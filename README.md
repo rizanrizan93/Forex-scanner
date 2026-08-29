@@ -1,83 +1,155 @@
-# FX Institutional Scanner v0.1
+# FX Institutional Scanner v0.4
 
-Production-oriented forex scanner foundation for intraday trading research.
+Production-oriented forex scanner for intraday research, mobile-controlled automation, and broker-agnostic execution.
 
-## Scope
+**Preferred execution backend: cTrader Open API**  
+**Fallback backend: MT5 (explicit operator selection only)**  
+**Execution default: `DISABLED`**
 
-This bootstrap implements **Phase 0 (contracts & safety)** and **Phase 1 (market-data foundation)** only.
-It does **not** place live orders. There is intentionally no `order_send` path in the codebase.
+## Target operating model
 
-Core design:
+The phone is the **control and monitoring plane**, not the 24/5 execution host.
 
-`Macro Regime -> Currency Strength -> Pair Ranking -> HTF Structure -> Liquidity/SMC -> Entry -> Guards -> Paper/Demo -> Real-Money Gate`
+```text
+Phone / cTrader mobile / future dashboard
+              |
+              | approve / pause / kill / monitor
+              v
+        VPS / cloud worker
+              |
+      FX Scanner Core
+              |
+ Macro -> Pair Ranking -> SMC/ICT -> Risk/Guards
+              |
+       BrokerGateway
+          /       \
+   cTrader       MT5
+  preferred     fallback
+```
 
-The later phases are specified in configuration and schema contracts, but trading logic is not enabled until data integrity is validated.
+A home PC does not need to remain on when the cTrader backend is used. The VPS keeps the scanner, streaming connection, execution router, risk engine, and health supervisor alive.
 
-## Phase 0 implemented
+## v0.4 broker architecture
 
-- 15-pair G10 liquid universe
-- canonical UTC time contract
-- signal state contract
-- risk limits and real-money acceptance criteria
-- session definitions using real time zones (DST-aware)
-- fail-closed data-source rules
-- no placeholder/default-neutral values for missing evidence
-- no live-order execution path
+The trading core no longer depends directly on MT5.
 
-## Phase 1 implemented
+`BrokerGateway` normalizes:
 
-- broker-native MT5 collector adapter (read-only market data)
-- deterministic mock collector for tests
-- UTC tick contract with Bid/Ask validation
-- tick-to-bar aggregation for M1/M5/M15/H1/H4/D1
-- spread statistics on every bar
-- data-quality/freshness checks
-- Parquet partition store adapter
-- DuckDB catalog adapter
-- JSONL audit fallback for environments without Arrow/DuckDB
-- Supabase declarative schema (not applied to any remote project)
-- test suite for contracts, aggregation, quality, sessions, and guards
+- account/equity/margin state
+- symbol and quote state
+- preflight validation
+- order submission and response
+- order identifiers and executed volume
 
-## Important MT5 host constraint
+Backends:
 
-The official `MetaTrader5` Python wheel is currently distributed for **Windows x86-64**. Therefore the broker-native collector should run on a Windows machine/VPS with the TMGM MT5 terminal logged in. The scanner/dashboard can run elsewhere and consume persisted data.
+- **cTrader Open API** — preferred, event-driven, server/VPS friendly
+- **MT5** — compatibility fallback for brokers that only expose MT5
 
-The MT5 adapter is **fail-closed**. If the package/terminal is unavailable it raises an explicit error; it never silently substitutes another price feed.
+Automatic failover from cTrader to MT5 is deliberately forbidden. Switching brokers/backends is an explicit operator action to prevent duplicate positions or accidental cross-broker exposure.
 
-## Data contract
+See `docs/CTRADER_V0_4.md`.
 
-All timestamps are timezone-aware UTC.
+## Runtime cadence
 
-A tick is valid only when:
+- heavy macro + pair ranking: 15 minutes
+- shortlisted setup watcher: 60 seconds
+- ARMED execution watcher: 2 seconds
+- open-position monitor: 2 seconds
 
-- `bid > 0`
-- `ask > 0`
-- `ask >= bid`
-- timestamp is timezone-aware
-- symbol belongs to configured universe
+The runtime supervisor uses bounded concurrent workers so a slow heavy scan cannot block the execution watcher.
 
-Bar prices use the tick midpoint for research features, while raw Bid/Ask ticks remain the source of truth for execution-cost/backtest work.
+## Runtime safety
 
-## Storage design
+- non-overlap lock per watcher
+- monotonic/deadline scheduling
+- late-cycle skip; no catch-up storm
+- bounded concurrent supervisor
+- bounded FIFO execution queue
+- dedicated single execution worker
+- queue backpressure
+- reconnect/backoff + circuit breaker
+- health/stuck-worker telemetry
+- atomic in-flight duplicate-signal claim
+- kill-switch and signal-age recheck immediately before submit
+- server-side SL/TP requirement
+- broker preflight before submit
+- cTrader quote freshness gate
+- live environment + account allowlist gates
 
-Large raw market data:
+## Execution modes
 
-- `data/ticks/symbol=<PAIR>/date=<YYYY-MM-DD>/*.parquet`
-- `data/bars/timeframe=<TF>/symbol=<PAIR>/date=<YYYY-MM-DD>/*.parquet`
+- `DISABLED` — default
+- `SIMULATION`
+- `CONFIRM_TO_TRADE`
+- `AUTO`
 
-Catalog/query layer:
+`AUTO` cannot trade until all independent live gates are deliberately opened.
 
-- DuckDB
+## cTrader setup
 
-Operational/evidence state:
+Install the official Open API Python SDK on the VPS:
 
-- Supabase/Postgres (separate project intended)
+```bash
+pip install -r requirements-ctrader.txt
+```
 
-Supabase is deliberately not mixed into the existing stock-scanner database.
+After a cTrader Open API application is registered/approved and a demo account is available, provide secrets only as environment variables:
 
-## Install
+```text
+CTRADER_CLIENT_ID
+CTRADER_CLIENT_SECRET
+CTRADER_ACCESS_TOKEN
+CTRADER_REFRESH_TOKEN
+CTRADER_ACCOUNT_ID
+```
 
-Recommended Python: 3.11-3.14.
+Do not commit those values.
+
+The initial target should remain **Pepperstone cTrader demo**, then progress through simulation and confirm-to-trade before any automatic demo execution.
+
+## Database architecture
+
+The scanner **still needs a database**, especially for phone-only control, auditability, macro history, and performance validation. But the database is not placed in the critical quote/order latency path.
+
+```text
+Realtime critical path
+cTrader stream -> in-memory state -> guards -> broker execution
+
+Historical research
+Parquet -> DuckDB
+
+Durable operational/control state
+Supabase/Postgres
+```
+
+Supabase stores durable state such as:
+
+- macro/currency-strength snapshots
+- pair rankings and signals
+- broker/order audit events
+- paper/demo/live performance
+- mobile AUTO/PAUSE/EMERGENCY control state
+- runtime heartbeats and health
+- model drift/acceptance evidence
+
+Raw tick history should stay in Parquet/DuckDB rather than being written tick-by-tick to Supabase.
+
+See `docs/DATABASE_ARCHITECTURE_V0_4.md`.
+
+## Data foundation
+
+- 15 liquid G10 pairs
+- canonical UTC timestamps
+- Bid/Ask contract validation
+- M1/M5/M15/H1/H4/D1 aggregation
+- spread statistics
+- freshness/duplicate/non-monotonic checks
+- DST-aware sessions
+- Parquet + DuckDB historical adapters
+- isolated Supabase operational schema
+
+## Install core
 
 ```bash
 python -m venv .venv
@@ -86,50 +158,48 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-On the Windows MT5 collector host only:
+Optional cTrader backend:
+
+```bash
+pip install -r requirements-ctrader.txt
+```
+
+Optional Windows MT5 fallback:
 
 ```bash
 pip install -r requirements-mt5-windows.txt
 ```
 
-## Run validation
+## Validation
 
 ```bash
 pytest -q
 python -m fx_scanner.cli validate-config
 python -m fx_scanner.cli demo-ingest --symbol EURUSD --minutes 10
+python -m fx_scanner.cli runtime-smoke --seconds 86400
 ```
 
-The demo command uses deterministic synthetic ticks and does not access a broker.
+## Live progression
 
-## MT5 read-only smoke test
+Do not jump directly to `AUTO`.
 
-On Windows with TMGM MT5 already installed and logged in:
-
-```bash
-python -m fx_scanner.cli mt5-smoke --symbol EURUSD --seconds 30
+```text
+DISABLED
+-> SIMULATION
+-> CONFIRM_TO_TRADE (cTrader demo)
+-> AUTO (cTrader demo)
+-> forward validation
+-> real-money acceptance gate
 ```
 
-This only reads ticks. It does not place an order.
-
-## Supabase
-
-`supabase/schemas/fx_core.sql` is a declarative schema for a future dedicated FX Supabase project.
-It enables RLS on exposed tables and revokes `anon` / `authenticated` privileges by default. Initial scanner writes are intended to come only from a trusted backend.
-
-Do not put a service-role/secret key in GitHub or Streamlit client code.
-
-## Real-money gate
-
-The codebase records these acceptance criteria but Phase 0/1 cannot satisfy them yet:
+Real-money acceptance remains at minimum:
 
 - OOS win rate >= 55%
 - Profit Factor >= 1.30
-- Expectancy > 0.15R
-- >= 250 aggregate OOS trades
+- positive robust expectancy
 - walk-forward pass
 - spread/slippage stress pass
-- multiple-regime pass
+- multi-regime pass
 - demo forward-test pass
 
-Until every mandatory gate is satisfied, readiness must remain `RESEARCH_ONLY` / `PAPER_ONLY`.
+No real-money readiness is claimed at v0.4.
