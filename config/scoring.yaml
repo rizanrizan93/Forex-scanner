@@ -1,0 +1,37 @@
+pair_opportunity:
+  macro: 35
+  currency_strength: 25
+  intermarket: 15
+  volatility: 10
+  session: 10
+  spread: 5
+
+execution_conviction:
+  relative_macro: 20
+  htf_structure: 15
+  liquidity: 15
+  smc_structure: 15
+  displacement: 10
+  session: 10
+  cross_asset: 5
+  positioning: 5
+  execution_quality: 5
+
+states:
+  no_trade_max: 64
+  watch_min: 65
+  setup_forming_min: 75
+  armed_min: 85
+  execution_candidate_min: 90
+
+hard_guards:
+  - NEWS_BLOCK
+  - SPREAD_BLOCK
+  - VOLATILITY_BLOCK
+  - CORRELATION_BLOCK
+  - RISK_BLOCK
+  - STALE_SIGNAL
+  - CHASE_BLOCK
+  - RR_BLOCK
+  - STRUCTURE_INVALID
+  - DATA_QUALITY_BLOCK

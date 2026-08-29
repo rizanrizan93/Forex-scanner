@@ -1,0 +1,24 @@
+pairs:
+  - {symbol: EURUSD, base: EUR, quote: USD, pip_size: 0.0001, tier: A}
+  - {symbol: GBPUSD, base: GBP, quote: USD, pip_size: 0.0001, tier: A}
+  - {symbol: USDJPY, base: USD, quote: JPY, pip_size: 0.01, tier: A}
+  - {symbol: USDCHF, base: USD, quote: CHF, pip_size: 0.0001, tier: A}
+  - {symbol: USDCAD, base: USD, quote: CAD, pip_size: 0.0001, tier: A}
+  - {symbol: AUDUSD, base: AUD, quote: USD, pip_size: 0.0001, tier: A}
+  - {symbol: NZDUSD, base: NZD, quote: USD, pip_size: 0.0001, tier: A}
+  - {symbol: EURJPY, base: EUR, quote: JPY, pip_size: 0.01, tier: B}
+  - {symbol: GBPJPY, base: GBP, quote: JPY, pip_size: 0.01, tier: B}
+  - {symbol: EURGBP, base: EUR, quote: GBP, pip_size: 0.0001, tier: B}
+  - {symbol: AUDJPY, base: AUD, quote: JPY, pip_size: 0.01, tier: B}
+  - {symbol: CADJPY, base: CAD, quote: JPY, pip_size: 0.01, tier: B}
+  - {symbol: EURCHF, base: EUR, quote: CHF, pip_size: 0.0001, tier: B}
+  - {symbol: EURAUD, base: EUR, quote: AUD, pip_size: 0.0001, tier: B}
+  - {symbol: GBPAUD, base: GBP, quote: AUD, pip_size: 0.0001, tier: B}
+
+timeframes:
+  M1: 60
+  M5: 300
+  M15: 900
+  H1: 3600
+  H4: 14400
+  D1: 86400

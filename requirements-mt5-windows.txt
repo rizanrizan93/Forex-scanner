@@ -1,0 +1,2 @@
+# Install only on the Windows MT5 collector host.
+MetaTrader5==5.0.6147

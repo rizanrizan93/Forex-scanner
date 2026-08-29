@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local market data / DB
+data/
+*.duckdb
+*.db
+*.parquet
+*.jsonl
+
+# Supabase local temp
+supabase/.temp/
+supabase/.branches/
+
+# OS/IDE
+.DS_Store
+.vscode/
+.idea/
