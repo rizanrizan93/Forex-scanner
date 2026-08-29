@@ -9,6 +9,8 @@ from .collectors.mt5 import MT5Collector
 from .config import load_project_config
 from .demo import generate_demo_ticks
 from .quality import assess_ticks
+from .execution.policy import load_execution_policy
+from .execution.runtime import RuntimeSupervisor, ScheduledJob
 from .storage.audit import JsonlAuditStore
 
 
@@ -17,7 +19,12 @@ UTC = timezone.utc
 
 def cmd_validate_config(args: argparse.Namespace) -> int:
     cfg = load_project_config(args.root)
-    print(f"CONFIG_OK pairs={len(cfg.pairs)} timeframes={','.join(cfg.timeframes)} mode={cfg.risk['mode']}")
+    execution = load_execution_policy(args.root)
+    print(
+        f"CONFIG_OK pairs={len(cfg.pairs)} timeframes={','.join(cfg.timeframes)} "
+        f"research_mode={cfg.risk['mode']} execution_mode={execution.mode.value} "
+        f"workers={execution.runtime['concurrent_workers']}"
+    )
     return 0
 
 
@@ -41,6 +48,39 @@ def cmd_demo_ingest(args: argparse.Namespace) -> int:
     })
     print(f"DEMO_OK symbol={args.symbol.upper()} ticks={len(ticks)} bars_m1={len(bars)} quality={report.valid}")
     return 0
+
+
+def cmd_runtime_smoke(args: argparse.Namespace) -> int:
+    policy = load_execution_policy(args.root)
+    counts = {"heavy_scan": 0, "fast_setup": 0, "execution_watch": 0, "position_monitor": 0}
+    supervisor = RuntimeSupervisor()
+    lag = policy.runtime["max_lag_seconds"]
+
+    def handler(name: str):
+        def run():
+            counts[name] += 1
+        return run
+
+    mapping = {
+        "heavy_scan": "heavy_scan_seconds",
+        "fast_setup": "fast_setup_seconds",
+        "execution_watch": "execution_watch_seconds",
+        "position_monitor": "position_monitor_seconds",
+    }
+    for name, key in mapping.items():
+        supervisor.add_job(ScheduledJob(name, policy.scheduler[key], lag[name], handler(name)))
+
+    step = float(policy.runtime["supervisor_tick_seconds"])
+    iterations = int(float(args.seconds) / step) + 1
+    for i in range(iterations):
+        supervisor.tick(i * step)
+    health = supervisor.health()
+    print(
+        "RUNTIME_SMOKE_OK "
+        + " ".join(f"{k}={v}" for k, v in counts.items())
+        + f" healthy={health.healthy} ticks={iterations}"
+    )
+    return 0 if health.healthy else 2
 
 
 def cmd_mt5_smoke(args: argparse.Namespace) -> int:
@@ -69,6 +109,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--symbol", default="EURUSD")
     p.add_argument("--minutes", type=int, default=10)
     p.set_defaults(func=cmd_demo_ingest)
+
+    p = sub.add_parser("runtime-smoke")
+    p.add_argument("--seconds", type=int, default=3600)
+    p.set_defaults(func=cmd_runtime_smoke)
 
     p = sub.add_parser("mt5-smoke")
     p.add_argument("--symbol", default="EURUSD")

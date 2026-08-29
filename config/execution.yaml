@@ -1,0 +1,69 @@
+# v0.4 broker-agnostic execution architecture.
+# Live trading remains locked by independent gates.
+mode: DISABLED
+
+broker:
+  preferred: CTRADER
+  fallback: MT5
+  automatic_fallback: false
+
+ctrader:
+  environment: DEMO
+  client_id_env: CTRADER_CLIENT_ID
+  client_secret_env: CTRADER_CLIENT_SECRET
+  access_token_env: CTRADER_ACCESS_TOKEN
+  refresh_token_env: CTRADER_REFRESH_TOKEN
+  account_id_env: CTRADER_ACCOUNT_ID
+  request_timeout_seconds: 10
+  max_quote_age_seconds: 5
+
+scheduler:
+  heavy_scan_seconds: 900
+  fast_setup_seconds: 60
+  execution_watch_seconds: 2
+  position_monitor_seconds: 2
+
+runtime:
+  max_lag_seconds:
+    heavy_scan: 120
+    fast_setup: 15
+    execution_watch: 3
+    position_monitor: 3
+  supervisor_tick_seconds: 0.25
+  execution_queue_maxsize: 100
+  concurrent_workers: 4
+  execution_worker_poll_seconds: 0.25
+  reconnect:
+    max_attempts: 3
+    backoff_initial_seconds: 1
+    backoff_multiplier: 2
+    backoff_max_seconds: 30
+  circuit_breaker:
+    failure_threshold: 3
+    recovery_seconds: 30
+
+order:
+  default_deviation_points: 20
+  magic_number: 26083001
+  comment_prefix: FXIS
+  max_signal_age_seconds: 300
+  require_server_side_sl: true
+  require_server_side_tp: true
+  require_broker_preflight: true
+  require_order_check: true   # MT5 fallback only
+  max_spread_ratio: 1.75
+
+live_safety:
+  live_enable_env: FX_LIVE_TRADING_ENABLED
+  live_enable_value: I_UNDERSTAND_LIVE_ORDERS
+  account_allowlist_env: FX_BROKER_ACCOUNT_ALLOWLIST
+  require_account_allowlist: true
+  kill_switch_env: FX_KILL_SWITCH
+  kill_switch_safe_value: "0"
+
+modes:
+  allowed:
+    - DISABLED
+    - SIMULATION
+    - CONFIRM_TO_TRADE
+    - AUTO
