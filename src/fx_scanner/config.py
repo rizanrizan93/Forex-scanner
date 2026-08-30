@@ -625,8 +625,18 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     perturb_cfg = validation.get("parameter_perturbation", {})
     if not isinstance(perturb_cfg, Mapping):
         raise ConfigurationError("validation.parameter_perturbation must be a mapping")
-    if int(perturb_cfg.get("minimum_variants", 0)) < 5:
-        raise ConfigurationError("parameter perturbation requires at least five variants")
+    if int(perturb_cfg.get("minimum_variants", 0)) < 6:
+        raise ConfigurationError("parameter perturbation requires at least six variants")
+    canonical_variants = [
+        "equal_tolerance_minus10",
+        "equal_tolerance_plus10",
+        "sl_buffer_minus10",
+        "sl_buffer_plus10",
+        "entry_zone_minus10",
+        "entry_zone_plus10",
+    ]
+    if list(perturb_cfg.get("required_variants", [])) != canonical_variants:
+        raise ConfigurationError("parameter perturbation variants must remain canonical")
     if _as_finite_number(
         perturb_cfg.get("profit_factor_min"),
         label="validation.parameter_perturbation.profit_factor_min",
