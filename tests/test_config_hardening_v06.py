@@ -153,3 +153,13 @@ def test_v08_minimum_bars_cannot_be_reduced(tmp_path):
     write_yaml(path, data)
     with pytest.raises(ConfigurationError, match="M5 cannot be below 60"):
         load_project_config(root)
+
+
+def test_v08_bar_freshness_window_cannot_be_weakened(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "strategy.yaml"
+    data = read_yaml(path)
+    data["mtf"]["max_bar_age_seconds"]["M5"] = 3600
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="max_bar_age_seconds.M5"):
+        load_project_config(root)
