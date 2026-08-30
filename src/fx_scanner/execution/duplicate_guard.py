@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from threading import Lock
 
@@ -32,17 +33,30 @@ class DuplicateOrderGuard:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temp = self.path.with_suffix(self.path.suffix + ".tmp")
-        temp.write_text(
-            json.dumps(
-                {
-                    "executed_signal_ids": sorted(self._seen),
-                    "uncertain_signal_ids": sorted(self._uncertain),
-                },
-                indent=2,
-            ),
-            encoding="utf-8",
+        payload = json.dumps(
+            {
+                "executed_signal_ids": sorted(self._seen),
+                "uncertain_signal_ids": sorted(self._uncertain),
+            },
+            indent=2,
         )
-        temp.replace(self.path)
+        with temp.open("w", encoding="utf-8") as fh:
+            fh.write(payload)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temp, self.path)
+        # Best-effort directory fsync closes the rename durability window on
+        # filesystems that support O_DIRECTORY. Windows safely skips this.
+        try:
+            flags = getattr(os, "O_DIRECTORY", 0)
+            if flags:
+                fd = os.open(str(self.path.parent), os.O_RDONLY | flags)
+                try:
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
+        except OSError:
+            pass
 
     def is_duplicate(self, signal_id: str) -> bool:
         with self._lock:
@@ -70,6 +84,10 @@ class DuplicateOrderGuard:
     def release_claim(self, signal_id: str) -> None:
         with self._lock:
             self._inflight.discard(signal_id)
+
+    def mark_submitting(self, signal_id: str) -> None:
+        """Persist a pre-submit quarantine before crossing broker side effects."""
+        self.mark_uncertain(signal_id)
 
     def mark_uncertain(self, signal_id: str) -> None:
         with self._lock:
