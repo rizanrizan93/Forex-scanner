@@ -94,3 +94,58 @@ def test_missing_guard_input_fails_closed():
     )
     assert decision.state == SignalState.NO_TRADE
     assert "GUARD_INPUT_MISSING:NEWS_BLOCK" in decision.guards
+
+
+def test_neutral_pair_can_never_be_execution_ready():
+    cfg = load_project_config()
+    neutral = PairRank(
+        symbol="EURUSD",
+        direction="NEUTRAL",
+        relative_macro_edge=0,
+        relative_technical_edge=0,
+        cross_asset_edge=0,
+        pair_edge=0,
+        absolute_edge=0,
+        coverage=1.0,
+        missing_components=(),
+        rank=1,
+    )
+    decision = build_decision(
+        rank=neutral,
+        timestamp=datetime(2026, 8, 28, 10, tzinfo=UTC),
+        conviction_components=components(100),
+        conviction_weights=cfg.scoring["execution_conviction"],
+        thresholds=cfg.scoring["states"],
+        guard_flags={name: False for name in cfg.scoring["hard_guards"]},
+        required_guards=cfg.scoring["hard_guards"],
+    )
+    assert decision.state == SignalState.NO_TRADE
+    assert "PAIR_DIRECTION_NEUTRAL" in decision.guards
+
+
+def test_low_pair_coverage_blocks_high_conviction():
+    cfg = load_project_config()
+    partial = PairRank(
+        symbol="EURUSD",
+        direction="LONG",
+        relative_macro_edge=80,
+        relative_technical_edge=60,
+        cross_asset_edge=None,
+        pair_edge=40,
+        absolute_edge=40,
+        coverage=0.80,
+        missing_components=("cross_asset",),
+        rank=1,
+    )
+    decision = build_decision(
+        rank=partial,
+        timestamp=datetime(2026, 8, 28, 10, tzinfo=UTC),
+        conviction_components=components(100),
+        conviction_weights=cfg.scoring["execution_conviction"],
+        thresholds=cfg.scoring["states"],
+        guard_flags={name: False for name in cfg.scoring["hard_guards"]},
+        required_guards=cfg.scoring["hard_guards"],
+        minimum_pair_coverage=0.85,
+    )
+    assert decision.state == SignalState.NO_TRADE
+    assert "PAIR_COVERAGE_BLOCK" in decision.guards
