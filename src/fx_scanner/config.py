@@ -351,6 +351,23 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         if not raw.is_integer() or not floor <= raw <= 2000:
             raise ConfigurationError(f"strategy minimum_bars.{tf} cannot be below {floor}")
 
+    max_bar_age = mtf.get("max_bar_age_seconds", {})
+    canonical_max_age = {
+        "D1": 129600,
+        "H4": 28800,
+        "H1": 7200,
+        "M15": 1800,
+        "M5": 600,
+    }
+    if not isinstance(max_bar_age, Mapping) or set(max_bar_age) != set(canonical_max_age):
+        raise ConfigurationError("strategy max_bar_age_seconds keys are invalid")
+    for tf, expected in canonical_max_age.items():
+        raw = _as_finite_number(max_bar_age.get(tf), label=f"strategy.max_bar_age_seconds.{tf}")
+        if not raw.is_integer() or int(raw) != expected:
+            raise ConfigurationError(
+                f"strategy max_bar_age_seconds.{tf} must remain {expected}"
+            )
+
     liquidity_cfg = strategy.get("liquidity", {})
     if not isinstance(liquidity_cfg, Mapping):
         raise ConfigurationError("strategy.liquidity must be a mapping")
