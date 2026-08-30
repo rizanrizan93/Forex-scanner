@@ -16,3 +16,7 @@ def test_config_contract():
     assert cfg.providers["sources"]["ECB_DATA_PORTAL"]["official"] is True
     assert cfg.providers["sources"]["BANK_OF_CANADA_VALET"]["enabled"] is True
     assert cfg.providers["transport"]["timeout_seconds"] > 0
+    assert cfg.strategy["selection"]["macro_compatible_top"] == 8
+    assert cfg.strategy["selection"]["deep_analysis_top"] == 5
+    assert cfg.strategy["mtf"]["required_timeframes"] == ["D1", "H4", "H1", "M15", "M5"]
+    assert cfg.strategy["trade_plan"]["minimum_tp2_rr"] >= 1.5
