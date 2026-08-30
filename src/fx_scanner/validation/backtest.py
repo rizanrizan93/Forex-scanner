@@ -38,6 +38,10 @@ class CostModel:
                 raise DataContractError(f"{name} must be non-negative finite")
 
     def stressed(self, *, spread_multiplier: float, slippage_multiplier: float) -> "CostModel":
+        if isinstance(spread_multiplier, bool) or isinstance(slippage_multiplier, bool):
+            raise DataContractError("stress multipliers cannot be boolean")
+        if not isfinite(float(spread_multiplier)) or not isfinite(float(slippage_multiplier)):
+            raise DataContractError("stress multipliers must be finite")
         if spread_multiplier < 1 or slippage_multiplier < 1:
             raise DataContractError("stress multipliers cannot reduce costs")
         return CostModel(
@@ -165,7 +169,9 @@ class BacktestEngine:
     def _fill_price(self, intent: TradeIntent, bar: Bar) -> float:
         # Conservative zone-edge fill: the edge further from the target.
         planned = intent.entry_high if intent.direction == "LONG" else intent.entry_low
-        adverse = 0.5 * self.cost_model.slippage_pips * intent.pip_size
+        adverse = 0.5 * (
+            self.cost_model.spread_pips + self.cost_model.slippage_pips
+        ) * intent.pip_size
         return planned + adverse if intent.direction == "LONG" else planned - adverse
 
     def _cost_r(self, intent: TradeIntent, entry_price: float, bars_held: int, timeframe_seconds: int) -> float:
@@ -179,7 +185,7 @@ class BacktestEngine:
             raise DataContractError("stop distance below configured minimum")
         elapsed_days = bars_held * timeframe_seconds / 86400.0
         cost_pips = (
-            self.cost_model.spread_pips
+            0.5 * self.cost_model.spread_pips
             + 0.5 * self.cost_model.slippage_pips
             + self.cost_model.commission_pips_round_trip
             + self.cost_model.swap_pips_per_day * elapsed_days
@@ -223,7 +229,11 @@ class BacktestEngine:
             else intent.stop_loss - entry_price
         )
         if risk_price <= 0:
-            raise DataContractError("adverse slippage invalidated stop geometry")
+            raise DataContractError("adverse costs invalidated stop geometry")
+        if intent.direction == "LONG" and intent.take_profit <= entry_price:
+            raise DataContractError("adverse costs invalidated LONG target geometry")
+        if intent.direction == "SHORT" and intent.take_profit >= entry_price:
+            raise DataContractError("adverse costs invalidated SHORT target geometry")
 
         evaluation = future[entry_bar_index:]
         held_limit = min(len(evaluation), intent.maximum_hold_bars + 1)
