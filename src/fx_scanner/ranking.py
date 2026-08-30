@@ -21,9 +21,11 @@ class PairRank:
     direction: str
     relative_macro_edge: float
     relative_technical_edge: float
-    cross_asset_edge: float
+    cross_asset_edge: float | None
     pair_edge: float
     absolute_edge: float
+    coverage: float
+    missing_components: tuple[str, ...]
     rank: int
 
 
@@ -61,10 +63,19 @@ def rank_pairs(
     *,
     macro_scores: Mapping[str, float],
     technical_strength: Mapping[str, CurrencyStrength | float],
-    cross_asset_edges: Mapping[str, float] | None = None,
+    cross_asset_edges: Mapping[str, float | None] | None = None,
+    minimum_coverage: float = 0.85,
 ) -> list[PairRank]:
+    """Rank pairs while preserving missing cross-asset evidence.
+
+    Macro and technical evidence are mandatory. Cross-asset evidence is optional
+    but its 15% weight is not silently converted to neutral zero; the remaining
+    observed weights are re-normalized and coverage is recorded.
+    """
+    if not 0 < minimum_coverage <= 1:
+        raise DataContractError("minimum_coverage must be in (0,1]")
     cross_asset_edges = cross_asset_edges or {}
-    candidates: list[tuple[PairSpec, float, float, float, float]] = []
+    candidates: list[tuple[PairSpec, float, float, float | None, float, float, tuple[str, ...]]] = []
 
     def strength(currency: str) -> float | None:
         value = technical_strength.get(currency)
@@ -81,23 +92,41 @@ def rank_pairs(
         quote_tech = strength(pair.quote)
         if base_tech is None or quote_tech is None:
             continue
+
         macro_edge = float(macro_scores[pair.base]) - float(macro_scores[pair.quote])
         tech_edge = base_tech - quote_tech
-        cross = float(cross_asset_edges.get(pair.symbol, 0.0))
-        if not all(isfinite(x) for x in (macro_edge, tech_edge, cross)):
+        if not all(isfinite(x) for x in (macro_edge, tech_edge)):
             raise DataContractError(f"non-finite pair edge for {pair.symbol}")
-        if not -100 <= cross <= 100:
-            raise DataContractError(f"cross-asset edge must be in [-100,100] for {pair.symbol}")
 
-        # Macro difference naturally spans [-200,200]; normalize to [-100,100].
         macro_norm = max(-100.0, min(100.0, macro_edge / 2.0))
         tech_norm = max(-100.0, min(100.0, tech_edge / 2.0))
-        pair_edge = 0.55 * macro_norm + 0.30 * tech_norm + 0.15 * cross
-        candidates.append((pair, macro_edge, tech_edge, cross, pair_edge))
+        observed_sum = 0.55 * macro_norm + 0.30 * tech_norm
+        observed_weight = 0.85
+        missing: list[str] = []
 
-    candidates.sort(key=lambda x: (-abs(x[4]), x[0].symbol))
+        cross_raw = cross_asset_edges.get(pair.symbol)
+        cross: float | None
+        if cross_raw is None:
+            cross = None
+            missing.append("cross_asset")
+        else:
+            cross = float(cross_raw)
+            if not isfinite(cross) or not -100 <= cross <= 100:
+                raise DataContractError(f"cross-asset edge must be in [-100,100] for {pair.symbol}")
+            observed_sum += 0.15 * cross
+            observed_weight += 0.15
+
+        coverage = observed_weight
+        if coverage < minimum_coverage:
+            continue
+        pair_edge = observed_sum / observed_weight
+        candidates.append(
+            (pair, macro_edge, tech_edge, cross, pair_edge, coverage, tuple(sorted(missing)))
+        )
+
+    candidates.sort(key=lambda x: (-abs(x[4]), -x[5], x[0].symbol))
     ranked: list[PairRank] = []
-    for idx, (pair, macro_edge, tech_edge, cross, edge) in enumerate(candidates, start=1):
+    for idx, (pair, macro_edge, tech_edge, cross, edge, coverage, missing) in enumerate(candidates, start=1):
         ranked.append(
             PairRank(
                 symbol=pair.symbol,
@@ -107,6 +136,8 @@ def rank_pairs(
                 cross_asset_edge=cross,
                 pair_edge=edge,
                 absolute_edge=abs(edge),
+                coverage=coverage,
+                missing_components=missing,
                 rank=idx,
             )
         )
