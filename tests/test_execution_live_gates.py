@@ -165,3 +165,42 @@ def test_inflight_claim_blocks_concurrent_duplicate(monkeypatch):
     release.set()
     t.join(timeout=1.0)
     assert gateway.sent == 1
+
+
+class RaisingGateway(FakeGateway):
+    def submit(self, preflight):
+        self.sent += 1
+        raise TimeoutError("response lost after send")
+
+
+def test_unknown_order_outcome_is_quarantined_and_persisted(monkeypatch, tmp_path):
+    _open_live(monkeypatch)
+    path = tmp_path / "idempotency.json"
+    gateway = RaisingGateway()
+    guard = DuplicateOrderGuard(path)
+    router = ExecutionRouter(_policy(), duplicate_guard=guard, gateway=gateway)
+    signal = _intent("UNKNOWN-OUTCOME")
+    with pytest.raises(TimeoutError, match="response lost"):
+        router.execute(signal)
+    assert guard.is_uncertain(signal.signal_id)
+    assert guard.is_duplicate(signal.signal_id)
+
+    restarted = DuplicateOrderGuard(path)
+    assert restarted.is_uncertain(signal.signal_id)
+    assert restarted.is_duplicate(signal.signal_id)
+    with pytest.raises(ExecutionBlocked, match="DUPLICATE_SIGNAL"):
+        ExecutionRouter(_policy(), duplicate_guard=restarted, gateway=FakeGateway()).execute(signal)
+
+
+def test_uncertain_signal_requires_explicit_reconciliation(tmp_path):
+    path = tmp_path / "idempotency.json"
+    guard = DuplicateOrderGuard(path)
+    assert guard.try_claim("U-1")
+    guard.mark_uncertain("U-1")
+    guard.resolve_uncertain("U-1", executed=False)
+    assert not guard.is_duplicate("U-1")
+
+    assert guard.try_claim("U-2")
+    guard.mark_uncertain("U-2")
+    guard.resolve_uncertain("U-2", executed=True)
+    assert guard.is_duplicate("U-2")
