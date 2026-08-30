@@ -29,6 +29,7 @@ class ProjectConfig:
     sessions: dict[str, Any]
     macro: dict[str, Any]
     providers: dict[str, Any]
+    strategy: dict[str, Any]
 
     @property
     def pair_map(self) -> dict[str, PairSpec]:
@@ -82,7 +83,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     pair_data = _read_yaml(cfg / "pairs.yaml")
     raw_pairs = pair_data.get("pairs", [])
     if not isinstance(raw_pairs, list) or len(raw_pairs) != 15:
-        raise ConfigurationError(f"v0.7 requires exactly 15 configured pairs, got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}")
+        raise ConfigurationError(f"v0.8 requires exactly 15 configured pairs, got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}")
 
     pairs: list[PairSpec] = []
     seen: set[str] = set()
@@ -127,6 +128,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     sessions = _read_yaml(cfg / "sessions.yaml")
     macro = _read_yaml(cfg / "macro.yaml")
     providers = _read_yaml(cfg / "providers.yaml")
+    strategy = _read_yaml(cfg / "strategy.yaml")
 
     pair_keys = {"macro", "currency_strength", "intermarket", "volatility", "session", "spread"}
     execution_keys = {
@@ -178,7 +180,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         raise ConfigurationError(f"hard_guards must be exactly {sorted(expected_guards)}")
 
     if str(risk.get("mode", "")).upper() != "RESEARCH_ONLY":
-        raise ConfigurationError("v0.7 risk mode must remain RESEARCH_ONLY")
+        raise ConfigurationError("v0.8 risk mode must remain RESEARCH_ONLY")
 
     risk_per_trade = _as_finite_number(risk.get("risk_per_trade_pct"), label="risk_per_trade_pct")
     max_risk = _as_finite_number(risk.get("max_risk_per_trade_pct"), label="max_risk_per_trade_pct")
@@ -188,15 +190,15 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         label="max_same_currency_exposure_units",
     )
     if not 0 < risk_per_trade <= max_risk <= 0.50:
-        raise ConfigurationError("risk-per-trade contract exceeds v0.7 safety cap")
+        raise ConfigurationError("risk-per-trade contract exceeds v0.8 safety cap")
     if not 0 < max_daily_loss <= 1.0:
-        raise ConfigurationError("max_daily_loss_pct exceeds v0.7 safety cap")
+        raise ConfigurationError("max_daily_loss_pct exceeds v0.8 safety cap")
     if int(risk.get("max_concurrent_trades", 0)) != 2:
         raise ConfigurationError("max_concurrent_trades must remain 2")
     if int(risk.get("max_consecutive_losses", 0)) != 3:
         raise ConfigurationError("max_consecutive_losses must remain 3")
     if not 0 < same_currency <= 1.5:
-        raise ConfigurationError("same-currency exposure exceeds v0.7 cap")
+        raise ConfigurationError("same-currency exposure exceeds v0.8 cap")
 
     acceptance = risk.get("acceptance", {})
     if not isinstance(acceptance, Mapping):
@@ -281,7 +283,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         ),
     }
     if not required_sources.issubset(set(sources)):
-        raise ConfigurationError("official ECB and Bank of Canada providers are required in v0.7")
+        raise ConfigurationError("official ECB and Bank of Canada providers are required in v0.8")
     for name, source in sources.items():
         if not isinstance(source, Mapping):
             raise ConfigurationError(f"provider source {name} must be a mapping")
@@ -319,4 +321,131 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         ) <= 0:
             raise ConfigurationError(f"smoke series {name} max age must be positive")
 
-    return ProjectConfig(tuple(pairs), timeframes, risk, scoring, sessions, macro, providers)
+
+    selection = strategy.get("selection", {})
+    if not isinstance(selection, Mapping):
+        raise ConfigurationError("strategy.selection must be a mapping")
+    if int(selection.get("macro_compatible_top", 0)) != 8:
+        raise ConfigurationError("strategy macro_compatible_top must remain 8")
+    if int(selection.get("deep_analysis_top", 0)) != 5:
+        raise ConfigurationError("strategy deep_analysis_top must remain 5")
+
+    mtf = strategy.get("mtf", {})
+    if not isinstance(mtf, Mapping):
+        raise ConfigurationError("strategy.mtf must be a mapping")
+    required_mtf = ["D1", "H4", "H1", "M15", "M5"]
+    if list(mtf.get("required_timeframes", [])) != required_mtf:
+        raise ConfigurationError(f"strategy MTF contract must equal {required_mtf}")
+    swing_lookback = _as_finite_number(mtf.get("swing_lookback"), label="strategy.mtf.swing_lookback")
+    atr_period = _as_finite_number(mtf.get("atr_period"), label="strategy.mtf.atr_period")
+    if not swing_lookback.is_integer() or not 1 <= swing_lookback <= 5:
+        raise ConfigurationError("strategy swing_lookback must be an integer in [1,5]")
+    if not atr_period.is_integer() or not 5 <= atr_period <= 50:
+        raise ConfigurationError("strategy ATR period must be an integer in [5,50]")
+    minimum_bars = mtf.get("minimum_bars", {})
+    canonical_minimum = {"D1": 20, "H4": 30, "H1": 40, "M15": 50, "M5": 60}
+    if not isinstance(minimum_bars, Mapping) or set(minimum_bars) != set(canonical_minimum):
+        raise ConfigurationError("strategy minimum_bars keys are invalid")
+    for tf, floor in canonical_minimum.items():
+        raw = _as_finite_number(minimum_bars.get(tf), label=f"strategy.minimum_bars.{tf}")
+        if not raw.is_integer() or not floor <= raw <= 2000:
+            raise ConfigurationError(f"strategy minimum_bars.{tf} cannot be below {floor}")
+
+    liquidity_cfg = strategy.get("liquidity", {})
+    if not isinstance(liquidity_cfg, Mapping):
+        raise ConfigurationError("strategy.liquidity must be a mapping")
+    tol = _as_finite_number(
+        liquidity_cfg.get("equal_level_tolerance_atr"),
+        label="strategy.liquidity.equal_level_tolerance_atr",
+    )
+    min_touches = _as_finite_number(
+        liquidity_cfg.get("equal_level_min_touches"),
+        label="strategy.liquidity.equal_level_min_touches",
+    )
+    lookback_bars = _as_finite_number(
+        liquidity_cfg.get("equal_level_lookback_bars"),
+        label="strategy.liquidity.equal_level_lookback_bars",
+    )
+    eq_band = _as_finite_number(
+        liquidity_cfg.get("equilibrium_band"),
+        label="strategy.liquidity.equilibrium_band",
+    )
+    sweep_reclaim = _as_finite_number(
+        liquidity_cfg.get("sweep_reclaim_bars"),
+        label="strategy.liquidity.sweep_reclaim_bars",
+    )
+    ob_search = _as_finite_number(
+        liquidity_cfg.get("order_block_search_bars"),
+        label="strategy.liquidity.order_block_search_bars",
+    )
+    ob_origin = _as_finite_number(
+        liquidity_cfg.get("order_block_origin_lookback"),
+        label="strategy.liquidity.order_block_origin_lookback",
+    )
+    fvg_scan = _as_finite_number(
+        liquidity_cfg.get("fvg_scan_bars"),
+        label="strategy.liquidity.fvg_scan_bars",
+    )
+    if not 0.05 <= tol <= 0.25:
+        raise ConfigurationError("equal-level ATR tolerance must remain within [0.05,0.25]")
+    if not min_touches.is_integer() or not 2 <= min_touches <= 5:
+        raise ConfigurationError("equal-level touches must be an integer in [2,5]")
+    for label, value in (
+        ("equal_level_lookback_bars", lookback_bars),
+        ("order_block_search_bars", ob_search),
+        ("fvg_scan_bars", fvg_scan),
+    ):
+        if not value.is_integer() or not 20 <= value <= 500:
+            raise ConfigurationError(f"strategy {label} must be an integer in [20,500]")
+    if not 0 <= eq_band <= 0.10:
+        raise ConfigurationError("equilibrium band must be within [0,0.10]")
+    if not sweep_reclaim.is_integer() or not 1 <= sweep_reclaim <= 5:
+        raise ConfigurationError("sweep reclaim bars must be an integer in [1,5]")
+    if not ob_origin.is_integer() or not 2 <= ob_origin <= 10:
+        raise ConfigurationError("order-block origin lookback must be an integer in [2,10]")
+
+    plan = strategy.get("trade_plan", {})
+    if not isinstance(plan, Mapping):
+        raise ConfigurationError("strategy.trade_plan must be a mapping")
+    sl_buffer = _as_finite_number(plan.get("sl_buffer_atr"), label="strategy.trade_plan.sl_buffer_atr")
+    chase_ok = _as_finite_number(plan.get("chase_ok_atr"), label="strategy.trade_plan.chase_ok_atr")
+    chase_block = _as_finite_number(plan.get("chase_block_atr"), label="strategy.trade_plan.chase_block_atr")
+    min_rr = _as_finite_number(plan.get("minimum_tp2_rr"), label="strategy.trade_plan.minimum_tp2_rr")
+    preferred_rr = _as_finite_number(plan.get("preferred_tp2_rr"), label="strategy.trade_plan.preferred_tp2_rr")
+    entry_zone = _as_finite_number(
+        plan.get("minimum_entry_zone_atr"),
+        label="strategy.trade_plan.minimum_entry_zone_atr",
+    )
+    if not 0.05 <= sl_buffer <= 0.30:
+        raise ConfigurationError("SL ATR buffer must remain within [0.05,0.30]")
+    if not 0 < chase_ok <= 0.25 or not chase_ok < chase_block <= 0.50:
+        raise ConfigurationError("chase thresholds violate v0.8 safety contract")
+    if min_rr < 1.50 or preferred_rr < max(2.0, min_rr):
+        raise ConfigurationError("trade-plan RR contract cannot be weakened")
+    if not 0 < entry_zone <= 0.20:
+        raise ConfigurationError("minimum entry-zone ATR must be in (0,0.20]")
+
+    setup = strategy.get("setup", {})
+    expected_setup = {
+        "liquidity_sweep_reversal": {
+            "require_m15_sweep",
+            "require_m5_displacement",
+            "require_m5_structure_break",
+        },
+        "trend_continuation": {
+            "require_d1_h4_alignment",
+            "require_h1_alignment",
+            "require_m15_fvg",
+            "require_m5_displacement",
+        },
+    }
+    if not isinstance(setup, Mapping) or set(setup) != set(expected_setup):
+        raise ConfigurationError("strategy setup keys are invalid")
+    for setup_name, required_flags in expected_setup.items():
+        values = setup.get(setup_name)
+        if not isinstance(values, Mapping) or set(values) != required_flags:
+            raise ConfigurationError(f"strategy setup {setup_name} flags are invalid")
+        if any(values[key] is not True for key in required_flags):
+            raise ConfigurationError(f"strategy setup {setup_name} requirements cannot be disabled")
+
+    return ProjectConfig(tuple(pairs), timeframes, risk, scoring, sessions, macro, providers, strategy)
