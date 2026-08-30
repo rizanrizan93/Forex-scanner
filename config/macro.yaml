@@ -1,0 +1,13 @@
+weights:
+  interest_rate: 25
+  central_bank_bias: 20
+  inflation: 15
+  growth: 10
+  labour: 10
+  yield_momentum: 10
+  risk_commodity: 5
+  positioning: 5
+
+minimum_coverage: 0.70
+factor_min: -100
+factor_max: 100
