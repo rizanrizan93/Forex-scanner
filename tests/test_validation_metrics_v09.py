@@ -99,12 +99,13 @@ def test_walk_forward_is_chronological_and_passes_stable_sequence():
 
 def test_monte_carlo_is_seeded_and_reports_sequence_risk():
     returns = [2.0, 2.0, -1.0, 2.0, -1.0] * 30
-    first = monte_carlo_returns(returns, simulations=500, seed=123)
-    second = monte_carlo_returns(returns, simulations=500, seed=123)
+    first = monte_carlo_returns(returns, simulations=500, seed=123, block_size=5)
+    second = monte_carlo_returns(returns, simulations=500, seed=123, block_size=5)
     assert first == second
     assert first.max_drawdown_r_p95 >= first.max_drawdown_r_p50
     assert first.losing_streak_p95 >= first.losing_streak_p50
-    assert first.terminal_r_p05 == pytest.approx(sum(returns))
+    assert first.block_size == 5
+    assert first.terminal_r_p05 <= first.terminal_r_p50
 
 
 def test_parameter_perturbation_requires_broad_stability():
