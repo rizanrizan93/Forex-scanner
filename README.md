@@ -1,4 +1,4 @@
-# FX Institutional Scanner v0.8
+# FX Institutional Scanner v0.9
 
 Production-oriented forex scanner foundation with a **dual-feed / single-execution** design.
 
@@ -191,6 +191,72 @@ python -m fx_scanner.cli provider-smoke --series RBA_CASH_RATE_TARGET
 
 These external-network checks remain outside mandatory CI.
 
+## Streamlit dashboard
+
+The repository now has a root Streamlit entrypoint:
+
+```text
+streamlit_app.py
+```
+
+For Streamlit Community Cloud, set **Main file path** to:
+
+```text
+streamlit_app.py
+```
+
+The Streamlit process is deliberately a dashboard/control surface, not the
+24/5 quote/order hot path. It can display:
+
+- configured 15-pair universe
+- latest durable pair ranking
+- latest signal states and Entry/SL/TP/RR
+- currency macro snapshots
+- execution-control safety state
+- runtime worker heartbeats
+- OOS/performance snapshots
+- manual official-provider health checks
+
+If backend credentials are absent, the app still starts in an offline/config
+mode instead of crashing. To read the private Supabase tables, configure these
+as Streamlit Secrets (never commit the values):
+
+```toml
+SUPABASE_URL = "..."
+SUPABASE_SECRET_KEY = "..."
+```
+
+Do not use a publishable/anon key for this dashboard: the operational/research
+tables are intentionally closed to public roles.
+
+See `docs/STREAMLIT_DEPLOY.md`.
+
+## v0.9 OOS validation and latency safeguards
+
+v0.9 keeps research validation outside the scanner hot path. It adds:
+
+- point-in-time closed-bar replay
+- chronological 60/20/20 train/validation/final-OOS split
+- conservative STOP_FIRST intrabar ambiguity handling
+- broker-observed spread where available
+- bid/ask-aware TP and SL testing
+- slippage, commission and swap costs
+- spread +25% and slippage +50% stress
+- censored-history handling that does not invent outcomes
+- rolling walk-forward
+- per-regime/setup/symbol performance
+- circular block-bootstrap Monte Carlo
+- canonical parameter perturbations
+- fail-closed demo-forward/perturbation/Monte-Carlo acceptance gates
+
+The final OOS acceptance contract remains at least 250 completed trades, 55%
+win rate, Profit Factor 1.30 and +0.15R expectancy before the additional
+stability/demo gates are considered.
+
+Research validation is statically prevented from entering the live
+strategy/execution import path. The CPU budget for a Top-5 deep scan remains
+250 ms.
+
 ## HFM Cent execution contract
 
 Startup fails closed unless the execution account and symbols match the configured
@@ -232,9 +298,9 @@ claim to recompute the complete SMC/ICT strategy on HFM M5 bars.
 ## Cadence
 
 - heavy macro / pair ranking: 15 minutes
-- setup watcher: 60 seconds
-- WATCH: 2 seconds
-- SETUP_FORMING: 1 second
+- setup watcher: 15 seconds
+- WATCH: 1 second
+- SETUP_FORMING: 500 ms
 - ARMED: 250 ms
 - EXECUTION_READY: 250 ms
 - open-position monitor: 2 seconds
@@ -363,4 +429,4 @@ Research acceptance remains at minimum: OOS win rate >=55%, Profit Factor
 >=1.30, positive robust expectancy, walk-forward pass, spread/slippage stress
 pass, multi-regime pass, and demo forward-test pass.
 
-**Real-money readiness is not claimed at v0.8.**
+**Real-money readiness is not claimed at v0.9.**
