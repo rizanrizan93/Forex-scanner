@@ -21,7 +21,7 @@ class DeltaNormalizer:
     def __post_init__(self) -> None:
         if isinstance(self.scale, bool) or not isfinite(float(self.scale)) or self.scale <= 0:
             raise DataContractError("normalizer scale must be positive finite")
-        if self.polarity not in (-1, 1):
+        if isinstance(self.polarity, bool) or self.polarity not in (-1, 1):
             raise DataContractError("normalizer polarity must be -1 or 1")
 
     def score(self, observation: NumericObservation) -> float | None:
@@ -46,7 +46,7 @@ class LevelNormalizer:
                 raise DataContractError(f"{name} must be finite numeric")
         if self.scale <= 0:
             raise DataContractError("normalizer scale must be positive")
-        if self.polarity not in (-1, 1):
+        if isinstance(self.polarity, bool) or self.polarity not in (-1, 1):
             raise DataContractError("normalizer polarity must be -1 or 1")
 
     def score(self, observation: NumericObservation) -> float:
