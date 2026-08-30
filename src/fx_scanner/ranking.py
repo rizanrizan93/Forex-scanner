@@ -125,7 +125,12 @@ def rank_pairs(
             return None
         if isinstance(value, CurrencyStrength):
             return float(value.score)
-        return float(value)
+        if isinstance(value, bool):
+            raise DataContractError(f"boolean technical strength is invalid for {currency}")
+        numeric = float(value)
+        if not isfinite(numeric) or not -100 <= numeric <= 100:
+            raise DataContractError(f"technical strength must be in [-100,100] for {currency}")
+        return numeric
 
     for pair in pairs:
         if pair.base not in macro_scores or pair.quote not in macro_scores:
