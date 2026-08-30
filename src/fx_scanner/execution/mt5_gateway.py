@@ -187,6 +187,32 @@ class MT5ExecutionGateway:
             raise CollectorUnavailable(f"MT5 stale quote for {symbol}: {age:.3f}s")
         return float(quote.ask if side == OrderSide.BUY else quote.bid)
 
+    def _order_filling(self, symbol_info, order_type: OrderType) -> int:
+        mt5 = self.mt5
+        # MetaTrader distinguishes SYMBOL_FILLING_* bit flags from the
+        # ORDER_FILLING_* enum used in MqlTradeRequest.type_filling.
+        # Pending orders use RETURN per MetaQuotes guidance.
+        if order_type != OrderType.MARKET:
+            return int(mt5.ORDER_FILLING_RETURN)
+
+        execution_mode = int(getattr(symbol_info, "trade_exemode", -1))
+        market_execution = int(getattr(mt5, "SYMBOL_TRADE_EXECUTION_MARKET", -99999))
+        flags = int(getattr(symbol_info, "filling_mode", 0) or 0)
+        symbol_ioc = int(getattr(mt5, "SYMBOL_FILLING_IOC", 2))
+        symbol_fok = int(getattr(mt5, "SYMBOL_FILLING_FOK", 1))
+
+        # RETURN is forbidden for Market Execution. Prefer IOC when broker
+        # permits it, otherwise FOK. If neither is advertised, fail closed.
+        if execution_mode == market_execution:
+            if flags & symbol_ioc:
+                return int(mt5.ORDER_FILLING_IOC)
+            if flags & symbol_fok:
+                return int(mt5.ORDER_FILLING_FOK)
+            raise CollectorUnavailable("MT5_NO_SUPPORTED_MARKET_FILLING_MODE")
+
+        # Instant/Request/Exchange execution may use RETURN.
+        return int(mt5.ORDER_FILLING_RETURN)
+
     def _request(self, intent: OrderIntent, *, deviation: int, magic: int, comment: str) -> dict[str, Any]:
         with self._io_lock:
             if not self.connected:
@@ -217,7 +243,7 @@ class MT5ExecutionGateway:
                 "magic": int(magic),
                 "comment": comment[:31],
                 "type_time": mt5.ORDER_TIME_GTC,
-                "type_filling": int(getattr(symbol_info, "filling_mode", mt5.ORDER_FILLING_IOC)),
+                "type_filling": self._order_filling(symbol_info, intent.order_type),
             }
 
     def order_check(self, request: dict[str, Any]):
