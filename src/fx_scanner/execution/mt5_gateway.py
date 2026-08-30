@@ -103,13 +103,22 @@ class MT5ExecutionGateway:
             info = self.mt5.account_info()
             if info is None:
                 raise CollectorUnavailable(f"MT5 account_info failed: {self.mt5.last_error()}")
+            terminal = self.mt5.terminal_info()
+            if terminal is None:
+                raise CollectorUnavailable(f"MT5 terminal_info failed: {self.mt5.last_error()}")
+            automated_trade_allowed = bool(
+                getattr(info, "trade_allowed", False)
+                and getattr(info, "trade_expert", False)
+                and getattr(terminal, "trade_allowed", False)
+                and not getattr(terminal, "tradeapi_disabled", False)
+            )
             return BrokerAccountSnapshot(
                 backend=self.backend,
                 account_id=str(int(info.login)),
                 balance=float(info.balance),
                 equity=float(info.equity),
                 margin_free=float(info.margin_free),
-                trade_allowed=bool(info.trade_allowed),
+                trade_allowed=automated_trade_allowed,
                 currency=str(getattr(info, "currency", "") or "") or None,
             )
 
