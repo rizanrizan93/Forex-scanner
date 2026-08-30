@@ -83,3 +83,15 @@ def test_http_transport_blocks_non_https_and_wrong_host_before_network():
         transport.get("http://example.com/x", allowed_host="example.com")
     with pytest.raises(HttpTransportError, match="host mismatch"):
         transport.get("https://evil.example/x", allowed_host="example.com")
+
+
+def test_official_numeric_providers_reject_multi_series_requests():
+    ecb = EcbDataPortalProvider(FakeTransport(b""))
+    result = ecb.fetch_numeric("EXR/D.USD+JPY.EUR.SP00.A")
+    assert result.status == ProviderStatus.INVALID
+    assert result.value is None
+
+    boc = BankOfCanadaValetProvider(FakeTransport(b""))
+    result = boc.fetch_numeric("V39079,V39078")
+    assert result.status == ProviderStatus.INVALID
+    assert result.value is None
