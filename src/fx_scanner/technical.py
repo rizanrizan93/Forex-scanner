@@ -177,13 +177,19 @@ def detect_sweep(
     atr_period: int = 14,
     reclaim_bars: int = 3,
 ) -> SweepSignal | None:
-    _validate_bars(bars, max(7, lookback * 2 + 3))
     if reclaim_bars < 1:
         raise DataContractError("reclaim_bars must be positive")
+    minimum_bars = lookback * 2 + 1 + reclaim_bars
+    _validate_bars(bars, max(5, minimum_bars))
     current_atr = atr(bars, atr_period)
-    highs = _pivot_highs(bars[:-1], lookback)
-    lows = _pivot_lows(bars[:-1], lookback)
-    recent = bars[-min(reclaim_bars, len(bars)):]
+
+    # Liquidity level must be established before the sweep/reclaim window.
+    # Otherwise the penetration candle itself can become the newest pivot and
+    # erase the level that was actually swept.
+    anchor_bars = bars[:-reclaim_bars]
+    highs = _pivot_highs(anchor_bars, lookback)
+    lows = _pivot_lows(anchor_bars, lookback)
+    recent = bars[-reclaim_bars:]
 
     bearish: SweepSignal | None = None
     bullish: SweepSignal | None = None
