@@ -129,21 +129,25 @@ class CTraderOpenApiSession:
                 return
             event = self.Protobuf.extract(container)
             sid = int(event.symbolId)
+            event_ts = self._event_ts(getattr(event, "timestamp", None))
             with self._quotes_lock:
                 state = self._quotes_by_id.setdefault(sid, {})
+                bid_present = False
+                ask_present = False
                 try:
-                    if event.HasField("bid"):
-                        state["bid"] = float(event.bid) / 100000.0
+                    bid_present = bool(event.HasField("bid"))
                 except Exception:
-                    if getattr(event, "bid", 0):
-                        state["bid"] = float(event.bid) / 100000.0
+                    bid_present = bool(getattr(event, "bid", 0))
                 try:
-                    if event.HasField("ask"):
-                        state["ask"] = float(event.ask) / 100000.0
+                    ask_present = bool(event.HasField("ask"))
                 except Exception:
-                    if getattr(event, "ask", 0):
-                        state["ask"] = float(event.ask) / 100000.0
-                state["timestamp"] = self._event_ts(getattr(event, "timestamp", None))
+                    ask_present = bool(getattr(event, "ask", 0))
+                if bid_present:
+                    state["bid"] = float(event.bid) / 100000.0
+                    state["bid_timestamp"] = event_ts
+                if ask_present:
+                    state["ask"] = float(event.ask) / 100000.0
+                    state["ask_timestamp"] = event_ts
         except Exception:
             return
 
@@ -300,11 +304,14 @@ class CTraderOpenApiSession:
         sid = self.symbol_id(symbol)
         with self._quotes_lock:
             state = dict(self._quotes_by_id.get(sid, {}))
-        if "bid" not in state or "ask" not in state or "timestamp" not in state:
+        required = {"bid", "ask", "bid_timestamp", "ask_timestamp"}
+        if not required.issubset(state):
             raise CollectorUnavailable(f"cTrader quote incomplete for {symbol}")
         if state["ask"] < state["bid"]:
             raise CollectorUnavailable(f"cTrader crossed quote for {symbol}")
-        return CTraderQuote(sid, float(state["bid"]), float(state["ask"]), state["timestamp"])
+        # Freshness of a two-sided quote is bounded by its older side.
+        quote_ts = min(state["bid_timestamp"], state["ask_timestamp"])
+        return CTraderQuote(sid, float(state["bid"]), float(state["ask"]), quote_ts)
 
     def trader(self):
         req = self.msg["TraderReq"]()
