@@ -40,8 +40,12 @@ class ExecutionRouter:
         audit_sink=None,
     ):
         self.policy = policy
-        self.duplicates = duplicate_guard or DuplicateOrderGuard()
         safety = policy.live_safety
+        if duplicate_guard is None and safety.get("require_persistent_idempotency", False):
+            state_env = str(safety.get("idempotency_state_path_env", "")).strip()
+            state_path = os.getenv(state_env, "").strip() if state_env else ""
+            duplicate_guard = DuplicateOrderGuard(state_path or None)
+        self.duplicates = duplicate_guard or DuplicateOrderGuard()
         self.kill_switch = kill_switch or KillSwitch(
             safety["kill_switch_env"],
             safety.get("kill_switch_safe_value", "0"),
@@ -106,6 +110,8 @@ class ExecutionRouter:
         allowlist = {x.strip() for x in allowed_raw.split(",") if x.strip()}
         if safety.get("require_account_allowlist", True) and str(account_id) not in allowlist:
             raise ExecutionBlocked("ACCOUNT_NOT_ALLOWLISTED")
+        if safety.get("require_persistent_idempotency", False) and self.duplicates.path is None:
+            raise ExecutionBlocked("PERSISTENT_IDEMPOTENCY_NOT_CONFIGURED")
         self._assert_control_plane()
 
     def execute(self, intent: OrderIntent, *, user_confirmed: bool = False) -> OrderReceipt:
@@ -122,6 +128,8 @@ class ExecutionRouter:
             raise ExecutionBlocked("DUPLICATE_SIGNAL")
 
         account_id = "UNKNOWN"
+        submit_attempted = False
+        submit_outcome_known = False
         try:
             if mode == ExecutionMode.SIMULATION:
                 self._assert_dynamic_safety(intent)
@@ -194,7 +202,9 @@ class ExecutionRouter:
             self._assert_dynamic_safety(intent)
             self._assert_control_plane()
 
+            submit_attempted = True
             result = self.gateway.submit(preflight)
+            submit_outcome_known = True
             if not result.accepted:
                 raise ExecutionBlocked(f"ORDER_SEND_REJECTED:{result.code}:{result.message}")
 
@@ -223,7 +233,18 @@ class ExecutionRouter:
                 result.executed_price,
             )
         except Exception as exc:
-            self.duplicates.release_claim(intent.signal_id)
+            if submit_attempted and not submit_outcome_known:
+                self.duplicates.mark_uncertain(intent.signal_id)
+                self._audit(
+                    "ORDER_OUTCOME_UNCERTAIN",
+                    account_id=account_id,
+                    accepted=None,
+                    code="RECONCILIATION_REQUIRED",
+                    message=str(exc),
+                    payload={"signal_id": intent.signal_id, "symbol": intent.symbol},
+                )
+            else:
+                self.duplicates.release_claim(intent.signal_id)
             self._audit(
                 "EXECUTION_BLOCKED",
                 account_id=account_id,
