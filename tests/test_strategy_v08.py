@@ -14,7 +14,9 @@ from fx_scanner.models import Bar, SignalState
 from fx_scanner.ranking import PairRank
 from fx_scanner.strategy import (
     SetupType,
+    TradePlan,
     analyze_pair_mtf,
+    scan_deep_candidates_report,
     select_pair_candidates,
 )
 from fx_scanner.technical import (
@@ -394,3 +396,60 @@ def test_stale_m5_bar_forces_stale_signal_guard(monkeypatch):
     assert "M5" in result.stale_timeframes
     assert result.computed_guards["STALE_SIGNAL"]
     assert result.decision.state == SignalState.NO_TRADE
+
+
+def test_trade_plan_rejects_reversed_tp2_geometry():
+    with pytest.raises(Exception, match="tp2 must be beyond tp1"):
+        TradePlan(
+            "LONG",
+            1.1000,
+            1.1010,
+            1.0950,
+            1.1100,
+            1.1080,
+            1.5,
+            2.0,
+            0.1,
+        )
+
+
+def test_deep_scan_report_preserves_missing_top5_candidates():
+    cfg = load_project_config()
+    symbols = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD"]
+    ranked = [
+        rank(symbol, i + 1, 95 - i, 180 - i * 5, "LONG")
+        for i, symbol in enumerate(symbols)
+    ]
+    report = scan_deep_candidates_report(
+        ranked=ranked,
+        bars_by_symbol={},
+        cfg=cfg,
+        as_of=AS_OF,
+        external_guards_by_symbol={},
+    )
+    assert len(report.selection.deep_analysis) == 5
+    assert report.analyses == ()
+    assert set(report.skipped) == set(symbols)
+    assert set(report.skipped.values()) == {"MISSING_MTF_BUNDLE"}
+
+
+def test_deep_scan_report_preserves_data_contract_failure():
+    cfg = load_project_config()
+    ranked = [rank("EURUSD", 1, 95, 180, "LONG")]
+    report = scan_deep_candidates_report(
+        ranked=ranked,
+        bars_by_symbol={
+            "EURUSD": {
+                "D1": bars("D1", 20),
+                "H4": bars("H4", 30),
+                "H1": bars("H1", 40),
+                "M15": bars("M15", 50),
+                # M5 deliberately missing.
+            }
+        },
+        cfg=cfg,
+        as_of=AS_OF,
+        external_guards_by_symbol={"EURUSD": all_guard_flags(cfg)},
+    )
+    assert report.analyses == ()
+    assert report.skipped["EURUSD"].startswith("DATA_CONTRACT:missing MTF bars")
