@@ -22,8 +22,8 @@ class FactorBinding:
     def __post_init__(self) -> None:
         if not self.series.strip():
             raise DataContractError("factor provider series is required")
-        if self.max_age_seconds <= 0:
-            raise DataContractError("factor max_age_seconds must be positive")
+        if isinstance(self.max_age_seconds, bool) or self.max_age_seconds <= 0:
+            raise DataContractError("factor max_age_seconds must be positive numeric")
         if not hasattr(self.provider, "fetch_numeric"):
             raise DataContractError("factor provider must expose fetch_numeric")
         if not hasattr(self.normalizer, "score"):
