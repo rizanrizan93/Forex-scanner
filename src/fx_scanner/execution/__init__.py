@@ -9,7 +9,8 @@ from .broker_gateway import (
     BrokerPreflight,
 )
 from .ctrader_gateway import CTraderExecutionGateway, CTraderPreparedOrder
-from .factory import DualBrokerStack, build_broker_gateway, build_dual_broker_stack
+from .ctrader_research import CTraderResearchFeed
+from .factory import DualBrokerStack, build_broker_gateway, build_ctrader_research_feed, build_dual_broker_stack
 from .reconciliation import DualFeedRevalidator, RevalidationBlocked, RevalidatedOrder, RevalidationMetrics
 from .symbol_mapping import MT5SymbolResolver, ResolvedSymbol
 from .models import ExecutionMode, OrderIntent, OrderReceipt, OrderSide, OrderType
@@ -33,6 +34,7 @@ __all__ = [
     "ExecutionWatchState",
     "DualBrokerStack",
     "build_dual_broker_stack",
+    "build_ctrader_research_feed",
     "DualFeedRevalidator",
     "RevalidationBlocked",
     "RevalidatedOrder",
@@ -47,6 +49,7 @@ __all__ = [
     "BrokerExecutionGateway",
     "BrokerOrderResult",
     "BrokerPreflight",
+    "CTraderResearchFeed",
     "CTraderExecutionGateway",
     "CTraderPreparedOrder",
     "build_broker_gateway",
