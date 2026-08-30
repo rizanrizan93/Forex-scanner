@@ -32,9 +32,13 @@ def build_decision(
     conviction_weights: Mapping[str, float],
     thresholds: Mapping[str, float],
     guard_flags: Mapping[str, bool],
+    required_guards: tuple[str, ...] | list[str],
     minimum_coverage: float = 0.80,
 ) -> DecisionSnapshot:
-    guard_result: GuardResult = evaluate_hard_guards(**dict(guard_flags))
+    guard_result: GuardResult = evaluate_hard_guards(
+        required_names=required_guards,
+        **dict(guard_flags),
+    )
     score: ScoreResult = score_with_state(
         conviction_components,
         conviction_weights,
