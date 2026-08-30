@@ -1,4 +1,4 @@
-# FX Institutional Scanner v0.5
+# FX Institutional Scanner v0.6
 
 Production-oriented forex scanner foundation with a **dual-feed / single-execution** design.
 
@@ -37,6 +37,29 @@ Android  -> monitor / future approve / pause / emergency controls
 There is **no automatic cTrader -> MT5 failover** and cTrader is configured
 `RESEARCH_ONLY`. The configured factory refuses to build cTrader as an execution
 backend.
+
+## v0.6 decision engine foundation
+
+The repository now contains deterministic, testable decision primitives:
+
+- eight-factor currency macro scoring with explicit missing/invalid coverage
+- relative macro edge by base vs quote currency
+- normalized currency-strength aggregation across the configured 15-pair universe
+- pair ranking using 55% macro / 30% technical / 15% cross-asset edge
+- evidence coverage propagated from macro, technical, and cross-asset inputs
+- ATR, displacement, FVG, swing structure, BOS, liquidity sweep/reclaim, and MSS confirmation
+- 0..100 conviction scoring with explicit missing-component coverage
+- state mapping: `NO_TRADE -> WATCH -> SETUP_FORMING -> ARMED -> EXECUTION_READY`
+- canonical hard guards that fail closed when a required guard input is missing or invalid
+- internal pair-direction and pair-coverage guards
+
+Missing evidence is never converted into a successful neutral observation. A
+high score cannot override a hard guard, a neutral pair direction, or inadequate
+evidence coverage.
+
+v0.6 is still a **research decision-engine foundation**. Macro/news/cross-asset
+providers and live broker bar pipelines must be wired and validated before these
+features can drive demo execution.
 
 ## HFM Cent execution contract
 
@@ -207,4 +230,4 @@ Research acceptance remains at minimum: OOS win rate >=55%, Profit Factor
 >=1.30, positive robust expectancy, walk-forward pass, spread/slippage stress
 pass, multi-regime pass, and demo forward-test pass.
 
-**Real-money readiness is not claimed at v0.5.**
+**Real-money readiness is not claimed at v0.6.**
