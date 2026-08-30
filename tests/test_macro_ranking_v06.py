@@ -138,3 +138,27 @@ def test_missing_cross_asset_is_partial_not_neutral_zero():
     assert eurusd.cross_asset_edge is None
     assert eurusd.coverage == 0.85
     assert eurusd.missing_components == ("cross_asset",)
+
+
+def test_boolean_macro_and_ranking_evidence_fail_closed():
+    import pytest
+    from fx_scanner.exceptions import DataContractError
+
+    cfg = load_project_config()
+    factors = _factors(inflation=True)
+    result = score_currency_macro("USD", factors, cfg.macro["weights"])
+    assert result.status == MacroStatus.INVALID
+    assert result.score is None
+
+    with pytest.raises(DataContractError, match="boolean momentum"):
+        compute_currency_strength({"EURUSD": True}, cfg.pairs)
+
+    macro = {c: 0 for c in ("EUR","USD","GBP","JPY","CHF","CAD","AUD","NZD")}
+    technical = {c: 0 for c in macro}
+    with pytest.raises(DataContractError, match="boolean cross-asset"):
+        rank_pairs(
+            cfg.pairs,
+            macro_scores=macro,
+            technical_strength=technical,
+            cross_asset_edges={"EURUSD": True},
+        )
