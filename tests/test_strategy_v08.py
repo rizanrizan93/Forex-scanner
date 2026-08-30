@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from fx_scanner.config import load_project_config
+from fx_scanner.exceptions import DataContractError
 from fx_scanner.liquidity import (
     DealingRange,
     FairValueGap,
@@ -399,7 +400,7 @@ def test_stale_m5_bar_forces_stale_signal_guard(monkeypatch):
 
 
 def test_trade_plan_rejects_reversed_tp2_geometry():
-    with pytest.raises(Exception, match="tp2 must be beyond tp1"):
+    with pytest.raises(DataContractError, match="tp2 must be beyond tp1"):
         TradePlan(
             "LONG",
             1.1000,
