@@ -14,7 +14,8 @@
 
 1. **Unknown broker outcome could previously permit blind retry.**
    - Fixed with persisted `uncertain_signal_ids`.
-   - Once submit starts, an exception with unknown outcome quarantines the signal.
+   - The signal is durably quarantined **before** crossing the broker side-effect boundary.
+   - Known rejection clears the quarantine; unknown outcome keeps it across restart.
    - Explicit broker reconciliation is required before retry.
 
 ### P1
