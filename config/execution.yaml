@@ -1,13 +1,17 @@
-# v0.4 broker-agnostic execution architecture.
-# Live trading remains locked by independent gates.
+# v0.5 dual-feed / single-execution architecture.
+# FP Markets cTrader is research-only; HFM Cent MT5 is the only execution venue.
+# Live trading remains locked by independent gates and defaults to DISABLED.
 mode: DISABLED
 
 broker:
-  preferred: CTRADER
-  fallback: MT5
+  dual_feed_single_execution: true
+  research: CTRADER
+  execution: MT5
   automatic_fallback: false
 
 ctrader:
+  role: RESEARCH_ONLY
+  broker_label: FP_MARKETS
   environment: DEMO
   client_id_env: CTRADER_CLIENT_ID
   client_secret_env: CTRADER_CLIENT_SECRET
@@ -15,24 +19,61 @@ ctrader:
   refresh_token_env: CTRADER_REFRESH_TOKEN
   account_id_env: CTRADER_ACCOUNT_ID
   request_timeout_seconds: 10
-  max_quote_age_seconds: 5
+  max_quote_age_seconds: 2
+
+mt5:
+  role: EXECUTION_ONLY
+  broker_label: HFM_CENT
+  terminal_path_env: MT5_TERMINAL_PATH
+  login_env: MT5_LOGIN
+  server_env: MT5_SERVER
+  password_env: MT5_PASSWORD
+  initialize_timeout_ms: 10000
+  max_quote_age_seconds: 1
+  symbol_suffix_candidates: ["", "c"]
+  symbol_map: {}
+
+reconciliation:
+  research_quote_max_age_seconds: 2
+  execution_quote_max_age_seconds: 1
+  max_mid_divergence_pips: 2.0
+  max_execution_spread_pips: 4.0
+  spread_ratio_floor_pips: 0.10
+  max_spread_ratio_vs_research: 12.0
+  max_entry_drift_pips: 2.0
+  max_entry_drift_r: 0.15
+  min_rr: 1.50
+  max_internal_revalidation_ms: 500
+  expected_account_currency: USC
+  expected_fx_contract_size: 1000
+  allow_pending_orders: false
+
+adaptive_cadence:
+  NO_TRADE: 2.0
+  WATCH: 2.0
+  SETUP_FORMING: 1.0
+  ARMED: 0.25
+  EXECUTION_READY: 0.05
+  MISSED: 2.0
+  INVALIDATED: 2.0
+  COOLDOWN: 2.0
 
 scheduler:
   heavy_scan_seconds: 900
   fast_setup_seconds: 60
-  execution_watch_seconds: 2
+  execution_watch_seconds: 0.25
   position_monitor_seconds: 2
 
 runtime:
   max_lag_seconds:
     heavy_scan: 120
     fast_setup: 15
-    execution_watch: 3
+    execution_watch: 0.50
     position_monitor: 3
-  supervisor_tick_seconds: 0.25
+  supervisor_tick_seconds: 0.05
   execution_queue_maxsize: 100
   concurrent_workers: 4
-  execution_worker_poll_seconds: 0.25
+  execution_worker_poll_seconds: 0.05
   reconnect:
     max_attempts: 3
     backoff_initial_seconds: 1
@@ -50,7 +91,7 @@ order:
   require_server_side_sl: true
   require_server_side_tp: true
   require_broker_preflight: true
-  require_order_check: true   # MT5 fallback only
+  require_order_check: true
   max_spread_ratio: 1.75
 
 live_safety:
@@ -62,6 +103,7 @@ live_safety:
   kill_switch_safe_value: "0"
   require_control_plane: true
   control_state_max_age_seconds: 5
+  require_revalidation: true
 
 modes:
   allowed:
