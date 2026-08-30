@@ -20,7 +20,8 @@ from fx_scanner.execution.runtime import (
 def test_v03_runtime_config_is_present_and_safe():
     policy = load_execution_policy()
     assert policy.mode.value == "DISABLED"
-    assert policy.runtime["max_lag_seconds"]["execution_watch"] == 3
+    assert policy.runtime["max_lag_seconds"]["execution_watch"] == 0.5
+    assert policy.scheduler["execution_watch_seconds"] == 0.25
     assert policy.runtime["execution_queue_maxsize"] == 100
     assert policy.runtime["concurrent_workers"] == 4
     assert policy.runtime["circuit_breaker"]["failure_threshold"] == 3
