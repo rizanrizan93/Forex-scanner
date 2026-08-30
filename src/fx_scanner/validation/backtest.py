@@ -215,6 +215,7 @@ class BacktestEngine:
         intent: TradeIntent,
         bar: Bar,
         *,
+        spread_pips: float,
         slippage_pips: float,
     ) -> float:
         # Conservative zone-edge fill: the edge further from the target.
@@ -229,7 +230,6 @@ class BacktestEngine:
         bars_held: int,
         timeframe_seconds: int,
         *,
-        spread_pips: float,
         slippage_pips: float,
     ) -> float:
         risk_price = (
@@ -294,6 +294,7 @@ class BacktestEngine:
                 entry_price = self._fill_price(
                     intent,
                     bar,
+                    spread_pips=spread_pips,
                     slippage_pips=slippage_pips,
                 )
                 break
