@@ -56,6 +56,8 @@ def score_currency_macro(
     invalid = False
 
     for name, raw_weight in weights.items():
+        if isinstance(raw_weight, bool):
+            raise DataContractError(f"invalid macro weight: {name}")
         weight = float(raw_weight)
         if weight <= 0 or not isfinite(weight):
             raise DataContractError(f"invalid macro weight: {name}")
