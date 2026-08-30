@@ -157,3 +157,61 @@ def test_ctrader_two_sided_quote_uses_older_side_timestamp():
     }
     quote = session.quote("EURUSD")
     assert quote.timestamp == older
+
+
+class AccountMT5:
+    def __init__(self, *, account_allowed=True, expert=True, terminal_allowed=True, api_disabled=False):
+        self.account_allowed = account_allowed
+        self.expert = expert
+        self.terminal_allowed = terminal_allowed
+        self.api_disabled = api_disabled
+    def account_info(self):
+        return SimpleNamespace(
+            login=123,
+            balance=10000,
+            equity=10000,
+            margin_free=9000,
+            trade_allowed=self.account_allowed,
+            trade_expert=self.expert,
+            currency="USC",
+        )
+    def terminal_info(self):
+        return SimpleNamespace(
+            connected=True,
+            trade_allowed=self.terminal_allowed,
+            tradeapi_disabled=self.api_disabled,
+        )
+    def last_error(self):
+        return (0, "ok")
+
+
+@pytest.mark.parametrize(
+    "account_allowed,expert,terminal_allowed,api_disabled,expected",
+    [
+        (True, True, True, False, True),
+        (False, True, True, False, False),
+        (True, False, True, False, False),
+        (True, True, False, False, False),
+        (True, True, True, True, False),
+    ],
+)
+def test_mt5_account_snapshot_requires_all_automation_permissions(
+    account_allowed, expert, terminal_allowed, api_disabled, expected
+):
+    g = MT5ExecutionGateway.__new__(MT5ExecutionGateway)
+    g.mt5 = AccountMT5(
+        account_allowed=account_allowed,
+        expert=expert,
+        terminal_allowed=terminal_allowed,
+        api_disabled=api_disabled,
+    )
+    g.connected = True
+    g._io_lock = RLock()
+    snapshot = g.account_snapshot()
+    assert snapshot.trade_allowed is expected
+
+
+def test_ctrader_missing_server_timestamp_is_rejected():
+    from fx_scanner.execution.ctrader_session import CTraderOpenApiSession
+    with pytest.raises(CollectorUnavailable, match="timestamp unavailable"):
+        CTraderOpenApiSession._event_ts(None)
