@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Mapping
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from ..exceptions import FXScannerError
 
@@ -21,6 +21,11 @@ class HttpResponse:
     final_url: str
 
 
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 class UrllibHttpTransport:
     def __init__(
         self,
@@ -34,6 +39,7 @@ class UrllibHttpTransport:
         self.timeout_seconds = float(timeout_seconds)
         self.max_response_bytes = int(max_response_bytes)
         self.user_agent = str(user_agent)
+        self._opener = build_opener(_NoRedirect())
 
     @staticmethod
     def _validate_url(url: str, allowed_host: str) -> None:
@@ -58,7 +64,7 @@ class UrllibHttpTransport:
         request_headers = {"User-Agent": self.user_agent, **dict(headers or {})}
         req = Request(url, headers=request_headers, method="GET")
         try:
-            with urlopen(req, timeout=self.timeout_seconds) as response:
+            with self._opener.open(req, timeout=self.timeout_seconds) as response:
                 final_url = str(response.geturl())
                 self._validate_url(final_url, allowed_host)
                 body = response.read(self.max_response_bytes + 1)
