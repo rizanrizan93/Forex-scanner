@@ -105,6 +105,8 @@ live_safety:
   require_control_plane: true
   control_state_max_age_seconds: 5
   require_revalidation: true
+  require_persistent_idempotency: true
+  idempotency_state_path_env: FX_IDEMPOTENCY_STATE_PATH
 
 modes:
   allowed:
