@@ -123,6 +123,7 @@ def run_validation_suite(
             completed_returns,
             simulations=int(mc_cfg["simulations"]),
             seed=int(mc_cfg["seed"]),
+            block_size=int(mc_cfg["block_size"]),
         )
     else:
         mc = None
