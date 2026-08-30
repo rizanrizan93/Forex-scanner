@@ -47,6 +47,10 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
         raise ConfigurationError("heavy scan should not be faster than setup watcher")
     if scheduler["fast_setup_seconds"] < scheduler["execution_watch_seconds"]:
         raise ConfigurationError("setup watcher should not be faster than execution watcher")
+    if scheduler["fast_setup_seconds"] > 15:
+        raise ConfigurationError("fast setup watcher cannot exceed 15 seconds in v0.9")
+    if scheduler["execution_watch_seconds"] > 0.25:
+        raise ConfigurationError("execution watcher cannot exceed 250ms in v0.9")
 
     order = dict(raw.get("order", {}))
     live_safety = dict(raw.get("live_safety", {}))
@@ -176,6 +180,12 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
         <= adaptive_cadence["WATCH"]
     ):
         raise ConfigurationError("adaptive cadence must accelerate toward execution")
+    if adaptive_cadence["WATCH"] > 1.0:
+        raise ConfigurationError("WATCH cadence cannot exceed 1 second in v0.9")
+    if adaptive_cadence["SETUP_FORMING"] > 0.5:
+        raise ConfigurationError("SETUP_FORMING cadence cannot exceed 500ms in v0.9")
+    if adaptive_cadence["ARMED"] > 0.25 or adaptive_cadence["EXECUTION_READY"] > 0.25:
+        raise ConfigurationError("ARMED/EXECUTION_READY cadence cannot exceed 250ms in v0.9")
 
     return ExecutionPolicy(
         mode, scheduler, order, live_safety, runtime, broker, ctrader, mt5,
