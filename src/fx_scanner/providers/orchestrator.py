@@ -68,8 +68,17 @@ class ProviderOrchestrator:
         coverage = len(usable) / len(results)
 
         if len(usable) < self.minimum_success:
+            statuses = {r.status for r in results}
+            if ProviderStatus.INVALID in statuses:
+                blocked_status = ProviderStatus.INVALID
+            elif ProviderStatus.STALE in statuses:
+                blocked_status = ProviderStatus.STALE
+            elif ProviderStatus.ERROR in statuses:
+                blocked_status = ProviderStatus.ERROR
+            else:
+                blocked_status = ProviderStatus.MISSING
             return QuorumNumericResult(
-                ProviderStatus.MISSING,
+                blocked_status,
                 None,
                 coverage,
                 (),
