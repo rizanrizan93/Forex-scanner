@@ -589,10 +589,16 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         mc_cfg.get("losing_streak_p95_limit"),
         label="validation.monte_carlo.losing_streak_p95_limit",
     )
+    block_size = _as_finite_number(
+        mc_cfg.get("block_size"),
+        label="validation.monte_carlo.block_size",
+    )
     if not simulations.is_integer() or not 500 <= simulations <= 10000:
         raise ConfigurationError("Monte Carlo simulations must be an integer in [500,10000]")
     if not seed.is_integer():
         raise ConfigurationError("Monte Carlo seed must be an integer")
+    if not block_size.is_integer() or not 2 <= block_size <= 20:
+        raise ConfigurationError("Monte Carlo block size must be an integer in [2,20]")
     if not 0 < dd_limit <= 12:
         raise ConfigurationError("Monte Carlo p95 drawdown limit cannot exceed 12R")
     if not streak_limit.is_integer() or not 1 <= streak_limit <= 8:
