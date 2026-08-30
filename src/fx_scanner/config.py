@@ -296,7 +296,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         ),
     }
     if not required_sources.issubset(set(sources)):
-        raise ConfigurationError("official ECB and Bank of Canada providers are required in v0.8")
+        raise ConfigurationError("canonical ECB, BoC, Federal Reserve/FRED, and RBA providers are required in v0.8")
     for name, source in sources.items():
         if not isinstance(source, Mapping):
             raise ConfigurationError(f"provider source {name} must be a mapping")
