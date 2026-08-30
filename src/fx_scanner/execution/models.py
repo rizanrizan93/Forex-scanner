@@ -40,10 +40,16 @@ class OrderIntent:
     take_profit: float
     risk_pct: float
     comment: str = ""
+    broker_symbol: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "symbol", self.symbol.upper())
         object.__setattr__(self, "created_at", ensure_utc(self.created_at))
+        if self.broker_symbol is not None:
+            broker_symbol = self.broker_symbol.strip()
+            if not broker_symbol:
+                raise DataContractError("broker_symbol cannot be blank")
+            object.__setattr__(self, "broker_symbol", broker_symbol)
         if not self.signal_id.strip():
             raise DataContractError("signal_id is required")
         if self.volume <= 0 or not isfinite(self.volume):
