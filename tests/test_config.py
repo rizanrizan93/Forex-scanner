@@ -22,3 +22,10 @@ def test_config_contract():
     assert cfg.strategy["selection"]["deep_analysis_top"] == 5
     assert cfg.strategy["mtf"]["required_timeframes"] == ["D1", "H4", "H1", "M15", "M5"]
     assert cfg.strategy["trade_plan"]["minimum_tp2_rr"] >= 1.5
+    assert cfg.validation["dataset_split"]["oos_fraction"] == 0.20
+    assert cfg.validation["costs"]["stress_spread_multiplier"] >= 1.25
+    assert cfg.validation["costs"]["stress_slippage_multiplier"] >= 1.50
+    assert cfg.validation["performance_budget"]["research_validation_in_hot_path"] is False
+    assert cfg.validation["performance_budget"]["deep_scan_top5_target_ms"] <= 250
+    assert cfg.risk["acceptance"]["point_in_time_required"] is True
+    assert cfg.risk["acceptance"]["parameter_perturbation_required"] is True
