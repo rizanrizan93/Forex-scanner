@@ -23,6 +23,8 @@ def weighted_score(
     minimum_coverage: float = 0.80,
 ) -> ScoreResult:
     """Weighted 0..100 score with explicit missing-evidence coverage."""
+    if not 0 < minimum_coverage <= 1:
+        raise DataContractError("minimum_coverage must be in (0,1]")
     total_weight = sum(float(v) for v in weights.values())
     if total_weight <= 0:
         raise DataContractError("score weights must sum positive")
