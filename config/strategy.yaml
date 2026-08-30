@@ -12,6 +12,12 @@ mtf:
     H1: 40
     M15: 50
     M5: 60
+  max_bar_age_seconds:
+    D1: 129600
+    H4: 28800
+    H1: 7200
+    M15: 1800
+    M5: 600
 
 liquidity:
   equal_level_tolerance_atr: 0.15
