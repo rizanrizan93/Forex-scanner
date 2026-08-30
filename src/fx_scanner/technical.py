@@ -204,8 +204,25 @@ def detect_sweep(
             reclaimed = bars[-1].close > level
             bullish = SweepSignal("BULLISH", level, (level - min_low) / current_atr, reclaimed, reclaimed)
 
+    valid = [candidate for candidate in (bearish, bullish) if candidate is not None and candidate.valid]
+    if len(valid) == 2:
+        return SweepSignal(
+            "AMBIGUOUS",
+            0.0,
+            max(valid[0].penetration_atr, valid[1].penetration_atr),
+            False,
+            False,
+        )
+    if len(valid) == 1:
+        return valid[0]
     if bearish and bullish:
-        return SweepSignal("AMBIGUOUS", 0.0, max(bearish.penetration_atr, bullish.penetration_atr), False, False)
+        return SweepSignal(
+            "AMBIGUOUS",
+            0.0,
+            max(bearish.penetration_atr, bullish.penetration_atr),
+            False,
+            False,
+        )
     return bearish or bullish
 
 
