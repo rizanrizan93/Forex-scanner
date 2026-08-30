@@ -11,6 +11,7 @@ from ..exceptions import DataContractError
 @dataclass(frozen=True, slots=True)
 class MonteCarloResult:
     simulations: int
+    block_size: int
     max_drawdown_r_p50: float
     max_drawdown_r_p95: float
     losing_streak_p50: int
@@ -19,8 +20,8 @@ class MonteCarloResult:
     terminal_r_p50: float
 
     def __post_init__(self) -> None:
-        if self.simulations <= 0:
-            raise DataContractError("Monte Carlo simulations must be positive")
+        if self.simulations <= 0 or self.block_size <= 0:
+            raise DataContractError("Monte Carlo counts must be positive")
         for value in (
             self.max_drawdown_r_p50,
             self.max_drawdown_r_p95,
@@ -61,11 +62,29 @@ def _percentile(values: Sequence[float], quantile: float) -> float:
     return float(ordered[index])
 
 
+def _circular_block_bootstrap(
+    values: Sequence[float],
+    *,
+    rng: Random,
+    block_size: int,
+) -> list[float]:
+    n = len(values)
+    sample: list[float] = []
+    while len(sample) < n:
+        start = rng.randrange(n)
+        for offset in range(block_size):
+            sample.append(float(values[(start + offset) % n]))
+            if len(sample) == n:
+                break
+    return sample
+
+
 def monte_carlo_returns(
     returns_r: Sequence[float],
     *,
     simulations: int = 1000,
     seed: int = 260830,
+    block_size: int = 5,
 ) -> MonteCarloResult:
     values = tuple(float(x) for x in returns_r)
     if not values or any(not isfinite(x) for x in values):
@@ -74,20 +93,24 @@ def monte_carlo_returns(
         raise DataContractError("simulations must be a positive integer")
     if simulations > 100_000:
         raise DataContractError("simulations exceeds safety bound")
+    if isinstance(block_size, bool) or not isinstance(block_size, int) or block_size <= 0:
+        raise DataContractError("block_size must be a positive integer")
+    if block_size > min(100, len(values)):
+        raise DataContractError("block_size exceeds return-series safety bound")
 
     rng = Random(seed)
     drawdowns: list[float] = []
     streaks: list[int] = []
     terminals: list[float] = []
-    work = list(values)
     for _ in range(simulations):
-        rng.shuffle(work)
-        drawdowns.append(_drawdown(work))
-        streaks.append(_streak(work))
-        terminals.append(sum(work))
+        sample = _circular_block_bootstrap(values, rng=rng, block_size=block_size)
+        drawdowns.append(_drawdown(sample))
+        streaks.append(_streak(sample))
+        terminals.append(sum(sample))
 
     return MonteCarloResult(
         simulations,
+        block_size,
         _percentile(drawdowns, 0.50),
         _percentile(drawdowns, 0.95),
         int(_percentile(streaks, 0.50)),
