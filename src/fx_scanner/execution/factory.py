@@ -8,6 +8,7 @@ from ..exceptions import ConfigurationError
 from .ctrader_gateway import CTraderExecutionGateway
 from .ctrader_research import CTraderResearchFeed
 from .ctrader_session import CTraderOpenApiSession
+from .ctrader_tokens import CTraderTokenStateStore
 from .mt5_gateway import MT5ExecutionGateway
 from .mt5_session import PersistentMT5Session
 from .policy import ExecutionPolicy
@@ -108,10 +109,17 @@ def build_ctrader_research_feed(
     cfg = policy.ctrader
     if str(cfg.get("role", "")).upper() != "RESEARCH_ONLY":
         raise ConfigurationError("cTrader research feed must be configured RESEARCH_ONLY")
+    token_store = CTraderTokenStateStore(_required_env(cfg["token_state_path_env"]))
+    tokens = token_store.load(
+        fallback_access=_required_env(cfg["access_token_env"]),
+        fallback_refresh=_required_env(cfg["refresh_token_env"]),
+    )
     session = CTraderOpenApiSession(
         client_id=_required_env(cfg["client_id_env"]),
         client_secret=_required_env(cfg["client_secret_env"]),
-        access_token=_required_env(cfg["access_token_env"]),
+        access_token=tokens.access_token,
+        refresh_token=tokens.refresh_token,
+        token_update_callback=token_store.save,
         account_id=int(_required_env(cfg["account_id_env"])),
         environment=str(cfg.get("environment", "DEMO")).lower(),
         request_timeout_seconds=float(cfg.get("request_timeout_seconds", 10)),
