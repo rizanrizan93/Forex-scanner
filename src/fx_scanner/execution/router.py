@@ -130,6 +130,7 @@ class ExecutionRouter:
         account_id = "UNKNOWN"
         submit_attempted = False
         submit_outcome_known = False
+        submission_quarantined = False
         try:
             if mode == ExecutionMode.SIMULATION:
                 self._assert_dynamic_safety(intent)
@@ -202,13 +203,21 @@ class ExecutionRouter:
             self._assert_dynamic_safety(intent)
             self._assert_control_plane()
 
+            # Persist the signal as indeterminate BEFORE crossing the broker
+            # side-effect boundary. A hard process/host crash can therefore
+            # never turn an unknown outcome into a blind retry after restart.
+            self.duplicates.mark_submitting(intent.signal_id)
+            submission_quarantined = True
             submit_attempted = True
             result = self.gateway.submit(preflight)
             submit_outcome_known = True
             if not result.accepted:
+                self.duplicates.resolve_uncertain(intent.signal_id, executed=False)
+                submission_quarantined = False
                 raise ExecutionBlocked(f"ORDER_SEND_REJECTED:{result.code}:{result.message}")
 
             self.duplicates.mark_executed(intent.signal_id)
+            submission_quarantined = False
             self._audit(
                 "ORDER_ACCEPTED",
                 account_id=account_id,
@@ -233,8 +242,7 @@ class ExecutionRouter:
                 result.executed_price,
             )
         except Exception as exc:
-            if submit_attempted and not submit_outcome_known:
-                self.duplicates.mark_uncertain(intent.signal_id)
+            if submission_quarantined and submit_attempted and not submit_outcome_known:
                 self._audit(
                     "ORDER_OUTCOME_UNCERTAIN",
                     account_id=account_id,
@@ -243,7 +251,7 @@ class ExecutionRouter:
                     message=str(exc),
                     payload={"signal_id": intent.signal_id, "symbol": intent.symbol},
                 )
-            else:
+            elif not submission_quarantined:
                 self.duplicates.release_claim(intent.signal_id)
             self._audit(
                 "EXECUTION_BLOCKED",
