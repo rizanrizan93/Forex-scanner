@@ -65,7 +65,7 @@ def test_acceptance_stays_blocked_until_demo_forward_and_perturbation_pass():
     cfg = load_project_config()
     metrics = good_metrics()
     wf = WalkForwardResult((), 1.0, True)
-    mc = MonteCarloResult(1000, 4.0, 8.0, 3, 6, 20.0, 20.0)
+    mc = MonteCarloResult(1000, 5, 4.0, 8.0, 3, 6, 20.0, 20.0)
     variants = {f"V{i}": metrics for i in range(5)}
     perturb = PerturbationResult(variants, 1.0, True)
 
