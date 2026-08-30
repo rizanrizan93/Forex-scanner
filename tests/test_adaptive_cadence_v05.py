@@ -9,7 +9,7 @@ def test_adaptive_cadence_accelerates_by_state():
             "WATCH": 2.0,
             "SETUP_FORMING": 1.0,
             "ARMED": 0.25,
-            "EXECUTION_READY": 0.05,
+            "EXECUTION_READY": 0.25,
             "MISSED": 2.0,
             "INVALIDATED": 2.0,
             "COOLDOWN": 2.0,
@@ -23,7 +23,9 @@ def test_adaptive_cadence_accelerates_by_state():
     now[0] = 100.25
     assert cadence.due("global", "ARMED")
     cadence.mark_checked("global")
-    now[0] = 100.30
+    now[0] = 100.49
+    assert not cadence.due("global", "EXECUTION_READY")
+    now[0] = 100.50
     assert cadence.due("global", "EXECUTION_READY")
     assert cadence.interval_for("WATCH") == 2.0
     assert cadence.interval_for("SETUP_FORMING") == 1.0
