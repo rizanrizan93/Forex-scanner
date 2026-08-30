@@ -154,7 +154,7 @@ def _pivots(bars: Sequence[Bar], lookback: int, high: bool) -> list[tuple[int, f
 def previous_day_levels(d1_bars: Sequence[Bar], *, as_of: datetime) -> tuple[LiquidityLevel, ...]:
     _validate_series(d1_bars, "D1", 1)
     cutoff = ensure_utc(as_of)
-    completed = [b for b in d1_bars if b.timestamp < cutoff]
+    completed = [b for b in d1_bars if b.timestamp.date() < cutoff.date()]
     if not completed:
         return ()
     bar = completed[-1]
