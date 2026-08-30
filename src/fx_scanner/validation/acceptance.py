@@ -6,6 +6,7 @@ from typing import Mapping
 from ..exceptions import DataContractError
 from .metrics import PerformanceMetrics
 from .monte_carlo import MonteCarloResult
+from .perturbation import PerturbationResult
 from .walk_forward import WalkForwardResult
 
 
@@ -42,10 +43,12 @@ def evaluate_acceptance(
     base_oos: PerformanceMetrics,
     stressed_oos: PerformanceMetrics,
     walk_forward: WalkForwardResult,
-    monte_carlo: MonteCarloResult,
+    monte_carlo: MonteCarloResult | None,
     regime_metrics: Mapping[str, PerformanceMetrics],
     acceptance_cfg: Mapping,
     validation_cfg: Mapping,
+    demo_forward_passed: bool,
+    parameter_perturbation: PerturbationResult | None,
 ) -> AcceptanceDecision:
     blockers: list[str] = []
     warnings: list[str] = []
@@ -86,10 +89,13 @@ def evaluate_acceptance(
         blockers.append("WALK_FORWARD_FAIL")
 
     mc_cfg = validation_cfg["monte_carlo"]
-    if monte_carlo.max_drawdown_r_p95 > float(mc_cfg["max_drawdown_r_p95_limit"]):
-        blockers.append("MONTE_CARLO_DRAWDOWN_P95_FAIL")
-    if monte_carlo.losing_streak_p95 > int(mc_cfg["losing_streak_p95_limit"]):
-        blockers.append("MONTE_CARLO_LOSS_STREAK_P95_FAIL")
+    if monte_carlo is None:
+        blockers.append("MONTE_CARLO_MISSING")
+    else:
+        if monte_carlo.max_drawdown_r_p95 > float(mc_cfg["max_drawdown_r_p95_limit"]):
+            blockers.append("MONTE_CARLO_DRAWDOWN_P95_FAIL")
+        if monte_carlo.losing_streak_p95 > int(mc_cfg["losing_streak_p95_limit"]):
+            blockers.append("MONTE_CARLO_LOSS_STREAK_P95_FAIL")
 
     regime_cfg = validation_cfg["regimes"]
     minimum_trades = int(regime_cfg["minimum_trades_per_regime"])
@@ -106,7 +112,19 @@ def evaluate_acceptance(
         if metrics.profit_factor is None or metrics.profit_factor < float(regime_cfg["minimum_profit_factor"]):
             blockers.append(f"REGIME:{name}:PF_FAIL")
 
-    if base_oos.max_drawdown_r > monte_carlo.max_drawdown_r_p95:
+    if monte_carlo is not None and base_oos.max_drawdown_r > monte_carlo.max_drawdown_r_p95:
         warnings.append("REALIZED_DRAWDOWN_ABOVE_MC_P95")
 
-    return AcceptanceDecision(not blockers, tuple(sorted(set(blockers))), tuple(sorted(set(warnings))))
+    if parameter_perturbation is None:
+        blockers.append("PARAMETER_PERTURBATION_MISSING")
+    elif not parameter_perturbation.passed:
+        blockers.append("PARAMETER_PERTURBATION_FAIL")
+
+    if demo_forward_passed is not True:
+        blockers.append("DEMO_FORWARD_PENDING")
+
+    return AcceptanceDecision(
+        not blockers,
+        tuple(sorted(set(blockers))),
+        tuple(sorted(set(warnings))),
+    )
