@@ -1,3 +1,5 @@
+import pytest
+
 from fx_scanner.config import load_project_config
 from fx_scanner.macro import MacroStatus, relative_macro_edge, score_currency_macro
 from fx_scanner.ranking import compute_currency_strength, rank_pairs
@@ -139,12 +141,11 @@ def test_missing_cross_asset_is_partial_not_neutral_zero():
     )
     eurusd = next(x for x in ranked if x.symbol == "EURUSD")
     assert eurusd.cross_asset_edge is None
-    assert eurusd.coverage == 0.85
+    assert eurusd.coverage == pytest.approx(0.85)
     assert eurusd.missing_components == ("cross_asset",)
 
 
 def test_boolean_macro_and_ranking_evidence_fail_closed():
-    import pytest
     from fx_scanner.exceptions import DataContractError
 
     cfg = load_project_config()
