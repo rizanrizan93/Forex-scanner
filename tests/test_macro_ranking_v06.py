@@ -83,6 +83,9 @@ def test_currency_strength_respects_base_quote_orientation():
     assert strength["EUR"].score == 80
     assert strength["GBP"].score == 40
     assert strength["USD"].contributing_pairs == 3
+    assert strength["USD"].expected_pairs == 7
+    assert strength["USD"].coverage == 3 / 7
+    assert strength["EUR"].coverage == 1 / 5
     assert strength["USD"].score < 0
     assert strength["JPY"].score > 0
 
@@ -162,3 +165,53 @@ def test_boolean_macro_and_ranking_evidence_fail_closed():
             technical_strength=technical,
             cross_asset_edges={"EURUSD": True},
         )
+
+
+def test_pair_rank_coverage_propagates_partial_macro_evidence():
+    cfg = load_project_config()
+    partial_factors = _factors(positioning=None)
+    macro = {
+        currency: score_currency_macro(
+            currency,
+            partial_factors,
+            cfg.macro["weights"],
+            minimum_coverage=cfg.macro["minimum_coverage"],
+        )
+        for currency in ("EUR","USD","GBP","JPY","CHF","CAD","AUD","NZD")
+    }
+    # Give EUR a stronger macro value without changing its 95% coverage.
+    eur_factors = _factors(positioning=None, interest_rate=100, central_bank_bias=100)
+    macro["EUR"] = score_currency_macro(
+        "EUR",
+        eur_factors,
+        cfg.macro["weights"],
+        minimum_coverage=cfg.macro["minimum_coverage"],
+    )
+    technical = {currency: 0 for currency in macro}
+    technical["EUR"] = 60
+
+    ranked = rank_pairs(
+        cfg.pairs,
+        macro_scores=macro,
+        technical_strength=technical,
+        cross_asset_edges={},
+        minimum_coverage=0.80,
+    )
+    eurusd = next(x for x in ranked if x.symbol == "EURUSD")
+    assert eurusd.coverage == 0.55 * 0.95 + 0.30
+    assert eurusd.coverage < 0.85
+    assert eurusd.missing_components == ("cross_asset",)
+
+
+def test_low_currency_strength_coverage_can_remove_pair_from_ranking():
+    cfg = load_project_config()
+    strength = compute_currency_strength({"EURUSD": 80}, cfg.pairs)
+    macro = {c: 0 for c in ("EUR","USD","GBP","JPY","CHF","CAD","AUD","NZD")}
+    ranked = rank_pairs(
+        cfg.pairs,
+        macro_scores=macro,
+        technical_strength=strength,
+        cross_asset_edges={"EURUSD": 0},
+        minimum_coverage=0.80,
+    )
+    assert all(x.symbol != "EURUSD" for x in ranked)
