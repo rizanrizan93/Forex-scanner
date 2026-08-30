@@ -200,3 +200,90 @@ def test_planned_stop_below_minimum_fails_before_costs_can_make_it_look_wider():
             [bar(1, low=1.1000, high=1.1010)],
             timeframe_seconds=300,
         )
+
+
+def test_history_ending_before_entry_expiry_is_open_not_missed():
+    bars = [
+        bar(1, low=1.1005, high=1.1010),
+        bar(2, low=1.1004, high=1.1011),
+    ]
+    result = engine().evaluate(intent(entry_expiry_bars=4), bars, timeframe_seconds=300)
+    assert result.outcome == TradeOutcome.OPEN
+    assert result.net_r is None
+    assert result.reason == "HISTORY_ENDED_BEFORE_ENTRY_EXPIRY"
+
+
+def test_history_ending_after_entry_but_before_max_hold_is_open_not_forced_exit():
+    bars = [
+        bar(1, low=1.1000, high=1.1010),
+        bar(2, low=1.1004, high=1.1012),
+        bar(3, low=1.1004, high=1.1013),
+    ]
+    result = engine().evaluate(
+        intent(maximum_hold_bars=12),
+        bars,
+        timeframe_seconds=300,
+    )
+    assert result.outcome == TradeOutcome.OPEN
+    assert result.entry_at == bars[0].timestamp
+    assert result.exit_at is None
+    assert result.net_r is None
+    assert result.reason == "HISTORY_ENDED_BEFORE_MAX_HOLD"
+
+
+def test_long_stop_uses_bid_side_and_can_trigger_before_mid_touches_stop():
+    # With 2-pip spread, bid is 1 pip below mid. Mid low stays above the
+    # configured stop but bid reaches it.
+    wide = Bar(
+        "EURUSD",
+        "M5",
+        SIGNAL + timedelta(minutes=5),
+        1.1005,
+        1.1010,
+        1.1000,
+        1.1005,
+        100,
+        0.0002,
+        0.0002,
+    )
+    stop_bar = Bar(
+        "EURUSD",
+        "M5",
+        SIGNAL + timedelta(minutes=10),
+        1.1000,
+        1.1005,
+        1.09905,
+        1.0995,
+        100,
+        0.0002,
+        0.0002,
+    )
+    result = engine().evaluate(intent(), [wide, stop_bar], timeframe_seconds=300)
+    assert stop_bar.low > intent().stop_loss
+    assert result.outcome == TradeOutcome.LOSS
+    assert result.exit_spread_pips_used == pytest.approx(2.0)
+
+
+def test_long_target_requires_bid_not_mid_high():
+    entry = bar(1, low=1.1000, high=1.1010)
+    # Mid high exceeds TP by only 0.5 pip while 2-pip spread means bid high is
+    # still 0.5 pip below TP. The target must not be counted.
+    near_target = Bar(
+        "EURUSD",
+        "M5",
+        SIGNAL + timedelta(minutes=10),
+        1.1010,
+        1.10205,
+        1.1006,
+        1.1018,
+        100,
+        0.0002,
+        0.0002,
+    )
+    result = engine().evaluate(
+        intent(maximum_hold_bars=12),
+        [entry, near_target],
+        timeframe_seconds=300,
+    )
+    assert result.outcome == TradeOutcome.OPEN
+    assert result.reason == "HISTORY_ENDED_BEFORE_MAX_HOLD"
