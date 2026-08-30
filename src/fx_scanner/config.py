@@ -353,7 +353,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
 
     max_bar_age = mtf.get("max_bar_age_seconds", {})
     canonical_max_age = {
-        "D1": 129600,
+        "D1": 259200,
         "H4": 28800,
         "H1": 7200,
         "M15": 1800,
