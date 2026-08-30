@@ -19,9 +19,11 @@ class DecisionSnapshot:
     pair_edge: float
     conviction_score: float | None
     coverage: float
+    pair_coverage: float
     state: SignalState
     guards: tuple[str, ...]
     missing_components: tuple[str, ...]
+    pair_missing_components: tuple[str, ...]
 
 
 def build_decision(
@@ -34,16 +36,24 @@ def build_decision(
     guard_flags: Mapping[str, bool],
     required_guards: tuple[str, ...] | list[str],
     minimum_coverage: float = 0.80,
+    minimum_pair_coverage: float = 0.85,
 ) -> DecisionSnapshot:
     guard_result: GuardResult = evaluate_hard_guards(
         required_names=required_guards,
         **dict(guard_flags),
     )
+    internal_guards: list[str] = []
+    if rank.direction == "NEUTRAL":
+        internal_guards.append("PAIR_DIRECTION_NEUTRAL")
+    if rank.coverage < minimum_pair_coverage:
+        internal_guards.append("PAIR_COVERAGE_BLOCK")
+    combined_guards = tuple(sorted(set(guard_result.active_guards).union(internal_guards)))
+
     score: ScoreResult = score_with_state(
         conviction_components,
         conviction_weights,
         thresholds,
-        hard_guards_clear=guard_result.allowed,
+        hard_guards_clear=not combined_guards,
         minimum_coverage=minimum_coverage,
     )
     return DecisionSnapshot(
@@ -54,7 +64,9 @@ def build_decision(
         pair_edge=rank.pair_edge,
         conviction_score=score.score,
         coverage=score.coverage,
+        pair_coverage=rank.coverage,
         state=score.state,
-        guards=guard_result.active_guards,
+        guards=combined_guards,
         missing_components=score.missing_components,
+        pair_missing_components=rank.missing_components,
     )
