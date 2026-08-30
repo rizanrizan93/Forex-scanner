@@ -44,8 +44,10 @@ class LiquidityLevel:
             raise DataContractError("liquidity level price must be positive finite")
         object.__setattr__(self, "price", float(self.price))
         object.__setattr__(self, "observed_at", ensure_utc(self.observed_at))
-        if self.touches <= 0:
-            raise DataContractError("liquidity level touches must be positive")
+        if isinstance(self.touches, bool) or self.touches <= 0:
+            raise DataContractError("liquidity level touches must be positive integer")
+        if not isinstance(self.active, bool):
+            raise DataContractError("liquidity level active must be boolean")
         if isinstance(self.strength, bool) or not isfinite(float(self.strength)) or self.strength < 0:
             raise DataContractError("liquidity level strength must be non-negative finite")
 
@@ -59,10 +61,17 @@ class DealingRange:
     zone: str
 
     def __post_init__(self) -> None:
+        if any(isinstance(x, bool) for x in (self.low, self.high, self.equilibrium, self.location)):
+            raise DataContractError("dealing range values cannot be boolean")
         if not (isfinite(self.low) and isfinite(self.high)) or self.low <= 0 or self.high <= self.low:
             raise DataContractError("dealing range is invalid")
         if not 0 <= self.location <= 1:
             raise DataContractError("dealing range location must be in [0,1]")
+        if not self.low < self.equilibrium < self.high:
+            raise DataContractError("dealing range equilibrium must be inside range")
+        expected_equilibrium = (self.low + self.high) / 2.0
+        if abs(self.equilibrium - expected_equilibrium) > 1e-9:
+            raise DataContractError("dealing range equilibrium mismatch")
         if self.zone not in {"DISCOUNT", "EQUILIBRIUM", "PREMIUM"}:
             raise DataContractError("dealing range zone is invalid")
 
@@ -77,6 +86,8 @@ class FairValueGap:
     fill_fraction: float
 
     def __post_init__(self) -> None:
+        if any(isinstance(x, bool) for x in (self.lower, self.upper, self.fill_fraction)):
+            raise DataContractError("FVG numeric values cannot be boolean")
         if self.direction not in {"BULLISH", "BEARISH"}:
             raise DataContractError("FVG direction is invalid")
         if not (0 < self.lower < self.upper):
@@ -100,6 +111,10 @@ class OrderBlock:
     invalidated: bool
 
     def __post_init__(self) -> None:
+        if any(isinstance(x, bool) for x in (self.lower, self.upper)):
+            raise DataContractError("order-block bounds cannot be boolean")
+        if not all(isinstance(x, bool) for x in (self.caused_break, self.mitigated, self.invalidated)):
+            raise DataContractError("order-block flags must be boolean")
         if self.direction not in {"BULLISH", "BEARISH"}:
             raise DataContractError("order-block direction is invalid")
         if not (0 < self.lower < self.upper):
@@ -116,6 +131,19 @@ class LiquidityMap:
     dealing_range: DealingRange | None
     fvgs: tuple[FairValueGap, ...]
     order_blocks: tuple[OrderBlock, ...]
+
+    def __post_init__(self) -> None:
+        symbol = str(self.symbol).upper().strip()
+        if len(symbol) != 6:
+            raise DataContractError("liquidity-map symbol must be a six-character FX pair")
+        object.__setattr__(self, "symbol", symbol)
+        object.__setattr__(self, "observed_at", ensure_utc(self.observed_at))
+        if any(level.observed_at > self.observed_at for level in self.levels):
+            raise DataContractError("liquidity level cannot be observed in the future")
+        if any(gap.origin_at > self.observed_at for gap in self.fvgs):
+            raise DataContractError("FVG origin cannot be in the future")
+        if any(block.origin_at > self.observed_at or block.displacement_at > self.observed_at for block in self.order_blocks):
+            raise DataContractError("order-block evidence cannot be in the future")
 
     def levels_above(self, price: float) -> tuple[LiquidityLevel, ...]:
         return tuple(sorted((x for x in self.levels if x.active and x.price > price), key=lambda x: x.price))
