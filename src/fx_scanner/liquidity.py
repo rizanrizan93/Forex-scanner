@@ -44,7 +44,7 @@ class LiquidityLevel:
             raise DataContractError("liquidity level price must be positive finite")
         object.__setattr__(self, "price", float(self.price))
         object.__setattr__(self, "observed_at", ensure_utc(self.observed_at))
-        if isinstance(self.touches, bool) or self.touches <= 0:
+        if isinstance(self.touches, bool) or not isinstance(self.touches, int) or self.touches <= 0:
             raise DataContractError("liquidity level touches must be positive integer")
         if not isinstance(self.active, bool):
             raise DataContractError("liquidity level active must be boolean")
@@ -121,6 +121,8 @@ class OrderBlock:
             raise DataContractError("order-block bounds are invalid")
         object.__setattr__(self, "origin_at", ensure_utc(self.origin_at))
         object.__setattr__(self, "displacement_at", ensure_utc(self.displacement_at))
+        if self.displacement_at <= self.origin_at:
+            raise DataContractError("order-block displacement must follow origin candle")
 
 
 @dataclass(frozen=True, slots=True)
