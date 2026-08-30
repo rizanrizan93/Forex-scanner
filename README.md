@@ -1,170 +1,180 @@
-# FX Institutional Scanner v0.4
+# FX Institutional Scanner v0.5
 
-Production-oriented forex scanner for intraday research, mobile-controlled automation, and broker-agnostic execution.
+Production-oriented forex scanner foundation with a **dual-feed / single-execution** design.
 
-**Preferred execution backend: cTrader Open API**  
-**Fallback backend: MT5 (explicit operator selection only)**  
-**Execution default: `DISABLED`**
+**Research feed:** FP Markets cTrader Open API  
+**Execution venue:** HFM Cent MT5  
+**Execution default:** `DISABLED`
 
-## Target operating model
+## Operating model
 
-The phone is the **control and monitoring plane**, not the 24/5 execution host.
+The Android phone is the control/monitoring surface. A controlled VPS is the 24/5 runtime host.
 
 ```text
-Phone / cTrader mobile / future dashboard
-              |
-              | approve / pause / kill / monitor
-              v
-        VPS / cloud worker
-              |
-      FX Scanner Core
-              |
- Macro -> Pair Ranking -> SMC/ICT -> Risk/Guards
-              |
-       BrokerGateway
-          /       \
-   cTrader       MT5
-  preferred     fallback
+Global/macro data
+       |
+FP Markets cTrader ------------------+
+(read-only research feed)            |
+                                     v
+                         Scanner / ranking / SMC-ICT
+                                     |
+                              signal candidate
+                                     |
+                                     v
+                        HFM execution revalidation
+                           (warm MT5 connection)
+                                     |
+                  stale/spread/divergence/chase/RR/risk
+                                     |
+                              pass -> MT5 order
+                                     |
+                              HFM Cent account
+
+Supabase -> cached control state + async audit (not quote/order latency path)
+Android  -> monitor / future approve / pause / emergency controls
 ```
 
-A home PC does not need to remain on when the cTrader backend is used. The VPS keeps the scanner, streaming connection, execution router, risk engine, and health supervisor alive.
+There is **no automatic cTrader -> MT5 failover** and cTrader is configured
+`RESEARCH_ONLY`. The configured factory refuses to build cTrader as an execution
+backend.
 
-## v0.4 broker architecture
+## HFM Cent execution contract
 
-The trading core no longer depends directly on MT5.
+Startup fails closed unless the execution account and symbols match the configured
+Cent contract:
 
-`BrokerGateway` normalizes:
+- account currency: `USC`
+- expected FX contract size: `1,000` units per Cent lot
+- canonical symbols are resolved to broker symbols (for example `EURUSDc`) using
+  explicit mapping or configured suffix candidates
+- ambiguous or non-matching symbols block startup
+- position sizing uses HFM-provided tick size, tick value, min/max volume and
+  volume step; standard-lot economics are never hard-coded
 
-- account/equity/margin state
-- symbol and quote state
-- preflight validation
-- order submission and response
-- order identifiers and executed volume
+Actual symbol names and contract metadata must still be verified against the
+real HFM demo account before enabling any execution mode.
 
-Backends:
+## Fast execution-side revalidation
 
-- **cTrader Open API** — preferred, event-driven, server/VPS friendly
-- **MT5** — compatibility fallback for brokers that only expose MT5
+The FP Markets signal is never copied blindly to HFM. Immediately before MT5
+preflight the runtime checks:
 
-Automatic failover from cTrader to MT5 is deliberately forbidden. Switching brokers/backends is an explicit operator action to prevent duplicate positions or accidental cross-broker exposure.
+- fresh cTrader research Bid/Ask
+- fresh HFM MT5 Bid/Ask
+- cross-broker mid-price divergence
+- HFM spread and spread divergence
+- entry drift / do-not-chase
+- SL/entry/TP geometry
+- minimum RR
+- HFM Cent account currency and contract size
+- HFM tick-economics position sizing
+- internal revalidation latency ceiling
 
-See `docs/CTRADER_V0_4.md`.
+MT5 then takes a fresh quote **again** during broker preflight and blocks if the
+price has moved too far from the revalidated entry.
 
-## Runtime cadence
+This is intentionally a fast execution-geometry reconciliation. It does not
+claim to recompute the complete SMC/ICT strategy on HFM M5 bars.
 
-- heavy macro + pair ranking: 15 minutes
-- shortlisted setup watcher: 60 seconds
-- ARMED execution watcher: 2 seconds
+## Cadence
+
+- heavy macro / pair ranking: 15 minutes
+- setup watcher: 60 seconds
+- WATCH: 2 seconds
+- SETUP_FORMING: 1 second
+- ARMED: 250 ms
+- EXECUTION_READY: 250 ms
 - open-position monitor: 2 seconds
 
-The runtime supervisor uses bounded concurrent workers so a slow heavy scan cannot block the execution watcher.
+The 250 ms figure is an engineering scheduler target, not a guaranteed
+broker-network order latency.
 
-## Runtime safety
+## Live safety
 
-- non-overlap lock per watcher
-- monotonic/deadline scheduling
-- late-cycle skip; no catch-up storm
-- bounded concurrent supervisor
-- bounded FIFO execution queue
-- dedicated single execution worker
-- queue backpressure
-- reconnect/backoff + circuit breaker
-- health/stuck-worker telemetry
-- atomic in-flight duplicate-signal claim
-- kill-switch and signal-age recheck immediately before submit
-- server-side SL/TP requirement
-- broker preflight before submit
-- cTrader quote freshness gate
-- live environment + account allowlist gates
+Live orders require all configured gates:
 
-## Execution modes
+- mode is not `DISABLED`
+- environment live-enable phrase
+- broker account allowlist
+- local kill switch
+- fresh cached Supabase control state
+- Supabase mode agreement / new-orders enabled / emergency-stop clear
+- dual-feed revalidation
+- MT5 broker preflight / `order_check`
+- server-side SL and TP
+- persistent signal idempotency state
 
-- `DISABLED` — default
-- `SIMULATION`
-- `CONFIRM_TO_TRADE`
-- `AUTO`
+If a broker submission crosses the side-effect boundary but its response is
+lost, that signal is persisted as **uncertain**. It cannot be retried until
+broker order/position reconciliation explicitly resolves the outcome.
 
-`AUTO` cannot trade until all independent live gates are deliberately opened.
+## cTrader research reliability
 
-## cTrader setup
+The cTrader research facade exposes quotes/symbol information only; it exposes
+no order submission method. On reconnect it reloads the research universe and
+restores spot subscriptions.
 
-Install the official Open API Python SDK on the VPS:
+cTrader access-token rotation is supported. Rotated access and refresh tokens
+are written atomically to the VPS-only token-state file and the `state/`
+directory is git-ignored.
 
-```bash
-pip install -r requirements-ctrader.txt
-```
-
-After a cTrader Open API application is registered/approved and a demo account is available, provide secrets only as environment variables:
+Required VPS secret/state variables include:
 
 ```text
 CTRADER_CLIENT_ID
 CTRADER_CLIENT_SECRET
 CTRADER_ACCESS_TOKEN
 CTRADER_REFRESH_TOKEN
+CTRADER_TOKEN_STATE_PATH
 CTRADER_ACCOUNT_ID
+
+MT5_TERMINAL_PATH
+MT5_LOGIN
+MT5_SERVER
+MT5_PASSWORD
+
+SUPABASE_URL
+SUPABASE_SECRET_KEY
+
+FX_IDEMPOTENCY_STATE_PATH
 ```
 
-Do not commit those values.
+Never commit real values.
 
-The initial target should remain **Pepperstone cTrader demo**, then progress through simulation and confirm-to-trade before any automatic demo execution.
+## Storage
 
-## Database architecture
+- realtime quote/order state: memory on VPS
+- history/research: Parquet + DuckDB
+- durable control/audit: dedicated Supabase project
 
-The scanner **still needs a database**, especially for phone-only control, auditability, macro history, and performance validation. But the database is not placed in the critical quote/order latency path.
+The Supabase project is `Forex scanner` in Singapore
+(`fotzcxjeypmjldhvfskt`). Supabase network I/O is isolated from the
+order-critical path. The database bootstrap remains:
 
 ```text
-Realtime critical path
-cTrader stream -> in-memory state -> guards -> broker execution
-
-Historical research
-Parquet -> DuckDB
-
-Durable operational/control state
-Supabase/Postgres
+execution_mode       DISABLED
+new_orders_enabled   false
+emergency_stop       true
 ```
 
-Supabase stores durable state such as:
+## Install
 
-- macro/currency-strength snapshots
-- pair rankings and signals
-- broker/order audit events
-- paper/demo/live performance
-- mobile AUTO/PAUSE/EMERGENCY control state
-- runtime heartbeats and health
-- model drift/acceptance evidence
-
-Raw tick history should stay in Parquet/DuckDB rather than being written tick-by-tick to Supabase.
-
-See `docs/DATABASE_ARCHITECTURE_V0_4.md`.
-
-## Data foundation
-
-- 15 liquid G10 pairs
-- canonical UTC timestamps
-- Bid/Ask contract validation
-- M1/M5/M15/H1/H4/D1 aggregation
-- spread statistics
-- freshness/duplicate/non-monotonic checks
-- DST-aware sessions
-- Parquet + DuckDB historical adapters
-- isolated Supabase operational schema
-
-## Install core
+Core:
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
 ```
 
-Optional cTrader backend:
+cTrader research backend:
 
 ```bash
 pip install -r requirements-ctrader.txt
 ```
 
-Optional Windows MT5 fallback:
+HFM MT5 execution host requires Windows and:
 
 ```bash
 pip install -r requirements-mt5-windows.txt
@@ -179,60 +189,22 @@ python -m fx_scanner.cli demo-ingest --symbol EURUSD --minutes 10
 python -m fx_scanner.cli runtime-smoke --seconds 86400
 ```
 
-## Live progression
+## Progression
 
-Do not jump directly to `AUTO`.
+Do not enable real-money execution from this repository state.
 
 ```text
 DISABLED
 -> SIMULATION
--> CONFIRM_TO_TRADE (cTrader demo)
--> AUTO (cTrader demo)
--> forward validation
--> real-money acceptance gate
+-> dual-broker live-feed smoke test
+-> CONFIRM_TO_TRADE on demo
+-> AUTO on demo
+-> forward validation / cost & latency calibration
+-> real-money acceptance review
 ```
 
-Real-money acceptance remains at minimum:
+Research acceptance remains at minimum: OOS win rate >=55%, Profit Factor
+>=1.30, positive robust expectancy, walk-forward pass, spread/slippage stress
+pass, multi-regime pass, and demo forward-test pass.
 
-- OOS win rate >= 55%
-- Profit Factor >= 1.30
-- positive robust expectancy
-- walk-forward pass
-- spread/slippage stress pass
-- multi-regime pass
-- demo forward-test pass
-
-No real-money readiness is claimed at v0.4.
-
-
-## Dedicated Supabase project
-
-The operational database is provisioned and schema-initialized:
-
-- project: `Forex scanner`
-- project ref: `fotzcxjeypmjldhvfskt`
-- region: `ap-southeast-1` (Singapore)
-- URL: `https://fotzcxjeypmjldhvfskt.supabase.co`
-
-The repository contains no backend secret. On the controlled VPS set:
-
-```text
-SUPABASE_URL=https://fotzcxjeypmjldhvfskt.supabase.co
-SUPABASE_SECRET_KEY=sb_secret_...
-```
-
-Prefer the modern Supabase secret key. The legacy
-`SUPABASE_SERVICE_ROLE_KEY` is accepted only as a fallback.
-
-The control-plane refresh worker performs Supabase network I/O outside the
-execution path. The router only reads a fresh in-memory cache. Missing/stale
-control state, `emergency_stop=true`, `new_orders_enabled=false`, or a
-database/runtime execution-mode mismatch blocks every new live order.
-
-The bootstrap database state is deliberately fail-closed:
-
-```text
-execution_mode       DISABLED
-new_orders_enabled   false
-emergency_stop       true
-```
+**Real-money readiness is not claimed at v0.5.**

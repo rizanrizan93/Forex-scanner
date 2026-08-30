@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from .cadence import AdaptiveExecutionCadence
 from .models import OrderIntent, OrderReceipt
 from .policy import ExecutionPolicy
 from .runtime import ConcurrentRuntimeSupervisor, ExecutionQueueWorker, RuntimeHealth, SerializedExecutionQueue
@@ -15,6 +16,7 @@ class RuntimeHandlers:
     fast_setup: Callable[[], Any]
     execution_watch: Callable[[], Any]
     position_monitor: Callable[[], Any]
+    execution_state: Callable[[], str] | None = None
 
 
 class TradingRuntimeService:
@@ -42,30 +44,46 @@ class TradingRuntimeService:
             self._execute_payload,
             poll_seconds=float(policy.runtime.get("execution_worker_poll_seconds", 0.25)),
         )
+        self.adaptive_cadence = (
+            AdaptiveExecutionCadence(policy.adaptive_cadence)
+            if policy.adaptive_cadence else None
+        )
+
+        def adaptive_execution_watch():
+            if self.adaptive_cadence is None or handlers.execution_state is None:
+                return handlers.execution_watch()
+            state = handlers.execution_state()
+            if not self.adaptive_cadence.due("global", state):
+                return None
+            try:
+                return handlers.execution_watch()
+            finally:
+                self.adaptive_cadence.mark_checked("global")
+
         lag = policy.runtime.get("max_lag_seconds", {})
         scheduler = policy.scheduler
         self.supervisor.add_job(build_runtime_job(
             "heavy_scan",
             scheduler["heavy_scan_seconds"],
-            int(lag.get("heavy_scan", 120)),
+            float(lag.get("heavy_scan", 120)),
             handlers.heavy_scan,
         ))
         self.supervisor.add_job(build_runtime_job(
             "fast_setup",
             scheduler["fast_setup_seconds"],
-            int(lag.get("fast_setup", 15)),
+            float(lag.get("fast_setup", 15)),
             handlers.fast_setup,
         ))
         self.supervisor.add_job(build_runtime_job(
             "execution_watch",
             scheduler["execution_watch_seconds"],
-            int(lag.get("execution_watch", 3)),
-            handlers.execution_watch,
+            float(lag.get("execution_watch", 3)),
+            adaptive_execution_watch,
         ))
         self.supervisor.add_job(build_runtime_job(
             "position_monitor",
             scheduler["position_monitor_seconds"],
-            int(lag.get("position_monitor", 3)),
+            float(lag.get("position_monitor", 3)),
             handlers.position_monitor,
         ))
 

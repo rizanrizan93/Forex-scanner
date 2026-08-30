@@ -17,7 +17,7 @@ class SchedulerIntervals:
     position_monitor: timedelta
 
     @classmethod
-    def from_seconds(cls, values: dict[str, int]) -> "SchedulerIntervals":
+    def from_seconds(cls, values: dict[str, float]) -> "SchedulerIntervals":
         return cls(
             heavy_scan=timedelta(seconds=values["heavy_scan_seconds"]),
             fast_setup=timedelta(seconds=values["fast_setup_seconds"]),
@@ -33,7 +33,7 @@ def due(last_run: datetime | None, now: datetime, interval: timedelta) -> bool:
     return now - last_run.astimezone(UTC) >= interval
 
 
-def build_runtime_job(name: str, interval_seconds: int, max_lag_seconds: int, handler) -> ScheduledJob:
+def build_runtime_job(name: str, interval_seconds: float, max_lag_seconds: float, handler) -> ScheduledJob:
     return ScheduledJob(
         name=name,
         interval_seconds=float(interval_seconds),

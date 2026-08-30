@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import asdict
 from datetime import datetime, timezone
 
 from ..exceptions import FXScannerError
@@ -20,8 +21,10 @@ class ExecutionBlocked(FXScannerError):
 class ExecutionRouter:
     """Centralized broker-agnostic execution state machine.
 
-    All live order side effects must pass through this router. The selected
-    gateway may be cTrader or MT5, but the safety contract is identical.
+    In dual-feed mode, strategy decisions arrive with canonical symbols. A
+    revalidator reconciles FP Markets cTrader research prices against HFM Cent
+    MT5 and returns an execution-ready intent with broker symbol and broker-
+    specific position size. No Supabase network call is permitted here.
     """
 
     def __init__(
@@ -33,10 +36,16 @@ class ExecutionRouter:
         gateway=None,
         session=None,
         control_gate=None,
+        revalidator=None,
+        audit_sink=None,
     ):
         self.policy = policy
-        self.duplicates = duplicate_guard or DuplicateOrderGuard()
         safety = policy.live_safety
+        if duplicate_guard is None and safety.get("require_persistent_idempotency", False):
+            state_env = str(safety.get("idempotency_state_path_env", "")).strip()
+            state_path = os.getenv(state_env, "").strip() if state_env else ""
+            duplicate_guard = DuplicateOrderGuard(state_path or None)
+        self.duplicates = duplicate_guard or DuplicateOrderGuard()
         self.kill_switch = kill_switch or KillSwitch(
             safety["kill_switch_env"],
             safety.get("kill_switch_safe_value", "0"),
@@ -44,12 +53,36 @@ class ExecutionRouter:
         self.gateway = gateway
         self.session = session
         self.control_gate = control_gate
+        self.revalidator = revalidator
+        self.audit_sink = audit_sink
+
+    def _audit(self, event_type: str, *, account_id: str = "UNKNOWN", accepted=None, code=None, message=None, payload=None) -> None:
+        if self.audit_sink is None:
+            return
+        backend = getattr(getattr(self.gateway, "backend", None), "value", "MT5")
+        try:
+            self.audit_sink.emit({
+                "backend": str(backend),
+                "account_id": str(account_id),
+                "signal_key": str((payload or {}).get("signal_id", "UNKNOWN")),
+                "event_type": event_type,
+                "accepted": accepted,
+                "code": code,
+                "message": message,
+                "payload": payload or {},
+            })
+        except Exception:
+            # Audit is deliberately non-critical-path. Safety decisions must not
+            # depend on telemetry availability.
+            pass
 
     def _assert_dynamic_safety(self, intent: OrderIntent) -> None:
         if self.kill_switch.engaged():
             raise ExecutionBlocked("KILL_SWITCH_ENGAGED")
         max_age = int(self.policy.order.get("max_signal_age_seconds", 300))
         age = (datetime.now(tz=UTC) - intent.created_at).total_seconds()
+        if age < -1.0:
+            raise ExecutionBlocked("SIGNAL_TIMESTAMP_IN_FUTURE")
         if age > max_age:
             raise ExecutionBlocked("STALE_SIGNAL")
 
@@ -77,6 +110,8 @@ class ExecutionRouter:
         allowlist = {x.strip() for x in allowed_raw.split(",") if x.strip()}
         if safety.get("require_account_allowlist", True) and str(account_id) not in allowlist:
             raise ExecutionBlocked("ACCOUNT_NOT_ALLOWLISTED")
+        if safety.get("require_persistent_idempotency", False) and self.duplicates.path is None:
+            raise ExecutionBlocked("PERSISTENT_IDEMPOTENCY_NOT_CONFIGURED")
         self._assert_control_plane()
 
     def execute(self, intent: OrderIntent, *, user_confirmed: bool = False) -> OrderReceipt:
@@ -92,6 +127,10 @@ class ExecutionRouter:
         if not self.duplicates.try_claim(intent.signal_id):
             raise ExecutionBlocked("DUPLICATE_SIGNAL")
 
+        account_id = "UNKNOWN"
+        submit_attempted = False
+        submit_outcome_known = False
+        submission_quarantined = False
         try:
             if mode == ExecutionMode.SIMULATION:
                 self._assert_dynamic_safety(intent)
@@ -115,23 +154,83 @@ class ExecutionRouter:
                 except Exception as exc:
                     raise ExecutionBlocked(f"BROKER_SESSION_UNHEALTHY:{exc}") from exc
 
-            account = self.gateway.account_snapshot()
-            self._assert_live_environment(account.account_id)
+            effective_intent = intent
+            account = None
+            if self.policy.live_safety.get("require_revalidation", False):
+                if self.revalidator is None:
+                    raise ExecutionBlocked("REVALIDATOR_NOT_CONFIGURED")
+                try:
+                    validated = self.revalidator.revalidate(intent)
+                except Exception as exc:
+                    self._audit(
+                        "REVALIDATION_BLOCK",
+                        code=type(exc).__name__,
+                        message=str(exc),
+                        payload={"signal_id": intent.signal_id, "symbol": intent.symbol},
+                    )
+                    raise ExecutionBlocked(f"REVALIDATION_BLOCK:{exc}") from exc
+                effective_intent = validated.prepared_intent
+                account = validated.account_snapshot
+                account_id = str(account.account_id)
+                self._audit(
+                    "REVALIDATION_PASS",
+                    account_id=account_id,
+                    accepted=True,
+                    code="OK",
+                    message="dual-feed reconciliation passed",
+                    payload={
+                        "signal_id": intent.signal_id,
+                        "symbol": intent.symbol,
+                        "broker_symbol": effective_intent.broker_symbol,
+                        "volume": effective_intent.volume,
+                        "metrics": asdict(validated.metrics),
+                    },
+                )
+
+            if account is None:
+                account = self.gateway.account_snapshot()
+                account_id = str(account.account_id)
+
+            self._assert_live_environment(account_id)
             if not account.trade_allowed:
                 raise ExecutionBlocked("ACCOUNT_TRADING_NOT_ALLOWED")
 
-            preflight = self.gateway.preflight(intent, self.policy.order)
+            preflight = self.gateway.preflight(effective_intent, self.policy.order)
             if not preflight.accepted:
                 raise ExecutionBlocked(f"PREFLIGHT_REJECTED:{preflight.code}:{preflight.message}")
 
+            # Re-check mutable safety immediately before the side effect.
             self._assert_dynamic_safety(intent)
             self._assert_control_plane()
 
+            # Persist the signal as indeterminate BEFORE crossing the broker
+            # side-effect boundary. A hard process/host crash can therefore
+            # never turn an unknown outcome into a blind retry after restart.
+            self.duplicates.mark_submitting(intent.signal_id)
+            submission_quarantined = True
+            submit_attempted = True
             result = self.gateway.submit(preflight)
+            submit_outcome_known = True
             if not result.accepted:
+                self.duplicates.resolve_uncertain(intent.signal_id, executed=False)
+                submission_quarantined = False
                 raise ExecutionBlocked(f"ORDER_SEND_REJECTED:{result.code}:{result.message}")
 
             self.duplicates.mark_executed(intent.signal_id)
+            submission_quarantined = False
+            self._audit(
+                "ORDER_ACCEPTED",
+                account_id=account_id,
+                accepted=True,
+                code=result.code,
+                message=result.message,
+                payload={
+                    "signal_id": intent.signal_id,
+                    "symbol": intent.symbol,
+                    "broker_symbol": effective_intent.broker_symbol,
+                    "broker_order_id": result.broker_order_id,
+                },
+            )
             return OrderReceipt(
                 intent.signal_id,
                 intent.symbol,
@@ -142,6 +241,24 @@ class ExecutionRouter:
                 result.executed_volume,
                 result.executed_price,
             )
-        except Exception:
-            self.duplicates.release_claim(intent.signal_id)
+        except Exception as exc:
+            if submission_quarantined and submit_attempted and not submit_outcome_known:
+                self._audit(
+                    "ORDER_OUTCOME_UNCERTAIN",
+                    account_id=account_id,
+                    accepted=None,
+                    code="RECONCILIATION_REQUIRED",
+                    message=str(exc),
+                    payload={"signal_id": intent.signal_id, "symbol": intent.symbol},
+                )
+            elif not submission_quarantined:
+                self.duplicates.release_claim(intent.signal_id)
+            self._audit(
+                "EXECUTION_BLOCKED",
+                account_id=account_id,
+                accepted=False,
+                code=type(exc).__name__,
+                message=str(exc),
+                payload={"signal_id": intent.signal_id, "symbol": intent.symbol},
+            )
             raise

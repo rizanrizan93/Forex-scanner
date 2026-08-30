@@ -20,6 +20,7 @@ class BrokerAccountSnapshot:
     equity: float
     margin_free: float | None
     trade_allowed: bool
+    currency: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

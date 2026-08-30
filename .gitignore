@@ -12,6 +12,9 @@ venv/
 *.pem
 *.key
 
+# Runtime state / secrets
+state/
+
 # Local market data / DB
 data/
 *.duckdb
