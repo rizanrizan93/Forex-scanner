@@ -51,8 +51,8 @@ reconciliation:
 
 adaptive_cadence:
   NO_TRADE: 2.0
-  WATCH: 2.0
-  SETUP_FORMING: 1.0
+  WATCH: 1.0
+  SETUP_FORMING: 0.5
   ARMED: 0.25
   EXECUTION_READY: 0.25
   MISSED: 2.0
@@ -61,14 +61,14 @@ adaptive_cadence:
 
 scheduler:
   heavy_scan_seconds: 900
-  fast_setup_seconds: 60
+  fast_setup_seconds: 15
   execution_watch_seconds: 0.25
   position_monitor_seconds: 2
 
 runtime:
   max_lag_seconds:
     heavy_scan: 120
-    fast_setup: 15
+    fast_setup: 5
     execution_watch: 0.50
     position_monitor: 3
   supervisor_tick_seconds: 0.05
