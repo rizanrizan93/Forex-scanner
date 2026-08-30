@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from threading import RLock
 from typing import Any, Iterable
 
@@ -37,6 +38,23 @@ class CTraderResearchFeed:
     def symbol_info(self, symbol: str) -> Any:
         self.ensure_connected()
         return self._session.symbol_info(symbol)
+
+    def heartbeat(self) -> None:
+        with self._lock:
+            self._session.heartbeat()
+
+    def historical_bars(
+        self, symbol: str, timeframe: str, *, from_time: datetime,
+        to_time: datetime, count: int,
+    ):
+        with self._lock:
+            self.ensure_connected()
+            quote = self._session.quote(symbol)
+            spread = max(0.0, float(quote.ask) - float(quote.bid))
+            return self._session.historical_bars(
+                symbol, timeframe, from_time=from_time, to_time=to_time,
+                count=count, spread_proxy=spread,
+            )
 
     def close(self) -> None:
         self._session.close()

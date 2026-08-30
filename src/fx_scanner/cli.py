@@ -11,7 +11,8 @@ from .config import load_project_config
 from .demo import generate_demo_ticks
 from .quality import assess_ticks
 from .providers.factory import build_provider_runtime
-from .execution.factory import build_broker_gateway
+from .cloud_runtime import CTraderCloudResearchRuntime
+from .execution.factory import build_broker_gateway, build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .execution.runtime import RuntimeSupervisor, ScheduledJob
 from .storage.audit import JsonlAuditStore
@@ -194,6 +195,31 @@ def cmd_mt5_monitor(args: argparse.Namespace) -> int:
         gateway.close()
 
 
+def cmd_research_cloud(args: argparse.Namespace) -> int:
+    cfg = load_project_config(args.root)
+    policy = load_execution_policy(args.root)
+    symbols = [pair.symbol for pair in cfg.pairs]
+    feed = build_ctrader_research_feed(policy, symbols)
+    store = SupabaseOperationalStore.from_env()
+    runtime = CTraderCloudResearchRuntime(cfg, feed, store)
+    try:
+        if args.once:
+            report = runtime.probe(include_mtf=not args.spot_only)
+            print(
+                "CTRADER_CLOUD_OK "
+                f"healthy={report.healthy} quotes={report.quotes_ok}/{report.quotes_total} "
+                f"mtf={report.mtf_ok}/{report.mtf_total} failures={len(report.failures)}"
+            )
+            return 0 if report.healthy else 2
+        runtime.run_forever(
+            heartbeat_seconds=float(args.heartbeat),
+            mtf_refresh_seconds=float(args.mtf_refresh),
+        )
+        return 0
+    finally:
+        feed.close()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="fx-scanner")
     parser.add_argument("--root", default=None, help="project root; defaults to package root")
@@ -220,6 +246,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seconds", type=int, default=30)
     p.add_argument("--terminal-path", default=None)
     p.set_defaults(func=cmd_mt5_smoke)
+
+    p = sub.add_parser("research-cloud")
+    p.add_argument("--once", action="store_true")
+    p.add_argument("--spot-only", action="store_true")
+    p.add_argument("--heartbeat", type=float, default=8.0)
+    p.add_argument("--mtf-refresh", type=float, default=900.0)
+    p.set_defaults(func=cmd_research_cloud)
 
     p = sub.add_parser("mt5-monitor")
     p.add_argument("--terminal-path", default=None)

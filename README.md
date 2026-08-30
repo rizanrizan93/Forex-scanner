@@ -1,4 +1,4 @@
-# FX Institutional Scanner v0.10
+# FX Institutional Scanner v0.11
 
 Production-oriented forex scanner foundation with a **dual-feed / single-execution** design.
 
@@ -235,6 +235,22 @@ tables are intentionally closed to public roles.
 
 See `docs/STREAMLIT_DEPLOY.md`.
 
+## v0.11 phone-only Linux research runtime
+
+The research side can now run independently on Linux/cloud while remaining
+connected to **FP Markets cTrader Open API**. It acquires live Bid/Ask plus
+D1/H4/H1/M15/M5 historical trendbars, sends an 8-second client heartbeat,
+and rate-limits historical requests below cTrader limits.
+
+HFM MT5 remains the separate execution/telemetry venue.
+
+```bash
+python -m fx_scanner.cli research-cloud --once
+python -m fx_scanner.cli research-cloud --heartbeat 8 --mtf-refresh 900
+```
+
+See `docs/PHONE_ONLY_RUNTIME.md`.
+
 ## v0.10 broker monitoring telemetry
 
 Streamlit remains a monitor only. A lightweight Windows/MT5 worker now
@@ -449,4 +465,4 @@ Research acceptance remains at minimum: OOS win rate >=55%, Profit Factor
 >=1.30, positive robust expectancy, walk-forward pass, spread/slippage stress
 pass, multi-regime pass, and demo forward-test pass.
 
-**Real-money readiness is not claimed at v0.10.**
+**Real-money readiness is not claimed at v0.11.**

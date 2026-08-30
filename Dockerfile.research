@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+COPY pyproject.toml README.md ./
+COPY src ./src
+COPY config ./config
+COPY requirements-research-cloud.txt ./
+RUN python -m pip install --upgrade pip && pip install -r requirements-research-cloud.txt
+RUN mkdir -p /app/state
+VOLUME ["/app/state"]
+ENV CTRADER_TOKEN_STATE_PATH=/app/state/ctrader_tokens.json
+CMD ["python", "-m", "fx_scanner.cli", "research-cloud", "--heartbeat", "8", "--mtf-refresh", "900"]

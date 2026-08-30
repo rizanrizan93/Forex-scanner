@@ -8,6 +8,7 @@ from typing import Any, Callable
 from uuid import uuid4
 
 from ..exceptions import CollectorUnavailable, MissingOptionalDependency
+from ..models import Bar
 
 UTC = timezone.utc
 
@@ -43,11 +44,13 @@ class CTraderOpenApiSession:
             raise ValueError("cTrader client_id/client_secret/access_token/account_id are required")
         try:
             from ctrader_open_api import Client, Protobuf, TcpProtocol, EndPoints
+            from ctrader_open_api.messages.OpenApiCommonMessages_pb2 import ProtoHeartbeatEvent
             from ctrader_open_api.messages.OpenApiMessages_pb2 import (
                 ProtoOAApplicationAuthReq,
                 ProtoOAAccountAuthReq,
                 ProtoOAExpectedMarginReq,
                 ProtoOAGetPositionUnrealizedPnLReq,
+                ProtoOAGetTrendbarsReq,
                 ProtoOANewOrderReq,
                 ProtoOAReconcileReq,
                 ProtoOARefreshTokenReq,
@@ -57,6 +60,7 @@ class CTraderOpenApiSession:
                 ProtoOASymbolsListReq,
                 ProtoOATraderReq,
             )
+            from ctrader_open_api.messages.OpenApiModelMessages_pb2 import ProtoOATrendbarPeriod
             from twisted.internet import reactor
         except ModuleNotFoundError as exc:
             raise MissingOptionalDependency(
@@ -66,10 +70,13 @@ class CTraderOpenApiSession:
         self.Protobuf = Protobuf
         self.reactor = reactor
         self.msg = {
+            "HeartbeatEvent": ProtoHeartbeatEvent,
             "ApplicationAuthReq": ProtoOAApplicationAuthReq,
             "AccountAuthReq": ProtoOAAccountAuthReq,
             "ExpectedMarginReq": ProtoOAExpectedMarginReq,
             "GetPositionUnrealizedPnLReq": ProtoOAGetPositionUnrealizedPnLReq,
+            "GetTrendbarsReq": ProtoOAGetTrendbarsReq,
+            "TrendbarPeriod": ProtoOATrendbarPeriod,
             "NewOrderReq": ProtoOANewOrderReq,
             "ReconcileReq": ProtoOAReconcileReq,
             "RefreshTokenReq": ProtoOARefreshTokenReq,
@@ -312,6 +319,83 @@ class CTraderOpenApiSession:
         # Freshness of a two-sided quote is bounded by its older side.
         quote_ts = min(state["bid_timestamp"], state["ask_timestamp"])
         return CTraderQuote(sid, float(state["bid"]), float(state["ask"]), quote_ts)
+
+    def heartbeat(self) -> None:
+        """Send a client heartbeat without exposing any trading operation."""
+        self.ensure_connected()
+        message = self.msg["HeartbeatEvent"]()
+
+        def dispatch():
+            try:
+                deferred = self.client.send(message)
+                try:
+                    deferred.addErrback(lambda _failure: None)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+        self.reactor.callFromThread(dispatch)
+
+    def historical_bars(
+        self,
+        symbol: str,
+        timeframe: str,
+        *,
+        from_time: datetime,
+        to_time: datetime,
+        count: int,
+        spread_proxy: float = 0.0,
+    ) -> tuple[Bar, ...]:
+        """Fetch historical cTrader trendbars normalized to scanner Bars."""
+        self.ensure_connected()
+        timeframe = str(timeframe).upper()
+        if timeframe not in {"M1", "M5", "M15", "H1", "H4", "D1"}:
+            raise CollectorUnavailable(f"unsupported cTrader timeframe: {timeframe}")
+        if count <= 0:
+            raise CollectorUnavailable("cTrader trendbar count must be positive")
+        if from_time.tzinfo is None or to_time.tzinfo is None:
+            raise CollectorUnavailable("cTrader trendbar timestamps must be timezone-aware")
+        if from_time >= to_time:
+            raise CollectorUnavailable("cTrader trendbar time range is invalid")
+        if spread_proxy < 0:
+            raise CollectorUnavailable("cTrader spread proxy cannot be negative")
+
+        req = self.msg["GetTrendbarsReq"]()
+        req.ctidTraderAccountId = self.account_id
+        req.symbolId = self.symbol_id(symbol)
+        req.period = self.msg["TrendbarPeriod"].Value(timeframe)
+        req.fromTimestamp = int(from_time.astimezone(UTC).timestamp() * 1000)
+        req.toTimestamp = int(to_time.astimezone(UTC).timestamp() * 1000)
+        req.count = int(count)
+        res = self._send_sync(req, client_msg_id=f"trendbars-{uuid4().hex}")
+
+        info = self.symbol_info(symbol)
+        digits = int(getattr(info, "digits", 5))
+        output: list[Bar] = []
+        for item in tuple(getattr(res, "trendbar", ())):
+            low_rel = int(getattr(item, "low", 0))
+            low = round(low_rel / 100000.0, digits)
+            open_ = round((low_rel + int(getattr(item, "deltaOpen", 0))) / 100000.0, digits)
+            high = round((low_rel + int(getattr(item, "deltaHigh", 0))) / 100000.0, digits)
+            close = round((low_rel + int(getattr(item, "deltaClose", 0))) / 100000.0, digits)
+            minute_ts = int(getattr(item, "utcTimestampInMinutes", 0))
+            if minute_ts <= 0:
+                raise CollectorUnavailable("cTrader trendbar timestamp unavailable")
+            timestamp = datetime.fromtimestamp(minute_ts * 60, tz=UTC)
+            volume = int(getattr(item, "volume", 0) or 0)
+            if volume <= 0:
+                volume = 1
+            output.append(
+                Bar(
+                    symbol, timeframe, timestamp, open_, high, low, close,
+                    volume, float(spread_proxy), float(spread_proxy),
+                )
+            )
+        output.sort(key=lambda bar: bar.timestamp)
+        if not output:
+            raise CollectorUnavailable(f"cTrader returned no {timeframe} bars for {symbol}")
+        return tuple(output)
 
     def trader(self):
         req = self.msg["TraderReq"]()
