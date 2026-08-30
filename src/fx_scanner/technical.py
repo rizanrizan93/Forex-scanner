@@ -41,6 +41,7 @@ class StructureSnapshot:
     last_swing_high: float | None
     last_swing_low: float | None
     bos: str | None
+    mss: str | None
     displacement: DisplacementSignal | None
     fvg: FVGSignal | None
     sweep: SweepSignal | None
@@ -184,13 +185,16 @@ def detect_sweep(
     lows = _pivot_lows(bars[:-1], lookback)
     recent = bars[-min(reclaim_bars, len(bars)):]
 
+    bearish: SweepSignal | None = None
+    bullish: SweepSignal | None = None
+
     if highs:
         level = highs[-1][1]
         penetrators = [b for b in recent if b.high > level]
         if penetrators:
             max_high = max(b.high for b in penetrators)
             reclaimed = bars[-1].close < level
-            return SweepSignal("BEARISH", level, (max_high - level) / current_atr, reclaimed, reclaimed)
+            bearish = SweepSignal("BEARISH", level, (max_high - level) / current_atr, reclaimed, reclaimed)
 
     if lows:
         level = lows[-1][1]
@@ -198,8 +202,11 @@ def detect_sweep(
         if penetrators:
             min_low = min(b.low for b in penetrators)
             reclaimed = bars[-1].close > level
-            return SweepSignal("BULLISH", level, (level - min_low) / current_atr, reclaimed, reclaimed)
-    return None
+            bullish = SweepSignal("BULLISH", level, (level - min_low) / current_atr, reclaimed, reclaimed)
+
+    if bearish and bullish:
+        return SweepSignal("AMBIGUOUS", 0.0, max(bearish.penetration_atr, bullish.penetration_atr), False, False)
+    return bearish or bullish
 
 
 def structure_snapshot(
@@ -235,12 +242,29 @@ def structure_snapshot(
     else:
         trend = "UNKNOWN"
 
+    displacement = detect_displacement(bars, atr_period=atr_period)
+    sweep = detect_sweep(bars, lookback=swing_lookback, atr_period=atr_period)
+    mss: str | None = None
+    if (
+        bos == "BULLISH"
+        and sweep is not None and sweep.valid and sweep.direction == "BULLISH"
+        and displacement.valid and displacement.direction == "BULLISH"
+    ):
+        mss = "BULLISH"
+    elif (
+        bos == "BEARISH"
+        and sweep is not None and sweep.valid and sweep.direction == "BEARISH"
+        and displacement.valid and displacement.direction == "BEARISH"
+    ):
+        mss = "BEARISH"
+
     return StructureSnapshot(
         trend=trend,
         last_swing_high=last_high,
         last_swing_low=last_low,
         bos=bos,
-        displacement=detect_displacement(bars, atr_period=atr_period),
+        mss=mss,
+        displacement=displacement,
         fvg=detect_fvg(bars, atr_period=atr_period),
-        sweep=detect_sweep(bars, lookback=swing_lookback, atr_period=atr_period),
+        sweep=sweep,
     )
