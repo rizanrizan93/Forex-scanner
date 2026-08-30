@@ -249,10 +249,11 @@ class BacktestEngine:
             # Counting it as a win can place the target before the entry touch.
             # Stop remains conservative: if the fill bar also touches stop, the
             # trade is recorded as a loss. A target is eligible from bar +1.
+            raw_target_hit = target_hit
             if held_index == 0:
                 target_hit = False
 
-            ambiguous = stop_hit and target_hit
+            ambiguous = stop_hit and raw_target_hit
             if stop_hit:
                 exit_price = intent.stop_loss
                 gross_r = -1.0
