@@ -271,7 +271,12 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     sources = providers.get("sources", {})
     if not isinstance(sources, Mapping) or not sources:
         raise ConfigurationError("providers.sources must contain configured sources")
-    required_sources = {"ECB_DATA_PORTAL", "BANK_OF_CANADA_VALET"}
+    required_sources = {
+        "ECB_DATA_PORTAL",
+        "BANK_OF_CANADA_VALET",
+        "FEDERAL_RESERVE_FRED",
+        "RBA_CASH_RATE",
+    }
     canonical_source_urls = {
         "ECB_DATA_PORTAL": (
             "https://data-api.ecb.europa.eu/service/data",
@@ -280,6 +285,14 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         "BANK_OF_CANADA_VALET": (
             "https://www.bankofcanada.ca/valet/observations",
             "www.bankofcanada.ca",
+        ),
+        "FEDERAL_RESERVE_FRED": (
+            "https://fred.stlouisfed.org/graph/fredgraph.csv",
+            "fred.stlouisfed.org",
+        ),
+        "RBA_CASH_RATE": (
+            "https://www.rba.gov.au/statistics/cash-rate",
+            "www.rba.gov.au",
         ),
     }
     if not required_sources.issubset(set(sources)):
@@ -296,7 +309,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
             raise ConfigurationError(f"provider source {name} HTTPS host contract is invalid")
         if name in canonical_source_urls:
             expected_url, expected_host = canonical_source_urls[name]
-            if base_url.rstrip("/") != expected_url or allowed_host != expected_host:
+            if base_url.rstrip("/") != expected_url.rstrip("/") or allowed_host != expected_host:
                 raise ConfigurationError(f"provider source {name} canonical endpoint changed")
         if _as_finite_number(
             source.get("default_max_age_seconds"),
