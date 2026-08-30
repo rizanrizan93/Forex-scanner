@@ -20,7 +20,12 @@ def evaluate_hard_guards(
     blocking condition. This prevents a missing guard calculation or typo from
     silently becoming "clear".
     """
-    active = [name for name, blocked in flags.items() if blocked]
+    active: list[str] = []
+    for name, blocked in flags.items():
+        if not isinstance(blocked, bool):
+            active.append(f"GUARD_INPUT_INVALID:{name}")
+        elif blocked:
+            active.append(name)
     if required_names is not None:
         required = {str(name) for name in required_names}
         missing = sorted(required - set(flags))
