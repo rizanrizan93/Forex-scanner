@@ -287,3 +287,47 @@ def test_long_target_requires_bid_not_mid_high():
     )
     assert result.outcome == TradeOutcome.OPEN
     assert result.reason == "HISTORY_ENDED_BEFORE_MAX_HOLD"
+
+
+def test_short_target_and_stop_use_ask_side_symmetrically():
+    short_intent = intent(
+        trade_id="SHORT-1",
+        direction="SHORT",
+        entry_low=1.1000,
+        entry_high=1.1002,
+        stop_loss=1.1012,
+        take_profit=1.0980,
+    )
+    entry = Bar(
+        "EURUSD",
+        "M5",
+        SIGNAL + timedelta(minutes=5),
+        1.1001,
+        1.1005,
+        1.0998,
+        1.1001,
+        100,
+        0.0002,
+        0.0002,
+    )
+    near_target = Bar(
+        "EURUSD",
+        "M5",
+        SIGNAL + timedelta(minutes=10),
+        1.0990,
+        1.0995,
+        1.09795,
+        1.0985,
+        100,
+        0.0002,
+        0.0002,
+    )
+    result = engine().evaluate(
+        short_intent,
+        [entry, near_target],
+        timeframe_seconds=300,
+    )
+    # Mid low is below TP, but ask low remains above it because of half-spread.
+    assert near_target.low < short_intent.take_profit
+    assert result.outcome == TradeOutcome.OPEN
+    assert result.reason == "HISTORY_ENDED_BEFORE_MAX_HOLD"
