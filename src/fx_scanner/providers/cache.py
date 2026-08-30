@@ -29,6 +29,8 @@ class ProviderCache:
         clock=monotonic,
     ):
         values = (positive_ttl_seconds, negative_ttl_seconds, stale_ttl_seconds)
+        if any(isinstance(v, bool) for v in values) or isinstance(max_entries, bool):
+            raise ValueError("provider cache limits cannot be boolean")
         if any(float(v) <= 0 for v in values) or max_entries <= 0:
             raise ValueError("provider cache limits must be positive")
         self.positive_ttl_seconds = float(positive_ttl_seconds)
