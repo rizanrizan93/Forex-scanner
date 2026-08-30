@@ -1,4 +1,4 @@
-# FX Institutional Scanner v0.6
+# FX Institutional Scanner v0.7
 
 Production-oriented forex scanner foundation with a **dual-feed / single-execution** design.
 
@@ -57,9 +57,46 @@ Missing evidence is never converted into a successful neutral observation. A
 high score cannot override a hard guard, a neutral pair direction, or inadequate
 evidence coverage.
 
-v0.6 is still a **research decision-engine foundation**. Macro/news/cross-asset
-providers and live broker bar pipelines must be wired and validated before these
-features can drive demo execution.
+v0.6 established the deterministic decision engine. v0.7 adds the first
+provider/live-data orchestration layer around that engine.
+
+## v0.7 provider and live-data orchestration
+
+Provider evidence now has explicit semantics:
+
+- `AVAILABLE`, `PARTIAL`, `MISSING`, `STALE`, `INVALID`, `ERROR`, `NOT_APPLICABLE`
+- zero is distinct from missing
+- source URL, series ID, official-source flag, observation time and fetch time
+- max-age freshness with stale values preserved for audit but excluded from decisions
+- typed provider error categories
+- positive, negative and stale TTL caching
+- numeric quorum with conflict detection
+- exact-single-series guards; wildcard/multi-series inputs fail closed
+- HTTPS + canonical-host configuration and redirect blocking
+
+The first keyless official adapters are:
+
+- ECB Data Portal SDMX/CSV
+- Bank of Canada Valet JSON
+
+The macro provider pipeline normalizes source observations only through explicit
+normalizers. Missing history does **not** become a neutral zero. Provider/factor
+coverage and provenance are retained and can be persisted to
+`currency_macro_state` in Supabase.
+
+v0.7 also contains a typed high-impact economic-event model and deterministic
+news-window evaluator for producing `NEWS_BLOCK`. A full multi-country
+economic-calendar ingestion provider is not yet claimed.
+
+Manual network smoke tests:
+
+```bash
+python -m fx_scanner.cli provider-smoke --series ECB_EURUSD_REFERENCE
+python -m fx_scanner.cli provider-smoke --series BOC_POLICY_RATE
+```
+
+These are intentionally not part of mandatory CI because external provider
+availability must not determine whether the codebase builds.
 
 ## HFM Cent execution contract
 
@@ -210,6 +247,9 @@ pytest -q
 python -m fx_scanner.cli validate-config
 python -m fx_scanner.cli demo-ingest --symbol EURUSD --minutes 10
 python -m fx_scanner.cli runtime-smoke --seconds 86400
+# Optional external-network checks:
+python -m fx_scanner.cli provider-smoke --series ECB_EURUSD_REFERENCE
+python -m fx_scanner.cli provider-smoke --series BOC_POLICY_RATE
 ```
 
 ## Progression
@@ -230,4 +270,4 @@ Research acceptance remains at minimum: OOS win rate >=55%, Profit Factor
 >=1.30, positive robust expectancy, walk-forward pass, spread/slippage stress
 pass, multi-regime pass, and demo forward-test pass.
 
-**Real-money readiness is not claimed at v0.6.**
+**Real-money readiness is not claimed at v0.7.**

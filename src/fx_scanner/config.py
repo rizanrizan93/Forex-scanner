@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from math import isfinite
 from pathlib import Path
 from typing import Any, Mapping
+from urllib.parse import urlparse
 
 import yaml
 
@@ -27,6 +28,7 @@ class ProjectConfig:
     scoring: dict[str, Any]
     sessions: dict[str, Any]
     macro: dict[str, Any]
+    providers: dict[str, Any]
 
     @property
     def pair_map(self) -> dict[str, PairSpec]:
@@ -80,7 +82,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     pair_data = _read_yaml(cfg / "pairs.yaml")
     raw_pairs = pair_data.get("pairs", [])
     if not isinstance(raw_pairs, list) or len(raw_pairs) != 15:
-        raise ConfigurationError(f"v0.6 requires exactly 15 configured pairs, got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}")
+        raise ConfigurationError(f"v0.7 requires exactly 15 configured pairs, got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}")
 
     pairs: list[PairSpec] = []
     seen: set[str] = set()
@@ -124,6 +126,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     scoring = _read_yaml(cfg / "scoring.yaml")
     sessions = _read_yaml(cfg / "sessions.yaml")
     macro = _read_yaml(cfg / "macro.yaml")
+    providers = _read_yaml(cfg / "providers.yaml")
 
     pair_keys = {"macro", "currency_strength", "intermarket", "volatility", "session", "spread"}
     execution_keys = {
@@ -175,7 +178,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         raise ConfigurationError(f"hard_guards must be exactly {sorted(expected_guards)}")
 
     if str(risk.get("mode", "")).upper() != "RESEARCH_ONLY":
-        raise ConfigurationError("v0.6 risk mode must remain RESEARCH_ONLY")
+        raise ConfigurationError("v0.7 risk mode must remain RESEARCH_ONLY")
 
     risk_per_trade = _as_finite_number(risk.get("risk_per_trade_pct"), label="risk_per_trade_pct")
     max_risk = _as_finite_number(risk.get("max_risk_per_trade_pct"), label="max_risk_per_trade_pct")
@@ -185,15 +188,15 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         label="max_same_currency_exposure_units",
     )
     if not 0 < risk_per_trade <= max_risk <= 0.50:
-        raise ConfigurationError("risk-per-trade contract exceeds v0.6 safety cap")
+        raise ConfigurationError("risk-per-trade contract exceeds v0.7 safety cap")
     if not 0 < max_daily_loss <= 1.0:
-        raise ConfigurationError("max_daily_loss_pct exceeds v0.6 safety cap")
+        raise ConfigurationError("max_daily_loss_pct exceeds v0.7 safety cap")
     if int(risk.get("max_concurrent_trades", 0)) != 2:
         raise ConfigurationError("max_concurrent_trades must remain 2")
     if int(risk.get("max_consecutive_losses", 0)) != 3:
         raise ConfigurationError("max_consecutive_losses must remain 3")
     if not 0 < same_currency <= 1.5:
-        raise ConfigurationError("same-currency exposure exceeds v0.6 cap")
+        raise ConfigurationError("same-currency exposure exceeds v0.7 cap")
 
     acceptance = risk.get("acceptance", {})
     if not isinstance(acceptance, Mapping):
@@ -218,4 +221,102 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         if acceptance.get(key) is not True:
             raise ConfigurationError(f"acceptance.{key} must remain true")
 
-    return ProjectConfig(tuple(pairs), timeframes, risk, scoring, sessions, macro)
+    transport = providers.get("transport", {})
+    if not isinstance(transport, Mapping):
+        raise ConfigurationError("providers.transport must be a mapping")
+    timeout_seconds = _as_finite_number(
+        transport.get("timeout_seconds"), label="providers.transport.timeout_seconds"
+    )
+    max_response_bytes = _as_finite_number(
+        transport.get("max_response_bytes"), label="providers.transport.max_response_bytes"
+    )
+    if not 0 < timeout_seconds <= 30:
+        raise ConfigurationError("provider transport timeout must be in (0,30] seconds")
+    if not 1024 <= max_response_bytes <= 5_242_880:
+        raise ConfigurationError("provider response size must be between 1 KiB and 5 MiB")
+    if not str(transport.get("user_agent", "")).strip():
+        raise ConfigurationError("provider transport user_agent is required")
+
+    cache_cfg = providers.get("cache", {})
+    if not isinstance(cache_cfg, Mapping):
+        raise ConfigurationError("providers.cache must be a mapping")
+    cache_limits = {
+        "positive_ttl_seconds": 86400,
+        "negative_ttl_seconds": 3600,
+        "stale_ttl_seconds": 600,
+    }
+    for key, upper in cache_limits.items():
+        value = _as_finite_number(cache_cfg.get(key), label=f"providers.cache.{key}")
+        if not 0 < value <= upper:
+            raise ConfigurationError(f"providers.cache.{key} must be in (0,{upper}]")
+
+    quorum_cfg = providers.get("quorum", {})
+    if not isinstance(quorum_cfg, Mapping):
+        raise ConfigurationError("providers.quorum must be a mapping")
+    minimum_success_raw = _as_finite_number(
+        quorum_cfg.get("minimum_success"),
+        label="providers.quorum.minimum_success",
+    )
+    if not minimum_success_raw.is_integer() or not 1 <= minimum_success_raw <= 5:
+        raise ConfigurationError("providers.quorum.minimum_success must be an integer in [1,5]")
+    max_conflict = _as_finite_number(
+        quorum_cfg.get("maximum_numeric_conflict"),
+        label="providers.quorum.maximum_numeric_conflict",
+    )
+    if not 0 <= max_conflict <= 100:
+        raise ConfigurationError("providers.quorum.maximum_numeric_conflict must be in [0,100]")
+
+    sources = providers.get("sources", {})
+    if not isinstance(sources, Mapping) or not sources:
+        raise ConfigurationError("providers.sources must contain configured sources")
+    required_sources = {"ECB_DATA_PORTAL", "BANK_OF_CANADA_VALET"}
+    canonical_source_urls = {
+        "ECB_DATA_PORTAL": (
+            "https://data-api.ecb.europa.eu/service/data",
+            "data-api.ecb.europa.eu",
+        ),
+        "BANK_OF_CANADA_VALET": (
+            "https://www.bankofcanada.ca/valet/observations",
+            "www.bankofcanada.ca",
+        ),
+    }
+    if not required_sources.issubset(set(sources)):
+        raise ConfigurationError("official ECB and Bank of Canada providers are required in v0.7")
+    for name, source in sources.items():
+        if not isinstance(source, Mapping):
+            raise ConfigurationError(f"provider source {name} must be a mapping")
+        if source.get("enabled") is not True or source.get("official") is not True:
+            raise ConfigurationError(f"provider source {name} must remain enabled and official")
+        base_url = str(source.get("base_url", "")).strip()
+        allowed_host = str(source.get("allowed_host", "")).strip()
+        parsed = urlparse(base_url)
+        if parsed.scheme != "https" or not parsed.hostname or parsed.hostname != allowed_host:
+            raise ConfigurationError(f"provider source {name} HTTPS host contract is invalid")
+        if name in canonical_source_urls:
+            expected_url, expected_host = canonical_source_urls[name]
+            if base_url.rstrip("/") != expected_url or allowed_host != expected_host:
+                raise ConfigurationError(f"provider source {name} canonical endpoint changed")
+        if _as_finite_number(
+            source.get("default_max_age_seconds"),
+            label=f"providers.sources.{name}.default_max_age_seconds",
+        ) <= 0:
+            raise ConfigurationError(f"provider source {name} max age must be positive")
+
+    smoke_series = providers.get("smoke_series", {})
+    if not isinstance(smoke_series, Mapping) or not smoke_series:
+        raise ConfigurationError("providers.smoke_series must be configured")
+    for name, item in smoke_series.items():
+        if not isinstance(item, Mapping):
+            raise ConfigurationError(f"smoke series {name} must be a mapping")
+        provider_name = str(item.get("provider", ""))
+        if provider_name not in sources:
+            raise ConfigurationError(f"smoke series {name} references unknown provider")
+        if not str(item.get("series", "")).strip():
+            raise ConfigurationError(f"smoke series {name} requires series")
+        if _as_finite_number(
+            item.get("max_age_seconds"),
+            label=f"providers.smoke_series.{name}.max_age_seconds",
+        ) <= 0:
+            raise ConfigurationError(f"smoke series {name} max age must be positive")
+
+    return ProjectConfig(tuple(pairs), timeframes, risk, scoring, sessions, macro, providers)

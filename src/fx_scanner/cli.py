@@ -9,6 +9,7 @@ from .collectors.mt5 import MT5Collector
 from .config import load_project_config
 from .demo import generate_demo_ticks
 from .quality import assess_ticks
+from .providers.factory import build_provider_runtime
 from .execution.policy import load_execution_policy
 from .execution.runtime import RuntimeSupervisor, ScheduledJob
 from .storage.audit import JsonlAuditStore
@@ -83,6 +84,29 @@ def cmd_runtime_smoke(args: argparse.Namespace) -> int:
     return 0 if health.healthy else 2
 
 
+def cmd_provider_smoke(args: argparse.Namespace) -> int:
+    cfg = load_project_config(args.root)
+    smoke = cfg.providers["smoke_series"].get(args.series)
+    if smoke is None:
+        raise SystemExit(f"unknown configured provider smoke series: {args.series}")
+    runtime = build_provider_runtime(cfg.providers)
+    provider_name = str(smoke["provider"])
+    provider = runtime.providers[provider_name]
+    result = runtime.orchestrator.fetch(
+        provider,
+        str(smoke["series"]),
+        max_age_seconds=float(smoke["max_age_seconds"]),
+    )
+    value = None if result.value is None else result.value.value
+    observed = None if result.value is None else result.value.observed_at.isoformat()
+    age = None if result.freshness is None else round(result.freshness.age_seconds, 3)
+    print(
+        f"PROVIDER_SMOKE status={result.status.value} provider={provider_name} "
+        f"series={smoke['series']} value={value} observed_at={observed} age_seconds={age}"
+    )
+    return 0 if result.usable else 2
+
+
 def cmd_mt5_smoke(args: argparse.Namespace) -> int:
     cfg = load_project_config(args.root)
     symbol = args.symbol.upper()
@@ -113,6 +137,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("runtime-smoke")
     p.add_argument("--seconds", type=int, default=3600)
     p.set_defaults(func=cmd_runtime_smoke)
+
+    p = sub.add_parser("provider-smoke")
+    p.add_argument("--series", default="ECB_EURUSD_REFERENCE")
+    p.set_defaults(func=cmd_provider_smoke)
 
     p = sub.add_parser("mt5-smoke")
     p.add_argument("--symbol", default="EURUSD")
