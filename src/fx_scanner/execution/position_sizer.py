@@ -14,11 +14,14 @@ class SymbolTradeSpec:
     volume_min: float
     volume_max: float
     volume_step: float
+    contract_size: float | None = None
 
     def __post_init__(self) -> None:
         vals = (self.tick_size, self.tick_value_loss, self.volume_min, self.volume_max, self.volume_step)
         if not all(isfinite(x) and x > 0 for x in vals):
             raise DataContractError("trade spec values must be positive finite numbers")
+        if self.contract_size is not None and (not isfinite(self.contract_size) or self.contract_size <= 0):
+            raise DataContractError("contract_size must be positive when supplied")
         if self.volume_max < self.volume_min:
             raise DataContractError("volume_max must be >= volume_min")
 
