@@ -203,3 +203,36 @@ Real-money acceptance remains at minimum:
 - demo forward-test pass
 
 No real-money readiness is claimed at v0.4.
+
+
+## Dedicated Supabase project
+
+The operational database is provisioned and schema-initialized:
+
+- project: `Forex scanner`
+- project ref: `fotzcxjeypmjldhvfskt`
+- region: `ap-southeast-1` (Singapore)
+- URL: `https://fotzcxjeypmjldhvfskt.supabase.co`
+
+The repository contains no backend secret. On the controlled VPS set:
+
+```text
+SUPABASE_URL=https://fotzcxjeypmjldhvfskt.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_...
+```
+
+Prefer the modern Supabase secret key. The legacy
+`SUPABASE_SERVICE_ROLE_KEY` is accepted only as a fallback.
+
+The control-plane refresh worker performs Supabase network I/O outside the
+execution path. The router only reads a fresh in-memory cache. Missing/stale
+control state, `emergency_stop=true`, `new_orders_enabled=false`, or a
+database/runtime execution-mode mismatch blocks every new live order.
+
+The bootstrap database state is deliberately fail-closed:
+
+```text
+execution_mode       DISABLED
+new_orders_enabled   false
+emergency_stop       true
+```
