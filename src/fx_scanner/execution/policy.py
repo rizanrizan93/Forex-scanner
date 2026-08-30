@@ -13,12 +13,15 @@ from .models import ExecutionMode
 @dataclass(frozen=True, slots=True)
 class ExecutionPolicy:
     mode: ExecutionMode
-    scheduler: dict[str, int]
+    scheduler: dict[str, float]
     order: dict[str, Any]
     live_safety: dict[str, Any]
     runtime: dict[str, Any] = field(default_factory=dict)
     broker: dict[str, Any] = field(default_factory=dict)
     ctrader: dict[str, Any] = field(default_factory=dict)
+    mt5: dict[str, Any] = field(default_factory=dict)
+    reconciliation: dict[str, Any] = field(default_factory=dict)
+    adaptive_cadence: dict[str, float] = field(default_factory=dict)
 
 
 def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
@@ -31,7 +34,7 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
     except Exception as exc:
         raise ConfigurationError("invalid execution mode") from exc
 
-    scheduler = {k: int(v) for k, v in raw.get("scheduler", {}).items()}
+    scheduler = {k: float(v) for k, v in raw.get("scheduler", {}).items()}
     required = {
         "heavy_scan_seconds",
         "fast_setup_seconds",
@@ -50,6 +53,10 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
     runtime = dict(raw.get("runtime", {}))
     broker = dict(raw.get("broker", {}))
     ctrader = dict(raw.get("ctrader", {}))
+    mt5 = dict(raw.get("mt5", {}))
+    reconciliation = dict(raw.get("reconciliation", {}))
+    adaptive_cadence = {str(k).upper(): float(v) for k, v in raw.get("adaptive_cadence", {}).items()}
+
     for key in ("live_enable_env", "live_enable_value", "account_allowlist_env", "kill_switch_env"):
         if not live_safety.get(key):
             raise ConfigurationError(f"missing live safety config: {key}")
@@ -90,13 +97,19 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
     if int(breaker.get("failure_threshold", 0)) <= 0 or float(breaker.get("recovery_seconds", 0)) <= 0:
         raise ConfigurationError("circuit breaker configuration is invalid")
 
-    preferred = str(broker.get("preferred", "CTRADER")).upper()
-    fallback = str(broker.get("fallback", "MT5")).upper()
-    if preferred not in {"CTRADER", "MT5"} or fallback not in {"CTRADER", "MT5", "NONE"}:
+    research_backend = str(broker.get("research", broker.get("preferred", "CTRADER"))).upper()
+    execution_backend = str(broker.get("execution", "MT5")).upper()
+    if research_backend not in {"CTRADER", "MT5"} or execution_backend not in {"CTRADER", "MT5"}:
         raise ConfigurationError("invalid broker backend configuration")
     if bool(broker.get("automatic_fallback", False)):
         raise ConfigurationError("automatic cross-broker fallback is forbidden")
-    if preferred == "CTRADER":
+    if bool(broker.get("dual_feed_single_execution", False)):
+        if research_backend != "CTRADER" or execution_backend != "MT5":
+            raise ConfigurationError("dual-feed v0.5 requires CTRADER research and MT5 execution")
+        if not live_safety.get("require_revalidation", False):
+            raise ConfigurationError("dual-feed live execution requires revalidation")
+
+    if research_backend == "CTRADER":
         if str(ctrader.get("environment", "DEMO")).upper() not in {"DEMO", "LIVE"}:
             raise ConfigurationError("cTrader environment must be DEMO or LIVE")
         for key in ("client_id_env", "client_secret_env", "access_token_env", "account_id_env"):
@@ -107,4 +120,56 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
         if float(ctrader.get("max_quote_age_seconds", 0)) <= 0:
             raise ConfigurationError("cTrader quote age must be positive")
 
-    return ExecutionPolicy(mode, scheduler, order, live_safety, runtime, broker, ctrader)
+    if execution_backend == "MT5":
+        for key in ("terminal_path_env", "login_env", "server_env", "password_env"):
+            if not mt5.get(key):
+                raise ConfigurationError(f"missing MT5 config: {key}")
+        if float(mt5.get("initialize_timeout_ms", 0)) <= 0:
+            raise ConfigurationError("MT5 initialize timeout must be positive")
+        if float(mt5.get("max_quote_age_seconds", 0)) <= 0:
+            raise ConfigurationError("MT5 quote age must be positive")
+        suffixes = mt5.get("symbol_suffix_candidates", [])
+        if not isinstance(suffixes, list) or not suffixes:
+            raise ConfigurationError("MT5 symbol suffix candidates are required")
+
+    if bool(broker.get("dual_feed_single_execution", False)):
+        positive = (
+            "research_quote_max_age_seconds",
+            "execution_quote_max_age_seconds",
+            "max_mid_divergence_pips",
+            "max_execution_spread_pips",
+            "max_spread_ratio_vs_research",
+            "max_entry_drift_pips",
+            "max_entry_drift_r",
+            "min_rr",
+            "max_internal_revalidation_ms",
+            "expected_fx_contract_size",
+        )
+        for key in positive:
+            if float(reconciliation.get(key, 0)) <= 0:
+                raise ConfigurationError(f"invalid reconciliation config: {key}")
+        if float(reconciliation["min_rr"]) < 1.5:
+            raise ConfigurationError("dual-feed minimum RR cannot be below 1.5")
+        if str(reconciliation.get("expected_account_currency", "")).upper() != "USC":
+            raise ConfigurationError("HFM Cent execution account currency must be USC")
+        if abs(float(reconciliation["expected_fx_contract_size"]) - 1000.0) > 1e-9:
+            raise ConfigurationError("HFM Cent FX contract size must be 1000 units")
+
+    required_states = {
+        "NO_TRADE", "WATCH", "SETUP_FORMING", "ARMED",
+        "EXECUTION_READY", "MISSED", "INVALIDATED", "COOLDOWN",
+    }
+    if set(adaptive_cadence) != required_states or any(v <= 0 for v in adaptive_cadence.values()):
+        raise ConfigurationError("adaptive cadence is incomplete or invalid")
+    if not (
+        adaptive_cadence["EXECUTION_READY"]
+        <= adaptive_cadence["ARMED"]
+        <= adaptive_cadence["SETUP_FORMING"]
+        <= adaptive_cadence["WATCH"]
+    ):
+        raise ConfigurationError("adaptive cadence must accelerate toward execution")
+
+    return ExecutionPolicy(
+        mode, scheduler, order, live_safety, runtime, broker, ctrader, mt5,
+        reconciliation, adaptive_cadence
+    )
