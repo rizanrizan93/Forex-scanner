@@ -5,12 +5,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_root_streamlit_main_file_exists_and_is_syntax_valid():
-    path = ROOT / "streamlit_app.py"
+    path = ROOT / "main.py"
     assert path.is_file()
     source = path.read_text(encoding="utf-8")
     ast.parse(source)
-    assert "st.set_page_config" in source
-    assert "Main file: streamlit_app.py" in source
+    assert "runpy.run_path" in source
+    assert "streamlit_app.py" in source
+
+    implementation = (ROOT / "streamlit_app.py").read_text(encoding="utf-8")
+    ast.parse(implementation)
+    assert "st.set_page_config" in implementation
+    assert "Main file: main.py" in implementation
 
 
 def test_streamlit_entrypoint_does_not_import_research_validation_hot_work():

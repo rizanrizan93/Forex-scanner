@@ -193,17 +193,21 @@ These external-network checks remain outside mandatory CI.
 
 ## Streamlit dashboard
 
-The repository now has a root Streamlit entrypoint:
+The repository now has a canonical root Streamlit entrypoint:
 
 ```text
-streamlit_app.py
+main.py
 ```
 
 For Streamlit Community Cloud, set **Main file path** to:
 
 ```text
-streamlit_app.py
+main.py
 ```
+
+`main.py` is intentionally a thin launcher. The dashboard implementation remains
+in `streamlit_app.py`, which keeps deployment plumbing separate from the scanner
+and execution runtime.
 
 The Streamlit process is deliberately a dashboard/control surface, not the
 24/5 quote/order hot path. It can display:

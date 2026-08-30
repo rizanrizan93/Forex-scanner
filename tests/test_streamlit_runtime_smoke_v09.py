@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_streamlit_app_boots_offline_without_backend_secrets():
     app = AppTest.from_file(
-        ROOT / "streamlit_app.py",
+        ROOT / "main.py",
         default_timeout=10,
     ).run()
     assert not app.exception

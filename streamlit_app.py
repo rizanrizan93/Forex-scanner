@@ -487,5 +487,5 @@ st.divider()
 st.caption(
     "Rendered at "
     + datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-    + " • Main file: streamlit_app.py"
+    + " • Main file: main.py • Dashboard implementation: streamlit_app.py"
 )

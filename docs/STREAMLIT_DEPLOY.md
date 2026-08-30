@@ -5,17 +5,18 @@
 Use this exact path in Streamlit Community Cloud:
 
 ```text
-streamlit_app.py
+main.py
 ```
 
-The file is located at the repository root.
+The file is located at the repository root and is the canonical deployment
+entrypoint. It delegates to `streamlit_app.py`, which contains the dashboard UI.
 
 ## Recommended deployment
 
 1. Create a new Streamlit Community Cloud app.
 2. Select the `Forex-scanner` repository.
 3. Select branch `main`.
-4. Set **Main file path** to `streamlit_app.py`.
+4. Set **Main file path** to `main.py`.
 5. Deploy.
 
 The repository pins Streamlit `1.62.0` in `requirements.txt`.
@@ -97,17 +98,19 @@ initiated and cached for 60 seconds. It is not part of the quote/order hot path.
 ```bash
 pip install -r requirements.txt
 pip install -e .
-streamlit run streamlit_app.py
+streamlit run main.py
 ```
 
-Then open the local Streamlit URL shown in the terminal.
+`streamlit run streamlit_app.py` remains supported for direct local debugging,
+but `main.py` is the deployment contract.
 
 ## CI
 
-Every pull request compiles `streamlit_app.py` before unit tests. Static tests
-also verify:
+Every push and pull request compiles both `main.py` and
+`streamlit_app.py` before unit tests. Static tests also verify:
 
-- the root main file exists
+- the canonical root `main.py` exists and delegates to `streamlit_app.py`
+- the implementation contains the Streamlit page configuration
 - Streamlit is pinned
 - no backend secret literal is committed
-- the Streamlit entrypoint does not import the heavy validation package
+- the dashboard implementation does not import the heavy validation package
