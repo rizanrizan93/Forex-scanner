@@ -73,3 +73,33 @@ def test_acceptance_thresholds_cannot_be_watered_down(tmp_path):
     write_yaml(path, data)
     with pytest.raises(ConfigurationError, match="250"):
         load_project_config(root)
+
+
+def test_provider_source_cannot_be_downgraded_from_https(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "providers.yaml"
+    data = read_yaml(path)
+    data["sources"]["ECB_DATA_PORTAL"]["base_url"] = "http://data.ecb.europa.eu/service/data"
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="HTTPS host contract"):
+        load_project_config(root)
+
+
+def test_provider_host_allowlist_must_match_url(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "providers.yaml"
+    data = read_yaml(path)
+    data["sources"]["BANK_OF_CANADA_VALET"]["allowed_host"] = "evil.example"
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="HTTPS host contract"):
+        load_project_config(root)
+
+
+def test_provider_negative_cache_ttl_cannot_be_zero(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "providers.yaml"
+    data = read_yaml(path)
+    data["cache"]["negative_ttl_seconds"] = 0
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="negative_ttl_seconds"):
+        load_project_config(root)
