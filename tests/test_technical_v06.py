@@ -106,3 +106,37 @@ def test_structure_snapshot_is_deterministic():
     assert snap.trend in {"BULLISH", "BEARISH", "RANGE", "UNKNOWN"}
     assert snap.last_swing_high is not None
     assert snap.last_swing_low is not None
+
+
+def test_two_sided_valid_reclaims_are_ambiguous_and_fail_closed():
+    bars = [
+        bar(0, 1.1000, 1.1010, 1.0990, 1.1000),
+        bar(1, 1.1000, 1.1040, 1.1000, 1.1020),  # pivot high
+        bar(2, 1.1020, 1.1025, 1.0980, 1.0990),  # pivot low
+        bar(3, 1.0990, 1.1028, 1.0995, 1.1010),
+        bar(4, 1.1010, 1.1025, 1.0990, 1.1005),
+        bar(5, 1.1005, 1.1050, 1.0970, 1.1010),  # sweeps both sides
+        bar(6, 1.1010, 1.1030, 1.0990, 1.1015),  # closes inside both levels
+    ]
+    sweep = detect_sweep(bars, lookback=1, atr_period=6, reclaim_bars=2)
+    assert sweep is not None
+    assert sweep.direction == "AMBIGUOUS"
+    assert not sweep.valid
+
+
+def test_bullish_mss_requires_prior_low_sweep_bullish_displacement_and_bos():
+    bars = [
+        bar(0, 1.1000, 1.1010, 1.0990, 1.1000, 100),
+        bar(1, 1.1000, 1.1030, 1.1000, 1.1020, 100),  # pivot high
+        bar(2, 1.1020, 1.1020, 1.0980, 1.0990, 100),  # pivot low
+        bar(3, 1.0990, 1.1025, 1.0990, 1.1010, 100),  # later swing high
+        bar(4, 1.1010, 1.1020, 1.0995, 1.1005, 100),
+        bar(5, 1.1005, 1.1015, 1.0975, 1.0985, 100),  # low sweep
+        bar(6, 1.0985, 1.1020, 1.0980, 1.1015, 110),
+        bar(7, 1.1015, 1.1050, 1.1010, 1.1048, 220),  # displacement + BOS
+    ]
+    snap = structure_snapshot(bars, swing_lookback=1, atr_period=7)
+    assert snap.bos == "BULLISH"
+    assert snap.sweep is not None and snap.sweep.direction == "BULLISH" and snap.sweep.valid
+    assert snap.displacement.direction == "BULLISH" and snap.displacement.valid
+    assert snap.mss == "BULLISH"
