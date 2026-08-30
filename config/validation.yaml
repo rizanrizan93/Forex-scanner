@@ -37,6 +37,7 @@ stress_acceptance:
 monte_carlo:
   simulations: 1000
   seed: 260830
+  block_size: 5
   max_drawdown_r_p95_limit: 12.0
   losing_streak_p95_limit: 8
 
