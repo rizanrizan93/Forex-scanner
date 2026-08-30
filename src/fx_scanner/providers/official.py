@@ -27,16 +27,16 @@ def _period_to_utc(value: str) -> datetime:
         if len(raw) >= 10 and raw[4] == "-" and raw[7] == "-":
             parsed = date.fromisoformat(raw[:10])
             return datetime.combine(parsed, time.min, tzinfo=UTC)
-        if len(raw) == 7 and raw[4] == "-":
-            year, month = map(int, raw.split("-"))
-            day = calendar.monthrange(year, month)[1]
-            return datetime(year, month, day, tzinfo=UTC)
         if len(raw) == 7 and raw[4:6] == "-Q":
             year = int(raw[:4])
             quarter = int(raw[-1])
             if quarter not in (1, 2, 3, 4):
                 raise ValueError("quarter out of range")
             month = quarter * 3
+            day = calendar.monthrange(year, month)[1]
+            return datetime(year, month, day, tzinfo=UTC)
+        if len(raw) == 7 and raw[4] == "-":
+            year, month = map(int, raw.split("-"))
             day = calendar.monthrange(year, month)[1]
             return datetime(year, month, day, tzinfo=UTC)
         if len(raw) == 4:
