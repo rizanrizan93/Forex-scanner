@@ -101,11 +101,14 @@ class MacroProviderPipeline:
                 continue
             try:
                 score = binding.normalizer.score(result.value)
-            except Exception:
+            except DataContractError:
                 rejected.append(f"{provider_name}:NORMALIZATION_ERROR")
                 continue
             if score is None:
                 rejected.append(f"{provider_name}:INSUFFICIENT_HISTORY")
+                continue
+            if isinstance(score, bool):
+                rejected.append(f"{provider_name}:NORMALIZATION_BOOLEAN")
                 continue
             score = float(score)
             if not -100 <= score <= 100:
@@ -186,9 +189,12 @@ class MacroProviderPipeline:
             factor_min=factor_min,
             factor_max=factor_max,
         )
+        observed_at = self.clock()
+        if observed_at.tzinfo is None:
+            raise DataContractError("macro pipeline clock must be timezone-aware")
         return CurrencyMacroBundle(
             currency.upper(),
-            self.clock().astimezone(UTC),
+            observed_at.astimezone(UTC),
             macro,
             factor_scores,
             evidence,
