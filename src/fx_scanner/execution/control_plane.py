@@ -62,3 +62,74 @@ class ControlPlaneGate:
             raise ControlPlaneBlocked(
                 f"MODE_MISMATCH:db={snap.execution_mode}:runtime={str(required_mode).upper()}"
             )
+
+
+class ControlPlaneRefreshWorker:
+    """Isolated periodic Supabase refresh worker.
+
+    Network failures are contained. The last good cache is retained; once it
+    exceeds ControlPlaneGate.max_age_seconds, live execution fails closed.
+    """
+
+    def __init__(self, store: SupabaseOperationalStore, gate: ControlPlaneGate, *, interval_seconds: float = 2.0):
+        from threading import Event, Thread
+
+        if interval_seconds <= 0:
+            raise ValueError("interval_seconds must be positive")
+        self.store = store
+        self.gate = gate
+        self.interval_seconds = float(interval_seconds)
+        self._Event = Event
+        self._Thread = Thread
+        self._stop = Event()
+        self._thread = None
+        self.last_error: str | None = None
+        self.refresh_count = 0
+        self.failure_count = 0
+
+    @property
+    def running(self) -> bool:
+        return bool(self._thread and self._thread.is_alive())
+
+    def refresh_once(self) -> None:
+        try:
+            self.gate.refresh(self.store)
+            self.refresh_count += 1
+            self.last_error = None
+        except Exception as exc:
+            self.failure_count += 1
+            self.last_error = f"{type(exc).__name__}: {exc}"
+
+    def _run(self) -> None:
+        from time import monotonic
+
+        deadline = monotonic()
+        while not self._stop.is_set():
+            now = monotonic()
+            if now >= deadline:
+                self.refresh_once()
+                deadline = now + self.interval_seconds
+            self._stop.wait(timeout=min(0.25, max(0.0, deadline - monotonic())))
+
+    def start(self) -> None:
+        if self.running:
+            return
+        self._stop.clear()
+        self._thread = self._Thread(target=self._run, name="fx-control-plane-refresh", daemon=True)
+        self._thread.start()
+
+    def stop(self, timeout: float = 2.0) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=timeout)
+            if self._thread.is_alive():
+                raise RuntimeError("CONTROL_PLANE_WORKER_STOP_TIMEOUT")
+
+    def health(self) -> dict[str, object]:
+        return {
+            "running": self.running,
+            "refresh_count": self.refresh_count,
+            "failure_count": self.failure_count,
+            "last_error": self.last_error,
+            "cache_present": self.gate.snapshot() is not None,
+        }
