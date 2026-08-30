@@ -201,3 +201,20 @@ def test_build_liquidity_map_contains_external_and_internal_levels():
     kinds = {x.kind for x in result.levels}
     assert LiquidityKind.PDH in kinds
     assert LiquidityKind.PDL in kinds
+
+
+def test_liquidity_level_rejects_fractional_touch_count():
+    from fx_scanner.exceptions import DataContractError
+    from fx_scanner.liquidity import LiquidityLevel
+
+    with pytest.raises(DataContractError, match="positive integer"):
+        LiquidityLevel(LiquidityKind.PDH, 1.1, datetime(2026, 8, 30, tzinfo=UTC), touches=1.5)
+
+
+def test_order_block_requires_displacement_after_origin():
+    from fx_scanner.exceptions import DataContractError
+    from fx_scanner.liquidity import OrderBlock
+
+    ts = datetime(2026, 8, 30, tzinfo=UTC)
+    with pytest.raises(DataContractError, match="must follow"):
+        OrderBlock("BULLISH", 1.10, 1.11, ts, ts, True, False, False)
