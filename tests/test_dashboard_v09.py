@@ -106,3 +106,26 @@ def test_dashboard_reader_wraps_backend_failure():
         assert "signals read failed" in str(exc)
     else:
         raise AssertionError("DashboardReadError was not raised")
+
+
+def test_dashboard_reads_coherent_broker_snapshot_positions():
+    client = FakeClient({
+        "broker_account_state": [{
+            "backend": "MT5", "account_id": "123",
+            "snapshot_id": "snap-new",
+            "observed_at": "2026-08-30T13:00:00Z",
+            "balance": 10000.0, "equity": 10025.0,
+            "connection_healthy": True,
+        }],
+        "broker_position_state": [
+            {"backend": "MT5", "account_id": "123", "snapshot_id": "snap-new",
+             "position_id": "77", "symbol": "EURUSDc", "side": "BUY", "profit": 25.0},
+            {"backend": "MT5", "account_id": "123", "snapshot_id": "snap-old",
+             "position_id": "66", "symbol": "GBPUSDc", "side": "SELL", "profit": -3.0},
+        ],
+    })
+    reader = SupabaseDashboardReader(client)
+    account = reader.latest_broker_account()
+    positions = reader.broker_positions_for_account(account)
+    assert account["snapshot_id"] == "snap-new"
+    assert [row["position_id"] for row in positions] == ["77"]

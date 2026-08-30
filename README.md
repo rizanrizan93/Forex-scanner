@@ -1,4 +1,4 @@
-# FX Institutional Scanner v0.9
+# FX Institutional Scanner v0.10
 
 Production-oriented forex scanner foundation with a **dual-feed / single-execution** design.
 
@@ -235,6 +235,22 @@ tables are intentionally closed to public roles.
 
 See `docs/STREAMLIT_DEPLOY.md`.
 
+## v0.10 broker monitoring telemetry
+
+Streamlit remains a monitor only. A lightweight Windows/MT5 worker now
+publishes broker-reported balance, equity, floating P/L, margin and open
+positions to Supabase without submitting orders.
+
+Run on the Windows HFM MT5 host:
+
+```bash
+python -m fx_scanner.cli mt5-monitor --once
+python -m fx_scanner.cli mt5-monitor --interval 15
+```
+
+The **Account & Positions** tab reads only the latest coherent snapshot.
+Execution remains `DISABLED` by default. See `docs/RUNTIME_MONITORING.md`.
+
 ## v0.9 OOS validation and latency safeguards
 
 v0.9 keeps research validation outside the scanner hot path. It adds:
@@ -433,4 +449,4 @@ Research acceptance remains at minimum: OOS win rate >=55%, Profit Factor
 >=1.30, positive robust expectancy, walk-forward pass, spread/slippage stress
 pass, multi-regime pass, and demo forward-test pass.
 
-**Real-money readiness is not claimed at v0.9.**
+**Real-money readiness is not claimed at v0.10.**

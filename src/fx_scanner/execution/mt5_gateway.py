@@ -11,6 +11,7 @@ from .broker_gateway import (
     BrokerAccountSnapshot,
     BrokerBackend,
     BrokerOrderResult,
+    BrokerPositionSnapshot,
     BrokerPreflight,
 )
 from .models import OrderIntent, OrderSide, OrderType
@@ -120,7 +121,65 @@ class MT5ExecutionGateway:
                 margin_free=float(info.margin_free),
                 trade_allowed=automated_trade_allowed,
                 currency=str(getattr(info, "currency", "") or "") or None,
+                floating_profit=float(getattr(info, "profit", 0.0) or 0.0),
+                margin=float(getattr(info, "margin", 0.0) or 0.0),
+                margin_level=float(getattr(info, "margin_level", 0.0) or 0.0) or None,
+                leverage=float(getattr(info, "leverage", 0.0) or 0.0) or None,
+                server=str(getattr(info, "server", "") or "") or None,
             )
+
+    def open_positions(self) -> tuple[BrokerPositionSnapshot, ...]:
+        with self._io_lock:
+            if not self.connected:
+                raise CollectorUnavailable("MT5 gateway is not connected")
+            positions = self.mt5.positions_get()
+            if positions is None:
+                raise CollectorUnavailable(f"MT5 positions_get failed: {self.mt5.last_error()}")
+
+            rows: list[BrokerPositionSnapshot] = []
+            buy_type = int(getattr(self.mt5, "POSITION_TYPE_BUY", 0))
+            sell_type = int(getattr(self.mt5, "POSITION_TYPE_SELL", 1))
+            for position in positions:
+                raw_type = int(getattr(position, "type", -1))
+                if raw_type == buy_type:
+                    side = "BUY"
+                elif raw_type == sell_type:
+                    side = "SELL"
+                else:
+                    raise CollectorUnavailable(
+                        f"unsupported MT5 position type: {raw_type}"
+                    )
+
+                raw_ms = int(getattr(position, "time_msc", 0) or 0)
+                raw_s = int(getattr(position, "time", 0) or 0)
+                opened_at = None
+                if raw_ms > 0:
+                    opened_at = datetime.fromtimestamp(raw_ms / 1000.0, tz=UTC)
+                elif raw_s > 0:
+                    opened_at = datetime.fromtimestamp(raw_s, tz=UTC)
+
+                sl = float(getattr(position, "sl", 0.0) or 0.0)
+                tp = float(getattr(position, "tp", 0.0) or 0.0)
+                current = float(getattr(position, "price_current", 0.0) or 0.0)
+                rows.append(
+                    BrokerPositionSnapshot(
+                        backend=self.backend,
+                        position_id=str(getattr(position, "ticket", "")),
+                        symbol=str(getattr(position, "symbol", "") or ""),
+                        side=side,
+                        volume=float(getattr(position, "volume", 0.0) or 0.0),
+                        open_price=float(getattr(position, "price_open", 0.0) or 0.0),
+                        current_price=current or None,
+                        stop_loss=sl or None,
+                        take_profit=tp or None,
+                        profit=float(getattr(position, "profit", 0.0) or 0.0),
+                        swap=float(getattr(position, "swap", 0.0) or 0.0),
+                        magic=int(getattr(position, "magic", 0) or 0) or None,
+                        comment=str(getattr(position, "comment", "") or "") or None,
+                        opened_at=opened_at,
+                    )
+                )
+            return tuple(rows)
 
     def symbol_available(self, symbol: str) -> bool:
         with self._io_lock:

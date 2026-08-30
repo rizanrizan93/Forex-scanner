@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
+from uuid import uuid4
 
 from ..exceptions import ConfigurationError, FXScannerError, MissingOptionalDependency
 
@@ -127,6 +128,91 @@ class SupabaseOperationalStore:
             self.client.table("runtime_heartbeats").upsert(payload, on_conflict="worker_name").execute()
         except Exception as exc:
             raise OperationalStoreUnavailable(f"heartbeat write failed: {exc}") from exc
+
+    def publish_broker_telemetry(
+        self,
+        account: Any,
+        positions: Any,
+        *,
+        broker_name: str | None = None,
+        environment: str | None = None,
+        connection_healthy: bool = True,
+    ) -> str:
+        """Publish one coherent broker-account/open-position snapshot."""
+        snapshot_id = str(uuid4())
+        observed_at = datetime.now(tz=UTC).isoformat()
+        backend = getattr(account.backend, "value", str(account.backend)).upper()
+        account_id = str(account.account_id)
+
+        position_rows = []
+        for position in tuple(positions):
+            position_backend = getattr(
+                position.backend, "value", str(position.backend)
+            ).upper()
+            if position_backend != backend:
+                raise OperationalStoreUnavailable("broker telemetry backend mismatch")
+            opened_at = getattr(position, "opened_at", None)
+            position_rows.append({
+                "backend": backend,
+                "account_id": account_id,
+                "position_id": str(position.position_id),
+                "snapshot_id": snapshot_id,
+                "observed_at": observed_at,
+                "symbol": str(position.symbol),
+                "side": str(position.side).upper(),
+                "volume": float(position.volume),
+                "open_price": float(position.open_price),
+                "current_price": position.current_price,
+                "sl": position.stop_loss,
+                "tp": position.take_profit,
+                "profit": position.profit,
+                "swap": position.swap,
+                "magic": position.magic,
+                "comment": position.comment,
+                "opened_at": None if opened_at is None else opened_at.isoformat(),
+                "metadata": {},
+            })
+
+        try:
+            if position_rows:
+                (
+                    self.client.table("broker_position_state")
+                    .upsert(
+                        position_rows,
+                        on_conflict="backend,account_id,position_id",
+                    )
+                    .execute()
+                )
+
+            account_row = {
+                "backend": backend,
+                "account_id": account_id,
+                "snapshot_id": snapshot_id,
+                "observed_at": observed_at,
+                "broker_name": broker_name,
+                "environment": None if environment is None else str(environment).upper(),
+                "currency": account.currency,
+                "balance": float(account.balance),
+                "equity": float(account.equity),
+                "floating_profit": account.floating_profit,
+                "margin": account.margin,
+                "margin_free": account.margin_free,
+                "margin_level": account.margin_level,
+                "leverage": account.leverage,
+                "trade_allowed": bool(account.trade_allowed),
+                "connection_healthy": bool(connection_healthy),
+                "metadata": {"server": account.server} if account.server else {},
+            }
+            (
+                self.client.table("broker_account_state")
+                .upsert(account_row, on_conflict="backend,account_id")
+                .execute()
+            )
+        except Exception as exc:
+            raise OperationalStoreUnavailable(
+                f"broker telemetry write failed: {exc}"
+            ) from exc
+        return snapshot_id
 
     def record_order_event(
         self,

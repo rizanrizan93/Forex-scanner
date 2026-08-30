@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from time import sleep
 
 from .aggregation import aggregate_ticks
 from .collectors.mt5 import MT5Collector
@@ -10,9 +11,11 @@ from .config import load_project_config
 from .demo import generate_demo_ticks
 from .quality import assess_ticks
 from .providers.factory import build_provider_runtime
+from .execution.factory import build_broker_gateway
 from .execution.policy import load_execution_policy
 from .execution.runtime import RuntimeSupervisor, ScheduledJob
 from .storage.audit import JsonlAuditStore
+from .storage.supabase_operational import SupabaseOperationalStore
 
 
 UTC = timezone.utc
@@ -121,6 +124,76 @@ def cmd_mt5_smoke(args: argparse.Namespace) -> int:
     return 0 if report.valid else 2
 
 
+def cmd_mt5_monitor(args: argparse.Namespace) -> int:
+    cfg = load_project_config(args.root)
+    policy = load_execution_policy(args.root)
+    symbols = [pair.symbol for pair in cfg.pairs]
+    gateway, session = build_broker_gateway(
+        policy,
+        symbols,
+        backend="MT5",
+        mt5_terminal_path=args.terminal_path,
+    )
+    store = SupabaseOperationalStore.from_env()
+    interval = max(5.0, float(args.interval))
+    reconnect_attempts = int(
+        policy.runtime.get("reconnect", {}).get("max_attempts", 3)
+    )
+
+    def publish_once() -> None:
+        session.ensure_connected(max_attempts=reconnect_attempts)
+        account = gateway.account_snapshot()
+        positions = gateway.open_positions()
+        snapshot_id = store.publish_broker_telemetry(
+            account,
+            positions,
+            broker_name=str(policy.mt5.get("broker_label", "HFM_CENT")),
+            environment=str(args.environment).upper(),
+            connection_healthy=True,
+        )
+        store.write_heartbeat(
+            "mt5_account_monitor",
+            healthy=True,
+            lag_seconds=0.0,
+            details={
+                "account_id": account.account_id,
+                "positions": len(positions),
+                "snapshot_id": snapshot_id,
+                "execution_mode": policy.mode.value,
+            },
+        )
+        print(
+            "MT5_MONITOR_OK "
+            f"account={account.account_id} balance={account.balance:.2f} "
+            f"equity={account.equity:.2f} currency={account.currency or 'UNKNOWN'} "
+            f"positions={len(positions)} snapshot={snapshot_id}"
+        )
+
+    try:
+        if args.once:
+            publish_once()
+            return 0
+        while True:
+            try:
+                publish_once()
+            except Exception as exc:
+                try:
+                    store.write_heartbeat(
+                        "mt5_account_monitor",
+                        healthy=False,
+                        details={"error": f"{type(exc).__name__}: {exc}"},
+                    )
+                except Exception:
+                    pass
+                print(f"MT5_MONITOR_ERROR {type(exc).__name__}: {exc}")
+            sleep(interval)
+    except KeyboardInterrupt:
+        print("MT5_MONITOR_STOPPED")
+        return 0
+    finally:
+        gateway.close()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="fx-scanner")
     parser.add_argument("--root", default=None, help="project root; defaults to package root")
@@ -147,6 +220,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seconds", type=int, default=30)
     p.add_argument("--terminal-path", default=None)
     p.set_defaults(func=cmd_mt5_smoke)
+
+    p = sub.add_parser("mt5-monitor")
+    p.add_argument("--terminal-path", default=None)
+    p.add_argument("--interval", type=float, default=15.0)
+    p.add_argument("--environment", choices=["DEMO", "LIVE"], default="DEMO")
+    p.add_argument("--once", action="store_true")
+    p.set_defaults(func=cmd_mt5_monitor)
     return parser
 
 

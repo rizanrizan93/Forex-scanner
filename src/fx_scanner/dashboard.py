@@ -18,6 +18,8 @@ class DashboardSnapshot:
     heartbeats: tuple[dict[str, Any], ...]
     macro: tuple[dict[str, Any], ...]
     performance: tuple[dict[str, Any], ...]
+    broker_account: dict[str, Any] | None
+    broker_positions: tuple[dict[str, Any], ...]
 
 
 class SupabaseDashboardReader:
@@ -149,9 +151,57 @@ class SupabaseDashboardReader:
             raise DashboardReadError(f"model_performance read failed: {exc}") from exc
         return tuple(self._rows(response))
 
+    def latest_broker_account(self) -> dict[str, Any] | None:
+        try:
+            response = (
+                self.client.table("broker_account_state")
+                .select(
+                    "backend,account_id,snapshot_id,observed_at,broker_name,"
+                    "environment,currency,balance,equity,floating_profit,margin,"
+                    "margin_free,margin_level,leverage,trade_allowed,"
+                    "connection_healthy,metadata"
+                )
+                .order("observed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"broker_account_state read failed: {exc}"
+            ) from exc
+        rows = self._rows(response)
+        return rows[0] if rows else None
+
+    def broker_positions_for_account(
+        self,
+        account: dict[str, Any] | None,
+    ) -> tuple[dict[str, Any], ...]:
+        if not account or not account.get("snapshot_id"):
+            return ()
+        try:
+            response = (
+                self.client.table("broker_position_state")
+                .select(
+                    "observed_at,position_id,symbol,side,volume,open_price,"
+                    "current_price,sl,tp,profit,swap,magic,comment,opened_at"
+                )
+                .eq("backend", str(account["backend"]))
+                .eq("account_id", str(account["account_id"]))
+                .eq("snapshot_id", str(account["snapshot_id"]))
+                .order("profit", desc=True)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"broker_position_state read failed: {exc}"
+            ) from exc
+        return tuple(self._rows(response))
+
     def snapshot(self) -> DashboardSnapshot:
         run = self.latest_run()
         rankings = self.rankings_for_run(None if run is None else run.get("id"))
+        broker_account = self.latest_broker_account()
+        broker_positions = self.broker_positions_for_account(broker_account)
         return DashboardSnapshot(
             latest_run=run,
             rankings=rankings,
@@ -159,4 +209,6 @@ class SupabaseDashboardReader:
             heartbeats=self.heartbeats(),
             macro=self.latest_macro(),
             performance=self.latest_performance(),
+            broker_account=broker_account,
+            broker_positions=broker_positions,
         )

@@ -69,6 +69,8 @@ def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
         "macro": list(snapshot.macro),
         "performance": list(snapshot.performance),
         "control": asdict(control),
+        "broker_account": snapshot.broker_account,
+        "broker_positions": list(snapshot.broker_positions),
     }
 
 
@@ -245,9 +247,90 @@ else:
         "after Supabase backend credentials and runtime snapshots are available."
     )
 
-scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
-    ["Scanner", "Macro & Data", "System", "Validation"]
+account_tab, scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
+    ["Account & Positions", "Scanner", "Macro & Data", "System", "Validation"]
 )
+
+with account_tab:
+    st.subheader("HFM / MT5 Account Monitor")
+    account = None if backend is None else backend.get("broker_account")
+    positions = [] if backend is None else backend.get("broker_positions", [])
+
+    if account:
+        observed = str(account.get("observed_at") or "")
+        age_seconds = None
+        try:
+            observed_dt = datetime.fromisoformat(observed.replace("Z", "+00:00"))
+            age_seconds = max(
+                0.0,
+                (datetime.now(tz=UTC) - observed_dt.astimezone(UTC)).total_seconds(),
+            )
+        except (TypeError, ValueError):
+            pass
+
+        connected = bool(account.get("connection_healthy"))
+        stale = age_seconds is None or age_seconds > 60
+        if not connected:
+            st.error("Broker telemetry reports the MT5 connection as unhealthy.")
+        elif stale:
+            st.warning("Broker telemetry is stale (>60 seconds).")
+        else:
+            st.success("Broker telemetry is live and read-only.")
+
+        currency = str(account.get("currency") or "")
+
+        def money(value):
+            try:
+                return f"{float(value):,.2f} {currency}".strip()
+            except (TypeError, ValueError):
+                return "—"
+
+        a1, a2, a3, a4, a5, a6 = st.columns(6)
+        a1.metric("Balance", money(account.get("balance")))
+        a2.metric("Equity", money(account.get("equity")))
+        a3.metric("Floating P/L", money(account.get("floating_profit")))
+        a4.metric("Free Margin", money(account.get("margin_free")))
+        margin_level = account.get("margin_level")
+        a5.metric(
+            "Margin Level",
+            "—" if margin_level is None else f"{float(margin_level):,.1f}%",
+        )
+        a6.metric("Open Positions", len(positions))
+
+        st.caption(
+            f"Backend: {account.get('backend', '—')} • "
+            f"Account: {account.get('account_id', '—')} • "
+            f"Currency: {currency or '—'} • "
+            f"Telemetry age: {'—' if age_seconds is None else f'{age_seconds:.0f}s'}"
+        )
+        if currency.upper() == "USC":
+            st.info(
+                "Broker reports this Cent account in USC. Values are shown in "
+                "the broker's native unit and are not silently converted."
+            )
+
+        if positions:
+            position_frame = _frame(positions)
+            display_cols = [
+                col
+                for col in [
+                    "symbol", "side", "volume", "open_price", "current_price",
+                    "sl", "tp", "profit", "swap", "opened_at", "position_id",
+                ]
+                if col in position_frame.columns
+            ]
+            st.dataframe(
+                position_frame[display_cols],
+                hide_index=True,
+                use_container_width=True,
+            )
+        else:
+            st.info("No open MT5 positions in the latest broker snapshot.")
+    else:
+        st.info(
+            "No broker telemetry yet. Streamlit is only the monitor; start the "
+            "Windows MT5 telemetry worker to publish balance and open positions."
+        )
 
 with scanner_tab:
     st.subheader("Pair Ranking")

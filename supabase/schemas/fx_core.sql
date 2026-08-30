@@ -346,3 +346,71 @@ begin
     end;
   end loop;
 end $$;
+
+
+-- v0.10 read-only broker account and open-position monitoring.
+create table if not exists public.broker_account_state (
+  backend text not null check (backend in ('CTRADER','MT5')),
+  account_id text not null,
+  snapshot_id uuid not null,
+  observed_at timestamptz not null,
+  broker_name text,
+  environment text check (environment is null or environment in ('DEMO','LIVE')),
+  currency text,
+  balance double precision not null,
+  equity double precision not null,
+  floating_profit double precision,
+  margin double precision,
+  margin_free double precision,
+  margin_level double precision,
+  leverage double precision,
+  trade_allowed boolean not null default false,
+  connection_healthy boolean not null default false,
+  metadata jsonb not null default '{}'::jsonb,
+  primary key (backend, account_id)
+);
+
+create table if not exists public.broker_position_state (
+  backend text not null check (backend in ('CTRADER','MT5')),
+  account_id text not null,
+  position_id text not null,
+  snapshot_id uuid not null,
+  observed_at timestamptz not null,
+  symbol text not null,
+  side text not null check (side in ('BUY','SELL')),
+  volume double precision not null check (volume >= 0),
+  open_price double precision not null,
+  current_price double precision,
+  sl double precision,
+  tp double precision,
+  profit double precision,
+  swap double precision,
+  magic bigint,
+  comment text,
+  opened_at timestamptz,
+  metadata jsonb not null default '{}'::jsonb,
+  primary key (backend, account_id, position_id)
+);
+create index if not exists broker_position_state_snapshot_idx
+  on public.broker_position_state (backend, account_id, snapshot_id);
+alter table public.broker_account_state enable row level security;
+alter table public.broker_position_state enable row level security;
+revoke all on table public.broker_account_state from anon, authenticated;
+revoke all on table public.broker_position_state from anon, authenticated;
+grant select, insert, update, delete on table public.broker_account_state to service_role;
+grant select, insert, update, delete on table public.broker_position_state to service_role;
+do $$
+begin
+  begin
+    create policy deny_public_broker_account_state
+      on public.broker_account_state as restrictive for all to anon, authenticated
+      using (false) with check (false);
+  exception when duplicate_object then null;
+  end;
+  begin
+    create policy deny_public_broker_position_state
+      on public.broker_position_state as restrictive for all to anon, authenticated
+      using (false) with check (false);
+  exception when duplicate_object then null;
+  end;
+end $$;

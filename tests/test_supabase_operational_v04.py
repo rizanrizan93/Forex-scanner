@@ -2,6 +2,11 @@ from datetime import datetime, timezone
 
 import pytest
 
+from fx_scanner.execution.broker_gateway import (
+    BrokerAccountSnapshot,
+    BrokerBackend,
+    BrokerPositionSnapshot,
+)
 from fx_scanner.storage.supabase_operational import (
     OperationalStoreUnavailable,
     SupabaseOperationalStore,
@@ -131,3 +136,30 @@ def test_from_env_prefers_modern_secret_key(monkeypatch):
     store = SupabaseOperationalStore.from_env(client_factory=factory)
     assert store.client is client
     assert captured == {"url": "https://project.supabase.co", "key": "sb_secret_modern"}
+
+
+def test_publishes_positions_before_account_snapshot_pointer():
+    client = FakeClient()
+    store = SupabaseOperationalStore(
+        "https://example.supabase.co", "secret", client=client
+    )
+    account = BrokerAccountSnapshot(
+        backend=BrokerBackend.MT5, account_id="123",
+        balance=10000.0, equity=10025.0, margin_free=9000.0,
+        trade_allowed=False, currency="USC", floating_profit=25.0,
+        margin=1000.0, margin_level=1002.5, leverage=500.0,
+        server="HFM-Demo",
+    )
+    position = BrokerPositionSnapshot(
+        backend=BrokerBackend.MT5, position_id="77", symbol="EURUSDc",
+        side="BUY", volume=0.10, open_price=1.1000, current_price=1.1010,
+        stop_loss=1.0950, take_profit=1.1100, profit=25.0, swap=-1.0,
+        magic=26083001, comment="FXIS:test",
+    )
+    snapshot_id = store.publish_broker_telemetry(
+        account, [position], broker_name="HFM_CENT", environment="DEMO"
+    )
+    assert client.writes[-2][0] == "broker_position_state"
+    assert client.writes[-1][0] == "broker_account_state"
+    assert client.writes[-2][2][0]["snapshot_id"] == snapshot_id
+    assert client.writes[-1][2]["snapshot_id"] == snapshot_id
