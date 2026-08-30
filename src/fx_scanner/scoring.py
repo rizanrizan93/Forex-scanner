@@ -31,11 +31,17 @@ def weighted_score(
     missing: list[str] = []
 
     for name, weight_raw in weights.items():
+        if isinstance(weight_raw, bool):
+            raise DataContractError(f"score weight {name} cannot be boolean")
         weight = float(weight_raw)
+        if not isfinite(weight) or weight <= 0:
+            raise DataContractError(f"score weight {name} must be positive finite")
         value = components.get(name)
         if value is None:
             missing.append(name)
             continue
+        if isinstance(value, bool):
+            raise DataContractError(f"score component {name} cannot be boolean")
         value = float(value)
         if not isfinite(value) or not 0 <= value <= 100:
             raise DataContractError(f"score component {name} must be in [0,100]")
