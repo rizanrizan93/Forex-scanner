@@ -18,6 +18,8 @@ def rank():
         cross_asset_edge=20,
         pair_edge=44.0,
         absolute_edge=44.0,
+        coverage=1.0,
+        missing_components=(),
         rank=1,
     )
 
@@ -48,7 +50,8 @@ def test_hard_guard_forces_no_trade_even_with_high_score():
         conviction_components=components(99),
         conviction_weights=cfg.scoring["execution_conviction"],
         thresholds=cfg.scoring["states"],
-        guard_flags={"NEWS_BLOCK": True, "SPREAD_BLOCK": False},
+        guard_flags={name: name == "NEWS_BLOCK" for name in cfg.scoring["hard_guards"]},
+        required_guards=cfg.scoring["hard_guards"],
     )
     assert decision.conviction_score == 99
     assert decision.state == SignalState.NO_TRADE
@@ -67,10 +70,27 @@ def test_low_evidence_coverage_fails_closed_without_fake_neutral_values():
         conviction_components=values,
         conviction_weights=cfg.scoring["execution_conviction"],
         thresholds=cfg.scoring["states"],
-        guard_flags={},
+        guard_flags={name: False for name in cfg.scoring["hard_guards"]},
+        required_guards=cfg.scoring["hard_guards"],
         minimum_coverage=0.80,
     )
     assert decision.coverage < 0.80
     assert decision.conviction_score is None
     assert decision.state == SignalState.NO_TRADE
     assert set(decision.missing_components) == {"relative_macro", "htf_structure", "liquidity"}
+
+
+def test_missing_guard_input_fails_closed():
+    cfg = load_project_config()
+    flags = {name: False for name in cfg.scoring["hard_guards"] if name != "NEWS_BLOCK"}
+    decision = build_decision(
+        rank=rank(),
+        timestamp=datetime(2026, 8, 28, 10, tzinfo=UTC),
+        conviction_components=components(99),
+        conviction_weights=cfg.scoring["execution_conviction"],
+        thresholds=cfg.scoring["states"],
+        guard_flags=flags,
+        required_guards=cfg.scoring["hard_guards"],
+    )
+    assert decision.state == SignalState.NO_TRADE
+    assert "GUARD_INPUT_MISSING:NEWS_BLOCK" in decision.guards
