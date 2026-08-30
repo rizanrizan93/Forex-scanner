@@ -9,7 +9,12 @@ from fx_scanner.validation.backtest import (
 )
 from fx_scanner.validation.metrics import compute_metrics, metrics_by_group
 from fx_scanner.validation.monte_carlo import monte_carlo_returns
-from fx_scanner.validation.perturbation import evaluate_parameter_perturbations
+from fx_scanner.config import load_project_config
+from fx_scanner.validation.perturbation import (
+    apply_parameter_variant,
+    canonical_parameter_variants,
+    evaluate_parameter_perturbations,
+)
 from fx_scanner.validation.walk_forward import walk_forward_evaluate
 
 UTC = timezone.utc
@@ -110,13 +115,23 @@ def test_monte_carlo_is_seeded_and_reports_sequence_risk():
 
 def test_parameter_perturbation_requires_broad_stability():
     good = compute_metrics(profitable_trades(40))
-    variants = {f"V{i}": good for i in range(5)}
+    variants = {variant.name: good for variant in canonical_parameter_variants()}
     result = evaluate_parameter_perturbations(
         variants,
-        minimum_variants=5,
+        minimum_variants=6,
         profit_factor_min=1.10,
         expectancy_r_min=0.05,
         minimum_pass_fraction=0.80,
     )
     assert result.passed
     assert result.pass_fraction == pytest.approx(1.0)
+
+
+def test_canonical_parameter_variants_are_deterministic_and_do_not_mutate_baseline():
+    cfg = load_project_config()
+    original = cfg.strategy["liquidity"]["equal_level_tolerance_atr"]
+    variants = canonical_parameter_variants()
+    assert [x.name for x in variants] == cfg.validation["parameter_perturbation"]["required_variants"]
+    modified = apply_parameter_variant(cfg, variants[0])
+    assert modified.strategy["liquidity"]["equal_level_tolerance_atr"] == pytest.approx(original * 0.90)
+    assert cfg.strategy["liquidity"]["equal_level_tolerance_atr"] == original
