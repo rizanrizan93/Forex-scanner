@@ -25,6 +25,8 @@ class CostModel:
     slippage_pips: float
     commission_pips_round_trip: float
     swap_pips_per_day: float = 0.0
+    spread_multiplier: float = 1.0
+    slippage_multiplier: float = 1.0
 
     def __post_init__(self) -> None:
         for name in (
@@ -36,6 +38,10 @@ class CostModel:
             value = getattr(self, name)
             if isinstance(value, bool) or not isfinite(float(value)) or value < 0:
                 raise DataContractError(f"{name} must be non-negative finite")
+        for name in ("spread_multiplier", "slippage_multiplier"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isfinite(float(value)) or value < 1:
+                raise DataContractError(f"{name} must be finite and >= 1")
 
     def stressed(self, *, spread_multiplier: float, slippage_multiplier: float) -> "CostModel":
         if isinstance(spread_multiplier, bool) or isinstance(slippage_multiplier, bool):
@@ -45,10 +51,12 @@ class CostModel:
         if spread_multiplier < 1 or slippage_multiplier < 1:
             raise DataContractError("stress multipliers cannot reduce costs")
         return CostModel(
-            spread_pips=self.spread_pips * spread_multiplier,
-            slippage_pips=self.slippage_pips * slippage_multiplier,
+            spread_pips=self.spread_pips,
+            slippage_pips=self.slippage_pips,
             commission_pips_round_trip=self.commission_pips_round_trip,
             swap_pips_per_day=self.swap_pips_per_day,
+            spread_multiplier=self.spread_multiplier * float(spread_multiplier),
+            slippage_multiplier=self.slippage_multiplier * float(slippage_multiplier),
         )
 
 
@@ -67,6 +75,10 @@ class TradeIntent:
     regime: str
     entry_expiry_bars: int = 12
     maximum_hold_bars: int = 72
+    feature_cutoff_at: datetime | None = None
+    slippage_pips_override: float | None = None
+    commission_pips_round_trip_override: float | None = None
+    swap_pips_per_day_override: float | None = None
 
     def __post_init__(self) -> None:
         if not self.trade_id.strip():
@@ -80,6 +92,10 @@ class TradeIntent:
             raise DataContractError("trade direction must be LONG or SHORT")
         object.__setattr__(self, "direction", direction)
         object.__setattr__(self, "signal_at", ensure_utc(self.signal_at))
+        cutoff = self.signal_at if self.feature_cutoff_at is None else ensure_utc(self.feature_cutoff_at)
+        if cutoff > self.signal_at:
+            raise DataContractError("feature cutoff cannot be after signal timestamp")
+        object.__setattr__(self, "feature_cutoff_at", cutoff)
         for name in ("entry_low", "entry_high", "stop_loss", "take_profit", "pip_size"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isfinite(float(value)) or value <= 0:
@@ -100,6 +116,16 @@ class TradeIntent:
             raise DataContractError("bar limits must be integers")
         if not self.setup.strip() or not self.regime.strip():
             raise DataContractError("setup and regime are required")
+        for name in (
+            "slippage_pips_override",
+            "commission_pips_round_trip_override",
+            "swap_pips_per_day_override",
+        ):
+            value = getattr(self, name)
+            if value is not None and (
+                isinstance(value, bool) or not isfinite(float(value)) or value < 0
+            ):
+                raise DataContractError(f"{name} must be non-negative finite when present")
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +142,8 @@ class BacktestTrade:
     bars_held: int
     ambiguous_bar: bool
     reason: str
+    spread_pips_used: float | None = None
+    slippage_pips_used: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,6 +186,8 @@ class BacktestEngine:
         ordered = tuple(bars)
         if any(b.symbol != intent.symbol for b in ordered):
             raise DataContractError("backtest bars contain another symbol")
+        if len({b.timeframe for b in ordered}) > 1:
+            raise DataContractError("backtest bars must use one timeframe")
         if any(ordered[i].timestamp >= ordered[i + 1].timestamp for i in range(len(ordered) - 1)):
             raise DataContractError("backtest bars must be strictly chronological")
         return ordered
@@ -166,15 +196,42 @@ class BacktestEngine:
     def _entry_touch(intent: TradeIntent, bar: Bar) -> bool:
         return bar.low <= intent.entry_high and bar.high >= intent.entry_low
 
-    def _fill_price(self, intent: TradeIntent, bar: Bar) -> float:
+    def _spread_pips(self, intent: TradeIntent, bar: Bar) -> float:
+        observed = float(bar.spread_avg) / intent.pip_size
+        fallback = float(self.cost_model.spread_pips)
+        return max(fallback, observed) * self.cost_model.spread_multiplier
+
+    def _slippage_pips(self, intent: TradeIntent) -> float:
+        base = (
+            self.cost_model.slippage_pips
+            if intent.slippage_pips_override is None
+            else float(intent.slippage_pips_override)
+        )
+        return base * self.cost_model.slippage_multiplier
+
+    def _fill_price(
+        self,
+        intent: TradeIntent,
+        bar: Bar,
+        *,
+        spread_pips: float,
+        slippage_pips: float,
+    ) -> float:
         # Conservative zone-edge fill: the edge further from the target.
         planned = intent.entry_high if intent.direction == "LONG" else intent.entry_low
-        adverse = 0.5 * (
-            self.cost_model.spread_pips + self.cost_model.slippage_pips
-        ) * intent.pip_size
+        adverse = 0.5 * (spread_pips + slippage_pips) * intent.pip_size
         return planned + adverse if intent.direction == "LONG" else planned - adverse
 
-    def _cost_r(self, intent: TradeIntent, entry_price: float, bars_held: int, timeframe_seconds: int) -> float:
+    def _cost_r(
+        self,
+        intent: TradeIntent,
+        entry_price: float,
+        bars_held: int,
+        timeframe_seconds: int,
+        *,
+        spread_pips: float,
+        slippage_pips: float,
+    ) -> float:
         risk_price = (
             entry_price - intent.stop_loss
             if intent.direction == "LONG"
@@ -184,11 +241,21 @@ class BacktestEngine:
         if risk_pips < self.minimum_stop_distance_pips:
             raise DataContractError("stop distance below configured minimum")
         elapsed_days = bars_held * timeframe_seconds / 86400.0
+        commission = (
+            self.cost_model.commission_pips_round_trip
+            if intent.commission_pips_round_trip_override is None
+            else float(intent.commission_pips_round_trip_override)
+        )
+        swap = (
+            self.cost_model.swap_pips_per_day
+            if intent.swap_pips_per_day_override is None
+            else float(intent.swap_pips_per_day_override)
+        )
         cost_pips = (
-            0.5 * self.cost_model.spread_pips
-            + 0.5 * self.cost_model.slippage_pips
-            + self.cost_model.commission_pips_round_trip
-            + self.cost_model.swap_pips_per_day * elapsed_days
+            0.5 * spread_pips
+            + 0.5 * slippage_pips
+            + commission
+            + swap * elapsed_days
         )
         return cost_pips / risk_pips
 
@@ -209,14 +276,30 @@ class BacktestEngine:
                 "NO_FUTURE_BARS",
             )
 
+        planned_risk_pips = (
+            (intent.entry_high - intent.stop_loss) / intent.pip_size
+            if intent.direction == "LONG"
+            else (intent.stop_loss - intent.entry_low) / intent.pip_size
+        )
+        if planned_risk_pips < self.minimum_stop_distance_pips:
+            raise DataContractError("planned stop distance below configured minimum")
+
         entry_bar_index: int | None = None
         entry_price: float | None = None
+        spread_pips = slippage_pips = None
         for i, bar in enumerate(future[: intent.entry_expiry_bars]):
             if self._entry_touch(intent, bar):
                 entry_bar_index = i
-                entry_price = self._fill_price(intent, bar)
+                spread_pips = self._spread_pips(intent, bar)
+                slippage_pips = self._slippage_pips(intent)
+                entry_price = self._fill_price(
+                    intent,
+                    bar,
+                    spread_pips=spread_pips,
+                    slippage_pips=slippage_pips,
+                )
                 break
-        if entry_bar_index is None or entry_price is None:
+        if entry_bar_index is None or entry_price is None or spread_pips is None or slippage_pips is None:
             return BacktestTrade(
                 intent, TradeOutcome.MISSED, None, None, None, None, None, None, None, 0, False,
                 "ENTRY_NOT_TOUCHED_BEFORE_EXPIRY",
@@ -258,7 +341,14 @@ class BacktestEngine:
                 exit_price = intent.stop_loss
                 gross_r = -1.0
                 bars_held = held_index
-                cost_r = self._cost_r(intent, entry_price, bars_held, timeframe_seconds)
+                cost_r = self._cost_r(
+                    intent,
+                    entry_price,
+                    bars_held,
+                    timeframe_seconds,
+                    spread_pips=spread_pips,
+                    slippage_pips=slippage_pips,
+                )
                 return BacktestTrade(
                     intent,
                     TradeOutcome.LOSS,
@@ -272,6 +362,8 @@ class BacktestEngine:
                     bars_held,
                     ambiguous,
                     "STOP_FIRST_AMBIGUOUS" if ambiguous else "STOP_HIT",
+                    spread_pips,
+                    slippage_pips,
                 )
             if target_hit:
                 exit_price = intent.take_profit
@@ -282,7 +374,14 @@ class BacktestEngine:
                 )
                 gross_r = reward_price / risk_price
                 bars_held = held_index
-                cost_r = self._cost_r(intent, entry_price, bars_held, timeframe_seconds)
+                cost_r = self._cost_r(
+                    intent,
+                    entry_price,
+                    bars_held,
+                    timeframe_seconds,
+                    spread_pips=spread_pips,
+                    slippage_pips=slippage_pips,
+                )
                 net_r = gross_r - cost_r
                 outcome = TradeOutcome.WIN if net_r > 0 else TradeOutcome.BREAKEVEN
                 return BacktestTrade(
@@ -298,6 +397,8 @@ class BacktestEngine:
                     bars_held,
                     False,
                     "TARGET_HIT",
+                    spread_pips,
+                    slippage_pips,
                 )
 
         last = evaluation[held_limit - 1]
@@ -308,7 +409,14 @@ class BacktestEngine:
             exit_price = last.close
             gross_r = (entry_price - exit_price) / risk_price
         bars_held = max(0, held_limit - 1)
-        cost_r = self._cost_r(intent, entry_price, bars_held, timeframe_seconds)
+        cost_r = self._cost_r(
+                    intent,
+                    entry_price,
+                    bars_held,
+                    timeframe_seconds,
+                    spread_pips=spread_pips,
+                    slippage_pips=slippage_pips,
+                )
         net_r = gross_r - cost_r
         outcome = (
             TradeOutcome.WIN if net_r > 0
@@ -328,6 +436,8 @@ class BacktestEngine:
             bars_held,
             False,
             "MAX_HOLD_EXIT",
+            spread_pips,
+            slippage_pips,
         )
 
     def run(
