@@ -31,6 +31,8 @@ smoke_series:
   ECB_EURUSD_REFERENCE:
     provider: ECB_DATA_PORTAL
     series: EXR/D.USD.EUR.SP00.A
+    max_age_seconds: 259200
   BOC_POLICY_RATE:
     provider: BANK_OF_CANADA_VALET
     series: V39079
+    max_age_seconds: 3888000
