@@ -63,6 +63,9 @@ def score_currency_macro(
         if value is None:
             missing.append(str(name))
             continue
+        if isinstance(value, bool):
+            invalid = True
+            continue
         value = float(value)
         if not isfinite(value) or value < factor_min or value > factor_max:
             invalid = True
