@@ -6,6 +6,7 @@ from typing import Mapping
 
 from .config import PairSpec
 from .exceptions import DataContractError
+from .macro import CurrencyMacroScore
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,6 +14,8 @@ class CurrencyStrength:
     currency: str
     score: float
     contributing_pairs: int
+    expected_pairs: int
+    coverage: float
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "currency", self.currency.upper())
@@ -20,8 +23,15 @@ class CurrencyStrength:
             raise DataContractError("currency strength requires a three-letter currency")
         if not isfinite(self.score) or not -100 <= self.score <= 100:
             raise DataContractError("currency strength score must be in [-100,100]")
-        if self.contributing_pairs <= 0:
-            raise DataContractError("currency strength requires at least one contributing pair")
+        if self.contributing_pairs <= 0 or self.expected_pairs <= 0:
+            raise DataContractError("currency strength pair counts must be positive")
+        if self.contributing_pairs > self.expected_pairs:
+            raise DataContractError("contributing_pairs cannot exceed expected_pairs")
+        if not 0 < self.coverage <= 1:
+            raise DataContractError("currency strength coverage must be in (0,1]")
+        expected_coverage = self.contributing_pairs / self.expected_pairs
+        if abs(self.coverage - expected_coverage) > 1e-9:
+            raise DataContractError("currency strength coverage/count mismatch")
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,12 +85,16 @@ def compute_currency_strength(
 ) -> dict[str, CurrencyStrength]:
     """Aggregate normalized signed pair momentum (-100..100) by currency.
 
-    A positive pair momentum strengthens base and weakens quote. Missing pairs are
-    omitted rather than interpreted as zero.
+    Missing pairs are omitted rather than interpreted as zero. Coverage records
+    how much of each currency's configured pair universe contributed.
     """
     sums: dict[str, float] = {}
     counts: dict[str, int] = {}
+    expected: dict[str, int] = {}
     for pair in pairs:
+        expected[pair.base] = expected.get(pair.base, 0) + 1
+        expected[pair.quote] = expected.get(pair.quote, 0) + 1
+
         raw = pair_momentum.get(pair.symbol)
         if raw is None:
             continue
@@ -96,54 +110,75 @@ def compute_currency_strength(
     out: dict[str, CurrencyStrength] = {}
     for currency, total in sums.items():
         count = counts[currency]
-        out[currency] = CurrencyStrength(currency, total / count, count)
+        expected_count = expected[currency]
+        out[currency] = CurrencyStrength(
+            currency,
+            total / count,
+            count,
+            expected_count,
+            count / expected_count,
+        )
     return out
 
 
 def rank_pairs(
     pairs: tuple[PairSpec, ...] | list[PairSpec],
     *,
-    macro_scores: Mapping[str, float],
+    macro_scores: Mapping[str, CurrencyMacroScore | float],
     technical_strength: Mapping[str, CurrencyStrength | float],
     cross_asset_edges: Mapping[str, float | None] | None = None,
-    minimum_coverage: float = 0.85,
+    minimum_coverage: float = 0.80,
 ) -> list[PairRank]:
-    """Rank pairs while preserving missing cross-asset evidence.
+    """Rank pairs while preserving partial/missing evidence coverage.
 
-    Macro and technical evidence are mandatory. Cross-asset evidence is optional
-    but its 15% weight is not silently converted to neutral zero; the remaining
-    observed weights are re-normalized and coverage is recorded.
+    Pair-edge formula is fixed at 55% macro, 30% technical, 15% cross-asset.
+    Missing cross-asset does not become neutral zero; the observed formula is
+    re-normalized over available top-level components, while evidence coverage
+    separately tracks macro/technical source coverage.
     """
     if not 0 < minimum_coverage <= 1:
         raise DataContractError("minimum_coverage must be in (0,1]")
     cross_asset_edges = cross_asset_edges or {}
     candidates: list[tuple[PairSpec, float, float, float | None, float, float, tuple[str, ...]]] = []
 
-    def strength(currency: str) -> float | None:
+    def macro_value(currency: str) -> tuple[float, float] | None:
+        value = macro_scores.get(currency)
+        if value is None:
+            return None
+        if isinstance(value, CurrencyMacroScore):
+            if value.score is None:
+                return None
+            return float(value.score), float(value.coverage)
+        if isinstance(value, bool):
+            raise DataContractError(f"boolean macro score is invalid for {currency}")
+        numeric = float(value)
+        if not isfinite(numeric) or not -100 <= numeric <= 100:
+            raise DataContractError(f"macro score must be in [-100,100] for {currency}")
+        return numeric, 1.0
+
+    def strength_value(currency: str) -> tuple[float, float] | None:
         value = technical_strength.get(currency)
         if value is None:
             return None
         if isinstance(value, CurrencyStrength):
-            return float(value.score)
+            return float(value.score), float(value.coverage)
         if isinstance(value, bool):
             raise DataContractError(f"boolean technical strength is invalid for {currency}")
         numeric = float(value)
         if not isfinite(numeric) or not -100 <= numeric <= 100:
             raise DataContractError(f"technical strength must be in [-100,100] for {currency}")
-        return numeric
+        return numeric, 1.0
 
     for pair in pairs:
-        if pair.base not in macro_scores or pair.quote not in macro_scores:
-            continue
-        base_tech = strength(pair.base)
-        quote_tech = strength(pair.quote)
-        if base_tech is None or quote_tech is None:
+        base_macro = macro_value(pair.base)
+        quote_macro = macro_value(pair.quote)
+        base_tech = strength_value(pair.base)
+        quote_tech = strength_value(pair.quote)
+        if base_macro is None or quote_macro is None or base_tech is None or quote_tech is None:
             continue
 
-        if isinstance(macro_scores[pair.base], bool) or isinstance(macro_scores[pair.quote], bool):
-            raise DataContractError(f"boolean macro score is invalid for {pair.symbol}")
-        macro_edge = float(macro_scores[pair.base]) - float(macro_scores[pair.quote])
-        tech_edge = base_tech - quote_tech
+        macro_edge = base_macro[0] - quote_macro[0]
+        tech_edge = base_tech[0] - quote_tech[0]
         if not all(isfinite(x) for x in (macro_edge, tech_edge)):
             raise DataContractError(f"non-finite pair edge for {pair.symbol}")
 
@@ -151,6 +186,10 @@ def rank_pairs(
         tech_norm = max(-100.0, min(100.0, tech_edge / 2.0))
         observed_sum = 0.55 * macro_norm + 0.30 * tech_norm
         observed_weight = 0.85
+        evidence_coverage = (
+            0.55 * min(base_macro[1], quote_macro[1])
+            + 0.30 * min(base_tech[1], quote_tech[1])
+        )
         missing: list[str] = []
 
         cross_raw = cross_asset_edges.get(pair.symbol)
@@ -166,10 +205,12 @@ def rank_pairs(
                 raise DataContractError(f"cross-asset edge must be in [-100,100] for {pair.symbol}")
             observed_sum += 0.15 * cross
             observed_weight += 0.15
+            evidence_coverage += 0.15
 
-        coverage = observed_weight
+        coverage = evidence_coverage
         if coverage < minimum_coverage:
             continue
+
         pair_edge = observed_sum / observed_weight
         candidates.append(
             (pair, macro_edge, tech_edge, cross, pair_edge, coverage, tuple(sorted(missing)))
