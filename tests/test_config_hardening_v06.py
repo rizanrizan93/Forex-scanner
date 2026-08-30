@@ -183,3 +183,54 @@ def test_v08_rba_endpoint_cannot_be_redirected_to_other_host(tmp_path):
     write_yaml(path, data)
     with pytest.raises(ConfigurationError, match="HTTPS host contract"):
         load_project_config(root)
+
+
+def test_v09_oos_split_cannot_be_changed_after_results(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "validation.yaml"
+    data = read_yaml(path)
+    data["dataset_split"]["train_fraction"] = 0.70
+    data["dataset_split"]["validation_fraction"] = 0.10
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="60/20/20"):
+        load_project_config(root)
+
+
+def test_v09_cost_stress_cannot_be_weakened(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "validation.yaml"
+    data = read_yaml(path)
+    data["costs"]["stress_spread_multiplier"] = 1.0
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="cannot be below 1.25"):
+        load_project_config(root)
+
+
+def test_v09_validation_cannot_enter_hot_path(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "validation.yaml"
+    data = read_yaml(path)
+    data["performance_budget"]["research_validation_in_hot_path"] = True
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="outside hot path"):
+        load_project_config(root)
+
+
+def test_v09_canonical_perturbation_set_cannot_be_cherry_picked(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "validation.yaml"
+    data = read_yaml(path)
+    data["parameter_perturbation"]["required_variants"].pop()
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="must remain canonical"):
+        load_project_config(root)
+
+
+def test_v09_point_in_time_gate_cannot_be_disabled(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "risk.yaml"
+    data = read_yaml(path)
+    data["acceptance"]["point_in_time_required"] = False
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="point_in_time_required"):
+        load_project_config(root)

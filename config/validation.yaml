@@ -1,0 +1,67 @@
+engine:
+  ambiguous_bar_policy: STOP_FIRST
+  default_entry_expiry_bars: 12
+  maximum_hold_bars: 72
+  minimum_stop_distance_pips: 2.0
+
+costs:
+  base:
+    spread_pips: 0.8
+    slippage_pips: 0.2
+    commission_pips_round_trip: 0.2
+    swap_pips_per_day: 0.0
+  stress_spread_multiplier: 1.25
+  stress_slippage_multiplier: 1.50
+
+dataset_split:
+  train_fraction: 0.60
+  validation_fraction: 0.20
+  oos_fraction: 0.20
+
+walk_forward:
+  train_fraction: 0.60
+  test_fraction: 0.20
+  minimum_train_trades: 100
+  minimum_test_trades: 30
+  step_fraction: 0.20
+  fold_win_rate_min: 0.50
+  fold_profit_factor_min: 1.10
+  fold_expectancy_r_min: 0.05
+  minimum_pass_fraction: 0.67
+
+stress_acceptance:
+  win_rate_min: 0.50
+  profit_factor_min: 1.10
+  expectancy_r_min: 0.05
+
+monte_carlo:
+  simulations: 1000
+  seed: 260830
+  block_size: 5
+  max_drawdown_r_p95_limit: 12.0
+  losing_streak_p95_limit: 8
+
+regimes:
+  minimum_trades_per_regime: 30
+  minimum_eligible_regimes: 2
+  minimum_expectancy_r: 0.00
+  minimum_profit_factor: 1.00
+
+parameter_perturbation:
+  minimum_variants: 6
+  required_variants:
+    - equal_tolerance_minus10
+    - equal_tolerance_plus10
+    - sl_buffer_minus10
+    - sl_buffer_plus10
+    - entry_zone_minus10
+    - entry_zone_plus10
+  profit_factor_min: 1.10
+  expectancy_r_min: 0.05
+  minimum_pass_fraction: 0.80
+
+performance_budget:
+  research_validation_in_hot_path: false
+  deep_scan_top5_target_ms: 250
+  per_pair_mtf_target_ms: 50
+  execution_revalidation_max_ms: 500

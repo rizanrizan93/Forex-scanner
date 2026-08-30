@@ -17,3 +17,6 @@ acceptance:
   slippage_stress_required: true
   multi_regime_required: true
   demo_forward_required: true
+  point_in_time_required: true
+  monte_carlo_required: true
+  parameter_perturbation_required: true

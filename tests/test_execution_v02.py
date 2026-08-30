@@ -60,7 +60,7 @@ def test_v02_config_defaults_to_disabled():
     p = load_execution_policy()
     assert p.mode == ExecutionMode.DISABLED
     assert p.scheduler["heavy_scan_seconds"] == 900
-    assert p.scheduler["fast_setup_seconds"] == 60
+    assert p.scheduler["fast_setup_seconds"] == 15
 
 
 def test_disabled_mode_cannot_execute(monkeypatch):

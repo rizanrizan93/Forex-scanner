@@ -30,6 +30,7 @@ class ProjectConfig:
     macro: dict[str, Any]
     providers: dict[str, Any]
     strategy: dict[str, Any]
+    validation: dict[str, Any]
 
     @property
     def pair_map(self) -> dict[str, PairSpec]:
@@ -83,7 +84,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     pair_data = _read_yaml(cfg / "pairs.yaml")
     raw_pairs = pair_data.get("pairs", [])
     if not isinstance(raw_pairs, list) or len(raw_pairs) != 15:
-        raise ConfigurationError(f"v0.8 requires exactly 15 configured pairs, got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}")
+        raise ConfigurationError(f"v0.9 requires exactly 15 configured pairs, got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}")
 
     pairs: list[PairSpec] = []
     seen: set[str] = set()
@@ -129,6 +130,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     macro = _read_yaml(cfg / "macro.yaml")
     providers = _read_yaml(cfg / "providers.yaml")
     strategy = _read_yaml(cfg / "strategy.yaml")
+    validation = _read_yaml(cfg / "validation.yaml")
 
     pair_keys = {"macro", "currency_strength", "intermarket", "volatility", "session", "spread"}
     execution_keys = {
@@ -180,7 +182,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         raise ConfigurationError(f"hard_guards must be exactly {sorted(expected_guards)}")
 
     if str(risk.get("mode", "")).upper() != "RESEARCH_ONLY":
-        raise ConfigurationError("v0.8 risk mode must remain RESEARCH_ONLY")
+        raise ConfigurationError("v0.9 risk mode must remain RESEARCH_ONLY")
 
     risk_per_trade = _as_finite_number(risk.get("risk_per_trade_pct"), label="risk_per_trade_pct")
     max_risk = _as_finite_number(risk.get("max_risk_per_trade_pct"), label="max_risk_per_trade_pct")
@@ -190,15 +192,15 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         label="max_same_currency_exposure_units",
     )
     if not 0 < risk_per_trade <= max_risk <= 0.50:
-        raise ConfigurationError("risk-per-trade contract exceeds v0.8 safety cap")
+        raise ConfigurationError("risk-per-trade contract exceeds v0.9 safety cap")
     if not 0 < max_daily_loss <= 1.0:
-        raise ConfigurationError("max_daily_loss_pct exceeds v0.8 safety cap")
+        raise ConfigurationError("max_daily_loss_pct exceeds v0.9 safety cap")
     if int(risk.get("max_concurrent_trades", 0)) != 2:
         raise ConfigurationError("max_concurrent_trades must remain 2")
     if int(risk.get("max_consecutive_losses", 0)) != 3:
         raise ConfigurationError("max_consecutive_losses must remain 3")
     if not 0 < same_currency <= 1.5:
-        raise ConfigurationError("same-currency exposure exceeds v0.8 cap")
+        raise ConfigurationError("same-currency exposure exceeds v0.9 cap")
 
     acceptance = risk.get("acceptance", {})
     if not isinstance(acceptance, Mapping):
@@ -218,6 +220,9 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         "slippage_stress_required",
         "multi_regime_required",
         "demo_forward_required",
+        "point_in_time_required",
+        "monte_carlo_required",
+        "parameter_perturbation_required",
     }
     for key in required_acceptance_flags:
         if acceptance.get(key) is not True:
@@ -296,7 +301,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         ),
     }
     if not required_sources.issubset(set(sources)):
-        raise ConfigurationError("canonical ECB, BoC, Federal Reserve/FRED, and RBA providers are required in v0.8")
+        raise ConfigurationError("canonical ECB, BoC, Federal Reserve/FRED, and RBA providers are required in v0.9")
     for name, source in sources.items():
         if not isinstance(source, Mapping):
             raise ConfigurationError(f"provider source {name} must be a mapping")
@@ -449,7 +454,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     if not 0.05 <= sl_buffer <= 0.30:
         raise ConfigurationError("SL ATR buffer must remain within [0.05,0.30]")
     if not 0 < chase_ok <= 0.25 or not chase_ok < chase_block <= 0.50:
-        raise ConfigurationError("chase thresholds violate v0.8 safety contract")
+        raise ConfigurationError("chase thresholds violate v0.9 safety contract")
     if min_rr < 1.50 or preferred_rr < max(2.0, min_rr):
         raise ConfigurationError("trade-plan RR contract cannot be weakened")
     if not 0 < entry_zone <= 0.20:
@@ -478,4 +483,196 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         if any(values[key] is not True for key in required_flags):
             raise ConfigurationError(f"strategy setup {setup_name} requirements cannot be disabled")
 
-    return ProjectConfig(tuple(pairs), timeframes, risk, scoring, sessions, macro, providers, strategy)
+
+    engine_cfg = validation.get("engine", {})
+    if not isinstance(engine_cfg, Mapping):
+        raise ConfigurationError("validation.engine must be a mapping")
+    if str(engine_cfg.get("ambiguous_bar_policy", "")).upper() != "STOP_FIRST":
+        raise ConfigurationError("validation ambiguous-bar policy must remain STOP_FIRST")
+    entry_expiry = _as_finite_number(
+        engine_cfg.get("default_entry_expiry_bars"),
+        label="validation.engine.default_entry_expiry_bars",
+    )
+    max_hold = _as_finite_number(
+        engine_cfg.get("maximum_hold_bars"),
+        label="validation.engine.maximum_hold_bars",
+    )
+    min_stop_pips = _as_finite_number(
+        engine_cfg.get("minimum_stop_distance_pips"),
+        label="validation.engine.minimum_stop_distance_pips",
+    )
+    if not entry_expiry.is_integer() or not 1 <= entry_expiry <= 48:
+        raise ConfigurationError("validation entry expiry must be an integer in [1,48]")
+    if not max_hold.is_integer() or not 12 <= max_hold <= 288:
+        raise ConfigurationError("validation maximum hold bars must be an integer in [12,288]")
+    if min_stop_pips < 2.0:
+        raise ConfigurationError("validation minimum stop distance cannot be below 2 pips")
+
+    costs_cfg = validation.get("costs", {})
+    if not isinstance(costs_cfg, Mapping) or not isinstance(costs_cfg.get("base"), Mapping):
+        raise ConfigurationError("validation costs configuration is incomplete")
+    for key in ("spread_pips", "slippage_pips", "commission_pips_round_trip", "swap_pips_per_day"):
+        value = _as_finite_number(costs_cfg["base"].get(key), label=f"validation.costs.base.{key}")
+        if value < 0:
+            raise ConfigurationError(f"validation cost {key} cannot be negative")
+    spread_stress = _as_finite_number(
+        costs_cfg.get("stress_spread_multiplier"),
+        label="validation.costs.stress_spread_multiplier",
+    )
+    slippage_stress = _as_finite_number(
+        costs_cfg.get("stress_slippage_multiplier"),
+        label="validation.costs.stress_slippage_multiplier",
+    )
+    if spread_stress < 1.25:
+        raise ConfigurationError("spread stress multiplier cannot be below 1.25")
+    if slippage_stress < 1.50:
+        raise ConfigurationError("slippage stress multiplier cannot be below 1.50")
+
+    split_cfg = validation.get("dataset_split", {})
+    canonical_split = {
+        "train_fraction": 0.60,
+        "validation_fraction": 0.20,
+        "oos_fraction": 0.20,
+    }
+    if not isinstance(split_cfg, Mapping) or set(split_cfg) != set(canonical_split):
+        raise ConfigurationError("validation dataset split keys are invalid")
+    for key, expected in canonical_split.items():
+        value = _as_finite_number(split_cfg.get(key), label=f"validation.dataset_split.{key}")
+        if abs(value - expected) > 1e-9:
+            raise ConfigurationError("validation dataset split must remain 60/20/20")
+
+    wf_cfg = validation.get("walk_forward", {})
+    if not isinstance(wf_cfg, Mapping):
+        raise ConfigurationError("validation.walk_forward must be a mapping")
+    wf_minimums = {
+        "minimum_train_trades": 100,
+        "minimum_test_trades": 30,
+        "fold_win_rate_min": 0.50,
+        "fold_profit_factor_min": 1.10,
+        "fold_expectancy_r_min": 0.05,
+        "minimum_pass_fraction": 0.67,
+    }
+    for key, floor in wf_minimums.items():
+        value = _as_finite_number(wf_cfg.get(key), label=f"validation.walk_forward.{key}")
+        if value < floor:
+            raise ConfigurationError(f"validation walk-forward {key} cannot be below {floor}")
+    for key in ("train_fraction", "test_fraction", "step_fraction"):
+        value = _as_finite_number(wf_cfg.get(key), label=f"validation.walk_forward.{key}")
+        if not 0 < value <= 1:
+            raise ConfigurationError(f"validation walk-forward {key} must be in (0,1]")
+    if float(wf_cfg["train_fraction"]) + float(wf_cfg["test_fraction"]) > 1:
+        raise ConfigurationError("validation walk-forward train+test fractions cannot exceed 1")
+
+    stress_cfg = validation.get("stress_acceptance", {})
+    if not isinstance(stress_cfg, Mapping):
+        raise ConfigurationError("validation.stress_acceptance must be a mapping")
+    stress_floors = {
+        "win_rate_min": 0.50,
+        "profit_factor_min": 1.10,
+        "expectancy_r_min": 0.05,
+    }
+    for key, floor in stress_floors.items():
+        value = _as_finite_number(stress_cfg.get(key), label=f"validation.stress_acceptance.{key}")
+        if value < floor:
+            raise ConfigurationError(f"validation stress {key} cannot be below {floor}")
+
+    mc_cfg = validation.get("monte_carlo", {})
+    if not isinstance(mc_cfg, Mapping):
+        raise ConfigurationError("validation.monte_carlo must be a mapping")
+    simulations = _as_finite_number(mc_cfg.get("simulations"), label="validation.monte_carlo.simulations")
+    seed = _as_finite_number(mc_cfg.get("seed"), label="validation.monte_carlo.seed")
+    dd_limit = _as_finite_number(
+        mc_cfg.get("max_drawdown_r_p95_limit"),
+        label="validation.monte_carlo.max_drawdown_r_p95_limit",
+    )
+    streak_limit = _as_finite_number(
+        mc_cfg.get("losing_streak_p95_limit"),
+        label="validation.monte_carlo.losing_streak_p95_limit",
+    )
+    block_size = _as_finite_number(
+        mc_cfg.get("block_size"),
+        label="validation.monte_carlo.block_size",
+    )
+    if not simulations.is_integer() or not 500 <= simulations <= 10000:
+        raise ConfigurationError("Monte Carlo simulations must be an integer in [500,10000]")
+    if not seed.is_integer():
+        raise ConfigurationError("Monte Carlo seed must be an integer")
+    if not block_size.is_integer() or not 2 <= block_size <= 20:
+        raise ConfigurationError("Monte Carlo block size must be an integer in [2,20]")
+    if not 0 < dd_limit <= 12:
+        raise ConfigurationError("Monte Carlo p95 drawdown limit cannot exceed 12R")
+    if not streak_limit.is_integer() or not 1 <= streak_limit <= 8:
+        raise ConfigurationError("Monte Carlo p95 losing-streak limit cannot exceed 8")
+
+    regime_cfg = validation.get("regimes", {})
+    if not isinstance(regime_cfg, Mapping):
+        raise ConfigurationError("validation.regimes must be a mapping")
+    if int(regime_cfg.get("minimum_trades_per_regime", 0)) < 30:
+        raise ConfigurationError("minimum trades per regime cannot be below 30")
+    if int(regime_cfg.get("minimum_eligible_regimes", 0)) < 2:
+        raise ConfigurationError("at least two eligible regimes are required")
+    if _as_finite_number(
+        regime_cfg.get("minimum_expectancy_r"),
+        label="validation.regimes.minimum_expectancy_r",
+    ) < 0:
+        raise ConfigurationError("regime minimum expectancy cannot be negative")
+    if _as_finite_number(
+        regime_cfg.get("minimum_profit_factor"),
+        label="validation.regimes.minimum_profit_factor",
+    ) < 1.0:
+        raise ConfigurationError("regime minimum PF cannot be below 1.0")
+
+    perturb_cfg = validation.get("parameter_perturbation", {})
+    if not isinstance(perturb_cfg, Mapping):
+        raise ConfigurationError("validation.parameter_perturbation must be a mapping")
+    if int(perturb_cfg.get("minimum_variants", 0)) < 6:
+        raise ConfigurationError("parameter perturbation requires at least six variants")
+    canonical_variants = [
+        "equal_tolerance_minus10",
+        "equal_tolerance_plus10",
+        "sl_buffer_minus10",
+        "sl_buffer_plus10",
+        "entry_zone_minus10",
+        "entry_zone_plus10",
+    ]
+    if list(perturb_cfg.get("required_variants", [])) != canonical_variants:
+        raise ConfigurationError("parameter perturbation variants must remain canonical")
+    if _as_finite_number(
+        perturb_cfg.get("profit_factor_min"),
+        label="validation.parameter_perturbation.profit_factor_min",
+    ) < 1.10:
+        raise ConfigurationError("perturbation PF gate cannot be below 1.10")
+    if _as_finite_number(
+        perturb_cfg.get("expectancy_r_min"),
+        label="validation.parameter_perturbation.expectancy_r_min",
+    ) < 0.05:
+        raise ConfigurationError("perturbation expectancy gate cannot be below 0.05R")
+    if _as_finite_number(
+        perturb_cfg.get("minimum_pass_fraction"),
+        label="validation.parameter_perturbation.minimum_pass_fraction",
+    ) < 0.80:
+        raise ConfigurationError("perturbation pass fraction cannot be below 80%")
+
+    perf_cfg = validation.get("performance_budget", {})
+    if not isinstance(perf_cfg, Mapping):
+        raise ConfigurationError("validation.performance_budget must be a mapping")
+    if perf_cfg.get("research_validation_in_hot_path") is not False:
+        raise ConfigurationError("research validation must remain outside hot path")
+    top5_ms = _as_finite_number(
+        perf_cfg.get("deep_scan_top5_target_ms"),
+        label="validation.performance_budget.deep_scan_top5_target_ms",
+    )
+    per_pair_ms = _as_finite_number(
+        perf_cfg.get("per_pair_mtf_target_ms"),
+        label="validation.performance_budget.per_pair_mtf_target_ms",
+    )
+    revalidation_ms = _as_finite_number(
+        perf_cfg.get("execution_revalidation_max_ms"),
+        label="validation.performance_budget.execution_revalidation_max_ms",
+    )
+    if top5_ms > 250 or per_pair_ms > 50 or revalidation_ms > 500:
+        raise ConfigurationError("v0.9 performance budget cannot be weakened")
+
+    return ProjectConfig(
+        tuple(pairs), timeframes, risk, scoring, sessions, macro, providers, strategy, validation
+    )
