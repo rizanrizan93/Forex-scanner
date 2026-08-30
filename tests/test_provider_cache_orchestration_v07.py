@@ -96,3 +96,18 @@ def test_quorum_conflict_fails_closed():
     assert result.status == ProviderStatus.INVALID
     assert result.value is None
     assert result.conflict_span == pytest.approx(50)
+
+
+def test_quorum_preserves_stale_reason_when_no_fresh_source_exists():
+    stale = FakeProvider("STALE", 10, status=ProviderStatus.STALE)
+    orchestrator = ProviderOrchestrator(minimum_success=1)
+    result = orchestrator.collect_numeric([(stale, "X")])
+    assert result.status == ProviderStatus.STALE
+    assert result.value is None
+
+
+def test_boolean_provider_limits_are_rejected():
+    with pytest.raises(ValueError, match="boolean"):
+        ProviderCache(positive_ttl_seconds=True)
+    with pytest.raises(ValueError, match="boolean"):
+        ProviderOrchestrator(minimum_success=True)
