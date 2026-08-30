@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import StrEnum
 from math import isfinite
@@ -66,6 +66,7 @@ class MTFAnalysis:
     symbol: str
     direction: str
     setup_type: SetupType | None
+    trigger_confirmed: bool
     d1: StructureSnapshot
     h4: StructureSnapshot
     h1: StructureSnapshot
@@ -188,17 +189,12 @@ def _choose_setup(
     h4: StructureSnapshot,
     h1: StructureSnapshot,
     m15: StructureSnapshot,
-    m5: StructureSnapshot,
     liquidity: LiquidityMap,
 ) -> SetupType | None:
     sweep_reversal = (
         m15.sweep is not None
         and m15.sweep.valid
         and _aligned(m15.sweep.direction, direction)
-        and m5.displacement is not None
-        and m5.displacement.valid
-        and _aligned(m5.displacement.direction, direction)
-        and (_aligned(m5.mss, direction) or _aligned(m5.bos, direction))
         and _favorable_dealing_zone(direction, liquidity)
     )
     if sweep_reversal:
@@ -213,14 +209,19 @@ def _choose_setup(
         and m15.fvg is not None
         and m15.fvg.valid
         and _aligned(m15.fvg.direction, direction)
-        and m5.displacement is not None
-        and m5.displacement.valid
-        and _aligned(m5.displacement.direction, direction)
-        and (_aligned(m5.bos, direction) or _aligned(m5.mss, direction))
     )
     if trend_continuation:
         return SetupType.TREND_CONTINUATION
     return None
+
+
+def _m5_trigger_confirmed(direction: str, m5: StructureSnapshot) -> bool:
+    return bool(
+        m5.displacement is not None
+        and m5.displacement.valid
+        and _aligned(m5.displacement.direction, direction)
+        and (_aligned(m5.mss, direction) or _aligned(m5.bos, direction))
+    )
 
 
 def _entry_fvg(direction: str, m5: StructureSnapshot, liquidity: LiquidityMap) -> FairValueGap | None:
@@ -417,7 +418,8 @@ def analyze_pair_mtf(
         order_block_search_bars=int(liquidity_cfg["order_block_search_bars"]),
         order_block_origin_lookback=int(liquidity_cfg["order_block_origin_lookback"]),
     )
-    setup_type = _choose_setup(rank.direction, d1, h4, h1, m15, m5, liquidity)
+    setup_type = _choose_setup(rank.direction, d1, h4, h1, m15, liquidity)
+    trigger_confirmed = _m5_trigger_confirmed(rank.direction, m5)
     plan = _build_trade_plan(
         direction=rank.direction,
         current_price=current_price,
@@ -435,6 +437,52 @@ def analyze_pair_mtf(
     if rank.cross_asset_edge is not None:
         cross_asset_score = _edge_score(rank.cross_asset_edge, rank.direction, span=100.0)
 
+    internal_execution_quality: float | None
+    if plan is None:
+        internal_execution_quality = 20.0 if trigger_confirmed else 10.0
+    else:
+        chase_ok = float(plan_cfg["chase_ok_atr"])
+        chase_block = float(plan_cfg["chase_block_atr"])
+        if plan.chase_distance_atr <= chase_ok:
+            chase_quality = 100.0
+        else:
+            span = max(1e-12, chase_block - chase_ok)
+            chase_quality = max(
+                40.0,
+                100.0 - 60.0 * (plan.chase_distance_atr - chase_ok) / span,
+            )
+        preferred_rr = float(plan_cfg["preferred_tp2_rr"])
+        minimum_rr = float(plan_cfg["minimum_tp2_rr"])
+        if plan.rr2 is None:
+            rr_quality = 20.0
+        elif plan.rr2 >= preferred_rr:
+            rr_quality = 100.0
+        elif plan.rr2 >= minimum_rr:
+            rr_quality = 70.0 + 30.0 * (
+                (plan.rr2 - minimum_rr) / max(1e-12, preferred_rr - minimum_rr)
+            )
+        else:
+            rr_quality = max(0.0, 70.0 * plan.rr2 / minimum_rr)
+        internal_execution_quality = min(chase_quality, rr_quality)
+
+    if execution_quality_score is None:
+        combined_execution_quality = internal_execution_quality
+    else:
+        if isinstance(execution_quality_score, bool) or not isfinite(float(execution_quality_score)):
+            raise DataContractError("execution_quality_score must be finite numeric")
+        if not 0 <= float(execution_quality_score) <= 100:
+            raise DataContractError("execution_quality_score must be in [0,100]")
+        combined_execution_quality = min(
+            internal_execution_quality,
+            float(execution_quality_score),
+        )
+
+    if positioning_score is not None:
+        if isinstance(positioning_score, bool) or not isfinite(float(positioning_score)):
+            raise DataContractError("positioning_score must be finite numeric")
+        if not 0 <= float(positioning_score) <= 100:
+            raise DataContractError("positioning_score must be in [0,100]")
+
     components = {
         "relative_macro": _edge_score(rank.relative_macro_edge, rank.direction, span=200.0),
         "htf_structure": _htf_score(rank.direction, d1, h4, h1),
@@ -444,13 +492,19 @@ def analyze_pair_mtf(
         "session": _session_score(rank.symbol, as_of, cfg.sessions),
         "cross_asset": cross_asset_score,
         "positioning": positioning_score,
-        "execution_quality": execution_quality_score,
+        "execution_quality": combined_execution_quality,
     }
 
     computed = {
-        "STRUCTURE_INVALID": _htf_conflict(rank.direction, d1, h4, h1) or setup_type is None,
-        "CHASE_BLOCK": plan is None or plan.chase_distance_atr > float(plan_cfg["chase_block_atr"]),
-        "RR_BLOCK": plan is None or plan.rr2 is None or plan.rr2 < float(plan_cfg["minimum_tp2_rr"]),
+        "STRUCTURE_INVALID": _htf_conflict(rank.direction, d1, h4, h1),
+        "CHASE_BLOCK": bool(
+            plan is not None
+            and plan.chase_distance_atr > float(plan_cfg["chase_block_atr"])
+        ),
+        "RR_BLOCK": bool(
+            plan is not None
+            and (plan.rr2 is None or plan.rr2 < float(plan_cfg["minimum_tp2_rr"]))
+        ),
     }
     guard_flags = dict(external_guard_flags)
     guard_flags.update(computed)
@@ -466,10 +520,31 @@ def analyze_pair_mtf(
         minimum_coverage=0.80,
         minimum_pair_coverage=0.85,
     )
+
+    # Strategy phase caps prevent an incomplete pattern from skipping directly
+    # to ARMED/EXECUTION_READY merely because upstream evidence scores are high.
+    state = decision.state
+    if not decision.guards:
+        if setup_type is None and state not in {SignalState.NO_TRADE, SignalState.WATCH}:
+            state = SignalState.WATCH
+        elif setup_type is not None and not trigger_confirmed and state in {
+            SignalState.ARMED,
+            SignalState.EXECUTION_READY,
+        }:
+            state = SignalState.SETUP_FORMING
+        elif trigger_confirmed and plan is None and state in {
+            SignalState.ARMED,
+            SignalState.EXECUTION_READY,
+        }:
+            state = SignalState.SETUP_FORMING
+    if state != decision.state:
+        decision = replace(decision, state=state)
+
     return MTFAnalysis(
         rank.symbol,
         rank.direction,
         setup_type,
+        trigger_confirmed,
         d1,
         h4,
         h1,
