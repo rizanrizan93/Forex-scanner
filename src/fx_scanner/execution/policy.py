@@ -71,6 +71,9 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
     if live_safety.get("require_control_plane", False):
         if float(live_safety.get("control_state_max_age_seconds", 0)) <= 0:
             raise ConfigurationError("control_state_max_age_seconds must be positive")
+    if live_safety.get("require_persistent_idempotency", False):
+        if not str(live_safety.get("idempotency_state_path_env", "")).strip():
+            raise ConfigurationError("idempotency_state_path_env is required")
 
     lag = dict(runtime.get("max_lag_seconds", {}))
     required_lag = {"heavy_scan", "fast_setup", "execution_watch", "position_monitor"}
