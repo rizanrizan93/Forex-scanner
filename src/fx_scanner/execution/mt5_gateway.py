@@ -213,7 +213,40 @@ class MT5ExecutionGateway:
         # Instant/Request/Exchange execution may use RETURN.
         return int(mt5.ORDER_FILLING_RETURN)
 
-    def _request(self, intent: OrderIntent, *, deviation: int, magic: int, comment: str) -> dict[str, Any]:
+    @staticmethod
+    def _assert_final_market_geometry(
+        intent: OrderIntent,
+        executable_price: float,
+        *,
+        max_entry_drift_r: float,
+    ) -> None:
+        if intent.side == OrderSide.BUY:
+            if not (intent.stop_loss < executable_price < intent.take_profit):
+                raise CollectorUnavailable("MT5_FINAL_STRUCTURE_INVALID")
+        else:
+            if not (intent.take_profit < executable_price < intent.stop_loss):
+                raise CollectorUnavailable("MT5_FINAL_STRUCTURE_INVALID")
+
+        if intent.entry_price is None:
+            raise CollectorUnavailable("MT5_REVALIDATED_ENTRY_MISSING")
+        reference_risk = abs(float(intent.entry_price) - float(intent.stop_loss))
+        if reference_risk <= 0:
+            raise CollectorUnavailable("MT5_REVALIDATED_RISK_INVALID")
+        drift_r = abs(float(executable_price) - float(intent.entry_price)) / reference_risk
+        if drift_r > float(max_entry_drift_r):
+            raise CollectorUnavailable(
+                f"MT5_FINAL_PRICE_DRIFT_BLOCK:{drift_r:.6f}>{float(max_entry_drift_r):.6f}"
+            )
+
+    def _request(
+        self,
+        intent: OrderIntent,
+        *,
+        deviation: int,
+        magic: int,
+        comment: str,
+        max_entry_drift_r: float,
+    ) -> dict[str, Any]:
         with self._io_lock:
             if not self.connected:
                 raise CollectorUnavailable("MT5 gateway is not connected")
@@ -227,6 +260,12 @@ class MT5ExecutionGateway:
             price = self.current_price(symbol, intent.side) if intent.order_type == OrderType.MARKET else intent.entry_price
             if price is None:
                 raise ValueError("pending order requires entry_price")
+            if intent.order_type == OrderType.MARKET:
+                self._assert_final_market_geometry(
+                    intent,
+                    float(price),
+                    max_entry_drift_r=max_entry_drift_r,
+                )
             action = mt5.TRADE_ACTION_DEAL if intent.order_type == OrderType.MARKET else mt5.TRADE_ACTION_PENDING
             symbol_info = self.mt5.symbol_info(symbol)
             if symbol_info is None:
@@ -269,6 +308,7 @@ class MT5ExecutionGateway:
                 deviation=int(order_config.get("default_deviation_points", 20)),
                 magic=int(order_config.get("magic_number", 26083001)),
                 comment=comment,
+                max_entry_drift_r=float(order_config.get("max_preflight_entry_drift_r", 0.03)),
             )
             check = self.order_check(request)
             retcode = int(getattr(check, "retcode", -1))
