@@ -147,3 +147,17 @@ def test_news_block_boundary_is_inclusive():
         events=(event,),
     )
     assert at_pre.blocked and at_post.blocked
+
+
+def test_boolean_normalizer_polarity_and_factor_age_are_rejected():
+    from fx_scanner.exceptions import DataContractError
+
+    with pytest.raises(DataContractError, match="polarity"):
+        DeltaNormalizer(scale=1.0, polarity=True)
+    with pytest.raises(DataContractError, match="max_age_seconds"):
+        FactorBinding(
+            SeriesProvider("RATE", 2.5, previous=2.25),
+            "RATE",
+            DeltaNormalizer(scale=0.25),
+            True,
+        )
