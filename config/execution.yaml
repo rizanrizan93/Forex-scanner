@@ -93,6 +93,7 @@ order:
   require_broker_preflight: true
   require_order_check: true
   max_spread_ratio: 1.75
+  max_preflight_entry_drift_r: 0.03
 
 live_safety:
   live_enable_env: FX_LIVE_TRADING_ENABLED
