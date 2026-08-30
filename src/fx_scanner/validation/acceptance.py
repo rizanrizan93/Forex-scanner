@@ -117,8 +117,13 @@ def evaluate_acceptance(
 
     if parameter_perturbation is None:
         blockers.append("PARAMETER_PERTURBATION_MISSING")
-    elif not parameter_perturbation.passed:
-        blockers.append("PARAMETER_PERTURBATION_FAIL")
+    else:
+        required_variants = set(validation_cfg["parameter_perturbation"]["required_variants"])
+        missing_variants = required_variants - set(parameter_perturbation.variants)
+        if missing_variants:
+            blockers.append("PARAMETER_PERTURBATION_COVERAGE_FAIL")
+        if not parameter_perturbation.passed:
+            blockers.append("PARAMETER_PERTURBATION_FAIL")
 
     if demo_forward_passed is not True:
         blockers.append("DEMO_FORWARD_PENDING")
