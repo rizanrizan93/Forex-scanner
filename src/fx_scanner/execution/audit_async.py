@@ -34,7 +34,7 @@ class AsyncOperationalAudit:
             return False
 
     def _run(self) -> None:
-        while not self._stop.is_set():
+        while not self._stop.is_set() or not self.queue.empty():
             try:
                 event = self.queue.get(timeout=self.poll_seconds)
             except Empty:
