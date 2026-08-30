@@ -1,4 +1,4 @@
--- Development-only reference symbols. Do not use --include-seed on production.
+-- Canonical reference symbols for the FX scanner universe.
 insert into public.fx_symbols (symbol, base_currency, quote_currency, pip_size, tier)
 values
   ('EURUSD','EUR','USD',0.0001,'A'),
