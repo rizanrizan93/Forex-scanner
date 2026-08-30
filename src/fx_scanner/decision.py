@@ -38,6 +38,8 @@ def build_decision(
     minimum_coverage: float = 0.80,
     minimum_pair_coverage: float = 0.85,
 ) -> DecisionSnapshot:
+    if not 0 < minimum_pair_coverage <= 1:
+        raise ValueError("minimum_pair_coverage must be in (0,1]")
     guard_result: GuardResult = evaluate_hard_guards(
         required_names=required_guards,
         **dict(guard_flags),
