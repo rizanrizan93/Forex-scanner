@@ -237,6 +237,7 @@ def structure_snapshot(
     *,
     swing_lookback: int = 2,
     atr_period: int = 14,
+    sweep_reclaim_bars: int = 3,
 ) -> StructureSnapshot:
     _validate_bars(bars, max(7, swing_lookback * 2 + 3))
     highs = _pivot_highs(bars, swing_lookback)
@@ -266,7 +267,12 @@ def structure_snapshot(
         trend = "UNKNOWN"
 
     displacement = detect_displacement(bars, atr_period=atr_period)
-    sweep = detect_sweep(bars, lookback=swing_lookback, atr_period=atr_period)
+    sweep = detect_sweep(
+        bars,
+        lookback=swing_lookback,
+        atr_period=atr_period,
+        reclaim_bars=sweep_reclaim_bars,
+    )
     mss: str | None = None
     if (
         bos == "BULLISH"

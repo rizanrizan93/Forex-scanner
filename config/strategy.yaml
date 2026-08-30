@@ -1,0 +1,49 @@
+selection:
+  macro_compatible_top: 8
+  deep_analysis_top: 5
+
+mtf:
+  required_timeframes: [D1, H4, H1, M15, M5]
+  swing_lookback: 2
+  atr_period: 14
+  minimum_bars:
+    D1: 20
+    H4: 30
+    H1: 40
+    M15: 50
+    M5: 60
+  max_bar_age_seconds:
+    D1: 259200
+    H4: 28800
+    H1: 7200
+    M15: 1800
+    M5: 600
+
+liquidity:
+  equal_level_tolerance_atr: 0.15
+  equal_level_min_touches: 2
+  equal_level_lookback_bars: 80
+  equilibrium_band: 0.05
+  sweep_reclaim_bars: 3
+  order_block_search_bars: 40
+  order_block_origin_lookback: 5
+  fvg_scan_bars: 60
+
+trade_plan:
+  sl_buffer_atr: 0.15
+  chase_ok_atr: 0.25
+  chase_block_atr: 0.50
+  minimum_tp2_rr: 1.50
+  preferred_tp2_rr: 2.00
+  minimum_entry_zone_atr: 0.05
+
+setup:
+  liquidity_sweep_reversal:
+    require_m15_sweep: true
+    require_m5_displacement: true
+    require_m5_structure_break: true
+  trend_continuation:
+    require_d1_h4_alignment: true
+    require_h1_alignment: true
+    require_m15_fvg: true
+    require_m5_displacement: true

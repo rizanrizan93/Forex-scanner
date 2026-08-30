@@ -103,3 +103,83 @@ def test_provider_negative_cache_ttl_cannot_be_zero(tmp_path):
     write_yaml(path, data)
     with pytest.raises(ConfigurationError, match="negative_ttl_seconds"):
         load_project_config(root)
+
+
+def test_v08_top5_selection_cannot_be_expanded(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "strategy.yaml"
+    data = read_yaml(path)
+    data["selection"]["deep_analysis_top"] = 8
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="deep_analysis_top"):
+        load_project_config(root)
+
+
+def test_v08_rr_gate_cannot_be_weakened(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "strategy.yaml"
+    data = read_yaml(path)
+    data["trade_plan"]["minimum_tp2_rr"] = 1.2
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="RR contract"):
+        load_project_config(root)
+
+
+def test_v08_chase_block_cannot_exceed_half_atr(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "strategy.yaml"
+    data = read_yaml(path)
+    data["trade_plan"]["chase_block_atr"] = 0.75
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="chase thresholds"):
+        load_project_config(root)
+
+
+def test_v08_required_setup_confirmation_cannot_be_disabled(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "strategy.yaml"
+    data = read_yaml(path)
+    data["setup"]["liquidity_sweep_reversal"]["require_m5_displacement"] = False
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="requirements cannot be disabled"):
+        load_project_config(root)
+
+
+def test_v08_minimum_bars_cannot_be_reduced(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "strategy.yaml"
+    data = read_yaml(path)
+    data["mtf"]["minimum_bars"]["M5"] = 20
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="M5 cannot be below 60"):
+        load_project_config(root)
+
+
+def test_v08_bar_freshness_window_cannot_be_weakened(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "strategy.yaml"
+    data = read_yaml(path)
+    data["mtf"]["max_bar_age_seconds"]["M5"] = 3600
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="max_bar_age_seconds.M5"):
+        load_project_config(root)
+
+
+def test_v08_fred_endpoint_cannot_be_redirected_to_other_path(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "providers.yaml"
+    data = read_yaml(path)
+    data["sources"]["FEDERAL_RESERVE_FRED"]["base_url"] = "https://fred.stlouisfed.org/evil.csv"
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="canonical endpoint"):
+        load_project_config(root)
+
+
+def test_v08_rba_endpoint_cannot_be_redirected_to_other_host(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "providers.yaml"
+    data = read_yaml(path)
+    data["sources"]["RBA_CASH_RATE"]["allowed_host"] = "example.com"
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="HTTPS host contract"):
+        load_project_config(root)

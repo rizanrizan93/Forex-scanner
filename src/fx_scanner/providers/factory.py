@@ -5,7 +5,7 @@ from typing import Any, Mapping
 
 from ..exceptions import ConfigurationError
 from .cache import ProviderCache
-from .official import BankOfCanadaValetProvider, EcbDataPortalProvider
+from .official import BankOfCanadaValetProvider, EcbDataPortalProvider, FredCsvProvider, RbaCashRateProvider
 from .orchestrator import ProviderOrchestrator
 from .transport import UrllibHttpTransport
 
@@ -42,6 +42,8 @@ def build_provider_runtime(provider_config: Mapping[str, Any]) -> ProviderRuntim
 
     ecb_cfg = sources["ECB_DATA_PORTAL"]
     boc_cfg = sources["BANK_OF_CANADA_VALET"]
+    fred_cfg = sources["FEDERAL_RESERVE_FRED"]
+    rba_cfg = sources["RBA_CASH_RATE"]
     providers: dict[str, object] = {
         "ECB_DATA_PORTAL": EcbDataPortalProvider(
             transport,
@@ -54,6 +56,18 @@ def build_provider_runtime(provider_config: Mapping[str, Any]) -> ProviderRuntim
             base_url=str(boc_cfg["base_url"]),
             allowed_host=str(boc_cfg["allowed_host"]),
             default_max_age_seconds=float(boc_cfg["default_max_age_seconds"]),
+        ),
+        "FEDERAL_RESERVE_FRED": FredCsvProvider(
+            transport,
+            base_url=str(fred_cfg["base_url"]),
+            allowed_host=str(fred_cfg["allowed_host"]),
+            default_max_age_seconds=float(fred_cfg["default_max_age_seconds"]),
+        ),
+        "RBA_CASH_RATE": RbaCashRateProvider(
+            transport,
+            base_url=str(rba_cfg["base_url"]),
+            allowed_host=str(rba_cfg["allowed_host"]),
+            default_max_age_seconds=float(rba_cfg["default_max_age_seconds"]),
         ),
     }
     unknown = set(sources) - set(providers)

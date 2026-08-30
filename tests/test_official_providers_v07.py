@@ -2,7 +2,12 @@ from datetime import datetime, timezone
 
 import pytest
 
-from fx_scanner.providers.official import BankOfCanadaValetProvider, EcbDataPortalProvider
+from fx_scanner.providers.official import (
+    BankOfCanadaValetProvider,
+    EcbDataPortalProvider,
+    FredCsvProvider,
+    RbaCashRateProvider,
+)
 from fx_scanner.providers.semantics import ProviderStatus
 from fx_scanner.providers.transport import HttpResponse, HttpTransportError, UrllibHttpTransport
 
@@ -95,3 +100,65 @@ def test_official_numeric_providers_reject_multi_series_requests():
     result = boc.fetch_numeric("V39079,V39078")
     assert result.status == ProviderStatus.INVALID
     assert result.value is None
+
+
+def test_fred_csv_provider_reads_exact_series_history():
+    body = (
+        b"observation_date,IORB\n"
+        b"2026-08-27,3.65\n"
+        b"2026-08-28,3.65\n"
+    )
+    transport = FakeTransport(body)
+    provider = FredCsvProvider(
+        transport,
+        clock=lambda: datetime(2026, 8, 30, 0, tzinfo=UTC),
+    )
+    result = provider.fetch_numeric("IORB", max_age_seconds=259200)
+    assert result.status == ProviderStatus.AVAILABLE
+    assert result.value.value == pytest.approx(3.65)
+    assert result.value.previous_value == pytest.approx(3.65)
+    assert result.value.observed_at == datetime(2026, 8, 28, tzinfo=UTC)
+    assert "id=IORB" in transport.calls[0][0]
+
+
+def test_fred_provider_rejects_non_exact_series():
+    provider = FredCsvProvider(FakeTransport(b""))
+    result = provider.fetch_numeric("IORB,OTHER")
+    assert result.status == ProviderStatus.INVALID
+    assert result.value is None
+
+
+def test_rba_cash_rate_provider_parses_official_decision_table():
+    body = b"""
+    <html><body><table>
+      <tr><th>Effective Date</th><th>Change</th><th>Cash rate target %</th></tr>
+      <tr><td>12 Aug 2026</td><td>0.00</td><td>4.35</td></tr>
+      <tr><td>17 Jun 2026</td><td>0.00</td><td>4.35</td></tr>
+      <tr><td>6 May 2026</td><td>+0.25</td><td>4.35</td></tr>
+    </table></body></html>
+    """
+    provider = RbaCashRateProvider(
+        FakeTransport(body),
+        clock=lambda: datetime(2026, 8, 30, tzinfo=UTC),
+    )
+    result = provider.fetch_numeric("CASH_RATE_TARGET", max_age_seconds=3888000)
+    assert result.status == ProviderStatus.AVAILABLE
+    assert result.value.value == pytest.approx(4.35)
+    assert result.value.previous_value == pytest.approx(4.35)
+    assert result.value.observed_at == datetime(2026, 8, 12, tzinfo=UTC)
+
+
+def test_rba_cash_rate_provider_fails_closed_if_table_contract_disappears():
+    provider = RbaCashRateProvider(
+        FakeTransport(b"<html><body>No decision table</body></html>"),
+        clock=lambda: NOW,
+    )
+    result = provider.fetch_numeric("CASH_RATE_TARGET")
+    assert result.status == ProviderStatus.MISSING
+    assert result.value is None
+
+
+def test_rba_cash_rate_provider_rejects_unknown_series():
+    provider = RbaCashRateProvider(FakeTransport(b""))
+    result = provider.fetch_numeric("OTHER")
+    assert result.status == ProviderStatus.INVALID

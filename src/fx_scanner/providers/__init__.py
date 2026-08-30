@@ -1,5 +1,5 @@
 from .cache import ProviderCache
-from .official import BankOfCanadaValetProvider, EcbDataPortalProvider
+from .official import BankOfCanadaValetProvider, EcbDataPortalProvider, FredCsvProvider, RbaCashRateProvider
 from .factory import ProviderRuntime, build_provider_runtime
 from .news import EconomicEvent, EventImpact, NewsBlockDecision, evaluate_news_block
 from .normalization import DeltaNormalizer, LevelNormalizer
@@ -19,6 +19,8 @@ __all__ = [
     "ProviderCache",
     "BankOfCanadaValetProvider",
     "EcbDataPortalProvider",
+    "FredCsvProvider",
+    "RbaCashRateProvider",
     "ProviderRuntime",
     "build_provider_runtime",
     "EconomicEvent",
