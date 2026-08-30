@@ -1,0 +1,36 @@
+transport:
+  timeout_seconds: 10
+  max_response_bytes: 1048576
+  user_agent: FX-Institutional-Scanner/0.7
+
+cache:
+  positive_ttl_seconds: 300
+  negative_ttl_seconds: 60
+  stale_ttl_seconds: 30
+
+quorum:
+  minimum_success: 1
+  maximum_numeric_conflict: 10.0
+
+sources:
+  ECB_DATA_PORTAL:
+    enabled: true
+    official: true
+    base_url: https://data-api.ecb.europa.eu/service/data
+    allowed_host: data-api.ecb.europa.eu
+    default_max_age_seconds: 172800
+
+  BANK_OF_CANADA_VALET:
+    enabled: true
+    official: true
+    base_url: https://www.bankofcanada.ca/valet/observations
+    allowed_host: www.bankofcanada.ca
+    default_max_age_seconds: 172800
+
+smoke_series:
+  ECB_EURUSD_REFERENCE:
+    provider: ECB_DATA_PORTAL
+    series: EXR/D.USD.EUR.SP00.A
+  BOC_POLICY_RATE:
+    provider: BANK_OF_CANADA_VALET
+    series: V39079
