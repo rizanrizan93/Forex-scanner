@@ -98,14 +98,17 @@ class NumericObservation:
             if isinstance(self.previous_value, bool) or not isfinite(float(self.previous_value)):
                 raise DataContractError("previous numeric observation must be finite numeric")
             object.__setattr__(self, "previous_value", float(self.previous_value))
+        if (self.previous_value is None) != (self.previous_observed_at is None):
+            raise DataContractError(
+                "previous_value and previous_observed_at must be supplied together"
+            )
         if self.previous_observed_at is not None:
             if self.previous_observed_at.tzinfo is None:
                 raise DataContractError("previous observation timestamp must be timezone-aware")
-            object.__setattr__(
-                self,
-                "previous_observed_at",
-                self.previous_observed_at.astimezone(UTC),
-            )
+            previous_at = self.previous_observed_at.astimezone(UTC)
+            if previous_at >= self.observed_at:
+                raise DataContractError("previous observation must predate current observation")
+            object.__setattr__(self, "previous_observed_at", previous_at)
 
 
 @dataclass(frozen=True, slots=True)
