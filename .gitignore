@@ -14,6 +14,7 @@ venv/
 
 # Runtime state / secrets
 state/
+.streamlit/secrets.toml
 
 # Local market data / DB
 data/
