@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from math import isfinite
 from typing import Mapping, Sequence
@@ -76,6 +76,7 @@ class MTFAnalysis:
     trade_plan: TradePlan | None
     conviction_components: Mapping[str, float | None]
     computed_guards: Mapping[str, bool]
+    stale_timeframes: tuple[str, ...]
     decision: DecisionSnapshot
 
 
@@ -101,6 +102,49 @@ def select_pair_candidates(
     macro = tuple(compatible[:macro_compatible_top])
     deep = tuple(macro[:deep_analysis_top])
     return UniverseSelection(macro, deep)
+
+
+def _closed_bar_bundle(
+    bars_by_timeframe: Mapping[str, Sequence[Bar]],
+    *,
+    as_of: datetime,
+    timeframe_seconds: Mapping[str, int],
+) -> dict[str, tuple[Bar, ...]]:
+    closed: dict[str, tuple[Bar, ...]] = {}
+    for tf, bars in bars_by_timeframe.items():
+        seconds = timeframe_seconds.get(tf)
+        if seconds is None:
+            continue
+        close_cutoff = ensure_utc(as_of)
+        closed[tf] = tuple(
+            bar for bar in bars
+            if bar.timestamp + timedelta(seconds=int(seconds)) <= close_cutoff
+        )
+    return closed
+
+
+def _stale_timeframes(
+    bars_by_timeframe: Mapping[str, Sequence[Bar]],
+    *,
+    as_of: datetime,
+    timeframe_seconds: Mapping[str, int],
+    max_age_seconds: Mapping[str, int],
+) -> tuple[str, ...]:
+    now = ensure_utc(as_of)
+    stale: list[str] = []
+    for tf in ("D1", "H4", "H1", "M15", "M5"):
+        bars = bars_by_timeframe.get(tf, ())
+        if not bars:
+            stale.append(tf)
+            continue
+        last_close = bars[-1].timestamp + timedelta(seconds=int(timeframe_seconds[tf]))
+        age = (now - last_close).total_seconds()
+        if age < -1:
+            stale.append(tf)
+            continue
+        if age > float(max_age_seconds[tf]):
+            stale.append(tf)
+    return tuple(stale)
 
 
 def _validate_bundle(
@@ -390,21 +434,58 @@ def analyze_pair_mtf(
     mtf_cfg = strategy["mtf"]
     liquidity_cfg = strategy["liquidity"]
     plan_cfg = strategy["trade_plan"]
-    _validate_bundle(rank.symbol, bars_by_timeframe, mtf_cfg["minimum_bars"])
+    closed_bars = _closed_bar_bundle(
+        bars_by_timeframe,
+        as_of=as_of,
+        timeframe_seconds=cfg.timeframes,
+    )
+    _validate_bundle(rank.symbol, closed_bars, mtf_cfg["minimum_bars"])
+    stale_tfs = _stale_timeframes(
+        closed_bars,
+        as_of=as_of,
+        timeframe_seconds=cfg.timeframes,
+        max_age_seconds=mtf_cfg["max_bar_age_seconds"],
+    )
 
     swing = int(mtf_cfg["swing_lookback"])
     atr_period = int(mtf_cfg["atr_period"])
-    d1 = structure_snapshot(list(bars_by_timeframe["D1"]), swing_lookback=swing, atr_period=atr_period)
-    h4 = structure_snapshot(list(bars_by_timeframe["H4"]), swing_lookback=swing, atr_period=atr_period)
-    h1 = structure_snapshot(list(bars_by_timeframe["H1"]), swing_lookback=swing, atr_period=atr_period)
-    m15 = structure_snapshot(list(bars_by_timeframe["M15"]), swing_lookback=swing, atr_period=atr_period)
-    m5 = structure_snapshot(list(bars_by_timeframe["M5"]), swing_lookback=swing, atr_period=atr_period)
+    reclaim_bars = int(liquidity_cfg["sweep_reclaim_bars"])
+    d1 = structure_snapshot(
+        list(closed_bars["D1"]),
+        swing_lookback=swing,
+        atr_period=atr_period,
+        sweep_reclaim_bars=reclaim_bars,
+    )
+    h4 = structure_snapshot(
+        list(closed_bars["H4"]),
+        swing_lookback=swing,
+        atr_period=atr_period,
+        sweep_reclaim_bars=reclaim_bars,
+    )
+    h1 = structure_snapshot(
+        list(closed_bars["H1"]),
+        swing_lookback=swing,
+        atr_period=atr_period,
+        sweep_reclaim_bars=reclaim_bars,
+    )
+    m15 = structure_snapshot(
+        list(closed_bars["M15"]),
+        swing_lookback=swing,
+        atr_period=atr_period,
+        sweep_reclaim_bars=reclaim_bars,
+    )
+    m5 = structure_snapshot(
+        list(closed_bars["M5"]),
+        swing_lookback=swing,
+        atr_period=atr_period,
+        sweep_reclaim_bars=reclaim_bars,
+    )
 
-    current_price = float(bars_by_timeframe["M5"][-1].close)
+    current_price = float(closed_bars["M5"][-1].close)
     liquidity = build_liquidity_map(
-        d1_bars=bars_by_timeframe["D1"],
-        h1_bars=bars_by_timeframe["H1"],
-        intraday_bars=bars_by_timeframe["M5"],
+        d1_bars=closed_bars["D1"],
+        h1_bars=closed_bars["H1"],
+        intraday_bars=closed_bars["M5"],
         as_of=as_of,
         current_price=current_price,
         session_config=cfg.sessions,
@@ -427,7 +508,7 @@ def analyze_pair_mtf(
         h1=h1,
         m5=m5,
         liquidity=liquidity,
-        m5_bars=bars_by_timeframe["M5"],
+        m5_bars=closed_bars["M5"],
         atr_period=atr_period,
         sl_buffer_atr=float(plan_cfg["sl_buffer_atr"]),
         minimum_entry_zone_atr=float(plan_cfg["minimum_entry_zone_atr"]),
@@ -497,6 +578,7 @@ def analyze_pair_mtf(
 
     computed = {
         "STRUCTURE_INVALID": _htf_conflict(rank.direction, d1, h4, h1),
+        "STALE_SIGNAL": bool(stale_tfs),
         "CHASE_BLOCK": bool(
             plan is not None
             and plan.chase_distance_atr > float(plan_cfg["chase_block_atr"])
@@ -554,6 +636,7 @@ def analyze_pair_mtf(
         plan,
         components,
         computed,
+        stale_tfs,
         decision,
     )
 
