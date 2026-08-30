@@ -1,4 +1,4 @@
--- FX Institutional Scanner v0.1
+-- FX Institutional Scanner v0.4
 -- Declarative schema for a NEW dedicated FX Supabase project.
 -- Do not apply this to existing stock-scanner projects.
 -- No extension version pins are used.
@@ -20,7 +20,7 @@ create table if not exists public.scanner_runs (
   mode text not null check (mode in ('RESEARCH_ONLY','PAPER_ONLY','DEMO_ONLY','REAL_MONEY_CANDIDATE')),
   status text not null,
   code_version text not null,
-  data_contract_version text not null default '0.1',
+  data_contract_version text not null default '0.4',
   created_at timestamptz not null default now()
 );
 create index if not exists scanner_runs_started_at_idx on public.scanner_runs (started_at desc);
@@ -293,3 +293,19 @@ revoke all on table public.broker_accounts from anon, authenticated;
 revoke all on table public.execution_control from anon, authenticated;
 revoke all on table public.runtime_heartbeats from anon, authenticated;
 revoke all on table public.broker_order_events from anon, authenticated;
+
+
+-- New Supabase projects no longer auto-grant Data API access.
+-- Backend-only access: secret/service_role may use the Data API; public roles stay closed.
+grant usage on schema public to service_role;
+grant select, insert, update, delete on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to service_role;
+alter default privileges in schema public grant select, insert, update, delete on tables to service_role;
+alter default privileges in schema public grant usage, select on sequences to service_role;
+
+-- Fail-closed initial mobile/control-plane state.
+insert into public.execution_control
+  (control_key, execution_mode, new_orders_enabled, emergency_stop, close_all_requested, version, metadata)
+values
+  ('primary', 'DISABLED', false, true, false, 1, '{"source":"bootstrap_v0.4"}'::jsonb)
+on conflict (control_key) do nothing;
