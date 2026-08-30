@@ -32,6 +32,7 @@ class ExecutionRouter:
         kill_switch: KillSwitch | None = None,
         gateway=None,
         session=None,
+        control_gate=None,
     ):
         self.policy = policy
         self.duplicates = duplicate_guard or DuplicateOrderGuard()
@@ -42,6 +43,7 @@ class ExecutionRouter:
         )
         self.gateway = gateway
         self.session = session
+        self.control_gate = control_gate
 
     def _assert_dynamic_safety(self, intent: OrderIntent) -> None:
         if self.kill_switch.engaged():
@@ -56,6 +58,17 @@ class ExecutionRouter:
         if self.duplicates.is_duplicate(intent.signal_id):
             raise ExecutionBlocked("DUPLICATE_SIGNAL")
 
+    def _assert_control_plane(self) -> None:
+        safety = self.policy.live_safety
+        if not safety.get("require_control_plane", False):
+            return
+        if self.control_gate is None:
+            raise ExecutionBlocked("CONTROL_PLANE_NOT_CONFIGURED")
+        try:
+            self.control_gate.assert_orders_allowed(self.policy.mode.value)
+        except Exception as exc:
+            raise ExecutionBlocked(f"CONTROL_PLANE_BLOCK:{exc}") from exc
+
     def _assert_live_environment(self, account_id: str) -> None:
         safety = self.policy.live_safety
         if os.getenv(safety["live_enable_env"]) != safety["live_enable_value"]:
@@ -64,6 +77,7 @@ class ExecutionRouter:
         allowlist = {x.strip() for x in allowed_raw.split(",") if x.strip()}
         if safety.get("require_account_allowlist", True) and str(account_id) not in allowlist:
             raise ExecutionBlocked("ACCOUNT_NOT_ALLOWLISTED")
+        self._assert_control_plane()
 
     def execute(self, intent: OrderIntent, *, user_confirmed: bool = False) -> OrderReceipt:
         self._assert_common(intent)
@@ -111,6 +125,7 @@ class ExecutionRouter:
                 raise ExecutionBlocked(f"PREFLIGHT_REJECTED:{preflight.code}:{preflight.message}")
 
             self._assert_dynamic_safety(intent)
+            self._assert_control_plane()
 
             result = self.gateway.submit(preflight)
             if not result.accepted:
