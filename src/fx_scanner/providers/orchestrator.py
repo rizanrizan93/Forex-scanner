@@ -35,6 +35,8 @@ class ProviderOrchestrator:
         minimum_success: int = 1,
         maximum_numeric_conflict: float = 10.0,
     ):
+        if isinstance(minimum_success, bool) or isinstance(maximum_numeric_conflict, bool):
+            raise ValueError("provider quorum configuration cannot be boolean")
         if minimum_success <= 0 or maximum_numeric_conflict < 0:
             raise ValueError("invalid provider quorum configuration")
         self.cache = cache or ProviderCache()
