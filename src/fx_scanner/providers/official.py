@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 import csv
 import io
 import json
@@ -20,9 +21,29 @@ from .transport import HttpTransportError
 UTC = timezone.utc
 
 
-def _date_to_utc(value: str) -> datetime:
-    parsed = date.fromisoformat(value[:10])
-    return datetime.combine(parsed, time.min, tzinfo=UTC)
+def _period_to_utc(value: str) -> datetime:
+    raw = str(value).strip()
+    try:
+        if len(raw) >= 10 and raw[4] == "-" and raw[7] == "-":
+            parsed = date.fromisoformat(raw[:10])
+            return datetime.combine(parsed, time.min, tzinfo=UTC)
+        if len(raw) == 7 and raw[4] == "-":
+            year, month = map(int, raw.split("-"))
+            day = calendar.monthrange(year, month)[1]
+            return datetime(year, month, day, tzinfo=UTC)
+        if len(raw) == 7 and raw[4:6] == "-Q":
+            year = int(raw[:4])
+            quarter = int(raw[-1])
+            if quarter not in (1, 2, 3, 4):
+                raise ValueError("quarter out of range")
+            month = quarter * 3
+            day = calendar.monthrange(year, month)[1]
+            return datetime(year, month, day, tzinfo=UTC)
+        if len(raw) == 4:
+            return datetime(int(raw), 12, 31, tzinfo=UTC)
+    except (ValueError, TypeError):
+        pass
+    raise ValueError(f"unsupported observation period: {raw}")
 
 
 def _failure(provider: str, url: str, series: str, category, message: str):
@@ -81,7 +102,7 @@ class EcbDataPortalProvider:
                 if not raw_time or raw_value in (None, "", "."):
                     continue
                 try:
-                    parsed.append((_date_to_utc(raw_time), float(raw_value)))
+                    parsed.append((_period_to_utc(raw_time), float(raw_value)))
                 except (ValueError, TypeError):
                     continue
             parsed.sort(key=lambda x: x[0])
@@ -169,7 +190,7 @@ class BankOfCanadaValetProvider:
                 if not raw_date or raw_value in (None, "", "NA"):
                     continue
                 try:
-                    parsed.append((_date_to_utc(str(raw_date)), float(raw_value)))
+                    parsed.append((_period_to_utc(str(raw_date)), float(raw_value)))
                 except (TypeError, ValueError):
                     continue
             parsed.sort(key=lambda x: x[0])
