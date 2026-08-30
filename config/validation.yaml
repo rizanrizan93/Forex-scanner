@@ -13,12 +13,26 @@ costs:
   stress_spread_multiplier: 1.25
   stress_slippage_multiplier: 1.50
 
+dataset_split:
+  train_fraction: 0.60
+  validation_fraction: 0.20
+  oos_fraction: 0.20
+
 walk_forward:
   train_fraction: 0.60
   test_fraction: 0.20
   minimum_train_trades: 100
   minimum_test_trades: 30
   step_fraction: 0.20
+  fold_win_rate_min: 0.50
+  fold_profit_factor_min: 1.10
+  fold_expectancy_r_min: 0.05
+  minimum_pass_fraction: 0.67
+
+stress_acceptance:
+  win_rate_min: 0.50
+  profit_factor_min: 1.10
+  expectancy_r_min: 0.05
 
 monte_carlo:
   simulations: 1000
@@ -28,6 +42,15 @@ monte_carlo:
 
 regimes:
   minimum_trades_per_regime: 30
+  minimum_eligible_regimes: 2
+  minimum_expectancy_r: 0.00
+  minimum_profit_factor: 1.00
+
+parameter_perturbation:
+  minimum_variants: 5
+  profit_factor_min: 1.10
+  expectancy_r_min: 0.05
+  minimum_pass_fraction: 0.80
 
 performance_budget:
   research_validation_in_hot_path: false
