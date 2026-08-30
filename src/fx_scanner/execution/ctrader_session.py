@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from threading import Event, Lock, Thread
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 from ..exceptions import CollectorUnavailable, MissingOptionalDependency
@@ -34,6 +34,8 @@ class CTraderOpenApiSession:
         client_secret: str,
         access_token: str,
         account_id: int,
+        refresh_token: str | None = None,
+        token_update_callback: Callable[[str, str], None] | None = None,
         environment: str = "demo",
         request_timeout_seconds: float = 10.0,
     ):
@@ -48,6 +50,7 @@ class CTraderOpenApiSession:
                 ProtoOAGetPositionUnrealizedPnLReq,
                 ProtoOANewOrderReq,
                 ProtoOAReconcileReq,
+                ProtoOARefreshTokenReq,
                 ProtoOASpotEvent,
                 ProtoOASubscribeSpotsReq,
                 ProtoOASymbolByIdReq,
@@ -69,6 +72,7 @@ class CTraderOpenApiSession:
             "GetPositionUnrealizedPnLReq": ProtoOAGetPositionUnrealizedPnLReq,
             "NewOrderReq": ProtoOANewOrderReq,
             "ReconcileReq": ProtoOAReconcileReq,
+            "RefreshTokenReq": ProtoOARefreshTokenReq,
             "SpotEvent": ProtoOASpotEvent,
             "SubscribeSpotsReq": ProtoOASubscribeSpotsReq,
             "SymbolByIdReq": ProtoOASymbolByIdReq,
@@ -78,6 +82,8 @@ class CTraderOpenApiSession:
         self.client_id = client_id
         self.client_secret = client_secret
         self.access_token = access_token
+        self.refresh_token = refresh_token
+        self.token_update_callback = token_update_callback
         self.account_id = int(account_id)
         self.environment = environment.lower()
         if self.environment not in {"demo", "live"}:
@@ -183,6 +189,24 @@ class CTraderOpenApiSession:
             raise CollectorUnavailable(f"cTrader request failed: {box['error']}")
         return box["result"]
 
+    def _refresh_tokens(self) -> None:
+        if not self.refresh_token:
+            raise CollectorUnavailable("cTrader refresh token unavailable")
+        req = self.msg["RefreshTokenReq"]()
+        req.refreshToken = self.refresh_token
+        res = self._send_sync(req, client_msg_id=f"refresh-{uuid4().hex}")
+        access = str(getattr(res, "accessToken", "") or "")
+        refresh = str(getattr(res, "refreshToken", "") or "")
+        if not access or not refresh:
+            raise CollectorUnavailable("cTrader token refresh returned incomplete credentials")
+        self.access_token = access
+        self.refresh_token = refresh
+        if self.token_update_callback is not None:
+            try:
+                self.token_update_callback(access, refresh)
+            except Exception as exc:
+                raise CollectorUnavailable("cTrader token refresh persistence failed") from exc
+
     def connect(self) -> None:
         if self.health():
             return
@@ -199,7 +223,14 @@ class CTraderOpenApiSession:
         account = self.msg["AccountAuthReq"]()
         account.ctidTraderAccountId = self.account_id
         account.accessToken = self.access_token
-        self._send_sync(account, client_msg_id=f"acct-{uuid4().hex}")
+        try:
+            self._send_sync(account, client_msg_id=f"acct-{uuid4().hex}")
+        except Exception:
+            if not self.refresh_token:
+                raise
+            self._refresh_tokens()
+            account.accessToken = self.access_token
+            self._send_sync(account, client_msg_id=f"acct-refresh-{uuid4().hex}")
         self._authenticated.set()
 
     def ensure_connected(self) -> None:
