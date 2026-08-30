@@ -268,6 +268,21 @@ class BacktestEngine:
         if timeframe_seconds <= 0:
             raise DataContractError("timeframe_seconds must be positive")
         ordered = self._validate_bars(intent, bars)
+        if not ordered:
+            return BacktestTrade(
+                intent,
+                TradeOutcome.MISSED,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                0,
+                False,
+                "EMPTY_SYMBOL_HISTORY",
+            )
         future = [b for b in ordered if b.timestamp > intent.signal_at]
         if not future:
             return BacktestTrade(
@@ -299,8 +314,33 @@ class BacktestEngine:
                 )
                 break
         if entry_bar_index is None or entry_price is None or spread_pips is None or slippage_pips is None:
+            if len(future) < intent.entry_expiry_bars:
+                return BacktestTrade(
+                    intent,
+                    TradeOutcome.OPEN,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    0,
+                    False,
+                    "HISTORY_ENDED_BEFORE_ENTRY_EXPIRY",
+                )
             return BacktestTrade(
-                intent, TradeOutcome.MISSED, None, None, None, None, None, None, None, 0, False,
+                intent,
+                TradeOutcome.MISSED,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                0,
+                False,
                 "ENTRY_NOT_TOUCHED_BEFORE_EXPIRY",
             )
 
@@ -403,6 +443,26 @@ class BacktestEngine:
                     slippage_pips,
                     exit_spread_pips,
                 )
+
+        if len(evaluation) < intent.maximum_hold_bars + 1:
+            last_seen = evaluation[-1]
+            return BacktestTrade(
+                intent,
+                TradeOutcome.OPEN,
+                entry_bar.timestamp,
+                None,
+                entry_price,
+                None,
+                None,
+                None,
+                None,
+                max(0, len(evaluation) - 1),
+                False,
+                "HISTORY_ENDED_BEFORE_MAX_HOLD",
+                spread_pips,
+                slippage_pips,
+                self._spread_pips(intent, last_seen),
+            )
 
         last = evaluation[held_limit - 1]
         exit_spread_pips = self._spread_pips(intent, last)
