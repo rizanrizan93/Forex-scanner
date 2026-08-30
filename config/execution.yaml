@@ -60,6 +60,8 @@ live_safety:
   require_account_allowlist: true
   kill_switch_env: FX_KILL_SWITCH
   kill_switch_safe_value: "0"
+  require_control_plane: true
+  control_state_max_age_seconds: 5
 
 modes:
   allowed:
