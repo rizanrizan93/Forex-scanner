@@ -139,11 +139,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_runtime_smoke)
 
     p = sub.add_parser("provider-smoke")
-    p.add_argument(
-        "--series",
-        default="ECB_EURUSD_REFERENCE",
-        choices=("ECB_EURUSD_REFERENCE", "BOC_POLICY_RATE"),
-    )
+    p.add_argument("--series", default="ECB_EURUSD_REFERENCE")
     p.set_defaults(func=cmd_provider_smoke)
 
     p = sub.add_parser("mt5-smoke")
