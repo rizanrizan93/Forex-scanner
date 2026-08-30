@@ -1,4 +1,4 @@
-# FX Institutional Scanner v0.7
+# FX Institutional Scanner v0.8
 
 Production-oriented forex scanner foundation with a **dual-feed / single-execution** design.
 
@@ -93,10 +93,103 @@ Manual network smoke tests:
 ```bash
 python -m fx_scanner.cli provider-smoke --series ECB_EURUSD_REFERENCE
 python -m fx_scanner.cli provider-smoke --series BOC_POLICY_RATE
+python -m fx_scanner.cli provider-smoke --series FED_IORB
+python -m fx_scanner.cli provider-smoke --series RBA_CASH_RATE_TARGET
 ```
 
 These are intentionally not part of mandatory CI because external provider
 availability must not determine whether the codebase builds.
+
+## v0.8 full MTF strategy and liquidity orchestration
+
+v0.8 connects the v0.6 decision engine and v0.7 provider layer into a
+deterministic multi-timeframe research pipeline:
+
+```text
+15 configured pairs
+      |
+macro-compatible filter
+      v
+Top 8
+      |
+pair edge / evidence coverage
+      v
+Top 5 deep analysis
+      |
+D1 regime
+      v
+H4 directional bias
+      v
+H1 structure + dealing range
+      v
+M15 setup
+      |
+      +-- liquidity-sweep reversal
+      +-- trend continuation
+      v
+M5 confirmed trigger
+      |
+closed-bar freshness + liquidity map
+      v
+entry zone / structural SL / liquidity TP
+      v
+conviction + hard guards
+      v
+WATCH / SETUP_FORMING / ARMED / EXECUTION_READY
+```
+
+Only **closed bars** are eligible for structure, BOS, FVG, sweep or
+displacement calculations. The current partial bucket is removed before
+analysis. Freshness is measured from the close time of the most recent closed
+bar, and stale MTF evidence activates `STALE_SIGNAL`.
+
+Liquidity evidence includes:
+
+- previous-day high/low (PDH/PDL)
+- previous-week high/low (PWH/PWL)
+- completed Asia/London/New York session highs/lows
+- equal highs/lows using ATR tolerance
+- recent H1 swing liquidity
+- premium/discount/equilibrium dealing range
+- FVG open/partial/filled state
+- order-block validation after displacement + structure break
+
+Trade geometry is fail-closed:
+
+- entry zone comes from an unfilled/partially-filled aligned FVG
+- SL uses sweep/H1 structure plus ATR buffer
+- TP1/TP2 use distinct external liquidity levels
+- TP2 RR below 1.50 activates `RR_BLOCK`
+- >0.50 ATR chase activates `CHASE_BLOCK`
+- 0.25-0.50 ATR chase degrades execution quality
+- reversed TP or RR geometry is rejected by the data contract
+
+A missing Top-5 MTF bundle is no longer silently dropped:
+`DeepScanReport` records the skipped symbol and reason.
+
+### Official/keyless provider coverage in v0.8
+
+Currently wired provider evidence:
+
+- USD: Federal Reserve policy-tool evidence through FRED CSV (IORB)
+- EUR: ECB Data Portal
+- CAD: Bank of Canada Valet
+- AUD: RBA Cash Rate Target
+
+GBP/JPY/CHF/NZD official numeric provider coverage is still incomplete. Missing
+coverage remains missing and reduces/block evidence; it is not replaced with
+neutral zero.
+
+Manual network checks can be run with:
+
+```bash
+python -m fx_scanner.cli provider-smoke --series FED_IORB
+python -m fx_scanner.cli provider-smoke --series ECB_EURUSD_REFERENCE
+python -m fx_scanner.cli provider-smoke --series BOC_POLICY_RATE
+python -m fx_scanner.cli provider-smoke --series RBA_CASH_RATE_TARGET
+```
+
+These external-network checks remain outside mandatory CI.
 
 ## HFM Cent execution contract
 
@@ -270,4 +363,4 @@ Research acceptance remains at minimum: OOS win rate >=55%, Profit Factor
 >=1.30, positive robust expectancy, walk-forward pass, spread/slippage stress
 pass, multi-regime pass, and demo forward-test pass.
 
-**Real-money readiness is not claimed at v0.7.**
+**Real-money readiness is not claimed at v0.8.**
