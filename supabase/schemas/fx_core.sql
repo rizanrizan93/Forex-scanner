@@ -309,3 +309,40 @@ insert into public.execution_control
 values
   ('primary', 'DISABLED', false, true, false, 1, '{"source":"bootstrap_v0.4"}'::jsonb)
 on conflict (control_key) do nothing;
+
+
+-- v0.4 advisor hardening: cover foreign keys used by deletes/joins.
+create index if not exists data_quality_run_id_idx
+  on public.data_quality_snapshots (run_id);
+create index if not exists pair_rankings_symbol_idx
+  on public.pair_rankings (symbol);
+create index if not exists paper_trades_signal_id_idx
+  on public.paper_trades (signal_id);
+create index if not exists signals_run_id_idx
+  on public.signals (run_id);
+create index if not exists smc_features_symbol_idx
+  on public.smc_features (symbol);
+
+-- Explicit deny policies for low-privilege API roles. Backend secret/service_role
+-- bypasses RLS; anon/authenticated stay denied even if grants change later.
+do $$
+declare
+  t text;
+begin
+  foreach t in array ARRAY[
+    'fx_symbols','scanner_runs','data_quality_snapshots','currency_macro_state',
+    'currency_strength','pair_rankings','market_structure','liquidity_levels',
+    'smc_features','signals','paper_trades','model_performance',
+    'broker_accounts','execution_control','runtime_heartbeats','broker_order_events'
+  ]
+  loop
+    begin
+      execute format(
+        'create policy %I on public.%I as restrictive for all to anon, authenticated using (false) with check (false)',
+        'deny_public_' || t, t
+      );
+    exception when duplicate_object then
+      null;
+    end;
+  end loop;
+end $$;
