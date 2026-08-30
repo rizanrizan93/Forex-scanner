@@ -235,6 +235,13 @@ class BacktestEngine:
                 stop_hit = bar.high >= intent.stop_loss
                 target_hit = bar.low <= intent.take_profit
 
+            # On the fill bar, target-only sequencing is unknowable from OHLC.
+            # Counting it as a win can place the target before the entry touch.
+            # Stop remains conservative: if the fill bar also touches stop, the
+            # trade is recorded as a loss. A target is eligible from bar +1.
+            if held_index == 0:
+                target_hit = False
+
             ambiguous = stop_hit and target_hit
             if stop_hit:
                 exit_price = intent.stop_loss
