@@ -66,3 +66,16 @@ def test_success_cannot_hide_stale_freshness():
 def test_invalid_result_requires_error_category():
     with pytest.raises(DataContractError, match="requires error category"):
         ProviderResult(ProviderStatus.INVALID, None, prov(), None)
+
+
+def test_previous_history_must_be_complete_and_chronological():
+    with pytest.raises(DataContractError, match="supplied together"):
+        NumericObservation("SERIES", 2.0, NOW, previous_value=1.0)
+    with pytest.raises(DataContractError, match="predate"):
+        NumericObservation(
+            "SERIES",
+            2.0,
+            NOW,
+            previous_value=1.0,
+            previous_observed_at=NOW,
+        )
