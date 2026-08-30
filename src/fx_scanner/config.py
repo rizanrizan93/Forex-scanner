@@ -230,33 +230,56 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     max_response_bytes = _as_finite_number(
         transport.get("max_response_bytes"), label="providers.transport.max_response_bytes"
     )
-    if timeout_seconds <= 0 or max_response_bytes < 1024:
-        raise ConfigurationError("provider transport limits are invalid")
+    if not 0 < timeout_seconds <= 30:
+        raise ConfigurationError("provider transport timeout must be in (0,30] seconds")
+    if not 1024 <= max_response_bytes <= 5_242_880:
+        raise ConfigurationError("provider response size must be between 1 KiB and 5 MiB")
     if not str(transport.get("user_agent", "")).strip():
         raise ConfigurationError("provider transport user_agent is required")
 
     cache_cfg = providers.get("cache", {})
     if not isinstance(cache_cfg, Mapping):
         raise ConfigurationError("providers.cache must be a mapping")
-    for key in ("positive_ttl_seconds", "negative_ttl_seconds", "stale_ttl_seconds"):
-        if _as_finite_number(cache_cfg.get(key), label=f"providers.cache.{key}") <= 0:
-            raise ConfigurationError(f"providers.cache.{key} must be positive")
+    cache_limits = {
+        "positive_ttl_seconds": 86400,
+        "negative_ttl_seconds": 3600,
+        "stale_ttl_seconds": 600,
+    }
+    for key, upper in cache_limits.items():
+        value = _as_finite_number(cache_cfg.get(key), label=f"providers.cache.{key}")
+        if not 0 < value <= upper:
+            raise ConfigurationError(f"providers.cache.{key} must be in (0,{upper}]")
 
     quorum_cfg = providers.get("quorum", {})
     if not isinstance(quorum_cfg, Mapping):
         raise ConfigurationError("providers.quorum must be a mapping")
-    if int(quorum_cfg.get("minimum_success", 0)) <= 0:
-        raise ConfigurationError("providers.quorum.minimum_success must be positive")
-    if _as_finite_number(
+    minimum_success_raw = _as_finite_number(
+        quorum_cfg.get("minimum_success"),
+        label="providers.quorum.minimum_success",
+    )
+    if not minimum_success_raw.is_integer() or not 1 <= minimum_success_raw <= 5:
+        raise ConfigurationError("providers.quorum.minimum_success must be an integer in [1,5]")
+    max_conflict = _as_finite_number(
         quorum_cfg.get("maximum_numeric_conflict"),
         label="providers.quorum.maximum_numeric_conflict",
-    ) < 0:
-        raise ConfigurationError("providers.quorum.maximum_numeric_conflict cannot be negative")
+    )
+    if not 0 <= max_conflict <= 100:
+        raise ConfigurationError("providers.quorum.maximum_numeric_conflict must be in [0,100]")
 
     sources = providers.get("sources", {})
     if not isinstance(sources, Mapping) or not sources:
         raise ConfigurationError("providers.sources must contain configured sources")
     required_sources = {"ECB_DATA_PORTAL", "BANK_OF_CANADA_VALET"}
+    canonical_source_urls = {
+        "ECB_DATA_PORTAL": (
+            "https://data-api.ecb.europa.eu/service/data",
+            "data-api.ecb.europa.eu",
+        ),
+        "BANK_OF_CANADA_VALET": (
+            "https://www.bankofcanada.ca/valet/observations",
+            "www.bankofcanada.ca",
+        ),
+    }
     if not required_sources.issubset(set(sources)):
         raise ConfigurationError("official ECB and Bank of Canada providers are required in v0.7")
     for name, source in sources.items():
@@ -269,6 +292,10 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         parsed = urlparse(base_url)
         if parsed.scheme != "https" or not parsed.hostname or parsed.hostname != allowed_host:
             raise ConfigurationError(f"provider source {name} HTTPS host contract is invalid")
+        if name in canonical_source_urls:
+            expected_url, expected_host = canonical_source_urls[name]
+            if base_url.rstrip("/") != expected_url or allowed_host != expected_host:
+                raise ConfigurationError(f"provider source {name} canonical endpoint changed")
         if _as_finite_number(
             source.get("default_max_age_seconds"),
             label=f"providers.sources.{name}.default_max_age_seconds",
