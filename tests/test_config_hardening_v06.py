@@ -163,3 +163,23 @@ def test_v08_bar_freshness_window_cannot_be_weakened(tmp_path):
     write_yaml(path, data)
     with pytest.raises(ConfigurationError, match="max_bar_age_seconds.M5"):
         load_project_config(root)
+
+
+def test_v08_fred_endpoint_cannot_be_redirected_to_other_path(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "providers.yaml"
+    data = read_yaml(path)
+    data["sources"]["FEDERAL_RESERVE_FRED"]["base_url"] = "https://fred.stlouisfed.org/evil.csv"
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="canonical endpoint"):
+        load_project_config(root)
+
+
+def test_v08_rba_endpoint_cannot_be_redirected_to_other_host(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "providers.yaml"
+    data = read_yaml(path)
+    data["sources"]["RBA_CASH_RATE"]["allowed_host"] = "example.com"
+    write_yaml(path, data)
+    with pytest.raises(ConfigurationError, match="HTTPS host contract"):
+        load_project_config(root)
