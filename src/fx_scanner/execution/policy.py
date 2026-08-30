@@ -66,6 +66,8 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
         raise ConfigurationError("server-side SL is mandatory")
     if not order.get("require_server_side_tp", False):
         raise ConfigurationError("server-side TP is mandatory")
+    if float(order.get("max_preflight_entry_drift_r", 0)) <= 0:
+        raise ConfigurationError("max_preflight_entry_drift_r must be positive")
     if live_safety.get("require_control_plane", False):
         if float(live_safety.get("control_state_max_age_seconds", 0)) <= 0:
             raise ConfigurationError("control_state_max_age_seconds must be positive")
