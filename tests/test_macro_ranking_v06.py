@@ -119,4 +119,22 @@ def test_pair_ranking_combines_signed_macro_technical_and_cross_asset_edges():
     assert eurusd.direction == "LONG"
     assert eurusd.pair_edge > 0
     assert eurusd.rank <= 3
-    assert ranked == sorted(ranked, key=lambda x: (-x.absolute_edge, x.symbol))
+    assert ranked == sorted(ranked, key=lambda x: (-x.absolute_edge, -x.coverage, x.symbol))
+
+
+def test_missing_cross_asset_is_partial_not_neutral_zero():
+    cfg = load_project_config()
+    macro = {c: 0 for c in ("EUR","USD","GBP","JPY","CHF","CAD","AUD","NZD")}
+    macro["EUR"] = 80
+    technical = {c: 0 for c in macro}
+    technical["EUR"] = 60
+    ranked = rank_pairs(
+        cfg.pairs,
+        macro_scores=macro,
+        technical_strength=technical,
+        cross_asset_edges={},
+    )
+    eurusd = next(x for x in ranked if x.symbol == "EURUSD")
+    assert eurusd.cross_asset_edge is None
+    assert eurusd.coverage == 0.85
+    assert eurusd.missing_components == ("cross_asset",)
