@@ -19,3 +19,12 @@ def test_missing_required_guard_input_blocks():
     )
     assert not result.allowed
     assert result.active_guards == ("GUARD_INPUT_MISSING:NEWS_BLOCK",)
+
+
+def test_non_boolean_guard_input_blocks():
+    result = evaluate_hard_guards(
+        required_names=("NEWS_BLOCK",),
+        NEWS_BLOCK="false",
+    )
+    assert not result.allowed
+    assert result.active_guards == ("GUARD_INPUT_INVALID:NEWS_BLOCK",)
