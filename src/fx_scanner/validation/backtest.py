@@ -144,6 +144,7 @@ class BacktestTrade:
     reason: str
     spread_pips_used: float | None = None
     slippage_pips_used: float | None = None
+    exit_spread_pips_used: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,7 +215,6 @@ class BacktestEngine:
         intent: TradeIntent,
         bar: Bar,
         *,
-        spread_pips: float,
         slippage_pips: float,
     ) -> float:
         # Conservative zone-edge fill: the edge further from the target.
@@ -252,8 +252,7 @@ class BacktestEngine:
             else float(intent.swap_pips_per_day_override)
         )
         cost_pips = (
-            0.5 * spread_pips
-            + 0.5 * slippage_pips
+            0.5 * slippage_pips
             + commission
             + swap * elapsed_days
         )
@@ -295,7 +294,6 @@ class BacktestEngine:
                 entry_price = self._fill_price(
                     intent,
                     bar,
-                    spread_pips=spread_pips,
                     slippage_pips=slippage_pips,
                 )
                 break
@@ -321,12 +319,16 @@ class BacktestEngine:
         evaluation = future[entry_bar_index:]
         held_limit = min(len(evaluation), intent.maximum_hold_bars + 1)
         for held_index, bar in enumerate(evaluation[:held_limit]):
+            exit_spread_pips = self._spread_pips(intent, bar)
+            half_exit_spread = 0.5 * exit_spread_pips * intent.pip_size
             if intent.direction == "LONG":
-                stop_hit = bar.low <= intent.stop_loss
-                target_hit = bar.high >= intent.take_profit
+                # LONG exits on bid.
+                stop_hit = bar.low - half_exit_spread <= intent.stop_loss
+                target_hit = bar.high - half_exit_spread >= intent.take_profit
             else:
-                stop_hit = bar.high >= intent.stop_loss
-                target_hit = bar.low <= intent.take_profit
+                # SHORT exits on ask.
+                stop_hit = bar.high + half_exit_spread >= intent.stop_loss
+                target_hit = bar.low + half_exit_spread <= intent.take_profit
 
             # On the fill bar, target-only sequencing is unknowable from OHLC.
             # Counting it as a win can place the target before the entry touch.
@@ -346,7 +348,6 @@ class BacktestEngine:
                     entry_price,
                     bars_held,
                     timeframe_seconds,
-                    spread_pips=spread_pips,
                     slippage_pips=slippage_pips,
                 )
                 return BacktestTrade(
@@ -364,6 +365,7 @@ class BacktestEngine:
                     "STOP_FIRST_AMBIGUOUS" if ambiguous else "STOP_HIT",
                     spread_pips,
                     slippage_pips,
+                    exit_spread_pips,
                 )
             if target_hit:
                 exit_price = intent.take_profit
@@ -379,7 +381,6 @@ class BacktestEngine:
                     entry_price,
                     bars_held,
                     timeframe_seconds,
-                    spread_pips=spread_pips,
                     slippage_pips=slippage_pips,
                 )
                 net_r = gross_r - cost_r
@@ -399,14 +400,17 @@ class BacktestEngine:
                     "TARGET_HIT",
                     spread_pips,
                     slippage_pips,
+                    exit_spread_pips,
                 )
 
         last = evaluation[held_limit - 1]
+        exit_spread_pips = self._spread_pips(intent, last)
+        half_exit_spread = 0.5 * exit_spread_pips * intent.pip_size
         if intent.direction == "LONG":
-            exit_price = last.close
+            exit_price = last.close - half_exit_spread
             gross_r = (exit_price - entry_price) / risk_price
         else:
-            exit_price = last.close
+            exit_price = last.close + half_exit_spread
             gross_r = (entry_price - exit_price) / risk_price
         bars_held = max(0, held_limit - 1)
         cost_r = self._cost_r(
@@ -414,7 +418,6 @@ class BacktestEngine:
                     entry_price,
                     bars_held,
                     timeframe_seconds,
-                    spread_pips=spread_pips,
                     slippage_pips=slippage_pips,
                 )
         net_r = gross_r - cost_r
@@ -438,6 +441,7 @@ class BacktestEngine:
             "MAX_HOLD_EXIT",
             spread_pips,
             slippage_pips,
+            exit_spread_pips,
         )
 
     def run(
