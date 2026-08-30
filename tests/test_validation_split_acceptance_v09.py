@@ -5,7 +5,7 @@ from fx_scanner.validation.acceptance import evaluate_acceptance
 from fx_scanner.validation.backtest import TradeIntent
 from fx_scanner.validation.metrics import PerformanceMetrics
 from fx_scanner.validation.monte_carlo import MonteCarloResult
-from fx_scanner.validation.perturbation import PerturbationResult
+from fx_scanner.validation.perturbation import PerturbationResult, canonical_parameter_variants
 from fx_scanner.validation.split import chronological_split
 from fx_scanner.validation.walk_forward import WalkForwardResult
 
@@ -66,7 +66,7 @@ def test_acceptance_stays_blocked_until_demo_forward_and_perturbation_pass():
     metrics = good_metrics()
     wf = WalkForwardResult((), 1.0, True)
     mc = MonteCarloResult(1000, 5, 4.0, 8.0, 3, 6, 20.0, 20.0)
-    variants = {f"V{i}": metrics for i in range(5)}
+    variants = {variant.name: metrics for variant in canonical_parameter_variants()}
     perturb = PerturbationResult(variants, 1.0, True)
 
     pending = evaluate_acceptance(
