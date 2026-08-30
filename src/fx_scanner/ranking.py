@@ -14,6 +14,15 @@ class CurrencyStrength:
     score: float
     contributing_pairs: int
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "currency", self.currency.upper())
+        if len(self.currency) != 3:
+            raise DataContractError("currency strength requires a three-letter currency")
+        if not isfinite(self.score) or not -100 <= self.score <= 100:
+            raise DataContractError("currency strength score must be in [-100,100]")
+        if self.contributing_pairs <= 0:
+            raise DataContractError("currency strength requires at least one contributing pair")
+
 
 @dataclass(frozen=True, slots=True)
 class PairRank:
@@ -27,6 +36,37 @@ class PairRank:
     coverage: float
     missing_components: tuple[str, ...]
     rank: int
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "symbol", self.symbol.upper())
+        object.__setattr__(self, "direction", self.direction.upper())
+        if not self.symbol:
+            raise DataContractError("pair rank symbol is required")
+        if self.direction not in {"LONG", "SHORT", "NEUTRAL"}:
+            raise DataContractError("pair rank direction is invalid")
+        for name, value, lower, upper in (
+            ("relative_macro_edge", self.relative_macro_edge, -200.0, 200.0),
+            ("relative_technical_edge", self.relative_technical_edge, -200.0, 200.0),
+            ("pair_edge", self.pair_edge, -100.0, 100.0),
+            ("absolute_edge", self.absolute_edge, 0.0, 100.0),
+        ):
+            if not isfinite(value) or not lower <= value <= upper:
+                raise DataContractError(f"{name} outside [{lower},{upper}]")
+        if self.cross_asset_edge is not None:
+            if not isfinite(self.cross_asset_edge) or not -100 <= self.cross_asset_edge <= 100:
+                raise DataContractError("cross_asset_edge must be in [-100,100]")
+        if not 0 <= self.coverage <= 1:
+            raise DataContractError("pair rank coverage must be in [0,1]")
+        if self.rank <= 0:
+            raise DataContractError("pair rank must be positive")
+        if abs(self.absolute_edge - abs(self.pair_edge)) > 1e-9:
+            raise DataContractError("absolute_edge must equal abs(pair_edge)")
+        if self.direction == "LONG" and self.pair_edge <= 0:
+            raise DataContractError("LONG pair rank requires positive pair_edge")
+        if self.direction == "SHORT" and self.pair_edge >= 0:
+            raise DataContractError("SHORT pair rank requires negative pair_edge")
+        if self.direction == "NEUTRAL" and abs(self.pair_edge) > 1e-12:
+            raise DataContractError("NEUTRAL pair rank requires zero pair_edge")
 
 
 def compute_currency_strength(
