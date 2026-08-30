@@ -121,7 +121,7 @@ def build_ctrader_research_feed(
         universe = [str(x).upper() for x in symbols]
         session.load_symbols(universe)
         session.subscribe_spots(universe)
-        return CTraderResearchFeed(session)
+        return CTraderResearchFeed(session, universe)
     except Exception:
         try:
             session.close()
