@@ -296,3 +296,101 @@ def test_opposing_htf_trend_sets_structure_invalid(monkeypatch):
     )
     assert result.computed_guards["STRUCTURE_INVALID"]
     assert result.decision.state == SignalState.NO_TRADE
+
+
+def test_partial_current_m5_bar_is_excluded_from_structure_analysis(monkeypatch):
+    cfg = load_project_config()
+    seen = {}
+    base_snapshot = snapshot()
+    monkeypatch.setattr(
+        "fx_scanner.strategy.build_liquidity_map",
+        lambda **kwargs: fixed_liquidity(),
+    )
+
+    def capture(values, **kwargs):
+        seen[values[0].timeframe] = len(values)
+        return base_snapshot
+
+    monkeypatch.setattr("fx_scanner.strategy.structure_snapshot", capture)
+    bundle = {
+        "D1": bars("D1", 20),
+        "H4": bars("H4", 30),
+        "H1": bars("H1", 40),
+        "M15": bars("M15", 50),
+        "M5": bars("M5", 60),
+    }
+    partial = Bar(
+        "EURUSD",
+        "M5",
+        AS_OF - timedelta(minutes=2),
+        1.1004,
+        1.1010,
+        1.1000,
+        1.1006,
+        100,
+        0.0001,
+        0.0002,
+    )
+    bundle["M5"] = [*bundle["M5"], partial]
+    analyze_pair_mtf(
+        rank=rank("EURUSD", 1, 80, 160),
+        bars_by_timeframe=bundle,
+        cfg=cfg,
+        as_of=AS_OF,
+        external_guard_flags=all_guard_flags(cfg),
+        positioning_score=100,
+        execution_quality_score=100,
+    )
+    assert seen["M5"] == 60
+
+
+def test_stale_m5_bar_forces_stale_signal_guard(monkeypatch):
+    cfg = load_project_config()
+    mapping = {
+        "D1": snapshot(),
+        "H4": snapshot(),
+        "H1": snapshot(),
+        "M15": snapshot(),
+        "M5": snapshot(),
+    }
+    monkeypatch.setattr(
+        "fx_scanner.strategy.structure_snapshot",
+        lambda x, **kwargs: mapping[x[0].timeframe],
+    )
+    monkeypatch.setattr(
+        "fx_scanner.strategy.build_liquidity_map",
+        lambda **kwargs: fixed_liquidity(),
+    )
+    bundle = {
+        "D1": bars("D1", 20),
+        "H4": bars("H4", 30),
+        "H1": bars("H1", 40),
+        "M15": bars("M15", 50),
+        "M5": [
+            Bar(
+                item.symbol,
+                item.timeframe,
+                item.timestamp - timedelta(minutes=20),
+                item.open,
+                item.high,
+                item.low,
+                item.close,
+                item.tick_count,
+                item.spread_avg,
+                item.spread_max,
+            )
+            for item in bars("M5", 60)
+        ],
+    }
+    result = analyze_pair_mtf(
+        rank=rank("EURUSD", 1, 80, 160),
+        bars_by_timeframe=bundle,
+        cfg=cfg,
+        as_of=AS_OF,
+        external_guard_flags=all_guard_flags(cfg),
+        positioning_score=100,
+        execution_quality_score=100,
+    )
+    assert "M5" in result.stale_timeframes
+    assert result.computed_guards["STALE_SIGNAL"]
+    assert result.decision.state == SignalState.NO_TRADE
