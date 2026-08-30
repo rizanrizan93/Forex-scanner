@@ -84,6 +84,8 @@ def compute_currency_strength(
         raw = pair_momentum.get(pair.symbol)
         if raw is None:
             continue
+        if isinstance(raw, bool):
+            raise DataContractError(f"boolean momentum is invalid for {pair.symbol}")
         value = float(raw)
         if not isfinite(value) or not -100 <= value <= 100:
             raise DataContractError(f"invalid normalized momentum for {pair.symbol}")
@@ -133,6 +135,8 @@ def rank_pairs(
         if base_tech is None or quote_tech is None:
             continue
 
+        if isinstance(macro_scores[pair.base], bool) or isinstance(macro_scores[pair.quote], bool):
+            raise DataContractError(f"boolean macro score is invalid for {pair.symbol}")
         macro_edge = float(macro_scores[pair.base]) - float(macro_scores[pair.quote])
         tech_edge = base_tech - quote_tech
         if not all(isfinite(x) for x in (macro_edge, tech_edge)):
@@ -150,6 +154,8 @@ def rank_pairs(
             cross = None
             missing.append("cross_asset")
         else:
+            if isinstance(cross_raw, bool):
+                raise DataContractError(f"boolean cross-asset edge is invalid for {pair.symbol}")
             cross = float(cross_raw)
             if not isfinite(cross) or not -100 <= cross <= 100:
                 raise DataContractError(f"cross-asset edge must be in [-100,100] for {pair.symbol}")
