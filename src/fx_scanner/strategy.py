@@ -54,11 +54,35 @@ class TradePlan:
         if self.direction == "SHORT" and self.stop_loss <= self.entry_high:
             raise DataContractError("SHORT stop must be above entry zone")
         for name, value in (("tp1", self.tp1), ("tp2", self.tp2)):
-            if value is not None and (not isfinite(float(value)) or value <= 0):
+            if value is not None and (
+                isinstance(value, bool) or not isfinite(float(value)) or value <= 0
+            ):
                 raise DataContractError(f"{name} must be positive finite")
         for name, value in (("rr1", self.rr1), ("rr2", self.rr2)):
-            if value is not None and (not isfinite(float(value)) or value <= 0):
+            if value is not None and (
+                isinstance(value, bool) or not isfinite(float(value)) or value <= 0
+            ):
                 raise DataContractError(f"{name} must be positive finite")
+        if (self.tp1 is None) != (self.rr1 is None):
+            raise DataContractError("tp1 and rr1 must be supplied together")
+        if (self.tp2 is None) != (self.rr2 is None):
+            raise DataContractError("tp2 and rr2 must be supplied together")
+        if self.direction == "LONG":
+            if self.tp1 is not None and self.tp1 <= self.entry_high:
+                raise DataContractError("LONG tp1 must be above entry zone")
+            if self.tp2 is not None and self.tp2 <= self.entry_high:
+                raise DataContractError("LONG tp2 must be above entry zone")
+            if self.tp1 is not None and self.tp2 is not None and self.tp2 <= self.tp1:
+                raise DataContractError("LONG tp2 must be beyond tp1")
+        else:
+            if self.tp1 is not None and self.tp1 >= self.entry_low:
+                raise DataContractError("SHORT tp1 must be below entry zone")
+            if self.tp2 is not None and self.tp2 >= self.entry_low:
+                raise DataContractError("SHORT tp2 must be below entry zone")
+            if self.tp1 is not None and self.tp2 is not None and self.tp2 >= self.tp1:
+                raise DataContractError("SHORT tp2 must be beyond tp1")
+        if self.rr1 is not None and self.rr2 is not None and self.rr2 <= self.rr1:
+            raise DataContractError("rr2 must exceed rr1")
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +102,13 @@ class MTFAnalysis:
     computed_guards: Mapping[str, bool]
     stale_timeframes: tuple[str, ...]
     decision: DecisionSnapshot
+
+
+@dataclass(frozen=True, slots=True)
+class DeepScanReport:
+    selection: UniverseSelection
+    analyses: tuple[MTFAnalysis, ...]
+    skipped: Mapping[str, str]
 
 
 def select_pair_candidates(
@@ -641,7 +672,7 @@ def analyze_pair_mtf(
     )
 
 
-def scan_deep_candidates(
+def scan_deep_candidates_report(
     *,
     ranked: Sequence[PairRank],
     bars_by_symbol: Mapping[str, Mapping[str, Sequence[Bar]]],
@@ -650,7 +681,7 @@ def scan_deep_candidates(
     external_guards_by_symbol: Mapping[str, Mapping[str, bool]],
     positioning_by_symbol: Mapping[str, float | None] | None = None,
     execution_quality_by_symbol: Mapping[str, float | None] | None = None,
-) -> tuple[MTFAnalysis, ...]:
+) -> DeepScanReport:
     selection_cfg = cfg.strategy["selection"]
     selected = select_pair_candidates(
         ranked,
@@ -660,21 +691,26 @@ def scan_deep_candidates(
     positioning_by_symbol = positioning_by_symbol or {}
     execution_quality_by_symbol = execution_quality_by_symbol or {}
     analyses: list[MTFAnalysis] = []
+    skipped: dict[str, str] = {}
     for rank in selected.deep_analysis:
         bars = bars_by_symbol.get(rank.symbol)
         if bars is None:
+            skipped[rank.symbol] = "MISSING_MTF_BUNDLE"
             continue
-        analyses.append(
-            analyze_pair_mtf(
-                rank=rank,
-                bars_by_timeframe=bars,
-                cfg=cfg,
-                as_of=as_of,
-                external_guard_flags=external_guards_by_symbol.get(rank.symbol, {}),
-                positioning_score=positioning_by_symbol.get(rank.symbol),
-                execution_quality_score=execution_quality_by_symbol.get(rank.symbol),
+        try:
+            analyses.append(
+                analyze_pair_mtf(
+                    rank=rank,
+                    bars_by_timeframe=bars,
+                    cfg=cfg,
+                    as_of=as_of,
+                    external_guard_flags=external_guards_by_symbol.get(rank.symbol, {}),
+                    positioning_score=positioning_by_symbol.get(rank.symbol),
+                    execution_quality_score=execution_quality_by_symbol.get(rank.symbol),
+                )
             )
-        )
+        except DataContractError as exc:
+            skipped[rank.symbol] = f"DATA_CONTRACT:{exc}"
     analyses.sort(
         key=lambda x: (
             0 if x.decision.state == SignalState.EXECUTION_READY else
@@ -685,4 +721,26 @@ def scan_deep_candidates(
             x.symbol,
         )
     )
-    return tuple(analyses)
+    return DeepScanReport(selected, tuple(analyses), dict(sorted(skipped.items())))
+
+
+def scan_deep_candidates(
+    *,
+    ranked: Sequence[PairRank],
+    bars_by_symbol: Mapping[str, Mapping[str, Sequence[Bar]]],
+    cfg: ProjectConfig,
+    as_of: datetime,
+    external_guards_by_symbol: Mapping[str, Mapping[str, bool]],
+    positioning_by_symbol: Mapping[str, float | None] | None = None,
+    execution_quality_by_symbol: Mapping[str, float | None] | None = None,
+) -> tuple[MTFAnalysis, ...]:
+    """Compatibility wrapper returning analyses while report API preserves skips."""
+    return scan_deep_candidates_report(
+        ranked=ranked,
+        bars_by_symbol=bars_by_symbol,
+        cfg=cfg,
+        as_of=as_of,
+        external_guards_by_symbol=external_guards_by_symbol,
+        positioning_by_symbol=positioning_by_symbol,
+        execution_quality_by_symbol=execution_quality_by_symbol,
+    ).analyses
