@@ -48,7 +48,14 @@ regimes:
   minimum_profit_factor: 1.00
 
 parameter_perturbation:
-  minimum_variants: 5
+  minimum_variants: 6
+  required_variants:
+    - equal_tolerance_minus10
+    - equal_tolerance_plus10
+    - sl_buffer_minus10
+    - sl_buffer_plus10
+    - entry_zone_minus10
+    - entry_zone_plus10
   profit_factor_min: 1.10
   expectancy_r_min: 0.05
   minimum_pass_fraction: 0.80
