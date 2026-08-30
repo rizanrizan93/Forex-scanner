@@ -190,7 +190,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     if not 0 < risk_per_trade <= max_risk <= 0.50:
         raise ConfigurationError("risk-per-trade contract exceeds v0.7 safety cap")
     if not 0 < max_daily_loss <= 1.0:
-        raise ConfigurationError("max_daily_loss_pct exceeds v0.6 safety cap")
+        raise ConfigurationError("max_daily_loss_pct exceeds v0.7 safety cap")
     if int(risk.get("max_concurrent_trades", 0)) != 2:
         raise ConfigurationError("max_concurrent_trades must remain 2")
     if int(risk.get("max_consecutive_losses", 0)) != 3:
