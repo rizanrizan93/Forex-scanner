@@ -165,7 +165,7 @@ class BacktestEngine:
     def _fill_price(self, intent: TradeIntent, bar: Bar) -> float:
         # Conservative zone-edge fill: the edge further from the target.
         planned = intent.entry_high if intent.direction == "LONG" else intent.entry_low
-        adverse = self.cost_model.slippage_pips * intent.pip_size
+        adverse = 0.5 * self.cost_model.slippage_pips * intent.pip_size
         return planned + adverse if intent.direction == "LONG" else planned - adverse
 
     def _cost_r(self, intent: TradeIntent, entry_price: float, bars_held: int, timeframe_seconds: int) -> float:
@@ -180,7 +180,7 @@ class BacktestEngine:
         elapsed_days = bars_held * timeframe_seconds / 86400.0
         cost_pips = (
             self.cost_model.spread_pips
-            + self.cost_model.slippage_pips
+            + 0.5 * self.cost_model.slippage_pips
             + self.cost_model.commission_pips_round_trip
             + self.cost_model.swap_pips_per_day * elapsed_days
         )
