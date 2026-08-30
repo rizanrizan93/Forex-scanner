@@ -6,6 +6,7 @@ from typing import Iterable, Mapping
 
 from ..exceptions import ConfigurationError
 from .ctrader_gateway import CTraderExecutionGateway
+from .ctrader_research import CTraderResearchFeed
 from .ctrader_session import CTraderOpenApiSession
 from .mt5_gateway import MT5ExecutionGateway
 from .mt5_session import PersistentMT5Session
@@ -59,6 +60,10 @@ def build_broker_gateway(
 
     if selected == "CTRADER":
         cfg = policy.ctrader
+        if str(cfg.get("role", "")).upper() == "RESEARCH_ONLY":
+            raise ConfigurationError(
+                "configured cTrader backend is RESEARCH_ONLY; use build_ctrader_research_feed()"
+            )
         session = CTraderOpenApiSession(
             client_id=_required_env(cfg["client_id_env"]),
             client_secret=_required_env(cfg["client_secret_env"]),
@@ -96,10 +101,38 @@ def build_broker_gateway(
     raise ConfigurationError(f"unsupported broker backend: {selected}")
 
 
+def build_ctrader_research_feed(
+    policy: ExecutionPolicy,
+    symbols: Iterable[str],
+) -> CTraderResearchFeed:
+    cfg = policy.ctrader
+    if str(cfg.get("role", "")).upper() != "RESEARCH_ONLY":
+        raise ConfigurationError("cTrader research feed must be configured RESEARCH_ONLY")
+    session = CTraderOpenApiSession(
+        client_id=_required_env(cfg["client_id_env"]),
+        client_secret=_required_env(cfg["client_secret_env"]),
+        access_token=_required_env(cfg["access_token_env"]),
+        account_id=int(_required_env(cfg["account_id_env"])),
+        environment=str(cfg.get("environment", "DEMO")).lower(),
+        request_timeout_seconds=float(cfg.get("request_timeout_seconds", 10)),
+    )
+    try:
+        session.connect()
+        universe = [str(x).upper() for x in symbols]
+        session.load_symbols(universe)
+        session.subscribe_spots(universe)
+        return CTraderResearchFeed(session)
+    except Exception:
+        try:
+            session.close()
+        except Exception:
+            pass
+        raise
+
+
 @dataclass(frozen=True, slots=True)
 class DualBrokerStack:
-    research_gateway: CTraderExecutionGateway
-    research_session: CTraderOpenApiSession
+    research_feed: CTraderResearchFeed
     execution_gateway: MT5ExecutionGateway
     execution_session: PersistentMT5Session
     symbol_resolver: MT5SymbolResolver
@@ -119,7 +152,9 @@ def build_dual_broker_stack(
         raise ConfigurationError("dual-feed execution backend must be MT5")
 
     universe = tuple(str(x).upper() for x in symbols)
-    research_gateway, research_session = build_broker_gateway(policy, universe, backend="CTRADER")
+    research_feed = build_ctrader_research_feed(policy, universe)
+    execution_gateway = None
+    execution_session = None
     try:
         execution_gateway, execution_session = build_broker_gateway(policy, universe, backend="MT5")
         resolver = MT5SymbolResolver(
@@ -141,23 +176,27 @@ def build_dual_broker_stack(
             )
 
         revalidator = DualFeedRevalidator(
-            research_quotes=research_session,
+            research_quotes=research_feed,
             execution_gateway=execution_gateway,
             symbol_resolver=resolver,
             pip_sizes=pip_sizes,
             config=policy.reconciliation,
         )
         return DualBrokerStack(
-            research_gateway,
-            research_session,
+            research_feed,
             execution_gateway,
             execution_session,
             resolver,
             revalidator,
         )
     except Exception:
+        if execution_gateway is not None:
+            try:
+                execution_gateway.close()
+            except Exception:
+                pass
         try:
-            research_session.close()
+            research_feed.close()
         except Exception:
             pass
         raise
