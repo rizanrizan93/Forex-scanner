@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from math import isfinite
 from enum import StrEnum
 from typing import Iterable
 
@@ -41,6 +42,12 @@ class EconomicEvent:
         object.__setattr__(self, "scheduled_at", self.scheduled_at.astimezone(UTC))
         if not self.source_url.startswith("https://"):
             raise DataContractError("economic event source URL must use HTTPS")
+        for name in ("actual", "forecast", "previous"):
+            value = getattr(self, name)
+            if value is not None:
+                if isinstance(value, bool) or not isfinite(float(value)):
+                    raise DataContractError(f"economic event {name} must be finite numeric")
+                object.__setattr__(self, name, float(value))
 
 
 @dataclass(frozen=True, slots=True)
