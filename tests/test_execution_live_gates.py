@@ -204,3 +204,18 @@ def test_uncertain_signal_requires_explicit_reconciliation(tmp_path):
     guard.mark_uncertain("U-2")
     guard.resolve_uncertain("U-2", executed=True)
     assert guard.is_duplicate("U-2")
+
+
+def test_definitive_order_rejection_clears_pre_submit_quarantine(monkeypatch, tmp_path):
+    _open_live(monkeypatch)
+    path = tmp_path / "idempotency.json"
+    gateway = FakeGateway(send_ok=False)
+    guard = DuplicateOrderGuard(path)
+    router = ExecutionRouter(_policy(), duplicate_guard=guard, gateway=gateway)
+    signal = _intent("KNOWN-REJECT")
+    with pytest.raises(ExecutionBlocked, match="ORDER_SEND_REJECTED"):
+        router.execute(signal)
+    assert not guard.is_uncertain(signal.signal_id)
+    assert not guard.is_duplicate(signal.signal_id)
+    restarted = DuplicateOrderGuard(path)
+    assert not restarted.is_duplicate(signal.signal_id)
