@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from fx_scanner.exceptions import DataContractError
 from fx_scanner.models import Bar
 from fx_scanner.validation.backtest import (
     BacktestEngine,
@@ -62,9 +63,9 @@ def test_signal_candle_is_never_used_for_fill_or_outcome():
     bars = [
         bar(0, low=1.0980, high=1.1030),
         bar(1, low=1.1005, high=1.1010),
-        bar(2, low=1.1006, high=1.1011),
-        bar(3, low=1.1007, high=1.1012),
-        bar(4, low=1.1008, high=1.1013),
+        bar(2, low=1.1004, high=1.1011),
+        bar(3, low=1.1004, high=1.1012),
+        bar(4, low=1.1004, high=1.1013),
     ]
     result = engine().evaluate(intent(), bars, timeframe_seconds=300)
     assert result.outcome == TradeOutcome.MISSED
@@ -117,5 +118,5 @@ def test_missing_symbol_history_is_preserved_as_missed_not_zero_return():
 
 
 def test_duplicate_trade_id_fails_closed():
-    with pytest.raises(Exception, match="duplicate trade_id"):
+    with pytest.raises(DataContractError, match="duplicate trade_id"):
         engine().run([intent(), intent()], {"EURUSD": []}, timeframe_seconds=300)
