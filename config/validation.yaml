@@ -1,0 +1,36 @@
+engine:
+  ambiguous_bar_policy: STOP_FIRST
+  default_entry_expiry_bars: 12
+  maximum_hold_bars: 72
+  minimum_stop_distance_pips: 2.0
+
+costs:
+  base:
+    spread_pips: 0.8
+    slippage_pips: 0.2
+    commission_pips_round_trip: 0.2
+    swap_pips_per_day: 0.0
+  stress_spread_multiplier: 1.25
+  stress_slippage_multiplier: 1.50
+
+walk_forward:
+  train_fraction: 0.60
+  test_fraction: 0.20
+  minimum_train_trades: 100
+  minimum_test_trades: 30
+  step_fraction: 0.20
+
+monte_carlo:
+  simulations: 1000
+  seed: 260830
+  max_drawdown_r_p95_limit: 12.0
+  losing_streak_p95_limit: 8
+
+regimes:
+  minimum_trades_per_regime: 30
+
+performance_budget:
+  research_validation_in_hot_path: false
+  deep_scan_top5_target_ms: 250
+  per_pair_mtf_target_ms: 50
+  execution_revalidation_max_ms: 500
