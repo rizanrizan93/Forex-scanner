@@ -25,6 +25,7 @@ class ProjectConfig:
     risk: dict[str, Any]
     scoring: dict[str, Any]
     sessions: dict[str, Any]
+    macro: dict[str, Any]
 
     @property
     def pair_map(self) -> dict[str, PairSpec]:
@@ -74,11 +75,34 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     risk = _read_yaml(cfg / "risk.yaml")
     scoring = _read_yaml(cfg / "scoring.yaml")
     sessions = _read_yaml(cfg / "sessions.yaml")
+    macro = _read_yaml(cfg / "macro.yaml")
 
     pair_weight_sum = sum(scoring["pair_opportunity"].values())
     exec_weight_sum = sum(scoring["execution_conviction"].values())
     if pair_weight_sum != 100 or exec_weight_sum != 100:
         raise ConfigurationError("scoring weights must sum to 100")
+
+    macro_weights = macro.get("weights", {})
+    expected_macro = {
+        "interest_rate", "central_bank_bias", "inflation", "growth",
+        "labour", "yield_momentum", "risk_commodity", "positioning",
+    }
+    if set(macro_weights) != expected_macro or sum(macro_weights.values()) != 100:
+        raise ConfigurationError("macro weights must contain the canonical eight factors and sum to 100")
+    if not 0 < float(macro.get("minimum_coverage", 0)) <= 1:
+        raise ConfigurationError("macro minimum_coverage must be in (0,1]")
+    if float(macro.get("factor_min", 0)) >= float(macro.get("factor_max", 0)):
+        raise ConfigurationError("macro factor range is invalid")
+
+    states = scoring.get("states", {})
+    ordered_thresholds = [
+        float(states.get("watch_min", 0)),
+        float(states.get("setup_forming_min", 0)),
+        float(states.get("armed_min", 0)),
+        float(states.get("execution_candidate_min", 0)),
+    ]
+    if ordered_thresholds != sorted(ordered_thresholds) or not all(0 <= x <= 100 for x in ordered_thresholds):
+        raise ConfigurationError("signal-state thresholds must be monotonic within [0,100]")
 
     acceptance = risk.get("acceptance", {})
     if float(acceptance.get("oos_win_rate_min", 0)) < 0.55:
@@ -86,4 +110,4 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     if float(acceptance.get("profit_factor_min", 0)) < 1.30:
         raise ConfigurationError("profit-factor gate cannot be below 1.30")
 
-    return ProjectConfig(tuple(pairs), timeframes, risk, scoring, sessions)
+    return ProjectConfig(tuple(pairs), timeframes, risk, scoring, sessions, macro)
