@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from threading import RLock
+from threading import Lock, RLock
 
 import pytest
 
@@ -137,3 +137,23 @@ def test_ctrader_research_feed_restores_subscriptions_after_reconnect():
     feed.quote("USDJPY")
     assert session.loads == 1
     assert session.subscriptions == 1
+
+
+def test_ctrader_two_sided_quote_uses_older_side_timestamp():
+    from fx_scanner.execution.ctrader_session import CTraderOpenApiSession
+
+    session = CTraderOpenApiSession.__new__(CTraderOpenApiSession)
+    session.symbol_id_by_name = {"EURUSD": 7}
+    session._quotes_lock = Lock()
+    newer = datetime(2026, 8, 30, 7, 0, 1, tzinfo=UTC)
+    older = datetime(2026, 8, 30, 7, 0, 0, tzinfo=UTC)
+    session._quotes_by_id = {
+        7: {
+            "bid": 1.1000,
+            "ask": 1.1002,
+            "bid_timestamp": newer,
+            "ask_timestamp": older,
+        }
+    }
+    quote = session.quote("EURUSD")
+    assert quote.timestamp == older
