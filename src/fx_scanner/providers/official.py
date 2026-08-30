@@ -82,10 +82,11 @@ class EcbDataPortalProvider:
         max_age_seconds: float | None = None,
     ) -> ProviderResult[NumericObservation]:
         if "+" in series or "*" in series or ".." in series:
-            return _failure(
-                self.name,
-                self.base_url,
-                series,
+            return ProviderResult(
+                ProviderStatus.INVALID,
+                None,
+                Provenance(self.name, self.base_url, series, True),
+                None,
                 ProviderErrorCategory.CONTRACT,
                 "ECB numeric provider requires one exact series",
             )
@@ -177,10 +178,11 @@ class BankOfCanadaValetProvider:
         max_age_seconds: float | None = None,
     ) -> ProviderResult[NumericObservation]:
         if "," in series or "+" in series or not series.strip():
-            return _failure(
-                self.name,
-                self.base_url,
-                series,
+            return ProviderResult(
+                ProviderStatus.INVALID,
+                None,
+                Provenance(self.name, self.base_url, series, True),
+                None,
                 ProviderErrorCategory.CONTRACT,
                 "BoC numeric provider requires one exact series",
             )
