@@ -81,7 +81,15 @@ class EcbDataPortalProvider:
         *,
         max_age_seconds: float | None = None,
     ) -> ProviderResult[NumericObservation]:
-        encoded = "/".join(quote(part, safe=".,+") for part in series.split("/"))
+        if "+" in series or "*" in series or ".." in series:
+            return _failure(
+                self.name,
+                self.base_url,
+                series,
+                ProviderErrorCategory.CONTRACT,
+                "ECB numeric provider requires one exact series",
+            )
+        encoded = "/".join(quote(part, safe=".,") for part in series.split("/"))
         query = urlencode({"format": "csvdata", "lastNObservations": 2})
         url = f"{self.base_url}/{encoded}?{query}"
         provenance = Provenance(self.name, url, series, True)
@@ -168,8 +176,16 @@ class BankOfCanadaValetProvider:
         *,
         max_age_seconds: float | None = None,
     ) -> ProviderResult[NumericObservation]:
+        if "," in series or "+" in series or not series.strip():
+            return _failure(
+                self.name,
+                self.base_url,
+                series,
+                ProviderErrorCategory.CONTRACT,
+                "BoC numeric provider requires one exact series",
+            )
         encoded = quote(series, safe="")
-        query = urlencode({"recent": 2, "format": "json"})
+        query = urlencode({"recent": 2})
         url = f"{self.base_url}/{encoded}/json?{query}"
         provenance = Provenance(self.name, url, series, True)
         try:
