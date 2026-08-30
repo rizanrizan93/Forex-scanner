@@ -130,9 +130,12 @@ class ProviderResult(Generic[T]):
             raise DataContractError("fresh success cannot carry stale freshness")
         if success and self.error_category != ProviderErrorCategory.NONE:
             raise DataContractError("successful provider result cannot carry error category")
-        if not success and self.status != ProviderStatus.STALE:
+        if self.status in {ProviderStatus.INVALID, ProviderStatus.ERROR}:
             if self.error_category == ProviderErrorCategory.NONE:
-                raise DataContractError("failed provider result requires error category")
+                raise DataContractError("invalid/error provider result requires error category")
+        if self.status in {ProviderStatus.MISSING, ProviderStatus.NOT_APPLICABLE}:
+            if self.value is not None:
+                raise DataContractError("missing/not-applicable result cannot carry a value")
 
     @property
     def usable(self) -> bool:
