@@ -117,7 +117,10 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
     if research_backend == "CTRADER":
         if str(ctrader.get("environment", "DEMO")).upper() not in {"DEMO", "LIVE"}:
             raise ConfigurationError("cTrader environment must be DEMO or LIVE")
-        for key in ("client_id_env", "client_secret_env", "access_token_env", "account_id_env"):
+        for key in (
+            "client_id_env", "client_secret_env", "access_token_env",
+            "refresh_token_env", "token_state_path_env", "account_id_env",
+        ):
             if not ctrader.get(key):
                 raise ConfigurationError(f"missing cTrader config: {key}")
         if float(ctrader.get("request_timeout_seconds", 0)) <= 0:
