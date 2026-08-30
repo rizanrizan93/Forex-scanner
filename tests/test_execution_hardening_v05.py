@@ -80,15 +80,21 @@ def test_final_preflight_geometry_blocks_price_race():
 
 
 class DummySession:
-    def health(self): return True
-    def ensure_connected(self): return None
+    def __init__(self):
+        self.healthy = True
+        self.loads = 0
+        self.subscriptions = 0
+    def health(self): return self.healthy
+    def ensure_connected(self): self.healthy = True
+    def load_symbols(self, symbols): self.loads += 1
+    def subscribe_spots(self, symbols): self.subscriptions += 1
     def quote(self, symbol): return ("quote", symbol)
     def symbol_info(self, symbol): return ("info", symbol)
     def close(self): self.closed = True
 
 
 def test_ctrader_research_facade_exposes_no_order_methods():
-    feed = CTraderResearchFeed(DummySession())
+    feed = CTraderResearchFeed(DummySession(), ["EURUSD"])
     assert feed.health() is True
     assert feed.quote("EURUSD") == ("quote", "EURUSD")
     assert not hasattr(feed, "send_new_order")
@@ -118,3 +124,16 @@ def test_async_audit_graceful_stop_drains_queue():
     worker.stop(timeout=1)
     assert len(store.events) == 10
     assert worker.health()["queued"] == 0
+
+
+def test_ctrader_research_feed_restores_subscriptions_after_reconnect():
+    session = DummySession()
+    session.healthy = False
+    feed = CTraderResearchFeed(session, ["EURUSD", "USDJPY"])
+    assert feed.quote("EURUSD") == ("quote", "EURUSD")
+    assert session.loads == 1
+    assert session.subscriptions == 1
+    # Healthy subsequent quote must not resubscribe on every read.
+    feed.quote("USDJPY")
+    assert session.loads == 1
+    assert session.subscriptions == 1
