@@ -26,9 +26,10 @@ class CTraderTokenStateStore:
     """
 
     def __init__(self, path: str | Path):
-        self.path = Path(path)
-        if not str(self.path):
+        raw = str(path).strip()
+        if not raw:
             raise ConfigurationError("cTrader token-state path is required")
+        self.path = Path(raw)
 
     def load(self, *, fallback_access: str, fallback_refresh: str) -> CTraderTokens:
         if not self.path.exists():
