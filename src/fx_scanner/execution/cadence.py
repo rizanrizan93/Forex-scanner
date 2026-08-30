@@ -40,7 +40,7 @@ class AdaptiveExecutionCadence:
         interval = self.interval_for(state)
         with self._lock:
             last = self._last.get(str(key))
-        return last is None or now - last >= interval
+        return last is None or now - last >= interval - 1e-9
 
     def mark_checked(self, key: str, *, now_mono: float | None = None) -> None:
         now = self.clock() if now_mono is None else float(now_mono)
