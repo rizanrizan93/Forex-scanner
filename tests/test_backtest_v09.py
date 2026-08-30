@@ -120,3 +120,83 @@ def test_missing_symbol_history_is_preserved_as_missed_not_zero_return():
 def test_duplicate_trade_id_fails_closed():
     with pytest.raises(DataContractError, match="duplicate trade_id"):
         engine().run([intent(), intent()], {"EURUSD": []}, timeframe_seconds=300)
+
+
+def test_observed_broker_spread_overrides_lower_fallback_and_is_audited():
+    wide = Bar(
+        "EURUSD",
+        "M5",
+        SIGNAL + timedelta(minutes=5),
+        1.1005,
+        1.1010,
+        1.1000,
+        1.1005,
+        100,
+        0.0003,
+        0.0004,
+    )
+    target = bar(2, low=1.1004, high=1.1023, close=1.1020)
+    result = engine().evaluate(intent(), [wide, target], timeframe_seconds=300)
+    assert result.spread_pips_used == pytest.approx(3.0)
+    assert result.slippage_pips_used == pytest.approx(0.2)
+
+
+def test_stress_multiplier_applies_to_observed_spread_not_only_fallback():
+    wide = Bar(
+        "EURUSD",
+        "M5",
+        SIGNAL + timedelta(minutes=5),
+        1.1005,
+        1.1010,
+        1.1000,
+        1.1005,
+        100,
+        0.0003,
+        0.0004,
+    )
+    target = bar(2, low=1.1004, high=1.1023, close=1.1020)
+    stressed = CostModel(0.8, 0.2, 0.2).stressed(
+        spread_multiplier=1.25,
+        slippage_multiplier=1.50,
+    )
+    result = engine(stressed).evaluate(intent(), [wide, target], timeframe_seconds=300)
+    assert result.spread_pips_used == pytest.approx(3.75)
+    assert result.slippage_pips_used == pytest.approx(0.30)
+
+
+def test_feature_cutoff_cannot_reference_future_information():
+    with pytest.raises(DataContractError, match="feature cutoff"):
+        intent(feature_cutoff_at=SIGNAL + timedelta(seconds=1))
+
+
+def test_mixed_timeframe_history_fails_closed():
+    first = bar(1, low=1.1000, high=1.1010)
+    second = Bar(
+        "EURUSD",
+        "H1",
+        SIGNAL + timedelta(minutes=10),
+        1.1005,
+        1.1022,
+        1.1004,
+        1.1020,
+        100,
+        0.0001,
+        0.0002,
+    )
+    with pytest.raises(DataContractError, match="one timeframe"):
+        engine().evaluate(intent(), [first, second], timeframe_seconds=300)
+
+
+def test_planned_stop_below_minimum_fails_before_costs_can_make_it_look_wider():
+    tiny = intent(
+        entry_low=1.1000,
+        entry_high=1.1001,
+        stop_loss=1.09995,
+        take_profit=1.1020,
+    )
+    with pytest.raises(DataContractError, match="planned stop distance"):
+        engine().evaluate(
+            tiny,
+            [bar(1, low=1.1000, high=1.1010)],
+            timeframe_seconds=300,
+        )
