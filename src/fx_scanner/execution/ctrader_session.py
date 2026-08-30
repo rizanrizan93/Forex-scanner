@@ -117,7 +117,7 @@ class CTraderOpenApiSession:
     @staticmethod
     def _event_ts(raw: int | None) -> datetime:
         if not raw:
-            return datetime.now(tz=UTC)
+            raise CollectorUnavailable("cTrader spot event timestamp unavailable")
         value = float(raw)
         seconds = value / 1000.0 if value > 10_000_000_000 else value
         return datetime.fromtimestamp(seconds, tz=UTC)
