@@ -124,9 +124,14 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
         for key in (
             "client_id_env", "client_secret_env", "access_token_env",
             "refresh_token_env", "token_state_path_env", "account_id_env",
+            "trader_login_env",
         ):
             if not ctrader.get(key):
                 raise ConfigurationError(f"missing cTrader config: {key}")
+        if not bool(ctrader.get("require_demo", False)):
+            raise ConfigurationError("cTrader demo-only account lock cannot be disabled")
+        if str(ctrader.get("environment", "DEMO")).upper() != "DEMO":
+            raise ConfigurationError("cTrader phone-only runtime is locked to DEMO")
         if float(ctrader.get("request_timeout_seconds", 0)) <= 0:
             raise ConfigurationError("cTrader request timeout must be positive")
         if float(ctrader.get("max_quote_age_seconds", 0)) <= 0:
