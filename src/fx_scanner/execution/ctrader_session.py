@@ -524,7 +524,11 @@ class CTraderOpenApiSession:
     def reconcile(self):
         req = self.msg["ReconcileReq"]()
         req.ctidTraderAccountId = self.account_id
-        req.returnProtectionOrders = False
+        # Spotware's current protocol documents returnProtectionOrders as
+        # optional, while ctrader-open-api 0.9.2 ships an older generated
+        # protobuf without that attribute. Omitting it is equivalent to FALSE.
+        if hasattr(req, "returnProtectionOrders"):
+            req.returnProtectionOrders = False
         return self._send_sync(req, client_msg_id=f"reconcile-{uuid4().hex}")
 
     def expected_margin(self, symbol_id: int, volume_cents: int):
