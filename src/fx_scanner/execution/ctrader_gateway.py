@@ -137,6 +137,17 @@ class CTraderExecutionGateway:
         raw = first.buyMargin if intent.side == OrderSide.BUY else first.sellMargin
         return CTraderPreparedOrder(request, int(symbol.lotSize), executable_price, float(raw))
 
+    def position_count(self) -> int:
+        """Return broker-reported open position count for demo exposure guards."""
+        self.session.ensure_connected()
+        reconcile = self.session.reconcile()
+        return len(tuple(getattr(reconcile, "position", ())))
+
+    def executable_quote(self, intent: OrderIntent) -> tuple[float, float, float]:
+        """Return bid, ask, and side-specific executable price after freshness validation."""
+        quote, executable = self._quote(intent)
+        return float(quote.bid), float(quote.ask), float(executable)
+
     def preflight(self, intent: OrderIntent, order_config: dict[str, Any]) -> BrokerPreflight:
         try:
             prepared = self._build_request(intent, order_config)
