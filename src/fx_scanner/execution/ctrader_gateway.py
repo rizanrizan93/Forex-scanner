@@ -83,11 +83,15 @@ class CTraderExecutionGateway:
             raise CollectorUnavailable("cTrader volume does not match broker stepVolume")
         return volume
 
-    def _quote(self, intent: OrderIntent):
-        quote = self.session.quote(intent.symbol)
+    def market_quote(self, symbol: str):
+        quote = self.session.quote(str(symbol).upper())
         age = (datetime.now(tz=UTC) - quote.timestamp).total_seconds()
-        if age > self.max_quote_age_seconds:
+        if age < -1.0 or age > self.max_quote_age_seconds:
             raise CollectorUnavailable(f"cTrader stale quote: {age:.3f}s")
+        return quote
+
+    def _quote(self, intent: OrderIntent):
+        quote = self.market_quote(intent.symbol)
         return quote, quote.ask if intent.side == OrderSide.BUY else quote.bid
 
     def _build_request(self, intent: OrderIntent, order_config: dict[str, Any]) -> CTraderPreparedOrder:
