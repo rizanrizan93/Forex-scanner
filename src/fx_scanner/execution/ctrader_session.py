@@ -183,6 +183,23 @@ class CTraderOpenApiSession:
         if not self._reactor_started.wait(timeout=2.0):
             raise CollectorUnavailable("cTrader Twisted reactor did not start")
 
+    def _decode_response(self, result):
+        """Decode OpenApiPy's ProtoMessage container into its payload message."""
+        decoded = result
+        if hasattr(result, "payload") and hasattr(result, "payloadType"):
+            try:
+                decoded = self.Protobuf.extract(result)
+            except Exception as exc:
+                raise CollectorUnavailable("cTrader response protobuf decode failed") from exc
+
+        message_name = type(decoded).__name__
+        if message_name in {"ProtoErrorRes", "ProtoOAErrorRes", "ProtoOAOrderErrorEvent"}:
+            code = str(getattr(decoded, "errorCode", "") or "UNKNOWN_ERROR")
+            description = str(getattr(decoded, "description", "") or "")
+            suffix = f": {description}" if description else ""
+            raise CollectorUnavailable(f"cTrader API error {code}{suffix}")
+        return decoded
+
     def _send_sync(self, message, *, client_msg_id: str | None = None, timeout: float | None = None):
         timeout = self.request_timeout_seconds if timeout is None else float(timeout)
         done = Event()
@@ -211,7 +228,7 @@ class CTraderOpenApiSession:
             raise CollectorUnavailable(f"cTrader request timeout after {timeout:.1f}s")
         if "error" in box:
             raise CollectorUnavailable(f"cTrader request failed: {box['error']}")
-        return box["result"]
+        return self._decode_response(box["result"])
 
     def _refresh_tokens(self) -> None:
         if not self.refresh_token:
