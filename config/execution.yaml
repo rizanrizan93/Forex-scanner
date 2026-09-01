@@ -23,6 +23,8 @@ ctrader:
   require_demo: true
   request_timeout_seconds: 10
   max_quote_age_seconds: 2
+  quote_wait_timeout_seconds: 5
+  quote_poll_seconds: 0.10
 
 mt5:
   role: EXECUTION_ONLY
