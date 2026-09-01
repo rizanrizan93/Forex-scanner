@@ -272,6 +272,7 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
             300.0,
             float(policy.order.get("max_signal_age_seconds", 300)),
         ),
+        max_quote_age_seconds=float(policy.ctrader["max_quote_age_seconds"]),
         guard_resolver=guard_resolver,
     )
     try:
