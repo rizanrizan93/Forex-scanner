@@ -1,0 +1,43 @@
+name: cTrader Demo AutoTrade
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-demo-autotrade
+  cancel-in-progress: false
+
+jobs:
+  autotrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      FX_KILL_SWITCH: "0"
+      FX_IDEMPOTENCY_STATE_PATH: /tmp/execution_idempotency.json
+      CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install cTrader runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Execute only durable EXECUTION_READY demo signals
+        run: python -m fx_scanner.cli ctrader-demo-autotrade --once --limit 10
