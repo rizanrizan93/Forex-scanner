@@ -98,6 +98,8 @@ def build_broker_gateway(
             gateway = CTraderExecutionGateway(
                 session,
                 max_quote_age_seconds=float(cfg.get("max_quote_age_seconds", 5)),
+                quote_wait_timeout_seconds=float(cfg.get("quote_wait_timeout_seconds", 5)),
+                quote_poll_seconds=float(cfg.get("quote_poll_seconds", 0.10)),
             )
             return gateway, session
         except Exception:
