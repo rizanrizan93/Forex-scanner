@@ -328,3 +328,164 @@ class SupabaseOperationalStore:
             self.client.table("broker_order_events").insert(row).execute()
         except Exception as exc:
             raise OperationalStoreUnavailable(f"broker_order_events write failed: {exc}") from exc
+
+
+    def start_scanner_run(
+        self,
+        *,
+        mode: str = "DEMO_ONLY",
+        code_version: str,
+        data_contract_version: str = "0.4",
+        started_at: datetime | None = None,
+    ) -> str:
+        """Create one durable producer run and return its database UUID."""
+        mode = str(mode).upper()
+        if mode not in {"RESEARCH_ONLY", "PAPER_ONLY", "DEMO_ONLY", "REAL_MONEY_CANDIDATE"}:
+            raise ValueError("invalid scanner run mode")
+        if mode == "REAL_MONEY_CANDIDATE":
+            raise OperationalStoreUnavailable(
+                "signal producer is demo/research only; real-money candidate mode is forbidden"
+            )
+        row = {
+            "started_at": (started_at or datetime.now(tz=UTC)).astimezone(UTC).isoformat(),
+            "mode": mode,
+            "status": "RUNNING",
+            "code_version": str(code_version or "UNKNOWN"),
+            "data_contract_version": str(data_contract_version),
+        }
+        try:
+            response = self.client.table("scanner_runs").insert(row).execute()
+            rows = list(response.data or [])
+        except Exception as exc:
+            raise OperationalStoreUnavailable(f"scanner_runs insert failed: {exc}") from exc
+        if len(rows) != 1 or not rows[0].get("id"):
+            raise OperationalStoreUnavailable("scanner_runs insert did not return exactly one id")
+        return str(rows[0]["id"])
+
+    def finish_scanner_run(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        finished_at: datetime | None = None,
+    ) -> None:
+        if not str(run_id).strip():
+            raise ValueError("run_id is required")
+        payload = {
+            "status": str(status).upper(),
+            "finished_at": (finished_at or datetime.now(tz=UTC)).astimezone(UTC).isoformat(),
+        }
+        try:
+            response = (
+                self.client.table("scanner_runs")
+                .update(payload)
+                .eq("id", str(run_id))
+                .execute()
+            )
+            rows = list(response.data or [])
+        except Exception as exc:
+            raise OperationalStoreUnavailable(f"scanner_runs finish failed: {exc}") from exc
+        if len(rows) != 1:
+            raise OperationalStoreUnavailable(
+                f"scanner_runs finish expected one row, got {len(rows)}"
+            )
+
+    def get_latest_currency_macro_states(
+        self,
+        currencies: tuple[str, ...] | list[str],
+    ) -> dict[str, dict[str, Any]]:
+        """Read newest durable macro snapshot per requested currency.
+
+        Missing currencies are omitted instead of being synthesized as neutral.
+        """
+        fields = (
+            "currency,observed_at,rate_score,central_bank_score,inflation_score,"
+            "growth_score,labour_score,yield_score,risk_score,positioning_score,"
+            "macro_score,coverage,freshness_seconds,evidence"
+        )
+        output: dict[str, dict[str, Any]] = {}
+        for raw in currencies:
+            currency = str(raw).upper().strip()
+            if len(currency) != 3:
+                raise ValueError(f"invalid currency code: {raw}")
+            try:
+                response = (
+                    self.client.table("currency_macro_state")
+                    .select(fields)
+                    .eq("currency", currency)
+                    .order("observed_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+                rows = list(response.data or [])
+            except Exception as exc:
+                raise OperationalStoreUnavailable(
+                    f"currency_macro_state read failed for {currency}: {exc}"
+                ) from exc
+            if len(rows) > 1:
+                raise OperationalStoreUnavailable(
+                    f"currency_macro_state returned multiple latest rows for {currency}"
+                )
+            if rows:
+                output[currency] = dict(rows[0])
+        return output
+
+    def write_currency_strength_rows(self, rows: list[dict[str, Any]]) -> None:
+        if not rows:
+            return
+        try:
+            self.client.table("currency_strength").insert(rows).execute()
+        except Exception as exc:
+            raise OperationalStoreUnavailable(f"currency_strength write failed: {exc}") from exc
+
+    def write_pair_ranking_rows(self, rows: list[dict[str, Any]]) -> None:
+        if not rows:
+            return
+        try:
+            self.client.table("pair_rankings").insert(rows).execute()
+        except Exception as exc:
+            raise OperationalStoreUnavailable(f"pair_rankings write failed: {exc}") from exc
+
+    def write_signal_rows(self, rows: list[dict[str, Any]]) -> None:
+        if not rows:
+            return
+        for row in rows:
+            if str(row.get("state", "")).upper() == "EXECUTION_READY":
+                guards = row.get("active_guards")
+                score = row.get("final_score")
+                coverage = row.get("data_coverage")
+                if guards not in ([], ()):
+                    raise OperationalStoreUnavailable(
+                        "refusing to persist EXECUTION_READY with active guards"
+                    )
+                if score is None or float(score) < 90.0:
+                    raise OperationalStoreUnavailable(
+                        "refusing to persist EXECUTION_READY below score 90"
+                    )
+                if coverage is None or float(coverage) < 0.80:
+                    raise OperationalStoreUnavailable(
+                        "refusing to persist EXECUTION_READY below coverage 0.80"
+                    )
+        try:
+            self.client.table("signals").insert(rows).execute()
+        except Exception as exc:
+            raise OperationalStoreUnavailable(f"signals write failed: {exc}") from exc
+
+    def list_signals_for_run(self, run_id: str) -> tuple[dict[str, Any], ...]:
+        if not str(run_id).strip():
+            raise ValueError("run_id is required")
+        fields = (
+            "id,run_id,observed_at,symbol,direction,setup_type,state,"
+            "final_score,active_guards,data_coverage,expires_at"
+        )
+        try:
+            response = (
+                self.client.table("signals")
+                .select(fields)
+                .eq("run_id", str(run_id))
+                .order("observed_at", desc=True)
+                .execute()
+            )
+            return tuple(dict(row) for row in (response.data or []))
+        except Exception as exc:
+            raise OperationalStoreUnavailable(f"signals run read failed: {exc}") from exc

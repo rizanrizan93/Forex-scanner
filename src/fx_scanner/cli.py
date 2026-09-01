@@ -15,6 +15,10 @@ from .demo import generate_demo_ticks
 from .quality import assess_ticks
 from .providers.factory import build_provider_runtime
 from .cloud_runtime import CTraderCloudResearchRuntime
+from .signal_producer import CTraderSignalProducer
+from .producer_guards import ProductionGuardResolver
+from .providers.news import ForexFactoryCalendarProvider
+from .providers.transport import UrllibHttpTransport
 from .execution.factory import build_broker_gateway, build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .execution.models import ExecutionMode, OrderIntent, OrderSide, OrderType
@@ -222,6 +226,90 @@ def cmd_research_cloud(args: argparse.Namespace) -> int:
             heartbeat_seconds=float(args.heartbeat),
             mtf_refresh_seconds=float(args.mtf_refresh),
         )
+        return 0
+    finally:
+        feed.close()
+
+
+def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
+    """Run one DEMO-only signal-production cycle; never submits broker orders."""
+    cfg = load_project_config(args.root)
+    policy = load_execution_policy(args.root)
+    if str(policy.ctrader.get("environment", "")).upper() != "DEMO":
+        raise SystemExit("CTRADER_SIGNAL_PRODUCER_DEMO_ONLY")
+    if not bool(policy.ctrader.get("require_demo", False)):
+        raise SystemExit("CTRADER_SIGNAL_PRODUCER_REQUIRE_DEMO")
+    symbols = [pair.symbol for pair in cfg.pairs]
+    feed = build_ctrader_research_feed(policy, symbols)
+    store = SupabaseOperationalStore.from_env()
+
+    transport_cfg = cfg.providers["transport"]
+    calendar_cfg = cfg.providers["calendar"]["FOREX_FACTORY_WEEKLY"]
+    calendar_transport = UrllibHttpTransport(
+        timeout_seconds=float(transport_cfg["timeout_seconds"]),
+        max_response_bytes=int(transport_cfg["max_response_bytes"]),
+        user_agent=str(transport_cfg["user_agent"]),
+    )
+    calendar_provider = ForexFactoryCalendarProvider(
+        calendar_transport,
+        url=str(calendar_cfg["base_url"]),
+        allowed_host=str(calendar_cfg["allowed_host"]),
+    )
+    guard_resolver = ProductionGuardResolver(
+        cfg,
+        feed,
+        calendar_provider=calendar_provider,
+        max_quote_age_seconds=float(policy.ctrader["max_quote_age_seconds"]),
+        max_spread_pips=float(policy.reconciliation["max_execution_spread_pips"]),
+        demo_max_risk_pct=float(policy.demo_safety["max_risk_pct"]),
+    )
+    producer = CTraderSignalProducer(
+        cfg,
+        feed,
+        store,
+        code_version=os.getenv("GITHUB_SHA", "LOCAL"),
+        signal_ttl_seconds=min(
+            300.0,
+            float(policy.order.get("max_signal_age_seconds", 300)),
+        ),
+        max_quote_age_seconds=float(policy.ctrader["max_quote_age_seconds"]),
+        guard_resolver=guard_resolver,
+    )
+    try:
+        report = producer.run_once()
+        persisted = store.list_signals_for_run(report.run_id)
+        state_counts: dict[str, int] = {}
+        for row in persisted:
+            state = str(row.get("state", "UNKNOWN")).upper()
+            state_counts[state] = state_counts.get(state, 0) + 1
+        states = ",".join(
+            f"{name}:{state_counts[name]}" for name in sorted(state_counts)
+        ) or "NONE"
+        missing_macro = ",".join(report.missing_macro) or "NONE"
+        guard_missing_count = sum(
+            len(names) for names in report.guard_missing.values()
+        )
+        print(
+            "CTRADER_SIGNAL_PRODUCER_OK "
+            f"run_id={report.run_id} market={report.market_symbols}/{len(cfg.pairs)} "
+            f"macro={report.macro_currencies}/8 ranked={report.ranked_pairs} "
+            f"deep={report.deep_candidates} analyses={report.analyses} "
+            f"signals={report.signals_written} execution_ready={report.execution_ready} "
+            f"skipped={len(report.skipped)} missing_macro={missing_macro} "
+            f"guard_missing={guard_missing_count}"
+        )
+        print(f"CTRADER_SIGNAL_STATES {states}")
+        if report.calendar_error:
+            print(f"CTRADER_SIGNAL_CALENDAR_UNAVAILABLE {report.calendar_error}")
+        if report.execution_ready:
+            ready_rows = [
+                row for row in persisted
+                if str(row.get("state", "")).upper() == "EXECUTION_READY"
+            ]
+            if len(ready_rows) != report.execution_ready:
+                raise SystemExit("CTRADER_SIGNAL_PERSISTENCE_MISMATCH")
+            if any(row.get("active_guards") not in ([], ()) for row in ready_rows):
+                raise SystemExit("CTRADER_SIGNAL_READY_HAS_GUARDS")
         return 0
     finally:
         feed.close()
@@ -479,6 +567,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--environment", choices=["DEMO", "LIVE"], default="DEMO")
     p.add_argument("--once", action="store_true")
     p.set_defaults(func=cmd_mt5_monitor)
+
+    p = sub.add_parser("ctrader-signal-producer")
+    p.set_defaults(func=cmd_ctrader_signal_producer)
 
     p = sub.add_parser("ctrader-demo-preflight")
     p.set_defaults(func=cmd_ctrader_demo_preflight)

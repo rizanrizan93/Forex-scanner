@@ -58,3 +58,11 @@ smoke_series:
     provider: RBA_CASH_RATE
     series: CASH_RATE_TARGET
     max_age_seconds: 3888000
+
+
+calendar:
+  FOREX_FACTORY_WEEKLY:
+    enabled: true
+    official: false
+    base_url: https://nfs.faireconomy.media/ff_calendar_thisweek.json
+    allowed_host: nfs.faireconomy.media
