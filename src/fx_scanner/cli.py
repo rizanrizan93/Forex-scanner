@@ -19,7 +19,7 @@ from .execution.factory import build_broker_gateway, build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .execution.models import ExecutionMode, OrderIntent, OrderSide, OrderType
 from .execution.router import ExecutionRouter
-from .execution.control_plane import ControlPlaneGate
+from .execution.control_plane import ControlPlaneGate, ControlPlaneRefreshWorker
 from .execution.demo_autotrade import CTraderDemoAutoExecutor, SupabaseOrderAuditSink
 from .execution.runtime import RuntimeSupervisor, ScheduledJob
 from .storage.audit import JsonlAuditStore
@@ -307,9 +307,18 @@ def cmd_ctrader_demo_autotrade(args: argparse.Namespace) -> int:
         store=store,
     )
     interval = float(policy.demo_safety.get("poll_seconds", 1.0))
+    control_worker = ControlPlaneRefreshWorker(
+        store,
+        gate,
+        interval_seconds=min(
+            1.0,
+            max(0.25, float(policy.live_safety.get("control_state_max_age_seconds", 5)) / 3.0),
+        ),
+    )
+    control_worker.refresh_once()
+    control_worker.start()
 
     def run_once():
-        gate.refresh(store)
         report = executor.poll_once(limit=int(args.limit))
         store.write_heartbeat(
             "ctrader_demo_autotrade",
@@ -355,6 +364,7 @@ def cmd_ctrader_demo_autotrade(args: argparse.Namespace) -> int:
         print("CTRADER_DEMO_AUTOTRADE_STOPPED")
         return 0
     finally:
+        control_worker.stop()
         session.close()
 
 
@@ -402,8 +412,17 @@ def cmd_ctrader_demo_order_smoke(args: argparse.Namespace) -> int:
         control_gate=gate,
         audit_sink=SupabaseOrderAuditSink(store),
     )
+    control_worker = ControlPlaneRefreshWorker(
+        store,
+        gate,
+        interval_seconds=min(
+            1.0,
+            max(0.25, float(policy.live_safety.get("control_state_max_age_seconds", 5)) / 3.0),
+        ),
+    )
+    control_worker.refresh_once()
+    control_worker.start()
     try:
-        gate.refresh(store)
         intent = _build_ctrader_demo_smoke_intent(cfg, gateway, symbol=args.symbol)
         receipt = router.execute(intent)
         if not receipt.accepted:
@@ -416,6 +435,7 @@ def cmd_ctrader_demo_order_smoke(args: argparse.Namespace) -> int:
         )
         return 0
     finally:
+        control_worker.stop()
         session.close()
 
 
