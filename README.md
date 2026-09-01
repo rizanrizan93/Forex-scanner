@@ -1,10 +1,11 @@
-# FX Institutional Scanner v0.11
+# FX Institutional Scanner v0.13
 
-Production-oriented forex scanner foundation with a **dual-feed / single-execution** design.
+Production-oriented forex scanner foundation with a **phone-only cTrader demo-forward** design.
 
 **Research feed:** FP Markets cTrader Open API  
-**Execution venue:** HFM Cent MT5  
-**Execution default:** `DISABLED`
+**Demo execution venue:** FP Markets cTrader Demo only  
+**Future execution venue:** HFM MT5 is deferred  
+**Committed execution default:** `DISABLED`
 
 ## Operating model
 
@@ -13,30 +14,31 @@ The Android phone is the control/monitoring surface. A controlled VPS is the 24/
 ```text
 Global/macro data
        |
-FP Markets cTrader ------------------+
-(read-only research feed)            |
-                                     v
-                         Scanner / ranking / SMC-ICT
-                                     |
-                              signal candidate
-                                     |
-                                     v
-                        HFM execution revalidation
-                           (warm MT5 connection)
-                                     |
-                  stale/spread/divergence/chase/RR/risk
-                                     |
-                              pass -> MT5 order
-                                     |
-                              HFM Cent account
+FP Markets cTrader
+(live Bid/Ask + D1/H4/H1/M15/M5)
+       |
+       v
+Scanner / ranking / SMC-ICT
+       |
+EXECUTION_READY only
+       |
+Supabase atomic claim: EXECUTION_READY -> COOLDOWN
+       |
+fresh cTrader quote + entry-zone + RR + SL/TP + demo guards
+       |
+       v
+FP Markets cTrader DEMO order (max 0.01 lot, max 1 open position)
 
-Supabase -> cached control state + async audit (not quote/order latency path)
-Android  -> monitor / future approve / pause / emergency controls
+Supabase -> control state + durable signal claim + async audit
+Android  -> monitor / explicit demo enable-disable
 ```
 
-There is **no automatic cTrader -> MT5 failover** and cTrader is configured
-`RESEARCH_ONLY`. The configured factory refuses to build cTrader as an execution
-backend.
+There is **no automatic broker failover**. cTrader is hard-locked to the
+`DEMO` host and the runtime rejects any live account. Demo order submission
+also requires an access token with cTrader `SCOPE_TRADE`, an explicit
+demo-autotrade opt-in secret, a fresh Supabase control state, an
+`EXECUTION_READY` signal with no active guards, an atomic durable signal
+claim, and the broker preflight. Real/live execution is not enabled.
 
 ## v0.6 decision engine foundation
 
@@ -235,6 +237,39 @@ tables are intentionally closed to public roles.
 
 See `docs/STREAMLIT_DEPLOY.md`.
 
+## v0.13 phone-only cTrader demo execution
+
+The demo-forward execution path is separate from the scanner decision logic.
+It consumes only durable `EXECUTION_READY` signals and never creates a trade
+candidate by itself. Before broker I/O it atomically moves the signal to
+`COOLDOWN`, then rechecks the live cTrader quote against the signal entry
+zone and validates SL/TP/RR geometry.
+
+Hard demo limits are committed in configuration:
+
+- cTrader environment must be `DEMO`
+- granted account must not be live
+- OAuth permission scope must be `SCOPE_TRADE`
+- max order size: `0.01` lot
+- max concurrent open positions: `1`
+- signal evidence coverage: at least `0.80`
+- TP2 RR: at least `1.50`
+- server-side SL and TP are mandatory
+- explicit phone-side opt-in and Supabase control-plane agreement are mandatory
+
+Phone workflows:
+
+- `cTrader Demo Execution Preflight`: verifies demo account, trade permission,
+  symbols and account access without placing an order.
+- `cTrader Demo Execution Control`: explicitly enables or disables demo AUTO.
+- `cTrader Demo AutoTrade`: consumes eligible durable signals. The GitHub
+  schedule is an interim 5-minute runner; the intended persistent cloud runtime
+  remains the next deployment step for approximately 1-second polling.
+
+The repository stays `DISABLED` at rest. The demo CLI creates an in-memory
+`AUTO` policy only after the exact demo opt-in phrase is present and the
+Supabase control plane agrees.
+
 ## v0.11 phone-only Linux research runtime
 
 The research side can now run independently on Linux/cloud while remaining
@@ -242,7 +277,7 @@ connected to **FP Markets cTrader Open API**. It acquires live Bid/Ask plus
 D1/H4/H1/M15/M5 historical trendbars, sends an 8-second client heartbeat,
 and rate-limits historical requests below cTrader limits.
 
-HFM MT5 remains the separate execution/telemetry venue.
+HFM MT5 is deferred while cTrader Demo is used for forward validation.
 
 ```bash
 python -m fx_scanner.cli research-cloud --once
@@ -363,11 +398,12 @@ If a broker submission crosses the side-effect boundary but its response is
 lost, that signal is persisted as **uncertain**. It cannot be retried until
 broker order/position reconciliation explicitly resolves the outcome.
 
-## cTrader research reliability
+## cTrader reliability and demo isolation
 
-The cTrader research facade exposes quotes/symbol information only; it exposes
-no order submission method. On reconnect it reloads the research universe and
-restores spot subscriptions.
+The research facade restores symbols and spot subscriptions after reconnect.
+The underlying session also supports order messages, but the configured
+execution factory can construct that path only for the hard-locked cTrader
+DEMO role. Live accounts are rejected during granted-account resolution.
 
 cTrader access-token rotation is supported. Rotated access and refresh tokens
 are written atomically to the VPS-only token-state file and the `state/`
@@ -382,6 +418,7 @@ CTRADER_ACCESS_TOKEN
 CTRADER_REFRESH_TOKEN
 CTRADER_TOKEN_STATE_PATH
 CTRADER_ACCOUNT_ID
+CTRADER_DEMO_AUTOTRADE_ENABLED
 
 MT5_TERMINAL_PATH
 MT5_LOGIN
@@ -453,16 +490,16 @@ Do not enable real-money execution from this repository state.
 
 ```text
 DISABLED
--> SIMULATION
--> dual-broker live-feed smoke test
--> CONFIRM_TO_TRADE on demo
--> AUTO on demo
+-> cTrader research smoke 15/15 + 75/75
+-> cTrader demo execution preflight
+-> controlled demo order smoke
+-> AUTO on cTrader demo
 -> forward validation / cost & latency calibration
--> real-money acceptance review
+-> separate real-money acceptance review
 ```
 
 Research acceptance remains at minimum: OOS win rate >=55%, Profit Factor
 >=1.30, positive robust expectancy, walk-forward pass, spread/slippage stress
 pass, multi-regime pass, and demo forward-test pass.
 
-**Real-money readiness is not claimed at v0.11.**
+**Real-money readiness is not claimed at v0.13.**
