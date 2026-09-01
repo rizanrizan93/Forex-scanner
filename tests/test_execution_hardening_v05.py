@@ -139,7 +139,7 @@ def test_ctrader_research_feed_restores_subscriptions_after_reconnect():
     assert session.subscriptions == 1
 
 
-def test_ctrader_two_sided_quote_uses_older_side_timestamp():
+def test_ctrader_two_sided_quote_uses_latest_price_side_timestamp():
     from fx_scanner.execution.ctrader_session import CTraderOpenApiSession
 
     session = CTraderOpenApiSession.__new__(CTraderOpenApiSession)
@@ -156,7 +156,7 @@ def test_ctrader_two_sided_quote_uses_older_side_timestamp():
         }
     }
     quote = session.quote("EURUSD")
-    assert quote.timestamp == older
+    assert quote.timestamp == newer
 
 
 class AccountMT5:
