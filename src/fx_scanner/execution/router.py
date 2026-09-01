@@ -102,6 +102,36 @@ class ExecutionRouter:
         except Exception as exc:
             raise ExecutionBlocked(f"CONTROL_PLANE_BLOCK:{exc}") from exc
 
+    def _is_ctrader_demo_execution(self) -> bool:
+        return bool(
+            str(self.policy.broker.get("execution", "")).upper() == "CTRADER"
+            and str(self.policy.ctrader.get("environment", "")).upper() == "DEMO"
+            and str(self.policy.ctrader.get("role", "")).upper()
+            == "RESEARCH_AND_DEMO_EXECUTION"
+        )
+
+    def _assert_demo_environment(self, account_id: str, intent: OrderIntent) -> None:
+        safety = self.policy.demo_safety
+        if not self._is_ctrader_demo_execution():
+            raise ExecutionBlocked("DEMO_EXECUTION_CONFIGURATION_INVALID")
+        if os.getenv(str(safety.get("enable_env", "")), "") != str(safety.get("enable_value", "")):
+            raise ExecutionBlocked("DEMO_ENV_GATE_CLOSED")
+        if float(intent.volume) > float(safety.get("max_order_lots", 0)):
+            raise ExecutionBlocked("DEMO_MAX_ORDER_LOTS_EXCEEDED")
+        if float(intent.risk_pct) > float(safety.get("max_risk_pct", 0)):
+            raise ExecutionBlocked("DEMO_MAX_RISK_EXCEEDED")
+        if self.gateway is None or not hasattr(self.gateway, "position_count"):
+            raise ExecutionBlocked("DEMO_POSITION_GUARD_UNAVAILABLE")
+        try:
+            open_positions = int(self.gateway.position_count())
+        except Exception as exc:
+            raise ExecutionBlocked(f"DEMO_POSITION_GUARD_FAILED:{exc}") from exc
+        if open_positions >= int(safety.get("max_concurrent_positions", 1)):
+            raise ExecutionBlocked("DEMO_MAX_CONCURRENT_POSITIONS")
+        if not str(account_id).isdigit():
+            raise ExecutionBlocked("DEMO_ACCOUNT_ID_INVALID")
+        self._assert_control_plane()
+
     def _assert_live_environment(self, account_id: str) -> None:
         safety = self.policy.live_safety
         if os.getenv(safety["live_enable_env"]) != safety["live_enable_value"]:
@@ -113,6 +143,12 @@ class ExecutionRouter:
         if safety.get("require_persistent_idempotency", False) and self.duplicates.path is None:
             raise ExecutionBlocked("PERSISTENT_IDEMPOTENCY_NOT_CONFIGURED")
         self._assert_control_plane()
+
+    def _assert_broker_environment(self, account_id: str, intent: OrderIntent) -> None:
+        if self._is_ctrader_demo_execution():
+            self._assert_demo_environment(account_id, intent)
+            return
+        self._assert_live_environment(account_id)
 
     def execute(self, intent: OrderIntent, *, user_confirmed: bool = False) -> OrderReceipt:
         self._assert_common(intent)
@@ -191,7 +227,7 @@ class ExecutionRouter:
                 account = self.gateway.account_snapshot()
                 account_id = str(account.account_id)
 
-            self._assert_live_environment(account_id)
+            self._assert_broker_environment(account_id, effective_intent)
             if not account.trade_allowed:
                 raise ExecutionBlocked("ACCOUNT_TRADING_NOT_ALLOWED")
 

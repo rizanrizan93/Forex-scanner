@@ -1,16 +1,16 @@
-# v0.5 dual-feed / single-execution architecture.
-# FP Markets cTrader is research-only; HFM Cent MT5 is the only execution venue.
-# Live trading remains locked by independent gates and defaults to DISABLED.
+# v0.13 phone-only demo-forward architecture.
+# FP Markets cTrader is the research feed AND the only permitted DEMO execution venue.
+# Real/live execution remains forbidden; committed execution mode stays DISABLED.
 mode: DISABLED
 
 broker:
-  dual_feed_single_execution: true
+  dual_feed_single_execution: false
   research: CTRADER
-  execution: MT5
+  execution: CTRADER
   automatic_fallback: false
 
 ctrader:
-  role: RESEARCH_ONLY
+  role: RESEARCH_AND_DEMO_EXECUTION
   broker_label: FP_MARKETS
   environment: DEMO
   client_id_env: CTRADER_CLIENT_ID
@@ -107,9 +107,22 @@ live_safety:
   kill_switch_safe_value: "0"
   require_control_plane: true
   control_state_max_age_seconds: 5
-  require_revalidation: true
+  require_revalidation: false
   require_persistent_idempotency: true
   idempotency_state_path_env: FX_IDEMPOTENCY_STATE_PATH
+
+demo_safety:
+  enable_env: CTRADER_DEMO_AUTOTRADE_ENABLED
+  enable_value: I_UNDERSTAND_DEMO_ORDERS
+  require_demo_account: true
+  require_trade_scope: true
+  require_atomic_signal_claim: true
+  min_signal_coverage: 0.80
+  max_order_lots: 0.01
+  max_risk_pct: 0.25
+  max_concurrent_positions: 1
+  poll_seconds: 1.0
+
 
 modes:
   allowed:

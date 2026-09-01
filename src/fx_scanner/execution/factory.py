@@ -61,27 +61,51 @@ def build_broker_gateway(
 
     if selected == "CTRADER":
         cfg = policy.ctrader
-        if str(cfg.get("role", "")).upper() == "RESEARCH_ONLY":
+        if str(cfg.get("role", "")).upper() != "RESEARCH_AND_DEMO_EXECUTION":
             raise ConfigurationError(
-                "configured cTrader backend is RESEARCH_ONLY; use build_ctrader_research_feed()"
+                "configured cTrader backend is not enabled for demo execution"
             )
+        if str(cfg.get("environment", "DEMO")).upper() != "DEMO":
+            raise ConfigurationError("cTrader execution is hard-locked to DEMO")
+        token_store = CTraderTokenStateStore(_required_env(cfg["token_state_path_env"]))
+        tokens = token_store.load(
+            fallback_access=_required_env(cfg["access_token_env"]),
+            fallback_refresh=_required_env(cfg["refresh_token_env"]),
+        )
+        pinned_account_id = _optional_env(cfg["account_id_env"])
         session = CTraderOpenApiSession(
             client_id=_required_env(cfg["client_id_env"]),
             client_secret=_required_env(cfg["client_secret_env"]),
-            access_token=_required_env(cfg["access_token_env"]),
-            account_id=int(_required_env(cfg["account_id_env"])),
-            environment=str(cfg.get("environment", "DEMO")).lower(),
+            access_token=tokens.access_token,
+            refresh_token=tokens.refresh_token,
+            token_update_callback=token_store.save,
+            account_id=None,
+            environment="demo",
             request_timeout_seconds=float(cfg.get("request_timeout_seconds", 10)),
         )
-        session.connect()
-        universe = [str(x).upper() for x in symbols]
-        session.load_symbols(universe)
-        session.subscribe_spots(universe)
-        gateway = CTraderExecutionGateway(
-            session,
-            max_quote_age_seconds=float(cfg.get("max_quote_age_seconds", 5)),
-        )
-        return gateway, session
+        try:
+            account = session.resolve_granted_account(
+                trader_login=int(_required_env(cfg["trader_login_env"])),
+                require_demo=True,
+                pinned_account_id=None if pinned_account_id is None else int(pinned_account_id),
+            )
+            if bool(policy.demo_safety.get("require_trade_scope", True)) and account.permission_scope != 1:
+                raise ConfigurationError("cTrader token does not have SCOPE_TRADE")
+            session.connect()
+            universe = [str(x).upper() for x in symbols]
+            session.load_symbols(universe)
+            session.subscribe_spots(universe)
+            gateway = CTraderExecutionGateway(
+                session,
+                max_quote_age_seconds=float(cfg.get("max_quote_age_seconds", 5)),
+            )
+            return gateway, session
+        except Exception:
+            try:
+                session.close()
+            except Exception:
+                pass
+            raise
 
     if selected == "MT5":
         cfg = policy.mt5
@@ -107,8 +131,8 @@ def build_ctrader_research_feed(
     symbols: Iterable[str],
 ) -> CTraderResearchFeed:
     cfg = policy.ctrader
-    if str(cfg.get("role", "")).upper() != "RESEARCH_ONLY":
-        raise ConfigurationError("cTrader research feed must be configured RESEARCH_ONLY")
+    if str(cfg.get("role", "")).upper() not in {"RESEARCH_ONLY", "RESEARCH_AND_DEMO_EXECUTION"}:
+        raise ConfigurationError("cTrader research role is invalid")
     token_store = CTraderTokenStateStore(_required_env(cfg["token_state_path_env"]))
     tokens = token_store.load(
         fallback_access=_required_env(cfg["access_token_env"]),

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from time import sleep
@@ -14,6 +16,10 @@ from .providers.factory import build_provider_runtime
 from .cloud_runtime import CTraderCloudResearchRuntime
 from .execution.factory import build_broker_gateway, build_ctrader_research_feed
 from .execution.policy import load_execution_policy
+from .execution.models import ExecutionMode
+from .execution.router import ExecutionRouter
+from .execution.control_plane import ControlPlaneGate
+from .execution.demo_autotrade import CTraderDemoAutoExecutor, SupabaseOrderAuditSink
 from .execution.runtime import RuntimeSupervisor, ScheduledJob
 from .storage.audit import JsonlAuditStore
 from .storage.supabase_operational import SupabaseOperationalStore
@@ -220,6 +226,137 @@ def cmd_research_cloud(args: argparse.Namespace) -> int:
         feed.close()
 
 
+def _require_demo_autotrade_opt_in(policy) -> None:
+    safety = policy.demo_safety
+    name = str(safety.get("enable_env", ""))
+    value = str(safety.get("enable_value", ""))
+    if not name or os.getenv(name, "") != value:
+        raise SystemExit("CTRADER_DEMO_AUTOTRADE_OPT_IN_REQUIRED")
+
+
+def cmd_ctrader_demo_preflight(args: argparse.Namespace) -> int:
+    cfg = load_project_config(args.root)
+    policy = load_execution_policy(args.root)
+    symbols = [pair.symbol for pair in cfg.pairs]
+    gateway, session = build_broker_gateway(policy, symbols, backend="CTRADER")
+    try:
+        account = gateway.account_snapshot()
+        positions = gateway.position_count()
+        print(
+            "CTRADER_DEMO_PREFLIGHT_OK "
+            f"account_bound={bool(account.account_id)} trade_allowed={account.trade_allowed} "
+            f"positions={positions} symbols={len(symbols)}"
+        )
+        return 0 if account.trade_allowed else 2
+    finally:
+        session.close()
+
+
+def cmd_ctrader_demo_control(args: argparse.Namespace) -> int:
+    policy = load_execution_policy(args.root)
+    store = SupabaseOperationalStore.from_env()
+    if args.enable:
+        _require_demo_autotrade_opt_in(policy)
+        snapshot = store.set_execution_control(
+            execution_mode="AUTO",
+            new_orders_enabled=True,
+            emergency_stop=False,
+            close_all_requested=False,
+            source="github_phone_demo_enable",
+        )
+    else:
+        snapshot = store.set_execution_control(
+            execution_mode="DISABLED",
+            new_orders_enabled=False,
+            emergency_stop=True,
+            close_all_requested=False,
+            source="github_phone_demo_disable",
+        )
+    print(
+        "CTRADER_DEMO_CONTROL_OK "
+        f"mode={snapshot.execution_mode} new_orders={snapshot.new_orders_enabled} "
+        f"emergency_stop={snapshot.emergency_stop} version={snapshot.version}"
+    )
+    return 0
+
+
+def cmd_ctrader_demo_autotrade(args: argparse.Namespace) -> int:
+    cfg = load_project_config(args.root)
+    base_policy = load_execution_policy(args.root)
+    _require_demo_autotrade_opt_in(base_policy)
+    policy = replace(base_policy, mode=ExecutionMode.AUTO)
+    symbols = [pair.symbol for pair in cfg.pairs]
+    gateway, session = build_broker_gateway(policy, symbols, backend="CTRADER")
+    store = SupabaseOperationalStore.from_env()
+    gate = ControlPlaneGate(
+        max_age_seconds=float(policy.live_safety.get("control_state_max_age_seconds", 5))
+    )
+    router = ExecutionRouter(
+        policy,
+        gateway=gateway,
+        session=session,
+        control_gate=gate,
+        audit_sink=SupabaseOrderAuditSink(store),
+    )
+    executor = CTraderDemoAutoExecutor(
+        cfg=cfg,
+        policy=policy,
+        gateway=gateway,
+        router=router,
+        store=store,
+    )
+    interval = float(policy.demo_safety.get("poll_seconds", 1.0))
+
+    def run_once():
+        gate.refresh(store)
+        report = executor.poll_once(limit=int(args.limit))
+        store.write_heartbeat(
+            "ctrader_demo_autotrade",
+            healthy=True,
+            lag_seconds=0.0,
+            details={
+                "mode": "AUTO",
+                "environment": "DEMO",
+                "scanned": report.scanned,
+                "eligible": report.eligible,
+                "claimed": report.claimed,
+                "executed": report.executed,
+                "skipped": list(report.skipped[:20]),
+            },
+        )
+        print(
+            "CTRADER_DEMO_AUTOTRADE_OK "
+            f"scanned={report.scanned} eligible={report.eligible} "
+            f"claimed={report.claimed} executed={report.executed} "
+            f"skipped={len(report.skipped)}"
+        )
+        return report
+
+    try:
+        if args.once:
+            run_once()
+            return 0
+        while True:
+            try:
+                run_once()
+            except Exception as exc:
+                try:
+                    store.write_heartbeat(
+                        "ctrader_demo_autotrade",
+                        healthy=False,
+                        details={"error": f"{type(exc).__name__}: {exc}"},
+                    )
+                except Exception:
+                    pass
+                print(f"CTRADER_DEMO_AUTOTRADE_ERROR {type(exc).__name__}: {exc}")
+            sleep(interval)
+    except KeyboardInterrupt:
+        print("CTRADER_DEMO_AUTOTRADE_STOPPED")
+        return 0
+    finally:
+        session.close()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="fx-scanner")
     parser.add_argument("--root", default=None, help="project root; defaults to package root")
@@ -260,6 +397,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--environment", choices=["DEMO", "LIVE"], default="DEMO")
     p.add_argument("--once", action="store_true")
     p.set_defaults(func=cmd_mt5_monitor)
+
+    p = sub.add_parser("ctrader-demo-preflight")
+    p.set_defaults(func=cmd_ctrader_demo_preflight)
+
+    p = sub.add_parser("ctrader-demo-control")
+    group = p.add_mutually_exclusive_group(required=True)
+    group.add_argument("--enable", action="store_true")
+    group.add_argument("--disable", action="store_true")
+    p.set_defaults(func=cmd_ctrader_demo_control)
+
+    p = sub.add_parser("ctrader-demo-autotrade")
+    p.add_argument("--once", action="store_true")
+    p.add_argument("--limit", type=int, default=10)
+    p.set_defaults(func=cmd_ctrader_demo_autotrade)
     return parser
 
 

@@ -22,6 +22,7 @@ class ExecutionPolicy:
     mt5: dict[str, Any] = field(default_factory=dict)
     reconciliation: dict[str, Any] = field(default_factory=dict)
     adaptive_cadence: dict[str, float] = field(default_factory=dict)
+    demo_safety: dict[str, Any] = field(default_factory=dict)
 
 
 def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
@@ -60,6 +61,7 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
     mt5 = dict(raw.get("mt5", {}))
     reconciliation = dict(raw.get("reconciliation", {}))
     adaptive_cadence = {str(k).upper(): float(v) for k, v in raw.get("adaptive_cadence", {}).items()}
+    demo_safety = dict(raw.get("demo_safety", {}))
 
     for key in ("live_enable_env", "live_enable_value", "account_allowlist_env", "kill_switch_env"):
         if not live_safety.get(key):
@@ -117,6 +119,41 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
             raise ConfigurationError("dual-feed v0.5 requires CTRADER research and MT5 execution")
         if not live_safety.get("require_revalidation", False):
             raise ConfigurationError("dual-feed live execution requires revalidation")
+
+    if execution_backend == "CTRADER":
+        if research_backend != "CTRADER":
+            raise ConfigurationError("cTrader demo execution requires cTrader research")
+        if bool(broker.get("dual_feed_single_execution", False)):
+            raise ConfigurationError("cTrader demo execution cannot use dual-feed MT5 mode")
+        if str(ctrader.get("role", "")).upper() != "RESEARCH_AND_DEMO_EXECUTION":
+            raise ConfigurationError("cTrader execution requires RESEARCH_AND_DEMO_EXECUTION role")
+        if str(ctrader.get("environment", "DEMO")).upper() != "DEMO":
+            raise ConfigurationError("cTrader execution is hard-locked to DEMO")
+        if not bool(ctrader.get("require_demo", False)):
+            raise ConfigurationError("cTrader execution requires demo-account lock")
+        required_demo = (
+            "enable_env", "enable_value", "min_signal_coverage", "max_order_lots",
+            "max_risk_pct", "max_concurrent_positions", "poll_seconds",
+        )
+        for key in required_demo:
+            if key not in demo_safety or demo_safety.get(key) in (None, ""):
+                raise ConfigurationError(f"missing demo safety config: {key}")
+        if not bool(demo_safety.get("require_demo_account", False)):
+            raise ConfigurationError("demo account guard cannot be disabled")
+        if not bool(demo_safety.get("require_trade_scope", False)):
+            raise ConfigurationError("cTrader trade-scope guard cannot be disabled")
+        if not bool(demo_safety.get("require_atomic_signal_claim", False)):
+            raise ConfigurationError("atomic signal claim cannot be disabled")
+        if not 0.80 <= float(demo_safety["min_signal_coverage"]) <= 1.0:
+            raise ConfigurationError("demo min_signal_coverage cannot be below 0.80")
+        if not 0 < float(demo_safety["max_order_lots"]) <= 0.01:
+            raise ConfigurationError("demo max_order_lots cannot exceed 0.01")
+        if not 0 < float(demo_safety["max_risk_pct"]) <= 0.25:
+            raise ConfigurationError("demo max_risk_pct cannot exceed 0.25")
+        if int(demo_safety["max_concurrent_positions"]) != 1:
+            raise ConfigurationError("demo max_concurrent_positions must remain 1")
+        if not 0.25 <= float(demo_safety["poll_seconds"]) <= 5.0:
+            raise ConfigurationError("demo poll_seconds must be in [0.25,5]")
 
     if research_backend == "CTRADER":
         if str(ctrader.get("environment", "DEMO")).upper() not in {"DEMO", "LIVE"}:
@@ -193,6 +230,15 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
         raise ConfigurationError("ARMED/EXECUTION_READY cadence cannot exceed 250ms in v0.9")
 
     return ExecutionPolicy(
-        mode, scheduler, order, live_safety, runtime, broker, ctrader, mt5,
-        reconciliation, adaptive_cadence
+        mode=mode,
+        scheduler=scheduler,
+        order=order,
+        live_safety=live_safety,
+        runtime=runtime,
+        broker=broker,
+        ctrader=ctrader,
+        mt5=mt5,
+        reconciliation=reconciliation,
+        adaptive_cadence=adaptive_cadence,
+        demo_safety=demo_safety,
     )
