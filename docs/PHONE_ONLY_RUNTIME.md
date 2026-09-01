@@ -26,7 +26,7 @@ CTRADER_CLIENT_ID
 CTRADER_CLIENT_SECRET
 CTRADER_ACCESS_TOKEN
 CTRADER_REFRESH_TOKEN
-CTRADER_ACCOUNT_ID
+CTRADER_TRADER_LOGIN
 SUPABASE_URL
 SUPABASE_SECRET_KEY
 ```
@@ -36,6 +36,11 @@ Use persistent storage for:
 ```text
 CTRADER_TOKEN_STATE_PATH=/app/state/ctrader_tokens.json
 ```
+
+The runtime resolves the actual `ctidTraderAccountId` from the access-token
+account list by matching `CTRADER_TRADER_LOGIN`. It fails closed unless the
+match is unique and is a demo account. `CTRADER_ACCOUNT_ID` is optional; when
+provided it acts only as a second pin and must match the resolved API ID.
 
 One-shot validation:
 
