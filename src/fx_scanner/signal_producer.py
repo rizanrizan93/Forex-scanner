@@ -226,6 +226,7 @@ class CTraderSignalProducer:
         code_version: str,
         historical_request_delay_seconds: float = 0.25,
         signal_ttl_seconds: float = 300.0,
+        max_quote_age_seconds: float = 2.0,
         sleeper: Callable[[float], None] = sleep,
         clock: Callable[[], datetime] = lambda: datetime.now(tz=UTC),
         guard_resolver: Any | None = None,
@@ -236,12 +237,15 @@ class CTraderSignalProducer:
             )
         if signal_ttl_seconds <= 0 or signal_ttl_seconds > 300:
             raise ValueError("signal TTL must be in (0,300] seconds")
+        if max_quote_age_seconds <= 0:
+            raise ValueError("max_quote_age_seconds must be positive")
         self.cfg = cfg
         self.feed = feed
         self.store = store
         self.code_version = str(code_version or "UNKNOWN")
         self.request_delay = float(historical_request_delay_seconds)
         self.signal_ttl_seconds = float(signal_ttl_seconds)
+        self.max_quote_age_seconds = float(max_quote_age_seconds)
         self.sleeper = sleeper
         self.clock = clock
         self.guard_resolver = guard_resolver
@@ -268,7 +272,7 @@ class CTraderSignalProducer:
             try:
                 quote = self.feed.quote(symbol)
                 quote_age = (as_of - quote.timestamp).total_seconds()
-                if quote_age < -1.0 or quote_age > 2.0:
+                if quote_age < -1.0 or quote_age > self.max_quote_age_seconds:
                     failures[symbol] = f"QUOTE_STALE:{quote_age:.3f}"
                     continue
                 if not (float(quote.bid) > 0 and float(quote.ask) >= float(quote.bid)):
