@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
+from time import monotonic, sleep
 
 from ..exceptions import CollectorUnavailable
 from .broker_gateway import (
@@ -34,11 +35,24 @@ class CTraderExecutionGateway:
 
     backend = BrokerBackend.CTRADER
 
-    def __init__(self, session, *, max_quote_age_seconds: float = 5.0):
+    def __init__(
+        self,
+        session,
+        *,
+        max_quote_age_seconds: float = 5.0,
+        quote_wait_timeout_seconds: float = 5.0,
+        quote_poll_seconds: float = 0.10,
+    ):
         self.session = session
         self.max_quote_age_seconds = float(max_quote_age_seconds)
+        self.quote_wait_timeout_seconds = float(quote_wait_timeout_seconds)
+        self.quote_poll_seconds = float(quote_poll_seconds)
         if self.max_quote_age_seconds <= 0:
             raise ValueError("max_quote_age_seconds must be positive")
+        if self.quote_wait_timeout_seconds < 0:
+            raise ValueError("quote_wait_timeout_seconds cannot be negative")
+        if not 0 < self.quote_poll_seconds <= 1.0:
+            raise ValueError("quote_poll_seconds must be in (0,1]")
 
     def account_snapshot(self) -> BrokerAccountSnapshot:
         self.session.ensure_connected()
@@ -84,11 +98,22 @@ class CTraderExecutionGateway:
         return volume
 
     def market_quote(self, symbol: str):
-        quote = self.session.quote(str(symbol).upper())
-        age = (datetime.now(tz=UTC) - quote.timestamp).total_seconds()
-        if age < -1.0 or age > self.max_quote_age_seconds:
-            raise CollectorUnavailable(f"cTrader stale quote: {age:.3f}s")
-        return quote
+        symbol = str(symbol).upper()
+        deadline = monotonic() + self.quote_wait_timeout_seconds
+        last_age = None
+        while True:
+            quote = self.session.quote(symbol)
+            age = (datetime.now(tz=UTC) - quote.timestamp).total_seconds()
+            last_age = age
+            if -1.0 <= age <= self.max_quote_age_seconds:
+                return quote
+            if age < -1.0:
+                raise CollectorUnavailable(f"cTrader quote timestamp is in the future: {age:.3f}s")
+            if monotonic() >= deadline:
+                raise CollectorUnavailable(
+                    f"cTrader stale quote after bounded wait: {last_age:.3f}s"
+                )
+            sleep(self.quote_poll_seconds)
 
     def _quote(self, intent: OrderIntent):
         quote = self.market_quote(intent.symbol)
