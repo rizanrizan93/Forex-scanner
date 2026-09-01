@@ -289,12 +289,24 @@ class CTraderOpenApiSession:
             raise CollectorUnavailable("cTrader trader login must be positive")
         accounts = self.granted_accounts()
         matches = [account for account in accounts if account.trader_login == trader_login]
-        if len(matches) != 1:
+
+        if len(matches) == 1:
+            account = matches[0]
+        elif (
+            len(matches) == 0
+            and len(accounts) == 1
+            and accounts[0].trader_login == 0
+        ):
+            # cTrader documents traderLogin as optional. Protobuf exposes an
+            # omitted optional integer as 0, so when the access token grants
+            # exactly one account we may bind that sole grant. This remains
+            # fail-closed for multiple grants or an explicit non-matching login.
+            account = accounts[0]
+        else:
             raise CollectorUnavailable(
                 f"cTrader granted-account match must be unique for trader login {trader_login}; "
-                f"matches={len(matches)}"
+                f"matches={len(matches)} grants={len(accounts)}"
             )
-        account = matches[0]
         if account.ctid_trader_account_id <= 0:
             raise CollectorUnavailable("cTrader resolved account id is invalid")
         if require_demo and account.is_live:
