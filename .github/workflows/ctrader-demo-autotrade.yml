@@ -1,9 +1,10 @@
 name: cTrader Demo AutoTrade
 
 on:
+  # Manual-only until the controlled broker-order smoke is proven end-to-end.
+  # The recurring schedule is re-enabled only after scanner signal production
+  # and persistent runtime evidence have passed.
   workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * 1-5"
 
 permissions:
   contents: read
