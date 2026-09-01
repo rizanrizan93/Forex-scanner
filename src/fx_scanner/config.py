@@ -340,6 +340,30 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
             raise ConfigurationError(f"smoke series {name} max age must be positive")
 
 
+    calendar_cfg = providers.get("calendar", {})
+    if not isinstance(calendar_cfg, Mapping):
+        raise ConfigurationError("providers.calendar must be a mapping")
+    ff_calendar = calendar_cfg.get("FOREX_FACTORY_WEEKLY")
+    if not isinstance(ff_calendar, Mapping):
+        raise ConfigurationError("FOREX_FACTORY_WEEKLY calendar is required")
+    if ff_calendar.get("enabled") is not True:
+        raise ConfigurationError("FOREX_FACTORY_WEEKLY calendar must remain enabled")
+    if ff_calendar.get("official") is not False:
+        raise ConfigurationError(
+            "FOREX_FACTORY_WEEKLY must remain explicitly marked non-official"
+        )
+    ff_url = str(ff_calendar.get("base_url", "")).strip()
+    ff_host = str(ff_calendar.get("allowed_host", "")).strip()
+    ff_parsed = urlparse(ff_url)
+    if (
+        ff_url != "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+        or ff_host != "nfs.faireconomy.media"
+        or ff_parsed.scheme != "https"
+        or ff_parsed.hostname != ff_host
+    ):
+        raise ConfigurationError("FOREX_FACTORY_WEEKLY canonical HTTPS endpoint changed")
+
+
     selection = strategy.get("selection", {})
     if not isinstance(selection, Mapping):
         raise ConfigurationError("strategy.selection must be a mapping")
@@ -385,6 +409,53 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
             raise ConfigurationError(
                 f"strategy max_bar_age_seconds.{tf} must remain {expected}"
             )
+
+    guard_evidence = strategy.get("guard_evidence", {})
+    expected_guard_evidence = {
+        "news_pre_block_minutes",
+        "news_post_block_minutes",
+        "volatility_atr_median_min",
+        "volatility_atr_median_max",
+        "correlation_lookback_bars",
+        "correlation_threshold",
+    }
+    if not isinstance(guard_evidence, Mapping) or set(guard_evidence) != expected_guard_evidence:
+        raise ConfigurationError(
+            f"strategy.guard_evidence keys must be exactly {sorted(expected_guard_evidence)}"
+        )
+    news_pre = _as_finite_number(
+        guard_evidence["news_pre_block_minutes"],
+        label="strategy.guard_evidence.news_pre_block_minutes",
+    )
+    news_post = _as_finite_number(
+        guard_evidence["news_post_block_minutes"],
+        label="strategy.guard_evidence.news_post_block_minutes",
+    )
+    vol_min = _as_finite_number(
+        guard_evidence["volatility_atr_median_min"],
+        label="strategy.guard_evidence.volatility_atr_median_min",
+    )
+    vol_max = _as_finite_number(
+        guard_evidence["volatility_atr_median_max"],
+        label="strategy.guard_evidence.volatility_atr_median_max",
+    )
+    corr_lookback = _as_finite_number(
+        guard_evidence["correlation_lookback_bars"],
+        label="strategy.guard_evidence.correlation_lookback_bars",
+    )
+    corr_threshold = _as_finite_number(
+        guard_evidence["correlation_threshold"],
+        label="strategy.guard_evidence.correlation_threshold",
+    )
+    if not (0 <= news_pre <= 120 and 0 <= news_post <= 120):
+        raise ConfigurationError("news guard windows must remain within [0,120] minutes")
+    if not (0.10 <= vol_min < 1.0 < vol_max <= 5.0):
+        raise ConfigurationError("volatility guard ATR/median bounds are invalid")
+    if not corr_lookback.is_integer() or not 20 <= corr_lookback <= 100:
+        raise ConfigurationError("correlation lookback must be an integer in [20,100]")
+    if not 0.70 <= corr_threshold <= 0.99:
+        raise ConfigurationError("correlation threshold must remain within [0.70,0.99]")
+
 
     liquidity_cfg = strategy.get("liquidity", {})
     if not isinstance(liquidity_cfg, Mapping):
