@@ -18,7 +18,9 @@ ctrader:
   access_token_env: CTRADER_ACCESS_TOKEN
   refresh_token_env: CTRADER_REFRESH_TOKEN
   token_state_path_env: CTRADER_TOKEN_STATE_PATH
+  trader_login_env: CTRADER_TRADER_LOGIN
   account_id_env: CTRADER_ACCOUNT_ID
+  require_demo: true
   request_timeout_seconds: 10
   max_quote_age_seconds: 2
 
