@@ -271,7 +271,8 @@ class CTraderSignalProducer:
             symbol = pair.symbol
             try:
                 quote = self.feed.quote(symbol)
-                quote_age = (as_of - quote.timestamp).total_seconds()
+                quote_now = ensure_utc(self.clock())
+                quote_age = (quote_now - quote.timestamp).total_seconds()
                 if quote_age < -1.0 or quote_age > self.max_quote_age_seconds:
                     failures[symbol] = f"QUOTE_STALE:{quote_age:.3f}"
                     continue
@@ -516,27 +517,29 @@ class CTraderSignalProducer:
         *,
         external_guards_by_symbol: Mapping[str, Mapping[str, bool]] | None = None,
     ) -> SignalProducerReport:
-        as_of = ensure_utc(self.clock())
+        snapshot_at = ensure_utc(self.clock())
         run_id = self.store.start_scanner_run(
             mode="DEMO_ONLY",
             code_version=self.code_version,
-            started_at=as_of,
+            started_at=snapshot_at,
         )
         failures: dict[str, str] = {}
         try:
             self.feed.ensure_connected()
-            bars_by_symbol, market_failures = self._fetch_market(as_of=as_of)
+            bars_by_symbol, market_failures = self._fetch_market(as_of=snapshot_at)
             failures.update(market_failures)
 
             combined_strength, strength_by_tf = self._technical_strength(bars_by_symbol)
             self._persist_strength(
                 run_id,
-                as_of=as_of,
+                as_of=snapshot_at,
                 combined=combined_strength,
                 per_tf=strength_by_tf,
             )
 
-            macro_scores, missing_macro = self._macro_scores(as_of=as_of)
+            macro_scores, missing_macro = self._macro_scores(
+                as_of=ensure_utc(self.clock())
+            )
             ranked = rank_pairs(
                 self.cfg.pairs,
                 macro_scores=macro_scores,
@@ -544,8 +547,9 @@ class CTraderSignalProducer:
                 cross_asset_edges={},
                 minimum_coverage=0.80,
             )
-            self._persist_rankings(run_id, as_of=as_of, ranked=ranked)
+            self._persist_rankings(run_id, as_of=snapshot_at, ranked=ranked)
 
+            decision_at = ensure_utc(self.clock())
             guard_missing: Mapping[str, tuple[str, ...]] = {}
             calendar_error: str | None = None
             guard_inputs = external_guards_by_symbol
@@ -562,7 +566,7 @@ class CTraderSignalProducer:
                 guard_resolution = self.guard_resolver.resolve(
                     candidates=selection.deep_analysis,
                     bars_by_symbol=bars_by_symbol,
-                    as_of=as_of,
+                    as_of=decision_at,
                 )
                 guard_inputs = guard_resolution.flags_by_symbol
                 guard_missing = guard_resolution.missing_by_symbol
@@ -572,19 +576,19 @@ class CTraderSignalProducer:
                 ranked=ranked,
                 bars_by_symbol=bars_by_symbol,
                 cfg=self.cfg,
-                as_of=as_of,
+                as_of=decision_at,
                 external_guards_by_symbol=guard_inputs or {},
             )
             failures.update(deep.skipped)
             signals_written, ready = self._persist_signals(
                 run_id,
-                as_of=as_of,
+                as_of=decision_at,
                 report=deep,
             )
             self.store.finish_scanner_run(run_id, status="COMPLETED", finished_at=self.clock())
             return SignalProducerReport(
                 run_id=run_id,
-                observed_at=as_of,
+                observed_at=decision_at,
                 market_symbols=len(bars_by_symbol),
                 macro_currencies=len(macro_scores),
                 ranked_pairs=len(ranked),
