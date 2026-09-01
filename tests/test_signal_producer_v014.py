@@ -244,3 +244,37 @@ def test_producer_quote_freshness_is_configurable_from_policy(monkeypatch):
     report = producer.run_once()
 
     assert report.market_symbols == len(cfg.pairs)
+
+
+class AdvancingFeed(Feed):
+    def __init__(self):
+        super().__init__()
+        self.now = AS_OF
+
+    def quote(self, _symbol):
+        self.now += timedelta(seconds=2)
+        return Quote(self.now)
+
+
+def test_sequential_fetch_uses_current_quote_time_not_frozen_snapshot(monkeypatch):
+    cfg = load_project_config()
+    feed = AdvancingFeed()
+    store = Store()
+    producer = CTraderSignalProducer(
+        cfg,
+        feed,
+        store,
+        code_version="test-sha",
+        sleeper=lambda _seconds: None,
+        clock=lambda: feed.now,
+    )
+    monkeypatch.setattr(producer, "_technical_strength", lambda _bars: ({}, {}))
+    monkeypatch.setattr(producer, "_macro_scores", lambda **_kwargs: ({}, tuple()))
+
+    report = producer.run_once()
+
+    assert report.market_symbols == len(cfg.pairs)
+    assert not any(
+        value.startswith("QUOTE_STALE:")
+        for value in report.skipped.values()
+    )
