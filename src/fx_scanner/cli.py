@@ -16,6 +16,9 @@ from .quality import assess_ticks
 from .providers.factory import build_provider_runtime
 from .cloud_runtime import CTraderCloudResearchRuntime
 from .signal_producer import CTraderSignalProducer
+from .producer_guards import ProductionGuardResolver
+from .providers.news import ForexFactoryCalendarProvider
+from .providers.transport import UrllibHttpTransport
 from .execution.factory import build_broker_gateway, build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .execution.models import ExecutionMode, OrderIntent, OrderSide, OrderType
@@ -239,6 +242,27 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
     symbols = [pair.symbol for pair in cfg.pairs]
     feed = build_ctrader_research_feed(policy, symbols)
     store = SupabaseOperationalStore.from_env()
+
+    transport_cfg = cfg.providers["transport"]
+    calendar_cfg = cfg.providers["calendar"]["FOREX_FACTORY_WEEKLY"]
+    calendar_transport = UrllibHttpTransport(
+        timeout_seconds=float(transport_cfg["timeout_seconds"]),
+        max_response_bytes=int(transport_cfg["max_response_bytes"]),
+        user_agent=str(transport_cfg["user_agent"]),
+    )
+    calendar_provider = ForexFactoryCalendarProvider(
+        calendar_transport,
+        url=str(calendar_cfg["base_url"]),
+        allowed_host=str(calendar_cfg["allowed_host"]),
+    )
+    guard_resolver = ProductionGuardResolver(
+        cfg,
+        feed,
+        calendar_provider=calendar_provider,
+        max_quote_age_seconds=float(policy.ctrader["max_quote_age_seconds"]),
+        max_spread_pips=float(policy.reconciliation["max_execution_spread_pips"]),
+        demo_max_risk_pct=float(policy.demo_safety["max_risk_pct"]),
+    )
     producer = CTraderSignalProducer(
         cfg,
         feed,
@@ -248,6 +272,7 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
             300.0,
             float(policy.order.get("max_signal_age_seconds", 300)),
         ),
+        guard_resolver=guard_resolver,
     )
     try:
         report = producer.run_once()
@@ -260,15 +285,21 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
             f"{name}:{state_counts[name]}" for name in sorted(state_counts)
         ) or "NONE"
         missing_macro = ",".join(report.missing_macro) or "NONE"
+        guard_missing_count = sum(
+            len(names) for names in report.guard_missing.values()
+        )
         print(
             "CTRADER_SIGNAL_PRODUCER_OK "
             f"run_id={report.run_id} market={report.market_symbols}/{len(cfg.pairs)} "
             f"macro={report.macro_currencies}/8 ranked={report.ranked_pairs} "
             f"deep={report.deep_candidates} analyses={report.analyses} "
             f"signals={report.signals_written} execution_ready={report.execution_ready} "
-            f"skipped={len(report.skipped)} missing_macro={missing_macro}"
+            f"skipped={len(report.skipped)} missing_macro={missing_macro} "
+            f"guard_missing={guard_missing_count}"
         )
         print(f"CTRADER_SIGNAL_STATES {states}")
+        if report.calendar_error:
+            print(f"CTRADER_SIGNAL_CALENDAR_UNAVAILABLE {report.calendar_error}")
         if report.execution_ready:
             ready_rows = [
                 row for row in persisted
