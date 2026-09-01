@@ -10,7 +10,7 @@ from .config import ProjectConfig
 from .macro import CurrencyMacroScore, MacroStatus
 from .models import Bar, SignalState, ensure_utc
 from .ranking import CurrencyStrength, PairRank, compute_currency_strength, rank_pairs
-from .strategy import DeepScanReport, scan_deep_candidates_report
+from .strategy import DeepScanReport, scan_deep_candidates_report, select_pair_candidates
 from .technical import StructureSnapshot, structure_snapshot
 
 UTC = timezone.utc
@@ -40,6 +40,8 @@ class SignalProducerReport:
     execution_ready: int
     skipped: Mapping[str, str]
     missing_macro: tuple[str, ...]
+    guard_missing: Mapping[str, tuple[str, ...]]
+    calendar_error: str | None
 
 
 def _closed_bars(
@@ -226,6 +228,7 @@ class CTraderSignalProducer:
         signal_ttl_seconds: float = 300.0,
         sleeper: Callable[[float], None] = sleep,
         clock: Callable[[], datetime] = lambda: datetime.now(tz=UTC),
+        guard_resolver: Any | None = None,
     ):
         if historical_request_delay_seconds < 0.20:
             raise ValueError(
@@ -241,6 +244,7 @@ class CTraderSignalProducer:
         self.signal_ttl_seconds = float(signal_ttl_seconds)
         self.sleeper = sleeper
         self.clock = clock
+        self.guard_resolver = guard_resolver
 
     def _bar_window(self, timeframe: str, count: int, now: datetime) -> tuple[datetime, datetime]:
         seconds = int(self.cfg.timeframes[timeframe])
@@ -538,12 +542,34 @@ class CTraderSignalProducer:
             )
             self._persist_rankings(run_id, as_of=as_of, ranked=ranked)
 
+            guard_missing: Mapping[str, tuple[str, ...]] = {}
+            calendar_error: str | None = None
+            guard_inputs = external_guards_by_symbol
+            if guard_inputs is None and self.guard_resolver is not None:
+                selection = select_pair_candidates(
+                    ranked,
+                    macro_compatible_top=int(
+                        self.cfg.strategy["selection"]["macro_compatible_top"]
+                    ),
+                    deep_analysis_top=int(
+                        self.cfg.strategy["selection"]["deep_analysis_top"]
+                    ),
+                )
+                guard_resolution = self.guard_resolver.resolve(
+                    candidates=selection.deep_analysis,
+                    bars_by_symbol=bars_by_symbol,
+                    as_of=as_of,
+                )
+                guard_inputs = guard_resolution.flags_by_symbol
+                guard_missing = guard_resolution.missing_by_symbol
+                calendar_error = guard_resolution.calendar_error
+
             deep = scan_deep_candidates_report(
                 ranked=ranked,
                 bars_by_symbol=bars_by_symbol,
                 cfg=self.cfg,
                 as_of=as_of,
-                external_guards_by_symbol=external_guards_by_symbol or {},
+                external_guards_by_symbol=guard_inputs or {},
             )
             failures.update(deep.skipped)
             signals_written, ready = self._persist_signals(
@@ -564,6 +590,8 @@ class CTraderSignalProducer:
                 execution_ready=ready,
                 skipped=dict(sorted(failures.items())),
                 missing_macro=missing_macro,
+                guard_missing=guard_missing,
+                calendar_error=calendar_error,
             )
         except Exception:
             try:
