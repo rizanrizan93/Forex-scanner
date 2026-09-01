@@ -114,17 +114,23 @@ def build_ctrader_research_feed(
         fallback_access=_required_env(cfg["access_token_env"]),
         fallback_refresh=_required_env(cfg["refresh_token_env"]),
     )
+    pinned_account_id = _optional_env(cfg["account_id_env"])
     session = CTraderOpenApiSession(
         client_id=_required_env(cfg["client_id_env"]),
         client_secret=_required_env(cfg["client_secret_env"]),
         access_token=tokens.access_token,
         refresh_token=tokens.refresh_token,
         token_update_callback=token_store.save,
-        account_id=int(_required_env(cfg["account_id_env"])),
+        account_id=None,
         environment=str(cfg.get("environment", "DEMO")).lower(),
         request_timeout_seconds=float(cfg.get("request_timeout_seconds", 10)),
     )
     try:
+        session.resolve_granted_account(
+            trader_login=int(_required_env(cfg["trader_login_env"])),
+            require_demo=bool(cfg.get("require_demo", True)),
+            pinned_account_id=None if pinned_account_id is None else int(pinned_account_id),
+        )
         session.connect()
         universe = [str(x).upper() for x in symbols]
         session.load_symbols(universe)
