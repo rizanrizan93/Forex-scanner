@@ -47,3 +47,12 @@ setup:
     require_h1_alignment: true
     require_m15_fvg: true
     require_m5_displacement: true
+
+
+guard_evidence:
+  news_pre_block_minutes: 30
+  news_post_block_minutes: 30
+  volatility_atr_median_min: 0.40
+  volatility_atr_median_max: 2.50
+  correlation_lookback_bars: 30
+  correlation_threshold: 0.85
