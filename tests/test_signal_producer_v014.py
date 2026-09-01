@@ -222,3 +222,25 @@ def test_stale_quote_prevents_symbol_from_reaching_analysis(monkeypatch):
     assert report.execution_ready == 0
     assert len(report.skipped) == len(cfg.pairs)
     assert all(value.startswith("QUOTE_STALE:") for value in report.skipped.values())
+
+
+def test_producer_quote_freshness_is_configurable_from_policy(monkeypatch):
+    cfg = load_project_config()
+    feed = Feed()
+    store = Store()
+    producer = CTraderSignalProducer(
+        cfg,
+        feed,
+        store,
+        code_version="test-sha",
+        max_quote_age_seconds=12.0,
+        sleeper=lambda _seconds: None,
+        clock=lambda: AS_OF,
+    )
+    feed.quote = lambda _symbol: Quote(AS_OF - timedelta(seconds=10))
+    monkeypatch.setattr(producer, "_technical_strength", lambda _bars: ({}, {}))
+    monkeypatch.setattr(producer, "_macro_scores", lambda **_kwargs: ({}, tuple()))
+
+    report = producer.run_once()
+
+    assert report.market_symbols == len(cfg.pairs)
