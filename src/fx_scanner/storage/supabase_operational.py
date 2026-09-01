@@ -96,6 +96,91 @@ class SupabaseOperationalStore:
             raise OperationalStoreUnavailable(f"expected exactly one execution_control row, got {len(rows)}")
         return ExecutionControlSnapshot.from_row(rows[0])
 
+    def list_execution_ready_signals(self, *, limit: int = 10) -> tuple[dict[str, Any], ...]:
+        if limit <= 0 or limit > 100:
+            raise ValueError("signal limit must be in [1,100]")
+        fields = (
+            "id,run_id,observed_at,symbol,direction,setup_type,state,"
+            "entry_low,entry_high,sl,tp1,tp2,rr1,rr2,active_guards,"
+            "data_coverage,expires_at,final_score"
+        )
+        try:
+            response = (
+                self.client.table("signals")
+                .select(fields)
+                .eq("state", "EXECUTION_READY")
+                .order("observed_at", desc=True)
+                .limit(int(limit))
+                .execute()
+            )
+            return tuple(dict(row) for row in (response.data or []))
+        except Exception as exc:
+            raise OperationalStoreUnavailable(
+                f"execution-ready signal read failed: {exc}"
+            ) from exc
+
+    def claim_signal_for_execution(self, signal_id: str) -> bool:
+        """Atomically move one EXECUTION_READY signal to COOLDOWN before broker I/O."""
+        if not str(signal_id).strip():
+            raise ValueError("signal_id is required")
+        try:
+            response = (
+                self.client.table("signals")
+                .update({"state": "COOLDOWN"})
+                .eq("id", str(signal_id))
+                .eq("state", "EXECUTION_READY")
+                .execute()
+            )
+            rows = list(response.data or [])
+        except Exception as exc:
+            raise OperationalStoreUnavailable(f"signal claim failed: {exc}") from exc
+        if len(rows) > 1:
+            raise OperationalStoreUnavailable("signal claim updated multiple rows")
+        return len(rows) == 1
+
+    def set_execution_control(
+        self,
+        *,
+        execution_mode: str,
+        new_orders_enabled: bool,
+        emergency_stop: bool,
+        close_all_requested: bool = False,
+        control_key: str = "primary",
+        source: str = "ctrader_demo_control",
+    ) -> ExecutionControlSnapshot:
+        """Optimistic, versioned control-plane update for the phone-only demo runtime."""
+        mode = str(execution_mode).upper()
+        if mode not in {"DISABLED", "SIMULATION", "CONFIRM_TO_TRADE", "AUTO"}:
+            raise ValueError("invalid execution control mode")
+        current = self.get_execution_control(control_key)
+        payload = {
+            "execution_mode": mode,
+            "new_orders_enabled": bool(new_orders_enabled),
+            "emergency_stop": bool(emergency_stop),
+            "close_all_requested": bool(close_all_requested),
+            "version": current.version + 1,
+            "updated_at": datetime.now(tz=UTC).isoformat(),
+            "metadata": {"source": str(source), "previous_version": current.version},
+        }
+        try:
+            response = (
+                self.client.table("execution_control")
+                .update(payload)
+                .eq("control_key", control_key)
+                .eq("version", current.version)
+                .execute()
+            )
+            rows = list(response.data or [])
+        except Exception as exc:
+            raise OperationalStoreUnavailable(
+                f"execution_control update failed: {exc}"
+            ) from exc
+        if len(rows) != 1:
+            raise OperationalStoreUnavailable(
+                "execution_control optimistic update lost a race"
+            )
+        return ExecutionControlSnapshot.from_row(rows[0])
+
     def list_active_symbols(self) -> tuple[str, ...]:
         try:
             response = (
