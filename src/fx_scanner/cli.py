@@ -6,6 +6,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from time import sleep
+from uuid import uuid4
 
 from .aggregation import aggregate_ticks
 from .collectors.mt5 import MT5Collector
@@ -16,7 +17,7 @@ from .providers.factory import build_provider_runtime
 from .cloud_runtime import CTraderCloudResearchRuntime
 from .execution.factory import build_broker_gateway, build_ctrader_research_feed
 from .execution.policy import load_execution_policy
-from .execution.models import ExecutionMode
+from .execution.models import ExecutionMode, OrderIntent, OrderSide, OrderType
 from .execution.router import ExecutionRouter
 from .execution.control_plane import ControlPlaneGate
 from .execution.demo_autotrade import CTraderDemoAutoExecutor, SupabaseOrderAuditSink
@@ -357,6 +358,67 @@ def cmd_ctrader_demo_autotrade(args: argparse.Namespace) -> int:
         session.close()
 
 
+def _build_ctrader_demo_smoke_intent(cfg, gateway, *, symbol: str = "EURUSD") -> OrderIntent:
+    symbol = str(symbol).upper()
+    pair = cfg.pair_map.get(symbol)
+    if pair is None:
+        raise SystemExit(f"unknown configured pair: {symbol}")
+    quote = gateway.market_quote(symbol)
+    entry = float(quote.ask)
+    stop_loss = entry - 20.0 * float(pair.pip_size)
+    take_profit = entry + 40.0 * float(pair.pip_size)
+    return OrderIntent(
+        signal_id=f"DEMO-SMOKE-{uuid4().hex[:24]}",
+        symbol=symbol,
+        side=OrderSide.BUY,
+        order_type=OrderType.MARKET,
+        created_at=datetime.now(tz=UTC),
+        volume=0.01,
+        entry_price=entry,
+        stop_loss=stop_loss,
+        take_profit=take_profit,
+        risk_pct=0.25,
+        comment="CONTROLLED_DEMO_ORDER_SMOKE",
+    )
+
+
+def cmd_ctrader_demo_order_smoke(args: argparse.Namespace) -> int:
+    if not bool(args.confirmed):
+        raise SystemExit("CONTROLLED_DEMO_ORDER_CONFIRMATION_REQUIRED")
+    cfg = load_project_config(args.root)
+    base_policy = load_execution_policy(args.root)
+    _require_demo_autotrade_opt_in(base_policy)
+    policy = replace(base_policy, mode=ExecutionMode.AUTO)
+    symbols = [pair.symbol for pair in cfg.pairs]
+    gateway, session = build_broker_gateway(policy, symbols, backend="CTRADER")
+    store = SupabaseOperationalStore.from_env()
+    gate = ControlPlaneGate(
+        max_age_seconds=float(policy.live_safety.get("control_state_max_age_seconds", 5))
+    )
+    router = ExecutionRouter(
+        policy,
+        gateway=gateway,
+        session=session,
+        control_gate=gate,
+        audit_sink=SupabaseOrderAuditSink(store),
+    )
+    try:
+        gate.refresh(store)
+        intent = _build_ctrader_demo_smoke_intent(cfg, gateway, symbol=args.symbol)
+        receipt = router.execute(intent)
+        if not receipt.accepted:
+            raise SystemExit("CTRADER_DEMO_ORDER_SMOKE_NOT_ACCEPTED")
+        print(
+            "CTRADER_DEMO_ORDER_SMOKE_OK "
+            f"symbol={intent.symbol} side={intent.side.value} volume={intent.volume:.2f} "
+            f"broker_order_id={receipt.broker_order_id or 'UNKNOWN'} "
+            f"executed_price={receipt.executed_price or 0.0}"
+        )
+        return 0
+    finally:
+        session.close()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="fx-scanner")
     parser.add_argument("--root", default=None, help="project root; defaults to package root")
@@ -411,6 +473,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--once", action="store_true")
     p.add_argument("--limit", type=int, default=10)
     p.set_defaults(func=cmd_ctrader_demo_autotrade)
+
+    p = sub.add_parser("ctrader-demo-order-smoke")
+    p.add_argument("--symbol", default="EURUSD")
+    p.add_argument("--confirmed", action="store_true")
+    p.set_defaults(func=cmd_ctrader_demo_order_smoke)
     return parser
 
 
