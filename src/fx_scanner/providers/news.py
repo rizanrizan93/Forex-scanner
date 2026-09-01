@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from math import isfinite
 from enum import StrEnum
-from typing import Iterable
+from typing import Any, Iterable
 
 from ..exceptions import DataContractError
 
@@ -90,3 +92,106 @@ def evaluate_news_block(
         return NewsBlockDecision(False, (), None)
     names = ",".join(f"{e.currency}:{e.event_id}" for e in relevant)
     return NewsBlockDecision(True, tuple(relevant), f"HIGH_IMPACT_WINDOW:{names}")
+
+
+@dataclass(frozen=True, slots=True)
+class EconomicCalendarSnapshot:
+    events: tuple[EconomicEvent, ...]
+    fetched_at: datetime
+    source: str
+    source_url: str
+
+
+class ForexFactoryCalendarProvider:
+    """Fetch the public weekly calendar and fail closed if it is not current."""
+
+    def __init__(
+        self,
+        transport: Any,
+        *,
+        url: str = "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
+        allowed_host: str = "nfs.faireconomy.media",
+    ):
+        self.transport = transport
+        self.url = str(url)
+        self.allowed_host = str(allowed_host)
+
+    @staticmethod
+    def _event_id(title: str, currency: str, scheduled_at: datetime) -> str:
+        raw = f"{currency}|{scheduled_at.isoformat()}|{title}".encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()[:24]
+
+    def fetch(self, *, now: datetime | None = None) -> EconomicCalendarSnapshot:
+        fetched_at = (now or datetime.now(tz=UTC)).astimezone(UTC)
+        response = self.transport.get(
+            self.url,
+            allowed_host=self.allowed_host,
+            headers={"Accept": "application/json"},
+        )
+        if int(response.status_code) != 200:
+            raise DataContractError(
+                f"economic calendar HTTP status {response.status_code}"
+            )
+        try:
+            payload = json.loads(response.body.decode("utf-8"))
+        except Exception as exc:
+            raise DataContractError("economic calendar JSON decode failed") from exc
+        if not isinstance(payload, list) or not payload:
+            raise DataContractError("economic calendar payload must be a non-empty list")
+
+        impact_map = {
+            "LOW": EventImpact.LOW,
+            "MEDIUM": EventImpact.MEDIUM,
+            "HIGH": EventImpact.HIGH,
+        }
+        events: list[EconomicEvent] = []
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title", "")).strip()
+            currency = str(item.get("country", "")).upper().strip()
+            impact = impact_map.get(str(item.get("impact", "")).upper().strip())
+            raw_date = str(item.get("date", "")).strip()
+            if not title or len(currency) != 3 or impact is None or not raw_date:
+                continue
+            try:
+                scheduled_at = datetime.fromisoformat(
+                    raw_date.replace("Z", "+00:00")
+                )
+            except ValueError:
+                continue
+            if scheduled_at.tzinfo is None:
+                continue
+            scheduled_at = scheduled_at.astimezone(UTC)
+            events.append(
+                EconomicEvent(
+                    event_id=self._event_id(title, currency, scheduled_at),
+                    title=title,
+                    currency=currency,
+                    scheduled_at=scheduled_at,
+                    impact=impact,
+                    source="FOREX_FACTORY_WEEKLY",
+                    source_url=self.url,
+                )
+            )
+
+        if not events:
+            raise DataContractError("economic calendar contained no usable events")
+        events.sort(key=lambda event: (event.scheduled_at, event.currency, event.event_id))
+
+        # A successfully fetched but cached/stale weekly export must never be
+        # interpreted as an empty current calendar.
+        freshness_window = timedelta(days=4)
+        if not any(
+            fetched_at - freshness_window <= event.scheduled_at <= fetched_at + freshness_window
+            for event in events
+        ):
+            raise DataContractError(
+                "economic calendar does not cover the current runtime week"
+            )
+        return EconomicCalendarSnapshot(
+            events=tuple(events),
+            fetched_at=fetched_at,
+            source="FOREX_FACTORY_WEEKLY",
+            source_url=self.url,
+        )
