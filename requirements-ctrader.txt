@@ -1,3 +1,6 @@
 # Spotware-maintained official Open API Python SDK.
 # Keep separate from base CI so core logic remains testable without broker SDK.
 ctrader-open-api==0.9.2
+
+# Full TLS hostname identity verification for Twisted/OpenSSL.
+service-identity==24.2.0
