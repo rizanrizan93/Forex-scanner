@@ -1,0 +1,40 @@
+name: cTrader Demo Execution Control
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Demo execution control
+        required: true
+        type: choice
+        options:
+          - disable
+          - enable
+
+permissions:
+  contents: read
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install runtime
+        run: pip install -r requirements.txt
+      - name: Apply requested control state
+        shell: bash
+        run: |
+          if [ "${{ inputs.action }}" = "enable" ]; then
+            python -m fx_scanner.cli ctrader-demo-control --enable
+          else
+            python -m fx_scanner.cli ctrader-demo-control --disable
+          fi
