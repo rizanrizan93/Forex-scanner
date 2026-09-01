@@ -25,6 +25,15 @@ class CTraderQuote:
     timestamp: datetime
 
 
+@dataclass(frozen=True, slots=True)
+class CTraderGrantedAccount:
+    ctid_trader_account_id: int
+    trader_login: int
+    is_live: bool
+    broker_title_short: str
+    permission_scope: int
+
+
 class CTraderOpenApiSession:
     """Synchronous facade over Spotware's asynchronous OpenApiPy client."""
 
@@ -34,14 +43,14 @@ class CTraderOpenApiSession:
         client_id: str,
         client_secret: str,
         access_token: str,
-        account_id: int,
+        account_id: int | None,
         refresh_token: str | None = None,
         token_update_callback: Callable[[str, str], None] | None = None,
         environment: str = "demo",
         request_timeout_seconds: float = 10.0,
     ):
-        if not all([client_id, client_secret, access_token, account_id]):
-            raise ValueError("cTrader client_id/client_secret/access_token/account_id are required")
+        if not all([client_id, client_secret, access_token]):
+            raise ValueError("cTrader client_id/client_secret/access_token are required")
         try:
             from ctrader_open_api import Client, Protobuf, TcpProtocol, EndPoints
             from ctrader_open_api.messages.OpenApiCommonMessages_pb2 import ProtoHeartbeatEvent
@@ -50,6 +59,7 @@ class CTraderOpenApiSession:
                 ProtoOAAccountAuthReq,
                 ProtoOAExpectedMarginReq,
                 ProtoOAGetPositionUnrealizedPnLReq,
+                ProtoOAGetAccountListByAccessTokenReq,
                 ProtoOAGetTrendbarsReq,
                 ProtoOANewOrderReq,
                 ProtoOAReconcileReq,
@@ -75,6 +85,7 @@ class CTraderOpenApiSession:
             "AccountAuthReq": ProtoOAAccountAuthReq,
             "ExpectedMarginReq": ProtoOAExpectedMarginReq,
             "GetPositionUnrealizedPnLReq": ProtoOAGetPositionUnrealizedPnLReq,
+            "GetAccountListByAccessTokenReq": ProtoOAGetAccountListByAccessTokenReq,
             "GetTrendbarsReq": ProtoOAGetTrendbarsReq,
             "TrendbarPeriod": ProtoOATrendbarPeriod,
             "NewOrderReq": ProtoOANewOrderReq,
@@ -91,7 +102,7 @@ class CTraderOpenApiSession:
         self.access_token = access_token
         self.refresh_token = refresh_token
         self.token_update_callback = token_update_callback
-        self.account_id = int(account_id)
+        self.account_id = None if account_id is None else int(account_id)
         self.environment = environment.lower()
         if self.environment not in {"demo", "live"}:
             raise ValueError("environment must be demo or live")
@@ -102,6 +113,7 @@ class CTraderOpenApiSession:
         host = EndPoints.PROTOBUF_LIVE_HOST if self.environment == "live" else EndPoints.PROTOBUF_DEMO_HOST
         self.client = Client(host, EndPoints.PROTOBUF_PORT, TcpProtocol)
         self._connected = Event()
+        self._application_authenticated = Event()
         self._authenticated = Event()
         self._reactor_started = Event()
         self._quotes_lock = Lock()
@@ -119,6 +131,7 @@ class CTraderOpenApiSession:
 
     def _on_disconnected(self, client, reason) -> None:
         self._connected.clear()
+        self._application_authenticated.clear()
         self._authenticated.clear()
 
     @staticmethod
@@ -218,18 +231,89 @@ class CTraderOpenApiSession:
             except Exception as exc:
                 raise CollectorUnavailable("cTrader token refresh persistence failed") from exc
 
-    def connect(self) -> None:
-        if self.health():
+    def connect_application(self) -> None:
+        if self._connected.is_set() and self._application_authenticated.is_set():
             return
-        self.client.startService()
-        self._ensure_reactor()
-        if not self._connected.wait(timeout=self.request_timeout_seconds):
-            raise CollectorUnavailable("cTrader connection timeout")
+        if not self._connected.is_set():
+            self.client.startService()
+            self._ensure_reactor()
+            if not self._connected.wait(timeout=self.request_timeout_seconds):
+                raise CollectorUnavailable("cTrader connection timeout")
+        if self._application_authenticated.is_set():
+            return
 
         app = self.msg["ApplicationAuthReq"]()
         app.clientId = self.client_id
         app.clientSecret = self.client_secret
         self._send_sync(app, client_msg_id=f"app-{uuid4().hex}")
+        self._application_authenticated.set()
+
+    def granted_accounts(self) -> tuple[CTraderGrantedAccount, ...]:
+        """Return only accounts explicitly granted to the current access token."""
+        self.connect_application()
+        req = self.msg["GetAccountListByAccessTokenReq"]()
+        req.accessToken = self.access_token
+        try:
+            res = self._send_sync(req, client_msg_id=f"accounts-{uuid4().hex}")
+        except Exception:
+            if not self.refresh_token:
+                raise
+            self._refresh_tokens()
+            req.accessToken = self.access_token
+            res = self._send_sync(req, client_msg_id=f"accounts-refresh-{uuid4().hex}")
+
+        permission_scope = int(getattr(res, "permissionScope", 0) or 0)
+        output: list[CTraderGrantedAccount] = []
+        for item in tuple(getattr(res, "ctidTraderAccount", ())):
+            output.append(
+                CTraderGrantedAccount(
+                    ctid_trader_account_id=int(getattr(item, "ctidTraderAccountId", 0) or 0),
+                    trader_login=int(getattr(item, "traderLogin", 0) or 0),
+                    is_live=bool(getattr(item, "isLive", False)),
+                    broker_title_short=str(getattr(item, "brokerTitleShort", "") or ""),
+                    permission_scope=permission_scope,
+                )
+            )
+        return tuple(output)
+
+    def resolve_granted_account(
+        self,
+        *,
+        trader_login: int,
+        require_demo: bool = True,
+        pinned_account_id: int | None = None,
+    ) -> CTraderGrantedAccount:
+        """Resolve one granted account by visible trader login and fail closed on ambiguity/live mismatch."""
+        trader_login = int(trader_login)
+        if trader_login <= 0:
+            raise CollectorUnavailable("cTrader trader login must be positive")
+        accounts = self.granted_accounts()
+        matches = [account for account in accounts if account.trader_login == trader_login]
+        if len(matches) != 1:
+            raise CollectorUnavailable(
+                f"cTrader granted-account match must be unique for trader login {trader_login}; "
+                f"matches={len(matches)}"
+            )
+        account = matches[0]
+        if account.ctid_trader_account_id <= 0:
+            raise CollectorUnavailable("cTrader resolved account id is invalid")
+        if require_demo and account.is_live:
+            raise CollectorUnavailable("cTrader demo-only guard rejected a live account")
+        if self.environment == "demo" and account.is_live:
+            raise CollectorUnavailable("cTrader DEMO host cannot bind a live account")
+        if self.environment == "live" and not account.is_live:
+            raise CollectorUnavailable("cTrader LIVE host cannot bind a demo account")
+        if pinned_account_id is not None and int(pinned_account_id) != account.ctid_trader_account_id:
+            raise CollectorUnavailable("cTrader pinned account id does not match granted trader login")
+        self.account_id = account.ctid_trader_account_id
+        return account
+
+    def connect(self) -> None:
+        if self.health():
+            return
+        if self.account_id is None:
+            raise CollectorUnavailable("cTrader account id is unresolved")
+        self.connect_application()
 
         account = self.msg["AccountAuthReq"]()
         account.ctidTraderAccountId = self.account_id
@@ -254,6 +338,7 @@ class CTraderOpenApiSession:
         except Exception:
             pass
         self._connected.clear()
+        self._application_authenticated.clear()
         self._authenticated.clear()
 
     def health(self) -> bool:
