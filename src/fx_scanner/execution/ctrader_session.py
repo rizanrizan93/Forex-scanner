@@ -430,8 +430,11 @@ class CTraderOpenApiSession:
             raise CollectorUnavailable(f"cTrader quote incomplete for {symbol}")
         if state["ask"] < state["bid"]:
             raise CollectorUnavailable(f"cTrader crossed quote for {symbol}")
-        # Freshness of a two-sided quote is bounded by its older side.
-        quote_ts = min(state["bid_timestamp"], state["ask_timestamp"])
+        # ProtoOASpotEvent bid/ask are optional. When only one side is
+        # present, the omitted side remains the current last-known quote.
+        # Therefore freshness is the timestamp of the latest price-side event,
+        # not the older side's last change.
+        quote_ts = max(state["bid_timestamp"], state["ask_timestamp"])
         return CTraderQuote(sid, float(state["bid"]), float(state["ask"]), quote_ts)
 
     def heartbeat(self) -> None:
