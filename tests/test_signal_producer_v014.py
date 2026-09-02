@@ -278,3 +278,62 @@ def test_sequential_fetch_uses_current_quote_time_not_frozen_snapshot(monkeypatc
         value.startswith("QUOTE_STALE:")
         for value in report.skipped.values()
     )
+
+
+
+class SequencedQuoteFeed(Feed):
+    def __init__(self, ages):
+        super().__init__()
+        self.ages = list(ages)
+        self.quote_calls = 0
+
+    def quote(self, _symbol):
+        age = self.ages[min(self.quote_calls, len(self.ages) - 1)]
+        self.quote_calls += 1
+        return Quote(AS_OF - timedelta(seconds=age))
+
+
+def test_producer_waits_boundedly_for_new_tick_without_relaxing_freshness():
+    cfg = load_project_config()
+    feed = SequencedQuoteFeed([4.0, 3.0, 0.2])
+    sleeps = []
+    producer = CTraderSignalProducer(
+        cfg,
+        feed,
+        Store(),
+        code_version="test-sha",
+        max_quote_age_seconds=2.0,
+        quote_wait_timeout_seconds=0.5,
+        quote_poll_seconds=0.1,
+        sleeper=sleeps.append,
+        clock=lambda: AS_OF,
+    )
+
+    quote, error = producer._fresh_quote("EURUSD")
+
+    assert error is None
+    assert quote is not None
+    assert feed.quote_calls == 3
+    assert sleeps == [0.1, 0.1]
+
+
+def test_producer_bounded_wait_still_rejects_persistently_stale_quote():
+    cfg = load_project_config()
+    feed = SequencedQuoteFeed([4.0])
+    producer = CTraderSignalProducer(
+        cfg,
+        feed,
+        Store(),
+        code_version="test-sha",
+        max_quote_age_seconds=2.0,
+        quote_wait_timeout_seconds=0.2,
+        quote_poll_seconds=0.1,
+        sleeper=lambda _seconds: None,
+        clock=lambda: AS_OF,
+    )
+
+    quote, error = producer._fresh_quote("EURUSD")
+
+    assert quote is None
+    assert error == "QUOTE_STALE:4.000"
+    assert feed.quote_calls == 3
