@@ -4,9 +4,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_demo_auto_pipeline_remains_demo_only():
+def test_demo_auto_pipeline_is_dispatch_only_and_demo_only():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
 
+    assert "workflow_dispatch:" in text
+    assert "schedule:" not in text
     assert "ctrader-signal-producer" in text
     assert "ctrader-demo-autotrade --once --limit 10" in text
     assert text.index("ctrader-signal-producer") < text.index("ctrader-demo-autotrade")
@@ -17,16 +19,13 @@ def test_demo_auto_pipeline_remains_demo_only():
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
 
 
-def test_proven_macro_scheduler_dispatches_demo_pipeline_every_five_minutes():
+def test_macro_refresh_remains_hourly_and_has_no_broker_execution_secrets():
     text = (ROOT / ".github/workflows/forex-official-macro-refresh.yml").read_text()
 
     assert 'cron: "7 * * * 1-5"' in text
-    assert 'cron: "4,9,14,19,24,29,34,39,44,49,54,59 * * * 1-5"' in text
-    assert "github.event.schedule == '7 * * * 1-5'" in text
-    assert "github.event.schedule == '4,9,14,19,24,29,34,39,44,49,54,59 * * * 1-5'" in text
-    assert "gh workflow run ctrader-demo-auto-pipeline.yml --ref main" in text
-    assert "actions: write" in text
     assert "macro-refresh" in text
+    assert "actions: write" not in text
+    assert "ctrader-demo-auto-pipeline" not in text
     assert "CTRADER_CLIENT_SECRET" not in text
     assert "CTRADER_ACCESS_TOKEN" not in text
     assert "CTRADER_REFRESH_TOKEN" not in text
