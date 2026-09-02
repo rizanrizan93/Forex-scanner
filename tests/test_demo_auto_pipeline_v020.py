@@ -14,6 +14,7 @@ def test_demo_auto_pipeline_is_dispatch_only_and_demo_only():
     assert text.index("ctrader-signal-producer") < text.index("ctrader-demo-autotrade")
     assert "macro-refresh" not in text
     assert "CTRADER_DEMO_AUTOTRADE_ENABLED" in text
+    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "70"' in text
     assert 'FX_KILL_SWITCH: "0"' in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
