@@ -16,7 +16,11 @@ values
   ('EURCHF','EUR','CHF',0.0001,'B'),
   ('EURAUD','EUR','AUD',0.0001,'B'),
   ('GBPAUD','GBP','AUD',0.0001,'B'),
-  ('XAUUSD','XAU','USD',0.01,'A')
+  ('XAUUSD','XAU','USD',0.01,'A'),
+  ('XTIUSD','XTI','USD',0.01,'A'),
+  ('BTCUSD','BTC','USD',0.01,'A'),
+  ('ETHUSD','ETH','USD',0.01,'A'),
+  ('SOLUSD','SOL','USD',0.01,'A')
 on conflict (symbol) do update
 set base_currency = excluded.base_currency,
     quote_currency = excluded.quote_currency,

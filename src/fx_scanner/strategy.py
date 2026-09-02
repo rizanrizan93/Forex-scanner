@@ -455,6 +455,19 @@ def _build_trade_plan(
 
 def _session_score(symbol: str, timestamp: datetime, session_config: Mapping) -> float:
     active = set(active_sessions(timestamp, session_config))
+    symbol = str(symbol).upper()
+    if symbol in {"BTCUSD", "ETHUSD", "SOLUSD"}:
+        # FP Markets crypto CFDs trade 24/5; do not penalize a valid crypto
+        # setup merely because it is outside the London/New York overlap.
+        return 90.0 if active else 85.0
+    if symbol == "XTIUSD":
+        if "NEW_YORK" in active:
+            return 100.0
+        if "LONDON" in active:
+            return 85.0
+        if "ASIA" in active:
+            return 50.0
+        return 40.0
     if {"LONDON", "NEW_YORK"}.issubset(active):
         return 100.0
     if "LONDON" in active or "NEW_YORK" in active:

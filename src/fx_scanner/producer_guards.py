@@ -192,9 +192,9 @@ class ProductionGuardResolver:
             limit = float(raw_limit)
             if symbol not in cfg.pair_map:
                 raise ValueError(f"unknown spread-limit symbol: {symbol}")
-            if not isfinite(limit) or not 0 < limit <= 100:
+            if not isfinite(limit) or not 0 < limit <= 5000:
                 raise ValueError(
-                    f"spread-limit override for {symbol} must be in (0,100] pips"
+                    f"spread-limit override for {symbol} must be in (0,5000] pips"
                 )
             overrides[symbol] = limit
         self.max_spread_pips_by_symbol = overrides
