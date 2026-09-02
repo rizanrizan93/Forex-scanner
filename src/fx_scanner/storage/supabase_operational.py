@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from math import isfinite
 from typing import Any, Callable
 from uuid import uuid4
 
@@ -52,12 +53,19 @@ class SupabaseOperationalStore:
         *,
         client: Any | None = None,
         client_factory: Callable[[str, str], Any] | None = None,
+        execution_ready_score_floor: float = 90.0,
     ):
         if not url.strip():
             raise ConfigurationError("SUPABASE_URL is required")
         if not secret_key.strip():
             raise ConfigurationError("SUPABASE_SECRET_KEY is required")
         self.url = url.strip()
+        score_floor = float(execution_ready_score_floor)
+        if not isfinite(score_floor) or not 65.0 <= score_floor <= 100.0:
+            raise ConfigurationError(
+                "execution_ready_score_floor must be finite and within [65,100]"
+            )
+        self.execution_ready_score_floor = score_floor
         if client is not None:
             self.client = client
             return
@@ -76,6 +84,53 @@ class SupabaseOperationalStore:
         if not secret:
             secret = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
         return cls(url, secret, **kwargs)
+
+    def ensure_reference_symbols(self, pairs: Any) -> None:
+        """Idempotently synchronize configured instruments into fx_symbols.
+
+        This is backend-only reference-data bootstrap. It never weakens RLS or
+        public access and fails closed if the durable reference write fails.
+        """
+        rows: list[dict[str, Any]] = []
+        for pair in tuple(pairs):
+            symbol = str(getattr(pair, "symbol", "")).upper().strip()
+            base = str(getattr(pair, "base", "")).upper().strip()
+            quote = str(getattr(pair, "quote", "")).upper().strip()
+            pip_size = float(getattr(pair, "pip_size", 0.0))
+            tier = str(getattr(pair, "tier", "")).upper().strip()
+            if (
+                not symbol
+                or len(base) != 3
+                or len(quote) != 3
+                or symbol != base + quote
+                or not isfinite(pip_size)
+                or pip_size <= 0
+                or tier not in {"A", "B"}
+            ):
+                raise OperationalStoreUnavailable(
+                    f"invalid configured reference symbol: {symbol or 'UNKNOWN'}"
+                )
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "base_currency": base,
+                    "quote_currency": quote,
+                    "pip_size": pip_size,
+                    "tier": tier,
+                    "active": True,
+                }
+            )
+        if not rows:
+            raise OperationalStoreUnavailable("reference symbol bootstrap cannot be empty")
+        try:
+            self.client.table("fx_symbols").upsert(
+                rows,
+                on_conflict="symbol",
+            ).execute()
+        except Exception as exc:
+            raise OperationalStoreUnavailable(
+                f"fx_symbols reference bootstrap failed: {exc}"
+            ) from exc
 
     def get_execution_control(self, control_key: str = "primary") -> ExecutionControlSnapshot:
         try:
@@ -458,9 +513,10 @@ class SupabaseOperationalStore:
                     raise OperationalStoreUnavailable(
                         "refusing to persist EXECUTION_READY with active guards"
                     )
-                if score is None or float(score) < 90.0:
+                if score is None or float(score) < self.execution_ready_score_floor:
                     raise OperationalStoreUnavailable(
-                        "refusing to persist EXECUTION_READY below score 90"
+                        "refusing to persist EXECUTION_READY below score "
+                        f"{self.execution_ready_score_floor:g}"
                     )
                 if coverage is None or float(coverage) < 0.80:
                     raise OperationalStoreUnavailable(
