@@ -297,6 +297,8 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
             float(policy.order.get("max_signal_age_seconds", 300)),
         ),
         max_quote_age_seconds=float(policy.ctrader["max_quote_age_seconds"]),
+        quote_wait_timeout_seconds=float(policy.ctrader["quote_wait_timeout_seconds"]),
+        quote_poll_seconds=float(policy.ctrader["quote_poll_seconds"]),
         guard_resolver=guard_resolver,
     )
     try:
@@ -323,6 +325,15 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
             f"guard_missing={guard_missing_count}"
         )
         print(f"CTRADER_SIGNAL_STATES {states}")
+        if report.skipped:
+            reason_counts: dict[str, int] = {}
+            for reason in report.skipped.values():
+                code = str(reason).split(":", 1)[0] or "UNKNOWN"
+                reason_counts[code] = reason_counts.get(code, 0) + 1
+            reason_summary = ",".join(
+                f"{name}:{reason_counts[name]}" for name in sorted(reason_counts)
+            )
+            print(f"CTRADER_SIGNAL_SKIP_REASONS {reason_summary}")
         if report.calendar_error:
             print(f"CTRADER_SIGNAL_CALENDAR_UNAVAILABLE {report.calendar_error}")
         if report.execution_ready:
