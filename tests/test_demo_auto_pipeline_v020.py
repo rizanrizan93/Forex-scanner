@@ -51,3 +51,4 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
         text = (workflow_dir / name).read_text()
         assert 'CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json' in text
         assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in text
+        assert "\\n" not in text
