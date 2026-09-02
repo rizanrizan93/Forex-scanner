@@ -108,203 +108,6 @@ class FredCsvProvider:
         self.clock = clock
 
 
-    def fetch_numeric_batch(
-        self,
-        series_by_label: Mapping[str, str],
-        *,
-        max_age_seconds: float | None = None,
-    ) -> dict[str, ProviderResult[NumericObservation]]:
-        """Fetch many exact OECD series in grouped SDMX requests.
-
-        Series are grouped by dataset and all dimensions except REF_AREA.
-        This keeps request volume well below OECD download limits while each
-        returned ProviderResult retains exact per-series provenance semantics.
-        """
-        requested: dict[str, tuple[str, str, str, str]] = {}
-        invalid: dict[str, ProviderResult[NumericObservation]] = {}
-        for label, raw_series in series_by_label.items():
-            series = str(raw_series)
-            parts = series.split("|")
-            if len(parts) != 2:
-                invalid[label] = ProviderResult(
-                    ProviderStatus.INVALID,
-                    None,
-                    Provenance(self.name, self.base_url, series, True),
-                    None,
-                    ProviderErrorCategory.CONTRACT,
-                    "OECD numeric provider requires dataset|exact_key",
-                )
-                continue
-            dataset, key = (part.strip() for part in parts)
-            area, sep, suffix = key.partition(".")
-            if (
-                not self._valid_dataset(dataset)
-                or not self._valid_key(key)
-                or not sep
-                or not area
-                or not suffix
-            ):
-                invalid[label] = ProviderResult(
-                    ProviderStatus.INVALID,
-                    None,
-                    Provenance(self.name, self.base_url, series, True),
-                    None,
-                    ProviderErrorCategory.CONTRACT,
-                    "OECD dataset/key contract is invalid",
-                )
-                continue
-            requested[label] = (series, dataset, area, suffix)
-
-        now = self.clock()
-        if now.tzinfo is None:
-            return {
-                label: _failure(
-                    self.name,
-                    self.base_url,
-                    requested[label][0],
-                    ProviderErrorCategory.CONTRACT,
-                    "OECD provider clock must be timezone-aware",
-                )
-                for label in requested
-            } | invalid
-        now = now.astimezone(UTC)
-        start = (now.date() - timedelta(days=self.history_days)).strftime("%Y-%m")
-
-        groups: dict[tuple[str, str], list[tuple[str, str, str]]] = {}
-        for label, (series, dataset, area, suffix) in requested.items():
-            groups.setdefault((dataset, suffix), []).append((label, series, area))
-
-        output: dict[str, ProviderResult[NumericObservation]] = dict(invalid)
-
-        for (dataset, suffix), members in groups.items():
-            areas = sorted({area for _, _, area in members})
-            dataset_path = quote(dataset, safe=",@")
-            area_path = "+".join(quote(area, safe="") for area in areas)
-            suffix_path = quote(suffix, safe="._-")
-            key_path = f"{area_path}.{suffix_path}"
-            query = urlencode(
-                {
-                    "startPeriod": start,
-                    "dimensionAtObservation": "AllDimensions",
-                    "format": "csvfile",
-                }
-            )
-            url = f"{self.base_url}/{dataset_path}/{key_path}?{query}"
-
-            try:
-                response = self.transport.get(
-                    url,
-                    allowed_host=self.allowed_host,
-                    headers={"Accept": "text/csv"},
-                )
-                if response.status_code != 200:
-                    raise HttpTransportError(f"HTTP_{response.status_code}")
-
-                rows = csv.DictReader(io.StringIO(response.body.decode("utf-8-sig")))
-                by_area_time: dict[str, dict[datetime, set[float]]] = {}
-                for row in rows:
-                    raw_area = row.get("REF_AREA") or row.get("ref_area")
-                    raw_time = row.get("TIME_PERIOD") or row.get("time_period")
-                    raw_value = row.get("OBS_VALUE") or row.get("obs_value")
-                    if (
-                        not raw_area
-                        or not raw_time
-                        or raw_value in (None, "", ".", "..", "NA")
-                    ):
-                        continue
-                    area = str(raw_area).strip()
-                    if area not in areas:
-                        continue
-                    try:
-                        ts = _period_to_utc(str(raw_time))
-                        value = float(raw_value)
-                    except (TypeError, ValueError):
-                        continue
-                    by_area_time.setdefault(area, {}).setdefault(ts, set()).add(value)
-
-                for label, series, area in members:
-                    provenance = Provenance(self.name, url, series, True)
-                    by_time = by_area_time.get(area, {})
-                    if not by_time:
-                        output[label] = ProviderResult(
-                            ProviderStatus.MISSING,
-                            None,
-                            provenance,
-                            None,
-                            ProviderErrorCategory.PARSE,
-                            "OECD response contained no numeric observations for reference area",
-                        )
-                        continue
-                    if any(len(values) != 1 for values in by_time.values()):
-                        output[label] = ProviderResult(
-                            ProviderStatus.INVALID,
-                            None,
-                            provenance,
-                            None,
-                            ProviderErrorCategory.CONTRACT,
-                            "OECD exact series resolved to conflicting observations",
-                        )
-                        continue
-
-                    parsed = sorted(
-                        (ts, next(iter(values))) for ts, values in by_time.items()
-                    )
-                    observed_at, value = parsed[-1]
-                    previous_at = parsed[-2][0] if len(parsed) >= 2 else None
-                    previous_value = parsed[-2][1] if len(parsed) >= 2 else None
-                    observation = NumericObservation(
-                        series,
-                        value,
-                        observed_at,
-                        previous_value,
-                        previous_at,
-                    )
-                    freshness = Freshness.evaluate(
-                        observed_at,
-                        now,
-                        max_age_seconds=max_age_seconds
-                        or self.default_max_age_seconds,
-                    )
-                    status = (
-                        ProviderStatus.STALE
-                        if freshness.stale
-                        else ProviderStatus.AVAILABLE
-                    )
-                    output[label] = ProviderResult(
-                        status,
-                        observation,
-                        provenance,
-                        freshness,
-                    )
-            except HttpTransportError as exc:
-                message = str(exc)
-                category = (
-                    ProviderErrorCategory.TIMEOUT
-                    if "TIMEOUT" in message
-                    else ProviderErrorCategory.HTTP
-                    if message.startswith("HTTP_")
-                    else ProviderErrorCategory.NETWORK
-                )
-                for label, series, _area in members:
-                    output[label] = _failure(
-                        self.name,
-                        url,
-                        series,
-                        category,
-                        message,
-                    )
-            except Exception as exc:
-                for label, series, _area in members:
-                    output[label] = _failure(
-                        self.name,
-                        url,
-                        series,
-                        ProviderErrorCategory.PARSE,
-                        str(exc),
-                    )
-
-        return output
-
     def fetch_numeric(
         self,
         series: str,
@@ -689,6 +492,203 @@ class OecdSdmxCsvProvider:
     @staticmethod
     def _valid_key(value: str) -> bool:
         return bool(value) and all(ch.isalnum() or ch in "._-" for ch in value)
+
+    def fetch_numeric_batch(
+        self,
+        series_by_label: Mapping[str, str],
+        *,
+        max_age_seconds: float | None = None,
+    ) -> dict[str, ProviderResult[NumericObservation]]:
+        """Fetch many exact OECD series in grouped SDMX requests.
+
+        Series are grouped by dataset and all dimensions except REF_AREA.
+        This keeps request volume well below OECD download limits while each
+        returned ProviderResult retains exact per-series provenance semantics.
+        """
+        requested: dict[str, tuple[str, str, str, str]] = {}
+        invalid: dict[str, ProviderResult[NumericObservation]] = {}
+        for label, raw_series in series_by_label.items():
+            series = str(raw_series)
+            parts = series.split("|")
+            if len(parts) != 2:
+                invalid[label] = ProviderResult(
+                    ProviderStatus.INVALID,
+                    None,
+                    Provenance(self.name, self.base_url, series, True),
+                    None,
+                    ProviderErrorCategory.CONTRACT,
+                    "OECD numeric provider requires dataset|exact_key",
+                )
+                continue
+            dataset, key = (part.strip() for part in parts)
+            area, sep, suffix = key.partition(".")
+            if (
+                not self._valid_dataset(dataset)
+                or not self._valid_key(key)
+                or not sep
+                or not area
+                or not suffix
+            ):
+                invalid[label] = ProviderResult(
+                    ProviderStatus.INVALID,
+                    None,
+                    Provenance(self.name, self.base_url, series, True),
+                    None,
+                    ProviderErrorCategory.CONTRACT,
+                    "OECD dataset/key contract is invalid",
+                )
+                continue
+            requested[label] = (series, dataset, area, suffix)
+
+        now = self.clock()
+        if now.tzinfo is None:
+            return {
+                label: _failure(
+                    self.name,
+                    self.base_url,
+                    requested[label][0],
+                    ProviderErrorCategory.CONTRACT,
+                    "OECD provider clock must be timezone-aware",
+                )
+                for label in requested
+            } | invalid
+        now = now.astimezone(UTC)
+        start = (now.date() - timedelta(days=self.history_days)).strftime("%Y-%m")
+
+        groups: dict[tuple[str, str], list[tuple[str, str, str]]] = {}
+        for label, (series, dataset, area, suffix) in requested.items():
+            groups.setdefault((dataset, suffix), []).append((label, series, area))
+
+        output: dict[str, ProviderResult[NumericObservation]] = dict(invalid)
+
+        for (dataset, suffix), members in groups.items():
+            areas = sorted({area for _, _, area in members})
+            dataset_path = quote(dataset, safe=",@")
+            area_path = "+".join(quote(area, safe="") for area in areas)
+            suffix_path = quote(suffix, safe="._-")
+            key_path = f"{area_path}.{suffix_path}"
+            query = urlencode(
+                {
+                    "startPeriod": start,
+                    "dimensionAtObservation": "AllDimensions",
+                    "format": "csvfile",
+                }
+            )
+            url = f"{self.base_url}/{dataset_path}/{key_path}?{query}"
+
+            try:
+                response = self.transport.get(
+                    url,
+                    allowed_host=self.allowed_host,
+                    headers={"Accept": "text/csv"},
+                )
+                if response.status_code != 200:
+                    raise HttpTransportError(f"HTTP_{response.status_code}")
+
+                rows = csv.DictReader(io.StringIO(response.body.decode("utf-8-sig")))
+                by_area_time: dict[str, dict[datetime, set[float]]] = {}
+                for row in rows:
+                    raw_area = row.get("REF_AREA") or row.get("ref_area")
+                    raw_time = row.get("TIME_PERIOD") or row.get("time_period")
+                    raw_value = row.get("OBS_VALUE") or row.get("obs_value")
+                    if (
+                        not raw_area
+                        or not raw_time
+                        or raw_value in (None, "", ".", "..", "NA")
+                    ):
+                        continue
+                    area = str(raw_area).strip()
+                    if area not in areas:
+                        continue
+                    try:
+                        ts = _period_to_utc(str(raw_time))
+                        value = float(raw_value)
+                    except (TypeError, ValueError):
+                        continue
+                    by_area_time.setdefault(area, {}).setdefault(ts, set()).add(value)
+
+                for label, series, area in members:
+                    provenance = Provenance(self.name, url, series, True)
+                    by_time = by_area_time.get(area, {})
+                    if not by_time:
+                        output[label] = ProviderResult(
+                            ProviderStatus.MISSING,
+                            None,
+                            provenance,
+                            None,
+                            ProviderErrorCategory.PARSE,
+                            "OECD response contained no numeric observations for reference area",
+                        )
+                        continue
+                    if any(len(values) != 1 for values in by_time.values()):
+                        output[label] = ProviderResult(
+                            ProviderStatus.INVALID,
+                            None,
+                            provenance,
+                            None,
+                            ProviderErrorCategory.CONTRACT,
+                            "OECD exact series resolved to conflicting observations",
+                        )
+                        continue
+
+                    parsed = sorted(
+                        (ts, next(iter(values))) for ts, values in by_time.items()
+                    )
+                    observed_at, value = parsed[-1]
+                    previous_at = parsed[-2][0] if len(parsed) >= 2 else None
+                    previous_value = parsed[-2][1] if len(parsed) >= 2 else None
+                    observation = NumericObservation(
+                        series,
+                        value,
+                        observed_at,
+                        previous_value,
+                        previous_at,
+                    )
+                    freshness = Freshness.evaluate(
+                        observed_at,
+                        now,
+                        max_age_seconds=max_age_seconds
+                        or self.default_max_age_seconds,
+                    )
+                    status = (
+                        ProviderStatus.STALE
+                        if freshness.stale
+                        else ProviderStatus.AVAILABLE
+                    )
+                    output[label] = ProviderResult(
+                        status,
+                        observation,
+                        provenance,
+                        freshness,
+                    )
+            except HttpTransportError as exc:
+                message = str(exc)
+                category = (
+                    ProviderErrorCategory.TIMEOUT
+                    if "TIMEOUT" in message
+                    else ProviderErrorCategory.HTTP
+                    if message.startswith("HTTP_")
+                    else ProviderErrorCategory.NETWORK
+                )
+                for label, series, _area in members:
+                    output[label] = _failure(
+                        self.name,
+                        url,
+                        series,
+                        category,
+                        message,
+                    )
+            except Exception as exc:
+                for label, series, _area in members:
+                    output[label] = _failure(
+                        self.name,
+                        url,
+                        series,
+                        ProviderErrorCategory.PARSE,
+                        str(exc),
+                    )
+
+        return output
 
     def fetch_numeric(
         self,
