@@ -93,7 +93,10 @@ macro_ingestion:
     inflation:
       provider: OECD_SDMX
       dataset: OECD.SDD.TPS,DSD_PRICES@DF_PRICES_ALL,1.0
-      key_template: "{area}.M.N.CPI.PA._T.N.GY"
+      key_template: "{area}.M.N.CPI.._T.N.GY"
+      key_overrides:
+        AUD: "{area}.Q.N.CPI.._T.N.GY"
+        NZD: "{area}.Q.N.CPI.._T.N.GY"
       area_overrides: {}
       normalizer: delta
       scale: 0.25
@@ -113,7 +116,7 @@ macro_ingestion:
     labour:
       provider: OECD_SDMX
       dataset: OECD.SDD.TPS,DSD_LFS@DF_IALFS_INDIC,1.0
-      key_template: "{area}.UNE_LF_M.PT_LF_SUB..Y._T.Y_GE15..M"
+      key_template: "{area}.UNE_LF_M...Y._T.Y_GE15..M"
       area_overrides: {}
       normalizer: delta
       scale: 0.25
