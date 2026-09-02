@@ -437,6 +437,48 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
                     f"invalid OECD key override for {factor}.{currency}"
                 )
 
+        series_overrides = item.get("series_overrides", {})
+        if (
+            not isinstance(series_overrides, Mapping)
+            or not set(series_overrides).issubset(expected_currencies)
+        ):
+            raise ConfigurationError(
+                f"macro ingestion factor {factor} series_overrides are invalid"
+            )
+        for currency, raw_series in series_overrides.items():
+            series = str(raw_series).strip()
+            if series.count("|") != 1:
+                raise ConfigurationError(
+                    f"invalid OECD exact series override for {factor}.{currency}"
+                )
+            dataset_override, key_override = series.split("|", 1)
+            if (
+                not dataset_override.startswith("OECD.")
+                or any(ch in dataset_override for ch in "/?#&%")
+                or not key_override
+                or any(ch in key_override for ch in "/?#&%+")
+            ):
+                raise ConfigurationError(
+                    f"invalid OECD exact series override for {factor}.{currency}"
+                )
+        max_age_overrides = item.get("max_age_overrides", {})
+        if (
+            not isinstance(max_age_overrides, Mapping)
+            or not set(max_age_overrides).issubset(expected_currencies)
+        ):
+            raise ConfigurationError(
+                f"macro ingestion factor {factor} max_age_overrides are invalid"
+            )
+        for currency, raw_age in max_age_overrides.items():
+            override_age = _as_finite_number(
+                raw_age,
+                label=f"providers.macro_ingestion.factors.{factor}.max_age_overrides.{currency}",
+            )
+            if not 86400 <= override_age <= 15552000:
+                raise ConfigurationError(
+                    f"macro ingestion factor {factor}.{currency} max age must be within [1,180] days"
+                )
+
     calendar_cfg = providers.get("calendar", {})
     if not isinstance(calendar_cfg, Mapping):
         raise ConfigurationError("providers.calendar must be a mapping")
