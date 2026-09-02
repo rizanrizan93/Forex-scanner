@@ -54,6 +54,7 @@ class CTraderDemoAutoExecutor:
         self.router = router
         self.store = store
         self.demo = policy.demo_safety
+        self.control_gate = getattr(router, "control_gate", None)
 
     @staticmethod
     def _dt(value: Any) -> datetime | None:
@@ -135,6 +136,22 @@ class CTraderDemoAutoExecutor:
         )
 
     def poll_once(self, *, limit: int = 10) -> DemoAutoReport:
+        if self.policy.live_safety.get("require_control_plane", False):
+            if self.control_gate is None:
+                return DemoAutoReport(
+                    0, 0, 0, 0, ("CONTROL_PLANE_BLOCKED:NOT_CONFIGURED",)
+                )
+            try:
+                self.control_gate.assert_orders_allowed(self.policy.mode.value)
+            except Exception as exc:
+                return DemoAutoReport(
+                    0,
+                    0,
+                    0,
+                    0,
+                    (f"CONTROL_PLANE_BLOCKED:{type(exc).__name__}:{exc}",),
+                )
+
         now = datetime.now(tz=UTC)
         rows = self.store.list_execution_ready_signals(limit=limit)
         eligible = 0
