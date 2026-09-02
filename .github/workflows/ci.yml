@@ -29,5 +29,7 @@ jobs:
         run: pytest -q
       - name: Config contract
         run: python -m fx_scanner.cli validate-config
+      - name: Macro source smoke
+        run: python -m fx_scanner.cli macro-source-smoke
       - name: Demo ingest
         run: python -m fx_scanner.cli demo-ingest --symbol EURUSD --minutes 10
