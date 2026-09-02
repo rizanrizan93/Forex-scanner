@@ -369,13 +369,16 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
         print(f"CTRADER_SIGNAL_STATES {states}")
         if report.skipped:
             reason_counts: dict[str, int] = {}
-            for reason in report.skipped.values():
+            safe_skips: list[str] = []
+            for symbol, reason in sorted(report.skipped.items()):
                 code = str(reason).split(":", 1)[0] or "UNKNOWN"
                 reason_counts[code] = reason_counts.get(code, 0) + 1
+                safe_skips.append(f"{symbol}:{code}")
             reason_summary = ",".join(
                 f"{name}:{reason_counts[name]}" for name in sorted(reason_counts)
             )
             print(f"CTRADER_SIGNAL_SKIP_REASONS {reason_summary}")
+            print("CTRADER_SIGNAL_SKIPS " + ",".join(safe_skips))
         if report.calendar_error:
             print(f"CTRADER_SIGNAL_CALENDAR_UNAVAILABLE {report.calendar_error}")
         if report.execution_ready:
