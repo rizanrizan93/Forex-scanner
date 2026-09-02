@@ -252,6 +252,13 @@ def cmd_macro_refresh(args: argparse.Namespace) -> int:
         f"valid={report.valid_currencies}/{report.currencies_total} "
         f"coverage={coverage} below_minimum={below}"
     )
+    configured_factors = set(cfg.providers["macro_ingestion"]["factors"])
+    source_gaps = []
+    for currency in sorted(report.missing_by_currency):
+        gaps = sorted(configured_factors.intersection(report.missing_by_currency[currency]))
+        if gaps:
+            source_gaps.append(f"{currency}=" + "+".join(gaps))
+    print("MACRO_REFRESH_SOURCE_GAPS " + (";".join(source_gaps) or "NONE"))
     return 0
 
 
