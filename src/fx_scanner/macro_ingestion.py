@@ -64,6 +64,41 @@ class MacroEvidenceRefresher:
             )
         return output
 
+
+    def prefetch_sources(self, currencies: list[str] | tuple[str, ...]) -> None:
+        """Prime provider cache using batched official-source requests when supported."""
+        groups: dict[tuple[int, float], dict[str, tuple[object, FactorBinding]]] = {}
+        for currency in currencies:
+            for factor, bindings in self._bindings(currency).items():
+                for binding in bindings:
+                    provider = binding.provider
+                    if not hasattr(provider, "fetch_numeric_batch"):
+                        continue
+                    label = f"{currency}:{factor}:{binding.series}"
+                    key = (id(provider), float(binding.max_age_seconds))
+                    groups.setdefault(key, {})[label] = (provider, binding)
+
+        for (_provider_id, max_age), members in groups.items():
+            provider = next(iter(members.values()))[0]
+            series_by_label = {
+                label: binding.series
+                for label, (_provider, binding) in members.items()
+            }
+            results = provider.fetch_numeric_batch(
+                series_by_label,
+                max_age_seconds=max_age,
+            )
+            for label, (_provider, binding) in members.items():
+                result = results.get(label)
+                if result is None:
+                    continue
+                self.runtime.orchestrator.prime(
+                    provider,
+                    binding.series,
+                    result,
+                    max_age_seconds=binding.max_age_seconds,
+                )
+
     def run_once(self) -> MacroRefreshReport:
         now = self.clock()
         if now.tzinfo is None:
@@ -74,6 +109,7 @@ class MacroEvidenceRefresher:
             clock=lambda: now,
         )
         currencies = sorted(self.cfg.providers["macro_ingestion"]["currency_areas"])
+        self.prefetch_sources(currencies)
         coverage: dict[str, float] = {}
         missing: dict[str, tuple[str, ...]] = {}
         statuses: dict[str, str] = {}
