@@ -243,6 +243,7 @@ def cmd_macro_source_smoke(args: argparse.Namespace) -> int:
         runtime=runtime,
     )
     currencies = sorted(cfg.providers["macro_ingestion"]["currency_areas"])
+    refresher.prefetch_sources(currencies)
     for currency in currencies:
         parts = []
         for factor, bindings in refresher._bindings(currency).items():
@@ -260,7 +261,8 @@ def cmd_macro_source_smoke(args: argparse.Namespace) -> int:
                     score = None
             age = None if result.freshness is None else round(result.freshness.age_seconds, 1)
             parts.append(
-                f"{factor}:{result.status.value}:score={score}:age={age}"
+                f"{factor}:{result.status.value}:"
+                f"error={result.error_category.value}:score={score}:age={age}"
             )
         print(f"MACRO_SOURCE_SMOKE {currency} " + " ".join(parts))
     return 0
