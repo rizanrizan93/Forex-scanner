@@ -66,6 +66,7 @@ class CTraderOpenApiSession:
                 ProtoOARefreshTokenReq,
                 ProtoOASpotEvent,
                 ProtoOASubscribeSpotsReq,
+                ProtoOAUnsubscribeSpotsReq,
                 ProtoOASymbolByIdReq,
                 ProtoOASymbolsListReq,
                 ProtoOATraderReq,
@@ -93,6 +94,7 @@ class CTraderOpenApiSession:
             "RefreshTokenReq": ProtoOARefreshTokenReq,
             "SpotEvent": ProtoOASpotEvent,
             "SubscribeSpotsReq": ProtoOASubscribeSpotsReq,
+            "UnsubscribeSpotsReq": ProtoOAUnsubscribeSpotsReq,
             "SymbolByIdReq": ProtoOASymbolByIdReq,
             "SymbolsListReq": ProtoOASymbolsListReq,
             "TraderReq": ProtoOATraderReq,
@@ -406,6 +408,31 @@ class CTraderOpenApiSession:
         for symbol in symbols:
             req.symbolId.append(self.symbol_id(symbol))
         self._send_sync(req, client_msg_id=f"spots-{uuid4().hex}")
+
+    def refresh_spot_snapshot(self, symbol: str) -> None:
+        """Re-subscribe one symbol so cTrader emits its latest technical spot snapshot."""
+        self.ensure_connected()
+        sid = self.symbol_id(symbol)
+
+        unsubscribe = self.msg["UnsubscribeSpotsReq"]()
+        unsubscribe.ctidTraderAccountId = self.account_id
+        unsubscribe.symbolId.append(sid)
+        self._send_sync(
+            unsubscribe,
+            client_msg_id=f"unspots-{uuid4().hex}",
+        )
+
+        with self._quotes_lock:
+            self._quotes_by_id.pop(sid, None)
+
+        subscribe = self.msg["SubscribeSpotsReq"]()
+        subscribe.ctidTraderAccountId = self.account_id
+        subscribe.symbolId.append(sid)
+        subscribe.subscribeToSpotTimestamp = True
+        self._send_sync(
+            subscribe,
+            client_msg_id=f"spots-refresh-{uuid4().hex}",
+        )
 
     def symbol_id(self, symbol: str) -> int:
         key = normalize_symbol_name(symbol)
