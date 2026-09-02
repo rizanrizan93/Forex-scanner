@@ -30,6 +30,7 @@ jobs:
       CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
       CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "70"
       CTRADER_DEMO_TECHNICAL_ONLY: "1"
+      CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"
       # Reference symbols are bootstrapped idempotently before each DEMO scan.
 
     steps:

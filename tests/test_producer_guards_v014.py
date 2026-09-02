@@ -300,3 +300,45 @@ def test_guard_bounded_wait_still_fails_closed_when_quote_remains_stale():
     assert feed.calls == 3
     assert "SPREAD_BLOCK" in result.missing_by_symbol["EURUSD"]
     assert result.flags_by_symbol["EURUSD"]["DATA_QUALITY_BLOCK"] is True
+
+
+class GoldFeed:
+    def quote(self, _symbol):
+        return SimpleNamespace(bid=3500.00, ask=3500.20, timestamp=NOW)
+
+
+def test_xauusd_demo_spread_override_is_instrument_specific():
+    cfg = load_project_config()
+    candidate = rank("XAUUSD", "LONG", 1)
+    bars = {"XAUUSD": bundle("XAUUSD")}
+    global_only = ProductionGuardResolver(
+        cfg, GoldFeed(), calendar_provider=None,
+        max_quote_age_seconds=2.0, max_spread_pips=4.0,
+        demo_max_risk_pct=0.25, disabled_guards=("NEWS_BLOCK",),
+    ).resolve(candidates=[candidate], bars_by_symbol=bars, as_of=NOW)
+    assert global_only.flags_by_symbol["XAUUSD"]["SPREAD_BLOCK"] is True
+
+    with_override = ProductionGuardResolver(
+        cfg, GoldFeed(), calendar_provider=None,
+        max_quote_age_seconds=2.0, max_spread_pips=4.0,
+        max_spread_pips_by_symbol={"XAUUSD": 30.0},
+        demo_max_risk_pct=0.25, disabled_guards=("NEWS_BLOCK",),
+    ).resolve(candidates=[candidate], bars_by_symbol=bars, as_of=NOW)
+    assert with_override.flags_by_symbol["XAUUSD"]["SPREAD_BLOCK"] is False
+
+
+def test_xauusd_spread_override_does_not_change_fx_limit():
+    cfg = load_project_config()
+    class WideFxFeed:
+        def quote(self, _symbol):
+            return SimpleNamespace(bid=1.1000, ask=1.1005, timestamp=NOW)
+    result = ProductionGuardResolver(
+        cfg, WideFxFeed(), calendar_provider=None,
+        max_quote_age_seconds=2.0, max_spread_pips=4.0,
+        max_spread_pips_by_symbol={"XAUUSD": 30.0},
+        demo_max_risk_pct=0.25, disabled_guards=("NEWS_BLOCK",),
+    ).resolve(
+        candidates=[rank("EURUSD", "LONG", 1)],
+        bars_by_symbol={"EURUSD": bundle("EURUSD")}, as_of=NOW,
+    )
+    assert result.flags_by_symbol["EURUSD"]["SPREAD_BLOCK"] is True

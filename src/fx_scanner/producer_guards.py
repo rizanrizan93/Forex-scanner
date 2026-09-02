@@ -164,6 +164,7 @@ class ProductionGuardResolver:
         max_quote_age_seconds: float,
         max_spread_pips: float,
         demo_max_risk_pct: float,
+        max_spread_pips_by_symbol: Mapping[str, float] | None = None,
         quote_wait_timeout_seconds: float = 0.0,
         quote_poll_seconds: float = 0.10,
         sleeper: Callable[[float], None] = sleep,
@@ -185,6 +186,18 @@ class ProductionGuardResolver:
         self.calendar_provider = calendar_provider
         self.max_quote_age_seconds = float(max_quote_age_seconds)
         self.max_spread_pips = float(max_spread_pips)
+        overrides: dict[str, float] = {}
+        for raw_symbol, raw_limit in (max_spread_pips_by_symbol or {}).items():
+            symbol = str(raw_symbol).upper().strip()
+            limit = float(raw_limit)
+            if symbol not in cfg.pair_map:
+                raise ValueError(f"unknown spread-limit symbol: {symbol}")
+            if not isfinite(limit) or not 0 < limit <= 100:
+                raise ValueError(
+                    f"spread-limit override for {symbol} must be in (0,100] pips"
+                )
+            overrides[symbol] = limit
+        self.max_spread_pips_by_symbol = overrides
         self.demo_max_risk_pct = float(demo_max_risk_pct)
         self.quote_wait_timeout_seconds = float(quote_wait_timeout_seconds)
         self.quote_poll_seconds = float(quote_poll_seconds)
@@ -303,9 +316,11 @@ class ProductionGuardResolver:
                 spread_pips = (
                     float(quote.ask) - float(quote.bid)
                 ) / float(pair.pip_size)
-                flags["SPREAD_BLOCK"] = bool(
-                    spread_pips > self.max_spread_pips
+                spread_limit = self.max_spread_pips_by_symbol.get(
+                    candidate.symbol,
+                    self.max_spread_pips,
                 )
+                flags["SPREAD_BLOCK"] = bool(spread_pips > spread_limit)
 
             if bundle is not None:
                 quality_ok = _bundle_quality_ok(self.cfg, candidate.symbol, bundle)

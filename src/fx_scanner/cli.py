@@ -64,6 +64,20 @@ def _demo_technical_only_enabled() -> bool:
     return os.getenv("CTRADER_DEMO_TECHNICAL_ONLY", "0").strip() == "1"
 
 
+def _demo_spread_limit_overrides(cfg) -> dict[str, float]:
+    """Read explicit DEMO-only per-instrument spread limits."""
+    raw = os.getenv("CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS", "").strip()
+    if not raw:
+        return {}
+    try:
+        limit = float(raw)
+    except ValueError as exc:
+        raise SystemExit("CTRADER_DEMO_XAU_SPREAD_LIMIT_INVALID") from exc
+    if "XAUUSD" not in cfg.pair_map or not 4.0 <= limit <= 50.0:
+        raise SystemExit("CTRADER_DEMO_XAU_SPREAD_LIMIT_OUT_OF_RANGE")
+    return {"XAUUSD": limit}
+
+
 def _apply_demo_technical_only_profile(cfg):
     """Return a DEMO-only technical scalping configuration.
 
@@ -393,6 +407,16 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
             url=str(calendar_cfg["base_url"]),
             allowed_host=str(calendar_cfg["allowed_host"]),
         )
+    spread_overrides = _demo_spread_limit_overrides(cfg) if technical_only else {}
+    if spread_overrides:
+        print(
+            "CTRADER_DEMO_SPREAD_LIMITS "
+            f"default={float(policy.reconciliation['max_execution_spread_pips']):g} "
+            + " ".join(
+                f"{symbol}={limit:g}"
+                for symbol, limit in sorted(spread_overrides.items())
+            )
+        )
     guard_resolver = ProductionGuardResolver(
         cfg,
         feed,
@@ -400,6 +424,7 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
         max_quote_age_seconds=float(policy.ctrader["max_quote_age_seconds"]),
         max_spread_pips=float(policy.reconciliation["max_execution_spread_pips"]),
         demo_max_risk_pct=float(policy.demo_safety["max_risk_pct"]),
+        max_spread_pips_by_symbol=spread_overrides,
         quote_wait_timeout_seconds=float(policy.ctrader["quote_wait_timeout_seconds"]),
         quote_poll_seconds=float(policy.ctrader["quote_poll_seconds"]),
         clock=lambda: datetime.now(tz=UTC),
