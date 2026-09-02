@@ -188,3 +188,93 @@ def test_macro_refresher_uses_quarterly_cpi_for_aud_nzd():
     assert nzd.endswith("|NZL.Q.N.CPI.PA._T.N.GY")
     assert usd.endswith("|USA.M.N.CPI.PA._T.N.GY")
     assert labour.endswith("|USA.UNE_LF_M...Y._T.Y_GE15..M")
+
+
+
+def test_oecd_batch_provider_groups_reference_areas():
+    body = (
+        b"REF_AREA,FREQ,MEASURE,TIME_PERIOD,OBS_VALUE\n"
+        b"USA,M,CPI,2026-06,2.5\n"
+        b"USA,M,CPI,2026-07,2.7\n"
+        b"CAN,M,CPI,2026-06,2.0\n"
+        b"CAN,M,CPI,2026-07,2.1\n"
+        b"AUS,Q,CPI,2026-Q1,3.0\n"
+        b"AUS,Q,CPI,2026-Q2,2.8\n"
+    )
+    transport = FakeTransport(body)
+    provider = OecdSdmxCsvProvider(transport, clock=lambda: NOW)
+    dataset = "OECD.SDD.TPS,DSD_PRICES@DF_PRICES_ALL,1.0"
+    results = provider.fetch_numeric_batch(
+        {
+            "USD": f"{dataset}|USA.M.N.CPI.PA._T.N.GY",
+            "CAD": f"{dataset}|CAN.M.N.CPI.PA._T.N.GY",
+            "AUD": f"{dataset}|AUS.Q.N.CPI.PA._T.N.GY",
+        },
+        max_age_seconds=10368000,
+    )
+
+    assert len(transport.calls) == 2
+    assert results["USD"].status == ProviderStatus.AVAILABLE
+    assert results["USD"].value.value == pytest.approx(2.7)
+    assert results["CAD"].value.value == pytest.approx(2.1)
+    assert results["AUD"].value.value == pytest.approx(2.8)
+    urls = [call[0] for call in transport.calls]
+    assert any("CAN+USA.M.N.CPI.PA._T.N.GY" in url for url in urls)
+    assert any("AUS.Q.N.CPI.PA._T.N.GY" in url for url in urls)
+
+
+class BatchFreshOecd(AlwaysFreshOecd):
+    def __init__(self):
+        super().__init__(with_history=True)
+        self.batch_calls = 0
+        self.scalar_calls = 0
+
+    def fetch_numeric(self, series, *, max_age_seconds=None):
+        self.scalar_calls += 1
+        raise AssertionError("scalar OECD fetch must be served from primed batch cache")
+
+    def fetch_numeric_batch(self, series_by_label, *, max_age_seconds=None):
+        self.batch_calls += 1
+        output = {}
+        for label, series in series_by_label.items():
+            observation = NumericObservation(
+                series,
+                2.50,
+                NOW - timedelta(days=10),
+                2.25,
+                NOW - timedelta(days=40),
+            )
+            fresh = Freshness.evaluate(
+                observation.observed_at,
+                NOW,
+                max_age_seconds=max_age_seconds or 10368000,
+            )
+            output[label] = ProviderResult(
+                ProviderStatus.AVAILABLE,
+                observation,
+                Provenance(
+                    "OECD_SDMX",
+                    "https://sdmx.oecd.org/public/rest/data",
+                    series,
+                    True,
+                ),
+                fresh,
+            )
+        return output
+
+
+def test_macro_refresher_primes_batch_results_before_scoring():
+    cfg = load_project_config()
+    provider = BatchFreshOecd()
+    store = Store()
+    report = MacroEvidenceRefresher(
+        cfg,
+        store,
+        runtime=runtime(provider),
+        clock=lambda: NOW,
+    ).run_once()
+
+    assert provider.batch_calls == 1
+    assert provider.scalar_calls == 0
+    assert report.valid_currencies == 8
+    assert all(value == pytest.approx(0.70) for value in report.coverage_by_currency.values())
