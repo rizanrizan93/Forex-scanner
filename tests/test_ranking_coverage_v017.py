@@ -41,8 +41,8 @@ def test_rank_coverage_normalizes_over_observed_components_without_lowering_gate
     )
 
     assert len(ranked) == 1
-    assert ranked[0].coverage == pytest.approx((0.55 * 0.70 + 0.30) / 0.85)
-    assert ranked[0].coverage >= 0.80
+    assert ranked[0].coverage == pytest.approx(0.55 * 0.70 + 0.30)
+    assert (ranked[0].coverage / 0.85) >= 0.80
     assert ranked[0].missing_components == ("cross_asset",)
 
 
