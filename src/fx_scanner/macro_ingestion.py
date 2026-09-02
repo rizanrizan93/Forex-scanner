@@ -43,9 +43,11 @@ class MacroEvidenceRefresher:
         default_area = str(ingestion["currency_areas"][currency])
         output: dict[str, tuple[FactorBinding, ...]] = {}
         for factor, item in ingestion["factors"].items():
-            overrides = item.get("area_overrides", {})
-            area = str(overrides.get(currency, default_area))
-            key = str(item["key_template"]).format(area=area)
+            area_overrides = item.get("area_overrides", {})
+            area = str(area_overrides.get(currency, default_area))
+            key_overrides = item.get("key_overrides", {})
+            key_template = str(key_overrides.get(currency, item["key_template"]))
+            key = key_template.format(area=area)
             series = f"{item['dataset']}|{key}"
             provider = self.runtime.providers[str(item["provider"])]
             normalizer = DeltaNormalizer(
