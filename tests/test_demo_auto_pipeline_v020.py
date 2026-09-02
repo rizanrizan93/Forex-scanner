@@ -15,15 +15,17 @@ def test_demo_auto_pipeline_is_dispatch_only_and_demo_only():
     assert "macro-refresh" not in text
     assert "CTRADER_DEMO_AUTOTRADE_ENABLED" in text
     assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "70"' in text
+    assert 'CTRADER_DEMO_TECHNICAL_ONLY: "1"' in text
     assert 'FX_KILL_SWITCH: "0"' in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
 
 
-def test_macro_refresh_remains_hourly_and_has_no_broker_execution_secrets():
+def test_macro_refresh_is_manual_only_during_demo_technical_testing():
     text = (ROOT / ".github/workflows/forex-official-macro-refresh.yml").read_text()
 
-    assert 'cron: "7 * * * 1-5"' in text
+    assert "workflow_dispatch:" in text
+    assert "schedule:" not in text
     assert "macro-refresh" in text
     assert "actions: write" not in text
     assert "ctrader-demo-auto-pipeline" not in text
@@ -59,7 +61,7 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
 def test_demo_auto_supervisor_dispatches_only_demo_pipeline_every_five_minutes():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
 
-    assert 'workflows: ["Forex Official Macro Refresh"]' in text
+    assert 'workflows: ["cTrader Demo Technical Heartbeat"]' in text
     assert "github.event.workflow_run.event == 'schedule'" in text
     assert "github.event.workflow_run.head_branch == 'main'" in text
     assert "actions: write" in text
@@ -72,3 +74,14 @@ def test_demo_auto_supervisor_dispatches_only_demo_pipeline_every_five_minutes()
     assert "CTRADER_REFRESH_TOKEN" not in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
+
+
+def test_demo_technical_heartbeat_is_hourly_and_secret_free():
+    text = (ROOT / ".github/workflows/ctrader-demo-technical-heartbeat.yml").read_text()
+
+    assert 'cron: "17 * * * 1-5"' in text
+    assert "CTRADER_DEMO_TECHNICAL_HEARTBEAT_OK" in text
+    assert "CTRADER_CLIENT_SECRET" not in text
+    assert "CTRADER_ACCESS_TOKEN" not in text
+    assert "SUPABASE_SECRET_KEY" not in text
+    assert "macro-refresh" not in text
