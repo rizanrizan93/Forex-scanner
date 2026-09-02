@@ -38,9 +38,15 @@ def _demo_setup_type(base: MTFAnalysis) -> SetupType | None:
     return None
 
 
-def _execution_quality(plan, plan_cfg: Mapping, external_score: float | None) -> float | None:
+def _execution_quality(
+    plan,
+    plan_cfg: Mapping,
+    external_score: float | None,
+    *,
+    trigger_confirmed: bool,
+) -> float | None:
     if plan is None:
-        internal = 20.0
+        internal = 20.0 if trigger_confirmed else 10.0
     else:
         chase_ok = float(plan_cfg["chase_ok_atr"])
         chase_block = float(plan_cfg["chase_block_atr"])
@@ -127,6 +133,7 @@ def analyze_demo_pair_mtf(
         plan,
         plan_cfg,
         execution_quality_score,
+        trigger_confirmed=base.trigger_confirmed,
     )
 
     computed = dict(base.computed_guards)
