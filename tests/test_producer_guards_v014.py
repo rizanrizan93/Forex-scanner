@@ -228,3 +228,75 @@ def test_directional_correlation_blocks_lower_ranked_duplicate_exposure():
     )
     assert result.flags_by_symbol["EURUSD"]["CORRELATION_BLOCK"] is False
     assert result.flags_by_symbol["GBPUSD"]["CORRELATION_BLOCK"] is True
+
+
+
+class SequencedGuardFeed:
+    def __init__(self, ages):
+        self.ages = list(ages)
+        self.calls = 0
+
+    def quote(self, _symbol):
+        age = self.ages[min(self.calls, len(self.ages) - 1)]
+        self.calls += 1
+        return SimpleNamespace(
+            bid=1.1000,
+            ask=1.1002,
+            timestamp=NOW - timedelta(seconds=age),
+        )
+
+
+def test_guard_waits_boundedly_for_fresh_quote_without_relaxing_freshness():
+    cfg = load_project_config()
+    feed = SequencedGuardFeed([5.0, 3.0, 0.2])
+    sleeps = []
+    resolver = ProductionGuardResolver(
+        cfg,
+        feed,
+        calendar_provider=calendar_provider([event(NOW)]),
+        max_quote_age_seconds=2.0,
+        max_spread_pips=4.0,
+        demo_max_risk_pct=0.25,
+        quote_wait_timeout_seconds=0.5,
+        quote_poll_seconds=0.1,
+        sleeper=sleeps.append,
+        clock=lambda: NOW,
+    )
+    result = resolver.resolve(
+        candidates=[rank("EURUSD", "LONG", 1)],
+        bars_by_symbol={"EURUSD": bundle("EURUSD")},
+        as_of=NOW,
+    )
+
+    flags = result.flags_by_symbol["EURUSD"]
+    assert feed.calls == 3
+    assert sleeps == [0.1, 0.1]
+    assert flags["SPREAD_BLOCK"] is False
+    assert flags["DATA_QUALITY_BLOCK"] is False
+    assert result.missing_by_symbol["EURUSD"] == ()
+
+
+def test_guard_bounded_wait_still_fails_closed_when_quote_remains_stale():
+    cfg = load_project_config()
+    feed = SequencedGuardFeed([5.0])
+    resolver = ProductionGuardResolver(
+        cfg,
+        feed,
+        calendar_provider=calendar_provider([event(NOW)]),
+        max_quote_age_seconds=2.0,
+        max_spread_pips=4.0,
+        demo_max_risk_pct=0.25,
+        quote_wait_timeout_seconds=0.2,
+        quote_poll_seconds=0.1,
+        sleeper=lambda _seconds: None,
+        clock=lambda: NOW,
+    )
+    result = resolver.resolve(
+        candidates=[rank("EURUSD", "LONG", 1)],
+        bars_by_symbol={"EURUSD": bundle("EURUSD")},
+        as_of=NOW,
+    )
+
+    assert feed.calls == 3
+    assert "SPREAD_BLOCK" in result.missing_by_symbol["EURUSD"]
+    assert result.flags_by_symbol["EURUSD"]["DATA_QUALITY_BLOCK"] is True
