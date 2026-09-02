@@ -29,6 +29,10 @@ def _optional_env(name: str) -> str | None:
     return value or None
 
 
+def _allow_ctrader_token_refresh() -> bool:
+    return os.getenv("CTRADER_DISABLE_TOKEN_REFRESH", "").strip() != "1"
+
+
 def _session_policies(policy: ExecutionPolicy):
     reconnect = policy.runtime.get("reconnect", {})
     breaker = policy.runtime.get("circuit_breaker", {})
@@ -82,6 +86,7 @@ def build_broker_gateway(
             account_id=None,
             environment="demo",
             request_timeout_seconds=float(cfg.get("request_timeout_seconds", 10)),
+            allow_token_refresh=_allow_ctrader_token_refresh(),
         )
         try:
             account = session.resolve_granted_account(
@@ -150,6 +155,7 @@ def build_ctrader_research_feed(
         account_id=None,
         environment=str(cfg.get("environment", "DEMO")).lower(),
         request_timeout_seconds=float(cfg.get("request_timeout_seconds", 10)),
+        allow_token_refresh=_allow_ctrader_token_refresh(),
     )
     try:
         session.resolve_granted_account(

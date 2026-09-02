@@ -185,8 +185,9 @@ class SignalStore:
 
 
 class Router:
-    def __init__(self):
+    def __init__(self, control_gate=None):
         self.intents = []
+        self.control_gate = control_gate or Gate()
 
     def execute(self, intent):
         self.intents.append(intent)
@@ -260,3 +261,49 @@ def test_signal_executor_does_not_claim_price_outside_entry_zone():
     assert report.claimed == 0
     assert report.executed == 0
     assert store.claimed == []
+
+
+
+class BlockedGate:
+    def assert_orders_allowed(self, required_mode):
+        assert required_mode == "AUTO"
+        raise RuntimeError("NEW_ORDERS_DISABLED")
+
+
+def test_signal_executor_does_not_claim_when_control_plane_blocks():
+    cfg = load_project_config()
+    p = policy()
+    now = datetime.now(tz=UTC)
+    row = {
+        "id": "00000000-0000-0000-0000-000000000099",
+        "observed_at": now.isoformat(),
+        "symbol": "EURUSD",
+        "direction": "LONG",
+        "setup_type": "TREND_CONTINUATION",
+        "state": "EXECUTION_READY",
+        "entry_low": 1.0998,
+        "entry_high": 1.1002,
+        "sl": 1.0950,
+        "tp2": 1.1100,
+        "rr2": 2.0,
+        "active_guards": [],
+        "data_coverage": 0.95,
+        "expires_at": (now + timedelta(minutes=2)).isoformat(),
+        "final_score": 95.0,
+    }
+    store = SignalStore(row)
+    executor = CTraderDemoAutoExecutor(
+        cfg=cfg,
+        policy=p,
+        gateway=Gateway(quote=1.1000),
+        router=Router(control_gate=BlockedGate()),
+        store=store,
+    )
+
+    report = executor.poll_once()
+
+    assert report.scanned == 0
+    assert report.claimed == 0
+    assert report.executed == 0
+    assert store.claimed == []
+    assert report.skipped[0].startswith("CONTROL_PLANE_BLOCKED:")

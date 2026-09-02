@@ -48,6 +48,7 @@ class CTraderOpenApiSession:
         token_update_callback: Callable[[str, str], None] | None = None,
         environment: str = "demo",
         request_timeout_seconds: float = 10.0,
+        allow_token_refresh: bool = True,
     ):
         if not all([client_id, client_secret, access_token]):
             raise ValueError("cTrader client_id/client_secret/access_token are required")
@@ -109,6 +110,7 @@ class CTraderOpenApiSession:
         if self.environment not in {"demo", "live"}:
             raise ValueError("environment must be demo or live")
         self.request_timeout_seconds = float(request_timeout_seconds)
+        self.allow_token_refresh = bool(allow_token_refresh)
         if self.request_timeout_seconds <= 0:
             raise ValueError("request_timeout_seconds must be positive")
 
@@ -275,7 +277,7 @@ class CTraderOpenApiSession:
         try:
             res = self._send_sync(req, client_msg_id=f"accounts-{uuid4().hex}")
         except Exception:
-            if not self.refresh_token:
+            if not self.refresh_token or not self.allow_token_refresh:
                 raise
             self._refresh_tokens()
             req.accessToken = self.access_token
