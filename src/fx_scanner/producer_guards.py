@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite, sqrt
 from statistics import median
-from typing import Any, Mapping, Sequence
+from time import sleep
+from typing import Any, Callable, Mapping, Sequence
 
 from .config import ProjectConfig
 from .models import Bar, ensure_utc
@@ -163,6 +164,10 @@ class ProductionGuardResolver:
         max_quote_age_seconds: float,
         max_spread_pips: float,
         demo_max_risk_pct: float,
+        quote_wait_timeout_seconds: float = 0.0,
+        quote_poll_seconds: float = 0.10,
+        sleeper: Callable[[float], None] = sleep,
+        clock: Callable[[], datetime] | None = None,
     ):
         if max_quote_age_seconds <= 0:
             raise ValueError("max_quote_age_seconds must be positive")
@@ -170,12 +175,64 @@ class ProductionGuardResolver:
             raise ValueError("max_spread_pips must be positive")
         if demo_max_risk_pct <= 0:
             raise ValueError("demo_max_risk_pct must be positive")
+        if quote_wait_timeout_seconds < 0:
+            raise ValueError("quote_wait_timeout_seconds cannot be negative")
+        if not 0 < quote_poll_seconds <= 1.0:
+            raise ValueError("quote_poll_seconds must be in (0,1]")
         self.cfg = cfg
         self.feed = feed
         self.calendar_provider = calendar_provider
         self.max_quote_age_seconds = float(max_quote_age_seconds)
         self.max_spread_pips = float(max_spread_pips)
         self.demo_max_risk_pct = float(demo_max_risk_pct)
+        self.quote_wait_timeout_seconds = float(quote_wait_timeout_seconds)
+        self.quote_poll_seconds = float(quote_poll_seconds)
+        self.sleeper = sleeper
+        self.clock = clock
+
+    def _fresh_quote(
+        self,
+        symbol: str,
+        *,
+        reference_now: datetime,
+    ) -> tuple[Any | None, str | None]:
+        attempts = max(
+            1,
+            int(self.quote_wait_timeout_seconds / self.quote_poll_seconds) + 1,
+        )
+        last_error: str | None = None
+        last_age: float | None = None
+        for attempt in range(attempts):
+            try:
+                quote = self.feed.quote(symbol)
+            except Exception as exc:
+                last_error = f"{type(exc).__name__}:{exc}"
+                if attempt + 1 < attempts:
+                    self.sleeper(self.quote_poll_seconds)
+                    continue
+                return None, f"QUOTE_UNAVAILABLE:{last_error}"
+
+            quote_now = ensure_utc(
+                self.clock() if self.clock is not None else reference_now
+            )
+            age = (quote_now - quote.timestamp).total_seconds()
+            if age < -1.0:
+                return None, f"QUOTE_FUTURE:{age:.3f}"
+            if not (
+                float(quote.bid) > 0
+                and float(quote.ask) >= float(quote.bid)
+            ):
+                return None, "QUOTE_INVALID"
+            if age <= self.max_quote_age_seconds:
+                return quote, None
+
+            last_age = age
+            if attempt + 1 < attempts:
+                self.sleeper(self.quote_poll_seconds)
+
+        if last_age is not None:
+            return None, f"QUOTE_STALE:{last_age:.3f}"
+        return None, f"QUOTE_UNAVAILABLE:{last_error or 'UNKNOWN'}"
 
     def resolve(
         self,
@@ -214,24 +271,18 @@ class ProductionGuardResolver:
                 )
                 flags["NEWS_BLOCK"] = bool(news.blocked)
 
-            quote_ok = False
-            try:
-                quote = self.feed.quote(candidate.symbol)
-                age = (now - quote.timestamp).total_seconds()
-                quote_ok = (
-                    -1.0 <= age <= self.max_quote_age_seconds
-                    and float(quote.bid) > 0
-                    and float(quote.ask) >= float(quote.bid)
+            quote, _quote_error = self._fresh_quote(
+                candidate.symbol,
+                reference_now=now,
+            )
+            quote_ok = quote is not None
+            if quote_ok:
+                spread_pips = (
+                    float(quote.ask) - float(quote.bid)
+                ) / float(pair.pip_size)
+                flags["SPREAD_BLOCK"] = bool(
+                    spread_pips > self.max_spread_pips
                 )
-                if quote_ok:
-                    spread_pips = (
-                        float(quote.ask) - float(quote.bid)
-                    ) / float(pair.pip_size)
-                    flags["SPREAD_BLOCK"] = bool(
-                        spread_pips > self.max_spread_pips
-                    )
-            except Exception:
-                quote_ok = False
 
             if bundle is not None:
                 quality_ok = _bundle_quality_ok(self.cfg, candidate.symbol, bundle)
