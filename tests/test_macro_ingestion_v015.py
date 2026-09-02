@@ -184,7 +184,7 @@ def test_macro_refresher_uses_quarterly_cpi_for_aud_nzd():
     usd = refresher._bindings("USD")["inflation"][0].series
     labour = refresher._bindings("USD")["labour"][0].series
 
-    assert aud.endswith("|AUS.Q.N.CPI.._T.N.GY")
-    assert nzd.endswith("|NZL.Q.N.CPI.._T.N.GY")
-    assert usd.endswith("|USA.M.N.CPI.._T.N.GY")
+    assert aud.endswith("|AUS.Q.N.CPI.PA._T.N.GY")
+    assert nzd.endswith("|NZL.Q.N.CPI.PA._T.N.GY")
+    assert usd.endswith("|USA.M.N.CPI.PA._T.N.GY")
     assert labour.endswith("|USA.UNE_LF_M...Y._T.Y_GE15..M")
