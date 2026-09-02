@@ -35,6 +35,31 @@ from .storage.supabase_research import SupabaseResearchStore
 UTC = timezone.utc
 
 
+def _apply_demo_execution_threshold(cfg):
+    """Apply an explicitly DEMO-only execution threshold override.
+
+    The canonical production/research threshold in config/scoring.yaml remains
+    unchanged. This override is only consumed by the cTrader DEMO signal
+    producer after the broker policy has already been proven DEMO-only.
+    """
+    raw = os.getenv("CTRADER_DEMO_EXECUTION_CANDIDATE_MIN")
+    if raw is None or not raw.strip():
+        return cfg, float(cfg.scoring["states"]["execution_candidate_min"])
+    try:
+        demo_min = float(raw)
+    except ValueError as exc:
+        raise SystemExit("CTRADER_DEMO_EXECUTION_THRESHOLD_INVALID") from exc
+    production_min = float(cfg.scoring["states"]["execution_candidate_min"])
+    watch_min = float(cfg.scoring["states"]["watch_min"])
+    if not watch_min <= demo_min <= production_min:
+        raise SystemExit("CTRADER_DEMO_EXECUTION_THRESHOLD_OUT_OF_RANGE")
+    states = dict(cfg.scoring["states"])
+    states["execution_candidate_min"] = demo_min
+    scoring = dict(cfg.scoring)
+    scoring["states"] = states
+    return replace(cfg, scoring=scoring), production_min
+
+
 def cmd_validate_config(args: argparse.Namespace) -> int:
     cfg = load_project_config(args.root)
     execution = load_execution_policy(args.root)
@@ -305,6 +330,12 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
         raise SystemExit("CTRADER_SIGNAL_PRODUCER_DEMO_ONLY")
     if not bool(policy.ctrader.get("require_demo", False)):
         raise SystemExit("CTRADER_SIGNAL_PRODUCER_REQUIRE_DEMO")
+    cfg, production_execution_min = _apply_demo_execution_threshold(cfg)
+    demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
+    print(
+        "CTRADER_DEMO_EXECUTION_THRESHOLD "
+        f"active={demo_execution_min:g} production_default={production_execution_min:g}"
+    )
     symbols = [pair.symbol for pair in cfg.pairs]
     feed = build_ctrader_research_feed(policy, symbols)
     store = SupabaseOperationalStore.from_env()
@@ -370,6 +401,18 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
             f"guard_missing={guard_missing_count}"
         )
         print(f"CTRADER_SIGNAL_STATES {states}")
+        for row in sorted(persisted, key=lambda item: str(item.get("symbol", ""))):
+            score = row.get("final_score")
+            score_text = "NONE" if score is None else f"{float(score):.2f}"
+            rr2 = row.get("rr2")
+            rr2_text = "NONE" if rr2 is None else f"{float(rr2):.2f}"
+            guards = "+".join(str(x) for x in (row.get("active_guards") or [])) or "NONE"
+            print(
+                "CTRADER_SIGNAL_DETAIL "
+                f"symbol={row.get('symbol')} state={str(row.get('state', 'UNKNOWN')).upper()} "
+                f"score={score_text} setup={row.get('setup_type', 'NONE')} "
+                f"rr2={rr2_text} guards={guards}"
+            )
         if report.skipped:
             reason_counts: dict[str, int] = {}
             safe_skips: list[str] = []
