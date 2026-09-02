@@ -231,7 +231,29 @@ class BatchFreshOecd(AlwaysFreshOecd):
 
     def fetch_numeric(self, series, *, max_age_seconds=None):
         self.scalar_calls += 1
-        raise AssertionError("scalar OECD fetch must be served from primed batch cache")
+        observation = NumericObservation(
+            series,
+            2.50,
+            NOW - timedelta(days=10),
+            2.25,
+            NOW - timedelta(days=40),
+        )
+        fresh = Freshness.evaluate(
+            observation.observed_at,
+            NOW,
+            max_age_seconds=max_age_seconds or 10368000,
+        )
+        return ProviderResult(
+            ProviderStatus.AVAILABLE,
+            observation,
+            Provenance(
+                "OECD_SDMX",
+                "https://sdmx.oecd.org/public/rest/data",
+                series,
+                True,
+            ),
+            fresh,
+        )
 
     def fetch_numeric_batch(self, series_by_label, *, max_age_seconds=None):
         self.batch_calls += 1
@@ -274,7 +296,46 @@ def test_macro_refresher_primes_batch_results_before_scoring():
         clock=lambda: NOW,
     ).run_once()
 
-    assert provider.batch_calls == 1
-    assert provider.scalar_calls == 0
+    assert provider.batch_calls == 2
+    assert provider.scalar_calls == 2
     assert report.valid_currencies == 8
     assert all(value == pytest.approx(0.70) for value in report.coverage_by_currency.values())
+
+
+
+def test_macro_bindings_use_current_official_fallback_series():
+    cfg = load_project_config()
+    refresher = MacroEvidenceRefresher(
+        cfg,
+        Store(),
+        runtime=runtime(AlwaysFreshOecd()),
+        clock=lambda: NOW,
+    )
+
+    eur_interest = refresher._bindings("EUR")["interest_rate"][0]
+    gbp_interest = refresher._bindings("GBP")["interest_rate"][0]
+    chf_inflation = refresher._bindings("CHF")["inflation"][0]
+    eur_inflation = refresher._bindings("EUR")["inflation"][0]
+    jpy_inflation = refresher._bindings("JPY")["inflation"][0]
+    aud_growth = refresher._bindings("AUD")["growth"][0]
+    nzd_growth = refresher._bindings("NZD")["growth"][0]
+    chf_labour = refresher._bindings("CHF")["labour"][0]
+    nzd_labour = refresher._bindings("NZD")["labour"][0]
+    eur_labour = refresher._bindings("EUR")["labour"][0]
+    eur_yield = refresher._bindings("EUR")["yield_momentum"][0]
+
+    assert eur_interest.series.endswith("|EA19.M.IR3TIB....")
+    assert gbp_interest.series.endswith("|GBR.M.IR3TIB....")
+    assert "DSD_PRICES_COICOP2018@DF_PRICES_C2018_ALL,1.0|CHE.M.N.CPI.PA._T.N.GY" in chf_inflation.series
+    assert eur_inflation.series.endswith("|EA.M.N.CPI.PA._T.N.GY")
+    assert jpy_inflation.series.endswith("|JPN.M.N.CPI.PA._T.N.GY")
+    assert aud_growth.series.endswith("|Q..AUS.S1..B1GQ......G1.")
+    assert nzd_growth.series.endswith("|Q..NZL.S1..B1GQ......G1.")
+    assert aud_growth.max_age_seconds == pytest.approx(15552000)
+    assert nzd_growth.max_age_seconds == pytest.approx(15552000)
+    assert chf_labour.series.endswith("|CHE.UNE_LF_M...Y._T.Y_GE15..Q")
+    assert nzd_labour.series.endswith("|NZL.UNE_LF_M...Y._T.Y_GE15..Q")
+    assert chf_labour.max_age_seconds == pytest.approx(15552000)
+    assert nzd_labour.max_age_seconds == pytest.approx(15552000)
+    assert eur_labour.series.endswith("|EA.UNE_LF_M...Y._T.Y_GE15..M")
+    assert eur_yield.series.endswith("|EA19.M.IRLT....")
