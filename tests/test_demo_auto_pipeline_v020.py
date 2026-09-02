@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_demo_auto_pipeline_is_weekday_five_minute_demo_only():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
 
-    assert 'cron: "*/5 * * * 1-5"' in text
+    assert 'cron: "3-58/5 * * * 1-5"' in text
     assert "ctrader-signal-producer" in text
     assert "ctrader-demo-autotrade --once --limit 10" in text
     assert text.index("ctrader-signal-producer") < text.index("ctrader-demo-autotrade")
