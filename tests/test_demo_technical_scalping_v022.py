@@ -7,13 +7,17 @@ from fx_scanner.ranking import CurrencyStrength, PairRank, rank_pairs_technical_
 from fx_scanner.strategy import select_pair_candidates
 
 
-def test_xauusd_is_in_16_instrument_universe():
+def test_alternative_assets_are_in_20_instrument_universe():
     cfg = load_project_config()
 
-    assert len(cfg.pairs) == 16
+    assert len(cfg.pairs) == 20
     assert cfg.pair_map["XAUUSD"].base == "XAU"
     assert cfg.pair_map["XAUUSD"].quote == "USD"
     assert cfg.pair_map["XAUUSD"].pip_size == 0.01
+    assert cfg.pair_map["XTIUSD"].pip_size == 0.01
+    assert cfg.pair_map["BTCUSD"].pip_size == 0.01
+    assert cfg.pair_map["ETHUSD"].pip_size == 0.01
+    assert cfg.pair_map["SOLUSD"].pip_size == 0.01
 
 
 def test_demo_technical_profile_removes_macro_from_conviction_and_news_from_execution(monkeypatch):
