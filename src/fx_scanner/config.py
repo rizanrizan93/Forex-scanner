@@ -421,6 +421,21 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
                 raise ConfigurationError(
                     f"invalid OECD reference area override for {factor}.{currency}"
                 )
+        key_overrides = item.get("key_overrides", {})
+        if (
+            not isinstance(key_overrides, Mapping)
+            or not set(key_overrides).issubset(expected_currencies)
+        ):
+            raise ConfigurationError(f"macro ingestion factor {factor} key_overrides are invalid")
+        for currency, override_template in key_overrides.items():
+            override_template = str(override_template).strip()
+            if (
+                override_template.count("{area}") != 1
+                or any(ch in override_template for ch in "/?#&%+")
+            ):
+                raise ConfigurationError(
+                    f"invalid OECD key override for {factor}.{currency}"
+                )
 
     calendar_cfg = providers.get("calendar", {})
     if not isinstance(calendar_cfg, Mapping):
