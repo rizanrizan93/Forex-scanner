@@ -112,7 +112,11 @@ class Store:
 
 def runtime(provider):
     return SimpleNamespace(
-        providers={"OECD_SDMX": provider},
+        providers={
+            "OECD_SDMX": provider,
+            "ECB_DATA_PORTAL": provider,
+            "BANK_OF_ENGLAND_IADB": provider,
+        },
         orchestrator=ProviderOrchestrator(cache=ProviderCache()),
     )
 
@@ -297,7 +301,7 @@ def test_macro_refresher_primes_batch_results_before_scoring():
     ).run_once()
 
     assert provider.batch_calls == 2
-    assert provider.scalar_calls == 2
+    assert provider.scalar_calls == 5
     assert report.valid_currencies == 8
     assert all(value == pytest.approx(0.70) for value in report.coverage_by_currency.values())
 
@@ -324,8 +328,10 @@ def test_macro_bindings_use_current_official_fallback_series():
     eur_labour = refresher._bindings("EUR")["labour"][0]
     eur_yield = refresher._bindings("EUR")["yield_momentum"][0]
 
-    assert eur_interest.series.endswith("|EA19.M.IR3TIB....")
-    assert gbp_interest.series.endswith("|GBR.M.IR3TIB....")
+    assert eur_interest.series == "FM/B.U2.EUR.4F.KR.MRR_FR.LEV"
+    assert gbp_interest.series == "IUDBEDR"
+    assert eur_interest.max_age_seconds == pytest.approx(10368000)
+    assert gbp_interest.max_age_seconds == pytest.approx(2592000)
     assert "DSD_PRICES_COICOP2018@DF_PRICES_C2018_ALL,1.0|CHE.M.N.CPI.PA._T.N.GY" in chf_inflation.series
     assert eur_inflation.series.endswith("|EA.M.N.CPI.PA._T.N.GY")
     assert jpy_inflation.series.endswith("|JPN.M.N.CPI.PA._T.N.GY")
@@ -338,4 +344,5 @@ def test_macro_bindings_use_current_official_fallback_series():
     assert chf_labour.max_age_seconds == pytest.approx(15552000)
     assert nzd_labour.max_age_seconds == pytest.approx(15552000)
     assert eur_labour.series.endswith("|EA.UNE_LF_M...Y._T.Y_GE15..M")
-    assert eur_yield.series.endswith("|EA19.M.IRLT....")
+    assert eur_yield.series == "YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y"
+    assert eur_yield.max_age_seconds == pytest.approx(10368000)
