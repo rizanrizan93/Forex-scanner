@@ -125,7 +125,7 @@ def test_canonical_config_switches_only_demo_execution_backend():
     assert p.ctrader["environment"] == "DEMO"
     assert p.ctrader["role"] == "RESEARCH_AND_DEMO_EXECUTION"
     assert p.demo_safety["max_order_lots"] == 0.01
-    assert p.demo_safety["max_concurrent_positions"] == 1
+    assert p.demo_safety["max_concurrent_positions"] == 2
 
 
 def test_demo_auto_requires_explicit_opt_in(monkeypatch):
@@ -138,10 +138,10 @@ def test_demo_auto_requires_explicit_opt_in(monkeypatch):
     assert gateway.sent == 0
 
 
-def test_demo_auto_rejects_more_than_one_open_position(monkeypatch):
+def test_demo_auto_rejects_when_two_positions_already_open(monkeypatch):
     monkeypatch.setenv("FX_KILL_SWITCH", "0")
     monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED", "I_UNDERSTAND_DEMO_ORDERS")
-    gateway = Gateway(positions=1)
+    gateway = Gateway(positions=2)
     router = ExecutionRouter(policy(), gateway=gateway, control_gate=Gate())
     with pytest.raises(ExecutionBlocked, match="DEMO_MAX_CONCURRENT_POSITIONS"):
         router.execute(intent())
