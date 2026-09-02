@@ -4,6 +4,7 @@ import sys
 
 from . import strategy
 from .cli import main
+from .demo_trade_plan_geometry import install_demo_trade_plan_geometry_patch
 
 
 _original_choose_scalp_setup = strategy._choose_scalp_setup
@@ -14,8 +15,8 @@ def _choose_scalp_setup_with_liquidity_fvg(direction, h1, m15, liquidity):
 
     The canonical scalp selector historically required the *current* M15 FVG,
     while the trade-plan builder intentionally accepts still-open/partial FVGs
-    from the durable liquidity map.  That mismatch can produce a valid plan and
-    high technical conviction while leaving setup_type=NONE.  Preserve the
+    from the durable liquidity map. That mismatch can produce a valid plan and
+    high technical conviction while leaving setup_type=NONE. Preserve the
     original selector first, then allow the same durable FVG evidence already
     accepted by the trade-plan builder.
     """
@@ -42,6 +43,7 @@ def _choose_scalp_setup_with_liquidity_fvg(direction, h1, m15, liquidity):
 
 def run() -> int:
     strategy._choose_scalp_setup = _choose_scalp_setup_with_liquidity_fvg
+    install_demo_trade_plan_geometry_patch()
     sys.argv = [sys.argv[0], "ctrader-signal-producer"]
     return main()
 
