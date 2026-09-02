@@ -207,11 +207,13 @@ def rank_pairs(
             observed_weight += 0.15
             evidence_coverage += 0.15
 
-        # Coverage is measured over observed top-level components, matching
-        # score renormalization. Missing cross-asset evidence is still recorded
-        # explicitly and is never converted to a neutral zero.
-        coverage = evidence_coverage / observed_weight
-        if coverage < minimum_coverage:
+        # Preserve absolute weighted evidence coverage for downstream audit.
+        # Apply the ranking gate to completeness of the components that are
+        # actually observed, matching score renormalization. Missing cross-asset
+        # remains explicit and is never converted to a neutral zero.
+        coverage = evidence_coverage
+        gate_coverage = evidence_coverage / observed_weight
+        if gate_coverage < minimum_coverage:
             continue
 
         pair_edge = observed_sum / observed_weight
