@@ -116,17 +116,22 @@ def select_pair_candidates(
     *,
     macro_compatible_top: int = 8,
     deep_analysis_top: int = 5,
+    compatibility_mode: str = "MACRO",
 ) -> UniverseSelection:
     if macro_compatible_top <= 0 or deep_analysis_top <= 0:
         raise DataContractError("selection limits must be positive")
     if deep_analysis_top > macro_compatible_top:
         raise DataContractError("deep-analysis limit cannot exceed macro-compatible limit")
 
+    mode = str(compatibility_mode).upper()
+    if mode not in {"MACRO", "TECHNICAL"}:
+        raise DataContractError("compatibility_mode must be MACRO or TECHNICAL")
     compatible: list[PairRank] = []
     for item in ranked:
-        if item.direction == "LONG" and item.relative_macro_edge > 0:
+        edge = item.relative_technical_edge if mode == "TECHNICAL" else item.relative_macro_edge
+        if item.direction == "LONG" and edge > 0:
             compatible.append(item)
-        elif item.direction == "SHORT" and item.relative_macro_edge < 0:
+        elif item.direction == "SHORT" and edge < 0:
             compatible.append(item)
 
     compatible.sort(key=lambda x: (-x.absolute_edge, -x.coverage, x.rank, x.symbol))
@@ -256,6 +261,50 @@ def _favorable_dealing_zone(direction: str, liquidity: LiquidityMap) -> bool:
     if direction == "LONG":
         return dr.zone in {"DISCOUNT", "EQUILIBRIUM"}
     return dr.zone in {"PREMIUM", "EQUILIBRIUM"}
+
+
+def _scalp_structure_score(
+    direction: str,
+    h1: StructureSnapshot,
+    m15: StructureSnapshot,
+    m5: StructureSnapshot,
+) -> float | None:
+    scores = (
+        _directional_structure_score(h1, direction),
+        _directional_structure_score(m15, direction),
+        _directional_structure_score(m5, direction),
+    )
+    if any(x is None for x in scores):
+        return None
+    return 0.25 * scores[0] + 0.35 * scores[1] + 0.40 * scores[2]
+
+
+def _choose_scalp_setup(
+    direction: str,
+    h1: StructureSnapshot,
+    m15: StructureSnapshot,
+    liquidity: LiquidityMap,
+) -> SetupType | None:
+    sweep_reversal = (
+        m15.sweep is not None
+        and m15.sweep.valid
+        and _aligned(m15.sweep.direction, direction)
+        and _favorable_dealing_zone(direction, liquidity)
+    )
+    if sweep_reversal:
+        return SetupType.LIQUIDITY_SWEEP_REVERSAL
+
+    trend_continuation = (
+        not _htf_conflict(direction, h1, m15)
+        and (_directional_structure_score(h1, direction) or 0) >= 55
+        and (_directional_structure_score(m15, direction) or 0) >= 55
+        and m15.fvg is not None
+        and m15.fvg.valid
+        and _aligned(m15.fvg.direction, direction)
+    )
+    if trend_continuation:
+        return SetupType.TREND_CONTINUATION
+    return None
 
 
 def _choose_setup(
@@ -457,6 +506,7 @@ def analyze_pair_mtf(
     external_guard_flags: Mapping[str, bool],
     positioning_score: float | None = None,
     execution_quality_score: float | None = None,
+    technical_scalping: bool = False,
 ) -> MTFAnalysis:
     if rank.direction not in {"LONG", "SHORT"}:
         raise DataContractError("MTF analysis requires directional pair rank")
@@ -530,7 +580,11 @@ def analyze_pair_mtf(
         order_block_search_bars=int(liquidity_cfg["order_block_search_bars"]),
         order_block_origin_lookback=int(liquidity_cfg["order_block_origin_lookback"]),
     )
-    setup_type = _choose_setup(rank.direction, d1, h4, h1, m15, liquidity)
+    setup_type = (
+        _choose_scalp_setup(rank.direction, h1, m15, liquidity)
+        if technical_scalping
+        else _choose_setup(rank.direction, d1, h4, h1, m15, liquidity)
+    )
     trigger_confirmed = _m5_trigger_confirmed(rank.direction, m5)
     plan = _build_trade_plan(
         direction=rank.direction,
@@ -595,20 +649,34 @@ def analyze_pair_mtf(
         if not 0 <= float(positioning_score) <= 100:
             raise DataContractError("positioning_score must be in [0,100]")
 
-    components = {
-        "relative_macro": _edge_score(rank.relative_macro_edge, rank.direction, span=200.0),
-        "htf_structure": _htf_score(rank.direction, d1, h4, h1),
-        "liquidity": _liquidity_score(rank.direction, m15, liquidity),
-        "smc_structure": _smc_score(rank.direction, m5),
-        "displacement": _displacement_score(rank.direction, m15, m5),
-        "session": _session_score(rank.symbol, as_of, cfg.sessions),
-        "cross_asset": cross_asset_score,
-        "positioning": positioning_score,
-        "execution_quality": combined_execution_quality,
-    }
+    if technical_scalping:
+        components = {
+            "htf_structure": _scalp_structure_score(rank.direction, h1, m15, m5),
+            "liquidity": _liquidity_score(rank.direction, m15, liquidity),
+            "smc_structure": _smc_score(rank.direction, m5),
+            "displacement": _displacement_score(rank.direction, m15, m5),
+            "session": _session_score(rank.symbol, as_of, cfg.sessions),
+            "execution_quality": combined_execution_quality,
+        }
+    else:
+        components = {
+            "relative_macro": _edge_score(rank.relative_macro_edge, rank.direction, span=200.0),
+            "htf_structure": _htf_score(rank.direction, d1, h4, h1),
+            "liquidity": _liquidity_score(rank.direction, m15, liquidity),
+            "smc_structure": _smc_score(rank.direction, m5),
+            "displacement": _displacement_score(rank.direction, m15, m5),
+            "session": _session_score(rank.symbol, as_of, cfg.sessions),
+            "cross_asset": cross_asset_score,
+            "positioning": positioning_score,
+            "execution_quality": combined_execution_quality,
+        }
 
     computed = {
-        "STRUCTURE_INVALID": _htf_conflict(rank.direction, d1, h4, h1),
+        "STRUCTURE_INVALID": (
+            _htf_conflict(rank.direction, h1, m15)
+            if technical_scalping
+            else _htf_conflict(rank.direction, d1, h4, h1)
+        ),
         "STALE_SIGNAL": bool(stale_tfs),
         "CHASE_BLOCK": bool(
             plan is not None
@@ -681,12 +749,14 @@ def scan_deep_candidates_report(
     external_guards_by_symbol: Mapping[str, Mapping[str, bool]],
     positioning_by_symbol: Mapping[str, float | None] | None = None,
     execution_quality_by_symbol: Mapping[str, float | None] | None = None,
+    technical_scalping: bool = False,
 ) -> DeepScanReport:
     selection_cfg = cfg.strategy["selection"]
     selected = select_pair_candidates(
         ranked,
         macro_compatible_top=int(selection_cfg["macro_compatible_top"]),
         deep_analysis_top=int(selection_cfg["deep_analysis_top"]),
+        compatibility_mode="TECHNICAL" if technical_scalping else "MACRO",
     )
     positioning_by_symbol = positioning_by_symbol or {}
     execution_quality_by_symbol = execution_quality_by_symbol or {}
@@ -707,6 +777,7 @@ def scan_deep_candidates_report(
                     external_guard_flags=external_guards_by_symbol.get(rank.symbol, {}),
                     positioning_score=positioning_by_symbol.get(rank.symbol),
                     execution_quality_score=execution_quality_by_symbol.get(rank.symbol),
+                    technical_scalping=technical_scalping,
                 )
             )
         except DataContractError as exc:
@@ -733,6 +804,7 @@ def scan_deep_candidates(
     external_guards_by_symbol: Mapping[str, Mapping[str, bool]],
     positioning_by_symbol: Mapping[str, float | None] | None = None,
     execution_quality_by_symbol: Mapping[str, float | None] | None = None,
+    technical_scalping: bool = False,
 ) -> tuple[MTFAnalysis, ...]:
     """Compatibility wrapper returning analyses while report API preserves skips."""
     return scan_deep_candidates_report(
@@ -743,4 +815,5 @@ def scan_deep_candidates(
         external_guards_by_symbol=external_guards_by_symbol,
         positioning_by_symbol=positioning_by_symbol,
         execution_quality_by_symbol=execution_quality_by_symbol,
+        technical_scalping=technical_scalping,
     ).analyses
