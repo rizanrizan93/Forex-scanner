@@ -167,3 +167,24 @@ def test_macro_ingestion_config_preserves_threshold_and_official_source():
     ) / 100.0
     assert factor_weight == pytest.approx(0.70)
     assert cfg.macro["minimum_coverage"] == pytest.approx(0.70)
+
+
+
+def test_macro_refresher_uses_quarterly_cpi_for_aud_nzd():
+    cfg = load_project_config()
+    refresher = MacroEvidenceRefresher(
+        cfg,
+        Store(),
+        runtime=runtime(AlwaysFreshOecd()),
+        clock=lambda: NOW,
+    )
+
+    aud = refresher._bindings("AUD")["inflation"][0].series
+    nzd = refresher._bindings("NZD")["inflation"][0].series
+    usd = refresher._bindings("USD")["inflation"][0].series
+    labour = refresher._bindings("USD")["labour"][0].series
+
+    assert aud.endswith("|AUS.Q.N.CPI.._T.N.GY")
+    assert nzd.endswith("|NZL.Q.N.CPI.._T.N.GY")
+    assert usd.endswith("|USA.M.N.CPI.._T.N.GY")
+    assert labour.endswith("|USA.UNE_LF_M...Y._T.Y_GE15..M")
