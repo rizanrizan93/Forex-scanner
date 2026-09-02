@@ -96,7 +96,7 @@ macro_ingestion:
       key_template: "{area}.M.N.CPI.PA._T.N.GY"
       key_overrides:
         AUD: "{area}.Q.N.CPI.PA._T.N.GY"
-        NZD: "{area}.Q.N.CPI.._T.N.GY"
+        NZD: "{area}.Q.N.CPI.PA._T.N.GY"
       area_overrides: {}
       normalizer: delta
       scale: 0.25
