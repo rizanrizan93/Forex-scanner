@@ -49,7 +49,8 @@ def build_provider_runtime(provider_config: Mapping[str, Any]) -> ProviderRuntim
     ecb_cfg = sources["ECB_DATA_PORTAL"]
     boc_cfg = sources["BANK_OF_CANADA_VALET"]
     fred_cfg = sources["FEDERAL_RESERVE_FRED"]
-    rba_cfg = sources["RBA_CASH_RATE"]\n    oecd_cfg = sources["OECD_SDMX"]
+    rba_cfg = sources["RBA_CASH_RATE"]
+    oecd_cfg = sources["OECD_SDMX"]
     providers: dict[str, object] = {
         "ECB_DATA_PORTAL": EcbDataPortalProvider(
             transport,
