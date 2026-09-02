@@ -4,9 +4,11 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "7 * * * 1-5"
+    - cron: "4,9,14,19,24,29,34,39,44,49,54,59 * * * 1-5"
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: forex-official-macro-refresh
@@ -14,6 +16,7 @@ concurrency:
 
 jobs:
   refresh:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7 * * * 1-5'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -34,3 +37,13 @@ jobs:
         run: python -m fx_scanner.cli validate-config
       - name: Refresh official macro evidence
         run: python -m fx_scanner.cli macro-refresh
+
+  dispatch-demo:
+    if: github.event_name == 'schedule' && github.event.schedule == '4,9,14,19,24,29,34,39,44,49,54,59 * * * 1-5'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Dispatch existing DEMO pipeline
+        run: gh workflow run ctrader-demo-auto-pipeline.yml --ref main
