@@ -60,6 +60,33 @@ def _apply_demo_execution_threshold(cfg):
     return replace(cfg, scoring=scoring), production_min
 
 
+def _demo_technical_only_enabled() -> bool:
+    return os.getenv("CTRADER_DEMO_TECHNICAL_ONLY", "0").strip() == "1"
+
+
+def _apply_demo_technical_only_profile(cfg):
+    """Return a DEMO-only technical scalping configuration.
+
+    Macro, cross-asset and positioning evidence are removed from conviction,
+    and NEWS_BLOCK is removed from required execution guards. Canonical config
+    files remain unchanged and LIVE remains locked by execution policy.
+    """
+    technical_weights = {
+        "htf_structure": 20.0,
+        "liquidity": 20.0,
+        "smc_structure": 20.0,
+        "displacement": 15.0,
+        "session": 10.0,
+        "execution_quality": 15.0,
+    }
+    scoring = dict(cfg.scoring)
+    scoring["execution_conviction"] = technical_weights
+    scoring["hard_guards"] = [
+        name for name in cfg.scoring["hard_guards"] if name != "NEWS_BLOCK"
+    ]
+    return replace(cfg, scoring=scoring)
+
+
 def cmd_validate_config(args: argparse.Namespace) -> int:
     cfg = load_project_config(args.root)
     execution = load_execution_policy(args.root)
@@ -331,10 +358,18 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
     if not bool(policy.ctrader.get("require_demo", False)):
         raise SystemExit("CTRADER_SIGNAL_PRODUCER_REQUIRE_DEMO")
     cfg, production_execution_min = _apply_demo_execution_threshold(cfg)
+    technical_only = _demo_technical_only_enabled()
+    if technical_only:
+        cfg = _apply_demo_technical_only_profile(cfg)
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
     print(
         "CTRADER_DEMO_EXECUTION_THRESHOLD "
         f"active={demo_execution_min:g} production_default={production_execution_min:g}"
+    )
+    print(
+        "CTRADER_DEMO_PROFILE "
+        f"mode={'TECHNICAL_SCALPING' if technical_only else 'CANONICAL'} "
+        f"macro={'DISABLED' if technical_only else 'ENABLED'}"
     )
     symbols = [pair.symbol for pair in cfg.pairs]
     feed = build_ctrader_research_feed(policy, symbols)
@@ -347,11 +382,13 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
         max_response_bytes=int(transport_cfg["max_response_bytes"]),
         user_agent=str(transport_cfg["user_agent"]),
     )
-    calendar_provider = ForexFactoryCalendarProvider(
-        calendar_transport,
-        url=str(calendar_cfg["base_url"]),
-        allowed_host=str(calendar_cfg["allowed_host"]),
-    )
+    calendar_provider = None
+    if not technical_only:
+        calendar_provider = ForexFactoryCalendarProvider(
+            calendar_transport,
+            url=str(calendar_cfg["base_url"]),
+            allowed_host=str(calendar_cfg["allowed_host"]),
+        )
     guard_resolver = ProductionGuardResolver(
         cfg,
         feed,
@@ -362,6 +399,7 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
         quote_wait_timeout_seconds=float(policy.ctrader["quote_wait_timeout_seconds"]),
         quote_poll_seconds=float(policy.ctrader["quote_poll_seconds"]),
         clock=lambda: datetime.now(tz=UTC),
+        disabled_guards=("NEWS_BLOCK",) if technical_only else (),
     )
     producer = CTraderSignalProducer(
         cfg,
@@ -376,6 +414,7 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
         quote_wait_timeout_seconds=float(policy.ctrader["quote_wait_timeout_seconds"]),
         quote_poll_seconds=float(policy.ctrader["quote_poll_seconds"]),
         guard_resolver=guard_resolver,
+        technical_only_scalping=technical_only,
     )
     try:
         report = producer.run_once()
@@ -394,7 +433,8 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
         print(
             "CTRADER_SIGNAL_PRODUCER_OK "
             f"run_id={report.run_id} market={report.market_symbols}/{len(cfg.pairs)} "
-            f"macro={report.macro_currencies}/8 ranked={report.ranked_pairs} "
+            f"macro={'DISABLED' if technical_only else str(report.macro_currencies) + '/8'} "
+            f"ranked={report.ranked_pairs} "
             f"deep={report.deep_candidates} analyses={report.analyses} "
             f"signals={report.signals_written} execution_ready={report.execution_ready} "
             f"skipped={len(report.skipped)} missing_macro={missing_macro} "
@@ -507,6 +547,9 @@ def cmd_ctrader_demo_autotrade(args: argparse.Namespace) -> int:
     cfg = load_project_config(args.root)
     base_policy = load_execution_policy(args.root)
     _require_demo_autotrade_opt_in(base_policy)
+    cfg, _production_execution_min = _apply_demo_execution_threshold(cfg)
+    if _demo_technical_only_enabled():
+        cfg = _apply_demo_technical_only_profile(cfg)
     policy = replace(base_policy, mode=ExecutionMode.AUTO)
     symbols = [pair.symbol for pair in cfg.pairs]
     gateway, session = build_broker_gateway(policy, symbols, backend="CTRADER")
