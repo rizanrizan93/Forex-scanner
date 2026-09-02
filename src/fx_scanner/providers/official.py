@@ -459,6 +459,167 @@ class BankOfCanadaValetProvider:
             return _failure(self.name, url, series, ProviderErrorCategory.PARSE, str(exc))
 
 
+class BankOfEnglandIadbProvider:
+    """Official Bank of England IADB CSV adapter for one exact series."""
+
+    name = "BANK_OF_ENGLAND_IADB"
+
+    def __init__(
+        self,
+        transport,
+        *,
+        base_url: str = "https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp",
+        allowed_host: str = "www.bankofengland.co.uk",
+        default_max_age_seconds: float = 2592000,
+        lookback_days: int = 45,
+        clock=lambda: datetime.now(tz=UTC),
+    ):
+        if lookback_days < 7 or lookback_days > 366:
+            raise ValueError("BoE lookback_days must be in [7,366]")
+        self.transport = transport
+        self.base_url = base_url
+        self.allowed_host = allowed_host
+        self.default_max_age_seconds = float(default_max_age_seconds)
+        self.lookback_days = int(lookback_days)
+        self.clock = clock
+
+    @staticmethod
+    def _parse_date(raw: str) -> datetime:
+        text = str(raw).strip()
+        for fmt in ("%d %b %Y", "%d %b %y", "%d/%m/%Y", "%d-%b-%Y", "%d/%b/%Y"):
+            try:
+                return datetime.strptime(text, fmt).replace(tzinfo=UTC)
+            except ValueError:
+                continue
+        return _period_to_utc(text)
+
+    def fetch_numeric(
+        self,
+        series: str,
+        *,
+        max_age_seconds: float | None = None,
+    ) -> ProviderResult[NumericObservation]:
+        series = str(series).strip().upper()
+        if not series or not series.isalnum():
+            return ProviderResult(
+                ProviderStatus.INVALID,
+                None,
+                Provenance(self.name, self.base_url, series or "INVALID", True),
+                None,
+                ProviderErrorCategory.CONTRACT,
+                "BoE numeric provider requires one exact alphanumeric series code",
+            )
+
+        now = self.clock()
+        if now.tzinfo is None:
+            return _failure(
+                self.name,
+                self.base_url,
+                series,
+                ProviderErrorCategory.CONTRACT,
+                "BoE provider clock must be timezone-aware",
+            )
+        now = now.astimezone(UTC)
+        date_from = (now.date() - timedelta(days=self.lookback_days)).strftime("%d/%b/%Y")
+        query = urlencode(
+            {
+                "csv.x": "yes",
+                "Datefrom": date_from,
+                "Dateto": "now",
+                "SeriesCodes": series,
+                "CSVF": "TN",
+                "UsingCodes": "Y",
+                "VPD": "Y",
+            }
+        )
+        url = f"{self.base_url}?{query}"
+        provenance = Provenance(self.name, url, series, True)
+        try:
+            response = self.transport.get(
+                url,
+                allowed_host=self.allowed_host,
+                headers={"Accept": "text/csv"},
+            )
+            if response.status_code != 200:
+                return _failure(
+                    self.name,
+                    url,
+                    series,
+                    ProviderErrorCategory.HTTP,
+                    f"HTTP_{response.status_code}",
+                )
+            text = response.body.decode("utf-8-sig").strip()
+            if not text or text.lstrip().lower().startswith(("<html", "<!doctype")):
+                return _failure(
+                    self.name,
+                    url,
+                    series,
+                    ProviderErrorCategory.PARSE,
+                    "BoE endpoint returned non-CSV content",
+                )
+            rows = list(csv.DictReader(io.StringIO(text)))
+            parsed: list[tuple[datetime, float]] = []
+            for row in rows:
+                raw_date = row.get("DATE") or row.get("Date") or row.get("date")
+                raw_value = row.get(series)
+                if raw_value is None:
+                    for key, value in row.items():
+                        if str(key).strip().upper() == series:
+                            raw_value = value
+                            break
+                if not raw_date or raw_value in (None, "", ".", "NA"):
+                    continue
+                try:
+                    parsed.append((self._parse_date(str(raw_date)), float(raw_value)))
+                except (TypeError, ValueError):
+                    continue
+            parsed.sort(key=lambda item: item[0])
+            if not parsed:
+                return ProviderResult(
+                    ProviderStatus.MISSING,
+                    None,
+                    provenance,
+                    None,
+                    ProviderErrorCategory.PARSE,
+                    "BoE response contained no numeric observations",
+                )
+            observed_at, value = parsed[-1]
+            previous_at = parsed[-2][0] if len(parsed) >= 2 else None
+            previous_value = parsed[-2][1] if len(parsed) >= 2 else None
+            observation = NumericObservation(
+                series,
+                value,
+                observed_at,
+                previous_value,
+                previous_at,
+            )
+            freshness = Freshness.evaluate(
+                observed_at,
+                now,
+                max_age_seconds=max_age_seconds or self.default_max_age_seconds,
+            )
+            status = ProviderStatus.STALE if freshness.stale else ProviderStatus.AVAILABLE
+            return ProviderResult(status, observation, provenance, freshness)
+        except HttpTransportError as exc:
+            message = str(exc)
+            category = (
+                ProviderErrorCategory.TIMEOUT
+                if "TIMEOUT" in message
+                else ProviderErrorCategory.HTTP
+                if message.startswith("HTTP_")
+                else ProviderErrorCategory.NETWORK
+            )
+            return _failure(self.name, url, series, category, message)
+        except Exception as exc:
+            return _failure(
+                self.name,
+                url,
+                series,
+                ProviderErrorCategory.PARSE,
+                str(exc),
+            )
+
+
 class OecdSdmxCsvProvider:
     """Official OECD SDMX CSV provider for one exact macro series."""
 
