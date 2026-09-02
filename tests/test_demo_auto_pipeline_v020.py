@@ -52,3 +52,21 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
         assert 'CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json' in text
         assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in text
         assert "\\n" not in text
+
+
+def test_demo_auto_supervisor_dispatches_only_demo_pipeline_every_five_minutes():
+    text = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
+
+    assert 'workflows: ["Forex Official Macro Refresh"]' in text
+    assert "github.event.workflow_run.event == 'schedule'" in text
+    assert "github.event.workflow_run.head_branch == 'main'" in text
+    assert "actions: write" in text
+    assert "seq 1 12" in text
+    assert "sleep 300" in text
+    assert "ctrader-demo-auto-pipeline.yml/dispatches" in text
+    assert "-f ref=main" in text
+    assert "CTRADER_CLIENT_SECRET" not in text
+    assert "CTRADER_ACCESS_TOKEN" not in text
+    assert "CTRADER_REFRESH_TOKEN" not in text
+    assert "FX_LIVE_TRADING_ENABLED" not in text
+    assert "I_UNDERSTAND_LIVE_ORDERS" not in text
