@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/ctrader-demo-auto-supervisor.yml"
+      - ".github/workflows/ctrader-demo-auto-pipeline.yml"
   workflow_run:
     workflows: ["Forex Official Macro Refresh"]
     types: [completed]
