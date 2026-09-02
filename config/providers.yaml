@@ -27,6 +27,13 @@ sources:
     allowed_host: www.bankofcanada.ca
     default_max_age_seconds: 172800
 
+  BANK_OF_ENGLAND_IADB:
+    enabled: true
+    official: true
+    base_url: https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp
+    allowed_host: www.bankofengland.co.uk
+    default_max_age_seconds: 2592000
+
   FEDERAL_RESERVE_FRED:
     enabled: true
     official: true
@@ -85,9 +92,16 @@ macro_ingestion:
       key_template: "{area}.M.IR3TIB.PA....."
       area_overrides:
         EUR: EA19
-      series_overrides:
-        EUR: "OECD.SDD.STES,DSD_KEI@DF_KEI,4.0|EA19.M.IR3TIB...."
-        GBP: "OECD.SDD.STES,DSD_KEI@DF_KEI,4.0|GBR.M.IR3TIB...."
+      series_overrides: {}
+      binding_overrides:
+        EUR:
+          provider: ECB_DATA_PORTAL
+          series: FM/B.U2.EUR.4F.KR.MRR_FR.LEV
+          max_age_seconds: 10368000
+        GBP:
+          provider: BANK_OF_ENGLAND_IADB
+          series: IUDBEDR
+          max_age_seconds: 2592000
       normalizer: delta
       scale: 0.25
       polarity: 1
@@ -150,8 +164,12 @@ macro_ingestion:
       key_template: "{area}.M.IRLT.PA....."
       area_overrides:
         EUR: EA19
-      series_overrides:
-        EUR: "OECD.SDD.STES,DSD_KEI@DF_KEI,4.0|EA19.M.IRLT...."
+      series_overrides: {}
+      binding_overrides:
+        EUR:
+          provider: ECB_DATA_PORTAL
+          series: YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y
+          max_age_seconds: 10368000
       normalizer: delta
       scale: 0.25
       polarity: 1
