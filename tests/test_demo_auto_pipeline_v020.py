@@ -34,3 +34,20 @@ def test_legacy_autotrade_workflow_remains_manual_only():
     text = (ROOT / ".github/workflows/ctrader-demo-autotrade.yml").read_text()
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
+
+
+
+def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
+    workflow_dir = ROOT / ".github/workflows"
+    names = (
+        "ctrader-demo-auto-pipeline.yml",
+        "ctrader-demo-autotrade.yml",
+        "ctrader-demo-order-smoke.yml",
+        "ctrader-demo-preflight.yml",
+        "ctrader-signal-producer.yml",
+        "ctrader-smoke.yml",
+    )
+    for name in names:
+        text = (workflow_dir / name).read_text()
+        assert 'CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json' in text
+        assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in text
