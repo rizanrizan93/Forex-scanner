@@ -679,6 +679,9 @@ class CTraderSignalProducer:
                     deep_analysis_top=int(
                         self.cfg.strategy["selection"]["deep_analysis_top"]
                     ),
+                    compatibility_mode=(
+                        "TECHNICAL" if self.technical_only_scalping else "MACRO"
+                    ),
                 )
                 guard_resolution = self.guard_resolver.resolve(
                     candidates=selection.deep_analysis,
