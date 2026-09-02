@@ -168,6 +168,7 @@ class ProductionGuardResolver:
         quote_poll_seconds: float = 0.10,
         sleeper: Callable[[float], None] = sleep,
         clock: Callable[[], datetime] | None = None,
+        disabled_guards: Sequence[str] | None = None,
     ):
         if max_quote_age_seconds <= 0:
             raise ValueError("max_quote_age_seconds must be positive")
@@ -189,6 +190,10 @@ class ProductionGuardResolver:
         self.quote_poll_seconds = float(quote_poll_seconds)
         self.sleeper = sleeper
         self.clock = clock
+        self.disabled_guards = {str(name).upper() for name in (disabled_guards or ())}
+        unknown_disabled = self.disabled_guards.difference(self.EXTERNAL_GUARDS)
+        if unknown_disabled:
+            raise ValueError(f"unknown disabled external guards: {sorted(unknown_disabled)}")
 
     def _fresh_quote(
         self,
@@ -262,7 +267,7 @@ class ProductionGuardResolver:
         now = ensure_utc(as_of)
         calendar = None
         calendar_error = None
-        if self.calendar_provider is not None:
+        if "NEWS_BLOCK" not in self.disabled_guards and self.calendar_provider is not None:
             try:
                 calendar = self.calendar_provider.fetch(now=now)
             except Exception as exc:
@@ -337,7 +342,9 @@ class ProductionGuardResolver:
                     flags["CORRELATION_BLOCK"] = blocked
 
             missing_names = tuple(
-                name for name in self.EXTERNAL_GUARDS if name not in flags
+                name
+                for name in self.EXTERNAL_GUARDS
+                if name not in self.disabled_guards and name not in flags
             )
             output[candidate.symbol] = flags
             missing[candidate.symbol] = missing_names
