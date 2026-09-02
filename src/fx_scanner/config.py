@@ -83,8 +83,8 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
 
     pair_data = _read_yaml(cfg / "pairs.yaml")
     raw_pairs = pair_data.get("pairs", [])
-    if not isinstance(raw_pairs, list) or len(raw_pairs) != 16:
-        raise ConfigurationError(f"DEMO technical universe requires exactly 16 configured instruments, got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}")
+    if not isinstance(raw_pairs, list) or len(raw_pairs) != 20:
+        raise ConfigurationError(f"DEMO technical universe requires exactly 20 configured instruments, got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}")
 
     pairs: list[PairSpec] = []
     seen: set[str] = set()
