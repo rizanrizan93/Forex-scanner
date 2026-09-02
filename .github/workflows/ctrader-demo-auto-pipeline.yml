@@ -50,6 +50,7 @@ jobs:
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
       - name: Produce durable DEMO-only signals
+        # DEMO wrapper ultimately invokes the canonical ctrader-signal-producer command.
         run: python -m fx_scanner.demo_technical_producer
       - name: Execute only durable EXECUTION_READY DEMO signals
         run: python -m fx_scanner.cli ctrader-demo-autotrade --once --limit 10
