@@ -279,6 +279,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
     required_sources = {
         "ECB_DATA_PORTAL",
         "BANK_OF_CANADA_VALET",
+        "BANK_OF_ENGLAND_IADB",
         "FEDERAL_RESERVE_FRED",
         "RBA_CASH_RATE",
         "OECD_SDMX",
@@ -291,6 +292,10 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         "BANK_OF_CANADA_VALET": (
             "https://www.bankofcanada.ca/valet/observations",
             "www.bankofcanada.ca",
+        ),
+        "BANK_OF_ENGLAND_IADB": (
+            "https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp",
+            "www.bankofengland.co.uk",
         ),
         "FEDERAL_RESERVE_FRED": (
             "https://fred.stlouisfed.org/graph/fredgraph.csv",
@@ -306,7 +311,9 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         ),
     }
     if not required_sources.issubset(set(sources)):
-        raise ConfigurationError("canonical ECB, BoC, Federal Reserve/FRED, and RBA providers are required in v0.9")
+        raise ConfigurationError(
+            "canonical ECB, BoC, BoE, Federal Reserve/FRED, RBA, and OECD providers are required"
+        )
     for name, source in sources.items():
         if not isinstance(source, Mapping):
             raise ConfigurationError(f"provider source {name} must be a mapping")
@@ -477,6 +484,45 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
             if not 86400 <= override_age <= 15552000:
                 raise ConfigurationError(
                     f"macro ingestion factor {factor}.{currency} max age must be within [1,180] days"
+                )
+
+        binding_overrides = item.get("binding_overrides", {})
+        if (
+            not isinstance(binding_overrides, Mapping)
+            or not set(binding_overrides).issubset(expected_currencies)
+        ):
+            raise ConfigurationError(
+                f"macro ingestion factor {factor} binding_overrides are invalid"
+            )
+        for currency, binding in binding_overrides.items():
+            if not isinstance(binding, Mapping):
+                raise ConfigurationError(
+                    f"macro ingestion factor {factor}.{currency} binding override must be a mapping"
+                )
+            allowed_binding_keys = {"provider", "series", "max_age_seconds"}
+            if not {"provider", "series"}.issubset(binding) or not set(binding).issubset(
+                allowed_binding_keys
+            ):
+                raise ConfigurationError(
+                    f"macro ingestion factor {factor}.{currency} binding override keys are invalid"
+                )
+            override_provider = str(binding["provider"]).strip()
+            if override_provider not in sources:
+                raise ConfigurationError(
+                    f"macro ingestion factor {factor}.{currency} references unknown provider"
+                )
+            override_series = str(binding["series"]).strip()
+            if not override_series or "\n" in override_series or "\r" in override_series:
+                raise ConfigurationError(
+                    f"macro ingestion factor {factor}.{currency} override series is invalid"
+                )
+            override_age = _as_finite_number(
+                binding.get("max_age_seconds", item["max_age_seconds"]),
+                label=f"providers.macro_ingestion.factors.{factor}.binding_overrides.{currency}.max_age_seconds",
+            )
+            if not 86400 <= override_age <= 15552000:
+                raise ConfigurationError(
+                    f"macro ingestion factor {factor}.{currency} binding max age must be within [1,180] days"
                 )
 
     calendar_cfg = providers.get("calendar", {})
