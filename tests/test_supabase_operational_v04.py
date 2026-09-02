@@ -179,7 +179,9 @@ def test_reference_symbol_bootstrap_upserts_xauusd():
     table, operation, payload = client.writes[-1]
     assert table == "fx_symbols"
     assert operation == "upsert"
-    assert len(payload) == 16
+    assert len(payload) == 20
+    symbols = {row["symbol"] for row in payload}
+    assert {"XTIUSD", "BTCUSD", "ETHUSD", "SOLUSD"}.issubset(symbols)
     xau = next(row for row in payload if row["symbol"] == "XAUUSD")
     assert xau == {
         "symbol": "XAUUSD",
