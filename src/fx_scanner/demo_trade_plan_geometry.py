@@ -7,7 +7,15 @@ from .strategy import TradePlan
 from .technical import atr
 
 
-def _nearest_directional_gap(direction, m5, liquidity, current_price: float) -> FairValueGap | None:
+def _nearest_directional_gap(
+    direction,
+    m5,
+    liquidity,
+    current_price: float,
+    *,
+    current_atr: float | None = None,
+    max_chase_atr: float | None = None,
+) -> FairValueGap | None:
     wanted = "BULLISH" if direction == "LONG" else "BEARISH"
     candidates = [
         gap
@@ -39,9 +47,25 @@ def _nearest_directional_gap(direction, m5, liquidity, current_price: float) -> 
             return gap.lower - current_price
         return current_price - gap.upper
 
+    def chase_distance(gap: FairValueGap) -> float:
+        if current_atr is None or current_atr <= 0:
+            return 0.0
+        if direction == "LONG":
+            return max(0.0, float(current_price) - float(gap.upper)) / current_atr
+        return max(0.0, float(gap.lower) - float(current_price)) / current_atr
+
+    def is_chase_eligible(gap: FairValueGap) -> bool:
+        if max_chase_atr is None or current_atr is None or current_atr <= 0:
+            return True
+        return chase_distance(gap) <= float(max_chase_atr)
+
+    # Prefer a currently tradeable FVG first. If none are within the hard
+    # chase limit, still return the nearest stale geometry so CHASE_BLOCK is
+    # surfaced explicitly rather than silently degrading to plan=None.
     return min(
         candidates,
         key=lambda gap: (
+            0 if is_chase_eligible(gap) else 1,
             zone_distance(gap),
             0 if gap.status == "PARTIAL" else 1,
             -gap.lower if direction == "LONG" else gap.upper,
@@ -61,21 +85,30 @@ def build_demo_trade_plan(
     atr_period: int,
     sl_buffer_atr: float,
     minimum_entry_zone_atr: float,
+    chase_block_atr: float = 0.50,
 ) -> TradePlan | None:
-    """DEMO technical-scalping trade-plan repair.
+    """Explicit DEMO technical-scalping trade-plan builder.
 
-    Changes are intentionally narrow:
-    1. choose the nearest still-active directional FVG instead of the last one;
-    2. when exactly one structural target exists, synthesize TP2 at a 2R-or-better
-       continuation target so missing target enumeration alone does not create
-       RR_BLOCK. Zero-target plans remain fail-closed.
+    The builder prefers the nearest OPEN/PARTIAL directional FVG that is still
+    inside the configured hard chase limit. If every FVG is already chased, it
+    preserves the nearest stale plan so CHASE_BLOCK remains observable.
+
+    A TP2 fallback is created only after at least one structural liquidity
+    target exists. Zero-target geometry remains fail-closed.
     """
-    gap = _nearest_directional_gap(direction, m5, liquidity, current_price)
-    if gap is None:
-        return None
-
     current_atr = float(atr(list(m5_bars), atr_period))
     if not isfinite(current_atr) or current_atr <= 0:
+        return None
+
+    gap = _nearest_directional_gap(
+        direction,
+        m5,
+        liquidity,
+        current_price,
+        current_atr=current_atr,
+        max_chase_atr=float(chase_block_atr),
+    )
+    if gap is None:
         return None
 
     entry_low, entry_high = float(gap.lower), float(gap.upper)
@@ -164,7 +197,7 @@ def build_demo_trade_plan(
 
 
 def install_demo_trade_plan_geometry_patch() -> None:
-    """Install the patch process-locally for DEMO producer execution only."""
+    """Deprecated compatibility shim; explicit DEMO producer no longer calls it."""
     from . import strategy
 
     strategy._build_trade_plan = build_demo_trade_plan
