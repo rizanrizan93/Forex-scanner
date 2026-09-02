@@ -281,6 +281,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         "BANK_OF_CANADA_VALET",
         "FEDERAL_RESERVE_FRED",
         "RBA_CASH_RATE",
+        "OECD_SDMX",
     }
     canonical_source_urls = {
         "ECB_DATA_PORTAL": (
@@ -298,6 +299,10 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         "RBA_CASH_RATE": (
             "https://www.rba.gov.au/statistics/cash-rate",
             "www.rba.gov.au",
+        ),
+        "OECD_SDMX": (
+            "https://sdmx.oecd.org/public/rest/data",
+            "sdmx.oecd.org",
         ),
     }
     if not required_sources.issubset(set(sources)):
@@ -339,6 +344,98 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         ) <= 0:
             raise ConfigurationError(f"smoke series {name} max age must be positive")
 
+
+    macro_ingestion = providers.get("macro_ingestion", {})
+    if not isinstance(macro_ingestion, Mapping):
+        raise ConfigurationError("providers.macro_ingestion must be a mapping")
+    currency_areas = macro_ingestion.get("currency_areas", {})
+    expected_currencies = {"USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD"}
+    if not isinstance(currency_areas, Mapping) or set(currency_areas) != expected_currencies:
+        raise ConfigurationError(
+            "providers.macro_ingestion.currency_areas must cover exactly the eight scanner currencies"
+        )
+    for currency, area in currency_areas.items():
+        area = str(area).strip()
+        if not area or not all(ch.isalnum() or ch in "_-" for ch in area):
+            raise ConfigurationError(f"invalid OECD reference area for {currency}")
+
+    macro_factor_cfg = macro_ingestion.get("factors", {})
+    required_macro_ingestion_factors = {
+        "interest_rate",
+        "inflation",
+        "growth",
+        "labour",
+        "yield_momentum",
+    }
+    if (
+        not isinstance(macro_factor_cfg, Mapping)
+        or set(macro_factor_cfg) != required_macro_ingestion_factors
+    ):
+        raise ConfigurationError(
+            "providers.macro_ingestion.factors must contain the canonical five-factor official subset"
+        )
+    configured_weight = sum(
+        float(macro["weights"][factor]) for factor in required_macro_ingestion_factors
+    ) / 100.0
+    if configured_weight + 1e-12 < macro_min_coverage:
+        raise ConfigurationError(
+            "configured macro ingestion factors cannot satisfy macro.minimum_coverage"
+        )
+    for factor, item in macro_factor_cfg.items():
+        if not isinstance(item, Mapping):
+            raise ConfigurationError(f"macro ingestion factor {factor} must be a mapping")
+        if str(item.get("provider", "")) != "OECD_SDMX":
+            raise ConfigurationError(f"macro ingestion factor {factor} must use OECD_SDMX")
+        dataset = str(item.get("dataset", "")).strip()
+        key_template = str(item.get("key_template", "")).strip()
+        if not dataset.startswith("OECD.") or any(ch in dataset for ch in "/?#&%"):
+            raise ConfigurationError(f"macro ingestion factor {factor} dataset is invalid")
+        if key_template.count("{area}") != 1 or any(ch in key_template for ch in "/?#&%+"):
+            raise ConfigurationError(f"macro ingestion factor {factor} key_template is invalid")
+        if str(item.get("normalizer", "")).lower() != "delta":
+            raise ConfigurationError(f"macro ingestion factor {factor} must use delta normalizer")
+        scale = _as_finite_number(
+            item.get("scale"), label=f"providers.macro_ingestion.factors.{factor}.scale"
+        )
+        if scale <= 0:
+            raise ConfigurationError(f"macro ingestion factor {factor} scale must be positive")
+        polarity = _as_finite_number(
+            item.get("polarity"), label=f"providers.macro_ingestion.factors.{factor}.polarity"
+        )
+        if not polarity.is_integer() or int(polarity) not in (-1, 1):
+            raise ConfigurationError(f"macro ingestion factor {factor} polarity must be -1 or 1")
+        max_age = _as_finite_number(
+            item.get("max_age_seconds"),
+            label=f"providers.macro_ingestion.factors.{factor}.max_age_seconds",
+        )
+        if not 86400 <= max_age <= 15552000:
+            raise ConfigurationError(
+                f"macro ingestion factor {factor} max age must be within [1,180] days"
+            )
+        overrides = item.get("area_overrides", {})
+        if not isinstance(overrides, Mapping) or not set(overrides).issubset(expected_currencies):
+            raise ConfigurationError(f"macro ingestion factor {factor} area_overrides are invalid")
+        for currency, area in overrides.items():
+            area = str(area).strip()
+            if not area or not all(ch.isalnum() or ch in "_-" for ch in area):
+                raise ConfigurationError(
+                    f"invalid OECD reference area override for {factor}.{currency}"
+                )
+        key_overrides = item.get("key_overrides", {})
+        if (
+            not isinstance(key_overrides, Mapping)
+            or not set(key_overrides).issubset(expected_currencies)
+        ):
+            raise ConfigurationError(f"macro ingestion factor {factor} key_overrides are invalid")
+        for currency, override_template in key_overrides.items():
+            override_template = str(override_template).strip()
+            if (
+                override_template.count("{area}") != 1
+                or any(ch in override_template for ch in "/?#&%+")
+            ):
+                raise ConfigurationError(
+                    f"invalid OECD key override for {factor}.{currency}"
+                )
 
     calendar_cfg = providers.get("calendar", {})
     if not isinstance(calendar_cfg, Mapping):

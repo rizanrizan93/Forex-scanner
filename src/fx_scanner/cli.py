@@ -14,6 +14,7 @@ from .config import load_project_config
 from .demo import generate_demo_ticks
 from .quality import assess_ticks
 from .providers.factory import build_provider_runtime
+from .macro_ingestion import MacroEvidenceRefresher
 from .cloud_runtime import CTraderCloudResearchRuntime
 from .signal_producer import CTraderSignalProducer
 from .producer_guards import ProductionGuardResolver
@@ -28,6 +29,7 @@ from .execution.demo_autotrade import CTraderDemoAutoExecutor, SupabaseOrderAudi
 from .execution.runtime import RuntimeSupervisor, ScheduledJob
 from .storage.audit import JsonlAuditStore
 from .storage.supabase_operational import SupabaseOperationalStore
+from .storage.supabase_research import SupabaseResearchStore
 
 
 UTC = timezone.utc
@@ -231,6 +233,35 @@ def cmd_research_cloud(args: argparse.Namespace) -> int:
         feed.close()
 
 
+def cmd_macro_refresh(args: argparse.Namespace) -> int:
+    """Refresh durable official macro evidence; never touches broker execution."""
+    cfg = load_project_config(args.root)
+    store = SupabaseResearchStore.from_env()
+    report = MacroEvidenceRefresher(cfg, store).run_once()
+    coverage = ",".join(
+        f"{currency}:{report.coverage_by_currency[currency]:.2f}"
+        for currency in sorted(report.coverage_by_currency)
+    )
+    below = ",".join(
+        currency
+        for currency in sorted(report.coverage_by_currency)
+        if report.coverage_by_currency[currency] < float(cfg.macro["minimum_coverage"])
+    ) or "NONE"
+    print(
+        "MACRO_REFRESH_OK "
+        f"valid={report.valid_currencies}/{report.currencies_total} "
+        f"coverage={coverage} below_minimum={below}"
+    )
+    configured_factors = set(cfg.providers["macro_ingestion"]["factors"])
+    source_gaps = []
+    for currency in sorted(report.missing_by_currency):
+        gaps = sorted(configured_factors.intersection(report.missing_by_currency[currency]))
+        if gaps:
+            source_gaps.append(f"{currency}=" + "+".join(gaps))
+    print("MACRO_REFRESH_SOURCE_GAPS " + (";".join(source_gaps) or "NONE"))
+    return 0
+
+
 def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
     """Run one DEMO-only signal-production cycle; never submits broker orders."""
     cfg = load_project_config(args.root)
@@ -273,6 +304,8 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
             float(policy.order.get("max_signal_age_seconds", 300)),
         ),
         max_quote_age_seconds=float(policy.ctrader["max_quote_age_seconds"]),
+        quote_wait_timeout_seconds=float(policy.ctrader["quote_wait_timeout_seconds"]),
+        quote_poll_seconds=float(policy.ctrader["quote_poll_seconds"]),
         guard_resolver=guard_resolver,
     )
     try:
@@ -299,6 +332,15 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
             f"guard_missing={guard_missing_count}"
         )
         print(f"CTRADER_SIGNAL_STATES {states}")
+        if report.skipped:
+            reason_counts: dict[str, int] = {}
+            for reason in report.skipped.values():
+                code = str(reason).split(":", 1)[0] or "UNKNOWN"
+                reason_counts[code] = reason_counts.get(code, 0) + 1
+            reason_summary = ",".join(
+                f"{name}:{reason_counts[name]}" for name in sorted(reason_counts)
+            )
+            print(f"CTRADER_SIGNAL_SKIP_REASONS {reason_summary}")
         if report.calendar_error:
             print(f"CTRADER_SIGNAL_CALENDAR_UNAVAILABLE {report.calendar_error}")
         if report.execution_ready:
@@ -567,6 +609,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--environment", choices=["DEMO", "LIVE"], default="DEMO")
     p.add_argument("--once", action="store_true")
     p.set_defaults(func=cmd_mt5_monitor)
+
+    p = sub.add_parser("macro-refresh")
+    p.set_defaults(func=cmd_macro_refresh)
 
     p = sub.add_parser("ctrader-signal-producer")
     p.set_defaults(func=cmd_ctrader_signal_producer)

@@ -5,7 +5,7 @@ import csv
 import io
 import json
 from html.parser import HTMLParser
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 from urllib.parse import quote, urlencode
 
@@ -456,3 +456,171 @@ class BankOfCanadaValetProvider:
             return _failure(self.name, url, series, category, message)
         except Exception as exc:
             return _failure(self.name, url, series, ProviderErrorCategory.PARSE, str(exc))
+
+
+class OecdSdmxCsvProvider:
+    """Official OECD SDMX CSV provider for one exact macro series."""
+
+    name = "OECD_SDMX"
+
+    def __init__(
+        self,
+        transport,
+        *,
+        base_url: str = "https://sdmx.oecd.org/public/rest/data",
+        allowed_host: str = "sdmx.oecd.org",
+        default_max_age_seconds: float = 10368000,
+        history_days: int = 550,
+        clock=lambda: datetime.now(tz=UTC),
+    ):
+        if history_days < 120 or history_days > 1095:
+            raise ValueError("OECD history_days must be in [120,1095]")
+        self.transport = transport
+        self.base_url = base_url.rstrip("/")
+        self.allowed_host = allowed_host
+        self.default_max_age_seconds = float(default_max_age_seconds)
+        self.history_days = int(history_days)
+        self.clock = clock
+
+    @staticmethod
+    def _valid_dataset(value: str) -> bool:
+        return bool(value) and value.startswith("OECD.") and all(
+            ch.isalnum() or ch in "._,@-" for ch in value
+        )
+
+    @staticmethod
+    def _valid_key(value: str) -> bool:
+        return bool(value) and all(ch.isalnum() or ch in "._-" for ch in value)
+
+    def fetch_numeric(
+        self,
+        series: str,
+        *,
+        max_age_seconds: float | None = None,
+    ) -> ProviderResult[NumericObservation]:
+        parts = str(series).split("|")
+        if len(parts) != 2:
+            return ProviderResult(
+                ProviderStatus.INVALID,
+                None,
+                Provenance(self.name, self.base_url, str(series), True),
+                None,
+                ProviderErrorCategory.CONTRACT,
+                "OECD numeric provider requires dataset|exact_key",
+            )
+        dataset, key = (part.strip() for part in parts)
+        if not self._valid_dataset(dataset) or not self._valid_key(key):
+            return ProviderResult(
+                ProviderStatus.INVALID,
+                None,
+                Provenance(self.name, self.base_url, str(series), True),
+                None,
+                ProviderErrorCategory.CONTRACT,
+                "OECD dataset/key contract is invalid",
+            )
+
+        now = self.clock()
+        if now.tzinfo is None:
+            return _failure(
+                self.name,
+                self.base_url,
+                str(series),
+                ProviderErrorCategory.CONTRACT,
+                "OECD provider clock must be timezone-aware",
+            )
+        now = now.astimezone(UTC)
+        start = (now.date() - timedelta(days=self.history_days)).strftime("%Y-%m")
+        dataset_path = quote(dataset, safe=",@")
+        key_path = quote(key, safe="._-")
+        query = urlencode(
+            {
+                "startPeriod": start,
+                "dimensionAtObservation": "AllDimensions",
+                "format": "csvfile",
+            }
+        )
+        url = f"{self.base_url}/{dataset_path}/{key_path}?{query}"
+        provenance = Provenance(self.name, url, str(series), True)
+        try:
+            response = self.transport.get(
+                url,
+                allowed_host=self.allowed_host,
+                headers={"Accept": "text/csv"},
+            )
+            if response.status_code != 200:
+                return _failure(
+                    self.name,
+                    url,
+                    str(series),
+                    ProviderErrorCategory.HTTP,
+                    f"HTTP_{response.status_code}",
+                )
+            rows = csv.DictReader(io.StringIO(response.body.decode("utf-8-sig")))
+            by_time: dict[datetime, set[float]] = {}
+            for row in rows:
+                raw_time = row.get("TIME_PERIOD") or row.get("time_period")
+                raw_value = row.get("OBS_VALUE") or row.get("obs_value")
+                if not raw_time or raw_value in (None, "", ".", "..", "NA"):
+                    continue
+                try:
+                    ts = _period_to_utc(str(raw_time))
+                    value = float(raw_value)
+                except (TypeError, ValueError):
+                    continue
+                by_time.setdefault(ts, set()).add(value)
+
+            if not by_time:
+                return ProviderResult(
+                    ProviderStatus.MISSING,
+                    None,
+                    provenance,
+                    None,
+                    ProviderErrorCategory.PARSE,
+                    "OECD response contained no numeric observations",
+                )
+            if any(len(values) != 1 for values in by_time.values()):
+                return ProviderResult(
+                    ProviderStatus.INVALID,
+                    None,
+                    provenance,
+                    None,
+                    ProviderErrorCategory.CONTRACT,
+                    "OECD exact series resolved to conflicting observations",
+                )
+
+            parsed = sorted((ts, next(iter(values))) for ts, values in by_time.items())
+            observed_at, value = parsed[-1]
+            previous_at = parsed[-2][0] if len(parsed) >= 2 else None
+            previous_value = parsed[-2][1] if len(parsed) >= 2 else None
+            observation = NumericObservation(
+                str(series),
+                value,
+                observed_at,
+                previous_value,
+                previous_at,
+            )
+            freshness = Freshness.evaluate(
+                observed_at,
+                now,
+                max_age_seconds=max_age_seconds or self.default_max_age_seconds,
+            )
+            status = ProviderStatus.STALE if freshness.stale else ProviderStatus.AVAILABLE
+            return ProviderResult(status, observation, provenance, freshness)
+        except HttpTransportError as exc:
+            message = str(exc)
+            category = (
+                ProviderErrorCategory.TIMEOUT
+                if "TIMEOUT" in message
+                else ProviderErrorCategory.HTTP
+                if message.startswith("HTTP_")
+                else ProviderErrorCategory.NETWORK
+            )
+            return _failure(self.name, url, str(series), category, message)
+        except Exception as exc:
+            return _failure(
+                self.name,
+                url,
+                str(series),
+                ProviderErrorCategory.PARSE,
+                str(exc),
+            )

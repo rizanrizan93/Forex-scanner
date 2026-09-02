@@ -227,6 +227,8 @@ class CTraderSignalProducer:
         historical_request_delay_seconds: float = 0.25,
         signal_ttl_seconds: float = 300.0,
         max_quote_age_seconds: float = 2.0,
+        quote_wait_timeout_seconds: float = 1.0,
+        quote_poll_seconds: float = 0.10,
         sleeper: Callable[[float], None] = sleep,
         clock: Callable[[], datetime] = lambda: datetime.now(tz=UTC),
         guard_resolver: Any | None = None,
@@ -239,6 +241,10 @@ class CTraderSignalProducer:
             raise ValueError("signal TTL must be in (0,300] seconds")
         if max_quote_age_seconds <= 0:
             raise ValueError("max_quote_age_seconds must be positive")
+        if quote_wait_timeout_seconds < 0:
+            raise ValueError("quote_wait_timeout_seconds cannot be negative")
+        if not 0 < quote_poll_seconds <= 1.0:
+            raise ValueError("quote_poll_seconds must be in (0,1]")
         self.cfg = cfg
         self.feed = feed
         self.store = store
@@ -246,6 +252,8 @@ class CTraderSignalProducer:
         self.request_delay = float(historical_request_delay_seconds)
         self.signal_ttl_seconds = float(signal_ttl_seconds)
         self.max_quote_age_seconds = float(max_quote_age_seconds)
+        self.quote_wait_timeout_seconds = float(quote_wait_timeout_seconds)
+        self.quote_poll_seconds = float(quote_poll_seconds)
         self.sleeper = sleeper
         self.clock = clock
         self.guard_resolver = guard_resolver
@@ -253,6 +261,41 @@ class CTraderSignalProducer:
     def _bar_window(self, timeframe: str, count: int, now: datetime) -> tuple[datetime, datetime]:
         seconds = int(self.cfg.timeframes[timeframe])
         return now - timedelta(seconds=seconds * (count + 12)), now
+
+    def _fresh_quote(self, symbol: str) -> tuple[Any | None, str | None]:
+        """Wait boundedly for a fresh subscribed quote without relaxing freshness."""
+        attempts = max(
+            1,
+            int(self.quote_wait_timeout_seconds / self.quote_poll_seconds) + 1,
+        )
+        last_error: str | None = None
+        last_age: float | None = None
+        for attempt in range(attempts):
+            try:
+                quote = self.feed.quote(symbol)
+            except Exception as exc:
+                last_error = f"{type(exc).__name__}:{exc}"
+                if attempt + 1 >= attempts:
+                    return None, f"QUOTE_UNAVAILABLE:{last_error}"
+                self.sleeper(self.quote_poll_seconds)
+                continue
+
+            quote_now = ensure_utc(self.clock())
+            quote_age = (quote_now - quote.timestamp).total_seconds()
+            if quote_age < -1.0:
+                return None, f"QUOTE_FUTURE:{quote_age:.3f}"
+            if not (float(quote.bid) > 0 and float(quote.ask) >= float(quote.bid)):
+                return None, "QUOTE_INVALID"
+            if quote_age <= self.max_quote_age_seconds:
+                return quote, None
+
+            last_age = quote_age
+            if attempt + 1 < attempts:
+                self.sleeper(self.quote_poll_seconds)
+
+        if last_age is not None:
+            return None, f"QUOTE_STALE:{last_age:.3f}"
+        return None, f"QUOTE_UNAVAILABLE:{last_error or 'UNKNOWN'}"
 
     def _fetch_market(
         self,
@@ -270,14 +313,9 @@ class CTraderSignalProducer:
         for pair in self.cfg.pairs:
             symbol = pair.symbol
             try:
-                quote = self.feed.quote(symbol)
-                quote_now = ensure_utc(self.clock())
-                quote_age = (quote_now - quote.timestamp).total_seconds()
-                if quote_age < -1.0 or quote_age > self.max_quote_age_seconds:
-                    failures[symbol] = f"QUOTE_STALE:{quote_age:.3f}"
-                    continue
-                if not (float(quote.bid) > 0 and float(quote.ask) >= float(quote.bid)):
-                    failures[symbol] = "QUOTE_INVALID"
+                quote, quote_error = self._fresh_quote(symbol)
+                if quote is None:
+                    failures[symbol] = quote_error or "QUOTE_UNAVAILABLE:UNKNOWN"
                     continue
 
                 bundle: dict[str, tuple[Bar, ...]] = {}

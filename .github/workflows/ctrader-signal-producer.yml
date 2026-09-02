@@ -37,5 +37,7 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
+      - name: Refresh official macro evidence
+        run: python -m fx_scanner.cli macro-refresh
       - name: Produce durable DEMO-only signals
         run: python -m fx_scanner.cli ctrader-signal-producer
