@@ -4,6 +4,7 @@ import pytest
 
 from fx_scanner.providers.official import (
     BankOfCanadaValetProvider,
+    BankOfEnglandIadbProvider,
     EcbDataPortalProvider,
     FredCsvProvider,
     RbaCashRateProvider,
@@ -162,3 +163,37 @@ def test_rba_cash_rate_provider_rejects_unknown_series():
     provider = RbaCashRateProvider(FakeTransport(b""))
     result = provider.fetch_numeric("OTHER")
     assert result.status == ProviderStatus.INVALID
+
+
+
+def test_boe_iadb_provider_reads_daily_official_bank_rate():
+    body = (
+        b"DATE,IUDBEDR\n"
+        b"27 Aug 2026,3.75\n"
+        b"28 Aug 2026,3.75\n"
+    )
+    transport = FakeTransport(body)
+    provider = BankOfEnglandIadbProvider(
+        transport,
+        clock=lambda: datetime(2026, 9, 2, 0, tzinfo=UTC),
+    )
+    result = provider.fetch_numeric("IUDBEDR", max_age_seconds=2592000)
+
+    assert result.status == ProviderStatus.AVAILABLE
+    assert result.value.value == pytest.approx(3.75)
+    assert result.value.previous_value == pytest.approx(3.75)
+    assert result.value.observed_at == datetime(2026, 8, 28, tzinfo=UTC)
+    url = transport.calls[0][0]
+    assert "SeriesCodes=IUDBEDR" in url
+    assert "CSVF=TN" in url
+    assert transport.calls[0][1] == "www.bankofengland.co.uk"
+
+
+def test_boe_iadb_provider_rejects_html_error_as_provider_error():
+    provider = BankOfEnglandIadbProvider(
+        FakeTransport(b"<html><body>error</body></html>"),
+        clock=lambda: datetime(2026, 9, 2, 0, tzinfo=UTC),
+    )
+    result = provider.fetch_numeric("IUDBEDR")
+    assert result.status == ProviderStatus.ERROR
+    assert result.value is None
