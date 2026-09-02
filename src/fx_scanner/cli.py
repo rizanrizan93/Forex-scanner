@@ -66,16 +66,28 @@ def _demo_technical_only_enabled() -> bool:
 
 def _demo_spread_limit_overrides(cfg) -> dict[str, float]:
     """Read explicit DEMO-only per-instrument spread limits."""
-    raw = os.getenv("CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS", "").strip()
-    if not raw:
-        return {}
-    try:
-        limit = float(raw)
-    except ValueError as exc:
-        raise SystemExit("CTRADER_DEMO_XAU_SPREAD_LIMIT_INVALID") from exc
-    if "XAUUSD" not in cfg.pair_map or not 4.0 <= limit <= 50.0:
-        raise SystemExit("CTRADER_DEMO_XAU_SPREAD_LIMIT_OUT_OF_RANGE")
-    return {"XAUUSD": limit}
+    contracts = {
+        "XAUUSD": ("CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS", 4.0, 100.0),
+        "XTIUSD": ("CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS", 1.0, 100.0),
+        "BTCUSD": ("CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS", 100.0, 5000.0),
+        "ETHUSD": ("CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS", 10.0, 1000.0),
+        "SOLUSD": ("CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS", 10.0, 1000.0),
+    }
+    output: dict[str, float] = {}
+    for symbol, (env_name, minimum, maximum) in contracts.items():
+        raw = os.getenv(env_name, "").strip()
+        if not raw:
+            continue
+        if symbol not in cfg.pair_map:
+            raise SystemExit(f"CTRADER_DEMO_SPREAD_SYMBOL_NOT_CONFIGURED:{symbol}")
+        try:
+            limit = float(raw)
+        except ValueError as exc:
+            raise SystemExit(f"CTRADER_DEMO_SPREAD_LIMIT_INVALID:{symbol}") from exc
+        if not minimum <= limit <= maximum:
+            raise SystemExit(f"CTRADER_DEMO_SPREAD_LIMIT_OUT_OF_RANGE:{symbol}")
+        output[symbol] = limit
+    return output
 
 
 def _apply_demo_technical_only_profile(cfg):
