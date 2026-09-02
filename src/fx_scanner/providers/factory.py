@@ -5,7 +5,13 @@ from typing import Any, Mapping
 
 from ..exceptions import ConfigurationError
 from .cache import ProviderCache
-from .official import BankOfCanadaValetProvider, EcbDataPortalProvider, FredCsvProvider, RbaCashRateProvider
+from .official import (
+    BankOfCanadaValetProvider,
+    EcbDataPortalProvider,
+    FredCsvProvider,
+    OecdSdmxCsvProvider,
+    RbaCashRateProvider,
+)
 from .orchestrator import ProviderOrchestrator
 from .transport import UrllibHttpTransport
 
@@ -43,7 +49,7 @@ def build_provider_runtime(provider_config: Mapping[str, Any]) -> ProviderRuntim
     ecb_cfg = sources["ECB_DATA_PORTAL"]
     boc_cfg = sources["BANK_OF_CANADA_VALET"]
     fred_cfg = sources["FEDERAL_RESERVE_FRED"]
-    rba_cfg = sources["RBA_CASH_RATE"]
+    rba_cfg = sources["RBA_CASH_RATE"]\n    oecd_cfg = sources["OECD_SDMX"]
     providers: dict[str, object] = {
         "ECB_DATA_PORTAL": EcbDataPortalProvider(
             transport,
@@ -68,6 +74,12 @@ def build_provider_runtime(provider_config: Mapping[str, Any]) -> ProviderRuntim
             base_url=str(rba_cfg["base_url"]),
             allowed_host=str(rba_cfg["allowed_host"]),
             default_max_age_seconds=float(rba_cfg["default_max_age_seconds"]),
+        ),
+        "OECD_SDMX": OecdSdmxCsvProvider(
+            transport,
+            base_url=str(oecd_cfg["base_url"]),
+            allowed_host=str(oecd_cfg["allowed_host"]),
+            default_max_age_seconds=float(oecd_cfg["default_max_age_seconds"]),
         ),
     }
     unknown = set(sources) - set(providers)
