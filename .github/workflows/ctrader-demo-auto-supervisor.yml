@@ -1,0 +1,48 @@
+name: cTrader Demo Auto Supervisor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ctrader-demo-auto-supervisor.yml"
+  workflow_run:
+    workflows: ["Forex Official Macro Refresh"]
+    types: [completed]
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: ctrader-demo-auto-supervisor
+  cancel-in-progress: true
+
+jobs:
+  dispatch-five-minute-demo-pipeline:
+    if: >-
+      github.event_name == 'push' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'schedule' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Dispatch DEMO pipeline every five minutes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for cycle in $(seq 1 12); do
+            echo "SUPERVISOR_DISPATCH cycle=${cycle}/12"
+            gh api --method POST               -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-pipeline.yml/dispatches"               -f ref=main
+
+            if [ "${cycle}" -lt 12 ]; then
+              sleep 300
+            fi
+          done
+
+          echo "CTRADER_DEMO_SUPERVISOR_OK dispatches=12 cadence_seconds=300"
