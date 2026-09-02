@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from fx_scanner.execution.ctrader_session import CTraderOpenApiSession
+from fx_scanner.execution.factory import _allow_ctrader_token_refresh
 from fx_scanner.execution.ctrader_tokens import CTraderTokenStateStore
 
 
@@ -47,3 +48,11 @@ def test_ctrader_token_store_rotated_state_overrides_stale_env(tmp_path):
     loaded = store.load(fallback_access="stale-access", fallback_refresh="stale-refresh")
     assert loaded.access_token == "rotated-access"
     assert loaded.refresh_token == "rotated-refresh"
+
+
+
+def test_ephemeral_runner_can_disable_ctrader_token_refresh(monkeypatch):
+    monkeypatch.delenv("CTRADER_DISABLE_TOKEN_REFRESH", raising=False)
+    assert _allow_ctrader_token_refresh() is True
+    monkeypatch.setenv("CTRADER_DISABLE_TOKEN_REFRESH", "1")
+    assert _allow_ctrader_token_refresh() is False
