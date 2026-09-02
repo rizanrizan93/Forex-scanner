@@ -35,6 +35,11 @@ class CTraderResearchFeed:
         self.ensure_connected()
         return self._session.quote(symbol)
 
+    def refresh_quote_snapshot(self, symbol: str) -> None:
+        with self._lock:
+            self.ensure_connected()
+            self._session.refresh_spot_snapshot(symbol)
+
     def symbol_info(self, symbol: str) -> Any:
         self.ensure_connected()
         return self._session.symbol_info(symbol)

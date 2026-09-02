@@ -270,11 +270,28 @@ class CTraderSignalProducer:
         )
         last_error: str | None = None
         last_age: float | None = None
+        refreshed = False
+
+        def request_snapshot() -> bool:
+            nonlocal refreshed
+            if refreshed:
+                return False
+            refresh = getattr(self.feed, "refresh_quote_snapshot", None)
+            if not callable(refresh):
+                return False
+            try:
+                refresh(symbol)
+            except Exception:
+                return False
+            refreshed = True
+            return True
+
         for attempt in range(attempts):
             try:
                 quote = self.feed.quote(symbol)
             except Exception as exc:
                 last_error = f"{type(exc).__name__}:{exc}"
+                request_snapshot()
                 if attempt + 1 >= attempts:
                     return None, f"QUOTE_UNAVAILABLE:{last_error}"
                 self.sleeper(self.quote_poll_seconds)
@@ -290,6 +307,7 @@ class CTraderSignalProducer:
                 return quote, None
 
             last_age = quote_age
+            request_snapshot()
             if attempt + 1 < attempts:
                 self.sleeper(self.quote_poll_seconds)
 
