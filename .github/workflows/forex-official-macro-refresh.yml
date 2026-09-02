@@ -1,0 +1,36 @@
+name: Forex Official Macro Refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7 * * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forex-official-macro-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Refresh official macro evidence
+        run: python -m fx_scanner.cli macro-refresh
