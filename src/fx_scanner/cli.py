@@ -14,6 +14,7 @@ from .config import load_project_config
 from .demo import generate_demo_ticks
 from .quality import assess_ticks
 from .providers.factory import build_provider_runtime
+from .macro_ingestion import MacroEvidenceRefresher
 from .cloud_runtime import CTraderCloudResearchRuntime
 from .signal_producer import CTraderSignalProducer
 from .producer_guards import ProductionGuardResolver
@@ -28,6 +29,7 @@ from .execution.demo_autotrade import CTraderDemoAutoExecutor, SupabaseOrderAudi
 from .execution.runtime import RuntimeSupervisor, ScheduledJob
 from .storage.audit import JsonlAuditStore
 from .storage.supabase_operational import SupabaseOperationalStore
+from .storage.supabase_research import SupabaseResearchStore
 
 
 UTC = timezone.utc
@@ -229,6 +231,28 @@ def cmd_research_cloud(args: argparse.Namespace) -> int:
         return 0
     finally:
         feed.close()
+
+
+def cmd_macro_refresh(args: argparse.Namespace) -> int:
+    """Refresh durable official macro evidence; never touches broker execution."""
+    cfg = load_project_config(args.root)
+    store = SupabaseResearchStore.from_env()
+    report = MacroEvidenceRefresher(cfg, store).run_once()
+    coverage = ",".join(
+        f"{currency}:{report.coverage_by_currency[currency]:.2f}"
+        for currency in sorted(report.coverage_by_currency)
+    )
+    below = ",".join(
+        currency
+        for currency in sorted(report.coverage_by_currency)
+        if report.coverage_by_currency[currency] < float(cfg.macro["minimum_coverage"])
+    ) or "NONE"
+    print(
+        "MACRO_REFRESH_OK "
+        f"valid={report.valid_currencies}/{report.currencies_total} "
+        f"coverage={coverage} below_minimum={below}"
+    )
+    return 0
 
 
 def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
@@ -567,6 +591,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--environment", choices=["DEMO", "LIVE"], default="DEMO")
     p.add_argument("--once", action="store_true")
     p.set_defaults(func=cmd_mt5_monitor)
+
+    p = sub.add_parser("macro-refresh")
+    p.set_defaults(func=cmd_macro_refresh)
 
     p = sub.add_parser("ctrader-signal-producer")
     p.set_defaults(func=cmd_ctrader_signal_producer)
