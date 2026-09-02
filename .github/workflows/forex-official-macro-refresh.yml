@@ -2,8 +2,6 @@ name: Forex Official Macro Refresh
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "7 * * * 1-5"
 
 permissions:
   contents: read
