@@ -202,11 +202,28 @@ class ProductionGuardResolver:
         )
         last_error: str | None = None
         last_age: float | None = None
+        refreshed = False
+
+        def request_snapshot() -> bool:
+            nonlocal refreshed
+            if refreshed:
+                return False
+            refresh = getattr(self.feed, "refresh_quote_snapshot", None)
+            if not callable(refresh):
+                return False
+            try:
+                refresh(symbol)
+            except Exception:
+                return False
+            refreshed = True
+            return True
+
         for attempt in range(attempts):
             try:
                 quote = self.feed.quote(symbol)
             except Exception as exc:
                 last_error = f"{type(exc).__name__}:{exc}"
+                request_snapshot()
                 if attempt + 1 < attempts:
                     self.sleeper(self.quote_poll_seconds)
                     continue
@@ -227,6 +244,7 @@ class ProductionGuardResolver:
                 return quote, None
 
             last_age = age
+            request_snapshot()
             if attempt + 1 < attempts:
                 self.sleeper(self.quote_poll_seconds)
 
