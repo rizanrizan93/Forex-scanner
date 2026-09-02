@@ -6,8 +6,9 @@ on:
     paths:
       - ".github/workflows/ctrader-demo-auto-supervisor.yml"
       - ".github/workflows/ctrader-demo-auto-pipeline.yml"
+      - ".github/workflows/ctrader-demo-technical-heartbeat.yml"
   workflow_run:
-    workflows: ["Forex Official Macro Refresh"]
+    workflows: ["cTrader Demo Technical Heartbeat"]
     types: [completed]
 
 permissions:

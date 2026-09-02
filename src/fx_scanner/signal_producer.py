@@ -9,7 +9,13 @@ from typing import Any, Callable, Mapping, Sequence
 from .config import ProjectConfig
 from .macro import CurrencyMacroScore, MacroStatus
 from .models import Bar, SignalState, ensure_utc
-from .ranking import CurrencyStrength, PairRank, compute_currency_strength, rank_pairs
+from .ranking import (
+    CurrencyStrength,
+    PairRank,
+    compute_currency_strength,
+    rank_pairs,
+    rank_pairs_technical_only,
+)
 from .strategy import DeepScanReport, scan_deep_candidates_report, select_pair_candidates
 from .technical import StructureSnapshot, structure_snapshot
 
@@ -232,6 +238,7 @@ class CTraderSignalProducer:
         sleeper: Callable[[float], None] = sleep,
         clock: Callable[[], datetime] = lambda: datetime.now(tz=UTC),
         guard_resolver: Any | None = None,
+        technical_only_scalping: bool = False,
     ):
         if historical_request_delay_seconds < 0.20:
             raise ValueError(
@@ -257,6 +264,7 @@ class CTraderSignalProducer:
         self.sleeper = sleeper
         self.clock = clock
         self.guard_resolver = guard_resolver
+        self.technical_only_scalping = bool(technical_only_scalping)
 
     def _bar_window(self, timeframe: str, count: int, now: datetime) -> tuple[datetime, datetime]:
         seconds = int(self.cfg.timeframes[timeframe])
@@ -393,7 +401,16 @@ class CTraderSignalProducer:
         dict[str, CurrencyStrength],
         dict[str, dict[str, CurrencyStrength]],
     ]:
-        strength_tfs = ("M15", "H1", "H4", "D1")
+        strength_tfs = (
+            ("M5", "M15", "H1")
+            if self.technical_only_scalping
+            else ("M15", "H1", "H4", "D1")
+        )
+        strength_weights = (
+            {"M5": 0.50, "M15": 0.30, "H1": 0.20}
+            if self.technical_only_scalping
+            else {tf: 1.0 for tf in strength_tfs}
+        )
         pair_scores_by_tf: dict[str, dict[str, float]] = {
             tf: {} for tf in strength_tfs
         }
@@ -424,7 +441,15 @@ class CTraderSignalProducer:
                 pair_scores_by_tf[tf][pair.symbol] = score
                 observed.append(score)
             if observed:
-                combined_pair_scores[pair.symbol] = sum(observed) / len(observed)
+                weighted = [
+                    (pair_scores_by_tf[tf][pair.symbol], strength_weights[tf])
+                    for tf in strength_tfs
+                    if pair.symbol in pair_scores_by_tf[tf]
+                ]
+                total_weight = sum(weight for _score, weight in weighted)
+                combined_pair_scores[pair.symbol] = (
+                    sum(score * weight for score, weight in weighted) / total_weight
+                )
 
         per_tf = {
             tf: compute_currency_strength(values, self.cfg.pairs)
@@ -517,6 +542,7 @@ class CTraderSignalProducer:
         *,
         as_of: datetime,
         ranked: Sequence[PairRank],
+        technical_only: bool = False,
     ) -> None:
         rows = [
             {
@@ -524,7 +550,7 @@ class CTraderSignalProducer:
                 "observed_at": as_of.isoformat(),
                 "symbol": item.symbol,
                 "direction": item.direction,
-                "macro_edge": item.relative_macro_edge,
+                "macro_edge": None if technical_only else item.relative_macro_edge,
                 "technical_edge": item.relative_technical_edge,
                 "cross_asset_score": item.cross_asset_edge,
                 "session_score": None,
@@ -614,17 +640,31 @@ class CTraderSignalProducer:
                 per_tf=strength_by_tf,
             )
 
-            macro_scores, missing_macro = self._macro_scores(
-                as_of=ensure_utc(self.clock())
+            if self.technical_only_scalping:
+                macro_scores = {}
+                missing_macro = ()
+                ranked = rank_pairs_technical_only(
+                    self.cfg.pairs,
+                    technical_strength=combined_strength,
+                    minimum_coverage=0.80,
+                )
+            else:
+                macro_scores, missing_macro = self._macro_scores(
+                    as_of=ensure_utc(self.clock())
+                )
+                ranked = rank_pairs(
+                    self.cfg.pairs,
+                    macro_scores=macro_scores,
+                    technical_strength=combined_strength,
+                    cross_asset_edges={},
+                    minimum_coverage=0.80,
+                )
+            self._persist_rankings(
+                run_id,
+                as_of=snapshot_at,
+                ranked=ranked,
+                technical_only=self.technical_only_scalping,
             )
-            ranked = rank_pairs(
-                self.cfg.pairs,
-                macro_scores=macro_scores,
-                technical_strength=combined_strength,
-                cross_asset_edges={},
-                minimum_coverage=0.80,
-            )
-            self._persist_rankings(run_id, as_of=snapshot_at, ranked=ranked)
 
             decision_at = ensure_utc(self.clock())
             guard_missing: Mapping[str, tuple[str, ...]] = {}
@@ -638,6 +678,9 @@ class CTraderSignalProducer:
                     ),
                     deep_analysis_top=int(
                         self.cfg.strategy["selection"]["deep_analysis_top"]
+                    ),
+                    compatibility_mode=(
+                        "TECHNICAL" if self.technical_only_scalping else "MACRO"
                     ),
                 )
                 guard_resolution = self.guard_resolver.resolve(
@@ -655,6 +698,7 @@ class CTraderSignalProducer:
                 cfg=self.cfg,
                 as_of=decision_at,
                 external_guards_by_symbol=guard_inputs or {},
+                technical_scalping=self.technical_only_scalping,
             )
             failures.update(deep.skipped)
             signals_written, ready = self._persist_signals(

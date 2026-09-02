@@ -1,0 +1,17 @@
+name: cTrader Demo Technical Heartbeat
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * 1-5"
+
+permissions:
+  contents: read
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Emit technical DEMO heartbeat
+        run: echo "CTRADER_DEMO_TECHNICAL_HEARTBEAT_OK"

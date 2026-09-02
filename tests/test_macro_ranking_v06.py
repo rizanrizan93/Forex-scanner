@@ -85,8 +85,8 @@ def test_currency_strength_respects_base_quote_orientation():
     assert strength["EUR"].score == 80
     assert strength["GBP"].score == 40
     assert strength["USD"].contributing_pairs == 3
-    assert strength["USD"].expected_pairs == 7
-    assert strength["USD"].coverage == 3 / 7
+    assert strength["USD"].expected_pairs == 8
+    assert strength["USD"].coverage == 3 / 8
     assert strength["EUR"].coverage == 1 / 5
     assert strength["USD"].score < 0
     assert strength["JPY"].score > 0

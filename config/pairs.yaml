@@ -14,6 +14,7 @@ pairs:
   - {symbol: EURCHF, base: EUR, quote: CHF, pip_size: 0.0001, tier: B}
   - {symbol: EURAUD, base: EUR, quote: AUD, pip_size: 0.0001, tier: B}
   - {symbol: GBPAUD, base: GBP, quote: AUD, pip_size: 0.0001, tier: B}
+  - {symbol: XAUUSD, base: XAU, quote: USD, pip_size: 0.01, tier: A}
 
 timeframes:
   M1: 60
