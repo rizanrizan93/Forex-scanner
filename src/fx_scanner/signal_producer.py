@@ -310,13 +310,12 @@ class CTraderSignalProducer:
         required_tfs = tuple(self.cfg.strategy["mtf"]["required_timeframes"])
         minimum = self.cfg.strategy["mtf"]["minimum_bars"]
 
-        for pair in self.cfg.pairs:
+        def fetch_pair(pair) -> tuple[Mapping[str, tuple[Bar, ...]] | None, str | None]:
             symbol = pair.symbol
             try:
                 quote, quote_error = self._fresh_quote(symbol)
                 if quote is None:
-                    failures[symbol] = quote_error or "QUOTE_UNAVAILABLE:UNKNOWN"
-                    continue
+                    return None, quote_error or "QUOTE_UNAVAILABLE:UNKNOWN"
 
                 bundle: dict[str, tuple[Bar, ...]] = {}
                 for tf in required_tfs:
@@ -342,9 +341,31 @@ class CTraderSignalProducer:
                         )
                     bundle[tf] = closed
                     self.sleeper(self.request_delay)
-                bars_by_symbol[symbol] = bundle
+                return bundle, None
             except Exception as exc:
-                failures[symbol] = f"{type(exc).__name__}:{exc}"
+                return None, f"{type(exc).__name__}:{exc}"
+
+        for pair in self.cfg.pairs:
+            bundle, error = fetch_pair(pair)
+            if bundle is None:
+                failures[pair.symbol] = error or "UNKNOWN"
+            else:
+                bars_by_symbol[pair.symbol] = bundle
+
+        retry_symbols = [
+            symbol
+            for symbol, reason in failures.items()
+            if reason.startswith(("QUOTE_STALE:", "QUOTE_UNAVAILABLE:"))
+        ]
+        for symbol in retry_symbols:
+            pair = self.cfg.pair_map[symbol]
+            bundle, error = fetch_pair(pair)
+            if bundle is None:
+                failures[symbol] = error or failures[symbol]
+            else:
+                bars_by_symbol[symbol] = bundle
+                failures.pop(symbol, None)
+
         return bars_by_symbol, dict(sorted(failures.items()))
 
     def _technical_strength(

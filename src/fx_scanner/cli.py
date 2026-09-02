@@ -328,6 +328,9 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
         max_quote_age_seconds=float(policy.ctrader["max_quote_age_seconds"]),
         max_spread_pips=float(policy.reconciliation["max_execution_spread_pips"]),
         demo_max_risk_pct=float(policy.demo_safety["max_risk_pct"]),
+        quote_wait_timeout_seconds=float(policy.ctrader["quote_wait_timeout_seconds"]),
+        quote_poll_seconds=float(policy.ctrader["quote_poll_seconds"]),
+        clock=lambda: datetime.now(tz=UTC),
     )
     producer = CTraderSignalProducer(
         cfg,
@@ -379,6 +382,14 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
             )
             print(f"CTRADER_SIGNAL_SKIP_REASONS {reason_summary}")
             print("CTRADER_SIGNAL_SKIPS " + ",".join(safe_skips))
+        if report.guard_missing:
+            missing_items = [
+                f"{symbol}:{'+'.join(names)}"
+                for symbol, names in sorted(report.guard_missing.items())
+                if names
+            ]
+            if missing_items:
+                print("CTRADER_SIGNAL_GUARD_MISSING " + ",".join(missing_items))
         if report.calendar_error:
             print(f"CTRADER_SIGNAL_CALENDAR_UNAVAILABLE {report.calendar_error}")
         if report.execution_ready:

@@ -337,3 +337,66 @@ def test_producer_bounded_wait_still_rejects_persistently_stale_quote():
     assert quote is None
     assert error == "QUOTE_STALE:4.000"
     assert feed.quote_calls == 3
+
+
+
+class RecoveringMarketFeed(Feed):
+    def __init__(self, stale_symbol):
+        super().__init__()
+        self.stale_symbol = stale_symbol
+        self.quote_calls = {}
+
+    def quote(self, symbol):
+        count = self.quote_calls.get(symbol, 0) + 1
+        self.quote_calls[symbol] = count
+        if symbol == self.stale_symbol and count <= 3:
+            return Quote(AS_OF - timedelta(seconds=5))
+        return Quote(AS_OF)
+
+
+def test_market_second_pass_recovers_transient_stale_symbol():
+    cfg = load_project_config()
+    feed = RecoveringMarketFeed("EURCHF")
+    producer = CTraderSignalProducer(
+        cfg,
+        feed,
+        Store(),
+        code_version="test-sha",
+        max_quote_age_seconds=2.0,
+        quote_wait_timeout_seconds=0.2,
+        quote_poll_seconds=0.1,
+        sleeper=lambda _seconds: None,
+        clock=lambda: AS_OF,
+    )
+
+    bars, failures = producer._fetch_market(as_of=AS_OF)
+
+    assert len(bars) == len(cfg.pairs)
+    assert failures == {}
+    assert feed.quote_calls["EURCHF"] == 4
+
+
+def test_market_second_pass_does_not_accept_persistently_stale_symbol():
+    cfg = load_project_config()
+    feed = RecoveringMarketFeed("EURCHF")
+    feed.quote = lambda symbol: (
+        Quote(AS_OF - timedelta(seconds=5))
+        if symbol == "EURCHF"
+        else Quote(AS_OF)
+    )
+    producer = CTraderSignalProducer(
+        cfg,
+        feed,
+        Store(),
+        code_version="test-sha",
+        max_quote_age_seconds=2.0,
+        quote_wait_timeout_seconds=0.2,
+        quote_poll_seconds=0.1,
+        sleeper=lambda _seconds: None,
+        clock=lambda: AS_OF,
+    )
+
+    bars, failures = producer._fetch_market(as_of=AS_OF)
+
+    assert len(bars) == len(cfg.pairs) - 1
+    assert failures["EURCHF"].startswith("QUOTE_STALE:")
