@@ -2,11 +2,13 @@ from datetime import datetime, timezone
 
 import pytest
 
+from fx_scanner.config import load_project_config
 from fx_scanner.execution.broker_gateway import (
     BrokerAccountSnapshot,
     BrokerBackend,
     BrokerPositionSnapshot,
 )
+from fx_scanner.exceptions import ConfigurationError
 from fx_scanner.storage.supabase_operational import (
     OperationalStoreUnavailable,
     SupabaseOperationalStore,
@@ -163,3 +165,78 @@ def test_publishes_positions_before_account_snapshot_pointer():
     assert client.writes[-1][0] == "broker_account_state"
     assert client.writes[-2][2][0]["snapshot_id"] == snapshot_id
     assert client.writes[-1][2]["snapshot_id"] == snapshot_id
+
+
+def test_reference_symbol_bootstrap_upserts_xauusd():
+    client = FakeClient()
+    store = SupabaseOperationalStore(
+        "https://example.supabase.co", "secret", client=client
+    )
+    cfg = load_project_config()
+
+    store.ensure_reference_symbols(cfg.pairs)
+
+    table, operation, payload = client.writes[-1]
+    assert table == "fx_symbols"
+    assert operation == "upsert"
+    assert len(payload) == 16
+    xau = next(row for row in payload if row["symbol"] == "XAUUSD")
+    assert xau == {
+        "symbol": "XAUUSD",
+        "base_currency": "XAU",
+        "quote_currency": "USD",
+        "pip_size": 0.01,
+        "tier": "A",
+        "active": True,
+    }
+
+
+def test_execution_ready_storage_floor_defaults_to_90():
+    client = FakeClient()
+    store = SupabaseOperationalStore(
+        "https://example.supabase.co", "secret", client=client
+    )
+
+    with pytest.raises(OperationalStoreUnavailable, match="below score 90"):
+        store.write_signal_rows([
+            {
+                "state": "EXECUTION_READY",
+                "active_guards": [],
+                "final_score": 70.0,
+                "data_coverage": 0.80,
+            }
+        ])
+
+    assert client.writes == []
+
+
+def test_execution_ready_storage_floor_can_be_70_for_explicit_demo_profile():
+    client = FakeClient()
+    store = SupabaseOperationalStore(
+        "https://example.supabase.co",
+        "secret",
+        client=client,
+        execution_ready_score_floor=70.0,
+    )
+
+    store.write_signal_rows([
+        {
+            "state": "EXECUTION_READY",
+            "active_guards": [],
+            "final_score": 70.0,
+            "data_coverage": 0.80,
+        }
+    ])
+
+    assert client.writes[-1][0] == "signals"
+    assert client.writes[-1][1] == "insert"
+
+
+def test_execution_ready_storage_floor_cannot_be_weakened_below_watch_floor():
+    with pytest.raises(ConfigurationError, match="within \\[65,100\\]"):
+        SupabaseOperationalStore(
+            "https://example.supabase.co",
+            "secret",
+            client=FakeClient(),
+            execution_ready_score_floor=64.0,
+        )

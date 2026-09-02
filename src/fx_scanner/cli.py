@@ -373,7 +373,11 @@ def cmd_ctrader_signal_producer(args: argparse.Namespace) -> int:
     )
     symbols = [pair.symbol for pair in cfg.pairs]
     feed = build_ctrader_research_feed(policy, symbols)
-    store = SupabaseOperationalStore.from_env()
+    store = SupabaseOperationalStore.from_env(
+        execution_ready_score_floor=demo_execution_min,
+    )
+    store.ensure_reference_symbols(cfg.pairs)
+    print(f"CTRADER_SYMBOL_REFERENCE_OK count={len(cfg.pairs)}")
 
     transport_cfg = cfg.providers["transport"]
     calendar_cfg = cfg.providers["calendar"]["FOREX_FACTORY_WEEKLY"]
@@ -550,10 +554,13 @@ def cmd_ctrader_demo_autotrade(args: argparse.Namespace) -> int:
     cfg, _production_execution_min = _apply_demo_execution_threshold(cfg)
     if _demo_technical_only_enabled():
         cfg = _apply_demo_technical_only_profile(cfg)
+    demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
     policy = replace(base_policy, mode=ExecutionMode.AUTO)
     symbols = [pair.symbol for pair in cfg.pairs]
     gateway, session = build_broker_gateway(policy, symbols, backend="CTRADER")
-    store = SupabaseOperationalStore.from_env()
+    store = SupabaseOperationalStore.from_env(
+        execution_ready_score_floor=demo_execution_min,
+    )
     gate = ControlPlaneGate(
         max_age_seconds=float(policy.live_safety.get("control_state_max_age_seconds", 5))
     )

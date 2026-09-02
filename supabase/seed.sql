@@ -15,7 +15,8 @@ values
   ('CADJPY','CAD','JPY',0.01,'B'),
   ('EURCHF','EUR','CHF',0.0001,'B'),
   ('EURAUD','EUR','AUD',0.0001,'B'),
-  ('GBPAUD','GBP','AUD',0.0001,'B')
+  ('GBPAUD','GBP','AUD',0.0001,'B'),
+  ('XAUUSD','XAU','USD',0.01,'A')
 on conflict (symbol) do update
 set base_currency = excluded.base_currency,
     quote_currency = excluded.quote_currency,
