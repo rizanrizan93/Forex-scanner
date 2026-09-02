@@ -3,7 +3,8 @@ name: cTrader Demo Auto Pipeline
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * 1-5"
+    # Deliberately offset from minute 0 to reduce GitHub scheduler load/drops.
+    - cron: "3-58/5 * * * 1-5"
 
 permissions:
   contents: read
