@@ -3,8 +3,9 @@ name: cTrader Demo Auto Pipeline
 on:
   workflow_dispatch:
   schedule:
-    # Deliberately offset from minute 0 to reduce GitHub scheduler load/drops.
-    - cron: "3-58/5 * * * 1-5"
+    # Explicit fixed-minute slots avoid step/range scheduler registration issues.
+    # Still exactly every 5 minutes on weekdays, offset from minute 0.
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 1-5"
 
 permissions:
   contents: read
