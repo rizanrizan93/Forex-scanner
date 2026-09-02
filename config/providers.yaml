@@ -41,6 +41,13 @@ sources:
     allowed_host: www.rba.gov.au
     default_max_age_seconds: 3888000
 
+  OECD_SDMX:
+    enabled: true
+    official: true
+    base_url: https://sdmx.oecd.org/public/rest/data
+    allowed_host: sdmx.oecd.org
+    default_max_age_seconds: 10368000
+
 smoke_series:
   ECB_EURUSD_REFERENCE:
     provider: ECB_DATA_PORTAL
@@ -58,6 +65,71 @@ smoke_series:
     provider: RBA_CASH_RATE
     series: CASH_RATE_TARGET
     max_age_seconds: 3888000
+
+
+macro_ingestion:
+  currency_areas:
+    USD: USA
+    EUR: EA20
+    GBP: GBR
+    JPY: JPN
+    CHF: CHE
+    CAD: CAN
+    AUD: AUS
+    NZD: NZL
+
+  factors:
+    interest_rate:
+      provider: OECD_SDMX
+      dataset: OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0
+      key_template: "{area}.M.IR3TIB.PA....."
+      area_overrides:
+        EUR: EA19
+      normalizer: delta
+      scale: 0.25
+      polarity: 1
+      max_age_seconds: 10368000
+
+    inflation:
+      provider: OECD_SDMX
+      dataset: OECD.SDD.TPS,DSD_PRICES@DF_PRICES_ALL,1.0
+      key_template: "{area}.M.N.CPI.PA._T.N.GY"
+      area_overrides: {}
+      normalizer: delta
+      scale: 0.25
+      polarity: 1
+      max_age_seconds: 10368000
+
+    growth:
+      provider: OECD_SDMX
+      dataset: OECD.SDD.STES,DSD_KEI@DF_KEI,4.0
+      key_template: "{area}.M.PRVM.IX.BTE.."
+      area_overrides: {}
+      normalizer: delta
+      scale: 1.0
+      polarity: 1
+      max_age_seconds: 10368000
+
+    labour:
+      provider: OECD_SDMX
+      dataset: OECD.SDD.TPS,DSD_LFS@DF_IALFS_INDIC,1.0
+      key_template: "{area}.UNE_LF_M.PT_LF_SUB..Y._T.Y_GE15..M"
+      area_overrides: {}
+      normalizer: delta
+      scale: 0.25
+      polarity: -1
+      max_age_seconds: 10368000
+
+    yield_momentum:
+      provider: OECD_SDMX
+      dataset: OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0
+      key_template: "{area}.M.IRLT.PA....."
+      area_overrides:
+        EUR: EA19
+      normalizer: delta
+      scale: 0.25
+      polarity: 1
+      max_age_seconds: 10368000
 
 
 calendar:
