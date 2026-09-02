@@ -239,3 +239,66 @@ def rank_pairs(
             )
         )
     return ranked
+
+
+def rank_pairs_technical_only(
+    pairs: tuple[PairSpec, ...] | list[PairSpec],
+    *,
+    technical_strength: Mapping[str, CurrencyStrength | float],
+    minimum_coverage: float = 0.80,
+) -> list[PairRank]:
+    """Rank the DEMO scalping universe from technical strength only.
+
+    Macro, cross-asset and positioning inputs are intentionally absent. Pair
+    coverage therefore represents only observed technical evidence. This is
+    used exclusively by the DEMO technical-only profile.
+    """
+    if not 0 < minimum_coverage <= 1:
+        raise DataContractError("minimum_coverage must be in (0,1]")
+
+    def strength_value(currency: str) -> tuple[float, float] | None:
+        value = technical_strength.get(currency)
+        if value is None:
+            return None
+        if isinstance(value, CurrencyStrength):
+            return float(value.score), float(value.coverage)
+        if isinstance(value, bool):
+            raise DataContractError(f"boolean technical strength is invalid for {currency}")
+        numeric = float(value)
+        if not isfinite(numeric) or not -100 <= numeric <= 100:
+            raise DataContractError(f"technical strength must be in [-100,100] for {currency}")
+        return numeric, 1.0
+
+    candidates: list[tuple[PairSpec, float, float, float]] = []
+    for pair in pairs:
+        base = strength_value(pair.base)
+        quote = strength_value(pair.quote)
+        if base is None or quote is None:
+            continue
+        technical_edge = base[0] - quote[0]
+        if not isfinite(technical_edge):
+            raise DataContractError(f"non-finite technical edge for {pair.symbol}")
+        coverage = min(base[1], quote[1])
+        if coverage < minimum_coverage:
+            continue
+        pair_edge = max(-100.0, min(100.0, technical_edge / 2.0))
+        candidates.append((pair, technical_edge, pair_edge, coverage))
+
+    candidates.sort(key=lambda x: (-abs(x[2]), -x[3], x[0].symbol))
+    ranked: list[PairRank] = []
+    for idx, (pair, technical_edge, edge, coverage) in enumerate(candidates, start=1):
+        ranked.append(
+            PairRank(
+                symbol=pair.symbol,
+                direction="LONG" if edge > 0 else "SHORT" if edge < 0 else "NEUTRAL",
+                relative_macro_edge=0.0,
+                relative_technical_edge=technical_edge,
+                cross_asset_edge=None,
+                pair_edge=edge,
+                absolute_edge=abs(edge),
+                coverage=coverage,
+                missing_components=(),
+                rank=idx,
+            )
+        )
+    return ranked
