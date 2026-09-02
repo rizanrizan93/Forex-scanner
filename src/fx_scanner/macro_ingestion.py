@@ -45,21 +45,32 @@ class MacroEvidenceRefresher:
         for factor, item in ingestion["factors"].items():
             area_overrides = item.get("area_overrides", {})
             area = str(area_overrides.get(currency, default_area))
-            series_overrides = item.get("series_overrides", {})
-            if currency in series_overrides:
-                series = str(series_overrides[currency])
+            binding_overrides = item.get("binding_overrides", {})
+            override = binding_overrides.get(currency)
+            if override is not None:
+                provider = self.runtime.providers[str(override["provider"])]
+                series = str(override["series"])
+                max_age = float(
+                    override.get("max_age_seconds", item["max_age_seconds"])
+                )
             else:
-                key_overrides = item.get("key_overrides", {})
-                key_template = str(key_overrides.get(currency, item["key_template"]))
-                key = key_template.format(area=area)
-                series = f"{item['dataset']}|{key}"
-            provider = self.runtime.providers[str(item["provider"])]
+                series_overrides = item.get("series_overrides", {})
+                if currency in series_overrides:
+                    series = str(series_overrides[currency])
+                else:
+                    key_overrides = item.get("key_overrides", {})
+                    key_template = str(key_overrides.get(currency, item["key_template"]))
+                    key = key_template.format(area=area)
+                    series = f"{item['dataset']}|{key}"
+                provider = self.runtime.providers[str(item["provider"])]
+                max_age_overrides = item.get("max_age_overrides", {})
+                max_age = float(
+                    max_age_overrides.get(currency, item["max_age_seconds"])
+                )
             normalizer = DeltaNormalizer(
                 scale=float(item["scale"]),
                 polarity=int(item["polarity"]),
             )
-            max_age_overrides = item.get("max_age_overrides", {})
-            max_age = float(max_age_overrides.get(currency, item["max_age_seconds"]))
             output[str(factor)] = (
                 FactorBinding(
                     provider,
