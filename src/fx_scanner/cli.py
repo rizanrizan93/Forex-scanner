@@ -233,6 +233,41 @@ def cmd_research_cloud(args: argparse.Namespace) -> int:
         feed.close()
 
 
+def cmd_macro_source_smoke(args: argparse.Namespace) -> int:
+    """Read-only diagnostic of configured official macro bindings."""
+    cfg = load_project_config(args.root)
+    runtime = build_provider_runtime(cfg.providers)
+    refresher = MacroEvidenceRefresher(
+        cfg,
+        store=None,
+        runtime=runtime,
+    )
+    currencies = sorted(cfg.providers["macro_ingestion"]["currency_areas"])
+    refresher.prefetch_sources(currencies)
+    for currency in currencies:
+        parts = []
+        for factor, bindings in refresher._bindings(currency).items():
+            binding = bindings[0]
+            result = runtime.orchestrator.fetch(
+                binding.provider,
+                binding.series,
+                max_age_seconds=binding.max_age_seconds,
+            )
+            score = None
+            if result.usable and result.value is not None:
+                try:
+                    score = binding.normalizer.score(result.value)
+                except Exception:
+                    score = None
+            age = None if result.freshness is None else round(result.freshness.age_seconds, 1)
+            parts.append(
+                f"{factor}:{result.status.value}:"
+                f"error={result.error_category.value}:score={score}:age={age}"
+            )
+        print(f"MACRO_SOURCE_SMOKE {currency} " + " ".join(parts))
+    return 0
+
+
 def cmd_macro_refresh(args: argparse.Namespace) -> int:
     """Refresh durable official macro evidence; never touches broker execution."""
     cfg = load_project_config(args.root)
@@ -609,6 +644,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--environment", choices=["DEMO", "LIVE"], default="DEMO")
     p.add_argument("--once", action="store_true")
     p.set_defaults(func=cmd_mt5_monitor)
+
+    p = sub.add_parser("macro-source-smoke")
+    p.set_defaults(func=cmd_macro_source_smoke)
 
     p = sub.add_parser("macro-refresh")
     p.set_defaults(func=cmd_macro_refresh)

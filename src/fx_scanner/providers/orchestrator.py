@@ -43,8 +43,22 @@ class ProviderOrchestrator:
         self.minimum_success = int(minimum_success)
         self.maximum_numeric_conflict = float(maximum_numeric_conflict)
 
+    @staticmethod
+    def cache_key(provider, series: str, max_age_seconds: float | None = None) -> str:
+        return f"{provider.name}:{series}:{max_age_seconds}"
+
+    def prime(
+        self,
+        provider,
+        series: str,
+        result: ProviderResult,
+        *,
+        max_age_seconds: float | None = None,
+    ) -> None:
+        self.cache.put(self.cache_key(provider, series, max_age_seconds), result)
+
     def fetch(self, provider, series: str, *, max_age_seconds: float | None = None):
-        key = f"{provider.name}:{series}:{max_age_seconds}"
+        key = self.cache_key(provider, series, max_age_seconds)
         cached = self.cache.get(key)
         if cached is not None:
             return cached

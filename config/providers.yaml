@@ -27,6 +27,13 @@ sources:
     allowed_host: www.bankofcanada.ca
     default_max_age_seconds: 172800
 
+  BANK_OF_ENGLAND_IADB:
+    enabled: true
+    official: true
+    base_url: https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp
+    allowed_host: www.bankofengland.co.uk
+    default_max_age_seconds: 2592000
+
   FEDERAL_RESERVE_FRED:
     enabled: true
     official: true
@@ -85,6 +92,16 @@ macro_ingestion:
       key_template: "{area}.M.IR3TIB.PA....."
       area_overrides:
         EUR: EA19
+      series_overrides: {}
+      binding_overrides:
+        EUR:
+          provider: ECB_DATA_PORTAL
+          series: FM/B.U2.EUR.4F.KR.MRR_FR.LEV
+          max_age_seconds: 10368000
+        GBP:
+          provider: BANK_OF_ENGLAND_IADB
+          series: IUDBEDR
+          max_age_seconds: 2592000
       normalizer: delta
       scale: 0.25
       polarity: 1
@@ -93,11 +110,16 @@ macro_ingestion:
     inflation:
       provider: OECD_SDMX
       dataset: OECD.SDD.TPS,DSD_PRICES@DF_PRICES_ALL,1.0
-      key_template: "{area}.M.N.CPI.._T.N.GY"
+      key_template: "{area}.M.N.CPI.PA._T.N.GY"
       key_overrides:
-        AUD: "{area}.Q.N.CPI.._T.N.GY"
-        NZD: "{area}.Q.N.CPI.._T.N.GY"
-      area_overrides: {}
+        AUD: "{area}.Q.N.CPI.PA._T.N.GY"
+        NZD: "{area}.Q.N.CPI.PA._T.N.GY"
+      area_overrides:
+        EUR: EA
+      series_overrides:
+        CHF: "OECD.SDD.TPS,DSD_PRICES_COICOP2018@DF_PRICES_C2018_ALL,1.0|CHE.M.N.CPI.PA._T.N.GY"
+        EUR: "OECD.SDD.TPS,DSD_PRICES_COICOP2018@DF_PRICES_C2018_ALL,1.0|EA.M.N.CPI.PA._T.N.GY"
+        JPY: "OECD.SDD.TPS,DSD_PRICES_COICOP2018@DF_PRICES_C2018_ALL,1.0|JPN.M.N.CPI.PA._T.N.GY"
       normalizer: delta
       scale: 0.25
       polarity: 1
@@ -108,20 +130,33 @@ macro_ingestion:
       dataset: OECD.SDD.STES,DSD_KEI@DF_KEI,4.0
       key_template: "{area}.M.PRVM.IX.BTE.."
       area_overrides: {}
+      series_overrides:
+        AUD: "OECD.SDD.NAD,DSD_NAMAIN1@DF_QNA_EXPENDITURE_GROWTH_OECD,1.1|Q..AUS.S1..B1GQ......G1."
+        NZD: "OECD.SDD.NAD,DSD_NAMAIN1@DF_QNA_EXPENDITURE_GROWTH_OECD,1.1|Q..NZL.S1..B1GQ......G1."
       normalizer: delta
       scale: 1.0
       polarity: 1
       max_age_seconds: 10368000
+      max_age_overrides:
+        AUD: 15552000
+        NZD: 15552000
 
     labour:
       provider: OECD_SDMX
       dataset: OECD.SDD.TPS,DSD_LFS@DF_IALFS_INDIC,1.0
       key_template: "{area}.UNE_LF_M...Y._T.Y_GE15..M"
-      area_overrides: {}
+      key_overrides:
+        CHF: "{area}.UNE_LF_M...Y._T.Y_GE15..Q"
+        NZD: "{area}.UNE_LF_M...Y._T.Y_GE15..Q"
+      area_overrides:
+        EUR: EA
       normalizer: delta
       scale: 0.25
       polarity: -1
       max_age_seconds: 10368000
+      max_age_overrides:
+        CHF: 15552000
+        NZD: 15552000
 
     yield_momentum:
       provider: OECD_SDMX
@@ -129,6 +164,12 @@ macro_ingestion:
       key_template: "{area}.M.IRLT.PA....."
       area_overrides:
         EUR: EA19
+      series_overrides: {}
+      binding_overrides:
+        EUR:
+          provider: ECB_DATA_PORTAL
+          series: YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y
+          max_age_seconds: 10368000
       normalizer: delta
       scale: 0.25
       polarity: 1

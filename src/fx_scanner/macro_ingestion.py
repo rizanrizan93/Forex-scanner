@@ -45,11 +45,28 @@ class MacroEvidenceRefresher:
         for factor, item in ingestion["factors"].items():
             area_overrides = item.get("area_overrides", {})
             area = str(area_overrides.get(currency, default_area))
-            key_overrides = item.get("key_overrides", {})
-            key_template = str(key_overrides.get(currency, item["key_template"]))
-            key = key_template.format(area=area)
-            series = f"{item['dataset']}|{key}"
-            provider = self.runtime.providers[str(item["provider"])]
+            binding_overrides = item.get("binding_overrides", {})
+            override = binding_overrides.get(currency)
+            if override is not None:
+                provider = self.runtime.providers[str(override["provider"])]
+                series = str(override["series"])
+                max_age = float(
+                    override.get("max_age_seconds", item["max_age_seconds"])
+                )
+            else:
+                series_overrides = item.get("series_overrides", {})
+                if currency in series_overrides:
+                    series = str(series_overrides[currency])
+                else:
+                    key_overrides = item.get("key_overrides", {})
+                    key_template = str(key_overrides.get(currency, item["key_template"]))
+                    key = key_template.format(area=area)
+                    series = f"{item['dataset']}|{key}"
+                provider = self.runtime.providers[str(item["provider"])]
+                max_age_overrides = item.get("max_age_overrides", {})
+                max_age = float(
+                    max_age_overrides.get(currency, item["max_age_seconds"])
+                )
             normalizer = DeltaNormalizer(
                 scale=float(item["scale"]),
                 polarity=int(item["polarity"]),
@@ -59,10 +76,55 @@ class MacroEvidenceRefresher:
                     provider,
                     series,
                     normalizer,
-                    float(item["max_age_seconds"]),
+                    max_age,
                 ),
             )
         return output
+
+
+    def prefetch_sources(self, currencies: list[str] | tuple[str, ...]) -> None:
+        """Prime provider cache using batched official-source requests when supported."""
+        groups: dict[tuple[int, float], dict[str, tuple[object, FactorBinding]]] = {}
+        ingestion = self.cfg.providers["macro_ingestion"]
+        for currency in currencies:
+            default_area = str(ingestion["currency_areas"][currency])
+            for factor, bindings in self._bindings(currency).items():
+                item = ingestion["factors"][factor]
+                area = str(item.get("area_overrides", {}).get(currency, default_area))
+                for binding in bindings:
+                    provider = binding.provider
+                    if not hasattr(provider, "fetch_numeric_batch"):
+                        continue
+                    try:
+                        exact_key = str(binding.series).split("|", 1)[1]
+                    except IndexError:
+                        continue
+                    if not exact_key.startswith(area + "."):
+                        continue
+                    label = f"{currency}:{factor}:{binding.series}"
+                    key = (id(provider), float(binding.max_age_seconds))
+                    groups.setdefault(key, {})[label] = (provider, binding)
+
+        for (_provider_id, max_age), members in groups.items():
+            provider = next(iter(members.values()))[0]
+            series_by_label = {
+                label: binding.series
+                for label, (_provider, binding) in members.items()
+            }
+            results = provider.fetch_numeric_batch(
+                series_by_label,
+                max_age_seconds=max_age,
+            )
+            for label, (_provider, binding) in members.items():
+                result = results.get(label)
+                if result is None:
+                    continue
+                self.runtime.orchestrator.prime(
+                    provider,
+                    binding.series,
+                    result,
+                    max_age_seconds=binding.max_age_seconds,
+                )
 
     def run_once(self) -> MacroRefreshReport:
         now = self.clock()
@@ -74,6 +136,7 @@ class MacroEvidenceRefresher:
             clock=lambda: now,
         )
         currencies = sorted(self.cfg.providers["macro_ingestion"]["currency_areas"])
+        self.prefetch_sources(currencies)
         coverage: dict[str, float] = {}
         missing: dict[str, tuple[str, ...]] = {}
         statuses: dict[str, str] = {}

@@ -112,7 +112,11 @@ class Store:
 
 def runtime(provider):
     return SimpleNamespace(
-        providers={"OECD_SDMX": provider},
+        providers={
+            "OECD_SDMX": provider,
+            "ECB_DATA_PORTAL": provider,
+            "BANK_OF_ENGLAND_IADB": provider,
+        },
         orchestrator=ProviderOrchestrator(cache=ProviderCache()),
     )
 
@@ -184,7 +188,161 @@ def test_macro_refresher_uses_quarterly_cpi_for_aud_nzd():
     usd = refresher._bindings("USD")["inflation"][0].series
     labour = refresher._bindings("USD")["labour"][0].series
 
-    assert aud.endswith("|AUS.Q.N.CPI.._T.N.GY")
-    assert nzd.endswith("|NZL.Q.N.CPI.._T.N.GY")
-    assert usd.endswith("|USA.M.N.CPI.._T.N.GY")
+    assert aud.endswith("|AUS.Q.N.CPI.PA._T.N.GY")
+    assert nzd.endswith("|NZL.Q.N.CPI.PA._T.N.GY")
+    assert usd.endswith("|USA.M.N.CPI.PA._T.N.GY")
     assert labour.endswith("|USA.UNE_LF_M...Y._T.Y_GE15..M")
+
+
+
+def test_oecd_batch_provider_groups_reference_areas():
+    body = (
+        b"REF_AREA,FREQ,MEASURE,TIME_PERIOD,OBS_VALUE\n"
+        b"USA,M,CPI,2026-06,2.5\n"
+        b"USA,M,CPI,2026-07,2.7\n"
+        b"CAN,M,CPI,2026-06,2.0\n"
+        b"CAN,M,CPI,2026-07,2.1\n"
+        b"AUS,Q,CPI,2026-Q1,3.0\n"
+        b"AUS,Q,CPI,2026-Q2,2.8\n"
+    )
+    transport = FakeTransport(body)
+    provider = OecdSdmxCsvProvider(transport, clock=lambda: NOW)
+    dataset = "OECD.SDD.TPS,DSD_PRICES@DF_PRICES_ALL,1.0"
+    results = provider.fetch_numeric_batch(
+        {
+            "USD": f"{dataset}|USA.M.N.CPI.PA._T.N.GY",
+            "CAD": f"{dataset}|CAN.M.N.CPI.PA._T.N.GY",
+            "AUD": f"{dataset}|AUS.Q.N.CPI.PA._T.N.GY",
+        },
+        max_age_seconds=10368000,
+    )
+
+    assert len(transport.calls) == 2
+    assert results["USD"].status == ProviderStatus.AVAILABLE
+    assert results["USD"].value.value == pytest.approx(2.7)
+    assert results["CAD"].value.value == pytest.approx(2.1)
+    assert results["AUD"].value.value == pytest.approx(2.8)
+    urls = [call[0] for call in transport.calls]
+    assert any("CAN+USA.M.N.CPI.PA._T.N.GY" in url for url in urls)
+    assert any("AUS.Q.N.CPI.PA._T.N.GY" in url for url in urls)
+
+
+class BatchFreshOecd(AlwaysFreshOecd):
+    def __init__(self):
+        super().__init__(with_history=True)
+        self.batch_calls = 0
+        self.scalar_calls = 0
+
+    def fetch_numeric(self, series, *, max_age_seconds=None):
+        self.scalar_calls += 1
+        observation = NumericObservation(
+            series,
+            2.50,
+            NOW - timedelta(days=10),
+            2.25,
+            NOW - timedelta(days=40),
+        )
+        fresh = Freshness.evaluate(
+            observation.observed_at,
+            NOW,
+            max_age_seconds=max_age_seconds or 10368000,
+        )
+        return ProviderResult(
+            ProviderStatus.AVAILABLE,
+            observation,
+            Provenance(
+                "OECD_SDMX",
+                "https://sdmx.oecd.org/public/rest/data",
+                series,
+                True,
+            ),
+            fresh,
+        )
+
+    def fetch_numeric_batch(self, series_by_label, *, max_age_seconds=None):
+        self.batch_calls += 1
+        output = {}
+        for label, series in series_by_label.items():
+            observation = NumericObservation(
+                series,
+                2.50,
+                NOW - timedelta(days=10),
+                2.25,
+                NOW - timedelta(days=40),
+            )
+            fresh = Freshness.evaluate(
+                observation.observed_at,
+                NOW,
+                max_age_seconds=max_age_seconds or 10368000,
+            )
+            output[label] = ProviderResult(
+                ProviderStatus.AVAILABLE,
+                observation,
+                Provenance(
+                    "OECD_SDMX",
+                    "https://sdmx.oecd.org/public/rest/data",
+                    series,
+                    True,
+                ),
+                fresh,
+            )
+        return output
+
+
+def test_macro_refresher_primes_batch_results_before_scoring():
+    cfg = load_project_config()
+    provider = BatchFreshOecd()
+    store = Store()
+    report = MacroEvidenceRefresher(
+        cfg,
+        store,
+        runtime=runtime(provider),
+        clock=lambda: NOW,
+    ).run_once()
+
+    assert provider.batch_calls == 2
+    assert provider.scalar_calls == 5
+    assert report.valid_currencies == 8
+    assert all(value == pytest.approx(0.70) for value in report.coverage_by_currency.values())
+
+
+
+def test_macro_bindings_use_current_official_fallback_series():
+    cfg = load_project_config()
+    refresher = MacroEvidenceRefresher(
+        cfg,
+        Store(),
+        runtime=runtime(AlwaysFreshOecd()),
+        clock=lambda: NOW,
+    )
+
+    eur_interest = refresher._bindings("EUR")["interest_rate"][0]
+    gbp_interest = refresher._bindings("GBP")["interest_rate"][0]
+    chf_inflation = refresher._bindings("CHF")["inflation"][0]
+    eur_inflation = refresher._bindings("EUR")["inflation"][0]
+    jpy_inflation = refresher._bindings("JPY")["inflation"][0]
+    aud_growth = refresher._bindings("AUD")["growth"][0]
+    nzd_growth = refresher._bindings("NZD")["growth"][0]
+    chf_labour = refresher._bindings("CHF")["labour"][0]
+    nzd_labour = refresher._bindings("NZD")["labour"][0]
+    eur_labour = refresher._bindings("EUR")["labour"][0]
+    eur_yield = refresher._bindings("EUR")["yield_momentum"][0]
+
+    assert eur_interest.series == "FM/B.U2.EUR.4F.KR.MRR_FR.LEV"
+    assert gbp_interest.series == "IUDBEDR"
+    assert eur_interest.max_age_seconds == pytest.approx(10368000)
+    assert gbp_interest.max_age_seconds == pytest.approx(2592000)
+    assert "DSD_PRICES_COICOP2018@DF_PRICES_C2018_ALL,1.0|CHE.M.N.CPI.PA._T.N.GY" in chf_inflation.series
+    assert eur_inflation.series.endswith("|EA.M.N.CPI.PA._T.N.GY")
+    assert jpy_inflation.series.endswith("|JPN.M.N.CPI.PA._T.N.GY")
+    assert aud_growth.series.endswith("|Q..AUS.S1..B1GQ......G1.")
+    assert nzd_growth.series.endswith("|Q..NZL.S1..B1GQ......G1.")
+    assert aud_growth.max_age_seconds == pytest.approx(15552000)
+    assert nzd_growth.max_age_seconds == pytest.approx(15552000)
+    assert chf_labour.series.endswith("|CHE.UNE_LF_M...Y._T.Y_GE15..Q")
+    assert nzd_labour.series.endswith("|NZL.UNE_LF_M...Y._T.Y_GE15..Q")
+    assert chf_labour.max_age_seconds == pytest.approx(15552000)
+    assert nzd_labour.max_age_seconds == pytest.approx(15552000)
+    assert eur_labour.series.endswith("|EA.UNE_LF_M...Y._T.Y_GE15..M")
+    assert eur_yield.series == "YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y"
+    assert eur_yield.max_age_seconds == pytest.approx(10368000)

@@ -7,6 +7,7 @@ from ..exceptions import ConfigurationError
 from .cache import ProviderCache
 from .official import (
     BankOfCanadaValetProvider,
+    BankOfEnglandIadbProvider,
     EcbDataPortalProvider,
     FredCsvProvider,
     OecdSdmxCsvProvider,
@@ -48,6 +49,7 @@ def build_provider_runtime(provider_config: Mapping[str, Any]) -> ProviderRuntim
 
     ecb_cfg = sources["ECB_DATA_PORTAL"]
     boc_cfg = sources["BANK_OF_CANADA_VALET"]
+    boe_cfg = sources["BANK_OF_ENGLAND_IADB"]
     fred_cfg = sources["FEDERAL_RESERVE_FRED"]
     rba_cfg = sources["RBA_CASH_RATE"]
     oecd_cfg = sources["OECD_SDMX"]
@@ -63,6 +65,12 @@ def build_provider_runtime(provider_config: Mapping[str, Any]) -> ProviderRuntim
             base_url=str(boc_cfg["base_url"]),
             allowed_host=str(boc_cfg["allowed_host"]),
             default_max_age_seconds=float(boc_cfg["default_max_age_seconds"]),
+        ),
+        "BANK_OF_ENGLAND_IADB": BankOfEnglandIadbProvider(
+            transport,
+            base_url=str(boe_cfg["base_url"]),
+            allowed_host=str(boe_cfg["allowed_host"]),
+            default_max_age_seconds=float(boe_cfg["default_max_age_seconds"]),
         ),
         "FEDERAL_RESERVE_FRED": FredCsvProvider(
             transport,
