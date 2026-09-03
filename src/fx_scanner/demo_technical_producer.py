@@ -12,10 +12,10 @@ from .demo_calibration import (
     apply_demo_calibration_threshold,
     build_demo_calibration_store,
 )
+from .demo_correlation_evidence import EvidenceProductionGuardResolver
 from .demo_signal_producer import ExplicitDemoTechnicalSignalProducer
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
-from .producer_guards import ProductionGuardResolver
 
 UTC = timezone.utc
 
@@ -64,7 +64,7 @@ def run() -> int:
             )
         )
 
-    guard_resolver = ProductionGuardResolver(
+    guard_resolver = EvidenceProductionGuardResolver(
         cfg,
         feed,
         calendar_provider=None,
@@ -132,6 +132,13 @@ def run() -> int:
                 f"score={score_text} setup={row.get('setup_type', 'NONE')} "
                 f"rr2={rr2_text} guards={guards}"
             )
+            for evidence in guard_resolver.last_correlation_evidence.get(symbol, ()):
+                print(
+                    "CTRADER_CORRELATION_EVIDENCE "
+                    f"symbol={symbol} peer={evidence.peer_symbol} "
+                    f"corr={evidence.correlation:.4f} threshold={evidence.threshold:.4f} "
+                    f"lookback_h1={evidence.lookback_bars} blocked={int(evidence.blocked)}"
+                )
             analysis = analyses.get(symbol)
             if analysis is not None:
                 plan = analysis.trade_plan
