@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import replace
+from enum import StrEnum
 from math import isfinite
 from typing import Mapping, Sequence
 
@@ -21,6 +22,19 @@ from .strategy import (
 )
 
 
+class DemoSetupType(StrEnum):
+    """Additional DEMO-only setup labels.
+
+    Canonical strategy.SetupType intentionally remains unchanged. These labels
+    widen DEMO technical-pattern recognition without altering production
+    strategy behavior or weakening any execution guard.
+    """
+
+    BREAKOUT_RETEST = "BREAKOUT_RETEST"
+    FVG_PULLBACK_CONTINUATION = "FVG_PULLBACK_CONTINUATION"
+    ORDER_BLOCK_RECLAIM = "ORDER_BLOCK_RECLAIM"
+
+
 def _demo_calibration_pretrigger_enabled() -> bool:
     return os.getenv("CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER", "0").strip() == "1"
 
@@ -36,8 +50,12 @@ def _demo_fvg_max_age_minutes() -> float:
     return value
 
 
+def _wanted_direction(direction: str) -> str:
+    return "BULLISH" if direction == "LONG" else "BEARISH"
+
+
 def _fresh_directional_fvg(base: MTFAnalysis, *, as_of) -> bool:
-    wanted = "BULLISH" if base.direction == "LONG" else "BEARISH"
+    wanted = _wanted_direction(base.direction)
     now = ensure_utc(as_of)
     max_age_seconds = 60.0 * _demo_fvg_max_age_minutes()
     for gap in base.liquidity.fvgs:
@@ -45,6 +63,29 @@ def _fresh_directional_fvg(base: MTFAnalysis, *, as_of) -> bool:
             continue
         age = (now - ensure_utc(gap.origin_at)).total_seconds()
         if 0.0 <= age <= max_age_seconds:
+            return True
+    return False
+
+
+def _directional_displacement(base: MTFAnalysis) -> bool:
+    wanted = _wanted_direction(base.direction)
+    signal = base.m5.displacement
+    return bool(signal is not None and signal.valid and signal.direction == wanted)
+
+
+def _directional_breakout(base: MTFAnalysis) -> bool:
+    wanted = _wanted_direction(base.direction)
+    return bool(base.m15.bos == wanted and _directional_displacement(base))
+
+
+def _directional_order_block(base: MTFAnalysis) -> bool:
+    wanted = _wanted_direction(base.direction)
+    for block in base.liquidity.order_blocks:
+        if (
+            block.direction == wanted
+            and block.caused_break
+            and not block.invalidated
+        ):
             return True
     return False
 
@@ -58,13 +99,35 @@ def _early_structure_valid(base: MTFAnalysis) -> bool:
     )
 
 
-def _demo_setup_type(base: MTFAnalysis, *, as_of) -> SetupType | None:
+def _demo_setup_type(base: MTFAnalysis, *, as_of) -> SetupType | DemoSetupType | None:
+    # Preserve canonical detections first. DEMO-only patterns only fill genuine
+    # setup=NONE coverage gaps; they never overwrite a canonical setup.
     if base.setup_type is not None:
         return base.setup_type
     if not _early_structure_valid(base):
         return None
+
+    # Breakout/retest requires an actual M15 BOS plus directional M5
+    # displacement. This is stronger than score-only momentum classification.
+    if _directional_breakout(base):
+        return DemoSetupType.BREAKOUT_RETEST
+
+    # Order-block reclaim requires a directional OB that caused a break and has
+    # not invalidated. M5 structure must still be directionally constructive.
+    if _directional_order_block(base):
+        wanted = _wanted_direction(base.direction)
+        if (
+            base.m5.bos == wanted
+            or base.m5.mss == wanted
+            or _directional_displacement(base)
+            or (_directional_structure_score(base.m5, base.direction) or 0.0) >= 55.0
+        ):
+            return DemoSetupType.ORDER_BLOCK_RECLAIM
+
+    # Fresh FVG pullback catches early continuation before the stricter
+    # canonical trend-continuation trigger becomes visible.
     if _fresh_directional_fvg(base, as_of=as_of):
-        return SetupType.TREND_CONTINUATION
+        return DemoSetupType.FVG_PULLBACK_CONTINUATION
     return None
 
 
@@ -159,6 +222,11 @@ def analyze_demo_pair_mtf(
     setup_type = _demo_setup_type(base, as_of=as_of)
     early_structure = _early_structure_valid(base)
     fresh_fvg = _fresh_directional_fvg(base, as_of=as_of)
+    expanded_early_pattern = setup_type in {
+        DemoSetupType.BREAKOUT_RETEST,
+        DemoSetupType.FVG_PULLBACK_CONTINUATION,
+        DemoSetupType.ORDER_BLOCK_RECLAIM,
+    }
 
     components = dict(base.conviction_components)
     components["execution_quality"] = _execution_quality(
@@ -205,7 +273,7 @@ def analyze_demo_pair_mtf(
         early_watch = bool(
             setup_type is not None
             and early_structure
-            and fresh_fvg
+            and (fresh_fvg or expanded_early_pattern)
         )
         calibration_ready = bool(
             _demo_calibration_pretrigger_enabled()
@@ -223,9 +291,8 @@ def analyze_demo_pair_mtf(
             # immediately instead of waiting for a later M5 displacement bar.
             state = SignalState.EXECUTION_READY
         elif early_watch and state in {SignalState.NO_TRADE, SignalState.WATCH}:
-            # Preserve the score for execution eligibility, but surface valid
-            # H1/M15 structure + a fresh FVG earlier so the setup is not hidden
-            # until price has already moved beyond the chase limit.
+            # Surface valid early structure/pattern recognition without
+            # weakening the execution score or any hard guard.
             state = SignalState.SETUP_FORMING
         elif setup_type is not None and not base.trigger_confirmed and state in {
             SignalState.ARMED,
