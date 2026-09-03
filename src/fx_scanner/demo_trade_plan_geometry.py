@@ -59,9 +59,6 @@ def _nearest_directional_gap(
             return True
         return chase_distance(gap) <= float(max_chase_atr)
 
-    # Prefer a currently tradeable FVG first. If none are within the hard
-    # chase limit, still return the nearest stale geometry so CHASE_BLOCK is
-    # surfaced explicitly rather than silently degrading to plan=None.
     return min(
         candidates,
         key=lambda gap: (
@@ -90,8 +87,12 @@ def build_demo_trade_plan(
     """Explicit DEMO technical-scalping trade-plan builder.
 
     The builder prefers the nearest OPEN/PARTIAL directional FVG that is still
-    inside the configured hard chase limit. If every FVG is already chased, it
-    preserves the nearest stale plan so CHASE_BLOCK remains observable.
+    inside the configured hard chase limit. When price has moved through the
+    FVG in the trade direction but remains inside that hard chase allowance,
+    the executable edge of the DEMO entry zone is extended to current price.
+    This keeps strategy and market-order executor semantics aligned while RR is
+    recomputed from the actual executable boundary. If every FVG is already
+    chased, stale geometry is preserved so CHASE_BLOCK remains observable.
 
     A TP2 fallback is created only after at least one structural liquidity
     target exists. Zero-target geometry remains fail-closed.
@@ -111,9 +112,19 @@ def build_demo_trade_plan(
     if gap is None:
         return None
 
-    entry_low, entry_high = float(gap.lower), float(gap.upper)
-    if entry_high - entry_low < current_atr * float(minimum_entry_zone_atr):
+    raw_entry_low, raw_entry_high = float(gap.lower), float(gap.upper)
+    if raw_entry_high - raw_entry_low < current_atr * float(minimum_entry_zone_atr):
         return None
+
+    entry_low, entry_high = raw_entry_low, raw_entry_high
+    if direction == "LONG":
+        raw_chase = max(0.0, float(current_price) - raw_entry_high) / current_atr
+        if 0.0 < raw_chase <= float(chase_block_atr):
+            entry_high = float(current_price)
+    else:
+        raw_chase = max(0.0, raw_entry_low - float(current_price)) / current_atr
+        if 0.0 < raw_chase <= float(chase_block_atr):
+            entry_low = float(current_price)
 
     buffer = current_atr * float(sl_buffer_atr)
     tolerance = current_atr * 0.05
@@ -127,7 +138,7 @@ def build_demo_trade_plan(
         if anchor is None:
             return None
 
-        stop = min(float(anchor), entry_low) - buffer
+        stop = min(float(anchor), raw_entry_low) - buffer
         risk = entry_high - stop
         if not isfinite(risk) or risk <= 0:
             return None
@@ -159,7 +170,7 @@ def build_demo_trade_plan(
         if anchor is None:
             return None
 
-        stop = max(float(anchor), entry_high) + buffer
+        stop = max(float(anchor), raw_entry_high) + buffer
         risk = stop - entry_low
         if not isfinite(risk) or risk <= 0:
             return None
