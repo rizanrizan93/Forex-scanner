@@ -100,6 +100,7 @@ def _demo_directional_structure_score(snapshot, direction: str) -> float | None:
 
 
 def _early_structure_valid(base: MTFAnalysis) -> bool:
+    """Execution-grade H1/M15 structure; intentionally remains strict."""
     if _demo_structure_conflict(base):
         return False
     return bool(
@@ -108,12 +109,76 @@ def _early_structure_valid(base: MTFAnalysis) -> bool:
     )
 
 
+def _demo_setup_recognition_structure_valid(base: MTFAnalysis) -> bool:
+    """Recognition-grade structure, separated from execution eligibility.
+
+    A setup may be named before it is safe to execute. This prevents a genuine
+    transition/continuation pattern from being hidden as setup=NONE while the
+    stricter execution structure, chase, RR, correlation and volatility gates
+    continue to decide whether an order is allowed.
+    """
+    if _demo_structure_conflict(base):
+        return False
+    h1_score = _demo_directional_structure_score(base.h1, base.direction)
+    m15_score = _demo_directional_structure_score(base.m15, base.direction)
+    return bool(
+        h1_score is not None
+        and m15_score is not None
+        and h1_score >= 50.0
+        and m15_score >= 50.0
+    )
+
+
+def _demo_snapshot_directional_evidence(snapshot, direction: str) -> bool:
+    wanted = "BULLISH" if direction == "LONG" else "BEARISH"
+    displacement = getattr(snapshot, "displacement", None)
+    fvg = getattr(snapshot, "fvg", None)
+    sweep = getattr(snapshot, "sweep", None)
+    return bool(
+        snapshot.bos == wanted
+        or snapshot.mss == wanted
+        or (
+            displacement is not None
+            and bool(getattr(displacement, "valid", False))
+            and getattr(displacement, "direction", None) == wanted
+        )
+        or (
+            fvg is not None
+            and bool(getattr(fvg, "valid", False))
+            and getattr(fvg, "direction", None) == wanted
+        )
+        or (
+            sweep is not None
+            and bool(getattr(sweep, "valid", False))
+            and getattr(sweep, "direction", None) == wanted
+        )
+    )
+
+
 def _demo_setup_type(base: MTFAnalysis, *, as_of) -> SetupType | None:
+    """Recognize the technical setup independently from execution guards."""
     if base.setup_type is not None:
         return base.setup_type
-    if not _early_structure_valid(base):
+    if not _demo_setup_recognition_structure_valid(base):
         return None
+
+    # A fresh directional imbalance is sufficient to name the continuation
+    # while price is still forming the executable trigger/geometry.
     if _fresh_directional_fvg(base, as_of=as_of):
+        return SetupType.TREND_CONTINUATION
+
+    # Do not wait for pivot-derived trend labels to catch up with a confirmed
+    # same-timeframe transition. This is the principal anti-miss path.
+    if _demo_transition_confirmed(base.h1, base.direction) or _demo_transition_confirmed(
+        base.m15, base.direction
+    ):
+        return SetupType.TREND_CONTINUATION
+
+    # When H1 already carries directional structure, a directional M15 event
+    # is enough to classify the setup as forming. Execution still requires the
+    # stricter >=55 H1/M15 structure and every hard guard below.
+    h1_score = _demo_directional_structure_score(base.h1, base.direction) or 0.0
+    if h1_score >= 55.0 and _demo_snapshot_directional_evidence(base.m15, base.direction):
         return SetupType.TREND_CONTINUATION
     return None
 
@@ -260,6 +325,8 @@ def analyze_demo_pair_mtf(
         )
         calibration_ready = bool(
             _demo_calibration_pretrigger_enabled()
+            and setup_type is not None
+            and early_structure
             and plan_ready
             and score is not None
             and float(score) >= execution_floor
@@ -269,9 +336,9 @@ def analyze_demo_pair_mtf(
             if state not in {SignalState.NO_TRADE, SignalState.WATCH}:
                 state = SignalState.WATCH
         elif calibration_ready:
-            # DEMO calibration lane: once the technical score, setup, RR and
-            # chase geometry are all valid and hard guards are clear, execute
-            # immediately instead of waiting for a later M5 displacement bar.
+            # DEMO calibration lane: recognition may happen earlier, but an
+            # actual order still requires execution-grade H1/M15 structure,
+            # valid RR/chase geometry, score floor and every hard guard clear.
             state = SignalState.EXECUTION_READY
         elif early_watch and state in {SignalState.NO_TRADE, SignalState.WATCH}:
             # Preserve the score for execution eligibility, but surface valid
