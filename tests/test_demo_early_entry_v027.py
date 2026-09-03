@@ -5,6 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from fx_scanner.demo_technical_strategy import (
+    _demo_directional_structure_score,
+    _demo_structure_conflict,
     _early_structure_valid,
     _fresh_directional_fvg,
 )
@@ -13,8 +15,22 @@ from fx_scanner.liquidity import FairValueGap
 UTC = timezone.utc
 
 
-def _snapshot(trend: str, bos: str | None = None, mss: str | None = None):
-    return SimpleNamespace(trend=trend, bos=bos, mss=mss)
+def _displacement(direction: str, *, valid: bool = True):
+    return SimpleNamespace(direction=direction, valid=valid)
+
+
+def _snapshot(
+    trend: str,
+    bos: str | None = None,
+    mss: str | None = None,
+    displacement=None,
+):
+    return SimpleNamespace(
+        trend=trend,
+        bos=bos,
+        mss=mss,
+        displacement=displacement,
+    )
 
 
 def test_fresh_directional_fvg_is_visible_before_chase(monkeypatch):
@@ -60,6 +76,81 @@ def test_h1_m15_structure_can_prearm_before_m5_trigger():
         m15=_snapshot("BULLISH"),
     )
     assert _early_structure_valid(base) is True
+
+
+def test_lagging_m15_trend_is_not_hard_conflict_after_bullish_bos_displacement():
+    base = SimpleNamespace(
+        direction="LONG",
+        h1=_snapshot("BULLISH"),
+        m15=_snapshot(
+            "BEARISH",
+            bos="BULLISH",
+            displacement=_displacement("BULLISH"),
+        ),
+    )
+    assert _demo_structure_conflict(base) is False
+    assert _demo_directional_structure_score(base.m15, "LONG") == 65.0
+    assert _early_structure_valid(base) is True
+
+
+def test_lagging_h1_trend_is_not_hard_conflict_after_bearish_bos_displacement():
+    base = SimpleNamespace(
+        direction="SHORT",
+        h1=_snapshot(
+            "BULLISH",
+            bos="BEARISH",
+            displacement=_displacement("BEARISH"),
+        ),
+        m15=_snapshot("BEARISH"),
+    )
+    assert _demo_structure_conflict(base) is False
+    assert _demo_directional_structure_score(base.h1, "SHORT") == 65.0
+    assert _early_structure_valid(base) is True
+
+
+def test_opposite_trend_without_confirmed_transition_remains_hard_blocked():
+    base = SimpleNamespace(
+        direction="LONG",
+        h1=_snapshot("BULLISH"),
+        m15=_snapshot("BEARISH", bos="BULLISH"),
+    )
+    assert _demo_structure_conflict(base) is True
+    assert _early_structure_valid(base) is False
+
+
+def test_invalid_or_opposite_displacement_cannot_bypass_structure_guard():
+    invalid = SimpleNamespace(
+        direction="LONG",
+        h1=_snapshot("BULLISH"),
+        m15=_snapshot(
+            "BEARISH",
+            bos="BULLISH",
+            displacement=_displacement("BULLISH", valid=False),
+        ),
+    )
+    wrong_direction = SimpleNamespace(
+        direction="LONG",
+        h1=_snapshot("BULLISH"),
+        m15=_snapshot(
+            "BEARISH",
+            bos="BULLISH",
+            displacement=_displacement("BEARISH"),
+        ),
+    )
+    assert _demo_structure_conflict(invalid) is True
+    assert _demo_structure_conflict(wrong_direction) is True
+
+
+def test_demo_runtime_recomputes_structure_guard_without_relaxing_other_guards():
+    source = Path("src/fx_scanner/demo_technical_strategy.py").read_text()
+    workflow = Path(".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
+    strategy = Path("config/strategy.yaml").read_text()
+
+    assert 'computed["STRUCTURE_INVALID"] = _demo_structure_conflict(base)' in source
+    assert 'computed["CHASE_BLOCK"]' in source
+    assert 'computed["RR_BLOCK"]' in source
+    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "60"' in workflow
+    assert "chase_block_atr: 0.50" in strategy
 
 
 def test_supervisor_uses_two_minute_non_overlap_dispatch():
