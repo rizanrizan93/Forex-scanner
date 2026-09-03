@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 from fx_scanner.config import load_project_config
@@ -92,3 +93,24 @@ def test_same_symbol_open_position_is_blocked_before_signal_claim():
 def test_free_capacity_without_session_specific_reconciliation_is_allowed():
     block = executor(CapacityGateway(1))._broker_exposure_block("EURUSD")
     assert block is None
+
+
+def test_manual_close_frees_capacity_on_next_reconciliation():
+    gateway = CapacityGateway(2)
+    demo_executor = executor(gateway)
+    assert demo_executor._broker_exposure_block("EURUSD") == "BROKER_CAPACITY_FULL:2/2"
+
+    # Simulates the user manually closing one cTrader position. The next poll
+    # reads broker state again rather than trusting stale/local position state.
+    gateway.positions = 1
+    assert demo_executor._broker_exposure_block("EURUSD") is None
+
+
+def test_runtime_reports_live_broker_capacity_and_manual_close_detection():
+    source = Path("src/fx_scanner/demo_calibration_autotrade.py").read_text()
+    assert "CTRADER_DEMO_BROKER_EXPOSURE" in source
+    assert "open_positions_before = int(gateway.position_count())" in source
+    assert "open_positions_after = int(gateway.position_count())" in source
+    assert '"broker_position_source": "CTRADER_LIVE"' in source
+    assert '"manual_close_detection": "NEXT_POLL"' in source
+    assert "free_slots" in source
