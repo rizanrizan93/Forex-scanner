@@ -1,6 +1,6 @@
 mode: RESEARCH_ONLY
-risk_per_trade_pct: 1.00
-max_risk_per_trade_pct: 1.00
+risk_per_trade_pct: 0.25
+max_risk_per_trade_pct: 0.50
 max_concurrent_trades: 2
 max_daily_loss_pct: 1.0
 max_consecutive_losses: 3
