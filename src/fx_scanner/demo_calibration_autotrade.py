@@ -15,6 +15,26 @@ from .execution.router import ExecutionRouter
 from .storage.supabase_operational import SupabaseOperationalStore
 
 
+def _safe_skip_fields(value: str) -> tuple[str, str, str | None]:
+    """Return bounded, non-secret skip telemetry for GitHub Actions logs."""
+    parts = str(value).split(":")
+    signal_id = parts[0].strip() if parts and parts[0].strip() else "UNKNOWN"
+    reason = parts[1].strip() if len(parts) > 1 and parts[1].strip() else "UNKNOWN"
+    detail = None
+    if reason in {"BROKER_CAPACITY_FULL", "BROKER_SYMBOL_ALREADY_OPEN"}:
+        if len(parts) > 2 and parts[2].strip():
+            detail = parts[2].strip()
+    elif reason in {
+        "INTENT_ERROR",
+        "BROKER_POSITION_RECONCILIATION_FAILED",
+        "BROKER_SYMBOL_RECONCILIATION_FAILED",
+        "EXECUTION_BLOCKED",
+    }:
+        if len(parts) > 2 and parts[2].strip():
+            detail = parts[2].strip()
+    return signal_id, reason, detail
+
+
 def run(*, limit: int = 10) -> int:
     cfg = load_project_config(None)
     base_policy = load_execution_policy(None)
@@ -72,6 +92,13 @@ def run(*, limit: int = 10) -> int:
         )
 
         report = executor.poll_once(limit=int(limit))
+
+        for skipped in report.skipped[:20]:
+            signal_id, reason, detail = _safe_skip_fields(skipped)
+            line = f"CTRADER_DEMO_SKIP_DETAIL signal_id={signal_id} reason={reason}"
+            if detail is not None:
+                line += f" detail={detail}"
+            print(line)
 
         open_positions_after = int(gateway.position_count())
         free_slots_after = max(0, max_positions - open_positions_after)

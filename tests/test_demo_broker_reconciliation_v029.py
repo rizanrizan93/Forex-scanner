@@ -2,6 +2,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from fx_scanner.config import load_project_config
+from fx_scanner.demo_calibration_autotrade import _safe_skip_fields
 from fx_scanner.execution.demo_autotrade import CTraderDemoAutoExecutor
 from fx_scanner.execution.models import ExecutionMode
 from fx_scanner.execution.policy import ExecutionPolicy
@@ -114,3 +115,22 @@ def test_runtime_reports_live_broker_capacity_and_manual_close_detection():
     assert '"broker_position_source": "CTRADER_LIVE"' in source
     assert '"manual_close_detection": "NEXT_POLL"' in source
     assert "free_slots" in source
+
+
+def test_skip_telemetry_exposes_reason_without_exception_message():
+    assert _safe_skip_fields(
+        "sig-1:EXECUTION_BLOCKED:RuntimeError:secret-like-message"
+    ) == ("sig-1", "EXECUTION_BLOCKED", "RuntimeError")
+    assert _safe_skip_fields("sig-2:BROKER_CAPACITY_FULL:2/2") == (
+        "sig-2",
+        "BROKER_CAPACITY_FULL",
+        "2/2",
+    )
+    assert _safe_skip_fields("sig-3:BROKER_NOT_ACCEPTED") == (
+        "sig-3",
+        "BROKER_NOT_ACCEPTED",
+        None,
+    )
+
+    source = Path("src/fx_scanner/demo_calibration_autotrade.py").read_text()
+    assert "CTRADER_DEMO_SKIP_DETAIL" in source
