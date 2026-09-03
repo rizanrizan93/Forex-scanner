@@ -95,7 +95,7 @@ def test_calibration_pretrigger_is_explicit_opt_in(monkeypatch):
     assert _demo_calibration_pretrigger_enabled() is True
 
 
-def test_demo_pipeline_uses_minimum_supported_calibration_threshold():
+def test_demo_pipeline_uses_score_driven_floor_above_50():
     text = Path(".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
-    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "60"' in text
+    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in text
     assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"' in text

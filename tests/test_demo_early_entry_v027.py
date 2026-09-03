@@ -119,7 +119,7 @@ def test_lagging_h1_trend_is_not_hard_conflict_after_bearish_bos_displacement():
     assert _early_structure_valid(base) is True
 
 
-def test_opposite_trend_without_confirmed_transition_remains_hard_blocked():
+def test_opposite_trend_without_confirmed_transition_remains_diagnostic_conflict():
     base = SimpleNamespace(
         direction="LONG",
         h1=_snapshot("BULLISH"),
@@ -129,7 +129,7 @@ def test_opposite_trend_without_confirmed_transition_remains_hard_blocked():
     assert _early_structure_valid(base) is False
 
 
-def test_invalid_or_opposite_displacement_cannot_bypass_structure_guard():
+def test_invalid_or_opposite_displacement_cannot_hide_diagnostic_conflict():
     invalid = SimpleNamespace(
         direction="LONG",
         h1=_snapshot("BULLISH"),
@@ -192,7 +192,7 @@ def test_recognition_grade_setup_does_not_imply_execution_grade_structure(monkey
     assert _demo_setup_type(base, as_of=now) == SetupType.TREND_CONTINUATION
 
 
-def test_setup_remains_none_without_directional_pattern_evidence():
+def test_setup_remains_none_below_score_policy_without_directional_pattern_evidence():
     now = datetime(2026, 9, 3, 9, 0, tzinfo=UTC)
     base = SimpleNamespace(
         direction="LONG",
@@ -205,16 +205,17 @@ def test_setup_remains_none_without_directional_pattern_evidence():
     assert _demo_setup_type(base, as_of=now) is None
 
 
-def test_demo_runtime_recomputes_structure_guard_without_relaxing_other_guards():
+def test_demo_runtime_uses_score_driven_setup_and_keeps_other_guards():
     source = Path("src/fx_scanner/demo_technical_strategy.py").read_text()
     workflow = Path(".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     strategy = Path("config/strategy.yaml").read_text()
 
-    assert 'computed["STRUCTURE_INVALID"] = _demo_structure_conflict(base)' in source
+    assert 'computed["STRUCTURE_INVALID"] = False' in source
     assert 'computed["CHASE_BLOCK"]' in source
     assert 'computed["RR_BLOCK"]' in source
-    assert "and early_structure" in source
-    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "60"' in workflow
+    assert "score_driven_setup" in source
+    assert "and score_driven_setup" in source
+    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in workflow
     assert "chase_block_atr: 0.50" in strategy
 
 
@@ -229,6 +230,6 @@ def test_supervisor_uses_two_minute_non_overlap_dispatch():
 def test_pipeline_keeps_chase_limit_and_enables_fresh_fvg_profile():
     workflow = Path(".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     strategy = Path("config/strategy.yaml").read_text()
-    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "60"' in workflow
+    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in workflow
     assert 'CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"' in workflow
     assert "chase_block_atr: 0.50" in strategy
