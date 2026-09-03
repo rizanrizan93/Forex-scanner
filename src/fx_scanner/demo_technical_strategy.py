@@ -15,7 +15,6 @@ from .strategy import (
     MTFAnalysis,
     SetupType,
     _directional_structure_score,
-    _htf_conflict,
     analyze_pair_mtf,
     select_pair_candidates,
 )
@@ -49,12 +48,63 @@ def _fresh_directional_fvg(base: MTFAnalysis, *, as_of) -> bool:
     return False
 
 
+def _demo_transition_confirmed(snapshot, direction: str) -> bool:
+    """Accept a fresh SMC transition even while pivot-derived trend still lags.
+
+    The canonical trend label is based on two confirmed swing pivots, so it can
+    remain opposite after price has already produced a directional BOS. For the
+    DEMO scalping lane only, that lag may be overridden by either an explicit
+    MSS or BOS plus valid same-direction displacement on the same timeframe.
+    """
+    wanted = "BULLISH" if direction == "LONG" else "BEARISH"
+    if snapshot.mss == wanted:
+        return True
+    displacement = getattr(snapshot, "displacement", None)
+    return bool(
+        snapshot.bos == wanted
+        and displacement is not None
+        and bool(getattr(displacement, "valid", False))
+        and getattr(displacement, "direction", None) == wanted
+    )
+
+
+def _demo_snapshot_conflict(snapshot, direction: str) -> bool:
+    opposite = "BEARISH" if direction == "LONG" else "BULLISH"
+    return bool(
+        snapshot.trend == opposite
+        and not _demo_transition_confirmed(snapshot, direction)
+    )
+
+
+def _demo_structure_conflict(base: MTFAnalysis) -> bool:
+    return bool(
+        _demo_snapshot_conflict(base.h1, base.direction)
+        or _demo_snapshot_conflict(base.m15, base.direction)
+    )
+
+
+def _demo_directional_structure_score(snapshot, direction: str) -> float | None:
+    """Score transition-confirmed lagging trend as neutral, not opposite.
+
+    We do not award the +30 trend-alignment bonus until pivots catch up. We only
+    remove the stale -40 opposite-trend penalty when same-timeframe transition
+    evidence is already confirmed.
+    """
+    score = _directional_structure_score(snapshot, direction)
+    if score is None:
+        return None
+    opposite = "BEARISH" if direction == "LONG" else "BULLISH"
+    if snapshot.trend == opposite and _demo_transition_confirmed(snapshot, direction):
+        return min(100.0, score + 40.0)
+    return score
+
+
 def _early_structure_valid(base: MTFAnalysis) -> bool:
-    if _htf_conflict(base.direction, base.h1, base.m15):
+    if _demo_structure_conflict(base):
         return False
     return bool(
-        (_directional_structure_score(base.h1, base.direction) or 0.0) >= 55.0
-        and (_directional_structure_score(base.m15, base.direction) or 0.0) >= 55.0
+        (_demo_directional_structure_score(base.h1, base.direction) or 0.0) >= 55.0
+        and (_demo_directional_structure_score(base.m15, base.direction) or 0.0) >= 55.0
     )
 
 
@@ -169,6 +219,7 @@ def analyze_demo_pair_mtf(
     )
 
     computed = dict(base.computed_guards)
+    computed["STRUCTURE_INVALID"] = _demo_structure_conflict(base)
     computed["CHASE_BLOCK"] = bool(
         plan is not None
         and plan.chase_distance_atr > float(plan_cfg["chase_block_atr"])
