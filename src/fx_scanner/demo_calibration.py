@@ -21,7 +21,7 @@ def apply_demo_calibration_threshold(cfg):
     return replace(cfg, scoring=scoring), production_min
 
 
-def apply_demo_calibration_risk(cfg, *, max_risk_pct: float):
+def apply_demo_calibration_risk(cfg, *, max_risk_pct: float = 1.0):
     """Apply a process-local DEMO risk target while keeping canonical risk unchanged."""
     ceiling = float(max_risk_pct)
     if not isfinite(ceiling) or not 0.0 < ceiling <= 1.0:
@@ -34,6 +34,22 @@ def apply_demo_calibration_risk(cfg, *, max_risk_pct: float):
     risk["risk_per_trade_pct"] = requested
     risk["max_risk_per_trade_pct"] = ceiling
     return replace(cfg, risk=risk), requested
+
+
+def apply_demo_calibration_policy_risk(policy, *, max_risk_pct: float = 1.0):
+    """Raise only the already-validated DEMO process risk ceiling.
+
+    The committed execution policy remains at the canonical 0.25% ceiling so
+    normal config validation and any future LIVE path cannot inherit this DEMO
+    calibration override. This helper is called only after DEMO/account locks
+    have been validated by the caller.
+    """
+    ceiling = float(max_risk_pct)
+    if not isfinite(ceiling) or not 0.0 < ceiling <= 1.0:
+        raise SystemExit("CTRADER_DEMO_POLICY_RISK_CEILING_OUT_OF_RANGE")
+    demo_safety = dict(policy.demo_safety)
+    demo_safety["max_risk_pct"] = ceiling
+    return replace(policy, demo_safety=demo_safety)
 
 
 def build_demo_calibration_store(*, execution_ready_score_floor: float):
