@@ -42,6 +42,26 @@ def apply_demo_calibration_risk(cfg, *, max_risk_pct: float = 1.0):
     return replace(cfg, risk=risk), requested
 
 
+def apply_demo_deep_analysis_top(cfg):
+    """Expand only the DEMO technical deep shortlist, bounded by the universe."""
+    raw = os.getenv("CTRADER_DEMO_DEEP_ANALYSIS_TOP", "").strip()
+    if not raw:
+        return cfg
+    try:
+        requested = int(raw)
+    except ValueError as exc:
+        raise SystemExit("CTRADER_DEMO_DEEP_ANALYSIS_TOP_INVALID") from exc
+    canonical = int(cfg.strategy["selection"]["deep_analysis_top"])
+    universe = len(cfg.pairs)
+    if not canonical <= requested <= min(10, universe):
+        raise SystemExit("CTRADER_DEMO_DEEP_ANALYSIS_TOP_OUT_OF_RANGE")
+    selection = dict(cfg.strategy["selection"])
+    selection["deep_analysis_top"] = requested
+    strategy = dict(cfg.strategy)
+    strategy["selection"] = selection
+    return replace(cfg, strategy=strategy)
+
+
 def apply_demo_calibration_policy_risk(policy, *, max_risk_pct: float = 1.0):
     """Raise only the already-validated DEMO process risk ceiling."""
     ceiling = float(max_risk_pct)
