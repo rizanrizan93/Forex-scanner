@@ -73,6 +73,6 @@ def test_supervisor_uses_two_minute_non_overlap_dispatch():
 def test_pipeline_keeps_chase_limit_and_enables_fresh_fvg_profile():
     workflow = Path(".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     strategy = Path("config/strategy.yaml").read_text()
-    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "60"' in workflow
+    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50"' in workflow
     assert 'CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"' in workflow
     assert "chase_block_atr: 0.50" in strategy
