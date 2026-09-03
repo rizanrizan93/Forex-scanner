@@ -21,6 +21,21 @@ def apply_demo_calibration_threshold(cfg):
     return replace(cfg, scoring=scoring), production_min
 
 
+def apply_demo_calibration_risk(cfg, *, max_risk_pct: float):
+    """Apply a process-local DEMO risk target while keeping canonical risk unchanged."""
+    ceiling = float(max_risk_pct)
+    if not isfinite(ceiling) or not 0.0 < ceiling <= 1.0:
+        raise SystemExit("CTRADER_DEMO_RISK_CEILING_OUT_OF_RANGE")
+    raw = os.getenv("CTRADER_DEMO_RISK_PER_TRADE_PCT", "").strip()
+    requested = float(cfg.risk["risk_per_trade_pct"]) if not raw else float(raw)
+    if not isfinite(requested) or not 0.0 < requested <= ceiling:
+        raise SystemExit("CTRADER_DEMO_RISK_PER_TRADE_OUT_OF_RANGE")
+    risk = dict(cfg.risk)
+    risk["risk_per_trade_pct"] = requested
+    risk["max_risk_per_trade_pct"] = ceiling
+    return replace(cfg, risk=risk), requested
+
+
 def build_demo_calibration_store(*, execution_ready_score_floor: float):
     """Build the backend store with an isolated DEMO persistence floor >=60.
 
