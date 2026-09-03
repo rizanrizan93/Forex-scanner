@@ -2,9 +2,29 @@ from __future__ import annotations
 
 from math import isfinite
 
-from .liquidity import FairValueGap
+from .liquidity import FairValueGap, OrderBlock
 from .strategy import TradePlan
 from .technical import atr
+
+
+def _zone_distance(lower: float, upper: float, current_price: float) -> float:
+    if lower <= current_price <= upper:
+        return 0.0
+    if current_price < lower:
+        return lower - current_price
+    return current_price - upper
+
+
+def _zone_chase(
+    direction: str,
+    lower: float,
+    upper: float,
+    current_price: float,
+    current_atr: float,
+) -> float:
+    if direction == "LONG":
+        return max(0.0, float(current_price) - float(upper)) / current_atr
+    return max(0.0, float(lower) - float(current_price)) / current_atr
 
 
 def _nearest_directional_gap(
@@ -40,19 +60,16 @@ def _nearest_directional_gap(
     if not candidates:
         return None
 
-    def zone_distance(gap: FairValueGap) -> float:
-        if gap.lower <= current_price <= gap.upper:
-            return 0.0
-        if current_price < gap.lower:
-            return gap.lower - current_price
-        return current_price - gap.upper
-
     def chase_distance(gap: FairValueGap) -> float:
         if current_atr is None or current_atr <= 0:
             return 0.0
-        if direction == "LONG":
-            return max(0.0, float(current_price) - float(gap.upper)) / current_atr
-        return max(0.0, float(gap.lower) - float(current_price)) / current_atr
+        return _zone_chase(
+            direction,
+            float(gap.lower),
+            float(gap.upper),
+            current_price,
+            current_atr,
+        )
 
     def is_chase_eligible(gap: FairValueGap) -> bool:
         if max_chase_atr is None or current_atr is None or current_atr <= 0:
@@ -63,11 +80,75 @@ def _nearest_directional_gap(
         candidates,
         key=lambda gap: (
             0 if is_chase_eligible(gap) else 1,
-            zone_distance(gap),
+            _zone_distance(float(gap.lower), float(gap.upper), current_price),
             0 if gap.status == "PARTIAL" else 1,
             -gap.lower if direction == "LONG" else gap.upper,
         ),
     )
+
+
+def _nearest_directional_order_block(
+    direction: str,
+    liquidity,
+    current_price: float,
+    *,
+    current_atr: float,
+    max_chase_atr: float,
+) -> OrderBlock | None:
+    wanted = "BULLISH" if direction == "LONG" else "BEARISH"
+    candidates = [
+        block
+        for block in liquidity.order_blocks
+        if block.direction == wanted
+        and block.caused_break
+        and not block.invalidated
+    ]
+    if not candidates:
+        return None
+
+    return min(
+        candidates,
+        key=lambda block: (
+            0
+            if _zone_chase(
+                direction,
+                float(block.lower),
+                float(block.upper),
+                current_price,
+                current_atr,
+            ) <= float(max_chase_atr)
+            else 1,
+            _zone_distance(float(block.lower), float(block.upper), current_price),
+            0 if block.mitigated else 1,
+            -block.lower if direction == "LONG" else block.upper,
+        ),
+    )
+
+
+def _breakout_retest_zone(
+    direction: str,
+    m15,
+    *,
+    current_atr: float,
+    minimum_entry_zone_atr: float,
+) -> tuple[float, float] | None:
+    wanted = "BULLISH" if direction == "LONG" else "BEARISH"
+    if m15.bos != wanted:
+        return None
+
+    level = m15.last_swing_high if direction == "LONG" else m15.last_swing_low
+    if level is None or not isfinite(float(level)) or float(level) <= 0:
+        return None
+
+    half_width = max(
+        current_atr * float(minimum_entry_zone_atr) * 0.50,
+        current_atr * 0.025,
+    )
+    lower = float(level) - half_width
+    upper = float(level) + half_width
+    if lower <= 0 or upper <= lower:
+        return None
+    return lower, upper
 
 
 def build_demo_trade_plan(
@@ -86,13 +167,11 @@ def build_demo_trade_plan(
 ) -> TradePlan | None:
     """Explicit DEMO technical-scalping trade-plan builder.
 
-    The builder prefers the nearest OPEN/PARTIAL directional FVG that is still
-    inside the configured hard chase limit. When price has moved through the
-    FVG in the trade direction but remains inside that hard chase allowance,
-    the executable edge of the DEMO entry zone is extended to current price.
-    This keeps strategy and market-order executor semantics aligned while RR is
-    recomputed from the actual executable boundary. If every FVG is already
-    chased, stale geometry is preserved so CHASE_BLOCK remains observable.
+    Entry-zone priority is directional OPEN/PARTIAL FVG, then a valid
+    break-causing order block, then an M15 BOS retest zone. Every path uses the
+    same hard chase limit and the same structural-target fail-closed behavior.
+    No setup path can bypass RR, chase, structure, spread, correlation, or risk
+    guards in the calling strategy/execution layers.
 
     A TP2 fallback is created only after at least one structural liquidity
     target exists. Zero-target geometry remains fail-closed.
@@ -109,21 +188,48 @@ def build_demo_trade_plan(
         current_atr=current_atr,
         max_chase_atr=float(chase_block_atr),
     )
-    if gap is None:
-        return None
+    block = None
+    source = "FVG"
+    if gap is not None:
+        raw_entry_low, raw_entry_high = float(gap.lower), float(gap.upper)
+    else:
+        block = _nearest_directional_order_block(
+            direction,
+            liquidity,
+            current_price,
+            current_atr=current_atr,
+            max_chase_atr=float(chase_block_atr),
+        )
+        if block is not None:
+            source = "ORDER_BLOCK"
+            raw_entry_low, raw_entry_high = float(block.lower), float(block.upper)
+        else:
+            retest = _breakout_retest_zone(
+                direction,
+                m15,
+                current_atr=current_atr,
+                minimum_entry_zone_atr=float(minimum_entry_zone_atr),
+            )
+            if retest is None:
+                return None
+            source = "BREAKOUT_RETEST"
+            raw_entry_low, raw_entry_high = retest
 
-    raw_entry_low, raw_entry_high = float(gap.lower), float(gap.upper)
     if raw_entry_high - raw_entry_low < current_atr * float(minimum_entry_zone_atr):
         return None
 
     entry_low, entry_high = raw_entry_low, raw_entry_high
-    if direction == "LONG":
-        raw_chase = max(0.0, float(current_price) - raw_entry_high) / current_atr
-        if 0.0 < raw_chase <= float(chase_block_atr):
+    raw_chase = _zone_chase(
+        direction,
+        raw_entry_low,
+        raw_entry_high,
+        current_price,
+        current_atr,
+    )
+    if 0.0 < raw_chase <= float(chase_block_atr):
+        if direction == "LONG":
             entry_high = float(current_price)
-    else:
-        raw_chase = max(0.0, raw_entry_low - float(current_price)) / current_atr
-        if 0.0 < raw_chase <= float(chase_block_atr):
+        else:
             entry_low = float(current_price)
 
     buffer = current_atr * float(sl_buffer_atr)
@@ -133,6 +239,8 @@ def build_demo_trade_plan(
         anchor = None
         if m15.sweep is not None and m15.sweep.valid and m15.sweep.direction == "BULLISH":
             anchor = m15.sweep.level
+        if anchor is None and block is not None:
+            anchor = block.lower
         if anchor is None:
             anchor = h1.last_swing_low
         if anchor is None:
@@ -142,7 +250,7 @@ def build_demo_trade_plan(
         risk = entry_high - stop
         if not isfinite(risk) or risk <= 0:
             return None
-        chase = max(0.0, float(current_price) - entry_high) / current_atr
+        chase = _zone_chase(direction, entry_low, entry_high, current_price, current_atr)
 
         targets = []
         for level in liquidity.levels_above(entry_high):
@@ -165,6 +273,8 @@ def build_demo_trade_plan(
         anchor = None
         if m15.sweep is not None and m15.sweep.valid and m15.sweep.direction == "BEARISH":
             anchor = m15.sweep.level
+        if anchor is None and block is not None:
+            anchor = block.upper
         if anchor is None:
             anchor = h1.last_swing_high
         if anchor is None:
@@ -174,7 +284,7 @@ def build_demo_trade_plan(
         risk = stop - entry_low
         if not isfinite(risk) or risk <= 0:
             return None
-        chase = max(0.0, entry_low - float(current_price)) / current_atr
+        chase = _zone_chase(direction, entry_low, entry_high, current_price, current_atr)
 
         targets = []
         for level in liquidity.levels_below(entry_low):
