@@ -6,11 +6,14 @@ from types import SimpleNamespace
 
 from fx_scanner.demo_technical_strategy import (
     _demo_directional_structure_score,
+    _demo_setup_recognition_structure_valid,
+    _demo_setup_type,
     _demo_structure_conflict,
     _early_structure_valid,
     _fresh_directional_fvg,
 )
 from fx_scanner.liquidity import FairValueGap
+from fx_scanner.strategy import SetupType
 
 UTC = timezone.utc
 
@@ -19,17 +22,25 @@ def _displacement(direction: str, *, valid: bool = True):
     return SimpleNamespace(direction=direction, valid=valid)
 
 
+def _fvg(direction: str, *, valid: bool = True):
+    return SimpleNamespace(direction=direction, valid=valid)
+
+
 def _snapshot(
     trend: str,
     bos: str | None = None,
     mss: str | None = None,
     displacement=None,
+    fvg=None,
+    sweep=None,
 ):
     return SimpleNamespace(
         trend=trend,
         bos=bos,
         mss=mss,
         displacement=displacement,
+        fvg=fvg,
+        sweep=sweep,
     )
 
 
@@ -141,6 +152,59 @@ def test_invalid_or_opposite_displacement_cannot_bypass_structure_guard():
     assert _demo_structure_conflict(wrong_direction) is True
 
 
+def test_transition_can_name_setup_without_waiting_for_fresh_fvg():
+    now = datetime(2026, 9, 3, 9, 0, tzinfo=UTC)
+    base = SimpleNamespace(
+        direction="LONG",
+        setup_type=None,
+        h1=_snapshot("BULLISH"),
+        m15=_snapshot(
+            "RANGE",
+            bos="BULLISH",
+            displacement=_displacement("BULLISH"),
+        ),
+        liquidity=SimpleNamespace(fvgs=()),
+    )
+    assert _demo_setup_recognition_structure_valid(base) is True
+    assert _demo_setup_type(base, as_of=now) == SetupType.TREND_CONTINUATION
+
+
+def test_recognition_grade_setup_does_not_imply_execution_grade_structure(monkeypatch):
+    monkeypatch.setenv("CTRADER_DEMO_FVG_MAX_AGE_MINUTES", "90")
+    now = datetime(2026, 9, 3, 9, 0, tzinfo=UTC)
+    gap = FairValueGap(
+        "BULLISH",
+        100.0,
+        101.0,
+        now - timedelta(minutes=20),
+        "OPEN",
+        0.0,
+    )
+    base = SimpleNamespace(
+        direction="LONG",
+        setup_type=None,
+        h1=_snapshot("RANGE"),
+        m15=_snapshot("RANGE"),
+        liquidity=SimpleNamespace(fvgs=(gap,)),
+    )
+    assert _demo_setup_recognition_structure_valid(base) is True
+    assert _early_structure_valid(base) is False
+    assert _demo_setup_type(base, as_of=now) == SetupType.TREND_CONTINUATION
+
+
+def test_setup_remains_none_without_directional_pattern_evidence():
+    now = datetime(2026, 9, 3, 9, 0, tzinfo=UTC)
+    base = SimpleNamespace(
+        direction="LONG",
+        setup_type=None,
+        h1=_snapshot("RANGE"),
+        m15=_snapshot("RANGE"),
+        liquidity=SimpleNamespace(fvgs=()),
+    )
+    assert _demo_setup_recognition_structure_valid(base) is True
+    assert _demo_setup_type(base, as_of=now) is None
+
+
 def test_demo_runtime_recomputes_structure_guard_without_relaxing_other_guards():
     source = Path("src/fx_scanner/demo_technical_strategy.py").read_text()
     workflow = Path(".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
@@ -149,6 +213,7 @@ def test_demo_runtime_recomputes_structure_guard_without_relaxing_other_guards()
     assert 'computed["STRUCTURE_INVALID"] = _demo_structure_conflict(base)' in source
     assert 'computed["CHASE_BLOCK"]' in source
     assert 'computed["RR_BLOCK"]' in source
+    assert "and early_structure" in source
     assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "60"' in workflow
     assert "chase_block_atr: 0.50" in strategy
 
