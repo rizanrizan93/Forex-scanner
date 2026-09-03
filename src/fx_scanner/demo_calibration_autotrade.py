@@ -1,0 +1,99 @@
+from __future__ import annotations
+
+import argparse
+from dataclasses import replace
+
+from .cli import _apply_demo_technical_only_profile, _require_demo_autotrade_opt_in
+from .config import load_project_config
+from .demo_calibration import apply_demo_calibration_threshold
+from .execution.control_plane import ControlPlaneGate, ControlPlaneRefreshWorker
+from .execution.demo_autotrade import CTraderDemoAutoExecutor, SupabaseOrderAuditSink
+from .execution.factory import build_broker_gateway
+from .execution.models import ExecutionMode
+from .execution.policy import load_execution_policy
+from .execution.router import ExecutionRouter
+from .storage.supabase_operational import SupabaseOperationalStore
+
+
+def run(*, limit: int = 10) -> int:
+    cfg = load_project_config(None)
+    base_policy = load_execution_policy(None)
+    _require_demo_autotrade_opt_in(base_policy)
+    if str(base_policy.ctrader.get("environment", "")).upper() != "DEMO":
+        raise SystemExit("CTRADER_DEMO_CALIBRATION_EXECUTOR_DEMO_ONLY")
+
+    cfg, production_execution_min = apply_demo_calibration_threshold(cfg)
+    cfg = _apply_demo_technical_only_profile(cfg)
+    demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
+    policy = replace(base_policy, mode=ExecutionMode.AUTO)
+    symbols = [pair.symbol for pair in cfg.pairs]
+    gateway, session = build_broker_gateway(policy, symbols, backend="CTRADER")
+    # The executor only reads/claims durable signals; canonical storage's score
+    # write floor is not relaxed in this process.
+    store = SupabaseOperationalStore.from_env()
+    gate = ControlPlaneGate(
+        max_age_seconds=float(policy.live_safety.get("control_state_max_age_seconds", 5))
+    )
+    router = ExecutionRouter(
+        policy,
+        gateway=gateway,
+        session=session,
+        control_gate=gate,
+        audit_sink=SupabaseOrderAuditSink(store),
+    )
+    executor = CTraderDemoAutoExecutor(
+        cfg=cfg,
+        policy=policy,
+        gateway=gateway,
+        router=router,
+        store=store,
+    )
+    control_worker = ControlPlaneRefreshWorker(
+        store,
+        gate,
+        interval_seconds=min(
+            1.0,
+            max(0.25, float(policy.live_safety.get("control_state_max_age_seconds", 5)) / 3.0),
+        ),
+    )
+    control_worker.refresh_once()
+    control_worker.start()
+    try:
+        report = executor.poll_once(limit=int(limit))
+        store.write_heartbeat(
+            "ctrader_demo_autotrade",
+            healthy=True,
+            lag_seconds=0.0,
+            details={
+                "mode": "AUTO",
+                "environment": "DEMO",
+                "calibration_threshold": demo_execution_min,
+                "scanned": report.scanned,
+                "eligible": report.eligible,
+                "claimed": report.claimed,
+                "executed": report.executed,
+                "skipped": list(report.skipped[:20]),
+            },
+        )
+        print(
+            "CTRADER_DEMO_CALIBRATION_AUTOTRADE_OK "
+            f"threshold={demo_execution_min:g} production_default={production_execution_min:g} "
+            f"scanned={report.scanned} eligible={report.eligible} "
+            f"claimed={report.claimed} executed={report.executed} "
+            f"skipped={len(report.skipped)}"
+        )
+        return 0
+    finally:
+        control_worker.stop()
+        session.close()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--limit", type=int, default=10)
+    args = parser.parse_args()
+    return run(limit=args.limit)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
