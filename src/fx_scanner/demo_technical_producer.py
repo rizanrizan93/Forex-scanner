@@ -11,6 +11,7 @@ from .config import load_project_config
 from .demo_calibration import (
     apply_demo_calibration_risk,
     apply_demo_calibration_threshold,
+    apply_demo_deep_analysis_top,
     build_demo_calibration_store,
 )
 from .demo_correlation_evidence import EvidenceProductionGuardResolver
@@ -37,11 +38,14 @@ def run() -> int:
 
     cfg, production_execution_min = apply_demo_calibration_threshold(cfg)
     cfg = _apply_demo_technical_only_profile(cfg)
+    cfg = apply_demo_deep_analysis_top(cfg)
     cfg, demo_risk_pct = apply_demo_calibration_risk(
         cfg,
         max_risk_pct=float(policy.demo_safety["max_risk_pct"]),
     )
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
+    demo_deep_top = int(cfg.strategy["selection"]["deep_analysis_top"])
+    effective_risk_ceiling = float(cfg.risk["max_risk_per_trade_pct"])
     fvg_max_age = float(os.getenv("CTRADER_DEMO_FVG_MAX_AGE_MINUTES", "90"))
     print(
         "CTRADER_DEMO_EXECUTION_THRESHOLD "
@@ -57,13 +61,13 @@ def run() -> int:
     )
     print(
         "CTRADER_DEMO_FAST_PASS universe_tfs=H1,M15,M5 "
-        f"slow_hydration_top={max(int(cfg.strategy['selection']['deep_analysis_top']), int(cfg.strategy['selection']['macro_compatible_top']))} "
-        "slow_tfs=D1,H4 request_pacing=UNCHANGED"
+        f"slow_hydration_top={max(demo_deep_top, int(cfg.strategy['selection']['macro_compatible_top']))} "
+        f"deep_analysis_top={demo_deep_top} slow_tfs=D1,H4 request_pacing=UNCHANGED"
     )
     print(
         "CTRADER_DEMO_RISK "
         f"risk_per_trade_pct={demo_risk_pct:g} "
-        f"max_risk_pct={float(policy.demo_safety['max_risk_pct']):g} "
+        f"max_risk_pct={effective_risk_ceiling:g} "
         f"max_lots={float(policy.demo_safety['max_order_lots']):g} "
         f"max_positions={int(policy.demo_safety['max_concurrent_positions'])}"
     )
