@@ -16,10 +16,29 @@ from .demo_calibration import (
 )
 from .demo_correlation_evidence import EvidenceProductionGuardResolver
 from .demo_signal_producer import ExplicitDemoTechnicalSignalProducer
+from .demo_technical_strategy import (
+    _demo_directional_structure_score,
+    _demo_structure_conflict,
+    _early_structure_valid,
+)
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 
 UTC = timezone.utc
+
+
+def _safe_structure_value(value) -> str:
+    return "NONE" if value is None else str(value)
+
+
+def _displacement_text(snapshot) -> tuple[str, int]:
+    displacement = getattr(snapshot, "displacement", None)
+    if displacement is None:
+        return "NONE", 0
+    return (
+        _safe_structure_value(getattr(displacement, "direction", None)),
+        int(bool(getattr(displacement, "valid", False))),
+    )
 
 
 def run() -> int:
@@ -168,6 +187,26 @@ def run() -> int:
                 )
             analysis = analyses.get(symbol)
             if analysis is not None:
+                h1_score = _demo_directional_structure_score(analysis.h1, analysis.direction)
+                m15_score = _demo_directional_structure_score(analysis.m15, analysis.direction)
+                h1_disp_dir, h1_disp_valid = _displacement_text(analysis.h1)
+                m15_disp_dir, m15_disp_valid = _displacement_text(analysis.m15)
+                print(
+                    "CTRADER_STRUCTURE_EVIDENCE "
+                    f"symbol={symbol} direction={analysis.direction} "
+                    f"h1_trend={analysis.h1.trend} "
+                    f"h1_score={'NONE' if h1_score is None else f'{h1_score:.1f}'} "
+                    f"h1_bos={_safe_structure_value(analysis.h1.bos)} "
+                    f"h1_mss={_safe_structure_value(analysis.h1.mss)} "
+                    f"h1_disp={h1_disp_dir} h1_disp_valid={h1_disp_valid} "
+                    f"m15_trend={analysis.m15.trend} "
+                    f"m15_score={'NONE' if m15_score is None else f'{m15_score:.1f}'} "
+                    f"m15_bos={_safe_structure_value(analysis.m15.bos)} "
+                    f"m15_mss={_safe_structure_value(analysis.m15.mss)} "
+                    f"m15_disp={m15_disp_dir} m15_disp_valid={m15_disp_valid} "
+                    f"conflict={int(_demo_structure_conflict(analysis))} "
+                    f"execution_structure={int(_early_structure_valid(analysis))}"
+                )
                 plan = analysis.trade_plan
                 if plan is None:
                     print(f"CTRADER_SIGNAL_GEOMETRY symbol={symbol} plan=NONE")
