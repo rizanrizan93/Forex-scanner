@@ -42,9 +42,10 @@ class SupabaseOrderAuditSink:
 class CTraderDemoAutoExecutor:
     """Consume durable EXECUTION_READY signals and submit demo-only cTrader orders.
 
-    The Supabase state transition EXECUTION_READY -> COOLDOWN is the durable,
-    atomic claim. It happens before broker I/O. A crash can therefore miss a
-    demo trade, but it cannot blindly repeat the same signal on the next run.
+    Broker exposure is reconciled before the durable Supabase claim. This keeps
+    capacity/same-symbol blocks from consuming a signal into COOLDOWN before any
+    broker attempt, while the canonical EXECUTION_READY -> COOLDOWN transition
+    remains the atomic claim immediately before execution.
     """
 
     def __init__(self, *, cfg, policy, gateway, router, store):
@@ -135,6 +136,37 @@ class CTraderDemoAutoExecutor:
             comment=f"DEMO_AUTO:{row.get('setup_type') or 'UNKNOWN'}",
         )
 
+    def _broker_exposure_block(self, symbol: str) -> str | None:
+        """Reconcile current cTrader exposure before consuming the durable signal.
+
+        Fail closed when total broker capacity cannot be read. For the cTrader
+        gateway, also reject stacking a second position on the same symbol.
+        """
+        try:
+            open_positions = int(self.gateway.position_count())
+        except Exception as exc:
+            return f"BROKER_POSITION_RECONCILIATION_FAILED:{type(exc).__name__}:{exc}"
+
+        max_positions = int(self.demo.get("max_concurrent_positions", 1))
+        if open_positions >= max_positions:
+            return f"BROKER_CAPACITY_FULL:{open_positions}/{max_positions}"
+
+        session = getattr(self.gateway, "session", None)
+        if session is None:
+            return None
+        try:
+            session.ensure_connected()
+            target_symbol_id = int(session.symbol_info(symbol).symbolId)
+            reconcile = session.reconcile()
+            for position in tuple(getattr(reconcile, "position", ())):
+                trade_data = getattr(position, "tradeData", None)
+                position_symbol_id = getattr(trade_data, "symbolId", None)
+                if position_symbol_id is not None and int(position_symbol_id) == target_symbol_id:
+                    return f"BROKER_SYMBOL_ALREADY_OPEN:{symbol}"
+        except Exception as exc:
+            return f"BROKER_SYMBOL_RECONCILIATION_FAILED:{type(exc).__name__}:{exc}"
+        return None
+
     def poll_once(self, *, limit: int = 10) -> DemoAutoReport:
         if self.policy.live_safety.get("require_control_plane", False):
             if self.control_gate is None:
@@ -170,6 +202,11 @@ class CTraderDemoAutoExecutor:
                 skipped.append(f"{signal_id}:NOT_ELIGIBLE")
                 continue
             eligible += 1
+
+            exposure_block = self._broker_exposure_block(intent.symbol)
+            if exposure_block is not None:
+                skipped.append(f"{signal_id}:{exposure_block}")
+                continue
 
             try:
                 if not self.store.claim_signal_for_execution(intent.signal_id):
