@@ -27,17 +27,12 @@ def run(*, limit: int = 10) -> int:
     cfg, demo_risk_pct = apply_demo_calibration_risk(cfg, max_risk_pct=1.0)
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
 
-    # Canonical policy validation remains capped at 0.25%. Only after the DEMO
-    # environment + explicit opt-in are proven do we raise this process-local
-    # calibration ceiling to 1.0%.
     demo_safety = dict(base_policy.demo_safety)
     demo_safety["max_risk_pct"] = 1.0
     policy = replace(base_policy, mode=ExecutionMode.AUTO, demo_safety=demo_safety)
 
     symbols = [pair.symbol for pair in cfg.pairs]
     gateway, session = build_broker_gateway(policy, symbols, backend="CTRADER")
-    # The executor only reads/claims durable signals; canonical storage's score
-    # write floor is not relaxed in this process.
     store = SupabaseOperationalStore.from_env()
     gate = ControlPlaneGate(
         max_age_seconds=float(policy.live_safety.get("control_state_max_age_seconds", 5))
@@ -67,21 +62,23 @@ def run(*, limit: int = 10) -> int:
     control_worker.refresh_once()
     control_worker.start()
     try:
-        open_positions_before = int(gateway.position_count())
+        open_before = int(gateway.position_count())
         max_positions = int(policy.demo_safety["max_concurrent_positions"])
         print(
             "CTRADER_DEMO_BROKER_EXPOSURE "
-            f"open_positions={open_positions_before} max_positions={max_positions} "
-            f"free_slots={max(0, max_positions - open_positions_before)} source=CTRADER_LIVE"
+            f"open_positions={open_before} max_positions={max_positions} "
+            f"free_slots={max(0, max_positions - open_before)} source=CTRADER_LIVE phase=BEFORE"
         )
 
         report = executor.poll_once(limit=int(limit))
 
-        # Re-read the broker after execution. This is deliberately authoritative:
-        # a manual close in cTrader is reflected on the next executor poll and the
-        # freed slot becomes immediately available to another valid setup.
-        open_positions_after = int(gateway.position_count())
-        free_slots_after = max(0, max_positions - open_positions_after)
+        open_after = int(gateway.position_count())
+        print(
+            "CTRADER_DEMO_BROKER_EXPOSURE "
+            f"open_positions={open_after} max_positions={max_positions} "
+            f"free_slots={max(0, max_positions - open_after)} source=CTRADER_LIVE phase=AFTER"
+        )
+
         store.write_heartbeat(
             "ctrader_demo_autotrade",
             healthy=True,
@@ -92,11 +89,10 @@ def run(*, limit: int = 10) -> int:
                 "calibration_threshold": demo_execution_min,
                 "risk_per_trade_pct": demo_risk_pct,
                 "max_risk_pct": float(policy.demo_safety["max_risk_pct"]),
-                "open_positions": open_positions_after,
+                "open_positions": open_after,
                 "max_positions": max_positions,
-                "free_slots": free_slots_after,
-                "broker_position_source": "CTRADER_LIVE",
-                "manual_close_detection": "NEXT_POLL",
+                "free_slots": max(0, max_positions - open_after),
+                "broker_exposure_source": "CTRADER_LIVE",
                 "scanned": report.scanned,
                 "eligible": report.eligible,
                 "claimed": report.claimed,
@@ -105,15 +101,10 @@ def run(*, limit: int = 10) -> int:
             },
         )
         print(
-            "CTRADER_DEMO_BROKER_EXPOSURE_AFTER "
-            f"open_positions={open_positions_after} max_positions={max_positions} "
-            f"free_slots={free_slots_after} manual_close_detection=NEXT_POLL"
-        )
-        print(
             "CTRADER_DEMO_CALIBRATION_AUTOTRADE_OK "
             f"threshold={demo_execution_min:g} production_default={production_execution_min:g} "
             f"risk_pct={demo_risk_pct:g} max_risk_pct={float(policy.demo_safety['max_risk_pct']):g} "
-            f"open_positions={open_positions_after}/{max_positions} free_slots={free_slots_after} "
+            f"open_positions={open_after} free_slots={max(0, max_positions - open_after)} "
             f"scanned={report.scanned} eligible={report.eligible} "
             f"claimed={report.claimed} executed={report.executed} "
             f"skipped={len(report.skipped)}"
