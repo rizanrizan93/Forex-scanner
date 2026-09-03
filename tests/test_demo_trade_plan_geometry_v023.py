@@ -76,8 +76,8 @@ def test_demo_plan_synthesizes_tp2_only_after_structural_tp1(monkeypatch):
 
     assert plan is not None
     assert plan.entry_low == 99.8
-    assert plan.entry_high == 100.1
-    assert plan.chase_distance_atr <= 0.5
+    assert plan.entry_high == 100.2
+    assert plan.chase_distance_atr == 0.0
     assert plan.tp1 == 102.0
     assert plan.tp2 is not None
     assert plan.tp2 > plan.tp1
