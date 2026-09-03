@@ -49,13 +49,7 @@ def _fresh_directional_fvg(base: MTFAnalysis, *, as_of) -> bool:
 
 
 def _demo_transition_confirmed(snapshot, direction: str) -> bool:
-    """Accept a fresh SMC transition even while pivot-derived trend still lags.
-
-    The canonical trend label is based on two confirmed swing pivots, so it can
-    remain opposite after price has already produced a directional BOS. For the
-    DEMO scalping lane only, that lag may be overridden by either an explicit
-    MSS or BOS plus valid same-direction displacement on the same timeframe.
-    """
+    """Accept a fresh SMC transition even while pivot-derived trend still lags."""
     wanted = "BULLISH" if direction == "LONG" else "BEARISH"
     if snapshot.mss == wanted:
         return True
@@ -84,12 +78,6 @@ def _demo_structure_conflict(base: MTFAnalysis) -> bool:
 
 
 def _demo_directional_structure_score(snapshot, direction: str) -> float | None:
-    """Score transition-confirmed lagging trend as neutral, not opposite.
-
-    We do not award the +30 trend-alignment bonus until pivots catch up. We only
-    remove the stale -40 opposite-trend penalty when same-timeframe transition
-    evidence is already confirmed.
-    """
     score = _directional_structure_score(snapshot, direction)
     if score is None:
         return None
@@ -100,7 +88,6 @@ def _demo_directional_structure_score(snapshot, direction: str) -> float | None:
 
 
 def _early_structure_valid(base: MTFAnalysis) -> bool:
-    """Execution-grade H1/M15 structure; intentionally remains strict."""
     if _demo_structure_conflict(base):
         return False
     return bool(
@@ -110,13 +97,6 @@ def _early_structure_valid(base: MTFAnalysis) -> bool:
 
 
 def _demo_setup_recognition_structure_valid(base: MTFAnalysis) -> bool:
-    """Recognition-grade structure, separated from execution eligibility.
-
-    A setup may be named before it is safe to execute. This prevents a genuine
-    transition/continuation pattern from being hidden as setup=NONE while the
-    stricter execution structure, chase, RR, correlation and volatility gates
-    continue to decide whether an order is allowed.
-    """
     if _demo_structure_conflict(base):
         return False
     h1_score = _demo_directional_structure_score(base.h1, base.direction)
@@ -156,27 +136,17 @@ def _demo_snapshot_directional_evidence(snapshot, direction: str) -> bool:
 
 
 def _demo_setup_type(base: MTFAnalysis, *, as_of) -> SetupType | None:
-    """Recognize the technical setup independently from execution guards."""
+    """Recognize technical patterns below the score-driven DEMO admission floor."""
     if base.setup_type is not None:
         return base.setup_type
     if not _demo_setup_recognition_structure_valid(base):
         return None
-
-    # A fresh directional imbalance is sufficient to name the continuation
-    # while price is still forming the executable trigger/geometry.
     if _fresh_directional_fvg(base, as_of=as_of):
         return SetupType.TREND_CONTINUATION
-
-    # Do not wait for pivot-derived trend labels to catch up with a confirmed
-    # same-timeframe transition. This is the principal anti-miss path.
     if _demo_transition_confirmed(base.h1, base.direction) or _demo_transition_confirmed(
         base.m15, base.direction
     ):
         return SetupType.TREND_CONTINUATION
-
-    # When H1 already carries directional structure, a directional M15 event
-    # is enough to classify the setup as forming. Execution still requires the
-    # stricter >=55 H1/M15 structure and every hard guard below.
     h1_score = _demo_directional_structure_score(base.h1, base.direction) or 0.0
     if h1_score >= 55.0 and _demo_snapshot_directional_evidence(base.m15, base.direction):
         return SetupType.TREND_CONTINUATION
@@ -235,12 +205,7 @@ def analyze_demo_pair_mtf(
     external_guard_flags: Mapping[str, bool],
     execution_quality_score: float | None = None,
 ) -> MTFAnalysis:
-    """Run canonical technical analysis, then explicitly bind DEMO geometry.
-
-    No module-level strategy function is replaced. The DEMO trade-plan builder
-    is called directly and all plan-dependent scoring/guards are recomputed from
-    that explicit result before the final decision is returned.
-    """
+    """Run canonical analysis, then apply the DEMO score-driven admission policy."""
     base = analyze_pair_mtf(
         rank=rank,
         bars_by_timeframe=bars_by_timeframe,
@@ -284,7 +249,9 @@ def analyze_demo_pair_mtf(
     )
 
     computed = dict(base.computed_guards)
-    computed["STRUCTURE_INVALID"] = _demo_structure_conflict(base)
+    # DEMO score-driven policy: structure remains diagnostic telemetry but is no
+    # longer a hard execution veto. Other market/risk guards remain enforced.
+    computed["STRUCTURE_INVALID"] = False
     computed["CHASE_BLOCK"] = bool(
         plan is not None
         and plan.chase_distance_atr > float(plan_cfg["chase_block_atr"])
@@ -308,10 +275,14 @@ def analyze_demo_pair_mtf(
         minimum_pair_coverage=0.85,
     )
 
+    score = decision.conviction_score
+    execution_floor = float(cfg.scoring["states"]["execution_candidate_min"])
+    score_driven_setup = bool(score is not None and float(score) >= execution_floor)
+    if score_driven_setup and setup_type is None:
+        setup_type = SetupType.TREND_CONTINUATION
+
     state = decision.state
     if not decision.guards:
-        score = decision.conviction_score
-        execution_floor = float(cfg.scoring["states"]["execution_candidate_min"])
         plan_ready = bool(
             plan is not None
             and plan.rr2 is not None
@@ -325,25 +296,16 @@ def analyze_demo_pair_mtf(
         )
         calibration_ready = bool(
             _demo_calibration_pretrigger_enabled()
-            and setup_type is not None
-            and early_structure
+            and score_driven_setup
             and plan_ready
-            and score is not None
-            and float(score) >= execution_floor
         )
 
-        if setup_type is None:
+        if calibration_ready:
+            state = SignalState.EXECUTION_READY
+        elif setup_type is None:
             if state not in {SignalState.NO_TRADE, SignalState.WATCH}:
                 state = SignalState.WATCH
-        elif calibration_ready:
-            # DEMO calibration lane: recognition may happen earlier, but an
-            # actual order still requires execution-grade H1/M15 structure,
-            # valid RR/chase geometry, score floor and every hard guard clear.
-            state = SignalState.EXECUTION_READY
         elif early_watch and state in {SignalState.NO_TRADE, SignalState.WATCH}:
-            # Preserve the score for execution eligibility, but surface valid
-            # H1/M15 structure + a fresh FVG earlier so the setup is not hidden
-            # until price has already moved beyond the chase limit.
             state = SignalState.SETUP_FORMING
         elif setup_type is not None and not base.trigger_confirmed and state in {
             SignalState.ARMED,
