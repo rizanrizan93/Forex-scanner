@@ -67,7 +67,21 @@ def run(*, limit: int = 10) -> int:
     control_worker.refresh_once()
     control_worker.start()
     try:
+        open_positions_before = int(gateway.position_count())
+        max_positions = int(policy.demo_safety["max_concurrent_positions"])
+        print(
+            "CTRADER_DEMO_BROKER_EXPOSURE "
+            f"open_positions={open_positions_before} max_positions={max_positions} "
+            f"free_slots={max(0, max_positions - open_positions_before)} source=CTRADER_LIVE"
+        )
+
         report = executor.poll_once(limit=int(limit))
+
+        # Re-read the broker after execution. This is deliberately authoritative:
+        # a manual close in cTrader is reflected on the next executor poll and the
+        # freed slot becomes immediately available to another valid setup.
+        open_positions_after = int(gateway.position_count())
+        free_slots_after = max(0, max_positions - open_positions_after)
         store.write_heartbeat(
             "ctrader_demo_autotrade",
             healthy=True,
@@ -78,6 +92,11 @@ def run(*, limit: int = 10) -> int:
                 "calibration_threshold": demo_execution_min,
                 "risk_per_trade_pct": demo_risk_pct,
                 "max_risk_pct": float(policy.demo_safety["max_risk_pct"]),
+                "open_positions": open_positions_after,
+                "max_positions": max_positions,
+                "free_slots": free_slots_after,
+                "broker_position_source": "CTRADER_LIVE",
+                "manual_close_detection": "NEXT_POLL",
                 "scanned": report.scanned,
                 "eligible": report.eligible,
                 "claimed": report.claimed,
@@ -86,9 +105,15 @@ def run(*, limit: int = 10) -> int:
             },
         )
         print(
+            "CTRADER_DEMO_BROKER_EXPOSURE_AFTER "
+            f"open_positions={open_positions_after} max_positions={max_positions} "
+            f"free_slots={free_slots_after} manual_close_detection=NEXT_POLL"
+        )
+        print(
             "CTRADER_DEMO_CALIBRATION_AUTOTRADE_OK "
             f"threshold={demo_execution_min:g} production_default={production_execution_min:g} "
             f"risk_pct={demo_risk_pct:g} max_risk_pct={float(policy.demo_safety['max_risk_pct']):g} "
+            f"open_positions={open_positions_after}/{max_positions} free_slots={free_slots_after} "
             f"scanned={report.scanned} eligible={report.eligible} "
             f"claimed={report.claimed} executed={report.executed} "
             f"skipped={len(report.skipped)}"
