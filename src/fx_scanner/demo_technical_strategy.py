@@ -8,7 +8,7 @@ from typing import Mapping, Sequence
 from .decision import build_decision
 from .demo_trade_plan_geometry import build_demo_trade_plan
 from .exceptions import DataContractError
-from .models import Bar, SignalState
+from .models import Bar, SignalState, ensure_utc
 from .ranking import PairRank
 from .strategy import (
     DeepScanReport,
@@ -25,20 +25,45 @@ def _demo_calibration_pretrigger_enabled() -> bool:
     return os.getenv("CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER", "0").strip() == "1"
 
 
-def _demo_setup_type(base: MTFAnalysis) -> SetupType | None:
+def _demo_fvg_max_age_minutes() -> float:
+    raw = os.getenv("CTRADER_DEMO_FVG_MAX_AGE_MINUTES", "90").strip()
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise DataContractError("CTRADER_DEMO_FVG_MAX_AGE_MINUTES must be numeric") from exc
+    if not 15.0 <= value <= 240.0:
+        raise DataContractError("CTRADER_DEMO_FVG_MAX_AGE_MINUTES must be in [15,240]")
+    return value
+
+
+def _fresh_directional_fvg(base: MTFAnalysis, *, as_of) -> bool:
+    wanted = "BULLISH" if base.direction == "LONG" else "BEARISH"
+    now = ensure_utc(as_of)
+    max_age_seconds = 60.0 * _demo_fvg_max_age_minutes()
+    for gap in base.liquidity.fvgs:
+        if gap.direction != wanted or gap.status not in {"OPEN", "PARTIAL"}:
+            continue
+        age = (now - ensure_utc(gap.origin_at)).total_seconds()
+        if 0.0 <= age <= max_age_seconds:
+            return True
+    return False
+
+
+def _early_structure_valid(base: MTFAnalysis) -> bool:
+    if _htf_conflict(base.direction, base.h1, base.m15):
+        return False
+    return bool(
+        (_directional_structure_score(base.h1, base.direction) or 0.0) >= 55.0
+        and (_directional_structure_score(base.m15, base.direction) or 0.0) >= 55.0
+    )
+
+
+def _demo_setup_type(base: MTFAnalysis, *, as_of) -> SetupType | None:
     if base.setup_type is not None:
         return base.setup_type
-    if _htf_conflict(base.direction, base.h1, base.m15):
+    if not _early_structure_valid(base):
         return None
-    if (_directional_structure_score(base.h1, base.direction) or 0.0) < 55.0:
-        return None
-    if (_directional_structure_score(base.m15, base.direction) or 0.0) < 55.0:
-        return None
-    wanted = "BULLISH" if base.direction == "LONG" else "BEARISH"
-    if any(
-        gap.direction == wanted and gap.status in {"OPEN", "PARTIAL"}
-        for gap in base.liquidity.fvgs
-    ):
+    if _fresh_directional_fvg(base, as_of=as_of):
         return SetupType.TREND_CONTINUATION
     return None
 
@@ -131,7 +156,9 @@ def analyze_demo_pair_mtf(
         minimum_entry_zone_atr=float(plan_cfg["minimum_entry_zone_atr"]),
         chase_block_atr=float(plan_cfg["chase_block_atr"]),
     )
-    setup_type = _demo_setup_type(base)
+    setup_type = _demo_setup_type(base, as_of=as_of)
+    early_structure = _early_structure_valid(base)
+    fresh_fvg = _fresh_directional_fvg(base, as_of=as_of)
 
     components = dict(base.conviction_components)
     components["execution_quality"] = _execution_quality(
@@ -167,21 +194,44 @@ def analyze_demo_pair_mtf(
 
     state = decision.state
     if not decision.guards:
-        if setup_type is None and state not in {SignalState.NO_TRADE, SignalState.WATCH}:
-            state = SignalState.WATCH
+        score = decision.conviction_score
+        execution_floor = float(cfg.scoring["states"]["execution_candidate_min"])
+        plan_ready = bool(
+            plan is not None
+            and plan.rr2 is not None
+            and plan.rr2 >= float(plan_cfg["minimum_tp2_rr"])
+            and plan.chase_distance_atr <= float(plan_cfg["chase_block_atr"])
+        )
+        early_watch = bool(
+            setup_type is not None
+            and early_structure
+            and fresh_fvg
+        )
+        calibration_ready = bool(
+            _demo_calibration_pretrigger_enabled()
+            and plan_ready
+            and score is not None
+            and float(score) >= execution_floor
+        )
+
+        if setup_type is None:
+            if state not in {SignalState.NO_TRADE, SignalState.WATCH}:
+                state = SignalState.WATCH
+        elif calibration_ready:
+            # DEMO calibration lane: once the technical score, setup, RR and
+            # chase geometry are all valid and hard guards are clear, execute
+            # immediately instead of waiting for a later M5 displacement bar.
+            state = SignalState.EXECUTION_READY
+        elif early_watch and state in {SignalState.NO_TRADE, SignalState.WATCH}:
+            # Preserve the score for execution eligibility, but surface valid
+            # H1/M15 structure + a fresh FVG earlier so the setup is not hidden
+            # until price has already moved beyond the chase limit.
+            state = SignalState.SETUP_FORMING
         elif setup_type is not None and not base.trigger_confirmed and state in {
             SignalState.ARMED,
             SignalState.EXECUTION_READY,
         }:
-            calibration_ready = (
-                _demo_calibration_pretrigger_enabled()
-                and plan is not None
-                and plan.rr2 is not None
-                and plan.rr2 >= float(plan_cfg["minimum_tp2_rr"])
-                and plan.chase_distance_atr <= float(plan_cfg["chase_block_atr"])
-            )
-            if not calibration_ready:
-                state = SignalState.SETUP_FORMING
+            state = SignalState.SETUP_FORMING
         elif base.trigger_confirmed and plan is None and state in {
             SignalState.ARMED,
             SignalState.EXECUTION_READY,

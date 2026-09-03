@@ -17,6 +17,7 @@ def test_demo_auto_pipeline_is_dispatch_only_and_demo_only():
     assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "60"' in text
     assert 'CTRADER_DEMO_TECHNICAL_ONLY: "1"' in text
     assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"' in text
+    assert 'CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"' in text
     assert 'CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"' in text
     assert 'CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"' in text
     assert 'CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "100"' in text
@@ -64,15 +65,18 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
         assert "\\n" not in text
 
 
-def test_demo_auto_supervisor_dispatches_only_demo_pipeline_every_five_minutes():
+def test_demo_auto_supervisor_dispatches_only_demo_pipeline_every_two_minutes_without_overlap():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
 
     assert 'workflows: ["cTrader Demo Technical Heartbeat"]' in text
     assert "github.event.workflow_run.event == 'schedule'" in text
     assert "github.event.workflow_run.head_branch == 'main'" in text
     assert "actions: write" in text
-    assert "seq 1 12" in text
-    assert "sleep 300" in text
+    assert "seq 1 30" in text
+    assert "sleep 120" in text
+    assert "SUPERVISOR_SKIP_BUSY" in text
+    assert "active_runs" in text
+    assert "overlap=DISABLED" in text
     assert "ctrader-demo-auto-pipeline.yml/dispatches" in text
     assert "-f ref=main" in text
     assert "CTRADER_CLIENT_SECRET" not in text
