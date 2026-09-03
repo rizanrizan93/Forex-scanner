@@ -50,6 +50,18 @@ def run() -> int:
         f"h1_m15=PREARM fresh_fvg_minutes={fvg_max_age:g} "
         "execution_score=60 chase_block_atr=0.50"
     )
+    print(
+        "CTRADER_DEMO_FAST_PASS universe_tfs=H1,M15,M5 "
+        f"slow_hydration_top={max(int(cfg.strategy['selection']['deep_analysis_top']), int(cfg.strategy['selection']['macro_compatible_top']))} "
+        "slow_tfs=D1,H4 request_pacing=UNCHANGED"
+    )
+    print(
+        "CTRADER_DEMO_RISK "
+        f"risk_per_trade_pct={float(cfg.risk['risk_per_trade_pct']):g} "
+        f"max_risk_pct={float(policy.demo_safety['max_risk_pct']):g} "
+        f"max_lots={float(policy.demo_safety['max_order_lots']):g} "
+        f"max_positions={int(policy.demo_safety['max_concurrent_positions'])}"
+    )
 
     symbols = [pair.symbol for pair in cfg.pairs]
     feed = build_ctrader_research_feed(policy, symbols)
