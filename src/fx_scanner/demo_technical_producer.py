@@ -42,12 +42,7 @@ def _displacement_text(snapshot) -> tuple[str, int]:
 
 
 def run() -> int:
-    """Run the explicit DEMO-only technical signal-production path.
-
-    No strategy module function is replaced at runtime. The producer binds the
-    DEMO technical scan and trade-plan geometry explicitly through
-    ExplicitDemoTechnicalSignalProducer.
-    """
+    """Run the explicit DEMO-only technical signal-production path."""
     cfg = load_project_config(None)
     policy = load_execution_policy(None)
     if str(policy.ctrader.get("environment", "")).upper() != "DEMO":
@@ -71,12 +66,15 @@ def run() -> int:
         f"active={demo_execution_min:g} production_default={production_execution_min:g}"
     )
     print("CTRADER_DEMO_PROFILE mode=TECHNICAL_SCALPING macro=DISABLED")
-    print("CTRADER_DEMO_CALIBRATION floor=60 hard_guards=ENFORCED")
+    print(
+        "CTRADER_DEMO_CALIBRATION "
+        f"floor={demo_execution_min:g} admission=SCORE_DRIVEN hard_guards=ENFORCED"
+    )
     print("CTRADER_DEMO_BINDING mode=EXPLICIT trade_plan=DEMO_GEOMETRY monkeypatch=DISABLED")
     print(
         "CTRADER_DEMO_EARLY_ENTRY "
-        f"h1_m15=PREARM fresh_fvg_minutes={fvg_max_age:g} "
-        "execution_score=60 chase_block_atr=0.50"
+        f"h1_m15=DIAGNOSTIC fresh_fvg_minutes={fvg_max_age:g} "
+        f"execution_score={demo_execution_min:g} chase_block_atr=0.50"
     )
     print(
         "CTRADER_DEMO_FAST_PASS universe_tfs=H1,M15,M5 "
