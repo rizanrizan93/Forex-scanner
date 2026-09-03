@@ -9,6 +9,7 @@ from .cli import (
 )
 from .config import load_project_config
 from .demo_calibration import (
+    apply_demo_calibration_risk,
     apply_demo_calibration_threshold,
     build_demo_calibration_store,
 )
@@ -36,6 +37,10 @@ def run() -> int:
 
     cfg, production_execution_min = apply_demo_calibration_threshold(cfg)
     cfg = _apply_demo_technical_only_profile(cfg)
+    cfg, demo_risk_pct = apply_demo_calibration_risk(
+        cfg,
+        max_risk_pct=float(policy.demo_safety["max_risk_pct"]),
+    )
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
     fvg_max_age = float(os.getenv("CTRADER_DEMO_FVG_MAX_AGE_MINUTES", "90"))
     print(
@@ -57,7 +62,7 @@ def run() -> int:
     )
     print(
         "CTRADER_DEMO_RISK "
-        f"risk_per_trade_pct={float(cfg.risk['risk_per_trade_pct']):g} "
+        f"risk_per_trade_pct={demo_risk_pct:g} "
         f"max_risk_pct={float(policy.demo_safety['max_risk_pct']):g} "
         f"max_lots={float(policy.demo_safety['max_order_lots']):g} "
         f"max_positions={int(policy.demo_safety['max_concurrent_positions'])}"
