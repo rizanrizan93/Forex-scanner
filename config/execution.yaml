@@ -121,7 +121,7 @@ demo_safety:
   require_atomic_signal_claim: true
   min_signal_coverage: 0.80
   max_order_lots: 0.01
-  max_risk_pct: 1.00
+  max_risk_pct: 0.25
   max_concurrent_positions: 2
   poll_seconds: 1.0
 
