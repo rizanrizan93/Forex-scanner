@@ -28,8 +28,9 @@ jobs:
       FX_KILL_SWITCH: "0"
       FX_IDEMPOTENCY_STATE_PATH: /tmp/execution_idempotency.json
       CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
-      CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "70"
+      CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "65"
       CTRADER_DEMO_TECHNICAL_ONLY: "1"
+      CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"
       CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"
       CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS: "6"
       CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS: "2000"
@@ -50,7 +51,7 @@ jobs:
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
       - name: Produce durable DEMO-only signals
-        # DEMO wrapper ultimately invokes the canonical ctrader-signal-producer command.
+        # Explicit DEMO wrapper binds the canonical ctrader-signal-producer command.
         run: python -m fx_scanner.demo_technical_producer
       - name: Execute only durable EXECUTION_READY DEMO signals
         run: python -m fx_scanner.cli ctrader-demo-autotrade --once --limit 10

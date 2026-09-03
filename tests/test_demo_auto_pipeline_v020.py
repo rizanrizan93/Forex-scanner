@@ -14,8 +14,9 @@ def test_demo_auto_pipeline_is_dispatch_only_and_demo_only():
     assert text.index("ctrader-signal-producer") < text.index("ctrader-demo-autotrade")
     assert "macro-refresh" not in text
     assert "CTRADER_DEMO_AUTOTRADE_ENABLED" in text
-    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "70"' in text
+    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "65"' in text
     assert 'CTRADER_DEMO_TECHNICAL_ONLY: "1"' in text
+    assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"' in text
     assert 'CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"' in text
     assert 'CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"' in text
     assert 'CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "100"' in text

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import replace
 from math import isfinite
 from typing import Mapping, Sequence
@@ -18,6 +19,10 @@ from .strategy import (
     analyze_pair_mtf,
     select_pair_candidates,
 )
+
+
+def _demo_calibration_pretrigger_enabled() -> bool:
+    return os.getenv("CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER", "0").strip() == "1"
 
 
 def _demo_setup_type(base: MTFAnalysis) -> SetupType | None:
@@ -168,7 +173,15 @@ def analyze_demo_pair_mtf(
             SignalState.ARMED,
             SignalState.EXECUTION_READY,
         }:
-            state = SignalState.SETUP_FORMING
+            calibration_ready = (
+                _demo_calibration_pretrigger_enabled()
+                and plan is not None
+                and plan.rr2 is not None
+                and plan.rr2 >= float(plan_cfg["minimum_tp2_rr"])
+                and plan.chase_distance_atr <= float(plan_cfg["chase_block_atr"])
+            )
+            if not calibration_ready:
+                state = SignalState.SETUP_FORMING
         elif base.trigger_confirmed and plan is None and state in {
             SignalState.ARMED,
             SignalState.EXECUTION_READY,
