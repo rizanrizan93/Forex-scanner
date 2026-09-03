@@ -37,6 +37,7 @@ def run() -> int:
     cfg, production_execution_min = apply_demo_calibration_threshold(cfg)
     cfg = _apply_demo_technical_only_profile(cfg)
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
+    fvg_max_age = float(os.getenv("CTRADER_DEMO_FVG_MAX_AGE_MINUTES", "90"))
     print(
         "CTRADER_DEMO_EXECUTION_THRESHOLD "
         f"active={demo_execution_min:g} production_default={production_execution_min:g}"
@@ -44,6 +45,11 @@ def run() -> int:
     print("CTRADER_DEMO_PROFILE mode=TECHNICAL_SCALPING macro=DISABLED")
     print("CTRADER_DEMO_CALIBRATION floor=60 hard_guards=ENFORCED")
     print("CTRADER_DEMO_BINDING mode=EXPLICIT trade_plan=DEMO_GEOMETRY monkeypatch=DISABLED")
+    print(
+        "CTRADER_DEMO_EARLY_ENTRY "
+        f"h1_m15=PREARM fresh_fvg_minutes={fvg_max_age:g} "
+        "execution_score=60 chase_block_atr=0.50"
+    )
 
     symbols = [pair.symbol for pair in cfg.pairs]
     feed = build_ctrader_research_feed(policy, symbols)
