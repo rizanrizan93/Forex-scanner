@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
+from math import isfinite
 from typing import Mapping, Sequence
 
 from .models import Bar
@@ -19,14 +21,23 @@ class CorrelationEvidence:
 
 
 class EvidenceProductionGuardResolver(ProductionGuardResolver):
-    """DEMO resolver that keeps the canonical guard decision and exposes its evidence.
+    """DEMO resolver that keeps canonical guard decisions and exposes evidence.
 
-    The parent resolver remains the sole owner of CORRELATION_BLOCK. This class only
-    recomputes the same aligned H1 correlations for observability after the canonical
-    flags have been resolved; it does not alter any guard outcome.
+    Correlation semantics remain canonical. The only DEMO-specific mutation is
+    an explicit process-local risk ceiling up to 1%, driven by the calibration
+    environment variable after the caller has already validated DEMO mode.
     """
 
     last_correlation_evidence: Mapping[str, tuple[CorrelationEvidence, ...]] = {}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        raw = os.getenv("CTRADER_DEMO_RISK_PER_TRADE_PCT", "").strip()
+        if raw:
+            value = float(raw)
+            if not isfinite(value) or not 0.0 < value <= 1.0:
+                raise ValueError("CTRADER_DEMO_RISK_PER_TRADE_PCT must be in (0,1]")
+            self.demo_max_risk_pct = max(self.demo_max_risk_pct, value)
 
     def resolve(
         self,

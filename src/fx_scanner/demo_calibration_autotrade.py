@@ -5,7 +5,7 @@ from dataclasses import replace
 
 from .cli import _apply_demo_technical_only_profile, _require_demo_autotrade_opt_in
 from .config import load_project_config
-from .demo_calibration import apply_demo_calibration_threshold
+from .demo_calibration import apply_demo_calibration_risk, apply_demo_calibration_threshold
 from .execution.control_plane import ControlPlaneGate, ControlPlaneRefreshWorker
 from .execution.demo_autotrade import CTraderDemoAutoExecutor, SupabaseOrderAuditSink
 from .execution.factory import build_broker_gateway
@@ -24,8 +24,16 @@ def run(*, limit: int = 10) -> int:
 
     cfg, production_execution_min = apply_demo_calibration_threshold(cfg)
     cfg = _apply_demo_technical_only_profile(cfg)
+    cfg, demo_risk_pct = apply_demo_calibration_risk(cfg, max_risk_pct=1.0)
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
-    policy = replace(base_policy, mode=ExecutionMode.AUTO)
+
+    # Canonical policy validation remains capped at 0.25%. Only after the DEMO
+    # environment + explicit opt-in are proven do we raise this process-local
+    # calibration ceiling to 1.0%.
+    demo_safety = dict(base_policy.demo_safety)
+    demo_safety["max_risk_pct"] = 1.0
+    policy = replace(base_policy, mode=ExecutionMode.AUTO, demo_safety=demo_safety)
+
     symbols = [pair.symbol for pair in cfg.pairs]
     gateway, session = build_broker_gateway(policy, symbols, backend="CTRADER")
     # The executor only reads/claims durable signals; canonical storage's score
@@ -68,6 +76,8 @@ def run(*, limit: int = 10) -> int:
                 "mode": "AUTO",
                 "environment": "DEMO",
                 "calibration_threshold": demo_execution_min,
+                "risk_per_trade_pct": demo_risk_pct,
+                "max_risk_pct": float(policy.demo_safety["max_risk_pct"]),
                 "scanned": report.scanned,
                 "eligible": report.eligible,
                 "claimed": report.claimed,
@@ -78,6 +88,7 @@ def run(*, limit: int = 10) -> int:
         print(
             "CTRADER_DEMO_CALIBRATION_AUTOTRADE_OK "
             f"threshold={demo_execution_min:g} production_default={production_execution_min:g} "
+            f"risk_pct={demo_risk_pct:g} max_risk_pct={float(policy.demo_safety['max_risk_pct']):g} "
             f"scanned={report.scanned} eligible={report.eligible} "
             f"claimed={report.claimed} executed={report.executed} "
             f"skipped={len(report.skipped)}"
