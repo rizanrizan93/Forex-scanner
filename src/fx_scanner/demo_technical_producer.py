@@ -4,16 +4,18 @@ import os
 from datetime import datetime, timezone
 
 from .cli import (
-    _apply_demo_execution_threshold,
     _apply_demo_technical_only_profile,
     _demo_spread_limit_overrides,
 )
 from .config import load_project_config
+from .demo_calibration import (
+    apply_demo_calibration_threshold,
+    build_demo_calibration_store,
+)
 from .demo_signal_producer import ExplicitDemoTechnicalSignalProducer
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .producer_guards import ProductionGuardResolver
-from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
 
@@ -32,7 +34,7 @@ def run() -> int:
     if not bool(policy.ctrader.get("require_demo", False)):
         raise SystemExit("CTRADER_SIGNAL_PRODUCER_REQUIRE_DEMO")
 
-    cfg, production_execution_min = _apply_demo_execution_threshold(cfg)
+    cfg, production_execution_min = apply_demo_calibration_threshold(cfg)
     cfg = _apply_demo_technical_only_profile(cfg)
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
     print(
@@ -40,11 +42,12 @@ def run() -> int:
         f"active={demo_execution_min:g} production_default={production_execution_min:g}"
     )
     print("CTRADER_DEMO_PROFILE mode=TECHNICAL_SCALPING macro=DISABLED")
+    print("CTRADER_DEMO_CALIBRATION floor=60 hard_guards=ENFORCED")
     print("CTRADER_DEMO_BINDING mode=EXPLICIT trade_plan=DEMO_GEOMETRY monkeypatch=DISABLED")
 
     symbols = [pair.symbol for pair in cfg.pairs]
     feed = build_ctrader_research_feed(policy, symbols)
-    store = SupabaseOperationalStore.from_env(
+    store = build_demo_calibration_store(
         execution_ready_score_floor=demo_execution_min,
     )
     store.ensure_reference_symbols(cfg.pairs)
