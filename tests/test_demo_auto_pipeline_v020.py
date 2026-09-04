@@ -71,7 +71,7 @@ def test_demo_auto_supervisor_is_self_renewing_and_dispatches_without_overlap():
     assert "workflow_dispatch:" in text
     assert "branches: [main]" in text
     assert "paths:" not in text
-    assert 'cron: "7,22,37,52 * * * 1-5"' in text
+    assert 'cron: "7,22,37,52 * * * *"' in text
     assert 'workflows: ["cTrader Demo Technical Heartbeat"]' in text
     assert "github.event_name == 'schedule'" in text
     assert "github.event.workflow_run.event == 'schedule'" in text
@@ -84,6 +84,7 @@ def test_demo_auto_supervisor_is_self_renewing_and_dispatches_without_overlap():
     assert "active_runs" in text
     assert "overlap=DISABLED" in text
     assert "self_renew_schedule=ENABLED" in text
+    assert "calendar=SEVEN_DAYS" in text
     assert "ctrader-demo-auto-pipeline.yml/dispatches" in text
     assert "-f ref=main" in text
     assert "CTRADER_CLIENT_SECRET" not in text
@@ -96,8 +97,9 @@ def test_demo_auto_supervisor_is_self_renewing_and_dispatches_without_overlap():
 def test_demo_technical_heartbeat_is_hourly_and_secret_free():
     text = (ROOT / ".github/workflows/ctrader-demo-technical-heartbeat.yml").read_text()
 
-    assert 'cron: "17 * * * 1-5"' in text
+    assert 'cron: "17 * * * *"' in text
     assert "CTRADER_DEMO_TECHNICAL_HEARTBEAT_OK" in text
+    assert "calendar=SEVEN_DAYS" in text
     assert "CTRADER_CLIENT_SECRET" not in text
     assert "CTRADER_ACCESS_TOKEN" not in text
     assert "SUPABASE_SECRET_KEY" not in text
