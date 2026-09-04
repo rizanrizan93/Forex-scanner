@@ -17,6 +17,12 @@ class ExplicitDemoTechnicalSignalProducer(CTraderSignalProducer):
     as early as possible. Slower D1/H4 history is then hydrated only for the
     shortlist that can reach deep analysis. Request pacing remains unchanged, so
     the cTrader 5 requests/sec safety limit is preserved.
+
+    A usable last-known quote may supply the historical-bar spread proxy, but a
+    symbol is admitted to ranking only after a fresh quote is observed *after*
+    its fast historical hydration. This prevents a long discovery pass from
+    rejecting the entire universe because the pre-hydration spot snapshot aged
+    out, without relaxing the configured quote-freshness limit.
     """
 
     last_deep_report: DeepScanReport | None = None
@@ -27,12 +33,25 @@ class ExplicitDemoTechnicalSignalProducer(CTraderSignalProducer):
         fast_tfs = ("H1", "M15", "M5")
         minimum = self.cfg.strategy["mtf"]["minimum_bars"]
 
-        def fetch_pair(pair):
-            symbol = pair.symbol
+        def available_quote(symbol):
+            """Require a structurally valid quote, but defer freshness until post-hydration."""
             try:
+                quote = self.feed.quote(symbol)
+            except Exception:
                 quote, quote_error = self._fresh_quote(symbol)
                 if quote is None:
                     return None, quote_error or "QUOTE_UNAVAILABLE:UNKNOWN"
+            if not (float(quote.bid) > 0 and float(quote.ask) >= float(quote.bid)):
+                return None, "QUOTE_INVALID"
+            return quote, None
+
+        def fetch_pair(pair):
+            symbol = pair.symbol
+            try:
+                quote, quote_error = available_quote(symbol)
+                if quote is None:
+                    return None, quote_error or "QUOTE_UNAVAILABLE:UNKNOWN"
+
                 bundle: dict[str, tuple] = {}
                 for tf in fast_tfs:
                     count = int(minimum[tf]) + 12
@@ -57,6 +76,12 @@ class ExplicitDemoTechnicalSignalProducer(CTraderSignalProducer):
                         )
                     bundle[tf] = closed
                     self.sleeper(self.request_delay)
+
+                # Freshness is enforced at the point where the hydrated symbol
+                # becomes ranking-eligible. Never widen max_quote_age_seconds.
+                fresh_quote, quote_error = self._fresh_quote(symbol)
+                if fresh_quote is None:
+                    return None, quote_error or "QUOTE_UNAVAILABLE:UNKNOWN"
                 return bundle, None
             except Exception as exc:
                 return None, f"{type(exc).__name__}:{exc}"
