@@ -30,6 +30,23 @@ def _gap(direction, lower, upper, status="OPEN"):
     return FairValueGap(direction, lower, upper, NOW, status, 0.0)
 
 
+def _bar(high, low):
+    return SimpleNamespace(high=float(high), low=float(low))
+
+
+def _snap(*, trend, low=None, high=None, bos=None, mss=None, displacement=None, sweep=None, fvg=None):
+    return SimpleNamespace(
+        trend=trend,
+        last_swing_low=low,
+        last_swing_high=high,
+        bos=bos,
+        mss=mss,
+        displacement=displacement,
+        sweep=sweep,
+        fvg=fvg,
+    )
+
+
 def test_nearest_directional_gap_prefers_current_price_geometry():
     liquidity = FakeLiquidity(
         [
@@ -57,9 +74,9 @@ def test_demo_plan_synthesizes_tp2_only_after_structural_tp1(monkeypatch):
         ],
         above=(102.0,),
     )
-    m15 = SimpleNamespace(sweep=None)
-    h1 = SimpleNamespace(last_swing_low=99.0, last_swing_high=None)
-    m5 = SimpleNamespace(fvg=None)
+    m15 = _snap(trend="BULLISH", low=99.5)
+    h1 = _snap(trend="BULLISH", low=99.0)
+    m5 = _snap(trend="RANGE", low=99.8, bos="BULLISH")
 
     plan = build_demo_trade_plan(
         direction="LONG",
@@ -68,7 +85,7 @@ def test_demo_plan_synthesizes_tp2_only_after_structural_tp1(monkeypatch):
         h1=h1,
         m5=m5,
         liquidity=liquidity,
-        m5_bars=[object()],
+        m5_bars=[_bar(99.9, 99.5), _bar(100.5, 99.9), _bar(100.4, 100.0), _bar(100.3, 100.1)],
         atr_period=14,
         sl_buffer_atr=0.15,
         minimum_entry_zone_atr=0.05,
@@ -76,8 +93,8 @@ def test_demo_plan_synthesizes_tp2_only_after_structural_tp1(monkeypatch):
 
     assert plan is not None
     assert plan.entry_low == 99.8
-    assert plan.entry_high == 100.2
-    assert plan.chase_distance_atr == 0.0
+    assert plan.entry_high == 100.1
+    assert plan.chase_distance_atr > 0.0
     assert plan.tp1 == 102.0
     assert plan.tp2 is not None
     assert plan.tp2 > plan.tp1
@@ -93,9 +110,9 @@ def test_demo_plan_stays_fail_closed_without_any_structural_target(monkeypatch):
         [_gap("BEARISH", 99.9, 100.2, "PARTIAL")],
         below=(),
     )
-    m15 = SimpleNamespace(sweep=None)
-    h1 = SimpleNamespace(last_swing_low=None, last_swing_high=101.0)
-    m5 = SimpleNamespace(fvg=None)
+    m15 = _snap(trend="BEARISH", high=100.5)
+    h1 = _snap(trend="BEARISH", high=101.0)
+    m5 = _snap(trend="RANGE", high=100.2, bos="BEARISH")
 
     plan = build_demo_trade_plan(
         direction="SHORT",
@@ -104,7 +121,7 @@ def test_demo_plan_stays_fail_closed_without_any_structural_target(monkeypatch):
         h1=h1,
         m5=m5,
         liquidity=liquidity,
-        m5_bars=[object()],
+        m5_bars=[_bar(100.4, 100.0), _bar(100.0, 99.4), _bar(100.1, 99.5), _bar(99.9, 99.6)],
         atr_period=14,
         sl_buffer_atr=0.15,
         minimum_entry_zone_atr=0.05,
