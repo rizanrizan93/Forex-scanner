@@ -29,7 +29,24 @@ def _gap(direction, lower, upper, status="PARTIAL"):
     return FairValueGap(direction, lower, upper, NOW, status, 0.0)
 
 
-def test_chase_valid_long_plan_extends_executable_zone_to_market(monkeypatch):
+def _bar(high, low):
+    return SimpleNamespace(high=float(high), low=float(low))
+
+
+def _snap(*, trend, low=None, high=None, bos=None, mss=None, displacement=None, sweep=None):
+    return SimpleNamespace(
+        trend=trend,
+        last_swing_low=low,
+        last_swing_high=high,
+        bos=bos,
+        mss=mss,
+        displacement=displacement,
+        sweep=sweep,
+        fvg=None,
+    )
+
+
+def test_wave_ready_long_plan_keeps_raw_structural_zone(monkeypatch):
     import fx_scanner.demo_trade_plan_geometry as geometry
 
     monkeypatch.setattr(geometry, "atr", lambda _bars, _period: 1.0)
@@ -39,12 +56,12 @@ def test_chase_valid_long_plan_extends_executable_zone_to_market(monkeypatch):
     )
     plan = build_demo_trade_plan(
         direction="LONG",
-        current_price=100.4,
-        m15=SimpleNamespace(sweep=None),
-        h1=SimpleNamespace(last_swing_low=99.0, last_swing_high=None),
-        m5=SimpleNamespace(fvg=None),
+        current_price=100.2,
+        m15=_snap(trend="BULLISH", low=99.5),
+        h1=_snap(trend="BULLISH", low=99.0),
+        m5=_snap(trend="RANGE", low=99.8, bos="BULLISH"),
         liquidity=liquidity,
-        m5_bars=[object()],
+        m5_bars=[_bar(99.9, 99.5), _bar(100.5, 99.9), _bar(100.4, 100.0), _bar(100.3, 100.1)],
         atr_period=14,
         sl_buffer_atr=0.15,
         minimum_entry_zone_atr=0.05,
@@ -53,15 +70,15 @@ def test_chase_valid_long_plan_extends_executable_zone_to_market(monkeypatch):
 
     assert plan is not None
     assert plan.entry_low == 99.8
-    assert plan.entry_high == 100.4
-    assert plan.chase_distance_atr == 0.0
+    assert plan.entry_high == 100.1
+    assert 0.0 < plan.chase_distance_atr <= 0.50
     assert plan.tp1 == 102.0
     assert plan.tp2 is not None
     assert plan.rr2 is not None
     assert plan.rr2 >= 2.0
 
 
-def test_over_chased_long_plan_remains_blockable(monkeypatch):
+def test_mid_wave_long_plan_is_blocked_even_inside_broad_chase_lane(monkeypatch):
     import fx_scanner.demo_trade_plan_geometry as geometry
 
     monkeypatch.setattr(geometry, "atr", lambda _bars, _period: 1.0)
@@ -72,20 +89,18 @@ def test_over_chased_long_plan_remains_blockable(monkeypatch):
     plan = build_demo_trade_plan(
         direction="LONG",
         current_price=100.8,
-        m15=SimpleNamespace(sweep=None),
-        h1=SimpleNamespace(last_swing_low=99.0, last_swing_high=None),
-        m5=SimpleNamespace(fvg=None),
+        m15=_snap(trend="BULLISH", low=99.5),
+        h1=_snap(trend="BULLISH", low=99.0),
+        m5=_snap(trend="RANGE", low=99.8, bos="BULLISH"),
         liquidity=liquidity,
-        m5_bars=[object()],
+        m5_bars=[_bar(100.0, 99.6), _bar(101.2, 100.2), _bar(101.1, 100.6), _bar(100.9, 100.7)],
         atr_period=14,
         sl_buffer_atr=0.15,
         minimum_entry_zone_atr=0.05,
-        chase_block_atr=0.50,
+        chase_block_atr=2.0,
     )
 
-    assert plan is not None
-    assert plan.entry_high == 100.1
-    assert plan.chase_distance_atr > 0.50
+    assert plan is None
 
 
 def test_calibration_pretrigger_is_explicit_opt_in(monkeypatch):
@@ -99,3 +114,5 @@ def test_demo_pipeline_uses_score_driven_floor_above_50():
     text = Path(".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in text
     assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"' in text
+    assert 'CTRADER_DEMO_WAVE_MIN_PULLBACK_ATR: "0.25"' in text
+    assert 'CTRADER_DEMO_WAVE_MAX_ZONE_ATR: "0.50"' in text
