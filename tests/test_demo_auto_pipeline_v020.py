@@ -65,18 +65,25 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
         assert "\\n" not in text
 
 
-def test_demo_auto_supervisor_dispatches_only_demo_pipeline_every_two_minutes_without_overlap():
+def test_demo_auto_supervisor_is_self_renewing_and_dispatches_without_overlap():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
 
+    assert "workflow_dispatch:" in text
+    assert "branches: [main]" in text
+    assert "paths:" not in text
+    assert 'cron: "7,22,37,52 * * * 1-5"' in text
     assert 'workflows: ["cTrader Demo Technical Heartbeat"]' in text
+    assert "github.event_name == 'schedule'" in text
     assert "github.event.workflow_run.event == 'schedule'" in text
     assert "github.event.workflow_run.head_branch == 'main'" in text
+    assert "cancel-in-progress: false" in text
     assert "actions: write" in text
     assert "seq 1 30" in text
     assert "sleep 120" in text
     assert "SUPERVISOR_SKIP_BUSY" in text
     assert "active_runs" in text
     assert "overlap=DISABLED" in text
+    assert "self_renew_schedule=ENABLED" in text
     assert "ctrader-demo-auto-pipeline.yml/dispatches" in text
     assert "-f ref=main" in text
     assert "CTRADER_CLIENT_SECRET" not in text
