@@ -118,11 +118,23 @@ def _signal_id_from_orders_or_deals(orders: tuple[Any, ...], deals: tuple[Any, .
     return None
 
 
-def _classify_exit(*, close_order: Any | None, signal: dict[str, Any], exit_price: float, gross_profit: float, partial: bool) -> str:
+def _classify_exit(
+    *,
+    close_order: Any | None,
+    signal: dict[str, Any],
+    exit_price: float,
+    gross_profit: float,
+    partial: bool,
+    structural_profit_protect: bool = False,
+) -> str:
     if partial:
         if abs(gross_profit) <= 0.01:
             return "PARTIAL_CLOSE_BREAKEVEN"
         return "PARTIAL_CLOSE_PROFIT" if gross_profit > 0 else "PARTIAL_CLOSE_LOSS"
+    if structural_profit_protect:
+        if abs(gross_profit) <= 0.01:
+            return "STRUCTURAL_PROTECT_BREAKEVEN"
+        return "STRUCTURAL_PROTECT_PROFIT" if gross_profit > 0 else "STRUCTURAL_PROTECT_LOSS"
     if close_order is not None and bool(getattr(close_order, "isStopOut", False)):
         return "STOP_OUT"
     order_type = int(getattr(close_order, "orderType", 0) or 0) if close_order is not None else 0
@@ -159,6 +171,23 @@ class DemoClosedTradeReconciler:
             .execute()
         )
         return bool(response.data or [])
+
+    def _profit_protect_exit(self, *, signal_id: str, position_id: int) -> bool:
+        """Return true only for the exact scanner-linked confirmed protector exit."""
+        response = (
+            self.store.client.table("broker_order_events")
+            .select("id")
+            .eq("backend", "CTRADER")
+            .eq("account_id", self.account_id)
+            .eq("signal_key", signal_id)
+            .eq("event_type", "DEMO_STRUCTURAL_PROFIT_PROTECT_EXIT")
+            .eq("broker_order_id", f"PROFIT_PROTECT:{int(position_id)}")
+            .eq("accepted", True)
+            .limit(2)
+            .execute()
+        )
+        rows = list(response.data or [])
+        return len(rows) == 1
 
     def _signal(self, signal_id: str) -> dict[str, Any] | None:
         response = (
@@ -258,6 +287,10 @@ class DemoClosedTradeReconciler:
             partial = position_id in open_position_ids
             if partial:
                 partial_closes += 1
+            structural_profit_protect = bool(
+                not partial
+                and self._profit_protect_exit(signal_id=signal_id, position_id=position_id)
+            )
 
             outcome = _classify_exit(
                 close_order=close_order,
@@ -265,6 +298,7 @@ class DemoClosedTradeReconciler:
                 exit_price=exit_price,
                 gross_profit=gross_profit,
                 partial=partial,
+                structural_profit_protect=structural_profit_protect,
             )
             event_type = "DEMO_TRADE_PARTIAL_CLOSE" if partial else "DEMO_TRADE_CLOSED"
             payload = {
@@ -296,6 +330,8 @@ class DemoClosedTradeReconciler:
                 "is_stop_out": bool(getattr(close_order, "isStopOut", False)) if close_order is not None else False,
                 "source": "CTRADER_DEAL_HISTORY",
                 "entry_geometry_available": bool(geometry),
+                "trade_management_exit": "STRUCTURAL_PROFIT_PROTECT" if structural_profit_protect else None,
+                "exit_attribution": "DEMO_STRUCTURAL_PROFIT_PROTECT_EXIT" if structural_profit_protect else None,
             }
             payload.update(geometry)
             self.store.record_order_event(
@@ -316,6 +352,7 @@ class DemoClosedTradeReconciler:
                 f"position_id={position_id} deal_id={deal_id} outcome={outcome} "
                 f"gross_profit={gross_profit:.8g} net_pnl_estimate={net_pnl_estimate:.8g} "
                 f"exit_price={exit_price:.8g} partial={int(partial)} "
+                f"profit_protect={int(structural_profit_protect)} "
                 f"entry_mode={geometry.get('entry_mode', 'LEGACY')}"
             )
 
@@ -360,6 +397,7 @@ def run() -> int:
                 "history_truncated": report.history_truncated,
                 "outcome_event": "DEMO_TRADE_CLOSED",
                 "entry_geometry_enrichment": "DEMO_SIGNAL_GEOMETRY",
+                "trade_management_attribution": "DEMO_STRUCTURAL_PROFIT_PROTECT_EXIT",
             },
         )
         print(
