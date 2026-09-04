@@ -14,6 +14,17 @@ from .storage.supabase_operational import SupabaseOperationalStore
 UTC = timezone.utc
 HISTORY_LOOKBACK = timedelta(days=7)
 HISTORY_MAX_ROWS = 1000
+GEOMETRY_FIELDS = (
+    "entry_mode",
+    "pullback_atr",
+    "zone_distance_atr",
+    "confirmation",
+    "fvg_age_minutes",
+    "fvg_status",
+    "fvg_fill_fraction",
+    "chase_monitor_distance_atr",
+    "exit_model",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +50,6 @@ class CTraderHistoryClient:
             ProtoOADealListReq,
             ProtoOAOrderListByPositionIdReq,
         )
-
         return ProtoOADealListReq, ProtoOAOrderListByPositionIdReq
 
     def recent_deals(self, *, from_timestamp_ms: int, to_timestamp_ms: int, max_rows: int):
@@ -58,10 +68,7 @@ class CTraderHistoryClient:
         req = OrderListByPositionIdReq()
         req.ctidTraderAccountId = int(self.session.account_id)
         req.positionId = int(position_id)
-        return self.session._send_sync(
-            req,
-            client_msg_id=f"demo-closed-orders-{int(position_id)}",
-        )
+        return self.session._send_sync(req, client_msg_id=f"demo-closed-orders-{int(position_id)}")
 
     def open_position_ids(self) -> set[int]:
         self.session.ensure_connected()
@@ -80,13 +87,11 @@ def _has_field(message: Any, field: str) -> bool:
             return bool(checker(field))
         except Exception:
             pass
-    value = getattr(message, field, None)
-    return value is not None
+    return getattr(message, field, None) is not None
 
 
 def _money(value: Any, digits: Any) -> float:
-    exponent = int(digits or 0)
-    return float(value or 0) / (10 ** exponent)
+    return float(value or 0) / (10 ** int(digits or 0))
 
 
 def _as_signal_id(value: Any) -> str | None:
@@ -113,24 +118,15 @@ def _signal_id_from_orders_or_deals(orders: tuple[Any, ...], deals: tuple[Any, .
     return None
 
 
-def _classify_exit(
-    *,
-    close_order: Any | None,
-    signal: dict[str, Any],
-    exit_price: float,
-    gross_profit: float,
-    partial: bool,
-) -> str:
+def _classify_exit(*, close_order: Any | None, signal: dict[str, Any], exit_price: float, gross_profit: float, partial: bool) -> str:
     if partial:
         if abs(gross_profit) <= 0.01:
             return "PARTIAL_CLOSE_BREAKEVEN"
         return "PARTIAL_CLOSE_PROFIT" if gross_profit > 0 else "PARTIAL_CLOSE_LOSS"
-
     if close_order is not None and bool(getattr(close_order, "isStopOut", False)):
         return "STOP_OUT"
-
     order_type = int(getattr(close_order, "orderType", 0) or 0) if close_order is not None else 0
-    if order_type == 4:  # ProtoOAOrderType.STOP_LOSS_TAKE_PROFIT
+    if order_type == 4:
         try:
             sl = float(signal["sl"])
             tp = float(signal["tp2"])
@@ -141,7 +137,6 @@ def _classify_exit(
         if abs(gross_profit) <= 0.01:
             return "PROTECTION_CLOSE_BREAKEVEN"
         return "TP_HIT" if gross_profit > 0 else "SL_HIT"
-
     if abs(gross_profit) <= 0.01:
         return "BREAKEVEN"
     return "MANUAL_CLOSE_PROFIT" if gross_profit > 0 else "MANUAL_CLOSE_LOSS"
@@ -179,6 +174,25 @@ class DemoClosedTradeReconciler:
         rows = list(response.data or [])
         return dict(rows[0]) if len(rows) == 1 else None
 
+    def _geometry(self, signal_id: str) -> dict[str, Any]:
+        """Read latest exact producer geometry for this signal, if available."""
+        response = (
+            self.store.client.table("broker_order_events")
+            .select("payload")
+            .eq("backend", "CTRADER")
+            .eq("account_id", self.account_id)
+            .eq("signal_key", signal_id)
+            .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
+            .order("observed_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = list(response.data or [])
+        if not rows or not isinstance(rows[0].get("payload"), dict):
+            return {}
+        payload = dict(rows[0]["payload"])
+        return {key: payload.get(key) for key in GEOMETRY_FIELDS if key in payload}
+
     def run_once(self, *, now: datetime | None = None) -> ClosedTradeReconcileReport:
         now = (now or datetime.now(tz=UTC)).astimezone(UTC)
         start = now - HISTORY_LOOKBACK
@@ -189,13 +203,11 @@ class DemoClosedTradeReconciler:
         )
         deals = tuple(getattr(deals_res, "deal", ()))
         closing_deals = tuple(
-            deal
-            for deal in deals
+            deal for deal in deals
             if _has_field(deal, "closePositionDetail")
             and int(getattr(deal, "dealStatus", 0) or 0) in {2, 3}
         )
         open_position_ids = self.history.open_position_ids()
-
         grouped: dict[int, tuple[Any, ...]] = {}
         for deal in deals:
             position_id = int(getattr(deal, "positionId", 0) or 0)
@@ -203,17 +215,13 @@ class DemoClosedTradeReconciler:
                 grouped[position_id] = grouped.get(position_id, ()) + (deal,)
 
         matched = persisted = duplicates = partial_closes = unmatched = 0
-        for close_deal in sorted(
-            closing_deals,
-            key=lambda item: int(getattr(item, "executionTimestamp", 0) or 0),
-        ):
+        for close_deal in sorted(closing_deals, key=lambda item: int(getattr(item, "executionTimestamp", 0) or 0)):
             deal_id = int(getattr(close_deal, "dealId", 0) or 0)
             position_id = int(getattr(close_deal, "positionId", 0) or 0)
             closing_order_id = int(getattr(close_deal, "orderId", 0) or 0)
             if deal_id <= 0 or position_id <= 0:
                 unmatched += 1
                 continue
-
             event_key = f"DEAL:{deal_id}"
             if self._event_exists(event_key):
                 duplicates += 1
@@ -226,19 +234,15 @@ class DemoClosedTradeReconciler:
             if signal_id is None:
                 unmatched += 1
                 continue
-
             signal = self._signal(signal_id)
             if signal is None:
                 unmatched += 1
                 continue
+            geometry = self._geometry(signal_id)
             matched += 1
 
             close_order = next(
-                (
-                    order
-                    for order in orders
-                    if int(getattr(order, "orderId", 0) or 0) == closing_order_id
-                ),
+                (order for order in orders if int(getattr(order, "orderId", 0) or 0) == closing_order_id),
                 None,
             )
             detail = getattr(close_deal, "closePositionDetail")
@@ -250,11 +254,7 @@ class DemoClosedTradeReconciler:
             net_pnl_estimate = gross_profit + swap + commission - pnl_conversion_fee
             exit_price = float(getattr(close_deal, "executionPrice", 0.0) or 0.0)
             execution_ms = int(getattr(close_deal, "executionTimestamp", 0) or 0)
-            exit_time = (
-                datetime.fromtimestamp(execution_ms / 1000.0, tz=UTC)
-                if execution_ms > 0
-                else now
-            )
+            exit_time = datetime.fromtimestamp(execution_ms / 1000.0, tz=UTC) if execution_ms > 0 else now
             partial = position_id in open_position_ids
             if partial:
                 partial_closes += 1
@@ -292,12 +292,12 @@ class DemoClosedTradeReconciler:
                 "pnl_conversion_fee": pnl_conversion_fee,
                 "net_pnl_estimate": net_pnl_estimate,
                 "money_digits": digits,
-                "close_order_type": (
-                    None if close_order is None else int(getattr(close_order, "orderType", 0) or 0)
-                ),
+                "close_order_type": None if close_order is None else int(getattr(close_order, "orderType", 0) or 0),
                 "is_stop_out": bool(getattr(close_order, "isStopOut", False)) if close_order is not None else False,
                 "source": "CTRADER_DEAL_HISTORY",
+                "entry_geometry_available": bool(geometry),
             }
+            payload.update(geometry)
             self.store.record_order_event(
                 backend="CTRADER",
                 account_id=self.account_id,
@@ -315,7 +315,8 @@ class DemoClosedTradeReconciler:
                 f"signal_id={signal_id} symbol={signal.get('symbol')} "
                 f"position_id={position_id} deal_id={deal_id} outcome={outcome} "
                 f"gross_profit={gross_profit:.8g} net_pnl_estimate={net_pnl_estimate:.8g} "
-                f"exit_price={exit_price:.8g} partial={int(partial)}"
+                f"exit_price={exit_price:.8g} partial={int(partial)} "
+                f"entry_mode={geometry.get('entry_mode', 'LEGACY')}"
             )
 
         return ClosedTradeReconcileReport(
@@ -337,16 +338,11 @@ def run() -> int:
         raise SystemExit("CTRADER_DEMO_CLOSED_TRADE_RECONCILER_DEMO_ONLY")
     if not bool(policy.ctrader.get("require_demo", False)):
         raise SystemExit("CTRADER_DEMO_CLOSED_TRADE_RECONCILER_REQUIRE_DEMO")
-
     symbols = [pair.symbol for pair in cfg.pairs]
     _gateway, session = build_broker_gateway(policy, symbols, backend="CTRADER")
     store = SupabaseOperationalStore.from_env()
     history = CTraderHistoryClient(session)
-    reconciler = DemoClosedTradeReconciler(
-        history=history,
-        store=store,
-        account_id=str(session.account_id),
-    )
+    reconciler = DemoClosedTradeReconciler(history=history, store=store, account_id=str(session.account_id))
     try:
         report = reconciler.run_once()
         store.write_heartbeat(
@@ -363,6 +359,7 @@ def run() -> int:
                 "unmatched": report.unmatched,
                 "history_truncated": report.history_truncated,
                 "outcome_event": "DEMO_TRADE_CLOSED",
+                "entry_geometry_enrichment": "DEMO_SIGNAL_GEOMETRY",
             },
         )
         print(
