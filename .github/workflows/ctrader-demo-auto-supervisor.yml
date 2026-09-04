@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  dispatch-two-minute-demo-pipeline:
+  dispatch-fast-and-discovery-lanes:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'push' ||
@@ -35,35 +35,56 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - name: Dispatch DEMO pipeline every two minutes without overlap
+      - name: Dispatch fast lane every two minutes and discovery lane independently
         shell: bash
         run: |
           set -euo pipefail
-          dispatched=0
-          skipped_busy=0
+          fast_dispatched=0
+          fast_busy=0
+          discovery_dispatched=0
+          discovery_busy=0
 
-          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} cadence_seconds=120 self_renew_schedule=ENABLED calendar=SEVEN_DAYS"
+          active_count() {
+            local workflow_file="$1"
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/runs?branch=main&per_page=20" \
+              --jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending")] | length'
+          }
+
+          dispatch_workflow() {
+            local workflow_file="$1"
+            gh api --method POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/dispatches" \
+              -f ref=main
+          }
+
+          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} fast_cadence_seconds=120 discovery_check_seconds=360 overlap_within_lane=DISABLED cross_lane=ENABLED calendar=SEVEN_DAYS"
 
           for cycle in $(seq 1 30); do
-            active_runs="$(
-              gh api \
-                -H "Accept: application/vnd.github+json" \
-                -H "X-GitHub-Api-Version: 2022-11-28" \
-                "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-pipeline.yml/runs?branch=main&per_page=20" \
-                --jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending")] | length'
-            )"
-
-            if [ "${active_runs}" -eq 0 ]; then
-              echo "SUPERVISOR_DISPATCH cycle=${cycle}/30 cadence_seconds=120"
-              gh api --method POST \
-                -H "Accept: application/vnd.github+json" \
-                -H "X-GitHub-Api-Version: 2022-11-28" \
-                "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-pipeline.yml/dispatches" \
-                -f ref=main
-              dispatched=$((dispatched + 1))
+            active_fast="$(active_count ctrader-demo-auto-pipeline.yml)"
+            if [ "${active_fast}" -eq 0 ]; then
+              echo "SUPERVISOR_FAST_DISPATCH cycle=${cycle}/30 cadence_seconds=120"
+              dispatch_workflow ctrader-demo-auto-pipeline.yml
+              fast_dispatched=$((fast_dispatched + 1))
             else
-              echo "SUPERVISOR_SKIP_BUSY cycle=${cycle}/30 active_runs=${active_runs}"
-              skipped_busy=$((skipped_busy + 1))
+              echo "SUPERVISOR_FAST_SKIP_BUSY cycle=${cycle}/30 active_runs=${active_fast}"
+              fast_busy=$((fast_busy + 1))
+            fi
+
+            if [ $(((cycle - 1) % 3)) -eq 0 ]; then
+              active_discovery="$(active_count ctrader-demo-discovery-pipeline.yml)"
+              if [ "${active_discovery}" -eq 0 ]; then
+                echo "SUPERVISOR_DISCOVERY_DISPATCH cycle=${cycle}/30 check_seconds=360"
+                dispatch_workflow ctrader-demo-discovery-pipeline.yml
+                discovery_dispatched=$((discovery_dispatched + 1))
+              else
+                echo "SUPERVISOR_DISCOVERY_SKIP_BUSY cycle=${cycle}/30 active_runs=${active_discovery}"
+                discovery_busy=$((discovery_busy + 1))
+              fi
             fi
 
             if [ "${cycle}" -lt 30 ]; then
@@ -71,4 +92,4 @@ jobs:
             fi
           done
 
-          echo "CTRADER_DEMO_SUPERVISOR_OK dispatched=${dispatched} skipped_busy=${skipped_busy} cadence_seconds=120 overlap=DISABLED self_renew_schedule=ENABLED calendar=SEVEN_DAYS"
+          echo "CTRADER_DEMO_SUPERVISOR_OK fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=120 discovery_check_seconds=360 overlap_within_lane=DISABLED cross_lane=ENABLED calendar=SEVEN_DAYS"
