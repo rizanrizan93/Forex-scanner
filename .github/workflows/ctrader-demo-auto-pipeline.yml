@@ -11,9 +11,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  scan-and-execute:
+  fast-revalidate-and-execute:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -46,7 +46,10 @@ jobs:
       CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"
       CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "1"
       CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED: "1"
-      # Reference symbols are bootstrapped idempotently before each DEMO scan.
+      CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"
+      CTRADER_DEMO_FAST_CANDIDATE_LOOKBACK_MINUTES: "45"
+      CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"
+      CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "1.20"
 
     steps:
       - uses: actions/checkout@v4
@@ -60,22 +63,9 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Produce durable DEMO-only signals
-        # Explicit DEMO wrapper binds the canonical ctrader-signal-producer command.
-        run: python -m fx_scanner.demo_technical_producer
-      - name: Execute only durable EXECUTION_READY DEMO signals
+      - name: Fast revalidate latest DEMO candidates on fresh broker data
+        run: python -m fx_scanner.demo_fast_candidate_producer
+      - name: Execute only fresh durable EXECUTION_READY DEMO signals
         run: python -m fx_scanner.demo_calibration_autotrade --limit 10
       - name: Protect profitable DEMO positions on confirmed structural reversal
         run: python -m fx_scanner.demo_structural_profit_protector
-      - name: Reconcile cTrader closed DEMO outcomes
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_closed_trade_reconciler
-      - name: Finalize sampled MAE and MFE trajectories
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_trajectory_finalizer
-      - name: Summarize floating P&L and incremental calibration
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_incremental_calibration
