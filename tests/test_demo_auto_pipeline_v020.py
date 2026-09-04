@@ -105,7 +105,8 @@ def test_demo_auto_supervisor_is_self_renewing_and_dispatches_split_lanes():
     assert "github.event_name == 'schedule'" in text
     assert "github.event.workflow_run.event == 'schedule'" in text
     assert "github.event.workflow_run.head_branch == 'main'" in text
-    assert "cancel-in-progress: false" in text
+    assert "cancel-in-progress: true" in text
+    assert "stale_supervisor_replacement=ENABLED" in text
     assert "actions: write" in text
     assert "seq 1 30" in text
     assert "sleep 120" in text
