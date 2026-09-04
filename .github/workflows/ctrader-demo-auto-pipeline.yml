@@ -44,6 +44,7 @@ jobs:
       CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS: "2000"
       CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "100"
       CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"
+      CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "1"
       # Reference symbols are bootstrapped idempotently before each DEMO scan.
 
     steps:
@@ -63,6 +64,8 @@ jobs:
         run: python -m fx_scanner.demo_technical_producer
       - name: Execute only durable EXECUTION_READY DEMO signals
         run: python -m fx_scanner.demo_calibration_autotrade --limit 10
+      - name: Protect profitable DEMO positions on confirmed structural reversal
+        run: python -m fx_scanner.demo_structural_profit_protector
       - name: Reconcile cTrader closed DEMO outcomes
         if: ${{ always() }}
         continue-on-error: true
