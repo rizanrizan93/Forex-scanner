@@ -5,6 +5,7 @@ from dataclasses import replace
 
 from .cli import _apply_demo_technical_only_profile, _require_demo_autotrade_opt_in
 from .config import load_project_config
+from .demo_broker_pnl import capture_ctrader_demo_snapshot
 from .demo_calibration import apply_demo_calibration_risk, apply_demo_calibration_threshold
 from .demo_market_schedule import apply_demo_market_schedule
 from .execution.control_plane import ControlPlaneGate, ControlPlaneRefreshWorker
@@ -118,7 +119,12 @@ def run(*, limit: int = 10) -> int:
                 line += f" detail={detail}"
             print(line)
 
-        open_positions_after = int(gateway.position_count())
+        pnl_snapshot = capture_ctrader_demo_snapshot(
+            session=session,
+            store=store,
+            phase="AFTER",
+        )
+        open_positions_after = len(pnl_snapshot.positions)
         free_slots_after = max(0, max_positions - open_positions_after)
         print(
             "CTRADER_DEMO_BROKER_EXPOSURE "
@@ -126,6 +132,12 @@ def run(*, limit: int = 10) -> int:
             f"free_slots={free_slots_after} source=CTRADER_LIVE phase=AFTER"
         )
 
+        account = pnl_snapshot.account
+        position_floating = {
+            position.symbol: float(position.profit)
+            for position in pnl_snapshot.positions
+            if position.profit is not None
+        }
         store.write_heartbeat(
             "ctrader_demo_autotrade",
             healthy=True,
@@ -144,6 +156,13 @@ def run(*, limit: int = 10) -> int:
                 "free_slots": free_slots_after,
                 "broker_position_source": "CTRADER_LIVE",
                 "broker_exposure_source": "CTRADER_LIVE",
+                "balance": float(account.balance),
+                "equity": float(account.equity),
+                "floating_pnl": float(account.floating_profit or 0.0),
+                "margin": float(account.margin or 0.0),
+                "margin_free": float(account.margin_free or 0.0),
+                "position_floating_pnl": position_floating,
+                "broker_snapshot_id": pnl_snapshot.snapshot_id,
                 "manual_close_detection": "NEXT_POLL",
                 "scanned": report.scanned,
                 "eligible": report.eligible,
@@ -159,6 +178,8 @@ def run(*, limit: int = 10) -> int:
             f"max_entry_drift_r={executor.max_entry_drift_r:g} "
             f"market_schedule={market_schedule_mode} "
             f"open_positions={open_positions_after} free_slots={free_slots_after} "
+            f"floating_pnl={float(account.floating_profit or 0.0):.8g} "
+            f"equity={float(account.equity):.8g} "
             f"scanned={report.scanned} eligible={report.eligible} "
             f"claimed={report.claimed} executed={report.executed} "
             f"skipped={len(report.skipped)}"
