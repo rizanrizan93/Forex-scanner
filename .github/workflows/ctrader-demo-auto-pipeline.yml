@@ -45,6 +45,7 @@ jobs:
       CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "100"
       CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"
       CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "1"
+      CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED: "1"
       # Reference symbols are bootstrapped idempotently before each DEMO scan.
 
     steps:
