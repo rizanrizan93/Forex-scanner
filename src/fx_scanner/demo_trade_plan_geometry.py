@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 from math import isfinite
 
-from .liquidity import FairValueGap
+from .liquidity import FairValueGap, LiquidityKind
 from .strategy import TradePlan
 from .technical import atr
 
@@ -244,6 +244,123 @@ def assess_demo_wave_entry(
     return WaveEntryAssessment(False, "WAIT", reason, pullback_atr, zone_distance, confirmation)
 
 
+def _structural_stop_anchor(direction: str, *, entry_low: float, entry_high: float, m5, m15, h1) -> float | None:
+    """Choose the nearest valid structural invalidation anchor.
+
+    Sweep/reclaim evidence is preferred, then the M5 pullback swing, M15 swing,
+    and finally H1 swing. The selected level must sit beyond the raw entry zone
+    in the invalidation direction; an ATR buffer is applied by the caller.
+    """
+    wanted = "BULLISH" if direction == "LONG" else "BEARISH"
+    attr = "last_swing_low" if direction == "LONG" else "last_swing_high"
+    boundary = float(entry_low if direction == "LONG" else entry_high)
+    candidates: list[tuple[int, float]] = []
+
+    sweep = getattr(m15, "sweep", None)
+    if (
+        sweep is not None
+        and bool(getattr(sweep, "valid", False))
+        and getattr(sweep, "direction", None) == wanted
+    ):
+        level = getattr(sweep, "level", None)
+        if level is not None:
+            value = float(level)
+            if (direction == "LONG" and value < boundary) or (direction == "SHORT" and value > boundary):
+                candidates.append((0, value))
+
+    for priority, snapshot in ((1, m5), (2, m15), (3, h1)):
+        level = getattr(snapshot, attr, None)
+        if level is None:
+            continue
+        value = float(level)
+        if (direction == "LONG" and value < boundary) or (direction == "SHORT" and value > boundary):
+            candidates.append((priority, value))
+
+    if not candidates:
+        return None
+    best_priority = min(priority for priority, _ in candidates)
+    preferred = [value for priority, value in candidates if priority == best_priority]
+    return max(preferred) if direction == "LONG" else min(preferred)
+
+
+def _liquidity_priority(kind) -> int:
+    """Rank liquidity targets from local/internal to external/HTF."""
+    try:
+        normalized = LiquidityKind(kind)
+    except (TypeError, ValueError):
+        return 5
+    if normalized in {
+        LiquidityKind.ASIA_HIGH,
+        LiquidityKind.ASIA_LOW,
+        LiquidityKind.LONDON_HIGH,
+        LiquidityKind.LONDON_LOW,
+        LiquidityKind.NEW_YORK_HIGH,
+        LiquidityKind.NEW_YORK_LOW,
+    }:
+        return 2
+    if normalized in {LiquidityKind.EQUAL_HIGH, LiquidityKind.EQUAL_LOW}:
+        return 3
+    if normalized in {LiquidityKind.PDH, LiquidityKind.PDL}:
+        return 4
+    if normalized in {LiquidityKind.PWH, LiquidityKind.PWL}:
+        return 5
+    if normalized in {LiquidityKind.SWING_HIGH, LiquidityKind.SWING_LOW}:
+        return 1
+    return 6
+
+
+def _structural_targets(
+    direction: str,
+    *,
+    entry_low: float,
+    entry_high: float,
+    m15,
+    h1,
+    liquidity,
+    tolerance: float,
+) -> list[float]:
+    """Return ordered structure/liquidity targets for TP construction.
+
+    Priority is local M15 structure, H1 structure, session/internal liquidity,
+    equal highs/lows, previous-day liquidity and then previous-week liquidity.
+    Price ordering is still enforced so TP2 must sit beyond TP1.
+    """
+    reference = float(entry_high if direction == "LONG" else entry_low)
+    attr = "last_swing_high" if direction == "LONG" else "last_swing_low"
+    ranked: list[tuple[int, float]] = []
+
+    for priority, snapshot in ((0, m15), (1, h1)):
+        level = getattr(snapshot, attr, None)
+        if level is None:
+            continue
+        price = float(level)
+        if (direction == "LONG" and price > reference) or (direction == "SHORT" and price < reference):
+            ranked.append((priority, price))
+
+    levels = liquidity.levels_above(reference) if direction == "LONG" else liquidity.levels_below(reference)
+    for level in levels:
+        price = float(level.price)
+        if (direction == "LONG" and price <= reference) or (direction == "SHORT" and price >= reference):
+            continue
+        ranked.append((_liquidity_priority(getattr(level, "kind", None)), price))
+
+    ranked.sort(key=lambda item: (item[0], item[1] if direction == "LONG" else -item[1]))
+    output: list[float] = []
+    for _priority, price in ranked:
+        if any(abs(price - existing) <= tolerance for existing in output):
+            continue
+        output.append(price)
+    return output
+
+
+def _next_farther_target(direction: str, targets: list[float], first: float, tolerance: float) -> float | None:
+    if direction == "LONG":
+        candidates = [price for price in targets if price > first + tolerance]
+        return min(candidates) if candidates else None
+    candidates = [price for price in targets if price < first - tolerance]
+    return max(candidates) if candidates else None
+
+
 def build_demo_trade_plan(
     *,
     direction: str,
@@ -258,12 +375,11 @@ def build_demo_trade_plan(
     minimum_entry_zone_atr: float,
     chase_block_atr: float = 0.50,
 ) -> TradePlan | None:
-    """Build a DEMO plan only after a wave-aware entry reaction.
+    """Build a DEMO plan after a wave-aware entry reaction.
 
-    The broad DEMO chase allowance is used only to keep a candidate observable.
-    Actual execution now requires either an HL/LH pullback reaction near the raw
-    FVG entry zone, or a much tighter momentum-continuation exception. The raw
-    FVG is never extended to current price, preventing mid-wave market chasing.
+    Entry remains anchored to the raw FVG. Stops use structural invalidation
+    (sweep/M5/M15/H1) plus an ATR buffer. Profit targets follow market structure
+    and liquidity before any RR-derived fallback is used.
     """
     current_atr = float(atr(list(m5_bars), atr_period))
     if not isfinite(current_atr) or current_atr <= 0:
@@ -300,68 +416,52 @@ def build_demo_trade_plan(
 
     buffer = current_atr * float(sl_buffer_atr)
     tolerance = current_atr * 0.05
+    anchor = _structural_stop_anchor(
+        direction,
+        entry_low=entry_low,
+        entry_high=entry_high,
+        m5=m5,
+        m15=m15,
+        h1=h1,
+    )
+    if anchor is None:
+        return None
+
+    targets = _structural_targets(
+        direction,
+        entry_low=entry_low,
+        entry_high=entry_high,
+        m15=m15,
+        h1=h1,
+        liquidity=liquidity,
+        tolerance=tolerance,
+    )
+    if not targets:
+        return None
 
     if direction == "LONG":
-        anchor = None
-        if m15.sweep is not None and m15.sweep.valid and m15.sweep.direction == "BULLISH":
-            anchor = m15.sweep.level
-        if anchor is None:
-            anchor = h1.last_swing_low
-        if anchor is None:
-            return None
-
         stop = min(float(anchor), entry_low) - buffer
         risk = entry_high - stop
         if not isfinite(risk) or risk <= 0:
             return None
         chase = max(0.0, float(current_price) - entry_high) / current_atr
-
-        targets = []
-        for level in liquidity.levels_above(entry_high):
-            price = float(level.price)
-            if price <= entry_high:
-                continue
-            if not targets or abs(price - targets[-1]) > tolerance:
-                targets.append(price)
-        if not targets:
-            return None
         tp1 = targets[0]
         rr1 = (tp1 - entry_high) / risk
-        if len(targets) > 1:
-            tp2 = targets[1]
-        else:
+        tp2 = _next_farther_target(direction, targets, tp1, tolerance)
+        if tp2 is None:
             fallback_rr = max(2.0, rr1 + 0.50)
             tp2 = entry_high + fallback_rr * risk
         rr2 = (tp2 - entry_high) / risk
     else:
-        anchor = None
-        if m15.sweep is not None and m15.sweep.valid and m15.sweep.direction == "BEARISH":
-            anchor = m15.sweep.level
-        if anchor is None:
-            anchor = h1.last_swing_high
-        if anchor is None:
-            return None
-
         stop = max(float(anchor), entry_high) + buffer
         risk = stop - entry_low
         if not isfinite(risk) or risk <= 0:
             return None
         chase = max(0.0, entry_low - float(current_price)) / current_atr
-
-        targets = []
-        for level in liquidity.levels_below(entry_low):
-            price = float(level.price)
-            if price >= entry_low:
-                continue
-            if not targets or abs(price - targets[-1]) > tolerance:
-                targets.append(price)
-        if not targets:
-            return None
         tp1 = targets[0]
         rr1 = (entry_low - tp1) / risk
-        if len(targets) > 1:
-            tp2 = targets[1]
-        else:
+        tp2 = _next_farther_target(direction, targets, tp1, tolerance)
+        if tp2 is None:
             fallback_rr = max(2.0, rr1 + 0.50)
             tp2 = entry_low - fallback_rr * risk
         rr2 = (entry_low - tp2) / risk
