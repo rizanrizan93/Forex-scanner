@@ -122,7 +122,7 @@ demo_safety:
   min_signal_coverage: 0.80
   max_order_lots: 0.01
   max_risk_pct: 0.25
-  max_concurrent_positions: 2
+  max_concurrent_positions: 5
   poll_seconds: 1.0
 
 
