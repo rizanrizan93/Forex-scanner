@@ -60,3 +60,7 @@ jobs:
         run: python -m fx_scanner.demo_technical_producer
       - name: Execute only durable EXECUTION_READY DEMO signals
         run: python -m fx_scanner.demo_calibration_autotrade --limit 10
+      - name: Reconcile cTrader closed DEMO outcomes
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_closed_trade_reconciler
