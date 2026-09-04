@@ -43,6 +43,9 @@ class FakeQuery:
         self.filters.append((field, value))
         return self
 
+    def order(self, _field, desc=False):
+        return self
+
     def limit(self, value):
         self.limit_value = int(value)
         return self
