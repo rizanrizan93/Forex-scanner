@@ -8,9 +8,13 @@ from typing import Any, Iterable
 from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
-SYSTEM_WINS = {"TP_HIT"}
-SYSTEM_LOSSES = {"SL_HIT", "STOP_OUT"}
-SYSTEM_BREAKEVENS = {"BREAKEVEN", "PROTECTION_CLOSE_BREAKEVEN"}
+SYSTEM_WINS = {"TP_HIT", "STRUCTURAL_PROTECT_PROFIT"}
+SYSTEM_LOSSES = {"SL_HIT", "STOP_OUT", "STRUCTURAL_PROTECT_LOSS"}
+SYSTEM_BREAKEVENS = {
+    "BREAKEVEN",
+    "PROTECTION_CLOSE_BREAKEVEN",
+    "STRUCTURAL_PROTECT_BREAKEVEN",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +25,9 @@ class CalibrationStats:
     wins: int = 0
     losses: int = 0
     breakevens: int = 0
+    protected_wins: int = 0
+    protected_losses: int = 0
+    protected_breakevens: int = 0
     net_pnl: float = 0.0
     r_proxy_sum: float = 0.0
     r_proxy_count: int = 0
@@ -37,6 +44,14 @@ class CalibrationStats:
     @property
     def avg_r_proxy(self) -> float | None:
         return None if self.r_proxy_count <= 0 else self.r_proxy_sum / self.r_proxy_count
+
+    @property
+    def tp_wins(self) -> int:
+        return self.wins - self.protected_wins
+
+    @property
+    def sl_losses(self) -> int:
+        return self.losses - self.protected_losses
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +110,9 @@ def _add(stats: CalibrationStats, payload: dict[str, Any]) -> CalibrationStats:
     is_loss = exit_type in SYSTEM_LOSSES
     is_be = exit_type in SYSTEM_BREAKEVENS
     is_system = is_win or is_loss or is_be
+    protected_win = exit_type == "STRUCTURAL_PROTECT_PROFIT"
+    protected_loss = exit_type == "STRUCTURAL_PROTECT_LOSS"
+    protected_be = exit_type == "STRUCTURAL_PROTECT_BREAKEVEN"
     r_value = _r_proxy(payload) if is_system else None
     return CalibrationStats(
         closed=stats.closed + 1,
@@ -103,6 +121,9 @@ def _add(stats: CalibrationStats, payload: dict[str, Any]) -> CalibrationStats:
         wins=stats.wins + int(is_win),
         losses=stats.losses + int(is_loss),
         breakevens=stats.breakevens + int(is_be),
+        protected_wins=stats.protected_wins + int(protected_win),
+        protected_losses=stats.protected_losses + int(protected_loss),
+        protected_breakevens=stats.protected_breakevens + int(protected_be),
         net_pnl=stats.net_pnl + net,
         r_proxy_sum=stats.r_proxy_sum + (0.0 if r_value is None else r_value),
         r_proxy_count=stats.r_proxy_count + int(r_value is not None),
@@ -217,11 +238,25 @@ def _stats_payload(stats: CalibrationStats) -> dict[str, Any]:
         "wins": stats.wins,
         "losses": stats.losses,
         "breakevens": stats.breakevens,
+        "tp_wins": stats.tp_wins,
+        "sl_losses": stats.sl_losses,
+        "protected_wins": stats.protected_wins,
+        "protected_losses": stats.protected_losses,
+        "protected_breakevens": stats.protected_breakevens,
         "net_pnl": stats.net_pnl,
         "win_rate": stats.win_rate,
         "avg_r_proxy": stats.avg_r_proxy,
         "stage": calibration_stage(stats),
     }
+
+
+def _outcome_counts_text(stats: CalibrationStats) -> str:
+    return (
+        f"tp={stats.tp_wins} sl={stats.sl_losses} "
+        f"protect_profit={stats.protected_wins} "
+        f"protect_loss={stats.protected_losses} "
+        f"protect_be={stats.protected_breakevens}"
+    )
 
 
 def run() -> int:
@@ -243,7 +278,7 @@ def run() -> int:
     print(
         "CTRADER_DEMO_INCREMENTAL_CALIBRATION "
         f"closed={overall.closed} system_closed={overall.system_closed} "
-        f"manual_closed={overall.manual_closed} tp={overall.wins} sl={overall.losses} "
+        f"manual_closed={overall.manual_closed} {_outcome_counts_text(overall)} "
         f"breakeven={overall.breakevens} realized_net={overall.net_pnl:.8g} "
         f"balance={balance_text} equity={equity_text} floating_pnl={floating_text} "
         f"open_positions={len(positions)} snapshot_age_s={age_text} mode=SHADOW_INCREMENTAL"
@@ -270,7 +305,7 @@ def run() -> int:
         print(
             "CTRADER_DEMO_PAIR_CALIBRATION "
             f"symbol={symbol} closed={stats.closed} system={stats.system_closed} "
-            f"manual={stats.manual_closed} tp={stats.wins} sl={stats.losses} "
+            f"manual={stats.manual_closed} {_outcome_counts_text(stats)} "
             f"win_rate={'NONE' if win_rate is None else f'{win_rate:.3f}'} net={stats.net_pnl:.8g} "
             f"avg_r_proxy={'NONE' if avg_r is None else f'{avg_r:.3f}'} "
             f"open={int(current['open'])} floating={float(current['floating']):.8g} "
@@ -287,7 +322,7 @@ def run() -> int:
         print(
             "CTRADER_DEMO_SETUP_CALIBRATION "
             f"setup={setup} closed={stats.closed} system={stats.system_closed} "
-            f"manual={stats.manual_closed} tp={stats.wins} sl={stats.losses} "
+            f"manual={stats.manual_closed} {_outcome_counts_text(stats)} "
             f"win_rate={'NONE' if stats.win_rate is None else f'{stats.win_rate:.3f}'} "
             f"net={stats.net_pnl:.8g} stage={calibration_stage(stats)}"
         )
@@ -297,7 +332,7 @@ def run() -> int:
         print(
             "CTRADER_DEMO_ENTRY_CALIBRATION "
             f"entry_mode={entry_mode} closed={stats.closed} system={stats.system_closed} "
-            f"manual={stats.manual_closed} tp={stats.wins} sl={stats.losses} "
+            f"manual={stats.manual_closed} {_outcome_counts_text(stats)} "
             f"win_rate={'NONE' if stats.win_rate is None else f'{stats.win_rate:.3f}'} "
             f"net={stats.net_pnl:.8g} avg_r_proxy={'NONE' if stats.avg_r_proxy is None else f'{stats.avg_r_proxy:.3f}'} "
             f"stage={calibration_stage(stats)}"
@@ -309,7 +344,7 @@ def run() -> int:
         print(
             "CTRADER_DEMO_CONFIRMATION_CALIBRATION "
             f"confirmation={confirmation} closed={stats.closed} system={stats.system_closed} "
-            f"tp={stats.wins} sl={stats.losses} "
+            f"{_outcome_counts_text(stats)} "
             f"win_rate={'NONE' if stats.win_rate is None else f'{stats.win_rate:.3f}'} "
             f"net={stats.net_pnl:.8g} stage={calibration_stage(stats)}"
         )
@@ -327,6 +362,11 @@ def run() -> int:
             "wins": overall.wins,
             "losses": overall.losses,
             "breakevens": overall.breakevens,
+            "tp_wins": overall.tp_wins,
+            "sl_losses": overall.sl_losses,
+            "structural_protect_profit": overall.protected_wins,
+            "structural_protect_loss": overall.protected_losses,
+            "structural_protect_breakeven": overall.protected_breakevens,
             "realized_net_pnl": overall.net_pnl,
             "balance": balance,
             "equity": equity,
@@ -338,6 +378,7 @@ def run() -> int:
             "confirmation_calibration": confirmation_details,
             "automatic_strategy_mutation": False,
             "geometry_calibration": "SHADOW_CAPTURE_ACTIVE_MUTATION_HOLD",
+            "trade_management_calibration": "STRUCTURAL_PROFIT_PROTECT_SEPARATE_BUCKET",
         },
     )
     return 0
