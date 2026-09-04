@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 from datetime import datetime, timezone
+from math import isfinite
 
 from .cli import (
     _apply_demo_technical_only_profile,
@@ -25,6 +27,26 @@ from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 
 UTC = timezone.utc
+
+
+def _apply_demo_chase_block(cfg):
+    """Apply a DEMO-only chase ceiling without changing production config."""
+    production = float(cfg.strategy["trade_plan"]["chase_block_atr"])
+    raw = os.getenv("CTRADER_DEMO_CHASE_BLOCK_ATR", "").strip()
+    if not raw:
+        return cfg, production
+    try:
+        demo_limit = float(raw)
+    except ValueError as exc:
+        raise SystemExit("CTRADER_DEMO_CHASE_BLOCK_ATR_INVALID") from exc
+    if not isfinite(demo_limit) or not production <= demo_limit <= 3.0:
+        raise SystemExit("CTRADER_DEMO_CHASE_BLOCK_ATR_OUT_OF_RANGE")
+
+    trade_plan = dict(cfg.strategy["trade_plan"])
+    trade_plan["chase_block_atr"] = demo_limit
+    strategy = dict(cfg.strategy)
+    strategy["trade_plan"] = trade_plan
+    return replace(cfg, strategy=strategy), production
 
 
 def _safe_structure_value(value) -> str:
@@ -52,12 +74,14 @@ def run() -> int:
 
     cfg, production_execution_min = apply_demo_calibration_threshold(cfg)
     cfg = _apply_demo_technical_only_profile(cfg)
+    cfg, production_chase_block = _apply_demo_chase_block(cfg)
     cfg = apply_demo_deep_analysis_top(cfg)
     cfg, demo_risk_pct = apply_demo_calibration_risk(
         cfg,
         max_risk_pct=float(policy.demo_safety["max_risk_pct"]),
     )
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
+    demo_chase_block = float(cfg.strategy["trade_plan"]["chase_block_atr"])
     demo_deep_top = int(cfg.strategy["selection"]["deep_analysis_top"])
     effective_risk_ceiling = float(cfg.risk["max_risk_per_trade_pct"])
     fvg_max_age = float(os.getenv("CTRADER_DEMO_FVG_MAX_AGE_MINUTES", "90"))
@@ -68,13 +92,14 @@ def run() -> int:
     print("CTRADER_DEMO_PROFILE mode=TECHNICAL_SCALPING macro=DISABLED")
     print(
         "CTRADER_DEMO_CALIBRATION "
-        f"floor={demo_execution_min:g} admission=SCORE_DRIVEN hard_guards=ENFORCED"
+        f"floor={demo_execution_min:g} admission=SCORE_DRIVEN hard_guards=ENFORCED "
+        f"chase_block_atr={demo_chase_block:g} production_chase_block_atr={production_chase_block:g}"
     )
     print("CTRADER_DEMO_BINDING mode=EXPLICIT trade_plan=DEMO_GEOMETRY monkeypatch=DISABLED")
     print(
         "CTRADER_DEMO_EARLY_ENTRY "
         f"h1_m15=DIAGNOSTIC fresh_fvg_minutes={fvg_max_age:g} "
-        f"execution_score={demo_execution_min:g} chase_block_atr=0.50"
+        f"execution_score={demo_execution_min:g} chase_block_atr={demo_chase_block:g}"
     )
     print(
         "CTRADER_DEMO_FAST_PASS universe_tfs=H1,M15,M5 "

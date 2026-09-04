@@ -20,8 +20,11 @@ def test_demo_deep_top8_is_explicit_and_process_local():
 def test_demo_deep_top8_keeps_non_structure_execution_guards():
     workflow = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     producer = (ROOT / "src/fx_scanner/demo_technical_producer.py").read_text()
+    strategy = (ROOT / "config/strategy.yaml").read_text()
 
     assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in workflow
-    assert "chase_block_atr=0.50" in producer
+    assert 'CTRADER_DEMO_CHASE_BLOCK_ATR: "2.0"' in workflow
+    assert "production_chase_block_atr" in producer
+    assert "chase_block_atr: 0.50" in strategy
     assert "hard_guards=ENFORCED" in producer
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "1.0"' in workflow
