@@ -64,3 +64,7 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_closed_trade_reconciler
+      - name: Summarize floating P&L and incremental calibration
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_incremental_calibration
