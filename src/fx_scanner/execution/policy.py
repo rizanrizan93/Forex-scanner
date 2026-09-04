@@ -150,8 +150,8 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
             raise ConfigurationError("demo max_order_lots cannot exceed 0.01")
         if not 0 < float(demo_safety["max_risk_pct"]) <= 0.25:
             raise ConfigurationError("demo max_risk_pct cannot exceed 0.25")
-        if not 1 <= int(demo_safety["max_concurrent_positions"]) <= 5:
-            raise ConfigurationError("demo max_concurrent_positions must be in [1,5]")
+        if not 1 <= int(demo_safety["max_concurrent_positions"]) <= 10:
+            raise ConfigurationError("demo max_concurrent_positions must be in [1,10]")
         if not 0.25 <= float(demo_safety["poll_seconds"]) <= 5.0:
             raise ConfigurationError("demo poll_seconds must be in [0.25,5]")
 
