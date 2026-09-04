@@ -21,7 +21,7 @@ def _safe_skip_fields(value: str) -> tuple[str, str, str | None]:
     signal_id = parts[0].strip() if parts and parts[0].strip() else "UNKNOWN"
     reason = parts[1].strip() if len(parts) > 1 and parts[1].strip() else "UNKNOWN"
     detail = None
-    if reason in {"BROKER_CAPACITY_FULL", "BROKER_SYMBOL_ALREADY_OPEN"}:
+    if reason in {"BROKER_CAPACITY_FULL", "BROKER_SYMBOL_ALREADY_OPEN", "NOT_ELIGIBLE"}:
         if len(parts) > 2 and parts[2].strip():
             detail = parts[2].strip()
     elif reason in {
@@ -94,6 +94,12 @@ def run(*, limit: int = 10) -> int:
             f"free_slots={max(0, max_positions - open_positions_before)} "
             "source=CTRADER_LIVE phase=BEFORE"
         )
+        print(
+            "CTRADER_DEMO_LIVE_ENTRY_REVALIDATION "
+            f"max_entry_drift_r={executor.max_entry_drift_r:g} "
+            f"minimum_tp2_rr={float(cfg.strategy['trade_plan']['minimum_tp2_rr']):g} "
+            "fresh_quote=REQUIRED"
+        )
 
         report = executor.poll_once(limit=int(limit))
 
@@ -122,6 +128,7 @@ def run(*, limit: int = 10) -> int:
                 "calibration_threshold": demo_execution_min,
                 "risk_per_trade_pct": demo_risk_pct,
                 "max_risk_pct": float(policy.demo_safety["max_risk_pct"]),
+                "max_entry_drift_r": executor.max_entry_drift_r,
                 "open_positions": open_positions_after,
                 "max_positions": max_positions,
                 "free_slots": free_slots_after,
@@ -139,6 +146,7 @@ def run(*, limit: int = 10) -> int:
             "CTRADER_DEMO_CALIBRATION_AUTOTRADE_OK "
             f"threshold={demo_execution_min:g} production_default={production_execution_min:g} "
             f"risk_pct={demo_risk_pct:g} max_risk_pct={float(policy.demo_safety['max_risk_pct']):g} "
+            f"max_entry_drift_r={executor.max_entry_drift_r:g} "
             f"open_positions={open_positions_after} free_slots={free_slots_after} "
             f"scanned={report.scanned} eligible={report.eligible} "
             f"claimed={report.claimed} executed={report.executed} "
