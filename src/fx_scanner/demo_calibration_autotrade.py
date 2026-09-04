@@ -29,6 +29,10 @@ def _safe_skip_fields(value: str) -> tuple[str, str, str | None]:
         "BROKER_POSITION_RECONCILIATION_FAILED",
         "BROKER_SYMBOL_RECONCILIATION_FAILED",
         "EXECUTION_BLOCKED",
+        "TRANSIENT_REQUEUED",
+        "TRANSIENT_REQUEUE_FAILED",
+        "OUTCOME_UNCERTAIN",
+        "CLAIM_ERROR",
     }:
         if len(parts) > 2 and parts[2].strip():
             detail = parts[2].strip()
