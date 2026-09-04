@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from math import isfinite
 from time import sleep
 from typing import Any
 
@@ -53,6 +55,13 @@ class CTraderDemoAutoExecutor:
     If all bounded retries fail safely, the durable COOLDOWN claim is atomically
     returned to EXECUTION_READY so a valid signal is not lost to transport noise.
     An indeterminate post-submit outcome is never retried or requeued blindly.
+
+    For DEMO calibration, a producer-approved EXECUTION_READY signal may be
+    executed at the fresh live quote even when that quote has moved just outside
+    the original entry zone. The live quote must remain inside SL/TP geometry,
+    preserve the configured minimum TP2 RR, and remain within a bounded fraction
+    of the original planned risk. This prevents a narrow entry-zone handoff race
+    from silently dropping an otherwise valid calibration order.
     """
 
     SAFE_RETRY_DELAYS_SECONDS = (0.5, 1.5)
@@ -78,6 +87,7 @@ class CTraderDemoAutoExecutor:
         self.store = store
         self.demo = policy.demo_safety
         self.control_gate = getattr(router, "control_gate", None)
+        self.max_entry_drift_r = self._demo_entry_drift_r()
 
     @staticmethod
     def _dt(value: Any) -> datetime | None:
@@ -87,6 +97,17 @@ class CTraderDemoAutoExecutor:
         if parsed.tzinfo is None:
             return None
         return parsed.astimezone(UTC)
+
+    @staticmethod
+    def _demo_entry_drift_r() -> float:
+        raw = os.getenv("CTRADER_DEMO_MAX_ENTRY_DRIFT_R", "0.50").strip()
+        try:
+            value = float(raw)
+        except ValueError as exc:
+            raise ValueError("CTRADER_DEMO_MAX_ENTRY_DRIFT_R_INVALID") from exc
+        if not isfinite(value) or not 0.0 <= value <= 1.0:
+            raise ValueError("CTRADER_DEMO_MAX_ENTRY_DRIFT_R_OUT_OF_RANGE")
+        return value
 
     @classmethod
     def _is_transient_error(cls, exc_or_text: Any) -> bool:
@@ -153,36 +174,40 @@ class CTraderDemoAutoExecutor:
             return False
         return len(rows) == 1
 
-    def _intent(self, row: dict[str, Any], *, now: datetime) -> OrderIntent | None:
+    def _intent_diagnostic(
+        self, row: dict[str, Any], *, now: datetime
+    ) -> tuple[OrderIntent | None, str | None]:
         signal_id = str(row.get("id", "")).strip()
         symbol = str(row.get("symbol", "")).upper().strip()
         direction = str(row.get("direction", "")).upper().strip()
         if not signal_id or symbol not in self.cfg.pair_map or direction not in {"LONG", "SHORT"}:
-            return None
+            return None, "IDENTITY_INVALID"
         if str(row.get("state", "")).upper() != "EXECUTION_READY":
-            return None
+            return None, "STATE_NOT_EXECUTION_READY"
 
         guards = row.get("active_guards")
         if guards not in (None, [], ()):
-            return None
+            return None, "ACTIVE_GUARDS"
         coverage = float(row.get("data_coverage") or 0.0)
         if coverage < float(self.demo["min_signal_coverage"]):
-            return None
+            return None, "COVERAGE_BELOW_MIN"
         final_score = row.get("final_score")
         if final_score is not None and float(final_score) < float(
             self.cfg.scoring["states"]["execution_candidate_min"]
         ):
-            return None
+            return None, "SCORE_BELOW_MIN"
 
         observed_at = self._dt(row.get("observed_at"))
         if observed_at is None:
-            return None
+            return None, "OBSERVED_AT_INVALID"
         age = (now - observed_at).total_seconds()
-        if age < -1.0 or age > float(self.policy.order["max_signal_age_seconds"]):
-            return None
+        if age < -1.0:
+            return None, "SIGNAL_TIMESTAMP_IN_FUTURE"
+        if age > float(self.policy.order["max_signal_age_seconds"]):
+            return None, "SIGNAL_TOO_OLD"
         expires_at = self._dt(row.get("expires_at"))
         if expires_at is not None and now > expires_at:
-            return None
+            return None, "SIGNAL_EXPIRED"
 
         try:
             entry_low = float(row["entry_low"])
@@ -191,48 +216,78 @@ class CTraderDemoAutoExecutor:
             take_profit = float(row["tp2"])
             rr2 = float(row["rr2"])
         except (TypeError, ValueError, KeyError):
-            return None
-        if not (
-            0 < entry_low < entry_high
-            and rr2 >= float(self.cfg.strategy["trade_plan"]["minimum_tp2_rr"])
-        ):
-            return None
+            return None, "PLAN_FIELDS_INVALID"
+
+        minimum_rr = float(self.cfg.strategy["trade_plan"]["minimum_tp2_rr"])
+        if not (0 < entry_low < entry_high and rr2 >= minimum_rr):
+            return None, "PLAN_GEOMETRY_INVALID"
 
         side = OrderSide.BUY if direction == "LONG" else OrderSide.SELL
         quote = self.gateway.market_quote(symbol)
         executable = float(quote.ask if side == OrderSide.BUY else quote.bid)
-        if not entry_low <= executable <= entry_high:
-            return None
-        if side == OrderSide.BUY and not (stop_loss < executable < take_profit):
-            return None
-        if side == OrderSide.SELL and not (take_profit < executable < stop_loss):
-            return None
+
+        if side == OrderSide.BUY:
+            if not (stop_loss < executable < take_profit):
+                return None, "LIVE_SLTP_GEOMETRY_INVALID"
+            planned_risk = entry_high - stop_loss
+            live_risk = executable - stop_loss
+            live_reward = take_profit - executable
+        else:
+            if not (take_profit < executable < stop_loss):
+                return None, "LIVE_SLTP_GEOMETRY_INVALID"
+            planned_risk = stop_loss - entry_low
+            live_risk = stop_loss - executable
+            live_reward = executable - take_profit
+
+        if planned_risk <= 0 or live_risk <= 0 or live_reward <= 0:
+            return None, "LIVE_RISK_GEOMETRY_INVALID"
+
+        live_rr2 = live_reward / live_risk
+        if live_rr2 + 1e-9 < minimum_rr:
+            return None, f"LIVE_RR_BELOW_MIN_{live_rr2:.3f}"
+
+        if executable < entry_low:
+            drift = entry_low - executable
+        elif executable > entry_high:
+            drift = executable - entry_high
+        else:
+            drift = 0.0
+        drift_r = drift / planned_risk
+        if drift_r > self.max_entry_drift_r + 1e-9:
+            return None, f"ENTRY_DRIFT_R_EXCEEDED_{drift_r:.3f}"
 
         volume = min(0.01, float(self.demo["max_order_lots"]))
-        return OrderIntent(
-            signal_id=signal_id,
-            symbol=symbol,
-            side=side,
-            order_type=OrderType.MARKET,
-            created_at=observed_at,
-            volume=volume,
-            entry_price=executable,
-            stop_loss=stop_loss,
-            take_profit=take_profit,
-            risk_pct=min(
-                float(self.cfg.risk["risk_per_trade_pct"]),
-                float(self.demo["max_risk_pct"]),
+        return (
+            OrderIntent(
+                signal_id=signal_id,
+                symbol=symbol,
+                side=side,
+                order_type=OrderType.MARKET,
+                created_at=observed_at,
+                volume=volume,
+                entry_price=executable,
+                stop_loss=stop_loss,
+                take_profit=take_profit,
+                risk_pct=min(
+                    float(self.cfg.risk["risk_per_trade_pct"]),
+                    float(self.demo["max_risk_pct"]),
+                ),
+                comment=f"DEMO_AUTO:{row.get('setup_type') or 'UNKNOWN'}",
             ),
-            comment=f"DEMO_AUTO:{row.get('setup_type') or 'UNKNOWN'}",
+            None,
         )
+
+    def _intent(self, row: dict[str, Any], *, now: datetime) -> OrderIntent | None:
+        intent, _reason = self._intent_diagnostic(row, now=now)
+        return intent
 
     def _intent_with_transport_retry(
         self, row: dict[str, Any], *, now: datetime
-    ) -> OrderIntent | None:
+    ) -> tuple[OrderIntent | None, str | None]:
         symbol = str(row.get("symbol", "")).upper().strip() or None
         for attempt in range(len(self.SAFE_RETRY_DELAYS_SECONDS) + 1):
             try:
-                return self._intent(row, now=now)
+                return self._intent_diagnostic(row, now=now)
             except Exception as exc:
                 if (
                     not self._is_transient_error(exc)
@@ -241,7 +296,7 @@ class CTraderDemoAutoExecutor:
                     raise
                 self._recover_transport(symbol=symbol)
                 sleep(self.SAFE_RETRY_DELAYS_SECONDS[attempt])
-        return None
+        return None, "UNKNOWN"
 
     def _broker_exposure_block(self, symbol: str) -> str | None:
         """Reconcile current cTrader exposure before consuming the durable signal.
@@ -299,9 +354,7 @@ class CTraderDemoAutoExecutor:
             except Exception as exc:
                 last_exc = exc
                 if self._submission_uncertain(intent.signal_id):
-                    return False, (
-                        f"OUTCOME_UNCERTAIN:{type(exc).__name__}:{exc}"
-                    )
+                    return False, f"OUTCOME_UNCERTAIN:{type(exc).__name__}:{exc}"
                 if (
                     not self._is_transient_error(exc)
                     or attempt >= len(self.SAFE_RETRY_DELAYS_SECONDS)
@@ -318,9 +371,7 @@ class CTraderDemoAutoExecutor:
         ):
             requeued = self._requeue_safe_transport_claim(intent.signal_id)
             state = "REQUEUED" if requeued else "REQUEUE_FAILED"
-            return False, (
-                f"TRANSIENT_{state}:{type(last_exc).__name__}:{last_exc}"
-            )
+            return False, f"TRANSIENT_{state}:{type(last_exc).__name__}:{last_exc}"
 
         return False, f"EXECUTION_BLOCKED:{type(last_exc).__name__}:{last_exc}"
 
@@ -351,12 +402,14 @@ class CTraderDemoAutoExecutor:
         for row in rows:
             signal_id = str(row.get("id", "UNKNOWN"))
             try:
-                intent = self._intent_with_transport_retry(row, now=now)
+                intent, ineligible_reason = self._intent_with_transport_retry(row, now=now)
             except Exception as exc:
                 skipped.append(f"{signal_id}:INTENT_ERROR:{type(exc).__name__}:{exc}")
                 continue
             if intent is None:
-                skipped.append(f"{signal_id}:NOT_ELIGIBLE")
+                skipped.append(
+                    f"{signal_id}:NOT_ELIGIBLE:{ineligible_reason or 'UNKNOWN'}"
+                )
                 continue
             eligible += 1
 
