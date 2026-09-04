@@ -111,9 +111,11 @@ def test_runtime_reports_live_broker_capacity_and_manual_close_detection():
     source = Path("src/fx_scanner/demo_calibration_autotrade.py").read_text()
     assert "CTRADER_DEMO_BROKER_EXPOSURE" in source
     assert "open_positions_before = int(gateway.position_count())" in source
-    assert "open_positions_after = int(gateway.position_count())" in source
+    assert "pnl_snapshot = capture_ctrader_demo_snapshot" in source
+    assert "open_positions_after = len(pnl_snapshot.positions)" in source
     assert '"broker_position_source": "CTRADER_LIVE"' in source
     assert '"manual_close_detection": "NEXT_POLL"' in source
+    assert '"floating_pnl"' in source
     assert "free_slots" in source
 
 
