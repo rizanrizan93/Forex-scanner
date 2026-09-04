@@ -17,7 +17,7 @@ This runtime is intentionally **DEMO ONLY**.
 - TP2 RR must remain at least 1.50.
 - Every signal is atomically claimed by moving it to COOLDOWN before broker I/O.
 - Maximum demo order size is 0.01 lot.
-- During DEMO calibration, maximum simultaneous broker positions is five; stacking another position on the same symbol remains blocked.
+- During DEMO calibration, maximum simultaneous broker positions is ten; stacking another position on the same symbol remains blocked.
 - Server-side SL and TP are mandatory.
 - The real/live account path is not enabled.
 
