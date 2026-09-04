@@ -152,13 +152,14 @@ def _update_sampled_trajectory(store, positions: tuple[BrokerPositionSnapshot, .
         return {}
 
     for position_id, item in sorted(current.items(), key=lambda pair: (pair[1]["symbol"], pair[0])):
+        last_pnl = item["last_floating_pnl"]
+        last_text = "NONE" if last_pnl is None else f"{float(last_pnl):.8g}"
         print(
             "CTRADER_DEMO_POSITION_TRAJECTORY "
             f"symbol={item['symbol']} position_id={position_id} samples={item['sample_count']} "
             f"sampled_mae_pnl={float(item['sampled_mae_pnl']):.8g} "
             f"sampled_mfe_pnl={float(item['sampled_mfe_pnl']):.8g} "
-            f"last_floating_pnl={'NONE' if item['last_floating_pnl'] is None else f'{float(item['last_floating_pnl']):.8g}'} "
-            "scope=SINCE_FIRST_OBSERVED"
+            f"last_floating_pnl={last_text} scope=SINCE_FIRST_OBSERVED"
         )
     return current
 
