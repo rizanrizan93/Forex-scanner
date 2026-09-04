@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import os
 from dataclasses import replace
 
 from .cli import _apply_demo_technical_only_profile, _require_demo_autotrade_opt_in
 from .config import load_project_config
+from .demo_adaptive_calibration import (
+    build_adaptive_policy_from_rows,
+    load_adaptive_policy,
+)
 from .demo_broker_pnl import capture_ctrader_demo_snapshot
 from .demo_calibration import apply_demo_calibration_risk, apply_demo_calibration_threshold
 from .demo_market_schedule import apply_demo_market_schedule
@@ -41,6 +46,13 @@ def _safe_skip_fields(value: str) -> tuple[str, str, str | None]:
     return signal_id, reason, detail
 
 
+def _demo_account_id(policy) -> str | None:
+    account_env = str(policy.ctrader.get("account_id_env", "CTRADER_ACCOUNT_ID"))
+    login_env = str(policy.ctrader.get("trader_login_env", "CTRADER_TRADER_LOGIN"))
+    value = str(os.getenv(account_env) or os.getenv(login_env) or "").strip()
+    return value or None
+
+
 def run(*, limit: int = 10) -> int:
     cfg = load_project_config(None)
     cfg, market_schedule_mode = apply_demo_market_schedule(cfg)
@@ -61,6 +73,50 @@ def run(*, limit: int = 10) -> int:
     symbols = [pair.symbol for pair in cfg.pairs]
     gateway, session = build_broker_gateway(policy, symbols, backend="CTRADER")
     store = SupabaseOperationalStore.from_env()
+
+    adaptive_enabled = os.getenv("CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED", "0").strip() == "1"
+    adaptive_error = None
+    try:
+        adaptive_policy = load_adaptive_policy(
+            store,
+            account_id=_demo_account_id(policy),
+            base_floor=demo_execution_min,
+            enabled=adaptive_enabled,
+        )
+    except Exception as exc:
+        adaptive_error = type(exc).__name__
+        adaptive_policy = build_adaptive_policy_from_rows(
+            (),
+            base_floor=demo_execution_min,
+            enabled=False,
+        )
+
+    adaptive_details = adaptive_policy.details()
+    if adaptive_error is not None:
+        adaptive_details["load_error"] = adaptive_error
+    store.write_heartbeat(
+        "ctrader_demo_adaptive_calibration",
+        healthy=adaptive_error is None,
+        lag_seconds=0.0,
+        details=adaptive_details,
+    )
+    effective_global_floor = min(
+        adaptive_policy.max_floor,
+        adaptive_policy.base_floor + adaptive_policy.global_penalty,
+    )
+    print(
+        "CTRADER_DEMO_ADAPTIVE_CALIBRATION "
+        f"enabled={int(adaptive_policy.enabled)} "
+        f"wave_decisive={adaptive_policy.wave_stats.decisive_system} "
+        f"wave_wins={adaptive_policy.wave_stats.wins} wave_losses={adaptive_policy.wave_stats.losses} "
+        f"legacy_decisive={adaptive_policy.legacy_stats.decisive_system} "
+        f"legacy_wins={adaptive_policy.legacy_stats.wins} legacy_losses={adaptive_policy.legacy_stats.losses} "
+        f"global_penalty={adaptive_policy.global_penalty:.2f} "
+        f"effective_global_floor={effective_global_floor:.2f} "
+        f"root_cause={adaptive_policy.root_cause} "
+        f"load_error={adaptive_error or 'NONE'}"
+    )
+
     gate = ControlPlaneGate(
         max_age_seconds=float(policy.live_safety.get("control_state_max_age_seconds", 5))
     )
@@ -77,6 +133,7 @@ def run(*, limit: int = 10) -> int:
         gateway=gateway,
         router=router,
         store=store,
+        adaptive_policy=adaptive_policy,
     )
     control_worker = ControlPlaneRefreshWorker(
         store,
@@ -148,6 +205,7 @@ def run(*, limit: int = 10) -> int:
                 "market_schedule_mode": market_schedule_mode,
                 "active_universe": symbols,
                 "calibration_threshold": demo_execution_min,
+                "adaptive_calibration": adaptive_details,
                 "risk_per_trade_pct": demo_risk_pct,
                 "max_risk_pct": float(policy.demo_safety["max_risk_pct"]),
                 "max_entry_drift_r": executor.max_entry_drift_r,
@@ -174,6 +232,8 @@ def run(*, limit: int = 10) -> int:
         print(
             "CTRADER_DEMO_CALIBRATION_AUTOTRADE_OK "
             f"threshold={demo_execution_min:g} production_default={production_execution_min:g} "
+            f"adaptive_enabled={int(adaptive_policy.enabled)} "
+            f"adaptive_global_floor={effective_global_floor:.2f} "
             f"risk_pct={demo_risk_pct:g} max_risk_pct={float(policy.demo_safety['max_risk_pct']):g} "
             f"max_entry_drift_r={executor.max_entry_drift_r:g} "
             f"market_schedule={market_schedule_mode} "

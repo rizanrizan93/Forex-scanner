@@ -79,12 +79,13 @@ class CTraderDemoAutoExecutor:
         "NETWORK",
     )
 
-    def __init__(self, *, cfg, policy, gateway, router, store):
+    def __init__(self, *, cfg, policy, gateway, router, store, adaptive_policy=None):
         self.cfg = cfg
         self.policy = policy
         self.gateway = gateway
         self.router = router
         self.store = store
+        self.adaptive_policy = adaptive_policy
         self.demo = policy.demo_safety
         self.control_gate = getattr(router, "control_gate", None)
         self.max_entry_drift_r = self._demo_entry_drift_r()
@@ -174,6 +175,15 @@ class CTraderDemoAutoExecutor:
             return False
         return len(rows) == 1
 
+    def _required_score(self, row: dict[str, Any]) -> float:
+        base = float(self.cfg.scoring["states"]["execution_candidate_min"])
+        if self.adaptive_policy is None:
+            return base
+        required = float(self.adaptive_policy.required_score(row))
+        if not isfinite(required) or required < base or required > 100.0:
+            raise ValueError("CTRADER_DEMO_ADAPTIVE_SCORE_FLOOR_INVALID")
+        return required
+
     def _intent_diagnostic(
         self, row: dict[str, Any], *, now: datetime
     ) -> tuple[OrderIntent | None, str | None]:
@@ -191,10 +201,12 @@ class CTraderDemoAutoExecutor:
         coverage = float(row.get("data_coverage") or 0.0)
         if coverage < float(self.demo["min_signal_coverage"]):
             return None, "COVERAGE_BELOW_MIN"
+        required_score = self._required_score(row)
         final_score = row.get("final_score")
-        if final_score is not None and float(final_score) < float(
-            self.cfg.scoring["states"]["execution_candidate_min"]
-        ):
+        if final_score is not None and float(final_score) < required_score:
+            base_score = float(self.cfg.scoring["states"]["execution_candidate_min"])
+            if required_score > base_score + 1e-9:
+                return None, f"ADAPTIVE_SCORE_BELOW_{required_score:.2f}"
             return None, "SCORE_BELOW_MIN"
 
         observed_at = self._dt(row.get("observed_at"))
