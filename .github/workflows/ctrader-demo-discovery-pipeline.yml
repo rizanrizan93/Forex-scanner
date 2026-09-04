@@ -1,4 +1,4 @@
-name: cTrader Demo Auto Pipeline
+name: cTrader Demo Discovery Pipeline
 
 on:
   workflow_dispatch:
@@ -7,13 +7,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: ctrader-demo-auto-pipeline
+  group: ctrader-demo-discovery-pipeline
   cancel-in-progress: false
 
 jobs:
-  fast-revalidate-and-execute:
+  full-universe-discovery:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -26,7 +26,6 @@ jobs:
       SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       FX_KILL_SWITCH: "0"
-      FX_IDEMPOTENCY_STATE_PATH: /tmp/execution_idempotency.json
       CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
       CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"
       CTRADER_DEMO_TECHNICAL_ONLY: "1"
@@ -46,10 +45,6 @@ jobs:
       CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"
       CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "1"
       CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED: "1"
-      CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"
-      CTRADER_DEMO_FAST_CANDIDATE_LOOKBACK_MINUTES: "45"
-      CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"
-      CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "1.20"
 
     steps:
       - uses: actions/checkout@v4
@@ -63,9 +58,17 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Fast revalidate latest DEMO candidates on fresh broker data
-        run: python -m fx_scanner.demo_fast_candidate_producer
-      - name: Execute only fresh durable EXECUTION_READY DEMO signals
-        run: python -m fx_scanner.demo_calibration_autotrade --limit 10
-      - name: Protect profitable DEMO positions on confirmed structural reversal
-        run: python -m fx_scanner.demo_structural_profit_protector
+      - name: Discover and rank full DEMO universe
+        run: python -m fx_scanner.demo_technical_producer
+      - name: Reconcile cTrader closed DEMO outcomes
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_closed_trade_reconciler
+      - name: Finalize sampled MAE and MFE trajectories
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_trajectory_finalizer
+      - name: Summarize floating P&L and incremental calibration
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_incremental_calibration
