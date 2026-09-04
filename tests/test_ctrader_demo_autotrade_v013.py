@@ -125,7 +125,7 @@ def test_canonical_config_switches_only_demo_execution_backend():
     assert p.ctrader["environment"] == "DEMO"
     assert p.ctrader["role"] == "RESEARCH_AND_DEMO_EXECUTION"
     assert p.demo_safety["max_order_lots"] == 0.01
-    assert p.demo_safety["max_concurrent_positions"] == 5
+    assert p.demo_safety["max_concurrent_positions"] == 10
 
 
 def test_demo_auto_requires_explicit_opt_in(monkeypatch):
