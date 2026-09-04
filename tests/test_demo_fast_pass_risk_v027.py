@@ -25,7 +25,7 @@ def test_demo_risk_is_one_percent_only_via_explicit_process_override():
     assert float(execution["demo_safety"]["max_risk_pct"]) == 0.25
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "1.0"' in workflow
     assert float(execution["demo_safety"]["max_order_lots"]) == 0.01
-    assert int(execution["demo_safety"]["max_concurrent_positions"]) == 5
+    assert int(execution["demo_safety"]["max_concurrent_positions"]) == 10
     assert execution["ctrader"]["environment"] == "DEMO"
     assert execution["mode"] == "DISABLED"
 
