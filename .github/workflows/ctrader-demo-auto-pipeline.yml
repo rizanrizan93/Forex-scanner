@@ -67,6 +67,10 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_closed_trade_reconciler
+      - name: Finalize sampled MAE and MFE trajectories
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_trajectory_finalizer
       - name: Summarize floating P&L and incremental calibration
         if: ${{ always() }}
         continue-on-error: true
