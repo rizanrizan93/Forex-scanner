@@ -17,6 +17,7 @@ from .demo_calibration import (
     build_demo_calibration_store,
 )
 from .demo_correlation_evidence import EvidenceProductionGuardResolver
+from .demo_market_schedule import apply_demo_market_schedule
 from .demo_signal_producer import ExplicitDemoTechnicalSignalProducer
 from .demo_technical_strategy import (
     _demo_directional_structure_score,
@@ -66,6 +67,7 @@ def _displacement_text(snapshot) -> tuple[str, int]:
 def run() -> int:
     """Run the explicit DEMO-only technical signal-production path."""
     cfg = load_project_config(None)
+    cfg, market_schedule_mode = apply_demo_market_schedule(cfg)
     policy = load_execution_policy(None)
     if str(policy.ctrader.get("environment", "")).upper() != "DEMO":
         raise SystemExit("CTRADER_SIGNAL_PRODUCER_DEMO_ONLY")
@@ -88,6 +90,10 @@ def run() -> int:
     print(
         "CTRADER_DEMO_EXECUTION_THRESHOLD "
         f"active={demo_execution_min:g} production_default={production_execution_min:g}"
+    )
+    print(
+        "CTRADER_DEMO_MARKET_SCHEDULE "
+        f"mode={market_schedule_mode} universe={','.join(pair.symbol for pair in cfg.pairs)}"
     )
     print("CTRADER_DEMO_PROFILE mode=TECHNICAL_SCALPING macro=DISABLED")
     print(
