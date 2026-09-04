@@ -44,6 +44,8 @@ class CalibrationSummary:
     overall: CalibrationStats
     by_symbol: dict[str, CalibrationStats]
     by_setup: dict[str, CalibrationStats]
+    by_entry_mode: dict[str, CalibrationStats]
+    by_confirmation: dict[str, CalibrationStats]
 
 
 def _payload(row: dict[str, Any]) -> dict[str, Any]:
@@ -111,14 +113,20 @@ def summarize_closed_events(rows: Iterable[dict[str, Any]]) -> CalibrationSummar
     overall = CalibrationStats()
     by_symbol: dict[str, CalibrationStats] = {}
     by_setup: dict[str, CalibrationStats] = {}
+    by_entry_mode: dict[str, CalibrationStats] = {}
+    by_confirmation: dict[str, CalibrationStats] = {}
     for row in rows:
         payload = _payload(dict(row))
         overall = _add(overall, payload)
         symbol = str(payload.get("symbol", "UNKNOWN") or "UNKNOWN").upper()
         setup = str(payload.get("setup_type", "UNKNOWN") or "UNKNOWN").upper()
+        entry_mode = str(payload.get("entry_mode", "LEGACY") or "LEGACY").upper()
+        confirmation = str(payload.get("confirmation", "LEGACY") or "LEGACY").upper()
         by_symbol[symbol] = _add(by_symbol.get(symbol, CalibrationStats()), payload)
         by_setup[setup] = _add(by_setup.get(setup, CalibrationStats()), payload)
-    return CalibrationSummary(overall, by_symbol, by_setup)
+        by_entry_mode[entry_mode] = _add(by_entry_mode.get(entry_mode, CalibrationStats()), payload)
+        by_confirmation[confirmation] = _add(by_confirmation.get(confirmation, CalibrationStats()), payload)
+    return CalibrationSummary(overall, by_symbol, by_setup, by_entry_mode, by_confirmation)
 
 
 def calibration_stage(stats: CalibrationStats) -> str:
@@ -133,14 +141,7 @@ def calibration_stage(stats: CalibrationStats) -> str:
 
 
 def suggested_score_floor_penalty(stats: CalibrationStats) -> float:
-    """Conservative DEMO-only suggestion; never boosts a pair.
-
-    Manual closes and breakevens do not drive the suggestion. A beta prior
-    prevents tiny samples from creating large changes. No penalty is suggested
-    before ten decisive system exits. The suggested cap is 2.5 points until 20
-    decisive exits and 5 points thereafter.
-    """
-
+    """Conservative DEMO-only suggestion; never boosts a pair."""
     decisive = stats.decisive_system
     if decisive < 10:
         return 0.0
@@ -208,6 +209,21 @@ def _snapshot_age_seconds(account: dict[str, Any] | None) -> float | None:
     return max(0.0, (datetime.now(tz=UTC) - observed.astimezone(UTC)).total_seconds())
 
 
+def _stats_payload(stats: CalibrationStats) -> dict[str, Any]:
+    return {
+        "closed": stats.closed,
+        "system_closed": stats.system_closed,
+        "manual_closed": stats.manual_closed,
+        "wins": stats.wins,
+        "losses": stats.losses,
+        "breakevens": stats.breakevens,
+        "net_pnl": stats.net_pnl,
+        "win_rate": stats.win_rate,
+        "avg_r_proxy": stats.avg_r_proxy,
+        "stage": calibration_stage(stats),
+    }
+
+
 def run() -> int:
     store = SupabaseOperationalStore.from_env()
     account, positions = _latest_account_and_positions(store)
@@ -251,40 +267,53 @@ def run() -> int:
         avg_r = stats.avg_r_proxy
         penalty = suggested_score_floor_penalty(stats)
         stage = calibration_stage(stats)
-        win_text = "NONE" if win_rate is None else f"{win_rate:.3f}"
-        r_text = "NONE" if avg_r is None else f"{avg_r:.3f}"
         print(
             "CTRADER_DEMO_PAIR_CALIBRATION "
             f"symbol={symbol} closed={stats.closed} system={stats.system_closed} "
             f"manual={stats.manual_closed} tp={stats.wins} sl={stats.losses} "
-            f"win_rate={win_text} net={stats.net_pnl:.8g} avg_r_proxy={r_text} "
+            f"win_rate={'NONE' if win_rate is None else f'{win_rate:.3f}'} net={stats.net_pnl:.8g} "
+            f"avg_r_proxy={'NONE' if avg_r is None else f'{avg_r:.3f}'} "
             f"open={int(current['open'])} floating={float(current['floating']):.8g} "
             f"stage={stage} suggested_floor_penalty={penalty:.2f}"
         )
         pair_details[symbol] = {
-            "closed": stats.closed,
-            "system_closed": stats.system_closed,
-            "manual_closed": stats.manual_closed,
-            "wins": stats.wins,
-            "losses": stats.losses,
-            "net_pnl": stats.net_pnl,
-            "win_rate": win_rate,
-            "avg_r_proxy": avg_r,
+            **_stats_payload(stats),
             "open_positions": int(current["open"]),
             "floating_pnl": float(current["floating"]),
-            "stage": stage,
             "suggested_floor_penalty": penalty,
         }
 
     for setup, stats in sorted(summary.by_setup.items()):
-        win_rate = stats.win_rate
         print(
             "CTRADER_DEMO_SETUP_CALIBRATION "
             f"setup={setup} closed={stats.closed} system={stats.system_closed} "
             f"manual={stats.manual_closed} tp={stats.wins} sl={stats.losses} "
-            f"win_rate={'NONE' if win_rate is None else f'{win_rate:.3f}'} "
+            f"win_rate={'NONE' if stats.win_rate is None else f'{stats.win_rate:.3f}'} "
             f"net={stats.net_pnl:.8g} stage={calibration_stage(stats)}"
         )
+
+    entry_details: dict[str, Any] = {}
+    for entry_mode, stats in sorted(summary.by_entry_mode.items()):
+        print(
+            "CTRADER_DEMO_ENTRY_CALIBRATION "
+            f"entry_mode={entry_mode} closed={stats.closed} system={stats.system_closed} "
+            f"manual={stats.manual_closed} tp={stats.wins} sl={stats.losses} "
+            f"win_rate={'NONE' if stats.win_rate is None else f'{stats.win_rate:.3f}'} "
+            f"net={stats.net_pnl:.8g} avg_r_proxy={'NONE' if stats.avg_r_proxy is None else f'{stats.avg_r_proxy:.3f}'} "
+            f"stage={calibration_stage(stats)}"
+        )
+        entry_details[entry_mode] = _stats_payload(stats)
+
+    confirmation_details: dict[str, Any] = {}
+    for confirmation, stats in sorted(summary.by_confirmation.items()):
+        print(
+            "CTRADER_DEMO_CONFIRMATION_CALIBRATION "
+            f"confirmation={confirmation} closed={stats.closed} system={stats.system_closed} "
+            f"tp={stats.wins} sl={stats.losses} "
+            f"win_rate={'NONE' if stats.win_rate is None else f'{stats.win_rate:.3f}'} "
+            f"net={stats.net_pnl:.8g} stage={calibration_stage(stats)}"
+        )
+        confirmation_details[confirmation] = _stats_payload(stats)
 
     store.write_heartbeat(
         "ctrader_demo_incremental_calibration",
@@ -305,8 +334,10 @@ def run() -> int:
             "open_positions": len(positions),
             "snapshot_age_seconds": snapshot_age,
             "pair_calibration": pair_details,
+            "entry_mode_calibration": entry_details,
+            "confirmation_calibration": confirmation_details,
             "automatic_strategy_mutation": False,
-            "geometry_calibration": "HOLD_UNTIL_SUFFICIENT_CLOSED_AND_TRAJECTORY_EVIDENCE",
+            "geometry_calibration": "SHADOW_CAPTURE_ACTIVE_MUTATION_HOLD",
         },
     )
     return 0

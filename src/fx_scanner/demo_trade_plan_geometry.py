@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from math import isfinite
+from typing import Any
 
 from .liquidity import FairValueGap, LiquidityKind
 from .strategy import TradePlan
@@ -17,6 +18,55 @@ class WaveEntryAssessment:
     pullback_atr: float
     zone_distance_atr: float
     confirmation: str
+
+
+@dataclass(frozen=True, slots=True)
+class DemoPlanGeometryEvidence:
+    entry_mode: str
+    pullback_atr: float
+    zone_distance_atr: float
+    confirmation: str
+    fvg_age_minutes: float
+    fvg_status: str
+    fvg_fill_fraction: float
+    chase_monitor_distance_atr: float
+    exit_model: str = "STRUCTURE_LIQUIDITY"
+
+    def payload(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+# A producer process is short-lived and builds only a bounded deep shortlist.
+# Retain exact wave evidence by immutable plan fingerprint so it can be attached
+# to the durable signal after Supabase generates the signal UUID.
+_PLAN_EVIDENCE: dict[tuple[Any, ...], DemoPlanGeometryEvidence] = {}
+_PLAN_EVIDENCE_MAX = 256
+
+
+def _plan_fingerprint(plan: TradePlan) -> tuple[Any, ...]:
+    return (
+        plan.direction,
+        round(float(plan.entry_low), 12),
+        round(float(plan.entry_high), 12),
+        round(float(plan.stop_loss), 12),
+        None if plan.tp1 is None else round(float(plan.tp1), 12),
+        None if plan.tp2 is None else round(float(plan.tp2), 12),
+        None if plan.rr1 is None else round(float(plan.rr1), 8),
+        None if plan.rr2 is None else round(float(plan.rr2), 8),
+    )
+
+
+def plan_geometry_evidence(plan: TradePlan | None) -> DemoPlanGeometryEvidence | None:
+    if plan is None:
+        return None
+    return _PLAN_EVIDENCE.get(_plan_fingerprint(plan))
+
+
+def _remember_plan_evidence(plan: TradePlan, evidence: DemoPlanGeometryEvidence) -> None:
+    if len(_PLAN_EVIDENCE) >= _PLAN_EVIDENCE_MAX:
+        oldest = next(iter(_PLAN_EVIDENCE))
+        _PLAN_EVIDENCE.pop(oldest, None)
+    _PLAN_EVIDENCE[_plan_fingerprint(plan)] = evidence
 
 
 def _env_float(name: str, default: float, *, minimum: float, maximum: float) -> float:
@@ -148,13 +198,7 @@ def assess_demo_wave_entry(
     m5_bars,
     current_atr: float,
 ) -> WaveEntryAssessment:
-    """Require a structural pullback/reaction before DEMO execution.
-
-    LONG prioritizes a higher-low reaction; SHORT prioritizes a lower-high
-    reaction. A momentum continuation is retained only as a secondary path when
-    price is still very close to the structural entry zone and M5 has both an
-    aligned structure break and displacement.
-    """
+    """Require a structural pullback/reaction before DEMO execution."""
     if direction not in {"LONG", "SHORT"}:
         raise ValueError("direction must be LONG or SHORT")
     if not isfinite(current_atr) or current_atr <= 0:
@@ -209,14 +253,7 @@ def assess_demo_wave_entry(
         and displacement_aligned
     )
     if momentum_ready:
-        return WaveEntryAssessment(
-            True,
-            "MOMENTUM_CONTINUATION",
-            "READY",
-            pullback_atr,
-            zone_distance,
-            confirmation,
-        )
+        return WaveEntryAssessment(True, "MOMENTUM_CONTINUATION", "READY", pullback_atr, zone_distance, confirmation)
 
     pullback_ready = bool(
         trend_aligned
@@ -245,23 +282,14 @@ def assess_demo_wave_entry(
 
 
 def _structural_stop_anchor(direction: str, *, entry_low: float, entry_high: float, m5, m15, h1) -> float | None:
-    """Choose the nearest valid structural invalidation anchor.
-
-    Sweep/reclaim evidence is preferred, then the M5 pullback swing, M15 swing,
-    and finally H1 swing. The selected level must sit beyond the raw entry zone
-    in the invalidation direction; an ATR buffer is applied by the caller.
-    """
+    """Choose nearest valid structural invalidation anchor."""
     wanted = "BULLISH" if direction == "LONG" else "BEARISH"
     attr = "last_swing_low" if direction == "LONG" else "last_swing_high"
     boundary = float(entry_low if direction == "LONG" else entry_high)
     candidates: list[tuple[int, float]] = []
 
     sweep = getattr(m15, "sweep", None)
-    if (
-        sweep is not None
-        and bool(getattr(sweep, "valid", False))
-        and getattr(sweep, "direction", None) == wanted
-    ):
+    if sweep is not None and bool(getattr(sweep, "valid", False)) and getattr(sweep, "direction", None) == wanted:
         level = getattr(sweep, "level", None)
         if level is not None:
             value = float(level)
@@ -284,19 +312,11 @@ def _structural_stop_anchor(direction: str, *, entry_low: float, entry_high: flo
 
 
 def _liquidity_priority(kind) -> int:
-    """Rank liquidity targets from local/internal to external/HTF."""
     try:
         normalized = LiquidityKind(kind)
     except (TypeError, ValueError):
         return 5
-    if normalized in {
-        LiquidityKind.ASIA_HIGH,
-        LiquidityKind.ASIA_LOW,
-        LiquidityKind.LONDON_HIGH,
-        LiquidityKind.LONDON_LOW,
-        LiquidityKind.NEW_YORK_HIGH,
-        LiquidityKind.NEW_YORK_LOW,
-    }:
+    if normalized in {LiquidityKind.ASIA_HIGH, LiquidityKind.ASIA_LOW, LiquidityKind.LONDON_HIGH, LiquidityKind.LONDON_LOW, LiquidityKind.NEW_YORK_HIGH, LiquidityKind.NEW_YORK_LOW}:
         return 2
     if normalized in {LiquidityKind.EQUAL_HIGH, LiquidityKind.EQUAL_LOW}:
         return 3
@@ -309,26 +329,10 @@ def _liquidity_priority(kind) -> int:
     return 6
 
 
-def _structural_targets(
-    direction: str,
-    *,
-    entry_low: float,
-    entry_high: float,
-    m15,
-    h1,
-    liquidity,
-    tolerance: float,
-) -> list[float]:
-    """Return ordered structure/liquidity targets for TP construction.
-
-    Priority is local M15 structure, H1 structure, session/internal liquidity,
-    equal highs/lows, previous-day liquidity and then previous-week liquidity.
-    Price ordering is still enforced so TP2 must sit beyond TP1.
-    """
+def _structural_targets(direction: str, *, entry_low: float, entry_high: float, m15, h1, liquidity, tolerance: float) -> list[float]:
     reference = float(entry_high if direction == "LONG" else entry_low)
     attr = "last_swing_high" if direction == "LONG" else "last_swing_low"
     ranked: list[tuple[int, float]] = []
-
     for priority, snapshot in ((0, m15), (1, h1)):
         level = getattr(snapshot, attr, None)
         if level is None:
@@ -336,14 +340,12 @@ def _structural_targets(
         price = float(level)
         if (direction == "LONG" and price > reference) or (direction == "SHORT" and price < reference):
             ranked.append((priority, price))
-
     levels = liquidity.levels_above(reference) if direction == "LONG" else liquidity.levels_below(reference)
     for level in levels:
         price = float(level.price)
         if (direction == "LONG" and price <= reference) or (direction == "SHORT" and price >= reference):
             continue
         ranked.append((_liquidity_priority(getattr(level, "kind", None)), price))
-
     ranked.sort(key=lambda item: (item[0], item[1] if direction == "LONG" else -item[1]))
     output: list[float] = []
     for _priority, price in ranked:
@@ -362,53 +364,23 @@ def _next_farther_target(direction: str, targets: list[float], first: float, tol
 
 
 def build_demo_trade_plan(
-    *,
-    direction: str,
-    current_price: float,
-    m15,
-    h1,
-    m5,
-    liquidity,
-    m5_bars,
-    atr_period: int,
-    sl_buffer_atr: float,
-    minimum_entry_zone_atr: float,
+    *, direction: str, current_price: float, m15, h1, m5, liquidity, m5_bars,
+    atr_period: int, sl_buffer_atr: float, minimum_entry_zone_atr: float,
     chase_block_atr: float = 0.50,
 ) -> TradePlan | None:
-    """Build a DEMO plan after a wave-aware entry reaction.
-
-    Entry remains anchored to the raw FVG. Stops use structural invalidation
-    (sweep/M5/M15/H1) plus an ATR buffer. Profit targets follow market structure
-    and liquidity before any RR-derived fallback is used.
-    """
+    """Build DEMO plan and retain exact entry geometry for later calibration."""
     current_atr = float(atr(list(m5_bars), atr_period))
     if not isfinite(current_atr) or current_atr <= 0:
         return None
-
-    gap = _nearest_directional_gap(
-        direction,
-        m5,
-        liquidity,
-        current_price,
-        current_atr=current_atr,
-        max_chase_atr=float(chase_block_atr),
-    )
+    gap = _nearest_directional_gap(direction, m5, liquidity, current_price, current_atr=current_atr, max_chase_atr=float(chase_block_atr))
     if gap is None:
         return None
-
     entry_low, entry_high = float(gap.lower), float(gap.upper)
     if entry_high - entry_low < current_atr * float(minimum_entry_zone_atr):
         return None
-
     wave = assess_demo_wave_entry(
-        direction=direction,
-        current_price=float(current_price),
-        entry_low=entry_low,
-        entry_high=entry_high,
-        h1=h1,
-        m15=m15,
-        m5=m5,
-        m5_bars=m5_bars,
+        direction=direction, current_price=float(current_price), entry_low=entry_low,
+        entry_high=entry_high, h1=h1, m15=m15, m5=m5, m5_bars=m5_bars,
         current_atr=current_atr,
     )
     if not wave.ready:
@@ -416,26 +388,10 @@ def build_demo_trade_plan(
 
     buffer = current_atr * float(sl_buffer_atr)
     tolerance = current_atr * 0.05
-    anchor = _structural_stop_anchor(
-        direction,
-        entry_low=entry_low,
-        entry_high=entry_high,
-        m5=m5,
-        m15=m15,
-        h1=h1,
-    )
+    anchor = _structural_stop_anchor(direction, entry_low=entry_low, entry_high=entry_high, m5=m5, m15=m15, h1=h1)
     if anchor is None:
         return None
-
-    targets = _structural_targets(
-        direction,
-        entry_low=entry_low,
-        entry_high=entry_high,
-        m15=m15,
-        h1=h1,
-        liquidity=liquidity,
-        tolerance=tolerance,
-    )
+    targets = _structural_targets(direction, entry_low=entry_low, entry_high=entry_high, m15=m15, h1=h1, liquidity=liquidity, tolerance=tolerance)
     if not targets:
         return None
 
@@ -466,21 +422,29 @@ def build_demo_trade_plan(
             tp2 = entry_low - fallback_rr * risk
         rr2 = (entry_low - tp2) / risk
 
-    return TradePlan(
-        direction,
-        entry_low,
-        entry_high,
-        stop,
-        tp1,
-        tp2,
-        rr1,
-        rr2,
-        chase,
+    plan = TradePlan(direction, entry_low, entry_high, stop, tp1, tp2, rr1, rr2, chase)
+    observed_at = getattr(liquidity, "observed_at", None)
+    origin_at = getattr(gap, "origin_at", None)
+    fvg_age_minutes = 0.0
+    if observed_at is not None and origin_at is not None:
+        fvg_age_minutes = max(0.0, (observed_at - origin_at).total_seconds() / 60.0)
+    _remember_plan_evidence(
+        plan,
+        DemoPlanGeometryEvidence(
+            entry_mode=wave.mode,
+            pullback_atr=float(wave.pullback_atr),
+            zone_distance_atr=float(wave.zone_distance_atr),
+            confirmation=str(wave.confirmation),
+            fvg_age_minutes=float(fvg_age_minutes),
+            fvg_status=str(gap.status),
+            fvg_fill_fraction=float(gap.fill_fraction),
+            chase_monitor_distance_atr=float(chase),
+        ),
     )
+    return plan
 
 
 def install_demo_trade_plan_geometry_patch() -> None:
     """Deprecated compatibility shim; explicit DEMO producer no longer calls it."""
     from . import strategy
-
     strategy._build_trade_plan = build_demo_trade_plan

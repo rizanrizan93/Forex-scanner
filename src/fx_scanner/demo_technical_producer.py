@@ -24,6 +24,7 @@ from .demo_technical_strategy import (
     _demo_structure_conflict,
     _early_structure_valid,
 )
+from .demo_trade_plan_geometry import plan_geometry_evidence
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 
@@ -62,6 +63,74 @@ def _displacement_text(snapshot) -> tuple[str, int]:
         _safe_structure_value(getattr(displacement, "direction", None)),
         int(bool(getattr(displacement, "valid", False))),
     )
+
+
+def _demo_account_id(policy) -> str:
+    account_env = str(policy.ctrader.get("account_id_env", "CTRADER_ACCOUNT_ID"))
+    login_env = str(policy.ctrader.get("trader_login_env", "CTRADER_TRADER_LOGIN"))
+    return str(os.getenv(account_env) or os.getenv(login_env) or "UNKNOWN")
+
+
+def _persist_geometry_events(*, store, policy, persisted, analyses) -> tuple[int, int]:
+    """Attach exact wave geometry to durable signal UUIDs without schema changes.
+
+    EXECUTION_READY signals fail closed if their calibration geometry cannot be
+    written. Non-ready telemetry remains best-effort so observation cannot stop
+    the producer. The event payload later follows the signal into closed-trade
+    reconciliation and incremental calibration.
+    """
+    account_id = _demo_account_id(policy)
+    written = missing = 0
+    for row in persisted:
+        signal_id = str(row.get("id", "") or "").strip()
+        symbol = str(row.get("symbol", "") or "").upper().strip()
+        analysis = analyses.get(symbol)
+        plan = None if analysis is None else analysis.trade_plan
+        evidence = plan_geometry_evidence(plan)
+        if not signal_id or plan is None or evidence is None:
+            if str(row.get("state", "")).upper() == "EXECUTION_READY":
+                raise SystemExit(f"CTRADER_DEMO_READY_GEOMETRY_MISSING:{symbol or 'UNKNOWN'}")
+            missing += 1
+            continue
+        payload = evidence.payload()
+        payload.update(
+            {
+                "signal_id": signal_id,
+                "run_id": row.get("run_id"),
+                "symbol": symbol,
+                "direction": row.get("direction"),
+                "setup_type": row.get("setup_type"),
+                "final_score": row.get("final_score"),
+                "entry_low": plan.entry_low,
+                "entry_high": plan.entry_high,
+                "planned_sl": plan.stop_loss,
+                "planned_tp1": plan.tp1,
+                "planned_tp2": plan.tp2,
+                "rr1": plan.rr1,
+                "rr2": plan.rr2,
+                "source": "DEMO_WAVE_AWARE_PRODUCER",
+            }
+        )
+        try:
+            store.record_order_event(
+                backend="CTRADER",
+                account_id=account_id,
+                signal_key=signal_id,
+                event_type="DEMO_SIGNAL_GEOMETRY",
+                broker_order_id=f"GEOMETRY:{signal_id}",
+                accepted=True,
+                code=evidence.entry_mode,
+                message="wave-aware entry geometry persisted",
+                payload=payload,
+            )
+            written += 1
+        except Exception as exc:
+            if str(row.get("state", "")).upper() == "EXECUTION_READY":
+                raise SystemExit(
+                    f"CTRADER_DEMO_READY_GEOMETRY_PERSIST_FAILED:{symbol}:{type(exc).__name__}"
+                ) from exc
+            missing += 1
+    return written, missing
 
 
 def run() -> int:
@@ -175,6 +244,16 @@ def run() -> int:
             item.symbol: item
             for item in ((producer.last_deep_report.analyses if producer.last_deep_report else ()))
         }
+        geometry_written, geometry_missing = _persist_geometry_events(
+            store=store,
+            policy=policy,
+            persisted=persisted,
+            analyses=analyses,
+        )
+        print(
+            "CTRADER_DEMO_SIGNAL_GEOMETRY_PERSISTED "
+            f"written={geometry_written} missing_nonready={geometry_missing}"
+        )
         state_counts: dict[str, int] = {}
         for row in persisted:
             state = str(row.get("state", "UNKNOWN")).upper()
@@ -198,14 +277,12 @@ def run() -> int:
             symbol = str(row.get("symbol", ""))
             score = row.get("final_score")
             score_text = "NONE" if score is None else f"{float(score):.2f}"
-            rr2 = row.get("rr2")
-            rr2_text = "NONE" if rr2 is None else f"{float(rr2):.2f}"
             guards = "+".join(str(x) for x in (row.get("active_guards") or [])) or "NONE"
             print(
                 "CTRADER_SIGNAL_DETAIL "
                 f"symbol={symbol} state={str(row.get('state', 'UNKNOWN')).upper()} "
                 f"score={score_text} setup={row.get('setup_type', 'NONE')} "
-                f"rr2={rr2_text} guards={guards}"
+                f"guards={guards}"
             )
             for evidence in guard_resolver.last_correlation_evidence.get(symbol, ()):
                 print(
@@ -240,6 +317,15 @@ def run() -> int:
                 if plan is None:
                     print(f"CTRADER_SIGNAL_GEOMETRY symbol={symbol} plan=NONE")
                 else:
+                    evidence = plan_geometry_evidence(plan)
+                    evidence_text = ""
+                    if evidence is not None:
+                        evidence_text = (
+                            f" entry_mode={evidence.entry_mode} pullback_atr={evidence.pullback_atr:.4f} "
+                            f"zone_distance_atr={evidence.zone_distance_atr:.4f} "
+                            f"confirmation={evidence.confirmation} fvg_age_min={evidence.fvg_age_minutes:.2f} "
+                            f"fvg_status={evidence.fvg_status}"
+                        )
                     print(
                         "CTRADER_SIGNAL_GEOMETRY "
                         f"symbol={symbol} entry_low={plan.entry_low:.8g} "
@@ -248,7 +334,7 @@ def run() -> int:
                         f"tp2={plan.tp2 if plan.tp2 is not None else 'NONE'} "
                         f"rr1={plan.rr1 if plan.rr1 is not None else 'NONE'} "
                         f"rr2={plan.rr2 if plan.rr2 is not None else 'NONE'} "
-                        f"chase_atr={plan.chase_distance_atr:.4f}"
+                        f"chase_atr={plan.chase_distance_atr:.4f}{evidence_text}"
                     )
 
         if report.skipped:
