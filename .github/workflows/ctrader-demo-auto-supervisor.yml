@@ -1,12 +1,11 @@
 name: cTrader Demo Auto Supervisor
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - ".github/workflows/ctrader-demo-auto-supervisor.yml"
-      - ".github/workflows/ctrader-demo-auto-pipeline.yml"
-      - ".github/workflows/ctrader-demo-technical-heartbeat.yml"
+  schedule:
+    - cron: "7,22,37,52 * * * 1-5"
   workflow_run:
     workflows: ["cTrader Demo Technical Heartbeat"]
     types: [completed]
@@ -17,12 +16,14 @@ permissions:
 
 concurrency:
   group: ctrader-demo-auto-supervisor
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   dispatch-two-minute-demo-pipeline:
     if: >-
+      github.event_name == 'workflow_dispatch' ||
       github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
       (
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.event == 'schedule' &&
@@ -40,6 +41,8 @@ jobs:
           set -euo pipefail
           dispatched=0
           skipped_busy=0
+
+          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} cadence_seconds=120 self_renew_schedule=ENABLED"
 
           for cycle in $(seq 1 30); do
             active_runs="$(
@@ -68,4 +71,4 @@ jobs:
             fi
           done
 
-          echo "CTRADER_DEMO_SUPERVISOR_OK dispatched=${dispatched} skipped_busy=${skipped_busy} cadence_seconds=120 overlap=DISABLED"
+          echo "CTRADER_DEMO_SUPERVISOR_OK dispatched=${dispatched} skipped_busy=${skipped_busy} cadence_seconds=120 overlap=DISABLED self_renew_schedule=ENABLED"
