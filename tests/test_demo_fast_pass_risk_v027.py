@@ -44,6 +44,8 @@ def test_demo_risk_override_is_process_local_and_bounded():
 
 def test_demo_fast_pass_observability_markers_exist():
     text = (ROOT / "src/fx_scanner/demo_technical_producer.py").read_text()
+    workflow = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     assert "CTRADER_DEMO_FAST_PASS" in text
     assert "CTRADER_DEMO_RISK" in text
-    assert "chase_block_atr=0.50" in text
+    assert "production_chase_block_atr" in text
+    assert 'CTRADER_DEMO_CHASE_BLOCK_ATR: "2.0"' in workflow
