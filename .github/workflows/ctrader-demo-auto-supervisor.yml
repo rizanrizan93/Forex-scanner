@@ -62,7 +62,7 @@ jobs:
               -f ref=main
           }
 
-          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} fast_cadence_seconds=120 discovery_check_seconds=360 overlap_within_lane=DISABLED cross_lane=ENABLED calendar=SEVEN_DAYS"
+          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} fast_cadence_seconds=120 discovery_check_seconds=360 overlap=DISABLED_WITHIN_LANE cross_lane=ENABLED calendar=SEVEN_DAYS"
 
           for cycle in $(seq 1 30); do
             active_fast="$(active_count ctrader-demo-auto-pipeline.yml)"
@@ -71,6 +71,7 @@ jobs:
               dispatch_workflow ctrader-demo-auto-pipeline.yml
               fast_dispatched=$((fast_dispatched + 1))
             else
+              echo "SUPERVISOR_SKIP_BUSY lane=FAST cycle=${cycle}/30 active_runs=${active_fast}"
               echo "SUPERVISOR_FAST_SKIP_BUSY cycle=${cycle}/30 active_runs=${active_fast}"
               fast_busy=$((fast_busy + 1))
             fi
@@ -92,4 +93,4 @@ jobs:
             fi
           done
 
-          echo "CTRADER_DEMO_SUPERVISOR_OK fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=120 discovery_check_seconds=360 overlap_within_lane=DISABLED cross_lane=ENABLED calendar=SEVEN_DAYS"
+          echo "CTRADER_DEMO_SUPERVISOR_OK fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=120 discovery_check_seconds=360 overlap=DISABLED_WITHIN_LANE cross_lane=ENABLED calendar=SEVEN_DAYS"
