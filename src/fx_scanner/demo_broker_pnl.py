@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from math import isfinite
 from typing import Any
 
 from .execution.broker_gateway import (
@@ -11,6 +12,8 @@ from .execution.broker_gateway import (
 )
 
 UTC = timezone.utc
+TRAJECTORY_WORKER = "ctrader_demo_trajectory_state"
+TRAJECTORY_MAX_POSITIONS = 128
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,19 +42,134 @@ def _opened_at(trade_data: Any) -> datetime | None:
     return datetime.fromtimestamp(raw / 1000.0, tz=UTC)
 
 
+def _finite_float(value: Any) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if isfinite(parsed) else None
+
+
+def _load_trajectory_state(store) -> dict[str, Any]:
+    if store is None or not hasattr(store, "client"):
+        return {"version": 1, "positions": {}}
+    try:
+        response = (
+            store.client.table("runtime_heartbeats")
+            .select("details")
+            .eq("worker_name", TRAJECTORY_WORKER)
+            .limit(1)
+            .execute()
+        )
+        rows = list(response.data or [])
+    except Exception as exc:
+        print(f"CTRADER_DEMO_TRAJECTORY_WARN stage=READ error={type(exc).__name__}")
+        return {"version": 1, "positions": {}}
+    if not rows or not isinstance(rows[0].get("details"), dict):
+        return {"version": 1, "positions": {}}
+    details = dict(rows[0]["details"])
+    positions = details.get("positions")
+    details["positions"] = dict(positions) if isinstance(positions, dict) else {}
+    details["version"] = 1
+    return details
+
+
+def _update_sampled_trajectory(store, positions: tuple[BrokerPositionSnapshot, ...]) -> dict[str, dict[str, Any]]:
+    """Maintain bounded sampled MAE/MFE in account-currency net floating P&L.
+
+    These are explicitly sampled extrema at the pipeline cadence, not tick-level
+    intrabar extrema. Keeping that distinction avoids false precision while
+    still providing reliable evidence about whether trades first moved in our
+    favor or against us before closing.
+    """
+    if store is None or not hasattr(store, "client"):
+        return {}
+    now = datetime.now(tz=UTC).isoformat()
+    state = _load_trajectory_state(store)
+    history = dict(state.get("positions") or {})
+    current: dict[str, dict[str, Any]] = {}
+
+    for position in positions:
+        position_id = str(position.position_id)
+        previous = history.get(position_id)
+        previous = dict(previous) if isinstance(previous, dict) else {}
+        pnl = _finite_float(position.profit)
+        sample_count = int(previous.get("sample_count", 0) or 0)
+        mae = _finite_float(previous.get("sampled_mae_pnl"))
+        mfe = _finite_float(previous.get("sampled_mfe_pnl"))
+        if mae is None:
+            mae = 0.0
+        if mfe is None:
+            mfe = 0.0
+        if pnl is not None:
+            mae = min(0.0, mae, pnl)
+            mfe = max(0.0, mfe, pnl)
+            sample_count += 1
+        item = {
+            "position_id": position_id,
+            "symbol": str(position.symbol).upper(),
+            "side": str(position.side).upper(),
+            "opened_at": None if position.opened_at is None else position.opened_at.isoformat(),
+            "sampling_started_at": previous.get("sampling_started_at") or now,
+            "last_sample_at": now,
+            "sample_count": sample_count,
+            "sampled_mae_pnl": mae,
+            "sampled_mfe_pnl": mfe,
+            "last_floating_pnl": pnl,
+            "trajectory_scope": "SINCE_FIRST_OBSERVED",
+            "metric": "NET_UNREALIZED_PNL_ACCOUNT_CURRENCY",
+            "target_sample_cadence_seconds": 120,
+        }
+        history[position_id] = item
+        current[position_id] = item
+
+    if len(history) > TRAJECTORY_MAX_POSITIONS:
+        ordered = sorted(
+            history.items(),
+            key=lambda pair: str((pair[1] or {}).get("last_sample_at", "")),
+            reverse=True,
+        )
+        history = dict(ordered[:TRAJECTORY_MAX_POSITIONS])
+
+    state.update(
+        {
+            "version": 1,
+            "positions": history,
+            "current_open_position_ids": sorted(current),
+            "sampling_definition": "pipeline-sampled net unrealized P&L extrema",
+            "automatic_exit_mutation": False,
+        }
+    )
+    try:
+        store.write_heartbeat(
+            TRAJECTORY_WORKER,
+            healthy=True,
+            lag_seconds=0.0,
+            details=state,
+        )
+    except Exception as exc:
+        print(f"CTRADER_DEMO_TRAJECTORY_WARN stage=WRITE error={type(exc).__name__}")
+        return {}
+
+    for position_id, item in sorted(current.items(), key=lambda pair: (pair[1]["symbol"], pair[0])):
+        print(
+            "CTRADER_DEMO_POSITION_TRAJECTORY "
+            f"symbol={item['symbol']} position_id={position_id} samples={item['sample_count']} "
+            f"sampled_mae_pnl={float(item['sampled_mae_pnl']):.8g} "
+            f"sampled_mfe_pnl={float(item['sampled_mfe_pnl']):.8g} "
+            f"last_floating_pnl={'NONE' if item['last_floating_pnl'] is None else f'{float(item['last_floating_pnl']):.8g}'} "
+            "scope=SINCE_FIRST_OBSERVED"
+        )
+    return current
+
+
 def capture_ctrader_demo_snapshot(
     *,
     session,
     store=None,
     phase: str = "AFTER",
 ) -> DemoBrokerSnapshot:
-    """Capture one coherent DEMO account/open-position P&L snapshot.
-
-    The snapshot uses one Trader request, one unrealized-P&L request and one
-    reconciliation request, then optionally persists the coherent account and
-    position rows through the existing backend-only Supabase telemetry tables.
-    No order operation is performed here.
-    """
+    """Capture one coherent DEMO account/open-position P&L snapshot."""
 
     session.ensure_connected()
     trader = session.trader()
@@ -142,6 +260,7 @@ def capture_ctrader_demo_snapshot(
             environment="DEMO",
             connection_healthy=True,
         )
+        _update_sampled_trajectory(store, tuple(positions))
 
     phase_text = str(phase or "AFTER").upper()
     print(
