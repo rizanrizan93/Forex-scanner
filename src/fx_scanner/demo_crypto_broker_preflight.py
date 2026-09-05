@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from math import isclose
 
 from .config import load_project_config
-from .demo_market_schedule import CRYPTO_WEEKEND_SYMBOLS
+from .demo_market_schedule import CRYPTO_WEEKEND_SYMBOLS, weekend_crypto_pairs
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 
@@ -19,7 +19,7 @@ def run() -> int:
     if not bool(policy.ctrader.get("require_demo", False)):
         raise SystemExit("CTRADER_DEMO_CRYPTO_PREFLIGHT_REQUIRE_DEMO")
 
-    pairs = tuple(pair for pair in cfg.pairs if pair.symbol in CRYPTO_WEEKEND_SYMBOLS)
+    pairs = weekend_crypto_pairs(cfg)
     symbols = tuple(pair.symbol for pair in pairs)
     if set(symbols) != set(CRYPTO_WEEKEND_SYMBOLS):
         raise SystemExit("CTRADER_DEMO_CRYPTO_PREFLIGHT_UNIVERSE_INCOMPLETE")
