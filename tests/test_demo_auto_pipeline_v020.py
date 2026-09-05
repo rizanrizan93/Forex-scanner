@@ -28,8 +28,8 @@ def test_demo_auto_pipeline_is_dispatch_only_fast_lane_and_demo_only():
     assert 'CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"' in text
     assert 'CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"' in text
     assert 'CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"' in text
-    assert 'CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "100"' in text
-    assert 'CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS: "2000"' in text
+    assert 'CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "1"' in text
+    assert 'CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS: "20"' in text
     assert 'CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS: "6"' in text
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"' in text
     assert 'CTRADER_DEMO_DEEP_ANALYSIS_TOP: "5"' in text
