@@ -11,6 +11,7 @@ CLOSED_LIMIT = 500
 SIGNAL_LIMIT = 1000
 GEOMETRY_LIMIT = 1500
 TRAJECTORY_LIMIT = 1000
+FEATURE_SNAPSHOT_LIMIT = 1500
 
 
 def _account_id() -> str:
@@ -84,12 +85,25 @@ def _geometry_context(
     *,
     account_id: str,
 ) -> dict[str, dict[str, Any]]:
-    """Load immutable producer geometry keyed by scanner signal UUID."""
     return _event_payload_context(
         store,
         account_id=account_id,
         event_type="DEMO_SIGNAL_GEOMETRY",
         limit=GEOMETRY_LIMIT,
+    )
+
+
+def _feature_snapshot_context(
+    store: SupabaseOperationalStore,
+    *,
+    account_id: str,
+) -> dict[str, dict[str, Any]]:
+    """Load immutable decision-time Adaptive Calibration v2 features."""
+    return _event_payload_context(
+        store,
+        account_id=account_id,
+        event_type="DEMO_SIGNAL_FEATURE_SNAPSHOT_V2",
+        limit=FEATURE_SNAPSHOT_LIMIT,
     )
 
 
@@ -147,8 +161,6 @@ def _attach_trajectory(payload: dict[str, Any], trajectory: dict[str, Any]) -> N
         if payload.get(key) is None and value is not None:
             payload[key] = value
 
-    # R-normalized extrema may only enter adaptive diagnosis when a future
-    # finalizer has computed them explicitly. Never alias currency P&L to R.
     for key in ("mae_r", "mfe_r"):
         value = trajectory.get(key)
         if payload.get(key) is None and value is not None:
@@ -164,13 +176,35 @@ def _attach_trajectory(payload: dict[str, Any], trajectory: dict[str, Any]) -> N
     )
 
 
+def _attach_feature_snapshot(payload: dict[str, Any], snapshot: dict[str, Any]) -> None:
+    """Attach immutable decision-time features without overriding trade truth."""
+    if not snapshot:
+        return
+    for key, value in snapshot.items():
+        if key in {"signal_id", "run_id", "source"}:
+            continue
+        if payload.get(key) is None and value is not None:
+            payload[key] = value
+    payload["v2_feature_snapshot_version"] = snapshot.get("snapshot_version", 2)
+    payload["v2_feature_snapshot_complete"] = bool(
+        snapshot.get("snapshot_complete_for_regime", False)
+    )
+    payload["v2_regime_source"] = (
+        "DEMO_SIGNAL_FEATURE_SNAPSHOT_V2"
+        if str(snapshot.get("regime", "") or "").strip()
+        else "FALLBACK"
+    )
+
+
 def _enrich_rows(
     rows: tuple[dict[str, Any], ...],
     signals: dict[str, dict[str, Any]],
     geometries: dict[str, dict[str, Any]],
     trajectories: dict[str, dict[str, Any]] | None = None,
+    feature_snapshots: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], ...]:
     trajectories = trajectories or {}
+    feature_snapshots = feature_snapshots or {}
     enriched: list[dict[str, Any]] = []
     for row in rows:
         item = dict(row)
@@ -179,15 +213,16 @@ def _enrich_rows(
         signal = signals.get(signal_id, {})
         geometry = geometries.get(signal_id, {})
         trajectory = trajectories.get(signal_id, {})
+        feature_snapshot = feature_snapshots.get(signal_id, {})
 
-        # Geometry is the preferred source for immutable point-in-time features.
-        # Closed-trade fields always win when already present.
+        # Closed-trade payload is always authoritative. The immutable feature
+        # snapshot then outranks older geometry/signal fallbacks for decision-time
+        # context such as regime, ATR, evidence components, and structure.
+        _attach_feature_snapshot(payload, feature_snapshot)
         for key, value in geometry.items():
             if payload.get(key) is None and value is not None:
                 payload[key] = value
 
-        # The durable signal row fills context that is not part of the geometry
-        # event yet. This remains a read-time join; historical rows are untouched.
         for target, source in (
             ("symbol", "symbol"),
             ("direction", "direction"),
@@ -208,10 +243,13 @@ def _enrich_rows(
 
         if not str(payload.get("regime", "") or "").strip() and signal:
             payload["regime"] = _regime_proxy(signal)
+            payload["v2_regime_source"] = "SIGNALS_H1_H4_PROXY"
         if signal:
             payload.setdefault("h1_bias", signal.get("h1_bias"))
             payload.setdefault("h4_bias", signal.get("h4_bias"))
         sources = ["DEMO_TRADE_CLOSED"]
+        if feature_snapshot:
+            sources.append("DEMO_SIGNAL_FEATURE_SNAPSHOT_V2")
         if geometry:
             sources.append("DEMO_SIGNAL_GEOMETRY")
         if signal:
@@ -234,7 +272,14 @@ def run() -> int:
     signals = _signal_context(store)
     geometries = _geometry_context(store, account_id=account_id)
     trajectories = _trajectory_context(store, account_id=account_id)
-    rows = _enrich_rows(raw_rows, signals, geometries, trajectories)
+    feature_snapshots = _feature_snapshot_context(store, account_id=account_id)
+    rows = _enrich_rows(
+        raw_rows,
+        signals,
+        geometries,
+        trajectories,
+        feature_snapshots,
+    )
     report = build_adaptive_calibration_v2_report(rows)
     details = report.details()
     trajectory_joined = sum(
@@ -249,12 +294,26 @@ def run() -> int:
         if (row.get("payload") or {}).get("mae_r") is not None
         and (row.get("payload") or {}).get("mfe_r") is not None
     )
+    feature_snapshot_joined = sum(
+        1
+        for row in rows
+        if "DEMO_SIGNAL_FEATURE_SNAPSHOT_V2"
+        in str((row.get("payload") or {}).get("v2_context_source", ""))
+    )
+    feature_snapshot_complete = sum(
+        1
+        for row in rows
+        if bool((row.get("payload") or {}).get("v2_feature_snapshot_complete", False))
+    )
     details.update(
         {
-            "data_source": "DEMO_TRADE_CLOSED+DEMO_SIGNAL_GEOMETRY+SIGNALS+DEMO_TRADE_TRAJECTORY_FINAL",
+            "data_source": "DEMO_TRADE_CLOSED+DEMO_SIGNAL_FEATURE_SNAPSHOT_V2+DEMO_SIGNAL_GEOMETRY+SIGNALS+DEMO_TRADE_TRAJECTORY_FINAL",
             "closed_rows_scanned": len(raw_rows),
             "signal_context_rows": len(signals),
             "geometry_context_rows": len(geometries),
+            "feature_snapshot_context_rows": len(feature_snapshots),
+            "feature_snapshot_joined_closed_rows": feature_snapshot_joined,
+            "feature_snapshot_complete_closed_rows": feature_snapshot_complete,
             "trajectory_context_rows": len(trajectories),
             "trajectory_joined_closed_rows": trajectory_joined,
             "trajectory_r_ready_closed_rows": trajectory_r_ready,
@@ -278,6 +337,7 @@ def run() -> int:
         f"stage={report.stage} decisive={report.decisive} "
         f"snapshot_coverage={report.snapshot_coverage:.3f} "
         f"cohorts={len(report.cohorts)} diagnostics={len(report.diagnostics)} "
+        f"feature_snapshots={len(feature_snapshots)} feature_joined={feature_snapshot_joined} "
         f"geometry_rows={len(geometries)} trajectory_rows={len(trajectories)} "
         f"trajectory_joined={trajectory_joined} trajectory_r_ready={trajectory_r_ready} "
         "policy=SHADOW_ONLY sltp_mutation=0 risk_mutation=0 production_mutation=0"
