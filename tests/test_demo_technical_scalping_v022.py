@@ -15,8 +15,8 @@ def test_alternative_assets_are_in_20_instrument_universe():
     assert cfg.pair_map["XAUUSD"].quote == "USD"
     assert cfg.pair_map["XAUUSD"].pip_size == 0.01
     assert cfg.pair_map["XTIUSD"].pip_size == 0.01
-    assert cfg.pair_map["BTCUSD"].pip_size == 0.01
-    assert cfg.pair_map["ETHUSD"].pip_size == 0.01
+    assert cfg.pair_map["BTCUSD"].pip_size == 1.0
+    assert cfg.pair_map["ETHUSD"].pip_size == 1.0
     assert cfg.pair_map["SOLUSD"].pip_size == 0.01
 
 
