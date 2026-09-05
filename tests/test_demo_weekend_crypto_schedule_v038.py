@@ -34,11 +34,11 @@ def test_weekday_keeps_full_twenty_instrument_universe():
         datetime(2026, 9, 6, 12, 0, tzinfo=UTC),  # Sunday
     ],
 )
-def test_weekend_is_five_crypto_only(when):
+def test_weekend_crypto_is_broker_gated_not_assumed_open(when):
     cfg = load_project_config(None)
     scheduled, mode = apply_demo_market_schedule(cfg, now=when)
 
-    assert mode == "WEEKEND_CRYPTO_24X7"
+    assert mode == "WEEKEND_CRYPTO_BROKER_GATED"
     assert {pair.symbol for pair in scheduled.pairs} == CRYPTO_WEEKEND_SYMBOLS
     assert CRYPTO_WEEKEND_SYMBOLS == {
         "BTCUSD",
@@ -51,7 +51,7 @@ def test_weekend_is_five_crypto_only(when):
 
 
 @pytest.mark.parametrize("requested", ["5", "8"])
-def test_weekend_deep_top_is_capped_to_active_crypto_universe(monkeypatch, requested):
+def test_weekend_deep_top_is_capped_to_crypto_contract_check_universe(monkeypatch, requested):
     cfg = load_project_config(None)
     scheduled, _ = apply_demo_market_schedule(
         cfg,
@@ -71,13 +71,18 @@ def test_schedule_requires_timezone_aware_clock():
         apply_demo_market_schedule(cfg, now=datetime(2026, 9, 5, 12, 0))
 
 
-def test_github_continuity_schedules_run_seven_days():
+def test_github_continuity_runs_on_broker_weekdays_only():
     root = Path(__file__).resolve().parents[1]
     supervisor = (root / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
     heartbeat = (root / ".github/workflows/ctrader-demo-technical-heartbeat.yml").read_text()
+    schedule_source = (root / "src/fx_scanner/demo_market_schedule.py").read_text()
 
-    assert 'cron: "7,22,37,52 * * * *"' in supervisor
-    assert 'cron: "17 * * * *"' in heartbeat
-    assert "1-5" not in supervisor
-    assert "1-5" not in heartbeat
+    assert 'cron: "7,22,37,52 * * 1-5"' in supervisor
+    assert 'cron: "17 * * * 1-5"' in heartbeat
+    assert "calendar=BROKER_24X5_WEEKDAYS" in supervisor
+    assert "calendar=BROKER_24X5_WEEKDAYS" in heartbeat
+    assert "reason=WEEKEND_BROKER_CLOSED" in supervisor
     assert "cadence_seconds=120" in supervisor
+    assert "WEEKEND_CRYPTO_24X7" not in schedule_source
+    assert "WEEKEND_CRYPTO_24X7" not in supervisor
+    assert "WEEKEND_CRYPTO_24X7" not in heartbeat

@@ -14,7 +14,12 @@ _CRYPTO_WEEKEND_SUPPLEMENTAL = (
 
 
 def weekend_crypto_pairs(cfg: ProjectConfig) -> tuple[PairSpec, ...]:
-    """Return the five-symbol weekend DEMO universe without changing weekdays."""
+    """Return the five-symbol crypto contract-check universe.
+
+    This is only a candidate/preflight universe. It does not imply that any
+    crypto CFD is tradable on Saturday or Sunday; cTrader broker-session
+    metadata is authoritative for actual market availability.
+    """
     configured = {
         pair.symbol: pair
         for pair in cfg.pairs
@@ -34,13 +39,13 @@ def apply_demo_market_schedule(
     *,
     now: datetime | None = None,
 ) -> tuple[ProjectConfig, str]:
-    """Keep the proven 20-symbol weekday universe and five crypto CFDs on weekends.
+    """Keep weekdays unchanged and make weekend crypto explicitly broker-gated.
 
-    Weekend selection is evaluated in UTC so GitHub Actions and scanner telemetry
-    share one deterministic clock. RPLUSD and LTCUSD are DEMO weekend overlays,
-    so weekday ranking/calibration denominators stay unchanged. cTrader symbol
-    trading mode and broker session schedule remain authoritative before market
-    data can be used for a decision.
+    Scheduled automation is restricted to broker weekdays by GitHub Actions.
+    A manual weekend run may still inspect the five crypto CFD contracts, but
+    it must not treat them as open merely because the underlying spot crypto
+    market trades continuously. cTrader symbol trading mode and broker session
+    schedule remain authoritative before market data or a decision can be used.
     """
     current = now or datetime.now(tz=UTC)
     if current.tzinfo is None:
@@ -51,6 +56,4 @@ def apply_demo_market_schedule(
         return cfg, "WEEKDAY_FULL_24X5"
 
     pairs = weekend_crypto_pairs(cfg)
-    # Keep the legacy mode identifier for downstream compatibility. The name no
-    # longer grants a 24x7 assumption: broker session metadata is authoritative.
-    return replace(cfg, pairs=pairs), "WEEKEND_CRYPTO_24X7"
+    return replace(cfg, pairs=pairs), "WEEKEND_CRYPTO_BROKER_GATED"
