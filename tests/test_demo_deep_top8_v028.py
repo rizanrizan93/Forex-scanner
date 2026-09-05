@@ -13,7 +13,7 @@ def test_demo_fast_deep_top_is_explicit_and_process_local():
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"' in workflow
     assert 'CTRADER_DEMO_DEEP_ANALYSIS_TOP: "5"' in workflow
     assert "apply_demo_deep_analysis_top" in calibration
-    assert "requested <= min(10, universe)" in calibration
+    assert "effective = min(requested, universe)" in calibration
     assert "deep_analysis_top={demo_deep_top}" in producer
     assert "deep_analysis_top: 5" in strategy
 
