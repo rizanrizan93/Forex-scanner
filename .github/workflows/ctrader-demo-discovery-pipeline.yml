@@ -87,3 +87,7 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_adaptive_calibration_v2_runtime
+      - name: Attribute repeated loss patterns in shadow mode
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_loss_attribution_v2_runtime
