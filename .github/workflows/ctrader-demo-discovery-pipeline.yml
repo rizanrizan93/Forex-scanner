@@ -83,3 +83,7 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_incremental_calibration
+      - name: Build Adaptive Calibration v2 shadow cohorts and diagnostics
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_adaptive_calibration_v2_runtime
