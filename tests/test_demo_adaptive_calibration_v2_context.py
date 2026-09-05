@@ -126,17 +126,16 @@ def test_immutable_feature_snapshot_outranks_geometry_and_signal_fallbacks():
     }
     enriched = _enrich_rows(rows, signals, geometry, {}, snapshot)[0]["payload"]
 
-    # Closed trade remains authoritative when it already carries a value.
     assert enriched["regime"] == "CLOSED_TRUTH_REGIME"
     assert enriched["final_score"] == 63.0
-    # Otherwise immutable snapshot outranks older geometry/signal fallbacks.
     assert enriched["entry_mode"] == "HL_PULLBACK"
     assert enriched["confirmation"] == "BOS"
     assert enriched["pullback_atr"] == 0.35
     assert enriched["atr_m5"] == 0.0008
     assert enriched["evidence_scores"]["structure"] == 74.0
-    assert enriched["spread_pips_at_entry"] is None
-    assert enriched["live_entry_drift_r"] is None
+    # Missing execution-time observations remain absent; None is not evidence.
+    assert "spread_pips_at_entry" not in enriched
+    assert "live_entry_drift_r" not in enriched
     assert enriched["v2_feature_snapshot_complete"] is True
     assert enriched["v2_context_source"].startswith(
         "DEMO_TRADE_CLOSED+DEMO_SIGNAL_FEATURE_SNAPSHOT_V2"
