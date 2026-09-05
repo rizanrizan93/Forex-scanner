@@ -3,7 +3,7 @@ name: cTrader Demo Technical Heartbeat
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 * * * 1-5"
+    - cron: "17 * * * *"
 
 permissions:
   contents: read
@@ -14,4 +14,4 @@ jobs:
     timeout-minutes: 2
     steps:
       - name: Emit technical DEMO heartbeat
-        run: echo "CTRADER_DEMO_TECHNICAL_HEARTBEAT_OK calendar=BROKER_24X5_WEEKDAYS"
+        run: echo "CTRADER_DEMO_TECHNICAL_HEARTBEAT_OK calendar=SEVEN_DAYS"

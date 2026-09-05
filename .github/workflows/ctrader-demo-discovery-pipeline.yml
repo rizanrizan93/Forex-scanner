@@ -58,14 +58,14 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Verify five-crypto broker contracts and sessions
+      - name: Verify active weekend crypto broker contracts and sessions
         run: python -m fx_scanner.demo_crypto_broker_preflight
       - name: Discover and rank full DEMO universe
         run: |
-          # The Python market schedule is UTC-based. On weekends only crypto is
-          # selected. Weekday-only spread overrides must not be presented to
-          # the already-scheduled crypto-only config. Broker trading sessions
-          # are checked independently by the cTrader research facade.
+          # The Python market schedule is UTC-based. On weekends only the three
+          # authorized crypto symbols are selected. Weekday-only spread overrides
+          # must not be presented to the already-scheduled crypto-only config.
+          # Broker trading sessions remain authoritative and fail closed.
           if [ "$(date -u +%u)" -ge 6 ]; then
             export CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS=""
             export CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS=""
