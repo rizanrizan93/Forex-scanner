@@ -3,8 +3,8 @@ from fx_scanner.config import load_project_config
 
 def test_config_contract():
     cfg = load_project_config()
-    assert len(cfg.pairs) == 20
-    assert len(cfg.pair_map) == 20
+    assert len(cfg.pairs) == 22
+    assert len(cfg.pair_map) == 22
     assert cfg.timeframes["M5"] == 300
     assert cfg.pair_map["XAUUSD"].base == "XAU"
     assert cfg.pair_map["XAUUSD"].quote == "USD"
@@ -13,6 +13,10 @@ def test_config_contract():
     assert cfg.pair_map["BTCUSD"].base == "BTC"
     assert cfg.pair_map["ETHUSD"].base == "ETH"
     assert cfg.pair_map["SOLUSD"].base == "SOL"
+    assert cfg.pair_map["RPLUSD"].base == "RPL"
+    assert cfg.pair_map["RPLUSD"].pip_size == 0.0001
+    assert cfg.pair_map["LTCUSD"].base == "LTC"
+    assert cfg.pair_map["LTCUSD"].pip_size == 0.01
     assert sum(cfg.scoring["pair_opportunity"].values()) == 100
     assert sum(cfg.scoring["execution_conviction"].values()) == 100
     assert cfg.risk["acceptance"]["oos_win_rate_min"] >= 0.55
