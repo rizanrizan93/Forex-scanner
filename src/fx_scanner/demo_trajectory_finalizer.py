@@ -116,7 +116,7 @@ def finalize_trajectories(
         r_normalization = (
             "ACTUAL_BROKER_OPEN_TO_ACTIVE_SL_PRICE_R"
             if r_ready
-            else "DEFERRED_UNTIL_BROKER_PRICE_R_AVAILABLE"
+            else "DEFERRED_UNTIL_EXACT_BROKER_RISK_DENOMINATOR"
         )
         final_payload = {
             "signal_id": signal_id,
