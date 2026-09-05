@@ -4,19 +4,17 @@ from fx_scanner.config import load_project_config
 from fx_scanner.demo_market_schedule import weekend_crypto_pairs
 
 
-def test_five_crypto_pip_contract_matches_observed_ctrader_metadata():
+def test_three_crypto_pip_contract_matches_ctrader_metadata():
     cfg = load_project_config(None)
     pairs = weekend_crypto_pairs(cfg)
     assert {pair.symbol: pair.pip_size for pair in pairs} == {
         "BTCUSD": 1.0,
         "ETHUSD": 1.0,
         "SOLUSD": 0.01,
-        "RPLUSD": 0.001,
-        "LTCUSD": 0.1,
     }
 
 
-def test_preflight_requires_exactly_five_successful_symbol_reads():
+def test_preflight_requires_exact_successful_symbol_reads_for_active_crypto_universe():
     root = Path(__file__).resolve().parents[1]
     source = (root / "src/fx_scanner/demo_crypto_broker_preflight.py").read_text()
     assert "CTRADER_DEMO_CRYPTO_PREFLIGHT_READ_COUNT_MISMATCH" in source
