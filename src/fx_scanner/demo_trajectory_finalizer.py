@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from math import isfinite
 from typing import Any
 
 from .demo_broker_pnl import TRAJECTORY_WORKER
@@ -22,6 +23,14 @@ def _account_id() -> str:
         or os.getenv("CTRADER_TRADER_LOGIN")
         or ""
     ).strip()
+
+
+def _finite(value: Any) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if isfinite(parsed) else None
 
 
 def _trajectory_positions(store: SupabaseOperationalStore) -> dict[str, dict[str, Any]]:
@@ -101,6 +110,14 @@ def finalize_trajectories(
             duplicates += 1
             continue
 
+        sampled_mae_r = _finite(trajectory.get("sampled_mae_r"))
+        sampled_mfe_r = _finite(trajectory.get("sampled_mfe_r"))
+        r_ready = sampled_mae_r is not None and sampled_mfe_r is not None
+        r_normalization = (
+            "ACTUAL_BROKER_OPEN_TO_ACTIVE_SL_PRICE_R"
+            if r_ready
+            else "DEFERRED_UNTIL_EXACT_BROKER_RISK_DENOMINATOR"
+        )
         final_payload = {
             "signal_id": signal_id,
             "position_id": position_id,
@@ -121,9 +138,13 @@ def finalize_trajectories(
             "trajectory_scope": trajectory.get("trajectory_scope", "SINCE_FIRST_OBSERVED"),
             "metric": trajectory.get("metric", "NET_UNREALIZED_PNL_ACCOUNT_CURRENCY"),
             "target_sample_cadence_seconds": trajectory.get("target_sample_cadence_seconds", 120),
-            "mae_r": None,
-            "mfe_r": None,
-            "r_normalization": "DEFERRED_UNTIL_EXACT_BROKER_RISK_DENOMINATOR",
+            "initial_risk_price": trajectory.get("initial_risk_price"),
+            "last_price_r": trajectory.get("last_price_r"),
+            "mae_r": sampled_mae_r,
+            "mfe_r": sampled_mfe_r,
+            "r_metric": trajectory.get("r_metric", "BROKER_EXECUTABLE_PRICE_R_EXCLUDING_COSTS"),
+            "r_normalization": r_normalization,
+            "r_ready": r_ready,
             "automatic_exit_mutation": False,
             "source": "CTRADER_PIPELINE_SAMPLED_TRAJECTORY",
         }
@@ -134,7 +155,7 @@ def finalize_trajectories(
             event_type="DEMO_TRADE_TRAJECTORY_FINAL",
             broker_order_id=event_key,
             accepted=True,
-            code="SAMPLED_MAE_MFE",
+            code="SAMPLED_MAE_MFE_R" if r_ready else "SAMPLED_MAE_MFE",
             message="sampled trade trajectory finalized",
             payload=final_payload,
         )
@@ -145,7 +166,9 @@ def finalize_trajectories(
             f"samples={final_payload['sample_count']} "
             f"sampled_mae_pnl={final_payload['sampled_mae_pnl']} "
             f"sampled_mfe_pnl={final_payload['sampled_mfe_pnl']} "
-            f"exit_type={final_payload['exit_type']} entry_mode={final_payload['entry_mode']}"
+            f"mae_r={final_payload['mae_r']} mfe_r={final_payload['mfe_r']} "
+            f"r_ready={int(r_ready)} exit_type={final_payload['exit_type']} "
+            f"entry_mode={final_payload['entry_mode']}"
         )
 
     return TrajectoryFinalizeReport(len(closed), finalized, duplicates, missing)
@@ -163,14 +186,15 @@ def run() -> int:
             healthy=True,
             lag_seconds=0.0,
             details={
-                "mode": "SAMPLED_MAE_MFE",
+                "mode": "SAMPLED_MAE_MFE_R",
                 "closed_scanned": report.closed_scanned,
                 "finalized": report.finalized,
                 "duplicates": report.duplicates,
                 "missing_trajectory": report.missing_trajectory,
                 "metric": "NET_UNREALIZED_PNL_ACCOUNT_CURRENCY",
+                "r_metric": "BROKER_EXECUTABLE_PRICE_R_EXCLUDING_COSTS",
                 "trajectory_scope": "SINCE_FIRST_OBSERVED",
-                "r_normalization": "DEFERRED_UNTIL_EXACT_BROKER_RISK_DENOMINATOR",
+                "r_normalization": "ACTUAL_BROKER_OPEN_TO_ACTIVE_SL_PRICE_R_WHEN_AVAILABLE",
                 "automatic_exit_mutation": False,
             },
         )

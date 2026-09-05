@@ -50,9 +50,40 @@ def _finite_float(value: Any) -> float | None:
     return parsed if isfinite(parsed) else None
 
 
+def _price_r_sample(position: BrokerPositionSnapshot) -> tuple[float | None, float | None]:
+    """Return (initial risk distance, current price-R) from broker position truth.
+
+    R is normalized by the actual broker open price to active broker stop-loss
+    distance. Current price is the side-specific executable close quote captured
+    by the broker snapshot (bid for BUY, ask for SELL). This is a price-R metric,
+    intentionally separate from account-currency P&L so contract-value and FX
+    conversion differences can never corrupt MAE/MFE normalization.
+    """
+    entry = _finite_float(position.open_price)
+    stop = _finite_float(position.stop_loss)
+    current = _finite_float(position.current_price)
+    side = str(position.side or "").upper()
+    if entry is None or stop is None or current is None or entry <= 0 or stop <= 0 or current <= 0:
+        return None, None
+    if side == "BUY":
+        risk = entry - stop
+        excursion = current - entry
+    elif side == "SELL":
+        risk = stop - entry
+        excursion = entry - current
+    else:
+        return None, None
+    if risk <= 1e-12:
+        return None, None
+    value = excursion / risk
+    if not isfinite(value):
+        return None, None
+    return risk, max(-10.0, min(10.0, value))
+
+
 def _load_trajectory_state(store) -> dict[str, Any]:
     if store is None or not hasattr(store, "client"):
-        return {"version": 1, "positions": {}}
+        return {"version": 2, "positions": {}}
     try:
         response = (
             store.client.table("runtime_heartbeats")
@@ -64,24 +95,18 @@ def _load_trajectory_state(store) -> dict[str, Any]:
         rows = list(response.data or [])
     except Exception as exc:
         print(f"CTRADER_DEMO_TRAJECTORY_WARN stage=READ error={type(exc).__name__}")
-        return {"version": 1, "positions": {}}
+        return {"version": 2, "positions": {}}
     if not rows or not isinstance(rows[0].get("details"), dict):
-        return {"version": 1, "positions": {}}
+        return {"version": 2, "positions": {}}
     details = dict(rows[0]["details"])
     positions = details.get("positions")
     details["positions"] = dict(positions) if isinstance(positions, dict) else {}
-    details["version"] = 1
+    details["version"] = 2
     return details
 
 
 def _update_sampled_trajectory(store, positions: tuple[BrokerPositionSnapshot, ...]) -> dict[str, dict[str, Any]]:
-    """Maintain bounded sampled MAE/MFE in account-currency net floating P&L.
-
-    These are explicitly sampled extrema at the pipeline cadence, not tick-level
-    intrabar extrema. Keeping that distinction avoids false precision while
-    still providing reliable evidence about whether trades first moved in our
-    favor or against us before closing.
-    """
+    """Maintain bounded sampled P&L extrema and broker-grounded price-R MAE/MFE."""
     if store is None or not hasattr(store, "client"):
         return {}
     now = datetime.now(tz=UTC).isoformat()
@@ -105,6 +130,14 @@ def _update_sampled_trajectory(store, positions: tuple[BrokerPositionSnapshot, .
             mae = min(0.0, mae, pnl)
             mfe = max(0.0, mfe, pnl)
             sample_count += 1
+
+        initial_risk_price, price_r = _price_r_sample(position)
+        mae_r = _finite_float(previous.get("sampled_mae_r"))
+        mfe_r = _finite_float(previous.get("sampled_mfe_r"))
+        if price_r is not None:
+            mae_r = min(0.0, 0.0 if mae_r is None else mae_r, price_r)
+            mfe_r = max(0.0, 0.0 if mfe_r is None else mfe_r, price_r)
+
         item = {
             "position_id": position_id,
             "symbol": str(position.symbol).upper(),
@@ -116,8 +149,21 @@ def _update_sampled_trajectory(store, positions: tuple[BrokerPositionSnapshot, .
             "sampled_mae_pnl": mae,
             "sampled_mfe_pnl": mfe,
             "last_floating_pnl": pnl,
+            "open_price": _finite_float(position.open_price),
+            "current_price": _finite_float(position.current_price),
+            "stop_loss": _finite_float(position.stop_loss),
+            "initial_risk_price": initial_risk_price,
+            "sampled_mae_r": mae_r,
+            "sampled_mfe_r": mfe_r,
+            "last_price_r": price_r,
             "trajectory_scope": "SINCE_FIRST_OBSERVED",
             "metric": "NET_UNREALIZED_PNL_ACCOUNT_CURRENCY",
+            "r_metric": "BROKER_EXECUTABLE_PRICE_R_EXCLUDING_COSTS",
+            "r_normalization": (
+                "ACTUAL_BROKER_OPEN_TO_ACTIVE_SL_PRICE_R"
+                if initial_risk_price is not None and price_r is not None
+                else "DEFERRED_UNTIL_BROKER_PRICE_R_AVAILABLE"
+            ),
             "target_sample_cadence_seconds": 120,
         }
         history[position_id] = item
@@ -133,10 +179,11 @@ def _update_sampled_trajectory(store, positions: tuple[BrokerPositionSnapshot, .
 
     state.update(
         {
-            "version": 1,
+            "version": 2,
             "positions": history,
             "current_open_position_ids": sorted(current),
-            "sampling_definition": "pipeline-sampled net unrealized P&L extrema",
+            "sampling_definition": "pipeline-sampled net unrealized P&L plus broker executable price-R extrema",
+            "r_metric": "BROKER_EXECUTABLE_PRICE_R_EXCLUDING_COSTS",
             "automatic_exit_mutation": False,
         }
     )
@@ -154,14 +201,30 @@ def _update_sampled_trajectory(store, positions: tuple[BrokerPositionSnapshot, .
     for position_id, item in sorted(current.items(), key=lambda pair: (pair[1]["symbol"], pair[0])):
         last_pnl = item["last_floating_pnl"]
         last_text = "NONE" if last_pnl is None else f"{float(last_pnl):.8g}"
+        mae_r_text = "NONE" if item["sampled_mae_r"] is None else f"{float(item['sampled_mae_r']):.4f}"
+        mfe_r_text = "NONE" if item["sampled_mfe_r"] is None else f"{float(item['sampled_mfe_r']):.4f}"
         print(
             "CTRADER_DEMO_POSITION_TRAJECTORY "
             f"symbol={item['symbol']} position_id={position_id} samples={item['sample_count']} "
             f"sampled_mae_pnl={float(item['sampled_mae_pnl']):.8g} "
             f"sampled_mfe_pnl={float(item['sampled_mfe_pnl']):.8g} "
+            f"sampled_mae_r={mae_r_text} sampled_mfe_r={mfe_r_text} "
             f"last_floating_pnl={last_text} scope=SINCE_FIRST_OBSERVED"
         )
     return current
+
+
+def _side_specific_close_price(session, symbol: str, side: str) -> float | None:
+    """Best-effort broker executable close quote for trajectory sampling only."""
+    try:
+        quote = session.quote(symbol)
+        if str(side).upper() == "BUY":
+            return _positive_float(getattr(quote, "bid", None))
+        if str(side).upper() == "SELL":
+            return _positive_float(getattr(quote, "ask", None))
+    except Exception:
+        return None
+    return None
 
 
 def capture_ctrader_demo_snapshot(
@@ -218,6 +281,7 @@ def capture_ctrader_demo_snapshot(
         swap_raw = getattr(position, "swap", None)
         swap = None if swap_raw is None else _money(swap_raw, money_digits)
         comment = str(getattr(trade_data, "comment", "") or "").strip() or None
+        current_price = _side_specific_close_price(session, symbol, side)
         positions.append(
             BrokerPositionSnapshot(
                 backend=BrokerBackend.CTRADER,
@@ -226,7 +290,7 @@ def capture_ctrader_demo_snapshot(
                 side=side,
                 volume=volume,
                 open_price=float(getattr(position, "price", 0.0) or 0.0),
-                current_price=None,
+                current_price=current_price,
                 stop_loss=_positive_float(getattr(position, "stopLoss", None)),
                 take_profit=_positive_float(getattr(position, "takeProfit", None)),
                 profit=pnl_by_position.get(position_id),
@@ -275,11 +339,12 @@ def capture_ctrader_demo_snapshot(
         pnl_text = "NONE" if position.profit is None else f"{float(position.profit):.8g}"
         sl_text = "NONE" if position.stop_loss is None else f"{float(position.stop_loss):.8g}"
         tp_text = "NONE" if position.take_profit is None else f"{float(position.take_profit):.8g}"
+        current_text = "NONE" if position.current_price is None else f"{float(position.current_price):.8g}"
         print(
             "CTRADER_DEMO_POSITION_PNL "
             f"phase={phase_text} symbol={position.symbol} position_id={position.position_id} "
             f"side={position.side} volume={position.volume:.8g} floating_pnl={pnl_text} "
-            f"open_price={position.open_price:.8g} sl={sl_text} tp={tp_text}"
+            f"open_price={position.open_price:.8g} current_price={current_text} sl={sl_text} tp={tp_text}"
         )
 
     return DemoBrokerSnapshot(account, tuple(positions), snapshot_id)
