@@ -83,8 +83,8 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
 
     pair_data = _read_yaml(cfg / "pairs.yaml")
     raw_pairs = pair_data.get("pairs", [])
-    if not isinstance(raw_pairs, list) or len(raw_pairs) != 22:
-        raise ConfigurationError(f"DEMO technical universe requires exactly 22 configured instruments, got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}")
+    if not isinstance(raw_pairs, list) or len(raw_pairs) != 20:
+        raise ConfigurationError(f"DEMO technical universe requires exactly 20 configured instruments, got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}")
 
     pairs: list[PairSpec] = []
     seen: set[str] = set()
@@ -351,6 +351,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         ) <= 0:
             raise ConfigurationError(f"smoke series {name} max age must be positive")
 
+
     macro_ingestion = providers.get("macro_ingestion", {})
     if not isinstance(macro_ingestion, Mapping):
         raise ConfigurationError("providers.macro_ingestion must be a mapping")
@@ -537,7 +538,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
             "FOREX_FACTORY_WEEKLY must remain explicitly marked non-official"
         )
     ff_url = str(ff_calendar.get("base_url", "")).strip()
-    ff_host = str(calendar_cfg.get("FOREX_FACTORY_WEEKLY", {}).get("allowed_host", "")).strip()
+    ff_host = str(ff_calendar.get("allowed_host", "")).strip()
     ff_parsed = urlparse(ff_url)
     if (
         ff_url != "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
@@ -546,6 +547,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         or ff_parsed.hostname != ff_host
     ):
         raise ConfigurationError("FOREX_FACTORY_WEEKLY canonical HTTPS endpoint changed")
+
 
     selection = strategy.get("selection", {})
     if not isinstance(selection, Mapping):
@@ -638,6 +640,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
         raise ConfigurationError("correlation lookback must be an integer in [20,100]")
     if not 0.70 <= corr_threshold <= 0.99:
         raise ConfigurationError("correlation threshold must remain within [0.70,0.99]")
+
 
     liquidity_cfg = strategy.get("liquidity", {})
     if not isinstance(liquidity_cfg, Mapping):
@@ -735,6 +738,7 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
             raise ConfigurationError(f"strategy setup {setup_name} flags are invalid")
         if any(values[key] is not True for key in required_flags):
             raise ConfigurationError(f"strategy setup {setup_name} requirements cannot be disabled")
+
 
     engine_cfg = validation.get("engine", {})
     if not isinstance(engine_cfg, Mapping):

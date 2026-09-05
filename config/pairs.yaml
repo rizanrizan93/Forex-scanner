@@ -19,8 +19,6 @@ pairs:
   - {symbol: BTCUSD, base: BTC, quote: USD, pip_size: 0.01, tier: A}
   - {symbol: ETHUSD, base: ETH, quote: USD, pip_size: 0.01, tier: A}
   - {symbol: SOLUSD, base: SOL, quote: USD, pip_size: 0.01, tier: A}
-  - {symbol: RPLUSD, base: RPL, quote: USD, pip_size: 0.0001, tier: A}
-  - {symbol: LTCUSD, base: LTC, quote: USD, pip_size: 0.01, tier: A}
 
 timeframes:
   M1: 60
