@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from threading import Lock
+from types import SimpleNamespace
 
 from fx_scanner.config import load_project_config
 from fx_scanner.execution.ctrader_research import CTraderResearchFeed
@@ -69,6 +70,16 @@ class SessionFacade:
 
     def ensure_connected(self):
         return None
+
+    def symbol_info(self, _symbol):
+        return SimpleNamespace(
+            tradingMode=0,
+            scheduleTimeZone="UTC",
+            schedule=(SimpleNamespace(startSecond=0, endSecond=7 * 86400),),
+            holiday=(),
+            digits=5,
+            pipPosition=4,
+        )
 
     def refresh_spot_snapshot(self, symbol):
         self.refreshes.append(symbol)
