@@ -44,11 +44,11 @@ def test_geometry_context_is_preferred_without_overwriting_closed_trade_values()
     }
 
     enriched = _enrich_rows(rows, signals, geometries)[0]["payload"]
-    assert enriched["pullback_atr"] == 0.40  # closed-trade payload stays authoritative
+    assert enriched["pullback_atr"] == 0.40
     assert enriched["zone_distance_atr"] == 0.18
     assert enriched["entry_mode"] == "HL_PULLBACK"
     assert enriched["confirmation"] == "BOS"
-    assert enriched["planned_sl"] == 98.5  # immutable geometry beats later signal fallback
+    assert enriched["planned_sl"] == 98.5
     assert enriched["regime"] == "TREND"
     assert enriched["v2_context_source"] == "DEMO_TRADE_CLOSED+DEMO_SIGNAL_GEOMETRY+SIGNALS"
 
@@ -79,6 +79,94 @@ def test_signal_fallback_fills_geometry_absence_but_does_not_invent_entry_mode()
     assert enriched["regime"] == "RANGE"
     assert "entry_mode" not in enriched
     assert enriched["v2_context_source"] == "DEMO_TRADE_CLOSED+SIGNALS"
+
+
+def test_immutable_feature_snapshot_outranks_geometry_and_signal_fallbacks():
+    rows = (
+        {
+            "signal_key": "sig-v2",
+            "payload": {
+                "exit_type": "SL_HIT",
+                "regime": "CLOSED_TRUTH_REGIME",
+                "final_score": 63.0,
+            },
+        },
+    )
+    signals = {
+        "sig-v2": {
+            "id": "sig-v2",
+            "symbol": "EURUSD",
+            "direction": "LONG",
+            "setup_type": "TREND_CONTINUATION",
+            "final_score": 55.0,
+            "h1_bias": "BULLISH",
+            "h4_bias": "BULLISH",
+        }
+    }
+    geometry = {
+        "sig-v2": {
+            "entry_mode": "MOMENTUM",
+            "confirmation": "FVG",
+            "pullback_atr": 0.10,
+        }
+    }
+    snapshot = {
+        "sig-v2": {
+            "snapshot_version": 2,
+            "snapshot_complete_for_regime": True,
+            "regime": "TREND_STRONG",
+            "entry_mode": "HL_PULLBACK",
+            "confirmation": "BOS",
+            "pullback_atr": 0.35,
+            "atr_m5": 0.0008,
+            "evidence_scores": {"structure": 74.0},
+            "spread_pips_at_entry": None,
+            "live_entry_drift_r": None,
+        }
+    }
+    enriched = _enrich_rows(rows, signals, geometry, {}, snapshot)[0]["payload"]
+
+    # Closed trade remains authoritative when it already carries a value.
+    assert enriched["regime"] == "CLOSED_TRUTH_REGIME"
+    assert enriched["final_score"] == 63.0
+    # Otherwise immutable snapshot outranks older geometry/signal fallbacks.
+    assert enriched["entry_mode"] == "HL_PULLBACK"
+    assert enriched["confirmation"] == "BOS"
+    assert enriched["pullback_atr"] == 0.35
+    assert enriched["atr_m5"] == 0.0008
+    assert enriched["evidence_scores"]["structure"] == 74.0
+    assert enriched["spread_pips_at_entry"] is None
+    assert enriched["live_entry_drift_r"] is None
+    assert enriched["v2_feature_snapshot_complete"] is True
+    assert enriched["v2_context_source"].startswith(
+        "DEMO_TRADE_CLOSED+DEMO_SIGNAL_FEATURE_SNAPSHOT_V2"
+    )
+
+
+def test_feature_snapshot_regime_replaces_signal_proxy_when_closed_trade_has_no_regime():
+    rows = ({"signal_key": "sig-regime", "payload": {"exit_type": "TP_HIT"}},)
+    signals = {
+        "sig-regime": {
+            "id": "sig-regime",
+            "symbol": "EURUSD",
+            "direction": "LONG",
+            "setup_type": "TREND_CONTINUATION",
+            "h1_bias": "BEARISH",
+            "h4_bias": "BEARISH",
+        }
+    }
+    snapshot = {
+        "sig-regime": {
+            "snapshot_version": 2,
+            "snapshot_complete_for_regime": True,
+            "regime": "TRANSITION",
+            "entry_mode": "HL_PULLBACK",
+            "confirmation": "BOS",
+        }
+    }
+    enriched = _enrich_rows(rows, signals, {}, {}, snapshot)[0]["payload"]
+    assert enriched["regime"] == "TRANSITION"
+    assert enriched["v2_regime_source"] == "DEMO_SIGNAL_FEATURE_SNAPSHOT_V2"
 
 
 def test_trajectory_account_currency_extrema_are_attribution_only_not_r():
