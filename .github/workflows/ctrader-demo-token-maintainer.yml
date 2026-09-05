@@ -1,22 +1,23 @@
-name: cTrader Demo AutoTrade
+name: cTrader Demo Token Maintainer
 
 on:
-  # Manual-only until the controlled broker-order smoke is proven end-to-end.
-  # The recurring schedule is re-enabled only after scanner signal production
-  # and persistent runtime evidence have passed.
   workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 * * * *"
 
 permissions:
   contents: read
 
 concurrency:
-  group: ctrader-demo-autotrade
+  group: ctrader-demo-token-maintainer
   cancel-in-progress: false
 
 jobs:
-  autotrade:
+  maintain-demo-token:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -29,9 +30,7 @@ jobs:
       CTRADER_DISABLE_TOKEN_REFRESH: "1"
       SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      FX_KILL_SWITCH: "0"
-      FX_IDEMPOTENCY_STATE_PATH: /tmp/execution_idempotency.json
-      CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -42,5 +41,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-research-cloud.txt
-      - name: Execute only durable EXECUTION_READY demo signals
-        run: python -m fx_scanner.cli ctrader-demo-autotrade --once --limit 10
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Maintain encrypted durable DEMO token state
+        run: python -m fx_scanner.demo_ctrader_token_maintainer
