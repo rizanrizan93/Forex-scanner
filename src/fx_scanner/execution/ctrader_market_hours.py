@@ -100,7 +100,7 @@ def evaluate_ctrader_market_status(symbol_info, *, at: datetime | None = None) -
     schedule = tuple(getattr(symbol_info, "schedule", ()) or ())
     digits = int(getattr(symbol_info, "digits", 0) or 0)
     pip_position = int(getattr(symbol_info, "pipPosition", 0) or 0)
-    broker_pip_size = 10.0 ** (-pip_position) if pip_position > 0 else None
+    broker_pip_size = 10.0 ** (-pip_position)
 
     if trading_mode != 0:
         return CTraderMarketStatus(
