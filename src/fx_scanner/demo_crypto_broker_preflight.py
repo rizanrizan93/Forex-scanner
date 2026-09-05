@@ -48,15 +48,18 @@ def run() -> int:
 
     pairs = weekend_crypto_pairs(cfg)
     symbols = tuple(pair.symbol for pair in pairs)
-    if set(symbols) != set(CRYPTO_WEEKEND_SYMBOLS):
+    if len(symbols) != len(CRYPTO_WEEKEND_SYMBOLS) or set(symbols) != set(CRYPTO_WEEKEND_SYMBOLS):
         raise SystemExit("CTRADER_DEMO_CRYPTO_PREFLIGHT_UNIVERSE_INCOMPLETE")
 
     feed = _build_feed_with_bounded_retry(policy, symbols)
     mismatches: list[str] = []
+    read_symbols: list[str] = []
+    read_error: Exception | None = None
     try:
         now = datetime.now(tz=UTC)
         for pair in pairs:
             status = feed.market_status(pair.symbol, at=now)
+            read_symbols.append(pair.symbol)
             broker_pip = status.broker_pip_size
             pip_match = broker_pip is not None and isclose(
                 float(pair.pip_size),
@@ -75,8 +78,23 @@ def run() -> int:
             )
             if not pip_match:
                 mismatches.append(pair.symbol)
+    except Exception as exc:
+        read_error = exc
     finally:
         feed.close()
+
+    if tuple(read_symbols) != tuple(symbols):
+        read_set = set(read_symbols)
+        missing = ",".join(symbol for symbol in symbols if symbol not in read_set) or "NONE"
+        message = (
+            "CTRADER_DEMO_CRYPTO_PREFLIGHT_READ_COUNT_MISMATCH:"
+            f"read={len(read_symbols)} expected={len(symbols)} missing={missing}"
+        )
+        if read_error is not None:
+            raise SystemExit(message) from read_error
+        raise SystemExit(message)
+    if read_error is not None:
+        raise read_error
 
     if mismatches:
         raise SystemExit(
@@ -84,6 +102,7 @@ def run() -> int:
         )
     print(
         "CTRADER_DEMO_CRYPTO_PREFLIGHT_OK "
+        f"read_count={len(read_symbols)} expected_count={len(symbols)} "
         f"symbols={','.join(symbols)} broker_schedule=AUTHORITATIVE"
     )
     return 0

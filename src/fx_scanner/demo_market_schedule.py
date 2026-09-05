@@ -8,8 +8,8 @@ from .config import PairSpec, ProjectConfig
 UTC = timezone.utc
 CRYPTO_WEEKEND_SYMBOLS = frozenset({"BTCUSD", "ETHUSD", "SOLUSD", "RPLUSD", "LTCUSD"})
 _CRYPTO_WEEKEND_SUPPLEMENTAL = (
-    PairSpec(symbol="RPLUSD", base="RPL", quote="USD", pip_size=0.0001, tier="A"),
-    PairSpec(symbol="LTCUSD", base="LTC", quote="USD", pip_size=0.01, tier="A"),
+    PairSpec(symbol="RPLUSD", base="RPL", quote="USD", pip_size=0.001, tier="A"),
+    PairSpec(symbol="LTCUSD", base="LTC", quote="USD", pip_size=0.1, tier="A"),
 )
 
 

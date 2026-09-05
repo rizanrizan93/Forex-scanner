@@ -69,8 +69,8 @@ def _demo_spread_limit_overrides(cfg) -> dict[str, float]:
     contracts = {
         "XAUUSD": ("CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS", 4.0, 100.0),
         "XTIUSD": ("CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS", 1.0, 100.0),
-        "BTCUSD": ("CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS", 100.0, 5000.0),
-        "ETHUSD": ("CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS", 10.0, 1000.0),
+        "BTCUSD": ("CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS", 1.0, 50.0),
+        "ETHUSD": ("CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS", 0.1, 10.0),
         "SOLUSD": ("CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS", 10.0, 1000.0),
     }
     output: dict[str, float] = {}
