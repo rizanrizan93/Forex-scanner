@@ -16,8 +16,8 @@ pairs:
   - {symbol: GBPAUD, base: GBP, quote: AUD, pip_size: 0.0001, tier: B}
   - {symbol: XAUUSD, base: XAU, quote: USD, pip_size: 0.01, tier: A}
   - {symbol: XTIUSD, base: XTI, quote: USD, pip_size: 0.01, tier: A}
-  - {symbol: BTCUSD, base: BTC, quote: USD, pip_size: 0.01, tier: A}
-  - {symbol: ETHUSD, base: ETH, quote: USD, pip_size: 0.01, tier: A}
+  - {symbol: BTCUSD, base: BTC, quote: USD, pip_size: 1.0, tier: A}
+  - {symbol: ETHUSD, base: ETH, quote: USD, pip_size: 1.0, tier: A}
   - {symbol: SOLUSD, base: SOL, quote: USD, pip_size: 0.01, tier: A}
 
 timeframes:
