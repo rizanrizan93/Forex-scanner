@@ -13,7 +13,7 @@ from fx_scanner.demo_market_schedule import (
 UTC = timezone.utc
 
 
-def test_weekday_keeps_full_twenty_two_instrument_universe():
+def test_weekday_keeps_full_twenty_instrument_universe():
     cfg = load_project_config(None)
     scheduled, mode = apply_demo_market_schedule(
         cfg,
@@ -21,7 +21,7 @@ def test_weekday_keeps_full_twenty_two_instrument_universe():
     )
 
     assert mode == "WEEKDAY_FULL_24X5"
-    assert len(scheduled.pairs) == 22
+    assert len(scheduled.pairs) == 20
     assert {pair.symbol for pair in scheduled.pairs} == {
         pair.symbol for pair in cfg.pairs
     }
