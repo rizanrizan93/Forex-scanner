@@ -10,6 +10,14 @@ from .demo_adaptive_calibration import (
     build_adaptive_policy_from_rows,
     load_adaptive_policy,
 )
+from .demo_adaptive_gate_v2 import (
+    CompositeAdaptiveScorePolicy,
+    build_adaptive_gate_v2_policy,
+)
+from .demo_adaptive_gate_v2_runtime import (
+    gate_v2_heartbeat_details,
+    load_adaptive_gate_v2_policy,
+)
 from .demo_broker_pnl import capture_ctrader_demo_snapshot
 from .demo_calibration import apply_demo_calibration_risk, apply_demo_calibration_threshold
 from .demo_market_schedule import apply_demo_market_schedule
@@ -75,23 +83,27 @@ def run(*, limit: int = 10) -> int:
     store = SupabaseOperationalStore.from_env()
 
     adaptive_enabled = os.getenv("CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED", "0").strip() == "1"
+    account_id = _demo_account_id(policy)
+
+    # Preserve the proven legacy bounded policy as fallback. Adaptive v2 does not
+    # stack on top of it: once v2 is evidence-ready, v2 supersedes this floor.
     adaptive_error = None
     try:
-        adaptive_policy = load_adaptive_policy(
+        legacy_adaptive_policy = load_adaptive_policy(
             store,
-            account_id=_demo_account_id(policy),
+            account_id=account_id,
             base_floor=demo_execution_min,
             enabled=adaptive_enabled,
         )
     except Exception as exc:
         adaptive_error = type(exc).__name__
-        adaptive_policy = build_adaptive_policy_from_rows(
+        legacy_adaptive_policy = build_adaptive_policy_from_rows(
             (),
             base_floor=demo_execution_min,
             enabled=False,
         )
 
-    adaptive_details = adaptive_policy.details()
+    adaptive_details = legacy_adaptive_policy.details()
     if adaptive_error is not None:
         adaptive_details["load_error"] = adaptive_error
     store.write_heartbeat(
@@ -101,20 +113,70 @@ def run(*, limit: int = 10) -> int:
         details=adaptive_details,
     )
     effective_global_floor = min(
-        adaptive_policy.max_floor,
-        adaptive_policy.base_floor + adaptive_policy.global_penalty,
+        legacy_adaptive_policy.max_floor,
+        legacy_adaptive_policy.base_floor + legacy_adaptive_policy.global_penalty,
     )
     print(
         "CTRADER_DEMO_ADAPTIVE_CALIBRATION "
-        f"enabled={int(adaptive_policy.enabled)} "
-        f"wave_decisive={adaptive_policy.wave_stats.decisive_system} "
-        f"wave_wins={adaptive_policy.wave_stats.wins} wave_losses={adaptive_policy.wave_stats.losses} "
-        f"legacy_decisive={adaptive_policy.legacy_stats.decisive_system} "
-        f"legacy_wins={adaptive_policy.legacy_stats.wins} legacy_losses={adaptive_policy.legacy_stats.losses} "
-        f"global_penalty={adaptive_policy.global_penalty:.2f} "
+        f"enabled={int(legacy_adaptive_policy.enabled)} "
+        f"wave_decisive={legacy_adaptive_policy.wave_stats.decisive_system} "
+        f"wave_wins={legacy_adaptive_policy.wave_stats.wins} wave_losses={legacy_adaptive_policy.wave_stats.losses} "
+        f"legacy_decisive={legacy_adaptive_policy.legacy_stats.decisive_system} "
+        f"legacy_wins={legacy_adaptive_policy.legacy_stats.wins} legacy_losses={legacy_adaptive_policy.legacy_stats.losses} "
+        f"global_penalty={legacy_adaptive_policy.global_penalty:.2f} "
         f"effective_global_floor={effective_global_floor:.2f} "
-        f"root_cause={adaptive_policy.root_cause} "
+        f"root_cause={legacy_adaptive_policy.root_cause} "
         f"load_error={adaptive_error or 'NONE'}"
+    )
+
+    v2_error = None
+    try:
+        if account_id:
+            v2_policy = load_adaptive_gate_v2_policy(
+                store,
+                account_id=account_id,
+                base_floor=demo_execution_min,
+                enabled=adaptive_enabled,
+            )
+        else:
+            v2_policy = build_adaptive_gate_v2_policy(
+                (),
+                signal_context={},
+                base_floor=demo_execution_min,
+                enabled=False,
+            )
+            v2_error = "ACCOUNT_ID_MISSING"
+    except Exception as exc:
+        v2_error = type(exc).__name__
+        v2_policy = build_adaptive_gate_v2_policy(
+            (),
+            signal_context={},
+            base_floor=demo_execution_min,
+            enabled=False,
+        )
+
+    v2_details = gate_v2_heartbeat_details(v2_policy)
+    if v2_error is not None:
+        v2_details["load_error"] = v2_error
+    store.write_heartbeat(
+        "ctrader_demo_adaptive_gate_v2",
+        healthy=v2_error is None,
+        lag_seconds=0.0,
+        details=v2_details,
+    )
+    adaptive_policy = CompositeAdaptiveScorePolicy(
+        legacy_policy=legacy_adaptive_policy,
+        v2_policy=v2_policy,
+    )
+    composite_details = adaptive_policy.details()
+    print(
+        "CTRADER_DEMO_ADAPTIVE_GATE_V2 "
+        f"enabled={int(v2_policy.enabled)} wave_decisive={v2_policy.wave_decisive} "
+        f"snapshot_coverage={v2_policy.snapshot_coverage:.3f} "
+        f"max_penalty={v2_policy.max_penalty:.2f} "
+        f"active_policy={'V2' if v2_policy.enabled else 'LEGACY_FALLBACK'} "
+        f"penalty_stacking=0 root_cause={v2_policy.root_cause} "
+        f"load_error={v2_error or 'NONE'}"
     )
 
     gate = ControlPlaneGate(
@@ -182,9 +244,6 @@ def run(*, limit: int = 10) -> int:
             phase="AFTER",
         )
         snapshot_positions_after = len(pnl_snapshot.positions)
-        # Capacity telemetry must remain account-wide even when the active
-        # weekend universe is crypto-only and the P&L snapshot cannot map
-        # pre-existing weekday FX symbol IDs in this ephemeral session.
         open_positions_after = int(gateway.position_count())
         free_slots_after = max(0, max_positions - open_positions_after)
         print(
@@ -211,6 +270,8 @@ def run(*, limit: int = 10) -> int:
                 "active_universe": symbols,
                 "calibration_threshold": demo_execution_min,
                 "adaptive_calibration": adaptive_details,
+                "adaptive_gate_v2": v2_details,
+                "adaptive_score_policy": composite_details,
                 "risk_per_trade_pct": demo_risk_pct,
                 "max_risk_pct": float(policy.demo_safety["max_risk_pct"]),
                 "max_entry_drift_r": executor.max_entry_drift_r,
@@ -238,8 +299,9 @@ def run(*, limit: int = 10) -> int:
         print(
             "CTRADER_DEMO_CALIBRATION_AUTOTRADE_OK "
             f"threshold={demo_execution_min:g} production_default={production_execution_min:g} "
-            f"adaptive_enabled={int(adaptive_policy.enabled)} "
+            f"adaptive_enabled={int(adaptive_enabled)} "
             f"adaptive_global_floor={effective_global_floor:.2f} "
+            f"adaptive_policy={'V2' if v2_policy.enabled else 'LEGACY_FALLBACK'} "
             f"risk_pct={demo_risk_pct:g} max_risk_pct={float(policy.demo_safety['max_risk_pct']):g} "
             f"max_entry_drift_r={executor.max_entry_drift_r:g} "
             f"market_schedule={market_schedule_mode} "
