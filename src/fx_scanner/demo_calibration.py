@@ -46,7 +46,7 @@ def apply_demo_calibration_risk(cfg, *, max_risk_pct: float = 1.0):
 
 
 def apply_demo_deep_analysis_top(cfg):
-    """Expand only the DEMO technical deep shortlist, bounded by the universe."""
+    """Apply DEMO deep-shortlist width, capped by the active market universe."""
     raw = os.getenv("CTRADER_DEMO_DEEP_ANALYSIS_TOP", "").strip()
     if not raw:
         return cfg
@@ -56,10 +56,13 @@ def apply_demo_deep_analysis_top(cfg):
         raise SystemExit("CTRADER_DEMO_DEEP_ANALYSIS_TOP_INVALID") from exc
     canonical = int(cfg.strategy["selection"]["deep_analysis_top"])
     universe = len(cfg.pairs)
-    if not canonical <= requested <= min(10, universe):
+    if not canonical <= requested <= 10:
+        raise SystemExit("CTRADER_DEMO_DEEP_ANALYSIS_TOP_OUT_OF_RANGE")
+    effective = min(requested, universe)
+    if effective <= 0:
         raise SystemExit("CTRADER_DEMO_DEEP_ANALYSIS_TOP_OUT_OF_RANGE")
     selection = dict(cfg.strategy["selection"])
-    selection["deep_analysis_top"] = requested
+    selection["deep_analysis_top"] = effective
     strategy = dict(cfg.strategy)
     strategy["selection"] = selection
     return replace(cfg, strategy=strategy)
