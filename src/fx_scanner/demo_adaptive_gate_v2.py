@@ -25,7 +25,11 @@ def _text(payload: Mapping[str, Any], key: str, default: str = "UNKNOWN") -> str
 
 def _complete_snapshot(payload: Mapping[str, Any]) -> bool:
     required = ("symbol", "setup_type", "direction", "regime", "entry_mode", "confirmation")
-    return bool(payload.get("v2_feature_snapshot_complete", False)) and all(
+    complete_marker = bool(
+        payload.get("v2_feature_snapshot_complete", False)
+        or payload.get("snapshot_complete_for_regime", False)
+    )
+    return complete_marker and all(
         str(payload.get(key, "") or "").strip() for key in required
     )
 
@@ -82,8 +86,6 @@ class AdaptiveGateV2Policy:
             return 0.0
         evidence_cap = 2.5 if stats.decisive < 10 else self.max_penalty
         cap = min(self.max_penalty, evidence_cap)
-        # Conservative, monotonic and self-relaxing: once win rate recovers,
-        # the penalty automatically decays toward zero without manual reset.
         if stats.win_rate < 0.25:
             return cap
         if stats.win_rate < 0.35:
@@ -101,8 +103,6 @@ class AdaptiveGateV2Policy:
         if not isinstance(context, Mapping) or not _complete_snapshot(context):
             return GateDecision(base, base, 0.0, "NONE", "NONE", 0, None, False, "CURRENT_SIGNAL_SNAPSHOT_MISSING")
 
-        # Choose exactly one most-specific eligible scope. Never add penalties
-        # across hierarchy levels.
         for level, key, minimum in self._scope_candidates(context):
             stats = self.scope_stats.get(level, {}).get(key)
             if stats is None or stats.decisive < minimum:
@@ -205,7 +205,6 @@ def build_adaptive_gate_v2_policy(
     safe_base = float(base_floor)
     if not isfinite(safe_base) or safe_base < 0 or safe_base > 100:
         raise ValueError("ADAPTIVE_V2_BASE_FLOOR_INVALID")
-    # Contract agreed for DEMO: 10–19 max +2.5, >=20 max +5.
     max_penalty = 0.0 if wave_decisive < 10 else 2.5 if wave_decisive < 20 else 5.0
     ready = bool(enabled and wave_decisive >= MIN_GLOBAL_DECISIVE and coverage >= MIN_SNAPSHOT_COVERAGE)
     if not enabled:
@@ -230,12 +229,6 @@ def build_adaptive_gate_v2_policy(
 
 @dataclass(frozen=True, slots=True)
 class CompositeAdaptiveScorePolicy:
-    """Non-stacking bridge between legacy safe gate and Adaptive v2 gate.
-
-    V2 supersedes the legacy score-floor mutation only when its own sample and
-    snapshot contract is ready. Otherwise the existing legacy policy remains
-    authoritative. This prevents old + v2 penalties from ever being summed.
-    """
     legacy_policy: Any
     v2_policy: AdaptiveGateV2Policy
 
