@@ -29,6 +29,32 @@ def _token_invalid(exc: BaseException) -> bool:
     return "CH_ACCESS_TOKEN_INVALID" in text or "ACCESS_TOKEN_EXPIRED" in text
 
 
+def _rotation_reason(
+    *,
+    had_durable_state: bool,
+    durable_age_seconds: float | None,
+    validation_error: BaseException | None = None,
+) -> str:
+    """Return an explicit safe rotation reason or propagate non-token failures.
+
+    Routing/timeouts are deliberately not interpreted as token expiry. Refresh
+    tokens rotate on use, so refreshing on ambiguous transport failures could
+    strand every worker on an already-invalidated refresh credential.
+    """
+    if not had_durable_state:
+        return "BOOTSTRAP_DURABLE_STATE"
+    if (
+        durable_age_seconds is not None
+        and durable_age_seconds >= PROACTIVE_ROTATION_AGE.total_seconds()
+    ):
+        return "PROACTIVE_20D_ROTATION"
+    if validation_error is None:
+        return "NONE"
+    if _token_invalid(validation_error):
+        return "ACCESS_TOKEN_INVALID"
+    raise validation_error
+
+
 def run() -> int:
     policy = load_execution_policy(None)
     cfg = policy.ctrader
@@ -63,24 +89,28 @@ def run() -> int:
         allow_token_refresh=False,
     )
 
-    rotation_reason = "NONE"
     try:
         session.connect_application()
-        if not had_durable_state:
-            rotation_reason = "BOOTSTRAP_DURABLE_STATE"
-        elif durable_age is not None and durable_age >= PROACTIVE_ROTATION_AGE.total_seconds():
-            rotation_reason = "PROACTIVE_20D_ROTATION"
-        else:
+        validation_error: BaseException | None = None
+        if had_durable_state and not (
+            durable_age is not None
+            and durable_age >= PROACTIVE_ROTATION_AGE.total_seconds()
+        ):
             try:
                 session.granted_accounts()
             except CollectorUnavailable as exc:
-                if not _token_invalid(exc):
-                    raise
-                rotation_reason = "ACCESS_TOKEN_INVALID"
+                validation_error = exc
+
+        rotation_reason = _rotation_reason(
+            had_durable_state=had_durable_state,
+            durable_age_seconds=durable_age,
+            validation_error=validation_error,
+        )
 
         if rotation_reason != "NONE":
             # _refresh_tokens persists the newly rotated access+refresh pair via
-            # token_update_callback before this process continues.
+            # token_update_callback before this process continues. There is no
+            # blind refresh retry on an ambiguous transport outcome.
             session._refresh_tokens()
 
         account = session.resolve_granted_account(
