@@ -13,7 +13,7 @@ from fx_scanner.demo_market_schedule import (
 UTC = timezone.utc
 
 
-def test_weekday_keeps_full_twenty_instrument_universe():
+def test_weekday_keeps_full_twenty_two_instrument_universe():
     cfg = load_project_config(None)
     scheduled, mode = apply_demo_market_schedule(
         cfg,
@@ -21,7 +21,7 @@ def test_weekday_keeps_full_twenty_instrument_universe():
     )
 
     assert mode == "WEEKDAY_FULL_24X5"
-    assert len(scheduled.pairs) == 20
+    assert len(scheduled.pairs) == 22
     assert {pair.symbol for pair in scheduled.pairs} == {
         pair.symbol for pair in cfg.pairs
     }
@@ -34,13 +34,20 @@ def test_weekday_keeps_full_twenty_instrument_universe():
         datetime(2026, 9, 6, 12, 0, tzinfo=UTC),  # Sunday
     ],
 )
-def test_weekend_is_crypto_only(when):
+def test_weekend_is_five_crypto_only(when):
     cfg = load_project_config(None)
     scheduled, mode = apply_demo_market_schedule(cfg, now=when)
 
     assert mode == "WEEKEND_CRYPTO_24X7"
     assert {pair.symbol for pair in scheduled.pairs} == CRYPTO_WEEKEND_SYMBOLS
-    assert len(scheduled.pairs) == 3
+    assert CRYPTO_WEEKEND_SYMBOLS == {
+        "BTCUSD",
+        "ETHUSD",
+        "SOLUSD",
+        "RPLUSD",
+        "LTCUSD",
+    }
+    assert len(scheduled.pairs) == 5
 
 
 @pytest.mark.parametrize("requested", ["5", "8"])
@@ -54,8 +61,8 @@ def test_weekend_deep_top_is_capped_to_active_crypto_universe(monkeypatch, reque
 
     calibrated = apply_demo_deep_analysis_top(scheduled)
 
-    assert len(calibrated.pairs) == 3
-    assert calibrated.strategy["selection"]["deep_analysis_top"] == 3
+    assert len(calibrated.pairs) == 5
+    assert calibrated.strategy["selection"]["deep_analysis_top"] == 5
 
 
 def test_schedule_requires_timezone_aware_clock():
