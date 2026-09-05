@@ -232,17 +232,24 @@ class CompositeAdaptiveScorePolicy:
     legacy_policy: Any
     v2_policy: AdaptiveGateV2Policy
 
-    def required_score(self, row: Mapping[str, Any]) -> float:
-        if self.v2_policy.enabled:
-            return self.v2_policy.required_score(row)
+    def _legacy_required_score(self, row: Mapping[str, Any]) -> float:
         if self.legacy_policy is None:
             return self.v2_policy.base_floor
         return float(self.legacy_policy.required_score(dict(row)))
+
+    def required_score(self, row: Mapping[str, Any]) -> float:
+        if self.v2_policy.enabled:
+            decision = self.v2_policy.decision(row)
+            if decision.reason == "CURRENT_SIGNAL_SNAPSHOT_MISSING":
+                return self._legacy_required_score(row)
+            return decision.required_score
+        return self._legacy_required_score(row)
 
     def details(self) -> dict[str, Any]:
         return {
             "mode": "DEMO_ADAPTIVE_SCORE_POLICY_COMPOSITE",
             "active_policy": "V2" if self.v2_policy.enabled else "LEGACY_FALLBACK",
+            "missing_current_snapshot_policy": "LEGACY_FALLBACK",
             "penalty_stacking": False,
             "v2": self.v2_policy.details(),
             "legacy_fallback_present": self.legacy_policy is not None,
