@@ -32,6 +32,7 @@ def test_demo_auto_pipeline_is_dispatch_only_fast_lane_and_demo_only():
     assert 'CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS: "2000"' in text
     assert 'CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS: "6"' in text
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"' in text
+    assert 'CTRADER_DEMO_DEEP_ANALYSIS_TOP: "5"' in text
     assert 'CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"' in text
     assert 'CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "1.20"' in text
     assert 'FX_KILL_SWITCH: "0"' in text
