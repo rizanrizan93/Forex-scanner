@@ -181,12 +181,17 @@ def run(*, limit: int = 10) -> int:
             store=store,
             phase="AFTER",
         )
-        open_positions_after = len(pnl_snapshot.positions)
+        snapshot_positions_after = len(pnl_snapshot.positions)
+        # Capacity telemetry must remain account-wide even when the active
+        # weekend universe is crypto-only and the P&L snapshot cannot map
+        # pre-existing weekday FX symbol IDs in this ephemeral session.
+        open_positions_after = int(gateway.position_count())
         free_slots_after = max(0, max_positions - open_positions_after)
         print(
             "CTRADER_DEMO_BROKER_EXPOSURE "
             f"open_positions={open_positions_after} max_positions={max_positions} "
-            f"free_slots={free_slots_after} source=CTRADER_LIVE phase=AFTER"
+            f"free_slots={free_slots_after} snapshot_positions={snapshot_positions_after} "
+            "source=CTRADER_LIVE phase=AFTER"
         )
 
         account = pnl_snapshot.account
@@ -212,7 +217,8 @@ def run(*, limit: int = 10) -> int:
                 "open_positions": open_positions_after,
                 "max_positions": max_positions,
                 "free_slots": free_slots_after,
-                "broker_position_source": "CTRADER_LIVE",
+                "broker_snapshot_positions": snapshot_positions_after,
+                "broker_position_source": "CTRADER_RECONCILE_ACCOUNT_WIDE",
                 "broker_exposure_source": "CTRADER_LIVE",
                 "balance": float(account.balance),
                 "equity": float(account.equity),
@@ -238,6 +244,7 @@ def run(*, limit: int = 10) -> int:
             f"max_entry_drift_r={executor.max_entry_drift_r:g} "
             f"market_schedule={market_schedule_mode} "
             f"open_positions={open_positions_after} free_slots={free_slots_after} "
+            f"snapshot_positions={snapshot_positions_after} "
             f"floating_pnl={float(account.floating_profit or 0.0):.8g} "
             f"equity={float(account.equity):.8g} "
             f"scanned={report.scanned} eligible={report.eligible} "
