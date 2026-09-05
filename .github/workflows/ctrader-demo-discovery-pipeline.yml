@@ -59,7 +59,16 @@ jobs:
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
       - name: Discover and rank full DEMO universe
-        run: python -m fx_scanner.demo_technical_producer
+        run: |
+          # The Python market schedule is UTC-based. On weekends only crypto is
+          # active, so weekday-only spread overrides must not be presented to
+          # the already-scheduled crypto-only config. Bounds remain unchanged
+          # and all three crypto overrides stay active.
+          if [ "$(date -u +%u)" -ge 6 ]; then
+            export CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS=""
+            export CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS=""
+          fi
+          python -m fx_scanner.demo_technical_producer
       - name: Reconcile cTrader closed DEMO outcomes
         if: ${{ always() }}
         continue-on-error: true
