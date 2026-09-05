@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Mapping
 
 from .demo_technical_strategy import scan_demo_deep_candidates_report
@@ -26,6 +27,8 @@ class ExplicitDemoTechnicalSignalProducer(CTraderSignalProducer):
     """
 
     last_deep_report: DeepScanReport | None = None
+    last_bars_by_symbol: dict[str, dict[str, tuple]] | None = None
+    last_decision_at: datetime | None = None
 
     def _fetch_fast_market(self, *, as_of):
         bars_by_symbol: dict[str, dict[str, tuple]] = {}
@@ -230,6 +233,10 @@ class ExplicitDemoTechnicalSignalProducer(CTraderSignalProducer):
                 external_guards_by_symbol=guard_inputs or {},
             )
             self.last_deep_report = deep
+            self.last_bars_by_symbol = {
+                symbol: dict(bundle) for symbol, bundle in bars_by_symbol.items()
+            }
+            self.last_decision_at = decision_at
             failures.update(deep.skipped)
             signals_written, ready = self._persist_signals(
                 run_id,
