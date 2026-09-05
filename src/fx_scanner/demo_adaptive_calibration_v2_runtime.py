@@ -10,6 +10,7 @@ V2_WORKER = "ctrader_demo_adaptive_calibration_v2"
 CLOSED_LIMIT = 500
 SIGNAL_LIMIT = 1000
 GEOMETRY_LIMIT = 1500
+TRAJECTORY_LIMIT = 1000
 
 
 def _account_id() -> str:
@@ -52,25 +53,21 @@ def _signal_context(store: SupabaseOperationalStore) -> dict[str, dict[str, Any]
     }
 
 
-def _geometry_context(
+def _event_payload_context(
     store: SupabaseOperationalStore,
     *,
     account_id: str,
+    event_type: str,
+    limit: int,
 ) -> dict[str, dict[str, Any]]:
-    """Load immutable producer geometry keyed by scanner signal UUID.
-
-    Geometry events are durable point-in-time evidence produced before broker
-    submission. Joining them here enriches calibration without mutating historic
-    closed-trade rows or coupling the execution hot path to v2.
-    """
     response = (
         store.client.table("broker_order_events")
         .select("observed_at,signal_key,payload")
         .eq("backend", "CTRADER")
         .eq("account_id", account_id)
-        .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
+        .eq("event_type", event_type)
         .order("observed_at", desc=True)
-        .limit(GEOMETRY_LIMIT)
+        .limit(int(limit))
         .execute()
     )
     output: dict[str, dict[str, Any]] = {}
@@ -80,6 +77,38 @@ def _geometry_context(
         if signal_id and signal_id not in output and isinstance(payload, dict):
             output[signal_id] = dict(payload)
     return output
+
+
+def _geometry_context(
+    store: SupabaseOperationalStore,
+    *,
+    account_id: str,
+) -> dict[str, dict[str, Any]]:
+    """Load immutable producer geometry keyed by scanner signal UUID."""
+    return _event_payload_context(
+        store,
+        account_id=account_id,
+        event_type="DEMO_SIGNAL_GEOMETRY",
+        limit=GEOMETRY_LIMIT,
+    )
+
+
+def _trajectory_context(
+    store: SupabaseOperationalStore,
+    *,
+    account_id: str,
+) -> dict[str, dict[str, Any]]:
+    """Load finalized sampled trajectory evidence keyed by signal UUID.
+
+    Current trajectory extrema are account-currency P&L samples, not R. They are
+    attached for attribution only and MUST NOT be silently treated as mae_r/mfe_r.
+    """
+    return _event_payload_context(
+        store,
+        account_id=account_id,
+        event_type="DEMO_TRADE_TRAJECTORY_FINAL",
+        limit=TRAJECTORY_LIMIT,
+    )
 
 
 def _regime_proxy(signal: dict[str, Any]) -> str:
@@ -99,11 +128,49 @@ def _regime_proxy(signal: dict[str, Any]) -> str:
     return "UNKNOWN"
 
 
+def _attach_trajectory(payload: dict[str, Any], trajectory: dict[str, Any]) -> None:
+    if not trajectory:
+        return
+    for key in (
+        "position_id",
+        "closing_deal_id",
+        "sample_count",
+        "sampled_mae_pnl",
+        "sampled_mfe_pnl",
+        "last_sampled_floating_pnl",
+        "sampling_started_at",
+        "last_sample_at",
+        "trajectory_scope",
+        "target_sample_cadence_seconds",
+    ):
+        value = trajectory.get(key)
+        if payload.get(key) is None and value is not None:
+            payload[key] = value
+
+    # R-normalized extrema may only enter adaptive diagnosis when a future
+    # finalizer has computed them explicitly. Never alias currency P&L to R.
+    for key in ("mae_r", "mfe_r"):
+        value = trajectory.get(key)
+        if payload.get(key) is None and value is not None:
+            payload[key] = value
+    payload["trajectory_metric"] = trajectory.get(
+        "metric", "NET_UNREALIZED_PNL_ACCOUNT_CURRENCY"
+    )
+    payload["trajectory_r_normalization"] = trajectory.get(
+        "r_normalization", "DEFERRED_UNTIL_EXACT_BROKER_RISK_DENOMINATOR"
+    )
+    payload["trajectory_attribution_only"] = bool(
+        payload.get("mae_r") is None or payload.get("mfe_r") is None
+    )
+
+
 def _enrich_rows(
     rows: tuple[dict[str, Any], ...],
     signals: dict[str, dict[str, Any]],
     geometries: dict[str, dict[str, Any]],
+    trajectories: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], ...]:
+    trajectories = trajectories or {}
     enriched: list[dict[str, Any]] = []
     for row in rows:
         item = dict(row)
@@ -111,6 +178,7 @@ def _enrich_rows(
         signal_id = str(item.get("signal_key") or payload.get("signal_id") or "").strip()
         signal = signals.get(signal_id, {})
         geometry = geometries.get(signal_id, {})
+        trajectory = trajectories.get(signal_id, {})
 
         # Geometry is the preferred source for immutable point-in-time features.
         # Closed-trade fields always win when already present.
@@ -136,6 +204,8 @@ def _enrich_rows(
             if payload.get(target) is None and signal.get(source) is not None:
                 payload[target] = signal.get(source)
 
+        _attach_trajectory(payload, trajectory)
+
         if not str(payload.get("regime", "") or "").strip() and signal:
             payload["regime"] = _regime_proxy(signal)
         if signal:
@@ -146,6 +216,8 @@ def _enrich_rows(
             sources.append("DEMO_SIGNAL_GEOMETRY")
         if signal:
             sources.append("SIGNALS")
+        if trajectory:
+            sources.append("DEMO_TRADE_TRAJECTORY_FINAL")
         payload["v2_context_source"] = "+".join(sources)
         item["payload"] = payload
         enriched.append(item)
@@ -161,15 +233,32 @@ def run() -> int:
     raw_rows = _closed_rows(store, account_id=account_id)
     signals = _signal_context(store)
     geometries = _geometry_context(store, account_id=account_id)
-    rows = _enrich_rows(raw_rows, signals, geometries)
+    trajectories = _trajectory_context(store, account_id=account_id)
+    rows = _enrich_rows(raw_rows, signals, geometries, trajectories)
     report = build_adaptive_calibration_v2_report(rows)
     details = report.details()
+    trajectory_joined = sum(
+        1
+        for row in rows
+        if "DEMO_TRADE_TRAJECTORY_FINAL"
+        in str((row.get("payload") or {}).get("v2_context_source", ""))
+    )
+    trajectory_r_ready = sum(
+        1
+        for row in rows
+        if (row.get("payload") or {}).get("mae_r") is not None
+        and (row.get("payload") or {}).get("mfe_r") is not None
+    )
     details.update(
         {
-            "data_source": "DEMO_TRADE_CLOSED+DEMO_SIGNAL_GEOMETRY+SIGNALS",
+            "data_source": "DEMO_TRADE_CLOSED+DEMO_SIGNAL_GEOMETRY+SIGNALS+DEMO_TRADE_TRAJECTORY_FINAL",
             "closed_rows_scanned": len(raw_rows),
             "signal_context_rows": len(signals),
             "geometry_context_rows": len(geometries),
+            "trajectory_context_rows": len(trajectories),
+            "trajectory_joined_closed_rows": trajectory_joined,
+            "trajectory_r_ready_closed_rows": trajectory_r_ready,
+            "trajectory_currency_pnl_is_not_r": True,
             "policy_effect": "SHADOW_ONLY",
             "risk_mutation": False,
             "sltp_mutation": False,
@@ -189,7 +278,8 @@ def run() -> int:
         f"stage={report.stage} decisive={report.decisive} "
         f"snapshot_coverage={report.snapshot_coverage:.3f} "
         f"cohorts={len(report.cohorts)} diagnostics={len(report.diagnostics)} "
-        f"geometry_rows={len(geometries)} "
+        f"geometry_rows={len(geometries)} trajectory_rows={len(trajectories)} "
+        f"trajectory_joined={trajectory_joined} trajectory_r_ready={trajectory_r_ready} "
         "policy=SHADOW_ONLY sltp_mutation=0 risk_mutation=0 production_mutation=0"
     )
     for item in report.diagnostics[:20]:
