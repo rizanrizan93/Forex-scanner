@@ -81,6 +81,49 @@ def test_signal_fallback_fills_geometry_absence_but_does_not_invent_entry_mode()
     assert enriched["v2_context_source"] == "DEMO_TRADE_CLOSED+SIGNALS"
 
 
+def test_trajectory_account_currency_extrema_are_attribution_only_not_r():
+    rows = ({"signal_key": "sig-3", "payload": {"exit_type": "SL_HIT"}},)
+    trajectory = {
+        "sig-3": {
+            "position_id": "123",
+            "sample_count": 8,
+            "sampled_mae_pnl": -2.4,
+            "sampled_mfe_pnl": 1.7,
+            "metric": "NET_UNREALIZED_PNL_ACCOUNT_CURRENCY",
+            "r_normalization": "DEFERRED_UNTIL_EXACT_BROKER_RISK_DENOMINATOR",
+            "mae_r": None,
+            "mfe_r": None,
+        }
+    }
+    enriched = _enrich_rows(rows, {}, {}, trajectory)[0]["payload"]
+    assert enriched["sampled_mae_pnl"] == -2.4
+    assert enriched["sampled_mfe_pnl"] == 1.7
+    assert "mae_r" not in enriched
+    assert "mfe_r" not in enriched
+    assert enriched["trajectory_attribution_only"] is True
+    assert enriched["trajectory_r_normalization"] == "DEFERRED_UNTIL_EXACT_BROKER_RISK_DENOMINATOR"
+    assert enriched["v2_context_source"] == "DEMO_TRADE_CLOSED+DEMO_TRADE_TRAJECTORY_FINAL"
+
+
+def test_explicit_r_normalized_trajectory_can_be_consumed_when_available():
+    rows = ({"signal_key": "sig-4", "payload": {"exit_type": "TP_HIT"}},)
+    trajectory = {
+        "sig-4": {
+            "sample_count": 12,
+            "sampled_mae_pnl": -0.6,
+            "sampled_mfe_pnl": 2.2,
+            "mae_r": -0.35,
+            "mfe_r": 1.65,
+            "metric": "NET_UNREALIZED_PNL_ACCOUNT_CURRENCY",
+            "r_normalization": "EXACT_INITIAL_BROKER_RISK",
+        }
+    }
+    enriched = _enrich_rows(rows, {}, {}, trajectory)[0]["payload"]
+    assert enriched["mae_r"] == -0.35
+    assert enriched["mfe_r"] == 1.65
+    assert enriched["trajectory_attribution_only"] is False
+
+
 def test_regime_proxy_keeps_conflicting_context_mixed():
     assert _regime_proxy({"direction": "LONG", "h1_bias": "BULLISH", "h4_bias": "BEARISH"}) == "MIXED"
     assert _regime_proxy({"direction": "SHORT", "h1_bias": "BEARISH", "h4_bias": "BEARISH"}) == "TREND"
