@@ -16,6 +16,7 @@ from .demo_calibration import (
     apply_demo_deep_analysis_top,
     build_demo_calibration_store,
 )
+from .demo_calibration_features_v2 import build_signal_feature_snapshot_v2
 from .demo_correlation_evidence import EvidenceProductionGuardResolver
 from .demo_market_schedule import apply_demo_market_schedule
 from .demo_signal_producer import ExplicitDemoTechnicalSignalProducer
@@ -133,6 +134,60 @@ def _persist_geometry_events(*, store, policy, persisted, analyses) -> tuple[int
     return written, missing
 
 
+def _persist_feature_snapshot_v2_events(
+    *,
+    store,
+    policy,
+    cfg,
+    persisted,
+    analyses,
+    bars_by_symbol,
+) -> tuple[int, int]:
+    """Persist immutable point-in-time features for Adaptive Calibration v2.
+
+    The v2 snapshot is observation-only. A write failure is surfaced in telemetry
+    but does not block an otherwise valid DEMO execution while the feature is in
+    shadow calibration. Incomplete snapshots are excluded from future v2 gates.
+    """
+    account_id = _demo_account_id(policy)
+    atr_period = int(cfg.strategy["mtf"]["atr_period"])
+    written = missing = 0
+    for row in persisted:
+        signal_id = str(row.get("id", "") or "").strip()
+        symbol = str(row.get("symbol", "") or "").upper().strip()
+        analysis = analyses.get(symbol)
+        bars = bars_by_symbol.get(symbol)
+        plan = None if analysis is None else analysis.trade_plan
+        geometry = plan_geometry_evidence(plan)
+        if not signal_id or analysis is None or bars is None or geometry is None:
+            missing += 1
+            continue
+        try:
+            payload = build_signal_feature_snapshot_v2(
+                analysis=analysis,
+                bars_by_timeframe=bars,
+                signal_row=row,
+                geometry_payload=geometry.payload(),
+                session_config=cfg.sessions,
+                atr_period=atr_period,
+            )
+            store.record_order_event(
+                backend="CTRADER",
+                account_id=account_id,
+                signal_key=signal_id,
+                event_type="DEMO_SIGNAL_FEATURE_SNAPSHOT_V2",
+                broker_order_id=f"FEATURES_V2:{signal_id}",
+                accepted=True,
+                code=str(payload.get("regime") or "UNKNOWN"),
+                message="immutable Adaptive Calibration v2 signal features persisted",
+                payload=payload,
+            )
+            written += 1
+        except Exception:
+            missing += 1
+    return written, missing
+
+
 def run() -> int:
     """Run the explicit DEMO-only technical signal-production path."""
     cfg = load_project_config(None)
@@ -244,6 +299,7 @@ def run() -> int:
             item.symbol: item
             for item in ((producer.last_deep_report.analyses if producer.last_deep_report else ()))
         }
+        bars_by_symbol = producer.last_bars_by_symbol or {}
         geometry_written, geometry_missing = _persist_geometry_events(
             store=store,
             policy=policy,
@@ -253,6 +309,18 @@ def run() -> int:
         print(
             "CTRADER_DEMO_SIGNAL_GEOMETRY_PERSISTED "
             f"written={geometry_written} missing_nonready={geometry_missing}"
+        )
+        v2_written, v2_missing = _persist_feature_snapshot_v2_events(
+            store=store,
+            policy=policy,
+            cfg=cfg,
+            persisted=persisted,
+            analyses=analyses,
+            bars_by_symbol=bars_by_symbol,
+        )
+        print(
+            "CTRADER_DEMO_SIGNAL_FEATURE_SNAPSHOT_V2 "
+            f"written={v2_written} missing={v2_missing} policy=OBSERVATION_ONLY"
         )
         state_counts: dict[str, int] = {}
         for row in persisted:
