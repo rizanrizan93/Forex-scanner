@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from fx_scanner.config import load_project_config
+from fx_scanner.demo_calibration import apply_demo_deep_analysis_top
 from fx_scanner.demo_market_schedule import (
     CRYPTO_WEEKEND_SYMBOLS,
     apply_demo_market_schedule,
@@ -40,6 +41,21 @@ def test_weekend_is_crypto_only(when):
     assert mode == "WEEKEND_CRYPTO_24X7"
     assert {pair.symbol for pair in scheduled.pairs} == CRYPTO_WEEKEND_SYMBOLS
     assert len(scheduled.pairs) == 3
+
+
+@pytest.mark.parametrize("requested", ["5", "8"])
+def test_weekend_deep_top_is_capped_to_active_crypto_universe(monkeypatch, requested):
+    cfg = load_project_config(None)
+    scheduled, _ = apply_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 9, 5, 12, 0, tzinfo=UTC),
+    )
+    monkeypatch.setenv("CTRADER_DEMO_DEEP_ANALYSIS_TOP", requested)
+
+    calibrated = apply_demo_deep_analysis_top(scheduled)
+
+    assert len(calibrated.pairs) == 3
+    assert calibrated.strategy["selection"]["deep_analysis_top"] == 3
 
 
 def test_schedule_requires_timezone_aware_clock():
