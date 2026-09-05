@@ -89,7 +89,15 @@ class DummySession:
     def load_symbols(self, symbols): self.loads += 1
     def subscribe_spots(self, symbols): self.subscriptions += 1
     def quote(self, symbol): return ("quote", symbol)
-    def symbol_info(self, symbol): return ("info", symbol)
+    def symbol_info(self, symbol):
+        return SimpleNamespace(
+            tradingMode=0,
+            scheduleTimeZone="UTC",
+            schedule=(SimpleNamespace(startSecond=0, endSecond=7 * 86400),),
+            holiday=(),
+            digits=5,
+            pipPosition=4,
+        )
     def close(self): self.closed = True
 
 
