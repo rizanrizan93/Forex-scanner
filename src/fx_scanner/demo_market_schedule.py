@@ -73,7 +73,7 @@ def apply_demo_market_schedule(
     current = current.astimezone(UTC)
 
     if current.weekday() < 5:
-        return replace(cfg, pairs=weekday_demo_pairs(cfg)), "WEEKDAY_FULL_25_DEMO"
+        return replace(cfg, pairs=weekday_demo_pairs(cfg)), "WEEKDAY_FULL_24X5"
 
     pairs = weekend_crypto_pairs(cfg)
     return replace(cfg, pairs=pairs), "WEEKEND_CRYPTO_BROKER_GATED"
