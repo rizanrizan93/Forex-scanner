@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from .config import PairSpec, ProjectConfig
 
 UTC = timezone.utc
+JAKARTA = ZoneInfo("Asia/Jakarta")
 CRYPTO_WEEKEND_SYMBOLS = frozenset({"BTCUSD", "ETHUSD", "SOLUSD"})
 DEMO_WEEKDAY_SUPPLEMENTAL_SYMBOLS = frozenset(
     {"EURCAD", "GBPCAD", "GBPCHF", "AUDCAD", "NZDJPY"}
@@ -63,14 +65,15 @@ def apply_demo_market_schedule(
 ) -> tuple[ProjectConfig, str]:
     """Apply the frozen DEMO calibration calendar without changing production.
 
-    Monday-Friday UTC uses 25 DEMO instruments (canonical 20 plus five FX
-    crosses). Saturday-Sunday UTC restricts scanning to BTCUSD, ETHUSD and
-    SOLUSD, with broker session/tradability checks remaining fail-closed.
+    Monday-Friday Asia/Jakarta uses 25 DEMO instruments (canonical 20 plus five
+    FX crosses). Saturday-Sunday Asia/Jakarta restricts scanning to BTCUSD,
+    ETHUSD and SOLUSD. Broker session/tradability checks remain authoritative
+    and fail closed, so this calendar never forces an order into a closed market.
     """
-    current = now or datetime.now(tz=UTC)
+    current = now or datetime.now(tz=JAKARTA)
     if current.tzinfo is None:
         raise ValueError("demo market schedule requires timezone-aware datetime")
-    current = current.astimezone(UTC)
+    current = current.astimezone(JAKARTA)
 
     if current.weekday() < 5:
         return replace(cfg, pairs=weekday_demo_pairs(cfg)), "WEEKDAY_FULL_24X5"
