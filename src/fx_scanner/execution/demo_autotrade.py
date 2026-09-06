@@ -7,6 +7,7 @@ from math import isfinite
 from time import sleep
 from typing import Any
 
+from .demo_position_transition import close_opposite_symbol_positions, inspect_symbol_exposure
 from .models import OrderIntent, OrderSide, OrderType
 
 UTC = timezone.utc
@@ -45,26 +46,16 @@ class SupabaseOrderAuditSink:
 class CTraderDemoAutoExecutor:
     """Consume durable EXECUTION_READY signals and submit demo-only cTrader orders.
 
-    Broker exposure is reconciled before the durable Supabase claim. This keeps
-    capacity/same-symbol blocks from consuming a signal into COOLDOWN before any
-    broker attempt, while the canonical EXECUTION_READY -> COOLDOWN transition
-    remains the atomic claim immediately before execution.
-
-    Transient cTrader transport failures are retried only while the router's
-    duplicate guard proves the broker side-effect boundary has not been crossed.
-    If all bounded retries fail safely, the durable COOLDOWN claim is atomically
-    returned to EXECUTION_READY so a valid signal is not lost to transport noise.
-    An indeterminate post-submit outcome is never retried or requeued blindly.
-
-    For DEMO calibration, a producer-approved EXECUTION_READY signal may be
-    executed at the fresh live quote even when that quote has moved just outside
-    the original entry zone. The live quote must remain inside SL/TP geometry,
-    preserve the configured minimum TP2 RR, and remain within a bounded fraction
-    of the original planned risk. This prevents a narrow entry-zone handoff race
-    from silently dropping an otherwise valid calibration order.
+    Same-symbol stacking is allowed only when the new qualified signal has the
+    same direction as existing scanner-linked positions. A qualified opposite
+    signal closes scanner-linked opposite positions first, never blind-retries
+    an uncertain close, then revalidates the new signal before broker submission.
+    Account-wide capacity and all existing execution/risk guards remain active.
     """
 
     SAFE_RETRY_DELAYS_SECONDS = (0.5, 1.5)
+    SAME_DIRECTION_STACKING_REASON = "BROKER_SYMBOL_SAME_DIRECTION_ALLOWED"
+    OPPOSITE_CLOSE_REQUIRED = "BROKER_OPPOSITE_DIRECTION_CLOSE_REQUIRED"
     TRANSIENT_ERROR_MARKERS = (
         "COLLECTORUNAVAILABLE",
         "TIMEOUT",
@@ -119,7 +110,6 @@ class CTraderDemoAutoExecutor:
         return any(marker in text for marker in cls.TRANSIENT_ERROR_MARKERS)
 
     def _submission_uncertain(self, signal_id: str) -> bool:
-        """Fail closed unless router idempotency proves no submit is uncertain."""
         duplicates = getattr(self.router, "duplicates", None)
         checker = getattr(duplicates, "is_uncertain", None)
         if checker is None:
@@ -130,7 +120,6 @@ class CTraderDemoAutoExecutor:
             return True
 
     def _recover_transport(self, *, symbol: str | None = None) -> None:
-        """Best-effort forced cTrader reconnect used only before safe retries."""
         session = getattr(self.gateway, "session", None)
         if session is None:
             return
@@ -146,19 +135,15 @@ class CTraderDemoAutoExecutor:
                 if callable(subscribe):
                     subscribe([symbol])
         except Exception:
-            # The next bounded retry remains authoritative. Recovery itself must
-            # never turn a transport incident into an unsafe execution attempt.
             pass
 
     def _requeue_safe_transport_claim(self, signal_id: str) -> bool:
-        """Return COOLDOWN -> EXECUTION_READY only after proven pre-submit failure."""
         helper = getattr(self.store, "release_signal_execution_claim", None)
         if callable(helper):
             try:
                 return bool(helper(signal_id))
             except Exception:
                 return False
-
         client = getattr(self.store, "client", None)
         if client is None:
             return False
@@ -184,9 +169,7 @@ class CTraderDemoAutoExecutor:
             raise ValueError("CTRADER_DEMO_ADAPTIVE_SCORE_FLOOR_INVALID")
         return required
 
-    def _intent_diagnostic(
-        self, row: dict[str, Any], *, now: datetime
-    ) -> tuple[OrderIntent | None, str | None]:
+    def _intent_diagnostic(self, row: dict[str, Any], *, now: datetime) -> tuple[OrderIntent | None, str | None]:
         signal_id = str(row.get("id", "")).strip()
         symbol = str(row.get("symbol", "")).upper().strip()
         direction = str(row.get("direction", "")).upper().strip()
@@ -194,7 +177,6 @@ class CTraderDemoAutoExecutor:
             return None, "IDENTITY_INVALID"
         if str(row.get("state", "")).upper() != "EXECUTION_READY":
             return None, "STATE_NOT_EXECUTION_READY"
-
         guards = row.get("active_guards")
         if guards not in (None, [], ()):
             return None, "ACTIVE_GUARDS"
@@ -208,7 +190,6 @@ class CTraderDemoAutoExecutor:
             if required_score > base_score + 1e-9:
                 return None, f"ADAPTIVE_SCORE_BELOW_{required_score:.2f}"
             return None, "SCORE_BELOW_MIN"
-
         observed_at = self._dt(row.get("observed_at"))
         if observed_at is None:
             return None, "OBSERVED_AT_INVALID"
@@ -220,7 +201,6 @@ class CTraderDemoAutoExecutor:
         expires_at = self._dt(row.get("expires_at"))
         if expires_at is not None and now > expires_at:
             return None, "SIGNAL_EXPIRED"
-
         try:
             entry_low = float(row["entry_low"])
             entry_high = float(row["entry_high"])
@@ -229,15 +209,12 @@ class CTraderDemoAutoExecutor:
             rr2 = float(row["rr2"])
         except (TypeError, ValueError, KeyError):
             return None, "PLAN_FIELDS_INVALID"
-
         minimum_rr = float(self.cfg.strategy["trade_plan"]["minimum_tp2_rr"])
         if not (0 < entry_low < entry_high and rr2 >= minimum_rr):
             return None, "PLAN_GEOMETRY_INVALID"
-
         side = OrderSide.BUY if direction == "LONG" else OrderSide.SELL
         quote = self.gateway.market_quote(symbol)
         executable = float(quote.ask if side == OrderSide.BUY else quote.bid)
-
         if side == OrderSide.BUY:
             if not (stop_loss < executable < take_profit):
                 return None, "LIVE_SLTP_GEOMETRY_INVALID"
@@ -250,14 +227,11 @@ class CTraderDemoAutoExecutor:
             planned_risk = stop_loss - entry_low
             live_risk = stop_loss - executable
             live_reward = executable - take_profit
-
         if planned_risk <= 0 or live_risk <= 0 or live_reward <= 0:
             return None, "LIVE_RISK_GEOMETRY_INVALID"
-
         live_rr2 = live_reward / live_risk
         if live_rr2 + 1e-9 < minimum_rr:
             return None, f"LIVE_RR_BELOW_MIN_{live_rr2:.3f}"
-
         if executable < entry_low:
             drift = entry_low - executable
         elif executable > entry_high:
@@ -267,97 +241,107 @@ class CTraderDemoAutoExecutor:
         drift_r = drift / planned_risk
         if drift_r > self.max_entry_drift_r + 1e-9:
             return None, f"ENTRY_DRIFT_R_EXCEEDED_{drift_r:.3f}"
-
         volume = min(0.01, float(self.demo["max_order_lots"]))
-        return (
-            OrderIntent(
-                signal_id=signal_id,
-                symbol=symbol,
-                side=side,
-                order_type=OrderType.MARKET,
-                created_at=observed_at,
-                volume=volume,
-                entry_price=executable,
-                stop_loss=stop_loss,
-                take_profit=take_profit,
-                risk_pct=min(
-                    float(self.cfg.risk["risk_per_trade_pct"]),
-                    float(self.demo["max_risk_pct"]),
-                ),
-                comment=f"DEMO_AUTO:{row.get('setup_type') or 'UNKNOWN'}",
-            ),
-            None,
-        )
+        return OrderIntent(
+            signal_id=signal_id,
+            symbol=symbol,
+            side=side,
+            order_type=OrderType.MARKET,
+            created_at=observed_at,
+            volume=volume,
+            entry_price=executable,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            risk_pct=min(float(self.cfg.risk["risk_per_trade_pct"]), float(self.demo["max_risk_pct"])),
+            comment=f"DEMO_AUTO:{row.get('setup_type') or 'UNKNOWN'}",
+        ), None
 
     def _intent(self, row: dict[str, Any], *, now: datetime) -> OrderIntent | None:
         intent, _reason = self._intent_diagnostic(row, now=now)
         return intent
 
-    def _intent_with_transport_retry(
-        self, row: dict[str, Any], *, now: datetime
-    ) -> tuple[OrderIntent | None, str | None]:
+    def _intent_with_transport_retry(self, row: dict[str, Any], *, now: datetime) -> tuple[OrderIntent | None, str | None]:
         symbol = str(row.get("symbol", "")).upper().strip() or None
         for attempt in range(len(self.SAFE_RETRY_DELAYS_SECONDS) + 1):
             try:
                 return self._intent_diagnostic(row, now=now)
             except Exception as exc:
-                if (
-                    not self._is_transient_error(exc)
-                    or attempt >= len(self.SAFE_RETRY_DELAYS_SECONDS)
-                ):
+                if not self._is_transient_error(exc) or attempt >= len(self.SAFE_RETRY_DELAYS_SECONDS):
                     raise
                 self._recover_transport(symbol=symbol)
                 sleep(self.SAFE_RETRY_DELAYS_SECONDS[attempt])
         return None, "UNKNOWN"
 
-    def _broker_exposure_block(self, symbol: str) -> str | None:
-        """Reconcile current cTrader exposure before consuming the durable signal.
-
-        Fail closed when total broker capacity cannot be read. For the cTrader
-        gateway, also reject stacking a second position on the same symbol.
-        """
+    def _broker_exposure_block(self, intent: OrderIntent) -> str | None:
+        session = getattr(self.gateway, "session", None)
+        if session is None:
+            try:
+                open_positions = int(self.gateway.position_count())
+            except Exception as exc:
+                return f"BROKER_POSITION_RECONCILIATION_FAILED:{type(exc).__name__}:{exc}"
+            max_positions = int(self.demo.get("max_concurrent_positions", 1))
+            return f"BROKER_CAPACITY_FULL:{open_positions}/{max_positions}" if open_positions >= max_positions else None
+        direction = "LONG" if intent.side == OrderSide.BUY else "SHORT"
+        prefix = str(self.policy.order.get("comment_prefix", "FXIS"))
+        try:
+            session.ensure_connected()
+            exposure = inspect_symbol_exposure(
+                session=session,
+                store=self.store,
+                symbol=intent.symbol,
+                direction=direction,
+                comment_prefix=prefix,
+            )
+        except Exception as exc:
+            return f"BROKER_SYMBOL_RECONCILIATION_FAILED:{type(exc).__name__}:{exc}"
+        if exposure.unmanaged:
+            return f"BROKER_SYMBOL_UNMANAGED_POSITION:{intent.symbol}"
+        if exposure.opposite_direction:
+            return self.OPPOSITE_CLOSE_REQUIRED
         try:
             open_positions = int(self.gateway.position_count())
         except Exception as exc:
             return f"BROKER_POSITION_RECONCILIATION_FAILED:{type(exc).__name__}:{exc}"
-
         max_positions = int(self.demo.get("max_concurrent_positions", 1))
         if open_positions >= max_positions:
             return f"BROKER_CAPACITY_FULL:{open_positions}/{max_positions}"
-
-        session = getattr(self.gateway, "session", None)
-        if session is None:
-            return None
-        try:
-            session.ensure_connected()
-            target_symbol_id = int(session.symbol_info(symbol).symbolId)
-            reconcile = session.reconcile()
-            for position in tuple(getattr(reconcile, "position", ())):
-                trade_data = getattr(position, "tradeData", None)
-                position_symbol_id = getattr(trade_data, "symbolId", None)
-                if (
-                    position_symbol_id is not None
-                    and int(position_symbol_id) == target_symbol_id
-                ):
-                    return f"BROKER_SYMBOL_ALREADY_OPEN:{symbol}"
-        except Exception as exc:
-            return f"BROKER_SYMBOL_RECONCILIATION_FAILED:{type(exc).__name__}:{exc}"
+        if exposure.same_direction:
+            _same_direction_policy = self.SAME_DIRECTION_STACKING_REASON
         return None
 
-    def _broker_exposure_block_with_retry(self, symbol: str) -> str | None:
+    def _close_opposite_symbol_positions(self, intent: OrderIntent) -> str | None:
+        session = getattr(self.gateway, "session", None)
+        if session is None:
+            return "BROKER_OPPOSITE_DIRECTION_SESSION_UNAVAILABLE"
+        direction = "LONG" if intent.side == OrderSide.BUY else "SHORT"
+        prefix = str(self.policy.order.get("comment_prefix", "FXIS"))
+        return close_opposite_symbol_positions(
+            session=session,
+            store=self.store,
+            symbol=intent.symbol,
+            direction=direction,
+            new_signal_id=intent.signal_id,
+            comment_prefix=prefix,
+        )
+
+    def _broker_exposure_block_with_retry(self, intent: OrderIntent) -> str | None:
         block: str | None = None
         for attempt in range(len(self.SAFE_RETRY_DELAYS_SECONDS) + 1):
-            block = self._broker_exposure_block(symbol)
+            block = self._broker_exposure_block(intent)
+            if block == self.OPPOSITE_CLOSE_REQUIRED:
+                close_block = self._close_opposite_symbol_positions(intent)
+                if close_block is not None:
+                    return close_block
+                block = self._broker_exposure_block(intent)
             if block is None or not self._is_transient_error(block):
                 return block
             if attempt >= len(self.SAFE_RETRY_DELAYS_SECONDS):
                 return block
-            self._recover_transport(symbol=symbol)
+            self._recover_transport(symbol=intent.symbol)
             sleep(self.SAFE_RETRY_DELAYS_SECONDS[attempt])
         return block
 
     def _execute_claimed_with_retry(self, intent: OrderIntent) -> tuple[bool, str | None]:
-        """Execute a claimed signal; retry only while broker submission is known not to have started."""
         last_exc: Exception | None = None
         for attempt in range(len(self.SAFE_RETRY_DELAYS_SECONDS) + 1):
             try:
@@ -367,50 +351,30 @@ class CTraderDemoAutoExecutor:
                 last_exc = exc
                 if self._submission_uncertain(intent.signal_id):
                     return False, f"OUTCOME_UNCERTAIN:{type(exc).__name__}:{exc}"
-                if (
-                    not self._is_transient_error(exc)
-                    or attempt >= len(self.SAFE_RETRY_DELAYS_SECONDS)
-                ):
+                if not self._is_transient_error(exc) or attempt >= len(self.SAFE_RETRY_DELAYS_SECONDS):
                     break
                 self._recover_transport(symbol=intent.symbol)
                 sleep(self.SAFE_RETRY_DELAYS_SECONDS[attempt])
-
         if last_exc is None:
             return False, "EXECUTION_FAILED:UNKNOWN"
-
-        if self._is_transient_error(last_exc) and not self._submission_uncertain(
-            intent.signal_id
-        ):
+        if self._is_transient_error(last_exc) and not self._submission_uncertain(intent.signal_id):
             requeued = self._requeue_safe_transport_claim(intent.signal_id)
             state = "REQUEUED" if requeued else "REQUEUE_FAILED"
             return False, f"TRANSIENT_{state}:{type(last_exc).__name__}:{last_exc}"
-
         return False, f"EXECUTION_BLOCKED:{type(last_exc).__name__}:{last_exc}"
 
     def poll_once(self, *, limit: int = 10) -> DemoAutoReport:
         if self.policy.live_safety.get("require_control_plane", False):
             if self.control_gate is None:
-                return DemoAutoReport(
-                    0, 0, 0, 0, ("CONTROL_PLANE_BLOCKED:NOT_CONFIGURED",)
-                )
+                return DemoAutoReport(0, 0, 0, 0, ("CONTROL_PLANE_BLOCKED:NOT_CONFIGURED",))
             try:
                 self.control_gate.assert_orders_allowed(self.policy.mode.value)
             except Exception as exc:
-                return DemoAutoReport(
-                    0,
-                    0,
-                    0,
-                    0,
-                    (f"CONTROL_PLANE_BLOCKED:{type(exc).__name__}:{exc}",),
-                )
-
+                return DemoAutoReport(0, 0, 0, 0, (f"CONTROL_PLANE_BLOCKED:{type(exc).__name__}:{exc}",))
         now = datetime.now(tz=UTC)
         rows = self.store.list_execution_ready_signals(limit=limit)
-        eligible = 0
-        claimed = 0
-        executed = 0
+        eligible = claimed = executed = 0
         skipped: list[str] = []
-
         for row in rows:
             signal_id = str(row.get("id", "UNKNOWN"))
             try:
@@ -419,17 +383,26 @@ class CTraderDemoAutoExecutor:
                 skipped.append(f"{signal_id}:INTENT_ERROR:{type(exc).__name__}:{exc}")
                 continue
             if intent is None:
-                skipped.append(
-                    f"{signal_id}:NOT_ELIGIBLE:{ineligible_reason or 'UNKNOWN'}"
-                )
+                skipped.append(f"{signal_id}:NOT_ELIGIBLE:{ineligible_reason or 'UNKNOWN'}")
                 continue
             eligible += 1
-
-            exposure_block = self._broker_exposure_block_with_retry(intent.symbol)
+            exposure_block = self._broker_exposure_block_with_retry(intent)
             if exposure_block is not None:
                 skipped.append(f"{signal_id}:{exposure_block}")
                 continue
-
+            # A reversal may have closed an existing position. Revalidate fresh
+            # quote/age/RR/drift after that broker side effect before new entry.
+            try:
+                refreshed_intent, refresh_reason = self._intent_with_transport_retry(
+                    row, now=datetime.now(tz=UTC)
+                )
+            except Exception as exc:
+                skipped.append(f"{signal_id}:POST_TRANSITION_REVALIDATION_ERROR:{type(exc).__name__}:{exc}")
+                continue
+            if refreshed_intent is None:
+                skipped.append(f"{signal_id}:POST_TRANSITION_NOT_ELIGIBLE:{refresh_reason or 'UNKNOWN'}")
+                continue
+            intent = refreshed_intent
             try:
                 if not self.store.claim_signal_for_execution(intent.signal_id):
                     skipped.append(f"{signal_id}:CLAIM_LOST")
@@ -438,7 +411,6 @@ class CTraderDemoAutoExecutor:
             except Exception as exc:
                 skipped.append(f"{signal_id}:CLAIM_ERROR:{type(exc).__name__}:{exc}")
                 continue
-
             accepted, failure = self._execute_claimed_with_retry(intent)
             if accepted:
                 executed += 1
@@ -446,11 +418,4 @@ class CTraderDemoAutoExecutor:
                 skipped.append(f"{signal_id}:{failure}")
             else:
                 skipped.append(f"{signal_id}:BROKER_NOT_ACCEPTED")
-
-        return DemoAutoReport(
-            scanned=len(rows),
-            eligible=eligible,
-            claimed=claimed,
-            executed=executed,
-            skipped=tuple(skipped),
-        )
+        return DemoAutoReport(scanned=len(rows), eligible=eligible, claimed=claimed, executed=executed, skipped=tuple(skipped))
