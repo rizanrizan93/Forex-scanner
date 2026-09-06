@@ -18,7 +18,7 @@ def test_weekday_uses_frozen_twenty_five_instrument_demo_universe():
     cfg = load_project_config(None)
     scheduled, mode = apply_demo_market_schedule(
         cfg,
-        now=datetime(2026, 9, 4, 12, 0, tzinfo=UTC),  # Friday
+        now=datetime(2026, 9, 4, 12, 0, tzinfo=UTC),  # Friday WIB
     )
 
     assert mode == "WEEKDAY_FULL_24X5"
@@ -42,8 +42,8 @@ def test_weekday_uses_frozen_twenty_five_instrument_demo_universe():
 @pytest.mark.parametrize(
     "when",
     [
-        datetime(2026, 9, 5, 12, 0, tzinfo=UTC),  # Saturday
-        datetime(2026, 9, 6, 12, 0, tzinfo=UTC),  # Sunday
+        datetime(2026, 9, 5, 12, 0, tzinfo=UTC),  # Saturday WIB
+        datetime(2026, 9, 6, 12, 0, tzinfo=UTC),  # Sunday WIB
     ],
 )
 def test_weekend_crypto_is_exactly_three_and_broker_gated(when):
@@ -54,6 +54,33 @@ def test_weekend_crypto_is_exactly_three_and_broker_gated(when):
     assert {pair.symbol for pair in scheduled.pairs} == CRYPTO_WEEKEND_SYMBOLS
     assert CRYPTO_WEEKEND_SYMBOLS == {"BTCUSD", "ETHUSD", "SOLUSD"}
     assert len(scheduled.pairs) == 3
+
+
+def test_monday_jakarta_switches_to_weekday_before_utc_midnight():
+    cfg = load_project_config(None)
+    # 2026-09-06 22:00 UTC is already Monday 05:00 in Asia/Jakarta.
+    scheduled, mode = apply_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 9, 6, 22, 0, tzinfo=UTC),
+    )
+
+    assert mode == "WEEKDAY_FULL_24X5"
+    assert len(scheduled.pairs) == 25
+    assert {pair.symbol for pair in cfg.pairs}.issubset(
+        {pair.symbol for pair in scheduled.pairs}
+    )
+
+
+def test_saturday_jakarta_switches_to_weekend_before_utc_midnight():
+    cfg = load_project_config(None)
+    # 2026-09-04 18:00 UTC is already Saturday 01:00 in Asia/Jakarta.
+    scheduled, mode = apply_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 9, 4, 18, 0, tzinfo=UTC),
+    )
+
+    assert mode == "WEEKEND_CRYPTO_BROKER_GATED"
+    assert {pair.symbol for pair in scheduled.pairs} == CRYPTO_WEEKEND_SYMBOLS
 
 
 @pytest.mark.parametrize("requested", ["5", "8"])
