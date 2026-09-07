@@ -60,12 +60,9 @@ class OrderIntent:
             raise DataContractError("entry_price must be positive when supplied")
 
         # risk_pct is expressed in percentage points throughout the execution
-        # stack (for example, 1.0 means 1%). The canonical non-DEMO intent
-        # contract remains capped at 1%. Only explicitly tagged DEMO auto intents
-        # may use the setup-weighted user-approved ceiling up to 10%; the router
-        # still enforces the process-local DEMO policy before broker submission.
-        demo_auto_intent = self.comment.startswith("DEMO_AUTO:")
-        risk_ceiling_pct = 10.0 if demo_auto_intent else 1.0
+        # stack (for example, 1.0 means 1%). Both DEMO and non-DEMO intents are
+        # fail-closed at 1%; DEMO adaptive calibration may only reduce risk.
+        risk_ceiling_pct = 1.0
         if not 0 < self.risk_pct <= risk_ceiling_pct:
             raise DataContractError(
                 f"risk_pct must be in (0, {risk_ceiling_pct:g}] percentage points"
