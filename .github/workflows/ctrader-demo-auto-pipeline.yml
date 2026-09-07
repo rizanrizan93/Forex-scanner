@@ -67,6 +67,6 @@ jobs:
       - name: Fast revalidate latest DEMO candidates on fresh broker data
         run: python -m fx_scanner.demo_fast_candidate_producer
       - name: Execute only fresh durable EXECUTION_READY DEMO signals
-        run: python -m fx_scanner.demo_calibration_autotrade --limit 10
+        run: python -m fx_scanner.demo_fresh_ready_handoff --limit 10
       - name: Protect profitable DEMO positions on confirmed structural reversal
         run: python -m fx_scanner.demo_structural_profit_protector
