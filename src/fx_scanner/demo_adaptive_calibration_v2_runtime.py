@@ -14,19 +14,37 @@ TRAJECTORY_LIMIT = 1000
 FEATURE_SNAPSHOT_LIMIT = 1500
 
 
-def _account_ids() -> tuple[str, ...]:
-    """Return bounded DEMO account identifier aliases used by cTrader evidence.
+def _account_ids(
+    store: SupabaseOperationalStore | None = None,
+) -> tuple[str, ...]:
+    """Return bounded DEMO account aliases from config plus durable broker truth.
 
-    cTrader durable evidence historically used both the account id and trader
-    login as account identifiers. They refer to the same configured DEMO account,
-    but filtering on only one alias can split closed-trade truth from signal
-    geometry/features. Keep the scope explicit to the two configured identifiers.
+    cTrader durable evidence historically used both a configured account/login
+    identifier and the broker-native ctidTraderAccountId. The latest durable
+    broker account snapshot is authoritative for the active DEMO account and is
+    safe to add to the two configured aliases. No arbitrary event-derived account
+    ids are admitted.
     """
     values: list[str] = []
     for name in ("CTRADER_ACCOUNT_ID", "CTRADER_TRADER_LOGIN"):
         value = str(os.getenv(name) or "").strip()
         if value and value not in values:
             values.append(value)
+
+    if store is not None:
+        response = (
+            store.client.table("broker_account_state")
+            .select("account_id")
+            .eq("backend", "CTRADER")
+            .order("observed_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = list(response.data or [])
+        if rows:
+            durable = str(rows[0].get("account_id") or "").strip()
+            if durable and durable not in values:
+                values.append(durable)
     return tuple(values)
 
 
@@ -287,11 +305,11 @@ def _enrich_rows(
 
 
 def run() -> int:
-    account_ids = _account_ids()
+    store = SupabaseOperationalStore.from_env()
+    account_ids = _account_ids(store)
     if not account_ids:
         raise SystemExit("CTRADER_DEMO_ADAPTIVE_V2_ACCOUNT_ID_MISSING")
 
-    store = SupabaseOperationalStore.from_env()
     raw_rows = _closed_rows(store, account_ids=account_ids)
     signals = _signal_context(store)
     geometries = _geometry_context(store, account_ids=account_ids)
