@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from fx_scanner.config import PairSpec, ProjectConfig
 from fx_scanner.demo_fast_candidate_producer import (
+    _candidate_spread_limit_overrides,
     latest_discovery_rankings,
     recent_candidate_symbols,
 )
@@ -52,6 +53,7 @@ def _cfg() -> ProjectConfig:
         PairSpec("EURUSD", "EUR", "USD", 0.0001, "A"),
         PairSpec("GBPUSD", "GBP", "USD", 0.0001, "A"),
         PairSpec("USDJPY", "USD", "JPY", 0.01, "A"),
+        PairSpec("XTIUSD", "XTI", "USD", 0.01, "A"),
     )
     return ProjectConfig(
         pairs=pairs,
@@ -197,3 +199,10 @@ def test_fast_lane_rejects_low_coverage_discovery_rank():
     )
 
     assert ranks == ()
+
+
+def test_fast_spread_overrides_validate_full_cfg_then_filter_candidate_subset(monkeypatch):
+    monkeypatch.setenv("CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS", "6")
+
+    assert _candidate_spread_limit_overrides(_cfg(), ("EURUSD",)) == {}
+    assert _candidate_spread_limit_overrides(_cfg(), ("XTIUSD",)) == {"XTIUSD": 6.0}
