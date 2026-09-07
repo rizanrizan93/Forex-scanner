@@ -178,6 +178,15 @@ def _subset_cfg(cfg: ProjectConfig, symbols: tuple[str, ...]) -> ProjectConfig:
     return replace(cfg, pairs=selected)
 
 
+def _candidate_spread_limit_overrides(
+    cfg: ProjectConfig, symbols: tuple[str, ...]
+) -> dict[str, float]:
+    """Validate DEMO spread envs against the full schedule, then bound to candidates."""
+    overrides = _demo_spread_limit_overrides(cfg)
+    selected = set(symbols)
+    return {symbol: limit for symbol, limit in overrides.items() if symbol in selected}
+
+
 class FastCandidateSignalProducer(CTraderSignalProducer):
     """Freshly re-analyze a small symbol set using slow-lane full-universe ranks."""
 
@@ -338,10 +347,10 @@ def run() -> int:
         )
         return 0
 
+    spread_overrides = _candidate_spread_limit_overrides(cfg, symbols)
     cfg = _subset_cfg(cfg, symbols)
     store.ensure_reference_symbols(cfg.pairs)
     feed = build_ctrader_research_feed(policy, symbols)
-    spread_overrides = _demo_spread_limit_overrides(cfg)
     guard_resolver = EvidenceProductionGuardResolver(
         cfg,
         feed,
