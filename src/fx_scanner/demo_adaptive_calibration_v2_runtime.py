@@ -14,21 +14,43 @@ TRAJECTORY_LIMIT = 1000
 FEATURE_SNAPSHOT_LIMIT = 1500
 
 
-def _account_id() -> str:
-    return str(
-        os.getenv("CTRADER_ACCOUNT_ID")
-        or os.getenv("CTRADER_TRADER_LOGIN")
-        or ""
-    ).strip()
+def _account_ids() -> tuple[str, ...]:
+    """Return bounded DEMO account identifier aliases used by cTrader evidence.
+
+    cTrader durable evidence historically used both the account id and trader
+    login as account identifiers. They refer to the same configured DEMO account,
+    but filtering on only one alias can split closed-trade truth from signal
+    geometry/features. Keep the scope explicit to the two configured identifiers.
+    """
+    values: list[str] = []
+    for name in ("CTRADER_ACCOUNT_ID", "CTRADER_TRADER_LOGIN"):
+        value = str(os.getenv(name) or "").strip()
+        if value and value not in values:
+            values.append(value)
+    return tuple(values)
 
 
-def _closed_rows(store: SupabaseOperationalStore, *, account_id: str) -> tuple[dict[str, Any], ...]:
-    response = (
+def _account_scoped(query, account_ids: tuple[str, ...]):
+    if not account_ids:
+        raise SystemExit("CTRADER_DEMO_ADAPTIVE_V2_ACCOUNT_ID_MISSING")
+    if len(account_ids) == 1:
+        return query.eq("account_id", account_ids[0])
+    return query.in_("account_id", list(account_ids))
+
+
+def _closed_rows(
+    store: SupabaseOperationalStore,
+    *,
+    account_ids: tuple[str, ...],
+) -> tuple[dict[str, Any], ...]:
+    query = (
         store.client.table("broker_order_events")
         .select("observed_at,signal_key,code,payload")
         .eq("backend", "CTRADER")
-        .eq("account_id", account_id)
         .eq("event_type", "DEMO_TRADE_CLOSED")
+    )
+    response = (
+        _account_scoped(query, account_ids)
         .order("observed_at", desc=True)
         .limit(CLOSED_LIMIT)
         .execute()
@@ -57,16 +79,18 @@ def _signal_context(store: SupabaseOperationalStore) -> dict[str, dict[str, Any]
 def _event_payload_context(
     store: SupabaseOperationalStore,
     *,
-    account_id: str,
+    account_ids: tuple[str, ...],
     event_type: str,
     limit: int,
 ) -> dict[str, dict[str, Any]]:
-    response = (
+    query = (
         store.client.table("broker_order_events")
         .select("observed_at,signal_key,payload")
         .eq("backend", "CTRADER")
-        .eq("account_id", account_id)
         .eq("event_type", event_type)
+    )
+    response = (
+        _account_scoped(query, account_ids)
         .order("observed_at", desc=True)
         .limit(int(limit))
         .execute()
@@ -83,11 +107,11 @@ def _event_payload_context(
 def _geometry_context(
     store: SupabaseOperationalStore,
     *,
-    account_id: str,
+    account_ids: tuple[str, ...],
 ) -> dict[str, dict[str, Any]]:
     return _event_payload_context(
         store,
-        account_id=account_id,
+        account_ids=account_ids,
         event_type="DEMO_SIGNAL_GEOMETRY",
         limit=GEOMETRY_LIMIT,
     )
@@ -96,12 +120,12 @@ def _geometry_context(
 def _feature_snapshot_context(
     store: SupabaseOperationalStore,
     *,
-    account_id: str,
+    account_ids: tuple[str, ...],
 ) -> dict[str, dict[str, Any]]:
     """Load immutable decision-time Adaptive Calibration v2 features."""
     return _event_payload_context(
         store,
-        account_id=account_id,
+        account_ids=account_ids,
         event_type="DEMO_SIGNAL_FEATURE_SNAPSHOT_V2",
         limit=FEATURE_SNAPSHOT_LIMIT,
     )
@@ -110,7 +134,7 @@ def _feature_snapshot_context(
 def _trajectory_context(
     store: SupabaseOperationalStore,
     *,
-    account_id: str,
+    account_ids: tuple[str, ...],
 ) -> dict[str, dict[str, Any]]:
     """Load finalized sampled trajectory evidence keyed by signal UUID.
 
@@ -119,7 +143,7 @@ def _trajectory_context(
     """
     return _event_payload_context(
         store,
-        account_id=account_id,
+        account_ids=account_ids,
         event_type="DEMO_TRADE_TRAJECTORY_FINAL",
         limit=TRAJECTORY_LIMIT,
     )
@@ -263,16 +287,16 @@ def _enrich_rows(
 
 
 def run() -> int:
-    account_id = _account_id()
-    if not account_id:
+    account_ids = _account_ids()
+    if not account_ids:
         raise SystemExit("CTRADER_DEMO_ADAPTIVE_V2_ACCOUNT_ID_MISSING")
 
     store = SupabaseOperationalStore.from_env()
-    raw_rows = _closed_rows(store, account_id=account_id)
+    raw_rows = _closed_rows(store, account_ids=account_ids)
     signals = _signal_context(store)
-    geometries = _geometry_context(store, account_id=account_id)
-    trajectories = _trajectory_context(store, account_id=account_id)
-    feature_snapshots = _feature_snapshot_context(store, account_id=account_id)
+    geometries = _geometry_context(store, account_ids=account_ids)
+    trajectories = _trajectory_context(store, account_ids=account_ids)
+    feature_snapshots = _feature_snapshot_context(store, account_ids=account_ids)
     rows = _enrich_rows(
         raw_rows,
         signals,
@@ -318,6 +342,7 @@ def run() -> int:
             "trajectory_joined_closed_rows": trajectory_joined,
             "trajectory_r_ready_closed_rows": trajectory_r_ready,
             "trajectory_currency_pnl_is_not_r": True,
+            "account_identifier_alias_count": len(account_ids),
             "policy_effect": "SHADOW_ONLY",
             "risk_mutation": False,
             "sltp_mutation": False,
@@ -340,6 +365,7 @@ def run() -> int:
         f"feature_snapshots={len(feature_snapshots)} feature_joined={feature_snapshot_joined} "
         f"geometry_rows={len(geometries)} trajectory_rows={len(trajectories)} "
         f"trajectory_joined={trajectory_joined} trajectory_r_ready={trajectory_r_ready} "
+        f"account_aliases={len(account_ids)} "
         "policy=SHADOW_ONLY sltp_mutation=0 risk_mutation=0 production_mutation=0"
     )
     for item in report.diagnostics[:20]:
