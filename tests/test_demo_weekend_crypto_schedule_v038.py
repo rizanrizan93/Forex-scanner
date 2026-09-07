@@ -7,43 +7,32 @@ from fx_scanner.config import load_project_config
 from fx_scanner.demo_calibration import apply_demo_deep_analysis_top
 from fx_scanner.demo_market_schedule import (
     CRYPTO_WEEKEND_SYMBOLS,
-    DEMO_WEEKDAY_SUPPLEMENTAL_SYMBOLS,
     apply_demo_market_schedule,
 )
 
 UTC = timezone.utc
 
 
-def test_weekday_uses_frozen_twenty_five_instrument_demo_universe():
+def test_weekday_uses_configured_twenty_instrument_demo_universe():
     cfg = load_project_config(None)
     scheduled, mode = apply_demo_market_schedule(
         cfg,
-        now=datetime(2026, 9, 4, 12, 0, tzinfo=UTC),  # Friday WIB
+        now=datetime(2026, 9, 4, 12, 0, tzinfo=UTC),  # Friday UTC
     )
 
     assert mode == "WEEKDAY_FULL_24X5"
-    assert len(cfg.pairs) == 20  # canonical production universe remains unchanged
-    assert len(scheduled.pairs) == 25
-    assert {pair.symbol for pair in cfg.pairs}.issubset(
-        {pair.symbol for pair in scheduled.pairs}
-    )
-    assert DEMO_WEEKDAY_SUPPLEMENTAL_SYMBOLS == {
-        "EURCAD",
-        "GBPCAD",
-        "GBPCHF",
-        "AUDCAD",
-        "NZDJPY",
-    }
-    assert DEMO_WEEKDAY_SUPPLEMENTAL_SYMBOLS.issubset(
-        {pair.symbol for pair in scheduled.pairs}
+    assert len(cfg.pairs) == 20
+    assert len(scheduled.pairs) == 20
+    assert tuple(pair.symbol for pair in scheduled.pairs) == tuple(
+        pair.symbol for pair in cfg.pairs
     )
 
 
 @pytest.mark.parametrize(
     "when",
     [
-        datetime(2026, 9, 5, 12, 0, tzinfo=UTC),  # Saturday WIB
-        datetime(2026, 9, 6, 12, 0, tzinfo=UTC),  # Sunday WIB
+        datetime(2026, 9, 5, 12, 0, tzinfo=UTC),  # Saturday UTC
+        datetime(2026, 9, 6, 12, 0, tzinfo=UTC),  # Sunday UTC
     ],
 )
 def test_weekend_crypto_is_exactly_three_and_broker_gated(when):
@@ -56,31 +45,42 @@ def test_weekend_crypto_is_exactly_three_and_broker_gated(when):
     assert len(scheduled.pairs) == 3
 
 
-def test_monday_jakarta_switches_to_weekday_before_utc_midnight():
+def test_sunday_utc_does_not_switch_to_weekday_on_jakarta_monday():
     cfg = load_project_config(None)
-    # 2026-09-06 22:00 UTC is already Monday 05:00 in Asia/Jakarta.
+    # This is Monday in Jakarta, but remains Sunday under the runtime contract.
     scheduled, mode = apply_demo_market_schedule(
         cfg,
         now=datetime(2026, 9, 6, 22, 0, tzinfo=UTC),
     )
 
+    assert mode == "WEEKEND_CRYPTO_BROKER_GATED"
+    assert {pair.symbol for pair in scheduled.pairs} == CRYPTO_WEEKEND_SYMBOLS
+
+
+def test_monday_utc_switches_to_configured_weekday_universe():
+    cfg = load_project_config(None)
+    scheduled, mode = apply_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 9, 7, 0, 0, tzinfo=UTC),
+    )
+
     assert mode == "WEEKDAY_FULL_24X5"
-    assert len(scheduled.pairs) == 25
-    assert {pair.symbol for pair in cfg.pairs}.issubset(
-        {pair.symbol for pair in scheduled.pairs}
+    assert len(scheduled.pairs) == 20
+    assert tuple(pair.symbol for pair in scheduled.pairs) == tuple(
+        pair.symbol for pair in cfg.pairs
     )
 
 
-def test_saturday_jakarta_switches_to_weekend_before_utc_midnight():
+def test_friday_utc_does_not_switch_to_weekend_on_jakarta_saturday():
     cfg = load_project_config(None)
-    # 2026-09-04 18:00 UTC is already Saturday 01:00 in Asia/Jakarta.
+    # This is Saturday in Jakarta, but remains Friday under the runtime contract.
     scheduled, mode = apply_demo_market_schedule(
         cfg,
         now=datetime(2026, 9, 4, 18, 0, tzinfo=UTC),
     )
 
-    assert mode == "WEEKEND_CRYPTO_BROKER_GATED"
-    assert {pair.symbol for pair in scheduled.pairs} == CRYPTO_WEEKEND_SYMBOLS
+    assert mode == "WEEKDAY_FULL_24X5"
+    assert len(scheduled.pairs) == 20
 
 
 @pytest.mark.parametrize("requested", ["5", "8"])
