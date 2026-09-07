@@ -294,10 +294,15 @@ def analyze_demo_pair_mtf(
             and early_structure
             and fresh_fvg
         )
+        # 20-trade DEMO calibration: pre-trigger entries remain available for
+        # fast capture, but weak-confirmation evidence no longer permits score +
+        # plan alone to bypass H1/M15 structure and fresh directional FVG.
         calibration_ready = bool(
             _demo_calibration_pretrigger_enabled()
             and score_driven_setup
             and plan_ready
+            and early_structure
+            and fresh_fvg
         )
 
         if calibration_ready:
