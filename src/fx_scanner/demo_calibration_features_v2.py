@@ -4,6 +4,7 @@ from datetime import datetime
 from math import isfinite
 from typing import Any, Mapping, Sequence
 
+from .demo_strategy_lab import strategy_lab_payload
 from .demo_technical_strategy import _demo_directional_structure_score
 from .models import Bar, ensure_utc
 from .sessions import session_label
@@ -190,6 +191,14 @@ def build_signal_feature_snapshot_v2(
         str(key): bool(value)
         for key, value in dict(getattr(analysis, "computed_guards", {}) or {}).items()
     }
+    regime = classify_regime_v2(analysis)
+    session = session_label(observed_at, dict(session_config))
+    hypotheses = strategy_lab_payload(
+        analysis=analysis,
+        regime=regime,
+        session=session,
+        geometry_payload=geometry_payload,
+    )
     snapshot: dict[str, Any] = {
         "snapshot_version": 2,
         "snapshot_type": "IMMUTABLE_SIGNAL_FEATURES",
@@ -200,9 +209,12 @@ def build_signal_feature_snapshot_v2(
         "direction": str(signal_row.get("direction") or analysis.direction).upper(),
         "setup_type": _enumish(signal_row.get("setup_type") or analysis.setup_type),
         "final_score": _finite(signal_row.get("final_score")),
-        "regime": classify_regime_v2(analysis),
+        "regime": regime,
         "regime_classifier": "STRUCTURE_V2_DIRECTION_AWARE",
-        "session": session_label(observed_at, dict(session_config)),
+        "session": session,
+        "strategy_lab_version": 1,
+        "strategy_hypotheses": hypotheses,
+        "strategy_hypotheses_active": [row["family"] for row in hypotheses if row["active"]],
         "trigger_confirmed": bool(getattr(analysis, "trigger_confirmed", False)),
         "stale_timeframes": list(getattr(analysis, "stale_timeframes", ()) or ()),
         "structure_h1": _structure_snapshot(analysis.h1, analysis.direction),
