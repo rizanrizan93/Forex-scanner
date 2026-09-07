@@ -80,4 +80,4 @@ def test_auto_workflow_uses_fresh_handoff_wrapper():
     root = Path(__file__).resolve().parents[1]
     text = (root / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     assert "python -m fx_scanner.demo_fresh_ready_handoff --limit 10" in text
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "10.0"' in text

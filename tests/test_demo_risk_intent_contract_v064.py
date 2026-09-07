@@ -25,18 +25,18 @@ def _intent(*, risk_pct: float, comment: str) -> OrderIntent:
     )
 
 
-def test_demo_auto_intent_accepts_canonical_three_percent_ceiling():
-    intent = _intent(risk_pct=3.0, comment="DEMO_AUTO:TREND_CONTINUATION")
-    assert intent.risk_pct == 3.0
+def test_demo_auto_intent_accepts_user_approved_ten_percent_ceiling():
+    intent = _intent(risk_pct=10.0, comment="DEMO_AUTO:TREND_CONTINUATION:ELITE")
+    assert intent.risk_pct == 10.0
 
 
-def test_demo_auto_intent_rejects_above_three_percent():
-    with pytest.raises(DataContractError, match=r"\(0, 3\]"):
-        _intent(risk_pct=3.01, comment="DEMO_AUTO:TREND_CONTINUATION")
+def test_demo_auto_intent_rejects_above_ten_percent():
+    with pytest.raises(DataContractError, match=r"\(0, 10\]"):
+        _intent(risk_pct=10.01, comment="DEMO_AUTO:TREND_CONTINUATION:ELITE")
 
 
 def test_non_demo_intent_keeps_one_percent_ceiling():
     with pytest.raises(DataContractError, match=r"\(0, 1\]"):
-        _intent(risk_pct=3.0, comment="LIVE_OR_GENERIC")
+        _intent(risk_pct=10.0, comment="LIVE_OR_GENERIC")
 
     assert _intent(risk_pct=1.0, comment="LIVE_OR_GENERIC").risk_pct == 1.0
