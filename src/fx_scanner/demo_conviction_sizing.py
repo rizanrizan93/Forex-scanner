@@ -6,7 +6,7 @@ from typing import Any
 
 MAX_DEMO_LOTS = 0.10
 MIN_DEMO_LOTS = 0.01
-MAX_DEMO_RISK_PCT = 3.0
+MAX_DEMO_RISK_PCT = 10.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,12 +22,12 @@ def select_demo_conviction_sizing(
     max_order_lots: float = MAX_DEMO_LOTS,
     max_risk_pct: float = MAX_DEMO_RISK_PCT,
 ) -> DemoConvictionSizing:
-    """Map validated DEMO setup quality to a bounded lot/risk budget.
+    """Map validated DEMO setup quality to bounded lot and risk budgets.
 
     The setup score is primary. Data coverage and planned TP2 RR are required for
     the larger tiers so a high score cannot by itself unlock maximum size. This
     function never changes Entry/SL/TP geometry and never permits >0.10 lot or
-    >3 percentage points of configured DEMO risk budget.
+    >10 percentage points of configured DEMO risk budget.
     """
     try:
         score = float(row.get("final_score"))
@@ -46,17 +46,17 @@ def select_demo_conviction_sizing(
         raise ValueError("DEMO_CONVICTION_SIZING_CAP_INVALID")
 
     if score >= 95.0 and coverage >= 0.95 and rr2 >= 2.50:
-        tier, lots, risk = "ELITE", 0.10, 3.0
+        tier, lots, risk = "ELITE", 0.10, 10.0
     elif score >= 90.0 and coverage >= 0.90 and rr2 >= 2.00:
-        tier, lots, risk = "A_PLUS", 0.07, 2.5
+        tier, lots, risk = "A_PLUS", 0.07, 7.0
     elif score >= 80.0 and coverage >= 0.90 and rr2 >= 2.00:
-        tier, lots, risk = "A", 0.05, 2.0
+        tier, lots, risk = "A", 0.05, 5.0
     elif score >= 70.0 and coverage >= 0.85 and rr2 >= 1.75:
-        tier, lots, risk = "B_PLUS", 0.03, 1.5
+        tier, lots, risk = "B_PLUS", 0.03, 3.0
     elif score >= 60.0:
-        tier, lots, risk = "B", 0.02, 1.0
+        tier, lots, risk = "B", 0.02, 2.0
     else:
-        tier, lots, risk = "BASE", 0.01, 0.5
+        tier, lots, risk = "BASE", 0.01, 1.0
 
     return DemoConvictionSizing(
         tier=tier,
@@ -66,7 +66,7 @@ def select_demo_conviction_sizing(
 
 
 def _install_runtime_policy_cap() -> None:
-    """Raise only the cTrader DEMO runtime order cap to the user-approved 0.10 lot."""
+    """Raise only cTrader DEMO runtime lot/risk caps to approved ceilings."""
     from . import demo_calibration_autotrade as runtime
 
     if getattr(runtime, "_demo_conviction_policy_patch_installed", False):
@@ -78,6 +78,7 @@ def _install_runtime_policy_cap() -> None:
         policy = original(root)
         demo_safety = dict(policy.demo_safety)
         demo_safety["max_order_lots"] = MAX_DEMO_LOTS
+        demo_safety["max_risk_pct"] = MAX_DEMO_RISK_PCT
         return replace(policy, demo_safety=demo_safety)
 
     runtime.load_execution_policy = _load_execution_policy_with_conviction_cap
@@ -112,14 +113,11 @@ def _install_executor_sizing() -> None:
         except Exception as exc:
             return None, f"CONVICTION_SIZING_INVALID:{type(exc).__name__}"
 
-        # The legacy executor already computes the configured DEMO risk ceiling.
-        # Conviction sizing may only reduce that budget, never raise it.
-        risk_pct = min(float(intent.risk_pct), sizing.risk_budget_pct)
         return (
             replace(
                 intent,
                 volume=sizing.lots,
-                risk_pct=risk_pct,
+                risk_pct=sizing.risk_budget_pct,
                 comment=f"{intent.comment}:{sizing.tier}",
             ),
             None,
@@ -130,6 +128,6 @@ def _install_executor_sizing() -> None:
 
 
 def install_demo_conviction_sizing() -> None:
-    """Install DEMO-only 0.01-0.10 lot sizing for the fast execution handoff."""
+    """Install DEMO-only 0.01-0.10 lot / 1%-10% setup-weighted sizing."""
     _install_runtime_policy_cap()
     _install_executor_sizing()
