@@ -58,8 +58,18 @@ class OrderIntent:
             raise DataContractError("SL/TP must be positive")
         if self.entry_price is not None and self.entry_price <= 0:
             raise DataContractError("entry_price must be positive when supplied")
-        if not 0 < self.risk_pct <= 1:
-            raise DataContractError("risk_pct must be in (0, 1]")
+
+        # risk_pct is expressed in percentage points throughout the execution
+        # stack (for example, 0.25 means 0.25%). The canonical non-DEMO intent
+        # contract remains capped at 1%. The explicitly tagged DEMO auto lane is
+        # allowed up to the user-approved 3% calibration ceiling; the router
+        # still enforces the process-local DEMO policy before any broker submit.
+        demo_auto_intent = self.comment.startswith("DEMO_AUTO:")
+        risk_ceiling_pct = 3.0 if demo_auto_intent else 1.0
+        if not 0 < self.risk_pct <= risk_ceiling_pct:
+            raise DataContractError(
+                f"risk_pct must be in (0, {risk_ceiling_pct:g}] percentage points"
+            )
         ref = self.entry_price
         if ref is not None:
             if self.side == OrderSide.BUY and not (self.stop_loss < ref < self.take_profit):
