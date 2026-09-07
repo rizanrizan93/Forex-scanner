@@ -41,8 +41,8 @@ def test_account_ids_include_latest_durable_ctrader_account(monkeypatch):
     assert _account_ids(_Store()) == ("configured-alias", "broker-native-account")
 
 
-def test_fast_handoff_installs_guarded_same_symbol_position_policy():
+def test_fast_handoff_does_not_install_same_symbol_stacking_policy():
     source = Path("src/fx_scanner/demo_fresh_ready_handoff.py").read_text(encoding="utf-8")
 
-    assert "install_demo_position_policy" in source
-    assert "demo_position_reversal" in source
+    assert "install_demo_position_policy" not in source
+    assert "demo_position_reversal" not in source
