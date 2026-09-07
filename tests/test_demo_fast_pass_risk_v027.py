@@ -15,36 +15,32 @@ def test_demo_fast_pass_fetches_fast_timeframes_for_universe_then_hydrates_short
     assert "request_pacing" not in text
 
 
-def test_demo_risk_is_ten_percent_only_via_explicit_auto_process_override():
+def test_demo_risk_is_bounded_to_one_percent_in_both_lanes():
     risk = yaml.safe_load((ROOT / "config/risk.yaml").read_text())
     execution = yaml.safe_load((ROOT / "config/execution.yaml").read_text())
     auto_workflow = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     discovery_workflow = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
 
-    # Canonical config stays conservative and unchanged. Only the DEMO auto
-    # wrapper exposes the user-approved 10% setup-weighted ceiling.
     assert float(risk["risk_per_trade_pct"]) == 0.25
     assert float(risk["max_risk_per_trade_pct"]) == 0.50
     assert float(execution["demo_safety"]["max_risk_pct"]) == 0.25
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "10.0"' in auto_workflow
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in discovery_workflow
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "1.0"' in auto_workflow
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "1.0"' in discovery_workflow
     assert float(execution["demo_safety"]["max_order_lots"]) == 0.01
     assert int(execution["demo_safety"]["max_concurrent_positions"]) == 10
     assert execution["ctrader"]["environment"] == "DEMO"
     assert execution["mode"] == "DISABLED"
 
 
-def test_demo_risk_override_is_process_local_and_bounded_to_ten_percent():
+def test_demo_calibration_clamps_caller_ceiling_to_one_percent():
     text = (ROOT / "src/fx_scanner/demo_calibration.py").read_text()
-    guard_text = (ROOT / "src/fx_scanner/demo_correlation_evidence.py").read_text()
-    executor_text = (ROOT / "src/fx_scanner/demo_calibration_autotrade.py").read_text()
-    assert "apply_demo_calibration_risk" in text
-    assert "CTRADER_DEMO_RISK_PER_TRADE_PCT" in text
-    assert "DEMO_RISK_CEILING_PCT = 10.0" in text
-    assert "replace(cfg, risk=risk)" in text
-    assert "self.demo_max_risk_pct = max" in guard_text
-    assert 'demo_safety["max_risk_pct"] = 10.0' in executor_text
-    assert "max_risk_pct=10.0" in executor_text
+    model_text = (ROOT / "src/fx_scanner/execution/models.py").read_text()
+    handoff_text = (ROOT / "src/fx_scanner/demo_fresh_ready_handoff.py").read_text()
+    assert "DEMO_RISK_CEILING_PCT = 1.0" in text
+    assert "min(DEMO_RISK_CEILING_PCT, requested_ceiling)" in text
+    assert "risk_ceiling_pct = 1.0" in model_text
+    assert "install_demo_conviction_sizing" not in handoff_text
+    assert "install_demo_position_policy" not in handoff_text
 
 
 def test_demo_fast_pass_observability_markers_exist():
