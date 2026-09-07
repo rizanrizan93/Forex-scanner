@@ -89,13 +89,6 @@ def main() -> int:
     max_age_seconds = float(policy.order.get("max_signal_age_seconds", 300))
     install_fresh_execution_ready_handoff(max_age_seconds=max_age_seconds)
 
-    # DEMO-only execution semantics: same-direction stacking is allowed while
-    # opposite reversals close scanner-linked exposure only, quarantine any
-    # uncertain close, and force fresh post-close revalidation before entry.
-    from .demo_position_reversal import install_demo_position_policy
-
-    install_demo_position_policy()
-
     from .demo_calibration_autotrade import main as calibration_main
 
     return calibration_main()
