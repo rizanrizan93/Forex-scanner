@@ -10,12 +10,12 @@ def test_demo_auto_pipeline_is_dispatch_only_fast_lane_and_demo_only():
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
     assert "demo_fast_candidate_producer" in text
-    assert "demo_calibration_autotrade --limit 10" in text
+    assert "demo_fresh_ready_handoff --limit 10" in text
     assert "demo_structural_profit_protector" in text
     assert text.index("demo_fast_candidate_producer") < text.index(
-        "demo_calibration_autotrade"
+        "demo_fresh_ready_handoff"
     )
-    assert text.index("demo_calibration_autotrade") < text.index(
+    assert text.index("demo_fresh_ready_handoff") < text.index(
         "demo_structural_profit_protector"
     )
     assert "demo_technical_producer" not in text
@@ -50,6 +50,7 @@ def test_demo_discovery_pipeline_is_independent_and_non_executing():
     assert "demo_trajectory_finalizer" in text
     assert "demo_incremental_calibration" in text
     assert "demo_calibration_autotrade" not in text
+    assert "demo_fresh_ready_handoff" not in text
     assert "demo_structural_profit_protector" not in text
     assert "continue-on-error: true" in text
     assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in text

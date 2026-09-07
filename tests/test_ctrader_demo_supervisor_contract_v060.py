@@ -25,7 +25,7 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
 
     assert "cancel-in-progress: false" in fast
     assert "python -m fx_scanner.demo_fast_candidate_producer" in fast
-    assert "python -m fx_scanner.demo_calibration_autotrade --limit 10" in fast
+    assert "python -m fx_scanner.demo_fresh_ready_handoff --limit 10" in fast
     assert "python -m fx_scanner.demo_structural_profit_protector" in fast
 
     assert "cancel-in-progress: false" in discovery
@@ -33,5 +33,6 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
     assert "python -m fx_scanner.demo_closed_trade_reconciler" in discovery
     assert "python -m fx_scanner.demo_trajectory_finalizer" in discovery
     assert "python -m fx_scanner.demo_incremental_calibration" in discovery
+    assert "demo_fresh_ready_handoff" not in discovery
     assert "demo_calibration_autotrade" not in discovery
     assert "ctrader-demo-order-smoke" not in discovery
