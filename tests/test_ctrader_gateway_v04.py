@@ -21,6 +21,7 @@ class FakeSession:
         self.sent = None
         self.symbol = SimpleNamespace(
             symbolId=11,
+            digits=5,
             lotSize=10_000_000,
             minVolume=100_000,
             maxVolume=1_000_000_000,
