@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 from time import monotonic, sleep
 
@@ -28,6 +29,29 @@ class CTraderPreparedOrder:
 def _money(value: int | float, digits: int | None) -> float:
     exponent = int(digits or 0)
     return float(value) / (10 ** exponent)
+
+
+def _relative_protection_distance(distance: float, symbol_info) -> int:
+    """Normalize a scanner price distance to cTrader's 1e-5 relative units.
+
+    cTrader transmits relative SL/TP as integer 1/100000 price units, but the
+    server still validates that the implied protection price respects the
+    symbol's displayed price precision. Normalize the price distance to the
+    broker-reported symbol digits before conversion. This changes only broker
+    representation (at most half one symbol tick), not scanner trade geometry.
+    """
+    digits = int(getattr(symbol_info, "digits", -1))
+    if digits < 0:
+        raise CollectorUnavailable("cTrader symbol digits unavailable")
+    protocol_digits = min(digits, 5)
+    quantum = Decimal("1").scaleb(-protocol_digits)
+    normalized = Decimal(str(float(distance))).quantize(quantum, rounding=ROUND_HALF_UP)
+    relative = int(
+        (normalized * Decimal("100000")).to_integral_value(rounding=ROUND_HALF_UP)
+    )
+    if relative <= 0:
+        raise CollectorUnavailable("cTrader normalized relative SL/TP distance is zero")
+    return relative
 
 
 class CTraderExecutionGateway:
@@ -140,8 +164,8 @@ class CTraderExecutionGateway:
             tp_distance = intent.take_profit - executable_price if intent.side == OrderSide.BUY else executable_price - intent.take_profit
             if sl_distance <= 0 or tp_distance <= 0:
                 raise CollectorUnavailable("cTrader market SL/TP invalid relative to executable quote")
-            request.relativeStopLoss = int(round(sl_distance * 100000.0))
-            request.relativeTakeProfit = int(round(tp_distance * 100000.0))
+            request.relativeStopLoss = _relative_protection_distance(sl_distance, symbol)
+            request.relativeTakeProfit = _relative_protection_distance(tp_distance, symbol)
         elif intent.order_type == OrderType.LIMIT:
             if intent.entry_price is None:
                 raise CollectorUnavailable("cTrader LIMIT requires entry_price")
@@ -188,7 +212,26 @@ class CTraderExecutionGateway:
         if not preflight.accepted or not isinstance(preflight.request, CTraderPreparedOrder):
             return BrokerOrderResult(self.backend, False, "INVALID_PREFLIGHT", "invalid prepared order")
         prepared = preflight.request
-        response = self.session.send_new_order(prepared.request, client_msg_id=f"ord-{prepared.request.clientOrderId}")
+        try:
+            response = self.session.send_new_order(
+                prepared.request,
+                client_msg_id=f"ord-{prepared.request.clientOrderId}",
+            )
+        except CollectorUnavailable as exc:
+            text = str(exc)
+            # ProtoErrorRes / ProtoOAOrderErrorEvent are explicit server-side
+            # rejections, so the submission outcome is known (no fill). Only
+            # transport/decode ambiguity remains eligible for uncertain-outcome
+            # quarantine in the execution router.
+            if text.startswith("cTrader API error "):
+                code = text.removeprefix("cTrader API error ").split(":", 1)[0]
+                return BrokerOrderResult(
+                    backend=self.backend,
+                    accepted=False,
+                    code=code or "API_REJECTED",
+                    message=text,
+                )
+            raise
         execution_type = int(getattr(response, "executionType", -1))
         accepted = execution_type in {2, 3, 11}
         order = getattr(response, "order", None)
