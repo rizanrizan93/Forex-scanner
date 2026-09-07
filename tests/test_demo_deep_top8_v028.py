@@ -28,4 +28,4 @@ def test_demo_fast_deep_top_keeps_non_structure_execution_guards():
     assert "production_chase_block_atr" in producer
     assert "chase_block_atr: 0.50" in strategy
     assert "hard_guards=ENFORCED" in producer
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in workflow
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "1.0"' in workflow
