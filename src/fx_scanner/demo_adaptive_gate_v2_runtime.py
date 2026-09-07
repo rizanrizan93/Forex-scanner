@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .demo_adaptive_calibration_v2_runtime import (
+    _account_ids,
     _closed_rows,
     _enrich_rows,
     _feature_snapshot_context,
@@ -11,6 +12,17 @@ from .demo_adaptive_calibration_v2_runtime import (
     _trajectory_context,
 )
 from .demo_adaptive_gate_v2 import AdaptiveGateV2Policy, build_adaptive_gate_v2_policy
+
+
+def _resolved_account_ids(account_id: str) -> tuple[str, ...]:
+    """Return the runtime account id plus configured cTrader aliases, deduplicated."""
+    values: list[str] = []
+    for value in (str(account_id or "").strip(), *_account_ids()):
+        if value and value not in values:
+            values.append(value)
+    if not values:
+        raise SystemExit("CTRADER_DEMO_ADAPTIVE_V2_ACCOUNT_ID_MISSING")
+    return tuple(values)
 
 
 def load_adaptive_gate_v2_policy(
@@ -26,11 +38,12 @@ def load_adaptive_gate_v2_policy(
     keyed by signal UUID. Historical closed outcomes are enriched with immutable
     snapshots/geometry/trajectory before cohort statistics are calculated.
     """
-    raw_rows = _closed_rows(store, account_id=account_id)
+    account_ids = _resolved_account_ids(account_id)
+    raw_rows = _closed_rows(store, account_ids=account_ids)
     signals = _signal_context(store)
-    geometries = _geometry_context(store, account_id=account_id)
-    trajectories = _trajectory_context(store, account_id=account_id)
-    snapshots = _feature_snapshot_context(store, account_id=account_id)
+    geometries = _geometry_context(store, account_ids=account_ids)
+    trajectories = _trajectory_context(store, account_ids=account_ids)
+    snapshots = _feature_snapshot_context(store, account_ids=account_ids)
     rows = _enrich_rows(raw_rows, signals, geometries, trajectories, snapshots)
     return build_adaptive_gate_v2_policy(
         rows,
