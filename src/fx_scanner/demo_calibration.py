@@ -26,13 +26,18 @@ def apply_demo_calibration_threshold(cfg):
 
 
 def apply_demo_calibration_risk(cfg, *, max_risk_pct: float = DEMO_RISK_CEILING_PCT):
-    """Apply an explicit process-local DEMO risk ceiling capped at 1%."""
-    canonical_ceiling = float(max_risk_pct)
-    if not isfinite(canonical_ceiling) or not 0.0 < canonical_ceiling <= DEMO_RISK_CEILING_PCT:
+    """Apply a DEMO-only risk target under the immutable 1% ceiling.
+
+    Caller-supplied ceilings are treated only as upper-bound requests and are
+    clamped to the canonical DEMO ceiling. Calibration may therefore reduce risk
+    but can never raise the process above 1%.
+    """
+    requested_ceiling = float(max_risk_pct)
+    if not isfinite(requested_ceiling) or requested_ceiling <= 0.0:
         raise SystemExit("CTRADER_DEMO_RISK_CEILING_OUT_OF_RANGE")
+    ceiling = min(DEMO_RISK_CEILING_PCT, requested_ceiling)
     raw = os.getenv("CTRADER_DEMO_RISK_PER_TRADE_PCT", "").strip()
     requested = float(cfg.risk["risk_per_trade_pct"]) if not raw else float(raw)
-    ceiling = min(DEMO_RISK_CEILING_PCT, canonical_ceiling)
     if not isfinite(requested) or not 0.0 < requested <= ceiling:
         raise SystemExit("CTRADER_DEMO_RISK_PER_TRADE_OUT_OF_RANGE")
     risk = dict(cfg.risk)
@@ -68,9 +73,10 @@ def apply_demo_calibration_policy_risk(
     policy, *, max_risk_pct: float = DEMO_RISK_CEILING_PCT
 ):
     """Apply the already-validated DEMO process risk ceiling."""
-    ceiling = float(max_risk_pct)
-    if not isfinite(ceiling) or not 0.0 < ceiling <= DEMO_RISK_CEILING_PCT:
+    requested_ceiling = float(max_risk_pct)
+    if not isfinite(requested_ceiling) or requested_ceiling <= 0.0:
         raise SystemExit("CTRADER_DEMO_POLICY_RISK_CEILING_OUT_OF_RANGE")
+    ceiling = min(DEMO_RISK_CEILING_PCT, requested_ceiling)
     demo_safety = dict(policy.demo_safety)
     demo_safety["max_risk_pct"] = ceiling
     return replace(policy, demo_safety=demo_safety)
