@@ -1,0 +1,204 @@
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+from enum import StrEnum
+from math import isfinite
+from typing import Any, Mapping
+
+
+class StrategyFamily(StrEnum):
+    """DEMO research families. These labels have no execution authority."""
+
+    TREND_MOMENTUM = "TREND_MOMENTUM"
+    SESSION_BREAKOUT = "SESSION_BREAKOUT"
+    PULLBACK_TREND = "PULLBACK_TREND"
+    MEAN_REVERSION = "MEAN_REVERSION"
+    LIQUIDITY_SWEEP = "LIQUIDITY_SWEEP"
+
+
+@dataclass(frozen=True, slots=True)
+class StrategyHypothesis:
+    family: StrategyFamily
+    score: float
+    active: bool
+    evidence: Mapping[str, Any]
+    policy_effect: str = "OBSERVATION_ONLY"
+    hypothesis_version: int = 1
+
+    def __post_init__(self) -> None:
+        if not isfinite(float(self.score)) or not 0.0 <= float(self.score) <= 100.0:
+            raise ValueError("strategy hypothesis score must be finite and in [0,100]")
+        if self.policy_effect != "OBSERVATION_ONLY":
+            raise ValueError("strategy lab hypotheses must remain observation-only")
+
+    def to_payload(self) -> dict[str, Any]:
+        payload = asdict(self)
+        payload["family"] = self.family.value
+        return payload
+
+
+def _enumish(value: Any) -> str | None:
+    if value is None:
+        return None
+    raw = getattr(value, "value", value)
+    text = str(raw).strip().upper()
+    return text or None
+
+
+def _aligned(value: Any, direction: str) -> bool:
+    wanted = "BULLISH" if str(direction).upper() == "LONG" else "BEARISH"
+    return _enumish(value) == wanted
+
+
+def _valid_directional(feature: Any, direction: str) -> bool:
+    return bool(
+        feature is not None
+        and bool(getattr(feature, "valid", False))
+        and _aligned(getattr(feature, "direction", None), direction)
+    )
+
+
+def _cap(value: float) -> float:
+    return max(0.0, min(100.0, float(value)))
+
+
+def build_strategy_lab_hypotheses(
+    *,
+    analysis: Any,
+    regime: str,
+    session: str,
+    geometry_payload: Mapping[str, Any] | None = None,
+) -> tuple[StrategyHypothesis, ...]:
+    """Build competing DEMO strategy hypotheses from one immutable signal snapshot.
+
+    This function deliberately does not alter setup classification, conviction,
+    guards, geometry, risk, or execution state. It only emits research labels
+    that can later be joined to durable trade outcomes.
+    """
+
+    direction = str(getattr(analysis, "direction", "")).upper()
+    h1 = analysis.h1
+    m15 = analysis.m15
+    m5 = analysis.m5
+    regime = str(regime or "UNKNOWN").upper()
+    session = str(session or "UNKNOWN").upper()
+    geometry_payload = dict(geometry_payload or {})
+
+    aligned_h1 = _aligned(getattr(h1, "trend", None), direction)
+    aligned_m15 = _aligned(getattr(m15, "trend", None), direction)
+    aligned_m5 = _aligned(getattr(m5, "trend", None), direction)
+    m5_displacement = _valid_directional(getattr(m5, "displacement", None), direction)
+    m15_displacement = _valid_directional(getattr(m15, "displacement", None), direction)
+    m5_bos = _aligned(getattr(m5, "bos", None), direction)
+    m15_bos = _aligned(getattr(m15, "bos", None), direction)
+    m5_sweep = _valid_directional(getattr(m5, "sweep", None), direction)
+    m15_sweep = _valid_directional(getattr(m15, "sweep", None), direction)
+    m5_fvg = _valid_directional(getattr(m5, "fvg", None), direction)
+    m15_fvg = _valid_directional(getattr(m15, "fvg", None), direction)
+
+    entry_mode = str(geometry_payload.get("entry_mode") or "").upper()
+    confirmation = str(geometry_payload.get("confirmation") or "").upper()
+    pullback_atr = geometry_payload.get("pullback_atr")
+    try:
+        pullback_atr_f = float(pullback_atr) if pullback_atr is not None else None
+    except (TypeError, ValueError):
+        pullback_atr_f = None
+
+    trend_score = 20.0
+    trend_score += 25.0 if aligned_h1 else 0.0
+    trend_score += 20.0 if aligned_m15 else 0.0
+    trend_score += 10.0 if aligned_m5 else 0.0
+    trend_score += 15.0 if (m5_displacement or m15_displacement) else 0.0
+    trend_score += 10.0 if (m5_bos or m15_bos) else 0.0
+    if regime == "TREND_STRONG":
+        trend_score += 10.0
+    elif regime in {"RANGE", "REVERSAL"}:
+        trend_score -= 20.0
+
+    liquid_session = session in {"LONDON", "NEW_YORK", "LONDON_NEW_YORK_OVERLAP", "OVERLAP"}
+    breakout_score = 15.0
+    breakout_score += 25.0 if liquid_session else 0.0
+    breakout_score += 25.0 if (m5_displacement or m15_displacement) else 0.0
+    breakout_score += 20.0 if (m5_bos or m15_bos) else 0.0
+    breakout_score += 10.0 if aligned_h1 else 0.0
+    breakout_score += 5.0 if regime in {"TREND_STRONG", "TRANSITION"} else 0.0
+
+    pullback_score = 15.0
+    pullback_score += 25.0 if aligned_h1 else 0.0
+    pullback_score += 20.0 if aligned_m15 else 0.0
+    pullback_score += 15.0 if (m5_fvg or m15_fvg) else 0.0
+    pullback_score += 15.0 if any(token in entry_mode for token in ("PULLBACK", "RETRACE", "FVG")) else 0.0
+    if pullback_atr_f is not None and 0.10 <= pullback_atr_f <= 1.25:
+        pullback_score += 10.0
+    if "PULLBACK" in confirmation:
+        pullback_score += 5.0
+
+    mean_reversion_score = 10.0
+    mean_reversion_score += 35.0 if regime == "RANGE" else 0.0
+    mean_reversion_score += 20.0 if (m5_sweep or m15_sweep) else 0.0
+    mean_reversion_score += 15.0 if not aligned_h1 else 0.0
+    mean_reversion_score += 10.0 if not (m5_displacement or m15_displacement) else -10.0
+    mean_reversion_score += 10.0 if "RECLAIM" in confirmation else 0.0
+
+    sweep_score = 10.0
+    sweep_score += 35.0 if (m5_sweep or m15_sweep) else 0.0
+    sweep_score += 20.0 if (m5_displacement or m15_displacement) else 0.0
+    sweep_score += 15.0 if (m5_bos or m15_bos) else 0.0
+    sweep_score += 10.0 if regime in {"REVERSAL", "TRANSITION"} else 0.0
+    sweep_score += 10.0 if any(token in confirmation for token in ("MSS", "RECLAIM", "STRUCTURE_BREAK")) else 0.0
+
+    raw = (
+        (StrategyFamily.TREND_MOMENTUM, trend_score, {
+            "aligned_h1": aligned_h1,
+            "aligned_m15": aligned_m15,
+            "aligned_m5": aligned_m5,
+            "directional_displacement": m5_displacement or m15_displacement,
+            "directional_bos": m5_bos or m15_bos,
+            "regime": regime,
+        }),
+        (StrategyFamily.SESSION_BREAKOUT, breakout_score, {
+            "liquid_session": liquid_session,
+            "directional_displacement": m5_displacement or m15_displacement,
+            "directional_bos": m5_bos or m15_bos,
+            "aligned_h1": aligned_h1,
+            "session": session,
+            "regime": regime,
+        }),
+        (StrategyFamily.PULLBACK_TREND, pullback_score, {
+            "aligned_h1": aligned_h1,
+            "aligned_m15": aligned_m15,
+            "directional_fvg": m5_fvg or m15_fvg,
+            "entry_mode": entry_mode or None,
+            "confirmation": confirmation or None,
+            "pullback_atr": pullback_atr_f,
+        }),
+        (StrategyFamily.MEAN_REVERSION, mean_reversion_score, {
+            "range_regime": regime == "RANGE",
+            "directional_sweep": m5_sweep or m15_sweep,
+            "h1_not_aligned": not aligned_h1,
+            "directional_displacement": m5_displacement or m15_displacement,
+            "confirmation": confirmation or None,
+        }),
+        (StrategyFamily.LIQUIDITY_SWEEP, sweep_score, {
+            "directional_sweep": m5_sweep or m15_sweep,
+            "directional_displacement": m5_displacement or m15_displacement,
+            "directional_bos": m5_bos or m15_bos,
+            "regime": regime,
+            "confirmation": confirmation or None,
+        }),
+    )
+
+    hypotheses = tuple(
+        StrategyHypothesis(
+            family=family,
+            score=_cap(score),
+            active=_cap(score) >= 60.0,
+            evidence=evidence,
+        )
+        for family, score, evidence in raw
+    )
+    return tuple(sorted(hypotheses, key=lambda item: (-item.score, item.family.value)))
+
+
+def strategy_lab_payload(**kwargs: Any) -> list[dict[str, Any]]:
+    return [item.to_payload() for item in build_strategy_lab_hypotheses(**kwargs)]
