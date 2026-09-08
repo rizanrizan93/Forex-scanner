@@ -170,6 +170,33 @@ def test_scanner_signal_id_is_recovered_from_client_order_id_first():
     assert _signal_id_from_orders_or_deals(orders, deals) == SIGNAL_ID
 
 
+def test_geometry_join_uses_signal_uuid_across_account_aliases():
+    store = FakeStore(_signal())
+    store.client.rows["broker_order_events"].append(
+        {
+            "backend": "CTRADER",
+            "account_id": "visible-trader-login-alias",
+            "signal_key": SIGNAL_ID,
+            "event_type": "DEMO_SIGNAL_GEOMETRY",
+            "payload": {
+                "signal_id": SIGNAL_ID,
+                "entry_mode": "HL_PULLBACK",
+                "confirmation": "M5_STRUCTURE_BREAK",
+            },
+        }
+    )
+    reconciler = DemoClosedTradeReconciler(
+        history=FakeHistory((), ()),
+        store=store,
+        account_id="native-broker-account-id",
+    )
+
+    assert reconciler._geometry(SIGNAL_ID) == {
+        "entry_mode": "HL_PULLBACK",
+        "confirmation": "M5_STRUCTURE_BREAK",
+    }
+
+
 def test_closed_deal_is_persisted_once_and_then_deduplicated():
     opening_deal = Obj(
         present=(),

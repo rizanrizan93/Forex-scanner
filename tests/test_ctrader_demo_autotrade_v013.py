@@ -56,6 +56,14 @@ class Gateway:
         return SimpleNamespace(bid=self.quote - 0.0001, ask=self.quote)
 
 
+class AuditSink:
+    def __init__(self):
+        self.events = []
+
+    def emit(self, event):
+        self.events.append(event)
+
+
 def policy():
     return ExecutionPolicy(
         mode=ExecutionMode.AUTO,
@@ -125,7 +133,7 @@ def test_canonical_config_switches_only_demo_execution_backend():
     assert p.ctrader["environment"] == "DEMO"
     assert p.ctrader["role"] == "RESEARCH_AND_DEMO_EXECUTION"
     assert p.demo_safety["max_order_lots"] == 0.01
-    assert p.demo_safety["max_concurrent_positions"] == 10
+    assert p.demo_safety["max_concurrent_positions"] == 2
 
 
 def test_demo_auto_requires_explicit_opt_in(monkeypatch):
@@ -169,6 +177,27 @@ def test_demo_auto_can_submit_with_all_gates(monkeypatch):
     assert receipt.broker_order_id == "777"
     assert gateway.sent == 1
     assert gate.calls >= 2
+
+
+def test_accepted_order_audit_preserves_executed_entry_sl_tp_and_volume(monkeypatch):
+    monkeypatch.setenv("FX_KILL_SWITCH", "0")
+    monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED", "I_UNDERSTAND_DEMO_ORDERS")
+    gateway = Gateway(quote=1.1002)
+    audit = AuditSink()
+    router = ExecutionRouter(
+        policy(), gateway=gateway, control_gate=Gate(), audit_sink=audit
+    )
+
+    router.execute(intent())
+
+    accepted = next(event for event in audit.events if event["event_type"] == "ORDER_ACCEPTED")
+    payload = accepted["payload"]
+    assert payload["requested_entry"] == 1.1000
+    assert payload["requested_stop_loss"] == 1.0950
+    assert payload["requested_take_profit"] == 1.1100
+    assert payload["requested_volume"] == 0.01
+    assert payload["executed_volume"] == 0.01
+    assert payload["executed_price"] == 1.1002
 
 
 class SignalStore:

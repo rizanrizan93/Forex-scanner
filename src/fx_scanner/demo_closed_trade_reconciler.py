@@ -204,12 +204,16 @@ class DemoClosedTradeReconciler:
         return dict(rows[0]) if len(rows) == 1 else None
 
     def _geometry(self, signal_id: str) -> dict[str, Any]:
-        """Read latest exact producer geometry for this signal, if available."""
+        """Read exact producer geometry without assuming one account-ID namespace.
+
+        The producer may run with the visible trader-login alias while broker
+        reconciliation uses cTrader's native account ID. Signal UUIDs are
+        globally unique, so the durable signal key is the authoritative join.
+        """
         response = (
             self.store.client.table("broker_order_events")
             .select("payload")
             .eq("backend", "CTRADER")
-            .eq("account_id", self.account_id)
             .eq("signal_key", signal_id)
             .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
             .order("observed_at", desc=True)
