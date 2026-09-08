@@ -71,11 +71,12 @@ def run(*, limit: int = 10) -> int:
 
     cfg, production_execution_min = apply_demo_calibration_threshold(cfg)
     cfg = _apply_demo_technical_only_profile(cfg)
-    cfg, demo_risk_pct = apply_demo_calibration_risk(cfg, max_risk_pct=5.0)
+    cfg, demo_risk_pct = apply_demo_calibration_risk(cfg, max_risk_pct=3.0)
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
 
     demo_safety = dict(base_policy.demo_safety)
-    demo_safety["max_risk_pct"] = 5.0
+    demo_safety["max_risk_pct"] = 3.0
+    demo_safety["max_order_lots"] = min(0.01, float(demo_safety.get("max_order_lots", 0.01)))
     policy = replace(base_policy, mode=ExecutionMode.AUTO, demo_safety=demo_safety)
 
     symbols = [pair.symbol for pair in cfg.pairs]
@@ -272,6 +273,7 @@ def run(*, limit: int = 10) -> int:
                 "adaptive_score_policy": composite_details,
                 "risk_per_trade_pct": demo_risk_pct,
                 "max_risk_pct": float(policy.demo_safety["max_risk_pct"]),
+                "max_order_lots": float(policy.demo_safety["max_order_lots"]),
                 "max_entry_drift_r": executor.max_entry_drift_r,
                 "open_positions": open_positions_after,
                 "max_positions": max_positions,
@@ -301,6 +303,7 @@ def run(*, limit: int = 10) -> int:
             f"adaptive_global_floor={effective_global_floor:.2f} "
             f"adaptive_policy={'V2' if v2_policy.enabled else 'LEGACY_FALLBACK'} "
             f"risk_pct={demo_risk_pct:g} max_risk_pct={float(policy.demo_safety['max_risk_pct']):g} "
+            f"max_order_lots={float(policy.demo_safety['max_order_lots']):g} "
             f"max_entry_drift_r={executor.max_entry_drift_r:g} "
             f"market_schedule={market_schedule_mode} "
             f"open_positions={open_positions_after} free_slots={free_slots_after} "
