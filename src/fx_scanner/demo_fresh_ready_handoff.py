@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from math import isfinite
 from typing import Any, Iterable
 
 from .execution.policy import ExecutionPolicy, load_execution_policy as _load_execution_policy
@@ -11,6 +12,14 @@ from .storage.supabase_operational import SupabaseOperationalStore
 UTC = timezone.utc
 DEMO_POSITION_CAP_ENV = "CTRADER_DEMO_MAX_CONCURRENT_POSITIONS"
 DEMO_POSITION_CAP_CEILING = 10
+DEMO_ORDER_LOT_CAP_ENV = "CTRADER_DEMO_MAX_ORDER_LOTS"
+DEMO_ORDER_LOT_CAP_CEILING = 0.10
+DEMO_STACKING_ENV = "CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING"
+DEMO_STACK_MIN_SCORE_ENV = "CTRADER_DEMO_STACK_MIN_SCORE"
+DEMO_STACK_MIN_COVERAGE_ENV = "CTRADER_DEMO_STACK_MIN_COVERAGE"
+DEMO_STACK_MIN_RR2_ENV = "CTRADER_DEMO_STACK_MIN_RR2"
+DEMO_STACK_MAX_POSITIONS_ENV = "CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS"
+DEMO_STACK_MIN_SPACING_ENV = "CTRADER_DEMO_MIN_STACK_SPACING_SECONDS"
 
 
 def _dt(value: Any) -> datetime | None:
@@ -25,28 +34,117 @@ def _dt(value: Any) -> datetime | None:
     return parsed.astimezone(UTC)
 
 
-def load_demo_execution_policy(root=None) -> ExecutionPolicy:
-    """Load the canonical policy and apply one bounded DEMO-only capacity profile.
+def _bounded_float_env(
+    name: str,
+    *,
+    default: float,
+    minimum: float,
+    maximum: float,
+) -> float:
+    raw = os.getenv(name, str(default)).strip()
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be numeric") from exc
+    if not isfinite(value) or not minimum <= value <= maximum:
+        raise RuntimeError(f"{name} must be in [{minimum},{maximum}]")
+    return value
 
-    The committed static fallback remains conservative. The Auto workflow may
-    explicitly request a larger DEMO account-wide capacity up to ten positions.
-    This changes only the total position ceiling: 0.01-lot order cap, DEMO lock,
-    broker preflight, server-side SL/TP and same-symbol stacking guards remain
-    authoritative in the router/executor.
+
+def _bounded_int_env(
+    name: str,
+    *,
+    default: int,
+    minimum: int,
+    maximum: int,
+) -> int:
+    raw = os.getenv(name, str(default)).strip()
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be an integer") from exc
+    if not minimum <= value <= maximum:
+        raise RuntimeError(f"{name} must be in [{minimum},{maximum}]")
+    return value
+
+
+def _bool_env(name: str, *, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return bool(default)
+    value = raw.strip().upper()
+    if value in {"1", "TRUE", "YES", "ON"}:
+        return True
+    if value in {"0", "FALSE", "NO", "OFF"}:
+        return False
+    raise RuntimeError(f"{name} must be boolean-like 0/1")
+
+
+def load_demo_execution_policy(root=None) -> ExecutionPolicy:
+    """Load canonical policy plus an explicit bounded DEMO runtime profile.
+
+    Static config remains conservative (0.01 lot, two positions, no stacking).
+    The Auto workflow may opt into up to ten total positions, conviction-sized
+    orders up to 0.10 lot, and same-symbol stacking only behind the independent
+    high-conviction gate installed by this entrypoint. LIVE remains untouched.
     """
     policy = _load_execution_policy(root)
-    default_cap = int(policy.demo_safety["max_concurrent_positions"])
-    raw = os.getenv(DEMO_POSITION_CAP_ENV, str(default_cap)).strip()
-    try:
-        cap = int(raw)
-    except ValueError as exc:
-        raise RuntimeError(f"{DEMO_POSITION_CAP_ENV} must be an integer") from exc
-    if not 1 <= cap <= DEMO_POSITION_CAP_CEILING:
-        raise RuntimeError(
-            f"{DEMO_POSITION_CAP_ENV} must be in [1,{DEMO_POSITION_CAP_CEILING}]"
-        )
     demo_safety = dict(policy.demo_safety)
-    demo_safety["max_concurrent_positions"] = cap
+
+    default_cap = int(demo_safety["max_concurrent_positions"])
+    demo_safety["max_concurrent_positions"] = _bounded_int_env(
+        DEMO_POSITION_CAP_ENV,
+        default=default_cap,
+        minimum=1,
+        maximum=DEMO_POSITION_CAP_CEILING,
+    )
+
+    default_lots = float(demo_safety["max_order_lots"])
+    max_order_lots = _bounded_float_env(
+        DEMO_ORDER_LOT_CAP_ENV,
+        default=default_lots,
+        minimum=0.01,
+        maximum=DEMO_ORDER_LOT_CAP_CEILING,
+    )
+    demo_safety["max_order_lots"] = max_order_lots
+
+    allow_stacking = _bool_env(DEMO_STACKING_ENV, default=False)
+    demo_safety["allow_same_symbol_stacking"] = allow_stacking
+    demo_safety["stack_min_score"] = _bounded_float_env(
+        DEMO_STACK_MIN_SCORE_ENV,
+        default=85.0,
+        minimum=70.0,
+        maximum=100.0,
+    )
+    demo_safety["stack_min_coverage"] = _bounded_float_env(
+        DEMO_STACK_MIN_COVERAGE_ENV,
+        default=0.90,
+        minimum=0.80,
+        maximum=1.0,
+    )
+    demo_safety["stack_min_rr2"] = _bounded_float_env(
+        DEMO_STACK_MIN_RR2_ENV,
+        default=2.0,
+        minimum=1.5,
+        maximum=5.0,
+    )
+    max_same_symbol_positions = _bounded_int_env(
+        DEMO_STACK_MAX_POSITIONS_ENV,
+        default=3,
+        minimum=1,
+        maximum=3,
+    )
+    demo_safety["max_same_symbol_positions"] = max_same_symbol_positions
+    demo_safety["min_stack_spacing_seconds"] = _bounded_float_env(
+        DEMO_STACK_MIN_SPACING_ENV,
+        default=300.0,
+        minimum=0.0,
+        maximum=3600.0,
+    )
+    demo_safety["max_same_symbol_lots"] = min(
+        0.30,
+        max_order_lots * max_same_symbol_positions,
+    )
     return replace(policy, demo_safety=demo_safety)
 
 
@@ -118,15 +216,33 @@ def main() -> int:
     max_age_seconds = float(policy.order.get("max_signal_age_seconds", 300))
     install_fresh_execution_ready_handoff(max_age_seconds=max_age_seconds)
 
-    # Keep the fail-closed base executor authoritative. It enforces the
-    # canonical 0.01-lot cap and blocks a second position on the same symbol.
-    # Conviction-scaled lots remain disabled until sizing is derived from the
-    # broker's monetary loss at the live stop rather than from score alone.
     # The calibration module imports its loader as a module-level dependency;
     # inject the bounded DEMO profile explicitly for this workflow entrypoint.
     from . import demo_calibration_autotrade as calibration_runtime
 
     calibration_runtime.load_execution_policy = load_demo_execution_policy
+
+    # Dynamic size is a conviction ceiling, not a reason to bypass signal gates.
+    # The base intent must first pass state, score, coverage, fresh quote, SL/TP,
+    # live RR and entry-drift validation. Conditional stacking then adds an
+    # independent same-direction/high-conviction broker exposure gate.
+    from .demo_conditional_stacking import install_demo_conditional_stacking
+    from .demo_conviction_sizing import install_demo_conviction_sizing
+
+    install_demo_conviction_sizing()
+    install_demo_conditional_stacking()
+
+    print(
+        "CTRADER_DEMO_DYNAMIC_EXECUTION_POLICY "
+        f"max_order_lots={float(policy.demo_safety['max_order_lots']):.2f} "
+        f"stacking={int(bool(policy.demo_safety['allow_same_symbol_stacking']))} "
+        f"stack_min_score={float(policy.demo_safety['stack_min_score']):.2f} "
+        f"stack_min_coverage={float(policy.demo_safety['stack_min_coverage']):.2f} "
+        f"stack_min_rr2={float(policy.demo_safety['stack_min_rr2']):.2f} "
+        f"max_same_symbol_positions={int(policy.demo_safety['max_same_symbol_positions'])} "
+        f"min_stack_spacing_seconds={float(policy.demo_safety['min_stack_spacing_seconds']):.0f} "
+        "live_unlock=0"
+    )
     return calibration_runtime.main()
 
 

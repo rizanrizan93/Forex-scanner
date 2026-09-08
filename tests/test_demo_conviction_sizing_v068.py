@@ -53,7 +53,9 @@ def test_invalid_quality_fails_closed():
         select_demo_conviction_sizing({"final_score": None, "data_coverage": 0.95, "rr2": 2.5})
 
 
-def test_fast_handoff_does_not_install_score_only_conviction_sizing():
+def test_fast_handoff_installs_bounded_demo_conviction_sizing():
     source = Path("src/fx_scanner/demo_fresh_ready_handoff.py").read_text(encoding="utf-8")
-    assert "install_demo_conviction_sizing" not in source
-    assert "broker's monetary loss at the live stop" in source
+    assert "install_demo_conviction_sizing" in source
+    assert "CTRADER_DEMO_MAX_ORDER_LOTS" in source
+    assert "DEMO_ORDER_LOT_CAP_CEILING = 0.10" in source
+    assert "live_unlock=0" in source
