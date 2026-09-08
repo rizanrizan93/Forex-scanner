@@ -64,6 +64,12 @@ class BrokerOrderResult:
     broker_order_id: str | None = None
     executed_volume: float | None = None
     executed_price: float | None = None
+    broker_position_id: str | None = None
+    protection_verified: bool | None = None
+    attached_stop_loss: float | None = None
+    attached_take_profit: float | None = None
+    protection_code: str | None = None
+    protection_message: str | None = None
 
 
 class BrokerExecutionGateway(Protocol):
