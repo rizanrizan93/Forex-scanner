@@ -20,6 +20,8 @@ DEMO_STACK_MIN_COVERAGE_ENV = "CTRADER_DEMO_STACK_MIN_COVERAGE"
 DEMO_STACK_MIN_RR2_ENV = "CTRADER_DEMO_STACK_MIN_RR2"
 DEMO_STACK_MAX_POSITIONS_ENV = "CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS"
 DEMO_STACK_MIN_SPACING_ENV = "CTRADER_DEMO_MIN_STACK_SPACING_SECONDS"
+DEMO_PORTFOLIO_RISK_CAP_ENV = "CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT"
+DEMO_MARGIN_USAGE_CAP_ENV = "CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT"
 
 
 def _dt(value: Any) -> datetime | None:
@@ -85,8 +87,8 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
 
     Static config remains conservative (0.01 lot, two positions, no stacking).
     The Auto workflow may opt into up to ten total positions, conviction-sized
-    orders up to 0.10 lot, and same-symbol stacking only behind the independent
-    high-conviction gate installed by this entrypoint. LIVE remains untouched.
+    orders up to 0.10 lot, bounded aggregate open risk, and same-symbol stacking
+    only behind the independent high-conviction gate. LIVE remains untouched.
     """
     policy = _load_execution_policy(root)
     demo_safety = dict(policy.demo_safety)
@@ -144,6 +146,18 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
     demo_safety["max_same_symbol_lots"] = min(
         0.30,
         max_order_lots * max_same_symbol_positions,
+    )
+    demo_safety["max_portfolio_risk_pct"] = _bounded_float_env(
+        DEMO_PORTFOLIO_RISK_CAP_ENV,
+        default=6.0,
+        minimum=0.5,
+        maximum=12.0,
+    )
+    demo_safety["max_margin_free_usage_pct"] = _bounded_float_env(
+        DEMO_MARGIN_USAGE_CAP_ENV,
+        default=25.0,
+        minimum=5.0,
+        maximum=50.0,
     )
     return replace(policy, demo_safety=demo_safety)
 
@@ -222,26 +236,31 @@ def main() -> int:
 
     calibration_runtime.load_execution_policy = load_demo_execution_policy
 
-    # Dynamic size is a conviction ceiling, not a reason to bypass signal gates.
-    # The base intent must first pass state, score, coverage, fresh quote, SL/TP,
-    # live RR and entry-drift validation. Conditional stacking then adds an
-    # independent same-direction/high-conviction broker exposure gate.
+    # Dynamic size is only a ceiling. The base intent first passes state, score,
+    # coverage, fresh quote, SL/TP, live RR and entry drift; conviction then sets
+    # the quality cap. Broker-native sizing can only reduce that volume using
+    # actual SL loss, account-wide remaining risk and expected-margin evidence.
+    # Conditional stacking sees the already-reduced final intent volume.
+    from .demo_broker_risk_sizing import install_demo_broker_native_risk_sizing
     from .demo_conditional_stacking import install_demo_conditional_stacking
     from .demo_conviction_sizing import install_demo_conviction_sizing
 
     install_demo_conviction_sizing()
+    install_demo_broker_native_risk_sizing()
     install_demo_conditional_stacking()
 
     print(
         "CTRADER_DEMO_DYNAMIC_EXECUTION_POLICY "
         f"max_order_lots={float(policy.demo_safety['max_order_lots']):.2f} "
+        f"portfolio_risk_cap_pct={float(policy.demo_safety['max_portfolio_risk_pct']):.2f} "
+        f"margin_free_usage_cap_pct={float(policy.demo_safety['max_margin_free_usage_pct']):.2f} "
         f"stacking={int(bool(policy.demo_safety['allow_same_symbol_stacking']))} "
         f"stack_min_score={float(policy.demo_safety['stack_min_score']):.2f} "
         f"stack_min_coverage={float(policy.demo_safety['stack_min_coverage']):.2f} "
         f"stack_min_rr2={float(policy.demo_safety['stack_min_rr2']):.2f} "
         f"max_same_symbol_positions={int(policy.demo_safety['max_same_symbol_positions'])} "
         f"min_stack_spacing_seconds={float(policy.demo_safety['min_stack_spacing_seconds']):.0f} "
-        "live_unlock=0"
+        "broker_native_risk=1 live_unlock=0"
     )
     return calibration_runtime.main()
 
