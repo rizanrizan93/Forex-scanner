@@ -25,15 +25,18 @@ class CTraderPreparedOrder:
     lot_size_cents: int
     executable_price: float
     expected_margin: float | None
-    account_id: int
-    symbol_name: str
-    symbol_info: Any
-    symbol_id: int
-    trade_side: int
-    volume_cents: int
-    planned_stop_loss: float
-    planned_take_profit: float
-    is_market: bool
+    # The fields below are populated for every production preflight. Defaults
+    # preserve compatibility with legacy no-fill transport/rejection fixtures,
+    # which never cross the post-fill protection boundary.
+    account_id: int = 0
+    symbol_name: str = ""
+    symbol_info: Any = None
+    symbol_id: int = 0
+    trade_side: int = 0
+    volume_cents: int = 0
+    planned_stop_loss: float = 0.0
+    planned_take_profit: float = 0.0
+    is_market: bool = False
 
 
 def _money(value: int | float, digits: int | None) -> float:
