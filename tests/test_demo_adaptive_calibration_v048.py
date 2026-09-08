@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from fx_scanner.demo_adaptive_calibration import build_adaptive_policy_from_rows
+from fx_scanner.demo_adaptive_calibration import (
+    build_adaptive_policy_from_rows,
+    load_adaptive_policy,
+)
 
 
 def _row(
@@ -87,3 +90,85 @@ def test_feature_gate_disables_mutation_but_keeps_diagnostics():
     assert policy.enabled is False
     assert policy.global_penalty == 0.0
     assert policy.required_score({"symbol": "EURUSD", "setup_type": "ICT_PULLBACK", "direction": "LONG"}) == pytest.approx(50.01)
+
+
+class _Response:
+    def __init__(self, data):
+        self.data = data
+
+
+class _ClosedQuery:
+    def __init__(self, rows):
+        self.rows = rows
+        self.calls = []
+
+    def select(self, *_args):
+        return self
+
+    def eq(self, column, value):
+        self.calls.append(("eq", column, value))
+        return self
+
+    def in_(self, column, values):
+        self.calls.append(("in", column, tuple(values)))
+        return self
+
+    def order(self, *_args, **_kwargs):
+        return self
+
+    def limit(self, *_args):
+        return self
+
+    def execute(self):
+        return _Response(self.rows)
+
+
+class _Client:
+    def __init__(self, query):
+        self.query = query
+
+    def table(self, name):
+        assert name == "broker_order_events"
+        return self.query
+
+
+class _Store:
+    def __init__(self, query):
+        self.client = _Client(query)
+
+
+def test_policy_loader_scopes_closed_rows_to_both_aliases_and_enriches_geometry(
+    monkeypatch,
+):
+    import fx_scanner.demo_adaptive_calibration_v2_runtime as context
+
+    query = _ClosedQuery(
+        [{"signal_key": "signal-1", "payload": {"exit_type": "SL_HIT"}}]
+    )
+    store = _Store(query)
+    monkeypatch.setattr(
+        context,
+        "_account_ids",
+        lambda _store: ("configured-alias", "native-account"),
+    )
+    monkeypatch.setattr(
+        context,
+        "_geometry_context",
+        lambda _store, *, account_ids: {
+            "signal-1": {
+                "entry_mode": "LH_PULLBACK",
+                "confirmation": "M5_STRUCTURE_BREAK",
+            }
+        },
+    )
+
+    policy = load_adaptive_policy(
+        store,
+        account_id="configured-alias",
+        base_floor=50.01,
+        enabled=True,
+    )
+
+    assert ("in", "account_id", ("configured-alias", "native-account")) in query.calls
+    assert policy.wave_stats.decisive_system == 1
+    assert policy.wave_stats.losses == 1

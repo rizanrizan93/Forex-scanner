@@ -1,5 +1,6 @@
 from fx_scanner.demo_incremental_calibration import (
     calibration_stage,
+    enrich_closed_events_with_geometry,
     suggested_score_floor_penalty,
     summarize_closed_events,
 )
@@ -76,3 +77,37 @@ def test_pair_and_setup_buckets_are_kept_separate():
     )
     assert set(summary.by_symbol) == {"EURUSD", "XAUUSD"}
     assert set(summary.by_setup) == {"TREND_CONTINUATION", "LIQUIDITY_SWEEP_REVERSAL"}
+
+
+def test_geometry_enrichment_uses_all_account_aliases(monkeypatch):
+    import fx_scanner.demo_adaptive_calibration_v2_runtime as context
+
+    observed = {}
+    monkeypatch.setattr(
+        context,
+        "_account_ids",
+        lambda _store: ("configured-alias", "native-account"),
+    )
+
+    def geometry_context(_store, *, account_ids):
+        observed["account_ids"] = account_ids
+        return {
+            "signal-1": {
+                "entry_mode": "HL_PULLBACK",
+                "confirmation": "M5_STRUCTURE_BREAK",
+            }
+        }
+
+    monkeypatch.setattr(context, "_geometry_context", geometry_context)
+    rows = (
+        {
+            "signal_key": "signal-1",
+            "payload": {"exit_type": "SL_HIT", "symbol": "EURUSD"},
+        },
+    )
+
+    enriched = enrich_closed_events_with_geometry(object(), rows)
+
+    assert observed["account_ids"] == ("configured-alias", "native-account")
+    assert enriched[0]["payload"]["entry_mode"] == "HL_PULLBACK"
+    assert enriched[0]["payload"]["confirmation"] == "M5_STRUCTURE_BREAK"

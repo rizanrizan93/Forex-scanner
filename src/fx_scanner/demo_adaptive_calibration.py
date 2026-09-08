@@ -5,6 +5,8 @@ from typing import Any, Iterable
 
 from .demo_incremental_calibration import (
     CalibrationStats,
+    _calibration_account_ids,
+    enrich_closed_events_with_geometry,
     summarize_closed_events,
     suggested_score_floor_penalty,
 )
@@ -165,6 +167,7 @@ def load_adaptive_policy(
     enabled: bool,
     limit: int = 200,
 ) -> AdaptiveCalibrationPolicy:
+    account_ids = _calibration_account_ids(store, account_id=account_id)
     query = (
         store.client.table("broker_order_events")
         .select("observed_at,account_id,signal_key,payload")
@@ -173,10 +176,16 @@ def load_adaptive_policy(
         .order("observed_at", desc=True)
         .limit(int(limit))
     )
-    if account_id:
-        query = query.eq("account_id", str(account_id))
+    if len(account_ids) == 1:
+        query = query.eq("account_id", account_ids[0])
+    elif account_ids:
+        query = query.in_("account_id", list(account_ids))
     response = query.execute()
-    rows = tuple(dict(row) for row in (response.data or []))
+    rows = enrich_closed_events_with_geometry(
+        store,
+        tuple(dict(row) for row in (response.data or [])),
+        account_id=account_id,
+    )
     return build_adaptive_policy_from_rows(
         rows,
         base_floor=base_floor,

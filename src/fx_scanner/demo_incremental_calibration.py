@@ -218,6 +218,41 @@ def _closed_events(store: SupabaseOperationalStore, *, account_id: str | None, l
     return tuple(dict(row) for row in (response.data or []))
 
 
+def _calibration_account_ids(
+    store: SupabaseOperationalStore,
+    *,
+    account_id: str | None = None,
+) -> tuple[str, ...]:
+    """Resolve configured and broker-native cTrader IDs for one DEMO account."""
+    from .demo_adaptive_calibration_v2_runtime import _account_ids
+
+    values = list(_account_ids(store))
+    explicit = str(account_id or "").strip()
+    if explicit and explicit not in values:
+        values.insert(0, explicit)
+    return tuple(values)
+
+
+def enrich_closed_events_with_geometry(
+    store: SupabaseOperationalStore,
+    rows: Iterable[dict[str, Any]],
+    *,
+    account_id: str | None = None,
+) -> tuple[dict[str, Any], ...]:
+    """Join immutable entry geometry across cTrader account-ID aliases."""
+    from .demo_adaptive_calibration_v2_runtime import (
+        _enrich_rows,
+        _geometry_context,
+    )
+
+    raw_rows = tuple(dict(row) for row in rows)
+    account_ids = _calibration_account_ids(store, account_id=account_id)
+    if not raw_rows or not account_ids:
+        return raw_rows
+    geometries = _geometry_context(store, account_ids=account_ids)
+    return _enrich_rows(raw_rows, {}, geometries)
+
+
 def _snapshot_age_seconds(account: dict[str, Any] | None) -> float | None:
     if not account or not account.get("observed_at"):
         return None
@@ -263,7 +298,12 @@ def run() -> int:
     store = SupabaseOperationalStore.from_env()
     account, positions = _latest_account_and_positions(store)
     account_id = None if account is None else str(account.get("account_id", "") or "")
-    rows = _closed_events(store, account_id=account_id or None)
+    raw_rows = _closed_events(store, account_id=account_id or None)
+    rows = enrich_closed_events_with_geometry(
+        store,
+        raw_rows,
+        account_id=account_id or None,
+    )
     summary = summarize_closed_events(rows)
 
     balance = None if account is None else _finite_float(account.get("balance"))
