@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import os
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
 
-from .execution.policy import load_execution_policy
+from .execution.policy import ExecutionPolicy, load_execution_policy as _load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
+DEMO_POSITION_CAP_ENV = "CTRADER_DEMO_MAX_CONCURRENT_POSITIONS"
+DEMO_POSITION_CAP_CEILING = 10
 
 
 def _dt(value: Any) -> datetime | None:
@@ -19,6 +23,31 @@ def _dt(value: Any) -> datetime | None:
     if parsed.tzinfo is None:
         return None
     return parsed.astimezone(UTC)
+
+
+def load_demo_execution_policy(root=None) -> ExecutionPolicy:
+    """Load the canonical policy and apply one bounded DEMO-only capacity profile.
+
+    The committed static fallback remains conservative. The Auto workflow may
+    explicitly request a larger DEMO account-wide capacity up to ten positions.
+    This changes only the total position ceiling: 0.01-lot order cap, DEMO lock,
+    broker preflight, server-side SL/TP and same-symbol stacking guards remain
+    authoritative in the router/executor.
+    """
+    policy = _load_execution_policy(root)
+    default_cap = int(policy.demo_safety["max_concurrent_positions"])
+    raw = os.getenv(DEMO_POSITION_CAP_ENV, str(default_cap)).strip()
+    try:
+        cap = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{DEMO_POSITION_CAP_ENV} must be an integer") from exc
+    if not 1 <= cap <= DEMO_POSITION_CAP_CEILING:
+        raise RuntimeError(
+            f"{DEMO_POSITION_CAP_ENV} must be in [1,{DEMO_POSITION_CAP_CEILING}]"
+        )
+    demo_safety = dict(policy.demo_safety)
+    demo_safety["max_concurrent_positions"] = cap
+    return replace(policy, demo_safety=demo_safety)
 
 
 def fresh_execution_ready_rows(
@@ -85,7 +114,7 @@ def install_fresh_execution_ready_handoff(*, max_age_seconds: float) -> None:
 
 
 def main() -> int:
-    policy = load_execution_policy(None)
+    policy = load_demo_execution_policy(None)
     max_age_seconds = float(policy.order.get("max_signal_age_seconds", 300))
     install_fresh_execution_ready_handoff(max_age_seconds=max_age_seconds)
 
@@ -93,10 +122,12 @@ def main() -> int:
     # canonical 0.01-lot cap and blocks a second position on the same symbol.
     # Conviction-scaled lots remain disabled until sizing is derived from the
     # broker's monetary loss at the live stop rather than from score alone.
+    # The calibration module imports its loader as a module-level dependency;
+    # inject the bounded DEMO profile explicitly for this workflow entrypoint.
+    from . import demo_calibration_autotrade as calibration_runtime
 
-    from .demo_calibration_autotrade import main as calibration_main
-
-    return calibration_main()
+    calibration_runtime.load_execution_policy = load_demo_execution_policy
+    return calibration_runtime.main()
 
 
 if __name__ == "__main__":
