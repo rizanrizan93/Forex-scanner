@@ -10,6 +10,9 @@ from .producer_guards import ProductionGuardResolver, GuardResolution, _aligned_
 from .ranking import PairRank
 
 
+MAX_DEMO_RISK_PCT = 5.0
+
+
 @dataclass(frozen=True, slots=True)
 class CorrelationEvidence:
     symbol: str
@@ -24,7 +27,7 @@ class EvidenceProductionGuardResolver(ProductionGuardResolver):
     """DEMO resolver that keeps canonical guard decisions and exposes evidence.
 
     Correlation semantics remain canonical. The only DEMO-specific mutation is
-    an explicit process-local risk ceiling up to 3%, driven by the calibration
+    an explicit process-local risk ceiling up to 5%, driven by the calibration
     environment variable after the caller has already validated DEMO mode.
     """
 
@@ -35,8 +38,8 @@ class EvidenceProductionGuardResolver(ProductionGuardResolver):
         raw = os.getenv("CTRADER_DEMO_RISK_PER_TRADE_PCT", "").strip()
         if raw:
             value = float(raw)
-            if not isfinite(value) or not 0.0 < value <= 3.0:
-                raise ValueError("CTRADER_DEMO_RISK_PER_TRADE_PCT must be in (0,3]")
+            if not isfinite(value) or not 0.0 < value <= MAX_DEMO_RISK_PCT:
+                raise ValueError("CTRADER_DEMO_RISK_PER_TRADE_PCT must be in (0,5]")
             self.demo_max_risk_pct = max(self.demo_max_risk_pct, value)
 
     def resolve(
