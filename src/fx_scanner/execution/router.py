@@ -154,7 +154,6 @@ class ExecutionRouter:
         return bool(
             self._is_ctrader_demo_execution()
             and intent.order_type == OrderType.MARKET
-            and getattr(self.gateway, "post_fill_protection_managed", False)
         )
 
     def execute(self, intent: OrderIntent, *, user_confirmed: bool = False) -> OrderReceipt:
