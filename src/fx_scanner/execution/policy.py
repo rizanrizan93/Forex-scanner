@@ -146,8 +146,8 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
             raise ConfigurationError("atomic signal claim cannot be disabled")
         if not 0.80 <= float(demo_safety["min_signal_coverage"]) <= 1.0:
             raise ConfigurationError("demo min_signal_coverage cannot be below 0.80")
-        if not 0 < float(demo_safety["max_order_lots"]) <= 0.01:
-            raise ConfigurationError("demo max_order_lots cannot exceed 0.01")
+        if not 0 < float(demo_safety["max_order_lots"]) <= 0.10:
+            raise ConfigurationError("demo max_order_lots cannot exceed 0.10")
         if not 0 < float(demo_safety["max_risk_pct"]) <= 0.25:
             raise ConfigurationError("demo max_risk_pct cannot exceed 0.25")
         if not 1 <= int(demo_safety["max_concurrent_positions"]) <= 10:
