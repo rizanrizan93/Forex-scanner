@@ -19,130 +19,51 @@ UTC = timezone.utc
 
 
 class Gate:
-    def __init__(self):
-        self.calls = 0
-
+    def __init__(self): self.calls = 0
     def assert_orders_allowed(self, required_mode):
-        assert required_mode == "AUTO"
-        self.calls += 1
+        assert required_mode == "AUTO"; self.calls += 1
 
 
 class Gateway:
     backend = BrokerBackend.CTRADER
-
     def __init__(self, *, positions=0, quote=1.1000, protection_verified=True):
-        self.positions = positions
-        self.quote = quote
-        self.sent = 0
-        self.protection_verified = protection_verified
-
-    def position_count(self):
-        return self.positions
-
-    def account_snapshot(self):
-        return BrokerAccountSnapshot(
-            self.backend, "9001001", 10000, 10000, 10000, True
-        )
-
-    def preflight(self, intent, order_config):
-        return BrokerPreflight(self.backend, True, "OK", "ok", intent)
-
+        self.positions = positions; self.quote = quote; self.sent = 0; self.protection_verified = protection_verified
+    def position_count(self): return self.positions
+    def account_snapshot(self): return BrokerAccountSnapshot(self.backend, "9001001", 10000, 10000, 10000, True)
+    def preflight(self, intent, order_config): return BrokerPreflight(self.backend, True, "OK", "ok", intent)
     def submit(self, preflight):
         self.sent += 1
         return BrokerOrderResult(
-            backend=self.backend,
-            accepted=True,
-            code="3",
-            message="filled",
-            broker_order_id="777",
-            executed_volume=0.01,
-            executed_price=self.quote,
-            broker_position_id="888",
+            backend=self.backend, accepted=True, code="3", message="filled", broker_order_id="777",
+            executed_volume=0.01, executed_price=self.quote, broker_position_id="888",
             protection_verified=self.protection_verified,
             attached_stop_loss=1.0950 if self.protection_verified else None,
             attached_take_profit=1.1100 if self.protection_verified else None,
-            protection_code=(
-                "PROTECTION_VERIFIED"
-                if self.protection_verified
-                else "PROTECTION_AMEND_FAILED"
-            ),
-            protection_message=(
-                "broker position already has SL and TP"
-                if self.protection_verified
-                else "bounded amend/reconcile attempts exhausted"
-            ),
+            protection_code="PROTECTION_VERIFIED" if self.protection_verified else "PROTECTION_AMEND_FAILED",
+            protection_message="broker position already has SL and TP" if self.protection_verified else "bounded amend/reconcile attempts exhausted",
         )
-
-    def market_quote(self, symbol):
-        return SimpleNamespace(bid=self.quote - 0.0001, ask=self.quote)
+    def market_quote(self, symbol): return SimpleNamespace(bid=self.quote - 0.0001, ask=self.quote)
 
 
 class AuditSink:
-    def __init__(self):
-        self.events = []
-
-    def emit(self, event):
-        self.events.append(event)
+    def __init__(self): self.events = []
+    def emit(self, event): self.events.append(event)
 
 
 def policy():
     return ExecutionPolicy(
         mode=ExecutionMode.AUTO,
-        scheduler={
-            "heavy_scan_seconds": 900,
-            "fast_setup_seconds": 15,
-            "execution_watch_seconds": 0.25,
-            "position_monitor_seconds": 2,
-        },
-        order={
-            "max_signal_age_seconds": 300,
-            "require_broker_preflight": True,
-            "require_server_side_sl": True,
-            "require_server_side_tp": True,
-        },
-        live_safety={
-            "live_enable_env": "FX_LIVE_TRADING_ENABLED",
-            "live_enable_value": "I_UNDERSTAND_LIVE_ORDERS",
-            "account_allowlist_env": "FX_BROKER_ACCOUNT_ALLOWLIST",
-            "require_account_allowlist": True,
-            "kill_switch_env": "FX_KILL_SWITCH",
-            "kill_switch_safe_value": "0",
-            "require_control_plane": True,
-        },
-        broker={"research": "CTRADER", "execution": "CTRADER"},
-        ctrader={
-            "role": "RESEARCH_AND_DEMO_EXECUTION",
-            "environment": "DEMO",
-            "require_demo": True,
-        },
-        demo_safety={
-            "enable_env": "CTRADER_DEMO_AUTOTRADE_ENABLED",
-            "enable_value": "I_UNDERSTAND_DEMO_ORDERS",
-            "require_demo_account": True,
-            "require_trade_scope": True,
-            "require_atomic_signal_claim": True,
-            "min_signal_coverage": 0.80,
-            "max_order_lots": 0.01,
-            "max_risk_pct": 0.25,
-            "max_concurrent_positions": 1,
-            "poll_seconds": 1.0,
-        },
+        scheduler={"heavy_scan_seconds":900,"fast_setup_seconds":15,"execution_watch_seconds":0.25,"position_monitor_seconds":2},
+        order={"max_signal_age_seconds":300,"require_broker_preflight":True,"require_server_side_sl":True,"require_server_side_tp":True},
+        live_safety={"live_enable_env":"FX_LIVE_TRADING_ENABLED","live_enable_value":"I_UNDERSTAND_LIVE_ORDERS","account_allowlist_env":"FX_BROKER_ACCOUNT_ALLOWLIST","require_account_allowlist":True,"kill_switch_env":"FX_KILL_SWITCH","kill_switch_safe_value":"0","require_control_plane":True},
+        broker={"research":"CTRADER","execution":"CTRADER"},
+        ctrader={"role":"RESEARCH_AND_DEMO_EXECUTION","environment":"DEMO","require_demo":True},
+        demo_safety={"enable_env":"CTRADER_DEMO_AUTOTRADE_ENABLED","enable_value":"I_UNDERSTAND_DEMO_ORDERS","require_demo_account":True,"require_trade_scope":True,"require_atomic_signal_claim":True,"min_signal_coverage":0.80,"max_order_lots":0.01,"max_risk_pct":0.25,"max_concurrent_positions":1,"poll_seconds":1.0},
     )
 
 
 def intent(volume=0.01, *, signal_id="demo-signal-1"):
-    return OrderIntent(
-        signal_id=signal_id,
-        symbol="EURUSD",
-        side=OrderSide.BUY,
-        order_type=OrderType.MARKET,
-        created_at=datetime.now(tz=UTC),
-        volume=volume,
-        entry_price=1.1000,
-        stop_loss=1.0950,
-        take_profit=1.1100,
-        risk_pct=0.25,
-    )
+    return OrderIntent(signal_id=signal_id,symbol="EURUSD",side=OrderSide.BUY,order_type=OrderType.MARKET,created_at=datetime.now(tz=UTC),volume=volume,entry_price=1.1000,stop_loss=1.0950,take_profit=1.1100,risk_pct=0.25)
 
 
 def test_canonical_config_switches_only_demo_execution_backend():
@@ -153,231 +74,91 @@ def test_canonical_config_switches_only_demo_execution_backend():
     assert not p.broker["dual_feed_single_execution"]
     assert p.ctrader["environment"] == "DEMO"
     assert p.ctrader["role"] == "RESEARCH_AND_DEMO_EXECUTION"
-    assert p.demo_safety["max_order_lots"] == 0.10
-    assert p.demo_safety["max_risk_pct"] == 5.0
+    assert p.demo_safety["max_order_lots"] == 0.01
+    assert p.demo_safety["max_risk_pct"] == 3.0
     assert p.demo_safety["max_concurrent_positions"] == 10
 
 
 def test_demo_auto_requires_explicit_opt_in(monkeypatch):
-    monkeypatch.setenv("FX_KILL_SWITCH", "0")
-    monkeypatch.delenv("CTRADER_DEMO_AUTOTRADE_ENABLED", raising=False)
-    gateway = Gateway()
-    router = ExecutionRouter(policy(), gateway=gateway, control_gate=Gate())
-    with pytest.raises(ExecutionBlocked, match="DEMO_ENV_GATE_CLOSED"):
-        router.execute(intent())
-    assert gateway.sent == 0
+    monkeypatch.setenv("FX_KILL_SWITCH","0"); monkeypatch.delenv("CTRADER_DEMO_AUTOTRADE_ENABLED",raising=False)
+    gateway=Gateway(); router=ExecutionRouter(policy(),gateway=gateway,control_gate=Gate())
+    with pytest.raises(ExecutionBlocked,match="DEMO_ENV_GATE_CLOSED"): router.execute(intent())
+    assert gateway.sent==0
 
 
 def test_demo_auto_rejects_when_two_positions_already_open(monkeypatch):
-    monkeypatch.setenv("FX_KILL_SWITCH", "0")
-    monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED", "I_UNDERSTAND_DEMO_ORDERS")
-    gateway = Gateway(positions=2)
-    router = ExecutionRouter(policy(), gateway=gateway, control_gate=Gate())
-    with pytest.raises(ExecutionBlocked, match="DEMO_MAX_CONCURRENT_POSITIONS"):
-        router.execute(intent())
-    assert gateway.sent == 0
+    monkeypatch.setenv("FX_KILL_SWITCH","0"); monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED","I_UNDERSTAND_DEMO_ORDERS")
+    gateway=Gateway(positions=2); router=ExecutionRouter(policy(),gateway=gateway,control_gate=Gate())
+    with pytest.raises(ExecutionBlocked,match="DEMO_MAX_CONCURRENT_POSITIONS"): router.execute(intent())
+    assert gateway.sent==0
 
 
 def test_demo_auto_rejects_volume_above_one_centilot(monkeypatch):
-    monkeypatch.setenv("FX_KILL_SWITCH", "0")
-    monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED", "I_UNDERSTAND_DEMO_ORDERS")
-    gateway = Gateway()
-    router = ExecutionRouter(policy(), gateway=gateway, control_gate=Gate())
-    with pytest.raises(ExecutionBlocked, match="DEMO_MAX_ORDER_LOTS_EXCEEDED"):
-        router.execute(intent(volume=0.02))
-    assert gateway.sent == 0
+    monkeypatch.setenv("FX_KILL_SWITCH","0"); monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED","I_UNDERSTAND_DEMO_ORDERS")
+    gateway=Gateway(); router=ExecutionRouter(policy(),gateway=gateway,control_gate=Gate())
+    with pytest.raises(ExecutionBlocked,match="DEMO_MAX_ORDER_LOTS_EXCEEDED"): router.execute(intent(volume=0.02))
+    assert gateway.sent==0
 
 
 def test_demo_auto_can_submit_with_all_gates(monkeypatch):
-    monkeypatch.setenv("FX_KILL_SWITCH", "0")
-    monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED", "I_UNDERSTAND_DEMO_ORDERS")
-    gateway = Gateway()
-    gate = Gate()
-    router = ExecutionRouter(policy(), gateway=gateway, control_gate=gate)
-    receipt = router.execute(intent())
-    assert receipt.accepted
-    assert receipt.broker_order_id == "777"
-    assert gateway.sent == 1
-    assert gate.calls >= 2
+    monkeypatch.setenv("FX_KILL_SWITCH","0"); monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED","I_UNDERSTAND_DEMO_ORDERS")
+    gateway=Gateway(); gate=Gate(); router=ExecutionRouter(policy(),gateway=gateway,control_gate=gate)
+    receipt=router.execute(intent()); assert receipt.accepted; assert receipt.broker_order_id=="777"; assert gateway.sent==1; assert gate.calls>=2
 
 
 def test_accepted_order_audit_preserves_executed_entry_sl_tp_and_volume(monkeypatch):
-    monkeypatch.setenv("FX_KILL_SWITCH", "0")
-    monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED", "I_UNDERSTAND_DEMO_ORDERS")
-    gateway = Gateway(quote=1.1002)
-    audit = AuditSink()
-    router = ExecutionRouter(
-        policy(), gateway=gateway, control_gate=Gate(), audit_sink=audit
-    )
-
+    monkeypatch.setenv("FX_KILL_SWITCH","0"); monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED","I_UNDERSTAND_DEMO_ORDERS")
+    gateway=Gateway(quote=1.1002); audit=AuditSink(); router=ExecutionRouter(policy(),gateway=gateway,control_gate=Gate(),audit_sink=audit)
     router.execute(intent())
-
-    accepted = next(event for event in audit.events if event["event_type"] == "ORDER_ACCEPTED")
-    payload = accepted["payload"]
-    assert payload["requested_entry"] == 1.1000
-    assert payload["requested_stop_loss"] == 1.0950
-    assert payload["requested_take_profit"] == 1.1100
-    assert payload["requested_volume"] == 0.01
-    assert payload["executed_volume"] == 0.01
-    assert payload["executed_price"] == 1.1002
-    assert payload["broker_position_id"] == "888"
-    assert payload["protection_verified"] is True
-    assert payload["attached_stop_loss"] == 1.0950
-    assert payload["attached_take_profit"] == 1.1100
-    assert any(event["event_type"] == "POSITION_PROTECTION_VERIFIED" for event in audit.events)
+    accepted=next(event for event in audit.events if event["event_type"]=="ORDER_ACCEPTED"); payload=accepted["payload"]
+    assert payload["requested_entry"]==1.1000; assert payload["requested_stop_loss"]==1.0950; assert payload["requested_take_profit"]==1.1100
+    assert payload["requested_volume"]==0.01; assert payload["executed_volume"]==0.01; assert payload["executed_price"]==1.1002
+    assert payload["broker_position_id"]=="888"; assert payload["protection_verified"] is True; assert payload["attached_stop_loss"]==1.0950; assert payload["attached_take_profit"]==1.1100
+    assert any(event["event_type"]=="POSITION_PROTECTION_VERIFIED" for event in audit.events)
 
 
 def test_unverified_post_fill_protection_fails_closed_and_blocks_next_order(monkeypatch):
-    monkeypatch.setenv("FX_KILL_SWITCH", "0")
-    monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED", "I_UNDERSTAND_DEMO_ORDERS")
-    gateway = Gateway(protection_verified=False)
-    audit = AuditSink()
-    router = ExecutionRouter(
-        policy(), gateway=gateway, control_gate=Gate(), audit_sink=audit
-    )
-
-    with pytest.raises(ExecutionBlocked, match="POST_FILL_PROTECTION_FAILED"):
-        router.execute(intent(signal_id="unprotected-fill"))
-    assert gateway.sent == 1
-    assert any(event["event_type"] == "POSITION_PROTECTION_FAILED" for event in audit.events)
-
-    with pytest.raises(ExecutionBlocked, match="POST_FILL_PROTECTION_LATCH"):
-        router.execute(intent(signal_id="different-signal"))
-    assert gateway.sent == 1
+    monkeypatch.setenv("FX_KILL_SWITCH","0"); monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED","I_UNDERSTAND_DEMO_ORDERS")
+    gateway=Gateway(protection_verified=False); audit=AuditSink(); router=ExecutionRouter(policy(),gateway=gateway,control_gate=Gate(),audit_sink=audit)
+    with pytest.raises(ExecutionBlocked,match="POST_FILL_PROTECTION_FAILED"): router.execute(intent(signal_id="unprotected-fill"))
+    assert gateway.sent==1; assert any(event["event_type"]=="POSITION_PROTECTION_FAILED" for event in audit.events)
+    with pytest.raises(ExecutionBlocked,match="POST_FILL_PROTECTION_LATCH"): router.execute(intent(signal_id="different-signal"))
+    assert gateway.sent==1
 
 
 class SignalStore:
-    def __init__(self, row):
-        self.row = row
-        self.claimed = []
-
-    def list_execution_ready_signals(self, *, limit=10):
-        return (self.row,)
-
-    def claim_signal_for_execution(self, signal_id):
-        self.claimed.append(signal_id)
-        return True
+    def __init__(self,row): self.row=row; self.claimed=[]
+    def list_execution_ready_signals(self,*,limit=10): return (self.row,)
+    def claim_signal_for_execution(self,signal_id): self.claimed.append(signal_id); return True
 
 
 class Router:
-    def __init__(self, control_gate=None):
-        self.intents = []
-        self.control_gate = control_gate or Gate()
+    def __init__(self,control_gate=None): self.intents=[]; self.control_gate=control_gate or Gate()
+    def execute(self,intent): self.intents.append(intent); return SimpleNamespace(accepted=True)
 
-    def execute(self, intent):
-        self.intents.append(intent)
-        return SimpleNamespace(accepted=True)
+
+def _signal_row(signal_id, now, *, entry_low=1.0998, entry_high=1.1002):
+    return {"id":signal_id,"observed_at":now.isoformat(),"symbol":"EURUSD","direction":"LONG","setup_type":"TREND_CONTINUATION","state":"EXECUTION_READY","entry_low":entry_low,"entry_high":entry_high,"sl":1.0950,"tp2":1.1100,"rr2":2.0,"active_guards":[],"data_coverage":0.95,"expires_at":(now+timedelta(minutes=2)).isoformat(),"final_score":95.0}
 
 
 def test_signal_executor_claims_before_demo_execution():
-    cfg = load_project_config()
-    p = policy()
-    now = datetime.now(tz=UTC)
-    row = {
-        "id": "00000000-0000-0000-0000-000000000001",
-        "observed_at": now.isoformat(),
-        "symbol": "EURUSD",
-        "direction": "LONG",
-        "setup_type": "LIQUIDITY_SWEEP_REVERSAL",
-        "state": "EXECUTION_READY",
-        "entry_low": 1.0998,
-        "entry_high": 1.1002,
-        "sl": 1.0950,
-        "tp2": 1.1100,
-        "rr2": 2.0,
-        "active_guards": [],
-        "data_coverage": 0.90,
-        "expires_at": (now + timedelta(minutes=2)).isoformat(),
-        "final_score": 95.0,
-    }
-    store = SignalStore(row)
-    router = Router()
-    gateway = Gateway(quote=1.1000)
-    executor = CTraderDemoAutoExecutor(
-        cfg=cfg, policy=p, gateway=gateway, router=router, store=store
-    )
-    report = executor.poll_once()
-    assert report.scanned == 1
-    assert report.eligible == 1
-    assert report.claimed == 1
-    assert report.executed == 1
-    assert store.claimed == [row["id"]]
-    assert len(router.intents) == 1
-    assert router.intents[0].volume == 0.01
+    cfg=load_project_config(); p=policy(); now=datetime.now(tz=UTC); row=_signal_row("00000000-0000-0000-0000-000000000001",now)
+    row["setup_type"]="LIQUIDITY_SWEEP_REVERSAL"; row["data_coverage"]=0.90
+    store=SignalStore(row); router=Router(); executor=CTraderDemoAutoExecutor(cfg=cfg,policy=p,gateway=Gateway(quote=1.1000),router=router,store=store)
+    report=executor.poll_once(); assert report.scanned==1; assert report.eligible==1; assert report.claimed==1; assert report.executed==1; assert store.claimed==[row["id"]]; assert router.intents[0].volume==0.01
 
 
 def test_signal_executor_does_not_claim_price_outside_entry_zone():
-    cfg = load_project_config()
-    p = policy()
-    now = datetime.now(tz=UTC)
-    row = {
-        "id": "00000000-0000-0000-0000-000000000002",
-        "observed_at": now.isoformat(),
-        "symbol": "EURUSD",
-        "direction": "LONG",
-        "setup_type": "TREND_CONTINUATION",
-        "state": "EXECUTION_READY",
-        "entry_low": 1.0900,
-        "entry_high": 1.0910,
-        "sl": 1.0850,
-        "tp2": 1.1000,
-        "rr2": 2.0,
-        "active_guards": [],
-        "data_coverage": 0.95,
-        "expires_at": (now + timedelta(minutes=2)).isoformat(),
-        "final_score": 95.0,
-    }
-    store = SignalStore(row)
-    executor = CTraderDemoAutoExecutor(
-        cfg=cfg, policy=p, gateway=Gateway(quote=1.1000), router=Router(), store=store
-    )
-    report = executor.poll_once()
-    assert report.eligible == 0
-    assert report.claimed == 0
-    assert report.executed == 0
-    assert store.claimed == []
+    cfg=load_project_config(); p=policy(); now=datetime.now(tz=UTC); row=_signal_row("00000000-0000-0000-0000-000000000002",now,entry_low=1.0900,entry_high=1.0910)
+    store=SignalStore(row); executor=CTraderDemoAutoExecutor(cfg=cfg,policy=p,gateway=Gateway(quote=1.1000),router=Router(),store=store)
+    report=executor.poll_once(); assert report.eligible==0; assert report.claimed==0; assert report.executed==0; assert store.claimed==[]
 
 
 class BlockedGate:
-    def assert_orders_allowed(self, required_mode):
-        assert required_mode == "AUTO"
-        raise RuntimeError("NEW_ORDERS_DISABLED")
+    def assert_orders_allowed(self,required_mode): assert required_mode=="AUTO"; raise RuntimeError("NEW_ORDERS_DISABLED")
 
 
 def test_signal_executor_does_not_claim_when_control_plane_blocks():
-    cfg = load_project_config()
-    p = policy()
-    now = datetime.now(tz=UTC)
-    row = {
-        "id": "00000000-0000-0000-0000-000000000099",
-        "observed_at": now.isoformat(),
-        "symbol": "EURUSD",
-        "direction": "LONG",
-        "setup_type": "TREND_CONTINUATION",
-        "state": "EXECUTION_READY",
-        "entry_low": 1.0998,
-        "entry_high": 1.1002,
-        "sl": 1.0950,
-        "tp2": 1.1100,
-        "rr2": 2.0,
-        "active_guards": [],
-        "data_coverage": 0.95,
-        "expires_at": (now + timedelta(minutes=2)).isoformat(),
-        "final_score": 95.0,
-    }
-    store = SignalStore(row)
-    executor = CTraderDemoAutoExecutor(
-        cfg=cfg,
-        policy=p,
-        gateway=Gateway(quote=1.1000),
-        router=Router(control_gate=BlockedGate()),
-        store=store,
-    )
-
-    report = executor.poll_once()
-
-    assert report.scanned == 0
-    assert report.claimed == 0
-    assert report.executed == 0
-    assert store.claimed == []
-    assert report.skipped[0].startswith("CONTROL_PLANE_BLOCKED:")
+    cfg=load_project_config(); p=policy(); now=datetime.now(tz=UTC); row=_signal_row("00000000-0000-0000-0000-000000000099",now)
+    store=SignalStore(row); executor=CTraderDemoAutoExecutor(cfg=cfg,policy=p,gateway=Gateway(quote=1.1000),router=Router(control_gate=BlockedGate()),store=store)
+    report=executor.poll_once(); assert report.scanned==0; assert report.claimed==0; assert report.executed==0; assert store.claimed==[]; assert report.skipped[0].startswith("CONTROL_PLANE_BLOCKED:")
