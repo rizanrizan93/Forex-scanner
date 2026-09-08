@@ -55,6 +55,10 @@ class ExecutionRouter:
         self.control_gate = control_gate
         self.revalidator = revalidator
         self.audit_sink = audit_sink
+        # Process-local hard latch for the remainder of an execution run. Across
+        # fresh workflow processes, the account-wide broker exposure guard is the
+        # source of truth and blocks any reconciled position without SL/TP.
+        self._post_fill_protection_block: str | None = None
 
     def _audit(self, event_type: str, *, account_id: str = "UNKNOWN", accepted=None, code=None, message=None, payload=None) -> None:
         if self.audit_sink is None:
@@ -79,6 +83,10 @@ class ExecutionRouter:
     def _assert_dynamic_safety(self, intent: OrderIntent) -> None:
         if self.kill_switch.engaged():
             raise ExecutionBlocked("KILL_SWITCH_ENGAGED")
+        if self._post_fill_protection_block is not None:
+            raise ExecutionBlocked(
+                f"POST_FILL_PROTECTION_LATCH:{self._post_fill_protection_block}"
+            )
         max_age = int(self.policy.order.get("max_signal_age_seconds", 300))
         age = (datetime.now(tz=UTC) - intent.created_at).total_seconds()
         if age < -1.0:
@@ -299,6 +307,7 @@ class ExecutionRouter:
                         getattr(result, "protection_message", None)
                         or "broker position SL/TP could not be verified"
                     )
+                    self._post_fill_protection_block = protection_code
                     self._audit(
                         "POSITION_PROTECTION_FAILED",
                         account_id=account_id,
