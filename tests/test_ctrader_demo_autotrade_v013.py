@@ -153,8 +153,8 @@ def test_canonical_config_switches_only_demo_execution_backend():
     assert not p.broker["dual_feed_single_execution"]
     assert p.ctrader["environment"] == "DEMO"
     assert p.ctrader["role"] == "RESEARCH_AND_DEMO_EXECUTION"
-    assert p.demo_safety["max_order_lots"] == 0.10
-    assert p.demo_safety["max_risk_pct"] == 5.0
+    assert p.demo_safety["max_order_lots"] == 0.01
+    assert p.demo_safety["max_risk_pct"] == 3.0
     assert p.demo_safety["max_concurrent_positions"] == 10
 
 
@@ -209,9 +209,7 @@ def test_accepted_order_audit_preserves_executed_entry_sl_tp_and_volume(monkeypa
     router = ExecutionRouter(
         policy(), gateway=gateway, control_gate=Gate(), audit_sink=audit
     )
-
     router.execute(intent())
-
     accepted = next(event for event in audit.events if event["event_type"] == "ORDER_ACCEPTED")
     payload = accepted["payload"]
     assert payload["requested_entry"] == 1.1000
@@ -232,15 +230,11 @@ def test_unverified_post_fill_protection_fails_closed_and_blocks_next_order(monk
     monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED", "I_UNDERSTAND_DEMO_ORDERS")
     gateway = Gateway(protection_verified=False)
     audit = AuditSink()
-    router = ExecutionRouter(
-        policy(), gateway=gateway, control_gate=Gate(), audit_sink=audit
-    )
-
+    router = ExecutionRouter(policy(), gateway=gateway, control_gate=Gate(), audit_sink=audit)
     with pytest.raises(ExecutionBlocked, match="POST_FILL_PROTECTION_FAILED"):
         router.execute(intent(signal_id="unprotected-fill"))
     assert gateway.sent == 1
     assert any(event["event_type"] == "POSITION_PROTECTION_FAILED" for event in audit.events)
-
     with pytest.raises(ExecutionBlocked, match="POST_FILL_PROTECTION_LATCH"):
         router.execute(intent(signal_id="different-signal"))
     assert gateway.sent == 1
@@ -250,10 +244,7 @@ class SignalStore:
     def __init__(self, row):
         self.row = row
         self.claimed = []
-
-    def list_execution_ready_signals(self, *, limit=10):
-        return (self.row,)
-
+    def list_execution_ready_signals(self, *, limit=10): return (self.row,)
     def claim_signal_for_execution(self, signal_id):
         self.claimed.append(signal_id)
         return True
@@ -263,39 +254,16 @@ class Router:
     def __init__(self, control_gate=None):
         self.intents = []
         self.control_gate = control_gate or Gate()
-
     def execute(self, intent):
         self.intents.append(intent)
         return SimpleNamespace(accepted=True)
 
 
 def test_signal_executor_claims_before_demo_execution():
-    cfg = load_project_config()
-    p = policy()
-    now = datetime.now(tz=UTC)
-    row = {
-        "id": "00000000-0000-0000-0000-000000000001",
-        "observed_at": now.isoformat(),
-        "symbol": "EURUSD",
-        "direction": "LONG",
-        "setup_type": "LIQUIDITY_SWEEP_REVERSAL",
-        "state": "EXECUTION_READY",
-        "entry_low": 1.0998,
-        "entry_high": 1.1002,
-        "sl": 1.0950,
-        "tp2": 1.1100,
-        "rr2": 2.0,
-        "active_guards": [],
-        "data_coverage": 0.90,
-        "expires_at": (now + timedelta(minutes=2)).isoformat(),
-        "final_score": 95.0,
-    }
-    store = SignalStore(row)
-    router = Router()
-    gateway = Gateway(quote=1.1000)
-    executor = CTraderDemoAutoExecutor(
-        cfg=cfg, policy=p, gateway=gateway, router=router, store=store
-    )
+    cfg = load_project_config(); p = policy(); now = datetime.now(tz=UTC)
+    row = {"id":"00000000-0000-0000-0000-000000000001","observed_at":now.isoformat(),"symbol":"EURUSD","direction":"LONG","setup_type":"LIQUIDITY_SWEEP_REVERSAL","state":"EXECUTION_READY","entry_low":1.0998,"entry_high":1.1002,"sl":1.0950,"tp2":1.1100,"rr2":2.0,"active_guards":[],"data_coverage":0.90,"expires_at":(now+timedelta(minutes=2)).isoformat(),"final_score":95.0}
+    store = SignalStore(row); router = Router(); gateway = Gateway(quote=1.1000)
+    executor = CTraderDemoAutoExecutor(cfg=cfg, policy=p, gateway=gateway, router=router, store=store)
     report = executor.poll_once()
     assert report.scanned == 1
     assert report.eligible == 1
@@ -307,30 +275,10 @@ def test_signal_executor_claims_before_demo_execution():
 
 
 def test_signal_executor_does_not_claim_price_outside_entry_zone():
-    cfg = load_project_config()
-    p = policy()
-    now = datetime.now(tz=UTC)
-    row = {
-        "id": "00000000-0000-0000-0000-000000000002",
-        "observed_at": now.isoformat(),
-        "symbol": "EURUSD",
-        "direction": "LONG",
-        "setup_type": "TREND_CONTINUATION",
-        "state": "EXECUTION_READY",
-        "entry_low": 1.0900,
-        "entry_high": 1.0910,
-        "sl": 1.0850,
-        "tp2": 1.1000,
-        "rr2": 2.0,
-        "active_guards": [],
-        "data_coverage": 0.95,
-        "expires_at": (now + timedelta(minutes=2)).isoformat(),
-        "final_score": 95.0,
-    }
+    cfg = load_project_config(); p = policy(); now = datetime.now(tz=UTC)
+    row = {"id":"00000000-0000-0000-0000-000000000002","observed_at":now.isoformat(),"symbol":"EURUSD","direction":"LONG","setup_type":"TREND_CONTINUATION","state":"EXECUTION_READY","entry_low":1.0900,"entry_high":1.0910,"sl":1.0850,"tp2":1.1000,"rr2":2.0,"active_guards":[],"data_coverage":0.95,"expires_at":(now+timedelta(minutes=2)).isoformat(),"final_score":95.0}
     store = SignalStore(row)
-    executor = CTraderDemoAutoExecutor(
-        cfg=cfg, policy=p, gateway=Gateway(quote=1.1000), router=Router(), store=store
-    )
+    executor = CTraderDemoAutoExecutor(cfg=cfg, policy=p, gateway=Gateway(quote=1.1000), router=Router(), store=store)
     report = executor.poll_once()
     assert report.eligible == 0
     assert report.claimed == 0
@@ -345,37 +293,11 @@ class BlockedGate:
 
 
 def test_signal_executor_does_not_claim_when_control_plane_blocks():
-    cfg = load_project_config()
-    p = policy()
-    now = datetime.now(tz=UTC)
-    row = {
-        "id": "00000000-0000-0000-0000-000000000099",
-        "observed_at": now.isoformat(),
-        "symbol": "EURUSD",
-        "direction": "LONG",
-        "setup_type": "TREND_CONTINUATION",
-        "state": "EXECUTION_READY",
-        "entry_low": 1.0998,
-        "entry_high": 1.1002,
-        "sl": 1.0950,
-        "tp2": 1.1100,
-        "rr2": 2.0,
-        "active_guards": [],
-        "data_coverage": 0.95,
-        "expires_at": (now + timedelta(minutes=2)).isoformat(),
-        "final_score": 95.0,
-    }
+    cfg = load_project_config(); p = policy(); now = datetime.now(tz=UTC)
+    row = {"id":"00000000-0000-0000-0000-000000000099","observed_at":now.isoformat(),"symbol":"EURUSD","direction":"LONG","setup_type":"TREND_CONTINUATION","state":"EXECUTION_READY","entry_low":1.0998,"entry_high":1.1002,"sl":1.0950,"tp2":1.1100,"rr2":2.0,"active_guards":[],"data_coverage":0.95,"expires_at":(now+timedelta(minutes=2)).isoformat(),"final_score":95.0}
     store = SignalStore(row)
-    executor = CTraderDemoAutoExecutor(
-        cfg=cfg,
-        policy=p,
-        gateway=Gateway(quote=1.1000),
-        router=Router(control_gate=BlockedGate()),
-        store=store,
-    )
-
+    executor = CTraderDemoAutoExecutor(cfg=cfg,policy=p,gateway=Gateway(quote=1.1000),router=Router(control_gate=BlockedGate()),store=store)
     report = executor.poll_once()
-
     assert report.scanned == 0
     assert report.claimed == 0
     assert report.executed == 0
