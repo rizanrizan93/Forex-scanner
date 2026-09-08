@@ -36,7 +36,7 @@ jobs:
       CTRADER_DEMO_WAVE_MAX_ZONE_ATR: "0.50"
       CTRADER_DEMO_MOMENTUM_MAX_ZONE_ATR: "0.20"
       CTRADER_DEMO_MAX_ENTRY_DRIFT_R: "0.50"
-      CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"
+      CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"
       CTRADER_DEMO_DEEP_ANALYSIS_TOP: "8"
       CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"
       CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"
@@ -63,6 +63,10 @@ jobs:
         run: python -m fx_scanner.demo_crypto_broker_preflight
       - name: Discover and rank full DEMO universe
         run: |
+          # The Python market schedule is UTC-based. On weekends only the three
+          # authorized crypto symbols are selected. Weekday-only spread overrides
+          # must not be presented to the already-scheduled crypto-only config.
+          # Broker trading sessions remain authoritative and fail closed.
           if [ "$(date -u +%u)" -ge 6 ]; then
             export CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS=""
             export CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS=""
