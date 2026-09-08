@@ -47,13 +47,13 @@ class _Client:
         return _Query(self.rows)
 
 
-def test_demo_runtime_profile_defaults_keep_conservative_lot_and_no_stacking(monkeypatch):
+def test_demo_runtime_profile_defaults_keep_bounded_lot_and_no_stacking(monkeypatch):
     monkeypatch.setenv(DEMO_POSITION_CAP_ENV, "10")
     monkeypatch.delenv(DEMO_ORDER_LOT_CAP_ENV, raising=False)
     monkeypatch.delenv(DEMO_STACKING_ENV, raising=False)
     policy = load_demo_execution_policy()
     assert policy.demo_safety["max_concurrent_positions"] == 10
-    assert policy.demo_safety["max_order_lots"] == 0.01
+    assert policy.demo_safety["max_order_lots"] == 0.10
     assert policy.demo_safety["allow_same_symbol_stacking"] is False
     assert policy.ctrader["environment"] == "DEMO"
     assert policy.ctrader["require_demo"] is True
@@ -69,11 +69,10 @@ def test_execution_policy_ceiling_accepts_ten_and_rejects_eleven(tmp_path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
     source = (ROOT / "config" / "execution.yaml").read_text(encoding="utf-8")
-    ten = source.replace("max_concurrent_positions: 2", "max_concurrent_positions: 10")
-    (config_dir / "execution.yaml").write_text(ten, encoding="utf-8")
+    (config_dir / "execution.yaml").write_text(source, encoding="utf-8")
     assert load_execution_policy(tmp_path).demo_safety["max_concurrent_positions"] == 10
 
-    eleven = ten.replace("max_concurrent_positions: 10", "max_concurrent_positions: 11")
+    eleven = source.replace("max_concurrent_positions: 10", "max_concurrent_positions: 11")
     (config_dir / "execution.yaml").write_text(eleven, encoding="utf-8")
     with pytest.raises(ConfigurationError, match=r"\[1,10\]"):
         load_execution_policy(tmp_path)
@@ -148,7 +147,7 @@ def test_auto_workflow_repairs_before_new_orders_and_requests_dynamic_profile():
     repair = "python -m fx_scanner.demo_existing_protection_repair"
     execute = "python -m fx_scanner.demo_fresh_ready_handoff --limit 10"
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in source
-    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"' in source
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.10"' in source
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in source
     assert 'CTRADER_DEMO_STACK_MIN_SCORE: "85"' in source
     assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "3"' in source

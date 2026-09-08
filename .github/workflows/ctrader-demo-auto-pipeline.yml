@@ -37,9 +37,9 @@ jobs:
       CTRADER_DEMO_WAVE_MAX_ZONE_ATR: "0.50"
       CTRADER_DEMO_MOMENTUM_MAX_ZONE_ATR: "0.20"
       CTRADER_DEMO_MAX_ENTRY_DRIFT_R: "0.50"
-      CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"
+      CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"
       CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"
-      CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"
+      CTRADER_DEMO_MAX_ORDER_LOTS: "0.10"
       CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"
       CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "25.0"
       CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"
@@ -55,6 +55,7 @@ jobs:
       CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS: "20"
       CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "1"
       CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"
+      CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "1"
       CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "1"
       CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED: "1"
       CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"
@@ -80,5 +81,7 @@ jobs:
         run: python -m fx_scanner.demo_existing_protection_repair
       - name: Execute only fresh durable EXECUTION_READY DEMO signals
         run: python -m fx_scanner.demo_fresh_ready_handoff --limit 10
+      - name: Advance adaptive server-side profit lock on profitable DEMO positions
+        run: python -m fx_scanner.demo_adaptive_profit_lock
       - name: Protect profitable DEMO positions on confirmed structural reversal
         run: python -m fx_scanner.demo_structural_profit_protector
