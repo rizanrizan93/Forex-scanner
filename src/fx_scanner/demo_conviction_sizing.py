@@ -6,7 +6,7 @@ from typing import Any
 
 MAX_DEMO_LOTS = 0.10
 MIN_DEMO_LOTS = 0.01
-MAX_DEMO_RISK_PCT = 3.0
+MAX_DEMO_RISK_PCT = 5.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +26,7 @@ def select_demo_conviction_sizing(
 
     Low-confidence cohorts remain at the 0.01-lot floor while higher-quality
     setups may scale gradually to 0.10 lot. Entry/SL/TP geometry is never changed
-    here and the DEMO risk-budget contract remains capped at 3 percentage points.
+    here and the DEMO risk-budget contract remains capped at 5 percentage points.
     """
     try:
         score = float(row.get("final_score"))
@@ -45,13 +45,13 @@ def select_demo_conviction_sizing(
         raise ValueError("DEMO_CONVICTION_SIZING_CAP_INVALID")
 
     if score >= 95.0 and coverage >= 0.95 and rr2 >= 2.50:
-        tier, lots, risk = "ELITE", 0.10, 3.0
+        tier, lots, risk = "ELITE", 0.10, 5.0
     elif score >= 90.0 and coverage >= 0.90 and rr2 >= 2.00:
-        tier, lots, risk = "A_PLUS", 0.06, 2.5
+        tier, lots, risk = "A_PLUS", 0.06, 4.0
     elif score >= 80.0 and coverage >= 0.90 and rr2 >= 2.00:
-        tier, lots, risk = "A", 0.04, 2.0
+        tier, lots, risk = "A", 0.04, 3.0
     elif score >= 70.0 and coverage >= 0.85 and rr2 >= 1.75:
-        tier, lots, risk = "B_PLUS", 0.02, 1.5
+        tier, lots, risk = "B_PLUS", 0.02, 2.0
     elif score >= 60.0:
         tier, lots, risk = "B", 0.01, 1.0
     else:
