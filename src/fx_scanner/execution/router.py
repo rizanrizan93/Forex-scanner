@@ -265,6 +265,14 @@ class ExecutionRouter:
                     "symbol": intent.symbol,
                     "broker_symbol": effective_intent.broker_symbol,
                     "broker_order_id": result.broker_order_id,
+                    "order_type": effective_intent.order_type.value,
+                    "requested_volume": effective_intent.volume,
+                    "risk_budget_pct": effective_intent.risk_pct,
+                    "requested_entry": effective_intent.entry_price,
+                    "requested_stop_loss": effective_intent.stop_loss,
+                    "requested_take_profit": effective_intent.take_profit,
+                    "executed_volume": result.executed_volume,
+                    "executed_price": result.executed_price,
                 },
             )
             return OrderReceipt(

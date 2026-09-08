@@ -89,18 +89,10 @@ def main() -> int:
     max_age_seconds = float(policy.order.get("max_signal_age_seconds", 300))
     install_fresh_execution_ready_handoff(max_age_seconds=max_age_seconds)
 
-    # DEMO-only sizing: setup conviction selects 0.01-0.10 lot and a bounded
-    # 0.5%-3% risk budget after the existing freshness/geometry/RR guards pass.
-    from .demo_conviction_sizing import install_demo_conviction_sizing
-
-    install_demo_conviction_sizing()
-
-    # DEMO-only execution semantics: same-direction stacking is allowed while
-    # opposite reversals close scanner-linked exposure only, quarantine any
-    # uncertain close, and force fresh post-close revalidation before entry.
-    from .demo_position_reversal import install_demo_position_policy
-
-    install_demo_position_policy()
+    # Keep the fail-closed base executor authoritative. It enforces the
+    # canonical 0.01-lot cap and blocks a second position on the same symbol.
+    # Conviction-scaled lots remain disabled until sizing is derived from the
+    # broker's monetary loss at the live stop rather than from score alone.
 
     from .demo_calibration_autotrade import main as calibration_main
 

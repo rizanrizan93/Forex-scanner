@@ -333,6 +333,11 @@ class CTraderDemoAutoExecutor:
             target_symbol_id = int(session.symbol_info(symbol).symbolId)
             reconcile = session.reconcile()
             for position in tuple(getattr(reconcile, "position", ())):
+                position_id = int(getattr(position, "positionId", 0) or 0)
+                stop_loss = float(getattr(position, "stopLoss", 0.0) or 0.0)
+                take_profit = float(getattr(position, "takeProfit", 0.0) or 0.0)
+                if stop_loss <= 0.0 or take_profit <= 0.0:
+                    return f"BROKER_POSITION_UNPROTECTED:{position_id or 'UNKNOWN'}"
                 trade_data = getattr(position, "tradeData", None)
                 position_symbol_id = getattr(trade_data, "symbolId", None)
                 if (

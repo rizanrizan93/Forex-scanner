@@ -38,13 +38,46 @@ class Session:
 
     def reconcile(self):
         return SimpleNamespace(
-            position=(SimpleNamespace(tradeData=SimpleNamespace(symbolId=42)),)
+            position=(
+                SimpleNamespace(
+                    positionId=101,
+                    stopLoss=0.89,
+                    takeProfit=0.91,
+                    tradeData=SimpleNamespace(symbolId=42),
+                ),
+            )
         )
 
 
 class SymbolGateway:
     def __init__(self):
         self.session = Session()
+
+    def position_count(self):
+        return 1
+
+
+class UnprotectedSession(Session):
+    def symbol_info(self, symbol):
+        assert symbol == "EURUSD"
+        return SimpleNamespace(symbolId=7)
+
+    def reconcile(self):
+        return SimpleNamespace(
+            position=(
+                SimpleNamespace(
+                    positionId=202,
+                    stopLoss=0.0,
+                    takeProfit=1.12,
+                    tradeData=SimpleNamespace(symbolId=42),
+                ),
+            )
+        )
+
+
+class UnprotectedGateway:
+    def __init__(self):
+        self.session = UnprotectedSession()
 
     def position_count(self):
         return 1
@@ -89,6 +122,11 @@ def test_capacity_is_blocked_before_signal_claim():
 def test_same_symbol_open_position_is_blocked_before_signal_claim():
     block = executor(SymbolGateway())._broker_exposure_block("USDCHF")
     assert block == "BROKER_SYMBOL_ALREADY_OPEN:USDCHF"
+
+
+def test_any_unprotected_broker_position_blocks_new_orders():
+    block = executor(UnprotectedGateway())._broker_exposure_block("EURUSD")
+    assert block == "BROKER_POSITION_UNPROTECTED:202"
 
 
 def test_free_capacity_without_session_specific_reconciliation_is_allowed():

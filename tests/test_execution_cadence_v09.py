@@ -44,3 +44,13 @@ def test_v09_setup_forming_cadence_cannot_be_slowed(tmp_path):
     path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     with pytest.raises(ConfigurationError, match="cannot exceed 500ms"):
         load_execution_policy(root)
+
+
+def test_demo_position_cap_cannot_be_raised_above_two(tmp_path):
+    root = copied_root(tmp_path)
+    path = root / "config" / "execution.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["demo_safety"]["max_concurrent_positions"] = 3
+    path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    with pytest.raises(ConfigurationError, match=r"must be in \[1,2\]"):
+        load_execution_policy(root)
