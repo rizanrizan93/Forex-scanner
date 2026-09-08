@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from decimal import Decimal, InvalidOperation, ROUND_FLOOR
 from math import isfinite
 from time import monotonic, sleep
 from typing import Any, Callable
@@ -37,27 +38,43 @@ def _finite_positive(value: Any, *, name: str) -> float:
     return parsed
 
 
+def _decimal(value: Any, *, name: str) -> Decimal:
+    try:
+        parsed = Decimal(str(value))
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        raise ValueError(f"DEMO_BROKER_RISK_{name}_INVALID") from exc
+    if not parsed.is_finite() or parsed <= 0:
+        raise ValueError(f"DEMO_BROKER_RISK_{name}_INVALID")
+    return parsed
+
+
 def floor_broker_volume_cents(
-    raw_volume_cents: float,
+    raw_volume_cents: float | Decimal,
     *,
     minimum: int,
     step: int,
     maximum: int | None = None,
 ) -> int:
     """Floor protocol volume (0.01 native units) to the broker's exact grid."""
-    if not isfinite(float(raw_volume_cents)) or raw_volume_cents <= 0:
+    try:
+        raw = Decimal(str(raw_volume_cents))
+    except (InvalidOperation, ValueError, TypeError):
+        return 0
+    if not raw.is_finite() or raw <= 0:
         return 0
     minimum = int(minimum)
     step = int(step)
     if minimum <= 0 or step <= 0:
         raise ValueError("DEMO_BROKER_RISK_VOLUME_GRID_INVALID")
-    capped = float(raw_volume_cents)
+    capped = raw
     if maximum is not None and int(maximum) > 0:
-        capped = min(capped, float(int(maximum)))
-    if capped + 1e-9 < minimum:
+        capped = min(capped, Decimal(int(maximum)))
+    minimum_d = Decimal(minimum)
+    step_d = Decimal(step)
+    if capped < minimum_d:
         return 0
-    units = int((capped - minimum) // step)
-    return minimum + units * step
+    units = ((capped - minimum_d) / step_d).to_integral_value(rounding=ROUND_FLOOR)
+    return int(minimum_d + units * step_d)
 
 
 def monetary_loss_at_stop(
@@ -68,16 +85,17 @@ def monetary_loss_at_stop(
     quote_to_deposit_rate: float,
 ) -> float:
     """Estimate gross loss in deposit currency at SL using cTrader volume units."""
-    entry = _finite_positive(entry_price, name="ENTRY")
-    stop = _finite_positive(stop_loss, name="STOP")
-    rate = _finite_positive(quote_to_deposit_rate, name="CONVERSION_RATE")
+    entry = _decimal(entry_price, name="ENTRY")
+    stop = _decimal(stop_loss, name="STOP")
+    rate = _decimal(quote_to_deposit_rate, name="CONVERSION_RATE")
     volume = int(volume_cents)
     if volume <= 0:
         raise ValueError("DEMO_BROKER_RISK_VOLUME_INVALID")
     # Open API protocol volume is expressed in cents: 100 protocol units =
     # one native base-asset unit. P/L is price distance * native units, then
     # converted from the symbol quote asset into the account deposit asset.
-    return abs(entry - stop) * (float(volume) / 100.0) * rate
+    loss = abs(entry - stop) * (Decimal(volume) / Decimal(100)) * rate
+    return float(loss)
 
 
 def risk_capped_volume_cents(
@@ -92,15 +110,15 @@ def risk_capped_volume_cents(
     maximum: int | None = None,
 ) -> int:
     """Return the largest broker-grid volume whose SL loss fits the cash budget."""
-    budget = _finite_positive(risk_capital, name="RISK_CAPITAL")
-    per_cent_loss = monetary_loss_at_stop(
-        entry_price=entry_price,
-        stop_loss=stop_loss,
-        volume_cents=1,
-        quote_to_deposit_rate=quote_to_deposit_rate,
-    )
+    budget = _decimal(risk_capital, name="RISK_CAPITAL")
+    entry = _decimal(entry_price, name="ENTRY")
+    stop = _decimal(stop_loss, name="STOP")
+    rate = _decimal(quote_to_deposit_rate, name="CONVERSION_RATE")
+    per_cent_loss = abs(entry - stop) * rate / Decimal(100)
+    if per_cent_loss <= 0:
+        raise ValueError("DEMO_BROKER_RISK_STOP_DISTANCE_INVALID")
     raw_by_risk = budget / per_cent_loss
-    raw = min(float(int(conviction_volume_cents)), raw_by_risk)
+    raw = min(Decimal(int(conviction_volume_cents)), raw_by_risk)
     return floor_broker_volume_cents(
         raw,
         minimum=minimum,
@@ -325,16 +343,17 @@ def _margin_capped_volume(
         )
         if margin <= cap + 1e-9:
             return target, margin
-        proportional = max(0.0, float(target) * cap / margin * 0.995)
+        proportional = Decimal(target) * _decimal(cap, name="MARGIN_CAPITAL") / _decimal(
+            margin, name="EXPECTED_MARGIN"
+        ) * Decimal("0.995")
         next_target = floor_broker_volume_cents(
             proportional,
             minimum=minimum,
             step=step,
         )
         if next_target >= target:
-            next_target = target - step
             next_target = floor_broker_volume_cents(
-                next_target,
+                Decimal(target - step),
                 minimum=minimum,
                 step=step,
             )
@@ -430,7 +449,7 @@ def select_demo_broker_native_sizing(
 
     minimum, step, maximum, lot_size = _symbol_volume_grid(symbol_info)
     conviction_volume = floor_broker_volume_cents(
-        conviction_lots * float(lot_size),
+        _decimal(conviction_lots, name="CONVICTION_LOTS") * Decimal(lot_size),
         minimum=minimum,
         step=step,
         maximum=maximum,
@@ -486,7 +505,7 @@ def select_demo_broker_native_sizing(
         quote_to_deposit_rate=conversion_rate,
     )
     estimated_pct = estimated_loss / equity * 100.0
-    final_lots = float(final_volume) / float(lot_size)
+    final_lots = float(Decimal(final_volume) / Decimal(lot_size))
     if final_lots <= 0.0 or final_lots > conviction_lots + 1e-9:
         raise ValueError("DEMO_BROKER_RISK_FINAL_LOTS_INVALID")
     if estimated_loss > monetary_budget + 1e-6:
