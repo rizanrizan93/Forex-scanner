@@ -9,7 +9,9 @@ from fx_scanner.demo_existing_protection_repair import (
     _signal_id_from_comment,
 )
 from fx_scanner.demo_fresh_ready_handoff import (
+    DEMO_ORDER_LOT_CAP_ENV,
     DEMO_POSITION_CAP_ENV,
+    DEMO_STACKING_ENV,
     load_demo_execution_policy,
 )
 from fx_scanner.exceptions import ConfigurationError
@@ -45,11 +47,14 @@ class _Client:
         return _Query(self.rows)
 
 
-def test_demo_runtime_profile_allows_ten_without_changing_lot_or_demo_lock(monkeypatch):
+def test_demo_runtime_profile_defaults_keep_conservative_lot_and_no_stacking(monkeypatch):
     monkeypatch.setenv(DEMO_POSITION_CAP_ENV, "10")
+    monkeypatch.delenv(DEMO_ORDER_LOT_CAP_ENV, raising=False)
+    monkeypatch.delenv(DEMO_STACKING_ENV, raising=False)
     policy = load_demo_execution_policy()
     assert policy.demo_safety["max_concurrent_positions"] == 10
     assert policy.demo_safety["max_order_lots"] == 0.01
+    assert policy.demo_safety["allow_same_symbol_stacking"] is False
     assert policy.ctrader["environment"] == "DEMO"
     assert policy.ctrader["require_demo"] is True
 
@@ -136,17 +141,21 @@ def test_exact_broker_identity_rejects_position_or_side_mismatch():
     ) is None
 
 
-def test_auto_workflow_repairs_before_new_orders_and_requests_max10_profile():
+def test_auto_workflow_repairs_before_new_orders_and_requests_dynamic_profile():
     source = (ROOT / ".github" / "workflows" / "ctrader-demo-auto-pipeline.yml").read_text(
         encoding="utf-8"
     )
     repair = "python -m fx_scanner.demo_existing_protection_repair"
     execute = "python -m fx_scanner.demo_fresh_ready_handoff --limit 10"
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in source
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.10"' in source
+    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in source
+    assert 'CTRADER_DEMO_STACK_MIN_SCORE: "85"' in source
+    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "3"' in source
     assert source.index(repair) < source.index(execute)
 
 
-def test_same_symbol_stacking_guard_remains_present():
+def test_base_executor_same_symbol_and_unprotected_guards_remain_present():
     source = (ROOT / "src" / "fx_scanner" / "execution" / "demo_autotrade.py").read_text(
         encoding="utf-8"
     )
