@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from ..exceptions import FXScannerError
 from .duplicate_guard import DuplicateOrderGuard
 from .kill_switch import KillSwitch
-from .models import ExecutionMode, OrderIntent, OrderReceipt
+from .models import ExecutionMode, OrderIntent, OrderReceipt, OrderType
 from .policy import ExecutionPolicy
 
 
@@ -150,6 +150,13 @@ class ExecutionRouter:
             return
         self._assert_live_environment(account_id)
 
+    def _requires_post_fill_protection(self, intent: OrderIntent) -> bool:
+        return bool(
+            self._is_ctrader_demo_execution()
+            and intent.order_type == OrderType.MARKET
+            and getattr(self.gateway, "post_fill_protection_managed", False)
+        )
+
     def execute(self, intent: OrderIntent, *, user_confirmed: bool = False) -> OrderReceipt:
         self._assert_common(intent)
         mode = self.policy.mode
@@ -252,29 +259,70 @@ class ExecutionRouter:
                 submission_quarantined = False
                 raise ExecutionBlocked(f"ORDER_SEND_REJECTED:{result.code}:{result.message}")
 
+            # Broker acceptance is a real side effect regardless of subsequent
+            # protection verification. Persist idempotency before any fail-closed
+            # protection decision so the signal can never be blindly retried.
             self.duplicates.mark_executed(intent.signal_id)
             submission_quarantined = False
+            order_payload = {
+                "signal_id": intent.signal_id,
+                "symbol": intent.symbol,
+                "broker_symbol": effective_intent.broker_symbol,
+                "broker_order_id": result.broker_order_id,
+                "broker_position_id": getattr(result, "broker_position_id", None),
+                "order_type": effective_intent.order_type.value,
+                "requested_volume": effective_intent.volume,
+                "risk_budget_pct": effective_intent.risk_pct,
+                "requested_entry": effective_intent.entry_price,
+                "requested_stop_loss": effective_intent.stop_loss,
+                "requested_take_profit": effective_intent.take_profit,
+                "executed_volume": result.executed_volume,
+                "executed_price": result.executed_price,
+                "protection_verified": getattr(result, "protection_verified", None),
+                "attached_stop_loss": getattr(result, "attached_stop_loss", None),
+                "attached_take_profit": getattr(result, "attached_take_profit", None),
+                "protection_code": getattr(result, "protection_code", None),
+            }
             self._audit(
                 "ORDER_ACCEPTED",
                 account_id=account_id,
                 accepted=True,
                 code=result.code,
                 message=result.message,
-                payload={
-                    "signal_id": intent.signal_id,
-                    "symbol": intent.symbol,
-                    "broker_symbol": effective_intent.broker_symbol,
-                    "broker_order_id": result.broker_order_id,
-                    "order_type": effective_intent.order_type.value,
-                    "requested_volume": effective_intent.volume,
-                    "risk_budget_pct": effective_intent.risk_pct,
-                    "requested_entry": effective_intent.entry_price,
-                    "requested_stop_loss": effective_intent.stop_loss,
-                    "requested_take_profit": effective_intent.take_profit,
-                    "executed_volume": result.executed_volume,
-                    "executed_price": result.executed_price,
-                },
+                payload=order_payload,
             )
+
+            if self._requires_post_fill_protection(effective_intent):
+                protection_verified = getattr(result, "protection_verified", None)
+                if protection_verified is not True:
+                    protection_code = str(getattr(result, "protection_code", None) or "PROTECTION_NOT_VERIFIED")
+                    protection_message = str(
+                        getattr(result, "protection_message", None)
+                        or "broker position SL/TP could not be verified"
+                    )
+                    self._audit(
+                        "POSITION_PROTECTION_FAILED",
+                        account_id=account_id,
+                        accepted=False,
+                        code=protection_code,
+                        message=protection_message,
+                        payload=order_payload,
+                    )
+                    raise ExecutionBlocked(
+                        f"POST_FILL_PROTECTION_FAILED:{protection_code}:{protection_message}"
+                    )
+                self._audit(
+                    "POSITION_PROTECTION_VERIFIED",
+                    account_id=account_id,
+                    accepted=True,
+                    code=str(getattr(result, "protection_code", None) or "PROTECTION_VERIFIED"),
+                    message=str(
+                        getattr(result, "protection_message", None)
+                        or "broker position SL/TP verified"
+                    ),
+                    payload=order_payload,
+                )
+
             return OrderReceipt(
                 intent.signal_id,
                 intent.symbol,
