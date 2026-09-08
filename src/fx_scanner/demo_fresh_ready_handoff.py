@@ -13,7 +13,7 @@ UTC = timezone.utc
 DEMO_POSITION_CAP_ENV = "CTRADER_DEMO_MAX_CONCURRENT_POSITIONS"
 DEMO_POSITION_CAP_CEILING = 10
 DEMO_ORDER_LOT_CAP_ENV = "CTRADER_DEMO_MAX_ORDER_LOTS"
-DEMO_ORDER_LOT_CAP_CEILING = 0.10
+DEMO_ORDER_LOT_CAP_CEILING = 0.01
 DEMO_STACKING_ENV = "CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING"
 DEMO_STACK_MIN_SCORE_ENV = "CTRADER_DEMO_STACK_MIN_SCORE"
 DEMO_STACK_MIN_COVERAGE_ENV = "CTRADER_DEMO_STACK_MIN_COVERAGE"
@@ -85,9 +85,8 @@ def _bool_env(name: str, *, default: bool = False) -> bool:
 def load_demo_execution_policy(root=None) -> ExecutionPolicy:
     """Load canonical policy plus an explicit bounded DEMO runtime profile.
 
-    Static config remains conservative (0.01 lot, two positions, no stacking).
-    The Auto workflow may opt into up to ten total positions, conviction-sized
-    orders up to 0.10 lot, bounded aggregate open risk, and same-symbol stacking
+    The Auto workflow may opt into up to ten total positions, with every order
+    capped at 0.01 lot, bounded aggregate open risk, and same-symbol stacking
     only behind the independent high-conviction gate. LIVE remains untouched.
     """
     policy = _load_execution_policy(root)
@@ -169,11 +168,6 @@ def fresh_execution_ready_rows(
     max_age_seconds: float,
     limit: int,
 ) -> tuple[dict[str, Any], ...]:
-    """Return newest durable EXECUTION_READY rows that are still executable by time.
-
-    This is intentionally a handoff filter only. It never promotes WATCH/ARMED/
-    SETUP_FORMING rows and never changes score, guards, entry, SL, TP or RR.
-    """
     current = now.astimezone(UTC)
     cutoff = current - timedelta(seconds=float(max_age_seconds))
     fresh: list[tuple[datetime, dict[str, Any]]] = []
@@ -193,12 +187,6 @@ def fresh_execution_ready_rows(
 
 
 def install_fresh_execution_ready_handoff(*, max_age_seconds: float) -> None:
-    """Replace the DEMO read boundary with a freshness-aware durable query.
-
-    The executor still performs its own timestamp, quote, RR and geometry checks.
-    This only prevents an old EXECUTION_READY backlog from occupying the bounded
-    executor poll while a newer signal is waiting behind it.
-    """
     age_limit = float(max_age_seconds)
     if age_limit <= 0:
         raise ValueError("max_age_seconds must be positive")
@@ -230,17 +218,10 @@ def main() -> int:
     max_age_seconds = float(policy.order.get("max_signal_age_seconds", 300))
     install_fresh_execution_ready_handoff(max_age_seconds=max_age_seconds)
 
-    # The calibration module imports its loader as a module-level dependency;
-    # inject the bounded DEMO profile explicitly for this workflow entrypoint.
     from . import demo_calibration_autotrade as calibration_runtime
 
     calibration_runtime.load_execution_policy = load_demo_execution_policy
 
-    # Dynamic size is only a ceiling. The base intent first passes state, score,
-    # coverage, fresh quote, SL/TP, live RR and entry drift; conviction then sets
-    # the quality cap. Broker-native sizing can only reduce that volume using
-    # actual SL loss, account-wide remaining risk and expected-margin evidence.
-    # Conditional stacking sees the already-reduced final intent volume.
     from .demo_broker_risk_sizing import install_demo_broker_native_risk_sizing
     from .demo_conditional_stacking import install_demo_conditional_stacking
     from .demo_conviction_sizing import install_demo_conviction_sizing
