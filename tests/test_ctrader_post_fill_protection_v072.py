@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from fx_scanner.execution.ctrader_gateway import CTraderExecutionGateway
 from fx_scanner.execution.ctrader_protection import CTraderPostFillProtectionManager
 
 
@@ -209,3 +210,13 @@ def test_position_identity_mismatch_never_amends_wrong_position():
     assert not result.verified
     assert result.code == "POSITION_SYMBOL_MISMATCH"
     assert session.amend_calls == []
+
+
+def test_execution_and_order_position_ids_must_agree():
+    response = SimpleNamespace(position=SimpleNamespace(positionId=POSITION_ID))
+    order = SimpleNamespace(positionId=POSITION_ID + 1)
+
+    position_id, error = CTraderExecutionGateway._position_id_from_execution(response, order)
+
+    assert position_id == 0
+    assert error == "execution positionId and order positionId disagree"
