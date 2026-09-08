@@ -20,6 +20,19 @@ from .strategy import (
 )
 
 
+_DEMO_SCORE50_RETAINED_BLOCKERS = frozenset(
+    {
+        "SPREAD_BLOCK",
+        "CORRELATION_BLOCK",
+        "RISK_BLOCK",
+        "STALE_SIGNAL",
+        "DATA_QUALITY_BLOCK",
+        "PAIR_DIRECTION_NEUTRAL",
+        "PAIR_COVERAGE_BLOCK",
+    }
+)
+
+
 def _demo_calibration_pretrigger_enabled() -> bool:
     return os.getenv("CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER", "0").strip() == "1"
 
@@ -249,8 +262,6 @@ def analyze_demo_pair_mtf(
     )
 
     computed = dict(base.computed_guards)
-    # DEMO score-driven policy: structure remains diagnostic telemetry but is no
-    # longer a hard execution veto. Other market/risk guards remain enforced.
     computed["STRUCTURE_INVALID"] = False
     computed["CHASE_BLOCK"] = bool(
         plan is not None
@@ -282,7 +293,21 @@ def analyze_demo_pair_mtf(
         setup_type = SetupType.TREND_CONTINUATION
 
     state = decision.state
-    if not decision.guards:
+    retained_blockers = tuple(
+        guard for guard in decision.guards if guard in _DEMO_SCORE50_RETAINED_BLOCKERS
+    )
+    experiment_plan_ready = bool(plan is not None and plan.rr2 is not None)
+    score50_ready = bool(
+        _demo_calibration_pretrigger_enabled()
+        and score_driven_setup
+        and experiment_plan_ready
+        and not retained_blockers
+    )
+
+    if score50_ready:
+        state = SignalState.EXECUTION_READY
+        decision = replace(decision, state=state, guards=retained_blockers)
+    elif not decision.guards:
         plan_ready = bool(
             plan is not None
             and plan.rr2 is not None
@@ -294,9 +319,6 @@ def analyze_demo_pair_mtf(
             and early_structure
             and fresh_fvg
         )
-        # 20-trade DEMO calibration: pre-trigger entries remain available for
-        # fast capture, but weak-confirmation evidence no longer permits score +
-        # plan alone to bypass H1/M15 structure and fresh directional FVG.
         calibration_ready = bool(
             _demo_calibration_pretrigger_enabled()
             and score_driven_setup
