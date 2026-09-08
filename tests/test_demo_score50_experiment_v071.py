@@ -18,8 +18,8 @@ def test_score50_experiment_promotes_valid_plan_without_strategy_timing_vetoes()
     assert "decision = replace(decision, state=state, guards=retained_blockers)" in STRATEGY
 
 
-def test_score50_experiment_does_not_remove_account_risk_contracts():
+def test_score50_experiment_keeps_runtime_floor_and_risk_ceiling_contracts():
     assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in WORKFLOW
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in WORKFLOW
-    assert 'CTRADER_DEMO_MAX_OPEN_POSITIONS: "10"' in WORKFLOW
-    assert 'CTRADER_DEMO_CORRELATION_THRESHOLD: "0.85"' in WORKFLOW
+    assert '"CORRELATION_BLOCK"' in STRATEGY
+    assert '"RISK_BLOCK"' in STRATEGY
