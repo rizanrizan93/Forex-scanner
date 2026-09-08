@@ -13,6 +13,7 @@ from .broker_gateway import (
     BrokerOrderResult,
     BrokerPreflight,
 )
+from .ctrader_protection import CTraderPostFillProtectionManager, PostFillProtectionOutcome
 from .models import OrderIntent, OrderSide, OrderType
 
 UTC = timezone.utc
@@ -24,6 +25,15 @@ class CTraderPreparedOrder:
     lot_size_cents: int
     executable_price: float
     expected_margin: float | None
+    account_id: int
+    symbol_name: str
+    symbol_info: Any
+    symbol_id: int
+    trade_side: int
+    volume_cents: int
+    planned_stop_loss: float
+    planned_take_profit: float
+    is_market: bool
 
 
 def _money(value: int | float, digits: int | None) -> float:
@@ -66,6 +76,10 @@ class CTraderExecutionGateway:
         max_quote_age_seconds: float = 5.0,
         quote_wait_timeout_seconds: float = 5.0,
         quote_poll_seconds: float = 0.10,
+        protection_reconcile_attempts: int = 3,
+        protection_amend_attempts: int = 2,
+        protection_poll_seconds: float = 0.15,
+        protection_amend_timeout_seconds: float = 5.0,
     ):
         self.session = session
         self.max_quote_age_seconds = float(max_quote_age_seconds)
@@ -77,6 +91,14 @@ class CTraderExecutionGateway:
             raise ValueError("quote_wait_timeout_seconds cannot be negative")
         if not 0 < self.quote_poll_seconds <= 1.0:
             raise ValueError("quote_poll_seconds must be in (0,1]")
+        self.protection_manager = CTraderPostFillProtectionManager(
+            session,
+            quote_provider=self.market_quote,
+            reconcile_attempts=protection_reconcile_attempts,
+            amend_attempts=protection_amend_attempts,
+            poll_seconds=protection_poll_seconds,
+            amend_timeout_seconds=protection_amend_timeout_seconds,
+        )
 
     def account_snapshot(self) -> BrokerAccountSnapshot:
         self.session.ensure_connected()
@@ -149,16 +171,19 @@ class CTraderExecutionGateway:
         volume_cents = self._volume_cents(intent.volume, symbol)
         _, executable_price = self._quote(intent)
         request = self.session.new_order_message()
-        request.ctidTraderAccountId = int(self.session.account_id)
+        account_id = int(self.session.account_id)
+        trade_side = 1 if intent.side == OrderSide.BUY else 2
+        request.ctidTraderAccountId = account_id
         request.symbolId = symbol_id
         request.volume = volume_cents
-        request.tradeSide = 1 if intent.side == OrderSide.BUY else 2
+        request.tradeSide = trade_side
         request.clientOrderId = intent.signal_id[:50]
         prefix = str(order_config.get("comment_prefix", "FXIS"))
         request.label = prefix[:100]
         request.comment = f"{prefix}:{intent.signal_id}"[:512]
 
-        if intent.order_type == OrderType.MARKET:
+        is_market = intent.order_type == OrderType.MARKET
+        if is_market:
             request.orderType = 1
             sl_distance = executable_price - intent.stop_loss if intent.side == OrderSide.BUY else intent.stop_loss - executable_price
             tp_distance = intent.take_profit - executable_price if intent.side == OrderSide.BUY else executable_price - intent.take_profit
@@ -188,7 +213,21 @@ class CTraderExecutionGateway:
             raise CollectorUnavailable("cTrader expected-margin preflight returned no margin")
         first = margin_res.margin[0]
         raw = first.buyMargin if intent.side == OrderSide.BUY else first.sellMargin
-        return CTraderPreparedOrder(request, int(symbol.lotSize), executable_price, float(raw))
+        return CTraderPreparedOrder(
+            request=request,
+            lot_size_cents=int(symbol.lotSize),
+            executable_price=executable_price,
+            expected_margin=float(raw),
+            account_id=account_id,
+            symbol_name=str(intent.symbol).upper(),
+            symbol_info=symbol,
+            symbol_id=symbol_id,
+            trade_side=trade_side,
+            volume_cents=volume_cents,
+            planned_stop_loss=float(intent.stop_loss),
+            planned_take_profit=float(intent.take_profit),
+            is_market=is_market,
+        )
 
     def position_count(self) -> int:
         """Return broker-reported open position count for demo exposure guards."""
@@ -207,6 +246,58 @@ class CTraderExecutionGateway:
         except Exception as exc:
             return BrokerPreflight(self.backend, False, "LOCAL_VALIDATION", str(exc), None)
         return BrokerPreflight(self.backend, True, "EXPECTED_MARGIN_OK", "cTrader preflight passed", prepared)
+
+    @staticmethod
+    def _position_id_from_execution(response: Any, order: Any) -> tuple[int, str | None]:
+        position = getattr(response, "position", None)
+        try:
+            response_position_id = int(getattr(position, "positionId", 0) or 0)
+        except (TypeError, ValueError):
+            response_position_id = 0
+        try:
+            order_position_id = int(getattr(order, "positionId", 0) or 0) if order is not None else 0
+        except (TypeError, ValueError):
+            order_position_id = 0
+        if response_position_id and order_position_id and response_position_id != order_position_id:
+            return 0, "execution positionId and order positionId disagree"
+        return response_position_id or order_position_id, None
+
+    def _verify_market_protection(
+        self,
+        *,
+        response: Any,
+        order: Any,
+        prepared: CTraderPreparedOrder,
+    ) -> PostFillProtectionOutcome:
+        response_account = int(getattr(response, "ctidTraderAccountId", 0) or prepared.account_id)
+        if response_account != prepared.account_id:
+            return PostFillProtectionOutcome(
+                False,
+                "ACCOUNT_MISMATCH",
+                f"execution account {response_account} != submitted account {prepared.account_id}",
+                "0",
+            )
+        position_id, identity_error = self._position_id_from_execution(response, order)
+        if identity_error:
+            return PostFillProtectionOutcome(False, "POSITION_ID_MISMATCH", identity_error, "0")
+        if position_id <= 0:
+            return PostFillProtectionOutcome(
+                False,
+                "POSITION_ID_UNAVAILABLE",
+                "accepted market order did not expose a broker position id; no amend attempted",
+                "0",
+            )
+        return self.protection_manager.ensure(
+            account_id=prepared.account_id,
+            position_id=position_id,
+            symbol_name=prepared.symbol_name,
+            symbol_info=prepared.symbol_info,
+            expected_symbol_id=prepared.symbol_id,
+            expected_trade_side=prepared.trade_side,
+            expected_volume_cents=prepared.volume_cents,
+            planned_stop_loss=prepared.planned_stop_loss,
+            planned_take_profit=prepared.planned_take_profit,
+        )
 
     def submit(self, preflight: BrokerPreflight) -> BrokerOrderResult:
         if not preflight.accepted or not isinstance(preflight.request, CTraderPreparedOrder):
@@ -239,12 +330,40 @@ class CTraderExecutionGateway:
         executed_cents = int(getattr(order, "executedVolume", 0) or 0) if order is not None else 0
         executed_lots = executed_cents / prepared.lot_size_cents if executed_cents else None
         price = float(getattr(order, "executionPrice", 0.0) or 0.0) if order is not None else 0.0
+
+        if not accepted or not prepared.is_market:
+            return BrokerOrderResult(
+                backend=self.backend,
+                accepted=accepted,
+                code=str(execution_type),
+                message=str(getattr(response, "errorCode", "")) or "execution_event",
+                broker_order_id=order_id,
+                executed_volume=executed_lots,
+                executed_price=price or None,
+            )
+
+        protection = self._verify_market_protection(
+            response=response,
+            order=order,
+            prepared=prepared,
+        )
+        reconciled_lots = (
+            protection.executed_volume_cents / prepared.lot_size_cents
+            if protection.executed_volume_cents
+            else None
+        )
         return BrokerOrderResult(
             backend=self.backend,
-            accepted=accepted,
+            accepted=True,
             code=str(execution_type),
             message=str(getattr(response, "errorCode", "")) or "execution_event",
             broker_order_id=order_id,
-            executed_volume=executed_lots,
-            executed_price=price or None,
+            executed_volume=reconciled_lots or executed_lots,
+            executed_price=protection.executed_entry or price or None,
+            broker_position_id=protection.position_id if protection.position_id != "0" else None,
+            protection_verified=protection.verified,
+            attached_stop_loss=protection.stop_loss,
+            attached_take_profit=protection.take_profit,
+            protection_code=protection.code,
+            protection_message=protection.message,
         )
