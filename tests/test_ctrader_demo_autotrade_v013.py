@@ -30,10 +30,11 @@ class Gate:
 class Gateway:
     backend = BrokerBackend.CTRADER
 
-    def __init__(self, *, positions=0, quote=1.1000):
+    def __init__(self, *, positions=0, quote=1.1000, protection_verified=True):
         self.positions = positions
         self.quote = quote
         self.sent = 0
+        self.protection_verified = protection_verified
 
     def position_count(self):
         return self.positions
@@ -49,7 +50,27 @@ class Gateway:
     def submit(self, preflight):
         self.sent += 1
         return BrokerOrderResult(
-            self.backend, True, "3", "filled", "777", 0.01, self.quote
+            backend=self.backend,
+            accepted=True,
+            code="3",
+            message="filled",
+            broker_order_id="777",
+            executed_volume=0.01,
+            executed_price=self.quote,
+            broker_position_id="888",
+            protection_verified=self.protection_verified,
+            attached_stop_loss=1.0950 if self.protection_verified else None,
+            attached_take_profit=1.1100 if self.protection_verified else None,
+            protection_code=(
+                "PROTECTION_VERIFIED"
+                if self.protection_verified
+                else "PROTECTION_AMEND_FAILED"
+            ),
+            protection_message=(
+                "broker position already has SL and TP"
+                if self.protection_verified
+                else "bounded amend/reconcile attempts exhausted"
+            ),
         )
 
     def market_quote(self, symbol):
@@ -109,9 +130,9 @@ def policy():
     )
 
 
-def intent(volume=0.01):
+def intent(volume=0.01, *, signal_id="demo-signal-1"):
     return OrderIntent(
-        signal_id="demo-signal-1",
+        signal_id=signal_id,
         symbol="EURUSD",
         side=OrderSide.BUY,
         order_type=OrderType.MARKET,
@@ -198,6 +219,30 @@ def test_accepted_order_audit_preserves_executed_entry_sl_tp_and_volume(monkeypa
     assert payload["requested_volume"] == 0.01
     assert payload["executed_volume"] == 0.01
     assert payload["executed_price"] == 1.1002
+    assert payload["broker_position_id"] == "888"
+    assert payload["protection_verified"] is True
+    assert payload["attached_stop_loss"] == 1.0950
+    assert payload["attached_take_profit"] == 1.1100
+    assert any(event["event_type"] == "POSITION_PROTECTION_VERIFIED" for event in audit.events)
+
+
+def test_unverified_post_fill_protection_fails_closed_and_blocks_next_order(monkeypatch):
+    monkeypatch.setenv("FX_KILL_SWITCH", "0")
+    monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED", "I_UNDERSTAND_DEMO_ORDERS")
+    gateway = Gateway(protection_verified=False)
+    audit = AuditSink()
+    router = ExecutionRouter(
+        policy(), gateway=gateway, control_gate=Gate(), audit_sink=audit
+    )
+
+    with pytest.raises(ExecutionBlocked, match="POST_FILL_PROTECTION_FAILED"):
+        router.execute(intent(signal_id="unprotected-fill"))
+    assert gateway.sent == 1
+    assert any(event["event_type"] == "POSITION_PROTECTION_FAILED" for event in audit.events)
+
+    with pytest.raises(ExecutionBlocked, match="POST_FILL_PROTECTION_LATCH"):
+        router.execute(intent(signal_id="different-signal"))
+    assert gateway.sent == 1
 
 
 class SignalStore:
@@ -290,7 +335,6 @@ def test_signal_executor_does_not_claim_price_outside_entry_zone():
     assert report.claimed == 0
     assert report.executed == 0
     assert store.claimed == []
-
 
 
 class BlockedGate:
