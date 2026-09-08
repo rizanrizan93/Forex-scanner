@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from math import isfinite
 from typing import Any
 
-MAX_DEMO_LOTS = 0.01
+MAX_DEMO_LOTS = 0.10
 MIN_DEMO_LOTS = 0.01
 MAX_DEMO_RISK_PCT = 3.0
 
@@ -24,9 +24,9 @@ def select_demo_conviction_sizing(
 ) -> DemoConvictionSizing:
     """Map validated DEMO setup quality to bounded lot/risk budgets.
 
-    Setup quality may reduce the risk budget, but every order remains capped at
-    0.01 lot. Entry/SL/TP geometry is never changed here and DEMO risk remains
-    capped at 3 percentage points.
+    Low-confidence cohorts remain at the 0.01-lot floor while higher-quality
+    setups may scale gradually to 0.10 lot. Entry/SL/TP geometry is never changed
+    here and the DEMO risk-budget contract remains capped at 3 percentage points.
     """
     try:
         score = float(row.get("final_score"))
@@ -45,13 +45,13 @@ def select_demo_conviction_sizing(
         raise ValueError("DEMO_CONVICTION_SIZING_CAP_INVALID")
 
     if score >= 95.0 and coverage >= 0.95 and rr2 >= 2.50:
-        tier, lots, risk = "ELITE", 0.01, 3.0
+        tier, lots, risk = "ELITE", 0.10, 3.0
     elif score >= 90.0 and coverage >= 0.90 and rr2 >= 2.00:
-        tier, lots, risk = "A_PLUS", 0.01, 2.5
+        tier, lots, risk = "A_PLUS", 0.06, 2.5
     elif score >= 80.0 and coverage >= 0.90 and rr2 >= 2.00:
-        tier, lots, risk = "A", 0.01, 2.0
+        tier, lots, risk = "A", 0.04, 2.0
     elif score >= 70.0 and coverage >= 0.85 and rr2 >= 1.75:
-        tier, lots, risk = "B_PLUS", 0.01, 1.5
+        tier, lots, risk = "B_PLUS", 0.02, 1.5
     elif score >= 60.0:
         tier, lots, risk = "B", 0.01, 1.0
     else:
@@ -65,7 +65,7 @@ def select_demo_conviction_sizing(
 
 
 def _install_runtime_policy_cap() -> None:
-    """Enforce the cTrader DEMO runtime order cap at 0.01 lot."""
+    """Enforce the cTrader DEMO runtime order cap at 0.10 lot."""
     from . import demo_calibration_autotrade as runtime
 
     if getattr(runtime, "_demo_conviction_policy_patch_installed", False):
@@ -130,6 +130,6 @@ def _install_executor_sizing() -> None:
 
 
 def install_demo_conviction_sizing() -> None:
-    """Install DEMO-only 0.01-lot sizing for the fast execution handoff."""
+    """Install DEMO-only 0.01-0.10 conviction sizing for the fast execution handoff."""
     _install_runtime_policy_cap()
     _install_executor_sizing()
