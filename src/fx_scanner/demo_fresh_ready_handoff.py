@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from math import isfinite
 from typing import Any, Iterable
 
+from .config import load_project_config as _load_project_config
 from .execution.policy import ExecutionPolicy, load_execution_policy as _load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
 
@@ -22,6 +23,8 @@ DEMO_STACK_MAX_POSITIONS_ENV = "CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS"
 DEMO_STACK_MIN_SPACING_ENV = "CTRADER_DEMO_MIN_STACK_SPACING_SECONDS"
 DEMO_PORTFOLIO_RISK_CAP_ENV = "CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT"
 DEMO_MARGIN_USAGE_CAP_ENV = "CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT"
+DEMO_MIN_LIVE_RR_ENV = "CTRADER_DEMO_MIN_LIVE_RR"
+DEMO_MIN_LIVE_RR_FLOOR = 1.0
 
 
 def _dt(value: Any) -> datetime | None:
@@ -80,6 +83,28 @@ def _bool_env(name: str, *, default: bool = False) -> bool:
     if value in {"0", "FALSE", "NO", "OFF"}:
         return False
     raise RuntimeError(f"{name} must be boolean-like 0/1")
+
+
+def load_demo_project_config(root=None):
+    """Load canonical project config plus a bounded DEMO-only live-RR floor.
+
+    Discovery/plan generation keeps the canonical minimum TP2 RR contract. Only
+    the DEMO autotrade handoff may accept fresh broker-price deterioration down
+    to 1:1. Entry, SL and TP geometry are never rewritten by this override.
+    """
+    cfg = _load_project_config(root)
+    strategy = dict(cfg.strategy)
+    trade_plan = dict(strategy.get("trade_plan", {}))
+    canonical_min_rr = float(trade_plan["minimum_tp2_rr"])
+    demo_min_live_rr = _bounded_float_env(
+        DEMO_MIN_LIVE_RR_ENV,
+        default=DEMO_MIN_LIVE_RR_FLOOR,
+        minimum=DEMO_MIN_LIVE_RR_FLOOR,
+        maximum=canonical_min_rr,
+    )
+    trade_plan["minimum_tp2_rr"] = demo_min_live_rr
+    strategy["trade_plan"] = trade_plan
+    return replace(cfg, strategy=strategy)
 
 
 def load_demo_execution_policy(root=None) -> ExecutionPolicy:
@@ -230,11 +255,12 @@ def main() -> int:
     max_age_seconds = float(policy.order.get("max_signal_age_seconds", 300))
     install_fresh_execution_ready_handoff(max_age_seconds=max_age_seconds)
 
-    # The calibration module imports its loader as a module-level dependency;
-    # inject the bounded DEMO profile explicitly for this workflow entrypoint.
+    # The calibration module imports its loaders as module-level dependencies;
+    # inject the bounded DEMO runtime profiles explicitly for this entrypoint.
     from . import demo_calibration_autotrade as calibration_runtime
 
     calibration_runtime.load_execution_policy = load_demo_execution_policy
+    calibration_runtime.load_project_config = load_demo_project_config
 
     # Dynamic size is only a ceiling. The base intent first passes state, score,
     # coverage, fresh quote, SL/TP, live RR and entry drift; conviction then sets
@@ -249,11 +275,13 @@ def main() -> int:
     install_demo_broker_native_risk_sizing()
     install_demo_conditional_stacking()
 
+    demo_cfg = load_demo_project_config(None)
     print(
         "CTRADER_DEMO_DYNAMIC_EXECUTION_POLICY "
         f"max_order_lots={float(policy.demo_safety['max_order_lots']):.2f} "
         f"portfolio_risk_cap_pct={float(policy.demo_safety['max_portfolio_risk_pct']):.2f} "
         f"margin_free_usage_cap_pct={float(policy.demo_safety['max_margin_free_usage_pct']):.2f} "
+        f"min_live_rr={float(demo_cfg.strategy['trade_plan']['minimum_tp2_rr']):.2f} "
         f"stacking={int(bool(policy.demo_safety['allow_same_symbol_stacking']))} "
         f"stack_min_score={float(policy.demo_safety['stack_min_score']):.2f} "
         f"stack_min_coverage={float(policy.demo_safety['stack_min_coverage']):.2f} "
