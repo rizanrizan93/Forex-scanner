@@ -63,7 +63,6 @@ def evaluate_profit_lock(
         return ProfitLockDecision(False, "ORIGINAL_RISK_INVALID", None, None, None)
 
     favorable_r = excursion / risk
-    # Conservative staged lock: leave normal noise untouched below +0.50R.
     if favorable_r < 0.50:
         return ProfitLockDecision(False, "BELOW_ACTIVATION", favorable_r, None, None)
     if favorable_r < 0.80:
@@ -75,7 +74,6 @@ def evaluate_profit_lock(
     elif favorable_r < 2.50:
         lock_r = 1.00
     else:
-        # Beyond +2.5R, trail at 0.75R behind the current favorable excursion.
         lock_r = max(1.00, favorable_r - 0.75)
 
     target = entry + lock_r * risk if side == "BUY" else entry - lock_r * risk
@@ -111,6 +109,64 @@ def _load_state(store: SupabaseOperationalStore) -> dict[str, Any]:
     details["positions"] = dict(details.get("positions") or {})
     details["uncertain_position_ids"] = list(details.get("uncertain_position_ids") or [])
     return details
+
+
+def _symbol_digits(session, symbol: str) -> int | None:
+    """Return cTrader price digits, failing closed when precision is unavailable."""
+    try:
+        info = session.symbol_info(str(symbol).upper())
+    except Exception:
+        return None
+    raw_digits = getattr(info, "digits", None)
+    if raw_digits is not None:
+        try:
+            digits = int(raw_digits)
+        except (TypeError, ValueError):
+            digits = -1
+        if 0 <= digits <= 10:
+            return digits
+    raw_pip_position = getattr(info, "pipPosition", None)
+    if raw_pip_position is not None:
+        try:
+            digits = int(raw_pip_position) + 1
+        except (TypeError, ValueError):
+            digits = -1
+        if 0 <= digits <= 10:
+            return digits
+    return None
+
+
+def normalize_profit_lock_stop(
+    session,
+    *,
+    symbol: str,
+    side: str,
+    target_stop: float,
+    current_stop: float,
+    current_price: float,
+) -> tuple[float | None, str]:
+    """Round a proposed SL to broker precision and revalidate monotonic geometry."""
+    digits = _symbol_digits(session, symbol)
+    if digits is None:
+        return None, "BROKER_PRICE_PRECISION_UNKNOWN_FAIL_CLOSED"
+    try:
+        target = round(float(target_stop), digits)
+        stop = float(current_stop)
+        market = float(current_price)
+    except (TypeError, ValueError):
+        return None, "BROKER_PRICE_NORMALIZATION_INVALID"
+    if not all(isfinite(v) and v > 0 for v in (target, stop, market)):
+        return None, "BROKER_PRICE_NORMALIZATION_INVALID"
+    direction = str(side).upper()
+    if direction == "BUY":
+        if not stop < target < market:
+            return None, "BROKER_ROUNDED_STOP_GEOMETRY_INVALID"
+    elif direction == "SELL":
+        if not market < target < stop:
+            return None, "BROKER_ROUNDED_STOP_GEOMETRY_INVALID"
+    else:
+        return None, "BROKER_PRICE_NORMALIZATION_INVALID"
+    return target, f"BROKER_PRICE_NORMALIZED_{digits}DP"
 
 
 def _amend_once(session, *, position_id: int, stop_loss: float, take_profit: float) -> tuple[str, str]:
@@ -201,9 +257,6 @@ def run() -> int:
             current_stop = float(position.stop_loss)
             side = str(position.side).upper()
             if original_stop is None:
-                # Capture only an unprotected loss-side SL. If the process starts
-                # after another protector has already moved SL past entry, do not
-                # invent the original risk distance.
                 valid_original = (side == "BUY" and current_stop < entry) or (side == "SELL" and current_stop > entry)
                 if not valid_original:
                     decisions.append({"position_id": position_id, "symbol": symbol, "reason": "ORIGINAL_RISK_UNKNOWN_FAIL_CLOSED"})
@@ -250,6 +303,25 @@ def run() -> int:
             if not decision.amend or decision.target_stop is None:
                 continue
 
+            normalized_stop, normalization = normalize_profit_lock_stop(
+                session,
+                symbol=symbol,
+                side=side,
+                target_stop=float(decision.target_stop),
+                current_stop=current_stop,
+                current_price=float(position.current_price),
+            )
+            if normalized_stop is None:
+                decisions[-1]["execution"] = "FAIL_CLOSED"
+                decisions[-1]["execution_detail"] = normalization
+                continue
+            payload["raw_target_stop"] = float(decision.target_stop)
+            payload["target_stop"] = normalized_stop
+            payload["price_normalization"] = normalization
+            decisions[-1]["raw_target_stop"] = float(decision.target_stop)
+            decisions[-1]["target_stop"] = normalized_stop
+            decisions[-1]["price_normalization"] = normalization
+
             try:
                 store.record_order_event(
                     backend="CTRADER",
@@ -269,13 +341,13 @@ def run() -> int:
             status, detail = _amend_once(
                 session,
                 position_id=int(position_id),
-                stop_loss=float(decision.target_stop),
+                stop_loss=normalized_stop,
                 take_profit=float(position.take_profit),
             )
             decisions[-1]["execution"] = status
             decisions[-1]["execution_detail"] = detail
             if status == "ACKNOWLEDGED":
-                item["last_target_stop"] = float(decision.target_stop)
+                item["last_target_stop"] = normalized_stop
                 item["last_lock_r"] = decision.lock_r
                 item["last_amended_at"] = datetime.now(tz=UTC).isoformat()
                 positions_state[position_id] = item
@@ -304,7 +376,6 @@ def run() -> int:
                     payload=payload,
                 )
 
-        # Keep bounded durable state; closed IDs may remain for audit but are not reprocessed.
         ordered = list(positions_state.items())[-128:]
         state = {
             "version": 1,
