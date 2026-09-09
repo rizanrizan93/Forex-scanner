@@ -8,7 +8,7 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 
 DEMO_SCORE_FLOOR_MIN = 50.01
-DEMO_RISK_CEILING_PCT = 5.0
+DEMO_RISK_CEILING_PCT = 3.0
 
 
 def apply_demo_calibration_threshold(cfg):
@@ -26,11 +26,7 @@ def apply_demo_calibration_threshold(cfg):
 
 
 def apply_demo_calibration_risk(cfg, *, max_risk_pct: float = DEMO_RISK_CEILING_PCT):
-    """Apply an explicit process-local DEMO risk target.
-
-    Canonical LIVE safety remains unchanged. An explicit
-    CTRADER_DEMO_RISK_PER_TRADE_PCT may raise only this DEMO wrapper up to 5%.
-    """
+    """Apply an explicit process-local DEMO risk target capped at 3%."""
     canonical_ceiling = float(max_risk_pct)
     if not isfinite(canonical_ceiling) or not 0.0 < canonical_ceiling <= DEMO_RISK_CEILING_PCT:
         raise SystemExit("CTRADER_DEMO_RISK_CEILING_OUT_OF_RANGE")
@@ -74,7 +70,7 @@ def apply_demo_deep_analysis_top(cfg):
 def apply_demo_calibration_policy_risk(
     policy, *, max_risk_pct: float = DEMO_RISK_CEILING_PCT
 ):
-    """Raise only the already-validated DEMO process risk ceiling."""
+    """Raise only the already-validated DEMO process risk ceiling up to 3%."""
     ceiling = float(max_risk_pct)
     if not isfinite(ceiling) or not 0.0 < ceiling <= DEMO_RISK_CEILING_PCT:
         raise SystemExit("CTRADER_DEMO_POLICY_RISK_CEILING_OUT_OF_RANGE")
@@ -84,12 +80,7 @@ def apply_demo_calibration_policy_risk(
 
 
 def build_demo_calibration_store(*, execution_ready_score_floor: float):
-    """Build the backend store with an isolated DEMO persistence floor >50.
-
-    SupabaseOperationalStore deliberately keeps its canonical constructor floor
-    at 65. The DEMO calibration adapter bootstraps through that invariant, then
-    narrows only this process-local persistence floor after explicit validation.
-    """
+    """Build the backend store with an isolated DEMO persistence floor >50."""
     floor = float(execution_ready_score_floor)
     if not isfinite(floor) or not DEMO_SCORE_FLOOR_MIN <= floor <= 100.0:
         raise SystemExit("CTRADER_DEMO_CALIBRATION_STORE_FLOOR_OUT_OF_RANGE")
