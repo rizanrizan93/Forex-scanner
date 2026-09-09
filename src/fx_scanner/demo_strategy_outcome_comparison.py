@@ -58,10 +58,10 @@ class OutcomeStats:
 
     @property
     def profit_factor(self) -> float | None:
+        # Return None instead of Infinity for zero-loss samples so the heartbeat
+        # remains strict JSON and a tiny cohort cannot masquerade as infinite edge.
         if self.gross_negative_pnl < -1e-12:
             return self.gross_positive_pnl / abs(self.gross_negative_pnl)
-        if self.gross_positive_pnl > 0:
-            return float("inf")
         return None
 
     @property
