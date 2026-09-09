@@ -4,6 +4,7 @@ from datetime import datetime
 from math import isfinite
 from typing import Any, Mapping, Sequence
 
+from .demo_four_ema import build_four_ema_bundle
 from .demo_strategy_lab import strategy_lab_payload
 from .demo_technical_strategy import _demo_directional_structure_score
 from .models import Bar, ensure_utc
@@ -193,11 +194,17 @@ def build_signal_feature_snapshot_v2(
     }
     regime = classify_regime_v2(analysis)
     session = session_label(observed_at, dict(session_config))
+    ema4 = build_four_ema_bundle(
+        bars_by_timeframe,
+        direction=str(analysis.direction).upper(),
+        atr_period=int(atr_period),
+    )
     hypotheses = strategy_lab_payload(
         analysis=analysis,
         regime=regime,
         session=session,
         geometry_payload=geometry_payload,
+        ema_evidence=ema4,
     )
     snapshot: dict[str, Any] = {
         "snapshot_version": 2,
@@ -212,9 +219,19 @@ def build_signal_feature_snapshot_v2(
         "regime": regime,
         "regime_classifier": "STRUCTURE_V2_DIRECTION_AWARE",
         "session": session,
-        "strategy_lab_version": 1,
+        "strategy_lab_version": 2,
         "strategy_hypotheses": hypotheses,
         "strategy_hypotheses_active": [row["family"] for row in hypotheses if row["active"]],
+        "ema4_profile": ema4["profile"],
+        "ema4_periods": ema4["periods"],
+        "ema4_brochure_periods_confirmed": False,
+        "ema4_policy_effect": "OBSERVATION_ONLY",
+        "ema4_available_timeframes": ema4["available_timeframes"],
+        "ema4_mature_timeframes": ema4["mature_timeframes"],
+        "ema4_directional_confluence": ema4["directional_confluence"],
+        "ema4_h1": ema4["h1"],
+        "ema4_m15": ema4["m15"],
+        "ema4_m5": ema4["m5"],
         "trigger_confirmed": bool(getattr(analysis, "trigger_confirmed", False)),
         "stale_timeframes": list(getattr(analysis, "stale_timeframes", ()) or ()),
         "structure_h1": _structure_snapshot(analysis.h1, analysis.direction),

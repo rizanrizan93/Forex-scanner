@@ -14,6 +14,7 @@ class StrategyFamily(StrEnum):
     PULLBACK_TREND = "PULLBACK_TREND"
     MEAN_REVERSION = "MEAN_REVERSION"
     LIQUIDITY_SWEEP = "LIQUIDITY_SWEEP"
+    FOUR_EMA_PULLBACK = "FOUR_EMA_PULLBACK"
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,12 +63,18 @@ def _cap(value: float) -> float:
     return max(0.0, min(100.0, float(value)))
 
 
+def _ema_row(evidence: Mapping[str, Any], timeframe: str) -> Mapping[str, Any]:
+    value = evidence.get(timeframe.lower())
+    return value if isinstance(value, Mapping) else {}
+
+
 def build_strategy_lab_hypotheses(
     *,
     analysis: Any,
     regime: str,
     session: str,
     geometry_payload: Mapping[str, Any] | None = None,
+    ema_evidence: Mapping[str, Any] | None = None,
 ) -> tuple[StrategyHypothesis, ...]:
     """Build competing DEMO strategy hypotheses from one immutable signal snapshot.
 
@@ -83,6 +90,7 @@ def build_strategy_lab_hypotheses(
     regime = str(regime or "UNKNOWN").upper()
     session = str(session or "UNKNOWN").upper()
     geometry_payload = dict(geometry_payload or {})
+    ema_evidence = dict(ema_evidence or {})
 
     aligned_h1 = _aligned(getattr(h1, "trend", None), direction)
     aligned_m15 = _aligned(getattr(m15, "trend", None), direction)
@@ -147,6 +155,28 @@ def build_strategy_lab_hypotheses(
     sweep_score += 10.0 if regime in {"REVERSAL", "TRANSITION"} else 0.0
     sweep_score += 10.0 if any(token in confirmation for token in ("MSS", "RECLAIM", "STRUCTURE_BREAK")) else 0.0
 
+    ema_h1 = _ema_row(ema_evidence, "H1")
+    ema_m15 = _ema_row(ema_evidence, "M15")
+    ema_m5 = _ema_row(ema_evidence, "M5")
+    ema_available = any(bool(row.get("available")) for row in (ema_h1, ema_m15, ema_m5))
+    ema_score = 5.0 if not ema_available else 10.0
+    ema_score += 20.0 if bool(ema_h1.get("directional_aligned")) else 0.0
+    ema_score += 20.0 if bool(ema_m15.get("directional_aligned")) else 0.0
+    ema_score += 10.0 if bool(ema_m5.get("directional_aligned")) else 0.0
+    ema_score += 10.0 if bool(ema_h1.get("directional_slopes")) else 0.0
+    ema_score += 10.0 if bool(ema_m15.get("directional_slopes")) else 0.0
+    ema_score += 5.0 if str(ema_h1.get("spread_state", "")).upper() in {"STABLE", "EXPANDING"} else 0.0
+    ema_score += 5.0 if str(ema_m15.get("spread_state", "")).upper() == "EXPANDING" else 0.0
+    ema_pullback = bool(ema_m5.get("pullback_near_fast_cluster")) or bool(
+        ema_m15.get("pullback_near_fast_cluster")
+    )
+    ema_score += 10.0 if ema_pullback else 0.0
+    ema_score += 10.0 if (m5_displacement or m15_displacement or m5_bos or m15_bos) else 0.0
+    ema_score -= 20.0 if bool(ema_h1.get("opposite_aligned")) else 0.0
+    ema_score -= 15.0 if bool(ema_m15.get("opposite_aligned")) else 0.0
+    if regime == "RANGE" and str(ema_m15.get("spread_state", "")).upper() == "COMPRESSING":
+        ema_score -= 10.0
+
     raw = (
         (StrategyFamily.TREND_MOMENTUM, trend_score, {
             "aligned_h1": aligned_h1,
@@ -185,6 +215,24 @@ def build_strategy_lab_hypotheses(
             "directional_bos": m5_bos or m15_bos,
             "regime": regime,
             "confirmation": confirmation or None,
+        }),
+        (StrategyFamily.FOUR_EMA_PULLBACK, ema_score, {
+            "profile": ema_evidence.get("profile"),
+            "periods": ema_evidence.get("periods"),
+            "brochure_periods_confirmed": bool(ema_evidence.get("brochure_periods_confirmed", False)),
+            "available_timeframes": ema_evidence.get("available_timeframes", 0),
+            "mature_timeframes": ema_evidence.get("mature_timeframes", 0),
+            "directional_confluence": ema_evidence.get("directional_confluence", 0),
+            "h1_directional_aligned": bool(ema_h1.get("directional_aligned")),
+            "m15_directional_aligned": bool(ema_m15.get("directional_aligned")),
+            "m5_directional_aligned": bool(ema_m5.get("directional_aligned")),
+            "h1_directional_slopes": bool(ema_h1.get("directional_slopes")),
+            "m15_directional_slopes": bool(ema_m15.get("directional_slopes")),
+            "h1_spread_state": ema_h1.get("spread_state"),
+            "m15_spread_state": ema_m15.get("spread_state"),
+            "pullback_near_fast_cluster": ema_pullback,
+            "smc_confirmation": m5_displacement or m15_displacement or m5_bos or m15_bos,
+            "regime": regime,
         }),
     )
 
