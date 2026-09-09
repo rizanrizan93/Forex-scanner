@@ -42,6 +42,7 @@ reconciliation:
   research_quote_max_age_seconds: 2
   execution_quote_max_age_seconds: 1
   max_mid_divergence_pips: 2.0
+  max_execution_spread_pips: 4.0
   spread_ratio_floor_pips: 0.10
   max_spread_ratio_vs_research: 12.0
   max_entry_drift_pips: 2.0
