@@ -88,6 +88,10 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_adaptive_calibration_v2_runtime
+      - name: Compare SMC baseline vs four EMA shadow cohort
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_strategy_outcome_comparison
       - name: Attribute repeated loss patterns in shadow mode
         if: ${{ always() }}
         continue-on-error: true
