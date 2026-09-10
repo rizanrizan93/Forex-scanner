@@ -11,9 +11,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  full-universe-discovery:
+  xauusd-discovery:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -32,18 +32,10 @@ jobs:
       CTRADER_DEMO_TECHNICAL_ONLY: "1"
       CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"
       CTRADER_DEMO_CHASE_BLOCK_ATR: "2.0"
-      CTRADER_DEMO_WAVE_MIN_PULLBACK_ATR: "0.25"
-      CTRADER_DEMO_WAVE_MAX_ZONE_ATR: "0.50"
-      CTRADER_DEMO_MOMENTUM_MAX_ZONE_ATR: "0.20"
       CTRADER_DEMO_MAX_ENTRY_DRIFT_R: "0.50"
       CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"
-      CTRADER_DEMO_DEEP_ANALYSIS_TOP: "8"
-      CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"
+      CTRADER_DEMO_DEEP_ANALYSIS_TOP: "1"
       CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"
-      CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS: "6"
-      CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS: "20"
-      CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "1"
-      CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"
       CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "1"
       CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED: "1"
 
@@ -59,19 +51,8 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Verify active weekend crypto broker contracts and sessions
-        run: python -m fx_scanner.demo_crypto_broker_preflight
-      - name: Discover and rank full DEMO universe
-        run: |
-          # The Python market schedule is UTC-based. On weekends only the three
-          # authorized crypto symbols are selected. Weekday-only spread overrides
-          # must not be presented to the already-scheduled crypto-only config.
-          # Broker trading sessions remain authoritative and fail closed.
-          if [ "$(date -u +%u)" -ge 6 ]; then
-            export CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS=""
-            export CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS=""
-          fi
-          python -m fx_scanner.demo_technical_producer
+      - name: Discover XAUUSD IMPULSE_RETEST_V2 only
+        run: python -m fx_scanner.demo_xau_technical_producer
       - name: Reconcile cTrader closed DEMO outcomes
         if: ${{ always() }}
         continue-on-error: true
@@ -88,7 +69,7 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_adaptive_calibration_v2_runtime
-      - name: Compare SMC baseline vs four EMA shadow cohort
+      - name: Compare historical shadow cohorts
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_strategy_outcome_comparison
