@@ -29,19 +29,16 @@ def _bar(i, o, h, l, c, symbol="XAUUSD"):
 def _long_fixture(symbol="XAUUSD"):
     rows = []
     price = 3500.0
-    # Stable pre-history gives ATR around 1.0 and a clear 12-bar high.
     for i in range(38):
         o = price + 0.02 * i
         rows.append(_bar(i, o, o + 0.50, o - 0.50, o + 0.05, symbol))
     prior_high = max(x.high for x in rows[-12:])
     i = len(rows)
-    # Impulse: >1.2 ATR range, >0.8 ATR body, closes near high and beyond structure.
     o = prior_high - 0.20
     rows.append(_bar(i, o, prior_high + 1.30, prior_high - 0.25, prior_high + 1.15, symbol))
     impulse_close = rows[-1].close
-    # First controlled retest remains accepted above breakout level.
     i += 1
-    rows.append(_bar(i, impulse_close, impulse_close + 0.20, impulse_close - 0.55, prior_high + 0.35, symbol))
+    rows.append(_bar(i, impulse_close, impulse_close + 0.20, prior_high + 0.20, prior_high + 0.35, symbol))
     return rows
 
 
@@ -73,7 +70,6 @@ def test_same_pattern_on_eurusd_is_shadow_only_not_execution_eligible():
 def test_bare_break_without_impulse_body_is_rejected():
     rows = _long_fixture()
     impulse = rows[-2]
-    # Replace impulse with a tiny-body candle that still closes above structure.
     rows[-2] = _bar(
         len(rows) - 2,
         impulse.close - 0.05,
@@ -87,11 +83,22 @@ def test_bare_break_without_impulse_body_is_rejected():
 
 def test_lost_acceptance_before_retest_invalidates_signal():
     rows = _long_fixture()
-    # Insert a close materially back below the breakout before a later retest.
     signal0 = evaluate_impulse_retest_v2(rows, direction="LONG")
     assert signal0.breakout_level is not None
     impulse = rows[-2]
-    bad = _bar(len(rows) - 1, impulse.close, impulse.close + 0.1, signal0.breakout_level - 0.7, signal0.breakout_level - 0.5)
-    later = _bar(len(rows), signal0.breakout_level + 0.5, signal0.breakout_level + 0.8, signal0.breakout_level + 0.2, signal0.breakout_level + 0.4)
+    bad = _bar(
+        len(rows) - 1,
+        impulse.close,
+        impulse.close + 0.1,
+        signal0.breakout_level - 0.7,
+        signal0.breakout_level - 0.5,
+    )
+    later = _bar(
+        len(rows),
+        signal0.breakout_level + 0.5,
+        signal0.breakout_level + 0.8,
+        signal0.breakout_level + 0.2,
+        signal0.breakout_level + 0.4,
+    )
     signal = evaluate_impulse_retest_v2(rows[:-1] + [bad, later], direction="LONG")
     assert signal.active is False
