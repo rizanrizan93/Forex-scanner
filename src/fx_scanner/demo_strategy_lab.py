@@ -15,6 +15,7 @@ class StrategyFamily(StrEnum):
     MEAN_REVERSION = "MEAN_REVERSION"
     LIQUIDITY_SWEEP = "LIQUIDITY_SWEEP"
     FOUR_EMA_PULLBACK = "FOUR_EMA_PULLBACK"
+    IMPULSE_RETEST = "IMPULSE_RETEST"
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,6 +178,42 @@ def build_strategy_lab_hypotheses(
     if regime == "RANGE" and str(ema_m15.get("spread_state", "")).upper() == "COMPRESSING":
         ema_score -= 10.0
 
+    # Original research hypothesis: a directional move is treated as credible only
+    # after an impulse has been accepted and price returns in a controlled retest.
+    # This intentionally rejects bare M5 structure breaks, which dominate the
+    # current weak DEMO outcome cohort, and uses four-EMA state only as secondary
+    # expansion/context evidence rather than as an execution trigger.
+    impulse_present = m5_displacement or m15_displacement
+    structure_present = m5_bos or m15_bos
+    directional_fvg = m5_fvg or m15_fvg
+    directional_sweep = m5_sweep or m15_sweep
+    ema_not_opposed = not bool(ema_h1.get("opposite_aligned")) and not bool(
+        ema_m15.get("opposite_aligned")
+    )
+    ema_release = str(ema_m5.get("spread_state", "")).upper() == "EXPANDING" or str(
+        ema_m15.get("spread_state", "")
+    ).upper() == "EXPANDING"
+    controlled_retest = bool(
+        pullback_atr_f is not None
+        and 0.10 <= pullback_atr_f <= 1.25
+        and any(token in entry_mode for token in ("PULLBACK", "RETRACE", "FVG"))
+    )
+    impulse_retest_score = 5.0
+    impulse_retest_score += 20.0 if regime in {"TRANSITION", "TREND_WEAK", "TREND_STRONG"} else 0.0
+    impulse_retest_score += 20.0 if impulse_present else -40.0
+    impulse_retest_score += 10.0 if structure_present else 0.0
+    impulse_retest_score += 10.0 if directional_fvg else 0.0
+    impulse_retest_score += 5.0 if directional_sweep else 0.0
+    impulse_retest_score += 10.0 if aligned_m15 else 0.0
+    impulse_retest_score += 5.0 if aligned_h1 else 0.0
+    impulse_retest_score += 5.0 if bool(ema_m15.get("directional_aligned")) else 0.0
+    impulse_retest_score += 5.0 if bool(ema_m5.get("directional_aligned")) else 0.0
+    impulse_retest_score += 5.0 if ema_release else 0.0
+    impulse_retest_score += 10.0 if controlled_retest else 0.0
+    impulse_retest_score += 5.0 if liquid_session else 0.0
+    impulse_retest_score -= 20.0 if regime == "RANGE" else 0.0
+    impulse_retest_score -= 20.0 if not ema_not_opposed else 0.0
+
     raw = (
         (StrategyFamily.TREND_MOMENTUM, trend_score, {
             "aligned_h1": aligned_h1,
@@ -233,6 +270,23 @@ def build_strategy_lab_hypotheses(
             "pullback_near_fast_cluster": ema_pullback,
             "smc_confirmation": m5_displacement or m15_displacement or m5_bos or m15_bos,
             "regime": regime,
+        }),
+        (StrategyFamily.IMPULSE_RETEST, impulse_retest_score, {
+            "regime": regime,
+            "session": session,
+            "impulse_present": impulse_present,
+            "directional_structure": structure_present,
+            "directional_fvg": directional_fvg,
+            "directional_sweep": directional_sweep,
+            "aligned_h1": aligned_h1,
+            "aligned_m15": aligned_m15,
+            "ema_not_opposed": ema_not_opposed,
+            "ema_release": ema_release,
+            "controlled_retest": controlled_retest,
+            "pullback_atr": pullback_atr_f,
+            "entry_mode": entry_mode or None,
+            "confirmation": confirmation or None,
+            "design_basis": "IMPULSE_ACCEPTANCE_THEN_FIRST_CONTROLLED_RETEST",
         }),
     )
 
