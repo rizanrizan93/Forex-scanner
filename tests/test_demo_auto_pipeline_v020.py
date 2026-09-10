@@ -4,21 +4,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_demo_auto_pipeline_is_dispatch_only_xau_fast_lane_and_demo_only():
+def test_demo_auto_pipeline_is_dispatch_only_pair_specific_fast_lane_and_demo_only():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
 
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
-    assert "demo_xau_fast_candidate_producer" in text
-    assert "demo_xau_fresh_ready_handoff --limit 10" in text
+    assert "demo_execution_fast_candidate_producer" in text
+    assert "demo_execution_fresh_ready_handoff --limit 10" in text
     assert "demo_structural_profit_protector" in text
-    assert text.index("demo_xau_fast_candidate_producer") < text.index(
-        "demo_xau_fresh_ready_handoff"
+    assert text.index("demo_execution_fast_candidate_producer") < text.index(
+        "demo_execution_fresh_ready_handoff"
     )
-    assert text.index("demo_xau_fresh_ready_handoff") < text.index(
+    assert text.index("demo_execution_fresh_ready_handoff") < text.index(
         "demo_structural_profit_protector"
     )
-    assert "demo_technical_producer" not in text
     assert "demo_closed_trade_reconciler" not in text
     assert "macro-refresh" not in text
     assert "CTRADER_DEMO_AUTOTRADE_ENABLED" in text
@@ -27,7 +26,7 @@ def test_demo_auto_pipeline_is_dispatch_only_xau_fast_lane_and_demo_only():
     assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"' in text
     assert 'CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"' in text
     assert 'CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"' in text
-    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"' in text
+    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "2"' in text
     assert "CTRADER_DEMO_DEEP_ANALYSIS_TOP" not in text
     assert 'CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"' in text
     assert 'CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"' in text
@@ -38,21 +37,22 @@ def test_demo_auto_pipeline_is_dispatch_only_xau_fast_lane_and_demo_only():
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
 
 
-def test_demo_discovery_pipeline_is_xau_only_independent_and_non_executing():
+def test_demo_discovery_pipeline_is_pair_specific_independent_and_non_executing():
     text = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
 
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
-    assert "demo_xau_technical_producer" in text
+    assert "demo_execution_technical_producer" in text
     assert "demo_closed_trade_reconciler" in text
     assert "demo_trajectory_finalizer" in text
     assert "demo_normalized_calibration_runner incremental" in text
     assert "demo_xau_v2_forward_scorecard" in text
+    assert "demo_eurusd_forward_scorecard" in text
     assert "demo_normalized_calibration_runner adaptive-v2" in text
     assert "demo_normalized_calibration_runner comparison" in text
     assert "demo_normalized_calibration_runner loss-attribution" in text
     assert "demo_calibration_autotrade" not in text
-    assert "demo_xau_fresh_ready_handoff" not in text
+    assert "demo_execution_fresh_ready_handoff" not in text
     assert "demo_structural_profit_protector" not in text
     assert "continue-on-error: true" in text
     assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in text
@@ -63,7 +63,6 @@ def test_demo_discovery_pipeline_is_xau_only_independent_and_non_executing():
 
 def test_macro_refresh_is_manual_only_during_demo_technical_testing():
     text = (ROOT / ".github/workflows/forex-official-macro-refresh.yml").read_text()
-
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
     assert "macro-refresh" in text
@@ -99,9 +98,8 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
         assert "\\n" not in text
 
 
-def test_demo_auto_supervisor_is_self_renewing_and_dispatches_xau_lanes():
+def test_demo_auto_supervisor_is_self_renewing_and_dispatches_pair_specific_lanes():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
-
     assert "workflow_dispatch:" in text
     assert "branches: [main]" in text
     assert "paths:" not in text
@@ -116,8 +114,8 @@ def test_demo_auto_supervisor_is_self_renewing_and_dispatches_xau_lanes():
     assert "sleep 60" in text
     assert "fast_cadence_seconds=60" in text
     assert "discovery_check_seconds=60" in text
-    assert "universe=XAUUSD" in text
-    assert "strategy=IMPULSE_RETEST_V2" in text
+    assert "universe=XAUUSD,EURUSD" in text
+    assert "strategies=PAIR_SPECIFIC" in text
     assert "SUPERVISOR_FAST_SKIP_BUSY" in text
     assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
     assert "active_count" in text
@@ -135,7 +133,6 @@ def test_demo_auto_supervisor_is_self_renewing_and_dispatches_xau_lanes():
 
 def test_demo_technical_heartbeat_is_hourly_seven_days_and_secret_free():
     text = (ROOT / ".github/workflows/ctrader-demo-technical-heartbeat.yml").read_text()
-
     assert 'cron: "17 * * * *"' in text
     assert "CTRADER_DEMO_TECHNICAL_HEARTBEAT_OK" in text
     assert "calendar=SEVEN_DAYS" in text
