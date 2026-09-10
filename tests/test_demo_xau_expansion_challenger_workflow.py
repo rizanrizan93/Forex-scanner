@@ -4,9 +4,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_challenger_runs_after_xau_discovery_as_best_effort_shadow_only():
+def test_challenger_runs_after_pair_discovery_as_best_effort_shadow_only():
     workflow = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text(encoding="utf-8")
-    producer = "python -m fx_scanner.demo_xau_technical_producer"
+    producer = "python -m fx_scanner.demo_execution_technical_producer"
     challenger = "python -m fx_scanner.demo_xau_expansion_challenger"
     reconciler = "python -m fx_scanner.demo_closed_trade_reconciler"
     assert workflow.index(producer) < workflow.index(challenger) < workflow.index(reconciler)
