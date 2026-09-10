@@ -53,6 +53,10 @@ jobs:
         run: python -m fx_scanner.cli validate-config
       - name: Discover XAUUSD IMPULSE_RETEST_V2 only
         run: python -m fx_scanner.demo_xau_technical_producer
+      - name: Classify XAU expansion challenger shadow evidence
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_expansion_challenger
       - name: Reconcile cTrader closed DEMO outcomes
         if: ${{ always() }}
         continue-on-error: true
