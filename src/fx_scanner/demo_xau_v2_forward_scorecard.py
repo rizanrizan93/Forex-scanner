@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from math import isfinite
 from typing import Any
 
@@ -9,6 +10,7 @@ from .demo_outcome_normalization import normalize_adaptive_profit_lock_outcomes
 from .demo_xau_strategy_latency_telemetry import STRATEGY_ACTIVATED_AT, STRATEGY_ID
 from .storage.supabase_operational import SupabaseOperationalStore
 
+UTC = timezone.utc
 WORKER = "ctrader_demo_xau_impulse_retest_v2_forward_scorecard"
 CLOSED_LIMIT = 500
 SIGNAL_LIMIT = 1000
@@ -47,6 +49,16 @@ def _finite(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return parsed if isfinite(parsed) else None
+
+
+def _dt(value: Any) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(UTC)
 
 
 def _signals(store: SupabaseOperationalStore) -> dict[str, dict[str, Any]]:
@@ -101,6 +113,9 @@ def _reliable_v2_rows(
         signal_id = str(row.get("signal_key") or payload.get("signal_id") or "").strip()
         signal = signals.get(signal_id)
         if signal is None:
+            continue
+        signal_at = _dt(signal.get("observed_at"))
+        if signal_at is None or signal_at < STRATEGY_ACTIVATED_AT:
             continue
         if str(payload.get("symbol") or signal.get("symbol") or "").upper() != "XAUUSD":
             continue
