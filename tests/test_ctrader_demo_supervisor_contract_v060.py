@@ -35,7 +35,8 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
     assert "python -m fx_scanner.demo_xau_technical_producer" in discovery
     assert "python -m fx_scanner.demo_closed_trade_reconciler" in discovery
     assert "python -m fx_scanner.demo_trajectory_finalizer" in discovery
-    assert "python -m fx_scanner.demo_incremental_calibration" in discovery
+    assert "python -m fx_scanner.demo_normalized_calibration_runner incremental" in discovery
+    assert "python -m fx_scanner.demo_normalized_calibration_runner adaptive-v2" in discovery
     assert "demo_xau_fresh_ready_handoff" not in discovery
     assert "demo_calibration_autotrade" not in discovery
     assert "ctrader-demo-order-smoke" not in discovery
