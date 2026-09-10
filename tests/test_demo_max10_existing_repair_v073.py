@@ -145,7 +145,7 @@ def test_auto_workflow_repairs_before_new_orders_and_requests_dynamic_profile():
         encoding="utf-8"
     )
     repair = "python -m fx_scanner.demo_existing_protection_repair"
-    execute = "python -m fx_scanner.demo_fresh_ready_handoff --limit 10"
+    execute = "python -m fx_scanner.demo_xau_fresh_ready_handoff --limit 10"
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in source
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in source
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in source
