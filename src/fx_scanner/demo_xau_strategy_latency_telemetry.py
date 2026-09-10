@@ -9,7 +9,8 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
 STRATEGY_ID = "IMPULSE_RETEST_V2"
-EVENT_TYPE = "DEMO_XAU_STRATEGY_LATENCY_V1"
+STRATEGY_ACTIVATED_AT = datetime(2026, 9, 10, 7, 42, 49, tzinfo=UTC)
+EVENT_TYPE = "DEMO_XAU_STRATEGY_LATENCY_V2"
 HEARTBEAT_NAME = "ctrader_demo_xau_strategy_latency"
 MAX_ROWS = 500
 
@@ -38,6 +39,7 @@ def _signals(store: SupabaseOperationalStore) -> tuple[dict[str, Any], ...]:
         store.client.table("signals")
         .select("id,run_id,observed_at,symbol,direction,state,final_score,setup_type")
         .eq("symbol", "XAUUSD")
+        .gte("observed_at", STRATEGY_ACTIVATED_AT.isoformat())
         .order("observed_at", desc=True)
         .limit(MAX_ROWS)
         .execute()
@@ -50,6 +52,7 @@ def _events(store: SupabaseOperationalStore) -> tuple[dict[str, Any], ...]:
         store.client.table("broker_order_events")
         .select("observed_at,signal_key,event_type,accepted,payload")
         .eq("backend", "CTRADER")
+        .gte("observed_at", STRATEGY_ACTIVATED_AT.isoformat())
         .order("observed_at", desc=True)
         .limit(MAX_ROWS * 4)
         .execute()
@@ -107,7 +110,9 @@ def build_latency_payload(signal: dict[str, Any], event_times: dict[str, datetim
     order_at = event_times.get("order_accepted_at")
     protection_at = event_times.get("protection_verified_at")
     return {
+        "telemetry_version": 2,
         "strategy_id": STRATEGY_ID,
+        "strategy_activated_at": STRATEGY_ACTIVATED_AT.isoformat(),
         "strategy_authority": "SOLE_DEMO_EXECUTION_STRATEGY",
         "symbol": "XAUUSD",
         "signal_id": str(signal.get("id") or ""),
@@ -156,7 +161,8 @@ def run() -> int:
 
     for signal in reversed(signals):
         signal_id = str(signal.get("id") or "")
-        if not signal_id:
+        signal_at = _dt(signal.get("observed_at"))
+        if not signal_id or signal_at is None or signal_at < STRATEGY_ACTIVATED_AT:
             continue
         payload = build_latency_payload(signal, event_index.get(signal_id, {}))
         order_latency = payload.get("signal_to_order_seconds")
@@ -172,16 +178,18 @@ def run() -> int:
             account_id="OBSERVABILITY",
             signal_key=signal_id,
             event_type=EVENT_TYPE,
-            broker_order_id=f"XAU_LATENCY:{signal_id}",
+            broker_order_id=f"XAU_LATENCY_V2:{signal_id}",
             accepted=True,
             code=STRATEGY_ID,
-            message="XAUUSD active strategy identity and latency telemetry",
+            message="XAUUSD IMPULSE_RETEST_V2 era strategy identity and latency telemetry",
             payload=payload,
         )
         emitted += 1
 
     details = {
+        "telemetry_version": 2,
         "strategy_id": STRATEGY_ID,
+        "strategy_activated_at": STRATEGY_ACTIVATED_AT.isoformat(),
         "strategy_authority": "SOLE_DEMO_EXECUTION_STRATEGY",
         "policy_effect": "OBSERVATION_ONLY",
         "execution_influence": False,
@@ -195,6 +203,7 @@ def run() -> int:
         "order_to_protection_median_seconds": None if not protection_latencies else median(protection_latencies),
         "m5_close_latency_status": "NOT_INFERRED_WITHOUT_EXACT_BAR_IDENTITY",
         "cadence_decision": "KEEP_60S_DISCOVERY_UNTIL_FORWARD_LATENCY_EVIDENCE",
+        "v1_historical_rows_excluded_from_strategy_identity": True,
     }
     store.write_heartbeat(
         HEARTBEAT_NAME,
@@ -204,7 +213,7 @@ def run() -> int:
     )
     print(
         "CTRADER_DEMO_XAU_STRATEGY_LATENCY "
-        f"strategy={STRATEGY_ID} signals={len(signals)} emitted={emitted} "
+        f"version=2 strategy={STRATEGY_ID} signals={len(signals)} emitted={emitted} "
         f"matched_orders={len(order_latencies)} "
         f"median_s={'NONE' if not order_latencies else f'{median(order_latencies):.3f}'} "
         f"p90_s={'NONE' if not order_latencies else f'{_percentile(order_latencies, 0.90):.3f}'} "
