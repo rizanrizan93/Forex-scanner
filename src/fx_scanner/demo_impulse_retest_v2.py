@@ -18,10 +18,17 @@ ACCEPTANCE_INVALIDATION_ATR = 0.25
 STOP_BUFFER_ATR = 0.35
 TARGET_R = 1.50
 
-# XAUUSD had the highest temporal-holdout win rate in the public-data study.
-# EURUSD remains research/shadow evidence only until forward DEMO validation.
-EXECUTION_SYMBOLS = frozenset({"XAUUSD"})
-SHADOW_SYMBOLS = frozenset({"EURUSD"})
+# Pair-specific DEMO execution registry.
+# XAUUSD keeps IMPULSE_RETEST_V2 as its active strategy. EURUSD is promoted to
+# DEMO execution as an isolated baseline so its own forward evidence can decide
+# whether this family remains suitable or should later be replaced by a
+# EURUSD-specific strategy. No LIVE authority is granted here.
+EXECUTION_SYMBOLS = frozenset({"XAUUSD", "EURUSD"})
+SHADOW_SYMBOLS = frozenset()
+PAIR_STRATEGY_IDS = {
+    "XAUUSD": "IMPULSE_RETEST_V2",
+    "EURUSD": "EURUSD_IMPULSE_RETEST_BASELINE_V1",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,8 +114,6 @@ def evaluate_impulse_retest_v2(
         if not impulse_ok:
             continue
 
-        # No earlier bar may already have supplied the valid first retest. If it
-        # did, the current bar is stale for this setup and must not re-trigger it.
         stale_or_invalid = False
         for idx in range(impulse_idx + 1, current_idx):
             row = rows[idx]
