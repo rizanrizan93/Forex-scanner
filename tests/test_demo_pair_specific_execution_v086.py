@@ -25,7 +25,7 @@ def test_eurusd_bootstrap_sizing_is_capped_below_xau_elite_plus():
     assert xau_sizing.risk_budget_pct == 5.0
 
 
-def test_active_workflows_use_pair_specific_wrappers_and_remain_demo_only():
+def test_active_workflows_use_pair_specific_wrappers_and_bounded_demo_contract():
     auto = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     discovery = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
     supervisor = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
@@ -33,7 +33,11 @@ def test_active_workflows_use_pair_specific_wrappers_and_remain_demo_only():
     assert "demo_execution_fast_candidate_producer" in auto
     assert "demo_execution_fresh_ready_handoff" in auto
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "2"' in auto
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in auto
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"' in auto
+    assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in auto
     assert "demo_execution_technical_producer" in discovery
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in discovery
     assert "XAUUSD,EURUSD" in supervisor
     assert "FX_LIVE_TRADING_ENABLED" not in auto
     assert "I_UNDERSTAND_LIVE_ORDERS" not in auto
