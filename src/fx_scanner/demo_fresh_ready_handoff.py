@@ -14,7 +14,7 @@ UTC = timezone.utc
 DEMO_POSITION_CAP_ENV = "CTRADER_DEMO_MAX_CONCURRENT_POSITIONS"
 DEMO_POSITION_CAP_CEILING = 10
 DEMO_ORDER_LOT_CAP_ENV = "CTRADER_DEMO_MAX_ORDER_LOTS"
-DEMO_ORDER_LOT_CAP_CEILING = 0.01
+DEMO_ORDER_LOT_CAP_CEILING = 0.50
 DEMO_STACKING_ENV = "CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING"
 DEMO_STACK_MIN_SCORE_ENV = "CTRADER_DEMO_STACK_MIN_SCORE"
 DEMO_STACK_MIN_COVERAGE_ENV = "CTRADER_DEMO_STACK_MIN_COVERAGE"
@@ -110,10 +110,12 @@ def load_demo_project_config(root=None):
 def load_demo_execution_policy(root=None) -> ExecutionPolicy:
     """Load canonical policy plus an explicit bounded DEMO runtime profile.
 
-    DEMO may opt into up to ten total positions with a hard 0.01 lot/order cap.
-    Broker-native stop-loss loss, aggregate risk, margin, spread, correlation and
-    geometry checks remain authoritative. Same-symbol stacking remains behind
-    independent high-conviction gates. LIVE remains untouched.
+    DEMO may opt into up to ten total positions and conviction-sized orders from
+    0.01 through 0.50 lot. The lot ceiling is not a risk override: broker-native
+    stop-loss loss, aggregate risk, margin, spread, correlation and geometry
+    checks remain authoritative and may reduce or reject the requested volume.
+    Same-symbol stacking remains behind independent high-conviction gates.
+    LIVE remains untouched.
     """
     policy = _load_execution_policy(root)
     demo_safety = dict(policy.demo_safety)
@@ -168,7 +170,10 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
         minimum=0.0,
         maximum=3600.0,
     )
-    demo_safety["max_same_symbol_lots"] = max_order_lots * max_same_symbol_positions
+    demo_safety["max_same_symbol_lots"] = min(
+        1.50,
+        max_order_lots * max_same_symbol_positions,
+    )
     demo_safety["max_portfolio_risk_pct"] = _bounded_float_env(
         DEMO_PORTFOLIO_RISK_CAP_ENV,
         default=6.0,
@@ -257,6 +262,9 @@ def main() -> int:
     calibration_runtime.load_execution_policy = load_demo_execution_policy
     calibration_runtime.load_project_config = load_demo_project_config
 
+    # Conviction chooses a quality ceiling. Broker-native stop-loss sizing runs
+    # after it and may only reduce that volume, keeping <=5% per-trade risk and
+    # account-wide risk/margin protections authoritative.
     from .demo_broker_risk_sizing import install_demo_broker_native_risk_sizing
     from .demo_conditional_stacking import install_demo_conditional_stacking
     from .demo_conviction_sizing import install_demo_conviction_sizing

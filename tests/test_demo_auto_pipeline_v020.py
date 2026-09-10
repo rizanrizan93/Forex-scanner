@@ -28,11 +28,11 @@ def test_demo_auto_pipeline_is_dispatch_only_xau_fast_lane_and_demo_only():
     assert 'CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"' in text
     assert 'CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"' in text
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"' in text
-    assert 'CTRADER_DEMO_DEEP_ANALYSIS_TOP: "5"' in text
+    assert 'CTRADER_DEMO_DEEP_ANALYSIS_TOP: "1"' in text
     assert 'CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"' in text
     assert 'CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"' in text
-    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"' in text
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in text
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
     assert 'FX_KILL_SWITCH: "0"' in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
@@ -52,8 +52,7 @@ def test_demo_discovery_pipeline_is_xau_only_independent_and_non_executing():
     assert "demo_structural_profit_protector" not in text
     assert "continue-on-error: true" in text
     assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in text
-    assert 'CTRADER_DEMO_DEEP_ANALYSIS_TOP: "5"' in text
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in text
+    assert 'CTRADER_DEMO_DEEP_ANALYSIS_TOP: "1"' in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
 

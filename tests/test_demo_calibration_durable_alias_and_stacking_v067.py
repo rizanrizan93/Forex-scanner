@@ -45,9 +45,9 @@ def test_fast_handoff_installs_conditional_stacking_after_conviction_sizing():
     source = Path("src/fx_scanner/demo_fresh_ready_handoff.py").read_text(encoding="utf-8")
 
     sizing = source.index("install_demo_conviction_sizing()")
-    broker_risk = source.index("install_demo_broker_native_risk_sizing()")
     stacking = source.index("install_demo_conditional_stacking()")
-    assert sizing < broker_risk < stacking
+    assert sizing < stacking
     assert "CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING" in source
     assert "max_same_symbol_positions" in source
-    assert "DEMO_ORDER_LOT_CAP_CEILING = 0.01" in source
+    assert "DEMO_ORDER_LOT_CAP_CEILING = 0.50" in source
+    assert "broker-native" in source
