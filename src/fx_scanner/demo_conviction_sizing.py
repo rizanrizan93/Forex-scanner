@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from math import isfinite
 from typing import Any
 
-MAX_DEMO_LOTS = 0.10
+MAX_DEMO_LOTS = 0.50
 MIN_DEMO_LOTS = 0.01
 MAX_DEMO_RISK_PCT = 5.0
 
@@ -24,9 +24,11 @@ def select_demo_conviction_sizing(
 ) -> DemoConvictionSizing:
     """Map validated DEMO setup quality to bounded lot/risk budgets.
 
-    Low-confidence cohorts remain at the 0.01-lot floor while higher-quality
-    setups may scale gradually to 0.10 lot. Entry/SL/TP geometry is never changed
-    here and the DEMO risk-budget contract remains capped at 5 percentage points.
+    IMPULSE_RETEST_V2 is designed around a 1.5R target, so conviction tiers use
+    that strategy-compatible RR floor. A 0.50-lot order is reserved for the
+    strictest ELITE_PLUS cohort. Entry/SL/TP geometry is never changed here and
+    broker-native risk sizing may only reduce the requested volume. Risk remains
+    capped at five percentage points per trade.
     """
     try:
         score = float(row.get("final_score"))
@@ -44,13 +46,15 @@ def select_demo_conviction_sizing(
     if order_cap < MIN_DEMO_LOTS or risk_cap <= 0.0:
         raise ValueError("DEMO_CONVICTION_SIZING_CAP_INVALID")
 
-    if score >= 95.0 and coverage >= 0.95 and rr2 >= 2.50:
-        tier, lots, risk = "ELITE", 0.10, 5.0
-    elif score >= 90.0 and coverage >= 0.90 and rr2 >= 2.00:
-        tier, lots, risk = "A_PLUS", 0.06, 4.0
-    elif score >= 80.0 and coverage >= 0.90 and rr2 >= 2.00:
-        tier, lots, risk = "A", 0.04, 3.0
-    elif score >= 70.0 and coverage >= 0.85 and rr2 >= 1.75:
+    if score >= 97.0 and coverage >= 0.98 and rr2 >= 1.50:
+        tier, lots, risk = "ELITE_PLUS", 0.50, 5.0
+    elif score >= 94.0 and coverage >= 0.95 and rr2 >= 1.50:
+        tier, lots, risk = "ELITE", 0.25, 4.5
+    elif score >= 90.0 and coverage >= 0.92 and rr2 >= 1.50:
+        tier, lots, risk = "A_PLUS", 0.10, 4.0
+    elif score >= 85.0 and coverage >= 0.90 and rr2 >= 1.50:
+        tier, lots, risk = "A", 0.05, 3.0
+    elif score >= 75.0 and coverage >= 0.85 and rr2 >= 1.50:
         tier, lots, risk = "B_PLUS", 0.02, 2.0
     elif score >= 60.0:
         tier, lots, risk = "B", 0.01, 1.0
@@ -65,7 +69,7 @@ def select_demo_conviction_sizing(
 
 
 def _install_runtime_policy_cap() -> None:
-    """Enforce the cTrader DEMO runtime order cap at 0.10 lot."""
+    """Enforce the cTrader DEMO runtime order cap at 0.50 lot."""
     from . import demo_calibration_autotrade as runtime
 
     if getattr(runtime, "_demo_conviction_policy_patch_installed", False):
@@ -130,6 +134,6 @@ def _install_executor_sizing() -> None:
 
 
 def install_demo_conviction_sizing() -> None:
-    """Install DEMO-only 0.01-0.10 conviction sizing for the fast execution handoff."""
+    """Install DEMO-only 0.01-0.50 conviction sizing for the fast execution handoff."""
     _install_runtime_policy_cap()
     _install_executor_sizing()
