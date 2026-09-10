@@ -73,6 +73,10 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_normalized_calibration_runner incremental
+      - name: Score IMPULSE_RETEST_V2 post-activation forward DEMO outcomes
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v2_forward_scorecard
       - name: Build Adaptive Calibration v2 shadow cohorts and diagnostics
         if: ${{ always() }}
         continue-on-error: true
