@@ -219,12 +219,13 @@ def test_demo_runtime_uses_score_driven_setup_and_keeps_other_guards():
     assert "chase_block_atr: 0.50" in strategy
 
 
-def test_supervisor_uses_two_minute_non_overlap_dispatch():
+def test_supervisor_uses_one_minute_non_overlap_dispatch():
     text = Path(".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
-    assert "seq 1 30" in text
-    assert "sleep 120" in text
-    assert "SUPERVISOR_SKIP_BUSY" in text
-    assert "overlap=DISABLED" in text
+    assert "seq 1 60" in text
+    assert "sleep 60" in text
+    assert "SUPERVISOR_FAST_SKIP_BUSY" in text
+    assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
+    assert "overlap_within_lane=DISABLED" in text
 
 
 def test_pipeline_keeps_chase_limit_and_enables_fresh_fvg_profile():
