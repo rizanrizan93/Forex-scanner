@@ -8,12 +8,22 @@ from typing import Any, Iterable
 from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
-SYSTEM_WINS = {"TP_HIT", "STRUCTURAL_PROTECT_PROFIT"}
-SYSTEM_LOSSES = {"SL_HIT", "STOP_OUT", "STRUCTURAL_PROTECT_LOSS"}
+SYSTEM_WINS = {
+    "TP_HIT",
+    "STRUCTURAL_PROTECT_PROFIT",
+    "ADAPTIVE_PROFIT_LOCK_PROFIT",
+}
+SYSTEM_LOSSES = {
+    "SL_HIT",
+    "STOP_OUT",
+    "STRUCTURAL_PROTECT_LOSS",
+    "ADAPTIVE_PROFIT_LOCK_LOSS",
+}
 SYSTEM_BREAKEVENS = {
     "BREAKEVEN",
     "PROTECTION_CLOSE_BREAKEVEN",
     "STRUCTURAL_PROTECT_BREAKEVEN",
+    "ADAPTIVE_PROFIT_LOCK_BREAKEVEN",
 }
 
 
@@ -28,6 +38,9 @@ class CalibrationStats:
     protected_wins: int = 0
     protected_losses: int = 0
     protected_breakevens: int = 0
+    adaptive_lock_wins: int = 0
+    adaptive_lock_losses: int = 0
+    adaptive_lock_breakevens: int = 0
     net_pnl: float = 0.0
     r_proxy_sum: float = 0.0
     r_proxy_count: int = 0
@@ -47,11 +60,11 @@ class CalibrationStats:
 
     @property
     def tp_wins(self) -> int:
-        return self.wins - self.protected_wins
+        return self.wins - self.protected_wins - self.adaptive_lock_wins
 
     @property
     def sl_losses(self) -> int:
-        return self.losses - self.protected_losses
+        return self.losses - self.protected_losses - self.adaptive_lock_losses
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +126,9 @@ def _add(stats: CalibrationStats, payload: dict[str, Any]) -> CalibrationStats:
     protected_win = exit_type == "STRUCTURAL_PROTECT_PROFIT"
     protected_loss = exit_type == "STRUCTURAL_PROTECT_LOSS"
     protected_be = exit_type == "STRUCTURAL_PROTECT_BREAKEVEN"
+    adaptive_win = exit_type == "ADAPTIVE_PROFIT_LOCK_PROFIT"
+    adaptive_loss = exit_type == "ADAPTIVE_PROFIT_LOCK_LOSS"
+    adaptive_be = exit_type == "ADAPTIVE_PROFIT_LOCK_BREAKEVEN"
     r_value = _r_proxy(payload) if is_system else None
     return CalibrationStats(
         closed=stats.closed + 1,
@@ -124,6 +140,9 @@ def _add(stats: CalibrationStats, payload: dict[str, Any]) -> CalibrationStats:
         protected_wins=stats.protected_wins + int(protected_win),
         protected_losses=stats.protected_losses + int(protected_loss),
         protected_breakevens=stats.protected_breakevens + int(protected_be),
+        adaptive_lock_wins=stats.adaptive_lock_wins + int(adaptive_win),
+        adaptive_lock_losses=stats.adaptive_lock_losses + int(adaptive_loss),
+        adaptive_lock_breakevens=stats.adaptive_lock_breakevens + int(adaptive_be),
         net_pnl=stats.net_pnl + net,
         r_proxy_sum=stats.r_proxy_sum + (0.0 if r_value is None else r_value),
         r_proxy_count=stats.r_proxy_count + int(r_value is not None),
@@ -278,6 +297,9 @@ def _stats_payload(stats: CalibrationStats) -> dict[str, Any]:
         "protected_wins": stats.protected_wins,
         "protected_losses": stats.protected_losses,
         "protected_breakevens": stats.protected_breakevens,
+        "adaptive_lock_wins": stats.adaptive_lock_wins,
+        "adaptive_lock_losses": stats.adaptive_lock_losses,
+        "adaptive_lock_breakevens": stats.adaptive_lock_breakevens,
         "net_pnl": stats.net_pnl,
         "win_rate": stats.win_rate,
         "avg_r_proxy": stats.avg_r_proxy,
@@ -290,7 +312,10 @@ def _outcome_counts_text(stats: CalibrationStats) -> str:
         f"tp={stats.tp_wins} sl={stats.sl_losses} "
         f"protect_profit={stats.protected_wins} "
         f"protect_loss={stats.protected_losses} "
-        f"protect_be={stats.protected_breakevens}"
+        f"protect_be={stats.protected_breakevens} "
+        f"adaptive_lock_profit={stats.adaptive_lock_wins} "
+        f"adaptive_lock_loss={stats.adaptive_lock_losses} "
+        f"adaptive_lock_be={stats.adaptive_lock_breakevens}"
     )
 
 
@@ -407,6 +432,9 @@ def run() -> int:
             "structural_protect_profit": overall.protected_wins,
             "structural_protect_loss": overall.protected_losses,
             "structural_protect_breakeven": overall.protected_breakevens,
+            "adaptive_profit_lock_profit": overall.adaptive_lock_wins,
+            "adaptive_profit_lock_loss": overall.adaptive_lock_losses,
+            "adaptive_profit_lock_breakeven": overall.adaptive_lock_breakevens,
             "realized_net_pnl": overall.net_pnl,
             "balance": balance,
             "equity": equity,
@@ -418,7 +446,7 @@ def run() -> int:
             "confirmation_calibration": confirmation_details,
             "automatic_strategy_mutation": False,
             "geometry_calibration": "SHADOW_CAPTURE_ACTIVE_MUTATION_HOLD",
-            "trade_management_calibration": "STRUCTURAL_PROFIT_PROTECT_SEPARATE_BUCKET",
+            "trade_management_calibration": "STRUCTURAL_AND_ADAPTIVE_PROFIT_LOCK_SEPARATE_BUCKETS",
         },
     )
     return 0
