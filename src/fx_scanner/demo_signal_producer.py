@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Mapping
 
-from .demo_technical_strategy import scan_demo_deep_candidates_report
+from .demo_impulse_retest_execution import scan_demo_deep_candidates_report
 from .models import ensure_utc
 from .ranking import rank_pairs_technical_only
 from .signal_producer import CTraderSignalProducer, SignalProducerReport, _closed_bars
@@ -80,8 +80,6 @@ class ExplicitDemoTechnicalSignalProducer(CTraderSignalProducer):
                     bundle[tf] = closed
                     self.sleeper(self.request_delay)
 
-                # Freshness is enforced at the point where the hydrated symbol
-                # becomes ranking-eligible. Never widen max_quote_age_seconds.
                 fresh_quote, quote_error = self._fresh_quote(symbol)
                 if fresh_quote is None:
                     return None, quote_error or "QUOTE_UNAVAILABLE:UNKNOWN"
@@ -196,7 +194,9 @@ class ExplicitDemoTechnicalSignalProducer(CTraderSignalProducer):
                 ),
                 compatibility_mode="TECHNICAL",
             )
-            hydration_symbols = tuple(rank.symbol for rank in preselection.deep_analysis)
+            hydration_symbols = tuple(
+                dict.fromkeys((*[rank.symbol for rank in preselection.deep_analysis], "XAUUSD"))
+            )
             failures.update(
                 self._hydrate_slow_timeframes(
                     bars_by_symbol=bars_by_symbol,
@@ -210,14 +210,9 @@ class ExplicitDemoTechnicalSignalProducer(CTraderSignalProducer):
             calendar_error: str | None = None
             guard_inputs = external_guards_by_symbol
             if guard_inputs is None and self.guard_resolver is not None:
-                selection = select_pair_candidates(
-                    ranked,
-                    macro_compatible_top=int(selection_cfg["macro_compatible_top"]),
-                    deep_analysis_top=int(selection_cfg["deep_analysis_top"]),
-                    compatibility_mode="TECHNICAL",
-                )
+                xau_candidates = tuple(rank for rank in ranked if rank.symbol == "XAUUSD")
                 guard_resolution = self.guard_resolver.resolve(
-                    candidates=selection.deep_analysis,
+                    candidates=xau_candidates,
                     bars_by_symbol=bars_by_symbol,
                     as_of=decision_at,
                 )
