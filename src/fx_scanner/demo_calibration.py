@@ -8,7 +8,7 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 
 DEMO_SCORE_FLOOR_MIN = 50.01
-DEMO_RISK_CEILING_PCT = 5.0
+DEMO_RISK_CEILING_PCT = 3.0
 
 
 def apply_demo_calibration_threshold(cfg):
@@ -26,10 +26,11 @@ def apply_demo_calibration_threshold(cfg):
 
 
 def apply_demo_calibration_risk(cfg, *, max_risk_pct: float = DEMO_RISK_CEILING_PCT):
-    """Apply an explicit process-local DEMO risk target.
+    """Apply an explicit process-local DEMO risk target capped at three percent.
 
     Canonical LIVE safety remains unchanged. An explicit
-    CTRADER_DEMO_RISK_PER_TRADE_PCT may raise only this DEMO wrapper up to 5%.
+    CTRADER_DEMO_RISK_PER_TRADE_PCT may adjust only this DEMO wrapper and must
+    remain within the bounded DEMO ceiling.
     """
     canonical_ceiling = float(max_risk_pct)
     if not isfinite(canonical_ceiling) or not 0.0 < canonical_ceiling <= DEMO_RISK_CEILING_PCT:
@@ -74,7 +75,7 @@ def apply_demo_deep_analysis_top(cfg):
 def apply_demo_calibration_policy_risk(
     policy, *, max_risk_pct: float = DEMO_RISK_CEILING_PCT
 ):
-    """Raise only the already-validated DEMO process risk ceiling."""
+    """Adjust only the already-validated DEMO process risk ceiling."""
     ceiling = float(max_risk_pct)
     if not isfinite(ceiling) or not 0.0 < ceiling <= DEMO_RISK_CEILING_PCT:
         raise SystemExit("CTRADER_DEMO_POLICY_RISK_CEILING_OUT_OF_RANGE")
