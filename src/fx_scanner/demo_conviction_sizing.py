@@ -7,6 +7,8 @@ from typing import Any
 MAX_DEMO_LOTS = 0.50
 MIN_DEMO_LOTS = 0.01
 MAX_DEMO_RISK_PCT = 5.0
+EURUSD_BOOTSTRAP_MAX_LOTS = 0.10
+EURUSD_BOOTSTRAP_MAX_RISK_PCT = 2.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,13 +24,13 @@ def select_demo_conviction_sizing(
     max_order_lots: float = MAX_DEMO_LOTS,
     max_risk_pct: float = MAX_DEMO_RISK_PCT,
 ) -> DemoConvictionSizing:
-    """Map validated DEMO setup quality to bounded lot/risk budgets.
+    """Map validated DEMO setup quality to bounded pair-specific lot/risk budgets.
 
-    IMPULSE_RETEST_V2 is designed around a 1.5R target, so conviction tiers use
-    that strategy-compatible RR floor. A 0.50-lot order is reserved for the
-    strictest ELITE_PLUS cohort. Entry/SL/TP geometry is never changed here and
-    broker-native risk sizing may only reduce the requested volume. Risk remains
-    capped at five percentage points per trade.
+    XAUUSD keeps the established 0.01-0.50 / <=5% profile. EURUSD is an execution
+    research baseline and is conservatively capped at 0.10 lot / <=2% until its
+    own forward DEMO evidence is sufficient for a later pair-specific policy
+    review. Entry/SL/TP geometry is never changed here; broker-native risk sizing
+    may only reduce the requested volume.
     """
     try:
         score = float(row.get("final_score"))
@@ -45,6 +47,11 @@ def select_demo_conviction_sizing(
         raise ValueError("DEMO_CONVICTION_SIZING_QUALITY_INVALID")
     if order_cap < MIN_DEMO_LOTS or risk_cap <= 0.0:
         raise ValueError("DEMO_CONVICTION_SIZING_CAP_INVALID")
+
+    symbol = str(row.get("symbol") or "").upper().strip()
+    if symbol == "EURUSD":
+        order_cap = min(order_cap, EURUSD_BOOTSTRAP_MAX_LOTS)
+        risk_cap = min(risk_cap, EURUSD_BOOTSTRAP_MAX_RISK_PCT)
 
     if score >= 97.0 and coverage >= 0.98 and rr2 >= 1.50:
         tier, lots, risk = "ELITE_PLUS", 0.50, 5.0
@@ -134,6 +141,6 @@ def _install_executor_sizing() -> None:
 
 
 def install_demo_conviction_sizing() -> None:
-    """Install DEMO-only 0.01-0.50 conviction sizing for the fast execution handoff."""
+    """Install DEMO-only pair-specific conviction sizing for execution handoff."""
     _install_runtime_policy_cap()
     _install_executor_sizing()
