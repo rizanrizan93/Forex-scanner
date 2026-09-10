@@ -1,26 +1,60 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from fx_scanner.config import load_project_config
 from fx_scanner.demo_calibration import apply_demo_deep_analysis_top
-from fx_scanner.demo_market_schedule import apply_demo_market_schedule
+from fx_scanner.demo_market_schedule import (
+    CRYPTO_WEEKEND_SYMBOLS,
+    apply_demo_market_schedule,
+)
 
 UTC = timezone.utc
 
 
-def test_market_schedule_still_keeps_weekday_fx_universe():
-    cfg = load_project_config()
-    scheduled, mode = apply_demo_market_schedule(cfg, now=datetime(2026, 9, 4, 12, 0, tzinfo=UTC))
-    assert mode == "WEEKDAY_FX"
+def test_legacy_schedule_helper_preserves_configured_weekday_universe():
+    """Historical schedule helper remains stable for lineage/non-active callers."""
+    cfg = load_project_config(None)
+    scheduled, mode = apply_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 9, 4, 12, 0, tzinfo=UTC),
+    )
+    assert mode == "WEEKDAY_FULL_24X5"
+    assert len(cfg.pairs) == 20
     assert len(scheduled.pairs) == 20
 
 
-def test_weekend_schedule_can_still_bound_research_universe(monkeypatch):
-    cfg = load_project_config()
-    scheduled, _ = apply_demo_market_schedule(cfg, now=datetime(2026, 9, 5, 12, 0, tzinfo=UTC))
+@pytest.mark.parametrize(
+    "when",
+    [
+        datetime(2026, 9, 5, 12, 0, tzinfo=UTC),
+        datetime(2026, 9, 6, 12, 0, tzinfo=UTC),
+    ],
+)
+def test_legacy_schedule_helper_still_exposes_crypto_weekend_contract(when):
+    cfg = load_project_config(None)
+    scheduled, mode = apply_demo_market_schedule(cfg, now=when)
+    assert mode == "WEEKEND_CRYPTO_BROKER_GATED"
+    assert {pair.symbol for pair in scheduled.pairs} == CRYPTO_WEEKEND_SYMBOLS
+    assert CRYPTO_WEEKEND_SYMBOLS == {"BTCUSD", "ETHUSD", "SOLUSD"}
+
+
+def test_schedule_requires_timezone_aware_clock():
+    cfg = load_project_config(None)
+    with pytest.raises(ValueError, match="timezone-aware"):
+        apply_demo_market_schedule(cfg, now=datetime(2026, 9, 5, 12, 0))
+
+
+def test_legacy_weekend_deep_top_helper_remains_bounded(monkeypatch):
+    cfg = load_project_config(None)
+    scheduled, _ = apply_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 9, 5, 12, 0, tzinfo=UTC),
+    )
     monkeypatch.setenv("CTRADER_DEMO_DEEP_ANALYSIS_TOP", "5")
     calibrated = apply_demo_deep_analysis_top(scheduled)
-    assert calibrated.strategy["selection"]["deep_analysis_top"] == min(5, len(scheduled.pairs))
+    assert calibrated.strategy["selection"]["deep_analysis_top"] == 3
 
 
 def test_active_pair_supervisor_runs_one_minute_checks_without_weekend_crypto_fallback():
