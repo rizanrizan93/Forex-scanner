@@ -180,7 +180,7 @@ def build_strategy_lab_hypotheses(
 
     # Original research hypothesis: a directional move is treated as credible only
     # after an impulse has been accepted and price returns in a controlled retest.
-    # This intentionally penalizes bare M5 structure breaks, which dominate the
+    # This intentionally rejects bare M5 structure breaks, which dominate the
     # current weak DEMO outcome cohort, and uses four-EMA state only as secondary
     # expansion/context evidence rather than as an execution trigger.
     impulse_present = m5_displacement or m15_displacement
@@ -200,7 +200,7 @@ def build_strategy_lab_hypotheses(
     )
     impulse_retest_score = 5.0
     impulse_retest_score += 20.0 if regime in {"TRANSITION", "TREND_WEAK", "TREND_STRONG"} else 0.0
-    impulse_retest_score += 20.0 if impulse_present else -25.0
+    impulse_retest_score += 20.0 if impulse_present else -40.0
     impulse_retest_score += 10.0 if structure_present else 0.0
     impulse_retest_score += 10.0 if directional_fvg else 0.0
     impulse_retest_score += 5.0 if directional_sweep else 0.0
