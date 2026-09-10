@@ -9,6 +9,8 @@ from .storage.supabase_operational import SupabaseOperationalStore
 UTC = timezone.utc
 ADAPTIVE_EVENT = "DEMO_ADAPTIVE_PROFIT_LOCK_ADVANCED"
 NORMALIZABLE_STOP_OUTCOMES = {"SL_HIT", "PROTECTION_CLOSE_BREAKEVEN", "BREAKEVEN"}
+BREAKEVEN_ABS_NET = 0.01
+BREAKEVEN_EPSILON = 1e-9
 
 
 def _dt(value: Any) -> datetime | None:
@@ -31,8 +33,12 @@ def _finite(value: Any) -> float | None:
     return parsed if isfinite(parsed) else None
 
 
+def _is_breakeven(net_pnl: float) -> bool:
+    return abs(float(net_pnl)) <= BREAKEVEN_ABS_NET + BREAKEVEN_EPSILON
+
+
 def _adaptive_outcome(net_pnl: float) -> str:
-    if abs(net_pnl) <= 0.01:
+    if _is_breakeven(net_pnl):
         return "ADAPTIVE_PROFIT_LOCK_BREAKEVEN"
     return "ADAPTIVE_PROFIT_LOCK_PROFIT" if net_pnl > 0 else "ADAPTIVE_PROFIT_LOCK_LOSS"
 
@@ -121,7 +127,7 @@ def normalize_adaptive_profit_lock_outcomes(
             payload["trade_management_exit"] = "ADAPTIVE_PROFIT_LOCK"
             payload["exit_attribution"] = ADAPTIVE_EVENT
             payload["outcome_normalized_for_calibration"] = True
-            payload["outcome_normalization_contract"] = "ACKNOWLEDGED_ADAPTIVE_LOCK_SAME_SIGNAL_POSITION_PRE_CLOSE_V1"
+            payload["outcome_normalization_contract"] = "ACKNOWLEDGED_ADAPTIVE_LOCK_SAME_SIGNAL_POSITION_PRE_CLOSE_V2_NUMERIC_STABLE_BE"
             item["code"] = outcome
 
         item["payload"] = payload
