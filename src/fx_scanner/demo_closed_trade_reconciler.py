@@ -126,15 +126,22 @@ def _classify_exit(
     gross_profit: float,
     partial: bool,
     structural_profit_protect: bool = False,
+    adaptive_profit_lock: bool = False,
+    realized_pnl: float | None = None,
 ) -> str:
+    pnl = gross_profit if realized_pnl is None else realized_pnl
     if partial:
-        if abs(gross_profit) <= 0.01:
+        if abs(pnl) <= 0.01:
             return "PARTIAL_CLOSE_BREAKEVEN"
-        return "PARTIAL_CLOSE_PROFIT" if gross_profit > 0 else "PARTIAL_CLOSE_LOSS"
+        return "PARTIAL_CLOSE_PROFIT" if pnl > 0 else "PARTIAL_CLOSE_LOSS"
     if structural_profit_protect:
-        if abs(gross_profit) <= 0.01:
+        if abs(pnl) <= 0.01:
             return "STRUCTURAL_PROTECT_BREAKEVEN"
-        return "STRUCTURAL_PROTECT_PROFIT" if gross_profit > 0 else "STRUCTURAL_PROTECT_LOSS"
+        return "STRUCTURAL_PROTECT_PROFIT" if pnl > 0 else "STRUCTURAL_PROTECT_LOSS"
+    if adaptive_profit_lock:
+        if abs(pnl) <= 0.01:
+            return "ADAPTIVE_PROFIT_LOCK_BREAKEVEN"
+        return "ADAPTIVE_PROFIT_LOCK_PROFIT" if pnl > 0 else "ADAPTIVE_PROFIT_LOCK_LOSS"
     if close_order is not None and bool(getattr(close_order, "isStopOut", False)):
         return "STOP_OUT"
     order_type = int(getattr(close_order, "orderType", 0) or 0) if close_order is not None else 0
@@ -146,12 +153,12 @@ def _classify_exit(
             sl = tp = 0.0
         if sl > 0 and tp > 0 and exit_price > 0:
             return "SL_HIT" if abs(exit_price - sl) <= abs(exit_price - tp) else "TP_HIT"
-        if abs(gross_profit) <= 0.01:
+        if abs(pnl) <= 0.01:
             return "PROTECTION_CLOSE_BREAKEVEN"
-        return "TP_HIT" if gross_profit > 0 else "SL_HIT"
-    if abs(gross_profit) <= 0.01:
+        return "TP_HIT" if pnl > 0 else "SL_HIT"
+    if abs(pnl) <= 0.01:
         return "BREAKEVEN"
-    return "MANUAL_CLOSE_PROFIT" if gross_profit > 0 else "MANUAL_CLOSE_LOSS"
+    return "MANUAL_CLOSE_PROFIT" if pnl > 0 else "MANUAL_CLOSE_LOSS"
 
 
 class DemoClosedTradeReconciler:
@@ -189,6 +196,37 @@ class DemoClosedTradeReconciler:
         rows = list(response.data or [])
         return len(rows) == 1
 
+    def _adaptive_profit_lock_exit(self, *, signal_id: str, position_id: int) -> bool:
+        """Detect an acknowledged stop advance for this exact signal/position.
+
+        Account aliases are intentionally not used for the join. Signal UUID plus
+        broker position ID is the durable identity, matching the geometry join
+        contract and avoiding cTrader visible-login/native-account alias drift.
+        """
+        response = (
+            self.store.client.table("broker_order_events")
+            .select("id,payload")
+            .eq("backend", "CTRADER")
+            .eq("signal_key", signal_id)
+            .eq("event_type", "DEMO_ADAPTIVE_PROFIT_LOCK_ADVANCED")
+            .eq("accepted", True)
+            .order("observed_at", desc=True)
+            .limit(20)
+            .execute()
+        )
+        wanted_position = str(int(position_id))
+        matches = []
+        for row in response.data or []:
+            payload = row.get("payload")
+            if not isinstance(payload, dict):
+                continue
+            if str(payload.get("position_id") or "") != wanted_position:
+                continue
+            if str(payload.get("execution") or "").upper() != "ACKNOWLEDGED":
+                continue
+            matches.append(row)
+        return bool(matches)
+
     def _signal(self, signal_id: str) -> dict[str, Any] | None:
         response = (
             self.store.client.table("signals")
@@ -204,12 +242,7 @@ class DemoClosedTradeReconciler:
         return dict(rows[0]) if len(rows) == 1 else None
 
     def _geometry(self, signal_id: str) -> dict[str, Any]:
-        """Read exact producer geometry without assuming one account-ID namespace.
-
-        The producer may run with the visible trader-login alias while broker
-        reconciliation uses cTrader's native account ID. Signal UUIDs are
-        globally unique, so the durable signal key is the authoritative join.
-        """
+        """Read exact producer geometry without assuming one account-ID namespace."""
         response = (
             self.store.client.table("broker_order_events")
             .select("payload")
@@ -295,6 +328,11 @@ class DemoClosedTradeReconciler:
                 not partial
                 and self._profit_protect_exit(signal_id=signal_id, position_id=position_id)
             )
+            adaptive_profit_lock = bool(
+                not partial
+                and not structural_profit_protect
+                and self._adaptive_profit_lock_exit(signal_id=signal_id, position_id=position_id)
+            )
 
             outcome = _classify_exit(
                 close_order=close_order,
@@ -303,8 +341,19 @@ class DemoClosedTradeReconciler:
                 gross_profit=gross_profit,
                 partial=partial,
                 structural_profit_protect=structural_profit_protect,
+                adaptive_profit_lock=adaptive_profit_lock,
+                realized_pnl=net_pnl_estimate,
             )
             event_type = "DEMO_TRADE_PARTIAL_CLOSE" if partial else "DEMO_TRADE_CLOSED"
+            if structural_profit_protect:
+                trade_management_exit = "STRUCTURAL_PROFIT_PROTECT"
+                exit_attribution = "DEMO_STRUCTURAL_PROFIT_PROTECT_EXIT"
+            elif adaptive_profit_lock:
+                trade_management_exit = "ADAPTIVE_PROFIT_LOCK"
+                exit_attribution = "DEMO_ADAPTIVE_PROFIT_LOCK_ADVANCED"
+            else:
+                trade_management_exit = None
+                exit_attribution = None
             payload = {
                 "signal_id": signal_id,
                 "run_id": signal.get("run_id"),
@@ -334,8 +383,8 @@ class DemoClosedTradeReconciler:
                 "is_stop_out": bool(getattr(close_order, "isStopOut", False)) if close_order is not None else False,
                 "source": "CTRADER_DEAL_HISTORY",
                 "entry_geometry_available": bool(geometry),
-                "trade_management_exit": "STRUCTURAL_PROFIT_PROTECT" if structural_profit_protect else None,
-                "exit_attribution": "DEMO_STRUCTURAL_PROFIT_PROTECT_EXIT" if structural_profit_protect else None,
+                "trade_management_exit": trade_management_exit,
+                "exit_attribution": exit_attribution,
             }
             payload.update(geometry)
             self.store.record_order_event(
@@ -357,6 +406,7 @@ class DemoClosedTradeReconciler:
                 f"gross_profit={gross_profit:.8g} net_pnl_estimate={net_pnl_estimate:.8g} "
                 f"exit_price={exit_price:.8g} partial={int(partial)} "
                 f"profit_protect={int(structural_profit_protect)} "
+                f"adaptive_profit_lock={int(adaptive_profit_lock)} "
                 f"entry_mode={geometry.get('entry_mode', 'LEGACY')}"
             )
 
@@ -401,7 +451,10 @@ def run() -> int:
                 "history_truncated": report.history_truncated,
                 "outcome_event": "DEMO_TRADE_CLOSED",
                 "entry_geometry_enrichment": "DEMO_SIGNAL_GEOMETRY",
-                "trade_management_attribution": "DEMO_STRUCTURAL_PROFIT_PROTECT_EXIT",
+                "trade_management_attribution": [
+                    "DEMO_STRUCTURAL_PROFIT_PROTECT_EXIT",
+                    "DEMO_ADAPTIVE_PROFIT_LOCK_ADVANCED",
+                ],
             },
         )
         print(
