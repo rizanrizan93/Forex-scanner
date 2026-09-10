@@ -57,6 +57,10 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_expansion_challenger
+      - name: Persist XAU active strategy identity and latency telemetry
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_strategy_latency_telemetry
       - name: Reconcile cTrader closed DEMO outcomes
         if: ${{ always() }}
         continue-on-error: true
