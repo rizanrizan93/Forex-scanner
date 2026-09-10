@@ -71,11 +71,11 @@ def run(*, limit: int = 10) -> int:
 
     cfg, production_execution_min = apply_demo_calibration_threshold(cfg)
     cfg = _apply_demo_technical_only_profile(cfg)
-    cfg, demo_risk_pct = apply_demo_calibration_risk(cfg, max_risk_pct=3.0)
+    cfg, demo_risk_pct = apply_demo_calibration_risk(cfg, max_risk_pct=5.0)
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
 
     demo_safety = dict(base_policy.demo_safety)
-    demo_safety["max_risk_pct"] = min(3.0, float(demo_safety["max_risk_pct"]))
+    demo_safety["max_risk_pct"] = 5.0
     policy = replace(base_policy, mode=ExecutionMode.AUTO, demo_safety=demo_safety)
 
     symbols = [pair.symbol for pair in cfg.pairs]

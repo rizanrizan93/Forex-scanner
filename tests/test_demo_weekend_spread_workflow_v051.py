@@ -14,4 +14,4 @@ def test_weekend_discovery_clears_only_inactive_weekday_spread_overrides():
     assert 'CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "1"' in workflow
     assert 'CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"' in workflow
     assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in workflow
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in workflow
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in workflow
