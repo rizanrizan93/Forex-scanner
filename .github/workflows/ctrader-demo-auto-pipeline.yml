@@ -40,29 +40,25 @@ jobs:
       CTRADER_DEMO_MIN_LIVE_RR: "1.0"
       CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"
       CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"
-      CTRADER_DEMO_MAX_ORDER_LOTS: "0.10"
+      CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"
       CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"
       CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "25.0"
       CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"
       CTRADER_DEMO_STACK_MIN_SCORE: "85"
       CTRADER_DEMO_STACK_MIN_COVERAGE: "0.90"
-      CTRADER_DEMO_STACK_MIN_RR2: "2.0"
+      CTRADER_DEMO_STACK_MIN_RR2: "1.5"
       CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "3"
       CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "300"
-      CTRADER_DEMO_DEEP_ANALYSIS_TOP: "5"
+      CTRADER_DEMO_DEEP_ANALYSIS_TOP: "1"
       CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"
       CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"
-      CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS: "6"
-      CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS: "20"
-      CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "1"
-      CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"
+      CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"
+      CTRADER_DEMO_FAST_CANDIDATE_LOOKBACK_MINUTES: "45"
+      CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"
+      CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"
       CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "1"
       CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "1"
       CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED: "1"
-      CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"
-      CTRADER_DEMO_FAST_CANDIDATE_LOOKBACK_MINUTES: "45"
-      CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"
-      CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "1.20"
 
     steps:
       - uses: actions/checkout@v4
@@ -76,12 +72,12 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Fast revalidate latest DEMO candidates on fresh broker data
-        run: python -m fx_scanner.demo_fast_candidate_producer
+      - name: Fast revalidate XAUUSD IMPULSE_RETEST_V2 on fresh broker data
+        run: python -m fx_scanner.demo_xau_fast_candidate_producer
       - name: Repair missing SL/TP on scanner-linked DEMO positions
         run: python -m fx_scanner.demo_existing_protection_repair
-      - name: Execute only fresh durable EXECUTION_READY DEMO signals
-        run: python -m fx_scanner.demo_fresh_ready_handoff --limit 10
+      - name: Execute only fresh durable XAUUSD EXECUTION_READY DEMO signals
+        run: python -m fx_scanner.demo_xau_fresh_ready_handoff --limit 10
       - name: Advance adaptive server-side profit lock on profitable DEMO positions
         run: python -m fx_scanner.demo_adaptive_profit_lock
       - name: Protect profitable DEMO positions on confirmed structural reversal

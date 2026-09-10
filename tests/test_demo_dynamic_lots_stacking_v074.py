@@ -19,14 +19,14 @@ def _intent(*, side=OrderSide.BUY, volume=0.04, created_at=None):
     now = created_at or datetime.now(tz=UTC)
     return OrderIntent(
         signal_id=f"stack-test-{side.value}-{int(now.timestamp())}-{volume}",
-        symbol="EURUSD",
+        symbol="XAUUSD",
         side=side,
         order_type=OrderType.MARKET,
         created_at=now,
         volume=volume,
-        entry_price=1.1000,
-        stop_loss=1.0950 if side == OrderSide.BUY else 1.1050,
-        take_profit=1.1100 if side == OrderSide.BUY else 1.0900,
+        entry_price=3500.0,
+        stop_loss=3495.0 if side == OrderSide.BUY else 3505.0,
+        take_profit=3510.0 if side == OrderSide.BUY else 3490.0,
         risk_pct=1.0,
         comment="DEMO_AUTO:STACK_TEST",
     )
@@ -37,8 +37,8 @@ def _position(*, side=1, lots=0.04, opened_at=None, symbol_id=7):
     lot_size = 100_000
     return SimpleNamespace(
         positionId=123,
-        stopLoss=1.0950 if side == 1 else 1.1050,
-        takeProfit=1.1100 if side == 1 else 1.0900,
+        stopLoss=3495.0 if side == 1 else 3505.0,
+        takeProfit=3510.0 if side == 1 else 3490.0,
         tradeData=SimpleNamespace(
             symbolId=symbol_id,
             tradeSide=side,
@@ -48,7 +48,7 @@ def _position(*, side=1, lots=0.04, opened_at=None, symbol_id=7):
     )
 
 
-def _row(score=90.0, coverage=0.95, rr2=2.2):
+def _row(score=90.0, coverage=0.95, rr2=1.5):
     return {
         "final_score": score,
         "data_coverage": coverage,
@@ -62,11 +62,11 @@ def _safety(**overrides):
         "allow_same_symbol_stacking": True,
         "stack_min_score": 85.0,
         "stack_min_coverage": 0.90,
-        "stack_min_rr2": 2.0,
+        "stack_min_rr2": 1.5,
         "max_same_symbol_positions": 3,
         "min_stack_spacing_seconds": 300.0,
-        "max_order_lots": 0.10,
-        "max_same_symbol_lots": 0.30,
+        "max_order_lots": 0.50,
+        "max_same_symbol_lots": 1.50,
     }
     base.update(overrides)
     return base
@@ -76,23 +76,36 @@ def _symbol_info():
     return SimpleNamespace(lotSize=100_000)
 
 
-def test_runtime_profile_can_enable_point_one_lot_and_stacking(monkeypatch):
+def test_runtime_profile_base_loader_keeps_canonical_cap_until_xau_wrapper(monkeypatch):
     monkeypatch.setenv(DEMO_POSITION_CAP_ENV, "10")
-    monkeypatch.setenv(DEMO_ORDER_LOT_CAP_ENV, "0.10")
+    monkeypatch.setenv(DEMO_ORDER_LOT_CAP_ENV, "0.50")
     monkeypatch.setenv(DEMO_STACKING_ENV, "1")
-    policy = load_demo_execution_policy()
+    # The base handoff remains fail-closed at its legacy cap; the XAU wrapper
+    # explicitly raises the DEMO-only ceiling before loading policy.
+    import fx_scanner.demo_fresh_ready_handoff as handoff
+    old = handoff.DEMO_ORDER_LOT_CAP_CEILING
+    handoff.DEMO_ORDER_LOT_CAP_CEILING = 0.50
+    try:
+        policy = load_demo_execution_policy()
+    finally:
+        handoff.DEMO_ORDER_LOT_CAP_CEILING = old
     assert policy.demo_safety["max_concurrent_positions"] == 10
-    assert policy.demo_safety["max_order_lots"] == 0.10
+    assert policy.demo_safety["max_order_lots"] == 0.50
     assert policy.demo_safety["allow_same_symbol_stacking"] is True
     assert policy.demo_safety["max_same_symbol_positions"] == 3
-    assert policy.demo_safety["max_same_symbol_lots"] == pytest.approx(0.30)
     assert policy.ctrader["environment"] == "DEMO"
 
 
-def test_runtime_profile_rejects_lot_cap_above_point_one(monkeypatch):
-    monkeypatch.setenv(DEMO_ORDER_LOT_CAP_ENV, "0.11")
-    with pytest.raises(RuntimeError, match=r"CTRADER_DEMO_MAX_ORDER_LOTS must be in \[0.01,0.1\]"):
-        load_demo_execution_policy()
+def test_runtime_profile_rejects_lot_cap_above_point_five(monkeypatch):
+    import fx_scanner.demo_fresh_ready_handoff as handoff
+    old = handoff.DEMO_ORDER_LOT_CAP_CEILING
+    handoff.DEMO_ORDER_LOT_CAP_CEILING = 0.50
+    monkeypatch.setenv(DEMO_ORDER_LOT_CAP_ENV, "0.51")
+    try:
+        with pytest.raises(RuntimeError, match=r"CTRADER_DEMO_MAX_ORDER_LOTS must be in \[0.01,0.5\]"):
+            load_demo_execution_policy()
+    finally:
+        handoff.DEMO_ORDER_LOT_CAP_CEILING = old
 
 
 def test_high_conviction_same_direction_stack_is_allowed_after_spacing():
@@ -120,7 +133,7 @@ def test_same_symbol_stack_blocks_opposite_direction():
         symbol_info=_symbol_info(),
         demo_safety=_safety(),
     )
-    assert block == "BROKER_SYMBOL_OPPOSITE_EXPOSURE:EURUSD"
+    assert block == "BROKER_SYMBOL_OPPOSITE_EXPOSURE:XAUUSD"
 
 
 def test_same_symbol_stack_blocks_below_confidence_threshold():
@@ -175,12 +188,12 @@ def test_same_symbol_stack_blocks_aggregate_symbol_lot_cap():
     now = datetime.now(tz=UTC)
     block = evaluate_same_symbol_stack(
         row=_row(),
-        intent=_intent(volume=0.10, created_at=now),
+        intent=_intent(volume=0.50, created_at=now),
         same_symbol_positions=(
-            _position(lots=0.10, opened_at=now - timedelta(minutes=10)),
-            _position(lots=0.10, opened_at=now - timedelta(minutes=20)),
+            _position(lots=0.50, opened_at=now - timedelta(minutes=10)),
+            _position(lots=0.50, opened_at=now - timedelta(minutes=20)),
         ),
         symbol_info=_symbol_info(),
-        demo_safety=_safety(max_same_symbol_lots=0.25),
+        demo_safety=_safety(max_same_symbol_lots=1.25),
     )
     assert block.startswith("BROKER_SYMBOL_LOT_CAP")

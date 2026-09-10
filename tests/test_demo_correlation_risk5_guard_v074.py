@@ -16,4 +16,4 @@ def test_fast_pipeline_requests_same_five_percent_contract():
     workflow = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text(encoding="utf-8")
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in workflow
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in workflow
-    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.10"' in workflow
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in workflow

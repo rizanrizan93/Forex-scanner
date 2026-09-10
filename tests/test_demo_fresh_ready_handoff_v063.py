@@ -74,10 +74,11 @@ def test_fresh_handoff_never_promotes_nonready_or_future_signal():
     ) == ()
 
 
-def test_auto_workflow_uses_fresh_handoff_wrapper():
+def test_auto_workflow_uses_xau_fresh_handoff_wrapper():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1]
     text = (root / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
-    assert "python -m fx_scanner.demo_fresh_ready_handoff --limit 10" in text
+    assert "python -m fx_scanner.demo_xau_fresh_ready_handoff --limit 10" in text
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text

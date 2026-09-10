@@ -21,13 +21,13 @@ def test_demo_risk_is_five_percent_only_via_explicit_process_override():
     auto_workflow = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     discovery_workflow = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
 
-    # Canonical strategy risk remains conservative; the DEMO wrapper alone may scale to 5%.
+    # Canonical strategy geometry remains conservative; DEMO risk is explicitly bounded to 5%.
     assert float(risk["risk_per_trade_pct"]) == 0.25
     assert float(risk["max_risk_per_trade_pct"]) == 0.50
     assert float(execution["demo_safety"]["max_risk_pct"]) == 5.0
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in auto_workflow
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in discovery_workflow
-    assert float(execution["demo_safety"]["max_order_lots"]) == 0.10
+    assert float(execution["demo_safety"]["max_order_lots"]) == 0.50
     assert int(execution["demo_safety"]["max_concurrent_positions"]) == 10
     assert execution["ctrader"]["environment"] == "DEMO"
     assert execution["mode"] == "DISABLED"
