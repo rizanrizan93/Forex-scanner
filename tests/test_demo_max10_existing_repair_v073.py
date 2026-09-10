@@ -87,30 +87,14 @@ def test_signal_comment_must_be_exact_scanner_uuid():
 
 def test_signal_plan_requires_symbol_direction_and_structural_stop():
     signal_id = "9aad9e85-d13c-47ef-80e2-c937dc64293d"
-    good = {
-        "id": signal_id,
-        "symbol": "SOLUSD",
-        "direction": "SHORT",
-        "sl": 103.69825,
-        "tp2": 97.005,
-    }
+    good = {"id": signal_id, "symbol": "SOLUSD", "direction": "SHORT", "sl": 103.69825, "tp2": 97.005}
     store = SimpleNamespace(client=_Client([good]))
-    row = _load_signal_plan(
-        store,
-        signal_id=signal_id,
-        symbol="SOLUSD",
-        side="SELL",
-    )
+    row = _load_signal_plan(store, signal_id=signal_id, symbol="SOLUSD", side="SELL")
     assert row == good
 
     wrong_side = dict(good, direction="LONG")
     store = SimpleNamespace(client=_Client([wrong_side]))
-    assert _load_signal_plan(
-        store,
-        signal_id=signal_id,
-        symbol="SOLUSD",
-        side="SELL",
-    ) is None
+    assert _load_signal_plan(store, signal_id=signal_id, symbol="SOLUSD", side="SELL") is None
 
 
 def test_exact_broker_identity_rejects_position_or_side_mismatch():
@@ -120,32 +104,15 @@ def test_exact_broker_identity_rejects_position_or_side_mismatch():
         reconcile=lambda: SimpleNamespace(position=[position]),
         symbol_id=lambda symbol: 77 if symbol == "SOLUSD" else 0,
     )
-    assert _exact_broker_identity(
-        session,
-        position_id=41389302,
-        symbol="SOLUSD",
-        side="SELL",
-    ) == (77, 2, 100)
-    assert _exact_broker_identity(
-        session,
-        position_id=41389302,
-        symbol="SOLUSD",
-        side="BUY",
-    ) is None
-    assert _exact_broker_identity(
-        session,
-        position_id=999,
-        symbol="SOLUSD",
-        side="SELL",
-    ) is None
+    assert _exact_broker_identity(session, position_id=41389302, symbol="SOLUSD", side="SELL") == (77, 2, 100)
+    assert _exact_broker_identity(session, position_id=41389302, symbol="SOLUSD", side="BUY") is None
+    assert _exact_broker_identity(session, position_id=999, symbol="SOLUSD", side="SELL") is None
 
 
 def test_auto_workflow_repairs_before_new_orders_and_requests_dynamic_profile():
-    source = (ROOT / ".github" / "workflows" / "ctrader-demo-auto-pipeline.yml").read_text(
-        encoding="utf-8"
-    )
+    source = (ROOT / ".github" / "workflows" / "ctrader-demo-auto-pipeline.yml").read_text(encoding="utf-8")
     repair = "python -m fx_scanner.demo_existing_protection_repair"
-    execute = "python -m fx_scanner.demo_xau_fresh_ready_handoff --limit 10"
+    execute = "python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10"
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in source
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in source
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in source
@@ -155,8 +122,6 @@ def test_auto_workflow_repairs_before_new_orders_and_requests_dynamic_profile():
 
 
 def test_base_executor_same_symbol_and_unprotected_guards_remain_present():
-    source = (ROOT / "src" / "fx_scanner" / "execution" / "demo_autotrade.py").read_text(
-        encoding="utf-8"
-    )
+    source = (ROOT / "src" / "fx_scanner" / "execution" / "demo_autotrade.py").read_text(encoding="utf-8")
     assert "BROKER_SYMBOL_ALREADY_OPEN" in source
     assert "BROKER_POSITION_UNPROTECTED" in source

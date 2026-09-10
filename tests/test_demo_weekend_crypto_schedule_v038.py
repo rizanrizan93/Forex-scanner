@@ -14,13 +14,12 @@ UTC = timezone.utc
 
 
 def test_legacy_schedule_helper_preserves_configured_weekday_universe():
-    """Historical schedule helper remains stable for lineage/non-XAU callers."""
+    """Historical schedule helper remains stable for lineage/non-active callers."""
     cfg = load_project_config(None)
     scheduled, mode = apply_demo_market_schedule(
         cfg,
         now=datetime(2026, 9, 4, 12, 0, tzinfo=UTC),
     )
-
     assert mode == "WEEKDAY_FULL_24X5"
     assert len(cfg.pairs) == 20
     assert len(scheduled.pairs) == 20
@@ -36,7 +35,6 @@ def test_legacy_schedule_helper_preserves_configured_weekday_universe():
 def test_legacy_schedule_helper_still_exposes_crypto_weekend_contract(when):
     cfg = load_project_config(None)
     scheduled, mode = apply_demo_market_schedule(cfg, now=when)
-
     assert mode == "WEEKEND_CRYPTO_BROKER_GATED"
     assert {pair.symbol for pair in scheduled.pairs} == CRYPTO_WEEKEND_SYMBOLS
     assert CRYPTO_WEEKEND_SYMBOLS == {"BTCUSD", "ETHUSD", "SOLUSD"}
@@ -59,7 +57,7 @@ def test_legacy_weekend_deep_top_helper_remains_bounded(monkeypatch):
     assert calibrated.strategy["selection"]["deep_analysis_top"] == 3
 
 
-def test_active_xau_supervisor_runs_one_minute_checks_without_weekend_crypto_fallback():
+def test_active_pair_supervisor_runs_one_minute_checks_without_weekend_crypto_fallback():
     root = Path(__file__).resolve().parents[1]
     supervisor = (root / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
     fast = (root / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
@@ -70,8 +68,8 @@ def test_active_xau_supervisor_runs_one_minute_checks_without_weekend_crypto_fal
     assert 'cron: "17 * * * *"' in heartbeat
     assert "fast_cadence_seconds=60" in supervisor
     assert "discovery_check_seconds=60" in supervisor
-    assert "universe=XAUUSD" in supervisor
-    assert "strategy=IMPULSE_RETEST_V2" in supervisor
-    assert "demo_xau_fast_candidate_producer" in fast
-    assert "demo_xau_technical_producer" in discovery
+    assert "universe=XAUUSD,EURUSD" in supervisor
+    assert "strategies=PAIR_SPECIFIC" in supervisor
+    assert "demo_execution_fast_candidate_producer" in fast
+    assert "demo_execution_technical_producer" in discovery
     assert "demo_crypto_broker_preflight" not in discovery

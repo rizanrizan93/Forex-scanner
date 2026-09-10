@@ -51,7 +51,7 @@ jobs:
       CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "300"
       CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"
       CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"
-      CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"
+      CTRADER_DEMO_FAST_MAX_SYMBOLS: "2"
       CTRADER_DEMO_FAST_CANDIDATE_LOOKBACK_MINUTES: "45"
       CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"
       CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"
@@ -71,12 +71,12 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Fast revalidate XAUUSD IMPULSE_RETEST_V2 on fresh broker data
-        run: python -m fx_scanner.demo_xau_fast_candidate_producer
+      - name: Fast revalidate XAUUSD and EURUSD pair-specific DEMO strategies
+        run: python -m fx_scanner.demo_execution_fast_candidate_producer
       - name: Repair missing SL/TP on scanner-linked DEMO positions
         run: python -m fx_scanner.demo_existing_protection_repair
-      - name: Execute only fresh durable XAUUSD EXECUTION_READY DEMO signals
-        run: python -m fx_scanner.demo_xau_fresh_ready_handoff --limit 10
+      - name: Execute only fresh durable pair-specific EXECUTION_READY DEMO signals
+        run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
       - name: Advance adaptive server-side profit lock on profitable DEMO positions
         run: python -m fx_scanner.demo_adaptive_profit_lock
       - name: Protect profitable DEMO positions on confirmed structural reversal

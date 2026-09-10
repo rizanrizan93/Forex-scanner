@@ -42,8 +42,8 @@ def _long_fixture(symbol="XAUUSD"):
     return rows
 
 
-def test_xauusd_is_the_only_execution_symbol():
-    assert EXECUTION_SYMBOLS == frozenset({"XAUUSD"})
+def test_xauusd_and_eurusd_are_the_only_execution_symbols():
+    assert EXECUTION_SYMBOLS == frozenset({"XAUUSD", "EURUSD"})
 
 
 def test_valid_first_retest_activates_xauusd_strategy_and_builds_15r_plan():
@@ -59,12 +59,12 @@ def test_valid_first_retest_activates_xauusd_strategy_and_builds_15r_plan():
     assert plan.tp2 > plan.entry_high
 
 
-def test_same_pattern_on_eurusd_is_shadow_only_not_execution_eligible():
+def test_same_pattern_on_eurusd_is_execution_eligible_baseline():
     rows = _long_fixture("EURUSD")
     signal = evaluate_impulse_retest_v2(rows, direction="LONG")
     assert signal.active is True
-    assert signal.execution_eligible is False
-    assert signal.reason == "SHADOW_ONLY_SYMBOL"
+    assert signal.execution_eligible is True
+    assert signal.reason == "VALID_FIRST_CONTROLLED_RETEST"
 
 
 def test_bare_break_without_impulse_body_is_rejected():
