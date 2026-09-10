@@ -4,18 +4,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_demo_auto_pipeline_is_dispatch_only_fast_lane_and_demo_only():
+def test_demo_auto_pipeline_is_dispatch_only_xau_fast_lane_and_demo_only():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
 
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
-    assert "demo_fast_candidate_producer" in text
-    assert "demo_fresh_ready_handoff --limit 10" in text
+    assert "demo_xau_fast_candidate_producer" in text
+    assert "demo_xau_fresh_ready_handoff --limit 10" in text
     assert "demo_structural_profit_protector" in text
-    assert text.index("demo_fast_candidate_producer") < text.index(
-        "demo_fresh_ready_handoff"
+    assert text.index("demo_xau_fast_candidate_producer") < text.index(
+        "demo_xau_fresh_ready_handoff"
     )
-    assert text.index("demo_fresh_ready_handoff") < text.index(
+    assert text.index("demo_xau_fresh_ready_handoff") < text.index(
         "demo_structural_profit_protector"
     )
     assert "demo_technical_producer" not in text
@@ -27,33 +27,32 @@ def test_demo_auto_pipeline_is_dispatch_only_fast_lane_and_demo_only():
     assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"' in text
     assert 'CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"' in text
     assert 'CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"' in text
-    assert 'CTRADER_DEMO_SOLUSD_MAX_SPREAD_PIPS: "120"' in text
-    assert 'CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "1"' in text
-    assert 'CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS: "20"' in text
-    assert 'CTRADER_DEMO_XTIUSD_MAX_SPREAD_PIPS: "6"' in text
-    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"' in text
-    assert 'CTRADER_DEMO_DEEP_ANALYSIS_TOP: "5"' in text
+    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"' in text
+    assert 'CTRADER_DEMO_DEEP_ANALYSIS_TOP: "1"' in text
     assert 'CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"' in text
-    assert 'CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "1.20"' in text
+    assert 'CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"' in text
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
     assert 'FX_KILL_SWITCH: "0"' in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
 
 
-def test_demo_discovery_pipeline_is_independent_and_non_executing():
+def test_demo_discovery_pipeline_is_xau_only_independent_and_non_executing():
     text = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
 
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
-    assert "demo_technical_producer" in text
+    assert "demo_xau_technical_producer" in text
     assert "demo_closed_trade_reconciler" in text
     assert "demo_trajectory_finalizer" in text
     assert "demo_incremental_calibration" in text
     assert "demo_calibration_autotrade" not in text
-    assert "demo_fresh_ready_handoff" not in text
+    assert "demo_xau_fresh_ready_handoff" not in text
     assert "demo_structural_profit_protector" not in text
     assert "continue-on-error: true" in text
     assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in text
+    assert 'CTRADER_DEMO_DEEP_ANALYSIS_TOP: "1"' in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
 
@@ -96,7 +95,7 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
         assert "\\n" not in text
 
 
-def test_demo_auto_supervisor_is_self_renewing_and_dispatches_split_lanes():
+def test_demo_auto_supervisor_is_self_renewing_and_dispatches_xau_lanes():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
 
     assert "workflow_dispatch:" in text
@@ -108,17 +107,18 @@ def test_demo_auto_supervisor_is_self_renewing_and_dispatches_split_lanes():
     assert "github.event.workflow_run.event == 'schedule'" in text
     assert "github.event.workflow_run.head_branch == 'main'" in text
     assert "cancel-in-progress: true" in text
-    assert "stale_supervisor_replacement=ENABLED" in text
     assert "actions: write" in text
-    assert "seq 1 30" in text
-    assert "sleep 120" in text
+    assert "seq 1 60" in text
+    assert "sleep 60" in text
+    assert "fast_cadence_seconds=60" in text
+    assert "discovery_check_seconds=60" in text
+    assert "universe=XAUUSD" in text
+    assert "strategy=IMPULSE_RETEST_V2" in text
     assert "SUPERVISOR_FAST_SKIP_BUSY" in text
     assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
     assert "active_count" in text
     assert "overlap_within_lane=DISABLED" in text
     assert "cross_lane=ENABLED" in text
-    assert "calendar=SEVEN_DAYS" in text
-    assert "reason=WEEKEND_BROKER_CLOSED" not in text
     assert "ctrader-demo-auto-pipeline.yml" in text
     assert "ctrader-demo-discovery-pipeline.yml" in text
     assert "-f ref=main" in text
