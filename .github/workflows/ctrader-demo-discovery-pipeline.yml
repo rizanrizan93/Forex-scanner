@@ -72,16 +72,16 @@ jobs:
       - name: Summarize floating P&L and incremental calibration
         if: ${{ always() }}
         continue-on-error: true
-        run: python -m fx_scanner.demo_incremental_calibration
+        run: python -m fx_scanner.demo_normalized_calibration_runner incremental
       - name: Build Adaptive Calibration v2 shadow cohorts and diagnostics
         if: ${{ always() }}
         continue-on-error: true
-        run: python -m fx_scanner.demo_adaptive_calibration_v2_runtime
+        run: python -m fx_scanner.demo_normalized_calibration_runner adaptive-v2
       - name: Compare historical shadow cohorts
         if: ${{ always() }}
         continue-on-error: true
-        run: python -m fx_scanner.demo_strategy_outcome_comparison
+        run: python -m fx_scanner.demo_normalized_calibration_runner comparison
       - name: Attribute repeated loss patterns in shadow mode
         if: ${{ always() }}
         continue-on-error: true
-        run: python -m fx_scanner.demo_loss_attribution_v2_runtime
+        run: python -m fx_scanner.demo_normalized_calibration_runner loss-attribution
