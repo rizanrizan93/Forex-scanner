@@ -23,8 +23,9 @@ def test_preflight_requires_exact_successful_symbol_reads_for_active_crypto_univ
     assert "expected_count={len(symbols)}" in source
 
 
-def test_crypto_spread_caps_preserve_prechange_absolute_price_limits():
+def test_auto_pipeline_is_xauusd_only_and_retired_crypto_caps_are_not_active():
     root = Path(__file__).resolve().parents[1]
     workflow = (root / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
-    assert 'CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS: "20"' in workflow
-    assert 'CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS: "1"' in workflow
+    assert 'CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"' in workflow
+    assert 'CTRADER_DEMO_BTCUSD_MAX_SPREAD_PIPS' not in workflow
+    assert 'CTRADER_DEMO_ETHUSD_MAX_SPREAD_PIPS' not in workflow
