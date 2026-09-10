@@ -46,7 +46,10 @@ def test_demo_discovery_pipeline_is_xau_only_independent_and_non_executing():
     assert "demo_xau_technical_producer" in text
     assert "demo_closed_trade_reconciler" in text
     assert "demo_trajectory_finalizer" in text
-    assert "demo_incremental_calibration" in text
+    assert "demo_normalized_calibration_runner incremental" in text
+    assert "demo_normalized_calibration_runner adaptive-v2" in text
+    assert "demo_normalized_calibration_runner comparison" in text
+    assert "demo_normalized_calibration_runner loss-attribution" in text
     assert "demo_calibration_autotrade" not in text
     assert "demo_xau_fresh_ready_handoff" not in text
     assert "demo_structural_profit_protector" not in text
