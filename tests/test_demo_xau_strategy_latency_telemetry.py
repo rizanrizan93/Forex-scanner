@@ -45,9 +45,9 @@ def test_latency_payload_persists_explicit_active_strategy_identity():
     assert payload["m5_close_to_detection_seconds"] is None
 
 
-def test_workflow_runs_telemetry_best_effort_after_active_discovery():
+def test_workflow_runs_xau_telemetry_best_effort_after_pair_discovery():
     workflow = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text(encoding="utf-8")
-    producer = "python -m fx_scanner.demo_xau_technical_producer"
+    producer = "python -m fx_scanner.demo_execution_technical_producer"
     telemetry = "python -m fx_scanner.demo_xau_strategy_latency_telemetry"
     reconciler = "python -m fx_scanner.demo_closed_trade_reconciler"
     assert workflow.index(producer) < workflow.index(telemetry) < workflow.index(reconciler)
