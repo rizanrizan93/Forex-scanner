@@ -35,7 +35,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - name: Dispatch XAUUSD fast and discovery lanes every minute
+      - name: Dispatch pair-specific fast and discovery lanes every minute
         shell: bash
         run: |
           set -euo pipefail
@@ -63,7 +63,7 @@ jobs:
               -f ref=main
           }
 
-          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} universe=XAUUSD strategy=IMPULSE_RETEST_V2 fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED self_handoff=ENABLED"
+          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} universe=XAUUSD,EURUSD strategies=PAIR_SPECIFIC fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED self_handoff=ENABLED"
 
           for cycle in $(seq 1 60); do
             active_fast="$(active_count ctrader-demo-auto-pipeline.yml)"
@@ -91,6 +91,6 @@ jobs:
             fi
           done
 
-          echo "CTRADER_DEMO_SUPERVISOR_OK universe=XAUUSD fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED self_handoff=ENABLED"
+          echo "CTRADER_DEMO_SUPERVISOR_OK universe=XAUUSD,EURUSD fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED self_handoff=ENABLED"
           echo "CTRADER_DEMO_SUPERVISOR_HANDOFF target=ctrader-demo-auto-supervisor.yml reason=FINITE_LOOP_COMPLETE"
           dispatch_workflow ctrader-demo-auto-supervisor.yml
