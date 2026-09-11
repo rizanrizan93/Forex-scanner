@@ -1,0 +1,39 @@
+name: research-stage2-m15
+
+on:
+  push:
+    branches:
+      - research/strategy-regime-100-20260911
+    paths:
+      - scripts/research_stage2_m15_walkforward.py
+      - .github/workflows/research-stage2-m15.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tournament:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install research dependencies
+        run: python -m pip install --disable-pip-version-check pandas numpy
+      - name: Run M15 tournament
+        run: python scripts/research_stage2_m15_walkforward.py --output out/stage2_m15
+      - name: Print report
+        if: always()
+        run: |
+          if [ -f out/stage2_m15/report.md ]; then cat out/stage2_m15/report.md; fi
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage2-m15-results
+          path: out/stage2_m15/
+          if-no-files-found: warn
+          retention-days: 14
