@@ -6,6 +6,7 @@ on:
       - research/strategy-regime-100-20260911
     paths:
       - scripts/research_strategy_regime_100.py
+      - scripts/research_strategy_regime_100_fixed.py
       - .github/workflows/research-strategy-regime-100.yml
   workflow_dispatch:
 
@@ -29,7 +30,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check pandas numpy
 
       - name: Run 100-trade multi-regime benchmark
-        run: python scripts/research_strategy_regime_100.py --output out/strategy_regime_100
+        run: python scripts/research_strategy_regime_100_fixed.py --output out/strategy_regime_100
 
       - name: Show report
         if: always()
