@@ -73,7 +73,7 @@ def run(*, limit: int = 10) -> int:
     cfg = _apply_demo_technical_only_profile(cfg)
     # Keep the executor on the exact same DEMO ceiling that was validated from
     # config.  A second hard-coded ceiling previously diverged from the active
-    # 3% contract and made every fresh-ready handoff fail before polling.
+    # configured DEMO contract and made every fresh-ready handoff fail before polling.
     demo_risk_ceiling = float(base_policy.demo_safety["max_risk_pct"])
     cfg, demo_risk_pct = apply_demo_calibration_risk(
         cfg,

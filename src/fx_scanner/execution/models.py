@@ -62,10 +62,10 @@ class OrderIntent:
         # risk_pct is expressed in percentage points throughout the execution
         # stack (for example, 0.25 means 0.25%). The canonical non-DEMO intent
         # contract remains capped at 1%. The explicitly tagged DEMO auto lane is
-        # capped at the current bounded 3% DEMO ceiling; the router additionally
+        # capped at the current bounded 5% DEMO ceiling; the router additionally
         # enforces the process-local DEMO policy before any broker submit.
         demo_auto_intent = self.comment.startswith("DEMO_AUTO:")
-        risk_ceiling_pct = 3.0 if demo_auto_intent else 1.0
+        risk_ceiling_pct = 5.0 if demo_auto_intent else 1.0
         if not 0 < self.risk_pct <= risk_ceiling_pct:
             raise DataContractError(
                 f"risk_pct must be in (0, {risk_ceiling_pct:g}] percentage points"

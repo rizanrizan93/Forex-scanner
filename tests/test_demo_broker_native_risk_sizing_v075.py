@@ -89,6 +89,12 @@ def test_runtime_profile_has_bounded_portfolio_and_margin_caps(monkeypatch):
     assert policy.demo_safety["max_margin_free_usage_pct"] == 25.0
 
 
+def test_runtime_profile_defaults_to_latest_demo_order_and_risk_caps():
+    policy = load_demo_execution_policy()
+    assert policy.demo_safety["max_order_lots"] == 0.50
+    assert policy.demo_safety["max_risk_pct"] == 5.0
+
+
 def test_runtime_profile_rejects_excessive_portfolio_cap(monkeypatch):
     monkeypatch.setenv(DEMO_PORTFOLIO_RISK_CAP_ENV, "12.1")
     with pytest.raises(RuntimeError, match="CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT"):
