@@ -4,34 +4,39 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_demo_auto_pipeline_is_dispatch_only_pair_specific_fast_lane_and_demo_only():
+def test_demo_auto_pipeline_is_dispatch_only_five_core_fast_lane_and_demo_only():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
 
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
     assert "demo_execution_fast_candidate_producer" in text
     assert "demo_execution_fresh_ready_handoff --limit 10" in text
+    assert "demo_five_core_time_exit" in text
     assert "demo_structural_profit_protector" in text
     assert text.index("demo_execution_fast_candidate_producer") < text.index(
         "demo_execution_fresh_ready_handoff"
     )
     assert text.index("demo_execution_fresh_ready_handoff") < text.index(
-        "demo_structural_profit_protector"
+        "demo_five_core_time_exit"
     )
     assert "demo_closed_trade_reconciler" not in text
     assert "macro-refresh" not in text
     assert "CTRADER_DEMO_AUTOTRADE_ENABLED" in text
     assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in text
     assert 'CTRADER_DEMO_TECHNICAL_ONLY: "1"' in text
-    assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"' in text
+    assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "0"' in text
     assert 'CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"' in text
     assert 'CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"' in text
-    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "2"' in text
+    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"' in text
     assert "CTRADER_DEMO_DEEP_ANALYSIS_TOP" not in text
     assert 'CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"' in text
     assert 'CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"' in text
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
+    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "0"' in text
+    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "1"' in text
+    assert 'CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "0"' in text
+    assert 'CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"' in text
     assert 'FX_KILL_SWITCH: "0"' in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
@@ -99,7 +104,7 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
         assert "\\n" not in text
 
 
-def test_demo_auto_supervisor_is_self_renewing_and_dispatches_pair_specific_lanes():
+def test_demo_auto_supervisor_is_self_renewing_and_dispatches_five_core_lanes():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
     assert "workflow_dispatch:" in text
     assert "branches: [main]" in text
@@ -115,8 +120,8 @@ def test_demo_auto_supervisor_is_self_renewing_and_dispatches_pair_specific_lane
     assert "sleep 60" in text
     assert "fast_cadence_seconds=60" in text
     assert "discovery_check_seconds=60" in text
-    assert "universe=XAUUSD,EURUSD" in text
-    assert "strategies=PAIR_SPECIFIC" in text
+    assert "universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD" in text
+    assert "strategies=FIVE_CORE_ROUTER_V1" in text
     assert "SUPERVISOR_FAST_SKIP_BUSY" in text
     assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
     assert "active_count" in text
