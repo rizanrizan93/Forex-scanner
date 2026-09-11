@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fx_scanner.demo_impulse_retest_v2 import (
     EXECUTION_SYMBOLS,
@@ -6,9 +6,8 @@ from fx_scanner.demo_impulse_retest_v2 import (
     build_impulse_retest_v2_plan,
     evaluate_impulse_retest_v2,
 )
+from fx_scanner.demo_trade_plan_geometry import plan_geometry_evidence
 from fx_scanner.models import Bar
-
-UTC = timezone.utc
 
 
 def _bar(i, o, h, l, c, symbol="XAUUSD"):
@@ -54,6 +53,11 @@ def test_valid_first_retest_activates_xauusd_strategy_and_builds_15r_plan():
     assert signal.reason == "VALID_FIRST_CONTROLLED_RETEST"
     plan = build_impulse_retest_v2_plan(signal, current_price=rows[-1].close)
     assert plan is not None
+    evidence = plan_geometry_evidence(plan)
+    assert evidence is not None
+    assert evidence.entry_mode == "IMPULSE_RETEST_V2"
+    assert evidence.confirmation == "VALID_FIRST_CONTROLLED_RETEST"
+    assert evidence.exit_model == "IMPULSE_RETEST_R_MULTIPLE"
     assert plan.rr2 == TARGET_R == 1.5
     assert plan.stop_loss < plan.entry_low
     assert plan.tp2 > plan.entry_high
