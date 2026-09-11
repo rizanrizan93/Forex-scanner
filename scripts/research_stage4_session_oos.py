@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -10,9 +10,10 @@ import pandas as pd
 
 from research_stage2_m15_walkforward import FX_PATHS, RAW, features
 
-TRAIN_END=pd.Timestamp("2021-01-01")
-VALID_START=pd.Timestamp("2021-01-01")
-FINAL_START=pd.Timestamp("2023-01-01")
+TRAIN_START=pd.Timestamp("2022-04-12")
+TRAIN_END=pd.Timestamp("2024-01-01")
+VALID_START=pd.Timestamp("2024-01-01")
+FINAL_START=pd.Timestamp("2025-01-01")
 BASE_COST=1.2
 STRESS_COST=1.5
 MAX_HOLD=64
@@ -88,7 +89,6 @@ def metric(rows):
  a=np.array([r["net_r"] for r in rows]);p=a[a>0].sum();l=-a[a<0].sum();return {"n":len(a),"avg":float(a.mean()),"pf":float(p/l) if l>0 else 99.,"net":float(a.sum()),"win":float((a>0).mean())}
 
 def choose(cands):
- # Must be positive in both train and validation; favor validation expectancy then breadth/stability.
  ok=[r for r in cands if r["train"]["n"]>=150 and r["valid"]["n"]>=60 and r["train"]["avg"]>0 and r["valid"]["avg"]>0 and r["train"]["pf"]>1 and r["valid"]["pf"]>1]
  if not ok:return None
  for r in ok:
@@ -98,21 +98,18 @@ def choose(cands):
 def main():
  ap=argparse.ArgumentParser();ap.add_argument("--output",default="out/stage4_session");z=ap.parse_args();out=Path(z.output);out.mkdir(parents=True,exist_ok=True)
  data={s:load(p) for s,p in FX_PATHS.items()}; coverage={s:{"rows":len(d),"start":str(d.time.min()),"end":str(d.time.max())} for s,d in data.items()}
- # Precompute each variant's per-pair trades at base cost.
- cache={}
- global_candidates=[]
+ cache={};global_candidates=[]
  for v in VARIANTS:
   train=[];valid=[]
   for sym,df in data.items():
-   rs=records(df,v); key=(sym,v.name); cache[key]=rs
+   rs=records(df,v);cache[(sym,v.name)]=rs
    for r in rs:
     t=simulate(df,sym,v,r,BASE_COST)
     if not t:continue
-    if t["entry_at"]<TRAIN_END:train.append(t)
+    if TRAIN_START<=t["entry_at"]<TRAIN_END:train.append(t)
     elif VALID_START<=t["entry_at"]<FINAL_START:valid.append(t)
   global_candidates.append({"variant":v.name,"train":metric(train),"valid":metric(valid)})
  global_pick=choose(global_candidates)
-
  pair_picks={}
  for sym,df in data.items():
   cand=[]
@@ -121,45 +118,38 @@ def main():
    for r in cache[(sym,v.name)]:
     t=simulate(df,sym,v,r,BASE_COST)
     if not t:continue
-    if t["entry_at"]<TRAIN_END:tr.append(t)
+    if TRAIN_START<=t["entry_at"]<TRAIN_END:tr.append(t)
     elif VALID_START<=t["entry_at"]<FINAL_START:va.append(t)
    cand.append({"variant":v.name,"train":metric(tr),"valid":metric(va)})
   pair_picks[sym]=choose(cand)
-
  def eval_pick(sym,vname,cost):
-  v=next(v for v in VARIANTS if v.name==vname);df=data[sym]; rows=[]
+  v=next(v for v in VARIANTS if v.name==vname);df=data[sym];rows=[]
   for r in cache[(sym,vname)]:
    t=simulate(df,sym,v,r,cost)
    if t and t["entry_at"]>=FINAL_START:rows.append(t)
   return metric(rows)
-
- final_global={};
+ final_global={}
  if global_pick:
-  vn=global_pick["variant"]
-  final_global={"variant":vn,"selected_on":{"train":global_pick["train"],"valid":global_pick["valid"]},"base_by_pair":{},"stress_by_pair":{}}
-  agg_b=[];agg_s=[]
-  for sym in data:
+  vn=global_pick["variant"];final_global={"variant":vn,"selected_on":{"train":global_pick["train"],"valid":global_pick["valid"]},"base_by_pair":{},"stress_by_pair":{}}
+  agg_b=[];agg_s=[];v=next(v for v in VARIANTS if v.name==vn)
+  for sym,df in data.items():
    mb=eval_pick(sym,vn,BASE_COST);ms=eval_pick(sym,vn,STRESS_COST);final_global["base_by_pair"][sym]=mb;final_global["stress_by_pair"][sym]=ms
-   # Reconstruct aggregate final rows for exact metric.
-   v=next(v for v in VARIANTS if v.name==vn);df=data[sym]
    for r in cache[(sym,vn)]:
     tb=simulate(df,sym,v,r,BASE_COST);ts=simulate(df,sym,v,r,STRESS_COST)
     if tb and tb["entry_at"]>=FINAL_START:agg_b.append(tb)
     if ts and ts["entry_at"]>=FINAL_START:agg_s.append(ts)
   final_global["base"]=metric(agg_b);final_global["stress"]=metric(agg_s)
-
  final_pairs={}
  for sym,pick in pair_picks.items():
-  if not pick: final_pairs[sym]={"selected":None};continue
-  vn=pick["variant"]; final_pairs[sym]={"selected":vn,"train":pick["train"],"valid":pick["valid"],"final_base":eval_pick(sym,vn,BASE_COST),"final_stress":eval_pick(sym,vn,STRESS_COST)}
-
- payload={"methodology":{"variant_count":len(VARIANTS),"train":"before 2021","validation":"2021-2022","untouched_final":"2023+","base_cost_pips":BASE_COST,"stress_cost_pips":STRESS_COST,"selection":"requires positive train and validation before final is examined"},"coverage":coverage,"global_pick":final_global,"pair_picks":final_pairs}
+  if not pick:final_pairs[sym]={"selected":None};continue
+  vn=pick["variant"];final_pairs[sym]={"selected":vn,"train":pick["train"],"valid":pick["valid"],"final_base":eval_pick(sym,vn,BASE_COST),"final_stress":eval_pick(sym,vn,STRESS_COST)}
+ payload={"methodology":{"variant_count":len(VARIANTS),"train":"2022-04-12 through 2023-12-31","validation":"2024","untouched_final":"2025 onward","base_cost_pips":BASE_COST,"stress_cost_pips":STRESS_COST,"selection":"positive train and validation required before final is examined"},"coverage":coverage,"global_pick":final_global,"pair_picks":final_pairs}
  (out/"summary.json").write_text(json.dumps(payload,indent=2),encoding="utf-8")
  lines=["# Stage 4 Session Breakout Frozen-OOS Validation","",f"Variants tested pre-OOS: {len(VARIANTS)}",""]
  if final_global:
-  lines += ["## Global frozen variant",f"- variant: **{final_global['variant']}**",f"- train: {final_global['selected_on']['train']}",f"- validation 2021-22: {final_global['selected_on']['valid']}",f"- FINAL 2023+ base: **{final_global['base']}**",f"- FINAL 2023+ stress: **{final_global['stress']}**",""]
- else: lines += ["## Global frozen variant","No variant met positive train + positive validation gate.",""]
+  lines += ["## Global frozen variant",f"- variant: **{final_global['variant']}**",f"- train 2022-23: {final_global['selected_on']['train']}",f"- validation 2024: {final_global['selected_on']['valid']}",f"- FINAL 2025+ base: **{final_global['base']}**",f"- FINAL 2025+ stress: **{final_global['stress']}**",""]
+ else:lines += ["## Global frozen variant","No variant met positive train + positive validation gate.",""]
  lines += ["## Pair-specific frozen variants",""]
- for sym,r in final_pairs.items(): lines.append(f"- **{sym}**: {r}")
+ for sym,r in final_pairs.items():lines.append(f"- **{sym}**: {r}")
  (out/"report.md").write_text("\n".join(lines)+"\n",encoding="utf-8");print((out/"report.md").read_text())
 if __name__=="__main__":main()
