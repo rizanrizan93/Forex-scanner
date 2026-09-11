@@ -54,14 +54,24 @@ def _trajectory_positions(store: SupabaseOperationalStore) -> dict[str, dict[str
     }
 
 
-def _closed_events(store: SupabaseOperationalStore, *, account_id: str, limit: int = 100):
-    response = (
+def _closed_events(
+    store: SupabaseOperationalStore,
+    *,
+    account_ids: tuple[str, ...],
+    limit: int = 100,
+):
+    query = (
         store.client.table("broker_order_events")
-        .select("observed_at,signal_key,broker_order_id,code,payload")
+        .select("observed_at,account_id,signal_key,broker_order_id,code,payload")
         .eq("backend", "CTRADER")
-        .eq("account_id", account_id)
         .eq("event_type", "DEMO_TRADE_CLOSED")
-        .order("observed_at", desc=True)
+    )
+    if len(account_ids) == 1:
+        query = query.eq("account_id", account_ids[0])
+    else:
+        query = query.in_("account_id", list(account_ids))
+    response = (
+        query.order("observed_at", desc=True)
         .limit(int(limit))
         .execute()
     )
@@ -85,11 +95,24 @@ def _already_finalized(store: SupabaseOperationalStore, *, account_id: str, even
 def finalize_trajectories(
     store: SupabaseOperationalStore,
     *,
-    account_id: str,
+    account_id: str | None = None,
+    account_ids: tuple[str, ...] = (),
     limit: int = 100,
 ) -> TrajectoryFinalizeReport:
+    aliases = tuple(
+        dict.fromkeys(
+            value
+            for value in (
+                *(str(item).strip() for item in account_ids),
+                str(account_id or "").strip(),
+            )
+            if value
+        )
+    )
+    if not aliases:
+        raise ValueError("at least one DEMO account identifier is required")
     trajectories = _trajectory_positions(store)
-    closed = _closed_events(store, account_id=account_id, limit=limit)
+    closed = _closed_events(store, account_ids=aliases, limit=limit)
     finalized = duplicates = missing = 0
 
     for event in reversed(closed):
@@ -106,7 +129,12 @@ def finalize_trajectories(
             missing += 1
             continue
         event_key = f"TRAJECTORY:{deal_id}"
-        if _already_finalized(store, account_id=account_id, event_key=event_key):
+        event_account_id = str(event.get("account_id") or account_id or aliases[0]).strip()
+        if _already_finalized(
+            store,
+            account_id=event_account_id,
+            event_key=event_key,
+        ):
             duplicates += 1
             continue
 
@@ -150,7 +178,7 @@ def finalize_trajectories(
         }
         store.record_order_event(
             backend="CTRADER",
-            account_id=account_id,
+            account_id=event_account_id,
             signal_key=signal_id,
             event_type="DEMO_TRADE_TRAJECTORY_FINAL",
             broker_order_id=event_key,
@@ -175,12 +203,17 @@ def finalize_trajectories(
 
 
 def run() -> int:
-    account_id = _account_id()
-    if not account_id:
-        raise SystemExit("CTRADER_DEMO_TRAJECTORY_ACCOUNT_ID_MISSING")
     store = SupabaseOperationalStore.from_env()
+    from .demo_adaptive_calibration_v2_runtime import _account_ids
+
+    account_ids = _account_ids(store)
+    configured_account_id = _account_id()
+    if configured_account_id and configured_account_id not in account_ids:
+        account_ids = (configured_account_id, *account_ids)
+    if not account_ids:
+        raise SystemExit("CTRADER_DEMO_TRAJECTORY_ACCOUNT_ID_MISSING")
     try:
-        report = finalize_trajectories(store, account_id=account_id)
+        report = finalize_trajectories(store, account_ids=account_ids)
         store.write_heartbeat(
             "ctrader_demo_trajectory_finalizer",
             healthy=True,
@@ -196,6 +229,7 @@ def run() -> int:
                 "trajectory_scope": "SINCE_FIRST_OBSERVED",
                 "r_normalization": "ACTUAL_BROKER_OPEN_TO_ACTIVE_SL_PRICE_R_WHEN_AVAILABLE",
                 "automatic_exit_mutation": False,
+                "account_identifier_alias_count": len(account_ids),
             },
         )
         print(
