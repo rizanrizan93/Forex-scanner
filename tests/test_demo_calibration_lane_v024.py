@@ -110,9 +110,9 @@ def test_calibration_pretrigger_is_explicit_opt_in(monkeypatch):
     assert _demo_calibration_pretrigger_enabled() is True
 
 
-def test_demo_pipeline_uses_score_driven_floor_above_50():
+def test_demo_pipeline_keeps_score_floor_but_disables_legacy_pretrigger_for_five_core():
     text = Path(".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in text
-    assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"' in text
+    assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "0"' in text
     assert 'CTRADER_DEMO_WAVE_MIN_PULLBACK_ATR: "0.25"' in text
     assert 'CTRADER_DEMO_WAVE_MAX_ZONE_ATR: "0.50"' in text
