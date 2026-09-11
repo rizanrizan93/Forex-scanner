@@ -30,8 +30,8 @@ def test_demo_auto_pipeline_is_dispatch_only_pair_specific_fast_lane_and_demo_on
     assert "CTRADER_DEMO_DEEP_ANALYSIS_TOP" not in text
     assert 'CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"' in text
     assert 'CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"' in text
-    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"' in text
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in text
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
     assert 'FX_KILL_SWITCH: "0"' in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
