@@ -2,6 +2,10 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from fx_scanner.demo_five_core_candidate_producer import (
+    HISTORY_WINDOW_CALENDAR_FACTOR,
+    _history_window_seconds,
+)
 from fx_scanner.demo_five_core_router import (
     D1_MAX_HOLD_BARS,
     EXECUTION_SYMBOLS,
@@ -50,6 +54,27 @@ def test_five_core_registry_is_exact_and_fail_closed():
     assert PAIR_STRATEGY_IDS["USDJPY"] == "H4_COMPRESSION_BREAKOUT"
     assert FORWARD_DEMO_SCORE == 60.0
     assert D1_MAX_HOLD_BARS == 30
+
+
+def test_slow_history_window_pads_24x5_calendar_gaps_without_expanding_fast_timeframes():
+    count = 232
+    d1_seconds = 24 * 60 * 60
+    h4_seconds = 4 * 60 * 60
+    m5_seconds = 5 * 60
+
+    assert HISTORY_WINDOW_CALENDAR_FACTOR == {"D1": 1.65, "H4": 1.65}
+    assert _history_window_seconds("D1", count, d1_seconds) == pytest.approx(
+        d1_seconds * (count + 12) * 1.65
+    )
+    assert _history_window_seconds("H4", count, h4_seconds) == pytest.approx(
+        h4_seconds * (count + 12) * 1.65
+    )
+    assert _history_window_seconds("M5", count, m5_seconds) == pytest.approx(
+        m5_seconds * (count + 12)
+    )
+    # 220+ D1 observations need materially more than 244 calendar days once
+    # weekends/holidays are excluded; the padded window is intentionally >1 year.
+    assert _history_window_seconds("D1", count, d1_seconds) > 365 * d1_seconds
 
 
 @pytest.mark.parametrize(
