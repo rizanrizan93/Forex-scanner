@@ -25,14 +25,14 @@ def _intent(*, risk_pct: float, comment: str) -> OrderIntent:
     )
 
 
-def test_demo_auto_order_intent_accepts_three_percent_runtime_contract():
-    intent = _intent(risk_pct=3.0, comment="DEMO_AUTO:HL_PULLBACK")
-    assert intent.risk_pct == 3.0
+def test_demo_auto_order_intent_accepts_five_percent_runtime_contract():
+    intent = _intent(risk_pct=5.0, comment="DEMO_AUTO:HL_PULLBACK")
+    assert intent.risk_pct == 5.0
 
 
-def test_demo_auto_order_intent_rejects_above_three_percent():
-    with pytest.raises(DataContractError, match=r"risk_pct must be in \(0, 3\]"):
-        _intent(risk_pct=3.01, comment="DEMO_AUTO:HL_PULLBACK")
+def test_demo_auto_order_intent_rejects_above_five_percent():
+    with pytest.raises(DataContractError, match=r"risk_pct must be in \(0, 5\]"):
+        _intent(risk_pct=5.01, comment="DEMO_AUTO:HL_PULLBACK")
 
 
 def test_non_demo_order_intent_keeps_one_percent_ceiling():

@@ -53,7 +53,7 @@ def test_demo_runtime_profile_defaults_keep_bounded_lot_and_no_stacking(monkeypa
     monkeypatch.delenv(DEMO_STACKING_ENV, raising=False)
     policy = load_demo_execution_policy()
     assert policy.demo_safety["max_concurrent_positions"] == 10
-    assert policy.demo_safety["max_order_lots"] == 0.01
+    assert policy.demo_safety["max_order_lots"] == 0.50
     assert policy.demo_safety["allow_same_symbol_stacking"] is False
     assert policy.ctrader["environment"] == "DEMO"
     assert policy.ctrader["require_demo"] is True
@@ -114,7 +114,7 @@ def test_auto_workflow_repairs_before_new_orders_and_requests_dynamic_profile():
     repair = "python -m fx_scanner.demo_existing_protection_repair"
     execute = "python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10"
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in source
-    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"' in source
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in source
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in source
     assert 'CTRADER_DEMO_STACK_MIN_SCORE: "85"' in source
     assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "3"' in source

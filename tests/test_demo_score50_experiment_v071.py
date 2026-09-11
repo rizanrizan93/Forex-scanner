@@ -17,6 +17,6 @@ def test_score50_floor_cannot_discard_strategy_timing_or_hard_guard_vetoes():
 
 def test_score50_experiment_keeps_runtime_floor_and_risk_ceiling_contracts():
     assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in WORKFLOW
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in WORKFLOW
-    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"' in WORKFLOW
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in WORKFLOW
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in WORKFLOW
     assert "decision.guards" in STRATEGY
