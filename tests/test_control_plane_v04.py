@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from threading import Event
 
 import pytest
 
@@ -82,3 +83,27 @@ def test_refresh_failure_keeps_last_good_cache_until_it_ages_out():
     now[0] = 106.0
     with pytest.raises(ControlPlaneBlocked, match="STALE"):
         gate.assert_orders_allowed("AUTO")
+
+
+def test_blocked_refresh_stop_timeout_is_telemetry_not_pipeline_failure():
+    entered = Event()
+    release = Event()
+
+    class BlockingStore:
+        def get_execution_control(self):
+            entered.set()
+            release.wait(timeout=2.0)
+            return snap()
+
+    gate = ControlPlaneGate(max_age_seconds=5)
+    worker = ControlPlaneRefreshWorker(BlockingStore(), gate, interval_seconds=2)
+    worker.start()
+    assert entered.wait(timeout=1.0)
+
+    assert worker.stop(timeout=0.01) is False
+    assert worker.health()["stop_timed_out"] is True
+    assert worker.health()["last_error"] == "CONTROL_PLANE_WORKER_STOP_TIMEOUT"
+
+    release.set()
+    assert worker.stop(timeout=1.0) is True
+    assert worker.running is False
