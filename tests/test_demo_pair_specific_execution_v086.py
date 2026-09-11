@@ -33,11 +33,11 @@ def test_active_workflows_use_pair_specific_wrappers_and_bounded_demo_contract()
     assert "demo_execution_fast_candidate_producer" in auto
     assert "demo_execution_fresh_ready_handoff" in auto
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "2"' in auto
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in auto
-    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"' in auto
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in auto
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in auto
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in auto
     assert "demo_execution_technical_producer" in discovery
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in discovery
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in discovery
     assert "XAUUSD,EURUSD" in supervisor
     assert "FX_LIVE_TRADING_ENABLED" not in auto
     assert "I_UNDERSTAND_LIVE_ORDERS" not in auto
