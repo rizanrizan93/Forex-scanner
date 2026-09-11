@@ -86,6 +86,7 @@ class ControlPlaneRefreshWorker:
         self.last_error: str | None = None
         self.refresh_count = 0
         self.failure_count = 0
+        self.stop_timed_out = False
 
     @property
     def running(self) -> bool:
@@ -115,15 +116,33 @@ class ControlPlaneRefreshWorker:
         if self.running:
             return
         self._stop.clear()
+        self.stop_timed_out = False
         self._thread = self._Thread(target=self._run, name="fx-control-plane-refresh", daemon=True)
         self._thread.start()
 
-    def stop(self, timeout: float = 2.0) -> None:
+    def stop(self, timeout: float = 2.0) -> bool:
+        """Request a bounded shutdown without invalidating completed execution.
+
+        A refresh can still be inside bounded Supabase network I/O when a short
+        one-shot pipeline exits. The worker is a daemon and will observe the stop
+        event as soon as that call returns, so a join timeout is operational
+        telemetry rather than a reason to turn an otherwise successful broker
+        cycle into a failed workflow.
+        """
+        if timeout < 0:
+            raise ValueError("timeout must be non-negative")
         self._stop.set()
-        if self._thread is not None:
-            self._thread.join(timeout=timeout)
-            if self._thread.is_alive():
-                raise RuntimeError("CONTROL_PLANE_WORKER_STOP_TIMEOUT")
+        thread = self._thread
+        if thread is None:
+            self.stop_timed_out = False
+            return True
+        thread.join(timeout=timeout)
+        self.stop_timed_out = thread.is_alive()
+        if self.stop_timed_out:
+            self.last_error = "CONTROL_PLANE_WORKER_STOP_TIMEOUT"
+            return False
+        self._thread = None
+        return True
 
     def health(self) -> dict[str, object]:
         return {
@@ -132,4 +151,5 @@ class ControlPlaneRefreshWorker:
             "failure_count": self.failure_count,
             "last_error": self.last_error,
             "cache_present": self.gate.snapshot() is not None,
+            "stop_timed_out": self.stop_timed_out,
         }
