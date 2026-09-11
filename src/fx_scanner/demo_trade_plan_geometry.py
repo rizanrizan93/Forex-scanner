@@ -62,7 +62,8 @@ def plan_geometry_evidence(plan: TradePlan | None) -> DemoPlanGeometryEvidence |
     return _PLAN_EVIDENCE.get(_plan_fingerprint(plan))
 
 
-def _remember_plan_evidence(plan: TradePlan, evidence: DemoPlanGeometryEvidence) -> None:
+def remember_plan_evidence(plan: TradePlan, evidence: DemoPlanGeometryEvidence) -> None:
+    """Bind immutable geometry evidence to a plan produced in this process."""
     if len(_PLAN_EVIDENCE) >= _PLAN_EVIDENCE_MAX:
         oldest = next(iter(_PLAN_EVIDENCE))
         _PLAN_EVIDENCE.pop(oldest, None)
@@ -428,7 +429,7 @@ def build_demo_trade_plan(
     fvg_age_minutes = 0.0
     if observed_at is not None and origin_at is not None:
         fvg_age_minutes = max(0.0, (observed_at - origin_at).total_seconds() / 60.0)
-    _remember_plan_evidence(
+    remember_plan_evidence(
         plan,
         DemoPlanGeometryEvidence(
             entry_mode=wave.mode,

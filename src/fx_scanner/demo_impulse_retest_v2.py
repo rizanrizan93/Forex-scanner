@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
+from .demo_trade_plan_geometry import DemoPlanGeometryEvidence, remember_plan_evidence
 from .exceptions import DataContractError
 from .models import Bar
 from .strategy import TradePlan
@@ -198,7 +199,7 @@ def build_impulse_retest_v2_plan(signal: ImpulseRetestV2Signal, *, current_price
     if risk <= 0:
         return None
 
-    return TradePlan(
+    plan = TradePlan(
         direction=signal.direction,
         entry_low=entry_low,
         entry_high=entry_high,
@@ -209,3 +210,18 @@ def build_impulse_retest_v2_plan(signal: ImpulseRetestV2Signal, *, current_price
         rr2=TARGET_R,
         chase_distance_atr=0.0,
     )
+    remember_plan_evidence(
+        plan,
+        DemoPlanGeometryEvidence(
+            entry_mode="IMPULSE_RETEST_V2",
+            pullback_atr=float(signal.retest_depth_atr or 0.0),
+            zone_distance_atr=0.0,
+            confirmation=signal.reason,
+            fvg_age_minutes=0.0,
+            fvg_status="NOT_APPLICABLE",
+            fvg_fill_fraction=0.0,
+            chase_monitor_distance_atr=0.0,
+            exit_model="IMPULSE_RETEST_R_MULTIPLE",
+        ),
+    )
+    return plan

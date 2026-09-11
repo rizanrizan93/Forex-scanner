@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import datetime
 
 from . import demo_technical_producer as base
+from .demo_impulse_retest_execution import scan_demo_deep_candidates_report
 from .demo_impulse_retest_v2 import EXECUTION_SYMBOLS
 
 _ORIGINAL_APPLY_DEMO_MARKET_SCHEDULE = base.apply_demo_market_schedule
@@ -23,6 +24,7 @@ def _apply_execution_market_schedule(cfg, *, now: datetime | None = None):
 def run() -> int:
     """Run discovery for the pair-specific DEMO execution registry only."""
     base.apply_demo_market_schedule = _apply_execution_market_schedule
+    base.scan_demo_deep_candidates_report = scan_demo_deep_candidates_report
     return base.run()
 
 
