@@ -120,8 +120,8 @@ demo_safety:
   require_trade_scope: true
   require_atomic_signal_claim: true
   min_signal_coverage: 0.80
-  max_order_lots: 0.50
-  max_risk_pct: 5.0
+  max_order_lots: 0.01
+  max_risk_pct: 3.0
   max_concurrent_positions: 10
   poll_seconds: 1.0
 
