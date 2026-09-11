@@ -104,7 +104,7 @@ def test_demo_auto_supervisor_is_self_renewing_and_dispatches_pair_specific_lane
     assert "workflow_dispatch:" in text
     assert "branches: [main]" in text
     assert "paths:" not in text
-    assert 'cron: "7,22,37,52 * * 1-5"' in text
+    assert 'cron: "7,22,37,52 * * * 1-5"' in text
     assert 'workflows: ["cTrader Demo Technical Heartbeat"]' in text
     assert "github.event_name == 'schedule'" in text
     assert "github.event.workflow_run.event == 'schedule'" in text
@@ -134,7 +134,7 @@ def test_demo_auto_supervisor_is_self_renewing_and_dispatches_pair_specific_lane
 
 def test_demo_technical_heartbeat_is_hourly_weekdays_and_secret_free():
     text = (ROOT / ".github/workflows/ctrader-demo-technical-heartbeat.yml").read_text()
-    assert 'cron: "17 * * 1-5"' in text
+    assert 'cron: "17 * * * 1-5"' in text
     assert "CTRADER_DEMO_TECHNICAL_HEARTBEAT_OK" in text
     assert "calendar=WEEKDAY_24X5" in text
     assert "CTRADER_CLIENT_SECRET" not in text
