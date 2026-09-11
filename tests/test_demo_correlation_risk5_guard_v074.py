@@ -10,8 +10,8 @@ def test_demo_correlation_guard_retains_fail_closed_upper_bound():
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT must be in (0,5]' in source
 
 
-def test_fast_pipeline_requests_bounded_three_percent_contract():
+def test_fast_pipeline_requests_five_percent_contract():
     workflow = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text(encoding="utf-8")
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in workflow
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in workflow
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in workflow
-    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"' in workflow
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in workflow
