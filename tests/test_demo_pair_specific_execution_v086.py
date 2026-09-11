@@ -13,16 +13,16 @@ def test_pair_specific_execution_registry_contains_only_xau_and_eurusd():
     assert PAIR_STRATEGY_IDS["EURUSD"] == "EURUSD_IMPULSE_RETEST_BASELINE_V1"
 
 
-def test_eurusd_bootstrap_sizing_is_capped_below_xau_elite_plus():
+def test_pair_specific_quality_never_changes_bounded_demo_exposure():
     elite = {"symbol": "EURUSD", "final_score": 99, "data_coverage": 1.0, "rr2": 1.5}
     sizing = select_demo_conviction_sizing(elite, max_order_lots=0.50, max_risk_pct=5.0)
-    assert sizing.lots == 0.10
-    assert sizing.risk_budget_pct == 2.0
+    assert sizing.lots == 0.01
+    assert sizing.risk_budget_pct == 0.5
 
     xau = dict(elite, symbol="XAUUSD")
     xau_sizing = select_demo_conviction_sizing(xau, max_order_lots=0.50, max_risk_pct=5.0)
-    assert xau_sizing.lots == 0.50
-    assert xau_sizing.risk_budget_pct == 5.0
+    assert xau_sizing.lots == 0.01
+    assert xau_sizing.risk_budget_pct == 0.5
 
 
 def test_active_workflows_use_pair_specific_wrappers_and_bounded_demo_contract():
@@ -33,11 +33,11 @@ def test_active_workflows_use_pair_specific_wrappers_and_bounded_demo_contract()
     assert "demo_execution_fast_candidate_producer" in auto
     assert "demo_execution_fresh_ready_handoff" in auto
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "2"' in auto
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in auto
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "0.5"' in auto
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"' in auto
-    assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in auto
+    assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "2"' in auto
     assert "demo_execution_technical_producer" in discovery
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in discovery
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "0.5"' in discovery
     assert "XAUUSD,EURUSD" in supervisor
     assert "FX_LIVE_TRADING_ENABLED" not in auto
     assert "I_UNDERSTAND_LIVE_ORDERS" not in auto

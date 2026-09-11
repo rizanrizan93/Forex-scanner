@@ -12,9 +12,9 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
 DEMO_POSITION_CAP_ENV = "CTRADER_DEMO_MAX_CONCURRENT_POSITIONS"
-DEMO_POSITION_CAP_CEILING = 10
+DEMO_POSITION_CAP_CEILING = 2
 DEMO_ORDER_LOT_CAP_ENV = "CTRADER_DEMO_MAX_ORDER_LOTS"
-DEMO_ORDER_LOT_CAP_CEILING = 0.50
+DEMO_ORDER_LOT_CAP_CEILING = 0.01
 DEMO_STACKING_ENV = "CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING"
 DEMO_STACK_MIN_SCORE_ENV = "CTRADER_DEMO_STACK_MIN_SCORE"
 DEMO_STACK_MIN_COVERAGE_ENV = "CTRADER_DEMO_STACK_MIN_COVERAGE"
@@ -24,7 +24,7 @@ DEMO_STACK_MIN_SPACING_ENV = "CTRADER_DEMO_MIN_STACK_SPACING_SECONDS"
 DEMO_PORTFOLIO_RISK_CAP_ENV = "CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT"
 DEMO_MARGIN_USAGE_CAP_ENV = "CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT"
 DEMO_MIN_LIVE_RR_ENV = "CTRADER_DEMO_MIN_LIVE_RR"
-DEMO_MIN_LIVE_RR_FLOOR = 1.0
+DEMO_MIN_LIVE_RR_FLOOR = 1.5
 
 
 def _dt(value: Any) -> datetime | None:
@@ -89,8 +89,8 @@ def load_demo_project_config(root=None):
     """Load canonical project config plus a bounded DEMO-only live-RR floor.
 
     Discovery/plan generation keeps the canonical minimum TP2 RR contract. Only
-    the DEMO autotrade handoff may accept fresh broker-price deterioration down
-    to 1:1. Entry, SL and TP geometry are never rewritten by this override.
+    the DEMO autotrade handoff may validate fresh broker prices at the same
+    minimum 1:1.5 RR. Entry, SL and TP geometry are never rewritten.
     """
     cfg = _load_project_config(root)
     strategy = dict(cfg.strategy)
@@ -110,12 +110,9 @@ def load_demo_project_config(root=None):
 def load_demo_execution_policy(root=None) -> ExecutionPolicy:
     """Load canonical policy plus an explicit bounded DEMO runtime profile.
 
-    DEMO may opt into up to ten total positions and conviction-sized orders from
-    0.01 through 0.50 lot. The lot ceiling is not a risk override: broker-native
-    stop-loss loss, aggregate risk, margin, spread, correlation and geometry
-    checks remain authoritative and may reduce or reject the requested volume.
-    Same-symbol stacking remains behind independent high-conviction gates.
-    LIVE remains untouched.
+    DEMO remains hard-capped at two positions, 0.01 lot per order and 0.5% risk
+    per trade. Environment variables may tighten these limits but cannot loosen
+    them. Same-symbol stacking and LIVE execution are forbidden.
     """
     policy = _load_execution_policy(root)
     demo_safety = dict(policy.demo_safety)
@@ -138,7 +135,9 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
     demo_safety["max_order_lots"] = max_order_lots
 
     allow_stacking = _bool_env(DEMO_STACKING_ENV, default=False)
-    demo_safety["allow_same_symbol_stacking"] = allow_stacking
+    if allow_stacking:
+        raise RuntimeError("CTRADER_DEMO_SAME_SYMBOL_STACKING_FORBIDDEN")
+    demo_safety["allow_same_symbol_stacking"] = False
     demo_safety["stack_min_score"] = _bounded_float_env(
         DEMO_STACK_MIN_SCORE_ENV,
         default=85.0,
@@ -159,9 +158,9 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
     )
     max_same_symbol_positions = _bounded_int_env(
         DEMO_STACK_MAX_POSITIONS_ENV,
-        default=3,
+        default=1,
         minimum=1,
-        maximum=3,
+        maximum=1,
     )
     demo_safety["max_same_symbol_positions"] = max_same_symbol_positions
     demo_safety["min_stack_spacing_seconds"] = _bounded_float_env(
@@ -171,20 +170,20 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
         maximum=3600.0,
     )
     demo_safety["max_same_symbol_lots"] = min(
-        1.50,
+        0.01,
         max_order_lots * max_same_symbol_positions,
     )
     demo_safety["max_portfolio_risk_pct"] = _bounded_float_env(
         DEMO_PORTFOLIO_RISK_CAP_ENV,
-        default=6.0,
+        default=1.0,
         minimum=0.5,
-        maximum=12.0,
+        maximum=1.0,
     )
     demo_safety["max_margin_free_usage_pct"] = _bounded_float_env(
         DEMO_MARGIN_USAGE_CAP_ENV,
-        default=25.0,
+        default=10.0,
         minimum=5.0,
-        maximum=50.0,
+        maximum=10.0,
     )
     return replace(policy, demo_safety=demo_safety)
 

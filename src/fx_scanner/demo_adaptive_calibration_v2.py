@@ -49,15 +49,11 @@ def _number(payload: dict[str, Any], key: str) -> float | None:
 
 
 def calibration_v2_stage(decisive: int) -> str:
-    if decisive < 10:
+    if decisive < 30:
         return "OBSERVE"
-    if decisive < 20:
-        return "GATE_ADAPT"
-    if decisive < 50:
-        return "PATTERN_ADAPT"
     if decisive < 100:
-        return "SLTP_SHADOW"
-    return "BOUNDED_SLTP_READY"
+        return "BOUNDED_SCORE_FLOOR_PROMOTED"
+    return "FULL_SCORE_FLOOR_PROMOTED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -342,7 +338,7 @@ def build_adaptive_calibration_v2_report(rows: Iterable[dict[str, Any]]) -> Adap
         snapshot_coverage=coverage,
         cohorts=cohorts,
         diagnostics=_diagnose(cohorts),
-        automatic_gate_mutation_allowed=decisive >= 10,
-        automatic_pattern_mutation_allowed=decisive >= 20,
+        automatic_gate_mutation_allowed=decisive >= 30,
+        automatic_pattern_mutation_allowed=False,
         automatic_sltp_mutation_allowed=False,
     )

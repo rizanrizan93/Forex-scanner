@@ -215,22 +215,24 @@ def test_demo_runtime_uses_score_driven_setup_and_keeps_other_guards():
     assert 'computed["RR_BLOCK"]' in source
     assert "score_driven_setup" in source
     assert "and score_driven_setup" in source
-    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in workflow
+    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "70.0"' in workflow
     assert "chase_block_atr: 0.50" in strategy
 
 
-def test_supervisor_uses_one_minute_non_overlap_dispatch():
+def test_supervisor_uses_stateless_five_minute_non_overlap_dispatch():
     text = Path(".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
-    assert "seq 1 60" in text
-    assert "sleep 60" in text
+    assert 'cron: "*/5 * * * *"' in text
+    assert "seq 1 60" not in text
+    assert "sleep 60" not in text
     assert "SUPERVISOR_FAST_SKIP_BUSY" in text
     assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
     assert "overlap_within_lane=DISABLED" in text
+    assert "self_handoff=DISABLED" in text
 
 
 def test_pipeline_keeps_chase_limit_and_enables_fresh_fvg_profile():
     workflow = Path(".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     strategy = Path("config/strategy.yaml").read_text()
-    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in workflow
+    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "70.0"' in workflow
     assert 'CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"' in workflow
     assert "chase_block_atr: 0.50" in strategy

@@ -10,7 +10,7 @@ def test_demo_auto_pipeline_is_dispatch_only_pair_specific_fast_lane_and_demo_on
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
     assert "demo_execution_fast_candidate_producer" in text
-    assert "demo_execution_fresh_ready_handoff --limit 10" in text
+    assert "demo_execution_fresh_ready_handoff --limit 2" in text
     assert "demo_structural_profit_protector" in text
     assert text.index("demo_execution_fast_candidate_producer") < text.index(
         "demo_execution_fresh_ready_handoff"
@@ -21,7 +21,7 @@ def test_demo_auto_pipeline_is_dispatch_only_pair_specific_fast_lane_and_demo_on
     assert "demo_closed_trade_reconciler" not in text
     assert "macro-refresh" not in text
     assert "CTRADER_DEMO_AUTOTRADE_ENABLED" in text
-    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in text
+    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "70.0"' in text
     assert 'CTRADER_DEMO_TECHNICAL_ONLY: "1"' in text
     assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"' in text
     assert 'CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"' in text
@@ -31,7 +31,7 @@ def test_demo_auto_pipeline_is_dispatch_only_pair_specific_fast_lane_and_demo_on
     assert 'CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"' in text
     assert 'CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"' in text
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"' in text
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"' in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "0.5"' in text
     assert 'FX_KILL_SWITCH: "0"' in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
@@ -98,29 +98,27 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
         assert "\\n" not in text
 
 
-def test_demo_auto_supervisor_is_self_renewing_and_dispatches_pair_specific_lanes():
+def test_demo_auto_supervisor_is_stateless_and_dispatches_pair_specific_lanes():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
     assert "workflow_dispatch:" in text
     assert "branches: [main]" in text
     assert "paths:" not in text
-    assert 'cron: "7,22,37,52 * * * *"' in text
-    assert 'workflows: ["cTrader Demo Technical Heartbeat"]' in text
+    assert 'cron: "*/5 * * * *"' in text
+    assert "workflow_run:" not in text
     assert "github.event_name == 'schedule'" in text
-    assert "github.event.workflow_run.event == 'schedule'" in text
-    assert "github.event.workflow_run.head_branch == 'main'" in text
-    assert "cancel-in-progress: true" in text
+    assert "github.event.workflow_run" not in text
+    assert "cancel-in-progress: false" in text
     assert "actions: write" in text
-    assert "seq 1 60" in text
-    assert "sleep 60" in text
-    assert "fast_cadence_seconds=60" in text
-    assert "discovery_check_seconds=60" in text
+    assert "seq 1 60" not in text
+    assert "sleep 60" not in text
+    assert "cadence_minutes=5" in text
     assert "universe=XAUUSD,EURUSD" in text
     assert "strategies=PAIR_SPECIFIC" in text
     assert "SUPERVISOR_FAST_SKIP_BUSY" in text
     assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
     assert "active_count" in text
     assert "overlap_within_lane=DISABLED" in text
-    assert "cross_lane=ENABLED" in text
+    assert "self_handoff=DISABLED" in text
     assert "ctrader-demo-auto-pipeline.yml" in text
     assert "ctrader-demo-discovery-pipeline.yml" in text
     assert "-f ref=main" in text

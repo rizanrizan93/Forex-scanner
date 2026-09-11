@@ -107,14 +107,14 @@ class CTraderOpenApiSession:
         self.token_update_callback = token_update_callback
         self.account_id = None if account_id is None else int(account_id)
         self.environment = environment.lower()
-        if self.environment not in {"demo", "live"}:
-            raise ValueError("environment must be demo or live")
+        if self.environment != "demo":
+            raise ValueError("cTrader session is permanently hard-locked to demo")
         self.request_timeout_seconds = float(request_timeout_seconds)
         self.allow_token_refresh = bool(allow_token_refresh)
         if self.request_timeout_seconds <= 0:
             raise ValueError("request_timeout_seconds must be positive")
 
-        host = EndPoints.PROTOBUF_LIVE_HOST if self.environment == "live" else EndPoints.PROTOBUF_DEMO_HOST
+        host = EndPoints.PROTOBUF_DEMO_HOST
         self.client = Client(host, EndPoints.PROTOBUF_PORT, TcpProtocol)
         self._connected = Event()
         self._application_authenticated = Event()
@@ -334,8 +334,6 @@ class CTraderOpenApiSession:
             raise CollectorUnavailable("cTrader demo-only guard rejected a live account")
         if self.environment == "demo" and account.is_live:
             raise CollectorUnavailable("cTrader DEMO host cannot bind a live account")
-        if self.environment == "live" and not account.is_live:
-            raise CollectorUnavailable("cTrader LIVE host cannot bind a demo account")
         if pinned_account_id is not None and int(pinned_account_id) != account.ctid_trader_account_id:
             raise CollectorUnavailable("cTrader pinned account id does not match granted trader login")
         self.account_id = account.ctid_trader_account_id

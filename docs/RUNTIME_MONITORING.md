@@ -1,5 +1,9 @@
 # Runtime monitoring
 
+> Historical document: the Windows/MT5 worker described below is retired and
+> blocked by the active factory. Current monitoring uses FP Markets cTrader
+> DEMO telemetry only; live and MT5 execution are permanently disabled.
+
 Streamlit Community Cloud remains the monitor only. The broker terminal and
 scanner runtime run outside Streamlit.
 

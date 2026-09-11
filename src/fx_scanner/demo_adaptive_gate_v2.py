@@ -7,11 +7,12 @@ from typing import Any, Iterable, Mapping
 SYSTEM_WINS = {"TP_HIT", "STRUCTURAL_PROTECT_PROFIT"}
 SYSTEM_LOSSES = {"SL_HIT", "STOP_OUT", "STRUCTURAL_PROTECT_LOSS"}
 WAVE_ENTRY_MODES = {"HL_PULLBACK", "LH_PULLBACK", "MOMENTUM_CONTINUATION"}
-MIN_GLOBAL_DECISIVE = 10
+MIN_GLOBAL_DECISIVE = 30
 MIN_SNAPSHOT_COVERAGE = 0.80
-MIN_SPECIFIC_DECISIVE = 5
-MIN_PARENT_DECISIVE = 7
-MIN_SETUP_REGIME_DECISIVE = 8
+MIN_SPECIFIC_DECISIVE = 10
+MIN_PARENT_DECISIVE = 15
+MIN_SETUP_REGIME_DECISIVE = 20
+FULL_PROMOTION_DECISIVE = 100
 
 
 def _payload(row: Mapping[str, Any]) -> dict[str, Any]:
@@ -134,6 +135,14 @@ class AdaptiveGateV2Policy:
             "minimum_snapshot_coverage": MIN_SNAPSHOT_COVERAGE,
             "wave_decisive": self.wave_decisive,
             "minimum_global_decisive": MIN_GLOBAL_DECISIVE,
+            "full_promotion_decisive": FULL_PROMOTION_DECISIVE,
+            "score_floor_promotion_stage": (
+                "FULL_PROMOTED"
+                if self.enabled and self.wave_decisive >= FULL_PROMOTION_DECISIVE
+                else "BOUNDED_PROMOTED"
+                if self.enabled
+                else "SHADOW"
+            ),
             "hierarchy": [
                 "symbol+setup+direction+regime",
                 "setup+direction+regime",
@@ -205,7 +214,13 @@ def build_adaptive_gate_v2_policy(
     safe_base = float(base_floor)
     if not isfinite(safe_base) or safe_base < 0 or safe_base > 100:
         raise ValueError("ADAPTIVE_V2_BASE_FLOOR_INVALID")
-    max_penalty = 0.0 if wave_decisive < 10 else 2.5 if wave_decisive < 20 else 5.0
+    max_penalty = (
+        0.0
+        if wave_decisive < MIN_GLOBAL_DECISIVE
+        else 2.5
+        if wave_decisive < FULL_PROMOTION_DECISIVE
+        else 5.0
+    )
     ready = bool(enabled and wave_decisive >= MIN_GLOBAL_DECISIVE and coverage >= MIN_SNAPSHOT_COVERAGE)
     if not enabled:
         root = "DISABLED"

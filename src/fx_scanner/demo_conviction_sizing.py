@@ -4,11 +4,11 @@ from dataclasses import dataclass, replace
 from math import isfinite
 from typing import Any
 
-MAX_DEMO_LOTS = 0.50
+MAX_DEMO_LOTS = 0.01
 MIN_DEMO_LOTS = 0.01
-MAX_DEMO_RISK_PCT = 5.0
-EURUSD_BOOTSTRAP_MAX_LOTS = 0.10
-EURUSD_BOOTSTRAP_MAX_RISK_PCT = 2.0
+MAX_DEMO_RISK_PCT = 0.5
+EURUSD_BOOTSTRAP_MAX_LOTS = 0.01
+EURUSD_BOOTSTRAP_MAX_RISK_PCT = 0.5
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,11 +26,8 @@ def select_demo_conviction_sizing(
 ) -> DemoConvictionSizing:
     """Map validated DEMO setup quality to bounded pair-specific lot/risk budgets.
 
-    XAUUSD keeps the established 0.01-0.50 / <=5% profile. EURUSD is an execution
-    research baseline and is conservatively capped at 0.10 lot / <=2% until its
-    own forward DEMO evidence is sufficient for a later pair-specific policy
-    review. Entry/SL/TP geometry is never changed here; broker-native risk sizing
-    may only reduce the requested volume.
+    Every pair remains at 0.01 lot and <=0.5% risk. Quality tiers are retained
+    only as telemetry; they can never increase broker exposure.
     """
     try:
         score = float(row.get("final_score"))
@@ -76,7 +73,7 @@ def select_demo_conviction_sizing(
 
 
 def _install_runtime_policy_cap() -> None:
-    """Enforce the cTrader DEMO runtime order cap at 0.50 lot."""
+    """Enforce the cTrader DEMO runtime order cap at 0.01 lot."""
     from . import demo_calibration_autotrade as runtime
 
     if getattr(runtime, "_demo_conviction_policy_patch_installed", False):

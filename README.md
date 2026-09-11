@@ -4,7 +4,7 @@ Production-oriented forex scanner foundation with a **phone-only cTrader demo-fo
 
 **Research feed:** FP Markets cTrader Open API  
 **Demo execution venue:** FP Markets cTrader Demo only  
-**Future execution venue:** HFM MT5 is deferred  
+**Live execution:** permanently disabled
 **Committed execution default:** `DISABLED`
 
 ## Operating model
@@ -27,7 +27,7 @@ Supabase atomic claim: EXECUTION_READY -> COOLDOWN
 fresh cTrader quote + entry-zone + RR + SL/TP + demo guards
        |
        v
-FP Markets cTrader DEMO order (max 0.01 lot, max 1 open position)
+FP Markets cTrader DEMO order (max 0.01 lot, max 2 open positions)
 
 Supabase -> control state + durable signal claim + async audit
 Android  -> monitor / explicit demo enable-disable
@@ -277,7 +277,8 @@ connected to **FP Markets cTrader Open API**. It acquires live Bid/Ask plus
 D1/H4/H1/M15/M5 historical trendbars, sends an 8-second client heartbeat,
 and rate-limits historical requests below cTrader limits.
 
-HFM MT5 is deferred while cTrader Demo is used for forward validation.
+Legacy MT5 modules are retained only for migration lineage and cannot be
+selected by the active execution factory.
 
 ```bash
 python -m fx_scanner.cli research-cloud --once
@@ -286,21 +287,11 @@ python -m fx_scanner.cli research-cloud --heartbeat 8 --mtf-refresh 900
 
 See `docs/PHONE_ONLY_RUNTIME.md`.
 
-## v0.10 broker monitoring telemetry
+## Broker monitoring telemetry
 
-Streamlit remains a monitor only. A lightweight Windows/MT5 worker now
-publishes broker-reported balance, equity, floating P/L, margin and open
-positions to Supabase without submitting orders.
-
-Run on the Windows HFM MT5 host:
-
-```bash
-python -m fx_scanner.cli mt5-monitor --once
-python -m fx_scanner.cli mt5-monitor --interval 15
-```
-
-The **Account & Positions** tab reads only the latest coherent snapshot.
-Execution remains `DISABLED` by default. See `docs/RUNTIME_MONITORING.md`.
+Streamlit remains a monitor only. The active cTrader DEMO workers publish
+broker-reported balance, equity, floating P/L, margin and open positions to
+Supabase. Execution remains `DISABLED` at rest.
 
 ## v0.9 OOS validation and latency safeguards
 
@@ -324,47 +315,23 @@ The final OOS acceptance contract remains at least 250 completed trades, 55%
 win rate, Profit Factor 1.30 and +0.15R expectancy before the additional
 stability/demo gates are considered.
 
+DEMO score calibration is deliberately one-way and evidence-gated. Below 30
+decisive, fully attributed outcomes it stays in shadow mode. From 30 through 99
+it may automatically promote only a bounded score-floor penalty (maximum
++2.5 points); from 100 outcomes the ceiling becomes +5 points. It cannot lower
+the 70-point base floor, increase lot/risk limits, alter entry/SL/TP geometry,
+or authorize LIVE execution. Pattern and SL/TP findings remain review-only.
+
 Research validation is statically prevented from entering the live
 strategy/execution import path. The CPU budget for a Top-5 deep scan remains
 250 ms.
 
-## HFM Cent execution contract
+## cTrader DEMO execution contract
 
-Startup fails closed unless the execution account and symbols match the configured
-Cent contract:
-
-- account currency: `USC`
-- expected FX contract size: `1,000` units per Cent lot
-- canonical symbols are resolved to broker symbols (for example `EURUSDc`) using
-  explicit mapping or configured suffix candidates
-- ambiguous or non-matching symbols block startup
-- position sizing uses HFM-provided tick size, tick value, min/max volume and
-  volume step; standard-lot economics are never hard-coded
-
-Actual symbol names and contract metadata must still be verified against the
-real HFM demo account before enabling any execution mode.
-
-## Fast execution-side revalidation
-
-The FP Markets signal is never copied blindly to HFM. Immediately before MT5
-preflight the runtime checks:
-
-- fresh cTrader research Bid/Ask
-- fresh HFM MT5 Bid/Ask
-- cross-broker mid-price divergence
-- HFM spread and spread divergence
-- entry drift / do-not-chase
-- SL/entry/TP geometry
-- minimum RR
-- HFM Cent account currency and contract size
-- HFM tick-economics position sizing
-- internal revalidation latency ceiling
-
-MT5 then takes a fresh quote **again** during broker preflight and blocks if the
-price has moved too far from the revalidated entry.
-
-This is intentionally a fast execution-geometry reconciliation. It does not
-claim to recompute the complete SMC/ICT strategy on HFM M5 bars.
+Immediately before every order the runtime rechecks the cTrader DEMO account,
+fresh executable Bid/Ask, entry drift, SL/TP geometry, minimum 1:1.5 RR,
+broker-native risk, the two-position portfolio cap, and the 0.01-lot order cap.
+Same-symbol stacking and all live/MT5 execution paths are blocked.
 
 ## Cadence
 
@@ -466,11 +433,8 @@ cTrader research backend:
 pip install -r requirements-ctrader.txt
 ```
 
-HFM MT5 execution host requires Windows and:
-
-```bash
-pip install -r requirements-mt5-windows.txt
-```
+Dashboard dependencies can be installed separately with
+`pip install -r requirements-dashboard.txt`.
 
 ## Validation
 

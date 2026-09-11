@@ -35,7 +35,7 @@ def test_streamlit_entrypoint_does_not_import_research_validation_hot_work():
 def test_streamlit_dependency_is_pinned_and_no_backend_secret_is_committed():
     requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
     source = (ROOT / "streamlit_app.py").read_text(encoding="utf-8")
-    assert "streamlit==1.62.0" in requirements
+    assert "streamlit==1.39.0" in requirements
     assert "sb_secret_" not in source
     assert "SUPABASE_SECRET_KEY" in source
     assert "SUPABASE_SERVICE_ROLE_KEY" in source

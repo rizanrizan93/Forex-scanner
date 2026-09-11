@@ -13,8 +13,8 @@ from .demo_incremental_calibration import (
 
 WAVE_ENTRY_MODES = frozenset({"HL_PULLBACK", "LH_PULLBACK", "MOMENTUM_CONTINUATION"})
 LEGACY_ENTRY_MODE = "LEGACY"
-DEFAULT_MAX_ADAPTIVE_FLOOR = 60.0
-MIN_DECISIVE_FOR_MUTATION = 10
+DEFAULT_MAX_ADAPTIVE_PENALTY = 5.0
+MIN_DECISIVE_FOR_MUTATION = 30
 
 
 def _payload(row: dict[str, Any]) -> dict[str, Any]:
@@ -91,6 +91,11 @@ class AdaptiveCalibrationPolicy:
             "legacy_win_rate": self.legacy_stats.win_rate,
             "legacy_excluded_from_mutation": True,
             "minimum_decisive_for_mutation": MIN_DECISIVE_FOR_MUTATION,
+            "score_floor_promotion_stage": (
+                "PROMOTED_BOUNDED"
+                if self.wave_stats.decisive_system >= MIN_DECISIVE_FOR_MUTATION
+                else "SHADOW"
+            ),
             "automatic_strategy_mutation": "DEMO_SCORE_FLOOR_ONLY",
             "risk_mutation": False,
             "sl_tp_mutation": False,
@@ -103,7 +108,7 @@ def build_adaptive_policy_from_rows(
     *,
     base_floor: float,
     enabled: bool,
-    max_floor: float = DEFAULT_MAX_ADAPTIVE_FLOOR,
+    max_floor: float | None = None,
 ) -> AdaptiveCalibrationPolicy:
     rows = tuple(dict(row) for row in rows)
     wave_rows = tuple(row for row in rows if _entry_mode(row) in WAVE_ENTRY_MODES)
@@ -144,7 +149,12 @@ def build_adaptive_policy_from_rows(
         root_cause = "NO_ADAPTIVE_PENALTY_REQUIRED"
 
     safe_base = float(base_floor)
-    safe_max = max(safe_base, min(float(max_floor), DEFAULT_MAX_ADAPTIVE_FLOOR))
+    requested_max = (
+        safe_base + DEFAULT_MAX_ADAPTIVE_PENALTY
+        if max_floor is None
+        else float(max_floor)
+    )
+    safe_max = min(100.0, max(safe_base, requested_max))
     return AdaptiveCalibrationPolicy(
         enabled=bool(enabled),
         base_floor=safe_base,

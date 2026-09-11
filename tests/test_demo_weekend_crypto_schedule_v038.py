@@ -57,17 +57,17 @@ def test_legacy_weekend_deep_top_helper_remains_bounded(monkeypatch):
     assert calibrated.strategy["selection"]["deep_analysis_top"] == 3
 
 
-def test_active_pair_supervisor_runs_one_minute_checks_without_weekend_crypto_fallback():
+def test_active_pair_supervisor_runs_stateless_five_minute_checks_without_weekend_crypto_fallback():
     root = Path(__file__).resolve().parents[1]
     supervisor = (root / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
     fast = (root / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     discovery = (root / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
     heartbeat = (root / ".github/workflows/ctrader-demo-technical-heartbeat.yml").read_text()
 
-    assert 'cron: "7,22,37,52 * * * *"' in supervisor
+    assert 'cron: "*/5 * * * *"' in supervisor
     assert 'cron: "17 * * * *"' in heartbeat
-    assert "fast_cadence_seconds=60" in supervisor
-    assert "discovery_check_seconds=60" in supervisor
+    assert "cadence_minutes=5" in supervisor
+    assert "self_handoff=DISABLED" in supervisor
     assert "universe=XAUUSD,EURUSD" in supervisor
     assert "strategies=PAIR_SPECIFIC" in supervisor
     assert "demo_execution_fast_candidate_producer" in fast

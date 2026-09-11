@@ -16,7 +16,7 @@ def test_calibration_does_not_mutate_geometry_or_global_score_floor():
     source = Path("src/fx_scanner/demo_technical_strategy.py").read_text(encoding="utf-8")
     workflow = Path(".github/workflows/ctrader-demo-auto-pipeline.yml").read_text(encoding="utf-8")
 
-    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"' in workflow
+    assert 'CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "70.0"' in workflow
     assert "sl_buffer_atr" in source
     assert "minimum_entry_zone_atr" in source
     assert "minimum_tp2_rr" in source

@@ -3,7 +3,7 @@
 FP Markets cTrader Open API remains the research/live-market feed.
 
 ```text
-FP Markets cTrader (RESEARCH_ONLY)
+FP Markets cTrader DEMO
           |
           v
 Linux research runtime
@@ -12,10 +12,11 @@ Linux research runtime
           v
 Supabase -> Streamlit on Android
 
-HFM MT5 stays separate for execution/telemetry when a Windows host exists.
+cTrader DEMO is also the sole permitted execution and broker-telemetry path.
 ```
 
-The Linux process has no MT5 or order-submission dependency.
+The research process has no MT5 dependency. Order submission is handled only
+by the separately gated cTrader DEMO worker.
 It sends a client heartbeat every 8 seconds and paces historical requests at
 4 requests/second.
 

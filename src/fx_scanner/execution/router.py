@@ -21,10 +21,9 @@ class ExecutionBlocked(FXScannerError):
 class ExecutionRouter:
     """Centralized broker-agnostic execution state machine.
 
-    In dual-feed mode, strategy decisions arrive with canonical symbols. A
-    revalidator reconciles FP Markets cTrader research prices against HFM Cent
-    MT5 and returns an execution-ready intent with broker symbol and broker-
-    specific position size. No Supabase network call is permitted here.
+    FP Markets cTrader DEMO is the only permitted broker path. Any legacy
+    live/MT5 policy reaches a permanent fail-closed barrier before preflight.
+    No Supabase network call is permitted in the broker side-effect boundary.
     """
 
     def __init__(
@@ -140,23 +139,11 @@ class ExecutionRouter:
             raise ExecutionBlocked("DEMO_ACCOUNT_ID_INVALID")
         self._assert_control_plane()
 
-    def _assert_live_environment(self, account_id: str) -> None:
-        safety = self.policy.live_safety
-        if os.getenv(safety["live_enable_env"]) != safety["live_enable_value"]:
-            raise ExecutionBlocked("LIVE_ENV_GATE_CLOSED")
-        allowed_raw = os.getenv(safety["account_allowlist_env"], "")
-        allowlist = {x.strip() for x in allowed_raw.split(",") if x.strip()}
-        if safety.get("require_account_allowlist", True) and str(account_id) not in allowlist:
-            raise ExecutionBlocked("ACCOUNT_NOT_ALLOWLISTED")
-        if safety.get("require_persistent_idempotency", False) and self.duplicates.path is None:
-            raise ExecutionBlocked("PERSISTENT_IDEMPOTENCY_NOT_CONFIGURED")
-        self._assert_control_plane()
-
     def _assert_broker_environment(self, account_id: str, intent: OrderIntent) -> None:
         if self._is_ctrader_demo_execution():
             self._assert_demo_environment(account_id, intent)
             return
-        self._assert_live_environment(account_id)
+        raise ExecutionBlocked("LIVE_TRADING_PERMANENTLY_DISABLED")
 
     def _requires_post_fill_protection(self, intent: OrderIntent) -> bool:
         return bool(

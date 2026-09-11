@@ -9,8 +9,8 @@ from typing import Any, Callable
 from .execution.ctrader_session import normalize_symbol_name
 from .execution.models import OrderIntent, OrderSide
 
-MAX_DEMO_PORTFOLIO_RISK_PCT = 6.0
-MAX_DEMO_MARGIN_FREE_USAGE_PCT = 25.0
+MAX_DEMO_PORTFOLIO_RISK_PCT = 1.0
+MAX_DEMO_MARGIN_FREE_USAGE_PCT = 10.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -420,7 +420,7 @@ def select_demo_broker_native_sizing(
     """Apply SL-loss, aggregate open-risk and expected-margin caps to conviction lots."""
     portfolio_pct = _finite_positive(max_portfolio_risk_pct, name="PORTFOLIO_RISK_PCT")
     margin_pct = _finite_positive(max_margin_free_usage_pct, name="MARGIN_USAGE_PCT")
-    if portfolio_pct > 25.0 or margin_pct > 80.0:
+    if portfolio_pct > MAX_DEMO_PORTFOLIO_RISK_PCT or margin_pct > MAX_DEMO_MARGIN_FREE_USAGE_PCT:
         raise ValueError("DEMO_BROKER_RISK_CAP_OUT_OF_RANGE")
     conviction_lots = _finite_positive(intent.volume, name="CONVICTION_LOTS")
     per_trade_pct = _finite_positive(intent.risk_pct, name="PER_TRADE_RISK_PCT")

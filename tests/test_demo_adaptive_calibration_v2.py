@@ -31,15 +31,15 @@ def _row(*, symbol="BTCUSD", setup="CONTINUATION", direction="LONG", regime="TRE
 
 def test_v2_stage_contract_is_progressive_and_sltp_not_automatic():
     assert calibration_v2_stage(0) == "OBSERVE"
-    assert calibration_v2_stage(10) == "GATE_ADAPT"
-    assert calibration_v2_stage(20) == "PATTERN_ADAPT"
-    assert calibration_v2_stage(50) == "SLTP_SHADOW"
-    assert calibration_v2_stage(100) == "BOUNDED_SLTP_READY"
+    assert calibration_v2_stage(29) == "OBSERVE"
+    assert calibration_v2_stage(30) == "BOUNDED_SCORE_FLOOR_PROMOTED"
+    assert calibration_v2_stage(99) == "BOUNDED_SCORE_FLOOR_PROMOTED"
+    assert calibration_v2_stage(100) == "FULL_SCORE_FLOOR_PROMOTED"
 
     report = build_adaptive_calibration_v2_report([_row(exit_type="TP_HIT") for _ in range(100)])
-    assert report.stage == "BOUNDED_SLTP_READY"
+    assert report.stage == "FULL_SCORE_FLOOR_PROMOTED"
     assert report.automatic_gate_mutation_allowed is True
-    assert report.automatic_pattern_mutation_allowed is True
+    assert report.automatic_pattern_mutation_allowed is False
     assert report.automatic_sltp_mutation_allowed is False
 
 

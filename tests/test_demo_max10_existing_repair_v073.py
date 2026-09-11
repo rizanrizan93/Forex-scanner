@@ -48,33 +48,33 @@ class _Client:
 
 
 def test_demo_runtime_profile_defaults_keep_bounded_lot_and_no_stacking(monkeypatch):
-    monkeypatch.setenv(DEMO_POSITION_CAP_ENV, "10")
+    monkeypatch.setenv(DEMO_POSITION_CAP_ENV, "2")
     monkeypatch.delenv(DEMO_ORDER_LOT_CAP_ENV, raising=False)
     monkeypatch.delenv(DEMO_STACKING_ENV, raising=False)
     policy = load_demo_execution_policy()
-    assert policy.demo_safety["max_concurrent_positions"] == 10
-    assert policy.demo_safety["max_order_lots"] == 0.50
+    assert policy.demo_safety["max_concurrent_positions"] == 2
+    assert policy.demo_safety["max_order_lots"] == 0.01
     assert policy.demo_safety["allow_same_symbol_stacking"] is False
     assert policy.ctrader["environment"] == "DEMO"
     assert policy.ctrader["require_demo"] is True
 
 
-def test_demo_runtime_profile_rejects_capacity_above_ten(monkeypatch):
-    monkeypatch.setenv(DEMO_POSITION_CAP_ENV, "11")
-    with pytest.raises(RuntimeError, match=r"must be in \[1,10\]"):
+def test_demo_runtime_profile_rejects_capacity_above_two(monkeypatch):
+    monkeypatch.setenv(DEMO_POSITION_CAP_ENV, "3")
+    with pytest.raises(RuntimeError, match=r"must be in \[1,2\]"):
         load_demo_execution_policy()
 
 
-def test_execution_policy_ceiling_accepts_ten_and_rejects_eleven(tmp_path):
+def test_execution_policy_requires_two_positions(tmp_path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
     source = (ROOT / "config" / "execution.yaml").read_text(encoding="utf-8")
     (config_dir / "execution.yaml").write_text(source, encoding="utf-8")
-    assert load_execution_policy(tmp_path).demo_safety["max_concurrent_positions"] == 10
+    assert load_execution_policy(tmp_path).demo_safety["max_concurrent_positions"] == 2
 
-    eleven = source.replace("max_concurrent_positions: 10", "max_concurrent_positions: 11")
-    (config_dir / "execution.yaml").write_text(eleven, encoding="utf-8")
-    with pytest.raises(ConfigurationError, match=r"\[1,10\]"):
+    three = source.replace("max_concurrent_positions: 2", "max_concurrent_positions: 3")
+    (config_dir / "execution.yaml").write_text(three, encoding="utf-8")
+    with pytest.raises(ConfigurationError, match="must remain 2"):
         load_execution_policy(tmp_path)
 
 
@@ -112,12 +112,12 @@ def test_exact_broker_identity_rejects_position_or_side_mismatch():
 def test_auto_workflow_repairs_before_new_orders_and_requests_dynamic_profile():
     source = (ROOT / ".github" / "workflows" / "ctrader-demo-auto-pipeline.yml").read_text(encoding="utf-8")
     repair = "python -m fx_scanner.demo_existing_protection_repair"
-    execute = "python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10"
-    assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in source
+    execute = "python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 2"
+    assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "2"' in source
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"' in source
-    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in source
+    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "0"' in source
     assert 'CTRADER_DEMO_STACK_MIN_SCORE: "85"' in source
-    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "3"' in source
+    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "1"' in source
     assert source.index(repair) < source.index(execute)
 
 

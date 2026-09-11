@@ -66,15 +66,15 @@ def execution_ready_row(now):
 
 
 def test_demo_override_keeps_canonical_plan_contract_unchanged(monkeypatch):
-    monkeypatch.setenv("CTRADER_DEMO_MIN_LIVE_RR", "1.0")
+    monkeypatch.setenv("CTRADER_DEMO_MIN_LIVE_RR", "1.5")
     canonical = load_project_config()
     demo = load_demo_project_config()
     assert canonical.strategy["trade_plan"]["minimum_tp2_rr"] >= 1.5
-    assert demo.strategy["trade_plan"]["minimum_tp2_rr"] == 1.0
+    assert demo.strategy["trade_plan"]["minimum_tp2_rr"] == 1.5
 
 
-def test_demo_live_rr_between_1_and_1_5_is_admitted(monkeypatch):
-    monkeypatch.setenv("CTRADER_DEMO_MIN_LIVE_RR", "1.0")
+def test_demo_live_rr_below_1_5_is_rejected(monkeypatch):
+    monkeypatch.setenv("CTRADER_DEMO_MIN_LIVE_RR", "1.5")
     cfg = load_demo_project_config()
     executor = CTraderDemoAutoExecutor(
         cfg=cfg,
@@ -87,12 +87,12 @@ def test_demo_live_rr_between_1_and_1_5_is_admitted(monkeypatch):
         execution_ready_row(datetime.now(tz=UTC)),
         now=datetime.now(tz=UTC),
     )
-    assert reason is None
-    assert intent is not None
-    assert intent.entry_price == pytest.approx(1.1018)
+    assert intent is None
+    assert reason is not None
+    assert "RR" in reason
 
 
-def test_demo_live_rr_floor_cannot_drop_below_one(monkeypatch):
-    monkeypatch.setenv("CTRADER_DEMO_MIN_LIVE_RR", "0.99")
+def test_demo_live_rr_floor_cannot_drop_below_one_point_five(monkeypatch):
+    monkeypatch.setenv("CTRADER_DEMO_MIN_LIVE_RR", "1.49")
     with pytest.raises(RuntimeError, match="CTRADER_DEMO_MIN_LIVE_RR"):
         load_demo_project_config()

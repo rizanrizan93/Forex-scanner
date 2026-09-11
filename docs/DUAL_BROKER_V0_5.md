@@ -1,5 +1,9 @@
 # Dual-broker deployment contract v0.5
 
+> Archived design only. The active scanner rejects this stack before creating
+> a broker session. FP Markets cTrader DEMO is now the sole permitted research,
+> execution, and telemetry venue; LIVE and MT5 order paths are disabled.
+
 ## Roles
 
 `FP Markets cTrader` is read-only market/research evidence.

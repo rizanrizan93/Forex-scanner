@@ -26,7 +26,7 @@ def _closed_loss():
 
 def test_composite_uses_legacy_floor_when_v2_ready_but_current_snapshot_missing():
     v2 = build_adaptive_gate_v2_policy(
-        tuple(_closed_loss() for _ in range(10)),
+        tuple(_closed_loss() for _ in range(30)),
         signal_context={},
         base_floor=50.01,
         enabled=True,

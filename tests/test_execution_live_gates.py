@@ -17,7 +17,7 @@ from fx_scanner.execution.router import ExecutionBlocked, ExecutionRouter
 UTC = timezone.utc
 
 
-def _policy() -> ExecutionPolicy:
+def _live_policy() -> ExecutionPolicy:
     return ExecutionPolicy(
         mode=ExecutionMode.AUTO,
         scheduler={
@@ -34,12 +34,32 @@ def _policy() -> ExecutionPolicy:
             "comment_prefix": "FXIS",
         },
         live_safety={
+            "permanently_disabled": True,
             "live_enable_env": "FX_LIVE_TRADING_ENABLED",
             "live_enable_value": "I_UNDERSTAND_LIVE_ORDERS",
             "account_allowlist_env": "FX_BROKER_ACCOUNT_ALLOWLIST",
             "require_account_allowlist": True,
             "kill_switch_env": "FX_KILL_SWITCH",
             "kill_switch_safe_value": "0",
+        },
+    )
+
+
+def _demo_policy() -> ExecutionPolicy:
+    base = _live_policy()
+    return ExecutionPolicy(
+        mode=base.mode,
+        scheduler=base.scheduler,
+        order=base.order,
+        live_safety=base.live_safety,
+        broker={"research": "CTRADER", "execution": "CTRADER"},
+        ctrader={"environment": "DEMO", "role": "RESEARCH_AND_DEMO_EXECUTION"},
+        demo_safety={
+            "enable_env": "CTRADER_DEMO_AUTOTRADE_ENABLED",
+            "enable_value": "I_UNDERSTAND_DEMO_ORDERS",
+            "max_order_lots": 0.01,
+            "max_risk_pct": 0.5,
+            "max_concurrent_positions": 2,
         },
     )
 
@@ -51,7 +71,7 @@ def _intent(sig="LIVE-1") -> OrderIntent:
         side=OrderSide.BUY,
         order_type=OrderType.MARKET,
         created_at=datetime.now(tz=UTC),
-        volume=0.05,
+        volume=0.01,
         entry_price=1.1000,
         stop_loss=1.0950,
         take_profit=1.1100,
@@ -73,6 +93,9 @@ class FakeGateway:
     def account_snapshot(self):
         return BrokerAccountSnapshot(self.backend, self.account_id, 10_000, 10_000, 10_000, self.trade_allowed)
 
+    def position_count(self):
+        return 0
+
     def preflight(self, intent, order_config):
         if self.on_preflight:
             self.on_preflight()
@@ -80,7 +103,20 @@ class FakeGateway:
 
     def submit(self, preflight):
         self.sent += 1
-        return BrokerOrderResult(self.backend, self.send_ok, "3", "filled", "777", 0.05, 1.1001)
+        return BrokerOrderResult(
+            self.backend,
+            self.send_ok,
+            "3",
+            "filled",
+            "777",
+            0.01,
+            1.1001,
+            broker_position_id="888",
+            protection_verified=True,
+            attached_stop_loss=1.0950,
+            attached_take_profit=1.1100,
+            protection_code="PROTECTION_VERIFIED",
+        )
 
 
 def _open_live(monkeypatch, allowlist="12345"):
@@ -89,36 +125,41 @@ def _open_live(monkeypatch, allowlist="12345"):
     monkeypatch.setenv("FX_BROKER_ACCOUNT_ALLOWLIST", allowlist)
 
 
-def test_auto_live_env_gate_is_closed_by_default(monkeypatch):
+def _open_demo(monkeypatch):
+    monkeypatch.setenv("FX_KILL_SWITCH", "0")
+    monkeypatch.setenv("CTRADER_DEMO_AUTOTRADE_ENABLED", "I_UNDERSTAND_DEMO_ORDERS")
+
+
+def test_live_execution_is_permanently_disabled(monkeypatch):
     monkeypatch.setenv("FX_KILL_SWITCH", "0")
     monkeypatch.delenv("FX_LIVE_TRADING_ENABLED", raising=False)
     monkeypatch.setenv("FX_BROKER_ACCOUNT_ALLOWLIST", "12345")
-    router = ExecutionRouter(_policy(), duplicate_guard=DuplicateOrderGuard(), gateway=FakeGateway())
-    with pytest.raises(ExecutionBlocked, match="LIVE_ENV_GATE_CLOSED"):
+    router = ExecutionRouter(_live_policy(), duplicate_guard=DuplicateOrderGuard(), gateway=FakeGateway())
+    with pytest.raises(ExecutionBlocked, match="LIVE_TRADING_PERMANENTLY_DISABLED"):
         router.execute(_intent())
 
 
-def test_auto_requires_account_allowlist(monkeypatch):
+def test_live_execution_cannot_be_unlocked_by_legacy_envs(monkeypatch):
     _open_live(monkeypatch, "99999")
-    router = ExecutionRouter(_policy(), duplicate_guard=DuplicateOrderGuard(), gateway=FakeGateway(account_id="12345"))
-    with pytest.raises(ExecutionBlocked, match="ACCOUNT_NOT_ALLOWLISTED"):
+    router = ExecutionRouter(_live_policy(), duplicate_guard=DuplicateOrderGuard(), gateway=FakeGateway(account_id="12345"))
+    with pytest.raises(ExecutionBlocked, match="LIVE_TRADING_PERMANENTLY_DISABLED"):
         router.execute(_intent())
 
 
 def test_preflight_rejection_prevents_send(monkeypatch):
-    _open_live(monkeypatch)
+    _open_demo(monkeypatch)
     gateway = FakeGateway(preflight_ok=False)
-    router = ExecutionRouter(_policy(), duplicate_guard=DuplicateOrderGuard(), gateway=gateway)
+    router = ExecutionRouter(_demo_policy(), duplicate_guard=DuplicateOrderGuard(), gateway=gateway)
     with pytest.raises(ExecutionBlocked, match="PREFLIGHT_REJECTED"):
         router.execute(_intent())
     assert gateway.sent == 0
 
 
-def test_fake_live_success_requires_all_gates(monkeypatch):
-    _open_live(monkeypatch)
+def test_fake_demo_success_requires_all_gates(monkeypatch):
+    _open_demo(monkeypatch)
     gateway = FakeGateway()
     guard = DuplicateOrderGuard()
-    router = ExecutionRouter(_policy(), duplicate_guard=guard, gateway=gateway)
+    router = ExecutionRouter(_demo_policy(), duplicate_guard=guard, gateway=gateway)
     receipt = router.execute(_intent())
     assert receipt.accepted
     assert receipt.broker_order_id == "777"
@@ -128,17 +169,17 @@ def test_fake_live_success_requires_all_gates(monkeypatch):
 
 
 def test_kill_switch_rechecked_after_preflight(monkeypatch):
-    _open_live(monkeypatch)
+    _open_demo(monkeypatch)
     gateway = FakeGateway()
     gateway.on_preflight = lambda: monkeypatch.setenv("FX_KILL_SWITCH", "1")
-    router = ExecutionRouter(_policy(), duplicate_guard=DuplicateOrderGuard(), gateway=gateway)
+    router = ExecutionRouter(_demo_policy(), duplicate_guard=DuplicateOrderGuard(), gateway=gateway)
     with pytest.raises(ExecutionBlocked, match="KILL_SWITCH_ENGAGED"):
         router.execute(_intent("RACE-KILL"))
     assert gateway.sent == 0
 
 
 def test_inflight_claim_blocks_concurrent_duplicate(monkeypatch):
-    _open_live(monkeypatch)
+    _open_demo(monkeypatch)
     entered = Event()
     release = Event()
     gateway = FakeGateway()
@@ -148,7 +189,7 @@ def test_inflight_claim_blocks_concurrent_duplicate(monkeypatch):
         assert release.wait(timeout=1.0)
 
     gateway.on_preflight = block
-    router = ExecutionRouter(_policy(), duplicate_guard=DuplicateOrderGuard(), gateway=gateway)
+    router = ExecutionRouter(_demo_policy(), duplicate_guard=DuplicateOrderGuard(), gateway=gateway)
     outcomes = []
 
     def first():
@@ -174,11 +215,11 @@ class RaisingGateway(FakeGateway):
 
 
 def test_unknown_order_outcome_is_quarantined_and_persisted(monkeypatch, tmp_path):
-    _open_live(monkeypatch)
+    _open_demo(monkeypatch)
     path = tmp_path / "idempotency.json"
     gateway = RaisingGateway()
     guard = DuplicateOrderGuard(path)
-    router = ExecutionRouter(_policy(), duplicate_guard=guard, gateway=gateway)
+    router = ExecutionRouter(_demo_policy(), duplicate_guard=guard, gateway=gateway)
     signal = _intent("UNKNOWN-OUTCOME")
     with pytest.raises(TimeoutError, match="response lost"):
         router.execute(signal)
@@ -189,7 +230,7 @@ def test_unknown_order_outcome_is_quarantined_and_persisted(monkeypatch, tmp_pat
     assert restarted.is_uncertain(signal.signal_id)
     assert restarted.is_duplicate(signal.signal_id)
     with pytest.raises(ExecutionBlocked, match="DUPLICATE_SIGNAL"):
-        ExecutionRouter(_policy(), duplicate_guard=restarted, gateway=FakeGateway()).execute(signal)
+        ExecutionRouter(_demo_policy(), duplicate_guard=restarted, gateway=FakeGateway()).execute(signal)
 
 
 def test_uncertain_signal_requires_explicit_reconciliation(tmp_path):
@@ -207,11 +248,11 @@ def test_uncertain_signal_requires_explicit_reconciliation(tmp_path):
 
 
 def test_definitive_order_rejection_clears_pre_submit_quarantine(monkeypatch, tmp_path):
-    _open_live(monkeypatch)
+    _open_demo(monkeypatch)
     path = tmp_path / "idempotency.json"
     gateway = FakeGateway(send_ok=False)
     guard = DuplicateOrderGuard(path)
-    router = ExecutionRouter(_policy(), duplicate_guard=guard, gateway=gateway)
+    router = ExecutionRouter(_demo_policy(), duplicate_guard=guard, gateway=gateway)
     signal = _intent("KNOWN-REJECT")
     with pytest.raises(ExecutionBlocked, match="ORDER_SEND_REJECTED"):
         router.execute(signal)
