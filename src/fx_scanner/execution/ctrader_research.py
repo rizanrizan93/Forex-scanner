@@ -13,8 +13,14 @@ class CTraderResearchFeed:
 
     This object deliberately exposes no order-construction or order-submission
     methods. On reconnect it restores the symbol catalogue and spot
-    subscriptions before serving quotes. Broker symbol trading hours are checked
-    before quote/history use so a closed market cannot masquerade as stale data.
+    subscriptions before serving quotes.
+
+    Live quote operations remain broker-session gated and fail closed when the
+    symbol cannot accept new positions. Historical trendbar reads are different:
+    they are read-only evidence and are intentionally allowed while the market is
+    closed. A current spread is attached to historical bars only when a cached
+    quote is available; otherwise the non-authoritative spread proxy is 0.0.
+    Execution spread/freshness guards continue to use live quotes separately.
     """
 
     __slots__ = ("_session", "_symbols", "_lock")
@@ -68,10 +74,24 @@ class CTraderResearchFeed:
         self, symbol: str, timeframe: str, *, from_time: datetime,
         to_time: datetime, count: int,
     ):
+        """Fetch read-only trendbars without weakening live-session guards.
+
+        cTrader historical data remains useful when a symbol is outside its live
+        trading session. Do not call ``_require_open_market`` here. The current
+        quote is used only as a best-effort metadata spread proxy; failure to
+        obtain a cached quote must not block the historical request.
+        """
         with self._lock:
-            self._require_open_market(symbol, at=to_time)
-            quote = self._session.quote(symbol)
-            spread = max(0.0, float(quote.ask) - float(quote.bid))
+            self.ensure_connected()
+            spread = 0.0
+            try:
+                quote = self._session.quote(symbol)
+                spread = max(0.0, float(quote.ask) - float(quote.bid))
+            except CollectorUnavailable:
+                # Historical OHLC does not depend on a live spread. Execution
+                # spread and quote freshness are validated independently on the
+                # order path, so a zero metadata proxy cannot authorize a trade.
+                spread = 0.0
             return self._session.historical_bars(
                 symbol, timeframe, from_time=from_time, to_time=to_time,
                 count=count, spread_proxy=spread,
