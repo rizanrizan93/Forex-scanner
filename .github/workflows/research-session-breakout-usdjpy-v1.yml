@@ -1,0 +1,52 @@
+name: Research Session Breakout USDJPY V1
+
+on:
+  pull_request:
+    paths:
+      - "research/asia_london_breakout_v1.py"
+      - ".github/workflows/research-session-breakout-usdjpy-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Run identical frozen rule on USDJPY only
+        run: |
+          mkdir -p research_output_session_v1
+          python - <<'PY' | tee research_output_session_v1/console-usdjpy.txt
+          import sys
+          sys.path.insert(0, 'research')
+          import asia_london_breakout_v1 as m
+          usd = m.PAIR_INSTRUMENTS['USDJPY']
+          m.PAIR_INSTRUMENTS = {'USDJPY': usd}
+          m.main()
+          PY
+      - name: Verify research-only USDJPY contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d = json.loads(Path('research_output_session_v1/asia_london_breakout_v1.json').read_text())
+          assert d['contract'] == 'ASIA_LONDON_BREAKOUT_V1'
+          assert d['execution_influence'] is False
+          assert list(d['coverage']) == ['USDJPY']
+          assert d['coverage']['USDJPY']['rows'] >= 150000
+          print('USDJPY research-only replay: PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asia-london-breakout-usdjpy-v1-results
+          path: research_output_session_v1/
+          retention-days: 14
