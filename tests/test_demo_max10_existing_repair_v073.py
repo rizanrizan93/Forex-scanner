@@ -109,16 +109,17 @@ def test_exact_broker_identity_rejects_position_or_side_mismatch():
     assert _exact_broker_identity(session, position_id=999, symbol="SOLUSD", side="SELL") is None
 
 
-def test_auto_workflow_repairs_before_new_orders_and_requests_dynamic_profile():
+def test_auto_workflow_repairs_before_new_orders_and_enforces_five_core_nonoverlap():
     source = (ROOT / ".github" / "workflows" / "ctrader-demo-auto-pipeline.yml").read_text(encoding="utf-8")
     repair = "python -m fx_scanner.demo_existing_protection_repair"
     execute = "python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10"
+    time_exit = "python -m fx_scanner.demo_five_core_time_exit"
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in source
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in source
-    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in source
+    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "0"' in source
     assert 'CTRADER_DEMO_STACK_MIN_SCORE: "85"' in source
-    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "3"' in source
-    assert source.index(repair) < source.index(execute)
+    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "1"' in source
+    assert source.index(repair) < source.index(execute) < source.index(time_exit)
 
 
 def test_base_executor_same_symbol_and_unprotected_guards_remain_present():
