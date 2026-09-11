@@ -22,6 +22,10 @@ class Query:
         self.filters.append((key, value))
         return self
 
+    def in_(self, key, values):
+        self.filters.append((key, tuple(values)))
+        return self
+
     def order(self, _key, desc=False):
         return self
 
@@ -32,7 +36,10 @@ class Query:
     def execute(self):
         rows = list(self.client.rows.get(self.table, []))
         for key, value in self.filters:
-            rows = [row for row in rows if row.get(key) == value]
+            if isinstance(value, tuple):
+                rows = [row for row in rows if row.get(key) in value]
+            else:
+                rows = [row for row in rows if row.get(key) == value]
         if self.limit_value is not None:
             rows = rows[: self.limit_value]
         return Response(rows)
@@ -148,3 +155,38 @@ def test_closed_trade_finalizes_sampled_trajectory_once_without_fake_r_precision
     second = finalize_trajectories(store, account_id="999")
     assert second.finalized == 0
     assert second.duplicates == 1
+
+
+def test_closed_trade_finalizer_accepts_configured_and_broker_native_account_aliases():
+    store = Store()
+    _update_sampled_trajectory(store, (position(1.25),))
+    store.client.rows["broker_order_events"].append(
+        {
+            "observed_at": "2026-09-11T08:06:39+00:00",
+            "backend": "CTRADER",
+            "account_id": "BROKER_NATIVE_48498388",
+            "signal_key": "12345678-1234-5678-1234-567812345678",
+            "broker_order_id": "DEAL:502",
+            "event_type": "DEMO_TRADE_CLOSED",
+            "code": "TP_HIT",
+            "payload": {
+                "signal_id": "12345678-1234-5678-1234-567812345678",
+                "position_id": "77",
+                "closing_deal_id": "502",
+                "symbol": "EURUSD",
+                "direction": "LONG",
+                "setup_type": "TREND_CONTINUATION",
+                "net_pnl_estimate": 1.25,
+            },
+        }
+    )
+
+    report = finalize_trajectories(
+        store,
+        account_ids=("CONFIGURED_LOGIN", "BROKER_NATIVE_48498388"),
+    )
+
+    assert report.closed_scanned == 1
+    assert report.finalized == 1
+    final = store.client.rows["broker_order_events"][-1]
+    assert final["account_id"] == "BROKER_NATIVE_48498388"

@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "7,22,37,52 * * * *"
+    - cron: "7,22,37,52 * * 1-5"
   workflow_run:
     workflows: ["cTrader Demo Technical Heartbeat"]
     types: [completed]
@@ -63,9 +63,25 @@ jobs:
               -f ref=main
           }
 
+          market_weekday_utc() {
+            local weekday
+            weekday="$(date -u +%u)"
+            [ "${weekday}" -le 5 ]
+          }
+
+          if ! market_weekday_utc; then
+            echo "CTRADER_DEMO_SUPERVISOR_MARKET_CLOSED calendar=WEEKDAY_24X5 action=NO_DISPATCH"
+            exit 0
+          fi
+
           echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} universe=XAUUSD,EURUSD strategies=PAIR_SPECIFIC fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED self_handoff=ENABLED"
 
           for cycle in $(seq 1 60); do
+            if ! market_weekday_utc; then
+              echo "CTRADER_DEMO_SUPERVISOR_MARKET_CLOSED cycle=${cycle}/60 calendar=WEEKDAY_24X5 action=STOP_NO_HANDOFF"
+              exit 0
+            fi
+
             active_fast="$(active_count ctrader-demo-auto-pipeline.yml)"
             if [ "${active_fast}" -eq 0 ]; then
               echo "SUPERVISOR_FAST_DISPATCH cycle=${cycle}/60 cadence_seconds=60"
@@ -92,5 +108,5 @@ jobs:
           done
 
           echo "CTRADER_DEMO_SUPERVISOR_OK universe=XAUUSD,EURUSD fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED self_handoff=ENABLED"
-          echo "CTRADER_DEMO_SUPERVISOR_HANDOFF target=ctrader-demo-auto-supervisor.yml reason=FINITE_LOOP_COMPLETE"
+          echo "CTRADER_DEMO_SUPERVISOR_HANDOFF target=ctrader-demo-auto-supervisor.yml reason=FINITE_LOOP_COMPLETE calendar=WEEKDAY_24X5"
           dispatch_workflow ctrader-demo-auto-supervisor.yml

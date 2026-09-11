@@ -71,11 +71,18 @@ def run(*, limit: int = 10) -> int:
 
     cfg, production_execution_min = apply_demo_calibration_threshold(cfg)
     cfg = _apply_demo_technical_only_profile(cfg)
-    cfg, demo_risk_pct = apply_demo_calibration_risk(cfg, max_risk_pct=5.0)
+    # Keep the executor on the exact same DEMO ceiling that was validated from
+    # config.  A second hard-coded ceiling previously diverged from the active
+    # 3% contract and made every fresh-ready handoff fail before polling.
+    demo_risk_ceiling = float(base_policy.demo_safety["max_risk_pct"])
+    cfg, demo_risk_pct = apply_demo_calibration_risk(
+        cfg,
+        max_risk_pct=demo_risk_ceiling,
+    )
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
 
     demo_safety = dict(base_policy.demo_safety)
-    demo_safety["max_risk_pct"] = 5.0
+    demo_safety["max_risk_pct"] = demo_risk_ceiling
     policy = replace(base_policy, mode=ExecutionMode.AUTO, demo_safety=demo_safety)
 
     symbols = [pair.symbol for pair in cfg.pairs]

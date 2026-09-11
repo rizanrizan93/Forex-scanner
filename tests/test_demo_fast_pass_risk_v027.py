@@ -41,8 +41,9 @@ def test_demo_process_wrapper_keeps_fail_closed_risk_cap_path():
     assert "DEMO_RISK_CEILING_PCT = 3.0" in text
     assert "replace(cfg, risk=risk)" in text
     assert "self.demo_max_risk_pct = max" in guard_text
-    assert 'demo_safety["max_risk_pct"] = 5.0' in executor_text
-    assert "max_risk_pct=5.0" in executor_text
+    assert 'demo_safety["max_risk_pct"] = demo_risk_ceiling' in executor_text
+    assert 'demo_risk_ceiling = float(base_policy.demo_safety["max_risk_pct"])' in executor_text
+    assert "max_risk_pct=5.0" not in executor_text
 
 
 def test_demo_fast_pass_observability_markers_exist():

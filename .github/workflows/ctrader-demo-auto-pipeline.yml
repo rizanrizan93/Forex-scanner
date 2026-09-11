@@ -71,6 +71,9 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
+      - name: Record auto pipeline running
+        continue-on-error: true
+        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_auto_pipeline RUNNING
       - name: Fast revalidate XAUUSD and EURUSD pair-specific DEMO strategies
         run: python -m fx_scanner.demo_execution_fast_candidate_producer
       - name: Repair missing SL/TP on scanner-linked DEMO positions
@@ -81,3 +84,11 @@ jobs:
         run: python -m fx_scanner.demo_adaptive_profit_lock
       - name: Protect profitable DEMO positions on confirmed structural reversal
         run: python -m fx_scanner.demo_structural_profit_protector
+      - name: Record auto pipeline success
+        if: success()
+        continue-on-error: true
+        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_auto_pipeline SUCCESS
+      - name: Record auto pipeline failure
+        if: failure()
+        continue-on-error: true
+        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_auto_pipeline FAILED
