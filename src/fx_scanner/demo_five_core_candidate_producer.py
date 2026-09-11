@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .cli import _apply_demo_technical_only_profile, _demo_spread_limit_overrides
@@ -37,6 +37,10 @@ from .strategy import DeepScanReport, UniverseSelection
 UTC = timezone.utc
 MARKER_EVENT = "DEMO_FIVE_CORE_SIGNAL_EMITTED"
 WORKER_NAME = "ctrader_demo_five_core_candidate_producer"
+HISTORY_WINDOW_CALENDAR_FACTOR = {
+    "D1": 1.65,
+    "H4": 1.65,
+}
 
 
 def _subset_cfg(cfg: ProjectConfig, symbols: tuple[str, ...]) -> ProjectConfig:
@@ -56,6 +60,12 @@ def _with_history_requirements(cfg: ProjectConfig) -> ProjectConfig:
     mtf["minimum_bars"] = minimum_bars
     strategy["mtf"] = mtf
     return replace(cfg, strategy=strategy)
+
+
+def _history_window_seconds(timeframe: str, count: int, timeframe_seconds: int) -> float:
+    base_periods = int(count) + 12
+    factor = float(HISTORY_WINDOW_CALENDAR_FACTOR.get(str(timeframe).upper(), 1.0))
+    return float(timeframe_seconds) * float(base_periods) * factor
 
 
 def _already_emitted(store, *, signal_bar_at: datetime | None) -> bool:
@@ -110,6 +120,19 @@ class FiveCoreSignalProducer(CTraderSignalProducer):
     last_deep_report: DeepScanReport | None = None
     last_xau_signal = None
     last_usdjpy_shadow = None
+    last_market_failures: dict[str, str] = {}
+
+    def _bar_window(self, timeframe: str, count: int, now: datetime) -> tuple[datetime, datetime]:
+        """Pad slow-timeframe calendar windows for 24/5 weekend gaps.
+
+        The base producer assumes count * timeframe_seconds spans count bars. That
+        is valid for continuous markets but under-fetches FX/metals D1/H4 history
+        because Saturday/Sunday contain no bars. The feed still receives the same
+        bounded count; only the calendar lookback is widened.
+        """
+        seconds = int(self.cfg.timeframes[timeframe])
+        lookback_seconds = _history_window_seconds(timeframe, count, seconds)
+        return now - timedelta(seconds=lookback_seconds), now
 
     def run_once(self) -> SignalProducerReport:
         snapshot_at = ensure_utc(self.clock())
@@ -125,6 +148,7 @@ class FiveCoreSignalProducer(CTraderSignalProducer):
         try:
             self.feed.ensure_connected()
             bars_by_symbol, market_failures = self._fetch_market(as_of=snapshot_at)
+            self.last_market_failures = dict(market_failures)
             failures.update(market_failures)
             decision_at = ensure_utc(self.clock())
 
@@ -170,12 +194,12 @@ class FiveCoreSignalProducer(CTraderSignalProducer):
                 )
             elif xau_signal.active:
                 failures["XAUUSD"] = "DUPLICATE_D1_SIGNAL_BAR_BLOCKED"
-            else:
+            elif "XAUUSD" not in market_failures:
                 failures["XAUUSD"] = xau_signal.reason
 
             if usdjpy_shadow.active:
                 failures["USDJPY"] = "SHADOW_SIGNAL_NO_EXECUTION_AUTHORITY"
-            else:
+            elif "USDJPY" not in market_failures:
                 failures["USDJPY"] = usdjpy_shadow.reason
             for symbol in sorted(NO_TRADE_SYMBOLS):
                 failures[symbol] = "NO_TRADE_UNTIL_VALIDATED"
@@ -307,6 +331,14 @@ def run() -> int:
         )
 
     shadow = producer.last_usdjpy_shadow
+    xau_runtime_reason = producer.last_market_failures.get(
+        "XAUUSD",
+        None if producer.last_xau_signal is None else producer.last_xau_signal.reason,
+    )
+    usdjpy_runtime_reason = producer.last_market_failures.get(
+        "USDJPY",
+        None if shadow is None else shadow.reason,
+    )
     store.write_heartbeat(
         WORKER_NAME,
         healthy=True,
@@ -318,9 +350,12 @@ def run() -> int:
             "shadow_symbols": sorted(SHADOW_SYMBOLS),
             "no_trade_symbols": sorted(NO_TRADE_SYMBOLS),
             "pair_strategy_ids": five_core_policy_snapshot(),
-            "xau_signal_reason": None if producer.last_xau_signal is None else producer.last_xau_signal.reason,
+            "market_symbols": report.market_symbols,
+            "market_failures": dict(sorted(producer.last_market_failures.items())),
+            "xau_signal_reason": xau_runtime_reason,
             "usdjpy_shadow_active": bool(shadow and shadow.active),
             "usdjpy_shadow_direction": None if shadow is None else shadow.direction,
+            "usdjpy_shadow_reason": usdjpy_runtime_reason,
             "signals_written": report.signals_written,
             "execution_ready": report.execution_ready,
             "geometry_written": geometry_written,
@@ -336,7 +371,7 @@ def run() -> int:
         "CTRADER_DEMO_FIVE_CORE_ROUTER_OK "
         f"market={report.market_symbols}/{len(FIVE_CORE_SYMBOLS)} "
         f"signals={report.signals_written} ready={report.execution_ready} "
-        f"geometry={geometry_written} xau={producer.last_xau_signal.reason if producer.last_xau_signal else 'NONE'} "
+        f"geometry={geometry_written} xau={xau_runtime_reason or 'NONE'} "
         f"usdjpy_shadow={'ACTIVE' if shadow and shadow.active else 'INACTIVE'}"
     )
     return 0
