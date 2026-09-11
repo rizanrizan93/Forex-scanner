@@ -1,0 +1,45 @@
+name: Research Adaptive Public V1
+
+on:
+  pull_request:
+    paths:
+      - "research/adaptive_public_v1.py"
+      - ".github/workflows/research-adaptive-public-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3
+      - name: Run preregistered adaptive benchmark
+        run: python research/adaptive_public_v1.py | tee research_output/console.txt
+      - name: Verify research-only contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('research_output/adaptive_public_v1.json')
+          data = json.loads(p.read_text())
+          assert data['contract'] == 'ADAPTIVE_PUBLIC_RESEARCH_V1'
+          assert data['execution_influence'] is False
+          assert data['same_bar_policy'] == 'STOP_FIRST'
+          assert data['splits']['oos_start'] == '2020-01-01'
+          print('research-only contract: PASS')
+          PY
+      - name: Upload benchmark evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-public-v1-results
+          path: research_output/
+          retention-days: 14
