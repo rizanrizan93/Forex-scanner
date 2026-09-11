@@ -153,9 +153,10 @@ def test_canonical_config_switches_only_demo_execution_backend():
     assert not p.broker["dual_feed_single_execution"]
     assert p.ctrader["environment"] == "DEMO"
     assert p.ctrader["role"] == "RESEARCH_AND_DEMO_EXECUTION"
-    assert p.demo_safety["max_order_lots"] == 0.50
-    assert p.demo_safety["max_risk_pct"] == 5.0
-    assert p.demo_safety["max_concurrent_positions"] == 10
+    assert p.demo_safety["max_order_lots"] == 0.01
+    assert p.demo_safety["max_risk_pct"] == 0.5
+    assert p.demo_safety["max_concurrent_positions"] == 2
+    assert p.live_safety["permanently_disabled"] is True
 
 
 def test_demo_auto_requires_explicit_opt_in(monkeypatch):

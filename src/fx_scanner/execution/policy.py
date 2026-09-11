@@ -66,6 +66,8 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
     for key in ("live_enable_env", "live_enable_value", "account_allowlist_env", "kill_switch_env"):
         if not live_safety.get(key):
             raise ConfigurationError(f"missing live safety config: {key}")
+    if live_safety.get("permanently_disabled") is not True:
+        raise ConfigurationError("LIVE trading must remain permanently disabled")
     if not order.get("require_broker_preflight", False):
         raise ConfigurationError("broker preflight cannot be disabled")
     if not order.get("require_server_side_sl", False):
@@ -110,8 +112,10 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
 
     research_backend = str(broker.get("research", broker.get("preferred", "CTRADER"))).upper()
     execution_backend = str(broker.get("execution", "MT5")).upper()
-    if research_backend not in {"CTRADER", "MT5"} or execution_backend not in {"CTRADER", "MT5"}:
-        raise ConfigurationError("invalid broker backend configuration")
+    if research_backend != "CTRADER" or execution_backend != "CTRADER":
+        raise ConfigurationError(
+            "Forex Scanner is hard-locked to FP Markets cTrader DEMO"
+        )
     if bool(broker.get("automatic_fallback", False)):
         raise ConfigurationError("automatic cross-broker fallback is forbidden")
     if bool(broker.get("dual_feed_single_execution", False)):
@@ -146,21 +150,18 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
             raise ConfigurationError("atomic signal claim cannot be disabled")
         if not 0.80 <= float(demo_safety["min_signal_coverage"]) <= 1.0:
             raise ConfigurationError("demo min_signal_coverage cannot be below 0.80")
-        # DEMO-only conviction sizing may request up to 0.50 lot. This remains
-        # only a volume ceiling: broker-native stop-loss risk, margin, aggregate
-        # exposure and all execution guards remain authoritative downstream.
-        if not 0.01 <= float(demo_safety["max_order_lots"]) <= 0.50:
-            raise ConfigurationError("demo max_order_lots must be in [0.01,0.50]")
-        if not 0 < float(demo_safety["max_risk_pct"]) <= 5.0:
-            raise ConfigurationError("demo max_risk_pct cannot exceed 5.0")
-        if not 1 <= int(demo_safety["max_concurrent_positions"]) <= 10:
-            raise ConfigurationError("demo max_concurrent_positions must be in [1,10]")
+        if abs(float(demo_safety["max_order_lots"]) - 0.01) > 1e-9:
+            raise ConfigurationError("demo max_order_lots must remain 0.01")
+        if not 0 < float(demo_safety["max_risk_pct"]) <= 0.5:
+            raise ConfigurationError("demo max_risk_pct cannot exceed 0.5")
+        if int(demo_safety["max_concurrent_positions"]) != 2:
+            raise ConfigurationError("demo max_concurrent_positions must remain 2")
         if not 0.25 <= float(demo_safety["poll_seconds"]) <= 5.0:
             raise ConfigurationError("demo poll_seconds must be in [0.25,5]")
 
     if research_backend == "CTRADER":
-        if str(ctrader.get("environment", "DEMO")).upper() not in {"DEMO", "LIVE"}:
-            raise ConfigurationError("cTrader environment must be DEMO or LIVE")
+        if str(ctrader.get("environment", "DEMO")).upper() != "DEMO":
+            raise ConfigurationError("cTrader environment must remain DEMO")
         for key in (
             "client_id_env", "client_secret_env", "access_token_env",
             "refresh_token_env", "token_state_path_env", "account_id_env",

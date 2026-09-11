@@ -97,12 +97,10 @@ def test_live_router_requires_revalidator(monkeypatch):
         ExecutionRouter(policy(), gateway=Gateway()).execute(intent())
 
 
-def test_router_submits_only_revalidated_hfm_intent(monkeypatch):
+def test_router_blocks_revalidated_hfm_live_intent(monkeypatch):
     open_live(monkeypatch)
     gateway = Gateway()
     router = ExecutionRouter(policy(), gateway=gateway, revalidator=Revalidator(gateway))
-    receipt = router.execute(intent())
-    assert receipt.accepted
-    assert receipt.symbol == "EURUSD"
-    assert gateway.seen.broker_symbol == "EURUSDc"
-    assert gateway.seen.volume == pytest.approx(0.48)
+    with pytest.raises(ExecutionBlocked, match="LIVE_TRADING_PERMANENTLY_DISABLED"):
+        router.execute(intent())
+    assert gateway.seen is None

@@ -42,19 +42,20 @@ def test_legacy_losses_do_not_mutate_wave_aware_policy():
     assert policy.required_score({"symbol": "EURUSD", "setup_type": "ICT_PULLBACK", "direction": "LONG"}) == pytest.approx(50.01)
 
 
-def test_wave_aware_losses_raise_demo_floor_after_ten_decisive_outcomes():
-    rows = [_row("TP_HIT") for _ in range(2)] + [_row("SL_HIT") for _ in range(8)]
+def test_wave_aware_losses_raise_demo_floor_after_thirty_decisive_outcomes():
+    rows = [_row("TP_HIT") for _ in range(6)] + [_row("SL_HIT") for _ in range(24)]
 
     policy = build_adaptive_policy_from_rows(rows, base_floor=50.01, enabled=True)
 
-    assert policy.wave_stats.decisive_system == 10
-    assert policy.global_penalty == pytest.approx(2.5)
+    assert policy.wave_stats.decisive_system == 30
+    assert policy.global_penalty == pytest.approx(4.29)
     assert policy.root_cause == "WAVE_WIN_RATE_BELOW_TARGET"
-    assert policy.required_score({"symbol": "EURUSD", "setup_type": "ICT_PULLBACK", "direction": "LONG"}) == pytest.approx(52.51)
+    assert policy.details()["score_floor_promotion_stage"] == "PROMOTED_BOUNDED"
+    assert policy.required_score({"symbol": "EURUSD", "setup_type": "ICT_PULLBACK", "direction": "LONG"}) == pytest.approx(54.30)
 
 
 def test_good_wave_aware_performance_does_not_raise_floor():
-    rows = [_row("TP_HIT") for _ in range(7)] + [_row("SL_HIT") for _ in range(3)]
+    rows = [_row("TP_HIT") for _ in range(21)] + [_row("SL_HIT") for _ in range(9)]
 
     policy = build_adaptive_policy_from_rows(rows, base_floor=50.01, enabled=True)
 
@@ -66,18 +67,18 @@ def test_good_wave_aware_performance_does_not_raise_floor():
 
 def test_pair_specific_penalty_can_apply_without_broad_penalty():
     rows = []
-    rows += [_row("TP_HIT", symbol="EURUSD") for _ in range(2)]
-    rows += [_row("SL_HIT", symbol="EURUSD") for _ in range(8)]
-    rows += [_row("TP_HIT", symbol="GBPUSD") for _ in range(8)]
-    rows += [_row("SL_HIT", symbol="GBPUSD") for _ in range(2)]
+    rows += [_row("TP_HIT", symbol="EURUSD") for _ in range(6)]
+    rows += [_row("SL_HIT", symbol="EURUSD") for _ in range(24)]
+    rows += [_row("TP_HIT", symbol="GBPUSD") for _ in range(24)]
+    rows += [_row("SL_HIT", symbol="GBPUSD") for _ in range(6)]
 
     policy = build_adaptive_policy_from_rows(rows, base_floor=50.01, enabled=True)
 
-    assert policy.wave_stats.decisive_system == 20
+    assert policy.wave_stats.decisive_system == 60
     assert policy.global_penalty == 0.0
-    assert policy.symbol_penalties["EURUSD"] == pytest.approx(2.5)
+    assert policy.symbol_penalties["EURUSD"] == pytest.approx(4.29)
     assert "GBPUSD" not in policy.symbol_penalties
-    assert policy.required_score({"symbol": "EURUSD", "setup_type": "ICT_PULLBACK", "direction": "LONG"}) == pytest.approx(52.51)
+    assert policy.required_score({"symbol": "EURUSD", "setup_type": "ICT_PULLBACK", "direction": "LONG"}) == pytest.approx(54.30)
     assert policy.required_score({"symbol": "GBPUSD", "setup_type": "ICT_PULLBACK", "direction": "LONG"}) == pytest.approx(50.01)
 
 

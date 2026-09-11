@@ -32,6 +32,14 @@ jobs:
       FX_KILL_SWITCH: "0"
       FX_IDEMPOTENCY_STATE_PATH: /tmp/execution_idempotency.json
       CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
+      CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "70.0"
+      CTRADER_DEMO_MIN_LIVE_RR: "1.5"
+      CTRADER_DEMO_RISK_PER_TRADE_PCT: "0.5"
+      CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "2"
+      CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"
+      CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "1.0"
+      CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "10.0"
+      CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -43,4 +51,4 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-research-cloud.txt
       - name: Execute only durable EXECUTION_READY demo signals
-        run: python -m fx_scanner.cli ctrader-demo-autotrade --once --limit 10
+        run: python -m fx_scanner.cli ctrader-demo-autotrade --once --limit 2

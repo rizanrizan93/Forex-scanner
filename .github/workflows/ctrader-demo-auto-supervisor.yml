@@ -5,10 +5,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "7,22,37,52 * * * *"
-  workflow_run:
-    workflows: ["cTrader Demo Technical Heartbeat"]
-    types: [completed]
+    - cron: "*/5 * * * *"
 
 permissions:
   actions: write
@@ -16,34 +13,24 @@ permissions:
 
 concurrency:
   group: ctrader-demo-auto-supervisor
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   dispatch-fast-and-discovery-lanes:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'push' ||
-      github.event_name == 'schedule' ||
-      (
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'schedule' &&
-        github.event.workflow_run.head_branch == 'main'
-      )
+      github.event_name == 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 65
+    timeout-minutes: 5
     env:
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - name: Dispatch pair-specific fast and discovery lanes every minute
+      - name: Dispatch one bounded fast and discovery cycle
         shell: bash
         run: |
           set -euo pipefail
-
-          fast_dispatched=0
-          fast_busy=0
-          discovery_dispatched=0
-          discovery_busy=0
 
           active_count() {
             local workflow_file="$1"
@@ -63,34 +50,22 @@ jobs:
               -f ref=main
           }
 
-          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} universe=XAUUSD,EURUSD strategies=PAIR_SPECIFIC fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED self_handoff=ENABLED"
+          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} universe=XAUUSD,EURUSD strategies=PAIR_SPECIFIC cadence_minutes=5 self_handoff=DISABLED"
 
-          for cycle in $(seq 1 60); do
-            active_fast="$(active_count ctrader-demo-auto-pipeline.yml)"
-            if [ "${active_fast}" -eq 0 ]; then
-              echo "SUPERVISOR_FAST_DISPATCH cycle=${cycle}/60 cadence_seconds=60"
-              dispatch_workflow ctrader-demo-auto-pipeline.yml
-              fast_dispatched=$((fast_dispatched + 1))
-            else
-              echo "SUPERVISOR_FAST_SKIP_BUSY cycle=${cycle}/60 active_runs=${active_fast}"
-              fast_busy=$((fast_busy + 1))
-            fi
+          active_fast="$(active_count ctrader-demo-auto-pipeline.yml)"
+          if [ "${active_fast}" -eq 0 ]; then
+            echo "SUPERVISOR_FAST_DISPATCH cadence_minutes=5"
+            dispatch_workflow ctrader-demo-auto-pipeline.yml
+          else
+            echo "SUPERVISOR_FAST_SKIP_BUSY active_runs=${active_fast}"
+          fi
 
-            active_discovery="$(active_count ctrader-demo-discovery-pipeline.yml)"
-            if [ "${active_discovery}" -eq 0 ]; then
-              echo "SUPERVISOR_DISCOVERY_DISPATCH cycle=${cycle}/60 check_seconds=60"
-              dispatch_workflow ctrader-demo-discovery-pipeline.yml
-              discovery_dispatched=$((discovery_dispatched + 1))
-            else
-              echo "SUPERVISOR_DISCOVERY_SKIP_BUSY cycle=${cycle}/60 active_runs=${active_discovery}"
-              discovery_busy=$((discovery_busy + 1))
-            fi
+          active_discovery="$(active_count ctrader-demo-discovery-pipeline.yml)"
+          if [ "${active_discovery}" -eq 0 ]; then
+            echo "SUPERVISOR_DISCOVERY_DISPATCH cadence_minutes=5"
+            dispatch_workflow ctrader-demo-discovery-pipeline.yml
+          else
+            echo "SUPERVISOR_DISCOVERY_SKIP_BUSY active_runs=${active_discovery}"
+          fi
 
-            if [ "${cycle}" -lt 60 ]; then
-              sleep 60
-            fi
-          done
-
-          echo "CTRADER_DEMO_SUPERVISOR_OK universe=XAUUSD,EURUSD fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED self_handoff=ENABLED"
-          echo "CTRADER_DEMO_SUPERVISOR_HANDOFF target=ctrader-demo-auto-supervisor.yml reason=FINITE_LOOP_COMPLETE"
-          dispatch_workflow ctrader-demo-auto-supervisor.yml
+          echo "CTRADER_DEMO_SUPERVISOR_OK universe=XAUUSD,EURUSD cadence_minutes=5 overlap_within_lane=DISABLED self_handoff=DISABLED"

@@ -41,23 +41,23 @@ class LegacyPolicy:
         return self.required
 
 
-def test_v2_gate_stays_disabled_below_ten_complete_wave_outcomes():
-    rows = tuple(_row() for _ in range(9))
+def test_v2_gate_stays_disabled_below_thirty_complete_wave_outcomes():
+    rows = tuple(_row() for _ in range(29))
     policy = build_adaptive_gate_v2_policy(
         rows, signal_context=_context(), base_floor=BASE, enabled=True
     )
     assert policy.enabled is False
-    assert policy.wave_decisive == 9
+    assert policy.wave_decisive == 29
     assert policy.max_penalty == 0.0
     assert policy.root_cause == "WAVE_SAMPLE_INSUFFICIENT"
 
 
 def test_snapshot_coverage_below_eighty_percent_blocks_v2_even_with_sample():
-    rows = tuple(_row() for _ in range(13)) + tuple(_row(complete=False) for _ in range(4))
+    rows = tuple(_row() for _ in range(30)) + tuple(_row(complete=False) for _ in range(10))
     policy = build_adaptive_gate_v2_policy(
         rows, signal_context=_context(), base_floor=BASE, enabled=True
     )
-    assert policy.wave_decisive == 13
+    assert policy.wave_decisive == 30
     assert policy.snapshot_coverage < 0.80
     assert policy.enabled is False
     assert policy.root_cause == "SNAPSHOT_COVERAGE_INSUFFICIENT"
@@ -65,8 +65,9 @@ def test_snapshot_coverage_below_eighty_percent_blocks_v2_even_with_sample():
 
 def test_specific_symbol_setup_direction_regime_is_selected_before_parent():
     rows = (
-        tuple(_row(symbol="SOLUSD", exit_type="SL_HIT") for _ in range(5))
-        + tuple(_row(symbol="BTCUSD", exit_type="TP_HIT") for _ in range(5))
+        tuple(_row(symbol="SOLUSD", exit_type="SL_HIT") for _ in range(10))
+        + tuple(_row(symbol="BTCUSD", exit_type="TP_HIT") for _ in range(10))
+        + tuple(_row(symbol="EURUSD", exit_type="TP_HIT") for _ in range(10))
     )
     contexts = {}
     contexts.update(_context("sol", symbol="SOLUSD"))
@@ -90,8 +91,8 @@ def test_specific_symbol_setup_direction_regime_is_selected_before_parent():
 
 def test_hierarchy_falls_back_when_specific_scope_has_too_little_evidence():
     rows = (
-        tuple(_row(symbol="SOLUSD", exit_type="SL_HIT") for _ in range(3))
-        + tuple(_row(symbol="BTCUSD", exit_type="SL_HIT") for _ in range(7))
+        tuple(_row(symbol="SOLUSD", exit_type="SL_HIT") for _ in range(9))
+        + tuple(_row(symbol="BTCUSD", exit_type="SL_HIT") for _ in range(21))
     )
     policy = build_adaptive_gate_v2_policy(
         rows,
@@ -101,14 +102,14 @@ def test_hierarchy_falls_back_when_specific_scope_has_too_little_evidence():
     )
     decision = policy.decision({"id": "sol"})
     assert decision.scope_level == "SETUP_DIRECTION_REGIME"
-    assert decision.evidence_count == 10
+    assert decision.evidence_count == 30
     assert decision.penalty == 2.5
 
 
-def test_twenty_outcomes_allow_at_most_five_points_and_recovering_cohort_relaxes():
+def test_hundred_outcomes_allow_at_most_five_points_and_recovering_cohort_relaxes():
     bad_rows = (
-        tuple(_row(symbol="SOLUSD", exit_type="SL_HIT") for _ in range(10))
-        + tuple(_row(symbol="BTCUSD", exit_type="TP_HIT") for _ in range(10))
+        tuple(_row(symbol="SOLUSD", exit_type="SL_HIT") for _ in range(50))
+        + tuple(_row(symbol="BTCUSD", exit_type="TP_HIT") for _ in range(50))
     )
     bad_policy = build_adaptive_gate_v2_policy(
         bad_rows,
@@ -119,10 +120,10 @@ def test_twenty_outcomes_allow_at_most_five_points_and_recovering_cohort_relaxes
     assert bad_policy.max_penalty == 5.0
     assert bad_policy.decision({"id": "sol"}).penalty == 5.0
 
-    recovered = tuple(_row(symbol="SOLUSD", exit_type="SL_HIT") for _ in range(5)) + tuple(
-        _row(symbol="SOLUSD", exit_type="TP_HIT") for _ in range(5)
+    recovered = tuple(_row(symbol="SOLUSD", exit_type="SL_HIT") for _ in range(25)) + tuple(
+        _row(symbol="SOLUSD", exit_type="TP_HIT") for _ in range(25)
     )
-    recovered += tuple(_row(symbol="BTCUSD", exit_type="TP_HIT") for _ in range(10))
+    recovered += tuple(_row(symbol="BTCUSD", exit_type="TP_HIT") for _ in range(50))
     recovered_policy = build_adaptive_gate_v2_policy(
         recovered,
         signal_context=_context("sol", symbol="SOLUSD"),
@@ -136,7 +137,7 @@ def test_twenty_outcomes_allow_at_most_five_points_and_recovering_cohort_relaxes
 
 
 def test_current_signal_without_complete_snapshot_never_receives_v2_penalty():
-    rows = tuple(_row() for _ in range(10))
+    rows = tuple(_row() for _ in range(30))
     policy = build_adaptive_gate_v2_policy(
         rows, signal_context={}, base_floor=BASE, enabled=True
     )
@@ -148,7 +149,7 @@ def test_current_signal_without_complete_snapshot_never_receives_v2_penalty():
 
 
 def test_composite_policy_never_stacks_legacy_and_v2_penalties():
-    rows = tuple(_row() for _ in range(10))
+    rows = tuple(_row() for _ in range(30))
     v2 = build_adaptive_gate_v2_policy(
         rows, signal_context=_context("sig"), base_floor=BASE, enabled=True
     )
@@ -164,7 +165,7 @@ def test_composite_policy_never_stacks_legacy_and_v2_penalties():
 
 def test_policy_details_lock_risk_sltp_production_and_live_mutation_off():
     policy = build_adaptive_gate_v2_policy(
-        tuple(_row() for _ in range(10)),
+        tuple(_row() for _ in range(30)),
         signal_context=_context(),
         base_floor=BASE,
         enabled=True,
@@ -175,3 +176,16 @@ def test_policy_details_lock_risk_sltp_production_and_live_mutation_off():
     assert details["sl_tp_mutation"] is False
     assert details["production_mutation"] is False
     assert details["live_unlock"] is False
+    assert details["score_floor_promotion_stage"] == "BOUNDED_PROMOTED"
+
+
+def test_full_score_floor_promotion_requires_one_hundred_outcomes():
+    policy = build_adaptive_gate_v2_policy(
+        tuple(_row() for _ in range(100)),
+        signal_context=_context(),
+        base_floor=BASE,
+        enabled=True,
+    )
+    details = policy.details()
+    assert policy.max_penalty == 5.0
+    assert details["score_floor_promotion_stage"] == "FULL_PROMOTED"

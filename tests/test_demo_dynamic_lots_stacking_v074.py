@@ -76,36 +76,28 @@ def _symbol_info():
     return SimpleNamespace(lotSize=100_000)
 
 
-def test_runtime_profile_base_loader_keeps_canonical_cap_until_xau_wrapper(monkeypatch):
-    monkeypatch.setenv(DEMO_POSITION_CAP_ENV, "10")
-    monkeypatch.setenv(DEMO_ORDER_LOT_CAP_ENV, "0.50")
-    monkeypatch.setenv(DEMO_STACKING_ENV, "1")
-    # The base handoff remains fail-closed at its legacy cap; the XAU wrapper
-    # explicitly raises the DEMO-only ceiling before loading policy.
-    import fx_scanner.demo_fresh_ready_handoff as handoff
-    old = handoff.DEMO_ORDER_LOT_CAP_CEILING
-    handoff.DEMO_ORDER_LOT_CAP_CEILING = 0.50
-    try:
-        policy = load_demo_execution_policy()
-    finally:
-        handoff.DEMO_ORDER_LOT_CAP_CEILING = old
-    assert policy.demo_safety["max_concurrent_positions"] == 10
-    assert policy.demo_safety["max_order_lots"] == 0.50
-    assert policy.demo_safety["allow_same_symbol_stacking"] is True
-    assert policy.demo_safety["max_same_symbol_positions"] == 3
+def test_runtime_profile_keeps_hard_demo_exposure_caps(monkeypatch):
+    monkeypatch.setenv(DEMO_POSITION_CAP_ENV, "2")
+    monkeypatch.setenv(DEMO_ORDER_LOT_CAP_ENV, "0.01")
+    monkeypatch.setenv(DEMO_STACKING_ENV, "0")
+    policy = load_demo_execution_policy()
+    assert policy.demo_safety["max_concurrent_positions"] == 2
+    assert policy.demo_safety["max_order_lots"] == 0.01
+    assert policy.demo_safety["allow_same_symbol_stacking"] is False
+    assert policy.demo_safety["max_same_symbol_positions"] == 1
     assert policy.ctrader["environment"] == "DEMO"
 
 
-def test_runtime_profile_rejects_lot_cap_above_point_five(monkeypatch):
-    import fx_scanner.demo_fresh_ready_handoff as handoff
-    old = handoff.DEMO_ORDER_LOT_CAP_CEILING
-    handoff.DEMO_ORDER_LOT_CAP_CEILING = 0.50
-    monkeypatch.setenv(DEMO_ORDER_LOT_CAP_ENV, "0.51")
-    try:
-        with pytest.raises(RuntimeError, match=r"CTRADER_DEMO_MAX_ORDER_LOTS must be in \[0.01,0.5\]"):
-            load_demo_execution_policy()
-    finally:
-        handoff.DEMO_ORDER_LOT_CAP_CEILING = old
+def test_runtime_profile_rejects_lot_cap_above_point_zero_one(monkeypatch):
+    monkeypatch.setenv(DEMO_ORDER_LOT_CAP_ENV, "0.02")
+    with pytest.raises(RuntimeError, match=r"CTRADER_DEMO_MAX_ORDER_LOTS must be in \[0.01,0.01\]"):
+        load_demo_execution_policy()
+
+
+def test_runtime_profile_forbids_same_symbol_stacking(monkeypatch):
+    monkeypatch.setenv(DEMO_STACKING_ENV, "1")
+    with pytest.raises(RuntimeError, match="CTRADER_DEMO_SAME_SYMBOL_STACKING_FORBIDDEN"):
+        load_demo_execution_policy()
 
 
 def test_high_conviction_same_direction_stack_is_allowed_after_spacing():

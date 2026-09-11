@@ -101,6 +101,7 @@ order:
   max_preflight_entry_drift_r: 0.03
 
 live_safety:
+  permanently_disabled: true
   live_enable_env: FX_LIVE_TRADING_ENABLED
   live_enable_value: I_UNDERSTAND_LIVE_ORDERS
   account_allowlist_env: FX_BROKER_ACCOUNT_ALLOWLIST
@@ -120,9 +121,9 @@ demo_safety:
   require_trade_scope: true
   require_atomic_signal_claim: true
   min_signal_coverage: 0.80
-  max_order_lots: 0.50
-  max_risk_pct: 5.0
-  max_concurrent_positions: 10
+  max_order_lots: 0.01
+  max_risk_pct: 0.5
+  max_concurrent_positions: 2
   poll_seconds: 1.0
 
 modes:

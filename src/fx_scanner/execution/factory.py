@@ -63,6 +63,11 @@ def build_broker_gateway(
         or policy.broker.get("preferred", "CTRADER")
     ).upper()
 
+    if selected != "CTRADER":
+        raise ConfigurationError(
+            "Forex Scanner execution is permanently locked to FP Markets cTrader DEMO"
+        )
+
     if selected == "CTRADER":
         cfg = policy.ctrader
         if str(cfg.get("role", "")).upper() != "RESEARCH_AND_DEMO_EXECUTION":
@@ -113,22 +118,6 @@ def build_broker_gateway(
             except Exception:
                 pass
             raise
-
-    if selected == "MT5":
-        cfg = policy.mt5
-        terminal_path = mt5_terminal_path or _optional_env(cfg["terminal_path_env"])
-        gateway = MT5ExecutionGateway(
-            terminal_path=terminal_path,
-            initialize_timeout_ms=int(cfg.get("initialize_timeout_ms", 10_000)),
-            login=int(_required_env(cfg["login_env"])),
-            server=_required_env(cfg["server_env"]),
-            password=_required_env(cfg["password_env"]),
-            max_quote_age_seconds=float(cfg.get("max_quote_age_seconds", 1)),
-        )
-        backoff, breaker = _session_policies(policy)
-        session = PersistentMT5Session(gateway, backoff=backoff, circuit_breaker=breaker)
-        session.ensure_connected(max_attempts=int(policy.runtime.get("reconnect", {}).get("max_attempts", 3)))
-        return gateway, session
 
     raise ConfigurationError(f"unsupported broker backend: {selected}")
 
@@ -190,59 +179,6 @@ def build_dual_broker_stack(
     symbols: Iterable[str],
     pip_sizes: Mapping[str, float],
 ) -> DualBrokerStack:
-    if not bool(policy.broker.get("dual_feed_single_execution", False)):
-        raise ConfigurationError("dual-feed stack is not enabled")
-    if str(policy.broker.get("research", "")).upper() != "CTRADER":
-        raise ConfigurationError("dual-feed research backend must be CTRADER")
-    if str(policy.broker.get("execution", "")).upper() != "MT5":
-        raise ConfigurationError("dual-feed execution backend must be MT5")
-
-    universe = tuple(str(x).upper() for x in symbols)
-    research_feed = build_ctrader_research_feed(policy, universe)
-    execution_gateway = None
-    execution_session = None
-    try:
-        execution_gateway, execution_session = build_broker_gateway(policy, universe, backend="MT5")
-        resolver = MT5SymbolResolver(
-            execution_gateway,
-            explicit_map=policy.mt5.get("symbol_map", {}),
-            suffix_candidates=policy.mt5.get("symbol_suffix_candidates", ["", "c"]),
-            expected_contract_size=float(policy.reconciliation.get("expected_fx_contract_size", 1000)),
-        )
-        # Resolve every configured pair at startup. Wrong account type/symbol
-        # contract fails before the execution router can ever receive an order.
-        for symbol in universe:
-            resolver.resolve(symbol)
-
-        account = execution_gateway.account_snapshot()
-        expected_currency = str(policy.reconciliation.get("expected_account_currency", "USC")).upper()
-        if str(account.currency or "").upper() != expected_currency:
-            raise ConfigurationError(
-                f"execution account must be HFM Cent currency {expected_currency}; got {account.currency or 'UNKNOWN'}"
-            )
-
-        revalidator = DualFeedRevalidator(
-            research_quotes=research_feed,
-            execution_gateway=execution_gateway,
-            symbol_resolver=resolver,
-            pip_sizes=pip_sizes,
-            config=policy.reconciliation,
-        )
-        return DualBrokerStack(
-            research_feed,
-            execution_gateway,
-            execution_session,
-            resolver,
-            revalidator,
-        )
-    except Exception:
-        if execution_gateway is not None:
-            try:
-                execution_gateway.close()
-            except Exception:
-                pass
-        try:
-            research_feed.close()
-        except Exception:
-            pass
-        raise
+    raise ConfigurationError(
+        "dual-broker MT5 execution is retired; FP Markets cTrader DEMO only"
+    )

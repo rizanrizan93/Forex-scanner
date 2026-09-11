@@ -29,7 +29,7 @@ jobs:
       FX_KILL_SWITCH: "0"
       FX_IDEMPOTENCY_STATE_PATH: /tmp/execution_idempotency.json
       CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
-      CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"
+      CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "70.0"
       CTRADER_DEMO_TECHNICAL_ONLY: "1"
       CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "1"
       CTRADER_DEMO_CHASE_BLOCK_ATR: "2.0"
@@ -37,17 +37,17 @@ jobs:
       CTRADER_DEMO_WAVE_MAX_ZONE_ATR: "0.50"
       CTRADER_DEMO_MOMENTUM_MAX_ZONE_ATR: "0.20"
       CTRADER_DEMO_MAX_ENTRY_DRIFT_R: "0.50"
-      CTRADER_DEMO_MIN_LIVE_RR: "1.0"
-      CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"
-      CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"
+      CTRADER_DEMO_MIN_LIVE_RR: "1.5"
+      CTRADER_DEMO_RISK_PER_TRADE_PCT: "0.5"
+      CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "2"
       CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"
-      CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"
-      CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "25.0"
-      CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"
+      CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "1.0"
+      CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "10.0"
+      CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "0"
       CTRADER_DEMO_STACK_MIN_SCORE: "85"
       CTRADER_DEMO_STACK_MIN_COVERAGE: "0.90"
       CTRADER_DEMO_STACK_MIN_RR2: "1.5"
-      CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "3"
+      CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "1"
       CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "300"
       CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"
       CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"
@@ -76,7 +76,7 @@ jobs:
       - name: Repair missing SL/TP on scanner-linked DEMO positions
         run: python -m fx_scanner.demo_existing_protection_repair
       - name: Execute only fresh durable pair-specific EXECUTION_READY DEMO signals
-        run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
+        run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 2
       - name: Advance adaptive server-side profit lock on profitable DEMO positions
         run: python -m fx_scanner.demo_adaptive_profit_lock
       - name: Protect profitable DEMO positions on confirmed structural reversal
