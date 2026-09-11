@@ -64,8 +64,8 @@ def test_active_pair_supervisor_runs_one_minute_checks_without_weekend_crypto_fa
     discovery = (root / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
     heartbeat = (root / ".github/workflows/ctrader-demo-technical-heartbeat.yml").read_text()
 
-    assert 'cron: "7,22,37,52 * * 1-5"' in supervisor
-    assert 'cron: "17 * * 1-5"' in heartbeat
+    assert 'cron: "7,22,37,52 * * * 1-5"' in supervisor
+    assert 'cron: "17 * * * 1-5"' in heartbeat
     assert "market_weekday_utc" in supervisor
     assert "fast_cadence_seconds=60" in supervisor
     assert "discovery_check_seconds=60" in supervisor

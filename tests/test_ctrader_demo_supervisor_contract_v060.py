@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -20,9 +22,13 @@ def test_supervisor_keeps_bounded_one_minute_cadence_and_self_handoffs() -> None
     assert "CTRADER_DEMO_SUPERVISOR_HANDOFF" in text
     assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" in text
     assert "self_handoff=ENABLED" in text
-    assert 'cron: "7,22,37,52 * * 1-5"' in text
+    assert 'cron: "7,22,37,52 * * * 1-5"' in text
     assert "market_weekday_utc" in text
     assert "action=STOP_NO_HANDOFF" in text
+
+    parsed = yaml.safe_load(text)
+    schedules = parsed[True]["schedule"]
+    assert all(len(item["cron"].split()) == 5 for item in schedules)
 
 
 def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
