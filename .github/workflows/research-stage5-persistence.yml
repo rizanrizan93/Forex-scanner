@@ -1,0 +1,35 @@
+name: research-stage5-persistence
+
+on:
+  push:
+    branches:
+      - research/strategy-regime-100-20260911
+    paths:
+      - scripts/research_stage5_session_persistence.py
+      - .github/workflows/research-stage5-persistence.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pandas numpy
+      - run: python scripts/research_stage5_session_persistence.py --output out/stage5_persistence
+      - if: always()
+        run: |
+          if [ -f out/stage5_persistence/report.md ]; then cat out/stage5_persistence/report.md; fi
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage5-persistence-results
+          path: out/stage5_persistence/
+          if-no-files-found: warn
+          retention-days: 14
