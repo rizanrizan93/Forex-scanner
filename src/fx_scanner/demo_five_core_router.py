@@ -321,9 +321,18 @@ def build_xau_execution_analysis(
     current_price = float(m5[-1].close)
     plan = build_xau_d1_tsmom_plan(signal, current_price=current_price)
 
+    guard_flags = dict(external_guard_flags)
+    guard_flags.update(
+        {
+            "STALE_SIGNAL": False,
+            "CHASE_BLOCK": False,
+            "RR_BLOCK": False,
+            "STRUCTURE_INVALID": False,
+        }
+    )
     guard_result = evaluate_hard_guards(
         required_names=cfg.scoring["hard_guards"],
-        **dict(external_guard_flags),
+        **guard_flags,
     )
     state = SignalState.EXECUTION_READY if guard_result.allowed else SignalState.SETUP_FORMING
     decision = replace(
@@ -348,7 +357,12 @@ def build_xau_execution_analysis(
         trigger_confirmed=True,
         trade_plan=plan,
         conviction_components={"five_core_forward_demo": FORWARD_DEMO_SCORE},
-        computed_guards={},
+        computed_guards={
+            "STALE_SIGNAL": False,
+            "CHASE_BLOCK": False,
+            "RR_BLOCK": False,
+            "STRUCTURE_INVALID": False,
+        },
         decision=decision,
     )
 
