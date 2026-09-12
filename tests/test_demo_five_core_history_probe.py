@@ -45,7 +45,7 @@ def test_history_probe_needs_no_live_quote_and_checks_all_five_core_pairs():
     )
     feed = FakeHistoryOnlyFeed(as_of)
 
-    counts, failures = probe_history(
+    counts, failures, boundaries = probe_history(
         feed,
         cfg,
         as_of=as_of,
@@ -54,10 +54,18 @@ def test_history_probe_needs_no_live_quote_and_checks_all_five_core_pairs():
 
     assert failures == {}
     assert set(counts) == set(FIVE_CORE_SYMBOLS)
+    assert set(boundaries) == set(FIVE_CORE_SYMBOLS)
     assert len(feed.calls) == len(FIVE_CORE_SYMBOLS) * 2
     for symbol in FIVE_CORE_SYMBOLS:
         assert counts[symbol]["D1"] >= 220
         assert counts[symbol]["H4"] >= 220
+        assert boundaries[symbol]["D1"]["bars"] == counts[symbol]["D1"]
+        assert boundaries[symbol]["H4"]["bars"] == counts[symbol]["H4"]
+
+    xau = boundaries["XAUUSD"]["D1"]
+    assert xau["expected_open_seconds_utc"] == 0
+    assert xau["unique_open_seconds_utc"] == [0]
+    assert xau["matches_expected_boundary"] is True
 
     # The fake intentionally has no quote() method: successful completion proves
     # the readiness probe is independent of live broker-session quotes.
