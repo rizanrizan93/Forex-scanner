@@ -11,6 +11,10 @@ from .demo_five_core_candidate_producer import (
     _subset_cfg,
     _with_history_requirements,
 )
+from .demo_five_core_forward_evidence import (
+    XAU_D1_RESEARCH_BOUNDARY_SECONDS_UTC,
+    bar_boundary_snapshot,
+)
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .signal_producer import _closed_bars
@@ -28,20 +32,26 @@ def probe_history(
     *,
     as_of: datetime,
     sleeper: Callable[[float], None] = sleep,
-) -> tuple[dict[str, dict[str, int]], dict[str, str]]:
-    """Read-only slow-history sufficiency probe independent of live quotes.
+) -> tuple[
+    dict[str, dict[str, int]],
+    dict[str, str],
+    dict[str, dict[str, dict[str, Any]]],
+]:
+    """Read-only slow-history sufficiency and bar-boundary probe.
 
     This intentionally does not call feed.quote(), does not construct signals,
-    and has no execution/order dependency. It verifies that the same bounded
-    cTrader historical request used by the Five-Core router can supply at least
-    the configured D1/H4 minimum after 24/5 calendar padding.
+    and has no execution/order dependency. It verifies the same bounded cTrader
+    D1/H4 request used by the Five-Core router and records the actual UTC bar-open
+    boundary so broker candles can be compared with the research contract.
     """
     counts: dict[str, dict[str, int]] = {}
     failures: dict[str, str] = {}
+    boundaries: dict[str, dict[str, dict[str, Any]]] = {}
     minimum = cfg.strategy["mtf"]["minimum_bars"]
 
     for symbol in FIVE_CORE_SYMBOLS:
         counts[symbol] = {}
+        boundaries[symbol] = {}
         for timeframe in PROBE_TIMEFRAMES:
             required = int(minimum[timeframe])
             request_count = required + 12
@@ -69,16 +79,33 @@ def probe_history(
                     timeframe_seconds=timeframe_seconds,
                 )
                 counts[symbol][timeframe] = len(closed)
+                expected = (
+                    XAU_D1_RESEARCH_BOUNDARY_SECONDS_UTC
+                    if symbol == "XAUUSD" and timeframe == "D1"
+                    else None
+                )
+                boundaries[symbol][timeframe] = bar_boundary_snapshot(
+                    closed,
+                    expected_open_seconds_utc=expected,
+                )
                 if len(closed) < required:
                     failures[f"{symbol}:{timeframe}"] = (
                         f"INSUFFICIENT_CLOSED_BARS:{len(closed)}<{required}"
                     )
             except Exception as exc:
                 counts[symbol][timeframe] = 0
+                boundaries[symbol][timeframe] = bar_boundary_snapshot(
+                    (),
+                    expected_open_seconds_utc=(
+                        XAU_D1_RESEARCH_BOUNDARY_SECONDS_UTC
+                        if symbol == "XAUUSD" and timeframe == "D1"
+                        else None
+                    ),
+                )
                 failures[f"{symbol}:{timeframe}"] = f"{type(exc).__name__}:{exc}"
             sleeper(REQUEST_DELAY_SECONDS)
 
-    return counts, dict(sorted(failures.items()))
+    return counts, dict(sorted(failures.items())), boundaries
 
 
 def run() -> int:
@@ -94,9 +121,10 @@ def run() -> int:
     as_of = datetime.now(tz=UTC)
     counts: dict[str, dict[str, int]] = {}
     failures: dict[str, str] = {}
+    boundaries: dict[str, dict[str, dict[str, Any]]] = {}
     try:
         feed.ensure_connected()
-        counts, failures = probe_history(feed, cfg, as_of=as_of)
+        counts, failures, boundaries = probe_history(feed, cfg, as_of=as_of)
     except Exception as exc:
         failures["CONNECTION"] = f"{type(exc).__name__}:{exc}"
     finally:
@@ -106,12 +134,13 @@ def run() -> int:
             pass
 
     healthy = not failures
+    xau_boundary = boundaries.get("XAUUSD", {}).get("D1", {})
     store.write_heartbeat(
         WORKER_NAME,
         healthy=healthy,
         lag_seconds=0.0,
         details={
-            "mode": "READ_ONLY_HISTORY_PROBE_V1",
+            "mode": "READ_ONLY_HISTORY_PROBE_V2_BOUNDARY_AUDIT",
             "environment": "DEMO",
             "execution_influence": False,
             "quote_dependency": False,
@@ -122,6 +151,12 @@ def run() -> int:
                 for timeframe in PROBE_TIMEFRAMES
             },
             "closed_bar_counts": counts,
+            "bar_boundaries": boundaries,
+            "research_d1_boundary_assumption": {
+                "source": "FIVE_CORE_TOURNAMENT_V1 pandas resample('1D') on UTC H1",
+                "expected_open_seconds_utc": XAU_D1_RESEARCH_BOUNDARY_SECONDS_UTC,
+            },
+            "xau_d1_boundary_matches_research": xau_boundary.get("matches_expected_boundary"),
             "failures": failures,
         },
     )
@@ -132,7 +167,9 @@ def run() -> int:
     )
     print(
         "CTRADER_DEMO_FIVE_CORE_HISTORY_PROBE "
-        f"healthy={healthy} {summary} failures={len(failures)}"
+        f"healthy={healthy} {summary} failures={len(failures)} "
+        f"xau_d1_open_seconds={xau_boundary.get('unique_open_seconds_utc')} "
+        f"research_boundary_match={xau_boundary.get('matches_expected_boundary')}"
     )
     if failures:
         for key, value in sorted(failures.items()):
