@@ -30,6 +30,8 @@ jobs:
       CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
       CTRADER_TOKEN_STATE_DURABLE: '1'
       CTRADER_DISABLE_TOKEN_REFRESH: '1'
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -43,7 +45,9 @@ jobs:
       - name: Validate fail-closed DEMO config
         run: python -m fx_scanner.cli validate-config
       - name: Run frozen broker-feed replay
+        shell: bash
         run: |
+          set -euo pipefail
           rm -rf research_output_xau_ctrader_replay_v1
           mkdir -p research_output_xau_ctrader_replay_v1
           python research/xau_ctrader_broker_replay_v1.py | tee research_output_xau_ctrader_replay_v1/console.txt
