@@ -9,6 +9,7 @@ from fx_scanner.demo_five_core_forward_evidence import (
     evaluation_key,
     xau_d1_evaluation_snapshot,
 )
+from fx_scanner.demo_five_core_forward_observer import _resolve_account_id
 from fx_scanner.demo_five_core_router import evaluate_xau_d1_tsmom_60_200
 from fx_scanner.models import Bar
 
@@ -73,3 +74,15 @@ def test_evaluation_key_requires_real_d1_evidence():
     snapshot = xau_d1_evaluation_snapshot((), as_of=datetime(2026, 9, 12, tzinfo=UTC))
     assert snapshot["closed_bars"] == 0
     assert evaluation_key(snapshot) is None
+
+
+def test_forward_evidence_account_id_falls_back_when_explicit_id_is_blank(monkeypatch):
+    monkeypatch.setenv("CTRADER_ACCOUNT_ID", "")
+    monkeypatch.setenv("CTRADER_TRADER_LOGIN", "demo-login")
+    assert _resolve_account_id() == "demo-login"
+
+
+def test_forward_evidence_account_id_prefers_explicit_id(monkeypatch):
+    monkeypatch.setenv("CTRADER_ACCOUNT_ID", "explicit-demo-account")
+    monkeypatch.setenv("CTRADER_TRADER_LOGIN", "demo-login")
+    assert _resolve_account_id() == "explicit-demo-account"
