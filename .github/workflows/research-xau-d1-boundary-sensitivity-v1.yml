@@ -43,10 +43,18 @@ jobs:
           assert d['observed_ctrader_d1_open_seconds_utc'] == [75600, 79200]
           assert set(d['scorecard']) == {'UTC00_ORIGINAL', 'NY17_BROKER_ALIGNED'}
           broker = d['scorecard']['NY17_BROKER_ALIGNED']['boundary_diagnostics']
-          assert set(broker['unique_open_seconds_utc']).issubset({75600, 79200}), broker
+          assert broker['unique_open_seconds_utc'] == [75600, 79200], broker
           assert d['frozen_parameters']['stop_atr'] == 2.0
           assert d['frozen_parameters']['target_atr'] == 4.0
           assert d['frozen_parameters']['max_hold_d1'] == 30
+          assert d['frozen_parameters']['cost_stress_abs_usd'] == {
+              'base_0.17_usd': 0.17,
+              'stress_0.25_usd': 0.25,
+              'stress_0.35_usd': 0.35,
+          }
+          assert set(d['scorecard']['NY17_BROKER_ALIGNED']['cost_stress']) == {
+              'base_0.17_usd', 'stress_0.25_usd', 'stress_0.35_usd'
+          }
           print('XAU D1 boundary sensitivity research contract: PASS')
           PY
       - name: Upload evidence
