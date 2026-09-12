@@ -2,18 +2,24 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from fx_scanner.config import load_project_config
+from fx_scanner.demo_five_core_authority import (
+    AUTHORITY_CONTRACT,
+    DEMOTION_REASON,
+    EXECUTION_SYMBOLS,
+    SHADOW_SYMBOLS,
+    execution_authorized,
+)
 from fx_scanner.demo_five_core_candidate_producer import (
     HISTORY_WINDOW_CALENDAR_FACTOR,
     _history_window_seconds,
 )
 from fx_scanner.demo_five_core_router import (
     D1_MAX_HOLD_BARS,
-    EXECUTION_SYMBOLS,
     FIVE_CORE_SYMBOLS,
     FORWARD_DEMO_SCORE,
     NO_TRADE_SYMBOLS,
     PAIR_STRATEGY_IDS,
-    SHADOW_SYMBOLS,
     build_xau_d1_tsmom_plan,
     evaluate_xau_d1_tsmom_60_200,
 )
@@ -45,15 +51,19 @@ def _d1_bars(*, rising: bool) -> tuple[Bar, ...]:
     return tuple(rows)
 
 
-def test_five_core_registry_is_exact_and_fail_closed():
+def test_five_core_registry_is_exact_and_runtime_authority_is_fail_closed():
     assert FIVE_CORE_SYMBOLS == ("XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD")
-    assert EXECUTION_SYMBOLS == {"XAUUSD"}
-    assert SHADOW_SYMBOLS == {"USDJPY"}
+    assert EXECUTION_SYMBOLS == frozenset()
+    assert SHADOW_SYMBOLS == {"XAUUSD", "USDJPY"}
     assert NO_TRADE_SYMBOLS == {"EURUSD", "GBPUSD", "AUDUSD"}
     assert PAIR_STRATEGY_IDS["XAUUSD"] == "D1_TSMOM_60_200"
     assert PAIR_STRATEGY_IDS["USDJPY"] == "H4_COMPRESSION_BREAKOUT"
     assert FORWARD_DEMO_SCORE == 60.0
     assert D1_MAX_HOLD_BARS == 30
+    assert execution_authorized("XAUUSD") is False
+    assert execution_authorized("USDJPY") is False
+    assert AUTHORITY_CONTRACT == "FIVE_CORE_AUTHORITY_AFTER_XAU_ROLLING_GATE_V1"
+    assert DEMOTION_REASON == "PREREGISTERED_XAU_ROLLING_STABILITY_GATE_FAILED"
 
 
 def test_slow_history_window_pads_24x5_calendar_gaps_without_expanding_fast_timeframes():
@@ -72,8 +82,6 @@ def test_slow_history_window_pads_24x5_calendar_gaps_without_expanding_fast_time
     assert _history_window_seconds("M5", count, m5_seconds) == pytest.approx(
         m5_seconds * (count + 12)
     )
-    # 220+ D1 observations need materially more than 244 calendar days once
-    # weekends/holidays are excluded; the padded window is intentionally >1 year.
     assert _history_window_seconds("D1", count, d1_seconds) > 365 * d1_seconds
 
 
@@ -81,7 +89,7 @@ def test_slow_history_window_pads_24x5_calendar_gaps_without_expanding_fast_time
     ("rising", "expected"),
     [(True, "LONG"), (False, "SHORT")],
 )
-def test_xau_d1_tsmom_uses_completed_bar_and_next_d1_open(rising, expected):
+def test_xau_d1_tsmom_keeps_frozen_strategy_semantics_but_has_no_runtime_authority(rising, expected):
     bars = _d1_bars(rising=rising)
     next_open = bars[-1].timestamp
     signal = evaluate_xau_d1_tsmom_60_200(
@@ -89,7 +97,10 @@ def test_xau_d1_tsmom_uses_completed_bar_and_next_d1_open(rising, expected):
         as_of=next_open + timedelta(minutes=10),
     )
     assert signal.active is True
+    # Strategy capability remains intact for shadow/forward research. Runtime
+    # authority is a separate, fail-closed layer after the rolling gate failed.
     assert signal.execution_eligible is True
+    assert execution_authorized("XAUUSD") is False
     assert signal.direction == expected
     assert signal.strategy_id == "D1_TSMOM_60_200"
     assert signal.next_entry_at == next_open
