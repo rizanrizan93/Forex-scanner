@@ -14,6 +14,7 @@ from .demo_five_core_candidate_producer import (
 from .demo_five_core_soft_ema_research import (
     candidate_payload,
     evaluate_usdjpy_soft_ema,
+    evaluate_xau_ema_bias_v3,
     evaluate_xau_soft_ema,
 )
 from .execution.factory import build_ctrader_research_feed
@@ -23,7 +24,7 @@ from .storage.supabase_operational import SupabaseOperationalStore
 UTC = timezone.utc
 WORKER_NAME = "ctrader_demo_five_core_soft_ema_observer"
 EVENT_TYPE = "DEMO_FIVE_CORE_SOFT_EMA_EVALUATION"
-CONTRACT = "FIVE_CORE_SOFT_EMA_FORWARD_V2"
+CONTRACT = "FIVE_CORE_SOFT_EMA_FORWARD_V3"
 REQUEST_COUNT = 232
 SYMBOL_TIMEFRAMES = {"XAUUSD": "D1", "USDJPY": "H4"}
 
@@ -136,19 +137,23 @@ def run() -> int:
                         count=REQUEST_COUNT,
                     )
                 )
-                candidate = (
-                    evaluate_xau_soft_ema(bars, as_of=as_of)
+                candidates = (
+                    (
+                        ("XAUUSD_MOMENTUM_V2", evaluate_xau_soft_ema(bars, as_of=as_of)),
+                        ("XAUUSD_EMA_BIAS_V3", evaluate_xau_ema_bias_v3(bars, as_of=as_of)),
+                    )
                     if symbol == "XAUUSD"
-                    else evaluate_usdjpy_soft_ema(bars, as_of=as_of)
+                    else (("USDJPY_BREAKOUT_V2", evaluate_usdjpy_soft_ema(bars, as_of=as_of)),)
                 )
-                payload = candidate_payload(candidate)
-                evaluations[symbol] = payload
-                key = _key(payload)
-                persisted[symbol] = False if key is None else _persist(
-                    store,
-                    payload=payload,
-                    key=key,
-                )
+                for label, candidate in candidates:
+                    payload = candidate_payload(candidate)
+                    evaluations[label] = payload
+                    key = _key(payload)
+                    persisted[label] = False if key is None else _persist(
+                        store,
+                        payload=payload,
+                        key=key,
+                    )
             except Exception as exc:
                 errors[symbol] = f"{type(exc).__name__}:{exc}"
     finally:
