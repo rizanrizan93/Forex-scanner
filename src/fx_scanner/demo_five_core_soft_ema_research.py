@@ -16,6 +16,7 @@ from .demo_five_core_router import (
 from .models import Bar, ensure_utc
 
 XAU_SOFT_STRATEGY_ID = "D1_TSMOM_60_EMA200_SOFT_V2"
+XAU_EMA_BIAS_STRATEGY_ID = "D1_EMA200_BIAS_TSMOM60_V3"
 USDJPY_SOFT_STRATEGY_ID = "H4_COMPRESSION_BREAKOUT_EMA200_SOFT_V2"
 XAU_ENTRY_WINDOW_SECONDS = 30 * 60
 USDJPY_ENTRY_WINDOW_SECONDS = 30 * 60
@@ -46,6 +47,7 @@ def evaluate_xau_soft_ema(
     *,
     as_of: datetime,
 ) -> SoftEmaCandidate:
+    """V2 comparator: 60-day momentum chooses direction; EMA200 is context only."""
     rows = tuple(sorted(bars, key=lambda row: ensure_utc(row.timestamp)))
     if any(row.symbol.upper() != "XAUUSD" or row.timeframe != "D1" for row in rows):
         return SoftEmaCandidate("XAUUSD", XAU_SOFT_STRATEGY_ID, None, False, None, None, None, None, None, "INVALID_D1_BUNDLE")
@@ -84,6 +86,72 @@ def evaluate_xau_soft_ema(
         ema_context,
         score,
         f"{'ENTRY_WINDOW_ACTIVE' if active else 'WAIT_NEXT_D1_OPEN'}_{ema_context}",
+    )
+
+
+def evaluate_xau_ema_bias_v3(
+    bars: Sequence[Bar],
+    *,
+    as_of: datetime,
+) -> SoftEmaCandidate:
+    """V3: EMA200 selects primary XAU direction; TSMOM60 confirms or penalizes it.
+
+    Below EMA200 => SHORT bias. Above EMA200 => LONG bias. The 60-day return
+    remains evidence: matching momentum gets the aligned score; opposing momentum
+    is still retained as a lower-score DEMO research candidate rather than blocked.
+    This keeps the rule bidirectional while making the EMA useful as directional
+    context as requested.
+    """
+    rows = tuple(sorted(bars, key=lambda row: ensure_utc(row.timestamp)))
+    if any(row.symbol.upper() != "XAUUSD" or row.timeframe != "D1" for row in rows):
+        return SoftEmaCandidate("XAUUSD", XAU_EMA_BIAS_STRATEGY_ID, None, False, None, None, None, None, None, "INVALID_D1_BUNDLE")
+
+    closed = _closed_rows(rows, as_of=as_of, timeframe_seconds=86400)
+    if len(closed) < 200:
+        return SoftEmaCandidate("XAUUSD", XAU_EMA_BIAS_STRATEGY_ID, None, False, None, None, None, None, None, "INSUFFICIENT_D1_HISTORY")
+
+    closes = [float(row.close) for row in closed]
+    if len(closes) < 61:
+        return SoftEmaCandidate("XAUUSD", XAU_EMA_BIAS_STRATEGY_ID, None, False, None, None, None, None, None, "INSUFFICIENT_RET60_HISTORY")
+
+    close = closes[-1]
+    ema200 = _ema(closes, 200)[-1]
+    ret60 = close / closes[-61] - 1.0
+    signal_bar = closed[-1]
+    signal_at = ensure_utc(signal_bar.timestamp)
+    next_entry = _next_bar_open(rows, signal_bar)
+    atr14 = _wilder_ewm(_true_ranges(closed), 14)[-1]
+
+    if close < ema200:
+        direction = "SHORT"
+        ema_context = "EMA_BELOW_SHORT_BIAS"
+        momentum_confirmed = ret60 < 0
+    elif close > ema200:
+        direction = "LONG"
+        ema_context = "EMA_ABOVE_LONG_BIAS"
+        momentum_confirmed = ret60 > 0
+    else:
+        return SoftEmaCandidate(
+            "XAUUSD", XAU_EMA_BIAS_STRATEGY_ID, None, False,
+            signal_at, next_entry, atr14, "EMA_AT_PRICE", None,
+            "D1_PRICE_ON_EMA200_NO_DIRECTION",
+        )
+
+    score = ALIGNED_SCORE if momentum_confirmed else COUNTERTREND_SCORE
+    momentum_context = "MOMENTUM_CONFIRMED" if momentum_confirmed else "MOMENTUM_DIVERGENT"
+    now = ensure_utc(as_of)
+    active = next_entry <= now <= next_entry + timedelta(seconds=XAU_ENTRY_WINDOW_SECONDS)
+    return SoftEmaCandidate(
+        "XAUUSD",
+        XAU_EMA_BIAS_STRATEGY_ID,
+        direction,
+        active,
+        signal_at,
+        next_entry,
+        atr14,
+        ema_context,
+        score,
+        f"{'ENTRY_WINDOW_ACTIVE' if active else 'WAIT_NEXT_D1_OPEN'}_{ema_context}_{momentum_context}",
     )
 
 
