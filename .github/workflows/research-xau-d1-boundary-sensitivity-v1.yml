@@ -1,0 +1,57 @@
+name: Research XAU D1 Boundary Sensitivity V1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/xau-d1-boundary-sensitivity-v1
+    paths:
+      - 'research/xau_d1_boundary_sensitivity_v1.py'
+      - '.github/workflows/research-xau-d1-boundary-sensitivity-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Run frozen XAU D1 boundary sensitivity
+        run: |
+          rm -rf research_output_xau_d1_boundary_v1
+          mkdir -p research_output_xau_d1_boundary_v1
+          python research/xau_d1_boundary_sensitivity_v1.py | tee research_output_xau_d1_boundary_v1/console.txt
+      - name: Verify research-only contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('research_output_xau_d1_boundary_v1/xau_d1_boundary_sensitivity_v1.json')
+          d = json.loads(p.read_text())
+          assert d['contract'] == 'XAU_D1_BOUNDARY_SENSITIVITY_V1'
+          assert d['execution_influence'] is False
+          assert d['symbol'] == 'XAUUSD'
+          assert d['strategy'] == 'D1_TSMOM_60_200'
+          assert d['observed_ctrader_d1_open_seconds_utc'] == [75600, 79200]
+          assert set(d['scorecard']) == {'UTC00_ORIGINAL', 'NY17_BROKER_ALIGNED'}
+          broker = d['scorecard']['NY17_BROKER_ALIGNED']['boundary_diagnostics']
+          assert set(broker['unique_open_seconds_utc']).issubset({75600, 79200}), broker
+          assert d['frozen_parameters']['stop_atr'] == 2.0
+          assert d['frozen_parameters']['target_atr'] == 4.0
+          assert d['frozen_parameters']['max_hold_d1'] == 30
+          print('XAU D1 boundary sensitivity research contract: PASS')
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-d1-boundary-sensitivity-v1
+          path: research_output_xau_d1_boundary_v1/
+          retention-days: 30
