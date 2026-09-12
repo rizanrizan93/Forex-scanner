@@ -13,13 +13,17 @@ from .demo_calibration import (
     build_demo_calibration_store,
 )
 from .demo_correlation_evidence import EvidenceProductionGuardResolver
-from .demo_five_core_router import (
+from .demo_five_core_authority import (
+    AUTHORITY_CONTRACT,
     EXECUTION_SYMBOLS,
+    SHADOW_SYMBOLS,
+    execution_authorized,
+)
+from .demo_five_core_router import (
     FIVE_CORE_SYMBOLS,
     FORWARD_DEMO_SCORE,
     NO_TRADE_SYMBOLS,
     PAIR_STRATEGY_IDS,
-    SHADOW_SYMBOLS,
     build_xau_execution_analysis,
     evaluate_usdjpy_h4_compression_breakout,
     evaluate_xau_d1_tsmom_60_200,
@@ -92,7 +96,10 @@ def _already_emitted(store, *, signal_bar_at: datetime | None) -> bool:
 
 
 def _record_emitted_marker(store, *, signal_id: str, signal) -> None:
-    account_id = os.getenv("CTRADER_ACCOUNT_ID", os.getenv("CTRADER_TRADER_LOGIN", "")).strip()
+    account_id = (
+        os.getenv("CTRADER_ACCOUNT_ID", "").strip()
+        or os.getenv("CTRADER_TRADER_LOGIN", "").strip()
+    )
     if not account_id:
         raise SystemExit("CTRADER_ACCOUNT_ID_REQUIRED_FOR_FIVE_CORE_MARKER")
     store.record_order_event(
@@ -168,8 +175,15 @@ class FiveCoreSignalProducer(CTraderSignalProducer):
 
             analyses = []
             selected = ()
-            if xau_signal.active and not _already_emitted(
-                self.store, signal_bar_at=xau_signal.signal_bar_at
+            xau_execution_authorized = (
+                xau_signal.execution_eligible and execution_authorized("XAUUSD")
+            )
+            if (
+                xau_signal.active
+                and xau_execution_authorized
+                and not _already_emitted(
+                    self.store, signal_bar_at=xau_signal.signal_bar_at
+                )
             ):
                 rank = forward_rank(xau_signal)
                 selected = (rank,)
@@ -192,8 +206,10 @@ class FiveCoreSignalProducer(CTraderSignalProducer):
                         external_guard_flags=guard_inputs.get("XAUUSD", {}),
                     )
                 )
-            elif xau_signal.active:
+            elif xau_signal.active and xau_execution_authorized:
                 failures["XAUUSD"] = "DUPLICATE_D1_SIGNAL_BAR_BLOCKED"
+            elif xau_signal.active:
+                failures["XAUUSD"] = "SHADOW_SIGNAL_NO_EXECUTION_AUTHORITY"
             elif "XAUUSD" not in market_failures:
                 failures["XAUUSD"] = xau_signal.reason
 
@@ -331,13 +347,19 @@ def run() -> int:
         )
 
     shadow = producer.last_usdjpy_shadow
-    xau_runtime_reason = producer.last_market_failures.get(
+    xau_runtime_reason = report.skipped.get(
         "XAUUSD",
-        None if producer.last_xau_signal is None else producer.last_xau_signal.reason,
+        producer.last_market_failures.get(
+            "XAUUSD",
+            None if producer.last_xau_signal is None else producer.last_xau_signal.reason,
+        ),
     )
-    usdjpy_runtime_reason = producer.last_market_failures.get(
+    usdjpy_runtime_reason = report.skipped.get(
         "USDJPY",
-        None if shadow is None else shadow.reason,
+        producer.last_market_failures.get(
+            "USDJPY",
+            None if shadow is None else shadow.reason,
+        ),
     )
     store.write_heartbeat(
         WORKER_NAME,
@@ -345,6 +367,7 @@ def run() -> int:
         lag_seconds=0.0,
         details={
             "mode": "FIVE_CORE_STRATEGY_ROUTER_V1",
+            "authority_contract": AUTHORITY_CONTRACT,
             "universe": list(FIVE_CORE_SYMBOLS),
             "execution_symbols": sorted(EXECUTION_SYMBOLS),
             "shadow_symbols": sorted(SHADOW_SYMBOLS),
@@ -352,6 +375,7 @@ def run() -> int:
             "pair_strategy_ids": five_core_policy_snapshot(),
             "market_symbols": report.market_symbols,
             "market_failures": dict(sorted(producer.last_market_failures.items())),
+            "xau_execution_authorized": execution_authorized("XAUUSD"),
             "xau_signal_reason": xau_runtime_reason,
             "usdjpy_shadow_active": bool(shadow and shadow.active),
             "usdjpy_shadow_direction": None if shadow is None else shadow.direction,
@@ -372,6 +396,7 @@ def run() -> int:
         f"market={report.market_symbols}/{len(FIVE_CORE_SYMBOLS)} "
         f"signals={report.signals_written} ready={report.execution_ready} "
         f"geometry={geometry_written} xau={xau_runtime_reason or 'NONE'} "
+        f"xau_authorized={execution_authorized('XAUUSD')} "
         f"usdjpy_shadow={'ACTIVE' if shadow and shadow.active else 'INACTIVE'}"
     )
     return 0
