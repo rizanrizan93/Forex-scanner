@@ -28,6 +28,19 @@ XAU_SYMBOL = "XAUUSD"
 REQUEST_COUNT = 232
 
 
+def _resolve_account_id() -> str:
+    """Resolve a non-secret durable account label for evidence rows.
+
+    GitHub Actions intentionally defines CTRADER_ACCOUNT_ID even when its value
+    is blank. ``os.getenv(name, fallback)`` therefore does not fall back to the
+    authenticated trader login. Treat blank values as absent instead.
+    """
+    return (
+        os.getenv("CTRADER_ACCOUNT_ID", "").strip()
+        or os.getenv("CTRADER_TRADER_LOGIN", "").strip()
+    )
+
+
 def _already_recorded(store: Any, key: str) -> bool:
     try:
         response = (
@@ -53,7 +66,7 @@ def _already_recorded(store: Any, key: str) -> bool:
 def _persist_evaluation(store: Any, *, snapshot: dict[str, Any], key: str) -> bool:
     if _already_recorded(store, key):
         return False
-    account_id = os.getenv("CTRADER_ACCOUNT_ID", os.getenv("CTRADER_TRADER_LOGIN", "")).strip()
+    account_id = _resolve_account_id()
     if not account_id:
         raise RuntimeError("CTRADER_ACCOUNT_ID_REQUIRED_FOR_FORWARD_EVIDENCE")
     digest = hashlib.sha256(key.encode("utf-8")).hexdigest()[:32]
