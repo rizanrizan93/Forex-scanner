@@ -5,6 +5,12 @@ from time import sleep
 from typing import Any, Callable
 
 from .config import ProjectConfig, load_project_config
+from .demo_five_core_authority import (
+    AUTHORITY_CONTRACT,
+    DEMOTION_REASON,
+    EXECUTION_SYMBOLS,
+    SHADOW_SYMBOLS,
+)
 from .demo_five_core_candidate_producer import (
     FIVE_CORE_SYMBOLS,
     _history_window_seconds,
@@ -140,7 +146,7 @@ def run() -> int:
         healthy=healthy,
         lag_seconds=0.0,
         details={
-            "mode": "READ_ONLY_HISTORY_PROBE_V2_BOUNDARY_AUDIT",
+            "mode": "READ_ONLY_HISTORY_PROBE_V3_AUTHORITY_AUDIT",
             "environment": "DEMO",
             "execution_influence": False,
             "quote_dependency": False,
@@ -157,6 +163,11 @@ def run() -> int:
                 "expected_open_seconds_utc": XAU_D1_RESEARCH_BOUNDARY_SECONDS_UTC,
             },
             "xau_d1_boundary_matches_research": xau_boundary.get("matches_expected_boundary"),
+            "authority_contract": AUTHORITY_CONTRACT,
+            "authority_demotion_reason": DEMOTION_REASON,
+            "execution_symbols": sorted(EXECUTION_SYMBOLS),
+            "shadow_symbols": sorted(SHADOW_SYMBOLS),
+            "xau_execution_authorized": "XAUUSD" in EXECUTION_SYMBOLS,
             "failures": failures,
         },
     )
@@ -169,7 +180,9 @@ def run() -> int:
         "CTRADER_DEMO_FIVE_CORE_HISTORY_PROBE "
         f"healthy={healthy} {summary} failures={len(failures)} "
         f"xau_d1_open_seconds={xau_boundary.get('unique_open_seconds_utc')} "
-        f"research_boundary_match={xau_boundary.get('matches_expected_boundary')}"
+        f"research_boundary_match={xau_boundary.get('matches_expected_boundary')} "
+        f"execution_symbols={sorted(EXECUTION_SYMBOLS)} "
+        f"shadow_symbols={sorted(SHADOW_SYMBOLS)}"
     )
     if failures:
         for key, value in sorted(failures.items()):
