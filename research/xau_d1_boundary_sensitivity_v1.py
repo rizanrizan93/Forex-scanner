@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -20,6 +21,11 @@ ORIGINAL_RESEARCH_BOUNDARY = "00:00 UTC"
 STOP_ATR = 2.0
 TARGET_ATR = 4.0
 MAX_HOLD_D1 = 30
+XAU_COST_STRESS = {
+    "base_0.17_usd": 0.17,
+    "stress_0.25_usd": 0.25,
+    "stress_0.35_usd": 0.35,
+}
 
 ERAS = (
     ("2012_2016", pd.Timestamp("2012-01-01", tz="UTC"), pd.Timestamp("2017-01-01", tz="UTC")),
@@ -35,35 +41,46 @@ def aggregate_utc_midnight(h1: pd.DataFrame) -> pd.DataFrame:
     return base.resample_ohlc(h1, "1D")
 
 
+def _session_start_utc(session_date) -> pd.Timestamp:
+    """Exact 17:00 New York wall-clock session label, DST-aware."""
+    local_start = datetime.combine(session_date, time(17, 0), tzinfo=NY)
+    return pd.Timestamp(local_start).tz_convert("UTC")
+
+
 def aggregate_new_york_17(h1: pd.DataFrame) -> pd.DataFrame:
     """Construct broker-like D1 bars from 17:00 New York to 17:00 New York.
 
-    The observed cTrader DEMO XAU D1 bar opens are 21:00/22:00 UTC, which map
-    to 17:00 America/New_York across DST. Grouping in local wall-clock time
-    preserves that DST transition without optimizing any strategy parameter.
+    The observed cTrader DEMO XAU D1 timestamps are 21:00/22:00 UTC, which map
+    to 17:00 America/New_York across DST. Each H1 row is assigned to the most
+    recent NY17 session. The output timestamp is the exact session boundary,
+    not the first available H1 observation; this matters on Sunday/holiday
+    partial sessions where market data can begin after the broker D1 boundary.
+    No strategy parameter is changed.
     """
     x = h1.copy().sort_values("time").reset_index(drop=True)
     local = x["time"].dt.tz_convert(NY)
     x["session_date"] = (local - pd.Timedelta(hours=17)).dt.date
     rows: list[dict] = []
-    for _, day in x.groupby("session_date", sort=True):
+    for session_date, day in x.groupby("session_date", sort=True):
         if day.empty:
             continue
         rows.append(
             {
-                "time": day["time"].iloc[0],
+                "time": _session_start_utc(session_date),
                 "open": float(day["open"].iloc[0]),
                 "high": float(day["high"].max()),
                 "low": float(day["low"].min()),
                 "close": float(day["close"].iloc[-1]),
                 "h1_rows": int(len(day)),
+                "first_observation_at": day["time"].iloc[0],
+                "last_observation_at": day["time"].iloc[-1],
             }
         )
     out = pd.DataFrame(rows)
     if out.empty:
         raise RuntimeError("NY17 D1 aggregation produced no rows")
-    # Keep actual market sessions only. Normal sessions are 23/24/25 H1 rows
-    # around DST; very short holiday sessions are still legitimate broker days.
+    # Actual market sessions only. Partial Sunday/holiday sessions remain valid
+    # D1 bars; their timestamp still uses the broker's fixed NY17 boundary.
     return out.sort_values("time").reset_index(drop=True)
 
 
@@ -75,7 +92,7 @@ def simulate(d1: pd.DataFrame, label: str) -> pd.DataFrame:
         np.where(long_sig, 1, np.where(short_sig, -1, 0)),
         index=x.index,
     )
-    trades = base.simulate_fixed_atr(
+    return base.simulate_fixed_atr(
         SYMBOL,
         f"D1_TSMOM_60_200_{label}",
         x,
@@ -84,7 +101,6 @@ def simulate(d1: pd.DataFrame, label: str) -> pd.DataFrame:
         TARGET_ATR,
         MAX_HOLD_D1,
     )
-    return trades
 
 
 def metric_blocks(trades: pd.DataFrame) -> dict:
@@ -98,6 +114,30 @@ def metric_blocks(trades: pd.DataFrame) -> dict:
     blocks["LONG_FULL"] = base.metrics(trades[trades["direction"] > 0])
     blocks["SHORT_FULL"] = base.metrics(trades[trades["direction"] < 0])
     return blocks
+
+
+def _with_cost(trades: pd.DataFrame, cost_abs: float) -> pd.DataFrame:
+    x = trades.copy()
+    if x.empty:
+        return x
+    x["base_cost_abs"] = float(cost_abs)
+    x["cost_r"] = float(cost_abs) / x["risk_price"]
+    x["net_r"] = x["gross_r"] - x["cost_r"]
+    return x
+
+
+def cost_stress_blocks(trades: pd.DataFrame) -> dict:
+    out: dict[str, dict] = {}
+    for label, cost in XAU_COST_STRESS.items():
+        stressed = _with_cost(trades, cost)
+        out[label] = {
+            "cost_abs_usd": cost,
+            "FULL_2012_2026": base.metrics(stressed),
+            "OOS_2025_2026": base.metrics(
+                stressed[stressed["entry_time"] >= OOS_START]
+            ),
+        }
+    return out
 
 
 def annual_direction_summary(trades: pd.DataFrame) -> list[dict]:
@@ -131,13 +171,13 @@ def boundary_diagnostics(d1: pd.DataFrame) -> dict:
     if "h1_rows" in d1:
         counts = d1["h1_rows"].value_counts().sort_index()
         result["h1_rows_per_bucket"] = {str(int(k)): int(v) for k, v in counts.items()}
+        result["partial_sessions_lt_20h"] = int((d1["h1_rows"] < 20).sum())
     return result
 
 
 def main() -> int:
     # Reuse the frozen public-data loader and cost model; only D1 aggregation differs.
     base.SYMBOLS = {SYMBOL: base.SYMBOLS[SYMBOL]}
-    from datetime import datetime
     base.SLOW_START = datetime(2012, 1, 1)
 
     print("FETCH XAUUSD H1 2012-2026")
@@ -169,6 +209,7 @@ def main() -> int:
             "boundary": item["boundary"],
             "boundary_diagnostics": boundary_diagnostics(item["d1"]),
             "metrics": metric_blocks(item["trades"]),
+            "cost_stress": cost_stress_blocks(item["trades"]),
             "annual": annual_direction_summary(item["trades"]),
         }
 
@@ -188,7 +229,7 @@ def main() -> int:
             "stop_atr": STOP_ATR,
             "target_atr": TARGET_ATR,
             "max_hold_d1": MAX_HOLD_D1,
-            "base_cost_abs_xau_usd": base.base_cost_abs(SYMBOL),
+            "cost_stress_abs_usd": XAU_COST_STRESS,
         },
         "observed_ctrader_d1_open_seconds_utc": [75600, 79200],
         "primary_comparison": ["UTC00_ORIGINAL", "NY17_BROKER_ALIGNED"],
@@ -215,8 +256,26 @@ def main() -> int:
             )
     pd.DataFrame(rows).to_csv(out / "summary.csv", index=False)
 
+    stress_rows = []
+    for name, item in scorecard.items():
+        for cost_label, block in item["cost_stress"].items():
+            for period in ("FULL_2012_2026", "OOS_2025_2026"):
+                metrics = block[period]
+                stress_rows.append(
+                    {
+                        "variant": name,
+                        "cost_label": cost_label,
+                        "cost_abs_usd": block["cost_abs_usd"],
+                        "period": period,
+                        **{k: v for k, v in metrics.items() if k != "annual_net_r"},
+                    }
+                )
+    pd.DataFrame(stress_rows).to_csv(out / "cost_stress.csv", index=False)
+
     print("\n# XAU D1 BOUNDARY SENSITIVITY V1")
     print(pd.DataFrame(rows).to_string(index=False))
+    print("\n# COST STRESS")
+    print(pd.DataFrame(stress_rows).to_string(index=False))
     print("\nBoundary diagnostics:")
     print(json.dumps({k: v["boundary_diagnostics"] for k, v in scorecard.items()}, indent=2))
     print("Research only: execution_influence=false")
