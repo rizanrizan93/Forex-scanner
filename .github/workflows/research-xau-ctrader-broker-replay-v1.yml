@@ -1,0 +1,76 @@
+name: Research XAU cTrader Broker Replay V1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/xau-ctrader-broker-replay-v1
+    paths:
+      - 'research/xau_ctrader_broker_replay_v1.py'
+      - '.github/workflows/research-xau-ctrader-broker-replay-v1.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-ctrader-broker-replay-v1
+  cancel-in-progress: true
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: '1'
+      CTRADER_DISABLE_TOKEN_REFRESH: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install read-only cTrader research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Validate fail-closed DEMO config
+        run: python -m fx_scanner.cli validate-config
+      - name: Run frozen broker-feed replay
+        run: |
+          rm -rf research_output_xau_ctrader_replay_v1
+          mkdir -p research_output_xau_ctrader_replay_v1
+          python research/xau_ctrader_broker_replay_v1.py | tee research_output_xau_ctrader_replay_v1/console.txt
+      - name: Verify research-only replay contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('research_output_xau_ctrader_replay_v1/xau_ctrader_broker_replay_v1.json')
+          d = json.loads(p.read_text())
+          assert d['contract'] == 'XAU_CTRADER_BROKER_REPLAY_V1'
+          assert d['execution_influence'] is False
+          assert d['environment'] == 'DEMO'
+          assert d['symbol'] == 'XAUUSD'
+          assert d['strategy'] == 'D1_TSMOM_60_200'
+          assert d['closed_bars'] >= 600, d['closed_bars']
+          assert d['observed_boundary_matches_ny17'] is True, d['unique_open_seconds_utc']
+          assert set(d['unique_open_seconds_utc']).issubset({75600, 79200})
+          assert d['frozen_parameters']['stop_atr'] == 2.0
+          assert d['frozen_parameters']['target_atr'] == 4.0
+          assert d['frozen_parameters']['max_hold_d1'] == 30
+          assert set(d['cost_stress']) == {'base_0.17_usd','stress_0.25_usd','stress_0.35_usd'}
+          print('XAU cTrader broker replay research contract: PASS')
+          PY
+      - name: Upload replay evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-ctrader-broker-replay-v1
+          path: research_output_xau_ctrader_replay_v1/
+          retention-days: 30
