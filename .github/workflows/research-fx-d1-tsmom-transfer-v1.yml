@@ -1,0 +1,75 @@
+name: Research FX D1 TSMOM Transfer V1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/fx-d1-tsmom-transfer-v1
+    paths:
+      - "research/fx_d1_tsmom_transfer_v1.py"
+      - ".github/workflows/research-fx-d1-tsmom-transfer-v1.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-fx-d1-tsmom-transfer-v1
+  cancel-in-progress: true
+
+jobs:
+  historical-screen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Syntax check
+        run: python -m py_compile research/fx_d1_tsmom_transfer_v1.py
+      - name: Run exact-rule transfer screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf research_output_fx_d1_tsmom_transfer_v1
+          python research/fx_d1_tsmom_transfer_v1.py | tee fx_d1_tsmom_transfer_console.json
+      - name: Verify immutable contract and print evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path("research_output_fx_d1_tsmom_transfer_v1/fx_d1_tsmom_transfer_v1.json")
+          d = json.loads(p.read_text())
+          assert d["contract"] == "FX_D1_TSMOM_60_200_TRANSFER_V1"
+          assert d["execution_influence"] is False
+          assert d["live_execution_enabled"] is False
+          assert d["symbols"] == ["USDCAD", "NZDUSD", "USDCHF"]
+          assert d["transferred_from"] == "XAUUSD_D1_TSMOM_60_200_WITHOUT_PARAMETER_CHANGE"
+          assert d["strategy"]["stop_atr"] == 2.0
+          assert d["strategy"]["target_atr"] == 4.0
+          assert d["strategy"]["max_hold_d1"] == 30
+          assert d["partitions"]["oos_used_for_selection"] is False
+          print("FX_D1_TSMOM_TRANSFER_PASS", d["historical_pass"])
+          for row in d["rows"]:
+              val = row["costs"]["stress_1p5_pip"]["validation"]
+              oos = row["costs"]["stress_1p5_pip"]["oos"]
+              stress2 = row["costs"]["stress_2p0_pip"]["oos"]
+              print(
+                  "FX_D1_TSMOM_TRANSFER_ROW",
+                  row["symbol"],
+                  "validation=", val,
+                  "oos=", oos,
+                  "oos_2pip=", stress2,
+                  "pass=", row["historical_pass"],
+              )
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fx-d1-tsmom-transfer-v1
+          path: research_output_fx_d1_tsmom_transfer_v1/
+          if-no-files-found: error
+          retention-days: 30
