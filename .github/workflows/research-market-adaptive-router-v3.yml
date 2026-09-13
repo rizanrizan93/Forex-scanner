@@ -1,0 +1,44 @@
+name: Research Market Adaptive Router V3
+
+on:
+  push:
+    branches:
+      - research/market-adaptive-router-v2-b
+    paths:
+      - "research/adaptive_router_market_core_v2.py"
+      - "research/adaptive_router_market_adaptive_v3.py"
+      - ".github/workflows/research-market-adaptive-router-v3.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-market-adaptive-router-v3
+  cancel-in-progress: true
+
+jobs:
+  adaptive-backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run hierarchical adaptive backtest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/adaptive_router_market_adaptive_v3.py | tee adaptive_router_market_v3.log
+          grep '^RESULT_JSON=' adaptive_router_market_v3.log | sed 's/^RESULT_JSON=//' > adaptive_router_market_v3.json
+          test -s adaptive_router_market_v3.json
+      - name: Show compact evidence
+        run: grep -E '^(DATA|SUMMARY|PERIOD|RECENT_SETUP|RECENT_SYMBOL)' adaptive_router_market_v3.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-router-market-v3
+          path: |
+            adaptive_router_market_v3.json
+            adaptive_router_market_v3.log
+          if-no-files-found: error
