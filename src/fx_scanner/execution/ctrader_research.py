@@ -53,8 +53,13 @@ class CTraderResearchFeed:
             )
         return status
 
-    def quote(self, symbol: str):
-        self._require_open_market(symbol)
+    def quote(self, symbol: str, *, at: datetime | None = None):
+        """Return a quote only when the broker schedule is open.
+
+        ``at`` exists for deterministic research/testing of schedule gates. Normal
+        runtime callers omit it and continue to use the current broker clock.
+        """
+        self._require_open_market(symbol, at=at)
         return self._session.quote(symbol)
 
     def refresh_quote_snapshot(self, symbol: str) -> None:
