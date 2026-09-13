@@ -75,15 +75,16 @@ def resample_h1_to_daily(bars: tuple[Bar, ...], *, boundary_hour_utc: int) -> tu
 
 def _ema(values: list[float], span: int) -> list[float | None]:
     out: list[float | None] = [None] * len(values)
-    if len(values) < span:
+    if not values:
         return out
-    seed = sum(values[:span]) / span
-    out[span - 1] = seed
     alpha = 2.0 / (span + 1.0)
-    value = seed
-    for idx in range(span, len(values)):
+    value = values[0]
+    if span == 1:
+        out[0] = value
+    for idx in range(1, len(values)):
         value = alpha * values[idx] + (1.0 - alpha) * value
-        out[idx] = value
+        if idx >= span - 1:
+            out[idx] = value
     return out
 
 
@@ -96,14 +97,16 @@ def _wilder_atr(rows: tuple[DailyBar, ...], period: int = 14) -> list[float | No
             prev_close = rows[idx - 1].close
             tr.append(max(row.high - row.low, abs(row.high - prev_close), abs(row.low - prev_close)))
     out: list[float | None] = [None] * len(rows)
-    if len(rows) < period:
+    if not tr:
         return out
-    value = sum(tr[:period]) / period
-    out[period - 1] = value
     alpha = 1.0 / period
-    for idx in range(period, len(rows)):
+    value = tr[0]
+    if period == 1:
+        out[0] = value
+    for idx in range(1, len(tr)):
         value = alpha * tr[idx] + (1.0 - alpha) * value
-        out[idx] = value
+        if idx >= period - 1:
+            out[idx] = value
     return out
 
 
