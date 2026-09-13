@@ -1,0 +1,72 @@
+name: Research FX Portfolio TSMOM V1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/fx-portfolio-tsmom-v1
+    paths:
+      - "research/fx_portfolio_tsmom_v1.py"
+      - ".github/workflows/research-fx-portfolio-tsmom-v1.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-fx-portfolio-tsmom-v1
+  cancel-in-progress: true
+
+jobs:
+  historical-screen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Syntax check
+        run: python -m py_compile research/fx_portfolio_tsmom_v1.py
+      - name: Run frozen portfolio TSMOM screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf research_output_fx_portfolio_tsmom_v1
+          python research/fx_portfolio_tsmom_v1.py | tee fx_portfolio_tsmom_console.json
+      - name: Verify immutable contract and print evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path("research_output_fx_portfolio_tsmom_v1/fx_portfolio_tsmom_v1.json")
+          d = json.loads(p.read_text())
+          assert d["contract"] == "FX_PORTFOLIO_TSMOM_V1"
+          assert d["execution_influence"] is False
+          assert d["live_execution_enabled"] is False
+          assert len(d["symbols"]) == 7
+          assert d["portfolio_contract"]["rebalance_bars"] == 21
+          assert d["portfolio_contract"]["gross_exposure_target"] == 1.0
+          assert d["oos_used_for_selection"] is False
+          assert d["cost_contract"]["stress_round_trip_pips"] == 2.0
+          print("FX_PORTFOLIO_TSMOM_PASS", d["historical_pass"])
+          for row in d["rows"]:
+              validation = row["stress"]["validation"]
+              oos = row["stress"]["oos"]
+              print(
+                  "FX_PORTFOLIO_TSMOM_ROW",
+                  row["candidate"],
+                  "validation=", validation,
+                  "oos=", oos,
+                  "pass=", row["historical_pass"],
+              )
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fx-portfolio-tsmom-v1
+          path: research_output_fx_portfolio_tsmom_v1/
+          if-no-files-found: error
+          retention-days: 30
