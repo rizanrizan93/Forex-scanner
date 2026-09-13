@@ -21,7 +21,6 @@ class ClosedSession:
         return None
 
     def symbol_info(self, symbol):
-        # Sunday 00:00 through Friday 00:00 only. Saturday is closed.
         return SimpleNamespace(
             tradingMode=0,
             scheduleTimeZone="UTC",
@@ -66,8 +65,11 @@ def test_historical_bars_allowed_when_broker_session_closed_but_quote_remains_bl
     feed = CTraderResearchFeed(session, ("XAUUSD",))
     saturday = datetime(2026, 9, 12, 0, 0, tzinfo=UTC)
 
-    with pytest.raises(CollectorUnavailable, match="CTRADER_MARKET_CLOSED:XAUUSD:OUTSIDE_BROKER_SESSION"):
-        feed.quote("XAUUSD")
+    with pytest.raises(
+        CollectorUnavailable,
+        match="CTRADER_MARKET_CLOSED:XAUUSD:OUTSIDE_BROKER_SESSION",
+    ):
+        feed.quote("XAUUSD", at=saturday)
 
     result = feed.historical_bars(
         "XAUUSD",
@@ -84,7 +86,6 @@ def test_historical_bars_allowed_when_broker_session_closed_but_quote_remains_bl
     assert call["timeframe"] == "D1"
     assert call["count"] == 232
     assert call["spread_proxy"] == 0.0
-    # One best-effort cached quote attempt is permitted for metadata only.
     assert session.quote_calls == 1
 
 
@@ -93,8 +94,6 @@ def test_closed_session_history_never_calls_market_status_gate():
     feed = CTraderResearchFeed(session, ("USDJPY",))
     saturday = datetime(2026, 9, 12, 0, 0, tzinfo=UTC)
 
-    # If historical_bars were to call market_status/_require_open_market, this
-    # Saturday request would raise before reaching the session history method.
     result = feed.historical_bars(
         "USDJPY",
         "H4",
