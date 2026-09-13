@@ -1,0 +1,63 @@
+name: Research EURAUD GBPAUD Strategy V3
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/euraud-gbpaud-strategy-search-v3
+    paths:
+      - research/euraud_gbpaud_strategy_search_v3.py
+      - .github/workflows/research-euraud-gbpaud-strategy-v3.yml
+
+permissions:
+  contents: read
+
+jobs:
+  pair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        symbol:
+          - EURAUD
+          - GBPAUD
+    env:
+      CORE_SYMBOL: ${{ matrix.symbol }}
+      PYTHONPATH: research
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Run frozen V3 strategy tournament
+        run: |
+          set -o pipefail
+          rm -rf research_output_euraud_gbpaud_v3
+          mkdir -p research_output_euraud_gbpaud_v3
+          python research/euraud_gbpaud_strategy_search_v3.py | tee research_output_euraud_gbpaud_v3/console-${CORE_SYMBOL}.txt
+      - name: Verify research-only contract
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          symbol = os.environ['CORE_SYMBOL']
+          path = Path(f'research_output_euraud_gbpaud_v3/euraud_gbpaud_v3_{symbol}.json')
+          doc = json.loads(path.read_text())
+          assert doc['contract'] == 'EURAUD_GBPAUD_STRATEGY_SEARCH_V3'
+          assert doc['execution_influence'] is False
+          assert doc['promotion_authority'] is False
+          assert doc['symbol'] == symbol
+          assert doc['coverage']['h1_rows'] >= 70000, doc['coverage']
+          assert len(doc['candidate_set']) == 6
+          print(symbol, 'V3 research contract: PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: euraud-gbpaud-${{ matrix.symbol }}-v3
+          path: research_output_euraud_gbpaud_v3/
+          retention-days: 30
