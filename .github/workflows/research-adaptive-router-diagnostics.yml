@@ -1,0 +1,30 @@
+name: Research Adaptive Router Diagnostics
+
+on:
+  push:
+    branches:
+      - research/adaptive-router-public-2012-2026
+    paths:
+      - "research/adaptive_router_public_diagnostics.py"
+      - ".github/workflows/research-adaptive-router-diagnostics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run diagnostics
+        run: python research/adaptive_router_public_diagnostics.py | tee adaptive_router_diagnostics.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-router-diagnostics
+          path: adaptive_router_diagnostics.log
+          if-no-files-found: error
