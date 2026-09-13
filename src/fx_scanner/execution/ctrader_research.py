@@ -53,8 +53,8 @@ class CTraderResearchFeed:
             )
         return status
 
-    def quote(self, symbol: str):
-        self._require_open_market(symbol)
+    def quote(self, symbol: str, *, at: datetime | None = None):
+        self._require_open_market(symbol, at=at)
         return self._session.quote(symbol)
 
     def refresh_quote_snapshot(self, symbol: str) -> None:
