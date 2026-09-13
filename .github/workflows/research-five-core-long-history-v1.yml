@@ -1,0 +1,58 @@
+name: Research Five Core Long History V1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/five-core-tournament-v1
+    paths:
+      - 'research/five_core_long_history_v1.py'
+      - '.github/workflows/research-five-core-long-history-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  instrument:
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [XAUUSD, EURUSD, GBPUSD, USDJPY, AUDUSD]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CORE_SYMBOL: ${{ matrix.symbol }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Run unchanged-rule long-history validation
+        run: |
+          rm -rf research_output_five_core_long_v1
+          mkdir -p research_output_five_core_long_v1
+          python research/five_core_long_history_v1.py | tee research_output_five_core_long_v1/console-${CORE_SYMBOL}.txt
+      - name: Verify research-only contract
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          s = os.environ['CORE_SYMBOL']
+          p = Path(f'research_output_five_core_long_v1/five_core_long_history_{s}.json')
+          d = json.loads(p.read_text())
+          assert d['contract'] == 'FIVE_CORE_LONG_HISTORY_V1'
+          assert d['execution_influence'] is False
+          assert d['symbol'] == s
+          assert d['coverage']['h1_rows'] >= 70000, d['coverage']
+          assert set(d['scorecard']) == {'D1_TSMOM_60_200','H4_TREND_PULLBACK','H4_COMPRESSION_BREAKOUT'}
+          print(s, 'long-history research contract: PASS')
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: five-core-long-${{ matrix.symbol }}-v1
+          path: research_output_five_core_long_v1/
+          retention-days: 30
