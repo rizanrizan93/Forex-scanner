@@ -74,7 +74,6 @@ def _paper_excursions(
 ) -> tuple[float, float]:
     if not bars or risk_price <= 0:
         return 0.0, 0.0
-    sign = 1.0 if direction == "LONG" else -1.0
     favorable: list[float] = []
     adverse: list[float] = []
     for row in bars:
@@ -84,7 +83,6 @@ def _paper_excursions(
         else:
             favorable.append((entry_price - float(row.low)) / risk_price)
             adverse.append((entry_price - float(row.high)) / risk_price)
-    del sign
     return min(adverse), max(favorable)
 
 
@@ -196,7 +194,10 @@ def _open_paper_rows(store: SupabaseOperationalStore) -> tuple[dict[str, Any], .
     return tuple(dict(row) for row in (response.data or []))
 
 
-def _signal_row(store: SupabaseOperationalStore, signal_id: str) -> dict[str, Any] | None:
+def _signal_row(
+    store: SupabaseOperationalStore,
+    signal_id: str,
+) -> dict[str, Any] | None:
     response = (
         store.client.table("signals")
         .select(
@@ -208,9 +209,19 @@ def _signal_row(store: SupabaseOperationalStore, signal_id: str) -> dict[str, An
         .execute()
     )
     rows = list(response.data or [])
-    if not rows:
-        return None
-    return dict(rows[0])
+    return None if not rows else dict(rows[0])
+
+
+def _has_open_xau_paper(store: SupabaseOperationalStore) -> bool:
+    for paper in _open_paper_rows(store):
+        signal = _signal_row(store, str(paper["signal_id"]))
+        if not signal:
+            continue
+        if str(signal.get("setup_type")) != PAPER_SETUP_TYPE:
+            continue
+        if str(signal.get("symbol", "")).upper() == XAU_SYMBOL:
+            return True
+    return False
 
 
 def _close_existing_paper(
@@ -228,10 +239,13 @@ def _close_existing_paper(
             continue
         stop = float(signal["sl"])
         target = float(signal["tp2"])
+        entry_time = datetime.fromisoformat(
+            str(paper["entry_time"]).replace("Z", "+00:00")
+        )
         outcome = evaluate_paper_exit(
             bars,
             direction=str(signal["direction"]),
-            entry_time=datetime.fromisoformat(str(paper["entry_time"]).replace("Z", "+00:00")),
+            entry_time=entry_time,
             entry_price=float(paper["entry_price"]),
             stop=stop,
             target=target,
@@ -347,18 +361,17 @@ def _maybe_open_new_paper(
     *,
     as_of: datetime,
 ) -> bool:
-    if any(
-        _signal_row(store, str(row["signal_id"]))
-        and str(_signal_row(store, str(row["signal_id"])).get("setup_type"))
-        == PAPER_SETUP_TYPE
-        for row in _open_paper_rows(store)
-    ):
+    if _has_open_xau_paper(store):
         return False
 
     signal = evaluate_xau_d1_tsmom_60_200(bars, as_of=as_of)
     if signal.direction not in {"LONG", "SHORT"}:
         return False
-    if signal.signal_bar_at is None or signal.next_entry_at is None or signal.atr is None:
+    if (
+        signal.signal_bar_at is None
+        or signal.next_entry_at is None
+        or signal.atr is None
+    ):
         return False
     signal_bar_at = ensure_utc(signal.signal_bar_at)
     entry_at = ensure_utc(signal.next_entry_at)
@@ -482,7 +495,10 @@ def run() -> int:
             )
         )
         closed = _close_existing_paper(store, bars)
-        opened = _maybe_open_new_paper(store, bars, as_of=as_of)
+        # Preserve the frozen non-overlap contract: a run that closes an old
+        # position cannot retroactively open a new one at today's D1 open.
+        if closed == 0:
+            opened = _maybe_open_new_paper(store, bars, as_of=as_of)
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"
     finally:
