@@ -15,19 +15,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_five_core_execution_registry_is_exact_and_pair_specific():
     assert FIVE_CORE_SYMBOLS == ("XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD")
-    assert EXECUTION_SYMBOLS == frozenset({"XAUUSD"})
-    assert SHADOW_SYMBOLS == frozenset({"USDJPY"})
-    assert NO_TRADE_SYMBOLS == frozenset({"EURUSD", "GBPUSD", "AUDUSD"})
+    assert EXECUTION_SYMBOLS == frozenset({"XAUUSD", "USDJPY", "GBPUSD"})
+    assert SHADOW_SYMBOLS == frozenset()
+    assert NO_TRADE_SYMBOLS == frozenset({"EURUSD", "AUDUSD"})
     assert PAIR_STRATEGY_IDS["XAUUSD"] == "D1_TSMOM_60_200"
-    assert PAIR_STRATEGY_IDS["USDJPY"] == "H4_COMPRESSION_BREAKOUT"
+    assert PAIR_STRATEGY_IDS["USDJPY"] == "D1_DONCHIAN55_200"
+    assert PAIR_STRATEGY_IDS["GBPUSD"] == "H4_MEAN_REVERT_Z2_TO_SMA20"
     assert PAIR_STRATEGY_IDS["EURUSD"] == "NO_TRADE_UNTIL_VALIDATED"
 
 
-def test_forward_demo_score_keeps_xau_order_ceiling_conservative():
-    row = {"symbol": "XAUUSD", "final_score": 60.0, "data_coverage": 1.0, "rr2": 2.0}
-    sizing = select_demo_conviction_sizing(row, max_order_lots=0.50, max_risk_pct=5.0)
-    assert sizing.lots == 0.01
-    assert sizing.risk_budget_pct <= 5.0
+def test_forward_demo_score_keeps_pair_orders_at_conservative_floor():
+    for symbol in ("XAUUSD", "USDJPY", "GBPUSD"):
+        row = {"symbol": symbol, "final_score": 60.0, "data_coverage": 1.0, "rr2": 2.0}
+        sizing = select_demo_conviction_sizing(row, max_order_lots=0.50, max_risk_pct=5.0)
+        assert sizing.lots == 0.01
+        assert sizing.risk_budget_pct <= 5.0
 
 
 def test_active_workflows_use_five_core_wrappers_and_bounded_demo_contract():
@@ -47,6 +49,8 @@ def test_active_workflows_use_five_core_wrappers_and_bounded_demo_contract():
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "0"' in auto
     assert "demo_five_core_candidate_producer" in fast_wrapper
     assert "D1_TSMOM_60_200" in handoff
+    assert "D1_DONCHIAN55_200" not in handoff  # resolved via pair registry, not duplicated literals
+    assert "PAIR_STRATEGY_IDS" in handoff
     assert "demo_execution_technical_producer" in discovery
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in discovery
     assert "XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD" in supervisor
