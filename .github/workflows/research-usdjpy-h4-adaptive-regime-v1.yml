@@ -1,0 +1,81 @@
+name: Research USDJPY H4 Adaptive Regime V1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/usdjpy-h4-adaptive-regime-v1
+    paths:
+      - "research/usdjpy_h4_adaptive_regime_v1.py"
+      - ".github/workflows/research-usdjpy-h4-adaptive-regime-v1.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-usdjpy-h4-adaptive-regime-v1
+  cancel-in-progress: true
+
+jobs:
+  historical-screen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Syntax check
+        run: python -m py_compile research/usdjpy_h4_adaptive_regime_v1.py
+      - name: Run preregistered adaptive regime screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf research_output_usdjpy_h4_adaptive_v1
+          python research/usdjpy_h4_adaptive_regime_v1.py | tee usdjpy_h4_adaptive_console.json
+      - name: Verify immutable contract and print evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("research_output_usdjpy_h4_adaptive_v1/usdjpy_h4_adaptive_regime_v1.json")
+          data = json.loads(path.read_text())
+          assert data["contract"] == "USDJPY_H4_ADAPTIVE_REGIME_V1"
+          assert data["execution_influence"] is False
+          assert data["live_execution_enabled"] is False
+          assert data["symbol"] == "USDJPY"
+          assert data["shadow_strategy"] == "H4_COMPRESSION_BREAKOUT"
+          assert data["shadow_geometry"] == {
+              "stop_atr": 1.5,
+              "target_atr": 3.0,
+              "reward_r": 2.0,
+              "max_hold_h4": 24,
+              "same_bar_policy": "STOP_FIRST",
+          }
+          assert data["partitions"]["oos_used_for_selection"] is False
+          assert data["cost_contract"]["router_and_gate_stress_round_trip_pips"] == 1.5
+          print("USDJPY_ADAPTIVE_HISTORICAL_PASS", data["historical_pass"])
+          baseline = data["shadow_baseline_stress"]
+          print("USDJPY_SHADOW_VALIDATION", baseline["validation"])
+          print("USDJPY_SHADOW_OOS", baseline["oos"])
+          for row in data["rows"]:
+              print(
+                  "USDJPY_ADAPTIVE_ROW",
+                  row["candidate"],
+                  "validation=", row["validation"],
+                  "validation_active_ratio=", row["validation_active_ratio"],
+                  "oos=", row["oos"],
+                  "oos_active_ratio=", row["oos_active_ratio"],
+                  "pass=", row["historical_pass"],
+              )
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: usdjpy-h4-adaptive-regime-v1
+          path: research_output_usdjpy_h4_adaptive_v1/
+          if-no-files-found: error
+          retention-days: 30
