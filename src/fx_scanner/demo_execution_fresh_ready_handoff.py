@@ -16,8 +16,10 @@ _ALLOWED_STRATEGIES_BY_SYMBOL = {
     "GBPUSD": frozenset({PAIR_STRATEGY_IDS["GBPUSD"]}),
 }
 
-# Backward-compatible aggregate used by existing tests/observers.
-_ALLOWED_STRATEGIES = frozenset().union(*_ALLOWED_STRATEGIES_BY_SYMBOL.values())
+# Backward-compatible XAU-only aliases retained for existing observers/tests.
+# Runtime filtering below uses the pair-specific map instead.
+_ALLOWED_SYMBOL = "XAUUSD"
+_ALLOWED_STRATEGIES = _ALLOWED_STRATEGIES_BY_SYMBOL[_ALLOWED_SYMBOL]
 
 
 def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
