@@ -1,0 +1,45 @@
+name: Research Adaptive Router Public 2012-2026
+
+on:
+  push:
+    branches:
+      - research/adaptive-router-public-2012-2026
+    paths:
+      - "research/adaptive_router_public_backtest.py"
+      - ".github/workflows/research-adaptive-router-public-2012-2026.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-adaptive-router-public-2012-2026
+  cancel-in-progress: true
+
+jobs:
+  public-history-backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run frozen public-history backtest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/adaptive_router_public_backtest.py | tee adaptive_router_public_2012_2026.log
+          grep '^RESULT_JSON=' adaptive_router_public_2012_2026.log | sed 's/^RESULT_JSON=//' > adaptive_router_public_2012_2026.json
+          test -s adaptive_router_public_2012_2026.json
+      - name: Show compact evidence
+        shell: bash
+        run: |
+          grep -E '^(DATA|SUMMARY|SETUP|PERIOD)' adaptive_router_public_2012_2026.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-router-public-2012-2026
+          path: |
+            adaptive_router_public_2012_2026.json
+            adaptive_router_public_2012_2026.log
+          if-no-files-found: error
