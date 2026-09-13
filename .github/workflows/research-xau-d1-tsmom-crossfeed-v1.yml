@@ -1,0 +1,87 @@
+name: Research XAU D1 TSMOM Crossfeed V1
+
+on:
+  push:
+    branches:
+      - research/xau-d1-tsmom-crossfeed-v1
+    paths:
+      - "src/fx_scanner/research_xau_d1_tsmom_crossfeed_v1.py"
+      - "src/fx_scanner/demo_xau_d1_tsmom_crossfeed_research.py"
+      - "tests/test_research_xau_d1_tsmom_crossfeed_v1.py"
+      - ".github/workflows/research-xau-d1-tsmom-crossfeed-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-d1-tsmom-crossfeed-v1
+  cancel-in-progress: true
+
+jobs:
+  broker-crossfeed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
+      - name: Validate research-only config
+        run: python -m fx_scanner.cli validate-config
+      - name: Unit tests
+        run: pytest -q tests/test_research_xau_d1_tsmom_crossfeed_v1.py
+      - name: Run exact frozen rule on cTrader cross-feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m fx_scanner.demo_xau_d1_tsmom_crossfeed_research | tee xau_d1_tsmom_crossfeed_v1.json
+      - name: Print evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("xau_d1_tsmom_crossfeed_v1.json").read_text())
+          assert data["research_only"] is True
+          assert data["execution_influence"] is False
+          assert data["candidate_selected_before_crossfeed"] is True
+          print("XAU_TSMOM_CROSSFEED_PASS", data["crossfeed_pass"])
+          for row in data["boundaries"]:
+              c = row["confirm_2024_2026"]["stress"]
+              a = row["era_2024"]["stress"]
+              b = row["era_2025_2026"]["stress"]
+              print(
+                  "XAU_TSMOM_BOUNDARY",
+                  row["boundary_hour_utc"],
+                  "n=", c["trades"],
+                  "exp=", c["expectancy_r"],
+                  "pf=", c["profit_factor"],
+                  "dd=", c["max_drawdown_r"],
+                  "bootstrap_positive=", c["bootstrap_positive_fraction_100"],
+                  "2024_exp=", a["expectancy_r"],
+                  "2025_2026_exp=", b["expectancy_r"],
+              )
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-d1-tsmom-crossfeed-v1
+          path: xau_d1_tsmom_crossfeed_v1.json
+          if-no-files-found: error
