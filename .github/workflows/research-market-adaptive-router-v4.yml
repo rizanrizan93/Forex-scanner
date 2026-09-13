@@ -1,0 +1,46 @@
+name: Research Market Adaptive Router V4
+
+on:
+  push:
+    branches:
+      - research/market-adaptive-router-v4
+    paths:
+      - "research/adaptive_router_market_adaptive_v4.py"
+      - "research/adaptive_router_market_core_v2.py"
+      - "research/adaptive_router_public_backtest.py"
+      - ".github/workflows/research-market-adaptive-router-v4.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-market-adaptive-router-v4
+  cancel-in-progress: true
+
+jobs:
+  walk-forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run purged anchored adaptive V4
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/adaptive_router_market_adaptive_v4.py | tee adaptive_router_market_v4.log
+          grep '^RESULT_JSON=' adaptive_router_market_v4.log | sed 's/^RESULT_JSON=//' > adaptive_router_market_v4.json
+          test -s adaptive_router_market_v4.json
+      - name: Show compact evidence
+        run: |
+          grep -E '^(DATA|FOLD|OOS|V3_REFERENCE_STRESS)' adaptive_router_market_v4.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-router-market-v4
+          path: |
+            adaptive_router_market_v4.json
+            adaptive_router_market_v4.log
+          if-no-files-found: error
