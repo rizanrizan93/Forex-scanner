@@ -11,6 +11,7 @@ from .execution.policy import load_execution_policy
 from .models import Bar
 from .research_four_ema_m15_v1 import (
     FROZEN_CANDIDATES,
+    build_feature_cache,
     reprice_cost,
     replay_candidate,
     split_calendar,
@@ -109,9 +110,17 @@ def _screen_pass(row: dict[str, object]) -> bool:
 
 def build_report(history: dict[str, tuple[Bar, ...]]) -> dict[str, object]:
     rows: list[dict[str, object]] = []
+    feature_caches = {
+        symbol: build_feature_cache(history[symbol])
+        for symbol in SYMBOLS
+    }
     for candidate in FROZEN_CANDIDATES:
         for symbol in SYMBOLS:
-            gross = replay_candidate(history[symbol], candidate=candidate)
+            gross = replay_candidate(
+                history[symbol],
+                candidate=candidate,
+                feature_cache=feature_caches[symbol],
+            )
             record: dict[str, object] = {
                 "candidate": candidate.name,
                 "symbol": symbol,
