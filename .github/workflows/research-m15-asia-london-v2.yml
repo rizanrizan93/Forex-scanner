@@ -7,7 +7,9 @@ on:
     paths:
       - "src/fx_scanner/research_m15_asia_london_v2.py"
       - "src/fx_scanner/demo_m15_asia_london_research.py"
+      - "src/fx_scanner/execution/ctrader_research.py"
       - "tests/test_research_m15_asia_london_v2.py"
+      - "tests/test_ctrader_research_closed_session_history_v1.py"
       - ".github/workflows/research-m15-asia-london-v2.yml"
   workflow_dispatch:
 
@@ -32,6 +34,8 @@ jobs:
       CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
       CTRADER_TOKEN_STATE_DURABLE: "1"
       CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +50,37 @@ jobs:
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
       - name: Run frozen broker-history tournament
-        run: python -m fx_scanner.demo_m15_asia_london_research | tee forex_m15_asia_london_v2.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m fx_scanner.demo_m15_asia_london_research | tee forex_m15_asia_london_v2.json
+      - name: Validate research evidence JSON
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("forex_m15_asia_london_v2.json")
+          data = json.loads(p.read_text())
+          assert data["schema_version"] == "FOREX_M15_ASIA_LONDON_FROZEN_OOS_V2"
+          assert data["research_only"] is True
+          assert data["execution_influence"] is False
+          assert data["live_execution_enabled"] is False
+          assert len(data["candidates"]) == 2
+          print("FOREX_RESEARCH_EVIDENCE_OK", data["ranking"])
+          for row in data["candidates"]:
+              name = row["candidate"]["name"]
+              base = row["base"]["oos"]
+              stress = row["stress"]["oos"]
+              print(
+                  "FOREX_OOS",
+                  name,
+                  "trades=", base["trades"],
+                  "avg_net_r=", base["average_net_r"],
+                  "stress_avg_net_r=", stress["average_net_r"],
+                  "pf=", base["profit_factor"],
+                  "max_dd_r=", base["max_drawdown_r"],
+              )
+          PY
       - name: Upload immutable research evidence
         uses: actions/upload-artifact@v4
         with:
