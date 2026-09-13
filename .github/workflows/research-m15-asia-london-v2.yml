@@ -7,8 +7,10 @@ on:
     paths:
       - "src/fx_scanner/research_m15_asia_london_v2.py"
       - "src/fx_scanner/demo_m15_asia_london_research.py"
+      - "src/fx_scanner/demo_m15_asia_london_research_validation.py"
       - "src/fx_scanner/execution/ctrader_research.py"
       - "tests/test_research_m15_asia_london_v2.py"
+      - "tests/test_demo_m15_asia_london_research.py"
       - "tests/test_ctrader_research_closed_session_history_v1.py"
       - ".github/workflows/research-m15-asia-london-v2.yml"
   workflow_dispatch:
@@ -53,7 +55,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m fx_scanner.demo_m15_asia_london_research | tee forex_m15_asia_london_v2.json
+          python -m fx_scanner.demo_m15_asia_london_research_validation | tee forex_m15_asia_london_v2.json
       - name: Validate research evidence JSON
         run: |
           python - <<'PY'
@@ -61,19 +63,23 @@ jobs:
           from pathlib import Path
           p = Path("forex_m15_asia_london_v2.json")
           data = json.loads(p.read_text())
-          assert data["schema_version"] == "FOREX_M15_ASIA_LONDON_FROZEN_OOS_V2"
+          assert data["schema_version"] == "FOREX_M15_ASIA_LONDON_FROZEN_OOS_V2_VALIDATION_SELECTED"
           assert data["research_only"] is True
           assert data["execution_influence"] is False
           assert data["live_execution_enabled"] is False
+          assert data["selection_partition"] == "validation"
+          assert data["oos_used_for_selection"] is False
           assert len(data["candidates"]) == 2
-          print("FOREX_RESEARCH_EVIDENCE_OK", data["ranking"])
+          print("FOREX_VALIDATION_RANKING", data["ranking"])
           for row in data["candidates"]:
               name = row["candidate"]["name"]
+              validation = row["base"]["validation"]
               base = row["base"]["oos"]
               stress = row["stress"]["oos"]
               print(
                   "FOREX_OOS",
                   name,
+                  "validation_avg_net_r=", validation["average_net_r"],
                   "trades=", base["trades"],
                   "avg_net_r=", base["average_net_r"],
                   "stress_avg_net_r=", stress["average_net_r"],
