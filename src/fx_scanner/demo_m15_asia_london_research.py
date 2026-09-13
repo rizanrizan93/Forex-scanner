@@ -74,13 +74,13 @@ def fetch_monthly_history(
                 count=REQUEST_COUNT,
             )
         )
-        for row in fetched:
+        in_window = tuple(row for row in fetched if start <= row.timestamp <= end)
+        # cTrader may return older bars than fromTimestamp when count is supplied.
+        # Those bars are transport padding only. Filtering here is fail-safe: no
+        # out-of-window observation can enter the replay or any calendar partition.
+        for row in in_window:
             if row.timeframe != TIMEFRAME:
                 raise ValueError(f"unexpected timeframe for {symbol}: {row.timeframe}")
-            if not start <= row.timestamp <= end:
-                raise ValueError(
-                    f"out-of-window broker bar for {symbol}: {row.timestamp.isoformat()}"
-                )
             by_timestamp[row.timestamp] = row
         sleeper(REQUEST_DELAY_SECONDS)
     rows = tuple(by_timestamp[key] for key in sorted(by_timestamp))
@@ -105,10 +105,7 @@ def _partition_report(
         validation_end=VALIDATION_END,
         oos_end=OOS_END,
     )
-    return {
-        name: _summary_dict(rows)
-        for name, rows in split.items()
-    }
+    return {name: _summary_dict(rows) for name, rows in split.items()}
 
 
 def build_report(history_by_symbol: dict[str, tuple[Bar, ...]]) -> dict[str, object]:
@@ -176,10 +173,7 @@ def build_report(history_by_symbol: dict[str, tuple[Bar, ...]]) -> dict[str, obj
             "validation_end": VALIDATION_END.isoformat(),
             "oos_end": OOS_END.isoformat(),
         },
-        "cost_pips": {
-            "base": BASE_COST_PIPS,
-            "stress": STRESS_COST_PIPS,
-        },
+        "cost_pips": {"base": BASE_COST_PIPS, "stress": STRESS_COST_PIPS},
         "selection_rule": (
             "rank by pooled OOS stress average_net_r, then pooled OOS base average_net_r, "
             "then pooled OOS base profit_factor"
@@ -199,10 +193,7 @@ def run() -> int:
     feed = build_ctrader_research_feed(policy, SYMBOLS)
     try:
         feed.ensure_connected()
-        history = {
-            symbol: fetch_monthly_history(feed, symbol)
-            for symbol in SYMBOLS
-        }
+        history = {symbol: fetch_monthly_history(feed, symbol) for symbol in SYMBOLS}
     finally:
         try:
             feed.close()
