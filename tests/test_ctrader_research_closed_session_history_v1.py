@@ -67,7 +67,7 @@ def test_historical_bars_allowed_when_broker_session_closed_but_quote_remains_bl
     saturday = datetime(2026, 9, 12, 0, 0, tzinfo=UTC)
 
     with pytest.raises(CollectorUnavailable, match="CTRADER_MARKET_CLOSED:XAUUSD:OUTSIDE_BROKER_SESSION"):
-        feed.quote("XAUUSD")
+        feed.quote("XAUUSD", at=saturday)
 
     result = feed.historical_bars(
         "XAUUSD",
