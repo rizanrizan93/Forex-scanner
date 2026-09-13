@@ -1,0 +1,45 @@
+name: Research XAU Expansion V4 Walk-forward
+
+on:
+  push:
+    branches:
+      - research/market-adaptive-router-v4
+    paths:
+      - "research/adaptive_xau_expansion_v4_walkforward.py"
+      - "research/adaptive_router_public_backtest.py"
+      - ".github/workflows/research-xau-expansion-v4-walkforward.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-expansion-v4-walkforward
+  cancel-in-progress: true
+
+jobs:
+  walk-forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run XAU parameter walk-forward
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/adaptive_xau_expansion_v4_walkforward.py | tee xau_expansion_v4_walkforward.log
+          grep '^RESULT_JSON=' xau_expansion_v4_walkforward.log | sed 's/^RESULT_JSON=//' > xau_expansion_v4_walkforward.json
+          test -s xau_expansion_v4_walkforward.json
+      - name: Show compact evidence
+        run: |
+          grep -E '^(FOLD|OOS|CENTER_STRESS)' xau_expansion_v4_walkforward.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-expansion-v4-walkforward
+          path: |
+            xau_expansion_v4_walkforward.json
+            xau_expansion_v4_walkforward.log
+          if-no-files-found: error
