@@ -1,0 +1,78 @@
+name: Research XAU D1 Adaptive Regime V1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/xau-d1-adaptive-regime-v1
+    paths:
+      - "research/xau_d1_adaptive_regime_v1.py"
+      - ".github/workflows/research-xau-d1-adaptive-regime-v1.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-d1-adaptive-regime-v1
+  cancel-in-progress: true
+
+jobs:
+  historical-screen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Syntax check
+        run: python -m py_compile research/xau_d1_adaptive_regime_v1.py
+      - name: Run preregistered adaptive XAU screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf research_output_xau_d1_adaptive_v1
+          python research/xau_d1_adaptive_regime_v1.py | tee xau_d1_adaptive_console.json
+      - name: Verify immutable contract and print evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path("research_output_xau_d1_adaptive_v1/xau_d1_adaptive_regime_v1.json")
+          d = json.loads(p.read_text())
+          assert d["contract"] == "XAU_D1_ADAPTIVE_REGIME_V1"
+          assert d["execution_influence"] is False
+          assert d["live_execution_enabled"] is False
+          assert d["symbol"] == "XAUUSD"
+          assert d["boundary"] == "17:00 America/New_York DST-aware"
+          assert d["shadow_strategy"] == "D1_TSMOM_60_200"
+          assert d["shadow_geometry"]["stop_atr"] == 2.0
+          assert d["shadow_geometry"]["target_atr"] == 4.0
+          assert d["shadow_geometry"]["max_hold_d1"] == 30
+          assert d["partitions"]["oos_used_for_selection"] is False
+          assert d["rolling_contract"]["same_thresholds_as_prior_XAU_D1_ROLLING_STABILITY_V1"] is True
+          print("XAU_ADAPTIVE_HISTORICAL_PASS", d["historical_pass"])
+          print("XAU_STATIC_STRESS_OOS", d["shadow_baseline_stress"]["oos"])
+          print("XAU_STATIC_ROLLING", d["shadow_baseline_rolling"])
+          for row in d["rows"]:
+              print(
+                  "XAU_ADAPTIVE_ROW",
+                  row["candidate"],
+                  "validation=", row["validation"],
+                  "validation_active_ratio=", row["validation_active_ratio"],
+                  "oos=", row["oos"],
+                  "oos_active_ratio=", row["oos_active_ratio"],
+                  "rolling_pass=", row["rolling"]["passed"],
+                  "pass=", row["historical_pass"],
+              )
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-d1-adaptive-regime-v1
+          path: research_output_xau_d1_adaptive_v1/
+          if-no-files-found: error
+          retention-days: 30
