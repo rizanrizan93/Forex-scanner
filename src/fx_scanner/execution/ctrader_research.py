@@ -53,8 +53,13 @@ class CTraderResearchFeed:
             )
         return status
 
-    def quote(self, symbol: str):
-        self._require_open_market(symbol)
+    def quote(self, symbol: str, *, at: datetime | None = None):
+        """Return a quote only when the broker schedule is open.
+
+        ``at`` is for deterministic research/testing. Normal runtime callers
+        omit it and continue to evaluate the current broker clock.
+        """
+        self._require_open_market(symbol, at=at)
         return self._session.quote(symbol)
 
     def refresh_quote_snapshot(self, symbol: str) -> None:
@@ -74,13 +79,7 @@ class CTraderResearchFeed:
         self, symbol: str, timeframe: str, *, from_time: datetime,
         to_time: datetime, count: int,
     ):
-        """Fetch read-only trendbars without weakening live-session guards.
-
-        cTrader historical data remains useful when a symbol is outside its live
-        trading session. Do not call ``_require_open_market`` here. The current
-        quote is used only as a best-effort metadata spread proxy; failure to
-        obtain a cached quote must not block the historical request.
-        """
+        """Fetch read-only trendbars without weakening live-session guards."""
         with self._lock:
             self.ensure_connected()
             spread = 0.0
@@ -88,9 +87,6 @@ class CTraderResearchFeed:
                 quote = self._session.quote(symbol)
                 spread = max(0.0, float(quote.ask) - float(quote.bid))
             except CollectorUnavailable:
-                # Historical OHLC does not depend on a live spread. Execution
-                # spread and quote freshness are validated independently on the
-                # order path, so a zero metadata proxy cannot authorize a trade.
                 spread = 0.0
             return self._session.historical_bars(
                 symbol, timeframe, from_time=from_time, to_time=to_time,
