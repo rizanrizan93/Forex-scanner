@@ -1,0 +1,59 @@
+name: Research Four Pair Strategy Search V2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/four-pair-strategy-search-v1
+    paths:
+      - 'research/four_pair_strategy_search_v2.py'
+      - '.github/workflows/research-four-pair-strategy-search-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  pair:
+    strategy:
+      fail-fast: false
+      matrix:
+        symbol: [EURUSD, GBPUSD, USDJPY, AUDUSD]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      CORE_SYMBOL: ${{ matrix.symbol }}
+      PYTHONPATH: research
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Run V2 trend-trailing and mean-target tournament
+        run: |
+          rm -rf research_output_four_pair_v2
+          mkdir -p research_output_four_pair_v2
+          python research/four_pair_strategy_search_v2.py | tee research_output_four_pair_v2/console-${CORE_SYMBOL}.txt
+      - name: Verify research-only contract
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          s = os.environ['CORE_SYMBOL']
+          p = Path(f'research_output_four_pair_v2/four_pair_strategy_search_v2_{s}.json')
+          d = json.loads(p.read_text())
+          assert d['contract'] == 'FOUR_PAIR_STRATEGY_SEARCH_V2'
+          assert d['execution_influence'] is False
+          assert d['symbol'] == s
+          assert d['coverage']['h1_rows'] >= 70000, d['coverage']
+          assert len(d['candidate_set']) == 6
+          print(s, 'V2 research contract: PASS')
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: four-pair-${{ matrix.symbol }}-v2
+          path: research_output_four_pair_v2/
+          retention-days: 30
