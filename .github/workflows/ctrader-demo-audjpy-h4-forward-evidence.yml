@@ -1,0 +1,53 @@
+name: cTrader Demo AUDJPY H4 Forward Evidence
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/watch-gbpaud-audjpy-crossfeed-v1
+    paths:
+      - "src/fx_scanner/demo_audjpy_forward_evidence.py"
+      - "src/fx_scanner/demo_audjpy_forward_observer.py"
+      - ".github/workflows/ctrader-demo-audjpy-h4-forward-evidence.yml"
+  schedule:
+    - cron: "37 */4 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-demo-audjpy-h4-forward-evidence
+  cancel-in-progress: true
+
+jobs:
+  observe-audjpy-h4:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install cTrader research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install -e .
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Record non-authoritative AUDJPY H4 forward evaluation
+        run: python -m fx_scanner.demo_audjpy_forward_observer

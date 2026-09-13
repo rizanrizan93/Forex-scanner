@@ -1,0 +1,81 @@
+name: Research Watch Pair cTrader Crossfeed V1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/watch-gbpaud-audjpy-crossfeed-v1
+    paths:
+      - research/ctrader_watch_pair_crossfeed_v1.py
+      - .github/workflows/research-watch-pair-ctrader-crossfeed-v1.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-watch-pair-ctrader-crossfeed-v1
+  cancel-in-progress: true
+
+jobs:
+  crossfeed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install -e .
+      - name: Validate fail-closed project config
+        run: python -m fx_scanner.cli validate-config
+      - name: Run broker-native cross-feed replay
+        run: |
+          set -o pipefail
+          rm -rf research_output_watch_pair_crossfeed_v1
+          python research/ctrader_watch_pair_crossfeed_v1.py | tee research_output_watch_pair_crossfeed_v1-console.txt
+      - name: Validate research contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('research_output_watch_pair_crossfeed_v1/ctrader_watch_pair_crossfeed_v1.json')
+          d = json.loads(p.read_text())
+          assert d['contract'] == 'CTRADER_WATCH_PAIR_CROSSFEED_V1'
+          assert d['execution_influence'] is False
+          assert d['promotion_authority'] is False
+          assert set(d['pairs']) == {'GBPAUD', 'AUDJPY'}
+          for symbol, row in d['pairs'].items():
+              assert row['bars'] > 0, (symbol, row)
+              assert row['decision'] in {
+                  'BROKER_FEED_SUPPORT',
+                  'BROKER_FEED_CONTRADICTS',
+                  'INSUFFICIENT_BROKER_HISTORY',
+                  'INSUFFICIENT_BROKER_TRADES',
+              }
+          print('watch-pair cTrader cross-feed contract: PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: watch-pair-ctrader-crossfeed-v1
+          path: |
+            research_output_watch_pair_crossfeed_v1/
+            research_output_watch_pair_crossfeed_v1-console.txt
+          retention-days: 30
