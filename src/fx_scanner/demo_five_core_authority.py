@@ -2,27 +2,28 @@ from __future__ import annotations
 
 """Canonical Five-Core DEMO runtime authority.
 
-XAUUSD D1_TSMOM_60_200 was previously demoted after its preregistered rolling
-stability gate failed. The frozen strategy subsequently passed an independent
-cTrader cross-feed robustness study and the user explicitly authorized adding
-it back to DEMO execution on 2026-09-13.
+This authority is DEMO-only. XAUUSD D1_TSMOM_60_200 remains authorized after
+its independent cTrader cross-feed study. On 2026-09-13 the user additionally
+authorized the frozen public-history leads USDJPY D1_DONCHIAN55_200 and
+GBPUSD H4_MEAN_REVERT_Z2_TO_SMA20 for DEMO forward collection.
 
-This module grants authority only to the exact frozen XAU TSMOM strategy path.
-USDJPY remains shadow-only. LIVE execution is controlled elsewhere and remains
-locked.
+EURUSD and AUDUSD remain non-execution research lanes. LIVE execution is
+controlled elsewhere and remains locked.
 """
 
-AUTHORITY_CONTRACT = "FIVE_CORE_AUTHORITY_TSMOM_DEMO_REPROMOTION_V2"
+AUTHORITY_CONTRACT = "FIVE_CORE_AUTHORITY_PAIR_SPECIFIC_DEMO_V3"
 PREVIOUS_DEMOTION_REASON = "PREREGISTERED_XAU_ROLLING_STABILITY_GATE_FAILED"
-PROMOTION_REASON = "USER_AUTHORIZED_AFTER_INDEPENDENT_CTRADER_CROSSFEED"
-DEMOTION_REASON = "SUPERSEDED_BY_EXPLICIT_DEMO_REPROMOTION"
+PROMOTION_REASON = "USER_AUTHORIZED_DEMO_AFTER_PUBLIC_HISTORY_ROBUSTNESS_SEARCH"
+DEMOTION_REASON = "SUPERSEDED_BY_PAIR_SPECIFIC_DEMO_AUTHORITY_V3"
 
-# Exact Five-Core DEMO authority: XAUUSD only. The router binds XAUUSD to
-# D1_TSMOM_60_200; no other Five-Core strategy receives broker-order authority.
-EXECUTION_SYMBOLS = frozenset({"XAUUSD"})
+# Exact pair-specific DEMO authority. The router binds each symbol to one frozen
+# strategy identity; unknown or legacy strategies remain fail-closed.
+EXECUTION_SYMBOLS = frozenset({"XAUUSD", "USDJPY", "GBPUSD"})
 
-# USDJPY remains research/shadow only.
-SHADOW_SYMBOLS = frozenset({"USDJPY"})
+# No Five-Core pair is shadow-only after this explicit DEMO promotion. AUDUSD
+# remains research WATCH but not execution-authorized and is classified NO_TRADE
+# by the router until its regime edge is independently confirmed.
+SHADOW_SYMBOLS = frozenset()
 
 
 def execution_authorized(symbol: str) -> bool:
