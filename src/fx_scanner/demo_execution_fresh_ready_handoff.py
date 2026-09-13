@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from . import demo_fresh_ready_handoff as base
 from .demo_five_core_router import PAIR_STRATEGY_IDS
+from .demo_xau_expansion_v42 import STRATEGY_ID as XAU_EXPANSION_V42_STRATEGY_ID
 from .storage.supabase_operational import (
     OperationalStoreUnavailable,
     SupabaseOperationalStore,
@@ -9,15 +10,25 @@ from .storage.supabase_operational import (
 
 _ORIGINAL_INSTALL_FRESH = base.install_fresh_execution_ready_handoff
 _ALLOWED_SYMBOL = "XAUUSD"
-_ALLOWED_STRATEGY = PAIR_STRATEGY_IDS[_ALLOWED_SYMBOL]
+_ALLOWED_STRATEGIES = frozenset(
+    {
+        PAIR_STRATEGY_IDS[_ALLOWED_SYMBOL],
+        XAU_EXPANSION_V42_STRATEGY_ID,
+    }
+)
 
 
 def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
-    """Install freshness first, then fail-closed immutable strategy identity filtering."""
+    """Install freshness, then fail-closed exact strategy identity filtering.
+
+    Only the two explicitly promoted XAUUSD DEMO strategies are allowed through
+    the shared broker handoff: D1_TSMOM_60_200 and D1_EXPANSION_S2R2T2H0_V42.
+    Unknown/legacy strategy identities remain blocked.
+    """
     _ORIGINAL_INSTALL_FRESH(max_age_seconds=max_age_seconds)
     original_list = SupabaseOperationalStore.list_execution_ready_signals
 
-    def _five_core_rows(self, *, limit: int = 10):
+    def _promoted_xau_rows(self, *, limit: int = 10):
         requested = max(1, int(limit))
         rows = tuple(original_list(self, limit=max(50, requested * 10)))
         candidate_ids = [
@@ -39,13 +50,13 @@ def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
             )
         except Exception as exc:
             raise OperationalStoreUnavailable(
-                f"five-core strategy identity read failed: {exc}"
+                f"promoted strategy identity read failed: {exc}"
             ) from exc
 
         allowed_ids = {
             str(row.get("signal_key"))
             for row in (response.data or [])
-            if str(row.get("code") or "") == _ALLOWED_STRATEGY
+            if str(row.get("code") or "") in _ALLOWED_STRATEGIES
         }
         filtered = tuple(
             row for row in rows
@@ -54,11 +65,11 @@ def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
         )
         return filtered[:requested]
 
-    SupabaseOperationalStore.list_execution_ready_signals = _five_core_rows
+    SupabaseOperationalStore.list_execution_ready_signals = _promoted_xau_rows
 
 
 def main() -> int:
-    """Execute only fresh XAUUSD D1_TSMOM_60_200 DEMO signals."""
+    """Execute only fresh, exact promoted XAUUSD DEMO strategy signals."""
     base.install_fresh_execution_ready_handoff = _install_five_core_identity_filter
     return base.main()
 
