@@ -1,0 +1,137 @@
+{
+  "schema_version": "XAU_EXPANSION_FORWARD_FREEZE_V1",
+  "frozen_at_utc": "2026-09-13T09:35:00Z",
+  "forward_start_utc": "2026-09-14T00:00:00Z",
+  "research_only": true,
+  "execution_influence": false,
+  "live_execution_enabled": false,
+  "auto_promotion_enabled": false,
+  "symbol": "XAUUSD",
+  "setup": "EXPANSION_BREAKOUT",
+  "d1_config": {
+    "config_id": "S2R2T2H0",
+    "tr_mult": 1.45,
+    "atr_mult": 1.25,
+    "adx_min": 22.0,
+    "body_atr_min": 0.6,
+    "lookback": 30,
+    "buffer_atr": 0.05,
+    "stop_atr": 1.25,
+    "rr": 2.6,
+    "trend_mode": 2,
+    "max_hold_d1_bars": 7
+  },
+  "candidates": [
+    {
+      "candidate_id": "XAU_V4_CONTROL_OPEN_STATIC",
+      "role": "CONTROL",
+      "entry": {
+        "mode": "OPEN",
+        "timeframe": "H1_EXECUTION_ON_D1_SETUP"
+      },
+      "management": {
+        "mode": "STATIC",
+        "dynamic_stop": false
+      },
+      "historical_research_reference_stress_0_10R": {
+        "median_net_r": 10.7972,
+        "median_expectancy_r": 0.780738,
+        "median_profit_factor": 2.8733,
+        "median_max_drawdown_pct_proxy": 0.9383,
+        "median_coverage": 1.0
+      }
+    },
+    {
+      "candidate_id": "XAU_V42_OPEN_DEFERRED_STEP",
+      "role": "PRIMARY_PROFIT_PROTECTION_CHALLENGER",
+      "entry": {
+        "mode": "OPEN",
+        "timeframe": "H1_EXECUTION_ON_D1_SETUP"
+      },
+      "management": {
+        "mode": "DEFERRED_STEP",
+        "decision_timeframe": "H1_CLOSE",
+        "next_bar_effect": true,
+        "stages": [
+          {"favorable_r_gte": 1.25, "favorable_r_lt": 1.75, "locked_r": 0.10},
+          {"favorable_r_gte": 1.75, "favorable_r_lt": 2.25, "locked_r": 0.50},
+          {"favorable_r_gte": 2.25, "favorable_r_lt": 2.50, "locked_r": 1.00},
+          {"favorable_r_gte": 2.50, "trail_formula": "max(1.00, favorable_r - 1.00)"}
+        ]
+      },
+      "historical_research_reference_stress_0_10R": {
+        "median_net_r": 11.4609,
+        "median_expectancy_r": 0.835672,
+        "median_profit_factor": 3.0838,
+        "median_max_drawdown_pct_proxy": 0.6091,
+        "net_retention_vs_static": 1.0615
+      },
+      "historical_note": "Dominated STATIC on Net R, expectancy, PF and DD on each 00/21/22 UTC boundary under both 0.10R and 0.15R cost, but this observation is post-hoc and not promotion evidence."
+    },
+    {
+      "candidate_id": "XAU_V41_PB25_STATIC",
+      "role": "ENTRY_TIMING_CHALLENGER",
+      "entry": {
+        "mode": "PB25_24H",
+        "wait_hours": 24,
+        "limit_offset_r_adverse_from_baseline_entry": 0.25,
+        "timeframe": "H1_EXECUTION_ON_D1_SETUP"
+      },
+      "management": {
+        "mode": "STATIC",
+        "dynamic_stop": false
+      },
+      "historical_research_reference_stress_0_10R": {
+        "median_net_r": 7.8621,
+        "median_expectancy_r": 0.873572,
+        "median_profit_factor": 2.7817,
+        "median_coverage": 0.6429
+      }
+    }
+  ],
+  "explicitly_not_frozen": [
+    {
+      "variant": "H4_ALIGN_24H",
+      "reason": "No incremental historical value versus OPEN with the strict D1 EMA hierarchy."
+    },
+    {
+      "variant": "CURRENT_RUNTIME_LOCK_AS_RESEARCH_WINNER",
+      "reason": "Raised PF and reduced DD but retained only about 60% of STATIC median Net R."
+    },
+    {
+      "variant": "PB25_PLUS_DEFERRED_STEP",
+      "reason": "Not tested after freeze because combining two historically attractive overlays would add post-hoc degrees of freedom."
+    },
+    {
+      "variant": "TRAILING_EDGE_GATE_V4",
+      "reason": "Post-hoc regime gate remains shadow-only and is excluded from this clean prospective comparison."
+    }
+  ],
+  "forward_rules": {
+    "parameters_immutable_during_forward_window": true,
+    "historical_window_must_not_be_remined_for_candidate_changes": true,
+    "daily_boundary_replicas_must_not_be_counted_as_independent_trades": true,
+    "cost_reporting_r": [0.05, 0.10, 0.15],
+    "same_bar_policy": "STOP_FIRST",
+    "required_reporting": [
+      "completed_trades",
+      "fill_coverage",
+      "win_rate",
+      "net_r",
+      "expectancy_r",
+      "profit_factor",
+      "max_drawdown",
+      "MAE_MFE",
+      "exit_reason_distribution"
+    ],
+    "promotion_from_this_manifest": "PROHIBITED",
+    "next_decision": "Prospective shadow evidence only; any later execution promotion requires a separate explicit gate and must not use V4.1/V4.2 historical results as if they were untouched evidence."
+  },
+  "evidence": {
+    "v41_workflow_run": 34749555988,
+    "v41_artifact_id": 10315472191,
+    "v42_workflow_run": 34749705047,
+    "v42_artifact_id": 10315670123,
+    "evidence_markdown": "research/results/xau_expansion_v41_v42_execution_management.md"
+  }
+}
