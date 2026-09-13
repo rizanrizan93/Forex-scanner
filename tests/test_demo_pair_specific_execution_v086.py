@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from fx_scanner.demo_conviction_sizing import select_demo_conviction_sizing
+from fx_scanner.demo_execution_fresh_ready_handoff import _ALLOWED_STRATEGIES_BY_SYMBOL
 from fx_scanner.demo_five_core_router import (
     EXECUTION_SYMBOLS,
     FIVE_CORE_SYMBOLS,
@@ -22,6 +23,8 @@ def test_five_core_execution_registry_is_exact_and_pair_specific():
     assert PAIR_STRATEGY_IDS["USDJPY"] == "D1_DONCHIAN55_200"
     assert PAIR_STRATEGY_IDS["GBPUSD"] == "H4_MEAN_REVERT_Z2_TO_SMA20"
     assert PAIR_STRATEGY_IDS["EURUSD"] == "NO_TRADE_UNTIL_VALIDATED"
+    assert PAIR_STRATEGY_IDS["USDJPY"] in _ALLOWED_STRATEGIES_BY_SYMBOL["USDJPY"]
+    assert PAIR_STRATEGY_IDS["GBPUSD"] in _ALLOWED_STRATEGIES_BY_SYMBOL["GBPUSD"]
 
 
 def test_forward_demo_score_keeps_pair_orders_at_conservative_floor():
@@ -48,8 +51,7 @@ def test_active_workflows_use_five_core_wrappers_and_bounded_demo_contract():
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in auto
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "0"' in auto
     assert "demo_five_core_candidate_producer" in fast_wrapper
-    assert "D1_TSMOM_60_200" in handoff
-    assert "D1_DONCHIAN55_200" not in handoff  # resolved via pair registry, not duplicated literals
+    assert "_ALLOWED_STRATEGIES_BY_SYMBOL" in handoff
     assert "PAIR_STRATEGY_IDS" in handoff
     assert "demo_execution_technical_producer" in discovery
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in discovery
