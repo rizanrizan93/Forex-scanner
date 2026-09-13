@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from . import demo_fresh_ready_handoff as base
+from .demo_five_core_authority import EXECUTION_SYMBOLS
 from .demo_five_core_router import PAIR_STRATEGY_IDS
 from .demo_xau_expansion_v42 import STRATEGY_ID as XAU_EXPANSION_V42_STRATEGY_ID
 from .storage.supabase_operational import (
@@ -9,32 +10,30 @@ from .storage.supabase_operational import (
 )
 
 _ORIGINAL_INSTALL_FRESH = base.install_fresh_execution_ready_handoff
+_ALLOWED_STRATEGIES_BY_SYMBOL = {
+    "XAUUSD": frozenset({PAIR_STRATEGY_IDS["XAUUSD"], XAU_EXPANSION_V42_STRATEGY_ID}),
+    "USDJPY": frozenset({PAIR_STRATEGY_IDS["USDJPY"]}),
+    "GBPUSD": frozenset({PAIR_STRATEGY_IDS["GBPUSD"]}),
+}
+
+# Backward-compatible XAU-only aliases retained for existing observers/tests.
+# Runtime filtering below uses the pair-specific map instead.
 _ALLOWED_SYMBOL = "XAUUSD"
-_ALLOWED_STRATEGIES = frozenset(
-    {
-        PAIR_STRATEGY_IDS[_ALLOWED_SYMBOL],
-        XAU_EXPANSION_V42_STRATEGY_ID,
-    }
-)
+_ALLOWED_STRATEGIES = _ALLOWED_STRATEGIES_BY_SYMBOL[_ALLOWED_SYMBOL]
 
 
 def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
-    """Install freshness, then fail-closed exact strategy identity filtering.
-
-    Only the two explicitly promoted XAUUSD DEMO strategies are allowed through
-    the shared broker handoff: D1_TSMOM_60_200 and D1_EXPANSION_S2R2T2H0_V42.
-    Unknown/legacy strategy identities remain blocked.
-    """
+    """Install freshness, then fail-closed exact symbol/strategy filtering."""
     _ORIGINAL_INSTALL_FRESH(max_age_seconds=max_age_seconds)
     original_list = SupabaseOperationalStore.list_execution_ready_signals
 
-    def _promoted_xau_rows(self, *, limit: int = 10):
+    def _promoted_pair_rows(self, *, limit: int = 10):
         requested = max(1, int(limit))
         rows = tuple(original_list(self, limit=max(50, requested * 10)))
         candidate_ids = [
             str(row.get("id"))
             for row in rows
-            if str(row.get("symbol") or "").upper().strip() == _ALLOWED_SYMBOL
+            if str(row.get("symbol") or "").upper().strip() in EXECUTION_SYMBOLS
             and row.get("id")
         ]
         if not candidate_ids:
@@ -53,23 +52,27 @@ def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
                 f"promoted strategy identity read failed: {exc}"
             ) from exc
 
-        allowed_ids = {
-            str(row.get("signal_key"))
+        code_by_signal = {
+            str(row.get("signal_key")): str(row.get("code") or "")
             for row in (response.data or [])
-            if str(row.get("code") or "") in _ALLOWED_STRATEGIES
+            if row.get("signal_key")
         }
-        filtered = tuple(
-            row for row in rows
-            if str(row.get("id")) in allowed_ids
-            and str(row.get("symbol") or "").upper().strip() == _ALLOWED_SYMBOL
-        )
-        return filtered[:requested]
+        filtered = []
+        for row in rows:
+            signal_id = str(row.get("id") or "")
+            symbol = str(row.get("symbol") or "").upper().strip()
+            if not signal_id or symbol not in EXECUTION_SYMBOLS:
+                continue
+            allowed = _ALLOWED_STRATEGIES_BY_SYMBOL.get(symbol, frozenset())
+            if code_by_signal.get(signal_id) in allowed:
+                filtered.append(row)
+        return tuple(filtered[:requested])
 
-    SupabaseOperationalStore.list_execution_ready_signals = _promoted_xau_rows
+    SupabaseOperationalStore.list_execution_ready_signals = _promoted_pair_rows
 
 
 def main() -> int:
-    """Execute only fresh, exact promoted XAUUSD DEMO strategy signals."""
+    """Execute only fresh, exact promoted pair-specific DEMO strategy signals."""
     base.install_fresh_execution_ready_handoff = _install_five_core_identity_filter
     return base.main()
 

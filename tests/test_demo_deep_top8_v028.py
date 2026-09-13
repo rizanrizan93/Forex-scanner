@@ -17,9 +17,11 @@ def test_active_demo_fast_lane_is_five_core_and_process_local():
     assert 'CTRADER_DEMO_DEEP_ANALYSIS_TOP: "1"' not in discovery
     assert "apply_demo_deep_analysis_top" in calibration
     assert "demo_five_core_candidate_producer" in wrapper
-    assert 'EXECUTION_SYMBOLS = frozenset({"XAUUSD"})' in router
-    assert 'SHADOW_SYMBOLS = frozenset({"USDJPY"})' in router
-    assert 'NO_TRADE_SYMBOLS = frozenset({"EURUSD", "GBPUSD", "AUDUSD"})' in router
+    assert 'EXECUTION_SYMBOLS = frozenset({"XAUUSD", "USDJPY", "GBPUSD"})' in router
+    assert 'SHADOW_SYMBOLS = frozenset()' in router
+    assert 'NO_TRADE_SYMBOLS = frozenset({"EURUSD", "AUDUSD"})' in router
+    assert '"USDJPY": "D1_DONCHIAN55_200"' in router
+    assert '"GBPUSD": "H4_MEAN_REVERT_Z2_TO_SMA20"' in router
     assert "deep_analysis_top: 5" in strategy
 
 

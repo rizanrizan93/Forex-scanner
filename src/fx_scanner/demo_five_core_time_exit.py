@@ -7,7 +7,8 @@ from typing import Any
 from .cli import _require_demo_autotrade_opt_in
 from .config import load_project_config
 from .demo_broker_pnl import capture_ctrader_demo_snapshot
-from .demo_five_core_router import D1_MAX_HOLD_BARS, PAIR_STRATEGY_IDS
+from .demo_five_core_authority import EXECUTION_SYMBOLS
+from .demo_five_core_router import D1_MAX_HOLD_BARS, H4_MAX_HOLD_BARS, PAIR_STRATEGY_IDS
 from .demo_market_schedule import apply_demo_market_schedule
 from .demo_structural_profit_protector import (
     _close_full_position,
@@ -21,7 +22,11 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
 WORKER_NAME = "ctrader_demo_five_core_time_exit"
-TARGET_STRATEGY = PAIR_STRATEGY_IDS["XAUUSD"]
+TIME_EXIT_CONTRACTS = {
+    "XAUUSD": (PAIR_STRATEGY_IDS["XAUUSD"], "D1", 86400, D1_MAX_HOLD_BARS),
+    "USDJPY": (PAIR_STRATEGY_IDS["USDJPY"], "D1", 86400, D1_MAX_HOLD_BARS),
+    "GBPUSD": (PAIR_STRATEGY_IDS["GBPUSD"], "H4", 14400, H4_MAX_HOLD_BARS),
+}
 
 
 def _strategy_id_for_signal(store: SupabaseOperationalStore, signal_id: str) -> str | None:
@@ -43,26 +48,36 @@ def _strategy_id_for_signal(store: SupabaseOperationalStore, signal_id: str) -> 
     return str(rows[0].get("code") or "") or None
 
 
-def _closed_d1_bars_since_open(session, *, symbol: str, opened_at: datetime, now: datetime) -> int:
-    start = opened_at.astimezone(UTC) - timedelta(days=3)
+def _closed_bars_since_open(
+    session,
+    *,
+    symbol: str,
+    timeframe: str,
+    timeframe_seconds: int,
+    max_hold_bars: int,
+    opened_at: datetime,
+    now: datetime,
+) -> int:
+    # Calendar padding covers 24/5 weekend gaps for both D1 and H4.
+    start = opened_at.astimezone(UTC) - timedelta(seconds=timeframe_seconds * (max_hold_bars + 20) * 1.65)
     fetched = tuple(
         session.historical_bars(
             symbol,
-            "D1",
+            timeframe,
             from_time=start,
             to_time=now,
-            count=D1_MAX_HOLD_BARS + 12,
+            count=max_hold_bars + 24,
         )
     )
     closed = _closed_bars(
         fetched,
         as_of=now,
-        timeframe_seconds=86400,
+        timeframe_seconds=timeframe_seconds,
     )
     return sum(
         1
         for row in closed
-        if row.timestamp + timedelta(seconds=86400) > opened_at.astimezone(UTC)
+        if row.timestamp + timedelta(seconds=timeframe_seconds) > opened_at.astimezone(UTC)
     )
 
 
@@ -99,13 +114,14 @@ def run() -> int:
 
         for position in snapshot.positions:
             symbol = str(position.symbol).upper()
-            if symbol != "XAUUSD":
+            if symbol not in EXECUTION_SYMBOLS or symbol not in TIME_EXIT_CONTRACTS:
                 continue
             signal_id = _signal_id_from_comment(position.comment, prefix)
             if signal_id is None:
                 continue
+            expected_strategy, timeframe, timeframe_seconds, max_hold = TIME_EXIT_CONTRACTS[symbol]
             strategy_id = _strategy_id_for_signal(store, signal_id)
-            if strategy_id != TARGET_STRATEGY:
+            if strategy_id != expected_strategy:
                 continue
             evaluated += 1
             opened_at = position.opened_at
@@ -113,13 +129,17 @@ def run() -> int:
                 decisions.append({
                     "position_id": str(position.position_id),
                     "signal_id": signal_id,
+                    "symbol": symbol,
                     "reason": "OPENED_AT_UNAVAILABLE",
                 })
                 continue
 
-            closed_bars = _closed_d1_bars_since_open(
+            closed_bars = _closed_bars_since_open(
                 session,
                 symbol=symbol,
+                timeframe=timeframe,
+                timeframe_seconds=timeframe_seconds,
+                max_hold_bars=max_hold,
                 opened_at=opened_at,
                 now=now,
             )
@@ -128,12 +148,13 @@ def run() -> int:
                 "signal_id": signal_id,
                 "symbol": symbol,
                 "strategy_id": strategy_id,
-                "closed_d1_bars": closed_bars,
-                "max_hold_bars": D1_MAX_HOLD_BARS,
-                "reason": "HOLD" if closed_bars < D1_MAX_HOLD_BARS else "MAX_HOLD_REACHED",
+                "timeframe": timeframe,
+                "closed_bars": closed_bars,
+                "max_hold_bars": max_hold,
+                "reason": "HOLD" if closed_bars < max_hold else "MAX_HOLD_REACHED",
             }
             decisions.append(decision)
-            if closed_bars < D1_MAX_HOLD_BARS:
+            if closed_bars < max_hold:
                 continue
 
             raw_volume = int(raw_volumes.get(int(position.position_id), 0) or 0)
@@ -148,8 +169,8 @@ def run() -> int:
                 broker_order_id=f"TIME_EXIT_REQUEST:{position.position_id}",
                 event_type="DEMO_FIVE_CORE_TIME_EXIT_REQUEST",
                 accepted=None,
-                code=TARGET_STRATEGY,
-                message="D1 max-hold close requested",
+                code=strategy_id,
+                message=f"{timeframe} max-hold close requested",
                 payload=decision,
             )
             status, detail = _close_full_position(
@@ -167,7 +188,7 @@ def run() -> int:
                 event_type="DEMO_FIVE_CORE_TIME_EXIT_RESULT",
                 accepted=True if status == "CLOSED" else False if status == "REJECTED" else None,
                 code=status,
-                message="D1 max-hold close result",
+                message=f"{timeframe} max-hold close result",
                 payload=decision,
             )
             if status == "CLOSED":
@@ -178,7 +199,14 @@ def run() -> int:
             healthy=True,
             lag_seconds=0.0,
             details={
-                "strategy_id": TARGET_STRATEGY,
+                "contracts": {
+                    symbol: {
+                        "strategy_id": contract[0],
+                        "timeframe": contract[1],
+                        "max_hold_bars": contract[3],
+                    }
+                    for symbol, contract in TIME_EXIT_CONTRACTS.items()
+                },
                 "evaluated": evaluated,
                 "eligible": eligible,
                 "closed": closed_count,

@@ -24,8 +24,11 @@ from .demo_five_core_router import (
     FORWARD_DEMO_SCORE,
     NO_TRADE_SYMBOLS,
     PAIR_STRATEGY_IDS,
+    build_gbpusd_execution_analysis,
+    build_usdjpy_execution_analysis,
     build_xau_execution_analysis,
-    evaluate_usdjpy_h4_compression_breakout,
+    evaluate_gbpusd_h4_mean_revert_z2_to_sma20,
+    evaluate_usdjpy_d1_donchian55_200,
     evaluate_xau_d1_tsmom_60_200,
     five_core_policy_snapshot,
     forward_rank,
@@ -72,7 +75,12 @@ def _history_window_seconds(timeframe: str, count: int, timeframe_seconds: int) 
     return float(timeframe_seconds) * float(base_periods) * factor
 
 
-def _already_emitted(store, *, signal_bar_at: datetime | None) -> bool:
+def _already_emitted(
+    store,
+    *,
+    signal_bar_at: datetime | None,
+    strategy_id: str,
+) -> bool:
     if signal_bar_at is None:
         return False
     try:
@@ -80,12 +88,13 @@ def _already_emitted(store, *, signal_bar_at: datetime | None) -> bool:
             store.client.table("broker_order_events")
             .select("payload,code,event_type")
             .eq("event_type", MARKER_EVENT)
-            .eq("code", PAIR_STRATEGY_IDS["XAUUSD"])
+            .eq("code", strategy_id)
             .order("observed_at", desc=True)
             .limit(20)
             .execute()
         )
     except Exception:
+        # Fail closed when duplicate evidence cannot be read.
         return True
     target = ensure_utc(signal_bar_at).isoformat()
     for raw in response.data or []:
@@ -110,7 +119,7 @@ def _record_emitted_marker(store, *, signal_id: str, signal) -> None:
         event_type=MARKER_EVENT,
         accepted=True,
         code=signal.strategy_id,
-        message="five-core strategy execution candidate emitted",
+        message="five-core pair-specific strategy execution candidate emitted",
         payload={
             "symbol": signal.symbol,
             "direction": signal.direction,
@@ -125,18 +134,13 @@ def _record_emitted_marker(store, *, signal_id: str, signal) -> None:
 
 class FiveCoreSignalProducer(CTraderSignalProducer):
     last_deep_report: DeepScanReport | None = None
+    last_signals: dict[str, Any] = {}
+    # Backward-compatible observability attributes.
     last_xau_signal = None
     last_usdjpy_shadow = None
     last_market_failures: dict[str, str] = {}
 
     def _bar_window(self, timeframe: str, count: int, now: datetime) -> tuple[datetime, datetime]:
-        """Pad slow-timeframe calendar windows for 24/5 weekend gaps.
-
-        The base producer assumes count * timeframe_seconds spans count bars. That
-        is valid for continuous markets but under-fetches FX/metals D1/H4 history
-        because Saturday/Sunday contain no bars. The feed still receives the same
-        bounded count; only the calendar lookback is widened.
-        """
         seconds = int(self.cfg.timeframes[timeframe])
         lookback_seconds = _history_window_seconds(timeframe, count, seconds)
         return now - timedelta(seconds=lookback_seconds), now
@@ -146,7 +150,7 @@ class FiveCoreSignalProducer(CTraderSignalProducer):
         run_id = self.store.start_scanner_run(
             mode="DEMO_ONLY",
             code_version=self.code_version,
-            data_contract_version="FIVE_CORE_ROUTER_V1",
+            data_contract_version="FIVE_CORE_PAIR_SPECIFIC_ROUTER_V2",
             started_at=snapshot_at,
         )
         failures: dict[str, str] = {}
@@ -160,67 +164,85 @@ class FiveCoreSignalProducer(CTraderSignalProducer):
             decision_at = ensure_utc(self.clock())
 
             xau_bars = bars_by_symbol.get("XAUUSD", {})
-            xau_signal = evaluate_xau_d1_tsmom_60_200(
-                tuple(xau_bars.get("D1", ())),
-                as_of=decision_at,
-            )
-            self.last_xau_signal = xau_signal
-
             usdjpy_bars = bars_by_symbol.get("USDJPY", {})
-            usdjpy_shadow = evaluate_usdjpy_h4_compression_breakout(
-                tuple(usdjpy_bars.get("H4", ())),
-                as_of=decision_at,
-            )
-            self.last_usdjpy_shadow = usdjpy_shadow
+            gbpusd_bars = bars_by_symbol.get("GBPUSD", {})
 
+            signals = {
+                "XAUUSD": evaluate_xau_d1_tsmom_60_200(
+                    tuple(xau_bars.get("D1", ())), as_of=decision_at
+                ),
+                "USDJPY": evaluate_usdjpy_d1_donchian55_200(
+                    tuple(usdjpy_bars.get("D1", ())), as_of=decision_at
+                ),
+                "GBPUSD": evaluate_gbpusd_h4_mean_revert_z2_to_sma20(
+                    tuple(gbpusd_bars.get("H4", ())), as_of=decision_at
+                ),
+            }
+            self.last_signals = signals
+            self.last_xau_signal = signals["XAUUSD"]
+            self.last_usdjpy_shadow = signals["USDJPY"]
+
+            selected_ranks = []
+            active_symbols = []
+            for symbol, signal in signals.items():
+                if symbol in market_failures:
+                    continue
+                if not signal.active:
+                    failures[symbol] = signal.reason
+                    continue
+                if not signal.execution_eligible or not execution_authorized(symbol):
+                    failures[symbol] = "SIGNAL_NO_EXECUTION_AUTHORITY"
+                    continue
+                if _already_emitted(
+                    self.store,
+                    signal_bar_at=signal.signal_bar_at,
+                    strategy_id=signal.strategy_id,
+                ):
+                    failures[symbol] = "DUPLICATE_SIGNAL_BAR_BLOCKED"
+                    continue
+                selected_ranks.append(forward_rank(signal))
+                active_symbols.append(symbol)
+
+            selected = tuple(selected_ranks)
+            guard_inputs: dict[str, dict[str, bool]] = {}
+            if selected and self.guard_resolver is not None:
+                resolution = self.guard_resolver.resolve(
+                    candidates=selected,
+                    bars_by_symbol=bars_by_symbol,
+                    as_of=decision_at,
+                )
+                guard_inputs = resolution.flags_by_symbol
+                guard_missing = resolution.missing_by_symbol
+                calendar_error = resolution.calendar_error
+
+            builders = {
+                "XAUUSD": build_xau_execution_analysis,
+                "USDJPY": build_usdjpy_execution_analysis,
+                "GBPUSD": build_gbpusd_execution_analysis,
+            }
             analyses = []
-            selected = ()
-            xau_execution_authorized = (
-                xau_signal.execution_eligible and execution_authorized("XAUUSD")
-            )
-            if (
-                xau_signal.active
-                and xau_execution_authorized
-                and not _already_emitted(
-                    self.store, signal_bar_at=xau_signal.signal_bar_at
-                )
-            ):
-                rank = forward_rank(xau_signal)
-                selected = (rank,)
-                guard_inputs = {}
-                if self.guard_resolver is not None:
-                    resolution = self.guard_resolver.resolve(
-                        candidates=selected,
-                        bars_by_symbol=bars_by_symbol,
-                        as_of=decision_at,
+            for symbol in active_symbols:
+                signal = signals[symbol]
+                try:
+                    analyses.append(
+                        builders[symbol](
+                            signal=signal,
+                            bars_by_timeframe=bars_by_symbol[symbol],
+                            cfg=self.cfg,
+                            as_of=decision_at,
+                            external_guard_flags=guard_inputs.get(symbol, {}),
+                        )
                     )
-                    guard_inputs = resolution.flags_by_symbol
-                    guard_missing = resolution.missing_by_symbol
-                    calendar_error = resolution.calendar_error
-                analyses.append(
-                    build_xau_execution_analysis(
-                        signal=xau_signal,
-                        bars_by_timeframe=xau_bars,
-                        cfg=self.cfg,
-                        as_of=decision_at,
-                        external_guard_flags=guard_inputs.get("XAUUSD", {}),
-                    )
-                )
-            elif xau_signal.active and xau_execution_authorized:
-                failures["XAUUSD"] = "DUPLICATE_D1_SIGNAL_BAR_BLOCKED"
-            elif xau_signal.active:
-                failures["XAUUSD"] = "SHADOW_SIGNAL_NO_EXECUTION_AUTHORITY"
-            elif "XAUUSD" not in market_failures:
-                failures["XAUUSD"] = xau_signal.reason
+                except ValueError as exc:
+                    failures[symbol] = f"PAIR_PLAN_INVALID:{exc}"
 
-            if usdjpy_shadow.active:
-                failures["USDJPY"] = "SHADOW_SIGNAL_NO_EXECUTION_AUTHORITY"
-            elif "USDJPY" not in market_failures:
-                failures["USDJPY"] = usdjpy_shadow.reason
             for symbol in sorted(NO_TRADE_SYMBOLS):
                 failures[symbol] = "NO_TRADE_UNTIL_VALIDATED"
 
-            selection = UniverseSelection(tuple(selected), tuple(selected))
+            # Persist only ranks whose analyses survived plan construction.
+            analysis_symbols = {item.symbol for item in analyses}
+            persisted_ranks = tuple(rank for rank in selected if rank.symbol in analysis_symbols)
+            selection = UniverseSelection(persisted_ranks, persisted_ranks)
             deep = DeepScanReport(selection, tuple(analyses), dict(sorted(failures.items())))
             self.last_deep_report = deep
             signals_written, ready = self._persist_signals(
@@ -238,8 +260,8 @@ class FiveCoreSignalProducer(CTraderSignalProducer):
                 observed_at=decision_at,
                 market_symbols=len(bars_by_symbol),
                 macro_currencies=0,
-                ranked_pairs=len(selected),
-                deep_candidates=len(selected),
+                ranked_pairs=len(persisted_ranks),
+                deep_candidates=len(persisted_ranks),
                 analyses=len(analyses),
                 signals_written=signals_written,
                 execution_ready=ready,
@@ -332,41 +354,33 @@ def run() -> int:
         analyses=analyses,
     )
 
-    if producer.last_xau_signal is not None and report.execution_ready:
-        ready_rows = [
-            row for row in persisted
-            if str(row.get("state", "")).upper() == "EXECUTION_READY"
-            and str(row.get("symbol", "")).upper() == "XAUUSD"
-        ]
-        if len(ready_rows) != 1:
-            raise SystemExit("FIVE_CORE_READY_SIGNAL_CARDINALITY_INVALID")
-        _record_emitted_marker(
-            store,
-            signal_id=str(ready_rows[0]["id"]),
-            signal=producer.last_xau_signal,
-        )
+    ready_rows = [
+        row for row in persisted
+        if str(row.get("state", "")).upper() == "EXECUTION_READY"
+    ]
+    for row in ready_rows:
+        symbol = str(row.get("symbol") or "").upper().strip()
+        signal = producer.last_signals.get(symbol)
+        if signal is None or not execution_authorized(symbol):
+            raise SystemExit("FIVE_CORE_READY_SIGNAL_AUTHORITY_INVALID")
+        _record_emitted_marker(store, signal_id=str(row["id"]), signal=signal)
 
-    shadow = producer.last_usdjpy_shadow
-    xau_runtime_reason = report.skipped.get(
-        "XAUUSD",
-        producer.last_market_failures.get(
-            "XAUUSD",
-            None if producer.last_xau_signal is None else producer.last_xau_signal.reason,
-        ),
-    )
-    usdjpy_runtime_reason = report.skipped.get(
-        "USDJPY",
-        producer.last_market_failures.get(
-            "USDJPY",
-            None if shadow is None else shadow.reason,
-        ),
-    )
+    strategy_reasons = {
+        symbol: report.skipped.get(
+            symbol,
+            producer.last_market_failures.get(
+                symbol,
+                None if producer.last_signals.get(symbol) is None else producer.last_signals[symbol].reason,
+            ),
+        )
+        for symbol in ("XAUUSD", "USDJPY", "GBPUSD")
+    }
     store.write_heartbeat(
         WORKER_NAME,
         healthy=True,
         lag_seconds=0.0,
         details={
-            "mode": "FIVE_CORE_STRATEGY_ROUTER_V1",
+            "mode": "FIVE_CORE_PAIR_SPECIFIC_ROUTER_V2",
             "authority_contract": AUTHORITY_CONTRACT,
             "universe": list(FIVE_CORE_SYMBOLS),
             "execution_symbols": sorted(EXECUTION_SYMBOLS),
@@ -375,11 +389,7 @@ def run() -> int:
             "pair_strategy_ids": five_core_policy_snapshot(),
             "market_symbols": report.market_symbols,
             "market_failures": dict(sorted(producer.last_market_failures.items())),
-            "xau_execution_authorized": execution_authorized("XAUUSD"),
-            "xau_signal_reason": xau_runtime_reason,
-            "usdjpy_shadow_active": bool(shadow and shadow.active),
-            "usdjpy_shadow_direction": None if shadow is None else shadow.direction,
-            "usdjpy_shadow_reason": usdjpy_runtime_reason,
+            "strategy_reasons": strategy_reasons,
             "signals_written": report.signals_written,
             "execution_ready": report.execution_ready,
             "geometry_written": geometry_written,
@@ -395,9 +405,7 @@ def run() -> int:
         "CTRADER_DEMO_FIVE_CORE_ROUTER_OK "
         f"market={report.market_symbols}/{len(FIVE_CORE_SYMBOLS)} "
         f"signals={report.signals_written} ready={report.execution_ready} "
-        f"geometry={geometry_written} xau={xau_runtime_reason or 'NONE'} "
-        f"xau_authorized={execution_authorized('XAUUSD')} "
-        f"usdjpy_shadow={'ACTIVE' if shadow and shadow.active else 'INACTIVE'}"
+        f"geometry={geometry_written} authorized={','.join(sorted(EXECUTION_SYMBOLS))}"
     )
     return 0
 
