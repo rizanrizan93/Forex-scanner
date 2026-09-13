@@ -1,0 +1,68 @@
+name: Research Rejected FX Alternative V2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/remaining-fx-pairs-v1
+    paths:
+      - research/rejected_fx_alternative_strategy_search_v2.py
+      - .github/workflows/research-rejected-fx-alternative-v2.yml
+
+permissions:
+  contents: read
+
+jobs:
+  pair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 7
+      matrix:
+        symbol:
+          - USDCHF
+          - NZDUSD
+          - EURJPY
+          - EURGBP
+          - EURCHF
+          - EURAUD
+          - GBPAUD
+    env:
+      CORE_SYMBOL: ${{ matrix.symbol }}
+      PYTHONPATH: research
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Run alternative frozen-family tournament
+        run: |
+          set -o pipefail
+          rm -rf research_output_rejected_fx_v2
+          mkdir -p research_output_rejected_fx_v2
+          python research/rejected_fx_alternative_strategy_search_v2.py | tee research_output_rejected_fx_v2/console-${CORE_SYMBOL}.txt
+      - name: Verify research-only contract
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          symbol = os.environ['CORE_SYMBOL']
+          path = Path(f'research_output_rejected_fx_v2/rejected_fx_alternative_{symbol}.json')
+          doc = json.loads(path.read_text())
+          assert doc['contract'] == 'REJECTED_FX_ALTERNATIVE_STRATEGY_SEARCH_V2'
+          assert doc['execution_influence'] is False
+          assert doc['promotion_authority'] is False
+          assert doc['symbol'] == symbol
+          assert doc['coverage']['h1_rows'] >= 70000, doc['coverage']
+          assert len(doc['candidate_set']) == 6
+          print(symbol, 'rejected-FX alternative research contract: PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rejected-fx-${{ matrix.symbol }}-v2
+          path: research_output_rejected_fx_v2/
+          retention-days: 30
