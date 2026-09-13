@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from bisect import bisect_right
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime, timedelta
 from math import inf
-from typing import Iterable
 
 from .demo_four_ema import FOUR_EMA_PERIODS, build_four_ema_features
 from .models import Bar
@@ -54,6 +54,21 @@ class FourEMASummary:
     profit_factor: float
     total_net_r: float
     max_drawdown_r: float
+
+
+@dataclass(frozen=True, slots=True)
+class _FrameState:
+    available: bool
+    alignment: str
+    long_slopes: bool
+    short_slopes: bool
+    long_price_side: bool
+    short_price_side: bool
+    pullback: bool
+    spread_state: str
+
+
+FeatureCache = dict[int, tuple[_FrameState, _FrameState]]
 
 
 def pip_size(symbol: str) -> float:
@@ -110,11 +125,77 @@ def _liquid_session(timestamp: datetime) -> bool:
     return 7 <= timestamp.hour < 17
 
 
-def _directional_state(rows: tuple[Bar, ...], direction: str):
-    return build_four_ema_features(
+def _frame_state(rows: tuple[Bar, ...]) -> _FrameState:
+    features = build_four_ema_features(
         rows[-120:],
-        direction=direction,
+        direction="LONG",
         periods=FOUR_EMA_PERIODS,
+    )
+    slopes = (
+        features.slope_fast_atr,
+        features.slope_mid1_atr,
+        features.slope_mid2_atr,
+        features.slope_slow_atr,
+    )
+    long_slopes = all(value is not None and value > 0.0 for value in slopes)
+    short_slopes = all(value is not None and value < 0.0 for value in slopes)
+    latest_close = float(rows[-1].close) if rows else 0.0
+    slow = features.ema_slow
+    return _FrameState(
+        available=features.available,
+        alignment=features.alignment,
+        long_slopes=long_slopes,
+        short_slopes=short_slopes,
+        long_price_side=slow is not None and latest_close > slow,
+        short_price_side=slow is not None and latest_close < slow,
+        pullback=features.pullback_near_fast_cluster,
+        spread_state=features.spread_state,
+    )
+
+
+def build_feature_cache(bars: Iterable[Bar]) -> FeatureCache:
+    """Compute candidate-independent EMA states once per decision bar.
+
+    This is a runtime optimization only. Each cached state is derived from the
+    exact same 120-bar windows and ``build_four_ema_features`` contract used by
+    the original preregistered replay.
+    """
+    rows = _validate_m15(bars)
+    if not rows:
+        return {}
+    h1 = _resample_h1(rows)
+    h1_stamps = [row.timestamp for row in h1]
+    h1_cache: dict[int, _FrameState] = {}
+    output: FeatureCache = {}
+    for index in range(120, len(rows) - 1):
+        decision = rows[index]
+        cutoff = decision.timestamp + timedelta(minutes=15) - timedelta(hours=1)
+        h1_end = bisect_right(h1_stamps, cutoff)
+        if h1_end < 55:
+            continue
+        m15_window = rows[max(0, index - 119): index + 1]
+        h1_state = h1_cache.get(h1_end)
+        if h1_state is None:
+            h1_window = h1[max(0, h1_end - 120): h1_end]
+            h1_state = _frame_state(tuple(h1_window))
+            h1_cache[h1_end] = h1_state
+        output[index] = (_frame_state(tuple(m15_window)), h1_state)
+    return output
+
+
+def _aligned(state: _FrameState, direction: str) -> bool:
+    if direction == "LONG":
+        return bool(
+            state.available
+            and state.alignment == "BULLISH"
+            and state.long_slopes
+            and state.long_price_side
+        )
+    return bool(
+        state.available
+        and state.alignment == "BEARISH"
+        and state.short_slopes
+        and state.short_price_side
     )
 
 
@@ -123,12 +204,12 @@ def replay_candidate(
     *,
     candidate: FourEMACandidate,
     max_hold_bars: int = 32,
+    feature_cache: FeatureCache | None = None,
 ) -> tuple[FourEMATrade, ...]:
     rows = _validate_m15(bars)
     if not rows:
         return ()
-    h1 = _resample_h1(rows)
-    h1_stamps = [row.timestamp for row in h1]
+    cached = feature_cache if feature_cache is not None else build_feature_cache(rows)
     output: list[FourEMATrade] = []
     next_allowed = 120
     previous_pullback = {"LONG": False, "SHORT": False}
@@ -139,40 +220,28 @@ def replay_candidate(
             continue
         if candidate.liquid_session_only and not _liquid_session(decision.timestamp):
             continue
-
-        # Decision is made after the current M15 bar closes. Only fully closed H1
-        # bars are visible: H1 open timestamp + 1h <= M15 close timestamp.
-        cutoff = decision.timestamp + timedelta(minutes=15) - timedelta(hours=1)
-        h1_end = bisect_right(h1_stamps, cutoff)
-        if h1_end < 55:
+        frame_pair = cached.get(index)
+        if frame_pair is None:
             continue
-        m15_window = rows[max(0, index - 119): index + 1]
-        h1_window = h1[max(0, h1_end - 120): h1_end]
+        m15_state, h1_state = frame_pair
 
         signal_direction: str | None = None
-        current_pullbacks: dict[str, bool] = {}
+        current_pullback = bool(m15_state.pullback)
         for direction in ("LONG", "SHORT"):
-            m15_state = _directional_state(tuple(m15_window), direction)
-            h1_state = _directional_state(tuple(h1_window), direction)
-            pullback = bool(m15_state.pullback_near_fast_cluster)
-            current_pullbacks[direction] = pullback
-            first_touch = pullback and not previous_pullback[direction]
+            first_touch = current_pullback and not previous_pullback[direction]
             aligned = bool(
-                m15_state.available
-                and h1_state.available
-                and m15_state.directional_aligned
-                and h1_state.directional_aligned
-                and m15_state.directional_slopes
-                and h1_state.directional_slopes
-                and m15_state.price_side_slow_ok
-                and h1_state.price_side_slow_ok
+                _aligned(m15_state, direction)
+                and _aligned(h1_state, direction)
                 and h1_state.spread_state in {"STABLE", "EXPANDING"}
             )
             if aligned and first_touch:
                 signal_direction = direction
                 break
 
-        previous_pullback.update(current_pullbacks)
+        # The pullback-distance contract is direction-independent. Preserve the
+        # original per-direction first-touch state updates exactly.
+        previous_pullback["LONG"] = current_pullback
+        previous_pullback["SHORT"] = current_pullback
         if signal_direction is None:
             continue
 
