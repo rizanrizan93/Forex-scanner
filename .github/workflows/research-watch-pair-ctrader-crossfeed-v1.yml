@@ -30,6 +30,8 @@ jobs:
       CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
       CTRADER_TOKEN_STATE_DURABLE: "1"
       CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +48,7 @@ jobs:
         run: python -m fx_scanner.cli validate-config
       - name: Run broker-native cross-feed replay
         run: |
+          set -o pipefail
           rm -rf research_output_watch_pair_crossfeed_v1
           python research/ctrader_watch_pair_crossfeed_v1.py | tee research_output_watch_pair_crossfeed_v1-console.txt
       - name: Validate research contract
