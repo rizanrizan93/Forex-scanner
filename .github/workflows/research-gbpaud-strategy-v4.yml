@@ -1,0 +1,54 @@
+name: Research GBPAUD Strategy V4
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/gbpaud-strategy-search-v4
+    paths:
+      - research/gbpaud_strategy_search_v4.py
+      - .github/workflows/research-gbpaud-strategy-v4.yml
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: research
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Run frozen GBPAUD V4 tournament
+        run: |
+          set -o pipefail
+          rm -rf research_output_gbpaud_v4
+          mkdir -p research_output_gbpaud_v4
+          python research/gbpaud_strategy_search_v4.py | tee research_output_gbpaud_v4/console.txt
+      - name: Verify research-only contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('research_output_gbpaud_v4/gbpaud_strategy_search_v4.json')
+          d = json.loads(p.read_text())
+          assert d['contract'] == 'GBPAUD_STRATEGY_SEARCH_V4'
+          assert d['execution_influence'] is False
+          assert d['promotion_authority'] is False
+          assert d['symbol'] == 'GBPAUD'
+          assert d['coverage']['h1_rows'] >= 70000
+          assert len(d['candidate_set']) == 6
+          print('GBPAUD V4 research contract: PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gbpaud-strategy-v4
+          path: research_output_gbpaud_v4/
+          retention-days: 30
