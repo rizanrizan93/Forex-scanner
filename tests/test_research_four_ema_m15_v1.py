@@ -2,11 +2,14 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
+from fx_scanner.demo_four_ema import FOUR_EMA_PERIODS, build_four_ema_features
 from fx_scanner.models import Bar
 from fx_scanner.research_four_ema_m15_v1 import (
     FROZEN_CANDIDATES,
     FourEMATrade,
+    _frame_state,
     _resample_h1,
+    build_feature_cache,
     pip_size,
     reprice_cost,
     split_calendar,
@@ -72,6 +75,41 @@ def test_resample_h1_uses_only_complete_four_bar_hours():
     assert h1[0].open == rows[0].open
     assert h1[0].close == rows[3].close
     assert h1[1].timestamp.hour == 1
+
+
+def test_cached_direction_inference_matches_original_feature_contract():
+    window = _m15_rows(120)
+    state = _frame_state(window)
+    long_features = build_four_ema_features(
+        window,
+        direction="LONG",
+        periods=FOUR_EMA_PERIODS,
+    )
+    short_features = build_four_ema_features(
+        window,
+        direction="SHORT",
+        periods=FOUR_EMA_PERIODS,
+    )
+
+    assert state.available is long_features.available is short_features.available
+    assert state.alignment == long_features.alignment == short_features.alignment
+    assert state.pullback == long_features.pullback_near_fast_cluster
+    assert state.pullback == short_features.pullback_near_fast_cluster
+    assert state.long_slopes == long_features.directional_slopes
+    assert state.short_slopes == short_features.directional_slopes
+    assert state.long_price_side == long_features.price_side_slow_ok
+    assert state.short_price_side == short_features.price_side_slow_ok
+    assert state.spread_state == long_features.spread_state == short_features.spread_state
+
+
+def test_feature_cache_is_built_for_mature_decision_bars():
+    rows = _m15_rows(300)
+    cache = build_feature_cache(rows)
+    assert cache
+    assert min(cache) >= 220  # 55 complete H1 bars are required.
+    for m15_state, h1_state in cache.values():
+        assert isinstance(m15_state.available, bool)
+        assert isinstance(h1_state.available, bool)
 
 
 def test_pair_aware_pip_size():
