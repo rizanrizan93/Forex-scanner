@@ -57,6 +57,7 @@ jobs:
       CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"
       CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "0"
       CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"
+      CTRADER_DEMO_XAU_V42_PROFIT_LOCK_ENABLED: "1"
       CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED: "1"
 
     steps:
@@ -76,12 +77,18 @@ jobs:
         run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_auto_pipeline RUNNING
       - name: Evaluate five-core strategy router
         run: python -m fx_scanner.demo_execution_fast_candidate_producer
+      - name: Evaluate promoted XAU Expansion V4.2 DEMO strategy
+        run: python -m fx_scanner.demo_xau_expansion_v42_candidate_producer
       - name: Repair missing SL/TP on scanner-linked DEMO positions
         run: python -m fx_scanner.demo_existing_protection_repair
-      - name: Execute only fresh five-core strategy-authorized DEMO signals
+      - name: Execute only fresh strategy-authorized DEMO signals
         run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
-      - name: Enforce D1 fixed-strategy max-hold exit
+      - name: Enforce legacy five-core D1 max-hold exit
         run: python -m fx_scanner.demo_five_core_time_exit
+      - name: Enforce XAU Expansion V4.2 seven-D1-bar max-hold exit
+        run: python -m fx_scanner.demo_xau_expansion_v42_time_exit
+      - name: Apply XAU Expansion V4.2 completed-H1 deferred profit lock
+        run: python -m fx_scanner.demo_xau_v42_deferred_profit_lock
       - name: Keep legacy adaptive profit lock disabled for fixed-exit D1 strategy
         run: python -m fx_scanner.demo_adaptive_profit_lock
       - name: Keep legacy structural profit protector disabled for fixed-exit D1 strategy
