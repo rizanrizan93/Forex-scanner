@@ -1,0 +1,39 @@
+name: Research XAU Expansion V4 Edge Gate
+
+on:
+  push:
+    branches:
+      - research/market-adaptive-router-v4
+    paths:
+      - "research/adaptive_xau_expansion_v4_edge_gate.py"
+      - ".github/workflows/research-xau-expansion-v4-edge-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  edge-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run trailing edge gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python research/adaptive_xau_expansion_v4_edge_gate.py | tee xau_expansion_v4_edge_gate.log
+          grep '^RESULT_JSON=' xau_expansion_v4_edge_gate.log | sed 's/^RESULT_JSON=//' > xau_expansion_v4_edge_gate.json
+          test -s xau_expansion_v4_edge_gate.json
+      - name: Show evidence
+        run: grep -E '^(FOLD|UNGATED|GATED)' xau_expansion_v4_edge_gate.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-expansion-v4-edge-gate
+          path: |
+            xau_expansion_v4_edge_gate.json
+            xau_expansion_v4_edge_gate.log
+          if-no-files-found: error
