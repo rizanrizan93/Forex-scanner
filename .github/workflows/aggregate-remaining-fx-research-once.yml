@@ -1,0 +1,88 @@
+name: Aggregate Remaining FX Research Once
+
+on:
+  push:
+    branches:
+      - research/remaining-fx-pairs-v1
+    paths:
+      - .github/workflows/aggregate-remaining-fx-research-once.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/remaining-fx-pairs-v1
+      - name: Download research artifacts
+        run: |
+          rm -rf /tmp/remaining-fx
+          mkdir -p /tmp/remaining-fx
+          gh run download 34770055925 -R "$GITHUB_REPOSITORY" -D /tmp/remaining-fx
+      - name: Build findings report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('/tmp/remaining-fx')
+          docs = []
+          for path in root.rglob('remaining_fx_search_*.json'):
+              d = json.loads(path.read_text())
+              champ_name = d['champion_by_rule']['strategy']
+              champ = next(x for x in d['scorecard'] if x['strategy'] == champ_name)
+              stress = champ['stress']
+              recent = champ['eras_stress']['2024_2026']
+              docs.append({
+                  'symbol': d['symbol'],
+                  'strategy': champ_name,
+                  'status': champ['status'],
+                  'stress_pips': d['cost_model_pips']['stress'],
+                  'trades': stress['trades'],
+                  'expectancy_r': stress['expectancy_r'],
+                  'pf': stress['profit_factor'],
+                  'net_r': stress['net_r'],
+                  'max_dd_r': stress['max_dd_r'],
+                  'positive_eras': champ['positive_eras'],
+                  'ci_low': stress['bootstrap_ci_low'],
+                  'recent_exp': recent['expectancy_r'],
+                  'recent_pf': recent['profit_factor'],
+                  'h1_rows': d['coverage']['h1_rows'],
+              })
+          docs.sort(key=lambda x: ({'STRONG_RESEARCH_PASS': 2, 'WATCH': 1, 'REJECT': 0}[x['status']], x['expectancy_r']), reverse=True)
+          assert len(docs) == 11, docs
+          Path('research/remaining_fx_champions_20260913.json').write_text(json.dumps(docs, indent=2), encoding='utf-8')
+          lines = [
+              '# Remaining FX Public-History Findings — 2026-09-13', '',
+              'Research only. `execution_influence=false`. No result in this report grants DEMO or LIVE order authority.', '',
+              'Source: Dukascopy Bank public BID H1, 2012-01-01 through 2026-09-01. Same-bar ambiguity is STOP_FIRST. Each pair uses a small frozen six-family tournament rather than exhaustive parameter optimization. Stress friction is pair-specific; moving-block bootstrap and four multi-year eras are evaluated.', '',
+              '| Pair | Champion | Status | Stress pips | Trades | Exp R | PF | Net R | Max DD R | + eras | 95% CI low | Recent Exp | Recent PF |',
+              '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|'
+          ]
+          for r in docs:
+              cil = 'NA' if r['ci_low'] is None else f"{r['ci_low']:+.4f}"
+              lines.append(f"| {r['symbol']} | `{r['strategy']}` | {r['status']} | {r['stress_pips']:.1f} | {r['trades']} | {r['expectancy_r']:+.4f} | {r['pf']:.3f} | {r['net_r']:+.2f} | {r['max_dd_r']:.2f} | {r['positive_eras']}/4 | {cil} | {r['recent_exp']:+.4f} | {r['recent_pf']:.3f} |")
+          lines += ['', '## Decision', '']
+          strong = [r for r in docs if r['status'] == 'STRONG_RESEARCH_PASS']
+          watch = [r for r in docs if r['status'] == 'WATCH']
+          reject = [r for r in docs if r['status'] == 'REJECT']
+          lines.append('Strong research pass: ' + (', '.join(f"{r['symbol']} `{r['strategy']}`" for r in strong) or 'none.'))
+          lines.append('WATCH: ' + (', '.join(f"{r['symbol']} `{r['strategy']}`" for r in watch) or 'none.'))
+          lines.append('REJECT in this frozen family search: ' + ', '.join(r['symbol'] for r in reject) + '.')
+          lines += ['', 'A WATCH result is not automatically promotion-eligible. Broker-feed cross-check and forward DEMO evidence remain required before any execution authority change.']
+          Path('research/REMAINING_FX_PUBLIC_HISTORY_FINDINGS_20260913.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          print('\n'.join(lines))
+          PY
+      - name: Commit report
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add research/REMAINING_FX_PUBLIC_HISTORY_FINDINGS_20260913.md research/remaining_fx_champions_20260913.json
+          git commit -m "research: summarize remaining FX public-history tournament"
+          git push origin HEAD:research/remaining-fx-pairs-v1
