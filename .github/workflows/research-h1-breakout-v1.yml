@@ -1,0 +1,87 @@
+name: Research H1 Breakout V1
+
+on:
+  push:
+    branches:
+      - research/h1-compression-breakout-v1
+    paths:
+      - "src/fx_scanner/research_h1_breakout_v1.py"
+      - "src/fx_scanner/demo_h1_breakout_research.py"
+      - "tests/test_research_h1_breakout_v1.py"
+      - ".github/workflows/research-h1-breakout-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-h1-breakout-v1
+  cancel-in-progress: true
+
+jobs:
+  historical-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Validate research-only config
+        run: python -m fx_scanner.cli validate-config
+      - name: Run unit tests for frozen replay
+        run: pytest -q tests/test_research_h1_breakout_v1.py
+      - name: Run cTrader historical screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m fx_scanner.demo_h1_breakout_research | tee forex_h1_breakout_v1.json
+      - name: Print screen evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("forex_h1_breakout_v1.json").read_text())
+          assert data["research_only"] is True
+          assert data["execution_influence"] is False
+          assert data["oos_used_for_selection"] is False
+          print("H1_BREAKOUT_SCREEN_PASS", data["screen_pass"])
+          for row in data["rows"][:12]:
+              v = row["stress"]["validation"]
+              o = row["stress"]["oos"]
+              print(
+                  "H1_BREAKOUT_ROW",
+                  row["symbol"], row["candidate"],
+                  "validation_n=", v["trades"],
+                  "validation_exp=", v["expectancy_r"],
+                  "validation_pf=", v["profit_factor"],
+                  "oos_n=", o["trades"],
+                  "oos_exp=", o["expectancy_r"],
+                  "oos_pf=", o["profit_factor"],
+                  "oos_dd=", o["max_drawdown_r"],
+                  "pass=", row["screen_pass"],
+              )
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forex-h1-breakout-v1
+          path: forex_h1_breakout_v1.json
+          if-no-files-found: error
