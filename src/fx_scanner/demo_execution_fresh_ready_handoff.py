@@ -16,6 +16,9 @@ _ALLOWED_STRATEGIES_BY_SYMBOL = {
     "GBPUSD": frozenset({PAIR_STRATEGY_IDS["GBPUSD"]}),
 }
 
+# Backward-compatible aggregate used by existing tests/observers.
+_ALLOWED_STRATEGIES = frozenset().union(*_ALLOWED_STRATEGIES_BY_SYMBOL.values())
+
 
 def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
     """Install freshness, then fail-closed exact symbol/strategy filtering."""

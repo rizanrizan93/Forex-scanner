@@ -103,6 +103,19 @@ def _wilder_ewm(values: Sequence[float], period: int) -> list[float]:
     return out
 
 
+def _linear_quantile(values: Sequence[float], q: float) -> float:
+    clean = sorted(float(v) for v in values if isfinite(float(v)))
+    if not clean:
+        raise ValueError("quantile requires values")
+    if len(clean) == 1:
+        return clean[0]
+    pos = (len(clean) - 1) * q
+    lo = int(pos)
+    hi = min(lo + 1, len(clean) - 1)
+    frac = pos - lo
+    return clean[lo] * (1.0 - frac) + clean[hi] * frac
+
+
 def _rsi14(closes: Sequence[float]) -> float:
     if len(closes) < 15:
         return float("nan")
@@ -167,10 +180,14 @@ def _next_bar_open(
     bars: Sequence[Bar],
     signal_bar: Bar,
     *,
-    timeframe_seconds: int,
+    timeframe_seconds: int | None = None,
 ) -> datetime:
     ordered = tuple(sorted(bars, key=lambda row: ensure_utc(row.timestamp)))
     signal_ts = ensure_utc(signal_bar.timestamp)
+    if timeframe_seconds is None:
+        timeframe_seconds = {"D1": 86400, "H4": 14400, "H1": 3600, "M15": 900, "M5": 300, "M1": 60}.get(str(signal_bar.timeframe).upper())
+        if timeframe_seconds is None:
+            raise ValueError(f"unsupported timeframe for next-bar fallback: {signal_bar.timeframe}")
     for row in ordered:
         if ensure_utc(row.timestamp) > signal_ts:
             return ensure_utc(row.timestamp)
