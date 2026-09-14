@@ -251,6 +251,11 @@ def run() -> int:
     cfg, demo_risk_pct = apply_demo_calibration_risk(
         cfg, max_risk_pct=float(policy.demo_safety["max_risk_pct"])
     )
+    # Validate every configured DEMO spread override against the full project
+    # universe before narrowing this worker to its support symbols. This keeps
+    # the global fail-closed contract while preventing unrelated valid overrides
+    # (for example XAUUSD) from failing a subset-only producer.
+    all_demo_spread_overrides = _demo_spread_limit_overrides(cfg)
     cfg = _with_history_requirements(_subset_cfg(cfg, FETCH_SYMBOLS))
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
     store = build_demo_calibration_store(
@@ -260,7 +265,7 @@ def run() -> int:
     feed = build_ctrader_research_feed(policy, FETCH_SYMBOLS)
     spread_overrides = {
         symbol: limit
-        for symbol, limit in _demo_spread_limit_overrides(cfg).items()
+        for symbol, limit in all_demo_spread_overrides.items()
         if symbol in FETCH_SYMBOLS
     }
     guard_resolver = EvidenceProductionGuardResolver(
