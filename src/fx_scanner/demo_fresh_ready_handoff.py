@@ -15,6 +15,9 @@ DEMO_POSITION_CAP_ENV = "CTRADER_DEMO_MAX_CONCURRENT_POSITIONS"
 DEMO_POSITION_CAP_CEILING = 10
 DEMO_ORDER_LOT_CAP_ENV = "CTRADER_DEMO_MAX_ORDER_LOTS"
 DEMO_ORDER_LOT_CAP_CEILING = 0.50
+DEMO_ACTIVE_ORDER_LOT_CAP = 0.01
+DEMO_ACTIVE_RISK_CAP_PCT = 3.0
+DEMO_RISK_ENV = "CTRADER_DEMO_RISK_PER_TRADE_PCT"
 DEMO_STACKING_ENV = "CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING"
 DEMO_STACK_MIN_SCORE_ENV = "CTRADER_DEMO_STACK_MIN_SCORE"
 DEMO_STACK_MIN_COVERAGE_ENV = "CTRADER_DEMO_STACK_MIN_COVERAGE"
@@ -108,14 +111,11 @@ def load_demo_project_config(root=None):
 
 
 def load_demo_execution_policy(root=None) -> ExecutionPolicy:
-    """Load canonical policy plus an explicit bounded DEMO runtime profile.
+    """Load canonical policy plus the legacy bounded DEMO runtime profile.
 
-    DEMO may opt into up to ten total positions and conviction-sized orders from
-    0.01 through 0.50 lot. The lot ceiling is not a risk override: broker-native
-    stop-loss loss, aggregate risk, margin, spread, correlation and geometry
-    checks remain authoritative and may reduce or reject the requested volume.
-    Same-symbol stacking remains behind independent high-conviction gates.
-    LIVE remains untouched.
+    This function intentionally preserves the historical configuration surface
+    used by existing research/tests. The live DEMO handoff applies the stricter
+    calibration caps through ``load_bounded_demo_execution_policy`` below.
     """
     policy = _load_execution_policy(root)
     demo_safety = dict(policy.demo_safety)
@@ -189,6 +189,30 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
     return replace(policy, demo_safety=demo_safety)
 
 
+def load_bounded_demo_execution_policy(root=None) -> ExecutionPolicy:
+    """Apply the calibration contract only to the active DEMO order handoff.
+
+    The account-wide position cap and all existing RR/spread/correlation/data
+    quality/protection guards are preserved. This wrapper only lowers maximum
+    per-order volume to 0.01 lot and per-trade risk to 3%; it never rewrites
+    entry, SL or TP geometry.
+    """
+    policy = load_demo_execution_policy(root)
+    demo_safety = dict(policy.demo_safety)
+    demo_safety["max_order_lots"] = min(
+        float(demo_safety["max_order_lots"]), DEMO_ACTIVE_ORDER_LOT_CAP
+    )
+    demo_safety["max_risk_pct"] = min(
+        float(demo_safety["max_risk_pct"]), DEMO_ACTIVE_RISK_CAP_PCT
+    )
+    demo_safety["max_same_symbol_lots"] = min(
+        float(demo_safety.get("max_same_symbol_lots", DEMO_ACTIVE_ORDER_LOT_CAP)),
+        DEMO_ACTIVE_ORDER_LOT_CAP
+        * int(demo_safety.get("max_same_symbol_positions", 1)),
+    )
+    return replace(policy, demo_safety=demo_safety)
+
+
 def fresh_execution_ready_rows(
     rows: Iterable[dict[str, Any]],
     *,
@@ -252,18 +276,25 @@ def install_fresh_execution_ready_handoff(*, max_age_seconds: float) -> None:
     SupabaseOperationalStore.list_execution_ready_signals = _list_execution_ready_signals
 
 
+def install_bounded_demo_process_contract() -> None:
+    """Override stale workflow-level DEMO limits before any order-path imports."""
+    os.environ[DEMO_ORDER_LOT_CAP_ENV] = f"{DEMO_ACTIVE_ORDER_LOT_CAP:.2f}"
+    os.environ[DEMO_RISK_ENV] = f"{DEMO_ACTIVE_RISK_CAP_PCT:.1f}"
+
+
 def main() -> int:
-    policy = load_demo_execution_policy(None)
+    install_bounded_demo_process_contract()
+    policy = load_bounded_demo_execution_policy(None)
     max_age_seconds = float(policy.order.get("max_signal_age_seconds", 300))
     install_fresh_execution_ready_handoff(max_age_seconds=max_age_seconds)
 
     from . import demo_calibration_autotrade as calibration_runtime
 
-    calibration_runtime.load_execution_policy = load_demo_execution_policy
+    calibration_runtime.load_execution_policy = load_bounded_demo_execution_policy
     calibration_runtime.load_project_config = load_demo_project_config
 
-    # Conviction chooses a quality ceiling. Broker-native stop-loss sizing runs
-    # after it and may only reduce that volume, keeping <=5% per-trade risk and
+    # Conviction chooses a quality ceiling. broker-native stop-loss sizing runs
+    # after it and may only reduce that volume, keeping <=3% per-trade risk and
     # account-wide risk/margin protections authoritative.
     from .demo_broker_risk_sizing import install_demo_broker_native_risk_sizing
     from .demo_conditional_stacking import install_demo_conditional_stacking
@@ -277,6 +308,7 @@ def main() -> int:
     print(
         "CTRADER_DEMO_DYNAMIC_EXECUTION_POLICY "
         f"max_order_lots={float(policy.demo_safety['max_order_lots']):.2f} "
+        f"max_risk_pct={float(policy.demo_safety['max_risk_pct']):.2f} "
         f"portfolio_risk_cap_pct={float(policy.demo_safety['max_portfolio_risk_pct']):.2f} "
         f"margin_free_usage_cap_pct={float(policy.demo_safety['max_margin_free_usage_pct']):.2f} "
         f"min_live_rr={float(demo_cfg.strategy['trade_plan']['minimum_tp2_rr']):.2f} "
