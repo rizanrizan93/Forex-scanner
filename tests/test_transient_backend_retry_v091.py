@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -48,6 +49,41 @@ def _pair():
         pip_size=0.0001,
         tier="A",
     )
+
+
+class _ScannerRunQuery:
+    def __init__(self, client):
+        self.client = client
+        self.payload = None
+        self.run_id = None
+
+    def update(self, payload):
+        self.payload = payload
+        return self
+
+    def eq(self, field, value):
+        assert field == "id"
+        self.run_id = value
+        return self
+
+    def execute(self):
+        self.client.attempts += 1
+        if self.client.attempts <= self.client.failures:
+            raise RuntimeError(self.client.error)
+        self.client.payloads.append(dict(self.payload))
+        return SimpleNamespace(data=[{"id": self.run_id, **self.payload}])
+
+
+class _ScannerRunClient:
+    def __init__(self, *, failures: int, error: str = "504 Gateway Timeout"):
+        self.failures = failures
+        self.error = error
+        self.attempts = 0
+        self.payloads = []
+
+    def table(self, name):
+        assert name == "scanner_runs"
+        return _ScannerRunQuery(self)
 
 
 class _TokenStore:
@@ -127,6 +163,59 @@ def test_demo_reference_bootstrap_nontransient_does_not_retry(monkeypatch):
 
     with pytest.raises(OperationalStoreUnavailable):
         store.ensure_reference_symbols((_pair(),))
+
+    assert client.attempts == 1
+
+
+def test_demo_finish_scanner_run_retries_transient_then_succeeds(monkeypatch):
+    monkeypatch.setattr("fx_scanner.demo_calibration.time.sleep", lambda _seconds: None)
+    client = _ScannerRunClient(failures=2)
+    store = DemoSupabaseOperationalStore(
+        "https://example.supabase.co",
+        "secret",
+        client=client,
+    )
+    finished_at = datetime(2026, 9, 14, 13, 36, tzinfo=timezone.utc)
+
+    store.finish_scanner_run("run-1", status="SUCCESS", finished_at=finished_at)
+
+    assert client.attempts == 3
+    assert len(client.payloads) == 1
+    assert client.payloads[0] == {
+        "status": "SUCCESS",
+        "finished_at": finished_at.isoformat(),
+    }
+
+
+def test_demo_finish_scanner_run_persistent_504_fails_closed(monkeypatch):
+    monkeypatch.setattr("fx_scanner.demo_calibration.time.sleep", lambda _seconds: None)
+    client = _ScannerRunClient(failures=9)
+    store = DemoSupabaseOperationalStore(
+        "https://example.supabase.co",
+        "secret",
+        client=client,
+    )
+
+    with pytest.raises(
+        OperationalStoreUnavailable,
+        match="scanner_runs finish failed after transient retries",
+    ):
+        store.finish_scanner_run("run-1", status="SUCCESS")
+
+    assert client.attempts == 3
+
+
+def test_demo_finish_scanner_run_nontransient_does_not_retry(monkeypatch):
+    monkeypatch.setattr("fx_scanner.demo_calibration.time.sleep", lambda _seconds: None)
+    client = _ScannerRunClient(failures=9, error="401 unauthorized")
+    store = DemoSupabaseOperationalStore(
+        "https://example.supabase.co",
+        "secret",
+        client=client,
+    )
+
+    with pytest.raises(OperationalStoreUnavailable):
+        store.finish_scanner_run("run-1", status="SUCCESS")
 
     assert client.attempts == 1
 
