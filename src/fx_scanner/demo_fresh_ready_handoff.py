@@ -293,7 +293,7 @@ def main() -> int:
     calibration_runtime.load_execution_policy = load_bounded_demo_execution_policy
     calibration_runtime.load_project_config = load_demo_project_config
 
-    # Conviction chooses a quality ceiling. Broker-native stop-loss sizing runs
+    # Conviction chooses a quality ceiling. broker-native stop-loss sizing runs
     # after it and may only reduce that volume, keeping <=3% per-trade risk and
     # account-wide risk/margin protections authoritative.
     from .demo_broker_risk_sizing import install_demo_broker_native_risk_sizing
