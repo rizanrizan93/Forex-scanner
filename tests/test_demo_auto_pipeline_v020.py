@@ -42,6 +42,28 @@ def test_demo_auto_pipeline_is_dispatch_only_five_core_fast_lane_and_demo_only()
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
 
 
+def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_producer_failure():
+    text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
+
+    assert "id: produce_five_core" in text
+    assert "id: produce_xau_v42" in text
+    assert "id: produce_euraud_gbpaud" in text
+    assert "id: repair_existing_protection" in text
+    assert "id: execute_fresh_handoff" in text
+    assert "id: pair_time_exit" in text
+    assert "id: euraud_gbpaud_chandelier" in text
+    assert "id: xau_v42_time_exit" in text
+    assert "id: xau_v42_profit_lock" in text
+    assert text.count("if: ${{ always() && !cancelled() }}") >= 7
+    assert "steps.produce_five_core.outcome == 'success'" in text
+    assert "steps.produce_xau_v42.outcome == 'success'" in text
+    assert "steps.produce_euraud_gbpaud.outcome == 'success'" in text
+    assert "steps.repair_existing_protection.outcome == 'success'" in text
+    assert "CRITICAL_STAGE_FAILED" in text
+    assert "new_entry_handoff=BLOCKED protection_maintenance=ATTEMPTED" in text
+    assert "CTRADER_DEMO_AUTO_PIPELINE_CRITICAL_STAGES_OK" in text
+
+
 def test_demo_discovery_pipeline_is_pair_specific_independent_and_non_executing():
     text = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
 
