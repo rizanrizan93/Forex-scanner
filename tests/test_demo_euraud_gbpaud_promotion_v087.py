@@ -100,3 +100,15 @@ def test_auto_pipeline_runs_cross_candidates_and_chandelier_as_separate_processe
     )
     assert "FX_LIVE_TRADING_ENABLED" not in pipeline
     assert "I_UNDERSTAND_LIVE_ORDERS" not in pipeline
+
+
+def test_cross_pair_worker_validates_global_spread_overrides_before_subsetting():
+    producer = (
+        ROOT / "src/fx_scanner/demo_euraud_gbpaud_candidate_producer.py"
+    ).read_text()
+    validate = "all_demo_spread_overrides = _demo_spread_limit_overrides(cfg)"
+    subset = "cfg = _with_history_requirements(_subset_cfg(cfg, FETCH_SYMBOLS))"
+    filtered = "for symbol, limit in all_demo_spread_overrides.items()"
+    assert validate in producer
+    assert filtered in producer
+    assert producer.index(validate) < producer.index(subset) < producer.index(filtered)
