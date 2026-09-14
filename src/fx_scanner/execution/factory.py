@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
 from typing import Iterable, Mapping
 
 from ..exceptions import ConfigurationError
+from ..transient import TRANSIENT_RETRY_DELAYS, is_transient_backend_error
 from .ctrader_gateway import CTraderExecutionGateway
 from .ctrader_research import CTraderResearchFeed
 from .ctrader_session import CTraderOpenApiSession
@@ -31,6 +33,37 @@ def _optional_env(name: str) -> str | None:
 
 def _allow_ctrader_token_refresh() -> bool:
     return os.getenv("CTRADER_DISABLE_TOKEN_REFRESH", "").strip() != "1"
+
+
+def _load_ctrader_tokens(
+    token_store: CTraderTokenStateStore,
+    *,
+    fallback_access: str,
+    fallback_refresh: str,
+):
+    """Load durable token state with bounded retry for transient backend faults.
+
+    Durable-state integrity remains authoritative: permanent read/decryption
+    failures are never replaced by stale fallback credentials.
+    """
+    last_exc: BaseException | None = None
+    for attempt, delay in enumerate(TRANSIENT_RETRY_DELAYS, start=1):
+        if delay:
+            time.sleep(delay)
+        try:
+            return token_store.load(
+                fallback_access=fallback_access,
+                fallback_refresh=fallback_refresh,
+            )
+        except Exception as exc:
+            if not is_transient_backend_error(exc):
+                raise
+            last_exc = exc
+            if attempt == len(TRANSIENT_RETRY_DELAYS):
+                break
+    raise ConfigurationError(
+        "durable cTrader token-state read failed after transient retries"
+    ) from last_exc
 
 
 def _session_policies(policy: ExecutionPolicy):
@@ -72,7 +105,8 @@ def build_broker_gateway(
         if str(cfg.get("environment", "DEMO")).upper() != "DEMO":
             raise ConfigurationError("cTrader execution is hard-locked to DEMO")
         token_store = CTraderTokenStateStore(_required_env(cfg["token_state_path_env"]))
-        tokens = token_store.load(
+        tokens = _load_ctrader_tokens(
+            token_store,
             fallback_access=_required_env(cfg["access_token_env"]),
             fallback_refresh=_required_env(cfg["refresh_token_env"]),
         )
@@ -92,9 +126,14 @@ def build_broker_gateway(
             account = session.resolve_granted_account(
                 trader_login=int(_required_env(cfg["trader_login_env"])),
                 require_demo=True,
-                pinned_account_id=None if pinned_account_id is None else int(pinned_account_id),
+                pinned_account_id=(
+                    None if pinned_account_id is None else int(pinned_account_id)
+                ),
             )
-            if bool(policy.demo_safety.get("require_trade_scope", True)) and account.permission_scope != 1:
+            if (
+                bool(policy.demo_safety.get("require_trade_scope", True))
+                and account.permission_scope != 1
+            ):
                 raise ConfigurationError("cTrader token does not have SCOPE_TRADE")
             session.connect()
             universe = [str(x).upper() for x in symbols]
@@ -103,7 +142,9 @@ def build_broker_gateway(
             gateway = CTraderExecutionGateway(
                 session,
                 max_quote_age_seconds=float(cfg.get("max_quote_age_seconds", 5)),
-                quote_wait_timeout_seconds=float(cfg.get("quote_wait_timeout_seconds", 5)),
+                quote_wait_timeout_seconds=float(
+                    cfg.get("quote_wait_timeout_seconds", 5)
+                ),
                 quote_poll_seconds=float(cfg.get("quote_poll_seconds", 0.10)),
             )
             return gateway, session
@@ -126,8 +167,16 @@ def build_broker_gateway(
             max_quote_age_seconds=float(cfg.get("max_quote_age_seconds", 1)),
         )
         backoff, breaker = _session_policies(policy)
-        session = PersistentMT5Session(gateway, backoff=backoff, circuit_breaker=breaker)
-        session.ensure_connected(max_attempts=int(policy.runtime.get("reconnect", {}).get("max_attempts", 3)))
+        session = PersistentMT5Session(
+            gateway,
+            backoff=backoff,
+            circuit_breaker=breaker,
+        )
+        session.ensure_connected(
+            max_attempts=int(
+                policy.runtime.get("reconnect", {}).get("max_attempts", 3)
+            )
+        )
         return gateway, session
 
     raise ConfigurationError(f"unsupported broker backend: {selected}")
@@ -138,10 +187,14 @@ def build_ctrader_research_feed(
     symbols: Iterable[str],
 ) -> CTraderResearchFeed:
     cfg = policy.ctrader
-    if str(cfg.get("role", "")).upper() not in {"RESEARCH_ONLY", "RESEARCH_AND_DEMO_EXECUTION"}:
+    if str(cfg.get("role", "")).upper() not in {
+        "RESEARCH_ONLY",
+        "RESEARCH_AND_DEMO_EXECUTION",
+    }:
         raise ConfigurationError("cTrader research role is invalid")
     token_store = CTraderTokenStateStore(_required_env(cfg["token_state_path_env"]))
-    tokens = token_store.load(
+    tokens = _load_ctrader_tokens(
+        token_store,
         fallback_access=_required_env(cfg["access_token_env"]),
         fallback_refresh=_required_env(cfg["refresh_token_env"]),
     )
@@ -161,7 +214,9 @@ def build_ctrader_research_feed(
         session.resolve_granted_account(
             trader_login=int(_required_env(cfg["trader_login_env"])),
             require_demo=bool(cfg.get("require_demo", True)),
-            pinned_account_id=None if pinned_account_id is None else int(pinned_account_id),
+            pinned_account_id=(
+                None if pinned_account_id is None else int(pinned_account_id)
+            ),
         )
         session.connect()
         universe = [str(x).upper() for x in symbols]
@@ -202,12 +257,18 @@ def build_dual_broker_stack(
     execution_gateway = None
     execution_session = None
     try:
-        execution_gateway, execution_session = build_broker_gateway(policy, universe, backend="MT5")
+        execution_gateway, execution_session = build_broker_gateway(
+            policy,
+            universe,
+            backend="MT5",
+        )
         resolver = MT5SymbolResolver(
             execution_gateway,
             explicit_map=policy.mt5.get("symbol_map", {}),
             suffix_candidates=policy.mt5.get("symbol_suffix_candidates", ["", "c"]),
-            expected_contract_size=float(policy.reconciliation.get("expected_fx_contract_size", 1000)),
+            expected_contract_size=float(
+                policy.reconciliation.get("expected_fx_contract_size", 1000)
+            ),
         )
         # Resolve every configured pair at startup. Wrong account type/symbol
         # contract fails before the execution router can ever receive an order.
@@ -215,10 +276,13 @@ def build_dual_broker_stack(
             resolver.resolve(symbol)
 
         account = execution_gateway.account_snapshot()
-        expected_currency = str(policy.reconciliation.get("expected_account_currency", "USC")).upper()
+        expected_currency = str(
+            policy.reconciliation.get("expected_account_currency", "USC")
+        ).upper()
         if str(account.currency or "").upper() != expected_currency:
             raise ConfigurationError(
-                f"execution account must be HFM Cent currency {expected_currency}; got {account.currency or 'UNKNOWN'}"
+                "execution account must be HFM Cent currency "
+                f"{expected_currency}; got {account.currency or 'UNKNOWN'}"
             )
 
         revalidator = DualFeedRevalidator(
