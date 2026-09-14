@@ -1,14 +1,41 @@
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import replace
 from math import isfinite
 
-from .storage.supabase_operational import SupabaseOperationalStore
+from .storage.supabase_operational import (
+    OperationalStoreUnavailable,
+    SupabaseOperationalStore,
+)
+from .transient import TRANSIENT_RETRY_DELAYS, is_transient_backend_error
 
 
 DEMO_SCORE_FLOOR_MIN = 50.01
 DEMO_RISK_CEILING_PCT = 5.0
+
+
+class DemoSupabaseOperationalStore(SupabaseOperationalStore):
+    """DEMO store with bounded retry for idempotent reference bootstrap only."""
+
+    def ensure_reference_symbols(self, pairs) -> None:
+        last_exc: OperationalStoreUnavailable | None = None
+        for attempt, delay in enumerate(TRANSIENT_RETRY_DELAYS, start=1):
+            if delay:
+                time.sleep(delay)
+            try:
+                super().ensure_reference_symbols(pairs)
+                return
+            except OperationalStoreUnavailable as exc:
+                if not is_transient_backend_error(exc):
+                    raise
+                last_exc = exc
+                if attempt == len(TRANSIENT_RETRY_DELAYS):
+                    break
+        raise OperationalStoreUnavailable(
+            "fx_symbols reference bootstrap failed after transient retries"
+        ) from last_exc
 
 
 def apply_demo_calibration_threshold(cfg):
@@ -93,7 +120,7 @@ def build_demo_calibration_store(*, execution_ready_score_floor: float):
     floor = float(execution_ready_score_floor)
     if not isfinite(floor) or not DEMO_SCORE_FLOOR_MIN <= floor <= 100.0:
         raise SystemExit("CTRADER_DEMO_CALIBRATION_STORE_FLOOR_OUT_OF_RANGE")
-    store = SupabaseOperationalStore.from_env(
+    store = DemoSupabaseOperationalStore.from_env(
         execution_ready_score_floor=max(65.0, floor),
     )
     store.execution_ready_score_floor = floor
