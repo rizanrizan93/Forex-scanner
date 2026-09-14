@@ -26,18 +26,7 @@ jobs:
       - name: Streamlit syntax smoke
         run: python -m py_compile main.py streamlit_app.py
       - name: Unit tests
-        shell: bash
-        run: |
-          set -o pipefail
-          pytest -q 2>&1 | tee pytest-output.txt
-      - name: Upload pytest diagnostic
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-diagnostic
-          path: pytest-output.txt
-          if-no-files-found: error
-          retention-days: 1
+        run: pytest -q
       - name: Config contract
         run: python -m fx_scanner.cli validate-config
       - name: Macro source smoke
