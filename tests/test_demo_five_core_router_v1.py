@@ -63,7 +63,9 @@ def _d1_bars(*, symbol: str = "XAUUSD", rising: bool) -> tuple[Bar, ...]:
 
 def test_five_core_registry_and_pair_specific_demo_authority_are_exact():
     assert FIVE_CORE_SYMBOLS == ("XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD")
-    assert EXECUTION_SYMBOLS == frozenset({"XAUUSD", "USDJPY", "GBPUSD"})
+    assert EXECUTION_SYMBOLS == frozenset(
+        {"XAUUSD", "USDJPY", "GBPUSD", "EURAUD", "GBPAUD"}
+    )
     assert SHADOW_SYMBOLS == frozenset()
     assert NO_TRADE_SYMBOLS == frozenset({"EURUSD", "AUDUSD"})
     assert PAIR_STRATEGY_IDS["XAUUSD"] == "D1_TSMOM_60_200"
@@ -75,11 +77,14 @@ def test_five_core_registry_and_pair_specific_demo_authority_are_exact():
     assert execution_authorized("XAUUSD") is True
     assert execution_authorized("USDJPY") is True
     assert execution_authorized("GBPUSD") is True
+    assert execution_authorized("EURAUD") is True
+    assert execution_authorized("GBPAUD") is True
     assert execution_authorized("EURUSD") is False
-    assert AUTHORITY_CONTRACT == "FIVE_CORE_AUTHORITY_PAIR_SPECIFIC_DEMO_V3"
+    assert execution_authorized("AUDUSD") is False
+    assert AUTHORITY_CONTRACT == "PAIR_SPECIFIC_DEMO_AUTHORITY_V4_EURAUD_GBPAUD"
     assert PREVIOUS_DEMOTION_REASON == "PREREGISTERED_XAU_ROLLING_STABILITY_GATE_FAILED"
-    assert PROMOTION_REASON == "USER_AUTHORIZED_DEMO_AFTER_PUBLIC_HISTORY_ROBUSTNESS_SEARCH"
-    assert DEMOTION_REASON == "SUPERSEDED_BY_PAIR_SPECIFIC_DEMO_AUTHORITY_V3"
+    assert PROMOTION_REASON == "USER_AUTHORIZED_DEMO_TRADING_DATA_COLLECTION"
+    assert DEMOTION_REASON == "SUPERSEDED_BY_PAIR_SPECIFIC_DEMO_AUTHORITY_V4"
 
 
 def test_slow_history_window_pads_24x5_calendar_gaps_without_expanding_fast_timeframes():

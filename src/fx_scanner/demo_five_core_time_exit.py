@@ -7,6 +7,11 @@ from typing import Any
 from .cli import _require_demo_autotrade_opt_in
 from .config import load_project_config
 from .demo_broker_pnl import capture_ctrader_demo_snapshot
+from .demo_euraud_gbpaud_forward_evidence import (
+    EURAUD_STRATEGY_ID,
+    GBPAUD_STRATEGY_ID,
+    PAIR_SPECS as CROSS_PAIR_SPECS,
+)
 from .demo_five_core_authority import EXECUTION_SYMBOLS
 from .demo_five_core_router import D1_MAX_HOLD_BARS, H4_MAX_HOLD_BARS, PAIR_STRATEGY_IDS
 from .demo_market_schedule import apply_demo_market_schedule
@@ -26,6 +31,18 @@ TIME_EXIT_CONTRACTS = {
     "XAUUSD": (PAIR_STRATEGY_IDS["XAUUSD"], "D1", 86400, D1_MAX_HOLD_BARS),
     "USDJPY": (PAIR_STRATEGY_IDS["USDJPY"], "D1", 86400, D1_MAX_HOLD_BARS),
     "GBPUSD": (PAIR_STRATEGY_IDS["GBPUSD"], "H4", 14400, H4_MAX_HOLD_BARS),
+    "EURAUD": (
+        EURAUD_STRATEGY_ID,
+        "D1",
+        86400,
+        int(CROSS_PAIR_SPECS["EURAUD"]["max_hold_bars"]),
+    ),
+    "GBPAUD": (
+        GBPAUD_STRATEGY_ID,
+        "D1",
+        86400,
+        int(CROSS_PAIR_SPECS["GBPAUD"]["max_hold_bars"]),
+    ),
 }
 
 
@@ -58,8 +75,9 @@ def _closed_bars_since_open(
     opened_at: datetime,
     now: datetime,
 ) -> int:
-    # Calendar padding covers 24/5 weekend gaps for both D1 and H4.
-    start = opened_at.astimezone(UTC) - timedelta(seconds=timeframe_seconds * (max_hold_bars + 20) * 1.65)
+    start = opened_at.astimezone(UTC) - timedelta(
+        seconds=timeframe_seconds * (max_hold_bars + 20) * 1.65
+    )
     fetched = tuple(
         session.historical_bars(
             symbol,
@@ -77,7 +95,8 @@ def _closed_bars_since_open(
     return sum(
         1
         for row in closed
-        if row.timestamp + timedelta(seconds=timeframe_seconds) > opened_at.astimezone(UTC)
+        if row.timestamp + timedelta(seconds=timeframe_seconds)
+        > opened_at.astimezone(UTC)
     )
 
 
@@ -108,7 +127,9 @@ def run() -> int:
         if control.execution_mode != "AUTO" or control.emergency_stop:
             raise SystemExit("FIVE_CORE_TIME_EXIT_CONTROL_PLANE_BLOCK")
 
-        snapshot = capture_ctrader_demo_snapshot(session=session, store=None, phase="FIVE_CORE_TIME_EXIT")
+        snapshot = capture_ctrader_demo_snapshot(
+            session=session, store=None, phase="FIVE_CORE_TIME_EXIT"
+        )
         raw_volumes = _raw_volume_by_position(session)
         now = datetime.now(tz=UTC)
 
@@ -126,12 +147,14 @@ def run() -> int:
             evaluated += 1
             opened_at = position.opened_at
             if opened_at is None:
-                decisions.append({
-                    "position_id": str(position.position_id),
-                    "signal_id": signal_id,
-                    "symbol": symbol,
-                    "reason": "OPENED_AT_UNAVAILABLE",
-                })
+                decisions.append(
+                    {
+                        "position_id": str(position.position_id),
+                        "signal_id": signal_id,
+                        "symbol": symbol,
+                        "reason": "OPENED_AT_UNAVAILABLE",
+                    }
+                )
                 continue
 
             closed_bars = _closed_bars_since_open(
@@ -186,7 +209,11 @@ def run() -> int:
                 signal_key=signal_id,
                 broker_order_id=f"TIME_EXIT:{position.position_id}",
                 event_type="DEMO_FIVE_CORE_TIME_EXIT_RESULT",
-                accepted=True if status == "CLOSED" else False if status == "REJECTED" else None,
+                accepted=True
+                if status == "CLOSED"
+                else False
+                if status == "REJECTED"
+                else None,
                 code=status,
                 message=f"{timeframe} max-hold close result",
                 payload=decision,

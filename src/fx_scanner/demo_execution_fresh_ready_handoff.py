@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from . import demo_fresh_ready_handoff as base
+from .demo_euraud_gbpaud_forward_evidence import EURAUD_STRATEGY_ID, GBPAUD_STRATEGY_ID
 from .demo_five_core_authority import EXECUTION_SYMBOLS
 from .demo_five_core_router import PAIR_STRATEGY_IDS
 from .demo_xau_expansion_v42 import STRATEGY_ID as XAU_EXPANSION_V42_STRATEGY_ID
@@ -14,6 +15,8 @@ _ALLOWED_STRATEGIES_BY_SYMBOL = {
     "XAUUSD": frozenset({PAIR_STRATEGY_IDS["XAUUSD"], XAU_EXPANSION_V42_STRATEGY_ID}),
     "USDJPY": frozenset({PAIR_STRATEGY_IDS["USDJPY"]}),
     "GBPUSD": frozenset({PAIR_STRATEGY_IDS["GBPUSD"]}),
+    "EURAUD": frozenset({EURAUD_STRATEGY_ID}),
+    "GBPAUD": frozenset({GBPAUD_STRATEGY_ID}),
 }
 
 # Backward-compatible XAU-only aliases retained for existing observers/tests.
