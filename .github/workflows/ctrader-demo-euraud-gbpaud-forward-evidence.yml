@@ -1,0 +1,70 @@
+name: cTrader Demo EURAUD GBPAUD Forward Evidence
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/euraud-gbpaud-forward-shadow-v1
+    paths:
+      - "src/fx_scanner/demo_euraud_gbpaud_forward_evidence.py"
+      - "src/fx_scanner/demo_euraud_gbpaud_forward_observer.py"
+      - ".github/workflows/ctrader-demo-euraud-gbpaud-forward-evidence.yml"
+  schedule:
+    - cron: "17 23 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-demo-euraud-gbpaud-forward-evidence
+  cancel-in-progress: true
+
+jobs:
+  observe-forward-shadow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install cTrader research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install -e .
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Verify forward-shadow contract
+        run: |
+          python - <<'PY'
+          from fx_scanner.demo_euraud_gbpaud_forward_evidence import (
+              EXECUTION_ELIGIBLE,
+              EXECUTION_INFLUENCE,
+              PROMOTION_AUTHORITY,
+              EURAUD_STRATEGY_ID,
+              GBPAUD_STRATEGY_ID,
+          )
+          assert EXECUTION_ELIGIBLE is False
+          assert EXECUTION_INFLUENCE is False
+          assert PROMOTION_AUTHORITY is False
+          assert EURAUD_STRATEGY_ID == "D1_DONCHIAN55_VOLFILTER_CHANDELIER35"
+          assert GBPAUD_STRATEGY_ID == "D1_COMPONENT_RET63_OPPOSITE_CHANDELIER3"
+          print("EURAUD_GBPAUD_FORWARD_SHADOW_CONTRACT_OK")
+          PY
+      - name: Record broker-native forward shadow evaluations
+        run: python -m fx_scanner.demo_euraud_gbpaud_forward_observer
