@@ -75,28 +75,109 @@ jobs:
       - name: Record auto pipeline running
         continue-on-error: true
         run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_auto_pipeline RUNNING
+
+      # Producers are isolated so a transient failure in one strategy does not
+      # suppress protection maintenance for positions that already exist.
       - name: Evaluate five-core strategy router
+        id: produce_five_core
+        continue-on-error: true
         run: python -m fx_scanner.demo_execution_fast_candidate_producer
       - name: Evaluate promoted XAU Expansion V4.2 DEMO strategy
+        id: produce_xau_v42
+        continue-on-error: true
         run: python -m fx_scanner.demo_xau_expansion_v42_candidate_producer
       - name: Evaluate promoted EURAUD and GBPAUD frozen DEMO strategies
+        id: produce_euraud_gbpaud
+        continue-on-error: true
         run: python -m fx_scanner.demo_euraud_gbpaud_candidate_producer
+
       - name: Repair missing SL/TP on scanner-linked DEMO positions
+        id: repair_existing_protection
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
         run: python -m fx_scanner.demo_existing_protection_repair
+
+      # New entries remain fail-closed. A producer or protection-repair failure
+      # blocks handoff for this cycle rather than executing stale/partial intent.
       - name: Execute only fresh strategy-authorized DEMO signals
+        id: execute_fresh_handoff
+        if: >-
+          ${{ !cancelled() &&
+              steps.produce_five_core.outcome == 'success' &&
+              steps.produce_xau_v42.outcome == 'success' &&
+              steps.produce_euraud_gbpaud.outcome == 'success' &&
+              steps.repair_existing_protection.outcome == 'success' }}
+        continue-on-error: true
         run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
+
       - name: Enforce pair-specific max-hold exits
+        id: pair_time_exit
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
         run: python -m fx_scanner.demo_five_core_time_exit
       - name: Apply EURAUD and GBPAUD completed-D1 Chandelier stops
+        id: euraud_gbpaud_chandelier
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
         run: python -m fx_scanner.demo_euraud_gbpaud_chandelier
       - name: Enforce XAU Expansion V4.2 seven-D1-bar max-hold exit
+        id: xau_v42_time_exit
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
         run: python -m fx_scanner.demo_xau_expansion_v42_time_exit
       - name: Apply XAU Expansion V4.2 completed-H1 deferred profit lock
+        id: xau_v42_profit_lock
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
         run: python -m fx_scanner.demo_xau_v42_deferred_profit_lock
       - name: Keep legacy adaptive profit lock disabled for fixed-exit D1 strategy
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
         run: python -m fx_scanner.demo_adaptive_profit_lock
       - name: Keep legacy structural profit protector disabled for frozen strategies
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
         run: python -m fx_scanner.demo_structural_profit_protector
+
+      - name: Assert critical execution and protection stages succeeded
+        if: ${{ always() && !cancelled() }}
+        shell: bash
+        env:
+          FIVE_CORE_OUTCOME: ${{ steps.produce_five_core.outcome }}
+          XAU_V42_OUTCOME: ${{ steps.produce_xau_v42.outcome }}
+          EURAUD_GBPAUD_OUTCOME: ${{ steps.produce_euraud_gbpaud.outcome }}
+          REPAIR_OUTCOME: ${{ steps.repair_existing_protection.outcome }}
+          HANDOFF_OUTCOME: ${{ steps.execute_fresh_handoff.outcome }}
+          PAIR_EXIT_OUTCOME: ${{ steps.pair_time_exit.outcome }}
+          CHANDELIER_OUTCOME: ${{ steps.euraud_gbpaud_chandelier.outcome }}
+          XAU_EXIT_OUTCOME: ${{ steps.xau_v42_time_exit.outcome }}
+          XAU_LOCK_OUTCOME: ${{ steps.xau_v42_profit_lock.outcome }}
+        run: |
+          set -euo pipefail
+          failed=0
+          for item in \
+            "FIVE_CORE:${FIVE_CORE_OUTCOME}" \
+            "XAU_V42:${XAU_V42_OUTCOME}" \
+            "EURAUD_GBPAUD:${EURAUD_GBPAUD_OUTCOME}" \
+            "REPAIR:${REPAIR_OUTCOME}" \
+            "HANDOFF:${HANDOFF_OUTCOME}" \
+            "PAIR_EXIT:${PAIR_EXIT_OUTCOME}" \
+            "CHANDELIER:${CHANDELIER_OUTCOME}" \
+            "XAU_EXIT:${XAU_EXIT_OUTCOME}" \
+            "XAU_LOCK:${XAU_LOCK_OUTCOME}"; do
+            stage="${item%%:*}"
+            outcome="${item#*:}"
+            if [ "${outcome}" != "success" ]; then
+              echo "CRITICAL_STAGE_FAILED stage=${stage} outcome=${outcome}"
+              failed=1
+            fi
+          done
+          if [ "${failed}" -ne 0 ]; then
+            echo "CTRADER_DEMO_AUTO_PIPELINE_FAIL_CLOSED new_entry_handoff=BLOCKED protection_maintenance=ATTEMPTED"
+            exit 1
+          fi
+          echo "CTRADER_DEMO_AUTO_PIPELINE_CRITICAL_STAGES_OK"
+
       - name: Record auto pipeline success
         if: success()
         continue-on-error: true
