@@ -13,7 +13,7 @@ concurrency:
 jobs:
   fast-revalidate-and-execute:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 7
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -79,19 +79,23 @@ jobs:
         run: python -m fx_scanner.demo_execution_fast_candidate_producer
       - name: Evaluate promoted XAU Expansion V4.2 DEMO strategy
         run: python -m fx_scanner.demo_xau_expansion_v42_candidate_producer
+      - name: Evaluate promoted EURAUD and GBPAUD frozen DEMO strategies
+        run: python -m fx_scanner.demo_euraud_gbpaud_candidate_producer
       - name: Repair missing SL/TP on scanner-linked DEMO positions
         run: python -m fx_scanner.demo_existing_protection_repair
       - name: Execute only fresh strategy-authorized DEMO signals
         run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
-      - name: Enforce legacy five-core D1 max-hold exit
+      - name: Enforce pair-specific max-hold exits
         run: python -m fx_scanner.demo_five_core_time_exit
+      - name: Apply EURAUD and GBPAUD completed-D1 Chandelier stops
+        run: python -m fx_scanner.demo_euraud_gbpaud_chandelier
       - name: Enforce XAU Expansion V4.2 seven-D1-bar max-hold exit
         run: python -m fx_scanner.demo_xau_expansion_v42_time_exit
       - name: Apply XAU Expansion V4.2 completed-H1 deferred profit lock
         run: python -m fx_scanner.demo_xau_v42_deferred_profit_lock
       - name: Keep legacy adaptive profit lock disabled for fixed-exit D1 strategy
         run: python -m fx_scanner.demo_adaptive_profit_lock
-      - name: Keep legacy structural profit protector disabled for fixed-exit D1 strategy
+      - name: Keep legacy structural profit protector disabled for frozen strategies
         run: python -m fx_scanner.demo_structural_profit_protector
       - name: Record auto pipeline success
         if: success()
