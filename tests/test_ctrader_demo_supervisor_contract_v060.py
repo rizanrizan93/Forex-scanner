@@ -12,20 +12,21 @@ def _read(path: str) -> str:
 def test_supervisor_keeps_bounded_one_minute_cadence_without_recursive_handoff() -> None:
     text = _read(".github/workflows/ctrader-demo-auto-supervisor.yml")
 
-    assert "for cycle in $(seq 1 15)" in text
+    assert "for cycle in $(seq 1 5)" in text
     assert "sleep 60" in text
     assert "fast_cadence_seconds=60" in text
     assert "discovery_check_seconds=60" in text
     assert "universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD" in text
     assert "strategies=FIVE_CORE_ROUTER_V1" in text
     assert "cancel-in-progress: false" in text
-    assert "authority=SCHEDULE_15M" in text
+    assert "authority=SCHEDULE_5M" in text
     assert "self_handoff=DISABLED" in text
     assert "CTRADER_DEMO_SUPERVISOR_HANDOFF" not in text
     assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" not in text
     assert "workflow_run:" not in text
-    assert "push:" not in text
-    assert 'cron: "7,22,37,52 * * * 1-5"' in text
+    assert "push:" in text
+    assert '".github/workflows/ctrader-demo-auto-supervisor.yml"' in text
+    assert 'cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 1-5"' in text
     assert "market_weekday_utc" in text
     assert "action=STOP" in text
 
