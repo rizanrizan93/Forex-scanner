@@ -79,7 +79,6 @@ def test_short_breakout_uses_prior_lower_channel_and_atr_buffer():
     current = _bar(
         24,
         close=prior_lower - 0.0030,
-        high=prior_lower + 0.0005,
         low=prior_lower - 0.0035,
     )
     features = build_donchian_atr_h1_features(tuple(rows + [current]), direction="SHORT")
