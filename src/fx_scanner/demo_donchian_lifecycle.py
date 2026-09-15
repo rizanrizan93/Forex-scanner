@@ -134,6 +134,19 @@ def freeze_latest_eligible_candidate(store: SupabaseOperationalStore) -> FrozenC
     if variant.strategy_id != strategy_id:
         return None
     frozen_at = _parse_time(tournament["observed_at"])
+
+    # A failed candidate must not be re-frozen from the same stale historical
+    # tournament heartbeat. A newer tournament run is required before another
+    # prospective cycle can begin.
+    demotion = _latest_event(store, DEMOTION_EVENT)
+    if demotion and isinstance(demotion.get("payload"), Mapping):
+        demotion_payload = dict(demotion["payload"])
+        if (
+            str(demotion_payload.get("strategy_id") or "") == strategy_id
+            and _parse_time(demotion.get("observed_at")) >= frozen_at
+        ):
+            return None
+
     candidate = FrozenCandidate(strategy_id, variant, frozen_at, dict(decision))
     store.record_order_event(
         backend="CTRADER",
