@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import replace
+from datetime import datetime, timezone
 from math import isfinite
 
 from .storage.supabase_operational import (
@@ -14,10 +15,11 @@ from .transient import TRANSIENT_RETRY_DELAYS, is_transient_backend_error
 
 DEMO_SCORE_FLOOR_MIN = 50.01
 DEMO_RISK_CEILING_PCT = 5.0
+UTC = timezone.utc
 
 
 class DemoSupabaseOperationalStore(SupabaseOperationalStore):
-    """DEMO store with bounded retry for idempotent reference bootstrap only."""
+    """DEMO store with bounded retry for idempotent backend operations only."""
 
     def ensure_reference_symbols(self, pairs) -> None:
         last_exc: OperationalStoreUnavailable | None = None
@@ -35,6 +37,42 @@ class DemoSupabaseOperationalStore(SupabaseOperationalStore):
                     break
         raise OperationalStoreUnavailable(
             "fx_symbols reference bootstrap failed after transient retries"
+        ) from last_exc
+
+    def finish_scanner_run(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        finished_at: datetime | None = None,
+    ) -> None:
+        """Retry only the idempotent scanner_runs UPDATE on transient failures.
+
+        start_scanner_run deliberately remains one-shot because retrying an INSERT
+        after an ambiguous 5xx response could create a duplicate run. Finalization
+        is an UPDATE by durable run UUID, so retrying the same terminal state is
+        safe and preserves fail-closed behavior if all attempts fail.
+        """
+        fixed_finished_at = finished_at or datetime.now(tz=UTC)
+        last_exc: OperationalStoreUnavailable | None = None
+        for attempt, delay in enumerate(TRANSIENT_RETRY_DELAYS, start=1):
+            if delay:
+                time.sleep(delay)
+            try:
+                super().finish_scanner_run(
+                    run_id,
+                    status=status,
+                    finished_at=fixed_finished_at,
+                )
+                return
+            except OperationalStoreUnavailable as exc:
+                if not is_transient_backend_error(exc):
+                    raise
+                last_exc = exc
+                if attempt == len(TRANSIENT_RETRY_DELAYS):
+                    break
+        raise OperationalStoreUnavailable(
+            "scanner_runs finish failed after transient retries"
         ) from last_exc
 
 
