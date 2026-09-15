@@ -10,6 +10,7 @@ on:
       - "src/fx_scanner/demo_donchian_forward_shadow.py"
       - "src/fx_scanner/demo_donchian_lifecycle.py"
       - "src/fx_scanner/demo_donchian_adaptive_tournament.py"
+      - "src/fx_scanner/demo_donchian_export_evidence.py"
       - ".github/workflows/ctrader-demo-donchian-forward-shadow.yml"
 
 permissions:
@@ -36,6 +37,8 @@ jobs:
       CTRADER_DONCHIAN_FORWARD_HISTORY_BARS: "1200"
       SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      DONCHIAN_EVIDENCE_WORKER: ctrader_demo_donchian_forward_shadow
+      DONCHIAN_EVIDENCE_OUTPUT: artifacts/donchian-forward-evidence.json
 
     steps:
       - uses: actions/checkout@v4
@@ -51,3 +54,12 @@ jobs:
         run: python -m fx_scanner.cli validate-config
       - name: Run prospective Donchian forward shadow
         run: python -m fx_scanner.demo_donchian_forward_shadow
+      - name: Export exact forward evidence
+        run: python -m fx_scanner.demo_donchian_export_evidence
+      - name: Upload forward evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: donchian-forward-evidence
+          path: artifacts/donchian-forward-evidence.json
+          if-no-files-found: error
+          retention-days: 30
