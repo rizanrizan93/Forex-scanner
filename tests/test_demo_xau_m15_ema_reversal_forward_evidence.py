@@ -101,7 +101,13 @@ def test_forward_metrics_report_expectancy_pf_drawdown_and_tp1_touch_rate():
 
 
 def test_forward_metrics_never_grant_promotion_authority():
-    rows = [{"result_r": 3.0, "mfe_r": 3.0} for _ in range(30)]
+    rows = (
+        [{"result_r": 3.0, "mfe_r": 3.0} for _ in range(24)]
+        + [{"result_r": -1.0, "mfe_r": 0.5} for _ in range(6)]
+    )
     metrics = summarize_forward_metrics(rows)
+    assert metrics["closed_trades"] == 30
+    assert metrics["profit_factor"] == pytest.approx(12.0)
+    assert metrics["max_drawdown_r"] == pytest.approx(6.0)
     assert metrics["promotion_evidence_state"] == "EVIDENCE_POSITIVE_REVIEW_CANDIDATE"
     assert metrics["promotion_authority"] is False
