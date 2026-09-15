@@ -9,6 +9,7 @@ on:
     paths:
       - "src/fx_scanner/demo_donchian_adaptive_tournament.py"
       - "src/fx_scanner/demo_donchian_tournament_runtime.py"
+      - "src/fx_scanner/demo_donchian_export_evidence.py"
       - "src/fx_scanner/demo_donchian_atr_h1.py"
       - "config/validation.yaml"
       - ".github/workflows/ctrader-demo-donchian-tournament.yml"
@@ -37,6 +38,8 @@ jobs:
       CTRADER_DONCHIAN_HISTORY_BARS: "2200"
       SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      DONCHIAN_EVIDENCE_WORKER: ctrader_demo_donchian_adaptive_tournament
+      DONCHIAN_EVIDENCE_OUTPUT: artifacts/donchian-tournament-evidence.json
 
     steps:
       - uses: actions/checkout@v4
@@ -52,3 +55,12 @@ jobs:
         run: python -m fx_scanner.cli validate-config
       - name: Run bounded Donchian historical tournament
         run: python -m fx_scanner.demo_donchian_tournament_runtime
+      - name: Export exact tournament evidence
+        run: python -m fx_scanner.demo_donchian_export_evidence
+      - name: Upload tournament evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: donchian-tournament-evidence
+          path: artifacts/donchian-tournament-evidence.json
+          if-no-files-found: error
+          retention-days: 30
