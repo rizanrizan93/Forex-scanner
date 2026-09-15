@@ -129,16 +129,18 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
 def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_five_core_lanes():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
     assert "workflow_dispatch:" in text
-    assert 'cron: "7,22,37,52 * * * 1-5"' in text
+    assert 'cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 1-5"' in text
     assert "workflow_run:" not in text
-    assert "push:" not in text
+    assert "push:" in text
+    assert '".github/workflows/ctrader-demo-auto-supervisor.yml"' in text
     assert "cancel-in-progress: false" in text
     assert "actions: write" in text
-    assert "seq 1 15" in text
+    assert "seq 1 5" in text
     assert "sleep 60" in text
     assert "fast_cadence_seconds=60" in text
     assert "discovery_check_seconds=60" in text
-    assert "authority=SCHEDULE_15M" in text
+    assert "authority=SCHEDULE_5M" in text
+    assert "push_kick=WORKFLOW_FILE_ONLY" in text
     assert "self_handoff=DISABLED" in text
     assert "CTRADER_DEMO_SUPERVISOR_HANDOFF" not in text
     assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" not in text
