@@ -145,22 +145,20 @@ def run() -> int:
     stressed_costs = _costs(validation_cfg, stressed=True)
     development_base = {profile.profile_id: [] for profile in PROFILES}
     development_stressed = {profile.profile_id: [] for profile in PROFILES}
-    holdout_base = {profile.profile_id: [] for profile in PROFILES}
-    holdout_stressed = {profile.profile_id: [] for profile in PROFILES}
     split_times: dict[str, str] = {}
-    symbol_counts: dict[str, dict[str, dict[str, int]]] = {}
+    split_indices: dict[str, int] = {}
+    development_symbol_counts: dict[str, dict[str, int]] = {}
 
     warmup = max(CORE_VARIANT.lookback, CORE_VARIANT.atr_period, STRUCTURE_WINDOW)
     for symbol, bars in bars_by_symbol.items():
         split_index = int(len(bars) * DEVELOPMENT_FRACTION)
         split_index = max(warmup + 1, min(split_index, len(bars) - 2))
+        split_indices[symbol] = split_index
         split_time = bars[split_index].timestamp
         split_times[symbol] = split_time.isoformat()
         dev_bars = bars[:split_index]
-        hold_start = max(0, split_index - warmup)
-        hold_bars = bars[hold_start:]
         pip_size = float(pair_by_symbol[symbol].pip_size)
-        symbol_counts[symbol] = {}
+        development_symbol_counts[symbol] = {}
         for profile in PROFILES:
             dev_base = simulate_context_profile(
                 dev_bars,
@@ -176,30 +174,9 @@ def run() -> int:
                 profile=profile,
                 costs=stressed_costs,
             )
-            hold_base_all = simulate_context_profile(
-                hold_bars,
-                symbol=symbol,
-                pip_size=pip_size,
-                profile=profile,
-                costs=base_costs,
-            )
-            hold_stress_all = simulate_context_profile(
-                hold_bars,
-                symbol=symbol,
-                pip_size=pip_size,
-                profile=profile,
-                costs=stressed_costs,
-            )
-            hold_base_rows = tuple(row for row in hold_base_all if row.signal_at >= split_time)
-            hold_stress_rows = tuple(row for row in hold_stress_all if row.signal_at >= split_time)
             development_base[profile.profile_id].extend(dev_base)
             development_stressed[profile.profile_id].extend(dev_stress)
-            holdout_base[profile.profile_id].extend(hold_base_rows)
-            holdout_stressed[profile.profile_id].extend(hold_stress_rows)
-            symbol_counts[symbol][profile.profile_id] = {
-                "development": len(dev_base),
-                "holdout": len(hold_base_rows),
-            }
+            development_symbol_counts[symbol][profile.profile_id] = len(dev_base)
 
     evaluations = tuple(
         evaluate_development(
@@ -212,10 +189,46 @@ def run() -> int:
     )
     selected = select_on_development(evaluations)
     selected_id = None if selected is None else selected.profile.profile_id
+
+    # Untouched holdout is evaluated only after the development-only selector is
+    # frozen. No alternative profile receives a holdout score in this run.
+    selected_holdout_base = []
+    selected_holdout_stressed = []
+    selected_symbol_trade_counts: dict[str, dict[str, int]] = {}
+    if selected is not None:
+        for symbol, bars in bars_by_symbol.items():
+            split_index = split_indices[symbol]
+            split_time = bars[split_index].timestamp
+            hold_start = max(0, split_index - warmup)
+            hold_bars = bars[hold_start:]
+            pip_size = float(pair_by_symbol[symbol].pip_size)
+            hold_base_all = simulate_context_profile(
+                hold_bars,
+                symbol=symbol,
+                pip_size=pip_size,
+                profile=selected.profile,
+                costs=base_costs,
+            )
+            hold_stress_all = simulate_context_profile(
+                hold_bars,
+                symbol=symbol,
+                pip_size=pip_size,
+                profile=selected.profile,
+                costs=stressed_costs,
+            )
+            hold_base = tuple(row for row in hold_base_all if row.signal_at >= split_time)
+            hold_stress = tuple(row for row in hold_stress_all if row.signal_at >= split_time)
+            selected_holdout_base.extend(hold_base)
+            selected_holdout_stressed.extend(hold_stress)
+            selected_symbol_trade_counts[symbol] = {
+                "development": development_symbol_counts[symbol].get(selected_id, 0),
+                "holdout": len(hold_base),
+            }
+
     decision = evaluate_untouched_holdout(
         selected=selected,
-        holdout_base=() if selected_id is None else holdout_base[selected_id],
-        holdout_stressed=() if selected_id is None else holdout_stressed[selected_id],
+        holdout_base=selected_holdout_base,
+        holdout_stressed=selected_holdout_stressed,
         validation_cfg=validation_cfg,
     )
     if coverage < MIN_SYMBOL_COVERAGE:
@@ -247,6 +260,7 @@ def run() -> int:
             "minimum_development_trades": 130,
             "minimum_holdout_trades": 100,
             "holdout_opened_only_after_development_selection": True,
+            "only_selected_profile_receives_holdout_score": True,
         },
         "symbols_requested": list(symbols),
         "symbols_available": sorted(bars_by_symbol),
@@ -257,14 +271,7 @@ def run() -> int:
         "split_times": split_times,
         "development_evaluations": [row.payload() for row in evaluations],
         "decision": decision,
-        "selected_symbol_trade_counts": (
-            {
-                symbol: counts.get(selected_id, {})
-                for symbol, counts in sorted(symbol_counts.items())
-            }
-            if selected_id is not None
-            else {}
-        ),
+        "selected_symbol_trade_counts": selected_symbol_trade_counts,
     }
     healthy = bool(coverage >= MIN_SYMBOL_COVERAGE and bars_by_symbol)
     store = SupabaseOperationalStore.from_env()
