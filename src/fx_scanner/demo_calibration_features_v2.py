@@ -4,6 +4,7 @@ from datetime import datetime
 from math import isfinite
 from typing import Any, Mapping, Sequence
 
+from .demo_donchian_atr_h1 import build_donchian_atr_h1_features
 from .demo_four_ema import build_four_ema_bundle
 from .demo_strategy_lab import strategy_lab_payload
 from .demo_technical_strategy import _demo_directional_structure_score
@@ -52,13 +53,7 @@ def _transition_evidence(snapshot: Any, direction: str) -> bool:
 
 
 def classify_regime_v2(analysis: Any) -> str:
-    """Direction-aware structural regime for calibration attribution only.
-
-    The classifier is intentionally deterministic and has no execution effect.
-    It separates persistent trend, range, transition, and reversal contexts so
-    cohort calibration can learn setup/regime interactions without mutating the
-    strategy that created the observation.
-    """
+    """Direction-aware structural regime for calibration attribution only."""
     direction = str(analysis.direction).upper()
     h1 = analysis.h1
     m15 = analysis.m15
@@ -199,12 +194,18 @@ def build_signal_feature_snapshot_v2(
         direction=str(analysis.direction).upper(),
         atr_period=int(atr_period),
     )
+    donchian_h1 = build_donchian_atr_h1_features(
+        bars_by_timeframe.get("H1", ()),
+        direction=str(analysis.direction).upper(),
+        atr_period=int(atr_period),
+    ).to_payload()
     hypotheses = strategy_lab_payload(
         analysis=analysis,
         regime=regime,
         session=session,
         geometry_payload=geometry_payload,
         ema_evidence=ema4,
+        donchian_evidence=donchian_h1,
     )
     snapshot: dict[str, Any] = {
         "snapshot_version": 2,
@@ -219,7 +220,7 @@ def build_signal_feature_snapshot_v2(
         "regime": regime,
         "regime_classifier": "STRUCTURE_V2_DIRECTION_AWARE",
         "session": session,
-        "strategy_lab_version": 2,
+        "strategy_lab_version": 3,
         "strategy_hypotheses": hypotheses,
         "strategy_hypotheses_active": [row["family"] for row in hypotheses if row["active"]],
         "ema4_profile": ema4["profile"],
@@ -232,6 +233,9 @@ def build_signal_feature_snapshot_v2(
         "ema4_h1": ema4["h1"],
         "ema4_m15": ema4["m15"],
         "ema4_m5": ema4["m5"],
+        "donchian_atr_h1": donchian_h1,
+        "donchian_atr_h1_profile": donchian_h1["profile"],
+        "donchian_atr_h1_policy_effect": "OBSERVATION_ONLY",
         "trigger_confirmed": bool(getattr(analysis, "trigger_confirmed", False)),
         "stale_timeframes": list(getattr(analysis, "stale_timeframes", ()) or ()),
         "structure_h1": _structure_snapshot(analysis.h1, analysis.direction),

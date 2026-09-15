@@ -16,6 +16,7 @@ class StrategyFamily(StrEnum):
     LIQUIDITY_SWEEP = "LIQUIDITY_SWEEP"
     FOUR_EMA_PULLBACK = "FOUR_EMA_PULLBACK"
     IMPULSE_RETEST = "IMPULSE_RETEST"
+    DONCHIAN_ATR_BREAKOUT_H1 = "DONCHIAN_ATR_BREAKOUT_H1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +77,7 @@ def build_strategy_lab_hypotheses(
     session: str,
     geometry_payload: Mapping[str, Any] | None = None,
     ema_evidence: Mapping[str, Any] | None = None,
+    donchian_evidence: Mapping[str, Any] | None = None,
 ) -> tuple[StrategyHypothesis, ...]:
     """Build competing DEMO strategy hypotheses from one immutable signal snapshot.
 
@@ -92,6 +94,7 @@ def build_strategy_lab_hypotheses(
     session = str(session or "UNKNOWN").upper()
     geometry_payload = dict(geometry_payload or {})
     ema_evidence = dict(ema_evidence or {})
+    donchian_evidence = dict(donchian_evidence or {})
 
     aligned_h1 = _aligned(getattr(h1, "trend", None), direction)
     aligned_m15 = _aligned(getattr(m15, "trend", None), direction)
@@ -124,7 +127,9 @@ def build_strategy_lab_hypotheses(
     elif regime in {"RANGE", "REVERSAL"}:
         trend_score -= 20.0
 
-    liquid_session = session in {"LONDON", "NEW_YORK", "LONDON_NEW_YORK_OVERLAP", "OVERLAP"}
+    liquid_session = session in {
+        "LONDON", "NEW_YORK", "LONDON_NEW_YORK_OVERLAP", "LONDON_NY_OVERLAP", "OVERLAP"
+    }
     breakout_score = 15.0
     breakout_score += 25.0 if liquid_session else 0.0
     breakout_score += 25.0 if (m5_displacement or m15_displacement) else 0.0
@@ -178,11 +183,6 @@ def build_strategy_lab_hypotheses(
     if regime == "RANGE" and str(ema_m15.get("spread_state", "")).upper() == "COMPRESSING":
         ema_score -= 10.0
 
-    # Original research hypothesis: a directional move is treated as credible only
-    # after an impulse has been accepted and price returns in a controlled retest.
-    # This intentionally rejects bare M5 structure breaks, which dominate the
-    # current weak DEMO outcome cohort, and uses four-EMA state only as secondary
-    # expansion/context evidence rather than as an execution trigger.
     impulse_present = m5_displacement or m15_displacement
     structure_present = m5_bos or m15_bos
     directional_fvg = m5_fvg or m15_fvg
@@ -214,34 +214,38 @@ def build_strategy_lab_hypotheses(
     impulse_retest_score -= 20.0 if regime == "RANGE" else 0.0
     impulse_retest_score -= 20.0 if not ema_not_opposed else 0.0
 
+    donchian_available = bool(donchian_evidence.get("available"))
+    donchian_triggered = bool(donchian_evidence.get("breakout_triggered"))
+    donchian_close_beyond = bool(donchian_evidence.get("close_beyond_channel"))
+    donchian_intrabar_beyond = bool(donchian_evidence.get("intrabar_beyond_channel"))
+    donchian_score = 5.0 if not donchian_available else 10.0
+    donchian_score += 55.0 if donchian_triggered else 0.0
+    donchian_score += 10.0 if donchian_close_beyond else 0.0
+    donchian_score += 10.0 if aligned_h1 else 0.0
+    donchian_score += 10.0 if regime in {"TREND_STRONG", "TREND_WEAK", "TRANSITION"} else 0.0
+    donchian_score += 5.0 if (m5_displacement or m15_displacement or m5_bos or m15_bos) else 0.0
+    if regime in {"RANGE", "REVERSAL"} and not donchian_triggered:
+        donchian_score -= 15.0
+
     raw = (
         (StrategyFamily.TREND_MOMENTUM, trend_score, {
-            "aligned_h1": aligned_h1,
-            "aligned_m15": aligned_m15,
-            "aligned_m5": aligned_m5,
+            "aligned_h1": aligned_h1, "aligned_m15": aligned_m15, "aligned_m5": aligned_m5,
             "directional_displacement": m5_displacement or m15_displacement,
-            "directional_bos": m5_bos or m15_bos,
-            "regime": regime,
+            "directional_bos": m5_bos or m15_bos, "regime": regime,
         }),
         (StrategyFamily.SESSION_BREAKOUT, breakout_score, {
             "liquid_session": liquid_session,
             "directional_displacement": m5_displacement or m15_displacement,
-            "directional_bos": m5_bos or m15_bos,
-            "aligned_h1": aligned_h1,
-            "session": session,
-            "regime": regime,
+            "directional_bos": m5_bos or m15_bos, "aligned_h1": aligned_h1,
+            "session": session, "regime": regime,
         }),
         (StrategyFamily.PULLBACK_TREND, pullback_score, {
-            "aligned_h1": aligned_h1,
-            "aligned_m15": aligned_m15,
-            "directional_fvg": m5_fvg or m15_fvg,
-            "entry_mode": entry_mode or None,
-            "confirmation": confirmation or None,
-            "pullback_atr": pullback_atr_f,
+            "aligned_h1": aligned_h1, "aligned_m15": aligned_m15,
+            "directional_fvg": m5_fvg or m15_fvg, "entry_mode": entry_mode or None,
+            "confirmation": confirmation or None, "pullback_atr": pullback_atr_f,
         }),
         (StrategyFamily.MEAN_REVERSION, mean_reversion_score, {
-            "range_regime": regime == "RANGE",
-            "directional_sweep": m5_sweep or m15_sweep,
+            "range_regime": regime == "RANGE", "directional_sweep": m5_sweep or m15_sweep,
             "h1_not_aligned": not aligned_h1,
             "directional_displacement": m5_displacement or m15_displacement,
             "confirmation": confirmation or None,
@@ -249,13 +253,11 @@ def build_strategy_lab_hypotheses(
         (StrategyFamily.LIQUIDITY_SWEEP, sweep_score, {
             "directional_sweep": m5_sweep or m15_sweep,
             "directional_displacement": m5_displacement or m15_displacement,
-            "directional_bos": m5_bos or m15_bos,
-            "regime": regime,
+            "directional_bos": m5_bos or m15_bos, "regime": regime,
             "confirmation": confirmation or None,
         }),
         (StrategyFamily.FOUR_EMA_PULLBACK, ema_score, {
-            "profile": ema_evidence.get("profile"),
-            "periods": ema_evidence.get("periods"),
+            "profile": ema_evidence.get("profile"), "periods": ema_evidence.get("periods"),
             "brochure_periods_confirmed": bool(ema_evidence.get("brochure_periods_confirmed", False)),
             "available_timeframes": ema_evidence.get("available_timeframes", 0),
             "mature_timeframes": ema_evidence.get("mature_timeframes", 0),
@@ -265,28 +267,33 @@ def build_strategy_lab_hypotheses(
             "m5_directional_aligned": bool(ema_m5.get("directional_aligned")),
             "h1_directional_slopes": bool(ema_h1.get("directional_slopes")),
             "m15_directional_slopes": bool(ema_m15.get("directional_slopes")),
-            "h1_spread_state": ema_h1.get("spread_state"),
-            "m15_spread_state": ema_m15.get("spread_state"),
+            "h1_spread_state": ema_h1.get("spread_state"), "m15_spread_state": ema_m15.get("spread_state"),
             "pullback_near_fast_cluster": ema_pullback,
             "smc_confirmation": m5_displacement or m15_displacement or m5_bos or m15_bos,
             "regime": regime,
         }),
         (StrategyFamily.IMPULSE_RETEST, impulse_retest_score, {
-            "regime": regime,
-            "session": session,
-            "impulse_present": impulse_present,
-            "directional_structure": structure_present,
-            "directional_fvg": directional_fvg,
-            "directional_sweep": directional_sweep,
-            "aligned_h1": aligned_h1,
-            "aligned_m15": aligned_m15,
-            "ema_not_opposed": ema_not_opposed,
-            "ema_release": ema_release,
-            "controlled_retest": controlled_retest,
-            "pullback_atr": pullback_atr_f,
-            "entry_mode": entry_mode or None,
+            "regime": regime, "session": session, "impulse_present": impulse_present,
+            "directional_structure": structure_present, "directional_fvg": directional_fvg,
+            "directional_sweep": directional_sweep, "aligned_h1": aligned_h1,
+            "aligned_m15": aligned_m15, "ema_not_opposed": ema_not_opposed,
+            "ema_release": ema_release, "controlled_retest": controlled_retest,
+            "pullback_atr": pullback_atr_f, "entry_mode": entry_mode or None,
             "confirmation": confirmation or None,
             "design_basis": "IMPULSE_ACCEPTANCE_THEN_FIRST_CONTROLLED_RETEST",
+        }),
+        (StrategyFamily.DONCHIAN_ATR_BREAKOUT_H1, donchian_score, {
+            "profile": donchian_evidence.get("profile"), "timeframe": donchian_evidence.get("timeframe", "H1"),
+            "lookback": donchian_evidence.get("lookback"), "atr_period": donchian_evidence.get("atr_period"),
+            "breakout_buffer_atr": donchian_evidence.get("breakout_buffer_atr"),
+            "available": donchian_available, "mature": bool(donchian_evidence.get("mature")),
+            "breakout_triggered": donchian_triggered, "close_beyond_channel": donchian_close_beyond,
+            "intrabar_beyond_channel": donchian_intrabar_beyond,
+            "breakout_distance_atr": donchian_evidence.get("breakout_distance_atr"),
+            "channel_width_atr": donchian_evidence.get("channel_width_atr"),
+            "aligned_h1": aligned_h1, "regime": regime,
+            "smc_confirmation": m5_displacement or m15_displacement or m5_bos or m15_bos,
+            "design_basis": "PRIOR_DONCHIAN_CHANNEL_CLOSE_BREAK_PLUS_ATR_BUFFER",
         }),
     )
 
