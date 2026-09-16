@@ -9,6 +9,12 @@ from fx_scanner.demo_five_core_router import (
     PAIR_STRATEGY_IDS,
     SHADOW_SYMBOLS,
 )
+from fx_scanner.demo_xau_m15_ema_reversal_recovery import (
+    STRATEGY_ID as XAU_M15_EMA_REVERSAL_STRATEGY_ID,
+)
+from fx_scanner.demo_xau_m15_liquidity_sweep_fade import (
+    STRATEGY_ID as XAU_M15_SWEEP_FADE_STRATEGY_ID,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +31,8 @@ def test_five_core_execution_registry_is_exact_and_pair_specific():
     assert PAIR_STRATEGY_IDS["EURUSD"] == "NO_TRADE_UNTIL_VALIDATED"
     assert PAIR_STRATEGY_IDS["USDJPY"] in _ALLOWED_STRATEGIES_BY_SYMBOL["USDJPY"]
     assert PAIR_STRATEGY_IDS["GBPUSD"] in _ALLOWED_STRATEGIES_BY_SYMBOL["GBPUSD"]
+    assert XAU_M15_EMA_REVERSAL_STRATEGY_ID in _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"]
+    assert XAU_M15_SWEEP_FADE_STRATEGY_ID in _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"]
 
 
 def test_forward_demo_score_keeps_pair_orders_at_conservative_floor():
@@ -35,7 +43,7 @@ def test_forward_demo_score_keeps_pair_orders_at_conservative_floor():
         assert sizing.risk_budget_pct <= 5.0
 
 
-def test_active_workflows_use_five_core_wrappers_and_bounded_demo_contract():
+def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract():
     auto = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     discovery = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
     supervisor = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
@@ -49,10 +57,15 @@ def test_active_workflows_use_five_core_wrappers_and_bounded_demo_contract():
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in auto
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in auto
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in auto
-    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "0"' in auto
+    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in auto
+    assert 'CTRADER_DEMO_STACK_MIN_SCORE: "50.01"' in auto
+    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "4"' in auto
+    assert 'CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"' in auto
     assert "demo_five_core_candidate_producer" in fast_wrapper
     assert "_ALLOWED_STRATEGIES_BY_SYMBOL" in handoff
     assert "PAIR_STRATEGY_IDS" in handoff
+    assert "XAU_M15_EMA_REVERSAL_STRATEGY_ID" in handoff
+    assert "XAU_M15_SWEEP_FADE_STRATEGY_ID" in handoff
     assert "demo_execution_technical_producer" in discovery
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in discovery
     assert "XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD" in supervisor
