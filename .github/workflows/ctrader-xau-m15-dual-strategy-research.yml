@@ -1,0 +1,64 @@
+name: cTrader XAU M15 Dual Strategy Research
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - feature/xau-m15-dual-strategy-research
+    paths:
+      - "src/fx_scanner/research_xau_m15_dual_strategy.py"
+      - "src/fx_scanner/research_xau_m15_dual_strategy_runtime.py"
+      - "src/fx_scanner/demo_xau_m15_ema_reversal_recovery.py"
+      - "src/fx_scanner/demo_xau_m15_liquidity_sweep_fade.py"
+      - "config/validation.yaml"
+      - "config/pairs.yaml"
+      - ".github/workflows/ctrader-xau-m15-dual-strategy-research.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-xau-m15-dual-strategy-research
+  cancel-in-progress: true
+
+jobs:
+  xau-m15-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      CTRADER_XAU_M15_RESEARCH_HISTORY_BARS: "50000"
+      XAU_M15_DUAL_RESEARCH_EVIDENCE_OUTPUT: artifacts/xau-m15-dual-strategy-research.json
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install cTrader research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Run XAU M15 dual-strategy point-in-time research
+        run: python -m fx_scanner.research_xau_m15_dual_strategy_runtime
+      - name: Upload XAU M15 dual-strategy evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-m15-dual-strategy-research
+          path: artifacts/xau-m15-dual-strategy-research.json
+          if-no-files-found: error
+          retention-days: 30
