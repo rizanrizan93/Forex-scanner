@@ -3,6 +3,8 @@ name: cTrader Demo Auto Supervisor
 on:
   workflow_dispatch:
   schedule:
+    # Primary 5-minute authority. A separate recovery watchdog can re-dispatch
+    # this bounded supervisor if GitHub stops delivering the primary cron.
     - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 1-5"
   push:
     branches:
