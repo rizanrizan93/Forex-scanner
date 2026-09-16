@@ -12,7 +12,6 @@ def test_demo_auto_pipeline_is_dispatch_only_five_core_fast_lane_and_demo_only()
     assert "demo_execution_fast_candidate_producer" in text
     assert "demo_execution_fresh_ready_handoff --limit 10" in text
     assert "demo_five_core_time_exit" in text
-    assert "demo_structural_profit_protector" in text
     assert text.index("demo_execution_fast_candidate_producer") < text.index(
         "demo_execution_fresh_ready_handoff"
     )
@@ -33,8 +32,14 @@ def test_demo_auto_pipeline_is_dispatch_only_five_core_fast_lane_and_demo_only()
     assert 'CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"' in text
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
-    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "0"' in text
-    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "1"' in text
+    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in text
+    assert 'CTRADER_DEMO_STACK_MIN_SCORE: "50.01"' in text
+    assert 'CTRADER_DEMO_STACK_MIN_COVERAGE: "0.80"' in text
+    assert 'CTRADER_DEMO_STACK_MIN_RR2: "1.5"' in text
+    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "4"' in text
+    assert 'CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"' in text
+    assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"' in text
+    assert 'CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "25.0"' in text
     assert 'CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "0"' in text
     assert 'CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"' in text
     assert 'FX_KILL_SWITCH: "0"' in text
@@ -47,6 +52,8 @@ def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_producer
 
     assert "id: produce_five_core" in text
     assert "id: produce_xau_v42" in text
+    assert "id: produce_xau_m15_reversal" in text
+    assert "id: produce_xau_m15_sweep_fade" in text
     assert "id: produce_euraud_gbpaud" in text
     assert "id: repair_existing_protection" in text
     assert "id: execute_fresh_handoff" in text
@@ -57,6 +64,8 @@ def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_producer
     assert text.count("if: ${{ always() && !cancelled() }}") >= 7
     assert "steps.produce_five_core.outcome == 'success'" in text
     assert "steps.produce_xau_v42.outcome == 'success'" in text
+    assert "steps.produce_xau_m15_reversal.outcome == 'success'" in text
+    assert "steps.produce_xau_m15_sweep_fade.outcome == 'success'" in text
     assert "steps.produce_euraud_gbpaud.outcome == 'success'" in text
     assert "steps.repair_existing_protection.outcome == 'success'" in text
     assert "CRITICAL_STAGE_FAILED" in text
