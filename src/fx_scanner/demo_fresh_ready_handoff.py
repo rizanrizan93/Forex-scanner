@@ -142,7 +142,7 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
     demo_safety["stack_min_score"] = _bounded_float_env(
         DEMO_STACK_MIN_SCORE_ENV,
         default=85.0,
-        minimum=70.0,
+        minimum=50.01,
         maximum=100.0,
     )
     demo_safety["stack_min_coverage"] = _bounded_float_env(
@@ -161,7 +161,7 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
         DEMO_STACK_MAX_POSITIONS_ENV,
         default=3,
         minimum=1,
-        maximum=3,
+        maximum=4,
     )
     demo_safety["max_same_symbol_positions"] = max_same_symbol_positions
     demo_safety["min_stack_spacing_seconds"] = _bounded_float_env(

@@ -45,7 +45,11 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
     assert "python -m fx_scanner.demo_five_core_time_exit" in fast
     assert "python -m fx_scanner.demo_structural_profit_protector" in fast
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"' in fast
-    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "0"' in fast
+    assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in fast
+    assert 'CTRADER_DEMO_STACK_MIN_SCORE: "50.01"' in fast
+    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "4"' in fast
+    assert 'CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"' in fast
+    assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"' in fast
     assert 'CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "0"' in fast
     assert 'CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"' in fast
 

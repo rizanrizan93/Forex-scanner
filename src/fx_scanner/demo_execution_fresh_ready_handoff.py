@@ -5,6 +5,8 @@ from .demo_euraud_gbpaud_forward_evidence import EURAUD_STRATEGY_ID, GBPAUD_STRA
 from .demo_five_core_authority import EXECUTION_SYMBOLS
 from .demo_five_core_router import PAIR_STRATEGY_IDS
 from .demo_xau_expansion_v42 import STRATEGY_ID as XAU_EXPANSION_V42_STRATEGY_ID
+from .demo_xau_m15_ema_reversal_recovery import STRATEGY_ID as XAU_M15_EMA_REVERSAL_STRATEGY_ID
+from .demo_xau_m15_liquidity_sweep_fade import STRATEGY_ID as XAU_M15_SWEEP_FADE_STRATEGY_ID
 from .storage.supabase_operational import (
     OperationalStoreUnavailable,
     SupabaseOperationalStore,
@@ -12,7 +14,14 @@ from .storage.supabase_operational import (
 
 _ORIGINAL_INSTALL_FRESH = base.install_fresh_execution_ready_handoff
 _ALLOWED_STRATEGIES_BY_SYMBOL = {
-    "XAUUSD": frozenset({PAIR_STRATEGY_IDS["XAUUSD"], XAU_EXPANSION_V42_STRATEGY_ID}),
+    "XAUUSD": frozenset(
+        {
+            PAIR_STRATEGY_IDS["XAUUSD"],
+            XAU_EXPANSION_V42_STRATEGY_ID,
+            XAU_M15_EMA_REVERSAL_STRATEGY_ID,
+            XAU_M15_SWEEP_FADE_STRATEGY_ID,
+        }
+    ),
     "USDJPY": frozenset({PAIR_STRATEGY_IDS["USDJPY"]}),
     "GBPUSD": frozenset({PAIR_STRATEGY_IDS["GBPUSD"]}),
     "EURAUD": frozenset({EURAUD_STRATEGY_ID}),
@@ -75,7 +84,7 @@ def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
 
 
 def main() -> int:
-    """Execute only fresh, exact promoted pair-specific DEMO strategy signals."""
+    """Execute only fresh, exact authorized pair-specific DEMO strategy signals."""
     base.install_fresh_execution_ready_handoff = _install_five_core_identity_filter
     return base.main()
 
