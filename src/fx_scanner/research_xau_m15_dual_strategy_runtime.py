@@ -64,12 +64,19 @@ def _artifact_path() -> Path:
 def _write_artifact(details: dict[str, Any]) -> str:
     path = _artifact_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "artifact_contract": ARTIFACT_CONTRACT,
-        "contains_secrets": False,
-        "details": details,
-    }
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n")
+    path.write_text(
+        json.dumps(
+            {
+                "artifact_contract": ARTIFACT_CONTRACT,
+                "contains_secrets": False,
+                "details": details,
+            },
+            indent=2,
+            sort_keys=True,
+            default=str,
+        )
+        + "\n"
+    )
     return str(path)
 
 
@@ -84,8 +91,6 @@ def _fetch_history(feed, *, target: int, as_of: datetime):
         if remaining <= 0:
             break
         request_count = min(PAGE_BARS, remaining)
-        # M15 FX/metals trade roughly 5 days/week. A 3x wall-clock range leaves
-        # ample room for weekends/holidays without asking cTrader for unbounded history.
         start = cursor - timedelta(seconds=request_count * TIMEFRAME_SECONDS * 3)
         fetched = tuple(
             feed.historical_bars(
@@ -107,16 +112,18 @@ def _fetch_history(feed, *, target: int, as_of: datetime):
                 "page": page,
                 "requested": request_count,
                 "received": len(fetched),
+                "merged_total": len(merged),
                 "earliest": earliest.isoformat(),
                 "latest": latest.isoformat(),
             }
         )
+        # cTrader can return one/few bars less than `count` at an endpoint boundary.
+        # A partial page is not proof that older history is unavailable. Stop only
+        # when the cursor cannot move farther backward or the page is truly empty.
         if previous_earliest is not None and earliest >= previous_earliest:
             break
         previous_earliest = earliest
         cursor = earliest - timedelta(seconds=1)
-        if len(fetched) < request_count:
-            break
 
     rows = tuple(sorted(merged.values(), key=lambda row: row.timestamp))
     closed = tuple(
@@ -129,7 +136,10 @@ def _fetch_history(feed, *, target: int, as_of: datetime):
     return closed, pages
 
 
-def _costs(validation_cfg: dict[str, Any], spread_proxy_pips: float) -> tuple[M15ResearchCosts, M15ResearchCosts]:
+def _costs(
+    validation_cfg: dict[str, Any],
+    spread_proxy_pips: float,
+) -> tuple[M15ResearchCosts, M15ResearchCosts]:
     base_cfg = validation_cfg["costs"]["base"]
     base = M15ResearchCosts(
         spread_pips=float(spread_proxy_pips),
@@ -146,10 +156,30 @@ def _costs(validation_cfg: dict[str, Any], spread_proxy_pips: float) -> tuple[M1
 
 def _heartbeat(details: dict[str, Any], *, healthy: bool) -> None:
     try:
-        store = SupabaseOperationalStore.from_env()
-        store.write_heartbeat(WORKER_NAME, healthy=healthy, lag_seconds=0.0, details=details)
+        SupabaseOperationalStore.from_env().write_heartbeat(
+            WORKER_NAME,
+            healthy=healthy,
+            lag_seconds=0.0,
+            details=details,
+        )
     except Exception as exc:
         details["heartbeat_write_error"] = f"{type(exc).__name__}:{exc}"
+
+
+def _data_insufficient(details: dict[str, Any], reason: str) -> int:
+    details["decision"] = {
+        "stage": "DATA_INSUFFICIENT",
+        "reason": reason,
+        "execution_influence": False,
+    }
+    _heartbeat(details, healthy=False)
+    artifact = _write_artifact(details)
+    print(
+        "CTRADER_XAU_M15_DUAL_RESEARCH "
+        f"bars={details['history_actual_closed_bars']}/{details['history_target_bars']} "
+        f"stage=DATA_INSUFFICIENT reason={reason} artifact={artifact} execution_influence=0"
+    )
+    return 0
 
 
 def run() -> int:
@@ -201,33 +231,12 @@ def run() -> int:
     }
 
     if len(bars) < MIN_HISTORY_BARS:
-        details["decision"] = {
-            "stage": "DATA_INSUFFICIENT",
-            "reason": f"M15_HISTORY_BELOW_MINIMUM:{len(bars)}<{MIN_HISTORY_BARS}",
-            "execution_influence": False,
-        }
-        _heartbeat(details, healthy=False)
-        artifact = _write_artifact(details)
-        print(
-            "CTRADER_XAU_M15_DUAL_RESEARCH "
-            f"bars={len(bars)}/{target} stage=DATA_INSUFFICIENT artifact={artifact} execution_influence=0"
+        return _data_insufficient(
+            details,
+            f"M15_HISTORY_BELOW_MINIMUM:{len(bars)}<{MIN_HISTORY_BARS}",
         )
-        return 0
-
     if not bool(spread.get("available")):
-        details["decision"] = {
-            "stage": "DATA_INSUFFICIENT",
-            "reason": "CTRADER_SPREAD_PROXY_UNAVAILABLE",
-            "execution_influence": False,
-        }
-        _heartbeat(details, healthy=False)
-        artifact = _write_artifact(details)
-        print(
-            "CTRADER_XAU_M15_DUAL_RESEARCH "
-            f"bars={len(bars)}/{target} stage=DATA_INSUFFICIENT spread_proxy=0 "
-            f"artifact={artifact} execution_influence=0"
-        )
-        return 0
+        return _data_insufficient(details, "CTRADER_SPREAD_PROXY_UNAVAILABLE")
 
     base_costs, stressed_costs = _costs(validation_cfg, float(spread["median_pips"]))
     details["costs"] = {
