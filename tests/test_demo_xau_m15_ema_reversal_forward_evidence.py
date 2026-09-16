@@ -7,6 +7,7 @@ from fx_scanner.demo_xau_m15_ema_reversal_forward_evidence import (
     TP2_R,
     evaluate_paper_exit,
     summarize_forward_metrics,
+    summarize_forward_metrics_by_direction,
 )
 from fx_scanner.models import Bar
 
@@ -28,7 +29,7 @@ def _bar(index: int, *, open_: float, high: float, low: float, close: float) -> 
     )
 
 
-def test_paper_exit_uses_conservative_stop_first_on_same_bar_ambiguity():
+def test_long_paper_exit_uses_conservative_stop_first_on_same_bar_ambiguity():
     rows = (
         _bar(0, open_=100.0, high=104.0, low=98.0, close=101.0),
     )
@@ -38,6 +39,7 @@ def test_paper_exit_uses_conservative_stop_first_on_same_bar_ambiguity():
         entry_price=100.0,
         stop=99.0,
         target=103.0,
+        direction="LONG",
     )
     assert outcome is not None
     assert outcome.reason == "STOP"
@@ -46,7 +48,26 @@ def test_paper_exit_uses_conservative_stop_first_on_same_bar_ambiguity():
     assert outcome.tp1_touched is True
 
 
-def test_paper_exit_resolves_tp2_at_three_r_without_invented_time_exit():
+def test_short_paper_exit_is_symmetric_and_stop_first_on_same_bar_ambiguity():
+    rows = (
+        _bar(0, open_=100.0, high=102.0, low=96.0, close=99.0),
+    )
+    outcome = evaluate_paper_exit(
+        rows,
+        entry_time=rows[0].timestamp,
+        entry_price=100.0,
+        stop=101.0,
+        target=97.0,
+        direction="SHORT",
+    )
+    assert outcome is not None
+    assert outcome.reason == "STOP"
+    assert outcome.result_r == pytest.approx(-1.0)
+    assert outcome.mfe_r >= TP2_R
+    assert outcome.tp1_touched is True
+
+
+def test_long_paper_exit_resolves_tp2_at_three_r_without_invented_time_exit():
     rows = (
         _bar(0, open_=100.0, high=101.2, low=99.4, close=100.8),
         _bar(1, open_=100.8, high=103.2, low=100.5, close=103.0),
@@ -57,6 +78,28 @@ def test_paper_exit_resolves_tp2_at_three_r_without_invented_time_exit():
         entry_price=100.0,
         stop=99.0,
         target=103.0,
+        direction="LONG",
+    )
+    assert outcome is not None
+    assert outcome.reason == "TP2"
+    assert outcome.result_r == pytest.approx(TP2_R)
+    assert outcome.tp1_touched is True
+    assert outcome.mae_r == pytest.approx(-0.6)
+    assert outcome.mfe_r == pytest.approx(3.2)
+
+
+def test_short_paper_exit_resolves_tp2_at_three_r():
+    rows = (
+        _bar(0, open_=100.0, high=100.6, low=98.8, close=99.2),
+        _bar(1, open_=99.2, high=99.5, low=96.8, close=97.0),
+    )
+    outcome = evaluate_paper_exit(
+        rows,
+        entry_time=rows[0].timestamp,
+        entry_price=100.0,
+        stop=101.0,
+        target=97.0,
+        direction="SHORT",
     )
     assert outcome is not None
     assert outcome.reason == "TP2"
@@ -98,6 +141,20 @@ def test_forward_metrics_report_expectancy_pf_drawdown_and_tp1_touch_rate():
     assert metrics["max_drawdown_r"] == pytest.approx(2.0)
     assert metrics["tp1_touch_rate"] == pytest.approx(0.75)
     assert metrics["promotion_evidence_state"] == "COLLECTING"
+
+
+def test_directional_metrics_do_not_mix_long_and_short_samples():
+    rows = [
+        {"direction": "LONG", "result_r": 3.0, "mfe_r": 3.0},
+        {"direction": "LONG", "result_r": -1.0, "mfe_r": 0.4},
+        {"direction": "SHORT", "result_r": 3.0, "mfe_r": 3.2},
+    ]
+    metrics = summarize_forward_metrics_by_direction(rows)
+
+    assert metrics["LONG"]["closed_trades"] == 2
+    assert metrics["LONG"]["expectancy_r"] == pytest.approx(1.0)
+    assert metrics["SHORT"]["closed_trades"] == 1
+    assert metrics["SHORT"]["expectancy_r"] == pytest.approx(3.0)
 
 
 def test_forward_metrics_never_grant_promotion_authority():
