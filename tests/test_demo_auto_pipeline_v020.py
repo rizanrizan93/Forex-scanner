@@ -142,6 +142,7 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_five_
     assert "workflow_run:" not in text
     assert "push:" in text
     assert '".github/workflows/ctrader-demo-auto-supervisor.yml"' in text
+    assert '".github/workflows/ctrader-demo-auto-pipeline.yml"' in text
     assert "cancel-in-progress: false" in text
     assert "actions: write" in text
     assert "seq 1 5" in text
@@ -149,7 +150,8 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_five_
     assert "fast_cadence_seconds=60" in text
     assert "discovery_check_seconds=60" in text
     assert "authority=SCHEDULE_5M" in text
-    assert "push_kick=WORKFLOW_FILE_ONLY" in text
+    assert "push_kick=SUPERVISOR_OR_AUTO_PIPELINE" in text
+    assert "head_sha=${GITHUB_SHA}" in text
     assert "self_handoff=DISABLED" in text
     assert "CTRADER_DEMO_SUPERVISOR_HANDOFF" not in text
     assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" not in text
