@@ -26,6 +26,9 @@ def test_supervisor_keeps_bounded_one_minute_cadence_without_recursive_handoff()
     assert "workflow_run:" not in text
     assert "push:" in text
     assert '".github/workflows/ctrader-demo-auto-supervisor.yml"' in text
+    assert '".github/workflows/ctrader-demo-auto-pipeline.yml"' in text
+    assert "push_kick=SUPERVISOR_OR_AUTO_PIPELINE" in text
+    assert "head_sha=${GITHUB_SHA}" in text
     assert 'cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 1-5"' in text
     assert "market_weekday_utc" in text
     assert "action=STOP" in text
