@@ -3,7 +3,10 @@ name: cTrader Demo Auto Supervisor
 on:
   workflow_dispatch:
   schedule:
-    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 1-5"
+    # GitHub scheduled events are best-effort. Keep one long-lived supervisor
+    # window per hour instead of depending on twelve separate 5-minute cron
+    # deliveries. The supervisor itself checks both lanes every minute.
+    - cron: "2 * * * 1-5"
   push:
     branches:
       - main
@@ -25,12 +28,12 @@ jobs:
       github.event_name == 'schedule' ||
       github.event_name == 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 70
     env:
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - name: Dispatch five-core execution and discovery lanes every minute
+      - name: Maintain continuous DEMO execution and discovery window
         shell: bash
         run: |
           set -euo pipefail
@@ -39,6 +42,8 @@ jobs:
           fast_busy=0
           discovery_dispatched=0
           discovery_busy=0
+          window_cycles=59
+          cadence_seconds=60
 
           active_count() {
             local workflow_file="$1"
@@ -69,42 +74,41 @@ jobs:
             exit 0
           fi
 
-          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD strategies=FIVE_CORE_ROUTER_V1 fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_5M push_kick=WORKFLOW_FILE_ONLY self_handoff=DISABLED"
+          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD strategies=FIVE_CORE_ROUTER_V1 fast_cadence_seconds=${cadence_seconds} discovery_check_seconds=${cadence_seconds} window_cycles=${window_cycles} overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_HOURLY_CONTINUOUS push_kick=WORKFLOW_FILE_ONLY"
 
-          # Each supervisor owns one bounded five-minute window. Scheduled runs
-          # are re-registered every five minutes; the push trigger is restricted
-          # to this workflow file and provides a one-time recovery kick when the
-          # cadence contract itself is changed. Lane-level active checks prevent
-          # duplicate Auto/Discovery execution within the window.
-          for cycle in $(seq 1 5); do
+          # One scheduled event now owns almost the entire hour. This removes the
+          # previous dependency on a new GitHub cron delivery every five minutes.
+          # Lane-level active checks preserve the existing no-overlap contract;
+          # the execution/discovery workflows remain the only order/data authority.
+          for cycle in $(seq 1 "${window_cycles}"); do
             if ! market_weekday_utc; then
-              echo "CTRADER_DEMO_SUPERVISOR_MARKET_CLOSED cycle=${cycle}/5 calendar=WEEKDAY_24X5 action=STOP"
+              echo "CTRADER_DEMO_SUPERVISOR_MARKET_CLOSED cycle=${cycle}/${window_cycles} calendar=WEEKDAY_24X5 action=STOP"
               exit 0
             fi
 
             active_fast="$(active_count ctrader-demo-auto-pipeline.yml)"
             if [ "${active_fast}" -eq 0 ]; then
-              echo "SUPERVISOR_FAST_DISPATCH cycle=${cycle}/5 cadence_seconds=60"
+              echo "SUPERVISOR_FAST_DISPATCH cycle=${cycle}/${window_cycles} cadence_seconds=${cadence_seconds}"
               dispatch_workflow ctrader-demo-auto-pipeline.yml
               fast_dispatched=$((fast_dispatched + 1))
             else
-              echo "SUPERVISOR_FAST_SKIP_BUSY cycle=${cycle}/5 active_runs=${active_fast}"
+              echo "SUPERVISOR_FAST_SKIP_BUSY cycle=${cycle}/${window_cycles} active_runs=${active_fast}"
               fast_busy=$((fast_busy + 1))
             fi
 
             active_discovery="$(active_count ctrader-demo-discovery-pipeline.yml)"
             if [ "${active_discovery}" -eq 0 ]; then
-              echo "SUPERVISOR_DISCOVERY_DISPATCH cycle=${cycle}/5 check_seconds=60"
+              echo "SUPERVISOR_DISCOVERY_DISPATCH cycle=${cycle}/${window_cycles} check_seconds=${cadence_seconds}"
               dispatch_workflow ctrader-demo-discovery-pipeline.yml
               discovery_dispatched=$((discovery_dispatched + 1))
             else
-              echo "SUPERVISOR_DISCOVERY_SKIP_BUSY cycle=${cycle}/5 active_runs=${active_discovery}"
+              echo "SUPERVISOR_DISCOVERY_SKIP_BUSY cycle=${cycle}/${window_cycles} active_runs=${active_discovery}"
               discovery_busy=$((discovery_busy + 1))
             fi
 
-            if [ "${cycle}" -lt 5 ]; then
-              sleep 60
+            if [ "${cycle}" -lt "${window_cycles}" ]; then
+              sleep "${cadence_seconds}"
             fi
           done
 
-          echo "CTRADER_DEMO_SUPERVISOR_OK universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD strategies=FIVE_CORE_ROUTER_V1 fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=WORKFLOW_FILE_ONLY self_handoff=DISABLED"
+          echo "CTRADER_DEMO_SUPERVISOR_OK universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD strategies=FIVE_CORE_ROUTER_V1 fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=${cadence_seconds} discovery_check_seconds=${cadence_seconds} window_cycles=${window_cycles} overlap_within_lane=DISABLED authority=SCHEDULE_HOURLY_CONTINUOUS"
