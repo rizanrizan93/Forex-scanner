@@ -11,6 +11,7 @@ from .research_xau_m15_dual_strategy import MAX_HOLD_BARS, RESEARCH_VERSION
 
 UTC = timezone.utc
 AUTHORITY_CONTRACT = "XAU_M15_EVIDENCE_AUTHORITY_V1"
+FORWARD_HOLD_BINDING_CONTRACT = "HISTORICAL_SELECTED_MAX_HOLD_V1"
 HISTORICAL_WORKER = "ctrader_xau_m15_dual_strategy_research"
 FORWARD_WORKERS = {
     EMA_STRATEGY_ID: "ctrader_demo_xau_m15_ema_reversal_forward_evidence",
@@ -35,6 +36,7 @@ class EvidenceAuthorityDecision:
     historical_state: str
     forward_state: str
     selected_max_hold_bars: int | None = None
+    forward_candidate_max_hold_bars: int | None = None
     historical_observed_at: str | None = None
     forward_observed_at: str | None = None
     forward_closed_trades: int | None = None
@@ -102,6 +104,15 @@ def _float_or_none(value: Any) -> float | None:
     return parsed if isfinite(parsed) else None
 
 
+def _int_or_none(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def assess_xau_m15_evidence_authority(
     strategy_id: str,
     *,
@@ -156,11 +167,7 @@ def assess_xau_m15_evidence_authority(
             "HISTORICAL_STRATEGY_EVIDENCE_MISSING", "NOT_EVALUATED",
             historical_observed_at=historical_at_iso,
         )
-    selected_hold_raw = strategy_evidence.get("selected_max_hold_bars")
-    try:
-        selected_hold = int(selected_hold_raw) if selected_hold_raw is not None else None
-    except (TypeError, ValueError):
-        selected_hold = None
+    selected_hold = _int_or_none(strategy_evidence.get("selected_max_hold_bars"))
     historical_pass = bool(
         strategy_evidence.get("stage") == "FORWARD_SHADOW_ELIGIBLE"
         and strategy_evidence.get("development_pass") is True
@@ -203,13 +210,26 @@ def assess_xau_m15_evidence_authority(
             historical_observed_at=historical_at_iso,
             forward_observed_at=forward_at_iso,
         )
+    forward_hold = _int_or_none(forward_details.get("authority_candidate_max_hold_bars"))
+    binding_contract = str(forward_details.get("authority_candidate_contract") or "")
+    if (
+        binding_contract != FORWARD_HOLD_BINDING_CONTRACT
+        or forward_hold != selected_hold
+        or forward_hold not in MAX_HOLD_BARS
+    ):
+        return EvidenceAuthorityDecision(
+            strategy, False, "FORWARD_OBSERVATION", "FORWARD_MAX_HOLD_BINDING_MISMATCH",
+            "HISTORICAL_PASS", "FORWARD_MAX_HOLD_BINDING_MISMATCH",
+            selected_max_hold_bars=selected_hold,
+            forward_candidate_max_hold_bars=forward_hold,
+            historical_observed_at=historical_at_iso,
+            forward_observed_at=forward_at_iso,
+        )
+
     metrics = forward_details.get("metrics")
     if not isinstance(metrics, Mapping):
         metrics = {}
-    try:
-        closed = int(metrics.get("closed_trades") or 0)
-    except (TypeError, ValueError):
-        closed = 0
+    closed = _int_or_none(metrics.get("closed_trades")) or 0
     expectancy = _float_or_none(metrics.get("expectancy_r"))
     pf = _float_or_none(metrics.get("profit_factor"))
     max_dd = _float_or_none(metrics.get("max_drawdown_r"))
@@ -223,6 +243,7 @@ def assess_xau_m15_evidence_authority(
     )
     common = dict(
         selected_max_hold_bars=selected_hold,
+        forward_candidate_max_hold_bars=forward_hold,
         historical_observed_at=historical_at_iso,
         forward_observed_at=forward_at_iso,
         forward_closed_trades=closed,
