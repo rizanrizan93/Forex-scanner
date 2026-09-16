@@ -119,7 +119,7 @@ def test_no_fresh_sweep_fails_closed():
     last = rows[-1]
     rows[-1] = _bar(
         len(rows) - 1,
-        open_=last.open,
+        open_=min(last.open, prior_high - 0.10),
         high=prior_high,
         low=last.low,
         close=last.close,
