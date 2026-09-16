@@ -3,9 +3,9 @@ name: cTrader Demo Auto Supervisor Watchdog
 on:
   workflow_dispatch:
   schedule:
-    # Independent half-hour fallback. A healthy continuous supervisor is still
-    # running here and this exits immediately; if the hourly window was missed
-    # or died early, the watchdog re-dispatches it.
+    # Independent hourly recovery window. This does not execute trades or data
+    # acquisition itself; it only ensures the bounded primary supervisor keeps
+    # being re-dispatched if the primary 5-minute cron delivery stalls.
     - cron: "32 * * * 1-5"
 
 permissions:
@@ -19,39 +19,69 @@ concurrency:
 jobs:
   recover-supervisor-if-needed:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 70
     env:
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - name: Ensure continuous supervisor is alive
+      - name: Maintain supervisor recovery window
         shell: bash
         run: |
           set -euo pipefail
 
-          weekday="$(date -u +%u)"
-          if [ "${weekday}" -gt 5 ]; then
-            echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_MARKET_CLOSED calendar=WEEKDAY_24X5 action=NO_DISPATCH"
-            exit 0
-          fi
+          window_cycles=59
+          cadence_seconds=60
+          recovery_dispatches=0
+          healthy_checks=0
 
-          active_supervisor="$(
+          market_weekday_utc() {
+            local weekday
+            weekday="$(date -u +%u)"
+            [ "${weekday}" -le 5 ]
+          }
+
+          active_supervisor_count() {
             gh api \
               -H "Accept: application/vnd.github+json" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
               "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/runs?branch=main&per_page=20" \
               --jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending")] | length'
-          )"
+          }
 
-          if [ "${active_supervisor}" -gt 0 ]; then
-            echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_OK active_supervisor_runs=${active_supervisor} action=NO_DISPATCH"
+          dispatch_supervisor() {
+            gh api --method POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/dispatches" \
+              -f ref=main
+          }
+
+          if ! market_weekday_utc; then
+            echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_MARKET_CLOSED calendar=WEEKDAY_24X5 action=NO_DISPATCH"
             exit 0
           fi
 
-          gh api --method POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/dispatches" \
-            -f ref=main
+          echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_START window_cycles=${window_cycles} cadence_seconds=${cadence_seconds} authority=RECOVERY_ONLY execution_authority=NONE"
 
-          echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_RECOVERY active_supervisor_runs=0 action=DISPATCHED"
+          for cycle in $(seq 1 "${window_cycles}"); do
+            if ! market_weekday_utc; then
+              echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_MARKET_CLOSED cycle=${cycle}/${window_cycles} action=STOP"
+              exit 0
+            fi
+
+            active_supervisor="$(active_supervisor_count)"
+            if [ "${active_supervisor}" -gt 0 ]; then
+              echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_OK cycle=${cycle}/${window_cycles} active_supervisor_runs=${active_supervisor} action=NO_DISPATCH"
+              healthy_checks=$((healthy_checks + 1))
+            else
+              dispatch_supervisor
+              recovery_dispatches=$((recovery_dispatches + 1))
+              echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_RECOVERY cycle=${cycle}/${window_cycles} active_supervisor_runs=0 action=DISPATCHED"
+            fi
+
+            if [ "${cycle}" -lt "${window_cycles}" ]; then
+              sleep "${cadence_seconds}"
+            fi
+          done
+
+          echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_SUCCESS recovery_dispatches=${recovery_dispatches} healthy_checks=${healthy_checks} window_cycles=${window_cycles} cadence_seconds=${cadence_seconds} authority=RECOVERY_ONLY execution_authority=NONE"
