@@ -1,7 +1,10 @@
 from datetime import datetime, timedelta, timezone
 
 from fx_scanner.demo_xau_m15_ema_reversal_recovery import STRATEGY_ID as EMA_STRATEGY_ID
-from fx_scanner.demo_xau_m15_evidence_authority import assess_xau_m15_evidence_authority
+from fx_scanner.demo_xau_m15_evidence_authority import (
+    FORWARD_HOLD_BINDING_CONTRACT,
+    assess_xau_m15_evidence_authority,
+)
 from fx_scanner.demo_xau_m15_liquidity_sweep_fade import STRATEGY_ID as SWEEP_STRATEGY_ID
 from fx_scanner.research_xau_m15_dual_strategy import RESEARCH_VERSION
 
@@ -29,12 +32,24 @@ def _historical(strategy_id: str, *, passed: bool = True, age_hours: int = 1):
     }
 
 
-def _forward(strategy_id: str, *, sample: int = 30, expectancy: float = 0.10, pf: float = 1.20, dd: float = 4.0, age_hours: int = 1):
+def _forward(
+    strategy_id: str,
+    *,
+    sample: int = 30,
+    expectancy: float = 0.10,
+    pf: float = 1.20,
+    dd: float = 4.0,
+    age_hours: int = 1,
+    hold: int | None = 16,
+    binding: bool = True,
+):
     return {
         "observed_at": (NOW - timedelta(hours=age_hours)).isoformat(),
         "healthy": True,
         "details": {
             "strategy_id": strategy_id,
+            "authority_candidate_contract": FORWARD_HOLD_BINDING_CONTRACT if binding else "LEGACY_UNBOUND",
+            "authority_candidate_max_hold_bars": hold,
             "metrics": {
                 "closed_trades": sample,
                 "expectancy_r": expectancy,
@@ -81,6 +96,28 @@ def test_failed_historical_gate_blocks_even_positive_forward_sample():
     assert decision.reason.startswith("HISTORICAL_GATE_NOT_PASSED")
 
 
+def test_legacy_unbound_forward_sample_cannot_authorize_new_historical_candidate():
+    decision = assess_xau_m15_evidence_authority(
+        EMA_STRATEGY_ID,
+        historical_row=_historical(EMA_STRATEGY_ID),
+        forward_row=_forward(EMA_STRATEGY_ID, binding=False),
+        as_of=NOW,
+    )
+    assert decision.execution_authorized is False
+    assert decision.reason == "FORWARD_MAX_HOLD_BINDING_MISMATCH"
+
+
+def test_wrong_forward_max_hold_cannot_authorize():
+    decision = assess_xau_m15_evidence_authority(
+        EMA_STRATEGY_ID,
+        historical_row=_historical(EMA_STRATEGY_ID),
+        forward_row=_forward(EMA_STRATEGY_ID, hold=32),
+        as_of=NOW,
+    )
+    assert decision.execution_authorized is False
+    assert decision.forward_candidate_max_hold_bars == 32
+
+
 def test_historical_pass_but_forward_sample_below_30_remains_observation_only():
     decision = assess_xau_m15_evidence_authority(
         EMA_STRATEGY_ID,
@@ -114,6 +151,7 @@ def test_both_evidence_gates_authorize_demo_execution_only():
     assert decision.execution_authorized is True
     assert decision.lifecycle_stage == "DEMO_EXECUTION_AUTHORIZED"
     assert decision.selected_max_hold_bars == 16
+    assert decision.forward_candidate_max_hold_bars == 16
     assert decision.payload()["live_execution_enabled"] is False
 
 
