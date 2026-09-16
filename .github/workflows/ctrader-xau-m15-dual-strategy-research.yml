@@ -6,14 +6,18 @@ on:
     branches:
       - main
       - feature/xau-m15-dual-strategy-research
+      - feature/xau-m15-evidence-authority
     paths:
       - "src/fx_scanner/research_xau_m15_dual_strategy.py"
       - "src/fx_scanner/research_xau_m15_dual_strategy_runtime.py"
       - "src/fx_scanner/demo_xau_m15_ema_reversal_recovery.py"
       - "src/fx_scanner/demo_xau_m15_liquidity_sweep_fade.py"
+      - "src/fx_scanner/demo_xau_m15_evidence_authority.py"
       - "config/validation.yaml"
       - "config/pairs.yaml"
       - ".github/workflows/ctrader-xau-m15-dual-strategy-research.yml"
+  schedule:
+    - cron: "20 22 * * 1-5"
 
 permissions:
   contents: read
