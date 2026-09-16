@@ -7,6 +7,13 @@ on:
     # acquisition itself; it only ensures the bounded primary supervisor keeps
     # being re-dispatched if the primary 5-minute cron delivery stalls.
     - cron: "32 * * * 1-5"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ctrader-demo-auto-supervisor-watchdog.yml"
+      - ".github/workflows/ctrader-demo-auto-supervisor.yml"
+      - ".github/workflows/ctrader-demo-auto-pipeline.yml"
 
 permissions:
   actions: write
@@ -61,7 +68,7 @@ jobs:
             exit 0
           fi
 
-          echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_START window_cycles=${window_cycles} cadence_seconds=${cadence_seconds} authority=RECOVERY_ONLY execution_authority=NONE"
+          echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} window_cycles=${window_cycles} cadence_seconds=${cadence_seconds} authority=RECOVERY_ONLY execution_authority=NONE push_kick=WATCHDOG_SUPERVISOR_OR_AUTO_PIPELINE"
 
           for cycle in $(seq 1 "${window_cycles}"); do
             if ! market_weekday_utc; then
@@ -84,4 +91,4 @@ jobs:
             fi
           done
 
-          echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_SUCCESS recovery_dispatches=${recovery_dispatches} healthy_checks=${healthy_checks} window_cycles=${window_cycles} cadence_seconds=${cadence_seconds} authority=RECOVERY_ONLY execution_authority=NONE"
+          echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_SUCCESS head_sha=${GITHUB_SHA} recovery_dispatches=${recovery_dispatches} healthy_checks=${healthy_checks} window_cycles=${window_cycles} cadence_seconds=${cadence_seconds} authority=RECOVERY_ONLY execution_authority=NONE push_kick=WATCHDOG_SUPERVISOR_OR_AUTO_PIPELINE"
