@@ -15,6 +15,10 @@ from .demo_calibration import (
 from .demo_correlation_evidence import EvidenceProductionGuardResolver
 from .demo_market_schedule import apply_demo_market_schedule
 from .demo_technical_producer import _persist_geometry_events
+from .demo_xau_m15_evidence_authority import (
+    EvidenceAuthorityDecision,
+    resolve_xau_m15_evidence_authority,
+)
 from .demo_xau_m15_liquidity_sweep_fade import (
     FORWARD_DEMO_SCORE,
     RESEARCH_LADDER_R,
@@ -96,7 +100,7 @@ def _record_marker(store, *, signal_id: str, signal, analysis) -> None:
         "execution_influence": True,
         "environment": "DEMO",
         "live_execution_enabled": False,
-        "probationary_demo": True,
+        "evidence_authority_required": True,
         "source_provenance": "USER_SUPPLIED_TELEGRAM_SIGNAL_PATTERN_FORMALIZATION",
         "forward_demo_score": FORWARD_DEMO_SCORE,
         "research_target_ladder_r": list(RESEARCH_LADDER_R),
@@ -113,7 +117,7 @@ def _record_marker(store, *, signal_id: str, signal, analysis) -> None:
         event_type=MARKER_EVENT,
         accepted=True,
         code=STRATEGY_ID,
-        message="XAU M15 liquidity-sweep fade probationary DEMO candidate emitted",
+        message="evidence-authorized XAU M15 liquidity-sweep fade DEMO candidate emitted",
         payload=payload,
     )
 
@@ -122,6 +126,7 @@ class XauM15LiquiditySweepFadeProducer(CTraderSignalProducer):
     last_signal = None
     last_deep_report: DeepScanReport | None = None
     last_market_failures: dict[str, str] = {}
+    evidence_authority: EvidenceAuthorityDecision | None = None
 
     def _bar_window(self, timeframe: str, count: int, now: datetime) -> tuple[datetime, datetime]:
         seconds = int(self.cfg.timeframes[timeframe])
@@ -133,7 +138,7 @@ class XauM15LiquiditySweepFadeProducer(CTraderSignalProducer):
         run_id = self.store.start_scanner_run(
             mode="DEMO_ONLY",
             code_version=self.code_version,
-            data_contract_version="XAU_M15_LIQUIDITY_SWEEP_FADE_V1_DEMO",
+            data_contract_version="XAU_M15_LIQUIDITY_SWEEP_FADE_V1_EVIDENCE_GATED",
             started_at=snapshot_at,
         )
         failures: dict[str, str] = {}
@@ -154,7 +159,12 @@ class XauM15LiquiditySweepFadeProducer(CTraderSignalProducer):
             analyses = []
             selected = ()
             duplicate = False
-            if signal.active and signal.execution_eligible:
+            authority = self.evidence_authority
+            authority_allowed = bool(authority and authority.execution_authorized)
+            authority_blocked = bool(
+                signal.active and signal.execution_eligible and not authority_allowed
+            )
+            if signal.active and signal.execution_eligible and authority_allowed:
                 duplicate = _already_emitted(
                     self.store,
                     signal_bar_at=signal.signal_bar_at,
@@ -182,7 +192,10 @@ class XauM15LiquiditySweepFadeProducer(CTraderSignalProducer):
                             external_guard_flags=guard_inputs.get(SYMBOL, {}),
                         )
                     )
-            if duplicate:
+            if authority_blocked:
+                reason = "UNRESOLVED" if authority is None else authority.reason
+                failures[SYMBOL] = f"EVIDENCE_AUTHORITY_BLOCKED:{reason}"
+            elif duplicate:
                 failures[SYMBOL] = "DUPLICATE_M15_SWEEP_FADE_BAR_DIRECTION_BLOCKED"
             elif not signal.active and SYMBOL not in market_failures:
                 failures[SYMBOL] = signal.reason
@@ -191,9 +204,7 @@ class XauM15LiquiditySweepFadeProducer(CTraderSignalProducer):
             deep = DeepScanReport(selection, tuple(analyses), dict(sorted(failures.items())))
             self.last_deep_report = deep
             signals_written, ready = self._persist_signals(run_id, as_of=decision_at, report=deep)
-            self.store.finish_scanner_run(
-                run_id, status="COMPLETED", finished_at=self.clock()
-            )
+            self.store.finish_scanner_run(run_id, status="COMPLETED", finished_at=self.clock())
             return SignalProducerReport(
                 run_id=run_id,
                 observed_at=decision_at,
@@ -211,9 +222,7 @@ class XauM15LiquiditySweepFadeProducer(CTraderSignalProducer):
             )
         except Exception:
             try:
-                self.store.finish_scanner_run(
-                    run_id, status="FAILED", finished_at=self.clock()
-                )
+                self.store.finish_scanner_run(run_id, status="FAILED", finished_at=self.clock())
             except Exception:
                 pass
             raise
@@ -238,11 +247,10 @@ def run() -> int:
     demo_execution_min = float(cfg.scoring["states"]["execution_candidate_min"])
     store = build_demo_calibration_store(execution_ready_score_floor=demo_execution_min)
     store.ensure_reference_symbols(cfg.pairs)
+    authority = resolve_xau_m15_evidence_authority(store, STRATEGY_ID)
     feed = build_ctrader_research_feed(policy, (SYMBOL,))
     spread_overrides = {
-        key: value
-        for key, value in _demo_spread_limit_overrides(cfg).items()
-        if key == SYMBOL
+        key: value for key, value in _demo_spread_limit_overrides(cfg).items() if key == SYMBOL
     }
     guard_resolver = EvidenceProductionGuardResolver(
         cfg,
@@ -272,14 +280,13 @@ def run() -> int:
         guard_resolver=guard_resolver,
         technical_only_scalping=True,
     )
+    producer.evidence_authority = authority
     try:
         report = producer.run_once()
         persisted = store.list_signals_for_run(report.run_id)
         analyses = {
             item.symbol: item
-            for item in (
-                producer.last_deep_report.analyses if producer.last_deep_report else ()
-            )
+            for item in (producer.last_deep_report.analyses if producer.last_deep_report else ())
         }
         geometry_written, geometry_missing = _persist_geometry_events(
             store=store,
@@ -294,8 +301,13 @@ def run() -> int:
                 if str(row.get("state", "")).upper() == "EXECUTION_READY"
                 and str(row.get("symbol", "")).upper() == SYMBOL
             ]
-            if len(ready) != 1 or producer.last_signal is None or not analyses.get(SYMBOL):
-                raise SystemExit("XAU_M15_SWEEP_FADE_READY_CARDINALITY_INVALID")
+            if (
+                not authority.execution_authorized
+                or len(ready) != 1
+                or producer.last_signal is None
+                or not analyses.get(SYMBOL)
+            ):
+                raise SystemExit("XAU_M15_SWEEP_FADE_READY_AUTHORITY_INVALID")
             _record_marker(
                 store,
                 signal_id=str(ready[0]["id"]),
@@ -315,9 +327,10 @@ def run() -> int:
                 "strategy_id": STRATEGY_ID,
                 "strategy_contract": STRATEGY_CONTRACT,
                 "environment": "DEMO",
-                "execution_influence": True,
+                "execution_influence": authority.execution_authorized,
                 "live_execution_enabled": False,
-                "probationary_demo": True,
+                "paper_forward_observation": True,
+                "evidence_authority": authority.payload(),
                 "source_provenance": "USER_SUPPLIED_TELEGRAM_SIGNAL_PATTERN_FORMALIZATION",
                 "supported_directions": ["LONG", "SHORT"],
                 "market_schedule_mode": market_schedule_mode,
@@ -343,8 +356,9 @@ def run() -> int:
             "CTRADER_DEMO_XAU_M15_SWEEP_FADE_OK "
             f"direction={direction or 'NONE'} signals={report.signals_written} "
             f"ready={report.execution_ready} geometry={geometry_written} "
-            f"reason={reason or 'NONE'} probationary=1 score=70 "
-            "expected_lot=0.01 expected_risk_pct=1.0 bidirectional=1"
+            f"reason={reason or 'NONE'} authority={int(authority.execution_authorized)} "
+            f"lifecycle={authority.lifecycle_stage} score=70 expected_lot=0.01 "
+            "expected_risk_pct=1.0 bidirectional=1"
         )
         return 0
     finally:
