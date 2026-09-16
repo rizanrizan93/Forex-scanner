@@ -13,7 +13,7 @@ from .ranking import PairRank
 from .strategy import SetupType, TradePlan
 
 STRATEGY_ID = "XAU_M15_EMA_REVERSAL_RECOVERY_V1"
-STRATEGY_CONTRACT = "SCREENSHOT_DERIVED_TRANSPARENT_FORMALIZATION_V1"
+STRATEGY_CONTRACT = "SCREENSHOT_DERIVED_SYMMETRIC_FORMALIZATION_V2"
 SYMBOL = "XAUUSD"
 TIMEFRAME = "M15"
 FORWARD_DEMO_SCORE = 70.0
@@ -24,19 +24,28 @@ EMA_SLOW = 200
 ATR_PERIOD = 14
 EXTREME_LOOKBACK = 20
 IMPULSE_LOOKBACK = 8
-RECENT_LOW_BARS = 3
-MIN_DOWNSIDE_IMPULSE_ATR = 2.0
-MIN_EXTENSION_BELOW_FAST_ATR = 0.75
-MIN_RECOVERY_FROM_LOW_ATR = 0.60
-MIN_BULL_BODY_ATR = 0.20
-MIN_CLOSE_LOCATION = 0.60
-MAX_CLOSE_ABOVE_FAST_ATR = 0.30
+RECENT_EXTREME_BARS = 3
+MIN_IMPULSE_ATR = 2.0
+MIN_EXTENSION_ATR = 0.75
+MIN_RECOVERY_ATR = 0.60
+MIN_RECLAIM_BODY_ATR = 0.20
+MIN_DIRECTIONAL_CLOSE_LOCATION = 0.60
+MAX_CHASE_BEYOND_FAST_ATR = 0.30
 STOP_BUFFER_ATR = 0.20
 MIN_SIGNAL_RISK_ATR = 0.50
 MAX_SIGNAL_RISK_ATR = 2.50
 TP1_R = 1.50
 TP2_R = 3.00
 EXTENDED_RESEARCH_TARGET_R = 5.00
+
+# Compatibility aliases retained for existing tests/evidence consumers.
+RECENT_LOW_BARS = RECENT_EXTREME_BARS
+MIN_DOWNSIDE_IMPULSE_ATR = MIN_IMPULSE_ATR
+MIN_EXTENSION_BELOW_FAST_ATR = MIN_EXTENSION_ATR
+MIN_RECOVERY_FROM_LOW_ATR = MIN_RECOVERY_ATR
+MIN_BULL_BODY_ATR = MIN_RECLAIM_BODY_ATR
+MIN_CLOSE_LOCATION = MIN_DIRECTIONAL_CLOSE_LOCATION
+MAX_CLOSE_ABOVE_FAST_ATR = MAX_CHASE_BEYOND_FAST_ATR
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,11 +60,16 @@ class XauM15EmaReversalSignal:
     ema50: float | None = None
     ema200: float | None = None
     recent_low: float | None = None
+    recent_high: float | None = None
     structural_stop: float | None = None
     downside_impulse_atr: float | None = None
+    upside_impulse_atr: float | None = None
     extension_below_fast_atr: float | None = None
+    extension_above_fast_atr: float | None = None
     recovery_from_low_atr: float | None = None
+    rejection_from_high_atr: float | None = None
     bull_body_atr: float | None = None
+    bear_body_atr: float | None = None
     close_location: float | None = None
     reason: str = "NO_SIGNAL"
     symbol: str = SYMBOL
@@ -121,18 +135,132 @@ def _next_bar_open(bars: Sequence[Bar], signal_bar: Bar) -> datetime:
     return signal_at + timedelta(minutes=15)
 
 
+def _long_candidate(
+    closed: Sequence[Bar],
+    *,
+    row: Bar,
+    previous: Bar,
+    atr: float,
+    ema20: float,
+    ema50: float,
+    ema200: float,
+) -> tuple[bool, dict[str, float | None], list[str]]:
+    recent_window = closed[-RECENT_EXTREME_BARS:]
+    recent_low = min(float(item.low) for item in recent_window)
+    extreme_low = min(float(item.low) for item in closed[-EXTREME_LOOKBACK:])
+    reference_high = max(float(item.high) for item in closed[-(IMPULSE_LOOKBACK + 1):-1])
+    downside_impulse_atr = (reference_high - recent_low) / atr
+    extension_below_fast_atr = (ema20 - recent_low) / atr
+    recovery_from_low_atr = (float(row.close) - recent_low) / atr
+    bull_body_atr = (float(row.close) - float(row.open)) / atr
+    candle_range = max(float(row.high) - float(row.low), 1e-12)
+    close_location = (float(row.close) - float(row.low)) / candle_range
+    structural_stop = recent_low - STOP_BUFFER_ATR * atr
+    signal_risk_atr = (float(row.close) - structural_stop) / atr
+
+    checks = (
+        ("BEARISH_EMA_STACK", ema20 < ema50 < ema200),
+        ("FRESH_EXTREME_LOW", recent_low <= extreme_low + max(1e-9, atr * 0.01)),
+        ("SELL_OFF_IMPULSE", downside_impulse_atr >= MIN_IMPULSE_ATR),
+        ("EXTENSION", extension_below_fast_atr >= MIN_EXTENSION_ATR),
+        (
+            "BULLISH_RECLAIM",
+            float(row.close) > float(row.open)
+            and float(row.close) > float(previous.close)
+            and bull_body_atr >= MIN_RECLAIM_BODY_ATR
+            and close_location >= MIN_DIRECTIONAL_CLOSE_LOCATION
+            and recovery_from_low_atr >= MIN_RECOVERY_ATR,
+        ),
+        ("NOT_CHASED", float(row.close) <= ema20 + MAX_CHASE_BEYOND_FAST_ATR * atr),
+        ("RISK_GEOMETRY", MIN_SIGNAL_RISK_ATR <= signal_risk_atr <= MAX_SIGNAL_RISK_ATR),
+    )
+    failed = [name for name, passed in checks if not passed]
+    metrics: dict[str, float | None] = {
+        "recent_low": recent_low,
+        "recent_high": None,
+        "structural_stop": structural_stop,
+        "downside_impulse_atr": downside_impulse_atr,
+        "upside_impulse_atr": None,
+        "extension_below_fast_atr": extension_below_fast_atr,
+        "extension_above_fast_atr": None,
+        "recovery_from_low_atr": recovery_from_low_atr,
+        "rejection_from_high_atr": None,
+        "bull_body_atr": bull_body_atr,
+        "bear_body_atr": None,
+        "close_location": close_location,
+    }
+    return not failed, metrics, failed
+
+
+def _short_candidate(
+    closed: Sequence[Bar],
+    *,
+    row: Bar,
+    previous: Bar,
+    atr: float,
+    ema20: float,
+    ema50: float,
+    ema200: float,
+) -> tuple[bool, dict[str, float | None], list[str]]:
+    recent_window = closed[-RECENT_EXTREME_BARS:]
+    recent_high = max(float(item.high) for item in recent_window)
+    extreme_high = max(float(item.high) for item in closed[-EXTREME_LOOKBACK:])
+    reference_low = min(float(item.low) for item in closed[-(IMPULSE_LOOKBACK + 1):-1])
+    upside_impulse_atr = (recent_high - reference_low) / atr
+    extension_above_fast_atr = (recent_high - ema20) / atr
+    rejection_from_high_atr = (recent_high - float(row.close)) / atr
+    bear_body_atr = (float(row.open) - float(row.close)) / atr
+    candle_range = max(float(row.high) - float(row.low), 1e-12)
+    close_location = (float(row.high) - float(row.close)) / candle_range
+    structural_stop = recent_high + STOP_BUFFER_ATR * atr
+    signal_risk_atr = (structural_stop - float(row.close)) / atr
+
+    checks = (
+        ("BULLISH_EMA_STACK", ema20 > ema50 > ema200),
+        ("FRESH_EXTREME_HIGH", recent_high >= extreme_high - max(1e-9, atr * 0.01)),
+        ("RALLY_IMPULSE", upside_impulse_atr >= MIN_IMPULSE_ATR),
+        ("EXTENSION", extension_above_fast_atr >= MIN_EXTENSION_ATR),
+        (
+            "BEARISH_REJECTION",
+            float(row.close) < float(row.open)
+            and float(row.close) < float(previous.close)
+            and bear_body_atr >= MIN_RECLAIM_BODY_ATR
+            and close_location >= MIN_DIRECTIONAL_CLOSE_LOCATION
+            and rejection_from_high_atr >= MIN_RECOVERY_ATR,
+        ),
+        ("NOT_CHASED", float(row.close) >= ema20 - MAX_CHASE_BEYOND_FAST_ATR * atr),
+        ("RISK_GEOMETRY", MIN_SIGNAL_RISK_ATR <= signal_risk_atr <= MAX_SIGNAL_RISK_ATR),
+    )
+    failed = [name for name, passed in checks if not passed]
+    metrics: dict[str, float | None] = {
+        "recent_low": None,
+        "recent_high": recent_high,
+        "structural_stop": structural_stop,
+        "downside_impulse_atr": None,
+        "upside_impulse_atr": upside_impulse_atr,
+        "extension_below_fast_atr": None,
+        "extension_above_fast_atr": extension_above_fast_atr,
+        "recovery_from_low_atr": None,
+        "rejection_from_high_atr": rejection_from_high_atr,
+        "bull_body_atr": None,
+        "bear_body_atr": bear_body_atr,
+        "close_location": close_location,
+    }
+    return not failed, metrics, failed
+
+
 def evaluate_xau_m15_ema_reversal_recovery(
     bars: Sequence[Bar],
     *,
     as_of: datetime,
 ) -> XauM15EmaReversalSignal:
-    """Evaluate the user-authorized XAU M15 screenshot-derived reversal setup.
+    """Evaluate the transparent XAU M15 reversal/recovery V2 contract.
 
-    This is deliberately a transparent formalization, not a claim that the
-    source chart's proprietary Point-X/Point-Y/coffee target formulas are known.
-    V1 is LONG-only because the supplied evidence showed only the BUY pattern.
-    It looks for an extreme selloff below a bearish EMA20/50/200 stack followed
-    by a bullish reclaim candle before price has already chased far above EMA20.
+    LONG mirrors the supplied BUY example: extreme selloff below a bearish
+    EMA20/50/200 stack followed by a bullish reclaim. SHORT is the exact
+    directional mirror: extreme rally above a bullish stack followed by a
+    bearish rejection. The source chart's proprietary formulas remain unknown;
+    this contract is explicit, reproducible and independently attributable.
     """
 
     rows = tuple(sorted(bars, key=lambda value: ensure_utc(value.timestamp)))
@@ -144,7 +272,7 @@ def evaluate_xau_m15_ema_reversal_recovery(
     if len(closed) < minimum:
         return XauM15EmaReversalSignal(None, False, True, reason="INSUFFICIENT_M15_HISTORY")
 
-    closes = [float(row.close) for row in closed]
+    closes = [float(item.close) for item in closed]
     ema20 = _ema(closes, EMA_FAST)[-1]
     ema50 = _ema(closes, EMA_MID)[-1]
     ema200 = _ema(closes, EMA_SLOW)[-1]
@@ -154,91 +282,67 @@ def evaluate_xau_m15_ema_reversal_recovery(
 
     row = closed[-1]
     previous = closed[-2]
-    recent_window = closed[-RECENT_LOW_BARS:]
-    recent_low = min(float(item.low) for item in recent_window)
-    extreme_low = min(float(item.low) for item in closed[-EXTREME_LOOKBACK:])
-    reference_high = max(float(item.high) for item in closed[-(IMPULSE_LOOKBACK + 1):-1])
-    downside_impulse_atr = (reference_high - recent_low) / atr
-    extension_below_fast_atr = (ema20 - recent_low) / atr
-    recovery_from_low_atr = (float(row.close) - recent_low) / atr
-    body = float(row.close) - float(row.open)
-    bull_body_atr = body / atr
-    candle_range = max(float(row.high) - float(row.low), 1e-12)
-    close_location = (float(row.close) - float(row.low)) / candle_range
-    signal_risk_atr = (float(row.close) - (recent_low - STOP_BUFFER_ATR * atr)) / atr
-
-    bearish_stack = ema20 < ema50 < ema200
-    fresh_extreme = recent_low <= extreme_low + max(1e-9, atr * 0.01)
-    selloff_large = downside_impulse_atr >= MIN_DOWNSIDE_IMPULSE_ATR
-    sufficiently_extended = extension_below_fast_atr >= MIN_EXTENSION_BELOW_FAST_ATR
-    bullish_reclaim = (
-        float(row.close) > float(row.open)
-        and float(row.close) > float(previous.close)
-        and bull_body_atr >= MIN_BULL_BODY_ATR
-        and close_location >= MIN_CLOSE_LOCATION
-        and recovery_from_low_atr >= MIN_RECOVERY_FROM_LOW_ATR
-    )
-    not_chased = float(row.close) <= ema20 + MAX_CLOSE_ABOVE_FAST_ATR * atr
-    risk_geometry_ok = MIN_SIGNAL_RISK_ATR <= signal_risk_atr <= MAX_SIGNAL_RISK_ATR
-
     signal_at = ensure_utc(row.timestamp)
     next_entry_at = _next_bar_open(rows, row)
-    structural_stop = recent_low - STOP_BUFFER_ATR * atr
+    common = {
+        "signal_bar_at": signal_at,
+        "next_entry_at": next_entry_at,
+        "atr": atr,
+        "ema20": ema20,
+        "ema50": ema50,
+        "ema200": ema200,
+    }
 
-    common = dict(
-        signal_bar_at=signal_at,
-        next_entry_at=next_entry_at,
-        atr=atr,
-        ema20=ema20,
-        ema50=ema50,
-        ema200=ema200,
-        recent_low=recent_low,
-        structural_stop=structural_stop,
-        downside_impulse_atr=downside_impulse_atr,
-        extension_below_fast_atr=extension_below_fast_atr,
-        recovery_from_low_atr=recovery_from_low_atr,
-        bull_body_atr=bull_body_atr,
-        close_location=close_location,
-    )
-
-    conditions = (
-        bearish_stack,
-        fresh_extreme,
-        selloff_large,
-        sufficiently_extended,
-        bullish_reclaim,
-        not_chased,
-        risk_geometry_ok,
-    )
-    if not all(conditions):
-        failed = []
-        for name, passed in (
-            ("BEARISH_EMA_STACK", bearish_stack),
-            ("FRESH_EXTREME_LOW", fresh_extreme),
-            ("SELL_OFF_IMPULSE", selloff_large),
-            ("EXTENSION", sufficiently_extended),
-            ("BULLISH_RECLAIM", bullish_reclaim),
-            ("NOT_CHASED", not_chased),
-            ("RISK_GEOMETRY", risk_geometry_ok),
-        ):
-            if not passed:
-                failed.append(name)
+    if ema20 < ema50 < ema200:
+        passed, metrics, failed = _long_candidate(
+            closed,
+            row=row,
+            previous=previous,
+            atr=atr,
+            ema20=ema20,
+            ema50=ema50,
+            ema200=ema200,
+        )
+        direction = "LONG"
+    elif ema20 > ema50 > ema200:
+        passed, metrics, failed = _short_candidate(
+            closed,
+            row=row,
+            previous=previous,
+            atr=atr,
+            ema20=ema20,
+            ema50=ema50,
+            ema200=ema200,
+        )
+        direction = "SHORT"
+    else:
         return XauM15EmaReversalSignal(
             None,
             False,
             True,
-            reason="M15_REVERSAL_NOT_MET:" + ",".join(failed),
+            reason="M15_REVERSAL_NOT_MET:EMA_STACK_NOT_DIRECTIONAL",
             **common,
+        )
+
+    if not passed:
+        return XauM15EmaReversalSignal(
+            None,
+            False,
+            True,
+            reason=f"M15_{direction}_REVERSAL_NOT_MET:" + ",".join(failed),
+            **common,
+            **metrics,
         )
 
     now = ensure_utc(as_of)
     active = next_entry_at <= now <= next_entry_at + timedelta(seconds=ENTRY_WINDOW_SECONDS)
     return XauM15EmaReversalSignal(
-        "LONG",
+        direction,
         active,
         True,
         reason="ENTRY_WINDOW_ACTIVE" if active else "WAIT_NEXT_M15_OPEN",
         **common,
+        **metrics,
     )
 
 
@@ -247,26 +351,44 @@ def build_xau_m15_ema_reversal_plan(
     *,
     current_price: float,
 ) -> TradePlan:
-    if signal.strategy_id != STRATEGY_ID or not signal.active or signal.direction != "LONG":
-        raise ValueError("active XAU M15 EMA reversal LONG signal required")
+    if (
+        signal.strategy_id != STRATEGY_ID
+        or not signal.active
+        or signal.direction not in {"LONG", "SHORT"}
+    ):
+        raise ValueError("active XAU M15 EMA reversal LONG/SHORT signal required")
     atr = float(signal.atr or 0.0)
     stop = float(signal.structural_stop or 0.0)
     price = float(current_price)
     if not all(isfinite(value) and value > 0 for value in (atr, stop, price)):
         raise ValueError("valid M15 ATR, structural stop and price required")
-    if stop >= price:
-        raise ValueError("structural stop must remain below current price")
 
-    risk = price - stop
+    if signal.direction == "LONG":
+        if stop >= price:
+            raise ValueError("LONG structural stop must remain below current price")
+        risk = price - stop
+        tp1 = price + TP1_R * risk
+        tp2 = price + TP2_R * risk
+        confirmation = "M15_EXTREME_SELLOFF_BULLISH_RECLAIM_EMA20_50_200_CONTEXT"
+        directional_excursion = signal.recovery_from_low_atr
+    else:
+        if stop <= price:
+            raise ValueError("SHORT structural stop must remain above current price")
+        risk = stop - price
+        tp1 = price - TP1_R * risk
+        tp2 = price - TP2_R * risk
+        if tp2 <= 0:
+            raise ValueError("SHORT TP2 must remain positive")
+        confirmation = "M15_EXTREME_RALLY_BEARISH_REJECTION_EMA20_50_200_CONTEXT"
+        directional_excursion = signal.rejection_from_high_atr
+
     risk_atr = risk / atr
     if not MIN_SIGNAL_RISK_ATR <= risk_atr <= MAX_SIGNAL_RISK_ATR + 0.50:
         raise ValueError("live reversal risk geometry outside bounded ATR range")
 
-    tp1 = price + TP1_R * risk
-    tp2 = price + TP2_R * risk
     zone_half = max(price * 1e-7, atr * 0.002)
     plan = TradePlan(
-        direction="LONG",
+        direction=signal.direction,
         entry_low=price - zone_half,
         entry_high=price + zone_half,
         stop_loss=stop,
@@ -280,9 +402,9 @@ def build_xau_m15_ema_reversal_plan(
         plan,
         DemoPlanGeometryEvidence(
             entry_mode=STRATEGY_ID,
-            pullback_atr=signal.recovery_from_low_atr,
+            pullback_atr=directional_excursion,
             zone_distance_atr=0.0,
-            confirmation="M15_EXTREME_SELLOFF_BULLISH_RECLAIM_EMA20_50_200_CONTEXT",
+            confirmation=confirmation,
             fvg_age_minutes=0,
             fvg_status="NOT_REQUIRED",
             fvg_fill_fraction=0.0,
@@ -294,16 +416,17 @@ def build_xau_m15_ema_reversal_plan(
 
 
 def forward_rank(signal: XauM15EmaReversalSignal) -> PairRank:
-    if signal.direction != "LONG":
-        raise ValueError("active LONG signal required")
+    if signal.direction not in {"LONG", "SHORT"}:
+        raise ValueError("active directional signal required")
+    edge = FORWARD_DEMO_SCORE if signal.direction == "LONG" else -FORWARD_DEMO_SCORE
     return PairRank(
         symbol=SYMBOL,
-        direction="LONG",
+        direction=signal.direction,
         relative_macro_edge=0.0,
-        relative_technical_edge=FORWARD_DEMO_SCORE,
+        relative_technical_edge=edge,
         cross_asset_edge=None,
-        pair_edge=FORWARD_DEMO_SCORE,
-        absolute_edge=FORWARD_DEMO_SCORE,
+        pair_edge=edge,
+        absolute_edge=abs(edge),
         coverage=1.0,
         missing_components=(),
         rank=1,
@@ -318,6 +441,8 @@ def build_xau_m15_ema_reversal_analysis(
     as_of: datetime,
     external_guard_flags: Mapping[str, bool],
 ):
+    if signal.direction not in {"LONG", "SHORT"}:
+        raise ValueError("directional XAU M15 reversal signal required")
     rank = forward_rank(signal)
     base = analyze_demo_pair_mtf(
         rank=rank,
@@ -349,7 +474,7 @@ def build_xau_m15_ema_reversal_analysis(
     decision = replace(
         base.decision,
         symbol=SYMBOL,
-        direction="LONG",
+        direction=signal.direction,
         pair_rank=1,
         pair_edge=rank.pair_edge,
         conviction_score=FORWARD_DEMO_SCORE,
@@ -360,18 +485,33 @@ def build_xau_m15_ema_reversal_analysis(
         missing_components=(),
         pair_missing_components=(),
     )
+    directional_impulse = (
+        signal.downside_impulse_atr
+        if signal.direction == "LONG"
+        else signal.upside_impulse_atr
+    )
+    directional_extension = (
+        signal.extension_below_fast_atr
+        if signal.direction == "LONG"
+        else signal.extension_above_fast_atr
+    )
+    directional_recovery = (
+        signal.recovery_from_low_atr
+        if signal.direction == "LONG"
+        else signal.rejection_from_high_atr
+    )
     return replace(
         base,
         symbol=SYMBOL,
-        direction="LONG",
+        direction=signal.direction,
         setup_type=SetupType.LIQUIDITY_SWEEP_REVERSAL,
         trigger_confirmed=True,
         trade_plan=plan,
         conviction_components={
             "xau_m15_ema_reversal_recovery": FORWARD_DEMO_SCORE,
-            "downside_impulse_atr": signal.downside_impulse_atr,
-            "extension_below_fast_atr": signal.extension_below_fast_atr,
-            "recovery_from_low_atr": signal.recovery_from_low_atr,
+            "directional_impulse_atr": directional_impulse,
+            "directional_extension_atr": directional_extension,
+            "directional_recovery_atr": directional_recovery,
         },
         computed_guards={
             "STALE_SIGNAL": False,

@@ -55,8 +55,13 @@ def _with_history_requirements(cfg: ProjectConfig) -> ProjectConfig:
     return replace(cfg, strategy=strategy)
 
 
-def _already_emitted(store, *, signal_bar_at: datetime | None) -> bool:
-    if signal_bar_at is None:
+def _already_emitted(
+    store,
+    *,
+    signal_bar_at: datetime | None,
+    direction: str | None,
+) -> bool:
+    if signal_bar_at is None or direction not in {"LONG", "SHORT"}:
         return False
     try:
         response = (
@@ -73,6 +78,7 @@ def _already_emitted(store, *, signal_bar_at: datetime | None) -> bool:
     target = ensure_utc(signal_bar_at).isoformat()
     return any(
         str(dict(row.get("payload") or {}).get("signal_bar_at") or "") == target
+        and str(dict(row.get("payload") or {}).get("direction") or "").upper() == direction
         for row in response.data or []
     )
 
@@ -84,11 +90,18 @@ def _record_marker(store, *, signal_id: str, signal, analysis) -> None:
     )
     if not account_id:
         raise SystemExit("CTRADER_ACCOUNT_ID_REQUIRED_FOR_XAU_M15_REVERSAL_MARKER")
+    if signal.direction not in {"LONG", "SHORT"}:
+        raise SystemExit("XAU_M15_REVERSAL_MARKER_DIRECTION_INVALID")
     plan = analysis.trade_plan
+    point_y_role = (
+        "BULLISH_RECOVERY_CONFIRMATION_NOT_SEPARATE_ORDER_TARGET"
+        if signal.direction == "LONG"
+        else "BEARISH_REJECTION_CONFIRMATION_NOT_SEPARATE_ORDER_TARGET"
+    )
     payload = {
         **signal.evidence(),
         "symbol": SYMBOL,
-        "direction": "LONG",
+        "direction": signal.direction,
         "strategy_id": STRATEGY_ID,
         "strategy_contract": STRATEGY_CONTRACT,
         "execution_influence": True,
@@ -104,7 +117,7 @@ def _record_marker(store, *, signal_id: str, signal, analysis) -> None:
         "tp2": None if plan is None else plan.tp2,
         "extended_alias": "KOPI_BUTTERSCOTCH_RESEARCH_ONLY_V1",
         "extended_target_r": EXTENDED_RESEARCH_TARGET_R,
-        "point_y_role": "BULLISH_RECOVERY_CONFIRMATION_NOT_SEPARATE_ORDER_TARGET",
+        "point_y_role": point_y_role,
     }
     store.record_order_event(
         backend="CTRADER",
@@ -134,7 +147,7 @@ class XauM15EmaReversalProducer(CTraderSignalProducer):
         run_id = self.store.start_scanner_run(
             mode="DEMO_ONLY",
             code_version=self.code_version,
-            data_contract_version="XAU_M15_EMA_REVERSAL_RECOVERY_V1_DEMO",
+            data_contract_version="XAU_M15_EMA_REVERSAL_RECOVERY_V2_DEMO",
             started_at=snapshot_at,
         )
         failures: dict[str, str] = {}
@@ -157,7 +170,11 @@ class XauM15EmaReversalProducer(CTraderSignalProducer):
             selected = ()
             duplicate = False
             if signal.active and signal.execution_eligible:
-                duplicate = _already_emitted(self.store, signal_bar_at=signal.signal_bar_at)
+                duplicate = _already_emitted(
+                    self.store,
+                    signal_bar_at=signal.signal_bar_at,
+                    direction=signal.direction,
+                )
                 if not duplicate:
                     rank = forward_rank(signal)
                     selected = (rank,)
@@ -181,7 +198,7 @@ class XauM15EmaReversalProducer(CTraderSignalProducer):
                         )
                     )
             if duplicate:
-                failures[SYMBOL] = "DUPLICATE_M15_SIGNAL_BAR_BLOCKED"
+                failures[SYMBOL] = "DUPLICATE_M15_SIGNAL_BAR_DIRECTION_BLOCKED"
             elif not signal.active and SYMBOL not in market_failures:
                 failures[SYMBOL] = signal.reason
 
@@ -319,6 +336,7 @@ def run() -> int:
             SYMBOL,
             None if producer.last_signal is None else producer.last_signal.reason,
         )
+        direction = None if producer.last_signal is None else producer.last_signal.direction
         store.write_heartbeat(
             WORKER_NAME,
             healthy=True,
@@ -330,8 +348,11 @@ def run() -> int:
                 "execution_influence": True,
                 "live_execution_enabled": False,
                 "probationary_demo": True,
-                "long_only_v1": True,
+                "long_only_v1": False,
+                "bidirectional_v2": True,
+                "supported_directions": ["LONG", "SHORT"],
                 "market_schedule_mode": market_schedule_mode,
+                "signal_direction": direction,
                 "signal_reason": reason,
                 "signals_written": report.signals_written,
                 "execution_ready": report.execution_ready,
@@ -354,9 +375,10 @@ def run() -> int:
         )
         print(
             "CTRADER_DEMO_XAU_M15_EMA_REVERSAL_OK "
-            f"signals={report.signals_written} ready={report.execution_ready} "
-            f"geometry={geometry_written} reason={reason or 'NONE'} "
-            "probationary=1 score=70 expected_lot=0.01 expected_risk_pct=1.0"
+            f"direction={direction or 'NONE'} signals={report.signals_written} "
+            f"ready={report.execution_ready} geometry={geometry_written} "
+            f"reason={reason or 'NONE'} probationary=1 score=70 "
+            "expected_lot=0.01 expected_risk_pct=1.0 bidirectional=1"
         )
         return 0
     finally:

@@ -5,11 +5,13 @@ import pytest
 from fx_scanner.demo_conviction_sizing import select_demo_conviction_sizing
 from fx_scanner.demo_xau_m15_ema_reversal_recovery import (
     FORWARD_DEMO_SCORE,
+    STRATEGY_CONTRACT,
     STRATEGY_ID,
     TP1_R,
     TP2_R,
     build_xau_m15_ema_reversal_plan,
     evaluate_xau_m15_ema_reversal_recovery,
+    forward_rank,
 )
 from fx_scanner.models import Bar
 
@@ -64,6 +66,25 @@ def _qualifying_bars() -> tuple[Bar, ...]:
     return tuple(rows)
 
 
+def _qualifying_short_bars() -> tuple[Bar, ...]:
+    # Exact price-axis mirror of the qualifying LONG path. EMA order, impulse,
+    # extension, reclaim/rejection geometry and ATR distances therefore remain
+    # symmetric without inventing different thresholds for SHORT.
+    pivot = 9000.0
+    rows = []
+    for index, source in enumerate(_qualifying_bars()):
+        rows.append(
+            _bar(
+                index,
+                open_=pivot - float(source.open),
+                high=pivot - float(source.low),
+                low=pivot - float(source.high),
+                close=pivot - float(source.close),
+            )
+        )
+    return tuple(rows)
+
+
 def test_detects_long_after_extreme_selloff_and_bullish_reclaim():
     rows = _qualifying_bars()
     as_of = rows[-1].timestamp + timedelta(minutes=15)
@@ -71,6 +92,7 @@ def test_detects_long_after_extreme_selloff_and_bullish_reclaim():
     signal = evaluate_xau_m15_ema_reversal_recovery(rows, as_of=as_of)
 
     assert signal.strategy_id == STRATEGY_ID
+    assert signal.contract == STRATEGY_CONTRACT
     assert signal.direction == "LONG"
     assert signal.active is True
     assert signal.execution_eligible is True
@@ -80,6 +102,25 @@ def test_detects_long_after_extreme_selloff_and_bullish_reclaim():
     assert signal.extension_below_fast_atr >= 0.75
     assert signal.recovery_from_low_atr >= 0.60
     assert signal.structural_stop < signal.recent_low < rows[-1].close
+
+
+def test_detects_short_after_extreme_rally_and_bearish_rejection():
+    rows = _qualifying_short_bars()
+    as_of = rows[-1].timestamp + timedelta(minutes=15)
+
+    signal = evaluate_xau_m15_ema_reversal_recovery(rows, as_of=as_of)
+
+    assert signal.strategy_id == STRATEGY_ID
+    assert signal.contract == STRATEGY_CONTRACT
+    assert signal.direction == "SHORT"
+    assert signal.active is True
+    assert signal.execution_eligible is True
+    assert signal.reason == "ENTRY_WINDOW_ACTIVE"
+    assert signal.ema20 > signal.ema50 > signal.ema200
+    assert signal.upside_impulse_atr >= 2.0
+    assert signal.extension_above_fast_atr >= 0.75
+    assert signal.rejection_from_high_atr >= 0.60
+    assert signal.structural_stop > signal.recent_high > rows[-1].close
 
 
 def test_non_xau_bundle_fails_closed():
@@ -113,7 +154,7 @@ def test_expired_entry_window_does_not_reactivate_old_signal():
     assert signal.reason == "WAIT_NEXT_M15_OPEN"
 
 
-def test_plan_uses_structural_stop_and_staged_r_targets():
+def test_long_plan_uses_structural_stop_and_staged_r_targets():
     rows = _qualifying_bars()
     signal = evaluate_xau_m15_ema_reversal_recovery(
         rows,
@@ -129,6 +170,38 @@ def test_plan_uses_structural_stop_and_staged_r_targets():
     assert plan.tp2 == pytest.approx(price + TP2_R * risk)
     assert plan.rr1 == pytest.approx(1.5)
     assert plan.rr2 == pytest.approx(3.0)
+
+
+def test_short_plan_mirrors_structural_stop_and_staged_r_targets():
+    rows = _qualifying_short_bars()
+    signal = evaluate_xau_m15_ema_reversal_recovery(
+        rows,
+        as_of=rows[-1].timestamp + timedelta(minutes=15),
+    )
+    price = rows[-1].close
+    plan = build_xau_m15_ema_reversal_plan(signal, current_price=price)
+    risk = plan.stop_loss - price
+
+    assert plan.direction == "SHORT"
+    assert plan.stop_loss == pytest.approx(signal.structural_stop)
+    assert plan.tp1 == pytest.approx(price - TP1_R * risk)
+    assert plan.tp2 == pytest.approx(price - TP2_R * risk)
+    assert plan.tp2 < plan.tp1 < price < plan.stop_loss
+    assert plan.rr1 == pytest.approx(1.5)
+    assert plan.rr2 == pytest.approx(3.0)
+
+
+def test_short_rank_has_signed_negative_edge_but_equal_absolute_conviction():
+    rows = _qualifying_short_bars()
+    signal = evaluate_xau_m15_ema_reversal_recovery(
+        rows,
+        as_of=rows[-1].timestamp + timedelta(minutes=15),
+    )
+    rank = forward_rank(signal)
+
+    assert rank.direction == "SHORT"
+    assert rank.pair_edge == pytest.approx(-FORWARD_DEMO_SCORE)
+    assert rank.absolute_edge == pytest.approx(FORWARD_DEMO_SCORE)
 
 
 def test_probationary_score_stays_at_smallest_active_demo_tier():
