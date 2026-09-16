@@ -1,0 +1,57 @@
+name: cTrader Demo Auto Supervisor Watchdog
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Independent half-hour fallback. A healthy continuous supervisor is still
+    # running here and this exits immediately; if the hourly window was missed
+    # or died early, the watchdog re-dispatches it.
+    - cron: "32 * * * 1-5"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: ctrader-demo-auto-supervisor-watchdog
+  cancel-in-progress: true
+
+jobs:
+  recover-supervisor-if-needed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Ensure continuous supervisor is alive
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          weekday="$(date -u +%u)"
+          if [ "${weekday}" -gt 5 ]; then
+            echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_MARKET_CLOSED calendar=WEEKDAY_24X5 action=NO_DISPATCH"
+            exit 0
+          fi
+
+          active_supervisor="$(
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/runs?branch=main&per_page=20" \
+              --jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending")] | length'
+          )"
+
+          if [ "${active_supervisor}" -gt 0 ]; then
+            echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_OK active_supervisor_runs=${active_supervisor} action=NO_DISPATCH"
+            exit 0
+          fi
+
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/dispatches" \
+            -f ref=main
+
+          echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_RECOVERY active_supervisor_runs=0 action=DISPATCHED"
