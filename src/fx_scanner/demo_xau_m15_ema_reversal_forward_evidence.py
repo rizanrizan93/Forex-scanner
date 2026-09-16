@@ -21,8 +21,10 @@ from .execution.policy import load_execution_policy
 from .models import Bar, ensure_utc
 from .storage.supabase_operational import SupabaseOperationalStore
 
+# Keep the V1 setup label so already-open/closed LONG paper rows remain in the
+# same family and can still be reconciled after the bidirectional contract ships.
 PAPER_SETUP_TYPE = "XAU_M15_EMA_REVERSAL_PAPER_V1"
-FORWARD_EVIDENCE_CONTRACT = "XAU_M15_EMA_REVERSAL_FORWARD_EVIDENCE_V1"
+FORWARD_EVIDENCE_CONTRACT = "XAU_M15_EMA_REVERSAL_FORWARD_EVIDENCE_V2"
 WORKER_NAME = "ctrader_demo_xau_m15_ema_reversal_forward_evidence"
 EVALUATION_EVENT = "DEMO_XAU_M15_EMA_REVERSAL_EVALUATION"
 OPEN_EVENT = "DEMO_XAU_M15_EMA_REVERSAL_PAPER_OPEN"
@@ -30,6 +32,7 @@ CLOSE_EVENT = "DEMO_XAU_M15_EMA_REVERSAL_PAPER_CLOSE"
 REQUEST_COUNT = 420
 LOOKBACK_DAYS = 7
 FORWARD_EPOCH = datetime(2026, 9, 15, 22, 12, 50, tzinfo=UTC)
+SHORT_FORWARD_EPOCH = datetime(2026, 9, 16, 1, 30, 0, tzinfo=UTC)
 MAX_METRIC_ROWS = 500
 
 
@@ -71,13 +74,21 @@ def _bar_at(bars: Sequence[Bar], timestamp: datetime) -> Bar | None:
 def _paper_excursions(
     bars: Sequence[Bar],
     *,
+    direction: str,
     entry_price: float,
     risk_price: float,
 ) -> tuple[float, float]:
     if not bars or risk_price <= 0:
         return 0.0, 0.0
-    adverse = [(float(row.low) - entry_price) / risk_price for row in bars]
-    favorable = [(float(row.high) - entry_price) / risk_price for row in bars]
+    normalized = str(direction).upper()
+    if normalized == "LONG":
+        adverse = [(float(row.low) - entry_price) / risk_price for row in bars]
+        favorable = [(float(row.high) - entry_price) / risk_price for row in bars]
+    elif normalized == "SHORT":
+        adverse = [(entry_price - float(row.high)) / risk_price for row in bars]
+        favorable = [(entry_price - float(row.low)) / risk_price for row in bars]
+    else:
+        raise ValueError("paper direction must be LONG or SHORT")
     return min(adverse), max(favorable)
 
 
@@ -88,19 +99,27 @@ def evaluate_paper_exit(
     entry_price: float,
     stop: float,
     target: float,
+    direction: str = "LONG",
 ) -> PaperExit | None:
-    """Resolve the LONG-only fixed-SL/fixed-TP forward paper lifecycle.
+    """Resolve fixed-SL/fixed-TP paper lifecycle for LONG and SHORT.
 
-    The broker-authorized V1 uses structural SL and TP2=3R.  Paper evidence
-    mirrors that geometry and does not invent a time exit.  If SL and TP are
-    both inside the same M15 candle, STOP_FIRST is used conservatively.
+    Both directions use the same 1R stop and TP2=3R contract. If SL and TP are
+    both inside one M15 candle, STOP_FIRST is used conservatively.
     """
 
-    risk_price = float(entry_price) - float(stop)
+    normalized = str(direction).upper()
+    if normalized == "LONG":
+        risk_price = float(entry_price) - float(stop)
+        if float(target) <= float(entry_price):
+            raise ValueError("LONG paper target must remain above entry")
+    elif normalized == "SHORT":
+        risk_price = float(stop) - float(entry_price)
+        if float(target) >= float(entry_price):
+            raise ValueError("SHORT paper target must remain below entry")
+    else:
+        raise ValueError("paper direction must be LONG or SHORT")
     if not isfinite(risk_price) or risk_price <= 0:
         raise ValueError("paper risk distance must be positive")
-    if float(target) <= float(entry_price):
-        raise ValueError("paper target must remain above LONG entry")
 
     ordered = tuple(
         row
@@ -113,11 +132,16 @@ def evaluate_paper_exit(
     inspected: list[Bar] = []
     for row in ordered:
         inspected.append(row)
-        stop_hit = float(row.low) <= float(stop)
-        target_hit = float(row.high) >= float(target)
+        if normalized == "LONG":
+            stop_hit = float(row.low) <= float(stop)
+            target_hit = float(row.high) >= float(target)
+        else:
+            stop_hit = float(row.high) >= float(stop)
+            target_hit = float(row.low) <= float(target)
         if stop_hit:
             mae_r, mfe_r = _paper_excursions(
                 inspected,
+                direction=normalized,
                 entry_price=float(entry_price),
                 risk_price=risk_price,
             )
@@ -133,6 +157,7 @@ def evaluate_paper_exit(
         if target_hit:
             mae_r, mfe_r = _paper_excursions(
                 inspected,
+                direction=normalized,
                 entry_price=float(entry_price),
                 risk_price=risk_price,
             )
@@ -156,6 +181,7 @@ def _evaluation_key(signal) -> str | None:
             ensure_utc(signal.signal_bar_at).isoformat(),
             str(signal.direction or "NONE"),
             str(signal.reason),
+            str(signal.contract),
         )
     )
 
@@ -172,7 +198,6 @@ def _already_recorded_evaluation(store: Any, key: str) -> bool:
             .execute()
         )
     except Exception:
-        # Evidence writes are fail-closed when dedupe state is uncertain.
         return True
     return any(
         str(dict(row.get("payload") or {}).get("evaluation_key") or "") == key
@@ -259,6 +284,9 @@ def _close_existing_papers(store: Any, bars: Sequence[Bar]) -> int:
             or str(signal.get("symbol", "")).upper() != SYMBOL
         ):
             continue
+        direction = str(signal.get("direction") or "").upper()
+        if direction not in {"LONG", "SHORT"}:
+            continue
         outcome = evaluate_paper_exit(
             bars,
             entry_time=datetime.fromisoformat(
@@ -267,6 +295,7 @@ def _close_existing_papers(store: Any, bars: Sequence[Bar]) -> int:
             entry_price=float(paper["entry_price"]),
             stop=float(signal["sl"]),
             target=float(signal["tp2"]),
+            direction=direction,
         )
         if outcome is None:
             continue
@@ -310,6 +339,7 @@ def _close_existing_papers(store: Any, bars: Sequence[Bar]) -> int:
                     "contract": FORWARD_EVIDENCE_CONTRACT,
                     "execution_influence": False,
                     "paper_trade_id": str(paper["id"]),
+                    "direction": direction,
                     "exit": asdict(outcome)
                     | {"exit_time": outcome.exit_time.isoformat()},
                 },
@@ -321,12 +351,14 @@ def _close_existing_papers(store: Any, bars: Sequence[Bar]) -> int:
 def _existing_paper_signal_for_bar(
     store: Any,
     signal_bar_at: datetime,
+    direction: str,
 ) -> dict[str, Any] | None:
     response = (
         store.client.table("signals")
         .select("id,state")
         .eq("symbol", SYMBOL)
         .eq("setup_type", PAPER_SETUP_TYPE)
+        .eq("direction", direction)
         .eq("observed_at", ensure_utc(signal_bar_at).isoformat())
         .limit(1)
         .execute()
@@ -355,14 +387,16 @@ def _maybe_open_new_paper(
 ) -> bool:
     if _has_open_strategy_paper(store):
         return False
-    if not signal.active or signal.direction != "LONG":
+    if not signal.active or signal.direction not in {"LONG", "SHORT"}:
         return False
     if signal.signal_bar_at is None or signal.next_entry_at is None:
         return False
+    direction = str(signal.direction)
     signal_bar_at = ensure_utc(signal.signal_bar_at)
     entry_at = ensure_utc(signal.next_entry_at)
     now = ensure_utc(as_of)
-    if signal_bar_at < FORWARD_EPOCH:
+    direction_epoch = SHORT_FORWARD_EPOCH if direction == "SHORT" else FORWARD_EPOCH
+    if signal_bar_at < direction_epoch:
         return False
     if not entry_at <= now <= entry_at + timedelta(seconds=ENTRY_WINDOW_SECONDS):
         return False
@@ -372,12 +406,24 @@ def _maybe_open_new_paper(
 
     entry = float(entry_bar.open)
     stop = float(signal.structural_stop or 0.0)
-    if not (isfinite(entry) and isfinite(stop) and stop > 0.0 and stop < entry):
+    if not (isfinite(entry) and isfinite(stop) and entry > 0.0 and stop > 0.0):
         return False
-    risk = entry - stop
-    target = entry + TP2_R * risk
+    if direction == "LONG":
+        if stop >= entry:
+            return False
+        risk = entry - stop
+        target = entry + TP2_R * risk
+        tp1_reference = entry + TP1_R * risk
+    else:
+        if stop <= entry:
+            return False
+        risk = stop - entry
+        target = entry - TP2_R * risk
+        tp1_reference = entry - TP1_R * risk
+        if target <= 0 or tp1_reference <= 0:
+            return False
 
-    existing = _existing_paper_signal_for_bar(store, signal_bar_at)
+    existing = _existing_paper_signal_for_bar(store, signal_bar_at, direction)
     if existing is None:
         response = (
             store.client.table("signals")
@@ -385,10 +431,10 @@ def _maybe_open_new_paper(
                 {
                     "observed_at": signal_bar_at.isoformat(),
                     "symbol": SYMBOL,
-                    "direction": "LONG",
+                    "direction": direction,
                     "setup_type": PAPER_SETUP_TYPE,
                     "state": "WATCH",
-                    "pair_score": 70.0,
+                    "pair_score": 70.0 if direction == "LONG" else -70.0,
                     "execution_score": 0.0,
                     "final_score": 70.0,
                     "entry_low": entry,
@@ -447,11 +493,12 @@ def _maybe_open_new_paper(
                     "contract": FORWARD_EVIDENCE_CONTRACT,
                     "execution_influence": False,
                     "signal_id": signal_id,
+                    "direction": direction,
                     "signal_bar_at": signal_bar_at.isoformat(),
                     "entry_time": entry_at.isoformat(),
                     "entry_price": entry,
                     "stop": stop,
-                    "tp1_reference": entry + TP1_R * risk,
+                    "tp1_reference": tp1_reference,
                     "tp2": target,
                     "risk_price": risk,
                     "entry_model": "NEXT_M15_BAR_OPEN",
@@ -478,7 +525,9 @@ def _strategy_closed_rows(store: Any) -> list[dict[str, Any]]:
             str(signal.get("setup_type")) == PAPER_SETUP_TYPE
             and str(signal.get("symbol", "")).upper() == SYMBOL
         ):
-            selected.append(dict(paper))
+            row = dict(paper)
+            row["direction"] = str(signal.get("direction") or "").upper()
+            selected.append(row)
     return selected
 
 
@@ -495,6 +544,8 @@ def summarize_forward_metrics(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
             "max_drawdown_r": None,
             "tp1_touch_rate": None,
             "promotion_evidence_state": "NO_CLOSED_SAMPLE",
+            "promotion_authority": False,
+            "minimum_review_sample": 30,
         }
 
     wins = sum(value > 0.0 for value in results)
@@ -513,7 +564,12 @@ def summarize_forward_metrics(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     expectancy = sum(results) / len(results)
     state = "COLLECTING"
     if len(results) >= 30:
-        if expectancy > 0.0 and profit_factor is not None and profit_factor >= 1.15 and max_dd <= 8.0:
+        if (
+            expectancy > 0.0
+            and profit_factor is not None
+            and profit_factor >= 1.15
+            and max_dd <= 8.0
+        ):
             state = "EVIDENCE_POSITIVE_REVIEW_CANDIDATE"
         else:
             state = "EVIDENCE_NOT_YET_SUPPORTIVE"
@@ -529,6 +585,17 @@ def summarize_forward_metrics(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "promotion_evidence_state": state,
         "promotion_authority": False,
         "minimum_review_sample": 30,
+    }
+
+
+def summarize_forward_metrics_by_direction(
+    rows: Sequence[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    return {
+        direction: summarize_forward_metrics(
+            tuple(row for row in rows if str(row.get("direction") or "").upper() == direction)
+        )
+        for direction in ("LONG", "SHORT")
     }
 
 
@@ -548,6 +615,7 @@ def run() -> int:
     opened = False
     closed = 0
     metrics: dict[str, Any] = {}
+    by_direction: dict[str, dict[str, Any]] = {}
     error: str | None = None
     try:
         feed.ensure_connected()
@@ -567,7 +635,9 @@ def run() -> int:
             persisted_evaluation = _persist_evaluation(store, signal=signal, key=key)
         closed = _close_existing_papers(store, closed_bars)
         opened = _maybe_open_new_paper(store, bars, signal=signal, as_of=as_of)
-        metrics = summarize_forward_metrics(_strategy_closed_rows(store))
+        closed_rows = _strategy_closed_rows(store)
+        metrics = summarize_forward_metrics(closed_rows)
+        by_direction = summarize_forward_metrics_by_direction(closed_rows)
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"
     finally:
@@ -578,6 +648,7 @@ def run() -> int:
 
     healthy = error is None
     signal_reason = None if signal is None else signal.reason
+    signal_direction = None if signal is None else signal.direction
     store.write_heartbeat(
         WORKER_NAME,
         healthy=healthy,
@@ -590,23 +661,30 @@ def run() -> int:
             "execution_influence": False,
             "broker_order_submission": False,
             "promotion_authority": False,
+            "supported_directions": ["LONG", "SHORT"],
             "forward_epoch": FORWARD_EPOCH.isoformat(),
+            "short_forward_epoch": SHORT_FORWARD_EPOCH.isoformat(),
             "observed_at": as_of.isoformat(),
             "bars_received": len(bars),
+            "signal_direction": signal_direction,
             "signal_reason": signal_reason,
             "signal_active": False if signal is None else signal.active,
             "persisted_new_evaluation": persisted_evaluation,
             "paper_opened": opened,
             "paper_closed": closed,
             "metrics": metrics,
+            "metrics_by_direction": by_direction,
             "error": error,
         },
     )
     print(
         "CTRADER_DEMO_XAU_M15_REVERSAL_FORWARD_EVIDENCE "
-        f"healthy={healthy} bars={len(bars)} reason={signal_reason or 'NONE'} "
-        f"eval_persisted={persisted_evaluation} paper_opened={opened} "
-        f"paper_closed={closed} sample={metrics.get('closed_trades', 0)} "
+        f"healthy={healthy} bars={len(bars)} direction={signal_direction or 'NONE'} "
+        f"reason={signal_reason or 'NONE'} eval_persisted={persisted_evaluation} "
+        f"paper_opened={opened} paper_closed={closed} "
+        f"sample={metrics.get('closed_trades', 0)} "
+        f"long_sample={by_direction.get('LONG', {}).get('closed_trades', 0)} "
+        f"short_sample={by_direction.get('SHORT', {}).get('closed_trades', 0)} "
         f"expectancy_r={metrics.get('expectancy_r')} "
         f"pf={metrics.get('profit_factor')} error={error or 'NONE'}"
     )
