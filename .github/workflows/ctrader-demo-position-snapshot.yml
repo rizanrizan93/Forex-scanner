@@ -33,6 +33,8 @@ jobs:
       CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
       CTRADER_TOKEN_STATE_DURABLE: "1"
       CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       FX_KILL_SWITCH: "0"
       FX_IDEMPOTENCY_STATE_PATH: /tmp/execution_idempotency.json
 
