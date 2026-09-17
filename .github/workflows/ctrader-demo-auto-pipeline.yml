@@ -13,7 +13,7 @@ concurrency:
 jobs:
   fast-revalidate-and-execute:
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 10
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -59,6 +59,7 @@ jobs:
       CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"
       CTRADER_DEMO_XAU_V42_PROFIT_LOCK_ENABLED: "1"
       CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED: "1"
+      CTRADER_DEMO_XAU_CANONICAL_POSITION_MANAGER_ENABLED: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -76,25 +77,25 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_auto_pipeline RUNNING
 
-      # Producers are isolated so a transient failure in one strategy does not
-      # suppress protection maintenance for positions that already exist.
+      # Non-canonical XAU producers remain forward-evidence/shadow inputs. Their
+      # failures never authorize or suppress canonical XAU broker handoff.
       - name: Evaluate five-core strategy router
         id: produce_five_core
         continue-on-error: true
         run: python -m fx_scanner.demo_execution_fast_candidate_producer
-      - name: Evaluate promoted XAU Expansion V4.2 DEMO strategy
+      - name: Evaluate XAU Expansion V4.2 shadow evidence
         id: produce_xau_v42
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_expansion_v42_candidate_producer
-      - name: Evaluate XAU M15 EMA reversal/recovery probationary DEMO strategy
+      - name: Evaluate XAU M15 EMA reversal/recovery shadow evidence
         id: produce_xau_m15_reversal
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_m15_ema_reversal_candidate_producer
-      - name: Evaluate user-authorized XAU M15 EMA-SMC reclaim DEMO strategy
+      - name: Evaluate canonical XAU M15 EMA-SMC-ICT strategy
         id: produce_xau_m15_ema_smc_reclaim
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_m15_ema_smc_reclaim_candidate_producer
-      - name: Evaluate XAU M15 liquidity-sweep fade probationary DEMO strategy
+      - name: Evaluate XAU M15 liquidity-sweep fade shadow evidence
         id: produce_xau_m15_sweep_fade
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_m15_liquidity_sweep_fade_candidate_producer
@@ -109,21 +110,24 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_existing_protection_repair
 
-      # New entries remain fail-closed. A producer or protection-repair failure
-      # blocks handoff for this cycle rather than executing stale/partial intent.
+      # XAU execution authority is singular: XAU_M15_EMA_SMC_RECLAIM_V1. Legacy
+      # XAU rows can remain in evidence storage but are excluded by exact handoff.
       - name: Execute all fresh strategy-authorized DEMO signals within safety caps
         id: execute_fresh_handoff
         if: >-
           ${{ !cancelled() &&
               steps.produce_five_core.outcome == 'success' &&
-              steps.produce_xau_v42.outcome == 'success' &&
-              steps.produce_xau_m15_reversal.outcome == 'success' &&
               steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success' &&
-              steps.produce_xau_m15_sweep_fade.outcome == 'success' &&
               steps.produce_euraud_gbpaud.outcome == 'success' &&
               steps.repair_existing_protection.outcome == 'success' }}
         continue-on-error: true
         run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
+
+      - name: Manage canonical XAU filled positions
+        id: xau_canonical_manager
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_canonical_position_manager
 
       - name: Enforce pair-specific max-hold exits
         id: pair_time_exit
@@ -135,12 +139,12 @@ jobs:
         if: ${{ always() && !cancelled() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_euraud_gbpaud_chandelier
-      - name: Enforce XAU Expansion V4.2 seven-D1-bar max-hold exit
+      - name: Enforce legacy XAU Expansion V4.2 seven-D1-bar max-hold exit
         id: xau_v42_time_exit
         if: ${{ always() && !cancelled() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_expansion_v42_time_exit
-      - name: Apply XAU Expansion V4.2 completed-H1 deferred profit lock
+      - name: Apply legacy XAU Expansion V4.2 completed-H1 deferred profit lock
         id: xau_v42_profit_lock
         if: ${{ always() && !cancelled() }}
         continue-on-error: true
@@ -149,7 +153,7 @@ jobs:
         if: ${{ always() && !cancelled() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_adaptive_profit_lock
-      - name: Keep legacy structural profit protector disabled for frozen strategies
+      - name: Keep legacy structural profit protector disabled
         if: ${{ always() && !cancelled() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_structural_profit_protector
@@ -159,13 +163,11 @@ jobs:
         shell: bash
         env:
           FIVE_CORE_OUTCOME: ${{ steps.produce_five_core.outcome }}
-          XAU_V42_OUTCOME: ${{ steps.produce_xau_v42.outcome }}
-          XAU_M15_REVERSAL_OUTCOME: ${{ steps.produce_xau_m15_reversal.outcome }}
           XAU_M15_EMA_SMC_RECLAIM_OUTCOME: ${{ steps.produce_xau_m15_ema_smc_reclaim.outcome }}
-          XAU_M15_SWEEP_FADE_OUTCOME: ${{ steps.produce_xau_m15_sweep_fade.outcome }}
           EURAUD_GBPAUD_OUTCOME: ${{ steps.produce_euraud_gbpaud.outcome }}
           REPAIR_OUTCOME: ${{ steps.repair_existing_protection.outcome }}
           HANDOFF_OUTCOME: ${{ steps.execute_fresh_handoff.outcome }}
+          XAU_CANONICAL_MANAGER_OUTCOME: ${{ steps.xau_canonical_manager.outcome }}
           PAIR_EXIT_OUTCOME: ${{ steps.pair_time_exit.outcome }}
           CHANDELIER_OUTCOME: ${{ steps.euraud_gbpaud_chandelier.outcome }}
           XAU_EXIT_OUTCOME: ${{ steps.xau_v42_time_exit.outcome }}
@@ -175,13 +177,11 @@ jobs:
           failed=0
           for item in \
             "FIVE_CORE:${FIVE_CORE_OUTCOME}" \
-            "XAU_V42:${XAU_V42_OUTCOME}" \
-            "XAU_M15_REVERSAL:${XAU_M15_REVERSAL_OUTCOME}" \
             "XAU_M15_EMA_SMC_RECLAIM:${XAU_M15_EMA_SMC_RECLAIM_OUTCOME}" \
-            "XAU_M15_SWEEP_FADE:${XAU_M15_SWEEP_FADE_OUTCOME}" \
             "EURAUD_GBPAUD:${EURAUD_GBPAUD_OUTCOME}" \
             "REPAIR:${REPAIR_OUTCOME}" \
             "HANDOFF:${HANDOFF_OUTCOME}" \
+            "XAU_CANONICAL_MANAGER:${XAU_CANONICAL_MANAGER_OUTCOME}" \
             "PAIR_EXIT:${PAIR_EXIT_OUTCOME}" \
             "CHANDELIER:${CHANDELIER_OUTCOME}" \
             "XAU_EXIT:${XAU_EXIT_OUTCOME}" \
