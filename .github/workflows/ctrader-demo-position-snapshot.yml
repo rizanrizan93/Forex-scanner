@@ -10,6 +10,7 @@ on:
     paths:
       - ".github/workflows/ctrader-demo-position-snapshot.yml"
       - "src/fx_scanner/demo_live_position_snapshot.py"
+      - "src/fx_scanner/demo_manual_trade_journal.py"
       - "src/fx_scanner/demo_broker_pnl.py"
 
 permissions:
@@ -50,5 +51,7 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate config
         run: python -m fx_scanner.cli validate-config
-      - name: Capture read-only broker position snapshot
+      - name: Capture mutation-free broker position snapshot and persist research telemetry
         run: python -m fx_scanner.demo_live_position_snapshot
+      - name: Backfill and journal manual cTrader DEMO deals for reconstruction research
+        run: python -m fx_scanner.demo_manual_trade_journal
