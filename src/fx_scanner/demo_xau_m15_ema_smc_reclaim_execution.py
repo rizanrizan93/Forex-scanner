@@ -15,6 +15,7 @@ from .demo_xau_m15_ema_smc_reclaim import (
     SYMBOL,
     evaluate_xau_m15_ema_smc_reclaim,
 )
+from .demo_xau_m15_ict_layer import ICT_LAYER_CONTRACT, evaluate_ict_execution_context
 from .guards import evaluate_hard_guards
 from .models import Bar, SignalState, ensure_utc
 from .ranking import PairRank
@@ -49,6 +50,8 @@ class XauM15EmaSmcReclaimSignal:
     strategy_id: str = STRATEGY_ID
     strategy_profile: str = STRATEGY_PROFILE
     contract: str = STRATEGY_CONTRACT
+    ict_layer_contract: str = ICT_LAYER_CONTRACT
+    ict_evidence: dict[str, Any] | None = None
 
     def evidence(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -86,11 +89,13 @@ def evaluate_xau_m15_ema_smc_reclaim_execution(
     *,
     as_of: datetime,
 ) -> XauM15EmaSmcReclaimSignal:
-    """Fail-closed DEMO execution wrapper around the shadow EMA/SMC model.
+    """Fail-closed DEMO execution wrapper around the EMA/SMC reclaim model.
 
-    Only completed M15/H1 candles are evaluated. An otherwise valid setup may
-    execute only during the first ten minutes of the next M15 bar and only when
-    structural stop geometry and the model's projected liquidity RR are valid.
+    Only completed M15/H1 candles are evaluated. A valid base setup must also
+    pass the ICT execution-context layer: previous-day/session liquidity,
+    premium/discount or OTE location, OB/FVG retest confluence, external
+    liquidity targeting and an anti-chase bound. The strategy identity and
+    original score contract remain unchanged.
     """
 
     m15_all = tuple(sorted(m15_bars, key=lambda value: ensure_utc(value.timestamp)))
@@ -151,9 +156,55 @@ def evaluate_xau_m15_ema_smc_reclaim_execution(
 
     atr_value = float(atr)
     stop_value = float(stop)
+    ict = evaluate_ict_execution_context(
+        m15_all,
+        direction=str(direction),
+        atr_value=atr_value,
+        as_of=as_of,
+    )
+    ict_payload = ict.to_payload()
+    if not ict.execution_ready:
+        block_reason = ",".join(ict.reasons) if ict.reasons else "UNKNOWN"
+        return XauM15EmaSmcReclaimSignal(
+            direction,
+            float(selected.score),
+            False,
+            False,
+            signal_bar_at=signal_at,
+            next_entry_at=next_entry_at,
+            atr=atr_value,
+            ema20=float(ema20),
+            ema50=float(ema50),
+            ema200=float(ema200),
+            structural_stop=stop_value,
+            liquidity_target=None if target is None else float(target),
+            projected_rr=None if projected_rr is None else float(projected_rr),
+            reason=f"ICT_CONTEXT_BLOCK:{block_reason}",
+            ict_evidence=ict_payload,
+        )
+
     risk = close - stop_value if direction == "LONG" else stop_value - close
     risk_atr = risk / atr_value if atr_value > 0.0 else 999.0
-    rr_value = None if projected_rr is None else float(projected_rr)
+
+    external_target = ict.external_liquidity_target
+    target_value = None if target is None else float(target)
+    if external_target is not None:
+        external_value = float(external_target)
+        if (direction == "LONG" and external_value > close) or (
+            direction == "SHORT" and external_value < close
+        ):
+            target_value = external_value
+
+    rr_value: float | None = None
+    if risk > 0.0 and target_value is not None:
+        rr_value = (
+            (target_value - close) / risk
+            if direction == "LONG"
+            else (close - target_value) / risk
+        )
+    elif projected_rr is not None:
+        rr_value = float(projected_rr)
+
     geometry_ok = (
         risk > 0.0
         and risk_atr <= MAX_LIVE_RISK_ATR
@@ -184,9 +235,10 @@ def evaluate_xau_m15_ema_smc_reclaim_execution(
         ema50=float(ema50),
         ema200=float(ema200),
         structural_stop=stop_value,
-        liquidity_target=None if target is None else float(target),
+        liquidity_target=target_value,
         projected_rr=rr_value,
         reason=reason,
+        ict_evidence=ict_payload,
     )
 
 
@@ -209,14 +261,14 @@ def build_xau_m15_ema_smc_reclaim_plan(
         risk = price - stop
         tp1 = price + TP1_R * risk
         tp2 = price + TP2_R * risk
-        confirmation = "M15_EMA_SMC_BULLISH_RECLAIM_RETEST"
+        confirmation = "M15_EMA_SMC_BULLISH_RECLAIM_RETEST_ICT_CONTEXT"
     else:
         if stop <= price:
             raise ValueError("SHORT structural stop must remain above live entry")
         risk = stop - price
         tp1 = price - TP1_R * risk
         tp2 = price - TP2_R * risk
-        confirmation = "M15_EMA_SMC_BEARISH_RECLAIM_RETEST"
+        confirmation = "M15_EMA_SMC_BEARISH_RECLAIM_RETEST_ICT_CONTEXT"
 
     risk_atr = risk / atr
     if not isfinite(risk_atr) or risk_atr <= 0.0 or risk_atr > MAX_LIVE_RISK_ATR + 0.50:
@@ -224,6 +276,8 @@ def build_xau_m15_ema_smc_reclaim_plan(
     if min(tp1, tp2) <= 0.0:
         raise ValueError("take-profit price must remain positive")
 
+    ict = dict(signal.ict_evidence or {})
+    fvg_status = "ICT_FVG_RETEST" if bool(ict.get("fvg_retest")) else "ICT_CONTEXT_VALIDATED"
     zone_half = max(price * 1e-7, atr * 0.002)
     plan = TradePlan(
         direction=signal.direction,
@@ -244,10 +298,10 @@ def build_xau_m15_ema_smc_reclaim_plan(
             zone_distance_atr=None,
             confirmation=confirmation,
             fvg_age_minutes=0,
-            fvg_status="STRUCTURE_MODEL_VALIDATED",
+            fvg_status=fvg_status,
             fvg_fill_fraction=0.0,
             chase_monitor_distance_atr=0.0,
-            exit_model="STRUCTURAL_SL_FIXED_1P5R_3R",
+            exit_model="STRUCTURAL_SL_FIXED_1P5R_3R_EXTERNAL_LIQUIDITY_CONTEXT",
         ),
     )
     return plan
@@ -320,6 +374,7 @@ def build_xau_m15_ema_smc_reclaim_analysis(
         missing_components=(),
         pair_missing_components=(),
     )
+    ict = dict(signal.ict_evidence or {})
     return replace(
         base,
         symbol=SYMBOL,
@@ -333,6 +388,9 @@ def build_xau_m15_ema_smc_reclaim_analysis(
             "ema20": signal.ema20,
             "ema50": signal.ema50,
             "ema200": signal.ema200,
+            "ict_confluence_count": ict.get("confluence_count"),
+            "ict_dealing_range_position": ict.get("dealing_range_position"),
+            "ict_external_liquidity_target": ict.get("external_liquidity_target"),
         },
         computed_guards={
             "STALE_SIGNAL": False,
