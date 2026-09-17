@@ -7,6 +7,9 @@ from fx_scanner.demo_xau_expansion_v42 import STRATEGY_ID as XAU_EXPANSION_V42_S
 from fx_scanner.demo_xau_m15_ema_reversal_recovery import (
     STRATEGY_ID as XAU_M15_EMA_REVERSAL_STRATEGY_ID,
 )
+from fx_scanner.demo_xau_m15_ema_smc_reclaim import (
+    STRATEGY_ID as XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID,
+)
 from fx_scanner.demo_xau_m15_liquidity_sweep_fade import (
     STRATEGY_ID as XAU_M15_SWEEP_FADE_STRATEGY_ID,
 )
@@ -19,6 +22,7 @@ def test_shared_demo_handoff_allows_all_exact_authorized_xau_strategies():
             PAIR_STRATEGY_IDS["XAUUSD"],
             XAU_EXPANSION_V42_STRATEGY_ID,
             XAU_M15_EMA_REVERSAL_STRATEGY_ID,
+            XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID,
             XAU_M15_SWEEP_FADE_STRATEGY_ID,
         }
     )
