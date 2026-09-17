@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "record_type": "MANUAL_DEMO_CALIBRATION_EPISODE",
+  "status": "OPEN_PENDING_FINAL_EXIT",
+  "eligible_for_closed_trade_calibration": false,
+  "environment": "DEMO_ONLY",
+  "live_money": false,
+  "symbol": "XAUUSD",
+  "timeframe": "M15",
+  "trade_date_local": "2026-09-17",
+  "provenance": {
+    "source": "manual_cTrader_screenshots_and_chat_observation",
+    "broker_fill_timestamps_verified": false,
+    "broker_closed_trade_record_verified": false,
+    "note": "Do not treat screenshot-observed values as broker-authoritative timestamps or final PnL. Reconcile against cTrader broker history before calibration promotion."
+  },
+  "direction": "BUY",
+  "legs": [
+    {
+      "size_oz": 1.0,
+      "entry_price": 4360.87,
+      "entry_timestamp": null,
+      "exit_price": 4370.0,
+      "exit_timestamp": null,
+      "exit_state": "TP1_OBSERVED_AS_FILLED_FROM_LATER_SCREENSHOT",
+      "broker_verified": false
+    },
+    {
+      "size_oz": 1.0,
+      "entry_price": 4359.32,
+      "entry_timestamp": null,
+      "exit_price": null,
+      "exit_timestamp": null,
+      "exit_state": "UNKNOWN_OR_OPEN_AT_LAST_OBSERVATION",
+      "broker_verified": false
+    },
+    {
+      "size_oz": 1.0,
+      "entry_price": 4357.48,
+      "entry_timestamp": null,
+      "exit_price": null,
+      "exit_timestamp": null,
+      "exit_state": "UNKNOWN_OR_OPEN_AT_LAST_OBSERVATION",
+      "broker_verified": false
+    }
+  ],
+  "aggregate_entry_price_equal_size": 4359.223333333333,
+  "initial_plan": {
+    "hard_sl_zone": [4348.0, 4349.0],
+    "tp_levels": [4370.0, 4378.0, 4388.0],
+    "management_levels": {
+      "bullish_reclaim": [4360.0, 4362.0],
+      "warning": [4355.0, 4352.0],
+      "invalidation": 4350.0
+    }
+  },
+  "decision_context": {
+    "structure": "bullish_displacement_then_retracement_and_reclaim",
+    "ema_state": "EMA20_above_EMA50_above_EMA200",
+    "adx_observed_range": [33.9, 37.9],
+    "plus_di_dominant": true,
+    "bsl_zone": [4378.0, 4380.0],
+    "notes": [
+      "Entry management was based on M15 close/reclaim rather than intrabar wick alone.",
+      "TP1 at 4370 was observed to have been reached and position count reduced from three to two.",
+      "Later screenshots showed further reduction to one remaining 1 Oz position, but exact second-leg exit price/time is not yet broker-verified.",
+      "Final remaining-leg exit is not known yet."
+    ]
+  },
+  "calibration_policy": {
+    "use_for_demo_reconstruction": true,
+    "use_for_feature_review": true,
+    "use_for_closed_trade_scoring": false,
+    "promotion_condition": "Reconcile exact broker entry/exit timestamps, fills, realized PnL, and final remaining-leg exit from cTrader history; then convert to broker-authoritative closed-trade calibration evidence."
+  }
+}
