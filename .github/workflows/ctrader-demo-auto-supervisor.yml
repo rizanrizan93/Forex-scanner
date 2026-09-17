@@ -76,7 +76,7 @@ jobs:
             exit 0
           fi
 
-          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD strategies=FIVE_CORE_ROUTER_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1 fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_PIPELINE_OR_TELEGRAM_STRATEGY self_handoff=DISABLED"
+          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD strategies=FIVE_CORE_ROUTER_V1 telegram_strategy=TELEGRAM_XAU_M15_SWEEP_FADE_V1 fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_OR_AUTO_PIPELINE telegram_strategy_push_kick=ENABLED self_handoff=DISABLED"
 
           # Each supervisor owns one bounded five-minute window. Scheduled runs
           # are re-registered every five minutes. A push touching this supervisor,
@@ -115,4 +115,4 @@ jobs:
             fi
           done
 
-          echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD strategies=FIVE_CORE_ROUTER_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1 fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_PIPELINE_OR_TELEGRAM_STRATEGY self_handoff=DISABLED"
+          echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD strategies=FIVE_CORE_ROUTER_V1 telegram_strategy=TELEGRAM_XAU_M15_SWEEP_FADE_V1 fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_OR_AUTO_PIPELINE telegram_strategy_push_kick=ENABLED self_handoff=DISABLED"
