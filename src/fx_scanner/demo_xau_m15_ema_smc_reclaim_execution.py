@@ -7,6 +7,10 @@ from typing import Any, Mapping, Sequence
 
 from .demo_technical_strategy import analyze_demo_pair_mtf
 from .demo_trade_plan_geometry import DemoPlanGeometryEvidence, remember_plan_evidence
+from .demo_xau_m15_canonical_policy import (
+    CANONICAL_POLICY_CONTRACT,
+    evaluate_canonical_xau_decision,
+)
 from .demo_xau_m15_ema_smc_reclaim import (
     MIN_H1_BARS,
     MIN_M15_BARS,
@@ -52,6 +56,8 @@ class XauM15EmaSmcReclaimSignal:
     contract: str = STRATEGY_CONTRACT
     ict_layer_contract: str = ICT_LAYER_CONTRACT
     ict_evidence: dict[str, Any] | None = None
+    canonical_policy_contract: str = CANONICAL_POLICY_CONTRACT
+    canonical_evidence: dict[str, Any] | None = None
 
     def evidence(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -89,13 +95,12 @@ def evaluate_xau_m15_ema_smc_reclaim_execution(
     *,
     as_of: datetime,
 ) -> XauM15EmaSmcReclaimSignal:
-    """Fail-closed DEMO execution wrapper around the EMA/SMC reclaim model.
+    """Fail-closed DEMO execution wrapper around the canonical XAU model.
 
-    Only completed M15/H1 candles are evaluated. A valid base setup must also
-    pass the ICT execution-context layer: previous-day/session liquidity,
-    premium/discount or OTE location, OB/FVG retest confluence, external
-    liquidity targeting and an anti-chase bound. The strategy identity and
-    original score contract remain unchanged.
+    The EMA/SMC model creates directional evidence, the ICT layer validates
+    location/liquidity, and the canonical policy is final execution authority.
+    Only completed M15/H1 candles are used. Counter-trend scalps remain research
+    only and impulse-without-retracement is blocked by construction.
     """
 
     m15_all = tuple(sorted(m15_bars, key=lambda value: ensure_utc(value.timestamp)))
@@ -183,6 +188,34 @@ def evaluate_xau_m15_ema_smc_reclaim_execution(
             ict_evidence=ict_payload,
         )
 
+    canonical = evaluate_canonical_xau_decision(
+        direction=direction,
+        score=float(selected.score),
+        evidence=evidence,
+        ict_evidence=ict_payload,
+    )
+    canonical_payload = canonical.to_payload()
+    if not canonical.execution_ready:
+        block_reason = ",".join(canonical.reasons) if canonical.reasons else "UNKNOWN"
+        return XauM15EmaSmcReclaimSignal(
+            direction,
+            float(selected.score),
+            False,
+            False,
+            signal_bar_at=signal_at,
+            next_entry_at=next_entry_at,
+            atr=atr_value,
+            ema20=float(ema20),
+            ema50=float(ema50),
+            ema200=float(ema200),
+            structural_stop=stop_value,
+            liquidity_target=None if target is None else float(target),
+            projected_rr=None if projected_rr is None else float(projected_rr),
+            reason=f"CANONICAL_POLICY_BLOCK:{block_reason}",
+            ict_evidence=ict_payload,
+            canonical_evidence=canonical_payload,
+        )
+
     risk = close - stop_value if direction == "LONG" else stop_value - close
     risk_atr = risk / atr_value if atr_value > 0.0 else 999.0
 
@@ -239,6 +272,7 @@ def evaluate_xau_m15_ema_smc_reclaim_execution(
         projected_rr=rr_value,
         reason=reason,
         ict_evidence=ict_payload,
+        canonical_evidence=canonical_payload,
     )
 
 
@@ -261,14 +295,14 @@ def build_xau_m15_ema_smc_reclaim_plan(
         risk = price - stop
         tp1 = price + TP1_R * risk
         tp2 = price + TP2_R * risk
-        confirmation = "M15_EMA_SMC_BULLISH_RECLAIM_RETEST_ICT_CONTEXT"
+        confirmation = "M15_CANONICAL_BULLISH_RECLAIM_RETEST_ICT_CONTEXT"
     else:
         if stop <= price:
             raise ValueError("SHORT structural stop must remain above live entry")
         risk = stop - price
         tp1 = price - TP1_R * risk
         tp2 = price - TP2_R * risk
-        confirmation = "M15_EMA_SMC_BEARISH_RECLAIM_RETEST_ICT_CONTEXT"
+        confirmation = "M15_CANONICAL_BEARISH_RECLAIM_RETEST_ICT_CONTEXT"
 
     risk_atr = risk / atr
     if not isfinite(risk_atr) or risk_atr <= 0.0 or risk_atr > MAX_LIVE_RISK_ATR + 0.50:
@@ -301,7 +335,7 @@ def build_xau_m15_ema_smc_reclaim_plan(
             fvg_status=fvg_status,
             fvg_fill_fraction=0.0,
             chase_monitor_distance_atr=0.0,
-            exit_model="STRUCTURAL_SL_FIXED_1P5R_3R_EXTERNAL_LIQUIDITY_CONTEXT",
+            exit_model="CANONICAL_POSITION_AWARE_1P5R_3R_EXTERNAL_LIQUIDITY_V1",
         ),
     )
     return plan
@@ -375,6 +409,7 @@ def build_xau_m15_ema_smc_reclaim_analysis(
         pair_missing_components=(),
     )
     ict = dict(signal.ict_evidence or {})
+    canonical = dict(signal.canonical_evidence or {})
     return replace(
         base,
         symbol=SYMBOL,
@@ -391,6 +426,7 @@ def build_xau_m15_ema_smc_reclaim_analysis(
             "ict_confluence_count": ict.get("confluence_count"),
             "ict_dealing_range_position": ict.get("dealing_range_position"),
             "ict_external_liquidity_target": ict.get("external_liquidity_target"),
+            "canonical_policy_ready": 1.0 if canonical.get("execution_ready") else 0.0,
         },
         computed_guards={
             "STALE_SIGNAL": False,
