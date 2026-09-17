@@ -61,7 +61,8 @@ class EmaSmcReclaimEvaluation:
     short: DirectionalAssessment | None = None
 
     def to_payload(self) -> dict[str, Any]:
-        return asdict(self)
+        payload = asdict(self)
+        return payload
 
 
 def _ema_series(values: Sequence[float], period: int) -> tuple[float | None, ...]:
@@ -222,6 +223,90 @@ def _component_sum(components: dict[str, float]) -> float:
     return max(0.0, min(100.0, score))
 
 
+def _recent_smc_sequence(
+    m15: Sequence[Bar],
+    *,
+    direction: str,
+    ema20_value: float,
+    ema50_value: float,
+    current_atr: float,
+    window: int = 10,
+) -> dict[str, Any]:
+    wanted = _directional_token(direction)
+    current_index = len(m15) - 1
+    start = max(6, len(m15) - int(window))
+    sweep_index: int | None = None
+    bos_index: int | None = None
+    mss_index: int | None = None
+    displacement_index: int | None = None
+    fvg_index: int | None = None
+    latest_fvg: tuple[float, float] | None = None
+
+    for end in range(start, len(m15)):
+        snapshot = structure_snapshot(
+            list(m15[: end + 1]),
+            swing_lookback=SWING_LOOKBACK,
+            atr_period=ATR_PERIOD,
+            sweep_reclaim_bars=SWEEP_RECLAIM_BARS,
+        )
+        sweep = snapshot.sweep
+        if sweep is not None and sweep.valid and sweep.direction == wanted:
+            sweep_index = end
+        if snapshot.bos == wanted:
+            bos_index = end
+        if snapshot.mss == wanted:
+            mss_index = end
+        displacement = snapshot.displacement
+        if displacement is not None and displacement.valid and displacement.direction == wanted:
+            displacement_index = end
+        fvg = snapshot.fvg
+        if fvg is not None and fvg.valid and fvg.direction == wanted:
+            fvg_index = end
+            latest_fvg = (float(fvg.lower), float(fvg.upper))
+
+    structure_index = mss_index if mss_index is not None else bos_index
+    impulse_indexes = [index for index in (displacement_index, fvg_index) if index is not None]
+    impulse_index = max(impulse_indexes) if impulse_indexes else None
+    ordered = bool(
+        sweep_index is not None
+        and structure_index is not None
+        and impulse_index is not None
+        and sweep_index <= structure_index
+        and sweep_index <= impulse_index
+        and abs(structure_index - impulse_index) <= 2
+    )
+    event_index = max(sweep_index, structure_index, impulse_index) if ordered else None
+    retracement_after_event = event_index is not None and current_index > event_index
+
+    current = m15[-1]
+    zone_low = min(float(ema20_value), float(ema50_value))
+    zone_high = max(float(ema20_value), float(ema50_value))
+    ema_retrace = bool(
+        float(current.low) <= zone_high + 0.25 * current_atr
+        and float(current.high) >= zone_low - 0.10 * current_atr
+    )
+    fvg_retrace = bool(
+        latest_fvg is not None
+        and float(current.low) <= latest_fvg[1]
+        and float(current.high) >= latest_fvg[0]
+    )
+    retracement_ok = bool(retracement_after_event and (ema_retrace or fvg_retrace))
+    return {
+        "sweep_index": sweep_index,
+        "bos_index": bos_index,
+        "mss_index": mss_index,
+        "displacement_index": displacement_index,
+        "fvg_index": fvg_index,
+        "ordered": ordered,
+        "event_index": event_index,
+        "retrace_after_event": retracement_after_event,
+        "ema_retrace": ema_retrace,
+        "fvg_retrace": fvg_retrace,
+        "retracement_ok": retracement_ok,
+        "latest_fvg": latest_fvg,
+    }
+
+
 def _directional_assessment(
     *,
     direction: str,
@@ -237,7 +322,8 @@ def _directional_assessment(
     adx_rising: bool,
 ) -> DirectionalAssessment:
     wanted = _directional_token(direction)
-    close = float(m15[-1].close)
+    latest = m15[-1]
+    close = float(latest.close)
     current_20 = float(ema20[-1])
     current_50 = float(ema50[-1])
     current_200 = float(ema200[-1])
@@ -274,6 +360,7 @@ def _directional_assessment(
         directional_di = plus_di is not None and minus_di is not None and minus_di > plus_di
 
     transition = bool(recent_reclaim and price_regime and momentum_alignment)
+
     components = {key: 0.0 for key in SCORE_WEIGHTS}
 
     if price_regime and m15_snapshot.trend == wanted:
@@ -297,34 +384,26 @@ def _directional_assessment(
     elif h1_snapshot.trend in {"RANGE", "UNKNOWN"}:
         components["h1_alignment"] = 3.0
 
-    sweep = m15_snapshot.sweep
-    sweep_valid = bool(
-        sweep is not None
-        and bool(getattr(sweep, "valid", False))
-        and getattr(sweep, "direction", None) == wanted
+    smc_sequence = _recent_smc_sequence(
+        m15,
+        direction=direction,
+        ema20_value=current_20,
+        ema50_value=current_50,
+        current_atr=m15_atr,
     )
+    sweep_valid = smc_sequence["sweep_index"] is not None
     if sweep_valid:
         components["liquidity_sweep"] = 10.0
 
-    if m15_snapshot.mss == wanted:
+    if smc_sequence["mss_index"] is not None:
         components["choch_bos"] = 15.0
-    elif m15_snapshot.bos == wanted:
+    elif smc_sequence["bos_index"] is not None:
         components["choch_bos"] = 11.0
     elif h1_snapshot.bos == wanted or h1_snapshot.mss == wanted:
         components["choch_bos"] = 5.0
 
-    displacement = m15_snapshot.displacement
-    fvg = m15_snapshot.fvg
-    displacement_valid = bool(
-        displacement is not None
-        and bool(getattr(displacement, "valid", False))
-        and getattr(displacement, "direction", None) == wanted
-    )
-    fvg_valid = bool(
-        fvg is not None
-        and bool(getattr(fvg, "valid", False))
-        and getattr(fvg, "direction", None) == wanted
-    )
+    displacement_valid = smc_sequence["displacement_index"] is not None
+    fvg_valid = smc_sequence["fvg_index"] is not None
     if displacement_valid and fvg_valid:
         components["displacement_fvg"] = 10.0
     elif displacement_valid or fvg_valid:
@@ -372,18 +451,15 @@ def _directional_assessment(
 
     raw_score = _component_sum(components)
 
-    # Scoring alone cannot bypass the directional regime or market-structure gates.
+    # The strategy requires a directional EMA regime plus either mature alignment
+    # or an actual EMA200 reclaim transition. Scoring alone cannot bypass this.
     regime_gate = bool(price_regime and (full_alignment or transition or momentum_alignment))
-    structure_gate = bool(
-        m15_snapshot.mss == wanted
-        or m15_snapshot.bos == wanted
-        or displacement_valid
-        or fvg_valid
-        or sweep_valid
-    )
+    structure_gate = bool(smc_sequence["ordered"] and smc_sequence["retracement_ok"])
     if not regime_gate:
         score = min(raw_score, 64.0)
     elif not structure_gate:
+        # A strong impulse is WATCH-only until a post-impulse EMA/FVG retracement
+        # confirms execution geometry. This is the explicit anti-FOMO gate.
         score = min(raw_score, 74.0)
     else:
         score = raw_score
@@ -404,25 +480,7 @@ def _directional_assessment(
         "m15_trend": m15_snapshot.trend,
         "m15_bos": m15_snapshot.bos,
         "m15_mss_choch": m15_snapshot.mss,
-        "m15_sweep": None if sweep is None else {
-            "direction": sweep.direction,
-            "valid": sweep.valid,
-            "level": sweep.level,
-            "penetration_atr": sweep.penetration_atr,
-        },
-        "m15_displacement": None if displacement is None else {
-            "direction": displacement.direction,
-            "valid": displacement.valid,
-            "range_atr_ratio": displacement.range_atr_ratio,
-            "body_ratio": displacement.body_ratio,
-        },
-        "m15_fvg": None if fvg is None else {
-            "direction": fvg.direction,
-            "valid": fvg.valid,
-            "lower": fvg.lower,
-            "upper": fvg.upper,
-            "size_atr": fvg.size_atr,
-        },
+        "recent_smc_sequence": dict(smc_sequence),
         "h1_trend": h1_snapshot.trend,
         "h1_bos": h1_snapshot.bos,
         "h1_mss_choch": h1_snapshot.mss,
