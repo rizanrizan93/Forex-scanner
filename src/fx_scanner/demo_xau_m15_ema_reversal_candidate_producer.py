@@ -36,6 +36,9 @@ from .strategy import DeepScanReport, UniverseSelection
 UTC = timezone.utc
 WORKER_NAME = "ctrader_demo_xau_m15_ema_reversal_candidate_producer"
 MARKER_EVENT = "DEMO_XAU_M15_EMA_REVERSAL_SIGNAL_EMITTED"
+STRUCTURE_GATE_CONTRACT = "M15_MSS_BREAK_FAILED_RETEST_V1"
+STRUCTURE_LOOKBACK_BARS = 6
+STRUCTURE_RETEST_TOLERANCE_ATR = 0.25
 
 
 def _subset_cfg(cfg: ProjectConfig) -> ProjectConfig:
@@ -53,6 +56,64 @@ def _with_history_requirements(cfg: ProjectConfig) -> ProjectConfig:
     mtf["minimum_bars"] = minimum_bars
     strategy["mtf"] = mtf
     return replace(cfg, strategy=strategy)
+
+
+def _mss_failed_retest_confirmed(
+    bars,
+    *,
+    direction: str | None,
+    atr: float | None,
+    as_of: datetime,
+) -> bool:
+    """Fail-closed execution gate for the probationary reversal strategy.
+
+    A single rejection candle is not enough. The completed M15 sequence must
+    first break an internal structure level, then the signal bar must retest
+    that broken level and close back on the breakout side. This deliberately
+    trades frequency for cleaner reversal confirmation.
+    """
+
+    if direction not in {"LONG", "SHORT"} or atr is None:
+        return False
+    atr_value = float(atr)
+    if atr_value <= 0.0:
+        return False
+
+    now = ensure_utc(as_of)
+    closed = tuple(
+        row
+        for row in sorted(bars, key=lambda value: ensure_utc(value.timestamp))
+        if str(row.symbol).upper() == SYMBOL
+        and str(row.timeframe).upper() == "M15"
+        and ensure_utc(row.timestamp) + timedelta(minutes=15) <= now
+    )
+    minimum = STRUCTURE_LOOKBACK_BARS + 2
+    if len(closed) < minimum:
+        return False
+
+    signal_bar = closed[-1]
+    break_bar = closed[-2]
+    reference = closed[-minimum:-2]
+    tolerance = STRUCTURE_RETEST_TOLERANCE_ATR * atr_value
+
+    if direction == "SHORT":
+        structure_level = min(float(row.low) for row in reference)
+        structure_break = float(break_bar.close) < structure_level
+        retest_touched = float(signal_bar.high) >= structure_level - tolerance
+        failed_retest = (
+            float(signal_bar.close) < structure_level
+            and float(signal_bar.close) < float(signal_bar.open)
+        )
+        return structure_break and retest_touched and failed_retest
+
+    structure_level = max(float(row.high) for row in reference)
+    structure_break = float(break_bar.close) > structure_level
+    retest_touched = float(signal_bar.low) <= structure_level + tolerance
+    failed_retest = (
+        float(signal_bar.close) > structure_level
+        and float(signal_bar.close) > float(signal_bar.open)
+    )
+    return structure_break and retest_touched and failed_retest
 
 
 def _already_emitted(
@@ -109,6 +170,9 @@ def _record_marker(store, *, signal_id: str, signal, analysis) -> None:
         "live_execution_enabled": False,
         "probationary_demo": True,
         "forward_demo_score": FORWARD_DEMO_SCORE,
+        "execution_confirmation_gate": STRUCTURE_GATE_CONTRACT,
+        "structure_lookback_bars": STRUCTURE_LOOKBACK_BARS,
+        "structure_retest_tolerance_atr": STRUCTURE_RETEST_TOLERANCE_ATR,
         "tp1_alias": "AMERICANO_V1",
         "tp1_r": TP1_R,
         "tp1": None if plan is None else plan.tp1,
@@ -127,7 +191,7 @@ def _record_marker(store, *, signal_id: str, signal, analysis) -> None:
         event_type=MARKER_EVENT,
         accepted=True,
         code=STRATEGY_ID,
-        message="user-authorized XAU M15 EMA reversal/recovery DEMO candidate emitted",
+        message="user-authorized XAU M15 EMA reversal/recovery DEMO candidate emitted after MSS failed-retest gate",
         payload=payload,
     )
 
@@ -169,34 +233,44 @@ class XauM15EmaReversalProducer(CTraderSignalProducer):
             analyses = []
             selected = ()
             duplicate = False
+            structure_confirmed = False
             if signal.active and signal.execution_eligible:
-                duplicate = _already_emitted(
-                    self.store,
-                    signal_bar_at=signal.signal_bar_at,
+                structure_confirmed = _mss_failed_retest_confirmed(
+                    tuple(xau_bars.get("M15", ())),
                     direction=signal.direction,
+                    atr=signal.atr,
+                    as_of=decision_at,
                 )
-                if not duplicate:
-                    rank = forward_rank(signal)
-                    selected = (rank,)
-                    guard_inputs = {}
-                    if self.guard_resolver is not None:
-                        resolution = self.guard_resolver.resolve(
-                            candidates=selected,
-                            bars_by_symbol=bars_by_symbol,
-                            as_of=decision_at,
-                        )
-                        guard_inputs = resolution.flags_by_symbol
-                        guard_missing = resolution.missing_by_symbol
-                        calendar_error = resolution.calendar_error
-                    analyses.append(
-                        build_xau_m15_ema_reversal_analysis(
-                            signal=signal,
-                            bars_by_timeframe=xau_bars,
-                            cfg=self.cfg,
-                            as_of=decision_at,
-                            external_guard_flags=guard_inputs.get(SYMBOL, {}),
-                        )
+                if not structure_confirmed:
+                    failures[SYMBOL] = "MSS_BREAK_FAILED_RETEST_CONFIRMATION_REQUIRED"
+                else:
+                    duplicate = _already_emitted(
+                        self.store,
+                        signal_bar_at=signal.signal_bar_at,
+                        direction=signal.direction,
                     )
+                    if not duplicate:
+                        rank = forward_rank(signal)
+                        selected = (rank,)
+                        guard_inputs = {}
+                        if self.guard_resolver is not None:
+                            resolution = self.guard_resolver.resolve(
+                                candidates=selected,
+                                bars_by_symbol=bars_by_symbol,
+                                as_of=decision_at,
+                            )
+                            guard_inputs = resolution.flags_by_symbol
+                            guard_missing = resolution.missing_by_symbol
+                            calendar_error = resolution.calendar_error
+                        analyses.append(
+                            build_xau_m15_ema_reversal_analysis(
+                                signal=signal,
+                                bars_by_timeframe=xau_bars,
+                                cfg=self.cfg,
+                                as_of=decision_at,
+                                external_guard_flags=guard_inputs.get(SYMBOL, {}),
+                            )
+                        )
             if duplicate:
                 failures[SYMBOL] = "DUPLICATE_M15_SIGNAL_BAR_DIRECTION_BLOCKED"
             elif not signal.active and SYMBOL not in market_failures:
@@ -365,6 +439,9 @@ def run() -> int:
                 "production_execution_min": production_execution_min,
                 "demo_execution_min": demo_execution_min,
                 "global_demo_risk_ceiling_pct": demo_risk_pct,
+                "execution_confirmation_gate": STRUCTURE_GATE_CONTRACT,
+                "structure_lookback_bars": STRUCTURE_LOOKBACK_BARS,
+                "structure_retest_tolerance_atr": STRUCTURE_RETEST_TOLERANCE_ATR,
                 "tp1_alias": "AMERICANO_V1",
                 "tp1_r": TP1_R,
                 "tp2_alias": "KOPI_SUSU_V1",
@@ -378,7 +455,8 @@ def run() -> int:
             f"direction={direction or 'NONE'} signals={report.signals_written} "
             f"ready={report.execution_ready} geometry={geometry_written} "
             f"reason={reason or 'NONE'} probationary=1 score=70 "
-            "expected_lot=0.01 expected_risk_pct=1.0 bidirectional=1"
+            "expected_lot=0.01 expected_risk_pct=1.0 bidirectional=1 "
+            f"structure_gate={STRUCTURE_GATE_CONTRACT}"
         )
         return 0
     finally:
