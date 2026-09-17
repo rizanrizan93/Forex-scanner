@@ -11,11 +11,15 @@ def test_demo_auto_pipeline_is_dispatch_only_five_core_fast_lane_and_demo_only()
     assert "schedule:" not in text
     assert "demo_execution_fast_candidate_producer" in text
     assert "demo_execution_fresh_ready_handoff --limit 10" in text
+    assert "demo_xau_canonical_position_manager" in text
     assert "demo_five_core_time_exit" in text
     assert text.index("demo_execution_fast_candidate_producer") < text.index(
         "demo_execution_fresh_ready_handoff"
     )
     assert text.index("demo_execution_fresh_ready_handoff") < text.index(
+        "demo_xau_canonical_position_manager"
+    )
+    assert text.index("demo_xau_canonical_position_manager") < text.index(
         "demo_five_core_time_exit"
     )
     assert "demo_closed_trade_reconciler" not in text
@@ -42,33 +46,42 @@ def test_demo_auto_pipeline_is_dispatch_only_five_core_fast_lane_and_demo_only()
     assert 'CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "25.0"' in text
     assert 'CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "0"' in text
     assert 'CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"' in text
+    assert 'CTRADER_DEMO_XAU_CANONICAL_POSITION_MANAGER_ENABLED: "1"' in text
     assert 'FX_KILL_SWITCH: "0"' in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
 
 
-def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_producer_failure():
+def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_shadow_producer_failure():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
 
     assert "id: produce_five_core" in text
     assert "id: produce_xau_v42" in text
     assert "id: produce_xau_m15_reversal" in text
+    assert "id: produce_xau_m15_ema_smc_reclaim" in text
     assert "id: produce_xau_m15_sweep_fade" in text
     assert "id: produce_euraud_gbpaud" in text
     assert "id: repair_existing_protection" in text
     assert "id: execute_fresh_handoff" in text
+    assert "id: xau_canonical_manager" in text
     assert "id: pair_time_exit" in text
     assert "id: euraud_gbpaud_chandelier" in text
     assert "id: xau_v42_time_exit" in text
     assert "id: xau_v42_profit_lock" in text
-    assert text.count("if: ${{ always() && !cancelled() }}") >= 7
-    assert "steps.produce_five_core.outcome == 'success'" in text
-    assert "steps.produce_xau_v42.outcome == 'success'" in text
-    assert "steps.produce_xau_m15_reversal.outcome == 'success'" in text
-    assert "steps.produce_xau_m15_sweep_fade.outcome == 'success'" in text
-    assert "steps.produce_euraud_gbpaud.outcome == 'success'" in text
-    assert "steps.repair_existing_protection.outcome == 'success'" in text
+    assert text.count("if: ${{ always() && !cancelled() }}") >= 8
+
+    handoff = text.split("- name: Execute all fresh strategy-authorized DEMO signals", 1)[1]
+    handoff = handoff.split("- name: Manage canonical XAU filled positions", 1)[0]
+    assert "steps.produce_five_core.outcome == 'success'" in handoff
+    assert "steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success'" in handoff
+    assert "steps.produce_euraud_gbpaud.outcome == 'success'" in handoff
+    assert "steps.repair_existing_protection.outcome == 'success'" in handoff
+    assert "steps.produce_xau_v42.outcome == 'success'" not in handoff
+    assert "steps.produce_xau_m15_reversal.outcome == 'success'" not in handoff
+    assert "steps.produce_xau_m15_sweep_fade.outcome == 'success'" not in handoff
+
     assert "CRITICAL_STAGE_FAILED" in text
+    assert "XAU_CANONICAL_MANAGER" in text
     assert "new_entry_handoff=BLOCKED protection_maintenance=ATTEMPTED" in text
     assert "CTRADER_DEMO_AUTO_PIPELINE_CRITICAL_STAGES_OK" in text
 
@@ -111,10 +124,15 @@ def test_macro_refresh_is_manual_only_during_demo_technical_testing():
     assert "SUPABASE_SECRET_KEY" in text
 
 
-def test_legacy_autotrade_workflow_remains_manual_only():
+def test_legacy_autotrade_workflow_remains_manual_only_and_uses_exact_authority_filter():
     text = (ROOT / ".github/workflows/ctrader-demo-autotrade.yml").read_text()
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
+    assert "demo_execution_fresh_ready_handoff --limit 10" in text
+    assert "ctrader-demo-autotrade --once" not in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
+    assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in text
 
 
 def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
