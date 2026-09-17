@@ -1,7 +1,11 @@
 from pathlib import Path
 
 from fx_scanner.demo_conviction_sizing import select_demo_conviction_sizing
-from fx_scanner.demo_execution_fresh_ready_handoff import _ALLOWED_STRATEGIES_BY_SYMBOL
+from fx_scanner.demo_execution_fresh_ready_handoff import (
+    _ALLOWED_STRATEGIES_BY_SYMBOL,
+    _XAU_CANONICAL_STRATEGY,
+    _XAU_SHADOW_STRATEGIES,
+)
 from fx_scanner.demo_five_core_router import (
     EXECUTION_SYMBOLS,
     FIVE_CORE_SYMBOLS,
@@ -11,6 +15,9 @@ from fx_scanner.demo_five_core_router import (
 )
 from fx_scanner.demo_xau_m15_ema_reversal_recovery import (
     STRATEGY_ID as XAU_M15_EMA_REVERSAL_STRATEGY_ID,
+)
+from fx_scanner.demo_xau_m15_ema_smc_reclaim import (
+    STRATEGY_ID as XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID,
 )
 from fx_scanner.demo_xau_m15_liquidity_sweep_fade import (
     STRATEGY_ID as XAU_M15_SWEEP_FADE_STRATEGY_ID,
@@ -31,8 +38,17 @@ def test_five_core_execution_registry_is_exact_and_pair_specific():
     assert PAIR_STRATEGY_IDS["EURUSD"] == "NO_TRADE_UNTIL_VALIDATED"
     assert PAIR_STRATEGY_IDS["USDJPY"] in _ALLOWED_STRATEGIES_BY_SYMBOL["USDJPY"]
     assert PAIR_STRATEGY_IDS["GBPUSD"] in _ALLOWED_STRATEGIES_BY_SYMBOL["GBPUSD"]
-    assert XAU_M15_EMA_REVERSAL_STRATEGY_ID in _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"]
-    assert XAU_M15_SWEEP_FADE_STRATEGY_ID in _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"]
+
+    # The five-core registry can keep XAU research identity, but broker handoff
+    # now has one canonical XAU authority approved for DEMO execution.
+    assert _XAU_CANONICAL_STRATEGY == XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
+    assert _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"] == frozenset(
+        {XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID}
+    )
+    assert PAIR_STRATEGY_IDS["XAUUSD"] in _XAU_SHADOW_STRATEGIES
+    assert XAU_M15_EMA_REVERSAL_STRATEGY_ID in _XAU_SHADOW_STRATEGIES
+    assert XAU_M15_SWEEP_FADE_STRATEGY_ID in _XAU_SHADOW_STRATEGIES
+    assert _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"].isdisjoint(_XAU_SHADOW_STRATEGIES)
 
 
 def test_forward_demo_score_keeps_pair_orders_at_conservative_floor():
@@ -52,6 +68,7 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
 
     assert "demo_execution_fast_candidate_producer" in auto
     assert "demo_execution_fresh_ready_handoff" in auto
+    assert "demo_xau_canonical_position_manager" in auto
     assert "demo_five_core_time_exit" in auto
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"' in auto
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in auto
@@ -63,6 +80,8 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     assert 'CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"' in auto
     assert "demo_five_core_candidate_producer" in fast_wrapper
     assert "_ALLOWED_STRATEGIES_BY_SYMBOL" in handoff
+    assert "_XAU_CANONICAL_STRATEGY" in handoff
+    assert "_XAU_SHADOW_STRATEGIES" in handoff
     assert "PAIR_STRATEGY_IDS" in handoff
     assert "XAU_M15_EMA_REVERSAL_STRATEGY_ID" in handoff
     assert "XAU_M15_SWEEP_FADE_STRATEGY_ID" in handoff
