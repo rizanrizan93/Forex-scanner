@@ -107,6 +107,10 @@ def test_bullish_ema_smc_setup_scores_long_but_remains_shadow_only():
     assert result.long.components["ema_alignment"] == SCORE_WEIGHTS["ema_alignment"]
     assert result.long.components["adx_di"] >= 8.0
     assert result.long.evidence["regime_gate"] is True
-    assert result.long.evidence["structure_gate"] is True
+    # A trend impulse without the complete sweep -> structure -> retracement
+    # sequence must remain WATCH/NO_TRADE rather than chase the move.
+    assert result.long.evidence["structure_gate"] is False
+    assert result.long.active is False
+    assert result.long.score <= 74.0
     assert result.execution_eligible is False
     assert result.policy_effect == "OBSERVATION_ONLY"
