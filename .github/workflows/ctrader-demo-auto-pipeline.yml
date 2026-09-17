@@ -90,6 +90,10 @@ jobs:
         id: produce_xau_m15_reversal
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_m15_ema_reversal_candidate_producer
+      - name: Evaluate user-authorized XAU M15 EMA-SMC reclaim DEMO strategy
+        id: produce_xau_m15_ema_smc_reclaim
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_m15_ema_smc_reclaim_candidate_producer
       - name: Evaluate XAU M15 liquidity-sweep fade probationary DEMO strategy
         id: produce_xau_m15_sweep_fade
         continue-on-error: true
@@ -114,6 +118,7 @@ jobs:
               steps.produce_five_core.outcome == 'success' &&
               steps.produce_xau_v42.outcome == 'success' &&
               steps.produce_xau_m15_reversal.outcome == 'success' &&
+              steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success' &&
               steps.produce_xau_m15_sweep_fade.outcome == 'success' &&
               steps.produce_euraud_gbpaud.outcome == 'success' &&
               steps.repair_existing_protection.outcome == 'success' }}
@@ -156,6 +161,7 @@ jobs:
           FIVE_CORE_OUTCOME: ${{ steps.produce_five_core.outcome }}
           XAU_V42_OUTCOME: ${{ steps.produce_xau_v42.outcome }}
           XAU_M15_REVERSAL_OUTCOME: ${{ steps.produce_xau_m15_reversal.outcome }}
+          XAU_M15_EMA_SMC_RECLAIM_OUTCOME: ${{ steps.produce_xau_m15_ema_smc_reclaim.outcome }}
           XAU_M15_SWEEP_FADE_OUTCOME: ${{ steps.produce_xau_m15_sweep_fade.outcome }}
           EURAUD_GBPAUD_OUTCOME: ${{ steps.produce_euraud_gbpaud.outcome }}
           REPAIR_OUTCOME: ${{ steps.repair_existing_protection.outcome }}
@@ -171,6 +177,7 @@ jobs:
             "FIVE_CORE:${FIVE_CORE_OUTCOME}" \
             "XAU_V42:${XAU_V42_OUTCOME}" \
             "XAU_M15_REVERSAL:${XAU_M15_REVERSAL_OUTCOME}" \
+            "XAU_M15_EMA_SMC_RECLAIM:${XAU_M15_EMA_SMC_RECLAIM_OUTCOME}" \
             "XAU_M15_SWEEP_FADE:${XAU_M15_SWEEP_FADE_OUTCOME}" \
             "EURAUD_GBPAUD:${EURAUD_GBPAUD_OUTCOME}" \
             "REPAIR:${REPAIR_OUTCOME}" \

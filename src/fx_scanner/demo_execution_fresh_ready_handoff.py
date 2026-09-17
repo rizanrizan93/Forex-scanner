@@ -6,6 +6,7 @@ from .demo_five_core_authority import EXECUTION_SYMBOLS
 from .demo_five_core_router import PAIR_STRATEGY_IDS
 from .demo_xau_expansion_v42 import STRATEGY_ID as XAU_EXPANSION_V42_STRATEGY_ID
 from .demo_xau_m15_ema_reversal_recovery import STRATEGY_ID as XAU_M15_EMA_REVERSAL_STRATEGY_ID
+from .demo_xau_m15_ema_smc_reclaim import STRATEGY_ID as XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
 from .demo_xau_m15_liquidity_sweep_fade import STRATEGY_ID as XAU_M15_SWEEP_FADE_STRATEGY_ID
 from .storage.supabase_operational import (
     OperationalStoreUnavailable,
@@ -19,6 +20,7 @@ _ALLOWED_STRATEGIES_BY_SYMBOL = {
             PAIR_STRATEGY_IDS["XAUUSD"],
             XAU_EXPANSION_V42_STRATEGY_ID,
             XAU_M15_EMA_REVERSAL_STRATEGY_ID,
+            XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID,
             XAU_M15_SWEEP_FADE_STRATEGY_ID,
         }
     ),
