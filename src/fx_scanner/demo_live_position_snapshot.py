@@ -8,6 +8,7 @@ from .exceptions import ConfigurationError
 from .execution.ctrader_session import CTraderOpenApiSession
 from .execution.ctrader_tokens import CTraderTokenStateStore
 from .execution.policy import load_execution_policy
+from .storage.supabase_operational import SupabaseOperationalStore
 
 
 def _required_env(name: str) -> str:
@@ -23,13 +24,14 @@ def _optional_env(name: str) -> str | None:
 
 
 def run() -> int:
-    """Read the current cTrader DEMO account and positions without mutations.
+    """Read current cTrader DEMO truth and persist research telemetry only.
 
-    Durable token state is read so the snapshot uses the same current access
-    token as the trading runtime. The cTrader session is deliberately created
-    without a refresh token or persistence callback: an expired/invalid access
-    token therefore fails closed rather than refreshing tokens or writing state.
-    No order, protection, execution-control or Supabase write path is reachable.
+    The broker session remains strictly mutation-free: it has no refresh token,
+    no token persistence callback and no execution gateway.  The only writes are
+    Supabase telemetry rows for account/open-position state plus the bounded
+    sampled MAE/MFE trajectory maintained by ``capture_ctrader_demo_snapshot``.
+    An expired/invalid access token therefore fails closed instead of refreshing
+    credentials or reaching any order/protection mutation path.
     """
 
     cfg = load_project_config(None)
@@ -59,6 +61,7 @@ def run() -> int:
         request_timeout_seconds=float(ctrader.get("request_timeout_seconds", 10)),
         allow_token_refresh=False,
     )
+    store = SupabaseOperationalStore.from_env()
 
     symbols = [pair.symbol for pair in cfg.pairs]
     try:
@@ -73,8 +76,8 @@ def run() -> int:
 
         snapshot = capture_ctrader_demo_snapshot(
             session=session,
-            store=None,
-            phase="READ_ONLY",
+            store=store,
+            phase="READ_ONLY_PERSISTED",
         )
         print(
             "CTRADER_DEMO_POSITION_SNAPSHOT_OK "
@@ -85,7 +88,8 @@ def run() -> int:
             f"margin={float(snapshot.account.margin or 0.0):.8g} "
             f"margin_free={float(snapshot.account.margin_free or 0.0):.8g} "
             f"open_positions={len(snapshot.positions)} "
-            "orders_mutated=0 token_refreshes=0 database_writes=0"
+            f"snapshot_id={snapshot.snapshot_id or 'NONE'} "
+            "orders_mutated=0 token_refreshes=0 telemetry_persisted=1"
         )
         return 0
     finally:
