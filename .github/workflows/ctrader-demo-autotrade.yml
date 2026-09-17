@@ -1,9 +1,8 @@
 name: cTrader Demo AutoTrade
 
 on:
-  # Manual-only until the controlled broker-order smoke is proven end-to-end.
-  # The recurring schedule is re-enabled only after scanner signal production
-  # and persistent runtime evidence have passed.
+  # Manual-only emergency/validation entry point. The exact strategy handoff is
+  # still used so manual dispatch cannot bypass canonical XAU execution authority.
   workflow_dispatch:
 
 permissions:
@@ -32,6 +31,9 @@ jobs:
       FX_KILL_SWITCH: "0"
       FX_IDEMPOTENCY_STATE_PATH: /tmp/execution_idempotency.json
       CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
+      CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"
+      CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"
+      CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -42,5 +44,5 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-research-cloud.txt
-      - name: Execute only durable EXECUTION_READY demo signals
-        run: python -m fx_scanner.cli ctrader-demo-autotrade --once --limit 10
+      - name: Execute only fresh exact-authorized DEMO signals
+        run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
