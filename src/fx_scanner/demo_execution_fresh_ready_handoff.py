@@ -14,16 +14,23 @@ from .storage.supabase_operational import (
 )
 
 _ORIGINAL_INSTALL_FRESH = base.install_fresh_execution_ready_handoff
+
+# XAU has one canonical DEMO execution authority. Legacy/promoted XAU models keep
+# producing forward evidence, but their EXECUTION_READY rows are intentionally
+# excluded from broker handoff until a future promotion decision explicitly
+# changes this contract.
+_XAU_CANONICAL_STRATEGY = XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
+_XAU_SHADOW_STRATEGIES = frozenset(
+    {
+        PAIR_STRATEGY_IDS["XAUUSD"],
+        XAU_EXPANSION_V42_STRATEGY_ID,
+        XAU_M15_EMA_REVERSAL_STRATEGY_ID,
+        XAU_M15_SWEEP_FADE_STRATEGY_ID,
+    }
+)
+
 _ALLOWED_STRATEGIES_BY_SYMBOL = {
-    "XAUUSD": frozenset(
-        {
-            PAIR_STRATEGY_IDS["XAUUSD"],
-            XAU_EXPANSION_V42_STRATEGY_ID,
-            XAU_M15_EMA_REVERSAL_STRATEGY_ID,
-            XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID,
-            XAU_M15_SWEEP_FADE_STRATEGY_ID,
-        }
-    ),
+    "XAUUSD": frozenset({_XAU_CANONICAL_STRATEGY}),
     "USDJPY": frozenset({PAIR_STRATEGY_IDS["USDJPY"]}),
     "GBPUSD": frozenset({PAIR_STRATEGY_IDS["GBPUSD"]}),
     "EURAUD": frozenset({EURAUD_STRATEGY_ID}),
