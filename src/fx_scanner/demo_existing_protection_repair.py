@@ -23,6 +23,23 @@ def _positive(value: Any) -> float | None:
     return parsed if parsed > 0 else None
 
 
+def _position_unprotected(position) -> bool:
+    return _positive(position.stop_loss) is None or _positive(position.take_profit) is None
+
+
+def _protection_gate_healthy(
+    *,
+    failed: int,
+    unprotected_scanner_positions: list[str],
+    unprotected_unmanaged_positions: list[str],
+) -> bool:
+    return (
+        int(failed) == 0
+        and not unprotected_scanner_positions
+        and not unprotected_unmanaged_positions
+    )
+
+
 def _signal_id_from_comment(comment: str | None, prefix: str) -> str | None:
     text = str(comment or "").strip()
     marker = f"{str(prefix).strip()}:"
@@ -154,7 +171,7 @@ def run() -> int:
             position_id = int(str(position.position_id))
             current_sl = _positive(position.stop_loss)
             current_tp = _positive(position.take_profit)
-            if current_sl is not None and current_tp is not None:
+            if not _position_unprotected(position):
                 continue
 
             signal_id = _signal_id_from_comment(position.comment, prefix)
@@ -261,15 +278,22 @@ def run() -> int:
             store=store,
             phase="PROTECTION_REPAIR_AFTER",
         )
-        unprotected_scanner_positions = []
+        unprotected_scanner_positions: list[str] = []
+        unprotected_unmanaged_positions: list[str] = []
         for position in after.positions:
+            if not _position_unprotected(position):
+                continue
             signal_id = _signal_id_from_comment(position.comment, prefix)
             if signal_id is None:
-                continue
-            if _positive(position.stop_loss) is None or _positive(position.take_profit) is None:
+                unprotected_unmanaged_positions.append(str(position.position_id))
+            else:
                 unprotected_scanner_positions.append(str(position.position_id))
 
-        healthy = failed == 0 and not unprotected_scanner_positions
+        healthy = _protection_gate_healthy(
+            failed=failed,
+            unprotected_scanner_positions=unprotected_scanner_positions,
+            unprotected_unmanaged_positions=unprotected_unmanaged_positions,
+        )
         store.write_heartbeat(
             STATE_WORKER,
             healthy=healthy,
@@ -283,6 +307,8 @@ def run() -> int:
                 "failed": failed,
                 "skipped_non_scanner_or_unusable": skipped,
                 "unprotected_scanner_position_ids": unprotected_scanner_positions[-32:],
+                "unprotected_unmanaged_position_ids": unprotected_unmanaged_positions[-32:],
+                "new_orders_blocked_by_unprotected_unmanaged": bool(unprotected_unmanaged_positions),
                 "failures": failures[-32:],
                 "same_symbol_policy_mutated": False,
                 "live_unlock": False,
@@ -291,7 +317,8 @@ def run() -> int:
         print(
             "CTRADER_DEMO_EXISTING_PROTECTION_REPAIR "
             f"scanned={scanned} linked={linked} needed={repair_needed} repaired={repaired} "
-            f"failed={failed} remaining_unprotected={len(unprotected_scanner_positions)}"
+            f"failed={failed} remaining_scanner_unprotected={len(unprotected_scanner_positions)} "
+            f"remaining_unmanaged_unprotected={len(unprotected_unmanaged_positions)}"
         )
         return 0 if healthy else 2
     finally:
