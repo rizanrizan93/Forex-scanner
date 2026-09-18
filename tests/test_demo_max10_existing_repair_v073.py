@@ -6,6 +6,8 @@ import pytest
 from fx_scanner.demo_existing_protection_repair import (
     _exact_broker_identity,
     _load_signal_plan,
+    _position_unprotected,
+    _protection_gate_healthy,
     _signal_id_from_comment,
 )
 from fx_scanner.demo_fresh_ready_handoff import (
@@ -128,3 +130,23 @@ def test_base_executor_same_symbol_and_unprotected_guards_remain_present():
     source = (ROOT / "src" / "fx_scanner" / "execution" / "demo_autotrade.py").read_text(encoding="utf-8")
     assert "BROKER_SYMBOL_ALREADY_OPEN" in source
     assert "BROKER_POSITION_UNPROTECTED" in source
+
+
+def test_unprotected_manual_or_unmanaged_position_blocks_protection_gate():
+    position = SimpleNamespace(stop_loss=None, take_profit=None)
+    assert _position_unprotected(position) is True
+    assert _protection_gate_healthy(
+        failed=0,
+        unprotected_scanner_positions=[],
+        unprotected_unmanaged_positions=["41667319"],
+    ) is False
+
+
+def test_fully_protected_position_does_not_block_protection_gate():
+    position = SimpleNamespace(stop_loss=4405.0, take_profit=4370.0)
+    assert _position_unprotected(position) is False
+    assert _protection_gate_healthy(
+        failed=0,
+        unprotected_scanner_positions=[],
+        unprotected_unmanaged_positions=[],
+    ) is True
