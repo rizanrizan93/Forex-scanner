@@ -511,6 +511,14 @@ def evaluate_continuation_tournament(
         dev_stressed = tuple(t for t in stressed_trades if t.signal_index < split_index and t.exit_index < split_index)
         metrics = compute_metrics(dev)
         stressed_metrics = compute_metrics(dev_stressed)
+        direction_metrics = {
+            direction: compute_metrics(tuple(t for t in dev if t.direction == direction)).payload()
+            for direction in ("LONG", "SHORT")
+        }
+        stressed_direction_metrics = {
+            direction: compute_metrics(tuple(t for t in dev_stressed if t.direction == direction)).payload()
+            for direction in ("LONG", "SHORT")
+        }
         folds, pass_fraction, wf_passed = walk_forward(dev, validation_cfg["walk_forward"])
         stress_passed = _metrics_pass(stressed_metrics, validation_cfg["stress_acceptance"])
         development_passed = bool(
@@ -522,7 +530,9 @@ def evaluate_continuation_tournament(
             {
                 "variant": asdict(variant),
                 "development": metrics.payload(),
+                "development_by_direction": direction_metrics,
                 "stressed_development": stressed_metrics.payload(),
+                "stressed_development_by_direction": stressed_direction_metrics,
                 "walk_forward": {
                     "folds": [
                         {
