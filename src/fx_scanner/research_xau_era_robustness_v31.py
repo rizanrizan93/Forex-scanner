@@ -188,7 +188,8 @@ def evaluate_era(
         "portfolio_results":out,
         "interpretation":(
             "Alternate-feed era robustness using Dukascopy BID M15 plus explicit broker-like "
-            "transaction-cost stress. Exact V20/V24 D1+M15 signal rules are unchanged. "
+            "transaction-cost stress. Existing V20/V24 staggered D1+M15 rules are preserved, "
+            "with the original non-staggered D1 TSMOM added as an explicit comparator. "
             "Results are historical diagnostics only and do not grant execution authority."
         ),
     }
