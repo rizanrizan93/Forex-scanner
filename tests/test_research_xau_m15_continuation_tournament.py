@@ -12,7 +12,8 @@ def test_continuation_tournament_is_preregistered_and_shadow_only():
     assert len(set(ids)) == len(ids)
     assert all(variant.bos_lookback in {12, 20} for variant in VARIANTS)
     assert all(variant.target_r in {1.5, 2.0} for variant in VARIANTS)
-    assert all(variant.adx_min in {15.0, 18.0} for variant in VARIANTS)
+    assert all(variant.adx_min == 18.0 for variant in VARIANTS)
+    assert {variant.session for variant in VARIANTS} == {"ALL", "ASIA", "US"}
 
 
 def test_continuation_research_workflow_is_demo_research_only():
