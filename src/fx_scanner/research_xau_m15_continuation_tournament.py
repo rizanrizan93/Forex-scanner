@@ -39,7 +39,7 @@ class ContinuationVariant:
     adx_min: float
     target_r: float
     require_fvg: bool = False
-    session_only: bool = False
+    session: str = "ALL"
     breakout_buffer_atr: float = 0.0
     impulse_body_atr: float = 0.80
     impulse_range_atr: float = 1.20
@@ -51,9 +51,9 @@ VARIANTS = (
     ContinuationVariant("XAU_CONT_CORE_L12_ADX18_R15", 12, 8, 18.0, 1.50),
     ContinuationVariant("XAU_CONT_CORE_L12_ADX18_R20", 12, 8, 18.0, 2.00),
     ContinuationVariant("XAU_CONT_FVG_L12_ADX18_R20", 12, 8, 18.0, 2.00, require_fvg=True),
-    ContinuationVariant("XAU_CONT_SESSION_L12_ADX18_R15", 12, 8, 18.0, 1.50, session_only=True),
+    ContinuationVariant("XAU_CONT_ASIA_L12_ADX18_R15", 12, 8, 18.0, 1.50, session="ASIA"),
+    ContinuationVariant("XAU_CONT_US_L12_ADX18_R15", 12, 8, 18.0, 1.50, session="US"),
     ContinuationVariant("XAU_CONT_CORE_L20_ADX18_R20", 20, 10, 18.0, 2.00),
-    ContinuationVariant("XAU_CONT_CORE_L12_ADX15_R15", 12, 8, 15.0, 1.50),
 )
 
 
@@ -188,10 +188,18 @@ def _indicator_series(rows: Sequence[Bar]) -> dict[str, tuple[float | None, ...]
     }
 
 
-def _broad_london_ny_session(bar: Bar) -> bool:
-    # Deliberately broad UTC window to remain robust across DST transitions.
+def _session_ok(bar: Bar, session: str) -> bool:
+    # 2026 World Gold Council convention in UTC: Asia 22:00-07:00,
+    # Europe 07:00-12:00 and US 12:00-21:00. ALL is the default control.
+    value = str(session or "ALL").upper()
     hour = ensure_utc(bar.timestamp).hour
-    return 6 <= hour < 20
+    if value == "ALL":
+        return True
+    if value == "ASIA":
+        return hour >= 22 or hour < 7
+    if value == "US":
+        return 12 <= hour < 21
+    raise ValueError(f"XAU_CONTINUATION_SESSION_INVALID:{value}")
 
 
 def _fvg_on_impulse(rows: Sequence[Bar], index: int, direction: str) -> tuple[float | None, float | None]:
@@ -237,7 +245,7 @@ def extract_signals(
         atr_value = float(atr_value)
         if atr_value <= 0.0 or float(adx_value) < float(variant.adx_min):
             continue
-        if variant.session_only and not _broad_london_ny_session(impulse):
+        if not _session_ok(impulse, variant.session):
             continue
 
         prior = rows[impulse_index - variant.bos_lookback: impulse_index]
