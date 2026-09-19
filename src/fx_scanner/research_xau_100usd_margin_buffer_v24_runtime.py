@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from .config import load_project_config
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
+from .exceptions import CollectorUnavailable
 from .research_xau_m15_dual_strategy import infer_spread_proxy_pips
 from .research_xau_m15_dual_strategy_runtime import _costs, _validation_cfg
 from .research_xau_margin_leverage_v21_runtime import _dynamic_leverage, _expected_margin
@@ -23,6 +25,27 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
 WORKER_NAME = "ctrader_xau_100usd_margin_buffer_v24"
+CONNECT_ATTEMPTS = 3
+CONNECT_BACKOFF_SECONDS = (0.0, 2.0, 5.0)
+
+
+def _build_feed_with_retry(policy):
+    last_exc = None
+    for attempt in range(CONNECT_ATTEMPTS):
+        delay = CONNECT_BACKOFF_SECONDS[attempt]
+        if delay:
+            time.sleep(delay)
+        try:
+            feed = build_ctrader_research_feed(policy, (SYMBOL,))
+            feed.ensure_connected()
+            return feed
+        except CollectorUnavailable as exc:
+            last_exc = exc
+            if "connection timeout" not in str(exc).lower():
+                raise
+    raise CollectorUnavailable(
+        f"V24 cTrader connection failed after {CONNECT_ATTEMPTS} bounded attempts"
+    ) from last_exc
 
 
 def run() -> int:
@@ -38,9 +61,8 @@ def run() -> int:
 
     now = datetime.now(tz=UTC)
     validation = _validation_cfg()
-    feed = build_ctrader_research_feed(policy, (SYMBOL,))
+    feed = _build_feed_with_retry(policy)
     try:
-        feed.ensure_connected()
         bars, pages = _fetch_source_exhausted(feed, as_of=now)
         info = feed.symbol_info(SYMBOL)
         tiers = _dynamic_leverage(feed, int(getattr(info, "leverageId", 0) or 0))
