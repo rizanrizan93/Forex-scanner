@@ -431,6 +431,49 @@ def evaluate_session_liquidity_v3(
         )
         metrics = compute_metrics(development)
         stressed_metrics = compute_metrics(development_stressed)
+
+        signal_index = {
+            (signal.signal_index, signal.direction): signal
+            for signal in signals
+        }
+
+        def diagnostic_payload(trades):
+            by_direction = {
+                direction: compute_metrics(
+                    tuple(trade for trade in trades if trade.direction == direction)
+                ).payload()
+                for direction in ("LONG", "SHORT")
+            }
+            by_setup_type = {}
+            for setup_type in ("REVERSAL", "BREAKOUT_RETEST"):
+                selected_trades = []
+                for trade in trades:
+                    signal = signal_index.get((trade.signal_index, trade.direction))
+                    if signal is None:
+                        continue
+                    inferred = "REVERSAL" if signal.impulse_index == signal.retest_index else "BREAKOUT_RETEST"
+                    if inferred == setup_type:
+                        selected_trades.append(trade)
+                by_setup_type[setup_type] = compute_metrics(tuple(selected_trades)).payload()
+
+            by_session = {}
+            for session in (SESSION_ASIA, SESSION_EUROPE, SESSION_US):
+                selected_trades = []
+                for trade in trades:
+                    signal = signal_index.get((trade.signal_index, trade.direction))
+                    if signal is None:
+                        continue
+                    if _session_name(rows[signal.signal_index]) == session:
+                        selected_trades.append(trade)
+                by_session[session] = compute_metrics(tuple(selected_trades)).payload()
+            return {
+                "by_direction": by_direction,
+                "by_setup_type": by_setup_type,
+                "by_session": by_session,
+            }
+
+        diagnostics = diagnostic_payload(development)
+        stressed_diagnostics = diagnostic_payload(development_stressed)
         folds, pass_fraction, walk_forward_passed = walk_forward(
             development,
             validation_cfg["walk_forward"],
@@ -451,7 +494,9 @@ def evaluate_session_liquidity_v3(
             {
                 "variant": asdict(variant),
                 "development": metrics.payload(),
+                "development_diagnostics": diagnostics,
                 "stressed_development": stressed_metrics.payload(),
+                "stressed_development_diagnostics": stressed_diagnostics,
                 "walk_forward": {
                     "folds": [
                         {
