@@ -10,6 +10,7 @@ from .config import load_project_config
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .exceptions import CollectorUnavailable
+from .models import ensure_utc
 from .research_xau_canonical_gate_attribution_v27 import (
     ARTIFACT_CONTRACT,
     RESEARCH_VERSION,
