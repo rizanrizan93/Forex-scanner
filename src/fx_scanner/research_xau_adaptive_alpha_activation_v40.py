@@ -86,7 +86,11 @@ def _trailing_health(values: Sequence[TournamentTrade]) -> dict[str, Any]:
     net = [float(x.net_r) for x in trades]
     gross_profit = sum(x for x in net if x > 0.0)
     gross_loss = -sum(x for x in net if x < 0.0)
-    pf = None if gross_loss <= 0.0 else gross_profit / gross_loss
+    pf = (
+        float("inf")
+        if gross_loss <= 0.0 and gross_profit > 0.0
+        else (None if gross_loss <= 0.0 else gross_profit / gross_loss)
+    )
     expectancy = sum(net) / float(n)
     active = (
         n >= MIN_COMPLETED_TRADES
