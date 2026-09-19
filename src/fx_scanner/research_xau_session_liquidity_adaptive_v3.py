@@ -457,6 +457,7 @@ def evaluate_session_liquidity_v3(
                 by_setup_type[setup_type] = compute_metrics(tuple(selected_trades)).payload()
 
             by_session = {}
+            by_session_direction = {}
             for session in (SESSION_ASIA, SESSION_EUROPE, SESSION_US):
                 selected_trades = []
                 for trade in trades:
@@ -466,10 +467,19 @@ def evaluate_session_liquidity_v3(
                     if _session_name(rows[signal.signal_index]) == session:
                         selected_trades.append(trade)
                 by_session[session] = compute_metrics(tuple(selected_trades)).payload()
+                for direction in ("LONG", "SHORT"):
+                    directional = tuple(
+                        trade for trade in selected_trades
+                        if trade.direction == direction
+                    )
+                    by_session_direction[f"{session}_{direction}"] = compute_metrics(
+                        directional
+                    ).payload()
             return {
                 "by_direction": by_direction,
                 "by_setup_type": by_setup_type,
                 "by_session": by_session,
+                "by_session_direction": by_session_direction,
             }
 
         diagnostics = diagnostic_payload(development)
