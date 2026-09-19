@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .research_xau_hierarchical_regime_router_v35_runtime import (
     BROKER_SPEC,
+    COST_SCENARIOS,
     LEVERAGE_TIERS,
     _fetch,
     _metric_line,
@@ -37,6 +38,7 @@ def run() -> int:
         pip_size=0.01,
         broker_spec=BROKER_SPEC,
         leverage_tiers=LEVERAGE_TIERS,
+        cost_scenarios=COST_SCENARIOS,
     )
 
     details = {
