@@ -24,7 +24,6 @@ from .research_xau_hierarchical_regime_router_v35 import (
     _period,
     build_h1_context,
 )
-from .research_xau_hierarchical_regime_router_v35_runtime import COST_SCENARIOS
 from .research_xau_margin_leverage_v21 import LeverageTier
 from .research_xau_multihorizon_100usd_v20 import (
     BrokerLotSpec,
@@ -159,12 +158,12 @@ def evaluate_v48(
     pip_size: float,
     broker_spec: BrokerLotSpec,
     leverage_tiers: Sequence[LeverageTier],
-    cost_scenarios: Mapping[str, M15ResearchCosts] | None = None,
+    cost_scenarios: Mapping[str, M15ResearchCosts],
 ) -> dict[str, Any]:
     rows = tuple(sorted(bars, key=lambda x: ensure_utc(x.timestamp)))
     if not rows:
         raise ValueError("V48_EMPTY_HISTORY")
-    costs_map = dict(COST_SCENARIOS if cost_scenarios is None else cost_scenarios)
+    costs_map = dict(cost_scenarios)
     missing = [x for x in VALIDATION_COST_IDS if x not in costs_map]
     if missing:
         raise ValueError(f"V48_MISSING_COST_SCENARIOS:{missing}")
