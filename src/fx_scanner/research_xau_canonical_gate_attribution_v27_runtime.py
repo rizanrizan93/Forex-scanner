@@ -23,7 +23,7 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
 WORKER_NAME = "ctrader_xau_canonical_gate_attribution_v27"
-HISTORY_TARGET = 50_000
+HISTORY_TARGET = 20_000
 PAGE_BARS = 5_000
 MAX_PAGES = 12
 TIMEFRAME_SECONDS = 900
@@ -141,7 +141,7 @@ def run() -> int:
         "history_pages": pages,
         "spread_proxy": spread,
     }
-    if len(bars) < 40_000 or not bool(spread.get("available")):
+    if len(bars) < 15_000 or not bool(spread.get("available")):
         details["decision"] = {
             "stage": "DATA_INSUFFICIENT",
             "promotion_eligible": False,
