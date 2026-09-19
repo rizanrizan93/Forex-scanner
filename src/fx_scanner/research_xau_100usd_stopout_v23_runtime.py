@@ -33,10 +33,14 @@ def _margin_call_thresholds(feed):
     res = feed._session._send_sync(req, client_msg_id=f"mcall-{uuid4().hex}")
     output = []
     for row in tuple(getattr(res, "marginCall", ())):
-        threshold = float(getattr(row, "marginLevelThreshold", 0.0) or 0.0)
+        threshold_ratio = float(getattr(row, "marginLevelThreshold", 0.0) or 0.0)
         call_type = int(getattr(row, "marginCallType", 0) or 0)
-        if threshold > 0:
-            output.append({"type": call_type, "threshold_pct": threshold})
+        if threshold_ratio > 0:
+            output.append({
+                "type": call_type,
+                "threshold_ratio": threshold_ratio,
+                "threshold_pct": threshold_ratio * 100.0,
+            })
     return output
 
 
