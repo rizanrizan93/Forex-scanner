@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
+from .exceptions import CollectorUnavailable
 from .models import ensure_utc
 
 SYMBOL = "XAUUSD"
@@ -28,15 +29,27 @@ def fetch_exact_m5_history(
         if remaining <= 0:
             break
         count = min(PAGE_BARS, remaining)
-        fetched = tuple(
-            feed.historical_bars(
-                SYMBOL,
-                TIMEFRAME,
-                from_time=cursor - timedelta(seconds=count * SECONDS * 3),
-                to_time=cursor,
-                count=count,
+        try:
+            fetched = tuple(
+                feed.historical_bars(
+                    SYMBOL,
+                    TIMEFRAME,
+                    from_time=cursor - timedelta(seconds=count * SECONDS * 3),
+                    to_time=cursor,
+                    count=count,
+                )
             )
-        )
+        except CollectorUnavailable:
+            pages.append(
+                {
+                    "page": page,
+                    "requested": count,
+                    "received": 0,
+                    "merged_total": len(merged),
+                    "terminal": "COLLECTOR_UNAVAILABLE_AT_OLDER_HISTORY",
+                }
+            )
+            break
         if not fetched:
             break
         for row in fetched:
