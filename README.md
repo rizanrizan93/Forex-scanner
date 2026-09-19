@@ -7,6 +7,24 @@ Production-oriented forex scanner foundation with a **phone-only cTrader demo-fo
 **Future execution venue:** HFM MT5 is deferred  
 **Committed execution default:** `DISABLED`
 
+## XAUUSD-first DEMO mandate
+
+The recurring cTrader DEMO runtime is now intentionally **XAUUSD-only for new
+entries**. XAU challengers may produce shadow/forward evidence, but broker
+handoff accepts only the explicitly authorized canonical XAU strategy. Legacy
+non-XAU position-management jobs remain available only so an older DEMO
+position cannot be orphaned.
+
+The operational objective is **daily opportunity coverage, not forced daily
+trading**. Every active weekday the scanner can classify XAU observations as
+A+ / valid / watch / no-trade and continuously test challengers. A missing
+high-quality entry remains a valid no-trade result; risk, structure, spread,
+freshness, SL/TP and DEMO-only guards are never relaxed simply to manufacture
+a trade.
+
+New strategy families are promoted only from preregistered shadow research
+through development, walk-forward, stressed-cost and locked-holdout evidence.
+
 ## Operating model
 
 The Android phone is the control/monitoring surface. A controlled VPS is the 24/5 runtime host.
@@ -27,7 +45,7 @@ Supabase atomic claim: EXECUTION_READY -> COOLDOWN
 fresh cTrader quote + entry-zone + RR + SL/TP + demo guards
        |
        v
-FP Markets cTrader DEMO order (max 0.01 lot, max 1 open position)
+FP Markets cTrader DEMO order (max 0.50 lot/order, max 10 positions account-wide)
 
 Supabase -> control state + durable signal claim + async audit
 Android  -> monitor / explicit demo enable-disable
@@ -250,8 +268,9 @@ Hard demo limits are committed in configuration:
 - cTrader environment must be `DEMO`
 - granted account must not be live
 - OAuth permission scope must be `SCOPE_TRADE`
-- max order size: `0.01` lot
-- max concurrent open positions: `1`
+- max order size: `0.50` lot per order
+- max risk per trade: `5.0%`
+- max concurrent open positions: `10` account-wide
 - signal evidence coverage: at least `0.80`
 - TP2 RR: at least `1.50`
 - server-side SL and TP are mandatory
@@ -477,7 +496,7 @@ pip install -r requirements-mt5-windows.txt
 ```bash
 pytest -q
 python -m fx_scanner.cli validate-config
-python -m fx_scanner.cli demo-ingest --symbol EURUSD --minutes 10
+python -m fx_scanner.cli demo-ingest --symbol XAUUSD --minutes 10
 python -m fx_scanner.cli runtime-smoke --seconds 86400
 # Optional external-network checks:
 python -m fx_scanner.cli provider-smoke --series ECB_EURUSD_REFERENCE
