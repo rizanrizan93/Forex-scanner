@@ -24,7 +24,7 @@ from .storage.supabase_operational import SupabaseOperationalStore
 UTC = timezone.utc
 WORKER_NAME = "ctrader_xau_d1_regime_h1_session_v11"
 HISTORY_TARGET = 80_000
-MIN_ACCEPTABLE_BARS = 50_000
+MIN_ACCEPTABLE_BARS = 30_000
 
 
 def run() -> int:
