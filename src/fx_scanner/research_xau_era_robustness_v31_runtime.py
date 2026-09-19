@@ -29,6 +29,11 @@ ERAS={
         "start":datetime(2019,1,1,tzinfo=UTC),
         "end":datetime(2025,1,1,tzinfo=UTC),
     },
+    "2025_2026":{
+        "fetch_start":datetime(2024,1,1,tzinfo=UTC),
+        "start":datetime(2025,1,1,tzinfo=UTC),
+        "end":datetime(2026,9,1,tzinfo=UTC),
+    },
 }
 
 # Snapshot verified by V24 broker evidence on 2026-09-19.
