@@ -145,7 +145,7 @@ def extract_transfer_signals(
 
     target_groups = sorted(
         (
-            key, idxs
+            (key, idxs)
             for (session, key), idxs in groups.items()
             if session == variant.target_session
         ),
