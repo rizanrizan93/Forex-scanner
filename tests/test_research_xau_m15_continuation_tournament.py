@@ -24,3 +24,10 @@ def test_continuation_research_workflow_is_demo_research_only():
     assert "demo_execution_fresh_ready_handoff" not in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
+
+
+def test_continuation_tournament_emits_direction_diagnostics_without_changing_execution():
+    source = (ROOT / "src/fx_scanner/research_xau_m15_continuation_tournament.py").read_text()
+    assert '"development_by_direction": direction_metrics' in source
+    assert '"stressed_development_by_direction": stressed_direction_metrics' in source
+    assert '"execution_influence": False' in source
