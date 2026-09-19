@@ -44,7 +44,8 @@ jobs:
       - name: Install research runtime
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-research-cloud.txt\n          pip install pytest==9.0.2
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
       - name: Unit tests
