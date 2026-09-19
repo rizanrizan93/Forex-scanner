@@ -28,3 +28,18 @@ def test_shadow_xau_producers_do_not_gate_canonical_handoff():
     assert "steps.produce_xau_m15_reversal.outcome == 'success'" not in handoff
     assert "steps.produce_xau_m15_sweep_fade.outcome == 'success'" not in handoff
     assert "demo_xau_canonical_position_manager" in text
+
+
+def test_broker_critical_xau_path_precedes_all_shadow_producers():
+    text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
+    repair = text.index("demo_existing_protection_repair")
+    canonical = text.index("demo_xau_m15_ema_smc_reclaim_candidate_producer")
+    handoff = text.index("demo_execution_fresh_ready_handoff --limit 10")
+    manager = text.index("demo_xau_canonical_position_manager")
+    shadows = (
+        text.index("demo_xau_expansion_v42_candidate_producer"),
+        text.index("demo_xau_m15_ema_reversal_candidate_producer"),
+        text.index("demo_xau_m15_liquidity_sweep_fade_candidate_producer"),
+    )
+    assert repair < canonical < handoff < manager
+    assert all(manager < shadow for shadow in shadows)
