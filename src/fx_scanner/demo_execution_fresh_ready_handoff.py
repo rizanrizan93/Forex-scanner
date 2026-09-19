@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from . import demo_fresh_ready_handoff as base
-from .demo_euraud_gbpaud_forward_evidence import EURAUD_STRATEGY_ID, GBPAUD_STRATEGY_ID
-from .demo_five_core_authority import EXECUTION_SYMBOLS
 from .demo_five_core_router import PAIR_STRATEGY_IDS
 from .demo_xau_expansion_v42 import STRATEGY_ID as XAU_EXPANSION_V42_STRATEGY_ID
 from .demo_xau_m15_ema_reversal_recovery import STRATEGY_ID as XAU_M15_EMA_REVERSAL_STRATEGY_ID
@@ -29,12 +27,9 @@ _XAU_SHADOW_STRATEGIES = frozenset(
     }
 )
 
+_EXECUTION_SYMBOLS = frozenset({"XAUUSD"})
 _ALLOWED_STRATEGIES_BY_SYMBOL = {
     "XAUUSD": frozenset({_XAU_CANONICAL_STRATEGY}),
-    "USDJPY": frozenset({PAIR_STRATEGY_IDS["USDJPY"]}),
-    "GBPUSD": frozenset({PAIR_STRATEGY_IDS["GBPUSD"]}),
-    "EURAUD": frozenset({EURAUD_STRATEGY_ID}),
-    "GBPAUD": frozenset({GBPAUD_STRATEGY_ID}),
 }
 
 # Backward-compatible XAU-only aliases retained for existing observers/tests.
@@ -54,7 +49,7 @@ def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
         candidate_ids = [
             str(row.get("id"))
             for row in rows
-            if str(row.get("symbol") or "").upper().strip() in EXECUTION_SYMBOLS
+            if str(row.get("symbol") or "").upper().strip() in _EXECUTION_SYMBOLS
             and row.get("id")
         ]
         if not candidate_ids:
@@ -82,7 +77,7 @@ def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
         for row in rows:
             signal_id = str(row.get("id") or "")
             symbol = str(row.get("symbol") or "").upper().strip()
-            if not signal_id or symbol not in EXECUTION_SYMBOLS:
+            if not signal_id or symbol not in _EXECUTION_SYMBOLS:
                 continue
             allowed = _ALLOWED_STRATEGIES_BY_SYMBOL.get(symbol, frozenset())
             if code_by_signal.get(signal_id) in allowed:
