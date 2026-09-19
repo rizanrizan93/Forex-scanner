@@ -9,6 +9,7 @@ from typing import Any
 from .config import load_project_config
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
+from .exceptions import CollectorUnavailable
 from .research_xau_directional_reversal_v5 import (
     ARTIFACT_CONTRACT,
     RESEARCH_VERSION,
@@ -43,15 +44,27 @@ def _fetch_history_v5(feed, *, target: int, as_of: datetime):
             break
         request_count = min(PAGE_BARS, remaining)
         start = cursor - timedelta(seconds=request_count * M15_SECONDS * 3)
-        fetched = tuple(
-            feed.historical_bars(
-                SYMBOL,
-                "M15",
-                from_time=start,
-                to_time=cursor,
-                count=request_count,
+        try:
+            fetched = tuple(
+                feed.historical_bars(
+                    SYMBOL,
+                    "M15",
+                    from_time=start,
+                    to_time=cursor,
+                    count=request_count,
+                )
             )
-        )
+        except CollectorUnavailable:
+            pages.append(
+                {
+                    "page": page,
+                    "requested": request_count,
+                    "received": 0,
+                    "merged_total": len(merged),
+                    "terminal": "COLLECTOR_UNAVAILABLE_AT_OLDER_HISTORY",
+                }
+            )
+            break
         if not fetched:
             break
         for row in fetched:
