@@ -16,6 +16,7 @@ from .research_xau_m15_continuation_tournament import (
     ContinuationVariant,
     _daily_coverage,
     _metrics_pass,
+    _validate_bars,
     extract_signals,
     simulate_trades,
 )
@@ -41,6 +42,7 @@ class V2Variant:
     retest_min_atr: float
     retest_max_atr: float
     require_fvg: bool = False
+    selection_eligible: bool = True
 
     def base_variant(self) -> ContinuationVariant:
         return ContinuationVariant(
@@ -94,10 +96,12 @@ VARIANTS = (
     V2Variant(
         "XAU_V2_ALL_SHORT_L10_ADX15_R15_CONTROL", "SHORT", "ALL",
         10, 12, 15.0, 1.50, 1.00, 0.65, 0.00, 1.50,
+        selection_eligible=False,
     ),
     V2Variant(
         "XAU_V2_ASIA_LONG_L10_ADX15_R15_CONTROL", "LONG", "ASIA",
         10, 12, 15.0, 1.50, 1.00, 0.65, 0.00, 1.50,
+        selection_eligible=False,
     ),
 )
 
@@ -133,9 +137,7 @@ def evaluate_us_short_v2(
     stressed_costs: M15ResearchCosts,
     validation_cfg: Mapping[str, Any],
 ) -> dict[str, Any]:
-    rows = tuple(sorted(bars, key=lambda row: row.timestamp))
-    if not rows:
-        raise ValueError("XAU_V2_BARS_EMPTY")
+    rows = _validate_bars(bars)
     split_index = max(1000, min(len(rows) - 1, int(len(rows) * DEVELOPMENT_FRACTION)))
     development_rows = rows[:split_index]
     holdout_rows = rows[split_index:]
@@ -209,7 +211,11 @@ def evaluate_us_short_v2(
             }
         )
 
-    eligible = [row for row in evaluations if row["development_passed"]]
+    eligible = [
+        row
+        for row in evaluations
+        if row["development_passed"] and bool(row["variant"]["selection_eligible"])
+    ]
     eligible.sort(
         key=lambda row: (
             float(row["walk_forward"]["pass_fraction"]),
