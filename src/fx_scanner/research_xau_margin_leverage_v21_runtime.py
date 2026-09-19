@@ -69,7 +69,11 @@ def _dynamic_leverage(feed, leverage_id: int) -> tuple[LeverageTier, ...]:
     for row in tuple(getattr(entity, "tiers", ())):
         # Protocol volume is USD cents.
         volume_usd = float(int(getattr(row, "volume", 0) or 0)) / 100.0
-        leverage = float(int(getattr(row, "leverage", 0) or 0))
+        raw_leverage = int(getattr(row, "leverage", 0) or 0)
+        # cTrader leverage is represented in cents in account metadata and the
+        # broker's dynamic-leverage payload follows the same observed scaling.
+        # Example: raw 50000 => 1:500, not 1:50000.
+        leverage = float(raw_leverage) / 100.0
         if volume_usd > 0 and leverage > 0:
             tiers.append(LeverageTier(volume_usd, leverage))
     return tuple(tiers)
