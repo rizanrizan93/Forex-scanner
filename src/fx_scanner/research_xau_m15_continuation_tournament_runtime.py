@@ -27,13 +27,13 @@ from .research_xau_m15_dual_strategy_runtime import (
 from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
-WORKER_NAME = "ctrader_xau_m15_continuation_tournament"
+WORKER_NAME = "ctrader_xau_m15_continuation_tournament_v2"
 
 
 def _artifact_path() -> Path:
     raw = os.getenv(
         "XAU_M15_CONTINUATION_RESEARCH_EVIDENCE_OUTPUT",
-        "artifacts/xau-m15-continuation-tournament.json",
+        "artifacts/xau-m15-continuation-tournament-v2.json",
     ).strip()
     if not raw:
         raise SystemExit("XAU_M15_CONTINUATION_RESEARCH_EVIDENCE_OUTPUT_REQUIRED")
