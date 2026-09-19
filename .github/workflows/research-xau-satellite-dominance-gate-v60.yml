@@ -1,0 +1,44 @@
+name: XAU Satellite Dominance Gate V60
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_satellite_dominance_gate_v60.py"
+      - "src/fx_scanner/research_xau_satellite_dominance_gate_v60_runtime.py"
+      - "tests/test_research_xau_satellite_dominance_gate_v60.py"
+      - ".github/workflows/research-xau-satellite-dominance-gate-v60.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  dominance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      V60_EVIDENCE_OUTPUT: artifacts/xau-satellite-dominance-gate-v60.json
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit tests
+        run: pytest -q tests/test_research_xau_satellite_dominance_gate_v60.py
+      - name: Run baseline-relative dominance gate
+        run: python -m fx_scanner.research_xau_satellite_dominance_gate_v60_runtime
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-satellite-dominance-gate-v60
+          path: artifacts/xau-satellite-dominance-gate-v60.json
+          if-no-files-found: error
+          retention-days: 30
