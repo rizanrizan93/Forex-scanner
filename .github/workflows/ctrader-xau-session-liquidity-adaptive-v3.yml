@@ -1,0 +1,57 @@
+name: cTrader XAU Session Liquidity Adaptive V3
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_session_liquidity_adaptive_v3.py"
+      - "src/fx_scanner/research_xau_session_liquidity_adaptive_v3_runtime.py"
+      - "config/validation.yaml"
+      - ".github/workflows/ctrader-xau-session-liquidity-adaptive-v3.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-xau-session-liquidity-adaptive-v3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  xau-session-liquidity-v3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      XAU_SESSION_LIQUIDITY_V3_EVIDENCE_OUTPUT: artifacts/xau-session-liquidity-adaptive-v3.json
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install cTrader research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Run XAU session-liquidity adaptive V3 on 100k M15 bars
+        run: python -m fx_scanner.research_xau_session_liquidity_adaptive_v3_runtime
+      - name: Upload XAU session-liquidity V3 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-session-liquidity-adaptive-v3
+          path: artifacts/xau-session-liquidity-adaptive-v3.json
+          if-no-files-found: error
+          retention-days: 30
