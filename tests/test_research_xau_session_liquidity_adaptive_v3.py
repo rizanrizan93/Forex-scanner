@@ -76,3 +76,14 @@ def test_v3_workflow_is_shadow_only_and_100k():
     assert "demo_execution_fresh_ready_handoff" not in runtime
     assert "FX_LIVE_TRADING_ENABLED" not in workflow
     assert "I_UNDERSTAND_LIVE_ORDERS" not in workflow
+
+
+def test_v3_emits_direction_setup_and_session_diagnostics_without_execution_effect():
+    source = (ROOT / "src/fx_scanner/research_xau_session_liquidity_adaptive_v3.py").read_text()
+    assert '"development_diagnostics": diagnostics' in source
+    assert '"stressed_development_diagnostics": stressed_diagnostics' in source
+    assert '"by_direction": by_direction' in source
+    assert '"by_setup_type": by_setup_type' in source
+    assert '"by_session": by_session' in source
+    assert '"by_session_direction": by_session_direction' in source
+    assert '"execution_influence": False' in source
