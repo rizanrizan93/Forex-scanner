@@ -109,8 +109,8 @@ def _merge_unique(trades: Sequence[TournamentTrade]) -> tuple[TournamentTrade, .
             ensure_utc(trade.exit_at),
             str(trade.direction),
             round(float(trade.entry_price), 8),
-            round(float(trade.stop_price), 8),
-            round(float(trade.target_price), 8),
+            round(float(trade.stop_loss), 8),
+            round(float(trade.take_profit), 8),
         )
         chosen.setdefault(key, trade)
     return tuple(
