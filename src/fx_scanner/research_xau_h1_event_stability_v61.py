@@ -73,15 +73,16 @@ def evaluate_v61(
     for cost_id, costs in cost_scenarios.items():
         families: dict[str, Any] = {}
         combined: list[TournamentTrade] = []
+        annotated_by_family = _family_streams(
+            rows,
+            costs=costs,
+            pip_size=pip_size,
+            d1_context=d1_context,
+            h1_context=h1_context,
+        )
 
         for family in FAMILY_MAP:
-            annotated = _family_streams(
-                rows,
-                costs=costs,
-                pip_size=pip_size,
-                d1_context=d1_context,
-                h1_context=h1_context,
-            )[family]
+            annotated = annotated_by_family[family]
             candidate = _route_family_candidates(
                 annotated,
                 route=FROZEN_ROUTE,
