@@ -242,6 +242,29 @@ def _recent_smc_sequence(
     fvg_index: int | None = None
     latest_fvg: tuple[float, float] | None = None
 
+    # BOS and sweep are states that can remain true for multiple completed bars.
+    # Treat only the transition into the wanted state as the event. Otherwise a
+    # healthy retest that remains accepted beyond the broken swing keeps moving
+    # bos_index to the current bar and can never satisfy "retrace after event".
+    previous_bos: str | None = None
+    previous_mss: str | None = None
+    previous_sweep_match = False
+    if start >= 7:
+        prior_snapshot = structure_snapshot(
+            list(m15[:start]),
+            swing_lookback=SWING_LOOKBACK,
+            atr_period=ATR_PERIOD,
+            sweep_reclaim_bars=SWEEP_RECLAIM_BARS,
+        )
+        previous_bos = prior_snapshot.bos
+        previous_mss = prior_snapshot.mss
+        prior_sweep = prior_snapshot.sweep
+        previous_sweep_match = bool(
+            prior_sweep is not None
+            and prior_sweep.valid
+            and prior_sweep.direction == wanted
+        )
+
     for end in range(start, len(m15)):
         snapshot = structure_snapshot(
             list(m15[: end + 1]),
@@ -250,11 +273,14 @@ def _recent_smc_sequence(
             sweep_reclaim_bars=SWEEP_RECLAIM_BARS,
         )
         sweep = snapshot.sweep
-        if sweep is not None and sweep.valid and sweep.direction == wanted:
+        sweep_match = bool(
+            sweep is not None and sweep.valid and sweep.direction == wanted
+        )
+        if sweep_match and not previous_sweep_match:
             sweep_index = end
-        if snapshot.bos == wanted:
+        if snapshot.bos == wanted and previous_bos != wanted:
             bos_index = end
-        if snapshot.mss == wanted:
+        if snapshot.mss == wanted and previous_mss != wanted:
             mss_index = end
         displacement = snapshot.displacement
         if displacement is not None and displacement.valid and displacement.direction == wanted:
@@ -263,6 +289,10 @@ def _recent_smc_sequence(
         if fvg is not None and fvg.valid and fvg.direction == wanted:
             fvg_index = end
             latest_fvg = (float(fvg.lower), float(fvg.upper))
+
+        previous_bos = snapshot.bos
+        previous_mss = snapshot.mss
+        previous_sweep_match = sweep_match
 
     structure_index = mss_index if mss_index is not None else bos_index
     impulse_indexes = [index for index in (displacement_index, fvg_index) if index is not None]
