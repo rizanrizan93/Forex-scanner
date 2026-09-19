@@ -98,6 +98,7 @@ def test_demo_discovery_pipeline_is_xauusd_only_independent_and_non_executing():
     assert "demo_trajectory_finalizer" in text
     assert "demo_normalized_calibration_runner incremental" in text
     assert "demo_xau_v2_forward_scorecard" in text
+    assert "demo_xau_daily_opportunity" in text
     assert "demo_eurusd_forward_scorecard" not in text
     assert "demo_normalized_calibration_runner adaptive-v2" in text
     assert "demo_normalized_calibration_runner comparison" in text
