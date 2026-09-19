@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  pair-specific-discovery:
+  xauusd-discovery-and-calibration:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -50,8 +50,8 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Discover pair-specific DEMO execution strategies
-        run: python -m fx_scanner.demo_execution_technical_producer
+      - name: Discover XAUUSD IMPULSE_RETEST_V2 challenger
+        run: python -m fx_scanner.demo_xau_technical_producer
       - name: Classify XAU expansion challenger shadow evidence
         if: ${{ always() }}
         continue-on-error: true
@@ -76,10 +76,6 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v2_forward_scorecard
-      - name: Score EURUSD baseline forward DEMO outcomes
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_eurusd_forward_scorecard
       - name: Build Adaptive Calibration v2 shadow cohorts and diagnostics
         if: ${{ always() }}
         continue-on-error: true
