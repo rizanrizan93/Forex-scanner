@@ -31,6 +31,10 @@ def test_active_long_signal_builds_structural_protected_plan():
     )
     plan = build_xau_m15_ema_smc_reclaim_plan(signal, current_price=4330.0)
     assert plan.direction == "LONG"
+    # Entry is a bounded structural zone, not a single exact tick:
+    # default half-width = 0.05 ATR.
+    assert plan.entry_low == 4329.5
+    assert plan.entry_high == 4330.5
     assert plan.stop_loss == 4310.0
     assert plan.rr1 == 1.5
     assert plan.rr2 == 3.0
