@@ -211,6 +211,10 @@ def run() -> int:
         )
         for portfolio_id, payload in scenario["portfolio_results"].items():
             line = _metric_line(payload["metrics"])
+            line += (
+                f" tpd={payload.get('trades_per_day')} "
+                f"loss_streak={payload.get('max_losing_streak')}"
+            )
             cash = payload.get("cash_fixed_001")
             cash_text = ""
             if cash is not None:
@@ -228,6 +232,15 @@ def run() -> int:
             f"V35_COUNTERTREND era={era_id} cost={cost_id} "
             f"trades={counter['trades']} {_metric_line(counter['metrics'])}"
         )
+        if cost_id == "V24_STRESS_4675":
+            diag = scenario["diagnostics"]["d1_matched_family_x_maturity"]
+            for key, payload in diag.items():
+                print(
+                    f"V35_DIAG_FAMILY_MATURITY era={era_id} cost={cost_id} "
+                    f"bucket={key} tpd={payload['trades_per_day']} "
+                    f"loss_streak={payload['max_losing_streak']} "
+                    f"{_metric_line(payload['metrics'])}"
+                )
     return 0
 
 
