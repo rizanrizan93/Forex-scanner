@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +20,6 @@ from .research_xau_m15_dual_strategy import infer_spread_proxy_pips
 from .research_xau_m15_dual_strategy_runtime import (
     MIN_HISTORY_BARS,
     _costs,
-    _fetch_history,
     _validation_cfg,
 )
 from .storage.supabase_operational import SupabaseOperationalStore
@@ -28,6 +27,61 @@ from .storage.supabase_operational import SupabaseOperationalStore
 UTC = timezone.utc
 WORKER_NAME = "ctrader_xau_directional_reversal_v5"
 HISTORY_BARS = 200_000
+PAGE_BARS = 5_000
+MAX_PAGES = 50
+M15_SECONDS = 15 * 60
+
+
+def _fetch_history_v5(feed, *, target: int, as_of: datetime):
+    merged = {}
+    cursor = as_of
+    pages: list[dict[str, Any]] = []
+    previous_earliest = None
+    for page in range(1, MAX_PAGES + 1):
+        remaining = target - len(merged)
+        if remaining <= 0:
+            break
+        request_count = min(PAGE_BARS, remaining)
+        start = cursor - timedelta(seconds=request_count * M15_SECONDS * 3)
+        fetched = tuple(
+            feed.historical_bars(
+                SYMBOL,
+                "M15",
+                from_time=start,
+                to_time=cursor,
+                count=request_count,
+            )
+        )
+        if not fetched:
+            break
+        for row in fetched:
+            merged[row.timestamp] = row
+        earliest = min(row.timestamp for row in fetched)
+        latest = max(row.timestamp for row in fetched)
+        pages.append(
+            {
+                "page": page,
+                "requested": request_count,
+                "received": len(fetched),
+                "merged_total": len(merged),
+                "earliest": earliest.isoformat(),
+                "latest": latest.isoformat(),
+            }
+        )
+        if previous_earliest is not None and earliest >= previous_earliest:
+            break
+        previous_earliest = earliest
+        cursor = earliest - timedelta(seconds=1)
+
+    rows = tuple(sorted(merged.values(), key=lambda row: row.timestamp))
+    closed = tuple(
+        row
+        for row in rows
+        if row.timestamp.astimezone(UTC) + timedelta(seconds=M15_SECONDS) <= as_of
+    )
+    if len(closed) > target:
+        closed = closed[-target:]
+    return closed, pages
 
 
 def _artifact_path() -> Path:
@@ -86,7 +140,7 @@ def run() -> int:
     feed = build_ctrader_research_feed(policy, (SYMBOL,))
     try:
         feed.ensure_connected()
-        bars, pages = _fetch_history(feed, target=HISTORY_BARS, as_of=as_of)
+        bars, pages = _fetch_history_v5(feed, target=HISTORY_BARS, as_of=as_of)
     finally:
         try:
             feed.close()
@@ -119,10 +173,10 @@ def run() -> int:
         ),
     }
 
-    if len(bars) < MIN_HISTORY_BARS:
+    if len(bars) != HISTORY_BARS:
         details["decision"] = {
             "stage": "DATA_INSUFFICIENT",
-            "reason": f"M15_HISTORY_BELOW_MINIMUM:{len(bars)}<{MIN_HISTORY_BARS}",
+            "reason": f"M15_HISTORY_TARGET_NOT_MET:{len(bars)}!={HISTORY_BARS}",
             "promotion_eligible": False,
         }
         _heartbeat(details, healthy=False)
