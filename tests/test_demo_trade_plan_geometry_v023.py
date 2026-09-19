@@ -4,6 +4,8 @@ from types import SimpleNamespace
 from fx_scanner.demo_trade_plan_geometry import (
     _nearest_directional_gap,
     build_demo_trade_plan,
+    demo_entry_zone_half_width,
+    demo_entry_zone_tolerance_atr,
 )
 from fx_scanner.liquidity import FairValueGap
 
@@ -128,3 +130,15 @@ def test_demo_plan_stays_fail_closed_without_any_structural_target(monkeypatch):
     )
 
     assert plan is None
+
+
+def test_demo_entry_zone_tolerance_defaults_to_five_percent_atr(monkeypatch):
+    monkeypatch.delenv("CTRADER_DEMO_ENTRY_ZONE_TOLERANCE_ATR", raising=False)
+    assert demo_entry_zone_tolerance_atr() == 0.05
+    assert demo_entry_zone_half_width(price=4342.0, current_atr=16.0) == 0.8
+
+
+def test_demo_entry_zone_tolerance_is_bounded(monkeypatch):
+    monkeypatch.setenv("CTRADER_DEMO_ENTRY_ZONE_TOLERANCE_ATR", "0.15")
+    assert demo_entry_zone_tolerance_atr() == 0.15
+    assert demo_entry_zone_half_width(price=4300.0, current_atr=10.0) == 1.5
