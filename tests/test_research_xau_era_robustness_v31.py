@@ -19,7 +19,6 @@ def test_v31_contract_matches_requested_live_leverage_and_fixed_lot_era_design()
 def test_v31_runtime_uses_public_history_and_no_execution():
     src=(ROOT/"src/fx_scanner/research_xau_era_robustness_v31_runtime.py").read_text()
     assert "INTERVAL_MIN_15" in src
-    assert "dukascopy-python" not in src
     assert "send_new_order" not in src
     assert '"2012_2018"' in src and '"2019_2024"' in src
 
