@@ -26,3 +26,11 @@ def test_v23_reads_margin_call_thresholds_and_never_orders():
     assert "V23_DEMO_ONLY" in runtime
     assert "FX_LIVE_TRADING_ENABLED" not in workflow
     assert "I_UNDERSTAND_LIVE_ORDERS" not in workflow
+
+
+def test_v23_does_not_treat_margin_notifications_as_stopout():
+    source = (ROOT / "src/fx_scanner/research_xau_100usd_stopout_v23.py").read_text()
+    runtime = (ROOT / "src/fx_scanner/research_xau_100usd_stopout_v23_runtime.py").read_text()
+    assert "stopout_pct = BROKER_FALLBACK_STOPOUT_PCT" in source
+    assert '"threshold_ratio": threshold_ratio' in runtime
+    assert '"threshold_pct": threshold_ratio * 100.0' in runtime
