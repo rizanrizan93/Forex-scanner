@@ -28,6 +28,7 @@ from .storage.supabase_operational import SupabaseOperationalStore
 UTC = timezone.utc
 WORKER_NAME = "ctrader_xau_directional_reversal_v5"
 HISTORY_BARS = 200_000
+MIN_SOURCE_EXHAUSTED_BARS = 110_000
 PAGE_BARS = 5_000
 MAX_PAGES = 50
 M15_SECONDS = 15 * 60
@@ -186,10 +187,20 @@ def run() -> int:
         ),
     }
 
-    if len(bars) != HISTORY_BARS:
+    source_exhausted = bool(
+        pages
+        and pages[-1].get("terminal") == "COLLECTOR_UNAVAILABLE_AT_OLDER_HISTORY"
+    )
+    details["history_source_exhausted"] = source_exhausted
+    if len(bars) < MIN_SOURCE_EXHAUSTED_BARS or (
+        len(bars) < HISTORY_BARS and not source_exhausted
+    ):
         details["decision"] = {
             "stage": "DATA_INSUFFICIENT",
-            "reason": f"M15_HISTORY_TARGET_NOT_MET:{len(bars)}!={HISTORY_BARS}",
+            "reason": (
+                f"M15_HISTORY_INCOMPLETE:{len(bars)}<{HISTORY_BARS}:"
+                f"source_exhausted={int(source_exhausted)}"
+            ),
             "promotion_eligible": False,
         }
         _heartbeat(details, healthy=False)
@@ -231,7 +242,7 @@ def run() -> int:
     decision = details["decision"]
     print(
         "CTRADER_XAU_DIRECTIONAL_REVERSAL_V5 "
-        f"bars={len(bars)}/{HISTORY_BARS} spread_pips={float(spread['median_pips']):.4f} "
+        f"bars={len(bars)}/{HISTORY_BARS} source_exhausted={int(source_exhausted)} spread_pips={float(spread['median_pips']):.4f} "
         f"selected={decision['selected_variant']} "
         f"holdout_opened={int(decision['holdout'] is not None)} "
         f"promotion_eligible={int(bool(decision['promotion_eligible']))} "
