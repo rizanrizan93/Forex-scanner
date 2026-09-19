@@ -346,6 +346,49 @@ def _metrics(trades: Sequence[TournamentTrade]) -> dict[str, Any]:
     return compute_metrics(tuple(trades)).payload()
 
 
+def _max_losing_streak(trades: Sequence[TournamentTrade]) -> int:
+    streak = 0
+    maximum = 0
+    for trade in sorted(trades, key=lambda x: (ensure_utc(x.exit_at), ensure_utc(x.entry_at))):
+        if float(trade.net_r) < 0.0:
+            streak += 1
+            maximum = max(maximum, streak)
+        else:
+            streak = 0
+    return int(maximum)
+
+
+def _trade_stats(trades: Sequence[TournamentTrade], trading_days: int) -> dict[str, Any]:
+    values = tuple(trades)
+    return {
+        "trades": len(values),
+        "trades_per_day": 0.0 if trading_days <= 0 else len(values) / float(trading_days),
+        "max_losing_streak": _max_losing_streak(values),
+        "metrics": _metrics(values),
+    }
+
+
+def _cross_breakdown(
+    annotated: Sequence[Mapping[str, Any]],
+    *,
+    first: str,
+    second: str,
+    trading_days: int,
+) -> dict[str, Any]:
+    keys = sorted({(str(row[first]), str(row[second])) for row in annotated})
+    return {
+        f"{a}|{b}": _trade_stats(
+            tuple(
+                row["trade"]
+                for row in annotated
+                if str(row[first]) == a and str(row[second]) == b
+            ),
+            trading_days,
+        )
+        for a, b in keys
+    }
+
+
 def _breakdown(annotated: Sequence[Mapping[str, Any]], key: str) -> dict[str, Any]:
     values = sorted({str(row[key]) for row in annotated})
     return {
@@ -386,6 +429,7 @@ def evaluate_v35(
         for variant in M15_VARIANTS
     }
     trading_dates = _trading_dates(rows, start=start, end=end)
+    trading_days = len(trading_dates)
 
     scenario_results: dict[str, Any] = {}
     for cost_id, costs in cost_scenarios.items():
@@ -430,6 +474,9 @@ def evaluate_v35(
         for portfolio_id, trades in portfolios.items():
             payload = {
                 "available_trades": len(trades),
+                "trading_days": trading_days,
+                "trades_per_day": 0.0 if trading_days <= 0 else len(trades) / float(trading_days),
+                "max_losing_streak": _max_losing_streak(trades),
                 "metrics": _metrics(trades),
                 "direction_metrics": _direction_metrics(trades),
             }
@@ -452,8 +499,7 @@ def evaluate_v35(
             "portfolio_results": portfolio_payload,
             "routed_m15_metrics": {
                 key: {
-                    "trades": len(value),
-                    "metrics": _metrics(value),
+                    **_trade_stats(value, trading_days),
                     "direction_metrics": _direction_metrics(value),
                 }
                 for key, value in routed.items()
@@ -462,6 +508,32 @@ def evaluate_v35(
                 "all_m15_by_family": _breakdown(annotated, "family"),
                 "d1_matched_by_regime": _breakdown(tuple(x for x in annotated if bool(x["d1_match"])), "regime"),
                 "d1_matched_by_maturity": _breakdown(tuple(x for x in annotated if bool(x["d1_match"])), "maturity"),
+                "d1_matched_family_x_maturity": _cross_breakdown(
+                    tuple(x for x in annotated if bool(x["d1_match"])),
+                    first="family",
+                    second="maturity",
+                    trading_days=trading_days,
+                ),
+                "d1_matched_family_x_h1_permission": {
+                    "SOFT": _cross_breakdown(
+                        tuple(x for x in annotated if bool(x["d1_match"]) and bool(x["h1_soft"])),
+                        first="family",
+                        second="regime",
+                        trading_days=trading_days,
+                    ),
+                    "NORMAL": _cross_breakdown(
+                        tuple(x for x in annotated if bool(x["d1_match"]) and bool(x["h1_normal"])),
+                        first="family",
+                        second="regime",
+                        trading_days=trading_days,
+                    ),
+                    "STRICT": _cross_breakdown(
+                        tuple(x for x in annotated if bool(x["d1_match"]) and bool(x["h1_strict"])),
+                        first="family",
+                        second="regime",
+                        trading_days=trading_days,
+                    ),
+                },
                 "countertrend_extended_h1_strict": {
                     "trades": len(counter),
                     "metrics": _metrics(counter),
@@ -481,6 +553,7 @@ def evaluate_v35(
         "era_start": start.isoformat(),
         "era_end_exclusive": end.isoformat(),
         "history_rows": len(rows),
+        "trading_days": trading_days,
         "history_start": ensure_utc(rows[0].timestamp).isoformat(),
         "history_end": ensure_utc(rows[-1].timestamp).isoformat(),
         "causal_contract": {
