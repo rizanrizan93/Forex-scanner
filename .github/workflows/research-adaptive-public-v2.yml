@@ -1,0 +1,53 @@
+name: Research Adaptive Public Dukascopy V2
+
+on:
+  pull_request:
+    paths:
+      - "research/adaptive_public_v1.py"
+      - "research/adaptive_public_v2_dukascopy.py"
+      - ".github/workflows/research-adaptive-public-v2.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1
+      - name: Run untouched 2023-2026 Dukascopy benchmark
+        run: |
+          mkdir -p research_output_v2
+          python research/adaptive_public_v2_dukascopy.py | tee research_output_v2/console-v2.txt
+      - name: Verify V2 research-only and coverage contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('research_output_v2/adaptive_public_v2_dukascopy.json')
+          data = json.loads(p.read_text())
+          assert data['contract'] == 'ADAPTIVE_PUBLIC_DUKASCOPY_V2'
+          assert data['execution_influence'] is False
+          assert data['same_bar_policy'] == 'STOP_FIRST'
+          assert data['oos_start'] == '2023-01-01'
+          assert data['data_end_exclusive'] == '2026-09-01'
+          assert len(data['coverage']) == 6
+          for pair, item in data['coverage'].items():
+              assert item['rows'] >= 20000, (pair, item)
+              assert item['end'] >= '2026-08-25', (pair, item)
+          print('Dukascopy V2 research-only/coverage contract: PASS')
+          PY
+      - name: Upload V2 benchmark evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-public-dukascopy-v2-results
+          path: research_output_v2/
+          retention-days: 14
