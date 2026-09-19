@@ -1,13 +1,11 @@
 from pathlib import Path
 
-from fx_scanner.research_xau_adaptive_alpha_activation_v40 import (
+from fx_scanner.research_xau_causal_regime_edge_gate_v47 import (
+    EXECUTION_INFLUENCE,
     LOOKBACK_TRADING_DAYS,
     MIN_COMPLETED_TRADES,
     MIN_TRAILING_EXPECTANCY_R,
     MIN_TRAILING_PF,
-)
-from fx_scanner.research_xau_causal_regime_edge_gate_v47 import (
-    EXECUTION_INFLUENCE,
     POLICY_EFFECT,
     PROMOTION_ELIGIBLE,
     ROUTES,
