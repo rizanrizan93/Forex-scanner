@@ -27,3 +27,9 @@ def test_v21_reads_dynamic_leverage_but_never_orders():
     assert "FX_LIVE_TRADING_ENABLED" not in workflow
     assert "I_UNDERSTAND_LIVE_ORDERS" not in workflow
     assert EXECUTION_INFLUENCE is False
+
+
+def test_v21_normalizes_dynamic_leverage_from_cents():
+    runtime = (ROOT / "src/fx_scanner/research_xau_margin_leverage_v21_runtime.py").read_text()
+    assert "leverage = float(raw_leverage) / 100.0" in runtime
+    assert "raw 50000 => 1:500" in runtime
