@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from bisect import bisect_left
 from dataclasses import asdict
+from datetime import datetime, time, timezone
 from typing import Any, Mapping, Sequence
 
 from .demo_donchian_adaptive_tournament import TournamentTrade, compute_metrics
@@ -10,13 +12,6 @@ from .research_multisymbol_m15_breakout_v18 import (
     simulate as simulate_m15,
 )
 from .research_xau_100usd_stopout_v23 import _cash_path_stopout_safe
-from .research_xau_adaptive_alpha_activation_v40 import (
-    LOOKBACK_TRADING_DAYS,
-    MIN_COMPLETED_TRADES,
-    MIN_TRAILING_EXPECTANCY_R,
-    MIN_TRAILING_PF,
-    gate_family_causally,
-)
 from .research_xau_cost_viability_router_v43 import _annotate_cost
 from .research_xau_era_robustness_v31 import _dedupe_with_classic, _simulate_d1_classic
 from .research_xau_hierarchical_regime_router_v35 import (
@@ -49,6 +44,101 @@ POLICY_EFFECT = "SHADOW_ONLY"
 EXECUTION_INFLUENCE = False
 PROMOTION_ELIGIBLE = False
 DIAGNOSTIC_ONLY = True
+
+# Frozen verbatim from V40. Duplicated here because V40 lives on a separate
+# research branch and is not in V46's ancestry; the strategy contract is unchanged.
+LOOKBACK_TRADING_DAYS = 126
+MIN_COMPLETED_TRADES = 30
+MIN_TRAILING_PF = 1.10
+MIN_TRAILING_EXPECTANCY_R = 0.05
+
+
+def _trailing_health(values: Sequence[TournamentTrade]) -> dict[str, Any]:
+    trades = tuple(values)
+    n = len(trades)
+    if n == 0:
+        return {
+            "completed_trades": 0,
+            "profit_factor": None,
+            "expectancy_r": None,
+            "net_r": 0.0,
+            "active": False,
+        }
+    net = [float(x.net_r) for x in trades]
+    gross_profit = sum(x for x in net if x > 0.0)
+    gross_loss = -sum(x for x in net if x < 0.0)
+    pf = (
+        float("inf")
+        if gross_loss <= 0.0 and gross_profit > 0.0
+        else (None if gross_loss <= 0.0 else gross_profit / gross_loss)
+    )
+    expectancy = sum(net) / float(n)
+    active = (
+        n >= MIN_COMPLETED_TRADES
+        and pf is not None
+        and pf >= MIN_TRAILING_PF
+        and expectancy >= MIN_TRAILING_EXPECTANCY_R
+    )
+    return {
+        "completed_trades": n,
+        "profit_factor": pf,
+        "expectancy_r": expectancy,
+        "net_r": sum(net),
+        "active": bool(active),
+    }
+
+
+def _date_cutoff(signal_at, *, trading_dates: Sequence[Any]) -> Any:
+    signal_date = ensure_utc(signal_at).date()
+    dates = tuple(trading_dates)
+    pos = bisect_left(dates, signal_date)
+    if pos <= LOOKBACK_TRADING_DAYS:
+        return dates[0] if dates else signal_date
+    return dates[pos - LOOKBACK_TRADING_DAYS]
+
+
+def gate_family_causally(
+    trades: Sequence[TournamentTrade],
+    *,
+    trading_dates: Sequence[Any],
+) -> tuple[tuple[TournamentTrade, ...], dict[str, Any]]:
+    ordered_signal = tuple(sorted(trades, key=lambda x: ensure_utc(x.signal_at)))
+    ordered_exit = tuple(sorted(trades, key=lambda x: ensure_utc(x.exit_at)))
+    exit_times = tuple(ensure_utc(x.exit_at) for x in ordered_exit)
+
+    kept: list[TournamentTrade] = []
+    active_checks = 0
+    inactive_checks = 0
+    first_active_at = None
+    last_health: dict[str, Any] | None = None
+
+    for trade in ordered_signal:
+        signal_at = ensure_utc(trade.signal_at)
+        completed_end = bisect_left(exit_times, signal_at)
+        cutoff_date = _date_cutoff(signal_at, trading_dates=trading_dates)
+        cutoff = datetime.combine(cutoff_date, time.min, tzinfo=timezone.utc)
+        completed_start = bisect_left(exit_times, cutoff, hi=completed_end)
+        trailing = ordered_exit[completed_start:completed_end]
+        health = _trailing_health(trailing)
+        last_health = health
+        if health["active"]:
+            active_checks += 1
+            if first_active_at is None:
+                first_active_at = signal_at
+            kept.append(trade)
+        else:
+            inactive_checks += 1
+
+    total = active_checks + inactive_checks
+    return tuple(kept), {
+        "candidate_trades": len(ordered_signal),
+        "kept_trades": len(kept),
+        "suppressed_trades": len(ordered_signal) - len(kept),
+        "activation_fraction": 0.0 if total == 0 else active_checks / float(total),
+        "first_active_at": None if first_active_at is None else first_active_at.isoformat(),
+        "last_health": last_health,
+    }
+
 
 FAMILY_MAP = {
     "L12": L12_ID,
