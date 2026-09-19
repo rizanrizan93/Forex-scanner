@@ -6,8 +6,8 @@ from fx_scanner.research_xau_h1_event_stability_v61 import (
     EXECUTION_INFLUENCE,
     POLICY_EFFECT,
     PROMOTION_ELIGIBLE,
+    FROZEN_ROUTE,
 )
-from fx_scanner.research_xau_v47_frozen_validation_v48 import FROZEN_ROUTE
 
 ROOT = Path(__file__).resolve().parents[1]
 
