@@ -6,7 +6,11 @@ from math import isfinite
 from typing import Any, Mapping, Sequence
 
 from .demo_technical_strategy import analyze_demo_pair_mtf
-from .demo_trade_plan_geometry import (\n    DemoPlanGeometryEvidence,\n    demo_entry_zone_half_width,\n    remember_plan_evidence,\n)
+from .demo_trade_plan_geometry import (
+    DemoPlanGeometryEvidence,
+    demo_entry_zone_half_width,
+    remember_plan_evidence,
+)
 from .guards import evaluate_hard_guards
 from .models import Bar, SignalState, ensure_utc
 from .ranking import PairRank
