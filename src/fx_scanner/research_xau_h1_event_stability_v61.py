@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
 from .demo_donchian_adaptive_tournament import TournamentTrade, compute_metrics
@@ -19,7 +20,9 @@ from .research_xau_hierarchical_regime_router_v35 import build_h1_context
 from .research_xau_multihorizon_100usd_v20 import _trading_dates
 from .research_xau_m15_dual_strategy import M15ResearchCosts
 from .research_xau_secular_regime_router_v46 import build_secular_d1
-from .research_xau_v47_frozen_validation_v48 import FULL_END, FULL_START, FROZEN_ROUTE
+FROZEN_ROUTE = "SECULAR_BULL_REACCEL_LONG_COST10"
+FULL_START = datetime(2012, 1, 1, tzinfo=timezone.utc)
+FULL_END = datetime(2026, 9, 20, tzinfo=timezone.utc)
 
 RESEARCH_VERSION = "XAU_H1_EVENT_STABILITY_V61"
 ARTIFACT_CONTRACT = "XAU_H1_EVENT_STABILITY_V61_EVIDENCE_1"
