@@ -7,6 +7,8 @@ from pathlib import Path
 
 from .research_xau_h1_event_stability_v61 import (
     ARTIFACT_CONTRACT,
+    FULL_END,
+    FULL_START,
     RESEARCH_VERSION,
     evaluate_v61,
 )
@@ -15,11 +17,16 @@ from .research_xau_hierarchical_regime_router_v35_runtime import (
     _fetch,
     _metric_line,
 )
-from .research_xau_v47_frozen_validation_v48_runtime import FULL_ERA
 from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
 WORKER_NAME = "dukascopy_xau_h1_event_stability_v61"
+
+FULL_ERA = {
+    "fetch_start": datetime(2011, 1, 1, tzinfo=UTC),
+    "start": FULL_START,
+    "end": FULL_END,
+}
 
 
 def run() -> int:
