@@ -2,7 +2,8 @@ from fx_scanner.demo_xau_daily_opportunity import _grade, _score
 
 
 def test_daily_xau_opportunity_grade_never_implies_forced_execution():
-    assert _grade("EXECUTION_READY") == "EXECUTION_READY"
+    assert _grade("EXECUTION_READY", broker_authorized=True) == "EXECUTION_READY"
+    assert _grade("EXECUTION_READY", broker_authorized=False) == "SHADOW_SETUP_READY"
     assert _grade("ARMED") == "VALID_SETUP_FORMING"
     assert _grade("SETUP_FORMING") == "VALID_SETUP_FORMING"
     assert _grade("WATCH") == "WATCH"
