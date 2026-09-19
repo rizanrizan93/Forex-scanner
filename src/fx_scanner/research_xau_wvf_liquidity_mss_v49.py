@@ -210,7 +210,7 @@ def _entry_for_signal(
     trigger = float(sig.signal_high)
     for i in range(sig.signal_index + 1, min(len(bars), sig.signal_index + 1 + MSS_CONFIRM_BARS)):
         if float(bars[i].high) >= trigger:
-            return i, trigger
+            return i, max(float(bars[i].open), trigger)
     return None
 
 
