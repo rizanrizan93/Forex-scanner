@@ -1,4 +1,4 @@
-name: cTrader XAU M15 Continuation Tournament
+name: cTrader XAU M15 Continuation Tournament V2
 
 on:
   workflow_dispatch:
@@ -30,8 +30,8 @@ jobs:
       CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
       CTRADER_TOKEN_STATE_DURABLE: "1"
       CTRADER_DISABLE_TOKEN_REFRESH: "1"
-      CTRADER_XAU_M15_RESEARCH_HISTORY_BARS: "50000"
-      XAU_M15_CONTINUATION_RESEARCH_EVIDENCE_OUTPUT: artifacts/xau-m15-continuation-tournament.json
+      CTRADER_XAU_M15_RESEARCH_HISTORY_BARS: "100000"
+      XAU_M15_CONTINUATION_RESEARCH_EVIDENCE_OUTPUT: artifacts/xau-m15-continuation-tournament-v2.json
       SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
 
@@ -47,12 +47,12 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Run XAU M15 continuation/retest tournament on 50k closed bars
+      - name: Run XAU M15 continuation/retest tournament V2 on 100k closed bars
         run: python -m fx_scanner.research_xau_m15_continuation_tournament_runtime
       - name: Upload XAU continuation tournament evidence
         uses: actions/upload-artifact@v4
         with:
-          name: xau-m15-continuation-tournament
-          path: artifacts/xau-m15-continuation-tournament.json
+          name: xau-m15-continuation-tournament-v2
+          path: artifacts/xau-m15-continuation-tournament-v2.json
           if-no-files-found: error
           retention-days: 30
