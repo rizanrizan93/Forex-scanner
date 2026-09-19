@@ -6,7 +6,11 @@ from math import isfinite
 from typing import Any, Mapping, Sequence
 
 from .demo_technical_strategy import analyze_demo_pair_mtf
-from .demo_trade_plan_geometry import DemoPlanGeometryEvidence, remember_plan_evidence
+from .demo_trade_plan_geometry import (
+    DemoPlanGeometryEvidence,
+    demo_entry_zone_half_width,
+    remember_plan_evidence,
+)
 from .demo_xau_m15_canonical_policy import (
     CANONICAL_POLICY_CONTRACT,
     evaluate_canonical_xau_decision,
@@ -312,7 +316,7 @@ def build_xau_m15_ema_smc_reclaim_plan(
 
     ict = dict(signal.ict_evidence or {})
     fvg_status = "ICT_FVG_RETEST" if bool(ict.get("fvg_retest")) else "ICT_CONTEXT_VALIDATED"
-    zone_half = max(price * 1e-7, atr * 0.002)
+    zone_half = demo_entry_zone_half_width(price=price, current_atr=atr)
     plan = TradePlan(
         direction=signal.direction,
         entry_low=price - zone_half,

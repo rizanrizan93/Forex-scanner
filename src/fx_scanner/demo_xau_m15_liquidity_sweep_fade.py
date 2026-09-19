@@ -6,7 +6,11 @@ from math import isfinite
 from typing import Any, Mapping, Sequence
 
 from .demo_technical_strategy import analyze_demo_pair_mtf
-from .demo_trade_plan_geometry import DemoPlanGeometryEvidence, remember_plan_evidence
+from .demo_trade_plan_geometry import (
+    DemoPlanGeometryEvidence,
+    demo_entry_zone_half_width,
+    remember_plan_evidence,
+)
 from .demo_xau_m15_ema_reversal_recovery import _atr_at_end, _closed_rows, _ema, _next_bar_open
 from .guards import evaluate_hard_guards
 from .models import Bar, SignalState, ensure_utc
@@ -296,7 +300,7 @@ def build_xau_m15_liquidity_sweep_fade_plan(
     if min(tp1, tp2) <= 0:
         raise ValueError("take-profit price must remain positive")
 
-    zone_half = max(price * 1e-7, atr * 0.002)
+    zone_half = demo_entry_zone_half_width(price=price, current_atr=atr)
     plan = TradePlan(
         direction=signal.direction,
         entry_low=price - zone_half,

@@ -81,6 +81,29 @@ def _env_float(name: str, default: float, *, minimum: float, maximum: float) -> 
     return value
 
 
+def demo_entry_zone_tolerance_atr() -> float:
+    """Return bounded DEMO entry-zone half-width in ATR units.
+
+    A valid structural thesis is a zone, not a single exact tick.  Keep the
+    tolerance deliberately small so execution can absorb near-miss noise
+    without converting the setup into a chase entry.  DEMO only.
+    """
+    return _env_float(
+        "CTRADER_DEMO_ENTRY_ZONE_TOLERANCE_ATR",
+        0.05,
+        minimum=0.05,
+        maximum=0.15,
+    )
+
+
+def demo_entry_zone_half_width(*, price: float, current_atr: float) -> float:
+    if not isfinite(price) or price <= 0:
+        raise ValueError("price must be positive finite")
+    if not isfinite(current_atr) or current_atr <= 0:
+        raise ValueError("current_atr must be positive finite")
+    return max(float(price) * 1e-7, float(current_atr) * demo_entry_zone_tolerance_atr())
+
+
 def demo_wave_thresholds() -> tuple[float, float, float]:
     """Return DEMO-only wave-entry thresholds.
 

@@ -6,7 +6,11 @@ from math import isfinite
 from typing import Any, Mapping, Sequence
 
 from .demo_technical_strategy import analyze_demo_pair_mtf
-from .demo_trade_plan_geometry import DemoPlanGeometryEvidence, remember_plan_evidence
+from .demo_trade_plan_geometry import (
+    DemoPlanGeometryEvidence,
+    demo_entry_zone_half_width,
+    remember_plan_evidence,
+)
 from .guards import evaluate_hard_guards
 from .models import Bar, SignalState, ensure_utc
 from .ranking import PairRank
@@ -386,7 +390,7 @@ def build_xau_m15_ema_reversal_plan(
     if not MIN_SIGNAL_RISK_ATR <= risk_atr <= MAX_SIGNAL_RISK_ATR + 0.50:
         raise ValueError("live reversal risk geometry outside bounded ATR range")
 
-    zone_half = max(price * 1e-7, atr * 0.002)
+    zone_half = demo_entry_zone_half_width(price=price, current_atr=atr)
     plan = TradePlan(
         direction=signal.direction,
         entry_low=price - zone_half,
