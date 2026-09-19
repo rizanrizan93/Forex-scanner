@@ -113,7 +113,7 @@ def build_latency_payload(signal: dict[str, Any], event_times: dict[str, datetim
         "telemetry_version": 2,
         "strategy_id": STRATEGY_ID,
         "strategy_activated_at": STRATEGY_ACTIVATED_AT.isoformat(),
-        "strategy_authority": "SOLE_DEMO_EXECUTION_STRATEGY",
+        "strategy_authority": "SHADOW_CHALLENGER",
         "symbol": "XAUUSD",
         "signal_id": str(signal.get("id") or ""),
         "run_id": signal.get("run_id"),
@@ -181,7 +181,7 @@ def run() -> int:
             broker_order_id=f"XAU_LATENCY_V2:{signal_id}",
             accepted=True,
             code=STRATEGY_ID,
-            message="XAUUSD IMPULSE_RETEST_V2 era strategy identity and latency telemetry",
+            message="XAUUSD IMPULSE_RETEST_V2 shadow-challenger identity and latency telemetry",
             payload=payload,
         )
         emitted += 1
@@ -190,7 +190,7 @@ def run() -> int:
         "telemetry_version": 2,
         "strategy_id": STRATEGY_ID,
         "strategy_activated_at": STRATEGY_ACTIVATED_AT.isoformat(),
-        "strategy_authority": "SOLE_DEMO_EXECUTION_STRATEGY",
+        "strategy_authority": "SHADOW_CHALLENGER",
         "policy_effect": "OBSERVATION_ONLY",
         "execution_influence": False,
         "signals_considered": len(signals),
