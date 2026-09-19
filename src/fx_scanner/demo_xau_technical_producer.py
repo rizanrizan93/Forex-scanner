@@ -24,7 +24,7 @@ def _apply_xau_only_market_schedule(cfg, *, now: datetime | None = None):
 
 
 def run() -> int:
-    """Run discovery on XAUUSD only; IMPULSE_RETEST_V2 remains the sole strategy authority."""
+    """Run XAUUSD-only IMPULSE_RETEST_V2 discovery as a shadow challenger."""
     base.apply_demo_market_schedule = _apply_xau_only_market_schedule
     return base.run()
 

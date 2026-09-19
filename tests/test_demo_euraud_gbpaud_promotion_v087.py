@@ -35,12 +35,12 @@ def _signal(symbol: str, strategy_id: str, direction: str) -> FiveCoreSignal:
     )
 
 
-def test_user_authorized_cross_pairs_are_demo_authorized_and_exact_identity_filtered():
+def test_legacy_cross_pair_contracts_are_retained_but_removed_from_broker_handoff():
     assert {"EURAUD", "GBPAUD"}.issubset(EXECUTION_SYMBOLS)
     assert execution_authorized("EURAUD")
     assert execution_authorized("GBPAUD")
-    assert _ALLOWED_STRATEGIES_BY_SYMBOL["EURAUD"] == frozenset({EURAUD_STRATEGY_ID})
-    assert _ALLOWED_STRATEGIES_BY_SYMBOL["GBPAUD"] == frozenset({GBPAUD_STRATEGY_ID})
+    assert "EURAUD" not in _ALLOWED_STRATEGIES_BY_SYMBOL
+    assert "GBPAUD" not in _ALLOWED_STRATEGIES_BY_SYMBOL
 
 
 def test_cross_pair_entry_plans_keep_two_atr_initial_stop_and_remote_nonbinding_tp():
@@ -90,11 +90,8 @@ def test_auto_pipeline_runs_cross_candidates_and_chandelier_as_separate_processe
     pipeline = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
     assert "run_cross_candidates" not in wrapper
     assert "run_cross_chandelier" not in wrapper
-    assert "python -m fx_scanner.demo_euraud_gbpaud_candidate_producer" in pipeline
+    assert "python -m fx_scanner.demo_euraud_gbpaud_candidate_producer" not in pipeline
     assert "python -m fx_scanner.demo_euraud_gbpaud_chandelier" in pipeline
-    assert pipeline.index("demo_euraud_gbpaud_candidate_producer") < pipeline.index(
-        "demo_execution_fresh_ready_handoff"
-    )
     assert pipeline.index("demo_execution_fresh_ready_handoff") < pipeline.index(
         "demo_euraud_gbpaud_chandelier"
     )

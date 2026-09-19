@@ -4,16 +4,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_demo_auto_pipeline_is_dispatch_only_five_core_fast_lane_and_demo_only():
+def test_demo_auto_pipeline_is_dispatch_only_xauusd_fast_lane_and_demo_only():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
 
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
-    assert "demo_execution_fast_candidate_producer" in text
+    assert "demo_execution_fast_candidate_producer" not in text
+    assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in text
     assert "demo_execution_fresh_ready_handoff --limit 10" in text
     assert "demo_xau_canonical_position_manager" in text
     assert "demo_five_core_time_exit" in text
-    assert text.index("demo_execution_fast_candidate_producer") < text.index(
+    assert text.index("demo_xau_m15_ema_smc_reclaim_candidate_producer") < text.index(
         "demo_execution_fresh_ready_handoff"
     )
     assert text.index("demo_execution_fresh_ready_handoff") < text.index(
@@ -30,7 +31,7 @@ def test_demo_auto_pipeline_is_dispatch_only_five_core_fast_lane_and_demo_only()
     assert 'CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "0"' in text
     assert 'CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"' in text
     assert 'CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"' in text
-    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"' in text
+    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"' in text
     assert "CTRADER_DEMO_DEEP_ANALYSIS_TOP" not in text
     assert 'CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"' in text
     assert 'CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"' in text
@@ -55,12 +56,12 @@ def test_demo_auto_pipeline_is_dispatch_only_five_core_fast_lane_and_demo_only()
 def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_shadow_producer_failure():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
 
-    assert "id: produce_five_core" in text
+    assert "id: produce_five_core" not in text
     assert "id: produce_xau_v42" in text
     assert "id: produce_xau_m15_reversal" in text
     assert "id: produce_xau_m15_ema_smc_reclaim" in text
     assert "id: produce_xau_m15_sweep_fade" in text
-    assert "id: produce_euraud_gbpaud" in text
+    assert "id: produce_euraud_gbpaud" not in text
     assert "id: repair_existing_protection" in text
     assert "id: execute_fresh_handoff" in text
     assert "id: xau_canonical_manager" in text
@@ -72,9 +73,9 @@ def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_shadow_p
 
     handoff = text.split("- name: Execute all fresh strategy-authorized DEMO signals", 1)[1]
     handoff = handoff.split("- name: Manage canonical XAU filled positions", 1)[0]
-    assert "steps.produce_five_core.outcome == 'success'" in handoff
+    assert "steps.produce_five_core.outcome == 'success'" not in handoff
     assert "steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success'" in handoff
-    assert "steps.produce_euraud_gbpaud.outcome == 'success'" in handoff
+    assert "steps.produce_euraud_gbpaud.outcome == 'success'" not in handoff
     assert "steps.repair_existing_protection.outcome == 'success'" in handoff
     assert "steps.produce_xau_v42.outcome == 'success'" not in handoff
     assert "steps.produce_xau_m15_reversal.outcome == 'success'" not in handoff
@@ -86,17 +87,19 @@ def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_shadow_p
     assert "CTRADER_DEMO_AUTO_PIPELINE_CRITICAL_STAGES_OK" in text
 
 
-def test_demo_discovery_pipeline_is_pair_specific_independent_and_non_executing():
+def test_demo_discovery_pipeline_is_xauusd_only_independent_and_non_executing():
     text = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
 
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
-    assert "demo_execution_technical_producer" in text
+    assert "demo_xau_technical_producer" in text
+    assert "demo_execution_technical_producer" not in text
     assert "demo_closed_trade_reconciler" in text
     assert "demo_trajectory_finalizer" in text
     assert "demo_normalized_calibration_runner incremental" in text
     assert "demo_xau_v2_forward_scorecard" in text
-    assert "demo_eurusd_forward_scorecard" in text
+    assert "demo_xau_daily_opportunity" in text
+    assert "demo_eurusd_forward_scorecard" not in text
     assert "demo_normalized_calibration_runner adaptive-v2" in text
     assert "demo_normalized_calibration_runner comparison" in text
     assert "demo_normalized_calibration_runner loss-attribution" in text
@@ -153,7 +156,7 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
         assert "\\n" not in text
 
 
-def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_five_core_lanes():
+def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_lanes():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
     assert "workflow_dispatch:" in text
     assert 'cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 1-5"' in text
@@ -173,8 +176,10 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_five_
     assert "self_handoff=DISABLED" in text
     assert "CTRADER_DEMO_SUPERVISOR_HANDOFF" not in text
     assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" not in text
-    assert "universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD" in text
-    assert "strategies=FIVE_CORE_ROUTER_V1" in text
+    assert "universe=XAUUSD" in text
+    assert "universe=XAUUSD,EURUSD" not in text
+    assert "strategies=XAU_M15_EMA_SMC_RECLAIM_V1" in text
+    assert "challengers=IMPULSE_RETEST_V2" in text
     assert "SUPERVISOR_FAST_SKIP_BUSY" in text
     assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
     assert "active_count" in text

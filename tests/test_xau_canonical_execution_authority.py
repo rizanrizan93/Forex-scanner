@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_xau_has_one_canonical_demo_execution_strategy():
+    assert set(_ALLOWED_STRATEGIES_BY_SYMBOL) == {"XAUUSD"}
     allowed = _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"]
     assert STRATEGY_ID == _XAU_CANONICAL_STRATEGY
     assert allowed == frozenset({STRATEGY_ID})

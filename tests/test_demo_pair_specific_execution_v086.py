@@ -36,8 +36,9 @@ def test_five_core_execution_registry_is_exact_and_pair_specific():
     assert PAIR_STRATEGY_IDS["USDJPY"] == "D1_DONCHIAN55_200"
     assert PAIR_STRATEGY_IDS["GBPUSD"] == "H4_MEAN_REVERT_Z2_TO_SMA20"
     assert PAIR_STRATEGY_IDS["EURUSD"] == "NO_TRADE_UNTIL_VALIDATED"
-    assert PAIR_STRATEGY_IDS["USDJPY"] in _ALLOWED_STRATEGIES_BY_SYMBOL["USDJPY"]
-    assert PAIR_STRATEGY_IDS["GBPUSD"] in _ALLOWED_STRATEGIES_BY_SYMBOL["GBPUSD"]
+    assert set(_ALLOWED_STRATEGIES_BY_SYMBOL) == {"XAUUSD"}
+    assert "USDJPY" not in _ALLOWED_STRATEGIES_BY_SYMBOL
+    assert "GBPUSD" not in _ALLOWED_STRATEGIES_BY_SYMBOL
 
     # The five-core registry can keep XAU research identity, but broker handoff
     # now has one canonical XAU authority approved for DEMO execution.
@@ -66,11 +67,12 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     fast_wrapper = (ROOT / "src/fx_scanner/demo_execution_fast_candidate_producer.py").read_text()
     handoff = (ROOT / "src/fx_scanner/demo_execution_fresh_ready_handoff.py").read_text()
 
-    assert "demo_execution_fast_candidate_producer" in auto
+    assert "demo_execution_fast_candidate_producer" not in auto
+    assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in auto
     assert "demo_execution_fresh_ready_handoff" in auto
     assert "demo_xau_canonical_position_manager" in auto
     assert "demo_five_core_time_exit" in auto
-    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"' in auto
+    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"' in auto
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in auto
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in auto
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in auto
@@ -85,9 +87,11 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     assert "PAIR_STRATEGY_IDS" in handoff
     assert "XAU_M15_EMA_REVERSAL_STRATEGY_ID" in handoff
     assert "XAU_M15_SWEEP_FADE_STRATEGY_ID" in handoff
-    assert "demo_execution_technical_producer" in discovery
+    assert "demo_xau_technical_producer" in discovery
+    assert "demo_execution_technical_producer" not in discovery
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in discovery
-    assert "XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD" in supervisor
-    assert "FIVE_CORE_ROUTER_V1" in supervisor
+    assert "universe=XAUUSD" in supervisor
+    assert "universe=XAUUSD,EURUSD" not in supervisor
+    assert "strategies=XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor
     assert "FX_LIVE_TRADING_ENABLED" not in auto
     assert "I_UNDERSTAND_LIVE_ORDERS" not in auto
