@@ -76,6 +76,10 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v2_forward_scorecard
+      - name: Publish best XAU opportunity of the Jakarta trading day
+        if: ${{ always() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_daily_opportunity
       - name: Build Adaptive Calibration v2 shadow cohorts and diagnostics
         if: ${{ always() }}
         continue-on-error: true
