@@ -38,7 +38,7 @@ def test_latency_payload_persists_explicit_active_strategy_identity():
     assert payload["telemetry_version"] == 2
     assert payload["strategy_id"] == STRATEGY_ID == "IMPULSE_RETEST_V2"
     assert payload["strategy_activated_at"] == STRATEGY_ACTIVATED_AT.isoformat()
-    assert payload["strategy_authority"] == "SOLE_DEMO_EXECUTION_STRATEGY"
+    assert payload["strategy_authority"] == "SHADOW_CHALLENGER"
     assert payload["signal_to_order_seconds"] == 17.0
     assert payload["order_to_protection_seconds"] == 1.0
     assert payload["execution_influence"] is False
@@ -47,7 +47,7 @@ def test_latency_payload_persists_explicit_active_strategy_identity():
 
 def test_workflow_runs_xau_telemetry_best_effort_after_pair_discovery():
     workflow = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text(encoding="utf-8")
-    producer = "python -m fx_scanner.demo_execution_technical_producer"
+    producer = "python -m fx_scanner.demo_xau_technical_producer"
     telemetry = "python -m fx_scanner.demo_xau_strategy_latency_telemetry"
     reconciler = "python -m fx_scanner.demo_closed_trade_reconciler"
     assert workflow.index(producer) < workflow.index(telemetry) < workflow.index(reconciler)
@@ -61,6 +61,7 @@ def test_telemetry_has_no_execution_path_and_filters_by_activation_time():
     assert 'STRATEGY_ID = "IMPULSE_RETEST_V2"' in source
     assert '.gte("observed_at", STRATEGY_ACTIVATED_AT.isoformat())' in source
     assert '"v1_historical_rows_excluded_from_strategy_identity": True' in source
+    assert '"strategy_authority": "SHADOW_CHALLENGER"' in source
     assert '"execution_influence": False' in source
     assert "ExecutionRouter" not in source
     assert "demo_fresh_ready_handoff" not in source
