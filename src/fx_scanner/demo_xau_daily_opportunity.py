@@ -4,6 +4,7 @@ from datetime import datetime, time, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from .demo_xau_m15_ema_smc_reclaim import STRATEGY_ID as CANONICAL_XAU_STRATEGY_ID
 from .storage.supabase_operational import SupabaseOperationalStore
 
 SYMBOL = "XAUUSD"
@@ -27,10 +28,10 @@ def _score(row: dict[str, Any]) -> tuple[int, float, str]:
     return STATE_PRIORITY.get(state, 0), score, str(row.get("observed_at") or "")
 
 
-def _grade(state: str) -> str:
+def _grade(state: str, *, broker_authorized: bool = False) -> str:
     value = str(state or "").upper()
     if value == "EXECUTION_READY":
-        return "EXECUTION_READY"
+        return "EXECUTION_READY" if broker_authorized else "SHADOW_SETUP_READY"
     if value in {"ARMED", "SETUP_FORMING"}:
         return "VALID_SETUP_FORMING"
     if value == "WATCH":
@@ -91,9 +92,11 @@ def build_daily_opportunity(
         if geometry.data:
             strategy_id = str(dict(geometry.data[0]).get("code") or "") or None
 
+    broker_authorized = strategy_id == CANONICAL_XAU_STRATEGY_ID
     best_payload = {
         "signal_id": signal_id or None,
         "strategy_id": strategy_id,
+        "broker_authorized": broker_authorized,
         "observed_at": best.get("observed_at"),
         "direction": best.get("direction"),
         "state": best.get("state"),
@@ -113,7 +116,10 @@ def build_daily_opportunity(
         "symbol": SYMBOL,
         "trading_date_jakarta": current.date().isoformat(),
         "observations": len(rows),
-        "grade": _grade(str(best.get("state") or "")),
+        "grade": _grade(
+            str(best.get("state") or ""),
+            broker_authorized=broker_authorized,
+        ),
         "reason": "BEST_AVAILABLE_XAU_OBSERVATION",
         "execution_influence": False,
         "forced_trade": False,
