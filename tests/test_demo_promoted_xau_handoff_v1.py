@@ -1,5 +1,6 @@
 from fx_scanner.demo_execution_fresh_ready_handoff import (
     _ALLOWED_STRATEGIES,
+    _ALLOWED_STRATEGIES_BY_SYMBOL,
     _ALLOWED_SYMBOL,
     _XAU_CANONICAL_STRATEGY,
     _XAU_SHADOW_STRATEGIES,
@@ -18,6 +19,7 @@ from fx_scanner.demo_xau_m15_liquidity_sweep_fade import (
 
 
 def test_shared_demo_handoff_has_one_canonical_xau_execution_strategy():
+    assert set(_ALLOWED_STRATEGIES_BY_SYMBOL) == {"XAUUSD"}
     assert _ALLOWED_SYMBOL == "XAUUSD"
     assert _XAU_CANONICAL_STRATEGY == XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
     assert _ALLOWED_STRATEGIES == frozenset({XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID})
