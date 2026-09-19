@@ -16,8 +16,9 @@ def test_supervisor_keeps_bounded_one_minute_cadence_without_recursive_handoff()
     assert "sleep 60" in text
     assert "fast_cadence_seconds=60" in text
     assert "discovery_check_seconds=60" in text
-    assert "universe=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD" in text
-    assert "strategies=FIVE_CORE_ROUTER_V1" in text
+    assert "universe=XAUUSD" in text
+    assert "universe=XAUUSD,EURUSD" not in text
+    assert "strategies=XAU_M15_EMA_SMC_RECLAIM_V1" in text
     assert "cancel-in-progress: false" in text
     assert "authority=SCHEDULE_5M" in text
     assert "self_handoff=DISABLED" in text
@@ -43,11 +44,12 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
     discovery = _read(".github/workflows/ctrader-demo-discovery-pipeline.yml")
 
     assert "cancel-in-progress: false" in fast
-    assert "python -m fx_scanner.demo_execution_fast_candidate_producer" in fast
+    assert "python -m fx_scanner.demo_execution_fast_candidate_producer" not in fast
+    assert "python -m fx_scanner.demo_xau_m15_ema_smc_reclaim_candidate_producer" in fast
     assert "python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10" in fast
     assert "python -m fx_scanner.demo_five_core_time_exit" in fast
     assert "python -m fx_scanner.demo_structural_profit_protector" in fast
-    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "5"' in fast
+    assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"' in fast
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in fast
     assert 'CTRADER_DEMO_STACK_MIN_SCORE: "50.01"' in fast
     assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "4"' in fast
@@ -57,7 +59,8 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
     assert 'CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"' in fast
 
     assert "cancel-in-progress: false" in discovery
-    assert "python -m fx_scanner.demo_execution_technical_producer" in discovery
+    assert "python -m fx_scanner.demo_xau_technical_producer" in discovery
+    assert "python -m fx_scanner.demo_execution_technical_producer" not in discovery
     assert "python -m fx_scanner.demo_closed_trade_reconciler" in discovery
     assert "python -m fx_scanner.demo_trajectory_finalizer" in discovery
     assert "python -m fx_scanner.demo_normalized_calibration_runner incremental" in discovery
