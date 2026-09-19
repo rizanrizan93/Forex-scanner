@@ -105,31 +105,39 @@ def build_prior_day_skew_context(rows: Sequence[Bar]) -> pd.DataFrame:
     frame = pd.DataFrame.from_records(records)
     if frame.empty:
         return frame
-    prior = frame["realized_skew"].shift(1)
-    rolling = prior.rolling(
-        PRIOR_DAYS_WINDOW,
-        min_periods=PRIOR_DAYS_WINDOW,
-    )
-    frame["q20"] = rolling.quantile(0.20)
-    frame["q40"] = rolling.quantile(0.40)
-    frame["q60"] = rolling.quantile(0.60)
-    frame["q80"] = rolling.quantile(0.80)
-    frame["prior_median"] = rolling.quantile(0.50)
-
+    q20s: list[float] = []
+    q40s: list[float] = []
+    q60s: list[float] = []
+    q80s: list[float] = []
+    medians: list[float] = []
     states: list[str] = []
+    valid_history: list[float] = []
+
     for _, row in frame.iterrows():
-        values = [
-            float(row.get("realized_skew", np.nan)),
-            float(row.get("q20", np.nan)),
-            float(row.get("q40", np.nan)),
-            float(row.get("q60", np.nan)),
-            float(row.get("q80", np.nan)),
-        ]
-        if not all(np.isfinite(x) for x in values):
+        skew = float(row.get("realized_skew", np.nan))
+        if len(valid_history) >= PRIOR_DAYS_WINDOW:
+            sample = np.asarray(valid_history[-PRIOR_DAYS_WINDOW:], dtype=float)
+            q20, q40, q60, q80 = (
+                float(np.quantile(sample, 0.20)),
+                float(np.quantile(sample, 0.40)),
+                float(np.quantile(sample, 0.60)),
+                float(np.quantile(sample, 0.80)),
+            )
+            median_value = float(np.quantile(sample, 0.50))
+        else:
+            q20 = q40 = q60 = q80 = median_value = float("nan")
+
+        q20s.append(q20)
+        q40s.append(q40)
+        q60s.append(q60)
+        q80s.append(q80)
+        medians.append(median_value)
+
+        if not np.isfinite(skew) or not all(
+            np.isfinite(x) for x in (q20, q40, q60, q80)
+        ):
             states.append("UNAVAILABLE")
-            continue
-        skew, q20, q40, q60, q80 = values
-        if skew <= q20:
+        elif skew <= q20:
             states.append("Q1_MOST_NEGATIVE")
         elif skew <= q40:
             states.append("Q2")
@@ -139,6 +147,17 @@ def build_prior_day_skew_context(rows: Sequence[Bar]) -> pd.DataFrame:
             states.append("Q4")
         else:
             states.append("Q5_MOST_POSITIVE")
+
+        # The current completed day becomes history only after today's state
+        # has been assigned, so quantiles are strictly prior-only.
+        if np.isfinite(skew):
+            valid_history.append(skew)
+
+    frame["q20"] = q20s
+    frame["q40"] = q40s
+    frame["q60"] = q60s
+    frame["q80"] = q80s
+    frame["prior_median"] = medians
     frame["skew_state"] = states
     return frame
 
