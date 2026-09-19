@@ -85,4 +85,5 @@ def test_v3_emits_direction_setup_and_session_diagnostics_without_execution_effe
     assert '"by_direction": by_direction' in source
     assert '"by_setup_type": by_setup_type' in source
     assert '"by_session": by_session' in source
+    assert '"by_session_direction": by_session_direction' in source
     assert '"execution_influence": False' in source
