@@ -8,8 +8,8 @@ from .demo_donchian_adaptive_tournament import TournamentMetrics, TournamentTrad
 from .models import Bar, ensure_utc
 from .research_xau_m15_dual_strategy import M15ResearchCosts
 
-RESEARCH_VERSION = "XAU_M15_CONTINUATION_TOURNAMENT_V1"
-ARTIFACT_CONTRACT = "XAU_M15_CONTINUATION_TOURNAMENT_EVIDENCE_1"
+RESEARCH_VERSION = "XAU_M15_CONTINUATION_TOURNAMENT_V2"
+ARTIFACT_CONTRACT = "XAU_M15_CONTINUATION_TOURNAMENT_EVIDENCE_2"
 SYMBOL = "XAUUSD"
 TIMEFRAME = "M15"
 TIMEFRAME_SECONDS = 15 * 60
@@ -48,12 +48,14 @@ class ContinuationVariant:
 
 
 VARIANTS = (
-    ContinuationVariant("XAU_CONT_CORE_L12_ADX18_R15", 12, 8, 18.0, 1.50),
-    ContinuationVariant("XAU_CONT_CORE_L12_ADX18_R20", 12, 8, 18.0, 2.00),
-    ContinuationVariant("XAU_CONT_FVG_L12_ADX18_R20", 12, 8, 18.0, 2.00, require_fvg=True),
-    ContinuationVariant("XAU_CONT_ASIA_L12_ADX18_R15", 12, 8, 18.0, 1.50, session="ASIA"),
-    ContinuationVariant("XAU_CONT_US_L12_ADX18_R15", 12, 8, 18.0, 1.50, session="US"),
-    ContinuationVariant("XAU_CONT_CORE_L20_ADX18_R20", 20, 10, 18.0, 2.00),
+    # V1 found the broad US-session control closest to break-even after costs.
+    # V2 therefore changes one quality lever at a time and keeps holdout locked.
+    ContinuationVariant("XAU_CONT_V2_US_BASE_R15", 12, 8, 18.0, 1.50, session="US"),
+    ContinuationVariant("XAU_CONT_V2_US_FVG_R15", 12, 8, 18.0, 1.50, require_fvg=True, session="US"),
+    ContinuationVariant("XAU_CONT_V2_US_ADX25_R15", 12, 8, 25.0, 1.50, session="US"),
+    ContinuationVariant("XAU_CONT_V2_US_SHALLOW_R15", 12, 8, 18.0, 1.50, session="US", retest_max_atr=0.75),
+    ContinuationVariant("XAU_CONT_V2_US_BUFFER10_R15", 12, 8, 18.0, 1.50, session="US", breakout_buffer_atr=0.10),
+    ContinuationVariant("XAU_CONT_V2_US_BASE_R125", 12, 8, 18.0, 1.25, session="US"),
 )
 
 
