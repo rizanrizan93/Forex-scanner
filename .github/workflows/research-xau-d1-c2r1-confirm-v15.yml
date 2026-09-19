@@ -1,0 +1,56 @@
+name: Research XAU D1 C2R1 Confirm V15
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "research/xau_d1_staggered_v14.py"
+      - "research/xau_d1_c2r1_confirm_v15.py"
+      - "research/five_core_tournament_v1.py"
+      - "tests/test_research_xau_d1_c2r1_confirm_v15.py"
+      - ".github/workflows/research-xau-d1-c2r1-confirm-v15.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-d1-c2r1-confirm-v15-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  xau-d1-c2r1-v15:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install pinned research dependencies
+        run: pip install pandas==2.2.3 numpy==2.1.3 dukascopy-python==4.0.1 pytest==9.0.2
+      - name: Unit tests
+        run: pytest -q tests/test_research_xau_d1_c2r1_confirm_v15.py
+      - name: Run locked-OOS confirmatory research
+        run: python research/xau_d1_c2r1_confirm_v15.py
+      - name: Verify artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("research_output_xau_d1_c2r1_confirm_v15/xau_d1_c2r1_confirm_v15.json")
+          d=json.loads(p.read_text())
+          assert d["contract"]=="XAU_D1_C2R1_CONFIRM_V15"
+          assert d["execution_influence"] is False
+          assert d["selection_provenance"]["oos_seen_before_v15"] is False
+          assert d["variant"]["cadence_days"] == 2
+          assert d["variant"]["target_r"] == 1.0
+          print("V15_PROMOTION_ELIGIBLE", d["promotion_eligible"])
+          print("V15_LOCKED_OOS", json.dumps(d["locked_oos"], sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-d1-c2r1-confirm-v15
+          path: research_output_xau_d1_c2r1_confirm_v15/
+          if-no-files-found: error
+          retention-days: 30
