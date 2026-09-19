@@ -192,13 +192,11 @@ def evaluate_v23(
     hold_dates = _trading_dates(bars, start=split_time)
 
     positive_thresholds = sorted(float(x) for x in broker_margin_call_thresholds if float(x) > 0)
-    # FP Markets publishes stop-out at 50%. When the account returns three
-    # margin-call thresholds, the lowest is the liquidation threshold.
-    stopout_pct = (
-        min(positive_thresholds)
-        if positive_thresholds
-        else BROKER_FALLBACK_STOPOUT_PCT
-    )
+    # Open API MarginCallList contains notification thresholds, not the broker's
+    # liquidation level. FP Markets publishes a 50% stop-out level for cTrader,
+    # so liquidation survivability must use that broker policy rather than the
+    # lowest notification threshold.
+    stopout_pct = BROKER_FALLBACK_STOPOUT_PCT
 
     candidates = _portfolio_candidates(
         bars,
