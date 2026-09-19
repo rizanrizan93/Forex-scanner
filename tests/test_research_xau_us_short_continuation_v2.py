@@ -14,13 +14,16 @@ def test_xau_us_short_v2_is_preregistered_before_holdout():
     assert len(primary) == 7
     assert all(variant.direction == "SHORT" for variant in primary)
     assert all(variant.session == "US" for variant in primary)
+    assert all(variant.selection_eligible for variant in primary)
     assert {variant.target_r for variant in primary} == {1.25, 1.5, 1.75}
     assert {variant.adx_min for variant in primary} == {15.0, 18.0, 22.0}
 
 
 def test_xau_us_short_v2_keeps_controls_and_execution_isolation():
-    assert any(variant.session == "ALL" and variant.direction == "SHORT" for variant in VARIANTS)
-    assert any(variant.session == "ASIA" and variant.direction == "LONG" for variant in VARIANTS)
+    controls = [variant for variant in VARIANTS if not variant.selection_eligible]
+    assert len(controls) == 2
+    assert any(variant.session == "ALL" and variant.direction == "SHORT" for variant in controls)
+    assert any(variant.session == "ASIA" and variant.direction == "LONG" for variant in controls)
 
     source = (ROOT / "src/fx_scanner/research_xau_us_short_continuation_v2.py").read_text()
     runtime = (ROOT / "src/fx_scanner/research_xau_us_short_continuation_v2_runtime.py").read_text()
