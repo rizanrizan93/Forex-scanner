@@ -22,10 +22,12 @@ from typing import Any, Sequence
 
 from .demo_xau_v24_champion_candidate_producer import _indicator_series
 from .demo_xau_v24_utc_d1_context import (
-    _fetch_h1,
+    H1_CHUNK_COUNT,
+    H1_CHUNK_DAYS,
     aggregate_h1_to_utc_days,
     context_from_daily,
 )
+from .exceptions import CollectorUnavailable
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .models import Bar, ensure_utc
@@ -223,11 +225,59 @@ def _d1_tail_warmup_comparison(
     }
 
 
+def _fetch_available_h1_backwards(
+    feed,
+    *,
+    start: datetime,
+    end: datetime,
+) -> tuple[Bar, ...]:
+    """Discover available H1 history from newest to oldest for diagnostics.
+
+    Production V24 deliberately fails closed when a required H1 chunk is
+    unavailable. V125 is different: it is trying to discover how much older
+    broker history exists. Start from the known-current end and stop after the
+    first empty/unsupported older chunk once at least one valid chunk was seen.
+    """
+    if start >= end:
+        return ()
+    output: dict[datetime, Bar] = {}
+    cursor_end = ensure_utc(end)
+    lower = ensure_utc(start)
+    saw_data = False
+    while cursor_end > lower:
+        cursor_start = max(lower, cursor_end - timedelta(days=H1_CHUNK_DAYS))
+        try:
+            rows = feed.historical_bars(
+                SYMBOL,
+                "H1",
+                from_time=cursor_start,
+                to_time=cursor_end,
+                count=H1_CHUNK_COUNT,
+            )
+        except CollectorUnavailable:
+            if saw_data:
+                break
+            cursor_end = cursor_start
+            continue
+        accepted = 0
+        for row in rows:
+            stamp = ensure_utc(row.timestamp)
+            if cursor_start <= stamp < cursor_end:
+                output[stamp] = row
+                accepted += 1
+        if accepted:
+            saw_data = True
+        elif saw_data:
+            break
+        cursor_end = cursor_start
+    return tuple(output[key] for key in sorted(output))
+
+
 def _d1_warmup_comparison(feed, *, now: datetime) -> dict[str, Any]:
     target_day = ensure_utc(now).date()
     target_start = datetime.combine(target_day, datetime.min.time(), tzinfo=UTC)
     long_start = target_start - timedelta(days=D1_REFERENCE_CALENDAR_DAYS)
-    h1 = _fetch_h1(feed, start=long_start, end=target_start)
+    h1 = _fetch_available_h1_backwards(feed, start=long_start, end=target_start)
     daily = aggregate_h1_to_utc_days(h1, before_day=target_day)
     if len(daily) < 200:
         raise RuntimeError(f"V125_D1_REFERENCE_HISTORY_SHORT:{len(daily)}")
