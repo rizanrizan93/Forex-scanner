@@ -97,6 +97,35 @@ def _closed_bars_since_open(
     )
 
 
+def _completed_utc_d1_bars_since_open(
+    session,
+    *,
+    opened_at: datetime,
+    now: datetime,
+) -> int:
+    """Count completed UTC-calendar trading days from H1, matching V20/V24 D1."""
+    opened = ensure_utc(opened_at)
+    current = ensure_utc(now)
+    start = datetime.combine(opened.date(), datetime.min.time(), tzinfo=UTC)
+    if current <= start:
+        return 0
+    rows = tuple(
+        session.historical_bars(
+            "XAUUSD",
+            "H1",
+            from_time=start,
+            to_time=current,
+            count=1600,
+        )
+    )
+    completed_days = {
+        ensure_utc(row.timestamp).date()
+        for row in rows
+        if opened.date() <= ensure_utc(row.timestamp).date() < current.date()
+    }
+    return len(completed_days)
+
+
 def ensure_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         raise ValueError("timezone-aware datetime required")
@@ -161,14 +190,21 @@ def run() -> int:
                 )
                 continue
 
-            closed_bars = _closed_bars_since_open(
-                session,
-                timeframe=timeframe,
-                timeframe_seconds=timeframe_seconds,
-                max_hold_bars=max_hold,
-                opened_at=position.opened_at,
-                now=now,
-            )
+            if component == D1_COMPONENT:
+                closed_bars = _completed_utc_d1_bars_since_open(
+                    session,
+                    opened_at=position.opened_at,
+                    now=now,
+                )
+            else:
+                closed_bars = _closed_bars_since_open(
+                    session,
+                    timeframe=timeframe,
+                    timeframe_seconds=timeframe_seconds,
+                    max_hold_bars=max_hold,
+                    opened_at=position.opened_at,
+                    now=now,
+                )
             decision = {
                 "position_id": str(position.position_id),
                 "signal_id": signal_id,
