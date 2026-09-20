@@ -1,0 +1,8 @@
+from fx_scanner.research_xau_no_risk_compound_v92 import LOT_MODE,TARGET_BALANCE,POLICY_EFFECT,EXECUTION_INFLUENCE,PROMOTION_ELIGIBLE,VARIANTS
+def test_v92_contract():
+    assert LOT_MODE=="BALANCE_STEP_100"
+    assert TARGET_BALANCE==1000.0
+    assert VARIANTS==("V87_NEXT_OPEN","V91_DISPLACEMENT_50_RETEST_4")
+    assert POLICY_EFFECT=="SHADOW_ONLY"
+    assert EXECUTION_INFLUENCE is False
+    assert PROMOTION_ELIGIBLE is False
