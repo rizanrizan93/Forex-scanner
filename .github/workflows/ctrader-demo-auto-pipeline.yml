@@ -85,18 +85,24 @@ jobs:
         if: ${{ always() && !cancelled() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_existing_protection_repair
+      - name: Evaluate promoted XAU D1 TSMOM 60-EMA200 strategy
+        id: produce_xau_d1_tsmom
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_d1_tsmom_candidate_producer
       - name: Evaluate canonical XAU M15 EMA-SMC-ICT strategy
         id: produce_xau_m15_ema_smc_reclaim
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_m15_ema_smc_reclaim_candidate_producer
 
-      # XAU execution authority is singular: XAU_M15_EMA_SMC_RECLAIM_V1.
+      # Exact DEMO execution authority: D1_TSMOM_60_200 and
+      # XAU_M15_EMA_SMC_RECLAIM_V1. No shadow strategy can pass this handoff.
       - name: Execute all fresh strategy-authorized DEMO signals within safety caps
         id: execute_fresh_handoff
         if: >-
           ${{ !cancelled() &&
-              steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success' &&
-              steps.repair_existing_protection.outcome == 'success' }}
+              steps.repair_existing_protection.outcome == 'success' &&
+              (steps.produce_xau_d1_tsmom.outcome == 'success' ||
+               steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success') }}
         continue-on-error: true
         run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
 
@@ -154,6 +160,7 @@ jobs:
         if: ${{ always() && !cancelled() }}
         shell: bash
         env:
+          XAU_D1_TSMOM_OUTCOME: ${{ steps.produce_xau_d1_tsmom.outcome }}
           XAU_M15_EMA_SMC_RECLAIM_OUTCOME: ${{ steps.produce_xau_m15_ema_smc_reclaim.outcome }}
           REPAIR_OUTCOME: ${{ steps.repair_existing_protection.outcome }}
           HANDOFF_OUTCOME: ${{ steps.execute_fresh_handoff.outcome }}
@@ -165,8 +172,11 @@ jobs:
         run: |
           set -euo pipefail
           failed=0
+          if [ "${XAU_D1_TSMOM_OUTCOME}" != "success" ] && [ "${XAU_M15_EMA_SMC_RECLAIM_OUTCOME}" != "success" ]; then
+            echo "CRITICAL_STAGE_FAILED stage=XAU_EXECUTION_PRODUCERS d1=${XAU_D1_TSMOM_OUTCOME} m15=${XAU_M15_EMA_SMC_RECLAIM_OUTCOME}"
+            failed=1
+          fi
           for item in \
-            "XAU_M15_EMA_SMC_RECLAIM:${XAU_M15_EMA_SMC_RECLAIM_OUTCOME}" \
             "REPAIR:${REPAIR_OUTCOME}" \
             "HANDOFF:${HANDOFF_OUTCOME}" \
             "XAU_CANONICAL_MANAGER:${XAU_CANONICAL_MANAGER_OUTCOME}" \
