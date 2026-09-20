@@ -14,49 +14,135 @@ from fx_scanner.demo_xau_v24_champion_candidate_producer import (
     _d1_candidate,
     _dedupe,
 )
-from fx_scanner.demo_xau_v24_champion_time_exit import _COMPONENT_CONTRACTS
+from fx_scanner.demo_xau_v24_champion_time_exit import (
+    _COMPONENT_CONTRACTS,
+    _completed_utc_d1_bars_since_open,
+)
+from fx_scanner.demo_xau_v24_utc_d1_context import UtcD1Context
 from fx_scanner.models import Bar
 
 UTC = timezone.utc
 
 
-def _d1_rows(*, rising: bool) -> tuple[Bar, ...]:
-    start = datetime(2025, 1, 1, tzinfo=UTC)
-    rows = []
-    for i in range(202):
-        base = 2000.0 + i * 2.5 if rising else 3000.0 - i * 2.5
-        rows.append(
-            Bar(
-                symbol="XAUUSD",
-                timeframe="D1",
-                timestamp=start + timedelta(days=i),
-                open=base,
-                high=base + 8.0,
-                low=base - 8.0,
-                close=base + (2.0 if rising else -2.0),
-                tick_count=100,
-                spread_avg=0.1,
-                spread_max=0.2,
-            )
-        )
-    return tuple(rows)
+def _m15_bar(timestamp: datetime, price: float = 4400.0) -> Bar:
+    return Bar(
+        symbol="XAUUSD",
+        timeframe="M15",
+        timestamp=timestamp,
+        open=price,
+        high=price + 2.0,
+        low=price - 2.0,
+        close=price + 1.0,
+        tick_count=100,
+        spread_avg=0.1,
+        spread_max=0.2,
+    )
 
 
-@pytest.mark.parametrize(("rising", "direction"), [(True, "LONG"), (False, "SHORT")])
-def test_v24_d1_candidate_preserves_staggered_two_atr_two_r_contract(rising, direction):
-    rows = _d1_rows(rising=rising)
-    now = rows[-1].timestamp + timedelta(minutes=5)
-    candidate = _d1_candidate(rows, now=now)
+@pytest.mark.parametrize(("direction", "entry_price"), [("LONG", 4400.0), ("SHORT", 4400.0)])
+def test_v24_d1_candidate_preserves_utc_staggered_two_atr_two_r_contract(direction, entry_price):
+    target_day = datetime(2026, 9, 21, tzinfo=UTC).date()
+    signal_day = target_day - timedelta(days=1)
+    context = UtcD1Context(
+        target_day=target_day,
+        signal_day=signal_day,
+        direction=direction,
+        atr14=10.0,
+        ema200=4300.0,
+        ret60=0.10 if direction == "LONG" else -0.10,
+        close=4400.0,
+        closes_tail=tuple(4300.0 + i for i in range(61)),
+        history_days=500,
+        seed_day=target_day - timedelta(days=700),
+        source="TEST",
+    )
+    entry_at = datetime(2026, 9, 21, 0, 0, tzinfo=UTC)
+    candidate = _d1_candidate(
+        context,
+        (_m15_bar(entry_at, entry_price),),
+        now=entry_at + timedelta(minutes=5),
+    )
 
     assert candidate is not None
     assert candidate.component_id == D1_COMPONENT
     assert candidate.direction == direction
-    assert candidate.entry_at == rows[-1].timestamp
+    assert candidate.signal_bar_at == datetime.combine(signal_day, datetime.min.time(), tzinfo=UTC)
+    assert candidate.entry_at == entry_at
     risk = abs(candidate.entry_price - candidate.stop_loss)
     reward = abs(candidate.take_profit - candidate.entry_price)
-    assert risk == pytest.approx(2.0 * candidate.atr)
+    assert risk == pytest.approx(20.0)
     assert reward / risk == pytest.approx(2.0)
     assert candidate.max_hold_bars == 30
+
+
+def test_v24_d1_candidate_uses_first_available_m15_bar_of_utc_target_day():
+    target_day = datetime(2026, 9, 20, tzinfo=UTC).date()
+    context = UtcD1Context(
+        target_day=target_day,
+        signal_day=target_day - timedelta(days=2),
+        direction="LONG",
+        atr14=8.0,
+        ema200=4300.0,
+        ret60=0.08,
+        close=4400.0,
+        closes_tail=tuple(4300.0 + i for i in range(61)),
+        history_days=500,
+        seed_day=target_day - timedelta(days=700),
+        source="TEST",
+    )
+    sunday_open = datetime(2026, 9, 20, 21, 0, tzinfo=UTC)
+    bars = (
+        _m15_bar(sunday_open, 4450.0),
+        _m15_bar(sunday_open + timedelta(minutes=15), 4452.0),
+    )
+    candidate = _d1_candidate(context, bars, now=sunday_open + timedelta(minutes=5))
+    assert candidate is not None
+    assert candidate.entry_at == sunday_open
+    assert candidate.entry_price == 4450.0
+
+
+class _H1Session:
+    def __init__(self, rows):
+        self.rows = tuple(rows)
+
+    def historical_bars(self, symbol, timeframe, *, from_time, to_time, count):
+        assert symbol == "XAUUSD"
+        assert timeframe == "H1"
+        return tuple(
+            row
+            for row in self.rows
+            if from_time <= row.timestamp < to_time
+        )
+
+
+def test_v24_d1_time_exit_counts_completed_utc_trading_days_not_broker_d1():
+    opened = datetime(2026, 9, 20, 21, 0, tzinfo=UTC)
+    rows = []
+    for day in (
+        datetime(2026, 9, 20, tzinfo=UTC),
+        datetime(2026, 9, 21, tzinfo=UTC),
+        datetime(2026, 9, 22, tzinfo=UTC),
+    ):
+        rows.append(
+            Bar(
+                symbol="XAUUSD",
+                timeframe="H1",
+                timestamp=day + timedelta(hours=21 if day.date() == opened.date() else 0),
+                open=4400.0,
+                high=4410.0,
+                low=4390.0,
+                close=4405.0,
+                tick_count=100,
+                spread_avg=0.0,
+                spread_max=0.0,
+            )
+        )
+    session = _H1Session(rows)
+    assert _completed_utc_d1_bars_since_open(
+        session,
+        opened_at=opened,
+        now=datetime(2026, 9, 23, 0, 1, tzinfo=UTC),
+    ) == 3
 
 
 def test_v24_component_contract_is_frozen_and_dedupe_prefers_l20_then_d1_then_l12():
@@ -108,3 +194,13 @@ def test_v24_forward_adapter_is_demo_only_and_has_no_live_unlock():
     assert '"live_execution_enabled": False' in source
     assert "FX_LIVE_TRADING_ENABLED" not in workflow
     assert "I_UNDERSTAND_LIVE_ORDERS" not in workflow
+
+
+
+def test_v24_forward_adapter_never_fetches_broker_native_d1():
+    from pathlib import Path
+
+    source = Path("src/fx_scanner/demo_xau_v24_champion_candidate_producer.py").read_text()
+    assert "raw_d1" not in source
+    assert '"d1_source": "UTC_CALENDAR_D1_FROM_CTRADER_H1_PARITY_V124"' in source
+    assert '"XAU_V24_CHAMPION_FORWARD_V2_UTC_D1"' in source
