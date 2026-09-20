@@ -45,6 +45,7 @@ REFERENCE_M15_BARS = 5999
 D1_FORWARD_BOOTSTRAP_DAYS = 1100
 D1_REFERENCE_CALENDAR_DAYS = 5400
 COMPARE_TAIL = 100
+D1_COMPARE_TARGETS = 180
 
 
 def _finite(value: Any) -> float | None:
@@ -175,6 +176,53 @@ def _fetch_recent(feed, timeframe: str, count: int, days: int, now: datetime) ->
     )
 
 
+def _d1_tail_warmup_comparison(
+    daily,
+    *,
+    target_count: int = D1_COMPARE_TARGETS,
+) -> dict[str, Any]:
+    """Compare rolling 1,100-day D1 state to long-history state over recent targets."""
+    days = [row.day for row in daily]
+    candidates = days[-int(target_count):]
+    rows: list[dict[str, Any]] = []
+    for target_day in candidates:
+        short_cutoff = target_day - timedelta(days=D1_FORWARD_BOOTSTRAP_DAYS)
+        short_daily = tuple(
+            row for row in daily
+            if short_cutoff <= row.day < target_day
+        )
+        reference_daily = tuple(row for row in daily if row.day < target_day)
+        if len(short_daily) < 200 or len(reference_daily) < 200:
+            continue
+        reference = context_from_daily(reference_daily, target_day=target_day)
+        forward = context_from_daily(short_daily, target_day=target_day)
+        rows.append(
+            {
+                "target_day": target_day.isoformat(),
+                "direction_reference": reference.direction,
+                "direction_forward": forward.direction,
+                "direction_match": reference.direction == forward.direction,
+                "ema200_abs_diff": abs(forward.ema200 - reference.ema200),
+                "atr14_abs_diff": abs(forward.atr14 - reference.atr14),
+                "ret60_abs_diff": abs(forward.ret60 - reference.ret60),
+            }
+        )
+
+    mismatches = [row for row in rows if not row["direction_match"]]
+    return {
+        "targets_requested": int(target_count),
+        "targets_compared": len(rows),
+        "direction_mismatches": len(mismatches),
+        "direction_mismatch_fraction": (
+            len(mismatches) / len(rows) if rows else None
+        ),
+        "ema200_abs_diff": _summary([row["ema200_abs_diff"] for row in rows]),
+        "atr14_abs_diff": _summary([row["atr14_abs_diff"] for row in rows]),
+        "ret60_abs_diff": _summary([row["ret60_abs_diff"] for row in rows]),
+        "mismatch_examples": mismatches[:12],
+    }
+
+
 def _d1_warmup_comparison(feed, *, now: datetime) -> dict[str, Any]:
     target_day = ensure_utc(now).date()
     target_start = datetime.combine(target_day, datetime.min.time(), tzinfo=UTC)
@@ -222,6 +270,10 @@ def _d1_warmup_comparison(feed, *, now: datetime) -> dict[str, Any]:
         "close_reference": reference.close,
         "close_forward": forward.close,
         "close_abs_diff": abs(forward.close - reference.close),
+        "recent_target_parity": _d1_tail_warmup_comparison(
+            daily,
+            target_count=D1_COMPARE_TARGETS,
+        ),
     }
 
 
@@ -315,7 +367,9 @@ def run() -> int:
         f"direction_match={int(bool(d1p['direction_match']))} "
         f"ema_abs_diff={d1p['ema200_abs_diff']} "
         f"atr_abs_diff={d1p['atr14_abs_diff']} "
-        f"ret60_abs_diff={d1p['ret60_abs_diff']}"
+        f"ret60_abs_diff={d1p['ret60_abs_diff']} "
+        f"recent_direction_mismatch={d1p['recent_target_parity']['direction_mismatches']}/"
+        f"{d1p['recent_target_parity']['targets_compared']}"
     )
     print(f"V125_ARTIFACT path={output}")
     return 0
