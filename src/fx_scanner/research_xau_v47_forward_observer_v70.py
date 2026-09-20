@@ -9,7 +9,10 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from .config import load_project_config
-from .demo_xau_m15_ict_layer import evaluate_ict_execution_context
+from .demo_xau_m15_ict_layer import (
+    LIQUIDITY_SWEEP_LOOKBACK,
+    evaluate_ict_execution_context,
+)
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .models import Bar, ensure_utc
@@ -48,6 +51,10 @@ from .research_xau_v47_forward_telemetry_v72 import (
     TELEMETRY_CONTRACT,
 )
 from .research_xau_v47_target_credibility_v74 import build_d1_range_context
+from .research_xau_v47_forward_sweep_telemetry_v82 import (
+    ARTIFACT_CONTRACT as SWEEP_TELEMETRY_ARTIFACT_CONTRACT,
+    SWEEP_TELEMETRY_CONTRACT,
+)
 from .research_xau_v47_target_forward_freeze_v77 import (
     ARTIFACT_CONTRACT as TARGET_FREEZE_ARTIFACT_CONTRACT,
     FORWARD_CONTRACT as TARGET_FORWARD_CONTRACT,
@@ -107,6 +114,124 @@ def _finite_or_none(value: Any) -> float | None:
 def _int_or_none(value: Any) -> int | None:
     number = _finite_or_none(value)
     return None if number is None else int(number)
+
+
+def _raw_sweep_telemetry(
+    context_rows: Sequence[Bar],
+    *,
+    direction: str,
+    atr_value: float,
+    as_of: datetime,
+    ict: Any,
+) -> dict[str, Any]:
+    side = str(direction).upper()
+    if side not in {"LONG", "SHORT"} or not isfinite(float(atr_value)) or float(atr_value) <= 0.0:
+        return {
+            "contract": SWEEP_TELEMETRY_ARTIFACT_CONTRACT,
+            "latest_sweep_at": None,
+            "latest_sweep_age_m15_bars": None,
+            "latest_sweep_source": None,
+            "latest_sweep_level": None,
+            "penetration_atr": None,
+            "reclaim_atr": None,
+            "body_atr": None,
+            "close_location": None,
+            "all_recent_sweep_events": [],
+        }
+
+    completed = tuple(
+        row
+        for row in sorted(context_rows, key=lambda item: ensure_utc(item.timestamp))
+        if ensure_utc(row.timestamp) + timedelta(minutes=15) <= ensure_utc(as_of)
+    )
+    if not completed:
+        return {
+            "contract": SWEEP_TELEMETRY_ARTIFACT_CONTRACT,
+            "latest_sweep_at": None,
+            "latest_sweep_age_m15_bars": None,
+            "latest_sweep_source": None,
+            "latest_sweep_level": None,
+            "penetration_atr": None,
+            "reclaim_atr": None,
+            "body_atr": None,
+            "close_location": None,
+            "all_recent_sweep_events": [],
+        }
+
+    levels = (
+        {
+            "PDL": ict.previous_day_low,
+            "ASIA_LOW": ict.asian_low,
+            "LONDON_LOW": ict.london_low,
+            "NEW_YORK_LOW": ict.new_york_low,
+        }
+        if side == "LONG"
+        else {
+            "PDH": ict.previous_day_high,
+            "ASIA_HIGH": ict.asian_high,
+            "LONDON_HIGH": ict.london_high,
+            "NEW_YORK_HIGH": ict.new_york_high,
+        }
+    )
+
+    start = max(0, len(completed) - LIQUIDITY_SWEEP_LOOKBACK)
+    events: list[dict[str, Any]] = []
+    for index in range(start, len(completed)):
+        row = completed[index]
+        candle_range = max(float(row.high) - float(row.low), 1e-12)
+        body_atr = abs(float(row.close) - float(row.open)) / float(atr_value)
+        close_location = (
+            (float(row.close) - float(row.low)) / candle_range
+            if side == "LONG"
+            else (float(row.high) - float(row.close)) / candle_range
+        )
+        for source, raw_level in levels.items():
+            if raw_level is None:
+                continue
+            level = float(raw_level)
+            if side == "LONG":
+                swept = float(row.low) < level and float(row.close) > level
+                penetration = (level - float(row.low)) / float(atr_value)
+                reclaim = (float(row.close) - level) / float(atr_value)
+            else:
+                swept = float(row.high) > level and float(row.close) < level
+                penetration = (float(row.high) - level) / float(atr_value)
+                reclaim = (level - float(row.close)) / float(atr_value)
+            if not swept:
+                continue
+            events.append(
+                {
+                    "source": source,
+                    "level": level,
+                    "sweep_at": ensure_utc(row.timestamp).isoformat(),
+                    "age_m15_bars": len(completed) - 1 - index,
+                    "penetration_atr": penetration,
+                    "reclaim_atr": reclaim,
+                    "body_atr": body_atr,
+                    "close_location": close_location,
+                }
+            )
+
+    latest = max(
+        events,
+        key=lambda row: (
+            str(row["sweep_at"]),
+            str(row["source"]),
+        ),
+        default=None,
+    )
+    return {
+        "contract": SWEEP_TELEMETRY_ARTIFACT_CONTRACT,
+        "latest_sweep_at": None if latest is None else latest["sweep_at"],
+        "latest_sweep_age_m15_bars": None if latest is None else latest["age_m15_bars"],
+        "latest_sweep_source": None if latest is None else latest["source"],
+        "latest_sweep_level": None if latest is None else latest["level"],
+        "penetration_atr": None if latest is None else latest["penetration_atr"],
+        "reclaim_atr": None if latest is None else latest["reclaim_atr"],
+        "body_atr": None if latest is None else latest["body_atr"],
+        "close_location": None if latest is None else latest["close_location"],
+        "all_recent_sweep_events": events,
+    }
 
 
 def route_eligibility(
@@ -265,11 +390,19 @@ def _evaluate_signal(
     family_gate_active = bool(family_health.get("active"))
 
     context_rows = tuple(rows[max(0, int(signal.signal_index) - 699): int(signal.signal_index) + 1])
+    ict_as_of = signal_at + timedelta(minutes=15)
     ict = evaluate_ict_execution_context(
         context_rows,
         direction=str(signal.direction).upper(),
         atr_value=float(signal.atr),
-        as_of=signal_at + timedelta(minutes=15),
+        as_of=ict_as_of,
+    )
+    sweep_telemetry = _raw_sweep_telemetry(
+        context_rows,
+        direction=str(signal.direction).upper(),
+        atr_value=float(signal.atr),
+        as_of=ict_as_of,
+        ict=ict,
     )
 
     target = (
@@ -414,6 +547,7 @@ def _evaluate_signal(
             "confluence_count": int(ict.confluence_count),
             "reasons": list(ict.reasons),
         },
+        "sweep_telemetry": sweep_telemetry,
         "target_credibility": {
             "contract": TARGET_FREEZE_ARTIFACT_CONTRACT,
             "forward_contract": TARGET_FORWARD_CONTRACT,
@@ -515,6 +649,7 @@ def evaluate_forward_observer(
         "freeze_artifact_contract": FREEZE_ARTIFACT_CONTRACT,
         "forward_contract": FORWARD_CONTRACT,
         "secondary_telemetry_contract": TELEMETRY_CONTRACT,
+        "sweep_telemetry_contract": SWEEP_TELEMETRY_CONTRACT,
         "policy_effect": POLICY_EFFECT,
         "execution_influence": EXECUTION_INFLUENCE,
         "promotion_eligible": PROMOTION_ELIGIBLE,
