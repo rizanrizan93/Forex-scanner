@@ -1,0 +1,73 @@
+name: cTrader Demo XAU V47 Prospective Evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/ctrader-demo-xau-v47-prospective-evidence.yml"
+  schedule:
+    # Approximate XAU/FX 24/5 coverage in UTC, sampled once per completed M15 bar.
+    - cron: "3,18,33,48 21-23 * * 0"
+    - cron: "3,18,33,48 * * 1-4"
+    - cron: "3,18,33,48 0-21 * * 5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-demo-xau-v47-prospective-evidence
+  cancel-in-progress: true
+
+jobs:
+  observe-and-reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      V70_EVIDENCE_OUTPUT: artifacts/xau-v47-forward-observer-v70.json
+      V71_EVIDENCE_OUTPUT: artifacts/xau-v47-forward-outcomes-v71.json
+
+    steps:
+      - name: Checkout frozen prospective research stack
+        uses: actions/checkout@v4
+        with:
+          ref: 5843ab204c7d9ecfb3b2f14b6bb33cbc6db7616b
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+
+      - name: Validate fail-closed DEMO config
+        run: python -m fx_scanner.cli validate-config
+
+      - name: Capture prospective V47 context
+        run: python -m fx_scanner.research_xau_v47_forward_observer_v70
+
+      - name: Reconcile closed prospective outcomes
+        run: python -m fx_scanner.research_xau_v47_forward_outcomes_v71
+
+      - name: Upload prospective evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v47-prospective-evidence
+          path: |
+            artifacts/xau-v47-forward-observer-v70.json
+            artifacts/xau-v47-forward-outcomes-v71.json
+          if-no-files-found: error
+          retention-days: 30
