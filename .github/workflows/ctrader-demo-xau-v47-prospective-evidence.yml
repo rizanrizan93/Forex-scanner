@@ -2,14 +2,18 @@ name: cTrader Demo XAU V47 Prospective Evidence
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ctrader-demo-xau-v47-prospective-evidence.yml"
   pull_request:
     paths:
       - ".github/workflows/ctrader-demo-xau-v47-prospective-evidence.yml"
   schedule:
-    # Approximate XAU/FX 24/5 coverage in UTC, sampled once per completed M15 bar.
+    # Sample once per completed M15 bar during the normal FX/metals week.
+    - cron: "3,18,33,48 * * 1-5"
+    # Cover the Sunday UTC reopen window as well.
     - cron: "3,18,33,48 21-23 * * 0"
-    - cron: "3,18,33,48 * * 1-4"
-    - cron: "3,18,33,48 0-21 * * 5"
 
 permissions:
   contents: read
