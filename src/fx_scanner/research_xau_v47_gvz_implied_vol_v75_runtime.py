@@ -65,6 +65,8 @@ def _parse_gvz_csv(raw: bytes, *, source_url: str) -> list[tuple[datetime, float
     value_key = None
     if "GVZCLS" in normalized:
         value_key = normalized["GVZCLS"]
+    elif "GVZ" in normalized:
+        value_key = normalized["GVZ"]
     else:
         close_candidates = [
             field
