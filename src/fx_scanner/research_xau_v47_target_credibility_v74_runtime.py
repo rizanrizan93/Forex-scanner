@@ -68,6 +68,13 @@ def run() -> int:
             f"V74_COST cost={cost_id} "
             f"satellite={_metric_line(payload['satellite']['metrics'])}"
         )
+        for year, row in payload["annual"].items():
+            gt075 = row["target_to_d1_median60"]["GT_0_75"]
+            if int(gt075["trades"]) > 0:
+                print(
+                    f"V74_ANNUAL_TARGET cost={cost_id} year={year} bucket=GT_0_75 "
+                    f"{_metric_line(gt075['metrics'])}"
+                )
         for window, row in payload["diagnostic_windows"].items():
             print(
                 f"V74_WINDOW cost={cost_id} window={window} "
