@@ -69,6 +69,9 @@ def test_v87_detector_is_causal_and_effective_after_confirmation():
     )
     points = detect_change_points(frame)
     assert points
+    # The shock persists to the end of this synthetic sample, so one
+    # structural shift must not generate periodic duplicate change points.
+    assert len(points) == 1
     first = points[0]
     confirm = pd.Timestamp(first["confirm_at"])
     effective = pd.Timestamp(first["effective_at"])
@@ -82,6 +85,7 @@ def test_v87_has_no_broker_execution_or_calendar_era_router():
     combined = src + "\n" + runtime
     assert "send_new_order" not in combined
     assert "claim_signal_for_execution" not in combined
+    assert '"detector_rearms_only_after_nonshock_state": True' in src
     assert '"year_or_era_feature_used_for_routing": False' in src
     assert '"selection_uses_future_outcomes": False' in src
     assert '"threshold_grid_search": False' in src
