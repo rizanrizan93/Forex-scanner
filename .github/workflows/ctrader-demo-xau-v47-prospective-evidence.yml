@@ -10,6 +10,7 @@ on:
       - ".github/workflows/ctrader-demo-xau-v47-prospective-evidence.yml"
   schedule:
     - cron: "*/15 * * * 1-5"
+    - cron: "3,18,33,48 21-23 * * 0"
 
 permissions:
   contents: read
