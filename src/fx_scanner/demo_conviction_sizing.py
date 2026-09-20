@@ -53,6 +53,14 @@ def select_demo_conviction_sizing(
         order_cap = min(order_cap, EURUSD_BOOTSTRAP_MAX_LOTS)
         risk_cap = min(risk_cap, EURUSD_BOOTSTRAP_MAX_RISK_PCT)
 
+    setup_type = str(row.get("setup_type") or "").upper().strip()
+    if setup_type in {"V24_D1", "V24_L12", "V24_L20"}:
+        return DemoConvictionSizing(
+            tier="V24_FIXED_001",
+            lots=min(MIN_DEMO_LOTS, order_cap),
+            risk_budget_pct=min(MAX_DEMO_RISK_PCT, risk_cap),
+        )
+
     if score >= 97.0 and coverage >= 0.98 and rr2 >= 1.50:
         tier, lots, risk = "ELITE_PLUS", 0.50, 5.0
     elif score >= 94.0 and coverage >= 0.95 and rr2 >= 1.50:
