@@ -4,6 +4,7 @@ from fx_scanner.demo_conviction_sizing import select_demo_conviction_sizing
 from fx_scanner.demo_execution_fresh_ready_handoff import (
     _ALLOWED_STRATEGIES_BY_SYMBOL,
     _XAU_CANONICAL_STRATEGY,
+    _XAU_CHAMPION_STRATEGY,
     _XAU_D1_TSMOM_STRATEGY,
     _XAU_SHADOW_STRATEGIES,
 )
@@ -22,6 +23,9 @@ from fx_scanner.demo_xau_m15_ema_smc_reclaim import (
 )
 from fx_scanner.demo_xau_m15_liquidity_sweep_fade import (
     STRATEGY_ID as XAU_M15_SWEEP_FADE_STRATEGY_ID,
+)
+from fx_scanner.demo_xau_v24_champion_candidate_producer import (
+    STRATEGY_ID as XAU_V24_CHAMPION_STRATEGY_ID,
 )
 
 
@@ -42,13 +46,14 @@ def test_five_core_execution_registry_is_exact_and_pair_specific():
     assert "GBPUSD" not in _ALLOWED_STRATEGIES_BY_SYMBOL
 
     # Broker handoff has an exact two-strategy XAU DEMO allowlist: canonical
-    # M15 plus the frozen D1 TSMOM core promoted for forward collection.
+    # M15 plus the aggregate V24 champion. Standalone D1 remains shadow-only.
     assert _XAU_CANONICAL_STRATEGY == XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
+    assert _XAU_CHAMPION_STRATEGY == XAU_V24_CHAMPION_STRATEGY_ID
     assert _XAU_D1_TSMOM_STRATEGY == PAIR_STRATEGY_IDS["XAUUSD"]
     assert _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"] == frozenset(
-        {XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID, PAIR_STRATEGY_IDS["XAUUSD"]}
+        {XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID, XAU_V24_CHAMPION_STRATEGY_ID}
     )
-    assert PAIR_STRATEGY_IDS["XAUUSD"] not in _XAU_SHADOW_STRATEGIES
+    assert PAIR_STRATEGY_IDS["XAUUSD"] in _XAU_SHADOW_STRATEGIES
     assert XAU_M15_EMA_REVERSAL_STRATEGY_ID in _XAU_SHADOW_STRATEGIES
     assert XAU_M15_SWEEP_FADE_STRATEGY_ID in _XAU_SHADOW_STRATEGIES
     assert _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"].isdisjoint(_XAU_SHADOW_STRATEGIES)
@@ -70,7 +75,7 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     handoff = (ROOT / "src/fx_scanner/demo_execution_fresh_ready_handoff.py").read_text()
 
     assert "demo_execution_fast_candidate_producer" not in auto
-    assert "demo_xau_d1_tsmom_candidate_producer" in auto
+    assert "demo_xau_v24_champion_candidate_producer" in auto
     assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in auto
     assert "demo_execution_fresh_ready_handoff" in auto
     assert "demo_xau_canonical_position_manager" in auto
@@ -81,7 +86,7 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in auto
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in auto
     assert 'CTRADER_DEMO_STACK_MIN_SCORE: "50.01"' in auto
-    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "4"' in auto
+    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "10"' in auto
     assert 'CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"' in auto
     assert "demo_five_core_candidate_producer" in fast_wrapper
     assert "_ALLOWED_STRATEGIES_BY_SYMBOL" in handoff
@@ -95,6 +100,6 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in discovery
     assert "universe=XAUUSD" in supervisor
     assert "universe=XAUUSD,EURUSD" not in supervisor
-    assert "strategies=D1_TSMOM_60_200,XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor
+    assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor
     assert "FX_LIVE_TRADING_ENABLED" not in auto
     assert "I_UNDERSTAND_LIVE_ORDERS" not in auto

@@ -5,7 +5,7 @@ on:
   schedule:
     # Primary 5-minute authority. A separate recovery watchdog can re-dispatch
     # this bounded supervisor if GitHub stops delivering the primary cron.
-    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 1-5"
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 0-5"
   push:
     branches:
       - main
@@ -13,7 +13,8 @@ on:
       - ".github/workflows/ctrader-demo-auto-supervisor.yml"
       - ".github/workflows/ctrader-demo-auto-pipeline.yml"
       - ".github/workflows/ctrader-demo-auto-recovery-watchdog.yml"
-      - "src/fx_scanner/demo_xau_d1_tsmom_candidate_producer.py"
+      - "src/fx_scanner/demo_xau_v24_champion_candidate_producer.py"
+      - "src/fx_scanner/demo_xau_v24_champion_time_exit.py"
       - "src/fx_scanner/demo_five_core_candidate_producer.py"
       - "src/fx_scanner/demo_five_core_router.py"
       - "src/fx_scanner/demo_xau_m15_ema_smc_reclaim.py"
@@ -72,18 +73,29 @@ jobs:
               -f ref=main
           }
 
-          market_weekday_utc() {
-            local weekday
+          market_open_utc() {
+            local weekday hour
             weekday="$(date -u +%u)"
-            [ "${weekday}" -le 5 ]
+            hour="$(date -u +%H)"
+            # Forex week: Sunday evening UTC through Friday evening UTC.
+            # Broker/session availability remains authoritative downstream.
+            if [ "${weekday}" -eq 7 ]; then
+              [ "${hour}" -ge 21 ]
+            elif [ "${weekday}" -ge 1 ] && [ "${weekday}" -le 4 ]; then
+              return 0
+            elif [ "${weekday}" -eq 5 ]; then
+              [ "${hour}" -lt 22 ]
+            else
+              return 1
+            fi
           }
 
-          if ! market_weekday_utc; then
-            echo "CTRADER_DEMO_SUPERVISOR_MARKET_CLOSED calendar=WEEKDAY_24X5 action=NO_DISPATCH"
+          if ! market_open_utc; then
+            echo "CTRADER_DEMO_SUPERVISOR_MARKET_CLOSED calendar=FOREX_WEEK_24X5 action=NO_DISPATCH"
             exit 0
           fi
 
-          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} universe=XAUUSD strategies=D1_TSMOM_60_200,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1 fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_OR_AUTO_PIPELINE xau_ema_smc_push_kick=ENABLED telegram_strategy_push_kick=ENABLED self_handoff=DISABLED"
+          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1 fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_OR_AUTO_PIPELINE xau_ema_smc_push_kick=ENABLED telegram_strategy_push_kick=ENABLED self_handoff=DISABLED"
 
           # Each supervisor owns one bounded five-minute window. Scheduled runs
           # are re-registered every five minutes. A push touching this supervisor,
@@ -92,8 +104,8 @@ jobs:
           # wait for a stale cron registration. Lane-level active checks prevent
           # duplicate Auto/Discovery execution within the window.
           for cycle in $(seq 1 5); do
-            if ! market_weekday_utc; then
-              echo "CTRADER_DEMO_SUPERVISOR_MARKET_CLOSED cycle=${cycle}/5 calendar=WEEKDAY_24X5 action=STOP"
+            if ! market_open_utc; then
+              echo "CTRADER_DEMO_SUPERVISOR_MARKET_CLOSED cycle=${cycle}/5 calendar=FOREX_WEEK_24X5 action=STOP"
               exit 0
             fi
 
@@ -122,4 +134,4 @@ jobs:
             fi
           done
 
-          echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=D1_TSMOM_60_200,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1 fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_OR_AUTO_PIPELINE xau_ema_smc_push_kick=ENABLED telegram_strategy_push_kick=ENABLED self_handoff=DISABLED"
+          echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1 fast_dispatched=${fast_dispatched} fast_busy=${fast_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 discovery_check_seconds=60 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_OR_AUTO_PIPELINE xau_ema_smc_push_kick=ENABLED telegram_strategy_push_kick=ENABLED self_handoff=DISABLED"

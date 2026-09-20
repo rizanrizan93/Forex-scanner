@@ -5,7 +5,7 @@ on:
   schedule:
     # Independent recovery lane. If the primary 5-minute supervisor goes stale,
     # re-dispatch it without executing orders from this workflow itself.
-    - cron: "4,14,24,34,44,54 * * * 1-5"
+    - cron: "4,14,24,34,44,54 * * * 0-5"
 
 permissions:
   actions: write
@@ -28,9 +28,22 @@ jobs:
         run: |
           set -euo pipefail
 
-          weekday="$(date -u +%u)"
-          if [ "${weekday}" -gt 5 ]; then
-            echo "CTRADER_DEMO_RECOVERY_WATCHDOG_MARKET_CLOSED calendar=WEEKDAY_24X5 action=NO_DISPATCH"
+          market_open_utc() {
+            local weekday hour
+            weekday="$(date -u +%u)"
+            hour="$(date -u +%H)"
+            if [ "${weekday}" -eq 7 ]; then
+              [ "${hour}" -ge 21 ]
+            elif [ "${weekday}" -ge 1 ] && [ "${weekday}" -le 4 ]; then
+              return 0
+            elif [ "${weekday}" -eq 5 ]; then
+              [ "${hour}" -lt 22 ]
+            else
+              return 1
+            fi
+          }
+          if ! market_open_utc; then
+            echo "CTRADER_DEMO_RECOVERY_WATCHDOG_MARKET_CLOSED calendar=FOREX_WEEK_24X5 action=NO_DISPATCH"
             exit 0
           fi
 

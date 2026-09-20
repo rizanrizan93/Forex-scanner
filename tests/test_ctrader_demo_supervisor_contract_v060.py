@@ -18,7 +18,7 @@ def test_supervisor_keeps_bounded_one_minute_cadence_without_recursive_handoff()
     assert "discovery_check_seconds=60" in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
-    assert "strategies=D1_TSMOM_60_200,XAU_M15_EMA_SMC_RECLAIM_V1" in text
+    assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in text
     assert "cancel-in-progress: false" in text
     assert "authority=SCHEDULE_5M" in text
     assert "self_handoff=DISABLED" in text
@@ -30,9 +30,12 @@ def test_supervisor_keeps_bounded_one_minute_cadence_without_recursive_handoff()
     assert '".github/workflows/ctrader-demo-auto-pipeline.yml"' in text
     assert "push_kick=SUPERVISOR_OR_AUTO_PIPELINE" in text
     assert "head_sha=${GITHUB_SHA}" in text
-    assert 'cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 1-5"' in text
-    assert "market_weekday_utc" in text
+    assert 'cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 0-5"' in text
+    assert "market_open_utc" in text
     assert "action=STOP" in text
+    assert "calendar=FOREX_WEEK_24X5" in text
+    assert '"${weekday}" -eq 7' in text
+    assert '"${hour}" -ge 21' in text
 
     parsed = yaml.safe_load(text)
     schedules = parsed[True]["schedule"]
@@ -45,7 +48,7 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
 
     assert "cancel-in-progress: false" in fast
     assert "python -m fx_scanner.demo_execution_fast_candidate_producer" not in fast
-    assert "python -m fx_scanner.demo_xau_d1_tsmom_candidate_producer" in fast
+    assert "python -m fx_scanner.demo_xau_v24_champion_candidate_producer" in fast
     assert "python -m fx_scanner.demo_xau_m15_ema_smc_reclaim_candidate_producer" in fast
     assert "python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10" in fast
     assert "python -m fx_scanner.demo_five_core_time_exit" in fast
@@ -53,7 +56,7 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"' in fast
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in fast
     assert 'CTRADER_DEMO_STACK_MIN_SCORE: "50.01"' in fast
-    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "4"' in fast
+    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "10"' in fast
     assert 'CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"' in fast
     assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"' in fast
     assert 'CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "0"' in fast

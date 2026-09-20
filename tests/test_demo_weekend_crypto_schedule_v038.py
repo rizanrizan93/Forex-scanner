@@ -64,16 +64,16 @@ def test_active_xau_supervisor_runs_one_minute_checks_without_weekend_crypto_fal
     discovery = (root / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
     heartbeat = (root / ".github/workflows/ctrader-demo-technical-heartbeat.yml").read_text()
 
-    assert 'cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 1-5"' in supervisor
+    assert 'cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 0-5"' in supervisor
     assert 'cron: "17 * * * 1-5"' in heartbeat
-    assert "market_weekday_utc" in supervisor
+    assert "market_open_utc" in supervisor
     assert "fast_cadence_seconds=60" in supervisor
     assert "discovery_check_seconds=60" in supervisor
     assert "universe=XAUUSD" in supervisor
     assert "universe=XAUUSD,EURUSD" not in supervisor
-    assert "strategies=D1_TSMOM_60_200,XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor
+    assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor
     assert "demo_execution_fast_candidate_producer" not in fast
-    assert "demo_xau_d1_tsmom_candidate_producer" in fast
+    assert "demo_xau_v24_champion_candidate_producer" in fast
     assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in fast
     assert "demo_xau_technical_producer" in discovery
     assert "demo_crypto_broker_preflight" not in discovery
