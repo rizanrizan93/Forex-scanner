@@ -1,0 +1,38 @@
+name: XAU D1 Activation Audit V104
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_d1_activation_audit_v104.py"
+      - "src/fx_scanner/research_xau_d1_activation_audit_v104_runtime.py"
+      - "tests/test_research_xau_d1_activation_audit_v104.py"
+      - ".github/workflows/research-xau-d1-activation-audit-v104.yml"
+permissions: {contents: read}
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      V104_EVIDENCE_OUTPUT: artifacts/xau-d1-activation-audit-v104.json
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11",cache: pip}
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit tests
+        run: pytest -q tests/test_research_xau_d1_activation_audit_v104.py
+      - name: Run D1 activation audit
+        run: python -m fx_scanner.research_xau_d1_activation_audit_v104_runtime
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-d1-activation-audit-v104
+          path: artifacts/xau-d1-activation-audit-v104.json
+          if-no-files-found: error
+          retention-days: 30
