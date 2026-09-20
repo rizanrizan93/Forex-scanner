@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - ops/xau-v47-forward-evidence-scheduler
     paths:
       - ".github/workflows/ctrader-demo-xau-v47-prospective-evidence.yml"
   schedule:
@@ -42,7 +41,7 @@ jobs:
       - name: Checkout frozen prospective research stack
         uses: actions/checkout@v4
         with:
-          ref: 5843ab204c7d9ecfb3b2f14b6bb33cbc6db7616b
+          ref: 1b34d397c06238933b64503365fb5e39f02b3aca
 
       - uses: actions/setup-python@v5
         with:
