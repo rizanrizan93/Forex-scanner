@@ -223,7 +223,7 @@ def test_supervisor_uses_one_minute_non_overlap_dispatch():
     text = Path(".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
     assert "seq 1 5" in text
     assert "sleep 60" in text
-    assert "SUPERVISOR_FAST_SKIP_BUSY" in text
+    assert "SUPERVISOR_EXECUTION_SKIP_BUSY" in text
     assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
     assert "overlap_within_lane=DISABLED" in text
     assert "authority=SCHEDULE_5M" in text
