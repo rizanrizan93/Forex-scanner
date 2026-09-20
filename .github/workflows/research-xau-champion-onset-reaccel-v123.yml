@@ -1,0 +1,41 @@
+name: XAU Champion Onset Reaccel V123
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_champion_onset_reaccel_v123.py"
+      - "src/fx_scanner/research_xau_champion_onset_reaccel_v123_runtime.py"
+      - "tests/test_research_xau_champion_onset_reaccel_v123.py"
+      - ".github/workflows/research-xau-champion-onset-reaccel-v123.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      V123_EVIDENCE_OUTPUT: artifacts/xau-champion-onset-reaccel-v123.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit tests
+        run: pytest -q tests/test_research_xau_champion_onset_reaccel_v123.py
+      - name: Run V123
+        run: python -m fx_scanner.research_xau_champion_onset_reaccel_v123_runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-champion-onset-reaccel-v123
+          path: artifacts/xau-champion-onset-reaccel-v123.json
+          if-no-files-found: error
+          retention-days: 30
