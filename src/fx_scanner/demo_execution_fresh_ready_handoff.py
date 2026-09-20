@@ -6,6 +6,7 @@ from .demo_xau_expansion_v42 import STRATEGY_ID as XAU_EXPANSION_V42_STRATEGY_ID
 from .demo_xau_m15_ema_reversal_recovery import STRATEGY_ID as XAU_M15_EMA_REVERSAL_STRATEGY_ID
 from .demo_xau_m15_ema_smc_reclaim import STRATEGY_ID as XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
 from .demo_xau_m15_liquidity_sweep_fade import STRATEGY_ID as XAU_M15_SWEEP_FADE_STRATEGY_ID
+from .demo_xau_v24_champion_candidate_producer import STRATEGY_ID as XAU_V24_CHAMPION_STRATEGY_ID
 from .storage.supabase_operational import (
     OperationalStoreUnavailable,
     SupabaseOperationalStore,
@@ -14,16 +15,19 @@ from .storage.supabase_operational import (
 _ORIGINAL_INSTALL_FRESH = base.install_fresh_execution_ready_handoff
 
 # XAU DEMO execution authority is an exact strategy allowlist. The M15
-# EMA-SMC reclaim remains canonical for intraday execution, while the frozen
-# D1 TSMOM 60/EMA200 strategy is promoted for DEMO-forward evidence collection.
-# All other XAU strategies stay shadow-only.
+# EMA-SMC reclaim remains the independent canonical intraday baseline, while
+# XAU_V24_CHAMPION_DEMO_V1 is the exact champion portfolio identity containing
+# D1 staggered + M15 L12/L20. The standalone D1 strategy remains a shadow
+# comparator so the champion D1 leg cannot be duplicated at the broker.
 _XAU_CANONICAL_STRATEGY = XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
+_XAU_CHAMPION_STRATEGY = XAU_V24_CHAMPION_STRATEGY_ID
 _XAU_D1_TSMOM_STRATEGY = PAIR_STRATEGY_IDS["XAUUSD"]
 _XAU_DEMO_EXECUTION_STRATEGIES = frozenset(
-    {_XAU_CANONICAL_STRATEGY, _XAU_D1_TSMOM_STRATEGY}
+    {_XAU_CANONICAL_STRATEGY, _XAU_CHAMPION_STRATEGY}
 )
 _XAU_SHADOW_STRATEGIES = frozenset(
     {
+        _XAU_D1_TSMOM_STRATEGY,
         XAU_EXPANSION_V42_STRATEGY_ID,
         XAU_M15_EMA_REVERSAL_STRATEGY_ID,
         XAU_M15_SWEEP_FADE_STRATEGY_ID,
