@@ -179,7 +179,7 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert "fast_cadence_seconds=60" in text
     assert "discovery_check_seconds=60" in text
     assert "authority=SCHEDULE_5M" in text
-    assert "push_kick=SUPERVISOR_OR_AUTO_PIPELINE" in text
+    assert "push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE" in text
     assert "head_sha=${GITHUB_SHA}" in text
     assert "self_handoff=DISABLED" in text
     assert "CTRADER_DEMO_SUPERVISOR_HANDOFF" not in text
@@ -189,12 +189,13 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in text
     assert '"src/fx_scanner/demo_xau_v24_champion_candidate_producer.py"' in text
     assert "challengers=IMPULSE_RETEST_V2" in text
-    assert "SUPERVISOR_FAST_SKIP_BUSY" in text
+    assert "SUPERVISOR_EXECUTION_SKIP_BUSY" in text
     assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
     assert "active_count" in text
     assert "overlap_within_lane=DISABLED" in text
     assert "cross_lane=ENABLED" in text
-    assert "ctrader-demo-auto-pipeline.yml" in text
+    assert "ctrader-demo-xau-execution-lane.yml" in text
+    assert "ctrader-demo-maintenance-pipeline.yml" in text
     assert "ctrader-demo-discovery-pipeline.yml" in text
     assert "-f ref=main" in text
     assert "CTRADER_CLIENT_SECRET" not in text
