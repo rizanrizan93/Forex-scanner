@@ -624,13 +624,16 @@ def run() -> int:
                 )
             return context_by_day[day]
 
-        current_context = context_for(now.date())
         signal_day = (
             ensure_utc(closed_m15[-1].timestamp).date()
             if closed_m15
             else now.date()
         )
+        # Resolve the older M15 signal-day context first. Across the weekend this
+        # lets the current-day D1 context increment from that cache instead of
+        # performing two independent long-history bootstraps.
         signal_context = context_for(signal_day)
+        current_context = context_for(now.date())
 
         history = _latest_geometry_payloads(store)
         raw_candidates = [
