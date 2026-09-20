@@ -62,3 +62,19 @@ def test_fast_handoff_installs_bounded_demo_conviction_sizing():
     base = Path("src/fx_scanner/demo_fresh_ready_handoff.py").read_text(encoding="utf-8")
     assert "install_demo_conviction_sizing" in base
     assert "live_unlock=0" in base
+
+
+
+@pytest.mark.parametrize("setup_type", ["V24_D1", "V24_L12", "V24_L20"])
+def test_v24_champion_preserves_fixed_point_zero_one_lot_with_five_pct_ceiling(setup_type):
+    row = _row(60.0, 1.0, 2.0)
+    row["symbol"] = "XAUUSD"
+    row["setup_type"] = setup_type
+    sizing = select_demo_conviction_sizing(
+        row,
+        max_order_lots=0.50,
+        max_risk_pct=5.0,
+    )
+    assert sizing.tier == "V24_FIXED_001"
+    assert sizing.lots == 0.01
+    assert sizing.risk_budget_pct == 5.0
