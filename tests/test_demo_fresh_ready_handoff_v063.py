@@ -44,13 +44,18 @@ def test_auto_workflow_uses_pair_specific_fresh_handoff_wrapper():
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
 
 
-def test_xau_demo_handoff_exactly_allows_m15_and_frozen_d1_tsmom():
+def test_xau_demo_handoff_exactly_allows_m15_and_v24_champion():
     from fx_scanner.demo_execution_fresh_ready_handoff import (
         _ALLOWED_STRATEGIES_BY_SYMBOL,
+        _XAU_CHAMPION_STRATEGY,
         _XAU_D1_TSMOM_STRATEGY,
+        _XAU_SHADOW_STRATEGIES,
     )
     from fx_scanner.demo_xau_m15_ema_smc_reclaim import STRATEGY_ID as m15_strategy
+    from fx_scanner.demo_xau_v24_champion_candidate_producer import STRATEGY_ID as champion_strategy
 
     allowed = _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"]
+    assert _XAU_CHAMPION_STRATEGY == champion_strategy
     assert _XAU_D1_TSMOM_STRATEGY == "D1_TSMOM_60_200"
-    assert allowed == frozenset({"D1_TSMOM_60_200", m15_strategy})
+    assert allowed == frozenset({champion_strategy, m15_strategy})
+    assert _XAU_D1_TSMOM_STRATEGY in _XAU_SHADOW_STRATEGIES
