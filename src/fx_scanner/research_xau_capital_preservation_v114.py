@@ -46,11 +46,19 @@ class _Asof:
         return self.frame.iloc[i].to_dict()
 
 
+D1_ELIGIBLE_SPECIES=(
+    "BULL_STRUCTURAL_EXPANSION",
+    "BULL_SHOCK_EXPANSION",
+    "BEAR_STRUCTURAL_EXPANSION",
+    "BEAR_SHOCK_EXPANSION",
+)
+
+
 def _species_label(row:Mapping[str,Any]|None)->str|None:
     if row is None:
         return None
     label=str(row.get("species") or "UNCLASSIFIED")
-    return label
+    return label if label in D1_ELIGIBLE_SPECIES else None
 
 
 def _m15_label(row:Mapping[str,Any]|None)->str|None:
