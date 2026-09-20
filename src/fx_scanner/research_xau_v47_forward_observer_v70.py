@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from math import isfinite
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -230,7 +230,7 @@ def _evaluate_signal(
         context_rows,
         direction=str(signal.direction).upper(),
         atr_value=float(signal.atr),
-        as_of=signal_at.replace(tzinfo=UTC) + __import__("datetime").timedelta(minutes=15),
+        as_of=signal_at + timedelta(minutes=15),
     )
 
     target = (
