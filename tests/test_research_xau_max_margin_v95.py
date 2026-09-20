@@ -1,0 +1,8 @@
+from fx_scanner.research_xau_max_margin_v95 import STARTING_BALANCE_USD,ACCOUNT_LEVERAGE,MIN_LOT,LOT_STEP,MAX_LOT,POLICY_EFFECT,EXECUTION_INFLUENCE,PROMOTION_ELIGIBLE
+def test_v95_contract():
+    assert STARTING_BALANCE_USD==100.0
+    assert ACCOUNT_LEVERAGE==100.0
+    assert MIN_LOT==0.01 and LOT_STEP==0.01 and MAX_LOT==0.50
+    assert POLICY_EFFECT=="SHADOW_ONLY"
+    assert EXECUTION_INFLUENCE is False
+    assert PROMOTION_ELIGIBLE is False
