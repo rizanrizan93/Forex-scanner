@@ -1,0 +1,7 @@
+from fx_scanner.research_xau_m15_forward_witness_v108 import M15_WITNESS_STRATEGIES,D1_STRATEGIES,POLICY_EFFECT,EXECUTION_INFLUENCE,PROMOTION_ELIGIBLE
+def test_v108_contract():
+    assert M15_WITNESS_STRATEGIES==("M15_L12","M15_L20")
+    assert D1_STRATEGIES==("D1_STAGGERED",)
+    assert POLICY_EFFECT=="SHADOW_ONLY"
+    assert EXECUTION_INFLUENCE is False
+    assert PROMOTION_ELIGIBLE is False
