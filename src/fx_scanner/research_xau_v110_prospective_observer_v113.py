@@ -239,7 +239,7 @@ def evaluate_v113(
         "v99_d1_species":d1_label,
         "v99_quality_score":None if species_row is None else species_row.get("quality_score"),
         "v98_state":None if exceptional_row is None else exceptional_row.get("state"),
-        "v98_expansion_score":None if exceptional_row is None else exceptional_row.get("state_score"),
+        "v98_expansion_score":None if exceptional_row is None else exceptional_row.get("era_score"),
         "m15_unanimous_extreme":bool(exceptional_row.get("unanimous_extreme_expansion")) if exceptional_row is not None else False,
         "m15_state_label":m15_label,
         "last_v87_change_point":last_cp,
