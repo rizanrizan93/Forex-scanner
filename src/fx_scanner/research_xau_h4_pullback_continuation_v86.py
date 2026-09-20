@@ -14,6 +14,7 @@ from .research_xau_hierarchical_regime_router_v35 import (
     _max_losing_streak,
     _period,
     _resample_completed,
+    _wilder_atr,
 )
 from .research_xau_m15_dual_strategy import M15ResearchCosts
 from .research_xau_multihorizon_100usd_v20 import _trading_dates
@@ -61,6 +62,7 @@ def build_h4_context(rows: Sequence[Bar]) -> pd.DataFrame:
     h4["ema200"] = h4["close"].ewm(
         span=H4_EMA_SLOW, adjust=False, min_periods=H4_EMA_SLOW
     ).mean()
+    h4["atr14"] = _wilder_atr(h4, 14)
     return h4
 
 
@@ -182,7 +184,12 @@ def _simulate(
         if entry_cost_r > COST_R_CAP:
             continue
 
+        atr_signal = float(current.get("atr14", np.nan))
+        if not isfinite(atr_signal) or atr_signal <= 0.0:
+            continue
+
         target = entry + side * TARGET_R * risk
+        entry_at = signal_at
         last_i = min(len(h4) - 1, entry_i + MAX_HOLD_H4_BARS)
         trade: TournamentTrade | None = None
 
@@ -217,13 +224,13 @@ def _simulate(
                     str(rows[0].symbol),
                     "LONG" if side > 0 else "SHORT",
                     signal_at,
-                    ensure_utc(h4.iloc[entry_i]["time"]),
+                    entry_at,
                     ensure_utc(row["time"]),
                     i,
                     j,
                     entry,
                     stop,
-                    risk,
+                    atr_signal,
                     stop,
                     target,
                     gross_r,
@@ -241,13 +248,13 @@ def _simulate(
                     str(rows[0].symbol),
                     "LONG" if side > 0 else "SHORT",
                     signal_at,
-                    ensure_utc(h4.iloc[entry_i]["time"]),
+                    entry_at,
                     ensure_utc(row["time"]),
                     i,
                     j,
                     entry,
                     target,
-                    risk,
+                    atr_signal,
                     stop,
                     target,
                     gross_r,
@@ -278,13 +285,13 @@ def _simulate(
                 str(rows[0].symbol),
                 "LONG" if side > 0 else "SHORT",
                 signal_at,
-                ensure_utc(h4.iloc[entry_i]["time"]),
+                entry_at,
                 ensure_utc(row["time"]),
                 i,
                 last_i,
                 entry,
                 exit_price,
-                risk,
+                atr_signal,
                 stop,
                 target,
                 gross_r,
