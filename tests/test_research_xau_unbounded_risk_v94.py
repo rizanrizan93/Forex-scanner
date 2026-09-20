@@ -1,0 +1,7 @@
+from fx_scanner.research_xau_unbounded_risk_v94 import LOT_MODES,VARIANTS,POLICY_EFFECT,EXECUTION_INFLUENCE,PROMOTION_ELIGIBLE
+def test_v94_contract():
+    assert LOT_MODES==("FIXED_001","BALANCE_STEP_100")
+    assert VARIANTS==("V87_NEXT_OPEN","V91_DISPLACEMENT_50_RETEST_4")
+    assert POLICY_EFFECT=="SHADOW_ONLY"
+    assert EXECUTION_INFLUENCE is False
+    assert PROMOTION_ELIGIBLE is False
