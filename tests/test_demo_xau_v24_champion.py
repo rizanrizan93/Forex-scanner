@@ -96,3 +96,15 @@ def test_v24_time_exit_contracts_match_research_horizons():
     assert _COMPONENT_CONTRACTS[D1_COMPONENT] == ("D1", 86400, 30)
     assert _COMPONENT_CONTRACTS[L12_COMPONENT] == ("M15", 900, 16)
     assert _COMPONENT_CONTRACTS[L20_COMPONENT] == ("M15", 900, 16)
+
+
+
+def test_v24_forward_adapter_is_demo_only_and_has_no_live_unlock():
+    from pathlib import Path
+
+    source = Path("src/fx_scanner/demo_xau_v24_champion_candidate_producer.py").read_text()
+    workflow = Path(".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
+    assert 'mode="DEMO_ONLY"' in source
+    assert '"live_execution_enabled": False' in source
+    assert "FX_LIVE_TRADING_ENABLED" not in workflow
+    assert "I_UNDERSTAND_LIVE_ORDERS" not in workflow
