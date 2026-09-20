@@ -15,7 +15,7 @@ from .research_xau_changepoint_reset_router_v87 import (
     _trailing_health,
     detect_change_points,
 )
-from .research_xau_era_fingerprint_v97 import build_fingerprint_frame\nfrom .research_xau_changepoint_reset_router_v87 import build_regime_feature_frame
+from .research_xau_changepoint_reset_router_v87 import build_regime_feature_frame
 from .research_xau_era_robustness_v31 import _dedupe_with_classic
 from .research_xau_expansion_species_v99 import build_species_frame
 from .research_xau_margin_leverage_v21 import LeverageTier
