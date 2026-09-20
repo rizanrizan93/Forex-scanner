@@ -15,6 +15,7 @@ def test_supervisor_keeps_bounded_one_minute_cadence_without_recursive_handoff()
     assert "for cycle in $(seq 1 5)" in text
     assert "sleep 60" in text
     assert "fast_cadence_seconds=60" in text
+    assert "maintenance_cadence_seconds=300" in text
     assert "discovery_check_seconds=60" in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
@@ -28,7 +29,9 @@ def test_supervisor_keeps_bounded_one_minute_cadence_without_recursive_handoff()
     assert "push:" in text
     assert '".github/workflows/ctrader-demo-auto-supervisor.yml"' in text
     assert '".github/workflows/ctrader-demo-auto-pipeline.yml"' in text
-    assert "push_kick=SUPERVISOR_OR_AUTO_PIPELINE" in text
+    assert '".github/workflows/ctrader-demo-xau-execution-lane.yml"' in text
+    assert '".github/workflows/ctrader-demo-maintenance-pipeline.yml"' in text
+    assert "push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE" in text
     assert "head_sha=${GITHUB_SHA}" in text
     assert 'cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 0-5"' in text
     assert "market_open_utc" in text
