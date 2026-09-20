@@ -20,7 +20,7 @@ def test_legacy_schedule_helper_preserves_configured_weekday_universe():
         cfg,
         now=datetime(2026, 9, 4, 12, 0, tzinfo=UTC),
     )
-    assert mode == "WEEKDAY_FULL_24X5"
+    assert mode == "FOREX_WEEK_FULL_24X5"
     assert len(cfg.pairs) == 20
     assert len(scheduled.pairs) == 20
 
@@ -38,6 +38,39 @@ def test_legacy_schedule_helper_still_exposes_crypto_weekend_contract(when):
     assert mode == "WEEKEND_CRYPTO_BROKER_GATED"
     assert {pair.symbol for pair in scheduled.pairs} == CRYPTO_WEEKEND_SYMBOLS
     assert CRYPTO_WEEKEND_SYMBOLS == {"BTCUSD", "ETHUSD", "SOLUSD"}
+
+
+def test_sunday_forex_reopen_switches_back_to_full_universe():
+    cfg = load_project_config(None)
+    before, before_mode = apply_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 9, 6, 20, 59, tzinfo=UTC),
+    )
+    reopened, reopened_mode = apply_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 9, 6, 21, 0, tzinfo=UTC),
+    )
+    assert before_mode == "WEEKEND_CRYPTO_BROKER_GATED"
+    assert {pair.symbol for pair in before.pairs} == CRYPTO_WEEKEND_SYMBOLS
+    assert reopened_mode == "FOREX_WEEK_FULL_24X5"
+    assert len(reopened.pairs) == 20
+    assert "XAUUSD" in {pair.symbol for pair in reopened.pairs}
+
+
+def test_friday_forex_close_switches_to_crypto_only():
+    cfg = load_project_config(None)
+    before, before_mode = apply_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 9, 4, 21, 59, tzinfo=UTC),
+    )
+    after, after_mode = apply_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 9, 4, 22, 0, tzinfo=UTC),
+    )
+    assert before_mode == "FOREX_WEEK_FULL_24X5"
+    assert len(before.pairs) == 20
+    assert after_mode == "WEEKEND_CRYPTO_BROKER_GATED"
+    assert {pair.symbol for pair in after.pairs} == CRYPTO_WEEKEND_SYMBOLS
 
 
 def test_schedule_requires_timezone_aware_clock():
