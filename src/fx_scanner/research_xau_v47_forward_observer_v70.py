@@ -47,6 +47,12 @@ from .research_xau_v47_forward_telemetry_v72 import (
     ARTIFACT_CONTRACT as TELEMETRY_ARTIFACT_CONTRACT,
     TELEMETRY_CONTRACT,
 )
+from .research_xau_v47_target_credibility_v74 import build_d1_range_context
+from .research_xau_v47_target_forward_freeze_v77 import (
+    ARTIFACT_CONTRACT as TARGET_FREEZE_ARTIFACT_CONTRACT,
+    FORWARD_CONTRACT as TARGET_FORWARD_CONTRACT,
+    PROSPECTIVE_EPOCH as TARGET_PROSPECTIVE_EPOCH,
+)
 from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
@@ -203,6 +209,7 @@ def _evaluate_signal(
     structure_lookup: _Asof,
     volatility_lookup: _Asof,
     skew_lookup: _Asof,
+    d1_range_lookup: _Asof,
     candidate_history,
     trading_dates,
 ) -> dict[str, Any] | None:
@@ -234,6 +241,7 @@ def _evaluate_signal(
     structure = structure_lookup.row(signal_at)
     volatility = volatility_lookup.row(signal_at)
     skew = skew_lookup.row(signal_at)
+    d1_range = d1_range_lookup.row(signal_at)
     if d1 is None or h1 is None:
         return None
 
@@ -269,6 +277,28 @@ def _evaluate_signal(
         if str(signal.direction).upper() == "LONG"
         else entry_price - float(signal.reward_r) * risk_price
     )
+
+    prior60_d1_median_range = (
+        None
+        if d1_range is None
+        else _finite_or_none(d1_range.get("range_median60"))
+    )
+    target_distance = abs(float(target) - float(entry_price))
+    target_to_prior60_d1_median = (
+        None
+        if prior60_d1_median_range is None or prior60_d1_median_range <= 0.0
+        else target_distance / prior60_d1_median_range
+    )
+    if signal_at < TARGET_PROSPECTIVE_EPOCH:
+        target_forward_group = "BEFORE_V77_EPOCH"
+    elif not bool(route_ok and family_gate_active):
+        target_forward_group = "V47_NOT_APPROVED"
+    elif target_to_prior60_d1_median is None:
+        target_forward_group = "UNAVAILABLE"
+    elif target_to_prior60_d1_median > 0.75:
+        target_forward_group = "TARGET_GT_0_75"
+    else:
+        target_forward_group = "TARGET_LE_0_75"
 
     return {
         "family": family,
@@ -384,6 +414,18 @@ def _evaluate_signal(
             "confluence_count": int(ict.confluence_count),
             "reasons": list(ict.reasons),
         },
+        "target_credibility": {
+            "contract": TARGET_FREEZE_ARTIFACT_CONTRACT,
+            "forward_contract": TARGET_FORWARD_CONTRACT,
+            "prospective_epoch": TARGET_PROSPECTIVE_EPOCH.isoformat(),
+            "prior60_completed_d1_median_range": prior60_d1_median_range,
+            "target_distance": target_distance,
+            "target_to_prior60_d1_median": target_to_prior60_d1_median,
+            "target_forward_group": target_forward_group,
+            "changes_entry": False,
+            "changes_stop": False,
+            "changes_target": False,
+        },
         "primary_forward_group": (
             "SWEEP"
             if bool(route_ok and family_gate_active and ict.swept_liquidity)
@@ -410,11 +452,13 @@ def evaluate_forward_observer(
     structure_context = build_h1_structure_context(bars)
     volatility_context = build_h1_volatility_context(bars)
     skew_context = build_prior_day_skew_context(bars)
+    d1_range_context = build_d1_range_context(bars)
     d1_lookup = _Asof(d1_context)
     h1_lookup = _Asof(h1_context)
     structure_lookup = _Asof(structure_context)
     volatility_lookup = _Asof(volatility_context)
     skew_lookup = _Asof(skew_context)
+    d1_range_lookup = _Asof(d1_range_context)
     trading_dates = _trading_dates(
         bars,
         start=ensure_utc(bars[0].timestamp),
@@ -452,6 +496,7 @@ def evaluate_forward_observer(
                 structure_lookup=structure_lookup,
                 volatility_lookup=volatility_lookup,
                 skew_lookup=skew_lookup,
+                d1_range_lookup=d1_range_lookup,
                 candidate_history=history[family],
                 trading_dates=trading_dates,
             )
@@ -482,6 +527,14 @@ def evaluate_forward_observer(
             "v47_approved": sum(int(row["v47_approved"]) for row in evaluations),
             "sweep": sum(int(row["primary_forward_group"] == "SWEEP") for row in evaluations),
             "non_sweep": sum(int(row["primary_forward_group"] == "NON_SWEEP") for row in evaluations),
+            "target_gt_0_75": sum(
+                int(row.get("target_credibility", {}).get("target_forward_group") == "TARGET_GT_0_75")
+                for row in evaluations
+            ),
+            "target_le_0_75": sum(
+                int(row.get("target_credibility", {}).get("target_forward_group") == "TARGET_LE_0_75")
+                for row in evaluations
+            ),
         },
     }
 
