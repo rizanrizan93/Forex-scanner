@@ -4,6 +4,7 @@ from fx_scanner.demo_conviction_sizing import select_demo_conviction_sizing
 from fx_scanner.demo_execution_fresh_ready_handoff import (
     _ALLOWED_STRATEGIES_BY_SYMBOL,
     _XAU_CANONICAL_STRATEGY,
+    _XAU_D1_TSMOM_STRATEGY,
     _XAU_SHADOW_STRATEGIES,
 )
 from fx_scanner.demo_five_core_router import (
@@ -40,13 +41,14 @@ def test_five_core_execution_registry_is_exact_and_pair_specific():
     assert "USDJPY" not in _ALLOWED_STRATEGIES_BY_SYMBOL
     assert "GBPUSD" not in _ALLOWED_STRATEGIES_BY_SYMBOL
 
-    # The five-core registry can keep XAU research identity, but broker handoff
-    # now has one canonical XAU authority approved for DEMO execution.
+    # Broker handoff has an exact two-strategy XAU DEMO allowlist: canonical
+    # M15 plus the frozen D1 TSMOM core promoted for forward collection.
     assert _XAU_CANONICAL_STRATEGY == XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
+    assert _XAU_D1_TSMOM_STRATEGY == PAIR_STRATEGY_IDS["XAUUSD"]
     assert _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"] == frozenset(
-        {XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID}
+        {XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID, PAIR_STRATEGY_IDS["XAUUSD"]}
     )
-    assert PAIR_STRATEGY_IDS["XAUUSD"] in _XAU_SHADOW_STRATEGIES
+    assert PAIR_STRATEGY_IDS["XAUUSD"] not in _XAU_SHADOW_STRATEGIES
     assert XAU_M15_EMA_REVERSAL_STRATEGY_ID in _XAU_SHADOW_STRATEGIES
     assert XAU_M15_SWEEP_FADE_STRATEGY_ID in _XAU_SHADOW_STRATEGIES
     assert _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"].isdisjoint(_XAU_SHADOW_STRATEGIES)
@@ -68,6 +70,7 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     handoff = (ROOT / "src/fx_scanner/demo_execution_fresh_ready_handoff.py").read_text()
 
     assert "demo_execution_fast_candidate_producer" not in auto
+    assert "demo_xau_d1_tsmom_candidate_producer" in auto
     assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in auto
     assert "demo_execution_fresh_ready_handoff" in auto
     assert "demo_xau_canonical_position_manager" in auto
@@ -92,6 +95,6 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in discovery
     assert "universe=XAUUSD" in supervisor
     assert "universe=XAUUSD,EURUSD" not in supervisor
-    assert "strategies=XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor
+    assert "strategies=D1_TSMOM_60_200,XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor
     assert "FX_LIVE_TRADING_ENABLED" not in auto
     assert "I_UNDERSTAND_LIVE_ORDERS" not in auto

@@ -71,8 +71,9 @@ def test_active_xau_supervisor_runs_one_minute_checks_without_weekend_crypto_fal
     assert "discovery_check_seconds=60" in supervisor
     assert "universe=XAUUSD" in supervisor
     assert "universe=XAUUSD,EURUSD" not in supervisor
-    assert "strategies=XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor
+    assert "strategies=D1_TSMOM_60_200,XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor
     assert "demo_execution_fast_candidate_producer" not in fast
+    assert "demo_xau_d1_tsmom_candidate_producer" in fast
     assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in fast
     assert "demo_xau_technical_producer" in discovery
     assert "demo_crypto_broker_preflight" not in discovery

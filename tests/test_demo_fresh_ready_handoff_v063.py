@@ -42,3 +42,15 @@ def test_auto_workflow_uses_pair_specific_fresh_handoff_wrapper():
     assert "python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10" in text
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
+
+
+def test_xau_demo_handoff_exactly_allows_m15_and_frozen_d1_tsmom():
+    from fx_scanner.demo_execution_fresh_ready_handoff import (
+        _ALLOWED_STRATEGIES_BY_SYMBOL,
+        _XAU_D1_TSMOM_STRATEGY,
+    )
+    from fx_scanner.demo_xau_m15_ema_smc_reclaim import STRATEGY_ID as m15_strategy
+
+    allowed = _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"]
+    assert _XAU_D1_TSMOM_STRATEGY == "D1_TSMOM_60_200"
+    assert allowed == frozenset({"D1_TSMOM_60_200", m15_strategy})

@@ -18,7 +18,7 @@ def test_supervisor_keeps_bounded_one_minute_cadence_without_recursive_handoff()
     assert "discovery_check_seconds=60" in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
-    assert "strategies=XAU_M15_EMA_SMC_RECLAIM_V1" in text
+    assert "strategies=D1_TSMOM_60_200,XAU_M15_EMA_SMC_RECLAIM_V1" in text
     assert "cancel-in-progress: false" in text
     assert "authority=SCHEDULE_5M" in text
     assert "self_handoff=DISABLED" in text
@@ -45,6 +45,7 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
 
     assert "cancel-in-progress: false" in fast
     assert "python -m fx_scanner.demo_execution_fast_candidate_producer" not in fast
+    assert "python -m fx_scanner.demo_xau_d1_tsmom_candidate_producer" in fast
     assert "python -m fx_scanner.demo_xau_m15_ema_smc_reclaim_candidate_producer" in fast
     assert "python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10" in fast
     assert "python -m fx_scanner.demo_five_core_time_exit" in fast

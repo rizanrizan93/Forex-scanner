@@ -13,14 +13,17 @@ from .storage.supabase_operational import (
 
 _ORIGINAL_INSTALL_FRESH = base.install_fresh_execution_ready_handoff
 
-# XAU has one canonical DEMO execution authority. Legacy/promoted XAU models keep
-# producing forward evidence, but their EXECUTION_READY rows are intentionally
-# excluded from broker handoff until a future promotion decision explicitly
-# changes this contract.
+# XAU DEMO execution authority is an exact strategy allowlist. The M15
+# EMA-SMC reclaim remains canonical for intraday execution, while the frozen
+# D1 TSMOM 60/EMA200 strategy is promoted for DEMO-forward evidence collection.
+# All other XAU strategies stay shadow-only.
 _XAU_CANONICAL_STRATEGY = XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
+_XAU_D1_TSMOM_STRATEGY = PAIR_STRATEGY_IDS["XAUUSD"]
+_XAU_DEMO_EXECUTION_STRATEGIES = frozenset(
+    {_XAU_CANONICAL_STRATEGY, _XAU_D1_TSMOM_STRATEGY}
+)
 _XAU_SHADOW_STRATEGIES = frozenset(
     {
-        PAIR_STRATEGY_IDS["XAUUSD"],
         XAU_EXPANSION_V42_STRATEGY_ID,
         XAU_M15_EMA_REVERSAL_STRATEGY_ID,
         XAU_M15_SWEEP_FADE_STRATEGY_ID,
@@ -29,7 +32,7 @@ _XAU_SHADOW_STRATEGIES = frozenset(
 
 _EXECUTION_SYMBOLS = frozenset({"XAUUSD"})
 _ALLOWED_STRATEGIES_BY_SYMBOL = {
-    "XAUUSD": frozenset({_XAU_CANONICAL_STRATEGY}),
+    "XAUUSD": _XAU_DEMO_EXECUTION_STRATEGIES,
 }
 
 # Backward-compatible XAU-only aliases retained for existing observers/tests.
@@ -88,7 +91,7 @@ def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
 
 
 def main() -> int:
-    """Execute only fresh, exact authorized pair-specific DEMO strategy signals."""
+    """Execute only fresh, exact authorized XAU DEMO strategy signals."""
     base.install_fresh_execution_ready_handoff = _install_five_core_identity_filter
     return base.main()
 

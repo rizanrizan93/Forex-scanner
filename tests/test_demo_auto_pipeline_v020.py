@@ -10,10 +10,14 @@ def test_demo_auto_pipeline_is_dispatch_only_xauusd_fast_lane_and_demo_only():
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
     assert "demo_execution_fast_candidate_producer" not in text
+    assert "demo_xau_d1_tsmom_candidate_producer" in text
     assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in text
     assert "demo_execution_fresh_ready_handoff --limit 10" in text
     assert "demo_xau_canonical_position_manager" in text
     assert "demo_five_core_time_exit" in text
+    assert text.index("demo_xau_d1_tsmom_candidate_producer") < text.index(
+        "demo_execution_fresh_ready_handoff"
+    )
     assert text.index("demo_xau_m15_ema_smc_reclaim_candidate_producer") < text.index(
         "demo_execution_fresh_ready_handoff"
     )
@@ -57,6 +61,7 @@ def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_shadow_p
     text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
 
     assert "id: produce_five_core" not in text
+    assert "id: produce_xau_d1_tsmom" in text
     assert "id: produce_xau_v42" in text
     assert "id: produce_xau_m15_reversal" in text
     assert "id: produce_xau_m15_ema_smc_reclaim" in text
@@ -74,7 +79,9 @@ def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_shadow_p
     handoff = text.split("- name: Execute all fresh strategy-authorized DEMO signals", 1)[1]
     handoff = handoff.split("- name: Manage canonical XAU filled positions", 1)[0]
     assert "steps.produce_five_core.outcome == 'success'" not in handoff
+    assert "steps.produce_xau_d1_tsmom.outcome == 'success'" in handoff
     assert "steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success'" in handoff
+    assert "||" in handoff
     assert "steps.produce_euraud_gbpaud.outcome == 'success'" not in handoff
     assert "steps.repair_existing_protection.outcome == 'success'" in handoff
     assert "steps.produce_xau_v42.outcome == 'success'" not in handoff
@@ -178,7 +185,8 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" not in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
-    assert "strategies=XAU_M15_EMA_SMC_RECLAIM_V1" in text
+    assert "strategies=D1_TSMOM_60_200,XAU_M15_EMA_SMC_RECLAIM_V1" in text
+    assert '"src/fx_scanner/demo_xau_d1_tsmom_candidate_producer.py"' in text
     assert "challengers=IMPULSE_RETEST_V2" in text
     assert "SUPERVISOR_FAST_SKIP_BUSY" in text
     assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
