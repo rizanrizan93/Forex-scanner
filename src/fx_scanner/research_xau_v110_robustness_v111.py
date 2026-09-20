@@ -8,7 +8,6 @@ from .models import Bar, ensure_utc
 from .research_xau_100usd_stopout_v23 import _cash_path_stopout_safe
 from .research_xau_changepoint_reset_router_v87 import build_regime_feature_frame, detect_change_points
 from .research_xau_expansion_species_v99 import build_species_frame
-from .research_xau_hierarchical_regime_router_v35_runtime import BROKER_SPEC, LEVERAGE_TIERS
 from .research_xau_era_robustness_v31 import _dedupe_with_classic
 from .research_xau_multihorizon_100usd_v20 import _limit_concurrency, _trading_dates
 from .research_xau_causal_era_selector_v98 import (
@@ -123,6 +122,9 @@ def evaluate_v111(
         y2025=datetime(2025,1,1,tzinfo=start.tzinfo)
         cash_2025=None
         if y2025<end:
+            # Keep optional market-data runtime dependencies out of import-time
+            # paths used by the pure selector and the normal unit-test suite.
+            from .research_xau_hierarchical_regime_router_v35_runtime import BROKER_SPEC, LEVERAGE_TIERS
             trades_2025=_period(selector_all,y2025,end)
             dates_2025=_trading_dates(bars,start=y2025,end=end)
             cash_2025=_cash_path_stopout_safe(
