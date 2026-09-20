@@ -1,0 +1,30 @@
+name: XAU V47 Target Forward Freeze V77
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_v47_target_forward_freeze_v77.py"
+      - "tests/test_research_xau_v47_target_forward_freeze_v77.py"
+      - ".github/workflows/research-xau-v47-target-forward-freeze-v77.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
+      - name: Validate frozen contract
+        run: pytest -q tests/test_research_xau_v47_target_forward_freeze_v77.py
