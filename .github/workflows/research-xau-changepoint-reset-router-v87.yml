@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: research-xau-changepoint-reset-router-v87-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   diagnostic:
     runs-on: ubuntu-latest
