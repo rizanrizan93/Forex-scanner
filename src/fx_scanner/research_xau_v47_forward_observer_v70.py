@@ -52,7 +52,7 @@ LIVE_EXECUTION_ENABLED = False
 SYMBOL = "XAUUSD"
 EVENT_TYPE = "DEMO_XAU_V47_FORWARD_EVALUATION"
 WORKER_NAME = "ctrader_demo_xau_v47_forward_observer_v70"
-HISTORY_BARS = 60_000
+HISTORY_BARS = 45_000
 PIP_SIZE = 0.01
 
 # Freeze exact historical stress assumptions so the prospective eligibility
@@ -125,16 +125,21 @@ def _family_variant_map() -> dict[str, Any]:
     }
 
 
-def _already_recorded(store: Any, signal_key: str) -> bool:
+def _existing_signal_keys(store: Any) -> set[str]:
     response = (
         store.client.table("broker_order_events")
-        .select("id")
-        .eq("signal_key", signal_key)
+        .select("signal_key")
         .eq("event_type", EVENT_TYPE)
-        .limit(1)
+        .eq("code", RESEARCH_VERSION)
+        .order("observed_at", desc=False)
+        .limit(5000)
         .execute()
     )
-    return bool(response.data or [])
+    return {
+        str(row["signal_key"])
+        for row in (response.data or [])
+        if row.get("signal_key")
+    }
 
 
 def _signal_key(family: str, signal: BreakoutSignal) -> str:
@@ -406,6 +411,7 @@ def run() -> int:
         raise SystemExit("V70_CTRADER_ACCOUNT_LABEL_REQUIRED")
 
     persisted = 0
+    existing_keys = _existing_signal_keys(store)
     for evaluation in result["evaluations"]:
         signal = BreakoutSignal(
             variant_id=str(evaluation["variant_id"]),
@@ -418,7 +424,7 @@ def run() -> int:
             reward_r=float(evaluation["reward_r"]),
         )
         key = _signal_key(str(evaluation["family"]), signal)
-        if _already_recorded(store, key):
+        if key in existing_keys:
             continue
         store.record_order_event(
             backend="CTRADER",
@@ -439,6 +445,7 @@ def run() -> int:
                 "code_version": os.getenv("GITHUB_SHA", "LOCAL"),
             },
         )
+        existing_keys.add(key)
         persisted += 1
 
     result["persisted_new_events"] = persisted
