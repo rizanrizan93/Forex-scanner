@@ -1,0 +1,146 @@
+name: cTrader Demo Maintenance Pipeline
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-demo-maintenance-pipeline
+  cancel-in-progress: false
+
+jobs:
+  protection-and-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      FX_KILL_SWITCH: "0"
+      CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
+      CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "0"
+      CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"
+      CTRADER_DEMO_XAU_V42_PROFIT_LOCK_ENABLED: "1"
+      CTRADER_DEMO_XAU_CANONICAL_POSITION_MANAGER_ENABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install cTrader runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Record maintenance running
+        continue-on-error: true
+        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_maintenance_pipeline RUNNING
+
+      - name: Repair missing SL/TP on scanner-linked DEMO positions
+        id: repair_existing_protection
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_existing_protection_repair
+
+      - name: Manage canonical XAU filled positions
+        id: xau_canonical_manager
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_canonical_position_manager
+
+      - name: Enforce XAU V24 champion component max-hold exits
+        id: xau_v24_time_exit
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v24_champion_time_exit
+
+      - name: Evaluate XAU Expansion V4.2 shadow evidence
+        id: produce_xau_v42
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_expansion_v42_candidate_producer
+      - name: Evaluate XAU M15 EMA reversal/recovery shadow evidence
+        id: produce_xau_m15_reversal
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_m15_ema_reversal_candidate_producer
+      - name: Evaluate XAU M15 liquidity-sweep fade shadow evidence
+        id: produce_xau_m15_sweep_fade
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_m15_liquidity_sweep_fade_candidate_producer
+
+      - name: Enforce pair-specific max-hold exits
+        id: pair_time_exit
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_five_core_time_exit
+      - name: Apply EURAUD and GBPAUD completed-D1 Chandelier stops
+        id: euraud_gbpaud_chandelier
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_euraud_gbpaud_chandelier
+      - name: Enforce legacy XAU Expansion V4.2 seven-D1-bar max-hold exit
+        id: xau_v42_time_exit
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_expansion_v42_time_exit
+      - name: Apply legacy XAU Expansion V4.2 completed-H1 deferred profit lock
+        id: xau_v42_profit_lock
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v42_deferred_profit_lock
+      - name: Keep legacy adaptive profit lock disabled for fixed-exit D1 strategy
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_adaptive_profit_lock
+      - name: Keep legacy structural profit protector disabled
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_structural_profit_protector
+
+      - name: Assert maintenance critical stages
+        if: ${{ always() && !cancelled() }}
+        shell: bash
+        env:
+          REPAIR_OUTCOME: ${{ steps.repair_existing_protection.outcome }}
+          XAU_CANONICAL_MANAGER_OUTCOME: ${{ steps.xau_canonical_manager.outcome }}
+          XAU_V24_TIME_EXIT_OUTCOME: ${{ steps.xau_v24_time_exit.outcome }}
+          PAIR_EXIT_OUTCOME: ${{ steps.pair_time_exit.outcome }}
+          CHANDELIER_OUTCOME: ${{ steps.euraud_gbpaud_chandelier.outcome }}
+          XAU_EXIT_OUTCOME: ${{ steps.xau_v42_time_exit.outcome }}
+          XAU_LOCK_OUTCOME: ${{ steps.xau_v42_profit_lock.outcome }}
+        run: |
+          set -euo pipefail
+          failed=0
+          for item in             "REPAIR:${REPAIR_OUTCOME}"             "XAU_CANONICAL_MANAGER:${XAU_CANONICAL_MANAGER_OUTCOME}"             "XAU_V24_TIME_EXIT:${XAU_V24_TIME_EXIT_OUTCOME}"             "PAIR_EXIT:${PAIR_EXIT_OUTCOME}"             "CHANDELIER:${CHANDELIER_OUTCOME}"             "XAU_EXIT:${XAU_EXIT_OUTCOME}"             "XAU_LOCK:${XAU_LOCK_OUTCOME}"; do
+            stage="${item%%:*}"
+            outcome="${item#*:}"
+            if [ "${outcome}" != "success" ]; then
+              echo "CTRADER_DEMO_MAINTENANCE_FAIL stage=${stage} outcome=${outcome}"
+              failed=1
+            fi
+          done
+          if [ "${failed}" -ne 0 ]; then
+            exit 1
+          fi
+          echo "CTRADER_DEMO_MAINTENANCE_CRITICAL_STAGES_OK"
+
+      - name: Record maintenance success
+        if: success()
+        continue-on-error: true
+        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_maintenance_pipeline SUCCESS
+      - name: Record maintenance failure
+        if: failure()
+        continue-on-error: true
+        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_maintenance_pipeline FAILED

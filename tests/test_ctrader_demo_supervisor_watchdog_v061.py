@@ -43,5 +43,7 @@ def test_watchdog_push_kick_tracks_control_plane_changes_and_sha() -> None:
     assert '".github/workflows/ctrader-demo-auto-supervisor-watchdog.yml"' in text
     assert '".github/workflows/ctrader-demo-auto-supervisor.yml"' in text
     assert '".github/workflows/ctrader-demo-auto-pipeline.yml"' in text
-    assert "push_kick=WATCHDOG_SUPERVISOR_OR_AUTO_PIPELINE" in text
+    assert '".github/workflows/ctrader-demo-xau-execution-lane.yml"' in text
+    assert '".github/workflows/ctrader-demo-maintenance-pipeline.yml"' in text
+    assert "push_kick=WATCHDOG_SUPERVISOR_EXECUTION_OR_MAINTENANCE" in text
     assert "head_sha=${GITHUB_SHA}" in text

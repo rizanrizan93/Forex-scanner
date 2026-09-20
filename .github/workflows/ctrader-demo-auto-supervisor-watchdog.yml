@@ -14,6 +14,8 @@ on:
       - ".github/workflows/ctrader-demo-auto-supervisor-watchdog.yml"
       - ".github/workflows/ctrader-demo-auto-supervisor.yml"
       - ".github/workflows/ctrader-demo-auto-pipeline.yml"
+      - ".github/workflows/ctrader-demo-xau-execution-lane.yml"
+      - ".github/workflows/ctrader-demo-maintenance-pipeline.yml"
 
 permissions:
   actions: write
@@ -77,7 +79,7 @@ jobs:
             exit 0
           fi
 
-          echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} window_cycles=${window_cycles} cadence_seconds=${cadence_seconds} authority=RECOVERY_ONLY execution_authority=NONE push_kick=WATCHDOG_SUPERVISOR_OR_AUTO_PIPELINE"
+          echo "CTRADER_DEMO_SUPERVISOR_WATCHDOG_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} window_cycles=${window_cycles} cadence_seconds=${cadence_seconds} authority=RECOVERY_ONLY execution_authority=NONE push_kick=WATCHDOG_SUPERVISOR_EXECUTION_OR_MAINTENANCE"
 
           for cycle in $(seq 1 "${window_cycles}"); do
             if ! market_open_utc; then

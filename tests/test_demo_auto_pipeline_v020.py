@@ -179,7 +179,7 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert "fast_cadence_seconds=60" in text
     assert "discovery_check_seconds=60" in text
     assert "authority=SCHEDULE_5M" in text
-    assert "push_kick=SUPERVISOR_OR_AUTO_PIPELINE" in text
+    assert "push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE" in text
     assert "head_sha=${GITHUB_SHA}" in text
     assert "self_handoff=DISABLED" in text
     assert "CTRADER_DEMO_SUPERVISOR_HANDOFF" not in text
@@ -189,12 +189,13 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in text
     assert '"src/fx_scanner/demo_xau_v24_champion_candidate_producer.py"' in text
     assert "challengers=IMPULSE_RETEST_V2" in text
-    assert "SUPERVISOR_FAST_SKIP_BUSY" in text
+    assert "SUPERVISOR_EXECUTION_SKIP_BUSY" in text
     assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
     assert "active_count" in text
     assert "overlap_within_lane=DISABLED" in text
     assert "cross_lane=ENABLED" in text
-    assert "ctrader-demo-auto-pipeline.yml" in text
+    assert "ctrader-demo-xau-execution-lane.yml" in text
+    assert "ctrader-demo-maintenance-pipeline.yml" in text
     assert "ctrader-demo-discovery-pipeline.yml" in text
     assert "-f ref=main" in text
     assert "CTRADER_CLIENT_SECRET" not in text
@@ -213,3 +214,50 @@ def test_demo_technical_heartbeat_is_hourly_weekdays_and_secret_free():
     assert "CTRADER_ACCESS_TOKEN" not in text
     assert "SUPABASE_SECRET_KEY" not in text
     assert "macro-refresh" not in text
+
+
+
+def test_minute_xau_execution_lane_is_exact_authority_and_demo_only():
+    text = (ROOT / ".github/workflows/ctrader-demo-xau-execution-lane.yml").read_text()
+
+    assert "workflow_dispatch:" in text
+    assert "schedule:" not in text
+    assert "cancel-in-progress: false" in text
+    assert "demo_existing_protection_repair" in text
+    assert "demo_xau_v24_champion_candidate_producer" in text
+    assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in text
+    assert "demo_execution_fresh_ready_handoff --limit 10" in text
+    assert text.index("demo_existing_protection_repair") < text.index(
+        "demo_xau_v24_champion_candidate_producer"
+    )
+    assert text.index("demo_xau_v24_champion_candidate_producer") < text.index(
+        "demo_execution_fresh_ready_handoff"
+    )
+    assert "demo_xau_v24_champion_time_exit" not in text
+    assert "demo_xau_expansion_v42_candidate_producer" not in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
+    assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
+    assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in text
+    assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"' in text
+    assert 'CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json' in text
+    assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in text
+    assert "FX_LIVE_TRADING_ENABLED" not in text
+    assert "I_UNDERSTAND_LIVE_ORDERS" not in text
+
+
+def test_maintenance_lane_has_no_new_entry_authority():
+    text = (ROOT / ".github/workflows/ctrader-demo-maintenance-pipeline.yml").read_text()
+
+    assert "workflow_dispatch:" in text
+    assert "schedule:" not in text
+    assert "demo_existing_protection_repair" in text
+    assert "demo_xau_canonical_position_manager" in text
+    assert "demo_xau_v24_champion_time_exit" in text
+    assert "demo_five_core_time_exit" in text
+    assert "demo_xau_expansion_v42_candidate_producer" in text
+    assert "demo_execution_fresh_ready_handoff" not in text
+    assert "demo_xau_v24_champion_candidate_producer" not in text
+    assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" not in text
+    assert "CTRADER_DEMO_MAINTENANCE_CRITICAL_STAGES_OK" in text
+    assert "FX_LIVE_TRADING_ENABLED" not in text
+    assert "I_UNDERSTAND_LIVE_ORDERS" not in text

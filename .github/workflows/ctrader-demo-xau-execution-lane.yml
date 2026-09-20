@@ -1,0 +1,143 @@
+name: cTrader Demo XAU Execution Lane
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-demo-xau-execution-lane
+  cancel-in-progress: false
+
+jobs:
+  exact-xau-entry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      FX_KILL_SWITCH: "0"
+      FX_IDEMPOTENCY_STATE_PATH: /tmp/execution_idempotency.json
+      CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
+      CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"
+      CTRADER_DEMO_TECHNICAL_ONLY: "1"
+      CTRADER_DEMO_CALIBRATION_ALLOW_PRETRIGGER: "0"
+      CTRADER_DEMO_CHASE_BLOCK_ATR: "2.0"
+      CTRADER_DEMO_WAVE_MIN_PULLBACK_ATR: "0.25"
+      CTRADER_DEMO_WAVE_MAX_ZONE_ATR: "0.50"
+      CTRADER_DEMO_MOMENTUM_MAX_ZONE_ATR: "0.20"
+      CTRADER_DEMO_MAX_ENTRY_DRIFT_R: "0.50"
+      CTRADER_DEMO_MIN_LIVE_RR: "1.0"
+      CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"
+      CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"
+      CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"
+      CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"
+      CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "25.0"
+      CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"
+      CTRADER_DEMO_STACK_MIN_SCORE: "50.01"
+      CTRADER_DEMO_STACK_MIN_COVERAGE: "0.80"
+      CTRADER_DEMO_STACK_MIN_RR2: "1.5"
+      CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "10"
+      CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"
+      CTRADER_DEMO_FVG_MAX_AGE_MINUTES: "90"
+      CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"
+      CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"
+      CTRADER_DEMO_FAST_CANDIDATE_LOOKBACK_MINUTES: "45"
+      CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"
+      CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"
+      CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "0"
+      CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"
+      CTRADER_DEMO_XAU_V42_PROFIT_LOCK_ENABLED: "1"
+      CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED: "1"
+      CTRADER_DEMO_XAU_CANONICAL_POSITION_MANAGER_ENABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install cTrader runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Record execution lane running
+        continue-on-error: true
+        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_xau_execution_lane RUNNING
+
+      # Protection repair is intentionally first. A new entry is never allowed
+      # to outrun remediation of a scanner-linked position missing broker SL/TP.
+      - name: Repair missing SL/TP on scanner-linked DEMO positions
+        id: repair_existing_protection
+        continue-on-error: true
+        run: python -m fx_scanner.demo_existing_protection_repair
+
+      - name: Evaluate XAU V24 champion D1 plus M15 L12 L20
+        id: produce_xau_v24_champion
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v24_champion_candidate_producer
+
+      - name: Evaluate canonical XAU M15 EMA-SMC-ICT strategy
+        id: produce_xau_m15_ema_smc_reclaim
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_m15_ema_smc_reclaim_candidate_producer
+
+      - name: Execute fresh exact-authorized DEMO signals
+        id: execute_fresh_handoff
+        if: >-
+          ${{ !cancelled() &&
+              steps.repair_existing_protection.outcome == 'success' &&
+              (steps.produce_xau_v24_champion.outcome == 'success' ||
+               steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success') }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
+
+      - name: Assert execution lane critical stages
+        if: ${{ always() && !cancelled() }}
+        shell: bash
+        env:
+          REPAIR_OUTCOME: ${{ steps.repair_existing_protection.outcome }}
+          V24_OUTCOME: ${{ steps.produce_xau_v24_champion.outcome }}
+          CANONICAL_OUTCOME: ${{ steps.produce_xau_m15_ema_smc_reclaim.outcome }}
+          HANDOFF_OUTCOME: ${{ steps.execute_fresh_handoff.outcome }}
+        run: |
+          set -euo pipefail
+          failed=0
+          if [ "${REPAIR_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_FAIL stage=REPAIR outcome=${REPAIR_OUTCOME}"
+            failed=1
+          fi
+          if [ "${V24_OUTCOME}" != "success" ] && [ "${CANONICAL_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_FAIL stage=PRODUCERS v24=${V24_OUTCOME} canonical=${CANONICAL_OUTCOME}"
+            failed=1
+          fi
+          if [ "${HANDOFF_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_FAIL stage=HANDOFF outcome=${HANDOFF_OUTCOME}"
+            failed=1
+          fi
+          if [ "${failed}" -ne 0 ]; then
+            echo "CTRADER_DEMO_XAU_EXECUTION_LANE_FAIL_CLOSED"
+            exit 1
+          fi
+          echo "CTRADER_DEMO_XAU_EXECUTION_LANE_CRITICAL_STAGES_OK"
+
+      - name: Record execution lane success
+        if: success()
+        continue-on-error: true
+        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_xau_execution_lane SUCCESS
+      - name: Record execution lane failure
+        if: failure()
+        continue-on-error: true
+        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_xau_execution_lane FAILED
