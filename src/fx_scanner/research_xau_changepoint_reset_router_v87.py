@@ -202,7 +202,10 @@ def gate_family_with_changepoint_reset(
     ordered_signal = tuple(sorted(trades, key=lambda t: ensure_utc(t.signal_at)))
     ordered_exit = tuple(sorted(trades, key=lambda t: ensure_utc(t.exit_at)))
     exit_times = tuple(ensure_utc(t.exit_at) for t in ordered_exit)
-    cp_times = tuple(ensure_utc(x["effective_at"]) for x in change_points)
+    cp_times = tuple(
+        ensure_utc(pd.Timestamp(x["effective_at"]).to_pydatetime())
+        for x in change_points
+    )
 
     kept: list[TournamentTrade] = []
     active_checks = 0
