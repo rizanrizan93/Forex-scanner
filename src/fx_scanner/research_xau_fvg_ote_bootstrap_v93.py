@@ -74,8 +74,14 @@ def _simulate_limit_trade(
 
     signal_at=ensure_utc(baseline.signal_at)
     as_of=signal_at+timedelta(minutes=15)
+    # Canonical ICT context only needs recent completed M15 history:
+    # session lookup spans up to 6 calendar days and entry patterns <=32 bars.
+    # 700 M15 bars is >7 trading days and preserves those semantics while
+    # avoiding repeated full-history sorting/scanning for every candidate.
+    context_start=max(0,int(baseline.signal_index)-700)
+    context_rows=rows[context_start:start]
     ctx=evaluate_ict_execution_context(
-        rows,
+        context_rows,
         direction=direction,
         atr_value=float(baseline.atr_at_signal),
         as_of=as_of,
