@@ -30,6 +30,9 @@ from .research_xau_hierarchical_regime_router_v35 import (
     _Asof,
     build_h1_context,
 )
+from .research_xau_h1_structure_context_v56 import build_h1_structure_context
+from .research_xau_h1_volatility_state_v63 import build_h1_volatility_context
+from .research_xau_realized_skew_state_v64 import build_prior_day_skew_context
 from .research_xau_m15_dual_strategy import M15ResearchCosts
 from .research_xau_m15_dual_strategy_runtime import _fetch_history
 from .research_xau_multihorizon_100usd_v20 import M15_VARIANTS, _trading_dates
@@ -39,6 +42,10 @@ from .research_xau_v47_forward_freeze_v69 import (
     BASE_ROUTE,
     FORWARD_CONTRACT,
     PROSPECTIVE_EPOCH,
+)
+from .research_xau_v47_forward_telemetry_v72 import (
+    ARTIFACT_CONTRACT as TELEMETRY_ARTIFACT_CONTRACT,
+    TELEMETRY_CONTRACT,
 )
 from .storage.supabase_operational import SupabaseOperationalStore
 
@@ -81,6 +88,19 @@ def _friction_pips(costs: M15ResearchCosts) -> float:
         + float(costs.slippage_pips) * float(costs.slippage_multiplier)
         + float(costs.commission_pips_round_trip)
     )
+
+
+def _finite_or_none(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if isfinite(number) else None
+
+
+def _int_or_none(value: Any) -> int | None:
+    number = _finite_or_none(value)
+    return None if number is None else int(number)
 
 
 def route_eligibility(
@@ -180,6 +200,9 @@ def _evaluate_signal(
     signal: BreakoutSignal,
     d1_lookup: _Asof,
     h1_lookup: _Asof,
+    structure_lookup: _Asof,
+    volatility_lookup: _Asof,
+    skew_lookup: _Asof,
     candidate_history,
     trading_dates,
 ) -> dict[str, Any] | None:
@@ -208,6 +231,9 @@ def _evaluate_signal(
 
     d1 = d1_lookup.row(signal_at)
     h1 = h1_lookup.row(signal_at)
+    structure = structure_lookup.row(signal_at)
+    volatility = volatility_lookup.row(signal_at)
+    skew = skew_lookup.row(signal_at)
     if d1 is None or h1 is None:
         return None
 
@@ -275,6 +301,75 @@ def _evaluate_signal(
             "ema50": float(h1.get("ema50")),
             "ema200": float(h1.get("ema200")),
         },
+        "secondary_telemetry_contract": TELEMETRY_ARTIFACT_CONTRACT,
+        "secondary_telemetry": {
+            "h1_structure": {
+                "swing_structure_state": (
+                    "INSUFFICIENT"
+                    if structure is None
+                    else str(structure.get("swing_structure_state") or "INSUFFICIENT")
+                ),
+                "last_break_event": (
+                    "NONE"
+                    if structure is None
+                    else str(structure.get("last_break_event") or "NONE")
+                ),
+                "bars_since_last_break": (
+                    None
+                    if structure is None
+                    else _int_or_none(structure.get("bars_since_last_break"))
+                ),
+                "last_confirmed_swing_high": (
+                    None
+                    if structure is None
+                    else _finite_or_none(structure.get("last_confirmed_swing_high"))
+                ),
+                "last_confirmed_swing_low": (
+                    None
+                    if structure is None
+                    else _finite_or_none(structure.get("last_confirmed_swing_low"))
+                ),
+            },
+            "h1_volatility": {
+                "vol_state": (
+                    "UNAVAILABLE"
+                    if volatility is None
+                    else str(volatility.get("vol_state") or "UNAVAILABLE")
+                ),
+                "atr14": (
+                    None
+                    if volatility is None
+                    else _finite_or_none(volatility.get("atr14"))
+                ),
+                "atr_to_prior_median": (
+                    None
+                    if volatility is None
+                    else _finite_or_none(volatility.get("atr_to_prior_median"))
+                ),
+            },
+            "prior_day_realized_skew": {
+                "skew_state": (
+                    "UNAVAILABLE"
+                    if skew is None
+                    else str(skew.get("skew_state") or "UNAVAILABLE")
+                ),
+                "realized_skew": (
+                    None
+                    if skew is None
+                    else _finite_or_none(skew.get("realized_skew"))
+                ),
+                "realized_variance": (
+                    None
+                    if skew is None
+                    else _finite_or_none(skew.get("realized_variance"))
+                ),
+                "intraday_returns": (
+                    None
+                    if skew is None
+                    else _int_or_none(skew.get("intraday_returns"))
+                ),
+            },
+        },
         "ict": {
             "contract": ict.contract,
             "available": bool(ict.available),
@@ -312,8 +407,14 @@ def evaluate_forward_observer(
 
     d1_context = build_secular_d1(bars)
     h1_context = build_h1_context(bars)
+    structure_context = build_h1_structure_context(bars)
+    volatility_context = build_h1_volatility_context(bars)
+    skew_context = build_prior_day_skew_context(bars)
     d1_lookup = _Asof(d1_context)
     h1_lookup = _Asof(h1_context)
+    structure_lookup = _Asof(structure_context)
+    volatility_lookup = _Asof(volatility_context)
+    skew_lookup = _Asof(skew_context)
     trading_dates = _trading_dates(
         bars,
         start=ensure_utc(bars[0].timestamp),
@@ -348,6 +449,9 @@ def evaluate_forward_observer(
                 signal=signal,
                 d1_lookup=d1_lookup,
                 h1_lookup=h1_lookup,
+                structure_lookup=structure_lookup,
+                volatility_lookup=volatility_lookup,
+                skew_lookup=skew_lookup,
                 candidate_history=history[family],
                 trading_dates=trading_dates,
             )
@@ -365,6 +469,7 @@ def evaluate_forward_observer(
         "artifact_contract": ARTIFACT_CONTRACT,
         "freeze_artifact_contract": FREEZE_ARTIFACT_CONTRACT,
         "forward_contract": FORWARD_CONTRACT,
+        "secondary_telemetry_contract": TELEMETRY_CONTRACT,
         "policy_effect": POLICY_EFFECT,
         "execution_influence": EXECUTION_INFLUENCE,
         "promotion_eligible": PROMOTION_ELIGIBLE,
