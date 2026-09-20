@@ -229,6 +229,7 @@ def summarize_outcomes(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "losses": 0,
             "win_rate": None,
             "profit_factor": None,
+            "profit_factor_infinite": False,
             "expectancy_r": None,
             "net_r": 0.0,
             "max_drawdown_r": 0.0,
@@ -238,8 +239,9 @@ def summarize_outcomes(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     losses = sum(value < 0.0 for value in values)
     gross_profit = sum(value for value in values if value > 0.0)
     gross_loss = -sum(value for value in values if value < 0.0)
+    profit_factor_infinite = bool(gross_loss <= 0.0 and gross_profit > 0.0)
     if gross_loss <= 0.0:
-        profit_factor = inf if gross_profit > 0.0 else None
+        profit_factor = None
     else:
         profit_factor = gross_profit / gross_loss
 
@@ -257,6 +259,7 @@ def summarize_outcomes(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "losses": losses,
         "win_rate": wins / float(n),
         "profit_factor": profit_factor,
+        "profit_factor_infinite": profit_factor_infinite,
         "expectancy_r": sum(values) / float(n),
         "net_r": sum(values),
         "max_drawdown_r": max_dd,
@@ -328,6 +331,13 @@ def _metrics_from_outcomes(
     return summarize_outcomes(primary), summarize_outcomes(reference)
 
 
+def _effective_pf(metrics: Mapping[str, Any]) -> float | None:
+    if bool(metrics.get("profit_factor_infinite")):
+        return inf
+    value = metrics.get("profit_factor")
+    return None if value is None else float(value)
+
+
 def _assessment(
     primary: Mapping[str, Any],
     reference: Mapping[str, Any],
@@ -335,8 +345,8 @@ def _assessment(
     return assess_forward_snapshot(
         primary_closed_trades=int(primary["closed_trades"]),
         reference_closed_trades=int(reference["closed_trades"]),
-        primary_profit_factor=primary["profit_factor"],
-        reference_profit_factor=reference["profit_factor"],
+        primary_profit_factor=_effective_pf(primary),
+        reference_profit_factor=_effective_pf(reference),
         primary_expectancy_r=primary["expectancy_r"],
         reference_expectancy_r=reference["expectancy_r"],
         primary_net_r=float(primary["net_r"]),
