@@ -42,7 +42,7 @@ jobs:
       - name: Checkout frozen prospective research stack
         uses: actions/checkout@v4
         with:
-          ref: a9786662b7bb84d05e242c5a7e874ec29e888071
+          ref: 9c13f83fc3d0f99a2cd1076b246460fa23b6279a
 
       - uses: actions/setup-python@v5
         with:
