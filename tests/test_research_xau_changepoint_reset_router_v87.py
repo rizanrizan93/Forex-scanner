@@ -18,6 +18,7 @@ from fx_scanner.research_xau_changepoint_reset_router_v87 import (
     PROMOTION_ELIGIBLE,
     ROBUST_Z_THRESHOLD,
     detect_change_points,
+    gate_family_with_changepoint_reset,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -89,3 +90,36 @@ def test_v87_has_no_broker_execution_or_calendar_era_router():
     assert '"year_or_era_feature_used_for_routing": False' in src
     assert '"selection_uses_future_outcomes": False' in src
     assert '"threshold_grid_search": False' in src
+
+
+def test_v87_gate_accepts_serialized_change_point_timestamps():
+    # Regression: persisted detector evidence stores ISO strings.
+    from datetime import datetime, timedelta, timezone
+    from fx_scanner.demo_donchian_adaptive_tournament import TournamentTrade
+
+    base = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    trades = []
+    for i in range(35):
+        signal = base + timedelta(days=i + 20)
+        trades.append(
+            TournamentTrade(
+                "TEST", "XAUUSD", "LONG",
+                signal, signal, signal + timedelta(hours=1),
+                i, i, 2000.0, 2001.0, 10.0,
+                1990.0, 2020.0,
+                0.20, 0.01, 0.19, 1, "TIME_EXIT",
+            )
+        )
+    dates = tuple((base + timedelta(days=i)).date() for i in range(100))
+    kept, payload = gate_family_with_changepoint_reset(
+        trades,
+        trading_dates=dates,
+        change_points=(
+            {
+                "confirm_at": (base + timedelta(days=10)).isoformat(),
+                "effective_at": (base + timedelta(days=11)).isoformat(),
+            },
+        ),
+    )
+    assert isinstance(kept, tuple)
+    assert payload["change_points_seen"] == 1
