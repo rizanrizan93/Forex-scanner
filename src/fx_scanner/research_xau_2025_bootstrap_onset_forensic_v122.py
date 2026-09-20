@@ -99,8 +99,14 @@ def _annotate_trade(
     broker_spec,
     entry_cash: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    row = lookup.row(trade.signal_at)
-    cp_at, cp_days = _latest_cp(trade.signal_at, change_points)
+    # D1 trade.signal_at is the left-labelled start of the signal day, while
+    # the signal uses that day's completed close and enters at the next D1 open.
+    # The correct causal decision snapshot is therefore entry_at: at that instant
+    # the signal-day D1/H1 features are completed and available, but no entry-day
+    # future information exists.
+    decision_at = ensure_utc(trade.entry_at)
+    row = lookup.row(decision_at)
+    cp_at, cp_days = _latest_cp(decision_at, change_points)
     units_001 = float(broker_spec.contract_units_per_lot) * 0.01
     risk_price = abs(float(trade.entry_price) - float(trade.stop_loss))
     risk_usd_001 = risk_price * units_001
@@ -109,6 +115,7 @@ def _annotate_trade(
         "strategy_id": trade.strategy_id,
         "direction": str(trade.direction),
         "signal_at": ensure_utc(trade.signal_at).isoformat(),
+        "decision_at": decision_at.isoformat(),
         "entry_at": ensure_utc(trade.entry_at).isoformat(),
         "exit_at": ensure_utc(trade.exit_at).isoformat(),
         "entry_price": float(trade.entry_price),
@@ -123,6 +130,8 @@ def _annotate_trade(
         "days_since_change_point": cp_days,
     }
     if row is not None:
+        if row.get("available_at") is not None:
+            out["fingerprint_available_at"] = ensure_utc(row["available_at"]).isoformat()
         out["state"] = str(row.get("state") or "UNCLASSIFIED")
         out["species"] = str(row.get("species") or "UNCLASSIFIED")
         out["era_score"] = None if pd.isna(row.get("era_score")) else float(row.get("era_score"))
@@ -339,7 +348,7 @@ def evaluate_v122(
         "live_execution_enabled": False,
         "contract": {
             "purpose": "causal forensic decomposition only; no routing threshold selected",
-            "feature_availability": "completed D1/H1 only through available_at as-of lookup",
+            "feature_availability": "completed signal-day D1/H1 only; as-of lookup at next D1 entry open",
             "historical_outcome_used_only_as_label": True,
             "calendar_year_used_for_execution": False,
             "threshold_grid_search": False,
