@@ -117,8 +117,18 @@ def detect_change_points(frame: pd.DataFrame) -> tuple[dict[str, Any], ...]:
     out: list[dict[str, Any]] = []
     run = 0
     last_effective_i = -10_000
+    armed = True
     for i, state in enumerate(shocks):
-        run = run + 1 if state["shock"] else 0
+        if not state["shock"]:
+            # A detected regime shift must return to a non-shock state before
+            # another shift can be armed. This prevents one persistent level
+            # shift from generating repeated resets every spacing interval.
+            run = 0
+            armed = True
+            continue
+        if not armed:
+            continue
+        run += 1
         if run < CONFIRM_CONSECUTIVE_DAYS:
             continue
         confirm_i = i
@@ -139,6 +149,7 @@ def detect_change_points(frame: pd.DataFrame) -> tuple[dict[str, Any], ...]:
             }
         )
         last_effective_i = effective_i
+        armed = False
         run = 0
     return tuple(out)
 
@@ -351,6 +362,7 @@ def evaluate_v87(
             "minimum_simultaneous_shock_features": MIN_SHOCK_FEATURES,
             "confirmation_consecutive_completed_d1_days": CONFIRM_CONSECUTIVE_DAYS,
             "minimum_change_spacing_trading_days": MIN_CHANGE_SPACING_DAYS,
+            "detector_rearms_only_after_nonshock_state": True,
             "change_effective_next_completed_d1_bar": True,
             "health_lookback_trading_days": LOOKBACK_TRADING_DAYS,
             "health_min_completed_trades": MIN_COMPLETED_TRADES,
