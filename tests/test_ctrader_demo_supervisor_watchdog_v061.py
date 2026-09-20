@@ -8,7 +8,7 @@ WATCHDOG = ROOT / ".github/workflows/ctrader-demo-auto-supervisor-watchdog.yml"
 def test_watchdog_is_hourly_recovery_only_and_never_executes_lanes_directly() -> None:
     text = WATCHDOG.read_text()
 
-    assert 'cron: "32 * * * 1-5"' in text
+    assert 'cron: "32 * * * 0-5"' in text
     assert "timeout-minutes: 70" in text
     assert "window_cycles=59" in text
     assert "cadence_seconds=60" in text
@@ -20,13 +20,16 @@ def test_watchdog_is_hourly_recovery_only_and_never_executes_lanes_directly() ->
     assert "/actions/workflows/ctrader-demo-auto-pipeline.yml/dispatches" not in text
 
 
-def test_watchdog_preserves_weekday_24x5_and_active_supervisor_guard() -> None:
+def test_watchdog_preserves_forex_week_24x5_and_active_supervisor_guard() -> None:
     text = WATCHDOG.read_text()
 
-    assert "market_weekday_utc()" in text
+    assert "market_open_utc()" in text
     assert "date -u +%u" in text
-    assert '[ "${weekday}" -le 5 ]' in text
-    assert "if ! market_weekday_utc" in text
+    assert "date -u +%H" in text
+    assert '[ "${weekday}" -eq 7 ]' in text
+    assert '[ "${hour}" -ge 21 ]' in text
+    assert "if ! market_open_utc" in text
+    assert "calendar=FOREX_WEEK_24X5" in text
     assert "active_supervisor_count" in text
     assert 'if [ "${active_supervisor}" -gt 0 ]' in text
     assert "action=NO_DISPATCH" in text
