@@ -36,25 +36,43 @@ def weekend_crypto_pairs(cfg: ProjectConfig) -> tuple[PairSpec, ...]:
     return tuple(configured[symbol] for symbol in ("BTCUSD", "ETHUSD", "SOLUSD"))
 
 
+def _forex_week_open_utc(current: datetime) -> bool:
+    """Return the bounded calendar window used by the active Forex DEMO lane.
+
+    The cTrader broker session/tradability check remains authoritative. This
+    calendar only prevents the execution handoff from classifying Sunday
+    evening UTC as a crypto-only weekend after the forex market has reopened.
+    """
+    weekday = current.weekday()  # Monday=0 ... Sunday=6
+    hour = current.hour
+    if weekday == 6:
+        return hour >= 21
+    if 0 <= weekday <= 3:
+        return True
+    if weekday == 4:
+        return hour < 22
+    return False
+
+
 def apply_demo_market_schedule(
     cfg: ProjectConfig,
     *,
     now: datetime | None = None,
 ) -> tuple[ProjectConfig, str]:
-    """Apply the frozen DEMO calibration calendar without changing production.
+    """Apply the DEMO market calendar without changing production policy.
 
-    Monday-Friday UTC uses the configured 20-instrument discovery universe.
-    Saturday-Sunday UTC restricts scanning to BTCUSD, ETHUSD and SOLUSD.
-    Broker session/tradability checks remain authoritative and fail closed, so
-    this calendar never forces an order into a closed market.
+    Forex-week window: Sunday 21:00 UTC through Friday 22:00 UTC. During that
+    window the configured 20-instrument universe is available to the executor;
+    broker session/tradability checks still fail closed per symbol. Outside that
+    window scanning is restricted to BTCUSD, ETHUSD and SOLUSD.
     """
     current = now or datetime.now(tz=UTC)
     if current.tzinfo is None:
         raise ValueError("demo market schedule requires timezone-aware datetime")
     current = current.astimezone(UTC)
 
-    if current.weekday() < 5:
-        return replace(cfg, pairs=weekday_demo_pairs(cfg)), "WEEKDAY_FULL_24X5"
+    if _forex_week_open_utc(current):
+        return replace(cfg, pairs=weekday_demo_pairs(cfg)), "FOREX_WEEK_FULL_24X5"
 
     pairs = weekend_crypto_pairs(cfg)
     return replace(cfg, pairs=pairs), "WEEKEND_CRYPTO_BROKER_GATED"
