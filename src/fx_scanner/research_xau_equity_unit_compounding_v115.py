@@ -3,7 +3,8 @@ from __future__ import annotations
 import math
 from typing import Any, Mapping, Sequence
 
-from .demo_donchian_adaptive_tournament import compute_metrics\nfrom .models import ensure_utc
+from .demo_donchian_adaptive_tournament import compute_metrics
+from .models import ensure_utc
 from .research_xau_100usd_leverage_v22 import _lot_feasible, _symbol_leverage
 from .research_xau_margin_leverage_v21 import LeverageTier
 from .research_xau_multihorizon_100usd_v20 import BrokerLotSpec, MAX_ACTIVE_POSITIONS, _trading_dates
