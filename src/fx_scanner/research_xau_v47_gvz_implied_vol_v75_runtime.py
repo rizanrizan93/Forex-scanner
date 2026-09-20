@@ -22,7 +22,8 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 UTC = timezone.utc
 WORKER_NAME = "dukascopy_xau_v47_gvz_implied_vol_v75"
-GVZ_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=GVZCLS"
+CBOE_GVZ_URL = "https://cdn.cboe.com/api/global/us_indices/daily_prices/GVZ_History.csv"
+FRED_GVZ_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=GVZCLS"
 FULL_ERA = {
     "fetch_start": datetime(2011, 1, 1, tzinfo=UTC),
     "start": FULL_START,
@@ -30,112 +31,86 @@ FULL_ERA = {
 }
 
 
-def _fetch_gvz() -> tuple[list[tuple[datetime, float]], str, int]:
-    request = Request(
-        GVZ_URL,
-        headers={"User-Agent": "ForexScannerResearch-V75/1.0"},
-    )
-    with urlopen(request, timeout=30) as response:
-        raw = response.read()
-    digest = hashlib.sha256(raw).hexdigest()
+def _download(url: str, *, timeout: int = 90) -> bytes:
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            request = Request(
+                url,
+                headers={"User-Agent": "ForexScannerResearch-V75/1.0"},
+            )
+            with urlopen(request, timeout=timeout) as response:
+                return response.read()
+        except Exception as exc:
+            last_error = exc
+            if attempt >= 2:
+                break
+    assert last_error is not None
+    raise last_error
+
+
+def _parse_gvz_csv(raw: bytes, *, source_url: str) -> list[tuple[datetime, float]]:
     text = raw.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(text))
+    fields = [str(x) for x in (reader.fieldnames or [])]
+    normalized = {field.upper().strip(): field for field in fields}
+    date_key = (
+        normalized.get("DATE")
+        or normalized.get("OBSERVATION_DATE")
+    )
+    if date_key is None:
+        raise RuntimeError(f"V75_GVZ_DATE_COLUMN_MISSING:{fields}")
+
+    value_key = None
+    if "GVZCLS" in normalized:
+        value_key = normalized["GVZCLS"]
+    else:
+        close_candidates = [
+            field
+            for field in fields
+            if "CLOSE" in field.upper()
+        ]
+        if close_candidates:
+            value_key = close_candidates[-1]
+    if value_key is None:
+        raise RuntimeError(f"V75_GVZ_CLOSE_COLUMN_MISSING:{fields}")
+
     rows: list[tuple[datetime, float]] = []
     for row in reader:
-        date_raw = row.get("DATE") or row.get("observation_date")
-        value_raw = row.get("GVZCLS")
+        date_raw = row.get(date_key)
+        value_raw = row.get(value_key)
         if not date_raw or value_raw in (None, "", "."):
             continue
-        day = datetime.strptime(str(date_raw), "%Y-%m-%d").replace(tzinfo=UTC)
+        parsed = None
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
+            try:
+                parsed = datetime.strptime(str(date_raw).strip(), fmt).replace(tzinfo=UTC)
+                break
+            except ValueError:
+                continue
+        if parsed is None:
+            continue
         try:
-            value = float(value_raw)
+            value = float(str(value_raw).strip())
         except (TypeError, ValueError):
             continue
         if value <= 0.0:
             continue
-        rows.append((availability_timestamp(day), value))
-    if not rows:
-        raise RuntimeError("V75_GVZ_DOWNLOAD_EMPTY")
+        rows.append((availability_timestamp(parsed), value))
     rows.sort(key=lambda x: x[0])
-    return rows, digest, len(raw)
+    if not rows:
+        raise RuntimeError(f"V75_GVZ_PARSE_EMPTY:{source_url}")
+    return rows
 
 
-def run() -> int:
-    bars = _fetch(FULL_ERA)
-    gvz_rows, gvz_sha256, gvz_bytes = _fetch_gvz()
-    decision = evaluate_v75(
-        bars,
-        gvz_rows=gvz_rows,
-        pip_size=0.01,
-        cost_scenarios=COST_SCENARIOS,
-    )
-    details = {
-        "research_version": RESEARCH_VERSION,
-        "environment": "PUBLIC_HISTORY",
-        "policy_effect": "SHADOW_ONLY",
-        "execution_influence": False,
-        "promotion_eligible": False,
-        "observed_at": datetime.now(tz=UTC).isoformat(),
-        "price_data_source": "Dukascopy Bank public BID M15 via dukascopy-python",
-        "gvz_source": GVZ_URL,
-        "gvz_source_sha256": gvz_sha256,
-        "gvz_source_bytes": gvz_bytes,
-        "decision": decision,
-    }
-    try:
-        SupabaseOperationalStore.from_env().write_heartbeat(
-            WORKER_NAME,
-            healthy=True,
-            lag_seconds=0.0,
-            details=details,
-        )
-    except Exception as exc:
-        details["heartbeat_write_error"] = f"{type(exc).__name__}:{exc}"
+def _fetch_gvz() -> tuple[list[tuple[datetime, float]], str, int, str]:
+    errors: list[str] = []
+    for url in (CBOE_GVZ_URL, FRED_GVZ_URL):
+        try:
+            raw = _download(url)
+            rows = _parse_gvz_csv(raw, source_url=url)
+            return rows, hashlib.sha256(raw).hexdigest(), len(raw), url
+        except Exception as exc:
+            errors.append(f"{url}:{type(exc).__name__}:{exc}")
+    raise RuntimeError("V75_GVZ_ALL_SOURCES_FAILED:" + " | ".join(errors))
 
-    path = Path(os.getenv("V75_EVIDENCE_OUTPUT", "artifacts/xau-v47-gvz-implied-vol-v75.json"))
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({
-        "artifact_contract": ARTIFACT_CONTRACT,
-        "contains_secrets": False,
-        "details": details,
-    }, indent=2, sort_keys=True, default=str) + "\n")
-
-    print(
-        f"V75_RESULT bars={len(bars)} gvz_rows={len(gvz_rows)} "
-        f"gvz_sha256={gvz_sha256} artifact={path} "
-        "policy=SHADOW_ONLY execution_influence=0 promotion_eligible=0"
-    )
-    for cost_id, payload in decision["scenarios"].items():
-        print(
-            f"V75_COST cost={cost_id} "
-            f"satellite={_metric_line(payload['satellite']['metrics'])}"
-        )
-        for window, row in payload["diagnostic_windows"].items():
-            print(
-                f"V75_WINDOW cost={cost_id} window={window} "
-                f"all={_metric_line(row['all']['metrics'])} "
-                f"geometry={row['winner_loser_geometry']}"
-            )
-            for state, stats in row["gvz_states"].items():
-                if int(stats["trades"]) > 0:
-                    print(
-                        f"V75_GVZ cost={cost_id} window={window} state={state} "
-                        f"{_metric_line(stats['metrics'])}"
-                    )
-            for bucket, stats in row["stop_to_implied_1d"].items():
-                if int(stats["trades"]) > 0:
-                    print(
-                        f"V75_STOP_IV cost={cost_id} window={window} bucket={bucket} "
-                        f"{_metric_line(stats['metrics'])}"
-                    )
-            for bucket, stats in row["target_to_implied_1d"].items():
-                if int(stats["trades"]) > 0:
-                    print(
-                        f"V75_TARGET_IV cost={cost_id} window={window} bucket={bucket} "
-                        f"{_metric_line(stats['metrics'])}"
-                    )
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(run())
