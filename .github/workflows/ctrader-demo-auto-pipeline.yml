@@ -38,9 +38,9 @@ jobs:
       CTRADER_DEMO_MOMENTUM_MAX_ZONE_ATR: "0.20"
       CTRADER_DEMO_MAX_ENTRY_DRIFT_R: "0.50"
       CTRADER_DEMO_MIN_LIVE_RR: "1.0"
-      CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"
+      CTRADER_DEMO_RISK_PER_TRADE_PCT: "3.0"
       CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"
-      CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"
+      CTRADER_DEMO_MAX_ORDER_LOTS: "0.01"
       CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"
       CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "25.0"
       CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"
@@ -77,9 +77,6 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_auto_pipeline RUNNING
 
-      # Critical XAU execution path comes first. Existing protection is repaired
-      # before new orders; canonical evaluation and broker handoff are not delayed
-      # by shadow/research producers that have no execution authority.
       - name: Repair missing SL/TP on scanner-linked DEMO positions
         id: repair_existing_protection
         if: ${{ always() && !cancelled() }}
@@ -94,8 +91,6 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_m15_ema_smc_reclaim_candidate_producer
 
-      # Exact DEMO execution authority: D1_TSMOM_60_200 and
-      # XAU_M15_EMA_SMC_RECLAIM_V1. No shadow strategy can pass this handoff.
       - name: Execute all fresh strategy-authorized DEMO signals within safety caps
         id: execute_fresh_handoff
         if: >-
@@ -112,8 +107,6 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_canonical_position_manager
 
-      # Shadow XAU producers run only after the broker-critical path. Their
-      # failures cannot authorize, delay or suppress the canonical handoff.
       - name: Evaluate XAU Expansion V4.2 shadow evidence
         id: produce_xau_v42
         continue-on-error: true
