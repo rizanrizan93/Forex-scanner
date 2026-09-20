@@ -1,0 +1,49 @@
+name: XAU V47 Target Forward Assessment V78
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_v47_forward_observer_v70.py"
+      - "src/fx_scanner/research_xau_v47_target_forward_freeze_v77.py"
+      - "src/fx_scanner/research_xau_v47_target_forward_assessment_v78.py"
+      - "tests/test_research_xau_v47_target_forward_assessment_v78.py"
+      - ".github/workflows/research-xau-v47-target-forward-assessment-v78.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  assessment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      V78_EVIDENCE_OUTPUT: artifacts/xau-v47-target-forward-assessment-v78.json
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
+      - name: Unit tests
+        run: |
+          pytest -q tests/test_research_xau_v47_forward_observer_v70.py
+          pytest -q tests/test_research_xau_v47_forward_outcomes_v71.py
+          pytest -q tests/test_research_xau_v47_target_forward_freeze_v77.py
+          pytest -q tests/test_research_xau_v47_target_forward_assessment_v78.py
+      - name: Assess target-credibility prospective evidence
+        run: python -m fx_scanner.research_xau_v47_target_forward_assessment_v78
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v47-target-forward-assessment-v78
+          path: artifacts/xau-v47-target-forward-assessment-v78.json
+          if-no-files-found: error
+          retention-days: 30
