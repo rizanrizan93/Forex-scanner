@@ -20,7 +20,7 @@ def test_v70_is_shadow_only_and_prospective():
     assert PROMOTION_ELIGIBLE is False
     assert LIVE_EXECUTION_ENABLED is False
     assert EVENT_TYPE == "DEMO_XAU_V47_FORWARD_EVALUATION"
-    assert HISTORY_BARS == 60_000
+    assert HISTORY_BARS == 45_000
     assert PROSPECTIVE_EPOCH.isoformat() == "2026-09-20T01:00:00+00:00"
 
 
