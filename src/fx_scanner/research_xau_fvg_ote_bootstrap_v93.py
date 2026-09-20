@@ -72,6 +72,10 @@ def _simulate_limit_trade(
     if direction not in {"LONG","SHORT"}:
         return None
 
+    start=int(baseline.signal_index)+1
+    if start>=len(rows):
+        return None
+
     signal_at=ensure_utc(baseline.signal_at)
     as_of=signal_at+timedelta(minutes=15)
     # Canonical ICT context only needs recent completed M15 history:
@@ -91,10 +95,6 @@ def _simulate_limit_trade(
 
     limit=_limit_from_context(ctx,variant_id)
     if limit is None or not isfinite(limit):
-        return None
-
-    start=int(baseline.signal_index)+1
-    if start>=len(rows):
         return None
 
     original_entry=float(rows[start].open)
