@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - ops/xau-v47-forward-evidence-v78
     paths:
       - ".github/workflows/ctrader-demo-xau-v47-prospective-evidence.yml"
   schedule:
@@ -36,12 +37,13 @@ jobs:
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       V70_EVIDENCE_OUTPUT: artifacts/xau-v47-forward-observer-v70.json
       V71_EVIDENCE_OUTPUT: artifacts/xau-v47-forward-outcomes-v71.json
+      V78_EVIDENCE_OUTPUT: artifacts/xau-v47-target-forward-assessment-v78.json
 
     steps:
       - name: Checkout frozen prospective research stack
         uses: actions/checkout@v4
         with:
-          ref: 1b34d397c06238933b64503365fb5e39f02b3aca
+          ref: a9786662b7bb84d05e242c5a7e874ec29e888071
 
       - uses: actions/setup-python@v5
         with:
@@ -62,6 +64,9 @@ jobs:
       - name: Reconcile closed prospective outcomes
         run: python -m fx_scanner.research_xau_v47_forward_outcomes_v71
 
+      - name: Assess target-credibility prospective evidence
+        run: python -m fx_scanner.research_xau_v47_target_forward_assessment_v78
+
       - name: Upload prospective evidence
         uses: actions/upload-artifact@v4
         with:
@@ -69,5 +74,6 @@ jobs:
           path: |
             artifacts/xau-v47-forward-observer-v70.json
             artifacts/xau-v47-forward-outcomes-v71.json
+            artifacts/xau-v47-target-forward-assessment-v78.json
           if-no-files-found: error
           retention-days: 30
