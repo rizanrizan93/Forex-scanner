@@ -10,12 +10,12 @@ def test_demo_auto_pipeline_is_dispatch_only_xauusd_fast_lane_and_demo_only():
     assert "workflow_dispatch:" in text
     assert "schedule:" not in text
     assert "demo_execution_fast_candidate_producer" not in text
-    assert "demo_xau_d1_tsmom_candidate_producer" in text
+    assert "demo_xau_v24_champion_candidate_producer" in text
     assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in text
     assert "demo_execution_fresh_ready_handoff --limit 10" in text
     assert "demo_xau_canonical_position_manager" in text
     assert "demo_five_core_time_exit" in text
-    assert text.index("demo_xau_d1_tsmom_candidate_producer") < text.index(
+    assert text.index("demo_xau_v24_champion_candidate_producer") < text.index(
         "demo_execution_fresh_ready_handoff"
     )
     assert text.index("demo_xau_m15_ema_smc_reclaim_candidate_producer") < text.index(
@@ -45,7 +45,7 @@ def test_demo_auto_pipeline_is_dispatch_only_xauusd_fast_lane_and_demo_only():
     assert 'CTRADER_DEMO_STACK_MIN_SCORE: "50.01"' in text
     assert 'CTRADER_DEMO_STACK_MIN_COVERAGE: "0.80"' in text
     assert 'CTRADER_DEMO_STACK_MIN_RR2: "1.5"' in text
-    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "4"' in text
+    assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "10"' in text
     assert 'CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"' in text
     assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"' in text
     assert 'CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "25.0"' in text
@@ -61,7 +61,7 @@ def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_shadow_p
     text = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
 
     assert "id: produce_five_core" not in text
-    assert "id: produce_xau_d1_tsmom" in text
+    assert "id: produce_xau_v24_champion" in text
     assert "id: produce_xau_v42" in text
     assert "id: produce_xau_m15_reversal" in text
     assert "id: produce_xau_m15_ema_smc_reclaim" in text
@@ -70,6 +70,7 @@ def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_shadow_p
     assert "id: repair_existing_protection" in text
     assert "id: execute_fresh_handoff" in text
     assert "id: xau_canonical_manager" in text
+    assert "id: xau_v24_time_exit" in text
     assert "id: pair_time_exit" in text
     assert "id: euraud_gbpaud_chandelier" in text
     assert "id: xau_v42_time_exit" in text
@@ -79,7 +80,7 @@ def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_shadow_p
     handoff = text.split("- name: Execute all fresh strategy-authorized DEMO signals", 1)[1]
     handoff = handoff.split("- name: Manage canonical XAU filled positions", 1)[0]
     assert "steps.produce_five_core.outcome == 'success'" not in handoff
-    assert "steps.produce_xau_d1_tsmom.outcome == 'success'" in handoff
+    assert "steps.produce_xau_v24_champion.outcome == 'success'" in handoff
     assert "steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success'" in handoff
     assert "||" in handoff
     assert "steps.produce_euraud_gbpaud.outcome == 'success'" not in handoff
@@ -166,7 +167,7 @@ def test_all_ephemeral_ctrader_workflows_forbid_token_rotation():
 def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_lanes():
     text = (ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml").read_text()
     assert "workflow_dispatch:" in text
-    assert 'cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 1-5"' in text
+    assert 'cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 0-5"' in text
     assert "workflow_run:" not in text
     assert "push:" in text
     assert '".github/workflows/ctrader-demo-auto-supervisor.yml"' in text
@@ -185,8 +186,8 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" not in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
-    assert "strategies=D1_TSMOM_60_200,XAU_M15_EMA_SMC_RECLAIM_V1" in text
-    assert '"src/fx_scanner/demo_xau_d1_tsmom_candidate_producer.py"' in text
+    assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in text
+    assert '"src/fx_scanner/demo_xau_v24_champion_candidate_producer.py"' in text
     assert "challengers=IMPULSE_RETEST_V2" in text
     assert "SUPERVISOR_FAST_SKIP_BUSY" in text
     assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
