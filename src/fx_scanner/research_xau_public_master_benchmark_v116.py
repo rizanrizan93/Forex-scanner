@@ -69,6 +69,32 @@ def _aggregate(rows:Sequence[Bar], timeframe:str)->tuple[AggBar,...]:
     return tuple(out)
 
 
+
+def _m15_by_utc_day(rows:Sequence[Bar])->dict[tuple[int,int,int],tuple[Bar,...]]:
+    buckets:dict[tuple[int,int,int],list[Bar]]={}
+    for bar in sorted((x for x in rows if x.timeframe.upper()=="M15"),key=lambda x:ensure_utc(x.timestamp)):
+        t=ensure_utc(bar.timestamp)
+        buckets.setdefault((t.year,t.month,t.day),[]).append(bar)
+    return {k:tuple(v) for k,v in buckets.items()}
+
+
+def _day_key(ts)->tuple[int,int,int]:
+    t=ensure_utc(ts)
+    return (t.year,t.month,t.day)
+
+
+def _first_touch_direction(day_bars:Sequence[Bar],buy_level:float,sell_level:float):
+    for idx,bar in enumerate(day_bars):
+        buy_hit=float(bar.high)>=float(buy_level)
+        sell_hit=float(bar.low)<=float(sell_level)
+        if buy_hit and sell_hit:
+            return "AMBIGUOUS",idx
+        if buy_hit:
+            return "LONG",idx
+        if sell_hit:
+            return "SHORT",idx
+    return None,None
+
 def _tr(rows):
     out=[]
     prev=None
@@ -145,78 +171,119 @@ def _mk_trade(strategy_id,direction,signal,entry_at,exit_at,si,ei,entry,exitp,at
     )
 
 
-def simulate_turtle_s2(rows:Sequence[AggBar],costs:M15ResearchCosts)->tuple[TournamentTrade,...]:
-    # Public Turtle S2 signal rules: 55-day breakout, 20-day opposite exit, N=20D Wilder ATR,
-    # initial stop 2N. This benchmark is deliberately single-unit: no 0.5N pyramiding/portfolio sizing.
-    tr=_tr(rows);n20=_wilder(tr,20)
+def simulate_turtle_s2(
+    rows:Sequence[AggBar],
+    m15_rows:Sequence[Bar],
+    costs:M15ResearchCosts,
+)->tuple[TournamentTrade,...]:
+    # Public Turtle S2 signal rules: 55-day breakout, 20-day opposite exit,
+    # N=20D Wilder ATR, initial stop 2N. Single-unit benchmark only.
+    # Breakout side is resolved from causal M15 first-touch order.
+    tr=_tr(rows);n20=_wilder(tr,20);intraday=_m15_by_utc_day(m15_rows)
     trades=[];i=55
     while i<len(rows)-1:
         n=n20[i-1]
-        if n is None or n<=0:i+=1;continue
-        upper=max(x.high for x in rows[i-55:i]);lower=min(x.low for x in rows[i-55:i])
-        long_hit=rows[i].high>upper;short_hit=rows[i].low<lower
-        if long_hit==short_hit:
+        if n is None or n<=0:
             i+=1;continue
-        direction="LONG" if long_hit else "SHORT"
-        entry=upper if long_hit else lower
-        stop=entry-2*n if long_hit else entry+2*n
-        # Same-day initial-stop ambiguity is treated stop-first.
-        if (long_hit and rows[i].low<=stop) or (short_hit and rows[i].high>=stop):
-            c=_cost_r(2*n,0.0,costs)
-            trades.append(_mk_trade(TURTLE_S2_ID,direction,rows[i].timestamp,rows[i].timestamp,rows[i].timestamp,i,i,entry,stop,n,stop,0,-1,c,0,"STOP_FIRST_ENTRY_DAY"))
+        upper=max(float(x.high) for x in rows[i-55:i])
+        lower=min(float(x.low) for x in rows[i-55:i])
+        day=intraday.get(_day_key(rows[i].timestamp),())
+        direction,touch_idx=_first_touch_direction(day,upper,lower)
+        if direction in (None,"AMBIGUOUS"):
             i+=1;continue
+        entry=upper if direction=="LONG" else lower
+        stop=entry-2*n if direction=="LONG" else entry+2*n
+
+        # After the first causal touch, inspect remaining M15 bars that day.
+        same_day_stop=False
+        if touch_idx is not None:
+            for k,bar in enumerate(day[touch_idx:]):
+                if direction=="LONG":
+                    stop_hit=float(bar.low)<=stop
+                else:
+                    stop_hit=float(bar.high)>=stop
+                if stop_hit:
+                    same_day_stop=True
+                    break
+        if same_day_stop:
+            cst=_cost_r(2*n,0.0,costs)
+            trades.append(_mk_trade(
+                TURTLE_S2_ID,direction,rows[i].timestamp,day[touch_idx].timestamp,
+                day[touch_idx+k].timestamp,i,i,entry,stop,n,stop,0,-1,cst,0,
+                "2N_STOP_SAME_DAY_M15_CAUSAL"
+            ))
+            i+=1;continue
+
         done=False
         for j in range(i+1,len(rows)):
             exit_channel=(
-                min(x.low for x in rows[max(0,j-20):j])
+                min(float(x.low) for x in rows[max(0,j-20):j])
                 if direction=="LONG"
-                else max(x.high for x in rows[max(0,j-20):j])
+                else max(float(x.high) for x in rows[max(0,j-20):j])
             )
             if direction=="LONG":
-                if rows[j].low<=stop:
+                if float(rows[j].low)<=stop:
                     exitp=stop;reason="2N_STOP"
-                elif rows[j].low<=exit_channel:
+                elif float(rows[j].low)<=exit_channel:
                     exitp=exit_channel;reason="20D_OPPOSITE_EXIT"
                 else:
                     continue
                 gross=(exitp-entry)/(2*n)
             else:
-                if rows[j].high>=stop:
+                if float(rows[j].high)>=stop:
                     exitp=stop;reason="2N_STOP"
-                elif rows[j].high>=exit_channel:
+                elif float(rows[j].high)>=exit_channel:
                     exitp=exit_channel;reason="20D_OPPOSITE_EXIT"
                 else:
                     continue
                 gross=(entry-exitp)/(2*n)
-            hold=j-i;c=_cost_r(2*n,hold,costs)
-            trades.append(_mk_trade(TURTLE_S2_ID,direction,rows[i].timestamp,rows[i].timestamp,rows[j].timestamp,i,j,entry,exitp,n,stop,0,gross,c,hold,reason))
+            hold=j-i;cst=_cost_r(2*n,hold,costs)
+            trades.append(_mk_trade(
+                TURTLE_S2_ID,direction,rows[i].timestamp,day[touch_idx].timestamp,
+                rows[j].timestamp,i,j,entry,exitp,n,stop,0,gross,cst,hold,reason
+            ))
             i=j+1;done=True;break
-        if not done:i+=1
+        if not done:
+            i+=1
     return tuple(trades)
 
 
-def simulate_crabel_nr4(rows:Sequence[AggBar],costs:M15ResearchCosts)->tuple[TournamentTrade,...]:
-    # Classic published NR4 + ORB clean-room encoding:
-    # setup day is narrowest of last 4; following day uses Crabel's classic 10-day
-    # average "stretch" = distance from open to closest daily extreme; exit at same-day close.
-    trades=[]
-    ranges=[x.high-x.low for x in rows]
+def simulate_crabel_nr4(
+    rows:Sequence[AggBar],
+    m15_rows:Sequence[Bar],
+    costs:M15ResearchCosts,
+)->tuple[TournamentTrade,...]:
+    # Classic NR4 + next-day ORB clean-room encoding.
+    # The trigger side is determined by actual M15 first-touch sequence.
+    # Only a double-touch inside the same M15 bar is treated as unknowable.
+    trades=[];ranges=[float(x.high)-float(x.low) for x in rows]
+    intraday=_m15_by_utc_day(m15_rows)
     for i in range(10,len(rows)-1):
         if not (ranges[i]<=min(ranges[i-3:i])):
             continue
         j=i+1
-        stretch_vals=[min(abs(x.high-x.open),abs(x.open-x.low)) for x in rows[j-10:j]]
+        stretch_vals=[
+            min(abs(float(x.high)-float(x.open)),abs(float(x.open)-float(x.low)))
+            for x in rows[j-10:j]
+        ]
         stretch=sum(stretch_vals)/len(stretch_vals)
-        if not isfinite(stretch) or stretch<=0:continue
-        buy=rows[j].open+stretch;sell=rows[j].open-stretch
-        lh=rows[j].high>=buy;sh=rows[j].low<=sell
-        if lh==sh:continue  # no intraday sequence -> do not choose with hindsight
-        direction="LONG" if lh else "SHORT"
-        entry=buy if lh else sell
-        exitp=rows[j].close
-        gross=(exitp-entry)/stretch if lh else (entry-exitp)/stretch
-        c=_cost_r(stretch,0.0,costs)
-        trades.append(_mk_trade(CRABEL_NR4_ID,direction,rows[i].timestamp,rows[j].timestamp,rows[j].timestamp,i,j,entry,exitp,stretch,0,0,gross,c,0,"SAME_DAY_CLOSE"))
+        if not isfinite(stretch) or stretch<=0:
+            continue
+        buy=float(rows[j].open)+stretch
+        sell=float(rows[j].open)-stretch
+        day=intraday.get(_day_key(rows[j].timestamp),())
+        direction,touch_idx=_first_touch_direction(day,buy,sell)
+        if direction in (None,"AMBIGUOUS"):
+            continue
+        entry=buy if direction=="LONG" else sell
+        exitp=float(rows[j].close)
+        gross=(exitp-entry)/stretch if direction=="LONG" else (entry-exitp)/stretch
+        cst=_cost_r(stretch,0.0,costs)
+        entry_at=day[touch_idx].timestamp if touch_idx is not None else rows[j].timestamp
+        trades.append(_mk_trade(
+            CRABEL_NR4_ID,direction,rows[i].timestamp,entry_at,rows[j].timestamp,
+            i,j,entry,exitp,stretch,0,0,gross,cst,0,"M15_FIRST_TOUCH_TO_DAY_CLOSE"
+        ))
     return tuple(trades)
 
 
@@ -299,9 +366,9 @@ def evaluate_v116(
     d1=_aggregate(rows,"D1");h1=_aggregate(rows,"H1")
     start=ensure_utc(evaluation_start);end=ensure_utc(evaluation_end)
     all_trades={
-        TURTLE_S2_ID:simulate_turtle_s2(d1,costs),
+        TURTLE_S2_ID:simulate_turtle_s2(d1,rows,costs),
         RASCHKE_GRAIL_ID:simulate_holy_grail(h1,costs),
-        CRABEL_NR4_ID:simulate_crabel_nr4(d1,costs),
+        CRABEL_NR4_ID:simulate_crabel_nr4(d1,rows,costs),
     }
     out={}
     for name,trades in all_trades.items():
@@ -326,9 +393,9 @@ def evaluate_v116(
         "contract":{
             "data":"Dukascopy XAUUSD BID M15 aggregated causally to UTC H1/D1",
             "costs":"provided stress model deducted in normalized R units",
-            "turtle_s2":"55D breakout / 20D opposite exit / 20D Wilder N / 2N stop; single-unit signal benchmark, no pyramiding",
+            "turtle_s2":"55D breakout / 20D opposite exit / 20D Wilder N / 2N stop; M15 causal first-touch entry sequencing; single-unit signal benchmark, no pyramiding",
             "raschke_holy_grail":"mechanical clean-room encoding of public ADX14>30+rising / EMA20 first-pullback concept; not claimed identical to discretionary execution",
-            "crabel_nr4":"classic NR4 next-day ORB using 10D average open-to-nearest-extreme stretch; ambiguous two-sided trigger days skipped; same-day close exit",
+            "crabel_nr4":"classic NR4 next-day ORB using 10D average open-to-nearest-extreme stretch; trigger side resolved by M15 first-touch; only same-M15 double-touch ambiguity skipped; same-day close exit",
             "parameter_search":False,
             "calendar_year_used_for_routing":False,
         },
