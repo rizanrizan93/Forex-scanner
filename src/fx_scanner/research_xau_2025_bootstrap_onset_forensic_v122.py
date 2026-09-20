@@ -113,7 +113,7 @@ def _annotate_trade(
         "exit_at": ensure_utc(trade.exit_at).isoformat(),
         "entry_price": float(trade.entry_price),
         "stop_loss": float(trade.stop_loss),
-        "target": float(trade.target),
+        "target": float(trade.take_profit),
         "risk_price": float(risk_price),
         "risk_usd_001": float(risk_usd_001),
         "net_r": float(trade.net_r),
