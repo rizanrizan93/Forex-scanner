@@ -19,7 +19,7 @@ edge survives prospectively instead of silently testing a different strategy.
 
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from math import isfinite
 from typing import Any, Sequence
 
@@ -29,11 +29,12 @@ from .execution.policy import load_execution_policy
 from .models import Bar, ensure_utc
 from .signal_producer import _closed_bars
 from .storage.supabase_operational import SupabaseOperationalStore
+from .demo_xau_v24_utc_d1_context import UtcD1Context, load_or_build_context
 
 UTC = timezone.utc
 SYMBOL = "XAUUSD"
 STRATEGY_ID = "XAU_V24_CHAMPION_DEMO_V1"
-DATA_CONTRACT = "XAU_V24_CHAMPION_FORWARD_V1"
+DATA_CONTRACT = "XAU_V24_CHAMPION_FORWARD_V2_UTC_D1"
 WORKER_NAME = "ctrader_demo_xau_v24_champion_candidate_producer"
 
 D1_COMPONENT = "V20_D1_TSMOM_C1_R200"
@@ -220,50 +221,6 @@ def _indicator_series(rows: Sequence[Bar]) -> dict[str, tuple[float | None, ...]
     }
 
 
-def _ewm_from_first(values: Sequence[float], *, alpha: float) -> tuple[float, ...]:
-    if not values:
-        return ()
-    out = [float(values[0])]
-    current = float(values[0])
-    for raw in values[1:]:
-        current = alpha * float(raw) + (1.0 - alpha) * current
-        out.append(current)
-    return tuple(out)
-
-
-def _d1_state(rows: Sequence[Bar]) -> tuple[str | None, float | None]:
-    bars = tuple(rows)
-    if len(bars) < 200:
-        return None, None
-    closes = [float(x.close) for x in bars]
-    ema200 = _ewm_from_first(closes, alpha=2.0 / 201.0)
-    if len(closes) < 61:
-        return None, None
-    ret60 = closes[-1] / closes[-61] - 1.0
-    direction = None
-    if closes[-1] > ema200[-1] and ret60 > 0:
-        direction = "LONG"
-    elif closes[-1] < ema200[-1] and ret60 < 0:
-        direction = "SHORT"
-
-    trs: list[float] = []
-    prev = None
-    for bar in bars:
-        if prev is None:
-            tr = float(bar.high) - float(bar.low)
-        else:
-            tr = max(
-                float(bar.high) - float(bar.low),
-                abs(float(bar.high) - float(prev.close)),
-                abs(float(bar.low) - float(prev.close)),
-            )
-        trs.append(tr)
-        prev = bar
-    atr_series = _ewm_from_first(trs, alpha=1.0 / 14.0)
-    atr = atr_series[-1] if len(trs) >= 14 else None
-    return direction, atr
-
-
 def _next_raw_bar(rows: Sequence[Bar], signal_at: datetime) -> Bar | None:
     target = ensure_utc(signal_at)
     for row in sorted(rows, key=lambda x: ensure_utc(x.timestamp)):
@@ -278,26 +235,38 @@ def _within(now: datetime, start: datetime, seconds: int) -> bool:
     return begin <= current <= begin + timedelta(seconds=int(seconds))
 
 
+def _first_bar_for_utc_day(rows: Sequence[Bar], target_day: date) -> Bar | None:
+    matches = [
+        row
+        for row in sorted(rows, key=lambda x: ensure_utc(x.timestamp))
+        if ensure_utc(row.timestamp).date() == target_day
+    ]
+    return matches[0] if matches else None
+
+
 def _d1_candidate(
-    raw_d1: Sequence[Bar],
+    context: UtcD1Context,
+    raw_m15: Sequence[Bar],
     *,
     now: datetime,
 ) -> ChampionCandidate | None:
-    closed = _closed_bars(raw_d1, as_of=now, timeframe_seconds=86400)
-    if len(closed) < 200:
+    direction = context.direction
+    atr = float(context.atr14)
+    if direction not in {"LONG", "SHORT"} or not isfinite(atr) or atr <= 0:
         return None
-    direction, atr = _d1_state(closed)
-    if direction not in {"LONG", "SHORT"} or atr is None or atr <= 0:
+
+    current_day = ensure_utc(now).date()
+    if context.target_day != current_day or context.signal_day >= current_day:
         return None
-    signal_bar = closed[-1]
-    entry_bar = _next_raw_bar(raw_d1, signal_bar.timestamp)
+    entry_bar = _first_bar_for_utc_day(raw_m15, current_day)
     if entry_bar is None:
         return None
     entry_at = ensure_utc(entry_bar.timestamp)
     if not _within(now, entry_at, D1_ENTRY_GRACE_SECONDS):
         return None
+
     entry = float(entry_bar.open)
-    risk = 2.0 * float(atr)
+    risk = 2.0 * atr
     if direction == "LONG":
         stop = entry - risk
         target = entry + 2.0 * risk
@@ -307,13 +276,13 @@ def _d1_candidate(
     return ChampionCandidate(
         component_id=D1_COMPONENT,
         direction=direction,
-        signal_bar_at=ensure_utc(signal_bar.timestamp),
+        signal_bar_at=datetime.combine(context.signal_day, datetime.min.time(), tzinfo=UTC),
         entry_at=entry_at,
         entry_price=entry,
         stop_loss=stop,
         take_profit=target,
         reward_r=2.0,
-        atr=float(atr),
+        atr=atr,
     )
 
 
@@ -347,7 +316,7 @@ def _m15_candidate(
     component_id: str,
     raw_m15: Sequence[Bar],
     raw_h1: Sequence[Bar],
-    raw_d1: Sequence[Bar],
+    d1_direction: str | None,
     *,
     now: datetime,
 ) -> ChampionCandidate | None:
@@ -369,10 +338,8 @@ def _m15_candidate(
 
     signal_close_at = signal_at + timedelta(minutes=15)
     closed_h1 = _closed_bars(raw_h1, as_of=signal_close_at, timeframe_seconds=3600)
-    closed_d1 = _closed_bars(raw_d1, as_of=signal_close_at, timeframe_seconds=86400)
-    if len(closed_h1) < 61 or len(closed_d1) < 200:
+    if len(closed_h1) < 61:
         return None
-    d1_direction, _d1_atr = _d1_state(closed_d1)
     h1_direction = _h1_bias(closed_h1, adx_min=float(spec["h1_adx_min"]))
     if h1_direction is None or d1_direction != h1_direction:
         return None
@@ -624,17 +591,9 @@ def run() -> int:
     error: str | None = None
     candidates: tuple[ChampionCandidate, ...] = ()
     persisted: list[dict[str, Any]] = []
+    context_by_day: dict[date, UtcD1Context] = {}
     try:
         feed.ensure_connected()
-        raw_d1 = tuple(
-            feed.historical_bars(
-                SYMBOL,
-                "D1",
-                from_time=_history_window(now, 86400, 300, 1.70),
-                to_time=now,
-                count=300,
-            )
-        )
         raw_h1 = tuple(
             feed.historical_bars(
                 SYMBOL,
@@ -654,13 +613,44 @@ def run() -> int:
             )
         )
 
+        closed_m15 = _closed_bars(raw_m15, as_of=now, timeframe_seconds=900)
+        def context_for(day: date) -> UtcD1Context:
+            if day not in context_by_day:
+                context_by_day[day] = load_or_build_context(
+                    store=store,
+                    feed=feed,
+                    account_id=account_id,
+                    target_day=day,
+                )
+            return context_by_day[day]
+
+        current_context = context_for(now.date())
+        signal_day = (
+            ensure_utc(closed_m15[-1].timestamp).date()
+            if closed_m15
+            else now.date()
+        )
+        signal_context = context_for(signal_day)
+
         history = _latest_geometry_payloads(store)
         raw_candidates = [
             value
             for value in (
-                _d1_candidate(raw_d1, now=now),
-                _m15_candidate(L12_COMPONENT, raw_m15, raw_h1, raw_d1, now=now),
-                _m15_candidate(L20_COMPONENT, raw_m15, raw_h1, raw_d1, now=now),
+                _d1_candidate(current_context, raw_m15, now=now),
+                _m15_candidate(
+                    L12_COMPONENT,
+                    raw_m15,
+                    raw_h1,
+                    signal_context.direction,
+                    now=now,
+                ),
+                _m15_candidate(
+                    L20_COMPONENT,
+                    raw_m15,
+                    raw_h1,
+                    signal_context.direction,
+                    now=now,
+                ),
             )
             if value is not None
         ]
@@ -722,6 +712,18 @@ def run() -> int:
             "signals_written": len(persisted),
             "score": SCORE,
             "risk_policy": "shared bounded DEMO executor",
+            "d1_source": "UTC_CALENDAR_D1_FROM_CTRADER_H1_PARITY_V124",
+            "d1_contexts": [
+                {
+                    "target_day": context.target_day.isoformat(),
+                    "signal_day": context.signal_day.isoformat(),
+                    "direction": context.direction,
+                    "atr14": context.atr14,
+                    "source": context.source,
+                    "history_days": context.history_days,
+                }
+                for context in sorted(context_by_day.values(), key=lambda x: x.target_day)
+            ],
             "v110_v121": "lineage/benchmark",
             "v123": "shadow only",
             "error": error,
@@ -730,7 +732,8 @@ def run() -> int:
     print(
         "CTRADER_DEMO_XAU_V24_CHAMPION "
         f"healthy={int(healthy)} candidates={len(candidates)} "
-        f"signals={len(persisted)} strategy={STRATEGY_ID}"
+        f"signals={len(persisted)} strategy={STRATEGY_ID} "
+        "d1_source=UTC_CALENDAR_D1_FROM_CTRADER_H1_PARITY_V124"
     )
     for candidate in candidates:
         print(
