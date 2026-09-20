@@ -1,0 +1,48 @@
+name: XAU $100 Regime Cash Path V88
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_100usd_regime_cashpath_v88.py"
+      - "src/fx_scanner/research_xau_100usd_regime_cashpath_v88_runtime.py"
+      - "tests/test_research_xau_100usd_regime_cashpath_v88.py"
+      - ".github/workflows/research-xau-100usd-regime-cashpath-v88.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-100usd-regime-cashpath-v88-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      V88_EVIDENCE_OUTPUT: artifacts/xau-100usd-regime-cashpath-v88.json
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit tests
+        run: pytest -q tests/test_research_xau_100usd_regime_cashpath_v88.py
+      - name: Run continuous $100 / 1:100 diagnostic
+        run: python -m fx_scanner.research_xau_100usd_regime_cashpath_v88_runtime
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-100usd-regime-cashpath-v88
+          path: artifacts/xau-100usd-regime-cashpath-v88.json
+          if-no-files-found: error
+          retention-days: 30
