@@ -265,10 +265,29 @@ def _sequence_context(
     }
 
 
+def _trade_key(trade: TournamentTrade) -> tuple[Any, ...]:
+    return (
+        str(trade.strategy_id),
+        ensure_utc(trade.signal_at),
+        ensure_utc(trade.entry_at),
+        str(trade.direction),
+    )
+
+
+def _build_sequence_map(
+    rows: Sequence[Bar],
+    trades: Sequence[TournamentTrade],
+) -> dict[tuple[Any, ...], dict[str, Any]]:
+    return {
+        _trade_key(trade): _sequence_context(rows, trade)
+        for trade in trades
+    }
+
+
 def _payload(
     trades: Sequence[TournamentTrade],
     *,
-    rows: Sequence[Bar],
+    sequence_map: Mapping[tuple[Any, ...], Mapping[str, Any]],
     trading_days: int,
 ) -> dict[str, Any]:
     groups: dict[str, list[TournamentTrade]] = defaultdict(list)
@@ -277,7 +296,13 @@ def _payload(
     sweep_post_disp: list[TournamentTrade] = []
 
     for trade in trades:
-        ctx = _sequence_context(rows, trade)
+        ctx = sequence_map.get(
+            _trade_key(trade),
+            {
+                "state": "UNAVAILABLE",
+                "sweep_sources": (),
+            },
+        )
         state = str(ctx["state"])
         if state not in SEQUENCE_STATES:
             state = "UNAVAILABLE"
@@ -376,6 +401,7 @@ def evaluate_v80(
             }
 
         satellite = _unique(gated_all)
+        sequence_map = _build_sequence_map(rows, satellite)
 
         annual: dict[str, Any] = {}
         for year in range(FULL_START.year, FULL_END.year + 1):
@@ -387,7 +413,7 @@ def evaluate_v80(
             days = sum(1 for d in era_dates if start.date() <= d < end.date())
             annual[str(year)] = _payload(
                 period,
-                rows=rows,
+                sequence_map=sequence_map,
                 trading_days=days,
             )
 
@@ -408,7 +434,7 @@ def evaluate_v80(
             days = sum(1 for d in era_dates if start.date() <= d < end.date())
             windows[label] = _payload(
                 period,
-                rows=rows,
+                sequence_map=sequence_map,
                 trading_days=days,
             )
 
@@ -417,7 +443,7 @@ def evaluate_v80(
             "satellite": _stats(satellite, era_days),
             "full_period": _payload(
                 satellite,
-                rows=rows,
+                sequence_map=sequence_map,
                 trading_days=era_days,
             ),
             "annual": annual,
