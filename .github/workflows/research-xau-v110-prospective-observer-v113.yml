@@ -1,0 +1,44 @@
+name: XAU V110 Prospective Observer V113
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_v110_prospective_observer_v113.py"
+      - "src/fx_scanner/research_xau_v110_prospective_observer_v113_runtime.py"
+      - "tests/test_research_xau_v110_prospective_observer_v113.py"
+      - ".github/workflows/research-xau-v110-prospective-observer-v113.yml"
+  schedule:
+    - cron: "17 */4 * * 1-5"
+    - cron: "17 21 * * 0"
+permissions: {contents: read}
+concurrency:
+  group: xau-v110-prospective-observer-v113
+  cancel-in-progress: true
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      V113_EVIDENCE_OUTPUT: artifacts/xau-v110-prospective-observer-v113.json
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11",cache: pip}
+      - name: Install observer runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit tests
+        run: pytest -q tests/test_research_xau_v110_prospective_observer_v113.py
+      - name: Run V110 prospective observer
+        run: python -m fx_scanner.research_xau_v110_prospective_observer_v113_runtime
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v110-prospective-observer-v113
+          path: artifacts/xau-v110-prospective-observer-v113.json
+          if-no-files-found: error
+          retention-days: 30
