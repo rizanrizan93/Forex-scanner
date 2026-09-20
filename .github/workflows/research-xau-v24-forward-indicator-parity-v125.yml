@@ -1,0 +1,54 @@
+name: XAU V24 Forward Indicator Parity V125
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_v24_forward_indicator_parity_v125.py"
+      - "tests/test_research_xau_v24_forward_indicator_parity_v125.py"
+      - ".github/workflows/research-xau-v24-forward-indicator-parity-v125.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fidelity-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"
+      V125_OUTPUT: artifacts/xau-v24-forward-indicator-parity-v125.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
+          pip install -e .
+      - name: Unit tests
+        run: pytest -q tests/test_research_xau_v24_forward_indicator_parity_v125.py
+      - name: Run V125 fidelity audit
+        run: python -m fx_scanner.research_xau_v24_forward_indicator_parity_v125
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v24-forward-indicator-parity-v125
+          path: artifacts/xau-v24-forward-indicator-parity-v125.json
+          if-no-files-found: error
+          retention-days: 30
