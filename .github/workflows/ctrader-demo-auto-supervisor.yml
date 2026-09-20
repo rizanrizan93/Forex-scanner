@@ -14,6 +14,7 @@ on:
       - ".github/workflows/ctrader-demo-auto-pipeline.yml"
       - ".github/workflows/ctrader-demo-auto-recovery-watchdog.yml"
       - "src/fx_scanner/demo_xau_v24_champion_candidate_producer.py"
+      - "src/fx_scanner/demo_xau_v24_utc_d1_context.py"
       - "src/fx_scanner/demo_xau_v24_champion_time_exit.py"
       - "src/fx_scanner/demo_five_core_candidate_producer.py"
       - "src/fx_scanner/demo_five_core_router.py"
