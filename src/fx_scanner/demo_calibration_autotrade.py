@@ -215,7 +215,7 @@ def run(*, limit: int = 10) -> int:
     try:
         open_positions_before = int(gateway.position_count())
         max_positions = int(policy.demo_safety["max_concurrent_positions"])
-        weekend_crypto_only = market_schedule_mode == "WEEKEND_CRYPTO_24X7"
+        weekend_crypto_only = market_schedule_mode.startswith("WEEKEND_CRYPTO")
         poll_limit = 100 if weekend_crypto_only else int(limit)
         print(
             "CTRADER_DEMO_MARKET_SCHEDULE "

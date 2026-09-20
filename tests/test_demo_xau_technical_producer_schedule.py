@@ -14,7 +14,7 @@ def test_xau_wrapper_validates_full_weekday_universe_before_narrowing():
     )
 
     assert [pair.symbol for pair in scheduled.pairs] == ["XAUUSD"]
-    assert mode == "WEEKDAY_FULL_24X5_XAUUSD_ONLY"
+    assert mode == "FOREX_WEEK_FULL_24X5_XAUUSD_ONLY"
 
 
 def test_xau_wrapper_fails_closed_when_xau_is_not_scheduled():
