@@ -161,7 +161,7 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
         DEMO_STACK_MAX_POSITIONS_ENV,
         default=3,
         minimum=1,
-        maximum=4,
+        maximum=DEMO_POSITION_CAP_CEILING,
     )
     demo_safety["max_same_symbol_positions"] = max_same_symbol_positions
     demo_safety["min_stack_spacing_seconds"] = _bounded_float_env(
