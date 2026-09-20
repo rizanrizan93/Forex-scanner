@@ -137,7 +137,7 @@ def audit_d1(
                 "health_pf":health["profit_factor"],
                 "health_exp":health["expectancy_r"],
                 "net_r":float(t.net_r),
-                "reason":str(t.reason),
+                "reason":str(t.exit_reason),
             })
 
     return {
