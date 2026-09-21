@@ -24,7 +24,7 @@ def test_conviction_sizing_scales_lots_by_quality_tier():
         (_row(98.0, 0.99, 1.5), "ELITE_PLUS", 0.50, 5.0),
     )
     assert MAX_DEMO_LOTS == 0.50
-    assert MAX_DEMO_RISK_PCT == 5.0
+    assert MAX_DEMO_RISK_PCT == 20.0
     for row, tier, lots, risk in cases:
         sizing = select_demo_conviction_sizing(row)
         assert sizing.tier == tier
@@ -66,15 +66,15 @@ def test_fast_handoff_installs_bounded_demo_conviction_sizing():
 
 
 @pytest.mark.parametrize("setup_type", ["V24_D1", "V24_L12", "V24_L20"])
-def test_v24_champion_preserves_fixed_point_zero_one_lot_with_five_pct_ceiling(setup_type):
+def test_v24_champion_preserves_fixed_point_zero_one_lot_with_twenty_pct_ceiling(setup_type):
     row = _row(60.0, 1.0, 2.0)
     row["symbol"] = "XAUUSD"
     row["setup_type"] = setup_type
     sizing = select_demo_conviction_sizing(
         row,
         max_order_lots=0.50,
-        max_risk_pct=5.0,
+        max_risk_pct=20.0,
     )
     assert sizing.tier == "V24_FIXED_001"
     assert sizing.lots == 0.01
-    assert sizing.risk_budget_pct == 5.0
+    assert sizing.risk_budget_pct == 20.0
