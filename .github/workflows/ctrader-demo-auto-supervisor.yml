@@ -100,7 +100,7 @@ jobs:
             exit 0
           fi
 
-          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1 fast_cadence_seconds=60 maintenance_cadence_seconds=300 discovery_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_5M execution_workflow=ctrader-demo-xau-execution-lane.yml maintenance_workflow=ctrader-demo-maintenance-pipeline.yml push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=DISABLED"
+          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1 fast_cadence_seconds=60 maintenance_cadence_seconds=300 discovery_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_5M execution_workflow=ctrader-demo-xau-execution-lane.yml maintenance_workflow=ctrader-demo-maintenance-pipeline.yml push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=SAFE_CONDITIONAL"
 
           # Each supervisor owns one bounded five-minute window. The exact XAU
           # execution lane is checked every minute so the V24 three-minute entry
@@ -150,4 +150,24 @@ jobs:
             fi
           done
 
-          echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1 execution_dispatched=${execution_dispatched} execution_busy=${execution_busy} maintenance_dispatched=${maintenance_dispatched} maintenance_busy=${maintenance_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 maintenance_cadence_seconds=300 discovery_check_seconds=60 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=DISABLED"
+          # GitHub scheduled delivery can occasionally go stale. Keep one bounded
+          # supervisor chain alive without creating a duplicate queue, but only
+          # while the execution lane is healthy. Any fail-closed execution
+          # failure (including unprotected unmanaged positions) stops the chain.
+          latest_execution_conclusion="$(
+            gh api               -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-xau-execution-lane.yml/runs?branch=main&per_page=20"               --jq '[.workflow_runs[] | select(.status == "completed")][0].conclusion // ""'
+          )"
+          other_active_supervisors="$(
+            gh api               -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/runs?branch=main&per_page=20"               --jq "[.workflow_runs[] | select((.status == \"queued\" or .status == \"in_progress\" or .status == \"waiting\" or .status == \"pending\") and (.id != ${GITHUB_RUN_ID}))] | length"
+          )"
+
+          self_handoff=0
+          if market_open_utc && [ "${latest_execution_conclusion}" = "success" ] && [ "${other_active_supervisors}" -eq 0 ]; then
+            dispatch_workflow ctrader-demo-auto-supervisor.yml
+            self_handoff=1
+            echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_DISPATCHED source_run=${GITHUB_RUN_ID} latest_execution_conclusion=${latest_execution_conclusion}"
+          else
+            echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED source_run=${GITHUB_RUN_ID} latest_execution_conclusion=${latest_execution_conclusion:-NONE} other_active_supervisors=${other_active_supervisors} safety=FAIL_CLOSED"
+          fi
+
+          echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1 execution_dispatched=${execution_dispatched} execution_busy=${execution_busy} maintenance_dispatched=${maintenance_dispatched} maintenance_busy=${maintenance_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 maintenance_cadence_seconds=300 discovery_check_seconds=60 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=${self_handoff}"
