@@ -1,0 +1,40 @@
+name: XAU Account Compatible Era V150
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_v121_account_compatible_era_v150.py"
+      - "src/fx_scanner/research_xau_v121_account_compatible_era_v150_runtime.py"
+      - "tests/test_research_xau_v121_account_compatible_era_v150.py"
+      - ".github/workflows/research-xau-account-compatible-era-v150.yml"
+permissions:
+  contents: read
+jobs:
+  account-compatible-era:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      V150_EVIDENCE_OUTPUT: artifacts/xau-account-compatible-era-v150.json
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit tests
+        run: pytest -q tests/test_research_xau_v121_account_compatible_era_v150.py
+      - name: Run V150
+        run: python -m fx_scanner.research_xau_v121_account_compatible_era_v150_runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-account-compatible-era-v150
+          path: artifacts/xau-account-compatible-era-v150.json
+          if-no-files-found: error
+          retention-days: 30
