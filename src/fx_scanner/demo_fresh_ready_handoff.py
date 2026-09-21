@@ -182,7 +182,7 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
     )
     demo_safety["max_margin_free_usage_pct"] = _bounded_float_env(
         DEMO_MARGIN_USAGE_CAP_ENV,
-        default=25.0,
+        default=50.0,
         minimum=5.0,
         maximum=50.0,
     )
