@@ -40,14 +40,14 @@ def test_demo_auto_pipeline_is_dispatch_only_xauusd_fast_lane_and_demo_only():
     assert 'CTRADER_DEMO_FAST_RANKING_MAX_AGE_MINUTES: "20"' in text
     assert 'CTRADER_DEMO_HISTORICAL_REQUEST_DELAY_SECONDS: "0.20"' in text
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in text
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in text
     assert 'CTRADER_DEMO_STACK_MIN_SCORE: "50.01"' in text
     assert 'CTRADER_DEMO_STACK_MIN_COVERAGE: "0.80"' in text
     assert 'CTRADER_DEMO_STACK_MIN_RR2: "1.5"' in text
     assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "10"' in text
     assert 'CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"' in text
-    assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"' in text
+    assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "20.0"' in text
     assert 'CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "25.0"' in text
     assert 'CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "0"' in text
     assert 'CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"' in text
@@ -116,7 +116,7 @@ def test_demo_discovery_pipeline_is_xauusd_only_independent_and_non_executing():
     assert "demo_structural_profit_protector" not in text
     assert "continue-on-error: true" in text
     assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in text
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in text
     assert "CTRADER_DEMO_DEEP_ANALYSIS_TOP" not in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
@@ -141,7 +141,7 @@ def test_legacy_autotrade_workflow_remains_manual_only_and_uses_exact_authority_
     assert "schedule:" not in text
     assert "demo_execution_fresh_ready_handoff --limit 10" in text
     assert "ctrader-demo-autotrade --once" not in text
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in text
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in text
 
@@ -235,10 +235,10 @@ def test_minute_xau_execution_lane_is_exact_authority_and_demo_only():
     )
     assert "demo_xau_v24_champion_time_exit" not in text
     assert "demo_xau_expansion_v42_candidate_producer" not in text
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in text
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in text
-    assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"' in text
+    assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "20.0"' in text
     assert 'CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json' in text
     assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
