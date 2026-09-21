@@ -154,11 +154,16 @@ def evaluate_v130(
     candidates=_portfolio_candidates(
         bars,base_costs=costs,stressed_costs=costs,pip_size=pip_size
     )
-    exact_all=candidates["D1_PLUS_L12_L20"]["stress"]
     l12_id=M15_VARIANTS[0].variant_id
     l20_id=M15_VARIANTS[1].variant_id
-    raw_l12=tuple(t for t in exact_all if str(t.strategy_id)==l12_id)
-    raw_l20=tuple(t for t in exact_all if str(t.strategy_id)==l20_id)
+    # Use each frozen V24 component's own stream before cross-family
+    # concurrency limiting, then apply portfolio concurrency only after combine.
+    raw_l12=tuple(candidates["M15_L12_ONLY"]["stress"])
+    raw_l20=tuple(candidates["M15_L20_ONLY"]["stress"])
+    if any(str(t.strategy_id)!=l12_id for t in raw_l12):
+        raise AssertionError("V130_L12_LINEAGE_MISMATCH")
+    if any(str(t.strategy_id)!=l20_id for t in raw_l20):
+        raise AssertionError("V130_L20_LINEAGE_MISMATCH")
 
     frame=build_v122_feature_frame(bars)
     _,epoch_defs=build_reaccel_route_frame(frame,route_id="COMPRESSED_REACCEL")
