@@ -48,7 +48,7 @@ def test_demo_auto_pipeline_is_dispatch_only_xauusd_fast_lane_and_demo_only():
     assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "10"' in text
     assert 'CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"' in text
     assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "20.0"' in text
-    assert 'CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "25.0"' in text
+    assert 'CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "50.0"' in text
     assert 'CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "0"' in text
     assert 'CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"' in text
     assert 'CTRADER_DEMO_XAU_CANONICAL_POSITION_MANAGER_ENABLED: "1"' in text
