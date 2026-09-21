@@ -14,13 +14,13 @@ def test_calibration_auto_pipeline_keeps_bounded_demo_capacity_with_strategy_sta
     assert float(execution["demo_safety"]["max_order_lots"]) == 0.50
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in workflow
     assert int(execution["demo_safety"]["max_concurrent_positions"]) == 10
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in workflow
-    assert float(execution["demo_safety"]["max_risk_pct"]) == 5.0
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in workflow
+    assert float(execution["demo_safety"]["max_risk_pct"]) == 20.0
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in workflow
     assert 'CTRADER_DEMO_STACK_MIN_SCORE: "50.01"' in workflow
     assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "10"' in workflow
     assert 'CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"' in workflow
-    assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"' in workflow
+    assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "20.0"' in workflow
     assert 'CTRADER_DEMO_ADAPTIVE_PROFIT_LOCK_ENABLED: "0"' in workflow
     assert 'CTRADER_DEMO_STRUCTURAL_PROFIT_PROTECT_ENABLED: "0"' in workflow
     assert execution["ctrader"]["environment"] == "DEMO"
