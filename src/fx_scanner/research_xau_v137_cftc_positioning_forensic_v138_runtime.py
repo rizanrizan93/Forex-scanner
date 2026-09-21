@@ -55,9 +55,33 @@ def _download_year(session: requests.Session, year: int):
     }
 
 
+def _report_dates(frame: pd.DataFrame, year: int) -> tuple[pd.Series, str]:
+    if "As_of_Date_Form_YYYY-MM-DD" in frame.columns:
+        parsed = pd.to_datetime(
+            frame["As_of_Date_Form_YYYY-MM-DD"], errors="coerce"
+        )
+        if parsed.notna().any():
+            return parsed, "As_of_Date_Form_YYYY-MM-DD"
+
+    if "As_of_Date_In_Form_YYMMDD" in frame.columns:
+        # Historical 2011 archive uses the legacy YYMMDD field without the
+        # modern ISO date column. Convert as a zero-padded six-digit string.
+        raw = (
+            frame["As_of_Date_In_Form_YYMMDD"]
+            .astype(str)
+            .str.replace(r"\.0$", "", regex=True)
+            .str.strip()
+            .str.zfill(6)
+        )
+        parsed = pd.to_datetime(raw, format="%y%m%d", errors="coerce")
+        if parsed.notna().any():
+            return parsed, "As_of_Date_In_Form_YYMMDD"
+
+    raise RuntimeError(f"CFTC_DATE_SCHEMA_MISSING:{year}")
+
+
 def _load_cftc():
     required = {
-        "As_of_Date_Form_YYYY-MM-DD",
         "CFTC_Contract_Market_Code",
         "Open_Interest_All",
         "Prod_Merc_Positions_Long_All",
@@ -76,17 +100,27 @@ def _load_cftc():
             missing = sorted(required - set(frame.columns))
             if missing:
                 raise RuntimeError(f"CFTC_SCHEMA_MISSING:{year}:{missing}")
+            dates, date_column = _report_dates(frame, year)
+            frame = frame.copy()
+            frame["_parsed_report_date"] = dates
             codes = frame["CFTC_Contract_Market_Code"].map(_normalize_code)
-            gold = frame.loc[codes == GOLD_CFTC_CONTRACT_MARKET_CODE].copy()
+            gold = frame.loc[
+                (codes == GOLD_CFTC_CONTRACT_MARKET_CODE)
+                & frame["_parsed_report_date"].notna()
+            ].copy()
             if gold.empty:
                 raise RuntimeError(f"CFTC_GOLD_MISSING:{year}")
-            sources.append({**meta, "gold_rows": len(gold)})
+            sources.append(
+                {
+                    **meta,
+                    "gold_rows": len(gold),
+                    "date_column": date_column,
+                }
+            )
             for _, row in gold.iterrows():
                 raw_rows.append(
                     {
-                        "report_date": pd.to_datetime(
-                            row["As_of_Date_Form_YYYY-MM-DD"], errors="raise"
-                        ).date(),
+                        "report_date": row["_parsed_report_date"].date(),
                         "open_interest": float(row["Open_Interest_All"]),
                         "managed_money_long": float(row["M_Money_Positions_Long_All"]),
                         "managed_money_short": float(row["M_Money_Positions_Short_All"]),
@@ -175,6 +209,9 @@ def run():
                 "last": data["cot_last_report"],
                 "years": len(cot_sources),
                 "gold_rows_downloaded": sum(x["gold_rows"] for x in cot_sources),
+                "date_columns": {
+                    str(x["year"]): x["date_column"] for x in cot_sources
+                },
             },
             sort_keys=True,
         )
