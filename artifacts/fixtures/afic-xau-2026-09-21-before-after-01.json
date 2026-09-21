@@ -1,0 +1,48 @@
+{
+  "fixture_id": "AFIC_XAU_2026_09_21_BEFORE_AFTER_01",
+  "evidence_type": "USER_SUPPLIED_PROSPECTIVE_BEFORE_AFTER",
+  "source_context": "AKADEMI AFIQ INDONESIA screenshot supplied by user",
+  "instrument": "XAUUSD",
+  "timeframe_shown": "M12",
+  "levels_visible": {
+    "reaction_supply_low": 4350.24,
+    "reaction_supply_high_approx": 4359.0,
+    "intermediate_reference": 4339.83,
+    "lower_demand_low": 4323.05,
+    "lower_demand_high": 4324.54,
+    "upper_reference": 4373.53
+  },
+  "before_forecast": {
+    "sequence": [
+      "rebound upward into orange reaction/supply zone",
+      "then bearish move toward lower demand zone"
+    ],
+    "classification": "BIDIRECTIONAL_PATH_FORECAST"
+  },
+  "after_snapshot": {
+    "market_price_visible_approx": 4354.03,
+    "leg1_status": "CONFIRMED_PRICE_REACHED_REACTION_ZONE",
+    "channel_text": "GOLD BUY 300 PIPS PROFIT",
+    "next_action_text": "Take risk ah sell dalam zone, mudah2an lanjut turun lagi ke zona demand bawah.",
+    "leg2_status_at_snapshot": "PENDING"
+  },
+  "causal_interpretation": {
+    "validated": [
+      "AFIC forecast can contain sequential opposing legs",
+      "first liquidity/reaction destination can be traded as a BUY",
+      "arrival inside the forecast reaction zone can trigger a new SELL thesis",
+      "forecast node and execution node are distinct"
+    ],
+    "not_yet_validated_at_after_snapshot": [
+      "sell leg reaches lower demand 4323.05-4324.54",
+      "full-path sequence completes"
+    ]
+  },
+  "research_use": {
+    "locked_fixture": true,
+    "fit_thresholds_from_fixture": false,
+    "score_leg1_separately": true,
+    "score_leg2_separately": true,
+    "score_full_sequence_separately": true
+  }
+}
