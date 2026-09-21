@@ -181,9 +181,15 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert "authority=SCHEDULE_5M" in text
     assert "push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE" in text
     assert "head_sha=${GITHUB_SHA}" in text
-    assert "self_handoff=DISABLED" in text
-    assert "CTRADER_DEMO_SUPERVISOR_HANDOFF" not in text
-    assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" not in text
+    assert "self_handoff=SAFE_CONDITIONAL" in text
+    assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" in text
+    assert "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_DISPATCHED" in text
+    assert "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED" in text
+    assert "latest_execution_status" in text
+    assert '[ "${latest_execution_status}" = "completed" ]' in text
+    assert '[ "${latest_execution_conclusion}" = "success" ]' in text
+    assert "other_active_supervisors" in text
+    assert "safety=FAIL_CLOSED" in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
     assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in text

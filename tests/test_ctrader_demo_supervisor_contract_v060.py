@@ -9,7 +9,7 @@ def _read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_supervisor_keeps_bounded_one_minute_cadence_without_recursive_handoff() -> None:
+def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_handoff() -> None:
     text = _read(".github/workflows/ctrader-demo-auto-supervisor.yml")
 
     assert "for cycle in $(seq 1 5)" in text
@@ -22,9 +22,16 @@ def test_supervisor_keeps_bounded_one_minute_cadence_without_recursive_handoff()
     assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in text
     assert "cancel-in-progress: false" in text
     assert "authority=SCHEDULE_5M" in text
-    assert "self_handoff=DISABLED" in text
-    assert "CTRADER_DEMO_SUPERVISOR_HANDOFF" not in text
-    assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" not in text
+    assert "self_handoff=SAFE_CONDITIONAL" in text
+    assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" in text
+    assert "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_DISPATCHED" in text
+    assert "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED" in text
+    assert "latest_execution_status" in text
+    assert '.workflow_runs[0].status // ""' in text
+    assert '[ "${latest_execution_status}" = "completed" ]' in text
+    assert '[ "${latest_execution_conclusion}" = "success" ]' in text
+    assert "other_active_supervisors" in text
+    assert "safety=FAIL_CLOSED" in text
     assert "workflow_run:" not in text
     assert "push:" in text
     assert '".github/workflows/ctrader-demo-auto-supervisor.yml"' in text
