@@ -29,7 +29,7 @@ def _h1_rows_before(h1,timestamp):
     return h1[h1["time"]<=ensure_utc(timestamp)]
 
 
-def _break_level(h1,h1p,timestamp,direction,definition):
+def _break_level(h1,h1p,timestamp,direction,definition,signal_at=None):
     past=_h1_rows_before(h1,timestamp)
     if len(past)<4:
         return None
@@ -39,9 +39,12 @@ def _break_level(h1,h1p,timestamp,direction,definition):
         return float(row["low"] if direction=="SHORT" else row["high"])
 
     if definition=="SIGNAL_H1_EXTREME":
-        # Signal timestamp lies inside the next forming H1 bucket; the latest
-        # completed H1 candle is the causal signal-H1 reference.
-        row=past.iloc[-1]
+        signal_past=_h1_rows_before(h1,signal_at if signal_at is not None else timestamp)
+        if len(signal_past)<1:
+            return None
+        # Freeze the H1 reference that was already completed when the original
+        # M15 signal appeared; later TP1 movement cannot move this level.
+        row=signal_past.iloc[-1]
         return float(row["low"] if direction=="SHORT" else row["high"])
 
     if definition=="LOCAL_3H_STRUCTURE":
@@ -75,7 +78,10 @@ def _diagnose_one(f,bars,entry_index,h1,h1p,horizon,definition):
     if tp1_i is None:
         return {"tp1_hit":False,"pre_tp1_status":status,"break_after_tp1":False,"terminal_after_break":False,"be_after_tp1":False}
 
-    level=_break_level(h1,h1p,ensure_utc(bars[tp1_i].timestamp),f.direction,definition)
+    level=_break_level(
+        h1,h1p,ensure_utc(bars[tp1_i].timestamp),f.direction,definition,
+        signal_at=f.signal_at,
+    )
     if level is None:
         return {"tp1_hit":True,"pre_tp1_status":"TP1","break_after_tp1":False,"terminal_after_break":False,"be_after_tp1":False}
 
