@@ -124,10 +124,14 @@ def _replay(
             if first_1000 is None and balance>=1000.0:
                 first_1000=ts.isoformat()
 
-        entries=sorted(
-            grouped.get(ts,[]),
-            key=lambda z:(_planned_loss(z[1],spec),0 if _family(z[1])=="M15_BOOTSTRAP" else 1,z[0]),
-        )
+        if variant=="BOOTSTRAP_PLUS_D1_GEOMETRY":
+            entries=sorted(
+                grouped.get(ts,[]),
+                key=lambda z:(_planned_loss(z[1],spec),0 if _family(z[1])=="M15_BOOTSTRAP" else 1,z[0]),
+            )
+        else:
+            # Controls reproduce canonical V129 event ordering exactly.
+            entries=sorted(grouped.get(ts,[]),key=lambda z:z[0])
         for idx,t in entries:
             if not _variant_allows(t,variant):
                 continue
