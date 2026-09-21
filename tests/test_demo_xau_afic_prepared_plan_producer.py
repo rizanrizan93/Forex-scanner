@@ -1,7 +1,12 @@
+from datetime import datetime,timezone
+
 from fx_scanner.demo_xau_afic_prepared_plan_producer import (
     EXECUTION_STRATEGY_ID,MAX_H4_DIRECTIONAL_CLOSE_LOC,MAX_ZONE_DISTANCE_ATR,
-    STRATEGY_ID,prepared_blueprint,selector_grade
+    STRATEGY_ID,confirmation_latency_seconds,entry_drift_metrics,
+    prepared_blueprint,selector_grade
 )
+
+UTC=timezone.utc
 
 def test_afic_prepared_identity_and_selector():
     assert STRATEGY_ID=="XAU_AFIC_PATH_PREPARED_V1"
@@ -39,3 +44,15 @@ def test_afic_prepared_long_blueprint_is_structural():
     assert plan["stop"]==4319.0
     assert plan["tp2"]>plan["entry"]
     assert plan["rr2"]>=1.5
+
+def test_afic_confirmation_latency_uses_completed_m15_boundary():
+    payload={"confirm_at":"2026-09-21T12:00:00+00:00"}
+    detected=datetime(2026,9,21,12,15,42,tzinfo=UTC)
+    assert confirmation_latency_seconds(payload,detected_at=detected)==42.0
+
+def test_afic_entry_drift_is_normalized_by_prepared_risk():
+    prepared={"entry":4350.0,"stop":4360.0}
+    live={"entry":4349.0}
+    x=entry_drift_metrics(prepared=prepared,live=live)
+    assert x["entry_drift_abs"]==1.0
+    assert x["entry_drift_r"]==0.1

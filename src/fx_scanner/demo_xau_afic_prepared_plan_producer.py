@@ -129,6 +129,39 @@ def prepared_blueprint(payload:dict[str,Any])->dict[str,Any]|None:
     }
 
 
+def confirmation_latency_seconds(payload:dict[str,Any],*,detected_at:datetime)->float|None:
+    raw=payload.get("confirm_at")
+    if not raw:
+        return None
+    try:
+        confirm_open=datetime.fromisoformat(str(raw).replace("Z","+00:00"))
+    except ValueError:
+        return None
+    if confirm_open.tzinfo is None:
+        return None
+    completed_at=ensure_utc(confirm_open)+timedelta(minutes=15)
+    return max(0.0,(ensure_utc(detected_at)-completed_at).total_seconds())
+
+
+def entry_drift_metrics(*,prepared:dict[str,Any]|None,live:dict[str,Any]|None)->dict[str,float|None]:
+    if prepared is None or live is None:
+        return {
+            "prepared_reference_entry":None,
+            "live_entry":None,
+            "entry_drift_abs":None,
+            "entry_drift_r":None,
+        }
+    ref=float(prepared["entry"]);px=float(live["entry"]);stop=float(prepared["stop"])
+    risk=abs(ref-stop)
+    drift=abs(px-ref)
+    return {
+        "prepared_reference_entry":ref,
+        "live_entry":px,
+        "entry_drift_abs":drift,
+        "entry_drift_r":None if risk<=0 else drift/risk,
+    }
+
+
 def _dedupe_key(payload:dict[str,Any],kind:str)->str:
     fields=(
         STRATEGY_ID,
@@ -161,7 +194,10 @@ def _already_recorded(store,key:str)->bool:
     )
 
 
-def _record_event(store,*,key:str,kind:str,payload:dict[str,Any],plan:dict[str,Any]|None,signal_id:str|None)->None:
+def _record_event(
+    store,*,key:str,kind:str,payload:dict[str,Any],plan:dict[str,Any]|None,
+    signal_id:str|None,latency:float|None=None,drift:dict[str,float|None]|None=None,
+)->None:
     account=_account_label()
     if not account:
         raise SystemExit("CTRADER_ACCOUNT_ID_REQUIRED_FOR_AFIC_PREPARED_PLAN")
@@ -185,6 +221,8 @@ def _record_event(store,*,key:str,kind:str,payload:dict[str,Any],plan:dict[str,A
             "forecast":payload,
             "prepared_plan":plan,
             "signal_id":signal_id,
+            "confirmation_detection_lag_seconds":latency,
+            "entry_drift":dict(drift or {}),
             "code_version":os.getenv("GITHUB_SHA","LOCAL"),
         },
     )
@@ -281,6 +319,9 @@ def run()->int:
     raw_count=0
     payload:dict[str,Any]={}
     plan=None
+    prepared_reference=None
+    confirmation_lag=None
+    drift_metrics=entry_drift_metrics(prepared=None,live=None)
     emitted=False
     signal_id=None
     kind="NONE"
@@ -299,6 +340,7 @@ def run()->int:
 
         if payload.get("zone") and payload.get("continuation_direction"):
             plan=prepared_blueprint(payload)
+            prepared_reference=None if plan is None else dict(plan)
 
         confirmed=state in {"CONFIRMED_PENDING_ENTRY_BAR","CONFIRMED_SHADOW","CONFIRMED_NO_TARGET_GEOMETRY"}
         if confirmed:
@@ -316,6 +358,10 @@ def run()->int:
                     "selector_grade":selector_grade(payload.get("h4_features")),
                 }
                 kind="CONFIRMED_LIVE_BLUEPRINT"
+                confirmation_lag=confirmation_latency_seconds(payload,detected_at=now)
+                drift_metrics=entry_drift_metrics(
+                    prepared=prepared_reference,live=plan
+                )
         elif plan is not None:
             kind="FORECAST_BLUEPRINT"
 
@@ -330,7 +376,8 @@ def run()->int:
                     execution_enabled=execution_enabled,
                 )
                 _record_event(
-                    store,key=key,kind=kind,payload=payload,plan=plan,signal_id=signal_id
+                    store,key=key,kind=kind,payload=payload,plan=plan,signal_id=signal_id,
+                    latency=confirmation_lag,drift=drift_metrics,
                 )
                 emitted=True
 
@@ -360,6 +407,8 @@ def run()->int:
             "selector_grade":None if plan is None else plan.get("selector_grade"),
             "blueprint_kind":kind,
             "signal_id":signal_id,
+            "confirmation_detection_lag_seconds":confirmation_lag,
+            "entry_drift_r":drift_metrics.get("entry_drift_r"),
             "emitted":emitted,
             "error":error,
         },
@@ -368,6 +417,7 @@ def run()->int:
         "CTRADER_DEMO_XAU_AFIC_PREPARED_PLAN "
         f"healthy={int(healthy)} forecast_state={payload.get('state','ERROR')} "
         f"blueprint={kind} grade={None if plan is None else plan.get('selector_grade')} "
+        f"confirm_lag_s={confirmation_lag} drift_r={drift_metrics.get('entry_drift_r')} "
         f"emitted={int(emitted)} execution_authority=0"
     )
     return 0 if healthy else 2
