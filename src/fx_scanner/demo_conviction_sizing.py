@@ -6,7 +6,7 @@ from typing import Any
 
 MAX_DEMO_LOTS = 0.50
 MIN_DEMO_LOTS = 0.01
-MAX_DEMO_RISK_PCT = 5.0
+MAX_DEMO_RISK_PCT = 20.0
 EURUSD_BOOTSTRAP_MAX_LOTS = 0.10
 EURUSD_BOOTSTRAP_MAX_RISK_PCT = 2.0
 
@@ -26,7 +26,7 @@ def select_demo_conviction_sizing(
 ) -> DemoConvictionSizing:
     """Map validated DEMO setup quality to bounded pair-specific lot/risk budgets.
 
-    XAUUSD keeps the established 0.01-0.50 / <=5% profile. EURUSD is an execution
+    XAUUSD keeps the established 0.01-0.50 / <=20% profile. EURUSD is an execution
     research baseline and is conservatively capped at 0.10 lot / <=2% until its
     own forward DEMO evidence is sufficient for a later pair-specific policy
     review. Entry/SL/TP geometry is never changed here; broker-native risk sizing
