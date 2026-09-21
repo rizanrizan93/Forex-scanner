@@ -12,18 +12,33 @@ def test_v133_is_forensic_shadow_only():
     assert PROMOTION_ELIGIBLE is False
 
 
-def test_v133_residual_contract_is_exact_c2_without_new_threshold():
-    rec = {
+def _eligible_long_record():
+    return {
         "side": "LONG",
-        "d20_pct_atr14_pct": -0.1,
-        "d20_pct_atr_ratio_252": -0.2,
-        "d20_pct_range20_atr": -0.3,
-        "pct_atr14_pct": 0.2,
-        "pct_atr_ratio_252": 0.2,
-        "state": "BULL_COMPRESSED",
-        "direction_state": "BULL",
+        "pct_atr14_pct": 0.20,
+        "pct_atr_ratio_252": 0.20,
+        "d20_pct_atr14_pct": -0.10,
+        "d20_pct_atr_ratio_252": -0.20,
+        "d20_pct_range20_atr": -0.30,
+        "pct_ema200_distance_atr": 0.70,
+        "d5_pct_trend60_atr": 0.10,
     }
-    # passes_qualitative_gate requires the complete V126 record, so this test
-    # intentionally verifies only that the research module contains no new
-    # tunable threshold family or execution authority.
-    assert "THRESHOLD" not in _residual_c2.__code__.co_names
+
+
+def test_v133_residual_is_exact_v126_long_plus_triple_contraction():
+    rec = _eligible_long_record()
+    assert _residual_c2(rec) is True
+
+    no_range_contraction = {**rec, "d20_pct_range20_atr": 0.01}
+    assert _residual_c2(no_range_contraction) is False
+
+    short_side = {
+        **rec,
+        "side": "SHORT",
+        "pct_ema200_distance_atr": 0.30,
+        "d5_pct_trend60_atr": -0.10,
+    }
+    assert _residual_c2(short_side) is False
+
+    fails_frozen_v126 = {**rec, "pct_ema200_distance_atr": 0.49}
+    assert _residual_c2(fails_frozen_v126) is False
