@@ -5,6 +5,7 @@ import json
 from .config import load_project_config
 from .demo_broker_risk_sizing import (
     _all_light_symbols,
+    _ensure_conversion_symbols_loaded,
     _expected_margin_deposit,
     _symbol_volume_grid,
 )
@@ -30,6 +31,7 @@ def run() -> int:
             if "XAU" not in name and "GOLD" not in name:
                 continue
             try:
+                _ensure_conversion_symbols_loaded(session,(light,))
                 full=session.symbol_info(name)
                 minimum,step,maximum,lot_size=_symbol_volume_grid(full)
                 min_lots=float(minimum)/float(lot_size)
