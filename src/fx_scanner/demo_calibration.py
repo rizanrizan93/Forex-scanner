@@ -13,7 +13,7 @@ from .transient import TRANSIENT_RETRY_DELAYS, is_transient_backend_error
 
 
 DEMO_SCORE_FLOOR_MIN = 50.01
-DEMO_RISK_CEILING_PCT = 5.0
+DEMO_RISK_CEILING_PCT = 20.0
 
 
 class DemoSupabaseOperationalStore(SupabaseOperationalStore):
@@ -56,7 +56,7 @@ def apply_demo_calibration_risk(cfg, *, max_risk_pct: float = DEMO_RISK_CEILING_
     """Apply an explicit process-local DEMO risk target.
 
     Canonical LIVE safety remains unchanged. An explicit
-    CTRADER_DEMO_RISK_PER_TRADE_PCT may raise only this DEMO wrapper up to 5%.
+    CTRADER_DEMO_RISK_PER_TRADE_PCT may raise only this DEMO wrapper up to 20%.
     """
     canonical_ceiling = float(max_risk_pct)
     if not isfinite(canonical_ceiling) or not 0.0 < canonical_ceiling <= DEMO_RISK_CEILING_PCT:

@@ -12,15 +12,15 @@ from fx_scanner.demo_fresh_ready_handoff import (
 
 def test_active_demo_handoff_caps_lot_and_risk_at_canonical_ceiling(monkeypatch):
     monkeypatch.setenv(DEMO_ORDER_LOT_CAP_ENV, "0.50")
-    monkeypatch.setenv(DEMO_RISK_ENV, "5.0")
+    monkeypatch.setenv(DEMO_RISK_ENV, "20.0")
 
     install_bounded_demo_process_contract()
     policy = load_bounded_demo_execution_policy()
 
     assert os.environ[DEMO_ORDER_LOT_CAP_ENV] == "0.50"
-    assert os.environ[DEMO_RISK_ENV] == "5.0"
+    assert os.environ[DEMO_RISK_ENV] == "20.0"
     assert policy.demo_safety["max_order_lots"] == DEMO_ACTIVE_ORDER_LOT_CAP == 0.50
-    assert policy.demo_safety["max_risk_pct"] == DEMO_ACTIVE_RISK_CAP_PCT == 5.0
+    assert policy.demo_safety["max_risk_pct"] == DEMO_ACTIVE_RISK_CAP_PCT == 20.0
     assert policy.demo_safety["max_concurrent_positions"] == 10
 
 

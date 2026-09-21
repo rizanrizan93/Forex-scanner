@@ -9,7 +9,7 @@ from typing import Any, Callable
 from .execution.ctrader_session import normalize_symbol_name
 from .execution.models import OrderIntent, OrderSide
 
-MAX_DEMO_PORTFOLIO_RISK_PCT = 6.0
+MAX_DEMO_PORTFOLIO_RISK_PCT = 20.0
 MAX_DEMO_MARGIN_FREE_USAGE_PCT = 25.0
 
 

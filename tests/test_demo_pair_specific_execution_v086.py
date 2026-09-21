@@ -81,7 +81,7 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     assert "demo_xau_canonical_position_manager" in auto
     assert "demo_five_core_time_exit" in auto
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"' in auto
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in auto
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in auto
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in auto
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in auto
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in auto
@@ -97,7 +97,7 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     assert "XAU_M15_SWEEP_FADE_STRATEGY_ID" in handoff
     assert "demo_xau_technical_producer" in discovery
     assert "demo_execution_technical_producer" not in discovery
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in discovery
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in discovery
     assert "universe=XAUUSD" in supervisor
     assert "universe=XAUUSD,EURUSD" not in supervisor
     assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor

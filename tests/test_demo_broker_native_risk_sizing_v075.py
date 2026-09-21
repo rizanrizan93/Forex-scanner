@@ -82,21 +82,21 @@ def test_conversion_chain_uses_bid_for_long_and_ask_for_short():
 
 
 def test_runtime_profile_has_bounded_portfolio_and_margin_caps(monkeypatch):
-    monkeypatch.setenv(DEMO_PORTFOLIO_RISK_CAP_ENV, "6.0")
+    monkeypatch.setenv(DEMO_PORTFOLIO_RISK_CAP_ENV, "20.0")
     monkeypatch.setenv(DEMO_MARGIN_USAGE_CAP_ENV, "25.0")
     policy = load_demo_execution_policy()
-    assert policy.demo_safety["max_portfolio_risk_pct"] == 6.0
+    assert policy.demo_safety["max_portfolio_risk_pct"] == 20.0
     assert policy.demo_safety["max_margin_free_usage_pct"] == 25.0
 
 
 def test_runtime_profile_defaults_to_latest_demo_order_and_risk_caps():
     policy = load_demo_execution_policy()
     assert policy.demo_safety["max_order_lots"] == 0.50
-    assert policy.demo_safety["max_risk_pct"] == 5.0
+    assert policy.demo_safety["max_risk_pct"] == 20.0
 
 
 def test_runtime_profile_rejects_excessive_portfolio_cap(monkeypatch):
-    monkeypatch.setenv(DEMO_PORTFOLIO_RISK_CAP_ENV, "12.1")
+    monkeypatch.setenv(DEMO_PORTFOLIO_RISK_CAP_ENV, "20.1")
     with pytest.raises(RuntimeError, match="CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT"):
         load_demo_execution_policy()
 
