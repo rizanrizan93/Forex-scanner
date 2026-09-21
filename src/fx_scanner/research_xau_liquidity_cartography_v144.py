@@ -313,8 +313,11 @@ def extract_lcr_setups(rows: Sequence[Bar]) -> tuple[Setup, ...]:
         ts = ensure_utc(b.timestamp)
         h1 = h1_lookup.row(ts)
         d1 = d1_lookup.row(ts)
-        price = float(b.close)
-        upper, lower = _pools_at(ts=ts, price=price, day_map=day_map, week_map=week_map, h1_row=h1)
+        # Classify event-side liquidity from the last completed M15 close, not
+        # from the current bar close. Otherwise an accepted breakout would move
+        # the crossed pool to the opposite side before we can detect the event.
+        event_price = float(bars[i-1].close)
+        upper, lower = _pools_at(ts=ts, price=event_price, day_map=day_map, week_map=week_map, h1_row=h1)
         if not upper and not lower:
             continue
 
