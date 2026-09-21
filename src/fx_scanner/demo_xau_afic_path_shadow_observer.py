@@ -95,6 +95,14 @@ def _resample(rows:Sequence[Bar],rule:str)->pd.DataFrame:
     ).dropna().reset_index()
 
 
+def _resample_completed(rows:Sequence[Bar],rule:str,*,as_of:datetime)->pd.DataFrame:
+    frame=_resample(rows,rule)
+    cutoff=pd.Timestamp(ensure_utc(as_of))
+    # Right-labelled bars become causal only when their right boundary has
+    # passed. This excludes the currently forming H1/H4 candle.
+    return frame[frame["time"]<=cutoff].reset_index(drop=True)
+
+
 def _atr(frame:pd.DataFrame,period:int=14)->pd.Series:
     high=frame["high"].astype(float)
     low=frame["low"].astype(float)
@@ -125,8 +133,8 @@ def _available_pivots(pivots:Sequence[Pivot],timestamp)->tuple[Pivot,...]:
     return tuple(p for p in pivots if ensure_utc(p.available_at)<=t)
 
 
-def _origin_zones(rows:Sequence[Bar])->tuple[OriginZone,...]:
-    h1=_resample(rows,"1h")
+def _origin_zones(rows:Sequence[Bar],*,as_of:datetime)->tuple[OriginZone,...]:
+    h1=_resample_completed(rows,"1h",as_of=as_of)
     h1["atr14"]=_atr(h1,14)
     pivots=_pivots(h1)
     out=[]
@@ -285,10 +293,10 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
     if len(bars)<300:
         return {"state":"INSUFFICIENT_HISTORY","closed_m15":len(bars),"execution_influence":False}
 
-    h4=_resample(bars,"4h")
+    h4=_resample_completed(bars,"4h",as_of=as_of)
     if len(h4)<20:
         return {"state":"INSUFFICIENT_H4","closed_m15":len(bars),"execution_influence":False}
-    zones=_origin_zones(bars)
+    zones=_origin_zones(bars,as_of=as_of)
     if not zones:
         return {"state":"NO_ORIGIN_ZONE","closed_m15":len(bars),"execution_influence":False}
 
