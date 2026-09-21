@@ -122,7 +122,7 @@ def test_auto_workflow_repairs_before_new_orders_and_allows_bounded_valid_stacks
     assert 'CTRADER_DEMO_STACK_MIN_SCORE: "50.01"' in source
     assert 'CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "10"' in source
     assert 'CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"' in source
-    assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "6.0"' in source
+    assert 'CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "20.0"' in source
     assert source.index(repair) < source.index(execute) < source.index(time_exit)
 
 
