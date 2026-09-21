@@ -1,0 +1,38 @@
+name: XAU AFIC Selector Validation V161
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_afic_selector_validation_v161.py"
+      - "src/fx_scanner/research_xau_afic_selector_validation_v161_runtime.py"
+      - "tests/test_research_xau_afic_selector_validation_v161.py"
+      - ".github/workflows/research-xau-afic-selector-validation-v161.yml"
+permissions:
+  contents: read
+jobs:
+  afic-v161:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      V161_OUTPUT: artifacts/xau-afic-selector-validation-v161.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit test
+        run: pytest -q tests/test_research_xau_afic_selector_validation_v161.py
+      - name: Run V161 full history
+        run: python -m fx_scanner.research_xau_afic_selector_validation_v161_runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-afic-selector-validation-v161
+          path: artifacts/xau-afic-selector-validation-v161.json
+          if-no-files-found: error
+          retention-days: 30
