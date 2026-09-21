@@ -213,11 +213,30 @@ def build_forecasts(rows:Sequence[Bar],*,variant:str,evaluation_end)->tuple[Fore
     daily_lookup=_Asof(daily);weekly_lookup=_Asof(weekly)
 
     forecasts=[]
-    blocked_until=None
+    active_forecast=None
+    active_entry_index=None
     for i,row in enumerate(bars[:-1]):
         signal_at=ensure_utc(row.timestamp)
         if signal_at>=end:break
-        if blocked_until is not None and signal_at<=blocked_until:continue
+
+        # AFIC-style discrete forecast routing: while one forecast is active,
+        # do not emit repeated M15 calls. Resolve causally on each new bar.
+        if active_forecast is not None and active_entry_index is not None:
+            if i>=active_entry_index:
+                if active_forecast.direction=="LONG":
+                    stop_hit=float(row.low)<=active_forecast.stop
+                    terminal_hit=float(row.high)>=active_forecast.terminal_target
+                else:
+                    stop_hit=float(row.high)>=active_forecast.stop
+                    terminal_hit=float(row.low)<=active_forecast.terminal_target
+                expired=(i-active_entry_index)>=max(FORECAST_HORIZONS)
+                if stop_hit or terminal_hit or expired:
+                    active_forecast=None
+                    active_entry_index=None
+                    # Resolution belongs to this bar; next forecast may start
+                    # only from a later completed M15 bar.
+                    continue
+                continue
 
         d=d1_lookup.row(signal_at);h1row=h1_lookup.row(signal_at)
         if d is None or h1row is None:continue
@@ -276,8 +295,8 @@ def build_forecasts(rows:Sequence[Bar],*,variant:str,evaluation_end)->tuple[Fore
             dside,s4,s1,dealing,sweep,
         )
         forecasts.append(f)
-        # One discrete AFIC-style forecast at a time; no repeated M15 spam.
-        blocked_until=entry_at
+        active_forecast=f
+        active_entry_index=i+1
     return tuple(forecasts)
 
 
