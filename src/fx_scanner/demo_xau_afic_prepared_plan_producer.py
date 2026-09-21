@@ -275,7 +275,7 @@ def run()->int:
     execution_enabled=_bool_env(EXECUTION_ENV,False)
 
     feed=build_ctrader_research_feed(policy,(SYMBOL,))
-    store=SupabaseOperationalStore.from_env(execution_ready_score_floor=50.01)
+    store=SupabaseOperationalStore.from_env(execution_ready_score_floor=65.0)
     store.ensure_reference_symbols((cfg.pair_map[SYMBOL],))
     now=datetime.now(tz=UTC)
     raw_count=0
