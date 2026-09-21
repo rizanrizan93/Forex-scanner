@@ -31,37 +31,43 @@ def run() -> int:
             if "XAU" not in name and "GOLD" not in name:
                 continue
             try:
-                _ensure_conversion_symbols_loaded(session,(light,))
+                if int(sid) not in session.symbol_full_by_id:
+                    _ensure_conversion_symbols_loaded(session,(light,))
                 full=session.symbol_info(name)
                 minimum,step,maximum,lot_size=_symbol_volume_grid(full)
-                min_lots=float(minimum)/float(lot_size)
-                step_lots=float(step)/float(lot_size)
-                quote=gateway.market_quote(name)
-                buy_margin=_expected_margin_deposit(
-                    session=session,symbol_id=int(sid),volume_cents=int(minimum),side=OrderSide.BUY
-                )
-                sell_margin=_expected_margin_deposit(
-                    session=session,symbol_id=int(sid),volume_cents=int(minimum),side=OrderSide.SELL
-                )
-                candidates.append({
+                row={
                     "symbol":name,
                     "symbol_id":int(sid),
                     "min_volume_cents":int(minimum),
                     "step_volume_cents":int(step),
                     "max_volume_cents":None if maximum is None else int(maximum),
                     "lot_size_cents":int(lot_size),
-                    "min_lots":min_lots,
-                    "step_lots":step_lots,
-                    "bid":float(quote.bid),
-                    "ask":float(quote.ask),
-                    "buy_margin_at_min_volume":float(buy_margin),
-                    "sell_margin_at_min_volume":float(sell_margin),
-                })
+                    "min_lots":float(minimum)/float(lot_size),
+                    "step_lots":float(step)/float(lot_size),
+                }
+                try:
+                    buy_margin=_expected_margin_deposit(
+                        session=session,symbol_id=int(sid),volume_cents=int(minimum),side=OrderSide.BUY
+                    )
+                    sell_margin=_expected_margin_deposit(
+                        session=session,symbol_id=int(sid),volume_cents=int(minimum),side=OrderSide.SELL
+                    )
+                    row["buy_margin_at_min_volume"]=float(buy_margin)
+                    row["sell_margin_at_min_volume"]=float(sell_margin)
+                except Exception as exc:
+                    row["margin_error"]=f"{type(exc).__name__}:{exc}"
+                try:
+                    quote=gateway.market_quote(name)
+                    row["bid"]=float(quote.bid)
+                    row["ask"]=float(quote.ask)
+                except Exception as exc:
+                    row["quote_error"]=f"{type(exc).__name__}:{exc}"
+                candidates.append(row)
             except Exception as exc:
                 candidates.append({
                     "symbol":name,
                     "symbol_id":int(sid),
-                    "error":f"{type(exc).__name__}:{exc}",
+                    "spec_error":f"{type(exc).__name__}:{exc}",
                 })
 
         payload={
