@@ -213,7 +213,7 @@ def build_forecasts(rows:Sequence[Bar],*,variant:str,evaluation_end)->tuple[Fore
     h4p=_PivotAsof(_confirmed_pivots(h4))
     h1p=_PivotAsof(_confirmed_pivots(h1))
     daily=_completed_extremes(bars,"1D")
-    weekly=_completed_extremes(bars,"7D")
+    weekly=_completed_extremes(bars,"W-SUN")
     daily_lookup=_Asof(daily);weekly_lookup=_Asof(weekly)
 
     forecasts=[]
@@ -446,6 +446,7 @@ def evaluate_v152(rows:Sequence[Bar],*,evaluation_end)->dict[str,Any]:
             "optional_h1":"variant requires matching H1 structure",
             "optional_entry_timing":"variant requires M15 local liquidity sweep/reclaim",
             "terminal_liquidity":"nearest causal PDH/PDL/PWH/PWL/H1/H4 swing liquidity in forecast direction",
+            "weekly_liquidity_bucket":"W-SUN completed week; no unfinished-week high/low",
             "stop":"nearest opposite protected H1 swing, fallback H4 swing, plus 0.10 H1 ATR buffer",
             "minimum_terminal_rr":MIN_TERMINAL_RR,
             "ladder_step_usd":LADDER_STEP_USD,
