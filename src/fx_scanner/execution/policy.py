@@ -151,8 +151,8 @@ def load_execution_policy(root: str | Path | None = None) -> ExecutionPolicy:
         # exposure and all execution guards remain authoritative downstream.
         if not 0.01 <= float(demo_safety["max_order_lots"]) <= 0.50:
             raise ConfigurationError("demo max_order_lots must be in [0.01,0.50]")
-        if not 0 < float(demo_safety["max_risk_pct"]) <= 5.0:
-            raise ConfigurationError("demo max_risk_pct cannot exceed 5.0")
+        if not 0 < float(demo_safety["max_risk_pct"]) <= 20.0:
+            raise ConfigurationError("demo max_risk_pct cannot exceed 20.0")
         if not 1 <= int(demo_safety["max_concurrent_positions"]) <= 10:
             raise ConfigurationError("demo max_concurrent_positions must be in [1,10]")
         if not 0.25 <= float(demo_safety["poll_seconds"]) <= 5.0:
