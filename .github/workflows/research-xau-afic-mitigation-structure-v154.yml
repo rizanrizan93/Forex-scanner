@@ -1,0 +1,41 @@
+name: XAU AFIC Mitigation Structure V154
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_afic_mitigation_structure_v154.py"
+      - "src/fx_scanner/research_xau_afic_mitigation_structure_v154_runtime.py"
+      - "tests/test_research_xau_afic_mitigation_structure_v154.py"
+      - ".github/workflows/research-xau-afic-mitigation-structure-v154.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  afic-mitigation-structure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      V154_EVIDENCE_OUTPUT: artifacts/xau-afic-mitigation-structure-v154.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit tests
+        run: pytest -q tests/test_research_xau_afic_mitigation_structure_v154.py
+      - name: Run AFIC-inspired mitigation V154
+        run: python -m fx_scanner.research_xau_afic_mitigation_structure_v154_runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-afic-mitigation-structure-v154
+          path: artifacts/xau-afic-mitigation-structure-v154.json
+          if-no-files-found: error
+          retention-days: 30
