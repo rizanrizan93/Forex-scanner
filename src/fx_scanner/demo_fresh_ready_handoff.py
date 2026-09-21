@@ -16,7 +16,7 @@ DEMO_POSITION_CAP_CEILING = 10
 DEMO_ORDER_LOT_CAP_ENV = "CTRADER_DEMO_MAX_ORDER_LOTS"
 DEMO_ORDER_LOT_CAP_CEILING = 0.50
 DEMO_ACTIVE_ORDER_LOT_CAP = 0.50
-DEMO_ACTIVE_RISK_CAP_PCT = 5.0
+DEMO_ACTIVE_RISK_CAP_PCT = 20.0
 DEMO_RISK_ENV = "CTRADER_DEMO_RISK_PER_TRADE_PCT"
 DEMO_STACKING_ENV = "CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING"
 DEMO_STACK_MIN_SCORE_ENV = "CTRADER_DEMO_STACK_MIN_SCORE"
@@ -176,9 +176,9 @@ def load_demo_execution_policy(root=None) -> ExecutionPolicy:
     )
     demo_safety["max_portfolio_risk_pct"] = _bounded_float_env(
         DEMO_PORTFOLIO_RISK_CAP_ENV,
-        default=6.0,
+        default=20.0,
         minimum=0.5,
-        maximum=12.0,
+        maximum=20.0,
     )
     demo_safety["max_margin_free_usage_pct"] = _bounded_float_env(
         DEMO_MARGIN_USAGE_CAP_ENV,
@@ -194,7 +194,7 @@ def load_bounded_demo_execution_policy(root=None) -> ExecutionPolicy:
 
     The account-wide position cap and all existing RR/spread/correlation/data
     quality/protection guards are preserved. This wrapper keeps the active DEMO
-    handoff within the established 0.50-lot / 5% per-trade ceiling; conviction
+    handoff within the established 0.50-lot / 20% per-trade ceiling; conviction
     and broker-native sizing may only reduce those limits. It never rewrites
     entry, SL or TP geometry.
     """
@@ -295,7 +295,7 @@ def main() -> int:
     calibration_runtime.load_project_config = load_demo_project_config
 
     # Conviction chooses a quality ceiling. broker-native stop-loss sizing runs
-    # after it and may only reduce that volume/risk budget, keeping <=5% per-trade
+    # after it and may only reduce that volume/risk budget, keeping <=20% per-trade
     # risk and account-wide risk/margin protections authoritative.
     from .demo_broker_risk_sizing import install_demo_broker_native_risk_sizing
     from .demo_conditional_stacking import install_demo_conditional_stacking
