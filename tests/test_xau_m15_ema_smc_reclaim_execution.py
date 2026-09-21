@@ -47,5 +47,5 @@ def test_auto_pipeline_runs_and_fail_closed_gates_ema_smc_producer():
     assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in text
     assert "steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success'" in text
     assert "XAU_M15_EMA_SMC_RECLAIM_OUTCOME" in text
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "5.0"' in text
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in text
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in text
