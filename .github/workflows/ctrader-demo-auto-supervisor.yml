@@ -155,20 +155,12 @@ jobs:
           # run has completed successfully. A newer queued/in-progress/failed run
           # must stop the handoff rather than falling back to an older success.
           latest_execution_state="$(
-            gh api \\
-              -H "Accept: application/vnd.github+json" \\
-              -H "X-GitHub-Api-Version: 2022-11-28" \\
-              "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-xau-execution-lane.yml/runs?branch=main&per_page=20" \\
-              --jq '[.workflow_runs[0].status // "", .workflow_runs[0].conclusion // ""] | join("|")'
+            gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-xau-execution-lane.yml/runs?branch=main&per_page=20" --jq '[.workflow_runs[0].status // "", .workflow_runs[0].conclusion // ""] | join("|")'
           )"
           IFS='|' read -r latest_execution_status latest_execution_conclusion <<< "${latest_execution_state}"
 
           other_active_supervisors="$(
-            gh api \\
-              -H "Accept: application/vnd.github+json" \\
-              -H "X-GitHub-Api-Version: 2022-11-28" \\
-              "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/runs?branch=main&per_page=20" \\
-              --jq "[.workflow_runs[] | select((.status == \"queued\" or .status == \"in_progress\" or .status == \"waiting\" or .status == \"pending\") and (.id != ${GITHUB_RUN_ID}))] | length"
+            gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/runs?branch=main&per_page=20" --jq "[.workflow_runs[] | select((.status == \"queued\" or .status == \"in_progress\" or .status == \"waiting\" or .status == \"pending\") and (.id != ${GITHUB_RUN_ID}))] | length"
           )"
 
           self_handoff=0
