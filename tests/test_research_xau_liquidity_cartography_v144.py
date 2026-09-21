@@ -1,0 +1,18 @@
+from fx_scanner.research_xau_liquidity_cartography_v144 import (
+    ACCEPT_ATR,CANDIDATES,DISPLACEMENT_BODY_ATR,EXECUTION_INFLUENCE,
+    MIN_TARGET_R,MSS_LOOKBACK,POOL_WEIGHTS,PROMOTION_ELIGIBLE,
+    RETEST_MAX_BARS,SWEEP_ATR,
+)
+def test_v144_frozen_contract():
+    assert EXECUTION_INFLUENCE is False
+    assert PROMOTION_ELIGIBLE is False
+    assert CANDIDATES==("LCR_SWEEP_REJECTION","LCR_ACCEPTED_BREAK","LCR_COMBINED")
+    assert SWEEP_ATR==0.05
+    assert ACCEPT_ATR==0.10
+    assert DISPLACEMENT_BODY_ATR==0.50
+    assert MSS_LOOKBACK==3
+    assert RETEST_MAX_BARS==3
+    assert MIN_TARGET_R==1.50
+    assert POOL_WEIGHTS["PWH"]==4.0
+    assert POOL_WEIGHTS["PDH"]==3.0
+    assert POOL_WEIGHTS["H1_SWING_HIGH"]==2.0
