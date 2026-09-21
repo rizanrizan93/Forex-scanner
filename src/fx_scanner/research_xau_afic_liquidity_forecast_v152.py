@@ -31,6 +31,7 @@ MIN_TERMINAL_RR=1.50
 STOP_BUFFER_ATR=0.10
 FORECAST_HORIZONS=(16,32,64)  # 4h / 8h / 16h on M15
 M15_SWEEP_LOOKBACK=12
+PIVOT_MEMORY=32  # latest confirmed pivot events per HTF; no future bars
 
 VARIANTS=(
     "HTF_LIQUIDITY_ROUTE",
@@ -94,7 +95,10 @@ class _PivotAsof:
         self.times=[ensure_utc(x.available_at) for x in self.pivots]
     def available(self,timestamp)->tuple[Pivot,...]:
         i=bisect_right(self.times,ensure_utc(timestamp))
-        return self.pivots[:i]
+        # Only recent confirmed structural pivots are relevant to the active
+        # dealing range/liquidity route. This also prevents ancient levels
+        # from dominating the nearest-liquidity search.
+        return self.pivots[max(0,i-PIVOT_MEMORY):i]
 
 
 def _confirmed_pivots(frame:pd.DataFrame)->tuple[Pivot,...]:
@@ -337,11 +341,19 @@ def _evaluate_forecast(f:Forecast,bars:Sequence[Bar],entry_index:int,horizon:int
     }
 
 
-def evaluate_variant(rows:Sequence[Bar],*,variant:str,evaluation_start,evaluation_end)->dict[str,Any]:
+def evaluate_variant(
+    rows:Sequence[Bar],*,variant:str,evaluation_start,evaluation_end,
+    forecasts:Sequence[Forecast]|None=None,
+)->dict[str,Any]:
     bars=tuple(sorted(rows,key=lambda x:ensure_utc(x.timestamp)))
     by_time={ensure_utc(b.timestamp):i for i,b in enumerate(bars)}
+    all_forecasts=(
+        tuple(forecasts)
+        if forecasts is not None
+        else build_forecasts(bars,variant=variant,evaluation_end=evaluation_end)
+    )
     fs=tuple(
-        f for f in build_forecasts(bars,variant=variant,evaluation_end=evaluation_end)
+        f for f in all_forecasts
         if ensure_utc(evaluation_start)<=ensure_utc(f.entry_at)<ensure_utc(evaluation_end)
     )
     horizon_out={}
@@ -388,16 +400,31 @@ def evaluate_variant(rows:Sequence[Bar],*,variant:str,evaluation_start,evaluatio
 def evaluate_v152(rows:Sequence[Bar],*,evaluation_end)->dict[str,Any]:
     end=ensure_utc(evaluation_end)
     full_start=datetime(2012,1,1,tzinfo=timezone.utc)
+    bars=tuple(sorted(rows,key=lambda x:ensure_utc(x.timestamp)))
+
+    # Build each causal forecast stream once. Era slicing is attribution only
+    # and must not regenerate or alter the signal history.
+    prebuilt={
+        v:build_forecasts(bars,variant=v,evaluation_end=end)
+        for v in VARIANTS
+    }
+
     eras={}
     for label,a,b in ERA_WINDOWS:
         bb=min(ensure_utc(b),end)
         if ensure_utc(a)>=bb:continue
         eras[label]={
-            v:evaluate_variant(rows,variant=v,evaluation_start=a,evaluation_end=bb)
+            v:evaluate_variant(
+                bars,variant=v,evaluation_start=a,evaluation_end=bb,
+                forecasts=prebuilt[v],
+            )
             for v in VARIANTS
         }
     full={
-        v:evaluate_variant(rows,variant=v,evaluation_start=full_start,evaluation_end=end)
+        v:evaluate_variant(
+            bars,variant=v,evaluation_start=full_start,evaluation_end=end,
+            forecasts=prebuilt[v],
+        )
         for v in VARIANTS
     }
     return {
@@ -426,6 +453,7 @@ def evaluate_v152(rows:Sequence[Bar],*,evaluation_end)->dict[str,Any]:
             "forecast_horizons_m15_bars":list(FORECAST_HORIZONS),
             "same_bar_ambiguity":"STOP_FIRST",
             "pivot_confirmation":"2 left / 2 right; pivot usable only after right-side confirmation",
+            "pivot_memory_events":PIVOT_MEMORY,
             "no_calendar_routing":True,
             "no_parameter_grid":True,
             "outcome_metric":"TP1 and each ladder step reported separately from terminal-target hit rate",
