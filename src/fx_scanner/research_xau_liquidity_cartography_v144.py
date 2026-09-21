@@ -102,7 +102,7 @@ def _daily_weekly_levels(frame: pd.DataFrame) -> tuple[dict[Any, tuple[float,flo
         a = weeks[i]
         b = weeks[i+1] if i+1 < len(weeks) else frame["time"].iloc[-1] + pd.Timedelta(days=7)
         value = (float(w.iloc[i-1]["high"]), float(w.iloc[i-1]["low"]))
-        for day in pd.date_range(a, b - pd.Timedelta(days=1), freq="1D", tz="UTC"):
+        for day in pd.date_range(a, b - pd.Timedelta(days=1), freq="1D"):
             week_map[day.date()] = value
     return day_map, week_map
 
