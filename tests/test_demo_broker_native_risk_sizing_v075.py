@@ -83,10 +83,10 @@ def test_conversion_chain_uses_bid_for_long_and_ask_for_short():
 
 def test_runtime_profile_has_bounded_portfolio_and_margin_caps(monkeypatch):
     monkeypatch.setenv(DEMO_PORTFOLIO_RISK_CAP_ENV, "20.0")
-    monkeypatch.setenv(DEMO_MARGIN_USAGE_CAP_ENV, "25.0")
+    monkeypatch.setenv(DEMO_MARGIN_USAGE_CAP_ENV, "50.0")
     policy = load_demo_execution_policy()
     assert policy.demo_safety["max_portfolio_risk_pct"] == 20.0
-    assert policy.demo_safety["max_margin_free_usage_pct"] == 25.0
+    assert policy.demo_safety["max_margin_free_usage_pct"] == 50.0
 
 
 def test_runtime_profile_defaults_to_latest_demo_order_and_risk_caps():
