@@ -49,9 +49,12 @@ def _metrics(trades): return compute_metrics(tuple(trades)).payload()
 
 
 def _planned_loss(t:TournamentTrade,spec)->float:
+    # Match the canonical V128/V129 runtime guard exactly. Transaction costs
+    # are already present in trade.net_r and must not be charged a second time
+    # to the pre-entry stop-loss budget.
     risk_price=abs(float(t.entry_price)-float(t.stop_loss))
     units=float(spec.contract_units_per_lot)*LOT
-    return risk_price*units*(1.0+max(0.0,float(t.cost_r)))
+    return risk_price*units
 
 
 def _margin(t:TournamentTrade,spec,tiers)->float:
