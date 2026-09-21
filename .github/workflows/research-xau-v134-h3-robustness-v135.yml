@@ -1,0 +1,41 @@
+name: XAU V134 H3 Robustness V135
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_v134_h3_robustness_v135.py"
+      - "src/fx_scanner/research_xau_v134_h3_robustness_v135_runtime.py"
+      - "tests/test_research_xau_v134_h3_robustness_v135.py"
+      - ".github/workflows/research-xau-v134-h3-robustness-v135.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  robustness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      V135_EVIDENCE_OUTPUT: artifacts/xau-v134-h3-robustness-v135.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit tests
+        run: pytest -q tests/test_research_xau_v134_h3_robustness_v135.py
+      - name: Run V135
+        run: python -m fx_scanner.research_xau_v134_h3_robustness_v135_runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v134-h3-robustness-v135
+          path: artifacts/xau-v134-h3-robustness-v135.json
+          if-no-files-found: error
+          retention-days: 30
