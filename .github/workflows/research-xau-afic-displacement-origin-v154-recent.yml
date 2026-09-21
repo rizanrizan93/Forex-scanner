@@ -1,0 +1,38 @@
+name: XAU AFIC Displacement Origin V154 Recent
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_afic_displacement_origin_v154.py"
+      - "src/fx_scanner/research_xau_afic_displacement_origin_v154_recent_runtime.py"
+      - "tests/test_research_xau_afic_displacement_origin_v154.py"
+      - ".github/workflows/research-xau-afic-displacement-origin-v154-recent.yml"
+permissions:
+  contents: read
+jobs:
+  afic-v154-recent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      V154_RECENT_OUTPUT: artifacts/xau-afic-displacement-origin-v154-recent.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit test
+        run: pytest -q tests/test_research_xau_afic_displacement_origin_v154.py
+      - name: Run V154 recent
+        run: python -m fx_scanner.research_xau_afic_displacement_origin_v154_recent_runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-afic-displacement-origin-v154-recent
+          path: artifacts/xau-afic-displacement-origin-v154-recent.json
+          if-no-files-found: error
+          retention-days: 30
