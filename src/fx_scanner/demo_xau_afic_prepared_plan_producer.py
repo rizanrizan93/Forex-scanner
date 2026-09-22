@@ -36,9 +36,8 @@ ARMED_TTL_HOURS=24
 NEAR_ZONE_ATR=1.0
 EXECUTION_EVENT_TYPE="DEMO_SIGNAL_GEOMETRY"
 
-# Deliberately false in the committed workflow. The path is built so a future
-# DEMO-only promotion can change the durable state without changing the
-# forecasting/geometry logic, but research code cannot silently self-promote.
+# Explicit DEMO-only execution authority. The workflow must set this gate and
+# the exact strategy identity must still pass the shared broker handoff.
 EXECUTION_ENV="CTRADER_DEMO_AFIC_EXECUTION_ENABLED"
 
 
@@ -383,7 +382,7 @@ def _record_event(
         event_type=EVENT_TYPE,
         accepted=None,
         code=STRATEGY_ID,
-        message="AFIC forecast/order blueprint prepared; broker action disabled unless explicitly promoted",
+        message="AFIC forecast/order blueprint prepared; broker action remains gated by Grade-A confirmation and exact DEMO handoff",
         payload={
             "dedupe_key":key,
             "kind":kind,
@@ -585,9 +584,9 @@ def run()->int:
     if SYMBOL not in cfg.pair_map:
         raise SystemExit("AFIC_PREPARED_PLAN_XAUUSD_NOT_CONFIGURED")
 
-    # Hard fail closed in the committed workflow. Enabling the environment
-    # alone is not sufficient for broker execution because the exact strategy
-    # is intentionally not in the handoff allowlist yet.
+    # Environment authorization alone is insufficient: Grade A, completed M15
+    # confirmation, fresh geometry, exact strategy identity, atomic claim, risk,
+    # margin and server-side protection checks remain authoritative.
     execution_enabled=_bool_env(EXECUTION_ENV,False)
 
     feed=build_ctrader_research_feed(policy,(SYMBOL,))
