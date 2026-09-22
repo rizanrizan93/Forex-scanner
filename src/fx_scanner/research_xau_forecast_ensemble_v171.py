@@ -411,6 +411,9 @@ def build_forecast_ensemble(
     primary_direction = (
         "LONG" if score >= 0.15 else "SHORT" if score <= -0.15 else "UNCLEAR"
     )
+    structural_invalid = "INVALID" in afic_state or "REMAP" in afic_state
+    if structural_invalid:
+        primary_direction = "WAIT_REMAP"
 
     conflict = False
     nonzero = [vote for vote in votes.values() if vote not in (None, 0.0)]
@@ -422,8 +425,8 @@ def build_forecast_ensemble(
         structural_penalty *= 0.82
     elif afic_grade not in {"A", ""}:
         structural_penalty *= 0.68
-    if "INVALID" in afic_state or "REMAP" in afic_state:
-        structural_penalty *= 0.60
+    if structural_invalid:
+        structural_penalty *= 0.45
 
     raw_conf = (0.45 + 0.45 * abs(score)) * coverage * structural_penalty
     if conflict:
@@ -435,6 +438,9 @@ def build_forecast_ensemble(
         alternative = "SHORT_REVERSAL_IF_PRIMARY_INVALIDATES"
     elif primary_direction == "SHORT":
         alternative = "LONG_REVERSAL_IF_PRIMARY_INVALIDATES"
+    elif structural_invalid:
+        conditional_direction = str(components["conditional"].get("direction") or "NEUTRAL").upper()
+        alternative = f"{conditional_direction}_PRIOR_PENDING_H4_REMAP"
     elif afic_direction in {"LONG", "SHORT"}:
         alternative = f"{afic_direction}_STRUCTURAL_PATH_PENDING_CONFIRMATION"
 
