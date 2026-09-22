@@ -1,5 +1,8 @@
 name: XAU Forecast Ensemble V171
 
+# The live five-minute shadow cadence is owned by cTrader Demo Auto Supervisor,
+# which is already protected by the recovery watchdog. Keeping this workflow
+# dispatchable avoids relying on an independently delivered GitHub cron.
 on:
   workflow_dispatch:
   push:
@@ -9,8 +12,6 @@ on:
       - "src/fx_scanner/research_xau_forecast_ensemble_v171.py"
       - "src/fx_scanner/research_xau_forecast_ensemble_v171_runtime.py"
       - ".github/workflows/research-xau-forecast-ensemble-v171.yml"
-  schedule:
-    - cron: "*/5 * * * 1-5"
   pull_request:
     paths:
       - "src/fx_scanner/research_xau_forecast_ensemble_v171.py"
