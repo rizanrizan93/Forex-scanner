@@ -65,6 +65,7 @@ def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
         "latest_run": snapshot.latest_run,
         "rankings": list(snapshot.rankings),
         "signals": list(snapshot.signals),
+        "xau_signals": list(snapshot.xau_signals),
         "heartbeats": list(snapshot.heartbeats),
         "macro": list(snapshot.macro),
         "performance": list(snapshot.performance),
@@ -400,11 +401,10 @@ with forecast_tab:
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
     execution_events = [] if backend is None else backend.get("xau_execution_events", [])
-    all_signal_rows = [] if backend is None else backend.get("signals", [])
+    dedicated_xau_rows = [] if backend is None else backend.get("xau_signals", [])
     xau_technical_signal_rows = [
-        dict(row) for row in all_signal_rows
-        if str(row.get("symbol") or "").upper() == "XAUUSD"
-        and not str(row.get("setup_type") or "").upper().startswith("AFIC_")
+        dict(row) for row in dedicated_xau_rows
+        if not str(row.get("setup_type") or "").upper().startswith("AFIC_")
     ]
 
     state_event = forecast_rows[0] if forecast_rows else None
