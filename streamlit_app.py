@@ -393,6 +393,9 @@ with forecast_tab:
     move_hb = _latest_heartbeat(
         heartbeats, "ctrader_xau_expected_move_envelope_v170"
     )
+    ensemble_hb = _latest_heartbeat(
+        heartbeats, "ctrader_xau_forecast_ensemble_v171"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -475,6 +478,114 @@ with forecast_tab:
             f"duration={_fmt_distance(fast_details.get('duration_seconds'), 's')} • "
             f"exit={fast_details.get('exit_code', '—')} • "
             f"code={str(fast_details.get('code_version') or '—')[:12]}"
+        )
+
+    st.markdown("#### Forecast Ensemble V171")
+    ensemble_details = {} if ensemble_hb is None else dict(ensemble_hb.get("details") or {})
+    ensemble = dict(ensemble_details.get("ensemble") or {})
+    primary = dict(ensemble.get("primary_scenario") or {})
+    alternative = dict(ensemble.get("alternative_scenario") or {})
+    ensemble_age = None if ensemble_hb is None else _age_seconds(ensemble_hb.get("observed_at"))
+    ensemble_components = dict(ensemble.get("components") or {})
+
+    if ensemble:
+        e1, e2, e3, e4 = st.columns(4)
+        e1.metric("Primary scenario", str(primary.get("direction") or "—"))
+        e2.metric(
+            "Confidence",
+            "—"
+            if primary.get("confidence") is None
+            else _fmt_pct(primary.get("confidence")),
+        )
+        e3.metric(
+            "Alternative",
+            str(alternative.get("type") or "—"),
+        )
+        e4.metric(
+            "Invalidation",
+            _fmt_price(ensemble.get("invalidation")),
+        )
+        st.caption(
+            "Shadow-only ensemble • "
+            f"coverage={_fmt_pct(ensemble.get('coverage'))} • "
+            f"age={'—' if ensemble_age is None else f'{ensemble_age:.0f}s'} • "
+            "does not alter AFIC Grade-A execution authority."
+        )
+
+        path = dict(primary.get("structural_path") or {})
+        if path:
+            reaction = dict(path.get("reaction_zone") or {})
+            st.info(
+                "Primary path: "
+                f"{path.get('first_leg') or '—'} → "
+                f"reaction {_fmt_price(reaction.get('low'))}–{_fmt_price(reaction.get('high'))} → "
+                f"{path.get('continuation') or primary.get('direction') or '—'}"
+            )
+
+        component_rows = []
+        for name, label in (
+            ("afic", "AFIC structural"),
+            ("conditional", "Empirical conditional"),
+            ("acd", "Fisher/ACD session"),
+            ("cot", "Weekly COT prior"),
+            ("v170", "V170 expected move"),
+        ):
+            component = dict(ensemble_components.get(name) or {})
+            available = component.get("available")
+            direction_value = component.get("direction")
+            if name == "v170":
+                direction_value = "MAGNITUDE ONLY"
+            component_rows.append(
+                {
+                    "component": label,
+                    "available": available,
+                    "direction / role": direction_value or "—",
+                    "confidence": component.get("confidence"),
+                    "state / method": component.get("state")
+                    or component.get("method")
+                    or component.get("reason")
+                    or "—",
+                }
+            )
+        component_frame = pd.DataFrame(component_rows)
+        if "confidence" in component_frame.columns:
+            component_frame["confidence"] = component_frame["confidence"].apply(
+                lambda x: "—" if pd.isna(x) else _fmt_pct(x)
+            )
+        st.dataframe(component_frame, hide_index=True, use_container_width=True)
+
+        conditional_component = dict(ensemble_components.get("conditional") or {})
+        horizons_conditional = dict(conditional_component.get("horizons") or {})
+        if horizons_conditional:
+            probability_rows = []
+            for label in ("1h", "4h", "8h"):
+                row = dict(horizons_conditional.get(label) or {})
+                if row:
+                    probability_rows.append(
+                        {
+                            "horizon": label,
+                            "P(up)": row.get("p_up"),
+                            "P(down)": row.get("p_down"),
+                            "bias": row.get("direction"),
+                            "samples": row.get("samples"),
+                            "median close Δ": row.get("median_close_delta"),
+                        }
+                    )
+            if probability_rows:
+                probability_frame = pd.DataFrame(probability_rows)
+                for col in ("P(up)", "P(down)"):
+                    probability_frame[col] = probability_frame[col].apply(
+                        lambda x: "—" if pd.isna(x) else _fmt_pct(x)
+                    )
+                st.dataframe(
+                    probability_frame,
+                    hide_index=True,
+                    use_container_width=True,
+                )
+    else:
+        st.caption(
+            "Forecast Ensemble V171 has not produced a durable shadow snapshot yet. "
+            "AFIC and V170 remain independently visible below."
         )
 
     if zone_low is not None and zone_high is not None:
