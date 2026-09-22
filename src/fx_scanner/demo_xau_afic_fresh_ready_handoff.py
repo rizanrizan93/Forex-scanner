@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from dataclasses import replace
 from time import monotonic
 
 from .storage.supabase_operational import SupabaseOperationalStore
@@ -15,17 +14,6 @@ WORKER_NAME = "ctrader_demo_xau_afic_fast_handoff"
 _ALLOWED_AFIC_STRATEGIES_BY_SYMBOL = {
     SYMBOL: frozenset({AFIC_EXECUTION_STRATEGY_ID}),
 }
-
-_ORIGINAL_LOAD_DEMO_PROJECT_CONFIG = base.load_demo_project_config
-
-
-def load_afic_demo_project_config(root=None):
-    """Restrict the shared DEMO executor to XAUUSD for the AFIC fast lane."""
-    cfg = _ORIGINAL_LOAD_DEMO_PROJECT_CONFIG(root)
-    if SYMBOL not in cfg.pair_map:
-        raise RuntimeError("AFIC_FAST_HANDOFF_XAUUSD_CONFIG_MISSING")
-    return replace(cfg, pairs=(cfg.pair_map[SYMBOL],))
-
 
 def install_afic_execution_identity_filter(*, max_age_seconds: float) -> None:
     """Allow only fresh AFIC execution geometry through this fast lane."""
@@ -41,7 +29,8 @@ def main() -> int:
     exit_code = 2
     error = None
     try:
-        base.load_demo_project_config = load_afic_demo_project_config
+        # Preserve the canonical weekday universe contract. Exact AFIC-only
+        # authority is enforced at the durable signal identity boundary below.
         base.install_fresh_execution_ready_handoff = install_afic_execution_identity_filter
         exit_code = int(base.main())
         return exit_code
