@@ -45,8 +45,8 @@ def test_extreme_momentum_low_uses_prior_20_readings():
 def test_clean_half_atr_reaction_low():
     rows = [
         _bar(0, 100, 101, 99, 100),
-        _bar(1, 100, 100.2, 99.2, 99.5),
-        _bar(2, 99.5, 100.6, 99.1, 100.2),
+        _bar(1, 99.5, 99.8, 99.2, 99.6),
+        _bar(2, 99.6, 100.6, 99.1, 100.2),
     ]
     # Anchor low=99, reaction threshold=100 when ATR=2.
     # Day 1 never breaks 99; day 2 reaches 100.
