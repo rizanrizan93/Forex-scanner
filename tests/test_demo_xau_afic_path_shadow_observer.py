@@ -72,3 +72,49 @@ def test_zone_diagnostics_identifies_nearest_eligible_short_zone():
     assert x["selection_result"]=="ELIGIBLE_ZONE_FOUND"
     assert x["nearest_eligible"]["low"]==4350.0
     assert x["nearest_eligible"]["distance_points"]==10.0
+
+
+def test_opposite_long_zone_becomes_shadow_reversal_watch_on_short_map():
+    map_at=datetime(2026,9,22,4,0,tzinfo=UTC)
+    long_zone=_zone("LONG",map_at-timedelta(hours=3),4310.0,4320.0)
+    bars=(
+        Bar("XAUUSD","M15",map_at,4340.0,4342.0,4338.0,4339.0,1,0.1,0.2),
+        Bar("XAUUSD","M15",map_at+timedelta(minutes=15),4339.0,4340.0,4334.0,4335.0,1,0.1,0.2),
+    )
+    x=_zone_diagnostics(
+        (long_zone,),
+        map_at=map_at,
+        price=4341.66,
+        continuation="SHORT",
+        bars=bars,
+    )
+    assert x["matching_direction_fresh"]==0
+    assert x["opposite_direction_fresh"]==1
+    assert x["active_alternative_watch_count"]==1
+    watch=x["alternative_reversal_watch_zones"][0]
+    assert watch["direction"]=="LONG"
+    assert watch["role"]=="DOWNSIDE_DESTINATION_LONG_REVERSAL_WATCH"
+    assert watch["status"]=="ACTIVE_WATCH"
+    assert watch["auto_execution_authority"] is False
+    assert watch["required_confirmation"]=="H1/M15_BULLISH_REVERSAL_REMAP"
+
+
+def test_reversal_watch_marks_long_zone_invalid_after_close_below_zone():
+    map_at=datetime(2026,9,22,4,0,tzinfo=UTC)
+    long_zone=_zone("LONG",map_at-timedelta(hours=2),4310.0,4320.0)
+    bars=(
+        Bar("XAUUSD","M15",map_at,4340.0,4342.0,4315.0,4318.0,1,0.1,0.2),
+        Bar("XAUUSD","M15",map_at+timedelta(minutes=15),4318.0,4320.0,4305.0,4308.0,1,0.1,0.2),
+    )
+    x=_zone_diagnostics(
+        (long_zone,),
+        map_at=map_at,
+        price=4341.66,
+        continuation="SHORT",
+        bars=bars,
+    )
+    watch=x["alternative_reversal_watch_zones"][0]
+    assert watch["first_touch_at"] is not None
+    assert watch["invalidated_at"] is not None
+    assert watch["status"]=="INVALIDATED"
+    assert x["active_alternative_watch_count"]==0
