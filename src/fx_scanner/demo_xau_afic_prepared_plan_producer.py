@@ -475,6 +475,62 @@ def _write_signal(
         raise
 
 
+def geometry_matches_current_forecast(
+    geometry_payload:dict[str,Any],
+    forecast_payload:dict[str,Any],
+)->bool:
+    state=str(forecast_payload.get("state") or "")
+    confirmed=state in {
+        "CONFIRMED_PENDING_ENTRY_BAR",
+        "CONFIRMED_SHADOW",
+        "CONFIRMED_NO_TARGET_GEOMETRY",
+    }
+    if not confirmed:
+        return False
+    return bool(
+        str(geometry_payload.get("map_at") or "")
+        == str(forecast_payload.get("map_at") or "")
+        and str(geometry_payload.get("confirm_at") or "")
+        == str(forecast_payload.get("confirm_at") or "")
+    )
+
+
+def _invalidate_stale_execution_ready(store,*,payload:dict[str,Any])->int:
+    try:
+        response=(
+            store.client.table("broker_order_events")
+            .select("signal_key,payload,event_type,code")
+            .eq("event_type",EXECUTION_EVENT_TYPE)
+            .eq("code",EXECUTION_STRATEGY_ID)
+            .order("observed_at",desc=True)
+            .limit(40)
+            .execute()
+        )
+    except Exception:
+        # If execution-identity reconciliation cannot be proven, fail closed by
+        # suppressing new authority at the caller rather than guessing.
+        raise
+    invalidated=0
+    seen=set()
+    for row in response.data or []:
+        signal_id=str(row.get("signal_key") or "").strip()
+        if not signal_id or signal_id in seen:
+            continue
+        seen.add(signal_id)
+        geometry=dict(row.get("payload") or {})
+        if geometry_matches_current_forecast(geometry,payload):
+            continue
+        result=(
+            store.client.table("signals")
+            .update({"state":"INVALIDATED","active_guards":["AFIC_MAP_NO_LONGER_CURRENT"]})
+            .eq("id",signal_id)
+            .eq("state","EXECUTION_READY")
+            .execute()
+        )
+        invalidated+=len(list(result.data or []))
+    return invalidated
+
+
 def _record_execution_geometry(
     store,
     *,
@@ -553,6 +609,7 @@ def run()->int:
     observability:dict[str,Any]={}
     proximity=zone_proximity(price=None,zone=None)
     live_quote_error=None
+    stale_ready_invalidated=0
     try:
         feed.ensure_connected()
         raw=tuple(feed.historical_bars(
@@ -565,6 +622,9 @@ def run()->int:
         payload=evaluate_afic_shadow(raw,as_of=now)
         state=str(payload.get("state") or "")
         state_transition_persisted=_record_forecast_state(store,payload=payload)
+        stale_ready_invalidated=_invalidate_stale_execution_ready(
+            store,payload=payload
+        )
 
         quote=None
         if payload.get("zone"):
@@ -689,6 +749,7 @@ def run()->int:
             "recommended_scan_seconds":proximity.get("recommended_scan_seconds"),
             "effective_scan_seconds":60,
             "live_quote_error":live_quote_error,
+            "stale_ready_invalidated":stale_ready_invalidated,
             "signal_id":signal_id,
             "confirmation_detection_lag_seconds":confirmation_lag,
             "entry_drift_r":drift_metrics.get("entry_drift_r"),
