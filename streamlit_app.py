@@ -1100,21 +1100,30 @@ with forecast_tab:
     st.markdown("#### Expected-move envelope")
     move_details = {} if move_hb is None else dict(move_hb.get("details") or {})
     move_eval = dict(move_details.get("evaluation") or {})
-    envelope = dict(move_eval.get("current_envelope") or {})
-    horizons = dict(envelope.get("horizons") or {})
-    if envelope and horizons:
+    reference_envelope = dict(move_eval.get("current_envelope") or {})
+    live_envelope = dict(ensemble_components.get("v170") or {})
+    live_horizons = dict(live_envelope.get("horizons") or {})
+    reference_horizons = dict(reference_envelope.get("horizons") or {})
+
+    if live_envelope and live_horizons:
         st.caption(
+            "LIVE 20K expected-move envelope from the latest V171 cycle. "
             "Magnitude forecast only — excursion quantiles, not bullish/bearish probabilities."
         )
+        live_age = None if ensemble_hb is None else _age_seconds(ensemble_hb.get("observed_at"))
+        m1, m2, m3 = st.columns(3)
+        m1.metric("LIVE anchor", _fmt_price(live_envelope.get("price")))
+        m2.metric("LIVE as-of", str(live_envelope.get("as_of") or "—"))
+        m3.metric("LIVE age", "—" if live_age is None else f"{live_age:.0f}s")
         move_rows = []
         for label in ("1h", "4h", "8h"):
-            row = dict(horizons.get(label) or {})
+            row = dict(live_horizons.get(label) or {})
             levels = dict(row.get("levels") or {})
             if levels:
                 move_rows.append(
                     {
                         "horizon": label,
-                        "anchor": envelope.get("price"),
+                        "anchor": live_envelope.get("price"),
                         "down q50": levels.get("down_q50"),
                         "down q75": levels.get("down_q75"),
                         "down q90": levels.get("down_q90"),
@@ -1125,8 +1134,43 @@ with forecast_tab:
                 )
         if move_rows:
             st.dataframe(pd.DataFrame(move_rows), hide_index=True, use_container_width=True)
-    else:
-        st.caption("Expected-move V170 heartbeat is not available in this snapshot.")
+    elif reference_envelope and reference_horizons:
+        st.warning(
+            "LIVE 20K envelope is unavailable; showing the slower REFERENCE 100K snapshot instead."
+        )
+
+    if reference_envelope and reference_horizons:
+        with st.expander("REFERENCE 100K V170 snapshot", expanded=False):
+            reference_age = None if move_hb is None else _age_seconds(move_hb.get("observed_at"))
+            r1, r2, r3 = st.columns(3)
+            r1.metric("Reference anchor", _fmt_price(reference_envelope.get("price")))
+            r2.metric("Reference as-of", str(reference_envelope.get("as_of") or "—"))
+            r3.metric("Reference age", "—" if reference_age is None else f"{reference_age:.0f}s")
+            reference_rows = []
+            for label in ("1h", "4h", "8h"):
+                row = dict(reference_horizons.get(label) or {})
+                levels = dict(row.get("levels") or {})
+                if levels:
+                    reference_rows.append(
+                        {
+                            "horizon": label,
+                            "anchor": reference_envelope.get("price"),
+                            "down q50": levels.get("down_q50"),
+                            "down q75": levels.get("down_q75"),
+                            "down q90": levels.get("down_q90"),
+                            "up q50": levels.get("up_q50"),
+                            "up q75": levels.get("up_q75"),
+                            "up q90": levels.get("up_q90"),
+                        }
+                    )
+            if reference_rows:
+                st.dataframe(
+                    pd.DataFrame(reference_rows),
+                    hide_index=True,
+                    use_container_width=True,
+                )
+    elif not live_envelope:
+        st.caption("Expected-move V170 data is not available in this snapshot.")
 
     st.markdown("#### Forecast state history")
     history_rows = []
