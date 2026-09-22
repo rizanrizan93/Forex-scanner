@@ -77,3 +77,13 @@ def test_xau_dashboard_separates_shadow_ready_from_broker_eligible():
     assert '"XAU_AFIC_PATH_EXECUTION_V1"' in text
     assert 'pending live revalidation' in text
     assert 'may say EXECUTION_READY in storage but is SHADOW READY only' in text
+
+
+def test_xau_dashboard_shows_stable_zone_touch_lifecycle():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert '"touch lifecycle": item.get("touch_lifecycle")' in text
+    assert '"first durable touch": item.get("first_touch_at")' in text
+    assert '"current-map touch": item.get("map_first_touch_at")' in text
+    assert '"live touch": item.get("live_touch_at")' in text
+    assert 'Live touch is provisional until that M15 candle closes' in text
+    assert 'Only completed M15 touches are durable lifecycle evidence' in text

@@ -759,9 +759,11 @@ with forecast_tab:
     if active_watch:
         st.caption(
             "These are PRIOR ORIGIN REVISITS from structural memory, not current primary "
-            "AFIC reaction zones. They are potential destinations/reversal areas only. "
-            "They cannot auto-order against the active H4 map; a structural remap plus "
-            "H1/M15 reversal confirmation is required."
+            "AFIC reaction zones. first durable touch is preserved across H4 remaps; "
+            "current-map touch records only a completed M15 touch on the active H4 map. "
+            "Live touch is provisional until that M15 candle closes. They cannot auto-order "
+            "against the active H4 map; a structural remap plus H1/M15 reversal confirmation "
+            "is required."
         )
         watch_rows = []
         for item in active_watch:
@@ -774,6 +776,10 @@ with forecast_tab:
                     "origin_at": item.get("origin_at"),
                     "available_at": item.get("available_at"),
                     "status": item.get("status"),
+                    "touch lifecycle": item.get("touch_lifecycle"),
+                    "first durable touch": item.get("first_touch_at"),
+                    "current-map touch": item.get("map_first_touch_at"),
+                    "live touch": item.get("live_touch_at"),
                     "distance now": _fmt_distance(
                         item.get("distance_from_live_price_points")
                         if item.get("distance_from_live_price_points") is not None
@@ -783,7 +789,6 @@ with forecast_tab:
                     "age": _fmt_distance(item.get("current_age_hours"), "h"),
                     "displacement ATR": item.get("displacement_range_atr"),
                     "body fraction": item.get("displacement_body_fraction"),
-                    "touch": item.get("live_touch_at") or item.get("first_touch_at"),
                     "required": item.get("required_confirmation"),
                 }
             )
@@ -830,6 +835,14 @@ with forecast_tab:
         "H4 continuation is structural context only. It is not a current BUY/SELL call; "
         "trade authority still requires a valid current AFIC zone/selector/confirmation."
     )
+    if hb_details.get("touch_lifecycle"):
+        st.caption(
+            "Current-zone lifecycle: "
+            f"{hb_details.get('touch_lifecycle')} • "
+            f"first durable touch={hb_details.get('first_touch_at') or '—'} • "
+            f"current-map touch={hb_details.get('map_first_touch_at') or '—'}. "
+            "Only completed M15 touches are durable lifecycle evidence."
+        )
 
     h1, h2, h3, h4, h5 = st.columns(5)
     hb_age = None if prepared_hb is None else _age_seconds(prepared_hb.get("observed_at"))

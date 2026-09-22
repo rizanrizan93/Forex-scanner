@@ -118,3 +118,56 @@ def test_reversal_watch_marks_long_zone_invalid_after_close_below_zone():
     assert watch["invalidated_at"] is not None
     assert watch["status"]=="INVALIDATED"
     assert x["active_alternative_watch_count"]==0
+
+
+def test_reversal_watch_preserves_touch_before_current_h4_map():
+    map_at=datetime(2026,9,22,8,0,tzinfo=UTC)
+    zone=_zone("SHORT",map_at-timedelta(hours=4),4335.0,4343.0)
+    bars=(
+        Bar("XAUUSD","M15",map_at-timedelta(hours=2),4330.0,4338.0,4329.0,4332.0,1,0.1,0.2),
+        Bar("XAUUSD","M15",map_at,4320.0,4325.0,4318.0,4322.0,1,0.1,0.2),
+        Bar("XAUUSD","M15",map_at+timedelta(minutes=15),4322.0,4326.0,4320.0,4324.0,1,0.1,0.2),
+    )
+    x=_zone_diagnostics(
+        (zone,),map_at=map_at,price=4322.0,continuation="LONG",bars=bars
+    )
+    watch=x["alternative_reversal_watch_zones"][0]
+    assert watch["first_touch_at"]==(
+        map_at-timedelta(hours=2)
+    ).isoformat()
+    assert watch["map_first_touch_at"] is None
+    assert watch["touch_lifecycle"]=="TOUCHED_BEFORE_CURRENT_MAP"
+    assert watch["status"]=="ACTIVE_WATCH"
+
+
+def test_reversal_watch_distinguishes_touch_during_current_h4_map():
+    map_at=datetime(2026,9,22,8,0,tzinfo=UTC)
+    zone=_zone("SHORT",map_at-timedelta(hours=4),4335.0,4343.0)
+    bars=(
+        Bar("XAUUSD","M15",map_at-timedelta(hours=2),4320.0,4324.0,4318.0,4322.0,1,0.1,0.2),
+        Bar("XAUUSD","M15",map_at,4330.0,4338.0,4329.0,4332.0,1,0.1,0.2),
+    )
+    x=_zone_diagnostics(
+        (zone,),map_at=map_at,price=4322.0,continuation="LONG",bars=bars
+    )
+    watch=x["alternative_reversal_watch_zones"][0]
+    assert watch["first_touch_at"]==map_at.isoformat()
+    assert watch["map_first_touch_at"]==map_at.isoformat()
+    assert watch["touch_lifecycle"]=="TOUCHED_DURING_CURRENT_MAP"
+    assert watch["status"]=="TOUCHED_WATCH_REVERSAL"
+
+
+def test_zone_identity_is_stable_across_h4_maps():
+    first_map=datetime(2026,9,22,8,0,tzinfo=UTC)
+    second_map=first_map+timedelta(hours=4)
+    zone=_zone("SHORT",first_map-timedelta(hours=4),4335.0,4343.0)
+    bars=(
+        Bar("XAUUSD","M15",first_map,4320.0,4324.0,4318.0,4322.0,1,0.1,0.2),
+    )
+    a=_zone_diagnostics(
+        (zone,),map_at=first_map,price=4322.0,continuation="LONG",bars=bars
+    )["alternative_reversal_watch_zones"][0]
+    b=_zone_diagnostics(
+        (zone,),map_at=second_map,price=4322.0,continuation="LONG",bars=bars
+    )["alternative_reversal_watch_zones"][0]
+    assert a["zone_id"]==b["zone_id"]

@@ -182,6 +182,67 @@ def _origin_zones(rows:Sequence[Bar],*,as_of:datetime)->tuple[OriginZone,...]:
     return tuple(out)
 
 
+def _stable_zone_id(zone:OriginZone)->str:
+    """Return a zone identity that does not depend on the current H4 map."""
+    raw="|".join((
+        str(zone.direction).upper(),
+        ensure_utc(zone.origin_at).isoformat(),
+        ensure_utc(zone.available_at).isoformat(),
+        f"{float(zone.low):.8f}",
+        f"{float(zone.high):.8f}",
+        f"{float(zone.bos_level):.8f}",
+    ))
+    return hashlib.sha256(raw.encode()).hexdigest()[:24]
+
+
+def _zone_touch_lifecycle(
+    zone:OriginZone,
+    *,
+    bars:Sequence[Bar]|None,
+    map_at,
+)->dict[str,Any]:
+    """Describe durable closed-M15 touch history independently from H4 remaps.
+
+    A touch becomes durable evidence only after the M15 bar is closed and
+    available to this observer. first_touch_at is the first actionable touch
+    since the zone became available; map_first_touch_at is restricted to the
+    current H4 map.
+    """
+    t=ensure_utc(map_at)
+    available=ensure_utc(zone.available_at)
+    rows=tuple(sorted(tuple(bars or ()),key=lambda row:ensure_utc(row.timestamp)))
+    actionable=tuple(
+        row for row in rows if ensure_utc(row.timestamp)>=available
+    )
+    first_touch_at=None
+    map_first_touch_at=None
+    for row in actionable:
+        ts=ensure_utc(row.timestamp)
+        if _touch(row,zone):
+            if first_touch_at is None:
+                first_touch_at=ts
+            if ts>=t and map_first_touch_at is None:
+                map_first_touch_at=ts
+        if first_touch_at is not None and map_first_touch_at is not None:
+            break
+
+    if map_first_touch_at is not None:
+        lifecycle="TOUCHED_DURING_CURRENT_MAP"
+    elif first_touch_at is not None and first_touch_at<t:
+        lifecycle="TOUCHED_BEFORE_CURRENT_MAP"
+    else:
+        lifecycle="UNTOUCHED"
+
+    return {
+        "zone_id":_stable_zone_id(zone),
+        "first_touch_at":None if first_touch_at is None else first_touch_at.isoformat(),
+        "map_first_touch_at":None
+            if map_first_touch_at is None
+            else map_first_touch_at.isoformat(),
+        "touch_lifecycle":lifecycle,
+    }
+
+
 def _zone_diagnostics(
     zones:Sequence[OriginZone],
     *,
@@ -234,15 +295,13 @@ def _zone_diagnostics(
 
     alternative_watch=[]
     for z in opposite:
+        lifecycle=_zone_touch_lifecycle(z,bars=closed_bars,map_at=t)
         after=tuple(
             row for row in closed_bars
             if ensure_utc(row.timestamp)>=t
         )
-        first_touch=None
         invalidated_at=None
         for row in after:
-            if first_touch is None and _touch(row,z):
-                first_touch=ensure_utc(row.timestamp).isoformat()
             if _invalidated(row,z):
                 invalidated_at=ensure_utc(row.timestamp).isoformat()
                 break
@@ -261,6 +320,7 @@ def _zone_diagnostics(
         else:
             role="OPPOSITE_DIRECTION_REVERSAL_WATCH"
         alternative_watch.append({
+            "zone_id":lifecycle["zone_id"],
             "direction":z.direction,
             "role":role,
             "low":z.low,
@@ -279,10 +339,14 @@ def _zone_diagnostics(
             "distance_from_latest_price_points":_distance_to_zone(latest_price,z),
             "displacement_range_atr":z.displacement_range_atr,
             "displacement_body_fraction":z.displacement_body_fraction,
-            "first_touch_at":first_touch,
+            "first_touch_at":lifecycle["first_touch_at"],
+            "map_first_touch_at":lifecycle["map_first_touch_at"],
+            "touch_lifecycle":lifecycle["touch_lifecycle"],
             "invalidated_at":invalidated_at,
             "status":"INVALIDATED" if invalidated_at else (
-                "TOUCHED_WATCH_REVERSAL" if first_touch else "ACTIVE_WATCH"
+                "TOUCHED_WATCH_REVERSAL"
+                if lifecycle["map_first_touch_at"]
+                else "ACTIVE_WATCH"
             ),
             "auto_execution_authority":False,
             "required_confirmation":"H1/M15_BULLISH_REVERSAL_REMAP" if z.direction=="LONG"
@@ -507,6 +571,7 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
         }
 
     features=_h4_features(h4,i,continuation=continuation,zone=zone,map_price=map_price)
+    lifecycle=_zone_touch_lifecycle(zone,bars=bars,map_at=map_at)
     after=[(j,b) for j,b in enumerate(bars) if ensure_utc(b.timestamp)>=map_at]
     touch_idx=None;invalid_idx=None
     for j,b in after:
@@ -523,10 +588,14 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
         "continuation_direction":continuation,
         "first_leg_direction":first_leg,
         "zone":asdict(zone)|{
+            "zone_id":lifecycle["zone_id"],
             "available_at":zone.available_at.isoformat(),
             "bos_at":zone.bos_at.isoformat(),
             "origin_at":zone.origin_at.isoformat(),
         },
+        "first_touch_at":lifecycle["first_touch_at"],
+        "map_first_touch_at":lifecycle["map_first_touch_at"],
+        "touch_lifecycle":lifecycle["touch_lifecycle"],
         "h4_features":features,
         "zone_diagnostics":zone_diagnostics,
         "closed_m15":len(bars),
@@ -544,7 +613,10 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
             payload["state"]="FIRST_LEG_TIMEOUT_REMAP_DUE"
         return payload
 
-    payload["first_touch_at"]=ensure_utc(bars[touch_idx].timestamp).isoformat()
+    payload["map_first_touch_at"]=ensure_utc(bars[touch_idx].timestamp).isoformat()
+    if payload.get("first_touch_at") is None:
+        payload["first_touch_at"]=payload["map_first_touch_at"]
+    payload["touch_lifecycle"]="TOUCHED_DURING_CURRENT_MAP"
     confirm_idx=None
     c_end=min(len(bars)-1,touch_idx+CONFIRM_WINDOW_M15)
     for j in range(touch_idx,c_end+1):
