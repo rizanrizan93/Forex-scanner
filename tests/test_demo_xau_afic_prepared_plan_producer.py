@@ -130,6 +130,62 @@ def test_afic_forecast_state_transition_identity_and_key_are_durable():
     assert "2026-09-22T02:00:00+00:00" in invalidated
 
 
+def test_alternative_watch_lifecycle_transition_changes_forecast_state_key():
+    base={
+        "map_at":"2026-09-22T12:00:00+00:00",
+        "state":"NO_MAP_ZONE",
+        "continuation_direction":"LONG",
+        "zone_diagnostics":{"alternative_reversal_watch_zones":[{
+            "zone_id":"d53de19dc6617446d9c4ce42",
+            "zone_lifecycle":"TOUCHED_BEFORE_CURRENT_MAP",
+            "first_touch_at":"2026-09-22T08:45:00+00:00",
+            "map_first_touch_at":None,
+            "invalidated_at":None,
+        }]},
+    }
+    touched_during_map={
+        **base,
+        "zone_diagnostics":{"alternative_reversal_watch_zones":[{
+            **base["zone_diagnostics"]["alternative_reversal_watch_zones"][0],
+            "zone_lifecycle":"TOUCHED_DURING_CURRENT_MAP",
+            "map_first_touch_at":"2026-09-22T12:15:00+00:00",
+        }]},
+    }
+    invalidated={
+        **touched_during_map,
+        "zone_diagnostics":{"alternative_reversal_watch_zones":[{
+            **touched_during_map["zone_diagnostics"]["alternative_reversal_watch_zones"][0],
+            "zone_lifecycle":"INVALIDATED_DURING_CURRENT_MAP",
+            "invalidated_at":"2026-09-22T13:00:00+00:00",
+        }]},
+    }
+    assert forecast_state_key(base)!=forecast_state_key(touched_during_map)
+    assert forecast_state_key(touched_during_map)!=forecast_state_key(invalidated)
+
+
+def test_live_quote_churn_does_not_change_alternative_lifecycle_state_key():
+    base={
+        "map_at":"2026-09-22T12:00:00+00:00",
+        "state":"NO_MAP_ZONE",
+        "zone_diagnostics":{"alternative_reversal_watch_zones":[{
+            "zone_id":"ZONE_A",
+            "zone_lifecycle":"UNTOUCHED",
+            "first_touch_at":None,
+            "map_first_touch_at":None,
+            "invalidated_at":None,
+        }]},
+    }
+    quote_update={
+        **base,
+        "zone_diagnostics":{"alternative_reversal_watch_zones":[{
+            **base["zone_diagnostics"]["alternative_reversal_watch_zones"][0],
+            "live_price":4340.0,
+            "live_touch_at":"2026-09-22T12:11:00+00:00",
+        }]},
+    }
+    assert forecast_state_key(base)==forecast_state_key(quote_update)
+
+
 def test_afic_grade_a_and_b_confirmed_are_demo_auto_ready():
     for grade in ("A","B"):
         state,guards=signal_state_and_guards(

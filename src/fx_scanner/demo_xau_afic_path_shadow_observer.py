@@ -216,6 +216,7 @@ def _zone_touch_lifecycle(
     )
     first_touch_at=None
     map_first_touch_at=None
+    invalidated_at=None
     for row in actionable:
         ts=ensure_utc(row.timestamp)
         if _touch(row,zone):
@@ -223,7 +224,8 @@ def _zone_touch_lifecycle(
                 first_touch_at=ts
             if ts>=t and map_first_touch_at is None:
                 map_first_touch_at=ts
-        if first_touch_at is not None and map_first_touch_at is not None:
+        if _invalidated(row,zone):
+            invalidated_at=ts
             break
 
     if map_first_touch_at is not None:
@@ -232,6 +234,16 @@ def _zone_touch_lifecycle(
         lifecycle="TOUCHED_BEFORE_CURRENT_MAP"
     else:
         lifecycle="UNTOUCHED"
+    invalidated_before_map=bool(
+        invalidated_at is not None and invalidated_at<t
+    )
+    zone_lifecycle=(
+        "INVALIDATED_BEFORE_CURRENT_MAP"
+        if invalidated_before_map
+        else "INVALIDATED_DURING_CURRENT_MAP"
+        if invalidated_at is not None
+        else lifecycle
+    )
 
     return {
         "zone_id":_stable_zone_id(zone),
@@ -240,6 +252,14 @@ def _zone_touch_lifecycle(
             if map_first_touch_at is None
             else map_first_touch_at.isoformat(),
         "touch_lifecycle":lifecycle,
+        "zone_lifecycle":zone_lifecycle,
+        "origin_invalidated_at":None
+            if invalidated_at is None
+            else invalidated_at.isoformat(),
+        "invalidation_known_at":None
+            if invalidated_at is None
+            else (invalidated_at+timedelta(minutes=15)).isoformat(),
+        "invalidated_before_map":invalidated_before_map,
     }
 
 
@@ -261,7 +281,16 @@ def _zone_diagnostics(
         z for z in available_by_time
         if t-ensure_utc(z.available_at)<=timedelta(hours=ZONE_MAX_AGE_HOURS)
     )
-    matching=tuple(z for z in fresh if z.direction==continuation)
+    closed_bars=tuple(bars or ())
+    lifecycle_by_id={
+        _stable_zone_id(z):_zone_touch_lifecycle(z,bars=closed_bars,map_at=t)
+        for z in fresh
+    }
+    active_fresh=tuple(
+        z for z in fresh
+        if not lifecycle_by_id[_stable_zone_id(z)]["invalidated_before_map"]
+    )
+    matching=tuple(z for z in active_fresh if z.direction==continuation)
     if continuation=="SHORT":
         correct_side=tuple(z for z in matching if z.low>price)
         wrong_side=tuple(z for z in matching if z.low<=price)
@@ -278,8 +307,6 @@ def _zone_diagnostics(
         if ensure_utc(z.available_at)>t
     )
     opposite=tuple(z for z in fresh if z.direction!=continuation)
-
-    closed_bars=tuple(bars or ())
     latest_price=float(closed_bars[-1].close) if closed_bars else float(price)
     latest_at=(
         ensure_utc(closed_bars[-1].timestamp)
@@ -295,16 +322,8 @@ def _zone_diagnostics(
 
     alternative_watch=[]
     for z in opposite:
-        lifecycle=_zone_touch_lifecycle(z,bars=closed_bars,map_at=t)
-        after=tuple(
-            row for row in closed_bars
-            if ensure_utc(row.timestamp)>=t
-        )
-        invalidated_at=None
-        for row in after:
-            if _invalidated(row,z):
-                invalidated_at=ensure_utc(row.timestamp).isoformat()
-                break
+        lifecycle=lifecycle_by_id[_stable_zone_id(z)]
+        invalidated_at=lifecycle["origin_invalidated_at"]
         if continuation=="SHORT" and z.direction=="LONG":
             role=(
                 "DOWNSIDE_DESTINATION_LONG_REVERSAL_WATCH"
@@ -342,7 +361,10 @@ def _zone_diagnostics(
             "first_touch_at":lifecycle["first_touch_at"],
             "map_first_touch_at":lifecycle["map_first_touch_at"],
             "touch_lifecycle":lifecycle["touch_lifecycle"],
+            "zone_lifecycle":lifecycle["zone_lifecycle"],
             "invalidated_at":invalidated_at,
+            "invalidation_known_at":lifecycle["invalidation_known_at"],
+            "invalidated_before_map":lifecycle["invalidated_before_map"],
             "status":"INVALIDATED" if invalidated_at else (
                 "TOUCHED_WATCH_REVERSAL"
                 if lifecycle["map_first_touch_at"]
@@ -370,6 +392,7 @@ def _zone_diagnostics(
             distance=max(0.0,price-nearest.high)
         nearest_payload={
             "direction":nearest.direction,
+            "zone_id":_stable_zone_id(nearest),
             "low":nearest.low,
             "high":nearest.high,
             "available_at":nearest.available_at.isoformat(),
@@ -391,6 +414,8 @@ def _zone_diagnostics(
         "origin_zones_total":len(all_zones),
         "available_at_map":len(available_by_time),
         "fresh_within_24h":len(fresh),
+        "structurally_active_fresh":len(active_fresh),
+        "invalidated_before_map":len(fresh)-len(active_fresh),
         "stale_over_24h":len(stale),
         "future_not_available_at_map":len(future),
         "matching_direction_fresh":len(matching),
@@ -408,20 +433,31 @@ def _zone_diagnostics(
     }
 
 
-def _choose_zone(zones:Sequence[OriginZone],*,map_at,price:float,continuation:str)->OriginZone|None:
+def _choose_zone(
+    zones:Sequence[OriginZone],
+    *,
+    map_at,
+    price:float,
+    continuation:str,
+    bars:Sequence[Bar]|None=None,
+)->OriginZone|None:
     diagnostics=_zone_diagnostics(
-        zones,map_at=map_at,price=price,continuation=continuation
+        zones,map_at=map_at,price=price,continuation=continuation,bars=bars
     )
     nearest=dict(diagnostics.get("nearest_eligible") or {})
     if not nearest:
         return None
     t=ensure_utc(map_at)
+    nearest_zone_id=str(nearest.get("zone_id") or "")
     candidates=[
         z for z in zones
         if ensure_utc(z.available_at)<=t
         and t-ensure_utc(z.available_at)<=timedelta(hours=ZONE_MAX_AGE_HOURS)
         and z.direction==continuation
+        and not _zone_touch_lifecycle(z,bars=bars,map_at=t)["invalidated_before_map"]
     ]
+    if nearest_zone_id:
+        candidates=[z for z in candidates if _stable_zone_id(z)==nearest_zone_id]
     if continuation=="SHORT":
         candidates=[z for z in candidates if z.low>price]
         return None if not candidates else min(candidates,key=lambda z:z.low-price)
@@ -558,7 +594,9 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
         continuation=continuation,
         bars=bars,
     )
-    zone=_choose_zone(zones,map_at=map_at,price=map_price,continuation=continuation)
+    zone=_choose_zone(
+        zones,map_at=map_at,price=map_price,continuation=continuation,bars=bars
+    )
     if zone is None:
         return {
             "state":"NO_MAP_ZONE",
@@ -596,6 +634,8 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
         "first_touch_at":lifecycle["first_touch_at"],
         "map_first_touch_at":lifecycle["map_first_touch_at"],
         "touch_lifecycle":lifecycle["touch_lifecycle"],
+        "zone_lifecycle":lifecycle["zone_lifecycle"],
+        "origin_invalidated_at":lifecycle["origin_invalidated_at"],
         "h4_features":features,
         "zone_diagnostics":zone_diagnostics,
         "closed_m15":len(bars),
@@ -606,6 +646,7 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
     if invalid_idx is not None:
         payload["state"]="INVALIDATED_REMAP_DUE"
         payload["invalidated_at"]=ensure_utc(bars[invalid_idx].timestamp).isoformat()
+        payload["zone_lifecycle"]="INVALIDATED_DURING_CURRENT_MAP"
         return payload
 
     if touch_idx is None:
@@ -617,12 +658,14 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
     if payload.get("first_touch_at") is None:
         payload["first_touch_at"]=payload["map_first_touch_at"]
     payload["touch_lifecycle"]="TOUCHED_DURING_CURRENT_MAP"
+    payload["zone_lifecycle"]="TOUCHED_DURING_CURRENT_MAP"
     confirm_idx=None
     c_end=min(len(bars)-1,touch_idx+CONFIRM_WINDOW_M15)
     for j in range(touch_idx,c_end+1):
         if _invalidated(bars[j],zone):
             payload["state"]="INVALIDATED_AFTER_TOUCH_REMAP_DUE"
             payload["invalidated_at"]=ensure_utc(bars[j].timestamp).isoformat()
+            payload["zone_lifecycle"]="INVALIDATED_DURING_CURRENT_MAP"
             return payload
         if _engulf_reject(bars,j,zone):
             confirm_idx=j;break

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from datetime import UTC, datetime, timedelta
 from math import isfinite
@@ -330,6 +331,24 @@ def prepared_observability(
 
 def forecast_state_key(payload:dict[str,Any])->str:
     zone=dict(payload.get("zone") or {})
+    lifecycle_rows=[]
+    diagnostics=dict(payload.get("zone_diagnostics") or {})
+    for item in diagnostics.get("alternative_reversal_watch_zones") or []:
+        if item.get("zone_id"):
+            lifecycle_rows.append((
+                str(item.get("zone_id")),
+                str(item.get("zone_lifecycle") or item.get("touch_lifecycle") or "UNTOUCHED"),
+                str(item.get("first_touch_at") or "NONE"),
+                str(item.get("map_first_touch_at") or "NONE"),
+                str(item.get("invalidated_at") or "NONE"),
+            ))
+    alternative_lifecycle_token=(
+        "NONE"
+        if not lifecycle_rows
+        else hashlib.sha256(
+            json.dumps(sorted(lifecycle_rows),separators=(",",":")).encode()
+        ).hexdigest()[:24]
+    )
     fields=(
         STATE_CODE,
         str(payload.get("map_at") or "NONE"),
@@ -341,6 +360,7 @@ def forecast_state_key(payload:dict[str,Any])->str:
         str(payload.get("confirm_at") or "NONE"),
         str(payload.get("invalidated_at") or "NONE"),
         str(zone.get("origin_at") or "NONE"),
+        alternative_lifecycle_token,
     )
     return "|".join(fields)
 
@@ -870,6 +890,7 @@ def run()->int:
             "first_touch_at":payload.get("first_touch_at"),
             "map_first_touch_at":payload.get("map_first_touch_at"),
             "touch_lifecycle":payload.get("touch_lifecycle"),
+            "zone_lifecycle":payload.get("zone_lifecycle"),
             "zone_distance_atr":observability.get("zone_distance_atr"),
             "h4_directional_close_location":observability.get("h4_directional_close_location"),
             "zone_diagnostics":dict(payload.get("zone_diagnostics") or {}),

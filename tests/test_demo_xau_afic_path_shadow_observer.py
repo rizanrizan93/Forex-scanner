@@ -3,7 +3,7 @@ from datetime import datetime,timedelta,timezone
 from fx_scanner.models import Bar
 from fx_scanner.demo_xau_afic_path_shadow_observer import (
     FORWARD_CONTRACT,STRATEGY_ID,SYMBOL,OriginZone,_resample_completed,
-    _zone_diagnostics
+    _choose_zone,_zone_diagnostics
 )
 
 UTC=timezone.utc
@@ -171,3 +171,41 @@ def test_zone_identity_is_stable_across_h4_maps():
         (zone,),map_at=second_map,price=4322.0,continuation="LONG",bars=bars
     )["alternative_reversal_watch_zones"][0]
     assert a["zone_id"]==b["zone_id"]
+
+
+def test_zone_invalidated_before_current_map_cannot_revive_as_active_watch():
+    map_at=datetime(2026,9,22,8,0,tzinfo=UTC)
+    zone=_zone("SHORT",map_at-timedelta(hours=4),4335.0,4343.0)
+    invalidated_at=map_at-timedelta(hours=2)
+    bars=(
+        Bar("XAUUSD","M15",invalidated_at,4338.0,4345.0,4336.0,4344.0,1,0.1,0.2),
+        Bar("XAUUSD","M15",map_at,4332.0,4338.0,4330.0,4334.0,1,0.1,0.2),
+    )
+    x=_zone_diagnostics(
+        (zone,),map_at=map_at,price=4322.0,continuation="LONG",bars=bars
+    )
+    watch=x["alternative_reversal_watch_zones"][0]
+    assert watch["invalidated_at"]==invalidated_at.isoformat()
+    assert watch["map_first_touch_at"] is None
+    assert watch["invalidated_before_map"] is True
+    assert watch["zone_lifecycle"]=="INVALIDATED_BEFORE_CURRENT_MAP"
+    assert watch["status"]=="INVALIDATED"
+    assert x["active_alternative_watch_count"]==0
+
+
+def test_invalidated_matching_zone_is_not_eligible_on_later_map():
+    map_at=datetime(2026,9,22,8,0,tzinfo=UTC)
+    zone=_zone("SHORT",map_at-timedelta(hours=4),4335.0,4343.0)
+    bars=(
+        Bar("XAUUSD","M15",map_at-timedelta(hours=2),4338.0,4345.0,4336.0,4344.0,1,0.1,0.2),
+        Bar("XAUUSD","M15",map_at,4322.0,4326.0,4320.0,4324.0,1,0.1,0.2),
+    )
+    diagnostics=_zone_diagnostics(
+        (zone,),map_at=map_at,price=4322.0,continuation="SHORT",bars=bars
+    )
+    assert diagnostics["invalidated_before_map"]==1
+    assert diagnostics["structurally_active_fresh"]==0
+    assert diagnostics["eligible_correct_side"]==0
+    assert _choose_zone(
+        (zone,),map_at=map_at,price=4322.0,continuation="SHORT",bars=bars
+    ) is None

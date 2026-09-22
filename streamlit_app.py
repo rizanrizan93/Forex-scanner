@@ -776,10 +776,12 @@ with forecast_tab:
                     "origin_at": item.get("origin_at"),
                     "available_at": item.get("available_at"),
                     "status": item.get("status"),
+                    "zone lifecycle": item.get("zone_lifecycle"),
                     "touch lifecycle": item.get("touch_lifecycle"),
                     "first durable touch": item.get("first_touch_at"),
                     "current-map touch": item.get("map_first_touch_at"),
                     "live touch": item.get("live_touch_at"),
+                    "invalidated": item.get("invalidated_at"),
                     "distance now": _fmt_distance(
                         item.get("distance_from_live_price_points")
                         if item.get("distance_from_live_price_points") is not None
@@ -838,7 +840,7 @@ with forecast_tab:
     if hb_details.get("touch_lifecycle"):
         st.caption(
             "Current-zone lifecycle: "
-            f"{hb_details.get('touch_lifecycle')} • "
+            f"{hb_details.get('zone_lifecycle') or hb_details.get('touch_lifecycle')} • "
             f"first durable touch={hb_details.get('first_touch_at') or '—'} • "
             f"current-map touch={hb_details.get('map_first_touch_at') or '—'}. "
             "Only completed M15 touches are durable lifecycle evidence."
