@@ -388,6 +388,7 @@ def _record_event(
             "kind":kind,
             "strategy_id":STRATEGY_ID,
             "execution_strategy_id":EXECUTION_STRATEGY_ID,
+            "code_version":os.getenv("GITHUB_SHA","LOCAL"),
             "environment":"DEMO",
             "execution_influence":False,
             "live_execution_enabled":False,
