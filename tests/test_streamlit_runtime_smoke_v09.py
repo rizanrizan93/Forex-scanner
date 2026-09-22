@@ -49,3 +49,10 @@ def test_xau_dashboard_distinguishes_prior_origin_revisit_and_target_semantics()
     assert '"terminal target"' in text
     assert '"raw TP1"' in text
     assert '"raw TP2"' in text
+
+
+def test_xau_dashboard_does_not_label_raw_h4_direction_as_trade_forecast():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'f1.metric("H4 continuation", direction)' in text
+    assert 'H4 continuation is structural context only' in text
+    assert 'f1.metric("Forecast", direction)' not in text
