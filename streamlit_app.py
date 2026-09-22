@@ -387,6 +387,9 @@ with forecast_tab:
     prepared_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_afic_prepared_plan_producer"
     )
+    fast_handoff_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_afic_fast_handoff"
+    )
     move_hb = _latest_heartbeat(
         heartbeats, "ctrader_xau_expected_move_envelope_v170"
     )
@@ -451,13 +454,28 @@ with forecast_tab:
     f5.metric("Distance to zone", _fmt_distance(distance_points, " pts"))
     f6.metric("AFIC scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
 
-    h1, h2, h3, h4 = st.columns(4)
+    h1, h2, h3, h4, h5 = st.columns(5)
     hb_age = None if prepared_hb is None else _age_seconds(prepared_hb.get("observed_at"))
+    fast_age = None if fast_handoff_hb is None else _age_seconds(fast_handoff_hb.get("observed_at"))
+    fast_ok = bool(fast_handoff_hb and fast_handoff_hb.get("healthy"))
+    fast_label = "WAITING"
+    if fast_handoff_hb is not None:
+        fast_label = "OK" if fast_ok and fast_age is not None and fast_age <= 180 else "STALE/ERROR"
     h1.metric("Next action", next_action)
     h2.metric("DEMO auto", "ON" if auto_enabled else "OFF")
     h3.metric("Forecast heartbeat", "—" if hb_age is None else f"{hb_age:.0f}s ago")
-    h4.metric("Last AFIC broker event", latest_exec_event or "NONE")
+    h4.metric("Fast handoff", fast_label)
+    h5.metric("Last AFIC broker event", latest_exec_event or "NONE")
     st.caption(next_reason)
+    if fast_handoff_hb is not None:
+        fast_details = dict(fast_handoff_hb.get("details") or {})
+        st.caption(
+            "AFIC fast handoff • "
+            f"age={'—' if fast_age is None else f'{fast_age:.0f}s'} • "
+            f"duration={_fmt_distance(fast_details.get('duration_seconds'), 's')} • "
+            f"exit={fast_details.get('exit_code', '—')} • "
+            f"code={str(fast_details.get('code_version') or '—')[:12]}"
+        )
 
     if zone_low is not None and zone_high is not None:
         st.markdown(
