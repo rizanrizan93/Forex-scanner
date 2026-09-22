@@ -38,6 +38,11 @@ def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_hando
     assert "never fall back to an" in text
     assert "other_active_supervisors" in text
     assert "safety=FAIL_CLOSED" in text
+    assert "SUPERVISOR_GH_API_RETRY" in text
+    assert "SUPERVISOR_GH_API_FAIL_CLOSED" in text
+    assert "for attempt in 1 2 3" in text
+    assert "assumed_active=1" in text
+    assert "unknown|unknown" in text
     assert "workflow_run:" not in text
     assert "push:" in text
     assert '".github/workflows/ctrader-demo-auto-supervisor.yml"' in text

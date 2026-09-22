@@ -67,20 +67,44 @@ jobs:
 
           active_count() {
             local workflow_file="$1"
-            gh api \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/runs?branch=main&per_page=20" \
-              --jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending")] | length'
+            local attempt value
+            for attempt in 1 2 3; do
+              if value="$(
+                gh api \
+                  -H "Accept: application/vnd.github+json" \
+                  -H "X-GitHub-Api-Version: 2022-11-28" \
+                  "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/runs?branch=main&per_page=20" \
+                  --jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending")] | length' \
+                  2>/tmp/gh-active-count.err
+              )"; then
+                printf '%s\n' "${value}"
+                return 0
+              fi
+              echo "SUPERVISOR_GH_API_RETRY operation=active_count workflow=${workflow_file} attempt=${attempt}/3" >&2
+              sleep $((attempt * 2))
+            done
+            # Unknown activity must be treated as busy so transient GitHub API
+            # failures can never create duplicate workflow dispatches.
+            echo "SUPERVISOR_GH_API_FAIL_CLOSED operation=active_count workflow=${workflow_file} assumed_active=1" >&2
+            printf '1\n'
           }
 
           dispatch_workflow() {
             local workflow_file="$1"
-            gh api --method POST \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/dispatches" \
-              -f ref=main
+            local attempt
+            for attempt in 1 2 3; do
+              if gh api --method POST \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/dispatches" \
+                -f ref=main >/dev/null 2>/tmp/gh-dispatch.err; then
+                return 0
+              fi
+              echo "SUPERVISOR_GH_API_RETRY operation=dispatch workflow=${workflow_file} attempt=${attempt}/3" >&2
+              sleep $((attempt * 2))
+            done
+            echo "SUPERVISOR_GH_API_FAIL_CLOSED operation=dispatch workflow=${workflow_file}" >&2
+            return 1
           }
 
           market_open_utc() {
@@ -172,7 +196,19 @@ jobs:
           # that exact latest run for at most two minutes; never fall back to an
           # older success and never hand off after a failed/cancelled latest run.
           latest_execution_state() {
-            gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-xau-execution-lane.yml/runs?branch=main&per_page=20" --jq '[.workflow_runs[0].status // "", .workflow_runs[0].conclusion // ""] | join("|")'
+            local attempt value
+            for attempt in 1 2 3; do
+              if value="$(
+                gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-xau-execution-lane.yml/runs?branch=main&per_page=20" --jq '[.workflow_runs[0].status // "", .workflow_runs[0].conclusion // ""] | join("|")' 2>/tmp/gh-latest-execution.err
+              )"; then
+                printf '%s\n' "${value}"
+                return 0
+              fi
+              echo "SUPERVISOR_GH_API_RETRY operation=latest_execution_state attempt=${attempt}/3" >&2
+              sleep $((attempt * 2))
+            done
+            # Unknown latest state must prevent self-handoff.
+            printf 'unknown|unknown\n'
           }
 
           execution_state="$(latest_execution_state)"
@@ -196,9 +232,17 @@ jobs:
             esac
           done
 
-          other_active_supervisors="$(
-            gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/runs?branch=main&per_page=20" --jq "[.workflow_runs[] | select((.status == \"queued\" or .status == \"in_progress\" or .status == \"waiting\" or .status == \"pending\") and (.id != ${GITHUB_RUN_ID}))] | length"
-          )"
+          other_active_supervisors=1
+          for supervisor_query_attempt in 1 2 3; do
+            if other_active_supervisors="$(
+              gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/runs?branch=main&per_page=20" --jq "[.workflow_runs[] | select((.status == \"queued\" or .status == \"in_progress\" or .status == \"waiting\" or .status == \"pending\") and (.id != ${GITHUB_RUN_ID}))] | length" 2>/tmp/gh-other-supervisors.err
+            )"; then
+              break
+            fi
+            echo "SUPERVISOR_GH_API_RETRY operation=other_active_supervisors attempt=${supervisor_query_attempt}/3" >&2
+            other_active_supervisors=1
+            sleep $((supervisor_query_attempt * 2))
+          done
 
           self_handoff=0
           if market_open_utc && [ "${latest_execution_status}" = "completed" ] && [ "${latest_execution_conclusion}" = "success" ] && [ "${other_active_supervisors}" -eq 0 ]; then
