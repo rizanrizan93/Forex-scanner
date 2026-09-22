@@ -554,11 +554,16 @@ with forecast_tab:
                         expires_dt = expires_dt.astimezone(UTC)
                 except (TypeError, ValueError):
                     expires_dt = None
-            runtime_status = (
-                "CURRENT"
-                if expires_dt is not None and expires_dt >= now_utc
-                else "EXPIRED"
-            )
+            raw_state = str(row.get("state") or "").upper()
+            raw_setup = str(row.get("setup_type") or "").upper()
+            if raw_state == "INVALIDATED":
+                runtime_status = "INVALIDATED"
+            elif expires_dt is not None and expires_dt < now_utc:
+                runtime_status = "EXPIRED"
+            elif raw_state == "WATCH" or raw_setup in {"", "NONE"}:
+                runtime_status = "WATCH"
+            else:
+                runtime_status = "CURRENT"
             technical_rows.append(
                 {
                     "runtime": runtime_status,
@@ -573,8 +578,20 @@ with forecast_tab:
                         else "—"
                     ),
                     "SL": _fmt_price(row.get("sl")),
-                    "TP1": _fmt_price(row.get("tp1")),
-                    "TP2": _fmt_price(row.get("tp2")),
+                    "first target": _fmt_price(
+                        next(
+                            (x for x in (row.get("tp1"), row.get("tp2"), row.get("tp3")) if x is not None),
+                            None,
+                        )
+                    ),
+                    "terminal target": _fmt_price(
+                        next(
+                            (x for x in (row.get("tp3"), row.get("tp2"), row.get("tp1")) if x is not None),
+                            None,
+                        )
+                    ),
+                    "raw TP1": _fmt_price(row.get("tp1")),
+                    "raw TP2": _fmt_price(row.get("tp2")),
                     "guards": ", ".join(str(x) for x in (row.get("active_guards") or [])) or "—",
                     "expires_at": expires_raw,
                 }
@@ -584,6 +601,16 @@ with forecast_tab:
             st.info(
                 "Latest non-AFIC XAU technical setup is CURRENT. "
                 "Its geometry is shown below, but AFIC authority remains a separate gate."
+            )
+        elif latest_technical["runtime"] == "WATCH":
+            st.info(
+                "Latest non-AFIC XAU row is WATCH only. It has no independent trade "
+                "authority and should not be read as a current entry."
+            )
+        elif latest_technical["runtime"] == "INVALIDATED":
+            st.warning(
+                "Latest non-AFIC XAU setup is INVALIDATED. Its geometry is retained "
+                "only for historical evidence."
             )
         else:
             st.warning(
@@ -646,7 +673,8 @@ with forecast_tab:
     ]
     if active_watch:
         st.caption(
-            "Opposite-direction origin zones are potential destinations/reversal areas only. "
+            "These are PRIOR ORIGIN REVISITS from structural memory, not current primary "
+            "AFIC reaction zones. They are potential destinations/reversal areas only. "
             "They cannot auto-order against the active H4 map; a structural remap plus "
             "H1/M15 reversal confirmation is required."
         )
@@ -654,9 +682,12 @@ with forecast_tab:
         for item in active_watch:
             watch_rows.append(
                 {
+                    "context": "PRIOR_ORIGIN_REVISIT",
                     "role": item.get("role"),
                     "direction": item.get("direction"),
                     "zone": f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))}",
+                    "origin_at": item.get("origin_at"),
+                    "available_at": item.get("available_at"),
                     "status": item.get("status"),
                     "distance now": _fmt_distance(
                         item.get("distance_from_live_price_points")
@@ -691,9 +722,9 @@ with forecast_tab:
                 "Countertrend reaction watch only; wait for completed H1/M15 reversal/remap."
             )
         st.info(
-            f"Nearest reversal watch: {watch_side} "
+            f"PRIOR ORIGIN REVISIT: {watch_side} "
             f"{_fmt_price(nearest_watch.get('low'))}–{_fmt_price(nearest_watch.get('high'))} "
-            f"• {watch_status}. {path_hint}"
+            f"• {watch_status}. This is not the current primary AFIC zone. {path_hint}"
         )
     elif reversal_watch:
         st.caption(
@@ -704,12 +735,16 @@ with forecast_tab:
         st.caption("No active opposite-direction reversal-watch zone is available.")
 
     f1, f2, f3, f4, f5, f6 = st.columns(6)
-    f1.metric("Forecast", direction)
+    f1.metric("H4 continuation", direction)
     f2.metric("State", state)
     f3.metric("Selector", grade)
     f4.metric("Live XAU", _fmt_price(live_price))
     f5.metric("Distance to zone", _fmt_distance(distance_points, " pts"))
     f6.metric("AFIC scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
+    st.caption(
+        "H4 continuation is structural context only. It is not a current BUY/SELL call; "
+        "trade authority still requires a valid current AFIC zone/selector/confirmation."
+    )
 
     h1, h2, h3, h4, h5 = st.columns(5)
     hb_age = None if prepared_hb is None else _age_seconds(prepared_hb.get("observed_at"))

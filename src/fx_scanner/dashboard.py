@@ -90,8 +90,8 @@ class SupabaseDashboardReader:
                 self.client.table("signals")
                 .select(
                     "observed_at,symbol,direction,setup_type,state,pair_score,"
-                    "execution_score,final_score,entry_low,entry_high,sl,tp1,tp2,"
-                    "rr1,rr2,macro_bias,h4_bias,h1_bias,active_guards,"
+                    "execution_score,final_score,entry_low,entry_high,sl,tp1,tp2,tp3,"
+                    "rr1,rr2,rr3,macro_bias,h4_bias,h1_bias,active_guards,"
                     "data_coverage,expires_at"
                 )
                 .order("observed_at", desc=True)
@@ -113,8 +113,8 @@ class SupabaseDashboardReader:
                 self.client.table("signals")
                 .select(
                     "observed_at,symbol,direction,setup_type,state,pair_score,"
-                    "execution_score,final_score,entry_low,entry_high,sl,tp1,tp2,"
-                    "rr1,rr2,macro_bias,h4_bias,h1_bias,active_guards,"
+                    "execution_score,final_score,entry_low,entry_high,sl,tp1,tp2,tp3,"
+                    "rr1,rr2,rr3,macro_bias,h4_bias,h1_bias,active_guards,"
                     "data_coverage,expires_at"
                 )
                 .eq("symbol", normalized)
