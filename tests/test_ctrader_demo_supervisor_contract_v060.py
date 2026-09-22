@@ -48,6 +48,7 @@ def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_hando
     assert '".github/workflows/ctrader-demo-auto-supervisor.yml"' in text
     assert '".github/workflows/ctrader-demo-auto-pipeline.yml"' in text
     assert '".github/workflows/ctrader-demo-xau-execution-lane.yml"' in text
+    assert '"src/fx_scanner/demo_xau_afic_fresh_ready_handoff.py"' in text
     assert '".github/workflows/ctrader-demo-maintenance-pipeline.yml"' in text
     assert "push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE" in text
     assert "head_sha=${GITHUB_SHA}" in text
