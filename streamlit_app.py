@@ -554,11 +554,16 @@ with forecast_tab:
                         expires_dt = expires_dt.astimezone(UTC)
                 except (TypeError, ValueError):
                     expires_dt = None
-            runtime_status = (
-                "CURRENT"
-                if expires_dt is not None and expires_dt >= now_utc
-                else "EXPIRED"
-            )
+            raw_state = str(row.get("state") or "").upper()
+            raw_setup = str(row.get("setup_type") or "").upper()
+            if raw_state == "INVALIDATED":
+                runtime_status = "INVALIDATED"
+            elif expires_dt is not None and expires_dt < now_utc:
+                runtime_status = "EXPIRED"
+            elif raw_state == "WATCH" or raw_setup in {"", "NONE"}:
+                runtime_status = "WATCH"
+            else:
+                runtime_status = "CURRENT"
             technical_rows.append(
                 {
                     "runtime": runtime_status,
@@ -596,6 +601,16 @@ with forecast_tab:
             st.info(
                 "Latest non-AFIC XAU technical setup is CURRENT. "
                 "Its geometry is shown below, but AFIC authority remains a separate gate."
+            )
+        elif latest_technical["runtime"] == "WATCH":
+            st.info(
+                "Latest non-AFIC XAU row is WATCH only. It has no independent trade "
+                "authority and should not be read as a current entry."
+            )
+        elif latest_technical["runtime"] == "INVALIDATED":
+            st.warning(
+                "Latest non-AFIC XAU setup is INVALIDATED. Its geometry is retained "
+                "only for historical evidence."
             )
         else:
             st.warning(
