@@ -175,11 +175,12 @@ def enrich_alternative_reversal_watches(
 
 
 def signal_state_and_guards(*,execution_enabled:bool,confirmed:bool,grade:str)->tuple[str,list[str]]:
-    if execution_enabled and confirmed and str(grade).upper()=="A":
+    grade_u=str(grade).upper()
+    if execution_enabled and confirmed and grade_u in {"A","B"}:
         return "EXECUTION_READY",[]
     guards=[]
-    if str(grade).upper()!="A":
-        guards.append("AFIC_SELECTOR_GRADE_A_REQUIRED")
+    if grade_u not in {"A","B"}:
+        guards.append("AFIC_SELECTOR_GRADE_AB_REQUIRED")
     if not confirmed:
         guards.append("AFIC_M15_CONFIRMATION_REQUIRED")
     if not execution_enabled:
@@ -438,7 +439,7 @@ def _record_event(
         event_type=EVENT_TYPE,
         accepted=None,
         code=STRATEGY_ID,
-        message="AFIC forecast/order blueprint prepared; broker action remains gated by Grade-A confirmation and exact DEMO handoff",
+        message="AFIC forecast/order blueprint prepared; broker action remains gated by Grade-A/B confirmation and exact DEMO handoff",
         payload={
             "dedupe_key":key,
             "kind":kind,
@@ -657,7 +658,7 @@ def _record_execution_geometry(
         event_type=EXECUTION_EVENT_TYPE,
         accepted=True,
         code=EXECUTION_STRATEGY_ID,
-        message="user-authorized AFIC grade-A confirmed DEMO geometry persisted",
+        message="user-authorized AFIC grade-A/B confirmed DEMO geometry persisted",
         payload={
             "signal_id":str(signal_id),
             "symbol":SYMBOL,
@@ -693,7 +694,7 @@ def run()->int:
     if SYMBOL not in cfg.pair_map:
         raise SystemExit("AFIC_PREPARED_PLAN_XAUUSD_NOT_CONFIGURED")
 
-    # Environment authorization alone is insufficient: Grade A, completed M15
+    # Environment authorization alone is insufficient: Grade A/B, completed M15
     # confirmation, fresh geometry, exact strategy identity, atomic claim, risk,
     # margin and server-side protection checks remain authoritative.
     execution_enabled=_bool_env(EXECUTION_ENV,False)
@@ -813,7 +814,7 @@ def run()->int:
                 auto_authorized=bool(
                     execution_enabled
                     and confirmed
-                    and str(plan.get("selector_grade") or "").upper()=="A"
+                    and str(plan.get("selector_grade") or "").upper() in {"A","B"}
                 )
                 if auto_authorized:
                     _record_execution_geometry(
@@ -847,6 +848,8 @@ def run()->int:
             "execution_strategy_id":EXECUTION_STRATEGY_ID,
             "environment":"DEMO",
             "execution_influence":bool(execution_enabled),
+            "execution_authorized_grades":["A","B"],
+            "grade_c_policy":"SHADOW_ONLY",
             "execution_enabled_env":execution_enabled,
             "handoff_allowlisted":True,
             "live_execution_enabled":False,
