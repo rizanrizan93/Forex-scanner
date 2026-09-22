@@ -36,8 +36,10 @@ def test_xau_forecast_surfaces_cross_engine_signal_status_and_geometry():
     assert '"CURRENT"' in text
     assert '"EXPIRED"' in text
     assert '"SL": _fmt_price(row.get("sl"))' in text
-    assert '"TP1": _fmt_price(row.get("tp1"))' in text
-    assert '"TP2": _fmt_price(row.get("tp2"))' in text
+    assert '"first target"' in text
+    assert '"terminal target"' in text
+    assert '"raw TP1"' in text
+    assert '"raw TP2"' in text
     assert 'AFIC authority remains a separate gate' in text
 
 
