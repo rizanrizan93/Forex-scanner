@@ -53,7 +53,7 @@ def _supabase_client(url: str, secret_key: str):
     return create_client(url, secret_key)
 
 
-@st.cache_data(ttl=2, show_spinner=False)
+@st.cache_data(ttl=15, show_spinner=False)
 def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
     client = _supabase_client(url, secret_key)
     reader = SupabaseDashboardReader(client)
@@ -268,7 +268,7 @@ with st.sidebar:
     auto_refresh_enabled = st.toggle(
         "Auto refresh monitor",
         value=True,
-        help="Refresh the read-only dashboard every 5 seconds. Scanner/order runtime is independent.",
+        help="Refresh the read-only dashboard every 15 seconds. Scanner/order runtime is independent.",
     )
 
     st.divider()
@@ -296,13 +296,13 @@ if "dashboard_auto_refresh_at" not in st.session_state:
     st.session_state["dashboard_auto_refresh_at"] = datetime.now(tz=UTC)
 
 
-@st.fragment(run_every="5s")
+@st.fragment(run_every="15s")
 def _dashboard_auto_refresh_tick() -> None:
     if not auto_refresh_enabled:
         return
     now = datetime.now(tz=UTC)
     last = st.session_state.get("dashboard_auto_refresh_at")
-    if not isinstance(last, datetime) or (now - last).total_seconds() >= 4.5:
+    if not isinstance(last, datetime) or (now - last).total_seconds() >= 14.5:
         st.session_state["dashboard_auto_refresh_at"] = now
         _load_backend_snapshot.clear()
         st.rerun()
