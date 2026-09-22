@@ -1032,17 +1032,18 @@ with scanner_tab:
             [
                 {
                     "symbol": pair.symbol,
-                    "tier": pair.tier,
+                    "universe_tier": pair.tier,
                     "pip_size": pair.pip_size,
-                    "status": "WAITING_RUNTIME_DATA",
+                    "status": "CONFIGURED_ONLY_WAITING_RUNTIME_DATA",
                 }
                 for pair in cfg.pairs
             ]
         )
         st.dataframe(configured, hide_index=True, use_container_width=True)
         st.caption(
-            "No durable pair-ranking snapshot is available yet. The configured "
-            "15-pair universe is shown instead."
+            "No durable pair-ranking snapshot is available yet. This table shows the "
+            "configured trading universe only. universe_tier A/B is a static instrument "
+            "priority class, NOT an execution grade and NOT EXECUTION_READY."
         )
 
     st.subheader("Latest Signals")
