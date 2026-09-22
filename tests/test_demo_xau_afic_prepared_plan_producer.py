@@ -3,7 +3,7 @@ from datetime import datetime,timezone
 from fx_scanner.demo_xau_afic_prepared_plan_producer import (
     EXECUTION_STRATEGY_ID,MAX_H4_DIRECTIONAL_CLOSE_LOC,MAX_ZONE_DISTANCE_ATR,
     STRATEGY_ID,confirmation_latency_seconds,entry_drift_metrics,
-    prepared_blueprint,selector_grade
+    prepared_blueprint,prepared_observability,selector_grade
 )
 
 UTC=timezone.utc
@@ -56,3 +56,47 @@ def test_afic_entry_drift_is_normalized_by_prepared_risk():
     x=entry_drift_metrics(prepared=prepared,live=live)
     assert x["entry_drift_abs"]==1.0
     assert x["entry_drift_r"]==0.1
+
+
+def test_afic_prepared_observability_explains_missing_forecast_geometry():
+    payload={
+        "state":"APPROACHING_ZONE",
+        "map_at":"2026-09-22T00:00:00+00:00",
+        "continuation_direction":"SHORT",
+        "zone":{"low":4350.0,"high":4359.0,"h1_atr":10.0},
+        "h4_features":{"zone_distance_atr":0.4,"h4_directional_close_location":0.55},
+    }
+    x=prepared_observability(
+        payload,
+        prepared_reference=None,
+        final_plan=None,
+        kind="NONE",
+        confirmed=False,
+    )
+    assert x["blueprint_block_reason"]=="FORECAST_TARGET_GEOMETRY_INVALID"
+    assert x["forecast_selector_grade"]=="A"
+    assert x["zone_low"]==4350.0
+    assert x["zone_high"]==4359.0
+    assert x["zone_distance_atr"]==0.4
+    assert x["h4_directional_close_location"]==0.55
+
+
+def test_afic_prepared_observability_explains_confirmed_live_geometry_failure():
+    payload={
+        "state":"CONFIRMED_NO_TARGET_GEOMETRY",
+        "map_at":"2026-09-22T00:00:00+00:00",
+        "continuation_direction":"LONG",
+        "zone":{"low":4320.0,"high":4325.0,"h1_atr":10.0},
+        "h4_features":{"zone_distance_atr":0.5,"h4_directional_close_location":0.60},
+    }
+    prepared={"entry":4325.0,"stop":4319.0}
+    x=prepared_observability(
+        payload,
+        prepared_reference=prepared,
+        final_plan=prepared,
+        kind="NONE",
+        confirmed=True,
+    )
+    assert x["blueprint_block_reason"]=="CONFIRMED_LIVE_TARGET_GEOMETRY_INVALID"
+    assert x["forecast_selector_grade"]=="A"
+    assert x["prepared_reference_entry"]==4325.0
