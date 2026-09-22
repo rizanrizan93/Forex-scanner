@@ -1,0 +1,58 @@
+name: XAU Expected Move Envelope V170
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_expected_move_envelope_v170.py"
+      - "src/fx_scanner/research_xau_expected_move_envelope_v170_runtime.py"
+      - "tests/test_research_xau_expected_move_envelope_v170.py"
+      - ".github/workflows/research-xau-expected-move-envelope-v170.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-expected-move-envelope-v170-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  expected-move-v170:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      V170_OUTPUT: artifacts/xau-expected-move-envelope-v170.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Unit test
+        run: pytest -q tests/test_research_xau_expected_move_envelope_v170.py
+      - name: Run 100k-bar causal expected-move envelope
+        run: python -m fx_scanner.research_xau_expected_move_envelope_v170_runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-expected-move-envelope-v170
+          path: artifacts/xau-expected-move-envelope-v170.json
+          if-no-files-found: error
+          retention-days: 30
