@@ -18,6 +18,7 @@ from .research_xau_forecast_ensemble_v171 import (
     fisher_acd_session_path,
     parse_cftc_gold_cot,
 )
+from .research_xau_expected_move_envelope_v170 import evaluate_expected_move_v170
 from .research_xau_m15_dual_strategy_runtime import _fetch_history
 from .storage.supabase_operational import SupabaseOperationalStore
 
@@ -201,7 +202,7 @@ def run() -> int:
     now = datetime.now(tz=UTC)
     store = SupabaseOperationalStore.from_env()
     afic = _load_afic_component(store.client)
-    v170 = _load_v170(store.client)
+    reference_v170 = _load_v170(store.client)
 
     feed = build_ctrader_research_feed(policy, (SYMBOL,))
     try:
@@ -216,6 +217,32 @@ def run() -> int:
     conditional = empirical_conditional_probability(bars)
     acd = fisher_acd_session_path(bars)
     cot = _load_cot()
+
+    live_v170_evaluation = evaluate_expected_move_v170(bars)
+    live_v170_current = dict(live_v170_evaluation.get("current_envelope") or {})
+    if live_v170_current:
+        v170 = {
+            "available": True,
+            "observed_at": now.isoformat(),
+            "as_of": live_v170_current.get("as_of"),
+            "price": live_v170_current.get("price"),
+            "lookback_matches": live_v170_current.get("lookback_matches"),
+            "horizons": live_v170_current.get("horizons"),
+            "validation": live_v170_evaluation.get("validation"),
+            "method": "XAU_EXPECTED_MOVE_ENVELOPE_V170_LIVE_20K",
+            "directional_vote": False,
+            "reference_100k": {
+                "available": reference_v170.get("available"),
+                "observed_at": reference_v170.get("observed_at"),
+                "as_of": reference_v170.get("as_of"),
+            },
+        }
+    else:
+        v170 = {
+            **reference_v170,
+            "method": "XAU_EXPECTED_MOVE_ENVELOPE_V170_REFERENCE_FALLBACK",
+            "fallback_reason": "LIVE_20K_CURRENT_ENVELOPE_UNAVAILABLE",
+        }
 
     ensemble = build_forecast_ensemble(
         afic=afic,
@@ -238,6 +265,7 @@ def run() -> int:
         "source_freshness": {
             "afic_observed_at": afic.get("observed_at"),
             "v170_observed_at": v170.get("observed_at"),
+            "v170_reference_100k_observed_at": reference_v170.get("observed_at"),
             "cot_report_label": cot.get("report_label"),
         },
         "code_version": os.getenv("GITHUB_SHA", "LOCAL"),
