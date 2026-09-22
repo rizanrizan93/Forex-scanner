@@ -400,6 +400,12 @@ with forecast_tab:
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
     execution_events = [] if backend is None else backend.get("xau_execution_events", [])
+    all_signal_rows = [] if backend is None else backend.get("signals", [])
+    xau_technical_signal_rows = [
+        dict(row) for row in all_signal_rows
+        if str(row.get("symbol") or "").upper() == "XAUUSD"
+        and not str(row.get("setup_type") or "").upper().startswith("AFIC_")
+    ]
 
     state_event = forecast_rows[0] if forecast_rows else None
     state_payload = {}
@@ -524,6 +530,73 @@ with forecast_tab:
             + "Do not enter merely because price touches the zone; completed M15 "
               "confirmation is still required for the AFIC auto path."
         )
+
+    st.markdown("#### Cross-engine XAU technical signals")
+    st.caption(
+        "Separate from the AFIC H4 map. These rows come from other XAU technical engines. "
+        "CURRENT/EXPIRED is determined from expires_at; an expired setup is historical "
+        "context only and must not be treated as a current AFIC order blueprint."
+    )
+    if xau_technical_signal_rows:
+        now_utc = datetime.now(tz=UTC)
+        technical_rows = []
+        for row in xau_technical_signal_rows[:5]:
+            expires_raw = row.get("expires_at")
+            expires_dt = None
+            if expires_raw:
+                try:
+                    expires_dt = datetime.fromisoformat(
+                        str(expires_raw).replace("Z", "+00:00")
+                    )
+                    if expires_dt.tzinfo is None:
+                        expires_dt = expires_dt.replace(tzinfo=UTC)
+                    else:
+                        expires_dt = expires_dt.astimezone(UTC)
+                except (TypeError, ValueError):
+                    expires_dt = None
+            runtime_status = (
+                "CURRENT"
+                if expires_dt is not None and expires_dt >= now_utc
+                else "EXPIRED"
+            )
+            technical_rows.append(
+                {
+                    "runtime": runtime_status,
+                    "observed_at": row.get("observed_at"),
+                    "setup": row.get("setup_type"),
+                    "direction": row.get("direction"),
+                    "state": row.get("state"),
+                    "score": row.get("final_score"),
+                    "entry": (
+                        f"{_fmt_price(row.get('entry_low'))}–{_fmt_price(row.get('entry_high'))}"
+                        if row.get("entry_low") is not None or row.get("entry_high") is not None
+                        else "—"
+                    ),
+                    "SL": _fmt_price(row.get("sl")),
+                    "TP1": _fmt_price(row.get("tp1")),
+                    "TP2": _fmt_price(row.get("tp2")),
+                    "guards": ", ".join(str(x) for x in (row.get("active_guards") or [])) or "—",
+                    "expires_at": expires_raw,
+                }
+            )
+        latest_technical = technical_rows[0]
+        if latest_technical["runtime"] == "CURRENT":
+            st.info(
+                "Latest non-AFIC XAU technical setup is CURRENT. "
+                "Its geometry is shown below, but AFIC authority remains a separate gate."
+            )
+        else:
+            st.warning(
+                "Latest non-AFIC XAU technical setup is EXPIRED. "
+                "Its entry/SL/TP are historical geometry only, not a current instruction."
+            )
+        st.dataframe(
+            pd.DataFrame(technical_rows),
+            hide_index=True,
+            use_container_width=True,
+        )
+    else:
+        st.caption("No non-AFIC XAU technical signal rows are available yet.")
 
     st.markdown("#### Reaction-zone diagnostics")
     if zone_diagnostics:
