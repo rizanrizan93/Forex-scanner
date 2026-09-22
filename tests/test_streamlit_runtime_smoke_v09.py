@@ -39,3 +39,13 @@ def test_xau_forecast_surfaces_cross_engine_signal_status_and_geometry():
     assert '"TP1": _fmt_price(row.get("tp1"))' in text
     assert '"TP2": _fmt_price(row.get("tp2"))' in text
     assert 'AFIC authority remains a separate gate' in text
+
+
+def test_xau_dashboard_distinguishes_prior_origin_revisit_and_target_semantics():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'PRIOR ORIGIN REVISIT' in text
+    assert 'not the current primary AFIC zone' in text
+    assert '"first target"' in text
+    assert '"terminal target"' in text
+    assert '"raw TP1"' in text
+    assert '"raw TP2"' in text
