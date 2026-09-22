@@ -27,3 +27,15 @@ def test_streamlit_dashboard_refresh_contract_is_15_seconds():
     assert 'Refresh the read-only dashboard every 15 seconds.' in text
     assert 'run_every="5s"' not in text
     assert 'ttl=2' not in text
+
+
+def test_xau_forecast_surfaces_cross_engine_signal_status_and_geometry():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'Cross-engine XAU technical signals' in text
+    assert 'runtime_status' in text
+    assert '"CURRENT"' in text
+    assert '"EXPIRED"' in text
+    assert '"SL": _fmt_price(row.get("sl"))' in text
+    assert '"TP1": _fmt_price(row.get("tp1"))' in text
+    assert '"TP2": _fmt_price(row.get("tp2"))' in text
+    assert 'AFIC authority remains a separate gate' in text
