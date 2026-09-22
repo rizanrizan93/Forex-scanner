@@ -222,7 +222,7 @@ def _afic_next_action(
         return "VERIFYING SL/TP", "Broker accepted the order; scanner is waiting for protection verification."
     if "INVALID" in state_u or "REMAP" in state_u:
         return "WAIT NEW H4 MAP", "Current path is invalidated; no order should be sent until H4 remaps."
-    if grade_u not in {"A"}:
+    if grade_u not in {"A","B"}:
         return "WATCH ONLY", f"Selector grade {grade_u or '—'} is not execution-authorized."
     if not auto_enabled:
         return "AUTO BLOCKED", "DEMO execution authority or exact handoff is not active."
@@ -508,7 +508,7 @@ with forecast_tab:
         t1.metric("Waiting for", f"{zone_side} REACTION")
         t2.metric("Reaction zone", f"{_fmt_price(zone_low)}–{_fmt_price(zone_high)}")
         t3.metric("Reference entry", _fmt_price(reference_entry_now))
-        if grade != "A":
+        if grade not in {"A","B"}:
             manual_action = f"WATCH ONLY (GRADE {grade})"
         elif "CONFIRMED" in str(state).upper():
             manual_action = "CONFIRMED / FRESH QUOTE"
@@ -798,7 +798,7 @@ with forecast_tab:
             "Shadow-only ensemble • "
             f"coverage={_fmt_pct(ensemble.get('coverage'))} • "
             f"age={'—' if ensemble_age is None else f'{ensemble_age:.0f}s'} • "
-            "does not alter AFIC Grade-A execution authority."
+            "does not alter AFIC Grade-A/B execution authority."
         )
         directional_prior = dict(ensemble.get("directional_prior") or {})
         if directional_prior:
@@ -959,8 +959,8 @@ with forecast_tab:
                 "Do not reuse an older zone from Forecast State History."
             )
 
-    auto_label = "ARMED FOR GRADE-A CONFIRMATION" if auto_enabled else "MONITOR ONLY"
-    if grade != "A":
+    auto_label = "ARMED FOR GRADE-A/B CONFIRMATION" if auto_enabled else "MONITOR ONLY"
+    if grade not in {"A","B"}:
         auto_label = f"BLOCKED BY SELECTOR GRADE {grade}"
     st.markdown(f"**Automation status:** {auto_label}")
     if hb_details.get("blueprint_block_reason"):
