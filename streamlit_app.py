@@ -565,6 +565,54 @@ with forecast_tab:
             "cycle will populate candidate/rejection counts."
         )
 
+    st.markdown("#### Alternative / reversal watch zones")
+    reversal_watch = list(zone_diagnostics.get("alternative_reversal_watch_zones") or [])
+    active_watch = [
+        dict(item) for item in reversal_watch
+        if str(item.get("status") or "") != "INVALIDATED"
+    ]
+    if active_watch:
+        st.caption(
+            "Opposite-direction origin zones are potential destinations/reversal areas only. "
+            "They cannot auto-order against the active H4 map; a structural remap plus "
+            "H1/M15 reversal confirmation is required."
+        )
+        watch_rows = []
+        for item in active_watch:
+            watch_rows.append(
+                {
+                    "role": item.get("role"),
+                    "direction": item.get("direction"),
+                    "zone": f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))}",
+                    "status": item.get("status"),
+                    "distance now": _fmt_distance(
+                        item.get("distance_from_latest_price_points"), " pts"
+                    ),
+                    "age": _fmt_distance(item.get("current_age_hours"), "h"),
+                    "displacement ATR": item.get("displacement_range_atr"),
+                    "body fraction": item.get("displacement_body_fraction"),
+                    "touch": item.get("first_touch_at"),
+                    "required": item.get("required_confirmation"),
+                }
+            )
+        st.dataframe(pd.DataFrame(watch_rows), hide_index=True, use_container_width=True)
+        nearest_watch = active_watch[0]
+        watch_side = str(nearest_watch.get("direction") or "—")
+        st.info(
+            f"Nearest reversal watch: {watch_side} "
+            f"{_fmt_price(nearest_watch.get('low'))}–{_fmt_price(nearest_watch.get('high'))}. "
+            "Treat it as a destination/reaction area, not an entry instruction. "
+            "Wait for reversal evidence and a new valid structural map before considering "
+            f"{watch_side}."
+        )
+    elif reversal_watch:
+        st.caption(
+            "Opposite-direction zones were found, but all current reversal-watch candidates "
+            "have already been invalidated."
+        )
+    else:
+        st.caption("No active opposite-direction reversal-watch zone is available.")
+
     f1, f2, f3, f4, f5, f6 = st.columns(6)
     f1.metric("Forecast", direction)
     f2.metric("State", state)
