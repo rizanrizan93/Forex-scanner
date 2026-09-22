@@ -531,6 +531,91 @@ with forecast_tab:
               "confirmation is still required for the AFIC auto path."
         )
 
+    st.markdown("#### XAU Execution Admission")
+    st.caption(
+        "This panel separates stored signal state from actual broker authority. "
+        "BROKER ELIGIBLE means the signal has an allowlisted DEMO execution geometry, "
+        "but fresh quote/risk/margin/protection revalidation must still pass before an order."
+    )
+    authorized_geometry_codes = {
+        "XAU_AFIC_PATH_EXECUTION_V1",
+        "XAU_M15_EMA_SMC_RECLAIM_V1",
+        "XAU_V24_CHAMPION_DEMO_V1",
+    }
+    geometry_code_by_signal = {}
+    for event_row in execution_events:
+        if str(event_row.get("event_type") or "") != "DEMO_SIGNAL_GEOMETRY":
+            continue
+        signal_key = str(event_row.get("signal_key") or "")
+        if signal_key and signal_key not in geometry_code_by_signal:
+            geometry_code_by_signal[signal_key] = str(event_row.get("code") or "")
+
+    admission_rows = []
+    admission_now = datetime.now(tz=UTC)
+    for row in dedicated_xau_rows[:10]:
+        signal_id = str(row.get("id") or "")
+        state_u = str(row.get("state") or "").upper()
+        guards = list(row.get("active_guards") or [])
+        expires_dt = None
+        if row.get("expires_at"):
+            try:
+                expires_dt = datetime.fromisoformat(
+                    str(row.get("expires_at")).replace("Z", "+00:00")
+                )
+                if expires_dt.tzinfo is None:
+                    expires_dt = expires_dt.replace(tzinfo=UTC)
+                else:
+                    expires_dt = expires_dt.astimezone(UTC)
+            except (TypeError, ValueError):
+                expires_dt = None
+        geometry_code = geometry_code_by_signal.get(signal_id)
+        if state_u == "INVALIDATED":
+            admission = "INVALIDATED"
+            reason = "Signal/map no longer current"
+        elif expires_dt is not None and expires_dt < admission_now:
+            admission = "EXPIRED"
+            reason = "Signal TTL elapsed"
+        elif guards:
+            admission = "BLOCKED"
+            reason = ", ".join(str(x) for x in guards)
+        elif state_u != "EXECUTION_READY":
+            admission = "NOT READY"
+            reason = f"State={state_u or '—'}"
+        elif geometry_code in authorized_geometry_codes:
+            admission = "BROKER ELIGIBLE"
+            reason = f"{geometry_code}; pending live revalidation"
+        else:
+            admission = "SHADOW READY"
+            reason = (
+                f"{geometry_code or 'NO_AUTHORIZED_GEOMETRY'} has no broker authority"
+            )
+        admission_rows.append({
+            "observed_at": row.get("observed_at"),
+            "setup": row.get("setup_type"),
+            "direction": row.get("direction"),
+            "grade/score": row.get("final_score"),
+            "stored state": row.get("state"),
+            "admission": admission,
+            "geometry authority": geometry_code or "—",
+            "reason": reason,
+            "expires_at": row.get("expires_at"),
+        })
+    if admission_rows:
+        st.dataframe(pd.DataFrame(admission_rows), hide_index=True, use_container_width=True)
+        latest_admission = admission_rows[0]
+        if latest_admission["admission"] == "BROKER ELIGIBLE":
+            st.success(
+                "Latest XAU signal has broker-authorized DEMO geometry. "
+                "Order still depends on fresh quote, risk, margin and SL/TP revalidation."
+            )
+        elif latest_admission["admission"] == "SHADOW READY":
+            st.warning(
+                "Latest XAU signal may say EXECUTION_READY in storage but is SHADOW READY only; "
+                "the broker lane will not execute it."
+            )
+    else:
+        st.caption("No XAU signal rows are available for execution-admission diagnostics.")
+
     st.markdown("#### Cross-engine XAU technical signals")
     st.caption(
         "Separate from the AFIC H4 map. These rows come from other XAU technical engines. "
