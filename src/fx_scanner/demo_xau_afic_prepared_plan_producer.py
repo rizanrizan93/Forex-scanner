@@ -33,6 +33,8 @@ MAX_ZONE_DISTANCE_ATR=0.75
 MAX_H4_DIRECTIONAL_CLOSE_LOC=0.65
 CONFIRMED_TTL_SECONDS=300
 ARMED_TTL_HOURS=24
+NEAR_ZONE_ATR=1.0
+EXECUTION_EVENT_TYPE="DEMO_SIGNAL_GEOMETRY"
 
 # Deliberately false in the committed workflow. The path is built so a future
 # DEMO-only promotion can change the durable state without changing the
@@ -73,6 +75,61 @@ def selector_grade(features:dict[str,Any]|None)->str:
     if dist<=MAX_ZONE_DISTANCE_ATR:
         return "B"
     return "C"
+
+
+def zone_proximity(*,price:float|None,zone:dict[str,Any]|None)->dict[str,Any]:
+    z=dict(zone or {})
+    try:
+        px=float(price)
+        low=float(z["low"]);high=float(z["high"]);atr=float(z["h1_atr"])
+    except (TypeError,ValueError,KeyError):
+        return {
+            "live_price":None,
+            "inside_zone":False,
+            "distance_points":None,
+            "distance_atr":None,
+            "proximity_state":"UNKNOWN",
+            "recommended_scan_seconds":300,
+        }
+    if not all(isfinite(x) for x in (px,low,high,atr)) or atr<=0 or low>=high:
+        return {
+            "live_price":None,
+            "inside_zone":False,
+            "distance_points":None,
+            "distance_atr":None,
+            "proximity_state":"UNKNOWN",
+            "recommended_scan_seconds":300,
+        }
+    if low<=px<=high:
+        dist=0.0
+        state="IN_ZONE"
+    elif px<low:
+        dist=low-px
+        state="NEAR_ZONE" if dist/atr<=NEAR_ZONE_ATR else "FAR"
+    else:
+        dist=px-high
+        state="NEAR_ZONE" if dist/atr<=NEAR_ZONE_ATR else "FAR"
+    return {
+        "live_price":px,
+        "inside_zone":bool(low<=px<=high),
+        "distance_points":float(dist),
+        "distance_atr":float(dist/atr),
+        "proximity_state":state,
+        "recommended_scan_seconds":60 if state in {"IN_ZONE","NEAR_ZONE"} else 300,
+    }
+
+
+def signal_state_and_guards(*,execution_enabled:bool,confirmed:bool,grade:str)->tuple[str,list[str]]:
+    if execution_enabled and confirmed and str(grade).upper()=="A":
+        return "EXECUTION_READY",[]
+    guards=[]
+    if str(grade).upper()!="A":
+        guards.append("AFIC_SELECTOR_GRADE_A_REQUIRED")
+    if not confirmed:
+        guards.append("AFIC_M15_CONFIRMATION_REQUIRED")
+    if not execution_enabled:
+        guards.append("AFIC_DEMO_EXECUTION_DISABLED")
+    return "ARMED",guards
 
 
 def _zone_stop(zone:dict[str,Any],direction:str)->float:
@@ -356,7 +413,11 @@ def _write_signal(
     direction=str(payload["continuation_direction"]).upper()
     grade=str(plan["selector_grade"])
     confirmed=bool(payload.get("confirm_at"))
-    state="EXECUTION_READY" if execution_enabled and confirmed else "ARMED"
+    state,guards=signal_state_and_guards(
+        execution_enabled=execution_enabled,
+        confirmed=confirmed,
+        grade=grade,
+    )
     score={"A":95.0,"B":90.0,"C":85.0}[grade]
     risk=abs(float(plan["entry"])-float(plan["stop"]))
     half_width=max(0.05,risk*0.02)
@@ -394,7 +455,7 @@ def _write_signal(
         "macro_bias":direction,
         "h4_bias":direction,
         "h1_bias":direction,
-        "active_guards":[] if state=="EXECUTION_READY" else ["AFIC_FORWARD_VALIDATION"],
+        "active_guards":guards,
         "data_coverage":1.0,
         "expires_at":expires.isoformat(),
     }
@@ -412,6 +473,50 @@ def _write_signal(
         except Exception:
             pass
         raise
+
+
+def _record_execution_geometry(
+    store,
+    *,
+    signal_id:str,
+    payload:dict[str,Any],
+    plan:dict[str,Any],
+)->None:
+    account=_account_label()
+    if not account:
+        raise SystemExit("CTRADER_ACCOUNT_ID_REQUIRED_FOR_AFIC_EXECUTION_GEOMETRY")
+    store.record_order_event(
+        backend="CTRADER",
+        account_id=account,
+        signal_key=str(signal_id),
+        broker_order_id=f"GEOMETRY:{signal_id}",
+        event_type=EXECUTION_EVENT_TYPE,
+        accepted=True,
+        code=EXECUTION_STRATEGY_ID,
+        message="user-authorized AFIC grade-A confirmed DEMO geometry persisted",
+        payload={
+            "signal_id":str(signal_id),
+            "symbol":SYMBOL,
+            "direction":str(payload["continuation_direction"]).upper(),
+            "strategy_id":EXECUTION_STRATEGY_ID,
+            "forecast_strategy_id":STRATEGY_ID,
+            "map_at":payload.get("map_at"),
+            "confirm_at":payload.get("confirm_at"),
+            "selector_grade":plan.get("selector_grade"),
+            "entry_mode":"MARKET_ON_CONFIRM",
+            "limit_blueprint_entry":plan.get("prepared_reference_entry",plan.get("entry")),
+            "planned_entry":plan.get("entry"),
+            "planned_sl":plan.get("stop"),
+            "planned_tp1":plan.get("tp1"),
+            "planned_tp2":plan.get("tp2"),
+            "rr1":plan.get("rr1"),
+            "rr2":plan.get("rr2"),
+            "execution_influence":True,
+            "environment":"DEMO",
+            "live_execution_enabled":False,
+            "server_side_sl_tp_required":True,
+        },
+    )
 
 
 def run()->int:
@@ -446,6 +551,8 @@ def run()->int:
     error=None
     confirmed=False
     observability:dict[str,Any]={}
+    proximity=zone_proximity(price=None,zone=None)
+    live_quote_error=None
     try:
         feed.ensure_connected()
         raw=tuple(feed.historical_bars(
@@ -459,6 +566,15 @@ def run()->int:
         state=str(payload.get("state") or "")
         state_transition_persisted=_record_forecast_state(store,payload=payload)
 
+        quote=None
+        if payload.get("zone"):
+            try:
+                quote=feed.quote(SYMBOL,at=now)
+                live_mid=(float(quote.bid)+float(quote.ask))/2.0
+                proximity=zone_proximity(price=live_mid,zone=dict(payload.get("zone") or {}))
+            except Exception as exc:
+                live_quote_error=f"{type(exc).__name__}:{exc}"
+
         if payload.get("zone") and payload.get("continuation_direction"):
             plan=prepared_blueprint(payload)
             prepared_reference=None if plan is None else dict(plan)
@@ -466,7 +582,10 @@ def run()->int:
         confirmed=state in {"CONFIRMED_PENDING_ENTRY_BAR","CONFIRMED_SHADOW","CONFIRMED_NO_TARGET_GEOMETRY"}
         if confirmed:
             direction=str(payload["continuation_direction"]).upper()
-            quote=feed.quote(SYMBOL,at=now)
+            if quote is None:
+                quote=feed.quote(SYMBOL,at=now)
+                live_mid=(float(quote.bid)+float(quote.ask))/2.0
+                proximity=zone_proximity(price=live_mid,zone=dict(payload.get("zone") or {}))
             live_entry=float(quote.ask if direction=="LONG" else quote.bid)
             stop=_zone_stop(dict(payload["zone"]),direction)
             live_plan=_plan_from_entry(entry=live_entry,stop=stop,direction=direction)
@@ -508,6 +627,23 @@ def run()->int:
                     store,key=key,kind=kind,payload=payload,plan=plan,signal_id=signal_id,
                     latency=confirmation_lag,drift=drift_metrics,
                 )
+                auto_authorized=bool(
+                    execution_enabled
+                    and confirmed
+                    and str(plan.get("selector_grade") or "").upper()=="A"
+                )
+                if auto_authorized:
+                    _record_execution_geometry(
+                        store,
+                        signal_id=signal_id,
+                        payload=payload,
+                        plan={
+                            **plan,
+                            "prepared_reference_entry":None
+                            if prepared_reference is None
+                            else prepared_reference.get("entry"),
+                        },
+                    )
                 emitted=True
 
     except Exception as exc:
@@ -527,9 +663,9 @@ def run()->int:
             "strategy_id":STRATEGY_ID,
             "execution_strategy_id":EXECUTION_STRATEGY_ID,
             "environment":"DEMO",
-            "execution_influence":False,
+            "execution_influence":bool(execution_enabled),
             "execution_enabled_env":execution_enabled,
-            "handoff_allowlisted":False,
+            "handoff_allowlisted":True,
             "live_execution_enabled":False,
             "raw_m15_bars":raw_count,
             "forecast_state":payload.get("state"),
@@ -545,6 +681,14 @@ def run()->int:
             "h4_directional_close_location":observability.get("h4_directional_close_location"),
             "prepared_reference_entry":observability.get("prepared_reference_entry"),
             "final_entry":observability.get("final_entry"),
+            "live_price":proximity.get("live_price"),
+            "inside_zone":proximity.get("inside_zone"),
+            "distance_to_zone_points":proximity.get("distance_points"),
+            "distance_to_zone_atr":proximity.get("distance_atr"),
+            "proximity_state":proximity.get("proximity_state"),
+            "recommended_scan_seconds":proximity.get("recommended_scan_seconds"),
+            "effective_scan_seconds":60,
+            "live_quote_error":live_quote_error,
             "signal_id":signal_id,
             "confirmation_detection_lag_seconds":confirmation_lag,
             "entry_drift_r":drift_metrics.get("entry_drift_r"),
