@@ -1,0 +1,40 @@
+name: cTrader Demo Storage Guard
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ctrader-demo-storage-guard.yml"
+      - "src/fx_scanner/demo_storage_guard.py"
+      - "supabase/schemas/fx_core.sql"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-demo-storage-guard
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Enforce bounded Supabase retention
+        run: python -m fx_scanner.demo_storage_guard
