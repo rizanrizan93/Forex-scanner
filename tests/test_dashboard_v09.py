@@ -205,3 +205,17 @@ def test_dashboard_filters_recent_xau_execution_events():
     rows = SupabaseDashboardReader(client).latest_xau_execution_events()
     assert len(rows) == 2
     assert {row["signal_key"] for row in rows} == {"afic-signal"}
+
+
+def test_dashboard_reader_has_dedicated_xau_signal_feed():
+    client = FakeClient({
+        "signals": [
+            {"observed_at":"2026-09-22T13:00:00Z","symbol":"EURUSD","state":"WATCH"},
+            {"observed_at":"2026-09-22T12:59:00Z","symbol":"XAUUSD","state":"SETUP_FORMING"},
+            {"observed_at":"2026-09-22T12:58:00Z","symbol":"GBPUSD","state":"WATCH"},
+            {"observed_at":"2026-09-22T12:57:00Z","symbol":"XAUUSD","state":"WATCH"},
+        ]
+    })
+    rows = SupabaseDashboardReader(client).latest_signals_for_symbol("xauusd", limit=20)
+    assert [row["symbol"] for row in rows] == ["XAUUSD", "XAUUSD"]
+
