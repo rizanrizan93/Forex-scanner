@@ -1,0 +1,42 @@
+name: XAU AFIC M15 Confirmation Semantics V165
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_afic_m15_confirm_semantics_v165.py"
+      - "src/fx_scanner/research_xau_afic_m15_confirm_semantics_v165_runtime.py"
+      - "tests/test_research_xau_afic_m15_confirm_semantics_v165.py"
+      - ".github/workflows/research-xau-afic-m15-confirm-semantics-v165.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  afic-v165:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      V165_OUTPUT: artifacts/xau-afic-m15-confirm-semantics-v165.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit test
+        run: pytest -q tests/test_research_xau_afic_m15_confirm_semantics_v165.py
+      - name: Run V165 matched-map confirmation diagnostic
+        run: python -m fx_scanner.research_xau_afic_m15_confirm_semantics_v165_runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-afic-m15-confirm-semantics-v165
+          path: artifacts/xau-afic-m15-confirm-semantics-v165.json
+          if-no-files-found: error
+          retention-days: 30
