@@ -58,3 +58,11 @@ def test_xau_dashboard_does_not_label_raw_h4_direction_as_trade_forecast():
     assert 'f1.metric("H4 continuation", direction)' in text
     assert 'H4 continuation is structural context only' in text
     assert 'f1.metric("Forecast", direction)' not in text
+
+
+def test_xau_dashboard_runtime_status_distinguishes_watch_and_invalidated():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'runtime_status = "INVALIDATED"' in text
+    assert 'runtime_status = "WATCH"' in text
+    assert 'Latest non-AFIC XAU row is WATCH only' in text
+    assert 'Latest non-AFIC XAU setup is INVALIDATED' in text
