@@ -3,7 +3,7 @@ from datetime import datetime,timezone
 from fx_scanner.demo_xau_afic_prepared_plan_producer import (
     EXECUTION_STRATEGY_ID,MAX_H4_DIRECTIONAL_CLOSE_LOC,MAX_ZONE_DISTANCE_ATR,
     STATE_CODE,STATE_EVENT_TYPE,STRATEGY_ID,confirmation_latency_seconds,
-    entry_drift_metrics,forecast_state_key,prepared_blueprint,
+    entry_drift_metrics,enrich_alternative_reversal_watches,forecast_state_key,prepared_blueprint,
     prepared_observability,selector_grade,signal_state_and_guards,zone_proximity,
     geometry_matches_current_forecast
 )
@@ -160,6 +160,57 @@ def test_afic_zone_proximity_activates_one_minute_near_zone():
     far=zone_proximity(price=4385.0,zone=zone)
     assert far["proximity_state"]=="FAR"
     assert far["recommended_scan_seconds"]==300
+
+
+def test_afic_live_quote_marks_alternative_short_watch_touched_without_authority():
+    payload={
+        "state":"NO_MAP_ZONE",
+        "zone_diagnostics":{
+            "active_alternative_watch_count":1,
+            "alternative_reversal_watch_zones":[{
+                "direction":"SHORT",
+                "role":"UPSIDE_DESTINATION_SHORT_REVERSAL_WATCH",
+                "low":4335.07,
+                "high":4342.98,
+                "status":"ACTIVE_WATCH",
+                "first_touch_at":None,
+                "auto_execution_authority":False,
+            }],
+        },
+    }
+    now=datetime(2026,9,22,12,11,tzinfo=UTC)
+    x=enrich_alternative_reversal_watches(payload,live_price=4342.0,observed_at=now)
+    watch=x["zone_diagnostics"]["alternative_reversal_watch_zones"][0]
+    assert watch["status"]=="LIVE_TOUCHED_WAIT_REVERSAL_CONFIRM"
+    assert watch["live_inside_zone"] is True
+    assert watch["distance_from_live_price_points"]==0.0
+    assert watch["first_touch_at"]==now.isoformat()
+    assert watch["auto_execution_authority"] is False
+    assert x["zone_diagnostics"]["live_touched_alternative_watch_count"]==1
+
+
+def test_afic_live_quote_updates_watch_distance_without_fabricating_touch():
+    payload={
+        "zone_diagnostics":{
+            "active_alternative_watch_count":1,
+            "alternative_reversal_watch_zones":[{
+                "direction":"SHORT",
+                "low":4342.0,
+                "high":4355.0,
+                "status":"ACTIVE_WATCH",
+                "first_touch_at":None,
+                "auto_execution_authority":False,
+            }],
+        },
+    }
+    x=enrich_alternative_reversal_watches(
+        payload,live_price=4332.0,observed_at=datetime(2026,9,22,12,5,tzinfo=UTC)
+    )
+    watch=x["zone_diagnostics"]["alternative_reversal_watch_zones"][0]
+    assert watch["status"]=="ACTIVE_WATCH"
+    assert watch["live_touch"] is False
+    assert watch["distance_from_live_price_points"]==10.0
+    assert watch["first_touch_at"] is None
 
 
 def test_afic_execution_geometry_must_match_current_confirmed_map():

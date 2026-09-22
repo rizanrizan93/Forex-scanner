@@ -586,24 +586,41 @@ with forecast_tab:
                     "zone": f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))}",
                     "status": item.get("status"),
                     "distance now": _fmt_distance(
-                        item.get("distance_from_latest_price_points"), " pts"
+                        item.get("distance_from_live_price_points")
+                        if item.get("distance_from_live_price_points") is not None
+                        else item.get("distance_from_latest_price_points"),
+                        " pts",
                     ),
                     "age": _fmt_distance(item.get("current_age_hours"), "h"),
                     "displacement ATR": item.get("displacement_range_atr"),
                     "body fraction": item.get("displacement_body_fraction"),
-                    "touch": item.get("first_touch_at"),
+                    "touch": item.get("live_touch_at") or item.get("first_touch_at"),
                     "required": item.get("required_confirmation"),
                 }
             )
         st.dataframe(pd.DataFrame(watch_rows), hide_index=True, use_container_width=True)
         nearest_watch = active_watch[0]
         watch_side = str(nearest_watch.get("direction") or "—")
+        watch_role = str(nearest_watch.get("role") or "")
+        watch_status = str(nearest_watch.get("status") or "")
+        if watch_role == "UPSIDE_DESTINATION_SHORT_REVERSAL_WATCH":
+            path_hint = (
+                "Path watch: rebound/upside leg → SHORT reaction zone → wait for "
+                "completed H1/M15 bearish reversal/remap before any SELL authority."
+            )
+        elif watch_role == "DOWNSIDE_DESTINATION_LONG_REVERSAL_WATCH":
+            path_hint = (
+                "Path watch: selloff/downside leg → LONG reaction zone → wait for "
+                "completed H1/M15 bullish reversal/remap before any BUY authority."
+            )
+        else:
+            path_hint = (
+                "Countertrend reaction watch only; wait for completed H1/M15 reversal/remap."
+            )
         st.info(
             f"Nearest reversal watch: {watch_side} "
-            f"{_fmt_price(nearest_watch.get('low'))}–{_fmt_price(nearest_watch.get('high'))}. "
-            "Treat it as a destination/reaction area, not an entry instruction. "
-            "Wait for reversal evidence and a new valid structural map before considering "
-            f"{watch_side}."
+            f"{_fmt_price(nearest_watch.get('low'))}–{_fmt_price(nearest_watch.get('high'))} "
+            f"• {watch_status}. {path_hint}"
         )
     elif reversal_watch:
         st.caption(
@@ -798,9 +815,19 @@ with forecast_tab:
         p1, p2, p3, p4, p5 = st.columns(5)
         p1.metric("Reference / Limit", _fmt_price(prepared_plan.get("entry")))
         p2.metric("Stop Loss", _fmt_price(prepared_plan.get("stop")))
-        p3.metric("TP1", _fmt_price(prepared_plan.get("tp1")))
-        p4.metric("TP2", _fmt_price(prepared_plan.get("tp2")))
-        p5.metric("RR TP2", _fmt_distance(prepared_plan.get("rr2"), "R"))
+        p3.metric("First scale-out", _fmt_price(prepared_plan.get("tp1")))
+        p4.metric("Terminal target", _fmt_price(prepared_plan.get("tp2")))
+        p5.metric("RR terminal", _fmt_distance(prepared_plan.get("rr2"), "R"))
+        target_ladder = list(prepared_plan.get("tp_ladder") or [])
+        if target_ladder:
+            st.caption(
+                "Target ladder: "
+                + " → ".join(
+                    f"TP{i} {_fmt_price(level)}"
+                    for i, level in enumerate(target_ladder, start=1)
+                )
+                + f" • Terminal target = TP{len(target_ladder)}"
+            )
         if "CONFIRMED" in state.upper() and grade == "A" and auto_enabled:
             st.success(
                 "Automation: confirmation detected → fresh broker quote revalidated → "
