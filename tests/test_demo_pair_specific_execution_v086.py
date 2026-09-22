@@ -5,6 +5,7 @@ from fx_scanner.demo_execution_fresh_ready_handoff import (
     _ALLOWED_STRATEGIES_BY_SYMBOL,
     _XAU_CANONICAL_STRATEGY,
     _XAU_CHAMPION_STRATEGY,
+    _XAU_AFIC_EXECUTION_STRATEGY,
     _XAU_D1_TSMOM_STRATEGY,
     _XAU_SHADOW_STRATEGIES,
 )
@@ -45,13 +46,19 @@ def test_five_core_execution_registry_is_exact_and_pair_specific():
     assert "USDJPY" not in _ALLOWED_STRATEGIES_BY_SYMBOL
     assert "GBPUSD" not in _ALLOWED_STRATEGIES_BY_SYMBOL
 
-    # Broker handoff has an exact two-strategy XAU DEMO allowlist: canonical
-    # M15 plus the aggregate V24 champion. Standalone D1 remains shadow-only.
+    # Broker handoff has an exact three-strategy XAU DEMO allowlist: canonical
+    # M15, the aggregate V24 champion, and grade-A confirmed AFIC path execution.
+    # Standalone D1 and unvalidated challengers remain shadow-only.
     assert _XAU_CANONICAL_STRATEGY == XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
     assert _XAU_CHAMPION_STRATEGY == XAU_V24_CHAMPION_STRATEGY_ID
     assert _XAU_D1_TSMOM_STRATEGY == PAIR_STRATEGY_IDS["XAUUSD"]
+    assert _XAU_AFIC_EXECUTION_STRATEGY == "XAU_AFIC_PATH_EXECUTION_V1"
     assert _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"] == frozenset(
-        {XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID, XAU_V24_CHAMPION_STRATEGY_ID}
+        {
+            XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID,
+            XAU_V24_CHAMPION_STRATEGY_ID,
+            "XAU_AFIC_PATH_EXECUTION_V1",
+        }
     )
     assert PAIR_STRATEGY_IDS["XAUUSD"] in _XAU_SHADOW_STRATEGIES
     assert XAU_M15_EMA_REVERSAL_STRATEGY_ID in _XAU_SHADOW_STRATEGIES
