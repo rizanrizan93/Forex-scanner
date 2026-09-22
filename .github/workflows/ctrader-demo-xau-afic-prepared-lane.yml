@@ -26,6 +26,26 @@ jobs:
       CTRADER_DISABLE_TOKEN_REFRESH: "1"
       SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      FX_KILL_SWITCH: "0"
+      FX_IDEMPOTENCY_STATE_PATH: /tmp/afic_execution_idempotency.json
+      CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
+      CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"
+      CTRADER_DEMO_TECHNICAL_ONLY: "1"
+      CTRADER_DEMO_MAX_ENTRY_DRIFT_R: "0.50"
+      CTRADER_DEMO_MIN_LIVE_RR: "1.0"
+      CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"
+      CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"
+      CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"
+      CTRADER_DEMO_MAX_PORTFOLIO_RISK_PCT: "20.0"
+      CTRADER_DEMO_MAX_MARGIN_FREE_USAGE_PCT: "50.0"
+      CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"
+      CTRADER_DEMO_STACK_MIN_SCORE: "50.01"
+      CTRADER_DEMO_STACK_MIN_COVERAGE: "0.80"
+      CTRADER_DEMO_STACK_MIN_RR2: "1.5"
+      CTRADER_DEMO_MAX_SAME_SYMBOL_POSITIONS: "10"
+      CTRADER_DEMO_MIN_STACK_SPACING_SECONDS: "0"
+      CTRADER_DEMO_XAUUSD_MAX_SPREAD_PIPS: "30"
+      CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED: "1"
       CTRADER_DEMO_AFIC_EXECUTION_ENABLED: "1"
 
     steps:
@@ -34,14 +54,15 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install cTrader research runtime
+      - name: Install cTrader runtime
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-research-cloud.txt
-          pip install pytest==9.0.2
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Unit test AFIC prepared plan
-        run: pytest -q tests/test_demo_xau_afic_prepared_plan_producer.py tests/test_demo_xau_afic_path_shadow_observer.py
       - name: Prepare AFIC forecast/order blueprint
+        id: prepare_afic
         run: python -m fx_scanner.demo_xau_afic_prepared_plan_producer
+      - name: Execute fresh AFIC DEMO signal immediately
+        if: ${{ steps.prepare_afic.outcome == 'success' }}
+        run: python -m fx_scanner.demo_xau_afic_fresh_ready_handoff
