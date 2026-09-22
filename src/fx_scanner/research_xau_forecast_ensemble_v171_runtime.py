@@ -116,7 +116,17 @@ def _load_afic_component(client: Any) -> dict[str, Any]:
         elif direction == "SHORT":
             invalidation = zone_high
 
-    available = direction in {"LONG", "SHORT"}
+    zone_valid = (
+        zone_low is not None
+        and zone_high is not None
+        and float(zone_high) > float(zone_low)
+    )
+    structural_state = bool(
+        state
+        and state not in {"NO_MAP_ZONE", "NO_ORIGIN_ZONE", "NO_DIRECTION"}
+        and "INSUFFICIENT" not in state
+    )
+    available = direction in {"LONG", "SHORT"} and zone_valid and structural_state
     return {
         "available": available,
         "direction": direction if available else "NEUTRAL",
@@ -125,7 +135,9 @@ def _load_afic_component(client: Any) -> dict[str, Any]:
         "map_at": details.get("map_at") or forecast.get("map_at"),
         "observed_at": None if hb is None else hb.get("observed_at"),
         "zone": {"low": zone_low, "high": zone_high},
-        "invalidation": invalidation,
+        "zone_valid": zone_valid,
+        "raw_direction": direction or None,
+        "invalidation": invalidation if available else None,
         "path": {
             "first_leg": first_leg or None,
             "reaction_zone": {"low": zone_low, "high": zone_high},
