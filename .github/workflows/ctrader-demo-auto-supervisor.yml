@@ -167,12 +167,34 @@ jobs:
 
           # GitHub scheduled delivery can occasionally go stale. Keep one bounded
           # supervisor chain alive only when the absolute latest XAU execution
-          # run has completed successfully. A newer queued/in-progress/failed run
-          # must stop the handoff rather than falling back to an older success.
-          latest_execution_state="$(
+          # run has completed successfully. The final minute execution dispatch
+          # commonly remains active when this supervisor reaches handoff. Poll
+          # that exact latest run for at most two minutes; never fall back to an
+          # older success and never hand off after a failed/cancelled latest run.
+          latest_execution_state() {
             gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-xau-execution-lane.yml/runs?branch=main&per_page=20" --jq '[.workflow_runs[0].status // "", .workflow_runs[0].conclusion // ""] | join("|")'
-          )"
-          IFS='|' read -r latest_execution_status latest_execution_conclusion <<< "${latest_execution_state}"
+          }
+
+          execution_state="$(latest_execution_state)"
+          IFS='|' read -r latest_execution_status latest_execution_conclusion <<< "${execution_state}"
+
+          handoff_wait_cycles=0
+          handoff_wait_max_cycles=8
+          handoff_wait_seconds=15
+          while market_open_utc && [ "${handoff_wait_cycles}" -lt "${handoff_wait_max_cycles}" ]; do
+            case "${latest_execution_status}" in
+              queued|in_progress|waiting|pending)
+                handoff_wait_cycles=$((handoff_wait_cycles + 1))
+                echo "CTRADER_DEMO_SUPERVISOR_HANDOFF_WAIT cycle=${handoff_wait_cycles}/${handoff_wait_max_cycles} latest_execution_status=${latest_execution_status} wait_seconds=${handoff_wait_seconds}"
+                sleep "${handoff_wait_seconds}"
+                execution_state="$(latest_execution_state)"
+                IFS='|' read -r latest_execution_status latest_execution_conclusion <<< "${execution_state}"
+                ;;
+              *)
+                break
+                ;;
+            esac
+          done
 
           other_active_supervisors="$(
             gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/runs?branch=main&per_page=20" --jq "[.workflow_runs[] | select((.status == \"queued\" or .status == \"in_progress\" or .status == \"waiting\" or .status == \"pending\") and (.id != ${GITHUB_RUN_ID}))] | length"
@@ -182,8 +204,8 @@ jobs:
           if market_open_utc && [ "${latest_execution_status}" = "completed" ] && [ "${latest_execution_conclusion}" = "success" ] && [ "${other_active_supervisors}" -eq 0 ]; then
             dispatch_workflow ctrader-demo-auto-supervisor.yml
             self_handoff=1
-            echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_DISPATCHED source_run=${GITHUB_RUN_ID} latest_execution_status=${latest_execution_status} latest_execution_conclusion=${latest_execution_conclusion}"
+            echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_DISPATCHED source_run=${GITHUB_RUN_ID} latest_execution_status=${latest_execution_status} latest_execution_conclusion=${latest_execution_conclusion} handoff_wait_cycles=${handoff_wait_cycles}"
           else
-            echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED source_run=${GITHUB_RUN_ID} latest_execution_status=${latest_execution_status:-NONE} latest_execution_conclusion=${latest_execution_conclusion:-NONE} other_active_supervisors=${other_active_supervisors} safety=FAIL_CLOSED"
+            echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED source_run=${GITHUB_RUN_ID} latest_execution_status=${latest_execution_status:-NONE} latest_execution_conclusion=${latest_execution_conclusion:-NONE} other_active_supervisors=${other_active_supervisors} handoff_wait_cycles=${handoff_wait_cycles} safety=FAIL_CLOSED"
           fi
           echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_AFIC_PATH_PREPARED_V1 execution_dispatched=${execution_dispatched} execution_busy=${execution_busy} afic_dispatched=${afic_dispatched} afic_busy=${afic_busy} maintenance_dispatched=${maintenance_dispatched} maintenance_busy=${maintenance_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 afic_prepared_check_seconds=60 maintenance_cadence_seconds=300 discovery_check_seconds=60 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=${self_handoff}"
