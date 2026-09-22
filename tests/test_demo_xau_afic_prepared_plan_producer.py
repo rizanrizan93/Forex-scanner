@@ -111,7 +111,9 @@ def test_afic_forecast_state_transition_identity_and_key_are_durable():
         "map_at":"2026-09-22T00:00:00+00:00",
         "state":"ZONE_TOUCHED_WAIT_CONFIRM",
         "continuation_direction":"LONG",
-        "first_touch_at":"2026-09-22T00:30:00+00:00",
+        "first_touch_at":"2026-09-21T23:45:00+00:00",
+        "map_first_touch_at":"2026-09-22T00:30:00+00:00",
+        "touch_lifecycle":"TOUCHED_DURING_CURRENT_MAP",
         "zone":{"origin_at":"2026-09-21T11:00:00+00:00"},
     }
     touched=forecast_state_key(base)
@@ -123,6 +125,8 @@ def test_afic_forecast_state_transition_identity_and_key_are_durable():
     assert touched!=invalidated
     assert "ZONE_TOUCHED_WAIT_CONFIRM" in touched
     assert "INVALIDATED_AFTER_TOUCH_REMAP_DUE" in invalidated
+    assert "2026-09-22T00:30:00+00:00" in touched
+    assert "TOUCHED_DURING_CURRENT_MAP" in touched
     assert "2026-09-22T02:00:00+00:00" in invalidated
 
 
@@ -182,10 +186,13 @@ def test_afic_live_quote_marks_alternative_short_watch_touched_without_authority
     now=datetime(2026,9,22,12,11,tzinfo=UTC)
     x=enrich_alternative_reversal_watches(payload,live_price=4342.0,observed_at=now)
     watch=x["zone_diagnostics"]["alternative_reversal_watch_zones"][0]
-    assert watch["status"]=="LIVE_TOUCHED_WAIT_REVERSAL_CONFIRM"
+    assert watch["status"]=="LIVE_TOUCH_PENDING_M15_CLOSE"
     assert watch["live_inside_zone"] is True
     assert watch["distance_from_live_price_points"]==0.0
-    assert watch["first_touch_at"]==now.isoformat()
+    assert watch["live_touch_at"]==now.isoformat()
+    assert watch["live_touch_pending_m15_close"] is True
+    assert watch["first_touch_at"] is None
+    assert watch.get("map_first_touch_at") is None
     assert watch["auto_execution_authority"] is False
     assert x["zone_diagnostics"]["live_touched_alternative_watch_count"]==1
 
