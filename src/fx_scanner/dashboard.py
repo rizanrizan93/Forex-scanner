@@ -23,6 +23,7 @@ class DashboardSnapshot:
     afic_forecast_states: tuple[dict[str, Any], ...]
     afic_prepared_plans: tuple[dict[str, Any], ...]
     afic_execution_geometry: tuple[dict[str, Any], ...]
+    xau_execution_events: tuple[dict[str, Any], ...]
 
 
 class SupabaseDashboardReader:
@@ -245,6 +246,49 @@ class SupabaseDashboardReader:
             raise DashboardReadError(f"AFIC execution-geometry read failed: {exc}") from exc
         return tuple(self._rows(response))
 
+    def latest_xau_execution_events(self, *, raw_limit: int = 120) -> tuple[dict[str, Any], ...]:
+        """Return recent XAU broker/execution events for dashboard observability."""
+        try:
+            response = (
+                self.client.table("broker_order_events")
+                .select(
+                    "observed_at,event_type,code,accepted,message,signal_key,"
+                    "broker_order_id,payload"
+                )
+                .order("observed_at", desc=True)
+                .limit(int(raw_limit))
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(f"XAU execution-event read failed: {exc}") from exc
+
+        exact_codes = {
+            "XAU_AFIC_PATH_EXECUTION_V1",
+            "XAU_M15_EMA_SMC_RECLAIM_V1",
+            "XAU_V24_CHAMPION_DEMO_V1",
+        }
+        execution_events = {
+            "DEMO_SIGNAL_GEOMETRY",
+            "ORDER_ACCEPTED",
+            "POSITION_PROTECTION_VERIFIED",
+            "POSITION_PROTECTION_FAILED",
+            "EXECUTION_BLOCKED",
+            "ORDER_OUTCOME_UNCERTAIN",
+            "REVALIDATION_PASS",
+            "REVALIDATION_BLOCK",
+        }
+        selected: list[dict[str, Any]] = []
+        for row in self._rows(response):
+            payload = dict(row.get("payload") or {})
+            code = str(row.get("code") or "")
+            event_type = str(row.get("event_type") or "")
+            symbol = str(payload.get("symbol") or "").upper().strip()
+            if code in exact_codes or (
+                symbol == "XAUUSD" and event_type in execution_events
+            ):
+                selected.append(row)
+        return tuple(selected[:40])
+
     def snapshot(self) -> DashboardSnapshot:
         run = self.latest_run()
         rankings = self.rankings_for_run(None if run is None else run.get("id"))
@@ -253,6 +297,7 @@ class SupabaseDashboardReader:
         afic_forecast_states = self.latest_afic_forecast_states()
         afic_prepared_plans = self.latest_afic_prepared_plans()
         afic_execution_geometry = self.latest_afic_execution_geometry()
+        xau_execution_events = self.latest_xau_execution_events()
         return DashboardSnapshot(
             latest_run=run,
             rankings=rankings,
@@ -265,4 +310,5 @@ class SupabaseDashboardReader:
             afic_forecast_states=afic_forecast_states,
             afic_prepared_plans=afic_prepared_plans,
             afic_execution_geometry=afic_execution_geometry,
+            xau_execution_events=xau_execution_events,
         )

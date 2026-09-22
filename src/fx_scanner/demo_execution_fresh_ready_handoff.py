@@ -46,10 +46,23 @@ _ALLOWED_SYMBOL = "XAUUSD"
 _ALLOWED_STRATEGIES = _ALLOWED_STRATEGIES_BY_SYMBOL[_ALLOWED_SYMBOL]
 
 
-def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
+def install_exact_strategy_identity_filter(
+    *,
+    allowed_strategies_by_symbol: dict[str, frozenset[str]],
+    max_age_seconds: float,
+) -> None:
     """Install freshness, then fail-closed exact symbol/strategy filtering."""
+    normalized = {
+        str(symbol).upper().strip(): frozenset(str(code) for code in codes)
+        for symbol, codes in allowed_strategies_by_symbol.items()
+        if str(symbol).strip() and codes
+    }
+    if not normalized:
+        raise ValueError("allowed_strategies_by_symbol cannot be empty")
+
     _ORIGINAL_INSTALL_FRESH(max_age_seconds=max_age_seconds)
     original_list = SupabaseOperationalStore.list_execution_ready_signals
+    execution_symbols = frozenset(normalized)
 
     def _promoted_pair_rows(self, *, limit: int = 10):
         requested = max(1, int(limit))
@@ -57,7 +70,7 @@ def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
         candidate_ids = [
             str(row.get("id"))
             for row in rows
-            if str(row.get("symbol") or "").upper().strip() in _EXECUTION_SYMBOLS
+            if str(row.get("symbol") or "").upper().strip() in execution_symbols
             and row.get("id")
         ]
         if not candidate_ids:
@@ -85,14 +98,20 @@ def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
         for row in rows:
             signal_id = str(row.get("id") or "")
             symbol = str(row.get("symbol") or "").upper().strip()
-            if not signal_id or symbol not in _EXECUTION_SYMBOLS:
+            if not signal_id or symbol not in execution_symbols:
                 continue
-            allowed = _ALLOWED_STRATEGIES_BY_SYMBOL.get(symbol, frozenset())
-            if code_by_signal.get(signal_id) in allowed:
+            if code_by_signal.get(signal_id) in normalized.get(symbol, frozenset()):
                 filtered.append(row)
         return tuple(filtered[:requested])
 
     SupabaseOperationalStore.list_execution_ready_signals = _promoted_pair_rows
+
+
+def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
+    install_exact_strategy_identity_filter(
+        allowed_strategies_by_symbol=_ALLOWED_STRATEGIES_BY_SYMBOL,
+        max_age_seconds=max_age_seconds,
+    )
 
 
 def main() -> int:

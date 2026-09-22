@@ -170,3 +170,38 @@ def test_dashboard_reads_afic_forecast_prepared_and_execution_events():
     assert plans[0]["payload"]["prepared_plan"]["entry"] == 4350.0
     assert len(geometry) == 1
     assert geometry[0]["code"] == "XAU_AFIC_PATH_EXECUTION_V1"
+
+
+def test_dashboard_filters_recent_xau_execution_events():
+    client = FakeClient({
+        "broker_order_events": [
+            {
+                "observed_at": "2026-09-22T03:20:00Z",
+                "event_type": "ORDER_ACCEPTED",
+                "code": "2",
+                "accepted": True,
+                "signal_key": "afic-signal",
+                "broker_order_id": "123",
+                "payload": {"symbol": "XAUUSD", "requested_entry": 4350.0},
+            },
+            {
+                "observed_at": "2026-09-22T03:19:00Z",
+                "event_type": "DEMO_SIGNAL_GEOMETRY",
+                "code": "XAU_AFIC_PATH_EXECUTION_V1",
+                "accepted": True,
+                "signal_key": "afic-signal",
+                "payload": {"symbol": "XAUUSD"},
+            },
+            {
+                "observed_at": "2026-09-22T03:18:00Z",
+                "event_type": "ORDER_ACCEPTED",
+                "code": "2",
+                "accepted": True,
+                "signal_key": "eur-signal",
+                "payload": {"symbol": "EURUSD"},
+            },
+        ]
+    })
+    rows = SupabaseDashboardReader(client).latest_xau_execution_events()
+    assert len(rows) == 2
+    assert {row["signal_key"] for row in rows} == {"afic-signal"}

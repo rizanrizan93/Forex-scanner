@@ -74,6 +74,7 @@ def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
         "afic_forecast_states": list(snapshot.afic_forecast_states),
         "afic_prepared_plans": list(snapshot.afic_prepared_plans),
         "afic_execution_geometry": list(snapshot.afic_execution_geometry),
+        "xau_execution_events": list(snapshot.xau_execution_events),
     }
 
 
@@ -183,6 +184,56 @@ def _afic_path_text(direction: str, state: str) -> str:
     if "APPROACH" in current:
         return base + " • harga sedang mendekati zone"
     return base
+
+
+
+
+def _age_seconds(value: Any) -> float | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return max(0.0, (datetime.now(tz=UTC) - parsed.astimezone(UTC)).total_seconds())
+
+
+def _afic_next_action(
+    *,
+    state: str,
+    grade: str,
+    proximity: str,
+    auto_enabled: bool,
+    latest_execution_event: str | None,
+) -> tuple[str, str]:
+    state_u = str(state or "").upper()
+    grade_u = str(grade or "").upper()
+    proximity_u = str(proximity or "").upper()
+    event_u = str(latest_execution_event or "").upper()
+
+    if event_u == "POSITION_PROTECTION_FAILED":
+        return "PROTECTION ALERT", "Order side-effect exists; new AFIC orders must remain blocked until SL/TP is reconciled."
+    if event_u == "POSITION_PROTECTION_VERIFIED":
+        return "POSITION MANAGED", "Broker position exists and server-side protection has been verified."
+    if event_u == "ORDER_ACCEPTED":
+        return "VERIFYING SL/TP", "Broker accepted the order; scanner is waiting for protection verification."
+    if "INVALID" in state_u or "REMAP" in state_u:
+        return "WAIT NEW H4 MAP", "Current path is invalidated; no order should be sent until H4 remaps."
+    if grade_u not in {"A"}:
+        return "WATCH ONLY", f"Selector grade {grade_u or '—'} is not execution-authorized."
+    if not auto_enabled:
+        return "AUTO BLOCKED", "DEMO execution authority or exact handoff is not active."
+    if "CONFIRMED" in state_u:
+        return "EXECUTION HANDOFF", "M15 confirmation is complete; fresh quote/risk/protection checks decide the order now."
+    if "TOUCHED" in state_u or proximity_u == "IN_ZONE":
+        return "WAIT M15 CONFIRM", "Price is in the reaction zone; do not enter before the completed M15 trigger."
+    if proximity_u == "NEAR_ZONE":
+        return "PREPARED / 60S WATCH", "Price is near the zone; scanner is armed and checks every minute."
+    if proximity_u == "FAR":
+        return "TRACK TO ZONE", "Forecast is mapped; scanner is waiting for price to approach the reaction zone."
+    return "WAIT FORECAST", "No execution-ready AFIC path is active yet."
 
 
 cfg, config_error = _safe_config()
@@ -342,6 +393,7 @@ with forecast_tab:
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
+    execution_events = [] if backend is None else backend.get("xau_execution_events", [])
 
     state_event = forecast_rows[0] if forecast_rows else None
     state_payload = {}
@@ -368,6 +420,28 @@ with forecast_tab:
         hb_details.get("execution_enabled_env")
         and hb_details.get("handoff_allowlisted")
     )
+    latest_exec_event = None
+    latest_exec_row = None
+    for event_row in execution_events:
+        event_payload = dict(event_row.get("payload") or {})
+        if (
+            str(event_row.get("code") or "") == "XAU_AFIC_PATH_EXECUTION_V1"
+            or str(event_payload.get("strategy_id") or "") == "XAU_AFIC_PATH_EXECUTION_V1"
+            or (
+                str(event_payload.get("symbol") or "").upper() == "XAUUSD"
+                and str(event_row.get("signal_key") or "") == str(hb_details.get("signal_id") or "")
+            )
+        ):
+            latest_exec_row = event_row
+            latest_exec_event = str(event_row.get("event_type") or "")
+            break
+    next_action, next_reason = _afic_next_action(
+        state=state,
+        grade=grade,
+        proximity=proximity,
+        auto_enabled=auto_enabled,
+        latest_execution_event=latest_exec_event,
+    )
 
     f1, f2, f3, f4, f5, f6 = st.columns(6)
     f1.metric("Forecast", direction)
@@ -376,6 +450,14 @@ with forecast_tab:
     f4.metric("Live XAU", _fmt_price(live_price))
     f5.metric("Distance to zone", _fmt_distance(distance_points, " pts"))
     f6.metric("AFIC scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
+
+    h1, h2, h3, h4 = st.columns(4)
+    hb_age = None if prepared_hb is None else _age_seconds(prepared_hb.get("observed_at"))
+    h1.metric("Next action", next_action)
+    h2.metric("DEMO auto", "ON" if auto_enabled else "OFF")
+    h3.metric("Forecast heartbeat", "—" if hb_age is None else f"{hb_age:.0f}s ago")
+    h4.metric("Last AFIC broker event", latest_exec_event or "NONE")
+    st.caption(next_reason)
 
     if zone_low is not None and zone_high is not None:
         st.markdown(
@@ -451,6 +533,29 @@ with forecast_tab:
             f"TP2 {_fmt_price(latest_geometry.get('planned_tp2'))}"
         )
 
+    st.markdown("#### Automation / broker timeline")
+    if execution_events:
+        timeline_rows = []
+        for row in execution_events[:20]:
+            payload = dict(row.get("payload") or {})
+            timeline_rows.append(
+                {
+                    "time": row.get("observed_at"),
+                    "event": row.get("event_type"),
+                    "accepted": row.get("accepted"),
+                    "strategy": row.get("code") or payload.get("strategy_id"),
+                    "signal": row.get("signal_key"),
+                    "order": row.get("broker_order_id"),
+                    "entry": payload.get("executed_price") or payload.get("requested_entry") or payload.get("planned_entry"),
+                    "sl": payload.get("attached_stop_loss") or payload.get("requested_stop_loss") or payload.get("planned_sl"),
+                    "tp": payload.get("attached_take_profit") or payload.get("requested_take_profit") or payload.get("planned_tp2"),
+                    "message": row.get("message"),
+                }
+            )
+        st.dataframe(pd.DataFrame(timeline_rows), hide_index=True, use_container_width=True)
+    else:
+        st.caption("No XAU execution event yet. Forecast monitoring can still be active without an order.")
+
     st.markdown("#### Expected-move envelope")
     move_details = {} if move_hb is None else dict(move_hb.get("details") or {})
     move_eval = dict(move_details.get("evaluation") or {})
@@ -525,7 +630,7 @@ with account_tab:
         connected = bool(account.get("connection_healthy"))
         stale = age_seconds is None or age_seconds > 60
         if not connected:
-            st.error("Broker telemetry reports the MT5 connection as unhealthy.")
+            st.error("Broker telemetry reports the cTrader DEMO connection as unhealthy.")
         elif stale:
             st.warning("Broker telemetry is stale (>60 seconds).")
         else:
@@ -579,11 +684,11 @@ with account_tab:
                 use_container_width=True,
             )
         else:
-            st.info("No open MT5 positions in the latest broker snapshot.")
+            st.info("No open cTrader DEMO positions in the latest broker snapshot.")
     else:
         st.info(
-            "No broker telemetry yet. Streamlit is only the monitor; start the "
-            "Windows MT5 telemetry worker to publish balance and open positions."
+            "No broker telemetry yet. Streamlit is read-only; the cloud cTrader DEMO "
+            "runtime will publish balance and positions when the next broker snapshot arrives."
         )
 
 with scanner_tab:
