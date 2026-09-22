@@ -573,8 +573,20 @@ with forecast_tab:
                         else "—"
                     ),
                     "SL": _fmt_price(row.get("sl")),
-                    "TP1": _fmt_price(row.get("tp1")),
-                    "TP2": _fmt_price(row.get("tp2")),
+                    "first target": _fmt_price(
+                        next(
+                            (x for x in (row.get("tp1"), row.get("tp2"), row.get("tp3")) if x is not None),
+                            None,
+                        )
+                    ),
+                    "terminal target": _fmt_price(
+                        next(
+                            (x for x in (row.get("tp3"), row.get("tp2"), row.get("tp1")) if x is not None),
+                            None,
+                        )
+                    ),
+                    "raw TP1": _fmt_price(row.get("tp1")),
+                    "raw TP2": _fmt_price(row.get("tp2")),
                     "guards": ", ".join(str(x) for x in (row.get("active_guards") or [])) or "—",
                     "expires_at": expires_raw,
                 }
@@ -646,7 +658,8 @@ with forecast_tab:
     ]
     if active_watch:
         st.caption(
-            "Opposite-direction origin zones are potential destinations/reversal areas only. "
+            "These are PRIOR ORIGIN REVISITS from structural memory, not current primary "
+            "AFIC reaction zones. They are potential destinations/reversal areas only. "
             "They cannot auto-order against the active H4 map; a structural remap plus "
             "H1/M15 reversal confirmation is required."
         )
@@ -654,9 +667,12 @@ with forecast_tab:
         for item in active_watch:
             watch_rows.append(
                 {
+                    "context": "PRIOR_ORIGIN_REVISIT",
                     "role": item.get("role"),
                     "direction": item.get("direction"),
                     "zone": f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))}",
+                    "origin_at": item.get("origin_at"),
+                    "available_at": item.get("available_at"),
                     "status": item.get("status"),
                     "distance now": _fmt_distance(
                         item.get("distance_from_live_price_points")
@@ -691,9 +707,9 @@ with forecast_tab:
                 "Countertrend reaction watch only; wait for completed H1/M15 reversal/remap."
             )
         st.info(
-            f"Nearest reversal watch: {watch_side} "
+            f"PRIOR ORIGIN REVISIT: {watch_side} "
             f"{_fmt_price(nearest_watch.get('low'))}–{_fmt_price(nearest_watch.get('high'))} "
-            f"• {watch_status}. {path_hint}"
+            f"• {watch_status}. This is not the current primary AFIC zone. {path_hint}"
         )
     elif reversal_watch:
         st.caption(
