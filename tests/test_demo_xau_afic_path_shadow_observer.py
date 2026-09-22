@@ -2,7 +2,8 @@ from datetime import datetime,timedelta,timezone
 
 from fx_scanner.models import Bar
 from fx_scanner.demo_xau_afic_path_shadow_observer import (
-    FORWARD_CONTRACT,STRATEGY_ID,SYMBOL,_resample_completed
+    FORWARD_CONTRACT,STRATEGY_ID,SYMBOL,OriginZone,_resample_completed,
+    _zone_diagnostics
 )
 
 UTC=timezone.utc
@@ -23,3 +24,51 @@ def test_afic_live_resample_excludes_forming_h4():
     frame=_resample_completed(rows,"4h",as_of=datetime(2026,9,21,4,45,tzinfo=UTC))
     assert len(frame)==1
     assert frame.iloc[-1]["time"].to_pydatetime()==datetime(2026,9,21,4,0,tzinfo=UTC)
+
+
+def _zone(direction,available_at,low,high):
+    return OriginZone(
+        direction=direction,
+        available_at=available_at,
+        bos_at=available_at,
+        bos_level=low if direction=="SHORT" else high,
+        low=low,
+        high=high,
+        h1_atr=10.0,
+        origin_at=available_at-timedelta(hours=1),
+        displacement_range_atr=1.2,
+        displacement_body_fraction=0.65,
+    )
+
+
+def test_zone_diagnostics_explains_no_short_map_zone_without_bug():
+    map_at=datetime(2026,9,22,4,0,tzinfo=UTC)
+    zones=(
+        _zone("SHORT",map_at-timedelta(hours=2),4320.0,4330.0),
+        _zone("SHORT",map_at-timedelta(hours=30),4380.0,4390.0),
+        _zone("LONG",map_at-timedelta(hours=3),4310.0,4318.0),
+    )
+    x=_zone_diagnostics(
+        zones,map_at=map_at,price=4340.0,continuation="SHORT"
+    )
+    assert x["origin_zones_total"]==3
+    assert x["fresh_within_24h"]==2
+    assert x["matching_direction_fresh"]==1
+    assert x["wrong_side_of_anchor"]==1
+    assert x["eligible_correct_side"]==0
+    assert x["selection_result"]=="NO_ELIGIBLE_MAP_ZONE"
+
+
+def test_zone_diagnostics_identifies_nearest_eligible_short_zone():
+    map_at=datetime(2026,9,22,4,0,tzinfo=UTC)
+    zones=(
+        _zone("SHORT",map_at-timedelta(hours=2),4350.0,4360.0),
+        _zone("SHORT",map_at-timedelta(hours=1),4370.0,4380.0),
+    )
+    x=_zone_diagnostics(
+        zones,map_at=map_at,price=4340.0,continuation="SHORT"
+    )
+    assert x["eligible_correct_side"]==2
+    assert x["selection_result"]=="ELIGIBLE_ZONE_FOUND"
+    assert x["nearest_eligible"]["low"]==4350.0
+    assert x["nearest_eligible"]["distance_points"]==10.0

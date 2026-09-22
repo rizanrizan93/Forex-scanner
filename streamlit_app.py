@@ -461,6 +461,12 @@ with forecast_tab:
     )
     reference_entry_now = prep_plan_now.get("entry") if prep_current_now else None
 
+    zone_diagnostics = dict(
+        hb_details.get("zone_diagnostics")
+        or state_payload.get("zone_diagnostics")
+        or {}
+    )
+
     valid_zone_now = bool(
         zone_low is not None
         and zone_high is not None
@@ -517,6 +523,46 @@ with forecast_tab:
             )
             + "Do not enter merely because price touches the zone; completed M15 "
               "confirmation is still required for the AFIC auto path."
+        )
+
+    st.markdown("#### Reaction-zone diagnostics")
+    if zone_diagnostics:
+        d1, d2, d3, d4, d5 = st.columns(5)
+        d1.metric("Origin zones", zone_diagnostics.get("origin_zones_total", "—"))
+        d2.metric("Fresh ≤24h", zone_diagnostics.get("fresh_within_24h", "—"))
+        d3.metric(
+            f"{direction or 'Map'} direction",
+            zone_diagnostics.get("matching_direction_fresh", "—"),
+        )
+        d4.metric("Wrong side of anchor", zone_diagnostics.get("wrong_side_of_anchor", "—"))
+        d5.metric("Eligible reaction zones", zone_diagnostics.get("eligible_correct_side", "—"))
+        result = str(zone_diagnostics.get("selection_result") or "")
+        if result == "NO_ELIGIBLE_MAP_ZONE":
+            st.warning(
+                "NO_MAP_ZONE is explained by the current structure: origin zones exist, "
+                "but zero candidates satisfy direction + freshness + correct side of the "
+                "current H4 anchor. This is a no-setup state, not an execution signal."
+            )
+        elif result == "ELIGIBLE_ZONE_FOUND":
+            nearest = dict(zone_diagnostics.get("nearest_eligible") or {})
+            st.success(
+                "Eligible reaction zone found: "
+                f"{_fmt_price(nearest.get('low'))}–{_fmt_price(nearest.get('high'))} • "
+                f"distance {_fmt_distance(nearest.get('distance_points'), ' pts')}."
+            )
+        elif result == "NO_ORIGIN_ZONE":
+            st.warning(
+                "No H1 origin zone currently satisfies the displacement/BOS/origin "
+                "construction rules. Scanner is waiting for a new structural setup."
+            )
+        st.caption(
+            "Diagnostics are descriptive only; they do not relax the AFIC selector or "
+            "create broker authority."
+        )
+    else:
+        st.caption(
+            "Zone diagnostics are not available for this heartbeat yet; the next AFIC "
+            "cycle will populate candidate/rejection counts."
         )
 
     f1, f2, f3, f4, f5, f6 = st.columns(6)

@@ -182,18 +182,103 @@ def _origin_zones(rows:Sequence[Bar],*,as_of:datetime)->tuple[OriginZone,...]:
     return tuple(out)
 
 
-def _choose_zone(zones:Sequence[OriginZone],*,map_at,price:float,continuation:str)->OriginZone|None:
+def _zone_diagnostics(
+    zones:Sequence[OriginZone],
+    *,
+    map_at,
+    price:float,
+    continuation:str,
+)->dict[str,Any]:
     t=ensure_utc(map_at)
-    available=[
+    all_zones=tuple(zones)
+    available_by_time=tuple(
+        z for z in all_zones
+        if ensure_utc(z.available_at)<=t
+    )
+    fresh=tuple(
+        z for z in available_by_time
+        if t-ensure_utc(z.available_at)<=timedelta(hours=ZONE_MAX_AGE_HOURS)
+    )
+    matching=tuple(z for z in fresh if z.direction==continuation)
+    if continuation=="SHORT":
+        correct_side=tuple(z for z in matching if z.low>price)
+        wrong_side=tuple(z for z in matching if z.low<=price)
+    else:
+        correct_side=tuple(z for z in matching if z.high<price)
+        wrong_side=tuple(z for z in matching if z.high>=price)
+
+    stale=tuple(
+        z for z in available_by_time
+        if t-ensure_utc(z.available_at)>timedelta(hours=ZONE_MAX_AGE_HOURS)
+    )
+    future=tuple(
+        z for z in all_zones
+        if ensure_utc(z.available_at)>t
+    )
+    opposite=tuple(z for z in fresh if z.direction!=continuation)
+
+    nearest=None
+    if correct_side:
+        if continuation=="SHORT":
+            nearest=min(correct_side,key=lambda z:z.low-price)
+            distance=max(0.0,nearest.low-price)
+        else:
+            nearest=min(correct_side,key=lambda z:price-z.high)
+            distance=max(0.0,price-nearest.high)
+        nearest_payload={
+            "direction":nearest.direction,
+            "low":nearest.low,
+            "high":nearest.high,
+            "available_at":nearest.available_at.isoformat(),
+            "origin_at":nearest.origin_at.isoformat(),
+            "age_hours":(
+                t-ensure_utc(nearest.available_at)
+            ).total_seconds()/3600.0,
+            "distance_points":distance,
+            "displacement_range_atr":nearest.displacement_range_atr,
+            "displacement_body_fraction":nearest.displacement_body_fraction,
+        }
+    else:
+        nearest_payload=None
+
+    return {
+        "map_at":t.isoformat(),
+        "map_price":float(price),
+        "continuation_direction":continuation,
+        "origin_zones_total":len(all_zones),
+        "available_at_map":len(available_by_time),
+        "fresh_within_24h":len(fresh),
+        "stale_over_24h":len(stale),
+        "future_not_available_at_map":len(future),
+        "matching_direction_fresh":len(matching),
+        "opposite_direction_fresh":len(opposite),
+        "wrong_side_of_anchor":len(wrong_side),
+        "eligible_correct_side":len(correct_side),
+        "nearest_eligible":nearest_payload,
+        "selection_result":"ELIGIBLE_ZONE_FOUND" if correct_side else "NO_ELIGIBLE_MAP_ZONE",
+        "not_bug_if_zero_eligible":True,
+    }
+
+
+def _choose_zone(zones:Sequence[OriginZone],*,map_at,price:float,continuation:str)->OriginZone|None:
+    diagnostics=_zone_diagnostics(
+        zones,map_at=map_at,price=price,continuation=continuation
+    )
+    nearest=dict(diagnostics.get("nearest_eligible") or {})
+    if not nearest:
+        return None
+    t=ensure_utc(map_at)
+    candidates=[
         z for z in zones
         if ensure_utc(z.available_at)<=t
         and t-ensure_utc(z.available_at)<=timedelta(hours=ZONE_MAX_AGE_HOURS)
+        and z.direction==continuation
     ]
     if continuation=="SHORT":
-        c=[z for z in available if z.direction=="SHORT" and z.low>price]
-        return None if not c else min(c,key=lambda z:z.low-price)
-    c=[z for z in available if z.direction=="LONG" and z.high<price]
-    return None if not c else min(c,key=lambda z:price-z.high)
+        candidates=[z for z in candidates if z.low>price]
+        return None if not candidates else min(candidates,key=lambda z:z.low-price)
+    candidates=[z for z in candidates if z.high<price]
+    return None if not candidates else min(candidates,key=lambda z:price-z.high)
 
 
 def _touch(row:Bar,z:OriginZone)->bool:
@@ -298,7 +383,16 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
         return {"state":"INSUFFICIENT_H4","closed_m15":len(bars),"execution_influence":False}
     zones=_origin_zones(bars,as_of=as_of)
     if not zones:
-        return {"state":"NO_ORIGIN_ZONE","closed_m15":len(bars),"execution_influence":False}
+        return {
+            "state":"NO_ORIGIN_ZONE",
+            "closed_m15":len(bars),
+            "zone_diagnostics":{
+                "origin_zones_total":0,
+                "selection_result":"NO_ORIGIN_ZONE",
+                "not_bug_if_zero_eligible":True,
+            },
+            "execution_influence":False,
+        }
 
     i=len(h4)-1
     hr=h4.iloc[i]
@@ -309,11 +403,18 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
     continuation="LONG" if c>o else "SHORT"
     first_leg="SHORT" if continuation=="LONG" else "LONG"
     map_price=c
+    zone_diagnostics=_zone_diagnostics(
+        zones,map_at=map_at,price=map_price,continuation=continuation
+    )
     zone=_choose_zone(zones,map_at=map_at,price=map_price,continuation=continuation)
     if zone is None:
         return {
-            "state":"NO_MAP_ZONE","map_at":map_at.isoformat(),
-            "continuation_direction":continuation,"first_leg_direction":first_leg,
+            "state":"NO_MAP_ZONE",
+            "map_at":map_at.isoformat(),
+            "map_price":map_price,
+            "continuation_direction":continuation,
+            "first_leg_direction":first_leg,
+            "zone_diagnostics":zone_diagnostics,
             "execution_influence":False,
         }
 
@@ -339,6 +440,7 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
             "origin_at":zone.origin_at.isoformat(),
         },
         "h4_features":features,
+        "zone_diagnostics":zone_diagnostics,
         "closed_m15":len(bars),
         "execution_influence":False,
         "promotion_authority":False,

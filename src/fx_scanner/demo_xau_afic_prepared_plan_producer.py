@@ -739,6 +739,7 @@ def run()->int:
             "zone_high":observability.get("zone_high"),
             "zone_distance_atr":observability.get("zone_distance_atr"),
             "h4_directional_close_location":observability.get("h4_directional_close_location"),
+            "zone_diagnostics":dict(payload.get("zone_diagnostics") or {}),
             "prepared_reference_entry":observability.get("prepared_reference_entry"),
             "final_entry":observability.get("final_entry"),
             "live_price":proximity.get("live_price"),
