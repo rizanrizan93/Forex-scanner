@@ -20,6 +20,9 @@ class DashboardSnapshot:
     performance: tuple[dict[str, Any], ...]
     broker_account: dict[str, Any] | None
     broker_positions: tuple[dict[str, Any], ...]
+    afic_forecast_states: tuple[dict[str, Any], ...]
+    afic_prepared_plans: tuple[dict[str, Any], ...]
+    afic_execution_geometry: tuple[dict[str, Any], ...]
 
 
 class SupabaseDashboardReader:
@@ -197,11 +200,59 @@ class SupabaseDashboardReader:
             ) from exc
         return tuple(self._rows(response))
 
+    def latest_afic_forecast_states(self, *, limit: int = 24) -> tuple[dict[str, Any], ...]:
+        try:
+            response = (
+                self.client.table("broker_order_events")
+                .select("observed_at,event_type,code,message,payload")
+                .eq("event_type", "DEMO_XAU_AFIC_FORECAST_STATE")
+                .eq("code", "XAU_AFIC_PATH_STATE_V1")
+                .order("observed_at", desc=True)
+                .limit(int(limit))
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(f"AFIC forecast-state read failed: {exc}") from exc
+        return tuple(self._rows(response))
+
+    def latest_afic_prepared_plans(self, *, limit: int = 12) -> tuple[dict[str, Any], ...]:
+        try:
+            response = (
+                self.client.table("broker_order_events")
+                .select("observed_at,event_type,code,message,payload")
+                .eq("event_type", "DEMO_XAU_AFIC_PREPARED_PLAN")
+                .eq("code", "XAU_AFIC_PATH_PREPARED_V1")
+                .order("observed_at", desc=True)
+                .limit(int(limit))
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(f"AFIC prepared-plan read failed: {exc}") from exc
+        return tuple(self._rows(response))
+
+    def latest_afic_execution_geometry(self, *, limit: int = 12) -> tuple[dict[str, Any], ...]:
+        try:
+            response = (
+                self.client.table("broker_order_events")
+                .select("observed_at,event_type,code,message,payload")
+                .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
+                .eq("code", "XAU_AFIC_PATH_EXECUTION_V1")
+                .order("observed_at", desc=True)
+                .limit(int(limit))
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(f"AFIC execution-geometry read failed: {exc}") from exc
+        return tuple(self._rows(response))
+
     def snapshot(self) -> DashboardSnapshot:
         run = self.latest_run()
         rankings = self.rankings_for_run(None if run is None else run.get("id"))
         broker_account = self.latest_broker_account()
         broker_positions = self.broker_positions_for_account(broker_account)
+        afic_forecast_states = self.latest_afic_forecast_states()
+        afic_prepared_plans = self.latest_afic_prepared_plans()
+        afic_execution_geometry = self.latest_afic_execution_geometry()
         return DashboardSnapshot(
             latest_run=run,
             rankings=rankings,
@@ -211,4 +262,7 @@ class SupabaseDashboardReader:
             performance=self.latest_performance(),
             broker_account=broker_account,
             broker_positions=broker_positions,
+            afic_forecast_states=afic_forecast_states,
+            afic_prepared_plans=afic_prepared_plans,
+            afic_execution_geometry=afic_execution_geometry,
         )

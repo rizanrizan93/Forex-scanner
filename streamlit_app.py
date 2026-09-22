@@ -71,6 +71,9 @@ def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
         "control": asdict(control),
         "broker_account": snapshot.broker_account,
         "broker_positions": list(snapshot.broker_positions),
+        "afic_forecast_states": list(snapshot.afic_forecast_states),
+        "afic_prepared_plans": list(snapshot.afic_prepared_plans),
+        "afic_execution_geometry": list(snapshot.afic_execution_geometry),
     }
 
 
@@ -140,6 +143,48 @@ def _state_rank(state: str) -> int:
     return order.get(str(state).upper(), 99)
 
 
+
+def _latest_heartbeat(rows: list[dict[str, Any]], worker_name: str) -> dict[str, Any] | None:
+    for row in rows:
+        if str(row.get("worker_name") or "") == worker_name:
+            return row
+    return None
+
+
+def _fmt_price(value: Any) -> str:
+    try:
+        return f"{float(value):,.2f}"
+    except (TypeError, ValueError):
+        return "—"
+
+
+def _fmt_distance(value: Any, suffix: str = "") -> str:
+    try:
+        return f"{float(value):,.2f}{suffix}"
+    except (TypeError, ValueError):
+        return "—"
+
+
+def _afic_path_text(direction: str, state: str) -> str:
+    side = str(direction or "").upper()
+    current = str(state or "").upper()
+    if side == "LONG":
+        base = "First leg turun → reaction zone → M15 rejection → continuation naik"
+    elif side == "SHORT":
+        base = "First leg naik → reaction zone → M15 rejection → continuation turun"
+    else:
+        base = "Menunggu map H4 yang valid"
+    if "INVALID" in current or "REMAP" in current:
+        return base + " • map sebelumnya invalid/remap"
+    if "CONFIRMED" in current:
+        return base + " • confirmation selesai"
+    if "TOUCHED" in current:
+        return base + " • zone sudah disentuh, menunggu confirmation"
+    if "APPROACH" in current:
+        return base + " • harga sedang mendekati zone"
+    return base
+
+
 cfg, config_error = _safe_config()
 policy = None
 policy_error = None
@@ -169,6 +214,11 @@ with st.sidebar:
     if st.button("Refresh dashboard", use_container_width=True):
         _load_backend_snapshot.clear()
         st.rerun()
+    auto_refresh_enabled = st.toggle(
+        "Auto refresh monitor",
+        value=True,
+        help="Refresh the read-only dashboard every 5 seconds. Scanner/order runtime is independent.",
+    )
 
     st.divider()
     st.markdown("**Runtime model**")
@@ -185,7 +235,29 @@ with st.sidebar:
         st.warning("Supabase Secret not configured")
 
     st.markdown("**Execution safety**")
-    st.code("RESEARCH_ONLY / DISABLED", language=None)
+    if policy is not None and str(policy.ctrader.get("environment", "")).upper() == "DEMO":
+        st.code("DEMO AUTO CAPABLE / LIVE OFF", language=None)
+    else:
+        st.code("LIVE EXECUTION NOT AUTHORIZED", language=None)
+
+
+if "dashboard_auto_refresh_at" not in st.session_state:
+    st.session_state["dashboard_auto_refresh_at"] = datetime.now(tz=UTC)
+
+
+@st.fragment(run_every="5s")
+def _dashboard_auto_refresh_tick() -> None:
+    if not auto_refresh_enabled:
+        return
+    now = datetime.now(tz=UTC)
+    last = st.session_state.get("dashboard_auto_refresh_at")
+    if not isinstance(last, datetime) or (now - last).total_seconds() >= 4.5:
+        st.session_state["dashboard_auto_refresh_at"] = now
+        _load_backend_snapshot.clear()
+        st.rerun()
+
+
+_dashboard_auto_refresh_tick()
 
 
 st.title("FX Institutional Scanner")
@@ -226,33 +298,215 @@ m5.metric("Dashboard Backend", backend_label)
 
 if backend is not None:
     control = backend["control"]
-    unsafe = (
-        str(control.get("execution_mode", "")).upper() != "DISABLED"
-        or bool(control.get("new_orders_enabled"))
-        or not bool(control.get("emergency_stop"))
+    demo_locked = bool(
+        policy is not None
+        and str(policy.ctrader.get("environment", "")).upper() == "DEMO"
+        and bool(policy.ctrader.get("require_demo", False))
     )
-    if unsafe:
-        st.error(
-            "SAFETY ALERT: durable execution control differs from the expected "
-            "research lock."
+    mode_now = str(control.get("execution_mode", "")).upper()
+    orders_now = bool(control.get("new_orders_enabled"))
+    emergency_now = bool(control.get("emergency_stop"))
+    if demo_locked and mode_now == "AUTO" and orders_now and not emergency_now:
+        st.success(
+            "DEMO automation armed • new orders ON • server-side SL/TP required • "
+            "LIVE-money execution remains locked out by cTrader DEMO policy."
+        )
+    elif mode_now == "DISABLED" or emergency_now or not orders_now:
+        st.info(
+            f"Execution control: {mode_now or 'UNKNOWN'} • "
+            f"new orders {'ON' if orders_now else 'OFF'} • "
+            f"emergency stop {'ON' if emergency_now else 'OFF'}"
         )
     else:
-        st.success(
-            "Execution control is fail-closed: DISABLED • new orders OFF • "
-            "emergency stop ON"
-        )
+        st.warning("Execution-control state is not the expected bounded DEMO profile.")
 else:
     st.info(
         "Dashboard can be deployed now. Durable ranking/signal data will appear "
         "after Supabase backend credentials and runtime snapshots are available."
     )
 
-account_tab, scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
-    ["Account & Positions", "Scanner", "Macro & Data", "System", "Validation"]
+forecast_tab, account_tab, scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
+    ["XAU Forecast", "Account & Positions", "Scanner", "Macro & Data", "System", "Validation"]
 )
 
+with forecast_tab:
+    st.subheader("XAUUSD Forecast & Reaction Zone")
+
+    heartbeats = [] if backend is None else backend.get("heartbeats", [])
+    prepared_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_afic_prepared_plan_producer"
+    )
+    move_hb = _latest_heartbeat(
+        heartbeats, "ctrader_xau_expected_move_envelope_v170"
+    )
+    forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
+    prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
+    geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
+
+    state_event = forecast_rows[0] if forecast_rows else None
+    state_payload = {}
+    if state_event:
+        state_payload = dict(dict(state_event.get("payload") or {}).get("forecast") or {})
+
+    hb_details = {} if prepared_hb is None else dict(prepared_hb.get("details") or {})
+    state = str(hb_details.get("forecast_state") or state_payload.get("state") or "NO_MAP")
+    direction = str(
+        hb_details.get("continuation_direction")
+        or state_payload.get("continuation_direction")
+        or "—"
+    ).upper()
+    zone = dict(state_payload.get("zone") or {})
+    zone_low = hb_details.get("zone_low", zone.get("low"))
+    zone_high = hb_details.get("zone_high", zone.get("high"))
+    grade = str(hb_details.get("forecast_selector_grade") or "—")
+    live_price = hb_details.get("live_price")
+    distance_points = hb_details.get("distance_to_zone_points")
+    distance_atr = hb_details.get("distance_to_zone_atr")
+    proximity = str(hb_details.get("proximity_state") or "UNKNOWN")
+    scan_seconds = hb_details.get("effective_scan_seconds", 60)
+    auto_enabled = bool(
+        hb_details.get("execution_enabled_env")
+        and hb_details.get("handoff_allowlisted")
+    )
+
+    f1, f2, f3, f4, f5, f6 = st.columns(6)
+    f1.metric("Forecast", direction)
+    f2.metric("State", state)
+    f3.metric("Selector", grade)
+    f4.metric("Live XAU", _fmt_price(live_price))
+    f5.metric("Distance to zone", _fmt_distance(distance_points, " pts"))
+    f6.metric("AFIC scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
+
+    if zone_low is not None and zone_high is not None:
+        st.markdown(
+            f"**Reaction zone:** {_fmt_price(zone_low)} – {_fmt_price(zone_high)}  "
+            f"• **Proximity:** {proximity}  "
+            f"• **Distance:** {_fmt_distance(distance_atr, ' ATR')}"
+        )
+    st.info(_afic_path_text(direction, state))
+
+    if grade == "A":
+        st.success(
+            "Canonical V161 selector PASS: grade A map eligible for DEMO auto execution "
+            "after completed M15 confirmation."
+        )
+    elif grade in {"B", "C"}:
+        st.warning(
+            f"Grade {grade}: dashboard/watch only. Scanner will not auto-order this AFIC "
+            "map even if the zone is touched."
+        )
+    else:
+        st.caption("No canonical AFIC selector grade available yet.")
+
+    plan_event = prepared_rows[0] if prepared_rows else None
+    plan_payload = {} if plan_event is None else dict(plan_event.get("payload") or {})
+    prepared_plan = dict(plan_payload.get("prepared_plan") or {})
+    plan_forecast = dict(plan_payload.get("forecast") or {})
+    current_map = hb_details.get("map_at") or state_payload.get("map_at")
+    plan_current = bool(
+        prepared_plan
+        and current_map
+        and str(plan_forecast.get("map_at") or "") == str(current_map)
+    )
+
+    st.markdown("#### Prepared order blueprint")
+    if plan_current:
+        p1, p2, p3, p4, p5 = st.columns(5)
+        p1.metric("Reference / Limit", _fmt_price(prepared_plan.get("entry")))
+        p2.metric("Stop Loss", _fmt_price(prepared_plan.get("stop")))
+        p3.metric("TP1", _fmt_price(prepared_plan.get("tp1")))
+        p4.metric("TP2", _fmt_price(prepared_plan.get("tp2")))
+        p5.metric("RR TP2", _fmt_distance(prepared_plan.get("rr2"), "R"))
+        if "CONFIRMED" in state.upper() and grade == "A" and auto_enabled:
+            st.success(
+                "Automation: confirmation detected → fresh broker quote revalidated → "
+                "MARKET DEMO eligible. SL/TP must be attached server-side."
+            )
+        else:
+            st.caption(
+                "Reference level is also the manual LIMIT blueprint. Automatic pending "
+                "LIMIT stays disabled until expiry/cancel-on-invalidation reconciliation "
+                "is implemented."
+            )
+    else:
+        st.caption(
+            "No current-map executable blueprint. Zone and direction remain visible for "
+            "manual monitoring."
+        )
+
+    auto_label = "ARMED FOR GRADE-A CONFIRMATION" if auto_enabled else "MONITOR ONLY"
+    if grade != "A":
+        auto_label = f"BLOCKED BY SELECTOR GRADE {grade}"
+    st.markdown(f"**Automation status:** {auto_label}")
+    if hb_details.get("blueprint_block_reason"):
+        st.caption(f"Current block: {hb_details.get('blueprint_block_reason')}")
+
+    if geometry_rows:
+        latest_geometry = dict(geometry_rows[0].get("payload") or {})
+        st.caption(
+            "Latest AFIC broker-authorized geometry: "
+            f"{latest_geometry.get('direction', '—')} • "
+            f"entry mode {latest_geometry.get('entry_mode', '—')} • "
+            f"SL {_fmt_price(latest_geometry.get('planned_sl'))} • "
+            f"TP2 {_fmt_price(latest_geometry.get('planned_tp2'))}"
+        )
+
+    st.markdown("#### Expected-move envelope")
+    move_details = {} if move_hb is None else dict(move_hb.get("details") or {})
+    move_eval = dict(move_details.get("evaluation") or {})
+    envelope = dict(move_eval.get("current_envelope") or {})
+    horizons = dict(envelope.get("horizons") or {})
+    if envelope and horizons:
+        st.caption(
+            "Magnitude forecast only — excursion quantiles, not bullish/bearish probabilities."
+        )
+        move_rows = []
+        for label in ("1h", "4h", "8h"):
+            row = dict(horizons.get(label) or {})
+            levels = dict(row.get("levels") or {})
+            if levels:
+                move_rows.append(
+                    {
+                        "horizon": label,
+                        "anchor": envelope.get("price"),
+                        "down q50": levels.get("down_q50"),
+                        "down q75": levels.get("down_q75"),
+                        "down q90": levels.get("down_q90"),
+                        "up q50": levels.get("up_q50"),
+                        "up q75": levels.get("up_q75"),
+                        "up q90": levels.get("up_q90"),
+                    }
+                )
+        if move_rows:
+            st.dataframe(pd.DataFrame(move_rows), hide_index=True, use_container_width=True)
+    else:
+        st.caption("Expected-move V170 heartbeat is not available in this snapshot.")
+
+    st.markdown("#### Forecast state history")
+    history_rows = []
+    for row in forecast_rows[:12]:
+        payload = dict(dict(row.get("payload") or {}).get("forecast") or {})
+        z = dict(payload.get("zone") or {})
+        history_rows.append(
+            {
+                "observed_at": row.get("observed_at"),
+                "map_at": payload.get("map_at"),
+                "state": payload.get("state"),
+                "direction": payload.get("continuation_direction"),
+                "zone_low": z.get("low"),
+                "zone_high": z.get("high"),
+                "touch_at": payload.get("first_touch_at"),
+                "confirm_at": payload.get("confirm_at"),
+                "invalidated_at": payload.get("invalidated_at"),
+            }
+        )
+    if history_rows:
+        st.dataframe(pd.DataFrame(history_rows), hide_index=True, use_container_width=True)
+    else:
+        st.caption("No durable AFIC forecast transitions have been recorded yet.")
+
 with account_tab:
-    st.subheader("HFM / MT5 Account Monitor")
+    st.subheader("Broker Account Monitor")
     account = None if backend is None else backend.get("broker_account")
     positions = [] if backend is None else backend.get("broker_positions", [])
 

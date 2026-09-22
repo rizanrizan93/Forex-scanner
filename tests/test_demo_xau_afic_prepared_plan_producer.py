@@ -4,7 +4,8 @@ from fx_scanner.demo_xau_afic_prepared_plan_producer import (
     EXECUTION_STRATEGY_ID,MAX_H4_DIRECTIONAL_CLOSE_LOC,MAX_ZONE_DISTANCE_ATR,
     STATE_CODE,STATE_EVENT_TYPE,STRATEGY_ID,confirmation_latency_seconds,
     entry_drift_metrics,forecast_state_key,prepared_blueprint,
-    prepared_observability,selector_grade
+    prepared_observability,selector_grade,signal_state_and_guards,zone_proximity,
+    geometry_matches_current_forecast
 )
 
 UTC=timezone.utc
@@ -123,3 +124,58 @@ def test_afic_forecast_state_transition_identity_and_key_are_durable():
     assert "ZONE_TOUCHED_WAIT_CONFIRM" in touched
     assert "INVALIDATED_AFTER_TOUCH_REMAP_DUE" in invalidated
     assert "2026-09-22T02:00:00+00:00" in invalidated
+
+
+def test_afic_grade_a_confirmed_is_only_auto_ready_state():
+    state,guards=signal_state_and_guards(
+        execution_enabled=True,confirmed=True,grade="A"
+    )
+    assert state=="EXECUTION_READY"
+    assert guards==[]
+
+    state_b,guards_b=signal_state_and_guards(
+        execution_enabled=True,confirmed=True,grade="B"
+    )
+    assert state_b=="ARMED"
+    assert "AFIC_SELECTOR_GRADE_A_REQUIRED" in guards_b
+
+    state_wait,guards_wait=signal_state_and_guards(
+        execution_enabled=True,confirmed=False,grade="A"
+    )
+    assert state_wait=="ARMED"
+    assert "AFIC_M15_CONFIRMATION_REQUIRED" in guards_wait
+
+
+def test_afic_zone_proximity_activates_one_minute_near_zone():
+    zone={"low":4342.0,"high":4356.0,"h1_atr":14.0}
+    near=zone_proximity(price=4363.0,zone=zone)
+    assert near["proximity_state"]=="NEAR_ZONE"
+    assert near["distance_atr"]==0.5
+    assert near["recommended_scan_seconds"]==60
+
+    inside=zone_proximity(price=4350.0,zone=zone)
+    assert inside["inside_zone"] is True
+    assert inside["recommended_scan_seconds"]==60
+
+    far=zone_proximity(price=4385.0,zone=zone)
+    assert far["proximity_state"]=="FAR"
+    assert far["recommended_scan_seconds"]==300
+
+
+def test_afic_execution_geometry_must_match_current_confirmed_map():
+    geometry={
+        "map_at":"2026-09-22T04:00:00+00:00",
+        "confirm_at":"2026-09-22T04:45:00+00:00",
+    }
+    current={
+        "state":"CONFIRMED_SHADOW",
+        "map_at":"2026-09-22T04:00:00+00:00",
+        "confirm_at":"2026-09-22T04:45:00+00:00",
+    }
+    assert geometry_matches_current_forecast(geometry,current) is True
+    assert geometry_matches_current_forecast(
+        geometry,{**current,"state":"INVALIDATED_AFTER_TOUCH_REMAP_DUE"}
+    ) is False
+    assert geometry_matches_current_forecast(
+        geometry,{**current,"map_at":"2026-09-22T08:00:00+00:00"}
+    ) is False

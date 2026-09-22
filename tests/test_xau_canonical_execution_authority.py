@@ -4,6 +4,7 @@ from fx_scanner.demo_execution_fresh_ready_handoff import (
     _ALLOWED_STRATEGIES_BY_SYMBOL,
     _XAU_CANONICAL_STRATEGY,
     _XAU_CHAMPION_STRATEGY,
+    _XAU_AFIC_EXECUTION_STRATEGY,
     _XAU_D1_TSMOM_STRATEGY,
     _XAU_SHADOW_STRATEGIES,
 )
@@ -13,13 +14,16 @@ from fx_scanner.demo_xau_v24_champion_candidate_producer import STRATEGY_ID as V
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_xau_has_exact_canonical_and_v24_demo_execution_strategies():
+def test_xau_has_exact_canonical_v24_and_afic_demo_execution_strategies():
     assert set(_ALLOWED_STRATEGIES_BY_SYMBOL) == {"XAUUSD"}
     allowed = _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"]
     assert STRATEGY_ID == _XAU_CANONICAL_STRATEGY
     assert _XAU_CHAMPION_STRATEGY == V24_STRATEGY_ID
     assert _XAU_D1_TSMOM_STRATEGY == "D1_TSMOM_60_200"
-    assert allowed == frozenset({STRATEGY_ID, V24_STRATEGY_ID})
+    assert _XAU_AFIC_EXECUTION_STRATEGY == "XAU_AFIC_PATH_EXECUTION_V1"
+    assert allowed == frozenset(
+        {STRATEGY_ID, V24_STRATEGY_ID, "XAU_AFIC_PATH_EXECUTION_V1"}
+    )
     assert STRATEGY_ID not in _XAU_SHADOW_STRATEGIES
     assert _XAU_D1_TSMOM_STRATEGY in _XAU_SHADOW_STRATEGIES
     assert allowed.isdisjoint(_XAU_SHADOW_STRATEGIES)
