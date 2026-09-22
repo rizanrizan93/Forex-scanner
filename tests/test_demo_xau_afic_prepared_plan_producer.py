@@ -4,7 +4,8 @@ from fx_scanner.demo_xau_afic_prepared_plan_producer import (
     EXECUTION_STRATEGY_ID,MAX_H4_DIRECTIONAL_CLOSE_LOC,MAX_ZONE_DISTANCE_ATR,
     STATE_CODE,STATE_EVENT_TYPE,STRATEGY_ID,confirmation_latency_seconds,
     entry_drift_metrics,forecast_state_key,prepared_blueprint,
-    prepared_observability,selector_grade,signal_state_and_guards,zone_proximity
+    prepared_observability,selector_grade,signal_state_and_guards,zone_proximity,
+    geometry_matches_current_forecast
 )
 
 UTC=timezone.utc
@@ -159,3 +160,22 @@ def test_afic_zone_proximity_activates_one_minute_near_zone():
     far=zone_proximity(price=4385.0,zone=zone)
     assert far["proximity_state"]=="FAR"
     assert far["recommended_scan_seconds"]==300
+
+
+def test_afic_execution_geometry_must_match_current_confirmed_map():
+    geometry={
+        "map_at":"2026-09-22T04:00:00+00:00",
+        "confirm_at":"2026-09-22T04:45:00+00:00",
+    }
+    current={
+        "state":"CONFIRMED_SHADOW",
+        "map_at":"2026-09-22T04:00:00+00:00",
+        "confirm_at":"2026-09-22T04:45:00+00:00",
+    }
+    assert geometry_matches_current_forecast(geometry,current) is True
+    assert geometry_matches_current_forecast(
+        geometry,{**current,"state":"INVALIDATED_AFTER_TOUCH_REMAP_DUE"}
+    ) is False
+    assert geometry_matches_current_forecast(
+        geometry,{**current,"map_at":"2026-09-22T08:00:00+00:00"}
+    ) is False
