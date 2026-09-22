@@ -115,3 +115,47 @@ def test_ensemble_reports_scenarios_without_execution_authority():
     assert 0.0 < result["confidence"] <= 0.90
     assert result["execution_influence"] is False
     assert result["decision"]["promotion"] is False
+
+
+def test_invalidated_afic_forces_wait_remap_even_if_priors_are_bullish():
+    result = build_forecast_ensemble(
+        afic={
+            "available": True,
+            "direction": "LONG",
+            "grade": "B",
+            "state": "INVALIDATED_AFTER_TOUCH_REMAP_DUE",
+            "path": {"first_leg": "SHORT", "continuation": "LONG"},
+            "invalidation": 4300.0,
+        },
+        expected_move={"available": True},
+        conditional={
+            "available": True,
+            "direction": "LONG",
+            "direction_score": 0.60,
+        },
+        acd={
+            "available": True,
+            "direction": "LONG",
+            "direction_score": 0.55,
+        },
+        cot={
+            "available": True,
+            "direction": "LONG",
+            "direction_score": 0.35,
+        },
+    )
+    assert result["primary_scenario"]["direction"] == "WAIT_REMAP"
+    assert "PENDING_H4_REMAP" in result["alternative_scenario"]["type"]
+    assert result["execution_influence"] is False
+
+
+def test_streamlit_contains_live_ensemble_contract():
+    text = (
+        __import__("pathlib").Path(__file__).resolve().parents[1] / "streamlit_app.py"
+    ).read_text()
+    assert "Forecast Ensemble V171" in text
+    assert "Primary scenario" in text
+    assert "Alternative" in text
+    assert "Invalidation" in text
+    assert "ctrader_xau_forecast_ensemble_v171" in text
+    assert "does not alter AFIC Grade-A execution authority" in text
