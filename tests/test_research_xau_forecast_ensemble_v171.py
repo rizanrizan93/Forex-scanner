@@ -215,3 +215,15 @@ def test_runtime_marks_no_map_zone_afic_unavailable():
     assert '"NO_MAP_ZONE", "NO_ORIGIN_ZONE", "NO_DIRECTION"' in text
     assert "zone_valid" in text
     assert "available = direction in" in text
+
+
+def test_streamlit_trade_preparation_makes_wait_zone_explicit():
+    root = __import__("pathlib").Path(__file__).resolve().parents[1]
+    text = (root / "streamlit_app.py").read_text()
+    assert "### Trade Preparation" in text
+    assert "NO VALID ENTRY ZONE — DO NOT ORDER YET" in text
+    assert '"Reaction zone"' in text
+    assert '"Reference entry"' in text
+    assert '"Manual action"' in text
+    assert "WAIT M15 CONFIRM" in text
+    assert "Do not reuse an older zone from Forecast State History" in text

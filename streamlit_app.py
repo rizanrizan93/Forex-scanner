@@ -449,6 +449,76 @@ with forecast_tab:
         latest_execution_event=latest_exec_event,
     )
 
+    current_map = hb_details.get("map_at") or state_payload.get("map_at")
+    prep_event_now = prepared_rows[0] if prepared_rows else None
+    prep_payload_now = {} if prep_event_now is None else dict(prep_event_now.get("payload") or {})
+    prep_plan_now = dict(prep_payload_now.get("prepared_plan") or {})
+    prep_forecast_now = dict(prep_payload_now.get("forecast") or {})
+    prep_current_now = bool(
+        prep_plan_now
+        and current_map
+        and str(prep_forecast_now.get("map_at") or "") == str(current_map)
+    )
+    reference_entry_now = prep_plan_now.get("entry") if prep_current_now else None
+
+    valid_zone_now = bool(
+        zone_low is not None
+        and zone_high is not None
+        and str(state).upper() not in {
+            "NO_MAP_ZONE",
+            "NO_ORIGIN_ZONE",
+            "NO_DIRECTION",
+            "INSUFFICIENT_HISTORY",
+            "INSUFFICIENT_H4",
+        }
+        and "INVALID" not in str(state).upper()
+        and "REMAP" not in str(state).upper()
+    )
+    zone_side = (
+        "BUY" if direction == "LONG"
+        else "SELL" if direction == "SHORT"
+        else "—"
+    )
+
+    st.markdown("### Trade Preparation")
+    if not valid_zone_now:
+        st.error(
+            "NO VALID ENTRY ZONE — DO NOT ORDER YET. "
+            "Scanner is waiting for a new H4 structural map/reaction zone."
+        )
+        t1, t2, t3, t4 = st.columns(4)
+        t1.metric("Waiting for", "NEW H4 MAP")
+        t2.metric("Reaction zone", "—")
+        t3.metric("Reference entry", "—")
+        t4.metric("Manual action", "WAIT")
+    else:
+        t1, t2, t3, t4 = st.columns(4)
+        t1.metric("Waiting for", f"{zone_side} REACTION")
+        t2.metric("Reaction zone", f"{_fmt_price(zone_low)}–{_fmt_price(zone_high)}")
+        t3.metric("Reference entry", _fmt_price(reference_entry_now))
+        if grade != "A":
+            manual_action = f"WATCH ONLY (GRADE {grade})"
+        elif "CONFIRMED" in str(state).upper():
+            manual_action = "CONFIRMED / FRESH QUOTE"
+        elif proximity == "IN_ZONE":
+            manual_action = "WAIT M15 CONFIRM"
+        elif proximity == "NEAR_ZONE":
+            manual_action = "PREPARE"
+        else:
+            manual_action = "WAIT PRICE TO ZONE"
+        t4.metric("Manual action", manual_action)
+        st.info(
+            f"Current plan: wait for XAUUSD to enter {_fmt_price(zone_low)}–"
+            f"{_fmt_price(zone_high)}. "
+            + (
+                f"Prepared/reference entry ≈ {_fmt_price(reference_entry_now)}. "
+                if reference_entry_now is not None
+                else "Reference entry is not executable yet. "
+            )
+            + "Do not enter merely because price touches the zone; completed M15 "
+              "confirmation is still required for the AFIC auto path."
+        )
+
     f1, f2, f3, f4, f5, f6 = st.columns(6)
     f1.metric("Forecast", direction)
     f2.metric("State", state)
@@ -623,7 +693,6 @@ with forecast_tab:
     plan_payload = {} if plan_event is None else dict(plan_event.get("payload") or {})
     prepared_plan = dict(plan_payload.get("prepared_plan") or {})
     plan_forecast = dict(plan_payload.get("forecast") or {})
-    current_map = hb_details.get("map_at") or state_payload.get("map_at")
     plan_current = bool(
         prepared_plan
         and current_map
@@ -650,10 +719,16 @@ with forecast_tab:
                 "is implemented."
             )
     else:
-        st.caption(
-            "No current-map executable blueprint. Zone and direction remain visible for "
-            "manual monitoring."
-        )
+        if valid_zone_now:
+            st.warning(
+                "Reaction zone exists, but no executable prepared/reference entry is valid "
+                "for the current map yet. Wait for the blueprint/confirmation."
+            )
+        else:
+            st.error(
+                "No valid reaction zone or prepared/reference entry for the current H4 map. "
+                "Do not reuse an older zone from Forecast State History."
+            )
 
     auto_label = "ARMED FOR GRADE-A CONFIRMATION" if auto_enabled else "MONITOR ONLY"
     if grade != "A":
