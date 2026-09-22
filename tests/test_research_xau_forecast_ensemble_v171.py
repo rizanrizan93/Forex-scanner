@@ -170,3 +170,48 @@ def test_v171_runtime_refreshes_v170_from_same_live_history():
     assert "XAU_EXPECTED_MOVE_ENVELOPE_V170_LIVE_20K" in text
     assert "directional_vote" in text
     assert "reference_100k" in text
+
+
+def test_missing_afic_zone_forces_wait_h4_map_but_preserves_directional_prior():
+    result = build_forecast_ensemble(
+        afic={
+            "available": False,
+            "direction": "NEUTRAL",
+            "raw_direction": "SHORT",
+            "grade": None,
+            "state": "NO_MAP_ZONE",
+            "path": {"first_leg": None, "reaction_zone": {"low": None, "high": None}, "continuation": None},
+            "invalidation": None,
+        },
+        expected_move={"available": True},
+        conditional={
+            "available": True,
+            "direction": "NEUTRAL",
+            "direction_score": -0.03,
+        },
+        acd={
+            "available": True,
+            "direction": "SHORT",
+            "direction_score": -0.55,
+        },
+        cot={
+            "available": True,
+            "direction": "SHORT",
+            "direction_score": -0.35,
+        },
+    )
+    assert result["primary_scenario"]["direction"] == "WAIT_H4_MAP"
+    assert result["directional_prior"]["direction"] == "SHORT"
+    assert result["alternative_scenario"]["type"] == "SHORT_PRIOR_PENDING_H4_MAP"
+    assert result["confidence"] <= 0.25
+    assert result["execution_influence"] is False
+
+
+def test_runtime_marks_no_map_zone_afic_unavailable():
+    root = __import__("pathlib").Path(__file__).resolve().parents[1]
+    text = (
+        root / "src/fx_scanner/research_xau_forecast_ensemble_v171_runtime.py"
+    ).read_text()
+    assert '"NO_MAP_ZONE", "NO_ORIGIN_ZONE", "NO_DIRECTION"' in text
+    assert "zone_valid" in text
+    assert "available = direction in" in text
