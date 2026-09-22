@@ -105,9 +105,7 @@ jobs:
         if: >-
           ${{ !cancelled() &&
               steps.repair_existing_protection.outcome == 'success' &&
-              (steps.produce_xau_v24_champion.outcome == 'success' ||
-               steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success' ||
-               steps.produce_xau_afic.outcome == 'success') }}
+              steps.produce_xau_afic.outcome == 'success' }}
         continue-on-error: true
         run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
 
@@ -127,9 +125,12 @@ jobs:
             echo "XAU_EXECUTION_LANE_FAIL stage=REPAIR outcome=${REPAIR_OUTCOME}"
             failed=1
           fi
-          if [ "${V24_OUTCOME}" != "success" ] && [ "${CANONICAL_OUTCOME}" != "success" ] && [ "${AFIC_OUTCOME}" != "success" ]; then
-            echo "XAU_EXECUTION_LANE_FAIL stage=PRODUCERS v24=${V24_OUTCOME} canonical=${CANONICAL_OUTCOME} afic=${AFIC_OUTCOME}"
+          if [ "${AFIC_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_FAIL stage=AFIC_RECONCILIATION outcome=${AFIC_OUTCOME} safety=FAIL_CLOSED"
             failed=1
+          fi
+          if [ "${V24_OUTCOME}" != "success" ] && [ "${CANONICAL_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_WARN stage=OTHER_PRODUCERS v24=${V24_OUTCOME} canonical=${CANONICAL_OUTCOME} afic=${AFIC_OUTCOME}"
           fi
           if [ "${HANDOFF_OUTCOME}" != "success" ]; then
             echo "XAU_EXECUTION_LANE_FAIL stage=HANDOFF outcome=${HANDOFF_OUTCOME}"
