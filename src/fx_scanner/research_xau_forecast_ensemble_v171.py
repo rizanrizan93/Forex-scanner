@@ -389,8 +389,8 @@ def build_forecast_ensemble(
     afic_direction = str(components["afic"].get("direction") or "").upper()
     afic_grade = str(components["afic"].get("grade") or "").upper()
     afic_state = str(components["afic"].get("state") or "").upper()
-    if afic_direction in {"LONG", "SHORT"}:
-        components["afic"]["available"] = True
+    afic_available = bool(components["afic"].get("available")) and afic_direction in {"LONG", "SHORT"}
+    if afic_available:
         components["afic"]["direction_score"] = 1.0 if afic_direction == "LONG" else -1.0
     else:
         components["afic"]["available"] = False
@@ -408,11 +408,14 @@ def build_forecast_ensemble(
 
     score = 0.0 if available_weight <= 0 else weighted / available_weight
     coverage = available_weight / sum(DIRECTION_WEIGHTS.values())
-    primary_direction = (
-        "LONG" if score >= 0.15 else "SHORT" if score <= -0.15 else "UNCLEAR"
+    prior_direction = (
+        "LONG" if score >= 0.15 else "SHORT" if score <= -0.15 else "NEUTRAL"
     )
+    primary_direction = prior_direction if prior_direction != "NEUTRAL" else "UNCLEAR"
     structural_invalid = "INVALID" in afic_state or "REMAP" in afic_state
-    if structural_invalid:
+    if not afic_available:
+        primary_direction = "WAIT_H4_MAP"
+    elif structural_invalid:
         primary_direction = "WAIT_REMAP"
 
     conflict = False
@@ -421,7 +424,9 @@ def build_forecast_ensemble(
         conflict = any(v > 0 for v in nonzero) and any(v < 0 for v in nonzero)
 
     structural_penalty = 1.0
-    if afic_grade == "B":
+    if not afic_available:
+        structural_penalty *= 0.35
+    elif afic_grade == "B":
         structural_penalty *= 0.82
     elif afic_grade not in {"A", ""}:
         structural_penalty *= 0.68
@@ -432,12 +437,16 @@ def build_forecast_ensemble(
     if conflict:
         raw_conf *= 0.85
     confidence = max(0.0, min(0.90, raw_conf))
+    if not afic_available:
+        confidence = min(confidence, 0.25)
 
     alternative = "WAIT_FOR_REMAP"
     if primary_direction == "LONG":
         alternative = "SHORT_REVERSAL_IF_PRIMARY_INVALIDATES"
     elif primary_direction == "SHORT":
         alternative = "LONG_REVERSAL_IF_PRIMARY_INVALIDATES"
+    elif not afic_available:
+        alternative = f"{prior_direction}_PRIOR_PENDING_H4_MAP"
     elif structural_invalid:
         conditional_direction = str(components["conditional"].get("direction") or "NEUTRAL").upper()
         alternative = f"{conditional_direction}_PRIOR_PENDING_H4_REMAP"
@@ -472,6 +481,12 @@ def build_forecast_ensemble(
         "invalidation": invalidation,
         "confidence": confidence,
         "coverage": coverage,
+        "directional_prior": {
+            "direction": prior_direction,
+            "score": score,
+            "confidence": max(0.0, min(0.90, 0.45 + 0.45 * abs(score))),
+            "structural_map_required_for_primary": True,
+        },
         "expected_move": envelope,
         "components": {
             "afic": components["afic"],

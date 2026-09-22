@@ -511,6 +511,16 @@ with forecast_tab:
             f"age={'—' if ensemble_age is None else f'{ensemble_age:.0f}s'} • "
             "does not alter AFIC Grade-A execution authority."
         )
+        directional_prior = dict(ensemble.get("directional_prior") or {})
+        if directional_prior:
+            st.caption(
+                "Directional prior: "
+                f"{directional_prior.get('direction', '—')} • "
+                f"score={_fmt_distance(directional_prior.get('score'), '')} • "
+                f"prior confidence={_fmt_pct(directional_prior.get('confidence'))}. "
+                "A valid AFIC H4 map/reaction zone is still required before this can "
+                "become a Primary LONG/SHORT structural scenario."
+            )
 
         path = dict(primary.get("structural_path") or {})
         if path:
