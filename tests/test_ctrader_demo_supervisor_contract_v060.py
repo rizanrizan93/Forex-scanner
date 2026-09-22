@@ -30,6 +30,12 @@ def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_hando
     assert '.workflow_runs[0].status // ""' in text
     assert '[ "${latest_execution_status}" = "completed" ]' in text
     assert '[ "${latest_execution_conclusion}" = "success" ]' in text
+    assert "latest_execution_state()" in text
+    assert "handoff_wait_max_cycles=8" in text
+    assert "handoff_wait_seconds=15" in text
+    assert "CTRADER_DEMO_SUPERVISOR_HANDOFF_WAIT" in text
+    assert 'queued|in_progress|waiting|pending)' in text
+    assert "never fall back to an" in text
     assert "other_active_supervisors" in text
     assert "safety=FAIL_CLOSED" in text
     assert "workflow_run:" not in text
