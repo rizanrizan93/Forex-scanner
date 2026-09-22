@@ -162,6 +162,56 @@ def entry_drift_metrics(*,prepared:dict[str,Any]|None,live:dict[str,Any]|None)->
     }
 
 
+def prepared_observability(
+    payload:dict[str,Any],
+    *,
+    prepared_reference:dict[str,Any]|None,
+    final_plan:dict[str,Any]|None,
+    kind:str,
+    confirmed:bool,
+)->dict[str,Any]:
+    zone=dict(payload.get("zone") or {})
+    features=dict(payload.get("h4_features") or {})
+    direction=str(payload.get("continuation_direction") or "").upper()
+    valid_context=direction in {"LONG","SHORT"} and bool(zone)
+    grade=selector_grade(features) if valid_context and features else None
+
+    if not valid_context:
+        block_reason="NO_FORECAST_ZONE"
+    elif confirmed and kind!="CONFIRMED_LIVE_BLUEPRINT":
+        block_reason="CONFIRMED_LIVE_TARGET_GEOMETRY_INVALID"
+    elif not confirmed and prepared_reference is None:
+        block_reason="FORECAST_TARGET_GEOMETRY_INVALID"
+    elif kind=="NONE":
+        block_reason="NO_BLUEPRINT_KIND"
+    else:
+        block_reason=None
+
+    def _float_or_none(value):
+        try:
+            x=float(value)
+        except (TypeError,ValueError):
+            return None
+        return x if isfinite(x) else None
+
+    return {
+        "blueprint_block_reason":block_reason,
+        "forecast_selector_grade":grade,
+        "continuation_direction":direction if direction in {"LONG","SHORT"} else None,
+        "map_at":payload.get("map_at"),
+        "zone_low":_float_or_none(zone.get("low")),
+        "zone_high":_float_or_none(zone.get("high")),
+        "zone_distance_atr":_float_or_none(features.get("zone_distance_atr")),
+        "h4_directional_close_location":_float_or_none(
+            features.get("h4_directional_close_location")
+        ),
+        "prepared_reference_entry":None if prepared_reference is None else _float_or_none(
+            prepared_reference.get("entry")
+        ),
+        "final_entry":None if final_plan is None else _float_or_none(final_plan.get("entry")),
+    }
+
+
 def _dedupe_key(payload:dict[str,Any],kind:str)->str:
     fields=(
         STRATEGY_ID,
@@ -326,6 +376,8 @@ def run()->int:
     signal_id=None
     kind="NONE"
     error=None
+    confirmed=False
+    observability:dict[str,Any]={}
     try:
         feed.ensure_connected()
         raw=tuple(feed.historical_bars(
@@ -364,6 +416,14 @@ def run()->int:
                 )
         elif plan is not None:
             kind="FORECAST_BLUEPRINT"
+
+        observability=prepared_observability(
+            payload,
+            prepared_reference=prepared_reference,
+            final_plan=plan,
+            kind=kind,
+            confirmed=confirmed,
+        )
 
         if plan is not None and kind!="NONE":
             key=_dedupe_key(payload,kind)
@@ -405,7 +465,17 @@ def run()->int:
             "raw_m15_bars":raw_count,
             "forecast_state":payload.get("state"),
             "selector_grade":None if plan is None else plan.get("selector_grade"),
+            "forecast_selector_grade":observability.get("forecast_selector_grade"),
             "blueprint_kind":kind,
+            "blueprint_block_reason":observability.get("blueprint_block_reason"),
+            "map_at":observability.get("map_at"),
+            "continuation_direction":observability.get("continuation_direction"),
+            "zone_low":observability.get("zone_low"),
+            "zone_high":observability.get("zone_high"),
+            "zone_distance_atr":observability.get("zone_distance_atr"),
+            "h4_directional_close_location":observability.get("h4_directional_close_location"),
+            "prepared_reference_entry":observability.get("prepared_reference_entry"),
+            "final_entry":observability.get("final_entry"),
             "signal_id":signal_id,
             "confirmation_detection_lag_seconds":confirmation_lag,
             "entry_drift_r":drift_metrics.get("entry_drift_r"),
@@ -417,6 +487,8 @@ def run()->int:
         "CTRADER_DEMO_XAU_AFIC_PREPARED_PLAN "
         f"healthy={int(healthy)} forecast_state={payload.get('state','ERROR')} "
         f"blueprint={kind} grade={None if plan is None else plan.get('selector_grade')} "
+        f"forecast_grade={observability.get('forecast_selector_grade')} "
+        f"block={observability.get('blueprint_block_reason')} "
         f"confirm_lag_s={confirmation_lag} drift_r={drift_metrics.get('entry_drift_r')} "
         f"emitted={int(emitted)} execution_authority=0"
     )
