@@ -159,3 +159,14 @@ def test_streamlit_contains_live_ensemble_contract():
     assert "Invalidation" in text
     assert "ctrader_xau_forecast_ensemble_v171" in text
     assert "does not alter AFIC Grade-A execution authority" in text
+
+
+def test_v171_runtime_refreshes_v170_from_same_live_history():
+    root = __import__("pathlib").Path(__file__).resolve().parents[1]
+    text = (
+        root / "src/fx_scanner/research_xau_forecast_ensemble_v171_runtime.py"
+    ).read_text()
+    assert "evaluate_expected_move_v170(bars)" in text
+    assert "XAU_EXPECTED_MOVE_ENVELOPE_V170_LIVE_20K" in text
+    assert "directional_vote" in text
+    assert "reference_100k" in text
