@@ -214,6 +214,11 @@ with st.sidebar:
     if st.button("Refresh dashboard", use_container_width=True):
         _load_backend_snapshot.clear()
         st.rerun()
+    auto_refresh_enabled = st.toggle(
+        "Auto refresh monitor",
+        value=True,
+        help="Refresh the read-only dashboard every 5 seconds. Scanner/order runtime is independent.",
+    )
 
     st.divider()
     st.markdown("**Runtime model**")
@@ -234,6 +239,25 @@ with st.sidebar:
         st.code("DEMO AUTO CAPABLE / LIVE OFF", language=None)
     else:
         st.code("LIVE EXECUTION NOT AUTHORIZED", language=None)
+
+
+if "dashboard_auto_refresh_at" not in st.session_state:
+    st.session_state["dashboard_auto_refresh_at"] = datetime.now(tz=UTC)
+
+
+@st.fragment(run_every="5s")
+def _dashboard_auto_refresh_tick() -> None:
+    if not auto_refresh_enabled:
+        return
+    now = datetime.now(tz=UTC)
+    last = st.session_state.get("dashboard_auto_refresh_at")
+    if not isinstance(last, datetime) or (now - last).total_seconds() >= 4.5:
+        st.session_state["dashboard_auto_refresh_at"] = now
+        _load_backend_snapshot.clear()
+        st.rerun()
+
+
+_dashboard_auto_refresh_tick()
 
 
 st.title("FX Institutional Scanner")
@@ -482,7 +506,7 @@ with forecast_tab:
         st.caption("No durable AFIC forecast transitions have been recorded yet.")
 
 with account_tab:
-    st.subheader("HFM / MT5 Account Monitor")
+    st.subheader("Broker Account Monitor")
     account = None if backend is None else backend.get("broker_account")
     positions = [] if backend is None else backend.get("broker_positions", [])
 
