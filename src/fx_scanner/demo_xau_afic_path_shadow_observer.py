@@ -188,6 +188,7 @@ def _zone_diagnostics(
     map_at,
     price:float,
     continuation:str,
+    bars:Sequence[Bar]|None=None,
 )->dict[str,Any]:
     t=ensure_utc(map_at)
     all_zones=tuple(zones)
@@ -216,6 +217,84 @@ def _zone_diagnostics(
         if ensure_utc(z.available_at)>t
     )
     opposite=tuple(z for z in fresh if z.direction!=continuation)
+
+    closed_bars=tuple(bars or ())
+    latest_price=float(closed_bars[-1].close) if closed_bars else float(price)
+    latest_at=(
+        ensure_utc(closed_bars[-1].timestamp)
+        if closed_bars else t
+    )
+
+    def _distance_to_zone(px:float,z:OriginZone)->float:
+        if px<z.low:
+            return float(z.low-px)
+        if px>z.high:
+            return float(px-z.high)
+        return 0.0
+
+    alternative_watch=[]
+    for z in opposite:
+        after=tuple(
+            row for row in closed_bars
+            if ensure_utc(row.timestamp)>=t
+        )
+        first_touch=None
+        invalidated_at=None
+        for row in after:
+            if first_touch is None and _touch(row,z):
+                first_touch=ensure_utc(row.timestamp).isoformat()
+            if _invalidated(row,z):
+                invalidated_at=ensure_utc(row.timestamp).isoformat()
+                break
+        if continuation=="SHORT" and z.direction=="LONG":
+            role=(
+                "DOWNSIDE_DESTINATION_LONG_REVERSAL_WATCH"
+                if z.high<price else
+                "COUNTERTREND_LONG_REVERSAL_WATCH"
+            )
+        elif continuation=="LONG" and z.direction=="SHORT":
+            role=(
+                "UPSIDE_DESTINATION_SHORT_REVERSAL_WATCH"
+                if z.low>price else
+                "COUNTERTREND_SHORT_REVERSAL_WATCH"
+            )
+        else:
+            role="OPPOSITE_DIRECTION_REVERSAL_WATCH"
+        alternative_watch.append({
+            "direction":z.direction,
+            "role":role,
+            "low":z.low,
+            "high":z.high,
+            "bos_level":z.bos_level,
+            "available_at":z.available_at.isoformat(),
+            "origin_at":z.origin_at.isoformat(),
+            "age_at_map_hours":(
+                t-ensure_utc(z.available_at)
+            ).total_seconds()/3600.0,
+            "current_age_hours":max(
+                0.0,
+                (latest_at-ensure_utc(z.available_at)).total_seconds()/3600.0,
+            ),
+            "distance_from_map_anchor_points":_distance_to_zone(float(price),z),
+            "distance_from_latest_price_points":_distance_to_zone(latest_price,z),
+            "displacement_range_atr":z.displacement_range_atr,
+            "displacement_body_fraction":z.displacement_body_fraction,
+            "first_touch_at":first_touch,
+            "invalidated_at":invalidated_at,
+            "status":"INVALIDATED" if invalidated_at else (
+                "TOUCHED_WATCH_REVERSAL" if first_touch else "ACTIVE_WATCH"
+            ),
+            "auto_execution_authority":False,
+            "required_confirmation":"H1/M15_BULLISH_REVERSAL_REMAP" if z.direction=="LONG"
+                else "H1/M15_BEARISH_REVERSAL_REMAP",
+        })
+    alternative_watch.sort(
+        key=lambda item:(
+            item["status"]=="INVALIDATED",
+            float(item["distance_from_latest_price_points"]),
+            float(item["current_age_hours"]),
+        )
+    )
 
     nearest=None
     if correct_side:
@@ -252,6 +331,11 @@ def _zone_diagnostics(
         "future_not_available_at_map":len(future),
         "matching_direction_fresh":len(matching),
         "opposite_direction_fresh":len(opposite),
+        "alternative_reversal_watch_zones":alternative_watch[:5],
+        "active_alternative_watch_count":sum(
+            1 for item in alternative_watch
+            if item["status"]!="INVALIDATED"
+        ),
         "wrong_side_of_anchor":len(wrong_side),
         "eligible_correct_side":len(correct_side),
         "nearest_eligible":nearest_payload,
@@ -404,7 +488,11 @@ def evaluate_afic_shadow(rows:Sequence[Bar],*,as_of:datetime)->dict[str,Any]:
     first_leg="SHORT" if continuation=="LONG" else "LONG"
     map_price=c
     zone_diagnostics=_zone_diagnostics(
-        zones,map_at=map_at,price=map_price,continuation=continuation
+        zones,
+        map_at=map_at,
+        price=map_price,
+        continuation=continuation,
+        bars=bars,
     )
     zone=_choose_zone(zones,map_at=map_at,price=map_price,continuation=continuation)
     if zone is None:
