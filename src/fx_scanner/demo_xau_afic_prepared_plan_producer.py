@@ -158,10 +158,11 @@ def enrich_alternative_reversal_watches(
         item["live_touch"]=bool(inside and str(item.get("status") or "")!="INVALIDATED")
         if item["live_touch"]:
             item["live_touch_at"]=at
-            if not item.get("first_touch_at"):
-                item["first_touch_at"]=at
+            item["live_touch_pending_m15_close"]=True
             if str(item.get("status") or "") in {"", "ACTIVE_WATCH"}:
-                item["status"]="LIVE_TOUCHED_WAIT_REVERSAL_CONFIRM"
+                item["status"]="LIVE_TOUCH_PENDING_M15_CLOSE"
+        else:
+            item["live_touch_pending_m15_close"]=False
     diagnostics["alternative_reversal_watch_zones"]=watches
     diagnostics["live_quote_price"]=px
     diagnostics["live_quote_at"]=at
@@ -335,6 +336,8 @@ def forecast_state_key(payload:dict[str,Any])->str:
         str(payload.get("state") or "NONE"),
         str(payload.get("continuation_direction") or "NONE"),
         str(payload.get("first_touch_at") or "NONE"),
+        str(payload.get("map_first_touch_at") or "NONE"),
+        str(payload.get("touch_lifecycle") or "UNTOUCHED"),
         str(payload.get("confirm_at") or "NONE"),
         str(payload.get("invalidated_at") or "NONE"),
         str(zone.get("origin_at") or "NONE"),
@@ -863,6 +866,10 @@ def run()->int:
             "continuation_direction":observability.get("continuation_direction"),
             "zone_low":observability.get("zone_low"),
             "zone_high":observability.get("zone_high"),
+            "zone_id":dict(payload.get("zone") or {}).get("zone_id"),
+            "first_touch_at":payload.get("first_touch_at"),
+            "map_first_touch_at":payload.get("map_first_touch_at"),
+            "touch_lifecycle":payload.get("touch_lifecycle"),
             "zone_distance_atr":observability.get("zone_distance_atr"),
             "h4_directional_close_location":observability.get("h4_directional_close_location"),
             "zone_diagnostics":dict(payload.get("zone_diagnostics") or {}),
