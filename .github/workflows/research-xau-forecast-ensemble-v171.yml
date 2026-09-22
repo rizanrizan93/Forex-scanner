@@ -2,6 +2,13 @@ name: XAU Forecast Ensemble V171
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/fx_scanner/research_xau_forecast_ensemble_v171.py"
+      - "src/fx_scanner/research_xau_forecast_ensemble_v171_runtime.py"
+      - ".github/workflows/research-xau-forecast-ensemble-v171.yml"
   schedule:
     - cron: "*/5 * * * 1-5"
   pull_request:
