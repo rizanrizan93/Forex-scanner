@@ -126,21 +126,22 @@ def test_afic_forecast_state_transition_identity_and_key_are_durable():
     assert "2026-09-22T02:00:00+00:00" in invalidated
 
 
-def test_afic_grade_a_confirmed_is_only_auto_ready_state():
-    state,guards=signal_state_and_guards(
-        execution_enabled=True,confirmed=True,grade="A"
-    )
-    assert state=="EXECUTION_READY"
-    assert guards==[]
+def test_afic_grade_a_and_b_confirmed_are_demo_auto_ready():
+    for grade in ("A","B"):
+        state,guards=signal_state_and_guards(
+            execution_enabled=True,confirmed=True,grade=grade
+        )
+        assert state=="EXECUTION_READY"
+        assert guards==[]
 
-    state_b,guards_b=signal_state_and_guards(
-        execution_enabled=True,confirmed=True,grade="B"
+    state_c,guards_c=signal_state_and_guards(
+        execution_enabled=True,confirmed=True,grade="C"
     )
-    assert state_b=="ARMED"
-    assert "AFIC_SELECTOR_GRADE_A_REQUIRED" in guards_b
+    assert state_c=="ARMED"
+    assert "AFIC_SELECTOR_GRADE_AB_REQUIRED" in guards_c
 
     state_wait,guards_wait=signal_state_and_guards(
-        execution_enabled=True,confirmed=False,grade="A"
+        execution_enabled=True,confirmed=False,grade="B"
     )
     assert state_wait=="ARMED"
     assert "AFIC_M15_CONFIRMATION_REQUIRED" in guards_wait

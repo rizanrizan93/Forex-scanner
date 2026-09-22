@@ -24,7 +24,7 @@ def install_afic_execution_identity_filter(*, max_age_seconds: float) -> None:
 
 
 def main() -> int:
-    """Execute only fresh AFIC Grade-A confirmed signals on cTrader DEMO."""
+    """Execute only fresh AFIC Grade-A/B confirmed signals on cTrader DEMO."""
     started = monotonic()
     exit_code = 2
     error = None

@@ -66,3 +66,14 @@ def test_xau_dashboard_runtime_status_distinguishes_watch_and_invalidated():
     assert 'runtime_status = "WATCH"' in text
     assert 'Latest non-AFIC XAU row is WATCH only' in text
     assert 'Latest non-AFIC XAU setup is INVALIDATED' in text
+
+
+def test_xau_dashboard_separates_shadow_ready_from_broker_eligible():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'XAU Execution Admission' in text
+    assert '"BROKER ELIGIBLE"' in text
+    assert '"SHADOW READY"' in text
+    assert 'authorized_geometry_codes' in text
+    assert '"XAU_AFIC_PATH_EXECUTION_V1"' in text
+    assert 'pending live revalidation' in text
+    assert 'may say EXECUTION_READY in storage but is SHADOW READY only' in text

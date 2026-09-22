@@ -78,3 +78,24 @@ def test_v24_champion_preserves_fixed_point_zero_one_lot_with_twenty_pct_ceiling
     assert sizing.tier == "V24_FIXED_001"
     assert sizing.lots == 0.01
     assert sizing.risk_budget_pct == 20.0
+
+
+def test_afic_grade_score_contract_keeps_b_smaller_than_a():
+    grade_b = _row(90.0, 1.0, 1.5)
+    grade_b["symbol"] = "XAUUSD"
+    grade_b["setup_type"] = "AFIC_PATH_CONFIRMED"
+    grade_a = _row(95.0, 1.0, 1.5)
+    grade_a["symbol"] = "XAUUSD"
+    grade_a["setup_type"] = "AFIC_PATH_CONFIRMED"
+
+    b = select_demo_conviction_sizing(grade_b)
+    a = select_demo_conviction_sizing(grade_a)
+
+    assert b.tier == "A_PLUS"
+    assert b.lots == 0.10
+    assert b.risk_budget_pct == 4.0
+    assert a.tier == "ELITE"
+    assert a.lots == 0.25
+    assert a.risk_budget_pct == 4.5
+    assert b.lots < a.lots
+    assert b.risk_budget_pct < a.risk_budget_pct
