@@ -1,3 +1,4 @@
+from pathlib import Path
 from fx_scanner.dashboard import DashboardReadError, SupabaseDashboardReader
 
 
@@ -219,3 +220,8 @@ def test_dashboard_reader_has_dedicated_xau_signal_feed():
     rows = SupabaseDashboardReader(client).latest_signals_for_symbol("xauusd", limit=20)
     assert [row["symbol"] for row in rows] == ["XAUUSD", "XAUUSD"]
 
+
+
+def test_dashboard_xau_signal_feed_exposes_ids_for_exact_admission_join():
+    source = (Path(__file__).resolve().parents[1] / "src/fx_scanner/dashboard.py").read_text()
+    assert '"id,observed_at,symbol,direction,setup_type,state,pair_score,"' in source
