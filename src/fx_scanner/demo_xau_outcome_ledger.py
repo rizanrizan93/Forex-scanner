@@ -319,8 +319,10 @@ def _signal_status(
         return "PROTECTED", False, path.outcome_class
     if order_at is not None:
         return "ORDER_ACCEPTED", False, path.outcome_class
-    if state == "INVALIDATED":
-        return "INVALIDATED", False, path.outcome_class
+
+    # Market-path evidence is chronological and must survive a later state/map
+    # invalidation. This is essential for prospective missed-execution analysis:
+    # a signal can hit TP before a later H4 remap marks its stored row INVALIDATED.
     if path.tp2_hit:
         return "MISSED_EXECUTION" if missed else "TP2_HIT", missed, (
             "FORECAST_TARGET_HIT_NO_EXECUTION" if missed else path.outcome_class
@@ -331,6 +333,8 @@ def _signal_status(
         return "MISSED_EXECUTION" if missed else "TP1_HIT", missed, (
             "FORECAST_TP1_HIT_NO_EXECUTION" if missed else path.outcome_class
         )
+    if state == "INVALIDATED":
+        return "INVALIDATED", False, path.outcome_class
     if state == "EXECUTION_READY" and authority != "NONE":
         return "EXECUTION_READY", False, None
     if expired:
