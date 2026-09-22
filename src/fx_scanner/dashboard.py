@@ -15,6 +15,7 @@ class DashboardSnapshot:
     latest_run: dict[str, Any] | None
     rankings: tuple[dict[str, Any], ...]
     signals: tuple[dict[str, Any], ...]
+    xau_signals: tuple[dict[str, Any], ...]
     heartbeats: tuple[dict[str, Any], ...]
     macro: tuple[dict[str, Any], ...]
     performance: tuple[dict[str, Any], ...]
@@ -99,6 +100,30 @@ class SupabaseDashboardReader:
             )
         except Exception as exc:
             raise DashboardReadError(f"signals read failed: {exc}") from exc
+        return tuple(self._rows(response))
+
+    def latest_signals_for_symbol(
+        self, symbol: str, *, limit: int = 20
+    ) -> tuple[dict[str, Any], ...]:
+        normalized = str(symbol or "").upper().strip()
+        if not normalized:
+            return ()
+        try:
+            response = (
+                self.client.table("signals")
+                .select(
+                    "observed_at,symbol,direction,setup_type,state,pair_score,"
+                    "execution_score,final_score,entry_low,entry_high,sl,tp1,tp2,"
+                    "rr1,rr2,macro_bias,h4_bias,h1_bias,active_guards,"
+                    "data_coverage,expires_at"
+                )
+                .eq("symbol", normalized)
+                .order("observed_at", desc=True)
+                .limit(int(limit))
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(f"signals read failed for {normalized}: {exc}") from exc
         return tuple(self._rows(response))
 
     def heartbeats(self) -> tuple[dict[str, Any], ...]:
@@ -302,6 +327,7 @@ class SupabaseDashboardReader:
             latest_run=run,
             rankings=rankings,
             signals=self.latest_signals(),
+            xau_signals=self.latest_signals_for_symbol("XAUUSD"),
             heartbeats=self.heartbeats(),
             macro=self.latest_macro(),
             performance=self.latest_performance(),
