@@ -58,3 +58,8 @@ def test_afic_fast_handoff_preserves_canonical_weekday_universe_contract():
     wrapper = (ROOT / "src/fx_scanner/demo_xau_afic_fresh_ready_handoff.py").read_text()
     assert "Preserve the canonical weekday universe contract" in wrapper
     assert "install_afic_execution_identity_filter" in wrapper
+
+
+def test_afic_fast_handoff_documents_grade_a_b_demo_authority():
+    wrapper = (ROOT / "src/fx_scanner/demo_xau_afic_fresh_ready_handoff.py").read_text()
+    assert "Grade-A/B confirmed signals" in wrapper
