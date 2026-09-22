@@ -118,6 +118,62 @@ def zone_proximity(*,price:float|None,zone:dict[str,Any]|None)->dict[str,Any]:
     }
 
 
+def enrich_alternative_reversal_watches(
+    payload:dict[str,Any],*,live_price:float,observed_at:datetime
+)->dict[str,Any]:
+    """Attach fresh-quote proximity/touch evidence to shadow reversal watches.
+
+    This is observability only. A live touch must never grant broker authority or
+    replace the completed H1/M15 reversal/remap confirmation contract.
+    """
+    try:
+        px=float(live_price)
+    except (TypeError,ValueError):
+        return payload
+    if not isfinite(px):
+        return payload
+    diagnostics=dict(payload.get("zone_diagnostics") or {})
+    watches=[dict(item) for item in diagnostics.get("alternative_reversal_watch_zones") or []]
+    if not watches:
+        return payload
+    at=ensure_utc(observed_at).isoformat()
+    for item in watches:
+        try:
+            low=float(item["low"]);high=float(item["high"])
+        except (TypeError,ValueError,KeyError):
+            continue
+        if not all(isfinite(x) for x in (low,high)) or low>=high:
+            continue
+        if px<low:
+            dist=low-px
+        elif px>high:
+            dist=px-high
+        else:
+            dist=0.0
+        inside=bool(low<=px<=high)
+        item["live_price"]=px
+        item["live_quote_at"]=at
+        item["distance_from_live_price_points"]=float(dist)
+        item["live_inside_zone"]=inside
+        item["live_touch"]=bool(inside and str(item.get("status") or "")!="INVALIDATED")
+        if item["live_touch"]:
+            item["live_touch_at"]=at
+            if not item.get("first_touch_at"):
+                item["first_touch_at"]=at
+            if str(item.get("status") or "") in {"", "ACTIVE_WATCH"}:
+                item["status"]="LIVE_TOUCHED_WAIT_REVERSAL_CONFIRM"
+    diagnostics["alternative_reversal_watch_zones"]=watches
+    diagnostics["live_quote_price"]=px
+    diagnostics["live_quote_at"]=at
+    diagnostics["active_alternative_watch_count"]=sum(
+        1 for item in watches if str(item.get("status") or "")!="INVALIDATED"
+    )
+    diagnostics["live_touched_alternative_watch_count"]=sum(
+        1 for item in watches if bool(item.get("live_touch"))
+    )
+    return {**payload,"zone_diagnostics":diagnostics}
+
+
 def signal_state_and_guards(*,execution_enabled:bool,confirmed:bool,grade:str)->tuple[str,list[str]]:
     if execution_enabled and confirmed and str(grade).upper()=="A":
         return "EXECUTION_READY",[]
@@ -627,11 +683,22 @@ def run()->int:
         )
 
         quote=None
-        if payload.get("zone"):
+        live_mid=None
+        diagnostics=dict(payload.get("zone_diagnostics") or {})
+        needs_live_quote=bool(payload.get("zone")) or bool(
+            diagnostics.get("active_alternative_watch_count")
+        )
+        if needs_live_quote:
             try:
                 quote=feed.quote(SYMBOL,at=now)
                 live_mid=(float(quote.bid)+float(quote.ask))/2.0
-                proximity=zone_proximity(price=live_mid,zone=dict(payload.get("zone") or {}))
+                payload=enrich_alternative_reversal_watches(
+                    payload,live_price=live_mid,observed_at=now
+                )
+                if payload.get("zone"):
+                    proximity=zone_proximity(
+                        price=live_mid,zone=dict(payload.get("zone") or {})
+                    )
             except Exception as exc:
                 live_quote_error=f"{type(exc).__name__}:{exc}"
 
@@ -742,7 +809,7 @@ def run()->int:
             "zone_diagnostics":dict(payload.get("zone_diagnostics") or {}),
             "prepared_reference_entry":observability.get("prepared_reference_entry"),
             "final_entry":observability.get("final_entry"),
-            "live_price":proximity.get("live_price"),
+            "live_price":live_mid if live_mid is not None else proximity.get("live_price"),
             "inside_zone":proximity.get("inside_zone"),
             "distance_to_zone_points":proximity.get("distance_points"),
             "distance_to_zone_atr":proximity.get("distance_atr"),
