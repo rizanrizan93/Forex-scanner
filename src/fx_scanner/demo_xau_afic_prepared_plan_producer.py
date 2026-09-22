@@ -551,6 +551,52 @@ def geometry_matches_current_forecast(
     )
 
 
+def _invalidate_superseded_afic_signals(store,*,payload:dict[str,Any])->int:
+    """Invalidate persisted AFIC signals whose prepared map is no longer current.
+
+    ARMED forecast rows can otherwise outlive an H4 remap because their nominal
+    TTL is intentionally long. Superseded maps must become non-actionable even
+    when no execution geometry was ever created.
+    """
+    current_map=str(payload.get("map_at") or "").strip()
+    if not current_map:
+        return 0
+    response=(
+        store.client.table("broker_order_events")
+        .select("signal_key,payload,event_type,code")
+        .eq("event_type",EVENT_TYPE)
+        .eq("code",STRATEGY_ID)
+        .order("observed_at",desc=True)
+        .limit(120)
+        .execute()
+    )
+    invalidated=0
+    seen=set()
+    for row in response.data or []:
+        signal_id=str(row.get("signal_key") or "").strip()
+        if not signal_id or signal_id in seen:
+            continue
+        seen.add(signal_id)
+        event_payload=dict(row.get("payload") or {})
+        prior_forecast=dict(event_payload.get("forecast") or {})
+        prior_map=str(prior_forecast.get("map_at") or "").strip()
+        if not prior_map or prior_map==current_map:
+            continue
+        for prior_state in ("ARMED","EXECUTION_READY"):
+            result=(
+                store.client.table("signals")
+                .update({
+                    "state":"INVALIDATED",
+                    "active_guards":["AFIC_MAP_SUPERSEDED"],
+                })
+                .eq("id",signal_id)
+                .eq("state",prior_state)
+                .execute()
+            )
+            invalidated+=len(list(result.data or []))
+    return invalidated
+
+
 def _invalidate_stale_execution_ready(store,*,payload:dict[str,Any])->int:
     try:
         response=(
@@ -666,6 +712,7 @@ def run()->int:
     proximity=zone_proximity(price=None,zone=None)
     live_quote_error=None
     stale_ready_invalidated=0
+    superseded_signals_invalidated=0
     try:
         feed.ensure_connected()
         raw=tuple(feed.historical_bars(
@@ -678,6 +725,9 @@ def run()->int:
         payload=evaluate_afic_shadow(raw,as_of=now)
         state=str(payload.get("state") or "")
         state_transition_persisted=_record_forecast_state(store,payload=payload)
+        superseded_signals_invalidated=_invalidate_superseded_afic_signals(
+            store,payload=payload
+        )
         stale_ready_invalidated=_invalidate_stale_execution_ready(
             store,payload=payload
         )
@@ -818,6 +868,7 @@ def run()->int:
             "effective_scan_seconds":60,
             "live_quote_error":live_quote_error,
             "stale_ready_invalidated":stale_ready_invalidated,
+            "superseded_signals_invalidated":superseded_signals_invalidated,
             "signal_id":signal_id,
             "confirmation_detection_lag_seconds":confirmation_lag,
             "entry_drift_r":drift_metrics.get("entry_drift_r"),
