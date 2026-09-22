@@ -87,3 +87,14 @@ def test_xau_dashboard_shows_stable_zone_touch_lifecycle():
     assert '"live touch": item.get("live_touch_at")' in text
     assert 'Live touch is provisional until that M15 candle closes' in text
     assert 'Only completed M15 touches are durable lifecycle evidence' in text
+
+
+def test_xau_dashboard_prefers_live_v170_20k_and_separates_reference_100k():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'LIVE 20K expected-move envelope from the latest V171 cycle' in text
+    assert 'LIVE anchor' in text
+    assert 'LIVE as-of' in text
+    assert 'REFERENCE 100K V170 snapshot' in text
+    assert 'Reference anchor' in text
+    assert 'showing the slower REFERENCE 100K snapshot instead' in text
+    assert 'live_envelope = dict(ensemble_components.get("v170") or {})' in text
