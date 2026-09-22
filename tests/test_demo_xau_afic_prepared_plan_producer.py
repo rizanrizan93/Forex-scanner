@@ -2,8 +2,9 @@ from datetime import datetime,timezone
 
 from fx_scanner.demo_xau_afic_prepared_plan_producer import (
     EXECUTION_STRATEGY_ID,MAX_H4_DIRECTIONAL_CLOSE_LOC,MAX_ZONE_DISTANCE_ATR,
-    STRATEGY_ID,confirmation_latency_seconds,entry_drift_metrics,
-    prepared_blueprint,prepared_observability,selector_grade
+    STATE_CODE,STATE_EVENT_TYPE,STRATEGY_ID,confirmation_latency_seconds,
+    entry_drift_metrics,forecast_state_key,prepared_blueprint,
+    prepared_observability,selector_grade
 )
 
 UTC=timezone.utc
@@ -100,3 +101,25 @@ def test_afic_prepared_observability_explains_confirmed_live_geometry_failure():
     assert x["blueprint_block_reason"]=="CONFIRMED_LIVE_TARGET_GEOMETRY_INVALID"
     assert x["forecast_selector_grade"]=="A"
     assert x["prepared_reference_entry"]==4325.0
+
+
+def test_afic_forecast_state_transition_identity_and_key_are_durable():
+    assert STATE_CODE=="XAU_AFIC_PATH_STATE_V1"
+    assert STATE_EVENT_TYPE=="DEMO_XAU_AFIC_FORECAST_STATE"
+    base={
+        "map_at":"2026-09-22T00:00:00+00:00",
+        "state":"ZONE_TOUCHED_WAIT_CONFIRM",
+        "continuation_direction":"LONG",
+        "first_touch_at":"2026-09-22T00:30:00+00:00",
+        "zone":{"origin_at":"2026-09-21T11:00:00+00:00"},
+    }
+    touched=forecast_state_key(base)
+    invalidated=forecast_state_key({
+        **base,
+        "state":"INVALIDATED_AFTER_TOUCH_REMAP_DUE",
+        "invalidated_at":"2026-09-22T02:00:00+00:00",
+    })
+    assert touched!=invalidated
+    assert "ZONE_TOUCHED_WAIT_CONFIRM" in touched
+    assert "INVALIDATED_AFTER_TOUCH_REMAP_DUE" in invalidated
+    assert "2026-09-22T02:00:00+00:00" in invalidated
