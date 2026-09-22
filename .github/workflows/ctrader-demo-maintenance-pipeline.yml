@@ -13,7 +13,7 @@ concurrency:
 jobs:
   protection-and-lifecycle:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -79,6 +79,11 @@ jobs:
         id: produce_xau_m15_sweep_fade
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_m15_liquidity_sweep_fade_candidate_producer
+
+      - name: Update prospective XAU outcome ledger
+        id: update_xau_outcome_ledger
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_outcome_ledger
 
       - name: Enforce pair-specific max-hold exits
         id: pair_time_exit
