@@ -88,3 +88,32 @@ def test_zone_id_is_stable_for_same_structural_zone():
         "bos_level": 4339.26,
     }
     assert _stable_zone_id(zone) == _stable_zone_id(dict(zone))
+
+
+def test_target_hit_survives_later_signal_invalidation():
+    now = datetime(2026, 9, 22, 13, 0, tzinfo=UTC)
+    path = evaluate_signal_path(
+        (
+            _bar(now - timedelta(minutes=30), 4335, 4337, 4328, 4330),
+            _bar(now - timedelta(minutes=15), 4330, 4331, 4310, 4315),
+        ),
+        observed_at=now - timedelta(minutes=30),
+        direction="SHORT",
+        entry=4335.0,
+        stop=4345.0,
+        tp1=4332.0,
+        tp2=4314.0,
+    )
+    status, missed, outcome = _signal_status(
+        {"state": "INVALIDATED", "expires_at": (now + timedelta(hours=1)).isoformat()},
+        path=path,
+        order_at=None,
+        protection_at=None,
+        actual_outcome=None,
+        authority="NONE",
+        now=now,
+    )
+    assert path.tp2_hit is True
+    assert status == "MISSED_EXECUTION"
+    assert missed is True
+    assert outcome == "FORECAST_TARGET_HIT_NO_EXECUTION"
