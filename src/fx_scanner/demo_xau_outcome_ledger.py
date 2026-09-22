@@ -15,8 +15,8 @@ from .storage.supabase_operational import SupabaseOperationalStore
 SYMBOL = "XAUUSD"
 WORKER_NAME = "ctrader_demo_xau_outcome_ledger"
 CONTRACT = "XAU_PROSPECTIVE_OUTCOME_LEDGER_V1"
-LOOKBACK_DAYS = 14
-REQUEST_COUNT = 1499
+LOOKBACK_DAYS = 7
+REQUEST_COUNT = 800
 OUTCOME_HORIZON_HOURS = 8
 MAX_SIGNAL_ROWS = 1000
 MAX_EVENT_ROWS = 5000
@@ -224,7 +224,7 @@ def _signals(store: SupabaseOperationalStore, *, cutoff: datetime) -> tuple[dict
         )
         .eq("symbol", SYMBOL)
         .gte("observed_at", cutoff.isoformat())
-        .order("observed_at", desc=False)
+        .order("observed_at", desc=True)
         .limit(MAX_SIGNAL_ROWS)
         .execute()
     )
