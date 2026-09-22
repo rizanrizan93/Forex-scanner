@@ -1,0 +1,41 @@
+name: XAU AFIC Vol-Normalized Path V169
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_afic_vol_normalized_path_v169.py"
+      - "src/fx_scanner/research_xau_afic_vol_normalized_path_v169_runtime.py"
+      - "tests/test_research_xau_afic_vol_normalized_path_v169.py"
+      - ".github/workflows/research-xau-afic-vol-normalized-path-v169.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  afic-v169:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      V169_OUTPUT: artifacts/xau-afic-vol-normalized-path-v169.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2 dukascopy-python==4.0.1
+      - name: Unit test
+        run: pytest -q tests/test_research_xau_afic_vol_normalized_path_v169.py
+      - name: Run V169 volatility-normalized path diagnostic
+        run: python -m fx_scanner.research_xau_afic_vol_normalized_path_v169_runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-afic-vol-normalized-path-v169
+          path: artifacts/xau-afic-vol-normalized-path-v169.json
+          if-no-files-found: error
+          retention-days: 30
