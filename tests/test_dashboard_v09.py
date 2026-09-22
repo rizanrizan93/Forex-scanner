@@ -129,3 +129,44 @@ def test_dashboard_reads_coherent_broker_snapshot_positions():
     positions = reader.broker_positions_for_account(account)
     assert account["snapshot_id"] == "snap-new"
     assert [row["position_id"] for row in positions] == ["77"]
+
+
+def test_dashboard_reads_afic_forecast_prepared_and_execution_events():
+    client = FakeClient({
+        "broker_order_events": [
+            {
+                "observed_at": "2026-09-22T02:00:00Z",
+                "event_type": "DEMO_XAU_AFIC_FORECAST_STATE",
+                "code": "XAU_AFIC_PATH_STATE_V1",
+                "payload": {"forecast": {"state": "ZONE_TOUCHED_WAIT_CONFIRM"}},
+            },
+            {
+                "observed_at": "2026-09-22T02:01:00Z",
+                "event_type": "DEMO_XAU_AFIC_PREPARED_PLAN",
+                "code": "XAU_AFIC_PATH_PREPARED_V1",
+                "payload": {"prepared_plan": {"entry": 4350.0, "stop": 4340.0}},
+            },
+            {
+                "observed_at": "2026-09-22T02:02:00Z",
+                "event_type": "DEMO_SIGNAL_GEOMETRY",
+                "code": "XAU_AFIC_PATH_EXECUTION_V1",
+                "payload": {"planned_entry": 4351.0, "planned_sl": 4340.0},
+            },
+            {
+                "observed_at": "2026-09-22T02:03:00Z",
+                "event_type": "DEMO_SIGNAL_GEOMETRY",
+                "code": "OTHER_STRATEGY",
+                "payload": {},
+            },
+        ]
+    })
+    reader = SupabaseDashboardReader(client)
+    states = reader.latest_afic_forecast_states()
+    plans = reader.latest_afic_prepared_plans()
+    geometry = reader.latest_afic_execution_geometry()
+    assert len(states) == 1
+    assert states[0]["payload"]["forecast"]["state"] == "ZONE_TOUCHED_WAIT_CONFIRM"
+    assert len(plans) == 1
+    assert plans[0]["payload"]["prepared_plan"]["entry"] == 4350.0
+    assert len(geometry) == 1
+    assert geometry[0]["code"] == "XAU_AFIC_PATH_EXECUTION_V1"
