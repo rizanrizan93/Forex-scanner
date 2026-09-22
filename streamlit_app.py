@@ -71,6 +71,9 @@ def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
         "control": asdict(control),
         "broker_account": snapshot.broker_account,
         "broker_positions": list(snapshot.broker_positions),
+        "afic_forecast_states": list(snapshot.afic_forecast_states),
+        "afic_prepared_plans": list(snapshot.afic_prepared_plans),
+        "afic_execution_geometry": list(snapshot.afic_execution_geometry),
     }
 
 
@@ -140,6 +143,48 @@ def _state_rank(state: str) -> int:
     return order.get(str(state).upper(), 99)
 
 
+
+def _latest_heartbeat(rows: list[dict[str, Any]], worker_name: str) -> dict[str, Any] | None:
+    for row in rows:
+        if str(row.get("worker_name") or "") == worker_name:
+            return row
+    return None
+
+
+def _fmt_price(value: Any) -> str:
+    try:
+        return f"{float(value):,.2f}"
+    except (TypeError, ValueError):
+        return "—"
+
+
+def _fmt_distance(value: Any, suffix: str = "") -> str:
+    try:
+        return f"{float(value):,.2f}{suffix}"
+    except (TypeError, ValueError):
+        return "—"
+
+
+def _afic_path_text(direction: str, state: str) -> str:
+    side = str(direction or "").upper()
+    current = str(state or "").upper()
+    if side == "LONG":
+        base = "First leg turun → reaction zone → M15 rejection → continuation naik"
+    elif side == "SHORT":
+        base = "First leg naik → reaction zone → M15 rejection → continuation turun"
+    else:
+        base = "Menunggu map H4 yang valid"
+    if "INVALID" in current or "REMAP" in current:
+        return base + " • map sebelumnya invalid/remap"
+    if "CONFIRMED" in current:
+        return base + " • confirmation selesai"
+    if "TOUCHED" in current:
+        return base + " • zone sudah disentuh, menunggu confirmation"
+    if "APPROACH" in current:
+        return base + " • harga sedang mendekati zone"
+    return base
+
+
 cfg, config_error = _safe_config()
 policy = None
 policy_error = None
@@ -185,7 +230,10 @@ with st.sidebar:
         st.warning("Supabase Secret not configured")
 
     st.markdown("**Execution safety**")
-    st.code("RESEARCH_ONLY / DISABLED", language=None)
+    if policy is not None and str(policy.ctrader.get("environment", "")).upper() == "DEMO":
+        st.code("DEMO AUTO CAPABLE / LIVE OFF", language=None)
+    else:
+        st.code("LIVE EXECUTION NOT AUTHORIZED", language=None)
 
 
 st.title("FX Institutional Scanner")
@@ -226,21 +274,27 @@ m5.metric("Dashboard Backend", backend_label)
 
 if backend is not None:
     control = backend["control"]
-    unsafe = (
-        str(control.get("execution_mode", "")).upper() != "DISABLED"
-        or bool(control.get("new_orders_enabled"))
-        or not bool(control.get("emergency_stop"))
+    demo_locked = bool(
+        policy is not None
+        and str(policy.ctrader.get("environment", "")).upper() == "DEMO"
+        and bool(policy.ctrader.get("require_demo", False))
     )
-    if unsafe:
-        st.error(
-            "SAFETY ALERT: durable execution control differs from the expected "
-            "research lock."
+    mode_now = str(control.get("execution_mode", "")).upper()
+    orders_now = bool(control.get("new_orders_enabled"))
+    emergency_now = bool(control.get("emergency_stop"))
+    if demo_locked and mode_now == "AUTO" and orders_now and not emergency_now:
+        st.success(
+            "DEMO automation armed • new orders ON • server-side SL/TP required • "
+            "LIVE-money execution remains locked out by cTrader DEMO policy."
+        )
+    elif mode_now == "DISABLED" or emergency_now or not orders_now:
+        st.info(
+            f"Execution control: {mode_now or 'UNKNOWN'} • "
+            f"new orders {'ON' if orders_now else 'OFF'} • "
+            f"emergency stop {'ON' if emergency_now else 'OFF'}"
         )
     else:
-        st.success(
-            "Execution control is fail-closed: DISABLED • new orders OFF • "
-            "emergency stop ON"
-        )
+        st.warning("Execution-control state is not the expected bounded DEMO profile.")
 else:
     st.info(
         "Dashboard can be deployed now. Durable ranking/signal data will appear "
