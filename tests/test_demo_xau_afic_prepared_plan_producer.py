@@ -5,7 +5,7 @@ from fx_scanner.demo_xau_afic_prepared_plan_producer import (
     STATE_CODE,STATE_EVENT_TYPE,STRATEGY_ID,confirmation_latency_seconds,
     entry_drift_metrics,enrich_alternative_reversal_watches,forecast_state_key,prepared_blueprint,
     prepared_observability,selector_grade,signal_state_and_guards,zone_proximity,
-    geometry_matches_current_forecast
+    geometry_matches_current_forecast,_invalidate_superseded_afic_signals
 )
 
 UTC=timezone.utc
@@ -230,3 +230,86 @@ def test_afic_execution_geometry_must_match_current_confirmed_map():
     assert geometry_matches_current_forecast(
         geometry,{**current,"map_at":"2026-09-22T08:00:00+00:00"}
     ) is False
+
+
+class _Resp:
+    def __init__(self,data):
+        self.data=data
+
+
+class _Query:
+    def __init__(self,client,table):
+        self.client=client
+        self.table=table
+        self.filters=[]
+        self.patch=None
+    def select(self,*args,**kwargs):
+        return self
+    def update(self,patch):
+        self.patch=dict(patch)
+        return self
+    def eq(self,key,value):
+        self.filters.append((key,value))
+        return self
+    def order(self,*args,**kwargs):
+        return self
+    def limit(self,*args,**kwargs):
+        return self
+    def execute(self):
+        rows=list(self.client.rows.get(self.table,[]))
+        for key,value in self.filters:
+            rows=[r for r in rows if r.get(key)==value]
+        if self.patch is not None:
+            for row in rows:
+                row.update(self.patch)
+            return _Resp(rows)
+        return _Resp(rows)
+
+
+class _Client:
+    def __init__(self,rows):
+        self.rows=rows
+    def table(self,name):
+        return _Query(self,name)
+
+
+class _Store:
+    def __init__(self,rows):
+        self.client=_Client(rows)
+
+
+def test_superseded_afic_armed_signal_is_invalidated_on_new_h4_map():
+    signal={"id":"old-signal","state":"ARMED","active_guards":[]}
+    store=_Store({
+        "broker_order_events":[{
+            "signal_key":"old-signal",
+            "event_type":"DEMO_XAU_AFIC_PREPARED_PLAN",
+            "code":"XAU_AFIC_PATH_PREPARED_V1",
+            "payload":{"forecast":{"map_at":"2026-09-22T08:00:00+00:00"}},
+        }],
+        "signals":[signal],
+    })
+    n=_invalidate_superseded_afic_signals(
+        store,payload={"map_at":"2026-09-22T12:00:00+00:00"}
+    )
+    assert n==1
+    assert signal["state"]=="INVALIDATED"
+    assert signal["active_guards"]==["AFIC_MAP_SUPERSEDED"]
+
+
+def test_same_afic_map_remains_armed():
+    signal={"id":"same-signal","state":"ARMED","active_guards":[]}
+    store=_Store({
+        "broker_order_events":[{
+            "signal_key":"same-signal",
+            "event_type":"DEMO_XAU_AFIC_PREPARED_PLAN",
+            "code":"XAU_AFIC_PATH_PREPARED_V1",
+            "payload":{"forecast":{"map_at":"2026-09-22T12:00:00+00:00"}},
+        }],
+        "signals":[signal],
+    })
+    n=_invalidate_superseded_afic_signals(
+        store,payload={"map_at":"2026-09-22T12:00:00+00:00"}
+    )
+    assert n==0
+    assert signal["state"]=="ARMED"
