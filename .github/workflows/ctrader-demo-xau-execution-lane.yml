@@ -60,6 +60,7 @@ jobs:
       CTRADER_DEMO_XAU_V42_PROFIT_LOCK_ENABLED: "1"
       CTRADER_DEMO_ADAPTIVE_CALIBRATION_ENABLED: "1"
       CTRADER_DEMO_XAU_CANONICAL_POSITION_MANAGER_ENABLED: "1"
+      CTRADER_DEMO_AFIC_EXECUTION_ENABLED: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -94,13 +95,19 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_m15_ema_smc_reclaim_candidate_producer
 
+      - name: Evaluate AFIC prepared/confirmed path
+        id: produce_xau_afic
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_afic_prepared_plan_producer
+
       - name: Execute fresh exact-authorized DEMO signals
         id: execute_fresh_handoff
         if: >-
           ${{ !cancelled() &&
               steps.repair_existing_protection.outcome == 'success' &&
               (steps.produce_xau_v24_champion.outcome == 'success' ||
-               steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success') }}
+               steps.produce_xau_m15_ema_smc_reclaim.outcome == 'success' ||
+               steps.produce_xau_afic.outcome == 'success') }}
         continue-on-error: true
         run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
 
@@ -111,6 +118,7 @@ jobs:
           REPAIR_OUTCOME: ${{ steps.repair_existing_protection.outcome }}
           V24_OUTCOME: ${{ steps.produce_xau_v24_champion.outcome }}
           CANONICAL_OUTCOME: ${{ steps.produce_xau_m15_ema_smc_reclaim.outcome }}
+          AFIC_OUTCOME: ${{ steps.produce_xau_afic.outcome }}
           HANDOFF_OUTCOME: ${{ steps.execute_fresh_handoff.outcome }}
         run: |
           set -euo pipefail
@@ -119,8 +127,8 @@ jobs:
             echo "XAU_EXECUTION_LANE_FAIL stage=REPAIR outcome=${REPAIR_OUTCOME}"
             failed=1
           fi
-          if [ "${V24_OUTCOME}" != "success" ] && [ "${CANONICAL_OUTCOME}" != "success" ]; then
-            echo "XAU_EXECUTION_LANE_FAIL stage=PRODUCERS v24=${V24_OUTCOME} canonical=${CANONICAL_OUTCOME}"
+          if [ "${V24_OUTCOME}" != "success" ] && [ "${CANONICAL_OUTCOME}" != "success" ] && [ "${AFIC_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_FAIL stage=PRODUCERS v24=${V24_OUTCOME} canonical=${CANONICAL_OUTCOME} afic=${AFIC_OUTCOME}"
             failed=1
           fi
           if [ "${HANDOFF_OUTCOME}" != "success" ]; then
