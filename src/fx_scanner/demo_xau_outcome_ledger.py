@@ -528,6 +528,8 @@ def _zone_rows(store: SupabaseOperationalStore, *, now: datetime) -> tuple[dict[
                 "metadata": {
                     "contract": CONTRACT,
                     "touch_lifecycle": item.get("touch_lifecycle"),
+                    "zone_lifecycle": item.get("zone_lifecycle"),
+                    "invalidated_before_map": bool(item.get("invalidated_before_map", False)),
                     "role": item.get("role"),
                     "zone_low": _finite(item.get("low")),
                     "zone_high": _finite(item.get("high")),
