@@ -25,6 +25,8 @@ STRATEGY_ID="XAU_AFIC_PATH_PREPARED_V1"
 EXECUTION_STRATEGY_ID="XAU_AFIC_PATH_EXECUTION_V1"
 WORKER_NAME="ctrader_demo_xau_afic_prepared_plan_producer"
 EVENT_TYPE="DEMO_XAU_AFIC_PREPARED_PLAN"
+STATE_EVENT_TYPE="DEMO_XAU_AFIC_FORECAST_STATE"
+STATE_CODE="XAU_AFIC_PATH_STATE_V1"
 DATA_CONTRACT="XAU_AFIC_PREPARED_PLAN_FORWARD_V1"
 
 MAX_ZONE_DISTANCE_ATR=0.75
@@ -212,6 +214,71 @@ def prepared_observability(
     }
 
 
+def forecast_state_key(payload:dict[str,Any])->str:
+    zone=dict(payload.get("zone") or {})
+    fields=(
+        STATE_CODE,
+        str(payload.get("map_at") or "NONE"),
+        str(payload.get("state") or "NONE"),
+        str(payload.get("continuation_direction") or "NONE"),
+        str(payload.get("first_touch_at") or "NONE"),
+        str(payload.get("confirm_at") or "NONE"),
+        str(payload.get("invalidated_at") or "NONE"),
+        str(zone.get("origin_at") or "NONE"),
+    )
+    return "|".join(fields)
+
+
+def _forecast_state_recorded(store,key:str)->bool:
+    try:
+        response=(
+            store.client.table("broker_order_events")
+            .select("payload,event_type,code")
+            .eq("event_type",STATE_EVENT_TYPE)
+            .eq("code",STATE_CODE)
+            .order("observed_at",desc=True)
+            .limit(240)
+            .execute()
+        )
+    except Exception:
+        # Evidence persistence uncertainty must not create duplicate state rows.
+        return True
+    return any(
+        str(dict(r.get("payload") or {}).get("state_key") or "")==key
+        for r in response.data or []
+    )
+
+
+def _record_forecast_state(store,*,payload:dict[str,Any])->bool:
+    key=forecast_state_key(payload)
+    if _forecast_state_recorded(store,key):
+        return False
+    account=_account_label()
+    if not account:
+        raise SystemExit("CTRADER_ACCOUNT_ID_REQUIRED_FOR_AFIC_FORECAST_STATE")
+    digest=hashlib.sha256(key.encode()).hexdigest()[:24]
+    store.record_order_event(
+        backend="CTRADER",
+        account_id=account,
+        signal_key=f"AFIC_STATE:{digest}",
+        broker_order_id=None,
+        event_type=STATE_EVENT_TYPE,
+        accepted=None,
+        code=STATE_CODE,
+        message="AFIC prospective forecast state transition; no broker action",
+        payload={
+            "state_key":key,
+            "environment":"DEMO",
+            "execution_influence":False,
+            "promotion_authority":False,
+            "live_execution_enabled":False,
+            "forecast":payload,
+            "code_version":os.getenv("GITHUB_SHA","LOCAL"),
+        },
+    )
+    return True
+
+
 def _dedupe_key(payload:dict[str,Any],kind:str)->str:
     fields=(
         STRATEGY_ID,
@@ -373,6 +440,7 @@ def run()->int:
     confirmation_lag=None
     drift_metrics=entry_drift_metrics(prepared=None,live=None)
     emitted=False
+    state_transition_persisted=False
     signal_id=None
     kind="NONE"
     error=None
@@ -389,6 +457,7 @@ def run()->int:
         raw_count=len(raw)
         payload=evaluate_afic_shadow(raw,as_of=now)
         state=str(payload.get("state") or "")
+        state_transition_persisted=_record_forecast_state(store,payload=payload)
 
         if payload.get("zone") and payload.get("continuation_direction"):
             plan=prepared_blueprint(payload)
@@ -480,6 +549,7 @@ def run()->int:
             "confirmation_detection_lag_seconds":confirmation_lag,
             "entry_drift_r":drift_metrics.get("entry_drift_r"),
             "emitted":emitted,
+            "state_transition_persisted":state_transition_persisted,
             "error":error,
         },
     )
@@ -490,7 +560,8 @@ def run()->int:
         f"forecast_grade={observability.get('forecast_selector_grade')} "
         f"block={observability.get('blueprint_block_reason')} "
         f"confirm_lag_s={confirmation_lag} drift_r={drift_metrics.get('entry_drift_r')} "
-        f"emitted={int(emitted)} execution_authority=0"
+        f"emitted={int(emitted)} state_persisted={int(state_transition_persisted)} "
+        f"execution_authority=0"
     )
     return 0 if healthy else 2
 
