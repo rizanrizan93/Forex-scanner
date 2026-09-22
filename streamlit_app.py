@@ -720,12 +720,16 @@ with forecast_tab:
         st.caption("No active opposite-direction reversal-watch zone is available.")
 
     f1, f2, f3, f4, f5, f6 = st.columns(6)
-    f1.metric("Forecast", direction)
+    f1.metric("H4 continuation", direction)
     f2.metric("State", state)
     f3.metric("Selector", grade)
     f4.metric("Live XAU", _fmt_price(live_price))
     f5.metric("Distance to zone", _fmt_distance(distance_points, " pts"))
     f6.metric("AFIC scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
+    st.caption(
+        "H4 continuation is structural context only. It is not a current BUY/SELL call; "
+        "trade authority still requires a valid current AFIC zone/selector/confirmation."
+    )
 
     h1, h2, h3, h4, h5 = st.columns(5)
     hb_age = None if prepared_hb is None else _age_seconds(prepared_hb.get("observed_at"))
