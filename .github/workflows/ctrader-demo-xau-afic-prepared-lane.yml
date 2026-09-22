@@ -26,7 +26,7 @@ jobs:
       CTRADER_DISABLE_TOKEN_REFRESH: "1"
       SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      CTRADER_DEMO_AFIC_EXECUTION_ENABLED: "0"
+      CTRADER_DEMO_AFIC_EXECUTION_ENABLED: "1"
 
     steps:
       - uses: actions/checkout@v4
