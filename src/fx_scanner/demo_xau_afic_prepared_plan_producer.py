@@ -582,18 +582,24 @@ def _invalidate_superseded_afic_signals(store,*,payload:dict[str,Any])->int:
         prior_map=str(prior_forecast.get("map_at") or "").strip()
         if not prior_map or prior_map==current_map:
             continue
-        for prior_state in ("ARMED","EXECUTION_READY"):
-            result=(
-                store.client.table("signals")
-                .update({
-                    "state":"INVALIDATED",
-                    "active_guards":["AFIC_MAP_SUPERSEDED"],
-                })
-                .eq("id",signal_id)
-                .eq("state",prior_state)
-                .execute()
-            )
-            invalidated+=len(list(result.data or []))
+        state_response=(
+            store.client.table("signals")
+            .select("state")
+            .eq("id",signal_id)
+            .limit(1)
+            .execute()
+        )
+        signal_rows=list(state_response.data or [])
+        if not signal_rows:
+            continue
+        prior_state=str(signal_rows[0].get("state") or "").upper()
+        if prior_state not in {"ARMED","EXECUTION_READY"}:
+            continue
+        store.client.table("signals").update({
+            "state":"INVALIDATED",
+            "active_guards":["AFIC_MAP_SUPERSEDED"],
+        }).eq("id",signal_id).eq("state",prior_state).execute()
+        invalidated+=1
     return invalidated
 
 
