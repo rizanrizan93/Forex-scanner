@@ -5,7 +5,6 @@ from fx_scanner.demo_xau_afic_fresh_ready_handoff import (
     SYMBOL,
     WORKER_NAME,
     _ALLOWED_AFIC_STRATEGIES_BY_SYMBOL,
-    load_afic_demo_project_config,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,8 +17,9 @@ def test_afic_fast_handoff_is_exact_xau_only_identity():
     assert _ALLOWED_AFIC_STRATEGIES_BY_SYMBOL == {
         "XAUUSD": frozenset({"XAU_AFIC_PATH_EXECUTION_V1"})
     }
-    cfg = load_afic_demo_project_config(ROOT)
-    assert tuple(pair.symbol for pair in cfg.pairs) == ("XAUUSD",)
+    wrapper = (ROOT / "src/fx_scanner/demo_xau_afic_fresh_ready_handoff.py").read_text()
+    assert "load_afic_demo_project_config" not in wrapper
+    assert "base.load_demo_project_config =" not in wrapper
 
 
 def test_afic_minute_lane_runs_immediate_shared_safety_handoff():
@@ -52,3 +52,9 @@ def test_afic_fast_handoff_observability_is_read_only_for_dashboard():
     assert '"live_execution_enabled": False' in wrapper
     assert 'ctrader_demo_xau_afic_fast_handoff' in dashboard
     assert 'h4.metric("Fast handoff", fast_label)' in dashboard
+
+
+def test_afic_fast_handoff_preserves_canonical_weekday_universe_contract():
+    wrapper = (ROOT / "src/fx_scanner/demo_xau_afic_fresh_ready_handoff.py").read_text()
+    assert "Preserve the canonical weekday universe contract" in wrapper
+    assert "install_afic_execution_identity_filter" in wrapper
