@@ -94,3 +94,21 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
     assert "demo_execution_fresh_ready_handoff" not in discovery
     assert "demo_calibration_autotrade" not in discovery
     assert "ctrader-demo-order-smoke" not in discovery
+
+
+def test_supervisor_owns_v171_shadow_cadence_without_execution_authority() -> None:
+    supervisor = _read(".github/workflows/ctrader-demo-auto-supervisor.yml")
+    v171 = _read(".github/workflows/research-xau-forecast-ensemble-v171.yml")
+
+    assert "research-xau-forecast-ensemble-v171.yml" in supervisor
+    assert "SUPERVISOR_V171_DISPATCH" in supervisor
+    assert "SUPERVISOR_V171_SKIP_BUSY" in supervisor
+    assert "forecast_v171_cadence_seconds=300" in supervisor
+    assert "forecast_v171_authority=SHADOW_ONLY" in supervisor
+    assert "execution_authority=NONE" in supervisor
+    assert 'if [ "${cycle}" -eq 1 ]' in supervisor
+
+    parsed = yaml.safe_load(v171)
+    triggers = parsed[True]
+    assert "workflow_dispatch" in triggers
+    assert "schedule" not in triggers
