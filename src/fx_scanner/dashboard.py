@@ -25,6 +25,7 @@ class DashboardSnapshot:
     afic_prepared_plans: tuple[dict[str, Any], ...]
     afic_execution_geometry: tuple[dict[str, Any], ...]
     xau_execution_events: tuple[dict[str, Any], ...]
+    xau_prepared_plan_lifecycle: tuple[dict[str, Any], ...]
 
 
 class SupabaseDashboardReader:
@@ -271,6 +272,30 @@ class SupabaseDashboardReader:
             raise DashboardReadError(f"AFIC execution-geometry read failed: {exc}") from exc
         return tuple(self._rows(response))
 
+    def latest_xau_prepared_plan_lifecycle(
+        self, *, limit: int = 100
+    ) -> tuple[dict[str, Any], ...]:
+        try:
+            response = (
+                self.client.table("xau_prepared_plan_lifecycle")
+                .select(
+                    "plan_key,signal_id,zone_id,map_at,created_at,updated_at,"
+                    "direction,grade,zone_low,zone_high,entry_price,stop_price,"
+                    "tp1_price,tp2_price,lifecycle_state,cancel_reason,cancelled_at,"
+                    "first_touch_at,confirmed_at,execution_ready_at,order_accepted_at,"
+                    "protection_verified_at,outcome_at,outcome_class,tp1_hit,tp2_hit,"
+                    "stop_hit,mfe_r,mae_r,post_cancel_terminal_hit,metadata"
+                )
+                .order("created_at", desc=True)
+                .limit(int(limit))
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"XAU prepared-plan lifecycle read failed: {exc}"
+            ) from exc
+        return tuple(self._rows(response))
+
     def latest_xau_execution_events(self, *, raw_limit: int = 120) -> tuple[dict[str, Any], ...]:
         """Return recent XAU broker/execution events for dashboard observability."""
         try:
@@ -323,6 +348,7 @@ class SupabaseDashboardReader:
         afic_prepared_plans = self.latest_afic_prepared_plans()
         afic_execution_geometry = self.latest_afic_execution_geometry()
         xau_execution_events = self.latest_xau_execution_events()
+        xau_prepared_plan_lifecycle = self.latest_xau_prepared_plan_lifecycle()
         return DashboardSnapshot(
             latest_run=run,
             rankings=rankings,
@@ -337,4 +363,5 @@ class SupabaseDashboardReader:
             afic_prepared_plans=afic_prepared_plans,
             afic_execution_geometry=afic_execution_geometry,
             xau_execution_events=xau_execution_events,
+            xau_prepared_plan_lifecycle=xau_prepared_plan_lifecycle,
         )
