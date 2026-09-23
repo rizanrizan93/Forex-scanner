@@ -608,6 +608,284 @@ def _research_score(
     )
 
 
+
+def _active_payloads(payloads: Sequence[dict[str, Any]]) -> tuple[dict[str, Any], ...]:
+    return tuple(
+        item
+        for item in payloads
+        if bool(dict(item.get("lifecycle") or {}).get("active"))
+    )
+
+
+def _true_nearest_zone(
+    payloads: Sequence[dict[str, Any]],
+    *,
+    direction: str,
+) -> dict[str, Any] | None:
+    candidates = [
+        item
+        for item in payloads
+        if str(item.get("direction") or "") == direction
+        and bool(item.get("correct_side"))
+    ]
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda item: (
+            float(item.get("distance_points") or 0.0),
+            -TIMEFRAME_PRIORITY.get(str(item.get("timeframe") or ""), 0),
+            -float(item.get("research_score") or 0.0),
+        )
+    )
+    return candidates[0]
+
+
+def _zone_mid(item: dict[str, Any]) -> float:
+    return (float(item["low"]) + float(item["high"])) / 2.0
+
+
+def _compact_path_zone(item: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not item:
+        return None
+    keys = (
+        "zone_id",
+        "timeframe",
+        "zone_class",
+        "pattern",
+        "direction",
+        "low",
+        "high",
+        "proximal",
+        "distal",
+        "status",
+        "age_bucket",
+        "distance_points",
+        "distance_atr",
+        "research_score",
+        "htf_nesting_count",
+        "strategic_alignment",
+        "session_context",
+    )
+    out = {key: item.get(key) for key in keys}
+    out["lifecycle"] = dict(item.get("lifecycle") or {})
+    out["approach"] = dict(item.get("approach") or {})
+    out["liquidity"] = dict(item.get("liquidity") or {})
+    out["nested_in"] = list(item.get("nested_in") or [])
+    return out
+
+
+def _path_internal_targets(
+    *,
+    levels: Sequence[dict[str, Any]],
+    direction: str,
+    start_price: float,
+    end_price: float,
+) -> tuple[dict[str, Any], ...]:
+    low = min(float(start_price), float(end_price))
+    high = max(float(start_price), float(end_price))
+    wanted_role = "HIGH" if direction == "LONG" else "LOW"
+    output: list[dict[str, Any]] = []
+
+    for level in levels:
+        source = str(level.get("source") or "")
+        price = _safe_float(level.get("price"))
+        if price is None or not (low < price < high):
+            continue
+        if source.startswith("H1_SWING_"):
+            if not source.endswith(wanted_role):
+                continue
+        elif wanted_role not in source:
+            continue
+        output.append(
+            {
+                "source": source,
+                "price": float(price),
+                "distance_from_start": abs(float(price) - float(start_price)),
+            }
+        )
+
+    first_round = int(low // ROUND_STEP_USD) * int(ROUND_STEP_USD)
+    for value in range(first_round, int(high) + int(ROUND_STEP_USD), int(ROUND_STEP_USD)):
+        price = float(value)
+        if low < price < high:
+            output.append(
+                {
+                    "source": "ROUND_NUMBER",
+                    "price": price,
+                    "distance_from_start": abs(price - float(start_price)),
+                }
+            )
+
+    dedup: dict[tuple[str, float], dict[str, Any]] = {}
+    for item in output:
+        key = (str(item["source"]), round(float(item["price"]), 4))
+        dedup[key] = item
+    ordered = sorted(
+        dedup.values(),
+        key=lambda item: float(item["distance_from_start"]),
+    )
+    return tuple(ordered[:8])
+
+
+def _opposing_zone_candidates(
+    payloads: Sequence[dict[str, Any]],
+    *,
+    source: dict[str, Any],
+    reaction_direction: str,
+) -> tuple[dict[str, Any], ...]:
+    source_low = float(source["low"])
+    source_high = float(source["high"])
+    wanted = "SHORT" if reaction_direction == "LONG" else "LONG"
+    candidates: list[dict[str, Any]] = []
+    for item in payloads:
+        if str(item.get("direction") or "") != wanted:
+            continue
+        item_low = float(item["low"])
+        item_high = float(item["high"])
+        if reaction_direction == "LONG" and item_high <= source_high:
+            continue
+        if reaction_direction == "SHORT" and item_low >= source_low:
+            continue
+        candidates.append(item)
+
+    candidates.sort(
+        key=lambda item: (
+            abs(_zone_mid(item) - _zone_mid(source)),
+            -TIMEFRAME_PRIORITY.get(str(item.get("timeframe") or ""), 0),
+            -float(item.get("research_score") or 0.0),
+        )
+    )
+    return tuple(candidates[:5])
+
+
+def _build_directional_path(
+    *,
+    source: dict[str, Any] | None,
+    reaction_direction: str,
+    active_payloads: Sequence[dict[str, Any]],
+    levels: Sequence[dict[str, Any]],
+    last_price: float,
+) -> dict[str, Any] | None:
+    if not source:
+        return None
+    opponents = _opposing_zone_candidates(
+        active_payloads,
+        source=source,
+        reaction_direction=reaction_direction,
+    )
+    primary = opponents[0] if opponents else None
+
+    source_low = float(source["low"])
+    source_high = float(source["high"])
+    in_source = source_low <= float(last_price) <= source_high
+    if reaction_direction == "LONG":
+        start_price = max(float(last_price), source_high) if not in_source else float(last_price)
+        end_price = float(primary["low"]) if primary else start_price
+    else:
+        start_price = min(float(last_price), source_low) if not in_source else float(last_price)
+        end_price = float(primary["high"]) if primary else start_price
+
+    internal_targets = (
+        ()
+        if primary is None
+        else _path_internal_targets(
+            levels=levels,
+            direction=reaction_direction,
+            start_price=start_price,
+            end_price=end_price,
+        )
+    )
+    state = (
+        "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION"
+        if in_source
+        else "SOURCE_ZONE_APPROACHING"
+        if float(source.get("distance_atr") or 999.0) <= 0.75
+        else "SOURCE_ZONE_WATCH"
+    )
+    return {
+        "state": state,
+        "source_zone": _compact_path_zone(source),
+        "reaction_direction": reaction_direction,
+        "primary_opposing_zone": _compact_path_zone(primary),
+        "secondary_opposing_zones": [
+            _compact_path_zone(item) for item in opponents[1:4]
+        ],
+        "internal_targets": list(internal_targets),
+        "path_distance_points": None
+        if primary is None
+        else round(abs(_zone_mid(primary) - _zone_mid(source)), 4),
+        "confirmation_required": (
+            "SWEEP_OR_MITIGATION_THEN_M5_M15_RECLAIM_MSS_OR_DISPLACEMENT"
+        ),
+        "execution_influence": False,
+        "execution_authority": False,
+        "note": (
+            "Opposing zone is a reaction destination candidate, not a guaranteed target. "
+            "Internal targets are liquidity/structure waypoints inside the path."
+        ),
+    }
+
+
+def _build_path_map(
+    *,
+    payloads: Sequence[dict[str, Any]],
+    levels: Sequence[dict[str, Any]],
+    last_price: float,
+) -> dict[str, Any]:
+    active_payloads = _active_payloads(payloads)
+    nearest_demand = _true_nearest_zone(
+        active_payloads,
+        direction="LONG",
+    )
+    nearest_supply = _true_nearest_zone(
+        active_payloads,
+        direction="SHORT",
+    )
+    demand_to_supply = _build_directional_path(
+        source=nearest_demand,
+        reaction_direction="LONG",
+        active_payloads=active_payloads,
+        levels=levels,
+        last_price=last_price,
+    )
+    supply_to_demand = _build_directional_path(
+        source=nearest_supply,
+        reaction_direction="SHORT",
+        active_payloads=active_payloads,
+        levels=levels,
+        last_price=last_price,
+    )
+
+    active_path = None
+    for candidate in (demand_to_supply, supply_to_demand):
+        if candidate and candidate.get("state") == "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION":
+            active_path = candidate
+            break
+    if active_path is None:
+        entered = []
+        for candidate in (demand_to_supply, supply_to_demand):
+            if not candidate:
+                continue
+            source_zone = dict(candidate.get("source_zone") or {})
+            distance_atr = _safe_float(source_zone.get("distance_atr"))
+            if distance_atr is not None:
+                entered.append((distance_atr, candidate))
+        if entered:
+            entered.sort(key=lambda item: item[0])
+            active_path = entered[0][1]
+
+    return {
+        "contract": "XAU_SUPPLY_DEMAND_PATH_ENGINE_V186",
+        "nearest_demand": _compact_path_zone(nearest_demand),
+        "nearest_supply": _compact_path_zone(nearest_supply),
+        "demand_to_supply": demand_to_supply,
+        "supply_to_demand": supply_to_demand,
+        "active_path": active_path,
+        "execution_influence": False,
+        "execution_authority": False,
+    }
+
+
 def evaluate_supply_demand_atlas(
     bars: Sequence[Bar],
     *,
@@ -718,13 +996,13 @@ def evaluate_supply_demand_atlas(
         )
     )
     selected = payloads[:MAX_DISPLAY_ZONES]
-    active_correct = [
-        x for x in selected
-        if bool(dict(x.get("lifecycle") or {}).get("active"))
-        and bool(x.get("correct_side"))
-    ]
-    nearest_demand = next((x for x in active_correct if x.get("direction") == "LONG"), None)
-    nearest_supply = next((x for x in active_correct if x.get("direction") == "SHORT"), None)
+    path_map = _build_path_map(
+        payloads=payloads,
+        levels=levels,
+        last_price=last_price,
+    )
+    nearest_demand = dict(path_map.get("nearest_demand") or {}) or None
+    nearest_supply = dict(path_map.get("nearest_supply") or {}) or None
 
     return {
         "contract": CONTRACT,
@@ -741,6 +1019,7 @@ def evaluate_supply_demand_atlas(
         "timeframe_imbalance_counts": timeframe_counts,
         "nearest_demand": nearest_demand,
         "nearest_supply": nearest_supply,
+        "path_map": path_map,
         "zones": selected,
         "explanation": {
             "purpose": "EARLY_HTF_SUPPLY_DEMAND_PREPARATION_RESEARCH",
@@ -751,6 +1030,7 @@ def evaluate_supply_demand_atlas(
             "execution_rule": "NO_EXECUTION_AUTHORITY_CANONICAL_AFIC_REMAINS_UNCHANGED",
             "score_note": "RESEARCH_SCORE_IS_RANKING_EVIDENCE_NOT_CALIBRATED_WIN_PROBABILITY",
             "session_note": "WIB_SESSION_BUCKET_IS_RESEARCH_CONTEXT_NOT_A_TRADING_GATE",
+            "path_engine": "DEMAND_TO_OPPOSING_SUPPLY_AND_SUPPLY_TO_OPPOSING_DEMAND_WITH_INTERNAL_WAYPOINTS",
         },
     }
 
