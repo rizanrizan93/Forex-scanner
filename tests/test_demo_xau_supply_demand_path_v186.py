@@ -104,3 +104,30 @@ def test_path_engine_never_has_execution_authority():
     assert path_map["execution_authority"] is False
     assert path_map["execution_influence"] is False
     assert path_map["active_path"]["execution_authority"] is False
+
+
+def test_path_ignores_partially_overlapping_opposing_zone():
+    zones = (
+        _zone("d1", "LONG", 4274, 4301, distance=0),
+        _zone("overlap-supply", "SHORT", 4298, 4310, distance=0),
+        _zone("clean-supply", "SHORT", 4342, 4347, distance=40),
+    )
+    path_map = _build_path_map(payloads=zones, levels=(), last_price=4284)
+    path = path_map["demand_to_supply"]
+    assert path["primary_opposing_zone"]["zone_id"] == "clean-supply"
+
+
+def test_internal_waypoints_start_outside_source_zone():
+    zones = (
+        _zone("d1", "LONG", 4274, 4301, distance=0),
+        _zone("s1", "SHORT", 4342, 4347, distance=40),
+    )
+    levels = (
+        {"source": "H1_SWING_HIGH", "price": 4295.0},
+        {"source": "H1_SWING_HIGH", "price": 4331.0},
+    )
+    path_map = _build_path_map(payloads=zones, levels=levels, last_price=4280)
+    prices = [row["price"] for row in path_map["demand_to_supply"]["internal_targets"]]
+    assert 4295.0 not in prices
+    assert 4331.0 in prices
+    assert all(price > 4301.0 for price in prices)
