@@ -182,3 +182,15 @@ calendar:
     official: false
     base_url: https://nfs.faireconomy.media/ff_calendar_thisweek.json
     allowed_host: nfs.faireconomy.media
+
+  BLS_OFFICIAL_ICS:
+    enabled: true
+    official: true
+    base_url: https://www.bls.gov/schedule/news_release/bls.ics
+    allowed_host: www.bls.gov
+
+  BEA_OFFICIAL_SCHEDULE:
+    enabled: true
+    official: true
+    base_url: https://www.bea.gov/news/schedule
+    allowed_host: www.bea.gov
