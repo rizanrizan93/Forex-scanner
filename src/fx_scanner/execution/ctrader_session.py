@@ -26,6 +26,22 @@ class CTraderQuote:
 
 
 @dataclass(frozen=True, slots=True)
+class CTraderDepthLevel:
+    price: float
+    size_units: float
+
+
+@dataclass(frozen=True, slots=True)
+class CTraderDepthSnapshot:
+    symbol_id: int
+    bids: tuple[CTraderDepthLevel, ...]
+    asks: tuple[CTraderDepthLevel, ...]
+    observed_at: datetime
+    event_count: int
+    quote_count: int
+
+
+@dataclass(frozen=True, slots=True)
 class CTraderGrantedAccount:
     ctid_trader_account_id: int
     trader_login: int
@@ -66,6 +82,9 @@ class CTraderOpenApiSession:
                 ProtoOAReconcileReq,
                 ProtoOARefreshTokenReq,
                 ProtoOASpotEvent,
+                ProtoOADepthEvent,
+                ProtoOASubscribeDepthQuotesReq,
+                ProtoOAUnsubscribeDepthQuotesReq,
                 ProtoOASubscribeSpotsReq,
                 ProtoOAUnsubscribeSpotsReq,
                 ProtoOASymbolByIdReq,
@@ -94,6 +113,9 @@ class CTraderOpenApiSession:
             "ReconcileReq": ProtoOAReconcileReq,
             "RefreshTokenReq": ProtoOARefreshTokenReq,
             "SpotEvent": ProtoOASpotEvent,
+            "DepthEvent": ProtoOADepthEvent,
+            "SubscribeDepthQuotesReq": ProtoOASubscribeDepthQuotesReq,
+            "UnsubscribeDepthQuotesReq": ProtoOAUnsubscribeDepthQuotesReq,
             "SubscribeSpotsReq": ProtoOASubscribeSpotsReq,
             "UnsubscribeSpotsReq": ProtoOAUnsubscribeSpotsReq,
             "SymbolByIdReq": ProtoOASymbolByIdReq,
@@ -122,6 +144,10 @@ class CTraderOpenApiSession:
         self._reactor_started = Event()
         self._quotes_lock = Lock()
         self._quotes_by_id: dict[int, dict[str, Any]] = {}
+        self._depth_lock = Lock()
+        self._depth_quotes_by_symbol: dict[int, dict[int, dict[str, Any]]] = {}
+        self._depth_event_count_by_symbol: dict[int, int] = {}
+        self._depth_observed_at_by_symbol: dict[int, datetime] = {}
         self.symbol_id_by_name: dict[str, int] = {}
         self.symbol_name_by_id: dict[int, str] = {}
         self.symbol_full_by_id: dict[int, Any] = {}
@@ -148,30 +174,88 @@ class CTraderOpenApiSession:
 
     def _on_message(self, client, container) -> None:
         try:
+            payload_type = getattr(container, "payloadType", None)
             spot_type = self.msg["SpotEvent"]().payloadType
-            if getattr(container, "payloadType", None) != spot_type:
+            depth_type = self.msg["DepthEvent"]().payloadType
+
+            if payload_type == spot_type:
+                event = self.Protobuf.extract(container)
+                sid = int(event.symbolId)
+                event_ts = self._event_ts(getattr(event, "timestamp", None))
+                with self._quotes_lock:
+                    state = self._quotes_by_id.setdefault(sid, {})
+                    bid_present = False
+                    ask_present = False
+                    try:
+                        bid_present = bool(event.HasField("bid"))
+                    except Exception:
+                        bid_present = bool(getattr(event, "bid", 0))
+                    try:
+                        ask_present = bool(event.HasField("ask"))
+                    except Exception:
+                        ask_present = bool(getattr(event, "ask", 0))
+                    if bid_present:
+                        state["bid"] = float(event.bid) / 100000.0
+                        state["bid_timestamp"] = event_ts
+                    if ask_present:
+                        state["ask"] = float(event.ask) / 100000.0
+                        state["ask_timestamp"] = event_ts
                 return
-            event = self.Protobuf.extract(container)
-            sid = int(event.symbolId)
-            event_ts = self._event_ts(getattr(event, "timestamp", None))
-            with self._quotes_lock:
-                state = self._quotes_by_id.setdefault(sid, {})
-                bid_present = False
-                ask_present = False
-                try:
-                    bid_present = bool(event.HasField("bid"))
-                except Exception:
-                    bid_present = bool(getattr(event, "bid", 0))
-                try:
-                    ask_present = bool(event.HasField("ask"))
-                except Exception:
-                    ask_present = bool(getattr(event, "ask", 0))
-                if bid_present:
-                    state["bid"] = float(event.bid) / 100000.0
-                    state["bid_timestamp"] = event_ts
-                if ask_present:
-                    state["ask"] = float(event.ask) / 100000.0
-                    state["ask_timestamp"] = event_ts
+
+            if payload_type == depth_type:
+                event = self.Protobuf.extract(container)
+                sid = int(event.symbolId)
+                observed_at = datetime.now(tz=UTC)
+                with self._depth_lock:
+                    quotes = self._depth_quotes_by_symbol.setdefault(sid, {})
+                    for quote_id in tuple(getattr(event, "deletedQuotes", ())):
+                        quotes.pop(int(quote_id), None)
+
+                    for item in tuple(getattr(event, "newQuotes", ())):
+                        quote_id = int(getattr(item, "id", 0) or 0)
+                        size_raw = int(getattr(item, "size", 0) or 0)
+                        if quote_id <= 0 or size_raw < 0:
+                            continue
+                        bid_present = False
+                        ask_present = False
+                        try:
+                            bid_present = bool(item.HasField("bid"))
+                        except Exception:
+                            bid_present = bool(getattr(item, "bid", 0))
+                        try:
+                            ask_present = bool(item.HasField("ask"))
+                        except Exception:
+                            ask_present = bool(getattr(item, "ask", 0))
+
+                        side = None
+                        raw_price = 0
+                        if bid_present and not ask_present:
+                            side = "BID"
+                            raw_price = int(getattr(item, "bid", 0) or 0)
+                        elif ask_present and not bid_present:
+                            side = "ASK"
+                            raw_price = int(getattr(item, "ask", 0) or 0)
+                        elif bid_present:
+                            side = "BID"
+                            raw_price = int(getattr(item, "bid", 0) or 0)
+                        elif ask_present:
+                            side = "ASK"
+                            raw_price = int(getattr(item, "ask", 0) or 0)
+
+                        if side is None or raw_price <= 0:
+                            continue
+                        quotes[quote_id] = {
+                            "side": side,
+                            "price": float(raw_price) / 100000.0,
+                            "size_units": float(size_raw) / 100.0,
+                            "received_at": observed_at,
+                        }
+
+                    self._depth_event_count_by_symbol[sid] = (
+                        self._depth_event_count_by_symbol.get(sid, 0) + 1
+                    )
+                    self._depth_observed_at_by_symbol[sid] = observed_at
+                return
         except Exception:
             return
 
@@ -410,6 +494,84 @@ class CTraderOpenApiSession:
         for symbol in symbols:
             req.symbolId.append(self.symbol_id(symbol))
         self._send_sync(req, client_msg_id=f"spots-{uuid4().hex}")
+
+    def subscribe_depth(self, symbols: list[str]) -> None:
+        """Subscribe to live cTrader Level II depth for the requested symbols."""
+        self.ensure_connected()
+        if not self.symbol_id_by_name:
+            self.load_symbols(symbols)
+        req = self.msg["SubscribeDepthQuotesReq"]()
+        req.ctidTraderAccountId = self.account_id
+        for symbol in symbols:
+            req.symbolId.append(self.symbol_id(symbol))
+        self._send_sync(req, client_msg_id=f"depth-{uuid4().hex}")
+
+    def unsubscribe_depth(self, symbols: list[str]) -> None:
+        self.ensure_connected()
+        req = self.msg["UnsubscribeDepthQuotesReq"]()
+        req.ctidTraderAccountId = self.account_id
+        for symbol in symbols:
+            req.symbolId.append(self.symbol_id(symbol))
+        self._send_sync(req, client_msg_id=f"undepth-{uuid4().hex}")
+
+    def clear_depth_snapshot(self, symbol: str) -> None:
+        sid = self.symbol_id(symbol)
+        with self._depth_lock:
+            self._depth_quotes_by_symbol.pop(sid, None)
+            self._depth_event_count_by_symbol.pop(sid, None)
+            self._depth_observed_at_by_symbol.pop(sid, None)
+
+    def depth_snapshot(
+        self,
+        symbol: str,
+        *,
+        max_levels: int = 20,
+    ) -> CTraderDepthSnapshot:
+        if max_levels <= 0:
+            raise CollectorUnavailable("cTrader depth max_levels must be positive")
+        sid = self.symbol_id(symbol)
+        info = self.symbol_info(symbol)
+        digits = int(getattr(info, "digits", 5))
+        with self._depth_lock:
+            quotes = {
+                quote_id: dict(payload)
+                for quote_id, payload in self._depth_quotes_by_symbol.get(sid, {}).items()
+            }
+            observed_at = self._depth_observed_at_by_symbol.get(sid)
+            event_count = int(self._depth_event_count_by_symbol.get(sid, 0))
+
+        if not quotes or observed_at is None:
+            raise CollectorUnavailable(f"cTrader depth snapshot unavailable for {symbol}")
+
+        bid_by_price: dict[float, float] = {}
+        ask_by_price: dict[float, float] = {}
+        for payload in quotes.values():
+            price = round(float(payload["price"]), digits)
+            size_units = float(payload["size_units"])
+            if size_units < 0:
+                continue
+            side = str(payload["side"])
+            book = bid_by_price if side == "BID" else ask_by_price
+            book[price] = book.get(price, 0.0) + size_units
+
+        bids = tuple(
+            CTraderDepthLevel(price, bid_by_price[price])
+            for price in sorted(bid_by_price, reverse=True)[:max_levels]
+        )
+        asks = tuple(
+            CTraderDepthLevel(price, ask_by_price[price])
+            for price in sorted(ask_by_price)[:max_levels]
+        )
+        if not bids and not asks:
+            raise CollectorUnavailable(f"cTrader depth snapshot empty for {symbol}")
+        return CTraderDepthSnapshot(
+            symbol_id=sid,
+            bids=bids,
+            asks=asks,
+            observed_at=observed_at,
+            event_count=event_count,
+            quote_count=len(quotes),
+        )
 
     def refresh_spot_snapshot(self, symbol: str) -> None:
         """Re-subscribe one symbol so cTrader emits its latest technical spot snapshot."""
