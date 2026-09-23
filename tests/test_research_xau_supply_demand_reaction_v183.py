@@ -6,8 +6,10 @@ from fx_scanner.research_xau_supply_demand_reaction_v183 import (
     ARTIFACT_CONTRACT,
     ReactionEpisode,
     ReactionOutcome,
+    ZoneDestination,
     _age_bucket,
     _candidate_subsets,
+    _destination_summary,
     _liquidity_bucket,
     _nesting_bucket,
     _touch_bucket,
@@ -155,3 +157,63 @@ def test_high_precision_subset_is_never_granted_promotion_authority():
         == "EXPLORATORY_HOLDOUT_SUBSET_NOT_PRODUCTION_CLAIM"
         for candidate in candidates
     )
+
+
+def test_destination_touch_rate_excludes_right_censored_zones():
+    t0 = datetime(2026, 1, 1, tzinfo=UTC)
+    resolved_touch = ZoneDestination(
+        zone_id="a",
+        timeframe="H1",
+        zone_class="IMBALANCE",
+        pattern="DBR",
+        direction="LONG",
+        available_at=t0,
+        low=100.0,
+        high=102.0,
+        atr_points=4.0,
+        observation_hours=240,
+        touched=True,
+        first_touch_at=t0 + timedelta(hours=2),
+        invalidated_at=None,
+        expired_at=t0 + timedelta(hours=240),
+        observation_complete=True,
+    )
+    resolved_miss = ZoneDestination(
+        zone_id="b",
+        timeframe="H1",
+        zone_class="IMBALANCE",
+        pattern="DBR",
+        direction="LONG",
+        available_at=t0,
+        low=90.0,
+        high=92.0,
+        atr_points=4.0,
+        observation_hours=240,
+        touched=False,
+        first_touch_at=None,
+        invalidated_at=t0 + timedelta(hours=3),
+        expired_at=t0 + timedelta(hours=240),
+        observation_complete=True,
+    )
+    censored = ZoneDestination(
+        zone_id="c",
+        timeframe="H1",
+        zone_class="IMBALANCE",
+        pattern="DBR",
+        direction="LONG",
+        available_at=t0,
+        low=80.0,
+        high=82.0,
+        atr_points=4.0,
+        observation_hours=240,
+        touched=False,
+        first_touch_at=None,
+        invalidated_at=None,
+        expired_at=t0 + timedelta(hours=240),
+        observation_complete=False,
+    )
+    summary = _destination_summary((resolved_touch, resolved_miss, censored))
+    assert summary["zones"] == 3
+    assert summary["resolved_zones"] == 2
+    assert summary["right_censored"] == 1
+    assert summary["touch_rate"] == 0.5
