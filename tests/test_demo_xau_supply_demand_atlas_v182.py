@@ -49,7 +49,9 @@ def _bar(ts: datetime, o: float, h: float, l: float, c: float) -> Bar:
         high=h,
         low=l,
         close=c,
-        volume=1.0,
+        tick_count=1,
+        spread_avg=0.0,
+        spread_max=0.0,
     )
 
 
