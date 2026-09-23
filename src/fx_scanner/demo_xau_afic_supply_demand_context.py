@@ -140,6 +140,8 @@ def latest_atlas(
 def latest_dom(
     store: SupabaseOperationalStore,
 ) -> tuple[datetime | None, dict[str, Any]]:
+    if not hasattr(store, "client"):
+        return None, {}
     response = (
         store.client.table("runtime_heartbeats")
         .select("observed_at,healthy,details")
