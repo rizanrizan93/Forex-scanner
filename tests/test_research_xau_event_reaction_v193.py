@@ -108,7 +108,7 @@ def test_reaction_is_atr_normalized_and_keeps_technical_context():
     assert row["pre_context"]["state"] == "AVAILABLE"
     assert row["pre_context"]["atr14"] > 0
     assert row["r15m_atr"] is not None
-    assert row["execution_authority"] if "execution_authority" in row else True
+    assert row["execution_authority"] is False
 
 
 def test_atlas_reports_historical_frequency_not_probability():
