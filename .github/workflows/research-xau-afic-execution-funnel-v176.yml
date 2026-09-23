@@ -38,7 +38,7 @@ jobs:
       CTRADER_DISABLE_TOKEN_REFRESH: "1"
       SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      CTRADER_XAU_M15_RESEARCH_HISTORY_BARS: "50000"
+      CTRADER_XAU_M15_RESEARCH_HISTORY_BARS: "100000"
       XAU_AFIC_FUNNEL_V176_OUTPUT: artifacts/xau-afic-execution-funnel-v176.json
 
     steps:
@@ -56,7 +56,7 @@ jobs:
         run: python -m fx_scanner.cli validate-config
       - name: Unit test V176
         run: pytest -q tests/test_research_xau_afic_execution_funnel_v176.py
-      - name: Run 50K-bar causal funnel research
+      - name: Run 100K-bar causal funnel research
         if: ${{ github.event_name != 'pull_request' }}
         run: python -m fx_scanner.research_xau_afic_execution_funnel_v176_runtime
       - name: Upload V176 evidence
