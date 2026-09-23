@@ -127,3 +127,14 @@ def test_xau_dashboard_splits_active_and_post_cancel_zone_reach():
     assert '"touch while active": meta.get("touch_while_active")' in text
     assert '"post-cancel touch": meta.get("post_cancel_touch")' in text
     assert "Active zone reach counts only touches while the prepared plan was still valid." in text
+
+
+def test_xau_dashboard_shows_strategic_htf_regime_and_zone_age_pools():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert '"ctrader_xau_htf_strategic_regime_v180"' in text
+    assert 'Strategic HTF Regime' in text
+    assert '"Strategic Bias"' in text
+    assert '"Tactical First Leg"' in text
+    assert '"Canonical zones 0–24h"' in text
+    assert '"Shadow zones 24–48h"' in text
+    assert 'Shadow 24–48h zones have NO execution authority.' in text
