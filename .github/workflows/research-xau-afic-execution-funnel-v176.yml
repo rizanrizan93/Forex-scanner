@@ -1,0 +1,69 @@
+name: XAU AFIC Execution Funnel V176
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/research_xau_afic_execution_funnel_v176.py"
+      - "src/fx_scanner/research_xau_afic_execution_funnel_v176_runtime.py"
+      - ".github/workflows/research-xau-afic-execution-funnel-v176.yml"
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_afic_execution_funnel_v176.py"
+      - "src/fx_scanner/research_xau_afic_execution_funnel_v176_runtime.py"
+      - "tests/test_research_xau_afic_execution_funnel_v176.py"
+      - ".github/workflows/research-xau-afic-execution-funnel-v176.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-afic-execution-funnel-v176
+  cancel-in-progress: true
+
+jobs:
+  funnel-v176:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      CTRADER_XAU_M15_RESEARCH_HISTORY_BARS: "50000"
+      XAU_AFIC_FUNNEL_V176_OUTPUT: artifacts/xau-afic-execution-funnel-v176.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Unit test V176
+        run: pytest -q tests/test_research_xau_afic_execution_funnel_v176.py
+      - name: Run 50K-bar causal funnel research
+        if: ${{ github.event_name != 'pull_request' }}
+        run: python -m fx_scanner.research_xau_afic_execution_funnel_v176_runtime
+      - name: Upload V176 evidence
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-afic-execution-funnel-v176
+          path: artifacts/xau-afic-execution-funnel-v176.json
+          if-no-files-found: error
+          retention-days: 30
