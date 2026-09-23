@@ -15,6 +15,10 @@ from .config import load_project_config
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .models import Bar, ensure_utc
+from .demo_xau_afic_supply_demand_context import (
+    attach_supply_demand_context,
+    context_token as supply_demand_context_token,
+)
 from .storage.supabase_operational import SupabaseOperationalStore
 
 SYMBOL="XAUUSD"
@@ -707,6 +711,7 @@ def _evaluation_key(payload:dict[str,Any])->str:
         str(payload.get("first_touch_at") or "NONE"),
         str(payload.get("confirm_at") or "NONE"),
         str(dict(payload.get("zone") or {}).get("origin_at") or "NONE"),
+        *supply_demand_context_token(payload),
     )
     return "|".join(fields)
 
@@ -779,6 +784,7 @@ def run()->int:
         ))
         raw_count=len(raw)
         payload=evaluate_afic_shadow(raw,as_of=now)
+        payload=attach_supply_demand_context(store,payload,observed_at=now)
         key=_evaluation_key(payload)
         persisted=_persist(store,payload=payload,key=key)
     except Exception as exc:
@@ -800,6 +806,7 @@ def run()->int:
             "raw_m15_bars":raw_count,
             "persisted":persisted,
             "evaluation":payload,
+            "supply_demand_context":dict(payload.get("supply_demand_context") or {}),
             "error":error,
         },
     )
