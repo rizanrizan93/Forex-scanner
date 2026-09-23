@@ -392,6 +392,8 @@ def reaction_for_cluster(
         "reference_price": p0,
         "direction15m": direction15,
         "whipsaw15m": whipsaw15,
+        "execution_influence": False,
+        "execution_authority": False,
         **responses,
     }
 
