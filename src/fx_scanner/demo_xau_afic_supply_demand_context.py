@@ -176,6 +176,22 @@ def attach_supply_demand_context(
         if first_leg == "SHORT"
         else {}
     )
+    active_path_source = dict(active_path.get("source_zone") or {})
+    first_leg_source = dict(first_leg_path.get("source_zone") or {})
+    path_overlap_ratio = (
+        0.0
+        if not active_path_source or not first_leg_source
+        else _overlap_ratio(active_path_source, first_leg_source)
+    )
+    path_direction_conflict = bool(
+        active_path
+        and first_leg_path
+        and str(active_path.get("reaction_direction") or "").upper()
+        != str(first_leg_path.get("reaction_direction") or "").upper()
+        and str(active_path_source.get("timeframe") or "").upper() == "H1"
+        and str(first_leg_source.get("timeframe") or "").upper() == "H1"
+        and path_overlap_ratio >= 0.25
+    )
     continuation_path = (
         demand_to_supply
         if continuation == "LONG"
@@ -285,6 +301,14 @@ def attach_supply_demand_context(
         "first_leg_path": first_leg_path,
         "continuation_path": continuation_path,
         "active_reaction_path": active_path,
+        "path_direction_conflict": path_direction_conflict,
+        "path_overlap_ratio": path_overlap_ratio,
+        "path_conflict_state": (
+            "OVERLAPPING_H1_SUPPLY_DEMAND_COMPRESSION_WAIT_MICRO_RESOLUTION"
+            if path_direction_conflict
+            else "NO_PATH_DIRECTION_CONFLICT"
+        ),
+        "micro_resolution_required": path_direction_conflict,
         "micro_refinement": micro_refinement,
         "first_leg_micro_refinement": (
             micro_refinement
@@ -298,8 +322,9 @@ def attach_supply_demand_context(
         "promotion_authority": False,
         "interpretation": (
             "Supply/demand is AFIC context and preparation evidence only. "
-            "Path mapping can identify the next opposing zone and internal waypoints, "
-            "but it cannot create or upgrade execution authority."
+            "Path mapping can identify the next opposing zone and internal waypoints. "
+            "If opposing H1 source zones overlap materially, the state is compression/conflict "
+            "and microstructure must resolve direction before any interpretation is upgraded."
         ),
     }
     out["supply_demand_context"] = context
@@ -324,4 +349,5 @@ def context_token(payload: dict[str, Any]) -> tuple[str, ...]:
         str(primary_target.get("zone_id") or "NONE"),
         str(micro.get("state") or "NONE"),
         str(dict(micro.get("refined_entry_pocket") or {}).get("origin_at") or "NONE"),
+        str(context.get("path_direction_conflict") or False),
     )
