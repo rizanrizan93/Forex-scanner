@@ -117,3 +117,53 @@ def test_target_hit_survives_later_signal_invalidation():
     assert status == "MISSED_EXECUTION"
     assert missed is True
     assert outcome == "FORECAST_TARGET_HIT_NO_EXECUTION"
+
+
+def test_afic_forecast_waits_for_entry_touch_before_scoring_targets():
+    start = datetime(2026, 9, 22, 8, 0, tzinfo=UTC)
+    bars = (
+        # Target is already below market, but the SHORT entry at 4335 has not been touched.
+        _bar(start, 4305, 4310, 4298, 4302),
+        _bar(start + timedelta(minutes=15), 4302, 4320, 4299, 4318),
+        # Entry is finally activated here.
+        _bar(start + timedelta(minutes=45), 4330, 4337, 4328, 4334),
+        _bar(start + timedelta(minutes=60), 4334, 4336, 4310, 4314),
+    )
+    out = evaluate_signal_path(
+        bars,
+        observed_at=start,
+        direction="SHORT",
+        entry=4335.0,
+        stop=4345.0,
+        tp1=4332.0,
+        tp2=4314.0,
+        require_entry_touch=True,
+    )
+    assert out.activation_at == start + timedelta(minutes=45)
+    assert out.tp1_hit is True
+    assert out.tp2_hit is True
+    assert out.outcome_at == start + timedelta(minutes=60)
+
+
+def test_afic_forecast_without_entry_touch_has_no_target_outcome():
+    start = datetime(2026, 9, 22, 20, 0, tzinfo=UTC)
+    bars = (
+        _bar(start, 4364, 4368, 4359, 4365),
+        _bar(start + timedelta(minutes=15), 4365, 4370, 4358, 4368),
+    )
+    out = evaluate_signal_path(
+        bars,
+        observed_at=start,
+        direction="LONG",
+        entry=4345.0,
+        stop=4338.0,
+        tp1=4348.0,
+        tp2=4357.0,
+        require_entry_touch=True,
+    )
+    assert out.activation_at is None
+    assert out.tp1_hit is False
+    assert out.tp2_hit is False
+    assert out.stop_hit is False
+    assert out.outcome_at is None
+    assert out.outcome_class is None
