@@ -67,10 +67,6 @@ FEATURE_NAMES = (
     "tick_mean4_to_mean16",
     "tick_mean4_to_mean64",
     "tick_trend_4v16",
-    "spread_avg4_atr",
-    "spread_max4_atr",
-    "spread_avg4_to_avg16",
-    "spread_max4_to_max16",
     "m15_range4_to_range16",
     "m15_volatility16_to64",
     "h4_trend_alignment",
@@ -88,7 +84,6 @@ FEATURE_NAMES = (
     "freshness_x_displacement",
     "approach_speed_x_distance",
     "h4_x_d1_alignment",
-    "activity_x_spread",
     "volatility_x_pressure",
     "displacement_x_body_fraction",
 )
@@ -441,13 +436,6 @@ def _feature_vector(
         default=0.0,
     )
 
-    spread_avg4 = float(np.mean([float(row.spread_avg) for row in prior4]))
-    spread_avg16 = float(np.mean([float(row.spread_avg) for row in prior16]))
-    spread_max4 = float(max(float(row.spread_max) for row in prior4))
-    spread_max16 = float(max(float(row.spread_max) for row in prior16))
-    spread_avg_ratio = _safe_ratio(spread_avg4, spread_avg16, default=1.0)
-    spread_max_ratio = _safe_ratio(spread_max4, spread_max16, default=1.0)
-
     ranges4 = np.asarray(
         [float(row.high) - float(row.low) for row in prior4],
         dtype=float,
@@ -503,9 +491,6 @@ def _feature_vector(
     displacement_body = float(zone.displacement_body_fraction)
     distance_atr = distance_now / atr
     approach_net_atr = net8 / atr
-    spread_avg4_atr = spread_avg4 / atr
-    spread_max4_atr = spread_max4 / atr
-
     values = [
         zone_width_atr,
         age_norm,
@@ -523,10 +508,6 @@ def _feature_vector(
         float(np.clip(tick_4_16, 0.0, 6.0)),
         float(np.clip(tick_4_64, 0.0, 6.0)),
         float(np.clip(tick_trend, -4.0, 4.0)),
-        float(np.clip(spread_avg4_atr, 0.0, 2.0)),
-        float(np.clip(spread_max4_atr, 0.0, 4.0)),
-        float(np.clip(spread_avg_ratio, 0.0, 6.0)),
-        float(np.clip(spread_max_ratio, 0.0, 6.0)),
         float(np.clip(range_ratio, 0.0, 6.0)),
         float(np.clip(volatility_ratio, 0.0, 6.0)),
         h4_trend,
@@ -544,7 +525,6 @@ def _feature_vector(
         age_norm * displacement_range,
         float(np.clip(approach_speed * distance_atr, -12.0, 12.0)),
         float(np.clip(h4_trend * d1_trend, -12.0, 12.0)),
-        float(np.clip(tick_4_16 * spread_avg_ratio, 0.0, 12.0)),
         float(np.clip(volatility_ratio * body_pressure, -12.0, 12.0)),
         displacement_range * displacement_body,
     ]
@@ -1005,6 +985,14 @@ def evaluate_hold_break_research(bars: Sequence[Bar]) -> dict[str, Any]:
         "execution_influence": EXECUTION_INFLUENCE,
         "promotion_eligible": PROMOTION_ELIGIBLE,
         "live_execution_enabled": LIVE_EXECUTION_ENABLED,
+        "data_provenance": {
+            "tick_count": "CTRADER_HISTORICAL_TRENDBAR_TICK_COUNT",
+            "spread_features": "EXCLUDED",
+            "spread_reason": (
+                "CTRADER_TRENDBAR_HISTORY_IN_THIS_FEED_ONLY_CARRIES_CURRENT_QUOTE_"
+                "SPREAD_PROXY_NOT_HISTORICAL_BID_ASK"
+            ),
+        },
         "label_contract": {
             "population": "UNIQUE_H1_ORIGIN_FIRST_TOUCH_WITHIN_48H",
             "decision_time": "COMPLETED_M15_BAR_IMMEDIATELY_BEFORE_FIRST_TOUCH",
@@ -1156,6 +1144,7 @@ def evaluate_hold_break_research(bars: Sequence[Bar]) -> dict[str, Any]:
             "V177 is conditional on H1 origin zones and complements V175 destination-zone ranking.",
             "All predictive features stop at the completed M15 bar immediately before first zone touch.",
             "LONG and SHORT are modeled independently.",
+            "Historical spread-derived features are excluded because the cTrader trendbar adapter attaches only a current-quote spread proxy, not historical bid/ask spreads.",
             "Three expanding walk-forward folds are diagnostic; they stop before the final holdout window.",
             "The final 30% holdout is untouched by model fitting and threshold calibration.",
             "V177 cannot alter AFIC admission, position sizing, risk controls, or broker execution.",
