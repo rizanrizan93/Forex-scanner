@@ -929,6 +929,49 @@ def _stacked_funnel(
     return by_direction
 
 
+def _status_diagnostics(rows: Sequence[FunnelEpisode]) -> dict[str, Any]:
+    confirmation_status: dict[str, int] = {}
+    target_status: dict[str, int] = {}
+    by_direction: dict[str, dict[str, dict[str, int]]] = {
+        "LONG": {"confirmation_status": {}, "target_status": {}},
+        "SHORT": {"confirmation_status": {}, "target_status": {}},
+    }
+    for row in rows:
+        confirm = str(row.execution.confirmation_status)
+        target = str(row.execution.target_status)
+        confirmation_status[confirm] = confirmation_status.get(confirm, 0) + 1
+        target_status[target] = target_status.get(target, 0) + 1
+        direction = str(row.base.direction)
+        if direction in by_direction:
+            d_confirm = by_direction[direction]["confirmation_status"]
+            d_target = by_direction[direction]["target_status"]
+            d_confirm[confirm] = d_confirm.get(confirm, 0) + 1
+            d_target[target] = d_target.get(target, 0) + 1
+
+    confirmed = sum(
+        row.execution.confirmed for row in rows
+    )
+    valid_target_geometry = sum(
+        row.execution.target_status
+        in {"TARGET_HIT", "STOP_HIT", "TARGET_TIMEOUT", "PENDING_TARGET"}
+        for row in rows
+    )
+    geometry_invalid = sum(
+        row.execution.target_status == "TARGET_GEOMETRY_INVALID"
+        for row in rows
+    )
+    return {
+        "rows": len(rows),
+        "confirmed": int(confirmed),
+        "confirmed_rate": None if not rows else confirmed / len(rows),
+        "valid_target_geometry": int(valid_target_geometry),
+        "target_geometry_invalid": int(geometry_invalid),
+        "confirmation_status": confirmation_status,
+        "target_status": target_status,
+        "by_direction": by_direction,
+    }
+
+
 def evaluate_execution_funnel_research(bars: Sequence[Bar]) -> dict[str, Any]:
     episodes = build_funnel_episodes(bars)
     train, calibration, test = _split_by_map(episodes)
@@ -955,6 +998,11 @@ def evaluate_execution_funnel_research(bars: Sequence[Bar]) -> dict[str, Any]:
             "calibration": len(calibration),
             "test": len(test),
             "purge_hours": max(24, SPLIT_PURGE_HOURS),
+        },
+        "status_diagnostics": {
+            "train": _status_diagnostics(train),
+            "calibration": _status_diagnostics(calibration),
+            "test": _status_diagnostics(test),
         },
     }
     if min(len(train), len(calibration), len(test)) <= 0:
