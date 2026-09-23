@@ -478,6 +478,9 @@ with forecast_tab:
     dom_v191_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_dom_v191"
     )
+    event_risk_v192_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_event_risk_v192"
+    )
     supply_demand_research_hb = _latest_heartbeat(
         heartbeats, "ctrader_xau_supply_demand_reaction_v183"
     )
@@ -671,6 +674,73 @@ with forecast_tab:
             resolution = afic_sd_context.get("conflict_resolution_evidence")
             if resolution:
                 st.info(f"Evidence resolusi compression: {resolution}")
+
+        event_context = dict(afic_sd_context.get("event_risk_context") or {})
+        if not event_context and event_risk_v192_hb is not None:
+            event_details = dict(event_risk_v192_hb.get("details") or {})
+            event_context = dict(event_details.get("risk") or {})
+            event_context["source_status"] = dict(event_details.get("source_status") or {})
+            event_context["official_or_cadence_verified_count"] = event_details.get(
+                "official_or_cadence_verified_count"
+            )
+            event_context["discovery_unverified_count"] = event_details.get(
+                "discovery_unverified_count"
+            )
+            event_context["stale"] = False
+        if event_context:
+            focal_event = dict(event_context.get("focal_event") or {})
+            e1, e2, e3, e4 = st.columns(4)
+            e1.metric("Event Risk V192", str(event_context.get("state") or "—"))
+            e2.metric("Aksi", str(event_context.get("action") or "—"))
+            e3.metric(
+                "Event terdekat",
+                str(focal_event.get("title") or "Tidak ada event dekat"),
+            )
+            e4.metric(
+                "Jarak waktu",
+                "—"
+                if event_context.get("minutes_to_focal") is None
+                else f"{float(event_context.get('minutes_to_focal')):+.0f} menit",
+            )
+            if focal_event:
+                st.caption(
+                    "Focal event: "
+                    f"{focal_event.get('title','—')} • "
+                    f"{_fmt_wib_datetime(focal_event.get('scheduled_at'), seconds=False)} • "
+                    f"{focal_event.get('source_tier','—')} • "
+                    f"{focal_event.get('source','—')}."
+                )
+            upcoming = list(event_context.get("upcoming_events") or [])
+            if upcoming:
+                event_rows = []
+                for item in upcoming[:6]:
+                    event_rows.append(
+                        {
+                            "Waktu WIB": _fmt_wib_datetime(
+                                item.get("scheduled_at"), seconds=False
+                            ),
+                            "Event": item.get("title"),
+                            "Impact": item.get("impact"),
+                            "Kategori": item.get("category"),
+                            "Tier sumber": item.get("source_tier"),
+                            "Sumber": item.get("source"),
+                        }
+                    )
+                st.dataframe(
+                    pd.DataFrame(event_rows),
+                    hide_index=True,
+                    use_container_width=True,
+                )
+            st.caption(
+                "V192 adalah context risiko waktu, bukan prediksi arah berita. "
+                "PRE_EVENT/EVENT_WINDOW hanya mengubah cara membaca setup menjadi lebih hati-hati; "
+                "tidak memiliki execution authority."
+            )
+            if event_context.get("stale"):
+                st.warning(
+                    "Event-risk snapshot stale. Jangan gunakan kalender ini sebagai context aktif "
+                    "sampai heartbeat V192 diperbarui."
+                )
 
         if afic_sd_context.get("path_direction_conflict"):
             st.warning(
