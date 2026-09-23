@@ -475,6 +475,9 @@ with forecast_tab:
     supply_demand_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_supply_demand_atlas_v182"
     )
+    supply_demand_research_hb = _latest_heartbeat(
+        heartbeats, "ctrader_xau_supply_demand_reaction_v183"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -717,6 +720,77 @@ with forecast_tab:
         st.info(
             "Atlas V182 belum memiliki zona yang dapat ditampilkan pada snapshot terbaru. "
             "Ketiadaan zona V182 tidak memaksa scanner membuat setup."
+        )
+
+    st.markdown("### Validasi Historis Supply & Demand (V183)")
+    st.caption(
+        "Profiler 100K-bar ini memisahkan destination rate dari reaction rate. "
+        "Target primer HOLD = +0,50 ATR dalam 16 candle M15 sebelum close menembus distal. "
+        "Hasil V183 adalah evidence riset dan TIDAK memberi izin eksekusi."
+    )
+    v183_details = (
+        {} if supply_demand_research_hb is None
+        else dict(supply_demand_research_hb.get("details") or {})
+    )
+    v183_eval = dict(v183_details.get("evaluation") or {})
+    if v183_eval:
+        v183_holdout = dict(v183_eval.get("holdout_overall") or {})
+        v183_destination = dict(v183_eval.get("destination_overall") or {})
+        v183_candidates = list(v183_eval.get("candidate_80_precision_subsets") or [])
+        vh1, vh2, vh3, vh4, vh5 = st.columns(5)
+        vh1.metric("Keputusan riset", str(v183_eval.get("decision") or "—"))
+        vh2.metric("Zona historis", v183_eval.get("zones", 0))
+        vh3.metric(
+            "Destination touch rate",
+            "—"
+            if v183_destination.get("touch_rate") is None
+            else _fmt_pct(v183_destination.get("touch_rate")),
+        )
+        vh4.metric(
+            "Holdout HOLD precision",
+            "—"
+            if v183_holdout.get("precision_hold") is None
+            else _fmt_pct(v183_holdout.get("precision_hold")),
+        )
+        vh5.metric("Subset ≥80% (riset)", len(v183_candidates))
+        st.caption(
+            f"Holdout n={v183_holdout.get('n','—')} • "
+            f"Wilson lower 95%="
+            f"{'—' if v183_holdout.get('wilson_lower_95') is None else _fmt_pct(v183_holdout.get('wilson_lower_95'))} • "
+            f"mean MFE={_fmt_distance(v183_holdout.get('mean_mfe_atr'),' ATR')} • "
+            f"mean MAE={_fmt_distance(v183_holdout.get('mean_mae_atr'),' ATR')}. "
+            "Subset ≥80% tetap eksploratif dan tidak dipromosikan otomatis."
+        )
+        if v183_candidates:
+            candidate_rows = []
+            for item in v183_candidates[:10]:
+                dims = dict(item.get("dimensions") or {})
+                candidate_rows.append(
+                    {
+                        "kontrak grup": " | ".join(item.get("group_contract") or []),
+                        "dimensi": ", ".join(f"{k}={v}" for k, v in dims.items()),
+                        "n holdout": item.get("n"),
+                        "HOLD precision": item.get("precision_hold"),
+                        "Wilson lower 95%": item.get("wilson_lower_95"),
+                        "mean MFE (ATR)": item.get("mean_mfe_atr"),
+                        "mean MAE (ATR)": item.get("mean_mae_atr"),
+                        "otoritas": "RISET SAJA",
+                    }
+                )
+            st.dataframe(
+                pd.DataFrame(candidate_rows),
+                hide_index=True,
+                use_container_width=True,
+            )
+        st.info(
+            "V183 tidak mengubah V182, V181, canonical AFIC, atau broker lane. "
+            "Promosi hanya boleh dipertimbangkan setelah prospective forward lifecycle "
+            "mengonfirmasi subset yang sama pada data baru."
+        )
+    else:
+        st.info(
+            "V183 belum menerbitkan hasil 100K-bar. Dashboard akan menampilkan hasil "
+            "holdout setelah workflow riset selesai."
         )
 
     st.markdown("### Kandidat Zona Pra-H4 (Pre-map Candidate Zone)")
