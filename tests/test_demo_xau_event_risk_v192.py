@@ -98,3 +98,13 @@ def test_merge_prefers_official_event_for_same_category_and_time():
     assert len(merged) == 1
     assert merged[0].source_tier == "OFFICIAL"
     assert merged[0].source == "BEA_OFFICIAL_SCHEDULE"
+
+
+def test_unemployment_claims_is_jobless_claims_category():
+    from fx_scanner.demo_xau_event_risk_v192 import _category
+    assert _category("Unemployment Claims") == "JOBLESS_CLAIMS"
+
+
+def test_fomc_member_speech_is_speech_not_fomc_decision():
+    from fx_scanner.demo_xau_event_risk_v192 import _category
+    assert _category("FOMC Member Williams Speaks") == "FED_SPEECH"
