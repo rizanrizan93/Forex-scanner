@@ -475,6 +475,9 @@ with forecast_tab:
     supply_demand_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_supply_demand_atlas_v182"
     )
+    dom_v191_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_dom_v191"
+    )
     supply_demand_research_hb = _latest_heartbeat(
         heartbeats, "ctrader_xau_supply_demand_reaction_v183"
     )
@@ -625,6 +628,50 @@ with forecast_tab:
                 f"{_fmt_distance(afic_sd_context.get('opposite_zone_distance_atr'),' ATR')}. "
                 "Ini adalah Plan-B / reaction watch, bukan alasan entry melawan AFIC."
             )
+        dom_context = dict(afic_sd_context.get("dom_context") or {})
+        if not dom_context and dom_v191_hb is not None:
+            dom_details = dict(dom_v191_hb.get("details") or {})
+            dom_context = dict(dom_details.get("analysis") or {})
+            dom_context["stale"] = False
+            dom_context["alignment_with_first_leg"] = "BELUM_DIHUBUNGKAN_KE_SNAPSHOT_AFIC"
+        if dom_context:
+            d1, d2, d3, d4 = st.columns(4)
+            d1.metric("DOM V191", str(dom_context.get("state") or "—"))
+            d2.metric(
+                "Pressure score",
+                "—"
+                if dom_context.get("pressure_score") is None
+                and dom_context.get("dom_pressure_score") is None
+                else f"{float(dom_context.get('pressure_score', dom_context.get('dom_pressure_score'))):.1f}",
+            )
+            d3.metric(
+                "Imbalance top-5",
+                "—"
+                if dom_context.get("last_imbalance") is None
+                else f"{float(dom_context.get('last_imbalance')):+.2f}",
+            )
+            d4.metric(
+                "Alignment first-leg",
+                str(dom_context.get("alignment_with_first_leg") or "—"),
+            )
+            st.caption(
+                "DOM berasal dari Level II cTrader broker/venue, bukan consolidated COMEX book. "
+                "V191 hanya context/shadow evidence dan tidak memiliki execution authority."
+            )
+            bid_wall = dict(dom_context.get("bid_wall") or {})
+            ask_wall = dict(dom_context.get("ask_wall") or {})
+            if bid_wall or ask_wall:
+                st.caption(
+                    "Wall persistence • BID "
+                    f"{_fmt_price(bid_wall.get('dominant_wall_price'))} / "
+                    f"{_fmt_pct(bid_wall.get('wall_persistence'))} • ASK "
+                    f"{_fmt_price(ask_wall.get('dominant_wall_price'))} / "
+                    f"{_fmt_pct(ask_wall.get('wall_persistence'))}."
+                )
+            resolution = afic_sd_context.get("conflict_resolution_evidence")
+            if resolution:
+                st.info(f"Evidence resolusi compression: {resolution}")
+
         if afic_sd_context.get("path_direction_conflict"):
             st.warning(
                 "KONFLIK SUPPLY/DEMAND H1: zona LONG dan SHORT saling overlap "
