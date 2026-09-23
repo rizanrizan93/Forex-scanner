@@ -153,7 +153,7 @@ def _scan_touch_indices(
     row_times: Sequence[datetime],
     *,
     zone: SDZone,
-) -> tuple[int, ...]:
+) -> tuple[tuple[int, int], ...]:
     available = ensure_utc(zone.available_at)
     start = bisect_left(row_times, available)
     expiry = available + timedelta(
@@ -162,7 +162,7 @@ def _scan_touch_indices(
     end = min(len(rows), bisect_right(row_times, expiry))
     max_horizon = max(SENSITIVITY_HORIZONS_M15.get(zone.timeframe, (16,)))
 
-    touches: list[int] = []
+    touches: list[tuple[int, int]] = []
     was_inside = False
     next_eligible = start
     ordinal = 0
@@ -174,7 +174,7 @@ def _scan_touch_indices(
             if ordinal <= MAX_TOUCHES_PER_ZONE and index >= next_eligible:
                 # Right-edge unresolved touches are excluded rather than labelled.
                 if index + max_horizon < len(rows):
-                    touches.append(index)
+                    touches.append((ordinal, index))
                     next_eligible = index + max_horizon + 1
         if _invalidated(row, zone):
             break
@@ -206,7 +206,7 @@ def build_timeframe_dataset(
             row_times,
             zone=zone,
         )
-        for local_ordinal, touch_index in enumerate(touch_indices, start=1):
+        for touch_ordinal, touch_index in touch_indices:
             touch_at = ensure_utc(rows[touch_index].timestamp)
             primary_horizon = PRIMARY_HORIZON_M15[zone.timeframe]
             primary = evaluate_reaction_outcome(
@@ -267,8 +267,8 @@ def build_timeframe_dataset(
                     available_at=ensure_utc(zone.available_at),
                     touch_at=touch_at,
                     touch_index=int(touch_index),
-                    touch_ordinal=int(local_ordinal),
-                    touch_bucket=_touch_bucket(int(local_ordinal)),
+                    touch_ordinal=int(touch_ordinal),
+                    touch_bucket=_touch_bucket(int(touch_ordinal)),
                     age_hours=age_hours,
                     age_bucket=_age_bucket(zone.timeframe, age_hours),
                     session_context=_session_bucket_wib(touch_at),
