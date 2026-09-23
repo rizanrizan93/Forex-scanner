@@ -1096,15 +1096,15 @@ with forecast_tab:
         )
     st.info(_afic_path_text(direction, state))
 
-    if grade == "A":
+    if grade in {"A", "B"}:
         st.success(
-            "Canonical V161 selector PASS: grade A map eligible for DEMO auto execution "
-            "after completed M15 confirmation."
+            f"Canonical V161 selector Grade {grade}: eligible for DEMO auto execution "
+            "only after completed M15 confirmation and fresh broker revalidation."
         )
-    elif grade in {"B", "C"}:
+    elif grade == "C":
         st.warning(
-            f"Grade {grade}: dashboard/watch only. Scanner will not auto-order this AFIC "
-            "map even if the zone is touched."
+            "Grade C: shadow/watch only. Scanner will not auto-order this AFIC map "
+            "even if the zone is touched."
         )
     else:
         st.caption("No canonical AFIC selector grade available yet.")
