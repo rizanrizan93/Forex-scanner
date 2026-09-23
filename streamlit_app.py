@@ -689,9 +689,9 @@ with forecast_tab:
 
     st.markdown("#### Siklus Rencana Persiapan (Prepared Plan Lifecycle)")
     st.caption(
-        "Prepared plans are retained after they disappear from the current H4 map. "
-        "This separates WAITING_PRICE, ZONE_ENTERED, CONFIRMED, broker handoff, and "
-        "CANCELLED states. Cancellation is evidence, not deletion."
+        "Rencana yang pernah disiapkan tetap disimpan walaupun hilang dari H4 map terbaru. "
+        "Ini membedakan WAITING_PRICE, ZONE_ENTERED, CONFIRMED, penyerahan ke broker, dan "
+        "CANCELLED. Pembatalan disimpan sebagai evidence, bukan dihapus."
     )
     if lifecycle_rows:
         total_plans = len(lifecycle_rows)
@@ -799,9 +799,9 @@ with forecast_tab:
 
     st.markdown("#### Kelayakan Eksekusi XAU (XAU Execution Admission)")
     st.caption(
-        "This panel separates stored signal state from actual broker authority. "
-        "BROKER ELIGIBLE means the signal has an allowlisted DEMO execution geometry, "
-        "but fresh quote/risk/margin/protection revalidation must still pass before an order."
+        "Panel ini memisahkan status signal yang tersimpan dari izin broker yang sebenarnya. "
+        "BROKER ELIGIBLE berarti geometry signal termasuk jalur DEMO yang diizinkan, tetapi "
+        "quote terbaru, risiko, margin, serta verifikasi SL/TP tetap harus lulus sebelum order."
     )
     authorized_geometry_codes = {
         "XAU_AFIC_PATH_EXECUTION_V1",
@@ -884,9 +884,9 @@ with forecast_tab:
 
     st.markdown("#### Sinyal Teknikal XAU Lintas-Mesin (Cross-engine XAU technical signals)")
     st.caption(
-        "Separate from the AFIC H4 map. These rows come from other XAU technical engines. "
-        "CURRENT/EXPIRED is determined from expires_at; an expired setup is historical "
-        "context only and must not be treated as a current AFIC order blueprint."
+        "Bagian ini terpisah dari AFIC H4 map. Baris berasal dari mesin teknikal XAU lain. "
+        "CURRENT/EXPIRED ditentukan dari expires_at; setup yang kedaluwarsa hanya konteks "
+        "historis dan tidak boleh dianggap sebagai rancangan order AFIC yang masih aktif."
     )
     if xau_technical_signal_rows:
         now_utc = datetime.now(tz=UTC)
@@ -1016,7 +1016,7 @@ with forecast_tab:
             "cycle will populate candidate/rejection counts."
         )
 
-    st.markdown("#### Alternative / reversal watch zones")
+    st.markdown("#### Zona Pantauan Alternatif / Reversal (Alternative / reversal watch zones)")
     reversal_watch = list(zone_diagnostics.get("alternative_reversal_watch_zones") or [])
     active_watch = [
         dict(item) for item in reversal_watch
@@ -1342,7 +1342,7 @@ with forecast_tab:
             f"TP2 {_fmt_price(latest_geometry.get('planned_tp2'))}"
         )
 
-    st.markdown("#### Automation / broker timeline")
+    st.markdown("#### Linimasa Otomasi / Broker (Automation / broker timeline)")
     if execution_events:
         timeline_rows = []
         for row in execution_events[:20]:
@@ -1365,7 +1365,7 @@ with forecast_tab:
     else:
         st.caption("No XAU execution event yet. Forecast monitoring can still be active without an order.")
 
-    st.markdown("#### Expected-move envelope")
+    st.markdown("#### Rentang Pergerakan yang Diharapkan (Expected-move envelope)")
     move_details = {} if move_hb is None else dict(move_hb.get("details") or {})
     move_eval = dict(move_details.get("evaluation") or {})
     reference_envelope = dict(move_eval.get("current_envelope") or {})
@@ -1440,7 +1440,7 @@ with forecast_tab:
     elif not live_envelope:
         st.caption("Expected-move V170 data is not available in this snapshot.")
 
-    st.markdown("#### Forecast state history")
+    st.markdown("#### Riwayat Status Prakiraan (Forecast state history)")
     history_rows = []
     for row in forecast_rows[:12]:
         payload = dict(dict(row.get("payload") or {}).get("forecast") or {})
@@ -1464,7 +1464,7 @@ with forecast_tab:
         st.caption("No durable AFIC forecast transitions have been recorded yet.")
 
 with account_tab:
-    st.subheader("Broker Account Monitor")
+    st.subheader("Pemantauan Akun Broker (Broker Account Monitor)")
     account = None if backend is None else backend.get("broker_account")
     positions = [] if backend is None else backend.get("broker_positions", [])
 
@@ -1545,7 +1545,7 @@ with account_tab:
         )
 
 with scanner_tab:
-    st.subheader("Pair Ranking")
+    st.subheader("Peringkat Pair (Pair Ranking)")
 
     if backend is not None and backend["rankings"]:
         rankings = _frame(backend["rankings"])
@@ -1591,7 +1591,7 @@ with scanner_tab:
             "priority class, NOT an execution grade and NOT EXECUTION_READY."
         )
 
-    st.subheader("Latest Signals")
+    st.subheader("Sinyal Terbaru (Latest Signals)")
     if backend is not None and backend["signals"]:
         signals = _frame(backend["signals"])
         signals["_state_order"] = signals["state"].map(_state_rank)
@@ -1648,7 +1648,7 @@ with scanner_tab:
         st.info("No signal snapshots have been written yet.")
 
 with data_tab:
-    st.subheader("Currency Macro")
+    st.subheader("Makro Mata Uang (Currency Macro)")
     if backend is not None and backend["macro"]:
         macro = _frame(backend["macro"])
         if "coverage" in macro.columns:
@@ -1658,7 +1658,7 @@ with data_tab:
         st.info("No durable macro snapshots are available yet.")
 
     if cfg is not None:
-        st.subheader("Official Providers")
+        st.subheader("Sumber Data Resmi (Official Providers)")
         providers = pd.DataFrame(
             [
                 {
@@ -1686,7 +1686,7 @@ with data_tab:
                     st.error(f"Provider check failed safely: {type(exc).__name__}: {exc}")
 
 with system_tab:
-    st.subheader("Execution Control")
+    st.subheader("Kontrol Eksekusi (Execution Control)")
     if backend is not None:
         control = backend["control"]
         c1, c2, c3, c4 = st.columns(4)
@@ -1707,7 +1707,7 @@ with system_tab:
     else:
         st.info("Execution-control snapshot requires backend connection.")
 
-    st.subheader("Runtime Heartbeats")
+    st.subheader("Status Runtime / Heartbeat")
     if backend is not None and backend["heartbeats"]:
         heartbeats = _frame(backend["heartbeats"])
         st.dataframe(heartbeats, hide_index=True, use_container_width=True)
@@ -1715,12 +1715,12 @@ with system_tab:
         st.info("No runtime heartbeat snapshots are available.")
 
     if backend is not None and backend.get("latest_run"):
-        st.subheader("Latest Scanner Run")
+        st.subheader("Proses Scanner Terbaru (Latest Scanner Run)")
         run = backend["latest_run"]
         st.json(run, expanded=False)
 
 with validation_tab:
-    st.subheader("Acceptance Gates")
+    st.subheader("Gerbang Validasi (Acceptance Gates)")
     if cfg is not None:
         acceptance = cfg.risk["acceptance"]
         gates = pd.DataFrame(
@@ -1752,7 +1752,7 @@ with validation_tab:
         st.dataframe(gates, hide_index=True, use_container_width=True)
 
         perf = cfg.validation["performance_budget"]
-        st.subheader("Hot-path Performance Budget")
+        st.subheader("Batas Kinerja Jalur Kritis (Hot-path Performance Budget)")
         p1, p2, p3 = st.columns(3)
         p1.metric("Top-5 Deep Scan", f"≤ {perf['deep_scan_top5_target_ms']} ms")
         p2.metric("Per-pair MTF", f"≤ {perf['per_pair_mtf_target_ms']} ms")
@@ -1765,7 +1765,7 @@ with validation_tab:
             "from the live scanner hot path."
         )
 
-    st.subheader("Latest Persisted Performance")
+    st.subheader("Kinerja Tersimpan Terbaru (Latest Persisted Performance)")
     if backend is not None and backend["performance"]:
         performance = _frame(backend["performance"])
         if "win_rate" in performance.columns:
