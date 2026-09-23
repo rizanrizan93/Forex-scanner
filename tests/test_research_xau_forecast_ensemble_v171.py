@@ -221,9 +221,9 @@ def test_streamlit_trade_preparation_makes_wait_zone_explicit():
     root = __import__("pathlib").Path(__file__).resolve().parents[1]
     text = (root / "streamlit_app.py").read_text()
     assert "### Persiapan Trading (Trade Preparation)" in text
-    assert "NO VALID ENTRY ZONE — DO NOT ORDER YET" in text
-    assert '"Reaction zone"' in text
-    assert '"Reference entry"' in text
-    assert '"Manual action"' in text
+    assert "BELUM ADA ZONA ENTRY VALID — JANGAN PASANG ORDER" in text
+    assert '"Zona reaksi"' in text
+    assert '"Entry acuan"' in text
+    assert '"Tindakan manual"' in text
     assert "WAIT M15 CONFIRM" in text
     assert "Do not reuse an older zone from Forecast State History" in text

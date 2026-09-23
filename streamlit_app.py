@@ -537,43 +537,43 @@ with forecast_tab:
         tactical_first_leg = str(regime_current.get("tactical_first_leg") or "NEUTRAL")
         strategic_confidence = regime_current.get("confidence")
         r1, r2, r3, r4, r5 = st.columns(5)
-        r1.metric("Strategic Bias", strategic_bias)
+        r1.metric("Bias Strategis (Strategic Bias)", strategic_bias)
         r2.metric(
-            "HTF confidence",
+            "Keyakinan HTF (HTF confidence)",
             "—" if strategic_confidence is None else _fmt_pct(strategic_confidence),
         )
-        r3.metric("Tactical First Leg", tactical_first_leg)
-        r4.metric("Canonical zones 0–24h", regime_pool.get("canonical_count", 0))
-        r5.metric("Shadow zones 24–48h", regime_pool.get("shadow_count", 0))
+        r3.metric("Gerak Taktis Pertama (Tactical First Leg)", tactical_first_leg)
+        r4.metric("Zona canonical 0–24j", regime_pool.get("canonical_count", 0))
+        r5.metric("Zona shadow 24–48j", regime_pool.get("shadow_count", 0))
         st.caption(
-            "V180 strategic bias uses completed D1 + H4 only and adds hysteresis so it "
-            "does not flip with every M15 update. Example: Strategic SHORT can still have "
-            "a tactical LONG first leg while price rallies into an upper sell zone. "
-            "Shadow 24–48h zones have NO execution authority."
+            "Bias strategis V180 hanya memakai D1 + H4 yang sudah selesai dan menggunakan "
+            "hysteresis agar arah tidak berubah hanya karena update M15. Contoh: Bias "
+            "Strategis SHORT tetap dapat memiliki gerak taktis pertama LONG ketika harga "
+            "naik menuju zona jual di atas. Zona shadow 24–48 jam TIDAK memiliki izin eksekusi."
         )
         if strategic_bias in {"LONG", "SHORT"}:
             desired = str(regime_pool.get("desired_reaction_side") or "—")
             st.info(
-                f"HTF plan: {strategic_bias} • first leg {tactical_first_leg} • "
-                f"search {desired.replace('_', ' ')}. "
-                f"Current AFIC H4-candle direction = {direction}. "
-                "The two may differ because V180 is strategic while AFIC V161 is still "
-                "the canonical tactical execution map."
+                f"Rencana HTF: {strategic_bias} • gerak pertama {tactical_first_leg} • "
+                f"cari {desired.replace('_', ' ')}. "
+                f"Arah candle H4 AFIC saat ini = {direction}. "
+                "Keduanya dapat berbeda karena V180 adalah konteks strategis, sedangkan "
+                "AFIC V161 tetap merupakan peta taktis canonical untuk eksekusi."
             )
         shadow_zones = list(regime_pool.get("shadow_24_48h") or [])
         if not regime_pool.get("canonical_count") and shadow_zones:
             nearest_shadow = dict(shadow_zones[0])
             st.warning(
-                "No canonical 0–24h HTF-aligned H1 origin exists, but a structurally "
-                "active 24–48h research zone exists at "
+                "Tidak ada H1 origin canonical 0–24 jam yang selaras HTF, tetapi terdapat "
+                "zona riset 24–48 jam yang masih aktif secara struktural di "
                 f"{_fmt_price(nearest_shadow.get('low'))}–"
                 f"{_fmt_price(nearest_shadow.get('high'))}. "
-                "This is research-only until forward validation supports changing the age rule."
+                "Zona ini hanya untuk riset sampai validasi forward mendukung perubahan batas umur."
             )
     else:
         st.caption(
-            "Strategic HTF Regime V180 has not published a shadow snapshot yet. "
-            "AFIC V161 remains the execution authority."
+            "Rezim Strategis HTF V180 belum menerbitkan snapshot shadow. "
+            "AFIC V161 tetap menjadi otoritas eksekusi."
         )
 
     st.markdown("### Kandidat Zona Pra-H4 (Pre-map Candidate Zone)")
@@ -640,51 +640,51 @@ with forecast_tab:
     st.markdown("### Persiapan Trading (Trade Preparation)")
     if not valid_zone_now:
         st.error(
-            "NO VALID ENTRY ZONE — DO NOT ORDER YET. "
-            "Scanner is waiting for a new H4 structural map/reaction zone."
+            "BELUM ADA ZONA ENTRY VALID — JANGAN PASANG ORDER. "
+            "Scanner sedang menunggu H4 map struktural/zona reaksi yang baru."
         )
         t1, t2, t3, t4 = st.columns(4)
-        t1.metric("Waiting for", "NEW H4 MAP")
-        t2.metric("Reaction zone", "—")
-        t3.metric("Reference entry", "—")
-        t4.metric("Manual action", "WAIT")
+        t1.metric("Menunggu", "H4 MAP BARU")
+        t2.metric("Zona reaksi", "—")
+        t3.metric("Entry acuan", "—")
+        t4.metric("Tindakan manual", "TUNGGU")
         if lifecycle_rows:
             last_plan = dict(lifecycle_rows[0])
             if str(last_plan.get("lifecycle_state") or "") == "CANCELLED":
                 st.caption(
-                    "Last prepared plan: "
+                    "Rencana persiapan terakhir: "
                     f"{last_plan.get('direction') or '—'} "
                     f"{_fmt_price(last_plan.get('entry_price'))} • CANCELLED • "
-                    f"reason={last_plan.get('cancel_reason') or 'UNKNOWN'} • "
-                    f"created={last_plan.get('created_at') or '—'} • "
-                    f"cancelled={last_plan.get('cancelled_at') or '—'}."
+                    f"alasan={last_plan.get('cancel_reason') or 'UNKNOWN'} • "
+                    f"dibuat={last_plan.get('created_at') or '—'} • "
+                    f"dibatalkan={last_plan.get('cancelled_at') or '—'}."
                 )
     else:
         t1, t2, t3, t4 = st.columns(4)
-        t1.metric("Waiting for", f"{zone_side} REACTION")
-        t2.metric("Reaction zone", f"{_fmt_price(zone_low)}–{_fmt_price(zone_high)}")
-        t3.metric("Reference entry", _fmt_price(reference_entry_now))
+        t1.metric("Menunggu", f"REAKSI {zone_side}")
+        t2.metric("Zona reaksi", f"{_fmt_price(zone_low)}–{_fmt_price(zone_high)}")
+        t3.metric("Entry acuan", _fmt_price(reference_entry_now))
         if grade not in {"A","B"}:
-            manual_action = f"WATCH ONLY (GRADE {grade})"
+            manual_action = f"PANTAU SAJA / WATCH ONLY (GRADE {grade})"
         elif "CONFIRMED" in str(state).upper():
-            manual_action = "CONFIRMED / FRESH QUOTE"
+            manual_action = "TERKONFIRMASI / QUOTE TERBARU"
         elif proximity == "IN_ZONE":
-            manual_action = "WAIT M15 CONFIRM"
+            manual_action = "TUNGGU KONFIRMASI M15"
         elif proximity == "NEAR_ZONE":
-            manual_action = "PREPARE"
+            manual_action = "PERSIAPAN"
         else:
-            manual_action = "WAIT PRICE TO ZONE"
-        t4.metric("Manual action", manual_action)
+            manual_action = "TUNGGU HARGA KE ZONA"
+        t4.metric("Tindakan manual", manual_action)
         st.info(
-            f"Current plan: wait for XAUUSD to enter {_fmt_price(zone_low)}–"
+            f"Rencana saat ini: tunggu XAUUSD masuk ke {_fmt_price(zone_low)}–"
             f"{_fmt_price(zone_high)}. "
             + (
-                f"Prepared/reference entry ≈ {_fmt_price(reference_entry_now)}. "
+                f"Entry persiapan/acuan ≈ {_fmt_price(reference_entry_now)}. "
                 if reference_entry_now is not None
-                else "Reference entry is not executable yet. "
+                else "Entry acuan belum boleh dieksekusi. "
             )
-            + "Do not enter merely because price touches the zone; completed M15 "
-              "confirmation is still required for the AFIC auto path."
+            + "Jangan entry hanya karena harga menyentuh zona; candle M15 yang sudah "
+              "selesai tetap wajib memberikan konfirmasi untuk jalur otomatis AFIC."
         )
 
     st.markdown("#### Siklus Rencana Persiapan (Prepared Plan Lifecycle)")
@@ -721,69 +721,69 @@ with forecast_tab:
         )
         l1, l2, l3, l4, l5, l6 = st.columns(6)
         l1.metric(
-            "Active zone reach",
+            "Zona tercapai saat aktif",
             "—" if total_plans == 0 else _fmt_pct(active_reached_plans / total_plans),
         )
         l2.metric(
-            "Active touch → confirm",
+            "Touch aktif → konfirmasi",
             "—"
             if active_reached_plans == 0
             else _fmt_pct(active_confirmed_plans / active_reached_plans),
         )
         l3.metric(
-            "Cancellation",
+            "Pembatalan",
             "—" if total_plans == 0 else _fmt_pct(cancelled_plans / total_plans),
         )
         l4.metric(
-            "Prepared → order",
+            "Persiapan → order",
             "—" if total_plans == 0 else _fmt_pct(ordered_plans / total_plans),
         )
         l5.metric(
-            "Post-cancel zone reach",
+            "Zona tercapai pasca-batal",
             "—"
             if cancelled_plans == 0
             else _fmt_pct(post_cancel_reached / cancelled_plans),
         )
         l6.metric(
-            "Post-cancel TP2 candidate",
+            "Kandidat TP2 pasca-batal",
             "—"
             if cancelled_plans == 0
             else _fmt_pct(post_cancel_terminal / cancelled_plans),
         )
         st.caption(
-            "Active zone reach counts only touches while the prepared plan was still valid. "
-            "Post-cancel zone reach is tracked separately to measure whether cancellation "
-            "may be too aggressive. Post-cancel TP2 candidate is stricter and remains "
-            "diagnostic evidence, not proof that the cancel rule was wrong."
+            "Zona tercapai saat aktif hanya menghitung sentuhan ketika rencana masih valid. "
+            "Sentuhan setelah pembatalan dipisahkan untuk mengukur apakah aturan pembatalan "
+            "terlalu agresif. Kandidat TP2 pasca-batal tetap merupakan evidence diagnostik, "
+            "bukan bukti bahwa aturan pembatalan pasti salah."
         )
         lifecycle_table = []
         for row in lifecycle_rows[:20]:
             meta = dict(row.get("metadata") or {})
             lifecycle_table.append(
                 {
-                    "created": row.get("created_at"),
-                    "direction": row.get("direction"),
+                    "dibuat": row.get("created_at"),
+                    "arah": row.get("direction"),
                     "grade": row.get("grade"),
-                    "zone": (
+                    "zona": (
                         f"{_fmt_price(row.get('zone_low'))}–"
                         f"{_fmt_price(row.get('zone_high'))}"
                     ),
                     "entry": _fmt_price(row.get("entry_price")),
-                    "lifecycle": row.get("lifecycle_state"),
-                    "cancel reason": row.get("cancel_reason") or "—",
-                    "cancelled": row.get("cancelled_at"),
-                    "first touch": row.get("first_touch_at"),
-                    "touch while active": meta.get("touch_while_active"),
-                    "post-cancel touch": meta.get("post_cancel_touch"),
-                    "confirmed": row.get("confirmed_at"),
-                    "order": row.get("order_accepted_at"),
-                    "protected": row.get("protection_verified_at"),
+                    "siklus": row.get("lifecycle_state"),
+                    "alasan batal": row.get("cancel_reason") or "—",
+                    "dibatalkan": row.get("cancelled_at"),
+                    "sentuhan pertama": row.get("first_touch_at"),
+                    "touch saat aktif": meta.get("touch_while_active"),
+                    "touch pasca-batal": meta.get("post_cancel_touch"),
+                    "terkonfirmasi": row.get("confirmed_at"),
+                    "order diterima": row.get("order_accepted_at"),
+                    "proteksi terverifikasi": row.get("protection_verified_at"),
                     "TP1": bool(row.get("tp1_hit")),
                     "TP2": bool(row.get("tp2_hit")),
-                    "stop": bool(row.get("stop_hit")),
+                    "stop hit": bool(row.get("stop_hit")),
                     "MFE R": row.get("mfe_r"),
                     "MAE R": row.get("mae_r"),
-                    "lifetime min": meta.get("lifetime_minutes"),
+                    "durasi (menit)": meta.get("lifetime_minutes"),
                 }
             )
         st.dataframe(
@@ -793,8 +793,8 @@ with forecast_tab:
         )
     else:
         st.caption(
-            "Prepared-plan lifecycle ledger has not populated yet. The maintenance "
-            "worker will backfill recent AFIC prepared plans without changing execution."
+            "Ledger siklus rencana belum terisi. Worker maintenance akan mengisi ulang "
+            "rencana AFIC terbaru tanpa mengubah aturan eksekusi."
         )
 
     st.markdown("#### Kelayakan Eksekusi XAU (XAU Execution Admission)")
@@ -837,50 +837,50 @@ with forecast_tab:
         geometry_code = geometry_code_by_signal.get(signal_id)
         if state_u == "INVALIDATED":
             admission = "INVALIDATED"
-            reason = "Signal/map no longer current"
+            reason = "Signal/map sudah tidak berlaku"
         elif expires_dt is not None and expires_dt < admission_now:
             admission = "EXPIRED"
-            reason = "Signal TTL elapsed"
+            reason = "Masa berlaku (TTL) signal sudah habis"
         elif guards:
             admission = "BLOCKED"
             reason = ", ".join(str(x) for x in guards)
         elif state_u != "EXECUTION_READY":
             admission = "NOT READY"
-            reason = f"State={state_u or '—'}"
+            reason = f"Status={state_u or '—'}"
         elif geometry_code in authorized_geometry_codes:
             admission = "BROKER ELIGIBLE"
-            reason = f"{geometry_code}; pending live revalidation"
+            reason = f"{geometry_code}; menunggu validasi ulang quote/risiko"
         else:
             admission = "SHADOW READY"
             reason = (
-                f"{geometry_code or 'NO_AUTHORIZED_GEOMETRY'} has no broker authority"
+                f"{geometry_code or 'NO_AUTHORIZED_GEOMETRY'} tidak memiliki izin broker"
             )
         admission_rows.append({
-            "observed_at": row.get("observed_at"),
+            "waktu": row.get("observed_at"),
             "setup": row.get("setup_type"),
-            "direction": row.get("direction"),
-            "grade/score": row.get("final_score"),
-            "stored state": row.get("state"),
-            "admission": admission,
-            "geometry authority": geometry_code or "—",
-            "reason": reason,
-            "expires_at": row.get("expires_at"),
+            "arah": row.get("direction"),
+            "grade/skor": row.get("final_score"),
+            "status tersimpan": row.get("state"),
+            "kelayakan": admission,
+            "izin geometry": geometry_code or "—",
+            "alasan": reason,
+            "kedaluwarsa": row.get("expires_at"),
         })
     if admission_rows:
         st.dataframe(pd.DataFrame(admission_rows), hide_index=True, use_container_width=True)
         latest_admission = admission_rows[0]
-        if latest_admission["admission"] == "BROKER ELIGIBLE":
+        if latest_admission["kelayakan"] == "BROKER ELIGIBLE":
             st.success(
-                "Latest XAU signal has broker-authorized DEMO geometry. "
-                "Order still depends on fresh quote, risk, margin and SL/TP revalidation."
+                "Signal XAU terbaru memiliki geometry DEMO yang diizinkan broker. "
+                "Order tetap bergantung pada quote terbaru, risiko, margin, dan validasi ulang SL/TP."
             )
-        elif latest_admission["admission"] == "SHADOW READY":
+        elif latest_admission["kelayakan"] == "SHADOW READY":
             st.warning(
-                "Latest XAU signal may say EXECUTION_READY in storage but is SHADOW READY only; "
-                "the broker lane will not execute it."
+                "Signal XAU terbaru dapat berstatus EXECUTION_READY di storage, tetapi hanya "
+                "SHADOW READY; jalur broker tidak akan mengeksekusinya."
             )
     else:
-        st.caption("No XAU signal rows are available for execution-admission diagnostics.")
+        st.caption("Belum ada baris signal XAU untuk diagnostik kelayakan eksekusi.")
 
     st.markdown("#### Sinyal Teknikal XAU Lintas-Mesin (Cross-engine XAU technical signals)")
     st.caption(
@@ -918,24 +918,24 @@ with forecast_tab:
             technical_rows.append(
                 {
                     "runtime": runtime_status,
-                    "observed_at": row.get("observed_at"),
+                    "waktu": row.get("observed_at"),
                     "setup": row.get("setup_type"),
-                    "direction": row.get("direction"),
-                    "state": row.get("state"),
-                    "score": row.get("final_score"),
+                    "arah": row.get("direction"),
+                    "status": row.get("state"),
+                    "skor": row.get("final_score"),
                     "entry": (
                         f"{_fmt_price(row.get('entry_low'))}–{_fmt_price(row.get('entry_high'))}"
                         if row.get("entry_low") is not None or row.get("entry_high") is not None
                         else "—"
                     ),
                     "SL": _fmt_price(row.get("sl")),
-                    "first target": _fmt_price(
+                    "target pertama": _fmt_price(
                         next(
                             (x for x in (row.get("tp1"), row.get("tp2"), row.get("tp3")) if x is not None),
                             None,
                         )
                     ),
-                    "terminal target": _fmt_price(
+                    "target terminal": _fmt_price(
                         next(
                             (x for x in (row.get("tp3"), row.get("tp2"), row.get("tp1")) if x is not None),
                             None,
@@ -943,30 +943,30 @@ with forecast_tab:
                     ),
                     "raw TP1": _fmt_price(row.get("tp1")),
                     "raw TP2": _fmt_price(row.get("tp2")),
-                    "guards": ", ".join(str(x) for x in (row.get("active_guards") or [])) or "—",
-                    "expires_at": expires_raw,
+                    "guard/pengaman": ", ".join(str(x) for x in (row.get("active_guards") or [])) or "—",
+                    "kedaluwarsa": expires_raw,
                 }
             )
         latest_technical = technical_rows[0]
         if latest_technical["runtime"] == "CURRENT":
             st.info(
-                "Latest non-AFIC XAU technical setup is CURRENT. "
-                "Its geometry is shown below, but AFIC authority remains a separate gate."
+                "Setup teknikal XAU non-AFIC terbaru masih CURRENT. Geometry ditampilkan "
+                "di bawah, tetapi izin AFIC tetap merupakan gerbang terpisah."
             )
         elif latest_technical["runtime"] == "WATCH":
             st.info(
-                "Latest non-AFIC XAU row is WATCH only. It has no independent trade "
-                "authority and should not be read as a current entry."
+                "Baris XAU non-AFIC terbaru hanya WATCH. Ia tidak memiliki izin trading "
+                "mandiri dan tidak boleh dibaca sebagai entry aktif."
             )
         elif latest_technical["runtime"] == "INVALIDATED":
             st.warning(
-                "Latest non-AFIC XAU setup is INVALIDATED. Its geometry is retained "
-                "only for historical evidence."
+                "Setup XAU non-AFIC terbaru INVALIDATED. Geometry disimpan hanya sebagai "
+                "evidence historis."
             )
         else:
             st.warning(
-                "Latest non-AFIC XAU technical setup is EXPIRED. "
-                "Its entry/SL/TP are historical geometry only, not a current instruction."
+                "Setup teknikal XAU non-AFIC terbaru EXPIRED. Entry/SL/TP hanya geometry "
+                "historis, bukan instruksi yang masih aktif."
             )
         st.dataframe(
             pd.DataFrame(technical_rows),
@@ -974,46 +974,46 @@ with forecast_tab:
             use_container_width=True,
         )
     else:
-        st.caption("No non-AFIC XAU technical signal rows are available yet.")
+        st.caption("Belum ada baris signal teknikal XAU non-AFIC.")
 
     st.markdown("#### Diagnostik Zona Reaksi (Reaction-zone diagnostics)")
     if zone_diagnostics:
         d1, d2, d3, d4, d5 = st.columns(5)
-        d1.metric("Origin zones", zone_diagnostics.get("origin_zones_total", "—"))
-        d2.metric("Fresh ≤24h", zone_diagnostics.get("fresh_within_24h", "—"))
+        d1.metric("Jumlah origin zone", zone_diagnostics.get("origin_zones_total", "—"))
+        d2.metric("Fresh ≤24 jam", zone_diagnostics.get("fresh_within_24h", "—"))
         d3.metric(
-            f"{direction or 'Map'} direction",
+            f"Arah {direction or 'Map' }",
             zone_diagnostics.get("matching_direction_fresh", "—"),
         )
-        d4.metric("Wrong side of anchor", zone_diagnostics.get("wrong_side_of_anchor", "—"))
-        d5.metric("Eligible reaction zones", zone_diagnostics.get("eligible_correct_side", "—"))
+        d4.metric("Sisi anchor salah", zone_diagnostics.get("wrong_side_of_anchor", "—"))
+        d5.metric("Zona reaksi eligible", zone_diagnostics.get("eligible_correct_side", "—"))
         result = str(zone_diagnostics.get("selection_result") or "")
         if result == "NO_ELIGIBLE_MAP_ZONE":
             st.warning(
-                "NO_MAP_ZONE is explained by the current structure: origin zones exist, "
-                "but zero candidates satisfy direction + freshness + correct side of the "
-                "current H4 anchor. This is a no-setup state, not an execution signal."
+                "NO_MAP_ZONE dijelaskan oleh struktur saat ini: origin zone memang ada, "
+                "tetapi tidak ada kandidat yang sekaligus memenuhi arah, freshness, dan sisi "
+                "anchor H4 yang benar. Ini berarti belum ada setup, bukan signal eksekusi."
             )
         elif result == "ELIGIBLE_ZONE_FOUND":
             nearest = dict(zone_diagnostics.get("nearest_eligible") or {})
             st.success(
-                "Eligible reaction zone found: "
+                "Zona reaksi eligible ditemukan: "
                 f"{_fmt_price(nearest.get('low'))}–{_fmt_price(nearest.get('high'))} • "
-                f"distance {_fmt_distance(nearest.get('distance_points'), ' pts')}."
+                f"jarak {_fmt_distance(nearest.get('distance_points'), ' poin')}."
             )
         elif result == "NO_ORIGIN_ZONE":
             st.warning(
-                "No H1 origin zone currently satisfies the displacement/BOS/origin "
-                "construction rules. Scanner is waiting for a new structural setup."
+                "Belum ada H1 origin zone yang memenuhi aturan displacement/BOS/origin. "
+                "Scanner menunggu struktur baru."
             )
         st.caption(
-            "Diagnostics are descriptive only; they do not relax the AFIC selector or "
-            "create broker authority."
+            "Diagnostik hanya bersifat deskriptif; tidak melonggarkan selector AFIC dan "
+            "tidak menciptakan izin broker."
         )
     else:
         st.caption(
-            "Zone diagnostics are not available for this heartbeat yet; the next AFIC "
-            "cycle will populate candidate/rejection counts."
+            "Diagnostik zona belum tersedia pada heartbeat ini; siklus AFIC berikutnya "
+            "akan mengisi jumlah kandidat dan alasan penolakan."
         )
 
     st.markdown("#### Zona Pantauan Alternatif / Reversal (Alternative / reversal watch zones)")

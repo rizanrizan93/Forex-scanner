@@ -218,9 +218,20 @@ def _latest_completed_levels(
                 }
             )
 
+    latest_session: dict[str, dict[str, Any]] = {}
     for item in _session_levels(rows):
-        if ensure_utc(item["available_at"]) > ensure_utc(as_of):
+        available_at = ensure_utc(item["available_at"])
+        if available_at > ensure_utc(as_of):
             continue
+        source = str(item["source"])
+        previous = latest_session.get(source)
+        if (
+            previous is None
+            or ensure_utc(previous["available_at"]) < available_at
+        ):
+            latest_session[source] = dict(item)
+
+    for item in latest_session.values():
         for role in ("high", "low"):
             levels.append(
                 {
@@ -262,10 +273,10 @@ def _liquidity_evidence(
     distances: list[float] = []
     for level in levels:
         source = str(level.get("source") or "")
-        if (
-            relevant_role not in source
-            and not source.startswith("H1_SWING_")
-        ):
+        if source.startswith("H1_SWING_"):
+            if not source.endswith(relevant_role):
+                continue
+        elif relevant_role not in source:
             continue
         price = _safe_float(level.get("price"))
         if price is None:
