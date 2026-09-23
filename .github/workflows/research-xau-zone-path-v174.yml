@@ -2,6 +2,12 @@ name: XAU Zone Path Precision V174
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/research_xau_zone_path_v174.py"
+      - "src/fx_scanner/research_xau_zone_path_v174_runtime.py"
+      - ".github/workflows/research-xau-zone-path-v174.yml"
   pull_request:
     paths:
       - "src/fx_scanner/research_xau_zone_path_v174.py"
