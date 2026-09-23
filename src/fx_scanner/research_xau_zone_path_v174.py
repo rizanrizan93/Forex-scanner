@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from bisect import bisect_left
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from itertools import product
@@ -345,11 +346,20 @@ def candidate_rules() -> tuple[Rule, ...]:
     )
 
 
-def _bar_invalidated_at(zone: OriginZone, bars: Sequence[Bar]) -> datetime | None:
-    for row in bars:
+def _bar_invalidated_at(
+    zone: OriginZone,
+    bars: Sequence[Bar],
+    *,
+    bar_times: Sequence[datetime] | None = None,
+) -> datetime | None:
+    times = (
+        tuple(bar_times)
+        if bar_times is not None
+        else tuple(ensure_utc(row.timestamp) for row in bars)
+    )
+    start = bisect_left(times, ensure_utc(zone.available_at))
+    for row in bars[start:]:
         stamp = ensure_utc(row.timestamp)
-        if stamp < ensure_utc(zone.available_at):
-            continue
         if _invalidated(
             row,
             low=float(zone.low),
@@ -360,20 +370,40 @@ def _bar_invalidated_at(zone: OriginZone, bars: Sequence[Bar]) -> datetime | Non
     return None
 
 
-def _prior_touches(zone: OriginZone, bars: Sequence[Bar], *, map_at: datetime) -> int:
-    start = ensure_utc(zone.available_at)
-    end = ensure_utc(map_at)
+def _prior_touches(
+    zone: OriginZone,
+    bars: Sequence[Bar],
+    *,
+    map_at: datetime,
+    bar_times: Sequence[datetime] | None = None,
+) -> int:
+    times = (
+        tuple(bar_times)
+        if bar_times is not None
+        else tuple(ensure_utc(row.timestamp) for row in bars)
+    )
+    start = bisect_left(times, ensure_utc(zone.available_at))
+    end = bisect_left(times, ensure_utc(map_at))
     return sum(
         _touch(row, low=float(zone.low), high=float(zone.high))
-        for row in bars
-        if start <= ensure_utc(row.timestamp) < end
+        for row in bars[start:end]
     )
 
 
 def _approach_features(
-    bars: Sequence[Bar], *, map_at: datetime, zone: OriginZone
+    bars: Sequence[Bar],
+    *,
+    map_at: datetime,
+    zone: OriginZone,
+    bar_times: Sequence[datetime] | None = None,
 ) -> tuple[float, float]:
-    prior = [row for row in bars if ensure_utc(row.timestamp) < ensure_utc(map_at)][-8:]
+    times = (
+        tuple(bar_times)
+        if bar_times is not None
+        else tuple(ensure_utc(row.timestamp) for row in bars)
+    )
+    end = bisect_left(times, ensure_utc(map_at))
+    prior = bars[max(0, end - 8):end]
     if len(prior) < 2 or not isfinite(float(zone.h1_atr)) or zone.h1_atr <= 0:
         return 0.0, 0.0
     closes = [float(row.close) for row in prior]
@@ -392,10 +422,15 @@ def build_zone_scenarios(bars: Sequence[Bar]) -> tuple[ZoneScenario, ...]:
     if len(rows) < 400:
         return ()
     last_closed_at = ensure_utc(rows[-1].timestamp) + timedelta(minutes=15)
+    bar_times = tuple(ensure_utc(row.timestamp) for row in rows)
     h4 = _resample_completed(rows, "4h", as_of=last_closed_at)
     zones = _origin_zones(rows, as_of=last_closed_at)
     invalidated_at = {
-        _stable_zone_id(zone): _bar_invalidated_at(zone, rows)
+        _stable_zone_id(zone): _bar_invalidated_at(
+            zone,
+            rows,
+            bar_times=bar_times,
+        )
         for zone in zones
     }
     scenarios: list[ZoneScenario] = []
@@ -451,7 +486,12 @@ def build_zone_scenarios(bars: Sequence[Bar]) -> tuple[ZoneScenario, ...]:
         close_location = features.get("h4_directional_close_location")
         if distance is None or close_location is None:
             continue
-        future = [row for row in rows if ensure_utc(row.timestamp) >= map_at]
+        future_start = bisect_left(bar_times, map_at)
+        future_end = min(
+            len(rows),
+            future_start + TOUCH_HORIZON_M15 + REACTION_HORIZON_M15 + 1,
+        )
+        future = rows[future_start:future_end]
         outcome = evaluate_zone_path(
             future,
             forecast_at=map_at,
@@ -463,7 +503,10 @@ def build_zone_scenarios(bars: Sequence[Bar]) -> tuple[ZoneScenario, ...]:
         boundary = float(zone.low) if direction == "SHORT" else float(zone.high)
         round_distance = abs(boundary - round(boundary / ROUND_STEP_USD) * ROUND_STEP_USD)
         approach_efficiency, approach_range = _approach_features(
-            rows, map_at=map_at, zone=zone
+            rows,
+            map_at=map_at,
+            zone=zone,
+            bar_times=bar_times,
         )
         scenarios.append(
             ZoneScenario(
@@ -480,7 +523,12 @@ def build_zone_scenarios(bars: Sequence[Bar]) -> tuple[ZoneScenario, ...]:
                 origin_displacement_body_fraction=float(zone.displacement_body_fraction),
                 zone_width_atr=(float(zone.high) - float(zone.low)) / float(zone.h1_atr),
                 round_distance_atr=round_distance / float(zone.h1_atr),
-                prior_touch_count=_prior_touches(zone, rows, map_at=map_at),
+                prior_touch_count=_prior_touches(
+                    zone,
+                    rows,
+                    map_at=map_at,
+                    bar_times=bar_times,
+                ),
                 approach_efficiency=approach_efficiency,
                 approach_range_atr=approach_range,
                 outcome=outcome,
