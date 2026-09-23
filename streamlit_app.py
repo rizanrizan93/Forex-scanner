@@ -4,6 +4,7 @@ import os
 import sys
 from dataclasses import asdict
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,7 @@ from fx_scanner.storage.supabase_operational import (
 )
 
 UTC = timezone.utc
+WIB = ZoneInfo("Asia/Jakarta")
 
 st.set_page_config(
     page_title="FX Institutional Scanner",
@@ -166,6 +168,42 @@ def _fmt_distance(value: Any, suffix: str = "") -> str:
         return f"{float(value):,.2f}{suffix}"
     except (TypeError, ValueError):
         return "—"
+
+
+def _parse_timestamp(value: Any) -> datetime | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _fmt_wib_datetime(value: Any, *, seconds: bool = True) -> str:
+    parsed = _parse_timestamp(value)
+    if parsed is None:
+        return "—"
+    pattern = "%d-%m-%Y %H:%M:%S WIB" if seconds else "%d-%m-%Y %H:%M WIB"
+    return parsed.astimezone(WIB).strftime(pattern)
+
+
+def _convert_frame_times_to_wib(
+    frame: pd.DataFrame,
+    columns: tuple[str, ...] | list[str],
+) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    out = frame.copy()
+    for column in columns:
+        if column in out.columns:
+            out[column] = out[column].apply(_fmt_wib_datetime)
+    return out
 
 
 def _afic_path_text(direction: str, state: str) -> str:
@@ -394,7 +432,9 @@ with forecast_tab:
     st.caption(
         "Halaman ini memisahkan gambaran besar, arah taktis, kandidat zona, zona "
         "persiapan canonical, dan izin eksekusi. Zona reaksi adalah area harga yang "
-        "diperkirakan dapat memicu respons; menyentuh zona saja belum berarti entry."
+        "diperkirakan dapat memicu respons; menyentuh zona saja belum berarti entry. "
+        "Semua waktu trading yang ditampilkan menggunakan WIB (Asia/Jakarta, UTC+7); "
+        "runtime internal tetap UTC."
     )
     with st.expander("Kamus istilah pada halaman ini", expanded=False):
         st.markdown(
@@ -602,6 +642,7 @@ with forecast_tab:
             premap_table.append(
                 {
                     "arah": candidate.get("direction"),
+                    "tersedia sejak (WIB)": _fmt_wib_datetime(candidate.get("available_at")),
                     "zona": (
                         f"{_fmt_price(candidate.get('low'))}–"
                         f"{_fmt_price(candidate.get('high'))}"
@@ -656,8 +697,8 @@ with forecast_tab:
                     f"{last_plan.get('direction') or '—'} "
                     f"{_fmt_price(last_plan.get('entry_price'))} • CANCELLED • "
                     f"reason={last_plan.get('cancel_reason') or 'UNKNOWN'} • "
-                    f"created={last_plan.get('created_at') or '—'} • "
-                    f"cancelled={last_plan.get('cancelled_at') or '—'}."
+                    f"dibuat={_fmt_wib_datetime(last_plan.get('created_at'))} • "
+                    f"dibatalkan={_fmt_wib_datetime(last_plan.get('cancelled_at'))}."
                 )
     else:
         t1, t2, t3, t4 = st.columns(4)
@@ -761,7 +802,7 @@ with forecast_tab:
             meta = dict(row.get("metadata") or {})
             lifecycle_table.append(
                 {
-                    "created": row.get("created_at"),
+                    "dibuat (WIB)": _fmt_wib_datetime(row.get("created_at")),
                     "direction": row.get("direction"),
                     "grade": row.get("grade"),
                     "zone": (
@@ -771,13 +812,13 @@ with forecast_tab:
                     "entry": _fmt_price(row.get("entry_price")),
                     "lifecycle": row.get("lifecycle_state"),
                     "cancel reason": row.get("cancel_reason") or "—",
-                    "cancelled": row.get("cancelled_at"),
-                    "first touch": row.get("first_touch_at"),
+                    "dibatalkan (WIB)": _fmt_wib_datetime(row.get("cancelled_at")),
+                    "sentuh pertama (WIB)": _fmt_wib_datetime(row.get("first_touch_at")),
                     "touch while active": meta.get("touch_while_active"),
                     "post-cancel touch": meta.get("post_cancel_touch"),
-                    "confirmed": row.get("confirmed_at"),
-                    "order": row.get("order_accepted_at"),
-                    "protected": row.get("protection_verified_at"),
+                    "konfirmasi (WIB)": _fmt_wib_datetime(row.get("confirmed_at")),
+                    "order diterima (WIB)": _fmt_wib_datetime(row.get("order_accepted_at")),
+                    "SL/TP terverifikasi (WIB)": _fmt_wib_datetime(row.get("protection_verified_at")),
                     "TP1": bool(row.get("tp1_hit")),
                     "TP2": bool(row.get("tp2_hit")),
                     "stop": bool(row.get("stop_hit")),
@@ -856,7 +897,7 @@ with forecast_tab:
                 f"{geometry_code or 'NO_AUTHORIZED_GEOMETRY'} has no broker authority"
             )
         admission_rows.append({
-            "observed_at": row.get("observed_at"),
+            "diamati (WIB)": _fmt_wib_datetime(row.get("observed_at")),
             "setup": row.get("setup_type"),
             "direction": row.get("direction"),
             "grade/score": row.get("final_score"),
@@ -864,7 +905,7 @@ with forecast_tab:
             "admission": admission,
             "geometry authority": geometry_code or "—",
             "reason": reason,
-            "expires_at": row.get("expires_at"),
+            "kedaluwarsa (WIB)": _fmt_wib_datetime(row.get("expires_at")),
         })
     if admission_rows:
         st.dataframe(pd.DataFrame(admission_rows), hide_index=True, use_container_width=True)
@@ -918,7 +959,7 @@ with forecast_tab:
             technical_rows.append(
                 {
                     "runtime": runtime_status,
-                    "observed_at": row.get("observed_at"),
+                    "diamati (WIB)": _fmt_wib_datetime(row.get("observed_at")),
                     "setup": row.get("setup_type"),
                     "direction": row.get("direction"),
                     "state": row.get("state"),
@@ -944,7 +985,7 @@ with forecast_tab:
                     "raw TP1": _fmt_price(row.get("tp1")),
                     "raw TP2": _fmt_price(row.get("tp2")),
                     "guards": ", ".join(str(x) for x in (row.get("active_guards") or [])) or "—",
-                    "expires_at": expires_raw,
+                    "kedaluwarsa (WIB)": _fmt_wib_datetime(expires_raw),
                 }
             )
         latest_technical = technical_rows[0]
@@ -1349,7 +1390,7 @@ with forecast_tab:
             payload = dict(row.get("payload") or {})
             timeline_rows.append(
                 {
-                    "time": row.get("observed_at"),
+                    "waktu (WIB)": _fmt_wib_datetime(row.get("observed_at")),
                     "event": row.get("event_type"),
                     "accepted": row.get("accepted"),
                     "strategy": row.get("code") or payload.get("strategy_id"),
@@ -1412,7 +1453,7 @@ with forecast_tab:
             reference_age = None if move_hb is None else _age_seconds(move_hb.get("observed_at"))
             r1, r2, r3 = st.columns(3)
             r1.metric("Reference anchor", _fmt_price(reference_envelope.get("price")))
-            r2.metric("Reference as-of", str(reference_envelope.get("as_of") or "—"))
+            r2.metric("Reference as-of (WIB)", _fmt_wib_datetime(reference_envelope.get("as_of")))
             r3.metric("Reference age", "—" if reference_age is None else f"{reference_age:.0f}s")
             reference_rows = []
             for label in ("1h", "4h", "8h"):
@@ -1447,15 +1488,15 @@ with forecast_tab:
         z = dict(payload.get("zone") or {})
         history_rows.append(
             {
-                "observed_at": row.get("observed_at"),
-                "map_at": payload.get("map_at"),
+                "diamati (WIB)": _fmt_wib_datetime(row.get("observed_at")),
+                "map H4 (WIB)": _fmt_wib_datetime(payload.get("map_at")),
                 "state": payload.get("state"),
                 "direction": payload.get("continuation_direction"),
                 "zone_low": z.get("low"),
                 "zone_high": z.get("high"),
-                "touch_at": payload.get("first_touch_at"),
-                "confirm_at": payload.get("confirm_at"),
-                "invalidated_at": payload.get("invalidated_at"),
+                "sentuh (WIB)": _fmt_wib_datetime(payload.get("first_touch_at")),
+                "konfirmasi (WIB)": _fmt_wib_datetime(payload.get("confirm_at")),
+                "invalid (WIB)": _fmt_wib_datetime(payload.get("invalidated_at")),
             }
         )
     if history_rows:
@@ -1513,7 +1554,8 @@ with account_tab:
             f"Backend: {account.get('backend', '—')} • "
             f"Account: {account.get('account_id', '—')} • "
             f"Currency: {currency or '—'} • "
-            f"Telemetry age: {'—' if age_seconds is None else f'{age_seconds:.0f}s'}"
+            f"Telemetry age: {'—' if age_seconds is None else f'{age_seconds:.0f}s'} • "
+            f"Update WIB: {_fmt_wib_datetime(account.get('observed_at'))}"
         )
         if currency.upper() == "USC":
             st.info(
@@ -1522,7 +1564,10 @@ with account_tab:
             )
 
         if positions:
-            position_frame = _frame(positions)
+            position_frame = _convert_frame_times_to_wib(
+                _frame(positions),
+                ("opened_at", "observed_at", "updated_at"),
+            )
             display_cols = [
                 col
                 for col in [
@@ -1548,7 +1593,10 @@ with scanner_tab:
     st.subheader("Peringkat Pair (Pair Ranking)")
 
     if backend is not None and backend["rankings"]:
-        rankings = _frame(backend["rankings"])
+        rankings = _convert_frame_times_to_wib(
+            _frame(backend["rankings"]),
+            ("observed_at",),
+        )
         if "coverage" in rankings.columns:
             rankings["coverage"] = rankings["coverage"].apply(_fmt_pct)
         display_cols = [
@@ -1593,7 +1641,10 @@ with scanner_tab:
 
     st.subheader("Sinyal Terbaru (Latest Signals)")
     if backend is not None and backend["signals"]:
-        signals = _frame(backend["signals"])
+        signals = _convert_frame_times_to_wib(
+            _frame(backend["signals"]),
+            ("observed_at", "expires_at"),
+        )
         signals["_state_order"] = signals["state"].map(_state_rank)
         signals = signals.sort_values(
             ["_state_order", "observed_at"],
@@ -1783,5 +1834,6 @@ st.divider()
 st.caption(
     "Rendered at "
     + datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+    + " • Waktu tampilan trading: WIB (Asia/Jakarta, UTC+7)"
     + " • Main file: main.py • Dashboard implementation: streamlit_app.py"
 )
