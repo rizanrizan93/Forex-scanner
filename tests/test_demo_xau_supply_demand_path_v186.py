@@ -203,14 +203,15 @@ def test_reaction_target_is_last_internal_waypoint_before_opposing_zone():
 
 def test_reaction_target_falls_back_to_opposing_proximal_without_waypoint():
     zones = (
-        _zone("s1", "SHORT", 4342, 4347, distance=0, timeframe="H1"),
-        _zone("d1", "LONG", 4274, 4301, distance=40, timeframe="H1"),
+        _zone("s1", "SHORT", 4305, 4307, distance=0, timeframe="H1"),
+        _zone("d1", "LONG", 4301, 4303, distance=2, timeframe="H1"),
     )
     path_map = _build_path_map(
         payloads=zones,
         levels=(),
-        last_price=4344.0,
+        last_price=4306.0,
     )
     path = path_map["supply_to_demand"]
-    assert path["reaction_target"]["price"] == 4301.0
+    assert path["internal_targets"] == []
+    assert path["reaction_target"]["price"] == 4303.0
     assert path["reaction_target_basis"] == "OPPOSING_ZONE_PROXIMAL_FALLBACK"
