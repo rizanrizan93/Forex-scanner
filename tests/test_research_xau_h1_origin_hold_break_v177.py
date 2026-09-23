@@ -252,3 +252,7 @@ def test_final_holdout_is_larger_than_calibration_window():
     train, calibration, holdout = _split_chronological(rows)
     assert train and calibration and holdout
     assert len(holdout) > len(calibration)
+
+
+def test_v177_excludes_nonhistorical_spread_proxy_features():
+    assert all("spread" not in name for name in FEATURE_NAMES)
