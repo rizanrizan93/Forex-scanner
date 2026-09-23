@@ -161,6 +161,11 @@ def attach_supply_demand_context(
     nearest_demand = _compact_zone(dict(atlas.get("nearest_demand") or {}))
     nearest_supply = _compact_zone(dict(atlas.get("nearest_supply") or {}))
     path_map = dict(atlas.get("path_map") or {})
+    micro_refinement = dict(
+        atlas.get("micro_refinement")
+        or path_map.get("micro_refinement")
+        or {}
+    )
     demand_to_supply = dict(path_map.get("demand_to_supply") or {})
     supply_to_demand = dict(path_map.get("supply_to_demand") or {})
     active_path = dict(path_map.get("active_path") or {})
@@ -280,6 +285,12 @@ def attach_supply_demand_context(
         "first_leg_path": first_leg_path,
         "continuation_path": continuation_path,
         "active_reaction_path": active_path,
+        "micro_refinement": micro_refinement,
+        "first_leg_micro_refinement": (
+            micro_refinement
+            if str(micro_refinement.get("direction") or "").upper() == first_leg
+            else {}
+        ),
         "prepare_only_fallback": bool(not canonical and not stale),
         "required_for_execution": False,
         "execution_influence": False,
@@ -300,6 +311,7 @@ def context_token(payload: dict[str, Any]) -> tuple[str, ...]:
     same = dict(context.get("same_direction_zone") or {})
     opposite = dict(context.get("opposite_reversal_zone") or {})
     first_leg_path = dict(context.get("first_leg_path") or {})
+    micro = dict(context.get("first_leg_micro_refinement") or {})
     primary_target = dict(first_leg_path.get("primary_opposing_zone") or {})
     return (
         str(context.get("state") or "NONE"),
@@ -310,4 +322,6 @@ def context_token(payload: dict[str, Any]) -> tuple[str, ...]:
         str(context.get("opposite_zone_near_price") or False),
         str(first_leg_path.get("state") or "NONE"),
         str(primary_target.get("zone_id") or "NONE"),
+        str(micro.get("state") or "NONE"),
+        str(dict(micro.get("refined_entry_pocket") or {}).get("origin_at") or "NONE"),
     )

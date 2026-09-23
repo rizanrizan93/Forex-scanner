@@ -20,6 +20,9 @@ from .demo_xau_premap_candidate_v181 import (
     _latest_completed_levels,
     _latest_worker_details,
 )
+from .demo_xau_supply_demand_micro_refinement_v189 import (
+    evaluate_micro_refinement,
+)
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .models import Bar, ensure_utc
@@ -31,6 +34,8 @@ CONTRACT = "XAU_HTF_SUPPLY_DEMAND_ATLAS_V182"
 REQUEST_COUNT = 3000
 LOOKBACK_DAYS = 45
 MAX_DISPLAY_ZONES = 12
+M5_REQUEST_COUNT = 1800
+M5_LOOKBACK_DAYS = 10
 
 TIMEFRAME_RULES = {
     "H1": "1h",
@@ -1185,6 +1190,7 @@ def run() -> int:
     payload: dict[str, Any] = {}
     error: str | None = None
     raw_count = 0
+    raw_m5_count = 0
     try:
         regime = _latest_worker_details(store, "ctrader_xau_htf_strategic_regime_v180")
         regime_eval = dict(regime.get("evaluation") or {})
@@ -1203,11 +1209,30 @@ def run() -> int:
             )
         )
         raw_count = len(raw)
+        raw_m5 = tuple(
+            feed.historical_bars(
+                SYMBOL,
+                "M5",
+                from_time=now - timedelta(days=M5_LOOKBACK_DAYS),
+                to_time=now,
+                count=M5_REQUEST_COUNT,
+            )
+        )
+        raw_m5_count = len(raw_m5)
         payload = evaluate_supply_demand_atlas(
             raw,
             as_of=now,
             strategic_bias=strategic_bias,
         )
+        micro_refinement = evaluate_micro_refinement(
+            raw_m5,
+            path_map=dict(payload.get("path_map") or {}),
+            as_of=now,
+        )
+        payload["micro_refinement"] = micro_refinement
+        path_map = dict(payload.get("path_map") or {})
+        path_map["micro_refinement"] = micro_refinement
+        payload["path_map"] = path_map
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"
     finally:
@@ -1228,6 +1253,7 @@ def run() -> int:
             "execution_authority": False,
             "live_execution_enabled": False,
             "raw_m15_bars": raw_count,
+            "raw_m5_bars": raw_m5_count,
             "evaluation": payload,
             "error": error,
         },
