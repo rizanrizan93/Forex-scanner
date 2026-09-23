@@ -625,6 +625,36 @@ with forecast_tab:
                 f"{_fmt_distance(afic_sd_context.get('opposite_zone_distance_atr'),' ATR')}. "
                 "Ini adalah Plan-B / reaction watch, bukan alasan entry melawan AFIC."
             )
+        afic_first_leg_path = dict(afic_sd_context.get("first_leg_path") or {})
+        if afic_first_leg_path:
+            path_source = dict(afic_first_leg_path.get("source_zone") or {})
+            path_target = dict(afic_first_leg_path.get("primary_opposing_zone") or {})
+            path_waypoints = list(afic_first_leg_path.get("internal_targets") or [])
+            if path_source:
+                st.success(
+                    "Path AFIC saat ini: "
+                    f"{afic_first_leg_path.get('reaction_direction','—')} dari "
+                    f"{_fmt_price(path_source.get('low'))}–{_fmt_price(path_source.get('high'))}"
+                    + (
+                        " → target opposing zone "
+                        f"{_fmt_price(path_target.get('low'))}–{_fmt_price(path_target.get('high'))}"
+                        if path_target else
+                        " → opposing zone belum tersedia"
+                    )
+                    + "."
+                )
+                if path_waypoints:
+                    waypoint_text = " → ".join(
+                        f"{item.get('source','LEVEL')} {_fmt_price(item.get('price'))}"
+                        for item in path_waypoints[:5]
+                    )
+                    st.caption(
+                        "Waypoint internal sebelum opposing zone: " + waypoint_text
+                    )
+                st.caption(
+                    "Path ini baru aktif sebagai PREPARE/FORECAST. Reaction tetap harus "
+                    "dibuktikan oleh sweep/mitigation lalu reclaim/MSS/displacement M5/M15."
+                )
         if afic_sd_context.get("prepare_only_fallback"):
             st.warning(
                 "Canonical AFIC belum memiliki zona valid, tetapi atlas Supply/Demand "
@@ -710,6 +740,8 @@ with forecast_tab:
 
         nearest_demand = dict(sd_eval.get("nearest_demand") or {})
         nearest_supply = dict(sd_eval.get("nearest_supply") or {})
+        sd_path_map = dict(sd_eval.get("path_map") or {})
+        sd_active_path = dict(sd_path_map.get("active_path") or {})
         nd_col, ns_col = st.columns(2)
         with nd_col:
             if nearest_demand:
@@ -778,6 +810,19 @@ with forecast_tab:
                 }
             )
         st.dataframe(pd.DataFrame(sd_table), hide_index=True, use_container_width=True)
+        if sd_active_path:
+            source = dict(sd_active_path.get("source_zone") or {})
+            target = dict(sd_active_path.get("primary_opposing_zone") or {})
+            st.info(
+                "Rute reaksi V186: "
+                f"{sd_active_path.get('reaction_direction','—')} • "
+                f"sumber {_fmt_price(source.get('low'))}–{_fmt_price(source.get('high'))}"
+                + (
+                    f" → opposing zone {_fmt_price(target.get('low'))}–{_fmt_price(target.get('high'))}"
+                    if target else
+                    " → opposing zone belum tersedia"
+                )
+            )
         st.caption(
             "Skor riset V182 adalah ranking evidence, BUKAN probabilitas menang. "
             "Liquidity/round number hanya confluence, bukan pembentuk zona tunggal. "
