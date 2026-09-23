@@ -379,11 +379,38 @@ else:
     )
 
 forecast_tab, account_tab, scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
-    ["XAU Forecast", "Account & Positions", "Scanner", "Macro & Data", "System", "Validation"]
+    [
+        "Prakiraan XAU (XAU Forecast)",
+        "Akun & Posisi (Account & Positions)",
+        "Pemindai (Scanner)",
+        "Makro & Data",
+        "Sistem (System)",
+        "Validasi (Validation)",
+    ]
 )
 
 with forecast_tab:
-    st.subheader("XAUUSD Forecast & Reaction Zone")
+    st.subheader("Prakiraan XAUUSD & Zona Reaksi (XAUUSD Forecast & Reaction Zone)")
+    st.caption(
+        "Halaman ini memisahkan gambaran besar, arah taktis, kandidat zona, zona "
+        "persiapan canonical, dan izin eksekusi. Zona reaksi adalah area harga yang "
+        "diperkirakan dapat memicu respons; menyentuh zona saja belum berarti entry."
+    )
+    with st.expander("Kamus istilah pada halaman ini", expanded=False):
+        st.markdown(
+            """
+- **Strategic Bias / Bias Strategis:** konteks D1+H4 yang dibuat lebih stabil; bukan sinyal entry.
+- **Tactical First Leg / Gerak Taktis Pertama:** arah perjalanan harga menuju zona sebelum continuation/reversal utama.
+- **Reaction Zone / Zona Reaksi:** area harga berbasis struktur yang dipantau untuk respons, bukan titik entry otomatis.
+- **Pre-map Candidate / Kandidat Pra-H4:** H1 origin baru setelah H4 map saat ini; hanya untuk persiapan dan belum punya izin eksekusi.
+- **Prepared/Reference Entry / Entry Acuan:** geometry entry yang sudah disiapkan setelah zone canonical tersedia; tetap memerlukan konfirmasi.
+- **Execution Admission / Kelayakan Eksekusi:** pemeriksaan apakah signal benar-benar boleh diteruskan ke broker DEMO.
+- **Liquidity / Likuiditas:** area dengan potensi konsentrasi order/minat transaksi; pada scanner ini hanya confluence/ranking, bukan pembentuk zone tunggal.
+- **BOS (Break of Structure):** penembusan struktur swing yang dipakai untuk mengaitkan displacement dengan origin zone.
+- **Displacement:** gerakan impulsif yang cukup kuat setelah origin; digunakan untuk membuktikan bahwa origin berhubungan dengan perubahan struktur.
+- **Freshness / Kesegaran:** umur dan riwayat sentuhan zone; makin tua/sering disentuh, evidence reaksinya dapat melemah.
+"""
+        )
 
     heartbeats = [] if backend is None else backend.get("heartbeats", [])
     prepared_hb = _latest_heartbeat(
@@ -400,6 +427,9 @@ with forecast_tab:
     )
     regime_hb = _latest_heartbeat(
         heartbeats, "ctrader_xau_htf_strategic_regime_v180"
+    )
+    premap_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_premap_candidate_v181"
     )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
@@ -497,7 +527,7 @@ with forecast_tab:
         else "—"
     )
 
-    st.markdown("### Strategic HTF Regime")
+    st.markdown("### Rezim Strategis HTF (Strategic HTF Regime)")
     regime_details = {} if regime_hb is None else dict(regime_hb.get("details") or {})
     regime_eval = dict(regime_details.get("evaluation") or {})
     regime_current = dict(regime_eval.get("current") or {})
@@ -546,7 +576,68 @@ with forecast_tab:
             "AFIC V161 remains the execution authority."
         )
 
-    st.markdown("### Trade Preparation")
+    st.markdown("### Kandidat Zona Pra-H4 (Pre-map Candidate Zone)")
+    st.caption(
+        "Menampilkan H1 origin baru yang terbentuk setelah H4 map saat ini. Kandidat "
+        "ini membantu persiapan lebih awal, tetapi statusnya SELALU tanpa izin eksekusi "
+        "sampai H4 map berikutnya selesai dan AFIC canonical memvalidasinya."
+    )
+    premap_details = {} if premap_hb is None else dict(premap_hb.get("details") or {})
+    premap_eval = dict(premap_details.get("evaluation") or {})
+    premap_candidates = list(premap_eval.get("candidates") or [])
+    if premap_candidates:
+        pm1, pm2, pm3, pm4 = st.columns(4)
+        pm1.metric("Jumlah kandidat pra-H4", premap_eval.get("candidate_count", len(premap_candidates)))
+        pm2.metric("Bias strategis", str(premap_eval.get("strategic_bias") or "—"))
+        pm3.metric("Arah H4 taktis", str(premap_eval.get("tactical_h4_direction") or "—"))
+        pm4.metric("Izin eksekusi", "TIDAK ADA")
+        st.warning(
+            "PERSIAPAN SAJA / NO EXECUTION. Kandidat pra-H4 belum menjadi Trade Preparation "
+            "canonical. Ia harus bertahan sampai completed H4 map berikutnya dan lolos "
+            "pemilihan AFIC A/B sebelum dapat memiliki jalur broker."
+        )
+        premap_table = []
+        for candidate in premap_candidates:
+            liquidity = dict(candidate.get("liquidity") or {})
+            premap_table.append(
+                {
+                    "arah": candidate.get("direction"),
+                    "zona": (
+                        f"{_fmt_price(candidate.get('low'))}–"
+                        f"{_fmt_price(candidate.get('high'))}"
+                    ),
+                    "jarak (ATR)": candidate.get("distance_atr"),
+                    "umur (jam)": candidate.get("age_hours"),
+                    "displacement (ATR)": candidate.get("displacement_range_atr"),
+                    "body displacement": candidate.get("displacement_body_fraction"),
+                    "selaras strategis": candidate.get("strategic_alignment"),
+                    "selaras H4 taktis": candidate.get("tactical_alignment"),
+                    "confluence likuiditas": liquidity.get("confluence_count"),
+                    "sumber likuiditas": ", ".join(liquidity.get("sources") or []) or "—",
+                    "skor riset": candidate.get("research_score"),
+                    "V175 P(touch) OOS": candidate.get("v175_touch_prior"),
+                    "V175 P(reaction|touch) OOS": candidate.get("v175_reaction_prior"),
+                    "V177 hold OOS": candidate.get("v177_hold_prior"),
+                    "V178 hold M5 OOS": candidate.get("v178_hold_prior"),
+                    "V179 reaction OOS": candidate.get("v179_reaction_prior"),
+                    "status": candidate.get("status"),
+                }
+            )
+        st.dataframe(pd.DataFrame(premap_table), hide_index=True, use_container_width=True)
+        st.caption(
+            "Catatan probabilitas/evidence: nilai V175/V177/V178/V179 adalah prior "
+            "out-of-sample berdasarkan arah dari riset historis terbaru, BUKAN probabilitas "
+            "terkalibrasi untuk kandidat individual ini. Skor riset 0–100 juga merupakan "
+            "ranking evidence, bukan peluang menang."
+        )
+    else:
+        st.info(
+            "Belum ada Kandidat Pra-H4 yang valid. Ini berarti belum ada H1 origin baru "
+            "setelah H4 map sekarang yang masih aktif, berada di sisi harga yang benar, "
+            "dan memenuhi syarat dasar struktur."
+        )
+
+    st.markdown("### Persiapan Trading (Trade Preparation)")
     if not valid_zone_now:
         st.error(
             "NO VALID ENTRY ZONE — DO NOT ORDER YET. "
@@ -596,7 +687,7 @@ with forecast_tab:
               "confirmation is still required for the AFIC auto path."
         )
 
-    st.markdown("#### Prepared Plan Lifecycle")
+    st.markdown("#### Siklus Rencana Persiapan (Prepared Plan Lifecycle)")
     st.caption(
         "Prepared plans are retained after they disappear from the current H4 map. "
         "This separates WAITING_PRICE, ZONE_ENTERED, CONFIRMED, broker handoff, and "
@@ -706,7 +797,7 @@ with forecast_tab:
             "worker will backfill recent AFIC prepared plans without changing execution."
         )
 
-    st.markdown("#### XAU Execution Admission")
+    st.markdown("#### Kelayakan Eksekusi XAU (XAU Execution Admission)")
     st.caption(
         "This panel separates stored signal state from actual broker authority. "
         "BROKER ELIGIBLE means the signal has an allowlisted DEMO execution geometry, "
@@ -791,7 +882,7 @@ with forecast_tab:
     else:
         st.caption("No XAU signal rows are available for execution-admission diagnostics.")
 
-    st.markdown("#### Cross-engine XAU technical signals")
+    st.markdown("#### Sinyal Teknikal XAU Lintas-Mesin (Cross-engine XAU technical signals)")
     st.caption(
         "Separate from the AFIC H4 map. These rows come from other XAU technical engines. "
         "CURRENT/EXPIRED is determined from expires_at; an expired setup is historical "
@@ -885,7 +976,7 @@ with forecast_tab:
     else:
         st.caption("No non-AFIC XAU technical signal rows are available yet.")
 
-    st.markdown("#### Reaction-zone diagnostics")
+    st.markdown("#### Diagnostik Zona Reaksi (Reaction-zone diagnostics)")
     if zone_diagnostics:
         d1, d2, d3, d4, d5 = st.columns(5)
         d1.metric("Origin zones", zone_diagnostics.get("origin_zones_total", "—"))
@@ -1044,7 +1135,7 @@ with forecast_tab:
             f"code={str(fast_details.get('code_version') or '—')[:12]}"
         )
 
-    st.markdown("#### Forecast Ensemble V171")
+    st.markdown("#### Gabungan Prakiraan V171 (Forecast Ensemble V171)")
     ensemble_details = {} if ensemble_hb is None else dict(ensemble_hb.get("details") or {})
     ensemble = dict(ensemble_details.get("ensemble") or {})
     primary = dict(ensemble.get("primary_scenario") or {})
@@ -1193,7 +1284,7 @@ with forecast_tab:
         and str(plan_forecast.get("map_at") or "") == str(current_map)
     )
 
-    st.markdown("#### Prepared order blueprint")
+    st.markdown("#### Rancangan Order Persiapan (Prepared order blueprint)")
     if plan_current:
         p1, p2, p3, p4, p5 = st.columns(5)
         p1.metric("Reference / Limit", _fmt_price(prepared_plan.get("entry")))
