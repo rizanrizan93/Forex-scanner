@@ -661,6 +661,7 @@ def _compact_path_zone(item: dict[str, Any] | None) -> dict[str, Any] | None:
         "age_bucket",
         "distance_points",
         "distance_atr",
+        "atr_points",
         "research_score",
         "htf_nesting_count",
         "strategic_alignment",
