@@ -191,3 +191,85 @@ def test_afic_first_leg_uses_matching_supply_demand_path(monkeypatch):
     assert sd["first_leg_path"]["source_zone"]["zone_id"] == "demand-1"
     assert sd["first_leg_path"]["primary_opposing_zone"]["zone_id"] == "supply-near"
     assert sd["first_leg_path"]["execution_authority"] is False
+
+
+def test_overlapping_opposite_h1_paths_are_flagged_as_compression_conflict(monkeypatch):
+    now = datetime(2026, 9, 23, 21, 55, tzinfo=UTC)
+    atlas = _atlas()
+    atlas["path_map"] = {
+        "contract": "XAU_SUPPLY_DEMAND_PATH_ENGINE_V186",
+        "demand_to_supply": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "LONG",
+            "source_zone": {
+                "zone_id": "demand-overlap",
+                "timeframe": "H1",
+                "low": 4266.43,
+                "high": 4292.31,
+            },
+            "primary_opposing_zone": {
+                "zone_id": "supply-next",
+                "timeframe": "H4",
+                "low": 4294.71,
+                "high": 4322.79,
+            },
+            "execution_authority": False,
+        },
+        "supply_to_demand": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "SHORT",
+            "source_zone": {
+                "zone_id": "supply-overlap",
+                "timeframe": "H1",
+                "low": 4277.82,
+                "high": 4298.55,
+            },
+            "primary_opposing_zone": {
+                "zone_id": "demand-next",
+                "timeframe": "H4",
+                "low": 4257.53,
+                "high": 4276.30,
+            },
+            "execution_authority": False,
+        },
+        "active_path": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "LONG",
+            "source_zone": {
+                "zone_id": "demand-overlap",
+                "timeframe": "H1",
+                "low": 4266.43,
+                "high": 4292.31,
+            },
+            "primary_opposing_zone": {
+                "zone_id": "supply-next",
+                "timeframe": "H4",
+                "low": 4294.71,
+                "high": 4322.79,
+            },
+            "execution_authority": False,
+        },
+        "micro_refinement": {
+            "state": "M5_RECLAIM_WAIT_MSS",
+            "direction": "LONG",
+            "execution_authority": False,
+        },
+    }
+    monkeypatch.setattr(ctx, "latest_atlas", lambda store: (now, atlas))
+    out = ctx.attach_supply_demand_context(
+        DummyStore(),
+        {
+            "state": "NO_MAP_ZONE",
+            "continuation_direction": "SHORT",
+            "first_leg_direction": "SHORT",
+        },
+        observed_at=now,
+    )
+    sd = out["supply_demand_context"]
+    assert sd["path_direction_conflict"] is True
+    assert sd["path_overlap_ratio"] > 0.60
+    assert sd["micro_resolution_required"] is True
+    assert sd["path_conflict_state"] == (
+        "OVERLAPPING_H1_SUPPLY_DEMAND_COMPRESSION_WAIT_MICRO_RESOLUTION"
+    )
+    assert sd["execution_authority"] is False

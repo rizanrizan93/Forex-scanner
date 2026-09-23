@@ -625,6 +625,14 @@ with forecast_tab:
                 f"{_fmt_distance(afic_sd_context.get('opposite_zone_distance_atr'),' ATR')}. "
                 "Ini adalah Plan-B / reaction watch, bukan alasan entry melawan AFIC."
             )
+        if afic_sd_context.get("path_direction_conflict"):
+            st.warning(
+                "KONFLIK SUPPLY/DEMAND H1: zona LONG dan SHORT saling overlap "
+                f"sekitar {_fmt_pct(afic_sd_context.get('path_overlap_ratio'))}. "
+                "State = COMPRESSION / WAIT MICRO RESOLUTION. Jangan membaca salah satu "
+                "arah sebagai valid hanya karena harga sedang berada di dalam satu zona; "
+                "tunggu V189 M5 reclaim/MSS/displacement."
+            )
         afic_first_leg_path = dict(afic_sd_context.get("first_leg_path") or {})
         if afic_first_leg_path:
             path_source = dict(afic_first_leg_path.get("source_zone") or {})
