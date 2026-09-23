@@ -6,6 +6,7 @@ from fx_scanner.demo_xau_premap_candidate_v181 import (
     LiquidityEvidence,
     _alignment,
     _candidate_correct_side,
+    _liquidity_evidence,
     _research_score,
 )
 
@@ -83,3 +84,35 @@ def test_research_score_is_contextual_not_execution_authority():
 
 def test_v181_contract_is_prepare_only():
     assert CONTRACT == "XAU_PREMAP_CANDIDATE_V181"
+
+
+def test_liquidity_confluence_is_directionally_role_consistent():
+    short = _liquidity_evidence(
+        zone=_zone("SHORT"),
+        atr_points=4.0,
+        levels=(
+            {"source": "H1_SWING_HIGH", "price": 100.2},
+            {"source": "H1_SWING_LOW", "price": 100.1},
+            {"source": "PREVIOUS_DAY_HIGH", "price": 100.3},
+            {"source": "PREVIOUS_DAY_LOW", "price": 100.2},
+        ),
+    )
+    assert "H1_SWING_HIGH" in short.sources
+    assert "PREVIOUS_DAY_HIGH" in short.sources
+    assert "H1_SWING_LOW" not in short.sources
+    assert "PREVIOUS_DAY_LOW" not in short.sources
+
+    long = _liquidity_evidence(
+        zone=_zone("LONG"),
+        atr_points=4.0,
+        levels=(
+            {"source": "H1_SWING_LOW", "price": 101.8},
+            {"source": "H1_SWING_HIGH", "price": 101.9},
+            {"source": "PREVIOUS_DAY_LOW", "price": 101.7},
+            {"source": "PREVIOUS_DAY_HIGH", "price": 101.8},
+        ),
+    )
+    assert "H1_SWING_LOW" in long.sources
+    assert "PREVIOUS_DAY_LOW" in long.sources
+    assert "H1_SWING_HIGH" not in long.sources
+    assert "PREVIOUS_DAY_HIGH" not in long.sources
