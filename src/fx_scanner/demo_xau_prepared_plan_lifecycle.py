@@ -107,7 +107,7 @@ def _outcomes(
     response = (
         store.client.table("xau_outcome_ledger")
         .select(
-            "signal_id,observed_at,status,outcome_at,outcome_class,mfe_r,mae_r,"
+            "signal_id,observed_at,status,first_touch_at,outcome_at,outcome_class,mfe_r,mae_r,"
             "tp1_hit,tp2_hit,stop_hit,missed_execution"
         )
         .gte("observed_at", cutoff.isoformat())
@@ -178,14 +178,58 @@ def _same_map_state_transition(
         if str(forecast.get("map_at") or "") != str(map_at or ""):
             continue
         state = str(forecast.get("state") or "").upper()
-        if "INVALID" in state or "REMAP" in state:
-            reason = (
-                "PRICE_INVALIDATION_AFTER_TOUCH"
-                if "AFTER_TOUCH" in state
-                else "PRICE_INVALIDATION"
-            )
-            return at, reason
+        diagnostics = dict(forecast.get("zone_diagnostics") or {})
+
+        if state == "CONFIRM_TIMEOUT_REMAP_DUE":
+            return at, "CONFIRMATION_TIMEOUT"
+        if "INVALIDATED_AFTER_TOUCH" in state:
+            return at, "PRICE_INVALIDATION_AFTER_TOUCH"
+        if state.startswith("INVALIDATED"):
+            return at, "PRICE_INVALIDATION"
+        if state == "NO_MAP_ZONE":
+            if int(diagnostics.get("invalidated_before_map") or 0) > 0:
+                return at, "INVALIDATED_BEFORE_MAP"
+            if int(diagnostics.get("wrong_side_of_anchor") or 0) > 0:
+                return at, "WRONG_SIDE_OF_ANCHOR"
+            return at, "NO_ELIGIBLE_MAP_ZONE"
+        if state == "NO_ORIGIN_ZONE":
+            return at, "NO_ORIGIN_ZONE"
     return None, None
+
+
+def _same_map_touch_confirm(
+    forecast_events: Sequence[dict[str, Any]],
+    *,
+    created_at: datetime,
+    map_at: str,
+) -> tuple[datetime | None, datetime | None]:
+    touch: datetime | None = None
+    confirm: datetime | None = None
+    for row in forecast_events:
+        at = _dt(row.get("observed_at"))
+        if at is None or at < created_at:
+            continue
+        payload = dict(row.get("payload") or {})
+        forecast = dict(payload.get("forecast") or {})
+        if str(forecast.get("map_at") or "") != str(map_at or ""):
+            continue
+        candidate_touch = _dt(
+            forecast.get("map_first_touch_at") or forecast.get("first_touch_at")
+        )
+        if (
+            candidate_touch is not None
+            and candidate_touch >= created_at
+            and (touch is None or candidate_touch < touch)
+        ):
+            touch = candidate_touch
+        candidate_confirm = _dt(forecast.get("confirm_at"))
+        if (
+            candidate_confirm is not None
+            and candidate_confirm >= created_at
+            and (confirm is None or candidate_confirm < confirm)
+        ):
+            confirm = candidate_confirm
+    return touch, confirm
 
 
 def _next_map_transition(
@@ -314,10 +358,23 @@ def _lifecycle_rows(
 
         map_at = str(forecast.get("map_at") or "")
         zone = dict(forecast.get("zone") or {})
-        first_touch_at = _dt(
-            forecast.get("map_first_touch_at") or forecast.get("first_touch_at")
+        event_touch_at, event_confirm_at = _same_map_touch_confirm(
+            forecast_events,
+            created_at=created_at,
+            map_at=map_at,
         )
-        confirmed_at = _dt(forecast.get("confirm_at"))
+        outcome_touch_at = _dt(outcome.get("first_touch_at"))
+        first_touch_at = (
+            outcome_touch_at
+            if outcome_touch_at is not None and outcome_touch_at >= created_at
+            else event_touch_at
+        )
+        confirmed_at = event_confirm_at or (
+            _dt(forecast.get("confirm_at"))
+            if _dt(forecast.get("confirm_at")) is not None
+            and _dt(forecast.get("confirm_at")) >= created_at
+            else None
+        )
         geometry_at = _event_time(signal_events, "DEMO_SIGNAL_GEOMETRY")
         order_at = _event_time(signal_events, "ORDER_ACCEPTED")
         protection_at = _event_time(signal_events, "POSITION_PROTECTION_VERIFIED")
@@ -354,12 +411,20 @@ def _lifecycle_rows(
         )
 
         outcome_at = _dt(outcome.get("outcome_at"))
+        outcome_is_causal = bool(
+            first_touch_at is not None
+            and outcome_at is not None
+            and outcome_at >= first_touch_at
+        )
+        qualified_tp1 = bool(outcome.get("tp1_hit")) and outcome_is_causal
+        qualified_tp2 = bool(outcome.get("tp2_hit")) and outcome_is_causal
+        qualified_stop = bool(outcome.get("stop_hit")) and outcome_is_causal
         terminal_hit_after_cancel = bool(
             cancelled_at is not None
             and outcome_at is not None
             and outcome_at > cancelled_at
-            and bool(outcome.get("tp2_hit"))
-            and not bool(outcome.get("stop_hit"))
+            and qualified_tp2
+            and not qualified_stop
         )
         terminal_at = (
             closed_at
@@ -415,11 +480,11 @@ def _lifecycle_rows(
                 else protection_at.isoformat(),
                 "outcome_at": None if outcome_at is None else outcome_at.isoformat(),
                 "outcome_class": outcome.get("outcome_class"),
-                "tp1_hit": bool(outcome.get("tp1_hit")),
-                "tp2_hit": bool(outcome.get("tp2_hit")),
-                "stop_hit": bool(outcome.get("stop_hit")),
-                "mfe_r": _finite(outcome.get("mfe_r")),
-                "mae_r": _finite(outcome.get("mae_r")),
+                "tp1_hit": qualified_tp1,
+                "tp2_hit": qualified_tp2,
+                "stop_hit": qualified_stop,
+                "mfe_r": _finite(outcome.get("mfe_r")) if outcome_is_causal else None,
+                "mae_r": _finite(outcome.get("mae_r")) if outcome_is_causal else None,
                 "post_cancel_terminal_hit": terminal_hit_after_cancel,
                 "metadata": {
                     "contract": CONTRACT,
@@ -432,6 +497,11 @@ def _lifecycle_rows(
                     "lifetime_minutes": lifetime_minutes,
                     "eventual_outcome_status": outcome.get("status"),
                     "missed_execution": bool(outcome.get("missed_execution")),
+                    "outcome_is_causal_after_entry_activation": outcome_is_causal,
+                    "raw_outcome_at": outcome.get("outcome_at"),
+                    "raw_tp1_hit": bool(outcome.get("tp1_hit")),
+                    "raw_tp2_hit": bool(outcome.get("tp2_hit")),
+                    "raw_stop_hit": bool(outcome.get("stop_hit")),
                     "post_cancel_terminal_hit_is_conservative_candidate": True,
                     "live_execution_enabled": False,
                 },
