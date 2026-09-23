@@ -1,5 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
+import numpy as np
+import pandas as pd
 import pytest
 
 from fx_scanner.models import Bar
@@ -13,6 +15,7 @@ from fx_scanner.research_xau_h1_origin_hold_break_v177 import (
     HoldBreakOutcome,
     ScoredEpisode,
     _calibrate_threshold,
+    _frame_trend_context,
     _split_chronological,
     evaluate_hold_break_outcome,
     fit_logistic_model,
@@ -172,3 +175,80 @@ def test_v177_is_strictly_shadow_only():
     assert POLICY_EFFECT == "SHADOW_ONLY"
     assert EXECUTION_INFLUENCE is False
     assert LIVE_EXECUTION_ENABLED is False
+
+
+def test_frame_context_falls_back_when_short_or_long_atr_is_nan():
+    stamp = datetime(2026, 9, 23, 8, 0, tzinfo=UTC)
+    frame = pd.DataFrame(
+        [
+            {
+                "time": pd.Timestamp(stamp - timedelta(hours=4)),
+                "close": 100.0,
+                "ema20": 99.0,
+                "atr14": 4.0,
+                "atr5": np.nan,
+                "atr20": np.nan,
+            },
+            {
+                "time": pd.Timestamp(stamp),
+                "close": 102.0,
+                "ema20": 100.0,
+                "atr14": 4.0,
+                "atr5": np.nan,
+                "atr20": np.nan,
+            },
+        ]
+    )
+    times = tuple(value.to_pydatetime() for value in frame["time"])
+    trend, ema, vol = _frame_trend_context(
+        frame,
+        timestamp=stamp,
+        times=times,
+        direction="LONG",
+    )
+    assert np.isfinite(trend)
+    assert np.isfinite(ema)
+    assert vol == pytest.approx(1.0)
+
+
+def test_logistic_fit_fails_closed_on_nonfinite_feature_matrix():
+    row = _episode(
+        0,
+        direction="LONG",
+        hold=True,
+        signal=1.0,
+    )
+    rows = []
+    for index in range(100):
+        features = list(row.features)
+        features[3] = np.nan if index == 0 else 1.0
+        rows.append(
+            HoldBreakEpisode(
+                zone_id=f"nan-{index}",
+                direction="LONG",
+                available_at=row.available_at + timedelta(hours=4 * index),
+                touch_at=row.touch_at + timedelta(hours=4 * index),
+                decision_at=row.decision_at + timedelta(hours=4 * index),
+                zone_low=row.zone_low,
+                zone_high=row.zone_high,
+                features=tuple(features),
+                outcome=row.outcome,
+            )
+        )
+    with pytest.raises(ValueError, match="nonfinite feature matrix"):
+        fit_logistic_model(tuple(rows))
+
+
+def test_final_holdout_is_larger_than_calibration_window():
+    rows = tuple(
+        _episode(
+            index,
+            direction="LONG" if index % 2 == 0 else "SHORT",
+            hold=index % 3 == 0,
+            signal=1.0 if index % 3 == 0 else -1.0,
+        )
+        for index in range(500)
+    )
+    train, calibration, holdout = _split_chronological(rows)
+    assert train and calibration and holdout
+    assert len(holdout) > len(calibration)
