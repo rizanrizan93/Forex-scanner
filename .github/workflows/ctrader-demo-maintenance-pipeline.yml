@@ -100,6 +100,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_supply_demand_atlas_v182
 
+      - name: Update prospective XAU supply-demand lifecycle
+        id: update_xau_supply_demand_prospective
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_supply_demand_prospective_v184
+
       - name: Enforce pair-specific max-hold exits
         id: pair_time_exit
         if: ${{ always() && !cancelled() }}
