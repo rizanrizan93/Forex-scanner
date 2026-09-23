@@ -20,6 +20,10 @@ from .demo_xau_afic_path_shadow_observer import (
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .models import ensure_utc
+from .demo_xau_afic_supply_demand_context import (
+    attach_supply_demand_context,
+    context_token as supply_demand_context_token,
+)
 from .storage.supabase_operational import SupabaseOperationalStore
 
 STRATEGY_ID="XAU_AFIC_PATH_PREPARED_V1"
@@ -361,6 +365,7 @@ def forecast_state_key(payload:dict[str,Any])->str:
         str(payload.get("invalidated_at") or "NONE"),
         str(zone.get("origin_at") or "NONE"),
         alternative_lifecycle_token,
+        *supply_demand_context_token(payload),
     )
     return "|".join(fields)
 
@@ -753,6 +758,7 @@ def run()->int:
         ))
         raw_count=len(raw)
         payload=evaluate_afic_shadow(raw,as_of=now)
+        payload=attach_supply_demand_context(store,payload,observed_at=now)
         state=str(payload.get("state") or "")
         state_transition_persisted=_record_forecast_state(store,payload=payload)
         superseded_signals_invalidated=_invalidate_superseded_afic_signals(
@@ -894,6 +900,7 @@ def run()->int:
             "zone_distance_atr":observability.get("zone_distance_atr"),
             "h4_directional_close_location":observability.get("h4_directional_close_location"),
             "zone_diagnostics":dict(payload.get("zone_diagnostics") or {}),
+            "supply_demand_context":dict(payload.get("supply_demand_context") or {}),
             "prepared_reference_entry":observability.get("prepared_reference_entry"),
             "final_entry":observability.get("final_entry"),
             "live_price":live_mid if live_mid is not None else proximity.get("live_price"),

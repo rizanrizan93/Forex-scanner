@@ -558,6 +558,12 @@ with forecast_tab:
         or {}
     )
 
+    afic_sd_context = dict(
+        hb_details.get("supply_demand_context")
+        or state_payload.get("supply_demand_context")
+        or {}
+    )
+
     valid_zone_now = bool(
         zone_low is not None
         and zone_high is not None
@@ -576,6 +582,62 @@ with forecast_tab:
         else "SELL" if direction == "SHORT"
         else "—"
     )
+
+    st.markdown("### Integrasi AFIC ↔ Supply/Demand")
+    st.caption(
+        "Supply/Demand V182 sekarang menjadi context map untuk AFIC. Context ini dapat "
+        "mendukung zona canonical, memberi peringatan zona reversal lawan, atau menyediakan "
+        "fallback PREPARE ketika canonical AFIC belum ada. Context ini TIDAK mengubah Grade "
+        "A/B, tidak membuat signal broker, dan tidak menggantikan konfirmasi M15."
+    )
+    if afic_sd_context:
+        sd_same = dict(afic_sd_context.get("same_direction_zone") or {})
+        sd_opp = dict(afic_sd_context.get("opposite_reversal_zone") or {})
+        ic1, ic2, ic3, ic4 = st.columns(4)
+        ic1.metric("State integrasi", str(afic_sd_context.get("state") or "—"))
+        ic2.metric(
+            "Confluence canonical",
+            "YA" if afic_sd_context.get("same_direction_confluence") else "TIDAK",
+        )
+        ic3.metric(
+            "Zona lawan dekat harga",
+            "YA" if afic_sd_context.get("opposite_zone_near_price") else "TIDAK",
+        )
+        ic4.metric("Otoritas eksekusi", "TIDAK ADA")
+        if sd_same:
+            st.info(
+                "Supply/Demand searah AFIC: "
+                f"{sd_same.get('timeframe','—')} {sd_same.get('pattern','—')} "
+                f"{_fmt_price(sd_same.get('low'))}–{_fmt_price(sd_same.get('high'))} • "
+                f"overlap canonical={_fmt_pct(afic_sd_context.get('same_direction_overlap_ratio'))} • "
+                f"jarak ke canonical="
+                f"{_fmt_distance(afic_sd_context.get('same_direction_distance_atr'),' ATR')}."
+            )
+        if sd_opp:
+            st.warning(
+                "Zona reversal lawan: "
+                f"{sd_opp.get('timeframe','—')} {sd_opp.get('pattern','—')} "
+                f"{_fmt_price(sd_opp.get('low'))}–{_fmt_price(sd_opp.get('high'))} • "
+                f"jarak dari harga="
+                f"{_fmt_distance(afic_sd_context.get('opposite_zone_distance_atr'),' ATR')}. "
+                "Ini adalah Plan-B / reaction watch, bukan alasan entry melawan AFIC."
+            )
+        if afic_sd_context.get("prepare_only_fallback"):
+            st.warning(
+                "Canonical AFIC belum memiliki zona valid, tetapi atlas Supply/Demand "
+                "memiliki context aktif. Scanner boleh menampilkan PERSIAPAN/WATCH lebih awal, "
+                "namun order tetap dilarang sampai canonical AFIC + completed M15 confirmation "
+                "terbentuk."
+            )
+        if afic_sd_context.get("atlas_stale"):
+            st.error(
+                "Snapshot Supply/Demand terlalu lama untuk dipakai sebagai context aktif. "
+                "AFIC tetap berjalan tanpa policy effect dari atlas sampai heartbeat baru tersedia."
+            )
+    else:
+        st.caption(
+            "Context integrasi AFIC ↔ Supply/Demand belum tersedia pada snapshot runtime ini."
+        )
 
     st.markdown("### Rezim Strategis HTF (Strategic HTF Regime)")
     regime_details = {} if regime_hb is None else dict(regime_hb.get("details") or {})
@@ -923,6 +985,17 @@ with forecast_tab:
             "BELUM ADA ZONA ENTRY VALID — JANGAN PASANG ORDER. "
             "Scanner sedang menunggu H4 map struktural/zona reaksi yang baru."
         )
+        if afic_sd_context.get("prepare_only_fallback"):
+            sd_fallback_same = dict(afic_sd_context.get("same_direction_zone") or {})
+            sd_fallback_opp = dict(afic_sd_context.get("opposite_reversal_zone") or {})
+            fallback = sd_fallback_same or sd_fallback_opp
+            if fallback:
+                st.warning(
+                    "Namun ada Supply/Demand PREPARE context di "
+                    f"{_fmt_price(fallback.get('low'))}–{_fmt_price(fallback.get('high'))} "
+                    f"({fallback.get('timeframe','—')} {fallback.get('pattern','—')}). "
+                    "Gunakan hanya untuk bersiap; BELUM menjadi entry zone AFIC."
+                )
         t1, t2, t3, t4 = st.columns(4)
         t1.metric("Menunggu", "H4 MAP BARU")
         t2.metric("Zona reaksi", "—")
