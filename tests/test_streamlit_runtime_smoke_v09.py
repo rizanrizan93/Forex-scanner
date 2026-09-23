@@ -110,3 +110,11 @@ def test_xau_dashboard_shows_prepared_plan_lifecycle_and_cancel_reason():
     assert '"cancel reason": row.get("cancel_reason") or "—"' in text
     assert 'Post-cancel TP2 candidate' in text
     assert 'Cancellation is evidence, not deletion.' in text
+
+
+def test_xau_dashboard_grade_b_matches_current_demo_authority():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'if grade in {"A", "B"}:' in text
+    assert 'eligible for DEMO auto execution' in text
+    assert 'elif grade == "C":' in text
+    assert 'Grade C: shadow/watch only' in text
