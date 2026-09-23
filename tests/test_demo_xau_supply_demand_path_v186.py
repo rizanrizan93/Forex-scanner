@@ -1,5 +1,6 @@
 from fx_scanner.demo_xau_supply_demand_atlas_v182 import (
     _build_path_map,
+    _source_zone_stack,
     _true_nearest_zone,
 )
 
@@ -131,3 +132,46 @@ def test_internal_waypoints_start_outside_source_zone():
     assert 4295.0 not in prices
     assert 4331.0 in prices
     assert all(price > 4301.0 for price in prices)
+
+
+def test_stacked_source_prefers_h1_precision_inside_h4_parent():
+    zones = (
+        _zone("h4-parent", "LONG", 4266, 4318, distance=0, score=54, timeframe="H4"),
+        _zone("h1-precision", "LONG", 4274, 4301, distance=0, score=65, timeframe="H1"),
+        _zone("s1", "SHORT", 4342, 4347, distance=40, timeframe="H1"),
+    )
+    stack = _source_zone_stack(
+        zones,
+        direction="LONG",
+        last_price=4280.0,
+    )
+    assert stack[0]["zone_id"] == "h1-precision"
+    assert stack[1]["zone_id"] == "h4-parent"
+
+    path_map = _build_path_map(
+        payloads=zones,
+        levels=({"source": "H1_SWING_HIGH", "price": 4331.0},),
+        last_price=4280.0,
+    )
+    assert path_map["nearest_demand"]["zone_id"] == "h1-precision"
+    assert path_map["demand_source_stack"][0]["zone_id"] == "h1-precision"
+    assert path_map["demand_source_stack"][1]["zone_id"] == "h4-parent"
+    assert path_map["demand_to_supply"]["source_zone"]["zone_id"] == "h1-precision"
+
+
+def test_destination_stack_preserves_nearest_then_secondary_opposing_zones():
+    zones = (
+        _zone("d1", "LONG", 4274, 4301, distance=0, timeframe="H1"),
+        _zone("s-near", "SHORT", 4337, 4376, distance=36, timeframe="H4"),
+        _zone("s-nested", "SHORT", 4342, 4347, distance=42, timeframe="H1"),
+        _zone("s-far", "SHORT", 4355, 4369, distance=55, timeframe="H1"),
+    )
+    path_map = _build_path_map(
+        payloads=zones,
+        levels=(),
+        last_price=4280.0,
+    )
+    stack = path_map["demand_to_supply"]["destination_stack"]
+    assert stack[0]["zone_id"] == "s-near"
+    assert "s-nested" in [item["zone_id"] for item in stack]
+    assert "s-far" in [item["zone_id"] for item in stack]
