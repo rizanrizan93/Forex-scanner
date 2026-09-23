@@ -122,6 +122,7 @@ def latest_atlas(
         store.client.table("runtime_heartbeats")
         .select("observed_at,healthy,details")
         .eq("worker_name", ATLAS_WORKER)
+        .order("observed_at", desc=True)
         .limit(1)
         .execute()
     )
