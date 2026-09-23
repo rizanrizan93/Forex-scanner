@@ -57,6 +57,26 @@ class CTraderResearchFeed:
         self._require_open_market(symbol, at=at)
         return self._session.quote(symbol)
 
+    def subscribe_depth(self, symbols: Iterable[str] | None = None) -> None:
+        with self._lock:
+            self.ensure_connected()
+            wanted = list(self._symbols if symbols is None else tuple(str(x).upper() for x in symbols))
+            self._session.subscribe_depth(wanted)
+
+    def unsubscribe_depth(self, symbols: Iterable[str] | None = None) -> None:
+        with self._lock:
+            wanted = list(self._symbols if symbols is None else tuple(str(x).upper() for x in symbols))
+            self._session.unsubscribe_depth(wanted)
+
+    def clear_depth_snapshot(self, symbol: str) -> None:
+        with self._lock:
+            self._session.clear_depth_snapshot(symbol)
+
+    def depth_snapshot(self, symbol: str, *, max_levels: int = 20):
+        with self._lock:
+            self.ensure_connected()
+            return self._session.depth_snapshot(symbol, max_levels=max_levels)
+
     def refresh_quote_snapshot(self, symbol: str) -> None:
         with self._lock:
             self._require_open_market(symbol)

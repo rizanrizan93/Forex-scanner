@@ -273,3 +273,133 @@ def test_overlapping_opposite_h1_paths_are_flagged_as_compression_conflict(monke
         "OVERLAPPING_H1_SUPPLY_DEMAND_COMPRESSION_WAIT_MICRO_RESOLUTION"
     )
     assert sd["execution_authority"] is False
+
+
+def test_v191_dom_supports_long_first_leg_without_execution_authority(monkeypatch):
+    now = datetime(2026, 9, 24, 0, 0, tzinfo=UTC)
+    atlas = _atlas()
+    atlas["path_map"] = {
+        "contract": "XAU_SUPPLY_DEMAND_PATH_ENGINE_V186",
+        "demand_to_supply": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "LONG",
+            "source_zone": {
+                "zone_id": "demand-1",
+                "timeframe": "H1",
+                "low": 4273.96,
+                "high": 4300.95,
+            },
+            "primary_opposing_zone": {
+                "zone_id": "supply-near",
+                "timeframe": "H1",
+                "low": 4342.51,
+                "high": 4347.27,
+            },
+            "execution_authority": False,
+        },
+        "supply_to_demand": {},
+        "active_path": {},
+    }
+    monkeypatch.setattr(ctx, "latest_atlas", lambda store: (now, atlas))
+    monkeypatch.setattr(
+        ctx,
+        "latest_dom",
+        lambda store: (
+            now,
+            {
+                "state": "BID_DOMINANT",
+                "dom_pressure_score": 71.5,
+                "last_imbalance": 0.31,
+                "top5_bid_units": 25000.0,
+                "top5_ask_units": 13000.0,
+                "bid_wall": {"dominant_wall_price": 4288.5, "wall_persistence": 0.8},
+                "ask_wall": {"dominant_wall_price": 4294.5, "wall_persistence": 0.3},
+            },
+        ),
+    )
+    out = ctx.attach_supply_demand_context(
+        DummyStore(),
+        {
+            "state": "NO_MAP_ZONE",
+            "continuation_direction": "SHORT",
+            "first_leg_direction": "LONG",
+        },
+        observed_at=now,
+    )
+    dom = out["supply_demand_context"]["dom_context"]
+    assert dom["state"] == "BID_DOMINANT"
+    assert dom["alignment_with_first_leg"] == "SUPPORTS_FIRST_LEG"
+    assert dom["execution_authority"] is False
+    assert out["supply_demand_context"]["execution_authority"] is False
+
+
+def test_v191_dom_and_v189_can_align_but_remain_shadow(monkeypatch):
+    now = datetime(2026, 9, 24, 0, 0, tzinfo=UTC)
+    atlas = _atlas()
+    atlas["path_map"] = {
+        "contract": "XAU_SUPPLY_DEMAND_PATH_ENGINE_V186",
+        "demand_to_supply": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "LONG",
+            "source_zone": {
+                "zone_id": "demand-overlap",
+                "timeframe": "H1",
+                "low": 4266.43,
+                "high": 4292.31,
+            },
+            "execution_authority": False,
+        },
+        "supply_to_demand": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "SHORT",
+            "source_zone": {
+                "zone_id": "supply-overlap",
+                "timeframe": "H1",
+                "low": 4277.82,
+                "high": 4298.55,
+            },
+            "execution_authority": False,
+        },
+        "active_path": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "LONG",
+            "source_zone": {
+                "zone_id": "demand-overlap",
+                "timeframe": "H1",
+                "low": 4266.43,
+                "high": 4292.31,
+            },
+            "execution_authority": False,
+        },
+        "micro_refinement": {
+            "state": "M5_REFINEMENT_CONFIRMED_SHADOW",
+            "direction": "LONG",
+            "execution_authority": False,
+        },
+    }
+    monkeypatch.setattr(ctx, "latest_atlas", lambda store: (now, atlas))
+    monkeypatch.setattr(
+        ctx,
+        "latest_dom",
+        lambda store: (
+            now,
+            {
+                "state": "BID_DOMINANT",
+                "dom_pressure_score": 70.0,
+                "last_imbalance": 0.25,
+            },
+        ),
+    )
+    out = ctx.attach_supply_demand_context(
+        DummyStore(),
+        {
+            "state": "NO_MAP_ZONE",
+            "continuation_direction": "LONG",
+            "first_leg_direction": "SHORT",
+        },
+        observed_at=now,
+    )
+    sd = out["supply_demand_context"]
+    assert sd["path_direction_conflict"] is True
+    assert sd["conflict_resolution_evidence"] == "M5_AND_DOM_ALIGNED_SHADOW"
+    assert sd["execution_authority"] is False
