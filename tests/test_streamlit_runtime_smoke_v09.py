@@ -109,7 +109,7 @@ def test_xau_dashboard_shows_prepared_plan_lifecycle_and_cancel_reason():
     assert 'Last prepared plan:' in text
     assert '"cancel reason": row.get("cancel_reason") or "—"' in text
     assert 'Post-cancel TP2 candidate' in text
-    assert 'Cancellation is evidence, not deletion.' in text
+    assert 'Pembatalan disimpan sebagai evidence, bukan dihapus.' in text
 
 
 def test_xau_dashboard_grade_b_matches_current_demo_authority():
