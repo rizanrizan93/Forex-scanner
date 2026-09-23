@@ -156,3 +156,38 @@ def test_calibration_bins_report_predicted_and_observed_rates():
     assert len(bins) == 2
     assert bins[0]["observed_rate"] == pytest.approx(0.0)
     assert bins[1]["observed_rate"] == pytest.approx(1.0)
+
+
+def test_preindexed_history_path_matches_public_sorted_path():
+    start = datetime(2026, 9, 23, 8, 0, tzinfo=UTC)
+    touch = start + timedelta(minutes=15)
+    rows = (
+        _bar(start, 99.0, 101.2, 98.8, 101.0),
+        _bar(touch, 101.5, 102.0, 98.4, 98.5),
+        _bar(touch + timedelta(minutes=15), 99.0, 99.5, 96.0, 97.0),
+        _bar(touch + timedelta(minutes=30), 97.0, 97.2, 92.5, 93.0),
+    )
+    default = evaluate_execution_funnel_path(
+        tuple(reversed(rows)),
+        touch_at=touch,
+        direction="SHORT",
+        zone_low=100.0,
+        zone_high=102.0,
+        atr_points=4.0,
+        target_horizon_m15=8,
+    )
+    index_by_time = {
+        row.timestamp: index for index, row in enumerate(rows)
+    }
+    indexed = evaluate_execution_funnel_path(
+        rows,
+        touch_at=touch,
+        direction="SHORT",
+        zone_low=100.0,
+        zone_high=102.0,
+        atr_points=4.0,
+        target_horizon_m15=8,
+        _rows_are_sorted=True,
+        _index_by_time=index_by_time,
+    )
+    assert indexed == default
