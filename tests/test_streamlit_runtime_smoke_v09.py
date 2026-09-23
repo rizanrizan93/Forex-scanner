@@ -109,7 +109,7 @@ def test_xau_dashboard_shows_prepared_plan_lifecycle_and_cancel_reason():
     assert 'Last prepared plan:' in text
     assert '"cancel reason": row.get("cancel_reason") or "—"' in text
     assert 'Post-cancel TP2 candidate' in text
-    assert 'Cancellation is evidence, not deletion.' in text
+    assert 'Pembatalan disimpan sebagai evidence, bukan dihapus.' in text
 
 
 def test_xau_dashboard_grade_b_matches_current_demo_authority():
@@ -138,3 +138,27 @@ def test_xau_dashboard_shows_strategic_htf_regime_and_zone_age_pools():
     assert '"Canonical zones 0–24h"' in text
     assert '"Shadow zones 24–48h"' in text
     assert 'Shadow 24–48h zones have NO execution authority.' in text
+
+
+def test_xau_dashboard_shows_premap_prepare_only_panel_in_indonesian():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert '"ctrader_demo_xau_premap_candidate_v181"' in text
+    assert 'Kandidat Zona Pra-H4 (Pre-map Candidate Zone)' in text
+    assert 'PERSIAPAN SAJA / NO EXECUTION' in text
+    assert 'V175 P(touch) OOS' in text
+    assert 'V177 hold OOS' in text
+    assert 'V178 hold M5 OOS' in text
+    assert 'V179 reaction OOS' in text
+    assert 'Izin eksekusi", "TIDAK ADA"' in text
+
+
+def test_xau_dashboard_core_terms_are_localized_with_explanations():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'Prakiraan XAUUSD & Zona Reaksi (XAUUSD Forecast & Reaction Zone)' in text
+    assert 'Persiapan Trading (Trade Preparation)' in text
+    assert 'Kelayakan Eksekusi XAU (XAU Execution Admission)' in text
+    assert 'Sinyal Teknikal XAU Lintas-Mesin (Cross-engine XAU technical signals)' in text
+    assert 'Diagnostik Zona Reaksi (Reaction-zone diagnostics)' in text
+    assert 'Kamus istilah pada halaman ini' in text
+    assert 'Liquidity / Likuiditas' in text
+    assert 'BOS (Break of Structure)' in text

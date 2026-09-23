@@ -34,6 +34,7 @@ on:
       - "src/fx_scanner/demo_xau_afic_fresh_ready_handoff.py"
       - "src/fx_scanner/demo_xau_outcome_ledger.py"
       - "src/fx_scanner/demo_xau_prepared_plan_lifecycle.py"
+      - "src/fx_scanner/demo_xau_premap_candidate_v181.py"
       - "src/fx_scanner/demo_execution_fresh_ready_handoff.py"
       - "src/fx_scanner/demo_fresh_ready_handoff.py"
 

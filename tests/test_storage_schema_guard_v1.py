@@ -30,3 +30,8 @@ def test_storage_guard_is_scheduled_and_outcome_ledger_runs_in_maintenance():
     assert "python -m fx_scanner.demo_storage_guard" in guard
     assert "python -m fx_scanner.demo_xau_outcome_ledger" in maintenance
     assert "python -m fx_scanner.demo_xau_prepared_plan_lifecycle" in maintenance
+
+
+def test_maintenance_runs_premap_candidate_worker():
+    text = (ROOT / ".github/workflows/ctrader-demo-maintenance-pipeline.yml").read_text()
+    assert "python -m fx_scanner.demo_xau_premap_candidate_v181" in text

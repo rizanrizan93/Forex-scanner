@@ -220,7 +220,7 @@ def test_runtime_marks_no_map_zone_afic_unavailable():
 def test_streamlit_trade_preparation_makes_wait_zone_explicit():
     root = __import__("pathlib").Path(__file__).resolve().parents[1]
     text = (root / "streamlit_app.py").read_text()
-    assert "### Trade Preparation" in text
+    assert "### Persiapan Trading (Trade Preparation)" in text
     assert "NO VALID ENTRY ZONE — DO NOT ORDER YET" in text
     assert '"Reaction zone"' in text
     assert '"Reference entry"' in text
