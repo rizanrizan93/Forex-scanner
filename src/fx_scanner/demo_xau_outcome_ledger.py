@@ -30,6 +30,7 @@ AUTHORIZED_GEOMETRY_CODES = {
 
 @dataclass(frozen=True, slots=True)
 class PathOutcome:
+    activation_at: datetime | None
     mfe_points: float
     mae_points: float
     mfe_r: float | None
@@ -145,6 +146,7 @@ def evaluate_signal_path(
     tp1: float | None,
     tp2: float | None,
     horizon_hours: int = OUTCOME_HORIZON_HOURS,
+    require_entry_touch: bool = False,
 ) -> PathOutcome:
     normalized = str(direction).upper()
     if normalized not in {"LONG", "SHORT"}:
@@ -166,8 +168,14 @@ def evaluate_signal_path(
     stop_hit = False
     outcome_at: datetime | None = None
     outcome_class: str | None = None
+    activation_at: datetime | None = None if require_entry_touch else ensure_utc(observed_at)
 
     for row in selected:
+        if require_entry_touch and activation_at is None:
+            if not (float(row.low) <= float(entry) <= float(row.high)):
+                continue
+            activation_at = ensure_utc(row.timestamp)
+
         if normalized == "LONG":
             favorable = max(0.0, float(row.high) - entry)
             adverse = max(0.0, entry - float(row.low))
@@ -203,6 +211,7 @@ def evaluate_signal_path(
         outcome_class = "TP1_HIT"
 
     return PathOutcome(
+        activation_at=activation_at,
         mfe_points=mfe,
         mae_points=mae,
         mfe_r=None if risk is None else mfe / risk,
@@ -362,6 +371,8 @@ def _signal_rows(
             continue
         stop = _finite(signal.get("sl"))
         first_target, terminal_target = _targets(signal)
+        setup_type = str(signal.get("setup_type") or "").upper()
+        entry_activation_required = setup_type == "AFIC_PATH_FORECAST"
         path = evaluate_signal_path(
             bars,
             observed_at=observed_at,
@@ -370,6 +381,7 @@ def _signal_rows(
             stop=stop,
             tp1=first_target,
             tp2=terminal_target,
+            require_entry_touch=entry_activation_required,
         )
         signal_events = event_index.get(signal_id, ())
         order_at = _event_time(signal_events, "ORDER_ACCEPTED")
@@ -392,6 +404,10 @@ def _signal_rows(
             "active_guards": list(signal.get("active_guards") or []),
             "expires_at": signal.get("expires_at"),
             "geometry_authority": authority,
+            "entry_activation_required": entry_activation_required,
+            "entry_activated_at": None
+            if path.activation_at is None
+            else path.activation_at.isoformat(),
             "path_outcome_is_market_geometry_not_realized_pnl": order_at is not None,
             "actual_close": {
                 "net_pnl_estimate": actual_payload.get("net_pnl_estimate"),
@@ -420,7 +436,9 @@ def _signal_rows(
                 "stop_price": stop,
                 "tp1_price": first_target,
                 "tp2_price": terminal_target,
-                "first_touch_at": None,
+                "first_touch_at": None
+                if path.activation_at is None
+                else path.activation_at.isoformat(),
                 "map_first_touch_at": None,
                 "confirmed_at": None,
                 "execution_ready_at": None if execution_ready_at is None else execution_ready_at.isoformat(),
