@@ -6,6 +6,7 @@ from fx_scanner.models import Bar
 from fx_scanner.research_xau_afic_execution_funnel_v176 import (
     _calibration_bins,
     _split_by_map,
+    _status_diagnostics,
     evaluate_execution_funnel_path,
 )
 from fx_scanner.research_xau_zone_path_v174 import ZonePathOutcome, ZoneScenario
@@ -191,3 +192,16 @@ def test_preindexed_history_path_matches_public_sorted_path():
         _index_by_time=index_by_time,
     )
     assert indexed == default
+
+
+def test_status_diagnostics_explains_confirmation_and_target_population():
+    rows = (_episode(0), _episode(1))
+    diagnostics = _status_diagnostics(rows)
+    assert diagnostics["rows"] == 2
+    assert diagnostics["confirmed"] == 0
+    assert diagnostics["confirmation_status"]["CONFIRM_TIMEOUT"] == 2
+    assert diagnostics["target_status"]["NOT_APPLICABLE"] == 2
+    assert diagnostics["valid_target_geometry"] == 0
+    assert diagnostics["target_geometry_invalid"] == 0
+    assert diagnostics["by_direction"]["LONG"]["confirmation_status"]["CONFIRM_TIMEOUT"] == 1
+    assert diagnostics["by_direction"]["SHORT"]["confirmation_status"]["CONFIRM_TIMEOUT"] == 1
