@@ -1,0 +1,46 @@
+name: cTrader Demo XAU Event Risk V192
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "1,6,11,16,21,26,31,36,41,46,51,56 * * * 0-5"
+  push:
+    branches: [main]
+    paths:
+      - "config/providers.yaml"
+      - "src/fx_scanner/demo_xau_event_risk_v192.py"
+      - "tests/test_demo_xau_event_risk_v192.py"
+      - ".github/workflows/ctrader-demo-xau-event-risk-v192.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-demo-xau-event-risk-v192
+  cancel-in-progress: true
+
+jobs:
+  xau-event-risk-v192:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Validate config
+        run: python -m fx_scanner.cli validate-config
+      - name: Unit test V192
+        run: pytest -q tests/test_demo_xau_event_risk_v192.py
+      - name: Refresh XAU USD event-risk context
+        run: python -m fx_scanner.demo_xau_event_risk_v192
