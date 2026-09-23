@@ -25,7 +25,7 @@ class DashboardSnapshot:
     afic_prepared_plans: tuple[dict[str, Any], ...]
     afic_execution_geometry: tuple[dict[str, Any], ...]
     xau_execution_events: tuple[dict[str, Any], ...]
-    xau_prepared_plan_lifecycle: tuple[dict[str, Any], ...]
+    xau_prepared_plan_lifecycle: tuple[dict[str, Any], ...] = ()
 
 
 class SupabaseDashboardReader:
