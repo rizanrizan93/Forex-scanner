@@ -150,10 +150,17 @@ def _atr_from_scenario(scenario: ZoneScenario) -> float | None:
     return atr if isfinite(atr) and atr > 0 else None
 
 
-def _bar_index(rows: Sequence[Bar], timestamp: datetime | None) -> int | None:
+def _bar_index(
+    rows: Sequence[Bar],
+    timestamp: datetime | None,
+    *,
+    index_by_time: dict[datetime, int] | None = None,
+) -> int | None:
     if timestamp is None:
         return None
     target = ensure_utc(timestamp)
+    if index_by_time is not None:
+        return index_by_time.get(target)
     for index, row in enumerate(rows):
         if ensure_utc(row.timestamp) == target:
             return index
@@ -220,8 +227,19 @@ def evaluate_execution_funnel_path(
     atr_points: float,
     confirm_window_m15: int = CONFIRM_WINDOW_M15,
     target_horizon_m15: int = TARGET_HORIZON_M15,
+    _rows_are_sorted: bool = False,
+    _index_by_time: dict[datetime, int] | None = None,
 ) -> ExecutionPathOutcome:
-    rows = tuple(sorted(bars, key=lambda row: ensure_utc(row.timestamp)))
+    rows = (
+        tuple(bars)
+        if _rows_are_sorted
+        else tuple(sorted(bars, key=lambda row: ensure_utc(row.timestamp)))
+    )
+    index_by_time = (
+        _index_by_time
+        if _index_by_time is not None
+        else {ensure_utc(row.timestamp): index for index, row in enumerate(rows)}
+    )
     normalized = str(direction).upper().strip()
     low = float(zone_low)
     high = float(zone_high)
@@ -250,7 +268,7 @@ def evaluate_execution_funnel_path(
             entry_risk_atr=None,
         )
 
-    touch_index = _bar_index(rows, touch_at)
+    touch_index = _bar_index(rows, touch_at, index_by_time=index_by_time)
     if touch_index is None:
         return ExecutionPathOutcome(
             confirmation_status="TOUCH_BAR_NOT_FOUND",
@@ -436,6 +454,9 @@ def evaluate_execution_funnel_path(
 
 def build_funnel_episodes(bars: Sequence[Bar]) -> tuple[FunnelEpisode, ...]:
     rows = tuple(sorted(bars, key=lambda row: ensure_utc(row.timestamp)))
+    index_by_time = {
+        ensure_utc(row.timestamp): index for index, row in enumerate(rows)
+    }
     scenarios = build_zone_scenarios(rows)
     out: list[FunnelEpisode] = []
     for scenario in scenarios:
@@ -446,7 +467,11 @@ def build_funnel_episodes(bars: Sequence[Bar]) -> tuple[FunnelEpisode, ...]:
         touch_features: tuple[float, ...] | None = None
         confirm_features: tuple[float, ...] | None = None
         touch_depth = touch_close = touch_wick = touch_range = touch_body = None
-        touch_index = _bar_index(rows, scenario.outcome.touch_at)
+        touch_index = _bar_index(
+            rows,
+            scenario.outcome.touch_at,
+            index_by_time=index_by_time,
+        )
         if scenario.outcome.touched and touch_index is not None:
             touch_depth, touch_close, touch_wick, touch_range, touch_body = _touch_features(
                 scenario,
@@ -471,10 +496,16 @@ def build_funnel_episodes(bars: Sequence[Bar]) -> tuple[FunnelEpisode, ...]:
             zone_low=scenario.zone_low,
             zone_high=scenario.zone_high,
             atr_points=atr,
+            _rows_are_sorted=True,
+            _index_by_time=index_by_time,
         )
 
         if touch_features is not None and execution.confirmed and execution.confirm_at is not None:
-            confirm_index = _bar_index(rows, execution.confirm_at)
+            confirm_index = _bar_index(
+                rows,
+                execution.confirm_at,
+                index_by_time=index_by_time,
+            )
             if confirm_index is not None:
                 row = rows[confirm_index]
                 rng = max(float(row.high) - float(row.low), 1e-12)
