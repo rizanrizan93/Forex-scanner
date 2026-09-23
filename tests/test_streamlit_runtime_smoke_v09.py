@@ -176,3 +176,24 @@ def test_xau_operational_labels_are_indonesian_while_machine_states_remain_audit
     assert '"target terminal"' in text
     assert '"BROKER ELIGIBLE"' in text
     assert '"SHADOW READY"' in text
+
+
+def test_dashboard_trading_times_are_explicitly_wib():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'WIB = ZoneInfo("Asia/Jakarta")' in text
+    assert '%d-%m-%Y %H:%M:%S WIB' in text
+    assert 'Semua waktu trading yang ditampilkan menggunakan WIB (Asia/Jakarta, UTC+7)' in text
+    assert '"kedaluwarsa (WIB)"' in text
+    assert '"map H4 (WIB)"' in text
+    assert '"opened_at (WIB)"' in text
+    assert '"expires_at (WIB)"' in text
+    assert 'runtime internal tetap UTC' in text
+
+
+def test_signal_expiry_status_still_uses_absolute_utc_time():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'admission_now = datetime.now(tz=UTC)' in text
+    assert 'expires_dt = expires_dt.astimezone(UTC)' in text
+    assert 'expires_dt < admission_now' in text
+    assert 'now_utc = datetime.now(tz=UTC)' in text
+    assert 'expires_dt < now_utc' in text
