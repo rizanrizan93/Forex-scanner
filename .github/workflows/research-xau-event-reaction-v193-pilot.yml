@@ -1,0 +1,58 @@
+name: Research XAU Event Reaction V193 Pilot
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/research_xau_event_reaction_v193.py"
+      - "src/fx_scanner/research_xau_event_reaction_v193_runtime.py"
+      - ".github/workflows/research-xau-event-reaction-v193-pilot.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-event-reaction-v193-pilot
+  cancel-in-progress: true
+
+jobs:
+  event-reaction-v193-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      XAU_V193_PRICE_CSV: /tmp/dukascopy/xau-v193.csv
+      XAU_V193_EVENT_START: "2012-01-01T00:00:00+00:00"
+      XAU_V193_EVENT_END: "2012-02-01T00:00:00+00:00"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Python runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download bounded Dukascopy XAUUSD M5 pilot
+        run: |
+          mkdir -p /tmp/dukascopy
+          npx --yes dukascopy-node@1.50.0             -i xauusd             -from 2011-12-15             -to 2012-02-01             -t m5             -p bid             -f csv             -dir /tmp/dukascopy             -fn xau-v193.csv             -bs 10             -bp 250             -r 1             -rp 500             -s
+          test -s /tmp/dukascopy/xau-v193.csv
+          head -n 2 /tmp/dukascopy/xau-v193.csv
+      - name: Build V193 pilot reaction atlas
+        run: python -m fx_scanner.research_xau_event_reaction_v193_runtime
+      - name: Upload V193 reaction artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-event-reaction-v193-pilot
+          path: artifacts/xau-event-reaction-v193-pilot.json
+          if-no-files-found: error
+          retention-days: 14
