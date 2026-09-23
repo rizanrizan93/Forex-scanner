@@ -478,6 +478,9 @@ with forecast_tab:
     supply_demand_research_hb = _latest_heartbeat(
         heartbeats, "ctrader_xau_supply_demand_reaction_v183"
     )
+    supply_demand_prospective_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_supply_demand_prospective_v184"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -791,6 +794,60 @@ with forecast_tab:
         st.info(
             "V183 belum menerbitkan hasil 100K-bar. Dashboard akan menampilkan hasil "
             "holdout setelah workflow riset selesai."
+        )
+
+    st.markdown("### Validasi Prospektif Supply & Demand (V184)")
+    st.caption(
+        "V184 hanya menghitung touch yang terjadi SETELAH zona didaftarkan oleh engine. "
+        "Tidak ada backfill dari touch lama. Kandidat primer yang dibekukan dari V183 adalah "
+        "H1 LONG + multi-HTF nesting + aggressive approach. Status tetap SHADOW ONLY."
+    )
+    v184_details = (
+        {} if supply_demand_prospective_hb is None
+        else dict(supply_demand_prospective_hb.get("details") or {})
+    )
+    v184_summary = dict(v184_details.get("summary") or {})
+    v184_candidate = dict(v184_summary.get("primary_candidate") or {})
+    v184_controls = dict(v184_summary.get("controls") or {})
+    if v184_details:
+        vp1, vp2, vp3, vp4, vp5 = st.columns(5)
+        vp1.metric("Zona H1 dipantau", v184_details.get("h1_registry_rows_this_run", 0))
+        vp2.metric("Reaction prospektif resolved", v184_summary.get("resolved_reactions", 0))
+        vp3.metric("Reaction pending", v184_summary.get("pending_reactions", 0))
+        vp4.metric(
+            "Kandidat primer HOLD",
+            "—"
+            if v184_candidate.get("precision_hold") is None
+            else _fmt_pct(v184_candidate.get("precision_hold")),
+        )
+        vp5.metric(
+            "Gate replikasi",
+            "TERPENUHI"
+            if v184_candidate.get("replication_gate_met")
+            else "BELUM",
+        )
+        st.caption(
+            f"Kandidat primer: n={v184_candidate.get('n',0)} • "
+            f"Wilson lower 95%="
+            f"{'—' if v184_candidate.get('wilson_lower_95') is None else _fmt_pct(v184_candidate.get('wilson_lower_95'))} • "
+            f"minimum n={v184_candidate.get('minimum_n','—')} • "
+            f"target raw={_fmt_pct(v184_candidate.get('minimum_raw_precision')) if v184_candidate.get('minimum_raw_precision') is not None else '—'} • "
+            f"target Wilson={_fmt_pct(v184_candidate.get('minimum_wilson_lower_95')) if v184_candidate.get('minimum_wilson_lower_95') is not None else '—'}."
+        )
+        c_long = dict(v184_controls.get("all_h1_long") or {})
+        c_short = dict(v184_controls.get("all_h1_short") or {})
+        st.info(
+            f"Keputusan V184: {v184_summary.get('decision','—')}. "
+            f"Kontrol H1 LONG={('—' if c_long.get('precision_hold') is None else _fmt_pct(c_long.get('precision_hold')))} "
+            f"(n={c_long.get('n',0)}), H1 SHORT="
+            f"{('—' if c_short.get('precision_hold') is None else _fmt_pct(c_short.get('precision_hold')))} "
+            f"(n={c_short.get('n',0)}). "
+            "Bahkan jika gate replikasi terpenuhi, V184 tidak memiliki promotion/execution authority."
+        )
+    else:
+        st.info(
+            "V184 belum menerbitkan snapshot prospective. Episode baru akan dihitung "
+            "hanya setelah worker pertama kali mendaftarkan zona; touch historis lama tidak di-backfill."
         )
 
     st.markdown("### Kandidat Zona Pra-H4 (Pre-map Candidate Zone)")
