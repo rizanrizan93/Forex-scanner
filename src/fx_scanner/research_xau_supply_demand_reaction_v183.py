@@ -90,6 +90,7 @@ class ZoneDestination:
     first_touch_at: datetime | None
     invalidated_at: datetime | None
     expired_at: datetime | None
+    observation_complete: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -393,6 +394,12 @@ def _scan_zone(
             break
         was_inside = inside
 
+    data_end = row_times[-1] + timedelta(minutes=15)
+    observation_complete = bool(
+        first_touch_at is not None
+        or invalidated_at is not None
+        or data_end >= expiry
+    )
     destination = ZoneDestination(
         zone_id=zone.zone_id,
         timeframe=zone.timeframe,
@@ -408,6 +415,7 @@ def _scan_zone(
         first_touch_at=first_touch_at,
         invalidated_at=invalidated_at,
         expired_at=expiry,
+        observation_complete=observation_complete,
     )
     return destination, raw_episodes
 
@@ -570,20 +578,32 @@ def _summary(rows: Sequence[ReactionEpisode]) -> dict[str, Any]:
 
 def _destination_summary(rows: Sequence[ZoneDestination]) -> dict[str, Any]:
     selected = tuple(rows)
+    complete = tuple(row for row in selected if row.observation_complete)
+    censored = len(selected) - len(complete)
     if not selected:
         return {
             "zones": 0,
+            "resolved_zones": 0,
+            "right_censored": 0,
             "touched": 0,
             "touch_rate": None,
-            "invalidated_before_or_at_window": 0,
+            "invalidated_count": 0,
+            "invalidated_untouched": 0,
         }
-    touched = sum(row.touched for row in selected)
-    invalidated = sum(row.invalidated_at is not None for row in selected)
+    touched = sum(row.touched for row in complete)
+    invalidated = sum(row.invalidated_at is not None for row in complete)
+    invalidated_untouched = sum(
+        row.invalidated_at is not None and not row.touched
+        for row in complete
+    )
     return {
         "zones": len(selected),
+        "resolved_zones": len(complete),
+        "right_censored": int(censored),
         "touched": int(touched),
-        "touch_rate": touched / len(selected),
-        "invalidated_before_or_at_window": int(invalidated),
+        "touch_rate": None if not complete else touched / len(complete),
+        "invalidated_count": int(invalidated),
+        "invalidated_untouched": int(invalidated_untouched),
     }
 
 
@@ -704,6 +724,7 @@ def evaluate_supply_demand_research(bars: Sequence[Bar]) -> dict[str, Any]:
         "label_contract": {
             "zone_population": "V182_STRUCTURAL_H1_PLUS_D1_H4_H1_BASE_DEPARTURE_IMBALANCE",
             "destination_window_hours": OBSERVATION_HOURS,
+            "destination_censoring": "UNRESOLVED_RIGHT_EDGE_ZONES_EXCLUDED_FROM_TOUCH_RATE_DENOMINATOR",
             "touch_definition": "FIRST_M15_OVERLAP_AFTER_ZONE_AVAILABLE_THEN_NON_OVERLAPPING_RETESTS",
             "primary_hold": "0.50_ATR_FAVORABLE_EXCURSION_WITHIN_16_M15_BEFORE_DISTAL_BREAK",
             "break": "M15_CLOSE_BEYOND_DISTAL_BEFORE_PRIMARY_HOLD; BREAK_WINS_SAME_BAR",
