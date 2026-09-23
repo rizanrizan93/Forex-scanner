@@ -144,3 +144,50 @@ def test_supply_demand_context_does_not_change_grade_or_execution_gate():
     )
     assert state == "ARMED"
     assert "AFIC_M15_CONFIRMATION_REQUIRED" in guards
+
+
+def test_afic_first_leg_uses_matching_supply_demand_path(monkeypatch):
+    now = datetime(2026, 9, 23, 13, 0, tzinfo=UTC)
+    atlas = _atlas()
+    atlas["path_map"] = {
+        "contract": "XAU_SUPPLY_DEMAND_PATH_ENGINE_V186",
+        "demand_to_supply": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "LONG",
+            "source_zone": {"zone_id": "demand-1", "low": 4273.96, "high": 4300.95},
+            "primary_opposing_zone": {"zone_id": "supply-near", "low": 4342.51, "high": 4347.27},
+            "internal_targets": [{"source": "H1_SWING_HIGH", "price": 4331.0}],
+            "execution_authority": False,
+        },
+        "supply_to_demand": {
+            "state": "SOURCE_ZONE_WATCH",
+            "reaction_direction": "SHORT",
+            "source_zone": {"zone_id": "supply-near", "low": 4342.51, "high": 4347.27},
+            "primary_opposing_zone": {"zone_id": "demand-1", "low": 4273.96, "high": 4300.95},
+            "internal_targets": [],
+            "execution_authority": False,
+        },
+        "active_path": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "LONG",
+            "source_zone": {"zone_id": "demand-1", "low": 4273.96, "high": 4300.95},
+            "primary_opposing_zone": {"zone_id": "supply-near", "low": 4342.51, "high": 4347.27},
+            "internal_targets": [{"source": "H1_SWING_HIGH", "price": 4331.0}],
+            "execution_authority": False,
+        },
+    }
+    monkeypatch.setattr(ctx, "latest_atlas", lambda store: (now, atlas))
+    out = ctx.attach_supply_demand_context(
+        DummyStore(),
+        {
+            "state": "NO_MAP_ZONE",
+            "continuation_direction": "SHORT",
+            "first_leg_direction": "LONG",
+        },
+        observed_at=now,
+    )
+    sd = out["supply_demand_context"]
+    assert sd["first_leg_path"]["reaction_direction"] == "LONG"
+    assert sd["first_leg_path"]["source_zone"]["zone_id"] == "demand-1"
+    assert sd["first_leg_path"]["primary_opposing_zone"]["zone_id"] == "supply-near"
+    assert sd["first_leg_path"]["execution_authority"] is False

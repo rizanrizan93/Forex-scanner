@@ -159,6 +159,24 @@ def attach_supply_demand_context(
     canonical = dict(out.get("zone") or {})
     nearest_demand = _compact_zone(dict(atlas.get("nearest_demand") or {}))
     nearest_supply = _compact_zone(dict(atlas.get("nearest_supply") or {}))
+    path_map = dict(atlas.get("path_map") or {})
+    demand_to_supply = dict(path_map.get("demand_to_supply") or {})
+    supply_to_demand = dict(path_map.get("supply_to_demand") or {})
+    active_path = dict(path_map.get("active_path") or {})
+    first_leg_path = (
+        demand_to_supply
+        if first_leg == "LONG"
+        else supply_to_demand
+        if first_leg == "SHORT"
+        else {}
+    )
+    continuation_path = (
+        demand_to_supply
+        if continuation == "LONG"
+        else supply_to_demand
+        if continuation == "SHORT"
+        else {}
+    )
     last_price = _finite(atlas.get("last_closed_m15_price"))
     if last_price is None:
         last_price = _finite(out.get("map_price"))
@@ -257,6 +275,10 @@ def attach_supply_demand_context(
         "same_direction_confluence": same_supported,
         "opposite_zone_near_price": opposite_near,
         "opposite_zone_distance_atr": opposite_price_distance_atr,
+        "path_contract": path_map.get("contract"),
+        "first_leg_path": first_leg_path,
+        "continuation_path": continuation_path,
+        "active_reaction_path": active_path,
         "prepare_only_fallback": bool(not canonical and not stale),
         "required_for_execution": False,
         "execution_influence": False,
@@ -264,7 +286,8 @@ def attach_supply_demand_context(
         "promotion_authority": False,
         "interpretation": (
             "Supply/demand is AFIC context and preparation evidence only. "
-            "It cannot create or upgrade execution authority."
+            "Path mapping can identify the next opposing zone and internal waypoints, "
+            "but it cannot create or upgrade execution authority."
         ),
     }
     out["supply_demand_context"] = context
@@ -275,6 +298,8 @@ def context_token(payload: dict[str, Any]) -> tuple[str, ...]:
     context = dict(payload.get("supply_demand_context") or {})
     same = dict(context.get("same_direction_zone") or {})
     opposite = dict(context.get("opposite_reversal_zone") or {})
+    first_leg_path = dict(context.get("first_leg_path") or {})
+    primary_target = dict(first_leg_path.get("primary_opposing_zone") or {})
     return (
         str(context.get("state") or "NONE"),
         str(context.get("atlas_observed_at") or "NONE"),
@@ -282,4 +307,6 @@ def context_token(payload: dict[str, Any]) -> tuple[str, ...]:
         str(opposite.get("zone_id") or "NONE"),
         str(context.get("same_direction_confluence") or False),
         str(context.get("opposite_zone_near_price") or False),
+        str(first_leg_path.get("state") or "NONE"),
+        str(primary_target.get("zone_id") or "NONE"),
     )
