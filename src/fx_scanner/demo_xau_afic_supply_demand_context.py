@@ -10,8 +10,10 @@ from .storage.supabase_operational import SupabaseOperationalStore
 CONTRACT = "XAU_AFIC_SUPPLY_DEMAND_CONTEXT_V1"
 ATLAS_WORKER = "ctrader_demo_xau_supply_demand_atlas_v182"
 DOM_WORKER = "ctrader_demo_xau_dom_v191"
+EVENT_RISK_WORKER = "ctrader_demo_xau_event_risk_v192"
 MAX_ATLAS_AGE_MINUTES = 20
 MAX_DOM_AGE_MINUTES = 3
+MAX_EVENT_RISK_AGE_MINUTES = 10
 NEAR_SAME_DIRECTION_ATR = 0.50
 NEAR_OPPOSITE_ATR = 0.75
 
@@ -159,6 +161,26 @@ def latest_dom(
     return _dt(row.get("observed_at")), analysis
 
 
+def latest_event_risk(
+    store: SupabaseOperationalStore,
+) -> tuple[datetime | None, dict[str, Any]]:
+    if not hasattr(store, "client"):
+        return None, {}
+    response = (
+        store.client.table("runtime_heartbeats")
+        .select("observed_at,healthy,details")
+        .eq("worker_name", EVENT_RISK_WORKER)
+        .order("observed_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = list(response.data or [])
+    if not rows:
+        return None, {}
+    row = dict(rows[0])
+    return _dt(row.get("observed_at")), dict(row.get("details") or {})
+
+
 def attach_supply_demand_context(
     store: SupabaseOperationalStore,
     payload: dict[str, Any],
@@ -168,6 +190,8 @@ def attach_supply_demand_context(
     out = dict(payload)
     heartbeat_at, atlas = latest_atlas(store)
     dom_heartbeat_at, dom = latest_dom(store)
+    event_heartbeat_at, event_details = latest_event_risk(store)
+    event_risk = dict(event_details.get("risk") or {})
     now = ensure_utc(observed_at)
     atlas_age_minutes = (
         None
@@ -189,6 +213,22 @@ def attach_supply_demand_context(
         dom_heartbeat_at is None
         or dom_age_minutes is None
         or dom_age_minutes > MAX_DOM_AGE_MINUTES
+    )
+
+    event_age_minutes = (
+        None
+        if event_heartbeat_at is None
+        else max(0.0, (now - event_heartbeat_at).total_seconds() / 60.0)
+    )
+    event_stale = bool(
+        event_heartbeat_at is None
+        or event_age_minutes is None
+        or event_age_minutes > MAX_EVENT_RISK_AGE_MINUTES
+    )
+    event_state = (
+        "EVENT_RISK_STALE_NO_EFFECT"
+        if event_stale
+        else str(event_risk.get("state") or "CLEAR")
     )
 
     continuation = str(out.get("continuation_direction") or "").upper()
@@ -276,6 +316,16 @@ def attach_supply_demand_context(
         conflict_resolution_evidence = "WAIT_M5_AND_DOM"
     else:
         conflict_resolution_evidence = "NO_PATH_CONFLICT"
+
+    if not event_stale and event_state in {"PRE_EVENT", "EVENT_WINDOW"}:
+        if conflict_resolution_evidence == "M5_AND_DOM_ALIGNED_SHADOW":
+            conflict_resolution_evidence = (
+                "M5_DOM_ALIGNED_BUT_EVENT_RISK_WAIT"
+            )
+        elif path_direction_conflict:
+            conflict_resolution_evidence = (
+                f"{conflict_resolution_evidence}_EVENT_RISK_{event_state}"
+            )
 
     if continuation == "LONG":
         same_direction = nearest_demand
@@ -397,6 +447,28 @@ def attach_supply_demand_context(
             "execution_authority": False,
         },
         "conflict_resolution_evidence": conflict_resolution_evidence,
+        "event_risk_context": {
+            "worker": EVENT_RISK_WORKER,
+            "observed_at": (
+                None if event_heartbeat_at is None else event_heartbeat_at.isoformat()
+            ),
+            "age_minutes": event_age_minutes,
+            "stale": event_stale,
+            "state": event_state,
+            "action": event_risk.get("action"),
+            "minutes_to_focal": event_risk.get("minutes_to_focal"),
+            "focal_event": dict(event_risk.get("focal_event") or {}),
+            "upcoming_events": list(event_risk.get("upcoming_events") or []),
+            "official_or_cadence_verified_count": event_details.get(
+                "official_or_cadence_verified_count"
+            ),
+            "discovery_unverified_count": event_details.get(
+                "discovery_unverified_count"
+            ),
+            "source_status": dict(event_details.get("source_status") or {}),
+            "execution_influence": False,
+            "execution_authority": False,
+        },
         "path_conflict_state": (
             "OVERLAPPING_H1_SUPPLY_DEMAND_COMPRESSION_WAIT_MICRO_RESOLUTION"
             if path_direction_conflict
@@ -418,8 +490,8 @@ def attach_supply_demand_context(
             "Supply/demand is AFIC context and preparation evidence only. "
             "Path mapping can identify the next opposing zone and internal waypoints. "
             "If opposing H1 source zones overlap materially, the state is compression/conflict. "
-            "V189 microstructure and V191 broker-venue DOM may provide aligned shadow evidence, "
-            "but neither can create execution authority."
+            "V189 microstructure, V191 broker-venue DOM and V192 event risk may provide "
+            "aligned or cautionary shadow evidence, but none can create execution authority."
         ),
     }
     out["supply_demand_context"] = context

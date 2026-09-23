@@ -58,7 +58,12 @@ def _event_id(source: str, title: str, scheduled_at: datetime) -> str:
 
 def _category(title: str) -> str:
     text = re.sub(r"\s+", " ", str(title)).upper()
-    if "JOBLESS" in text or "UNEMPLOYMENT INSURANCE" in text or "UI WEEKLY CLAIMS" in text:
+    if (
+        "JOBLESS" in text
+        or "UNEMPLOYMENT INSURANCE" in text
+        or "UNEMPLOYMENT CLAIMS" in text
+        or "UI WEEKLY CLAIMS" in text
+    ):
         return "JOBLESS_CLAIMS"
     if "EMPLOYMENT SITUATION" in text or "NONFARM" in text or "PAYROLL" in text:
         return "EMPLOYMENT"
@@ -74,10 +79,13 @@ def _category(title: str) -> str:
         return "CURRENT_ACCOUNT"
     if "INTERNATIONAL TRADE" in text or "TRADE IN GOODS" in text:
         return "TRADE"
+    if (
+        ("FED" in text or "FOMC MEMBER" in text)
+        and ("SPEECH" in text or "SPEAK" in text)
+    ):
+        return "FED_SPEECH"
     if "FOMC" in text or "FEDERAL FUNDS" in text:
         return "FOMC"
-    if "FED" in text and ("SPEECH" in text or "SPEAK" in text):
-        return "FED_SPEECH"
     if "SPEECH" in text and any(
         name in text
         for name in ("WILLIAMS", "WALLER", "BARR", "JEFFERSON", "BOWMAN", "WARSH")
