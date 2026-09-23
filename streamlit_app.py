@@ -398,6 +398,9 @@ with forecast_tab:
     ensemble_hb = _latest_heartbeat(
         heartbeats, "ctrader_xau_forecast_ensemble_v171"
     )
+    regime_hb = _latest_heartbeat(
+        heartbeats, "ctrader_xau_htf_strategic_regime_v180"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -493,6 +496,55 @@ with forecast_tab:
         else "SELL" if direction == "SHORT"
         else "—"
     )
+
+    st.markdown("### Strategic HTF Regime")
+    regime_details = {} if regime_hb is None else dict(regime_hb.get("details") or {})
+    regime_eval = dict(regime_details.get("evaluation") or {})
+    regime_current = dict(regime_eval.get("current") or {})
+    regime_pool = dict(regime_eval.get("zone_pool") or {})
+    if regime_current:
+        strategic_bias = str(regime_current.get("strategic_bias") or "NEUTRAL")
+        tactical_first_leg = str(regime_current.get("tactical_first_leg") or "NEUTRAL")
+        strategic_confidence = regime_current.get("confidence")
+        r1, r2, r3, r4, r5 = st.columns(5)
+        r1.metric("Strategic Bias", strategic_bias)
+        r2.metric(
+            "HTF confidence",
+            "—" if strategic_confidence is None else _fmt_pct(strategic_confidence),
+        )
+        r3.metric("Tactical First Leg", tactical_first_leg)
+        r4.metric("Canonical zones 0–24h", regime_pool.get("canonical_count", 0))
+        r5.metric("Shadow zones 24–48h", regime_pool.get("shadow_count", 0))
+        st.caption(
+            "V180 strategic bias uses completed D1 + H4 only and adds hysteresis so it "
+            "does not flip with every M15 update. Example: Strategic SHORT can still have "
+            "a tactical LONG first leg while price rallies into an upper sell zone. "
+            "Shadow 24–48h zones have NO execution authority."
+        )
+        if strategic_bias in {"LONG", "SHORT"}:
+            desired = str(regime_pool.get("desired_reaction_side") or "—")
+            st.info(
+                f"HTF plan: {strategic_bias} • first leg {tactical_first_leg} • "
+                f"search {desired.replace('_', ' ')}. "
+                f"Current AFIC H4-candle direction = {direction}. "
+                "The two may differ because V180 is strategic while AFIC V161 is still "
+                "the canonical tactical execution map."
+            )
+        shadow_zones = list(regime_pool.get("shadow_24_48h") or [])
+        if not regime_pool.get("canonical_count") and shadow_zones:
+            nearest_shadow = dict(shadow_zones[0])
+            st.warning(
+                "No canonical 0–24h HTF-aligned H1 origin exists, but a structurally "
+                "active 24–48h research zone exists at "
+                f"{_fmt_price(nearest_shadow.get('low'))}–"
+                f"{_fmt_price(nearest_shadow.get('high'))}. "
+                "This is research-only until forward validation supports changing the age rule."
+            )
+    else:
+        st.caption(
+            "Strategic HTF Regime V180 has not published a shadow snapshot yet. "
+            "AFIC V161 remains the execution authority."
+        )
 
     st.markdown("### Trade Preparation")
     if not valid_zone_now:
