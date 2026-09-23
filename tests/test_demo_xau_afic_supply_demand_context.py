@@ -69,6 +69,8 @@ def test_no_map_zone_becomes_prepare_context_only(monkeypatch):
     assert sd["execution_authority"] is False
     assert sd["same_direction_zone"]["zone_id"] == "supply-1"
     assert sd["opposite_reversal_zone"]["zone_id"] == "demand-1"
+    assert sd["opposite_zone_near_price"] is True
+    assert sd["opposite_zone_distance_atr"] < 0.2
 
 
 def test_canonical_overlap_is_confluence_not_authority(monkeypatch):
