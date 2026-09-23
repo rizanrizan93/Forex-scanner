@@ -651,6 +651,24 @@ with forecast_tab:
                     st.caption(
                         "Waypoint internal sebelum opposing zone: " + waypoint_text
                     )
+                reaction_target = dict(
+                    afic_first_leg_path.get("reaction_target") or {}
+                )
+                terminal_target = dict(
+                    afic_first_leg_path.get("terminal_target_zone") or {}
+                )
+                if reaction_target:
+                    st.success(
+                        "Target reaction utama: "
+                        f"{_fmt_price(reaction_target.get('price'))} "
+                        f"({reaction_target.get('source','—')})"
+                        + (
+                            " → terminal opposing zone "
+                            f"{_fmt_price(terminal_target.get('low'))}–"
+                            f"{_fmt_price(terminal_target.get('high'))}"
+                            if terminal_target else ""
+                        )
+                    )
                 path_dest_stack = list(
                     afic_first_leg_path.get("destination_stack") or []
                 )
@@ -858,6 +876,13 @@ with forecast_tab:
                     " → opposing zone belum tersedia"
                 )
             )
+            reaction_target = dict(sd_active_path.get("reaction_target") or {})
+            if reaction_target:
+                st.success(
+                    "Target reaction V188: "
+                    f"{_fmt_price(reaction_target.get('price'))} • "
+                    f"basis={sd_active_path.get('reaction_target_basis','—')}."
+                )
             destination_stack = list(sd_active_path.get("destination_stack") or [])
             if destination_stack:
                 st.caption(
