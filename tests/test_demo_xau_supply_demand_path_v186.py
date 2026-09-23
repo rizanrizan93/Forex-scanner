@@ -175,3 +175,42 @@ def test_destination_stack_preserves_nearest_then_secondary_opposing_zones():
     assert stack[0]["zone_id"] == "s-near"
     assert "s-nested" in [item["zone_id"] for item in stack]
     assert "s-far" in [item["zone_id"] for item in stack]
+
+
+def test_reaction_target_is_last_internal_waypoint_before_opposing_zone():
+    zones = (
+        _zone("d1", "LONG", 4274, 4301, distance=0, timeframe="H1"),
+        _zone("s1", "SHORT", 4337, 4376, distance=36, timeframe="H4"),
+    )
+    levels = (
+        {"source": "ROUND_NUMBER_HIGH", "price": 4320.0},
+        {"source": "SESSION_LONDON_HIGH", "price": 4322.79},
+        {"source": "H1_SWING_HIGH", "price": 4330.0},
+    )
+    path_map = _build_path_map(
+        payloads=zones,
+        levels=levels,
+        last_price=4280.0,
+    )
+    path = path_map["demand_to_supply"]
+    assert path["reaction_target"]["price"] == 4330.0
+    assert path["reaction_target"]["role"] == "REACTION_TARGET"
+    assert path["reaction_target_basis"] == "LAST_INTERNAL_WAYPOINT_BEFORE_OPPOSING_ZONE"
+    assert path["terminal_target_zone"]["zone_id"] == "s1"
+    roles = [item["role"] for item in path["target_ladder"]]
+    assert roles[-2:] == ["REACTION_TARGET", "TERMINAL_OPPOSING_ZONE"]
+
+
+def test_reaction_target_falls_back_to_opposing_proximal_without_waypoint():
+    zones = (
+        _zone("s1", "SHORT", 4342, 4347, distance=0, timeframe="H1"),
+        _zone("d1", "LONG", 4274, 4301, distance=40, timeframe="H1"),
+    )
+    path_map = _build_path_map(
+        payloads=zones,
+        levels=(),
+        last_price=4344.0,
+    )
+    path = path_map["supply_to_demand"]
+    assert path["reaction_target"]["price"] == 4301.0
+    assert path["reaction_target_basis"] == "OPPOSING_ZONE_PROXIMAL_FALLBACK"
