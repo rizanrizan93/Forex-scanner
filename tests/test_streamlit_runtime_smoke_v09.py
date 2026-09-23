@@ -36,19 +36,19 @@ def test_xau_forecast_surfaces_cross_engine_signal_status_and_geometry():
     assert '"CURRENT"' in text
     assert '"EXPIRED"' in text
     assert '"SL": _fmt_price(row.get("sl"))' in text
-    assert '"first target"' in text
-    assert '"terminal target"' in text
+    assert '"target pertama"' in text
+    assert '"target terminal"' in text
     assert '"raw TP1"' in text
     assert '"raw TP2"' in text
-    assert 'AFIC authority remains a separate gate' in text
+    assert 'izin AFIC tetap merupakan gerbang terpisah' in text
 
 
 def test_xau_dashboard_distinguishes_prior_origin_revisit_and_target_semantics():
     text = (ROOT / "streamlit_app.py").read_text()
     assert 'PRIOR ORIGIN REVISIT' in text
     assert 'not the current primary AFIC zone' in text
-    assert '"first target"' in text
-    assert '"terminal target"' in text
+    assert '"target pertama"' in text
+    assert '"target terminal"' in text
     assert '"raw TP1"' in text
     assert '"raw TP2"' in text
 
@@ -64,8 +64,8 @@ def test_xau_dashboard_runtime_status_distinguishes_watch_and_invalidated():
     text = (ROOT / "streamlit_app.py").read_text()
     assert 'runtime_status = "INVALIDATED"' in text
     assert 'runtime_status = "WATCH"' in text
-    assert 'Latest non-AFIC XAU row is WATCH only' in text
-    assert 'Latest non-AFIC XAU setup is INVALIDATED' in text
+    assert 'Baris XAU non-AFIC terbaru hanya WATCH' in text
+    assert 'Setup XAU non-AFIC terbaru INVALIDATED' in text
 
 
 def test_xau_dashboard_separates_shadow_ready_from_broker_eligible():
@@ -75,8 +75,8 @@ def test_xau_dashboard_separates_shadow_ready_from_broker_eligible():
     assert '"SHADOW READY"' in text
     assert 'authorized_geometry_codes' in text
     assert '"XAU_AFIC_PATH_EXECUTION_V1"' in text
-    assert 'pending live revalidation' in text
-    assert 'may say EXECUTION_READY in storage but is SHADOW READY only' in text
+    assert 'menunggu validasi ulang quote/risiko' in text
+    assert 'dapat berstatus EXECUTION_READY di storage' in text
 
 
 def test_xau_dashboard_shows_stable_zone_touch_lifecycle():
@@ -106,9 +106,9 @@ def test_xau_dashboard_shows_prepared_plan_lifecycle_and_cancel_reason():
     text = (ROOT / "streamlit_app.py").read_text()
     assert '"xau_prepared_plan_lifecycle": list(snapshot.xau_prepared_plan_lifecycle)' in text
     assert 'Prepared Plan Lifecycle' in text
-    assert 'Last prepared plan:' in text
-    assert '"cancel reason": row.get("cancel_reason") or "—"' in text
-    assert 'Post-cancel TP2 candidate' in text
+    assert 'Rencana persiapan terakhir:' in text
+    assert '"alasan batal": row.get("cancel_reason") or "—"' in text
+    assert 'Kandidat TP2 pasca-batal' in text
     assert 'Pembatalan disimpan sebagai evidence, bukan dihapus.' in text
 
 
@@ -122,22 +122,22 @@ def test_xau_dashboard_grade_b_matches_current_demo_authority():
 
 def test_xau_dashboard_splits_active_and_post_cancel_zone_reach():
     text = (ROOT / "streamlit_app.py").read_text()
-    assert '"Active zone reach"' in text
-    assert '"Post-cancel zone reach"' in text
-    assert '"touch while active": meta.get("touch_while_active")' in text
-    assert '"post-cancel touch": meta.get("post_cancel_touch")' in text
-    assert "Active zone reach counts only touches while the prepared plan was still valid." in text
+    assert '"Zona tercapai saat aktif"' in text
+    assert '"Zona tercapai pasca-batal"' in text
+    assert '"touch saat aktif": meta.get("touch_while_active")' in text
+    assert '"touch pasca-batal": meta.get("post_cancel_touch")' in text
+    assert "Zona tercapai saat aktif hanya menghitung sentuhan ketika rencana masih valid." in text
 
 
 def test_xau_dashboard_shows_strategic_htf_regime_and_zone_age_pools():
     text = (ROOT / "streamlit_app.py").read_text()
     assert '"ctrader_xau_htf_strategic_regime_v180"' in text
     assert 'Strategic HTF Regime' in text
-    assert '"Strategic Bias"' in text
-    assert '"Tactical First Leg"' in text
-    assert '"Canonical zones 0–24h"' in text
-    assert '"Shadow zones 24–48h"' in text
-    assert 'Shadow 24–48h zones have NO execution authority.' in text
+    assert '"Bias Strategis (Strategic Bias)"' in text
+    assert '"Gerak Taktis Pertama (Tactical First Leg)"' in text
+    assert '"Zona canonical 0–24j"' in text
+    assert '"Zona shadow 24–48j"' in text
+    assert 'Zona shadow 24–48 jam TIDAK memiliki izin eksekusi.' in text
 
 
 def test_xau_dashboard_shows_premap_prepare_only_panel_in_indonesian():
@@ -162,3 +162,17 @@ def test_xau_dashboard_core_terms_are_localized_with_explanations():
     assert 'Kamus istilah pada halaman ini' in text
     assert 'Liquidity / Likuiditas' in text
     assert 'BOS (Break of Structure)' in text
+
+
+def test_xau_operational_labels_are_indonesian_while_machine_states_remain_auditable():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'Bias Strategis (Strategic Bias)' in text
+    assert 'Gerak Taktis Pertama (Tactical First Leg)' in text
+    assert 'Menunggu", "H4 MAP BARU"' in text
+    assert '"Zona tercapai saat aktif"' in text
+    assert '"kelayakan": admission' in text
+    assert '"izin geometry": geometry_code or "—"' in text
+    assert '"target pertama"' in text
+    assert '"target terminal"' in text
+    assert '"BROKER ELIGIBLE"' in text
+    assert '"SHADOW READY"' in text
