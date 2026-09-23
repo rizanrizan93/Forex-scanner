@@ -133,29 +133,42 @@ def test_cancel_reason_prefers_same_map_price_invalidation():
     assert reason == "PRICE_INVALIDATION_AFTER_TOUCH"
 
 
-def test_lifecycle_metrics_are_denominator_safe_and_explicit():
+def test_lifecycle_metrics_are_denominator_safe_and_split_active_vs_post_cancel():
     rows = (
         {
             "lifecycle_state": "CANCELLED",
+            "cancelled_at": "2026-09-22T20:10:00+00:00",
             "first_touch_at": "2026-09-22T20:15:00+00:00",
             "confirmed_at": None,
             "order_accepted_at": None,
             "post_cancel_terminal_hit": True,
+            "metadata": {
+                "touch_while_active": False,
+                "post_cancel_touch": True,
+                "confirmation_while_active": False,
+            },
         },
         {
             "lifecycle_state": "PROTECTED",
+            "cancelled_at": None,
             "first_touch_at": "2026-09-22T21:15:00+00:00",
             "confirmed_at": "2026-09-22T21:30:00+00:00",
             "order_accepted_at": "2026-09-22T21:31:00+00:00",
             "post_cancel_terminal_hit": False,
+            "metadata": {
+                "touch_while_active": True,
+                "post_cancel_touch": False,
+                "confirmation_while_active": True,
+            },
         },
     )
     metrics = lifecycle_metrics(rows)
     assert metrics["plans"] == 2
-    assert metrics["zone_reach_rate"] == 1.0
-    assert metrics["touch_to_confirmation_rate"] == 0.5
+    assert metrics["active_zone_reach_rate"] == 0.5
+    assert metrics["touch_to_confirmation_rate"] == 1.0
     assert metrics["cancellation_rate"] == 0.5
     assert metrics["execution_conversion_rate"] == 0.5
+    assert metrics["post_cancel_zone_reach_rate"] == 1.0
     assert metrics["post_cancel_terminal_hit_rate"] == 1.0
 
 
@@ -269,3 +282,27 @@ def test_touch_metric_accepts_post_plan_durable_touch():
     )
     assert touch == touch_at
     assert confirm is None
+
+
+def test_lifecycle_metrics_fallback_classifies_touch_chronology_without_metadata():
+    rows = (
+        {
+            "lifecycle_state": "CANCELLED",
+            "cancelled_at": "2026-09-22T20:10:00+00:00",
+            "first_touch_at": "2026-09-22T20:15:00+00:00",
+            "confirmed_at": None,
+            "order_accepted_at": None,
+            "post_cancel_terminal_hit": False,
+        },
+        {
+            "lifecycle_state": "CANCELLED",
+            "cancelled_at": "2026-09-22T21:20:00+00:00",
+            "first_touch_at": "2026-09-22T21:15:00+00:00",
+            "confirmed_at": None,
+            "order_accepted_at": None,
+            "post_cancel_terminal_hit": False,
+        },
+    )
+    metrics = lifecycle_metrics(rows)
+    assert metrics["active_zone_reach_rate"] == 0.5
+    assert metrics["post_cancel_zone_reach_rate"] == 0.5
