@@ -99,37 +99,17 @@ class TimeframeEpisode:
     sensitivity: tuple[tuple[int, Any], ...]
 
 
-def _active_at(
-    zone: SDZone,
-    *,
-    rows: Sequence[Bar],
-    timestamp: datetime,
-) -> bool:
-    cutoff = ensure_utc(timestamp)
-    if ensure_utc(zone.available_at) > cutoff:
-        return False
-    for row in rows:
-        ts = ensure_utc(row.timestamp)
-        if ts < ensure_utc(zone.available_at):
-            continue
-        if ts > cutoff:
-            break
-        if _invalidated(row, zone):
-            return False
-    return True
-
-
 def _parent_nesting_count(
     *,
     zone: SDZone,
     touch_at: datetime,
-    zones: Sequence[SDZone],
-    rows: Sequence[Bar],
+    parent_candidates: Sequence[SDZone],
+    invalidated_at_by_id: dict[str, datetime | None],
 ) -> int:
     midpoint = (float(zone.low) + float(zone.high)) / 2.0
     current_priority = TIMEFRAME_PRIORITY.get(zone.timeframe, 0)
     count = 0
-    for parent in zones:
+    for parent in parent_candidates:
         if parent.zone_id == zone.zone_id:
             continue
         if parent.direction != zone.direction:
@@ -138,7 +118,8 @@ def _parent_nesting_count(
             continue
         if ensure_utc(parent.available_at) > ensure_utc(touch_at):
             continue
-        if not _active_at(parent, rows=rows, timestamp=touch_at):
+        invalidated_at = invalidated_at_by_id.get(parent.zone_id)
+        if invalidated_at is not None and ensure_utc(invalidated_at) <= ensure_utc(touch_at):
             continue
         if (
             float(parent.low) <= midpoint <= float(parent.high)
@@ -153,7 +134,7 @@ def _scan_touch_indices(
     row_times: Sequence[datetime],
     *,
     zone: SDZone,
-) -> tuple[tuple[int, int], ...]:
+) -> tuple[tuple[tuple[int, int], ...], datetime | None]:
     available = ensure_utc(zone.available_at)
     start = bisect_left(row_times, available)
     expiry = available + timedelta(
@@ -163,6 +144,7 @@ def _scan_touch_indices(
     max_horizon = max(SENSITIVITY_HORIZONS_M15.get(zone.timeframe, (16,)))
 
     touches: list[tuple[int, int]] = []
+    invalidated_at: datetime | None = None
     was_inside = False
     next_eligible = start
     ordinal = 0
@@ -177,9 +159,10 @@ def _scan_touch_indices(
                     touches.append((ordinal, index))
                     next_eligible = index + max_horizon + 1
         if _invalidated(row, zone):
+            invalidated_at = ensure_utc(row.timestamp)
             break
         was_inside = inside
-    return tuple(touches)
+    return tuple(touches), invalidated_at
 
 
 def build_timeframe_dataset(
@@ -191,6 +174,16 @@ def build_timeframe_dataset(
     row_times = tuple(ensure_utc(row.timestamp) for row in rows)
     as_of = row_times[-1] + timedelta(minutes=15)
     zones = _all_zones(rows, as_of=as_of)
+    touch_indices_by_id: dict[str, tuple[tuple[int, int], ...]] = {}
+    invalidated_at_by_id: dict[str, datetime | None] = {}
+    for zone in zones:
+        touches, invalidated_at = _scan_touch_indices(
+            rows,
+            row_times,
+            zone=zone,
+        )
+        touch_indices_by_id[zone.zone_id] = touches
+        invalidated_at_by_id[zone.zone_id] = invalidated_at
 
     daily = _resample_completed(rows, "1D", as_of=as_of)
     weekly = _resample_completed(rows, "W-MON", as_of=as_of)
@@ -201,10 +194,12 @@ def build_timeframe_dataset(
     for zone in zones:
         if zone.timeframe not in PRIMARY_HORIZON_M15:
             continue
-        touch_indices = _scan_touch_indices(
-            rows,
-            row_times,
-            zone=zone,
+        touch_indices = touch_indices_by_id.get(zone.zone_id, ())
+        parent_candidates = tuple(
+            parent
+            for parent in zones
+            if TIMEFRAME_PRIORITY.get(parent.timeframe, 0)
+            > TIMEFRAME_PRIORITY.get(zone.timeframe, 0)
         )
         for touch_ordinal, touch_index in touch_indices:
             touch_at = ensure_utc(rows[touch_index].timestamp)
@@ -239,8 +234,8 @@ def build_timeframe_dataset(
             nesting_count = _parent_nesting_count(
                 zone=zone,
                 touch_at=touch_at,
-                zones=zones,
-                rows=rows,
+                parent_candidates=parent_candidates,
+                invalidated_at_by_id=invalidated_at_by_id,
             )
             liquidity = _liquidity_sources(
                 zone=zone,
