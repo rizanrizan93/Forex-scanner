@@ -872,6 +872,44 @@ def _build_directional_path(
             end_price=end_price,
         )
     )
+    reaction_target: dict[str, Any] | None = None
+    reaction_target_basis = None
+    if internal_targets:
+        reaction_target = dict(internal_targets[-1])
+        reaction_target["role"] = "REACTION_TARGET"
+        reaction_target_basis = "LAST_INTERNAL_WAYPOINT_BEFORE_OPPOSING_ZONE"
+    elif primary is not None:
+        fallback_price = (
+            float(primary["low"])
+            if reaction_direction == "LONG"
+            else float(primary["high"])
+        )
+        reaction_target = {
+            "source": "OPPOSING_ZONE_PROXIMAL_FALLBACK",
+            "price": fallback_price,
+            "distance_from_start": abs(fallback_price - float(start_price)),
+            "role": "REACTION_TARGET",
+        }
+        reaction_target_basis = "OPPOSING_ZONE_PROXIMAL_FALLBACK"
+
+    checkpoint_targets = [
+        {**dict(item), "role": "CHECKPOINT"}
+        for item in internal_targets[:-1]
+    ]
+    target_ladder = list(checkpoint_targets)
+    if reaction_target is not None:
+        target_ladder.append(reaction_target)
+    if primary is not None:
+        target_ladder.append(
+            {
+                "role": "TERMINAL_OPPOSING_ZONE",
+                "low": float(primary["low"]),
+                "high": float(primary["high"]),
+                "zone_id": primary.get("zone_id"),
+                "timeframe": primary.get("timeframe"),
+            }
+        )
+
     state = (
         "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION"
         if in_source
@@ -891,6 +929,11 @@ def _build_directional_path(
             _compact_path_zone(item) for item in opponents[1:4]
         ],
         "internal_targets": list(internal_targets),
+        "checkpoint_targets": checkpoint_targets,
+        "reaction_target": reaction_target,
+        "reaction_target_basis": reaction_target_basis,
+        "terminal_target_zone": _compact_path_zone(primary),
+        "target_ladder": target_ladder,
         "path_distance_points": None
         if primary is None
         else round(abs(_zone_mid(primary) - _zone_mid(source)), 4),
@@ -900,8 +943,9 @@ def _build_directional_path(
         "execution_influence": False,
         "execution_authority": False,
         "note": (
-            "Opposing zone is a reaction destination candidate, not a guaranteed target. "
-            "Internal targets are liquidity/structure waypoints inside the path."
+            "Reaction target is the final internal waypoint before the first fully forward "
+            "opposing zone when available; otherwise the opposing proximal boundary is used. "
+            "This is a forecast objective, not a guaranteed target."
         ),
     }
 
