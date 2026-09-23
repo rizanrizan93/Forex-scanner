@@ -76,6 +76,7 @@ def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
         "afic_prepared_plans": list(snapshot.afic_prepared_plans),
         "afic_execution_geometry": list(snapshot.afic_execution_geometry),
         "xau_execution_events": list(snapshot.xau_execution_events),
+        "xau_prepared_plan_lifecycle": list(snapshot.xau_prepared_plan_lifecycle),
     }
 
 
@@ -401,6 +402,7 @@ with forecast_tab:
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
     execution_events = [] if backend is None else backend.get("xau_execution_events", [])
+    lifecycle_rows = [] if backend is None else backend.get("xau_prepared_plan_lifecycle", [])
     dedicated_xau_rows = [] if backend is None else backend.get("xau_signals", [])
     xau_technical_signal_rows = [
         dict(row) for row in dedicated_xau_rows
@@ -503,6 +505,17 @@ with forecast_tab:
         t2.metric("Reaction zone", "—")
         t3.metric("Reference entry", "—")
         t4.metric("Manual action", "WAIT")
+        if lifecycle_rows:
+            last_plan = dict(lifecycle_rows[0])
+            if str(last_plan.get("lifecycle_state") or "") == "CANCELLED":
+                st.caption(
+                    "Last prepared plan: "
+                    f"{last_plan.get('direction') or '—'} "
+                    f"{_fmt_price(last_plan.get('entry_price'))} • CANCELLED • "
+                    f"reason={last_plan.get('cancel_reason') or 'UNKNOWN'} • "
+                    f"created={last_plan.get('created_at') or '—'} • "
+                    f"cancelled={last_plan.get('cancelled_at') or '—'}."
+                )
     else:
         t1, t2, t3, t4 = st.columns(4)
         t1.metric("Waiting for", f"{zone_side} REACTION")
@@ -529,6 +542,94 @@ with forecast_tab:
             )
             + "Do not enter merely because price touches the zone; completed M15 "
               "confirmation is still required for the AFIC auto path."
+        )
+
+    st.markdown("#### Prepared Plan Lifecycle")
+    st.caption(
+        "Prepared plans are retained after they disappear from the current H4 map. "
+        "This separates WAITING_PRICE, ZONE_ENTERED, CONFIRMED, broker handoff, and "
+        "CANCELLED states. Cancellation is evidence, not deletion."
+    )
+    if lifecycle_rows:
+        total_plans = len(lifecycle_rows)
+        reached_plans = sum(row.get("first_touch_at") is not None for row in lifecycle_rows)
+        confirmed_plans = sum(row.get("confirmed_at") is not None for row in lifecycle_rows)
+        cancelled_plans = sum(
+            str(row.get("lifecycle_state") or "") == "CANCELLED"
+            for row in lifecycle_rows
+        )
+        ordered_plans = sum(row.get("order_accepted_at") is not None for row in lifecycle_rows)
+        post_cancel_terminal = sum(
+            bool(row.get("post_cancel_terminal_hit"))
+            for row in lifecycle_rows
+            if str(row.get("lifecycle_state") or "") == "CANCELLED"
+        )
+        l1, l2, l3, l4, l5 = st.columns(5)
+        l1.metric(
+            "Zone reach",
+            "—" if total_plans == 0 else _fmt_pct(reached_plans / total_plans),
+        )
+        l2.metric(
+            "Touch → confirm",
+            "—" if reached_plans == 0 else _fmt_pct(confirmed_plans / reached_plans),
+        )
+        l3.metric(
+            "Cancellation",
+            "—" if total_plans == 0 else _fmt_pct(cancelled_plans / total_plans),
+        )
+        l4.metric(
+            "Prepared → order",
+            "—" if total_plans == 0 else _fmt_pct(ordered_plans / total_plans),
+        )
+        l5.metric(
+            "Post-cancel TP2 candidate",
+            "—"
+            if cancelled_plans == 0
+            else _fmt_pct(post_cancel_terminal / cancelled_plans),
+        )
+        st.caption(
+            "Post-cancel TP2 candidate is deliberately conservative: it counts a terminal "
+            "target outcome whose recorded outcome time is after cancellation and whose "
+            "path did not record a stop. It is diagnostic evidence, not proof that the "
+            "cancel rule was wrong."
+        )
+        lifecycle_table = []
+        for row in lifecycle_rows[:20]:
+            meta = dict(row.get("metadata") or {})
+            lifecycle_table.append(
+                {
+                    "created": row.get("created_at"),
+                    "direction": row.get("direction"),
+                    "grade": row.get("grade"),
+                    "zone": (
+                        f"{_fmt_price(row.get('zone_low'))}–"
+                        f"{_fmt_price(row.get('zone_high'))}"
+                    ),
+                    "entry": _fmt_price(row.get("entry_price")),
+                    "lifecycle": row.get("lifecycle_state"),
+                    "cancel reason": row.get("cancel_reason") or "—",
+                    "cancelled": row.get("cancelled_at"),
+                    "first touch": row.get("first_touch_at"),
+                    "confirmed": row.get("confirmed_at"),
+                    "order": row.get("order_accepted_at"),
+                    "protected": row.get("protection_verified_at"),
+                    "TP1": bool(row.get("tp1_hit")),
+                    "TP2": bool(row.get("tp2_hit")),
+                    "stop": bool(row.get("stop_hit")),
+                    "MFE R": row.get("mfe_r"),
+                    "MAE R": row.get("mae_r"),
+                    "lifetime min": meta.get("lifetime_minutes"),
+                }
+            )
+        st.dataframe(
+            pd.DataFrame(lifecycle_table),
+            hide_index=True,
+            use_container_width=True,
+        )
+    else:
+        st.caption(
+            "Prepared-plan lifecycle ledger has not populated yet. The maintenance "
+            "worker will backfill recent AFIC prepared plans without changing execution."
         )
 
     st.markdown("#### XAU Execution Admission")
