@@ -874,7 +874,7 @@ with forecast_tab:
                 "Signal XAU terbaru memiliki geometry DEMO yang diizinkan broker. "
                 "Order tetap bergantung pada quote terbaru, risiko, margin, dan validasi ulang SL/TP."
             )
-        elif latest_admission["admission"] == "SHADOW READY":
+        elif latest_admission["kelayakan"] == "SHADOW READY":
             st.warning(
                 "Signal XAU terbaru dapat berstatus EXECUTION_READY di storage, tetapi hanya "
                 "SHADOW READY; jalur broker tidak akan mengeksekusinya."
@@ -920,7 +920,7 @@ with forecast_tab:
                     "runtime": runtime_status,
                     "waktu": row.get("observed_at"),
                     "setup": row.get("setup_type"),
-                    "direction": row.get("direction"),
+                    "arah": row.get("direction"),
                     "status": row.get("state"),
                     "skor": row.get("final_score"),
                     "entry": (
@@ -999,7 +999,7 @@ with forecast_tab:
             st.success(
                 "Zona reaksi eligible ditemukan: "
                 f"{_fmt_price(nearest.get('low'))}–{_fmt_price(nearest.get('high'))} • "
-                f"distance {_fmt_distance(nearest.get('distance_points'), ' pts')}."
+                f"jarak {_fmt_distance(nearest.get('distance_points'), ' poin')}."
             )
         elif result == "NO_ORIGIN_ZONE":
             st.warning(
