@@ -617,11 +617,75 @@ def _active_payloads(payloads: Sequence[dict[str, Any]]) -> tuple[dict[str, Any]
     )
 
 
+def _freshness_rank(item: dict[str, Any]) -> int:
+    freshness = str(dict(item.get("lifecycle") or {}).get("freshness") or "")
+    return {
+        "FRESH": 6,
+        "FIRST_TEST": 5,
+        "SECOND_TEST": 4,
+        "PARTIALLY_MITIGATED": 3,
+        "DEEPLY_MITIGATED": 2,
+        "MULTI_TESTED": 1,
+        "BROKEN": 0,
+    }.get(freshness, 0)
+
+
+def _precision_timeframe_rank(item: dict[str, Any]) -> int:
+    # Reaction routing prefers H1 precision. H4/D1 remain parent context.
+    return {"H1": 3, "H4": 2, "D1": 1}.get(
+        str(item.get("timeframe") or "").upper(),
+        0,
+    )
+
+
+def _source_zone_stack(
+    payloads: Sequence[dict[str, Any]],
+    *,
+    direction: str,
+    last_price: float,
+) -> tuple[dict[str, Any], ...]:
+    candidates = [
+        item
+        for item in payloads
+        if str(item.get("direction") or "") == direction
+        and bool(item.get("correct_side"))
+    ]
+    if not candidates:
+        return ()
+
+    in_price = [
+        item
+        for item in candidates
+        if float(item["low"]) <= float(last_price) <= float(item["high"])
+    ]
+    pool = in_price if in_price else candidates
+    pool.sort(
+        key=lambda item: (
+            0 if float(item.get("distance_points") or 0.0) == 0 else 1,
+            float(item.get("distance_points") or 0.0),
+            -_precision_timeframe_rank(item),
+            -int(item.get("htf_nesting_count") or 0),
+            -_freshness_rank(item),
+            0 if bool(item.get("structural_bos")) else 1,
+            -float(item.get("research_score") or 0.0),
+        )
+    )
+    return tuple(pool[:8])
+
+
 def _true_nearest_zone(
     payloads: Sequence[dict[str, Any]],
     *,
     direction: str,
+    last_price: float | None = None,
 ) -> dict[str, Any] | None:
+    if last_price is not None:
+        stack = _source_zone_stack(
+            payloads,
+            direction=direction,
+            last_price=float(last_price),
+        )
+        return None if not stack else stack[0]
     candidates = [
         item
         for item in payloads
@@ -633,7 +697,9 @@ def _true_nearest_zone(
     candidates.sort(
         key=lambda item: (
             float(item.get("distance_points") or 0.0),
-            -TIMEFRAME_PRIORITY.get(str(item.get("timeframe") or ""), 0),
+            -_precision_timeframe_rank(item),
+            -int(item.get("htf_nesting_count") or 0),
+            -_freshness_rank(item),
             -float(item.get("research_score") or 0.0),
         )
     )
@@ -818,6 +884,9 @@ def _build_directional_path(
         "source_zone": _compact_path_zone(source),
         "reaction_direction": reaction_direction,
         "primary_opposing_zone": _compact_path_zone(primary),
+        "destination_stack": [
+            _compact_path_zone(item) for item in opponents[:5]
+        ],
         "secondary_opposing_zones": [
             _compact_path_zone(item) for item in opponents[1:4]
         ],
@@ -844,14 +913,18 @@ def _build_path_map(
     last_price: float,
 ) -> dict[str, Any]:
     active_payloads = _active_payloads(payloads)
-    nearest_demand = _true_nearest_zone(
+    demand_stack = _source_zone_stack(
         active_payloads,
         direction="LONG",
+        last_price=last_price,
     )
-    nearest_supply = _true_nearest_zone(
+    supply_stack = _source_zone_stack(
         active_payloads,
         direction="SHORT",
+        last_price=last_price,
     )
+    nearest_demand = None if not demand_stack else demand_stack[0]
+    nearest_supply = None if not supply_stack else supply_stack[0]
     demand_to_supply = _build_directional_path(
         source=nearest_demand,
         reaction_direction="LONG",
@@ -889,6 +962,12 @@ def _build_path_map(
         "contract": "XAU_SUPPLY_DEMAND_PATH_ENGINE_V186",
         "nearest_demand": _compact_path_zone(nearest_demand),
         "nearest_supply": _compact_path_zone(nearest_supply),
+        "demand_source_stack": [
+            _compact_path_zone(item) for item in demand_stack[:5]
+        ],
+        "supply_source_stack": [
+            _compact_path_zone(item) for item in supply_stack[:5]
+        ],
         "demand_to_supply": demand_to_supply,
         "supply_to_demand": supply_to_demand,
         "active_path": active_path,

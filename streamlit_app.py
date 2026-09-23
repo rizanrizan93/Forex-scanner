@@ -651,6 +651,19 @@ with forecast_tab:
                     st.caption(
                         "Waypoint internal sebelum opposing zone: " + waypoint_text
                     )
+                path_dest_stack = list(
+                    afic_first_leg_path.get("destination_stack") or []
+                )
+                if path_dest_stack:
+                    st.caption(
+                        "Destination stack: "
+                        + " | ".join(
+                            f"{item.get('timeframe','—')} "
+                            f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))} "
+                            f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
+                            for item in path_dest_stack[:4]
+                        )
+                    )
                 st.caption(
                     "Path ini baru aktif sebagai PREPARE/FORECAST. Reaction tetap harus "
                     "dibuktikan oleh sweep/mitigation lalu reclaim/MSS/displacement M5/M15."
@@ -810,6 +823,28 @@ with forecast_tab:
                 }
             )
         st.dataframe(pd.DataFrame(sd_table), hide_index=True, use_container_width=True)
+        demand_source_stack = list(sd_path_map.get("demand_source_stack") or [])
+        supply_source_stack = list(sd_path_map.get("supply_source_stack") or [])
+        if demand_source_stack:
+            st.caption(
+                "Demand stack aktif: "
+                + " | ".join(
+                    f"{item.get('timeframe','—')} "
+                    f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))} "
+                    f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
+                    for item in demand_source_stack[:4]
+                )
+            )
+        if supply_source_stack:
+            st.caption(
+                "Supply stack aktif: "
+                + " | ".join(
+                    f"{item.get('timeframe','—')} "
+                    f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))} "
+                    f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
+                    for item in supply_source_stack[:4]
+                )
+            )
         if sd_active_path:
             source = dict(sd_active_path.get("source_zone") or {})
             target = dict(sd_active_path.get("primary_opposing_zone") or {})
@@ -823,6 +858,17 @@ with forecast_tab:
                     " → opposing zone belum tersedia"
                 )
             )
+            destination_stack = list(sd_active_path.get("destination_stack") or [])
+            if destination_stack:
+                st.caption(
+                    "Opposing-zone stack: "
+                    + " | ".join(
+                        f"{item.get('timeframe','—')} "
+                        f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))} "
+                        f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
+                        for item in destination_stack[:4]
+                    )
+                )
         st.caption(
             "Skor riset V182 adalah ranking evidence, BUKAN probabilitas menang. "
             "Liquidity/round number hanya confluence, bukan pembentuk zona tunggal. "
