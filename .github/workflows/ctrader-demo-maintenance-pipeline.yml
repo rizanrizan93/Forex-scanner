@@ -95,6 +95,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_premap_candidate_v181
 
+      - name: Update XAU HTF supply-demand atlas
+        id: update_xau_supply_demand_atlas
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_supply_demand_atlas_v182
+
       - name: Enforce pair-specific max-hold exits
         id: pair_time_exit
         if: ${{ always() && !cancelled() }}

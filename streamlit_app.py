@@ -442,6 +442,7 @@ with forecast_tab:
 - **Strategic Bias / Bias Strategis:** konteks D1+H4 yang dibuat lebih stabil; bukan sinyal entry.
 - **Tactical First Leg / Gerak Taktis Pertama:** arah perjalanan harga menuju zona sebelum continuation/reversal utama.
 - **Reaction Zone / Zona Reaksi:** area harga berbasis struktur yang dipantau untuk respons, bukan titik entry otomatis.
+- **Supply/Demand HTF:** zona D1/H4/H1 berbasis base→departure atau structural origin. Demand memantau potensi reaksi naik; Supply memantau potensi reaksi turun. V182 hanya PREPARE/RESEARCH dan tidak memberi izin eksekusi.
 - **Pre-map Candidate / Kandidat Pra-H4:** H1 origin baru setelah H4 map saat ini; hanya untuk persiapan dan belum punya izin eksekusi.
 - **Prepared/Reference Entry / Entry Acuan:** geometry entry yang sudah disiapkan setelah zone canonical tersedia; tetap memerlukan konfirmasi.
 - **Execution Admission / Kelayakan Eksekusi:** pemeriksaan apakah signal benar-benar boleh diteruskan ke broker DEMO.
@@ -470,6 +471,9 @@ with forecast_tab:
     )
     premap_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_premap_candidate_v181"
+    )
+    supply_demand_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_supply_demand_atlas_v182"
     )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
@@ -614,6 +618,105 @@ with forecast_tab:
         st.caption(
             "Rezim Strategis HTF V180 belum menerbitkan snapshot shadow. "
             "AFIC V161 tetap menjadi otoritas eksekusi."
+        )
+
+    st.markdown("### Atlas Supply & Demand HTF (V182)")
+    st.caption(
+        "Atlas riset D1/H4/H1 untuk mendeteksi demand/supply lebih awal dari canonical AFIC. "
+        "Zona dibentuk dari structural origin atau base→departure imbalance, lalu dinilai "
+        "berdasarkan freshness, touch/mitigation, HTF nesting, liquidity confluence, jarak, "
+        "dan kualitas pendekatan harga. V182 SELALU PREPARE ONLY / NO EXECUTION."
+    )
+    sd_details = {} if supply_demand_hb is None else dict(supply_demand_hb.get("details") or {})
+    sd_eval = dict(sd_details.get("evaluation") or {})
+    sd_zones = list(sd_eval.get("zones") or [])
+    if sd_zones:
+        sd1, sd2, sd3, sd4 = st.columns(4)
+        sd1.metric("Zona aktif", sd_eval.get("active_count", 0))
+        sd2.metric("Zona ditampilkan", sd_eval.get("display_count", len(sd_zones)))
+        sd3.metric("Konteks sesi", str(sd_eval.get("session_context") or "—"))
+        sd4.metric("Izin eksekusi", "TIDAK ADA")
+
+        nearest_demand = dict(sd_eval.get("nearest_demand") or {})
+        nearest_supply = dict(sd_eval.get("nearest_supply") or {})
+        nd_col, ns_col = st.columns(2)
+        with nd_col:
+            if nearest_demand:
+                nd_lifecycle = dict(nearest_demand.get("lifecycle") or {})
+                nd_approach = dict(nearest_demand.get("approach") or {})
+                st.info(
+                    "Demand terdekat: "
+                    f"{nearest_demand.get('timeframe','—')} "
+                    f"{nearest_demand.get('pattern','—')} • "
+                    f"{_fmt_price(nearest_demand.get('low'))}–"
+                    f"{_fmt_price(nearest_demand.get('high'))} • "
+                    f"freshness={nd_lifecycle.get('freshness','—')} • "
+                    f"jarak={_fmt_distance(nearest_demand.get('distance_atr'),' ATR')} • "
+                    f"approach={nd_approach.get('state','—')}"
+                )
+            else:
+                st.caption("Demand aktif di sisi harga yang benar belum tersedia.")
+        with ns_col:
+            if nearest_supply:
+                ns_lifecycle = dict(nearest_supply.get("lifecycle") or {})
+                ns_approach = dict(nearest_supply.get("approach") or {})
+                st.warning(
+                    "Supply terdekat: "
+                    f"{nearest_supply.get('timeframe','—')} "
+                    f"{nearest_supply.get('pattern','—')} • "
+                    f"{_fmt_price(nearest_supply.get('low'))}–"
+                    f"{_fmt_price(nearest_supply.get('high'))} • "
+                    f"freshness={ns_lifecycle.get('freshness','—')} • "
+                    f"jarak={_fmt_distance(nearest_supply.get('distance_atr'),' ATR')} • "
+                    f"approach={ns_approach.get('state','—')}"
+                )
+            else:
+                st.caption("Supply aktif di sisi harga yang benar belum tersedia.")
+
+        sd_table = []
+        for item in sd_zones:
+            lifecycle = dict(item.get("lifecycle") or {})
+            liquidity = dict(item.get("liquidity") or {})
+            approach = dict(item.get("approach") or {})
+            sd_table.append(
+                {
+                    "TF": item.get("timeframe"),
+                    "kelas": item.get("zone_class"),
+                    "pola": item.get("pattern"),
+                    "arah reaksi": item.get("direction"),
+                    "zona": (
+                        f"{_fmt_price(item.get('low'))}–"
+                        f"{_fmt_price(item.get('high'))}"
+                    ),
+                    "proximal": item.get("proximal"),
+                    "distal": item.get("distal"),
+                    "dibentuk (WIB)": _fmt_wib_datetime(item.get("available_at")),
+                    "umur": item.get("age_bucket"),
+                    "freshness": lifecycle.get("freshness"),
+                    "touch": lifecycle.get("touch_count"),
+                    "mitigation": lifecycle.get("mitigation_depth"),
+                    "jarak (ATR)": item.get("distance_atr"),
+                    "HTF nesting": item.get("htf_nesting_count"),
+                    "likuiditas": liquidity.get("confluence_count"),
+                    "approach": approach.get("state"),
+                    "displacement (ATR)": item.get("departure_range_atr"),
+                    "body displacement": item.get("departure_body_fraction"),
+                    "selaras strategis": item.get("strategic_alignment"),
+                    "skor riset": item.get("research_score"),
+                    "status": item.get("status"),
+                }
+            )
+        st.dataframe(pd.DataFrame(sd_table), hide_index=True, use_container_width=True)
+        st.caption(
+            "Skor riset V182 adalah ranking evidence, BUKAN probabilitas menang. "
+            "Liquidity/round number hanya confluence, bukan pembentuk zona tunggal. "
+            "Canonical AFIC ≤24 jam, M15 confirmation, fresh quote, risk/margin, dan "
+            "server-side SL/TP tetap menjadi jalur eksekusi yang terpisah."
+        )
+    else:
+        st.info(
+            "Atlas V182 belum memiliki zona yang dapat ditampilkan pada snapshot terbaru. "
+            "Ketiadaan zona V182 tidak memaksa scanner membuat setup."
         )
 
     st.markdown("### Kandidat Zona Pra-H4 (Pre-map Candidate Zone)")
