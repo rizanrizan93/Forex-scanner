@@ -85,6 +85,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_outcome_ledger
 
+      - name: Update AFIC prepared-plan lifecycle ledger
+        id: update_xau_prepared_plan_lifecycle
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_prepared_plan_lifecycle
+
       - name: Enforce pair-specific max-hold exits
         id: pair_time_exit
         if: ${{ always() && !cancelled() }}
