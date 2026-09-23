@@ -400,10 +400,24 @@ def _lifecycle_rows(
             cancelled_at = None
             cancel_reason = None
 
+        touch_while_active = bool(
+            first_touch_at is not None
+            and (cancelled_at is None or first_touch_at <= cancelled_at)
+        )
+        post_cancel_touch = bool(
+            first_touch_at is not None
+            and cancelled_at is not None
+            and first_touch_at > cancelled_at
+        )
+        confirmation_while_active = bool(
+            confirmed_at is not None
+            and (cancelled_at is None or confirmed_at <= cancelled_at)
+        )
+
         state = lifecycle_state(
             cancelled_at=cancelled_at,
-            first_touch_at=first_touch_at,
-            confirmed_at=confirmed_at,
+            first_touch_at=first_touch_at if touch_while_active else None,
+            confirmed_at=confirmed_at if confirmation_while_active else None,
             execution_ready_at=execution_ready_at,
             order_accepted_at=order_at,
             protection_verified_at=protection_at,
@@ -497,6 +511,9 @@ def _lifecycle_rows(
                     "lifetime_minutes": lifetime_minutes,
                     "eventual_outcome_status": outcome.get("status"),
                     "missed_execution": bool(outcome.get("missed_execution")),
+                    "touch_while_active": touch_while_active,
+                    "post_cancel_touch": post_cancel_touch,
+                    "confirmation_while_active": confirmation_while_active,
                     "outcome_is_causal_after_entry_activation": outcome_is_causal,
                     "raw_outcome_at": outcome.get("outcome_at"),
                     "raw_tp1_hit": bool(outcome.get("tp1_hit")),
@@ -522,12 +539,37 @@ def _upsert_rows(
     return len(rows)
 
 
+def _metric_flag(row: dict[str, Any], key: str) -> bool:
+    metadata = dict(row.get("metadata") or {})
+    if key in metadata:
+        return bool(metadata.get(key))
+    touch_at = _dt(row.get("first_touch_at"))
+    confirm_at = _dt(row.get("confirmed_at"))
+    cancelled_at = _dt(row.get("cancelled_at"))
+    if key == "touch_while_active":
+        return bool(touch_at is not None and (cancelled_at is None or touch_at <= cancelled_at))
+    if key == "post_cancel_touch":
+        return bool(touch_at is not None and cancelled_at is not None and touch_at > cancelled_at)
+    if key == "confirmation_while_active":
+        return bool(confirm_at is not None and (cancelled_at is None or confirm_at <= cancelled_at))
+    return False
+
+
 def lifecycle_metrics(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     total = len(rows)
-    reached = sum(row.get("first_touch_at") is not None for row in rows)
-    confirmed = sum(row.get("confirmed_at") is not None for row in rows)
+    active_reached = sum(_metric_flag(row, "touch_while_active") for row in rows)
+    active_confirmed = sum(
+        _metric_flag(row, "confirmation_while_active")
+        and _metric_flag(row, "touch_while_active")
+        for row in rows
+    )
     cancelled = sum(str(row.get("lifecycle_state") or "") == "CANCELLED" for row in rows)
     ordered = sum(row.get("order_accepted_at") is not None for row in rows)
+    post_cancel_reached = sum(
+        _metric_flag(row, "post_cancel_touch")
+        for row in rows
+        if str(row.get("lifecycle_state") or "") == "CANCELLED"
+    )
     post_cancel_terminal = sum(
         bool(row.get("post_cancel_terminal_hit"))
         for row in rows
@@ -535,10 +577,15 @@ def lifecycle_metrics(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     )
     return {
         "plans": total,
-        "zone_reach_rate": None if total == 0 else reached / total,
-        "touch_to_confirmation_rate": None if reached == 0 else confirmed / reached,
+        "active_zone_reach_rate": None if total == 0 else active_reached / total,
+        "touch_to_confirmation_rate": None
+        if active_reached == 0
+        else active_confirmed / active_reached,
         "cancellation_rate": None if total == 0 else cancelled / total,
         "execution_conversion_rate": None if total == 0 else ordered / total,
+        "post_cancel_zone_reach_rate": None
+        if cancelled == 0
+        else post_cancel_reached / cancelled,
         "post_cancel_terminal_hit_rate": None
         if cancelled == 0
         else post_cancel_terminal / cancelled,

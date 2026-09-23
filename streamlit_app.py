@@ -552,26 +552,40 @@ with forecast_tab:
     )
     if lifecycle_rows:
         total_plans = len(lifecycle_rows)
-        reached_plans = sum(row.get("first_touch_at") is not None for row in lifecycle_rows)
-        confirmed_plans = sum(row.get("confirmed_at") is not None for row in lifecycle_rows)
+        active_reached_plans = sum(
+            bool(dict(row.get("metadata") or {}).get("touch_while_active"))
+            for row in lifecycle_rows
+        )
+        active_confirmed_plans = sum(
+            bool(dict(row.get("metadata") or {}).get("confirmation_while_active"))
+            and bool(dict(row.get("metadata") or {}).get("touch_while_active"))
+            for row in lifecycle_rows
+        )
         cancelled_plans = sum(
             str(row.get("lifecycle_state") or "") == "CANCELLED"
             for row in lifecycle_rows
         )
         ordered_plans = sum(row.get("order_accepted_at") is not None for row in lifecycle_rows)
+        post_cancel_reached = sum(
+            bool(dict(row.get("metadata") or {}).get("post_cancel_touch"))
+            for row in lifecycle_rows
+            if str(row.get("lifecycle_state") or "") == "CANCELLED"
+        )
         post_cancel_terminal = sum(
             bool(row.get("post_cancel_terminal_hit"))
             for row in lifecycle_rows
             if str(row.get("lifecycle_state") or "") == "CANCELLED"
         )
-        l1, l2, l3, l4, l5 = st.columns(5)
+        l1, l2, l3, l4, l5, l6 = st.columns(6)
         l1.metric(
-            "Zone reach",
-            "—" if total_plans == 0 else _fmt_pct(reached_plans / total_plans),
+            "Active zone reach",
+            "—" if total_plans == 0 else _fmt_pct(active_reached_plans / total_plans),
         )
         l2.metric(
-            "Touch → confirm",
-            "—" if reached_plans == 0 else _fmt_pct(confirmed_plans / reached_plans),
+            "Active touch → confirm",
+            "—"
+            if active_reached_plans == 0
+            else _fmt_pct(active_confirmed_plans / active_reached_plans),
         )
         l3.metric(
             "Cancellation",
@@ -582,16 +596,22 @@ with forecast_tab:
             "—" if total_plans == 0 else _fmt_pct(ordered_plans / total_plans),
         )
         l5.metric(
+            "Post-cancel zone reach",
+            "—"
+            if cancelled_plans == 0
+            else _fmt_pct(post_cancel_reached / cancelled_plans),
+        )
+        l6.metric(
             "Post-cancel TP2 candidate",
             "—"
             if cancelled_plans == 0
             else _fmt_pct(post_cancel_terminal / cancelled_plans),
         )
         st.caption(
-            "Post-cancel TP2 candidate is deliberately conservative: it counts a terminal "
-            "target outcome whose recorded outcome time is after cancellation and whose "
-            "path did not record a stop. It is diagnostic evidence, not proof that the "
-            "cancel rule was wrong."
+            "Active zone reach counts only touches while the prepared plan was still valid. "
+            "Post-cancel zone reach is tracked separately to measure whether cancellation "
+            "may be too aggressive. Post-cancel TP2 candidate is stricter and remains "
+            "diagnostic evidence, not proof that the cancel rule was wrong."
         )
         lifecycle_table = []
         for row in lifecycle_rows[:20]:
@@ -610,6 +630,8 @@ with forecast_tab:
                     "cancel reason": row.get("cancel_reason") or "—",
                     "cancelled": row.get("cancelled_at"),
                     "first touch": row.get("first_touch_at"),
+                    "touch while active": meta.get("touch_while_active"),
+                    "post-cancel touch": meta.get("post_cancel_touch"),
                     "confirmed": row.get("confirmed_at"),
                     "order": row.get("order_accepted_at"),
                     "protected": row.get("protection_verified_at"),

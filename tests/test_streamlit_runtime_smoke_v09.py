@@ -118,3 +118,12 @@ def test_xau_dashboard_grade_b_matches_current_demo_authority():
     assert 'eligible for DEMO auto execution' in text
     assert 'elif grade == "C":' in text
     assert 'Grade C: shadow/watch only' in text
+
+
+def test_xau_dashboard_splits_active_and_post_cancel_zone_reach():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert '"Active zone reach"' in text
+    assert '"Post-cancel zone reach"' in text
+    assert '"touch while active": meta.get("touch_while_active")' in text
+    assert '"post-cancel touch": meta.get("post_cancel_touch")' in text
+    assert "Active zone reach counts only touches while the prepared plan was still valid." in text
