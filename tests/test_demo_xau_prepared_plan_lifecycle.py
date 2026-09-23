@@ -1,6 +1,9 @@
 from datetime import UTC, datetime, timedelta
 
 from fx_scanner.demo_xau_prepared_plan_lifecycle import (
+    FORECAST_EVENT_TYPE,
+    PREPARED_EVENT_TYPE,
+    TRACKED_EVENT_TYPES,
     _cancel_reason,
     lifecycle_metrics,
     lifecycle_state,
@@ -153,3 +156,11 @@ def test_lifecycle_metrics_are_denominator_safe_and_explicit():
     assert metrics["cancellation_rate"] == 0.5
     assert metrics["execution_conversion_rate"] == 0.5
     assert metrics["post_cancel_terminal_hit_rate"] == 1.0
+
+
+def test_lifecycle_event_retrieval_is_scoped_to_relevant_event_families():
+    assert PREPARED_EVENT_TYPE in TRACKED_EVENT_TYPES
+    assert FORECAST_EVENT_TYPE in TRACKED_EVENT_TYPES
+    assert "ORDER_ACCEPTED" in TRACKED_EVENT_TYPES
+    assert "POSITION_PROTECTION_VERIFIED" in TRACKED_EVENT_TYPES
+    assert "DEMO_TRADE_CLOSED" in TRACKED_EVENT_TYPES

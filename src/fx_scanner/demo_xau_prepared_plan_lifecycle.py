@@ -16,9 +16,18 @@ PREPARED_CODE = "XAU_AFIC_PATH_PREPARED_V1"
 FORECAST_EVENT_TYPE = "DEMO_XAU_AFIC_FORECAST_STATE"
 FORECAST_CODE = "XAU_AFIC_PATH_STATE_V1"
 LOOKBACK_DAYS = 30
-MAX_EVENT_ROWS = 8000
+MAX_EVENT_ROWS_PER_TYPE = 2000
 MAX_SIGNAL_ROWS = 2000
 MAX_OUTCOME_ROWS = 2000
+
+TRACKED_EVENT_TYPES = (
+    PREPARED_EVENT_TYPE,
+    FORECAST_EVENT_TYPE,
+    "DEMO_SIGNAL_GEOMETRY",
+    "ORDER_ACCEPTED",
+    "POSITION_PROTECTION_VERIFIED",
+    "DEMO_TRADE_CLOSED",
+)
 
 _CANCEL_GUARD_REASON = {
     "AFIC_MAP_SUPERSEDED": "H4_REMAP",
@@ -49,15 +58,29 @@ def _finite(value: Any) -> float | None:
 def _events(
     store: SupabaseOperationalStore, *, cutoff: datetime
 ) -> tuple[dict[str, Any], ...]:
-    response = (
-        store.client.table("broker_order_events")
-        .select("observed_at,event_type,signal_key,accepted,code,payload")
-        .gte("observed_at", cutoff.isoformat())
-        .order("observed_at", desc=False)
-        .limit(MAX_EVENT_ROWS)
-        .execute()
-    )
-    return tuple(dict(row) for row in (response.data or []))
+    # broker_order_events contains high-volume telemetry. A single broad LIMIT
+    # can exclude recent AFIC plans entirely, so fetch only lifecycle-relevant
+    # event families with an independent bound for each type.
+    rows: list[dict[str, Any]] = []
+    for event_type in TRACKED_EVENT_TYPES:
+        query = (
+            store.client.table("broker_order_events")
+            .select("observed_at,event_type,signal_key,accepted,code,payload")
+            .eq("event_type", event_type)
+            .gte("observed_at", cutoff.isoformat())
+            .order("observed_at", desc=True)
+            .limit(MAX_EVENT_ROWS_PER_TYPE)
+        )
+        if event_type == PREPARED_EVENT_TYPE:
+            query = query.eq("code", PREPARED_CODE)
+        elif event_type == FORECAST_EVENT_TYPE:
+            query = query.eq("code", FORECAST_CODE)
+        response = query.execute()
+        rows.extend(dict(row) for row in (response.data or []))
+
+    floor = datetime.min.replace(tzinfo=UTC)
+    rows.sort(key=lambda row: _dt(row.get("observed_at")) or floor)
+    return tuple(rows)
 
 
 def _signals(
