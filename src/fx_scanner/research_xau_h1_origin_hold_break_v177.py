@@ -36,6 +36,9 @@ MIN_CLAIM_PER_DIRECTION = 100
 MIN_TRAIN_PER_DIRECTION = 80
 MIN_CALIBRATION_SELECTED_PER_DIRECTION = 75
 MIN_CALIBRATION_COVERAGE = 0.05
+TRAIN_FRACTION = 0.50
+CALIBRATION_FRACTION = 0.20
+HOLDOUT_FRACTION = 0.30
 LOGISTIC_ITERATIONS = 1200
 LOGISTIC_LEARNING_RATE = 0.035
 LOGISTIC_L2 = 0.15
@@ -290,9 +293,15 @@ def _frame_trend_context(
     reversal_sign = 1.0 if direction == "LONG" else -1.0
     trend = reversal_sign * (close - lag_close) / atr14
     ema20 = float(row.get("ema20", close))
+    if not isfinite(ema20):
+        ema20 = close
     ema_alignment = reversal_sign * (close - ema20) / atr14
     atr5 = float(row.get("atr5", atr14))
     atr20 = float(row.get("atr20", atr14))
+    if not isfinite(atr5) or atr5 <= 0:
+        atr5 = atr14
+    if not isfinite(atr20) or atr20 <= 0:
+        atr20 = atr14
     volatility_ratio = atr5 / max(atr20, 1e-12)
     return (
         float(np.clip(trend, -6.0, 6.0)),
@@ -539,6 +548,17 @@ def _feature_vector(
         float(np.clip(volatility_ratio * body_pressure, -12.0, 12.0)),
         displacement_range * displacement_body,
     ]
+    if len(values) != len(FEATURE_NAMES):
+        raise ValueError(
+            f"feature contract mismatch:{len(values)}!={len(FEATURE_NAMES)}"
+        )
+    bad = [
+        FEATURE_NAMES[index]
+        for index, value in enumerate(values)
+        if not isfinite(float(value))
+    ]
+    if bad:
+        raise ValueError(f"nonfinite features:{','.join(bad)}")
     return tuple(float(value) for value in values)
 
 
@@ -652,6 +672,10 @@ def fit_logistic_model(
     if len(episodes) < MIN_TRAIN_PER_DIRECTION:
         raise ValueError(f"insufficient training rows:{len(episodes)}")
     matrix = np.asarray([episode.features for episode in episodes], dtype=float)
+    if matrix.ndim != 2 or matrix.shape[1] != len(FEATURE_NAMES):
+        raise ValueError("feature matrix contract mismatch")
+    if not np.isfinite(matrix).all():
+        raise ValueError("nonfinite feature matrix")
     labels = np.asarray(
         [float(episode.outcome.label_hold) for episode in episodes],
         dtype=float,
@@ -725,8 +749,10 @@ def _split_chronological(
     times = sorted({row.touch_at for row in rows})
     if len(times) < 20:
         return (), (), ()
-    calibration_index = int(len(times) * 0.65)
-    holdout_index = int(len(times) * 0.80)
+    calibration_index = int(len(times) * TRAIN_FRACTION)
+    holdout_index = int(
+        len(times) * (TRAIN_FRACTION + CALIBRATION_FRACTION)
+    )
     if (
         calibration_index <= 0
         or holdout_index <= calibration_index
@@ -767,9 +793,9 @@ def _walk_forward_splits(
     purge = timedelta(hours=PURGE_HOURS)
     folds = []
     for train_fraction, validation_fraction in (
-        (0.50, 0.60),
-        (0.60, 0.70),
-        (0.70, 0.80),
+        (0.35, 0.45),
+        (0.45, 0.55),
+        (0.55, 0.65),
     ):
         train_index = int(len(times) * train_fraction)
         validation_end_index = int(len(times) * validation_fraction)
@@ -866,6 +892,9 @@ def _calibrate_threshold(
             "minimum_coverage": MIN_CALIBRATION_COVERAGE,
             "calibration_universe": len(scored),
             "projected_holdout_sample_floor": MIN_CLAIM_PER_DIRECTION,
+            "calibration_to_holdout_ratio": (
+                HOLDOUT_FRACTION / CALIBRATION_FRACTION
+            ),
         }
 
     best = max(
@@ -879,6 +908,9 @@ def _calibrate_threshold(
     return float(best["threshold"]), best | {
         "selection_reason": "MAX_WILSON_SUBJECT_TO_SAMPLE_FLOOR",
         "projected_holdout_sample_floor": MIN_CLAIM_PER_DIRECTION,
+        "calibration_to_holdout_ratio": (
+            HOLDOUT_FRACTION / CALIBRATION_FRACTION
+        ),
     }
 
 
@@ -988,6 +1020,9 @@ def evaluate_hold_break_research(bars: Sequence[Bar]) -> dict[str, Any]:
             "train": len(train),
             "calibration": len(calibration),
             "holdout": len(holdout),
+            "train_fraction": TRAIN_FRACTION,
+            "calibration_fraction": CALIBRATION_FRACTION,
+            "holdout_fraction": HOLDOUT_FRACTION,
             "purge_hours": PURGE_HOURS,
         },
         "walk_forward": _walk_forward_report(episodes),
@@ -1121,7 +1156,8 @@ def evaluate_hold_break_research(bars: Sequence[Bar]) -> dict[str, Any]:
             "V177 is conditional on H1 origin zones and complements V175 destination-zone ranking.",
             "All predictive features stop at the completed M15 bar immediately before first zone touch.",
             "LONG and SHORT are modeled independently.",
-            "Three expanding walk-forward folds are diagnostic; the final 20% holdout is untouched by model fitting and threshold calibration.",
+            "Three expanding walk-forward folds are diagnostic; they stop before the final holdout window.",
+            "The final 30% holdout is untouched by model fitting and threshold calibration.",
             "V177 cannot alter AFIC admission, position sizing, risk controls, or broker execution.",
         ],
     }
