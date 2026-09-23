@@ -679,6 +679,11 @@ with forecast_tab:
         )
 
     st.markdown("### Persiapan Trading (Trade Preparation)")
+    st.caption(
+        f"H4 map canonical saat ini: {_fmt_wib_datetime(current_map)}. "
+        "Waktu kedaluwarsa setup dan seluruh timestamp trading pada dashboard ini "
+        "ditampilkan dalam WIB (Asia/Jakarta)."
+    )
     if not valid_zone_now:
         st.error(
             "NO VALID ENTRY ZONE — DO NOT ORDER YET. "
@@ -1568,11 +1573,14 @@ with account_tab:
                 _frame(positions),
                 ("opened_at", "observed_at", "updated_at"),
             )
+            position_frame = position_frame.rename(
+                columns={"opened_at": "opened_at (WIB)"}
+            )
             display_cols = [
                 col
                 for col in [
                     "symbol", "side", "volume", "open_price", "current_price",
-                    "sl", "tp", "profit", "swap", "opened_at", "position_id",
+                    "sl", "tp", "profit", "swap", "opened_at (WIB)", "position_id",
                 ]
                 if col in position_frame.columns
             ]
@@ -1599,6 +1607,7 @@ with scanner_tab:
         )
         if "coverage" in rankings.columns:
             rankings["coverage"] = rankings["coverage"].apply(_fmt_pct)
+        rankings = rankings.rename(columns={"observed_at": "observed_at (WIB)"})
         display_cols = [
             col
             for col in [
@@ -1610,7 +1619,7 @@ with scanner_tab:
                 "technical_edge",
                 "cross_asset_score",
                 "coverage",
-                "observed_at",
+                "observed_at (WIB)",
             ]
             if col in rankings.columns
         ]
@@ -1641,15 +1650,21 @@ with scanner_tab:
 
     st.subheader("Sinyal Terbaru (Latest Signals)")
     if backend is not None and backend["signals"]:
-        signals = _convert_frame_times_to_wib(
-            _frame(backend["signals"]),
-            ("observed_at", "expires_at"),
-        )
+        signals = _frame(backend["signals"])
         signals["_state_order"] = signals["state"].map(_state_rank)
         signals = signals.sort_values(
             ["_state_order", "observed_at"],
             ascending=[True, False],
         ).drop(columns=["_state_order"])
+        signals = _convert_frame_times_to_wib(
+            signals,
+            ("observed_at", "expires_at"),
+        ).rename(
+            columns={
+                "observed_at": "observed_at (WIB)",
+                "expires_at": "expires_at (WIB)",
+            }
+        )
 
         if "data_coverage" in signals.columns:
             signals["data_coverage"] = signals["data_coverage"].apply(_fmt_pct)
@@ -1672,7 +1687,7 @@ with scanner_tab:
         display_cols = [
             col
             for col in [
-                "observed_at",
+                "observed_at (WIB)",
                 "symbol",
                 "direction",
                 "setup_type",
@@ -1687,6 +1702,7 @@ with scanner_tab:
                 "rr2",
                 "data_coverage",
                 "active_guards",
+                "expires_at (WIB)",
             ]
             if col in signals.columns
         ]
@@ -1760,7 +1776,10 @@ with system_tab:
 
     st.subheader("Status Runtime / Heartbeat")
     if backend is not None and backend["heartbeats"]:
-        heartbeats = _frame(backend["heartbeats"])
+        heartbeats = _convert_frame_times_to_wib(
+            _frame(backend["heartbeats"]),
+            ("observed_at",),
+        ).rename(columns={"observed_at": "observed_at (WIB)"})
         st.dataframe(heartbeats, hide_index=True, use_container_width=True)
     else:
         st.info("No runtime heartbeat snapshots are available.")
