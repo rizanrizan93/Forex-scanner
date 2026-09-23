@@ -682,6 +682,33 @@ with forecast_tab:
                             for item in path_dest_stack[:4]
                         )
                     )
+                afic_micro = dict(
+                    afic_sd_context.get("first_leg_micro_refinement") or {}
+                )
+                if afic_micro:
+                    micro_candidate = dict(afic_micro.get("candidate_entry_pocket") or {})
+                    micro_refined = dict(afic_micro.get("refined_entry_pocket") or {})
+                    st.info(
+                        "Micro Refinement V189: "
+                        f"{afic_micro.get('state','—')} • "
+                        f"sweep={_fmt_price(dict(afic_micro.get('sweep') or {}).get('price'))} • "
+                        f"reclaim={_fmt_price(afic_micro.get('source_proximal_reclaim_level'))} • "
+                        f"MSS={_fmt_price(afic_micro.get('mss_level'))}."
+                    )
+                    if micro_refined:
+                        st.success(
+                            "Refined entry pocket M5 (SHADOW): "
+                            f"{_fmt_price(micro_refined.get('low'))}–"
+                            f"{_fmt_price(micro_refined.get('high'))}. "
+                            "Ini belum memberi izin eksekusi."
+                        )
+                    elif micro_candidate:
+                        st.caption(
+                            "Candidate M5 pocket: "
+                            f"{_fmt_price(micro_candidate.get('low'))}–"
+                            f"{_fmt_price(micro_candidate.get('high'))}; "
+                            "masih menunggu reclaim/MSS/displacement."
+                        )
                 st.caption(
                     "Path ini baru aktif sebagai PREPARE/FORECAST. Reaction tetap harus "
                     "dibuktikan oleh sweep/mitigation lalu reclaim/MSS/displacement M5/M15."
@@ -893,6 +920,35 @@ with forecast_tab:
                         f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
                         for item in destination_stack[:4]
                     )
+                )
+        sd_micro = dict(sd_eval.get("micro_refinement") or {})
+        if sd_micro:
+            micro1, micro2, micro3, micro4 = st.columns(4)
+            micro1.metric("V189 state", str(sd_micro.get("state") or "—"))
+            micro2.metric(
+                "Sweep M5",
+                _fmt_price(dict(sd_micro.get("sweep") or {}).get("price")),
+            )
+            micro3.metric(
+                "Reclaim level",
+                _fmt_price(sd_micro.get("source_proximal_reclaim_level")),
+            )
+            micro4.metric(
+                "MSS level",
+                _fmt_price(sd_micro.get("mss_level")),
+            )
+            refined = dict(sd_micro.get("refined_entry_pocket") or {})
+            candidate = dict(sd_micro.get("candidate_entry_pocket") or {})
+            if refined:
+                st.success(
+                    "Refined entry pocket M5 (SHADOW ONLY): "
+                    f"{_fmt_price(refined.get('low'))}–{_fmt_price(refined.get('high'))}."
+                )
+            elif candidate:
+                st.caption(
+                    "Candidate entry pocket M5: "
+                    f"{_fmt_price(candidate.get('low'))}–{_fmt_price(candidate.get('high'))}; "
+                    "belum confirmed."
                 )
         st.caption(
             "Skor riset V182 adalah ranking evidence, BUKAN probabilitas menang. "
