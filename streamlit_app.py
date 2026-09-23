@@ -481,6 +481,9 @@ with forecast_tab:
     supply_demand_prospective_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_supply_demand_prospective_v184"
     )
+    supply_demand_timeframe_hb = _latest_heartbeat(
+        heartbeats, "ctrader_xau_supply_demand_timeframe_v185"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -856,6 +859,73 @@ with forecast_tab:
         st.info(
             "V183 belum menerbitkan hasil 100K-bar. Dashboard akan menampilkan hasil "
             "holdout setelah workflow riset selesai."
+        )
+
+    st.markdown("### Validasi Timeframe-Aware Supply & Demand (V185)")
+    st.caption(
+        "V185 menguji reaction dengan horizon yang sesuai timeframe pada touch population "
+        "yang sama: H1=4 jam, H4=24 jam, D1=72 jam. Sensitivity: H4 16/24 jam dan "
+        "D1 48/72/120 jam. Semua hasil tetap RISET SAJA / NO EXECUTION."
+    )
+    v185_details = (
+        {} if supply_demand_timeframe_hb is None
+        else dict(supply_demand_timeframe_hb.get("details") or {})
+    )
+    v185_eval = dict(v185_details.get("evaluation") or {})
+    v185_holdout = dict(v185_eval.get("holdout_by_timeframe") or {})
+    if v185_holdout:
+        tf_cols = st.columns(3)
+        for tf_col, tf_name in zip(tf_cols, ("H1", "H4", "D1")):
+            tf_payload = dict(v185_holdout.get(tf_name) or {})
+            tf_primary = dict(tf_payload.get("primary") or {})
+            with tf_col:
+                st.metric(
+                    f"{tf_name} HOLD precision",
+                    "—"
+                    if tf_primary.get("precision_hold") is None
+                    else _fmt_pct(tf_primary.get("precision_hold")),
+                )
+                st.caption(
+                    f"horizon={tf_payload.get('primary_horizon_hours','—')} jam • "
+                    f"n={tf_primary.get('n',0)} • "
+                    f"Wilson lower 95%="
+                    f"{'—' if tf_primary.get('wilson_lower_95') is None else _fmt_pct(tf_primary.get('wilson_lower_95'))} • "
+                    f"median outcome={tf_primary.get('median_bars_to_outcome','—')} M15."
+                )
+        sensitivity_rows = []
+        for tf_name in ("H4", "D1"):
+            tf_payload = dict(v185_holdout.get(tf_name) or {})
+            for horizon_key, item in dict(tf_payload.get("sensitivity") or {}).items():
+                item = dict(item or {})
+                sensitivity_rows.append(
+                    {
+                        "TF": tf_name,
+                        "horizon (jam)": item.get("horizon_hours"),
+                        "n": item.get("n"),
+                        "HOLD precision": item.get("precision_hold"),
+                        "Wilson lower 95%": item.get("wilson_lower_95"),
+                        "mean MFE (ATR)": item.get("mean_mfe_atr"),
+                        "mean MAE (ATR)": item.get("mean_mae_atr"),
+                    }
+                )
+        if sensitivity_rows:
+            st.dataframe(
+                pd.DataFrame(sensitivity_rows),
+                hide_index=True,
+                use_container_width=True,
+            )
+        v185_candidates = list(v185_eval.get("candidate_80_precision_subsets") or [])
+        st.info(
+            f"Keputusan V185: {v185_eval.get('decision','—')} • "
+            f"episode={v185_eval.get('episodes','—')} • "
+            f"subset holdout ≥80%={len(v185_candidates)}. "
+            "Horizon sensitivity memakai touch population yang sama; hasil tidak memiliki "
+            "promotion/execution authority."
+        )
+    else:
+        st.info(
+            "V185 belum menerbitkan hasil timeframe-aware. Setelah workflow 100K-bar selesai, "
+            "dashboard akan menampilkan H1/H4/D1 holdout dan sensitivity horizon."
         )
 
     st.markdown("### Validasi Prospektif Supply & Demand (V184)")
