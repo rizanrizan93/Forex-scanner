@@ -403,3 +403,140 @@ def test_v191_dom_and_v189_can_align_but_remain_shadow(monkeypatch):
     assert sd["path_direction_conflict"] is True
     assert sd["conflict_resolution_evidence"] == "M5_AND_DOM_ALIGNED_SHADOW"
     assert sd["execution_authority"] is False
+
+
+def test_v192_event_risk_is_context_only(monkeypatch):
+    now = datetime(2026, 9, 24, 12, 10, tzinfo=UTC)
+    monkeypatch.setattr(ctx, "latest_atlas", lambda store: (now, _atlas()))
+    monkeypatch.setattr(ctx, "latest_dom", lambda store: (now, {}))
+    monkeypatch.setattr(
+        ctx,
+        "latest_event_risk",
+        lambda store: (
+            now,
+            {
+                "risk": {
+                    "state": "PRE_EVENT",
+                    "action": "PREPARE_ONLY_AVOID_NEW_CHASE",
+                    "minutes_to_focal": 20.0,
+                    "focal_event": {
+                        "title": "Initial Jobless Claims",
+                        "scheduled_at": "2026-09-24T12:30:00+00:00",
+                        "scheduled_at_wib": "2026-09-24T19:30:00+07:00",
+                        "source_tier": "OFFICIAL_DOL_CADENCE_MATCHED",
+                        "source": "FOREX_FACTORY_WEEKLY",
+                    },
+                    "upcoming_events": [],
+                },
+                "official_or_cadence_verified_count": 1,
+                "discovery_unverified_count": 0,
+                "source_status": {"FOREX_FACTORY_WEEKLY": "OK:1"},
+            },
+        ),
+    )
+    out = ctx.attach_supply_demand_context(
+        DummyStore(),
+        {
+            "state": "NO_MAP_ZONE",
+            "continuation_direction": "SHORT",
+            "first_leg_direction": "LONG",
+        },
+        observed_at=now,
+    )
+    event = out["supply_demand_context"]["event_risk_context"]
+    assert event["state"] == "PRE_EVENT"
+    assert event["action"] == "PREPARE_ONLY_AVOID_NEW_CHASE"
+    assert event["execution_authority"] is False
+    assert out["supply_demand_context"]["execution_authority"] is False
+
+
+def test_v192_pre_event_keeps_m5_dom_alignment_shadow_only(monkeypatch):
+    now = datetime(2026, 9, 24, 12, 10, tzinfo=UTC)
+    atlas = _atlas()
+    atlas["path_map"] = {
+        "contract": "XAU_SUPPLY_DEMAND_PATH_ENGINE_V186",
+        "demand_to_supply": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "LONG",
+            "source_zone": {
+                "zone_id": "demand-overlap",
+                "timeframe": "H1",
+                "low": 4266.43,
+                "high": 4292.31,
+            },
+            "execution_authority": False,
+        },
+        "supply_to_demand": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "SHORT",
+            "source_zone": {
+                "zone_id": "supply-overlap",
+                "timeframe": "H1",
+                "low": 4277.82,
+                "high": 4298.55,
+            },
+            "execution_authority": False,
+        },
+        "active_path": {
+            "state": "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION",
+            "reaction_direction": "LONG",
+            "source_zone": {
+                "zone_id": "demand-overlap",
+                "timeframe": "H1",
+                "low": 4266.43,
+                "high": 4292.31,
+            },
+            "execution_authority": False,
+        },
+        "micro_refinement": {
+            "state": "M5_REFINEMENT_CONFIRMED_SHADOW",
+            "direction": "LONG",
+            "execution_authority": False,
+        },
+    }
+    monkeypatch.setattr(ctx, "latest_atlas", lambda store: (now, atlas))
+    monkeypatch.setattr(
+        ctx,
+        "latest_dom",
+        lambda store: (
+            now,
+            {
+                "state": "BID_DOMINANT",
+                "dom_pressure_score": 72.0,
+                "last_imbalance": 0.28,
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        ctx,
+        "latest_event_risk",
+        lambda store: (
+            now,
+            {
+                "risk": {
+                    "state": "PRE_EVENT",
+                    "action": "PREPARE_ONLY_AVOID_NEW_CHASE",
+                    "minutes_to_focal": 15.0,
+                    "focal_event": {
+                        "title": "CPI",
+                        "scheduled_at": "2026-09-24T12:25:00+00:00",
+                    },
+                    "upcoming_events": [],
+                }
+            },
+        ),
+    )
+    out = ctx.attach_supply_demand_context(
+        DummyStore(),
+        {
+            "state": "NO_MAP_ZONE",
+            "continuation_direction": "LONG",
+            "first_leg_direction": "SHORT",
+        },
+        observed_at=now,
+    )
+    sd = out["supply_demand_context"]
+    assert sd["path_direction_conflict"] is True
+    assert sd["conflict_resolution_evidence"] == "M5_DOM_ALIGNED_BUT_EVENT_RISK_WAIT"
+    assert sd["event_risk_context"]["state"] == "PRE_EVENT"
+    assert sd["execution_authority"] is False
