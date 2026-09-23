@@ -1,0 +1,69 @@
+name: XAU Supply Demand Timeframe V185
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/research_xau_supply_demand_timeframe_v185.py"
+      - "src/fx_scanner/research_xau_supply_demand_timeframe_v185_runtime.py"
+      - ".github/workflows/research-xau-supply-demand-timeframe-v185.yml"
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_supply_demand_timeframe_v185.py"
+      - "src/fx_scanner/research_xau_supply_demand_timeframe_v185_runtime.py"
+      - "tests/test_research_xau_supply_demand_timeframe_v185.py"
+      - ".github/workflows/research-xau-supply-demand-timeframe-v185.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-supply-demand-timeframe-v185
+  cancel-in-progress: true
+
+jobs:
+  supply-demand-timeframe-v185:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      CTRADER_XAU_M15_RESEARCH_HISTORY_BARS: "100000"
+      XAU_SUPPLY_DEMAND_TIMEFRAME_V185_OUTPUT: artifacts/xau-supply-demand-timeframe-v185.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Unit test V185
+        run: pytest -q tests/test_research_xau_supply_demand_timeframe_v185.py
+      - name: Run 100K-bar timeframe-aware supply-demand research
+        if: ${{ github.event_name != 'pull_request' }}
+        run: python -m fx_scanner.research_xau_supply_demand_timeframe_v185_runtime
+      - name: Upload V185 evidence
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-supply-demand-timeframe-v185
+          path: artifacts/xau-supply-demand-timeframe-v185.json
+          if-no-files-found: error
+          retention-days: 30
