@@ -9,7 +9,9 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 CONTRACT = "XAU_AFIC_SUPPLY_DEMAND_CONTEXT_V1"
 ATLAS_WORKER = "ctrader_demo_xau_supply_demand_atlas_v182"
+DOM_WORKER = "ctrader_demo_xau_dom_v191"
 MAX_ATLAS_AGE_MINUTES = 20
+MAX_DOM_AGE_MINUTES = 3
 NEAR_SAME_DIRECTION_ATR = 0.50
 NEAR_OPPOSITE_ATR = 0.75
 
@@ -135,6 +137,26 @@ def latest_atlas(
     return _dt(row.get("observed_at")), evaluation
 
 
+def latest_dom(
+    store: SupabaseOperationalStore,
+) -> tuple[datetime | None, dict[str, Any]]:
+    response = (
+        store.client.table("runtime_heartbeats")
+        .select("observed_at,healthy,details")
+        .eq("worker_name", DOM_WORKER)
+        .order("observed_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = list(response.data or [])
+    if not rows:
+        return None, {}
+    row = dict(rows[0])
+    details = dict(row.get("details") or {})
+    analysis = dict(details.get("analysis") or {})
+    return _dt(row.get("observed_at")), analysis
+
+
 def attach_supply_demand_context(
     store: SupabaseOperationalStore,
     payload: dict[str, Any],
@@ -143,6 +165,7 @@ def attach_supply_demand_context(
 ) -> dict[str, Any]:
     out = dict(payload)
     heartbeat_at, atlas = latest_atlas(store)
+    dom_heartbeat_at, dom = latest_dom(store)
     now = ensure_utc(observed_at)
     atlas_age_minutes = (
         None
@@ -153,6 +176,17 @@ def attach_supply_demand_context(
         heartbeat_at is None
         or atlas_age_minutes is None
         or atlas_age_minutes > MAX_ATLAS_AGE_MINUTES
+    )
+
+    dom_age_minutes = (
+        None
+        if dom_heartbeat_at is None
+        else max(0.0, (now - dom_heartbeat_at).total_seconds() / 60.0)
+    )
+    dom_stale = bool(
+        dom_heartbeat_at is None
+        or dom_age_minutes is None
+        or dom_age_minutes > MAX_DOM_AGE_MINUTES
     )
 
     continuation = str(out.get("continuation_direction") or "").upper()
@@ -202,6 +236,44 @@ def attach_supply_demand_context(
     last_price = _finite(atlas.get("last_closed_m15_price"))
     if last_price is None:
         last_price = _finite(out.get("map_price"))
+
+    dom_state = str(dom.get("state") or "UNAVAILABLE")
+    dom_score = _finite(dom.get("dom_pressure_score"))
+    dom_imbalance = _finite(dom.get("last_imbalance"))
+    if dom_stale:
+        dom_alignment = "DOM_STALE_NO_EFFECT"
+    elif first_leg == "LONG" and dom_state == "BID_DOMINANT":
+        dom_alignment = "SUPPORTS_FIRST_LEG"
+    elif first_leg == "LONG" and dom_state == "ASK_DOMINANT":
+        dom_alignment = "OPPOSES_FIRST_LEG"
+    elif first_leg == "SHORT" and dom_state == "ASK_DOMINANT":
+        dom_alignment = "SUPPORTS_FIRST_LEG"
+    elif first_leg == "SHORT" and dom_state == "BID_DOMINANT":
+        dom_alignment = "OPPOSES_FIRST_LEG"
+    else:
+        dom_alignment = "NEUTRAL_OR_CONTESTED"
+
+    micro_direction = str(micro_refinement.get("direction") or "").upper()
+    micro_state = str(micro_refinement.get("state") or "")
+    micro_confirmed = micro_state == "M5_REFINEMENT_CONFIRMED_SHADOW"
+    if (
+        not dom_stale
+        and path_direction_conflict
+        and micro_confirmed
+        and micro_direction in {"LONG", "SHORT"}
+    ):
+        aligned_dom_state = "BID_DOMINANT" if micro_direction == "LONG" else "ASK_DOMINANT"
+        opposed_dom_state = "ASK_DOMINANT" if micro_direction == "LONG" else "BID_DOMINANT"
+        if dom_state == aligned_dom_state:
+            conflict_resolution_evidence = "M5_AND_DOM_ALIGNED_SHADOW"
+        elif dom_state == opposed_dom_state:
+            conflict_resolution_evidence = "M5_DOM_DISAGREE_WAIT"
+        else:
+            conflict_resolution_evidence = "M5_CONFIRMED_DOM_NEUTRAL_WAIT"
+    elif path_direction_conflict:
+        conflict_resolution_evidence = "WAIT_M5_AND_DOM"
+    else:
+        conflict_resolution_evidence = "NO_PATH_CONFLICT"
 
     if continuation == "LONG":
         same_direction = nearest_demand
@@ -303,6 +375,26 @@ def attach_supply_demand_context(
         "active_reaction_path": active_path,
         "path_direction_conflict": path_direction_conflict,
         "path_overlap_ratio": path_overlap_ratio,
+        "dom_context": {
+            "worker": DOM_WORKER,
+            "observed_at": (
+                None if dom_heartbeat_at is None else dom_heartbeat_at.isoformat()
+            ),
+            "age_minutes": dom_age_minutes,
+            "stale": dom_stale,
+            "state": dom_state,
+            "pressure_score": dom_score,
+            "last_imbalance": dom_imbalance,
+            "top5_bid_units": dom.get("top5_bid_units"),
+            "top5_ask_units": dom.get("top5_ask_units"),
+            "bid_wall": dict(dom.get("bid_wall") or {}),
+            "ask_wall": dict(dom.get("ask_wall") or {}),
+            "alignment_with_first_leg": dom_alignment,
+            "source_scope": "CTRADER_BROKER_VENUE_LEVEL_II_NOT_COMEX",
+            "execution_influence": False,
+            "execution_authority": False,
+        },
+        "conflict_resolution_evidence": conflict_resolution_evidence,
         "path_conflict_state": (
             "OVERLAPPING_H1_SUPPLY_DEMAND_COMPRESSION_WAIT_MICRO_RESOLUTION"
             if path_direction_conflict
@@ -323,8 +415,9 @@ def attach_supply_demand_context(
         "interpretation": (
             "Supply/demand is AFIC context and preparation evidence only. "
             "Path mapping can identify the next opposing zone and internal waypoints. "
-            "If opposing H1 source zones overlap materially, the state is compression/conflict "
-            "and microstructure must resolve direction before any interpretation is upgraded."
+            "If opposing H1 source zones overlap materially, the state is compression/conflict. "
+            "V189 microstructure and V191 broker-venue DOM may provide aligned shadow evidence, "
+            "but neither can create execution authority."
         ),
     }
     out["supply_demand_context"] = context
