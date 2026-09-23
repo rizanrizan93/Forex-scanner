@@ -661,6 +661,7 @@ def _compact_path_zone(item: dict[str, Any] | None) -> dict[str, Any] | None:
         "age_bucket",
         "distance_points",
         "distance_atr",
+        "atr_points",
         "research_score",
         "htf_nesting_count",
         "strategic_alignment",
@@ -742,15 +743,22 @@ def _opposing_zone_candidates(
             continue
         item_low = float(item["low"])
         item_high = float(item["high"])
-        if reaction_direction == "LONG" and item_high <= source_high:
+        # Opposing destination must be fully ahead of the source zone.
+        # Partial overlap is context/confluence, not a valid path destination.
+        if reaction_direction == "LONG" and item_low <= source_high:
             continue
-        if reaction_direction == "SHORT" and item_low >= source_low:
+        if reaction_direction == "SHORT" and item_high >= source_low:
             continue
         candidates.append(item)
 
+    def path_gap(item: dict[str, Any]) -> float:
+        if reaction_direction == "LONG":
+            return max(0.0, float(item["low"]) - source_high)
+        return max(0.0, source_low - float(item["high"]))
+
     candidates.sort(
         key=lambda item: (
-            abs(_zone_mid(item) - _zone_mid(source)),
+            path_gap(item),
             -TIMEFRAME_PRIORITY.get(str(item.get("timeframe") or ""), 0),
             -float(item.get("research_score") or 0.0),
         )
@@ -779,10 +787,13 @@ def _build_directional_path(
     source_high = float(source["high"])
     in_source = source_low <= float(last_price) <= source_high
     if reaction_direction == "LONG":
-        start_price = max(float(last_price), source_high) if not in_source else float(last_price)
+        # Waypoints begin after price has reclaimed the demand proximal boundary;
+        # levels still inside demand are not reaction targets.
+        start_price = max(float(last_price), source_high)
         end_price = float(primary["low"]) if primary else start_price
     else:
-        start_price = min(float(last_price), source_low) if not in_source else float(last_price)
+        # Mirror rule for supply: targets begin below the supply proximal boundary.
+        start_price = min(float(last_price), source_low)
         end_price = float(primary["high"]) if primary else start_price
 
     internal_targets = (
