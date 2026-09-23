@@ -3,11 +3,15 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from fx_scanner.models import Bar
+from fx_scanner.demo_xau_afic_path_shadow_observer import OriginZone
 from fx_scanner.research_xau_zone_path_v174 import (
     CLAIM_PRECISION,
     MIN_CLAIM_PER_DIRECTION,
     ZonePathOutcome,
     ZoneScenario,
+    _approach_features,
+    _bar_invalidated_at,
+    _prior_touches,
     candidate_rules,
     evaluate_zone_path,
     precision_report,
@@ -130,3 +134,55 @@ def test_80_percent_claim_requires_both_directions_and_wilson_bound():
 def test_wilson_bound_blocks_small_or_merely_80_percent_sample():
     assert wilson_lower_bound(8, 10) < 0.80
     assert wilson_lower_bound(80, 100) < 0.80
+
+
+def test_local_window_helpers_match_unindexed_semantics():
+    start = datetime(2026, 9, 23, 0, 0, tzinfo=UTC)
+    rows = tuple(
+        _bar(
+            start + timedelta(minutes=15 * index),
+            95 + index * 0.2,
+            96 + index * 0.2,
+            94 + index * 0.2,
+            95.5 + index * 0.2,
+        )
+        for index in range(20)
+    )
+    # Force two touches and one later SHORT invalidation.
+    rows = list(rows)
+    rows[5] = _bar(start + timedelta(minutes=75), 99.5, 100.5, 98.5, 99.8)
+    rows[7] = _bar(start + timedelta(minutes=105), 100.0, 101.0, 99.2, 100.4)
+    rows[12] = _bar(start + timedelta(minutes=180), 101.5, 103.0, 101.0, 102.5)
+    rows = tuple(rows)
+    zone = OriginZone(
+        direction="SHORT",
+        available_at=start + timedelta(minutes=60),
+        bos_at=start + timedelta(minutes=60),
+        bos_level=99.0,
+        low=100.0,
+        high=102.0,
+        h1_atr=4.0,
+        origin_at=start + timedelta(minutes=45),
+        displacement_range_atr=1.5,
+        displacement_body_fraction=0.7,
+    )
+    times = tuple(row.timestamp for row in rows)
+    map_at = start + timedelta(minutes=150)
+
+    assert _prior_touches(zone, rows, map_at=map_at) == _prior_touches(
+        zone,
+        rows,
+        map_at=map_at,
+        bar_times=times,
+    )
+    assert _bar_invalidated_at(zone, rows) == _bar_invalidated_at(
+        zone,
+        rows,
+        bar_times=times,
+    )
+    assert _approach_features(rows, map_at=map_at, zone=zone) == _approach_features(
+        rows,
+        map_at=map_at,
+        zone=zone,
+        bar_times=times,
+    )
