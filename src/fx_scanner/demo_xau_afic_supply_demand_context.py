@@ -99,6 +99,7 @@ def _compact_zone(zone: dict[str, Any] | None) -> dict[str, Any] | None:
         "age_hours",
         "distance_points",
         "distance_atr",
+        "atr_points",
         "research_score",
         "strategic_alignment",
         "session_context",
