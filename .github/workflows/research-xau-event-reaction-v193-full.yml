@@ -11,11 +11,9 @@ on:
       - "src/fx_scanner/research_xau_event_reaction_v193.py"
       - "src/fx_scanner/research_xau_event_reaction_v193_year_runtime.py"
       - "src/fx_scanner/research_xau_histdata_download_v193.py"
-      - "src/fx_scanner/research_xau_event_parity_v193.py"
       - "src/fx_scanner/research_xau_event_walkforward_v193.py"
       - "tests/test_research_xau_event_full_v193.py"
       - "tests/test_research_xau_event_reaction_v193.py"
-      - "tests/test_research_xau_event_parity_v193.py"
       - "tests/test_research_xau_event_walkforward_v193.py"
       - ".github/workflows/research-xau-event-reaction-v193-full.yml"
 
