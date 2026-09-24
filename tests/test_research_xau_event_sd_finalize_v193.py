@@ -17,16 +17,24 @@ def test_final_decision_is_fail_closed_until_all_gates_pass():
         base_ready=True,
         sd_ready=False,
         parity_ready=True,
+        timestamp_audit_ready=True,
     ) == "SUPPLY_DEMAND_CONDITIONING_INCOMPLETE"
     assert final_decision(
         base_ready=True,
         sd_ready=True,
         parity_ready=False,
+        timestamp_audit_ready=True,
     ) == "AWAIT_CURRENT_PARITY"
     assert final_decision(
         base_ready=True,
         sd_ready=True,
         parity_ready=True,
+    ) == "TIMESTAMP_AUDIT_REQUIRED"
+    assert final_decision(
+        base_ready=True,
+        sd_ready=True,
+        parity_ready=True,
+        timestamp_audit_ready=True,
     ) == "FULL_BACKFILL_RESEARCH_READY"
 
 
@@ -46,3 +54,12 @@ def test_supply_demand_state_coverage_excludes_errors_and_deferred_rows():
     ):
         assert year_valid_sd_state(value) is True
         assert final_valid_sd_state(value) is True
+
+
+def test_timestamp_audit_blocks_even_when_sd_and_parity_pass():
+    assert final_decision(
+        base_ready=True,
+        sd_ready=True,
+        parity_ready=True,
+        timestamp_audit_ready=False,
+    ) == "TIMESTAMP_AUDIT_REQUIRED"

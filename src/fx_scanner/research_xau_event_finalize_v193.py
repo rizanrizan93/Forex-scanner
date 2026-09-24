@@ -91,9 +91,12 @@ def final_decision(
     base_ready: bool,
     sd_ready: bool,
     parity_ready: bool,
+    timestamp_audit_ready: bool = False,
 ) -> str:
     if not base_ready:
         return "BASE_REACTION_BACKFILL_NOT_READY"
+    if not timestamp_audit_ready:
+        return "TIMESTAMP_AUDIT_REQUIRED"
     if not sd_ready:
         return "SUPPLY_DEMAND_CONDITIONING_INCOMPLETE"
     if not parity_ready:
@@ -236,10 +239,16 @@ def run() -> int:
     )
     parity_ready = parity_current and parity_decision == "PARITY_DESCRIPTIVE_AVAILABLE"
 
+    # Hard fail-closed gate. The historical event timestamp contract must be
+    # independently audited before V193 can become prospective-ready. This stays
+    # False until a dedicated timestamp-audit worker proves archive/supplement
+    # timestamps against official releases.
+    timestamp_audit_ready = False
     decision = final_decision(
         base_ready=base_ready,
         sd_ready=sd_ready,
         parity_ready=parity_ready,
+        timestamp_audit_ready=timestamp_audit_ready,
     )
 
     artifact = {
@@ -272,7 +281,15 @@ def run() -> int:
             "coverage": parity_result.get("coverage"),
             "horizons": parity_result.get("horizons"),
         },
-        "research_stage": "POST_WALK_FORWARD_SD_AND_PARITY_FINAL_GATE",
+        "timestamp_audit_gate": {
+            "ready": timestamp_audit_ready,
+            "decision": "TIMESTAMP_AUDIT_REQUIRED",
+            "reason": (
+                "Historical event timestamps must be verified against official "
+                "release schedules before prospective activation."
+            ),
+        },
+        "research_stage": "POST_WALK_FORWARD_SD_PARITY_AND_TIMESTAMP_FINAL_GATE",
         "decision": decision,
         "policy_effect": "RESEARCH_ONLY",
         "execution_influence": False,
@@ -300,6 +317,7 @@ def run() -> int:
         "sd_years_complete": years_complete,
         "parity_decision": parity_decision,
         "parity_current_for_base": parity_current,
+        "timestamp_audit_ready": timestamp_audit_ready,
         "execution_influence": False,
         "execution_authority": False,
         "promotion_authority": False,
