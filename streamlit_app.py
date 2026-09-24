@@ -646,8 +646,26 @@ with forecast_tab:
         or afic_sd_context.get("micro_refinement")
         or {}
     )
-    dc_refined = dict(dc_micro.get("refined_entry_pocket") or {})
-    dc_candidate = dict(dc_micro.get("candidate_entry_pocket") or {})
+    dc_current_pocket_state = str(
+        dc_projection_current.get("pocket_state") or ""
+    ).upper()
+    dc_current_projected_pocket = dict(
+        dc_projection_current.get("m5_pocket") or {}
+    )
+    if dc_projection_current:
+        dc_refined = (
+            dc_current_projected_pocket
+            if dc_current_pocket_state == "REFINED_M5_POCKET"
+            else {}
+        )
+        dc_candidate = (
+            dc_current_projected_pocket
+            if dc_current_pocket_state == "CANDIDATE_M5_POCKET"
+            else {}
+        )
+    else:
+        dc_refined = dict(dc_micro.get("refined_entry_pocket") or {})
+        dc_candidate = dict(dc_micro.get("candidate_entry_pocket") or {})
     dc_current_leg_direction = str(
         dc_projection_current.get("direction")
         or dc_micro.get("direction")
@@ -666,8 +684,20 @@ with forecast_tab:
         or {}
     )
     dc_next_micro = dict(dc_projection_next.get("micro_refinement") or {})
-    dc_next_refined = dict(dc_next_micro.get("refined_entry_pocket") or {})
-    dc_next_candidate = dict(dc_next_micro.get("candidate_entry_pocket") or {})
+    dc_next_pocket_state = str(
+        dc_projection_next.get("pocket_state") or ""
+    ).upper()
+    dc_next_projected_pocket = dict(dc_projection_next.get("m5_pocket") or {})
+    dc_next_refined = (
+        dc_next_projected_pocket
+        if dc_next_pocket_state == "REFINED_M5_POCKET"
+        else {}
+    )
+    dc_next_candidate = (
+        dc_next_projected_pocket
+        if dc_next_pocket_state == "CANDIDATE_M5_POCKET"
+        else {}
+    )
     dc_next_leg_direction = str(
         dc_projection_next.get("direction")
         or ("SHORT" if dc_current_leg_direction == "LONG" else "LONG")
@@ -903,7 +933,18 @@ with forecast_tab:
             f"opposing zone={dc_current_terminal_text}."
         )
 
-    if dc_next_refined or dc_next_candidate:
+    if dc_next_pocket_state == "INVALIDATED_M5_POCKET":
+        st.warning(
+            f"Candidate M5 **{dc_next_leg_direction}** sebelumnya sudah **INVALIDATED** • "
+            f"state={dc_next_micro.get('state','—')}. "
+            "Pocket lama tidak lagi ditampilkan sebagai setup aktif. "
+            f"Parent watch zone tetap {_fmt_price(dc_next_leg_source.get('low'))}–"
+            f"{_fmt_price(dc_next_leg_source.get('high'))}; scanner menunggu sweep/reclaim/MSS/"
+            "displacement M5 yang baru sebelum membentuk candidate baru. "
+            f"Projected path jika setup baru nanti valid: reaction target={dc_next_target_text} • "
+            f"terminal zone={dc_next_terminal_text}."
+        )
+    elif dc_next_refined or dc_next_candidate:
         dc_next_pocket = dc_next_refined or dc_next_candidate
         dc_next_label = "REFINED" if dc_next_refined else "Candidate"
         st.info(
