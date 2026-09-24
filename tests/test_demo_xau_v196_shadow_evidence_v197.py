@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 from fx_scanner.demo_xau_v196_shadow_evidence_v197 import (
     PocketSnapshot,
+    _preserve_first_enrollment,
     _snapshots_from_heartbeats,
     evaluate_pocket_outcome,
 )
@@ -177,3 +178,27 @@ def test_v197_enrolls_first_valid_v196_heartbeat_and_no_invalidated_pocket():
     assert rows[0].leg_role == "current_leg"
     assert rows[0].direction == "LONG"
     assert rows[0].observed_at == datetime(2026, 9, 24, 6, 40, tzinfo=UTC)
+
+
+def test_v197_preserves_first_enrollment_across_runtime_cycles():
+    snap = _snapshot("LONG")
+    later = PocketSnapshot(
+        episode_key=snap.episode_key,
+        observed_at=datetime(2026, 9, 24, 7, 0, tzinfo=UTC),
+        leg_role=snap.leg_role,
+        direction=snap.direction,
+        pocket_state=snap.pocket_state,
+        pocket_low=snap.pocket_low,
+        pocket_high=snap.pocket_high,
+        pocket_origin_at=snap.pocket_origin_at,
+        source_role=snap.source_role,
+        source_zone=snap.source_zone,
+        reaction_target=snap.reaction_target,
+        terminal_zone=snap.terminal_zone,
+        projection_state=snap.projection_state,
+    )
+    preserved = _preserve_first_enrollment(
+        later,
+        {snap.episode_key: datetime(2026, 9, 24, 6, 0, tzinfo=UTC)},
+    )
+    assert preserved.observed_at == datetime(2026, 9, 24, 6, 0, tzinfo=UTC)
