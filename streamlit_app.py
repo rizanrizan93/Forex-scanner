@@ -1396,6 +1396,12 @@ with forecast_tab:
                     str(item.get("role") or "—")
                     for item in list(last_pocket.get("role_timeline") or [])
                 )
+                lead_minutes = last_pocket.get("premap_lead_minutes")
+                lead_text = (
+                    "—"
+                    if lead_minutes is None
+                    else f"{float(lead_minutes):.0f} mnt"
+                )
                 st.info(
                     "Pocket fisik terbaru: "
                     f"**{last_pocket.get('direction','—')} "
@@ -1404,7 +1410,7 @@ with forecast_tab:
                     f"role={roles or '—'} • "
                     f"first seen={_fmt_wib_datetime(last_pocket.get('first_seen_at'), seconds=False)} • "
                     f"first touch={_fmt_wib_datetime(last_pocket.get('first_touch_at'), seconds=False)} • "
-                    f"lead={'—' if last_pocket.get('premap_lead_minutes') is None else f\"{float(last_pocket.get('premap_lead_minutes')):.0f} mnt\"} • "
+                    f"lead={lead_text} • "
                     f"status={last_pocket.get('status','—')}."
                 )
 
