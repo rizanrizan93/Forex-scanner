@@ -110,6 +110,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v196_shadow_evidence_v197
 
+      - name: Analyze V196/V197 evidence and full paths
+        id: analyze_xau_v198_evidence
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v198_evidence_analytics
+
       - name: Enforce pair-specific max-hold exits
         id: pair_time_exit
         if: ${{ always() && !cancelled() }}

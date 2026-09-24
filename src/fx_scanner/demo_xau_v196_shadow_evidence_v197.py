@@ -332,22 +332,35 @@ def _heartbeats(
     return tuple(dict(row) for row in (response.data or []))
 
 
-def _existing_enrollment_times(
+def _existing_evidence_rows(
     store: SupabaseOperationalStore,
-) -> dict[str, datetime]:
+) -> dict[str, dict[str, Any]]:
     response = (
         store.client.table("xau_outcome_ledger")
-        .select("episode_key,observed_at")
+        .select(
+            "episode_key,observed_at,direction,entry_price,tp1_price,tp2_price,metadata"
+        )
         .eq("episode_type", EPISODE_TYPE)
         .eq("strategy_id", STRATEGY_ID)
         .limit(5000)
         .execute()
     )
-    output: dict[str, datetime] = {}
-    for row in list(response.data or []):
+    output: dict[str, dict[str, Any]] = {}
+    for raw in list(response.data or []):
+        row = dict(raw)
         key = str(row.get("episode_key") or "")
+        if key:
+            output[key] = row
+    return output
+
+
+def _existing_enrollment_times(
+    store: SupabaseOperationalStore,
+) -> dict[str, datetime]:
+    output: dict[str, datetime] = {}
+    for key, row in _existing_evidence_rows(store).items():
         observed = _dt(row.get("observed_at"))
-        if key and observed is not None:
+        if observed is not None:
             output[key] = observed
     return output
 
@@ -362,11 +375,84 @@ def _preserve_first_enrollment(
     return replace(snapshot, observed_at=previous)
 
 
+def _snapshot_from_ledger_row(
+    row: dict[str, Any],
+) -> PocketSnapshot | None:
+    metadata = dict(row.get("metadata") or {})
+    observed_at = _dt(row.get("observed_at"))
+    direction = str(row.get("direction") or "").upper()
+    low = _finite(metadata.get("pocket_low"))
+    high = _finite(metadata.get("pocket_high"))
+    if (
+        observed_at is None
+        or direction not in {"LONG", "SHORT"}
+        or low is None
+        or high is None
+        or high < low
+    ):
+        return None
+    key = str(row.get("episode_key") or "")
+    if not key:
+        return None
+    return PocketSnapshot(
+        episode_key=key,
+        observed_at=observed_at,
+        leg_role=str(metadata.get("leg_role") or ""),
+        direction=direction,
+        pocket_state=str(metadata.get("pocket_state_at_enrollment") or ""),
+        pocket_low=low,
+        pocket_high=high,
+        pocket_origin_at=(
+            str(metadata.get("pocket_origin_at"))
+            if metadata.get("pocket_origin_at") not in {None, ""}
+            else None
+        ),
+        source_role=(
+            str(metadata.get("source_role"))
+            if metadata.get("source_role") not in {None, ""}
+            else None
+        ),
+        source_zone=dict(metadata.get("source_zone") or {}),
+        reaction_target=(
+            _finite(metadata.get("reaction_target"))
+            if metadata.get("reaction_target") is not None
+            else _finite(row.get("tp1_price"))
+        ),
+        terminal_zone=dict(metadata.get("terminal_zone") or {}),
+        projection_state=str(metadata.get("projection_state_at_enrollment") or ""),
+    )
+
+
+def _freeze_snapshot_geometry(
+    snapshot: PocketSnapshot,
+    existing_rows: dict[str, dict[str, Any]],
+    *,
+    now: datetime,
+) -> tuple[PocketSnapshot, str, datetime]:
+    previous = dict(existing_rows.get(snapshot.episode_key) or {})
+    if not previous:
+        return snapshot, "IMMUTABLE_V198", ensure_utc(now)
+
+    metadata = dict(previous.get("metadata") or {})
+    frozen = _snapshot_from_ledger_row(previous)
+    if frozen is None:
+        previous_time = _dt(previous.get("observed_at"))
+        if previous_time is not None and previous_time < snapshot.observed_at:
+            snapshot = replace(snapshot, observed_at=previous_time)
+        frozen = snapshot
+
+    cohort = str(metadata.get("evidence_cohort") or "LEGACY_V197_PRE_FREEZE")
+    frozen_at = _dt(metadata.get("geometry_frozen_at")) or ensure_utc(now)
+    return frozen, cohort, frozen_at
+
+
 def _ledger_row(
     *,
     snapshot: PocketSnapshot,
     outcome: PocketOutcome,
     now: datetime,
+    evidence_cohort: str = "IMMUTABLE_V198",
+    geometry_frozen_at: datetime | None = None,
 ) -> dict[str, Any]:
     terminal_low = _finite(snapshot.terminal_zone.get("low"))
     terminal_high = _finite(snapshot.terminal_zone.get("high"))
@@ -419,6 +505,13 @@ def _ledger_row(
             "source_contract": SOURCE_CONTRACT,
             "evidence_class": "PROSPECTIVE_SHADOW_GEOMETRY",
             "prospective": True,
+            "immutable_forecast_geometry": True,
+            "immutable_geometry_contract": "V197_GEOMETRY_FREEZE_V198",
+            "geometry_frozen_at": ensure_utc(
+                geometry_frozen_at or now
+            ).isoformat(),
+            "evidence_cohort": evidence_cohort,
+            "strict_analytics_eligible": evidence_cohort == "IMMUTABLE_V198",
             "order_required": False,
             "counts_without_order": True,
             "not_trade_pnl_evidence": True,
@@ -488,11 +581,16 @@ def run() -> int:
     try:
         heartbeats = _heartbeats(store, cutoff=cutoff)
         snapshots = _snapshots_from_heartbeats(heartbeats)
-        existing_enrollments = _existing_enrollment_times(store)
-        snapshots = tuple(
-            _preserve_first_enrollment(snapshot, existing_enrollments)
+        existing_rows = _existing_evidence_rows(store)
+        frozen_states = tuple(
+            _freeze_snapshot_geometry(
+                snapshot,
+                existing_rows,
+                now=now,
+            )
             for snapshot in snapshots
         )
+        snapshots = tuple(item[0] for item in frozen_states)
 
         feed.ensure_connected()
         raw = tuple(
@@ -510,8 +608,10 @@ def run() -> int:
                 snapshot=snapshot,
                 outcome=evaluate_pocket_outcome(bars, snapshot=snapshot, as_of=now),
                 now=now,
+                evidence_cohort=evidence_cohort,
+                geometry_frozen_at=geometry_frozen_at,
             )
-            for snapshot in snapshots
+            for snapshot, evidence_cohort, geometry_frozen_at in frozen_states
         )
         written = _upsert(store, rows)
     except Exception as exc:
@@ -550,6 +650,9 @@ def run() -> int:
             "order_required_for_evidence": False,
             "evidence_is_not_trade_pnl": True,
             "first_enrollment_timestamp_preserved": True,
+            "forecast_geometry_immutable": True,
+            "immutable_geometry_contract": "V197_GEOMETRY_FREEZE_V198",
+            "strict_analytics_eligible_new_episodes": True,
             "lookback_days": LOOKBACK_DAYS,
             "outcome_horizon_hours": OUTCOME_HORIZON_HOURS,
             "closed_m5_bars": len(bars),

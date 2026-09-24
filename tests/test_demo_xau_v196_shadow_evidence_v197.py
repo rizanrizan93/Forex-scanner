@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 from fx_scanner.demo_xau_v196_shadow_evidence_v197 import (
     PocketSnapshot,
+    _freeze_snapshot_geometry,
     _preserve_first_enrollment,
     _snapshots_from_heartbeats,
     evaluate_pocket_outcome,
@@ -202,3 +203,72 @@ def test_v197_preserves_first_enrollment_across_runtime_cycles():
         {snap.episode_key: datetime(2026, 9, 24, 6, 0, tzinfo=UTC)},
     )
     assert preserved.observed_at == datetime(2026, 9, 24, 6, 0, tzinfo=UTC)
+
+
+def test_v197_freezes_entire_forecast_geometry_from_existing_ledger_row():
+    incoming = _snapshot("LONG")
+    incoming = PocketSnapshot(
+        episode_key=incoming.episode_key,
+        observed_at=datetime(2026, 9, 24, 7, 0, tzinfo=UTC),
+        leg_role=incoming.leg_role,
+        direction=incoming.direction,
+        pocket_state="REFINED_M5_POCKET",
+        pocket_low=incoming.pocket_low,
+        pocket_high=incoming.pocket_high,
+        pocket_origin_at=incoming.pocket_origin_at,
+        source_role="NEW_ROLE_SHOULD_NOT_REPLACE",
+        source_zone={"zone_id": "source-1", "distal": 93.0, "high": 999.0},
+        reaction_target=108.0,
+        terminal_zone={"low": 111.0, "high": 150.0},
+        projection_state="LATER_RUNTIME_STATE",
+    )
+    existing = {
+        incoming.episode_key: {
+            "episode_key": incoming.episode_key,
+            "observed_at": "2026-09-24T06:00:00+00:00",
+            "direction": "LONG",
+            "tp1_price": 110.0,
+            "tp2_price": 114.0,
+            "metadata": {
+                "leg_role": "current_leg",
+                "pocket_state_at_enrollment": "CANDIDATE_M5_POCKET",
+                "pocket_low": 100.0,
+                "pocket_high": 102.0,
+                "pocket_origin_at": "2026-09-24T05:55:00+00:00",
+                "source_role": None,
+                "source_zone": {"zone_id": "source-1", "distal": 95.0},
+                "reaction_target": 110.0,
+                "terminal_zone": {"low": 114.0, "high": 118.0},
+                "projection_state_at_enrollment": "ORIGINAL_STATE",
+                "evidence_cohort": "LEGACY_V197_PRE_FREEZE",
+                "geometry_frozen_at": "2026-09-24T06:30:00+00:00",
+            },
+        }
+    }
+
+    frozen, cohort, frozen_at = _freeze_snapshot_geometry(
+        incoming,
+        existing,
+        now=datetime(2026, 9, 24, 8, 0, tzinfo=UTC),
+    )
+
+    assert frozen.observed_at == datetime(2026, 9, 24, 6, 0, tzinfo=UTC)
+    assert frozen.pocket_state == "CANDIDATE_M5_POCKET"
+    assert frozen.source_zone == {"zone_id": "source-1", "distal": 95.0}
+    assert frozen.reaction_target == 110.0
+    assert frozen.terminal_zone == {"low": 114.0, "high": 118.0}
+    assert frozen.projection_state == "ORIGINAL_STATE"
+    assert cohort == "LEGACY_V197_PRE_FREEZE"
+    assert frozen_at == datetime(2026, 9, 24, 6, 30, tzinfo=UTC)
+
+
+def test_v197_new_episode_is_strict_immutable_v198_cohort():
+    snap = _snapshot("SHORT")
+    frozen, cohort, frozen_at = _freeze_snapshot_geometry(
+        snap,
+        {},
+        now=datetime(2026, 9, 24, 8, 0, tzinfo=UTC),
+    )
+    assert frozen == snap
+    assert cohort == "IMMUTABLE_V198"
+    assert frozen_at == datetime(2026, 9, 24, 8, 0, tzinfo=UTC)
