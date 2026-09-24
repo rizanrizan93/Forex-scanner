@@ -130,12 +130,6 @@ def test_v197_ignores_pre_fix_reverse_leg_heartbeats():
             "source_zone": {"zone_id": "d1", "distal": 95},
             "reaction_target": {"price": 110},
             "terminal_target_zone": {"low": 114, "high": 118},
-            "target_ladder": [
-                {"role": "CHECKPOINT", "price": 106.0, "source": "TEST_CP1"},
-                {"role": "CHECKPOINT", "price": 108.0, "source": "TEST_CP2"},
-                {"role": "REACTION_TARGET", "price": 110.0},
-                {"role": "TERMINAL_OPPOSING_ZONE", "low": 114.0, "high": 118.0},
-            ],
             "micro_refinement": {"state": "M5_RECLAIM_WAIT_MSS"},
         },
         "next_leg": {
@@ -166,6 +160,12 @@ def test_v197_enrolls_first_valid_v196_heartbeat_and_no_invalidated_pocket():
             "source_zone": {"zone_id": "d1", "distal": 95},
             "reaction_target": {"price": 110},
             "terminal_target_zone": {"low": 114, "high": 118},
+            "target_ladder": [
+                {"role": "CHECKPOINT", "price": 106.0, "source": "TEST_CP1"},
+                {"role": "CHECKPOINT", "price": 108.0, "source": "TEST_CP2"},
+                {"role": "REACTION_TARGET", "price": 110.0},
+                {"role": "TERMINAL_OPPOSING_ZONE", "low": 114.0, "high": 118.0},
+            ],
             "micro_refinement": {"state": "M5_RECLAIM_WAIT_MSS"},
         },
         "next_leg": {
