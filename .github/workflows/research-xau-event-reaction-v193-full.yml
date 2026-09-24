@@ -8,11 +8,14 @@ on:
       - "src/fx_scanner/research_xau_event_supplement_v193.py"
       - "src/fx_scanner/research_xau_event_corpus_v193_full_runtime.py"
       - "src/fx_scanner/research_xau_event_conditioning_v193.py"
+      - "src/fx_scanner/research_xau_event_reaction_v193.py"
       - "src/fx_scanner/research_xau_event_reaction_v193_year_runtime.py"
       - "src/fx_scanner/research_xau_histdata_download_v193.py"
       - "src/fx_scanner/research_xau_event_parity_v193.py"
       - "src/fx_scanner/research_xau_event_walkforward_v193.py"
       - "tests/test_research_xau_event_full_v193.py"
+      - "tests/test_research_xau_event_reaction_v193.py"
+      - "tests/test_research_xau_event_parity_v193.py"
       - "tests/test_research_xau_event_walkforward_v193.py"
       - ".github/workflows/research-xau-event-reaction-v193-full.yml"
 
@@ -45,7 +48,11 @@ jobs:
           pip install beautifulsoup4==4.13.4 pytest==9.0.2
       - name: Unit tests for corpus/conditioning
         run: |
-          pytest -q             tests/test_research_xau_event_full_v193.py             tests/test_research_xau_event_walkforward_v193.py
+          pytest -q \
+            tests/test_research_xau_event_full_v193.py \
+            tests/test_research_xau_event_reaction_v193.py \
+            tests/test_research_xau_event_parity_v193.py \
+            tests/test_research_xau_event_walkforward_v193.py
       - name: Build full USD event corpus through current date
         run: python -m fx_scanner.research_xau_event_corpus_v193_full_runtime
       - name: Upload full event corpus
