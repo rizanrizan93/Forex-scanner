@@ -12,6 +12,7 @@ from .config import load_project_config
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .models import Bar
+from .research_xau_event_reaction_v193 import reaction_metrics_from_bars
 from .storage.supabase_operational import SupabaseOperationalStore
 
 WORKER_NAME = "ctrader_xau_event_parity_v193"
@@ -46,44 +47,15 @@ def _sign(value: float | None) -> str | None:
     return "FLAT"
 
 
-def _atr14(rows: tuple[Bar, ...], event_at: datetime) -> float | None:
-    before = [row for row in rows if row.timestamp < event_at]
-    if len(before) < 15:
-        return None
-    sample = before[-15:]
-    trs = []
-    for i in range(1, len(sample)):
-        row = sample[i]
-        prev = sample[i - 1]
-        tr = max(
-            float(row.high) - float(row.low),
-            abs(float(row.high) - float(prev.close)),
-            abs(float(row.low) - float(prev.close)),
-        )
-        trs.append(tr)
-    if len(trs) < 14:
-        return None
-    atr = sum(trs[-14:]) / 14.0
-    return atr if atr > 0 else None
-
-
 def _reaction(rows: tuple[Bar, ...], event_at: datetime) -> dict[str, float | None]:
-    ordered = tuple(sorted(rows, key=lambda row: row.timestamp))
-    before = [row for row in ordered if row.timestamp < event_at]
-    if not before:
+    metrics = reaction_metrics_from_bars(rows, event_at=event_at)
+    if metrics is None:
         return {}
-    p0 = float(before[-1].close)
-    atr = _atr14(ordered, event_at)
-    out: dict[str, float | None] = {}
-    for minutes in (5, 15, 30, 60):
-        target = event_at + timedelta(minutes=minutes)
-        post = next((row for row in ordered if row.timestamp >= target), None)
-        if post is None:
-            out[f"r{minutes}m_atr"] = None
-            continue
-        change = float(post.close) - p0
-        out[f"r{minutes}m_atr"] = None if atr is None else change / atr
-    return out
+    return {
+        key: value
+        for key, value in metrics.items()
+        if key in {"r5m_atr", "r15m_atr", "r30m_atr", "r60m_atr"}
+    }
 
 
 def _load_rows(path: Path) -> list[dict[str, Any]]:
@@ -192,10 +164,10 @@ def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
             bars = tuple(
                 feed.historical_bars(
                     SYMBOL,
-                    "M5",
+                    "M1",
                     from_time=event_at - timedelta(hours=6),
                     to_time=event_at + timedelta(hours=2),
-                    count=300,
+                    count=800,
                 )
             )
         except Exception:
