@@ -31,6 +31,7 @@ def _path(direction="LONG", timeframe="H1"):
         "high": 110.0,
         "proximal": 105.0 if direction == "LONG" else 105.0,
         "distal": 100.0 if direction == "LONG" else 110.0,
+        "available_at": "2026-09-23T18:00:00+00:00",
     }
     return {
         "active_path": {
@@ -124,3 +125,87 @@ def test_long_touch_without_mss_remains_prepare_only():
     assert result["mss_confirmed"] is False
     assert result["state"] == "M5_RECLAIM_WAIT_MSS"
     assert result["refined_entry_pocket"] is None
+
+
+def test_v189_ignores_touch_before_source_available_at():
+    t0 = datetime(2026, 9, 23, 18, 0, tzinfo=UTC)
+    path = _path()
+    path["active_path"]["source_zone"]["available_at"] = (
+        t0 + timedelta(minutes=120)
+    ).isoformat()
+    bars = []
+    for i in range(50):
+        ts = t0 + timedelta(minutes=5 * i)
+        if i == 10:
+            bars.append(_bar(ts, 108.0, 109.0, 101.0, 103.0))
+        else:
+            bars.append(_bar(ts, 115.0, 116.0, 114.0, 115.0))
+
+    result = evaluate_micro_refinement(
+        tuple(bars),
+        path_map=path,
+        as_of=t0 + timedelta(minutes=5 * 51),
+    )
+    assert result["state"] == "WAIT_SOURCE_TOUCH"
+    assert result["pre_source_touch_count_ignored"] == 1
+    assert result["source_available_at"] == (
+        t0 + timedelta(minutes=120)
+    ).isoformat()
+
+
+def test_v189_uses_only_post_source_touch_for_refinement():
+    t0 = datetime(2026, 9, 23, 18, 0, tzinfo=UTC)
+    path = _path()
+    available = t0 + timedelta(minutes=100)
+    path["active_path"]["source_zone"]["available_at"] = available.isoformat()
+    bars = []
+    for i in range(50):
+        ts = t0 + timedelta(minutes=5 * i)
+        if i == 10:
+            # Deeper stale touch before source availability. Must be ignored.
+            bars.append(_bar(ts, 108.0, 109.0, 100.5, 103.0))
+        elif i == 22:
+            bars.append(_bar(ts, 107.0, 111.0, 106.0, 108.0))
+        elif i == 25:
+            # First eligible post-source sweep.
+            bars.append(_bar(ts, 108.0, 108.5, 102.0, 103.0))
+        elif i == 26:
+            bars.append(_bar(ts, 103.0, 107.0, 102.5, 106.0))
+        elif i == 27:
+            bars.append(_bar(ts, 106.0, 113.5, 105.5, 112.5))
+        else:
+            bars.append(_bar(ts, 106.0, 109.0, 105.5, 107.0))
+
+    result = evaluate_micro_refinement(
+        tuple(bars),
+        path_map=path,
+        as_of=t0 + timedelta(minutes=5 * 51),
+    )
+    assert result["state"] == "M5_REFINEMENT_CONFIRMED_SHADOW"
+    assert result["sweep"]["price"] == 102.0
+    assert result["sweep"]["at"] == (t0 + timedelta(minutes=125)).isoformat()
+    assert result["pre_source_touch_count_ignored"] >= 1
+    assert result["refined_entry_pocket"]["origin_at"] >= available.isoformat()
+
+
+def test_v189_fails_closed_when_source_available_at_missing():
+    t0 = datetime(2026, 9, 23, 18, 0, tzinfo=UTC)
+    path = _path()
+    path["active_path"]["source_zone"].pop("available_at")
+    bars = tuple(
+        _bar(
+            t0 + timedelta(minutes=5 * i),
+            106.0,
+            109.0,
+            105.0,
+            107.0,
+        )
+        for i in range(50)
+    )
+    result = evaluate_micro_refinement(
+        bars,
+        path_map=path,
+        as_of=t0 + timedelta(minutes=5 * 51),
+    )
+    assert result["state"] == "SOURCE_AVAILABILITY_UNKNOWN_NO_REFINEMENT"
+    assert result["refined_entry_pocket"] if "refined_entry_pocket" in result else None is None
