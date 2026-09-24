@@ -727,3 +727,17 @@ create index if not exists broker_order_events_event_code_observed_idx
   on public.broker_order_events (event_type, code, observed_at desc);
 
 -- Contract marker: XAU_PROSPECTIVE_OUTCOME_LEDGER_V1
+
+
+-- V206 signal query budget: latest-signals dashboard path orders globally by
+-- observed_at and cannot use the state- or symbol-prefixed indexes. This small
+-- index removes a full signals scan+sort on each cached dashboard refresh.
+-- Retention remains conservative: V206 does not delete historical signals.
+create index if not exists signals_observed_at_desc_idx
+  on public.signals (observed_at desc);
+
+-- V206 HOT/WARM/COLD retention contract (policy marker only):
+-- HOT: recent/active operational signals; WARM: research history retained in
+-- signals; COLD deletion remains delegated to fx_storage_guard_v1 only under
+-- HIGH/CRITICAL storage pressure with execution/evidence exclusions intact.
+-- Contract marker: FOREX_SCANNER_SIGNAL_QUERY_BUDGET_V206
