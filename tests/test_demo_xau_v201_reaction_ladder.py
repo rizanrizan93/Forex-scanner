@@ -25,6 +25,7 @@ def _row(
     mae=0.0,
     target=4270.0,
     checkpoint=None,
+    checkpoints=None,
     strict=True,
 ):
     return {
@@ -51,6 +52,7 @@ def _row(
             "pocket_origin_at": origin,
             "reaction_target": target,
             "checkpoint_target": checkpoint,
+            "checkpoint_targets": list(checkpoints or []),
             "source_zone": {
                 "zone_id": zone_id,
                 "timeframe": "H1",
@@ -354,3 +356,55 @@ def test_v201_hit_pending_counts_as_confirmed_hit():
     assert rung["resolved_misses"] == 0
     assert rung["pending_censored"] == 0
     assert rung["precision_decisive"] == 1.0
+
+
+def test_v201_tracks_multiple_frozen_checkpoint_first_hits():
+    rows = (
+        _row(
+            "checkpoint-list",
+            observed="2026-09-24T14:14:55+00:00",
+            role="current_leg",
+            touch="2026-09-24T14:35:00+00:00",
+            status="TOUCHED_PENDING",
+            atr=16.0,
+            checkpoints=(
+                {"role": "CHECKPOINT", "price": 4258.0, "source": "CP1"},
+                {"role": "CHECKPOINT", "price": 4260.0, "source": "CP2"},
+            ),
+            target=4265.0,
+        ),
+    )
+    bars = (
+        _bar(
+            "2026-09-24T14:35:00+00:00",
+            open_=4254.0,
+            high=4257.5,
+            low=4253.0,
+            close=4256.0,
+        ),
+        _bar(
+            "2026-09-24T14:40:00+00:00",
+            open_=4256.0,
+            high=4258.5,
+            low=4255.0,
+            close=4258.0,
+        ),
+        _bar(
+            "2026-09-24T14:45:00+00:00",
+            open_=4258.0,
+            high=4260.5,
+            low=4257.5,
+            close=4260.0,
+        ),
+    )
+    p = collapse_physical_pockets(
+        rows,
+        bars=bars,
+        as_of=datetime(2026, 9, 24, 14, 55, tzinfo=UTC),
+    )[0]
+    targets = p["target_versions"][0]["checkpoint_targets"]
+    assert [item["price"] for item in targets] == [4258.0, 4260.0]
+    assert targets[0]["first_hit_at"] == "2026-09-24T14:40:00+00:00"
+    assert targets[0]["minutes_from_touch"] == 5.0
+    assert targets[1]["first_hit_at"] == "2026-09-24T14:45:00+00:00"
+    assert targets[1]["minutes_from_touch"] == 10.0
