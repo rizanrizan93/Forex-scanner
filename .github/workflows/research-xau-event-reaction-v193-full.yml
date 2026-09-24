@@ -9,6 +9,8 @@ on:
       - "src/fx_scanner/research_xau_event_corpus_v193_full_runtime.py"
       - "src/fx_scanner/research_xau_event_conditioning_v193.py"
       - "src/fx_scanner/research_xau_event_reaction_v193_year_runtime.py"
+      - "src/fx_scanner/research_xau_histdata_download_v193.py"
+      - "src/fx_scanner/research_xau_event_parity_v193.py"
       - "src/fx_scanner/research_xau_event_walkforward_v193.py"
       - "tests/test_research_xau_event_full_v193.py"
       - "tests/test_research_xau_event_walkforward_v193.py"
@@ -57,7 +59,7 @@ jobs:
   backfill-year:
     needs: prepare-corpus
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -81,7 +83,9 @@ jobs:
     env:
       XAU_V193_YEAR: ${{ matrix.year }}
       XAU_V193_CORPUS_JSON: /tmp/v193-corpus/xau-event-corpus-v193-full.json
-      XAU_V193_PRICE_CSV: /tmp/dukascopy/xau-v193-${{ matrix.year }}.csv
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v193-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v193-price-provenance-${{ matrix.year }}.json
+      XAU_V193_PRICE_SOURCE: HISTDATA_XAUUSD_M1_FIXED_EST_NORMALIZED_UTC
       XAU_V193_YEAR_OUTPUT: artifacts/xau-event-reaction-v193-${{ matrix.year }}.json
 
     steps:
@@ -90,69 +94,18 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
       - name: Install V193 runtime
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
       - name: Download full event corpus
         uses: actions/download-artifact@v4
         with:
           name: xau-v193-full-event-corpus
           path: /tmp/v193-corpus
-      - name: Resolve bounded yearly price window
-        id: window
-        shell: bash
-        run: |
-          YEAR="${{ matrix.year }}"
-          FROM_DATE="$((YEAR-1))-11-01"
-          if [ "${YEAR}" = "$(date -u +%Y)" ]; then
-            TO_DATE="$(date -u -d '+1 day' +%Y-%m-%d)"
-          else
-            TO_DATE="$((YEAR+1))-01-02"
-          fi
-          echo "from=${FROM_DATE}" >> "$GITHUB_OUTPUT"
-          echo "to=${TO_DATE}" >> "$GITHUB_OUTPUT"
-      - name: Download Dukascopy XAUUSD M1 shard
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/dukascopy
-          OUT="/tmp/dukascopy/xau-v193-${{ matrix.year }}.csv"
-          success=0
-          for attempt in 1 2 3 4; do
-            rm -f "${OUT}"
-            echo "V193_DUKASCOPY attempt=${attempt}/4 year=${{ matrix.year }} batch_size=2 batch_pause_ms=2000"
-            if npx --yes dukascopy-node@1.50.0 \
-              -i xauusd \
-              -from "${{ steps.window.outputs.from }}" \
-              -to "${{ steps.window.outputs.to }}" \
-              -t m1 \
-              -p bid \
-              -f csv \
-              -dir /tmp/dukascopy \
-              -fn "xau-v193-${{ matrix.year }}.csv" \
-              -bs 2 \
-              -bp 2000 \
-              -r 5 \
-              -rp 10000 \
-              -s; then
-              if [ -s "${OUT}" ]; then
-                success=1
-                break
-              fi
-            fi
-            cooldown=$((attempt * 30))
-            echo "V193_DUKASCOPY retry_cooldown_seconds=${cooldown}"
-            sleep "${cooldown}"
-          done
-          if [ "${success}" -ne 1 ]; then
-            echo "::error::V193 Dukascopy download exhausted bounded retries for year ${{ matrix.year }}"
-            exit 1
-          fi
-          test -s "${OUT}"
+      - name: Download and normalize HistData XAUUSD M1 shard
+        run: python -m fx_scanner.research_xau_histdata_download_v193
       - name: Build yearly reaction + technical conditioning shard
         run: python -m fx_scanner.research_xau_event_reaction_v193_year_runtime
       - name: Upload yearly V193 shard
@@ -160,7 +113,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: xau-v193-year-${{ matrix.year }}
-          path: artifacts/xau-event-reaction-v193-${{ matrix.year }}.json
+          path: |
+            artifacts/xau-event-reaction-v193-${{ matrix.year }}.json
+            artifacts/xau-v193-price-provenance-${{ matrix.year }}.json
           if-no-files-found: error
           retention-days: 14
 
@@ -235,5 +190,5 @@ jobs:
         with:
           name: xau-event-reaction-v193-full
           path: /tmp/v193-full
-      - name: Compare recent Dukascopy reactions with cTrader
+      - name: Compare recent public-reference reactions with cTrader
         run: python -m fx_scanner.research_xau_event_parity_v193
