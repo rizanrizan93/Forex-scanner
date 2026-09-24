@@ -46,11 +46,6 @@ jobs:
           - 2025
           - 2026
     env:
-      SOURCE_RUN_ID: ${{
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.id ||
-        inputs.source_run_id
-        }}
       XAU_V193_YEAR: ${{ matrix.year }}
       XAU_V193_FULL_ARTIFACT: /tmp/v193-base/xau-event-reaction-v193-full.json
       XAU_V193_PRICE_CSV: /tmp/histdata/xau-v193-${{ matrix.year }}.csv
@@ -74,7 +69,7 @@ jobs:
           name: xau-event-reaction-v193-full
           path: /tmp/v193-base
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ env.SOURCE_RUN_ID }}
+          run-id: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || inputs.source_run_id }}
       - name: Download and normalize HistData XAUUSD M1 for SD conditioning
         run: python -m fx_scanner.research_xau_histdata_download_v193
       - name: Attach post-walk-forward Supply-Demand context
@@ -95,11 +90,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      SOURCE_RUN_ID: ${{
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.id ||
-        inputs.source_run_id
-        }}
       SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       XAU_V193_FULL_ARTIFACT: /tmp/v193-base/xau-event-reaction-v193-full.json
