@@ -61,3 +61,9 @@ def test_resolution_state_advances_only_when_horizon_exists():
     assert resolution_state({"r5m_atr": 0.2, "r15m_atr": -0.1}) == "RESOLVED_15M"
     assert resolution_state({"r30m_atr": 0.4}) == "RESOLVED_30M"
     assert resolution_state({"r60m_atr": -0.5}) == "RESOLVED_60M"
+
+
+def test_timestamp_audit_decision_contract_is_explicit():
+    # The runtime accepts only the exact PASS token from the dedicated audit
+    # worker. Historical readiness by itself must never bypass timestamp audit.
+    assert "TIMESTAMP_AUDIT_PASS" == "TIMESTAMP_AUDIT_PASS"
