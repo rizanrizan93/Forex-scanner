@@ -503,6 +503,9 @@ with forecast_tab:
     v201_reaction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v201_reaction_ladder"
     )
+    v203_shock_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v203_volatility_shock_guard"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -833,6 +836,28 @@ with forecast_tab:
     ]
     dc_position_mode = bool(dc_active_demo_positions)
 
+    v203_details = {} if v203_shock_hb is None else dict(v203_shock_hb.get("details") or {})
+    v203_latest = dict(v203_details.get("latest_completed_m5") or {})
+    v203_state = str(v203_details.get("state") or "NO_HEARTBEAT").upper()
+    v203_action = str(v203_details.get("shadow_action") or "OBSERVE_ONLY")
+    v203_age = (
+        None if v203_shock_hb is None else _age_seconds(v203_shock_hb.get("observed_at"))
+    )
+    v203_fresh = bool(v203_age is not None and v203_age <= 600.0)
+    v203_range_ratio = v203_latest.get("range_ratio")
+    v203_spread_ratio = v203_latest.get("spread_ratio")
+    v203_tick_ratio = v203_latest.get("tick_ratio")
+    v203_range_text = (
+        "—" if v203_range_ratio is None else f"{float(v203_range_ratio):.2f}×"
+    )
+    v203_spread_text = (
+        "—" if v203_spread_ratio is None else f"{float(v203_spread_ratio):.2f}×"
+    )
+    v203_tick_text = (
+        "—" if v203_tick_ratio is None else f"{float(v203_tick_ratio):.2f}×"
+    )
+    v203_reasons = ", ".join(v203_latest.get("shock_reasons") or []) or "—"
+
     st.markdown("## Pusat Keputusan XAUUSD (Decision Center)")
     if dc_position_mode:
         st.success(
@@ -855,6 +880,46 @@ with forecast_tab:
         "Mode",
         "MANAGE POSITION" if dc_position_mode else "ENTRY DISCOVERY",
     )
+
+    if v203_shock_hb is None:
+        st.info(
+            "V203 Volatility Shock Guard: belum ada heartbeat. "
+            "Layer ini SHADOW/RISET dan tidak memiliki execution authority."
+        )
+    elif not v203_fresh:
+        st.warning(
+            "V203 Volatility Shock Guard: heartbeat stale. Perlakukan shock-state sebagai "
+            "tidak terverifikasi sampai snapshot baru muncul. Tidak ada perubahan ke execution router."
+        )
+    else:
+        v203_message = (
+            f"**V203 SHADOW: {v203_state}** • action={v203_action} • "
+            f"range={v203_range_text} • spread={v203_spread_text} • "
+            f"tick={v203_tick_text} • reason={v203_reasons}. "
+            "Ini advisory research-only; effective execution block tetap OFF."
+        )
+        if v203_state == "SHOCK":
+            st.error(v203_message)
+        elif v203_state in {"STABILIZING", "ELEVATED", "INSUFFICIENT_DATA"}:
+            st.warning(v203_message)
+        else:
+            st.success(v203_message)
+
+        with st.expander("Detail V203 Volatility Shock Guard", expanded=False):
+            st.json(
+                {
+                    "observed_at": v203_shock_hb.get("observed_at"),
+                    "state": v203_state,
+                    "shadow_action": v203_action,
+                    "latest_completed_m5": v203_latest,
+                    "stable_completed_m5_run": v203_details.get("stable_completed_m5_run"),
+                    "stabilization_bars_required": v203_details.get("stabilization_bars_required"),
+                    "last_recent_shock": v203_details.get("last_recent_shock"),
+                    "data_quality": v203_details.get("data_quality"),
+                    "execution_influence": v203_details.get("execution_influence"),
+                    "execution_authority": v203_details.get("execution_authority"),
+                }
+            )
 
     st.markdown("#### 1. D1 / H4 — Arah & Parent Zone")
     dc_h4_text = (
