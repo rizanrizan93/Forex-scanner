@@ -119,3 +119,16 @@ def test_resample_and_conditioning_are_shadow_only():
     assert "H4" in out["mtf"]
     assert out["execution_authority"] is False
     assert out["supply_demand"]["execution_authority"] is False
+
+
+def test_market_structure_only_mode_defers_supply_demand():
+    frame = _m1_frame(5)
+    at = frame["timestamp"].iloc[-1].to_pydatetime()
+    out = event_conditioning(
+        frame,
+        event_at=at,
+        include_supply_demand=False,
+    )
+    assert out["state"] == "AVAILABLE"
+    assert out["supply_demand"]["state"] == "DEFERRED_POST_WALK_FORWARD"
+    assert out["execution_authority"] is False

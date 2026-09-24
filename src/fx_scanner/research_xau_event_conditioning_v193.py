@@ -167,6 +167,7 @@ def event_conditioning_from_frames(
     *,
     event_at: datetime,
     supply_demand_lookback_days: int = 90,
+    include_supply_demand: bool = True,
 ) -> dict[str, Any]:
     if event_at.tzinfo is None:
         raise ValueError("event_at must be timezone-aware")
@@ -205,26 +206,33 @@ def event_conditioning_from_frames(
         else "NEUTRAL"
     )
 
-    m15 = sliced["M15"]
-    cutoff = event_utc - timedelta(days=int(supply_demand_lookback_days))
-    m15_window = m15.loc[m15.index >= cutoff]
-    if len(m15_window) >= 300:
-        try:
-            atlas = evaluate_supply_demand_atlas(
-                _bars_from_frame(m15_window, "M15"),
-                as_of=event_utc,
-                strategic_bias=strategic_bias,
-            )
-        except Exception as exc:
+    if include_supply_demand:
+        m15 = sliced["M15"]
+        cutoff = event_utc - timedelta(days=int(supply_demand_lookback_days))
+        m15_window = m15.loc[m15.index >= cutoff]
+        if len(m15_window) >= 300:
+            try:
+                atlas = evaluate_supply_demand_atlas(
+                    _bars_from_frame(m15_window, "M15"),
+                    as_of=event_utc,
+                    strategic_bias=strategic_bias,
+                )
+            except Exception as exc:
+                atlas = {
+                    "state": "ATLAS_ERROR",
+                    "error": f"{type(exc).__name__}:{exc}",
+                    "execution_influence": False,
+                    "execution_authority": False,
+                }
+        else:
             atlas = {
-                "state": "ATLAS_ERROR",
-                "error": f"{type(exc).__name__}:{exc}",
+                "state": "INSUFFICIENT_M15_FOR_ATLAS",
                 "execution_influence": False,
                 "execution_authority": False,
             }
     else:
         atlas = {
-            "state": "INSUFFICIENT_M15_FOR_ATLAS",
+            "state": "DEFERRED_POST_WALK_FORWARD",
             "execution_influence": False,
             "execution_authority": False,
         }
@@ -256,9 +264,11 @@ def event_conditioning(
     *,
     event_at: datetime,
     supply_demand_lookback_days: int = 90,
+    include_supply_demand: bool = True,
 ) -> dict[str, Any]:
     return event_conditioning_from_frames(
         build_conditioning_frames(m1),
         event_at=event_at,
         supply_demand_lookback_days=supply_demand_lookback_days,
+        include_supply_demand=include_supply_demand,
     )

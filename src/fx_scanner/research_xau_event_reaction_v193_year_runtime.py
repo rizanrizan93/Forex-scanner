@@ -192,6 +192,7 @@ def run() -> int:
             frames,
             event_at=cluster.scheduled_at,
             supply_demand_lookback_days=90,
+            include_supply_demand=False,
         )
         reaction["conditioning"] = conditioning
         reaction["conditioning_key"] = _conditioning_key(conditioning)
@@ -214,6 +215,8 @@ def run() -> int:
         "price_end": price.index.max().isoformat(),
         "price_source": price_source,
         "price_provenance": price_provenance,
+        "conditioning_stage": "MARKET_STRUCTURE_ONLY_PRE_WALK_FORWARD",
+        "supply_demand_conditioning": "DEFERRED_POST_WALK_FORWARD",
         "atlas": atlas,
         "reactions": reactions,
         "policy_effect": "RESEARCH_ONLY",
