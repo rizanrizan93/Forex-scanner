@@ -1449,9 +1449,19 @@ with forecast_tab:
                 versions = list(last_pocket.get("target_versions") or [])
                 if versions:
                     latest_target = dict(versions[-1])
+                    checkpoint_parts = []
+                    for cp in list(latest_target.get("checkpoint_targets") or []):
+                        checkpoint_parts.append(
+                            f"{_fmt_price(cp.get('price'))}@"
+                            f"{_fmt_wib_datetime(cp.get('first_hit_at'), seconds=False)}"
+                        )
+                    checkpoint_text = (
+                        "—" if not checkpoint_parts else ", ".join(checkpoint_parts)
+                    )
                     st.caption(
                         "Target chronology versi terbaru: "
                         f"mapped={_fmt_wib_datetime(latest_target.get('mapped_at'), seconds=False)} • "
+                        f"checkpoint={checkpoint_text} • "
                         f"reaction={_fmt_price(latest_target.get('reaction_target'))} "
                         f"first hit={_fmt_wib_datetime(latest_target.get('reaction_first_hit_at'), seconds=False)} • "
                         f"terminal={_fmt_price(latest_target.get('terminal_target'))} "
