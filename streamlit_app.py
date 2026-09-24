@@ -1033,13 +1033,14 @@ with forecast_tab:
         )
     elif dc_next_leg_source:
         st.info(
-            f"PRE-CONFIRMATION M5 **{dc_next_leg_direction}** POCKET / WATCH: "
+            f"PARENT WATCH ZONE / PRE-M5 **{dc_next_leg_direction}**: "
             f"**{_fmt_price(dc_next_leg_source.get('low'))}–{_fmt_price(dc_next_leg_source.get('high'))}** • "
             f"state={dc_next_micro.get('state','WAIT_SOURCE_TOUCH')} • "
             f"reaction target={dc_next_target_text} • terminal zone={dc_next_terminal_text}. "
-            "Pocket ditampilkan **sebelum** reclaim + MSS + displacement agar area persiapan "
-            "sudah terlihat. Reclaim/MSS/displacement tetap diperlukan untuk menaikkan status "
-            "menjadi confirmed/refined; perubahan tampilan ini tidak memberi execution authority."
+            "Belum ada M5 pocket aktual pada tahap ini. Candidate M5 pocket baru dibentuk "
+            "setelah fresh M5 touch/sweep pada parent zone; candidate tersebut dapat tampil "
+            "**sebelum** reclaim + MSS + displacement. Reclaim/MSS/displacement tetap diperlukan "
+            "untuk menaikkan status menjadi confirmed/refined dan tidak ada execution authority."
         )
     else:
         st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
