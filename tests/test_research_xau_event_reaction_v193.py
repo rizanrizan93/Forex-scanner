@@ -133,3 +133,48 @@ def test_atlas_reports_historical_frequency_not_probability():
     assert atlas["overall"]["historical_up_frequency_15m"] == 24 / 40
     assert atlas["execution_authority"] is False
     assert "not calibrated probabilities" in atlas["interpretation"]
+
+
+def test_reaction_horizon_uses_close_completed_at_target_not_next_bar():
+    event_at = datetime(2026, 9, 24, 12, 30, tzinfo=UTC)
+    bars = []
+    # Twenty completed M1 bars before the event provide a stable ATR/reference.
+    for i in range(20):
+        ts = event_at - timedelta(minutes=20 - i)
+        bars.append(Bar(ts, 100.0, 100.2, 99.8, 100.0))
+
+    # Five event-window bars close progressively at +1 ... +5 minutes.
+    for i in range(5):
+        ts = event_at + timedelta(minutes=i)
+        close = 101.0 + i
+        bars.append(Bar(ts, 100.0 + i, close + 0.1, 99.9 + i, close))
+
+    # This bar opens exactly at +5m and closes at +6m. It must NOT define r5m.
+    bars.append(
+        Bar(
+            event_at + timedelta(minutes=5),
+            105.0,
+            999.5,
+            104.5,
+            999.0,
+        )
+    )
+
+    event = HistoricalEvent(
+        "clock-test",
+        event_at,
+        "Core CPI m/m",
+        "CPI",
+        "HIGH",
+        "TEST",
+        "SECONDARY_ARCHIVE",
+        0.004,
+        0.003,
+        0.002,
+    )
+    row = reaction_for_cluster(cluster_events((event,))[0], bars)
+    assert row is not None
+    assert row["reference_price"] == 100.0
+    assert row["bar_interval_minutes"] == 1.0
+    assert row["r5m_points"] == 5.0
+    assert row["r5m_points"] != 899.0

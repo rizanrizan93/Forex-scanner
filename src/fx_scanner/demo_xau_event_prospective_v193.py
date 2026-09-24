@@ -338,10 +338,10 @@ def _resolve_episode(
         bars = tuple(
             feed.historical_bars(
                 SYMBOL,
-                "M5",
+                "M1",
                 from_time=scheduled - timedelta(hours=3),
                 to_time=min(now, scheduled + timedelta(minutes=80)),
-                count=240,
+                count=400,
             )
         )
         cluster = cluster_events(events)[0]

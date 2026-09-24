@@ -10,7 +10,7 @@ from fx_scanner.research_xau_event_parity_v193 import (
 def _bar(ts, o, h, l, c):
     return Bar(
         "XAUUSD",
-        "M5",
+        "M1",
         ts,
         float(o),
         float(h),
@@ -27,8 +27,8 @@ def test_ctrader_parity_reaction_is_atr_normalized():
     bars = []
     start = event - timedelta(minutes=90)
     price = 2000.0
-    for i in range(31):
-        ts = start + timedelta(minutes=5 * i)
+    for i in range(160):
+        ts = start + timedelta(minutes=i)
         open_ = price
         close = price + 0.5
         bars.append(_bar(ts, open_, close + 0.2, open_ - 0.2, close))
