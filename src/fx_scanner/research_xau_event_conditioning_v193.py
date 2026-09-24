@@ -14,6 +14,11 @@ TIMEFRAMES = {
     "H1": "1h",
     "H4": "4h",
 }
+TIMEFRAME_MINUTES = {
+    "M15": 15,
+    "H1": 60,
+    "H4": 240,
+}
 
 
 def _ema(series: pd.Series, span: int) -> float | None:
@@ -173,7 +178,14 @@ def event_conditioning_from_frames(
         frame = frames.get(timeframe)
         if frame is None:
             frame = pd.DataFrame()
-        before = frame.loc[frame.index < event_utc] if not frame.empty else frame
+        completed_before = event_utc - timedelta(
+            minutes=int(TIMEFRAME_MINUTES[timeframe])
+        )
+        before = (
+            frame.loc[frame.index <= completed_before]
+            if not frame.empty
+            else frame
+        )
         sliced[timeframe] = before
         mtf[timeframe] = _trend_context(before)
 
