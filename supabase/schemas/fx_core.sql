@@ -717,4 +717,13 @@ $$;
 revoke all on function public.fx_storage_guard_v1(boolean) from public, anon, authenticated;
 grant execute on function public.fx_storage_guard_v1(boolean) to service_role;
 
+-- V204 dashboard/read-path indexes. These do not alter trading logic.
+-- The dashboard repeatedly reads the newest broker events, both globally and
+-- by event_type+code. Keep both access paths explicit to avoid full-table
+-- scan+sort growth as prospective evidence accumulates.
+create index if not exists broker_order_events_observed_at_desc_idx
+  on public.broker_order_events (observed_at desc);
+create index if not exists broker_order_events_event_code_observed_idx
+  on public.broker_order_events (event_type, code, observed_at desc);
+
 -- Contract marker: XAU_PROSPECTIVE_OUTCOME_LEDGER_V1
