@@ -42,6 +42,53 @@ def _same_zone(a: dict[str, Any], b: dict[str, Any]) -> bool:
     return _zone_overlap(a, b) > 0.0
 
 
+def _next_precision_source(
+    active_path: dict[str, Any],
+    *,
+    current_terminal: dict[str, Any],
+    next_direction: str,
+) -> dict[str, Any]:
+    if not current_terminal:
+        return {}
+
+    candidates: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw in (
+        list(active_path.get("destination_stack") or [])
+        + list(active_path.get("secondary_opposing_zones") or [])
+    ):
+        item = dict(raw or {})
+        if not item:
+            continue
+        zone_id = str(item.get("zone_id") or "")
+        if zone_id and zone_id in seen:
+            continue
+        if zone_id:
+            seen.add(zone_id)
+        item_direction = str(item.get("direction") or "").upper()
+        if item_direction and item_direction != next_direction:
+            continue
+        if str(item.get("timeframe") or "").upper() != "H1":
+            continue
+        if not _same_zone(item, current_terminal):
+            continue
+        lifecycle = dict(item.get("lifecycle") or {})
+        if lifecycle and lifecycle.get("active") is False:
+            continue
+        candidates.append(item)
+
+    if candidates:
+        if next_direction == "SHORT":
+            candidates.sort(key=lambda item: (_f(item.get("low")) or float("inf")))
+        else:
+            candidates.sort(
+                key=lambda item: -(_f(item.get("high")) or float("-inf"))
+            )
+        return candidates[0]
+
+    return dict(current_terminal)
+
+
 def _target_snapshot(path: dict[str, Any]) -> dict[str, Any]:
     return {
         "reaction_target": dict(path.get("reaction_target") or {}),
@@ -81,6 +128,7 @@ def _leg_payload(
     return {
         "direction": direction,
         "path_state": path.get("state"),
+        "source_role": path.get("source_role"),
         "source_zone": dict(path.get("source_zone") or {}),
         "micro_refinement": micro,
         "pocket_state": pocket_state,
@@ -126,16 +174,35 @@ def evaluate_bidirectional_m5_path(
 
     next_direction = "SHORT" if direction == "LONG" else "LONG"
     next_path_key = "supply_to_demand" if next_direction == "SHORT" else "demand_to_supply"
-    next_path = dict(path_map.get(next_path_key) or {})
+    reverse_template = dict(path_map.get(next_path_key) or {})
     current_terminal = dict(
         active_path.get("terminal_target_zone")
         or active_path.get("primary_opposing_zone")
         or {}
     )
-    next_source = dict(next_path.get("source_zone") or {})
+
+    if current_terminal:
+        next_source = _next_precision_source(
+            active_path,
+            current_terminal=current_terminal,
+            next_direction=next_direction,
+        )
+        next_path = dict(reverse_template)
+        next_path["reaction_direction"] = next_direction
+        next_path["source_zone"] = next_source
+        next_path["source_role"] = (
+            "H1_PRECISION_INSIDE_CURRENT_TERMINAL"
+            if str(next_source.get("timeframe") or "").upper() == "H1"
+            else "CURRENT_TERMINAL_OPPOSING_ZONE"
+        )
+        next_path["state"] = "SOURCE_ZONE_WATCH"
+    else:
+        next_path = reverse_template
+        next_source = dict(next_path.get("source_zone") or {})
+
     target_source_aligned = _same_zone(current_terminal, next_source)
 
-    if next_path:
+    if next_path and next_source:
         next_micro = evaluate_micro_refinement(
             m5_bars,
             path_map={"active_path": next_path},
@@ -148,8 +215,9 @@ def evaluate_bidirectional_m5_path(
         )
         next_leg["parent_matches_current_terminal"] = target_source_aligned
         next_leg["activation_rule"] = (
-            "Treat the opposing parent zone as a watch area only until M5 touch/sweep, "
-            "reclaim, causal MSS and displacement produce a candidate/refined pocket."
+            "The next opposing leg must originate from the current leg terminal opposing "
+            "zone, preferably an active H1 precision source nested inside it. It remains "
+            "watch-only until fresh M5 touch/sweep, reclaim, causal MSS and displacement."
         )
     else:
         next_leg = {
@@ -181,8 +249,8 @@ def evaluate_bidirectional_m5_path(
         "next_leg": next_leg,
         "interpretation": (
             "V196 maps both legs without creating entry authority. The current leg carries "
-            "its M5 pocket plus reaction/terminal targets. The next opposing leg is pre-mapped "
-            "from the existing supply/demand path, but it is only called an M5 pocket after "
-            "actual M5 evidence exists."
+            "its M5 pocket plus reaction/terminal targets. The next opposing leg is anchored "
+            "to the current terminal opposing zone and prefers an active nested H1 precision "
+            "source. It is only called an M5 pocket after fresh M5 evidence exists."
         ),
     }
