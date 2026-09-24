@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from fx_scanner.demo_xau_v196_shadow_evidence_v197 import (
     PocketSnapshot,
     _freeze_snapshot_geometry,
+    _tracked_frozen_states,
     _preserve_first_enrollment,
     _snapshots_from_heartbeats,
     evaluate_pocket_outcome,
@@ -272,3 +273,70 @@ def test_v197_new_episode_is_strict_immutable_v198_cohort():
     assert frozen == snap
     assert cohort == "IMMUTABLE_V198"
     assert frozen_at == datetime(2026, 9, 24, 8, 0, tzinfo=UTC)
+
+
+def test_v197_keeps_pending_ledger_episode_after_projection_disappears():
+    snap = _snapshot("LONG")
+    existing = {
+        snap.episode_key: {
+            "episode_key": snap.episode_key,
+            "observed_at": snap.observed_at.isoformat(),
+            "direction": snap.direction,
+            "status": "TOUCHED_PENDING",
+            "tp1_price": snap.reaction_target,
+            "tp2_price": 114.0,
+            "metadata": {
+                "leg_role": snap.leg_role,
+                "pocket_state_at_enrollment": snap.pocket_state,
+                "pocket_low": snap.pocket_low,
+                "pocket_high": snap.pocket_high,
+                "pocket_origin_at": snap.pocket_origin_at,
+                "source_role": snap.source_role,
+                "source_zone": snap.source_zone,
+                "reaction_target": snap.reaction_target,
+                "terminal_zone": snap.terminal_zone,
+                "projection_state_at_enrollment": snap.projection_state,
+                "evidence_cohort": "IMMUTABLE_V198",
+                "geometry_frozen_at": snap.observed_at.isoformat(),
+            },
+        }
+    }
+    tracked = _tracked_frozen_states(
+        (),
+        existing,
+        now=datetime(2026, 9, 24, 7, 0, tzinfo=UTC),
+        cutoff=datetime(2026, 9, 23, 0, 0, tzinfo=UTC),
+    )
+    assert len(tracked) == 1
+    assert tracked[0][0] == snap
+    assert tracked[0][1] == "IMMUTABLE_V198"
+
+
+def test_v197_does_not_reopen_resolved_episode_from_current_projection():
+    snap = _snapshot("LONG")
+    existing = {
+        snap.episode_key: {
+            "episode_key": snap.episode_key,
+            "observed_at": snap.observed_at.isoformat(),
+            "direction": snap.direction,
+            "status": "PROVEN_REACTION_TARGET",
+            "tp1_price": snap.reaction_target,
+            "tp2_price": 114.0,
+            "metadata": {
+                "leg_role": snap.leg_role,
+                "pocket_state_at_enrollment": snap.pocket_state,
+                "pocket_low": snap.pocket_low,
+                "pocket_high": snap.pocket_high,
+                "source_zone": snap.source_zone,
+                "reaction_target": snap.reaction_target,
+                "terminal_zone": snap.terminal_zone,
+            },
+        }
+    }
+    tracked = _tracked_frozen_states(
+        (snap,),
+        existing,
+        now=datetime(2026, 9, 24, 7, 0, tzinfo=UTC),
+        cutoff=datetime(2026, 9, 23, 0, 0, tzinfo=UTC),
+    )
+    assert tracked == ()
