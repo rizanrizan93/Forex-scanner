@@ -130,6 +130,12 @@ def test_v197_ignores_pre_fix_reverse_leg_heartbeats():
             "source_zone": {"zone_id": "d1", "distal": 95},
             "reaction_target": {"price": 110},
             "terminal_target_zone": {"low": 114, "high": 118},
+            "target_ladder": [
+                {"role": "CHECKPOINT", "price": 106.0, "source": "TEST_CP1"},
+                {"role": "CHECKPOINT", "price": 108.0, "source": "TEST_CP2"},
+                {"role": "REACTION_TARGET", "price": 110.0},
+                {"role": "TERMINAL_OPPOSING_ZONE", "low": 114.0, "high": 118.0},
+            ],
             "micro_refinement": {"state": "M5_RECLAIM_WAIT_MSS"},
         },
         "next_leg": {
@@ -180,6 +186,8 @@ def test_v197_enrolls_first_valid_v196_heartbeat_and_no_invalidated_pocket():
     assert rows[0].leg_role == "current_leg"
     assert rows[0].direction == "LONG"
     assert rows[0].observed_at == datetime(2026, 9, 24, 6, 40, tzinfo=UTC)
+    assert tuple(item["price"] for item in rows[0].checkpoint_targets) == (106.0, 108.0)
+    assert all(item["role"] == "CHECKPOINT" for item in rows[0].checkpoint_targets)
 
 
 def test_v197_preserves_first_enrollment_across_runtime_cycles():
@@ -222,6 +230,9 @@ def test_v197_freezes_entire_forecast_geometry_from_existing_ledger_row():
         reaction_target=108.0,
         terminal_zone={"low": 111.0, "high": 150.0},
         projection_state="LATER_RUNTIME_STATE",
+        checkpoint_targets=(
+            {"role": "CHECKPOINT", "price": 105.0, "source": "LATER_ONLY"},
+        ),
     )
     existing = {
         incoming.episode_key: {
@@ -258,6 +269,7 @@ def test_v197_freezes_entire_forecast_geometry_from_existing_ledger_row():
     assert frozen.source_zone == {"zone_id": "source-1", "distal": 95.0}
     assert frozen.reaction_target == 110.0
     assert frozen.terminal_zone == {"low": 114.0, "high": 118.0}
+    assert frozen.checkpoint_targets == ()
     assert frozen.projection_state == "ORIGINAL_STATE"
     assert cohort == "LEGACY_V197_PRE_FREEZE"
     assert frozen_at == datetime(2026, 9, 24, 6, 30, tzinfo=UTC)
@@ -340,3 +352,33 @@ def test_v197_does_not_reopen_resolved_episode_from_current_projection():
         cutoff=datetime(2026, 9, 23, 0, 0, tzinfo=UTC),
     )
     assert tracked == ()
+
+
+def test_v197_new_checkpoint_geometry_is_part_of_immutable_snapshot():
+    snap = _snapshot("LONG")
+    snap = PocketSnapshot(
+        episode_key=snap.episode_key,
+        observed_at=snap.observed_at,
+        leg_role=snap.leg_role,
+        direction=snap.direction,
+        pocket_state=snap.pocket_state,
+        pocket_low=snap.pocket_low,
+        pocket_high=snap.pocket_high,
+        pocket_origin_at=snap.pocket_origin_at,
+        source_role=snap.source_role,
+        source_zone=snap.source_zone,
+        reaction_target=snap.reaction_target,
+        terminal_zone=snap.terminal_zone,
+        projection_state=snap.projection_state,
+        checkpoint_targets=(
+            {"role": "CHECKPOINT", "price": 105.0, "source": "CP1"},
+            {"role": "CHECKPOINT", "price": 108.0, "source": "CP2"},
+        ),
+    )
+    frozen, cohort, _ = _freeze_snapshot_geometry(
+        snap,
+        {},
+        now=datetime(2026, 9, 24, 8, 0, tzinfo=UTC),
+    )
+    assert frozen.checkpoint_targets == snap.checkpoint_targets
+    assert cohort == "IMMUTABLE_V198"
