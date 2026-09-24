@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from fx_scanner.models import Bar
 from fx_scanner.research_xau_event_parity_v193 import (
     _reaction,
+    _summarize_time_shift_stats,
     parity_validation,
 )
 
@@ -97,3 +98,29 @@ def test_parity_insufficient_when_coverage_is_low():
     )
     assert out["passed"] is False
     assert out["decision"] == "PARITY_INSUFFICIENT"
+
+
+def test_v193_time_shift_forensics_identifies_best_offset_without_changing_gate():
+    stats = {
+        offset: {
+            minutes: {"agree": 0, "n": 0, "diffs": []}
+            for minutes in (5, 15, 30)
+        }
+        for offset in (-30, 0, 30)
+    }
+    for _ in range(10):
+        stats[-30][15]["n"] += 1
+        stats[-30][15]["agree"] += 9
+        stats[-30][15]["diffs"].append(1.0)
+        stats[0][15]["n"] += 1
+        stats[0][15]["agree"] += 5
+        stats[0][15]["diffs"].append(4.0)
+        stats[30][15]["n"] += 1
+        stats[30][15]["agree"] += 6
+        stats[30][15]["diffs"].append(3.0)
+    out = _summarize_time_shift_stats(stats)
+    assert out["best_offset_minutes_by_15m_sign_agreement"] == -30
+    assert out["best_15m_directional_agreement"] == 0.9
+    assert out["zero_offset_15m_directional_agreement"] == 0.5
+    assert out["best_vs_zero_15m_agreement_improvement"] == 0.4
+    assert out["changes_validation_gate"] is False
