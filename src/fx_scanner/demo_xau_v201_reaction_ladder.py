@@ -191,14 +191,36 @@ def _target_version(
 ) -> dict[str, Any]:
     meta = _metadata(row)
     mapped_at = _dt(row.get("observed_at"))
-    checkpoint_target = _f(meta.get("checkpoint_target"))
+
+    raw_checkpoints = [
+        dict(item)
+        for item in list(meta.get("checkpoint_targets") or [])
+        if isinstance(item, dict)
+    ]
+    legacy_checkpoint = _f(meta.get("checkpoint_target"))
+    if not raw_checkpoints and legacy_checkpoint is not None:
+        raw_checkpoints = [
+            {
+                "role": "CHECKPOINT",
+                "price": legacy_checkpoint,
+                "source": "LEGACY_SINGLE_CHECKPOINT",
+            }
+        ]
+
     reaction_target = _f(meta.get("reaction_target") or row.get("tp1_price"))
     terminal_target = _f(row.get("tp2_price"))
-    levels = {
-        "checkpoint": checkpoint_target,
+
+    levels: dict[str, float | None] = {
         "reaction": reaction_target,
         "terminal": terminal_target,
     }
+    checkpoint_geometry: list[tuple[str, dict[str, Any], float | None]] = []
+    for index, item in enumerate(raw_checkpoints):
+        label = f"checkpoint_{index}"
+        price = _f(item.get("price"))
+        levels[label] = price
+        checkpoint_geometry.append((label, item, price))
+
     chronology = _first_hit_chronology(
         bars,
         direction=direction,
@@ -209,24 +231,47 @@ def _target_version(
         end_at=end_at,
         levels=levels,
     )
+
+    checkpoint_targets = []
+    for label, item, price in checkpoint_geometry:
+        chrono = chronology[label]
+        checkpoint_targets.append(
+            {
+                **item,
+                "price": price,
+                "first_hit_at": chrono["first_hit_at"],
+                "minutes_from_touch": chrono["minutes_from_touch"],
+                "minutes_from_mapping": chrono["minutes_from_mapping"],
+                "mfe_at_first_hit": chrono["mfe_at_first_hit"],
+            }
+        )
+
+    first_checkpoint = checkpoint_targets[0] if checkpoint_targets else {}
     return {
         "episode_key": row.get("episode_key"),
         "role": meta.get("leg_role"),
         "mapped_at": row.get("observed_at"),
-        "checkpoint_target": checkpoint_target,
-        "checkpoint_first_hit_at": chronology["checkpoint"]["first_hit_at"],
-        "checkpoint_minutes_from_touch": chronology["checkpoint"]["minutes_from_touch"],
-        "checkpoint_minutes_from_mapping": chronology["checkpoint"]["minutes_from_mapping"],
+        "checkpoint_targets": checkpoint_targets,
+        "checkpoint_target": first_checkpoint.get("price"),
+        "checkpoint_first_hit_at": first_checkpoint.get("first_hit_at"),
+        "checkpoint_minutes_from_touch": first_checkpoint.get("minutes_from_touch"),
+        "checkpoint_minutes_from_mapping": first_checkpoint.get(
+            "minutes_from_mapping"
+        ),
         "reaction_target": reaction_target,
         "reaction_hit": bool(row.get("tp1_hit")),
         "reaction_first_hit_at": chronology["reaction"]["first_hit_at"],
         "reaction_minutes_from_touch": chronology["reaction"]["minutes_from_touch"],
-        "reaction_minutes_from_mapping": chronology["reaction"]["minutes_from_mapping"],
+        "reaction_minutes_from_mapping": chronology["reaction"][
+            "minutes_from_mapping"
+        ],
         "terminal_target": terminal_target,
         "terminal_hit": bool(row.get("tp2_hit")),
         "terminal_first_hit_at": chronology["terminal"]["first_hit_at"],
         "terminal_minutes_from_touch": chronology["terminal"]["minutes_from_touch"],
-        "terminal_minutes_from_mapping": chronology["terminal"]["minutes_from_mapping"],
+        "terminal_minutes_from_mapping": chronology["terminal"][
+            "minutes_from_mapping"
+        ],
         "status": row.get("status"),
     }
 
