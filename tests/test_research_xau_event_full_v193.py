@@ -27,6 +27,7 @@ def test_month_ranges_are_bounded_and_cover_span():
 def test_forex_factory_html_parser_preserves_simultaneous_time():
     pytest.importorskip("bs4")
     html = b"""
+    <div>Calendar Time Zone: Europe/London (GMT +1)</div>
     <table>
       <tr class="calendar__row">
         <td class="calendar__date">Thu Sep 24</td>
@@ -132,3 +133,51 @@ def test_market_structure_only_mode_defers_supply_demand():
     assert out["state"] == "AVAILABLE"
     assert out["supply_demand"]["state"] == "DEFERRED_POST_WALK_FORWARD"
     assert out["execution_authority"] is False
+
+
+def test_forex_factory_parser_uses_page_declared_timezone_not_hardcoded_london():
+    pytest.importorskip("bs4")
+    html = b"""
+    <div>Calendar Time Zone: America/Los_Angeles (GMT -7)</div>
+    <table>
+      <tr class="calendar__row">
+        <td class="calendar__date">Fri Sep 11</td>
+        <td class="calendar__time">5:30am</td>
+        <td class="calendar__currency">USD</td>
+        <td class="calendar__impact"><span title="High Impact Expected"></span></td>
+        <td class="calendar__event">Core CPI m/m</td>
+        <td class="calendar__actual">0.4%</td>
+        <td class="calendar__forecast">0.3%</td>
+        <td class="calendar__previous">0.2%</td>
+      </tr>
+    </table>
+    """
+    rows = parse_forex_factory_html(
+        html,
+        year_hint=2026,
+        source_url="https://www.forexfactory.com/calendar?range=sep11.2026-sep11.2026",
+    )
+    assert len(rows) == 1
+    # 05:30 PDT (UTC-7) is 12:30 UTC, matching the official 08:30 ET release.
+    assert rows[0].scheduled_at == datetime(2026, 9, 11, 12, 30, tzinfo=UTC)
+
+
+def test_forex_factory_parser_fails_closed_without_explicit_page_timezone():
+    pytest.importorskip("bs4")
+    html = b"""
+    <table>
+      <tr class="calendar__row">
+        <td class="calendar__date">Fri Sep 11</td>
+        <td class="calendar__time">5:30am</td>
+        <td class="calendar__currency">USD</td>
+        <td class="calendar__impact"><span title="High Impact Expected"></span></td>
+        <td class="calendar__event">Core CPI m/m</td>
+      </tr>
+    </table>
+    """
+    with pytest.raises(RuntimeError, match="timezone"):
+        parse_forex_factory_html(
+            html,
+            year_hint=2026,
+            source_url="https://www.forexfactory.com/calendar",
+        )
