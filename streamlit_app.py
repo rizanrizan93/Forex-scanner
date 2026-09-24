@@ -646,6 +646,37 @@ with forecast_tab:
         else dict(supply_demand_hb.get("details") or {})
     )
     dc_sd_eval = dict(dc_sd_details.get("evaluation") or {})
+    dc_path_map = dict(dc_sd_eval.get("path_map") or {})
+    dc_reaction_direction = str(
+        dc_path.get("reaction_direction")
+        or dc_micro.get("direction")
+        or dc_tactical_first_leg
+        or ""
+    ).upper()
+    dc_source_stack = list(
+        dc_path_map.get(
+            "demand_source_stack"
+            if dc_reaction_direction == "LONG"
+            else "supply_source_stack"
+        )
+        or []
+    )
+    dc_h4_parent = next(
+        (
+            dict(item)
+            for item in dc_source_stack
+            if str(item.get("timeframe") or "").upper() == "H4"
+        ),
+        {},
+    )
+    dc_d1_parent = next(
+        (
+            dict(item)
+            for item in dc_source_stack
+            if str(item.get("timeframe") or "").upper() == "D1"
+        ),
+        {},
+    )
     dc_reference_price = (
         live_price
         if live_price is not None
@@ -702,14 +733,30 @@ with forecast_tab:
     dc1, dc2, dc3 = st.columns(3)
     dc1.metric("Harga referensi", _fmt_price(dc_reference_price))
     dc2.metric("Arah taktis", dc_tactical_first_leg)
-    dc3.metric("Status entry", dc_entry_status)
+    dc3.metric(
+        "Entry resmi",
+        "BELUM"
+        if "BELUM ADA ENTRY RESMI" in dc_entry_status
+        or "SHADOW/PREPARE" in dc_entry_status
+        else "CEK ADMISSION",
+    )
 
-    st.markdown("#### 1. D1 / H4 — Arah & Peta Besar")
+    st.markdown("#### 1. D1 / H4 — Arah & Parent Zone")
+    dc_h4_text = (
+        f"{_fmt_price(dc_h4_parent.get('low'))}–{_fmt_price(dc_h4_parent.get('high'))}"
+        if dc_h4_parent else "—"
+    )
+    dc_d1_text = (
+        f"{_fmt_price(dc_d1_parent.get('low'))}–{_fmt_price(dc_d1_parent.get('high'))}"
+        if dc_d1_parent else "—"
+    )
     st.info(
         f"Bias strategis: **{dc_strategic_bias}** • "
         f"first-leg taktis: **{dc_tactical_first_leg}** • "
+        f"H4 parent zone: **{dc_h4_text}** • "
+        f"D1 parent: {dc_d1_text} • "
         f"H4 map: {_fmt_wib_datetime(current_map, seconds=False)}. "
-        "D1/H4 menentukan konteks dan tujuan; bukan harga entry presisi."
+        "H4/D1 menentukan parent context; entry dipersempit di H1 lalu M5."
     )
 
     st.markdown("#### 2. H1 — Zona Reaksi Utama")
@@ -818,6 +865,10 @@ with forecast_tab:
         )
 
     st.markdown("---")
+    st.caption(
+        "Di bawah ini adalah DETAIL / AUDIT / RISET. Untuk keputusan cepat, "
+        "cukup gunakan enam langkah di Decision Center di atas."
+    )
 
     with st.expander(
         "Detail Diagnostik AFIC ↔ Supply/Demand / V189 / DOM / Event",
