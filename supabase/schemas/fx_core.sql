@@ -741,3 +741,12 @@ create index if not exists signals_observed_at_desc_idx
 -- signals; COLD deletion remains delegated to fx_storage_guard_v1 only under
 -- HIGH/CRITICAL storage pressure with execution/evidence exclusions intact.
 -- Contract marker: FOREX_SCANNER_SIGNAL_QUERY_BUDGET_V206
+
+
+-- V207 broker-event hot path. Production pg_stat_statements showed the
+-- backend+event_type+account_id newest-first read path executing >16k times.
+-- This index lets PostgreSQL filter and order in one access path.
+create index if not exists broker_order_events_backend_event_account_observed_idx
+  on public.broker_order_events (backend, event_type, account_id, observed_at desc);
+
+-- Contract marker: FOREX_SCANNER_BROKER_EVENT_HOT_PATH_V207
