@@ -183,27 +183,21 @@ def test_forex_factory_parser_fails_closed_without_explicit_page_timezone():
         )
 
 
-def test_forex_factory_display_timezone_with_space_normalizes_to_iana():
+@pytest.mark.parametrize(
+    ("label", "expected"),
+    [
+        ("America/New York", "America/New_York"),
+        ("America/Los Angeles", "America/Los_Angeles"),
+        ("America/Phoenix", "America/Phoenix"),
+    ],
+)
+def test_forex_factory_timezone_label_normalization(label, expected):
     pytest.importorskip("bs4")
-    html = b"""
-    <div>Calendar Time Zone: America/New York (GMT -4)</div>
-    <table>
-      <tr class="calendar__row">
-        <td class="calendar__date">Fri Sep 11</td>
-        <td class="calendar__time">8:30am</td>
-        <td class="calendar__currency">USD</td>
-        <td class="calendar__impact"><span title="High Impact Expected"></span></td>
-        <td class="calendar__event">CPI m/m</td>
-        <td class="calendar__actual">0.4%</td>
-        <td class="calendar__forecast">0.3%</td>
-        <td class="calendar__previous">0.2%</td>
-      </tr>
-    </table>
-    """
-    rows = parse_forex_factory_html(
-        html,
-        year_hint=2026,
-        source_url="https://www.forexfactory.com/calendar",
+    from bs4 import BeautifulSoup
+    from fx_scanner.research_xau_event_supplement_v193 import _calendar_timezone_name
+
+    soup = BeautifulSoup(
+        f"<div>Calendar Time Zone: {label} (GMT -7)</div>",
+        "html.parser",
     )
-    assert len(rows) == 1
-    assert rows[0].scheduled_at == datetime(2026, 9, 11, 12, 30, tzinfo=UTC)
+    assert _calendar_timezone_name(soup) == expected
