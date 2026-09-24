@@ -15,7 +15,11 @@ from .research_xau_event_reaction_v193 import (
 )
 
 LONDON = ZoneInfo("Europe/London")
-BASE_URL = "https://www.forexfactory.com/calendar"
+BASE_URLS = (
+    "https://www.forexfactory.com/calendar",
+    "https://calendar.forexfactory.com/calendar",
+    "https://secure.forexfactory.com/calendar",
+)
 SOURCE = "FOREX_FACTORY_HISTORICAL_RANGE"
 SOURCE_TIER = "SECONDARY_CURRENT_PAGE"
 MAX_PAGE_BYTES = 8 * 1024 * 1024
@@ -49,24 +53,35 @@ def _month_ranges(start: date, end: date) -> tuple[tuple[date, date], ...]:
 
 def _fetch_page(start: date, end: date) -> tuple[bytes, str]:
     query = urlencode({"range": f"{_ff_date(start)}-{_ff_date(end)}"})
-    url = f"{BASE_URL}?{query}"
-    req = Request(
-        url,
-        method="GET",
-        headers={
-            "User-Agent": (
-                "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 "
-                "Chrome/140 Safari/537.36 XAU-V193-Research"
-            ),
-            "Accept": "text/html,application/xhtml+xml",
-            "Accept-Language": "en-US,en;q=0.9",
-        },
+    errors: list[str] = []
+    for base_url in BASE_URLS:
+        url = f"{base_url}?{query}"
+        req = Request(
+            url,
+            method="GET",
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 "
+                    "Chrome/140 Safari/537.36 XAU-V193-Research"
+                ),
+                "Accept": "text/html,application/xhtml+xml",
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+        )
+        try:
+            with urlopen(req, timeout=30) as response:
+                body = response.read(MAX_PAGE_BYTES + 1)
+            if len(body) > MAX_PAGE_BYTES:
+                raise RuntimeError("Forex Factory historical page exceeds bounded size")
+            if b"calendar" not in body.lower():
+                raise RuntimeError("Forex Factory historical page content unexpected")
+            return body, url
+        except Exception as exc:
+            errors.append(f"{base_url}:{type(exc).__name__}:{exc}")
+    raise RuntimeError(
+        "Forex Factory historical range fetch failed across bounded mirrors: "
+        + " | ".join(errors)
     )
-    with urlopen(req, timeout=30) as response:
-        body = response.read(MAX_PAGE_BYTES + 1)
-    if len(body) > MAX_PAGE_BYTES:
-        raise RuntimeError("Forex Factory historical page exceeds bounded size")
-    return body, url
 
 
 def _class_has(cell: Any, token: str) -> bool:
