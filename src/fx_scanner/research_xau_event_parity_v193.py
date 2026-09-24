@@ -18,6 +18,14 @@ WORKER_NAME = "ctrader_xau_event_parity_v193"
 CONTRACT = "XAU_EVENT_REACTION_PARITY_V193_1"
 SYMBOL = "XAUUSD"
 MAX_EVENTS = 60
+MIN_PARITY_EVENTS = 50
+MIN_PARITY_COVERAGE = 0.90
+MIN_DIRECTIONAL_AGREEMENT = {
+    "5m": 0.75,
+    "15m": 0.80,
+    "30m": 0.80,
+}
+MAX_MEDIAN_ABS_ATR_DIFFERENCE_15M = 1.0
 
 
 def _f(value: Any) -> float | None:
@@ -168,18 +176,67 @@ def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
             "median_abs_atr_difference": None if not diffs else median(diffs),
         }
 
+    coverage = None if attempted == 0 else available / attempted
+    gate_checks = {
+        "minimum_events": available >= MIN_PARITY_EVENTS,
+        "minimum_coverage": (
+            coverage is not None and coverage >= MIN_PARITY_COVERAGE
+        ),
+        "agreement_5m": (
+            horizon_stats["5m"]["directional_agreement"] is not None
+            and horizon_stats["5m"]["directional_agreement"]
+            >= MIN_DIRECTIONAL_AGREEMENT["5m"]
+        ),
+        "agreement_15m": (
+            horizon_stats["15m"]["directional_agreement"] is not None
+            and horizon_stats["15m"]["directional_agreement"]
+            >= MIN_DIRECTIONAL_AGREEMENT["15m"]
+        ),
+        "agreement_30m": (
+            horizon_stats["30m"]["directional_agreement"] is not None
+            and horizon_stats["30m"]["directional_agreement"]
+            >= MIN_DIRECTIONAL_AGREEMENT["30m"]
+        ),
+        "atr_difference_15m": (
+            horizon_stats["15m"]["median_abs_atr_difference"] is not None
+            and horizon_stats["15m"]["median_abs_atr_difference"]
+            <= MAX_MEDIAN_ABS_ATR_DIFFERENCE_15M
+        ),
+    }
+    validated = all(gate_checks.values())
+    descriptive_available = (
+        available >= MIN_PARITY_EVENTS
+        and coverage is not None
+        and coverage >= MIN_PARITY_COVERAGE
+    )
+    decision = (
+        "PARITY_VALIDATED"
+        if validated
+        else "PARITY_DESCRIPTIVE_AVAILABLE"
+        if descriptive_available
+        else "PARITY_INSUFFICIENT"
+    )
+
     return {
         "attempted": attempted,
         "available": available,
         "missing": missing,
-        "coverage": None if attempted == 0 else available / attempted,
+        "coverage": coverage,
         "horizons": horizon_stats,
         "samples": samples[:20],
-        "decision": (
-            "PARITY_DESCRIPTIVE_AVAILABLE"
-            if available >= 30
-            else "PARITY_INSUFFICIENT"
-        ),
+        "validation_gate": {
+            "passed": validated,
+            "checks": gate_checks,
+            "thresholds": {
+                "minimum_events": MIN_PARITY_EVENTS,
+                "minimum_coverage": MIN_PARITY_COVERAGE,
+                "minimum_directional_agreement": MIN_DIRECTIONAL_AGREEMENT,
+                "maximum_median_abs_atr_difference_15m": (
+                    MAX_MEDIAN_ABS_ATR_DIFFERENCE_15M
+                ),
+            },
+        },
+        "decision": decision,
         "execution_influence": False,
         "execution_authority": False,
         "promotion_authority": False,
@@ -230,7 +287,10 @@ def run() -> int:
         "execution_authority": False,
         "promotion_authority": False,
     }
-    healthy = result["decision"] == "PARITY_DESCRIPTIVE_AVAILABLE"
+    healthy = result["decision"] in {
+        "PARITY_DESCRIPTIVE_AVAILABLE",
+        "PARITY_VALIDATED",
+    }
     SupabaseOperationalStore.from_env().write_heartbeat(
         WORKER_NAME,
         healthy=healthy,
