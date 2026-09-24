@@ -120,6 +120,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v201_reaction_ladder
 
+      - name: Evaluate V203 volatility shock guard
+        id: evaluate_xau_v203_volatility_shock_guard
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v203_volatility_shock_guard
+
       - name: Enforce pair-specific max-hold exits
         id: pair_time_exit
         if: ${{ always() && !cancelled() }}
