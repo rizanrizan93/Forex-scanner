@@ -160,6 +160,7 @@ def _latest_parity(store: SupabaseOperationalStore) -> tuple[datetime | None, di
         store.client.table("runtime_heartbeats")
         .select("observed_at,healthy,details")
         .eq("worker_name", PARITY_WORKER)
+        .order("observed_at", desc=True)
         .limit(1)
         .execute()
     )
