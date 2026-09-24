@@ -66,3 +66,11 @@ def test_telemetry_has_no_execution_path_and_filters_by_activation_time():
     assert "ExecutionRouter" not in source
     assert "demo_fresh_ready_handoff" not in source
     assert "build_broker_gateway" not in source
+
+
+def test_v205_latency_event_read_is_bounded_and_narrow():
+    source = (ROOT / "src/fx_scanner/demo_xau_strategy_latency_telemetry.py").read_text(encoding="utf-8")
+    assert "EVENT_LOOKBACK_HOURS = 48" in source
+    assert '.in_("event_type", list(wanted))' in source
+    assert '.select("observed_at,signal_key,event_type,accepted")' in source
+    assert '.select("observed_at,signal_key,event_type,accepted,payload")' not in source
