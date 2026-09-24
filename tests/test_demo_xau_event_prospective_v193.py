@@ -4,6 +4,7 @@ from fx_scanner.demo_xau_event_prospective_v193 import (
     cluster_upcoming_events,
     historical_ready,
     resolution_state,
+    timestamp_audit_ready,
 )
 
 
@@ -61,3 +62,9 @@ def test_resolution_state_advances_only_when_horizon_exists():
     assert resolution_state({"r5m_atr": 0.2, "r15m_atr": -0.1}) == "RESOLVED_15M"
     assert resolution_state({"r30m_atr": 0.4}) == "RESOLVED_30M"
     assert resolution_state({"r60m_atr": -0.5}) == "RESOLVED_60M"
+
+
+def test_timestamp_audit_decision_contract_is_explicit():
+    assert timestamp_audit_ready({}) is False
+    assert timestamp_audit_ready({"decision": "TIMESTAMP_AUDIT_REQUIRED"}) is False
+    assert timestamp_audit_ready({"decision": "TIMESTAMP_AUDIT_PASS"}) is True
