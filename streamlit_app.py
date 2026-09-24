@@ -500,6 +500,9 @@ with forecast_tab:
     v198_analytics_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v198_evidence_analytics"
     )
+    v201_reaction_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v201_reaction_ladder"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -1282,7 +1285,7 @@ with forecast_tab:
             "sengaja dipisahkan."
         )
 
-    st.markdown("## Pusat Bukti XAUUSD (V197/V198)")
+    st.markdown("## Pusat Bukti XAUUSD (V197–V201)")
     st.caption(
         "Panel ini menilai forecast M5 V196 secara prospective. Order broker **tidak diperlukan** "
         "agar suatu forecast dihitung sebagai shadow evidence, tetapi bukti ini tetap dipisahkan "
@@ -1343,15 +1346,82 @@ with forecast_tab:
                 "reverse reaction → reverse terminal."
             )
 
-        with st.expander("Detail evidence analytics V198"):
+        if v201_reaction_hb is not None:
+            v201 = dict(v201_reaction_hb.get("details") or {})
+            ladder = list(v201.get("strict_ladder") or [])
+            latest_physical = list(v201.get("latest_physical_pockets") or [])
+            l1, l2, l3, l4 = st.columns(4)
+            l1.metric("Physical pockets", int(v201.get("physical_pockets") or 0))
+            l2.metric(
+                "Pre-mapped sebelum touch",
+                _fmt_pct(v201.get("premap_rate_given_touch")),
+            )
+            l3.metric(
+                "Median lead",
+                (
+                    "—"
+                    if v201.get("median_premap_lead_minutes") is None
+                    else f"{float(v201.get('median_premap_lead_minutes')):.0f} mnt"
+                ),
+            )
+            half = next(
+                (
+                    dict(item)
+                    for item in ladder
+                    if float(item.get("atr_multiple") or -1) == 0.5
+                ),
+                {},
+            )
+            l4.metric(
+                "0.50 ATR | decisive",
+                _fmt_pct(half.get("precision_decisive")),
+            )
+
+            rung_text = []
+            for item in ladder:
+                rung_text.append(
+                    f"{float(item.get('atr_multiple') or 0):.2f}ATR "
+                    f"{int(item.get('confirmed_hits') or 0)}/"
+                    f"{int(item.get('decisive_n') or 0)} decisive"
+                )
+            if rung_text:
+                st.caption(
+                    "V201 Reaction Ladder strict: " + " • ".join(rung_text)
+                    + ". Pending yang belum mencapai rung diperlakukan sebagai censored, bukan gagal."
+                )
+
+            if latest_physical:
+                last_pocket = dict(latest_physical[-1])
+                roles = " → ".join(
+                    str(item.get("role") or "—")
+                    for item in list(last_pocket.get("role_timeline") or [])
+                )
+                st.info(
+                    "Pocket fisik terbaru: "
+                    f"**{last_pocket.get('direction','—')} "
+                    f"{_fmt_price(last_pocket.get('pocket_low'))}–"
+                    f"{_fmt_price(last_pocket.get('pocket_high'))}** • "
+                    f"role={roles or '—'} • "
+                    f"first seen={_fmt_wib_datetime(last_pocket.get('first_seen_at'), seconds=False)} • "
+                    f"first touch={_fmt_wib_datetime(last_pocket.get('first_touch_at'), seconds=False)} • "
+                    f"lead={'—' if last_pocket.get('premap_lead_minutes') is None else f\"{float(last_pocket.get('premap_lead_minutes')):.0f} mnt\"} • "
+                    f"status={last_pocket.get('status','—')}."
+                )
+
+        with st.expander("Detail evidence analytics V198/V201"):
             st.json(
                 {
-                    "observed_at": v198_analytics_hb.get("observed_at"),
+                    "observed_at_v198": v198_analytics_hb.get("observed_at"),
                     "strict_immutable_evidence": ev_strict,
                     "legacy_pre_freeze_evidence": ev_legacy,
                     "strict_segments": ev_details.get("strict_segments"),
                     "full_path": ev_path,
                     "strict_full_path": ev_strict_path,
+                    "v201_reaction_ladder": (
+                        {}
+                        if v201_reaction_hb is None
+                        else dict(v201_reaction_hb.get("details") or {})
+                    ),
                     "v197_recorder": (
                         {}
                         if v197_evidence_hb is None
