@@ -28,6 +28,10 @@ MIN_DIRECTIONAL_AGREEMENT = {
 }
 MAX_MEDIAN_ABS_ATR_DIFFERENCE_15M = 1.0
 
+# Diagnostics only. These offsets never alter preregistered parity gates.
+TIME_SHIFT_OFFSETS_MINUTES = (-120, -90, -60, -30, -15, 0, 15, 30, 60, 90, 120)
+TIME_SHIFT_HORIZONS_MINUTES = (5, 15, 30)
+
 
 def _f(value: Any) -> float | None:
     try:
@@ -159,6 +163,76 @@ def parity_validation(
     }
 
 
+def _summarize_time_shift_stats(
+    shift_stats: dict[int, dict[int, dict[str, Any]]],
+) -> dict[str, Any]:
+    offsets: list[dict[str, Any]] = []
+    for offset in sorted(shift_stats):
+        horizons: dict[str, Any] = {}
+        for minutes in TIME_SHIFT_HORIZONS_MINUTES:
+            stats = shift_stats[offset][minutes]
+            n = int(stats["n"])
+            diffs = list(stats["diffs"])
+            horizons[f"{minutes}m"] = {
+                "n": n,
+                "directional_agreement": None if n == 0 else stats["agree"] / n,
+                "median_abs_point_difference": None if not diffs else median(diffs),
+            }
+        offsets.append({"offset_minutes": offset, "horizons": horizons})
+
+    eligible = [
+        item
+        for item in offsets
+        if item["horizons"]["15m"]["directional_agreement"] is not None
+    ]
+    best = None
+    if eligible:
+        best = sorted(
+            eligible,
+            key=lambda item: (
+                -float(item["horizons"]["15m"]["directional_agreement"]),
+                float(
+                    item["horizons"]["15m"]["median_abs_point_difference"]
+                    if item["horizons"]["15m"]["median_abs_point_difference"] is not None
+                    else float("inf")
+                ),
+                abs(int(item["offset_minutes"])),
+            ),
+        )[0]
+
+    zero = next((item for item in offsets if item["offset_minutes"] == 0), None)
+    zero_agreement = (
+        None
+        if zero is None
+        else zero["horizons"]["15m"]["directional_agreement"]
+    )
+    best_agreement = (
+        None
+        if best is None
+        else best["horizons"]["15m"]["directional_agreement"]
+    )
+    improvement = (
+        None
+        if zero_agreement is None or best_agreement is None
+        else float(best_agreement) - float(zero_agreement)
+    )
+    return {
+        "offsets": offsets,
+        "best_offset_minutes_by_15m_sign_agreement": (
+            None if best is None else best["offset_minutes"]
+        ),
+        "best_15m_directional_agreement": best_agreement,
+        "zero_offset_15m_directional_agreement": zero_agreement,
+        "best_vs_zero_15m_agreement_improvement": improvement,
+        "diagnostic_only": True,
+        "changes_validation_gate": False,
+        "interpretation": (
+            "If a non-zero offset materially improves agreement, investigate time anchoring. "
+            "If no offset restores agreement, investigate public-reference versus broker feed path/basis."
+        ),
+    }
+
+
 def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
     attempted = 0
     available = 0
@@ -199,6 +273,17 @@ def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
     }
     atr_ratios: list[float] = []
     reference_price_diffs: list[float] = []
+    signed_reference_price_diffs: list[float] = []
+    point_magnitude_ratios: dict[int, list[float]] = {
+        minutes: [] for minutes in (5, 15, 30, 60)
+    }
+    shift_stats: dict[int, dict[int, dict[str, Any]]] = {
+        offset: {
+            minutes: {"agree": 0, "n": 0, "diffs": []}
+            for minutes in TIME_SHIFT_HORIZONS_MINUTES
+        }
+        for offset in TIME_SHIFT_OFFSETS_MINUTES
+    }
     bar_interval_pairs = 0
     bar_interval_mismatches = 0
     samples: list[dict[str, Any]] = []
@@ -214,8 +299,8 @@ def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
                     SYMBOL,
                     "M1",
                     from_time=event_at - timedelta(hours=6),
-                    to_time=event_at + timedelta(hours=2),
-                    count=800,
+                    to_time=event_at + timedelta(hours=4),
+                    count=1000,
                 )
             )
         except Exception:
@@ -236,7 +321,9 @@ def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
         ctrader_interval = _f(ctrader.get("bar_interval_minutes"))
 
         if reference_price is not None and ctrader_price is not None:
-            reference_price_diffs.append(abs(ctrader_price - reference_price))
+            signed_diff = ctrader_price - reference_price
+            signed_reference_price_diffs.append(signed_diff)
+            reference_price_diffs.append(abs(signed_diff))
         if (
             reference_atr14 is not None
             and ctrader_atr14 is not None
@@ -264,6 +351,33 @@ def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
             "reference": {},
             "ctrader": {},
         }
+        shifted_reactions = {
+            offset: (
+                ctrader
+                if offset == 0
+                else _reaction(
+                    bars,
+                    event_at + timedelta(minutes=offset),
+                )
+            )
+            for offset in TIME_SHIFT_OFFSETS_MINUTES
+        }
+
+        for offset, shifted in shifted_reactions.items():
+            if not shifted:
+                continue
+            for minutes in TIME_SHIFT_HORIZONS_MINUTES:
+                reference_points = _f(row.get(f"r{minutes}m_points"))
+                shifted_points = _f(shifted.get(f"r{minutes}m_points"))
+                if reference_points is None or shifted_points is None:
+                    continue
+                stats = shift_stats[offset][minutes]
+                stats["n"] += 1
+                stats["agree"] += int(
+                    _sign(reference_points) == _sign(shifted_points)
+                )
+                stats["diffs"].append(abs(reference_points - shifted_points))
+
         for minutes in (5, 15, 30, 60):
             atr_key = f"r{minutes}m_atr"
             points_key = f"r{minutes}m_points"
@@ -285,6 +399,10 @@ def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
                 stats["point_diffs"].append(
                     abs(reference_points - ctrader_points)
                 )
+                if abs(reference_points) >= 0.25:
+                    point_magnitude_ratios[minutes].append(
+                        abs(ctrader_points) / abs(reference_points)
+                    )
 
             if reference_value is None or ctrader_value is None:
                 continue
@@ -315,18 +433,34 @@ def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
             ),
         }
 
+    time_shift_forensics = _summarize_time_shift_stats(shift_stats)
     forensic_summary = {
         "median_abs_reference_price_difference": (
             None if not reference_price_diffs else median(reference_price_diffs)
         ),
+        "median_signed_ctrader_minus_reference_price": (
+            None
+            if not signed_reference_price_diffs
+            else median(signed_reference_price_diffs)
+        ),
         "median_ctrader_to_reference_atr14_ratio": (
             None if not atr_ratios else median(atr_ratios)
         ),
+        "median_abs_point_magnitude_ratio_ctrader_to_reference": {
+            f"{minutes}m": (
+                None
+                if not point_magnitude_ratios[minutes]
+                else median(point_magnitude_ratios[minutes])
+            )
+            for minutes in (5, 15, 30, 60)
+        },
+        "time_shift_sweep": time_shift_forensics,
         "bar_interval_pairs": bar_interval_pairs,
         "bar_interval_mismatches": bar_interval_mismatches,
         "interpretation": (
             "Diagnostics only: separate raw-point, ATR-denominator, price-level, "
-            "and bar-interval mismatches without changing preregistered parity gates."
+            "bar-interval, magnitude-ratio, and time-shift mismatches without changing "
+            "preregistered parity gates."
         ),
     }
 
