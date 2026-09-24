@@ -120,6 +120,10 @@ def historical_ready(details: dict[str, Any] | None) -> bool:
     return str(dict(details or {}).get("decision") or "") == "FULL_BACKFILL_RESEARCH_READY"
 
 
+def timestamp_audit_ready(details: dict[str, Any] | None) -> bool:
+    return str(dict(details or {}).get("decision") or "") == "TIMESTAMP_AUDIT_PASS"
+
+
 def resolution_state(reaction: dict[str, Any]) -> str:
     if reaction.get("r60m_atr") is not None:
         return "RESOLVED_60M"
@@ -415,10 +419,7 @@ def run() -> int:
     timestamp_at, timestamp_audit = _latest_worker_details(
         store, TIMESTAMP_AUDIT_WORKER
     )
-    timestamp_ready = (
-        str(timestamp_audit.get("decision") or "")
-        == "TIMESTAMP_AUDIT_PASS"
-    )
+    timestamp_ready = timestamp_audit_ready(timestamp_audit)
 
     if not timestamp_ready:
         details = {
