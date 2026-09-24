@@ -55,7 +55,7 @@ def test_structure_scheme_abstains_without_enough_matching_history():
     rows += [_row(2017, i, up=True) for i in range(10)]
     result = walk_forward(
         rows,
-        scheme="FAMILY_SURPRISE_STRUCTURE",
+        scheme="FAMILY_SURPRISE_MARKET_STRUCTURE",
         first_test_year=2017,
     )
     assert result["folds"][0]["eligible_predictions"] == 0
@@ -74,3 +74,5 @@ def test_full_artifact_never_promotes_execution():
     assert artifact["promotion_authority"] is False
     assert artifact["year_min"] == 2012
     assert artifact["year_max"] == 2026
+    assert artifact["decision"] == "REACTION_BACKFILL_WALKFORWARD_READY"
+    assert artifact["supply_demand_conditioning"] == "PENDING_POST_WALK_FORWARD_STAGE"
