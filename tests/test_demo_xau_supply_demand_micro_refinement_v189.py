@@ -208,4 +208,4 @@ def test_v189_fails_closed_when_source_available_at_missing():
         as_of=t0 + timedelta(minutes=5 * 51),
     )
     assert result["state"] == "SOURCE_AVAILABILITY_UNKNOWN_NO_REFINEMENT"
-    assert result["refined_entry_pocket"] if "refined_entry_pocket" in result else None is None
+    assert "refined_entry_pocket" not in result or result["refined_entry_pocket"] is None
