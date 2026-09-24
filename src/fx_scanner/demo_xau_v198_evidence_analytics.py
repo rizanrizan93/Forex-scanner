@@ -126,13 +126,24 @@ def summarize_rows(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
         row for row in items if str(row.get("status") or "").startswith("EXPIRED")
     ]
 
-    reaction_precision = None if not touched else len(reaction) / len(touched)
-    terminal_precision = None if not touched else len(terminal) / len(touched)
+    resolved_reaction = [row for row in resolved_touch if bool(row.get("tp1_hit"))]
+    resolved_terminal = [row for row in resolved_touch if bool(row.get("tp2_hit"))]
+    resolved_n = len(resolved_touch)
+    reaction_precision = (
+        None if resolved_n == 0 else len(resolved_reaction) / resolved_n
+    )
+    terminal_precision = (
+        None if resolved_n == 0 else len(resolved_terminal) / resolved_n
+    )
     reaction_wilson = (
-        None if not touched else wilson_lower_bound(len(reaction), len(touched))
+        None
+        if resolved_n == 0
+        else wilson_lower_bound(len(resolved_reaction), resolved_n)
     )
     terminal_wilson = (
-        None if not touched else wilson_lower_bound(len(terminal), len(touched))
+        None
+        if resolved_n == 0
+        else wilson_lower_bound(len(resolved_terminal), resolved_n)
     )
 
     time_to_touch = [
@@ -151,7 +162,6 @@ def summarize_rows(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
                 _minutes(row.get("first_touch_at"), metadata.get("terminal_hit_at"))
             )
 
-    resolved_n = len(resolved_touch)
     sample_state = (
         "STATISTICAL_SAMPLE"
         if resolved_n >= STATISTICAL_MIN_RESOLVED_TOUCHES
@@ -160,7 +170,7 @@ def summarize_rows(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
         else "COLLECTING"
     )
     target_gate = bool(
-        len(touched) >= STATISTICAL_MIN_RESOLVED_TOUCHES
+        resolved_n >= STATISTICAL_MIN_RESOLVED_TOUCHES
         and reaction_precision is not None
         and reaction_precision >= TARGET_RAW_PRECISION
         and reaction_wilson is not None
@@ -172,6 +182,7 @@ def summarize_rows(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "touch_rate": None if enrolled == 0 else len(touched) / enrolled,
         "resolved_after_touch": resolved_n,
         "reaction_hits": len(reaction),
+        "pending_after_touch": len(touched) - resolved_n,
         "reaction_precision_given_touch": reaction_precision,
         "reaction_wilson_lower_95": reaction_wilson,
         "terminal_hits": len(terminal),
@@ -312,18 +323,39 @@ def evaluate_full_path_chain(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
 
 def full_path_summary(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    orphan_next_leg_episodes = 0
     for row in rows:
         grouped[_chain_key(row)].append(row)
-    chains = [
-        {"chain_id": key, **evaluate_full_path_chain(group)}
-        for key, group in sorted(grouped.items())
-    ]
+
+    chains: list[dict[str, Any]] = []
+    for key, group in sorted(grouped.items()):
+        current_rows = [
+            row for row in group if _row_metadata(row).get("leg_role") == "current_leg"
+        ]
+        next_rows = [
+            row for row in group if _row_metadata(row).get("leg_role") == "next_leg"
+        ]
+        if not current_rows:
+            orphan_next_leg_episodes += len(next_rows)
+            continue
+
+        current_direction = str(current_rows[0].get("direction") or "").upper()
+        valid_reverse = [
+            row
+            for row in next_rows
+            if str(row.get("direction") or "").upper()
+            in ({"LONG", "SHORT"} - {current_direction})
+        ]
+        clean_group = [current_rows[0], *valid_reverse[:1]]
+        chains.append({"chain_id": key, **evaluate_full_path_chain(clean_group)})
+
     stage_counts = {
         str(stage): sum(int(chain["stage_score"]) >= stage for chain in chains)
         for stage in range(1, 6)
     }
     return {
         "chains": len(chains),
+        "orphan_next_leg_episodes_excluded": orphan_next_leg_episodes,
         "stage_reached_counts": stage_counts,
         "max_stage_score": max((int(chain["stage_score"]) for chain in chains), default=0),
         "latest_chains": chains[-20:],

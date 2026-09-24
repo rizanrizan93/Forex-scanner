@@ -29,6 +29,7 @@ VALID_REVERSE_SOURCE_ROLES = {
     "H1_PRECISION_INSIDE_CURRENT_TERMINAL",
     "CURRENT_TERMINAL_OPPOSING_ZONE",
 }
+PENDING_EVIDENCE_STATUSES = {"ENROLLED_WAIT_TOUCH", "TOUCHED_PENDING"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -338,7 +339,7 @@ def _existing_evidence_rows(
     response = (
         store.client.table("xau_outcome_ledger")
         .select(
-            "episode_key,observed_at,direction,entry_price,tp1_price,tp2_price,metadata"
+            "episode_key,observed_at,direction,status,entry_price,tp1_price,tp2_price,metadata"
         )
         .eq("episode_type", EPISODE_TYPE)
         .eq("strategy_id", STRATEGY_ID)
@@ -444,6 +445,52 @@ def _freeze_snapshot_geometry(
     cohort = str(metadata.get("evidence_cohort") or "LEGACY_V197_PRE_FREEZE")
     frozen_at = _dt(metadata.get("geometry_frozen_at")) or ensure_utc(now)
     return frozen, cohort, frozen_at
+
+
+def _tracked_frozen_states(
+    current_snapshots: Sequence[PocketSnapshot],
+    existing_rows: dict[str, dict[str, Any]],
+    *,
+    now: datetime,
+    cutoff: datetime,
+) -> tuple[tuple[PocketSnapshot, str, datetime], ...]:
+    tracked: dict[str, tuple[PocketSnapshot, str, datetime]] = {}
+
+    # Persistence contract: once enrolled, a pending episode must continue to
+    # be evaluated even after it disappears from the latest V196 projection.
+    for key, raw in existing_rows.items():
+        row = dict(raw)
+        if str(row.get("status") or "") not in PENDING_EVIDENCE_STATUSES:
+            continue
+        snapshot = _snapshot_from_ledger_row(row)
+        if snapshot is None or snapshot.observed_at < ensure_utc(cutoff):
+            continue
+        metadata = dict(row.get("metadata") or {})
+        cohort = str(metadata.get("evidence_cohort") or "LEGACY_V197_PRE_FREEZE")
+        frozen_at = _dt(metadata.get("geometry_frozen_at")) or ensure_utc(now)
+        tracked[key] = (snapshot, cohort, frozen_at)
+
+    # New/current projection pockets can enroll only if there is no resolved
+    # row with the same immutable episode key. Existing pending rows retain the
+    # ledger geometry, not the latest heartbeat geometry.
+    for snapshot in current_snapshots:
+        previous = dict(existing_rows.get(snapshot.episode_key) or {})
+        if previous and str(previous.get("status") or "") not in PENDING_EVIDENCE_STATUSES:
+            continue
+        frozen = _freeze_snapshot_geometry(snapshot, existing_rows, now=now)
+        if frozen[0].observed_at >= ensure_utc(cutoff):
+            tracked[snapshot.episode_key] = frozen
+
+    return tuple(
+        tracked[key]
+        for key in sorted(
+            tracked,
+            key=lambda item: (
+                tracked[item][0].observed_at,
+                item,
+            ),
+        )
+    )
 
 
 def _ledger_row(
@@ -580,15 +627,13 @@ def run() -> int:
 
     try:
         heartbeats = _heartbeats(store, cutoff=cutoff)
-        snapshots = _snapshots_from_heartbeats(heartbeats)
+        current_snapshots = _snapshots_from_heartbeats(heartbeats)
         existing_rows = _existing_evidence_rows(store)
-        frozen_states = tuple(
-            _freeze_snapshot_geometry(
-                snapshot,
-                existing_rows,
-                now=now,
-            )
-            for snapshot in snapshots
+        frozen_states = _tracked_frozen_states(
+            current_snapshots,
+            existing_rows,
+            now=now,
+            cutoff=cutoff,
         )
         snapshots = tuple(item[0] for item in frozen_states)
 
@@ -656,6 +701,8 @@ def run() -> int:
             "lookback_days": LOOKBACK_DAYS,
             "outcome_horizon_hours": OUTCOME_HORIZON_HOURS,
             "closed_m5_bars": len(bars),
+            "current_projection_pockets": len(current_snapshots),
+            "tracked_pending_episodes": len(rows),
             "enrolled_pockets": len(rows),
             "proven_reaction_target": proven_reaction,
             "proven_terminal_zone": proven_terminal,
