@@ -86,6 +86,21 @@ def _valid_sd_state(state: Any) -> bool:
     }
 
 
+def final_decision(
+    *,
+    base_ready: bool,
+    sd_ready: bool,
+    parity_ready: bool,
+) -> str:
+    if not base_ready:
+        return "BASE_REACTION_BACKFILL_NOT_READY"
+    if not sd_ready:
+        return "SUPPLY_DEMAND_CONDITIONING_INCOMPLETE"
+    if not parity_ready:
+        return "AWAIT_CURRENT_PARITY"
+    return "FULL_BACKFILL_RESEARCH_READY"
+
+
 def _directional_stats(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     grouped: dict[tuple[str, str, str], list[float]] = defaultdict(list)
     for row in rows:
@@ -221,14 +236,11 @@ def run() -> int:
     )
     parity_ready = parity_current and parity_decision == "PARITY_DESCRIPTIVE_AVAILABLE"
 
-    if not base_ready:
-        decision = "BASE_REACTION_BACKFILL_NOT_READY"
-    elif not sd_ready:
-        decision = "SUPPLY_DEMAND_CONDITIONING_INCOMPLETE"
-    elif not parity_ready:
-        decision = "AWAIT_CURRENT_PARITY"
-    else:
-        decision = "FULL_BACKFILL_RESEARCH_READY"
+    decision = final_decision(
+        base_ready=base_ready,
+        sd_ready=sd_ready,
+        parity_ready=parity_ready,
+    )
 
     artifact = {
         **base,
