@@ -140,21 +140,22 @@ def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
         sample = {
             "scheduled_at": event_at.isoformat(),
             "family": row.get("family"),
-            "dukascopy": {},
+            "reference_source": row.get("price_source"),
+            "reference": {},
             "ctrader": {},
         }
         for minutes in (5, 15, 30, 60):
             key = f"r{minutes}m_atr"
-            d = _f(row.get(key))
-            c = _f(ctrader.get(key))
-            sample["dukascopy"][key] = d
-            sample["ctrader"][key] = c
-            if d is None or c is None:
+            reference_value = _f(row.get(key))
+            ctrader_value = _f(ctrader.get(key))
+            sample["reference"][key] = reference_value
+            sample["ctrader"][key] = ctrader_value
+            if reference_value is None or ctrader_value is None:
                 continue
             stats = horizons[minutes]
             stats["n"] += 1
-            stats["agree"] += int(_sign(d) == _sign(c))
-            stats["diffs"].append(abs(d - c))
+            stats["agree"] += int(_sign(reference_value) == _sign(ctrader_value))
+            stats["diffs"].append(abs(reference_value - ctrader_value))
         samples.append(sample)
 
     horizon_stats = {}
@@ -217,6 +218,12 @@ def run() -> int:
         "observed_at": datetime.now(tz=UTC).isoformat(),
         "source_artifact": str(path),
         "source_rows": len(source_rows),
+        "reference_sources": sorted(
+            {
+                str(row.get("price_source") or "UNKNOWN")
+                for row in source_rows
+            }
+        ),
         "result": result,
         "policy_effect": "RESEARCH_ONLY",
         "execution_influence": False,

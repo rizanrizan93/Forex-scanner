@@ -164,6 +164,13 @@ def run() -> int:
     corpus_path = _path_env("XAU_V193_CORPUS_JSON")
     price_path = _path_env("XAU_V193_PRICE_CSV")
     output_path = _output_path(year)
+    price_source = os.getenv("XAU_V193_PRICE_SOURCE", "UNKNOWN_PUBLIC_REFERENCE").strip()
+    provenance_path_raw = os.getenv("XAU_V193_PRICE_PROVENANCE", "").strip()
+    price_provenance: dict[str, Any] = {}
+    if provenance_path_raw:
+        provenance_path = Path(provenance_path_raw)
+        if provenance_path.exists():
+            price_provenance = dict(json.loads(provenance_path.read_text()) or {})
 
     events = _load_corpus(corpus_path, year)
     price = _load_price(price_path)
@@ -188,7 +195,7 @@ def run() -> int:
         )
         reaction["conditioning"] = conditioning
         reaction["conditioning_key"] = _conditioning_key(conditioning)
-        reaction["price_source"] = "DUKASCOPY_PUBLIC_M1"
+        reaction["price_source"] = price_source
         reaction["execution_influence"] = False
         reaction["execution_authority"] = False
         reactions.append(reaction)
@@ -205,6 +212,8 @@ def run() -> int:
         "price_bar_count": len(price),
         "price_start": price.index.min().isoformat(),
         "price_end": price.index.max().isoformat(),
+        "price_source": price_source,
+        "price_provenance": price_provenance,
         "atlas": atlas,
         "reactions": reactions,
         "policy_effect": "RESEARCH_ONLY",
