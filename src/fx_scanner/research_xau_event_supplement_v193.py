@@ -146,18 +146,20 @@ def _parse_date_text(text: str, year_hint: int) -> date | None:
 def _calendar_timezone_name(soup: Any) -> str:
     text = " ".join(soup.get_text(" ", strip=True).split())
     patterns = (
-        r"Calendar Time Zone:\s*([A-Za-z_]+/[A-Za-z_+-]+)",
-        r"Time Zone:\s*([A-Za-z_]+/[A-Za-z_+-]+)",
+        r"Calendar Time Zone:\s*([A-Za-z_]+/[A-Za-z_ +\-]+?)(?=\s*\(|\s+GMT\b|\s*$)",
+        r"Time Zone:\s*([A-Za-z_]+/[A-Za-z_ +\-]+?)(?=\s*\(|\s+GMT\b|\s*$)",
     )
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.I)
         if match:
-            name = match.group(1)
+            raw_name = " ".join(match.group(1).split())
+            name = raw_name.replace(" ", "_")
             try:
                 ZoneInfo(name)
             except Exception as exc:
                 raise RuntimeError(
-                    f"Forex Factory calendar timezone is not a valid IANA zone: {name}"
+                    "Forex Factory calendar timezone is not a valid IANA zone: "
+                    f"raw={raw_name!r} normalized={name!r}"
                 ) from exc
             return name
     raise RuntimeError(

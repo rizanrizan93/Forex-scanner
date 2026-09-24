@@ -181,3 +181,23 @@ def test_forex_factory_parser_fails_closed_without_explicit_page_timezone():
             year_hint=2026,
             source_url="https://www.forexfactory.com/calendar",
         )
+
+
+@pytest.mark.parametrize(
+    ("label", "expected"),
+    [
+        ("America/New York", "America/New_York"),
+        ("America/Los Angeles", "America/Los_Angeles"),
+        ("America/Phoenix", "America/Phoenix"),
+    ],
+)
+def test_forex_factory_timezone_label_normalization(label, expected):
+    pytest.importorskip("bs4")
+    from bs4 import BeautifulSoup
+    from fx_scanner.research_xau_event_supplement_v193 import _calendar_timezone_name
+
+    soup = BeautifulSoup(
+        f"<div>Calendar Time Zone: {label} (GMT -7)</div>",
+        "html.parser",
+    )
+    assert _calendar_timezone_name(soup) == expected
