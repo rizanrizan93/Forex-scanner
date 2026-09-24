@@ -819,268 +819,277 @@ with forecast_tab:
 
     st.markdown("---")
 
-    st.markdown("### Integrasi AFIC ↔ Supply/Demand")
-    st.caption(
-        "Supply/Demand V182 sekarang menjadi context map untuk AFIC. Context ini dapat "
-        "mendukung zona canonical, memberi peringatan zona reversal lawan, atau menyediakan "
-        "fallback PREPARE ketika canonical AFIC belum ada. Context ini TIDAK mengubah Grade "
-        "A/B, tidak membuat signal broker, dan tidak menggantikan konfirmasi M15."
-    )
-    if afic_sd_context:
-        sd_same = dict(afic_sd_context.get("same_direction_zone") or {})
-        sd_opp = dict(afic_sd_context.get("opposite_reversal_zone") or {})
-        ic1, ic2, ic3, ic4 = st.columns(4)
-        ic1.metric("State integrasi", str(afic_sd_context.get("state") or "—"))
-        ic2.metric(
-            "Confluence canonical",
-            "YA" if afic_sd_context.get("same_direction_confluence") else "TIDAK",
-        )
-        ic3.metric(
-            "Zona lawan dekat harga",
-            "YA" if afic_sd_context.get("opposite_zone_near_price") else "TIDAK",
-        )
-        ic4.metric("Otoritas eksekusi", "TIDAK ADA")
-        if sd_same:
-            st.info(
-                "Supply/Demand searah AFIC: "
-                f"{sd_same.get('timeframe','—')} {sd_same.get('pattern','—')} "
-                f"{_fmt_price(sd_same.get('low'))}–{_fmt_price(sd_same.get('high'))} • "
-                f"overlap canonical={_fmt_pct(afic_sd_context.get('same_direction_overlap_ratio'))} • "
-                f"jarak ke canonical="
-                f"{_fmt_distance(afic_sd_context.get('same_direction_distance_atr'),' ATR')}."
-            )
-        if sd_opp:
-            st.warning(
-                "Zona reversal lawan: "
-                f"{sd_opp.get('timeframe','—')} {sd_opp.get('pattern','—')} "
-                f"{_fmt_price(sd_opp.get('low'))}–{_fmt_price(sd_opp.get('high'))} • "
-                f"jarak dari harga="
-                f"{_fmt_distance(afic_sd_context.get('opposite_zone_distance_atr'),' ATR')}. "
-                "Ini adalah Plan-B / reaction watch, bukan alasan entry melawan AFIC."
-            )
-        dom_context = dict(afic_sd_context.get("dom_context") or {})
-        if not dom_context and dom_v191_hb is not None:
-            dom_details = dict(dom_v191_hb.get("details") or {})
-            dom_context = dict(dom_details.get("analysis") or {})
-            dom_context["stale"] = False
-            dom_context["alignment_with_first_leg"] = "BELUM_DIHUBUNGKAN_KE_SNAPSHOT_AFIC"
-        if dom_context:
-            d1, d2, d3, d4 = st.columns(4)
-            d1.metric("DOM V191", str(dom_context.get("state") or "—"))
-            d2.metric(
-                "Pressure score",
-                "—"
-                if dom_context.get("pressure_score") is None
-                and dom_context.get("dom_pressure_score") is None
-                else f"{float(dom_context.get('pressure_score', dom_context.get('dom_pressure_score'))):.1f}",
-            )
-            d3.metric(
-                "Imbalance top-5",
-                "—"
-                if dom_context.get("last_imbalance") is None
-                else f"{float(dom_context.get('last_imbalance')):+.2f}",
-            )
-            d4.metric(
-                "Alignment first-leg",
-                str(dom_context.get("alignment_with_first_leg") or "—"),
-            )
-            st.caption(
-                "DOM berasal dari Level II cTrader broker/venue, bukan consolidated COMEX book. "
-                "V191 hanya context/shadow evidence dan tidak memiliki execution authority."
-            )
-            bid_wall = dict(dom_context.get("bid_wall") or {})
-            ask_wall = dict(dom_context.get("ask_wall") or {})
-            if bid_wall or ask_wall:
-                st.caption(
-                    "Wall persistence • BID "
-                    f"{_fmt_price(bid_wall.get('dominant_wall_price'))} / "
-                    f"{_fmt_pct(bid_wall.get('wall_persistence'))} • ASK "
-                    f"{_fmt_price(ask_wall.get('dominant_wall_price'))} / "
-                    f"{_fmt_pct(ask_wall.get('wall_persistence'))}."
-                )
-            resolution = afic_sd_context.get("conflict_resolution_evidence")
-            if resolution:
-                st.info(f"Evidence resolusi compression: {resolution}")
-
-        event_context = dict(afic_sd_context.get("event_risk_context") or {})
-        if not event_context and event_risk_v192_hb is not None:
-            event_details = dict(event_risk_v192_hb.get("details") or {})
-            event_context = dict(event_details.get("risk") or {})
-            event_context["source_status"] = dict(event_details.get("source_status") or {})
-            event_context["official_or_cadence_verified_count"] = event_details.get(
-                "official_or_cadence_verified_count"
-            )
-            event_context["discovery_unverified_count"] = event_details.get(
-                "discovery_unverified_count"
-            )
-            event_context["stale"] = False
-        if event_context:
-            focal_event = dict(event_context.get("focal_event") or {})
-            e1, e2, e3, e4 = st.columns(4)
-            e1.metric("Event Risk V192", str(event_context.get("state") or "—"))
-            e2.metric("Aksi", str(event_context.get("action") or "—"))
-            e3.metric(
-                "Event terdekat",
-                str(focal_event.get("title") or "Tidak ada event dekat"),
-            )
-            e4.metric(
-                "Jarak waktu",
-                "—"
-                if event_context.get("minutes_to_focal") is None
-                else f"{float(event_context.get('minutes_to_focal')):+.0f} menit",
-            )
-            if focal_event:
-                st.caption(
-                    "Focal event: "
-                    f"{focal_event.get('title','—')} • "
-                    f"{_fmt_wib_datetime(focal_event.get('scheduled_at'), seconds=False)} • "
-                    f"{focal_event.get('source_tier','—')} • "
-                    f"{focal_event.get('source','—')}."
-                )
-            upcoming = list(event_context.get("upcoming_events") or [])
-            if upcoming:
-                event_rows = []
-                for item in upcoming[:6]:
-                    event_rows.append(
-                        {
-                            "Waktu WIB": _fmt_wib_datetime(
-                                item.get("scheduled_at"), seconds=False
-                            ),
-                            "Event": item.get("title"),
-                            "Impact": item.get("impact"),
-                            "Kategori": item.get("category"),
-                            "Tier sumber": item.get("source_tier"),
-                            "Sumber": item.get("source"),
-                        }
-                    )
-                st.dataframe(
-                    pd.DataFrame(event_rows),
-                    hide_index=True,
-                    use_container_width=True,
-                )
-            st.caption(
-                "V192 adalah context risiko waktu, bukan prediksi arah berita. "
-                "PRE_EVENT/EVENT_WINDOW hanya mengubah cara membaca setup menjadi lebih hati-hati; "
-                "tidak memiliki execution authority."
-            )
-            if event_context.get("stale"):
-                st.warning(
-                    "Event-risk snapshot stale. Jangan gunakan kalender ini sebagai context aktif "
-                    "sampai heartbeat V192 diperbarui."
-                )
-
-        if afic_sd_context.get("path_direction_conflict"):
-            st.warning(
-                "KONFLIK SUPPLY/DEMAND H1: zona LONG dan SHORT saling overlap "
-                f"sekitar {_fmt_pct(afic_sd_context.get('path_overlap_ratio'))}. "
-                "State = COMPRESSION / WAIT MICRO RESOLUTION. Jangan membaca salah satu "
-                "arah sebagai valid hanya karena harga sedang berada di dalam satu zona; "
-                "tunggu V189 M5 reclaim/MSS/displacement."
-            )
-        afic_first_leg_path = dict(afic_sd_context.get("first_leg_path") or {})
-        if afic_first_leg_path:
-            path_source = dict(afic_first_leg_path.get("source_zone") or {})
-            path_target = dict(afic_first_leg_path.get("primary_opposing_zone") or {})
-            path_waypoints = list(afic_first_leg_path.get("internal_targets") or [])
-            if path_source:
-                st.success(
-                    "Path AFIC saat ini: "
-                    f"{afic_first_leg_path.get('reaction_direction','—')} dari "
-                    f"{_fmt_price(path_source.get('low'))}–{_fmt_price(path_source.get('high'))}"
-                    + (
-                        " → target opposing zone "
-                        f"{_fmt_price(path_target.get('low'))}–{_fmt_price(path_target.get('high'))}"
-                        if path_target else
-                        " → opposing zone belum tersedia"
-                    )
-                    + "."
-                )
-                if path_waypoints:
-                    waypoint_text = " → ".join(
-                        f"{item.get('source','LEVEL')} {_fmt_price(item.get('price'))}"
-                        for item in path_waypoints[:5]
-                    )
-                    st.caption(
-                        "Waypoint internal sebelum opposing zone: " + waypoint_text
-                    )
-                reaction_target = dict(
-                    afic_first_leg_path.get("reaction_target") or {}
-                )
-                terminal_target = dict(
-                    afic_first_leg_path.get("terminal_target_zone") or {}
-                )
-                if reaction_target:
-                    st.success(
-                        "Target reaction utama: "
-                        f"{_fmt_price(reaction_target.get('price'))} "
-                        f"({reaction_target.get('source','—')})"
-                        + (
-                            " → terminal opposing zone "
-                            f"{_fmt_price(terminal_target.get('low'))}–"
-                            f"{_fmt_price(terminal_target.get('high'))}"
-                            if terminal_target else ""
-                        )
-                    )
-                path_dest_stack = list(
-                    afic_first_leg_path.get("destination_stack") or []
-                )
-                if path_dest_stack:
-                    st.caption(
-                        "Destination stack: "
-                        + " | ".join(
-                            f"{item.get('timeframe','—')} "
-                            f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))} "
-                            f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
-                            for item in path_dest_stack[:4]
-                        )
-                    )
-                afic_micro = dict(
-                    afic_sd_context.get("first_leg_micro_refinement") or {}
-                )
-                if afic_micro:
-                    micro_candidate = dict(afic_micro.get("candidate_entry_pocket") or {})
-                    micro_refined = dict(afic_micro.get("refined_entry_pocket") or {})
-                    st.info(
-                        "Micro Refinement V189: "
-                        f"{afic_micro.get('state','—')} • "
-                        f"sweep={_fmt_price(dict(afic_micro.get('sweep') or {}).get('price'))} • "
-                        f"reclaim={_fmt_price(afic_micro.get('source_proximal_reclaim_level'))} • "
-                        f"MSS={_fmt_price(afic_micro.get('mss_level'))}."
-                    )
-                    if micro_refined:
-                        st.success(
-                            "Refined entry pocket M5 (SHADOW): "
-                            f"{_fmt_price(micro_refined.get('low'))}–"
-                            f"{_fmt_price(micro_refined.get('high'))}. "
-                            "Ini belum memberi izin eksekusi."
-                        )
-                    elif micro_candidate:
-                        st.caption(
-                            "Candidate M5 pocket: "
-                            f"{_fmt_price(micro_candidate.get('low'))}–"
-                            f"{_fmt_price(micro_candidate.get('high'))}; "
-                            "masih menunggu reclaim/MSS/displacement."
-                        )
-                st.caption(
-                    "Path ini baru aktif sebagai PREPARE/FORECAST. Reaction tetap harus "
-                    "dibuktikan oleh sweep/mitigation lalu reclaim/MSS/displacement M5/M15."
-                )
-        if afic_sd_context.get("prepare_only_fallback"):
-            st.warning(
-                "Canonical AFIC belum memiliki zona valid, tetapi atlas Supply/Demand "
-                "memiliki context aktif. Scanner boleh menampilkan PERSIAPAN/WATCH lebih awal, "
-                "namun order tetap dilarang sampai canonical AFIC + completed M15 confirmation "
-                "terbentuk."
-            )
-        if afic_sd_context.get("atlas_stale"):
-            st.error(
-                "Snapshot Supply/Demand terlalu lama untuk dipakai sebagai context aktif. "
-                "AFIC tetap berjalan tanpa policy effect dari atlas sampai heartbeat baru tersedia."
-            )
-    else:
+    with st.expander(
+        "Detail Diagnostik AFIC ↔ Supply/Demand / V189 / DOM / Event",
+        expanded=False,
+    ):
         st.caption(
-            "Context integrasi AFIC ↔ Supply/Demand belum tersedia pada snapshot runtime ini."
+            "Detail ini tetap tersedia untuk audit. Untuk keputusan cepat gunakan "
+            "Pusat Keputusan XAUUSD di atas."
         )
+        st.markdown("### Integrasi AFIC ↔ Supply/Demand")
+        st.caption(
+            "Supply/Demand V182 sekarang menjadi context map untuk AFIC. Context ini dapat "
+            "mendukung zona canonical, memberi peringatan zona reversal lawan, atau menyediakan "
+            "fallback PREPARE ketika canonical AFIC belum ada. Context ini TIDAK mengubah Grade "
+            "A/B, tidak membuat signal broker, dan tidak menggantikan konfirmasi M15."
+        )
+        if afic_sd_context:
+            sd_same = dict(afic_sd_context.get("same_direction_zone") or {})
+            sd_opp = dict(afic_sd_context.get("opposite_reversal_zone") or {})
+            ic1, ic2, ic3, ic4 = st.columns(4)
+            ic1.metric("State integrasi", str(afic_sd_context.get("state") or "—"))
+            ic2.metric(
+                "Confluence canonical",
+                "YA" if afic_sd_context.get("same_direction_confluence") else "TIDAK",
+            )
+            ic3.metric(
+                "Zona lawan dekat harga",
+                "YA" if afic_sd_context.get("opposite_zone_near_price") else "TIDAK",
+            )
+            ic4.metric("Otoritas eksekusi", "TIDAK ADA")
+            if sd_same:
+                st.info(
+                    "Supply/Demand searah AFIC: "
+                    f"{sd_same.get('timeframe','—')} {sd_same.get('pattern','—')} "
+                    f"{_fmt_price(sd_same.get('low'))}–{_fmt_price(sd_same.get('high'))} • "
+                    f"overlap canonical={_fmt_pct(afic_sd_context.get('same_direction_overlap_ratio'))} • "
+                    f"jarak ke canonical="
+                    f"{_fmt_distance(afic_sd_context.get('same_direction_distance_atr'),' ATR')}."
+                )
+            if sd_opp:
+                st.warning(
+                    "Zona reversal lawan: "
+                    f"{sd_opp.get('timeframe','—')} {sd_opp.get('pattern','—')} "
+                    f"{_fmt_price(sd_opp.get('low'))}–{_fmt_price(sd_opp.get('high'))} • "
+                    f"jarak dari harga="
+                    f"{_fmt_distance(afic_sd_context.get('opposite_zone_distance_atr'),' ATR')}. "
+                    "Ini adalah Plan-B / reaction watch, bukan alasan entry melawan AFIC."
+                )
+            dom_context = dict(afic_sd_context.get("dom_context") or {})
+            if not dom_context and dom_v191_hb is not None:
+                dom_details = dict(dom_v191_hb.get("details") or {})
+                dom_context = dict(dom_details.get("analysis") or {})
+                dom_context["stale"] = False
+                dom_context["alignment_with_first_leg"] = "BELUM_DIHUBUNGKAN_KE_SNAPSHOT_AFIC"
+            if dom_context:
+                d1, d2, d3, d4 = st.columns(4)
+                d1.metric("DOM V191", str(dom_context.get("state") or "—"))
+                d2.metric(
+                    "Pressure score",
+                    "—"
+                    if dom_context.get("pressure_score") is None
+                    and dom_context.get("dom_pressure_score") is None
+                    else f"{float(dom_context.get('pressure_score', dom_context.get('dom_pressure_score'))):.1f}",
+                )
+                d3.metric(
+                    "Imbalance top-5",
+                    "—"
+                    if dom_context.get("last_imbalance") is None
+                    else f"{float(dom_context.get('last_imbalance')):+.2f}",
+                )
+                d4.metric(
+                    "Alignment first-leg",
+                    str(dom_context.get("alignment_with_first_leg") or "—"),
+                )
+                st.caption(
+                    "DOM berasal dari Level II cTrader broker/venue, bukan consolidated COMEX book. "
+                    "V191 hanya context/shadow evidence dan tidak memiliki execution authority."
+                )
+                bid_wall = dict(dom_context.get("bid_wall") or {})
+                ask_wall = dict(dom_context.get("ask_wall") or {})
+                if bid_wall or ask_wall:
+                    st.caption(
+                        "Wall persistence • BID "
+                        f"{_fmt_price(bid_wall.get('dominant_wall_price'))} / "
+                        f"{_fmt_pct(bid_wall.get('wall_persistence'))} • ASK "
+                        f"{_fmt_price(ask_wall.get('dominant_wall_price'))} / "
+                        f"{_fmt_pct(ask_wall.get('wall_persistence'))}."
+                    )
+                resolution = afic_sd_context.get("conflict_resolution_evidence")
+                if resolution:
+                    st.info(f"Evidence resolusi compression: {resolution}")
+
+            event_context = dict(afic_sd_context.get("event_risk_context") or {})
+            if not event_context and event_risk_v192_hb is not None:
+                event_details = dict(event_risk_v192_hb.get("details") or {})
+                event_context = dict(event_details.get("risk") or {})
+                event_context["source_status"] = dict(event_details.get("source_status") or {})
+                event_context["official_or_cadence_verified_count"] = event_details.get(
+                    "official_or_cadence_verified_count"
+                )
+                event_context["discovery_unverified_count"] = event_details.get(
+                    "discovery_unverified_count"
+                )
+                event_context["stale"] = False
+            if event_context:
+                focal_event = dict(event_context.get("focal_event") or {})
+                e1, e2, e3, e4 = st.columns(4)
+                e1.metric("Event Risk V192", str(event_context.get("state") or "—"))
+                e2.metric("Aksi", str(event_context.get("action") or "—"))
+                e3.metric(
+                    "Event terdekat",
+                    str(focal_event.get("title") or "Tidak ada event dekat"),
+                )
+                e4.metric(
+                    "Jarak waktu",
+                    "—"
+                    if event_context.get("minutes_to_focal") is None
+                    else f"{float(event_context.get('minutes_to_focal')):+.0f} menit",
+                )
+                if focal_event:
+                    st.caption(
+                        "Focal event: "
+                        f"{focal_event.get('title','—')} • "
+                        f"{_fmt_wib_datetime(focal_event.get('scheduled_at'), seconds=False)} • "
+                        f"{focal_event.get('source_tier','—')} • "
+                        f"{focal_event.get('source','—')}."
+                    )
+                upcoming = list(event_context.get("upcoming_events") or [])
+                if upcoming:
+                    event_rows = []
+                    for item in upcoming[:6]:
+                        event_rows.append(
+                            {
+                                "Waktu WIB": _fmt_wib_datetime(
+                                    item.get("scheduled_at"), seconds=False
+                                ),
+                                "Event": item.get("title"),
+                                "Impact": item.get("impact"),
+                                "Kategori": item.get("category"),
+                                "Tier sumber": item.get("source_tier"),
+                                "Sumber": item.get("source"),
+                            }
+                        )
+                    st.dataframe(
+                        pd.DataFrame(event_rows),
+                        hide_index=True,
+                        use_container_width=True,
+                    )
+                st.caption(
+                    "V192 adalah context risiko waktu, bukan prediksi arah berita. "
+                    "PRE_EVENT/EVENT_WINDOW hanya mengubah cara membaca setup menjadi lebih hati-hati; "
+                    "tidak memiliki execution authority."
+                )
+                if event_context.get("stale"):
+                    st.warning(
+                        "Event-risk snapshot stale. Jangan gunakan kalender ini sebagai context aktif "
+                        "sampai heartbeat V192 diperbarui."
+                    )
+
+            if afic_sd_context.get("path_direction_conflict"):
+                st.warning(
+                    "KONFLIK SUPPLY/DEMAND H1: zona LONG dan SHORT saling overlap "
+                    f"sekitar {_fmt_pct(afic_sd_context.get('path_overlap_ratio'))}. "
+                    "State = COMPRESSION / WAIT MICRO RESOLUTION. Jangan membaca salah satu "
+                    "arah sebagai valid hanya karena harga sedang berada di dalam satu zona; "
+                    "tunggu V189 M5 reclaim/MSS/displacement."
+                )
+            afic_first_leg_path = dict(afic_sd_context.get("first_leg_path") or {})
+            if afic_first_leg_path:
+                path_source = dict(afic_first_leg_path.get("source_zone") or {})
+                path_target = dict(afic_first_leg_path.get("primary_opposing_zone") or {})
+                path_waypoints = list(afic_first_leg_path.get("internal_targets") or [])
+                if path_source:
+                    st.success(
+                        "Path AFIC saat ini: "
+                        f"{afic_first_leg_path.get('reaction_direction','—')} dari "
+                        f"{_fmt_price(path_source.get('low'))}–{_fmt_price(path_source.get('high'))}"
+                        + (
+                            " → target opposing zone "
+                            f"{_fmt_price(path_target.get('low'))}–{_fmt_price(path_target.get('high'))}"
+                            if path_target else
+                            " → opposing zone belum tersedia"
+                        )
+                        + "."
+                    )
+                    if path_waypoints:
+                        waypoint_text = " → ".join(
+                            f"{item.get('source','LEVEL')} {_fmt_price(item.get('price'))}"
+                            for item in path_waypoints[:5]
+                        )
+                        st.caption(
+                            "Waypoint internal sebelum opposing zone: " + waypoint_text
+                        )
+                    reaction_target = dict(
+                        afic_first_leg_path.get("reaction_target") or {}
+                    )
+                    terminal_target = dict(
+                        afic_first_leg_path.get("terminal_target_zone") or {}
+                    )
+                    if reaction_target:
+                        st.success(
+                            "Target reaction utama: "
+                            f"{_fmt_price(reaction_target.get('price'))} "
+                            f"({reaction_target.get('source','—')})"
+                            + (
+                                " → terminal opposing zone "
+                                f"{_fmt_price(terminal_target.get('low'))}–"
+                                f"{_fmt_price(terminal_target.get('high'))}"
+                                if terminal_target else ""
+                            )
+                        )
+                    path_dest_stack = list(
+                        afic_first_leg_path.get("destination_stack") or []
+                    )
+                    if path_dest_stack:
+                        st.caption(
+                            "Destination stack: "
+                            + " | ".join(
+                                f"{item.get('timeframe','—')} "
+                                f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))} "
+                                f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
+                                for item in path_dest_stack[:4]
+                            )
+                        )
+                    afic_micro = dict(
+                        afic_sd_context.get("first_leg_micro_refinement") or {}
+                    )
+                    if afic_micro:
+                        micro_candidate = dict(afic_micro.get("candidate_entry_pocket") or {})
+                        micro_refined = dict(afic_micro.get("refined_entry_pocket") or {})
+                        st.info(
+                            "Micro Refinement V189: "
+                            f"{afic_micro.get('state','—')} • "
+                            f"sweep={_fmt_price(dict(afic_micro.get('sweep') or {}).get('price'))} • "
+                            f"reclaim={_fmt_price(afic_micro.get('source_proximal_reclaim_level'))} • "
+                            f"MSS={_fmt_price(afic_micro.get('mss_level'))}."
+                        )
+                        if micro_refined:
+                            st.success(
+                                "Refined entry pocket M5 (SHADOW): "
+                                f"{_fmt_price(micro_refined.get('low'))}–"
+                                f"{_fmt_price(micro_refined.get('high'))}. "
+                                "Ini belum memberi izin eksekusi."
+                            )
+                        elif micro_candidate:
+                            st.caption(
+                                "Candidate M5 pocket: "
+                                f"{_fmt_price(micro_candidate.get('low'))}–"
+                                f"{_fmt_price(micro_candidate.get('high'))}; "
+                                "masih menunggu reclaim/MSS/displacement."
+                            )
+                    st.caption(
+                        "Path ini baru aktif sebagai PREPARE/FORECAST. Reaction tetap harus "
+                        "dibuktikan oleh sweep/mitigation lalu reclaim/MSS/displacement M5/M15."
+                    )
+            if afic_sd_context.get("prepare_only_fallback"):
+                st.warning(
+                    "Canonical AFIC belum memiliki zona valid, tetapi atlas Supply/Demand "
+                    "memiliki context aktif. Scanner boleh menampilkan PERSIAPAN/WATCH lebih awal, "
+                    "namun order tetap dilarang sampai canonical AFIC + completed M15 confirmation "
+                    "terbentuk."
+                )
+            if afic_sd_context.get("atlas_stale"):
+                st.error(
+                    "Snapshot Supply/Demand terlalu lama untuk dipakai sebagai context aktif. "
+                    "AFIC tetap berjalan tanpa policy effect dari atlas sampai heartbeat baru tersedia."
+                )
+        else:
+            st.caption(
+                "Context integrasi AFIC ↔ Supply/Demand belum tersedia pada snapshot runtime ini."
+            )
+
 
     st.markdown("### Rezim Strategis HTF (Strategic HTF Regime)")
     regime_details = {} if regime_hb is None else dict(regime_hb.get("details") or {})
