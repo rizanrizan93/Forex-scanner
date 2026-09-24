@@ -34,6 +34,11 @@ def test_ctrader_parity_reaction_is_atr_normalized():
         bars.append(_bar(ts, open_, close + 0.2, open_ - 0.2, close))
         price = close
     out = _reaction(tuple(bars), event)
+    assert out["reference_price"] is not None
+    assert out["atr14"] is not None
+    assert out["bar_interval_minutes"] == 1.0
+    assert out["r5m_points"] is not None
+    assert out["r15m_points"] is not None
     assert out["r5m_atr"] is not None
     assert out["r15m_atr"] is not None
     assert out["r15m_atr"] > 0
