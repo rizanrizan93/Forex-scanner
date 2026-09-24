@@ -146,25 +146,22 @@ def _parse_date_text(text: str, year_hint: int) -> date | None:
 def _calendar_timezone_name(soup: Any) -> str:
     text = " ".join(soup.get_text(" ", strip=True).split())
     patterns = (
-        r"Calendar Time Zone:\s*([^()]+?)\s*\(GMT",
-        r"Time Zone:\s*([^()]+?)\s*\(GMT",
+        r"Calendar Time Zone:\s*([A-Za-z_]+/[A-Za-z_ +\-]+?)(?=\s*\(|\s+GMT\b|\s*$)",
+        r"Time Zone:\s*([A-Za-z_]+/[A-Za-z_ +\-]+?)(?=\s*\(|\s+GMT\b|\s*$)",
     )
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.I)
-        if not match:
-            continue
-        display_name = " ".join(match.group(1).split()).strip()
-        # Forex Factory may render a human label such as "America/New York"
-        # while Python's IANA key is "America/New_York".
-        name = display_name.replace(" ", "_")
-        try:
-            ZoneInfo(name)
-        except Exception as exc:
-            raise RuntimeError(
-                "Forex Factory calendar timezone is not a valid IANA zone: "
-                f"display={display_name!r} normalized={name!r}"
-            ) from exc
-        return name
+        if match:
+            raw_name = " ".join(match.group(1).split())
+            name = raw_name.replace(" ", "_")
+            try:
+                ZoneInfo(name)
+            except Exception as exc:
+                raise RuntimeError(
+                    "Forex Factory calendar timezone is not a valid IANA zone: "
+                    f"raw={raw_name!r} normalized={name!r}"
+                ) from exc
+            return name
     raise RuntimeError(
         "Forex Factory calendar timezone was not explicitly present in the fetched page"
     )
