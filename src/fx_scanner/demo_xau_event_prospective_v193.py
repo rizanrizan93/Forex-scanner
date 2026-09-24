@@ -17,6 +17,7 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 WORKER_NAME = "ctrader_demo_xau_event_prospective_v193"
 HISTORICAL_WORKER = "ctrader_xau_event_reaction_v193_full"
+TIMESTAMP_AUDIT_WORKER = "ctrader_xau_event_timestamp_audit_v193"
 EVENT_WORKER = "ctrader_demo_xau_event_risk_v192"
 ATLAS_WORKER = "ctrader_demo_xau_supply_demand_atlas_v182"
 DOM_WORKER = "ctrader_demo_xau_dom_v191"
@@ -117,6 +118,10 @@ def cluster_upcoming_events(
 
 def historical_ready(details: dict[str, Any] | None) -> bool:
     return str(dict(details or {}).get("decision") or "") == "FULL_BACKFILL_RESEARCH_READY"
+
+
+def timestamp_audit_ready(details: dict[str, Any] | None) -> bool:
+    return str(dict(details or {}).get("decision") or "") == "TIMESTAMP_AUDIT_PASS"
 
 
 def resolution_state(reaction: dict[str, Any]) -> str:
@@ -411,6 +416,37 @@ def run() -> int:
     store = SupabaseOperationalStore.from_env()
     now = datetime.now(tz=UTC)
     hist_at, historical = _latest_worker_details(store, HISTORICAL_WORKER)
+    timestamp_at, timestamp_audit = _latest_worker_details(
+        store, TIMESTAMP_AUDIT_WORKER
+    )
+    timestamp_ready = timestamp_audit_ready(timestamp_audit)
+
+    if not timestamp_ready:
+        details = {
+            "contract": CONTRACT,
+            "state": "WAIT_TIMESTAMP_AUDIT",
+            "timestamp_worker": TIMESTAMP_AUDIT_WORKER,
+            "timestamp_worker_observed_at": (
+                None if timestamp_at is None else timestamp_at.isoformat()
+            ),
+            "timestamp_decision": timestamp_audit.get("decision"),
+            "historical_decision": historical.get("decision"),
+            "captured": 0,
+            "resolved": 0,
+            "execution_influence": False,
+            "execution_authority": False,
+        }
+        store.write_heartbeat(
+            WORKER_NAME,
+            healthy=True,
+            lag_seconds=0.0,
+            details=details,
+        )
+        print(
+            "XAU_EVENT_PROSPECTIVE_V193 state=WAIT_TIMESTAMP_AUDIT "
+            "execution_authority=0"
+        )
+        return 0
 
     if not historical_ready(historical):
         details = {
