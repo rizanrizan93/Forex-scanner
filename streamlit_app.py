@@ -1414,6 +1414,51 @@ with forecast_tab:
                     f"status={last_pocket.get('status','—')}."
                 )
 
+            if latest_physical:
+                last_pocket = dict(latest_physical[-1])
+                rung_chronology = []
+                for item in list(last_pocket.get("reaction_ladder") or []):
+                    multiple = float(item.get("atr_multiple") or 0.0)
+                    first_hit = item.get("first_hit_at")
+                    state = str(item.get("chronology_state") or "—")
+                    if first_hit is not None:
+                        minutes = item.get("minutes_from_touch")
+                        minute_text = (
+                            "—"
+                            if minutes is None
+                            else f"{float(minutes):.0f} mnt"
+                        )
+                        rung_chronology.append(
+                            f"{multiple:.2f}ATR "
+                            f"{_fmt_price(item.get('threshold_price'))} → "
+                            f"{_fmt_wib_datetime(first_hit, seconds=False)} "
+                            f"({minute_text} setelah touch)"
+                        )
+                    else:
+                        rung_chronology.append(
+                            f"{multiple:.2f}ATR "
+                            f"{_fmt_price(item.get('threshold_price'))} → {state}"
+                        )
+                if rung_chronology:
+                    st.caption(
+                        "Chronology completed-M5: "
+                        + " • ".join(rung_chronology)
+                        + ". Pre-touch dan M5 yang belum selesai tidak dihitung."
+                    )
+
+                versions = list(last_pocket.get("target_versions") or [])
+                if versions:
+                    latest_target = dict(versions[-1])
+                    st.caption(
+                        "Target chronology versi terbaru: "
+                        f"mapped={_fmt_wib_datetime(latest_target.get('mapped_at'), seconds=False)} • "
+                        f"reaction={_fmt_price(latest_target.get('reaction_target'))} "
+                        f"first hit={_fmt_wib_datetime(latest_target.get('reaction_first_hit_at'), seconds=False)} • "
+                        f"terminal={_fmt_price(latest_target.get('terminal_target'))} "
+                        f"first hit={_fmt_wib_datetime(latest_target.get('terminal_first_hit_at'), seconds=False)}. "
+                        "Target version tidak boleh backfill pergerakan sebelum mapped_at."
+                    )
+
         with st.expander("Detail evidence analytics V198/V201"):
             st.json(
                 {
