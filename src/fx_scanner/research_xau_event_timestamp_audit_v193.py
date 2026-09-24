@@ -32,12 +32,12 @@ ANCHORS = (
         "exclude_title": (),
     },
     {
-        "id": "ARCHIVE_NFP_2025_04_04",
+        "id": "ARCHIVE_PPI_2025_03_13",
         "source": "ARCHIVE",
-        "family": "NFP_EMPLOYMENT",
-        "day": date(2025, 4, 4),
-        "expected_at": datetime(2025, 4, 4, 12, 30, tzinfo=UTC),
-        "exclude_title": ("ADP",),
+        "family": "PPI",
+        "day": date(2025, 3, 13),
+        "expected_at": datetime(2025, 3, 13, 12, 30, tzinfo=UTC),
+        "exclude_title": (),
     },
     # Supplement anchors across EST and EDT.
     {
