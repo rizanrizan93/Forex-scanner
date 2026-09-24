@@ -408,3 +408,58 @@ def test_v201_tracks_multiple_frozen_checkpoint_first_hits():
     assert targets[0]["minutes_from_touch"] == 5.0
     assert targets[1]["first_hit_at"] == "2026-09-24T14:45:00+00:00"
     assert targets[1]["minutes_from_touch"] == 10.0
+
+
+def test_v201_excludes_same_touch_bar_ohlc_hits_as_intrabar_ambiguous():
+    rows = (
+        _row(
+            "touch-bar-ambiguous",
+            observed="2026-09-24T14:14:55+00:00",
+            role="current_leg",
+            touch="2026-09-24T14:35:00+00:00",
+            status="TOUCHED_PENDING",
+            atr=16.0,
+            target=4262.0,
+        ),
+    )
+    bars = (
+        # The pocket is touched on this bar, but its high may have occurred
+        # before the touch. It must not prove any post-touch reaction.
+        _bar(
+            "2026-09-24T14:35:00+00:00",
+            open_=4264.0,
+            high=4265.0,
+            low=4253.0,
+            close=4256.0,
+        ),
+        # First unambiguous post-touch 0.25 ATR recross.
+        _bar(
+            "2026-09-24T14:40:00+00:00",
+            open_=4256.0,
+            high=4258.5,
+            low=4255.0,
+            close=4258.0,
+        ),
+        # First unambiguous post-touch 0.50 ATR and reaction-target recross.
+        _bar(
+            "2026-09-24T14:45:00+00:00",
+            open_=4258.0,
+            high=4263.0,
+            low=4257.5,
+            close=4262.0,
+        ),
+    )
+    p = collapse_physical_pockets(
+        rows,
+        bars=bars,
+        as_of=datetime(2026, 9, 24, 14, 55, tzinfo=UTC),
+    )[0]
+    ladder = {item["atr_multiple"]: item for item in p["reaction_ladder"]}
+    assert ladder[0.25]["first_hit_at"] == "2026-09-24T14:40:00+00:00"
+    assert ladder[0.25]["minutes_from_touch"] == 5.0
+    assert ladder[0.50]["first_hit_at"] == "2026-09-24T14:45:00+00:00"
+    assert ladder[0.50]["minutes_from_touch"] == 10.0
+
+    target = p["target_versions"][0]
+    assert target["reaction_first_hit_at"] == "2026-09-24T14:45:00+00:00"
+    assert target["reaction_minutes_from_touch"] == 10.0
