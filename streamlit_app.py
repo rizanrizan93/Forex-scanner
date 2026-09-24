@@ -25,6 +25,10 @@ from fx_scanner.storage.supabase_operational import (
     OperationalStoreUnavailable,
     SupabaseOperationalStore,
 )
+from fx_scanner.trade_management_v195 import (
+    evaluate_position,
+    summarize_positions,
+)
 
 UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
@@ -501,6 +505,11 @@ with forecast_tab:
         if not str(row.get("setup_type") or "").upper().startswith("AFIC_")
     ]
 
+    broker_account = {} if backend is None else dict(backend.get("broker_account") or {})
+    broker_positions = [] if backend is None else [
+        dict(row) for row in backend.get("broker_positions", [])
+    ]
+
     state_event = forecast_rows[0] if forecast_rows else None
     state_payload = {}
     if state_event:
@@ -864,10 +873,171 @@ with forecast_tab:
             f"Reaction target={dc_target_text} • terminal opposing zone={dc_terminal_text}."
         )
 
+    st.markdown("## Manajemen Posisi XAUUSD (Trade Management Center V195)")
+    st.caption(
+        "Sumber posisi otomatis di panel ini adalah akun cTrader **DEMO scanner**. "
+        "Posisi LIVE pribadi dari screenshot/akun terpisah tidak dicampurkan ke telemetry DEMO. "
+        "V195 hanya membaca posisi dan memberi status manajemen; tidak memindahkan SL/TP "
+        "atau menutup posisi."
+    )
+
+    tm_account_env = str(broker_account.get("environment") or "UNKNOWN").upper()
+    tm_account_age = _age_seconds(broker_account.get("observed_at"))
+    tm_snapshot_fresh = bool(
+        broker_account
+        and tm_account_env == "DEMO"
+        and tm_account_age is not None
+        and tm_account_age <= 180.0
+    )
+    tm_summary = summarize_positions(broker_positions if tm_snapshot_fresh else [])
+
+    tm1, tm2, tm3, tm4 = st.columns(4)
+    tm1.metric("Sumber", f"cTrader {tm_account_env}")
+    tm2.metric("Posisi XAU aktif", tm_summary.get("count", 0))
+    tm3.metric("Total volume", f"{float(tm_summary.get('total_volume') or 0.0):.2f}")
+    tm4.metric(
+        "Floating P/L",
+        "—"
+        if tm_summary.get("total_profit") is None
+        else f"{float(tm_summary.get('total_profit') or 0.0):+.2f}",
+    )
+
+    if broker_account and not tm_snapshot_fresh:
+        st.warning(
+            "Snapshot broker DEMO tidak cukup fresh untuk Trade Management Center. "
+            f"Observed={_fmt_wib_datetime(broker_account.get('observed_at'))} • "
+            f"age={'—' if tm_account_age is None else f'{tm_account_age:.0f}s'}. "
+            "V195 tidak menggunakan posisi stale sebagai posisi aktif."
+        )
+
+    tm_reaction_target = None
+    try:
+        tm_reaction_target = (
+            None
+            if not dc_reaction_target
+            else float(dc_reaction_target.get("price"))
+        )
+    except (TypeError, ValueError):
+        tm_reaction_target = None
+    try:
+        tm_terminal_low = (
+            None if not dc_target or dc_target.get("low") is None
+            else float(dc_target.get("low"))
+        )
+    except (TypeError, ValueError):
+        tm_terminal_low = None
+    try:
+        tm_terminal_high = (
+            None if not dc_target or dc_target.get("high") is None
+            else float(dc_target.get("high"))
+        )
+    except (TypeError, ValueError):
+        tm_terminal_high = None
+
+    tm_xau_positions = [
+        row
+        for row in broker_positions
+        if tm_snapshot_fresh and str(row.get("symbol") or "").upper() == "XAUUSD"
+    ]
+
+    if tm_xau_positions:
+        tm_rows = []
+        tm_alerts = []
+        for tm_position in tm_xau_positions:
+            tm_eval = evaluate_position(
+                tm_position,
+                reaction_target=tm_reaction_target,
+                terminal_low=tm_terminal_low,
+                terminal_high=tm_terminal_high,
+                structure_direction=dc_reaction_direction,
+            )
+            tm_rows.append(
+                {
+                    "ID": tm_eval.get("position_id"),
+                    "Side": tm_eval.get("side"),
+                    "Volume": tm_eval.get("volume"),
+                    "Entry": _fmt_price(tm_eval.get("entry")),
+                    "Harga kini": _fmt_price(tm_eval.get("current")),
+                    "P/L": tm_eval.get("profit"),
+                    "SL": _fmt_price(tm_eval.get("stop")),
+                    "TP broker": _fmt_price(tm_eval.get("broker_tp")),
+                    "R kini": (
+                        "—"
+                        if tm_eval.get("current_r") is None
+                        else f"{float(tm_eval.get('current_r')):+.2f}R"
+                    ),
+                    "BE ref": _fmt_price(tm_eval.get("be_reference_price")),
+                    "Target-1": tm_eval.get("first_target_state"),
+                    "Struktur": tm_eval.get("structure_alignment"),
+                    "State manajemen": tm_eval.get("management_state"),
+                }
+            )
+            if tm_eval.get("protection_state") in {
+                "SL_TP_MISSING",
+                "SL_MISSING_TP_PRESENT",
+            }:
+                tm_alerts.append(
+                    (
+                        "error",
+                        f"Posisi {tm_eval.get('position_id')} tidak memiliki SL broker. "
+                        "Ini harus dianggap PROTECTION REQUIRED.",
+                    )
+                )
+            elif tm_eval.get("first_target_state") == "REACHED":
+                tm_alerts.append(
+                    (
+                        "success",
+                        f"Posisi {tm_eval.get('position_id')} sudah mencapai reaction target "
+                        f"{_fmt_price(tm_eval.get('first_reaction_target'))}. "
+                        "V195 menandai REVIEW PROTECTION; keputusan BE/partial tetap manual "
+                        "sampai policy manajemen tervalidasi.",
+                    )
+                )
+            elif (
+                tm_eval.get("current_r") is not None
+                and float(tm_eval.get("current_r")) >= 1.0
+            ):
+                tm_alerts.append(
+                    (
+                        "warning",
+                        f"Posisi {tm_eval.get('position_id')} sudah ≥1R. "
+                        "V195 hanya menandai REVIEW PROTECTION; tidak memindahkan SL otomatis.",
+                    )
+                )
+
+        st.dataframe(
+            pd.DataFrame(tm_rows),
+            hide_index=True,
+            use_container_width=True,
+        )
+        for tm_level, tm_message in tm_alerts:
+            if tm_level == "error":
+                st.error(tm_message)
+            elif tm_level == "success":
+                st.success(tm_message)
+            else:
+                st.warning(tm_message)
+
+        st.info(
+            "Urutan manajemen: **proteksi broker → progress terhadap R → reaction target → "
+            "terminal opposing zone → alignment struktur terbaru**. "
+            f"Reaction target aktif={_fmt_price(tm_reaction_target)} • "
+            f"terminal zone={_fmt_price(tm_terminal_low)}–{_fmt_price(tm_terminal_high)}. "
+            "BE reference = harga entry; net break-even aktual dapat berbeda karena "
+            "spread/komisi/swap."
+        )
+    else:
+        st.info(
+            "Tidak ada posisi XAUUSD aktif pada snapshot cTrader DEMO scanner. "
+            "Jika Anda memiliki posisi LIVE pribadi (misalnya posisi yang terlihat pada screenshot), "
+            "posisi tersebut memang tidak akan muncul di panel ini karena sumber LIVE dan DEMO "
+            "sengaja dipisahkan."
+        )
+
     st.markdown("---")
     st.caption(
         "Di bawah ini adalah DETAIL / AUDIT / RISET. Untuk keputusan cepat, "
-        "cukup gunakan enam langkah di Decision Center di atas."
+        "gunakan Decision Center dan Trade Management Center di atas."
     )
 
     with st.expander(
