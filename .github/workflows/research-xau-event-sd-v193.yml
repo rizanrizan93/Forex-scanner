@@ -1,0 +1,188 @@
+name: Research XAU Event Supply-Demand V193
+
+on:
+  workflow_run:
+    workflows:
+      - Research XAU Event Reaction V193 Full
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      base_run_id:
+        description: "Completed Research XAU Event Reaction V193 Full run id"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: research-xau-event-sd-v193
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      base_ready: ${{ steps.validate.outputs.base_ready }}
+      base_run_id: ${{ steps.resolve.outputs.base_run_id }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve base run id
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_ID="${{ github.event.workflow_run.id || inputs.base_run_id }}"
+          if [ -z "${RUN_ID}" ]; then
+            echo "::error::base_run_id is required for workflow_dispatch"
+            exit 1
+          fi
+          echo "base_run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+      - name: Download base V193 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: xau-event-reaction-v193-full
+          path: /tmp/v193-base
+          run-id: ${{ steps.resolve.outputs.base_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Validate intermediate base gate
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import os
+          payload = json.loads(
+              Path("/tmp/v193-base/xau-event-reaction-v193-full.json").read_text()
+          )
+          decision = str(payload.get("decision") or "")
+          ready = decision == "REACTION_BACKFILL_WALKFORWARD_READY"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as handle:
+              handle.write(f"base_ready={'true' if ready else 'false'}\n")
+          print(
+              "V193_SD_PREPARE "
+              f"decision={decision} reactions={payload.get('reaction_count')} "
+              f"ready={int(ready)}"
+          )
+          PY
+      - name: Re-publish base artifact for current workflow
+        if: ${{ steps.validate.outputs.base_ready == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v193-sd-base
+          path: /tmp/v193-base/xau-event-reaction-v193-full.json
+          if-no-files-found: error
+          retention-days: 7
+
+  condition-sd-year:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.base_ready == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year:
+          - 2012
+          - 2013
+          - 2014
+          - 2015
+          - 2016
+          - 2017
+          - 2018
+          - 2019
+          - 2020
+          - 2021
+          - 2022
+          - 2023
+          - 2024
+          - 2025
+          - 2026
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_BASE_ARTIFACT: /tmp/v193-base/xau-event-reaction-v193-full.json
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v193-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v193-price-provenance-${{ matrix.year }}.json
+      XAU_V193_SD_YEAR_OUTPUT: artifacts/xau-event-sd-v193-${{ matrix.year }}.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install V193 Supply-Demand runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download base artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: xau-v193-sd-base
+          path: /tmp/v193-base
+      - name: Download and normalize HistData XAUUSD M1 shard
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Build post-walk-forward Supply-Demand conditioning
+        run: python -m fx_scanner.research_xau_event_sd_condition_v193_year
+      - name: Upload Supply-Demand yearly shard
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v193-sd-year-${{ matrix.year }}
+          path: artifacts/xau-event-sd-v193-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  finalize:
+    needs:
+      - prepare
+      - condition-sd-year
+    if: ${{ always() && needs.prepare.outputs.base_ready == 'true' && needs.condition-sd-year.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      XAU_V193_BASE_ARTIFACT: /tmp/v193-base/xau-event-reaction-v193-full.json
+      XAU_V193_SD_SHARD_DIR: /tmp/v193-sd
+      XAU_V193_FINAL_OUTPUT: artifacts/xau-event-reaction-v193-final.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install finalizer
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download base artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: xau-v193-sd-base
+          path: /tmp/v193-base
+      - name: Download Supply-Demand shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v193-sd-year-*
+          path: /tmp/v193-sd
+          merge-multiple: false
+      - name: Apply final parity and Supply-Demand gate
+        run: python -m fx_scanner.research_xau_event_finalize_v193
+      - name: Upload final V193 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-event-reaction-v193-final
+          path: artifacts/xau-event-reaction-v193-final.json
+          if-no-files-found: error
+          retention-days: 30
