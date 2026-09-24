@@ -17,11 +17,13 @@ def test_final_decision_is_fail_closed_until_all_gates_pass():
         base_ready=True,
         sd_ready=False,
         parity_ready=True,
+        timestamp_audit_ready=True,
     ) == "SUPPLY_DEMAND_CONDITIONING_INCOMPLETE"
     assert final_decision(
         base_ready=True,
         sd_ready=True,
         parity_ready=False,
+        timestamp_audit_ready=True,
     ) == "AWAIT_CURRENT_PARITY"
     assert final_decision(
         base_ready=True,
