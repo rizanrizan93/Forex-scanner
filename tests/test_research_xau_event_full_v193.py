@@ -181,3 +181,29 @@ def test_forex_factory_parser_fails_closed_without_explicit_page_timezone():
             year_hint=2026,
             source_url="https://www.forexfactory.com/calendar",
         )
+
+
+def test_forex_factory_display_timezone_with_space_normalizes_to_iana():
+    pytest.importorskip("bs4")
+    html = b"""
+    <div>Calendar Time Zone: America/New York (GMT -4)</div>
+    <table>
+      <tr class="calendar__row">
+        <td class="calendar__date">Fri Sep 11</td>
+        <td class="calendar__time">8:30am</td>
+        <td class="calendar__currency">USD</td>
+        <td class="calendar__impact"><span title="High Impact Expected"></span></td>
+        <td class="calendar__event">CPI m/m</td>
+        <td class="calendar__actual">0.4%</td>
+        <td class="calendar__forecast">0.3%</td>
+        <td class="calendar__previous">0.2%</td>
+      </tr>
+    </table>
+    """
+    rows = parse_forex_factory_html(
+        html,
+        year_hint=2026,
+        source_url="https://www.forexfactory.com/calendar",
+    )
+    assert len(rows) == 1
+    assert rows[0].scheduled_at == datetime(2026, 9, 11, 12, 30, tzinfo=UTC)
