@@ -242,6 +242,11 @@ def attach_supply_demand_context(
         or path_map.get("micro_refinement")
         or {}
     )
+    m5_path_projection = dict(
+        atlas.get("m5_path_projection")
+        or path_map.get("m5_path_projection")
+        or {}
+    )
     demand_to_supply = dict(path_map.get("demand_to_supply") or {})
     supply_to_demand = dict(path_map.get("supply_to_demand") or {})
     active_path = dict(path_map.get("active_path") or {})
@@ -481,6 +486,15 @@ def attach_supply_demand_context(
             if str(micro_refinement.get("direction") or "").upper() == first_leg
             else {}
         ),
+        "m5_path_projection": m5_path_projection,
+        "first_leg_m5_path_projection": (
+            m5_path_projection
+            if str(
+                dict(m5_path_projection.get("current_leg") or {}).get("direction")
+                or ""
+            ).upper() == first_leg
+            else {}
+        ),
         "prepare_only_fallback": bool(not canonical and not stale),
         "required_for_execution": False,
         "execution_influence": False,
@@ -504,6 +518,9 @@ def context_token(payload: dict[str, Any]) -> tuple[str, ...]:
     opposite = dict(context.get("opposite_reversal_zone") or {})
     first_leg_path = dict(context.get("first_leg_path") or {})
     micro = dict(context.get("first_leg_micro_refinement") or {})
+    projection = dict(context.get("first_leg_m5_path_projection") or {})
+    projection_current = dict(projection.get("current_leg") or {})
+    projection_next = dict(projection.get("next_leg") or {})
     primary_target = dict(first_leg_path.get("primary_opposing_zone") or {})
     return (
         str(context.get("state") or "NONE"),
@@ -516,5 +533,8 @@ def context_token(payload: dict[str, Any]) -> tuple[str, ...]:
         str(primary_target.get("zone_id") or "NONE"),
         str(micro.get("state") or "NONE"),
         str(dict(micro.get("refined_entry_pocket") or {}).get("origin_at") or "NONE"),
+        str(projection.get("state") or "NONE"),
+        str(projection_current.get("pocket_state") or "NONE"),
+        str(projection_next.get("pocket_state") or "NONE"),
         str(context.get("path_direction_conflict") or False),
     )

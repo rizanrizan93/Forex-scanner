@@ -625,13 +625,58 @@ with forecast_tab:
         or {}
     )
     dc_reaction_target = dict(dc_path.get("reaction_target") or {})
+    dc_projection = dict(
+        afic_sd_context.get("first_leg_m5_path_projection")
+        or afic_sd_context.get("m5_path_projection")
+        or {}
+    )
+    if not dc_projection and supply_demand_hb is not None:
+        dc_projection_details = dict(supply_demand_hb.get("details") or {})
+        dc_projection_eval = dict(dc_projection_details.get("evaluation") or {})
+        dc_projection = dict(
+            dc_projection_eval.get("m5_path_projection")
+            or dict(dc_projection_eval.get("path_map") or {}).get("m5_path_projection")
+            or {}
+        )
+    dc_projection_current = dict(dc_projection.get("current_leg") or {})
+    dc_projection_next = dict(dc_projection.get("next_leg") or {})
     dc_micro = dict(
-        afic_sd_context.get("first_leg_micro_refinement")
+        dc_projection_current.get("micro_refinement")
+        or afic_sd_context.get("first_leg_micro_refinement")
         or afic_sd_context.get("micro_refinement")
         or {}
     )
     dc_refined = dict(dc_micro.get("refined_entry_pocket") or {})
     dc_candidate = dict(dc_micro.get("candidate_entry_pocket") or {})
+    dc_current_leg_direction = str(
+        dc_projection_current.get("direction")
+        or dc_micro.get("direction")
+        or dc_path.get("reaction_direction")
+        or dc_tactical_first_leg
+        or "—"
+    ).upper()
+    dc_current_leg_target = dict(
+        dc_projection_current.get("reaction_target")
+        or dc_reaction_target
+        or {}
+    )
+    dc_current_leg_terminal = dict(
+        dc_projection_current.get("terminal_target_zone")
+        or dc_target
+        or {}
+    )
+    dc_next_micro = dict(dc_projection_next.get("micro_refinement") or {})
+    dc_next_refined = dict(dc_next_micro.get("refined_entry_pocket") or {})
+    dc_next_candidate = dict(dc_next_micro.get("candidate_entry_pocket") or {})
+    dc_next_leg_direction = str(
+        dc_projection_next.get("direction")
+        or ("SHORT" if dc_current_leg_direction == "LONG" else "LONG")
+        if dc_current_leg_direction in {"LONG", "SHORT"}
+        else "—"
+    ).upper()
+    dc_next_leg_source = dict(dc_projection_next.get("source_zone") or {})
+    dc_next_leg_target = dict(dc_projection_next.get("reaction_target") or {})
+    dc_next_leg_terminal = dict(dc_projection_next.get("terminal_target_zone") or {})
 
     dc_dom = dict(afic_sd_context.get("dom_context") or {})
     if not dc_dom and dom_v191_hb is not None:
@@ -732,22 +777,42 @@ with forecast_tab:
     elif dc_refined:
         dc_entry_status = "M5 POCKET TERSEDIA — SHADOW/PREPARE, BUKAN ENTRY RESMI"
 
-    st.markdown("## Pusat Keputusan XAUUSD (Decision Center)")
-    st.caption(
-        "Baca dari atas ke bawah. Urutannya tetap: D1/H4 konteks → H1 zona → "
-        "M5 pocket → M15 konfirmasi → DOM/Event → Execution. "
-        "Bagian diagnostik lengkap dipindahkan ke expander di bawah agar tampilan HP lebih ringkas."
+    dc_tm_account_env = str(broker_account.get("environment") or "UNKNOWN").upper()
+    dc_tm_account_age = _age_seconds(broker_account.get("observed_at"))
+    dc_tm_snapshot_fresh = bool(
+        broker_account
+        and dc_tm_account_env == "DEMO"
+        and dc_tm_account_age is not None
+        and dc_tm_account_age <= 180.0
     )
+    dc_active_demo_positions = [
+        row
+        for row in broker_positions
+        if dc_tm_snapshot_fresh and str(row.get("symbol") or "").upper() == "XAUUSD"
+    ]
+    dc_position_mode = bool(dc_active_demo_positions)
+
+    st.markdown("## Pusat Keputusan XAUUSD (Decision Center)")
+    if dc_position_mode:
+        st.success(
+            f"**MODE: POSITION FILLED / MANAGE TRADE** • "
+            f"{len(dc_active_demo_positions)} posisi XAUUSD DEMO aktif. "
+            "Prioritas dashboard sekarang: proteksi SL → BE/partial review → target reaksi → "
+            "opposing zone/target berikutnya. Entry discovery tetap terlihat sebagai context sekunder."
+        )
+    else:
+        st.caption(
+            "Baca dari atas ke bawah. Urutannya tetap: D1/H4 konteks → H1 zona → "
+            "M5 pocket → M15 konfirmasi → DOM/Event → Execution. "
+            "Bagian diagnostik lengkap dipindahkan ke expander di bawah agar tampilan HP lebih ringkas."
+        )
 
     dc1, dc2, dc3 = st.columns(3)
     dc1.metric("Harga referensi", _fmt_price(dc_reference_price))
     dc2.metric("Arah taktis", dc_tactical_first_leg)
     dc3.metric(
-        "Entry resmi",
-        "BELUM"
-        if "BELUM ADA ENTRY RESMI" in dc_entry_status
-        or "SHADOW/PREPARE" in dc_entry_status
-        else "CEK ADMISSION",
+        "Mode",
+        "MANAGE POSITION" if dc_position_mode else "ENTRY DISCOVERY",
     )
 
     st.markdown("#### 1. D1 / H4 — Arah & Parent Zone")
@@ -786,26 +851,81 @@ with forecast_tab:
             "Belum ada H1 source zone aktif pada path AFIC/Supply-Demand saat ini."
         )
 
-    st.markdown("#### 3. M5 — Refined Entry Pocket")
+    st.markdown("#### 3. M5 — Pocket, Target & Opposing Leg")
+    dc_current_target_text = (
+        _fmt_price(dc_current_leg_target.get("price"))
+        if dc_current_leg_target
+        else "—"
+    )
+    dc_current_terminal_text = (
+        f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
+        f"{_fmt_price(dc_current_leg_terminal.get('high'))}"
+        if dc_current_leg_terminal
+        else "—"
+    )
+    dc_next_target_text = (
+        _fmt_price(dc_next_leg_target.get("price"))
+        if dc_next_leg_target
+        else "—"
+    )
+    dc_next_terminal_text = (
+        f"{_fmt_price(dc_next_leg_terminal.get('low'))}–"
+        f"{_fmt_price(dc_next_leg_terminal.get('high'))}"
+        if dc_next_leg_terminal
+        else "—"
+    )
+
     if dc_refined:
         st.success(
-            "REFINED M5 POCKET: "
+            f"REFINED M5 **{dc_current_leg_direction}** POCKET: "
             f"**{_fmt_price(dc_refined.get('low'))}–{_fmt_price(dc_refined.get('high'))}** • "
             f"state={dc_micro.get('state','—')} • "
             f"sweep={_fmt_price(dict(dc_micro.get('sweep') or {}).get('price'))} • "
             f"reclaim={_fmt_price(dc_micro.get('source_proximal_reclaim_level'))} • "
             f"MSS={_fmt_price(dc_micro.get('mss_level'))}. "
+            f"Jika {dc_current_leg_direction} terkonfirmasi dan displacement meninggalkan pocket, "
+            f"reaction target={dc_current_target_text} • opposing zone={dc_current_terminal_text}. "
             "**SHADOW/PREPARE — belum otomatis menjadi entry resmi.**"
         )
     elif dc_candidate:
         st.warning(
-            "Candidate M5 pocket: "
-            f"{_fmt_price(dc_candidate.get('low'))}–{_fmt_price(dc_candidate.get('high'))} • "
+            f"Candidate M5 **{dc_current_leg_direction}** pocket: "
+            f"**{_fmt_price(dc_candidate.get('low'))}–{_fmt_price(dc_candidate.get('high'))}** • "
             f"state={dc_micro.get('state','—')}. "
-            "Belum refined; tunggu reclaim/MSS/displacement."
+            f"Belum refined; tunggu reclaim/MSS/displacement. Jika valid {dc_current_leg_direction}, "
+            f"scanner sudah memetakan reaction target={dc_current_target_text} dan "
+            f"opposing zone={dc_current_terminal_text}."
         )
     else:
-        st.info("Belum ada M5 refined pocket aktif.")
+        st.info(
+            f"Belum ada M5 pocket aktif untuk leg {dc_current_leg_direction}. "
+            f"Path target tetap dipetakan: reaction target={dc_current_target_text} • "
+            f"opposing zone={dc_current_terminal_text}."
+        )
+
+    if dc_next_refined or dc_next_candidate:
+        dc_next_pocket = dc_next_refined or dc_next_candidate
+        dc_next_label = "REFINED" if dc_next_refined else "Candidate"
+        st.info(
+            f"{dc_next_label} M5 **{dc_next_leg_direction}** pocket berikutnya: "
+            f"**{_fmt_price(dc_next_pocket.get('low'))}–{_fmt_price(dc_next_pocket.get('high'))}** • "
+            f"state={dc_next_micro.get('state','—')}. "
+            f"Jika {dc_next_leg_direction} terkonfirmasi dan harga meninggalkan area sesuai arah, "
+            f"target balik={dc_next_target_text} • terminal opposing zone={dc_next_terminal_text}. "
+            "Ini adalah leg berikutnya, bukan izin untuk entry sebelum konfirmasi."
+        )
+    elif dc_next_leg_source:
+        st.caption(
+            f"Next opposing **{dc_next_leg_direction}** watch zone: "
+            f"{_fmt_price(dc_next_leg_source.get('low'))}–{_fmt_price(dc_next_leg_source.get('high'))} • "
+            f"M5 state={dc_next_micro.get('state','WAIT_SOURCE_TOUCH')}. "
+            "Belum disebut M5 pocket sampai harga menyentuh/sweep zona lalu membentuk "
+            "reclaim + MSS + displacement. "
+            f"Jika nanti terkonfirmasi {dc_next_leg_direction}, projected reaction target="
+            f"{dc_next_target_text} • terminal zone={dc_next_terminal_text}."
+        )
+    else:
+        st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
 
     st.markdown("#### 4. M15 — Konfirmasi Eksekusi")
     if dc_m15_ready:
@@ -850,17 +970,29 @@ with forecast_tab:
         + ". DOM/Event hanya confirmation/caution context, bukan pembuat arah."
     )
 
-    st.markdown("#### 6. Entry Resmi, Target & Status Akhir")
+    st.markdown(
+        "#### 6. Posisi Aktif & Target Berikutnya"
+        if dc_position_mode
+        else "#### 6. Entry Resmi, Target & Status Akhir"
+    )
     dc_target_text = (
-        _fmt_price(dc_reaction_target.get("price"))
-        if dc_reaction_target
+        _fmt_price(dc_current_leg_target.get("price"))
+        if dc_current_leg_target
         else "—"
     )
     dc_terminal_text = (
-        f"{_fmt_price(dc_target.get('low'))}–{_fmt_price(dc_target.get('high'))}"
-        if dc_target else "—"
+        f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
+        f"{_fmt_price(dc_current_leg_terminal.get('high'))}"
+        if dc_current_leg_terminal else "—"
     )
-    if "BELUM ADA ENTRY RESMI" in dc_entry_status:
+    if dc_position_mode:
+        st.success(
+            f"**POSITION FILLED MODE.** Fokus berpindah dari mencari entry ke manajemen posisi. "
+            f"Current-leg reaction target={dc_target_text} • terminal opposing zone={dc_terminal_text} • "
+            f"next {dc_next_leg_direction} reaction target={dc_next_target_text}. "
+            "Detail SL/BE/TP dan R posisi ada langsung di Trade Management Center di bawah."
+        )
+    elif "BELUM ADA ENTRY RESMI" in dc_entry_status:
         st.error(
             f"**{dc_entry_status}.** "
             f"Reaction target={dc_target_text} • terminal opposing zone={dc_terminal_text}. "
@@ -944,12 +1076,52 @@ with forecast_tab:
         tm_rows = []
         tm_alerts = []
         for tm_position in tm_xau_positions:
+            tm_side = str(tm_position.get("side") or "").upper()
+            tm_wanted_direction = (
+                "LONG" if tm_side == "BUY"
+                else "SHORT" if tm_side == "SELL"
+                else ""
+            )
+            tm_leg = (
+                dc_projection_current
+                if str(dc_projection_current.get("direction") or "").upper() == tm_wanted_direction
+                else dc_projection_next
+                if str(dc_projection_next.get("direction") or "").upper() == tm_wanted_direction
+                else {}
+            )
+            tm_leg_target = dict(tm_leg.get("reaction_target") or {})
+            tm_leg_terminal = dict(tm_leg.get("terminal_target_zone") or {})
+            try:
+                tm_position_reaction_target = (
+                    float(tm_leg_target.get("price"))
+                    if tm_leg_target.get("price") is not None
+                    else tm_reaction_target
+                )
+            except (TypeError, ValueError):
+                tm_position_reaction_target = tm_reaction_target
+            try:
+                tm_position_terminal_low = (
+                    float(tm_leg_terminal.get("low"))
+                    if tm_leg_terminal.get("low") is not None
+                    else tm_terminal_low
+                )
+            except (TypeError, ValueError):
+                tm_position_terminal_low = tm_terminal_low
+            try:
+                tm_position_terminal_high = (
+                    float(tm_leg_terminal.get("high"))
+                    if tm_leg_terminal.get("high") is not None
+                    else tm_terminal_high
+                )
+            except (TypeError, ValueError):
+                tm_position_terminal_high = tm_terminal_high
+
             tm_eval = evaluate_position(
                 tm_position,
-                reaction_target=tm_reaction_target,
-                terminal_low=tm_terminal_low,
-                terminal_high=tm_terminal_high,
-                structure_direction=dc_reaction_direction,
+                reaction_target=tm_position_reaction_target,
+                terminal_low=tm_position_terminal_low,
+                terminal_high=tm_position_terminal_high,
+                structure_direction=tm_wanted_direction or dc_reaction_direction,
             )
             tm_rows.append(
                 {
@@ -967,7 +1139,12 @@ with forecast_tab:
                         else f"{float(tm_eval.get('current_r')):+.2f}R"
                     ),
                     "BE ref": _fmt_price(tm_eval.get("be_reference_price")),
+                    "Target reaksi": _fmt_price(tm_eval.get("first_reaction_target")),
                     "Target-1": tm_eval.get("first_target_state"),
+                    "Zona terminal": (
+                        f"{_fmt_price(tm_position_terminal_low)}–"
+                        f"{_fmt_price(tm_position_terminal_high)}"
+                    ),
                     "Struktur": tm_eval.get("structure_alignment"),
                     "State manajemen": tm_eval.get("management_state"),
                 }
@@ -1020,9 +1197,9 @@ with forecast_tab:
 
         st.info(
             "Urutan manajemen: **proteksi broker → progress terhadap R → reaction target → "
-            "terminal opposing zone → alignment struktur terbaru**. "
-            f"Reaction target aktif={_fmt_price(tm_reaction_target)} • "
-            f"terminal zone={_fmt_price(tm_terminal_low)}–{_fmt_price(tm_terminal_high)}. "
+            "terminal opposing zone → opposing M5 leg berikutnya → alignment struktur terbaru**. "
+            "Target sekarang dipilih **per side posisi** dari leg V196 yang sesuai (BUY=LONG, SELL=SHORT), "
+            "dengan fallback ke path aktif bila projection belum tersedia. "
             "BE reference = harga entry; net break-even aktual dapat berbeda karena "
             "spread/komisi/swap."
         )
