@@ -20,8 +20,8 @@ from .demo_xau_premap_candidate_v181 import (
     _latest_completed_levels,
     _latest_worker_details,
 )
-from .demo_xau_supply_demand_micro_refinement_v189 import (
-    evaluate_micro_refinement,
+from .demo_xau_m5_bidirectional_path_v196 import (
+    evaluate_bidirectional_m5_path,
 )
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
@@ -1224,14 +1224,18 @@ def run() -> int:
             as_of=now,
             strategic_bias=strategic_bias,
         )
-        micro_refinement = evaluate_micro_refinement(
+        path_map = dict(payload.get("path_map") or {})
+        m5_path_projection = evaluate_bidirectional_m5_path(
             raw_m5,
-            path_map=dict(payload.get("path_map") or {}),
+            path_map=path_map,
             as_of=now,
         )
+        current_leg = dict(m5_path_projection.get("current_leg") or {})
+        micro_refinement = dict(current_leg.get("micro_refinement") or {})
         payload["micro_refinement"] = micro_refinement
-        path_map = dict(payload.get("path_map") or {})
+        payload["m5_path_projection"] = m5_path_projection
         path_map["micro_refinement"] = micro_refinement
+        path_map["m5_path_projection"] = m5_path_projection
         payload["path_map"] = path_map
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"
