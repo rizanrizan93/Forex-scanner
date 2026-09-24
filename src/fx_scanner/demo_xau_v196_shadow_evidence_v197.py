@@ -47,6 +47,7 @@ class PocketSnapshot:
     reaction_target: float | None
     terminal_zone: dict[str, Any]
     projection_state: str
+    checkpoint_targets: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,6 +168,12 @@ def _snapshots_from_heartbeats(
             source_zone_id = str(source_zone.get("zone_id") or "NO_ZONE_ID")
             target = _finite(dict(leg.get("reaction_target") or {}).get("price"))
             terminal = dict(leg.get("terminal_target_zone") or {})
+            checkpoint_targets = tuple(
+                dict(item)
+                for item in list(leg.get("target_ladder") or [])
+                if str(dict(item).get("role") or "").upper() == "CHECKPOINT"
+                and _finite(dict(item).get("price")) is not None
+            )
             origin_at = str(pocket.get("origin_at") or "") or None
             key = _episode_key(
                 leg_role=leg_role,
@@ -192,6 +199,7 @@ def _snapshots_from_heartbeats(
                 reaction_target=target,
                 terminal_zone=terminal,
                 projection_state=str(projection.get("state") or ""),
+                checkpoint_targets=checkpoint_targets,
             )
     return tuple(first_seen.values())
 
@@ -421,6 +429,11 @@ def _snapshot_from_ledger_row(
         ),
         terminal_zone=dict(metadata.get("terminal_zone") or {}),
         projection_state=str(metadata.get("projection_state_at_enrollment") or ""),
+        checkpoint_targets=tuple(
+            dict(item)
+            for item in list(metadata.get("checkpoint_targets") or [])
+            if isinstance(item, dict)
+        ),
     )
 
 
@@ -574,6 +587,9 @@ def _ledger_row(
             "source_zone": snapshot.source_zone,
             "reaction_target": snapshot.reaction_target,
             "terminal_zone": snapshot.terminal_zone,
+            "checkpoint_targets": [
+                dict(item) for item in snapshot.checkpoint_targets
+            ],
             "reaction_hit_at": (
                 None
                 if outcome.reaction_hit_at is None
