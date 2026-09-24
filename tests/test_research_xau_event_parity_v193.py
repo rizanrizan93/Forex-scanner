@@ -108,16 +108,9 @@ def test_v193_time_shift_forensics_identifies_best_offset_without_changing_gate(
         }
         for offset in (-30, 0, 30)
     }
-    for _ in range(10):
-        stats[-30][15]["n"] += 1
-        stats[-30][15]["agree"] += 9
-        stats[-30][15]["diffs"].append(1.0)
-        stats[0][15]["n"] += 1
-        stats[0][15]["agree"] += 5
-        stats[0][15]["diffs"].append(4.0)
-        stats[30][15]["n"] += 1
-        stats[30][15]["agree"] += 6
-        stats[30][15]["diffs"].append(3.0)
+    stats[-30][15] = {"n": 10, "agree": 9, "diffs": [1.0] * 10}
+    stats[0][15] = {"n": 10, "agree": 5, "diffs": [4.0] * 10}
+    stats[30][15] = {"n": 10, "agree": 6, "diffs": [3.0] * 10}
     out = _summarize_time_shift_stats(stats)
     assert out["best_offset_minutes_by_15m_sign_agreement"] == -30
     assert out["best_15m_directional_agreement"] == 0.9
