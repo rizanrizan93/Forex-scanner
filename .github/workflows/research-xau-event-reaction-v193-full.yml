@@ -60,7 +60,7 @@ jobs:
     timeout-minutes: 75
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 1
       matrix:
         year:
           - 2012
@@ -118,13 +118,45 @@ jobs:
       - name: Download Dukascopy XAUUSD M1 shard
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p /tmp/dukascopy
-          npx --yes dukascopy-node@1.50.0             -i xauusd             -from "${{ steps.window.outputs.from }}"             -to "${{ steps.window.outputs.to }}"             -t m1             -p bid             -f csv             -dir /tmp/dukascopy             -fn "xau-v193-${{ matrix.year }}.csv"             -bs 10             -bp 250             -r 1             -rp 500             -s
-          test -s "/tmp/dukascopy/xau-v193-${{ matrix.year }}.csv"
+          OUT="/tmp/dukascopy/xau-v193-${{ matrix.year }}.csv"
+          success=0
+          for attempt in 1 2 3 4; do
+            rm -f "${OUT}"
+            echo "V193_DUKASCOPY attempt=${attempt}/4 year=${{ matrix.year }} batch_size=2 batch_pause_ms=2000"
+            if npx --yes dukascopy-node@1.50.0 \
+              -i xauusd \
+              -from "${{ steps.window.outputs.from }}" \
+              -to "${{ steps.window.outputs.to }}" \
+              -t m1 \
+              -p bid \
+              -f csv \
+              -dir /tmp/dukascopy \
+              -fn "xau-v193-${{ matrix.year }}.csv" \
+              -bs 2 \
+              -bp 2000 \
+              -r 5 \
+              -rp 10000 \
+              -s; then
+              if [ -s "${OUT}" ]; then
+                success=1
+                break
+              fi
+            fi
+            cooldown=$((attempt * 30))
+            echo "V193_DUKASCOPY retry_cooldown_seconds=${cooldown}"
+            sleep "${cooldown}"
+          done
+          if [ "${success}" -ne 1 ]; then
+            echo "::error::V193 Dukascopy download exhausted bounded retries for year ${{ matrix.year }}"
+            exit 1
+          fi
+          test -s "${OUT}"
       - name: Build yearly reaction + technical conditioning shard
         run: python -m fx_scanner.research_xau_event_reaction_v193_year_runtime
       - name: Upload yearly V193 shard
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: xau-v193-year-${{ matrix.year }}
