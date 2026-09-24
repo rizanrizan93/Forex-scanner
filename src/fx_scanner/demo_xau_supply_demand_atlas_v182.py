@@ -23,6 +23,7 @@ from .demo_xau_premap_candidate_v181 import (
 from .demo_xau_m5_bidirectional_path_v196 import (
     evaluate_bidirectional_m5_path,
 )
+from .demo_xau_zone_reuse_v200 import evaluate_bidirectional_reuse
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .models import Bar, ensure_utc
@@ -1230,12 +1231,22 @@ def run() -> int:
             path_map=path_map,
             as_of=now,
         )
+        reuse_v200 = evaluate_bidirectional_reuse(m5_path_projection)
+        for leg_name in ("current_leg", "next_leg"):
+            leg = dict(m5_path_projection.get(leg_name) or {})
+            if leg:
+                leg["zone_reuse_v200"] = dict(reuse_v200.get(leg_name) or {})
+                m5_path_projection[leg_name] = leg
+        m5_path_projection["zone_reuse_v200"] = reuse_v200
+
         current_leg = dict(m5_path_projection.get("current_leg") or {})
         micro_refinement = dict(current_leg.get("micro_refinement") or {})
         payload["micro_refinement"] = micro_refinement
         payload["m5_path_projection"] = m5_path_projection
+        payload["zone_reuse_v200"] = reuse_v200
         path_map["micro_refinement"] = micro_refinement
         path_map["m5_path_projection"] = m5_path_projection
+        path_map["zone_reuse_v200"] = reuse_v200
         payload["path_map"] = path_map
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"

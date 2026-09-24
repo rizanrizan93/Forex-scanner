@@ -713,6 +713,8 @@ with forecast_tab:
     dc_next_leg_source = dict(dc_projection_next.get("source_zone") or {})
     dc_next_leg_target = dict(dc_projection_next.get("reaction_target") or {})
     dc_next_leg_terminal = dict(dc_projection_next.get("terminal_target_zone") or {})
+    dc_current_reuse = dict(dc_projection_current.get("zone_reuse_v200") or {})
+    dc_next_reuse = dict(dc_projection_next.get("zone_reuse_v200") or {})
 
     dc_dom = dict(afic_sd_context.get("dom_context") or {})
     if not dc_dom and dom_v191_hb is not None:
@@ -973,6 +975,28 @@ with forecast_tab:
         )
     else:
         st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
+
+    if dc_current_reuse or dc_next_reuse:
+        current_reuse_state = str(dc_current_reuse.get("state") or "—")
+        next_reuse_state = str(dc_next_reuse.get("state") or "—")
+        st.caption(
+            "V200 Zone Reuse • "
+            f"current={current_reuse_state}"
+            + (
+                f" (touch={dc_current_reuse.get('touch_count')}, "
+                f"mitigation={float(dc_current_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
+                if dc_current_reuse else ""
+            )
+            + " • "
+            f"next={next_reuse_state}"
+            + (
+                f" (touch={dc_next_reuse.get('touch_count')}, "
+                f"mitigation={float(dc_next_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
+                if dc_next_reuse else ""
+            )
+            + ". Tidak ada blind reuse dan tidak ada hard touch-limit; "
+            "zona deep/multi-tested harus mendapat micro confirmation baru."
+        )
 
     st.markdown("#### 4. M15 — Konfirmasi Eksekusi")
     if dc_m15_ready:
