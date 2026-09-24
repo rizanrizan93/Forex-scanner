@@ -116,14 +116,39 @@ jobs:
                 -H "Accept: application/vnd.github+json" \
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/runs?branch=main&per_page=20" \
-                --jq '.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending") | [.id, .status, .created_at] | @tsv' \
+                --jq '.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending") | [.id, .status, .created_at] | join("|")' \
                 2>/tmp/gh-stale-discovery.err
             )"; then
               echo "SUPERVISOR_DISCOVERY_STALE_CHECK_FAILED safety=FAIL_CLOSED" >&2
               return 0
             fi
 
-            while IFS=            local attempt
+            while IFS='|' read -r run_id status created_at; do
+              [ -n "${run_id:-}" ] || continue
+              if ! created_epoch="$(date -u -d "${created_at}" +%s 2>/dev/null)"; then
+                echo "SUPERVISOR_DISCOVERY_STALE_PARSE_FAILED run_id=${run_id} status=${status} safety=FAIL_CLOSED" >&2
+                continue
+              fi
+              age_seconds=$((now_epoch - created_epoch))
+              if [ "${age_seconds}" -lt "${stale_after_seconds}" ]; then
+                continue
+              fi
+
+              if gh api --method POST \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" \
+                >/dev/null 2>/tmp/gh-stale-discovery-cancel.err; then
+                echo "SUPERVISOR_DISCOVERY_STALE_CANCELLED run_id=${run_id} status=${status} age_seconds=${age_seconds} stale_after_seconds=${stale_after_seconds}"
+              else
+                echo "SUPERVISOR_DISCOVERY_STALE_CANCEL_FAILED run_id=${run_id} status=${status} age_seconds=${age_seconds} safety=FAIL_CLOSED" >&2
+              fi
+            done <<< "${rows}"
+          }
+
+          dispatch_workflow() {
+            local workflow_file="$1"
+            local attempt
             for attempt in 1 2 3; do
               if gh api --method POST \
                 -H "Accept: application/vnd.github+json" \
@@ -308,212 +333,3 @@ jobs:
             echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED source_run=${GITHUB_RUN_ID} latest_execution_status=${latest_execution_status:-NONE} latest_execution_conclusion=${latest_execution_conclusion:-NONE} other_active_supervisors=${other_active_supervisors} handoff_wait_cycles=${handoff_wait_cycles} safety=FAIL_CLOSED"
           fi
           echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_AFIC_PATH_PREPARED_V1 execution_dispatched=${execution_dispatched} execution_busy=${execution_busy} afic_dispatched=${afic_dispatched} afic_busy=${afic_busy} dom_dispatched=${dom_dispatched} dom_busy=${dom_busy} maintenance_dispatched=${maintenance_dispatched} maintenance_busy=${maintenance_busy} forecast_v171_dispatched=${forecast_v171_dispatched} forecast_v171_busy=${forecast_v171_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 afic_prepared_check_seconds=60 dom_cadence_seconds=60 maintenance_cadence_seconds=300 forecast_v171_cadence_seconds=300 forecast_v171_authority=SHADOW_ONLY discovery_check_seconds=60 discovery_stale_seconds=1800 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=${self_handoff}"
-\t' read -r run_id status created_at; do
-              [ -n "${run_id:-}" ] || continue
-              if ! created_epoch="$(date -u -d "${created_at}" +%s 2>/dev/null)"; then
-                echo "SUPERVISOR_DISCOVERY_STALE_PARSE_FAILED run_id=${run_id} status=${status} safety=FAIL_CLOSED" >&2
-                continue
-              fi
-              age_seconds=$((now_epoch - created_epoch))
-              if [ "${age_seconds}" -lt "${stale_after_seconds}" ]; then
-                continue
-              fi
-
-              if gh api --method POST \
-                -H "Accept: application/vnd.github+json" \
-                -H "X-GitHub-Api-Version: 2022-11-28" \
-                "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" \
-                >/dev/null 2>/tmp/gh-stale-discovery-cancel.err; then
-                echo "SUPERVISOR_DISCOVERY_STALE_CANCELLED run_id=${run_id} status=${status} age_seconds=${age_seconds} stale_after_seconds=${stale_after_seconds}"
-              else
-                echo "SUPERVISOR_DISCOVERY_STALE_CANCEL_FAILED run_id=${run_id} status=${status} age_seconds=${age_seconds} safety=FAIL_CLOSED" >&2
-              fi
-            done <<< "${rows}"
-          }
-
-          dispatch_workflow() {
-            local workflow_file="$1"
-            local attempt
-            for attempt in 1 2 3; do
-              if gh api --method POST \
-                -H "Accept: application/vnd.github+json" \
-                -H "X-GitHub-Api-Version: 2022-11-28" \
-                "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/dispatches" \
-                -f ref=main >/dev/null 2>/tmp/gh-dispatch.err; then
-                return 0
-              fi
-              echo "SUPERVISOR_GH_API_RETRY operation=dispatch workflow=${workflow_file} attempt=${attempt}/3" >&2
-              sleep $((attempt * 2))
-            done
-            echo "SUPERVISOR_GH_API_FAIL_CLOSED operation=dispatch workflow=${workflow_file}" >&2
-            return 1
-          }
-
-          market_open_utc() {
-            local weekday hour
-            weekday="$(date -u +%u)"
-            hour="$(date -u +%H)"
-            # Forex week: Sunday evening UTC through Friday evening UTC.
-            # Broker/session availability remains authoritative downstream.
-            if [ "${weekday}" -eq 7 ]; then
-              [ "${hour}" -ge 21 ]
-            elif [ "${weekday}" -ge 1 ] && [ "${weekday}" -le 4 ]; then
-              return 0
-            elif [ "${weekday}" -eq 5 ]; then
-              [ "${hour}" -lt 22 ]
-            else
-              return 1
-            fi
-          }
-
-          if ! market_open_utc; then
-            echo "CTRADER_DEMO_SUPERVISOR_MARKET_CLOSED calendar=FOREX_WEEK_24X5 action=NO_DISPATCH"
-            exit 0
-          fi
-
-          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_AFIC_PATH_PREPARED_V1 fast_cadence_seconds=60 maintenance_cadence_seconds=300 forecast_v171_cadence_seconds=300 forecast_v171_authority=SHADOW_ONLY discovery_check_seconds=60 afic_prepared_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_5M execution_workflow=ctrader-demo-xau-execution-lane.yml afic_workflow=ctrader-demo-xau-afic-prepared-lane.yml maintenance_workflow=ctrader-demo-maintenance-pipeline.yml dom_workflow=ctrader-demo-xau-dom-v191.yml dom_cadence_seconds=60 push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=SAFE_CONDITIONAL"
-
-          # Each supervisor owns one bounded five-minute window. The exact XAU
-          # execution lane is checked every minute so the V24 three-minute entry
-          # grace is not bottlenecked by long lifecycle/shadow work. Maintenance
-          # is dispatched once per supervisor window and never authorizes a new
-          # order. Discovery remains independent and non-executing.
-          for cycle in $(seq 1 5); do
-            if ! market_open_utc; then
-              echo "CTRADER_DEMO_SUPERVISOR_MARKET_CLOSED cycle=${cycle}/5 calendar=FOREX_WEEK_24X5 action=STOP"
-              exit 0
-            fi
-
-            active_execution="$(active_count ctrader-demo-xau-execution-lane.yml)"
-            if [ "${active_execution}" -eq 0 ]; then
-              echo "SUPERVISOR_EXECUTION_DISPATCH cycle=${cycle}/5 cadence_seconds=60 head_sha=${GITHUB_SHA}"
-              dispatch_workflow ctrader-demo-xau-execution-lane.yml
-              execution_dispatched=$((execution_dispatched + 1))
-            else
-              echo "SUPERVISOR_EXECUTION_SKIP_BUSY cycle=${cycle}/5 active_runs=${active_execution}"
-              execution_busy=$((execution_busy + 1))
-            fi
-
-            active_afic="$(active_count ctrader-demo-xau-afic-prepared-lane.yml)"
-            if [ "${active_afic}" -eq 0 ]; then
-              echo "SUPERVISOR_AFIC_PREPARED_DISPATCH cycle=${cycle}/5 cadence_seconds=60 head_sha=${GITHUB_SHA}"
-              dispatch_workflow ctrader-demo-xau-afic-prepared-lane.yml
-              afic_dispatched=$((afic_dispatched + 1))
-            else
-              echo "SUPERVISOR_AFIC_PREPARED_SKIP_BUSY cycle=${cycle}/5 active_runs=${active_afic}"
-              afic_busy=$((afic_busy + 1))
-            fi
-
-            active_dom="$(active_count ctrader-demo-xau-dom-v191.yml)"
-            if [ "${active_dom}" -eq 0 ]; then
-              echo "SUPERVISOR_DOM_V191_DISPATCH cycle=${cycle}/5 cadence_seconds=60 head_sha=${GITHUB_SHA}"
-              dispatch_workflow ctrader-demo-xau-dom-v191.yml
-              dom_dispatched=$((dom_dispatched + 1))
-            else
-              echo "SUPERVISOR_DOM_V191_SKIP_BUSY cycle=${cycle}/5 active_runs=${active_dom}"
-              dom_busy=$((dom_busy + 1))
-            fi
-
-            if [ "${cycle}" -eq 1 ]; then
-              active_maintenance="$(active_count ctrader-demo-maintenance-pipeline.yml)"
-              if [ "${active_maintenance}" -eq 0 ]; then
-                echo "SUPERVISOR_MAINTENANCE_DISPATCH cycle=${cycle}/5 cadence_seconds=300 head_sha=${GITHUB_SHA}"
-                dispatch_workflow ctrader-demo-maintenance-pipeline.yml
-                maintenance_dispatched=$((maintenance_dispatched + 1))
-              else
-                echo "SUPERVISOR_MAINTENANCE_SKIP_BUSY cycle=${cycle}/5 active_runs=${active_maintenance}"
-                maintenance_busy=$((maintenance_busy + 1))
-              fi
-            fi
-
-            if [ "${cycle}" -eq 1 ]; then
-              active_v171="$(active_count research-xau-forecast-ensemble-v171.yml)"
-              if [ "${active_v171}" -eq 0 ]; then
-                echo "SUPERVISOR_V171_DISPATCH cycle=${cycle}/5 cadence_seconds=300 policy_effect=SHADOW_ONLY execution_authority=NONE head_sha=${GITHUB_SHA}"
-                dispatch_workflow research-xau-forecast-ensemble-v171.yml
-                forecast_v171_dispatched=$((forecast_v171_dispatched + 1))
-              else
-                echo "SUPERVISOR_V171_SKIP_BUSY cycle=${cycle}/5 active_runs=${active_v171} policy_effect=SHADOW_ONLY execution_authority=NONE"
-                forecast_v171_busy=$((forecast_v171_busy + 1))
-              fi
-            fi
-
-            active_discovery="$(active_count ctrader-demo-discovery-pipeline.yml)"
-            if [ "${active_discovery}" -eq 0 ]; then
-              echo "SUPERVISOR_DISCOVERY_DISPATCH cycle=${cycle}/5 check_seconds=60 head_sha=${GITHUB_SHA}"
-              dispatch_workflow ctrader-demo-discovery-pipeline.yml
-              discovery_dispatched=$((discovery_dispatched + 1))
-            else
-              echo "SUPERVISOR_DISCOVERY_SKIP_BUSY cycle=${cycle}/5 active_runs=${active_discovery}"
-              discovery_busy=$((discovery_busy + 1))
-            fi
-
-            if [ "${cycle}" -lt 5 ]; then
-              sleep 60
-            fi
-          done
-
-          # GitHub scheduled delivery can occasionally go stale. Keep one bounded
-          # supervisor chain alive only when the absolute latest XAU execution
-          # run has completed successfully. The final minute execution dispatch
-          # commonly remains active when this supervisor reaches handoff. Poll
-          # that exact latest run for at most two minutes; never fall back to an
-          # older success and never hand off after a failed/cancelled latest run.
-          latest_execution_state() {
-            local attempt value
-            for attempt in 1 2 3; do
-              if value="$(
-                gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-xau-execution-lane.yml/runs?branch=main&per_page=20" --jq '[.workflow_runs[0].status // "", .workflow_runs[0].conclusion // ""] | join("|")' 2>/tmp/gh-latest-execution.err
-              )"; then
-                printf '%s\n' "${value}"
-                return 0
-              fi
-              echo "SUPERVISOR_GH_API_RETRY operation=latest_execution_state attempt=${attempt}/3" >&2
-              sleep $((attempt * 2))
-            done
-            # Unknown latest state must prevent self-handoff.
-            printf 'unknown|unknown\n'
-          }
-
-          execution_state="$(latest_execution_state)"
-          IFS='|' read -r latest_execution_status latest_execution_conclusion <<< "${execution_state}"
-
-          handoff_wait_cycles=0
-          handoff_wait_max_cycles=8
-          handoff_wait_seconds=15
-          while market_open_utc && [ "${handoff_wait_cycles}" -lt "${handoff_wait_max_cycles}" ]; do
-            case "${latest_execution_status}" in
-              queued|in_progress|waiting|pending)
-                handoff_wait_cycles=$((handoff_wait_cycles + 1))
-                echo "CTRADER_DEMO_SUPERVISOR_HANDOFF_WAIT cycle=${handoff_wait_cycles}/${handoff_wait_max_cycles} latest_execution_status=${latest_execution_status} wait_seconds=${handoff_wait_seconds}"
-                sleep "${handoff_wait_seconds}"
-                execution_state="$(latest_execution_state)"
-                IFS='|' read -r latest_execution_status latest_execution_conclusion <<< "${execution_state}"
-                ;;
-              *)
-                break
-                ;;
-            esac
-          done
-
-          other_active_supervisors=1
-          for supervisor_query_attempt in 1 2 3; do
-            if other_active_supervisors="$(
-              gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-auto-supervisor.yml/runs?branch=main&per_page=20" --jq "[.workflow_runs[] | select((.status == \"queued\" or .status == \"in_progress\" or .status == \"waiting\" or .status == \"pending\") and (.id != ${GITHUB_RUN_ID}))] | length" 2>/tmp/gh-other-supervisors.err
-            )"; then
-              break
-            fi
-            echo "SUPERVISOR_GH_API_RETRY operation=other_active_supervisors attempt=${supervisor_query_attempt}/3" >&2
-            other_active_supervisors=1
-            sleep $((supervisor_query_attempt * 2))
-          done
-
-          self_handoff=0
-          if market_open_utc && [ "${latest_execution_status}" = "completed" ] && [ "${latest_execution_conclusion}" = "success" ] && [ "${other_active_supervisors}" -eq 0 ]; then
-            dispatch_workflow ctrader-demo-auto-supervisor.yml
-            self_handoff=1
-            echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_DISPATCHED source_run=${GITHUB_RUN_ID} latest_execution_status=${latest_execution_status} latest_execution_conclusion=${latest_execution_conclusion} handoff_wait_cycles=${handoff_wait_cycles}"
-          else
-            echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED source_run=${GITHUB_RUN_ID} latest_execution_status=${latest_execution_status:-NONE} latest_execution_conclusion=${latest_execution_conclusion:-NONE} other_active_supervisors=${other_active_supervisors} handoff_wait_cycles=${handoff_wait_cycles} safety=FAIL_CLOSED"
-          fi
-          echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_AFIC_PATH_PREPARED_V1 execution_dispatched=${execution_dispatched} execution_busy=${execution_busy} afic_dispatched=${afic_dispatched} afic_busy=${afic_busy} dom_dispatched=${dom_dispatched} dom_busy=${dom_busy} maintenance_dispatched=${maintenance_dispatched} maintenance_busy=${maintenance_busy} forecast_v171_dispatched=${forecast_v171_dispatched} forecast_v171_busy=${forecast_v171_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 afic_prepared_check_seconds=60 dom_cadence_seconds=60 maintenance_cadence_seconds=300 forecast_v171_cadence_seconds=300 forecast_v171_authority=SHADOW_ONLY discovery_check_seconds=60 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=${self_handoff}"
