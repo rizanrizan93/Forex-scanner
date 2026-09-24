@@ -147,3 +147,34 @@ def test_v198_strict_and_legacy_cohorts_are_separate():
     assert out["strict_immutable_evidence"]["enrolled"] == 1
     assert out["legacy_pre_freeze_evidence"]["enrolled"] == 1
     assert out["strict_segments"]["direction"][0]["value"] == "LONG"
+
+
+def test_v198_pending_touch_is_not_counted_as_failure_in_precision():
+    resolved_win = _row(
+        "win",
+        touch="2026-09-24T06:10:00+00:00",
+        reaction="2026-09-24T06:20:00+00:00",
+        status="PROVEN_REACTION_TARGET",
+    )
+    pending = _row(
+        "pending",
+        touch="2026-09-24T06:15:00+00:00",
+        status="TOUCHED_PENDING",
+    )
+    out = summarize_rows((resolved_win, pending))
+    assert out["touched"] == 2
+    assert out["resolved_after_touch"] == 1
+    assert out["pending_after_touch"] == 1
+    assert out["reaction_precision_given_touch"] == 1.0
+
+
+def test_v198_full_path_excludes_orphan_next_leg_group():
+    orphan = _row(
+        "orphan",
+        leg_role="next_leg",
+        direction="SHORT",
+        observed="2026-09-24T07:00:00+00:00",
+    )
+    out = build_analytics((orphan,))
+    assert out["full_path"]["chains"] == 0
+    assert out["full_path"]["orphan_next_leg_episodes_excluded"] == 1
