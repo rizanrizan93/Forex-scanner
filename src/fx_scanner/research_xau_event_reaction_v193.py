@@ -204,21 +204,65 @@ def _true_ranges(bars: Sequence[Any]) -> list[float]:
     return output
 
 
+def _infer_bar_interval(bars: Sequence[Any]) -> timedelta:
+    ordered = sorted(
+        {
+            bar.timestamp.astimezone(UTC)
+            for bar in bars
+            if getattr(bar, "timestamp", None) is not None
+        }
+    )
+    diffs = [
+        (right - left).total_seconds()
+        for left, right in zip(ordered, ordered[1:])
+        if right > left
+    ]
+    if not diffs:
+        return timedelta(minutes=1)
+    seconds = float(median(diffs))
+    if not isfinite(seconds) or seconds <= 0:
+        return timedelta(minutes=1)
+    return timedelta(seconds=seconds)
+
+
+def _completed_bars(
+    bars: Sequence[Any],
+    *,
+    end_at: datetime,
+    interval: timedelta,
+    start_at: datetime | None = None,
+) -> tuple[Any, ...]:
+    end_utc = end_at.astimezone(UTC)
+    start_utc = None if start_at is None else start_at.astimezone(UTC)
+    output = []
+    for bar in bars:
+        opened = bar.timestamp.astimezone(UTC)
+        closed = opened + interval
+        if closed > end_utc:
+            continue
+        if start_utc is not None and opened < start_utc:
+            continue
+        output.append(bar)
+    return tuple(output)
+
+
 def technical_context_before(
     bars: Sequence[Any],
     *,
     event_at: datetime,
 ) -> dict[str, Any]:
-    before = [
-        bar
-        for bar in bars
-        if bar.timestamp.astimezone(UTC) < event_at.astimezone(UTC)
-    ]
+    interval = _infer_bar_interval(bars)
+    before = _completed_bars(
+        bars,
+        end_at=event_at,
+        interval=interval,
+    )
     if not before:
         return {
             "state": "INSUFFICIENT_PRE_EVENT_HISTORY",
             "trend": "UNKNOWN",
             "atr14": None,
+            "bar_interval_minutes": interval.total_seconds() / 60.0,
         }
     window = before[-240:]
     closes = [float(bar.close) for bar in window]
@@ -260,28 +304,71 @@ def technical_context_before(
         "local_12bar_high": local_high,
         "local_12bar_low": local_low,
         "local_12bar_range_atr": compression_atr,
+        "bar_interval_minutes": interval.total_seconds() / 60.0,
     }
 
 
-def _bar_at_or_after(bars: Sequence[Any], target: datetime) -> Any | None:
-    for bar in bars:
-        if bar.timestamp.astimezone(UTC) >= target.astimezone(UTC):
-            return bar
-    return None
-
-
-def _window_bars(
+def reaction_metrics_from_bars(
     bars: Sequence[Any],
-    start: datetime,
-    end: datetime,
-) -> tuple[Any, ...]:
-    return tuple(
-        bar
-        for bar in bars
-        if start.astimezone(UTC)
-        <= bar.timestamp.astimezone(UTC)
-        < end.astimezone(UTC)
+    *,
+    event_at: datetime,
+) -> dict[str, Any] | None:
+    ordered = tuple(sorted(bars, key=lambda bar: bar.timestamp))
+    if not ordered:
+        return None
+    interval = _infer_bar_interval(ordered)
+    context = technical_context_before(ordered, event_at=event_at)
+    atr = context.get("atr14")
+    pre = _completed_bars(
+        ordered,
+        end_at=event_at,
+        interval=interval,
     )
+    if not pre:
+        return None
+    reference = pre[-1]
+    p0 = float(reference.close)
+    if p0 <= 0:
+        return None
+
+    responses: dict[str, Any] = {}
+    for minutes in (5, 15, 30, 60):
+        target = event_at + timedelta(minutes=minutes)
+        completed = _completed_bars(
+            ordered,
+            start_at=event_at,
+            end_at=target,
+            interval=interval,
+        )
+        if not completed:
+            responses[f"r{minutes}m_points"] = None
+            responses[f"r{minutes}m_atr"] = None
+            responses[f"mfe{minutes}m_atr"] = None
+            responses[f"mae{minutes}m_atr"] = None
+            continue
+
+        post_bar = completed[-1]
+        close = float(post_bar.close)
+        change = close - p0
+        high = max(float(bar.high) for bar in completed)
+        low = min(float(bar.low) for bar in completed)
+        responses[f"r{minutes}m_points"] = change
+        responses[f"r{minutes}m_atr"] = (
+            None if atr is None or atr <= 0 else change / float(atr)
+        )
+        responses[f"mfe{minutes}m_atr"] = (
+            None if atr is None or atr <= 0 else (high - p0) / float(atr)
+        )
+        responses[f"mae{minutes}m_atr"] = (
+            None if atr is None or atr <= 0 else (p0 - low) / float(atr)
+        )
+
+    return {
+        "reference_price": p0,
+        "pre_context": context,
+        "bar_interval_minutes": interval.total_seconds() / 60.0,
+        **responses,
+    }
 
 
 def _single_event_surprise(cluster: EventCluster) -> dict[str, Any]:
@@ -312,53 +399,18 @@ def reaction_for_cluster(
     cluster: EventCluster,
     bars: Sequence[Any],
 ) -> dict[str, Any] | None:
-    ordered = tuple(sorted(bars, key=lambda bar: bar.timestamp))
-    context = technical_context_before(ordered, event_at=cluster.scheduled_at)
-    atr = context.get("atr14")
-    pre = [
-        bar
-        for bar in ordered
-        if bar.timestamp.astimezone(UTC) < cluster.scheduled_at
-    ]
-    if not pre:
-        return None
-    reference = pre[-1]
-    p0 = float(reference.close)
-    if p0 <= 0:
+    metrics = reaction_metrics_from_bars(
+        bars,
+        event_at=cluster.scheduled_at,
+    )
+    if metrics is None:
         return None
 
-    horizons = (5, 15, 30, 60)
-    responses: dict[str, Any] = {}
-    for minutes in horizons:
-        target = cluster.scheduled_at + timedelta(minutes=minutes)
-        post_bar = _bar_at_or_after(ordered, target)
-        window = _window_bars(
-            ordered,
-            cluster.scheduled_at,
-            cluster.scheduled_at + timedelta(minutes=minutes + 1),
-        )
-        if post_bar is None or not window:
-            responses[f"r{minutes}m_points"] = None
-            responses[f"r{minutes}m_atr"] = None
-            responses[f"mfe{minutes}m_atr"] = None
-            responses[f"mae{minutes}m_atr"] = None
-            continue
-
-        close = float(post_bar.close)
-        change = close - p0
-        high = max(float(bar.high) for bar in window)
-        low = min(float(bar.low) for bar in window)
-        responses[f"r{minutes}m_points"] = change
-        responses[f"r{minutes}m_atr"] = (
-            None if atr is None or atr <= 0 else change / float(atr)
-        )
-        responses[f"mfe{minutes}m_atr"] = (
-            None if atr is None or atr <= 0 else (high - p0) / float(atr)
-        )
-        responses[f"mae{minutes}m_atr"] = (
-            None if atr is None or atr <= 0 else (p0 - low) / float(atr)
-        )
-
+    responses = {
+        key: value
+        for key, value in metrics.items()
+        if key.startswith(("r5m_", "r15m_", "r30m_", "r60m_", "mfe", "mae"))
+    }
     r15 = responses.get("r15m_atr")
     mfe15 = responses.get("mfe15m_atr")
     mae15 = responses.get("mae15m_atr")
@@ -388,8 +440,9 @@ def reaction_for_cluster(
         "event_count": len(cluster.events),
         "source_tiers": sorted({item.source_tier for item in cluster.events}),
         "surprise": _single_event_surprise(cluster),
-        "pre_context": context,
-        "reference_price": p0,
+        "pre_context": metrics["pre_context"],
+        "reference_price": metrics["reference_price"],
+        "bar_interval_minutes": metrics["bar_interval_minutes"],
         "direction15m": direction15,
         "whipsaw15m": whipsaw15,
         "execution_influence": False,
