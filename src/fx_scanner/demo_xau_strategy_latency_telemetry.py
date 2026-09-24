@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from math import isfinite
 from statistics import median
 from typing import Any
@@ -13,6 +13,7 @@ STRATEGY_ACTIVATED_AT = datetime(2026, 9, 10, 7, 42, 49, tzinfo=UTC)
 EVENT_TYPE = "DEMO_XAU_STRATEGY_LATENCY_V2"
 HEARTBEAT_NAME = "ctrader_demo_xau_strategy_latency"
 MAX_ROWS = 500
+EVENT_LOOKBACK_HOURS = 48
 
 
 def _dt(value: Any) -> datetime | None:
@@ -48,11 +49,25 @@ def _signals(store: SupabaseOperationalStore) -> tuple[dict[str, Any], ...]:
 
 
 def _events(store: SupabaseOperationalStore) -> tuple[dict[str, Any], ...]:
+    # V205 I/O guard: latency matching only needs recent execution evidence.
+    # The old activation-date scan grew monotonically and repeatedly pulled up
+    # to 2,000 wide broker event rows on every run.
+    recent_floor = max(
+        STRATEGY_ACTIVATED_AT,
+        datetime.now(tz=UTC) - timedelta(hours=EVENT_LOOKBACK_HOURS),
+    )
+    wanted = (
+        "DEMO_SIGNAL_GEOMETRY",
+        "DEMO_SIGNAL_FEATURE_SNAPSHOT_V2",
+        "ORDER_ACCEPTED",
+        "POSITION_PROTECTION_VERIFIED",
+    )
     response = (
         store.client.table("broker_order_events")
-        .select("observed_at,signal_key,event_type,accepted,payload")
+        .select("observed_at,signal_key,event_type,accepted")
         .eq("backend", "CTRADER")
-        .gte("observed_at", STRATEGY_ACTIVATED_AT.isoformat())
+        .in_("event_type", list(wanted))
+        .gte("observed_at", recent_floor.isoformat())
         .order("observed_at", desc=True)
         .limit(MAX_ROWS * 4)
         .execute()
