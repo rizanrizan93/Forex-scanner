@@ -126,3 +126,33 @@ def test_v196_exposes_current_candidate_direction():
     assert out["current_leg"]["pocket_state"] == "CANDIDATE_M5_POCKET"
     assert out["current_leg"]["m5_pocket"]
     assert out["current_leg"]["micro_refinement"]["state"] == "M5_RECLAIM_WAIT_MSS"
+
+
+def test_v196_suppresses_invalidated_candidate_pocket():
+    from fx_scanner.demo_xau_m5_bidirectional_path_v196 import _leg_payload
+
+    path = {
+        "state": "SOURCE_ZONE_APPROACHING",
+        "source_zone": {
+            "zone_id": "supply-x",
+            "timeframe": "H1",
+            "direction": "SHORT",
+            "low": 120.0,
+            "high": 130.0,
+        },
+        "reaction_target": {"price": 110.0},
+        "terminal_target_zone": {"low": 100.0, "high": 105.0},
+    }
+    micro = {
+        "state": "SOURCE_INVALIDATED_NO_REFINEMENT",
+        "direction": "SHORT",
+        "candidate_entry_pocket": {"low": 124.0, "high": 127.0},
+        "refined_entry_pocket": None,
+    }
+
+    out = _leg_payload(direction="SHORT", path=path, micro=micro)
+
+    assert out["pocket_state"] == "INVALIDATED_M5_POCKET"
+    assert out["m5_pocket"] == {}
+    assert out["historical_candidate_pocket"] == {"low": 124.0, "high": 127.0}
+    assert out["reaction_target"]["price"] == 110.0
