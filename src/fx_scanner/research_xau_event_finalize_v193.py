@@ -66,6 +66,7 @@ def finalize(
     base: dict[str, Any],
     sd_rows: list[dict[str, Any]],
     shards: list[dict[str, Any]],
+    parity_gate: dict[str, Any],
 ) -> dict[str, Any]:
     reactions = [dict(row) for row in base.get("reactions") or []]
     signals = oos_signal_rows(reactions)
@@ -96,7 +97,7 @@ def finalize(
         }
     )
 
-    parity_gate = dict(base.get("parity_gate") or {})
+    parity_gate = dict(parity_gate or {})
     parity_ok = bool(parity_gate.get("passed"))
 
     decision = (
@@ -149,6 +150,36 @@ def finalize(
     }
 
 
+def _latest_parity_gate(store: SupabaseOperationalStore) -> dict[str, Any]:
+    response = (
+        store.client.table("runtime_heartbeats")
+        .select("observed_at,healthy,details")
+        .eq("worker_name", "ctrader_xau_event_parity_v193")
+        .order("observed_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = list(response.data or [])
+    if not rows:
+        return {
+            "passed": False,
+            "decision": "PARITY_HEARTBEAT_MISSING",
+        }
+    row = dict(rows[0])
+    details = dict(row.get("details") or {})
+    result = dict(details.get("result") or {})
+    decision = str(result.get("decision") or "")
+    return {
+        "passed": bool(row.get("healthy")) and decision == "PARITY_DESCRIPTIVE_AVAILABLE",
+        "decision": decision or "UNKNOWN",
+        "observed_at": row.get("observed_at"),
+        "coverage": result.get("coverage"),
+        "attempted": result.get("attempted"),
+        "available": result.get("available"),
+        "horizons": result.get("horizons"),
+    }
+
+
 def run() -> int:
     base_path = Path(
         os.getenv(
@@ -166,9 +197,16 @@ def run() -> int:
     if not base_path.exists():
         raise SystemExit(f"XAU_V193_FULL_ARTIFACT_NOT_FOUND:{base_path}")
 
+    store = SupabaseOperationalStore.from_env()
     base = _load_base(base_path)
     sd_rows, shards = _load_sd_shards(shard_dir)
-    artifact = finalize(base=base, sd_rows=sd_rows, shards=shards)
+    parity_gate = _latest_parity_gate(store)
+    artifact = finalize(
+        base=base,
+        sd_rows=sd_rows,
+        shards=shards,
+        parity_gate=parity_gate,
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(artifact, indent=2, sort_keys=True, allow_nan=False, default=str)
@@ -192,7 +230,7 @@ def run() -> int:
         "promotion_authority": False,
     }
     healthy = artifact["decision"] == "FULL_BACKFILL_RESEARCH_READY"
-    SupabaseOperationalStore.from_env().write_heartbeat(
+    store.write_heartbeat(
         WORKER_NAME,
         healthy=healthy,
         lag_seconds=0.0,
