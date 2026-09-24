@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from math import isfinite
 from typing import Any, Sequence
@@ -332,6 +332,36 @@ def _heartbeats(
     return tuple(dict(row) for row in (response.data or []))
 
 
+def _existing_enrollment_times(
+    store: SupabaseOperationalStore,
+) -> dict[str, datetime]:
+    response = (
+        store.client.table("xau_outcome_ledger")
+        .select("episode_key,observed_at")
+        .eq("episode_type", EPISODE_TYPE)
+        .eq("strategy_id", STRATEGY_ID)
+        .limit(5000)
+        .execute()
+    )
+    output: dict[str, datetime] = {}
+    for row in list(response.data or []):
+        key = str(row.get("episode_key") or "")
+        observed = _dt(row.get("observed_at"))
+        if key and observed is not None:
+            output[key] = observed
+    return output
+
+
+def _preserve_first_enrollment(
+    snapshot: PocketSnapshot,
+    existing: dict[str, datetime],
+) -> PocketSnapshot:
+    previous = existing.get(snapshot.episode_key)
+    if previous is None or previous >= snapshot.observed_at:
+        return snapshot
+    return replace(snapshot, observed_at=previous)
+
+
 def _ledger_row(
     *,
     snapshot: PocketSnapshot,
@@ -458,6 +488,11 @@ def run() -> int:
     try:
         heartbeats = _heartbeats(store, cutoff=cutoff)
         snapshots = _snapshots_from_heartbeats(heartbeats)
+        existing_enrollments = _existing_enrollment_times(store)
+        snapshots = tuple(
+            _preserve_first_enrollment(snapshot, existing_enrollments)
+            for snapshot in snapshots
+        )
 
         feed.ensure_connected()
         raw = tuple(
@@ -514,6 +549,7 @@ def run() -> int:
             "promotion_authority": False,
             "order_required_for_evidence": False,
             "evidence_is_not_trade_pnl": True,
+            "first_enrollment_timestamp_preserved": True,
             "lookback_days": LOOKBACK_DAYS,
             "outcome_horizon_hours": OUTCOME_HORIZON_HOURS,
             "closed_m5_bars": len(bars),
