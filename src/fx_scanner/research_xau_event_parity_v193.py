@@ -109,6 +109,68 @@ def _load_rows(path: Path) -> list[dict[str, Any]]:
     return selected[:MAX_EVENTS]
 
 
+def parity_validation(
+    *,
+    attempted: int,
+    available: int,
+    horizon_stats: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    coverage = None if attempted == 0 else available / attempted
+    gate_checks = {
+        "minimum_events": available >= MIN_PARITY_EVENTS,
+        "minimum_coverage": (
+            coverage is not None and coverage >= MIN_PARITY_COVERAGE
+        ),
+        "agreement_5m": (
+            horizon_stats["5m"]["directional_agreement"] is not None
+            and horizon_stats["5m"]["directional_agreement"]
+            >= MIN_DIRECTIONAL_AGREEMENT["5m"]
+        ),
+        "agreement_15m": (
+            horizon_stats["15m"]["directional_agreement"] is not None
+            and horizon_stats["15m"]["directional_agreement"]
+            >= MIN_DIRECTIONAL_AGREEMENT["15m"]
+        ),
+        "agreement_30m": (
+            horizon_stats["30m"]["directional_agreement"] is not None
+            and horizon_stats["30m"]["directional_agreement"]
+            >= MIN_DIRECTIONAL_AGREEMENT["30m"]
+        ),
+        "atr_difference_15m": (
+            horizon_stats["15m"]["median_abs_atr_difference"] is not None
+            and horizon_stats["15m"]["median_abs_atr_difference"]
+            <= MAX_MEDIAN_ABS_ATR_DIFFERENCE_15M
+        ),
+    }
+    passed = all(gate_checks.values())
+    descriptive_available = (
+        available >= MIN_PARITY_EVENTS
+        and coverage is not None
+        and coverage >= MIN_PARITY_COVERAGE
+    )
+    decision = (
+        "PARITY_VALIDATED"
+        if passed
+        else "PARITY_DESCRIPTIVE_AVAILABLE"
+        if descriptive_available
+        else "PARITY_INSUFFICIENT"
+    )
+    return {
+        "passed": passed,
+        "decision": decision,
+        "coverage": coverage,
+        "checks": gate_checks,
+        "thresholds": {
+            "minimum_events": MIN_PARITY_EVENTS,
+            "minimum_coverage": MIN_PARITY_COVERAGE,
+            "minimum_directional_agreement": MIN_DIRECTIONAL_AGREEMENT,
+            "maximum_median_abs_atr_difference_15m": (
+                MAX_MEDIAN_ABS_ATR_DIFFERENCE_15M
+            ),
+        },
+    }
+
+
 def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
     attempted = 0
     available = 0
@@ -176,67 +238,24 @@ def _compare(rows: list[dict[str, Any]], feed) -> dict[str, Any]:
             "median_abs_atr_difference": None if not diffs else median(diffs),
         }
 
-    coverage = None if attempted == 0 else available / attempted
-    gate_checks = {
-        "minimum_events": available >= MIN_PARITY_EVENTS,
-        "minimum_coverage": (
-            coverage is not None and coverage >= MIN_PARITY_COVERAGE
-        ),
-        "agreement_5m": (
-            horizon_stats["5m"]["directional_agreement"] is not None
-            and horizon_stats["5m"]["directional_agreement"]
-            >= MIN_DIRECTIONAL_AGREEMENT["5m"]
-        ),
-        "agreement_15m": (
-            horizon_stats["15m"]["directional_agreement"] is not None
-            and horizon_stats["15m"]["directional_agreement"]
-            >= MIN_DIRECTIONAL_AGREEMENT["15m"]
-        ),
-        "agreement_30m": (
-            horizon_stats["30m"]["directional_agreement"] is not None
-            and horizon_stats["30m"]["directional_agreement"]
-            >= MIN_DIRECTIONAL_AGREEMENT["30m"]
-        ),
-        "atr_difference_15m": (
-            horizon_stats["15m"]["median_abs_atr_difference"] is not None
-            and horizon_stats["15m"]["median_abs_atr_difference"]
-            <= MAX_MEDIAN_ABS_ATR_DIFFERENCE_15M
-        ),
-    }
-    validated = all(gate_checks.values())
-    descriptive_available = (
-        available >= MIN_PARITY_EVENTS
-        and coverage is not None
-        and coverage >= MIN_PARITY_COVERAGE
+    validation = parity_validation(
+        attempted=attempted,
+        available=available,
+        horizon_stats=horizon_stats,
     )
-    decision = (
-        "PARITY_VALIDATED"
-        if validated
-        else "PARITY_DESCRIPTIVE_AVAILABLE"
-        if descriptive_available
-        else "PARITY_INSUFFICIENT"
-    )
-
     return {
         "attempted": attempted,
         "available": available,
         "missing": missing,
-        "coverage": coverage,
+        "coverage": validation["coverage"],
         "horizons": horizon_stats,
         "samples": samples[:20],
         "validation_gate": {
-            "passed": validated,
-            "checks": gate_checks,
-            "thresholds": {
-                "minimum_events": MIN_PARITY_EVENTS,
-                "minimum_coverage": MIN_PARITY_COVERAGE,
-                "minimum_directional_agreement": MIN_DIRECTIONAL_AGREEMENT,
-                "maximum_median_abs_atr_difference_15m": (
-                    MAX_MEDIAN_ABS_ATR_DIFFERENCE_15M
-                ),
-            },
+            "passed": validation["passed"],
+            "checks": validation["checks"],
+            "thresholds": validation["thresholds"],
         },
-        "decision": decision,
+        "decision": validation["decision"],
         "execution_influence": False,
         "execution_authority": False,
         "promotion_authority": False,
