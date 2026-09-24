@@ -143,8 +143,22 @@ def _bars_from_frame(frame: pd.DataFrame, timeframe: str) -> tuple[Bar, ...]:
     return tuple(rows)
 
 
-def event_conditioning(
-    m1: pd.DataFrame,
+def build_conditioning_frames(m1: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    base = m1.copy()
+    if not isinstance(base.index, pd.DatetimeIndex):
+        if "timestamp" not in base.columns:
+            raise ValueError("M1 frame requires timestamp column/index")
+        base["timestamp"] = pd.to_datetime(base["timestamp"], utc=True)
+        base = base.set_index("timestamp")
+    base = base.sort_index()
+    output = {"M1": base}
+    for timeframe, rule in TIMEFRAMES.items():
+        output[timeframe] = resample_ohlc(base, rule)
+    return output
+
+
+def event_conditioning_from_frames(
+    frames: dict[str, pd.DataFrame],
     *,
     event_at: datetime,
     supply_demand_lookback_days: int = 90,
@@ -152,25 +166,25 @@ def event_conditioning(
     if event_at.tzinfo is None:
         raise ValueError("event_at must be timezone-aware")
     event_utc = event_at.astimezone(UTC)
-    base = m1.copy()
-    if not isinstance(base.index, pd.DatetimeIndex):
-        base["timestamp"] = pd.to_datetime(base["timestamp"], utc=True)
-        base = base.set_index("timestamp")
-    base = base.sort_index()
-    before = base.loc[base.index < event_utc]
-    if before.empty:
+
+    mtf: dict[str, Any] = {}
+    sliced: dict[str, pd.DataFrame] = {}
+    for timeframe in TIMEFRAMES:
+        frame = frames.get(timeframe)
+        if frame is None:
+            frame = pd.DataFrame()
+        before = frame.loc[frame.index < event_utc] if not frame.empty else frame
+        sliced[timeframe] = before
+        mtf[timeframe] = _trend_context(before)
+
+    if all(frame.empty for frame in sliced.values()):
         return {
             "state": "NO_PRE_EVENT_PRICE",
-            "mtf": {},
+            "mtf": mtf,
             "supply_demand": {},
+            "execution_influence": False,
+            "execution_authority": False,
         }
-
-    mtf_frames: dict[str, pd.DataFrame] = {}
-    mtf: dict[str, Any] = {}
-    for timeframe, rule in TIMEFRAMES.items():
-        frame = resample_ohlc(before, rule)
-        mtf_frames[timeframe] = frame
-        mtf[timeframe] = _trend_context(frame)
 
     h4_stack = str(dict(mtf.get("H4") or {}).get("ema_stack") or "UNKNOWN")
     strategic_bias = (
@@ -179,7 +193,7 @@ def event_conditioning(
         else "NEUTRAL"
     )
 
-    m15 = mtf_frames["M15"]
+    m15 = sliced["M15"]
     cutoff = event_utc - timedelta(days=int(supply_demand_lookback_days))
     m15_window = m15.loc[m15.index >= cutoff]
     if len(m15_window) >= 300:
@@ -223,3 +237,16 @@ def event_conditioning(
         "execution_influence": False,
         "execution_authority": False,
     }
+
+
+def event_conditioning(
+    m1: pd.DataFrame,
+    *,
+    event_at: datetime,
+    supply_demand_lookback_days: int = 90,
+) -> dict[str, Any]:
+    return event_conditioning_from_frames(
+        build_conditioning_frames(m1),
+        event_at=event_at,
+        supply_demand_lookback_days=supply_demand_lookback_days,
+    )
