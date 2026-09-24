@@ -592,6 +592,233 @@ with forecast_tab:
         else "—"
     )
 
+    # V194: mobile-first decision center. Keep the full diagnostic sections below,
+    # but surface the trading hierarchy in one fixed top-to-bottom sequence.
+    dc_regime_details = {} if regime_hb is None else dict(regime_hb.get("details") or {})
+    dc_regime_eval = dict(dc_regime_details.get("evaluation") or {})
+    dc_regime_current = dict(dc_regime_eval.get("current") or {})
+    dc_strategic_bias = str(dc_regime_current.get("strategic_bias") or "NEUTRAL")
+    dc_tactical_first_leg = str(
+        dc_regime_current.get("tactical_first_leg")
+        or direction
+        or "NEUTRAL"
+    ).upper()
+
+    dc_path = dict(
+        afic_sd_context.get("first_leg_path")
+        or afic_sd_context.get("active_reaction_path")
+        or {}
+    )
+    dc_source = dict(dc_path.get("source_zone") or {})
+    dc_target = dict(
+        dc_path.get("terminal_target_zone")
+        or dc_path.get("primary_opposing_zone")
+        or {}
+    )
+    dc_reaction_target = dict(dc_path.get("reaction_target") or {})
+    dc_micro = dict(
+        afic_sd_context.get("first_leg_micro_refinement")
+        or afic_sd_context.get("micro_refinement")
+        or {}
+    )
+    dc_refined = dict(dc_micro.get("refined_entry_pocket") or {})
+    dc_candidate = dict(dc_micro.get("candidate_entry_pocket") or {})
+
+    dc_dom = dict(afic_sd_context.get("dom_context") or {})
+    if not dc_dom and dom_v191_hb is not None:
+        dc_dom_details = dict(dom_v191_hb.get("details") or {})
+        dc_dom = dict(dc_dom_details.get("analysis") or {})
+        dc_dom["stale"] = bool(
+            (_age_seconds(dom_v191_hb.get("observed_at")) or 0.0) > 180.0
+        )
+
+    dc_event = dict(afic_sd_context.get("event_risk_context") or {})
+    if not dc_event and event_risk_v192_hb is not None:
+        dc_event_details = dict(event_risk_v192_hb.get("details") or {})
+        dc_event = dict(dc_event_details.get("risk") or {})
+        dc_event["stale"] = bool(
+            (_age_seconds(event_risk_v192_hb.get("observed_at")) or 0.0) > 600.0
+        )
+
+    dc_sd_details = (
+        {}
+        if supply_demand_hb is None
+        else dict(supply_demand_hb.get("details") or {})
+    )
+    dc_sd_eval = dict(dc_sd_details.get("evaluation") or {})
+    dc_reference_price = (
+        live_price
+        if live_price is not None
+        else dc_sd_eval.get("last_closed_m15_price")
+    )
+
+    dc_m15_row = None
+    dc_now = datetime.now(tz=UTC)
+    for dc_row in xau_technical_signal_rows:
+        dc_setup = str(dc_row.get("setup_type") or "").upper()
+        if "M15" not in dc_setup:
+            continue
+        dc_expires = _parse_timestamp(dc_row.get("expires_at"))
+        if dc_expires is not None and dc_expires < dc_now:
+            continue
+        if str(dc_row.get("state") or "").upper() == "INVALIDATED":
+            continue
+        dc_m15_row = dict(dc_row)
+        break
+
+    dc_m15_state = (
+        "BELUM ADA SIGNAL M15 AKTIF"
+        if dc_m15_row is None
+        else str(dc_m15_row.get("state") or "—").upper()
+    )
+    dc_m15_direction = (
+        "—"
+        if dc_m15_row is None
+        else str(dc_m15_row.get("direction") or "—").upper()
+    )
+    dc_m15_score = None if dc_m15_row is None else dc_m15_row.get("final_score")
+    dc_m15_guards = [] if dc_m15_row is None else list(dc_m15_row.get("active_guards") or [])
+    dc_m15_ready = bool(
+        dc_m15_row is not None
+        and dc_m15_state == "EXECUTION_READY"
+        and not dc_m15_guards
+    )
+
+    dc_entry_status = "BELUM ADA ENTRY RESMI SCANNER"
+    if valid_zone_now and grade in {"A", "B"} and "CONFIRMED" in str(state).upper():
+        dc_entry_status = "CANONICAL CONFIRMED — CEK EXECUTION ADMISSION"
+    elif valid_zone_now:
+        dc_entry_status = "CANONICAL PREPARE — TUNGGU KONFIRMASI"
+    elif dc_refined:
+        dc_entry_status = "M5 POCKET TERSEDIA — SHADOW/PREPARE, BUKAN ENTRY RESMI"
+
+    st.markdown("## Pusat Keputusan XAUUSD (Decision Center)")
+    st.caption(
+        "Baca dari atas ke bawah. Urutannya tetap: D1/H4 konteks → H1 zona → "
+        "M5 pocket → M15 konfirmasi → DOM/Event → Execution. "
+        "Bagian diagnostik lengkap dipindahkan ke expander di bawah agar tampilan HP lebih ringkas."
+    )
+
+    dc1, dc2, dc3 = st.columns(3)
+    dc1.metric("Harga referensi", _fmt_price(dc_reference_price))
+    dc2.metric("Arah taktis", dc_tactical_first_leg)
+    dc3.metric("Status entry", dc_entry_status)
+
+    st.markdown("#### 1. D1 / H4 — Arah & Peta Besar")
+    st.info(
+        f"Bias strategis: **{dc_strategic_bias}** • "
+        f"first-leg taktis: **{dc_tactical_first_leg}** • "
+        f"H4 map: {_fmt_wib_datetime(current_map, seconds=False)}. "
+        "D1/H4 menentukan konteks dan tujuan; bukan harga entry presisi."
+    )
+
+    st.markdown("#### 2. H1 — Zona Reaksi Utama")
+    if dc_source:
+        dc_source_freshness = str(
+            dict(dc_source.get("lifecycle") or {}).get("freshness") or "—"
+        )
+        st.info(
+            f"{dc_source.get('timeframe','H1')} {dc_source.get('direction','—')} "
+            f"{dc_source.get('pattern','—')} • "
+            f"zona **{_fmt_price(dc_source.get('low'))}–{_fmt_price(dc_source.get('high'))}** • "
+            f"proximal {_fmt_price(dc_source.get('proximal'))} • "
+            f"freshness={dc_source_freshness}. "
+            "H1 menentukan area reaksi, bukan titik entry akhir."
+        )
+    else:
+        st.warning(
+            "Belum ada H1 source zone aktif pada path AFIC/Supply-Demand saat ini."
+        )
+
+    st.markdown("#### 3. M5 — Refined Entry Pocket")
+    if dc_refined:
+        st.success(
+            "REFINED M5 POCKET: "
+            f"**{_fmt_price(dc_refined.get('low'))}–{_fmt_price(dc_refined.get('high'))}** • "
+            f"state={dc_micro.get('state','—')} • "
+            f"sweep={_fmt_price(dict(dc_micro.get('sweep') or {}).get('price'))} • "
+            f"reclaim={_fmt_price(dc_micro.get('source_proximal_reclaim_level'))} • "
+            f"MSS={_fmt_price(dc_micro.get('mss_level'))}. "
+            "**SHADOW/PREPARE — belum otomatis menjadi entry resmi.**"
+        )
+    elif dc_candidate:
+        st.warning(
+            "Candidate M5 pocket: "
+            f"{_fmt_price(dc_candidate.get('low'))}–{_fmt_price(dc_candidate.get('high'))} • "
+            f"state={dc_micro.get('state','—')}. "
+            "Belum refined; tunggu reclaim/MSS/displacement."
+        )
+    else:
+        st.info("Belum ada M5 refined pocket aktif.")
+
+    st.markdown("#### 4. M15 — Konfirmasi Eksekusi")
+    if dc_m15_ready:
+        st.success(
+            f"M15 {dc_m15_direction} **EXECUTION_READY** • score={dc_m15_score}. "
+            "Tetap lanjut ke canonical/execution admission dan fresh quote."
+        )
+    elif dc_m15_row is not None:
+        st.warning(
+            f"M15 {dc_m15_direction} • state={dc_m15_state} • score={dc_m15_score} • "
+            f"guards={', '.join(str(x) for x in dc_m15_guards) or '—'}. "
+            "**Belum menjadi konfirmasi entry resmi.**"
+        )
+    else:
+        st.warning("Belum ada signal M15 aktif untuk mengesahkan pocket M5.")
+
+    st.markdown("#### 5. DOM V191 & Event Risk V192 — Konteks Saat Entry")
+    dc_dom_state = str(dc_dom.get("state") or "UNAVAILABLE")
+    dc_dom_score = dc_dom.get("pressure_score", dc_dom.get("dom_pressure_score"))
+    dc_event_state = str(dc_event.get("state") or "UNAVAILABLE")
+    dc_event_focal = dict(dc_event.get("focal_event") or {})
+    dc_event_time = _fmt_wib_datetime(
+        dc_event_focal.get("scheduled_at"),
+        seconds=False,
+    )
+    st.info(
+        f"DOM: **{dc_dom_state}**"
+        + (
+            f" / pressure={float(dc_dom_score):.1f}"
+            if dc_dom_score is not None
+            else ""
+        )
+        + (" / STALE" if dc_dom.get("stale") else "")
+        + " • Event risk: **"
+        + dc_event_state
+        + "**"
+        + (" / STALE" if dc_event.get("stale") else "")
+        + (
+            f" • berikutnya {dc_event_focal.get('title')} @ {dc_event_time}"
+            if dc_event_focal else ""
+        )
+        + ". DOM/Event hanya confirmation/caution context, bukan pembuat arah."
+    )
+
+    st.markdown("#### 6. Entry Resmi, Target & Status Akhir")
+    dc_target_text = (
+        _fmt_price(dc_reaction_target.get("price"))
+        if dc_reaction_target
+        else "—"
+    )
+    dc_terminal_text = (
+        f"{_fmt_price(dc_target.get('low'))}–{_fmt_price(dc_target.get('high'))}"
+        if dc_target else "—"
+    )
+    if "BELUM ADA ENTRY RESMI" in dc_entry_status:
+        st.error(
+            f"**{dc_entry_status}.** "
+            f"Reaction target={dc_target_text} • terminal opposing zone={dc_terminal_text}. "
+            "Pocket M5 boleh dipakai untuk persiapan/observasi, tetapi jangan disamakan "
+            "dengan izin broker scanner."
+        )
+    else:
+        st.success(
+            f"**{dc_entry_status}.** "
+            f"Reaction target={dc_target_text} • terminal opposing zone={dc_terminal_text}."
+        )
+
+    st.markdown("---")
+
     st.markdown("### Integrasi AFIC ↔ Supply/Demand")
     st.caption(
         "Supply/Demand V182 sekarang menjadi context map untuk AFIC. Context ini dapat "
