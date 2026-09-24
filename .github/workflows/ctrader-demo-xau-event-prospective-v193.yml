@@ -1,0 +1,52 @@
+name: cTrader Demo XAU Event Prospective V193
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * 1-5"
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/demo_xau_event_prospective_v193.py"
+      - "tests/test_demo_xau_event_prospective_v193.py"
+      - ".github/workflows/ctrader-demo-xau-event-prospective-v193.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-demo-xau-event-prospective-v193
+  cancel-in-progress: true
+
+jobs:
+  event-prospective-v193:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install cTrader runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
+      - name: Unit test prospective V193
+        run: pytest -q tests/test_demo_xau_event_prospective_v193.py
+      - name: Capture or resolve prospective event episodes
+        run: python -m fx_scanner.demo_xau_event_prospective_v193
