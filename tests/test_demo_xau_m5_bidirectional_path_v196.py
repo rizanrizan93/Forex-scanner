@@ -31,6 +31,7 @@ def _long_then_short_path():
         "high": 110.0,
         "proximal": 105.0,
         "distal": 100.0,
+        "available_at": "2026-09-22T00:00:00+00:00",
     }
     supply = {
         "zone_id": "supply-h1",
@@ -40,6 +41,7 @@ def _long_then_short_path():
         "high": 130.0,
         "proximal": 125.0,
         "distal": 130.0,
+        "available_at": "2026-09-22T00:00:00+00:00",
     }
     return {
         "active_path": {
@@ -181,6 +183,7 @@ def test_v196_next_leg_uses_h1_precision_inside_current_terminal_not_global_near
         "high": 129.0,
         "proximal": 123.0,
         "distal": 129.0,
+        "available_at": "2026-09-22T00:00:00+00:00",
         "lifecycle": {"active": True},
     }
     path_map["active_path"]["terminal_target_zone"] = h4_terminal
@@ -195,6 +198,7 @@ def test_v196_next_leg_uses_h1_precision_inside_current_terminal_not_global_near
         "high": 118.0,
         "proximal": 114.0,
         "distal": 118.0,
+        "available_at": "2026-09-22T00:00:00+00:00",
     }
 
     out = evaluate_bidirectional_m5_path(

@@ -24,6 +24,21 @@ def _safe_float(value: Any) -> float | None:
     return parsed if isfinite(parsed) else None
 
 
+def _safe_datetime(value: Any) -> datetime | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return None
+    if parsed.tzinfo is None:
+        return None
+    return ensure_utc(parsed)
+
+
 def _completed_m5(
     bars: Sequence[Bar],
     *,
@@ -175,6 +190,7 @@ def evaluate_micro_refinement(
         "direction": direction or None,
         "source_zone_id": source.get("zone_id"),
         "source_timeframe": source.get("timeframe"),
+        "source_available_at": source.get("available_at"),
     }
     if direction not in {"LONG", "SHORT"} or not source:
         return base | {"state": "NO_ACTIVE_REACTION_PATH"}
@@ -188,13 +204,36 @@ def evaluate_micro_refinement(
     if len(rows) < 40:
         return base | {"state": "INSUFFICIENT_M5_HISTORY"}
 
+    source_available_at = _safe_datetime(source.get("available_at"))
+    if source_available_at is None:
+        return base | {
+            "state": "SOURCE_AVAILABILITY_UNKNOWN_NO_REFINEMENT",
+            "note": (
+                "Fail-closed: M5 refinement requires the H1 source available_at timestamp "
+                "so pre-source historical touches cannot be reused retrospectively."
+            ),
+        }
+
     recent = rows[-MAX_RECENT_M5_BARS:]
     global_offset = len(rows) - len(recent)
-    touch_indices = [i for i, row in enumerate(recent) if _touches_source(row, source)]
+    pre_source_touch_count = sum(
+        1
+        for row in recent
+        if ensure_utc(row.timestamp) < source_available_at
+        and _touches_source(row, source)
+    )
+    touch_indices = [
+        i
+        for i, row in enumerate(recent)
+        if ensure_utc(row.timestamp) >= source_available_at
+        and _touches_source(row, source)
+    ]
     if not touch_indices:
         return base | {
             "state": "WAIT_SOURCE_TOUCH",
             "last_closed_m5_price": float(recent[-1].close),
+            "source_available_at": source_available_at.isoformat(),
+            "pre_source_touch_count_ignored": pre_source_touch_count,
         }
 
     # Use the deepest directional excursion among recent source-touch bars as the
@@ -301,6 +340,9 @@ def evaluate_micro_refinement(
     return base | {
         "state": state,
         "last_closed_m5_price": float(recent[-1].close),
+        "source_available_at": source_available_at.isoformat(),
+        "pre_source_touch_count_ignored": pre_source_touch_count,
+        "first_eligible_touch_at": ensure_utc(recent[touch_indices[0]].timestamp).isoformat(),
         "sweep": {
             "price": sweep_price,
             "at": ensure_utc(sweep_bar.timestamp).isoformat(),
