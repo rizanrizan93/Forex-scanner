@@ -494,6 +494,12 @@ with forecast_tab:
     supply_demand_timeframe_hb = _latest_heartbeat(
         heartbeats, "ctrader_xau_supply_demand_timeframe_v185"
     )
+    v197_evidence_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v196_shadow_evidence"
+    )
+    v198_analytics_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v198_evidence_analytics"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -1251,6 +1257,84 @@ with forecast_tab:
             "posisi tersebut memang tidak akan muncul di panel ini karena sumber LIVE dan DEMO "
             "sengaja dipisahkan."
         )
+
+    st.markdown("## Pusat Bukti XAUUSD (V197/V198)")
+    st.caption(
+        "Panel ini menilai forecast M5 V196 secara prospective. Order broker **tidak diperlukan** "
+        "agar suatu forecast dihitung sebagai shadow evidence, tetapi bukti ini tetap dipisahkan "
+        "dari realized trade/PnL. Geometry forecast baru setelah V198 bersifat immutable."
+    )
+    if v198_analytics_hb is None:
+        st.warning(
+            "V198 Evidence Analytics belum mempunyai heartbeat runtime. "
+            "Panel akan aktif setelah maintenance cycle berikutnya."
+        )
+    else:
+        ev_details = dict(v198_analytics_hb.get("details") or {})
+        ev_all = dict(ev_details.get("all_evidence") or {})
+        ev_strict = dict(ev_details.get("strict_immutable_evidence") or {})
+        ev_legacy = dict(ev_details.get("legacy_pre_freeze_evidence") or {})
+        ev_path = dict(ev_details.get("full_path") or {})
+        ev_strict_path = dict(ev_details.get("strict_full_path") or {})
+
+        ev1, ev2, ev3, ev4 = st.columns(4)
+        ev1.metric("Strict immutable", int(ev_strict.get("enrolled") or 0))
+        ev2.metric("Strict touched", int(ev_strict.get("touched") or 0))
+        ev3.metric(
+            "Reaction hit | touch",
+            _fmt_pct(ev_strict.get("reaction_precision_given_touch")),
+        )
+        ev4.metric(
+            "Full Path stage",
+            f"{int(ev_strict_path.get('max_stage_score') or 0)}/5",
+        )
+
+        st.info(
+            f"Strict sample: **{ev_strict.get('sample_state','COLLECTING')}** • "
+            f"resolved-after-touch={int(ev_strict.get('resolved_after_touch') or 0)} • "
+            f"Wilson LB95 reaction={_fmt_pct(ev_strict.get('reaction_wilson_lower_95'))} • "
+            f"80% gate={'LOLOS' if ev_strict.get('target_80pct_gate_met') else 'BELUM'}. "
+            "Gate ini hanya diagnostik/statistik dan tidak memberi execution/promotion authority."
+        )
+
+        st.caption(
+            f"Semua prospective evidence: enrolled={int(ev_all.get('enrolled') or 0)}, "
+            f"touched={int(ev_all.get('touched') or 0)}, "
+            f"reaction hits={int(ev_all.get('reaction_hits') or 0)}, "
+            f"terminal hits={int(ev_all.get('terminal_hits') or 0)}. "
+            f"Legacy pre-freeze={int(ev_legacy.get('enrolled') or 0)} episode; "
+            "legacy tetap ditampilkan sebagai bukti observasional tetapi dikeluarkan dari "
+            "strict promotion-grade statistics karena geometry-nya pernah mutable."
+        )
+
+        ev_chains = list(ev_path.get("latest_chains") or [])
+        if ev_chains:
+            latest_chain = dict(ev_chains[-1])
+            st.info(
+                f"Full Path terbaru: **stage {int(latest_chain.get('stage_score') or 0)}/5** • "
+                f"{latest_chain.get('state','—')} • "
+                f"{latest_chain.get('current_direction','—')} → "
+                f"{latest_chain.get('reverse_direction') or '—'}. "
+                "Urutan stage: touch current → reaction current → touch opposing pocket → "
+                "reverse reaction → reverse terminal."
+            )
+
+        with st.expander("Detail evidence analytics V198"):
+            st.json(
+                {
+                    "observed_at": v198_analytics_hb.get("observed_at"),
+                    "strict_immutable_evidence": ev_strict,
+                    "legacy_pre_freeze_evidence": ev_legacy,
+                    "strict_segments": ev_details.get("strict_segments"),
+                    "full_path": ev_path,
+                    "strict_full_path": ev_strict_path,
+                    "v197_recorder": (
+                        {}
+                        if v197_evidence_hb is None
+                        else dict(v197_evidence_hb.get("details") or {})
+                    ),
+                }
+            )
 
     st.markdown("---")
     st.caption(
