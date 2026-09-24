@@ -137,6 +137,11 @@ def _first_hit_chronology(
         ts = ensure_utc(row.timestamp)
         if ts < start_at or ts > end_at:
             continue
+        # The first-touch M5 bar is intrinsically order-ambiguous in OHLC data:
+        # its high/low may have happened before the pocket touch. Therefore a
+        # reaction rung/target can only be proven by a later completed M5 bar.
+        if ts <= first_touch:
+            continue
 
         # Keep the same conservative ambiguity rule as V197:
         # invalidation on a completed M5 bar wins over a target/rung hit
@@ -584,9 +589,10 @@ def build_reaction_ladder_analytics(
         "promotion_authority": False,
         "interpretation": (
             "V201 separates zone localization from reaction magnitude. Reaction-rung "
-            "first-hit timestamps are derived only from completed M5 bars at/after the "
-            "prospective first touch; pre-touch bars and unfinished M5 bars cannot claim "
-            "a hit. Target versions are also bounded by their mapped_at timestamp so a "
+            "first-hit timestamps are derived only from completed M5 bars strictly after "
+            "the prospective first-touch bar; pre-touch, same-touch-bar OHLC ambiguity, "
+            "and unfinished M5 bars cannot claim a hit. Target versions are also bounded "
+            "by their mapped_at timestamp so a "
             "later role/target version cannot backfill an earlier move."
         ),
     }
@@ -661,8 +667,9 @@ def run() -> int:
             "ledger_rows": len(rows),
             "closed_m5_bars": len(bars),
             "chronology_contract": (
-                "COMPLETED_M5_AT_OR_AFTER_FIRST_TOUCH_AND_MAPPED_AT"
+                "COMPLETED_M5_STRICTLY_AFTER_FIRST_TOUCH_AND_AT_OR_AFTER_MAPPED_AT"
             ),
+            "touch_bar_target_hits_excluded_as_intrabar_ambiguous": True,
             "same_bar_invalidation_precedence": True,
             "error": error,
             "code_version": os.getenv("GITHUB_SHA", "LOCAL"),
