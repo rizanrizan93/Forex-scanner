@@ -14,7 +14,6 @@ from .research_xau_event_reaction_v193 import (
     parse_release_number,
 )
 
-LONDON = ZoneInfo("Europe/London")
 BASE_URLS = (
     "https://www.forexfactory.com/calendar",
     "https://calendar.forexfactory.com/calendar",
@@ -144,6 +143,32 @@ def _parse_date_text(text: str, year_hint: int) -> date | None:
         return None
 
 
+def _calendar_timezone_name(soup: Any) -> str:
+    text = " ".join(soup.get_text(" ", strip=True).split())
+    patterns = (
+        r"Calendar Time Zone:\s*([A-Za-z_]+/[A-Za-z_+-]+)",
+        r"Time Zone:\s*([A-Za-z_]+/[A-Za-z_+-]+)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.I)
+        if match:
+            name = match.group(1)
+            try:
+                ZoneInfo(name)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Forex Factory calendar timezone is not a valid IANA zone: {name}"
+                ) from exc
+            return name
+    raise RuntimeError(
+        "Forex Factory calendar timezone was not explicitly present in the fetched page"
+    )
+
+
+def _calendar_timezone(soup: Any) -> ZoneInfo:
+    return ZoneInfo(_calendar_timezone_name(soup))
+
+
 def _parse_clock(text: str) -> tuple[int, int] | None:
     normalized = str(text).strip().lower().replace(" ", "")
     if not normalized or normalized in {"allday", "tentative"} or "day" in normalized:
@@ -169,6 +194,7 @@ def parse_forex_factory_html(
         raise RuntimeError("beautifulsoup4 is required for V193 supplement") from exc
 
     soup = BeautifulSoup(body.decode("utf-8", errors="replace"), "html.parser")
+    calendar_tz = _calendar_timezone(soup)
     rows = soup.select("tr.calendar__row")
     if not rows:
         rows = [
@@ -222,7 +248,7 @@ def parse_forex_factory_html(
             current_date.day,
             current_clock[0],
             current_clock[1],
-            tzinfo=LONDON,
+            tzinfo=calendar_tz,
         )
         scheduled = local.astimezone(UTC)
 
@@ -263,6 +289,12 @@ def fetch_supplement(
     provenance: list[dict[str, Any]] = []
     for page_start, page_end in _month_ranges(start, end):
         body, url = _fetch_page(page_start, page_end)
+        try:
+            from bs4 import BeautifulSoup
+        except ModuleNotFoundError as exc:
+            raise RuntimeError("beautifulsoup4 is required for V193 supplement") from exc
+        page_soup = BeautifulSoup(body.decode("utf-8", errors="replace"), "html.parser")
+        calendar_timezone = _calendar_timezone_name(page_soup)
         parsed = parse_forex_factory_html(
             body,
             year_hint=page_start.year,
@@ -277,6 +309,8 @@ def fetch_supplement(
                 "sha256": sha256(body).hexdigest(),
                 "events": len(parsed),
                 "source_tier": SOURCE_TIER,
+                "calendar_timezone": calendar_timezone,
+                "timestamp_contract": "PAGE_DECLARED_IANA_TIMEZONE_TO_UTC",
             }
         )
 
