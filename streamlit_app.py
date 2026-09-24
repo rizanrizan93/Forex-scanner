@@ -1032,14 +1032,14 @@ with forecast_tab:
             "Ini adalah leg berikutnya, bukan izin untuk entry sebelum konfirmasi."
         )
     elif dc_next_leg_source:
-        st.caption(
-            f"Next opposing **{dc_next_leg_direction}** watch zone: "
-            f"{_fmt_price(dc_next_leg_source.get('low'))}–{_fmt_price(dc_next_leg_source.get('high'))} • "
-            f"M5 state={dc_next_micro.get('state','WAIT_SOURCE_TOUCH')}. "
-            "Belum disebut M5 pocket sampai harga menyentuh/sweep zona lalu membentuk "
-            "reclaim + MSS + displacement. "
-            f"Jika nanti terkonfirmasi {dc_next_leg_direction}, projected reaction target="
-            f"{dc_next_target_text} • terminal zone={dc_next_terminal_text}."
+        st.info(
+            f"PRE-CONFIRMATION M5 **{dc_next_leg_direction}** POCKET / WATCH: "
+            f"**{_fmt_price(dc_next_leg_source.get('low'))}–{_fmt_price(dc_next_leg_source.get('high'))}** • "
+            f"state={dc_next_micro.get('state','WAIT_SOURCE_TOUCH')} • "
+            f"reaction target={dc_next_target_text} • terminal zone={dc_next_terminal_text}. "
+            "Pocket ditampilkan **sebelum** reclaim + MSS + displacement agar area persiapan "
+            "sudah terlihat. Reclaim/MSS/displacement tetap diperlukan untuk menaikkan status "
+            "menjadi confirmed/refined; perubahan tampilan ini tidak memberi execution authority."
         )
     else:
         st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
