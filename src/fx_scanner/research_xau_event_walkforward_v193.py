@@ -83,13 +83,12 @@ def _key(row: dict[str, Any], scheme: str) -> tuple[str, ...]:
         return (family,)
     if scheme == "FAMILY_SURPRISE":
         return (family, _surprise(row))
-    if scheme == "FAMILY_SURPRISE_STRUCTURE":
+    if scheme == "FAMILY_SURPRISE_MARKET_STRUCTURE":
         return (
             family,
             _surprise(row),
             _h1_structure(row),
             _h4_stack(row),
-            _sd_direction(row),
         )
     raise ValueError(f"unknown V193 scheme: {scheme}")
 
@@ -276,7 +275,7 @@ def build_full_artifact(
         for scheme in (
             "FAMILY",
             "FAMILY_SURPRISE",
-            "FAMILY_SURPRISE_STRUCTURE",
+            "FAMILY_SURPRISE_MARKET_STRUCTURE",
         )
     ]
     return {
@@ -291,8 +290,10 @@ def build_full_artifact(
         "atlas": full_atlas,
         "eras": _era_summary(reactions),
         "walk_forward": walkforwards,
+        "research_stage": "REACTION_BACKFILL_PLUS_MARKET_STRUCTURE_PRE_SD",
+        "supply_demand_conditioning": "PENDING_POST_WALK_FORWARD_STAGE",
         "decision": (
-            "FULL_BACKFILL_RESEARCH_READY"
+            "REACTION_BACKFILL_WALKFORWARD_READY"
             if years and min(years) <= 2012 and max(years) >= datetime.now(tz=UTC).year
             and len(reactions) >= 1000
             else "BACKFILL_INCOMPLETE"
@@ -343,7 +344,7 @@ def run() -> int:
         for row in artifact["eras"]
     ]
 
-    healthy = artifact["decision"] == "FULL_BACKFILL_RESEARCH_READY"
+    healthy = artifact["decision"] == "REACTION_BACKFILL_WALKFORWARD_READY"
     try:
         SupabaseOperationalStore.from_env().write_heartbeat(
             WORKER_NAME,
