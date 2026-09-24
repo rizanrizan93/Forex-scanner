@@ -1,0 +1,170 @@
+name: Research XAU Event Reaction V193 Full
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/research_xau_event_supplement_v193.py"
+      - "src/fx_scanner/research_xau_event_corpus_v193_full_runtime.py"
+      - "src/fx_scanner/research_xau_event_conditioning_v193.py"
+      - "src/fx_scanner/research_xau_event_reaction_v193_year_runtime.py"
+      - "src/fx_scanner/research_xau_event_walkforward_v193.py"
+      - "tests/test_research_xau_event_full_v193.py"
+      - "tests/test_research_xau_event_walkforward_v193.py"
+      - ".github/workflows/research-xau-event-reaction-v193-full.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-event-reaction-v193-full
+  cancel-in-progress: true
+
+jobs:
+  prepare-corpus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      XAU_EVENT_CORPUS_V193_FULL_OUTPUT: artifacts/xau-event-corpus-v193-full.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install V193 corpus runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install beautifulsoup4==4.13.4 pytest==9.0.2
+      - name: Unit tests for corpus/conditioning
+        run: |
+          pytest -q             tests/test_research_xau_event_full_v193.py             tests/test_research_xau_event_walkforward_v193.py
+      - name: Build full USD event corpus through current date
+        run: python -m fx_scanner.research_xau_event_corpus_v193_full_runtime
+      - name: Upload full event corpus
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v193-full-event-corpus
+          path: artifacts/xau-event-corpus-v193-full.json
+          if-no-files-found: error
+          retention-days: 14
+
+  backfill-year:
+    needs: prepare-corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year:
+          - 2012
+          - 2013
+          - 2014
+          - 2015
+          - 2016
+          - 2017
+          - 2018
+          - 2019
+          - 2020
+          - 2021
+          - 2022
+          - 2023
+          - 2024
+          - 2025
+          - 2026
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_CORPUS_JSON: /tmp/v193-corpus/xau-event-corpus-v193-full.json
+      XAU_V193_PRICE_CSV: /tmp/dukascopy/xau-v193-${{ matrix.year }}.csv
+      XAU_V193_YEAR_OUTPUT: artifacts/xau-event-reaction-v193-${{ matrix.year }}.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install V193 runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download full event corpus
+        uses: actions/download-artifact@v4
+        with:
+          name: xau-v193-full-event-corpus
+          path: /tmp/v193-corpus
+      - name: Resolve bounded yearly price window
+        id: window
+        shell: bash
+        run: |
+          YEAR="${{ matrix.year }}"
+          FROM_DATE="$((YEAR-1))-11-01"
+          if [ "${YEAR}" = "$(date -u +%Y)" ]; then
+            TO_DATE="$(date -u -d '+1 day' +%Y-%m-%d)"
+          else
+            TO_DATE="$((YEAR+1))-01-02"
+          fi
+          echo "from=${FROM_DATE}" >> "$GITHUB_OUTPUT"
+          echo "to=${TO_DATE}" >> "$GITHUB_OUTPUT"
+      - name: Download Dukascopy XAUUSD M1 shard
+        shell: bash
+        run: |
+          mkdir -p /tmp/dukascopy
+          npx --yes dukascopy-node@1.50.0             -i xauusd             -from "${{ steps.window.outputs.from }}"             -to "${{ steps.window.outputs.to }}"             -t m1             -p bid             -f csv             -dir /tmp/dukascopy             -fn "xau-v193-${{ matrix.year }}.csv"             -bs 10             -bp 250             -r 1             -rp 500             -s
+          test -s "/tmp/dukascopy/xau-v193-${{ matrix.year }}.csv"
+      - name: Build yearly reaction + technical conditioning shard
+        run: python -m fx_scanner.research_xau_event_reaction_v193_year_runtime
+      - name: Upload yearly V193 shard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v193-year-${{ matrix.year }}
+          path: artifacts/xau-event-reaction-v193-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      XAU_V193_SHARD_DIR: /tmp/v193-shards
+      XAU_V193_FULL_OUTPUT: artifacts/xau-event-reaction-v193-full.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download all yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v193-year-*
+          path: /tmp/v193-shards
+          merge-multiple: false
+      - name: Build eras and expanding walk-forward
+        run: python -m fx_scanner.research_xau_event_walkforward_v193
+      - name: Upload full V193 reaction atlas
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-event-reaction-v193-full
+          path: artifacts/xau-event-reaction-v193-full.json
+          if-no-files-found: error
+          retention-days: 30
