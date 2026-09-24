@@ -287,6 +287,7 @@ def build_full_artifact(
         "years_present": years,
         "reaction_count": len(reactions),
         "shards": list(shards),
+        "reactions": list(reactions),
         "atlas": full_atlas,
         "eras": _era_summary(reactions),
         "walk_forward": walkforwards,
@@ -322,7 +323,7 @@ def run() -> int:
     details = {
         key: value
         for key, value in artifact.items()
-        if key not in {"atlas", "eras", "walk_forward"}
+        if key not in {"atlas", "eras", "walk_forward", "reactions"}
     }
     details["walk_forward_summary"] = [
         {
