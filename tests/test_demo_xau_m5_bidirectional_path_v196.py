@@ -156,3 +156,55 @@ def test_v196_suppresses_invalidated_candidate_pocket():
     assert out["m5_pocket"] == {}
     assert out["historical_candidate_pocket"] == {"low": 124.0, "high": 127.0}
     assert out["reaction_target"]["price"] == 110.0
+
+
+def test_v196_next_leg_uses_h1_precision_inside_current_terminal_not_global_nearest():
+    t0 = datetime(2026, 9, 23, 0, 0, tzinfo=UTC)
+    bars = [
+        _bar(t0 + timedelta(minutes=5 * i), 111.0, 113.0, 110.0, 112.0)
+        for i in range(60)
+    ]
+    path_map = _long_then_short_path()
+    h4_terminal = {
+        "zone_id": "terminal-h4-supply",
+        "timeframe": "H4",
+        "direction": "SHORT",
+        "low": 120.0,
+        "high": 140.0,
+        "lifecycle": {"active": True},
+    }
+    h1_precision = {
+        "zone_id": "terminal-h1-supply",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 123.0,
+        "high": 129.0,
+        "proximal": 123.0,
+        "distal": 129.0,
+        "lifecycle": {"active": True},
+    }
+    path_map["active_path"]["terminal_target_zone"] = h4_terminal
+    path_map["active_path"]["primary_opposing_zone"] = h4_terminal
+    path_map["active_path"]["destination_stack"] = [h4_terminal, h1_precision]
+    path_map["active_path"]["secondary_opposing_zones"] = [h1_precision]
+    path_map["supply_to_demand"]["source_zone"] = {
+        "zone_id": "old-nearest-supply",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 114.0,
+        "high": 118.0,
+        "proximal": 114.0,
+        "distal": 118.0,
+    }
+
+    out = evaluate_bidirectional_m5_path(
+        tuple(bars),
+        path_map=path_map,
+        as_of=t0 + timedelta(minutes=5 * 61),
+    )
+
+    assert out["next_leg"]["source_zone"]["zone_id"] == "terminal-h1-supply"
+    assert out["next_leg"]["source_role"] == "H1_PRECISION_INSIDE_CURRENT_TERMINAL"
+    assert out["next_leg"]["parent_matches_current_terminal"] is True
+    assert out["next_leg"]["pocket_state"] == "NO_M5_POCKET_YET"
+    assert out["next_leg"]["micro_refinement"]["state"] == "WAIT_SOURCE_TOUCH"
