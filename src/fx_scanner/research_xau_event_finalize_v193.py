@@ -12,6 +12,7 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 WORKER_NAME = "ctrader_xau_event_reaction_v193_full"
 PARITY_WORKER = "ctrader_xau_event_parity_v193"
+TIMESTAMP_AUDIT_WORKER = "ctrader_xau_event_timestamp_audit_v193"
 ARTIFACT_CONTRACT = "XAU_EVENT_REACTION_V193_FINAL_1"
 
 MIN_SD_COVERAGE = 0.90
@@ -159,6 +160,7 @@ def _latest_parity(store: SupabaseOperationalStore) -> tuple[datetime | None, di
         store.client.table("runtime_heartbeats")
         .select("observed_at,healthy,details")
         .eq("worker_name", PARITY_WORKER)
+        .order("observed_at", desc=True)
         .limit(1)
         .execute()
     )
@@ -167,6 +169,28 @@ def _latest_parity(store: SupabaseOperationalStore) -> tuple[datetime | None, di
         return None, {}
     row = dict(rows[0])
     return _parse_dt(row.get("observed_at")), dict(row.get("details") or {})
+
+
+def _latest_timestamp_audit(
+    store: SupabaseOperationalStore,
+) -> tuple[datetime | None, bool, dict[str, Any]]:
+    response = (
+        store.client.table("runtime_heartbeats")
+        .select("observed_at,healthy,details")
+        .eq("worker_name", TIMESTAMP_AUDIT_WORKER)
+        .order("observed_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = list(response.data or [])
+    if not rows:
+        return None, False, {}
+    row = dict(rows[0])
+    return (
+        _parse_dt(row.get("observed_at")),
+        bool(row.get("healthy")),
+        dict(row.get("details") or {}),
+    )
 
 
 def run() -> int:
@@ -237,13 +261,13 @@ def run() -> int:
         and match_coverage >= MIN_SD_COVERAGE
         and valid_coverage >= MIN_SD_COVERAGE
     )
-    parity_ready = parity_current and parity_decision == "PARITY_DESCRIPTIVE_AVAILABLE"
+    parity_ready = parity_current and parity_decision == "PARITY_VALIDATED"
 
-    # Hard fail-closed gate. The historical event timestamp contract must be
-    # independently audited before V193 can become prospective-ready. This stays
-    # False until a dedicated timestamp-audit worker proves archive/supplement
-    # timestamps against official releases.
-    timestamp_audit_ready = False
+    audit_at, audit_healthy, audit_details = _latest_timestamp_audit(store)
+    audit_decision = str(audit_details.get("decision") or "TIMESTAMP_AUDIT_MISSING")
+    timestamp_audit_ready = (
+        audit_healthy and audit_decision == "TIMESTAMP_AUDIT_PASS"
+    )
     decision = final_decision(
         base_ready=base_ready,
         sd_ready=sd_ready,
@@ -282,8 +306,10 @@ def run() -> int:
             "horizons": parity_result.get("horizons"),
         },
         "timestamp_audit_gate": {
+            "worker": TIMESTAMP_AUDIT_WORKER,
             "ready": timestamp_audit_ready,
-            "decision": "TIMESTAMP_AUDIT_REQUIRED",
+            "observed_at": None if audit_at is None else audit_at.isoformat(),
+            "decision": audit_decision,
             "reason": (
                 "Historical event timestamps must be verified against official "
                 "release schedules before prospective activation."
@@ -318,6 +344,7 @@ def run() -> int:
         "parity_decision": parity_decision,
         "parity_current_for_base": parity_current,
         "timestamp_audit_ready": timestamp_audit_ready,
+        "timestamp_audit_decision": audit_decision,
         "execution_influence": False,
         "execution_authority": False,
         "promotion_authority": False,
