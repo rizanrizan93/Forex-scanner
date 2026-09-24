@@ -1,0 +1,140 @@
+name: Research XAU Event Supply Demand V193 Final
+
+on:
+  workflow_run:
+    workflows:
+      - "Research XAU Event Reaction V193 Full"
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Successful Research XAU Event Reaction V193 Full run id"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: research-xau-event-sd-v193-final
+  cancel-in-progress: true
+
+jobs:
+  post-sd-year:
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        github.event.workflow_run.conclusion == 'success'
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        year:
+          - 2017
+          - 2018
+          - 2019
+          - 2020
+          - 2021
+          - 2022
+          - 2023
+          - 2024
+          - 2025
+          - 2026
+    env:
+      SOURCE_RUN_ID: ${{
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.id ||
+        inputs.source_run_id
+        }}
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_FULL_ARTIFACT: /tmp/v193-base/xau-event-reaction-v193-full.json
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v193-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v193-sd-price-provenance-${{ matrix.year }}.json
+      XAU_V193_SD_OUTPUT: artifacts/xau-event-sd-v193-${{ matrix.year }}.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install V193 post-walk-forward runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download successful base V193 atlas
+        uses: actions/download-artifact@v4
+        with:
+          name: xau-event-reaction-v193-full
+          path: /tmp/v193-base
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+      - name: Download and normalize HistData XAUUSD M1 for SD conditioning
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Attach post-walk-forward Supply-Demand context
+        run: python -m fx_scanner.research_xau_event_supply_demand_post_v193
+      - name: Upload V193 Supply-Demand shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v193-sd-${{ matrix.year }}
+          path: |
+            artifacts/xau-event-sd-v193-${{ matrix.year }}.json
+            artifacts/xau-v193-sd-price-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  finalize:
+    needs: post-sd-year
+    if: needs.post-sd-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SOURCE_RUN_ID: ${{
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.id ||
+        inputs.source_run_id
+        }}
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      XAU_V193_FULL_ARTIFACT: /tmp/v193-base/xau-event-reaction-v193-full.json
+      XAU_V193_SD_SHARD_DIR: /tmp/v193-sd
+      XAU_V193_FINAL_OUTPUT: artifacts/xau-event-reaction-v193-final.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install V193 finalizer
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download successful base V193 atlas
+        uses: actions/download-artifact@v4
+        with:
+          name: xau-event-reaction-v193-full
+          path: /tmp/v193-base
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+      - name: Download all post-walk-forward Supply-Demand shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v193-sd-*
+          path: /tmp/v193-sd
+          merge-multiple: false
+      - name: Finalize V193 historical research gate
+        run: python -m fx_scanner.research_xau_event_finalize_v193
+      - name: Upload final V193 research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-event-reaction-v193-final
+          path: artifacts/xau-event-reaction-v193-final.json
+          if-no-files-found: error
+          retention-days: 30
