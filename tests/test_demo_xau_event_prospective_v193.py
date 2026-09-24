@@ -4,6 +4,7 @@ from fx_scanner.demo_xau_event_prospective_v193 import (
     cluster_upcoming_events,
     historical_ready,
     resolution_state,
+    timestamp_audit_ready,
 )
 
 
@@ -64,6 +65,6 @@ def test_resolution_state_advances_only_when_horizon_exists():
 
 
 def test_timestamp_audit_decision_contract_is_explicit():
-    # The runtime accepts only the exact PASS token from the dedicated audit
-    # worker. Historical readiness by itself must never bypass timestamp audit.
-    assert "TIMESTAMP_AUDIT_PASS" == "TIMESTAMP_AUDIT_PASS"
+    assert timestamp_audit_ready({}) is False
+    assert timestamp_audit_ready({"decision": "TIMESTAMP_AUDIT_REQUIRED"}) is False
+    assert timestamp_audit_ready({"decision": "TIMESTAMP_AUDIT_PASS"}) is True
