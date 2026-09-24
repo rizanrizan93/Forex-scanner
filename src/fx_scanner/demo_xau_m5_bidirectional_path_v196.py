@@ -62,14 +62,22 @@ def _leg_payload(
 ) -> dict[str, Any]:
     refined = dict(micro.get("refined_entry_pocket") or {})
     candidate = dict(micro.get("candidate_entry_pocket") or {})
-    pocket = refined or candidate
-    pocket_state = (
-        "REFINED_M5_POCKET"
-        if refined
-        else "CANDIDATE_M5_POCKET"
-        if candidate
-        else "NO_M5_POCKET_YET"
-    )
+    micro_state = str(micro.get("state") or "").upper()
+    invalidated = "INVALIDATED" in micro_state
+
+    if invalidated:
+        pocket = {}
+        pocket_state = "INVALIDATED_M5_POCKET"
+    else:
+        pocket = refined or candidate
+        pocket_state = (
+            "REFINED_M5_POCKET"
+            if refined
+            else "CANDIDATE_M5_POCKET"
+            if candidate
+            else "NO_M5_POCKET_YET"
+        )
+
     return {
         "direction": direction,
         "path_state": path.get("state"),
@@ -77,6 +85,7 @@ def _leg_payload(
         "micro_refinement": micro,
         "pocket_state": pocket_state,
         "m5_pocket": pocket,
+        "historical_candidate_pocket": candidate if invalidated else {},
         **_target_snapshot(path),
     }
 
