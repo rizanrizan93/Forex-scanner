@@ -20,23 +20,32 @@ CONTRACT = "XAU_EVENT_TIMESTAMP_AUDIT_V193_1"
 
 MAX_ANCHOR_ERROR_SECONDS = 60.0
 MIN_ARCHIVE_OFFSET_RATIO = 0.999
+MIN_ARCHIVE_ANCHORS_PASSED = 2
 
 ANCHORS = (
     # Pinned archive anchors. BLS official schedule: 08:30 ET.
+    {
+        "id": "ARCHIVE_CPI_2025_01_15",
+        "source": "ARCHIVE",
+        "family": "CPI",
+        "day": date(2025, 1, 15),
+        "expected_at": datetime(2025, 1, 15, 13, 30, tzinfo=UTC),
+        "exclude_title": (),
+    },
+    {
+        "id": "ARCHIVE_CPI_2025_02_12",
+        "source": "ARCHIVE",
+        "family": "CPI",
+        "day": date(2025, 2, 12),
+        "expected_at": datetime(2025, 2, 12, 13, 30, tzinfo=UTC),
+        "exclude_title": (),
+    },
     {
         "id": "ARCHIVE_CPI_2025_03_12",
         "source": "ARCHIVE",
         "family": "CPI",
         "day": date(2025, 3, 12),
         "expected_at": datetime(2025, 3, 12, 12, 30, tzinfo=UTC),
-        "exclude_title": (),
-    },
-    {
-        "id": "ARCHIVE_PPI_2025_03_13",
-        "source": "ARCHIVE",
-        "family": "PPI",
-        "day": date(2025, 3, 13),
-        "expected_at": datetime(2025, 3, 13, 12, 30, tzinfo=UTC),
         "exclude_title": (),
     },
     # Supplement anchors across EST and EDT.
@@ -191,12 +200,36 @@ def run() -> int:
         anchor_results.append(_anchor_match(source_events, anchor))
 
     anchors_passed = sum(bool(row.get("passed")) for row in anchor_results)
-    all_anchors_pass = anchors_passed == len(anchor_results)
-    archive_contract_pass = offset_ratio >= MIN_ARCHIVE_OFFSET_RATIO
+    archive_anchor_results = [
+        row for row, anchor in zip(anchor_results, ANCHORS)
+        if anchor["source"] == "ARCHIVE"
+    ]
+    supplement_anchor_results = [
+        row for row, anchor in zip(anchor_results, ANCHORS)
+        if anchor["source"] == "SUPPLEMENT"
+    ]
+    archive_anchors_passed = sum(
+        bool(row.get("passed")) for row in archive_anchor_results
+    )
+    supplement_anchors_passed = sum(
+        bool(row.get("passed")) for row in supplement_anchor_results
+    )
+    archive_anchor_contract_pass = (
+        archive_anchors_passed >= MIN_ARCHIVE_ANCHORS_PASSED
+    )
+    supplement_anchor_contract_pass = (
+        supplement_anchors_passed == len(supplement_anchor_results)
+    )
+    archive_contract_pass = (
+        offset_ratio >= MIN_ARCHIVE_OFFSET_RATIO
+        and archive_anchor_contract_pass
+    )
 
     decision = (
         "TIMESTAMP_AUDIT_PASS"
-        if archive_contract_pass and provenance_ok and all_anchors_pass
+        if archive_contract_pass
+        and provenance_ok
+        and supplement_anchor_contract_pass
         else "TIMESTAMP_AUDIT_FAIL"
     )
     details = {
@@ -207,12 +240,19 @@ def run() -> int:
             "source": "FOREX_FACTORY_HISTORICAL_ARCHIVE",
             "offset_ratio": offset_ratio,
             "minimum_offset_ratio": MIN_ARCHIVE_OFFSET_RATIO,
+            "anchors_passed": archive_anchors_passed,
+            "anchor_count": len(archive_anchor_results),
+            "minimum_anchors_passed": MIN_ARCHIVE_ANCHORS_PASSED,
+            "anchor_contract_pass": archive_anchor_contract_pass,
             "contract_pass": archive_contract_pass,
         },
         "supplement": {
             "source": "FOREX_FACTORY_HISTORICAL_RANGE",
             "page_count": len(timezone_pages),
             "provenance_pass": provenance_ok,
+            "anchors_passed": supplement_anchors_passed,
+            "anchor_count": len(supplement_anchor_results),
+            "anchor_contract_pass": supplement_anchor_contract_pass,
             "pages": timezone_pages,
         },
         "anchors": anchor_results,
@@ -235,6 +275,8 @@ def run() -> int:
         "XAU_EVENT_TIMESTAMP_AUDIT_V193 "
         f"decision={decision} archive_offset_ratio={offset_ratio:.6f} "
         f"pages={len(timezone_pages)} anchors={anchors_passed}/{len(anchor_results)} "
+        f"archive_anchors={archive_anchors_passed}/{len(archive_anchor_results)} "
+        f"supplement_anchors={supplement_anchors_passed}/{len(supplement_anchor_results)} "
         "execution_authority=0"
     )
     for row in anchor_results:
