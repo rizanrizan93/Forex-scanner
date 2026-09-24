@@ -105,6 +105,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_supply_demand_prospective_v184
 
+      - name: Record prospective V196 M5 pocket evidence
+        id: update_xau_v196_shadow_evidence
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v196_shadow_evidence_v197
+
       - name: Enforce pair-specific max-hold exits
         id: pair_time_exit
         if: ${{ always() && !cancelled() }}
