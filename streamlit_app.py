@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sys
 from dataclasses import asdict
@@ -111,6 +112,13 @@ def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
     merged = dict(_load_backend_slow_snapshot(url, secret_key))
     merged.update(_load_backend_fast_snapshot(url, secret_key))
     return merged
+
+
+def _clear_backend_snapshot_cache(*, include_slow: bool) -> None:
+    """Clear the actual cached V209 readers, not the uncached merge wrapper."""
+    _load_backend_fast_snapshot.clear()
+    if include_slow:
+        _load_backend_slow_snapshot.clear()
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -333,8 +341,8 @@ with st.sidebar:
     st.title("FX Scanner")
     st.caption(f"Engine v{__version__}")
 
-    if st.button("Refresh dashboard", use_container_width=True):
-        _load_backend_snapshot.clear()
+    if st.button("Refresh dashboard", width="stretch"):
+        _clear_backend_snapshot_cache(include_slow=True)
         st.rerun()
     auto_refresh_enabled = st.toggle(
         "Auto refresh monitor",
@@ -375,7 +383,7 @@ def _dashboard_auto_refresh_tick() -> None:
     last = st.session_state.get("dashboard_auto_refresh_at")
     if not isinstance(last, datetime) or (now - last).total_seconds() >= 14.5:
         st.session_state["dashboard_auto_refresh_at"] = now
-        _load_backend_snapshot.clear()
+        _clear_backend_snapshot_cache(include_slow=False)
         st.rerun()
 
 
@@ -1352,7 +1360,7 @@ with forecast_tab:
         st.dataframe(
             pd.DataFrame(tm_rows),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
         for tm_level, tm_message in tm_alerts:
             if tm_level == "error":
@@ -1735,7 +1743,7 @@ with forecast_tab:
                     st.dataframe(
                         pd.DataFrame(event_rows),
                         hide_index=True,
-                        use_container_width=True,
+                        width="stretch",
                     )
                 st.caption(
                     "V192 adalah context risiko waktu, bukan prediksi arah berita. "
@@ -1999,7 +2007,7 @@ with forecast_tab:
                     "status": item.get("status"),
                 }
             )
-        st.dataframe(pd.DataFrame(sd_table), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(sd_table), hide_index=True, width="stretch")
         demand_source_stack = list(sd_path_map.get("demand_source_stack") or [])
         supply_source_stack = list(sd_path_map.get("supply_source_stack") or [])
         if demand_source_stack:
@@ -2152,7 +2160,7 @@ with forecast_tab:
             st.dataframe(
                 pd.DataFrame(candidate_rows),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
         st.info(
             "V183 tidak mengubah V182, V181, canonical AFIC, atau broker lane. "
@@ -2216,7 +2224,7 @@ with forecast_tab:
             st.dataframe(
                 pd.DataFrame(sensitivity_rows),
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
         v185_candidates = list(v185_eval.get("candidate_80_precision_subsets") or [])
         st.info(
@@ -2334,7 +2342,7 @@ with forecast_tab:
                     "status": candidate.get("status"),
                 }
             )
-        st.dataframe(pd.DataFrame(premap_table), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(premap_table), hide_index=True, width="stretch")
         st.caption(
             "Catatan probabilitas/evidence: nilai V175/V177/V178/V179 adalah prior "
             "out-of-sample berdasarkan arah dari riset historis terbaru, BUKAN probabilitas "
@@ -2516,7 +2524,7 @@ with forecast_tab:
         st.dataframe(
             pd.DataFrame(lifecycle_table),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
     else:
         st.caption(
@@ -2594,7 +2602,7 @@ with forecast_tab:
             "kedaluwarsa (WIB)": _fmt_wib_datetime(row.get("expires_at")),
         })
     if admission_rows:
-        st.dataframe(pd.DataFrame(admission_rows), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(admission_rows), hide_index=True, width="stretch")
         latest_admission = admission_rows[0]
         if latest_admission["kelayakan"] == "BROKER ELIGIBLE":
             st.success(
@@ -2698,7 +2706,7 @@ with forecast_tab:
         st.dataframe(
             pd.DataFrame(technical_rows),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
     else:
         st.caption("Belum ada baris signal teknikal XAU non-AFIC.")
@@ -2787,7 +2795,7 @@ with forecast_tab:
                     "required": item.get("required_confirmation"),
                 }
             )
-        st.dataframe(pd.DataFrame(watch_rows), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(watch_rows), hide_index=True, width="stretch")
         nearest_watch = active_watch[0]
         watch_side = str(nearest_watch.get("direction") or "—")
         watch_role = str(nearest_watch.get("role") or "")
@@ -2944,7 +2952,7 @@ with forecast_tab:
             component_frame["confidence"] = component_frame["confidence"].apply(
                 lambda x: "—" if pd.isna(x) else _fmt_pct(x)
             )
-        st.dataframe(component_frame, hide_index=True, use_container_width=True)
+        st.dataframe(component_frame, hide_index=True, width="stretch")
 
         conditional_component = dict(ensemble_components.get("conditional") or {})
         horizons_conditional = dict(conditional_component.get("horizons") or {})
@@ -2972,7 +2980,7 @@ with forecast_tab:
                 st.dataframe(
                     probability_frame,
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                 )
     else:
         st.caption(
@@ -3088,7 +3096,7 @@ with forecast_tab:
                     "message": row.get("message"),
                 }
             )
-        st.dataframe(pd.DataFrame(timeline_rows), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(timeline_rows), hide_index=True, width="stretch")
     else:
         st.caption("No XAU execution event yet. Forecast monitoring can still be active without an order.")
 
@@ -3128,7 +3136,7 @@ with forecast_tab:
                     }
                 )
         if move_rows:
-            st.dataframe(pd.DataFrame(move_rows), hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(move_rows), hide_index=True, width="stretch")
     elif reference_envelope and reference_horizons:
         st.warning(
             "LIVE 20K envelope is unavailable; showing the slower REFERENCE 100K snapshot instead."
@@ -3162,7 +3170,7 @@ with forecast_tab:
                 st.dataframe(
                     pd.DataFrame(reference_rows),
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                 )
     elif not live_envelope:
         st.caption("Expected-move V170 data is not available in this snapshot.")
@@ -3186,7 +3194,7 @@ with forecast_tab:
             }
         )
     if history_rows:
-        st.dataframe(pd.DataFrame(history_rows), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(history_rows), hide_index=True, width="stretch")
     else:
         st.caption("No durable AFIC forecast transitions have been recorded yet.")
 
@@ -3265,7 +3273,7 @@ with account_tab:
             st.dataframe(
                 position_frame[display_cols],
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
         else:
             st.info("No open cTrader DEMO positions in the latest broker snapshot.")
@@ -3303,7 +3311,7 @@ with scanner_tab:
         st.dataframe(
             rankings[display_cols],
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
         st.caption("Rank 1–8 = macro-compatible shortlist; rank 1–5 receives deep MTF analysis.")
     elif cfg is not None:
@@ -3318,7 +3326,7 @@ with scanner_tab:
                 for pair in cfg.pairs
             ]
         )
-        st.dataframe(configured, hide_index=True, use_container_width=True)
+        st.dataframe(configured, hide_index=True, width="stretch")
         st.caption(
             "No durable pair-ranking snapshot is available yet. This table shows the "
             "configured trading universe only. universe_tier A/B is a static instrument "
@@ -3386,7 +3394,7 @@ with scanner_tab:
         st.dataframe(
             signals[display_cols],
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
     else:
         st.info("No signal snapshots have been written yet.")
@@ -3397,7 +3405,7 @@ with data_tab:
         macro = _frame(backend["macro"])
         if "coverage" in macro.columns:
             macro["coverage"] = macro["coverage"].apply(_fmt_pct)
-        st.dataframe(macro, hide_index=True, use_container_width=True)
+        st.dataframe(macro, hide_index=True, width="stretch")
     else:
         st.info("No durable macro snapshots are available yet.")
 
@@ -3415,7 +3423,7 @@ with data_tab:
                 for name, source in cfg.providers["sources"].items()
             ]
         )
-        st.dataframe(providers, hide_index=True, use_container_width=True)
+        st.dataframe(providers, hide_index=True, width="stretch")
 
         if st.button("Check official providers"):
             with st.spinner("Checking configured official sources..."):
@@ -3424,7 +3432,7 @@ with data_tab:
                     st.dataframe(
                         pd.DataFrame(rows),
                         hide_index=True,
-                        use_container_width=True,
+                        width="stretch",
                     )
                 except Exception as exc:
                     st.error(f"Provider check failed safely: {type(exc).__name__}: {exc}")
@@ -3457,7 +3465,18 @@ with system_tab:
             _frame(backend["heartbeats"]),
             ("observed_at",),
         ).rename(columns={"observed_at": "observed_at (WIB)"})
-        st.dataframe(heartbeats, hide_index=True, use_container_width=True)
+        if "details" in heartbeats.columns:
+            heartbeats["details"] = heartbeats["details"].apply(
+                lambda value: json.dumps(
+                    value,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    default=str,
+                )
+                if isinstance(value, (dict, list, tuple))
+                else value
+            )
+        st.dataframe(heartbeats, hide_index=True, width="stretch")
     else:
         st.info("No runtime heartbeat snapshots are available.")
 
@@ -3478,7 +3497,7 @@ with validation_tab:
                 },
                 {
                     "gate": "Profit factor",
-                    "minimum": acceptance["profit_factor_min"],
+                    "minimum": str(acceptance["profit_factor_min"]),
                 },
                 {
                     "gate": "Expectancy",
@@ -3486,7 +3505,7 @@ with validation_tab:
                 },
                 {
                     "gate": "Final OOS completed trades",
-                    "minimum": acceptance["aggregate_oos_trades_min"],
+                    "minimum": str(acceptance["aggregate_oos_trades_min"]),
                 },
                 {"gate": "Walk-forward", "minimum": "REQUIRED"},
                 {"gate": "Cost/spread/slippage stress", "minimum": "REQUIRED"},
@@ -3496,7 +3515,7 @@ with validation_tab:
                 {"gate": "Demo forward", "minimum": "REQUIRED"},
             ]
         )
-        st.dataframe(gates, hide_index=True, use_container_width=True)
+        st.dataframe(gates, hide_index=True, width="stretch")
 
         perf = cfg.validation["performance_budget"]
         st.subheader("Batas Kinerja Jalur Kritis (Hot-path Performance Budget)")
@@ -3519,7 +3538,7 @@ with validation_tab:
             performance["win_rate"] = performance["win_rate"].apply(
                 lambda x: "—" if pd.isna(x) else f"{float(x) * 100:.1f}%"
             )
-        st.dataframe(performance, hide_index=True, use_container_width=True)
+        st.dataframe(performance, hide_index=True, width="stretch")
     else:
         st.info(
             "No persisted OOS/performance rows are available yet. "
