@@ -2,7 +2,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fx_scanner.demo_xau_v224_primary_pocket_prospective import (
+    FORECAST_EVENT,
     _forecast_candidate,
+    _index_events,
     evaluate_primary_outcome,
 )
 from fx_scanner.models import Bar
@@ -83,6 +85,38 @@ def test_v224_rejects_primary_when_price_is_already_inside_zone() -> None:
 def test_v224_rejects_wrong_side_short_after_price_already_passed_zone() -> None:
     assert _forecast_candidate(_source(price=4308.0, direction="SHORT")) == {}
 
+
+
+
+def test_v224_parent_remap_does_not_create_new_physical_forecast_identity() -> None:
+    first = _source(price=4300.0, direction="SHORT")
+    second = _source(price=4300.0, direction="SHORT")
+    second["details"]["evaluation"]["parent_context"]["zone_id"] = "different-h1-parent"
+    a = _forecast_candidate(first)
+    b = _forecast_candidate(second)
+    assert a["signal_key"] == b["signal_key"]
+
+
+def test_v224_index_collapses_legacy_parent_remap_duplicates_by_micro_wave() -> None:
+    first = _forecast_candidate(_source(price=4300.0, direction="SHORT"))
+    second = dict(first)
+    second["signal_key"] = "legacy-parent-dependent-key"
+    second["parent"] = dict(first["parent"]) | {"zone_id": "different-h1-parent"}
+    rows = [
+        {
+            "event_type": FORECAST_EVENT,
+            "signal_key": "legacy-a",
+            "payload": first,
+        },
+        {
+            "event_type": FORECAST_EVENT,
+            "signal_key": "legacy-b",
+            "payload": second,
+        },
+    ]
+    forecasts, outcomes = _index_events(rows)
+    assert len(forecasts) == 1
+    assert outcomes == {}
 
 def test_v224_reaction_requires_completed_bar_after_touch() -> None:
     forecast = _forecast_candidate(_source(price=4300.0, direction="SHORT"))
