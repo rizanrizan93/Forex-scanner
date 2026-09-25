@@ -96,31 +96,39 @@ def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_shadow_p
 
 
 def test_demo_discovery_pipeline_is_xauusd_only_independent_and_non_executing():
-    text = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
+    discovery = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
+    calibration = (ROOT / ".github/workflows/ctrader-demo-calibration-pipeline.yml").read_text()
 
-    assert "workflow_dispatch:" in text
-    assert "schedule:" not in text
-    assert "demo_xau_technical_producer" in text
-    assert "demo_execution_technical_producer" not in text
-    assert "demo_closed_trade_reconciler" in text
-    assert "demo_trajectory_finalizer" in text
-    assert "demo_normalized_calibration_runner incremental" in text
-    assert "demo_xau_v2_forward_scorecard" in text
-    assert "demo_xau_daily_opportunity" in text
-    assert "demo_eurusd_forward_scorecard" not in text
-    assert "demo_normalized_calibration_runner adaptive-v2" in text
-    assert "demo_normalized_calibration_runner comparison" in text
-    assert "demo_normalized_calibration_runner loss-attribution" in text
-    assert "demo_calibration_autotrade" not in text
-    assert "demo_execution_fresh_ready_handoff" not in text
-    assert "demo_structural_profit_protector" not in text
-    assert "continue-on-error: true" in text
-    assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in text
-    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in text
-    assert "CTRADER_DEMO_DEEP_ANALYSIS_TOP" not in text
-    assert "FX_LIVE_TRADING_ENABLED" not in text
-    assert "I_UNDERSTAND_LIVE_ORDERS" not in text
+    assert "workflow_dispatch:" in discovery
+    assert "schedule:" not in discovery
+    assert "demo_xau_technical_producer" in discovery
+    assert "demo_xau_expansion_challenger" in discovery
+    assert "demo_execution_technical_producer" not in discovery
+    assert "demo_closed_trade_reconciler" not in discovery
+    assert "demo_execution_fresh_ready_handoff" not in discovery
+    assert "demo_structural_profit_protector" not in discovery
+    assert "continue-on-error: true" in discovery
+    assert 'CTRADER_DISABLE_TOKEN_REFRESH: "1"' in discovery
+    assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in discovery
+    assert "FX_LIVE_TRADING_ENABLED" not in discovery
+    assert "I_UNDERSTAND_LIVE_ORDERS" not in discovery
 
+    assert "workflow_dispatch:" in calibration
+    assert "schedule:" not in calibration
+    assert "demo_xau_strategy_latency_telemetry" in calibration
+    assert "demo_closed_trade_reconciler" in calibration
+    assert "demo_trajectory_finalizer" in calibration
+    assert "demo_normalized_calibration_runner incremental" in calibration
+    assert "demo_xau_v2_forward_scorecard" in calibration
+    assert "demo_xau_daily_opportunity" in calibration
+    assert "demo_normalized_calibration_runner adaptive-v2" in calibration
+    assert "demo_normalized_calibration_runner comparison" in calibration
+    assert "demo_normalized_calibration_runner loss-attribution" in calibration
+    assert "demo_eurusd_forward_scorecard" not in calibration
+    assert "demo_calibration_autotrade" not in calibration
+    assert "demo_execution_fresh_ready_handoff" not in calibration
+    assert "FX_LIVE_TRADING_ENABLED" not in calibration
+    assert "I_UNDERSTAND_LIVE_ORDERS" not in calibration
 
 def test_macro_refresh_is_manual_only_during_demo_technical_testing():
     text = (ROOT / ".github/workflows/forex-official-macro-refresh.yml").read_text()
