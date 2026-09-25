@@ -48,6 +48,23 @@ M15_MAX_BASE_RANGE_ATR = 1.25
 
 
 @dataclass(frozen=True, slots=True)
+class PriceIndex:
+    timestamps: tuple[pd.Timestamp, ...]
+    highs: np.ndarray
+    lows: np.ndarray
+    closes: np.ndarray
+
+
+def _price_index(frame: pd.DataFrame) -> PriceIndex:
+    return PriceIndex(
+        timestamps=tuple(pd.Timestamp(value) for value in frame["timestamp"]),
+        highs=frame["high"].to_numpy(dtype=float, copy=False),
+        lows=frame["low"].to_numpy(dtype=float, copy=False),
+        closes=frame["close"].to_numpy(dtype=float, copy=False),
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class DepthEpisode:
     zone_id: str
     timeframe: str
@@ -286,39 +303,46 @@ def evaluate_first_touch(
     price_m1: pd.DataFrame,
     *,
     zone: SDZone,
+    index: PriceIndex | None = None,
 ) -> DepthEpisode | None:
-    timestamps = list(price_m1["timestamp"])
+    px = _price_index(price_m1) if index is None else index
+    timestamps = px.timestamps
     available = ensure_utc(zone.available_at)
-    start = bisect_left(timestamps, available)
-    if start >= len(price_m1):
+    start = bisect_left(timestamps, pd.Timestamp(available))
+    if start >= len(timestamps):
         return None
     expiry = available + timedelta(hours=OBSERVATION_HOURS[zone.timeframe])
-    end = bisect_right(timestamps, expiry)
-    target = _target(zone)
-
-    touch_index: int | None = None
-    for index in range(start, min(end, len(price_m1))):
-        row = price_m1.iloc[index]
-        touched = _touches(float(row["high"]), float(row["low"]), zone)
-        invalid = _invalidated(float(row["close"]), zone)
-        if touched:
-            touch_index = index
-            break
-        if invalid:
-            return None
-    if touch_index is None:
+    end = bisect_right(timestamps, pd.Timestamp(expiry))
+    if end <= start:
         return None
 
-    touch_row = price_m1.iloc[touch_index]
-    touch_at = ensure_utc(pd.Timestamp(touch_row["timestamp"]).to_pydatetime())
-
+    high_slice = px.highs[start:end]
+    low_slice = px.lows[start:end]
+    close_slice = px.closes[start:end]
+    touch_mask = (low_slice <= float(zone.high)) & (high_slice >= float(zone.low))
     if zone.direction == "LONG":
-        adverse_extreme = min(float(zone.proximal), float(touch_row["low"]))
+        invalid_mask = close_slice < float(zone.distal)
     else:
-        adverse_extreme = max(float(zone.proximal), float(touch_row["high"]))
+        invalid_mask = close_slice > float(zone.distal)
+
+    event_positions = np.flatnonzero(touch_mask | invalid_mask)
+    if len(event_positions) == 0:
+        return None
+    rel = int(event_positions[0])
+    touched = bool(touch_mask[rel])
+    invalid = bool(invalid_mask[rel])
+    if invalid and not touched:
+        return None
+
+    touch_index = start + rel
+    touch_at = ensure_utc(timestamps[touch_index].to_pydatetime())
+    if zone.direction == "LONG":
+        adverse_extreme = min(float(zone.proximal), float(px.lows[touch_index]))
+    else:
+        adverse_extreme = max(float(zone.proximal), float(px.highs[touch_index]))
     max_depth = normalized_depth(zone, adverse_extreme)
 
-    if _invalidated(float(touch_row["close"]), zone):
+    if invalid:
         return DepthEpisode(
             zone_id=zone.zone_id,
             timeframe=zone.timeframe,
@@ -348,54 +372,90 @@ def evaluate_first_touch(
         )
 
     horizon_end = touch_at + timedelta(minutes=REACTION_HORIZON_MINUTES[zone.timeframe])
-    reaction_end = bisect_right(timestamps, horizon_end)
-    outcome = "STALL"
-    outcome_at = horizon_end
-    turning_price: float | None = None
-    turning_depth: float | None = None
+    reaction_end = bisect_right(timestamps, pd.Timestamp(horizon_end))
+    future_start = touch_index + 1
+    future_end = min(reaction_end, len(timestamps))
+    target = _target(zone)
+
+    if future_start < future_end:
+        future_high = px.highs[future_start:future_end]
+        future_low = px.lows[future_start:future_end]
+        future_close = px.closes[future_start:future_end]
+        if zone.direction == "LONG":
+            break_mask = future_close < float(zone.distal)
+            target_mask = future_high >= target
+        else:
+            break_mask = future_close > float(zone.distal)
+            target_mask = future_low <= target
+
+        event_positions = np.flatnonzero(break_mask | target_mask)
+    else:
+        break_mask = np.array([], dtype=bool)
+        target_mask = np.array([], dtype=bool)
+        event_positions = np.array([], dtype=int)
+
     reaction_hit = False
     break_hit = False
+    turning_price: float | None = None
+    turning_depth: float | None = None
 
-    # Target starts on the next M1 bar. On the target bar, do not incorporate a
-    # fresh adverse extreme into the turning point because OHLC order is unknown.
-    for index in range(touch_index + 1, min(reaction_end, len(price_m1))):
-        row = price_m1.iloc[index]
-        ts = ensure_utc(pd.Timestamp(row["timestamp"]).to_pydatetime())
-        close = float(row["close"])
-        if _invalidated(close, zone):
+    if len(event_positions):
+        rel_event = int(event_positions[0])
+        absolute = future_start + rel_event
+        ts = ensure_utc(timestamps[absolute].to_pydatetime())
+        # Conservative precedence: break wins if both occur on the same M1 bar.
+        if bool(break_mask[rel_event]):
             break_hit = True
             outcome = "BREAK"
             outcome_at = ts
             if zone.direction == "LONG":
-                adverse_extreme = min(adverse_extreme, float(row["low"]))
+                adverse_extreme = min(
+                    adverse_extreme,
+                    float(np.min(px.lows[touch_index:absolute + 1])),
+                )
             else:
-                adverse_extreme = max(adverse_extreme, float(row["high"]))
+                adverse_extreme = max(
+                    adverse_extreme,
+                    float(np.max(px.highs[touch_index:absolute + 1])),
+                )
             max_depth = max(max_depth, normalized_depth(zone, adverse_extreme))
-            break
-
-        reached = (
-            float(row["high"]) >= target
-            if zone.direction == "LONG"
-            else float(row["low"]) <= target
-        )
-        if reached:
+        else:
             reaction_hit = True
             outcome = "HOLD_050"
             outcome_at = ts
+            # Exclude the target bar's new adverse extreme. Intrabar ordering on
+            # that same M1 bar is unknowable.
+            if absolute > touch_index:
+                if zone.direction == "LONG":
+                    adverse_extreme = min(
+                        adverse_extreme,
+                        float(np.min(px.lows[touch_index:absolute])),
+                    )
+                else:
+                    adverse_extreme = max(
+                        adverse_extreme,
+                        float(np.max(px.highs[touch_index:absolute])),
+                    )
             turning_price = adverse_extreme
             turning_depth = normalized_depth(zone, adverse_extreme)
             max_depth = max(max_depth, turning_depth)
-            break
-
-        if zone.direction == "LONG":
-            adverse_extreme = min(adverse_extreme, float(row["low"]))
-        else:
-            adverse_extreme = max(adverse_extreme, float(row["high"]))
-        max_depth = max(max_depth, normalized_depth(zone, adverse_extreme))
-
-    if not reaction_hit and not break_hit:
-        turning_price = None
-        turning_depth = None
+    else:
+        if not timestamps or ensure_utc(timestamps[-1].to_pydatetime()) < horizon_end:
+            return None
+        outcome = "STALL"
+        outcome_at = horizon_end
+        if future_start < future_end:
+            if zone.direction == "LONG":
+                adverse_extreme = min(
+                    adverse_extreme,
+                    float(np.min(px.lows[touch_index:future_end])),
+                )
+            else:
+                adverse_extreme = max(
+                    adverse_extreme,
+                    float(np.max(px.highs[touch_index:future_end])),
+                )
+            max_depth = max(max_depth, normalized_depth(zone, adverse_extreme))
 
     return DepthEpisode(
         zone_id=zone.zone_id,
@@ -425,24 +485,33 @@ def evaluate_first_touch(
         structural_bos=bool(zone.structural_bos),
     )
 
-
 def _first_invalidation_at(
     price_m1: pd.DataFrame,
     *,
     zone: SDZone,
+    index: PriceIndex | None = None,
 ) -> datetime | None:
-    timestamps = list(price_m1["timestamp"])
+    px = _price_index(price_m1) if index is None else index
+    timestamps = px.timestamps
     available = ensure_utc(zone.available_at)
-    start = bisect_left(timestamps, available)
-    if start >= len(price_m1):
+    start = bisect_left(timestamps, pd.Timestamp(available))
+    if start >= len(timestamps):
         return None
     expiry = available + timedelta(hours=OBSERVATION_HOURS[zone.timeframe])
-    end = bisect_right(timestamps, expiry)
-    for index in range(start, min(end, len(price_m1))):
-        row = price_m1.iloc[index]
-        if _invalidated(float(row["close"]), zone):
-            return ensure_utc(pd.Timestamp(row["timestamp"]).to_pydatetime())
-    return None
+    end = bisect_right(timestamps, pd.Timestamp(expiry))
+    if end <= start:
+        return None
+    closes = px.closes[start:end]
+    invalid = (
+        closes < float(zone.distal)
+        if zone.direction == "LONG"
+        else closes > float(zone.distal)
+    )
+    positions = np.flatnonzero(invalid)
+    if len(positions) == 0:
+        return None
+    absolute = start + int(positions[0])
+    return ensure_utc(timestamps[absolute].to_pydatetime())
 
 
 def _active_at(
@@ -550,13 +619,14 @@ def build_depth_dataset(
     target_year: int,
 ) -> tuple[tuple[SDZone, ...], tuple[DepthEpisode, ...]]:
     zones = build_zones(price_m1)
+    index = _price_index(price_m1)
     invalidated_at_by_zone = {
-        zone.zone_id: _first_invalidation_at(price_m1, zone=zone)
+        zone.zone_id: _first_invalidation_at(price_m1, zone=zone, index=index)
         for zone in zones
     }
     episodes: list[DepthEpisode] = []
     for zone in zones:
-        episode = evaluate_first_touch(price_m1, zone=zone)
+        episode = evaluate_first_touch(price_m1, zone=zone, index=index)
         if episode is None or ensure_utc(episode.touch_at).year != int(target_year):
             continue
         episodes.append(episode)
