@@ -2,6 +2,8 @@ name: XAU HTF Strategic Regime V180
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "35 0 * * 1"
   push:
     branches: [main]
     paths:

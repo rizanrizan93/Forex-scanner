@@ -12,8 +12,9 @@ WORKER_NAME = "ctrader_demo_xau_v217_direction_probability"
 CONTRACT = "XAU_DIRECTION_PROBABILITY_V217"
 PATH_WORKER = "ctrader_demo_xau_v213_post_zone_path"
 FORECAST_WORKER = "ctrader_xau_forecast_ensemble_v171"
-REGIME_WORKER = "ctrader_xau_htf_strategic_regime_v180"
-REGIME_STALE_SECONDS = 12 * 60 * 60
+SNAPSHOT_WORKER = "ctrader_demo_xau_v218_htf_strategic_snapshot"
+REFERENCE_REGIME_WORKER = "ctrader_xau_htf_strategic_regime_v180"
+REGIME_STALE_SECONDS = 6 * 60 * 60
 
 
 def _f(value: Any) -> float | None:
@@ -53,6 +54,29 @@ def _age_seconds(value: Any, *, now: datetime) -> float | None:
     if parsed.tzinfo is None:
         return None
     return max(0.0, (now - parsed.astimezone(UTC)).total_seconds())
+
+
+def _select_regime_heartbeat(
+    snapshot_heartbeat: dict[str, Any],
+    reference_heartbeat: dict[str, Any],
+    *,
+    now: datetime,
+) -> tuple[dict[str, Any], str]:
+    snapshot_details = dict(snapshot_heartbeat.get("details") or {})
+    snapshot_eval = dict(snapshot_details.get("evaluation") or {})
+    snapshot_current = dict(snapshot_eval.get("current") or {})
+    snapshot_parity = dict(snapshot_eval.get("parity") or {})
+    snapshot_age = _age_seconds(snapshot_heartbeat.get("observed_at"), now=now)
+    snapshot_usable = bool(
+        snapshot_heartbeat.get("healthy")
+        and snapshot_current
+        and snapshot_age is not None
+        and snapshot_age <= REGIME_STALE_SECONDS
+        and snapshot_parity.get("trusted_for_context") is True
+    )
+    if snapshot_usable:
+        return snapshot_heartbeat, SNAPSHOT_WORKER
+    return reference_heartbeat, REFERENCE_REGIME_WORKER
 
 
 def _empty_distribution(reason: str) -> dict[str, Any]:
@@ -163,8 +187,15 @@ def strategic_support_distribution(
     regime_details = dict(regime_heartbeat.get("details") or {})
     regime_eval = dict(regime_details.get("evaluation") or {})
     regime_current = dict(regime_eval.get("current") or {})
+    regime_parity = dict(regime_eval.get("parity") or {})
     regime_age = _age_seconds(regime_heartbeat.get("observed_at"), now=now)
     regime_fresh = bool(regime_age is not None and regime_age <= REGIME_STALE_SECONDS)
+    regime_contract = str(regime_details.get("contract") or "")
+    regime_source = (
+        "V218_HTF_STRATEGIC_SNAPSHOT"
+        if regime_contract == "XAU_HTF_STRATEGIC_SNAPSHOT_V218"
+        else "V180_HTF_STRATEGIC_REGIME_REFERENCE"
+    )
 
     return {
         **distribution,
@@ -177,16 +208,21 @@ def strategic_support_distribution(
         "component_conflict": dict(ensemble.get("alternative_scenario") or {}).get(
             "component_conflict"
         ),
-        "v180_context": {
+        "htf_context": {
+            "source": regime_source,
+            "contract": regime_contract or None,
             "fresh": regime_fresh,
             "age_seconds": regime_age,
             "strategic_bias": regime_current.get("strategic_bias"),
             "raw_direction": regime_current.get("raw_direction"),
             "raw_score": regime_current.get("raw_score"),
             "confidence": regime_current.get("confidence"),
+            "map_at": regime_current.get("map_at"),
+            "parity_state": regime_parity.get("state"),
+            "parity_trusted": regime_parity.get("trusted_for_context"),
             "note": (
-                "V180 is context-only in V217. It is not converted into probability "
-                "or blended into the V171 support distribution."
+                "V218/V180 are context-only in V217. They are not converted into "
+                "probability or blended into the V171 support distribution."
             ),
         },
         "not_fully_calibrated_probability_claim": True,
@@ -301,7 +337,13 @@ def run() -> int:
     try:
         path_hb = _latest_heartbeat(store, PATH_WORKER)
         forecast_hb = _latest_heartbeat(store, FORECAST_WORKER)
-        regime_hb = _latest_heartbeat(store, REGIME_WORKER)
+        snapshot_hb = _latest_heartbeat(store, SNAPSHOT_WORKER)
+        reference_regime_hb = _latest_heartbeat(store, REFERENCE_REGIME_WORKER)
+        regime_hb, regime_source_worker = _select_regime_heartbeat(
+            snapshot_hb,
+            reference_regime_hb,
+            now=now,
+        )
 
         path_eval = dict(dict(path_hb.get("details") or {}).get("evaluation") or {})
         forecast_details = dict(forecast_hb.get("details") or {})
@@ -314,7 +356,9 @@ def run() -> int:
         evaluation["source_freshness"] = {
             "v213_observed_at": path_hb.get("observed_at"),
             "v171_observed_at": forecast_hb.get("observed_at"),
-            "v180_observed_at": regime_hb.get("observed_at"),
+            "v218_observed_at": snapshot_hb.get("observed_at"),
+            "v180_observed_at": reference_regime_hb.get("observed_at"),
+            "htf_context_worker": regime_source_worker,
         }
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"

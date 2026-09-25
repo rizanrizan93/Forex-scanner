@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fx_scanner.demo_xau_v217_direction_probability import (
+    _select_regime_heartbeat,
     empirical_leg_distribution,
     evaluate_direction_probability,
     strategic_support_distribution,
@@ -103,6 +104,53 @@ def test_v217_separates_countertrend_first_leg_from_strategic_continuation() -> 
     assert evaluation["execution_authority"] is False
     assert evaluation["promotion_authority"] is False
 
+
+
+
+def test_v217_prefers_fresh_parity_gated_v218_context() -> None:
+    now = datetime(2026, 9, 25, 4, 0, tzinfo=UTC)
+    snapshot = {
+        "observed_at": "2026-09-25T03:30:00+00:00",
+        "healthy": True,
+        "details": {
+            "contract": "XAU_HTF_STRATEGIC_SNAPSHOT_V218",
+            "evaluation": {
+                "current": {"strategic_bias": "SHORT"},
+                "parity": {"state": "PASS", "trusted_for_context": True},
+            },
+        },
+    }
+    reference = {
+        "observed_at": "2026-09-23T00:00:00+00:00",
+        "healthy": True,
+        "details": {"evaluation": {"current": {"strategic_bias": "NEUTRAL"}}},
+    }
+    chosen, source = _select_regime_heartbeat(snapshot, reference, now=now)
+    assert chosen is snapshot
+    assert source == "ctrader_demo_xau_v218_htf_strategic_snapshot"
+
+
+def test_v217_falls_back_when_v218_parity_is_not_trusted() -> None:
+    now = datetime(2026, 9, 25, 4, 0, tzinfo=UTC)
+    snapshot = {
+        "observed_at": "2026-09-25T03:30:00+00:00",
+        "healthy": True,
+        "details": {
+            "contract": "XAU_HTF_STRATEGIC_SNAPSHOT_V218",
+            "evaluation": {
+                "current": {"strategic_bias": "SHORT"},
+                "parity": {"state": "DRIFT", "trusted_for_context": False},
+            },
+        },
+    }
+    reference = {
+        "observed_at": "2026-09-23T00:00:00+00:00",
+        "healthy": True,
+        "details": {"evaluation": {"current": {"strategic_bias": "NEUTRAL"}}},
+    }
+    chosen, source = _select_regime_heartbeat(snapshot, reference, now=now)
+    assert chosen is reference
+    assert source == "ctrader_xau_htf_strategic_regime_v180"
 
 def test_v217_workflow_and_dashboard_remain_shadow_only() -> None:
     workflow = (ROOT / ".github/workflows/ctrader-demo-maintenance-pipeline.yml").read_text()
