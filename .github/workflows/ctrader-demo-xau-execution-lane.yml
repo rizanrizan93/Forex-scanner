@@ -74,10 +74,6 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Record execution lane running
-        continue-on-error: true
-        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_xau_execution_lane RUNNING
-
       # Protection repair is intentionally first. A new entry is never allowed
       # to outrun remediation of a scanner-linked position missing broker SL/TP.
       - name: Repair missing SL/TP on scanner-linked DEMO positions
