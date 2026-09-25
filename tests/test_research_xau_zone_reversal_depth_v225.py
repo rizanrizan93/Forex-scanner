@@ -9,6 +9,7 @@ from fx_scanner.research_xau_zone_reversal_depth_v225 import (
     depth_summary,
     evaluate_first_touch,
     normalized_depth,
+    normalized_internal_depth,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,15 +56,39 @@ def test_v225_user_example_depth_is_67_7_percent() -> None:
     assert round(depth * 100, 1) == 67.7
 
 
-def test_v225_short_depth_is_measured_from_supply_proximal_toward_distal() -> None:
+def test_v225_short_depth_is_measured_across_full_supply_range() -> None:
     zone = _zone(
         direction="SHORT",
         low=4300.0,
         high=4320.0,
-        proximal=4300.0,
+        proximal=4305.0,
         distal=4320.0,
     )
     assert normalized_depth(zone, 4310.0) == 0.5
+
+
+def test_v225_internal_depth_is_separate_from_full_zone_depth() -> None:
+    zone = _zone(
+        direction="SHORT",
+        low=4300.0,
+        high=4320.0,
+        proximal=4305.0,
+        distal=4320.0,
+    )
+    assert normalized_depth(zone, 4310.0) == 0.5
+    assert abs(normalized_internal_depth(zone, 4310.0) - (5.0 / 15.0)) < 1e-12
+
+
+def test_v225_full_demand_example_uses_outer_range_even_when_body_edge_differs() -> None:
+    zone = _zone(
+        direction="LONG",
+        low=4244.0,
+        high=4275.0,
+        proximal=4269.0,
+        distal=4244.0,
+    )
+    assert round(normalized_depth(zone, 4254.0) * 100, 1) == 67.7
+    assert round(normalized_internal_depth(zone, 4254.0) * 100, 1) == 60.0
 
 
 def test_v225_reaction_depth_excludes_new_adverse_extreme_on_target_bar() -> None:
