@@ -157,3 +157,51 @@ def test_v214_dashboard_keeps_initial_and_refined_pocket_with_wib_lifecycle() ->
     assert "reclaim_at" in text
     assert "mss_at" in text
     assert "displacement_at" in text
+
+
+def test_v214_same_geometry_refined_cannot_be_backdated_to_candidate_first_seen() -> None:
+    leg = {
+        "direction": "SHORT",
+        "pocket_state": "REFINED_M5_POCKET",
+        "m5_pocket": {
+            "low": 4312.59,
+            "high": 4315.82,
+            "origin_at": "2026-09-25T11:10:00+00:00",
+        },
+        "micro_refinement": {
+            "state": "M5_REFINEMENT_CONFIRMED_SHADOW",
+            "candidate_entry_pocket": {
+                "low": 4312.59,
+                "high": 4315.82,
+                "origin_at": "2026-09-25T11:10:00+00:00",
+            },
+            "refined_entry_pocket": {
+                "low": 4312.59,
+                "high": 4315.82,
+                "origin_at": "2026-09-25T11:10:00+00:00",
+            },
+            "sweep": {"at": "2026-09-25T11:10:00+00:00", "price": 4315.82},
+            "reclaim_at": "2026-09-25T11:25:00+00:00",
+            "mss_at": "2026-09-25T11:35:00+00:00",
+            "displacement_at": "2026-09-25T11:35:00+00:00",
+        },
+        "zone_reuse_v200": {},
+    }
+    physical = [
+        {
+            "physical_key": "same-geometry",
+            "direction": "SHORT",
+            "pocket_low": 4312.59,
+            "pocket_high": 4315.82,
+            "first_seen_at": "2026-09-25T11:15:21+00:00",
+            "first_touch_at": None,
+            "premapped_before_touch": False,
+            "premap_lead_minutes": None,
+            "status": "ENROLLED_WAIT_TOUCH",
+            "reaction_ladder": [],
+        }
+    ]
+    lifecycle = _leg_lifecycle(leg, physical)
+    assert lifecycle["timeline"]["refined_causal_ready_at"] == "2026-09-25T11:40:00+00:00"
+    assert lifecycle["timeline"]["refined_mapped_at"] == "2026-09-25T11:40:00+00:00"
+    assert lifecycle["latency_minutes"]["candidate_map_to_refined"] > 24.0
