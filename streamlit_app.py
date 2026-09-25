@@ -697,7 +697,7 @@ def _dashboard_auto_refresh_tick() -> None:
 _dashboard_auto_refresh_tick()
 
 
-st.title("FX Institutional Scanner")
+st.title("RIZAN XAU Institutional Scanner")
 st.caption(
     "Fast research dashboard • Top-8 macro shortlist • Top-5 MTF deep scan • "
     "Streamlit is not in the quote/order hot path."
@@ -1475,13 +1475,14 @@ with forecast_tab:
 
     with st.expander("Probabilitas & validasi arah", expanded=False):
         if v217_eval:
-            st.markdown("##### V217 — Multi-horizon Direction")
+            st.markdown("##### V217 — Probabilitas Arah Multi-Horizon")
             dp1, dp2, dp3, dp4 = st.columns(4)
-            dp1.metric("Tactical leg", str(v217_tactical.get("direction") or "—"))
+            dp1.metric("Tactical first leg", str(v217_tactical.get("direction") or "—"))
             dp2.metric("P LONG", _fmt_pct(v217_tactical.get("p_long")))
             dp3.metric("P SHORT", _fmt_pct(v217_tactical.get("p_short")))
             dp4.metric("P NEUTRAL", _fmt_pct(v217_tactical.get("p_neutral")))
             st.caption(
+                "Strategic HTF support • "
                 f"HTF source={v217_htf_context.get('source') or '—'} • "
                 f"strategic bias={v217_htf_context.get('strategic_bias') or dc_strategic_bias} • "
                 f"fresh={v217_htf_context.get('fresh')} • "
@@ -1491,7 +1492,7 @@ with forecast_tab:
             )
 
         if v220_summary:
-            st.markdown("##### V220 — Prospective Calibration")
+            st.markdown("##### V220 — Prospective Direction Calibration")
             pc1, pc2, pc3, pc4 = st.columns(4)
             pc1.metric("Forecast pre-touch", int(v220_summary.get("forecasts") or 0))
             pc2.metric("Resolved", int(v220_summary.get("resolved_directional") or 0))
@@ -1506,7 +1507,7 @@ with forecast_tab:
                 f"sample={v220_summary.get('sample_state','—')} • "
                 f"pending={v220_summary.get('pending',0)} • "
                 f"no-touch={v220_summary.get('no_touch',0)}. "
-                "Hanya forecast PRE_TOUCH yang dinilai; V220 tidak memiliki execution authority."
+                "Hanya forecast PRE_TOUCH yang dinilai; V220 tetap shadow-only dan tidak memiliki execution authority."
             )
 
         with st.expander("Raw detail V217/V220", expanded=False):
