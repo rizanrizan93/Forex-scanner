@@ -35,10 +35,28 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 
 st.set_page_config(
-    page_title="FX Institutional Scanner",
+    page_title="RIZAN XAU Scanner",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
+)
+
+st.markdown(
+    """
+    <style>
+    .block-container {padding-top: 1.0rem; padding-bottom: 2rem; max-width: 1500px;}
+    div[data-testid="stMetric"] {
+        border: 1px solid rgba(128,128,128,.22);
+        border-radius: 12px;
+        padding: .55rem .7rem;
+    }
+    div[data-testid="stMetricLabel"] {font-size: .82rem;}
+    .rizan-kicker {font-size:.82rem; opacity:.68; margin-bottom:.2rem;}
+    .rizan-title {font-size:1.55rem; font-weight:700; margin-bottom:.15rem;}
+    .rizan-note {font-size:.86rem; opacity:.78;}
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 
@@ -252,6 +270,288 @@ def _convert_frame_times_to_wib(
     return out
 
 
+def _rizan_chart_frame(
+    raw_bars: list[dict[str, Any]] | tuple[dict[str, Any], ...],
+    timeframe: str,
+) -> pd.DataFrame:
+    if not raw_bars:
+        return pd.DataFrame(columns=["open", "high", "low", "close"])
+    frame = pd.DataFrame(list(raw_bars))
+    required = {"time", "open", "high", "low", "close"}
+    if frame.empty or not required.issubset(frame.columns):
+        return pd.DataFrame(columns=["open", "high", "low", "close"])
+    frame["time"] = pd.to_datetime(frame["time"], utc=True, errors="coerce")
+    for col in ("open", "high", "low", "close"):
+        frame[col] = pd.to_numeric(frame[col], errors="coerce")
+    frame = frame.dropna(subset=["time", "open", "high", "low", "close"]).sort_values("time")
+    if frame.empty:
+        return pd.DataFrame(columns=["open", "high", "low", "close"])
+    frame = frame.set_index("time")[["open", "high", "low", "close"]]
+    tf = str(timeframe or "M15").upper()
+    if tf == "M15":
+        return frame.tail(120)
+    rule, duration, limit = {
+        "H1": ("1h", pd.Timedelta(hours=1), 96),
+        "H4": ("4h", pd.Timedelta(hours=4), 60),
+    }.get(tf, ("1h", pd.Timedelta(hours=1), 96))
+    source_end = frame.index.max() + pd.Timedelta(minutes=15)
+    out = frame.resample(rule, label="left", closed="left").agg(
+        {"open": "first", "high": "max", "low": "min", "close": "last"}
+    ).dropna()
+    out = out[(out.index + duration) <= source_end]
+    return out.tail(limit)
+
+
+def _rizan_chart_png(
+    raw_bars: list[dict[str, Any]] | tuple[dict[str, Any], ...],
+    *,
+    timeframe: str,
+    zones: list[dict[str, Any]],
+    price_now: float,
+    probability_by_zone: dict[str, dict[str, Any]],
+    path_roles: dict[str, str],
+    current_direction: str,
+    current_target: Any,
+    terminal_zone: dict[str, Any] | None,
+    next_target: Any,
+) -> tuple[bytes | None, str | None]:
+    frame = _rizan_chart_frame(raw_bars, timeframe)
+    if frame.empty or len(frame) < 4:
+        return None, "OHLC snapshot belum cukup untuk membentuk candlestick."
+
+    try:
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import FancyArrowPatch, Rectangle
+        from io import BytesIO
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}"
+
+    fig, ax = plt.subplots(figsize=(13.0, 6.8))
+    fig.patch.set_facecolor("#0e1117")
+    ax.set_facecolor("#0e1117")
+
+    visible = frame.copy()
+    x_values = list(range(len(visible)))
+    candle_width = 0.62
+    up_color = "#22c55e"
+    down_color = "#ef4444"
+    wick_color = "#cbd5e1"
+
+    for x, (_, row) in zip(x_values, visible.iterrows()):
+        o = float(row["open"])
+        h = float(row["high"])
+        l = float(row["low"])
+        close = float(row["close"])
+        color = up_color if close >= o else down_color
+        ax.vlines(x, l, h, color=wick_color, linewidth=0.72, alpha=0.92, zorder=3)
+        body_low = min(o, close)
+        body_height = max(abs(close - o), max((h - l) * 0.012, 0.04))
+        ax.add_patch(
+            Rectangle(
+                (x - candle_width / 2.0, body_low),
+                candle_width,
+                body_height,
+                facecolor=color,
+                edgecolor=color,
+                linewidth=0.7,
+                zorder=4,
+            )
+        )
+
+    right_edge = len(visible) + 11
+    nearest_long = next(
+        (z for z in zones if str(z.get("direction") or "").upper() == "LONG"),
+        None,
+    )
+    nearest_short = next(
+        (z for z in zones if str(z.get("direction") or "").upper() == "SHORT"),
+        None,
+    )
+    key_zone_ids = {
+        str(dict(nearest_long or {}).get("zone_id") or ""),
+        str(dict(nearest_short or {}).get("zone_id") or ""),
+        *[str(key) for key in path_roles.keys()],
+    }
+
+    def origin_x(zone: dict[str, Any]) -> int:
+        origin = pd.to_datetime(zone.get("origin_at"), utc=True, errors="coerce")
+        if pd.isna(origin):
+            return max(0, len(visible) - 30)
+        idx = int(visible.index.searchsorted(origin))
+        return max(0, min(len(visible) - 1, idx))
+
+    for zone in zones[:8]:
+        try:
+            low = float(zone["low"])
+            high = float(zone["high"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        side = str(zone.get("direction") or "").upper()
+        zone_id = str(zone.get("zone_id") or "")
+        is_demand = side == "LONG"
+        face = "#16a34a" if is_demand else "#dc2626"
+        edge = "#4ade80" if is_demand else "#f87171"
+        important = zone_id in key_zone_ids
+        alpha = 0.19 if important else 0.075
+        start_x = origin_x(zone)
+        width = right_edge - start_x - 1.0
+        ax.add_patch(
+            Rectangle(
+                (start_x, low),
+                width,
+                max(high - low, 1e-6),
+                facecolor=face,
+                edgecolor=edge,
+                alpha=alpha,
+                linewidth=1.45 if important else 0.75,
+                zorder=1,
+            )
+        )
+
+        prob = dict(probability_by_zone.get(zone_id) or {})
+        p_touch = dict(prob.get("destination") or {}).get("p_touch")
+        p_hold = dict(prob.get("reaction") or {}).get("p_hold_050")
+        lifecycle = dict(zone.get("lifecycle") or {})
+        freshness = str(lifecycle.get("freshness") or "")
+        role = path_roles.get(zone_id, "")
+        label = (
+            f"{zone.get('timeframe','')} {'DEMAND' if is_demand else 'SUPPLY'}  "
+            f"{low:.2f}–{high:.2f}"
+        )
+        detail = freshness
+        if p_touch is not None:
+            detail += f" • touch {_fmt_pct(p_touch)}"
+        if p_hold is not None:
+            detail += f" • hold50 {_fmt_pct(p_hold)}"
+        if role:
+            detail += f" • {role}"
+        ax.text(
+            right_edge - 0.6,
+            (low + high) / 2.0,
+            label + ("\n" + detail if detail else ""),
+            ha="right",
+            va="center",
+            fontsize=8.2,
+            color="#f8fafc",
+            bbox=dict(
+                boxstyle="round,pad=0.35",
+                facecolor="#111827",
+                edgecolor=edge,
+                alpha=0.93,
+            ),
+            zorder=6,
+        )
+
+    ax.axhline(float(price_now), color="#f8fafc", linewidth=1.0, linestyle="--", alpha=0.72)
+    ax.text(
+        right_edge - 0.6,
+        float(price_now),
+        f"NOW  {float(price_now):.2f}",
+        ha="right",
+        va="bottom",
+        fontsize=9,
+        color="#f8fafc",
+        bbox=dict(boxstyle="round,pad=0.25", facecolor="#1f2937", edgecolor="#94a3b8"),
+        zorder=8,
+    )
+
+    path_points: list[tuple[float, float, str]] = [
+        (max(0.0, len(visible) - 5.0), float(price_now), "NOW")
+    ]
+    try:
+        if current_target is not None:
+            path_points.append((len(visible) + 1.5, float(current_target), "REACTION"))
+    except (TypeError, ValueError):
+        pass
+    if terminal_zone:
+        try:
+            terminal_mid = (
+                float(terminal_zone.get("low")) + float(terminal_zone.get("high"))
+            ) / 2.0
+            path_points.append((len(visible) + 5.0, terminal_mid, "OPPOSING ZONE"))
+        except (TypeError, ValueError):
+            pass
+    try:
+        if next_target is not None and len(path_points) >= 2:
+            path_points.append((len(visible) + 8.5, float(next_target), "NEXT LEG"))
+    except (TypeError, ValueError):
+        pass
+
+    for idx, ((x1, y1, _), (x2, y2, label2)) in enumerate(zip(path_points, path_points[1:])):
+        line_color = "#38bdf8" if idx == 0 else "#f59e0b"
+        arrow = FancyArrowPatch(
+            (x1, y1),
+            (x2, y2),
+            arrowstyle="-|>",
+            mutation_scale=16,
+            linewidth=1.8,
+            color=line_color,
+            linestyle="-" if idx == 0 else "--",
+            connectionstyle="arc3,rad=0.08",
+            zorder=7,
+        )
+        ax.add_patch(arrow)
+        ax.text(
+            x2,
+            y2,
+            label2,
+            fontsize=8,
+            color=line_color,
+            va="bottom",
+            ha="center",
+            zorder=8,
+        )
+
+    y_values = [float(visible["low"].min()), float(visible["high"].max()), float(price_now)]
+    for zone in zones[:8]:
+        try:
+            y_values.extend([float(zone["low"]), float(zone["high"])])
+        except (KeyError, TypeError, ValueError):
+            pass
+    pad = max(2.0, (max(y_values) - min(y_values)) * 0.08)
+    ax.set_ylim(min(y_values) - pad, max(y_values) + pad)
+    ax.set_xlim(-1.0, right_edge)
+
+    tick_count = min(7, len(visible))
+    if tick_count > 1:
+        step = max(1, len(visible) // (tick_count - 1))
+        positions = list(range(0, len(visible), step))
+        if positions[-1] != len(visible) - 1:
+            positions.append(len(visible) - 1)
+        labels = [
+            visible.index[pos].tz_convert(WIB).strftime("%d/%m\n%H:%M")
+            for pos in positions
+        ]
+        ax.set_xticks(positions)
+        ax.set_xticklabels(labels, color="#94a3b8", fontsize=8)
+    ax.tick_params(axis="y", colors="#94a3b8", labelsize=8)
+    ax.grid(axis="y", color="#334155", alpha=0.28, linewidth=0.7)
+    for spine in ax.spines.values():
+        spine.set_color("#334155")
+
+    ax.set_title(
+        f"XAUUSD • RIZAN-style Supply/Demand • {str(timeframe).upper()} • "
+        f"leg aktif {str(current_direction or '—').upper()}",
+        color="#f8fafc",
+        fontsize=12,
+        loc="left",
+        pad=12,
+    )
+    ax.set_ylabel("Harga XAUUSD", color="#cbd5e1")
+    fig.tight_layout()
+
+    output = BytesIO()
+    fig.savefig(
+        output,
+        format="png",
+        dpi=190,
+        bbox_inches="tight",
+        facecolor=fig.get_facecolor(),
+    )
+    plt.close(fig)
+    return output.getvalue(), None
+
+
 def _afic_path_text(direction: str, state: str) -> str:
     side = str(direction or "").upper()
     current = str(state or "").upper()
@@ -300,7 +600,7 @@ def _afic_next_action(
     event_u = str(latest_execution_event or "").upper()
 
     if event_u == "POSITION_PROTECTION_FAILED":
-        return "PROTECTION ALERT", "Order side-effect exists; new AFIC orders must remain blocked until SL/TP is reconciled."
+        return "PROTECTION ALERT", "Order side-effect exists; new RIZAN-style orders must remain blocked until SL/TP is reconciled."
     if event_u == "POSITION_PROTECTION_VERIFIED":
         return "POSITION MANAGED", "Broker position exists and server-side protection has been verified."
     if event_u == "ORDER_ACCEPTED":
@@ -319,7 +619,7 @@ def _afic_next_action(
         return "PREPARED / 60S WATCH", "Price is near the zone; scanner is armed and checks every minute."
     if proximity_u == "FAR":
         return "TRACK TO ZONE", "Forecast is mapped; scanner is waiting for price to approach the reaction zone."
-    return "WAIT FORECAST", "No execution-ready AFIC path is active yet."
+    return "WAIT FORECAST", "No execution-ready RIZAN-style path is active yet."
 
 
 cfg, config_error = _safe_config()
@@ -345,8 +645,8 @@ if backend_configured:
         backend_error = f"{type(exc).__name__}: {exc}"
 
 with st.sidebar:
-    st.title("FX Scanner")
-    st.caption(f"Engine v{__version__}")
+    st.title("RIZAN XAU Scanner")
+    st.caption(f"RIZAN-style decision dashboard • Engine v{__version__}")
 
     if st.button("Refresh dashboard", width="stretch"):
         _clear_backend_snapshot_cache(include_slow=True)
