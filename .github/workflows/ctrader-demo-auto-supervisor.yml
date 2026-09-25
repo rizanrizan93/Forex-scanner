@@ -50,6 +50,7 @@ on:
       - "src/fx_scanner/demo_xau_v223_m5_pocket_cluster_selector.py"
       - "src/fx_scanner/demo_xau_v224_primary_pocket_prospective.py"
       - "src/fx_scanner/demo_xau_v226_rizan_depth_map.py"
+      - "src/fx_scanner/demo_xau_v227_depth_map_prospective.py"
       - "src/fx_scanner/demo_xau_v203_volatility_shock_guard.py"
       - "src/fx_scanner/demo_execution_fresh_ready_handoff.py"
       - "src/fx_scanner/demo_fresh_ready_handoff.py"
