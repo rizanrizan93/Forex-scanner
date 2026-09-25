@@ -1542,7 +1542,7 @@ with forecast_tab:
             h4_app = dict(v226_h4.get("applicability") or {})
             h4_median = dict(v226_h4_quantiles.get("median") or {})
             st.caption(
-                "V225.1 prior 2012–2026 • "
+                "V225.2 prior 2012–2026 • "
                 f"H4 top-band={h4_top.get('band','—')} "
                 f"(conditional hazard {_fmt_pct(h4_top.get('hazard'))}, "
                 f"n-at-risk={h4_top.get('at_risk','—')}) • "
@@ -1553,7 +1553,7 @@ with forecast_tab:
             )
             if str(h4_app.get("state") or "").startswith("LOW_"):
                 st.warning(
-                    "H4 aktif sudah multi-tested/reuse. V225.1 adalah first-touch study, "
+                    "H4 aktif sudah multi-tested/reuse. V225.2 adalah first-touch study, "
                     "jadi depth band ini hanya konteks historis dan tidak boleh dianggap "
                     "probabilitas entry baru."
                 )
@@ -1564,7 +1564,7 @@ with forecast_tab:
             )
         else:
             st.caption(
-                "V226 belum memiliki depth map aktif. Menunggu heartbeat atlas + prior V225.1."
+                "V226 belum memiliki depth map aktif. Menunggu heartbeat atlas + prior V225.2."
             )
 
     chart_control_1, chart_control_2 = st.columns([1, 3])

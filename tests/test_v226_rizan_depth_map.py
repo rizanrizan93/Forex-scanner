@@ -83,34 +83,34 @@ def _history() -> dict:
                 "M15": {
                     "LONG": {
                         "touches": 500,
-                        "hold_rate": 0.88,
-                        "depth_median": 0.58,
+                        "hold_rate": 0.75,
+                        "depth_median": 0.20,
                         "hazard_by_depth_band": [
-                            band("00-10%", 0.0, 0.1, 500, 15),
-                            band("90-100%", 0.9, 1.0, 160, 46),
+                            band("00-10%", 0.0, 0.1, 500, 110),
+                            band("10-20%", 0.1, 0.2, 390, 64),
                         ],
                         "highest_hazard_bands_min_n": [
-                            band("90-100%", 0.9, 1.0, 160, 46),
+                            band("00-10%", 0.0, 0.1, 500, 110),
                         ],
                     },
                     "SHORT": {
                         "touches": 500,
-                        "hold_rate": 0.88,
-                        "depth_median": 0.58,
+                        "hold_rate": 0.74,
+                        "depth_median": 0.20,
                         "hazard_by_depth_band": [
-                            band("00-10%", 0.0, 0.1, 500, 15),
-                            band("90-100%", 0.9, 1.0, 160, 47),
+                            band("00-10%", 0.0, 0.1, 500, 111),
+                            band("10-20%", 0.1, 0.2, 389, 63),
                         ],
                         "highest_hazard_bands_min_n": [
-                            band("90-100%", 0.9, 1.0, 160, 47),
+                            band("00-10%", 0.0, 0.1, 500, 111),
                         ],
                     },
                 },
             }
         }
     return {
-        "contract": "XAU_ZONE_REVERSAL_DEPTH_V225_1_EVIDENCE_1_FULL_2012_2026_1",
-        "research_version": "XAU_ZONE_REVERSAL_DEPTH_V225_1",
+        "contract": "XAU_ZONE_REVERSAL_DEPTH_V225_2_EVIDENCE_1_FULL_2012_2026_1",
+        "research_version": "XAU_ZONE_REVERSAL_DEPTH_V225_2",
         "years": list(range(2012, 2027)),
         "year_count": 15,
         "episode_count": 71739,
@@ -159,21 +159,21 @@ def _history() -> dict:
                 "timeframe": "M15",
                 "direction": "LONG",
                 "touches": 1500,
-                "hold_rate": 0.88,
-                "hold_wilson_lower_95": 0.86,
-                "depth_p25": 0.35,
-                "depth_median": 0.58,
-                "depth_p75": 0.79,
+                "hold_rate": 0.75,
+                "hold_wilson_lower_95": 0.73,
+                "depth_p25": 0.075,
+                "depth_median": 0.206,
+                "depth_p75": 0.445,
             },
             {
                 "timeframe": "M15",
                 "direction": "SHORT",
                 "touches": 1500,
-                "hold_rate": 0.88,
-                "hold_wilson_lower_95": 0.86,
-                "depth_p25": 0.36,
-                "depth_median": 0.58,
-                "depth_p75": 0.79,
+                "hold_rate": 0.74,
+                "hold_wilson_lower_95": 0.72,
+                "depth_p25": 0.073,
+                "depth_median": 0.202,
+                "depth_p75": 0.442,
             },
         ],
         "hierarchy": {
@@ -256,6 +256,15 @@ def test_v226_historical_profile_aggregates_eras_and_confirms_stability() -> Non
     assert abs(profile["hazard_bands"][0]["hazard"] - 0.24) < 1e-12
 
 
+
+
+def test_v226_m15_historical_profile_uses_causal_close_near_edge_prior() -> None:
+    profile = _historical_profile(_history(), "M15", "LONG")
+    top = profile["highest_hazard_band"]
+    assert top["band"] == "00-10%"
+    assert profile["stable_top_band_across_eras"] is True
+    assert abs(profile["depth_median"] - 0.206) < 1e-12
+
 def test_v226_marks_multitested_zone_as_low_first_touch_applicability() -> None:
     zone = _zone(
         "d",
@@ -286,7 +295,7 @@ def test_v226_h1_selector_prefers_child_intersecting_h4_hotspot() -> None:
     assert selected["zone_id"] == "hotspot-child"
 
 
-def test_v226_m15_selector_uses_nested_locator_overlap_not_standalone_deep_profile() -> None:
+def test_v226_m15_selector_uses_nested_locator_overlap_not_standalone_profile() -> None:
     parent = _zone("h1", timeframe="H1", direction="LONG", low=4270, high=4280)
     locator = {"low": 4274.0, "high": 4277.0}
     zones = [

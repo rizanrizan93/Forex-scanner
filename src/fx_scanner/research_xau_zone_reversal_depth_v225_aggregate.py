@@ -172,7 +172,7 @@ def run() -> int:
         "execution_authority": False,
         "promotion_authority": False,
         "interpretation": (
-            "V225.1 is historical research only. The primary full-zone coordinate matches "
+            "V225.2 is historical research only. M15 zones are causal only after the departure candle closes. The primary full-zone coordinate matches "
             "the user-facing supply/demand range: 0% is the near outer edge and 100% the "
             "far outer edge. Internal proximal-to-distal geometry is retained separately "
             "for diagnosis. Highest-hazard bands are conditional on price reaching that "
