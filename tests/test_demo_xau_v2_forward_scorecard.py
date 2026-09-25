@@ -101,7 +101,7 @@ def test_forward_scorecard_stage_contract_is_bounded():
 
 def test_forward_scorecard_remains_observation_only_and_runs_after_normalized_incremental():
     source = (ROOT / "src/fx_scanner/demo_xau_v2_forward_scorecard.py").read_text(encoding="utf-8")
-    workflow = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github/workflows/ctrader-demo-calibration-pipeline.yml").read_text(encoding="utf-8")
     assert '"automatic_strategy_mutation": False' in source
     assert '"execution_influence": False' in source
     assert "build_broker_gateway" not in source
