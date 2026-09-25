@@ -268,6 +268,19 @@ def test_v226_m15_historical_profile_uses_causal_close_near_edge_prior() -> None
     assert profile["stable_top_band_across_eras"] is True
     assert abs(profile["depth_median"] - 0.206) < 1e-12
 
+def test_v226_rejects_non_v2252_historical_prior() -> None:
+    history = _history()
+    history["research_version"] = "XAU_ZONE_REVERSAL_DEPTH_V225_1"
+    result = build_depth_map(
+        atlas_evaluation={"last_closed_m15_price": 4300.0},
+        history_details=history,
+    )
+    assert result["state"] == "HISTORICAL_PRIOR_VERSION_MISMATCH"
+    assert result["required_history_version"] == "XAU_ZONE_REVERSAL_DEPTH_V225_2"
+    assert result["observed_history_version"] == "XAU_ZONE_REVERSAL_DEPTH_V225_1"
+    assert result["execution_authority"] is False
+
+
 def test_v226_marks_multitested_zone_as_low_first_touch_applicability() -> None:
     zone = _zone(
         "d",

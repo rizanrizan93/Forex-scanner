@@ -1616,23 +1616,29 @@ with forecast_tab:
             )
 
     with st.container(border=True):
-        st.markdown("##### V227 — Prospective RIZAN Depth Calibration")
+        st.markdown("##### V227 — Prospective RIZAN Depth Calibration (V227.1 ladder)")
         if v227_summary:
-            v227_reaction = dict(v227_summary.get("reaction_050") or {})
-            v227_hotspot = dict(v227_summary.get("h4_hotspot_capture_given_reaction") or {})
-            v227_iqr = dict(v227_summary.get("h4_iqr_capture_given_reaction") or {})
-            v227_m15 = dict(v227_summary.get("m15_locator_capture_given_reaction") or {})
+            v227_reaction_025 = dict(v227_summary.get("reaction_025") or {})
+            v227_reaction_050 = dict(v227_summary.get("reaction_050") or {})
+            v227_reaction_075 = dict(v227_summary.get("reaction_075") or {})
+            v227_reaction_100 = dict(v227_summary.get("reaction_100") or {})
+            v227_hotspot = dict(v227_summary.get("h4_hotspot_capture_given_reaction_050") or v227_summary.get("h4_hotspot_capture_given_reaction") or {})
+            v227_iqr = dict(v227_summary.get("h4_iqr_capture_given_reaction_050") or v227_summary.get("h4_iqr_capture_given_reaction") or {})
+            v227_m15 = dict(v227_summary.get("m15_locator_capture_given_reaction_050") or v227_summary.get("m15_locator_capture_given_reaction") or {})
             r1, r2, r3, r4 = st.columns(4)
-            r1.metric("Fresh forecast", int(v227_summary.get("forecasts") or 0))
-            r2.metric("Reaction ≥0.50 ATR", _fmt_pct(v227_reaction.get("rate")))
-            r3.metric("H4 IQR capture", _fmt_pct(v227_iqr.get("rate")))
-            r4.metric("M15 locator capture", _fmt_pct(v227_m15.get("rate")))
+            r1.metric("Reaction ≥0.25 ATR", _fmt_pct(v227_reaction_025.get("rate")))
+            r2.metric("Reaction ≥0.50 ATR", _fmt_pct(v227_reaction_050.get("rate")))
+            r3.metric("Reaction ≥0.75 ATR", _fmt_pct(v227_reaction_075.get("rate")))
+            r4.metric("Reaction ≥1.00 ATR", _fmt_pct(v227_reaction_100.get("rate")))
             st.caption(
+                f"fresh forecast={v227_summary.get('forecasts',0)} • "
                 f"sample={v227_summary.get('sample_state','—')} • "
                 f"resolved-touch={v227_summary.get('resolved_after_touch',0)} • "
                 f"pending={v227_summary.get('pending',0)} • "
-                f"H4 top-band capture={_fmt_pct(v227_hotspot.get('rate'))} • "
-                f"median actual depth={_fmt_pct(v227_summary.get('median_turning_depth'))} • "
+                f"H4 top-band capture@0.50={_fmt_pct(v227_hotspot.get('rate'))} • "
+                f"H4 IQR capture@0.50={_fmt_pct(v227_iqr.get('rate'))} • "
+                f"M15 locator capture@0.50={_fmt_pct(v227_m15.get('rate'))} • "
+                f"median actual depth@0.50={_fmt_pct(v227_summary.get('median_turning_depth'))} • "
                 f"median error ke prediksi H4={_fmt_pct(v227_summary.get('median_h4_depth_error'))}. "
                 "Hanya H4 fresh/untouched yang direkam sebelum first touch. "
                 "V227 tetap shadow-only."

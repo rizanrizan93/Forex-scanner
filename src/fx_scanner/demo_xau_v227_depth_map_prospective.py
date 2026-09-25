@@ -16,6 +16,7 @@ from .storage.supabase_operational import SupabaseOperationalStore
 SYMBOL = "XAUUSD"
 WORKER_NAME = "ctrader_demo_xau_v227_depth_map_prospective"
 CONTRACT = "XAU_RIZAN_DEPTH_MAP_PROSPECTIVE_V227"
+RESEARCH_VERSION = "XAU_RIZAN_DEPTH_MAP_PROSPECTIVE_V227_1"
 SOURCE_WORKER = "ctrader_demo_xau_v226_rizan_depth_map"
 REQUIRED_PRIOR = "XAU_ZONE_REVERSAL_DEPTH_V225_2"
 
@@ -28,6 +29,7 @@ ACCOUNT_ID = "OBSERVABILITY"
 LOOKBACK_DAYS = 45
 TOUCH_HORIZON_HOURS = 24 * 30
 REACTION_HORIZON_HOURS = 16
+REACTION_RUNGS = (("025", 0.25), ("050", 0.50), ("075", 0.75), ("100", 1.00))
 REQUEST_COUNT = 50000
 MAX_EVENT_ROWS = 4000
 
@@ -168,6 +170,7 @@ def _forecast_candidate(
 
     return {
         "contract": CONTRACT,
+        "research_version": RESEARCH_VERSION,
         "signal_key": signal_key,
         "forecast_at": forecast_at.isoformat(),
         "forecast_timing": "FRESH_H4_PRE_TOUCH_CORRECT_SIDE",
@@ -219,6 +222,29 @@ def _reaction_target(*, direction: str, proximal: float, atr: float) -> float:
     return proximal + move if direction == "LONG" else proximal - move
 
 
+def _reaction_targets(*, direction: str, proximal: float, atr: float) -> dict[str, float]:
+    sign = 1.0 if direction == "LONG" else -1.0
+    return {
+        key: proximal + sign * multiple * atr
+        for key, multiple in REACTION_RUNGS
+    }
+
+
+def _reaction_flags(hits: dict[str, bool]) -> dict[str, Any]:
+    return {
+        "reaction_hit_025": bool(hits.get("025")),
+        "reaction_hit_050": bool(hits.get("050")),
+        "reaction_hit_075": bool(hits.get("075")),
+        "reaction_hit_100": bool(hits.get("100")),
+        "reaction_rungs": {
+            "0.25": bool(hits.get("025")),
+            "0.50": bool(hits.get("050")),
+            "0.75": bool(hits.get("075")),
+            "1.00": bool(hits.get("100")),
+        },
+    }
+
+
 def _full_depth(*, direction: str, low: float, high: float, price: float) -> float:
     width = max(high - low, 1e-12)
     return (high - price) / width if direction == "LONG" else (price - low) / width
@@ -233,6 +259,50 @@ def _depth_band(depth: float | None) -> str | None:
         return "100%+"
     lower = int(depth * 10) * 10
     return f"{lower:02d}-{lower + 10:02d}%"
+
+
+def _capture_payload(
+    forecast: dict[str, Any],
+    *,
+    turning_price: float | None,
+    turning_depth: float | None,
+) -> dict[str, Any]:
+    if turning_price is None or turning_depth is None:
+        return {
+            "turning_price": None,
+            "turning_depth": None,
+            "turning_depth_band": None,
+            "h4_hotspot_capture": None,
+            "h4_iqr_capture": None,
+            "h4_median_abs_depth_error": None,
+            "h1_locator_capture": None,
+            "m15_locator_capture": None,
+        }
+
+    h4 = dict(forecast.get("h4") or {})
+    h1 = dict(forecast.get("h1") or {})
+    m15 = dict(forecast.get("m15") or {})
+    h4_quantiles = dict(h4.get("quantiles") or {})
+    median_depth = _f(dict(h4_quantiles.get("median") or {}).get("depth"))
+    p25_depth = _f(dict(h4_quantiles.get("p25") or {}).get("depth"))
+    p75_depth = _f(dict(h4_quantiles.get("p75") or {}).get("depth"))
+    in_iqr = (
+        None
+        if p25_depth is None or p75_depth is None
+        else p25_depth <= turning_depth <= p75_depth
+    )
+    return {
+        "turning_price": turning_price,
+        "turning_depth": turning_depth,
+        "turning_depth_band": _depth_band(turning_depth),
+        "h4_hotspot_capture": _inside(turning_price, dict(h4.get("locator") or {})),
+        "h4_iqr_capture": in_iqr,
+        "h4_median_abs_depth_error": (
+            None if median_depth is None else abs(turning_depth - median_depth)
+        ),
+        "h1_locator_capture": _inside(turning_price, dict(h1.get("locator") or {})),
+        "m15_locator_capture": _inside(turning_price, dict(m15.get("locator") or {})),
+    }
 
 
 def evaluate_outcome(
@@ -265,6 +335,7 @@ def evaluate_outcome(
         row for row in closed
         if start <= ensure_utc(row.timestamp) <= min(ensure_utc(now), touch_deadline)
     ]
+    empty_hits = {key: False for key, _ in REACTION_RUNGS}
 
     touch_index: int | None = None
     for idx, row in enumerate(eligible):
@@ -276,7 +347,7 @@ def evaluate_outcome(
                 "status": "INVALIDATED_BEFORE_TOUCH",
                 "touch_at": None,
                 "outcome_at": ensure_utc(row.timestamp).isoformat(),
-                "reaction_hit_050": False,
+                **_reaction_flags(empty_hits),
                 "invalidated": True,
             }
 
@@ -285,7 +356,7 @@ def evaluate_outcome(
             "status": "NO_TOUCH" if ensure_utc(now) >= touch_deadline else "PENDING_TOUCH",
             "touch_at": None,
             "outcome_at": touch_deadline.isoformat() if ensure_utc(now) >= touch_deadline else None,
-            "reaction_hit_050": False,
+            **_reaction_flags(empty_hits),
             "invalidated": False,
         }
 
@@ -308,12 +379,20 @@ def evaluate_outcome(
             "status": "INVALIDATED_ON_TOUCH_BAR",
             "touch_at": touch_at.isoformat(),
             "outcome_at": touch_at.isoformat(),
-            "reaction_hit_050": False,
+            **_reaction_flags(empty_hits),
             "invalidated": True,
             "max_depth_reached": max_depth,
+            **_capture_payload(forecast, turning_price=None, turning_depth=None),
         }
 
-    target = _reaction_target(direction=direction, proximal=float(proximal), atr=float(atr))
+    targets = _reaction_targets(
+        direction=direction,
+        proximal=float(proximal),
+        atr=float(atr),
+    )
+    hits = {key: False for key, _ in REACTION_RUNGS}
+    turning_price_050: float | None = None
+    turning_depth_050: float | None = None
     reaction_deadline = touch_at + timedelta(hours=REACTION_HORIZON_HOURS)
     future = [
         row for row in closed
@@ -322,6 +401,9 @@ def evaluate_outcome(
 
     for offset, row in enumerate(future, start=1):
         ts = ensure_utc(row.timestamp)
+
+        # Conservative precedence: a close beyond distal invalidates the bar
+        # before any reaction rung printed inside the same M1 candle is credited.
         if _invalidated(row, direction=direction, distal=float(distal)):
             if direction == "LONG":
                 adverse = min(adverse, float(row.low))
@@ -341,54 +423,56 @@ def evaluate_outcome(
                 "touch_at": touch_at.isoformat(),
                 "outcome_at": ts.isoformat(),
                 "bars_after_touch": offset,
-                "reaction_hit_050": False,
+                **_reaction_flags(hits),
                 "invalidated": True,
                 "max_depth_reached": max_depth,
+                **_capture_payload(
+                    forecast,
+                    turning_price=turning_price_050,
+                    turning_depth=turning_depth_050,
+                ),
             }
 
-        reached = float(row.high) >= target if direction == "LONG" else float(row.low) <= target
-        if reached:
-            # Exclude the target bar's fresh adverse extreme: M1 intrabar order
-            # is unknown, matching the historical V225.2 contract.
-            turning_price = adverse
-            turning_depth = _full_depth(
-                direction=direction,
-                low=float(low),
-                high=float(high),
-                price=turning_price,
+        for key, _multiple in REACTION_RUNGS:
+            target = targets[key]
+            reached = (
+                float(row.high) >= target
+                if direction == "LONG"
+                else float(row.low) <= target
             )
-            h4 = dict(forecast.get("h4") or {})
-            h1 = dict(forecast.get("h1") or {})
-            m15 = dict(forecast.get("m15") or {})
-            h4_quantiles = dict(h4.get("quantiles") or {})
-            median_depth = _f(dict(h4_quantiles.get("median") or {}).get("depth"))
-            p25_depth = _f(dict(h4_quantiles.get("p25") or {}).get("depth"))
-            p75_depth = _f(dict(h4_quantiles.get("p75") or {}).get("depth"))
-            in_iqr = (
-                None
-                if p25_depth is None or p75_depth is None
-                else p25_depth <= turning_depth <= p75_depth
-            )
+            if not reached or hits[key]:
+                continue
+            hits[key] = True
+            if key == "050" and turning_depth_050 is None:
+                # Match V225.2: use the deepest adverse extreme known before
+                # the first 0.50 ATR target bar. The target bar's new adverse
+                # extreme is excluded because intrabar ordering is unknown.
+                turning_price_050 = adverse
+                turning_depth_050 = _full_depth(
+                    direction=direction,
+                    low=float(low),
+                    high=float(high),
+                    price=turning_price_050,
+                )
+
+        if hits["100"]:
             return {
-                "status": "REACTION_050",
+                "status": "REACTION_100",
                 "touch_at": touch_at.isoformat(),
                 "outcome_at": ts.isoformat(),
                 "bars_after_touch": offset,
-                "reaction_hit_050": True,
+                **_reaction_flags(hits),
                 "invalidated": False,
-                "turning_price": turning_price,
-                "turning_depth": turning_depth,
-                "turning_depth_band": _depth_band(turning_depth),
-                "max_depth_reached": max(max_depth, turning_depth),
-                "h4_hotspot_capture": _inside(turning_price, dict(h4.get("locator") or {})),
-                "h4_iqr_capture": in_iqr,
-                "h4_median_abs_depth_error": (
-                    None if median_depth is None else abs(turning_depth - median_depth)
+                "max_depth_reached": max(max_depth, turning_depth_050 or max_depth),
+                **_capture_payload(
+                    forecast,
+                    turning_price=turning_price_050,
+                    turning_depth=turning_depth_050,
                 ),
-                "h1_locator_capture": _inside(turning_price, dict(h1.get("locator") or {})),
-                "m15_locator_capture": _inside(turning_price, dict(m15.get("locator") or {})),
             }
 
+        # Only after rung detection do we admit this bar's adverse extreme into
+        # the path state, so a target bar cannot improve its own turning depth.
         if direction == "LONG":
             adverse = min(adverse, float(row.low))
         else:
@@ -408,18 +492,34 @@ def evaluate_outcome(
             "status": "PENDING_REACTION",
             "touch_at": touch_at.isoformat(),
             "outcome_at": None,
-            "reaction_hit_050": False,
+            **_reaction_flags(hits),
             "invalidated": False,
             "max_depth_reached": max_depth,
+            **_capture_payload(
+                forecast,
+                turning_price=turning_price_050,
+                turning_depth=turning_depth_050,
+            ),
         }
 
+    terminal_status = (
+        "REACTION_075_16H" if hits["075"]
+        else "REACTION_050_16H" if hits["050"]
+        else "REACTION_025_16H" if hits["025"]
+        else "STALL_16H"
+    )
     return {
-        "status": "STALL_16H",
+        "status": terminal_status,
         "touch_at": touch_at.isoformat(),
         "outcome_at": reaction_deadline.isoformat(),
-        "reaction_hit_050": False,
+        **_reaction_flags(hits),
         "invalidated": False,
         "max_depth_reached": max_depth,
+        **_capture_payload(
+            forecast,
+            turning_price=turning_price_050,
+            turning_depth=turning_depth_050,
+        ),
     }
 
 
@@ -476,44 +576,61 @@ def summarize(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     outcomes = list(outcomes_map.values())
     resolved_touch = [
         row for row in outcomes
-        if row.get("touch_at") and str(row.get("status") or "") != "PENDING_REACTION"
+        if row.get("touch_at") and str(row.get("status") or "") not in {"PENDING_TOUCH", "PENDING_REACTION"}
     ]
-    reactions = [row for row in resolved_touch if bool(row.get("reaction_hit_050"))]
+    reactions_025 = [row for row in resolved_touch if bool(row.get("reaction_hit_025"))]
+    reactions_050 = [row for row in resolved_touch if bool(row.get("reaction_hit_050"))]
+    reactions_075 = [row for row in resolved_touch if bool(row.get("reaction_hit_075"))]
+    reactions_100 = [row for row in resolved_touch if bool(row.get("reaction_hit_100"))]
     no_touch = [row for row in outcomes if str(row.get("status") or "") == "NO_TOUCH"]
 
     errors = [
         float(row["h4_median_abs_depth_error"])
-        for row in reactions
+        for row in reactions_050
         if _f(row.get("h4_median_abs_depth_error")) is not None
     ]
     depths = [
         float(row["turning_depth"])
-        for row in reactions
+        for row in reactions_050
         if _f(row.get("turning_depth")) is not None
     ]
-    reaction_hits = len(reactions)
     reaction_n = len(resolved_touch)
+
+    def rung_metric(rows_for_rung: Sequence[dict[str, Any]]) -> dict[str, Any]:
+        hits = len(rows_for_rung)
+        return {
+            "n": reaction_n,
+            "hits": hits,
+            "rate": None if reaction_n == 0 else hits / reaction_n,
+            "wilson_lower_95": (
+                None if reaction_n == 0
+                else wilson_lower_bound(hits, reaction_n)
+            ),
+        }
+
     return {
         "contract": CONTRACT,
+        "research_version": RESEARCH_VERSION,
         "forecasts": len(forecasts),
         "resolved_after_touch": reaction_n,
         "no_touch": len(no_touch),
         "pending": max(0, len(forecasts) - len(outcomes_map)),
-        "reaction_050": {
-            "n": reaction_n,
-            "hits": reaction_hits,
-            "rate": None if reaction_n == 0 else reaction_hits / reaction_n,
-            "wilson_lower_95": (
-                None if reaction_n == 0
-                else wilson_lower_bound(reaction_hits, reaction_n)
-            ),
-        },
-        "h4_hotspot_capture_given_reaction": _metric(reactions, "h4_hotspot_capture"),
-        "h4_iqr_capture_given_reaction": _metric(reactions, "h4_iqr_capture"),
-        "h1_locator_capture_given_reaction": _metric(reactions, "h1_locator_capture"),
-        "m15_locator_capture_given_reaction": _metric(reactions, "m15_locator_capture"),
+        "reaction_025": rung_metric(reactions_025),
+        "reaction_050": rung_metric(reactions_050),
+        "reaction_075": rung_metric(reactions_075),
+        "reaction_100": rung_metric(reactions_100),
+        "h4_hotspot_capture_given_reaction_050": _metric(reactions_050, "h4_hotspot_capture"),
+        "h4_iqr_capture_given_reaction_050": _metric(reactions_050, "h4_iqr_capture"),
+        "h1_locator_capture_given_reaction_050": _metric(reactions_050, "h1_locator_capture"),
+        "m15_locator_capture_given_reaction_050": _metric(reactions_050, "m15_locator_capture"),
+        # Backward-compatible aliases for the original V227 dashboard/readers.
+        "h4_hotspot_capture_given_reaction": _metric(reactions_050, "h4_hotspot_capture"),
+        "h4_iqr_capture_given_reaction": _metric(reactions_050, "h4_iqr_capture"),
+        "h1_locator_capture_given_reaction": _metric(reactions_050, "h1_locator_capture"),
+        "m15_locator_capture_given_reaction": _metric(reactions_050, "m15_locator_capture"),
         "median_turning_depth": None if not depths else median(depths),
         "median_h4_depth_error": None if not errors else median(errors),
+        "turning_depth_contract": "DEEPEST_ADVERSE_M1_EXTREME_BEFORE_FIRST_050_TARGET_BAR",
         "sample_state": (
             "COLLECTING" if reaction_n < 30
             else "EARLY" if reaction_n < 100
@@ -525,10 +642,11 @@ def summarize(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "execution_authority": False,
         "promotion_authority": False,
         "interpretation": (
-            "V227 prospectively validates immutable V226 maps only for fresh untouched "
+            "V227.1 prospectively validates immutable V226 maps only for fresh untouched "
             "H4 zones while price remains outside on the correct approach side. It scores "
-            "0.50 ATR reaction plus H4 hotspot/IQR and nested H1/M15 locator capture. "
-            "No execution or promotion authority."
+            "0.25/0.50/0.75/1.00 ATR reaction rungs, keeps invalidation precedence, and "
+            "measures turning depth on the historical 0.50 ATR contract plus H4 hotspot/IQR "
+            "and nested H1/M15 locator capture. No execution or promotion authority."
         ),
     }
 
@@ -610,6 +728,7 @@ def run() -> int:
                         continue
                     payload = {
                         "contract": CONTRACT,
+                        "research_version": RESEARCH_VERSION,
                         "signal_key": forecast.get("signal_key"),
                         "forecast_at": forecast.get("forecast_at"),
                         "direction": forecast.get("direction"),
@@ -647,6 +766,7 @@ def run() -> int:
         lag_seconds=0.0,
         details={
             "contract": CONTRACT,
+            "research_version": RESEARCH_VERSION,
             "environment": "DEMO",
             "required_prior": REQUIRED_PRIOR,
             "candidate_directions": candidate_directions,
