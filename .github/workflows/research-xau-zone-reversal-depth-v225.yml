@@ -1,0 +1,134 @@
+name: Research XAU Zone Reversal Depth V225
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - research/v225-zone-reversal-depth
+    paths:
+      - "src/fx_scanner/research_xau_zone_reversal_depth_v225.py"
+      - "src/fx_scanner/research_xau_zone_reversal_depth_v225_year_runtime.py"
+      - "src/fx_scanner/research_xau_zone_reversal_depth_v225_aggregate.py"
+      - "tests/test_research_xau_zone_reversal_depth_v225.py"
+      - ".github/workflows/research-xau-zone-reversal-depth-v225.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-zone-reversal-depth-v225-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Test V225
+        run: pytest -q tests/test_research_xau_zone_reversal_depth_v225.py
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year:
+          - 2012
+          - 2013
+          - 2014
+          - 2015
+          - 2016
+          - 2017
+          - 2018
+          - 2019
+          - 2020
+          - 2021
+          - 2022
+          - 2023
+          - 2024
+          - 2025
+          - 2026
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v225-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v225-price-provenance-${{ matrix.year }}.json
+      XAU_V225_YEAR: ${{ matrix.year }}
+      XAU_V225_PRICE_CSV: /tmp/histdata/xau-v225-${{ matrix.year }}.csv
+      XAU_V225_PRICE_PROVENANCE: artifacts/xau-v225-price-provenance-${{ matrix.year }}.json
+      XAU_V225_YEAR_OUTPUT: artifacts/xau-zone-reversal-depth-v225-${{ matrix.year }}.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install V225 historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download and normalize HistData XAUUSD M1
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Build yearly H4/H1/M15 reversal-depth shard
+        run: python -m fx_scanner.research_xau_zone_reversal_depth_v225_year_runtime
+      - name: Upload V225 yearly shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v225-year-${{ matrix.year }}
+          path: |
+            artifacts/xau-zone-reversal-depth-v225-${{ matrix.year }}.json
+            artifacts/xau-v225-price-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      XAU_V225_SHARD_DIR: /tmp/v225-shards
+      XAU_V225_FULL_OUTPUT: artifacts/xau-zone-reversal-depth-v225-full.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download all V225 yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v225-year-*
+          path: /tmp/v225-shards
+          merge-multiple: false
+      - name: Aggregate 2012-2026 reversal-depth atlas
+        run: python -m fx_scanner.research_xau_zone_reversal_depth_v225_aggregate
+      - name: Upload full V225 atlas
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-zone-reversal-depth-v225-full
+          path: artifacts/xau-zone-reversal-depth-v225-full.json
+          if-no-files-found: error
+          retention-days: 30
