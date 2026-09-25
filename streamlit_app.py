@@ -321,6 +321,7 @@ def _rizan_chart_png(
     current_target: Any,
     terminal_zone: dict[str, Any] | None,
     next_target: Any,
+    depth_overlays: list[dict[str, Any]] | None = None,
 ) -> tuple[bytes | None, str | None]:
     frame = _rizan_chart_frame(raw_bars, timeframe)
     if frame.empty or len(frame) < 4:
@@ -449,6 +450,76 @@ def _rizan_chart_png(
             zorder=6,
         )
 
+    # V226 RIZAN Depth hotspot / nested locator overlays.
+    chart_tf = str(timeframe or "M15").upper()
+    for depth in list(depth_overlays or []):
+        visible_on = {str(item).upper() for item in list(depth.get("visible_on") or [])}
+        if visible_on and chart_tf not in visible_on:
+            continue
+        try:
+            depth_low = float(depth["low"])
+            depth_high = float(depth["high"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        kind = str(depth.get("kind") or "DEPTH_LOCATOR").upper()
+        side = str(depth.get("direction") or "").upper()
+        if kind.startswith("H4"):
+            depth_edge = "#facc15"
+        elif kind.startswith("H1"):
+            depth_edge = "#38bdf8"
+        else:
+            depth_edge = "#a78bfa"
+        depth_start_x = max(0.0, len(visible) * 0.45)
+        depth_width = right_edge - depth_start_x - 1.0
+        ax.add_patch(
+            Rectangle(
+                (depth_start_x, depth_low),
+                depth_width,
+                max(depth_high - depth_low, 1e-6),
+                facecolor=depth_edge,
+                edgecolor=depth_edge,
+                alpha=0.12,
+                linewidth=1.7,
+                linestyle="--",
+                zorder=2,
+            )
+        )
+        median_price = depth.get("median_price")
+        try:
+            if median_price is not None:
+                median_value = float(median_price)
+                ax.hlines(
+                    median_value,
+                    depth_start_x,
+                    right_edge - 1.0,
+                    color=depth_edge,
+                    linewidth=1.15,
+                    linestyle=":",
+                    alpha=0.95,
+                    zorder=5,
+                )
+        except (TypeError, ValueError):
+            pass
+        depth_label = str(depth.get("label") or "RIZAN Depth hotspot")
+        applicability = str(depth.get("applicability") or "")
+        ax.text(
+            depth_start_x + 0.4,
+            depth_high,
+            f"{depth_label} • {side} • {depth_low:.2f}–{depth_high:.2f}"
+            + (f"\n{applicability}" if applicability else ""),
+            ha="left",
+            va="bottom",
+            fontsize=7.7,
+            color=depth_edge,
+            bbox=dict(
+                boxstyle="round,pad=0.25",
+                facecolor="#111827",
+                edgecolor=depth_edge,
+                alpha=0.92,
+            ),
+            zorder=8,
+        )
+
     ax.axhline(float(price_now), color="#f8fafc", linewidth=1.0, linestyle="--", alpha=0.72)
     ax.text(
         right_edge - 0.6,
@@ -513,6 +584,14 @@ def _rizan_chart_png(
     for zone in zones[:8]:
         try:
             y_values.extend([float(zone["low"]), float(zone["high"])])
+        except (KeyError, TypeError, ValueError):
+            pass
+    for depth in list(depth_overlays or []):
+        visible_on = {str(item).upper() for item in list(depth.get("visible_on") or [])}
+        if visible_on and chart_tf not in visible_on:
+            continue
+        try:
+            y_values.extend([float(depth["low"]), float(depth["high"])])
         except (KeyError, TypeError, ValueError):
             pass
     pad = max(2.0, (max(y_values) - min(y_values)) * 0.08)
@@ -875,6 +954,9 @@ with forecast_tab:
     )
     v224_primary_calibration_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v224_primary_pocket_prospective"
+    )
+    v226_depth_map_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v226_rizan_depth_map"
     )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
@@ -1323,6 +1405,29 @@ with forecast_tab:
             f"dashboard {_fmt_wib_datetime(datetime.now(tz=UTC), seconds=False)}."
         )
 
+    v226_details = (
+        {} if v226_depth_map_hb is None else dict(v226_depth_map_hb.get("details") or {})
+    )
+    v226_eval = dict(v226_details.get("evaluation") or {})
+    v226_overlays = [
+        dict(item) for item in list(v226_eval.get("chart_overlays") or [])
+    ]
+    v226_focus_direction = str(
+        v226_eval.get("focus_direction") or dc_current_leg_direction or ""
+    ).upper()
+    v226_focus_map = dict(
+        v226_eval.get(v226_focus_direction.lower()) or {}
+    )
+    v226_h4 = dict(v226_focus_map.get("h4") or {})
+    v226_h1 = dict(v226_focus_map.get("h1") or {})
+    v226_m15 = dict(v226_focus_map.get("m15") or {})
+    v226_h4_hotspot = dict(v226_h4.get("hotspot") or {})
+    v226_h4_quantiles = dict(v226_h4.get("quantiles") or {})
+    v226_h1_locator = dict(v226_h1.get("nested_locator") or {})
+    v226_h1_envelope = dict(v226_h1_locator.get("envelope") or {})
+    v226_m15_locator = dict(v226_m15.get("nested_locator") or {})
+    v226_m15_envelope = dict(v226_m15_locator.get("envelope") or {})
+
     st.markdown("#### 1. Peta Harga & Supply/Demand — RIZAN-style")
     st.caption(
         "Candlestick berasal dari snapshot completed M15 cTrader yang disimpan V182. "
@@ -1399,6 +1504,69 @@ with forecast_tab:
     chart_pool.sort(key=_chart_zone_priority)
     chart_pool = chart_pool[:8]
 
+    with st.container(border=True):
+        st.markdown("##### V226 — RIZAN Depth Map")
+        if v226_eval and str(v226_eval.get("state") or "") == "RIZAN_DEPTH_MAP_AVAILABLE":
+            d1, d2, d3, d4 = st.columns(4)
+            d1.metric(
+                "Fokus",
+                v226_focus_direction or "—",
+            )
+            d2.metric(
+                "H4 RIZAN Depth hotspot",
+                (
+                    f"{_fmt_price(v226_h4_hotspot.get('low'))}–"
+                    f"{_fmt_price(v226_h4_hotspot.get('high'))}"
+                    if v226_h4_hotspot else "—"
+                ),
+            )
+            d3.metric(
+                "H1 nested locator",
+                (
+                    f"{_fmt_price(v226_h1_envelope.get('low'))}–"
+                    f"{_fmt_price(v226_h1_envelope.get('high'))}"
+                    if v226_h1_envelope else "—"
+                ),
+            )
+            d4.metric(
+                "M15 nested locator",
+                (
+                    f"{_fmt_price(v226_m15_envelope.get('low'))}–"
+                    f"{_fmt_price(v226_m15_envelope.get('high'))}"
+                    if v226_m15_envelope else "—"
+                ),
+            )
+
+            h4_profile = dict(v226_h4.get("historical_profile") or {})
+            h4_top = dict(h4_profile.get("highest_hazard_band") or {})
+            h4_app = dict(v226_h4.get("applicability") or {})
+            h4_median = dict(v226_h4_quantiles.get("median") or {})
+            st.caption(
+                "V225.1 prior 2012–2026 • "
+                f"H4 top-band={h4_top.get('band','—')} "
+                f"(conditional hazard {_fmt_pct(h4_top.get('hazard'))}, "
+                f"n-at-risk={h4_top.get('at_risk','—')}) • "
+                f"median reversal depth={_fmt_pct(h4_median.get('depth'))} "
+                f"@ {_fmt_price(h4_median.get('price'))} • "
+                f"applicability={h4_app.get('state','—')}. "
+                "H1/M15 adalah locator nested bila child zone sudah tersedia sebelum reversal."
+            )
+            if str(h4_app.get("state") or "").startswith("LOW_"):
+                st.warning(
+                    "H4 aktif sudah multi-tested/reuse. V225.1 adalah first-touch study, "
+                    "jadi depth band ini hanya konteks historis dan tidak boleh dianggap "
+                    "probabilitas entry baru."
+                )
+            st.info(
+                "V226 menggambar zona lebih awal tanpa menunggu liquidity sweep, MSS, atau reclaim. "
+                "MSS/reclaim tetap boleh menjadi evidence tambahan, tetapi bukan syarat untuk membuat "
+                "RIZAN Depth Map. V226 tetap shadow-only."
+            )
+        else:
+            st.caption(
+                "V226 belum memiliki depth map aktif. Menunggu heartbeat atlas + prior V225.1."
+            )
+
     chart_control_1, chart_control_2 = st.columns([1, 3])
     with chart_control_1:
         rizan_chart_tf = st.selectbox(
@@ -1442,6 +1610,7 @@ with forecast_tab:
             current_target=dc_current_leg_target.get("price"),
             terminal_zone=dc_current_leg_terminal,
             next_target=dc_next_leg_target.get("price"),
+            depth_overlays=v226_overlays,
         )
         if chart_png is not None:
             st.image(chart_png, width="stretch")

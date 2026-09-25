@@ -100,6 +100,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_supply_demand_atlas_v182
 
+      - name: Map V226 RIZAN hierarchical reversal depth
+        id: analyze_xau_v226_rizan_depth_map
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v226_rizan_depth_map
+
       - name: Update prospective XAU supply-demand lifecycle
         id: update_xau_supply_demand_prospective
         continue-on-error: true
