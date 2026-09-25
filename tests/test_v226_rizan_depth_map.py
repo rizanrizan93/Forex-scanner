@@ -6,7 +6,9 @@ from fx_scanner.demo_xau_v226_rizan_depth_map import (
     _historical_profile,
     _nested_locator,
     _select_h1,
+    _select_h4,
     _select_m15,
+    _select_nearest_h4_context,
     build_depth_map,
 )
 
@@ -277,6 +279,77 @@ def test_v226_marks_multitested_zone_as_low_first_touch_applicability() -> None:
     result = _applicability(zone, 4290.0)
     assert result["state"] == "LOW_REUSE_OUT_OF_SAMPLE"
 
+
+
+
+def test_v226_h4_selector_prefers_fresh_first_touch_over_nearer_reused_zone() -> None:
+    zones = [
+        _zone(
+            "near-reused",
+            timeframe="H4",
+            direction="SHORT",
+            low=4294.0,
+            high=4323.0,
+            touches=8,
+            score=64.0,
+        ),
+        _zone(
+            "far-fresh",
+            timeframe="H4",
+            direction="SHORT",
+            low=4357.0,
+            high=4366.0,
+            touches=0,
+            score=72.0,
+        ),
+    ]
+    calibrated = _select_h4(
+        zones,
+        direction="SHORT",
+        price=4286.0,
+    )
+    context = _select_nearest_h4_context(
+        zones,
+        direction="SHORT",
+        price=4286.0,
+    )
+    assert calibrated["zone_id"] == "far-fresh"
+    assert context["zone_id"] == "near-reused"
+
+
+def test_v226_build_map_separates_calibrated_parent_from_nearest_reused_context() -> None:
+    atlas = {
+        "as_of": "2026-09-25T17:45:00+00:00",
+        "last_closed_m15_price": 4286.0,
+        "zones": [
+            _zone(
+                "near-reused",
+                timeframe="H4",
+                direction="SHORT",
+                low=4294.0,
+                high=4323.0,
+                touches=8,
+                score=64.0,
+            ),
+            _zone(
+                "far-fresh",
+                timeframe="H4",
+                direction="SHORT",
+                low=4357.0,
+                high=4366.0,
+                touches=0,
+                score=72.0,
+            ),
+        ],
+        "chart_bars_m15": [],
+        "m5_path_projection": {"current_leg": {"direction": "SHORT"}},
+    }
+    result = build_depth_map(atlas_evaluation=atlas, history_details=_history())
+    short = result["short"]
+    assert short["h4"]["zone"]["zone_id"] == "far-fresh"
+    assert short["h4_selection_mode"] == "FRESH_FIRST_TOUCH_CALIBRATED_PARENT"
+    assert short["nearest_h4_context"]["zone"]["zone_id"] == "near-reused"
+    assert short["nearest_h4_context"]["same_as_calibrated_parent"] is False
 
 def test_v226_h1_selector_prefers_child_intersecting_h4_hotspot() -> None:
     parent = _zone("h4", timeframe="H4", direction="LONG", low=4240, high=4280)
