@@ -158,3 +158,48 @@ def test_v222_dashboard_and_workflow_are_shadow_only() -> None:
     assert "V222 — M5 Pocket Quality & Stability" in dashboard
     assert "LATE_FOR_FIRST_ENTRY_WAIT_RETEST" in dashboard
     assert "V222 tetap shadow-only" in dashboard
+
+
+def test_v222_uses_actual_first_observed_refined_event() -> None:
+    candidate = _event(
+        "c",
+        observed_at="2026-09-25T11:16:07+00:00",
+        low=4312.59,
+        high=4315.82,
+        origin_at="2026-09-25T11:10:00+00:00",
+        refined=False,
+    )
+    refined = _event(
+        "c",
+        observed_at="2026-09-25T11:43:59+00:00",
+        low=4312.59,
+        high=4315.82,
+        origin_at="2026-09-25T11:10:00+00:00",
+        refined=True,
+    )
+    # Keep the immutable candidate mapping time in the later refined event.
+    refined["payload"]["timeline"]["candidate_mapped_at"] = "2026-09-25T11:15:21+00:00"
+
+    result = build_quality_evaluation(
+        events=[candidate, refined],
+        lifecycle={"current_leg": {"direction": "SHORT"}},
+        atlas_evaluation={
+            "last_closed_m15_price": 4304.80,
+            "m5_path_projection": {
+                "current_leg": {
+                    "source_zone": {
+                        "atr_points": 15.57,
+                        "research_score": 69.18,
+                        "lifecycle": {"freshness": "DEEPLY_MITIGATED"},
+                    }
+                }
+            },
+        },
+        calibration_summary={},
+        direction_evaluation={"tactical_first_leg": {"p_hold_050": 0.58}},
+        shock_details={"evaluation": {"state": "NORMAL"}},
+    )
+    latest = result["latest_pocket"]
+    assert latest["refined_first_observed_at"] == "2026-09-25T11:43:59+00:00"
+    assert latest["candidate_to_refined_observed_minutes"] > 28.0
+    assert latest["refinement_timing_state"] == "REFINED_LATE_RETEST_ONLY"
