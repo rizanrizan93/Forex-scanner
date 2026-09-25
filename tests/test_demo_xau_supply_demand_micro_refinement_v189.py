@@ -209,3 +209,66 @@ def test_v189_fails_closed_when_source_available_at_missing():
     )
     assert result["state"] == "SOURCE_AVAILABILITY_UNKNOWN_NO_REFINEMENT"
     assert "refined_entry_pocket" not in result or result["refined_entry_pocket"] is None
+
+
+def test_short_refinement_uses_local_post_touch_mss_before_far_structural_mss():
+    t0 = datetime(2026, 9, 23, 18, 0, tzinfo=UTC)
+    path = _path(direction="SHORT")
+    available = t0 + timedelta(minutes=100)
+    path["active_path"]["source_zone"]["available_at"] = available.isoformat()
+
+    bars = []
+    for i in range(50):
+        ts = t0 + timedelta(minutes=5 * i)
+        if i == 15:
+            # Old conservative 2-left/2-right structural swing, far from the
+            # eventual source interaction.
+            bars.append(_bar(ts, 94.0, 95.0, 90.0, 94.0))
+        elif i < 20:
+            bars.append(_bar(ts, 95.0, 96.0, 94.0, 95.0))
+        elif i == 20:
+            bars.append(_bar(ts, 104.0, 106.0, 103.8, 105.0))
+        elif i == 21:
+            bars.append(_bar(ts, 105.0, 106.5, 104.0, 105.5))
+        elif i == 22:
+            # Source-local 1-left/1-right internal low.
+            bars.append(_bar(ts, 105.5, 106.0, 103.2, 104.8))
+        elif i == 23:
+            bars.append(_bar(ts, 104.8, 107.0, 103.5, 106.5))
+        elif i == 24:
+            # Lower low prevents the local pivot from also qualifying as the
+            # conservative 2-left/2-right structural swing.
+            bars.append(_bar(ts, 106.5, 108.5, 103.0, 108.0))
+        elif i == 25:
+            # High sweep inside the SHORT H1 source.
+            bars.append(_bar(ts, 108.0, 109.5, 105.0, 106.5))
+        elif i == 26:
+            # Reclaim below proximal=105, but no close below local MSS yet.
+            bars.append(_bar(ts, 106.5, 107.0, 102.8, 104.5))
+        elif i == 27:
+            # Bearish displacement breaks local MSS while the old structural
+            # swing at 90 remains untouched.
+            bars.append(_bar(ts, 104.5, 104.8, 101.0, 102.0))
+        else:
+            bars.append(_bar(ts, 102.5, 104.0, 101.0, 102.5))
+
+    result = evaluate_micro_refinement(
+        tuple(bars),
+        path_map=path,
+        as_of=t0 + timedelta(minutes=5 * 51),
+    )
+
+    assert result["direction"] == "SHORT"
+    assert result["reclaim_confirmed"] is True
+    assert result["mss_scope"] == "LOCAL_EXECUTABLE"
+    assert result["mss_basis"] == "POST_SOURCE_TOUCH_INTERNAL_M5_SWING"
+    assert result["mss_level"] == 103.2
+    assert result["local_mss_level"] == 103.2
+    assert result["structural_mss_level"] == 90.0
+    assert result["mss_confirmed"] is True
+    assert result["structural_mss_confirmed"] is False
+    assert result["displacement_confirmed"] is True
+    assert result["state"] == "M5_REFINEMENT_CONFIRMED_SHADOW"
+    assert result["refined_entry_pocket"] is not None
+    assert result["execution_authority"] is False
+

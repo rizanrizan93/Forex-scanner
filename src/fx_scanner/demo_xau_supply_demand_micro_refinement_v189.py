@@ -10,6 +10,8 @@ CONTRACT = "XAU_SUPPLY_DEMAND_M5_MICRO_REFINEMENT_V189"
 MAX_RECENT_M5_BARS = 144
 SWING_LOOKBACK_BARS = 36
 MSS_FALLBACK_LOOKBACK = 6
+LOCAL_MSS_LOOKBACK_BARS = 12
+LOCAL_MSS_FALLBACK_LOOKBACK = 6
 ATR_PERIOD = 14
 DISPLACEMENT_BODY_ATR = 0.50
 DISPLACEMENT_RANGE_ATR = 0.80
@@ -128,6 +130,100 @@ def _latest_pre_sweep_swing_level(
     if direction == "LONG":
         return max(float(row.high) for row in prior), "PRE_SWEEP_M5_RANGE_FALLBACK"
     return min(float(row.low) for row in prior), "PRE_SWEEP_M5_RANGE_FALLBACK"
+
+
+def _latest_local_pre_sweep_mss_level(
+    rows: Sequence[Bar],
+    *,
+    sweep_index: int,
+    first_touch_index: int,
+    direction: str,
+) -> tuple[float | None, str, int | None]:
+    """Return a source-local internal MSS reference.
+
+    V189 originally used only the conservative 2-left/2-right pre-sweep swing.
+    During a near-vertical approach that level can sit near the far end of the
+    projected reaction path, so confirmation arrives after most of the move is
+    already complete. The local reference is intentionally narrower:
+
+    * it can only come from bars after the H1 source was first touched;
+    * it uses a 1-left/1-right internal M5 pivot for executable micro structure;
+    * if no pivot exists, it falls back to the recent post-touch range;
+    * the older conservative structural MSS is still computed and reported
+      separately by evaluate_micro_refinement.
+
+    This remains shadow/preparation evidence and does not grant execution
+    authority.
+    """
+    if sweep_index <= 1 or first_touch_index >= sweep_index:
+        return None, "NO_LOCAL_MSS_REFERENCE", None
+
+    start = max(
+        1,
+        int(first_touch_index),
+        int(sweep_index) - LOCAL_MSS_LOOKBACK_BARS,
+    )
+    end = int(sweep_index) - 1
+    swings: list[tuple[int, float]] = []
+    for i in range(start, end):
+        # A local pivot must be confirmed by the next completed M5 bar and must
+        # remain strictly pre-sweep.
+        if i + 1 >= sweep_index:
+            break
+        if direction == "LONG":
+            center = float(rows[i].high)
+            if (
+                center > float(rows[i - 1].high)
+                and center >= float(rows[i + 1].high)
+            ):
+                swings.append((i, center))
+        else:
+            center = float(rows[i].low)
+            if (
+                center < float(rows[i - 1].low)
+                and center <= float(rows[i + 1].low)
+            ):
+                swings.append((i, center))
+
+    if swings:
+        index, level = swings[-1]
+        return level, "POST_SOURCE_TOUCH_INTERNAL_M5_SWING", index
+
+    fallback_start = max(
+        int(first_touch_index),
+        int(sweep_index) - LOCAL_MSS_FALLBACK_LOOKBACK,
+    )
+    if fallback_start >= sweep_index:
+        return None, "NO_LOCAL_MSS_REFERENCE", None
+
+    indices = list(range(fallback_start, sweep_index))
+    if not indices:
+        return None, "NO_LOCAL_MSS_REFERENCE", None
+    if direction == "LONG":
+        level = max(float(rows[i].high) for i in indices)
+        index = max(i for i in indices if float(rows[i].high) == level)
+    else:
+        level = min(float(rows[i].low) for i in indices)
+        index = max(i for i in indices if float(rows[i].low) == level)
+    return level, "POST_SOURCE_TOUCH_M5_RANGE_FALLBACK", index
+
+
+def _first_close_break_index(
+    rows: Sequence[Bar],
+    *,
+    start_index: int,
+    direction: str,
+    level: float | None,
+) -> int | None:
+    if level is None:
+        return None
+    for i in range(int(start_index), len(rows)):
+        close = float(rows[i].close)
+        if direction == "LONG" and close > float(level):
+            return i
+        if direction == "SHORT" and close < float(level):
+            return i
+    return None
 
 
 def _candidate_pocket_from_bar(row: Bar, direction: str) -> dict[str, Any]:
@@ -253,11 +349,27 @@ def evaluate_micro_refinement(
             if direction == "LONG"
             else _safe_float(source.get("low"))
         )
-    mss_level, mss_basis = _latest_pre_sweep_swing_level(
+    structural_mss_level, structural_mss_basis = _latest_pre_sweep_swing_level(
         recent,
         sweep_index=sweep_index,
         direction=direction,
     )
+    local_mss_level, local_mss_basis, local_mss_reference_index = (
+        _latest_local_pre_sweep_mss_level(
+            recent,
+            sweep_index=sweep_index,
+            first_touch_index=touch_indices[0],
+            direction=direction,
+        )
+    )
+    if local_mss_level is not None:
+        mss_level = local_mss_level
+        mss_basis = local_mss_basis
+        mss_scope = "LOCAL_EXECUTABLE"
+    else:
+        mss_level = structural_mss_level
+        mss_basis = structural_mss_basis
+        mss_scope = "STRUCTURAL_FALLBACK"
 
     post = recent[sweep_index:]
     reclaim_index: int | None = None
@@ -271,15 +383,20 @@ def evaluate_micro_refinement(
                 break
 
     mss_index: int | None = None
-    if reclaim_index is not None and mss_level is not None:
-        for i in range(reclaim_index, len(recent)):
-            close = float(recent[i].close)
-            if direction == "LONG" and close > mss_level:
-                mss_index = i
-                break
-            if direction == "SHORT" and close < mss_level:
-                mss_index = i
-                break
+    structural_mss_index: int | None = None
+    if reclaim_index is not None:
+        mss_index = _first_close_break_index(
+            recent,
+            start_index=reclaim_index,
+            direction=direction,
+            level=mss_level,
+        )
+        structural_mss_index = _first_close_break_index(
+            recent,
+            start_index=reclaim_index,
+            direction=direction,
+            level=structural_mss_level,
+        )
 
     displacement_index: int | None = None
     if mss_index is not None:
@@ -357,11 +474,27 @@ def evaluate_micro_refinement(
         ),
         "mss_level": mss_level,
         "mss_basis": mss_basis,
+        "mss_scope": mss_scope,
+        "local_mss_level": local_mss_level,
+        "local_mss_basis": local_mss_basis,
+        "local_mss_reference_at": (
+            None
+            if local_mss_reference_index is None
+            else ensure_utc(recent[local_mss_reference_index].timestamp).isoformat()
+        ),
+        "structural_mss_level": structural_mss_level,
+        "structural_mss_basis": structural_mss_basis,
         "mss_confirmed": mss_index is not None,
         "mss_at": (
             None
             if mss_index is None
             else ensure_utc(recent[mss_index].timestamp).isoformat()
+        ),
+        "structural_mss_confirmed": structural_mss_index is not None,
+        "structural_mss_at": (
+            None
+            if structural_mss_index is None
+            else ensure_utc(recent[structural_mss_index].timestamp).isoformat()
         ),
         "displacement_confirmed": displacement_index is not None,
         "displacement_at": (
@@ -373,7 +506,9 @@ def evaluate_micro_refinement(
         "refined_entry_pocket": refined_pocket,
         "required_for_execution": False,
         "interpretation": (
-            "Micro pocket is preparation evidence only. Canonical AFIC and completed "
+            "V189 uses post-source-touch local M5 structure for the executable micro MSS "
+            "while preserving the older conservative pre-sweep structural MSS separately. "
+            "Micro pocket remains preparation evidence only; canonical AFIC and completed "
             "M15 confirmation remain required for execution admission."
         ),
         "bars_considered": len(recent),
