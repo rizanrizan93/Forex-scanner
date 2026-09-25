@@ -958,6 +958,9 @@ with forecast_tab:
     v226_depth_map_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v226_rizan_depth_map"
     )
+    v227_depth_calibration_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v227_depth_map_prospective"
+    )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
     )
@@ -1409,6 +1412,11 @@ with forecast_tab:
         {} if v226_depth_map_hb is None else dict(v226_depth_map_hb.get("details") or {})
     )
     v226_eval = dict(v226_details.get("evaluation") or {})
+    v227_details = (
+        {} if v227_depth_calibration_hb is None
+        else dict(v227_depth_calibration_hb.get("details") or {})
+    )
+    v227_summary = dict(v227_details.get("summary") or {})
     v226_overlays = [
         dict(item) for item in list(v226_eval.get("chart_overlays") or [])
     ]
@@ -1565,6 +1573,33 @@ with forecast_tab:
         else:
             st.caption(
                 "V226 belum memiliki depth map aktif. Menunggu heartbeat atlas + prior V225.2."
+            )
+
+    with st.container(border=True):
+        st.markdown("##### V227 — Prospective RIZAN Depth Calibration")
+        if v227_summary:
+            v227_reaction = dict(v227_summary.get("reaction_050") or {})
+            v227_hotspot = dict(v227_summary.get("h4_hotspot_capture_given_reaction") or {})
+            v227_iqr = dict(v227_summary.get("h4_iqr_capture_given_reaction") or {})
+            v227_m15 = dict(v227_summary.get("m15_locator_capture_given_reaction") or {})
+            r1, r2, r3, r4 = st.columns(4)
+            r1.metric("Fresh forecast", int(v227_summary.get("forecasts") or 0))
+            r2.metric("Reaction ≥0.50 ATR", _fmt_pct(v227_reaction.get("rate")))
+            r3.metric("H4 IQR capture", _fmt_pct(v227_iqr.get("rate")))
+            r4.metric("M15 locator capture", _fmt_pct(v227_m15.get("rate")))
+            st.caption(
+                f"sample={v227_summary.get('sample_state','—')} • "
+                f"resolved-touch={v227_summary.get('resolved_after_touch',0)} • "
+                f"pending={v227_summary.get('pending',0)} • "
+                f"H4 top-band capture={_fmt_pct(v227_hotspot.get('rate'))} • "
+                f"median actual depth={_fmt_pct(v227_summary.get('median_turning_depth'))} • "
+                f"median error ke prediksi H4={_fmt_pct(v227_summary.get('median_h4_depth_error'))}. "
+                "Hanya H4 fresh/untouched yang direkam sebelum first touch. "
+                "V227 tetap shadow-only."
+            )
+        else:
+            st.caption(
+                "V227 menunggu episode H4 fresh yang belum disentuh. Reuse/multi-tested tidak masuk sampel."
             )
 
     chart_control_1, chart_control_2 = st.columns([1, 3])
