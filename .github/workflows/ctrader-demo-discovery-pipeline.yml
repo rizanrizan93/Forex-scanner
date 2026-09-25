@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  xauusd-discovery-and-calibration:
+  xauusd-discovery:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -58,42 +58,6 @@ jobs:
         if: ${{ always() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_expansion_challenger
-      - name: Persist XAU active strategy identity and latency telemetry
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_xau_strategy_latency_telemetry
-      - name: Reconcile cTrader closed DEMO outcomes
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_closed_trade_reconciler
-      - name: Finalize sampled MAE and MFE trajectories
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_trajectory_finalizer
-      - name: Summarize floating P&L and incremental calibration
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_normalized_calibration_runner incremental
-      - name: Score XAUUSD IMPULSE_RETEST_V2 forward DEMO outcomes
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_xau_v2_forward_scorecard
-      - name: Publish best XAU opportunity of the Jakarta trading day
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_xau_daily_opportunity
-      - name: Build Adaptive Calibration v2 shadow cohorts and diagnostics
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_normalized_calibration_runner adaptive-v2
-      - name: Compare historical shadow cohorts
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_normalized_calibration_runner comparison
-      - name: Attribute repeated loss patterns in shadow mode
-        if: ${{ always() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_normalized_calibration_runner loss-attribution
       - name: Record discovery success
         if: ${{ success() }}
         run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_discovery_pipeline SUCCESS
