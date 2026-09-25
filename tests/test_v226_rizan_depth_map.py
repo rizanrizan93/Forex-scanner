@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fx_scanner.demo_xau_v226_rizan_depth_map import (
     _applicability,
+    _confluence_geometry,
     _depth_band_prices,
     _historical_profile,
     _nested_locator,
@@ -229,6 +230,27 @@ def _zone(
     }
 
 
+def test_v2261_triple_confluence_returns_exact_price_intersection() -> None:
+    core = _confluence_geometry(
+        h4_hotspot={"low": 4294.71, "high": 4297.518},
+        h1_locator={"low": 4297.0565, "high": 4305.4346},
+        m15_locator={"low": 4293.4348, "high": 4297.2410},
+    )
+    assert core["level"] == "H4_H1_M15_TRIPLE"
+    assert abs(core["low"] - 4297.0565) < 1e-12
+    assert abs(core["high"] - 4297.2410) < 1e-12
+    assert core["layers"] == ["H4", "H1", "M15"]
+
+
+def test_v2261_child_overlap_without_h4_is_not_promoted_to_htf_core() -> None:
+    core = _confluence_geometry(
+        h4_hotspot={"low": 4280.97, "high": 4284.99},
+        h1_locator={"low": 4266.59, "high": 4271.76},
+        m15_locator={"low": 4265.64, "high": 4270.91},
+    )
+    assert core == {}
+
+
 def test_v226_depth_band_converts_demand_and_supply_to_prices() -> None:
     demand = _zone("d", timeframe="H4", direction="LONG", low=4244.0, high=4275.0)
     supply = _zone("s", timeframe="H4", direction="SHORT", low=4300.0, high=4320.0)
@@ -346,6 +368,7 @@ def test_v226_workflow_and_dashboard_are_shadow_only() -> None:
     dashboard = (ROOT / "streamlit_app.py").read_text()
     assert "V226 — RIZAN Depth Map" in dashboard
     assert "RIZAN Depth hotspot" in dashboard
+    assert "RIZAN confluence core" in dashboard
     assert "V226 tetap shadow-only" in dashboard
 
     source = (ROOT / "src/fx_scanner/demo_xau_v226_rizan_depth_map.py").read_text()
