@@ -547,6 +547,9 @@ with forecast_tab:
     v213_path_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v213_post_zone_path"
     )
+    v214_lifecycle_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v214_pocket_lifecycle"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -762,6 +765,31 @@ with forecast_tab:
     dc_next_leg_terminal = dict(dc_projection_next.get("terminal_target_zone") or {})
     dc_current_reuse = dict(dc_projection_current.get("zone_reuse_v200") or {})
     dc_next_reuse = dict(dc_projection_next.get("zone_reuse_v200") or {})
+
+    dc_initial_candidate = dict(
+        dc_micro.get("candidate_entry_pocket")
+        or dc_current_reuse.get("active_candidate_micro_pocket")
+        or dc_candidate
+        or {}
+    )
+    dc_next_initial_candidate = dict(
+        dc_next_micro.get("candidate_entry_pocket")
+        or dc_next_reuse.get("active_candidate_micro_pocket")
+        or dc_next_candidate
+        or {}
+    )
+    dc_refined_display = dict(
+        dc_micro.get("refined_entry_pocket")
+        or dc_current_reuse.get("active_refined_micro_pocket")
+        or dc_refined
+        or {}
+    )
+    dc_next_refined_display = dict(
+        dc_next_micro.get("refined_entry_pocket")
+        or dc_next_reuse.get("active_refined_micro_pocket")
+        or dc_next_refined
+        or {}
+    )
 
     dc_dom = dict(afic_sd_context.get("dom_context") or {})
     if not dc_dom and dom_v191_hb is not None:
@@ -1022,28 +1050,55 @@ with forecast_tab:
         else "—"
     )
 
+    v214_details = (
+        {} if v214_lifecycle_hb is None else dict(v214_lifecycle_hb.get("details") or {})
+    )
+    v214_eval = dict(v214_details.get("evaluation") or {})
+    v214_current = dict(v214_eval.get("current_leg") or {})
+    v214_next = dict(v214_eval.get("next_leg") or {})
+    v214_current_timeline = dict(v214_current.get("timeline") or {})
+    v214_current_latency = dict(v214_current.get("latency_minutes") or {})
+    v214_next_timeline = dict(v214_next.get("timeline") or {})
+    v214_next_latency = dict(v214_next.get("latency_minutes") or {})
+
     dc_current_pocket_shown = False
-    if dc_candidate:
+    if dc_initial_candidate:
         dc_current_pocket_shown = True
         st.warning(
-            f"M5 **{dc_current_leg_direction}** POCKET: "
-            f"**{_fmt_price(dc_candidate.get('low'))}–{_fmt_price(dc_candidate.get('high'))}** • "
-            f"state={dc_micro.get('state','—')} • status=CANDIDATE. "
-            f"Pocket ini tampil sebelum reclaim/MSS/displacement selesai. "
+            f"INITIAL M5 **{dc_current_leg_direction}** POCKET: "
+            f"**{_fmt_price(dc_initial_candidate.get('low'))}–{_fmt_price(dc_initial_candidate.get('high'))}** • "
+            f"state={dc_micro.get('state','—')} • status=CANDIDATE/ORIGIN. "
+            f"Pocket awal tetap dipertahankan walaupun refined pocket sudah terbentuk. "
             f"Reaction target={dc_current_target_text} • opposing zone={dc_current_terminal_text}."
         )
+        st.caption(
+            "Lifecycle awal • "
+            f"mapped={_fmt_wib_datetime(v214_current_timeline.get('candidate_mapped_at') or dc_initial_candidate.get('origin_at'), seconds=False)} • "
+            f"first touch={_fmt_wib_datetime(v214_current_timeline.get('first_touch_at'), seconds=False)} • "
+            f"sweep={_fmt_wib_datetime(v214_current_timeline.get('sweep_at') or dict(dc_micro.get('sweep') or {}).get('at'), seconds=False)} • "
+            f"lead={'—' if v214_current_latency.get('candidate_map_to_touch') is None else f'{float(v214_current_latency.get("candidate_map_to_touch")):.0f} mnt'}."
+        )
 
-    if dc_refined:
+    if dc_refined_display:
         dc_current_pocket_shown = True
         st.success(
             f"REFINED M5 **{dc_current_leg_direction}** POCKET: "
-            f"**{_fmt_price(dc_refined.get('low'))}–{_fmt_price(dc_refined.get('high'))}** • "
+            f"**{_fmt_price(dc_refined_display.get('low'))}–{_fmt_price(dc_refined_display.get('high'))}** • "
             f"state={dc_micro.get('state','—')} • "
             f"sweep={_fmt_price(dict(dc_micro.get('sweep') or {}).get('price'))} • "
             f"reclaim={_fmt_price(dc_micro.get('source_proximal_reclaim_level'))} • "
             f"MSS={_fmt_price(dc_micro.get('mss_level'))}. "
             f"Reaction target={dc_current_target_text} • opposing zone={dc_current_terminal_text}. "
             "**SHADOW/PREPARE — belum otomatis menjadi entry resmi.**"
+        )
+
+        st.caption(
+            "Lifecycle refined • "
+            f"reclaim={_fmt_wib_datetime(v214_current_timeline.get('reclaim_at') or dc_micro.get('reclaim_at'), seconds=False)} • "
+            f"MSS={_fmt_wib_datetime(v214_current_timeline.get('mss_at') or dc_micro.get('mss_at'), seconds=False)} • "
+            f"displacement={_fmt_wib_datetime(v214_current_timeline.get('displacement_at') or dc_micro.get('displacement_at'), seconds=False)} • "
+            f"refined mapped={_fmt_wib_datetime(v214_current_timeline.get('refined_mapped_at') or dc_refined_display.get('origin_at'), seconds=False)} • "
+            f"touch→refined={'—' if v214_current_latency.get('touch_to_refined') is None else f'{float(v214_current_latency.get("touch_to_refined")):.0f} mnt'}."
         )
 
     if not dc_current_pocket_shown:
@@ -1066,25 +1121,35 @@ with forecast_tab:
     else:
         dc_next_pocket_shown = False
 
-        if dc_next_candidate:
+        if dc_next_initial_candidate:
             dc_next_pocket_shown = True
             st.info(
-                f"M5 **{dc_next_leg_direction}** POCKET berikutnya: "
-                f"**{_fmt_price(dc_next_candidate.get('low'))}–{_fmt_price(dc_next_candidate.get('high'))}** • "
+                f"INITIAL M5 **{dc_next_leg_direction}** POCKET berikutnya: "
+                f"**{_fmt_price(dc_next_initial_candidate.get('low'))}–{_fmt_price(dc_next_initial_candidate.get('high'))}** • "
                 f"state={dc_next_micro.get('state','—')} • status=CANDIDATE. "
                 f"Reaction target={dc_next_target_text} • "
                 f"terminal opposing zone={dc_next_terminal_text}."
             )
 
-        if dc_next_refined:
+        if dc_next_refined_display:
             dc_next_pocket_shown = True
             st.success(
                 f"REFINED M5 **{dc_next_leg_direction}** POCKET berikutnya: "
-                f"**{_fmt_price(dc_next_refined.get('low'))}–{_fmt_price(dc_next_refined.get('high'))}** • "
+                f"**{_fmt_price(dc_next_refined_display.get('low'))}–{_fmt_price(dc_next_refined_display.get('high'))}** • "
                 f"state={dc_next_micro.get('state','—')}. "
                 f"Reaction target={dc_next_target_text} • "
                 f"terminal opposing zone={dc_next_terminal_text}. "
                 "Refined pocket tetap tidak menjadi izin broker tanpa admission yang valid."
+            )
+
+        if dc_next_initial_candidate:
+            st.caption(
+                "Next-leg lifecycle • "
+                f"mapped={_fmt_wib_datetime(v214_next_timeline.get('candidate_mapped_at') or dc_next_initial_candidate.get('origin_at'), seconds=False)} • "
+                f"touch={_fmt_wib_datetime(v214_next_timeline.get('first_touch_at'), seconds=False)} • "
+                f"reclaim={_fmt_wib_datetime(v214_next_timeline.get('reclaim_at') or dc_next_micro.get('reclaim_at'), seconds=False)} • "
+                f"MSS={_fmt_wib_datetime(v214_next_timeline.get('mss_at') or dc_next_micro.get('mss_at'), seconds=False)} • "
+                f"touch→refined={'—' if v214_next_latency.get('touch_to_refined') is None else f'{float(v214_next_latency.get("touch_to_refined")):.0f} mnt'}."
             )
 
         if not dc_next_pocket_shown and dc_next_leg_source:
