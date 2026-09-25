@@ -30,11 +30,9 @@ def _latest_heartbeat(store: SupabaseOperationalStore, worker_name: str) -> dict
 
 
 def _stable_signal_key(role: str, leg: dict[str, Any]) -> str | None:
-    evidence = dict(leg.get("candidate_evidence") or {})
-    physical_key = str(evidence.get("physical_key") or "").strip()
-    if physical_key:
-        return "V215:" + physical_key
-
+    # Key only from immutable pocket geometry. Do not switch to a V201
+    # physical_key later, otherwise the same prospective episode could split
+    # into two V215 episodes after evidence reconciliation catches up.
     pocket = dict(leg.get("initial_pocket") or {})
     direction = str(leg.get("direction") or "").upper()
     low = pocket.get("low")
