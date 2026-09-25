@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: research-xau-zone-reversal-depth-v225-${{ github.ref }}
+  group: research-xau-zone-reversal-depth-v225-vectorized-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 5
       matrix:
         year:
           - 2012
