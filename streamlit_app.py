@@ -563,6 +563,9 @@ with forecast_tab:
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
     )
+    v220_calibration_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v220_direction_prospective_calibration"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -1076,6 +1079,35 @@ with forecast_tab:
                     "promotion_authority": v217_eval.get("promotion_authority"),
                 }
             )
+
+    v220_details = (
+        {} if v220_calibration_hb is None else dict(v220_calibration_hb.get("details") or {})
+    )
+    v220_summary = dict(v220_details.get("summary") or {})
+    if v220_summary:
+        st.markdown("##### V220 — Prospective Direction Calibration")
+        pc1, pc2, pc3, pc4 = st.columns(4)
+        pc1.metric("Forecast pre-touch", int(v220_summary.get("forecasts") or 0))
+        pc2.metric("Resolved", int(v220_summary.get("resolved_directional") or 0))
+        pc3.metric(
+            "Dominant accuracy",
+            _fmt_pct(v220_summary.get("dominant_accuracy")),
+        )
+        pc4.metric(
+            "Mean Brier",
+            "—"
+            if v220_summary.get("mean_brier_multiclass") is None
+            else f"{float(v220_summary.get('mean_brier_multiclass')):.3f}",
+        )
+        st.caption(
+            f"sample={v220_summary.get('sample_state','—')} • "
+            f"pending={v220_summary.get('pending',0)} • "
+            f"no-touch={v220_summary.get('no_touch',0)}. "
+            "Hanya forecast V217 PRE_TOUCH yang masuk sampel; HOLD/BREAK/NEUTRAL dinilai "
+            "secara prospective untuk menghindari hindsight leakage. V220 tetap shadow-only."
+        )
+        with st.expander("Detail V220 Prospective Calibration", expanded=False):
+            st.json(v220_summary)
 
     st.markdown("#### Peta Supply/Demand Terdekat — AFIC-style")
     st.caption(
