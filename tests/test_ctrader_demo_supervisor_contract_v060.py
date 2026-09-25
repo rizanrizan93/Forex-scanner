@@ -16,6 +16,7 @@ def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_hando
     assert "sleep 60" in text
     assert "fast_cadence_seconds=60" in text
     assert "maintenance_cadence_seconds=300" in text
+    assert "calibration_cadence_seconds=300" in text
     assert "discovery_check_seconds=60" in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
@@ -67,6 +68,7 @@ def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_hando
 def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
     fast = _read(".github/workflows/ctrader-demo-auto-pipeline.yml")
     discovery = _read(".github/workflows/ctrader-demo-discovery-pipeline.yml")
+    calibration = _read(".github/workflows/ctrader-demo-calibration-pipeline.yml")
 
     assert "cancel-in-progress: false" in fast
     assert "python -m fx_scanner.demo_execution_fast_candidate_producer" not in fast
@@ -87,13 +89,23 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
     assert "cancel-in-progress: false" in discovery
     assert "python -m fx_scanner.demo_xau_technical_producer" in discovery
     assert "python -m fx_scanner.demo_execution_technical_producer" not in discovery
-    assert "python -m fx_scanner.demo_closed_trade_reconciler" in discovery
-    assert "python -m fx_scanner.demo_trajectory_finalizer" in discovery
-    assert "python -m fx_scanner.demo_normalized_calibration_runner incremental" in discovery
-    assert "python -m fx_scanner.demo_normalized_calibration_runner adaptive-v2" in discovery
+    assert "python -m fx_scanner.demo_closed_trade_reconciler" not in discovery
+    assert "python -m fx_scanner.demo_trajectory_finalizer" not in discovery
+    assert "python -m fx_scanner.demo_normalized_calibration_runner incremental" not in discovery
+    assert "python -m fx_scanner.demo_normalized_calibration_runner adaptive-v2" not in discovery
     assert "demo_execution_fresh_ready_handoff" not in discovery
     assert "demo_calibration_autotrade" not in discovery
     assert "ctrader-demo-order-smoke" not in discovery
+
+    assert "cancel-in-progress: false" in calibration
+    assert "python -m fx_scanner.demo_xau_strategy_latency_telemetry" in calibration
+    assert "python -m fx_scanner.demo_closed_trade_reconciler" in calibration
+    assert "python -m fx_scanner.demo_trajectory_finalizer" in calibration
+    assert "python -m fx_scanner.demo_normalized_calibration_runner incremental" in calibration
+    assert "python -m fx_scanner.demo_normalized_calibration_runner adaptive-v2" in calibration
+    assert "python -m fx_scanner.demo_normalized_calibration_runner comparison" in calibration
+    assert "python -m fx_scanner.demo_normalized_calibration_runner loss-attribution" in calibration
+    assert "demo_execution_fresh_ready_handoff" not in calibration
 
 
 def test_supervisor_owns_v171_shadow_cadence_without_execution_authority() -> None:
