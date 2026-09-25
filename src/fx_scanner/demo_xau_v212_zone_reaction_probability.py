@@ -302,6 +302,21 @@ def run() -> int:
         prospective_summary = dict(dict(prospective_hb.get("details") or {}).get("summary") or {})
 
         zones = [dict(row) for row in list(atlas_eval.get("zones") or [])]
+        projection = dict(atlas_eval.get("m5_path_projection") or {})
+        current_source = dict(dict(projection.get("current_leg") or {}).get("source_zone") or {})
+        next_source = dict(dict(projection.get("next_leg") or {}).get("source_zone") or {})
+
+        # The atlas display list is intentionally capped for the phone dashboard.
+        # Always include the active/current and premapped next source even if either
+        # one falls outside that display slice, so V213 never loses its probability
+        # context because of a presentation limit.
+        seen_zone_ids = {str(row.get("zone_id") or "") for row in zones}
+        for source in (current_source, next_source):
+            source_id = str(source.get("zone_id") or "")
+            if source_id and source_id not in seen_zone_ids:
+                zones.append(source)
+                seen_zone_ids.add(source_id)
+
         results = evaluate_zone_probabilities(zones, research_eval)
 
         by_zone = {
@@ -309,9 +324,6 @@ def run() -> int:
             for row in results
             if row.get("zone_id")
         }
-        projection = dict(atlas_eval.get("m5_path_projection") or {})
-        current_source = dict(dict(projection.get("current_leg") or {}).get("source_zone") or {})
-        next_source = dict(dict(projection.get("next_leg") or {}).get("source_zone") or {})
         active_zone_probability = by_zone.get(str(current_source.get("zone_id") or ""), {})
         next_zone_probability = by_zone.get(str(next_source.get("zone_id") or ""), {})
     except Exception as exc:
