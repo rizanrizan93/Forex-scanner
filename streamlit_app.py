@@ -60,30 +60,57 @@ def _supabase_client(url: str, secret_key: str):
 
 
 @st.cache_data(ttl=15, show_spinner=False)
-def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
+def _load_backend_fast_snapshot(url: str, secret_key: str) -> dict[str, Any]:
+    """Fast dashboard state needed for manual execution awareness.
+
+    V209 keeps the user-facing 15-second refresh contract for broker state,
+    execution control, current signals, and recent XAU execution events.
+    """
     client = _supabase_client(url, secret_key)
     reader = SupabaseDashboardReader(client)
-    snapshot = reader.snapshot()
     store = SupabaseOperationalStore(url, secret_key, client=client)
-    control = store.get_execution_control()
+    broker_account = reader.latest_broker_account()
 
     return {
-        "latest_run": snapshot.latest_run,
-        "rankings": list(snapshot.rankings),
-        "signals": list(snapshot.signals),
-        "xau_signals": list(snapshot.xau_signals),
-        "heartbeats": list(snapshot.heartbeats),
-        "macro": list(snapshot.macro),
-        "performance": list(snapshot.performance),
-        "control": asdict(control),
-        "broker_account": snapshot.broker_account,
-        "broker_positions": list(snapshot.broker_positions),
-        "afic_forecast_states": list(snapshot.afic_forecast_states),
-        "afic_prepared_plans": list(snapshot.afic_prepared_plans),
-        "afic_execution_geometry": list(snapshot.afic_execution_geometry),
-        "xau_execution_events": list(snapshot.xau_execution_events),
-        "xau_prepared_plan_lifecycle": list(snapshot.xau_prepared_plan_lifecycle),
+        "signals": list(reader.latest_signals()),
+        "xau_signals": list(reader.latest_signals_for_symbol("XAUUSD")),
+        "control": asdict(store.get_execution_control()),
+        "broker_account": broker_account,
+        "broker_positions": list(reader.broker_positions_for_account(broker_account)),
+        "xau_execution_events": list(reader.latest_xau_execution_events()),
     }
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _load_backend_slow_snapshot(url: str, secret_key: str) -> dict[str, Any]:
+    """Slower observability/research state.
+
+    These producers run at roughly one-to-five minute cadence and do not need
+    to reread wide heartbeat/event JSON on every 15-second Streamlit rerun.
+    """
+    client = _supabase_client(url, secret_key)
+    reader = SupabaseDashboardReader(client)
+    run = reader.latest_run()
+
+    return {
+        "latest_run": run,
+        "rankings": list(reader.rankings_for_run(None if run is None else run.get("id"))),
+        "heartbeats": list(reader.heartbeats()),
+        "macro": list(reader.latest_macro()),
+        "performance": list(reader.latest_performance()),
+        "afic_forecast_states": list(reader.latest_afic_forecast_states()),
+        "afic_prepared_plans": list(reader.latest_afic_prepared_plans()),
+        "afic_execution_geometry": list(reader.latest_afic_execution_geometry()),
+        "xau_prepared_plan_lifecycle": list(reader.latest_xau_prepared_plan_lifecycle()),
+    }
+
+
+def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
+    # V209 tiered cache: preserve 15-second trading visibility while reducing
+    # wide observability reads (especially runtime_heartbeats/details) by ~4x.
+    merged = dict(_load_backend_slow_snapshot(url, secret_key))
+    merged.update(_load_backend_fast_snapshot(url, secret_key))
+    return merged
 
 
 @st.cache_data(ttl=60, show_spinner=False)
