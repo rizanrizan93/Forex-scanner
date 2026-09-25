@@ -541,6 +541,12 @@ with forecast_tab:
     v203_shock_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v203_volatility_shock_guard"
     )
+    v212_probability_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v212_zone_reaction_probability"
+    )
+    v213_path_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v213_post_zone_path"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -1092,6 +1098,43 @@ with forecast_tab:
             )
         elif not dc_next_pocket_shown:
             st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
+
+    v212_details = (
+        {} if v212_probability_hb is None else dict(v212_probability_hb.get("details") or {})
+    )
+    v213_details = (
+        {} if v213_path_hb is None else dict(v213_path_hb.get("details") or {})
+    )
+    v213_eval = dict(v213_details.get("evaluation") or {})
+    v213_current = dict(v213_eval.get("current_leg") or {})
+    v213_hist = dict(v213_current.get("historical_estimate") or {})
+    if v213_current:
+        st.markdown("##### V212/V213 — Probabilitas Reaksi & Jalur Setelah Zone")
+        rp1, rp2, rp3, rp4 = st.columns(4)
+        rp1.metric(
+            "P touch",
+            "—" if v213_hist.get("p_touch") is None else _fmt_pct(v213_hist.get("p_touch")),
+        )
+        rp2.metric(
+            "P reaksi ≥0.50 ATR",
+            "—" if v213_hist.get("p_hold_050") is None else _fmt_pct(v213_hist.get("p_hold_050")),
+        )
+        rp3.metric(
+            "P break zone",
+            "—" if v213_hist.get("p_break") is None else _fmt_pct(v213_hist.get("p_break")),
+        )
+        rp4.metric(
+            "P lanjut 1.00 ATR | sudah 0.50",
+            "—"
+            if v213_hist.get("p_100_given_050") is None
+            else _fmt_pct(v213_hist.get("p_100_given_050")),
+        )
+        st.caption(
+            f"Stage={v213_current.get('stage','—')} • "
+            f"confidence={v213_hist.get('confidence','—')} • "
+            f"median outcome={_fmt_distance(v213_hist.get('median_minutes_to_outcome'), ' menit')}. "
+            "Angka V212/V213 adalah estimasi historis/shadow untuk sharpening, bukan izin eksekusi."
+        )
 
     if dc_current_reuse or dc_next_reuse:
         current_reuse_state = str(dc_current_reuse.get("state") or "—")
