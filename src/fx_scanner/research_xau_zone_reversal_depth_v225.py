@@ -23,8 +23,8 @@ from .demo_xau_supply_demand_atlas_v182 import (
 from .models import Bar, ensure_utc
 from .research_xau_zone_path_v174 import wilson_lower_bound
 
-RESEARCH_VERSION = "XAU_ZONE_REVERSAL_DEPTH_V225_1"
-ARTIFACT_CONTRACT = "XAU_ZONE_REVERSAL_DEPTH_V225_1_EVIDENCE_1"
+RESEARCH_VERSION = "XAU_ZONE_REVERSAL_DEPTH_V225_2"
+ARTIFACT_CONTRACT = "XAU_ZONE_REVERSAL_DEPTH_V225_2_EVIDENCE_1"
 POLICY_EFFECT = "SHADOW_ONLY"
 EXECUTION_INFLUENCE = False
 PROMOTION_ELIGIBLE = False
@@ -228,7 +228,12 @@ def _detect_m15_zones(frame: pd.DataFrame) -> tuple[SDZone, ...]:
             pre_base_close=pre_close,
             base_mid=base_mid,
         )
-        available_at = ensure_utc(pd.Timestamp(row["time"]).to_pydatetime())
+        # M15 input is left-labelled at candle open. The base/departure
+        # pattern is only knowable after the departure candle closes, so the
+        # zone cannot become available at row["time"] without 15-minute
+        # look-ahead.
+        departure_open_at = ensure_utc(pd.Timestamp(row["time"]).to_pydatetime())
+        available_at = departure_open_at + timedelta(minutes=15)
         origin_at = ensure_utc(pd.Timestamp(base.iloc[0]["time"]).to_pydatetime())
         zone_id = _stable_sd_zone_id(
             timeframe="M15",
