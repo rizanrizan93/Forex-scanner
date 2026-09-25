@@ -266,7 +266,7 @@ def select_clusters(
     primary_pool = [
         row
         for row in payloads
-        if row["role"] in {"ACTIVE_WATCH_CLUSTER", "PROVEN_RETEST_CLUSTER"}
+        if row["role"] == "ACTIVE_WATCH_CLUSTER"
         and (row.get("age_minutes") is None or float(row["age_minutes"]) <= MAX_ACTIVE_AGE_MINUTES)
         and (row.get("distance_atr") is None or float(row["distance_atr"]) <= PRIMARY_DISTANCE_ATR)
     ]
@@ -274,7 +274,6 @@ def select_clusters(
         key=lambda row: (
             -float(row.get("selector_score_research") or 0.0),
             float(row.get("distance_atr") or 0.0),
-            -(float(row.get("latest_mapped_at") is not None)),
         )
     )
     primary = dict(primary_pool[0]) if primary_pool else {}
@@ -287,6 +286,9 @@ def select_clusters(
 
     retest_only = [
         dict(row) for row in payloads if row["role"] == "RETEST_ONLY_CLUSTER"
+    ]
+    proven_retest = [
+        dict(row) for row in payloads if row["role"] == "PROVEN_RETEST_CLUSTER"
     ]
     historical = [
         dict(row) for row in payloads if row["role"] == "HISTORICAL_CLUSTER"
@@ -301,6 +303,7 @@ def select_clusters(
         "primary_cluster": primary,
         "alternative_cluster": alternative,
         "retest_only_clusters": retest_only,
+        "proven_retest_clusters": proven_retest,
         "historical_clusters": historical,
         "clusters": payloads,
         "selection_policy": {
