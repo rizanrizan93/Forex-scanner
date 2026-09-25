@@ -359,7 +359,7 @@ def _applicability(zone: dict[str, Any], price: float) -> dict[str, Any]:
 
     if touches == 0 and freshness == "FRESH":
         state = "HIGH_FIRST_TOUCH_PRIOR"
-        note = "Belum tersentuh; paling dekat dengan populasi first-touch V225.1."
+        note = "Belum tersentuh; paling dekat dengan populasi first-touch V225.2."
     elif touches <= 1 and inside:
         state = "MEDIUM_FIRST_TOUCH_IN_PROGRESS"
         note = "First touch sedang/baru berlangsung; prior historis masih kontekstual."
@@ -368,7 +368,7 @@ def _applicability(zone: dict[str, Any], price: float) -> dict[str, Any]:
         note = "First touch sudah terjadi; jangan menganggap band sebagai forecast touch baru."
     else:
         state = "LOW_REUSE_OUT_OF_SAMPLE"
-        note = "Multi-tested/reused; V225.1 tidak mengkalibrasi reuse sebagai first touch baru."
+        note = "Multi-tested/reused; V225.2 tidak mengkalibrasi reuse sebagai first touch baru."
 
     return {
         "state": state,
@@ -936,7 +936,7 @@ def build_depth_map(
             "coordinate": "FULL_ZONE_NEAR_EDGE_TO_FAR_EDGE",
         },
         "interpretation": (
-            "V226 localizes current active H4 supply/demand using V225.1 first-touch "
+            "V226 localizes current active H4 supply/demand using V225.2 first-touch "
             "depth priors, then narrows with an overlapping H1 child and a pre-existing "
             "same-direction M15 child when available. H4/H1 standalone hotspots and "
             "nested child locators are deliberately separated. No MSS/reclaim is required "
