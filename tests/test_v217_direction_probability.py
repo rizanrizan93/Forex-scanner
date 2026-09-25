@@ -79,7 +79,7 @@ def test_v217_strategic_distribution_is_support_not_calibrated_probability() -> 
     )
     assert result["p_long"] == 0.0
     assert result["p_short"] == 0.32
-    assert result["p_neutral"] == 0.68
+    assert abs(result["p_neutral"] - 0.68) < 1e-12
     assert result["distribution_type"] == "NORMALIZED_DIRECTIONAL_SUPPORT_NOT_CALIBRATED"
     assert result["not_fully_calibrated_probability_claim"] is True
 
