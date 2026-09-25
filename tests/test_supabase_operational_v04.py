@@ -193,6 +193,29 @@ def test_reference_symbol_bootstrap_upserts_xauusd():
     }
 
 
+def test_reference_symbol_bootstrap_skips_identical_rows():
+    client = FakeClient()
+    cfg = load_project_config()
+    client.rows["fx_symbols"] = [
+        {
+            "symbol": pair.symbol,
+            "base_currency": pair.base,
+            "quote_currency": pair.quote,
+            "pip_size": pair.pip_size,
+            "tier": pair.tier,
+            "active": True,
+        }
+        for pair in cfg.pairs
+    ]
+    store = SupabaseOperationalStore(
+        "https://example.supabase.co", "secret", client=client
+    )
+
+    store.ensure_reference_symbols(cfg.pairs)
+
+    assert client.writes == []
+
+
 def test_execution_ready_storage_floor_defaults_to_90():
     client = FakeClient()
     store = SupabaseOperationalStore(
