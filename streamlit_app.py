@@ -35,10 +35,28 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 
 st.set_page_config(
-    page_title="FX Institutional Scanner",
+    page_title="RIZAN XAU Scanner",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
+)
+
+st.markdown(
+    """
+    <style>
+    .block-container {padding-top: 1.0rem; padding-bottom: 2rem; max-width: 1500px;}
+    div[data-testid="stMetric"] {
+        border: 1px solid rgba(128,128,128,.22);
+        border-radius: 12px;
+        padding: .55rem .7rem;
+    }
+    div[data-testid="stMetricLabel"] {font-size: .82rem;}
+    .rizan-kicker {font-size:.82rem; opacity:.68; margin-bottom:.2rem;}
+    .rizan-title {font-size:1.55rem; font-weight:700; margin-bottom:.15rem;}
+    .rizan-note {font-size:.86rem; opacity:.78;}
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 
@@ -252,6 +270,288 @@ def _convert_frame_times_to_wib(
     return out
 
 
+def _rizan_chart_frame(
+    raw_bars: list[dict[str, Any]] | tuple[dict[str, Any], ...],
+    timeframe: str,
+) -> pd.DataFrame:
+    if not raw_bars:
+        return pd.DataFrame(columns=["open", "high", "low", "close"])
+    frame = pd.DataFrame(list(raw_bars))
+    required = {"time", "open", "high", "low", "close"}
+    if frame.empty or not required.issubset(frame.columns):
+        return pd.DataFrame(columns=["open", "high", "low", "close"])
+    frame["time"] = pd.to_datetime(frame["time"], utc=True, errors="coerce")
+    for col in ("open", "high", "low", "close"):
+        frame[col] = pd.to_numeric(frame[col], errors="coerce")
+    frame = frame.dropna(subset=["time", "open", "high", "low", "close"]).sort_values("time")
+    if frame.empty:
+        return pd.DataFrame(columns=["open", "high", "low", "close"])
+    frame = frame.set_index("time")[["open", "high", "low", "close"]]
+    tf = str(timeframe or "M15").upper()
+    if tf == "M15":
+        return frame.tail(120)
+    rule, duration, limit = {
+        "H1": ("1h", pd.Timedelta(hours=1), 96),
+        "H4": ("4h", pd.Timedelta(hours=4), 60),
+    }.get(tf, ("1h", pd.Timedelta(hours=1), 96))
+    source_end = frame.index.max() + pd.Timedelta(minutes=15)
+    out = frame.resample(rule, label="left", closed="left").agg(
+        {"open": "first", "high": "max", "low": "min", "close": "last"}
+    ).dropna()
+    out = out[(out.index + duration) <= source_end]
+    return out.tail(limit)
+
+
+def _rizan_chart_png(
+    raw_bars: list[dict[str, Any]] | tuple[dict[str, Any], ...],
+    *,
+    timeframe: str,
+    zones: list[dict[str, Any]],
+    price_now: float,
+    probability_by_zone: dict[str, dict[str, Any]],
+    path_roles: dict[str, str],
+    current_direction: str,
+    current_target: Any,
+    terminal_zone: dict[str, Any] | None,
+    next_target: Any,
+) -> tuple[bytes | None, str | None]:
+    frame = _rizan_chart_frame(raw_bars, timeframe)
+    if frame.empty or len(frame) < 4:
+        return None, "OHLC snapshot belum cukup untuk membentuk candlestick."
+
+    try:
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import FancyArrowPatch, Rectangle
+        from io import BytesIO
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}"
+
+    fig, ax = plt.subplots(figsize=(13.0, 6.8))
+    fig.patch.set_facecolor("#0e1117")
+    ax.set_facecolor("#0e1117")
+
+    visible = frame.copy()
+    x_values = list(range(len(visible)))
+    candle_width = 0.62
+    up_color = "#22c55e"
+    down_color = "#ef4444"
+    wick_color = "#cbd5e1"
+
+    for x, (_, row) in zip(x_values, visible.iterrows()):
+        o = float(row["open"])
+        h = float(row["high"])
+        l = float(row["low"])
+        close = float(row["close"])
+        color = up_color if close >= o else down_color
+        ax.vlines(x, l, h, color=wick_color, linewidth=0.72, alpha=0.92, zorder=3)
+        body_low = min(o, close)
+        body_height = max(abs(close - o), max((h - l) * 0.012, 0.04))
+        ax.add_patch(
+            Rectangle(
+                (x - candle_width / 2.0, body_low),
+                candle_width,
+                body_height,
+                facecolor=color,
+                edgecolor=color,
+                linewidth=0.7,
+                zorder=4,
+            )
+        )
+
+    right_edge = len(visible) + 11
+    nearest_long = next(
+        (z for z in zones if str(z.get("direction") or "").upper() == "LONG"),
+        None,
+    )
+    nearest_short = next(
+        (z for z in zones if str(z.get("direction") or "").upper() == "SHORT"),
+        None,
+    )
+    key_zone_ids = {
+        str(dict(nearest_long or {}).get("zone_id") or ""),
+        str(dict(nearest_short or {}).get("zone_id") or ""),
+        *[str(key) for key in path_roles.keys()],
+    }
+
+    def origin_x(zone: dict[str, Any]) -> int:
+        origin = pd.to_datetime(zone.get("origin_at"), utc=True, errors="coerce")
+        if pd.isna(origin):
+            return max(0, len(visible) - 30)
+        idx = int(visible.index.searchsorted(origin))
+        return max(0, min(len(visible) - 1, idx))
+
+    for zone in zones[:8]:
+        try:
+            low = float(zone["low"])
+            high = float(zone["high"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        side = str(zone.get("direction") or "").upper()
+        zone_id = str(zone.get("zone_id") or "")
+        is_demand = side == "LONG"
+        face = "#16a34a" if is_demand else "#dc2626"
+        edge = "#4ade80" if is_demand else "#f87171"
+        important = zone_id in key_zone_ids
+        alpha = 0.19 if important else 0.075
+        start_x = origin_x(zone)
+        width = right_edge - start_x - 1.0
+        ax.add_patch(
+            Rectangle(
+                (start_x, low),
+                width,
+                max(high - low, 1e-6),
+                facecolor=face,
+                edgecolor=edge,
+                alpha=alpha,
+                linewidth=1.45 if important else 0.75,
+                zorder=1,
+            )
+        )
+
+        prob = dict(probability_by_zone.get(zone_id) or {})
+        p_touch = dict(prob.get("destination") or {}).get("p_touch")
+        p_hold = dict(prob.get("reaction") or {}).get("p_hold_050")
+        lifecycle = dict(zone.get("lifecycle") or {})
+        freshness = str(lifecycle.get("freshness") or "")
+        role = path_roles.get(zone_id, "")
+        label = (
+            f"{zone.get('timeframe','')} {'DEMAND' if is_demand else 'SUPPLY'}  "
+            f"{low:.2f}–{high:.2f}"
+        )
+        detail = freshness
+        if p_touch is not None:
+            detail += f" • touch {_fmt_pct(p_touch)}"
+        if p_hold is not None:
+            detail += f" • hold50 {_fmt_pct(p_hold)}"
+        if role:
+            detail += f" • {role}"
+        ax.text(
+            right_edge - 0.6,
+            (low + high) / 2.0,
+            label + ("\n" + detail if detail else ""),
+            ha="right",
+            va="center",
+            fontsize=8.2,
+            color="#f8fafc",
+            bbox=dict(
+                boxstyle="round,pad=0.35",
+                facecolor="#111827",
+                edgecolor=edge,
+                alpha=0.93,
+            ),
+            zorder=6,
+        )
+
+    ax.axhline(float(price_now), color="#f8fafc", linewidth=1.0, linestyle="--", alpha=0.72)
+    ax.text(
+        right_edge - 0.6,
+        float(price_now),
+        f"NOW  {float(price_now):.2f}",
+        ha="right",
+        va="bottom",
+        fontsize=9,
+        color="#f8fafc",
+        bbox=dict(boxstyle="round,pad=0.25", facecolor="#1f2937", edgecolor="#94a3b8"),
+        zorder=8,
+    )
+
+    path_points: list[tuple[float, float, str]] = [
+        (max(0.0, len(visible) - 5.0), float(price_now), "NOW")
+    ]
+    try:
+        if current_target is not None:
+            path_points.append((len(visible) + 1.5, float(current_target), "REACTION"))
+    except (TypeError, ValueError):
+        pass
+    if terminal_zone:
+        try:
+            terminal_mid = (
+                float(terminal_zone.get("low")) + float(terminal_zone.get("high"))
+            ) / 2.0
+            path_points.append((len(visible) + 5.0, terminal_mid, "OPPOSING ZONE"))
+        except (TypeError, ValueError):
+            pass
+    try:
+        if next_target is not None and len(path_points) >= 2:
+            path_points.append((len(visible) + 8.5, float(next_target), "NEXT LEG"))
+    except (TypeError, ValueError):
+        pass
+
+    for idx, ((x1, y1, _), (x2, y2, label2)) in enumerate(zip(path_points, path_points[1:])):
+        line_color = "#38bdf8" if idx == 0 else "#f59e0b"
+        arrow = FancyArrowPatch(
+            (x1, y1),
+            (x2, y2),
+            arrowstyle="-|>",
+            mutation_scale=16,
+            linewidth=1.8,
+            color=line_color,
+            linestyle="-" if idx == 0 else "--",
+            connectionstyle="arc3,rad=0.08",
+            zorder=7,
+        )
+        ax.add_patch(arrow)
+        ax.text(
+            x2,
+            y2,
+            label2,
+            fontsize=8,
+            color=line_color,
+            va="bottom",
+            ha="center",
+            zorder=8,
+        )
+
+    y_values = [float(visible["low"].min()), float(visible["high"].max()), float(price_now)]
+    for zone in zones[:8]:
+        try:
+            y_values.extend([float(zone["low"]), float(zone["high"])])
+        except (KeyError, TypeError, ValueError):
+            pass
+    pad = max(2.0, (max(y_values) - min(y_values)) * 0.08)
+    ax.set_ylim(min(y_values) - pad, max(y_values) + pad)
+    ax.set_xlim(-1.0, right_edge)
+
+    tick_count = min(7, len(visible))
+    if tick_count > 1:
+        step = max(1, len(visible) // (tick_count - 1))
+        positions = list(range(0, len(visible), step))
+        if positions[-1] != len(visible) - 1:
+            positions.append(len(visible) - 1)
+        labels = [
+            visible.index[pos].tz_convert(WIB).strftime("%d/%m\n%H:%M")
+            for pos in positions
+        ]
+        ax.set_xticks(positions)
+        ax.set_xticklabels(labels, color="#94a3b8", fontsize=8)
+    ax.tick_params(axis="y", colors="#94a3b8", labelsize=8)
+    ax.grid(axis="y", color="#334155", alpha=0.28, linewidth=0.7)
+    for spine in ax.spines.values():
+        spine.set_color("#334155")
+
+    ax.set_title(
+        f"XAUUSD • RIZAN-style Supply/Demand • {str(timeframe).upper()} • "
+        f"leg aktif {str(current_direction or '—').upper()}",
+        color="#f8fafc",
+        fontsize=12,
+        loc="left",
+        pad=12,
+    )
+    ax.set_ylabel("Harga XAUUSD", color="#cbd5e1")
+    fig.tight_layout()
+
+    output = BytesIO()
+    fig.savefig(
+        output,
+        format="png",
+        dpi=190,
+        bbox_inches="tight",
+        facecolor=fig.get_facecolor(),
+    )
+    plt.close(fig)
+    return output.getvalue(), None
+
+
 def _afic_path_text(direction: str, state: str) -> str:
     side = str(direction or "").upper()
     current = str(state or "").upper()
@@ -300,7 +600,7 @@ def _afic_next_action(
     event_u = str(latest_execution_event or "").upper()
 
     if event_u == "POSITION_PROTECTION_FAILED":
-        return "PROTECTION ALERT", "Order side-effect exists; new AFIC orders must remain blocked until SL/TP is reconciled."
+        return "PROTECTION ALERT", "Order side-effect exists; new RIZAN-style orders must remain blocked until SL/TP is reconciled."
     if event_u == "POSITION_PROTECTION_VERIFIED":
         return "POSITION MANAGED", "Broker position exists and server-side protection has been verified."
     if event_u == "ORDER_ACCEPTED":
@@ -319,7 +619,7 @@ def _afic_next_action(
         return "PREPARED / 60S WATCH", "Price is near the zone; scanner is armed and checks every minute."
     if proximity_u == "FAR":
         return "TRACK TO ZONE", "Forecast is mapped; scanner is waiting for price to approach the reaction zone."
-    return "WAIT FORECAST", "No execution-ready AFIC path is active yet."
+    return "WAIT FORECAST", "No execution-ready RIZAN-style path is active yet."
 
 
 cfg, config_error = _safe_config()
@@ -345,8 +645,8 @@ if backend_configured:
         backend_error = f"{type(exc).__name__}: {exc}"
 
 with st.sidebar:
-    st.title("FX Scanner")
-    st.caption(f"Engine v{__version__}")
+    st.title("RIZAN XAU Scanner")
+    st.caption(f"RIZAN-style decision dashboard • Engine v{__version__}")
 
     if st.button("Refresh dashboard", width="stretch"):
         _clear_backend_snapshot_cache(include_slow=True)
@@ -397,7 +697,7 @@ def _dashboard_auto_refresh_tick() -> None:
 _dashboard_auto_refresh_tick()
 
 
-st.title("FX Institutional Scanner")
+st.title("RIZAN XAU Institutional Scanner")
 st.caption(
     "Fast research dashboard • Top-8 macro shortlist • Top-5 MTF deep scan • "
     "Streamlit is not in the quote/order hot path."
@@ -943,70 +1243,13 @@ with forecast_tab:
     )
     v203_reasons = ", ".join(v203_latest.get("shock_reasons") or []) or "—"
 
-    st.markdown("## Pusat Keputusan XAUUSD (Decision Center)")
-    if dc_position_mode:
-        st.success(
-            f"**MODE: POSITION FILLED / MANAGE TRADE** • "
-            f"{len(dc_active_demo_positions)} posisi XAUUSD DEMO aktif. "
-            "Prioritas dashboard sekarang: proteksi SL → BE/partial review → target reaksi → "
-            "opposing zone/target berikutnya. Entry discovery tetap terlihat sebagai context sekunder."
-        )
-    else:
-        st.caption(
-            "Baca dari atas ke bawah. Urutannya tetap: D1/H4 konteks → H1 zona → "
-            "M5 pocket → M15 konfirmasi → DOM/Event → Execution. "
-            "Bagian diagnostik lengkap dipindahkan ke expander di bawah agar tampilan HP lebih ringkas."
-        )
-
-    dc1, dc2, dc3 = st.columns(3)
-    dc1.metric("Harga referensi", _fmt_price(dc_reference_price))
-    dc2.metric("Arah taktis", dc_tactical_first_leg)
-    dc3.metric(
-        "Mode",
-        "MANAGE POSITION" if dc_position_mode else "ENTRY DISCOVERY",
+    st.markdown(
+        '<div class="rizan-kicker">RIZAN-style • XAUUSD structured decision map</div>'
+        '<div class="rizan-title">Pusat Keputusan XAUUSD</div>'
+        '<div class="rizan-note">Baca: bias utama → jalur harga → zona → timing → eksekusi.</div>',
+        unsafe_allow_html=True,
     )
 
-    if v203_shock_hb is None:
-        st.info(
-            "V203 Volatility Shock Guard: belum ada heartbeat. "
-            "Layer ini SHADOW/RISET dan tidak memiliki execution authority."
-        )
-    elif not v203_fresh:
-        st.warning(
-            "V203 Volatility Shock Guard: heartbeat stale. Perlakukan shock-state sebagai "
-            "tidak terverifikasi sampai snapshot baru muncul. Tidak ada perubahan ke execution router."
-        )
-    else:
-        v203_message = (
-            f"**V203 SHADOW: {v203_state}** • action={v203_action} • "
-            f"range={v203_range_text} • spread={v203_spread_text} • "
-            f"tick={v203_tick_text} • reason={v203_reasons}. "
-            "Ini advisory research-only; effective execution block tetap OFF."
-        )
-        if v203_state == "SHOCK":
-            st.error(v203_message)
-        elif v203_state in {"STABILIZING", "ELEVATED", "INSUFFICIENT_DATA"}:
-            st.warning(v203_message)
-        else:
-            st.success(v203_message)
-
-        with st.expander("Detail V203 Volatility Shock Guard", expanded=False):
-            st.json(
-                {
-                    "observed_at": v203_shock_hb.get("observed_at"),
-                    "state": v203_state,
-                    "shadow_action": v203_action,
-                    "latest_completed_m5": v203_latest,
-                    "stable_completed_m5_run": v203_details.get("stable_completed_m5_run"),
-                    "stabilization_bars_required": v203_details.get("stabilization_bars_required"),
-                    "last_recent_shock": v203_details.get("last_recent_shock"),
-                    "data_quality": v203_details.get("data_quality"),
-                    "execution_influence": v203_details.get("execution_influence"),
-                    "execution_authority": v203_details.get("execution_authority"),
-                }
-            )
-
-    st.markdown("#### 1. D1 / H4 — Arah & Parent Zone")
     dc_h4_text = (
         f"{_fmt_price(dc_h4_parent.get('low'))}–{_fmt_price(dc_h4_parent.get('high'))}"
         if dc_h4_parent else "—"
@@ -1014,14 +1257,6 @@ with forecast_tab:
     dc_d1_text = (
         f"{_fmt_price(dc_d1_parent.get('low'))}–{_fmt_price(dc_d1_parent.get('high'))}"
         if dc_d1_parent else "—"
-    )
-    st.info(
-        f"Bias strategis: **{dc_strategic_bias}** • "
-        f"first-leg taktis: **{dc_tactical_first_leg}** • "
-        f"H4 parent zone: **{dc_h4_text}** • "
-        f"D1 parent: {dc_d1_text} • "
-        f"H4 map: {_fmt_wib_datetime(current_map, seconds=False)}. "
-        "H4/D1 menentukan parent context; entry dipersempit di H1 lalu M5."
     )
 
     v217_details = (
@@ -1032,100 +1267,65 @@ with forecast_tab:
     v217_tactical = dict(v217_eval.get("tactical_first_leg") or {})
     v217_next = dict(v217_eval.get("opposing_next_leg") or {})
     v217_relationship = dict(v217_eval.get("relationship") or {})
-    if v217_eval:
-        st.markdown("##### V217 — Probabilitas Arah Multi-Horizon")
-        dp1, dp2, dp3, dp4 = st.columns(4)
-        dp1.metric(
-            "Tactical first leg",
-            str(v217_tactical.get("direction") or "—"),
-        )
-        dp2.metric(
-            "P LONG (tactical)",
-            _fmt_pct(v217_tactical.get("p_long")),
-        )
-        dp3.metric(
-            "P SHORT (tactical)",
-            _fmt_pct(v217_tactical.get("p_short")),
-        )
-        dp4.metric(
-            "P NEUTRAL (tactical)",
-            _fmt_pct(v217_tactical.get("p_neutral")),
-        )
-        v217_htf_context = dict(v217_strategic.get("htf_context") or {})
-        st.caption(
-            "Strategic HTF support • "
-            f"LONG={_fmt_pct(v217_strategic.get('p_long'))} • "
-            f"SHORT={_fmt_pct(v217_strategic.get('p_short'))} • "
-            f"NEUTRAL={_fmt_pct(v217_strategic.get('p_neutral'))} • "
-            f"path={v217_relationship.get('sequential_path') or '—'} • "
-            f"relationship={v217_relationship.get('state') or '—'} • "
-            f"HTF source={v217_htf_context.get('source') or '—'} • "
-            f"fresh={v217_htf_context.get('fresh')} • "
-            f"parity={v217_htf_context.get('parity_state') or '—'}. "
-            "Strategic adalah normalized support, bukan calibrated probability. "
-            "Tactical memakai outcome HOLD/BREAK V212/V213. V217 tetap shadow-only."
-        )
-        with st.expander("Detail V217 Direction Probability", expanded=False):
-            st.json(
-                {
-                    "strategic_htf": v217_strategic,
-                    "htf_context": dict(v217_strategic.get("htf_context") or {}),
-                    "tactical_first_leg": v217_tactical,
-                    "opposing_next_leg": v217_next,
-                    "relationship": v217_relationship,
-                    "prospective_context": v217_eval.get("prospective_context"),
-                    "execution_influence": v217_eval.get("execution_influence"),
-                    "execution_authority": v217_eval.get("execution_authority"),
-                    "promotion_authority": v217_eval.get("promotion_authority"),
-                }
-            )
+    v217_htf_context = dict(v217_strategic.get("htf_context") or {})
 
     v220_details = (
         {} if v220_calibration_hb is None else dict(v220_calibration_hb.get("details") or {})
     )
     v220_summary = dict(v220_details.get("summary") or {})
-    if v220_summary:
-        st.markdown("##### V220 — Prospective Direction Calibration")
-        pc1, pc2, pc3, pc4 = st.columns(4)
-        pc1.metric("Forecast pre-touch", int(v220_summary.get("forecasts") or 0))
-        pc2.metric("Resolved", int(v220_summary.get("resolved_directional") or 0))
-        pc3.metric(
-            "Dominant accuracy",
-            _fmt_pct(v220_summary.get("dominant_accuracy")),
-        )
-        pc4.metric(
-            "Mean Brier",
-            "—"
-            if v220_summary.get("mean_brier_multiclass") is None
-            else f"{float(v220_summary.get('mean_brier_multiclass')):.3f}",
-        )
-        st.caption(
-            f"sample={v220_summary.get('sample_state','—')} • "
-            f"pending={v220_summary.get('pending',0)} • "
-            f"no-touch={v220_summary.get('no_touch',0)}. "
-            "Hanya forecast V217 PRE_TOUCH yang masuk sampel; HOLD/BREAK/NEUTRAL dinilai "
-            "secara prospective untuk menghindari hindsight leakage. V220 tetap shadow-only."
-        )
-        with st.expander("Detail V220 Prospective Calibration", expanded=False):
-            st.json(v220_summary)
 
-    st.markdown("#### Peta Supply/Demand Terdekat — AFIC-style")
+    with st.container(border=True):
+        top1, top2, top3, top4 = st.columns(4)
+        top1.metric("Harga XAUUSD", _fmt_price(dc_reference_price))
+        top2.metric("Bias strategis", dc_strategic_bias)
+        top3.metric("Leg aktif", dc_tactical_first_leg)
+        top4.metric(
+            "Status",
+            "MANAGE POSITION" if dc_position_mode else dc_entry_status,
+        )
+
+        if dc_position_mode:
+            st.success(
+                f"**POSITION MODE** • {len(dc_active_demo_positions)} posisi XAUUSD DEMO aktif. "
+                "Prioritas: proteksi SL → BE/partial → target reaksi → opposing zone."
+            )
+        else:
+            next_leg_label = str(v217_next.get("direction") or dc_next_leg_direction or "—")
+            st.info(
+                f"**Rencana sekarang:** {dc_tactical_first_leg} sebagai leg aktif"
+                f" → reaction target {_fmt_price(dc_current_leg_target.get('price'))}"
+                f" → opposing zone "
+                f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
+                f"{_fmt_price(dc_current_leg_terminal.get('high'))}"
+                f" → pantau next-leg **{next_leg_label}**. "
+                "Status ini adalah decision map; izin order tetap mengikuti admission dan protection contract."
+            )
+
+        st.caption(
+            f"HTF: {dc_strategic_bias} • H4 parent {dc_h4_text} • D1 parent {dc_d1_text} • "
+            f"map {_fmt_wib_datetime(current_map, seconds=False)} • "
+            f"dashboard {_fmt_wib_datetime(datetime.now(tz=UTC), seconds=False)}."
+        )
+
+    st.markdown("#### 1. Peta Harga & Supply/Demand — RIZAN-style")
     st.caption(
-        "Peta jalur: harga sekarang → reaction target → opposing Supply/Demand → kemungkinan leg berikutnya. "
-        "Zona diprioritaskan oleh path aktif, jarak, dan estimasi touch V212; bukan sekadar enam zona terdekat."
+        "Candlestick berasal dari snapshot completed M15 cTrader yang disimpan V182. "
+        "Kotak hijau = demand, kotak merah = supply; zona utama diberi border lebih tegas. "
+        "Panah menunjukkan jalur preparation, bukan jaminan pergerakan harga."
     )
+
     chart_price = dc_sd_eval.get("last_closed_m15_price")
+    chart_raw_bars = list(dc_sd_eval.get("chart_bars_m15") or [])
     chart_zones = [
         dict(item)
         for item in list(dc_sd_eval.get("zones") or [])
         if bool(dict(item.get("lifecycle") or {}).get("active"))
     ]
 
-    # Always include path-defining zones even when the phone display slice omits them.
     chart_seen: set[str] = set()
     chart_pool: list[dict[str, Any]] = []
     for raw_zone in (
-        [dc_source, dc_current_leg_terminal, dc_next_leg_source]
+        [dc_source, dc_current_leg_terminal, dc_next_leg_source, dc_next_leg_terminal]
         + chart_zones
     ):
         zone = dict(raw_zone or {})
@@ -1148,20 +1348,21 @@ with forecast_tab:
         if dict(row).get("zone_id")
     }
     path_zone_ids = {
-        str(dc_current_leg_terminal.get("zone_id") or ""): "1ST OPPOSING ZONE",
-        str(dc_next_leg_source.get("zone_id") or ""): "NEXT-LEG SOURCE",
-        str(dc_source.get("zone_id") or ""): "CURRENT SOURCE",
+        str(dc_source.get("zone_id") or ""): "SOURCE",
+        str(dc_current_leg_terminal.get("zone_id") or ""): "TARGET 1",
+        str(dc_next_leg_source.get("zone_id") or ""): "NEXT SOURCE",
+        str(dc_next_leg_terminal.get("zone_id") or ""): "NEXT TARGET",
     }
     path_zone_ids.pop("", None)
 
     def _chart_zone_priority(zone: dict[str, Any]) -> tuple[float, float, float]:
         zone_id = str(zone.get("zone_id") or "")
-        role = path_zone_ids.get(zone_id)
         role_rank = {
-            "1ST OPPOSING ZONE": 0.0,
-            "NEXT-LEG SOURCE": 1.0,
-            "CURRENT SOURCE": 2.0,
-        }.get(role, 3.0)
+            "SOURCE": 0.0,
+            "TARGET 1": 0.5,
+            "NEXT SOURCE": 1.0,
+            "NEXT TARGET": 1.5,
+        }.get(path_zone_ids.get(zone_id), 2.5)
         probability = dict(v212_chart_by_zone.get(zone_id) or {})
         p_touch = dict(probability.get("destination") or {}).get("p_touch")
         p_hold = dict(probability.get("reaction") or {}).get("p_hold_050")
@@ -1177,140 +1378,173 @@ with forecast_tab:
             distance = abs(float(zone.get("distance_points") or 999999.0))
         except (TypeError, ValueError):
             distance = 999999.0
-        adjusted_distance = distance / max(0.20, touch_score)
-        return role_rank, adjusted_distance, -hold_score
+        return role_rank, distance / max(0.20, touch_score), -hold_score
 
-    if chart_pool and chart_price is not None:
-        try:
-            import matplotlib.pyplot as plt
-            from matplotlib.patches import FancyArrowPatch
-            from io import BytesIO
+    chart_pool.sort(key=_chart_zone_priority)
+    chart_pool = chart_pool[:8]
 
-            price_now = float(chart_price)
-            chart_pool.sort(key=_chart_zone_priority)
-            chart_pool = chart_pool[:6]
+    chart_control_1, chart_control_2 = st.columns([1, 3])
+    with chart_control_1:
+        rizan_chart_tf = st.selectbox(
+            "Timeframe chart",
+            ("M15", "H1", "H4"),
+            index=1,
+            key="rizan_chart_timeframe",
+        )
+    with chart_control_2:
+        nearest_demand = next(
+            (
+                zone for zone in chart_pool
+                if str(zone.get("direction") or "").upper() == "LONG"
+            ),
+            {},
+        )
+        nearest_supply = next(
+            (
+                zone for zone in chart_pool
+                if str(zone.get("direction") or "").upper() == "SHORT"
+            ),
+            {},
+        )
+        st.caption(
+            "Demand terdekat "
+            f"**{_fmt_price(nearest_demand.get('low'))}–{_fmt_price(nearest_demand.get('high'))}**"
+            " • Supply terdekat "
+            f"**{_fmt_price(nearest_supply.get('low'))}–{_fmt_price(nearest_supply.get('high'))}**"
+            f" • leg aktif **{dc_current_leg_direction}**."
+        )
 
-            rt = dc_current_leg_target.get("price")
-            next_rt = dc_next_leg_target.get("price")
-            key_levels = [price_now]
-            if rt is not None:
-                key_levels.append(float(rt))
-            if next_rt is not None:
-                key_levels.append(float(next_rt))
-            lows = [float(z["low"]) for z in chart_pool]
-            highs = [float(z["high"]) for z in chart_pool]
-            y_min, y_max = min(lows + key_levels), max(highs + key_levels)
-            pad = max(2.0, (y_max - y_min) * 0.10)
-
-            fig, ax = plt.subplots(figsize=(7.4, 9.0))
-            ax.set_xlim(0.0, 10.0)
-            ax.set_ylim(y_min - pad, y_max + pad)
-            ax.axhline(price_now, linewidth=1.4)
-            ax.text(0.25, price_now, f"NOW {price_now:.2f}", va="bottom", fontsize=10)
-
-            for idx, z in enumerate(chart_pool):
-                low, high = float(z["low"]), float(z["high"])
-                side = str(z.get("direction") or "").upper()
-                tf = str(z.get("timeframe") or "")
-                freshness = str(dict(z.get("lifecycle") or {}).get("freshness") or "")
-                zone_id = str(z.get("zone_id") or "")
-                probability = dict(v212_chart_by_zone.get(zone_id) or {})
-                p_touch = dict(probability.get("destination") or {}).get("p_touch")
-                p_hold = dict(probability.get("reaction") or {}).get("p_hold_050")
-                role = path_zone_ids.get(zone_id, "")
-                ax.axhspan(low, high, alpha=max(0.11, 0.31 - idx * 0.025))
-                probability_text = (
-                    f" | touch={_fmt_pct(p_touch)} hold50={_fmt_pct(p_hold)}"
-                    if probability
-                    else ""
-                )
-                role_text = f" | {role}" if role else ""
-                label = (
-                    f"{tf} {'DEMAND' if side == 'LONG' else 'SUPPLY'} "
-                    f"{low:.2f}-{high:.2f} | {freshness}{probability_text}{role_text}"
-                )
-                ax.text(
-                    9.75,
-                    (low + high) / 2.0,
-                    label,
-                    ha="right",
-                    va="center",
-                    fontsize=7.5,
-                )
-
-            # AFIC-style path arrows: current price -> reaction target -> first
-            # opposing zone -> next-leg target when already mapped.
-            path_points: list[tuple[float, float, str]] = [(1.0, price_now, "NOW")]
-            if rt is not None:
-                rt_price = float(rt)
-                ax.axhline(rt_price, linestyle="--", linewidth=1.0)
-                ax.text(0.25, rt_price, f"Reaction {rt_price:.2f}", va="bottom", fontsize=8)
-                path_points.append((4.0, rt_price, "REACTION"))
-
-            if dc_current_leg_terminal:
-                terminal_low = float(dc_current_leg_terminal["low"])
-                terminal_high = float(dc_current_leg_terminal["high"])
-                terminal_mid = (terminal_low + terminal_high) / 2.0
-                path_points.append((7.0, terminal_mid, "OPPOSING ZONE"))
-
-            if next_rt is not None and len(path_points) >= 2:
-                path_points.append((9.0, float(next_rt), "NEXT LEG"))
-
-            for (x1, y1, _), (x2, y2, label2) in zip(path_points, path_points[1:]):
-                arrow = FancyArrowPatch(
-                    (x1, y1),
-                    (x2, y2),
-                    arrowstyle="->",
-                    mutation_scale=13,
-                    linewidth=1.3,
-                    connectionstyle="arc3,rad=0.08",
-                )
-                ax.add_patch(arrow)
-                ax.text(x2, y2, label2, fontsize=7.5, va="bottom", ha="center")
-
-            ax.set_title(
-                f"XAUUSD AFIC-style Supply/Demand Path | first leg {dc_current_leg_direction}"
-            )
-            ax.set_ylabel("Harga XAUUSD")
-            ax.set_xticks([])
-            ax.grid(axis="y", alpha=0.20)
-            fig.tight_layout()
-
-            st.pyplot(fig, width="stretch")
-            png = BytesIO()
-            fig.savefig(png, format="png", dpi=180, bbox_inches="tight")
-            plt.close(fig)
+    if chart_price is not None and chart_pool:
+        chart_png, chart_error = _rizan_chart_png(
+            chart_raw_bars,
+            timeframe=rizan_chart_tf,
+            zones=chart_pool,
+            price_now=float(chart_price),
+            probability_by_zone=v212_chart_by_zone,
+            path_roles=path_zone_ids,
+            current_direction=dc_current_leg_direction,
+            current_target=dc_current_leg_target.get("price"),
+            terminal_zone=dc_current_leg_terminal,
+            next_target=dc_next_leg_target.get("price"),
+        )
+        if chart_png is not None:
+            st.image(chart_png, width="stretch")
             st.download_button(
-                "Download peta Supply/Demand AFIC-style (PNG)",
-                data=png.getvalue(),
-                file_name="xauusd_afic_supply_demand_path.png",
+                "Download chart RIZAN-style (PNG)",
+                data=chart_png,
+                file_name=f"xauusd_rizan_supply_demand_{rizan_chart_tf.lower()}.png",
                 mime="image/png",
                 width="stretch",
             )
-
-            first_destination = next(
-                (
-                    zone
-                    for zone in chart_pool
-                    if path_zone_ids.get(str(zone.get("zone_id") or ""))
-                    == "1ST OPPOSING ZONE"
-                ),
-                chart_pool[0] if chart_pool else {},
-            )
-            if first_destination:
-                st.caption(
-                    "Prioritas jalur pertama: "
-                    f"{first_destination.get('timeframe','—')} "
-                    f"{'DEMAND' if str(first_destination.get('direction') or '').upper() == 'LONG' else 'SUPPLY'} "
-                    f"{_fmt_price(first_destination.get('low'))}–{_fmt_price(first_destination.get('high'))}. "
-                    "Urutan ini adalah forecast preparation/shadow; bukan jaminan harga atau execution authority."
-                )
-        except Exception as exc:
-            st.warning(
-                f"Peta Supply/Demand belum dapat dirender: {type(exc).__name__}: {exc}"
+        else:
+            st.info(
+                "Menunggu snapshot OHLC baru dari V182 untuk candlestick RIZAN-style. "
+                f"Detail: {chart_error or 'belum tersedia'}"
             )
     else:
-        st.info("Belum ada zona Supply/Demand aktif yang cukup untuk membuat peta.")
+        st.info("Belum ada zona Supply/Demand aktif yang cukup untuk membuat chart.")
+
+    with st.container(border=True):
+        st.markdown("##### Jalur harga yang sedang dipantau")
+        p1, p2, p3, p4 = st.columns(4)
+        p1.metric(
+            "Source zone",
+            (
+                f"{_fmt_price(dc_source.get('low'))}–{_fmt_price(dc_source.get('high'))}"
+                if dc_source else "—"
+            ),
+        )
+        p2.metric("Reaction target", _fmt_price(dc_current_leg_target.get("price")))
+        p3.metric(
+            "Opposing zone",
+            (
+                f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
+                f"{_fmt_price(dc_current_leg_terminal.get('high'))}"
+                if dc_current_leg_terminal else "—"
+            ),
+        )
+        p4.metric(
+            "Next leg",
+            str(v217_next.get("direction") or dc_next_leg_direction or "—"),
+        )
+        st.caption(
+            f"Source H1/HTF → {dc_current_leg_direction} reaction → target internal → "
+            "opposing zone → evaluasi leg berikutnya. "
+            "Kotak zona yang sudah broken/invalid tidak diperlakukan sebagai setup aktif."
+        )
+
+    with st.expander("Probabilitas & validasi arah", expanded=False):
+        if v217_eval:
+            st.markdown("##### V217 — Probabilitas Arah Multi-Horizon")
+            dp1, dp2, dp3, dp4 = st.columns(4)
+            dp1.metric("Tactical first leg", str(v217_tactical.get("direction") or "—"))
+            dp2.metric("P LONG", _fmt_pct(v217_tactical.get("p_long")))
+            dp3.metric("P SHORT", _fmt_pct(v217_tactical.get("p_short")))
+            dp4.metric("P NEUTRAL", _fmt_pct(v217_tactical.get("p_neutral")))
+            st.caption(
+                "Strategic HTF support • "
+                f"HTF source={v217_htf_context.get('source') or '—'} • "
+                f"strategic bias={v217_htf_context.get('strategic_bias') or dc_strategic_bias} • "
+                f"fresh={v217_htf_context.get('fresh')} • "
+                f"parity={v217_htf_context.get('parity_state') or '—'} • "
+                f"relationship={v217_relationship.get('state') or '—'}. "
+                "V217 tetap shadow-only."
+            )
+
+        if v220_summary:
+            st.markdown("##### V220 — Prospective Direction Calibration")
+            pc1, pc2, pc3, pc4 = st.columns(4)
+            pc1.metric("Forecast pre-touch", int(v220_summary.get("forecasts") or 0))
+            pc2.metric("Resolved", int(v220_summary.get("resolved_directional") or 0))
+            pc3.metric("Accuracy", _fmt_pct(v220_summary.get("dominant_accuracy")))
+            pc4.metric(
+                "Mean Brier",
+                "—"
+                if v220_summary.get("mean_brier_multiclass") is None
+                else f"{float(v220_summary.get('mean_brier_multiclass')):.3f}",
+            )
+            st.caption(
+                f"sample={v220_summary.get('sample_state','—')} • "
+                f"pending={v220_summary.get('pending',0)} • "
+                f"no-touch={v220_summary.get('no_touch',0)}. "
+                "Hanya forecast PRE_TOUCH yang dinilai; V220 tetap shadow-only dan tidak memiliki execution authority."
+            )
+
+        with st.expander("Raw detail V217/V220", expanded=False):
+            st.json(
+                {
+                    "v217": v217_eval,
+                    "v220": v220_summary,
+                }
+            )
+
+    with st.expander("Kondisi volatilitas V203", expanded=False):
+        if v203_shock_hb is None:
+            st.info("Belum ada heartbeat V203.")
+        elif not v203_fresh:
+            st.warning("Heartbeat V203 stale; shock-state belum terverifikasi.")
+        else:
+            v203_message = (
+                f"state={v203_state} • action={v203_action} • "
+                f"range={v203_range_text} • spread={v203_spread_text} • "
+                f"tick={v203_tick_text} • reason={v203_reasons}"
+            )
+            if v203_state == "SHOCK":
+                st.error(v203_message)
+            elif v203_state in {"STABILIZING", "ELEVATED", "INSUFFICIENT_DATA"}:
+                st.warning(v203_message)
+            else:
+                st.success(v203_message)
+            st.json(
+                {
+                    "observed_at": v203_shock_hb.get("observed_at"),
+                    "state": v203_state,
+                    "shadow_action": v203_action,
+                    "latest_completed_m5": v203_latest,
+                    "execution_influence": v203_details.get("execution_influence"),
+                    "execution_authority": v203_details.get("execution_authority"),
+                }
+            )
 
     st.markdown("#### 2. H1 — Zona Reaksi Utama")
     if dc_source:
@@ -1327,7 +1561,7 @@ with forecast_tab:
         )
     else:
         st.warning(
-            "Belum ada H1 source zone aktif pada path AFIC/Supply-Demand saat ini."
+            "Belum ada H1 source zone aktif pada path RIZAN-style/Supply-Demand saat ini."
         )
 
     st.markdown("#### 3. M5 — Pocket, Target & Opposing Leg")
@@ -1468,87 +1702,88 @@ with forecast_tab:
         elif not dc_next_pocket_shown:
             st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
 
-    v216_details = (
-        {} if v216_calibration_hb is None else dict(v216_calibration_hb.get("details") or {})
-    )
-    v216_summary = dict(v216_details.get("summary") or {})
-    if v216_summary:
-        st.markdown("##### V215/V216 — Candidate vs Refined Calibration")
-        cv1, cv2, cv3, cv4 = st.columns(4)
-        cv1.metric("Episode", int(v216_summary.get("episodes") or 0))
-        cv2.metric(
-            "Refined | touched",
-            _fmt_pct(v216_summary.get("refinement_rate_given_touch")),
+    with st.expander("Riset pocket, reaction & zone reuse (V200/V212–V216)", expanded=False):
+        v216_details = (
+            {} if v216_calibration_hb is None else dict(v216_calibration_hb.get("details") or {})
         )
-        before_025 = dict(v216_summary.get("reaction_025_before_refined") or {})
-        before_050 = dict(v216_summary.get("reaction_050_before_refined") or {})
-        cv3.metric("0.25 ATR sebelum refined", _fmt_pct(before_025.get("rate")))
-        cv4.metric("0.50 ATR sebelum refined", _fmt_pct(before_050.get("rate")))
-        st.caption(
-            f"sample={v216_summary.get('sample_state','—')} • "
-            f"median candidate lead={_fmt_minutes(v216_summary.get('median_premap_lead_minutes'))}. "
-            "Jika reaksi sering terjadi sebelum refined, refined dibaca sebagai retest/re-entry confirmation, "
-            "bukan origin reversal pertama. V215/V216 tetap shadow-only."
-        )
-
-    v212_details = (
-        {} if v212_probability_hb is None else dict(v212_probability_hb.get("details") or {})
-    )
-    v213_details = (
-        {} if v213_path_hb is None else dict(v213_path_hb.get("details") or {})
-    )
-    v213_eval = dict(v213_details.get("evaluation") or {})
-    v213_current = dict(v213_eval.get("current_leg") or {})
-    v213_hist = dict(v213_current.get("historical_estimate") or {})
-    if v213_current:
-        st.markdown("##### V212/V213 — Probabilitas Reaksi & Jalur Setelah Zone")
-        rp1, rp2, rp3, rp4 = st.columns(4)
-        rp1.metric(
-            "P touch",
-            "—" if v213_hist.get("p_touch") is None else _fmt_pct(v213_hist.get("p_touch")),
-        )
-        rp2.metric(
-            "P reaksi ≥0.50 ATR",
-            "—" if v213_hist.get("p_hold_050") is None else _fmt_pct(v213_hist.get("p_hold_050")),
-        )
-        rp3.metric(
-            "P break zone",
-            "—" if v213_hist.get("p_break") is None else _fmt_pct(v213_hist.get("p_break")),
-        )
-        rp4.metric(
-            "P lanjut 1.00 ATR | sudah 0.50",
-            "—"
-            if v213_hist.get("p_100_given_050") is None
-            else _fmt_pct(v213_hist.get("p_100_given_050")),
-        )
-        st.caption(
-            f"Stage={v213_current.get('stage','—')} • "
-            f"confidence={v213_hist.get('confidence','—')} • "
-            f"median outcome={_fmt_distance(v213_hist.get('median_minutes_to_outcome'), ' menit')}. "
-            "Angka V212/V213 adalah estimasi historis/shadow untuk sharpening, bukan izin eksekusi."
-        )
-
-    if dc_current_reuse or dc_next_reuse:
-        current_reuse_state = str(dc_current_reuse.get("state") or "—")
-        next_reuse_state = str(dc_next_reuse.get("state") or "—")
-        st.caption(
-            "V200 Zone Reuse • "
-            f"current={current_reuse_state}"
-            + (
-                f" (touch={dc_current_reuse.get('touch_count')}, "
-                f"mitigation={float(dc_current_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
-                if dc_current_reuse else ""
+        v216_summary = dict(v216_details.get("summary") or {})
+        if v216_summary:
+            st.markdown("##### V215/V216 — Candidate vs Refined Calibration")
+            cv1, cv2, cv3, cv4 = st.columns(4)
+            cv1.metric("Episode", int(v216_summary.get("episodes") or 0))
+            cv2.metric(
+                "Refined | touched",
+                _fmt_pct(v216_summary.get("refinement_rate_given_touch")),
             )
-            + " • "
-            f"next={next_reuse_state}"
-            + (
-                f" (touch={dc_next_reuse.get('touch_count')}, "
-                f"mitigation={float(dc_next_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
-                if dc_next_reuse else ""
+            before_025 = dict(v216_summary.get("reaction_025_before_refined") or {})
+            before_050 = dict(v216_summary.get("reaction_050_before_refined") or {})
+            cv3.metric("0.25 ATR sebelum refined", _fmt_pct(before_025.get("rate")))
+            cv4.metric("0.50 ATR sebelum refined", _fmt_pct(before_050.get("rate")))
+            st.caption(
+                f"sample={v216_summary.get('sample_state','—')} • "
+                f"median candidate lead={_fmt_minutes(v216_summary.get('median_premap_lead_minutes'))}. "
+                "Jika reaksi sering terjadi sebelum refined, refined dibaca sebagai retest/re-entry confirmation, "
+                "bukan origin reversal pertama. V215/V216 tetap shadow-only."
             )
-            + ". Tidak ada blind reuse dan tidak ada hard touch-limit; "
-            "zona deep/multi-tested harus mendapat micro confirmation baru."
+
+        v212_details = (
+            {} if v212_probability_hb is None else dict(v212_probability_hb.get("details") or {})
         )
+        v213_details = (
+            {} if v213_path_hb is None else dict(v213_path_hb.get("details") or {})
+        )
+        v213_eval = dict(v213_details.get("evaluation") or {})
+        v213_current = dict(v213_eval.get("current_leg") or {})
+        v213_hist = dict(v213_current.get("historical_estimate") or {})
+        if v213_current:
+            st.markdown("##### V212/V213 — Probabilitas Reaksi & Jalur Setelah Zone")
+            rp1, rp2, rp3, rp4 = st.columns(4)
+            rp1.metric(
+                "P touch",
+                "—" if v213_hist.get("p_touch") is None else _fmt_pct(v213_hist.get("p_touch")),
+            )
+            rp2.metric(
+                "P reaksi ≥0.50 ATR",
+                "—" if v213_hist.get("p_hold_050") is None else _fmt_pct(v213_hist.get("p_hold_050")),
+            )
+            rp3.metric(
+                "P break zone",
+                "—" if v213_hist.get("p_break") is None else _fmt_pct(v213_hist.get("p_break")),
+            )
+            rp4.metric(
+                "P lanjut 1.00 ATR | sudah 0.50",
+                "—"
+                if v213_hist.get("p_100_given_050") is None
+                else _fmt_pct(v213_hist.get("p_100_given_050")),
+            )
+            st.caption(
+                f"Stage={v213_current.get('stage','—')} • "
+                f"confidence={v213_hist.get('confidence','—')} • "
+                f"median outcome={_fmt_distance(v213_hist.get('median_minutes_to_outcome'), ' menit')}. "
+                "Angka V212/V213 adalah estimasi historis/shadow untuk sharpening, bukan izin eksekusi."
+            )
+
+        if dc_current_reuse or dc_next_reuse:
+            current_reuse_state = str(dc_current_reuse.get("state") or "—")
+            next_reuse_state = str(dc_next_reuse.get("state") or "—")
+            st.caption(
+                "V200 Zone Reuse • "
+                f"current={current_reuse_state}"
+                + (
+                    f" (touch={dc_current_reuse.get('touch_count')}, "
+                    f"mitigation={float(dc_current_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
+                    if dc_current_reuse else ""
+                )
+                + " • "
+                f"next={next_reuse_state}"
+                + (
+                    f" (touch={dc_next_reuse.get('touch_count')}, "
+                    f"mitigation={float(dc_next_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
+                    if dc_next_reuse else ""
+                )
+                + ". Tidak ada blind reuse dan tidak ada hard touch-limit; "
+                "zona deep/multi-tested harus mendapat micro confirmation baru."
+            )
 
     st.markdown("#### 4. M15 — Konfirmasi Eksekusi")
     if dc_m15_ready:
@@ -2047,18 +2282,18 @@ with forecast_tab:
     )
 
     with st.expander(
-        "Detail Diagnostik AFIC ↔ Supply/Demand / V189 / DOM / Event",
+        "Detail Diagnostik RIZAN-style ↔ Supply/Demand / V189 / DOM / Event",
         expanded=False,
     ):
         st.caption(
             "Detail ini tetap tersedia untuk audit. Untuk keputusan cepat gunakan "
             "Pusat Keputusan XAUUSD di atas."
         )
-        st.markdown("### Integrasi AFIC ↔ Supply/Demand")
+        st.markdown("### Integrasi RIZAN-style ↔ Supply/Demand")
         st.caption(
-            "Supply/Demand V182 sekarang menjadi context map untuk AFIC. Context ini dapat "
+            "Supply/Demand V182 sekarang menjadi context map untuk RIZAN-style. Context ini dapat "
             "mendukung zona canonical, memberi peringatan zona reversal lawan, atau menyediakan "
-            "fallback PREPARE ketika canonical AFIC belum ada. Context ini TIDAK mengubah Grade "
+            "fallback PREPARE ketika canonical RIZAN-style belum ada. Context ini TIDAK mengubah Grade "
             "A/B, tidak membuat signal broker, dan tidak menggantikan konfirmasi M15."
         )
         if afic_sd_context:
@@ -2077,7 +2312,7 @@ with forecast_tab:
             ic4.metric("Otoritas eksekusi", "TIDAK ADA")
             if sd_same:
                 st.info(
-                    "Supply/Demand searah AFIC: "
+                    "Supply/Demand searah RIZAN-style: "
                     f"{sd_same.get('timeframe','—')} {sd_same.get('pattern','—')} "
                     f"{_fmt_price(sd_same.get('low'))}–{_fmt_price(sd_same.get('high'))} • "
                     f"overlap canonical={_fmt_pct(afic_sd_context.get('same_direction_overlap_ratio'))} • "
@@ -2091,14 +2326,14 @@ with forecast_tab:
                     f"{_fmt_price(sd_opp.get('low'))}–{_fmt_price(sd_opp.get('high'))} • "
                     f"jarak dari harga="
                     f"{_fmt_distance(afic_sd_context.get('opposite_zone_distance_atr'),' ATR')}. "
-                    "Ini adalah Plan-B / reaction watch, bukan alasan entry melawan AFIC."
+                    "Ini adalah Plan-B / reaction watch, bukan alasan entry melawan RIZAN-style."
                 )
             dom_context = dict(afic_sd_context.get("dom_context") or {})
             if not dom_context and dom_v191_hb is not None:
                 dom_details = dict(dom_v191_hb.get("details") or {})
                 dom_context = dict(dom_details.get("analysis") or {})
                 dom_context["stale"] = False
-                dom_context["alignment_with_first_leg"] = "BELUM_DIHUBUNGKAN_KE_SNAPSHOT_AFIC"
+                dom_context["alignment_with_first_leg"] = "BELUM_DIHUBUNGKAN_KE_SNAPSHOT_RIZAN"
             if dom_context:
                 d1, d2, d3, d4 = st.columns(4)
                 d1.metric("DOM V191", str(dom_context.get("state") or "—"))
@@ -2219,7 +2454,7 @@ with forecast_tab:
                 path_waypoints = list(afic_first_leg_path.get("internal_targets") or [])
                 if path_source:
                     st.success(
-                        "Path AFIC saat ini: "
+                        "Path RIZAN-style saat ini: "
                         f"{afic_first_leg_path.get('reaction_direction','—')} dari "
                         f"{_fmt_price(path_source.get('low'))}–{_fmt_price(path_source.get('high'))}"
                         + (
@@ -2302,19 +2537,19 @@ with forecast_tab:
                     )
             if afic_sd_context.get("prepare_only_fallback"):
                 st.warning(
-                    "Canonical AFIC belum memiliki zona valid, tetapi atlas Supply/Demand "
+                    "Canonical RIZAN-style belum memiliki zona valid, tetapi atlas Supply/Demand "
                     "memiliki context aktif. Scanner boleh menampilkan PERSIAPAN/WATCH lebih awal, "
-                    "namun order tetap dilarang sampai canonical AFIC + completed M15 confirmation "
+                    "namun order tetap dilarang sampai canonical RIZAN-style + completed M15 confirmation "
                     "terbentuk."
                 )
             if afic_sd_context.get("atlas_stale"):
                 st.error(
                     "Snapshot Supply/Demand terlalu lama untuk dipakai sebagai context aktif. "
-                    "AFIC tetap berjalan tanpa policy effect dari atlas sampai heartbeat baru tersedia."
+                    "RIZAN-style tetap berjalan tanpa policy effect dari atlas sampai heartbeat baru tersedia."
                 )
         else:
             st.caption(
-                "Context integrasi AFIC ↔ Supply/Demand belum tersedia pada snapshot runtime ini."
+                "Context integrasi RIZAN-style ↔ Supply/Demand belum tersedia pada snapshot runtime ini."
             )
 
 
@@ -2347,9 +2582,9 @@ with forecast_tab:
             st.info(
                 f"Rencana HTF: {strategic_bias} • gerak pertama {tactical_first_leg} • "
                 f"cari {desired.replace('_', ' ')}. "
-                f"Arah candle H4 AFIC saat ini = {direction}. "
+                f"Arah candle H4 RIZAN-style saat ini = {direction}. "
                 "Keduanya dapat berbeda karena V180 adalah konteks strategis, sedangkan "
-                "AFIC V161 tetap merupakan peta taktis canonical untuk eksekusi."
+                "RIZAN-style V161 tetap merupakan peta taktis canonical untuk eksekusi."
             )
         shadow_zones = list(regime_pool.get("shadow_24_48h") or [])
         if not regime_pool.get("canonical_count") and shadow_zones:
@@ -2364,12 +2599,12 @@ with forecast_tab:
     else:
         st.caption(
             "Rezim Strategis HTF V180 belum menerbitkan snapshot shadow. "
-            "AFIC V161 tetap menjadi otoritas eksekusi."
+            "RIZAN-style V161 tetap menjadi otoritas eksekusi."
         )
 
     st.markdown("### Atlas Supply & Demand HTF (V182)")
     st.caption(
-        "Atlas riset D1/H4/H1 untuk mendeteksi demand/supply lebih awal dari canonical AFIC. "
+        "Atlas riset D1/H4/H1 untuk mendeteksi demand/supply lebih awal dari canonical RIZAN-style. "
         "Zona dibentuk dari structural origin atau base→departure imbalance, lalu dinilai "
         "berdasarkan freshness, touch/mitigation, HTF nesting, liquidity confluence, jarak, "
         "dan kualitas pendekatan harga. V182 SELALU PREPARE ONLY / NO EXECUTION."
@@ -2541,7 +2776,7 @@ with forecast_tab:
         st.caption(
             "Skor riset V182 adalah ranking evidence, BUKAN probabilitas menang. "
             "Liquidity/round number hanya confluence, bukan pembentuk zona tunggal. "
-            "Canonical AFIC ≤24 jam, M15 confirmation, fresh quote, risk/margin, dan "
+            "Canonical RIZAN-style ≤24 jam, M15 confirmation, fresh quote, risk/margin, dan "
             "server-side SL/TP tetap menjadi jalur eksekusi yang terpisah."
         )
     else:
@@ -2611,7 +2846,7 @@ with forecast_tab:
                 width="stretch",
             )
         st.info(
-            "V183 tidak mengubah V182, V181, canonical AFIC, atau broker lane. "
+            "V183 tidak mengubah V182, V181, canonical RIZAN-style, atau broker lane. "
             "Promosi hanya boleh dipertimbangkan setelah prospective forward lifecycle "
             "mengonfirmasi subset yang sama pada data baru."
         )
@@ -2746,7 +2981,7 @@ with forecast_tab:
     st.caption(
         "Menampilkan H1 origin baru yang terbentuk setelah H4 map saat ini. Kandidat "
         "ini membantu persiapan lebih awal, tetapi statusnya SELALU tanpa izin eksekusi "
-        "sampai H4 map berikutnya selesai dan AFIC canonical memvalidasinya."
+        "sampai H4 map berikutnya selesai dan canonical RIZAN-style memvalidasinya."
     )
     premap_details = {} if premap_hb is None else dict(premap_hb.get("details") or {})
     premap_eval = dict(premap_details.get("evaluation") or {})
@@ -2760,7 +2995,7 @@ with forecast_tab:
         st.warning(
             "PERSIAPAN SAJA / NO EXECUTION. Kandidat pra-H4 belum menjadi Trade Preparation "
             "canonical. Ia harus bertahan sampai completed H4 map berikutnya dan lolos "
-            "pemilihan AFIC A/B sebelum dapat memiliki jalur broker."
+            "pemilihan RIZAN-style A/B sebelum dapat memiliki jalur broker."
         )
         premap_table = []
         for candidate in premap_candidates:
@@ -2824,7 +3059,7 @@ with forecast_tab:
                     "Namun ada Supply/Demand PREPARE context di "
                     f"{_fmt_price(fallback.get('low'))}–{_fmt_price(fallback.get('high'))} "
                     f"({fallback.get('timeframe','—')} {fallback.get('pattern','—')}). "
-                    "Gunakan hanya untuk bersiap; BELUM menjadi entry zone AFIC."
+                    "Gunakan hanya untuk bersiap; BELUM menjadi entry zone RIZAN-style."
                 )
         t1, t2, t3, t4 = st.columns(4)
         t1.metric("Menunggu", "H4 MAP BARU")
@@ -2867,7 +3102,7 @@ with forecast_tab:
                 else "Entry acuan belum boleh dieksekusi. "
             )
             + "Jangan entry hanya karena harga menyentuh zona; candle M15 yang sudah "
-              "selesai tetap wajib memberikan konfirmasi untuk jalur otomatis AFIC."
+              "selesai tetap wajib memberikan konfirmasi untuk jalur otomatis RIZAN-style."
         )
 
     st.markdown("#### Siklus Rencana Persiapan (Prepared Plan Lifecycle)")
@@ -2977,7 +3212,7 @@ with forecast_tab:
     else:
         st.caption(
             "Ledger siklus rencana belum terisi. Worker maintenance akan mengisi ulang "
-            "rencana AFIC terbaru tanpa mengubah aturan eksekusi."
+            "rencana RIZAN-style terbaru tanpa mengubah aturan eksekusi."
         )
 
     st.markdown("#### Kelayakan Eksekusi XAU (XAU Execution Admission)")
@@ -3067,9 +3302,9 @@ with forecast_tab:
 
     st.markdown("#### Sinyal Teknikal XAU Lintas-Mesin (Cross-engine XAU technical signals)")
     st.caption(
-        "Bagian ini terpisah dari AFIC H4 map. Baris berasal dari mesin teknikal XAU lain. "
+        "Bagian ini terpisah dari RIZAN-style H4 map. Baris berasal dari mesin teknikal XAU lain. "
         "CURRENT/EXPIRED ditentukan dari expires_at; setup yang kedaluwarsa hanya konteks "
-        "historis dan tidak boleh dianggap sebagai rancangan order AFIC yang masih aktif."
+        "historis dan tidak boleh dianggap sebagai rancangan order RIZAN-style yang masih aktif."
     )
     if xau_technical_signal_rows:
         now_utc = datetime.now(tz=UTC)
@@ -3133,22 +3368,22 @@ with forecast_tab:
         latest_technical = technical_rows[0]
         if latest_technical["runtime"] == "CURRENT":
             st.info(
-                "Setup teknikal XAU non-AFIC terbaru masih CURRENT. Geometry ditampilkan "
-                "di bawah, tetapi izin AFIC tetap merupakan gerbang terpisah."
+                "Setup teknikal XAU non-RIZAN-style terbaru masih CURRENT. Geometry ditampilkan "
+                "di bawah, tetapi izin RIZAN-style tetap merupakan gerbang terpisah."
             )
         elif latest_technical["runtime"] == "WATCH":
             st.info(
-                "Baris XAU non-AFIC terbaru hanya WATCH. Ia tidak memiliki izin trading "
+                "Baris XAU non-RIZAN-style terbaru hanya WATCH. Ia tidak memiliki izin trading "
                 "mandiri dan tidak boleh dibaca sebagai entry aktif."
             )
         elif latest_technical["runtime"] == "INVALIDATED":
             st.warning(
-                "Setup XAU non-AFIC terbaru INVALIDATED. Geometry disimpan hanya sebagai "
+                "Setup XAU non-RIZAN-style terbaru INVALIDATED. Geometry disimpan hanya sebagai "
                 "evidence historis."
             )
         else:
             st.warning(
-                "Setup teknikal XAU non-AFIC terbaru EXPIRED. Entry/SL/TP hanya geometry "
+                "Setup teknikal XAU non-RIZAN-style terbaru EXPIRED. Entry/SL/TP hanya geometry "
                 "historis, bukan instruksi yang masih aktif."
             )
         st.dataframe(
@@ -3157,7 +3392,7 @@ with forecast_tab:
             width="stretch",
         )
     else:
-        st.caption("Belum ada baris signal teknikal XAU non-AFIC.")
+        st.caption("Belum ada baris signal teknikal XAU non-RIZAN-style.")
 
     st.markdown("#### Diagnostik Zona Reaksi (Reaction-zone diagnostics)")
     if zone_diagnostics:
@@ -3190,12 +3425,12 @@ with forecast_tab:
                 "Scanner menunggu struktur baru."
             )
         st.caption(
-            "Diagnostik hanya bersifat deskriptif; tidak melonggarkan selector AFIC dan "
+            "Diagnostik hanya bersifat deskriptif; tidak melonggarkan selector RIZAN-style dan "
             "tidak menciptakan izin broker."
         )
     else:
         st.caption(
-            "Diagnostik zona belum tersedia pada heartbeat ini; siklus AFIC berikutnya "
+            "Diagnostik zona belum tersedia pada heartbeat ini; siklus RIZAN-style berikutnya "
             "akan mengisi jumlah kandidat dan alasan penolakan."
         )
 
@@ -3208,7 +3443,7 @@ with forecast_tab:
     if active_watch:
         st.caption(
             "These are PRIOR ORIGIN REVISITS from structural memory, not current primary "
-            "AFIC reaction zones. first durable touch is preserved across H4 remaps; "
+            "RIZAN-style reaction zones. first durable touch is preserved across H4 remaps; "
             "current-map touch records only a completed M15 touch on the active H4 map. "
             "Live touch is provisional until that M15 candle closes. They cannot auto-order "
             "against the active H4 map; a structural remap plus H1/M15 reversal confirmation "
@@ -3265,7 +3500,7 @@ with forecast_tab:
         st.info(
             f"PRIOR ORIGIN REVISIT: {watch_side} "
             f"{_fmt_price(nearest_watch.get('low'))}–{_fmt_price(nearest_watch.get('high'))} "
-            f"• {watch_status}. This is not the current primary AFIC zone. {path_hint}"
+            f"• {watch_status}. This is not the current primary RIZAN-style zone. {path_hint}"
         )
     elif reversal_watch:
         st.caption(
@@ -3281,10 +3516,10 @@ with forecast_tab:
     f3.metric("Selector", grade)
     f4.metric("Live XAU", _fmt_price(live_price))
     f5.metric("Distance to zone", _fmt_distance(distance_points, " pts"))
-    f6.metric("AFIC scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
+    f6.metric("RIZAN scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
     st.caption(
         "H4 continuation is structural context only. It is not a current BUY/SELL call; "
-        "trade authority still requires a valid current AFIC zone/selector/confirmation."
+        "trade authority still requires a valid current RIZAN-style zone/selector/confirmation."
     )
     if hb_details.get("touch_lifecycle"):
         st.caption(
@@ -3306,12 +3541,12 @@ with forecast_tab:
     h2.metric("DEMO auto", "ON" if auto_enabled else "OFF")
     h3.metric("Forecast heartbeat", "—" if hb_age is None else f"{hb_age:.0f}s ago")
     h4.metric("Fast handoff", fast_label)
-    h5.metric("Last AFIC broker event", latest_exec_event or "NONE")
+    h5.metric("Last RIZAN broker event", latest_exec_event or "NONE")
     st.caption(next_reason)
     if fast_handoff_hb is not None:
         fast_details = dict(fast_handoff_hb.get("details") or {})
         st.caption(
-            "AFIC fast handoff • "
+            "RIZAN-style fast handoff • "
             f"age={'—' if fast_age is None else f'{fast_age:.0f}s'} • "
             f"duration={_fmt_distance(fast_details.get('duration_seconds'), 's')} • "
             f"exit={fast_details.get('exit_code', '—')} • "
@@ -3347,7 +3582,7 @@ with forecast_tab:
             "Shadow-only ensemble • "
             f"coverage={_fmt_pct(ensemble.get('coverage'))} • "
             f"age={'—' if ensemble_age is None else f'{ensemble_age:.0f}s'} • "
-            "does not alter AFIC Grade-A/B execution authority."
+            "does not alter RIZAN-style Grade-A/B execution authority."
         )
         directional_prior = dict(ensemble.get("directional_prior") or {})
         if directional_prior:
@@ -3356,7 +3591,7 @@ with forecast_tab:
                 f"{directional_prior.get('direction', '—')} • "
                 f"score={_fmt_distance(directional_prior.get('score'), '')} • "
                 f"prior confidence={_fmt_pct(directional_prior.get('confidence'))}. "
-                "A valid AFIC H4 map/reaction zone is still required before this can "
+                "A valid RIZAN-style H4 map/reaction zone is still required before this can "
                 "become a Primary LONG/SHORT structural scenario."
             )
 
@@ -3372,7 +3607,7 @@ with forecast_tab:
 
         component_rows = []
         for name, label in (
-            ("afic", "AFIC structural"),
+            ("afic", "RIZAN structural"),
             ("conditional", "Empirical conditional"),
             ("acd", "Fisher/ACD session"),
             ("cot", "Weekly COT prior"),
@@ -3433,7 +3668,7 @@ with forecast_tab:
     else:
         st.caption(
             "Forecast Ensemble V171 has not produced a durable shadow snapshot yet. "
-            "AFIC and V170 remain independently visible below."
+            "RIZAN-style and V170 remain independently visible below."
         )
 
     if zone_low is not None and zone_high is not None:
@@ -3451,11 +3686,11 @@ with forecast_tab:
         )
     elif grade == "C":
         st.warning(
-            "Grade C: shadow/watch only. Scanner will not auto-order this AFIC map "
+            "Grade C: shadow/watch only. Scanner will not auto-order this RIZAN-style map "
             "even if the zone is touched."
         )
     else:
-        st.caption("No canonical AFIC selector grade available yet.")
+        st.caption("No canonical RIZAN-style selector grade available yet.")
 
     plan_event = prepared_rows[0] if prepared_rows else None
     plan_payload = {} if plan_event is None else dict(plan_event.get("payload") or {})
@@ -3518,7 +3753,7 @@ with forecast_tab:
     if geometry_rows:
         latest_geometry = dict(geometry_rows[0].get("payload") or {})
         st.caption(
-            "Latest AFIC broker-authorized geometry: "
+            "Latest RIZAN-style broker-authorized geometry: "
             f"{latest_geometry.get('direction', '—')} • "
             f"entry mode {latest_geometry.get('entry_mode', '—')} • "
             f"SL {_fmt_price(latest_geometry.get('planned_sl'))} • "
@@ -3644,7 +3879,7 @@ with forecast_tab:
     if history_rows:
         st.dataframe(pd.DataFrame(history_rows), hide_index=True, width="stretch")
     else:
-        st.caption("No durable AFIC forecast transitions have been recorded yet.")
+        st.caption("No durable RIZAN-style forecast transitions have been recorded yet.")
 
 with account_tab:
     st.subheader("Pemantauan Akun Broker (Broker Account Monitor)")
