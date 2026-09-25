@@ -19,12 +19,11 @@ def test_v209_dashboard_uses_tiered_cache_without_slowing_fast_state() -> None:
     assert "merged.update(_load_backend_fast_snapshot" in text
 
 
-def test_v209_reference_symbol_sync_skips_noop_writes() -> None:
-    text = _read("src/fx_scanner/storage/supabase_operational.py")
-    assert 'select("symbol,base_currency,quote_currency,pip_size,tier,active")' in text
-    assert "if changed:" in text
-    assert "unconditional UPSERT" in text
-
+def test_v209_reference_symbol_noop_updates_are_suppressed_in_database() -> None:
+    schema = _read("supabase/schemas/fx_core.sql")
+    assert "fx_symbols_skip_noop_update_v209" in schema
+    assert "before update on public.fx_symbols" in schema
+    assert "return null;" in schema
 
 def test_v209_broker_order_identity_index_is_declared() -> None:
     schema = _read("supabase/schemas/fx_core.sql")
@@ -50,3 +49,12 @@ def test_v209_keeps_minute_discovery_and_moves_heavy_calibration_to_5m_lane() ->
     assert "python -m fx_scanner.demo_xau_strategy_latency_telemetry" in calibration
     assert "python -m fx_scanner.demo_closed_trade_reconciler" in calibration
     assert "python -m fx_scanner.demo_normalized_calibration_runner adaptive-v2" in calibration
+
+    execution = _read(".github/workflows/ctrader-demo-xau-execution-lane.yml")
+    auto = _read(".github/workflows/ctrader-demo-auto-pipeline.yml")
+    assert "ctrader_demo_xau_execution_lane RUNNING" not in execution
+    assert "ctrader_demo_xau_execution_lane SUCCESS" in execution
+    assert "ctrader_demo_auto_pipeline RUNNING" not in auto
+    assert "ctrader_demo_auto_pipeline SUCCESS" in auto
+    assert "ctrader_demo_discovery_pipeline RUNNING" not in discovery
+    assert "ctrader_demo_discovery_pipeline SUCCESS" in discovery
