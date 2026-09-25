@@ -427,6 +427,47 @@ def _candidate_sort_key(zone: dict[str, Any], price: float) -> tuple[Any, ...]:
     )
 
 
+def _clean_first_touch_candidate(
+    zone: dict[str, Any],
+    *,
+    direction: str,
+    price: float,
+) -> bool:
+    lifecycle = dict(zone.get("lifecycle") or {})
+    if int(lifecycle.get("touch_count") or 0) != 0:
+        return False
+    if str(lifecycle.get("freshness") or "").upper() != "FRESH":
+        return False
+    low = _f(zone.get("low"))
+    high = _f(zone.get("high"))
+    if low is None or high is None:
+        return False
+    if direction == "LONG":
+        return price > high
+    if direction == "SHORT":
+        return price < low
+    return False
+
+
+def _select_nearest_h4_context(
+    zones: Sequence[dict[str, Any]],
+    *,
+    direction: str,
+    price: float,
+) -> dict[str, Any]:
+    candidates = [
+        dict(zone)
+        for zone in zones
+        if str(zone.get("timeframe") or "").upper() == "H4"
+        and _direction(zone.get("direction")) == direction
+        and _active(zone)
+    ]
+    if not candidates:
+        return {}
+    candidates.sort(key=lambda zone: _candidate_sort_key(zone, price))
+    return candidates[0]
+
+
 def _select_h4(
     zones: Sequence[dict[str, Any]],
     *,
@@ -442,6 +483,30 @@ def _select_h4(
     ]
     if not candidates:
         return {}
+
+    # V225.2 is a first-touch study. Prefer an untouched fresh H4 parent that
+    # still lies ahead of price on the correct approach side. This keeps the
+    # calibrated parent aligned with the population used to estimate depth.
+    fresh = [
+        zone for zone in candidates
+        if _clean_first_touch_candidate(
+            zone,
+            direction=direction,
+            price=price,
+        )
+    ]
+    if fresh:
+        fresh.sort(
+            key=lambda zone: (
+                _distance_to_zone(price, zone),
+                -float(_f(zone.get("research_score")) or 0.0),
+                _zone_width(zone),
+            )
+        )
+        return fresh[0]
+
+    # If no clean first-touch H4 exists, retain the nearest active H4 only as
+    # contextual research. Applicability will mark reused zones as low.
     candidates.sort(key=lambda zone: _candidate_sort_key(zone, price))
     return candidates[0]
 
@@ -719,6 +784,11 @@ def _direction_map(
     h1_profile = _historical_profile(history_details, "H1", direction)
     m15_profile = _historical_profile(history_details, "M15", direction)
 
+    nearest_h4_context_zone = _select_nearest_h4_context(
+        atlas_zones,
+        direction=direction,
+        price=price,
+    )
     h4_zone = _select_h4(atlas_zones, direction=direction, price=price)
     if not h4_zone:
         return {
@@ -732,6 +802,28 @@ def _direction_map(
         }
 
     h4 = _standalone_layer(h4_zone, h4_profile, price=price)
+    nearest_h4_context = (
+        {}
+        if not nearest_h4_context_zone
+        else {
+            "zone": nearest_h4_context_zone,
+            "applicability": _applicability(nearest_h4_context_zone, price),
+            "same_as_calibrated_parent": (
+                str(nearest_h4_context_zone.get("zone_id") or "")
+                == str(h4_zone.get("zone_id") or "")
+            ),
+        }
+    )
+    h4_selection_mode = (
+        "FRESH_FIRST_TOUCH_CALIBRATED_PARENT"
+        if _clean_first_touch_candidate(
+            h4_zone,
+            direction=direction,
+            price=price,
+        )
+        else "FALLBACK_CONTEXT_ONLY"
+    )
+
     h1_zone = _select_h1(
         atlas_zones,
         parent=h4_zone,
@@ -830,6 +922,8 @@ def _direction_map(
         "state": state,
         "price_reference": price,
         "h4": h4,
+        "h4_selection_mode": h4_selection_mode,
+        "nearest_h4_context": nearest_h4_context,
         "h1": {
             **h1,
             "nested_locator": h1_nested,
@@ -938,10 +1032,11 @@ def build_depth_map(
         },
         "interpretation": (
             "V226 localizes current active H4 supply/demand using V225.2 first-touch "
-            "depth priors, then narrows with an overlapping H1 child and a pre-existing "
-            "same-direction M15 child when available. H4/H1 standalone hotspots and "
-            "nested child locators are deliberately separated. No MSS/reclaim is required "
-            "to draw the map, and the map has no execution authority."
+            "depth priors. A fresh untouched H4 on the correct approach side is preferred "
+            "as the calibrated parent; the nearest reused H4 is retained separately as "
+            "market context. The calibrated parent is then narrowed with an overlapping "
+            "H1 child and a pre-existing same-direction M15 child when available. "
+            "No MSS/reclaim is required to draw the map, and the map has no execution authority."
         ),
         "policy_effect": POLICY_EFFECT,
         "execution_influence": False,
