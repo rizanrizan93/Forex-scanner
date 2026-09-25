@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fx_scanner.demo_xau_v226_rizan_depth_map import (
     _applicability,
+    _clip_nested_locator,
     _depth_band_prices,
     _historical_profile,
     _nested_locator,
@@ -384,6 +385,40 @@ def test_v226_m15_selector_uses_nested_locator_overlap_not_standalone_profile() 
     )
     assert selected["zone_id"] == "m15-b"
 
+
+
+
+def test_v226_nested_locator_is_clipped_to_parent_geometry() -> None:
+    locator = {
+        "envelope": {
+            "low": 4357.33,
+            "high": 4359.52,
+            "lower_depth": 0.22,
+            "upper_depth": 0.72,
+        },
+        "median": {"depth": 0.46, "price": 4358.40},
+        "profile": {"n_total": 647},
+    }
+    clipped = _clip_nested_locator(
+        locator,
+        {"low": 4357.64, "high": 4364.35},
+    )
+    assert clipped["raw_envelope"]["low"] == 4357.33
+    assert clipped["envelope"]["low"] == 4357.64
+    assert clipped["envelope"]["high"] == 4359.52
+    assert clipped["envelope"]["clipped_to_parent"] is True
+    assert clipped["clip_parent"] == {"low": 4357.64, "high": 4364.35}
+
+
+def test_v226_nested_locator_returns_empty_when_no_parent_overlap() -> None:
+    locator = {
+        "envelope": {"low": 4300.0, "high": 4302.0},
+        "median": {"depth": 0.50, "price": 4301.0},
+    }
+    assert _clip_nested_locator(
+        locator,
+        {"low": 4350.0, "high": 4360.0},
+    ) == {}
 
 def test_v226_nested_locator_maps_child_quantiles_to_actual_prices() -> None:
     child = _zone("m15", timeframe="M15", direction="LONG", low=100.0, high=110.0)
