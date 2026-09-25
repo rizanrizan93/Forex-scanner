@@ -434,11 +434,17 @@ def evaluate_micro_refinement(
         for row in recent[sweep_index:]
     )
 
-    # V218: preserve causal M5 reversal evidence when a marginal H1 child break
-    # occurs inside a still-valid overlapping HTF parent. Shadow/prepare only.
+    # V219: an H1 child break is not sufficient to erase real M5 reversal
+    # evidence when that break occurs *inside* a still-valid overlapping HTF
+    # parent. In that context the H1 invalidation may itself be the liquidity
+    # sweep that starts the H4/D1 reaction. Preserve the candidate immediately
+    # (shadow/prepare only) and let reclaim/MSS/displacement progressively
+    # refine it. Parent invalidation still retires the rescue path.
     parent = dict(parent_source_zone or {})
     parent_rescue = False
+    parent_rescue_mode = None
     parent_penetration_atr = None
+    parent_contains_sweep = False
     if invalidated and parent:
         parent_low = _safe_float(parent.get("low"))
         parent_high = _safe_float(parent.get("high"))
@@ -457,6 +463,14 @@ def evaluate_micro_refinement(
             _source_invalidated(row, parent, direction)
             for row in recent[sweep_index:]
         )
+        sweep_extreme = (
+            float(sweep_bar.low) if direction == "LONG" else float(sweep_bar.high)
+        )
+        parent_contains_sweep = bool(
+            parent_low is not None
+            and parent_high is not None
+            and parent_low <= sweep_extreme <= parent_high
+        )
         if child_distal is not None and sweep_atr:
             excursion = (
                 max(0.0, child_distal - float(sweep_bar.low))
@@ -464,14 +478,32 @@ def evaluate_micro_refinement(
                 else max(0.0, float(sweep_bar.high) - child_distal)
             )
             parent_penetration_atr = excursion / sweep_atr
-        if (
-            same_direction and overlaps_child and parent_active
-            and parent_not_invalidated and parent_distal is not None
-            and parent_penetration_atr is not None
+
+        marginal_child_break = bool(
+            parent_penetration_atr is not None
             and parent_penetration_atr <= PARENT_REVERSAL_RESCUE_MAX_ATR
+        )
+        micro_reversal_visible = bool(
+            reclaim_index is not None
+            or mss_index is not None
+            or displacement_index is not None
+        )
+        if (
+            same_direction
+            and overlaps_child
+            and parent_active
+            and parent_not_invalidated
+            and parent_distal is not None
+            and parent_contains_sweep
         ):
             invalidated = False
             parent_rescue = True
+            if micro_reversal_visible:
+                parent_rescue_mode = "HTF_PARENT_WITH_LIVE_M5_REVERSAL"
+            elif marginal_child_break:
+                parent_rescue_mode = "HTF_PARENT_MARGINAL_CHILD_BREAK"
+            else:
+                parent_rescue_mode = "HTF_PARENT_OWNS_SWEEP_WAIT_CONFIRMATION"
 
     candidate_pocket = _candidate_pocket_from_bar(sweep_bar, direction)
     candidate_pocket["origin_at"] = ensure_utc(sweep_bar.timestamp).isoformat()
@@ -546,7 +578,23 @@ def evaluate_micro_refinement(
         ),
         "candidate_entry_pocket": candidate_pocket,
         "refined_entry_pocket": refined_pocket,
-        "parent_reversal_rescue": {"active": parent_rescue, "parent_zone_id": parent.get("zone_id") if parent_rescue else None, "parent_timeframe": parent.get("timeframe") if parent_rescue else None, "child_penetration_atr": None if parent_penetration_atr is None else round(parent_penetration_atr, 4), "max_child_penetration_atr": PARENT_REVERSAL_RESCUE_MAX_ATR, "effect": "SHADOW_PREPARE_ONLY"},
+        "parent_reversal_rescue": {
+            "active": parent_rescue,
+            "mode": parent_rescue_mode,
+            "parent_zone_id": parent.get("zone_id") if parent_rescue else None,
+            "parent_timeframe": parent.get("timeframe") if parent_rescue else None,
+            "parent_contains_sweep": parent_contains_sweep,
+            "child_penetration_atr": (
+                None
+                if parent_penetration_atr is None
+                else round(parent_penetration_atr, 4)
+            ),
+            "marginal_reference_atr": PARENT_REVERSAL_RESCUE_MAX_ATR,
+            "reclaim_visible": reclaim_index is not None,
+            "mss_visible": mss_index is not None,
+            "displacement_visible": displacement_index is not None,
+            "effect": "SHADOW_PREPARE_ONLY",
+        },
         "required_for_execution": False,
         "interpretation": (
             "V189 uses post-source-touch local M5 structure for the executable micro MSS "

@@ -1073,49 +1073,205 @@ with forecast_tab:
             )
 
     st.markdown("#### Peta Supply/Demand Terdekat — AFIC-style")
-    st.caption("Visual path map: harga saat ini, zona aktif terdekat, reaction target, dan terminal opposing zone. Forecast geometry, bukan jaminan arah.")
-    chart_zones = [dict(item) for item in list(dc_sd_eval.get("zones") or []) if bool(dict(item.get("lifecycle") or {}).get("active"))]
+    st.caption(
+        "Peta jalur: harga sekarang → reaction target → opposing Supply/Demand → kemungkinan leg berikutnya. "
+        "Zona diprioritaskan oleh path aktif, jarak, dan estimasi touch V212; bukan sekadar enam zona terdekat."
+    )
     chart_price = dc_sd_eval.get("last_closed_m15_price")
-    if chart_zones and chart_price is not None:
+    chart_zones = [
+        dict(item)
+        for item in list(dc_sd_eval.get("zones") or [])
+        if bool(dict(item.get("lifecycle") or {}).get("active"))
+    ]
+
+    # Always include path-defining zones even when the phone display slice omits them.
+    chart_seen: set[str] = set()
+    chart_pool: list[dict[str, Any]] = []
+    for raw_zone in (
+        [dc_source, dc_current_leg_terminal, dc_next_leg_source]
+        + chart_zones
+    ):
+        zone = dict(raw_zone or {})
+        if not zone or zone.get("low") is None or zone.get("high") is None:
+            continue
+        zone_key = str(zone.get("zone_id") or "") or (
+            f"{zone.get('timeframe')}:{zone.get('direction')}:{zone.get('low')}:{zone.get('high')}"
+        )
+        if zone_key in chart_seen:
+            continue
+        chart_seen.add(zone_key)
+        chart_pool.append(zone)
+
+    v212_chart_details = (
+        {} if v212_probability_hb is None else dict(v212_probability_hb.get("details") or {})
+    )
+    v212_chart_by_zone = {
+        str(dict(row).get("zone_id") or ""): dict(row)
+        for row in list(v212_chart_details.get("zone_probabilities") or [])
+        if dict(row).get("zone_id")
+    }
+    path_zone_ids = {
+        str(dc_current_leg_terminal.get("zone_id") or ""): "1ST OPPOSING ZONE",
+        str(dc_next_leg_source.get("zone_id") or ""): "NEXT-LEG SOURCE",
+        str(dc_source.get("zone_id") or ""): "CURRENT SOURCE",
+    }
+    path_zone_ids.pop("", None)
+
+    def _chart_zone_priority(zone: dict[str, Any]) -> tuple[float, float, float]:
+        zone_id = str(zone.get("zone_id") or "")
+        role = path_zone_ids.get(zone_id)
+        role_rank = {
+            "1ST OPPOSING ZONE": 0.0,
+            "NEXT-LEG SOURCE": 1.0,
+            "CURRENT SOURCE": 2.0,
+        }.get(role, 3.0)
+        probability = dict(v212_chart_by_zone.get(zone_id) or {})
+        p_touch = dict(probability.get("destination") or {}).get("p_touch")
+        p_hold = dict(probability.get("reaction") or {}).get("p_hold_050")
+        try:
+            touch_score = float(p_touch)
+        except (TypeError, ValueError):
+            touch_score = 0.50
+        try:
+            hold_score = float(p_hold)
+        except (TypeError, ValueError):
+            hold_score = 0.50
+        try:
+            distance = abs(float(zone.get("distance_points") or 999999.0))
+        except (TypeError, ValueError):
+            distance = 999999.0
+        adjusted_distance = distance / max(0.20, touch_score)
+        return role_rank, adjusted_distance, -hold_score
+
+    if chart_pool and chart_price is not None:
         try:
             import matplotlib.pyplot as plt
+            from matplotlib.patches import FancyArrowPatch
             from io import BytesIO
+
             price_now = float(chart_price)
-            chart_zones.sort(key=lambda z: float(z.get("distance_points") or 999999.0))
-            chart_zones = chart_zones[:6]
-            lows = [float(z["low"]) for z in chart_zones]
-            highs = [float(z["high"]) for z in chart_zones]
-            y_min, y_max = min(lows + [price_now]), max(highs + [price_now])
+            chart_pool.sort(key=_chart_zone_priority)
+            chart_pool = chart_pool[:6]
+
+            rt = dc_current_leg_target.get("price")
+            next_rt = dc_next_leg_target.get("price")
+            key_levels = [price_now]
+            if rt is not None:
+                key_levels.append(float(rt))
+            if next_rt is not None:
+                key_levels.append(float(next_rt))
+            lows = [float(z["low"]) for z in chart_pool]
+            highs = [float(z["high"]) for z in chart_pool]
+            y_min, y_max = min(lows + key_levels), max(highs + key_levels)
             pad = max(2.0, (y_max - y_min) * 0.10)
-            fig, ax = plt.subplots(figsize=(7.2, 8.6))
+
+            fig, ax = plt.subplots(figsize=(7.4, 9.0))
             ax.set_xlim(0.0, 10.0)
             ax.set_ylim(y_min - pad, y_max + pad)
             ax.axhline(price_now, linewidth=1.4)
-            ax.text(0.25, price_now, f"XAUUSD {price_now:.2f}", va="bottom", fontsize=10)
-            for idx, z in enumerate(chart_zones):
+            ax.text(0.25, price_now, f"NOW {price_now:.2f}", va="bottom", fontsize=10)
+
+            for idx, z in enumerate(chart_pool):
                 low, high = float(z["low"]), float(z["high"])
-                side, tf = str(z.get("direction") or ""), str(z.get("timeframe") or "")
+                side = str(z.get("direction") or "").upper()
+                tf = str(z.get("timeframe") or "")
                 freshness = str(dict(z.get("lifecycle") or {}).get("freshness") or "")
-                ax.axhspan(low, high, alpha=max(0.12, 0.32 - idx * 0.025))
-                label = f"{tf} {'DEMAND' if side == 'LONG' else 'SUPPLY'} {low:.2f}-{high:.2f} | {freshness}"
-                ax.text(9.75, (low + high) / 2.0, label, ha="right", va="center", fontsize=8)
-            rt = dc_current_leg_target.get("price")
+                zone_id = str(z.get("zone_id") or "")
+                probability = dict(v212_chart_by_zone.get(zone_id) or {})
+                p_touch = dict(probability.get("destination") or {}).get("p_touch")
+                p_hold = dict(probability.get("reaction") or {}).get("p_hold_050")
+                role = path_zone_ids.get(zone_id, "")
+                ax.axhspan(low, high, alpha=max(0.11, 0.31 - idx * 0.025))
+                probability_text = (
+                    f" | touch={_fmt_pct(p_touch)} hold50={_fmt_pct(p_hold)}"
+                    if probability
+                    else ""
+                )
+                role_text = f" | {role}" if role else ""
+                label = (
+                    f"{tf} {'DEMAND' if side == 'LONG' else 'SUPPLY'} "
+                    f"{low:.2f}-{high:.2f} | {freshness}{probability_text}{role_text}"
+                )
+                ax.text(
+                    9.75,
+                    (low + high) / 2.0,
+                    label,
+                    ha="right",
+                    va="center",
+                    fontsize=7.5,
+                )
+
+            # AFIC-style path arrows: current price -> reaction target -> first
+            # opposing zone -> next-leg target when already mapped.
+            path_points: list[tuple[float, float, str]] = [(1.0, price_now, "NOW")]
             if rt is not None:
-                ax.axhline(float(rt), linestyle="--", linewidth=1.0)
-                ax.text(0.25, float(rt), f"Reaction target {float(rt):.2f}", va="bottom", fontsize=8)
-            ax.set_title(f"XAUUSD Supply/Demand Path Map | {dc_current_leg_direction}")
+                rt_price = float(rt)
+                ax.axhline(rt_price, linestyle="--", linewidth=1.0)
+                ax.text(0.25, rt_price, f"Reaction {rt_price:.2f}", va="bottom", fontsize=8)
+                path_points.append((4.0, rt_price, "REACTION"))
+
+            if dc_current_leg_terminal:
+                terminal_low = float(dc_current_leg_terminal["low"])
+                terminal_high = float(dc_current_leg_terminal["high"])
+                terminal_mid = (terminal_low + terminal_high) / 2.0
+                path_points.append((7.0, terminal_mid, "OPPOSING ZONE"))
+
+            if next_rt is not None and len(path_points) >= 2:
+                path_points.append((9.0, float(next_rt), "NEXT LEG"))
+
+            for (x1, y1, _), (x2, y2, label2) in zip(path_points, path_points[1:]):
+                arrow = FancyArrowPatch(
+                    (x1, y1),
+                    (x2, y2),
+                    arrowstyle="->",
+                    mutation_scale=13,
+                    linewidth=1.3,
+                    connectionstyle="arc3,rad=0.08",
+                )
+                ax.add_patch(arrow)
+                ax.text(x2, y2, label2, fontsize=7.5, va="bottom", ha="center")
+
+            ax.set_title(
+                f"XAUUSD AFIC-style Supply/Demand Path | first leg {dc_current_leg_direction}"
+            )
             ax.set_ylabel("Harga XAUUSD")
             ax.set_xticks([])
             ax.grid(axis="y", alpha=0.20)
             fig.tight_layout()
+
             st.pyplot(fig, width="stretch")
             png = BytesIO()
             fig.savefig(png, format="png", dpi=180, bbox_inches="tight")
             plt.close(fig)
-            st.download_button("Download peta Supply/Demand (PNG)", data=png.getvalue(), file_name="xauusd_supply_demand_path_map.png", mime="image/png", width="stretch")
-            st.caption("Zona aktif terdekat diurutkan berdasarkan jarak. Ini visual preparation/research; research score bukan win probability.")
+            st.download_button(
+                "Download peta Supply/Demand AFIC-style (PNG)",
+                data=png.getvalue(),
+                file_name="xauusd_afic_supply_demand_path.png",
+                mime="image/png",
+                width="stretch",
+            )
+
+            first_destination = next(
+                (
+                    zone
+                    for zone in chart_pool
+                    if path_zone_ids.get(str(zone.get("zone_id") or ""))
+                    == "1ST OPPOSING ZONE"
+                ),
+                chart_pool[0] if chart_pool else {},
+            )
+            if first_destination:
+                st.caption(
+                    "Prioritas jalur pertama: "
+                    f"{first_destination.get('timeframe','—')} "
+                    f"{'DEMAND' if str(first_destination.get('direction') or '').upper() == 'LONG' else 'SUPPLY'} "
+                    f"{_fmt_price(first_destination.get('low'))}–{_fmt_price(first_destination.get('high'))}. "
+                    "Urutan ini adalah forecast preparation/shadow; bukan jaminan harga atau execution authority."
+                )
         except Exception as exc:
-            st.warning(f"Peta Supply/Demand belum dapat dirender: {type(exc).__name__}: {exc}")
+            st.warning(
+                f"Peta Supply/Demand belum dapat dirender: {type(exc).__name__}: {exc}"
+            )
     else:
         st.info("Belum ada zona Supply/Demand aktif yang cukup untuk membuat peta.")
 

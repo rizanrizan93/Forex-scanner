@@ -273,3 +273,63 @@ def test_v196_latches_existing_h1_pocket_when_active_source_hands_off_to_h4():
     assert current["m5_pocket"]
     assert out["execution_authority"] is False
 
+
+
+
+def test_v219_re_evaluates_invalid_h1_child_inside_active_h4_parent():
+    t0 = datetime(2026, 9, 25, 7, 0, tzinfo=UTC)
+    path_map = _long_then_short_path()
+    h1_source = dict(path_map["active_path"]["source_zone"])
+    h1_source["available_at"] = t0.isoformat()
+    h4_parent = {
+        "zone_id": "demand-h4-parent-v219",
+        "timeframe": "H4",
+        "direction": "LONG",
+        "low": 95.0,
+        "high": 115.0,
+        "proximal": 105.0,
+        "distal": 95.0,
+        "available_at": t0.isoformat(),
+        "lifecycle": {"active": True},
+    }
+    path_map["active_path"]["source_zone"] = h4_parent
+
+    bars = []
+    for i in range(45):
+        ts = t0 + timedelta(minutes=5 * i)
+        if i == 25:
+            bars.append(_bar(ts, 102.0, 104.0, 97.0, 98.0))
+        elif i > 25:
+            bars.append(_bar(ts, 99.0, 103.0, 98.0, 100.0))
+        else:
+            bars.append(_bar(ts, 106.0, 109.0, 105.0, 107.0))
+
+    previous_projection = {
+        "current_leg": {
+            "direction": "LONG",
+            "source_zone": h1_source,
+            "m5_pocket": {},
+            "historical_candidate_pocket": {"low": 97.0, "high": 104.0},
+            "micro_refinement": {
+                "state": "SOURCE_INVALIDATED_NO_REFINEMENT",
+                "direction": "LONG",
+                "candidate_entry_pocket": {"low": 97.0, "high": 104.0},
+            },
+        }
+    }
+
+    out = evaluate_bidirectional_m5_path(
+        tuple(bars),
+        path_map=path_map,
+        as_of=t0 + timedelta(minutes=5 * 46),
+        previous_projection=previous_projection,
+    )
+
+    current = out["current_leg"]
+    assert current["precision_source_latched"] is True
+    assert current["source_role"] == "LATCHED_INVALIDATED_H1_INSIDE_ACTIVE_HTF_PARENT"
+    assert current["parent_source_zone"]["zone_id"] == "demand-h4-parent-v219"
+    assert current["micro_refinement"]["parent_reversal_rescue"]["active"] is True
+    assert current["pocket_state"] == "CANDIDATE_M5_POCKET"
+    assert current["m5_pocket"]
+    assert out["execution_authority"] is False
