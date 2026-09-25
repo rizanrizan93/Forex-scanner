@@ -68,6 +68,9 @@ def _top_findings(report: dict[str, Any]) -> list[dict[str, Any]]:
             if not top:
                 continue
             best = dict(top[0])
+            internal = dict(summary.get("internal_geometry") or {})
+            internal_top = list(internal.get("highest_hazard_bands_min_n") or [])
+            internal_best = dict(internal_top[0]) if internal_top else {}
             output.append(
                 {
                     "timeframe": timeframe,
@@ -75,6 +78,7 @@ def _top_findings(report: dict[str, Any]) -> list[dict[str, Any]]:
                     "touches": summary.get("touches"),
                     "hold_rate": summary.get("hold_rate"),
                     "hold_wilson_lower_95": summary.get("hold_wilson_lower_95"),
+                    "depth_coordinate": summary.get("coordinate"),
                     "depth_median": summary.get("depth_median"),
                     "depth_p25": summary.get("depth_p25"),
                     "depth_p75": summary.get("depth_p75"),
@@ -83,6 +87,11 @@ def _top_findings(report: dict[str, Any]) -> list[dict[str, Any]]:
                     "band_wilson_lower_95": best.get("wilson_lower_95"),
                     "band_at_risk": best.get("at_risk"),
                     "band_reversals": best.get("reversals"),
+                    "internal_coordinate": internal.get("coordinate"),
+                    "internal_depth_median": internal.get("depth_median"),
+                    "internal_highest_hazard_band": internal_best.get("band"),
+                    "internal_band_hazard": internal_best.get("hazard"),
+                    "internal_band_at_risk": internal_best.get("at_risk"),
                 }
             )
     return output
@@ -131,8 +140,12 @@ def run() -> int:
         "year_count": len(shards),
         "episode_count": len(episodes),
         "label_contract": {
-            "depth_zero": "PROXIMAL_EDGE",
-            "depth_one": "DISTAL_EDGE",
+            "full_zone_depth_zero": "NEAR_OUTER_EDGE:H4_H1_M15_DEMAND_HIGH_OR_SUPPLY_LOW",
+            "full_zone_depth_one": "FAR_OUTER_EDGE:H4_H1_M15_DEMAND_LOW_OR_SUPPLY_HIGH",
+            "internal_depth_zero": "ATLAS_PROXIMAL_BODY_EDGE",
+            "internal_depth_one": "ATLAS_DISTAL_EDGE",
+            "primary_coordinate": "FULL_ZONE_NEAR_EDGE_TO_FAR_EDGE",
+            "secondary_coordinate": "ATLAS_PROXIMAL_BODY_EDGE_TO_DISTAL",
             "reaction": "0.50_ATR_FAVORABLE_MOVE_BEFORE_CLOSE_BEYOND_DISTAL",
             "turning_point": (
                 "DEEPEST_ADVERSE_M1_EXTREME_RECORDED_BEFORE_FIRST_REACTION_TARGET; "
@@ -159,9 +172,11 @@ def run() -> int:
         "execution_authority": False,
         "promotion_authority": False,
         "interpretation": (
-            "V225 is historical research only. Highest-hazard depth bands describe where "
-            "reversals most often occurred conditional on price reaching that depth. They "
-            "must not be treated as entry authority until parity/prospective validation."
+            "V225.1 is historical research only. The primary full-zone coordinate matches "
+            "the user-facing supply/demand range: 0% is the near outer edge and 100% the "
+            "far outer edge. Internal proximal-to-distal geometry is retained separately "
+            "for diagnosis. Highest-hazard bands are conditional on price reaching that "
+            "depth and have no entry authority until parity/prospective validation."
         ),
     }
 
