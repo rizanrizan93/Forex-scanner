@@ -610,6 +610,7 @@ def summarize(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
 
     return {
         "contract": CONTRACT,
+        "research_version": RESEARCH_VERSION,
         "forecasts": len(forecasts),
         "resolved_after_touch": reaction_n,
         "no_touch": len(no_touch),
@@ -727,6 +728,7 @@ def run() -> int:
                         continue
                     payload = {
                         "contract": CONTRACT,
+                        "research_version": RESEARCH_VERSION,
                         "signal_key": forecast.get("signal_key"),
                         "forecast_at": forecast.get("forecast_at"),
                         "direction": forecast.get("direction"),
