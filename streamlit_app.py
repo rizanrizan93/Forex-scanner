@@ -560,6 +560,9 @@ with forecast_tab:
     v216_calibration_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v216_lifecycle_calibration"
     )
+    v217_direction_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v217_direction_probability"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -1017,6 +1020,57 @@ with forecast_tab:
         f"H4 map: {_fmt_wib_datetime(current_map, seconds=False)}. "
         "H4/D1 menentukan parent context; entry dipersempit di H1 lalu M5."
     )
+
+    v217_details = (
+        {} if v217_direction_hb is None else dict(v217_direction_hb.get("details") or {})
+    )
+    v217_eval = dict(v217_details.get("evaluation") or {})
+    v217_strategic = dict(v217_eval.get("strategic_htf") or {})
+    v217_tactical = dict(v217_eval.get("tactical_first_leg") or {})
+    v217_next = dict(v217_eval.get("opposing_next_leg") or {})
+    v217_relationship = dict(v217_eval.get("relationship") or {})
+    if v217_eval:
+        st.markdown("##### V217 — Probabilitas Arah Multi-Horizon")
+        dp1, dp2, dp3, dp4 = st.columns(4)
+        dp1.metric(
+            "Tactical first leg",
+            str(v217_tactical.get("direction") or "—"),
+        )
+        dp2.metric(
+            "P LONG (tactical)",
+            _fmt_pct(v217_tactical.get("p_long")),
+        )
+        dp3.metric(
+            "P SHORT (tactical)",
+            _fmt_pct(v217_tactical.get("p_short")),
+        )
+        dp4.metric(
+            "P NEUTRAL (tactical)",
+            _fmt_pct(v217_tactical.get("p_neutral")),
+        )
+        st.caption(
+            "Strategic HTF support • "
+            f"LONG={_fmt_pct(v217_strategic.get('p_long'))} • "
+            f"SHORT={_fmt_pct(v217_strategic.get('p_short'))} • "
+            f"NEUTRAL={_fmt_pct(v217_strategic.get('p_neutral'))} • "
+            f"path={v217_relationship.get('sequential_path') or '—'} • "
+            f"relationship={v217_relationship.get('state') or '—'}. "
+            "Strategic adalah normalized support, bukan calibrated probability. "
+            "Tactical memakai outcome HOLD/BREAK V212/V213. V217 tetap shadow-only."
+        )
+        with st.expander("Detail V217 Direction Probability", expanded=False):
+            st.json(
+                {
+                    "strategic_htf": v217_strategic,
+                    "tactical_first_leg": v217_tactical,
+                    "opposing_next_leg": v217_next,
+                    "relationship": v217_relationship,
+                    "prospective_context": v217_eval.get("prospective_context"),
+                    "execution_influence": v217_eval.get("execution_influence"),
+                    "execution_authority": v217_eval.get("execution_authority"),
+                    "promotion_authority": v217_eval.get("promotion_authority"),
+                }
+            )
 
     st.markdown("#### 2. H1 — Zona Reaksi Utama")
     if dc_source:
