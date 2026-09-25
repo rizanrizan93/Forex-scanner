@@ -706,6 +706,114 @@ def _overlay(
     }
 
 
+def _intersect_geometries(
+    *parts: dict[str, Any],
+) -> dict[str, Any]:
+    usable = [
+        dict(part)
+        for part in parts
+        if _f(dict(part).get("low")) is not None
+        and _f(dict(part).get("high")) is not None
+    ]
+    if not usable:
+        return {}
+    low = max(float(_f(part.get("low"))) for part in usable)
+    high = min(float(_f(part.get("high"))) for part in usable)
+    if high < low:
+        return {}
+    return {
+        "low": low,
+        "high": high,
+        "mid": (low + high) / 2.0,
+        "width_points": high - low,
+    }
+
+
+def _confluence_geometry(
+    *,
+    h4_hotspot: dict[str, Any],
+    h1_locator: dict[str, Any],
+    m15_locator: dict[str, Any],
+) -> dict[str, Any]:
+    triple = _intersect_geometries(h4_hotspot, h1_locator, m15_locator)
+    if triple:
+        return {
+            **triple,
+            "level": "H4_H1_M15_TRIPLE",
+            "layers": ["H4", "H1", "M15"],
+        }
+
+    h4_h1 = _intersect_geometries(h4_hotspot, h1_locator)
+    if h4_h1:
+        return {
+            **h4_h1,
+            "level": "H4_H1",
+            "layers": ["H4", "H1"],
+        }
+
+    h4_m15 = _intersect_geometries(h4_hotspot, m15_locator)
+    if h4_m15:
+        return {
+            **h4_m15,
+            "level": "H4_M15",
+            "layers": ["H4", "M15"],
+        }
+
+    return {}
+
+
+def _child_confluence_geometry(
+    *,
+    h1_locator: dict[str, Any],
+    m15_locator: dict[str, Any],
+) -> dict[str, Any]:
+    child = _intersect_geometries(h1_locator, m15_locator)
+    if not child:
+        return {}
+    return {
+        **child,
+        "level": "H1_M15_CHILD_ONLY",
+        "layers": ["H1", "M15"],
+    }
+
+
+def _confluence_applicability(
+    *,
+    h4: dict[str, Any],
+    h1: dict[str, Any],
+    m15_zone: dict[str, Any],
+    price: float,
+) -> dict[str, Any]:
+    states = [
+        str(dict(h4.get("applicability") or {}).get("state") or ""),
+    ]
+    if h1:
+        states.append(
+            str(dict(h1.get("applicability") or {}).get("state") or "")
+        )
+    if m15_zone:
+        states.append(str(_applicability(m15_zone, price).get("state") or ""))
+
+    if any(state.startswith("LOW_") for state in states):
+        state = "CONTEXT_ONLY_REUSE_PRESENT"
+        note = (
+            "Satu atau lebih layer sudah reuse/multi-tested; intersection adalah "
+            "geometry confluence, bukan first-touch probability."
+        )
+    elif states and all(state.startswith("HIGH_") for state in states):
+        state = "FIRST_TOUCH_EVIDENCE_ALIGNED"
+        note = "Semua layer tersedia sebagai first-touch prior."
+    else:
+        state = "MIXED_FIRST_TOUCH_CONTEXT"
+        note = "Layer belum semuanya berada pada state first-touch yang sama."
+
+    return {
+        "state": state,
+        "layer_states": states,
+        "note": note,
+    }
+
+
 def _direction_map(
     *,
     direction: str,
@@ -812,13 +920,51 @@ def _direction_map(
         if m15_overlay:
             overlays.append(m15_overlay)
 
+    h4_geometry = dict(h4.get("hotspot") or {})
+    h1_geometry = dict(h1_nested.get("envelope") or {})
+    m15_geometry = dict(m15_nested.get("envelope") or {})
+    confluence_core = _confluence_geometry(
+        h4_hotspot=h4_geometry,
+        h1_locator=h1_geometry,
+        m15_locator=m15_geometry,
+    )
+    child_confluence = _child_confluence_geometry(
+        h1_locator=h1_geometry,
+        m15_locator=m15_geometry,
+    )
+    confluence_applicability = _confluence_applicability(
+        h4=h4,
+        h1=h1,
+        m15_zone=m15_zone,
+        price=price,
+    )
+
+    if confluence_core:
+        core_overlay = _overlay(
+            timeframe="MTF",
+            direction=direction,
+            kind="RIZAN_CONFLUENCE_CORE",
+            geometry=confluence_core,
+            label="RIZAN confluence core",
+            median_price=_f(confluence_core.get("mid")),
+            visible_on=("H4", "H1", "M15"),
+            applicability=str(confluence_applicability.get("state") or ""),
+        )
+        if core_overlay:
+            overlays.append(core_overlay)
+
     narrowest = (
-        dict(m15_nested.get("envelope") or {})
-        or dict(h1_nested.get("envelope") or {})
-        or dict(h4.get("hotspot") or {})
+        dict(confluence_core or {})
+        or dict(m15_geometry or {})
+        or dict(h1_geometry or {})
+        or dict(h4_geometry or {})
     )
     state = (
-        "H4_H1_M15_LOCATOR_AVAILABLE"
+        "H4_H1_M15_CONFLUENCE_CORE_AVAILABLE"
+        if str(confluence_core.get("level") or "") == "H4_H1_M15_TRIPLE"
+        else "HTF_CONFLUENCE_CORE_AVAILABLE"
+        if confluence_core
+        else "H4_H1_M15_LOCATOR_AVAILABLE"
         if m15_zone and m15_nested
         else "H4_H1_LOCATOR_AVAILABLE"
         if h1_zone
@@ -848,6 +994,9 @@ def _direction_map(
             "standalone_profile_context": m15_profile,
         },
         "historical_hierarchy": hierarchy,
+        "confluence_core": confluence_core,
+        "child_confluence": child_confluence,
+        "confluence_applicability": confluence_applicability,
         "narrowest_locator": narrowest,
         "overlays": overlays,
         "execution_influence": False,
@@ -939,8 +1088,10 @@ def build_depth_map(
             "V226 localizes current active H4 supply/demand using V225.1 first-touch "
             "depth priors, then narrows with an overlapping H1 child and a pre-existing "
             "same-direction M15 child when available. H4/H1 standalone hotspots and "
-            "nested child locators are deliberately separated. No MSS/reclaim is required "
-            "to draw the map, and the map has no execution authority."
+            "nested child locators are deliberately separated. When H4, H1 and M15 "
+            "geometries overlap, V226.1 also reports their exact price intersection as a "
+            "RIZAN confluence core. No MSS/reclaim is required to draw the map, and the "
+            "map has no execution authority."
         ),
         "policy_effect": POLICY_EFFECT,
         "execution_influence": False,
