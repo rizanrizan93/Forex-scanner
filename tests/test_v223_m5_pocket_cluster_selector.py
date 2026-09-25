@@ -87,6 +87,100 @@ def test_v223_does_not_select_all_late_cluster_as_primary_first_entry() -> None:
     assert result["retest_only_clusters"][0]["role"] == "RETEST_ONLY_CLUSTER"
 
 
+
+
+def test_v223_splits_transitive_chain_when_union_span_exceeds_micro_wave_bound() -> None:
+    rows = [
+        _pocket(1, 4301.60, 4308.13, "2026-09-25T10:20:28+00:00"),
+        _pocket(2, 4305.13, 4309.00, "2026-09-25T10:27:17+00:00"),
+        _pocket(3, 4306.17, 4309.63, "2026-09-25T10:34:14+00:00"),
+        _pocket(4, 4309.14, 4311.73, "2026-09-25T11:01:15+00:00"),
+        _pocket(5, 4310.40, 4311.93, "2026-09-25T11:08:18+00:00"),
+        _pocket(
+            6,
+            4312.59,
+            4315.82,
+            "2026-09-25T11:15:21+00:00",
+            timing="LATE_FOR_FIRST_ENTRY_WAIT_RETEST",
+        ),
+    ]
+    clusters = cluster_pocket_family(rows, atr_points=15.57)
+    assert len(clusters) == 2
+    assert [row["signal_key"] for row in clusters[0]] == ["p1", "p2", "p3", "p4", "p5"]
+    assert [row["signal_key"] for row in clusters[1]] == ["p6"]
+
+
+def test_v223_splits_new_micro_wave_after_large_time_gap() -> None:
+    rows = [
+        _pocket(1, 4312.59, 4315.82, "2026-09-25T11:15:21+00:00"),
+        _pocket(2, 4303.11, 4304.68, "2026-09-25T12:10:03+00:00"),
+        _pocket(3, 4303.71, 4304.88, "2026-09-25T12:16:40+00:00"),
+        _pocket(4, 4299.42, 4306.88, "2026-09-25T12:29:38+00:00"),
+    ]
+    clusters = cluster_pocket_family(rows, atr_points=15.57)
+    assert len(clusters) == 2
+    assert len(clusters[0]) == 1
+    assert len(clusters[1]) == 3
+
+
+def test_v223_recent_untouched_micro_wave_can_be_primary_even_if_old_wave_was_touched() -> None:
+    evaluation = {
+        "direction": "SHORT",
+        "current_price_reference": 4306.69,
+        "parent_context": {"atr_points": 15.57},
+        "family": [
+            _pocket(
+                1,
+                4306.17,
+                4309.63,
+                "2026-09-25T10:34:14+00:00",
+                quality=70.0,
+                timing="POST_MAP_TOUCH_CONFIRMED",
+            ),
+            _pocket(
+                2,
+                4312.59,
+                4315.82,
+                "2026-09-25T11:15:21+00:00",
+                quality=45.0,
+                timing="LATE_FOR_FIRST_ENTRY_WAIT_RETEST",
+            ),
+            _pocket(
+                3,
+                4303.11,
+                4304.68,
+                "2026-09-25T12:10:03+00:00",
+                quality=48.0,
+                timing="FRESH_ORIGIN_WAIT_RETEST",
+            ),
+            _pocket(
+                4,
+                4303.71,
+                4304.88,
+                "2026-09-25T12:16:40+00:00",
+                quality=50.0,
+                timing="FRESH_ORIGIN_WAIT_RETEST",
+            ),
+            _pocket(
+                5,
+                4299.42,
+                4306.88,
+                "2026-09-25T12:29:38+00:00",
+                quality=55.0,
+                timing="AT_POCKET_WAIT_CONFIRMATION",
+            ),
+        ],
+    }
+    result = select_clusters(
+        evaluation,
+        now=datetime(2026, 9, 25, 12, 35, tzinfo=UTC),
+    )
+    primary = result["primary_cluster"]
+    assert primary
+    assert primary["union_zone"] == {"low": 4299.42, "high": 4306.88}
+    assert primary["post_map_touch_member_count"] == 0
+    assert result["selection_policy"]["micro_wave_cluster_count"] >= 3
+
 def test_v223_workflow_and_dashboard_are_shadow_only() -> None:
     workflow = (ROOT / ".github/workflows/ctrader-demo-maintenance-pipeline.yml").read_text()
     assert "python -m fx_scanner.demo_xau_v223_m5_pocket_cluster_selector" in workflow

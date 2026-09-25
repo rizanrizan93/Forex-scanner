@@ -15,6 +15,9 @@ SOURCE_WORKER = "ctrader_demo_xau_v222_m5_pocket_quality"
 
 MAX_ACTIVE_AGE_MINUTES = 90.0
 CLUSTER_GAP_ATR = 0.10
+MAX_CLUSTER_SPAN_ATR = 0.75
+MAX_CLUSTER_TIME_GAP_MINUTES = 30.0
+MAX_MIDPOINT_SHIFT_ATR = 0.40
 PRIMARY_DISTANCE_ATR = 0.50
 
 
@@ -106,21 +109,52 @@ def cluster_pocket_family(
     family = _sanitize_family(rows)
     if not family:
         return []
-    allowed_gap = 0.0 if atr_points in (None, 0) else float(atr_points) * CLUSTER_GAP_ATR
+
+    atr = None if atr_points in (None, 0) else float(atr_points)
+    allowed_gap = 0.0 if atr is None else atr * CLUSTER_GAP_ATR
+    max_span = float("inf") if atr is None else atr * MAX_CLUSTER_SPAN_ATR
+    max_mid_shift = float("inf") if atr is None else atr * MAX_MIDPOINT_SHIFT_ATR
 
     clusters: list[list[dict[str, Any]]] = []
     for row in family:
-        placed = False
-        for cluster in reversed(clusters):
-            union_low = min(float(item["low"]) for item in cluster)
-            union_high = max(float(item["high"]) for item in cluster)
-            proxy = {"low": union_low, "high": union_high}
-            if _gap(row, proxy) <= allowed_gap:
-                cluster.append(row)
-                placed = True
-                break
-        if not placed:
+        if not clusters:
             clusters.append([row])
+            continue
+
+        cluster = clusters[-1]
+        previous = cluster[-1]
+        union_low = min(float(item["low"]) for item in cluster)
+        union_high = max(float(item["high"]) for item in cluster)
+        proposed_low = min(union_low, float(row["low"]))
+        proposed_high = max(union_high, float(row["high"]))
+        proposed_span = proposed_high - proposed_low
+
+        previous_mapped = _dt(previous.get("mapped_at"))
+        row_mapped = _dt(row.get("mapped_at"))
+        time_gap_minutes = (
+            None
+            if previous_mapped is None or row_mapped is None
+            else max(0.0, (row_mapped - previous_mapped).total_seconds() / 60.0)
+        )
+        previous_mid = (float(previous["low"]) + float(previous["high"])) / 2.0
+        row_mid = (float(row["low"]) + float(row["high"])) / 2.0
+        midpoint_shift = abs(row_mid - previous_mid)
+
+        same_micro_wave = bool(
+            _gap(row, {"low": union_low, "high": union_high}) <= allowed_gap
+            and proposed_span <= max_span
+            and midpoint_shift <= max_mid_shift
+            and (
+                time_gap_minutes is None
+                or time_gap_minutes <= MAX_CLUSTER_TIME_GAP_MINUTES
+            )
+        )
+
+        if same_micro_wave:
+            cluster.append(row)
+        else:
+            clusters.append([row])
+
     return clusters
 
 
@@ -309,17 +343,22 @@ def select_clusters(
         "selection_policy": {
             "max_active_age_minutes": MAX_ACTIVE_AGE_MINUTES,
             "cluster_gap_atr": CLUSTER_GAP_ATR,
-            "primary_distance_atr": PRIMARY_DISTANCE_ATR,
+            "max_cluster_span_atr": MAX_CLUSTER_SPAN_ATR,
+            "max_cluster_time_gap_minutes": MAX_CLUSTER_TIME_GAP_MINUTES,
+            "max_midpoint_shift_atr": MAX_MIDPOINT_SHIFT_ATR,
+            "micro_wave_cluster_count": len(payloads),
             "note": (
-                "V223 clusters overlapping/nearby M5 pocket episodes so the newest "
-                "sweep-origin geometry cannot silently replace a stable micro-area. "
-                "Consensus core is research geometry only, not an entry order."
+                "V223 clusters overlapping/nearby M5 pocket episodes only while they remain "
+                "inside one bounded micro-wave. Time gaps, excessive union span, or a large "
+                "midpoint jump start a new cluster so chained sweep origins cannot merge into "
+                "one oversized area. Consensus core is research geometry only, not an entry order."
             ),
         },
         "interpretation": (
             "PRIMARY means the highest-ranked currently relevant pocket cluster for "
             "research/watch purposes. RETEST_ONLY means the first-entry opportunity is "
-            "already considered late. V223 has no execution or promotion authority."
+            "already considered late. Micro-wave segmentation prevents older pocket chains "
+            "from swallowing a newer stable area. V223 has no execution or promotion authority."
         ),
         "policy_effect": "SHADOW_ONLY",
         "execution_influence": False,
