@@ -7,3 +7,5 @@ pytest==9.0.2
 supabase==2.31.0
 streamlit==1.62.0
 cryptography==42.0.8
+
+matplotlib==3.10.7
