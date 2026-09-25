@@ -1048,13 +1048,17 @@ with forecast_tab:
             "P NEUTRAL (tactical)",
             _fmt_pct(v217_tactical.get("p_neutral")),
         )
+        v217_htf_context = dict(v217_strategic.get("htf_context") or {})
         st.caption(
             "Strategic HTF support • "
             f"LONG={_fmt_pct(v217_strategic.get('p_long'))} • "
             f"SHORT={_fmt_pct(v217_strategic.get('p_short'))} • "
             f"NEUTRAL={_fmt_pct(v217_strategic.get('p_neutral'))} • "
             f"path={v217_relationship.get('sequential_path') or '—'} • "
-            f"relationship={v217_relationship.get('state') or '—'}. "
+            f"relationship={v217_relationship.get('state') or '—'} • "
+            f"HTF source={v217_htf_context.get('source') or '—'} • "
+            f"fresh={v217_htf_context.get('fresh')} • "
+            f"parity={v217_htf_context.get('parity_state') or '—'}. "
             "Strategic adalah normalized support, bukan calibrated probability. "
             "Tactical memakai outcome HOLD/BREAK V212/V213. V217 tetap shadow-only."
         )
@@ -1062,6 +1066,7 @@ with forecast_tab:
             st.json(
                 {
                     "strategic_htf": v217_strategic,
+                    "htf_context": dict(v217_strategic.get("htf_context") or {}),
                     "tactical_first_leg": v217_tactical,
                     "opposing_next_leg": v217_next,
                     "relationship": v217_relationship,
