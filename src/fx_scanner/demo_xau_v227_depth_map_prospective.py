@@ -166,6 +166,7 @@ def _forecast_candidate(
 
     h1 = _layer_snapshot(direction_map, "h1")
     m15 = _layer_snapshot(direction_map, "m15")
+    depth_entry_candidate = dict(direction_map.get("depth_entry_candidate") or {})
     signal_key = _stable_signal_key(direction=side, zone_id=zone_id)
 
     return {
@@ -179,6 +180,7 @@ def _forecast_candidate(
         "h4": h4,
         "h1": h1,
         "m15": m15,
+        "depth_entry_candidate": depth_entry_candidate,
         "parent": {
             "zone_id": zone_id,
             "low": low,
@@ -277,6 +279,7 @@ def _capture_payload(
             "h4_median_abs_depth_error": None,
             "h1_locator_capture": None,
             "m15_locator_capture": None,
+            "depth_entry_candidate_capture": None,
         }
 
     h4 = dict(forecast.get("h4") or {})
@@ -302,6 +305,13 @@ def _capture_payload(
         ),
         "h1_locator_capture": _inside(turning_price, dict(h1.get("locator") or {})),
         "m15_locator_capture": _inside(turning_price, dict(m15.get("locator") or {})),
+        "depth_entry_candidate_capture": _inside(
+            turning_price,
+            {
+                "low": dict(forecast.get("depth_entry_candidate") or {}).get("entry_low"),
+                "high": dict(forecast.get("depth_entry_candidate") or {}).get("entry_high"),
+            },
+        ),
     }
 
 
@@ -623,6 +633,10 @@ def summarize(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "h4_iqr_capture_given_reaction_050": _metric(reactions_050, "h4_iqr_capture"),
         "h1_locator_capture_given_reaction_050": _metric(reactions_050, "h1_locator_capture"),
         "m15_locator_capture_given_reaction_050": _metric(reactions_050, "m15_locator_capture"),
+        "depth_entry_candidate_capture_given_reaction_050": _metric(
+            reactions_050,
+            "depth_entry_candidate_capture",
+        ),
         # Backward-compatible aliases for the original V227 dashboard/readers.
         "h4_hotspot_capture_given_reaction": _metric(reactions_050, "h4_hotspot_capture"),
         "h4_iqr_capture_given_reaction": _metric(reactions_050, "h4_iqr_capture"),
@@ -646,7 +660,8 @@ def summarize(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
             "H4 zones while price remains outside on the correct approach side. It scores "
             "0.25/0.50/0.75/1.00 ATR reaction rungs, keeps invalidation precedence, and "
             "measures turning depth on the historical 0.50 ATR contract plus H4 hotspot/IQR "
-            "and nested H1/M15 locator capture. No execution or promotion authority."
+            "and nested H1/M15 locator plus Depth Entry Candidate capture. No execution "
+            "or promotion authority."
         ),
     }
 
@@ -736,6 +751,9 @@ def run() -> int:
                         "h4": dict(forecast.get("h4") or {}),
                         "h1": dict(forecast.get("h1") or {}),
                         "m15": dict(forecast.get("m15") or {}),
+                        "depth_entry_candidate": dict(
+                            forecast.get("depth_entry_candidate") or {}
+                        ),
                         **outcome,
                         "execution_influence": False,
                         "execution_authority": False,

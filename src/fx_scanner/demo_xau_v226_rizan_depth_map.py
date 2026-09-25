@@ -814,6 +814,109 @@ def _overlay(
     }
 
 
+
+def _depth_entry_candidate(
+    *,
+    direction: str,
+    price: float,
+    h4: dict[str, Any],
+    h1_nested: dict[str, Any],
+    m15_nested: dict[str, Any],
+    h1_profile: dict[str, Any],
+    m15_profile: dict[str, Any],
+    h4_selection_mode: str,
+) -> dict[str, Any]:
+    """Build one display-only entry candidate from the narrowest causal locator.
+
+    This is deliberately not an execution signal. M15 nested geometry wins when
+    available, otherwise H1 nested geometry, otherwise the H4 historical hotspot.
+    """
+    m15_geometry = dict(m15_nested.get("envelope") or {})
+    h1_geometry = dict(h1_nested.get("envelope") or {})
+    h4_geometry = dict(h4.get("hotspot") or {})
+
+    source_layer = ""
+    geometry: dict[str, Any] = {}
+    reference = None
+    if m15_geometry:
+        source_layer = "M15_NESTED_LOCATOR"
+        geometry = m15_geometry
+        reference = _f(dict(m15_nested.get("median") or {}).get("price"))
+    elif h1_geometry:
+        source_layer = "H1_NESTED_LOCATOR"
+        geometry = h1_geometry
+        reference = _f(dict(h1_nested.get("median") or {}).get("price"))
+    elif h4_geometry:
+        source_layer = "H4_HISTORICAL_HOTSPOT"
+        geometry = h4_geometry
+
+    low = _f(geometry.get("low"))
+    high = _f(geometry.get("high"))
+    if low is None or high is None or high < low:
+        return {}
+
+    if reference is None:
+        reference = (low + high) / 2.0
+    reference = min(max(float(reference), low), high)
+
+    if low <= price <= high:
+        approach_state = "INSIDE_CANDIDATE"
+    elif direction == "LONG":
+        approach_state = "AHEAD" if price > high else "PASSED_BEYOND_CANDIDATE"
+    else:
+        approach_state = "AHEAD" if price < low else "PASSED_BEYOND_CANDIDATE"
+
+    h4_profile = dict(h4.get("historical_profile") or {})
+    h4_app = dict(h4.get("applicability") or {})
+    calibrated_fresh = (
+        h4_selection_mode == "FRESH_FIRST_TOUCH_CALIBRATED_PARENT"
+        and str(h4_app.get("state") or "") == "HIGH_FIRST_TOUCH_PRIOR"
+    )
+    display_status = (
+        "PREPARE_ONLY_FRESH_FIRST_TOUCH"
+        if calibrated_fresh
+        else "CONTEXT_ONLY_OUT_OF_SAMPLE"
+    )
+
+    return {
+        "candidate_type": "DEPTH_ENTRY_CANDIDATE",
+        "direction": direction,
+        "entry_low": low,
+        "entry_high": high,
+        "entry_reference": reference,
+        "source_layer": source_layer,
+        "approach_state": approach_state,
+        "distance_points": _distance_to_zone(
+            price,
+            {"low": low, "high": high},
+        ),
+        "display_status": display_status,
+        "calibrated_fresh_first_touch": calibrated_fresh,
+        "historical_context": {
+            "reaction_contract": "REACTION_GTE_0_50_ATR",
+            "h4_parent_rate": _f(h4_profile.get("hold_rate")),
+            "h4_parent_wilson_lower_95": _f(h4_profile.get("hold_wilson_lower_95")),
+            "h1_standalone_rate": _f(h1_profile.get("hold_rate")),
+            "h1_standalone_wilson_lower_95": _f(
+                h1_profile.get("hold_wilson_lower_95")
+            ),
+            "m15_standalone_rate": _f(m15_profile.get("hold_rate")),
+            "m15_standalone_wilson_lower_95": _f(
+                m15_profile.get("hold_wilson_lower_95")
+            ),
+            "note": (
+                "Rates are standalone historical reaction/hold rates, not a combined "
+                "H4→H1→M15 entry-strategy win rate. The final candidate is being "
+                "validated prospectively by V227."
+            ),
+        },
+        "policy_effect": POLICY_EFFECT,
+        "execution_influence": False,
+        "execution_authority": False,
+        "promotion_authority": False,
+    }
+
+
 def _direction_map(
     *,
     direction: str,
@@ -967,6 +1070,16 @@ def _direction_map(
         if h1_zone
         else "H4_DEPTH_HOTSPOT_AVAILABLE"
     )
+    depth_entry_candidate = _depth_entry_candidate(
+        direction=direction,
+        price=price,
+        h4=h4,
+        h1_nested=h1_nested,
+        m15_nested=m15_nested,
+        h1_profile=h1_profile,
+        m15_profile=m15_profile,
+        h4_selection_mode=h4_selection_mode,
+    )
 
     return {
         "direction": direction,
@@ -995,6 +1108,7 @@ def _direction_map(
         },
         "historical_hierarchy": hierarchy,
         "narrowest_locator": narrowest,
+        "depth_entry_candidate": depth_entry_candidate,
         "overlays": overlays,
         "execution_influence": False,
         "execution_authority": False,
@@ -1079,12 +1193,19 @@ def build_depth_map(
         )
 
     overlays = list(long_map.get("overlays") or []) + list(short_map.get("overlays") or [])
+    focus_map = long_map if focus == "LONG" else short_map
+    focus_entry_candidate = dict(focus_map.get("depth_entry_candidate") or {})
     return {
         "contract": CONTRACT,
         "state": "RIZAN_DEPTH_MAP_AVAILABLE",
         "as_of": atlas_evaluation.get("as_of"),
         "price_reference": price,
         "focus_direction": focus,
+        "depth_entry_candidate": focus_entry_candidate,
+        "entry_candidates": {
+            "long": dict(long_map.get("depth_entry_candidate") or {}),
+            "short": dict(short_map.get("depth_entry_candidate") or {}),
+        },
         "long": long_map,
         "short": short_map,
         "chart_overlays": overlays,
@@ -1103,8 +1224,10 @@ def build_depth_map(
             "market context. The calibrated parent is then narrowed with an overlapping "
             "H1 child and a pre-existing same-direction M15 child when available. "
             "Nested child envelopes are clipped to their parent locator so each stage truly "
-            "narrows rather than expanding outside the upstream geometry. No MSS/reclaim is "
-            "required to draw the map, and the map has no execution authority."
+            "narrows rather than expanding outside the upstream geometry. The narrowest "
+            "available geometry is exposed as a display-only Depth Entry Candidate with "
+            "direction, price range and reference price. No MSS/reclaim is required to draw "
+            "the map, and the map/candidate have no execution authority."
         ),
         "policy_effect": POLICY_EFFECT,
         "execution_influence": False,

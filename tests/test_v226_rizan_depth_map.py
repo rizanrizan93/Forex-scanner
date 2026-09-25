@@ -4,6 +4,7 @@ from fx_scanner.demo_xau_v226_rizan_depth_map import (
     _applicability,
     _clip_nested_locator,
     _depth_band_prices,
+    _depth_entry_candidate,
     _historical_profile,
     _nested_locator,
     _select_h1,
@@ -477,7 +478,103 @@ def test_v226_workflow_and_dashboard_are_shadow_only() -> None:
     assert "V226 — RIZAN Depth Map" in dashboard
     assert "RIZAN Depth hotspot" in dashboard
     assert "V226 tetap shadow-only" in dashboard
+    assert "Depth Entry Candidate" in dashboard
+    assert "Candidate entry" in dashboard
 
     source = (ROOT / "src/fx_scanner/demo_xau_v226_rizan_depth_map.py").read_text()
     assert 'POLICY_EFFECT = "SHADOW_ONLY"' in source
     assert '"execution_authority": False' in source
+
+
+def test_v226_depth_entry_candidate_prefers_m15_then_h1_then_h4() -> None:
+    h4_zone = _zone(
+        "h4",
+        timeframe="H4",
+        direction="LONG",
+        low=100.0,
+        high=110.0,
+    )
+    h4 = {
+        "zone": h4_zone,
+        "hotspot": {"low": 109.0, "high": 110.0},
+        "historical_profile": {
+            "hold_rate": 0.71,
+            "hold_wilson_lower_95": 0.69,
+        },
+        "applicability": {"state": "HIGH_FIRST_TOUCH_PRIOR"},
+    }
+    h1_profile = {"hold_rate": 0.72, "hold_wilson_lower_95": 0.70}
+    m15_profile = {"hold_rate": 0.74, "hold_wilson_lower_95": 0.73}
+    h1_nested = {
+        "envelope": {"low": 106.0, "high": 108.0},
+        "median": {"price": 107.0},
+    }
+    m15_nested = {
+        "envelope": {"low": 106.5, "high": 107.5},
+        "median": {"price": 106.9},
+    }
+
+    candidate = _depth_entry_candidate(
+        direction="LONG",
+        price=112.0,
+        h4=h4,
+        h1_nested=h1_nested,
+        m15_nested=m15_nested,
+        h1_profile=h1_profile,
+        m15_profile=m15_profile,
+        h4_selection_mode="FRESH_FIRST_TOUCH_CALIBRATED_PARENT",
+    )
+    assert candidate["source_layer"] == "M15_NESTED_LOCATOR"
+    assert candidate["entry_low"] == 106.5
+    assert candidate["entry_high"] == 107.5
+    assert candidate["entry_reference"] == 106.9
+    assert candidate["direction"] == "LONG"
+    assert candidate["display_status"] == "PREPARE_ONLY_FRESH_FIRST_TOUCH"
+    assert candidate["execution_authority"] is False
+
+    candidate_without_m15 = _depth_entry_candidate(
+        direction="LONG",
+        price=112.0,
+        h4=h4,
+        h1_nested=h1_nested,
+        m15_nested={},
+        h1_profile=h1_profile,
+        m15_profile=m15_profile,
+        h4_selection_mode="FRESH_FIRST_TOUCH_CALIBRATED_PARENT",
+    )
+    assert candidate_without_m15["source_layer"] == "H1_NESTED_LOCATOR"
+    assert candidate_without_m15["entry_low"] == 106.0
+    assert candidate_without_m15["entry_high"] == 108.0
+
+    candidate_h4_only = _depth_entry_candidate(
+        direction="LONG",
+        price=112.0,
+        h4=h4,
+        h1_nested={},
+        m15_nested={},
+        h1_profile=h1_profile,
+        m15_profile=m15_profile,
+        h4_selection_mode="FRESH_FIRST_TOUCH_CALIBRATED_PARENT",
+    )
+    assert candidate_h4_only["source_layer"] == "H4_HISTORICAL_HOTSPOT"
+    assert candidate_h4_only["entry_reference"] == 109.5
+
+
+def test_v226_build_map_exposes_focus_and_both_direction_entry_candidates() -> None:
+    atlas = {
+        "as_of": "2026-09-25T16:00:00+00:00",
+        "last_closed_m15_price": 4290.0,
+        "zones": [
+            _zone("h4d", timeframe="H4", direction="LONG", low=4244.0, high=4275.0),
+            _zone("h1d", timeframe="H1", direction="LONG", low=4269.0, high=4274.0),
+            _zone("h4s", timeframe="H4", direction="SHORT", low=4310.0, high=4340.0),
+            _zone("h1s", timeframe="H1", direction="SHORT", low=4310.0, high=4316.0),
+        ],
+        "chart_bars_m15": [],
+        "m5_path_projection": {"current_leg": {"direction": "LONG"}},
+    }
+    result = build_depth_map(atlas_evaluation=atlas, history_details=_history())
+    assert result["depth_entry_candidate"]["direction"] == "LONG"
+    assert result["entry_candidates"]["long"]["direction"] == "LONG"
+    assert result["entry_candidates"]["short"]["direction"] == "SHORT"
+    assert result["depth_entry_candidate"]["execution_authority"] is False

@@ -81,7 +81,24 @@ def _source(
         },
         "applicability": {"state": "HIGH_FIRST_TOUCH_PRIOR"},
     }
-    side = {"h4": h4, "h1": h1, "m15": m15}
+    depth_entry_candidate = {
+        "candidate_type": "DEPTH_ENTRY_CANDIDATE",
+        "direction": direction,
+        "entry_low": 105.5,
+        "entry_high": 107.5,
+        "entry_reference": 106.3,
+        "source_layer": "M15_NESTED_LOCATOR",
+        "display_status": "PREPARE_ONLY_FRESH_FIRST_TOUCH",
+        "execution_influence": False,
+        "execution_authority": False,
+        "promotion_authority": False,
+    }
+    side = {
+        "h4": h4,
+        "h1": h1,
+        "m15": m15,
+        "depth_entry_candidate": depth_entry_candidate,
+    }
     return {
         "observed_at": "2026-09-25T12:00:00+00:00",
         "healthy": True,
@@ -106,6 +123,8 @@ def test_v227_enrolls_fresh_long_h4_only_before_first_touch() -> None:
     assert candidate
     assert candidate["forecast_timing"] == "FRESH_H4_PRE_TOUCH_CORRECT_SIDE"
     assert candidate["parent"]["zone_id"] == "h4-zone"
+    assert candidate["depth_entry_candidate"]["source_layer"] == "M15_NESTED_LOCATOR"
+    assert candidate["depth_entry_candidate"]["entry_low"] == 105.5
     assert candidate["execution_authority"] is False
 
 
@@ -174,6 +193,7 @@ def test_v227_scores_turning_depth_and_all_locator_captures() -> None:
     assert result["h4_iqr_capture"] is True
     assert result["h1_locator_capture"] is True
     assert result["m15_locator_capture"] is True
+    assert result["depth_entry_candidate_capture"] is True
 
 
 def test_v227_invalidation_wins_over_target_on_same_future_bar() -> None:
