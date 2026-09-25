@@ -750,3 +750,12 @@ create index if not exists broker_order_events_backend_event_account_observed_id
   on public.broker_order_events (backend, event_type, account_id, observed_at desc);
 
 -- Contract marker: FOREX_SCANNER_BROKER_EVENT_HOT_PATH_V207
+
+
+-- V209 broker-order identity lookup. Production duplicate/reconciliation checks
+-- repeatedly probe backend+account_id+broker_order_id; event_type is appended so
+-- the stricter protection checks use the same index. This does not alter trading logic.
+create index if not exists broker_order_events_backend_account_order_event_idx
+  on public.broker_order_events (backend, account_id, broker_order_id, event_type);
+
+-- Contract marker: FOREX_SCANNER_IO_BUDGET_V209
