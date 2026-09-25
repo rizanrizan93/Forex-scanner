@@ -6,6 +6,7 @@ import pandas as pd
 from fx_scanner.demo_xau_supply_demand_atlas_v182 import SDZone
 from fx_scanner.research_xau_zone_reversal_depth_v225 import (
     DepthEpisode,
+    _detect_m15_zones,
     causal_superseded_at,
     depth_summary,
     evaluate_first_touch,
@@ -93,6 +94,95 @@ def test_v225_full_demand_example_uses_outer_range_even_when_body_edge_differs()
 
 
 
+
+
+
+def test_v2252_m15_zone_becomes_available_only_after_departure_candle_closes() -> None:
+    start = datetime(2026, 9, 25, 0, tzinfo=UTC)
+    rows = []
+    for i in range(19):
+        t = start + timedelta(minutes=15 * i)
+        rows.append(
+            {
+                "time": t,
+                "open": 100.0,
+                "high": 100.4,
+                "low": 99.6,
+                "close": 100.0 if i % 2 == 0 else 99.9,
+            }
+        )
+    departure_open = start + timedelta(minutes=15 * 19)
+    rows.append(
+        {
+            "time": departure_open,
+            "open": 100.0,
+            "high": 106.0,
+            "low": 99.8,
+            "close": 105.5,
+        }
+    )
+    zones = _detect_m15_zones(pd.DataFrame(rows))
+    assert zones
+    latest = zones[-1]
+    assert latest.available_at == departure_open + timedelta(minutes=15)
+    assert latest.departure_at == latest.available_at
+    assert latest.available_at > departure_open
+
+
+def test_v2252_m15_departure_candle_cannot_be_counted_as_post_map_touch() -> None:
+    start = datetime(2026, 9, 25, 0, tzinfo=UTC)
+    rows = []
+    for i in range(19):
+        t = start + timedelta(minutes=15 * i)
+        rows.append(
+            {
+                "time": t,
+                "open": 100.0,
+                "high": 100.4,
+                "low": 99.6,
+                "close": 100.0 if i % 2 == 0 else 99.9,
+            }
+        )
+    departure_open = start + timedelta(minutes=15 * 19)
+    rows.append(
+        {
+            "time": departure_open,
+            "open": 100.0,
+            "high": 106.0,
+            "low": 99.8,
+            "close": 105.5,
+        }
+    )
+    zone = _detect_m15_zones(pd.DataFrame(rows))[-1]
+
+    m1 = pd.DataFrame(
+        [
+            {
+                "timestamp": departure_open + timedelta(minutes=10),
+                "open": 100.0,
+                "high": float(zone.high),
+                "low": float(zone.low),
+                "close": float(zone.proximal),
+            },
+            {
+                "timestamp": zone.available_at,
+                "open": float(zone.proximal),
+                "high": float(zone.high),
+                "low": float(zone.low),
+                "close": float(zone.proximal),
+            },
+            {
+                "timestamp": zone.available_at + timedelta(minutes=1),
+                "open": float(zone.proximal),
+                "high": float(zone.proximal) + float(zone.atr_points),
+                "low": float(zone.proximal),
+                "close": float(zone.proximal) + 0.75 * float(zone.atr_points),
+            },
+        ]
+    )
+    episode = evaluate_first_touch(m1, zone=zone)
+    assert episode is not None
+    assert episode.touch_at == zone.available_at
 
 def test_v225_causal_supersession_does_not_erase_older_zone_before_new_one_exists() -> None:
     old = _zone(low=100.0, high=110.0, proximal=108.0, distal=100.0)
