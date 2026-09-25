@@ -1447,6 +1447,14 @@ with forecast_tab:
     v226_h1_envelope = dict(v226_h1_locator.get("envelope") or {})
     v226_m15_locator = dict(v226_m15.get("nested_locator") or {})
     v226_m15_envelope = dict(v226_m15_locator.get("envelope") or {})
+    v226_entry_candidate = dict(
+        v226_focus_map.get("depth_entry_candidate")
+        or v226_eval.get("depth_entry_candidate")
+        or {}
+    )
+    v226_entry_candidates = dict(v226_eval.get("entry_candidates") or {})
+    v226_long_entry_candidate = dict(v226_entry_candidates.get("long") or {})
+    v226_short_entry_candidate = dict(v226_entry_candidates.get("short") or {})
 
     st.markdown("#### 1. Peta Harga & Supply/Demand — RIZAN-style")
     st.caption(
@@ -1534,6 +1542,47 @@ with forecast_tab:
     with st.container(border=True):
         st.markdown("##### V226 — RIZAN Depth Map")
         if v226_eval and str(v226_eval.get("state") or "") == "RIZAN_DEPTH_MAP_AVAILABLE":
+            st.markdown("###### Depth Entry Candidate")
+            ec1, ec2, ec3, ec4 = st.columns(4)
+            ec1.metric(
+                "Arah",
+                str(v226_entry_candidate.get("direction") or "—"),
+            )
+            ec2.metric(
+                "Candidate entry",
+                (
+                    f"{_fmt_price(v226_entry_candidate.get('entry_low'))}–"
+                    f"{_fmt_price(v226_entry_candidate.get('entry_high'))}"
+                    if v226_entry_candidate else "—"
+                ),
+            )
+            ec3.metric(
+                "Reference entry",
+                _fmt_price(v226_entry_candidate.get("entry_reference")),
+            )
+            ec4.metric(
+                "Sumber",
+                str(v226_entry_candidate.get("source_layer") or "—"),
+            )
+            ec_hist = dict(v226_entry_candidate.get("historical_context") or {})
+            st.caption(
+                f"status={v226_entry_candidate.get('display_status','—')} • "
+                f"approach={v226_entry_candidate.get('approach_state','—')} • "
+                f"jarak={_fmt_price(v226_entry_candidate.get('distance_points'))} poin • "
+                f"H4 reaction≥0.50 ATR={_fmt_pct(ec_hist.get('h4_parent_rate'))} • "
+                f"H1 standalone={_fmt_pct(ec_hist.get('h1_standalone_rate'))} • "
+                f"M15 standalone={_fmt_pct(ec_hist.get('m15_standalone_rate'))}. "
+                "Ini kandidat preparation/shadow, bukan perintah entry dan belum memiliki execution authority."
+            )
+            st.caption(
+                "Kandidat dua arah • LONG "
+                f"{_fmt_price(v226_long_entry_candidate.get('entry_low'))}–"
+                f"{_fmt_price(v226_long_entry_candidate.get('entry_high'))} • SHORT "
+                f"{_fmt_price(v226_short_entry_candidate.get('entry_low'))}–"
+                f"{_fmt_price(v226_short_entry_candidate.get('entry_high'))}. "
+                "Focus direction menentukan kandidat utama yang ditonjolkan."
+            )
+
             d1, d2, d3, d4 = st.columns(4)
             d1.metric(
                 "Fokus",
@@ -1625,6 +1674,7 @@ with forecast_tab:
             v227_hotspot = dict(v227_summary.get("h4_hotspot_capture_given_reaction_050") or v227_summary.get("h4_hotspot_capture_given_reaction") or {})
             v227_iqr = dict(v227_summary.get("h4_iqr_capture_given_reaction_050") or v227_summary.get("h4_iqr_capture_given_reaction") or {})
             v227_m15 = dict(v227_summary.get("m15_locator_capture_given_reaction_050") or v227_summary.get("m15_locator_capture_given_reaction") or {})
+            v227_entry_capture = dict(v227_summary.get("depth_entry_candidate_capture_given_reaction_050") or {})
             r1, r2, r3, r4 = st.columns(4)
             r1.metric("Reaction ≥0.25 ATR", _fmt_pct(v227_reaction_025.get("rate")))
             r2.metric("Reaction ≥0.50 ATR", _fmt_pct(v227_reaction_050.get("rate")))
@@ -1638,6 +1688,7 @@ with forecast_tab:
                 f"H4 top-band capture@0.50={_fmt_pct(v227_hotspot.get('rate'))} • "
                 f"H4 IQR capture@0.50={_fmt_pct(v227_iqr.get('rate'))} • "
                 f"M15 locator capture@0.50={_fmt_pct(v227_m15.get('rate'))} • "
+                f"Depth Entry Candidate capture@0.50={_fmt_pct(v227_entry_capture.get('rate'))} • "
                 f"median actual depth@0.50={_fmt_pct(v227_summary.get('median_turning_depth'))} • "
                 f"median error ke prediksi H4={_fmt_pct(v227_summary.get('median_h4_depth_error'))}. "
                 "Hanya H4 fresh/untouched yang direkam sebelum first touch. "
