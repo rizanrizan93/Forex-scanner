@@ -12,7 +12,7 @@ def test_streamlit_app_boots_offline_without_backend_secrets():
     ).run()
     assert not app.exception
     assert app.title
-    assert app.title[0].value == "FX Institutional Scanner"
+    assert app.title[0].value == "RIZAN XAU Institutional Scanner"
     assert any(
         "Dashboard can be deployed now" in element.value
         for element in app.info
@@ -40,13 +40,13 @@ def test_xau_forecast_surfaces_cross_engine_signal_status_and_geometry():
     assert '"target terminal"' in text
     assert '"raw TP1"' in text
     assert '"raw TP2"' in text
-    assert 'izin AFIC tetap merupakan gerbang terpisah' in text
+    assert 'izin RIZAN-style tetap merupakan gerbang terpisah' in text
 
 
 def test_xau_dashboard_distinguishes_prior_origin_revisit_and_target_semantics():
     text = (ROOT / "streamlit_app.py").read_text()
     assert 'PRIOR ORIGIN REVISIT' in text
-    assert 'not the current primary AFIC zone' in text
+    assert 'not the current primary RIZAN-style zone' in text
     assert '"target pertama"' in text
     assert '"target terminal"' in text
     assert '"raw TP1"' in text
@@ -64,8 +64,8 @@ def test_xau_dashboard_runtime_status_distinguishes_watch_and_invalidated():
     text = (ROOT / "streamlit_app.py").read_text()
     assert 'runtime_status = "INVALIDATED"' in text
     assert 'runtime_status = "WATCH"' in text
-    assert 'Baris XAU non-AFIC terbaru hanya WATCH' in text
-    assert 'Setup XAU non-AFIC terbaru INVALIDATED' in text
+    assert 'Baris XAU non-RIZAN-style terbaru hanya WATCH' in text
+    assert 'Setup XAU non-RIZAN-style terbaru INVALIDATED' in text
 
 
 def test_xau_dashboard_separates_shadow_ready_from_broker_eligible():
