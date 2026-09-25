@@ -106,7 +106,7 @@ def test_v224_short_half_atr_hit_on_later_completed_m5() -> None:
     forecast = _forecast_candidate(_source(price=4300.0, direction="SHORT"))
     touch = datetime(2026, 9, 25, 12, 45, tzinfo=UTC)
     bars = [
-        _bar(touch, o=4301.0, h=4304.0, l=4302.5, c=4303.0),
+        _bar(touch, o=4301.0, h=4304.0, l=4300.5, c=4303.0),
         _bar(touch + timedelta(minutes=5), o=4303.0, h=4303.5, l=4294.5, c=4296.0),
     ]
     result = evaluate_primary_outcome(
@@ -123,7 +123,7 @@ def test_v224_invalidation_wins_over_rung_on_same_later_bar() -> None:
     forecast = _forecast_candidate(_source(price=4300.0, direction="SHORT"))
     touch = datetime(2026, 9, 25, 12, 45, tzinfo=UTC)
     bars = [
-        _bar(touch, o=4301.0, h=4304.0, l=4302.5, c=4303.0),
+        _bar(touch, o=4301.0, h=4304.0, l=4300.5, c=4303.0),
         # Low crosses reaction thresholds but close invalidates the H1 parent.
         _bar(touch + timedelta(minutes=5), o=4303.0, h=4322.0, l=4290.0, c=4321.0),
     ]
