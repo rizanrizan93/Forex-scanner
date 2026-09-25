@@ -1072,6 +1072,53 @@ with forecast_tab:
                 }
             )
 
+    st.markdown("#### Peta Supply/Demand Terdekat — AFIC-style")
+    st.caption("Visual path map: harga saat ini, zona aktif terdekat, reaction target, dan terminal opposing zone. Forecast geometry, bukan jaminan arah.")
+    chart_zones = [dict(item) for item in list(dc_sd_eval.get("zones") or []) if bool(dict(item.get("lifecycle") or {}).get("active"))]
+    chart_price = dc_sd_eval.get("last_closed_m15_price")
+    if chart_zones and chart_price is not None:
+        try:
+            import matplotlib.pyplot as plt
+            from io import BytesIO
+            price_now = float(chart_price)
+            chart_zones.sort(key=lambda z: float(z.get("distance_points") or 999999.0))
+            chart_zones = chart_zones[:6]
+            lows = [float(z["low"]) for z in chart_zones]
+            highs = [float(z["high"]) for z in chart_zones]
+            y_min, y_max = min(lows + [price_now]), max(highs + [price_now])
+            pad = max(2.0, (y_max - y_min) * 0.10)
+            fig, ax = plt.subplots(figsize=(7.2, 8.6))
+            ax.set_xlim(0.0, 10.0)
+            ax.set_ylim(y_min - pad, y_max + pad)
+            ax.axhline(price_now, linewidth=1.4)
+            ax.text(0.25, price_now, f"XAUUSD {price_now:.2f}", va="bottom", fontsize=10)
+            for idx, z in enumerate(chart_zones):
+                low, high = float(z["low"]), float(z["high"])
+                side, tf = str(z.get("direction") or ""), str(z.get("timeframe") or "")
+                freshness = str(dict(z.get("lifecycle") or {}).get("freshness") or "")
+                ax.axhspan(low, high, alpha=max(0.12, 0.32 - idx * 0.025))
+                label = f"{tf} {'DEMAND' if side == 'LONG' else 'SUPPLY'} {low:.2f}-{high:.2f} | {freshness}"
+                ax.text(9.75, (low + high) / 2.0, label, ha="right", va="center", fontsize=8)
+            rt = dc_current_leg_target.get("price")
+            if rt is not None:
+                ax.axhline(float(rt), linestyle="--", linewidth=1.0)
+                ax.text(0.25, float(rt), f"Reaction target {float(rt):.2f}", va="bottom", fontsize=8)
+            ax.set_title(f"XAUUSD Supply/Demand Path Map | {dc_current_leg_direction}")
+            ax.set_ylabel("Harga XAUUSD")
+            ax.set_xticks([])
+            ax.grid(axis="y", alpha=0.20)
+            fig.tight_layout()
+            st.pyplot(fig, width="stretch")
+            png = BytesIO()
+            fig.savefig(png, format="png", dpi=180, bbox_inches="tight")
+            plt.close(fig)
+            st.download_button("Download peta Supply/Demand (PNG)", data=png.getvalue(), file_name="xauusd_supply_demand_path_map.png", mime="image/png", width="stretch")
+            st.caption("Zona aktif terdekat diurutkan berdasarkan jarak. Ini visual preparation/research; research score bukan win probability.")
+        except Exception as exc:
+            st.warning(f"Peta Supply/Demand belum dapat dirender: {type(exc).__name__}: {exc}")
+    else:
+        st.info("Belum ada zona Supply/Demand aktif yang cukup untuk membuat peta.")
+
     st.markdown("#### 2. H1 — Zona Reaksi Utama")
     if dc_source:
         dc_source_freshness = str(
