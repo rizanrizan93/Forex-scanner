@@ -141,7 +141,10 @@ def test_v227_touch_bar_cannot_prove_reaction() -> None:
         now=touch + timedelta(minutes=2),
     )
     assert result["status"] == "PENDING_REACTION"
+    assert result["reaction_hit_025"] is False
     assert result["reaction_hit_050"] is False
+    assert result["reaction_hit_075"] is False
+    assert result["reaction_hit_100"] is False
 
 
 def test_v227_scores_turning_depth_and_all_locator_captures() -> None:
@@ -149,15 +152,22 @@ def test_v227_scores_turning_depth_and_all_locator_captures() -> None:
     touch = datetime(2026, 9, 25, 12, 5, tzinfo=UTC)
     bars = [
         _bar(touch, o=111.0, h=111.2, l=107.0, c=108.0),
-        # H4 target is proximal 108 + 5 = 113. Target bar adverse low is ignored.
+        # H4 0.50 target is proximal 108 + 5 = 113. This bar's adverse low
+        # is excluded from the 0.50 turning-depth estimate.
         _bar(touch + timedelta(minutes=1), o=108.0, h=114.0, l=103.0, c=113.0),
+        # 1.00 ATR target = 118; reaching it resolves the full ladder early.
+        _bar(touch + timedelta(minutes=2), o=113.0, h=119.0, l=107.5, c=118.5),
     ]
     result = evaluate_outcome(
         bars,
         forecast=forecast,
-        now=touch + timedelta(minutes=3),
+        now=touch + timedelta(minutes=4),
     )
-    assert result["status"] == "REACTION_050"
+    assert result["status"] == "REACTION_100"
+    assert result["reaction_hit_025"] is True
+    assert result["reaction_hit_050"] is True
+    assert result["reaction_hit_075"] is True
+    assert result["reaction_hit_100"] is True
     assert result["turning_price"] == 107.0
     assert abs(result["turning_depth"] - 0.30) < 1e-12
     assert result["h4_hotspot_capture"] is False
@@ -180,8 +190,33 @@ def test_v227_invalidation_wins_over_target_on_same_future_bar() -> None:
         now=touch + timedelta(minutes=3),
     )
     assert result["status"] == "INVALIDATED_AFTER_TOUCH"
+    assert result["reaction_hit_025"] is False
     assert result["reaction_hit_050"] is False
+    assert result["reaction_hit_075"] is False
+    assert result["reaction_hit_100"] is False
     assert result["invalidated"] is True
+
+
+def test_v227_resolves_partial_ladder_at_fixed_16h_horizon() -> None:
+    forecast = _forecast_candidate(_source(), direction="LONG")
+    touch = datetime(2026, 9, 25, 12, 5, tzinfo=UTC)
+    bars = [
+        _bar(touch, o=111.0, h=111.2, l=107.0, c=108.0),
+        # Reaches 0.25 and 0.50 ATR, but not 0.75 ATR (115.5) or 1.00 ATR (118).
+        _bar(touch + timedelta(minutes=1), o=108.0, h=114.0, l=106.0, c=113.0),
+    ]
+    result = evaluate_outcome(
+        bars,
+        forecast=forecast,
+        now=touch + timedelta(hours=16, minutes=2),
+    )
+    assert result["status"] == "REACTION_050_16H"
+    assert result["reaction_hit_025"] is True
+    assert result["reaction_hit_050"] is True
+    assert result["reaction_hit_075"] is False
+    assert result["reaction_hit_100"] is False
+    assert result["turning_price"] == 107.0
+    assert abs(result["turning_depth"] - 0.30) < 1e-12
 
 
 def test_v227_workflow_and_dashboard_remain_shadow_only() -> None:
@@ -195,6 +230,8 @@ def test_v227_workflow_and_dashboard_remain_shadow_only() -> None:
     assert '"execution_influence": False' in source
     assert '"execution_authority": False' in source
     assert '"promotion_authority": False' in source
+    assert 'RESEARCH_VERSION = "XAU_RIZAN_DEPTH_MAP_PROSPECTIVE_V227_1"' in source
+    assert 'REACTION_RUNGS = (("025", 0.25), ("050", 0.50), ("075", 0.75), ("100", 1.00))' in source
 
     dashboard = (ROOT / "streamlit_app.py").read_text()
     assert "V227 — Prospective RIZAN Depth Calibration" in dashboard
