@@ -20,6 +20,7 @@ ATLAS_WORKER = "ctrader_demo_xau_supply_demand_atlas_v182"
 HISTORY_WORKER = "research_xau_zone_reversal_depth_v225"
 POLICY_EFFECT = "SHADOW_ONLY"
 MIN_HAZARD_AT_RISK = 30
+REQUIRED_HISTORY_VERSION = "XAU_ZONE_REVERSAL_DEPTH_V225_2"
 
 
 def _f(value: Any) -> float | None:
@@ -1016,11 +1017,25 @@ def build_depth_map(
             "promotion_authority": False,
         }
 
+    history_version = str(history_details.get("research_version") or "")
+    if history_version != REQUIRED_HISTORY_VERSION:
+        return {
+            "contract": CONTRACT,
+            "state": "HISTORICAL_PRIOR_VERSION_MISMATCH",
+            "price_reference": price,
+            "required_history_version": REQUIRED_HISTORY_VERSION,
+            "observed_history_version": history_version or None,
+            "execution_influence": False,
+            "execution_authority": False,
+            "promotion_authority": False,
+        }
+
     if int(history_details.get("year_count") or 0) < 15:
         return {
             "contract": CONTRACT,
             "state": "HISTORICAL_PRIOR_INCOMPLETE",
             "price_reference": price,
+            "required_history_version": REQUIRED_HISTORY_VERSION,
             "execution_influence": False,
             "execution_authority": False,
             "promotion_authority": False,
@@ -1078,6 +1093,7 @@ def build_depth_map(
             "year_count": int(history_details.get("year_count") or 0),
             "episode_count": int(history_details.get("episode_count") or 0),
             "research_version": history_details.get("research_version"),
+            "required_research_version": REQUIRED_HISTORY_VERSION,
             "coordinate": "FULL_ZONE_NEAR_EDGE_TO_FAR_EDGE",
         },
         "interpretation": (
