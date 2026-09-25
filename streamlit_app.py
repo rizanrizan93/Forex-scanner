@@ -873,6 +873,9 @@ with forecast_tab:
     v223_cluster_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v223_m5_pocket_cluster_selector"
     )
+    v224_primary_calibration_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v224_primary_pocket_prospective"
+    )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
     )
@@ -1655,6 +1658,34 @@ with forecast_tab:
             )
         else:
             st.caption("V223 belum menemukan cluster M5 aktif yang layak menjadi PRIMARY watch.")
+
+    v224_details = (
+        {} if v224_primary_calibration_hb is None
+        else dict(v224_primary_calibration_hb.get("details") or {})
+    )
+    v224_summary = dict(v224_details.get("summary") or {})
+    if v224_summary:
+        st.markdown("##### V224 — Prospective Primary Pocket Accuracy")
+        q1, q2, q3, q4 = st.columns(4)
+        q1.metric("Primary forecast", int(v224_summary.get("forecasts") or 0))
+        q2.metric("Resolved touch", int(v224_summary.get("resolved_after_touch") or 0))
+        q3.metric(
+            "Hit ≥0.50 ATR",
+            _fmt_pct(dict(v224_summary.get("hit_050") or {}).get("rate")),
+        )
+        q4.metric(
+            "Wilson LB 95%",
+            _fmt_pct(dict(v224_summary.get("hit_050") or {}).get("wilson_lower_95")),
+        )
+        st.caption(
+            f"sample={v224_summary.get('sample_state','—')} • "
+            f"pending={v224_summary.get('pending',0)} • "
+            f"no-touch={v224_summary.get('no_touch',0)} • "
+            f"median touch={_fmt_minutes(v224_summary.get('median_forecast_to_touch_minutes'))} • "
+            f"median touch→0.50ATR={_fmt_minutes(v224_summary.get('median_touch_to_050_minutes'))}. "
+            "Hanya PRIMARY cluster yang dipilih saat harga masih di luar pocket pada sisi approach yang benar "
+            "yang boleh masuk sampel. V224 tetap shadow-only."
+        )
 
     if v222_latest:
         v222_geometry = (

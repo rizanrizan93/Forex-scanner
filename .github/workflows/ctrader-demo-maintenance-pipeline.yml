@@ -155,6 +155,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v223_m5_pocket_cluster_selector
 
+      - name: Calibrate V224 primary M5 pocket prospectively
+        id: analyze_xau_v224_primary_pocket_prospective
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v224_primary_pocket_prospective
+
       - name: Estimate V217 multi-horizon direction probabilities
         id: analyze_xau_v217_direction_probability
         continue-on-error: true
