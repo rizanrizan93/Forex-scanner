@@ -44,6 +44,7 @@ on:
       - "src/fx_scanner/demo_xau_v201_reaction_ladder.py"
       - "src/fx_scanner/demo_xau_v217_direction_probability.py"
       - "src/fx_scanner/demo_xau_v218_htf_strategic_snapshot.py"
+      - "src/fx_scanner/demo_xau_v220_direction_prospective_calibration.py"
       - "src/fx_scanner/demo_xau_v203_volatility_shock_guard.py"
       - "src/fx_scanner/demo_execution_fresh_ready_handoff.py"
       - "src/fx_scanner/demo_fresh_ready_handoff.py"
