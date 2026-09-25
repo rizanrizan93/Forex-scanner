@@ -360,16 +360,13 @@ def _events(store: SupabaseOperationalStore) -> list[dict[str, Any]]:
         .select("observed_at,event_type,signal_key,payload")
         .eq("backend", "CTRADER")
         .eq("account_id", ACCOUNT_ID)
+        .in_("event_type", [FORECAST_EVENT, OUTCOME_EVENT])
         .gte("observed_at", cutoff.isoformat())
         .order("observed_at", desc=False)
         .limit(MAX_EVENT_ROWS)
         .execute()
     )
-    return [
-        dict(row)
-        for row in list(response.data or [])
-        if str(dict(row).get("event_type") or "") in {FORECAST_EVENT, OUTCOME_EVENT}
-    ]
+    return [dict(row) for row in list(response.data or [])]
 
 
 def _index_events(
