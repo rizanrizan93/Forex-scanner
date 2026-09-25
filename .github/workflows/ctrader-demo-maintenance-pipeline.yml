@@ -145,6 +145,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v216_lifecycle_calibration
 
+      - name: Estimate V217 multi-horizon direction probabilities
+        id: analyze_xau_v217_direction_probability
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v217_direction_probability
+
       - name: Evaluate V203 volatility shock guard
         id: evaluate_xau_v203_volatility_shock_guard
         continue-on-error: true
