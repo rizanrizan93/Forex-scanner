@@ -1196,6 +1196,11 @@ def run() -> int:
     raw_count = 0
     raw_m5_count = 0
     try:
+        previous_atlas = _latest_worker_details(store, WORKER_NAME)
+        previous_projection = dict(
+            dict(previous_atlas.get("evaluation") or {}).get("m5_path_projection")
+            or {}
+        )
         regime = _latest_worker_details(store, "ctrader_xau_htf_strategic_regime_v180")
         regime_eval = dict(regime.get("evaluation") or {})
         strategic_bias = str(
@@ -1233,6 +1238,7 @@ def run() -> int:
             raw_m5,
             path_map=path_map,
             as_of=now,
+            previous_projection=previous_projection,
         )
         reuse_v200 = evaluate_bidirectional_reuse(m5_path_projection)
         for leg_name in ("current_leg", "next_leg"):

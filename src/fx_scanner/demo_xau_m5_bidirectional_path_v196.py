@@ -42,6 +42,69 @@ def _same_zone(a: dict[str, Any], b: dict[str, Any]) -> bool:
     return _zone_overlap(a, b) > 0.0
 
 
+def _latched_current_precision_path(
+    active_path: dict[str, Any],
+    *,
+    previous_projection: dict[str, Any] | None,
+    direction: str,
+) -> tuple[dict[str, Any], bool]:
+    """Keep an already-observed H1 precision source across an HTF source handoff.
+
+    The atlas can legitimately promote an overlapping H4/D1 parent to active_path
+    while an H1 child already owns a live M5 candidate/refined pocket. V189 only
+    refines H1 sources, so dropping that child makes the pocket disappear even
+    though price has not invalidated it. This latch is deliberately narrow:
+    it only reuses the immediately previous current-leg H1 source when it overlaps
+    the new HTF parent, has the same direction, has availability metadata, and
+    already carried actual M5 pocket evidence.
+
+    The source is re-evaluated against the current M5 bars on every cycle. If it
+    is invalidated, evaluate_bidirectional_m5_path falls back to the HTF parent.
+    """
+    current_source = dict(active_path.get("source_zone") or {})
+    if not current_source:
+        return active_path, False
+    if str(current_source.get("timeframe") or "").upper() == "H1":
+        return active_path, False
+
+    previous = dict(previous_projection or {})
+    previous_leg = dict(previous.get("current_leg") or {})
+    previous_source = dict(previous_leg.get("source_zone") or {})
+    previous_micro = dict(previous_leg.get("micro_refinement") or {})
+
+    if str(previous_source.get("timeframe") or "").upper() != "H1":
+        return active_path, False
+    previous_direction = str(
+        previous_leg.get("direction")
+        or previous_source.get("direction")
+        or previous_micro.get("direction")
+        or ""
+    ).upper()
+    if previous_direction != direction:
+        return active_path, False
+    if not previous_source.get("available_at"):
+        return active_path, False
+    if not _same_zone(previous_source, current_source):
+        return active_path, False
+
+    previous_state = str(previous_micro.get("state") or "").upper()
+    if "INVALIDATED" in previous_state:
+        return active_path, False
+    previous_pocket = (
+        dict(previous_leg.get("m5_pocket") or {})
+        or dict(previous_micro.get("refined_entry_pocket") or {})
+        or dict(previous_micro.get("candidate_entry_pocket") or {})
+    )
+    if not previous_pocket:
+        return active_path, False
+
+    latched = dict(active_path)
+    latched["parent_source_zone"] = current_source
+    latched["source_zone"] = previous_source
+    latched["source_role"] = "LATCHED_H1_PRECISION_INSIDE_ACTIVE_HTF_PARENT"
+    return latched, True
+
+
 def _next_precision_source(
     active_path: dict[str, Any],
     *,
@@ -143,6 +206,7 @@ def evaluate_bidirectional_m5_path(
     *,
     path_map: dict[str, Any],
     as_of: datetime,
+    previous_projection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     active_path = dict(path_map.get("active_path") or {})
     direction = str(active_path.get("reaction_direction") or "").upper()
@@ -161,16 +225,40 @@ def evaluate_bidirectional_m5_path(
             "next_leg": {},
         }
 
+    current_eval_path, precision_source_latched = _latched_current_precision_path(
+        active_path,
+        previous_projection=previous_projection,
+        direction=direction,
+    )
     current_micro = evaluate_micro_refinement(
         m5_bars,
-        path_map={"active_path": active_path},
+        path_map={"active_path": current_eval_path},
         as_of=as_of,
     )
+
+    # Never keep a stale H1 child alive. The latch only preserves continuity;
+    # V189 still decides validity from current bars.
+    if precision_source_latched and "INVALIDATED" in str(
+        current_micro.get("state") or ""
+    ).upper():
+        current_eval_path = active_path
+        precision_source_latched = False
+        current_micro = evaluate_micro_refinement(
+            m5_bars,
+            path_map={"active_path": active_path},
+            as_of=as_of,
+        )
+
     current_leg = _leg_payload(
         direction=direction,
-        path=active_path,
+        path=current_eval_path,
         micro=current_micro,
     )
+    current_leg["precision_source_latched"] = precision_source_latched
+    if precision_source_latched:
+        current_leg["parent_source_zone"] = dict(
+            current_eval_path.get("parent_source_zone") or {}
+        )
 
     next_direction = "SHORT" if direction == "LONG" else "LONG"
     next_path_key = "supply_to_demand" if next_direction == "SHORT" else "demand_to_supply"
@@ -249,7 +337,9 @@ def evaluate_bidirectional_m5_path(
         "next_leg": next_leg,
         "interpretation": (
             "V196 maps both legs without creating entry authority. The current leg carries "
-            "its M5 pocket plus reaction/terminal targets. The next opposing leg is anchored "
+            "its M5 pocket plus reaction/terminal targets, and an existing H1 precision source "
+            "is latched across an overlapping H4/D1 parent handoff until current M5 evidence "
+            "invalidates it. The next opposing leg is anchored "
             "to the current terminal opposing zone and prefers an active nested H1 precision "
             "source. It is only called an M5 pocket after fresh M5 evidence exists."
         ),
