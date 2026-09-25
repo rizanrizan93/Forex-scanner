@@ -20,8 +20,8 @@ from .research_xau_supply_demand_reaction_v183 import _all_zones
 from .models import Bar, ensure_utc
 from .research_xau_zone_path_v174 import wilson_lower_bound
 
-RESEARCH_VERSION = "XAU_ZONE_REVERSAL_DEPTH_V225"
-ARTIFACT_CONTRACT = "XAU_ZONE_REVERSAL_DEPTH_V225_EVIDENCE_1"
+RESEARCH_VERSION = "XAU_ZONE_REVERSAL_DEPTH_V225_1"
+ARTIFACT_CONTRACT = "XAU_ZONE_REVERSAL_DEPTH_V225_1_EVIDENCE_1"
 POLICY_EFFECT = "SHADOW_ONLY"
 EXECUTION_INFLUENCE = False
 PROMOTION_ELIGIBLE = False
@@ -91,10 +91,14 @@ class DepthEpisode:
     departure_body_fraction: float
     base_range_atr: float
     structural_bos: bool
+    max_internal_depth_reached: float = 0.0
+    turning_internal_depth: float | None = None
     h1_child_zone_id: str | None = None
     h1_child_depth: float | None = None
+    h1_child_internal_depth: float | None = None
     m15_child_zone_id: str | None = None
     m15_child_depth: float | None = None
+    m15_child_internal_depth: float | None = None
 
 
 def _load_price_frame(path: str) -> pd.DataFrame:
@@ -276,10 +280,24 @@ def build_zones(price_m1: pd.DataFrame) -> tuple[SDZone, ...]:
 
 
 def normalized_depth(zone: SDZone, price: float) -> float:
+    """Full-zone depth: 0=near outer edge, 1=far outer edge.
+
+    LONG demand: high -> low.
+    SHORT supply: low -> high.
+    This is the user-facing coordinate for price-range localization.
+    """
     width = max(float(zone.high) - float(zone.low), 1e-12)
     if zone.direction == "LONG":
-        return (float(zone.proximal) - float(price)) / width
-    return (float(price) - float(zone.proximal)) / width
+        return (float(zone.high) - float(price)) / width
+    return (float(price) - float(zone.low)) / width
+
+
+def normalized_internal_depth(zone: SDZone, price: float) -> float:
+    """Atlas internal coordinate: 0=proximal body edge, 1=distal."""
+    span = max(abs(float(zone.proximal) - float(zone.distal)), 1e-12)
+    if zone.direction == "LONG":
+        return (float(zone.proximal) - float(price)) / span
+    return (float(price) - float(zone.proximal)) / span
 
 
 def _invalidated(close: float, zone: SDZone) -> bool:
@@ -337,10 +355,11 @@ def evaluate_first_touch(
     touch_index = start + rel
     touch_at = ensure_utc(timestamps[touch_index].to_pydatetime())
     if zone.direction == "LONG":
-        adverse_extreme = min(float(zone.proximal), float(px.lows[touch_index]))
+        adverse_extreme = min(float(zone.high), float(px.lows[touch_index]))
     else:
-        adverse_extreme = max(float(zone.proximal), float(px.highs[touch_index]))
+        adverse_extreme = max(float(zone.low), float(px.highs[touch_index]))
     max_depth = normalized_depth(zone, adverse_extreme)
+    max_internal_depth = normalized_internal_depth(zone, adverse_extreme)
 
     if invalid:
         return DepthEpisode(
@@ -369,6 +388,8 @@ def evaluate_first_touch(
             departure_body_fraction=float(zone.departure_body_fraction),
             base_range_atr=float(zone.base_range_atr),
             structural_bos=bool(zone.structural_bos),
+            max_internal_depth_reached=max_internal_depth,
+            turning_internal_depth=None,
         )
 
     horizon_end = touch_at + timedelta(minutes=REACTION_HORIZON_MINUTES[zone.timeframe])
@@ -398,6 +419,7 @@ def evaluate_first_touch(
     break_hit = False
     turning_price: float | None = None
     turning_depth: float | None = None
+    turning_internal_depth: float | None = None
 
     if len(event_positions):
         rel_event = int(event_positions[0])
@@ -419,6 +441,10 @@ def evaluate_first_touch(
                     float(np.max(px.highs[touch_index:absolute + 1])),
                 )
             max_depth = max(max_depth, normalized_depth(zone, adverse_extreme))
+            max_internal_depth = max(
+                max_internal_depth,
+                normalized_internal_depth(zone, adverse_extreme),
+            )
         else:
             reaction_hit = True
             outcome = "HOLD_050"
@@ -438,7 +464,9 @@ def evaluate_first_touch(
                     )
             turning_price = adverse_extreme
             turning_depth = normalized_depth(zone, adverse_extreme)
+            turning_internal_depth = normalized_internal_depth(zone, adverse_extreme)
             max_depth = max(max_depth, turning_depth)
+            max_internal_depth = max(max_internal_depth, turning_internal_depth)
     else:
         if not timestamps or ensure_utc(timestamps[-1].to_pydatetime()) < horizon_end:
             return None
@@ -456,6 +484,10 @@ def evaluate_first_touch(
                     float(np.max(px.highs[touch_index:future_end])),
                 )
             max_depth = max(max_depth, normalized_depth(zone, adverse_extreme))
+            max_internal_depth = max(
+                max_internal_depth,
+                normalized_internal_depth(zone, adverse_extreme),
+            )
 
     return DepthEpisode(
         zone_id=zone.zone_id,
@@ -483,6 +515,8 @@ def evaluate_first_touch(
         departure_body_fraction=float(zone.departure_body_fraction),
         base_range_atr=float(zone.base_range_atr),
         structural_bos=bool(zone.structural_bos),
+        max_internal_depth_reached=max_internal_depth,
+        turning_internal_depth=turning_internal_depth,
     )
 
 def _first_invalidation_at(
