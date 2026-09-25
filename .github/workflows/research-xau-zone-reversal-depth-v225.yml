@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - research/v225-zone-reversal-depth
+      - research/v2252-m15-causal-close
     paths:
       - "src/fx_scanner/research_xau_zone_reversal_depth_v225.py"
       - "src/fx_scanner/research_xau_zone_reversal_depth_v225_year_runtime.py"
