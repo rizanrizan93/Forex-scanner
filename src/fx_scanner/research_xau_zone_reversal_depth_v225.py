@@ -579,7 +579,7 @@ def attach_hierarchy(
                 zone
                 for zone in m15
                 if zone.direction == row.direction
-                and _active_at(zone, by_zone, row.touch_at)
+                and _active_at(zone, invalidated_at_by_zone, row.touch_at)
                 and _overlaps(child_h1, zone)
                 and _contains_price(zone, float(row.turning_price))
             ]
