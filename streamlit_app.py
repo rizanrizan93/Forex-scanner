@@ -870,6 +870,9 @@ with forecast_tab:
     v222_pocket_quality_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v222_m5_pocket_quality"
     )
+    v223_cluster_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v223_m5_pocket_cluster_selector"
+    )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
     )
@@ -1616,6 +1619,40 @@ with forecast_tab:
     v222_latest = dict(v222_eval.get("latest_pocket") or {})
     v222_family = [dict(row) for row in list(v222_eval.get("family") or [])]
 
+    v223_details = (
+        {} if v223_cluster_hb is None else dict(v223_cluster_hb.get("details") or {})
+    )
+    v223_eval = dict(v223_details.get("evaluation") or {})
+    v223_primary = dict(v223_eval.get("primary_cluster") or {})
+    v223_alternative = dict(v223_eval.get("alternative_cluster") or {})
+    if v223_primary:
+        v223_union = dict(v223_primary.get("union_zone") or {})
+        v223_core = dict(v223_primary.get("consensus_core") or {})
+        st.success(
+            "V223 — Primary M5 Pocket Cluster • "
+            f"**{_fmt_price(v223_union.get('low'))}–{_fmt_price(v223_union.get('high'))}** • "
+            f"role={v223_primary.get('role','—')} • "
+            f"score={_fmt_number(v223_primary.get('selector_score_research'), 1)}/100 • "
+            f"distance={_fmt_number(v223_primary.get('distance_atr'), 2)} ATR."
+        )
+        if v223_core:
+            st.caption(
+                "Consensus core "
+                f"**{_fmt_price(v223_core.get('low'))}–{_fmt_price(v223_core.get('high'))}** • "
+                f"{v223_primary.get('count',0)} pocket tergabung • "
+                f"latest mapped={_fmt_wib_datetime(v223_primary.get('latest_mapped_at'), seconds=False)}. "
+                "Consensus core adalah geometry riset, bukan entry order. V223 tetap shadow-only."
+            )
+    elif v223_eval:
+        retest_clusters = list(v223_eval.get("retest_only_clusters") or [])
+        if retest_clusters:
+            st.warning(
+                "V223 belum memiliki PRIMARY first-entry cluster. "
+                f"{len(retest_clusters)} cluster saat ini hanya berstatus RETEST_ONLY."
+            )
+        else:
+            st.caption("V223 belum menemukan cluster M5 aktif yang layak menjadi PRIMARY watch.")
+
     if v222_latest:
         v222_geometry = (
             f"{_fmt_price(v222_latest.get('low'))}–{_fmt_price(v222_latest.get('high'))}"
@@ -1759,7 +1796,54 @@ with forecast_tab:
         elif not dc_next_pocket_shown:
             st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
 
-    with st.expander("Riset pocket, reaction & zone reuse (V200/V212–V216/V222)", expanded=False):
+    with st.expander("Riset pocket, reaction & zone reuse (V200/V212–V216/V222/V223)", expanded=False):
+        if v223_eval:
+            st.markdown("##### V223 — Primary M5 Pocket Cluster")
+            cl1, cl2, cl3, cl4 = st.columns(4)
+            cl1.metric("Cluster", len(list(v223_eval.get("clusters") or [])))
+            cl2.metric(
+                "Primary role",
+                str(v223_primary.get("role") or "—"),
+            )
+            cl3.metric(
+                "Primary score",
+                "—"
+                if v223_primary.get("selector_score_research") is None
+                else f"{float(v223_primary.get('selector_score_research')):.1f}/100",
+            )
+            cl4.metric(
+                "Distance",
+                "—"
+                if v223_primary.get("distance_atr") is None
+                else f"{float(v223_primary.get('distance_atr')):.2f} ATR",
+            )
+            st.caption(
+                "V223 menggabungkan pocket yang overlap/berdekatan agar pocket terbaru tidak "
+                "otomatis menggusur micro-area yang stabil. Consensus core tetap shadow-only "
+                "dan belum boleh dipakai sebagai entry order."
+            )
+            cluster_rows = []
+            for row in list(v223_eval.get("clusters") or [])[-6:]:
+                item = dict(row)
+                union = dict(item.get("union_zone") or {})
+                core = dict(item.get("consensus_core") or {})
+                cluster_rows.append(
+                    {
+                        "Cluster": item.get("cluster_id"),
+                        "Role": item.get("role"),
+                        "Union": f"{_fmt_price(union.get('low'))}–{_fmt_price(union.get('high'))}",
+                        "Consensus core": (
+                            f"{_fmt_price(core.get('low'))}–{_fmt_price(core.get('high'))}"
+                            if core else "—"
+                        ),
+                        "Count": item.get("count"),
+                        "Score": item.get("selector_score_research"),
+                        "Distance ATR": item.get("distance_atr"),
+                    }
+                )
+            if cluster_rows:
+                st.dataframe(pd.DataFrame(cluster_rows), width="stretch", hide_index=True)
+
         if v222_eval:
             st.markdown("##### V222 — M5 Pocket Quality & Stability")
             pq1, pq2, pq3, pq4 = st.columns(4)
