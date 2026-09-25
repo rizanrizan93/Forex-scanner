@@ -1427,6 +1427,18 @@ with forecast_tab:
         v226_eval.get(v226_focus_direction.lower()) or {}
     )
     v226_h4 = dict(v226_focus_map.get("h4") or {})
+    v226_h4_selection_mode = str(
+        v226_focus_map.get("h4_selection_mode") or "—"
+    )
+    v226_nearest_h4_context = dict(
+        v226_focus_map.get("nearest_h4_context") or {}
+    )
+    v226_nearest_h4_context_zone = dict(
+        v226_nearest_h4_context.get("zone") or {}
+    )
+    v226_nearest_h4_context_app = dict(
+        v226_nearest_h4_context.get("applicability") or {}
+    )
     v226_h1 = dict(v226_focus_map.get("h1") or {})
     v226_m15 = dict(v226_focus_map.get("m15") or {})
     v226_h4_hotspot = dict(v226_h4.get("hotspot") or {})
@@ -1454,7 +1466,14 @@ with forecast_tab:
     chart_seen: set[str] = set()
     chart_pool: list[dict[str, Any]] = []
     for raw_zone in (
-        [dc_source, dc_current_leg_terminal, dc_next_leg_source, dc_next_leg_terminal]
+        [
+            dc_source,
+            dc_current_leg_terminal,
+            dc_next_leg_source,
+            dc_next_leg_terminal,
+            dict(v226_h4.get("zone") or {}),
+            v226_nearest_h4_context_zone,
+        ]
         + chart_zones
     ):
         zone = dict(raw_zone or {})
@@ -1556,9 +1575,30 @@ with forecast_tab:
                 f"n-at-risk={h4_top.get('at_risk','—')}) • "
                 f"median reversal depth={_fmt_pct(h4_median.get('depth'))} "
                 f"@ {_fmt_price(h4_median.get('price'))} • "
-                f"applicability={h4_app.get('state','—')}. "
+                f"applicability={h4_app.get('state','—')} • "
+                f"selection={v226_h4_selection_mode}. "
                 "H1/M15 adalah locator nested bila child zone sudah tersedia sebelum reversal."
             )
+            calibrated_h4_zone = dict(v226_h4.get("zone") or {})
+            calibrated_h4_id = str(calibrated_h4_zone.get("zone_id") or "")
+            nearest_context_id = str(v226_nearest_h4_context_zone.get("zone_id") or "")
+            if (
+                calibrated_h4_id
+                and nearest_context_id
+                and calibrated_h4_id != nearest_context_id
+            ):
+                st.info(
+                    "**Calibrated H4 parent:** "
+                    f"{_fmt_price(calibrated_h4_zone.get('low'))}–"
+                    f"{_fmt_price(calibrated_h4_zone.get('high'))} "
+                    f"({dict(calibrated_h4_zone.get('lifecycle') or {}).get('freshness','—')}, "
+                    f"touch={dict(calibrated_h4_zone.get('lifecycle') or {}).get('touch_count','—')}). "
+                    "**Nearest H4 context:** "
+                    f"{_fmt_price(v226_nearest_h4_context_zone.get('low'))}–"
+                    f"{_fmt_price(v226_nearest_h4_context_zone.get('high'))} "
+                    f"({v226_nearest_h4_context_app.get('state','—')}). "
+                    "Prior first-touch memakai calibrated parent; zona terdekat tetap ditampilkan sebagai konteks."
+                )
             if str(h4_app.get("state") or "").startswith("LOW_"):
                 st.warning(
                     "H4 aktif sudah multi-tested/reuse. V225.2 adalah first-touch study, "
