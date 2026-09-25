@@ -10,13 +10,16 @@ from typing import Any, Iterable, Sequence
 import numpy as np
 import pandas as pd
 
-from .demo_xau_afic_path_shadow_observer import _atr
+from .demo_xau_afic_path_shadow_observer import _atr, _resample_completed
 from .demo_xau_supply_demand_atlas_v182 import (
     SDZone,
+    TIMEFRAME_RULES,
     _classify_pattern,
+    _detect_base_departure_zones,
+    _overlap_ratio,
     _stable_sd_zone_id,
+    _structural_h1_zones,
 )
-from .research_xau_supply_demand_reaction_v183 import _all_zones
 from .models import Bar, ensure_utc
 from .research_xau_zone_path_v174 import wilson_lower_bound
 
@@ -262,21 +265,89 @@ def _detect_m15_zones(frame: pd.DataFrame) -> tuple[SDZone, ...]:
 
 
 def build_zones(price_m1: pd.DataFrame) -> tuple[SDZone, ...]:
+    """Build raw causal zones without future-aware global deduplication."""
     m15 = _resample_ohlc(price_m1, "15min")
     bars_m15 = _bars_from_frame(m15, "M15")
     if not bars_m15:
         return ()
     as_of = ensure_utc(bars_m15[-1].timestamp) + timedelta(minutes=15)
-    htf = [
-        zone
-        for zone in _all_zones(bars_m15, as_of=as_of)
-        if zone.timeframe in {"H1", "H4"}
-    ]
-    m15_zones = list(_detect_m15_zones(m15))
-    return tuple(sorted(
-        htf + m15_zones,
-        key=lambda zone: (ensure_utc(zone.available_at), zone.timeframe, zone.zone_id),
-    ))
+
+    zones: list[SDZone] = list(_structural_h1_zones(bars_m15, as_of=as_of))
+    for timeframe in ("H1", "H4"):
+        frame = _resample_completed(
+            bars_m15,
+            TIMEFRAME_RULES[timeframe],
+            as_of=as_of,
+        )
+        zones.extend(_detect_base_departure_zones(frame, timeframe=timeframe))
+    zones.extend(_detect_m15_zones(m15))
+
+    return tuple(
+        sorted(
+            zones,
+            key=lambda zone: (
+                ensure_utc(zone.available_at),
+                zone.timeframe,
+                zone.zone_class == "STRUCTURAL",
+                zone.zone_id,
+            ),
+        )
+    )
+
+
+def _supersession_gap_hours(timeframe: str) -> float:
+    if timeframe == "H4":
+        return 4.1
+    if timeframe == "H1":
+        return 1.1
+    if timeframe == "M15":
+        return 0.26
+    return 0.0
+
+
+def causal_superseded_at(
+    zones: Sequence[SDZone],
+) -> dict[str, datetime | None]:
+    """Return when a newer overlapping zone would first replace an older one.
+
+    This reproduces dedupe causally: an older zone exists before the replacement
+    zone is available, then stops contributing new first-touch episodes at the
+    replacement timestamp. Future zones cannot erase past opportunity.
+    """
+    result: dict[str, datetime | None] = {zone.zone_id: None for zone in zones}
+    recent_by_key: dict[tuple[str, str], list[SDZone]] = {}
+
+    ordered = sorted(
+        zones,
+        key=lambda zone: (
+            ensure_utc(zone.available_at),
+            zone.timeframe,
+            zone.direction,
+            zone.zone_class == "STRUCTURAL",
+            zone.zone_id,
+        ),
+    )
+    for zone in ordered:
+        key = (zone.timeframe, zone.direction)
+        gap_limit = _supersession_gap_hours(zone.timeframe)
+        current_at = ensure_utc(zone.available_at)
+        recent = recent_by_key.setdefault(key, [])
+        recent[:] = [
+            older
+            for older in recent
+            if (
+                current_at - ensure_utc(older.available_at)
+            ).total_seconds() / 3600.0 <= gap_limit + 1e-12
+        ]
+
+        for older in recent:
+            if result.get(older.zone_id) is not None:
+                continue
+            if _overlap_ratio(older, zone) >= 0.70:
+                result[older.zone_id] = current_at
+        recent.append(zone)
+
+    return result
 
 
 def normalized_depth(zone: SDZone, price: float) -> float:
@@ -322,6 +393,7 @@ def evaluate_first_touch(
     *,
     zone: SDZone,
     index: PriceIndex | None = None,
+    valid_until: datetime | None = None,
 ) -> DepthEpisode | None:
     px = _price_index(price_m1) if index is None else index
     timestamps = px.timestamps
@@ -330,7 +402,13 @@ def evaluate_first_touch(
     if start >= len(timestamps):
         return None
     expiry = available + timedelta(hours=OBSERVATION_HOURS[zone.timeframe])
-    end = bisect_right(timestamps, pd.Timestamp(expiry))
+    superseded = None if valid_until is None else ensure_utc(valid_until)
+    if superseded is not None and superseded <= available:
+        return None
+    if superseded is not None and superseded < expiry:
+        end = bisect_left(timestamps, pd.Timestamp(superseded))
+    else:
+        end = bisect_right(timestamps, pd.Timestamp(expiry))
     if end <= start:
         return None
 
@@ -524,6 +602,7 @@ def _first_invalidation_at(
     *,
     zone: SDZone,
     index: PriceIndex | None = None,
+    valid_until: datetime | None = None,
 ) -> datetime | None:
     px = _price_index(price_m1) if index is None else index
     timestamps = px.timestamps
@@ -532,7 +611,13 @@ def _first_invalidation_at(
     if start >= len(timestamps):
         return None
     expiry = available + timedelta(hours=OBSERVATION_HOURS[zone.timeframe])
-    end = bisect_right(timestamps, pd.Timestamp(expiry))
+    superseded = None if valid_until is None else ensure_utc(valid_until)
+    if superseded is not None and superseded <= available:
+        return None
+    if superseded is not None and superseded < expiry:
+        end = bisect_left(timestamps, pd.Timestamp(superseded))
+    else:
+        end = bisect_right(timestamps, pd.Timestamp(expiry))
     if end <= start:
         return None
     closes = px.closes[start:end]
@@ -551,6 +636,7 @@ def _first_invalidation_at(
 def _active_at(
     zone: SDZone,
     invalidated_at_by_zone: dict[str, datetime | None],
+    superseded_at_by_zone: dict[str, datetime | None],
     at: datetime,
 ) -> bool:
     available = ensure_utc(zone.available_at)
@@ -558,6 +644,9 @@ def _active_at(
     if available > point:
         return False
     if point > available + timedelta(hours=OBSERVATION_HOURS[zone.timeframe]):
+        return False
+    superseded_at = superseded_at_by_zone.get(zone.zone_id)
+    if superseded_at is not None and ensure_utc(superseded_at) <= point:
         return False
     invalidated_at = invalidated_at_by_zone.get(zone.zone_id)
     return invalidated_at is None or ensure_utc(invalidated_at) > point
@@ -576,6 +665,7 @@ def attach_hierarchy(
     zones: Sequence[SDZone],
     *,
     invalidated_at_by_zone: dict[str, datetime | None],
+    superseded_at_by_zone: dict[str, datetime | None],
 ) -> tuple[DepthEpisode, ...]:
     zone_by_id = {zone.zone_id: zone for zone in zones}
     h1 = [zone for zone in zones if zone.timeframe == "H1"]
@@ -595,7 +685,12 @@ def attach_hierarchy(
             zone
             for zone in h1
             if zone.direction == row.direction
-            and _active_at(zone, invalidated_at_by_zone, row.touch_at)
+            and _active_at(
+                    zone,
+                    invalidated_at_by_zone,
+                    superseded_at_by_zone,
+                    row.touch_at,
+                )
             and _overlaps(parent, zone)
             and _contains_price(zone, float(row.turning_price))
         ]
@@ -613,7 +708,12 @@ def attach_hierarchy(
                 zone
                 for zone in m15
                 if zone.direction == row.direction
-                and _active_at(zone, invalidated_at_by_zone, row.touch_at)
+                and _active_at(
+                    zone,
+                    invalidated_at_by_zone,
+                    superseded_at_by_zone,
+                    row.touch_at,
+                )
                 and _overlaps(child_h1, zone)
                 and _contains_price(zone, float(row.turning_price))
             ]
@@ -664,13 +764,24 @@ def build_depth_dataset(
 ) -> tuple[tuple[SDZone, ...], tuple[DepthEpisode, ...]]:
     zones = build_zones(price_m1)
     index = _price_index(price_m1)
+    superseded_at_by_zone = causal_superseded_at(zones)
     invalidated_at_by_zone = {
-        zone.zone_id: _first_invalidation_at(price_m1, zone=zone, index=index)
+        zone.zone_id: _first_invalidation_at(
+            price_m1,
+            zone=zone,
+            index=index,
+            valid_until=superseded_at_by_zone.get(zone.zone_id),
+        )
         for zone in zones
     }
     episodes: list[DepthEpisode] = []
     for zone in zones:
-        episode = evaluate_first_touch(price_m1, zone=zone, index=index)
+        episode = evaluate_first_touch(
+            price_m1,
+            zone=zone,
+            index=index,
+            valid_until=superseded_at_by_zone.get(zone.zone_id),
+        )
         if episode is None or ensure_utc(episode.touch_at).year != int(target_year):
             continue
         episodes.append(episode)
@@ -679,6 +790,7 @@ def build_depth_dataset(
         episodes,
         zones,
         invalidated_at_by_zone=invalidated_at_by_zone,
+        superseded_at_by_zone=superseded_at_by_zone,
     )
 
 
