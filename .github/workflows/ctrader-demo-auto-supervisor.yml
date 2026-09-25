@@ -39,6 +39,7 @@ on:
       - "src/fx_scanner/demo_xau_outcome_ledger.py"
       - "src/fx_scanner/demo_xau_prepared_plan_lifecycle.py"
       - "src/fx_scanner/demo_xau_premap_candidate_v181.py"
+      - "src/fx_scanner/demo_xau_supply_demand_atlas_v182.py"
       - "src/fx_scanner/demo_xau_v196_shadow_evidence_v197.py"
       - "src/fx_scanner/demo_xau_v198_evidence_analytics.py"
       - "src/fx_scanner/demo_xau_v201_reaction_ladder.py"
