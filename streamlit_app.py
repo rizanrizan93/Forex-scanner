@@ -2333,7 +2333,7 @@ with forecast_tab:
                 dom_details = dict(dom_v191_hb.get("details") or {})
                 dom_context = dict(dom_details.get("analysis") or {})
                 dom_context["stale"] = False
-                dom_context["alignment_with_first_leg"] = "BELUM_DIHUBUNGKAN_KE_SNAPSHOT_AFIC"
+                dom_context["alignment_with_first_leg"] = "BELUM_DIHUBUNGKAN_KE_SNAPSHOT_RIZAN"
             if dom_context:
                 d1, d2, d3, d4 = st.columns(4)
                 d1.metric("DOM V191", str(dom_context.get("state") or "—"))
