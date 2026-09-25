@@ -557,6 +557,9 @@ with forecast_tab:
     v214_lifecycle_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v214_pocket_lifecycle"
     )
+    v216_calibration_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v216_lifecycle_calibration"
+    )
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
@@ -1170,6 +1173,29 @@ with forecast_tab:
             )
         elif not dc_next_pocket_shown:
             st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
+
+    v216_details = (
+        {} if v216_calibration_hb is None else dict(v216_calibration_hb.get("details") or {})
+    )
+    v216_summary = dict(v216_details.get("summary") or {})
+    if v216_summary:
+        st.markdown("##### V215/V216 — Candidate vs Refined Calibration")
+        cv1, cv2, cv3, cv4 = st.columns(4)
+        cv1.metric("Episode", int(v216_summary.get("episodes") or 0))
+        cv2.metric(
+            "Refined | touched",
+            _fmt_pct(v216_summary.get("refinement_rate_given_touch")),
+        )
+        before_025 = dict(v216_summary.get("reaction_025_before_refined") or {})
+        before_050 = dict(v216_summary.get("reaction_050_before_refined") or {})
+        cv3.metric("0.25 ATR sebelum refined", _fmt_pct(before_025.get("rate")))
+        cv4.metric("0.50 ATR sebelum refined", _fmt_pct(before_050.get("rate")))
+        st.caption(
+            f"sample={v216_summary.get('sample_state','—')} • "
+            f"median candidate lead={_fmt_minutes(v216_summary.get('median_premap_lead_minutes'))}. "
+            "Jika reaksi sering terjadi sebelum refined, refined dibaca sebagai retest/re-entry confirmation, "
+            "bukan origin reversal pertama. V215/V216 tetap shadow-only."
+        )
 
     v212_details = (
         {} if v212_probability_hb is None else dict(v212_probability_hb.get("details") or {})
