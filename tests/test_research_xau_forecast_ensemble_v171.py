@@ -158,7 +158,7 @@ def test_streamlit_contains_live_ensemble_contract():
     assert "Alternative" in text
     assert "Invalidation" in text
     assert "ctrader_xau_forecast_ensemble_v171" in text
-    assert "does not alter AFIC Grade-A/B execution authority" in text
+    assert "does not alter RIZAN-style Grade-A/B execution authority" in text
 
 
 def test_v171_runtime_refreshes_v170_from_same_live_history():
