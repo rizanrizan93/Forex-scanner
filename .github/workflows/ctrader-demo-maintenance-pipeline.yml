@@ -120,6 +120,16 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v201_reaction_ladder
 
+      - name: Estimate V212 zone reaction probabilities
+        id: analyze_xau_v212_zone_reaction_probability
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v212_zone_reaction_probability
+
+      - name: Map V213 post-zone path
+        id: analyze_xau_v213_post_zone_path
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v213_post_zone_path
+
       - name: Evaluate V203 volatility shock guard
         id: evaluate_xau_v203_volatility_shock_guard
         continue-on-error: true
