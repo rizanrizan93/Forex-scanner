@@ -98,3 +98,35 @@ def test_v223_workflow_and_dashboard_are_shadow_only() -> None:
     assert "V223 — Primary M5 Pocket Cluster" in dashboard
     assert "Consensus core" in dashboard
     assert "V223 tetap shadow-only" in dashboard
+
+
+def test_v223_keeps_proven_retest_out_of_first_entry_primary_pool() -> None:
+    evaluation = {
+        "direction": "SHORT",
+        "current_price_reference": 4299.9,
+        "parent_context": {"atr_points": 16.0},
+        "family": [
+            _pocket(
+                1,
+                4295.41,
+                4298.03,
+                "2026-09-25T12:10:00+00:00",
+                quality=80.0,
+                timing="POST_MAP_TOUCH_CONFIRMED",
+            ),
+            _pocket(
+                2,
+                4303.11,
+                4304.68,
+                "2026-09-25T12:15:00+00:00",
+                quality=50.0,
+                timing="MOVE_STARTED_WAIT_RETEST",
+            ),
+        ],
+    }
+    result = select_clusters(
+        evaluation,
+        now=datetime(2026, 9, 25, 12, 20, tzinfo=UTC),
+    )
+    assert result["primary_cluster"]["role"] == "ACTIVE_WATCH_CLUSTER"
+    assert len(result["proven_retest_clusters"]) == 1
