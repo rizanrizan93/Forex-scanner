@@ -1637,6 +1637,15 @@ with forecast_tab:
                 f"timing={v222_timing} • quality research={_fmt_number(v222_quality, 1)}. "
                 "V222 membedakan formation/origin dari post-map retest."
             )
+        if v222_latest.get("refined_first_observed_at"):
+            st.caption(
+                "Refined first-observed • "
+                f"{_fmt_wib_datetime(v222_latest.get('refined_first_observed_at'), seconds=True)} • "
+                f"candidate→refined observed={_fmt_minutes(v222_latest.get('candidate_to_refined_observed_minutes'))} • "
+                f"state={v222_latest.get('refinement_timing_state','—')}. "
+                "Waktu ini lebih penting untuk no-lookahead daripada timestamp origin/refined geometry."
+            )
+
         if str(v222_eval.get("family_state") or "") in {
             "SEQUENTIAL_REMAP_UP",
             "SEQUENTIAL_REMAP_DOWN",

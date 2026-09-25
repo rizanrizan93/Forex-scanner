@@ -81,14 +81,20 @@ def _episode_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     reaction_times: dict[str, datetime] = {}
     premap_lead: float | None = None
 
-    for payload in payloads:
+    for row, payload in zip(rows, payloads):
         timeline = dict(payload.get("timeline") or {})
         candidate_time = candidate_time or _dt(timeline.get("candidate_mapped_at"))
         touch_time = touch_time or _dt(timeline.get("first_touch_at"))
         reclaim_time = reclaim_time or _dt(timeline.get("reclaim_at"))
         mss_time = mss_time or _dt(timeline.get("mss_at"))
         displacement_time = displacement_time or _dt(timeline.get("displacement_at"))
-        refined_time = refined_time or _dt(timeline.get("refined_mapped_at"))
+
+        # Actual prospective availability of a refined pocket is the first
+        # event where the refined label/geometry is observed. Do not trust an
+        # earlier physical first_seen timestamp when candidate and refined
+        # happen to share identical geometry.
+        if refined_time is None and dict(payload.get("refined_pocket") or {}):
+            refined_time = _dt(row.get("observed_at"))
 
         evidence = dict(payload.get("candidate_evidence") or {})
         if premap_lead is None:
@@ -118,6 +124,7 @@ def _episode_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "mss_at": None if mss_time is None else mss_time.isoformat(),
         "displacement_at": None if displacement_time is None else displacement_time.isoformat(),
         "refined_mapped_at": None if refined_time is None else refined_time.isoformat(),
+        "refined_first_observed_at": None if refined_time is None else refined_time.isoformat(),
         "premap_lead_minutes": premap_lead,
         "touched": touch_time is not None,
         "refined": refined_time is not None,

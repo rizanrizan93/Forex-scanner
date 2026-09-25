@@ -110,11 +110,20 @@ def _collapse_events(
         group.sort(key=lambda item: _dt(item.get("observed_at")) or datetime.max.replace(tzinfo=UTC))
         first = dict(group[0].get("payload") or {})
         latest = dict(group[-1].get("payload") or {})
+        refined_rows = [
+            row
+            for row in group
+            if dict(dict(row).get("payload") or {}).get("refined_pocket")
+        ]
+        refined_first_observed_at = (
+            None if not refined_rows else refined_rows[0].get("observed_at")
+        )
         output.append(
             {
                 "signal_key": key,
                 "first_observed_at": group[0].get("observed_at"),
                 "latest_observed_at": group[-1].get("observed_at"),
+                "refined_first_observed_at": refined_first_observed_at,
                 "first": first,
                 "latest": latest,
             }
@@ -365,6 +374,27 @@ def build_quality_evaluation(
             timing_state=timing_state,
             shock_state=shock_state,
         )
+        refined_first_observed_at = episode.get("refined_first_observed_at")
+        candidate_dt = _dt(mapped_at)
+        refined_observed_dt = _dt(refined_first_observed_at)
+        candidate_to_refined_observed_minutes = (
+            None
+            if candidate_dt is None or refined_observed_dt is None
+            else max(
+                0.0,
+                (refined_observed_dt - candidate_dt).total_seconds() / 60.0,
+            )
+        )
+        refinement_timing_state = (
+            "NOT_REFINED"
+            if refined_observed_dt is None
+            else "REFINED_LATE_RETEST_ONLY"
+            if (
+                candidate_to_refined_observed_minutes is not None
+                and candidate_to_refined_observed_minutes >= 10.0
+            )
+            else "REFINED_TIMELY_CONFIRMATION"
+        )
 
         rows.append(
             {
@@ -379,6 +409,9 @@ def build_quality_evaluation(
                 "stage_latest": latest.get("stage"),
                 "first_touch_at": first_touch_at,
                 "refined": bool(dict(latest.get("refined_pocket") or {})),
+                "refined_first_observed_at": refined_first_observed_at,
+                "candidate_to_refined_observed_minutes": candidate_to_refined_observed_minutes,
+                "refinement_timing_state": refinement_timing_state,
                 "processing_delay_after_close_minutes": delay,
                 "formation_price_was_already_traded": True,
                 "touch_semantics": (
@@ -453,11 +486,12 @@ def build_quality_evaluation(
             ),
         },
         "interpretation": (
-            "V222 separates formation/origin from a post-map retest. A pocket can be "
-            "computed promptly after a completed M5 candle yet still be too late for a "
-            "first entry because price already displaced away during formation. Sequential "
-            "new sweep origins are retained as a pocket family instead of letting the newest "
-            "geometry silently replace earlier candidates."
+            "V222 separates formation/origin from a post-map retest and measures "
+            "the first actual observation of the refined label. A pocket can be computed "
+            "promptly after a completed M5 candle yet still be too late for a first entry "
+            "because price already displaced away during formation. Sequential new sweep "
+            "origins are retained as a pocket family instead of letting the newest geometry "
+            "silently replace earlier candidates."
         ),
         "policy_effect": "SHADOW_ONLY",
         "execution_influence": False,
