@@ -50,8 +50,6 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Record discovery running
-        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_discovery_pipeline RUNNING
       - name: Discover XAUUSD IMPULSE_RETEST_V2 challenger
         run: python -m fx_scanner.demo_xau_technical_producer
       - name: Classify XAU expansion challenger shadow evidence
