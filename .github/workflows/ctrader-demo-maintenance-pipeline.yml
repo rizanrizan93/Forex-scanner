@@ -135,6 +135,16 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v214_pocket_lifecycle
 
+      - name: Persist V215 prospective lifecycle evidence
+        id: persist_xau_v215_lifecycle_evidence
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v215_lifecycle_evidence
+
+      - name: Analyze V216 candidate versus refined calibration
+        id: analyze_xau_v216_lifecycle_calibration
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v216_lifecycle_calibration
+
       - name: Evaluate V203 volatility shock guard
         id: evaluate_xau_v203_volatility_shock_guard
         continue-on-error: true
