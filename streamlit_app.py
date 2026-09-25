@@ -227,6 +227,13 @@ def _fmt_distance(value: Any, suffix: str = "") -> str:
         return "—"
 
 
+def _fmt_number(value: Any, decimals: int = 1) -> str:
+    try:
+        return f"{float(value):,.{int(decimals)}f}"
+    except (TypeError, ValueError):
+        return "—"
+
+
 def _fmt_minutes(value: Any) -> str:
     try:
         return f"{float(value):.0f} mnt"
@@ -859,6 +866,9 @@ with forecast_tab:
     )
     v216_calibration_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v216_lifecycle_calibration"
+    )
+    v222_pocket_quality_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v222_m5_pocket_quality"
     )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
@@ -1599,6 +1609,44 @@ with forecast_tab:
     v214_next_timeline = dict(v214_next.get("timeline") or {})
     v214_next_latency = dict(v214_next.get("latency_minutes") or {})
 
+    v222_details = (
+        {} if v222_pocket_quality_hb is None else dict(v222_pocket_quality_hb.get("details") or {})
+    )
+    v222_eval = dict(v222_details.get("evaluation") or {})
+    v222_latest = dict(v222_eval.get("latest_pocket") or {})
+    v222_family = [dict(row) for row in list(v222_eval.get("family") or [])]
+
+    if v222_latest:
+        v222_geometry = (
+            f"{_fmt_price(v222_latest.get('low'))}–{_fmt_price(v222_latest.get('high'))}"
+        )
+        v222_timing = str(v222_latest.get("timing_state") or "—")
+        v222_quality = v222_latest.get("quality_score_research")
+        if v222_timing == "LATE_FOR_FIRST_ENTRY_WAIT_RETEST":
+            st.warning(
+                f"V222 • pocket terbaru **{v222_geometry}** sudah diklasifikasikan "
+                "**LATE FOR FIRST ENTRY / WAIT RETEST**. "
+                f"Quality research={_fmt_number(v222_quality, 1)} • "
+                f"reference price={_fmt_price(v222_latest.get('current_price_reference'))}. "
+                "Ini berarti pocket tetap berguna sebagai origin/retest reference, tetapi bukan "
+                "fresh first-entry pocket hanya karena statusnya refined."
+            )
+        else:
+            st.info(
+                f"V222 • pocket terbaru **{v222_geometry}** • "
+                f"timing={v222_timing} • quality research={_fmt_number(v222_quality, 1)}. "
+                "V222 membedakan formation/origin dari post-map retest."
+            )
+        if str(v222_eval.get("family_state") or "") in {
+            "SEQUENTIAL_REMAP_UP",
+            "SEQUENTIAL_REMAP_DOWN",
+        }:
+            st.caption(
+                f"Pocket family: {v222_eval.get('family_count', 0)} kandidat • "
+                f"state={v222_eval.get('family_state')} • "
+                "pocket terbaru tidak otomatis menggusur kandidat lama dalam evaluasi kualitas."
+            )
+
     dc_current_pocket_shown = False
     if dc_initial_candidate:
         dc_current_pocket_shown = True
@@ -1702,7 +1750,45 @@ with forecast_tab:
         elif not dc_next_pocket_shown:
             st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
 
-    with st.expander("Riset pocket, reaction & zone reuse (V200/V212–V216)", expanded=False):
+    with st.expander("Riset pocket, reaction & zone reuse (V200/V212–V216/V222)", expanded=False):
+        if v222_eval:
+            st.markdown("##### V222 — M5 Pocket Quality & Stability")
+            pq1, pq2, pq3, pq4 = st.columns(4)
+            pq1.metric("Pocket family", int(v222_eval.get("family_count") or 0))
+            pq2.metric("Family state", str(v222_eval.get("family_state") or "—"))
+            pq3.metric(
+                "Latest quality",
+                "—"
+                if v222_latest.get("quality_score_research") is None
+                else f"{float(v222_latest.get('quality_score_research')):.1f}/100",
+            )
+            pq4.metric("Latest timing", str(v222_latest.get("timing_state") or "—"))
+            st.caption(
+                "Formation candle memang sudah memperdagangkan harga pocket sebelum pocket dapat "
+                "dipetakan dari completed M5. first_touch hanya berarti retest setelah mapping. "
+                "Karena itu ORIGIN/FORMATION tidak boleh disamakan dengan fresh entry. "
+                "V222 tetap shadow-only."
+            )
+            if v222_family:
+                family_rows = []
+                for row in v222_family[-6:]:
+                    family_rows.append(
+                        {
+                            "Seq": row.get("sequence"),
+                            "Pocket": f"{_fmt_price(row.get('low'))}–{_fmt_price(row.get('high'))}",
+                            "Mapped WIB": _fmt_wib_datetime(row.get("mapped_at"), seconds=False),
+                            "Post-map touch": _fmt_wib_datetime(row.get("first_touch_at"), seconds=False),
+                            "Timing": row.get("timing_state"),
+                            "Quality": row.get("quality_score_research"),
+                            "Shift ATR": row.get("midpoint_shift_atr"),
+                        }
+                    )
+                st.dataframe(
+                    pd.DataFrame(family_rows),
+                    width="stretch",
+                    hide_index=True,
+                )
+
         v216_details = (
             {} if v216_calibration_hb is None else dict(v216_calibration_hb.get("details") or {})
         )

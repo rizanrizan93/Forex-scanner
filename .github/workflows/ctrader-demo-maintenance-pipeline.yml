@@ -145,6 +145,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v216_lifecycle_calibration
 
+      - name: Rank V222 M5 pocket quality and stability
+        id: analyze_xau_v222_m5_pocket_quality
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v222_m5_pocket_quality
+
       - name: Estimate V217 multi-horizon direction probabilities
         id: analyze_xau_v217_direction_probability
         continue-on-error: true
