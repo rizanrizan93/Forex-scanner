@@ -432,10 +432,13 @@ def _first_invalidation_at(
     zone: SDZone,
 ) -> datetime | None:
     timestamps = list(price_m1["timestamp"])
-    start = bisect_left(timestamps, ensure_utc(zone.available_at))
+    available = ensure_utc(zone.available_at)
+    start = bisect_left(timestamps, available)
     if start >= len(price_m1):
         return None
-    for index in range(start, len(price_m1)):
+    expiry = available + timedelta(hours=OBSERVATION_HOURS[zone.timeframe])
+    end = bisect_right(timestamps, expiry)
+    for index in range(start, min(end, len(price_m1))):
         row = price_m1.iloc[index]
         if _invalidated(float(row["close"]), zone):
             return ensure_utc(pd.Timestamp(row["timestamp"]).to_pydatetime())
@@ -447,10 +450,14 @@ def _active_at(
     invalidated_at_by_zone: dict[str, datetime | None],
     at: datetime,
 ) -> bool:
-    if ensure_utc(zone.available_at) > ensure_utc(at):
+    available = ensure_utc(zone.available_at)
+    point = ensure_utc(at)
+    if available > point:
+        return False
+    if point > available + timedelta(hours=OBSERVATION_HOURS[zone.timeframe]):
         return False
     invalidated_at = invalidated_at_by_zone.get(zone.zone_id)
-    return invalidated_at is None or ensure_utc(invalidated_at) > ensure_utc(at)
+    return invalidated_at is None or ensure_utc(invalidated_at) > point
 
 
 def _contains_price(zone: SDZone, price: float) -> bool:
