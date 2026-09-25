@@ -170,3 +170,12 @@ def test_v212_v213_run_in_maintenance_after_v201() -> None:
     v212 = "python -m fx_scanner.demo_xau_v212_zone_reaction_probability"
     v213 = "python -m fx_scanner.demo_xau_v213_post_zone_path"
     assert workflow.index(v201) < workflow.index(v212) < workflow.index(v213)
+
+
+def test_v212_v213_dashboard_panel_is_observation_only() -> None:
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "V212/V213 — Probabilitas Reaksi & Jalur Setelah Zone" in text
+    assert "P reaksi ≥0.50 ATR" in text
+    assert "P break zone" in text
+    assert "P lanjut 1.00 ATR | sudah 0.50" in text
+    assert "bukan izin eksekusi" in text
