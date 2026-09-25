@@ -124,10 +124,12 @@ def test_open_position_close_deal_is_not_counted_as_completed_trade():
     assert event["event_type"] == "DEMO_TRADE_PARTIAL_CLOSE"; assert event["code"] == "PARTIAL_CLOSE_PROFIT"
 
 
-def test_discovery_pipeline_runs_closed_trade_reconciler_best_effort():
-    text = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
+def test_calibration_pipeline_runs_closed_trade_reconciler_best_effort():
+    text = (ROOT / ".github/workflows/ctrader-demo-calibration-pipeline.yml").read_text()
     assert "python -m fx_scanner.demo_closed_trade_reconciler" in text
     assert "continue-on-error: true" in text
-    assert text.index("demo_xau_technical_producer") < text.index("demo_closed_trade_reconciler")
+    assert text.index("demo_xau_strategy_latency_telemetry") < text.index("demo_closed_trade_reconciler")
+    discovery = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text()
     fast = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
+    assert "demo_closed_trade_reconciler" not in discovery
     assert "demo_closed_trade_reconciler" not in fast
