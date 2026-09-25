@@ -635,11 +635,21 @@ def attach_hierarchy(
                         if child_h1 is None
                         else normalized_depth(child_h1, float(row.turning_price))
                     ),
+                    "h1_child_internal_depth": (
+                        None
+                        if child_h1 is None
+                        else normalized_internal_depth(child_h1, float(row.turning_price))
+                    ),
                     "m15_child_zone_id": None if child_m15 is None else child_m15.zone_id,
                     "m15_child_depth": (
                         None
                         if child_m15 is None
                         else normalized_depth(child_m15, float(row.turning_price))
+                    ),
+                    "m15_child_internal_depth": (
+                        None
+                        if child_m15 is None
+                        else normalized_internal_depth(child_m15, float(row.turning_price))
                     ),
                 }
             )
@@ -689,24 +699,38 @@ def _quantile(values: Sequence[float], q: float) -> float | None:
     return None if not values else float(np.quantile(np.array(values, dtype=float), q))
 
 
-def depth_summary(rows: Sequence[DepthEpisode]) -> dict[str, Any]:
+def _depth_summary_for_coordinate(
+    rows: Sequence[DepthEpisode],
+    *,
+    turning_attr: str,
+    max_attr: str,
+    coordinate: str,
+) -> dict[str, Any]:
     episodes = list(rows)
-    successes = [row for row in episodes if row.reaction_hit and row.turning_depth is not None]
-    in_zone_success = [
-        row for row in successes
-        if 0.0 <= float(row.turning_depth) < 1.0
+    successes = [
+        row
+        for row in episodes
+        if row.reaction_hit and getattr(row, turning_attr) is not None
     ]
-    depths = [float(row.turning_depth) for row in in_zone_success]
+    in_zone_success = [
+        row
+        for row in successes
+        if 0.0 <= float(getattr(row, turning_attr)) < 1.0
+    ]
+    depths = [float(getattr(row, turning_attr)) for row in in_zone_success]
 
     hazard: list[dict[str, Any]] = []
     for index in range(10):
         lower = index / 10.0
         upper = (index + 1) / 10.0
-        at_risk = sum(float(row.max_depth_reached) + 1e-12 >= lower for row in episodes)
+        at_risk = sum(
+            float(getattr(row, max_attr)) + 1e-12 >= lower
+            for row in episodes
+        )
         reversals = sum(
             row.reaction_hit
-            and row.turning_depth is not None
-            and lower <= float(row.turning_depth) < upper
+            and getattr(row, turning_attr) is not None
+            and lower <= float(getattr(row, turning_attr)) < upper
             for row in episodes
         )
         hazard.append(
@@ -734,12 +758,15 @@ def depth_summary(rows: Sequence[DepthEpisode]) -> dict[str, Any]:
             -int(item.get("at_risk") or 0),
         )
     )
+
     distribution: dict[str, int] = {}
     for row in successes:
-        band = _depth_band(row.turning_depth)
+        value = getattr(row, turning_attr)
+        band = _depth_band(value)
         distribution[band] = distribution.get(band, 0) + 1
 
     return {
+        "coordinate": coordinate,
         "touches": len(episodes),
         "holds_050": len(successes),
         "hold_rate": None if not episodes else len(successes) / len(episodes),
@@ -747,8 +774,14 @@ def depth_summary(rows: Sequence[DepthEpisode]) -> dict[str, Any]:
         "breaks": sum(row.break_hit for row in episodes),
         "stalls": sum(row.outcome == "STALL" for row in episodes),
         "successes_inside_zone": len(in_zone_success),
+        "successes_before_zero": sum(
+            getattr(row, turning_attr) is not None
+            and float(getattr(row, turning_attr)) < 0.0
+            for row in successes
+        ),
         "successes_100pct_plus": sum(
-            row.turning_depth is not None and float(row.turning_depth) >= 1.0
+            getattr(row, turning_attr) is not None
+            and float(getattr(row, turning_attr)) >= 1.0
             for row in successes
         ),
         "depth_p25": _quantile(depths, 0.25),
@@ -760,6 +793,24 @@ def depth_summary(rows: Sequence[DepthEpisode]) -> dict[str, Any]:
         "minimum_at_risk_for_ranking": MIN_HAZARD_AT_RISK,
     }
 
+
+def depth_summary(rows: Sequence[DepthEpisode]) -> dict[str, Any]:
+    full = _depth_summary_for_coordinate(
+        rows,
+        turning_attr="turning_depth",
+        max_attr="max_depth_reached",
+        coordinate="FULL_ZONE_NEAR_EDGE_TO_FAR_EDGE",
+    )
+    internal = _depth_summary_for_coordinate(
+        rows,
+        turning_attr="turning_internal_depth",
+        max_attr="max_internal_depth_reached",
+        coordinate="ATLAS_PROXIMAL_BODY_EDGE_TO_DISTAL",
+    )
+    return {
+        **full,
+        "internal_geometry": internal,
+    }
 
 def grouped_report(rows: Sequence[DepthEpisode]) -> dict[str, Any]:
     output: dict[str, Any] = {"ALL": depth_summary(rows)}
@@ -781,41 +832,79 @@ def hierarchy_report(rows: Sequence[DepthEpisode]) -> dict[str, Any]:
     h1_nested = [row for row in h4_success if row.h1_child_depth is not None]
     m15_nested = [row for row in h1_nested if row.m15_child_depth is not None]
 
-    def nested_depth(values: Iterable[float | None]) -> dict[str, Any]:
-        clean = [float(value) for value in values if value is not None and 0 <= float(value) < 1]
+    def nested_depth(values: Iterable[float | None], *, coordinate: str) -> dict[str, Any]:
+        raw = [float(value) for value in values if value is not None]
+        clean = [value for value in raw if 0 <= value < 1]
         distribution: dict[str, int] = {}
-        for value in clean:
+        for value in raw:
             band = _depth_band(value)
             distribution[band] = distribution.get(band, 0) + 1
         ranked = sorted(distribution.items(), key=lambda item: (-item[1], item[0]))
         return {
-            "n": len(clean),
+            "coordinate": coordinate,
+            "n_total": len(raw),
+            "n_inside_0_100": len(clean),
             "p25": _quantile(clean, 0.25),
             "median": _quantile(clean, 0.50),
             "p75": _quantile(clean, 0.75),
             "distribution": distribution,
             "modal_bands": [
-                {"band": band, "count": count, "share": count / len(clean)}
+                {"band": band, "count": count, "share": count / len(raw)}
                 for band, count in ranked[:3]
-            ] if clean else [],
+            ] if raw else [],
         }
 
     combos: dict[tuple[str, str, str], int] = {}
+    internal_combos: dict[tuple[str, str, str], int] = {}
     for row in m15_nested:
-        key = (
+        full_key = (
             _depth_band(row.turning_depth),
             _depth_band(row.h1_child_depth),
             _depth_band(row.m15_child_depth),
         )
-        combos[key] = combos.get(key, 0) + 1
+        combos[full_key] = combos.get(full_key, 0) + 1
+        internal_key = (
+            _depth_band(row.turning_internal_depth),
+            _depth_band(row.h1_child_internal_depth),
+            _depth_band(row.m15_child_internal_depth),
+        )
+        internal_combos[internal_key] = internal_combos.get(internal_key, 0) + 1
+
     ranked_combos = sorted(combos.items(), key=lambda item: -item[1])
+    ranked_internal = sorted(internal_combos.items(), key=lambda item: -item[1])
 
     return {
         "h4_successes": len(h4_success),
         "h1_child_coverage": None if not h4_success else len(h1_nested) / len(h4_success),
         "m15_child_coverage_given_h1": None if not h1_nested else len(m15_nested) / len(h1_nested),
-        "h1_child_depth": nested_depth(row.h1_child_depth for row in h1_nested),
-        "m15_child_depth": nested_depth(row.m15_child_depth for row in m15_nested),
+        "h1_child_depth": nested_depth(
+            (row.h1_child_depth for row in h1_nested),
+            coordinate="FULL_ZONE_NEAR_EDGE_TO_FAR_EDGE",
+        ),
+        "m15_child_depth": nested_depth(
+            (row.m15_child_depth for row in m15_nested),
+            coordinate="FULL_ZONE_NEAR_EDGE_TO_FAR_EDGE",
+        ),
+        "internal_geometry": {
+            "h1_child_depth": nested_depth(
+                (row.h1_child_internal_depth for row in h1_nested),
+                coordinate="ATLAS_PROXIMAL_BODY_EDGE_TO_DISTAL",
+            ),
+            "m15_child_depth": nested_depth(
+                (row.m15_child_internal_depth for row in m15_nested),
+                coordinate="ATLAS_PROXIMAL_BODY_EDGE_TO_DISTAL",
+            ),
+            "top_nested_depth_combinations": [
+                {
+                    "h4_band": key[0],
+                    "h1_band": key[1],
+                    "m15_band": key[2],
+                    "count": count,
+                    "share_of_m15_nested": None if not m15_nested else count / len(m15_nested),
+                }
+                for key, count in ranked_internal[:15]
+            ],
+        },
         "top_nested_depth_combinations": [
             {
                 "h4_band": key[0],
@@ -827,12 +916,12 @@ def hierarchy_report(rows: Sequence[DepthEpisode]) -> dict[str, Any]:
             for key, count in ranked_combos[:15]
         ],
         "interpretation": (
-            "Hierarchy rows describe where successful H4 reversals landed inside pre-existing "
-            "same-direction H1 and M15 child zones. Coverage is descriptive; it is not an "
-            "execution probability."
+            "Full-zone coordinates are the user-facing range map: 0% is the near outer "
+            "edge and 100% the far outer edge. Internal geometry separately measures "
+            "atlas proximal body edge to distal. Coverage remains descriptive and has "
+            "no execution authority."
         ),
     }
-
 
 def serialize_episode(row: DepthEpisode) -> dict[str, Any]:
     payload = asdict(row)
@@ -845,4 +934,8 @@ def deserialize_episode(payload: dict[str, Any]) -> DepthEpisode:
     values = dict(payload)
     for key in ("available_at", "touch_at", "outcome_at"):
         values[key] = ensure_utc(datetime.fromisoformat(str(values[key]).replace("Z", "+00:00")))
+    values.setdefault("max_internal_depth_reached", 0.0)
+    values.setdefault("turning_internal_depth", None)
+    values.setdefault("h1_child_internal_depth", None)
+    values.setdefault("m15_child_internal_depth", None)
     return DepthEpisode(**values)
