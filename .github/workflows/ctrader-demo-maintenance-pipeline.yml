@@ -130,6 +130,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v213_post_zone_path
 
+      - name: Track V214 M5 pocket lifecycle latency
+        id: analyze_xau_v214_pocket_lifecycle
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v214_pocket_lifecycle
+
       - name: Evaluate V203 volatility shock guard
         id: evaluate_xau_v203_volatility_shock_guard
         continue-on-error: true
