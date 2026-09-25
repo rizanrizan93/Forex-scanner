@@ -117,7 +117,7 @@ def _bars_from_frame(frame: pd.DataFrame, timeframe: str) -> tuple[Bar, ...]:
                 high=float(row["high"]),
                 low=float(row["low"]),
                 close=float(row["close"]),
-                tick_count=0,
+                tick_count=1,
                 spread_avg=0.0,
                 spread_max=0.0,
             )
