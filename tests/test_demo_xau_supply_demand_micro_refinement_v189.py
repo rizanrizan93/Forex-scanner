@@ -272,3 +272,53 @@ def test_short_refinement_uses_local_post_touch_mss_before_far_structural_mss():
     assert result["refined_entry_pocket"] is not None
     assert result["execution_authority"] is False
 
+
+
+
+def test_v219_h1_child_break_inside_valid_h4_parent_preserves_candidate():
+    t0 = datetime(2026, 9, 25, 7, 0, tzinfo=UTC)
+    path = _path(direction="LONG")
+    path["active_path"]["source_zone"]["available_at"] = t0.isoformat()
+    parent = {
+        "zone_id": "parent-h4",
+        "timeframe": "H4",
+        "direction": "LONG",
+        "low": 95.0,
+        "high": 115.0,
+        "proximal": 105.0,
+        "distal": 95.0,
+        "available_at": t0.isoformat(),
+        "lifecycle": {"active": True},
+    }
+
+    bars = []
+    for i in range(45):
+        ts = t0 + timedelta(minutes=5 * i)
+        if i == 25:
+            # H1 distal=100 is broken on close, but the sweep stays inside the
+            # still-valid H4 parent. This is exactly the parent-reversal case
+            # V219 must keep visible as a candidate.
+            bars.append(_bar(ts, 102.0, 104.0, 97.0, 98.0))
+        elif i > 25:
+            bars.append(_bar(ts, 99.0, 103.0, 98.0, 100.0))
+        else:
+            bars.append(_bar(ts, 106.0, 109.0, 105.0, 107.0))
+
+    result = evaluate_micro_refinement(
+        tuple(bars),
+        path_map=path,
+        as_of=t0 + timedelta(minutes=5 * 46),
+        parent_source_zone=parent,
+    )
+
+    rescue = result["parent_reversal_rescue"]
+    assert rescue["active"] is True
+    assert rescue["parent_timeframe"] == "H4"
+    assert rescue["parent_contains_sweep"] is True
+    assert rescue["mode"] in {
+        "HTF_PARENT_OWNS_SWEEP_WAIT_CONFIRMATION",
+        "HTF_PARENT_WITH_LIVE_M5_REVERSAL",
+    }
+    assert result["state"] != "SOURCE_INVALIDATED_NO_REFINEMENT"
+    assert result["candidate_entry_pocket"]
+    assert result["execution_authority"] is False
