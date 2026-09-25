@@ -13,10 +13,10 @@ import pandas as pd
 from .demo_xau_afic_path_shadow_observer import _atr
 from .demo_xau_supply_demand_atlas_v182 import (
     SDZone,
-    _all_zones,
     _classify_pattern,
     _stable_sd_zone_id,
 )
+from .research_xau_supply_demand_reaction_v183 import _all_zones
 from .models import Bar, ensure_utc
 from .research_xau_zone_path_v174 import wilson_lower_bound
 
@@ -128,15 +128,19 @@ def _bars_from_frame(frame: pd.DataFrame, timeframe: str) -> tuple[Bar, ...]:
 def _base_geometry(base: pd.DataFrame, direction: str) -> tuple[float, float, float, float]:
     low = float(base["low"].min())
     high = float(base["high"].max())
+    body_high = float(
+        pd.concat([base["open"], base["close"]], axis=1).max(axis=1).max()
+    )
+    body_low = float(
+        pd.concat([base["open"], base["close"]], axis=1).min(axis=1).min()
+    )
     if direction == "LONG":
-        proximal = float(base[["open", "close"]].min(axis=1).min())
+        proximal = min(high, body_high)
         distal = low
-        proximal = min(high, max(low, proximal))
-        return distal, proximal, proximal, distal
-    proximal = float(base[["open", "close"]].max(axis=1).max())
-    distal = high
-    proximal = min(high, max(low, proximal))
-    return proximal, distal, proximal, distal
+    else:
+        proximal = max(low, body_low)
+        distal = high
+    return low, high, proximal, distal
 
 
 def _detect_m15_zones(frame: pd.DataFrame) -> tuple[SDZone, ...]:
