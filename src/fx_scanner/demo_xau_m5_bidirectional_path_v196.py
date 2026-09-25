@@ -230,14 +230,21 @@ def evaluate_bidirectional_m5_path(
         previous_projection=previous_projection,
         direction=direction,
     )
+    parent_context = (
+        dict(current_eval_path.get("parent_source_zone") or {})
+        if precision_source_latched
+        else {}
+    )
     current_micro = evaluate_micro_refinement(
         m5_bars,
         path_map={"active_path": current_eval_path},
         as_of=as_of,
+        parent_source_zone=parent_context,
     )
 
-    # Never keep a stale H1 child alive. The latch only preserves continuity;
-    # V189 still decides validity from current bars.
+    # V218: if the H1 child is invalid but the overlapping HTF parent remains
+    # valid, V189 may retain the causal micro reversal as shadow evidence.
+    # Otherwise fall back exactly as before.
     if precision_source_latched and "INVALIDATED" in str(
         current_micro.get("state") or ""
     ).upper():
