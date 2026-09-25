@@ -15,6 +15,8 @@ on:
       - ".github/workflows/ctrader-demo-xau-execution-lane.yml"
       - ".github/workflows/ctrader-demo-xau-afic-prepared-lane.yml"
       - ".github/workflows/ctrader-demo-maintenance-pipeline.yml"
+      - ".github/workflows/ctrader-demo-discovery-pipeline.yml"
+      - ".github/workflows/ctrader-demo-calibration-pipeline.yml"
       - ".github/workflows/ctrader-demo-xau-dom-v191.yml"
       - ".github/workflows/research-xau-forecast-ensemble-v171.yml"
       - "src/fx_scanner/research_xau_forecast_ensemble_v171.py"
@@ -78,6 +80,8 @@ jobs:
           dom_busy=0
           discovery_dispatched=0
           discovery_busy=0
+          calibration_dispatched=0
+          calibration_busy=0
           forecast_v171_dispatched=0
           forecast_v171_busy=0
 
@@ -186,7 +190,7 @@ jobs:
             exit 0
           fi
 
-          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_AFIC_PATH_PREPARED_V1 fast_cadence_seconds=60 maintenance_cadence_seconds=300 forecast_v171_cadence_seconds=300 forecast_v171_authority=SHADOW_ONLY discovery_check_seconds=60 discovery_stale_seconds=1800 afic_prepared_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_5M execution_workflow=ctrader-demo-xau-execution-lane.yml afic_workflow=ctrader-demo-xau-afic-prepared-lane.yml maintenance_workflow=ctrader-demo-maintenance-pipeline.yml dom_workflow=ctrader-demo-xau-dom-v191.yml dom_cadence_seconds=60 push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=SAFE_CONDITIONAL"
+          echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_AFIC_PATH_PREPARED_V1 fast_cadence_seconds=60 maintenance_cadence_seconds=300 forecast_v171_cadence_seconds=300 forecast_v171_authority=SHADOW_ONLY discovery_check_seconds=60 discovery_stale_seconds=1800 calibration_cadence_seconds=300 afic_prepared_check_seconds=60 overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_5M execution_workflow=ctrader-demo-xau-execution-lane.yml afic_workflow=ctrader-demo-xau-afic-prepared-lane.yml maintenance_workflow=ctrader-demo-maintenance-pipeline.yml dom_workflow=ctrader-demo-xau-dom-v191.yml dom_cadence_seconds=60 push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=SAFE_CONDITIONAL"
 
           # Each supervisor owns one bounded five-minute window. The exact XAU
           # execution lane is checked every minute so the V24 three-minute entry
@@ -250,6 +254,18 @@ jobs:
               else
                 echo "SUPERVISOR_V171_SKIP_BUSY cycle=${cycle}/5 active_runs=${active_v171} policy_effect=SHADOW_ONLY execution_authority=NONE"
                 forecast_v171_busy=$((forecast_v171_busy + 1))
+              fi
+            fi
+
+            if [ "${cycle}" -eq 1 ]; then
+              active_calibration="$(active_count ctrader-demo-calibration-pipeline.yml)"
+              if [ "${active_calibration}" -eq 0 ]; then
+                echo "SUPERVISOR_CALIBRATION_DISPATCH cycle=${cycle}/5 cadence_seconds=300 head_sha=${GITHUB_SHA}"
+                dispatch_workflow ctrader-demo-calibration-pipeline.yml
+                calibration_dispatched=$((calibration_dispatched + 1))
+              else
+                echo "SUPERVISOR_CALIBRATION_SKIP_BUSY cycle=${cycle}/5 active_runs=${active_calibration}"
+                calibration_busy=$((calibration_busy + 1))
               fi
             fi
 
@@ -332,4 +348,4 @@ jobs:
           else
             echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED source_run=${GITHUB_RUN_ID} latest_execution_status=${latest_execution_status:-NONE} latest_execution_conclusion=${latest_execution_conclusion:-NONE} other_active_supervisors=${other_active_supervisors} handoff_wait_cycles=${handoff_wait_cycles} safety=FAIL_CLOSED"
           fi
-          echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_AFIC_PATH_PREPARED_V1 execution_dispatched=${execution_dispatched} execution_busy=${execution_busy} afic_dispatched=${afic_dispatched} afic_busy=${afic_busy} dom_dispatched=${dom_dispatched} dom_busy=${dom_busy} maintenance_dispatched=${maintenance_dispatched} maintenance_busy=${maintenance_busy} forecast_v171_dispatched=${forecast_v171_dispatched} forecast_v171_busy=${forecast_v171_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 afic_prepared_check_seconds=60 dom_cadence_seconds=60 maintenance_cadence_seconds=300 forecast_v171_cadence_seconds=300 forecast_v171_authority=SHADOW_ONLY discovery_check_seconds=60 discovery_stale_seconds=1800 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=${self_handoff}"
+          echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_AFIC_PATH_PREPARED_V1 execution_dispatched=${execution_dispatched} execution_busy=${execution_busy} afic_dispatched=${afic_dispatched} afic_busy=${afic_busy} dom_dispatched=${dom_dispatched} dom_busy=${dom_busy} maintenance_dispatched=${maintenance_dispatched} maintenance_busy=${maintenance_busy} forecast_v171_dispatched=${forecast_v171_dispatched} forecast_v171_busy=${forecast_v171_busy} calibration_dispatched=${calibration_dispatched} calibration_busy=${calibration_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 afic_prepared_check_seconds=60 dom_cadence_seconds=60 maintenance_cadence_seconds=300 forecast_v171_cadence_seconds=300 forecast_v171_authority=SHADOW_ONLY discovery_check_seconds=60 discovery_stale_seconds=1800 calibration_cadence_seconds=300 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=${self_handoff}"

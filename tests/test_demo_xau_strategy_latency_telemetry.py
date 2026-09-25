@@ -45,16 +45,16 @@ def test_latency_payload_persists_explicit_active_strategy_identity():
     assert payload["m5_close_to_detection_seconds"] is None
 
 
-def test_workflow_runs_xau_telemetry_best_effort_after_pair_discovery():
-    workflow = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text(encoding="utf-8")
-    producer = "python -m fx_scanner.demo_xau_technical_producer"
+def test_workflow_runs_xau_telemetry_best_effort_in_calibration_lane():
+    workflow = (ROOT / ".github/workflows/ctrader-demo-calibration-pipeline.yml").read_text(encoding="utf-8")
     telemetry = "python -m fx_scanner.demo_xau_strategy_latency_telemetry"
     reconciler = "python -m fx_scanner.demo_closed_trade_reconciler"
-    assert workflow.index(producer) < workflow.index(telemetry) < workflow.index(reconciler)
+    assert workflow.index(telemetry) < workflow.index(reconciler)
     block = workflow[workflow.index("- name: Persist XAU active strategy identity and latency telemetry"):workflow.index("- name: Reconcile cTrader closed DEMO outcomes")]
     assert "continue-on-error: true" in block
     assert "if: ${{ always() }}" in block
-
+    discovery = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text(encoding="utf-8")
+    assert telemetry not in discovery
 
 def test_telemetry_has_no_execution_path_and_filters_by_activation_time():
     source = (ROOT / "src/fx_scanner/demo_xau_strategy_latency_telemetry.py").read_text(encoding="utf-8")

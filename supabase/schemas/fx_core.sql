@@ -750,3 +750,39 @@ create index if not exists broker_order_events_backend_event_account_observed_id
   on public.broker_order_events (backend, event_type, account_id, observed_at desc);
 
 -- Contract marker: FOREX_SCANNER_BROKER_EVENT_HOT_PATH_V207
+
+
+-- V209 broker-order identity lookup. Production duplicate/reconciliation checks
+-- repeatedly probe backend+account_id+broker_order_id; event_type is appended so
+-- the stricter protection checks use the same index. This does not alter trading logic.
+create index if not exists broker_order_events_backend_account_order_event_idx
+  on public.broker_order_events (backend, account_id, broker_order_id, event_type);
+
+-- Contract marker: FOREX_SCANNER_IO_BUDGET_V209
+
+
+-- V209 reference-data write guard. Short-lived workers may bootstrap the same
+-- fx_symbols rows repeatedly. Preserve the client UPSERT/retry contract while
+-- suppressing physical no-op UPDATEs (and their WAL/dirty-page cost) in Postgres.
+create or replace function public.fx_symbols_skip_noop_update_v209()
+returns trigger
+language plpgsql
+set search_path = public, pg_catalog
+as $$
+begin
+  if new.base_currency is not distinct from old.base_currency
+     and new.quote_currency is not distinct from old.quote_currency
+     and new.pip_size is not distinct from old.pip_size
+     and new.tier is not distinct from old.tier
+     and new.active is not distinct from old.active
+  then
+    return null;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists fx_symbols_skip_noop_update_v209 on public.fx_symbols;
+create trigger fx_symbols_skip_noop_update_v209
+before update on public.fx_symbols
+for each row execute function public.fx_symbols_skip_noop_update_v209();

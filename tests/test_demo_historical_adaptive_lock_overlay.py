@@ -94,8 +94,8 @@ def test_adaptive_v2_recognizes_all_adaptive_lock_outcomes():
     assert sum(item.losses for item in report.cohorts.values()) == 0
 
 
-def test_discovery_uses_one_normalized_reader_for_all_calibration_reports():
-    workflow = (ROOT / ".github/workflows/ctrader-demo-discovery-pipeline.yml").read_text(encoding="utf-8")
+def test_calibration_lane_uses_one_normalized_reader_for_all_calibration_reports():
+    workflow = (ROOT / ".github/workflows/ctrader-demo-calibration-pipeline.yml").read_text(encoding="utf-8")
     assert "demo_normalized_calibration_runner incremental" in workflow
     assert "demo_normalized_calibration_runner adaptive-v2" in workflow
     assert "demo_normalized_calibration_runner comparison" in workflow

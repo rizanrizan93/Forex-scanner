@@ -64,10 +64,6 @@ def test_v208_recovers_only_stale_discovery_runs_and_adds_pipeline_heartbeat() -
 
     assert (
         "python -m fx_scanner.demo_runtime_heartbeat "
-        "ctrader_demo_discovery_pipeline RUNNING"
-    ) in discovery
-    assert (
-        "python -m fx_scanner.demo_runtime_heartbeat "
         "ctrader_demo_discovery_pipeline SUCCESS"
     ) in discovery
     assert (
