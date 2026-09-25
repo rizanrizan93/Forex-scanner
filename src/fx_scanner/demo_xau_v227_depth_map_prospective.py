@@ -245,6 +245,22 @@ def _reaction_flags(hits: dict[str, bool]) -> dict[str, Any]:
     }
 
 
+def _full_depth(*, direction: str, low: float, high: float, price: float) -> float:
+    width = max(high - low, 1e-12)
+    return (high - price) / width if direction == "LONG" else (price - low) / width
+
+
+def _depth_band(depth: float | None) -> str | None:
+    if depth is None:
+        return None
+    if depth < 0:
+        return "BEFORE_NEAR_EDGE"
+    if depth >= 1:
+        return "100%+"
+    lower = int(depth * 10) * 10
+    return f"{lower:02d}-{lower + 10:02d}%"
+
+
 def _capture_payload(
     forecast: dict[str, Any],
     *,
