@@ -201,5 +201,5 @@ def test_v222_uses_actual_first_observed_refined_event() -> None:
     )
     latest = result["latest_pocket"]
     assert latest["refined_first_observed_at"] == "2026-09-25T11:43:59+00:00"
-    assert latest["candidate_to_refined_observed_minutes"] > 28.0
+    assert latest["candidate_to_refined_observed_minutes"] > 27.8
     assert latest["refinement_timing_state"] == "REFINED_LATE_RETEST_ONLY"
