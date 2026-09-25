@@ -109,8 +109,8 @@ def _history() -> dict:
             }
         }
     return {
-        "contract": "XAU_ZONE_REVERSAL_DEPTH_V225_1_EVIDENCE_1_FULL_2012_2026_1",
-        "research_version": "XAU_ZONE_REVERSAL_DEPTH_V225_1",
+        "contract": "XAU_ZONE_REVERSAL_DEPTH_V225_2_EVIDENCE_1_FULL_2012_2026_1",
+        "research_version": "XAU_ZONE_REVERSAL_DEPTH_V225_2",
         "years": list(range(2012, 2027)),
         "year_count": 15,
         "episode_count": 71739,
