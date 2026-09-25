@@ -16,6 +16,7 @@ ATR_PERIOD = 14
 DISPLACEMENT_BODY_ATR = 0.50
 DISPLACEMENT_RANGE_ATR = 0.80
 DISPLACEMENT_CLOSE_LOCATION = 0.70
+PARENT_REVERSAL_RESCUE_MAX_ATR = 0.35
 
 
 def _safe_float(value: Any) -> float | None:
@@ -273,6 +274,7 @@ def evaluate_micro_refinement(
     *,
     path_map: dict[str, Any],
     as_of: datetime,
+    parent_source_zone: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     active_path = dict(path_map.get("active_path") or {})
     source = dict(active_path.get("source_zone") or {})
@@ -431,6 +433,46 @@ def evaluate_micro_refinement(
         _source_invalidated(row, source, direction)
         for row in recent[sweep_index:]
     )
+
+    # V218: preserve causal M5 reversal evidence when a marginal H1 child break
+    # occurs inside a still-valid overlapping HTF parent. Shadow/prepare only.
+    parent = dict(parent_source_zone or {})
+    parent_rescue = False
+    parent_penetration_atr = None
+    if invalidated and parent:
+        parent_low = _safe_float(parent.get("low"))
+        parent_high = _safe_float(parent.get("high"))
+        parent_distal = _safe_float(parent.get("distal"))
+        child_low = _safe_float(source.get("low"))
+        child_high = _safe_float(source.get("high"))
+        child_distal = _safe_float(source.get("distal"))
+        sweep_atr = _atr_at(recent, sweep_index)
+        same_direction = str(parent.get("direction") or direction).upper() == direction
+        overlaps_child = (
+            None not in {parent_low, parent_high, child_low, child_high}
+            and child_low <= parent_high and child_high >= parent_low
+        )
+        parent_active = dict(parent.get("lifecycle") or {}).get("active", True) is not False
+        parent_not_invalidated = not any(
+            _source_invalidated(row, parent, direction)
+            for row in recent[sweep_index:]
+        )
+        if child_distal is not None and sweep_atr:
+            excursion = (
+                max(0.0, child_distal - float(sweep_bar.low))
+                if direction == "LONG"
+                else max(0.0, float(sweep_bar.high) - child_distal)
+            )
+            parent_penetration_atr = excursion / sweep_atr
+        if (
+            same_direction and overlaps_child and parent_active
+            and parent_not_invalidated and parent_distal is not None
+            and parent_penetration_atr is not None
+            and parent_penetration_atr <= PARENT_REVERSAL_RESCUE_MAX_ATR
+        ):
+            invalidated = False
+            parent_rescue = True
+
     candidate_pocket = _candidate_pocket_from_bar(sweep_bar, direction)
     candidate_pocket["origin_at"] = ensure_utc(sweep_bar.timestamp).isoformat()
 
@@ -504,6 +546,7 @@ def evaluate_micro_refinement(
         ),
         "candidate_entry_pocket": candidate_pocket,
         "refined_entry_pocket": refined_pocket,
+        "parent_reversal_rescue": {"active": parent_rescue, "parent_zone_id": parent.get("zone_id") if parent_rescue else None, "parent_timeframe": parent.get("timeframe") if parent_rescue else None, "child_penetration_atr": None if parent_penetration_atr is None else round(parent_penetration_atr, 4), "max_child_penetration_atr": PARENT_REVERSAL_RESCUE_MAX_ATR, "effect": "SHADOW_PREPARE_ONLY"},
         "required_for_execution": False,
         "interpretation": (
             "V189 uses post-source-touch local M5 structure for the executable micro MSS "
