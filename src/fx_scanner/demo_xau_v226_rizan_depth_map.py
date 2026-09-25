@@ -743,6 +743,48 @@ def _nested_locator(
     }
 
 
+def _clip_nested_locator(
+    locator: dict[str, Any],
+    parent_geometry: dict[str, Any],
+) -> dict[str, Any]:
+    if not locator or not parent_geometry:
+        return dict(locator or {})
+    envelope = dict(locator.get("envelope") or {})
+    e_low = _f(envelope.get("low"))
+    e_high = _f(envelope.get("high"))
+    p_low = _f(parent_geometry.get("low"))
+    p_high = _f(parent_geometry.get("high"))
+    if None in {e_low, e_high, p_low, p_high}:
+        return dict(locator)
+
+    overlap = _overlap_bounds(
+        float(e_low),
+        float(e_high),
+        float(p_low),
+        float(p_high),
+    )
+    if overlap is None:
+        return {}
+
+    clipped_low, clipped_high = overlap
+    clipped = dict(locator)
+    clipped["raw_envelope"] = envelope
+    clipped["envelope"] = {
+        **envelope,
+        "low": clipped_low,
+        "high": clipped_high,
+        "clipped_to_parent": (
+            abs(clipped_low - float(e_low)) > 1e-12
+            or abs(clipped_high - float(e_high)) > 1e-12
+        ),
+    }
+    clipped["clip_parent"] = {
+        "low": float(p_low),
+        "high": float(p_high),
+    }
+    return clipped
+
+
 def _overlay(
     *,
     timeframe: str,
@@ -837,9 +879,13 @@ def _direction_map(
         else _standalone_layer(h1_zone, h1_profile, price=price)
     )
 
-    h1_nested = _nested_locator(
+    h1_nested_raw = _nested_locator(
         h1_zone,
         dict(hierarchy.get("h1_child_depth") or {}),
+    )
+    h1_nested = _clip_nested_locator(
+        h1_nested_raw,
+        h4_zone,
     )
     m15_parent = h1_zone or h4_zone
     m15_locator_parent = (
@@ -853,9 +899,13 @@ def _direction_map(
         direction=direction,
         price=price,
     )
-    m15_nested = _nested_locator(
+    m15_nested_raw = _nested_locator(
         m15_zone,
         dict(hierarchy.get("m15_child_depth") or {}),
+    )
+    m15_nested = _clip_nested_locator(
+        m15_nested_raw,
+        m15_locator_parent,
     )
 
     overlays: list[dict[str, Any]] = []
@@ -1036,7 +1086,9 @@ def build_depth_map(
             "as the calibrated parent; the nearest reused H4 is retained separately as "
             "market context. The calibrated parent is then narrowed with an overlapping "
             "H1 child and a pre-existing same-direction M15 child when available. "
-            "No MSS/reclaim is required to draw the map, and the map has no execution authority."
+            "Nested child envelopes are clipped to their parent locator so each stage truly "
+            "narrows rather than expanding outside the upstream geometry. No MSS/reclaim is "
+            "required to draw the map, and the map has no execution authority."
         ),
         "policy_effect": POLICY_EFFECT,
         "execution_influence": False,
