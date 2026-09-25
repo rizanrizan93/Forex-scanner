@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from math import isfinite
 import os
 from typing import Any, Sequence
@@ -161,11 +161,25 @@ def _leg_lifecycle(
     reclaim_at = micro.get("reclaim_at")
     mss_at = micro.get("mss_at")
     displacement_at = micro.get("displacement_at")
-    refined_mapped_at = (
-        refined_physical.get("first_seen_at")
-        or displacement_at
-        or refined.get("origin_at")
+    refined_physical_first_seen = _dt(refined_physical.get("first_seen_at"))
+    displacement_dt = _dt(displacement_at)
+    refined_causal_ready = (
+        None
+        if displacement_dt is None
+        else displacement_dt + timedelta(minutes=5)
     )
+    if refined:
+        if refined_physical_first_seen is not None and refined_causal_ready is not None:
+            refined_mapped_dt = max(refined_physical_first_seen, refined_causal_ready)
+        else:
+            refined_mapped_dt = refined_physical_first_seen or refined_causal_ready
+        refined_mapped_at = (
+            None
+            if refined_mapped_dt is None
+            else refined_mapped_dt.isoformat()
+        ) or refined.get("origin_at")
+    else:
+        refined_mapped_at = None
 
     reaction = _reaction_hits(candidate_physical or refined_physical)
 
@@ -198,6 +212,9 @@ def _leg_lifecycle(
             "reclaim_at": reclaim_at,
             "mss_at": mss_at,
             "displacement_at": displacement_at,
+            "refined_causal_ready_at": (
+                None if refined_causal_ready is None else refined_causal_ready.isoformat()
+            ),
             "refined_mapped_at": refined_mapped_at,
             "refined_origin_at": refined.get("origin_at"),
         },
