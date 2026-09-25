@@ -299,24 +299,53 @@ def evaluate_first_touch(
     touch_index: int | None = None
     for index in range(start, min(end, len(price_m1))):
         row = price_m1.iloc[index]
-        if _invalidated(float(row["close"]), zone):
-            return None
-        if _touches(float(row["high"]), float(row["low"]), zone):
+        touched = _touches(float(row["high"]), float(row["low"]), zone)
+        invalid = _invalidated(float(row["close"]), zone)
+        if touched:
             touch_index = index
             break
+        if invalid:
+            return None
     if touch_index is None:
         return None
 
     touch_row = price_m1.iloc[touch_index]
     touch_at = ensure_utc(pd.Timestamp(touch_row["timestamp"]).to_pydatetime())
-    if _invalidated(float(touch_row["close"]), zone):
-        return None
 
     if zone.direction == "LONG":
         adverse_extreme = min(float(zone.proximal), float(touch_row["low"]))
     else:
         adverse_extreme = max(float(zone.proximal), float(touch_row["high"]))
     max_depth = normalized_depth(zone, adverse_extreme)
+
+    if _invalidated(float(touch_row["close"]), zone):
+        return DepthEpisode(
+            zone_id=zone.zone_id,
+            timeframe=zone.timeframe,
+            zone_class=zone.zone_class,
+            pattern=zone.pattern,
+            direction=zone.direction,
+            available_at=available,
+            touch_at=touch_at,
+            outcome_at=touch_at,
+            zone_low=float(zone.low),
+            zone_high=float(zone.high),
+            proximal=float(zone.proximal),
+            distal=float(zone.distal),
+            atr_points=float(zone.atr_points),
+            zone_width=float(zone.high) - float(zone.low),
+            outcome="BREAK_TOUCH",
+            reaction_hit=False,
+            break_hit=True,
+            max_depth_reached=max_depth,
+            turning_depth=None,
+            turning_price=None,
+            minutes_to_outcome=0.0,
+            departure_range_atr=float(zone.departure_range_atr),
+            departure_body_fraction=float(zone.departure_body_fraction),
+            base_range_atr=float(zone.base_range_atr),
+            structural_bos=bool(zone.structural_bos),
+        )
 
     horizon_end = touch_at + timedelta(minutes=REACTION_HORIZON_MINUTES[zone.timeframe])
     reaction_end = bisect_right(timestamps, horizon_end)
@@ -397,15 +426,31 @@ def evaluate_first_touch(
     )
 
 
-def _active_at(zone: SDZone, episode_by_zone: dict[str, DepthEpisode], at: datetime) -> bool:
+def _first_invalidation_at(
+    price_m1: pd.DataFrame,
+    *,
+    zone: SDZone,
+) -> datetime | None:
+    timestamps = list(price_m1["timestamp"])
+    start = bisect_left(timestamps, ensure_utc(zone.available_at))
+    if start >= len(price_m1):
+        return None
+    for index in range(start, len(price_m1)):
+        row = price_m1.iloc[index]
+        if _invalidated(float(row["close"]), zone):
+            return ensure_utc(pd.Timestamp(row["timestamp"]).to_pydatetime())
+    return None
+
+
+def _active_at(
+    zone: SDZone,
+    invalidated_at_by_zone: dict[str, datetime | None],
+    at: datetime,
+) -> bool:
     if ensure_utc(zone.available_at) > ensure_utc(at):
         return False
-    episode = episode_by_zone.get(zone.zone_id)
-    if episode is None:
-        return True
-    if episode.break_hit and episode.outcome_at <= ensure_utc(at):
-        return False
-    return True
+    invalidated_at = invalidated_at_by_zone.get(zone.zone_id)
+    return invalidated_at is None or ensure_utc(invalidated_at) > ensure_utc(at)
 
 
 def _contains_price(zone: SDZone, price: float) -> bool:
@@ -419,8 +464,9 @@ def _overlaps(parent: SDZone, child: SDZone) -> bool:
 def attach_hierarchy(
     episodes: Sequence[DepthEpisode],
     zones: Sequence[SDZone],
+    *,
+    invalidated_at_by_zone: dict[str, datetime | None],
 ) -> tuple[DepthEpisode, ...]:
-    by_zone = {row.zone_id: row for row in episodes}
     zone_by_id = {zone.zone_id: zone for zone in zones}
     h1 = [zone for zone in zones if zone.timeframe == "H1"]
     m15 = [zone for zone in zones if zone.timeframe == "M15"]
@@ -439,7 +485,7 @@ def attach_hierarchy(
             zone
             for zone in h1
             if zone.direction == row.direction
-            and _active_at(zone, by_zone, row.touch_at)
+            and _active_at(zone, invalidated_at_by_zone, row.touch_at)
             and _overlaps(parent, zone)
             and _contains_price(zone, float(row.turning_price))
         ]
@@ -497,6 +543,10 @@ def build_depth_dataset(
     target_year: int,
 ) -> tuple[tuple[SDZone, ...], tuple[DepthEpisode, ...]]:
     zones = build_zones(price_m1)
+    invalidated_at_by_zone = {
+        zone.zone_id: _first_invalidation_at(price_m1, zone=zone)
+        for zone in zones
+    }
     episodes: list[DepthEpisode] = []
     for zone in zones:
         episode = evaluate_first_touch(price_m1, zone=zone)
@@ -504,7 +554,11 @@ def build_depth_dataset(
             continue
         episodes.append(episode)
     episodes.sort(key=lambda row: (row.touch_at, row.timeframe, row.zone_id))
-    return zones, attach_hierarchy(episodes, zones)
+    return zones, attach_hierarchy(
+        episodes,
+        zones,
+        invalidated_at_by_zone=invalidated_at_by_zone,
+    )
 
 
 def _depth_band(value: float | None) -> str:
