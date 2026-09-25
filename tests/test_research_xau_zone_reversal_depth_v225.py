@@ -6,6 +6,7 @@ import pandas as pd
 from fx_scanner.demo_xau_supply_demand_atlas_v182 import SDZone
 from fx_scanner.research_xau_zone_reversal_depth_v225 import (
     DepthEpisode,
+    causal_superseded_at,
     depth_summary,
     evaluate_first_touch,
     normalized_depth,
@@ -90,6 +91,91 @@ def test_v225_full_demand_example_uses_outer_range_even_when_body_edge_differs()
     assert round(normalized_depth(zone, 4254.0) * 100, 1) == 67.7
     assert round(normalized_internal_depth(zone, 4254.0) * 100, 1) == 60.0
 
+
+
+
+def test_v225_causal_supersession_does_not_erase_older_zone_before_new_one_exists() -> None:
+    old = _zone(low=100.0, high=110.0, proximal=108.0, distal=100.0)
+    new = SDZone(
+        zone_id="new",
+        timeframe="H4",
+        zone_class="IMBALANCE",
+        pattern="DBR",
+        direction="LONG",
+        low=101.0,
+        high=109.0,
+        proximal=107.0,
+        distal=101.0,
+        available_at=old.available_at + timedelta(hours=4),
+        origin_at=old.origin_at + timedelta(hours=4),
+        departure_at=old.departure_at + timedelta(hours=4),
+        atr_points=20.0,
+        base_bars=1,
+        base_range_atr=0.4,
+        departure_range_atr=1.5,
+        departure_body_fraction=0.7,
+        structural_bos=False,
+    )
+    superseded = causal_superseded_at((old, new))
+    assert superseded[old.zone_id] == new.available_at
+    assert superseded[new.zone_id] is None
+
+    rows = pd.DataFrame(
+        [
+            {
+                "timestamp": old.available_at + timedelta(hours=1),
+                "open": 112.0,
+                "high": 112.0,
+                "low": 105.0,
+                "close": 108.0,
+            },
+            {
+                "timestamp": old.available_at + timedelta(hours=1, minutes=1),
+                "open": 108.0,
+                "high": 120.0,
+                "low": 107.0,
+                "close": 118.0,
+            },
+            {
+                "timestamp": new.available_at,
+                "open": 108.0,
+                "high": 109.0,
+                "low": 105.0,
+                "close": 106.0,
+            },
+        ]
+    )
+    episode = evaluate_first_touch(
+        rows,
+        zone=old,
+        valid_until=superseded[old.zone_id],
+    )
+    assert episode is not None
+    assert episode.touch_at == old.available_at + timedelta(hours=1)
+
+
+def test_v225_superseded_zone_cannot_take_first_touch_at_or_after_replacement() -> None:
+    old = _zone(low=100.0, high=110.0, proximal=108.0, distal=100.0)
+    valid_until = old.available_at + timedelta(hours=4)
+    rows = pd.DataFrame(
+        [
+            {
+                "timestamp": valid_until,
+                "open": 112.0,
+                "high": 112.0,
+                "low": 105.0,
+                "close": 108.0,
+            },
+            {
+                "timestamp": valid_until + timedelta(minutes=1),
+                "open": 108.0,
+                "high": 120.0,
+                "low": 107.0,
+                "close": 118.0,
+            },
+        ]
+    )
+    assert evaluate_first_touch(rows, zone=old, valid_until=valid_until) is None
 
 def test_v225_reaction_depth_excludes_new_adverse_extreme_on_target_bar() -> None:
     zone = _zone(low=100.0, high=110.0, proximal=110.0, distal=100.0)
