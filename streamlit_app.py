@@ -227,6 +227,13 @@ def _fmt_distance(value: Any, suffix: str = "") -> str:
         return "—"
 
 
+def _fmt_number(value: Any, decimals: int = 1) -> str:
+    try:
+        return f"{float(value):,.{int(decimals)}f}"
+    except (TypeError, ValueError):
+        return "—"
+
+
 def _fmt_minutes(value: Any) -> str:
     try:
         return f"{float(value):.0f} mnt"
