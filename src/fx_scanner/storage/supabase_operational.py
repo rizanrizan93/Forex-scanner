@@ -123,44 +123,10 @@ class SupabaseOperationalStore:
         if not rows:
             raise OperationalStoreUnavailable("reference symbol bootstrap cannot be empty")
         try:
-            # V209 I/O guard: this bootstrap is called by many short-lived cloud
-            # workers. An unconditional UPSERT rewrites identical reference rows,
-            # generating avoidable WAL and dirty pages on every invocation.
-            response = (
-                self.client.table("fx_symbols")
-                .select("symbol,base_currency,quote_currency,pip_size,tier,active")
-                .execute()
-            )
-            existing = {
-                str(item.get("symbol") or "").upper(): dict(item)
-                for item in (response.data or [])
-                if item.get("symbol")
-            }
-
-            changed: list[dict[str, Any]] = []
-            for row in rows:
-                previous = existing.get(str(row["symbol"]))
-                if previous is None:
-                    changed.append(row)
-                    continue
-                try:
-                    same = (
-                        str(previous.get("base_currency") or "").upper() == row["base_currency"]
-                        and str(previous.get("quote_currency") or "").upper() == row["quote_currency"]
-                        and float(previous.get("pip_size")) == float(row["pip_size"])
-                        and str(previous.get("tier") or "").upper() == row["tier"]
-                        and bool(previous.get("active")) is True
-                    )
-                except (TypeError, ValueError):
-                    same = False
-                if not same:
-                    changed.append(row)
-
-            if changed:
-                self.client.table("fx_symbols").upsert(
-                    changed,
-                    on_conflict="symbol",
-                ).execute()
+            self.client.table("fx_symbols").upsert(
+                rows,
+                on_conflict="symbol",
+            ).execute()
         except Exception as exc:
             raise OperationalStoreUnavailable(
                 f"fx_symbols reference bootstrap failed: {exc}"
