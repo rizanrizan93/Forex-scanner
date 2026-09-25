@@ -150,6 +150,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v222_m5_pocket_quality
 
+      - name: Select V223 stable M5 pocket clusters
+        id: analyze_xau_v223_m5_pocket_cluster_selector
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v223_m5_pocket_cluster_selector
+
       - name: Estimate V217 multi-horizon direction probabilities
         id: analyze_xau_v217_direction_probability
         continue-on-error: true
