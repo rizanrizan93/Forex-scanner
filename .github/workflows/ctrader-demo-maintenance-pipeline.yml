@@ -105,6 +105,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v226_rizan_depth_map
 
+      - name: Calibrate V227 RIZAN depth map prospectively
+        id: analyze_xau_v227_depth_map_prospective
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v227_depth_map_prospective
+
       - name: Update prospective XAU supply-demand lifecycle
         id: update_xau_supply_demand_prospective
         continue-on-error: true
