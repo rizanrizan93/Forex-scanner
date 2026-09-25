@@ -1636,12 +1636,15 @@ with forecast_tab:
             f"distance={_fmt_number(v223_primary.get('distance_atr'), 2)} ATR."
         )
         if v223_core:
+            v223_policy = dict(v223_eval.get("selection_policy") or {})
             st.caption(
                 "Consensus core "
                 f"**{_fmt_price(v223_core.get('low'))}–{_fmt_price(v223_core.get('high'))}** • "
-                f"{v223_primary.get('count',0)} pocket tergabung • "
+                f"{v223_primary.get('count',0)} pocket dalam micro-wave ini • "
+                f"total micro-wave={v223_policy.get('micro_wave_cluster_count','—')} • "
                 f"latest mapped={_fmt_wib_datetime(v223_primary.get('latest_mapped_at'), seconds=False)}. "
-                "Consensus core adalah geometry riset, bukan entry order. V223 tetap shadow-only."
+                "V223 memutus cluster saat time-gap/span/midpoint shift terlalu besar, sehingga pocket lama "
+                "tidak menyatu ke area aktif baru. Consensus core adalah geometry riset; V223 tetap shadow-only."
             )
     elif v223_eval:
         retest_clusters = list(v223_eval.get("retest_only_clusters") or [])
