@@ -58,8 +58,12 @@ def _latched_current_precision_path(
     the new HTF parent, has the same direction, has availability metadata, and
     already carried actual M5 pocket evidence.
 
-    The source is re-evaluated against the current M5 bars on every cycle. If it
-    is invalidated, evaluate_bidirectional_m5_path falls back to the HTF parent.
+    The source is re-evaluated against the current M5 bars on every cycle. V219
+    deliberately allows a previously invalidated H1 child to be re-evaluated
+    inside the still-valid overlapping H4/D1 parent: the H1 break may be the
+    liquidity sweep that creates the actual parent reversal. V189 decides
+    whether the parent-rescue contract is valid; otherwise this function falls
+    back to the HTF parent exactly as before.
     """
     current_source = dict(active_path.get("source_zone") or {})
     if not current_source:
@@ -88,10 +92,9 @@ def _latched_current_precision_path(
         return active_path, False
 
     previous_state = str(previous_micro.get("state") or "").upper()
-    if "INVALIDATED" in previous_state:
-        return active_path, False
     previous_pocket = (
         dict(previous_leg.get("m5_pocket") or {})
+        or dict(previous_leg.get("historical_candidate_pocket") or {})
         or dict(previous_micro.get("refined_entry_pocket") or {})
         or dict(previous_micro.get("candidate_entry_pocket") or {})
     )
@@ -101,7 +104,12 @@ def _latched_current_precision_path(
     latched = dict(active_path)
     latched["parent_source_zone"] = current_source
     latched["source_zone"] = previous_source
-    latched["source_role"] = "LATCHED_H1_PRECISION_INSIDE_ACTIVE_HTF_PARENT"
+    latched["source_role"] = (
+        "LATCHED_INVALIDATED_H1_INSIDE_ACTIVE_HTF_PARENT"
+        if "INVALIDATED" in previous_state
+        else "LATCHED_H1_PRECISION_INSIDE_ACTIVE_HTF_PARENT"
+    )
+    latched["previous_h1_micro_state"] = previous_state
     return latched, True
 
 
