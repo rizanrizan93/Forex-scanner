@@ -1560,7 +1560,7 @@ with forecast_tab:
         )
     else:
         st.warning(
-            "Belum ada H1 source zone aktif pada path AFIC/Supply-Demand saat ini."
+            "Belum ada H1 source zone aktif pada path RIZAN-style/Supply-Demand saat ini."
         )
 
     st.markdown("#### 3. M5 — Pocket, Target & Opposing Leg")
@@ -2280,18 +2280,18 @@ with forecast_tab:
     )
 
     with st.expander(
-        "Detail Diagnostik AFIC ↔ Supply/Demand / V189 / DOM / Event",
+        "Detail Diagnostik RIZAN-style ↔ Supply/Demand / V189 / DOM / Event",
         expanded=False,
     ):
         st.caption(
             "Detail ini tetap tersedia untuk audit. Untuk keputusan cepat gunakan "
             "Pusat Keputusan XAUUSD di atas."
         )
-        st.markdown("### Integrasi AFIC ↔ Supply/Demand")
+        st.markdown("### Integrasi RIZAN-style ↔ Supply/Demand")
         st.caption(
-            "Supply/Demand V182 sekarang menjadi context map untuk AFIC. Context ini dapat "
+            "Supply/Demand V182 sekarang menjadi context map untuk RIZAN-style. Context ini dapat "
             "mendukung zona canonical, memberi peringatan zona reversal lawan, atau menyediakan "
-            "fallback PREPARE ketika canonical AFIC belum ada. Context ini TIDAK mengubah Grade "
+            "fallback PREPARE ketika canonical RIZAN-style belum ada. Context ini TIDAK mengubah Grade "
             "A/B, tidak membuat signal broker, dan tidak menggantikan konfirmasi M15."
         )
         if afic_sd_context:
@@ -2310,7 +2310,7 @@ with forecast_tab:
             ic4.metric("Otoritas eksekusi", "TIDAK ADA")
             if sd_same:
                 st.info(
-                    "Supply/Demand searah AFIC: "
+                    "Supply/Demand searah RIZAN-style: "
                     f"{sd_same.get('timeframe','—')} {sd_same.get('pattern','—')} "
                     f"{_fmt_price(sd_same.get('low'))}–{_fmt_price(sd_same.get('high'))} • "
                     f"overlap canonical={_fmt_pct(afic_sd_context.get('same_direction_overlap_ratio'))} • "
@@ -2324,7 +2324,7 @@ with forecast_tab:
                     f"{_fmt_price(sd_opp.get('low'))}–{_fmt_price(sd_opp.get('high'))} • "
                     f"jarak dari harga="
                     f"{_fmt_distance(afic_sd_context.get('opposite_zone_distance_atr'),' ATR')}. "
-                    "Ini adalah Plan-B / reaction watch, bukan alasan entry melawan AFIC."
+                    "Ini adalah Plan-B / reaction watch, bukan alasan entry melawan RIZAN-style."
                 )
             dom_context = dict(afic_sd_context.get("dom_context") or {})
             if not dom_context and dom_v191_hb is not None:
@@ -2452,7 +2452,7 @@ with forecast_tab:
                 path_waypoints = list(afic_first_leg_path.get("internal_targets") or [])
                 if path_source:
                     st.success(
-                        "Path AFIC saat ini: "
+                        "Path RIZAN-style saat ini: "
                         f"{afic_first_leg_path.get('reaction_direction','—')} dari "
                         f"{_fmt_price(path_source.get('low'))}–{_fmt_price(path_source.get('high'))}"
                         + (
@@ -2535,19 +2535,19 @@ with forecast_tab:
                     )
             if afic_sd_context.get("prepare_only_fallback"):
                 st.warning(
-                    "Canonical AFIC belum memiliki zona valid, tetapi atlas Supply/Demand "
+                    "Canonical RIZAN-style belum memiliki zona valid, tetapi atlas Supply/Demand "
                     "memiliki context aktif. Scanner boleh menampilkan PERSIAPAN/WATCH lebih awal, "
-                    "namun order tetap dilarang sampai canonical AFIC + completed M15 confirmation "
+                    "namun order tetap dilarang sampai canonical RIZAN-style + completed M15 confirmation "
                     "terbentuk."
                 )
             if afic_sd_context.get("atlas_stale"):
                 st.error(
                     "Snapshot Supply/Demand terlalu lama untuk dipakai sebagai context aktif. "
-                    "AFIC tetap berjalan tanpa policy effect dari atlas sampai heartbeat baru tersedia."
+                    "RIZAN-style tetap berjalan tanpa policy effect dari atlas sampai heartbeat baru tersedia."
                 )
         else:
             st.caption(
-                "Context integrasi AFIC ↔ Supply/Demand belum tersedia pada snapshot runtime ini."
+                "Context integrasi RIZAN-style ↔ Supply/Demand belum tersedia pada snapshot runtime ini."
             )
 
 
@@ -2580,9 +2580,9 @@ with forecast_tab:
             st.info(
                 f"Rencana HTF: {strategic_bias} • gerak pertama {tactical_first_leg} • "
                 f"cari {desired.replace('_', ' ')}. "
-                f"Arah candle H4 AFIC saat ini = {direction}. "
+                f"Arah candle H4 RIZAN-style saat ini = {direction}. "
                 "Keduanya dapat berbeda karena V180 adalah konteks strategis, sedangkan "
-                "AFIC V161 tetap merupakan peta taktis canonical untuk eksekusi."
+                "RIZAN-style V161 tetap merupakan peta taktis canonical untuk eksekusi."
             )
         shadow_zones = list(regime_pool.get("shadow_24_48h") or [])
         if not regime_pool.get("canonical_count") and shadow_zones:
@@ -2597,12 +2597,12 @@ with forecast_tab:
     else:
         st.caption(
             "Rezim Strategis HTF V180 belum menerbitkan snapshot shadow. "
-            "AFIC V161 tetap menjadi otoritas eksekusi."
+            "RIZAN-style V161 tetap menjadi otoritas eksekusi."
         )
 
     st.markdown("### Atlas Supply & Demand HTF (V182)")
     st.caption(
-        "Atlas riset D1/H4/H1 untuk mendeteksi demand/supply lebih awal dari canonical AFIC. "
+        "Atlas riset D1/H4/H1 untuk mendeteksi demand/supply lebih awal dari canonical RIZAN-style. "
         "Zona dibentuk dari structural origin atau base→departure imbalance, lalu dinilai "
         "berdasarkan freshness, touch/mitigation, HTF nesting, liquidity confluence, jarak, "
         "dan kualitas pendekatan harga. V182 SELALU PREPARE ONLY / NO EXECUTION."
@@ -2774,7 +2774,7 @@ with forecast_tab:
         st.caption(
             "Skor riset V182 adalah ranking evidence, BUKAN probabilitas menang. "
             "Liquidity/round number hanya confluence, bukan pembentuk zona tunggal. "
-            "Canonical AFIC ≤24 jam, M15 confirmation, fresh quote, risk/margin, dan "
+            "Canonical RIZAN-style ≤24 jam, M15 confirmation, fresh quote, risk/margin, dan "
             "server-side SL/TP tetap menjadi jalur eksekusi yang terpisah."
         )
     else:
@@ -2844,7 +2844,7 @@ with forecast_tab:
                 width="stretch",
             )
         st.info(
-            "V183 tidak mengubah V182, V181, canonical AFIC, atau broker lane. "
+            "V183 tidak mengubah V182, V181, canonical RIZAN-style, atau broker lane. "
             "Promosi hanya boleh dipertimbangkan setelah prospective forward lifecycle "
             "mengonfirmasi subset yang sama pada data baru."
         )
@@ -2979,7 +2979,7 @@ with forecast_tab:
     st.caption(
         "Menampilkan H1 origin baru yang terbentuk setelah H4 map saat ini. Kandidat "
         "ini membantu persiapan lebih awal, tetapi statusnya SELALU tanpa izin eksekusi "
-        "sampai H4 map berikutnya selesai dan AFIC canonical memvalidasinya."
+        "sampai H4 map berikutnya selesai dan canonical RIZAN-style memvalidasinya."
     )
     premap_details = {} if premap_hb is None else dict(premap_hb.get("details") or {})
     premap_eval = dict(premap_details.get("evaluation") or {})
@@ -2993,7 +2993,7 @@ with forecast_tab:
         st.warning(
             "PERSIAPAN SAJA / NO EXECUTION. Kandidat pra-H4 belum menjadi Trade Preparation "
             "canonical. Ia harus bertahan sampai completed H4 map berikutnya dan lolos "
-            "pemilihan AFIC A/B sebelum dapat memiliki jalur broker."
+            "pemilihan RIZAN-style A/B sebelum dapat memiliki jalur broker."
         )
         premap_table = []
         for candidate in premap_candidates:
@@ -3057,7 +3057,7 @@ with forecast_tab:
                     "Namun ada Supply/Demand PREPARE context di "
                     f"{_fmt_price(fallback.get('low'))}–{_fmt_price(fallback.get('high'))} "
                     f"({fallback.get('timeframe','—')} {fallback.get('pattern','—')}). "
-                    "Gunakan hanya untuk bersiap; BELUM menjadi entry zone AFIC."
+                    "Gunakan hanya untuk bersiap; BELUM menjadi entry zone RIZAN-style."
                 )
         t1, t2, t3, t4 = st.columns(4)
         t1.metric("Menunggu", "H4 MAP BARU")
@@ -3100,7 +3100,7 @@ with forecast_tab:
                 else "Entry acuan belum boleh dieksekusi. "
             )
             + "Jangan entry hanya karena harga menyentuh zona; candle M15 yang sudah "
-              "selesai tetap wajib memberikan konfirmasi untuk jalur otomatis AFIC."
+              "selesai tetap wajib memberikan konfirmasi untuk jalur otomatis RIZAN-style."
         )
 
     st.markdown("#### Siklus Rencana Persiapan (Prepared Plan Lifecycle)")
@@ -3210,7 +3210,7 @@ with forecast_tab:
     else:
         st.caption(
             "Ledger siklus rencana belum terisi. Worker maintenance akan mengisi ulang "
-            "rencana AFIC terbaru tanpa mengubah aturan eksekusi."
+            "rencana RIZAN-style terbaru tanpa mengubah aturan eksekusi."
         )
 
     st.markdown("#### Kelayakan Eksekusi XAU (XAU Execution Admission)")
@@ -3300,9 +3300,9 @@ with forecast_tab:
 
     st.markdown("#### Sinyal Teknikal XAU Lintas-Mesin (Cross-engine XAU technical signals)")
     st.caption(
-        "Bagian ini terpisah dari AFIC H4 map. Baris berasal dari mesin teknikal XAU lain. "
+        "Bagian ini terpisah dari RIZAN-style H4 map. Baris berasal dari mesin teknikal XAU lain. "
         "CURRENT/EXPIRED ditentukan dari expires_at; setup yang kedaluwarsa hanya konteks "
-        "historis dan tidak boleh dianggap sebagai rancangan order AFIC yang masih aktif."
+        "historis dan tidak boleh dianggap sebagai rancangan order RIZAN-style yang masih aktif."
     )
     if xau_technical_signal_rows:
         now_utc = datetime.now(tz=UTC)
@@ -3366,22 +3366,22 @@ with forecast_tab:
         latest_technical = technical_rows[0]
         if latest_technical["runtime"] == "CURRENT":
             st.info(
-                "Setup teknikal XAU non-AFIC terbaru masih CURRENT. Geometry ditampilkan "
-                "di bawah, tetapi izin AFIC tetap merupakan gerbang terpisah."
+                "Setup teknikal XAU non-RIZAN-style terbaru masih CURRENT. Geometry ditampilkan "
+                "di bawah, tetapi izin RIZAN-style tetap merupakan gerbang terpisah."
             )
         elif latest_technical["runtime"] == "WATCH":
             st.info(
-                "Baris XAU non-AFIC terbaru hanya WATCH. Ia tidak memiliki izin trading "
+                "Baris XAU non-RIZAN-style terbaru hanya WATCH. Ia tidak memiliki izin trading "
                 "mandiri dan tidak boleh dibaca sebagai entry aktif."
             )
         elif latest_technical["runtime"] == "INVALIDATED":
             st.warning(
-                "Setup XAU non-AFIC terbaru INVALIDATED. Geometry disimpan hanya sebagai "
+                "Setup XAU non-RIZAN-style terbaru INVALIDATED. Geometry disimpan hanya sebagai "
                 "evidence historis."
             )
         else:
             st.warning(
-                "Setup teknikal XAU non-AFIC terbaru EXPIRED. Entry/SL/TP hanya geometry "
+                "Setup teknikal XAU non-RIZAN-style terbaru EXPIRED. Entry/SL/TP hanya geometry "
                 "historis, bukan instruksi yang masih aktif."
             )
         st.dataframe(
@@ -3390,7 +3390,7 @@ with forecast_tab:
             width="stretch",
         )
     else:
-        st.caption("Belum ada baris signal teknikal XAU non-AFIC.")
+        st.caption("Belum ada baris signal teknikal XAU non-RIZAN-style.")
 
     st.markdown("#### Diagnostik Zona Reaksi (Reaction-zone diagnostics)")
     if zone_diagnostics:
@@ -3423,12 +3423,12 @@ with forecast_tab:
                 "Scanner menunggu struktur baru."
             )
         st.caption(
-            "Diagnostik hanya bersifat deskriptif; tidak melonggarkan selector AFIC dan "
+            "Diagnostik hanya bersifat deskriptif; tidak melonggarkan selector RIZAN-style dan "
             "tidak menciptakan izin broker."
         )
     else:
         st.caption(
-            "Diagnostik zona belum tersedia pada heartbeat ini; siklus AFIC berikutnya "
+            "Diagnostik zona belum tersedia pada heartbeat ini; siklus RIZAN-style berikutnya "
             "akan mengisi jumlah kandidat dan alasan penolakan."
         )
 
@@ -3441,7 +3441,7 @@ with forecast_tab:
     if active_watch:
         st.caption(
             "These are PRIOR ORIGIN REVISITS from structural memory, not current primary "
-            "AFIC reaction zones. first durable touch is preserved across H4 remaps; "
+            "RIZAN-style reaction zones. first durable touch is preserved across H4 remaps; "
             "current-map touch records only a completed M15 touch on the active H4 map. "
             "Live touch is provisional until that M15 candle closes. They cannot auto-order "
             "against the active H4 map; a structural remap plus H1/M15 reversal confirmation "
@@ -3498,7 +3498,7 @@ with forecast_tab:
         st.info(
             f"PRIOR ORIGIN REVISIT: {watch_side} "
             f"{_fmt_price(nearest_watch.get('low'))}–{_fmt_price(nearest_watch.get('high'))} "
-            f"• {watch_status}. This is not the current primary AFIC zone. {path_hint}"
+            f"• {watch_status}. This is not the current primary RIZAN-style zone. {path_hint}"
         )
     elif reversal_watch:
         st.caption(
@@ -3514,10 +3514,10 @@ with forecast_tab:
     f3.metric("Selector", grade)
     f4.metric("Live XAU", _fmt_price(live_price))
     f5.metric("Distance to zone", _fmt_distance(distance_points, " pts"))
-    f6.metric("AFIC scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
+    f6.metric("RIZAN scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
     st.caption(
         "H4 continuation is structural context only. It is not a current BUY/SELL call; "
-        "trade authority still requires a valid current AFIC zone/selector/confirmation."
+        "trade authority still requires a valid current RIZAN-style zone/selector/confirmation."
     )
     if hb_details.get("touch_lifecycle"):
         st.caption(
@@ -3539,12 +3539,12 @@ with forecast_tab:
     h2.metric("DEMO auto", "ON" if auto_enabled else "OFF")
     h3.metric("Forecast heartbeat", "—" if hb_age is None else f"{hb_age:.0f}s ago")
     h4.metric("Fast handoff", fast_label)
-    h5.metric("Last AFIC broker event", latest_exec_event or "NONE")
+    h5.metric("Last RIZAN broker event", latest_exec_event or "NONE")
     st.caption(next_reason)
     if fast_handoff_hb is not None:
         fast_details = dict(fast_handoff_hb.get("details") or {})
         st.caption(
-            "AFIC fast handoff • "
+            "RIZAN-style fast handoff • "
             f"age={'—' if fast_age is None else f'{fast_age:.0f}s'} • "
             f"duration={_fmt_distance(fast_details.get('duration_seconds'), 's')} • "
             f"exit={fast_details.get('exit_code', '—')} • "
@@ -3580,7 +3580,7 @@ with forecast_tab:
             "Shadow-only ensemble • "
             f"coverage={_fmt_pct(ensemble.get('coverage'))} • "
             f"age={'—' if ensemble_age is None else f'{ensemble_age:.0f}s'} • "
-            "does not alter AFIC Grade-A/B execution authority."
+            "does not alter RIZAN-style Grade-A/B execution authority."
         )
         directional_prior = dict(ensemble.get("directional_prior") or {})
         if directional_prior:
@@ -3589,7 +3589,7 @@ with forecast_tab:
                 f"{directional_prior.get('direction', '—')} • "
                 f"score={_fmt_distance(directional_prior.get('score'), '')} • "
                 f"prior confidence={_fmt_pct(directional_prior.get('confidence'))}. "
-                "A valid AFIC H4 map/reaction zone is still required before this can "
+                "A valid RIZAN-style H4 map/reaction zone is still required before this can "
                 "become a Primary LONG/SHORT structural scenario."
             )
 
@@ -3605,7 +3605,7 @@ with forecast_tab:
 
         component_rows = []
         for name, label in (
-            ("afic", "AFIC structural"),
+            ("afic", "RIZAN structural"),
             ("conditional", "Empirical conditional"),
             ("acd", "Fisher/ACD session"),
             ("cot", "Weekly COT prior"),
@@ -3666,7 +3666,7 @@ with forecast_tab:
     else:
         st.caption(
             "Forecast Ensemble V171 has not produced a durable shadow snapshot yet. "
-            "AFIC and V170 remain independently visible below."
+            "RIZAN-style and V170 remain independently visible below."
         )
 
     if zone_low is not None and zone_high is not None:
@@ -3684,11 +3684,11 @@ with forecast_tab:
         )
     elif grade == "C":
         st.warning(
-            "Grade C: shadow/watch only. Scanner will not auto-order this AFIC map "
+            "Grade C: shadow/watch only. Scanner will not auto-order this RIZAN-style map "
             "even if the zone is touched."
         )
     else:
-        st.caption("No canonical AFIC selector grade available yet.")
+        st.caption("No canonical RIZAN-style selector grade available yet.")
 
     plan_event = prepared_rows[0] if prepared_rows else None
     plan_payload = {} if plan_event is None else dict(plan_event.get("payload") or {})
@@ -3751,7 +3751,7 @@ with forecast_tab:
     if geometry_rows:
         latest_geometry = dict(geometry_rows[0].get("payload") or {})
         st.caption(
-            "Latest AFIC broker-authorized geometry: "
+            "Latest RIZAN-style broker-authorized geometry: "
             f"{latest_geometry.get('direction', '—')} • "
             f"entry mode {latest_geometry.get('entry_mode', '—')} • "
             f"SL {_fmt_price(latest_geometry.get('planned_sl'))} • "
@@ -3877,7 +3877,7 @@ with forecast_tab:
     if history_rows:
         st.dataframe(pd.DataFrame(history_rows), hide_index=True, width="stretch")
     else:
-        st.caption("No durable AFIC forecast transitions have been recorded yet.")
+        st.caption("No durable RIZAN-style forecast transitions have been recorded yet.")
 
 with account_tab:
     st.subheader("Pemantauan Akun Broker (Broker Account Monitor)")
