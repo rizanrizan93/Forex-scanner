@@ -197,6 +197,33 @@ def test_v227_invalidation_wins_over_target_on_same_future_bar() -> None:
     assert result["invalidated"] is True
 
 
+def test_v227_short_reaction_ladder_is_symmetric() -> None:
+    forecast = _forecast_candidate(
+        _source(direction="SHORT", price=99.0),
+        direction="SHORT",
+    )
+    touch = datetime(2026, 9, 25, 12, 5, tzinfo=UTC)
+    bars = [
+        _bar(touch, o=99.0, h=103.0, l=98.0, c=102.0),
+        # SHORT 0.50 ATR target = proximal 102 - 5 = 97.
+        _bar(touch + timedelta(minutes=1), o=102.0, h=107.0, l=96.0, c=97.0),
+        # SHORT 1.00 ATR target = 92.
+        _bar(touch + timedelta(minutes=2), o=97.0, h=105.0, l=91.0, c=92.0),
+    ]
+    result = evaluate_outcome(
+        bars,
+        forecast=forecast,
+        now=touch + timedelta(minutes=4),
+    )
+    assert result["status"] == "REACTION_100"
+    assert result["reaction_hit_025"] is True
+    assert result["reaction_hit_050"] is True
+    assert result["reaction_hit_075"] is True
+    assert result["reaction_hit_100"] is True
+    assert result["turning_price"] == 103.0
+    assert abs(result["turning_depth"] - 0.30) < 1e-12
+
+
 def test_v227_resolves_partial_ladder_at_fixed_16h_horizon() -> None:
     forecast = _forecast_candidate(_source(), direction="LONG")
     touch = datetime(2026, 9, 25, 12, 5, tzinfo=UTC)
