@@ -209,6 +209,13 @@ def _fmt_distance(value: Any, suffix: str = "") -> str:
         return "—"
 
 
+def _fmt_minutes(value: Any) -> str:
+    try:
+        return f"{float(value):.0f} mnt"
+    except (TypeError, ValueError):
+        return "—"
+
+
 def _parse_timestamp(value: Any) -> datetime | None:
     if value is None or value == "":
         return None
@@ -1076,7 +1083,7 @@ with forecast_tab:
             f"mapped={_fmt_wib_datetime(v214_current_timeline.get('candidate_mapped_at') or dc_initial_candidate.get('origin_at'), seconds=False)} • "
             f"first touch={_fmt_wib_datetime(v214_current_timeline.get('first_touch_at'), seconds=False)} • "
             f"sweep={_fmt_wib_datetime(v214_current_timeline.get('sweep_at') or dict(dc_micro.get('sweep') or {}).get('at'), seconds=False)} • "
-            f"lead={'—' if v214_current_latency.get('candidate_map_to_touch') is None else f'{float(v214_current_latency.get("candidate_map_to_touch")):.0f} mnt'}."
+            f"lead={_fmt_minutes(v214_current_latency.get('candidate_map_to_touch'))}."
         )
 
     if dc_refined_display:
@@ -1098,7 +1105,7 @@ with forecast_tab:
             f"MSS={_fmt_wib_datetime(v214_current_timeline.get('mss_at') or dc_micro.get('mss_at'), seconds=False)} • "
             f"displacement={_fmt_wib_datetime(v214_current_timeline.get('displacement_at') or dc_micro.get('displacement_at'), seconds=False)} • "
             f"refined mapped={_fmt_wib_datetime(v214_current_timeline.get('refined_mapped_at') or dc_refined_display.get('origin_at'), seconds=False)} • "
-            f"touch→refined={'—' if v214_current_latency.get('touch_to_refined') is None else f'{float(v214_current_latency.get("touch_to_refined")):.0f} mnt'}."
+            f"touch→refined={_fmt_minutes(v214_current_latency.get('touch_to_refined'))}."
         )
 
     if not dc_current_pocket_shown:
@@ -1149,7 +1156,7 @@ with forecast_tab:
                 f"touch={_fmt_wib_datetime(v214_next_timeline.get('first_touch_at'), seconds=False)} • "
                 f"reclaim={_fmt_wib_datetime(v214_next_timeline.get('reclaim_at') or dc_next_micro.get('reclaim_at'), seconds=False)} • "
                 f"MSS={_fmt_wib_datetime(v214_next_timeline.get('mss_at') or dc_next_micro.get('mss_at'), seconds=False)} • "
-                f"touch→refined={'—' if v214_next_latency.get('touch_to_refined') is None else f'{float(v214_next_latency.get("touch_to_refined")):.0f} mnt'}."
+                f"touch→refined={_fmt_minutes(v214_next_latency.get('touch_to_refined'))}."
             )
 
         if not dc_next_pocket_shown and dc_next_leg_source:
