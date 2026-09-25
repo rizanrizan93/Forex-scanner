@@ -127,3 +127,35 @@ def test_v215_v216_run_after_v214_and_dashboard_remains_shadow_only() -> None:
     assert "0.25 ATR sebelum refined" in dashboard
     assert "0.50 ATR sebelum refined" in dashboard
     assert "V215/V216 tetap shadow-only" in dashboard
+
+
+def test_v216_uses_first_observed_refined_event_not_backdated_timeline() -> None:
+    candidate = _leg()
+    candidate["refined_pocket"] = {}
+    candidate["timeline"]["refined_mapped_at"] = None
+    candidate_payload = build_events({"current_leg": candidate, "next_leg": {}})[0]
+
+    refined = _leg()
+    refined["initial_pocket"] = dict(candidate["initial_pocket"])
+    refined["timeline"]["candidate_mapped_at"] = candidate["timeline"]["candidate_mapped_at"]
+    # Simulate the historical bug: timeline claims an early refined time even
+    # though the refined label is first observed much later.
+    refined["timeline"]["refined_mapped_at"] = "2026-09-25T11:15:21+00:00"
+    refined_payload = build_events({"current_leg": refined, "next_leg": {}})[0]
+
+    rows = [
+        {
+            "observed_at": "2026-09-25T11:16:07+00:00",
+            "signal_key": candidate_payload["signal_key"],
+            "payload": candidate_payload,
+        },
+        {
+            "observed_at": "2026-09-25T11:43:59+00:00",
+            "signal_key": candidate_payload["signal_key"],
+            "payload": refined_payload,
+        },
+    ]
+    result = summarize(rows)
+    episode = result["episodes_latest"][0]
+    assert episode["refined_mapped_at"] == "2026-09-25T11:43:59+00:00"
+    assert episode["refined_first_observed_at"] == "2026-09-25T11:43:59+00:00"
