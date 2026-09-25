@@ -15,7 +15,8 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 SYMBOL = "XAUUSD"
 WORKER_NAME = "ctrader_demo_xau_v227_depth_map_prospective"
-CONTRACT = "XAU_RIZAN_DEPTH_MAP_PROSPECTIVE_V227_1"
+CONTRACT = "XAU_RIZAN_DEPTH_MAP_PROSPECTIVE_V227"
+RESEARCH_VERSION = "XAU_RIZAN_DEPTH_MAP_PROSPECTIVE_V227_1"
 SOURCE_WORKER = "ctrader_demo_xau_v226_rizan_depth_map"
 REQUIRED_PRIOR = "XAU_ZONE_REVERSAL_DEPTH_V225_2"
 
@@ -169,6 +170,7 @@ def _forecast_candidate(
 
     return {
         "contract": CONTRACT,
+        "research_version": RESEARCH_VERSION,
         "signal_key": signal_key,
         "forecast_at": forecast_at.isoformat(),
         "forecast_timing": "FRESH_H4_PRE_TOUCH_CORRECT_SIDE",
@@ -746,6 +748,7 @@ def run() -> int:
         lag_seconds=0.0,
         details={
             "contract": CONTRACT,
+            "research_version": RESEARCH_VERSION,
             "environment": "DEMO",
             "required_prior": REQUIRED_PRIOR,
             "candidate_directions": candidate_directions,
