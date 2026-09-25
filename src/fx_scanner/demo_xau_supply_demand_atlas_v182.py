@@ -37,6 +37,7 @@ LOOKBACK_DAYS = 45
 MAX_DISPLAY_ZONES = 12
 M5_REQUEST_COUNT = 1800
 M5_LOOKBACK_DAYS = 10
+CHART_BAR_LIMIT = 480
 
 TIMEFRAME_RULES = {
     "H1": "1h",
@@ -1029,6 +1030,20 @@ def _build_path_map(
     }
 
 
+def _chart_bar_payload(rows: Sequence[Bar]) -> list[dict[str, Any]]:
+    selected = tuple(rows)[-CHART_BAR_LIMIT:]
+    return [
+        {
+            "time": ensure_utc(row.timestamp).isoformat(),
+            "open": float(row.open),
+            "high": float(row.high),
+            "low": float(row.low),
+            "close": float(row.close),
+        }
+        for row in selected
+    ]
+
+
 def evaluate_supply_demand_atlas(
     bars: Sequence[Bar],
     *,
@@ -1164,6 +1179,7 @@ def evaluate_supply_demand_atlas(
         "nearest_supply": nearest_supply,
         "path_map": path_map,
         "zones": selected,
+        "chart_bars_m15": _chart_bar_payload(rows),
         "explanation": {
             "purpose": "EARLY_HTF_SUPPLY_DEMAND_PREPARATION_RESEARCH",
             "zone_authority": "STRUCTURAL_H1_OR_BASE_DEPARTURE_IMBALANCE_D1_H4_H1",
