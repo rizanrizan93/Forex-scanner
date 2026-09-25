@@ -840,9 +840,10 @@ def _direction_map(
             "standalone_profile_context": m15_profile,
             "applicability": _applicability(m15_zone, price) if m15_zone else {},
             "note": (
-                "Standalone M15 historically peaks at deep 90-100% penetration, "
-                "but when M15 is nested under a successful H4/H1 path V226 uses "
-                "the historical nested-child locator distribution instead."
+                "Standalone M15 uses the causal-close V225.2 first-touch depth profile. "
+                "When M15 is nested under a successful H4/H1 path, V226 keeps that "
+                "standalone prior separate and uses the historical nested-child locator "
+                "distribution for hierarchical narrowing."
             ),
         } if m15_zone else {
             "standalone_profile_context": m15_profile,
