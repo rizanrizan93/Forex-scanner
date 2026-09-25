@@ -73,11 +73,29 @@ def _latest_heartbeat(
 def _stable_signal_key(
     *,
     direction: str,
-    parent_zone_id: str,
     first_mapped_at: str,
 ) -> str:
-    raw = "|".join((CONTRACT, direction, parent_zone_id, first_mapped_at))
+    # Identity is the physical micro-wave, not the current H1 parent.
+    # Parent maps can legitimately change while the selected M5 pocket family
+    # remains the same; using parent_zone_id would double-count one forecast.
+    raw = "|".join((CONTRACT, direction, first_mapped_at))
     return "V224:" + hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
+def _micro_wave_key(
+    payload: dict[str, Any],
+    *,
+    fallback: str = "",
+) -> str:
+    direction = str(payload.get("direction") or "").upper()
+    cluster = dict(payload.get("cluster") or {})
+    first_mapped_at = str(cluster.get("first_mapped_at") or "")
+    if direction in {"LONG", "SHORT"} and first_mapped_at:
+        return _stable_signal_key(
+            direction=direction,
+            first_mapped_at=first_mapped_at,
+        )
+    return str(fallback or payload.get("signal_key") or "")
 
 
 def _forecast_candidate(source_heartbeat: dict[str, Any]) -> dict[str, Any]:
@@ -134,7 +152,6 @@ def _forecast_candidate(source_heartbeat: dict[str, Any]) -> dict[str, Any]:
 
     signal_key = _stable_signal_key(
         direction=direction,
-        parent_zone_id=parent_zone_id,
         first_mapped_at=first_mapped_at,
     )
     return {
@@ -360,16 +377,13 @@ def _events(store: SupabaseOperationalStore) -> list[dict[str, Any]]:
         .select("observed_at,event_type,signal_key,payload")
         .eq("backend", "CTRADER")
         .eq("account_id", ACCOUNT_ID)
+        .in_("event_type", [FORECAST_EVENT, OUTCOME_EVENT])
         .gte("observed_at", cutoff.isoformat())
         .order("observed_at", desc=False)
         .limit(MAX_EVENT_ROWS)
         .execute()
     )
-    return [
-        dict(row)
-        for row in list(response.data or [])
-        if str(dict(row).get("event_type") or "") in {FORECAST_EVENT, OUTCOME_EVENT}
-    ]
+    return [dict(row) for row in list(response.data or [])]
 
 
 def _index_events(
@@ -378,10 +392,13 @@ def _index_events(
     forecasts: dict[str, dict[str, Any]] = {}
     outcomes: dict[str, dict[str, Any]] = {}
     for row in rows:
-        key = str(row.get("signal_key") or "")
+        payload = dict(row.get("payload") or {})
+        key = _micro_wave_key(
+            payload,
+            fallback=str(row.get("signal_key") or ""),
+        )
         if not key:
             continue
-        payload = dict(row.get("payload") or {})
         if str(row.get("event_type") or "") == FORECAST_EVENT and key not in forecasts:
             forecasts[key] = payload
         elif str(row.get("event_type") or "") == OUTCOME_EVENT:
