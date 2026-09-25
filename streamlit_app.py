@@ -1701,87 +1701,88 @@ with forecast_tab:
         elif not dc_next_pocket_shown:
             st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
 
-    v216_details = (
-        {} if v216_calibration_hb is None else dict(v216_calibration_hb.get("details") or {})
-    )
-    v216_summary = dict(v216_details.get("summary") or {})
-    if v216_summary:
-        st.markdown("##### V215/V216 — Candidate vs Refined Calibration")
-        cv1, cv2, cv3, cv4 = st.columns(4)
-        cv1.metric("Episode", int(v216_summary.get("episodes") or 0))
-        cv2.metric(
-            "Refined | touched",
-            _fmt_pct(v216_summary.get("refinement_rate_given_touch")),
+    with st.expander("Riset pocket, reaction & zone reuse (V200/V212–V216)", expanded=False):
+        v216_details = (
+            {} if v216_calibration_hb is None else dict(v216_calibration_hb.get("details") or {})
         )
-        before_025 = dict(v216_summary.get("reaction_025_before_refined") or {})
-        before_050 = dict(v216_summary.get("reaction_050_before_refined") or {})
-        cv3.metric("0.25 ATR sebelum refined", _fmt_pct(before_025.get("rate")))
-        cv4.metric("0.50 ATR sebelum refined", _fmt_pct(before_050.get("rate")))
-        st.caption(
-            f"sample={v216_summary.get('sample_state','—')} • "
-            f"median candidate lead={_fmt_minutes(v216_summary.get('median_premap_lead_minutes'))}. "
-            "Jika reaksi sering terjadi sebelum refined, refined dibaca sebagai retest/re-entry confirmation, "
-            "bukan origin reversal pertama. V215/V216 tetap shadow-only."
-        )
-
-    v212_details = (
-        {} if v212_probability_hb is None else dict(v212_probability_hb.get("details") or {})
-    )
-    v213_details = (
-        {} if v213_path_hb is None else dict(v213_path_hb.get("details") or {})
-    )
-    v213_eval = dict(v213_details.get("evaluation") or {})
-    v213_current = dict(v213_eval.get("current_leg") or {})
-    v213_hist = dict(v213_current.get("historical_estimate") or {})
-    if v213_current:
-        st.markdown("##### V212/V213 — Probabilitas Reaksi & Jalur Setelah Zone")
-        rp1, rp2, rp3, rp4 = st.columns(4)
-        rp1.metric(
-            "P touch",
-            "—" if v213_hist.get("p_touch") is None else _fmt_pct(v213_hist.get("p_touch")),
-        )
-        rp2.metric(
-            "P reaksi ≥0.50 ATR",
-            "—" if v213_hist.get("p_hold_050") is None else _fmt_pct(v213_hist.get("p_hold_050")),
-        )
-        rp3.metric(
-            "P break zone",
-            "—" if v213_hist.get("p_break") is None else _fmt_pct(v213_hist.get("p_break")),
-        )
-        rp4.metric(
-            "P lanjut 1.00 ATR | sudah 0.50",
-            "—"
-            if v213_hist.get("p_100_given_050") is None
-            else _fmt_pct(v213_hist.get("p_100_given_050")),
-        )
-        st.caption(
-            f"Stage={v213_current.get('stage','—')} • "
-            f"confidence={v213_hist.get('confidence','—')} • "
-            f"median outcome={_fmt_distance(v213_hist.get('median_minutes_to_outcome'), ' menit')}. "
-            "Angka V212/V213 adalah estimasi historis/shadow untuk sharpening, bukan izin eksekusi."
-        )
-
-    if dc_current_reuse or dc_next_reuse:
-        current_reuse_state = str(dc_current_reuse.get("state") or "—")
-        next_reuse_state = str(dc_next_reuse.get("state") or "—")
-        st.caption(
-            "V200 Zone Reuse • "
-            f"current={current_reuse_state}"
-            + (
-                f" (touch={dc_current_reuse.get('touch_count')}, "
-                f"mitigation={float(dc_current_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
-                if dc_current_reuse else ""
+        v216_summary = dict(v216_details.get("summary") or {})
+        if v216_summary:
+            st.markdown("##### V215/V216 — Candidate vs Refined Calibration")
+            cv1, cv2, cv3, cv4 = st.columns(4)
+            cv1.metric("Episode", int(v216_summary.get("episodes") or 0))
+            cv2.metric(
+                "Refined | touched",
+                _fmt_pct(v216_summary.get("refinement_rate_given_touch")),
             )
-            + " • "
-            f"next={next_reuse_state}"
-            + (
-                f" (touch={dc_next_reuse.get('touch_count')}, "
-                f"mitigation={float(dc_next_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
-                if dc_next_reuse else ""
+            before_025 = dict(v216_summary.get("reaction_025_before_refined") or {})
+            before_050 = dict(v216_summary.get("reaction_050_before_refined") or {})
+            cv3.metric("0.25 ATR sebelum refined", _fmt_pct(before_025.get("rate")))
+            cv4.metric("0.50 ATR sebelum refined", _fmt_pct(before_050.get("rate")))
+            st.caption(
+                f"sample={v216_summary.get('sample_state','—')} • "
+                f"median candidate lead={_fmt_minutes(v216_summary.get('median_premap_lead_minutes'))}. "
+                "Jika reaksi sering terjadi sebelum refined, refined dibaca sebagai retest/re-entry confirmation, "
+                "bukan origin reversal pertama. V215/V216 tetap shadow-only."
             )
-            + ". Tidak ada blind reuse dan tidak ada hard touch-limit; "
-            "zona deep/multi-tested harus mendapat micro confirmation baru."
+
+        v212_details = (
+            {} if v212_probability_hb is None else dict(v212_probability_hb.get("details") or {})
         )
+        v213_details = (
+            {} if v213_path_hb is None else dict(v213_path_hb.get("details") or {})
+        )
+        v213_eval = dict(v213_details.get("evaluation") or {})
+        v213_current = dict(v213_eval.get("current_leg") or {})
+        v213_hist = dict(v213_current.get("historical_estimate") or {})
+        if v213_current:
+            st.markdown("##### V212/V213 — Probabilitas Reaksi & Jalur Setelah Zone")
+            rp1, rp2, rp3, rp4 = st.columns(4)
+            rp1.metric(
+                "P touch",
+                "—" if v213_hist.get("p_touch") is None else _fmt_pct(v213_hist.get("p_touch")),
+            )
+            rp2.metric(
+                "P reaksi ≥0.50 ATR",
+                "—" if v213_hist.get("p_hold_050") is None else _fmt_pct(v213_hist.get("p_hold_050")),
+            )
+            rp3.metric(
+                "P break zone",
+                "—" if v213_hist.get("p_break") is None else _fmt_pct(v213_hist.get("p_break")),
+            )
+            rp4.metric(
+                "P lanjut 1.00 ATR | sudah 0.50",
+                "—"
+                if v213_hist.get("p_100_given_050") is None
+                else _fmt_pct(v213_hist.get("p_100_given_050")),
+            )
+            st.caption(
+                f"Stage={v213_current.get('stage','—')} • "
+                f"confidence={v213_hist.get('confidence','—')} • "
+                f"median outcome={_fmt_distance(v213_hist.get('median_minutes_to_outcome'), ' menit')}. "
+                "Angka V212/V213 adalah estimasi historis/shadow untuk sharpening, bukan izin eksekusi."
+            )
+
+        if dc_current_reuse or dc_next_reuse:
+            current_reuse_state = str(dc_current_reuse.get("state") or "—")
+            next_reuse_state = str(dc_next_reuse.get("state") or "—")
+            st.caption(
+                "V200 Zone Reuse • "
+                f"current={current_reuse_state}"
+                + (
+                    f" (touch={dc_current_reuse.get('touch_count')}, "
+                    f"mitigation={float(dc_current_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
+                    if dc_current_reuse else ""
+                )
+                + " • "
+                f"next={next_reuse_state}"
+                + (
+                    f" (touch={dc_next_reuse.get('touch_count')}, "
+                    f"mitigation={float(dc_next_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
+                    if dc_next_reuse else ""
+                )
+                + ". Tidak ada blind reuse dan tidak ada hard touch-limit; "
+                "zona deep/multi-tested harus mendapat micro confirmation baru."
+            )
 
     st.markdown("#### 4. M15 — Konfirmasi Eksekusi")
     if dc_m15_ready:
