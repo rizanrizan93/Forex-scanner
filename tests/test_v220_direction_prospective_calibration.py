@@ -14,12 +14,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _bar(ts: datetime, *, o: float, h: float, l: float, c: float) -> Bar:
     return Bar(
+        symbol="XAUUSD",
+        timeframe="M15",
         timestamp=ts,
         open=o,
         high=h,
         low=l,
         close=c,
-        volume=100.0,
+        tick_count=100,
+        spread_avg=0.20,
+        spread_max=0.30,
     )
 
 
