@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: research-xau-zone-reversal-depth-v225-vectorized-${{ github.ref }}
+  group: research-xau-zone-reversal-depth-v225-final-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
