@@ -1016,7 +1016,19 @@ with forecast_tab:
         else "—"
     )
 
+    dc_current_pocket_shown = False
+    if dc_candidate:
+        dc_current_pocket_shown = True
+        st.warning(
+            f"M5 **{dc_current_leg_direction}** POCKET: "
+            f"**{_fmt_price(dc_candidate.get('low'))}–{_fmt_price(dc_candidate.get('high'))}** • "
+            f"state={dc_micro.get('state','—')} • status=CANDIDATE. "
+            f"Pocket ini tampil sebelum reclaim/MSS/displacement selesai. "
+            f"Reaction target={dc_current_target_text} • opposing zone={dc_current_terminal_text}."
+        )
+
     if dc_refined:
+        dc_current_pocket_shown = True
         st.success(
             f"REFINED M5 **{dc_current_leg_direction}** POCKET: "
             f"**{_fmt_price(dc_refined.get('low'))}–{_fmt_price(dc_refined.get('high'))}** • "
@@ -1024,20 +1036,11 @@ with forecast_tab:
             f"sweep={_fmt_price(dict(dc_micro.get('sweep') or {}).get('price'))} • "
             f"reclaim={_fmt_price(dc_micro.get('source_proximal_reclaim_level'))} • "
             f"MSS={_fmt_price(dc_micro.get('mss_level'))}. "
-            f"Jika {dc_current_leg_direction} terkonfirmasi dan displacement meninggalkan pocket, "
-            f"reaction target={dc_current_target_text} • opposing zone={dc_current_terminal_text}. "
+            f"Reaction target={dc_current_target_text} • opposing zone={dc_current_terminal_text}. "
             "**SHADOW/PREPARE — belum otomatis menjadi entry resmi.**"
         )
-    elif dc_candidate:
-        st.warning(
-            f"Candidate M5 **{dc_current_leg_direction}** pocket: "
-            f"**{_fmt_price(dc_candidate.get('low'))}–{_fmt_price(dc_candidate.get('high'))}** • "
-            f"state={dc_micro.get('state','—')}. "
-            f"Belum refined; tunggu reclaim/MSS/displacement. Jika valid {dc_current_leg_direction}, "
-            f"scanner sudah memetakan reaction target={dc_current_target_text} dan "
-            f"opposing zone={dc_current_terminal_text}."
-        )
-    else:
+
+    if not dc_current_pocket_shown:
         st.info(
             f"Belum ada M5 pocket aktif untuk leg {dc_current_leg_direction}. "
             f"Path target tetap dipetakan: reaction target={dc_current_target_text} • "
@@ -1046,39 +1049,49 @@ with forecast_tab:
 
     if dc_next_pocket_state == "INVALIDATED_M5_POCKET":
         st.warning(
-            f"Candidate M5 **{dc_next_leg_direction}** sebelumnya sudah **INVALIDATED** • "
+            f"M5 **{dc_next_leg_direction}** pocket sebelumnya sudah **INVALIDATED** • "
             f"state={dc_next_micro.get('state','—')}. "
             "Pocket lama tidak lagi ditampilkan sebagai setup aktif. "
             f"Parent watch zone tetap {_fmt_price(dc_next_leg_source.get('low'))}–"
-            f"{_fmt_price(dc_next_leg_source.get('high'))}; scanner menunggu sweep/reclaim/MSS/"
-            "displacement M5 yang baru sebelum membentuk candidate baru. "
+            f"{_fmt_price(dc_next_leg_source.get('high'))}; scanner menunggu fresh M5 pocket baru. "
             f"Projected path jika setup baru nanti valid: reaction target={dc_next_target_text} • "
             f"terminal zone={dc_next_terminal_text}."
         )
-    elif dc_next_refined or dc_next_candidate:
-        dc_next_pocket = dc_next_refined or dc_next_candidate
-        dc_next_label = "REFINED" if dc_next_refined else "Candidate"
-        st.info(
-            f"{dc_next_label} M5 **{dc_next_leg_direction}** pocket berikutnya: "
-            f"**{_fmt_price(dc_next_pocket.get('low'))}–{_fmt_price(dc_next_pocket.get('high'))}** • "
-            f"state={dc_next_micro.get('state','—')}. "
-            f"Jika {dc_next_leg_direction} terkonfirmasi dan harga meninggalkan area sesuai arah, "
-            f"target balik={dc_next_target_text} • terminal opposing zone={dc_next_terminal_text}. "
-            "Ini adalah leg berikutnya, bukan izin untuk entry sebelum konfirmasi."
-        )
-    elif dc_next_leg_source:
-        st.info(
-            f"PARENT WATCH ZONE / PRE-M5 **{dc_next_leg_direction}**: "
-            f"**{_fmt_price(dc_next_leg_source.get('low'))}–{_fmt_price(dc_next_leg_source.get('high'))}** • "
-            f"state={dc_next_micro.get('state','WAIT_SOURCE_TOUCH')} • "
-            f"reaction target={dc_next_target_text} • terminal zone={dc_next_terminal_text}. "
-            "Belum ada M5 pocket aktual pada tahap ini. Candidate M5 pocket baru dibentuk "
-            "setelah fresh M5 touch/sweep pada parent zone; candidate tersebut dapat tampil "
-            "**sebelum** reclaim + MSS + displacement. Reclaim/MSS/displacement tetap diperlukan "
-            "untuk menaikkan status menjadi confirmed/refined dan tidak ada execution authority."
-        )
     else:
-        st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
+        dc_next_pocket_shown = False
+
+        if dc_next_candidate:
+            dc_next_pocket_shown = True
+            st.info(
+                f"M5 **{dc_next_leg_direction}** POCKET berikutnya: "
+                f"**{_fmt_price(dc_next_candidate.get('low'))}–{_fmt_price(dc_next_candidate.get('high'))}** • "
+                f"state={dc_next_micro.get('state','—')} • status=CANDIDATE. "
+                f"Reaction target={dc_next_target_text} • "
+                f"terminal opposing zone={dc_next_terminal_text}."
+            )
+
+        if dc_next_refined:
+            dc_next_pocket_shown = True
+            st.success(
+                f"REFINED M5 **{dc_next_leg_direction}** POCKET berikutnya: "
+                f"**{_fmt_price(dc_next_refined.get('low'))}–{_fmt_price(dc_next_refined.get('high'))}** • "
+                f"state={dc_next_micro.get('state','—')}. "
+                f"Reaction target={dc_next_target_text} • "
+                f"terminal opposing zone={dc_next_terminal_text}. "
+                "Refined pocket tetap tidak menjadi izin broker tanpa admission yang valid."
+            )
+
+        if not dc_next_pocket_shown and dc_next_leg_source:
+            st.info(
+                f"PARENT WATCH ZONE / PRE-M5 **{dc_next_leg_direction}**: "
+                f"**{_fmt_price(dc_next_leg_source.get('low'))}–{_fmt_price(dc_next_leg_source.get('high'))}** • "
+                f"state={dc_next_micro.get('state','WAIT_SOURCE_TOUCH')} • "
+                f"reaction target={dc_next_target_text} • terminal zone={dc_next_terminal_text}. "
+                "Belum ada M5 pocket aktual pada tahap ini. Candidate M5 pocket baru dibentuk "
+                "setelah fresh M5 touch/sweep pada parent zone."
+            )
+        elif not dc_next_pocket_shown:
+            st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
 
     if dc_current_reuse or dc_next_reuse:
         current_reuse_state = str(dc_current_reuse.get("state") or "—")
