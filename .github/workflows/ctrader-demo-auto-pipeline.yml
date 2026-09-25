@@ -73,10 +73,6 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Record auto pipeline running
-        continue-on-error: true
-        run: python -m fx_scanner.demo_runtime_heartbeat ctrader_demo_auto_pipeline RUNNING
-
       # Critical XAU execution path comes first. Existing protection is repaired
       # before new orders; canonical evaluation and broker handoff are not delayed
       # by shadow/research producers that have no execution authority.
