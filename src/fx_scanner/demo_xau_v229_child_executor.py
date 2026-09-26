@@ -395,9 +395,22 @@ def run() -> int:
             expires_at = _dt(signal.get("expires_at"))
             reconcile = session.reconcile()
 
+            direction_map = dict(v226_eval.get(str(plan.get("direction") or "").lower()) or {})
+            current_h4 = dict(dict(direction_map.get("h4") or {}).get("zone") or {})
+            current_h4_id = str(current_h4.get("zone_id") or "")
+            same_live_h4_parent = bool(
+                current_h4_id
+                and current_h4_id == str(payload.get("h4_zone_id") or "")
+            )
+            same_fresh_candidate = bool(
+                current_key
+                and str(plan.get("candidate_key") or "") == current_key
+            )
+            # After first touch V226 intentionally stops calling the H4 parent
+            # "fresh". That must not kill an already-owned 2+2 plan: the parent
+            # stays alive while the exact H4 zone itself remains active/current.
             invalid_parent = bool(
-                not current_key
-                or str(plan.get("candidate_key") or "") != current_key
+                (not same_fresh_candidate and not same_live_h4_parent)
                 or (expires_at is not None and now > expires_at)
                 or state == "INVALIDATED"
             )
@@ -405,6 +418,9 @@ def run() -> int:
                 outcomes = _cancel_pending_plan(session, plan, reconcile)
                 actions.extend(f"{parent_signal_id}:{x}" for x in outcomes)
                 continue
+
+            current_h4_lifecycle = dict(current_h4.get("lifecycle") or {})
+            parent_touched = int(current_h4_lifecycle.get("touch_count") or 0) >= 1
 
             if state == "EXECUTION_READY":
                 if not store.claim_signal_for_execution(parent_signal_id):
@@ -438,6 +454,9 @@ def run() -> int:
                     actions.append(f"{parent_signal_id}:L{slot}:ACCOUNT_CAP")
                     break
 
+                if slot >= 3 and not parent_touched:
+                    actions.append(f"{parent_signal_id}:L{slot}:WAIT_PARENT_FIRST_TOUCH")
+                    continue
                 entry, activation = _activation_entry(
                     slot=slot,
                     direction=str(plan["direction"]),
