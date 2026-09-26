@@ -110,6 +110,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v227_depth_map_prospective
 
+      - name: Validate frozen V231 terminal-target rule prospectively
+        id: analyze_xau_v232_v231_prospective_shadow
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v232_v231_prospective_shadow
+
       - name: Update prospective XAU supply-demand lifecycle
         id: update_xau_supply_demand_prospective
         continue-on-error: true
