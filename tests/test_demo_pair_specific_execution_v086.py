@@ -47,9 +47,9 @@ def test_five_core_execution_registry_is_exact_and_pair_specific():
     assert "USDJPY" not in _ALLOWED_STRATEGIES_BY_SYMBOL
     assert "GBPUSD" not in _ALLOWED_STRATEGIES_BY_SYMBOL
 
-    # Broker handoff has an exact four-strategy XAU DEMO allowlist: canonical
-    # M15, the aggregate V24 champion, AFIC execution, and fresh-first-touch
-    # RIZAN depth execution. Standalone D1 and other challengers remain shadow-only.
+    # Generic MARKET handoff has three XAU DEMO strategies: canonical M15,
+    # aggregate V24 champion and AFIC execution. RIZAN depth owns a dedicated
+    # four-child pending/confirmation executor and must never enter this list.
     assert _XAU_CANONICAL_STRATEGY == XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
     assert _XAU_CHAMPION_STRATEGY == XAU_V24_CHAMPION_STRATEGY_ID
     assert _XAU_D1_TSMOM_STRATEGY == PAIR_STRATEGY_IDS["XAUUSD"]
@@ -60,9 +60,9 @@ def test_five_core_execution_registry_is_exact_and_pair_specific():
             XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID,
             XAU_V24_CHAMPION_STRATEGY_ID,
             "XAU_AFIC_PATH_EXECUTION_V1",
-            "XAU_RIZAN_DEPTH_EXECUTION_V1",
         }
     )
+    assert _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY not in _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"]
     assert PAIR_STRATEGY_IDS["XAUUSD"] in _XAU_SHADOW_STRATEGIES
     assert XAU_M15_EMA_REVERSAL_STRATEGY_ID in _XAU_SHADOW_STRATEGIES
     assert XAU_M15_SWEEP_FADE_STRATEGY_ID in _XAU_SHADOW_STRATEGIES
