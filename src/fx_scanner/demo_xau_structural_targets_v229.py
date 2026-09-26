@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from math import isfinite
+import hashlib
 from typing import Any, Sequence
+
+import pandas as pd
 
 CONTRACT = "XAU_STRUCTURAL_TARGET_LADDER_V229_1"
 TIMEFRAME_ORDER = ("M15", "H1", "H4", "D1")
@@ -15,6 +18,222 @@ def _f(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return parsed if isfinite(parsed) else None
+
+
+
+M15_MIN_DEPARTURE_RANGE_ATR = 1.00
+M15_MIN_DEPARTURE_BODY_FRACTION = 0.50
+M15_MAX_BASE_RANGE_ATR = 1.25
+
+
+def _m15_frame(raw_bars: Sequence[dict[str, Any]]) -> pd.DataFrame:
+    if not raw_bars:
+        return pd.DataFrame()
+    frame = pd.DataFrame(list(raw_bars))
+    required = {"time", "open", "high", "low", "close"}
+    if frame.empty or not required.issubset(frame.columns):
+        return pd.DataFrame()
+    frame["time"] = pd.to_datetime(frame["time"], utc=True, errors="coerce")
+    for column in ("open", "high", "low", "close"):
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    return (
+        frame.dropna(subset=list(required))
+        .sort_values("time")
+        .drop_duplicates("time", keep="last")
+        .reset_index(drop=True)
+    )
+
+
+def _atr14(frame: pd.DataFrame) -> pd.Series:
+    high = frame["high"].astype(float)
+    low = frame["low"].astype(float)
+    close = frame["close"].astype(float)
+    previous = close.shift(1)
+    true_range = pd.concat(
+        [(high - low), (high - previous).abs(), (low - previous).abs()],
+        axis=1,
+    ).max(axis=1)
+    return true_range.rolling(14, min_periods=14).mean()
+
+
+def _base_geometry(base: pd.DataFrame, direction: str) -> tuple[float, float, float, float]:
+    low = float(base["low"].min())
+    high = float(base["high"].max())
+    body_high = float(
+        pd.concat([base["open"], base["close"]], axis=1).max(axis=1).max()
+    )
+    body_low = float(
+        pd.concat([base["open"], base["close"]], axis=1).min(axis=1).min()
+    )
+    if direction == "LONG":
+        return low, high, min(high, body_high), low
+    return low, high, max(low, body_low), high
+
+
+def _classify_pattern(*, direction: str, pre_base_close: float, base_mid: float) -> str:
+    if direction == "LONG":
+        return "RBR" if pre_base_close <= base_mid else "DBR"
+    return "DBD" if pre_base_close >= base_mid else "RBD"
+
+
+def _stable_m15_id(
+    *,
+    direction: str,
+    origin_at: pd.Timestamp,
+    available_at: pd.Timestamp,
+    low: float,
+    high: float,
+) -> str:
+    raw = "|".join(
+        (
+            "M15",
+            direction,
+            origin_at.isoformat(),
+            available_at.isoformat(),
+            f"{low:.8f}",
+            f"{high:.8f}",
+        )
+    )
+    return hashlib.sha256(raw.encode()).hexdigest()[:24]
+
+
+def runtime_m15_target_zones(
+    raw_bars: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Standalone causal M15 target detector with no AFIC/V226 imports."""
+    frame = _m15_frame(raw_bars)
+    if frame.empty or len(frame) < 20:
+        return []
+    work = frame.copy()
+    work["atr14"] = _atr14(work)
+    detected: list[dict[str, Any]] = []
+
+    for i in range(16, len(work)):
+        row = work.iloc[i]
+        atr = _f(row.get("atr14"))
+        if atr is None or atr <= 0:
+            continue
+        o = float(row["open"])
+        h = float(row["high"])
+        low_row = float(row["low"])
+        c = float(row["close"])
+        rng = max(h - low_row, 1e-12)
+        body_fraction = abs(c - o) / rng
+        range_atr = rng / atr
+        if range_atr < M15_MIN_DEPARTURE_RANGE_ATR:
+            continue
+        if body_fraction < M15_MIN_DEPARTURE_BODY_FRACTION:
+            continue
+        direction = "LONG" if c > o else "SHORT" if c < o else ""
+        if not direction:
+            continue
+
+        best: tuple[float, int, pd.DataFrame] | None = None
+        for base_len in (1, 2, 3):
+            start = i - base_len
+            if start < 2:
+                continue
+            base = work.iloc[start:i]
+            base_range = float(base["high"].max() - base["low"].min())
+            base_range_atr = base_range / atr
+            body_fracs = (
+                (base["close"].astype(float) - base["open"].astype(float)).abs()
+                / (base["high"].astype(float) - base["low"].astype(float)).clip(lower=1e-12)
+            )
+            compactness = base_range_atr + float(body_fracs.mean()) * 0.35
+            if base_range_atr > M15_MAX_BASE_RANGE_ATR:
+                continue
+            if best is None or compactness < best[0]:
+                best = (compactness, base_len, base.copy())
+        if best is None:
+            continue
+
+        _, base_len, base = best
+        low, high, proximal, distal = _base_geometry(base, direction)
+        if high <= low or (high - low) / atr > M15_MAX_BASE_RANGE_ATR:
+            continue
+        pre_close = float(work.iloc[i - base_len - 1]["close"])
+        pattern = _classify_pattern(
+            direction=direction,
+            pre_base_close=pre_close,
+            base_mid=(low + high) / 2.0,
+        )
+        departure_open = pd.Timestamp(row["time"])
+        available_at = departure_open + pd.Timedelta(minutes=15)
+        origin_at = pd.Timestamp(base.iloc[0]["time"])
+        detected.append(
+            {
+                "zone_id": _stable_m15_id(
+                    direction=direction,
+                    origin_at=origin_at,
+                    available_at=available_at,
+                    low=low,
+                    high=high,
+                ),
+                "timeframe": "M15",
+                "zone_class": "IMBALANCE",
+                "pattern": pattern,
+                "direction": direction,
+                "low": low,
+                "high": high,
+                "proximal": proximal,
+                "distal": distal,
+                "available_at": available_at.isoformat(),
+                "origin_at": origin_at.isoformat(),
+                "departure_at": available_at.isoformat(),
+                "atr_points": atr,
+                "base_range_atr": (high - low) / atr,
+                "departure_range_atr": range_atr,
+                "departure_body_fraction": body_fraction,
+            }
+        )
+
+    active: list[dict[str, Any]] = []
+    for zone in detected:
+        available = pd.Timestamp(zone["available_at"])
+        sample = work[work["time"] >= available]
+        touches = 0
+        was_inside = False
+        invalidated_at = None
+        for _, row in sample.iterrows():
+            inside = (
+                float(row["low"]) <= float(zone["high"])
+                and float(row["high"]) >= float(zone["low"])
+            )
+            if inside and not was_inside:
+                touches += 1
+            invalid = (
+                float(row["close"]) < float(zone["distal"])
+                if zone["direction"] == "LONG"
+                else float(row["close"]) > float(zone["distal"])
+            )
+            if invalid:
+                invalidated_at = pd.Timestamp(row["time"]).isoformat()
+                break
+            was_inside = inside
+        lifecycle = {
+            "active": invalidated_at is None,
+            "touch_count": touches,
+            "freshness": (
+                "BROKEN" if invalidated_at is not None
+                else "FRESH" if touches == 0
+                else "FIRST_TEST" if touches == 1
+                else "MULTI_TESTED"
+            ),
+            "invalidated_at": invalidated_at,
+        }
+        if invalidated_at is None:
+            active.append(
+                {
+                    **zone,
+                    "lifecycle": lifecycle,
+                    "status": "V229_M15_TARGET_ACTIVE",
+                    "execution_influence": False,
+                    "execution_authority": False,
+                }
+            )
+    active.sort(key=lambda zone: str(zone.get("available_at") or ""), reverse=True)
+    return active
 
 
 def _active(zone: dict[str, Any]) -> bool:
