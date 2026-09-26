@@ -237,11 +237,17 @@ def _candidate_key(plan: dict[str, Any]) -> str:
     return "|".join(fields)
 
 
-def _already_recorded(store: SupabaseOperationalStore, key: str) -> bool:
+def _already_recorded(
+    store: SupabaseOperationalStore,
+    key: str,
+    *,
+    now: datetime,
+) -> bool:
+    """Suppress duplicate active/claimed authority, but permit an expired retry."""
     try:
         response = (
             store.client.table("broker_order_events")
-            .select("payload,event_type,code")
+            .select("signal_key,payload,event_type,code")
             .eq("event_type", EVENT_TYPE)
             .eq("code", STRATEGY_ID)
             .order("observed_at", desc=True)
@@ -251,10 +257,39 @@ def _already_recorded(store: SupabaseOperationalStore, key: str) -> bool:
     except Exception:
         # Persistence uncertainty must suppress duplicate broker authority.
         return True
-    return any(
-        str(dict(row.get("payload") or {}).get("candidate_key") or "") == key
-        for row in (response.data or [])
-    )
+
+    for row in response.data or []:
+        payload = dict(row.get("payload") or {})
+        if str(payload.get("candidate_key") or "") != key:
+            continue
+        signal_id = str(row.get("signal_key") or "").strip()
+        if not signal_id:
+            return True
+        try:
+            state_response = (
+                store.client.table("signals")
+                .select("state,expires_at")
+                .eq("id", signal_id)
+                .limit(1)
+                .execute()
+            )
+            signal_rows = list(state_response.data or [])
+        except Exception:
+            return True
+        if not signal_rows:
+            return True
+        signal = dict(signal_rows[0])
+        state = str(signal.get("state") or "").upper()
+        if state == "COOLDOWN":
+            return True
+        if state == "EXECUTION_READY":
+            expires_at = _dt(signal.get("expires_at"))
+            if expires_at is None or now <= expires_at:
+                return True
+            # An unclaimed expired signal should not permanently suppress a
+            # still-valid physical first-touch candidate on the next cycle.
+            continue
+    return False
 
 
 def _invalidate_prior_ready(
@@ -473,7 +508,7 @@ def run() -> int:
                     store,
                     current_key=candidate_key,
                 )
-                if _already_recorded(store, candidate_key):
+                if _already_recorded(store, candidate_key, now=now):
                     reason = "CANDIDATE_ALREADY_EMITTED"
                 else:
                     signal_id = _write_signal(
