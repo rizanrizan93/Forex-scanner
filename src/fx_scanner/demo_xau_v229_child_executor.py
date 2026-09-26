@@ -11,7 +11,6 @@ from .demo_xau_v229_depth_execution import (
     ATLAS_WORKER,
     EVENT_TYPE,
     STRATEGY_ID,
-    V226_WORKER,
     _dt,
     _latest_heartbeat,
 )
@@ -20,8 +19,13 @@ from .demo_xau_v229_ladder_plan import (
     MAX_CHILDREN,
     MIN_TERMINAL_RR,
     _target_pool,
-    build_parent_ladder_plan,
     child_client_order_id,
+)
+from .demo_xau_v229_lifecycle import (
+    atlas_reason,
+    micro_reason,
+    parent_status,
+    pretouch_allowed,
 )
 from .execution.control_plane import ControlPlaneGate, ControlPlaneRefreshWorker
 from .execution.demo_autotrade import SupabaseOrderAuditSink
@@ -168,6 +172,9 @@ def _activation_entry(
 ) -> tuple[float | None, str]:
     if slot <= 2:
         return _f(child.get("reference_price")), "PRE_TOUCH_LIMIT"
+    micro_state = str(micro.get("state") or "").upper()
+    if "INVALID" in micro_state or "NO_REFINEMENT" in micro_state:
+        return None, "M5_SOURCE_INVALIDATED"
     if str(micro.get("direction") or "").upper() != direction:
         return None, "M5_DIRECTION_MISMATCH"
     if slot == 3:
@@ -358,25 +365,12 @@ def run() -> int:
     try:
         control.refresh_once()
         parents = _latest_parent_rows(store)
-        v226_hb = _latest_heartbeat(store, V226_WORKER)
         atlas_hb = _latest_heartbeat(store, ATLAS_WORKER)
-        v226_eval = dict(dict(v226_hb.get("details") or {}).get("evaluation") or {})
         atlas_eval = dict(dict(atlas_hb.get("details") or {}).get("evaluation") or {})
-        quote = gateway.market_quote(SYMBOL)
-        direction = str(v226_eval.get("focus_direction") or "").upper()
-        live_price = (
-            float(quote.ask)
-            if direction == "LONG"
-            else float(quote.bid)
-            if direction == "SHORT"
-            else (float(quote.bid) + float(quote.ask)) / 2.0
-        )
-        current_plan = build_parent_ladder_plan(
-            v226_evaluation=v226_eval,
-            atlas_evaluation=atlas_eval,
-            live_price=live_price,
-        )
-        current_key = None if current_plan is None else str(current_plan.get("candidate_key") or "")
+        atlas_block = atlas_reason(atlas_hb, now=now)
+        evaluation_at = _dt(atlas_eval.get("as_of"))
+        if evaluation_at is None or not -1 <= (now - evaluation_at).total_seconds() <= 600:
+            atlas_block = "ATLAS_EVALUATION_STALE_OR_UNTIMED"
 
         for parent in parents:
             parent_signal_id = str(parent.get("signal_key") or "")
@@ -386,6 +380,10 @@ def run() -> int:
                 "candidate_key": payload.get("candidate_key"),
                 "direction": payload.get("direction"),
                 "sl": payload.get("planned_sl"),
+                "h4_zone_id": payload.get("h4_zone_id"),
+                "h4_zone_snapshot": dict(payload.get("h4_zone_snapshot") or {}),
+                "precision_source_snapshot": dict(payload.get("precision_source_snapshot") or {}),
+                "source_layer": payload.get("source_layer"),
                 "children": list(payload.get("children") or []),
             }
             if not plan["plan_id"] or len(plan["children"]) != MAX_CHILDREN:
@@ -395,16 +393,29 @@ def run() -> int:
             expires_at = _dt(signal.get("expires_at"))
             reconcile = session.reconcile()
 
-            invalid_parent = bool(
-                not current_key
-                or str(plan.get("candidate_key") or "") != current_key
-                or (expires_at is not None and now > expires_at)
-                or state == "INVALIDATED"
-            )
-            if invalid_parent:
+            if state not in {"EXECUTION_READY", "COOLDOWN"} or (expires_at is not None and now >= expires_at):
                 outcomes = _cancel_pending_plan(session, plan, reconcile)
                 actions.extend(f"{parent_signal_id}:{x}" for x in outcomes)
                 continue
+            if atlas_block:
+                actions.append(f"{parent_signal_id}:{atlas_block}")
+                # The newest parent keeps ownership while evidence is unavailable.
+                break
+            quote = gateway.market_quote(SYMBOL)
+            live_price = float(quote.bid) if plan["direction"] == "LONG" else float(quote.ask)
+            disposition, reason = parent_status(
+                plan, signal, atlas_eval, now=now, live_price=live_price,
+            )
+            if disposition == "CANCEL":
+                outcomes = _cancel_pending_plan(session, plan, reconcile)
+                actions.extend(f"{parent_signal_id}:{reason}:{x}" for x in outcomes)
+                store.client.table("signals").update({
+                    "state": "INVALIDATED", "active_guards": [reason],
+                }).eq("id", parent_signal_id).in_("state", ["EXECUTION_READY", "COOLDOWN"]).execute()
+                continue
+            if disposition == "WAIT":
+                actions.append(f"{parent_signal_id}:{reason}")
+                break
 
             if state == "EXECUTION_READY":
                 if not store.claim_signal_for_execution(parent_signal_id):
@@ -426,6 +437,8 @@ def run() -> int:
                 or dict(atlas_eval.get("path_map") or {}).get("micro_refinement")
                 or {}
             )
+            parent_at = _dt(signal.get("observed_at"))
+            before_touch = pretouch_allowed(plan, atlas_eval)
 
             for child in list(plan["children"]):
                 slot = int(child.get("slot") or 0)
@@ -437,6 +450,20 @@ def run() -> int:
                 if future_exposure >= max_positions:
                     actions.append(f"{parent_signal_id}:L{slot}:ACCOUNT_CAP")
                     break
+                if slot <= 2 and not before_touch:
+                    actions.append(f"{parent_signal_id}:L{slot}:PRETOUCH_WINDOW_CLOSED")
+                    continue
+                if slot >= 3:
+                    if parent_at is None or evaluation_at is None:
+                        actions.append(f"{parent_signal_id}:L{slot}:PARENT_EPISODE_UNTIMED")
+                        continue
+                    micro_block = micro_reason(
+                        plan, micro, slot=slot, parent_at=parent_at,
+                        evaluation_at=evaluation_at,
+                    )
+                    if micro_block:
+                        actions.append(f"{parent_signal_id}:L{slot}:{micro_block}")
+                        continue
 
                 entry, activation = _activation_entry(
                     slot=slot,
