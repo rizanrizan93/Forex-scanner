@@ -1585,20 +1585,28 @@ with forecast_tab:
                 "Focus direction menentukan kandidat utama yang ditonjolkan."
             )
             if len(v226_ladder_slots) == 4:
-                st.markdown("###### 4-Order Depth Ladder — 0,01 lot per order")
+                st.markdown("###### 4-Order Hybrid Depth Plan — 0,01 lot per order")
                 lc1, lc2, lc3, lc4 = st.columns(4)
                 for col, slot in zip((lc1, lc2, lc3, lc4), v226_ladder_slots):
+                    display_price = (
+                        _fmt_price(slot.get("price"))
+                        if slot.get("submit_eligible")
+                        else f"WAIT M5 • ref {_fmt_price(slot.get('reference_price'))}"
+                    )
                     col.metric(
                         f"Order {slot.get('slot','—')} • 0,01 lot",
-                        _fmt_price(slot.get("price")),
+                        display_price,
                         f"depth {_fmt_pct(slot.get('depth'))}",
                     )
+                    col.caption(str(slot.get("stage") or "—"))
                 st.caption(
                     f"arah={v226_four_order_ladder.get('direction','—')} • "
                     f"source={v226_four_order_ladder.get('source_profile_timeframe','—')} • "
-                    f"total bila 4 terisi={v226_four_order_ladder.get('total_lots_if_all_filled',0):.2f} lot • "
-                    "q10/q35/q60/q85 dari distribusi turning depth historis. "
-                    "Masih PREVIEW/SHADOW; auto-submit pending order belum diaktifkan."
+                    f"pre-touch maksimum={v226_four_order_ladder.get('max_pretouch_lots',0):.2f} lot • "
+                    f"total maksimum setelah konfirmasi="
+                    f"{v226_four_order_ladder.get('total_lots_if_all_four_eventually_filled',0):.2f} lot. "
+                    "Order 1–2 = pre-touch q10/q35; Order 3–4 dicadangkan untuk reclaim/MSS "
+                    "dan displacement/retest M5. Masih PREVIEW/SHADOW; auto-submit belum diaktifkan."
                 )
 
             d1, d2, d3, d4 = st.columns(4)
