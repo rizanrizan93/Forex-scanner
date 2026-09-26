@@ -237,16 +237,21 @@ def _plan_from_entry(
         minimum_rr=MIN_PUBLISHED_RR,
     )
     broker_targets=list(structural.get("broker_scaleout_targets") or [])
+    mapped_targets=list(structural.get("mapped_targets") or [])
     if broker_targets:
         ladder=tuple(float(item["target_price"]) for item in broker_targets)
         terminal=float(ladder[-1])
         target_model="STRUCTURAL_SUPPLY_DEMAND_PRIMARY"
+    elif mapped_targets:
+        # Do not bypass a real opposing supply/demand barrier with a farther
+        # synthetic round-number target when the structural terminal is <1.5R.
+        return None
     else:
         if not legacy_ladder or legacy_terminal is None:
             return None
         ladder=tuple(float(x) for x in legacy_ladder)
         terminal=float(legacy_terminal)
-        target_model="LEGACY_RR_ROUND_FALLBACK_NO_ELIGIBLE_STRUCTURAL_TARGET"
+        target_model="LEGACY_RR_ROUND_FALLBACK_NO_STRUCTURAL_TARGET"
 
     rr1=((ladder[0]-entry) if direction=="LONG" else (entry-ladder[0]))/risk
     rr2=((terminal-entry) if direction=="LONG" else (entry-terminal))/risk
