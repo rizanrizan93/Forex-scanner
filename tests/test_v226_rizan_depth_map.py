@@ -5,6 +5,7 @@ from fx_scanner.demo_xau_v226_rizan_depth_map import (
     _clip_nested_locator,
     _depth_band_prices,
     _depth_entry_candidate,
+    _four_order_depth_ladder,
     _historical_profile,
     _nested_locator,
     _select_h1,
@@ -480,6 +481,8 @@ def test_v226_workflow_and_dashboard_are_shadow_only() -> None:
     assert "V226 tetap shadow-only" in dashboard
     assert "Depth Entry Candidate" in dashboard
     assert "Candidate entry" in dashboard
+    assert "4-Order Depth Ladder" in dashboard
+    assert "auto-submit pending order belum diaktifkan" in dashboard
 
     source = (ROOT / "src/fx_scanner/demo_xau_v226_rizan_depth_map.py").read_text()
     assert 'POLICY_EFFECT = "SHADOW_ONLY"' in source
@@ -578,3 +581,37 @@ def test_v226_build_map_exposes_focus_and_both_direction_entry_candidates() -> N
     assert result["entry_candidates"]["long"]["direction"] == "LONG"
     assert result["entry_candidates"]["short"]["direction"] == "SHORT"
     assert result["depth_entry_candidate"]["execution_authority"] is False
+
+
+def test_v226_four_order_ladder_has_four_unique_sorted_prices() -> None:
+    candidate = {
+        "direction": "LONG",
+        "entry_low": 100.0,
+        "entry_high": 110.0,
+        "source_layer": "M15_NESTED_LOCATOR",
+    }
+    profile = {
+        "hazard_bands": [
+            {"lower_depth": i / 10, "upper_depth": (i + 1) / 10, "reversals": 10}
+            for i in range(10)
+        ],
+        "depth_p25": 0.25,
+        "depth_median": 0.50,
+        "depth_p75": 0.75,
+    }
+    ladder = _four_order_depth_ladder(
+        direction="LONG",
+        candidate=candidate,
+        h4_profile=profile,
+        h1_profile=profile,
+        m15_profile=profile,
+    )
+    slots = ladder["slots"]
+    assert len(slots) == 4
+    assert all(slot["lot"] == 0.01 for slot in slots)
+    prices = [slot["price"] for slot in slots]
+    assert prices == sorted(prices, reverse=True)
+    assert len(set(round(price, 8) for price in prices)) == 4
+    assert ladder["total_lots_if_all_filled"] == 0.04
+    assert ladder["auto_submit"] is False
+    assert ladder["execution_authority"] is False
