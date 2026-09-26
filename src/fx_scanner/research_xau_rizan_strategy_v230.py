@@ -149,9 +149,8 @@ def _hotspot_h4(zone: SDZone) -> dict[str, float]:
 
 
 def _price_before(frame: pd.DataFrame, at: datetime) -> float | None:
-    timestamps = frame["timestamp"].to_numpy()
-    target = np.datetime64(pd.Timestamp(ensure_utc(at)).to_datetime64())
-    idx = int(np.searchsorted(timestamps, target, side="left")) - 1
+    timestamps = pd.DatetimeIndex(frame["timestamp"])
+    idx = int(timestamps.searchsorted(pd.Timestamp(ensure_utc(at)), side="left")) - 1
     if idx < 0:
         return None
     return float(frame.iloc[idx]["close"])
