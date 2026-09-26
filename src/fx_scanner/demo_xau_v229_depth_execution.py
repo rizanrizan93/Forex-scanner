@@ -12,6 +12,7 @@ from .demo_xau_v226_rizan_depth_map import (
     WORKER_NAME as V226_WORKER,
 )
 from .execution.factory import build_ctrader_research_feed
+from .demo_xau_v229_ladder_plan import build_parent_ladder_plan
 from .execution.policy import load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
 
@@ -22,7 +23,7 @@ EVENT_TYPE = "DEMO_SIGNAL_GEOMETRY"
 DATA_CONTRACT = "XAU_RIZAN_DEPTH_EXECUTION_V229_1"
 EXECUTION_ENV = "CTRADER_DEMO_DEPTH_EXECUTION_ENABLED"
 
-SIGNAL_TTL_SECONDS = 300
+SIGNAL_TTL_SECONDS = 16 * 60 * 60
 MAX_V226_AGE_SECONDS = 600
 H4_STOP_BUFFER_ATR = 0.15
 MIN_PLAN_RR = 1.0
@@ -130,111 +131,21 @@ def build_execution_plan(
     live_price: float,
     min_rr: float = MIN_PLAN_RR,
 ) -> dict[str, Any] | None:
-    """Promote one fresh V226 depth candidate when live price is inside it.
+    """Build the DEMO-only four-child parent plan before first touch.
 
-    No MSS/reclaim/displacement confirmation is required. The historical
-    first-touch contract remains the admission condition. Entry is still
-    fail-closed to the candidate geometry: no pre-zone chase order is emitted.
+    V226 owns entry geometry. V229 maps four 0.01-lot child slots and structural
+    M15/H1/H4 targets. Slots 1-2 may become pre-touch LIMIT orders; slots 3-4
+    stay reserved for M5 reclaim/MSS and displacement/retest evidence.
     """
-    direction = str(v226_evaluation.get("focus_direction") or "").upper()
-    if direction not in {"LONG", "SHORT"}:
-        return None
-
-    candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
-    if not bool(candidate.get("calibrated_fresh_first_touch")):
-        return None
-    if str(candidate.get("display_status") or "") != "PREPARE_ONLY_FRESH_FIRST_TOUCH":
-        return None
-
-    low = _f(candidate.get("entry_low"))
-    high = _f(candidate.get("entry_high"))
-    if low is None or high is None or not 0 < low < high:
-        return None
-    px = _f(live_price)
-    if px is None or not low <= px <= high:
-        return None
-
-    side_map = dict(v226_evaluation.get(direction.lower()) or {})
-    h4 = dict(dict(side_map.get("h4") or {}).get("zone") or {})
-    h4_low = _f(h4.get("low"))
-    h4_high = _f(h4.get("high"))
-    h4_atr = _f(h4.get("atr_points"))
-    if (
-        h4_low is None
-        or h4_high is None
-        or h4_atr is None
-        or h4_atr <= 0
-        or h4_high <= h4_low
-    ):
-        return None
-
-    buffer = H4_STOP_BUFFER_ATR * h4_atr
-    stop = h4_low - buffer if direction == "LONG" else h4_high + buffer
-    risk = px - stop if direction == "LONG" else stop - px
-    if risk <= 0:
-        return None
-
-    target, target_source = _path_target(
-        atlas_evaluation,
-        direction=direction,
-        entry=px,
+    _ = min_rr  # terminal RR is enforced by the structural target planner at 1.5R.
+    return build_parent_ladder_plan(
+        v226_evaluation=v226_evaluation,
+        atlas_evaluation=atlas_evaluation,
+        live_price=live_price,
     )
-    terminal = dict(
-        dict(atlas_evaluation.get("path_map") or {}).get(
-            "demand_to_supply" if direction == "LONG" else "supply_to_demand"
-        )
-        or {}
-    ).get("terminal_target_zone")
-    terminal = dict(terminal or {})
-    terminal_price = _f(terminal.get("low" if direction == "LONG" else "high"))
-
-    def rr_for(price: float) -> float:
-        reward = price - px if direction == "LONG" else px - price
-        return reward / risk
-
-    if target is None or rr_for(target) + 1e-9 < float(min_rr):
-        if (
-            terminal_price is None
-            or not (terminal_price > px if direction == "LONG" else terminal_price < px)
-            or rr_for(terminal_price) + 1e-9 < float(min_rr)
-        ):
-            return None
-        target = terminal_price
-        target_source = "ATLAS_TERMINAL_OPPOSING_ZONE"
-
-    rr2 = rr_for(float(target))
-    reward = abs(float(target) - px)
-    tp1_reward = min(risk, reward * 0.5)
-    tp1 = px + tp1_reward if direction == "LONG" else px - tp1_reward
-    rr1 = tp1_reward / risk
-
-    return {
-        "direction": direction,
-        "entry_low": low,
-        "entry_high": high,
-        "entry": px,
-        "sl": float(stop),
-        "tp1": float(tp1),
-        "tp2": float(target),
-        "rr1": float(rr1),
-        "rr2": float(rr2),
-        "source_layer": str(candidate.get("source_layer") or ""),
-        "target_source": str(target_source or ""),
-        "h4_zone_id": str(h4.get("zone_id") or ""),
-        "candidate": candidate,
-    }
-
 
 def _candidate_key(plan: dict[str, Any]) -> str:
-    fields = (
-        STRATEGY_ID,
-        str(plan.get("direction") or ""),
-        str(plan.get("h4_zone_id") or ""),
-        str(plan.get("source_layer") or ""),
-        f"{float(plan['entry_low']):.5f}",
-        f"{float(plan['entry_high']):.5f}",
-    )
-    return "|".join(fields)
+    return str(plan.get("candidate_key") or "")
 
 
 def _already_recorded(
@@ -359,10 +270,10 @@ def _write_signal(
         "sl": float(plan["sl"]),
         "tp1": float(plan["tp1"]),
         "tp2": float(plan["tp2"]),
-        "tp3": None,
+        "tp3": float(plan["tp2"]),
         "rr1": float(plan["rr1"]),
         "rr2": float(plan["rr2"]),
-        "rr3": None,
+        "rr3": float(plan["rr2"]),
         "macro_bias": plan["direction"],
         "h4_bias": plan["direction"],
         "h1_bias": plan["direction"],
@@ -421,7 +332,7 @@ def _record_execution_geometry(
             "symbol": SYMBOL,
             "direction": plan["direction"],
             "strategy_id": STRATEGY_ID,
-            "entry_mode": "MARKET_WHEN_LIVE_PRICE_INSIDE_DEPTH_CANDIDATE",
+            "entry_mode": "FOUR_CHILD_2_PRETOUCH_2_M5_CONFIRMATION",
             "candidate_low": plan["entry_low"],
             "candidate_high": plan["entry_high"],
             "planned_entry": plan["entry"],
@@ -431,14 +342,20 @@ def _record_execution_geometry(
             "rr1": plan["rr1"],
             "rr2": plan["rr2"],
             "source_layer": plan["source_layer"],
-            "target_source": plan["target_source"],
+            "target_source": "STRUCTURAL_M15_H1_H4",
             "h4_zone_id": plan["h4_zone_id"],
+            "plan_id": plan.get("plan_id"),
+            "children": list(plan.get("children") or []),
+            "max_children": plan.get("max_children"),
+            "child_lot": plan.get("child_lot"),
+            "max_total_lot": plan.get("max_total_lot"),
+            "generic_market_handoff_allowed": False,
             "execution_influence": True,
             "execution_authority": True,
             "environment": "DEMO",
             "live_execution_enabled": False,
             "server_side_sl_tp_required": True,
-            "microstructure_confirmation_required": False,
+            "microstructure_confirmation_required": "SLOTS_3_4_ONLY",
         },
     )
 
@@ -501,7 +418,7 @@ def run() -> int:
                 min_rr=MIN_PLAN_RR,
             )
             if plan is None:
-                reason = "WAIT_LIVE_PRICE_INSIDE_FRESH_DEPTH_CANDIDATE_OR_VALID_TARGET"
+                reason = "WAIT_FRESH_DEPTH_CANDIDATE_OR_STRUCTURAL_TARGET"
             else:
                 candidate_key = _candidate_key(plan)
                 prior_invalidated = _invalidate_prior_ready(
@@ -543,7 +460,7 @@ def run() -> int:
             "execution_enabled": execution_enabled,
             "execution_authority": True,
             "live_execution_enabled": False,
-            "microstructure_confirmation_required": False,
+            "microstructure_confirmation_required": "SLOTS_3_4_ONLY",
             "reason": reason,
             "signal_id": signal_id,
             "candidate_key": candidate_key,
