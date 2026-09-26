@@ -1,0 +1,69 @@
+name: Research XAU Causal MTF Health Router V235
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/v235-causal-mtf-health-router
+    paths:
+      - "src/fx_scanner/research_xau_causal_mtf_health_router_v235.py"
+      - "tests/test_research_xau_causal_mtf_health_router_v235.py"
+      - ".github/workflows/research-xau-causal-mtf-health-router-v235.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: research-xau-causal-mtf-health-router-v235-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      XAU_V235_V234_DIR: /tmp/v234-shards
+      XAU_V235_V230_DIR: /tmp/v230-shards
+      XAU_V235_OUTPUT: artifacts/xau-causal-mtf-health-router-v235-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pytest==9.0.2
+      - name: Compile
+        run: python -m py_compile src/fx_scanner/research_xau_causal_mtf_health_router_v235.py
+      - name: Focused tests
+        run: pytest -q tests/test_research_xau_causal_mtf_health_router_v235.py
+      - name: Download successful V234 yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36244419319
+          pattern: xau-v234-year-*
+          path: /tmp/v234-shards
+          merge-multiple: false
+      - name: Download frozen V230 reversal shards
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36230335879
+          pattern: xau-v230-year-*
+          path: /tmp/v230-shards
+          merge-multiple: false
+      - name: Run causal MTF health router
+        run: python -m fx_scanner.research_xau_causal_mtf_health_router_v235
+      - name: Upload V235 result
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-causal-mtf-health-router-v235-full
+          path: artifacts/xau-causal-mtf-health-router-v235-full.json
+          if-no-files-found: error
+          retention-days: 30
