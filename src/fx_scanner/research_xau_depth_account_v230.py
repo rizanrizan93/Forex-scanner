@@ -88,9 +88,8 @@ def _bar_window(
     *,
     as_of: datetime,
 ) -> tuple[Bar, ...]:
-    start_at = as_of - timedelta(days=ATLAS_LOOKBACK_DAYS)
-    left = bisect_left(timestamps, start_at)
     right = bisect_right(timestamps, as_of)
+    left = max(0, right - ATLAS_M15_REQUEST_COUNT)
     return tuple(bars[left:right])
 
 
