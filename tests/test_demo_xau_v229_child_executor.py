@@ -191,8 +191,8 @@ def _runtime_fixture(monkeypatch, *, invalid_source=False, broken_parent=False, 
     monkeypatch.setattr(module, "_latest_parent_rows", lambda s: [{"signal_key": "parent", "payload": payload}])
     monkeypatch.setattr(module, "_latest_heartbeat", lambda *a: heartbeat)
     monkeypatch.setattr(module, "_signal_row", lambda *a: signal)
-    monkeypatch.setattr(module, "_record_child_event", lambda **k: None)
-    monkeypatch.setattr(module, "_slot_target", lambda **k: (118.0, {"terminal_rr_eligible": True}))
+    monkeypatch.setattr(module, "_record_child_event", lambda *a, **k: None)
+    monkeypatch.setattr(module, "_slot_target", lambda *a, **k: (118.0, {"terminal_rr_eligible": True}))
     return module, session, submitted, updates, heartbeats
 
 
