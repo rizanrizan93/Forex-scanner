@@ -1,0 +1,111 @@
+name: Research EURUSD Depth V235
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/v235-eurusd-depth-2012-2026
+    paths:
+      - "src/fx_scanner/research_eurusd_histdata_download_v235.py"
+      - "src/fx_scanner/research_eurusd_depth_v235_year_runtime.py"
+      - "src/fx_scanner/research_eurusd_depth_v235_aggregate.py"
+      - "tests/test_research_eurusd_depth_v235.py"
+      - ".github/workflows/research-eurusd-depth-v235.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-eurusd-depth-v235-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Test V235
+        run: pytest -q tests/test_research_eurusd_depth_v235.py tests/test_research_xau_zone_reversal_depth_v225.py
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      EURUSD_V235_YEAR: ${{ matrix.year }}
+      EURUSD_V235_PRICE_CSV: /tmp/histdata/eurusd-v235-${{ matrix.year }}.csv
+      EURUSD_V235_PRICE_PROVENANCE: artifacts/eurusd-v235-price-provenance-${{ matrix.year }}.json
+      EURUSD_V235_YEAR_OUTPUT: artifacts/eurusd-depth-v235-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download and normalize HistData EURUSD M1
+        run: python -m fx_scanner.research_eurusd_histdata_download_v235
+      - name: Build yearly EURUSD depth shard
+        run: python -m fx_scanner.research_eurusd_depth_v235_year_runtime
+      - name: Upload yearly shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: eurusd-v235-year-${{ matrix.year }}
+          path: |
+            artifacts/eurusd-depth-v235-${{ matrix.year }}.json
+            artifacts/eurusd-v235-price-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EURUSD_V235_SHARD_DIR: /tmp/eurusd-v235-shards
+      EURUSD_V235_FULL_OUTPUT: artifacts/eurusd-depth-v235-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download all yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: eurusd-v235-year-*
+          path: /tmp/eurusd-v235-shards
+          merge-multiple: false
+      - name: Aggregate 2012-2026 EURUSD Depth benchmark
+        run: python -m fx_scanner.research_eurusd_depth_v235_aggregate
+      - name: Upload full benchmark
+        uses: actions/upload-artifact@v4
+        with:
+          name: eurusd-depth-v235-full
+          path: artifacts/eurusd-depth-v235-full.json
+          if-no-files-found: error
+          retention-days: 30
