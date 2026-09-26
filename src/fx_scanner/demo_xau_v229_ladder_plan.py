@@ -4,6 +4,8 @@ import hashlib
 from math import isfinite
 from typing import Any
 
+from .demo_xau_v229_lifecycle import ALLOWED_ENTRY_SOURCES
+
 from .demo_xau_structural_targets_v229 import (
     build_structural_target_plan,
     runtime_m15_target_zones,
@@ -72,6 +74,8 @@ def build_parent_ladder_plan(
         return None
 
     candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
+    if str(candidate.get("source_layer") or "") not in ALLOWED_ENTRY_SOURCES:
+        return None
     if not bool(candidate.get("calibrated_fresh_first_touch")):
         return None
     if str(candidate.get("display_status") or "") != "PREPARE_ONLY_FRESH_FIRST_TOUCH":
@@ -202,6 +206,9 @@ def build_parent_ladder_plan(
         "rr2": float(rr2),
         "source_layer": str(candidate.get("source_layer") or ""),
         "h4_zone_id": str(h4.get("zone_id") or ""),
+        "h4_zone_snapshot": dict(h4),
+        "precision_source_snapshot": dict(dict(side_map.get("h1") or {}).get("zone") or {}),
+        "research_cohort": str(candidate.get("source_layer") or ""),
         "candidate": candidate,
         "children": children,
         "max_children": MAX_CHILDREN,
