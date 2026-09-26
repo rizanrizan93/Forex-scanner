@@ -102,6 +102,15 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v229_depth_execution
 
+      - name: Execute RIZAN V229 four-child DEMO ladder
+        id: execute_rizan_children
+        if: >-
+          ${{ !cancelled() &&
+              steps.repair_existing_protection.outcome == 'success' &&
+              steps.produce_rizan_depth.outcome == 'success' }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v229_child_executor
+
       - name: Execute fresh exact-authorized DEMO signals
         id: execute_fresh_handoff
         if: >-
@@ -120,6 +129,7 @@ jobs:
           CANONICAL_OUTCOME: ${{ steps.produce_xau_m15_ema_smc_reclaim.outcome }}
           AFIC_OUTCOME: ${{ steps.produce_xau_afic.outcome }}
           RIZAN_DEPTH_OUTCOME: ${{ steps.produce_rizan_depth.outcome }}
+          RIZAN_CHILD_OUTCOME: ${{ steps.execute_rizan_children.outcome }}
           HANDOFF_OUTCOME: ${{ steps.execute_fresh_handoff.outcome }}
         run: |
           set -euo pipefail
@@ -134,6 +144,10 @@ jobs:
           fi
           if [ "${RIZAN_DEPTH_OUTCOME}" != "success" ]; then
             echo "XAU_EXECUTION_LANE_FAIL stage=RIZAN_DEPTH_EXECUTION outcome=${RIZAN_DEPTH_OUTCOME} safety=FAIL_CLOSED"
+            failed=1
+          fi
+          if [ "${RIZAN_CHILD_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_FAIL stage=RIZAN_CHILD_EXECUTION outcome=${RIZAN_CHILD_OUTCOME} safety=FAIL_CLOSED"
             failed=1
           fi
           if [ "${V24_OUTCOME}" != "success" ] && [ "${CANONICAL_OUTCOME}" != "success" ]; then
