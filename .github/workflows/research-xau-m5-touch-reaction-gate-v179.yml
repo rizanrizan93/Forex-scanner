@@ -25,7 +25,7 @@ concurrency:
 jobs:
   m5-touch-reaction-v179:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 80
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -39,6 +39,8 @@ jobs:
       SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       XAU_M5_TOUCH_REACTION_GATE_V179_OUTPUT: artifacts/xau-m5-touch-reaction-gate-v179.json
+      XAU_V179_M15_HISTORY_BARS: "200000"
+      XAU_V179_M5_HISTORY_BARS: "600000"
 
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +57,7 @@ jobs:
         run: python -m fx_scanner.cli validate-config
       - name: Unit test V179
         run: pytest -q tests/test_research_xau_m5_touch_reaction_gate_v179.py
-      - name: Run 100K M15 plus 300K M5 touch research
+      - name: Run 200K M15 plus 600K M5 touch research
         if: ${{ github.event_name != 'pull_request' }}
         run: python -m fx_scanner.research_xau_m5_touch_reaction_gate_v179_runtime
       - name: Upload V179 evidence

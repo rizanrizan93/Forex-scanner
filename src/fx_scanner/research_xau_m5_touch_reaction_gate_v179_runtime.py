@@ -11,9 +11,7 @@ from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .research_xau_h1_origin_hold_break_m5_v178_runtime import (
     M15_SECONDS,
-    M15_TARGET,
     M5_SECONDS,
-    M5_TARGET,
     _fetch_history,
 )
 from .research_xau_m5_touch_reaction_gate_v179 import (
@@ -25,6 +23,8 @@ from .storage.supabase_operational import SupabaseOperationalStore
 
 SYMBOL = "XAUUSD"
 WORKER_NAME = "ctrader_xau_m5_touch_reaction_gate_v179"
+M15_TARGET = int(os.getenv("XAU_V179_M15_HISTORY_BARS", "200000"))
+M5_TARGET = int(os.getenv("XAU_V179_M5_HISTORY_BARS", "600000"))
 
 
 def _artifact_path() -> Path:
