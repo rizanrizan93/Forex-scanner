@@ -4251,6 +4251,8 @@ with forecast_tab:
         p4.metric("Terminal target", _fmt_price(prepared_plan.get("tp2")))
         p5.metric("RR terminal", _fmt_distance(prepared_plan.get("rr2"), "R"))
         target_ladder = list(prepared_plan.get("tp_ladder") or [])
+        target_model = str(prepared_plan.get("target_model") or "LEGACY")
+        structural_targets = list(prepared_plan.get("structural_target_ladder") or [])
         if target_ladder:
             st.caption(
                 "Target ladder: "
@@ -4259,6 +4261,35 @@ with forecast_tab:
                     for i, level in enumerate(target_ladder, start=1)
                 )
                 + f" • Terminal target = TP{len(target_ladder)}"
+                + f" • model={target_model}"
+            )
+        if structural_targets:
+            st.markdown("###### Peta TP Struktural — opposing Supply/Demand")
+            structural_rows = []
+            for item in structural_targets:
+                structural_rows.append(
+                    {
+                        "timeframe": item.get("timeframe"),
+                        "role": item.get("role"),
+                        "zona lawan": (
+                            f"{_fmt_price(item.get('zone_low'))}–"
+                            f"{_fmt_price(item.get('zone_high'))}"
+                        ),
+                        "TP front-run": _fmt_price(item.get("target_price")),
+                        "RR": _fmt_distance(item.get("rr"), "R"),
+                        "lolos RR minimum": bool(item.get("rr_eligible")),
+                    }
+                )
+            st.dataframe(pd.DataFrame(structural_rows), hide_index=True, width="stretch")
+            macro_target = dict(prepared_plan.get("macro_terminal_target") or {})
+            st.caption(
+                "Urutan struktural: M15 → H1 → H4; D1 hanya macro terminal opsional. "
+                "TP ditempatkan sedikit sebelum proximal edge zona lawan. RR adalah validasi, "
+                "bukan sumber level target."
+                + (
+                    f" Macro D1: {_fmt_price(macro_target.get('target_price'))}."
+                    if macro_target else ""
+                )
             )
         if "CONFIRMED" in state.upper() and grade == "A" and auto_enabled:
             st.success(

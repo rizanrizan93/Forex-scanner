@@ -5,6 +5,7 @@ from math import isfinite
 from typing import Any
 
 from .models import ensure_utc
+from .demo_xau_structural_targets_v229 import runtime_m15_target_zones
 from .storage.supabase_operational import SupabaseOperationalStore
 
 CONTRACT = "XAU_AFIC_SUPPLY_DEMAND_CONTEXT_V1"
@@ -284,6 +285,48 @@ def attach_supply_demand_context(
     if last_price is None:
         last_price = _finite(out.get("map_price"))
 
+    runtime_m15_zones = runtime_m15_target_zones(
+        list(atlas.get("chart_bars_m15") or [])
+    )
+    wanted_target_direction = (
+        "SHORT" if continuation == "LONG"
+        else "LONG" if continuation == "SHORT"
+        else ""
+    )
+    m15_target_zones = [
+        dict(zone)
+        for zone in runtime_m15_zones
+        if str(zone.get("direction") or "").upper() == wanted_target_direction
+    ]
+    m15_target_zones.sort(
+        key=lambda zone: (
+            _distance_to_price(zone, last_price)
+            if _distance_to_price(zone, last_price) is not None
+            else float("inf")
+        )
+    )
+    htf_target_pool: list[dict[str, Any]] = []
+    seen_target_zone_ids: set[str] = set()
+    for raw_zone in (
+        list(continuation_path.get("destination_stack") or [])
+        + list(atlas.get("zones") or [])
+    ):
+        zone = dict(raw_zone or {})
+        zone_id = str(zone.get("zone_id") or "")
+        if not zone_id or zone_id in seen_target_zone_ids:
+            continue
+        seen_target_zone_ids.add(zone_id)
+        htf_target_pool.append(zone)
+
+    structural_target_context = {
+        "contract": "XAU_STRUCTURAL_TARGET_CONTEXT_V229_1",
+        "direction": continuation or None,
+        "m15_opposing_zones": m15_target_zones[:12],
+        "htf_destination_stack": htf_target_pool,
+        "execution_influence": False,
+        "execution_authority": False,
+    }
+
     dom_state = str(dom.get("state") or "UNAVAILABLE")
     dom_score = _finite(dom.get("dom_pressure_score"))
     dom_imbalance = _finite(dom.get("last_imbalance"))
@@ -429,6 +472,7 @@ def attach_supply_demand_context(
         "path_contract": path_map.get("contract"),
         "first_leg_path": first_leg_path,
         "continuation_path": continuation_path,
+        "structural_target_context": structural_target_context,
         "active_reaction_path": active_path,
         "path_direction_conflict": path_direction_conflict,
         "path_overlap_ratio": path_overlap_ratio,
@@ -522,6 +566,15 @@ def context_token(payload: dict[str, Any]) -> tuple[str, ...]:
     projection_current = dict(projection.get("current_leg") or {})
     projection_next = dict(projection.get("next_leg") or {})
     primary_target = dict(first_leg_path.get("primary_opposing_zone") or {})
+    structural_targets = dict(context.get("structural_target_context") or {})
+    m15_target_ids = ",".join(
+        str(dict(item).get("zone_id") or "NONE")
+        for item in list(structural_targets.get("m15_opposing_zones") or [])[:6]
+    )
+    htf_target_ids = ",".join(
+        str(dict(item).get("zone_id") or "NONE")
+        for item in list(structural_targets.get("htf_destination_stack") or [])[:6]
+    )
     return (
         str(context.get("state") or "NONE"),
         str(context.get("atlas_observed_at") or "NONE"),
@@ -531,6 +584,8 @@ def context_token(payload: dict[str, Any]) -> tuple[str, ...]:
         str(context.get("opposite_zone_near_price") or False),
         str(first_leg_path.get("state") or "NONE"),
         str(primary_target.get("zone_id") or "NONE"),
+        m15_target_ids or "NONE",
+        htf_target_ids or "NONE",
         str(micro.get("state") or "NONE"),
         str(dict(micro.get("refined_entry_pocket") or {}).get("origin_at") or "NONE"),
         str(projection.get("state") or "NONE"),
