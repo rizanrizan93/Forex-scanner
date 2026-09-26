@@ -815,6 +815,123 @@ def _overlay(
 
 
 
+
+def _histogram_quantile_depth(profile: dict[str, Any], q: float) -> float | None:
+    """Approximate a successful-turning-depth quantile from 10% hazard bins."""
+    target = min(max(float(q), 0.0), 1.0)
+    rows = [
+        dict(row) for row in list(profile.get("hazard_bands") or [])
+        if int(dict(row).get("reversals") or 0) > 0
+    ]
+    total = sum(int(row.get("reversals") or 0) for row in rows)
+    if total <= 0:
+        return None
+    threshold = target * total
+    running = 0
+    for row in rows:
+        count = int(row.get("reversals") or 0)
+        lower = _f(row.get("lower_depth"))
+        upper = _f(row.get("upper_depth"))
+        if lower is None or upper is None or upper <= lower:
+            running += count
+            continue
+        if running + count >= threshold:
+            within = 0.0 if count <= 0 else (threshold - running) / count
+            return min(max(lower + within * (upper - lower), 0.0), 0.999999)
+        running += count
+    return 0.999999
+
+
+def _ladder_price(
+    *,
+    direction: str,
+    low: float,
+    high: float,
+    depth: float,
+) -> float:
+    d = min(max(float(depth), 0.0), 1.0)
+    width = max(float(high) - float(low), 1e-12)
+    return float(high) - d * width if direction == "LONG" else float(low) + d * width
+
+
+def _four_order_depth_ladder(
+    *,
+    direction: str,
+    candidate: dict[str, Any],
+    h4_profile: dict[str, Any],
+    h1_profile: dict[str, Any],
+    m15_profile: dict[str, Any],
+) -> dict[str, Any]:
+    """Build four equal 0.01-lot display slots from historical turning depth.
+
+    Quantiles q10/q35/q60/q85 balance first-fill coverage versus overly early
+    entry. This is a planner only; broker submission remains disabled.
+    """
+    low = _f(candidate.get("entry_low"))
+    high = _f(candidate.get("entry_high"))
+    if low is None or high is None or high <= low:
+        return {}
+    source = str(candidate.get("source_layer") or "")
+    if source.startswith("M15"):
+        profile = m15_profile
+        profile_tf = "M15"
+    elif source.startswith("H1"):
+        profile = h1_profile
+        profile_tf = "H1"
+    else:
+        profile = h4_profile
+        profile_tf = "H4"
+
+    qs = (0.10, 0.35, 0.60, 0.85)
+    depths = [_histogram_quantile_depth(profile, q) for q in qs]
+    if any(depth is None for depth in depths):
+        fallback = [
+            _f(profile.get("depth_p25")),
+            _f(profile.get("depth_median")),
+            _f(profile.get("depth_p75")),
+        ]
+        if any(value is None for value in fallback):
+            return {}
+        p25, p50, p75 = (float(value) for value in fallback)
+        depths = [max(0.0, p25 * 0.5), p25, p50, min(0.95, p75)]
+
+    clean_depths = sorted(min(max(float(d), 0.0), 0.95) for d in depths if d is not None)
+    if len(clean_depths) != 4:
+        return {}
+
+    slots = []
+    for index, (q, depth) in enumerate(zip(qs, clean_depths), start=1):
+        slots.append(
+            {
+                "slot": index,
+                "lot": 0.01,
+                "quantile": q,
+                "depth": depth,
+                "price": _ladder_price(
+                    direction=direction,
+                    low=low,
+                    high=high,
+                    depth=depth,
+                ),
+            }
+        )
+    return {
+        "mode": "FOUR_SLOT_DEPTH_LADDER_PREVIEW",
+        "direction": direction,
+        "source_profile_timeframe": profile_tf,
+        "candidate_low": low,
+        "candidate_high": high,
+        "total_lots_if_all_filled": 0.04,
+        "slots": slots,
+        "auto_submit": False,
+        "execution_authority": False,
+        "note": (
+            "Preview only. Auto pending-limit submission stays fail-closed until V228 "
+            "M5 historical evidence and prospective capture validation pass."
+        ),
+    }
+
+
 def _depth_entry_candidate(
     *,
     direction: str,
@@ -1080,6 +1197,13 @@ def _direction_map(
         m15_profile=m15_profile,
         h4_selection_mode=h4_selection_mode,
     )
+    four_order_ladder = _four_order_depth_ladder(
+        direction=direction,
+        candidate=depth_entry_candidate,
+        h4_profile=h4_profile,
+        h1_profile=h1_profile,
+        m15_profile=m15_profile,
+    )
 
     return {
         "direction": direction,
@@ -1109,6 +1233,7 @@ def _direction_map(
         "historical_hierarchy": hierarchy,
         "narrowest_locator": narrowest,
         "depth_entry_candidate": depth_entry_candidate,
+        "four_order_ladder": four_order_ladder,
         "overlays": overlays,
         "execution_influence": False,
         "execution_authority": False,
@@ -1205,6 +1330,11 @@ def build_depth_map(
         "entry_candidates": {
             "long": dict(long_map.get("depth_entry_candidate") or {}),
             "short": dict(short_map.get("depth_entry_candidate") or {}),
+        },
+        "four_order_ladder": dict(focus_map.get("four_order_ladder") or {}),
+        "order_ladders": {
+            "long": dict(long_map.get("four_order_ladder") or {}),
+            "short": dict(short_map.get("four_order_ladder") or {}),
         },
         "long": long_map,
         "short": short_map,
