@@ -1,0 +1,126 @@
+name: Research XAU H1 Nested Aggressive Reversal V235
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/v235-h1-nested-aggressive-reversal
+    paths:
+      - "src/fx_scanner/research_xau_h1_nested_aggressive_reversal_v235_year.py"
+      - "src/fx_scanner/research_xau_h1_nested_aggressive_reversal_v235_aggregate.py"
+      - "tests/test_research_xau_h1_nested_aggressive_reversal_v235.py"
+      - ".github/workflows/research-xau-h1-nested-aggressive-reversal-v235.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: research-xau-h1-nested-aggressive-reversal-v235-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pytest==9.0.2
+      - name: Compile
+        run: |
+          python -m py_compile src/fx_scanner/research_xau_h1_nested_aggressive_reversal_v235_year.py
+          python -m py_compile src/fx_scanner/research_xau_h1_nested_aggressive_reversal_v235_aggregate.py
+      - name: Focused tests
+        run: pytest -q tests/test_research_xau_h1_nested_aggressive_reversal_v235.py
+
+  replay-year:
+    needs: syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v235-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v235-price-provenance-${{ matrix.year }}.json
+      XAU_V235_YEAR: ${{ matrix.year }}
+      XAU_V235_PRICE_CSV: /tmp/histdata/xau-v235-${{ matrix.year }}.csv
+      XAU_V235_OUTPUT: artifacts/xau-h1-nested-aggressive-reversal-v235-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download HistData XAUUSD M1
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Replay V235 H1 nested aggressive reversal
+        run: python -m fx_scanner.research_xau_h1_nested_aggressive_reversal_v235_year
+      - name: Upload V235 year
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v235-year-${{ matrix.year }}
+          path: |
+            artifacts/xau-h1-nested-aggressive-reversal-v235-${{ matrix.year }}.json
+            artifacts/xau-v235-price-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: replay-year
+    if: always() && needs.replay-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      XAU_V235_SHARD_DIR: /tmp/v235-shards
+      XAU_V235_V230_DIR: /tmp/v230-shards
+      XAU_V235_FULL_OUTPUT: artifacts/xau-h1-nested-aggressive-portfolio-v235-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download V235 yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v235-year-*
+          path: /tmp/v235-shards
+          merge-multiple: false
+      - name: Download frozen V230/V231 reversal shards
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36230335879
+          pattern: xau-v230-year-*
+          path: /tmp/v230-shards
+          merge-multiple: false
+      - name: Aggregate V235 plus frozen V231
+        run: python -m fx_scanner.research_xau_h1_nested_aggressive_reversal_v235_aggregate
+      - name: Upload V235 full result
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-h1-nested-aggressive-portfolio-v235-full
+          path: artifacts/xau-h1-nested-aggressive-portfolio-v235-full.json
+          if-no-files-found: error
+          retention-days: 30
