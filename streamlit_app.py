@@ -327,6 +327,123 @@ def _rizan_chart_frame(
     return out.tail(limit)
 
 
+def _chart_price(value: Any) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not pd.notna(parsed):
+        return None
+    return parsed
+
+
+def _rizan_chart_target_ladder(
+    *,
+    direction: str,
+    price_now: float,
+    entry_zone: dict[str, Any] | None,
+    structural_targets: list[dict[str, Any]] | None,
+    current_target: Any,
+    terminal_zone: dict[str, Any] | None,
+    next_target: Any,
+) -> tuple[list[dict[str, Any]], float | None, bool]:
+    """Return a clean geometric target ladder for the chart.
+
+    If price is still approaching the active depth/reaction zone, the visual path
+    first points to the entry reference and then follows structural targets.
+    Otherwise only still-forward targets are shown. Structural M15/H1/H4 targets
+    always take precedence over legacy path fallbacks.
+    """
+    side = str(direction or "").upper()
+    zone = dict(entry_zone or {})
+    low = _chart_price(zone.get("entry_low", zone.get("low")))
+    high = _chart_price(zone.get("entry_high", zone.get("high")))
+    entry_ref = _chart_price(zone.get("entry_reference"))
+    if entry_ref is None and low is not None and high is not None:
+        entry_ref = (low + high) / 2.0
+
+    approaching_entry = bool(
+        side == "LONG"
+        and high is not None
+        and float(price_now) > high
+        or side == "SHORT"
+        and low is not None
+        and float(price_now) < low
+    )
+    anchor = entry_ref if approaching_entry and entry_ref is not None else float(price_now)
+
+    raw_targets: list[dict[str, Any]] = []
+    for raw in list(structural_targets or []):
+        item = dict(raw or {})
+        price = _chart_price(item.get("target_price"))
+        timeframe = str(item.get("timeframe") or "").upper()
+        if price is None or timeframe not in {"M15", "H1", "H4", "D1"}:
+            continue
+        if side == "LONG" and price <= anchor:
+            continue
+        if side == "SHORT" and price >= anchor:
+            continue
+        raw_targets.append(
+            {
+                "price": price,
+                "timeframe": timeframe,
+                "role": str(item.get("role") or f"{timeframe}_TARGET"),
+                "zone_low": _chart_price(item.get("zone_low")),
+                "zone_high": _chart_price(item.get("zone_high")),
+                "rr": _chart_price(item.get("rr")),
+                "source": "STRUCTURAL",
+            }
+        )
+
+    if not raw_targets:
+        fallbacks: list[tuple[Any, str, str]] = [
+            (current_target, "", "REACTION TARGET"),
+        ]
+        terminal = dict(terminal_zone or {})
+        terminal_price = (
+            _chart_price(terminal.get("low"))
+            if side == "LONG"
+            else _chart_price(terminal.get("high"))
+            if side == "SHORT"
+            else None
+        )
+        fallbacks.append((terminal_price, str(terminal.get("timeframe") or ""), "OPPOSING ZONE"))
+        fallbacks.append((next_target, "", "NEXT TARGET"))
+        for value, timeframe, role in fallbacks:
+            price = _chart_price(value)
+            if price is None:
+                continue
+            if side == "LONG" and price <= anchor:
+                continue
+            if side == "SHORT" and price >= anchor:
+                continue
+            raw_targets.append(
+                {
+                    "price": price,
+                    "timeframe": timeframe.upper(),
+                    "role": role,
+                    "zone_low": None,
+                    "zone_high": None,
+                    "rr": None,
+                    "source": "PATH_FALLBACK",
+                }
+            )
+
+    raw_targets.sort(key=lambda item: abs(float(item["price"]) - anchor))
+    targets: list[dict[str, Any]] = []
+    for item in raw_targets:
+        if any(abs(float(existing["price"]) - float(item["price"])) < 0.05 for existing in targets):
+            continue
+        targets.append(item)
+        if len(targets) >= 3:
+            break
+
+    for index, item in enumerate(targets, start=1):
+        tf = str(item.get("timeframe") or "")
+        item["label"] = f"TP{index}" + (f" {tf}" if tf else "")
+    return targets, entry_ref, approaching_entry
+
+
 def _rizan_chart_png(
     raw_bars: list[dict[str, Any]] | tuple[dict[str, Any], ...],
     *,
@@ -340,6 +457,8 @@ def _rizan_chart_png(
     terminal_zone: dict[str, Any] | None,
     next_target: Any,
     depth_overlays: list[dict[str, Any]] | None = None,
+    entry_zone: dict[str, Any] | None = None,
+    structural_targets: list[dict[str, Any]] | None = None,
 ) -> tuple[bytes | None, str | None]:
     frame = _rizan_chart_frame(raw_bars, timeframe)
     if frame.empty or len(frame) < 4:
@@ -352,7 +471,7 @@ def _rizan_chart_png(
     except Exception as exc:
         return None, f"{type(exc).__name__}: {exc}"
 
-    fig, ax = plt.subplots(figsize=(13.0, 6.8))
+    fig, ax = plt.subplots(figsize=(14.2, 7.4))
     fig.patch.set_facecolor("#0e1117")
     ax.set_facecolor("#0e1117")
 
@@ -384,7 +503,7 @@ def _rizan_chart_png(
             )
         )
 
-    right_edge = len(visible) + 11
+    right_edge = len(visible) + 14
     nearest_long = next(
         (z for z in zones if str(z.get("direction") or "").upper() == "LONG"),
         None,
@@ -451,26 +570,27 @@ def _rizan_chart_png(
             detail += f" • hold50 {_fmt_pct(p_hold)}"
         if role:
             detail += f" • {role}"
-        ax.text(
-            right_edge - 0.6,
-            (low + high) / 2.0,
-            label + ("\n" + detail if detail else ""),
-            ha="right",
-            va="center",
-            fontsize=8.2,
-            color="#f8fafc",
-            bbox=dict(
-                boxstyle="round,pad=0.35",
-                facecolor="#111827",
-                edgecolor=edge,
-                alpha=0.93,
-            ),
-            zorder=6,
-        )
+        if important:
+            ax.text(
+                right_edge - 0.6,
+                (low + high) / 2.0,
+                label + ("\n" + detail if detail else ""),
+                ha="right",
+                va="center",
+                fontsize=8.0,
+                color="#f8fafc",
+                bbox=dict(
+                    boxstyle="round,pad=0.32",
+                    facecolor="#111827",
+                    edgecolor=edge,
+                    alpha=0.94,
+                ),
+                zorder=6,
+            )
 
     # V226 RIZAN Depth hotspot / nested locator overlays.
     chart_tf = str(timeframe or "M15").upper()
-    for depth in list(depth_overlays or []):
+    for depth in list(depth_overlays or [])[:4]:
         visible_on = {str(item).upper() for item in list(depth.get("visible_on") or [])}
         if visible_on and chart_tf not in visible_on:
             continue
@@ -538,6 +658,86 @@ def _rizan_chart_png(
             zorder=8,
         )
 
+    targets, entry_reference, approaching_entry = _rizan_chart_target_ladder(
+        direction=current_direction,
+        price_now=float(price_now),
+        entry_zone=entry_zone,
+        structural_targets=structural_targets,
+        current_target=current_target,
+        terminal_zone=terminal_zone,
+        next_target=next_target,
+    )
+
+    active_entry = dict(entry_zone or {})
+    active_entry_low = _chart_price(active_entry.get("entry_low", active_entry.get("low")))
+    active_entry_high = _chart_price(active_entry.get("entry_high", active_entry.get("high")))
+    if active_entry_low is not None and active_entry_high is not None and active_entry_high > active_entry_low:
+        entry_start_x = max(0.0, len(visible) * 0.56)
+        ax.add_patch(
+            Rectangle(
+                (entry_start_x, active_entry_low),
+                right_edge - entry_start_x - 1.0,
+                active_entry_high - active_entry_low,
+                facecolor="#f59e0b",
+                edgecolor="#fbbf24",
+                alpha=0.13,
+                linewidth=2.0,
+                linestyle="-",
+                zorder=2,
+            )
+        )
+        ax.text(
+            entry_start_x + 0.35,
+            active_entry_high,
+            "DEPTH / ENTRY AKTIF  "
+            f"{active_entry_low:.2f}–{active_entry_high:.2f}",
+            ha="left",
+            va="bottom",
+            fontsize=8.0,
+            color="#fbbf24",
+            bbox=dict(
+                boxstyle="round,pad=0.28",
+                facecolor="#111827",
+                edgecolor="#f59e0b",
+                alpha=0.94,
+            ),
+            zorder=9,
+        )
+
+    target_colors = ("#38bdf8", "#a78bfa", "#f59e0b")
+    for index, target in enumerate(targets):
+        target_price = float(target["price"])
+        target_color = target_colors[min(index, len(target_colors) - 1)]
+        target_label = str(target.get("label") or f"TP{index + 1}")
+        if index == len(targets) - 1 and len(targets) > 1:
+            target_label += " • TARGET BERIKUTNYA"
+        ax.hlines(
+            target_price,
+            max(0.0, len(visible) * 0.58),
+            right_edge - 1.0,
+            color=target_color,
+            linewidth=1.05,
+            linestyle=":",
+            alpha=0.82,
+            zorder=5,
+        )
+        ax.text(
+            right_edge - 0.6,
+            target_price,
+            f"{target_label}  {target_price:.2f}",
+            ha="right",
+            va="bottom",
+            fontsize=8.1,
+            color=target_color,
+            bbox=dict(
+                boxstyle="round,pad=0.24",
+                facecolor="#111827",
+                edgecolor=target_color,
+                alpha=0.94,
+            ),
+            zorder=9,
+        )
+
     ax.axhline(float(price_now), color="#f8fafc", linewidth=1.0, linestyle="--", alpha=0.72)
     ax.text(
         right_edge - 0.6,
@@ -554,48 +754,46 @@ def _rizan_chart_png(
     path_points: list[tuple[float, float, str]] = [
         (max(0.0, len(visible) - 5.0), float(price_now), "NOW")
     ]
-    try:
-        if current_target is not None:
-            path_points.append((len(visible) + 1.5, float(current_target), "REACTION"))
-    except (TypeError, ValueError):
-        pass
-    if terminal_zone:
-        try:
-            terminal_mid = (
-                float(terminal_zone.get("low")) + float(terminal_zone.get("high"))
-            ) / 2.0
-            path_points.append((len(visible) + 5.0, terminal_mid, "OPPOSING ZONE"))
-        except (TypeError, ValueError):
-            pass
-    try:
-        if next_target is not None and len(path_points) >= 2:
-            path_points.append((len(visible) + 8.5, float(next_target), "NEXT LEG"))
-    except (TypeError, ValueError):
-        pass
+    future_x = len(visible) + 1.2
+    if approaching_entry and entry_reference is not None:
+        path_points.append((future_x, float(entry_reference), "DEPTH / ENTRY"))
+        future_x += 3.3
+
+    for index, target in enumerate(targets):
+        label = str(target.get("label") or f"TP{index + 1}")
+        if index == len(targets) - 1 and len(targets) > 1:
+            label += " • NEXT TARGET"
+        path_points.append((future_x, float(target["price"]), label))
+        future_x += 3.3
 
     for idx, ((x1, y1, _), (x2, y2, label2)) in enumerate(zip(path_points, path_points[1:])):
-        line_color = "#38bdf8" if idx == 0 else "#f59e0b"
+        if label2 == "DEPTH / ENTRY":
+            line_color = "#fbbf24"
+        else:
+            target_index = max(0, idx - (1 if approaching_entry and entry_reference is not None else 0))
+            line_color = target_colors[min(target_index, len(target_colors) - 1)]
         arrow = FancyArrowPatch(
             (x1, y1),
             (x2, y2),
             arrowstyle="-|>",
-            mutation_scale=16,
-            linewidth=1.8,
+            mutation_scale=18,
+            linewidth=2.0,
             color=line_color,
-            linestyle="-" if idx == 0 else "--",
-            connectionstyle="arc3,rad=0.08",
-            zorder=7,
+            linestyle="-",
+            connectionstyle="arc3,rad=0.06",
+            zorder=10,
         )
         ax.add_patch(arrow)
         ax.text(
             x2,
             y2,
             label2,
-            fontsize=8,
+            fontsize=8.2,
             color=line_color,
-            va="bottom",
+            va="top" if y2 < y1 else "bottom",
             ha="center",
-            zorder=8,
+            fontweight="bold",
+            zorder=11,
         )
 
     y_values = [float(visible["low"].min()), float(visible["high"].max()), float(price_now)]
@@ -604,7 +802,7 @@ def _rizan_chart_png(
             y_values.extend([float(zone["low"]), float(zone["high"])])
         except (KeyError, TypeError, ValueError):
             pass
-    for depth in list(depth_overlays or []):
+    for depth in list(depth_overlays or [])[:4]:
         visible_on = {str(item).upper() for item in list(depth.get("visible_on") or [])}
         if visible_on and chart_tf not in visible_on:
             continue
@@ -612,6 +810,10 @@ def _rizan_chart_png(
             y_values.extend([float(depth["low"]), float(depth["high"])])
         except (KeyError, TypeError, ValueError):
             pass
+    if active_entry_low is not None and active_entry_high is not None:
+        y_values.extend([active_entry_low, active_entry_high])
+    for target in targets:
+        y_values.append(float(target["price"]))
     pad = max(2.0, (max(y_values) - min(y_values)) * 0.08)
     ax.set_ylim(min(y_values) - pad, max(y_values) + pad)
     ax.set_xlim(-1.0, right_edge)
@@ -635,7 +837,7 @@ def _rizan_chart_png(
 
     ax.set_title(
         f"XAUUSD • RIZAN-style Supply/Demand • {str(timeframe).upper()} • "
-        f"leg aktif {str(current_direction or '—').upper()}",
+        f"leg aktif {str(current_direction or '—').upper()} • path: ENTRY → TP berikutnya",
         color="#f8fafc",
         fontsize=12,
         loc="left",
@@ -1844,6 +2046,94 @@ with forecast_tab:
             f" • leg aktif **{dc_current_leg_direction}**."
         )
 
+    chart_v229_geometry: dict[str, Any] = {}
+    for chart_event in execution_events:
+        chart_payload = dict(chart_event.get("payload") or {})
+        if (
+            str(chart_event.get("event_type") or "") == "DEMO_SIGNAL_GEOMETRY"
+            and (
+                str(chart_event.get("code") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
+                or str(chart_payload.get("strategy_id") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
+            )
+        ):
+            candidate_low = _chart_price(chart_payload.get("candidate_low"))
+            candidate_high = _chart_price(chart_payload.get("candidate_high"))
+            active_low = _chart_price(v226_entry_candidate.get("entry_low"))
+            active_high = _chart_price(v226_entry_candidate.get("entry_high"))
+            same_candidate = bool(
+                active_low is None
+                or active_high is None
+                or candidate_low is None
+                or candidate_high is None
+                or (
+                    abs(active_low - candidate_low) < 0.05
+                    and abs(active_high - candidate_high) < 0.05
+                )
+            )
+            if same_candidate:
+                chart_v229_geometry = chart_payload
+                break
+
+    chart_structural_targets: list[dict[str, Any]] = []
+    chart_target_seen: set[tuple[str, str, float]] = set()
+    for chart_child in list(chart_v229_geometry.get("children") or []):
+        for raw_target in list(dict(chart_child).get("structural_targets") or []):
+            target = dict(raw_target or {})
+            target_price = _chart_price(target.get("target_price"))
+            if target_price is None:
+                continue
+            target_key = (
+                str(target.get("timeframe") or "").upper(),
+                str(target.get("zone_id") or ""),
+                round(target_price, 3),
+            )
+            if target_key in chart_target_seen:
+                continue
+            chart_target_seen.add(target_key)
+            chart_structural_targets.append(target)
+
+    chart_preview_targets, chart_entry_reference, chart_approaching_entry = _rizan_chart_target_ladder(
+        direction=dc_current_leg_direction,
+        price_now=float(chart_price) if chart_price is not None else 0.0,
+        entry_zone=v226_entry_candidate,
+        structural_targets=chart_structural_targets,
+        current_target=dc_current_leg_target.get("price"),
+        terminal_zone=dc_current_leg_terminal,
+        next_target=dc_next_leg_target.get("price"),
+    )
+    chart_next_target = chart_preview_targets[0] if chart_preview_targets else {}
+    chart_terminal_target = chart_preview_targets[-1] if chart_preview_targets else {}
+    with st.container(border=True):
+        cv1, cv2, cv3, cv4 = st.columns(4)
+        cv1.metric("Harga sekarang", _fmt_price(chart_price))
+        cv2.metric(
+            "Depth / entry",
+            (
+                f"{_fmt_price(v226_entry_candidate.get('entry_low'))}–"
+                f"{_fmt_price(v226_entry_candidate.get('entry_high'))}"
+                if v226_entry_candidate else "—"
+            ),
+        )
+        cv3.metric(
+            "Target berikutnya",
+            (
+                f"{chart_next_target.get('label','TP')} {_fmt_price(chart_next_target.get('price'))}"
+                if chart_next_target else "—"
+            ),
+        )
+        cv4.metric(
+            "Target terminal chart",
+            (
+                f"{chart_terminal_target.get('label','TP')} {_fmt_price(chart_terminal_target.get('price'))}"
+                if chart_terminal_target else "—"
+            ),
+        )
+        st.caption(
+            "Baca chart: harga sekarang → Depth/Entry bila masih pre-touch → TP struktural terdekat "
+            "→ target berikutnya. Panah terakhir selalu berakhir pada target berikutnya/terminal "
+            "yang masih berada di jalur harga."
+        )
+
     if chart_price is not None and chart_pool:
         chart_png, chart_error = _rizan_chart_png(
             chart_raw_bars,
@@ -1857,6 +2147,8 @@ with forecast_tab:
             terminal_zone=dc_current_leg_terminal,
             next_target=dc_next_leg_target.get("price"),
             depth_overlays=v226_overlays,
+            entry_zone=v226_entry_candidate,
+            structural_targets=chart_structural_targets,
         )
         if chart_png is not None:
             st.image(chart_png, width="stretch")
