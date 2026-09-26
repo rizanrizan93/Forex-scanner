@@ -43,6 +43,22 @@ M5_SUPERSESSION_GAP_MINUTES = 5.1
 M5_OVERLAP_REPLACE = 0.70
 LADDER_QUANTILES = (0.10, 0.35, 0.60, 0.85)
 
+# Frozen from the finalized causal-close V225.2 2012–2026 evidence.
+# These are used only as a pre-registered historical prior for ranking M5
+# children; they do not grant execution authority and are not re-fit per year.
+V2252_M15_DEPTH_PRIOR = {
+    "LONG": {
+        "p25": 0.07594936708854201,
+        "median": 0.20634920634920062,
+        "p75": 0.44541634835752575,
+    },
+    "SHORT": {
+        "p25": 0.07299526808306502,
+        "median": 0.20151750556940565,
+        "p75": 0.44198970413688654,
+    },
+}
+
 
 def _f(value: Any) -> float | None:
     try:
@@ -222,6 +238,96 @@ def _width(zone: SDZone) -> float:
     return max(float(zone.high) - float(zone.low), 1e-12)
 
 
+
+def _price_at_depth(zone: SDZone, depth: float) -> float:
+    d = min(max(float(depth), 0.0), 1.0)
+    width = _width(zone)
+    return (
+        float(zone.high) - d * width
+        if zone.direction == "LONG"
+        else float(zone.low) + d * width
+    )
+
+
+def _interval(low: float, high: float) -> tuple[float, float]:
+    return (min(float(low), float(high)), max(float(low), float(high)))
+
+
+def _m15_probability_geometry(parent: SDZone) -> dict[str, float]:
+    prior = dict(V2252_M15_DEPTH_PRIOR[parent.direction])
+    p25_price = _price_at_depth(parent, float(prior["p25"]))
+    median_price = _price_at_depth(parent, float(prior["median"]))
+    p75_price = _price_at_depth(parent, float(prior["p75"]))
+    corridor_low, corridor_high = _interval(p25_price, p75_price)
+    return {
+        "p25_depth": float(prior["p25"]),
+        "median_depth": float(prior["median"]),
+        "p75_depth": float(prior["p75"]),
+        "corridor_low": corridor_low,
+        "corridor_high": corridor_high,
+        "median_price": median_price,
+    }
+
+
+def _probability_weighted_m5_key(
+    zone: SDZone,
+    *,
+    parent: SDZone,
+) -> tuple[Any, ...]:
+    """Rank M5 child without observing the later turning point.
+
+    Priority is intentionally lexicographic rather than fitted:
+    1) overlap the frozen V225.2 M15 p25–p75 reversal corridor,
+    2) maximize the fraction of the M5 child inside that corridor,
+    3) place M5 midpoint close to the frozen M15 median turning price,
+    4) prefer a narrower child,
+    5) prefer the most recently available child as the final tie-break.
+    """
+    geometry = _m15_probability_geometry(parent)
+    corridor_low = float(geometry["corridor_low"])
+    corridor_high = float(geometry["corridor_high"])
+    overlap = max(
+        0.0,
+        min(float(zone.high), corridor_high) - max(float(zone.low), corridor_low),
+    )
+    child_width = _width(zone)
+    parent_width = _width(parent)
+    overlap_fraction = overlap / child_width
+    midpoint = (float(zone.low) + float(zone.high)) / 2.0
+    median_distance = abs(midpoint - float(geometry["median_price"])) / parent_width
+    width_ratio = child_width / parent_width
+    return (
+        -int(overlap > 0.0),
+        -overlap_fraction,
+        median_distance,
+        width_ratio,
+        -ensure_utc(zone.available_at).timestamp(),
+    )
+
+
+def _m5_selection_diagnostic(zone: SDZone | None, *, parent: SDZone) -> dict[str, Any]:
+    if zone is None:
+        return {}
+    geometry = _m15_probability_geometry(parent)
+    corridor_low = float(geometry["corridor_low"])
+    corridor_high = float(geometry["corridor_high"])
+    overlap = max(
+        0.0,
+        min(float(zone.high), corridor_high) - max(float(zone.low), corridor_low),
+    )
+    midpoint = (float(zone.low) + float(zone.high)) / 2.0
+    return {
+        **geometry,
+        "m5_low": float(zone.low),
+        "m5_high": float(zone.high),
+        "m5_width_ratio": _width(zone) / _width(parent),
+        "corridor_overlap_fraction_of_m5": overlap / _width(zone),
+        "midpoint_abs_distance_from_m15_median_as_parent_width": (
+            abs(midpoint - float(geometry["median_price"])) / _width(parent)
+        ),
+    }
+
+
 def _quantiles(values: Sequence[float]) -> dict[str, float | None]:
     clean = sorted(float(v) for v in values if isfinite(float(v)) and 0 <= float(v) < 1)
     return {
@@ -287,16 +393,25 @@ def build_year_records(
             and _active_at(zone, row.touch_at, superseded=superseded, invalidated=invalidated)
             and _overlaps(parent, zone)
         ]
-        active.sort(
+        naive_ranked = sorted(
+            active,
             key=lambda z: (
                 _width(z),
                 -ensure_utc(z.available_at).timestamp(),
-            )
+            ),
         )
-        selected = active[0] if active else None
+        naive_selected = naive_ranked[0] if naive_ranked else None
+        probability_ranked = sorted(
+            active,
+            key=lambda z: _probability_weighted_m5_key(z, parent=parent),
+        )
+        selected = probability_ranked[0] if probability_ranked else None
         capturing = [z for z in active if _contains(z, float(row.turning_price))]
         capturing.sort(key=lambda z: (_width(z), -ensure_utc(z.available_at).timestamp()))
         oracle = capturing[0] if capturing else None
+        naive_capture = bool(
+            naive_selected and _contains(naive_selected, float(row.turning_price))
+        )
         selected_capture = bool(selected and _contains(selected, float(row.turning_price)))
         selected_depth = (
             normalized_depth(selected, float(row.turning_price))
@@ -315,7 +430,16 @@ def build_year_records(
                 "m15_turning_depth": row.m15_child_depth,
                 "active_m5_candidates": len(active),
                 "oracle_m5_capture": oracle is not None,
+                "naive_m5_zone_id": (
+                    None if naive_selected is None else naive_selected.zone_id
+                ),
+                "naive_m5_capture": naive_capture,
                 "selected_m5_zone_id": None if selected is None else selected.zone_id,
+                "selected_m5_selector": "V2252_M15_IQR_MEDIAN_WEIGHTED_LEXICOGRAPHIC",
+                "selected_m5_diagnostic": _m5_selection_diagnostic(
+                    selected,
+                    parent=parent,
+                ),
                 "selected_m5_capture": selected_capture,
                 "selected_m5_depth": selected_depth,
                 "selected_m5_internal_depth": (
@@ -355,6 +479,7 @@ def summarize_records(
     rows = list(records)
     available = [r for r in rows if int(r.get("active_m5_candidates") or 0) > 0]
     oracle = [r for r in rows if bool(r.get("oracle_m5_capture"))]
+    naive = [r for r in rows if bool(r.get("naive_m5_capture"))]
     selected = [r for r in rows if bool(r.get("selected_m5_capture"))]
     depths = [float(r["selected_m5_depth"]) for r in selected if r.get("selected_m5_depth") is not None]
     ratios = [float(r["m5_to_m15_width_ratio"]) for r in available if r.get("m5_to_m15_width_ratio") is not None]
@@ -367,6 +492,8 @@ def summarize_records(
         "m5_available_given_m15": len(available),
         "m5_available_rate_given_m15": None if not m15_nested else len(available) / m15_nested,
         "oracle_m5_capture_given_m15": None if not m15_nested else len(oracle) / m15_nested,
+        "naive_m5_capture_given_available": None if not available else len(naive) / len(available),
+        "naive_m5_capture_given_m15": None if not m15_nested else len(naive) / m15_nested,
         "selected_m5_capture_given_available": None if not available else len(selected) / len(available),
         "selected_m5_capture_given_m15": None if not m15_nested else len(selected) / m15_nested,
         "selected_m5_depth_quantiles": _quantiles(depths),
@@ -376,8 +503,10 @@ def summarize_records(
         "coverage_contract": (
             "M5_AVAILABLE uses only zones known and active at H4 touch. "
             "ORACLE_CAPTURE asks whether any such M5 child contains the later turn. "
-            "SELECTED_CAPTURE chooses narrowest/most-recent active M5 without using the turn, "
-            "but is conditional on the V225 descriptive M15 parent and is not a fully "
+            "NAIVE_CAPTURE is the old narrowest/most-recent selector. SELECTED_CAPTURE "
+            "uses the frozen V225.2 M15 p25-p75 corridor and median before width/recency, "
+            "without observing the later turn. Both remain conditional on the V225 "
+            "descriptive M15 parent and are not a fully "
             "walk-forward strategy estimate."
         ),
         "policy_effect": POLICY_EFFECT,
