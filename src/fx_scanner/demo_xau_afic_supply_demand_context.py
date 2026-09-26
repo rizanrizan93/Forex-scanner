@@ -305,13 +305,24 @@ def attach_supply_demand_context(
             else float("inf")
         )
     )
+    htf_target_pool: list[dict[str, Any]] = []
+    seen_target_zone_ids: set[str] = set()
+    for raw_zone in (
+        list(continuation_path.get("destination_stack") or [])
+        + list(atlas.get("zones") or [])
+    ):
+        zone = dict(raw_zone or {})
+        zone_id = str(zone.get("zone_id") or "")
+        if not zone_id or zone_id in seen_target_zone_ids:
+            continue
+        seen_target_zone_ids.add(zone_id)
+        htf_target_pool.append(zone)
+
     structural_target_context = {
         "contract": "XAU_STRUCTURAL_TARGET_CONTEXT_V229_1",
         "direction": continuation or None,
         "m15_opposing_zones": m15_target_zones[:12],
-        "htf_destination_stack": [
-            dict(zone) for zone in list(continuation_path.get("destination_stack") or [])
-        ],
+        "htf_destination_stack": htf_target_pool,
         "execution_influence": False,
         "execution_authority": False,
     }
