@@ -410,7 +410,7 @@ def test_afic_v229_structural_targets_replace_round_number_as_primary_tp_source(
     assert plan["legacy_round_fallback"]["tp_ladder"]
 
 
-def test_afic_v229_falls_back_only_when_no_structural_target_passes_rr():
+def test_afic_v229_fails_closed_when_structural_terminal_is_below_min_rr():
     payload={
         "continuation_direction":"LONG",
         "zone":{"low":100.0,"high":105.0,"h1_atr":10.0},
@@ -426,8 +426,23 @@ def test_afic_v229_falls_back_only_when_no_structural_target_passes_rr():
             }
         },
     }
+    assert prepared_blueprint(payload) is None
+
+
+def test_afic_v229_legacy_round_fallback_requires_no_structural_target():
+    payload={
+        "continuation_direction":"LONG",
+        "zone":{"low":100.0,"high":105.0,"h1_atr":10.0},
+        "h4_features":{"zone_distance_atr":0.4,"h4_directional_close_location":0.55},
+        "supply_demand_context":{
+            "structural_target_context":{
+                "m15_opposing_zones":[],
+                "htf_destination_stack":[],
+            }
+        },
+    }
     plan=prepared_blueprint(payload)
     assert plan is not None
-    assert plan["target_model"]=="LEGACY_RR_ROUND_FALLBACK_NO_ELIGIBLE_STRUCTURAL_TARGET"
-    assert plan["structural_target_ladder"][0]["rr_eligible"] is False
+    assert plan["target_model"]=="LEGACY_RR_ROUND_FALLBACK_NO_STRUCTURAL_TARGET"
+    assert plan["structural_target_ladder"]==[]
     assert plan["rr2"]>=1.5
