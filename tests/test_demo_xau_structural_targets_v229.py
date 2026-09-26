@@ -83,7 +83,10 @@ def test_v229_rr_is_validation_not_target_generator():
     assert mapped["M15"]["rr_eligible"] is False
     assert mapped["M15"]["target_price"] == 107.8
     assert mapped["H1"]["rr_eligible"] is True
-    assert [row["timeframe"] for row in plan["broker_scaleout_targets"]] == ["H1"]
+    assert [row["timeframe"] for row in plan["broker_scaleout_targets"]] == ["M15", "H1"]
+    assert plan["terminal_structural_target"]["timeframe"] == "H1"
+    assert plan["terminal_rr_eligible"] is True
+    assert plan["primary_opposing_barrier"]["timeframe"] == "M15"
 
 
 def test_v229_ignores_same_direction_broken_and_behind_zones():
@@ -104,3 +107,36 @@ def test_v229_ignores_same_direction_broken_and_behind_zones():
     )
     assert plan["mapped_targets"] == []
     assert plan["structural_target_available"] is False
+
+
+def test_v229_target_ladder_follows_price_path_when_timeframes_are_not_nested_by_distance():
+    plan = build_structural_target_plan(
+        direction="LONG",
+        entry=100.0,
+        stop=90.0,
+        minimum_rr=1.5,
+        m15_zones=[_zone("m15", "M15", "SHORT", 120.0, 122.0)],
+        htf_zones=[
+            _zone("h1", "H1", "SHORT", 150.0, 155.0),
+            _zone("h4", "H4", "SHORT", 130.0, 140.0),
+        ],
+    )
+    broker = plan["broker_scaleout_targets"]
+    assert [row["timeframe"] for row in broker] == ["M15", "H4", "H1"]
+    assert [row["target_price"] for row in broker] == sorted(
+        row["target_price"] for row in broker
+    )
+
+
+def test_v229_structural_terminal_below_min_rr_has_no_broker_targets():
+    plan = build_structural_target_plan(
+        direction="LONG",
+        entry=100.0,
+        stop=90.0,
+        minimum_rr=1.5,
+        m15_zones=[_zone("near", "M15", "SHORT", 108.0, 110.0)],
+        htf_zones=[],
+    )
+    assert plan["mapped_targets"]
+    assert plan["terminal_rr_eligible"] is False
+    assert plan["broker_scaleout_targets"] == []
