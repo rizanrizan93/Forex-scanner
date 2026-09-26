@@ -884,7 +884,8 @@ with forecast_tab:
         "Tampilan utama disusun untuk keputusan cepat: **Ringkasan → Zona/Depth → "
         "Eksekusi → Posisi**. Panel riset, evidence, validasi, dan histori tetap "
         "tersedia di bagian detail tetapi ditutup secara default. "
-        "Semua waktu trading yang ditampilkan menggunakan WIB (Asia/Jakarta, UTC+7)."
+        "Semua waktu trading yang ditampilkan menggunakan WIB (Asia/Jakarta, UTC+7); "
+        "runtime internal tetap UTC."
     )
     with st.expander("Kamus istilah pada halaman ini", expanded=False):
         st.markdown(
