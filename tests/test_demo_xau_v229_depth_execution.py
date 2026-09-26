@@ -54,29 +54,34 @@ def _atlas() -> dict:
     }
 
 
-def test_v229_promotes_fresh_candidate_when_live_price_is_inside() -> None:
+def test_v229_builds_four_child_parent_before_touch() -> None:
     plan = build_execution_plan(
         v226_evaluation=_v226(),
         atlas_evaluation=_atlas(),
-        live_price=101.0,
+        live_price=103.0,
     )
     assert plan is not None
     assert plan["direction"] == "LONG"
     assert plan["entry_low"] == 100.0
     assert plan["entry_high"] == 102.0
     assert plan["sl"] < 98.0
-    assert plan["tp2"] == 106.0
-    assert plan["rr2"] >= 1.0
     assert plan["source_layer"] == "M15_NESTED_LOCATOR"
+    assert len(plan["children"]) == 4
+    assert [child["lot"] for child in plan["children"]] == [0.01,0.01,0.01,0.01]
+    assert plan["pretouch_slots"] == [1,2]
+    assert plan["confirmation_slots"] == [3,4]
+    assert plan["generic_market_handoff_allowed"] is False
 
 
-def test_v229_does_not_chase_before_candidate_touch() -> None:
+def test_v229_pre_touch_parent_does_not_require_price_inside_candidate() -> None:
     plan = build_execution_plan(
         v226_evaluation=_v226(),
         atlas_evaluation=_atlas(),
         live_price=103.0,
     )
-    assert plan is None
+    assert plan is not None
+    assert plan["entry_low"] == 100.0
+    assert plan["entry_high"] == 102.0
 
 
 def test_v229_rejects_reused_or_out_of_sample_parent() -> None:
@@ -88,6 +93,6 @@ def test_v229_rejects_reused_or_out_of_sample_parent() -> None:
     assert plan is None
 
 
-def test_v229_exact_strategy_is_authorized_for_xau_demo_handoff() -> None:
+def test_v229_parent_is_excluded_from_generic_market_handoff() -> None:
     assert STRATEGY_ID == "XAU_RIZAN_DEPTH_EXECUTION_V1"
-    assert STRATEGY_ID in _XAU_DEMO_EXECUTION_STRATEGIES
+    assert STRATEGY_ID not in _XAU_DEMO_EXECUTION_STRATEGIES
