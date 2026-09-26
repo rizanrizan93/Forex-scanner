@@ -88,6 +88,7 @@ def _stable_m15_id(
         (
             "M15",
             direction,
+            "IMBALANCE",
             origin_at.isoformat(),
             available_at.isoformat(),
             f"{low:.8f}",
