@@ -1,0 +1,141 @@
+name: Research XAU H4 H1 SD M15 M5 Portfolio V234
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/v234-h4-h1-sd-m15-m5-continuation
+    paths:
+      - "src/fx_scanner/research_xau_h4_h1_sd_m15_m5_continuation_v234_year.py"
+      - "src/fx_scanner/research_xau_h4_h1_sd_m15_m5_portfolio_v234_aggregate.py"
+      - "tests/test_research_xau_h4_h1_sd_m15_m5_v234.py"
+      - ".github/workflows/research-xau-h4-h1-sd-m15-m5-portfolio-v234.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: research-xau-h4-h1-sd-m15-m5-portfolio-v234-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pytest==9.0.2
+      - name: Compile
+        run: |
+          python -m py_compile src/fx_scanner/research_xau_h4_h1_sd_m15_m5_continuation_v234_year.py
+          python -m py_compile src/fx_scanner/research_xau_h4_h1_sd_m15_m5_portfolio_v234_aggregate.py
+      - name: Focused tests
+        run: pytest -q tests/test_research_xau_h4_h1_sd_m15_m5_v234.py
+
+  replay-year:
+    needs: syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        year:
+          - 2012
+          - 2013
+          - 2014
+          - 2015
+          - 2016
+          - 2017
+          - 2018
+          - 2019
+          - 2020
+          - 2021
+          - 2022
+          - 2023
+          - 2024
+          - 2025
+          - 2026
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v234-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v234-price-provenance-${{ matrix.year }}.json
+      XAU_V234_YEAR: ${{ matrix.year }}
+      XAU_V234_PRICE_CSV: /tmp/histdata/xau-v234-${{ matrix.year }}.csv
+      XAU_V234_OUTPUT: artifacts/xau-h4-h1-sd-m15-m5-continuation-v234-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download and normalize HistData XAUUSD M1
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Replay H4-H1 SD-M15-M5 continuation
+        run: python -m fx_scanner.research_xau_h4_h1_sd_m15_m5_continuation_v234_year
+      - name: Upload V234 year
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v234-year-${{ matrix.year }}
+          path: |
+            artifacts/xau-h4-h1-sd-m15-m5-continuation-v234-${{ matrix.year }}.json
+            artifacts/xau-v234-price-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: replay-year
+    if: always() && needs.replay-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      XAU_V234_CONTINUATION_DIR: /tmp/v234-cont
+      XAU_V234_V230_DIR: /tmp/v230-shards
+      XAU_V234_FULL_OUTPUT: artifacts/xau-h4-h1-sd-m15-m5-portfolio-v234-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download V234 continuation shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v234-year-*
+          path: /tmp/v234-cont
+          merge-multiple: false
+      - name: Download frozen V230 reversal shards
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36230335879
+          pattern: xau-v230-year-*
+          path: /tmp/v230-shards
+          merge-multiple: false
+      - name: Aggregate V234 portfolio
+        run: python -m fx_scanner.research_xau_h4_h1_sd_m15_m5_portfolio_v234_aggregate
+      - name: Upload V234 full result
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-h4-h1-sd-m15-m5-portfolio-v234-full
+          path: artifacts/xau-h4-h1-sd-m15-m5-portfolio-v234-full.json
+          if-no-files-found: error
+          retention-days: 30
