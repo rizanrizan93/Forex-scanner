@@ -23,7 +23,7 @@ def test_v234_path_is_now_entry_then_targets_not_next_leg() -> None:
     end = SOURCE.index('y_values = [float(visible["low"].min())', start)
     block = SOURCE[start:end]
     assert '"DEPTH / ENTRY"' in block
-    assert '"NEXT TARGET"' in block
+    assert "NEXT TARGET" in block
     assert '"NEXT LEG"' not in block
     assert 'float(target["price"])' in block
 
