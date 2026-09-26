@@ -53,7 +53,7 @@ def _atr14(frame: pd.DataFrame) -> pd.Series:
         [(high - low), (high - previous).abs(), (low - previous).abs()],
         axis=1,
     ).max(axis=1)
-    return true_range.rolling(14, min_periods=14).mean()
+    return true_range.ewm(alpha=1.0 / 14.0, adjust=False, min_periods=14).mean()
 
 
 def _base_geometry(base: pd.DataFrame, direction: str) -> tuple[float, float, float, float]:
