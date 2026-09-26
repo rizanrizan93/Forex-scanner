@@ -377,3 +377,57 @@ def test_same_afic_map_remains_armed():
     )
     assert n==0
     assert signal["state"]=="ARMED"
+
+
+def test_afic_v229_structural_targets_replace_round_number_as_primary_tp_source():
+    payload={
+        "continuation_direction":"LONG",
+        "zone":{"low":4250.0,"high":4258.0,"h1_atr":10.0},
+        "h4_features":{"zone_distance_atr":0.4,"h4_directional_close_location":0.55},
+        "supply_demand_context":{
+            "structural_target_context":{
+                "m15_opposing_zones":[{
+                    "zone_id":"m15-s","timeframe":"M15","direction":"SHORT",
+                    "low":4274.0,"high":4278.0,"status":"ACTIVE",
+                    "lifecycle":{"active":True},
+                }],
+                "htf_destination_stack":[
+                    {"zone_id":"h1-s","timeframe":"H1","direction":"SHORT",
+                     "low":4290.0,"high":4300.0,"status":"ACTIVE"},
+                    {"zone_id":"h4-s","timeframe":"H4","direction":"SHORT",
+                     "low":4320.0,"high":4340.0,"status":"ACTIVE"},
+                ],
+            }
+        },
+    }
+    plan=prepared_blueprint(payload)
+    assert plan is not None
+    assert plan["target_model"]=="STRUCTURAL_SUPPLY_DEMAND_PRIMARY"
+    assert plan["tp_ladder"]==[4273.6,4289.0,4319.0]
+    assert plan["tp1"]==4273.6
+    assert plan["tp2"]==4319.0
+    assert [x["timeframe"] for x in plan["structural_target_ladder"]]==["M15","H1","H4"]
+    assert plan["legacy_round_fallback"]["tp_ladder"]
+
+
+def test_afic_v229_falls_back_only_when_no_structural_target_passes_rr():
+    payload={
+        "continuation_direction":"LONG",
+        "zone":{"low":100.0,"high":105.0,"h1_atr":10.0},
+        "h4_features":{"zone_distance_atr":0.4,"h4_directional_close_location":0.55},
+        "supply_demand_context":{
+            "structural_target_context":{
+                "m15_opposing_zones":[{
+                    "zone_id":"too-near","timeframe":"M15","direction":"SHORT",
+                    "low":108.0,"high":110.0,"status":"ACTIVE",
+                    "lifecycle":{"active":True},
+                }],
+                "htf_destination_stack":[],
+            }
+        },
+    }
+    plan=prepared_blueprint(payload)
+    assert plan is not None
+    assert plan["target_model"]=="LEGACY_RR_ROUND_FALLBACK_NO_ELIGIBLE_STRUCTURAL_TARGET"
+    assert plan["structural_target_ladder"][0]["rr_eligible"] is False
+    assert plan["rr2"]>=1.5
