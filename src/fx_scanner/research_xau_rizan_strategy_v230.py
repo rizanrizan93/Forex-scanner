@@ -910,7 +910,7 @@ def simulate_year(
     summary["selection_contract"] = (
         "H4 focus uses V226 no-projection fallback: globally nearest fresh causal H4 "
         "parent one minute before first touch. H1/M15 are selected from zones already "
-        "available and active at that time; later turning_price is never used for selection."
+        "available and active at that time; later reversal outcome coordinates are never used for selection."
     )
     return summary, records
 
