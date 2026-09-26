@@ -14,7 +14,10 @@ from .storage.supabase_operational import (
 
 _ORIGINAL_INSTALL_FRESH = base.install_fresh_execution_ready_handoff
 
-# XAU DEMO execution authority is an exact strategy allowlist. The M15
+# XAU DEMO execution authority is an exact strategy allowlist. RIZAN V229 is
+# deliberately excluded here because its dedicated child executor owns the
+# 2+2 pending/confirmation ladder and must never be duplicated as one MARKET order.
+# The M15
 # EMA-SMC reclaim remains the independent canonical intraday baseline, while
 # XAU_V24_CHAMPION_DEMO_V1 is the exact champion portfolio identity containing
 # D1 staggered + M15 L12/L20. The standalone D1 strategy remains a shadow
@@ -29,7 +32,6 @@ _XAU_DEMO_EXECUTION_STRATEGIES = frozenset(
         _XAU_CANONICAL_STRATEGY,
         _XAU_CHAMPION_STRATEGY,
         _XAU_AFIC_EXECUTION_STRATEGY,
-        _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY,
     }
 )
 _XAU_SHADOW_STRATEGIES = frozenset(
