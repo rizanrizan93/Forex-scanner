@@ -43,12 +43,20 @@ def _health_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
     gross_loss = -sum(losses)
     return {
         "completed_trades": len(values),
-        "profit_factor": gross_profit / gross_loss if gross_loss > 0 else None,
+        # Zero-loss all-winning history is economically stronger than the
+        # PF threshold, not missing evidence. Use a finite sentinel so the
+        # result remains strict-JSON serializable with allow_nan=False.
+        "profit_factor": (
+            gross_profit / gross_loss
+            if gross_loss > 0
+            else 999.0 if gross_profit > 0 else None
+        ),
         "expectancy_r": sum(values) / len(values) if values else None,
         "win_rate": (
             len(wins) / (len(wins) + len(losses))
             if wins or losses else None
         ),
+        "zero_loss_pf_sentinel": bool(gross_loss == 0 and gross_profit > 0),
     }
 
 
