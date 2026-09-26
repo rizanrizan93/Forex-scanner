@@ -26,6 +26,14 @@ def _v226(*, fresh: bool = True) -> dict:
             ),
             "calibrated_fresh_first_touch": fresh,
         },
+        "four_order_ladder": {
+            "slots": [
+                {"slot":1,"lot":0.01,"reference_price":101.8,"stage":"PRE_TOUCH_LIMIT_REFERENCE","activation":"FRESH_DEPTH_ENTRY_CANDIDATE"},
+                {"slot":2,"lot":0.01,"reference_price":101.3,"stage":"PRE_TOUCH_LIMIT_REFERENCE","activation":"FRESH_DEPTH_ENTRY_CANDIDATE"},
+                {"slot":3,"lot":0.01,"reference_price":100.8,"stage":"RESERVE_M5_RECLAIM_MSS_RETEST","activation":"M5_RECLAIM_AND_LOCAL_MSS_CONFIRMED"},
+                {"slot":4,"lot":0.01,"reference_price":100.3,"stage":"RESERVE_M5_DISPLACEMENT_RETEST","activation":"M5_DISPLACEMENT_CONFIRMED_AND_RETEST_AVAILABLE"},
+            ]
+        },
         "long": {
             "h4": {
                 "zone": {
@@ -42,13 +50,17 @@ def _v226(*, fresh: bool = True) -> dict:
 
 def _atlas() -> dict:
     return {
+        "zones": [
+            {"zone_id":"m15-s","timeframe":"M15","direction":"SHORT","low":106.0,"high":107.0,"status":"ACTIVE","lifecycle":{"active":True}},
+            {"zone_id":"h1-s","timeframe":"H1","direction":"SHORT","low":110.0,"high":112.0,"status":"ACTIVE","lifecycle":{"active":True}},
+            {"zone_id":"h4-s","timeframe":"H4","direction":"SHORT","low":118.0,"high":122.0,"status":"ACTIVE","lifecycle":{"active":True}},
+        ],
         "path_map": {
             "demand_to_supply": {
-                "reaction_target": {"price": 106.0},
-                "terminal_target_zone": {
-                    "low": 108.0,
-                    "high": 110.0,
-                },
+                "destination_stack": [
+                    {"zone_id":"h1-s","timeframe":"H1","direction":"SHORT","low":110.0,"high":112.0,"status":"ACTIVE","lifecycle":{"active":True}},
+                    {"zone_id":"h4-s","timeframe":"H4","direction":"SHORT","low":118.0,"high":122.0,"status":"ACTIVE","lifecycle":{"active":True}},
+                ],
             }
         }
     }
