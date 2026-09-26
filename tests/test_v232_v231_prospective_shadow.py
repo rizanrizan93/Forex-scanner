@@ -148,7 +148,7 @@ def test_v232_stop_wins_on_fill_bar_and_tp_requires_future_bar() -> None:
 
     stopped = evaluate_shadow_order(
         [
-            _bar(start, o=111.0, h=108.0, l=98.0, c=106.0),
+            _bar(start, o=107.8, h=108.0, l=98.0, c=106.0),
         ],
         forecast=forecast,
         now=start + timedelta(minutes=2),
@@ -158,7 +158,7 @@ def test_v232_stop_wins_on_fill_bar_and_tp_requires_future_bar() -> None:
     pending = evaluate_shadow_order(
         [
             # Entry and TP both print on fill bar, but TP is not credited.
-            _bar(start, o=111.0, h=121.0, l=107.0, c=118.0),
+            _bar(start, o=108.0, h=121.0, l=107.0, c=118.0),
         ],
         forecast=forecast,
         now=start + timedelta(minutes=2),
@@ -175,7 +175,7 @@ def test_v232_scores_future_tp_and_16h_time_exit() -> None:
 
     tp = evaluate_shadow_order(
         [
-            _bar(start, o=111.0, h=108.0, l=107.0, c=107.5),
+            _bar(start, o=108.0, h=108.0, l=107.0, c=107.5),
             _bar(start + timedelta(minutes=1), o=107.5, h=121.0, l=106.0, c=120.5),
         ],
         forecast=forecast,
