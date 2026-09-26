@@ -139,7 +139,10 @@ def _latest_close_before(price: pd.DataFrame, point: datetime) -> tuple[datetime
     idx = bisect_left(timestamps, pd.Timestamp(ensure_utc(point))) - 1
     if idx < 0:
         return None
-    return ensure_utc(timestamps[idx].to_pydatetime()), float(price.iloc[idx]["close"])
+    return (
+        ensure_utc(timestamps[idx].to_pydatetime()) + timedelta(minutes=1),
+        float(price.iloc[idx]["close"]),
+    )
 
 
 def _active_zone_dicts(
@@ -318,24 +321,35 @@ def _exit_after_fill(
         hours=MAX_POSITION_HOLD_HOURS
     )
     end = min(len(timestamps), bisect_right(timestamps, pd.Timestamp(max_exit_at)))
-    highs = px_index.highs[fill_index:end]
-    lows = px_index.lows[fill_index:end]
-    if direction == "LONG":
-        stop_mask = lows <= float(stop)
-        target_mask = highs >= float(target)
-    else:
-        stop_mask = highs >= float(stop)
-        target_mask = lows <= float(target)
-    events = np.flatnonzero(stop_mask | target_mask)
-    if len(events):
-        rel = int(events[0])
-        absolute = fill_index + rel
-        stop_hit = bool(stop_mask[rel])
-        target_hit = bool(target_mask[rel])
-        if stop_hit:
-            return absolute, float(stop), "SL"
-        if target_hit:
-            return absolute, float(target), "TP"
+    # The entry price and TP can both be inside the fill M1 candle with no
+    # observable intrabar ordering. Be conservative: a stop touch on the fill
+    # candle counts immediately, while a TP touch on that same candle does not.
+    fill_high = float(px_index.highs[fill_index])
+    fill_low = float(px_index.lows[fill_index])
+    fill_stop = fill_low <= float(stop) if direction == "LONG" else fill_high >= float(stop)
+    if fill_stop:
+        return fill_index, float(stop), "SL"
+
+    scan_start = fill_index + 1
+    if scan_start < end:
+        highs = px_index.highs[scan_start:end]
+        lows = px_index.lows[scan_start:end]
+        if direction == "LONG":
+            stop_mask = lows <= float(stop)
+            target_mask = highs >= float(target)
+        else:
+            stop_mask = highs >= float(stop)
+            target_mask = lows <= float(target)
+        events = np.flatnonzero(stop_mask | target_mask)
+        if len(events):
+            rel = int(events[0])
+            absolute = scan_start + rel
+            stop_hit = bool(stop_mask[rel])
+            target_hit = bool(target_mask[rel])
+            if stop_hit:
+                return absolute, float(stop), "SL"
+            if target_hit:
+                return absolute, float(target), "TP"
 
     absolute = max(fill_index, end - 1)
     close = float(px_index.closes[absolute])
