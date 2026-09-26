@@ -5,7 +5,7 @@ from math import isfinite
 from typing import Any
 
 from .models import ensure_utc
-from .demo_xau_v226_rizan_depth_map import _runtime_m15_zones
+from .demo_xau_structural_targets_v229 import runtime_m15_target_zones
 from .storage.supabase_operational import SupabaseOperationalStore
 
 CONTRACT = "XAU_AFIC_SUPPLY_DEMAND_CONTEXT_V1"
@@ -285,7 +285,7 @@ def attach_supply_demand_context(
     if last_price is None:
         last_price = _finite(out.get("map_price"))
 
-    runtime_m15_zones = _runtime_m15_zones(
+    runtime_m15_zones = runtime_m15_target_zones(
         list(atlas.get("chart_bars_m15") or [])
     )
     wanted_target_direction = (
