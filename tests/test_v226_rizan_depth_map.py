@@ -481,8 +481,8 @@ def test_v226_workflow_and_dashboard_are_shadow_only() -> None:
     assert "V226 tetap shadow-only" in dashboard
     assert "Depth Entry Candidate" in dashboard
     assert "Candidate entry" in dashboard
-    assert "4-Order Depth Ladder" in dashboard
-    assert "auto-submit pending order belum diaktifkan" in dashboard
+    assert "4-Order Hybrid Depth Plan" in dashboard
+    assert "auto-submit belum diaktifkan" in dashboard
 
     source = (ROOT / "src/fx_scanner/demo_xau_v226_rizan_depth_map.py").read_text()
     assert 'POLICY_EFFECT = "SHADOW_ONLY"' in source
@@ -583,7 +583,7 @@ def test_v226_build_map_exposes_focus_and_both_direction_entry_candidates() -> N
     assert result["depth_entry_candidate"]["execution_authority"] is False
 
 
-def test_v226_four_order_ladder_has_four_unique_sorted_prices() -> None:
+def test_v226_four_order_ladder_is_hybrid_two_plus_two() -> None:
     candidate = {
         "direction": "LONG",
         "entry_low": 100.0,
@@ -609,9 +609,11 @@ def test_v226_four_order_ladder_has_four_unique_sorted_prices() -> None:
     slots = ladder["slots"]
     assert len(slots) == 4
     assert all(slot["lot"] == 0.01 for slot in slots)
-    prices = [slot["price"] for slot in slots]
-    assert prices == sorted(prices, reverse=True)
-    assert len(set(round(price, 8) for price in prices)) == 4
-    assert ladder["total_lots_if_all_filled"] == 0.04
+    assert [slot["submit_eligible"] for slot in slots] == [True, True, False, False]
+    assert all(slot["price"] is not None for slot in slots[:2])
+    assert all(slot["price"] is None for slot in slots[2:])
+    assert all(slot["reference_price"] is not None for slot in slots)
+    assert ladder["max_pretouch_lots"] == 0.02
+    assert ladder["total_lots_if_all_four_eventually_filled"] == 0.04
     assert ladder["auto_submit"] is False
     assert ladder["execution_authority"] is False
