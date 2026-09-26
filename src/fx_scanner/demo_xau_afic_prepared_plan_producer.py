@@ -14,6 +14,7 @@ from .demo_xau_afic_path_shadow_observer import (
     REQUEST_COUNT,
     STOP_BUFFER_ATR,
     SYMBOL,
+    MIN_PUBLISHED_RR,
     _target,
     evaluate_afic_shadow,
 )
@@ -25,6 +26,7 @@ from .demo_xau_afic_supply_demand_context import (
     context_token as supply_demand_context_token,
 )
 from .storage.supabase_operational import SupabaseOperationalStore
+from .demo_xau_structural_targets_v229 import build_structural_target_plan
 
 STRATEGY_ID="XAU_AFIC_PATH_PREPARED_V1"
 EXECUTION_STRATEGY_ID="XAU_AFIC_PATH_EXECUTION_V1"
@@ -207,27 +209,65 @@ def _reference_entry(zone:dict[str,Any],direction:str)->float:
     return float(zone["high"] if direction=="LONG" else zone["low"])
 
 
-def _plan_from_entry(*,entry:float,stop:float,direction:str):
-    target=_target(float(entry),float(stop),str(direction))
-    if target is None:
-        return None
-    round_level,terminal,ladder=target
-    if not ladder:
-        return None
+def _plan_from_entry(
+    *,
+    entry:float,
+    stop:float,
+    direction:str,
+    target_context:dict[str,Any]|None=None,
+):
     risk=(entry-stop) if direction=="LONG" else (stop-entry)
     if risk<=0:
         return None
+
+    legacy=_target(float(entry),float(stop),str(direction))
+    legacy_round=None
+    legacy_terminal=None
+    legacy_ladder:tuple[float,...]=()
+    if legacy is not None:
+        legacy_round,legacy_terminal,legacy_ladder=legacy
+
+    context=dict(target_context or {})
+    structural=build_structural_target_plan(
+        direction=str(direction),
+        entry=float(entry),
+        stop=float(stop),
+        m15_zones=list(context.get("m15_opposing_zones") or []),
+        htf_zones=list(context.get("htf_destination_stack") or []),
+        minimum_rr=MIN_PUBLISHED_RR,
+    )
+    broker_targets=list(structural.get("broker_scaleout_targets") or [])
+    if broker_targets:
+        ladder=tuple(float(item["target_price"]) for item in broker_targets)
+        terminal=float(ladder[-1])
+        target_model="STRUCTURAL_SUPPLY_DEMAND_PRIMARY"
+    else:
+        if not legacy_ladder or legacy_terminal is None:
+            return None
+        ladder=tuple(float(x) for x in legacy_ladder)
+        terminal=float(legacy_terminal)
+        target_model="LEGACY_RR_ROUND_FALLBACK_NO_ELIGIBLE_STRUCTURAL_TARGET"
+
     rr1=((ladder[0]-entry) if direction=="LONG" else (entry-ladder[0]))/risk
     rr2=((terminal-entry) if direction=="LONG" else (entry-terminal))/risk
     return {
         "entry":float(entry),
         "stop":float(stop),
-        "round_liquidity":float(round_level),
+        "round_liquidity":None if legacy_round is None else float(legacy_round),
         "tp_ladder":[float(x) for x in ladder],
         "tp1":float(ladder[0]),
         "tp2":float(terminal),
         "rr1":float(rr1),
         "rr2":float(rr2),
+        "target_model":target_model,
+        "structural_target_plan":structural,
+        "structural_target_ladder":list(structural.get("mapped_targets") or []),
+        "macro_terminal_target":structural.get("macro_terminal_target"),
+        "legacy_round_fallback":{
+            "round_liquidity":None if legacy_round is None else float(legacy_round),
+            "terminal":None if legacy_terminal is None else float(legacy_terminal),
+            "tp_ladder":[float(x) for x in legacy_ladder],
+        },
     }
 
 
@@ -238,7 +278,15 @@ def prepared_blueprint(payload:dict[str,Any])->dict[str,Any]|None:
         return None
     stop=_zone_stop(zone,direction)
     entry=_reference_entry(zone,direction)
-    plan=_plan_from_entry(entry=entry,stop=stop,direction=direction)
+    plan=_plan_from_entry(
+        entry=entry,
+        stop=stop,
+        direction=direction,
+        target_context=dict(
+            dict(payload.get("supply_demand_context") or {}).get("structural_target_context")
+            or {}
+        ),
+    )
     if plan is None:
         return None
     return {
@@ -702,6 +750,9 @@ def _record_execution_geometry(
             "planned_sl":plan.get("stop"),
             "planned_tp1":plan.get("tp1"),
             "planned_tp2":plan.get("tp2"),
+            "target_model":plan.get("target_model"),
+            "structural_target_ladder":list(plan.get("structural_target_ladder") or []),
+            "macro_terminal_target":plan.get("macro_terminal_target"),
             "rr1":plan.get("rr1"),
             "rr2":plan.get("rr2"),
             "execution_influence":True,
@@ -801,7 +852,15 @@ def run()->int:
                 proximity=zone_proximity(price=live_mid,zone=dict(payload.get("zone") or {}))
             live_entry=float(quote.ask if direction=="LONG" else quote.bid)
             stop=_zone_stop(dict(payload["zone"]),direction)
-            live_plan=_plan_from_entry(entry=live_entry,stop=stop,direction=direction)
+            live_plan=_plan_from_entry(
+                entry=live_entry,
+                stop=stop,
+                direction=direction,
+                target_context=dict(
+                    dict(payload.get("supply_demand_context") or {}).get("structural_target_context")
+                    or {}
+                ),
+            )
             if live_plan is not None:
                 plan={
                     **live_plan,
@@ -885,6 +944,8 @@ def run()->int:
             "raw_m15_bars":raw_count,
             "forecast_state":payload.get("state"),
             "selector_grade":None if plan is None else plan.get("selector_grade"),
+            "target_model":None if plan is None else plan.get("target_model"),
+            "structural_target_ladder":[] if plan is None else list(plan.get("structural_target_ladder") or []),
             "forecast_selector_grade":observability.get("forecast_selector_grade"),
             "blueprint_kind":kind,
             "blueprint_block_reason":observability.get("blueprint_block_reason"),
