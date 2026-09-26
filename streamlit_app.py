@@ -880,10 +880,11 @@ forecast_tab, account_tab, scanner_tab, data_tab, system_tab, validation_tab = s
 with forecast_tab:
     st.subheader("Dashboard Keputusan XAUUSD")
     st.caption(
+        "**Prakiraan XAUUSD & Zona Reaksi (XAUUSD Forecast & Reaction Zone)** • "
         "Tampilan utama disusun untuk keputusan cepat: **Ringkasan → Zona/Depth → "
         "Eksekusi → Posisi**. Panel riset, evidence, validasi, dan histori tetap "
-        "tersedia di bagian detail tetapi ditutup secara default. Semua waktu trading "
-        "menggunakan WIB (Asia/Jakarta, UTC+7)."
+        "tersedia di bagian detail tetapi ditutup secara default. "
+        "Semua waktu trading yang ditampilkan menggunakan WIB (Asia/Jakarta, UTC+7)."
     )
     with st.expander("Kamus istilah pada halaman ini", expanded=False):
         st.markdown(
@@ -1545,6 +1546,7 @@ with forecast_tab:
 
     st.markdown("### 2 • Zona Utama & Depth Entry")
     st.caption(
+        "**Peta Harga & Supply/Demand — RIZAN-style.** "
         "Candlestick berasal dari snapshot completed M15 cTrader yang disimpan V182. "
         "Kotak hijau = demand, kotak merah = supply; zona utama diberi border lebih tegas. "
         "Panah menunjukkan jalur preparation, bukan jaminan pergerakan harga."
