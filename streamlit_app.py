@@ -54,6 +54,24 @@ st.markdown(
     .rizan-kicker {font-size:.82rem; opacity:.68; margin-bottom:.2rem;}
     .rizan-title {font-size:1.55rem; font-weight:700; margin-bottom:.15rem;}
     .rizan-note {font-size:.86rem; opacity:.78;}
+    .rizan-flow-note {
+        border-left: 3px solid rgba(128,128,128,.35);
+        padding: .55rem .8rem;
+        margin: .35rem 0 .85rem 0;
+        border-radius: 0 10px 10px 0;
+        background: rgba(128,128,128,.055);
+        font-size: .88rem;
+    }
+    div[data-testid="stExpander"] {
+        border-radius: 12px;
+        border-color: rgba(128,128,128,.18);
+    }
+    @media (max-width: 768px) {
+        .block-container {padding-top:.55rem; padding-left:.75rem; padding-right:.75rem;}
+        .rizan-title {font-size:1.28rem;}
+        .rizan-kicker, .rizan-note {font-size:.78rem;}
+        div[data-testid="stMetric"] {padding:.45rem .55rem;}
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -860,11 +878,12 @@ forecast_tab, account_tab, scanner_tab, data_tab, system_tab, validation_tab = s
 )
 
 with forecast_tab:
-    st.subheader("Prakiraan XAUUSD & Zona Reaksi (XAUUSD Forecast & Reaction Zone)")
+    st.subheader("Dashboard Keputusan XAUUSD")
     st.caption(
-        "Halaman ini memisahkan gambaran besar, arah taktis, kandidat zona, zona "
-        "persiapan canonical, dan izin eksekusi. Zona reaksi adalah area harga yang "
-        "diperkirakan dapat memicu respons; menyentuh zona saja belum berarti entry. "
+        "**Prakiraan XAUUSD & Zona Reaksi (XAUUSD Forecast & Reaction Zone)** • "
+        "Tampilan utama disusun untuk keputusan cepat: **Ringkasan → Zona/Depth → "
+        "Eksekusi → Posisi**. Panel riset, evidence, validasi, dan histori tetap "
+        "tersedia di bagian detail tetapi ditutup secara default. "
         "Semua waktu trading yang ditampilkan menggunakan WIB (Asia/Jakarta, UTC+7); "
         "runtime internal tetap UTC."
     )
@@ -1345,9 +1364,9 @@ with forecast_tab:
     v203_reasons = ", ".join(v203_latest.get("shock_reasons") or []) or "—"
 
     st.markdown(
-        '<div class="rizan-kicker">RIZAN-style • XAUUSD structured decision map</div>'
+        '<div class="rizan-kicker">1 • RINGKASAN KEPUTUSAN</div>'
         '<div class="rizan-title">Pusat Keputusan XAUUSD</div>'
-        '<div class="rizan-note">Baca: bias utama → jalur harga → zona → timing → eksekusi.</div>',
+        '<div class="rizan-note">Satu layar untuk bias, leg aktif, status setup, dan prioritas tindakan.</div>',
         unsafe_allow_html=True,
     )
 
@@ -1408,6 +1427,74 @@ with forecast_tab:
             f"dashboard {_fmt_wib_datetime(datetime.now(tz=UTC), seconds=False)}."
         )
 
+
+    dc_geometry_code_by_signal: dict[str, str] = {}
+    for dc_event_row in execution_events:
+        if str(dc_event_row.get("event_type") or "") != "DEMO_SIGNAL_GEOMETRY":
+            continue
+        dc_signal_key = str(dc_event_row.get("signal_key") or "")
+        if dc_signal_key and dc_signal_key not in dc_geometry_code_by_signal:
+            dc_geometry_code_by_signal[dc_signal_key] = str(dc_event_row.get("code") or "")
+
+    dc_latest_signal = dict(dedicated_xau_rows[0]) if dedicated_xau_rows else {}
+    dc_latest_signal_id = str(dc_latest_signal.get("id") or "")
+    dc_latest_signal_state = str(dc_latest_signal.get("state") or "").upper()
+    dc_latest_signal_guards = list(dc_latest_signal.get("active_guards") or [])
+    dc_latest_geometry_code = dc_geometry_code_by_signal.get(dc_latest_signal_id, "")
+    dc_latest_expiry = _parse_timestamp(dc_latest_signal.get("expires_at"))
+    dc_latest_expired = bool(dc_latest_expiry and dc_latest_expiry < dc_now)
+
+    if dc_position_mode:
+        dc_admission_label = "MANAGE POSITION"
+        dc_route_label = "POSISI AKTIF"
+    elif dc_latest_signal_state == "INVALIDATED":
+        dc_admission_label = "INVALIDATED"
+        dc_route_label = "NO ORDER"
+    elif dc_latest_expired:
+        dc_admission_label = "EXPIRED"
+        dc_route_label = "NO ORDER"
+    elif dc_latest_signal_guards:
+        dc_admission_label = "BLOCKED"
+        dc_route_label = "GUARD ACTIVE"
+    elif dc_latest_signal_state == "EXECUTION_READY" and dc_latest_geometry_code == "XAU_RIZAN_DEPTH_EXECUTION_V1":
+        dc_admission_label = "V229 READY"
+        dc_route_label = "4-CHILD 2+2"
+    elif dc_latest_signal_state == "EXECUTION_READY" and dc_latest_geometry_code in {
+        "XAU_AFIC_PATH_EXECUTION_V1",
+        "XAU_M15_EMA_SMC_RECLAIM_V1",
+        "XAU_V24_CHAMPION_DEMO_V1",
+    }:
+        dc_admission_label = "BROKER ELIGIBLE"
+        dc_route_label = "DEMO ROUTE"
+    elif dc_latest_signal_state == "EXECUTION_READY":
+        dc_admission_label = "SHADOW READY"
+        dc_route_label = "NO AUTHORITY"
+    else:
+        dc_admission_label = "WAIT"
+        dc_route_label = "NO ORDER"
+
+    st.markdown(
+        '<div class="rizan-flow-note"><b>Urutan baca utama:</b> '
+        '1 Ringkasan keputusan → 2 Zona & Depth → 3 Eksekusi sekarang → '
+        '4 Manajemen posisi. Panel lain adalah detail/riset dan tidak perlu dibaca '
+        'untuk keputusan rutin.</div>',
+        unsafe_allow_html=True,
+    )
+    with st.container(border=True):
+        flow1, flow2, flow3, flow4, flow5 = st.columns(5)
+        flow1.metric("1 • Bias HTF", dc_strategic_bias)
+        flow2.metric("2 • Leg aktif", dc_current_leg_direction)
+        flow3.metric("3 • M15", dc_m15_state)
+        flow4.metric("4 • Admission", dc_admission_label)
+        flow5.metric("Broker route", dc_route_label)
+        if dc_latest_signal_guards:
+            st.warning("Guard aktif: " + ", ".join(str(x) for x in dc_latest_signal_guards))
+        elif dc_admission_label == "V229 READY":
+            st.success(
+                "V229 memakai jalur khusus: 2 pre-touch LIMIT + 2 child setelah konfirmasi M5. "
+                "Tidak diteruskan ke generic MARKET handoff."
+            )
+
     v226_details = (
         {} if v226_depth_map_hb is None else dict(v226_depth_map_hb.get("details") or {})
     )
@@ -1458,8 +1545,9 @@ with forecast_tab:
     v226_four_order_ladder = dict(v226_eval.get("four_order_ladder") or {})
     v226_ladder_slots = list(v226_four_order_ladder.get("slots") or [])
 
-    st.markdown("#### 1. Peta Harga & Supply/Demand — RIZAN-style")
+    st.markdown("### 2 • Zona Utama & Depth Entry")
     st.caption(
+        "**Peta Harga & Supply/Demand — RIZAN-style.** "
         "Candlestick berasal dari snapshot completed M15 cTrader yang disimpan V182. "
         "Kotak hijau = demand, kotak merah = supply; zona utama diberi border lebih tegas. "
         "Panah menunjukkan jalur preparation, bukan jaminan pergerakan harga."
@@ -1889,521 +1977,622 @@ with forecast_tab:
                 }
             )
 
-    st.markdown("#### 2. H1 — Zona Reaksi Utama")
-    if dc_source:
-        dc_source_freshness = str(
-            dict(dc_source.get("lifecycle") or {}).get("freshness") or "—"
-        )
-        st.info(
-            f"{dc_source.get('timeframe','H1')} {dc_source.get('direction','—')} "
-            f"{dc_source.get('pattern','—')} • "
-            f"zona **{_fmt_price(dc_source.get('low'))}–{_fmt_price(dc_source.get('high'))}** • "
-            f"proximal {_fmt_price(dc_source.get('proximal'))} • "
-            f"freshness={dc_source_freshness}. "
-            "H1 menentukan area reaksi, bukan titik entry akhir."
-        )
-    else:
-        st.warning(
-            "Belum ada H1 source zone aktif pada path RIZAN-style/Supply-Demand saat ini."
-        )
 
-    st.markdown("#### 3. M5 — Pocket, Target & Opposing Leg")
-    dc_current_target_text = (
-        _fmt_price(dc_current_leg_target.get("price"))
-        if dc_current_leg_target
-        else "—"
-    )
-    dc_current_terminal_text = (
-        f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
-        f"{_fmt_price(dc_current_leg_terminal.get('high'))}"
-        if dc_current_leg_terminal
-        else "—"
-    )
-    dc_next_target_text = (
-        _fmt_price(dc_next_leg_target.get("price"))
-        if dc_next_leg_target
-        else "—"
-    )
-    dc_next_terminal_text = (
-        f"{_fmt_price(dc_next_leg_terminal.get('low'))}–"
-        f"{_fmt_price(dc_next_leg_terminal.get('high'))}"
-        if dc_next_leg_terminal
-        else "—"
-    )
-
-    v214_details = (
-        {} if v214_lifecycle_hb is None else dict(v214_lifecycle_hb.get("details") or {})
-    )
-    v214_eval = dict(v214_details.get("evaluation") or {})
-    v214_current = dict(v214_eval.get("current_leg") or {})
-    v214_next = dict(v214_eval.get("next_leg") or {})
-    v214_current_timeline = dict(v214_current.get("timeline") or {})
-    v214_current_latency = dict(v214_current.get("latency_minutes") or {})
-    v214_next_timeline = dict(v214_next.get("timeline") or {})
-    v214_next_latency = dict(v214_next.get("latency_minutes") or {})
-
-    v222_details = (
-        {} if v222_pocket_quality_hb is None else dict(v222_pocket_quality_hb.get("details") or {})
-    )
-    v222_eval = dict(v222_details.get("evaluation") or {})
-    v222_latest = dict(v222_eval.get("latest_pocket") or {})
-    v222_family = [dict(row) for row in list(v222_eval.get("family") or [])]
-
-    v223_details = (
-        {} if v223_cluster_hb is None else dict(v223_cluster_hb.get("details") or {})
-    )
-    v223_eval = dict(v223_details.get("evaluation") or {})
-    v223_primary = dict(v223_eval.get("primary_cluster") or {})
-    v223_alternative = dict(v223_eval.get("alternative_cluster") or {})
-    if v223_primary:
-        v223_union = dict(v223_primary.get("union_zone") or {})
-        v223_core = dict(v223_primary.get("consensus_core") or {})
-        st.success(
-            "V223 — Primary M5 Pocket Cluster • "
-            f"**{_fmt_price(v223_union.get('low'))}–{_fmt_price(v223_union.get('high'))}** • "
-            f"role={v223_primary.get('role','—')} • "
-            f"score={_fmt_number(v223_primary.get('selector_score_research'), 1)}/100 • "
-            f"distance={_fmt_number(v223_primary.get('distance_atr'), 2)} ATR."
-        )
-        if v223_core:
-            v223_policy = dict(v223_eval.get("selection_policy") or {})
-            st.caption(
-                "Consensus core "
-                f"**{_fmt_price(v223_core.get('low'))}–{_fmt_price(v223_core.get('high'))}** • "
-                f"{v223_primary.get('count',0)} pocket dalam micro-wave ini • "
-                f"total micro-wave={v223_policy.get('micro_wave_cluster_count','—')} • "
-                f"latest mapped={_fmt_wib_datetime(v223_primary.get('latest_mapped_at'), seconds=False)}. "
-                "V223 memutus cluster saat time-gap/span/midpoint shift terlalu besar, sehingga pocket lama "
-                "tidak menyatu ke area aktif baru. Consensus core adalah geometry riset; V223 tetap shadow-only."
+    ui_h4_zone = dict(v226_h4.get("zone") or {})
+    ui_h4_zone_id = str(ui_h4_zone.get("zone_id") or "")
+    ui_v229_geometry: dict[str, Any] = {}
+    for ui_event_row in execution_events:
+        ui_payload = dict(ui_event_row.get("payload") or {})
+        if (
+            str(ui_event_row.get("event_type") or "") == "DEMO_SIGNAL_GEOMETRY"
+            and (
+                str(ui_event_row.get("code") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
+                or str(ui_payload.get("strategy_id") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
             )
-    elif v223_eval:
-        retest_clusters = list(v223_eval.get("retest_only_clusters") or [])
-        if retest_clusters:
-            st.warning(
-                "V223 belum memiliki PRIMARY first-entry cluster. "
-                f"{len(retest_clusters)} cluster saat ini hanya berstatus RETEST_ONLY."
+        ):
+            same_h4 = not ui_h4_zone_id or str(ui_payload.get("h4_zone_id") or "") == ui_h4_zone_id
+            same_low = (
+                v226_entry_candidate.get("entry_low") is None
+                or ui_payload.get("candidate_low") is None
+                or abs(float(v226_entry_candidate.get("entry_low")) - float(ui_payload.get("candidate_low"))) < 1e-6
             )
+            same_high = (
+                v226_entry_candidate.get("entry_high") is None
+                or ui_payload.get("candidate_high") is None
+                or abs(float(v226_entry_candidate.get("entry_high")) - float(ui_payload.get("candidate_high"))) < 1e-6
+            )
+            if same_h4 and same_low and same_high:
+                ui_v229_geometry = ui_payload
+                break
+
+    ui_entry_low = v226_entry_candidate.get("entry_low")
+    ui_entry_high = v226_entry_candidate.get("entry_high")
+    ui_reference_entry = (
+        v226_entry_candidate.get("entry_reference")
+        or (prep_plan_now.get("entry") if prep_current_now else None)
+    )
+    ui_stop = (
+        ui_v229_geometry.get("planned_sl")
+        if ui_v229_geometry
+        else (prep_plan_now.get("stop") if prep_current_now else None)
+    )
+    ui_tp1 = (
+        ui_v229_geometry.get("planned_tp1")
+        if ui_v229_geometry
+        else (prep_plan_now.get("tp1") if prep_current_now else None)
+    )
+    ui_tp2 = (
+        ui_v229_geometry.get("planned_tp2")
+        if ui_v229_geometry
+        else (prep_plan_now.get("tp2") if prep_current_now else None)
+    )
+
+    st.markdown("### 3 • Eksekusi Sekarang")
+    with st.container(border=True):
+        ex1, ex2, ex3, ex4, ex5 = st.columns(5)
+        ex1.metric(
+            "Depth / reaction zone",
+            (
+                f"{_fmt_price(ui_entry_low)}–{_fmt_price(ui_entry_high)}"
+                if ui_entry_low is not None or ui_entry_high is not None
+                else f"{_fmt_price(zone_low)}–{_fmt_price(zone_high)}"
+            ),
+        )
+        ex2.metric("Reference entry", _fmt_price(ui_reference_entry))
+        ex3.metric("Stop Loss", _fmt_price(ui_stop))
+        ex4.metric("Scale-out awal", _fmt_price(ui_tp1))
+        ex5.metric("Target terminal", _fmt_price(ui_tp2))
+
+        if dc_admission_label in {"V229 READY", "BROKER ELIGIBLE"}:
+            st.success(f"Admission: **{dc_admission_label}** • route: **{dc_route_label}**")
+        elif dc_admission_label in {"BLOCKED", "INVALIDATED", "EXPIRED", "SHADOW READY"}:
+            st.warning(f"Admission: **{dc_admission_label}** • belum boleh menjadi order baru.")
         else:
-            st.caption("V223 belum menemukan cluster M5 aktif yang layak menjadi PRIMARY watch.")
+            st.info("Belum ada setup yang lolos admission. Tetap tunggu struktur/konfirmasi berikutnya.")
 
-    v224_details = (
-        {} if v224_primary_calibration_hb is None
-        else dict(v224_primary_calibration_hb.get("details") or {})
-    )
-    v224_summary = dict(v224_details.get("summary") or {})
-    if v224_summary:
-        st.markdown("##### V224 — Prospective Primary Pocket Accuracy")
-        q1, q2, q3, q4 = st.columns(4)
-        q1.metric("Primary forecast", int(v224_summary.get("forecasts") or 0))
-        q2.metric("Resolved touch", int(v224_summary.get("resolved_after_touch") or 0))
-        q3.metric(
-            "Hit ≥0.50 ATR",
-            _fmt_pct(dict(v224_summary.get("hit_050") or {}).get("rate")),
-        )
-        q4.metric(
-            "Wilson LB 95%",
-            _fmt_pct(dict(v224_summary.get("hit_050") or {}).get("wilson_lower_95")),
-        )
-        st.caption(
-            f"sample={v224_summary.get('sample_state','—')} • "
-            f"pending={v224_summary.get('pending',0)} • "
-            f"no-touch={v224_summary.get('no_touch',0)} • "
-            f"median touch={_fmt_minutes(v224_summary.get('median_forecast_to_touch_minutes'))} • "
-            f"median touch→0.50ATR={_fmt_minutes(v224_summary.get('median_touch_to_050_minutes'))}. "
-            "Hanya PRIMARY cluster yang dipilih saat harga masih di luar pocket pada sisi approach yang benar "
-            "yang boleh masuk sampel. V224 tetap shadow-only."
-        )
-
-    if v222_latest:
-        v222_geometry = (
-            f"{_fmt_price(v222_latest.get('low'))}–{_fmt_price(v222_latest.get('high'))}"
-        )
-        v222_timing = str(v222_latest.get("timing_state") or "—")
-        v222_quality = v222_latest.get("quality_score_research")
-        if v222_timing == "LATE_FOR_FIRST_ENTRY_WAIT_RETEST":
-            st.warning(
-                f"V222 • pocket terbaru **{v222_geometry}** sudah diklasifikasikan "
-                "**LATE FOR FIRST ENTRY / WAIT RETEST**. "
-                f"Quality research={_fmt_number(v222_quality, 1)} • "
-                f"reference price={_fmt_price(v222_latest.get('current_price_reference'))}. "
-                "Ini berarti pocket tetap berguna sebagai origin/retest reference, tetapi bukan "
-                "fresh first-entry pocket hanya karena statusnya refined."
-            )
-        else:
-            st.info(
-                f"V222 • pocket terbaru **{v222_geometry}** • "
-                f"timing={v222_timing} • quality research={_fmt_number(v222_quality, 1)}. "
-                "V222 membedakan formation/origin dari post-map retest."
-            )
-        if v222_latest.get("refined_first_observed_at"):
-            st.caption(
-                "Refined first-observed • "
-                f"{_fmt_wib_datetime(v222_latest.get('refined_first_observed_at'), seconds=True)} • "
-                f"candidate→refined observed={_fmt_minutes(v222_latest.get('candidate_to_refined_observed_minutes'))} • "
-                f"state={v222_latest.get('refinement_timing_state','—')}. "
-                "Waktu ini lebih penting untuk no-lookahead daripada timestamp origin/refined geometry."
-            )
-
-        if str(v222_eval.get("family_state") or "") in {
-            "SEQUENTIAL_REMAP_UP",
-            "SEQUENTIAL_REMAP_DOWN",
-        }:
-            st.caption(
-                f"Pocket family: {v222_eval.get('family_count', 0)} kandidat • "
-                f"state={v222_eval.get('family_state')} • "
-                "pocket terbaru tidak otomatis menggusur kandidat lama dalam evaluasi kualitas."
-            )
-
-    dc_current_pocket_shown = False
-    if dc_initial_candidate:
-        dc_current_pocket_shown = True
-        st.warning(
-            f"INITIAL M5 **{dc_current_leg_direction}** POCKET: "
-            f"**{_fmt_price(dc_initial_candidate.get('low'))}–{_fmt_price(dc_initial_candidate.get('high'))}** • "
-            f"state={dc_micro.get('state','—')} • status=CANDIDATE/ORIGIN. "
-            f"Pocket awal tetap dipertahankan walaupun refined pocket sudah terbentuk. "
-            f"Reaction target={dc_current_target_text} • opposing zone={dc_current_terminal_text}."
-        )
-        st.caption(
-            "Lifecycle awal • "
-            f"mapped={_fmt_wib_datetime(v214_current_timeline.get('candidate_mapped_at') or dc_initial_candidate.get('origin_at'), seconds=False)} • "
-            f"first touch={_fmt_wib_datetime(v214_current_timeline.get('first_touch_at'), seconds=False)} • "
-            f"sweep={_fmt_wib_datetime(v214_current_timeline.get('sweep_at') or dict(dc_micro.get('sweep') or {}).get('at'), seconds=False)} • "
-            f"lead={_fmt_minutes(v214_current_latency.get('candidate_map_to_touch'))}."
-        )
-
-    if dc_refined_display:
-        dc_current_pocket_shown = True
-        st.success(
-            f"REFINED M5 **{dc_current_leg_direction}** POCKET: "
-            f"**{_fmt_price(dc_refined_display.get('low'))}–{_fmt_price(dc_refined_display.get('high'))}** • "
-            f"state={dc_micro.get('state','—')} • "
-            f"sweep={_fmt_price(dict(dc_micro.get('sweep') or {}).get('price'))} • "
-            f"reclaim={_fmt_price(dc_micro.get('source_proximal_reclaim_level'))} • "
-            f"MSS={_fmt_price(dc_micro.get('mss_level'))}. "
-            f"Reaction target={dc_current_target_text} • opposing zone={dc_current_terminal_text}. "
-            "**SHADOW/PREPARE — belum otomatis menjadi entry resmi.**"
-        )
-
-        st.caption(
-            "Lifecycle refined • "
-            f"reclaim={_fmt_wib_datetime(v214_current_timeline.get('reclaim_at') or dc_micro.get('reclaim_at'), seconds=False)} • "
-            f"MSS={_fmt_wib_datetime(v214_current_timeline.get('mss_at') or dc_micro.get('mss_at'), seconds=False)} • "
-            f"displacement={_fmt_wib_datetime(v214_current_timeline.get('displacement_at') or dc_micro.get('displacement_at'), seconds=False)} • "
-            f"refined mapped={_fmt_wib_datetime(v214_current_timeline.get('refined_mapped_at') or dc_refined_display.get('origin_at'), seconds=False)} • "
-            f"touch→refined={_fmt_minutes(v214_current_latency.get('touch_to_refined'))}."
-        )
-
-    if not dc_current_pocket_shown:
-        st.info(
-            f"Belum ada M5 pocket aktif untuk leg {dc_current_leg_direction}. "
-            f"Path target tetap dipetakan: reaction target={dc_current_target_text} • "
-            f"opposing zone={dc_current_terminal_text}."
-        )
-
-    if dc_next_pocket_state == "INVALIDATED_M5_POCKET":
-        st.warning(
-            f"M5 **{dc_next_leg_direction}** pocket sebelumnya sudah **INVALIDATED** • "
-            f"state={dc_next_micro.get('state','—')}. "
-            "Pocket lama tidak lagi ditampilkan sebagai setup aktif. "
-            f"Parent watch zone tetap {_fmt_price(dc_next_leg_source.get('low'))}–"
-            f"{_fmt_price(dc_next_leg_source.get('high'))}; scanner menunggu fresh M5 pocket baru. "
-            f"Projected path jika setup baru nanti valid: reaction target={dc_next_target_text} • "
-            f"terminal zone={dc_next_terminal_text}."
-        )
-    else:
-        dc_next_pocket_shown = False
-
-        if dc_next_initial_candidate:
-            dc_next_pocket_shown = True
-            st.info(
-                f"INITIAL M5 **{dc_next_leg_direction}** POCKET berikutnya: "
-                f"**{_fmt_price(dc_next_initial_candidate.get('low'))}–{_fmt_price(dc_next_initial_candidate.get('high'))}** • "
-                f"state={dc_next_micro.get('state','—')} • status=CANDIDATE. "
-                f"Reaction target={dc_next_target_text} • "
-                f"terminal opposing zone={dc_next_terminal_text}."
-            )
-
-        if dc_next_refined_display:
-            dc_next_pocket_shown = True
-            st.success(
-                f"REFINED M5 **{dc_next_leg_direction}** POCKET berikutnya: "
-                f"**{_fmt_price(dc_next_refined_display.get('low'))}–{_fmt_price(dc_next_refined_display.get('high'))}** • "
-                f"state={dc_next_micro.get('state','—')}. "
-                f"Reaction target={dc_next_target_text} • "
-                f"terminal opposing zone={dc_next_terminal_text}. "
-                "Refined pocket tetap tidak menjadi izin broker tanpa admission yang valid."
-            )
-
-        if dc_next_initial_candidate:
-            st.caption(
-                "Next-leg lifecycle • "
-                f"mapped={_fmt_wib_datetime(v214_next_timeline.get('candidate_mapped_at') or dc_next_initial_candidate.get('origin_at'), seconds=False)} • "
-                f"touch={_fmt_wib_datetime(v214_next_timeline.get('first_touch_at'), seconds=False)} • "
-                f"reclaim={_fmt_wib_datetime(v214_next_timeline.get('reclaim_at') or dc_next_micro.get('reclaim_at'), seconds=False)} • "
-                f"MSS={_fmt_wib_datetime(v214_next_timeline.get('mss_at') or dc_next_micro.get('mss_at'), seconds=False)} • "
-                f"touch→refined={_fmt_minutes(v214_next_latency.get('touch_to_refined'))}."
-            )
-
-        if not dc_next_pocket_shown and dc_next_leg_source:
-            st.info(
-                f"PARENT WATCH ZONE / PRE-M5 **{dc_next_leg_direction}**: "
-                f"**{_fmt_price(dc_next_leg_source.get('low'))}–{_fmt_price(dc_next_leg_source.get('high'))}** • "
-                f"state={dc_next_micro.get('state','WAIT_SOURCE_TOUCH')} • "
-                f"reaction target={dc_next_target_text} • terminal zone={dc_next_terminal_text}. "
-                "Belum ada M5 pocket aktual pada tahap ini. Candidate M5 pocket baru dibentuk "
-                "setelah fresh M5 touch/sweep pada parent zone."
-            )
-        elif not dc_next_pocket_shown:
-            st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
-
-    with st.expander("Riset pocket, reaction & zone reuse (V200/V212–V216/V222/V223)", expanded=False):
-        if v223_eval:
-            st.markdown("##### V223 — Primary M5 Pocket Cluster")
-            cl1, cl2, cl3, cl4 = st.columns(4)
-            cl1.metric("Cluster", len(list(v223_eval.get("clusters") or [])))
-            cl2.metric(
-                "Primary role",
-                str(v223_primary.get("role") or "—"),
-            )
-            cl3.metric(
-                "Primary score",
-                "—"
-                if v223_primary.get("selector_score_research") is None
-                else f"{float(v223_primary.get('selector_score_research')):.1f}/100",
-            )
-            cl4.metric(
-                "Distance",
-                "—"
-                if v223_primary.get("distance_atr") is None
-                else f"{float(v223_primary.get('distance_atr')):.2f} ATR",
-            )
-            st.caption(
-                "V223 menggabungkan pocket yang overlap/berdekatan agar pocket terbaru tidak "
-                "otomatis menggusur micro-area yang stabil. Consensus core tetap shadow-only "
-                "dan belum boleh dipakai sebagai entry order."
-            )
-            cluster_rows = []
-            for row in list(v223_eval.get("clusters") or [])[-6:]:
-                item = dict(row)
-                union = dict(item.get("union_zone") or {})
-                core = dict(item.get("consensus_core") or {})
-                cluster_rows.append(
+        if v226_ladder_slots:
+            ladder_rows = []
+            for ui_slot in v226_ladder_slots:
+                ui_slot_no = int(ui_slot.get("slot") or 0)
+                ladder_rows.append(
                     {
-                        "Cluster": item.get("cluster_id"),
-                        "Role": item.get("role"),
-                        "Union": f"{_fmt_price(union.get('low'))}–{_fmt_price(union.get('high'))}",
-                        "Consensus core": (
-                            f"{_fmt_price(core.get('low'))}–{_fmt_price(core.get('high'))}"
-                            if core else "—"
+                        "child": f"L{ui_slot_no}",
+                        "lot": ui_slot.get("lot", 0.01),
+                        "entry acuan": _fmt_price(ui_slot.get("reference_price")),
+                        "cara aktif": (
+                            "PRE-TOUCH LIMIT"
+                            if ui_slot_no in {1, 2}
+                            else "M5 CONFIRM + RETEST"
                         ),
-                        "Count": item.get("count"),
-                        "Score": item.get("selector_score_research"),
-                        "Distance ATR": item.get("distance_atr"),
+                        "status": (
+                            "boleh pending sebelum touch"
+                            if ui_slot_no in {1, 2}
+                            else "reserve; tunggu evidence M5"
+                        ),
                     }
                 )
-            if cluster_rows:
-                st.dataframe(pd.DataFrame(cluster_rows), width="stretch", hide_index=True)
-
-        if v222_eval:
-            st.markdown("##### V222 — M5 Pocket Quality & Stability")
-            pq1, pq2, pq3, pq4 = st.columns(4)
-            pq1.metric("Pocket family", int(v222_eval.get("family_count") or 0))
-            pq2.metric("Family state", str(v222_eval.get("family_state") or "—"))
-            pq3.metric(
-                "Latest quality",
-                "—"
-                if v222_latest.get("quality_score_research") is None
-                else f"{float(v222_latest.get('quality_score_research')):.1f}/100",
-            )
-            pq4.metric("Latest timing", str(v222_latest.get("timing_state") or "—"))
+            st.dataframe(pd.DataFrame(ladder_rows), hide_index=True, width="stretch")
             st.caption(
-                "Formation candle memang sudah memperdagangkan harga pocket sebelum pocket dapat "
-                "dipetakan dari completed M5. first_touch hanya berarti retest setelah mapping. "
-                "Karena itu ORIGIN/FORMATION tidak boleh disamakan dengan fresh entry. "
-                "V222 tetap shadow-only."
+                "V229 child ladder: maksimum 4 × 0,01 lot. L1–L2 pre-touch LIMIT; "
+                "L3–L4 hanya setelah evidence M5 masing-masing. Semua child wajib SL/TP server-side."
             )
-            if v222_family:
-                family_rows = []
-                for row in v222_family[-6:]:
-                    family_rows.append(
+
+    with st.expander("Detail setup multi-timeframe — H1 / M5 / M15 / DOM / Event", expanded=False):
+        st.markdown("#### 2. H1 — Zona Reaksi Utama")
+        if dc_source:
+            dc_source_freshness = str(
+                dict(dc_source.get("lifecycle") or {}).get("freshness") or "—"
+            )
+            st.info(
+                f"{dc_source.get('timeframe','H1')} {dc_source.get('direction','—')} "
+                f"{dc_source.get('pattern','—')} • "
+                f"zona **{_fmt_price(dc_source.get('low'))}–{_fmt_price(dc_source.get('high'))}** • "
+                f"proximal {_fmt_price(dc_source.get('proximal'))} • "
+                f"freshness={dc_source_freshness}. "
+                "H1 menentukan area reaksi, bukan titik entry akhir."
+            )
+        else:
+            st.warning(
+                "Belum ada H1 source zone aktif pada path RIZAN-style/Supply-Demand saat ini."
+            )
+
+        st.markdown("#### 3. M5 — Pocket, Target & Opposing Leg")
+        dc_current_target_text = (
+            _fmt_price(dc_current_leg_target.get("price"))
+            if dc_current_leg_target
+            else "—"
+        )
+        dc_current_terminal_text = (
+            f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
+            f"{_fmt_price(dc_current_leg_terminal.get('high'))}"
+            if dc_current_leg_terminal
+            else "—"
+        )
+        dc_next_target_text = (
+            _fmt_price(dc_next_leg_target.get("price"))
+            if dc_next_leg_target
+            else "—"
+        )
+        dc_next_terminal_text = (
+            f"{_fmt_price(dc_next_leg_terminal.get('low'))}–"
+            f"{_fmt_price(dc_next_leg_terminal.get('high'))}"
+            if dc_next_leg_terminal
+            else "—"
+        )
+
+        v214_details = (
+            {} if v214_lifecycle_hb is None else dict(v214_lifecycle_hb.get("details") or {})
+        )
+        v214_eval = dict(v214_details.get("evaluation") or {})
+        v214_current = dict(v214_eval.get("current_leg") or {})
+        v214_next = dict(v214_eval.get("next_leg") or {})
+        v214_current_timeline = dict(v214_current.get("timeline") or {})
+        v214_current_latency = dict(v214_current.get("latency_minutes") or {})
+        v214_next_timeline = dict(v214_next.get("timeline") or {})
+        v214_next_latency = dict(v214_next.get("latency_minutes") or {})
+
+        v222_details = (
+            {} if v222_pocket_quality_hb is None else dict(v222_pocket_quality_hb.get("details") or {})
+        )
+        v222_eval = dict(v222_details.get("evaluation") or {})
+        v222_latest = dict(v222_eval.get("latest_pocket") or {})
+        v222_family = [dict(row) for row in list(v222_eval.get("family") or [])]
+
+        v223_details = (
+            {} if v223_cluster_hb is None else dict(v223_cluster_hb.get("details") or {})
+        )
+        v223_eval = dict(v223_details.get("evaluation") or {})
+        v223_primary = dict(v223_eval.get("primary_cluster") or {})
+        v223_alternative = dict(v223_eval.get("alternative_cluster") or {})
+        if v223_primary:
+            v223_union = dict(v223_primary.get("union_zone") or {})
+            v223_core = dict(v223_primary.get("consensus_core") or {})
+            st.success(
+                "V223 — Primary M5 Pocket Cluster • "
+                f"**{_fmt_price(v223_union.get('low'))}–{_fmt_price(v223_union.get('high'))}** • "
+                f"role={v223_primary.get('role','—')} • "
+                f"score={_fmt_number(v223_primary.get('selector_score_research'), 1)}/100 • "
+                f"distance={_fmt_number(v223_primary.get('distance_atr'), 2)} ATR."
+            )
+            if v223_core:
+                v223_policy = dict(v223_eval.get("selection_policy") or {})
+                st.caption(
+                    "Consensus core "
+                    f"**{_fmt_price(v223_core.get('low'))}–{_fmt_price(v223_core.get('high'))}** • "
+                    f"{v223_primary.get('count',0)} pocket dalam micro-wave ini • "
+                    f"total micro-wave={v223_policy.get('micro_wave_cluster_count','—')} • "
+                    f"latest mapped={_fmt_wib_datetime(v223_primary.get('latest_mapped_at'), seconds=False)}. "
+                    "V223 memutus cluster saat time-gap/span/midpoint shift terlalu besar, sehingga pocket lama "
+                    "tidak menyatu ke area aktif baru. Consensus core adalah geometry riset; V223 tetap shadow-only."
+                )
+        elif v223_eval:
+            retest_clusters = list(v223_eval.get("retest_only_clusters") or [])
+            if retest_clusters:
+                st.warning(
+                    "V223 belum memiliki PRIMARY first-entry cluster. "
+                    f"{len(retest_clusters)} cluster saat ini hanya berstatus RETEST_ONLY."
+                )
+            else:
+                st.caption("V223 belum menemukan cluster M5 aktif yang layak menjadi PRIMARY watch.")
+
+        v224_details = (
+            {} if v224_primary_calibration_hb is None
+            else dict(v224_primary_calibration_hb.get("details") or {})
+        )
+        v224_summary = dict(v224_details.get("summary") or {})
+        if v224_summary:
+            st.markdown("##### V224 — Prospective Primary Pocket Accuracy")
+            q1, q2, q3, q4 = st.columns(4)
+            q1.metric("Primary forecast", int(v224_summary.get("forecasts") or 0))
+            q2.metric("Resolved touch", int(v224_summary.get("resolved_after_touch") or 0))
+            q3.metric(
+                "Hit ≥0.50 ATR",
+                _fmt_pct(dict(v224_summary.get("hit_050") or {}).get("rate")),
+            )
+            q4.metric(
+                "Wilson LB 95%",
+                _fmt_pct(dict(v224_summary.get("hit_050") or {}).get("wilson_lower_95")),
+            )
+            st.caption(
+                f"sample={v224_summary.get('sample_state','—')} • "
+                f"pending={v224_summary.get('pending',0)} • "
+                f"no-touch={v224_summary.get('no_touch',0)} • "
+                f"median touch={_fmt_minutes(v224_summary.get('median_forecast_to_touch_minutes'))} • "
+                f"median touch→0.50ATR={_fmt_minutes(v224_summary.get('median_touch_to_050_minutes'))}. "
+                "Hanya PRIMARY cluster yang dipilih saat harga masih di luar pocket pada sisi approach yang benar "
+                "yang boleh masuk sampel. V224 tetap shadow-only."
+            )
+
+        if v222_latest:
+            v222_geometry = (
+                f"{_fmt_price(v222_latest.get('low'))}–{_fmt_price(v222_latest.get('high'))}"
+            )
+            v222_timing = str(v222_latest.get("timing_state") or "—")
+            v222_quality = v222_latest.get("quality_score_research")
+            if v222_timing == "LATE_FOR_FIRST_ENTRY_WAIT_RETEST":
+                st.warning(
+                    f"V222 • pocket terbaru **{v222_geometry}** sudah diklasifikasikan "
+                    "**LATE FOR FIRST ENTRY / WAIT RETEST**. "
+                    f"Quality research={_fmt_number(v222_quality, 1)} • "
+                    f"reference price={_fmt_price(v222_latest.get('current_price_reference'))}. "
+                    "Ini berarti pocket tetap berguna sebagai origin/retest reference, tetapi bukan "
+                    "fresh first-entry pocket hanya karena statusnya refined."
+                )
+            else:
+                st.info(
+                    f"V222 • pocket terbaru **{v222_geometry}** • "
+                    f"timing={v222_timing} • quality research={_fmt_number(v222_quality, 1)}. "
+                    "V222 membedakan formation/origin dari post-map retest."
+                )
+            if v222_latest.get("refined_first_observed_at"):
+                st.caption(
+                    "Refined first-observed • "
+                    f"{_fmt_wib_datetime(v222_latest.get('refined_first_observed_at'), seconds=True)} • "
+                    f"candidate→refined observed={_fmt_minutes(v222_latest.get('candidate_to_refined_observed_minutes'))} • "
+                    f"state={v222_latest.get('refinement_timing_state','—')}. "
+                    "Waktu ini lebih penting untuk no-lookahead daripada timestamp origin/refined geometry."
+                )
+
+            if str(v222_eval.get("family_state") or "") in {
+                "SEQUENTIAL_REMAP_UP",
+                "SEQUENTIAL_REMAP_DOWN",
+            }:
+                st.caption(
+                    f"Pocket family: {v222_eval.get('family_count', 0)} kandidat • "
+                    f"state={v222_eval.get('family_state')} • "
+                    "pocket terbaru tidak otomatis menggusur kandidat lama dalam evaluasi kualitas."
+                )
+
+        dc_current_pocket_shown = False
+        if dc_initial_candidate:
+            dc_current_pocket_shown = True
+            st.warning(
+                f"INITIAL M5 **{dc_current_leg_direction}** POCKET: "
+                f"**{_fmt_price(dc_initial_candidate.get('low'))}–{_fmt_price(dc_initial_candidate.get('high'))}** • "
+                f"state={dc_micro.get('state','—')} • status=CANDIDATE/ORIGIN. "
+                f"Pocket awal tetap dipertahankan walaupun refined pocket sudah terbentuk. "
+                f"Reaction target={dc_current_target_text} • opposing zone={dc_current_terminal_text}."
+            )
+            st.caption(
+                "Lifecycle awal • "
+                f"mapped={_fmt_wib_datetime(v214_current_timeline.get('candidate_mapped_at') or dc_initial_candidate.get('origin_at'), seconds=False)} • "
+                f"first touch={_fmt_wib_datetime(v214_current_timeline.get('first_touch_at'), seconds=False)} • "
+                f"sweep={_fmt_wib_datetime(v214_current_timeline.get('sweep_at') or dict(dc_micro.get('sweep') or {}).get('at'), seconds=False)} • "
+                f"lead={_fmt_minutes(v214_current_latency.get('candidate_map_to_touch'))}."
+            )
+
+        if dc_refined_display:
+            dc_current_pocket_shown = True
+            st.success(
+                f"REFINED M5 **{dc_current_leg_direction}** POCKET: "
+                f"**{_fmt_price(dc_refined_display.get('low'))}–{_fmt_price(dc_refined_display.get('high'))}** • "
+                f"state={dc_micro.get('state','—')} • "
+                f"sweep={_fmt_price(dict(dc_micro.get('sweep') or {}).get('price'))} • "
+                f"reclaim={_fmt_price(dc_micro.get('source_proximal_reclaim_level'))} • "
+                f"MSS={_fmt_price(dc_micro.get('mss_level'))}. "
+                f"Reaction target={dc_current_target_text} • opposing zone={dc_current_terminal_text}. "
+                "**SHADOW/PREPARE — belum otomatis menjadi entry resmi.**"
+            )
+
+            st.caption(
+                "Lifecycle refined • "
+                f"reclaim={_fmt_wib_datetime(v214_current_timeline.get('reclaim_at') or dc_micro.get('reclaim_at'), seconds=False)} • "
+                f"MSS={_fmt_wib_datetime(v214_current_timeline.get('mss_at') or dc_micro.get('mss_at'), seconds=False)} • "
+                f"displacement={_fmt_wib_datetime(v214_current_timeline.get('displacement_at') or dc_micro.get('displacement_at'), seconds=False)} • "
+                f"refined mapped={_fmt_wib_datetime(v214_current_timeline.get('refined_mapped_at') or dc_refined_display.get('origin_at'), seconds=False)} • "
+                f"touch→refined={_fmt_minutes(v214_current_latency.get('touch_to_refined'))}."
+            )
+
+        if not dc_current_pocket_shown:
+            st.info(
+                f"Belum ada M5 pocket aktif untuk leg {dc_current_leg_direction}. "
+                f"Path target tetap dipetakan: reaction target={dc_current_target_text} • "
+                f"opposing zone={dc_current_terminal_text}."
+            )
+
+        if dc_next_pocket_state == "INVALIDATED_M5_POCKET":
+            st.warning(
+                f"M5 **{dc_next_leg_direction}** pocket sebelumnya sudah **INVALIDATED** • "
+                f"state={dc_next_micro.get('state','—')}. "
+                "Pocket lama tidak lagi ditampilkan sebagai setup aktif. "
+                f"Parent watch zone tetap {_fmt_price(dc_next_leg_source.get('low'))}–"
+                f"{_fmt_price(dc_next_leg_source.get('high'))}; scanner menunggu fresh M5 pocket baru. "
+                f"Projected path jika setup baru nanti valid: reaction target={dc_next_target_text} • "
+                f"terminal zone={dc_next_terminal_text}."
+            )
+        else:
+            dc_next_pocket_shown = False
+
+            if dc_next_initial_candidate:
+                dc_next_pocket_shown = True
+                st.info(
+                    f"INITIAL M5 **{dc_next_leg_direction}** POCKET berikutnya: "
+                    f"**{_fmt_price(dc_next_initial_candidate.get('low'))}–{_fmt_price(dc_next_initial_candidate.get('high'))}** • "
+                    f"state={dc_next_micro.get('state','—')} • status=CANDIDATE. "
+                    f"Reaction target={dc_next_target_text} • "
+                    f"terminal opposing zone={dc_next_terminal_text}."
+                )
+
+            if dc_next_refined_display:
+                dc_next_pocket_shown = True
+                st.success(
+                    f"REFINED M5 **{dc_next_leg_direction}** POCKET berikutnya: "
+                    f"**{_fmt_price(dc_next_refined_display.get('low'))}–{_fmt_price(dc_next_refined_display.get('high'))}** • "
+                    f"state={dc_next_micro.get('state','—')}. "
+                    f"Reaction target={dc_next_target_text} • "
+                    f"terminal opposing zone={dc_next_terminal_text}. "
+                    "Refined pocket tetap tidak menjadi izin broker tanpa admission yang valid."
+                )
+
+            if dc_next_initial_candidate:
+                st.caption(
+                    "Next-leg lifecycle • "
+                    f"mapped={_fmt_wib_datetime(v214_next_timeline.get('candidate_mapped_at') or dc_next_initial_candidate.get('origin_at'), seconds=False)} • "
+                    f"touch={_fmt_wib_datetime(v214_next_timeline.get('first_touch_at'), seconds=False)} • "
+                    f"reclaim={_fmt_wib_datetime(v214_next_timeline.get('reclaim_at') or dc_next_micro.get('reclaim_at'), seconds=False)} • "
+                    f"MSS={_fmt_wib_datetime(v214_next_timeline.get('mss_at') or dc_next_micro.get('mss_at'), seconds=False)} • "
+                    f"touch→refined={_fmt_minutes(v214_next_latency.get('touch_to_refined'))}."
+                )
+
+            if not dc_next_pocket_shown and dc_next_leg_source:
+                st.info(
+                    f"PARENT WATCH ZONE / PRE-M5 **{dc_next_leg_direction}**: "
+                    f"**{_fmt_price(dc_next_leg_source.get('low'))}–{_fmt_price(dc_next_leg_source.get('high'))}** • "
+                    f"state={dc_next_micro.get('state','WAIT_SOURCE_TOUCH')} • "
+                    f"reaction target={dc_next_target_text} • terminal zone={dc_next_terminal_text}. "
+                    "Belum ada M5 pocket aktual pada tahap ini. Candidate M5 pocket baru dibentuk "
+                    "setelah fresh M5 touch/sweep pada parent zone."
+                )
+            elif not dc_next_pocket_shown:
+                st.caption("Belum ada opposing leg yang cukup lengkap untuk dipetakan.")
+
+        with st.expander("Riset pocket, reaction & zone reuse (V200/V212–V216/V222/V223)", expanded=False):
+            if v223_eval:
+                st.markdown("##### V223 — Primary M5 Pocket Cluster")
+                cl1, cl2, cl3, cl4 = st.columns(4)
+                cl1.metric("Cluster", len(list(v223_eval.get("clusters") or [])))
+                cl2.metric(
+                    "Primary role",
+                    str(v223_primary.get("role") or "—"),
+                )
+                cl3.metric(
+                    "Primary score",
+                    "—"
+                    if v223_primary.get("selector_score_research") is None
+                    else f"{float(v223_primary.get('selector_score_research')):.1f}/100",
+                )
+                cl4.metric(
+                    "Distance",
+                    "—"
+                    if v223_primary.get("distance_atr") is None
+                    else f"{float(v223_primary.get('distance_atr')):.2f} ATR",
+                )
+                st.caption(
+                    "V223 menggabungkan pocket yang overlap/berdekatan agar pocket terbaru tidak "
+                    "otomatis menggusur micro-area yang stabil. Consensus core tetap shadow-only "
+                    "dan belum boleh dipakai sebagai entry order."
+                )
+                cluster_rows = []
+                for row in list(v223_eval.get("clusters") or [])[-6:]:
+                    item = dict(row)
+                    union = dict(item.get("union_zone") or {})
+                    core = dict(item.get("consensus_core") or {})
+                    cluster_rows.append(
                         {
-                            "Seq": row.get("sequence"),
-                            "Pocket": f"{_fmt_price(row.get('low'))}–{_fmt_price(row.get('high'))}",
-                            "Mapped WIB": _fmt_wib_datetime(row.get("mapped_at"), seconds=False),
-                            "Post-map touch": _fmt_wib_datetime(row.get("first_touch_at"), seconds=False),
-                            "Timing": row.get("timing_state"),
-                            "Quality": row.get("quality_score_research"),
-                            "Shift ATR": row.get("midpoint_shift_atr"),
+                            "Cluster": item.get("cluster_id"),
+                            "Role": item.get("role"),
+                            "Union": f"{_fmt_price(union.get('low'))}–{_fmt_price(union.get('high'))}",
+                            "Consensus core": (
+                                f"{_fmt_price(core.get('low'))}–{_fmt_price(core.get('high'))}"
+                                if core else "—"
+                            ),
+                            "Count": item.get("count"),
+                            "Score": item.get("selector_score_research"),
+                            "Distance ATR": item.get("distance_atr"),
                         }
                     )
-                st.dataframe(
-                    pd.DataFrame(family_rows),
-                    width="stretch",
-                    hide_index=True,
+                if cluster_rows:
+                    st.dataframe(pd.DataFrame(cluster_rows), width="stretch", hide_index=True)
+
+            if v222_eval:
+                st.markdown("##### V222 — M5 Pocket Quality & Stability")
+                pq1, pq2, pq3, pq4 = st.columns(4)
+                pq1.metric("Pocket family", int(v222_eval.get("family_count") or 0))
+                pq2.metric("Family state", str(v222_eval.get("family_state") or "—"))
+                pq3.metric(
+                    "Latest quality",
+                    "—"
+                    if v222_latest.get("quality_score_research") is None
+                    else f"{float(v222_latest.get('quality_score_research')):.1f}/100",
+                )
+                pq4.metric("Latest timing", str(v222_latest.get("timing_state") or "—"))
+                st.caption(
+                    "Formation candle memang sudah memperdagangkan harga pocket sebelum pocket dapat "
+                    "dipetakan dari completed M5. first_touch hanya berarti retest setelah mapping. "
+                    "Karena itu ORIGIN/FORMATION tidak boleh disamakan dengan fresh entry. "
+                    "V222 tetap shadow-only."
+                )
+                if v222_family:
+                    family_rows = []
+                    for row in v222_family[-6:]:
+                        family_rows.append(
+                            {
+                                "Seq": row.get("sequence"),
+                                "Pocket": f"{_fmt_price(row.get('low'))}–{_fmt_price(row.get('high'))}",
+                                "Mapped WIB": _fmt_wib_datetime(row.get("mapped_at"), seconds=False),
+                                "Post-map touch": _fmt_wib_datetime(row.get("first_touch_at"), seconds=False),
+                                "Timing": row.get("timing_state"),
+                                "Quality": row.get("quality_score_research"),
+                                "Shift ATR": row.get("midpoint_shift_atr"),
+                            }
+                        )
+                    st.dataframe(
+                        pd.DataFrame(family_rows),
+                        width="stretch",
+                        hide_index=True,
+                    )
+
+            v216_details = (
+                {} if v216_calibration_hb is None else dict(v216_calibration_hb.get("details") or {})
+            )
+            v216_summary = dict(v216_details.get("summary") or {})
+            if v216_summary:
+                st.markdown("##### V215/V216 — Candidate vs Refined Calibration")
+                cv1, cv2, cv3, cv4 = st.columns(4)
+                cv1.metric("Episode", int(v216_summary.get("episodes") or 0))
+                cv2.metric(
+                    "Refined | touched",
+                    _fmt_pct(v216_summary.get("refinement_rate_given_touch")),
+                )
+                before_025 = dict(v216_summary.get("reaction_025_before_refined") or {})
+                before_050 = dict(v216_summary.get("reaction_050_before_refined") or {})
+                cv3.metric("0.25 ATR sebelum refined", _fmt_pct(before_025.get("rate")))
+                cv4.metric("0.50 ATR sebelum refined", _fmt_pct(before_050.get("rate")))
+                st.caption(
+                    f"sample={v216_summary.get('sample_state','—')} • "
+                    f"median candidate lead={_fmt_minutes(v216_summary.get('median_premap_lead_minutes'))}. "
+                    "Jika reaksi sering terjadi sebelum refined, refined dibaca sebagai retest/re-entry confirmation, "
+                    "bukan origin reversal pertama. V215/V216 tetap shadow-only."
                 )
 
-        v216_details = (
-            {} if v216_calibration_hb is None else dict(v216_calibration_hb.get("details") or {})
-        )
-        v216_summary = dict(v216_details.get("summary") or {})
-        if v216_summary:
-            st.markdown("##### V215/V216 — Candidate vs Refined Calibration")
-            cv1, cv2, cv3, cv4 = st.columns(4)
-            cv1.metric("Episode", int(v216_summary.get("episodes") or 0))
-            cv2.metric(
-                "Refined | touched",
-                _fmt_pct(v216_summary.get("refinement_rate_given_touch")),
+            v212_details = (
+                {} if v212_probability_hb is None else dict(v212_probability_hb.get("details") or {})
             )
-            before_025 = dict(v216_summary.get("reaction_025_before_refined") or {})
-            before_050 = dict(v216_summary.get("reaction_050_before_refined") or {})
-            cv3.metric("0.25 ATR sebelum refined", _fmt_pct(before_025.get("rate")))
-            cv4.metric("0.50 ATR sebelum refined", _fmt_pct(before_050.get("rate")))
-            st.caption(
-                f"sample={v216_summary.get('sample_state','—')} • "
-                f"median candidate lead={_fmt_minutes(v216_summary.get('median_premap_lead_minutes'))}. "
-                "Jika reaksi sering terjadi sebelum refined, refined dibaca sebagai retest/re-entry confirmation, "
-                "bukan origin reversal pertama. V215/V216 tetap shadow-only."
+            v213_details = (
+                {} if v213_path_hb is None else dict(v213_path_hb.get("details") or {})
             )
-
-        v212_details = (
-            {} if v212_probability_hb is None else dict(v212_probability_hb.get("details") or {})
-        )
-        v213_details = (
-            {} if v213_path_hb is None else dict(v213_path_hb.get("details") or {})
-        )
-        v213_eval = dict(v213_details.get("evaluation") or {})
-        v213_current = dict(v213_eval.get("current_leg") or {})
-        v213_hist = dict(v213_current.get("historical_estimate") or {})
-        if v213_current:
-            st.markdown("##### V212/V213 — Probabilitas Reaksi & Jalur Setelah Zone")
-            rp1, rp2, rp3, rp4 = st.columns(4)
-            rp1.metric(
-                "P touch",
-                "—" if v213_hist.get("p_touch") is None else _fmt_pct(v213_hist.get("p_touch")),
-            )
-            rp2.metric(
-                "P reaksi ≥0.50 ATR",
-                "—" if v213_hist.get("p_hold_050") is None else _fmt_pct(v213_hist.get("p_hold_050")),
-            )
-            rp3.metric(
-                "P break zone",
-                "—" if v213_hist.get("p_break") is None else _fmt_pct(v213_hist.get("p_break")),
-            )
-            rp4.metric(
-                "P lanjut 1.00 ATR | sudah 0.50",
-                "—"
-                if v213_hist.get("p_100_given_050") is None
-                else _fmt_pct(v213_hist.get("p_100_given_050")),
-            )
-            st.caption(
-                f"Stage={v213_current.get('stage','—')} • "
-                f"confidence={v213_hist.get('confidence','—')} • "
-                f"median outcome={_fmt_distance(v213_hist.get('median_minutes_to_outcome'), ' menit')}. "
-                "Angka V212/V213 adalah estimasi historis/shadow untuk sharpening, bukan izin eksekusi."
-            )
-
-        if dc_current_reuse or dc_next_reuse:
-            current_reuse_state = str(dc_current_reuse.get("state") or "—")
-            next_reuse_state = str(dc_next_reuse.get("state") or "—")
-            st.caption(
-                "V200 Zone Reuse • "
-                f"current={current_reuse_state}"
-                + (
-                    f" (touch={dc_current_reuse.get('touch_count')}, "
-                    f"mitigation={float(dc_current_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
-                    if dc_current_reuse else ""
+            v213_eval = dict(v213_details.get("evaluation") or {})
+            v213_current = dict(v213_eval.get("current_leg") or {})
+            v213_hist = dict(v213_current.get("historical_estimate") or {})
+            if v213_current:
+                st.markdown("##### V212/V213 — Probabilitas Reaksi & Jalur Setelah Zone")
+                rp1, rp2, rp3, rp4 = st.columns(4)
+                rp1.metric(
+                    "P touch",
+                    "—" if v213_hist.get("p_touch") is None else _fmt_pct(v213_hist.get("p_touch")),
                 )
-                + " • "
-                f"next={next_reuse_state}"
-                + (
-                    f" (touch={dc_next_reuse.get('touch_count')}, "
-                    f"mitigation={float(dc_next_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
-                    if dc_next_reuse else ""
+                rp2.metric(
+                    "P reaksi ≥0.50 ATR",
+                    "—" if v213_hist.get("p_hold_050") is None else _fmt_pct(v213_hist.get("p_hold_050")),
                 )
-                + ". Tidak ada blind reuse dan tidak ada hard touch-limit; "
-                "zona deep/multi-tested harus mendapat micro confirmation baru."
+                rp3.metric(
+                    "P break zone",
+                    "—" if v213_hist.get("p_break") is None else _fmt_pct(v213_hist.get("p_break")),
+                )
+                rp4.metric(
+                    "P lanjut 1.00 ATR | sudah 0.50",
+                    "—"
+                    if v213_hist.get("p_100_given_050") is None
+                    else _fmt_pct(v213_hist.get("p_100_given_050")),
+                )
+                st.caption(
+                    f"Stage={v213_current.get('stage','—')} • "
+                    f"confidence={v213_hist.get('confidence','—')} • "
+                    f"median outcome={_fmt_distance(v213_hist.get('median_minutes_to_outcome'), ' menit')}. "
+                    "Angka V212/V213 adalah estimasi historis/shadow untuk sharpening, bukan izin eksekusi."
+                )
+
+            if dc_current_reuse or dc_next_reuse:
+                current_reuse_state = str(dc_current_reuse.get("state") or "—")
+                next_reuse_state = str(dc_next_reuse.get("state") or "—")
+                st.caption(
+                    "V200 Zone Reuse • "
+                    f"current={current_reuse_state}"
+                    + (
+                        f" (touch={dc_current_reuse.get('touch_count')}, "
+                        f"mitigation={float(dc_current_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
+                        if dc_current_reuse else ""
+                    )
+                    + " • "
+                    f"next={next_reuse_state}"
+                    + (
+                        f" (touch={dc_next_reuse.get('touch_count')}, "
+                        f"mitigation={float(dc_next_reuse.get('mitigation_depth') or 0.0)*100:.0f}%)"
+                        if dc_next_reuse else ""
+                    )
+                    + ". Tidak ada blind reuse dan tidak ada hard touch-limit; "
+                    "zona deep/multi-tested harus mendapat micro confirmation baru."
+                )
+
+        st.markdown("#### 4. M15 — Konfirmasi Eksekusi")
+        if dc_m15_ready:
+            st.success(
+                f"M15 {dc_m15_direction} **EXECUTION_READY** • score={dc_m15_score}. "
+                "Tetap lanjut ke canonical/execution admission dan fresh quote."
+            )
+        elif dc_m15_row is not None:
+            st.warning(
+                f"M15 {dc_m15_direction} • state={dc_m15_state} • score={dc_m15_score} • "
+                f"guards={', '.join(str(x) for x in dc_m15_guards) or '—'}. "
+                "**Belum menjadi konfirmasi entry resmi.**"
+            )
+        else:
+            st.warning("Belum ada signal M15 aktif untuk mengesahkan pocket M5.")
+
+        st.markdown("#### 5. DOM V191 & Event Risk V192 — Konteks Saat Entry")
+        dc_dom_state = str(dc_dom.get("state") or "UNAVAILABLE")
+        dc_dom_score = dc_dom.get("pressure_score", dc_dom.get("dom_pressure_score"))
+        dc_event_state = str(dc_event.get("state") or "UNAVAILABLE")
+        dc_event_focal = dict(dc_event.get("focal_event") or {})
+        dc_event_time = _fmt_wib_datetime(
+            dc_event_focal.get("scheduled_at"),
+            seconds=False,
+        )
+        st.info(
+            f"DOM: **{dc_dom_state}**"
+            + (
+                f" / pressure={float(dc_dom_score):.1f}"
+                if dc_dom_score is not None
+                else ""
+            )
+            + (" / STALE" if dc_dom.get("stale") else "")
+            + " • Event risk: **"
+            + dc_event_state
+            + "**"
+            + (" / STALE" if dc_event.get("stale") else "")
+            + (
+                f" • berikutnya {dc_event_focal.get('title')} @ {dc_event_time}"
+                if dc_event_focal else ""
+            )
+            + ". DOM/Event hanya confirmation/caution context, bukan pembuat arah."
+        )
+
+        st.markdown(
+            "#### 6. Posisi Aktif & Target Berikutnya"
+            if dc_position_mode
+            else "#### 6. Entry Resmi, Target & Status Akhir"
+        )
+        dc_target_text = (
+            _fmt_price(dc_current_leg_target.get("price"))
+            if dc_current_leg_target
+            else "—"
+        )
+        dc_terminal_text = (
+            f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
+            f"{_fmt_price(dc_current_leg_terminal.get('high'))}"
+            if dc_current_leg_terminal else "—"
+        )
+        if dc_position_mode:
+            st.success(
+                f"**POSITION FILLED MODE.** Fokus berpindah dari mencari entry ke manajemen posisi. "
+                f"Current-leg reaction target={dc_target_text} • terminal opposing zone={dc_terminal_text} • "
+                f"next {dc_next_leg_direction} reaction target={dc_next_target_text}. "
+                "Detail SL/BE/TP dan R posisi ada langsung di Trade Management Center di bawah."
+            )
+        elif "BELUM ADA ENTRY RESMI" in dc_entry_status:
+            st.error(
+                f"**{dc_entry_status}.** "
+                f"Reaction target={dc_target_text} • terminal opposing zone={dc_terminal_text}. "
+                "Pocket M5 boleh dipakai untuk persiapan/observasi, tetapi jangan disamakan "
+                "dengan izin broker scanner."
+            )
+        else:
+            st.success(
+                f"**{dc_entry_status}.** "
+                f"Reaction target={dc_target_text} • terminal opposing zone={dc_terminal_text}."
             )
 
-    st.markdown("#### 4. M15 — Konfirmasi Eksekusi")
-    if dc_m15_ready:
-        st.success(
-            f"M15 {dc_m15_direction} **EXECUTION_READY** • score={dc_m15_score}. "
-            "Tetap lanjut ke canonical/execution admission dan fresh quote."
-        )
-    elif dc_m15_row is not None:
-        st.warning(
-            f"M15 {dc_m15_direction} • state={dc_m15_state} • score={dc_m15_score} • "
-            f"guards={', '.join(str(x) for x in dc_m15_guards) or '—'}. "
-            "**Belum menjadi konfirmasi entry resmi.**"
-        )
-    else:
-        st.warning("Belum ada signal M15 aktif untuk mengesahkan pocket M5.")
-
-    st.markdown("#### 5. DOM V191 & Event Risk V192 — Konteks Saat Entry")
-    dc_dom_state = str(dc_dom.get("state") or "UNAVAILABLE")
-    dc_dom_score = dc_dom.get("pressure_score", dc_dom.get("dom_pressure_score"))
-    dc_event_state = str(dc_event.get("state") or "UNAVAILABLE")
-    dc_event_focal = dict(dc_event.get("focal_event") or {})
-    dc_event_time = _fmt_wib_datetime(
-        dc_event_focal.get("scheduled_at"),
-        seconds=False,
-    )
-    st.info(
-        f"DOM: **{dc_dom_state}**"
-        + (
-            f" / pressure={float(dc_dom_score):.1f}"
-            if dc_dom_score is not None
-            else ""
-        )
-        + (" / STALE" if dc_dom.get("stale") else "")
-        + " • Event risk: **"
-        + dc_event_state
-        + "**"
-        + (" / STALE" if dc_event.get("stale") else "")
-        + (
-            f" • berikutnya {dc_event_focal.get('title')} @ {dc_event_time}"
-            if dc_event_focal else ""
-        )
-        + ". DOM/Event hanya confirmation/caution context, bukan pembuat arah."
-    )
-
-    st.markdown(
-        "#### 6. Posisi Aktif & Target Berikutnya"
-        if dc_position_mode
-        else "#### 6. Entry Resmi, Target & Status Akhir"
-    )
-    dc_target_text = (
-        _fmt_price(dc_current_leg_target.get("price"))
-        if dc_current_leg_target
-        else "—"
-    )
-    dc_terminal_text = (
-        f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
-        f"{_fmt_price(dc_current_leg_terminal.get('high'))}"
-        if dc_current_leg_terminal else "—"
-    )
-    if dc_position_mode:
-        st.success(
-            f"**POSITION FILLED MODE.** Fokus berpindah dari mencari entry ke manajemen posisi. "
-            f"Current-leg reaction target={dc_target_text} • terminal opposing zone={dc_terminal_text} • "
-            f"next {dc_next_leg_direction} reaction target={dc_next_target_text}. "
-            "Detail SL/BE/TP dan R posisi ada langsung di Trade Management Center di bawah."
-        )
-    elif "BELUM ADA ENTRY RESMI" in dc_entry_status:
-        st.error(
-            f"**{dc_entry_status}.** "
-            f"Reaction target={dc_target_text} • terminal opposing zone={dc_terminal_text}. "
-            "Pocket M5 boleh dipakai untuk persiapan/observasi, tetapi jangan disamakan "
-            "dengan izin broker scanner."
-        )
-    else:
-        st.success(
-            f"**{dc_entry_status}.** "
-            f"Reaction target={dc_target_text} • terminal opposing zone={dc_terminal_text}."
-        )
-
-    st.markdown("## Manajemen Posisi XAUUSD (Trade Management Center V195)")
+    st.markdown("### 4 • Manajemen Posisi XAUUSD")
     st.caption(
         "Sumber posisi otomatis di panel ini adalah akun cTrader **DEMO scanner**. "
         "Posisi LIVE pribadi dari screenshot/akun terpisah tidak dicampurkan ke telemetry DEMO. "
@@ -2609,211 +2798,212 @@ with forecast_tab:
             "sengaja dipisahkan."
         )
 
-    st.markdown("## Pusat Bukti XAUUSD (V197–V201)")
-    st.caption(
-        "Panel ini menilai forecast M5 V196 secara prospective. Order broker **tidak diperlukan** "
-        "agar suatu forecast dihitung sebagai shadow evidence, tetapi bukti ini tetap dipisahkan "
-        "dari realized trade/PnL. Geometry forecast baru setelah V198 bersifat immutable."
-    )
-    if v198_analytics_hb is None:
-        st.warning(
-            "V198 Evidence Analytics belum mempunyai heartbeat runtime. "
-            "Panel akan aktif setelah maintenance cycle berikutnya."
-        )
-    else:
-        ev_details = dict(v198_analytics_hb.get("details") or {})
-        ev_all = dict(ev_details.get("all_evidence") or {})
-        ev_strict = dict(ev_details.get("strict_immutable_evidence") or {})
-        ev_legacy = dict(ev_details.get("legacy_pre_freeze_evidence") or {})
-        ev_path = dict(ev_details.get("full_path") or {})
-        ev_strict_path = dict(ev_details.get("strict_full_path") or {})
-
-        ev1, ev2, ev3, ev4 = st.columns(4)
-        ev1.metric("Strict immutable", int(ev_strict.get("enrolled") or 0))
-        ev2.metric("Strict touched", int(ev_strict.get("touched") or 0))
-        ev3.metric(
-            "Reaction hit | touch",
-            _fmt_pct(ev_strict.get("reaction_precision_given_touch")),
-        )
-        ev4.metric(
-            "Full Path stage",
-            f"{int(ev_strict_path.get('max_stage_score') or 0)}/5",
-        )
-
-        st.info(
-            f"Strict sample: **{ev_strict.get('sample_state','COLLECTING')}** • "
-            f"resolved-after-touch={int(ev_strict.get('resolved_after_touch') or 0)} • "
-            f"Wilson LB95 reaction={_fmt_pct(ev_strict.get('reaction_wilson_lower_95'))} • "
-            f"80% gate={'LOLOS' if ev_strict.get('target_80pct_gate_met') else 'BELUM'}. "
-            "Gate ini hanya diagnostik/statistik dan tidak memberi execution/promotion authority."
-        )
-
+    with st.expander("Riset & evidence prospective — V197 sampai V201", expanded=False):
+        st.markdown("## Pusat Bukti XAUUSD (V197–V201)")
         st.caption(
-            f"Semua prospective evidence: enrolled={int(ev_all.get('enrolled') or 0)}, "
-            f"touched={int(ev_all.get('touched') or 0)}, "
-            f"reaction hits={int(ev_all.get('reaction_hits') or 0)}, "
-            f"terminal hits={int(ev_all.get('terminal_hits') or 0)}. "
-            f"Legacy pre-freeze={int(ev_legacy.get('enrolled') or 0)} episode; "
-            "legacy tetap ditampilkan sebagai bukti observasional tetapi dikeluarkan dari "
-            "strict promotion-grade statistics karena geometry-nya pernah mutable."
+            "Panel ini menilai forecast M5 V196 secara prospective. Order broker **tidak diperlukan** "
+            "agar suatu forecast dihitung sebagai shadow evidence, tetapi bukti ini tetap dipisahkan "
+            "dari realized trade/PnL. Geometry forecast baru setelah V198 bersifat immutable."
         )
+        if v198_analytics_hb is None:
+            st.warning(
+                "V198 Evidence Analytics belum mempunyai heartbeat runtime. "
+                "Panel akan aktif setelah maintenance cycle berikutnya."
+            )
+        else:
+            ev_details = dict(v198_analytics_hb.get("details") or {})
+            ev_all = dict(ev_details.get("all_evidence") or {})
+            ev_strict = dict(ev_details.get("strict_immutable_evidence") or {})
+            ev_legacy = dict(ev_details.get("legacy_pre_freeze_evidence") or {})
+            ev_path = dict(ev_details.get("full_path") or {})
+            ev_strict_path = dict(ev_details.get("strict_full_path") or {})
 
-        ev_chains = list(ev_path.get("latest_chains") or [])
-        if ev_chains:
-            latest_chain = dict(ev_chains[-1])
+            ev1, ev2, ev3, ev4 = st.columns(4)
+            ev1.metric("Strict immutable", int(ev_strict.get("enrolled") or 0))
+            ev2.metric("Strict touched", int(ev_strict.get("touched") or 0))
+            ev3.metric(
+                "Reaction hit | touch",
+                _fmt_pct(ev_strict.get("reaction_precision_given_touch")),
+            )
+            ev4.metric(
+                "Full Path stage",
+                f"{int(ev_strict_path.get('max_stage_score') or 0)}/5",
+            )
+
             st.info(
-                f"Full Path terbaru: **stage {int(latest_chain.get('stage_score') or 0)}/5** • "
-                f"{latest_chain.get('state','—')} • "
-                f"{latest_chain.get('current_direction','—')} → "
-                f"{latest_chain.get('reverse_direction') or '—'}. "
-                "Urutan stage: touch current → reaction current → touch opposing pocket → "
-                "reverse reaction → reverse terminal."
+                f"Strict sample: **{ev_strict.get('sample_state','COLLECTING')}** • "
+                f"resolved-after-touch={int(ev_strict.get('resolved_after_touch') or 0)} • "
+                f"Wilson LB95 reaction={_fmt_pct(ev_strict.get('reaction_wilson_lower_95'))} • "
+                f"80% gate={'LOLOS' if ev_strict.get('target_80pct_gate_met') else 'BELUM'}. "
+                "Gate ini hanya diagnostik/statistik dan tidak memberi execution/promotion authority."
             )
 
-        if v201_reaction_hb is not None:
-            v201 = dict(v201_reaction_hb.get("details") or {})
-            ladder = list(v201.get("strict_ladder") or [])
-            latest_physical = list(v201.get("latest_physical_pockets") or [])
-            l1, l2, l3, l4 = st.columns(4)
-            l1.metric("Physical pockets", int(v201.get("physical_pockets") or 0))
-            l2.metric(
-                "Pre-mapped sebelum touch",
-                _fmt_pct(v201.get("premap_rate_given_touch")),
-            )
-            l3.metric(
-                "Median lead",
-                (
-                    "—"
-                    if v201.get("median_premap_lead_minutes") is None
-                    else f"{float(v201.get('median_premap_lead_minutes')):.0f} mnt"
-                ),
-            )
-            half = next(
-                (
-                    dict(item)
-                    for item in ladder
-                    if float(item.get("atr_multiple") or -1) == 0.5
-                ),
-                {},
-            )
-            l4.metric(
-                "0.50 ATR | decisive",
-                _fmt_pct(half.get("precision_decisive")),
+            st.caption(
+                f"Semua prospective evidence: enrolled={int(ev_all.get('enrolled') or 0)}, "
+                f"touched={int(ev_all.get('touched') or 0)}, "
+                f"reaction hits={int(ev_all.get('reaction_hits') or 0)}, "
+                f"terminal hits={int(ev_all.get('terminal_hits') or 0)}. "
+                f"Legacy pre-freeze={int(ev_legacy.get('enrolled') or 0)} episode; "
+                "legacy tetap ditampilkan sebagai bukti observasional tetapi dikeluarkan dari "
+                "strict promotion-grade statistics karena geometry-nya pernah mutable."
             )
 
-            rung_text = []
-            for item in ladder:
-                rung_text.append(
-                    f"{float(item.get('atr_multiple') or 0):.2f}ATR "
-                    f"{int(item.get('confirmed_hits') or 0)}/"
-                    f"{int(item.get('decisive_n') or 0)} decisive"
-                )
-            if rung_text:
-                st.caption(
-                    "V201 Reaction Ladder strict: " + " • ".join(rung_text)
-                    + ". Pending yang belum mencapai rung diperlakukan sebagai censored, bukan gagal."
-                )
-
-            if latest_physical:
-                last_pocket = dict(latest_physical[-1])
-                roles = " → ".join(
-                    str(item.get("role") or "—")
-                    for item in list(last_pocket.get("role_timeline") or [])
-                )
-                lead_minutes = last_pocket.get("premap_lead_minutes")
-                lead_text = (
-                    "—"
-                    if lead_minutes is None
-                    else f"{float(lead_minutes):.0f} mnt"
-                )
+            ev_chains = list(ev_path.get("latest_chains") or [])
+            if ev_chains:
+                latest_chain = dict(ev_chains[-1])
                 st.info(
-                    "Pocket fisik terbaru: "
-                    f"**{last_pocket.get('direction','—')} "
-                    f"{_fmt_price(last_pocket.get('pocket_low'))}–"
-                    f"{_fmt_price(last_pocket.get('pocket_high'))}** • "
-                    f"role={roles or '—'} • "
-                    f"first seen={_fmt_wib_datetime(last_pocket.get('first_seen_at'), seconds=False)} • "
-                    f"first touch={_fmt_wib_datetime(last_pocket.get('first_touch_at'), seconds=False)} • "
-                    f"lead={lead_text} • "
-                    f"status={last_pocket.get('status','—')}."
+                    f"Full Path terbaru: **stage {int(latest_chain.get('stage_score') or 0)}/5** • "
+                    f"{latest_chain.get('state','—')} • "
+                    f"{latest_chain.get('current_direction','—')} → "
+                    f"{latest_chain.get('reverse_direction') or '—'}. "
+                    "Urutan stage: touch current → reaction current → touch opposing pocket → "
+                    "reverse reaction → reverse terminal."
                 )
 
-            if latest_physical:
-                last_pocket = dict(latest_physical[-1])
-                rung_chronology = []
-                for item in list(last_pocket.get("reaction_ladder") or []):
-                    multiple = float(item.get("atr_multiple") or 0.0)
-                    first_hit = item.get("first_hit_at")
-                    state = str(item.get("chronology_state") or "—")
-                    if first_hit is not None:
-                        minutes = item.get("minutes_from_touch")
-                        minute_text = (
-                            "—"
-                            if minutes is None
-                            else f"{float(minutes):.0f} mnt"
-                        )
-                        rung_chronology.append(
-                            f"{multiple:.2f}ATR "
-                            f"{_fmt_price(item.get('threshold_price'))} → "
-                            f"{_fmt_wib_datetime(first_hit, seconds=False)} "
-                            f"({minute_text} setelah touch)"
-                        )
-                    else:
-                        rung_chronology.append(
-                            f"{multiple:.2f}ATR "
-                            f"{_fmt_price(item.get('threshold_price'))} → {state}"
-                        )
-                if rung_chronology:
+            if v201_reaction_hb is not None:
+                v201 = dict(v201_reaction_hb.get("details") or {})
+                ladder = list(v201.get("strict_ladder") or [])
+                latest_physical = list(v201.get("latest_physical_pockets") or [])
+                l1, l2, l3, l4 = st.columns(4)
+                l1.metric("Physical pockets", int(v201.get("physical_pockets") or 0))
+                l2.metric(
+                    "Pre-mapped sebelum touch",
+                    _fmt_pct(v201.get("premap_rate_given_touch")),
+                )
+                l3.metric(
+                    "Median lead",
+                    (
+                        "—"
+                        if v201.get("median_premap_lead_minutes") is None
+                        else f"{float(v201.get('median_premap_lead_minutes')):.0f} mnt"
+                    ),
+                )
+                half = next(
+                    (
+                        dict(item)
+                        for item in ladder
+                        if float(item.get("atr_multiple") or -1) == 0.5
+                    ),
+                    {},
+                )
+                l4.metric(
+                    "0.50 ATR | decisive",
+                    _fmt_pct(half.get("precision_decisive")),
+                )
+
+                rung_text = []
+                for item in ladder:
+                    rung_text.append(
+                        f"{float(item.get('atr_multiple') or 0):.2f}ATR "
+                        f"{int(item.get('confirmed_hits') or 0)}/"
+                        f"{int(item.get('decisive_n') or 0)} decisive"
+                    )
+                if rung_text:
                     st.caption(
-                        "Chronology completed-M5: "
-                        + " • ".join(rung_chronology)
-                        + ". Pre-touch dan M5 yang belum selesai tidak dihitung."
+                        "V201 Reaction Ladder strict: " + " • ".join(rung_text)
+                        + ". Pending yang belum mencapai rung diperlakukan sebagai censored, bukan gagal."
                     )
 
-                versions = list(last_pocket.get("target_versions") or [])
-                if versions:
-                    latest_target = dict(versions[-1])
-                    checkpoint_parts = []
-                    for cp in list(latest_target.get("checkpoint_targets") or []):
-                        checkpoint_parts.append(
-                            f"{_fmt_price(cp.get('price'))}@"
-                            f"{_fmt_wib_datetime(cp.get('first_hit_at'), seconds=False)}"
-                        )
-                    checkpoint_text = (
-                        "—" if not checkpoint_parts else ", ".join(checkpoint_parts)
+                if latest_physical:
+                    last_pocket = dict(latest_physical[-1])
+                    roles = " → ".join(
+                        str(item.get("role") or "—")
+                        for item in list(last_pocket.get("role_timeline") or [])
                     )
-                    st.caption(
-                        "Target chronology versi terbaru: "
-                        f"mapped={_fmt_wib_datetime(latest_target.get('mapped_at'), seconds=False)} • "
-                        f"checkpoint={checkpoint_text} • "
-                        f"reaction={_fmt_price(latest_target.get('reaction_target'))} "
-                        f"first hit={_fmt_wib_datetime(latest_target.get('reaction_first_hit_at'), seconds=False)} • "
-                        f"terminal={_fmt_price(latest_target.get('terminal_target'))} "
-                        f"first hit={_fmt_wib_datetime(latest_target.get('terminal_first_hit_at'), seconds=False)}. "
-                        "Target version tidak boleh backfill pergerakan sebelum mapped_at."
+                    lead_minutes = last_pocket.get("premap_lead_minutes")
+                    lead_text = (
+                        "—"
+                        if lead_minutes is None
+                        else f"{float(lead_minutes):.0f} mnt"
+                    )
+                    st.info(
+                        "Pocket fisik terbaru: "
+                        f"**{last_pocket.get('direction','—')} "
+                        f"{_fmt_price(last_pocket.get('pocket_low'))}–"
+                        f"{_fmt_price(last_pocket.get('pocket_high'))}** • "
+                        f"role={roles or '—'} • "
+                        f"first seen={_fmt_wib_datetime(last_pocket.get('first_seen_at'), seconds=False)} • "
+                        f"first touch={_fmt_wib_datetime(last_pocket.get('first_touch_at'), seconds=False)} • "
+                        f"lead={lead_text} • "
+                        f"status={last_pocket.get('status','—')}."
                     )
 
-        with st.expander("Detail evidence analytics V198/V201"):
-            st.json(
-                {
-                    "observed_at_v198": v198_analytics_hb.get("observed_at"),
-                    "strict_immutable_evidence": ev_strict,
-                    "legacy_pre_freeze_evidence": ev_legacy,
-                    "strict_segments": ev_details.get("strict_segments"),
-                    "full_path": ev_path,
-                    "strict_full_path": ev_strict_path,
-                    "v201_reaction_ladder": (
-                        {}
-                        if v201_reaction_hb is None
-                        else dict(v201_reaction_hb.get("details") or {})
-                    ),
-                    "v197_recorder": (
-                        {}
-                        if v197_evidence_hb is None
-                        else dict(v197_evidence_hb.get("details") or {})
-                    ),
-                }
-            )
+                if latest_physical:
+                    last_pocket = dict(latest_physical[-1])
+                    rung_chronology = []
+                    for item in list(last_pocket.get("reaction_ladder") or []):
+                        multiple = float(item.get("atr_multiple") or 0.0)
+                        first_hit = item.get("first_hit_at")
+                        state = str(item.get("chronology_state") or "—")
+                        if first_hit is not None:
+                            minutes = item.get("minutes_from_touch")
+                            minute_text = (
+                                "—"
+                                if minutes is None
+                                else f"{float(minutes):.0f} mnt"
+                            )
+                            rung_chronology.append(
+                                f"{multiple:.2f}ATR "
+                                f"{_fmt_price(item.get('threshold_price'))} → "
+                                f"{_fmt_wib_datetime(first_hit, seconds=False)} "
+                                f"({minute_text} setelah touch)"
+                            )
+                        else:
+                            rung_chronology.append(
+                                f"{multiple:.2f}ATR "
+                                f"{_fmt_price(item.get('threshold_price'))} → {state}"
+                            )
+                    if rung_chronology:
+                        st.caption(
+                            "Chronology completed-M5: "
+                            + " • ".join(rung_chronology)
+                            + ". Pre-touch dan M5 yang belum selesai tidak dihitung."
+                        )
+
+                    versions = list(last_pocket.get("target_versions") or [])
+                    if versions:
+                        latest_target = dict(versions[-1])
+                        checkpoint_parts = []
+                        for cp in list(latest_target.get("checkpoint_targets") or []):
+                            checkpoint_parts.append(
+                                f"{_fmt_price(cp.get('price'))}@"
+                                f"{_fmt_wib_datetime(cp.get('first_hit_at'), seconds=False)}"
+                            )
+                        checkpoint_text = (
+                            "—" if not checkpoint_parts else ", ".join(checkpoint_parts)
+                        )
+                        st.caption(
+                            "Target chronology versi terbaru: "
+                            f"mapped={_fmt_wib_datetime(latest_target.get('mapped_at'), seconds=False)} • "
+                            f"checkpoint={checkpoint_text} • "
+                            f"reaction={_fmt_price(latest_target.get('reaction_target'))} "
+                            f"first hit={_fmt_wib_datetime(latest_target.get('reaction_first_hit_at'), seconds=False)} • "
+                            f"terminal={_fmt_price(latest_target.get('terminal_target'))} "
+                            f"first hit={_fmt_wib_datetime(latest_target.get('terminal_first_hit_at'), seconds=False)}. "
+                            "Target version tidak boleh backfill pergerakan sebelum mapped_at."
+                        )
+
+            with st.expander("Detail evidence analytics V198/V201"):
+                st.json(
+                    {
+                        "observed_at_v198": v198_analytics_hb.get("observed_at"),
+                        "strict_immutable_evidence": ev_strict,
+                        "legacy_pre_freeze_evidence": ev_legacy,
+                        "strict_segments": ev_details.get("strict_segments"),
+                        "full_path": ev_path,
+                        "strict_full_path": ev_strict_path,
+                        "v201_reaction_ladder": (
+                            {}
+                            if v201_reaction_hb is None
+                            else dict(v201_reaction_hb.get("details") or {})
+                        ),
+                        "v197_recorder": (
+                            {}
+                            if v197_evidence_hb is None
+                            else dict(v197_evidence_hb.get("details") or {})
+                        ),
+                    }
+                )
 
     st.markdown("---")
     st.caption(
@@ -3093,769 +3283,701 @@ with forecast_tab:
             )
 
 
-    st.markdown("### Rezim Strategis HTF (Strategic HTF Regime)")
-    regime_details = {} if regime_hb is None else dict(regime_hb.get("details") or {})
-    regime_eval = dict(regime_details.get("evaluation") or {})
-    regime_current = dict(regime_eval.get("current") or {})
-    regime_pool = dict(regime_eval.get("zone_pool") or {})
-    if regime_current:
-        strategic_bias = str(regime_current.get("strategic_bias") or "NEUTRAL")
-        tactical_first_leg = str(regime_current.get("tactical_first_leg") or "NEUTRAL")
-        strategic_confidence = regime_current.get("confidence")
-        r1, r2, r3, r4, r5 = st.columns(5)
-        r1.metric("Bias Strategis (Strategic Bias)", strategic_bias)
-        r2.metric(
-            "Keyakinan HTF (HTF confidence)",
-            "—" if strategic_confidence is None else _fmt_pct(strategic_confidence),
-        )
-        r3.metric("Gerak Taktis Pertama (Tactical First Leg)", tactical_first_leg)
-        r4.metric("Zona canonical 0–24j", regime_pool.get("canonical_count", 0))
-        r5.metric("Zona shadow 24–48j", regime_pool.get("shadow_count", 0))
-        st.caption(
-            "Bias strategis V180 hanya memakai D1 + H4 yang sudah selesai dan menggunakan "
-            "hysteresis agar arah tidak berubah hanya karena update M15. Contoh: Bias "
-            "Strategis SHORT tetap dapat memiliki gerak taktis pertama LONG ketika harga "
-            "naik menuju zona jual di atas. Zona shadow 24–48 jam TIDAK memiliki izin eksekusi."
-        )
-        if strategic_bias in {"LONG", "SHORT"}:
-            desired = str(regime_pool.get("desired_reaction_side") or "—")
-            st.info(
-                f"Rencana HTF: {strategic_bias} • gerak pertama {tactical_first_leg} • "
-                f"cari {desired.replace('_', ' ')}. "
-                f"Arah candle H4 RIZAN-style saat ini = {direction}. "
-                "Keduanya dapat berbeda karena V180 adalah konteks strategis, sedangkan "
-                "RIZAN-style V161 tetap merupakan peta taktis canonical untuk eksekusi."
+    with st.expander("Riset HTF, atlas Supply/Demand & validasi zona", expanded=False):
+        st.markdown("### Rezim Strategis HTF (Strategic HTF Regime)")
+        regime_details = {} if regime_hb is None else dict(regime_hb.get("details") or {})
+        regime_eval = dict(regime_details.get("evaluation") or {})
+        regime_current = dict(regime_eval.get("current") or {})
+        regime_pool = dict(regime_eval.get("zone_pool") or {})
+        if regime_current:
+            strategic_bias = str(regime_current.get("strategic_bias") or "NEUTRAL")
+            tactical_first_leg = str(regime_current.get("tactical_first_leg") or "NEUTRAL")
+            strategic_confidence = regime_current.get("confidence")
+            r1, r2, r3, r4, r5 = st.columns(5)
+            r1.metric("Bias Strategis (Strategic Bias)", strategic_bias)
+            r2.metric(
+                "Keyakinan HTF (HTF confidence)",
+                "—" if strategic_confidence is None else _fmt_pct(strategic_confidence),
             )
-        shadow_zones = list(regime_pool.get("shadow_24_48h") or [])
-        if not regime_pool.get("canonical_count") and shadow_zones:
-            nearest_shadow = dict(shadow_zones[0])
-            st.warning(
-                "Tidak ada H1 origin canonical 0–24 jam yang selaras HTF, tetapi terdapat "
-                "zona riset 24–48 jam yang masih aktif secara struktural di "
-                f"{_fmt_price(nearest_shadow.get('low'))}–"
-                f"{_fmt_price(nearest_shadow.get('high'))}. "
-                "Zona ini hanya untuk riset sampai validasi forward mendukung perubahan batas umur."
+            r3.metric("Gerak Taktis Pertama (Tactical First Leg)", tactical_first_leg)
+            r4.metric("Zona canonical 0–24j", regime_pool.get("canonical_count", 0))
+            r5.metric("Zona shadow 24–48j", regime_pool.get("shadow_count", 0))
+            st.caption(
+                "Bias strategis V180 hanya memakai D1 + H4 yang sudah selesai dan menggunakan "
+                "hysteresis agar arah tidak berubah hanya karena update M15. Contoh: Bias "
+                "Strategis SHORT tetap dapat memiliki gerak taktis pertama LONG ketika harga "
+                "naik menuju zona jual di atas. Zona shadow 24–48 jam TIDAK memiliki izin eksekusi."
             )
-    else:
-        st.caption(
-            "Rezim Strategis HTF V180 belum menerbitkan snapshot shadow. "
-            "RIZAN-style V161 tetap menjadi otoritas eksekusi."
-        )
-
-    st.markdown("### Atlas Supply & Demand HTF (V182)")
-    st.caption(
-        "Atlas riset D1/H4/H1 untuk mendeteksi demand/supply lebih awal dari canonical RIZAN-style. "
-        "Zona dibentuk dari structural origin atau base→departure imbalance, lalu dinilai "
-        "berdasarkan freshness, touch/mitigation, HTF nesting, liquidity confluence, jarak, "
-        "dan kualitas pendekatan harga. V182 SELALU PREPARE ONLY / NO EXECUTION."
-    )
-    sd_details = {} if supply_demand_hb is None else dict(supply_demand_hb.get("details") or {})
-    sd_eval = dict(sd_details.get("evaluation") or {})
-    sd_zones = list(sd_eval.get("zones") or [])
-    if sd_zones:
-        sd1, sd2, sd3, sd4 = st.columns(4)
-        sd1.metric("Zona aktif", sd_eval.get("active_count", 0))
-        sd2.metric("Zona ditampilkan", sd_eval.get("display_count", len(sd_zones)))
-        sd3.metric("Konteks sesi", str(sd_eval.get("session_context") or "—"))
-        sd4.metric("Izin eksekusi", "TIDAK ADA")
-
-        nearest_demand = dict(sd_eval.get("nearest_demand") or {})
-        nearest_supply = dict(sd_eval.get("nearest_supply") or {})
-        sd_path_map = dict(sd_eval.get("path_map") or {})
-        sd_active_path = dict(sd_path_map.get("active_path") or {})
-        nd_col, ns_col = st.columns(2)
-        with nd_col:
-            if nearest_demand:
-                nd_lifecycle = dict(nearest_demand.get("lifecycle") or {})
-                nd_approach = dict(nearest_demand.get("approach") or {})
+            if strategic_bias in {"LONG", "SHORT"}:
+                desired = str(regime_pool.get("desired_reaction_side") or "—")
                 st.info(
-                    "Demand terdekat: "
-                    f"{nearest_demand.get('timeframe','—')} "
-                    f"{nearest_demand.get('pattern','—')} • "
-                    f"{_fmt_price(nearest_demand.get('low'))}–"
-                    f"{_fmt_price(nearest_demand.get('high'))} • "
-                    f"freshness={nd_lifecycle.get('freshness','—')} • "
-                    f"jarak={_fmt_distance(nearest_demand.get('distance_atr'),' ATR')} • "
-                    f"approach={nd_approach.get('state','—')}"
+                    f"Rencana HTF: {strategic_bias} • gerak pertama {tactical_first_leg} • "
+                    f"cari {desired.replace('_', ' ')}. "
+                    f"Arah candle H4 RIZAN-style saat ini = {direction}. "
+                    "Keduanya dapat berbeda karena V180 adalah konteks strategis, sedangkan "
+                    "RIZAN-style V161 tetap merupakan peta taktis canonical untuk eksekusi."
                 )
-            else:
-                st.caption("Demand aktif di sisi harga yang benar belum tersedia.")
-        with ns_col:
-            if nearest_supply:
-                ns_lifecycle = dict(nearest_supply.get("lifecycle") or {})
-                ns_approach = dict(nearest_supply.get("approach") or {})
+            shadow_zones = list(regime_pool.get("shadow_24_48h") or [])
+            if not regime_pool.get("canonical_count") and shadow_zones:
+                nearest_shadow = dict(shadow_zones[0])
                 st.warning(
-                    "Supply terdekat: "
-                    f"{nearest_supply.get('timeframe','—')} "
-                    f"{nearest_supply.get('pattern','—')} • "
-                    f"{_fmt_price(nearest_supply.get('low'))}–"
-                    f"{_fmt_price(nearest_supply.get('high'))} • "
-                    f"freshness={ns_lifecycle.get('freshness','—')} • "
-                    f"jarak={_fmt_distance(nearest_supply.get('distance_atr'),' ATR')} • "
-                    f"approach={ns_approach.get('state','—')}"
+                    "Tidak ada H1 origin canonical 0–24 jam yang selaras HTF, tetapi terdapat "
+                    "zona riset 24–48 jam yang masih aktif secara struktural di "
+                    f"{_fmt_price(nearest_shadow.get('low'))}–"
+                    f"{_fmt_price(nearest_shadow.get('high'))}. "
+                    "Zona ini hanya untuk riset sampai validasi forward mendukung perubahan batas umur."
                 )
-            else:
-                st.caption("Supply aktif di sisi harga yang benar belum tersedia.")
+        else:
+            st.caption(
+                "Rezim Strategis HTF V180 belum menerbitkan snapshot shadow. "
+                "RIZAN-style V161 tetap menjadi otoritas eksekusi."
+            )
 
-        sd_table = []
-        for item in sd_zones:
-            lifecycle = dict(item.get("lifecycle") or {})
-            liquidity = dict(item.get("liquidity") or {})
-            approach = dict(item.get("approach") or {})
-            sd_table.append(
-                {
-                    "TF": item.get("timeframe"),
-                    "kelas": item.get("zone_class"),
-                    "pola": item.get("pattern"),
-                    "arah reaksi": item.get("direction"),
-                    "zona": (
-                        f"{_fmt_price(item.get('low'))}–"
-                        f"{_fmt_price(item.get('high'))}"
-                    ),
-                    "proximal": item.get("proximal"),
-                    "distal": item.get("distal"),
-                    "dibentuk (WIB)": _fmt_wib_datetime(item.get("available_at")),
-                    "umur": item.get("age_bucket"),
-                    "freshness": lifecycle.get("freshness"),
-                    "touch": lifecycle.get("touch_count"),
-                    "mitigation": lifecycle.get("mitigation_depth"),
-                    "jarak (ATR)": item.get("distance_atr"),
-                    "HTF nesting": item.get("htf_nesting_count"),
-                    "likuiditas": liquidity.get("confluence_count"),
-                    "approach": approach.get("state"),
-                    "displacement (ATR)": item.get("departure_range_atr"),
-                    "body displacement": item.get("departure_body_fraction"),
-                    "selaras strategis": item.get("strategic_alignment"),
-                    "skor riset": item.get("research_score"),
-                    "status": item.get("status"),
-                }
-            )
-        st.dataframe(pd.DataFrame(sd_table), hide_index=True, width="stretch")
-        demand_source_stack = list(sd_path_map.get("demand_source_stack") or [])
-        supply_source_stack = list(sd_path_map.get("supply_source_stack") or [])
-        if demand_source_stack:
-            st.caption(
-                "Demand stack aktif: "
-                + " | ".join(
-                    f"{item.get('timeframe','—')} "
-                    f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))} "
-                    f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
-                    for item in demand_source_stack[:4]
+        st.markdown("### Atlas Supply & Demand HTF (V182)")
+        st.caption(
+            "Atlas riset D1/H4/H1 untuk mendeteksi demand/supply lebih awal dari canonical RIZAN-style. "
+            "Zona dibentuk dari structural origin atau base→departure imbalance, lalu dinilai "
+            "berdasarkan freshness, touch/mitigation, HTF nesting, liquidity confluence, jarak, "
+            "dan kualitas pendekatan harga. V182 SELALU PREPARE ONLY / NO EXECUTION."
+        )
+        sd_details = {} if supply_demand_hb is None else dict(supply_demand_hb.get("details") or {})
+        sd_eval = dict(sd_details.get("evaluation") or {})
+        sd_zones = list(sd_eval.get("zones") or [])
+        if sd_zones:
+            sd1, sd2, sd3, sd4 = st.columns(4)
+            sd1.metric("Zona aktif", sd_eval.get("active_count", 0))
+            sd2.metric("Zona ditampilkan", sd_eval.get("display_count", len(sd_zones)))
+            sd3.metric("Konteks sesi", str(sd_eval.get("session_context") or "—"))
+            sd4.metric("Izin eksekusi", "TIDAK ADA")
+
+            nearest_demand = dict(sd_eval.get("nearest_demand") or {})
+            nearest_supply = dict(sd_eval.get("nearest_supply") or {})
+            sd_path_map = dict(sd_eval.get("path_map") or {})
+            sd_active_path = dict(sd_path_map.get("active_path") or {})
+            nd_col, ns_col = st.columns(2)
+            with nd_col:
+                if nearest_demand:
+                    nd_lifecycle = dict(nearest_demand.get("lifecycle") or {})
+                    nd_approach = dict(nearest_demand.get("approach") or {})
+                    st.info(
+                        "Demand terdekat: "
+                        f"{nearest_demand.get('timeframe','—')} "
+                        f"{nearest_demand.get('pattern','—')} • "
+                        f"{_fmt_price(nearest_demand.get('low'))}–"
+                        f"{_fmt_price(nearest_demand.get('high'))} • "
+                        f"freshness={nd_lifecycle.get('freshness','—')} • "
+                        f"jarak={_fmt_distance(nearest_demand.get('distance_atr'),' ATR')} • "
+                        f"approach={nd_approach.get('state','—')}"
+                    )
+                else:
+                    st.caption("Demand aktif di sisi harga yang benar belum tersedia.")
+            with ns_col:
+                if nearest_supply:
+                    ns_lifecycle = dict(nearest_supply.get("lifecycle") or {})
+                    ns_approach = dict(nearest_supply.get("approach") or {})
+                    st.warning(
+                        "Supply terdekat: "
+                        f"{nearest_supply.get('timeframe','—')} "
+                        f"{nearest_supply.get('pattern','—')} • "
+                        f"{_fmt_price(nearest_supply.get('low'))}–"
+                        f"{_fmt_price(nearest_supply.get('high'))} • "
+                        f"freshness={ns_lifecycle.get('freshness','—')} • "
+                        f"jarak={_fmt_distance(nearest_supply.get('distance_atr'),' ATR')} • "
+                        f"approach={ns_approach.get('state','—')}"
+                    )
+                else:
+                    st.caption("Supply aktif di sisi harga yang benar belum tersedia.")
+
+            sd_table = []
+            for item in sd_zones:
+                lifecycle = dict(item.get("lifecycle") or {})
+                liquidity = dict(item.get("liquidity") or {})
+                approach = dict(item.get("approach") or {})
+                sd_table.append(
+                    {
+                        "TF": item.get("timeframe"),
+                        "kelas": item.get("zone_class"),
+                        "pola": item.get("pattern"),
+                        "arah reaksi": item.get("direction"),
+                        "zona": (
+                            f"{_fmt_price(item.get('low'))}–"
+                            f"{_fmt_price(item.get('high'))}"
+                        ),
+                        "proximal": item.get("proximal"),
+                        "distal": item.get("distal"),
+                        "dibentuk (WIB)": _fmt_wib_datetime(item.get("available_at")),
+                        "umur": item.get("age_bucket"),
+                        "freshness": lifecycle.get("freshness"),
+                        "touch": lifecycle.get("touch_count"),
+                        "mitigation": lifecycle.get("mitigation_depth"),
+                        "jarak (ATR)": item.get("distance_atr"),
+                        "HTF nesting": item.get("htf_nesting_count"),
+                        "likuiditas": liquidity.get("confluence_count"),
+                        "approach": approach.get("state"),
+                        "displacement (ATR)": item.get("departure_range_atr"),
+                        "body displacement": item.get("departure_body_fraction"),
+                        "selaras strategis": item.get("strategic_alignment"),
+                        "skor riset": item.get("research_score"),
+                        "status": item.get("status"),
+                    }
                 )
-            )
-        if supply_source_stack:
-            st.caption(
-                "Supply stack aktif: "
-                + " | ".join(
-                    f"{item.get('timeframe','—')} "
-                    f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))} "
-                    f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
-                    for item in supply_source_stack[:4]
-                )
-            )
-        if sd_active_path:
-            source = dict(sd_active_path.get("source_zone") or {})
-            target = dict(sd_active_path.get("primary_opposing_zone") or {})
-            st.info(
-                "Rute reaksi V186: "
-                f"{sd_active_path.get('reaction_direction','—')} • "
-                f"sumber {_fmt_price(source.get('low'))}–{_fmt_price(source.get('high'))}"
-                + (
-                    f" → opposing zone {_fmt_price(target.get('low'))}–{_fmt_price(target.get('high'))}"
-                    if target else
-                    " → opposing zone belum tersedia"
-                )
-            )
-            reaction_target = dict(sd_active_path.get("reaction_target") or {})
-            if reaction_target:
-                st.success(
-                    "Target reaction V188: "
-                    f"{_fmt_price(reaction_target.get('price'))} • "
-                    f"basis={sd_active_path.get('reaction_target_basis','—')}."
-                )
-            destination_stack = list(sd_active_path.get("destination_stack") or [])
-            if destination_stack:
+            st.dataframe(pd.DataFrame(sd_table), hide_index=True, width="stretch")
+            demand_source_stack = list(sd_path_map.get("demand_source_stack") or [])
+            supply_source_stack = list(sd_path_map.get("supply_source_stack") or [])
+            if demand_source_stack:
                 st.caption(
-                    "Opposing-zone stack: "
+                    "Demand stack aktif: "
                     + " | ".join(
                         f"{item.get('timeframe','—')} "
                         f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))} "
                         f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
-                        for item in destination_stack[:4]
+                        for item in demand_source_stack[:4]
                     )
                 )
-        sd_micro = dict(sd_eval.get("micro_refinement") or {})
-        if sd_micro:
-            micro1, micro2, micro3, micro4 = st.columns(4)
-            micro1.metric("V189 state", str(sd_micro.get("state") or "—"))
-            micro2.metric(
-                "Sweep M5",
-                _fmt_price(dict(sd_micro.get("sweep") or {}).get("price")),
-            )
-            micro3.metric(
-                "Reclaim level",
-                _fmt_price(sd_micro.get("source_proximal_reclaim_level")),
-            )
-            micro4.metric(
-                "MSS level",
-                _fmt_price(sd_micro.get("mss_level")),
-            )
-            refined = dict(sd_micro.get("refined_entry_pocket") or {})
-            candidate = dict(sd_micro.get("candidate_entry_pocket") or {})
-            if refined:
-                st.success(
-                    "Refined entry pocket M5 (SHADOW ONLY): "
-                    f"{_fmt_price(refined.get('low'))}–{_fmt_price(refined.get('high'))}."
-                )
-            elif candidate:
+            if supply_source_stack:
                 st.caption(
-                    "Candidate entry pocket M5: "
-                    f"{_fmt_price(candidate.get('low'))}–{_fmt_price(candidate.get('high'))}; "
-                    "belum confirmed."
+                    "Supply stack aktif: "
+                    + " | ".join(
+                        f"{item.get('timeframe','—')} "
+                        f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))} "
+                        f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
+                        for item in supply_source_stack[:4]
+                    )
                 )
-        st.caption(
-            "Skor riset V182 adalah ranking evidence, BUKAN probabilitas menang. "
-            "Liquidity/round number hanya confluence, bukan pembentuk zona tunggal. "
-            "Canonical RIZAN-style ≤24 jam, M15 confirmation, fresh quote, risk/margin, dan "
-            "server-side SL/TP tetap menjadi jalur eksekusi yang terpisah."
-        )
-    else:
-        st.info(
-            "Atlas V182 belum memiliki zona yang dapat ditampilkan pada snapshot terbaru. "
-            "Ketiadaan zona V182 tidak memaksa scanner membuat setup."
-        )
-
-    st.markdown("### Validasi Historis Supply & Demand (V183)")
-    st.caption(
-        "Profiler 100K-bar ini memisahkan destination rate dari reaction rate. "
-        "Target primer HOLD = +0,50 ATR dalam 16 candle M15 sebelum close menembus distal. "
-        "Hasil V183 adalah evidence riset dan TIDAK memberi izin eksekusi."
-    )
-    v183_details = (
-        {} if supply_demand_research_hb is None
-        else dict(supply_demand_research_hb.get("details") or {})
-    )
-    v183_eval = dict(v183_details.get("evaluation") or {})
-    if v183_eval:
-        v183_holdout = dict(v183_eval.get("holdout_overall") or {})
-        v183_destination = dict(v183_eval.get("destination_overall") or {})
-        v183_candidates = list(v183_eval.get("candidate_80_precision_subsets") or [])
-        vh1, vh2, vh3, vh4, vh5 = st.columns(5)
-        vh1.metric("Keputusan riset", str(v183_eval.get("decision") or "—"))
-        vh2.metric("Zona historis", v183_eval.get("zones", 0))
-        vh3.metric(
-            "Destination touch rate",
-            "—"
-            if v183_destination.get("touch_rate") is None
-            else _fmt_pct(v183_destination.get("touch_rate")),
-        )
-        vh4.metric(
-            "Holdout HOLD precision",
-            "—"
-            if v183_holdout.get("precision_hold") is None
-            else _fmt_pct(v183_holdout.get("precision_hold")),
-        )
-        vh5.metric("Subset ≥80% (riset)", len(v183_candidates))
-        st.caption(
-            f"Holdout n={v183_holdout.get('n','—')} • "
-            f"Wilson lower 95%="
-            f"{'—' if v183_holdout.get('wilson_lower_95') is None else _fmt_pct(v183_holdout.get('wilson_lower_95'))} • "
-            f"mean MFE={_fmt_distance(v183_holdout.get('mean_mfe_atr'),' ATR')} • "
-            f"mean MAE={_fmt_distance(v183_holdout.get('mean_mae_atr'),' ATR')}. "
-            "Subset ≥80% tetap eksploratif dan tidak dipromosikan otomatis."
-        )
-        if v183_candidates:
-            candidate_rows = []
-            for item in v183_candidates[:10]:
-                dims = dict(item.get("dimensions") or {})
-                candidate_rows.append(
-                    {
-                        "kontrak grup": " | ".join(item.get("group_contract") or []),
-                        "dimensi": ", ".join(f"{k}={v}" for k, v in dims.items()),
-                        "n holdout": item.get("n"),
-                        "HOLD precision": item.get("precision_hold"),
-                        "Wilson lower 95%": item.get("wilson_lower_95"),
-                        "mean MFE (ATR)": item.get("mean_mfe_atr"),
-                        "mean MAE (ATR)": item.get("mean_mae_atr"),
-                        "otoritas": "RISET SAJA",
-                    }
+            if sd_active_path:
+                source = dict(sd_active_path.get("source_zone") or {})
+                target = dict(sd_active_path.get("primary_opposing_zone") or {})
+                st.info(
+                    "Rute reaksi V186: "
+                    f"{sd_active_path.get('reaction_direction','—')} • "
+                    f"sumber {_fmt_price(source.get('low'))}–{_fmt_price(source.get('high'))}"
+                    + (
+                        f" → opposing zone {_fmt_price(target.get('low'))}–{_fmt_price(target.get('high'))}"
+                        if target else
+                        " → opposing zone belum tersedia"
+                    )
                 )
-            st.dataframe(
-                pd.DataFrame(candidate_rows),
-                hide_index=True,
-                width="stretch",
+                reaction_target = dict(sd_active_path.get("reaction_target") or {})
+                if reaction_target:
+                    st.success(
+                        "Target reaction V188: "
+                        f"{_fmt_price(reaction_target.get('price'))} • "
+                        f"basis={sd_active_path.get('reaction_target_basis','—')}."
+                    )
+                destination_stack = list(sd_active_path.get("destination_stack") or [])
+                if destination_stack:
+                    st.caption(
+                        "Opposing-zone stack: "
+                        + " | ".join(
+                            f"{item.get('timeframe','—')} "
+                            f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))} "
+                            f"[{dict(item.get('lifecycle') or {}).get('freshness','—')}]"
+                            for item in destination_stack[:4]
+                        )
+                    )
+            sd_micro = dict(sd_eval.get("micro_refinement") or {})
+            if sd_micro:
+                micro1, micro2, micro3, micro4 = st.columns(4)
+                micro1.metric("V189 state", str(sd_micro.get("state") or "—"))
+                micro2.metric(
+                    "Sweep M5",
+                    _fmt_price(dict(sd_micro.get("sweep") or {}).get("price")),
+                )
+                micro3.metric(
+                    "Reclaim level",
+                    _fmt_price(sd_micro.get("source_proximal_reclaim_level")),
+                )
+                micro4.metric(
+                    "MSS level",
+                    _fmt_price(sd_micro.get("mss_level")),
+                )
+                refined = dict(sd_micro.get("refined_entry_pocket") or {})
+                candidate = dict(sd_micro.get("candidate_entry_pocket") or {})
+                if refined:
+                    st.success(
+                        "Refined entry pocket M5 (SHADOW ONLY): "
+                        f"{_fmt_price(refined.get('low'))}–{_fmt_price(refined.get('high'))}."
+                    )
+                elif candidate:
+                    st.caption(
+                        "Candidate entry pocket M5: "
+                        f"{_fmt_price(candidate.get('low'))}–{_fmt_price(candidate.get('high'))}; "
+                        "belum confirmed."
+                    )
+            st.caption(
+                "Skor riset V182 adalah ranking evidence, BUKAN probabilitas menang. "
+                "Liquidity/round number hanya confluence, bukan pembentuk zona tunggal. "
+                "Canonical RIZAN-style ≤24 jam, M15 confirmation, fresh quote, risk/margin, dan "
+                "server-side SL/TP tetap menjadi jalur eksekusi yang terpisah."
             )
-        st.info(
-            "V183 tidak mengubah V182, V181, canonical RIZAN-style, atau broker lane. "
-            "Promosi hanya boleh dipertimbangkan setelah prospective forward lifecycle "
-            "mengonfirmasi subset yang sama pada data baru."
-        )
-    else:
-        st.info(
-            "V183 belum menerbitkan hasil 100K-bar. Dashboard akan menampilkan hasil "
-            "holdout setelah workflow riset selesai."
-        )
-
-    st.markdown("### Validasi Timeframe-Aware Supply & Demand (V185)")
-    st.caption(
-        "V185 menguji reaction dengan horizon yang sesuai timeframe pada touch population "
-        "yang sama: H1=4 jam, H4=24 jam, D1=72 jam. Sensitivity: H4 16/24 jam dan "
-        "D1 48/72/120 jam. Semua hasil tetap RISET SAJA / NO EXECUTION."
-    )
-    v185_details = (
-        {} if supply_demand_timeframe_hb is None
-        else dict(supply_demand_timeframe_hb.get("details") or {})
-    )
-    v185_eval = dict(v185_details.get("evaluation") or {})
-    v185_holdout = dict(v185_eval.get("holdout_by_timeframe") or {})
-    if v185_holdout:
-        tf_cols = st.columns(3)
-        for tf_col, tf_name in zip(tf_cols, ("H1", "H4", "D1")):
-            tf_payload = dict(v185_holdout.get(tf_name) or {})
-            tf_primary = dict(tf_payload.get("primary") or {})
-            with tf_col:
-                st.metric(
-                    f"{tf_name} HOLD precision",
-                    "—"
-                    if tf_primary.get("precision_hold") is None
-                    else _fmt_pct(tf_primary.get("precision_hold")),
-                )
-                st.caption(
-                    f"horizon={tf_payload.get('primary_horizon_hours','—')} jam • "
-                    f"n={tf_primary.get('n',0)} • "
-                    f"Wilson lower 95%="
-                    f"{'—' if tf_primary.get('wilson_lower_95') is None else _fmt_pct(tf_primary.get('wilson_lower_95'))} • "
-                    f"median outcome={tf_primary.get('median_bars_to_outcome','—')} M15."
-                )
-        sensitivity_rows = []
-        for tf_name in ("H4", "D1"):
-            tf_payload = dict(v185_holdout.get(tf_name) or {})
-            for horizon_key, item in dict(tf_payload.get("sensitivity") or {}).items():
-                item = dict(item or {})
-                sensitivity_rows.append(
-                    {
-                        "TF": tf_name,
-                        "horizon (jam)": item.get("horizon_hours"),
-                        "n": item.get("n"),
-                        "HOLD precision": item.get("precision_hold"),
-                        "Wilson lower 95%": item.get("wilson_lower_95"),
-                        "mean MFE (ATR)": item.get("mean_mfe_atr"),
-                        "mean MAE (ATR)": item.get("mean_mae_atr"),
-                    }
-                )
-        if sensitivity_rows:
-            st.dataframe(
-                pd.DataFrame(sensitivity_rows),
-                hide_index=True,
-                width="stretch",
-            )
-        v185_candidates = list(v185_eval.get("candidate_80_precision_subsets") or [])
-        st.info(
-            f"Keputusan V185: {v185_eval.get('decision','—')} • "
-            f"episode={v185_eval.get('episodes','—')} • "
-            f"subset holdout ≥80%={len(v185_candidates)}. "
-            "Horizon sensitivity memakai touch population yang sama; hasil tidak memiliki "
-            "promotion/execution authority."
-        )
-    else:
-        st.info(
-            "V185 belum menerbitkan hasil timeframe-aware. Setelah workflow 100K-bar selesai, "
-            "dashboard akan menampilkan H1/H4/D1 holdout dan sensitivity horizon."
-        )
-
-    st.markdown("### Validasi Prospektif Supply & Demand (V184)")
-    st.caption(
-        "V184 hanya menghitung touch yang terjadi SETELAH zona didaftarkan oleh engine. "
-        "Tidak ada backfill dari touch lama. Kandidat primer yang dibekukan dari V183 adalah "
-        "H1 LONG + multi-HTF nesting + aggressive approach. Status tetap SHADOW ONLY."
-    )
-    v184_details = (
-        {} if supply_demand_prospective_hb is None
-        else dict(supply_demand_prospective_hb.get("details") or {})
-    )
-    v184_summary = dict(v184_details.get("summary") or {})
-    v184_candidate = dict(v184_summary.get("primary_candidate") or {})
-    v184_controls = dict(v184_summary.get("controls") or {})
-    if v184_details:
-        vp1, vp2, vp3, vp4, vp5 = st.columns(5)
-        vp1.metric("Zona H1 dipantau", v184_details.get("h1_registry_rows_this_run", 0))
-        vp2.metric("Reaction prospektif resolved", v184_summary.get("resolved_reactions", 0))
-        vp3.metric("Reaction pending", v184_summary.get("pending_reactions", 0))
-        vp4.metric(
-            "Kandidat primer HOLD",
-            "—"
-            if v184_candidate.get("precision_hold") is None
-            else _fmt_pct(v184_candidate.get("precision_hold")),
-        )
-        vp5.metric(
-            "Gate replikasi",
-            "TERPENUHI"
-            if v184_candidate.get("replication_gate_met")
-            else "BELUM",
-        )
-        st.caption(
-            f"Kandidat primer: n={v184_candidate.get('n',0)} • "
-            f"Wilson lower 95%="
-            f"{'—' if v184_candidate.get('wilson_lower_95') is None else _fmt_pct(v184_candidate.get('wilson_lower_95'))} • "
-            f"minimum n={v184_candidate.get('minimum_n','—')} • "
-            f"target raw={_fmt_pct(v184_candidate.get('minimum_raw_precision')) if v184_candidate.get('minimum_raw_precision') is not None else '—'} • "
-            f"target Wilson={_fmt_pct(v184_candidate.get('minimum_wilson_lower_95')) if v184_candidate.get('minimum_wilson_lower_95') is not None else '—'}."
-        )
-        c_long = dict(v184_controls.get("all_h1_long") or {})
-        c_short = dict(v184_controls.get("all_h1_short") or {})
-        st.info(
-            f"Keputusan V184: {v184_summary.get('decision','—')}. "
-            f"Kontrol H1 LONG={('—' if c_long.get('precision_hold') is None else _fmt_pct(c_long.get('precision_hold')))} "
-            f"(n={c_long.get('n',0)}), H1 SHORT="
-            f"{('—' if c_short.get('precision_hold') is None else _fmt_pct(c_short.get('precision_hold')))} "
-            f"(n={c_short.get('n',0)}). "
-            "Bahkan jika gate replikasi terpenuhi, V184 tidak memiliki promotion/execution authority."
-        )
-    else:
-        st.info(
-            "V184 belum menerbitkan snapshot prospective. Episode baru akan dihitung "
-            "hanya setelah worker pertama kali mendaftarkan zona; touch historis lama tidak di-backfill."
-        )
-
-    st.markdown("### Kandidat Zona Pra-H4 (Pre-map Candidate Zone)")
-    st.caption(
-        "Menampilkan H1 origin baru yang terbentuk setelah H4 map saat ini. Kandidat "
-        "ini membantu persiapan lebih awal, tetapi statusnya SELALU tanpa izin eksekusi "
-        "sampai H4 map berikutnya selesai dan canonical RIZAN-style memvalidasinya."
-    )
-    premap_details = {} if premap_hb is None else dict(premap_hb.get("details") or {})
-    premap_eval = dict(premap_details.get("evaluation") or {})
-    premap_candidates = list(premap_eval.get("candidates") or [])
-    if premap_candidates:
-        pm1, pm2, pm3, pm4 = st.columns(4)
-        pm1.metric("Jumlah kandidat pra-H4", premap_eval.get("candidate_count", len(premap_candidates)))
-        pm2.metric("Bias strategis", str(premap_eval.get("strategic_bias") or "—"))
-        pm3.metric("Arah H4 taktis", str(premap_eval.get("tactical_h4_direction") or "—"))
-        pm4.metric("Izin eksekusi", "TIDAK ADA")
-        st.warning(
-            "PERSIAPAN SAJA / NO EXECUTION. Kandidat pra-H4 belum menjadi Trade Preparation "
-            "canonical. Ia harus bertahan sampai completed H4 map berikutnya dan lolos "
-            "pemilihan RIZAN-style A/B sebelum dapat memiliki jalur broker."
-        )
-        premap_table = []
-        for candidate in premap_candidates:
-            liquidity = dict(candidate.get("liquidity") or {})
-            premap_table.append(
-                {
-                    "arah": candidate.get("direction"),
-                    "tersedia sejak (WIB)": _fmt_wib_datetime(candidate.get("available_at")),
-                    "zona": (
-                        f"{_fmt_price(candidate.get('low'))}–"
-                        f"{_fmt_price(candidate.get('high'))}"
-                    ),
-                    "jarak (ATR)": candidate.get("distance_atr"),
-                    "umur (jam)": candidate.get("age_hours"),
-                    "displacement (ATR)": candidate.get("displacement_range_atr"),
-                    "body displacement": candidate.get("displacement_body_fraction"),
-                    "selaras strategis": candidate.get("strategic_alignment"),
-                    "selaras H4 taktis": candidate.get("tactical_alignment"),
-                    "confluence likuiditas": liquidity.get("confluence_count"),
-                    "sumber likuiditas": ", ".join(liquidity.get("sources") or []) or "—",
-                    "skor riset": candidate.get("research_score"),
-                    "V175 P(touch) OOS": candidate.get("v175_touch_prior"),
-                    "V175 P(reaction|touch) OOS": candidate.get("v175_reaction_prior"),
-                    "V177 hold OOS": candidate.get("v177_hold_prior"),
-                    "V178 hold M5 OOS": candidate.get("v178_hold_prior"),
-                    "V179 reaction OOS": candidate.get("v179_reaction_prior"),
-                    "status": candidate.get("status"),
-                }
-            )
-        st.dataframe(pd.DataFrame(premap_table), hide_index=True, width="stretch")
-        st.caption(
-            "Catatan probabilitas/evidence: nilai V175/V177/V178/V179 adalah prior "
-            "out-of-sample berdasarkan arah dari riset historis terbaru, BUKAN probabilitas "
-            "terkalibrasi untuk kandidat individual ini. Skor riset 0–100 juga merupakan "
-            "ranking evidence, bukan peluang menang."
-        )
-    else:
-        st.info(
-            "Belum ada Kandidat Pra-H4 yang valid. Ini berarti belum ada H1 origin baru "
-            "setelah H4 map sekarang yang masih aktif, berada di sisi harga yang benar, "
-            "dan memenuhi syarat dasar struktur."
-        )
-
-    st.markdown("### Persiapan Trading (Trade Preparation)")
-    st.caption(
-        f"H4 map canonical saat ini: {_fmt_wib_datetime(current_map)}. "
-        "Waktu kedaluwarsa setup dan seluruh timestamp trading pada dashboard ini "
-        "ditampilkan dalam WIB (Asia/Jakarta)."
-    )
-    if not valid_zone_now:
-        st.error(
-            "BELUM ADA ZONA ENTRY VALID — JANGAN PASANG ORDER. "
-            "Scanner sedang menunggu H4 map struktural/zona reaksi yang baru."
-        )
-        if afic_sd_context.get("prepare_only_fallback"):
-            sd_fallback_same = dict(afic_sd_context.get("same_direction_zone") or {})
-            sd_fallback_opp = dict(afic_sd_context.get("opposite_reversal_zone") or {})
-            fallback = sd_fallback_same or sd_fallback_opp
-            if fallback:
-                st.warning(
-                    "Namun ada Supply/Demand PREPARE context di "
-                    f"{_fmt_price(fallback.get('low'))}–{_fmt_price(fallback.get('high'))} "
-                    f"({fallback.get('timeframe','—')} {fallback.get('pattern','—')}). "
-                    "Gunakan hanya untuk bersiap; BELUM menjadi entry zone RIZAN-style."
-                )
-        t1, t2, t3, t4 = st.columns(4)
-        t1.metric("Menunggu", "H4 MAP BARU")
-        t2.metric("Zona reaksi", "—")
-        t3.metric("Entry acuan", "—")
-        t4.metric("Tindakan manual", "TUNGGU")
-        if lifecycle_rows:
-            last_plan = dict(lifecycle_rows[0])
-            if str(last_plan.get("lifecycle_state") or "") == "CANCELLED":
-                st.caption(
-                    "Rencana persiapan terakhir: "
-                    f"{last_plan.get('direction') or '—'} "
-                    f"{_fmt_price(last_plan.get('entry_price'))} • CANCELLED • "
-                    f"alasan={last_plan.get('cancel_reason') or 'UNKNOWN'} • "
-                    f"dibuat={_fmt_wib_datetime(last_plan.get('created_at'))} • "
-                    f"dibatalkan={_fmt_wib_datetime(last_plan.get('cancelled_at'))}."
-                )
-    else:
-        t1, t2, t3, t4 = st.columns(4)
-        t1.metric("Menunggu", f"REAKSI {zone_side}")
-        t2.metric("Zona reaksi", f"{_fmt_price(zone_low)}–{_fmt_price(zone_high)}")
-        t3.metric("Entry acuan", _fmt_price(reference_entry_now))
-        if grade not in {"A","B"}:
-            manual_action = f"PANTAU SAJA / WATCH ONLY (GRADE {grade})"
-        elif "CONFIRMED" in str(state).upper():
-            manual_action = "TERKONFIRMASI / QUOTE TERBARU"
-        elif proximity == "IN_ZONE":
-            manual_action = "TUNGGU KONFIRMASI M15"
-        elif proximity == "NEAR_ZONE":
-            manual_action = "PERSIAPAN"
         else:
-            manual_action = "TUNGGU HARGA KE ZONA"
-        t4.metric("Tindakan manual", manual_action)
-        st.info(
-            f"Rencana saat ini: tunggu XAUUSD masuk ke {_fmt_price(zone_low)}–"
-            f"{_fmt_price(zone_high)}. "
-            + (
-                f"Entry persiapan/acuan ≈ {_fmt_price(reference_entry_now)}. "
-                if reference_entry_now is not None
-                else "Entry acuan belum boleh dieksekusi. "
+            st.info(
+                "Atlas V182 belum memiliki zona yang dapat ditampilkan pada snapshot terbaru. "
+                "Ketiadaan zona V182 tidak memaksa scanner membuat setup."
             )
-            + "Jangan entry hanya karena harga menyentuh zona; candle M15 yang sudah "
-              "selesai tetap wajib memberikan konfirmasi untuk jalur otomatis RIZAN-style."
-        )
 
-    st.markdown("#### Siklus Rencana Persiapan (Prepared Plan Lifecycle)")
-    st.caption(
-        "Rencana yang pernah disiapkan tetap disimpan walaupun hilang dari H4 map terbaru. "
-        "Ini membedakan WAITING_PRICE, ZONE_ENTERED, CONFIRMED, penyerahan ke broker, dan "
-        "CANCELLED. Pembatalan disimpan sebagai evidence, bukan dihapus."
-    )
-    if lifecycle_rows:
-        total_plans = len(lifecycle_rows)
-        active_reached_plans = sum(
-            bool(dict(row.get("metadata") or {}).get("touch_while_active"))
-            for row in lifecycle_rows
-        )
-        active_confirmed_plans = sum(
-            bool(dict(row.get("metadata") or {}).get("confirmation_while_active"))
-            and bool(dict(row.get("metadata") or {}).get("touch_while_active"))
-            for row in lifecycle_rows
-        )
-        cancelled_plans = sum(
-            str(row.get("lifecycle_state") or "") == "CANCELLED"
-            for row in lifecycle_rows
-        )
-        ordered_plans = sum(row.get("order_accepted_at") is not None for row in lifecycle_rows)
-        post_cancel_reached = sum(
-            bool(dict(row.get("metadata") or {}).get("post_cancel_touch"))
-            for row in lifecycle_rows
-            if str(row.get("lifecycle_state") or "") == "CANCELLED"
-        )
-        post_cancel_terminal = sum(
-            bool(row.get("post_cancel_terminal_hit"))
-            for row in lifecycle_rows
-            if str(row.get("lifecycle_state") or "") == "CANCELLED"
-        )
-        l1, l2, l3, l4, l5, l6 = st.columns(6)
-        l1.metric(
-            "Zona tercapai saat aktif",
-            "—" if total_plans == 0 else _fmt_pct(active_reached_plans / total_plans),
-        )
-        l2.metric(
-            "Touch aktif → konfirmasi",
-            "—"
-            if active_reached_plans == 0
-            else _fmt_pct(active_confirmed_plans / active_reached_plans),
-        )
-        l3.metric(
-            "Pembatalan",
-            "—" if total_plans == 0 else _fmt_pct(cancelled_plans / total_plans),
-        )
-        l4.metric(
-            "Persiapan → order",
-            "—" if total_plans == 0 else _fmt_pct(ordered_plans / total_plans),
-        )
-        l5.metric(
-            "Zona tercapai pasca-batal",
-            "—"
-            if cancelled_plans == 0
-            else _fmt_pct(post_cancel_reached / cancelled_plans),
-        )
-        l6.metric(
-            "Kandidat TP2 pasca-batal",
-            "—"
-            if cancelled_plans == 0
-            else _fmt_pct(post_cancel_terminal / cancelled_plans),
-        )
+        st.markdown("### Validasi Historis Supply & Demand (V183)")
         st.caption(
-            "Zona tercapai saat aktif hanya menghitung sentuhan ketika rencana masih valid. "
-            "Sentuhan setelah pembatalan dipisahkan untuk mengukur apakah aturan pembatalan "
-            "terlalu agresif. Kandidat TP2 pasca-batal tetap merupakan evidence diagnostik, "
-            "bukan bukti bahwa aturan pembatalan pasti salah."
+            "Profiler 100K-bar ini memisahkan destination rate dari reaction rate. "
+            "Target primer HOLD = +0,50 ATR dalam 16 candle M15 sebelum close menembus distal. "
+            "Hasil V183 adalah evidence riset dan TIDAK memberi izin eksekusi."
         )
-        lifecycle_table = []
-        for row in lifecycle_rows[:20]:
-            meta = dict(row.get("metadata") or {})
-            lifecycle_table.append(
-                {
-                    "dibuat (WIB)": _fmt_wib_datetime(row.get("created_at")),
-                    "arah": row.get("direction"),
-                    "grade": row.get("grade"),
-                    "zona": (
-                        f"{_fmt_price(row.get('zone_low'))}–"
-                        f"{_fmt_price(row.get('zone_high'))}"
-                    ),
-                    "entry": _fmt_price(row.get("entry_price")),
-                    "siklus": row.get("lifecycle_state"),
-                    "alasan batal": row.get("cancel_reason") or "—",
-                    "dibatalkan (WIB)": _fmt_wib_datetime(row.get("cancelled_at")),
-                    "sentuhan pertama": row.get("first_touch_at"),
-                    "touch saat aktif": meta.get("touch_while_active"),
-                    "touch pasca-batal": meta.get("post_cancel_touch"),
-                    "terkonfirmasi": row.get("confirmed_at"),
-                    "order diterima": row.get("order_accepted_at"),
-                    "proteksi terverifikasi": row.get("protection_verified_at"),
-                    "TP1": bool(row.get("tp1_hit")),
-                    "TP2": bool(row.get("tp2_hit")),
-                    "stop hit": bool(row.get("stop_hit")),
-                    "MFE R": row.get("mfe_r"),
-                    "MAE R": row.get("mae_r"),
-                    "durasi (menit)": meta.get("lifetime_minutes"),
-                }
+        v183_details = (
+            {} if supply_demand_research_hb is None
+            else dict(supply_demand_research_hb.get("details") or {})
+        )
+        v183_eval = dict(v183_details.get("evaluation") or {})
+        if v183_eval:
+            v183_holdout = dict(v183_eval.get("holdout_overall") or {})
+            v183_destination = dict(v183_eval.get("destination_overall") or {})
+            v183_candidates = list(v183_eval.get("candidate_80_precision_subsets") or [])
+            vh1, vh2, vh3, vh4, vh5 = st.columns(5)
+            vh1.metric("Keputusan riset", str(v183_eval.get("decision") or "—"))
+            vh2.metric("Zona historis", v183_eval.get("zones", 0))
+            vh3.metric(
+                "Destination touch rate",
+                "—"
+                if v183_destination.get("touch_rate") is None
+                else _fmt_pct(v183_destination.get("touch_rate")),
             )
-        st.dataframe(
-            pd.DataFrame(lifecycle_table),
-            hide_index=True,
-            width="stretch",
-        )
-    else:
-        st.caption(
-            "Ledger siklus rencana belum terisi. Worker maintenance akan mengisi ulang "
-            "rencana RIZAN-style terbaru tanpa mengubah aturan eksekusi."
-        )
-
-    st.markdown("#### Kelayakan Eksekusi XAU (XAU Execution Admission)")
-    st.caption(
-        "Panel ini memisahkan status signal yang tersimpan dari izin broker yang sebenarnya. "
-        "BROKER ELIGIBLE berarti geometry signal termasuk jalur DEMO yang diizinkan, tetapi "
-        "quote terbaru, risiko, margin, serta verifikasi SL/TP tetap harus lulus sebelum order."
-    )
-    authorized_geometry_codes = {
-        "XAU_AFIC_PATH_EXECUTION_V1",
-        "XAU_M15_EMA_SMC_RECLAIM_V1",
-        "XAU_V24_CHAMPION_DEMO_V1",
-    }
-    geometry_code_by_signal = {}
-    for event_row in execution_events:
-        if str(event_row.get("event_type") or "") != "DEMO_SIGNAL_GEOMETRY":
-            continue
-        signal_key = str(event_row.get("signal_key") or "")
-        if signal_key and signal_key not in geometry_code_by_signal:
-            geometry_code_by_signal[signal_key] = str(event_row.get("code") or "")
-
-    admission_rows = []
-    admission_now = datetime.now(tz=UTC)
-    for row in dedicated_xau_rows[:10]:
-        signal_id = str(row.get("id") or "")
-        state_u = str(row.get("state") or "").upper()
-        guards = list(row.get("active_guards") or [])
-        expires_dt = None
-        if row.get("expires_at"):
-            try:
-                expires_dt = datetime.fromisoformat(
-                    str(row.get("expires_at")).replace("Z", "+00:00")
+            vh4.metric(
+                "Holdout HOLD precision",
+                "—"
+                if v183_holdout.get("precision_hold") is None
+                else _fmt_pct(v183_holdout.get("precision_hold")),
+            )
+            vh5.metric("Subset ≥80% (riset)", len(v183_candidates))
+            st.caption(
+                f"Holdout n={v183_holdout.get('n','—')} • "
+                f"Wilson lower 95%="
+                f"{'—' if v183_holdout.get('wilson_lower_95') is None else _fmt_pct(v183_holdout.get('wilson_lower_95'))} • "
+                f"mean MFE={_fmt_distance(v183_holdout.get('mean_mfe_atr'),' ATR')} • "
+                f"mean MAE={_fmt_distance(v183_holdout.get('mean_mae_atr'),' ATR')}. "
+                "Subset ≥80% tetap eksploratif dan tidak dipromosikan otomatis."
+            )
+            if v183_candidates:
+                candidate_rows = []
+                for item in v183_candidates[:10]:
+                    dims = dict(item.get("dimensions") or {})
+                    candidate_rows.append(
+                        {
+                            "kontrak grup": " | ".join(item.get("group_contract") or []),
+                            "dimensi": ", ".join(f"{k}={v}" for k, v in dims.items()),
+                            "n holdout": item.get("n"),
+                            "HOLD precision": item.get("precision_hold"),
+                            "Wilson lower 95%": item.get("wilson_lower_95"),
+                            "mean MFE (ATR)": item.get("mean_mfe_atr"),
+                            "mean MAE (ATR)": item.get("mean_mae_atr"),
+                            "otoritas": "RISET SAJA",
+                        }
+                    )
+                st.dataframe(
+                    pd.DataFrame(candidate_rows),
+                    hide_index=True,
+                    width="stretch",
                 )
-                if expires_dt.tzinfo is None:
-                    expires_dt = expires_dt.replace(tzinfo=UTC)
-                else:
-                    expires_dt = expires_dt.astimezone(UTC)
-            except (TypeError, ValueError):
-                expires_dt = None
-        geometry_code = geometry_code_by_signal.get(signal_id)
-        if state_u == "INVALIDATED":
-            admission = "INVALIDATED"
-            reason = "Signal/map sudah tidak berlaku"
-        elif expires_dt is not None and expires_dt < admission_now:
-            admission = "EXPIRED"
-            reason = "Masa berlaku (TTL) signal sudah habis"
-        elif guards:
-            admission = "BLOCKED"
-            reason = ", ".join(str(x) for x in guards)
-        elif state_u != "EXECUTION_READY":
-            admission = "NOT READY"
-            reason = f"Status={state_u or '—'}"
-        elif geometry_code in authorized_geometry_codes:
-            admission = "BROKER ELIGIBLE"
-            reason = f"{geometry_code}; menunggu validasi ulang quote/risiko"
+            st.info(
+                "V183 tidak mengubah V182, V181, canonical RIZAN-style, atau broker lane. "
+                "Promosi hanya boleh dipertimbangkan setelah prospective forward lifecycle "
+                "mengonfirmasi subset yang sama pada data baru."
+            )
         else:
-            admission = "SHADOW READY"
-            reason = (
-                f"{geometry_code or 'NO_AUTHORIZED_GEOMETRY'} tidak memiliki izin broker"
+            st.info(
+                "V183 belum menerbitkan hasil 100K-bar. Dashboard akan menampilkan hasil "
+                "holdout setelah workflow riset selesai."
             )
-        admission_rows.append({
-            "waktu (WIB)": _fmt_wib_datetime(row.get("observed_at")),
-            "setup": row.get("setup_type"),
-            "arah": row.get("direction"),
-            "grade/skor": row.get("final_score"),
-            "status tersimpan": row.get("state"),
-            "kelayakan": admission,
-            "izin geometry": geometry_code or "—",
-            "alasan": reason,
-            "kedaluwarsa (WIB)": _fmt_wib_datetime(row.get("expires_at")),
-        })
-    if admission_rows:
-        st.dataframe(pd.DataFrame(admission_rows), hide_index=True, width="stretch")
-        latest_admission = admission_rows[0]
-        if latest_admission["kelayakan"] == "BROKER ELIGIBLE":
-            st.success(
-                "Signal XAU terbaru memiliki geometry DEMO yang diizinkan broker. "
-                "Order tetap bergantung pada quote terbaru, risiko, margin, dan validasi ulang SL/TP."
+
+        st.markdown("### Validasi Timeframe-Aware Supply & Demand (V185)")
+        st.caption(
+            "V185 menguji reaction dengan horizon yang sesuai timeframe pada touch population "
+            "yang sama: H1=4 jam, H4=24 jam, D1=72 jam. Sensitivity: H4 16/24 jam dan "
+            "D1 48/72/120 jam. Semua hasil tetap RISET SAJA / NO EXECUTION."
+        )
+        v185_details = (
+            {} if supply_demand_timeframe_hb is None
+            else dict(supply_demand_timeframe_hb.get("details") or {})
+        )
+        v185_eval = dict(v185_details.get("evaluation") or {})
+        v185_holdout = dict(v185_eval.get("holdout_by_timeframe") or {})
+        if v185_holdout:
+            tf_cols = st.columns(3)
+            for tf_col, tf_name in zip(tf_cols, ("H1", "H4", "D1")):
+                tf_payload = dict(v185_holdout.get(tf_name) or {})
+                tf_primary = dict(tf_payload.get("primary") or {})
+                with tf_col:
+                    st.metric(
+                        f"{tf_name} HOLD precision",
+                        "—"
+                        if tf_primary.get("precision_hold") is None
+                        else _fmt_pct(tf_primary.get("precision_hold")),
+                    )
+                    st.caption(
+                        f"horizon={tf_payload.get('primary_horizon_hours','—')} jam • "
+                        f"n={tf_primary.get('n',0)} • "
+                        f"Wilson lower 95%="
+                        f"{'—' if tf_primary.get('wilson_lower_95') is None else _fmt_pct(tf_primary.get('wilson_lower_95'))} • "
+                        f"median outcome={tf_primary.get('median_bars_to_outcome','—')} M15."
+                    )
+            sensitivity_rows = []
+            for tf_name in ("H4", "D1"):
+                tf_payload = dict(v185_holdout.get(tf_name) or {})
+                for horizon_key, item in dict(tf_payload.get("sensitivity") or {}).items():
+                    item = dict(item or {})
+                    sensitivity_rows.append(
+                        {
+                            "TF": tf_name,
+                            "horizon (jam)": item.get("horizon_hours"),
+                            "n": item.get("n"),
+                            "HOLD precision": item.get("precision_hold"),
+                            "Wilson lower 95%": item.get("wilson_lower_95"),
+                            "mean MFE (ATR)": item.get("mean_mfe_atr"),
+                            "mean MAE (ATR)": item.get("mean_mae_atr"),
+                        }
+                    )
+            if sensitivity_rows:
+                st.dataframe(
+                    pd.DataFrame(sensitivity_rows),
+                    hide_index=True,
+                    width="stretch",
+                )
+            v185_candidates = list(v185_eval.get("candidate_80_precision_subsets") or [])
+            st.info(
+                f"Keputusan V185: {v185_eval.get('decision','—')} • "
+                f"episode={v185_eval.get('episodes','—')} • "
+                f"subset holdout ≥80%={len(v185_candidates)}. "
+                "Horizon sensitivity memakai touch population yang sama; hasil tidak memiliki "
+                "promotion/execution authority."
             )
-        elif latest_admission["kelayakan"] == "SHADOW READY":
+        else:
+            st.info(
+                "V185 belum menerbitkan hasil timeframe-aware. Setelah workflow 100K-bar selesai, "
+                "dashboard akan menampilkan H1/H4/D1 holdout dan sensitivity horizon."
+            )
+
+        st.markdown("### Validasi Prospektif Supply & Demand (V184)")
+        st.caption(
+            "V184 hanya menghitung touch yang terjadi SETELAH zona didaftarkan oleh engine. "
+            "Tidak ada backfill dari touch lama. Kandidat primer yang dibekukan dari V183 adalah "
+            "H1 LONG + multi-HTF nesting + aggressive approach. Status tetap SHADOW ONLY."
+        )
+        v184_details = (
+            {} if supply_demand_prospective_hb is None
+            else dict(supply_demand_prospective_hb.get("details") or {})
+        )
+        v184_summary = dict(v184_details.get("summary") or {})
+        v184_candidate = dict(v184_summary.get("primary_candidate") or {})
+        v184_controls = dict(v184_summary.get("controls") or {})
+        if v184_details:
+            vp1, vp2, vp3, vp4, vp5 = st.columns(5)
+            vp1.metric("Zona H1 dipantau", v184_details.get("h1_registry_rows_this_run", 0))
+            vp2.metric("Reaction prospektif resolved", v184_summary.get("resolved_reactions", 0))
+            vp3.metric("Reaction pending", v184_summary.get("pending_reactions", 0))
+            vp4.metric(
+                "Kandidat primer HOLD",
+                "—"
+                if v184_candidate.get("precision_hold") is None
+                else _fmt_pct(v184_candidate.get("precision_hold")),
+            )
+            vp5.metric(
+                "Gate replikasi",
+                "TERPENUHI"
+                if v184_candidate.get("replication_gate_met")
+                else "BELUM",
+            )
+            st.caption(
+                f"Kandidat primer: n={v184_candidate.get('n',0)} • "
+                f"Wilson lower 95%="
+                f"{'—' if v184_candidate.get('wilson_lower_95') is None else _fmt_pct(v184_candidate.get('wilson_lower_95'))} • "
+                f"minimum n={v184_candidate.get('minimum_n','—')} • "
+                f"target raw={_fmt_pct(v184_candidate.get('minimum_raw_precision')) if v184_candidate.get('minimum_raw_precision') is not None else '—'} • "
+                f"target Wilson={_fmt_pct(v184_candidate.get('minimum_wilson_lower_95')) if v184_candidate.get('minimum_wilson_lower_95') is not None else '—'}."
+            )
+            c_long = dict(v184_controls.get("all_h1_long") or {})
+            c_short = dict(v184_controls.get("all_h1_short") or {})
+            st.info(
+                f"Keputusan V184: {v184_summary.get('decision','—')}. "
+                f"Kontrol H1 LONG={('—' if c_long.get('precision_hold') is None else _fmt_pct(c_long.get('precision_hold')))} "
+                f"(n={c_long.get('n',0)}), H1 SHORT="
+                f"{('—' if c_short.get('precision_hold') is None else _fmt_pct(c_short.get('precision_hold')))} "
+                f"(n={c_short.get('n',0)}). "
+                "Bahkan jika gate replikasi terpenuhi, V184 tidak memiliki promotion/execution authority."
+            )
+        else:
+            st.info(
+                "V184 belum menerbitkan snapshot prospective. Episode baru akan dihitung "
+                "hanya setelah worker pertama kali mendaftarkan zona; touch historis lama tidak di-backfill."
+            )
+
+        st.markdown("### Kandidat Zona Pra-H4 (Pre-map Candidate Zone)")
+        st.caption(
+            "Menampilkan H1 origin baru yang terbentuk setelah H4 map saat ini. Kandidat "
+            "ini membantu persiapan lebih awal, tetapi statusnya SELALU tanpa izin eksekusi "
+            "sampai H4 map berikutnya selesai dan canonical RIZAN-style memvalidasinya."
+        )
+        premap_details = {} if premap_hb is None else dict(premap_hb.get("details") or {})
+        premap_eval = dict(premap_details.get("evaluation") or {})
+        premap_candidates = list(premap_eval.get("candidates") or [])
+        if premap_candidates:
+            pm1, pm2, pm3, pm4 = st.columns(4)
+            pm1.metric("Jumlah kandidat pra-H4", premap_eval.get("candidate_count", len(premap_candidates)))
+            pm2.metric("Bias strategis", str(premap_eval.get("strategic_bias") or "—"))
+            pm3.metric("Arah H4 taktis", str(premap_eval.get("tactical_h4_direction") or "—"))
+            pm4.metric("Izin eksekusi", "TIDAK ADA")
             st.warning(
-                "Signal XAU terbaru dapat berstatus EXECUTION_READY di storage, tetapi hanya "
-                "SHADOW READY; jalur broker tidak akan mengeksekusinya."
+                "PERSIAPAN SAJA / NO EXECUTION. Kandidat pra-H4 belum menjadi Trade Preparation "
+                "canonical. Ia harus bertahan sampai completed H4 map berikutnya dan lolos "
+                "pemilihan RIZAN-style A/B sebelum dapat memiliki jalur broker."
             )
-    else:
-        st.caption("Belum ada baris signal XAU untuk diagnostik kelayakan eksekusi.")
+            premap_table = []
+            for candidate in premap_candidates:
+                liquidity = dict(candidate.get("liquidity") or {})
+                premap_table.append(
+                    {
+                        "arah": candidate.get("direction"),
+                        "tersedia sejak (WIB)": _fmt_wib_datetime(candidate.get("available_at")),
+                        "zona": (
+                            f"{_fmt_price(candidate.get('low'))}–"
+                            f"{_fmt_price(candidate.get('high'))}"
+                        ),
+                        "jarak (ATR)": candidate.get("distance_atr"),
+                        "umur (jam)": candidate.get("age_hours"),
+                        "displacement (ATR)": candidate.get("displacement_range_atr"),
+                        "body displacement": candidate.get("displacement_body_fraction"),
+                        "selaras strategis": candidate.get("strategic_alignment"),
+                        "selaras H4 taktis": candidate.get("tactical_alignment"),
+                        "confluence likuiditas": liquidity.get("confluence_count"),
+                        "sumber likuiditas": ", ".join(liquidity.get("sources") or []) or "—",
+                        "skor riset": candidate.get("research_score"),
+                        "V175 P(touch) OOS": candidate.get("v175_touch_prior"),
+                        "V175 P(reaction|touch) OOS": candidate.get("v175_reaction_prior"),
+                        "V177 hold OOS": candidate.get("v177_hold_prior"),
+                        "V178 hold M5 OOS": candidate.get("v178_hold_prior"),
+                        "V179 reaction OOS": candidate.get("v179_reaction_prior"),
+                        "status": candidate.get("status"),
+                    }
+                )
+            st.dataframe(pd.DataFrame(premap_table), hide_index=True, width="stretch")
+            st.caption(
+                "Catatan probabilitas/evidence: nilai V175/V177/V178/V179 adalah prior "
+                "out-of-sample berdasarkan arah dari riset historis terbaru, BUKAN probabilitas "
+                "terkalibrasi untuk kandidat individual ini. Skor riset 0–100 juga merupakan "
+                "ranking evidence, bukan peluang menang."
+            )
+        else:
+            st.info(
+                "Belum ada Kandidat Pra-H4 yang valid. Ini berarti belum ada H1 origin baru "
+                "setelah H4 map sekarang yang masih aktif, berada di sisi harga yang benar, "
+                "dan memenuhi syarat dasar struktur."
+            )
 
-    st.markdown("#### Sinyal Teknikal XAU Lintas-Mesin (Cross-engine XAU technical signals)")
-    st.caption(
-        "Bagian ini terpisah dari RIZAN-style H4 map. Baris berasal dari mesin teknikal XAU lain. "
-        "CURRENT/EXPIRED ditentukan dari expires_at; setup yang kedaluwarsa hanya konteks "
-        "historis dan tidak boleh dianggap sebagai rancangan order RIZAN-style yang masih aktif."
-    )
-    if xau_technical_signal_rows:
-        now_utc = datetime.now(tz=UTC)
-        technical_rows = []
-        for row in xau_technical_signal_rows[:5]:
-            expires_raw = row.get("expires_at")
+    with st.expander("Detail execution, admission & diagnostik", expanded=False):
+        st.markdown("### Persiapan Trading (Trade Preparation)")
+        st.caption(
+            f"H4 map canonical saat ini: {_fmt_wib_datetime(current_map)}. "
+            "Waktu kedaluwarsa setup dan seluruh timestamp trading pada dashboard ini "
+            "ditampilkan dalam WIB (Asia/Jakarta)."
+        )
+        if not valid_zone_now:
+            st.error(
+                "BELUM ADA ZONA ENTRY VALID — JANGAN PASANG ORDER. "
+                "Scanner sedang menunggu H4 map struktural/zona reaksi yang baru."
+            )
+            if afic_sd_context.get("prepare_only_fallback"):
+                sd_fallback_same = dict(afic_sd_context.get("same_direction_zone") or {})
+                sd_fallback_opp = dict(afic_sd_context.get("opposite_reversal_zone") or {})
+                fallback = sd_fallback_same or sd_fallback_opp
+                if fallback:
+                    st.warning(
+                        "Namun ada Supply/Demand PREPARE context di "
+                        f"{_fmt_price(fallback.get('low'))}–{_fmt_price(fallback.get('high'))} "
+                        f"({fallback.get('timeframe','—')} {fallback.get('pattern','—')}). "
+                        "Gunakan hanya untuk bersiap; BELUM menjadi entry zone RIZAN-style."
+                    )
+            t1, t2, t3, t4 = st.columns(4)
+            t1.metric("Menunggu", "H4 MAP BARU")
+            t2.metric("Zona reaksi", "—")
+            t3.metric("Entry acuan", "—")
+            t4.metric("Tindakan manual", "TUNGGU")
+            if lifecycle_rows:
+                last_plan = dict(lifecycle_rows[0])
+                if str(last_plan.get("lifecycle_state") or "") == "CANCELLED":
+                    st.caption(
+                        "Rencana persiapan terakhir: "
+                        f"{last_plan.get('direction') or '—'} "
+                        f"{_fmt_price(last_plan.get('entry_price'))} • CANCELLED • "
+                        f"alasan={last_plan.get('cancel_reason') or 'UNKNOWN'} • "
+                        f"dibuat={_fmt_wib_datetime(last_plan.get('created_at'))} • "
+                        f"dibatalkan={_fmt_wib_datetime(last_plan.get('cancelled_at'))}."
+                    )
+        else:
+            t1, t2, t3, t4 = st.columns(4)
+            t1.metric("Menunggu", f"REAKSI {zone_side}")
+            t2.metric("Zona reaksi", f"{_fmt_price(zone_low)}–{_fmt_price(zone_high)}")
+            t3.metric("Entry acuan", _fmt_price(reference_entry_now))
+            if grade not in {"A","B"}:
+                manual_action = f"PANTAU SAJA / WATCH ONLY (GRADE {grade})"
+            elif "CONFIRMED" in str(state).upper():
+                manual_action = "TERKONFIRMASI / QUOTE TERBARU"
+            elif proximity == "IN_ZONE":
+                manual_action = "TUNGGU KONFIRMASI M15"
+            elif proximity == "NEAR_ZONE":
+                manual_action = "PERSIAPAN"
+            else:
+                manual_action = "TUNGGU HARGA KE ZONA"
+            t4.metric("Tindakan manual", manual_action)
+            st.info(
+                f"Rencana saat ini: tunggu XAUUSD masuk ke {_fmt_price(zone_low)}–"
+                f"{_fmt_price(zone_high)}. "
+                + (
+                    f"Entry persiapan/acuan ≈ {_fmt_price(reference_entry_now)}. "
+                    if reference_entry_now is not None
+                    else "Entry acuan belum boleh dieksekusi. "
+                )
+                + "Jangan entry hanya karena harga menyentuh zona; candle M15 yang sudah "
+                  "selesai tetap wajib memberikan konfirmasi untuk jalur otomatis RIZAN-style."
+            )
+
+        st.markdown("#### Siklus Rencana Persiapan (Prepared Plan Lifecycle)")
+        st.caption(
+            "Rencana yang pernah disiapkan tetap disimpan walaupun hilang dari H4 map terbaru. "
+            "Ini membedakan WAITING_PRICE, ZONE_ENTERED, CONFIRMED, penyerahan ke broker, dan "
+            "CANCELLED. Pembatalan disimpan sebagai evidence, bukan dihapus."
+        )
+        if lifecycle_rows:
+            total_plans = len(lifecycle_rows)
+            active_reached_plans = sum(
+                bool(dict(row.get("metadata") or {}).get("touch_while_active"))
+                for row in lifecycle_rows
+            )
+            active_confirmed_plans = sum(
+                bool(dict(row.get("metadata") or {}).get("confirmation_while_active"))
+                and bool(dict(row.get("metadata") or {}).get("touch_while_active"))
+                for row in lifecycle_rows
+            )
+            cancelled_plans = sum(
+                str(row.get("lifecycle_state") or "") == "CANCELLED"
+                for row in lifecycle_rows
+            )
+            ordered_plans = sum(row.get("order_accepted_at") is not None for row in lifecycle_rows)
+            post_cancel_reached = sum(
+                bool(dict(row.get("metadata") or {}).get("post_cancel_touch"))
+                for row in lifecycle_rows
+                if str(row.get("lifecycle_state") or "") == "CANCELLED"
+            )
+            post_cancel_terminal = sum(
+                bool(row.get("post_cancel_terminal_hit"))
+                for row in lifecycle_rows
+                if str(row.get("lifecycle_state") or "") == "CANCELLED"
+            )
+            l1, l2, l3, l4, l5, l6 = st.columns(6)
+            l1.metric(
+                "Zona tercapai saat aktif",
+                "—" if total_plans == 0 else _fmt_pct(active_reached_plans / total_plans),
+            )
+            l2.metric(
+                "Touch aktif → konfirmasi",
+                "—"
+                if active_reached_plans == 0
+                else _fmt_pct(active_confirmed_plans / active_reached_plans),
+            )
+            l3.metric(
+                "Pembatalan",
+                "—" if total_plans == 0 else _fmt_pct(cancelled_plans / total_plans),
+            )
+            l4.metric(
+                "Persiapan → order",
+                "—" if total_plans == 0 else _fmt_pct(ordered_plans / total_plans),
+            )
+            l5.metric(
+                "Zona tercapai pasca-batal",
+                "—"
+                if cancelled_plans == 0
+                else _fmt_pct(post_cancel_reached / cancelled_plans),
+            )
+            l6.metric(
+                "Kandidat TP2 pasca-batal",
+                "—"
+                if cancelled_plans == 0
+                else _fmt_pct(post_cancel_terminal / cancelled_plans),
+            )
+            st.caption(
+                "Zona tercapai saat aktif hanya menghitung sentuhan ketika rencana masih valid. "
+                "Sentuhan setelah pembatalan dipisahkan untuk mengukur apakah aturan pembatalan "
+                "terlalu agresif. Kandidat TP2 pasca-batal tetap merupakan evidence diagnostik, "
+                "bukan bukti bahwa aturan pembatalan pasti salah."
+            )
+            lifecycle_table = []
+            for row in lifecycle_rows[:20]:
+                meta = dict(row.get("metadata") or {})
+                lifecycle_table.append(
+                    {
+                        "dibuat (WIB)": _fmt_wib_datetime(row.get("created_at")),
+                        "arah": row.get("direction"),
+                        "grade": row.get("grade"),
+                        "zona": (
+                            f"{_fmt_price(row.get('zone_low'))}–"
+                            f"{_fmt_price(row.get('zone_high'))}"
+                        ),
+                        "entry": _fmt_price(row.get("entry_price")),
+                        "siklus": row.get("lifecycle_state"),
+                        "alasan batal": row.get("cancel_reason") or "—",
+                        "dibatalkan (WIB)": _fmt_wib_datetime(row.get("cancelled_at")),
+                        "sentuhan pertama": row.get("first_touch_at"),
+                        "touch saat aktif": meta.get("touch_while_active"),
+                        "touch pasca-batal": meta.get("post_cancel_touch"),
+                        "terkonfirmasi": row.get("confirmed_at"),
+                        "order diterima": row.get("order_accepted_at"),
+                        "proteksi terverifikasi": row.get("protection_verified_at"),
+                        "TP1": bool(row.get("tp1_hit")),
+                        "TP2": bool(row.get("tp2_hit")),
+                        "stop hit": bool(row.get("stop_hit")),
+                        "MFE R": row.get("mfe_r"),
+                        "MAE R": row.get("mae_r"),
+                        "durasi (menit)": meta.get("lifetime_minutes"),
+                    }
+                )
+            st.dataframe(
+                pd.DataFrame(lifecycle_table),
+                hide_index=True,
+                width="stretch",
+            )
+        else:
+            st.caption(
+                "Ledger siklus rencana belum terisi. Worker maintenance akan mengisi ulang "
+                "rencana RIZAN-style terbaru tanpa mengubah aturan eksekusi."
+            )
+
+        st.markdown("#### Kelayakan Eksekusi XAU (XAU Execution Admission)")
+        st.caption(
+            "Panel ini memisahkan status signal yang tersimpan dari izin broker yang sebenarnya. "
+            "BROKER ELIGIBLE berarti geometry signal termasuk jalur DEMO yang diizinkan, tetapi "
+            "quote terbaru, risiko, margin, serta verifikasi SL/TP tetap harus lulus sebelum order."
+        )
+        authorized_geometry_codes = {
+            "XAU_AFIC_PATH_EXECUTION_V1",
+            "XAU_M15_EMA_SMC_RECLAIM_V1",
+            "XAU_V24_CHAMPION_DEMO_V1",
+            "XAU_RIZAN_DEPTH_EXECUTION_V1",
+        }
+        geometry_code_by_signal = {}
+        for event_row in execution_events:
+            if str(event_row.get("event_type") or "") != "DEMO_SIGNAL_GEOMETRY":
+                continue
+            signal_key = str(event_row.get("signal_key") or "")
+            if signal_key and signal_key not in geometry_code_by_signal:
+                geometry_code_by_signal[signal_key] = str(event_row.get("code") or "")
+
+        admission_rows = []
+        admission_now = datetime.now(tz=UTC)
+        for row in dedicated_xau_rows[:10]:
+            signal_id = str(row.get("id") or "")
+            state_u = str(row.get("state") or "").upper()
+            guards = list(row.get("active_guards") or [])
             expires_dt = None
-            if expires_raw:
+            if row.get("expires_at"):
                 try:
                     expires_dt = datetime.fromisoformat(
-                        str(expires_raw).replace("Z", "+00:00")
+                        str(row.get("expires_at")).replace("Z", "+00:00")
                     )
                     if expires_dt.tzinfo is None:
                         expires_dt = expires_dt.replace(tzinfo=UTC)
@@ -3863,353 +3985,432 @@ with forecast_tab:
                         expires_dt = expires_dt.astimezone(UTC)
                 except (TypeError, ValueError):
                     expires_dt = None
-            raw_state = str(row.get("state") or "").upper()
-            raw_setup = str(row.get("setup_type") or "").upper()
-            if raw_state == "INVALIDATED":
-                runtime_status = "INVALIDATED"
-            elif expires_dt is not None and expires_dt < now_utc:
-                runtime_status = "EXPIRED"
-            elif raw_state == "WATCH" or raw_setup in {"", "NONE"}:
-                runtime_status = "WATCH"
-            else:
-                runtime_status = "CURRENT"
-            technical_rows.append(
-                {
-                    "runtime": runtime_status,
-                    "waktu (WIB)": _fmt_wib_datetime(row.get("observed_at")),
-                    "setup": row.get("setup_type"),
-                    "arah": row.get("direction"),
-                    "status": row.get("state"),
-                    "skor": row.get("final_score"),
-                    "entry": (
-                        f"{_fmt_price(row.get('entry_low'))}–{_fmt_price(row.get('entry_high'))}"
-                        if row.get("entry_low") is not None or row.get("entry_high") is not None
-                        else "—"
-                    ),
-                    "SL": _fmt_price(row.get("sl")),
-                    "target pertama": _fmt_price(
-                        next(
-                            (x for x in (row.get("tp1"), row.get("tp2"), row.get("tp3")) if x is not None),
-                            None,
-                        )
-                    ),
-                    "target terminal": _fmt_price(
-                        next(
-                            (x for x in (row.get("tp3"), row.get("tp2"), row.get("tp1")) if x is not None),
-                            None,
-                        )
-                    ),
-                    "raw TP1": _fmt_price(row.get("tp1")),
-                    "raw TP2": _fmt_price(row.get("tp2")),
-                    "guard/pengaman": ", ".join(str(x) for x in (row.get("active_guards") or [])) or "—",
-                    "kedaluwarsa (WIB)": _fmt_wib_datetime(expires_raw),
-                }
-            )
-        latest_technical = technical_rows[0]
-        if latest_technical["runtime"] == "CURRENT":
-            st.info(
-                "Setup teknikal XAU non-RIZAN-style terbaru masih CURRENT. Geometry ditampilkan "
-                "di bawah, tetapi izin RIZAN-style tetap merupakan gerbang terpisah."
-            )
-        elif latest_technical["runtime"] == "WATCH":
-            st.info(
-                "Baris XAU non-RIZAN-style terbaru hanya WATCH. Ia tidak memiliki izin trading "
-                "mandiri dan tidak boleh dibaca sebagai entry aktif."
-            )
-        elif latest_technical["runtime"] == "INVALIDATED":
-            st.warning(
-                "Setup XAU non-RIZAN-style terbaru INVALIDATED. Geometry disimpan hanya sebagai "
-                "evidence historis."
-            )
-        else:
-            st.warning(
-                "Setup teknikal XAU non-RIZAN-style terbaru EXPIRED. Entry/SL/TP hanya geometry "
-                "historis, bukan instruksi yang masih aktif."
-            )
-        st.dataframe(
-            pd.DataFrame(technical_rows),
-            hide_index=True,
-            width="stretch",
-        )
-    else:
-        st.caption("Belum ada baris signal teknikal XAU non-RIZAN-style.")
-
-    st.markdown("#### Diagnostik Zona Reaksi (Reaction-zone diagnostics)")
-    if zone_diagnostics:
-        d1, d2, d3, d4, d5 = st.columns(5)
-        d1.metric("Jumlah origin zone", zone_diagnostics.get("origin_zones_total", "—"))
-        d2.metric("Fresh ≤24 jam", zone_diagnostics.get("fresh_within_24h", "—"))
-        d3.metric(
-            f"Arah {direction or 'Map' }",
-            zone_diagnostics.get("matching_direction_fresh", "—"),
-        )
-        d4.metric("Sisi anchor salah", zone_diagnostics.get("wrong_side_of_anchor", "—"))
-        d5.metric("Zona reaksi eligible", zone_diagnostics.get("eligible_correct_side", "—"))
-        result = str(zone_diagnostics.get("selection_result") or "")
-        if result == "NO_ELIGIBLE_MAP_ZONE":
-            st.warning(
-                "NO_MAP_ZONE dijelaskan oleh struktur saat ini: origin zone memang ada, "
-                "tetapi tidak ada kandidat yang sekaligus memenuhi arah, freshness, dan sisi "
-                "anchor H4 yang benar. Ini berarti belum ada setup, bukan signal eksekusi."
-            )
-        elif result == "ELIGIBLE_ZONE_FOUND":
-            nearest = dict(zone_diagnostics.get("nearest_eligible") or {})
-            st.success(
-                "Zona reaksi eligible ditemukan: "
-                f"{_fmt_price(nearest.get('low'))}–{_fmt_price(nearest.get('high'))} • "
-                f"jarak {_fmt_distance(nearest.get('distance_points'), ' poin')}."
-            )
-        elif result == "NO_ORIGIN_ZONE":
-            st.warning(
-                "Belum ada H1 origin zone yang memenuhi aturan displacement/BOS/origin. "
-                "Scanner menunggu struktur baru."
-            )
-        st.caption(
-            "Diagnostik hanya bersifat deskriptif; tidak melonggarkan selector RIZAN-style dan "
-            "tidak menciptakan izin broker."
-        )
-    else:
-        st.caption(
-            "Diagnostik zona belum tersedia pada heartbeat ini; siklus RIZAN-style berikutnya "
-            "akan mengisi jumlah kandidat dan alasan penolakan."
-        )
-
-    st.markdown("#### Zona Pantauan Alternatif / Reversal (Alternative / reversal watch zones)")
-    reversal_watch = list(zone_diagnostics.get("alternative_reversal_watch_zones") or [])
-    active_watch = [
-        dict(item) for item in reversal_watch
-        if str(item.get("status") or "") != "INVALIDATED"
-    ]
-    if active_watch:
-        st.caption(
-            "These are PRIOR ORIGIN REVISITS from structural memory, not current primary "
-            "RIZAN-style reaction zones. first durable touch is preserved across H4 remaps; "
-            "current-map touch records only a completed M15 touch on the active H4 map. "
-            "Live touch is provisional until that M15 candle closes. They cannot auto-order "
-            "against the active H4 map; a structural remap plus H1/M15 reversal confirmation "
-            "is required."
-        )
-        watch_rows = []
-        for item in active_watch:
-            watch_rows.append(
-                {
-                    "context": "PRIOR_ORIGIN_REVISIT",
-                    "role": item.get("role"),
-                    "direction": item.get("direction"),
-                    "zone": f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))}",
-                    "origin_at": item.get("origin_at"),
-                    "available_at": item.get("available_at"),
-                    "status": item.get("status"),
-                    "zone lifecycle": item.get("zone_lifecycle"),
-                    "touch lifecycle": item.get("touch_lifecycle"),
-                    "first durable touch": item.get("first_touch_at"),
-                    "current-map touch": item.get("map_first_touch_at"),
-                    "live touch": item.get("live_touch_at"),
-                    "invalidated": item.get("invalidated_at"),
-                    "distance now": _fmt_distance(
-                        item.get("distance_from_live_price_points")
-                        if item.get("distance_from_live_price_points") is not None
-                        else item.get("distance_from_latest_price_points"),
-                        " pts",
-                    ),
-                    "age": _fmt_distance(item.get("current_age_hours"), "h"),
-                    "displacement ATR": item.get("displacement_range_atr"),
-                    "body fraction": item.get("displacement_body_fraction"),
-                    "required": item.get("required_confirmation"),
-                }
-            )
-        st.dataframe(pd.DataFrame(watch_rows), hide_index=True, width="stretch")
-        nearest_watch = active_watch[0]
-        watch_side = str(nearest_watch.get("direction") or "—")
-        watch_role = str(nearest_watch.get("role") or "")
-        watch_status = str(nearest_watch.get("status") or "")
-        if watch_role == "UPSIDE_DESTINATION_SHORT_REVERSAL_WATCH":
-            path_hint = (
-                "Path watch: rebound/upside leg → SHORT reaction zone → wait for "
-                "completed H1/M15 bearish reversal/remap before any SELL authority."
-            )
-        elif watch_role == "DOWNSIDE_DESTINATION_LONG_REVERSAL_WATCH":
-            path_hint = (
-                "Path watch: selloff/downside leg → LONG reaction zone → wait for "
-                "completed H1/M15 bullish reversal/remap before any BUY authority."
-            )
-        else:
-            path_hint = (
-                "Countertrend reaction watch only; wait for completed H1/M15 reversal/remap."
-            )
-        st.info(
-            f"PRIOR ORIGIN REVISIT: {watch_side} "
-            f"{_fmt_price(nearest_watch.get('low'))}–{_fmt_price(nearest_watch.get('high'))} "
-            f"• {watch_status}. This is not the current primary RIZAN-style zone. {path_hint}"
-        )
-    elif reversal_watch:
-        st.caption(
-            "Opposite-direction zones were found, but all current reversal-watch candidates "
-            "have already been invalidated."
-        )
-    else:
-        st.caption("No active opposite-direction reversal-watch zone is available.")
-
-    f1, f2, f3, f4, f5, f6 = st.columns(6)
-    f1.metric("H4 continuation", direction)
-    f2.metric("State", state)
-    f3.metric("Selector", grade)
-    f4.metric("Live XAU", _fmt_price(live_price))
-    f5.metric("Distance to zone", _fmt_distance(distance_points, " pts"))
-    f6.metric("RIZAN scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
-    st.caption(
-        "H4 continuation is structural context only. It is not a current BUY/SELL call; "
-        "trade authority still requires a valid current RIZAN-style zone/selector/confirmation."
-    )
-    if hb_details.get("touch_lifecycle"):
-        st.caption(
-            "Current-zone lifecycle: "
-            f"{hb_details.get('zone_lifecycle') or hb_details.get('touch_lifecycle')} • "
-            f"first durable touch={hb_details.get('first_touch_at') or '—'} • "
-            f"current-map touch={hb_details.get('map_first_touch_at') or '—'}. "
-            "Only completed M15 touches are durable lifecycle evidence."
-        )
-
-    h1, h2, h3, h4, h5 = st.columns(5)
-    hb_age = None if prepared_hb is None else _age_seconds(prepared_hb.get("observed_at"))
-    fast_age = None if fast_handoff_hb is None else _age_seconds(fast_handoff_hb.get("observed_at"))
-    fast_ok = bool(fast_handoff_hb and fast_handoff_hb.get("healthy"))
-    fast_label = "WAITING"
-    if fast_handoff_hb is not None:
-        fast_label = "OK" if fast_ok and fast_age is not None and fast_age <= 180 else "STALE/ERROR"
-    h1.metric("Next action", next_action)
-    h2.metric("DEMO auto", "ON" if auto_enabled else "OFF")
-    h3.metric("Forecast heartbeat", "—" if hb_age is None else f"{hb_age:.0f}s ago")
-    h4.metric("Fast handoff", fast_label)
-    h5.metric("Last RIZAN broker event", latest_exec_event or "NONE")
-    st.caption(next_reason)
-    if fast_handoff_hb is not None:
-        fast_details = dict(fast_handoff_hb.get("details") or {})
-        st.caption(
-            "RIZAN-style fast handoff • "
-            f"age={'—' if fast_age is None else f'{fast_age:.0f}s'} • "
-            f"duration={_fmt_distance(fast_details.get('duration_seconds'), 's')} • "
-            f"exit={fast_details.get('exit_code', '—')} • "
-            f"code={str(fast_details.get('code_version') or '—')[:12]}"
-        )
-
-    st.markdown("#### Gabungan Prakiraan V171 (Forecast Ensemble V171)")
-    ensemble_details = {} if ensemble_hb is None else dict(ensemble_hb.get("details") or {})
-    ensemble = dict(ensemble_details.get("ensemble") or {})
-    primary = dict(ensemble.get("primary_scenario") or {})
-    alternative = dict(ensemble.get("alternative_scenario") or {})
-    ensemble_age = None if ensemble_hb is None else _age_seconds(ensemble_hb.get("observed_at"))
-    ensemble_components = dict(ensemble.get("components") or {})
-
-    if ensemble:
-        e1, e2, e3, e4 = st.columns(4)
-        e1.metric("Primary scenario", str(primary.get("direction") or "—"))
-        e2.metric(
-            "Confidence",
-            "—"
-            if primary.get("confidence") is None
-            else _fmt_pct(primary.get("confidence")),
-        )
-        e3.metric(
-            "Alternative",
-            str(alternative.get("type") or "—"),
-        )
-        e4.metric(
-            "Invalidation",
-            _fmt_price(ensemble.get("invalidation")),
-        )
-        st.caption(
-            "Shadow-only ensemble • "
-            f"coverage={_fmt_pct(ensemble.get('coverage'))} • "
-            f"age={'—' if ensemble_age is None else f'{ensemble_age:.0f}s'} • "
-            "does not alter RIZAN-style Grade-A/B execution authority."
-        )
-        directional_prior = dict(ensemble.get("directional_prior") or {})
-        if directional_prior:
-            st.caption(
-                "Directional prior: "
-                f"{directional_prior.get('direction', '—')} • "
-                f"score={_fmt_distance(directional_prior.get('score'), '')} • "
-                f"prior confidence={_fmt_pct(directional_prior.get('confidence'))}. "
-                "A valid RIZAN-style H4 map/reaction zone is still required before this can "
-                "become a Primary LONG/SHORT structural scenario."
-            )
-
-        path = dict(primary.get("structural_path") or {})
-        if path:
-            reaction = dict(path.get("reaction_zone") or {})
-            st.info(
-                "Primary path: "
-                f"{path.get('first_leg') or '—'} → "
-                f"reaction {_fmt_price(reaction.get('low'))}–{_fmt_price(reaction.get('high'))} → "
-                f"{path.get('continuation') or primary.get('direction') or '—'}"
-            )
-
-        component_rows = []
-        for name, label in (
-            ("afic", "RIZAN structural"),
-            ("conditional", "Empirical conditional"),
-            ("acd", "Fisher/ACD session"),
-            ("cot", "Weekly COT prior"),
-            ("v170", "V170 expected move"),
-        ):
-            component = dict(ensemble_components.get(name) or {})
-            available = component.get("available")
-            direction_value = component.get("direction")
-            if name == "v170":
-                direction_value = "MAGNITUDE ONLY"
-            component_rows.append(
-                {
-                    "component": label,
-                    "available": available,
-                    "direction / role": direction_value or "—",
-                    "confidence": component.get("confidence"),
-                    "state / method": component.get("state")
-                    or component.get("method")
-                    or component.get("reason")
-                    or "—",
-                }
-            )
-        component_frame = pd.DataFrame(component_rows)
-        if "confidence" in component_frame.columns:
-            component_frame["confidence"] = component_frame["confidence"].apply(
-                lambda x: "—" if pd.isna(x) else _fmt_pct(x)
-            )
-        st.dataframe(component_frame, hide_index=True, width="stretch")
-
-        conditional_component = dict(ensemble_components.get("conditional") or {})
-        horizons_conditional = dict(conditional_component.get("horizons") or {})
-        if horizons_conditional:
-            probability_rows = []
-            for label in ("1h", "4h", "8h"):
-                row = dict(horizons_conditional.get(label) or {})
-                if row:
-                    probability_rows.append(
-                        {
-                            "horizon": label,
-                            "P(up)": row.get("p_up"),
-                            "P(down)": row.get("p_down"),
-                            "bias": row.get("direction"),
-                            "samples": row.get("samples"),
-                            "median close Δ": row.get("median_close_delta"),
-                        }
-                    )
-            if probability_rows:
-                probability_frame = pd.DataFrame(probability_rows)
-                for col in ("P(up)", "P(down)"):
-                    probability_frame[col] = probability_frame[col].apply(
-                        lambda x: "—" if pd.isna(x) else _fmt_pct(x)
-                    )
-                st.dataframe(
-                    probability_frame,
-                    hide_index=True,
-                    width="stretch",
+            geometry_code = geometry_code_by_signal.get(signal_id)
+            if state_u == "INVALIDATED":
+                admission = "INVALIDATED"
+                reason = "Signal/map sudah tidak berlaku"
+            elif expires_dt is not None and expires_dt < admission_now:
+                admission = "EXPIRED"
+                reason = "Masa berlaku (TTL) signal sudah habis"
+            elif guards:
+                admission = "BLOCKED"
+                reason = ", ".join(str(x) for x in guards)
+            elif state_u != "EXECUTION_READY":
+                admission = "NOT READY"
+                reason = f"Status={state_u or '—'}"
+            elif geometry_code == "XAU_RIZAN_DEPTH_EXECUTION_V1":
+                admission = "DEDICATED CHILD ELIGIBLE"
+                reason = (
+                    "V229 dedicated 2+2 child lane; L1-L2 pre-touch LIMIT, "
+                    "L3-L4 menunggu konfirmasi M5"
                 )
-    else:
+            elif geometry_code in authorized_geometry_codes:
+                admission = "BROKER ELIGIBLE"
+                reason = f"{geometry_code}; menunggu validasi ulang quote/risiko"
+            else:
+                admission = "SHADOW READY"
+                reason = (
+                    f"{geometry_code or 'NO_AUTHORIZED_GEOMETRY'} tidak memiliki izin broker"
+                )
+            admission_rows.append({
+                "waktu (WIB)": _fmt_wib_datetime(row.get("observed_at")),
+                "setup": row.get("setup_type"),
+                "arah": row.get("direction"),
+                "grade/skor": row.get("final_score"),
+                "status tersimpan": row.get("state"),
+                "kelayakan": admission,
+                "izin geometry": geometry_code or "—",
+                "alasan": reason,
+                "kedaluwarsa (WIB)": _fmt_wib_datetime(row.get("expires_at")),
+            })
+        if admission_rows:
+            st.dataframe(pd.DataFrame(admission_rows), hide_index=True, width="stretch")
+            latest_admission = admission_rows[0]
+            if latest_admission["kelayakan"] in {"BROKER ELIGIBLE", "DEDICATED CHILD ELIGIBLE"}:
+                st.success(
+                    "Signal XAU terbaru memiliki geometry DEMO yang diizinkan. "
+                    "Untuk V229, eksekusi dimiliki dedicated 4-child lane; strategy ini tidak masuk "
+                    "generic MARKET handoff. Semua order tetap tunduk pada quote, margin, dan SL/TP."
+                )
+            elif latest_admission["kelayakan"] == "SHADOW READY":
+                st.warning(
+                    "Signal XAU terbaru dapat berstatus EXECUTION_READY di storage, tetapi hanya "
+                    "SHADOW READY; jalur broker tidak akan mengeksekusinya."
+                )
+        else:
+            st.caption("Belum ada baris signal XAU untuk diagnostik kelayakan eksekusi.")
+
+        st.markdown("#### Sinyal Teknikal XAU Lintas-Mesin (Cross-engine XAU technical signals)")
         st.caption(
-            "Forecast Ensemble V171 has not produced a durable shadow snapshot yet. "
-            "RIZAN-style and V170 remain independently visible below."
+            "Bagian ini terpisah dari RIZAN-style H4 map. Baris berasal dari mesin teknikal XAU lain. "
+            "CURRENT/EXPIRED ditentukan dari expires_at; setup yang kedaluwarsa hanya konteks "
+            "historis dan tidak boleh dianggap sebagai rancangan order RIZAN-style yang masih aktif."
         )
+        if xau_technical_signal_rows:
+            now_utc = datetime.now(tz=UTC)
+            technical_rows = []
+            for row in xau_technical_signal_rows[:5]:
+                expires_raw = row.get("expires_at")
+                expires_dt = None
+                if expires_raw:
+                    try:
+                        expires_dt = datetime.fromisoformat(
+                            str(expires_raw).replace("Z", "+00:00")
+                        )
+                        if expires_dt.tzinfo is None:
+                            expires_dt = expires_dt.replace(tzinfo=UTC)
+                        else:
+                            expires_dt = expires_dt.astimezone(UTC)
+                    except (TypeError, ValueError):
+                        expires_dt = None
+                raw_state = str(row.get("state") or "").upper()
+                raw_setup = str(row.get("setup_type") or "").upper()
+                if raw_state == "INVALIDATED":
+                    runtime_status = "INVALIDATED"
+                elif expires_dt is not None and expires_dt < now_utc:
+                    runtime_status = "EXPIRED"
+                elif raw_state == "WATCH" or raw_setup in {"", "NONE"}:
+                    runtime_status = "WATCH"
+                else:
+                    runtime_status = "CURRENT"
+                technical_rows.append(
+                    {
+                        "runtime": runtime_status,
+                        "waktu (WIB)": _fmt_wib_datetime(row.get("observed_at")),
+                        "setup": row.get("setup_type"),
+                        "arah": row.get("direction"),
+                        "status": row.get("state"),
+                        "skor": row.get("final_score"),
+                        "entry": (
+                            f"{_fmt_price(row.get('entry_low'))}–{_fmt_price(row.get('entry_high'))}"
+                            if row.get("entry_low") is not None or row.get("entry_high") is not None
+                            else "—"
+                        ),
+                        "SL": _fmt_price(row.get("sl")),
+                        "target pertama": _fmt_price(
+                            next(
+                                (x for x in (row.get("tp1"), row.get("tp2"), row.get("tp3")) if x is not None),
+                                None,
+                            )
+                        ),
+                        "target terminal": _fmt_price(
+                            next(
+                                (x for x in (row.get("tp3"), row.get("tp2"), row.get("tp1")) if x is not None),
+                                None,
+                            )
+                        ),
+                        "raw TP1": _fmt_price(row.get("tp1")),
+                        "raw TP2": _fmt_price(row.get("tp2")),
+                        "guard/pengaman": ", ".join(str(x) for x in (row.get("active_guards") or [])) or "—",
+                        "kedaluwarsa (WIB)": _fmt_wib_datetime(expires_raw),
+                    }
+                )
+            latest_technical = technical_rows[0]
+            if latest_technical["runtime"] == "CURRENT":
+                st.info(
+                    "Setup teknikal XAU non-RIZAN-style terbaru masih CURRENT. Geometry ditampilkan "
+                    "di bawah, tetapi izin RIZAN-style tetap merupakan gerbang terpisah."
+                )
+            elif latest_technical["runtime"] == "WATCH":
+                st.info(
+                    "Baris XAU non-RIZAN-style terbaru hanya WATCH. Ia tidak memiliki izin trading "
+                    "mandiri dan tidak boleh dibaca sebagai entry aktif."
+                )
+            elif latest_technical["runtime"] == "INVALIDATED":
+                st.warning(
+                    "Setup XAU non-RIZAN-style terbaru INVALIDATED. Geometry disimpan hanya sebagai "
+                    "evidence historis."
+                )
+            else:
+                st.warning(
+                    "Setup teknikal XAU non-RIZAN-style terbaru EXPIRED. Entry/SL/TP hanya geometry "
+                    "historis, bukan instruksi yang masih aktif."
+                )
+            st.dataframe(
+                pd.DataFrame(technical_rows),
+                hide_index=True,
+                width="stretch",
+            )
+        else:
+            st.caption("Belum ada baris signal teknikal XAU non-RIZAN-style.")
+
+        st.markdown("#### Diagnostik Zona Reaksi (Reaction-zone diagnostics)")
+        if zone_diagnostics:
+            d1, d2, d3, d4, d5 = st.columns(5)
+            d1.metric("Jumlah origin zone", zone_diagnostics.get("origin_zones_total", "—"))
+            d2.metric("Fresh ≤24 jam", zone_diagnostics.get("fresh_within_24h", "—"))
+            d3.metric(
+                f"Arah {direction or 'Map' }",
+                zone_diagnostics.get("matching_direction_fresh", "—"),
+            )
+            d4.metric("Sisi anchor salah", zone_diagnostics.get("wrong_side_of_anchor", "—"))
+            d5.metric("Zona reaksi eligible", zone_diagnostics.get("eligible_correct_side", "—"))
+            result = str(zone_diagnostics.get("selection_result") or "")
+            if result == "NO_ELIGIBLE_MAP_ZONE":
+                st.warning(
+                    "NO_MAP_ZONE dijelaskan oleh struktur saat ini: origin zone memang ada, "
+                    "tetapi tidak ada kandidat yang sekaligus memenuhi arah, freshness, dan sisi "
+                    "anchor H4 yang benar. Ini berarti belum ada setup, bukan signal eksekusi."
+                )
+            elif result == "ELIGIBLE_ZONE_FOUND":
+                nearest = dict(zone_diagnostics.get("nearest_eligible") or {})
+                st.success(
+                    "Zona reaksi eligible ditemukan: "
+                    f"{_fmt_price(nearest.get('low'))}–{_fmt_price(nearest.get('high'))} • "
+                    f"jarak {_fmt_distance(nearest.get('distance_points'), ' poin')}."
+                )
+            elif result == "NO_ORIGIN_ZONE":
+                st.warning(
+                    "Belum ada H1 origin zone yang memenuhi aturan displacement/BOS/origin. "
+                    "Scanner menunggu struktur baru."
+                )
+            st.caption(
+                "Diagnostik hanya bersifat deskriptif; tidak melonggarkan selector RIZAN-style dan "
+                "tidak menciptakan izin broker."
+            )
+        else:
+            st.caption(
+                "Diagnostik zona belum tersedia pada heartbeat ini; siklus RIZAN-style berikutnya "
+                "akan mengisi jumlah kandidat dan alasan penolakan."
+            )
+
+        st.markdown("#### Zona Pantauan Alternatif / Reversal (Alternative / reversal watch zones)")
+        reversal_watch = list(zone_diagnostics.get("alternative_reversal_watch_zones") or [])
+        active_watch = [
+            dict(item) for item in reversal_watch
+            if str(item.get("status") or "") != "INVALIDATED"
+        ]
+        if active_watch:
+            st.caption(
+                "These are PRIOR ORIGIN REVISITS from structural memory, not current primary "
+                "RIZAN-style reaction zones. first durable touch is preserved across H4 remaps; "
+                "current-map touch records only a completed M15 touch on the active H4 map. "
+                "Live touch is provisional until that M15 candle closes. They cannot auto-order "
+                "against the active H4 map; a structural remap plus H1/M15 reversal confirmation "
+                "is required."
+            )
+            watch_rows = []
+            for item in active_watch:
+                watch_rows.append(
+                    {
+                        "context": "PRIOR_ORIGIN_REVISIT",
+                        "role": item.get("role"),
+                        "direction": item.get("direction"),
+                        "zone": f"{_fmt_price(item.get('low'))}–{_fmt_price(item.get('high'))}",
+                        "origin_at": item.get("origin_at"),
+                        "available_at": item.get("available_at"),
+                        "status": item.get("status"),
+                        "zone lifecycle": item.get("zone_lifecycle"),
+                        "touch lifecycle": item.get("touch_lifecycle"),
+                        "first durable touch": item.get("first_touch_at"),
+                        "current-map touch": item.get("map_first_touch_at"),
+                        "live touch": item.get("live_touch_at"),
+                        "invalidated": item.get("invalidated_at"),
+                        "distance now": _fmt_distance(
+                            item.get("distance_from_live_price_points")
+                            if item.get("distance_from_live_price_points") is not None
+                            else item.get("distance_from_latest_price_points"),
+                            " pts",
+                        ),
+                        "age": _fmt_distance(item.get("current_age_hours"), "h"),
+                        "displacement ATR": item.get("displacement_range_atr"),
+                        "body fraction": item.get("displacement_body_fraction"),
+                        "required": item.get("required_confirmation"),
+                    }
+                )
+            st.dataframe(pd.DataFrame(watch_rows), hide_index=True, width="stretch")
+            nearest_watch = active_watch[0]
+            watch_side = str(nearest_watch.get("direction") or "—")
+            watch_role = str(nearest_watch.get("role") or "")
+            watch_status = str(nearest_watch.get("status") or "")
+            if watch_role == "UPSIDE_DESTINATION_SHORT_REVERSAL_WATCH":
+                path_hint = (
+                    "Path watch: rebound/upside leg → SHORT reaction zone → wait for "
+                    "completed H1/M15 bearish reversal/remap before any SELL authority."
+                )
+            elif watch_role == "DOWNSIDE_DESTINATION_LONG_REVERSAL_WATCH":
+                path_hint = (
+                    "Path watch: selloff/downside leg → LONG reaction zone → wait for "
+                    "completed H1/M15 bullish reversal/remap before any BUY authority."
+                )
+            else:
+                path_hint = (
+                    "Countertrend reaction watch only; wait for completed H1/M15 reversal/remap."
+                )
+            st.info(
+                f"PRIOR ORIGIN REVISIT: {watch_side} "
+                f"{_fmt_price(nearest_watch.get('low'))}–{_fmt_price(nearest_watch.get('high'))} "
+                f"• {watch_status}. This is not the current primary RIZAN-style zone. {path_hint}"
+            )
+        elif reversal_watch:
+            st.caption(
+                "Opposite-direction zones were found, but all current reversal-watch candidates "
+                "have already been invalidated."
+            )
+        else:
+            st.caption("No active opposite-direction reversal-watch zone is available.")
+
+        f1, f2, f3, f4, f5, f6 = st.columns(6)
+        f1.metric("H4 continuation", direction)
+        f2.metric("State", state)
+        f3.metric("Selector", grade)
+        f4.metric("Live XAU", _fmt_price(live_price))
+        f5.metric("Distance to zone", _fmt_distance(distance_points, " pts"))
+        f6.metric("RIZAN scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
+        st.caption(
+            "H4 continuation is structural context only. It is not a current BUY/SELL call; "
+            "trade authority still requires a valid current RIZAN-style zone/selector/confirmation."
+        )
+        if hb_details.get("touch_lifecycle"):
+            st.caption(
+                "Current-zone lifecycle: "
+                f"{hb_details.get('zone_lifecycle') or hb_details.get('touch_lifecycle')} • "
+                f"first durable touch={hb_details.get('first_touch_at') or '—'} • "
+                f"current-map touch={hb_details.get('map_first_touch_at') or '—'}. "
+                "Only completed M15 touches are durable lifecycle evidence."
+            )
+
+        h1, h2, h3, h4, h5 = st.columns(5)
+        hb_age = None if prepared_hb is None else _age_seconds(prepared_hb.get("observed_at"))
+        fast_age = None if fast_handoff_hb is None else _age_seconds(fast_handoff_hb.get("observed_at"))
+        fast_ok = bool(fast_handoff_hb and fast_handoff_hb.get("healthy"))
+        fast_label = "WAITING"
+        if fast_handoff_hb is not None:
+            fast_label = "OK" if fast_ok and fast_age is not None and fast_age <= 180 else "STALE/ERROR"
+        h1.metric("Next action", next_action)
+        h2.metric("DEMO auto", "ON" if auto_enabled else "OFF")
+        h3.metric("Forecast heartbeat", "—" if hb_age is None else f"{hb_age:.0f}s ago")
+        h4.metric("Fast handoff", fast_label)
+        h5.metric("Last RIZAN broker event", latest_exec_event or "NONE")
+        st.caption(next_reason)
+        if fast_handoff_hb is not None:
+            fast_details = dict(fast_handoff_hb.get("details") or {})
+            st.caption(
+                "RIZAN-style fast handoff • "
+                f"age={'—' if fast_age is None else f'{fast_age:.0f}s'} • "
+                f"duration={_fmt_distance(fast_details.get('duration_seconds'), 's')} • "
+                f"exit={fast_details.get('exit_code', '—')} • "
+                f"code={str(fast_details.get('code_version') or '—')[:12]}"
+            )
+
+    with st.expander("Forecast ensemble & probabilitas tambahan", expanded=False):
+        st.markdown("#### Gabungan Prakiraan V171 (Forecast Ensemble V171)")
+        ensemble_details = {} if ensemble_hb is None else dict(ensemble_hb.get("details") or {})
+        ensemble = dict(ensemble_details.get("ensemble") or {})
+        primary = dict(ensemble.get("primary_scenario") or {})
+        alternative = dict(ensemble.get("alternative_scenario") or {})
+        ensemble_age = None if ensemble_hb is None else _age_seconds(ensemble_hb.get("observed_at"))
+        ensemble_components = dict(ensemble.get("components") or {})
+
+        if ensemble:
+            e1, e2, e3, e4 = st.columns(4)
+            e1.metric("Primary scenario", str(primary.get("direction") or "—"))
+            e2.metric(
+                "Confidence",
+                "—"
+                if primary.get("confidence") is None
+                else _fmt_pct(primary.get("confidence")),
+            )
+            e3.metric(
+                "Alternative",
+                str(alternative.get("type") or "—"),
+            )
+            e4.metric(
+                "Invalidation",
+                _fmt_price(ensemble.get("invalidation")),
+            )
+            st.caption(
+                "Shadow-only ensemble • "
+                f"coverage={_fmt_pct(ensemble.get('coverage'))} • "
+                f"age={'—' if ensemble_age is None else f'{ensemble_age:.0f}s'} • "
+                "does not alter RIZAN-style Grade-A/B execution authority."
+            )
+            directional_prior = dict(ensemble.get("directional_prior") or {})
+            if directional_prior:
+                st.caption(
+                    "Directional prior: "
+                    f"{directional_prior.get('direction', '—')} • "
+                    f"score={_fmt_distance(directional_prior.get('score'), '')} • "
+                    f"prior confidence={_fmt_pct(directional_prior.get('confidence'))}. "
+                    "A valid RIZAN-style H4 map/reaction zone is still required before this can "
+                    "become a Primary LONG/SHORT structural scenario."
+                )
+
+            path = dict(primary.get("structural_path") or {})
+            if path:
+                reaction = dict(path.get("reaction_zone") or {})
+                st.info(
+                    "Primary path: "
+                    f"{path.get('first_leg') or '—'} → "
+                    f"reaction {_fmt_price(reaction.get('low'))}–{_fmt_price(reaction.get('high'))} → "
+                    f"{path.get('continuation') or primary.get('direction') or '—'}"
+                )
+
+            component_rows = []
+            for name, label in (
+                ("afic", "RIZAN structural"),
+                ("conditional", "Empirical conditional"),
+                ("acd", "Fisher/ACD session"),
+                ("cot", "Weekly COT prior"),
+                ("v170", "V170 expected move"),
+            ):
+                component = dict(ensemble_components.get(name) or {})
+                available = component.get("available")
+                direction_value = component.get("direction")
+                if name == "v170":
+                    direction_value = "MAGNITUDE ONLY"
+                component_rows.append(
+                    {
+                        "component": label,
+                        "available": available,
+                        "direction / role": direction_value or "—",
+                        "confidence": component.get("confidence"),
+                        "state / method": component.get("state")
+                        or component.get("method")
+                        or component.get("reason")
+                        or "—",
+                    }
+                )
+            component_frame = pd.DataFrame(component_rows)
+            if "confidence" in component_frame.columns:
+                component_frame["confidence"] = component_frame["confidence"].apply(
+                    lambda x: "—" if pd.isna(x) else _fmt_pct(x)
+                )
+            st.dataframe(component_frame, hide_index=True, width="stretch")
+
+            conditional_component = dict(ensemble_components.get("conditional") or {})
+            horizons_conditional = dict(conditional_component.get("horizons") or {})
+            if horizons_conditional:
+                probability_rows = []
+                for label in ("1h", "4h", "8h"):
+                    row = dict(horizons_conditional.get(label) or {})
+                    if row:
+                        probability_rows.append(
+                            {
+                                "horizon": label,
+                                "P(up)": row.get("p_up"),
+                                "P(down)": row.get("p_down"),
+                                "bias": row.get("direction"),
+                                "samples": row.get("samples"),
+                                "median close Δ": row.get("median_close_delta"),
+                            }
+                        )
+                if probability_rows:
+                    probability_frame = pd.DataFrame(probability_rows)
+                    for col in ("P(up)", "P(down)"):
+                        probability_frame[col] = probability_frame[col].apply(
+                            lambda x: "—" if pd.isna(x) else _fmt_pct(x)
+                        )
+                    st.dataframe(
+                        probability_frame,
+                        hide_index=True,
+                        width="stretch",
+                    )
+        else:
+            st.caption(
+                "Forecast Ensemble V171 has not produced a durable shadow snapshot yet. "
+                "RIZAN-style and V170 remain independently visible below."
+            )
 
     if zone_low is not None and zone_high is not None:
         st.markdown(
@@ -4232,186 +4433,157 @@ with forecast_tab:
     else:
         st.caption("No canonical RIZAN-style selector grade available yet.")
 
-    plan_event = prepared_rows[0] if prepared_rows else None
-    plan_payload = {} if plan_event is None else dict(plan_event.get("payload") or {})
-    prepared_plan = dict(plan_payload.get("prepared_plan") or {})
-    plan_forecast = dict(plan_payload.get("forecast") or {})
-    plan_current = bool(
-        prepared_plan
-        and current_map
-        and str(plan_forecast.get("map_at") or "") == str(current_map)
-    )
+    with st.expander("Detail order blueprint & broker timeline", expanded=False):
+        plan_event = prepared_rows[0] if prepared_rows else None
+        plan_payload = {} if plan_event is None else dict(plan_event.get("payload") or {})
+        prepared_plan = dict(plan_payload.get("prepared_plan") or {})
+        plan_forecast = dict(plan_payload.get("forecast") or {})
+        plan_current = bool(
+            prepared_plan
+            and current_map
+            and str(plan_forecast.get("map_at") or "") == str(current_map)
+        )
 
-    st.markdown("#### Rancangan Order Persiapan (Prepared order blueprint)")
-    if plan_current:
-        p1, p2, p3, p4, p5 = st.columns(5)
-        p1.metric("Reference / Limit", _fmt_price(prepared_plan.get("entry")))
-        p2.metric("Stop Loss", _fmt_price(prepared_plan.get("stop")))
-        p3.metric("First scale-out", _fmt_price(prepared_plan.get("tp1")))
-        p4.metric("Terminal target", _fmt_price(prepared_plan.get("tp2")))
-        p5.metric("RR terminal", _fmt_distance(prepared_plan.get("rr2"), "R"))
-        target_ladder = list(prepared_plan.get("tp_ladder") or [])
-        target_model = str(prepared_plan.get("target_model") or "LEGACY")
-        structural_targets = list(prepared_plan.get("structural_target_ladder") or [])
-        if target_ladder:
-            st.caption(
-                "Target ladder: "
-                + " → ".join(
-                    f"TP{i} {_fmt_price(level)}"
-                    for i, level in enumerate(target_ladder, start=1)
+        st.markdown("#### Rancangan Order Persiapan (Prepared order blueprint)")
+        if plan_current:
+            p1, p2, p3, p4, p5 = st.columns(5)
+            p1.metric("Reference / Limit", _fmt_price(prepared_plan.get("entry")))
+            p2.metric("Stop Loss", _fmt_price(prepared_plan.get("stop")))
+            p3.metric("First scale-out", _fmt_price(prepared_plan.get("tp1")))
+            p4.metric("Terminal target", _fmt_price(prepared_plan.get("tp2")))
+            p5.metric("RR terminal", _fmt_distance(prepared_plan.get("rr2"), "R"))
+            target_ladder = list(prepared_plan.get("tp_ladder") or [])
+            target_model = str(prepared_plan.get("target_model") or "LEGACY")
+            structural_targets = list(prepared_plan.get("structural_target_ladder") or [])
+            if target_ladder:
+                st.caption(
+                    "Target ladder: "
+                    + " → ".join(
+                        f"TP{i} {_fmt_price(level)}"
+                        for i, level in enumerate(target_ladder, start=1)
+                    )
+                    + f" • Terminal target = TP{len(target_ladder)}"
+                    + f" • model={target_model}"
                 )
-                + f" • Terminal target = TP{len(target_ladder)}"
-                + f" • model={target_model}"
+            if structural_targets:
+                st.markdown("###### Peta TP Struktural — opposing Supply/Demand")
+                structural_rows = []
+                for item in structural_targets:
+                    structural_rows.append(
+                        {
+                            "timeframe": item.get("timeframe"),
+                            "role": item.get("role"),
+                            "zona lawan": (
+                                f"{_fmt_price(item.get('zone_low'))}–"
+                                f"{_fmt_price(item.get('zone_high'))}"
+                            ),
+                            "TP front-run": _fmt_price(item.get("target_price")),
+                            "RR": _fmt_distance(item.get("rr"), "R"),
+                            "lolos RR minimum": bool(item.get("rr_eligible")),
+                        }
+                    )
+                st.dataframe(pd.DataFrame(structural_rows), hide_index=True, width="stretch")
+                macro_target = dict(prepared_plan.get("macro_terminal_target") or {})
+                st.caption(
+                    "Urutan struktural: M15 → H1 → H4; D1 hanya macro terminal opsional. "
+                    "TP ditempatkan sedikit sebelum proximal edge zona lawan. RR adalah validasi, "
+                    "bukan sumber level target."
+                    + (
+                        f" Macro D1: {_fmt_price(macro_target.get('target_price'))}."
+                        if macro_target else ""
+                    )
+                )
+            if "CONFIRMED" in state.upper() and grade == "A" and auto_enabled:
+                st.success(
+                    "Automation: confirmation detected → fresh broker quote revalidated → "
+                    "MARKET DEMO eligible. SL/TP must be attached server-side."
+                )
+            else:
+                st.caption(
+                    "Reference level is also the manual LIMIT blueprint. Automatic pending "
+                    "LIMIT stays disabled until expiry/cancel-on-invalidation reconciliation "
+                    "is implemented."
+                )
+        else:
+            if valid_zone_now:
+                st.warning(
+                    "Reaction zone exists, but no executable prepared/reference entry is valid "
+                    "for the current map yet. Wait for the blueprint/confirmation."
+                )
+            else:
+                st.error(
+                    "No valid reaction zone or prepared/reference entry for the current H4 map. "
+                    "Do not reuse an older zone from Forecast State History."
+                )
+
+        auto_label = "ARMED FOR GRADE-A/B CONFIRMATION" if auto_enabled else "MONITOR ONLY"
+        if grade not in {"A","B"}:
+            auto_label = f"BLOCKED BY SELECTOR GRADE {grade}"
+        st.markdown(f"**Automation status:** {auto_label}")
+        if hb_details.get("blueprint_block_reason"):
+            st.caption(f"Current block: {hb_details.get('blueprint_block_reason')}")
+
+        if geometry_rows:
+            latest_geometry = dict(geometry_rows[0].get("payload") or {})
+            st.caption(
+                "Latest RIZAN-style broker-authorized geometry: "
+                f"{latest_geometry.get('direction', '—')} • "
+                f"entry mode {latest_geometry.get('entry_mode', '—')} • "
+                f"SL {_fmt_price(latest_geometry.get('planned_sl'))} • "
+                f"TP2 {_fmt_price(latest_geometry.get('planned_tp2'))}"
             )
-        if structural_targets:
-            st.markdown("###### Peta TP Struktural — opposing Supply/Demand")
-            structural_rows = []
-            for item in structural_targets:
-                structural_rows.append(
+
+        st.markdown("#### Linimasa Otomasi / Broker (Automation / broker timeline)")
+        if execution_events:
+            timeline_rows = []
+            for row in execution_events[:20]:
+                payload = dict(row.get("payload") or {})
+                timeline_rows.append(
                     {
-                        "timeframe": item.get("timeframe"),
-                        "role": item.get("role"),
-                        "zona lawan": (
-                            f"{_fmt_price(item.get('zone_low'))}–"
-                            f"{_fmt_price(item.get('zone_high'))}"
-                        ),
-                        "TP front-run": _fmt_price(item.get("target_price")),
-                        "RR": _fmt_distance(item.get("rr"), "R"),
-                        "lolos RR minimum": bool(item.get("rr_eligible")),
+                        "time": row.get("observed_at"),
+                        "event": row.get("event_type"),
+                        "accepted": row.get("accepted"),
+                        "strategy": row.get("code") or payload.get("strategy_id"),
+                        "signal": row.get("signal_key"),
+                        "order": row.get("broker_order_id"),
+                        "entry": payload.get("executed_price") or payload.get("requested_entry") or payload.get("planned_entry"),
+                        "sl": payload.get("attached_stop_loss") or payload.get("requested_stop_loss") or payload.get("planned_sl"),
+                        "tp": payload.get("attached_take_profit") or payload.get("requested_take_profit") or payload.get("planned_tp2"),
+                        "message": row.get("message"),
                     }
                 )
-            st.dataframe(pd.DataFrame(structural_rows), hide_index=True, width="stretch")
-            macro_target = dict(prepared_plan.get("macro_terminal_target") or {})
-            st.caption(
-                "Urutan struktural: M15 → H1 → H4; D1 hanya macro terminal opsional. "
-                "TP ditempatkan sedikit sebelum proximal edge zona lawan. RR adalah validasi, "
-                "bukan sumber level target."
-                + (
-                    f" Macro D1: {_fmt_price(macro_target.get('target_price'))}."
-                    if macro_target else ""
-                )
-            )
-        if "CONFIRMED" in state.upper() and grade == "A" and auto_enabled:
-            st.success(
-                "Automation: confirmation detected → fresh broker quote revalidated → "
-                "MARKET DEMO eligible. SL/TP must be attached server-side."
-            )
+            st.dataframe(pd.DataFrame(timeline_rows), hide_index=True, width="stretch")
         else:
+            st.caption("No XAU execution event yet. Forecast monitoring can still be active without an order.")
+
+    with st.expander("Expected move & riwayat forecast", expanded=False):
+        st.markdown("#### Rentang Pergerakan yang Diharapkan (Expected-move envelope)")
+        move_details = {} if move_hb is None else dict(move_hb.get("details") or {})
+        move_eval = dict(move_details.get("evaluation") or {})
+        reference_envelope = dict(move_eval.get("current_envelope") or {})
+        live_envelope = dict(ensemble_components.get("v170") or {})
+        live_horizons = dict(live_envelope.get("horizons") or {})
+        reference_horizons = dict(reference_envelope.get("horizons") or {})
+
+        if live_envelope and live_horizons:
             st.caption(
-                "Reference level is also the manual LIMIT blueprint. Automatic pending "
-                "LIMIT stays disabled until expiry/cancel-on-invalidation reconciliation "
-                "is implemented."
+                "LIVE 20K expected-move envelope from the latest V171 cycle. "
+                "Magnitude forecast only — excursion quantiles, not bullish/bearish probabilities."
             )
-    else:
-        if valid_zone_now:
-            st.warning(
-                "Reaction zone exists, but no executable prepared/reference entry is valid "
-                "for the current map yet. Wait for the blueprint/confirmation."
-            )
-        else:
-            st.error(
-                "No valid reaction zone or prepared/reference entry for the current H4 map. "
-                "Do not reuse an older zone from Forecast State History."
-            )
-
-    auto_label = "ARMED FOR GRADE-A/B CONFIRMATION" if auto_enabled else "MONITOR ONLY"
-    if grade not in {"A","B"}:
-        auto_label = f"BLOCKED BY SELECTOR GRADE {grade}"
-    st.markdown(f"**Automation status:** {auto_label}")
-    if hb_details.get("blueprint_block_reason"):
-        st.caption(f"Current block: {hb_details.get('blueprint_block_reason')}")
-
-    if geometry_rows:
-        latest_geometry = dict(geometry_rows[0].get("payload") or {})
-        st.caption(
-            "Latest RIZAN-style broker-authorized geometry: "
-            f"{latest_geometry.get('direction', '—')} • "
-            f"entry mode {latest_geometry.get('entry_mode', '—')} • "
-            f"SL {_fmt_price(latest_geometry.get('planned_sl'))} • "
-            f"TP2 {_fmt_price(latest_geometry.get('planned_tp2'))}"
-        )
-
-    st.markdown("#### Linimasa Otomasi / Broker (Automation / broker timeline)")
-    if execution_events:
-        timeline_rows = []
-        for row in execution_events[:20]:
-            payload = dict(row.get("payload") or {})
-            timeline_rows.append(
-                {
-                    "time": row.get("observed_at"),
-                    "event": row.get("event_type"),
-                    "accepted": row.get("accepted"),
-                    "strategy": row.get("code") or payload.get("strategy_id"),
-                    "signal": row.get("signal_key"),
-                    "order": row.get("broker_order_id"),
-                    "entry": payload.get("executed_price") or payload.get("requested_entry") or payload.get("planned_entry"),
-                    "sl": payload.get("attached_stop_loss") or payload.get("requested_stop_loss") or payload.get("planned_sl"),
-                    "tp": payload.get("attached_take_profit") or payload.get("requested_take_profit") or payload.get("planned_tp2"),
-                    "message": row.get("message"),
-                }
-            )
-        st.dataframe(pd.DataFrame(timeline_rows), hide_index=True, width="stretch")
-    else:
-        st.caption("No XAU execution event yet. Forecast monitoring can still be active without an order.")
-
-    st.markdown("#### Rentang Pergerakan yang Diharapkan (Expected-move envelope)")
-    move_details = {} if move_hb is None else dict(move_hb.get("details") or {})
-    move_eval = dict(move_details.get("evaluation") or {})
-    reference_envelope = dict(move_eval.get("current_envelope") or {})
-    live_envelope = dict(ensemble_components.get("v170") or {})
-    live_horizons = dict(live_envelope.get("horizons") or {})
-    reference_horizons = dict(reference_envelope.get("horizons") or {})
-
-    if live_envelope and live_horizons:
-        st.caption(
-            "LIVE 20K expected-move envelope from the latest V171 cycle. "
-            "Magnitude forecast only — excursion quantiles, not bullish/bearish probabilities."
-        )
-        live_age = None if ensemble_hb is None else _age_seconds(ensemble_hb.get("observed_at"))
-        m1, m2, m3 = st.columns(3)
-        m1.metric("LIVE anchor", _fmt_price(live_envelope.get("price")))
-        m2.metric("LIVE as-of", str(live_envelope.get("as_of") or "—"))
-        m3.metric("LIVE age", "—" if live_age is None else f"{live_age:.0f}s")
-        move_rows = []
-        for label in ("1h", "4h", "8h"):
-            row = dict(live_horizons.get(label) or {})
-            levels = dict(row.get("levels") or {})
-            if levels:
-                move_rows.append(
-                    {
-                        "horizon": label,
-                        "anchor": live_envelope.get("price"),
-                        "down q50": levels.get("down_q50"),
-                        "down q75": levels.get("down_q75"),
-                        "down q90": levels.get("down_q90"),
-                        "up q50": levels.get("up_q50"),
-                        "up q75": levels.get("up_q75"),
-                        "up q90": levels.get("up_q90"),
-                    }
-                )
-        if move_rows:
-            st.dataframe(pd.DataFrame(move_rows), hide_index=True, width="stretch")
-    elif reference_envelope and reference_horizons:
-        st.warning(
-            "LIVE 20K envelope is unavailable; showing the slower REFERENCE 100K snapshot instead."
-        )
-
-    if reference_envelope and reference_horizons:
-        with st.expander("REFERENCE 100K V170 snapshot", expanded=False):
-            reference_age = None if move_hb is None else _age_seconds(move_hb.get("observed_at"))
-            r1, r2, r3 = st.columns(3)
-            r1.metric("Reference anchor", _fmt_price(reference_envelope.get("price")))
-            r2.metric("Reference as-of (WIB)", _fmt_wib_datetime(reference_envelope.get("as_of")))
-            r3.metric("Reference age", "—" if reference_age is None else f"{reference_age:.0f}s")
-            reference_rows = []
+            live_age = None if ensemble_hb is None else _age_seconds(ensemble_hb.get("observed_at"))
+            m1, m2, m3 = st.columns(3)
+            m1.metric("LIVE anchor", _fmt_price(live_envelope.get("price")))
+            m2.metric("LIVE as-of", str(live_envelope.get("as_of") or "—"))
+            m3.metric("LIVE age", "—" if live_age is None else f"{live_age:.0f}s")
+            move_rows = []
             for label in ("1h", "4h", "8h"):
-                row = dict(reference_horizons.get(label) or {})
+                row = dict(live_horizons.get(label) or {})
                 levels = dict(row.get("levels") or {})
                 if levels:
-                    reference_rows.append(
+                    move_rows.append(
                         {
                             "horizon": label,
-                            "anchor": reference_envelope.get("price"),
+                            "anchor": live_envelope.get("price"),
                             "down q50": levels.get("down_q50"),
                             "down q75": levels.get("down_q75"),
                             "down q90": levels.get("down_q90"),
@@ -4420,37 +4592,68 @@ with forecast_tab:
                             "up q90": levels.get("up_q90"),
                         }
                     )
-            if reference_rows:
-                st.dataframe(
-                    pd.DataFrame(reference_rows),
-                    hide_index=True,
-                    width="stretch",
-                )
-    elif not live_envelope:
-        st.caption("Expected-move V170 data is not available in this snapshot.")
+            if move_rows:
+                st.dataframe(pd.DataFrame(move_rows), hide_index=True, width="stretch")
+        elif reference_envelope and reference_horizons:
+            st.warning(
+                "LIVE 20K envelope is unavailable; showing the slower REFERENCE 100K snapshot instead."
+            )
 
-    st.markdown("#### Riwayat Status Prakiraan (Forecast state history)")
-    history_rows = []
-    for row in forecast_rows[:12]:
-        payload = dict(dict(row.get("payload") or {}).get("forecast") or {})
-        z = dict(payload.get("zone") or {})
-        history_rows.append(
-            {
-                "diamati (WIB)": _fmt_wib_datetime(row.get("observed_at")),
-                "map H4 (WIB)": _fmt_wib_datetime(payload.get("map_at")),
-                "state": payload.get("state"),
-                "direction": payload.get("continuation_direction"),
-                "zone_low": z.get("low"),
-                "zone_high": z.get("high"),
-                "sentuh (WIB)": _fmt_wib_datetime(payload.get("first_touch_at")),
-                "konfirmasi (WIB)": _fmt_wib_datetime(payload.get("confirm_at")),
-                "invalid (WIB)": _fmt_wib_datetime(payload.get("invalidated_at")),
-            }
-        )
-    if history_rows:
-        st.dataframe(pd.DataFrame(history_rows), hide_index=True, width="stretch")
-    else:
-        st.caption("No durable RIZAN-style forecast transitions have been recorded yet.")
+        if reference_envelope and reference_horizons:
+            with st.expander("REFERENCE 100K V170 snapshot", expanded=False):
+                reference_age = None if move_hb is None else _age_seconds(move_hb.get("observed_at"))
+                r1, r2, r3 = st.columns(3)
+                r1.metric("Reference anchor", _fmt_price(reference_envelope.get("price")))
+                r2.metric("Reference as-of (WIB)", _fmt_wib_datetime(reference_envelope.get("as_of")))
+                r3.metric("Reference age", "—" if reference_age is None else f"{reference_age:.0f}s")
+                reference_rows = []
+                for label in ("1h", "4h", "8h"):
+                    row = dict(reference_horizons.get(label) or {})
+                    levels = dict(row.get("levels") or {})
+                    if levels:
+                        reference_rows.append(
+                            {
+                                "horizon": label,
+                                "anchor": reference_envelope.get("price"),
+                                "down q50": levels.get("down_q50"),
+                                "down q75": levels.get("down_q75"),
+                                "down q90": levels.get("down_q90"),
+                                "up q50": levels.get("up_q50"),
+                                "up q75": levels.get("up_q75"),
+                                "up q90": levels.get("up_q90"),
+                            }
+                        )
+                if reference_rows:
+                    st.dataframe(
+                        pd.DataFrame(reference_rows),
+                        hide_index=True,
+                        width="stretch",
+                    )
+        elif not live_envelope:
+            st.caption("Expected-move V170 data is not available in this snapshot.")
+
+        st.markdown("#### Riwayat Status Prakiraan (Forecast state history)")
+        history_rows = []
+        for row in forecast_rows[:12]:
+            payload = dict(dict(row.get("payload") or {}).get("forecast") or {})
+            z = dict(payload.get("zone") or {})
+            history_rows.append(
+                {
+                    "diamati (WIB)": _fmt_wib_datetime(row.get("observed_at")),
+                    "map H4 (WIB)": _fmt_wib_datetime(payload.get("map_at")),
+                    "state": payload.get("state"),
+                    "direction": payload.get("continuation_direction"),
+                    "zone_low": z.get("low"),
+                    "zone_high": z.get("high"),
+                    "sentuh (WIB)": _fmt_wib_datetime(payload.get("first_touch_at")),
+                    "konfirmasi (WIB)": _fmt_wib_datetime(payload.get("confirm_at")),
+                    "invalid (WIB)": _fmt_wib_datetime(payload.get("invalidated_at")),
+                }
+            )
+        if history_rows:
+            st.dataframe(pd.DataFrame(history_rows), hide_index=True, width="stretch")
+        else:
+            st.caption("No durable RIZAN-style forecast transitions have been recorded yet.")
 
 with account_tab:
     st.subheader("Pemantauan Akun Broker (Broker Account Monitor)")
