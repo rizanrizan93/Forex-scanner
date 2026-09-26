@@ -15,7 +15,7 @@ from fx_scanner.demo_xau_v24_champion_candidate_producer import STRATEGY_ID as V
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_xau_has_exact_canonical_v24_and_afic_demo_execution_strategies():
+def test_xau_generic_handoff_excludes_dedicated_v229_child_ladder():
     assert set(_ALLOWED_STRATEGIES_BY_SYMBOL) == {"XAUUSD"}
     allowed = _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"]
     assert STRATEGY_ID == _XAU_CANONICAL_STRATEGY
@@ -28,9 +28,9 @@ def test_xau_has_exact_canonical_v24_and_afic_demo_execution_strategies():
             STRATEGY_ID,
             V24_STRATEGY_ID,
             "XAU_AFIC_PATH_EXECUTION_V1",
-            "XAU_RIZAN_DEPTH_EXECUTION_V1",
         }
     )
+    assert _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY not in allowed
     assert STRATEGY_ID not in _XAU_SHADOW_STRATEGIES
     assert _XAU_D1_TSMOM_STRATEGY in _XAU_SHADOW_STRATEGIES
     assert allowed.isdisjoint(_XAU_SHADOW_STRATEGIES)

@@ -74,6 +74,7 @@ class CTraderOpenApiSession:
             from ctrader_open_api.messages.OpenApiMessages_pb2 import (
                 ProtoOAApplicationAuthReq,
                 ProtoOAAccountAuthReq,
+                ProtoOACancelOrderReq,
                 ProtoOAExpectedMarginReq,
                 ProtoOAGetPositionUnrealizedPnLReq,
                 ProtoOAGetAccountListByAccessTokenReq,
@@ -104,6 +105,7 @@ class CTraderOpenApiSession:
             "HeartbeatEvent": ProtoHeartbeatEvent,
             "ApplicationAuthReq": ProtoOAApplicationAuthReq,
             "AccountAuthReq": ProtoOAAccountAuthReq,
+            "CancelOrderReq": ProtoOACancelOrderReq,
             "ExpectedMarginReq": ProtoOAExpectedMarginReq,
             "GetPositionUnrealizedPnLReq": ProtoOAGetPositionUnrealizedPnLReq,
             "GetAccountListByAccessTokenReq": ProtoOAGetAccountListByAccessTokenReq,
@@ -734,6 +736,12 @@ class CTraderOpenApiSession:
 
     def send_new_order(self, request, *, client_msg_id: str):
         return self._send_sync(request, client_msg_id=client_msg_id)
+
+    def cancel_order(self, order_id: int):
+        req = self.msg["CancelOrderReq"]()
+        req.ctidTraderAccountId = self.account_id
+        req.orderId = int(order_id)
+        return self._send_sync(req, client_msg_id=f"cancel-{int(order_id)}-{uuid4().hex}")
 
     def new_order_message(self):
         return self.msg["NewOrderReq"]()

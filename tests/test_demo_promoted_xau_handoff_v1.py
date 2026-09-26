@@ -36,9 +36,9 @@ def test_shared_demo_handoff_has_exact_promoted_xau_execution_strategies():
             XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID,
             XAU_V24_CHAMPION_STRATEGY_ID,
             "XAU_AFIC_PATH_EXECUTION_V1",
-            "XAU_RIZAN_DEPTH_EXECUTION_V1",
         }
     )
+    assert _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY not in _ALLOWED_STRATEGIES
     assert _XAU_SHADOW_STRATEGIES == frozenset(
         {
             PAIR_STRATEGY_IDS["XAUUSD"],

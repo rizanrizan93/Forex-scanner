@@ -26,6 +26,14 @@ def _v226(*, fresh: bool = True) -> dict:
             ),
             "calibrated_fresh_first_touch": fresh,
         },
+        "four_order_ladder": {
+            "slots": [
+                {"slot":1,"lot":0.01,"reference_price":101.8,"stage":"PRE_TOUCH_LIMIT_REFERENCE","activation":"FRESH_DEPTH_ENTRY_CANDIDATE"},
+                {"slot":2,"lot":0.01,"reference_price":101.3,"stage":"PRE_TOUCH_LIMIT_REFERENCE","activation":"FRESH_DEPTH_ENTRY_CANDIDATE"},
+                {"slot":3,"lot":0.01,"reference_price":100.8,"stage":"RESERVE_M5_RECLAIM_MSS_RETEST","activation":"M5_RECLAIM_AND_LOCAL_MSS_CONFIRMED"},
+                {"slot":4,"lot":0.01,"reference_price":100.3,"stage":"RESERVE_M5_DISPLACEMENT_RETEST","activation":"M5_DISPLACEMENT_CONFIRMED_AND_RETEST_AVAILABLE"},
+            ]
+        },
         "long": {
             "h4": {
                 "zone": {
@@ -42,41 +50,50 @@ def _v226(*, fresh: bool = True) -> dict:
 
 def _atlas() -> dict:
     return {
+        "zones": [
+            {"zone_id":"m15-s","timeframe":"M15","direction":"SHORT","low":106.0,"high":107.0,"status":"ACTIVE","lifecycle":{"active":True}},
+            {"zone_id":"h1-s","timeframe":"H1","direction":"SHORT","low":110.0,"high":112.0,"status":"ACTIVE","lifecycle":{"active":True}},
+            {"zone_id":"h4-s","timeframe":"H4","direction":"SHORT","low":118.0,"high":122.0,"status":"ACTIVE","lifecycle":{"active":True}},
+        ],
         "path_map": {
             "demand_to_supply": {
-                "reaction_target": {"price": 106.0},
-                "terminal_target_zone": {
-                    "low": 108.0,
-                    "high": 110.0,
-                },
+                "destination_stack": [
+                    {"zone_id":"h1-s","timeframe":"H1","direction":"SHORT","low":110.0,"high":112.0,"status":"ACTIVE","lifecycle":{"active":True}},
+                    {"zone_id":"h4-s","timeframe":"H4","direction":"SHORT","low":118.0,"high":122.0,"status":"ACTIVE","lifecycle":{"active":True}},
+                ],
             }
         }
     }
 
 
-def test_v229_promotes_fresh_candidate_when_live_price_is_inside() -> None:
+def test_v229_builds_four_child_parent_before_touch() -> None:
     plan = build_execution_plan(
         v226_evaluation=_v226(),
         atlas_evaluation=_atlas(),
-        live_price=101.0,
+        live_price=103.0,
     )
     assert plan is not None
     assert plan["direction"] == "LONG"
     assert plan["entry_low"] == 100.0
     assert plan["entry_high"] == 102.0
     assert plan["sl"] < 98.0
-    assert plan["tp2"] == 106.0
-    assert plan["rr2"] >= 1.0
     assert plan["source_layer"] == "M15_NESTED_LOCATOR"
+    assert len(plan["children"]) == 4
+    assert [child["lot"] for child in plan["children"]] == [0.01,0.01,0.01,0.01]
+    assert plan["pretouch_slots"] == [1,2]
+    assert plan["confirmation_slots"] == [3,4]
+    assert plan["generic_market_handoff_allowed"] is False
 
 
-def test_v229_does_not_chase_before_candidate_touch() -> None:
+def test_v229_pre_touch_parent_does_not_require_price_inside_candidate() -> None:
     plan = build_execution_plan(
         v226_evaluation=_v226(),
         atlas_evaluation=_atlas(),
         live_price=103.0,
     )
-    assert plan is None
+    assert plan is not None
+    assert plan["entry_low"] == 100.0
+    assert plan["entry_high"] == 102.0
 
 
 def test_v229_rejects_reused_or_out_of_sample_parent() -> None:
@@ -88,6 +105,6 @@ def test_v229_rejects_reused_or_out_of_sample_parent() -> None:
     assert plan is None
 
 
-def test_v229_exact_strategy_is_authorized_for_xau_demo_handoff() -> None:
+def test_v229_parent_is_excluded_from_generic_market_handoff() -> None:
     assert STRATEGY_ID == "XAU_RIZAN_DEPTH_EXECUTION_V1"
-    assert STRATEGY_ID in _XAU_DEMO_EXECUTION_STRATEGIES
+    assert STRATEGY_ID not in _XAU_DEMO_EXECUTION_STRATEGIES
