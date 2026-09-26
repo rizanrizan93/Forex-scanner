@@ -1,0 +1,116 @@
+name: Research XAU RIZAN Strategy V230
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/v230-rizan-strategy-2012-2026
+    paths:
+      - "src/fx_scanner/research_xau_rizan_strategy_v230.py"
+      - "src/fx_scanner/research_xau_rizan_strategy_v230_year_runtime.py"
+      - "src/fx_scanner/research_xau_rizan_strategy_v230_aggregate.py"
+      - "tests/test_research_xau_rizan_strategy_v230.py"
+      - ".github/workflows/research-xau-rizan-strategy-v230.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-rizan-strategy-v230-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Test V230
+        run: pytest -q tests/test_research_xau_rizan_strategy_v230.py tests/test_demo_xau_v229_child_executor.py tests/test_demo_xau_structural_targets_v229.py
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v230-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v230-price-provenance-${{ matrix.year }}.json
+      XAU_V230_YEAR: ${{ matrix.year }}
+      XAU_V230_PRICE_CSV: /tmp/histdata/xau-v230-${{ matrix.year }}.csv
+      XAU_V230_PRICE_PROVENANCE: artifacts/xau-v230-price-provenance-${{ matrix.year }}.json
+      XAU_V230_YEAR_OUTPUT: artifacts/xau-rizan-strategy-v230-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download and normalize HistData XAUUSD M1
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Replay yearly RIZAN 2+2 strategy
+        run: python -m fx_scanner.research_xau_rizan_strategy_v230_year_runtime
+      - name: Upload yearly V230 shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v230-year-${{ matrix.year }}
+          path: |
+            artifacts/xau-rizan-strategy-v230-${{ matrix.year }}.json
+            artifacts/xau-v230-price-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      XAU_V230_SHARD_DIR: /tmp/v230-shards
+      XAU_V230_FULL_OUTPUT: artifacts/xau-rizan-strategy-v230-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download all yearly V230 shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v230-year-*
+          path: /tmp/v230-shards
+          merge-multiple: false
+      - name: Aggregate 2012-2026 RIZAN strategy evidence
+        run: python -m fx_scanner.research_xau_rizan_strategy_v230_aggregate
+      - name: Upload full V230 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-rizan-strategy-v230-full
+          path: artifacts/xau-rizan-strategy-v230-full.json
+          if-no-files-found: error
+          retention-days: 30
