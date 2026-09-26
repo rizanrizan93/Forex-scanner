@@ -3,11 +3,14 @@ from pathlib import Path
 
 import pandas as pd
 
+from fx_scanner.demo_xau_supply_demand_atlas_v182 import SDZone
 from fx_scanner.research_xau_nested_m5_v228 import (
     EXECUTION_AUTHORITY,
     LADDER_QUANTILES,
     _detect_m5_zones,
     _ladder_report,
+    _m15_probability_geometry,
+    _probability_weighted_m5_key,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,3 +68,70 @@ def test_v228_workflow_is_2012_2026_shadow_only() -> None:
     assert 'POLICY_EFFECT = "SHADOW_ONLY"' in source
     assert "EXECUTION_INFLUENCE = False" in source
     assert "EXECUTION_AUTHORITY = False" in source
+
+
+def _sd_zone(
+    zone_id: str,
+    *,
+    direction: str = "LONG",
+    low: float,
+    high: float,
+    available_at: datetime,
+    timeframe: str,
+) -> SDZone:
+    return SDZone(
+        zone_id=zone_id,
+        timeframe=timeframe,
+        zone_class="IMBALANCE",
+        pattern="DBR" if direction == "LONG" else "RBD",
+        direction=direction,
+        low=low,
+        high=high,
+        proximal=high if direction == "LONG" else low,
+        distal=low if direction == "LONG" else high,
+        available_at=available_at,
+        origin_at=available_at - timedelta(minutes=10),
+        departure_at=available_at,
+        atr_points=5.0,
+        base_bars=1,
+        base_range_atr=(high - low) / 5.0,
+        departure_range_atr=1.2,
+        departure_body_fraction=0.7,
+        structural_bos=False,
+    )
+
+
+def test_v228_probability_weighted_selector_prefers_m15_probability_corridor() -> None:
+    now = datetime(2026, 9, 25, 12, tzinfo=UTC)
+    parent = _sd_zone(
+        "m15-parent",
+        low=100.0,
+        high=110.0,
+        available_at=now - timedelta(hours=2),
+        timeframe="M15",
+    )
+    # Narrower but far from the frozen V225.2 M15 reversal corridor.
+    narrow_off_corridor = _sd_zone(
+        "off",
+        low=100.5,
+        high=101.0,
+        available_at=now - timedelta(minutes=20),
+        timeframe="M5",
+    )
+    # Slightly wider, but centered around the frozen M15 median reversal price.
+    probability_aligned = _sd_zone(
+        "aligned",
+        low=107.0,
+        high=108.2,
+        available_at=now - timedelta(minutes=30),
+        timeframe="M5",
+    )
+
+    geometry = _m15_probability_geometry(parent)
+    assert geometry["corridor_low"] < geometry["median_price"] < geometry["corridor_high"]
+
+    ranked = sorted(
+        [narrow_off_corridor, probability_aligned],
+        key=lambda zone: _probability_weighted_m5_key(zone, parent=parent),
+    )
+    assert ranked[0].zone_id == "aligned"
