@@ -1,0 +1,62 @@
+name: Research XAU Depth Target Walkforward V231
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/v231-depth-target-walkforward
+    paths:
+      - "src/fx_scanner/research_xau_depth_target_walkforward_v231.py"
+      - ".github/workflows/research-xau-depth-target-walkforward-v231.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: research-xau-depth-target-walkforward-v231-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      XAU_V231_SHARD_DIR: /tmp/v230-shards
+      XAU_V231_OUTPUT: artifacts/xau-depth-target-walkforward-v231-full.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Compile V231
+        run: python -m py_compile src/fx_scanner/research_xau_depth_target_walkforward_v231.py
+
+      - name: Download successful V230 yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 36230335879
+          pattern: xau-v230-year-*
+          path: /tmp/v230-shards
+          merge-multiple: false
+
+      - name: Run frozen-rule chronological and rolling validation
+        run: python -m fx_scanner.research_xau_depth_target_walkforward_v231
+
+      - name: Upload V231 result
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-depth-target-walkforward-v231-full
+          path: artifacts/xau-depth-target-walkforward-v231-full.json
+          if-no-files-found: error
+          retention-days: 30
