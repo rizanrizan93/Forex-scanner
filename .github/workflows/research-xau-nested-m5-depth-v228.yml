@@ -1,0 +1,114 @@
+name: Research XAU Nested M5 Depth V228
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - research/v228-nested-m5-depth
+    paths:
+      - "src/fx_scanner/research_xau_nested_m5_v228.py"
+      - "src/fx_scanner/research_xau_nested_m5_v228_year_runtime.py"
+      - "src/fx_scanner/research_xau_nested_m5_v228_aggregate.py"
+      - "tests/test_research_xau_nested_m5_v228.py"
+      - ".github/workflows/research-xau-nested-m5-depth-v228.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-nested-m5-depth-v228-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Test V228
+        run: pytest -q tests/test_research_xau_nested_m5_v228.py
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v228-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v228-price-provenance-${{ matrix.year }}.json
+      XAU_V228_YEAR: ${{ matrix.year }}
+      XAU_V228_PRICE_CSV: /tmp/histdata/xau-v228-${{ matrix.year }}.csv
+      XAU_V228_YEAR_OUTPUT: artifacts/xau-nested-m5-depth-v228-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download and normalize HistData XAUUSD M1
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Build yearly nested M5 shard
+        run: python -m fx_scanner.research_xau_nested_m5_v228_year_runtime
+      - name: Upload yearly shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v228-year-${{ matrix.year }}
+          path: artifacts/xau-nested-m5-depth-v228-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      XAU_V228_SHARD_DIR: /tmp/v228-shards
+      XAU_V228_FULL_OUTPUT: artifacts/xau-nested-m5-depth-v228-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download all yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v228-year-*
+          path: /tmp/v228-shards
+          merge-multiple: false
+      - name: Aggregate 2012-2026 nested M5 evidence
+        run: python -m fx_scanner.research_xau_nested_m5_v228_aggregate
+      - name: Upload full V228 atlas
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-nested-m5-depth-v228-full
+          path: artifacts/xau-nested-m5-depth-v228-full.json
+          if-no-files-found: error
+          retention-days: 30
