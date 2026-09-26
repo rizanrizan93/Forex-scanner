@@ -5,6 +5,7 @@ from fx_scanner.demo_execution_fresh_ready_handoff import (
     _XAU_CANONICAL_STRATEGY,
     _XAU_CHAMPION_STRATEGY,
     _XAU_AFIC_EXECUTION_STRATEGY,
+    _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY,
     _XAU_D1_TSMOM_STRATEGY,
     _XAU_SHADOW_STRATEGIES,
 )
@@ -29,11 +30,13 @@ def test_shared_demo_handoff_has_exact_promoted_xau_execution_strategies():
     assert _XAU_CHAMPION_STRATEGY == XAU_V24_CHAMPION_STRATEGY_ID
     assert _XAU_D1_TSMOM_STRATEGY == PAIR_STRATEGY_IDS["XAUUSD"]
     assert _XAU_AFIC_EXECUTION_STRATEGY == "XAU_AFIC_PATH_EXECUTION_V1"
+    assert _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY == "XAU_RIZAN_DEPTH_EXECUTION_V1"
     assert _ALLOWED_STRATEGIES == frozenset(
         {
             XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID,
             XAU_V24_CHAMPION_STRATEGY_ID,
             "XAU_AFIC_PATH_EXECUTION_V1",
+            "XAU_RIZAN_DEPTH_EXECUTION_V1",
         }
     )
     assert _XAU_SHADOW_STRATEGIES == frozenset(

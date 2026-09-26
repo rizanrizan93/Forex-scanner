@@ -49,6 +49,7 @@ def test_xau_demo_handoff_exactly_allows_m15_v24_and_afic():
         _ALLOWED_STRATEGIES_BY_SYMBOL,
         _XAU_CHAMPION_STRATEGY,
         _XAU_AFIC_EXECUTION_STRATEGY,
+        _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY,
         _XAU_D1_TSMOM_STRATEGY,
         _XAU_SHADOW_STRATEGIES,
     )
@@ -59,7 +60,13 @@ def test_xau_demo_handoff_exactly_allows_m15_v24_and_afic():
     assert _XAU_CHAMPION_STRATEGY == champion_strategy
     assert _XAU_D1_TSMOM_STRATEGY == "D1_TSMOM_60_200"
     assert _XAU_AFIC_EXECUTION_STRATEGY == "XAU_AFIC_PATH_EXECUTION_V1"
+    assert _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY == "XAU_RIZAN_DEPTH_EXECUTION_V1"
     assert allowed == frozenset(
-        {champion_strategy, m15_strategy, "XAU_AFIC_PATH_EXECUTION_V1"}
+        {
+            champion_strategy,
+            m15_strategy,
+            "XAU_AFIC_PATH_EXECUTION_V1",
+            "XAU_RIZAN_DEPTH_EXECUTION_V1",
+        }
     )
     assert _XAU_D1_TSMOM_STRATEGY in _XAU_SHADOW_STRATEGIES

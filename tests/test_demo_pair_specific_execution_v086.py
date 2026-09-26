@@ -6,6 +6,7 @@ from fx_scanner.demo_execution_fresh_ready_handoff import (
     _XAU_CANONICAL_STRATEGY,
     _XAU_CHAMPION_STRATEGY,
     _XAU_AFIC_EXECUTION_STRATEGY,
+    _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY,
     _XAU_D1_TSMOM_STRATEGY,
     _XAU_SHADOW_STRATEGIES,
 )
@@ -46,18 +47,20 @@ def test_five_core_execution_registry_is_exact_and_pair_specific():
     assert "USDJPY" not in _ALLOWED_STRATEGIES_BY_SYMBOL
     assert "GBPUSD" not in _ALLOWED_STRATEGIES_BY_SYMBOL
 
-    # Broker handoff has an exact three-strategy XAU DEMO allowlist: canonical
-    # M15, the aggregate V24 champion, and grade-A confirmed AFIC path execution.
-    # Standalone D1 and unvalidated challengers remain shadow-only.
+    # Broker handoff has an exact four-strategy XAU DEMO allowlist: canonical
+    # M15, the aggregate V24 champion, AFIC execution, and fresh-first-touch
+    # RIZAN depth execution. Standalone D1 and other challengers remain shadow-only.
     assert _XAU_CANONICAL_STRATEGY == XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
     assert _XAU_CHAMPION_STRATEGY == XAU_V24_CHAMPION_STRATEGY_ID
     assert _XAU_D1_TSMOM_STRATEGY == PAIR_STRATEGY_IDS["XAUUSD"]
     assert _XAU_AFIC_EXECUTION_STRATEGY == "XAU_AFIC_PATH_EXECUTION_V1"
+    assert _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY == "XAU_RIZAN_DEPTH_EXECUTION_V1"
     assert _ALLOWED_STRATEGIES_BY_SYMBOL["XAUUSD"] == frozenset(
         {
             XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID,
             XAU_V24_CHAMPION_STRATEGY_ID,
             "XAU_AFIC_PATH_EXECUTION_V1",
+            "XAU_RIZAN_DEPTH_EXECUTION_V1",
         }
     )
     assert PAIR_STRATEGY_IDS["XAUUSD"] in _XAU_SHADOW_STRATEGIES
@@ -107,6 +110,6 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in discovery
     assert "universe=XAUUSD" in supervisor
     assert "universe=XAUUSD,EURUSD" not in supervisor
-    assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor
+    assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1,XAU_RIZAN_DEPTH_EXECUTION_V1" in supervisor
     assert "FX_LIVE_TRADING_ENABLED" not in auto
     assert "I_UNDERSTAND_LIVE_ORDERS" not in auto
