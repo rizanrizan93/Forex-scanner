@@ -186,7 +186,7 @@ def test_v232_scores_future_tp_and_16h_time_exit() -> None:
 
     timeout = evaluate_shadow_order(
         [
-            _bar(start, o=111.0, h=108.0, l=107.0, c=107.5),
+            _bar(start, o=108.0, h=108.0, l=107.0, c=107.5),
             _bar(start + timedelta(hours=15), o=107.5, h=110.0, l=104.0, c=109.0),
         ],
         forecast=forecast,
