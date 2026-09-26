@@ -117,6 +117,7 @@ def build_structural_target_plan(
 
     zones = [dict(zone) for zone in list(m15_zones) + list(htf_zones)]
     selected = _nearest_per_timeframe(zones, direction=side, entry=entry_f)
+    selected.sort(key=lambda zone: _distance(zone, direction=side, entry=entry_f))
     mapped: list[dict[str, Any]] = []
     for zone in selected:
         front = _front_run_price(zone, side)
@@ -145,11 +146,22 @@ def build_structural_target_plan(
             }
         )
 
-    broker = [
+    broker_candidates = [
         item
         for item in mapped
-        if bool(item["rr_eligible"]) and str(item["timeframe"]) in {"M15", "H1", "H4"}
+        if str(item["timeframe"]) in {"M15", "H1", "H4"}
     ]
+    broker_candidates.sort(key=lambda item: float(item["rr"]))
+    terminal_structural = broker_candidates[-1] if broker_candidates else None
+    terminal_rr_eligible = bool(
+        terminal_structural is not None
+        and float(terminal_structural["rr"]) + 1e-12 >= float(min_rr)
+    )
+    # Earlier opposing zones remain valid partial scale-outs even below 1.5R.
+    # The minimum RR applies to the terminal structural objective, matching the
+    # existing executor's terminal-RR contract and preventing us from ignoring
+    # a nearby M15 barrier merely to target a farther H1/H4 zone.
+    broker = list(broker_candidates) if terminal_rr_eligible else []
     macro = next(
         (
             item
@@ -171,14 +183,17 @@ def build_structural_target_plan(
         },
         "mapped_targets": mapped,
         "broker_scaleout_targets": broker,
+        "terminal_structural_target": terminal_structural,
+        "terminal_rr_eligible": terminal_rr_eligible,
+        "primary_opposing_barrier": None if not mapped else mapped[0],
         "macro_terminal_target": macro,
         "structural_target_available": bool(broker),
         "target_timeframe_order": list(TIMEFRAME_ORDER),
         "execution_influence": False,
         "execution_authority": False,
         "note": (
-            "Opposing supply/demand determines target location. RR only validates whether "
-            "a mapped target is far enough to become a broker scale-out. D1 remains an "
-            "optional macro terminal rather than a mandatory take-profit."
+            "Opposing supply/demand determines target location. Earlier M15/H1 barriers "
+            "remain partial scale-outs even below minimum RR; minimum RR validates the "
+            "terminal structural objective. D1 remains an optional macro terminal."
         ),
     }
