@@ -862,10 +862,12 @@ def _four_order_depth_ladder(
     h1_profile: dict[str, Any],
     m15_profile: dict[str, Any],
 ) -> dict[str, Any]:
-    """Build four equal 0.01-lot display slots from historical turning depth.
+    """Build a fail-closed 2+2 four-order plan.
 
-    Quantiles q10/q35/q60/q85 balance first-fill coverage versus overly early
-    entry. This is a planner only; broker submission remains disabled.
+    Orders 1-2 are pre-touch reference limits at q10/q35 successful-turning
+    depth. Orders 3-4 reserve the remaining 0.02 lot for post-touch M5 reversal
+    evidence, because an unconditional four-limit ladder is expected to fill
+    deeply during invalidation. Broker auto-submit remains disabled.
     """
     low = _f(candidate.get("entry_low"))
     high = _f(candidate.get("entry_high"))
@@ -895,39 +897,58 @@ def _four_order_depth_ladder(
         p25, p50, p75 = (float(value) for value in fallback)
         depths = [max(0.0, p25 * 0.5), p25, p50, min(0.95, p75)]
 
-    clean_depths = sorted(min(max(float(d), 0.0), 0.95) for d in depths if d is not None)
+    clean_depths = sorted(min(max(float(depth), 0.0), 0.95) for depth in depths if depth is not None)
     if len(clean_depths) != 4:
         return {}
 
     slots = []
     for index, (q, depth) in enumerate(zip(qs, clean_depths), start=1):
+        reference_price = _ladder_price(
+            direction=direction,
+            low=low,
+            high=high,
+            depth=depth,
+        )
+        if index <= 2:
+            stage = "PRE_TOUCH_LIMIT_REFERENCE"
+            activation = "FRESH_DEPTH_ENTRY_CANDIDATE"
+            submit_eligible = True
+        elif index == 3:
+            stage = "RESERVE_M5_RECLAIM_MSS_RETEST"
+            activation = "M5_RECLAIM_AND_LOCAL_MSS_CONFIRMED"
+            submit_eligible = False
+        else:
+            stage = "RESERVE_M5_DISPLACEMENT_RETEST"
+            activation = "M5_DISPLACEMENT_CONFIRMED_AND_RETEST_AVAILABLE"
+            submit_eligible = False
         slots.append(
             {
                 "slot": index,
                 "lot": 0.01,
                 "quantile": q,
                 "depth": depth,
-                "price": _ladder_price(
-                    direction=direction,
-                    low=low,
-                    high=high,
-                    depth=depth,
-                ),
+                "reference_price": reference_price,
+                "price": reference_price if submit_eligible else None,
+                "stage": stage,
+                "activation": activation,
+                "submit_eligible": submit_eligible,
             }
         )
     return {
-        "mode": "FOUR_SLOT_DEPTH_LADDER_PREVIEW",
+        "mode": "FOUR_SLOT_HYBRID_2_PRETOUCH_2_CONFIRMATION",
         "direction": direction,
         "source_profile_timeframe": profile_tf,
         "candidate_low": low,
         "candidate_high": high,
-        "total_lots_if_all_filled": 0.04,
+        "max_pretouch_lots": 0.02,
+        "total_lots_if_all_four_eventually_filled": 0.04,
         "slots": slots,
         "auto_submit": False,
         "execution_authority": False,
         "note": (
-            "Preview only. Auto pending-limit submission stays fail-closed until V228 "
-            "M5 historical evidence and prospective capture validation pass."
+            "Two pre-touch reference limits plus two 0.01-lot reserves that require "
+            "M5 reversal evidence. This avoids pre-placing all four orders into a "
+            "zone invalidation path. Broker submission stays fail-closed."
         ),
     }
 
