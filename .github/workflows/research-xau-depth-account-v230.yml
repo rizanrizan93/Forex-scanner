@@ -35,6 +35,7 @@ jobs:
         run: |
           python -m py_compile src/fx_scanner/research_xau_depth_account_v230.py
           python -m py_compile src/fx_scanner/research_xau_depth_account_v230_aggregate.py
+          python -c "from fx_scanner.research_xau_depth_account_v230 import ATLAS_M15_REQUEST_COUNT; assert ATLAS_M15_REQUEST_COUNT == 3000"
 
   replay-year:
     needs: syntax
