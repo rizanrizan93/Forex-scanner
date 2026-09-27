@@ -134,3 +134,34 @@ def test_v239_is_shadow_only() -> None:
         ROOT / "src/fx_scanner/research_brent_v229_historical_v239.py"
     ).read_text(encoding="utf-8")
     assert 'POLICY_EFFECT = "SHADOW_ONLY"' in source
+
+
+
+def test_v239_rejects_target_crossed_by_adverse_fill() -> None:
+    start = datetime(2026, 1, 5, 0, 0, tzinfo=UTC)
+    frame = pd.DataFrame(
+        [
+            {
+                "timestamp": start + timedelta(minutes=1),
+                "open": 80.00,
+                "high": 80.03,
+                "low": 79.97,
+                "close": 80.00,
+            }
+        ]
+    )
+    result = _simulate_limit_trade(
+        px=price_arrays(frame),
+        direction="LONG",
+        order_at=start,
+        expires_at=start + timedelta(minutes=10),
+        entry=80.00,
+        stop=79.50,
+        target=80.01,
+        spread_pips=4.0,
+        slippage_pips=1.0,
+        commission_pips=0.0,
+    )
+    assert result["state"] == "REJECTED"
+    assert result["reason"] == "INVALID_TARGET_AFTER_COSTS"
+    assert result["fill_price"] > result["target"]

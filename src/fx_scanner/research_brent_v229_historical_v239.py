@@ -572,6 +572,22 @@ def _simulate_limit_trade(
     if risk <= 0 or risk_pips < MIN_STOP_PIPS:
         return {"state": "REJECTED", "reason": "INVALID_STOP_AFTER_COSTS"}
 
+    target_favorable = (
+        float(target) > fill
+        if direction == "LONG"
+        else float(target) < fill
+    )
+    if not target_favorable:
+        return {
+            "state": "REJECTED",
+            "reason": "INVALID_TARGET_AFTER_COSTS",
+            "planned_entry": float(entry),
+            "fill_price": float(fill),
+            "stop": float(stop),
+            "target": float(target),
+            "risk_pips": float(risk_pips),
+        }
+
     horizon = entry_at + MAX_POSITION_HOLD
     eval_end = bisect_right(px.timestamps, pd.Timestamp(horizon))
     if eval_end <= entry_index:
