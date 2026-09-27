@@ -479,7 +479,7 @@ def _rizan_chart_png(
     except Exception as exc:
         return None, f"{type(exc).__name__}: {exc}"
 
-    fig, ax = plt.subplots(figsize=(14.2, 7.4))
+    fig, ax = plt.subplots(figsize=(16.8, 8.2))
     fig.patch.set_facecolor("#0e1117")
     ax.set_facecolor("#0e1117")
 
@@ -511,7 +511,7 @@ def _rizan_chart_png(
             )
         )
 
-    right_edge = len(visible) + 14
+    right_edge = len(visible) + 26
     nearest_long = next(
         (z for z in zones if str(z.get("direction") or "").upper() == "LONG"),
         None,
@@ -655,15 +655,15 @@ def _rizan_chart_png(
         except (TypeError, ValueError):
             pass
         depth_label = str(depth.get("label") or "RIZAN Depth hotspot")
-        applicability = str(depth.get("applicability") or "")
+        # Keep chart labels short. Detailed applicability/reuse state belongs in
+        # the dashboard metrics, not on top of the candles.
         ax.text(
-            depth_start_x + 0.4,
+            len(visible) + 0.8,
             depth_high,
-            f"{depth_label} • {side} • {depth_low:.2f}–{depth_high:.2f}"
-            + (f"\n{applicability}" if applicability else ""),
+            f"{depth_label} • {depth_low:.2f}–{depth_high:.2f}",
             ha="left",
             va="bottom",
-            fontsize=7.7,
+            fontsize=7.6,
             color=depth_edge,
             bbox=dict(
                 boxstyle="round,pad=0.25",
@@ -790,10 +790,10 @@ def _rizan_chart_png(
                 zorder=6,
             )
             ax.text(
-                right_edge - 0.6,
+                len(visible) + 2.0,
                 checkpoint,
                 f"CHECKPOINT {str(current_direction).upper()}  {checkpoint:.2f}",
-                ha="right",
+                ha="left",
                 va="bottom",
                 fontsize=8.2,
                 color="#38bdf8",
@@ -821,11 +821,11 @@ def _rizan_chart_png(
         )
         reaction_label_color = "#fb7185" if next_side == "SHORT" else "#4ade80"
         ax.text(
-            right_edge - 0.6,
+            len(visible) + 9.0,
             (float(reaction_low) + float(reaction_high)) / 2.0,
-            f"AREA REAKSI • PANTAU {next_side}\n"
+            f"AREA REAKSI • {next_side}\n"
             f"{float(reaction_low):.2f}–{float(reaction_high):.2f}",
-            ha="right",
+            ha="left",
             va="center",
             fontsize=8.4,
             color="#f8fafc",
@@ -858,9 +858,9 @@ def _rizan_chart_png(
                 )
             )
             ax.text(
-                pocket_start_x + 0.25,
+                len(visible) + 9.0,
                 refined_high,
-                f"M5 REACTION POCKET  {refined_low:.2f}–{refined_high:.2f}",
+                f"M5 POCKET  {refined_low:.2f}–{refined_high:.2f}",
                 ha="left",
                 va="bottom",
                 fontsize=7.6,
@@ -886,10 +886,10 @@ def _rizan_chart_png(
                 zorder=6,
             )
             ax.text(
-                right_edge - 0.6,
+                len(visible) + 16.0,
                 next_reaction_price,
-                f"TARGET REAKSI {next_side}  {next_reaction_price:.2f}",
-                ha="right",
+                f"TARGET {next_side}  {next_reaction_price:.2f}",
+                ha="left",
                 va="top",
                 fontsize=8.1,
                 color="#fb923c",
@@ -903,10 +903,10 @@ def _rizan_chart_png(
             )
     ax.axhline(float(price_now), color="#f8fafc", linewidth=1.0, linestyle="--", alpha=0.72)
     ax.text(
-        right_edge - 0.6,
+        len(visible) + 0.8,
         float(price_now),
         f"NOW  {float(price_now):.2f}",
-        ha="right",
+        ha="left",
         va="bottom",
         fontsize=9,
         color="#f8fafc",
@@ -918,9 +918,11 @@ def _rizan_chart_png(
         current_side = str(current_direction or "").upper()
         checkpoint = _chart_price(current_target)
         current_start_x = max(0.0, len(visible) - 5.0)
-        x1 = len(visible) + 1.0
-        x2 = len(visible) + 4.0
-        x3 = len(visible) + 7.0
+        # Dedicated future-path rail. Wider spacing prevents labels and arrows
+        # from colliding with each other or with the zone labels.
+        x1 = len(visible) + 3.0
+        x2 = len(visible) + 10.0
+        x3 = len(visible) + 17.0
 
         current_destination = (
             checkpoint
@@ -2435,7 +2437,11 @@ with forecast_tab:
     with st.container(border=True):
         st.markdown("##### V226 — RIZAN Depth Map")
         if v226_eval and str(v226_eval.get("state") or "") == "RIZAN_DEPTH_MAP_AVAILABLE":
-            st.markdown("###### Depth Entry Candidate")
+            st.markdown("###### RISET / PREPARATION — Depth Entry Candidate")
+            st.caption(
+                "Untuk keputusan rutin gunakan V240 Canonical XAU Decision Map. "
+                "V226 hanya locator/depth evidence dan tidak mengalahkan angka canonical."
+            )
             ec1, ec2, ec3, ec4 = st.columns(4)
             ec1.metric(
                 "Arah",
@@ -2582,7 +2588,11 @@ with forecast_tab:
             )
 
     with st.container(border=True):
-        st.markdown("##### V227 — Prospective RIZAN Depth Calibration (V227.1 ladder)")
+        st.markdown("##### V227 — RISET SAJA: Prospective RIZAN Depth Calibration")
+        st.caption(
+            "V227 hanya mengukur apakah locator V226 benar secara prospective. "
+            "Angka V227 bukan entry/SL/TP dan tidak memiliki execution authority."
+        )
         if v227_summary:
             v227_reaction_025 = dict(v227_summary.get("reaction_025") or {})
             v227_reaction_050 = dict(v227_summary.get("reaction_050") or {})
