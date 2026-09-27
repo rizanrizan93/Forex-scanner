@@ -41,6 +41,11 @@ class CTraderResearchFeed:
     def health(self) -> bool:
         return bool(self._session.health())
 
+    def symbol_catalogue(self) -> tuple[tuple[int, str], ...]:
+        with self._lock:
+            self.ensure_connected()
+            return self._session.symbol_catalogue()
+
     def market_status(self, symbol: str, *, at: datetime | None = None) -> CTraderMarketStatus:
         self.ensure_connected()
         return evaluate_ctrader_market_status(self._session.symbol_info(symbol), at=at)
