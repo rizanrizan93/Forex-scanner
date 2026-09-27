@@ -117,5 +117,8 @@ def test_v229_child_executor_requires_pressure_transition_and_demo_lane_refresh(
     assert "pre_touch_entry_allowed" in source
     assert "confirmation_entry_allowed" in source
     assert "PRESSURE_BLOCK" in source
+    assert "build_dynamic_depth_hazard" in source
+    assert "WAIT_DEEPER_HAZARD" in source
+    assert "execution_enabled" in source
     assert "demo_xau_dom_v191" in workflow
     assert "steps.refresh_xau_pressure.outcome == 'success'" in workflow
