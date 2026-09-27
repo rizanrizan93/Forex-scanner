@@ -1,0 +1,72 @@
+from fx_scanner.xau_dynamic_depth_hazard_v251 import (
+    build_dynamic_depth_hazard,
+    child_reference_depth,
+    normalized_depth,
+)
+
+
+def _v226():
+    bands = [
+        {"band":"00-10%","lower_depth":0.0,"upper_depth":0.1,"hazard":0.20,"wilson_lower_95":0.15,"at_risk":500},
+        {"band":"10-20%","lower_depth":0.1,"upper_depth":0.2,"hazard":0.16,"wilson_lower_95":0.12,"at_risk":400},
+        {"band":"20-30%","lower_depth":0.2,"upper_depth":0.3,"hazard":0.14,"wilson_lower_95":0.10,"at_risk":300},
+        {"band":"30-40%","lower_depth":0.3,"upper_depth":0.4,"hazard":0.13,"wilson_lower_95":0.09,"at_risk":250},
+    ]
+    return {
+        "focus_direction":"LONG",
+        "depth_entry_candidate":{"source_layer":"M15_NESTED_LOCATOR"},
+        "long":{
+            "m15":{
+                "zone":{"direction":"LONG","low":100.0,"high":110.0},
+                "standalone_profile_context":{"touches":1500,"hazard_bands":bands},
+            }
+        }
+    }
+
+
+def test_normalized_depth_mirrors_zone_geometry():
+    assert normalized_depth({"direction":"LONG","low":100,"high":110}, 108) == 0.2
+    assert normalized_depth({"direction":"SHORT","low":100,"high":110}, 102) == 0.2
+
+
+def test_reacceleration_waits_deeper_than_current_band():
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=_v226(),
+        direction="LONG",
+        live_price=109.5,
+        pressure_transition={
+            "state":"OPPOSING_REACCELERATION",
+            "hard_block":True,
+            "pre_touch_entry_allowed":False,
+            "confirmation_entry_allowed":False,
+        },
+    )
+    assert result["state"] == "DYNAMIC_DEPTH_HAZARD_AVAILABLE"
+    assert result["recommended_depth_low"] >= 0.10
+    assert result["action"] == "WAIT_PRESSURE"
+    assert result["execution_ready"] is False
+
+
+def test_absorption_can_use_current_hazard_window():
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=_v226(),
+        direction="LONG",
+        live_price=109.5,
+        pressure_transition={
+            "state":"BALANCED_ABSORPTION",
+            "hard_block":False,
+            "pre_touch_entry_allowed":True,
+            "confirmation_entry_allowed":True,
+        },
+    )
+    assert result["recommended_depth_low"] == 0.0
+    assert result["action"] == "ENTRY_WINDOW"
+    assert result["execution_ready"] is True
+
+
+def test_child_reference_depth_uses_source_zone():
+    assert child_reference_depth(
+        v226_evaluation=_v226(),
+        direction="LONG",
+        price=107.0,
+    ) == 0.3
