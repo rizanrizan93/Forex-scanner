@@ -9,7 +9,7 @@ from fx_scanner.demo_xau_v229_depth_execution import (
 )
 
 
-def _v226(*, fresh: bool = True) -> dict:
+def _v226(*, fresh: bool = True, first_touch: bool = False) -> dict:
     return {
         "focus_direction": "LONG",
         "depth_entry_candidate": {
@@ -22,9 +22,13 @@ def _v226(*, fresh: bool = True) -> dict:
             "display_status": (
                 "PREPARE_ONLY_FRESH_FIRST_TOUCH"
                 if fresh
+                else "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS"
+                if first_touch
                 else "CONTEXT_ONLY_OUT_OF_SAMPLE"
             ),
             "calibrated_fresh_first_touch": fresh,
+            "confirmation_calibrated_first_touch": bool(fresh or first_touch),
+            "first_touch_in_progress": first_touch,
         },
         "four_order_ladder": {
             "slots": [
@@ -108,3 +112,21 @@ def test_v229_rejects_reused_or_out_of_sample_parent() -> None:
 def test_v229_parent_is_excluded_from_generic_market_handoff() -> None:
     assert STRATEGY_ID == "XAU_RIZAN_DEPTH_EXECUTION_V1"
     assert STRATEGY_ID not in _XAU_DEMO_EXECUTION_STRATEGIES
+
+
+def test_v229_first_touch_in_progress_builds_confirmation_only_parent() -> None:
+    plan = build_execution_plan(
+        v226_evaluation=_v226(fresh=False, first_touch=True),
+        atlas_evaluation=_atlas(),
+        live_price=101.0,
+    )
+    assert plan is not None
+    assert plan["execution_phase"] == "FIRST_TOUCH_CONFIRMATION"
+    assert plan["pretouch_slots"] == []
+    assert plan["confirmation_slots"] == [3, 4]
+    assert [child["execution_enabled"] for child in plan["children"]] == [
+        False,
+        False,
+        True,
+        True,
+    ]
