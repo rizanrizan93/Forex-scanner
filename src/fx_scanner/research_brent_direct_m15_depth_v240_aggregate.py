@@ -154,8 +154,19 @@ def run() -> int:
         era: _positive(dict(report["summary"]))
         for era, report in dict(primary["base"]["eras"]).items()
     }
+    primary_stress_era_positive = {
+        era: _positive(dict(report["summary"]))
+        for era, report in dict(primary["stress"]["eras"]).items()
+    }
     sensitivity_positive = {
         variant: _positive(dict(report["base"]["summary"]))
+        for variant, report in variants.items()
+    }
+    sensitivity_era_positive = {
+        variant: {
+            era: _positive(dict(era_report["summary"]))
+            for era, era_report in dict(report["base"]["eras"]).items()
+        }
         for variant, report in variants.items()
     }
     research_gate = {
@@ -163,15 +174,23 @@ def run() -> int:
         "primary_stress_positive": _positive(dict(primary["stress"]["summary"])),
         "primary_all_eras_positive": all(primary_era_positive.values()),
         "primary_era_positive": primary_era_positive,
+        "primary_stress_all_eras_positive": all(primary_stress_era_positive.values()),
+        "primary_stress_era_positive": primary_stress_era_positive,
         "all_depth_sensitivity_base_positive": all(sensitivity_positive.values()),
         "sensitivity_positive": sensitivity_positive,
+        "all_depth_sensitivity_all_eras_positive": all(
+            all(values.values()) for values in sensitivity_era_positive.values()
+        ),
+        "sensitivity_era_positive": sensitivity_era_positive,
     }
     research_gate["passes_all"] = all(
         [
             research_gate["primary_base_positive"],
             research_gate["primary_stress_positive"],
             research_gate["primary_all_eras_positive"],
+            research_gate["primary_stress_all_eras_positive"],
             research_gate["all_depth_sensitivity_base_positive"],
+            research_gate["all_depth_sensitivity_all_eras_positive"],
         ]
     )
 
