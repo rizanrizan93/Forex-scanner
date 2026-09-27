@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from pathlib import Path
 
 from fx_scanner.demo_xau_v229_child_executor import (
     _activation_entry,
@@ -107,3 +108,14 @@ def test_v229_parent_invalidation_cancels_only_its_pending_children():
     outcomes=_cancel_pending_plan(session,plan,reconcile)
     assert session.cancelled==[11]
     assert outcomes==["CANCELLED:11"]
+
+
+def test_v229_child_executor_requires_pressure_transition_and_demo_lane_refresh():
+    source = (Path(__file__).resolve().parents[1] / "src/fx_scanner/demo_xau_v229_child_executor.py").read_text()
+    workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/ctrader-demo-xau-execution-lane.yml").read_text()
+    assert "evaluate_pressure_transition" in source
+    assert "pre_touch_entry_allowed" in source
+    assert "confirmation_entry_allowed" in source
+    assert "PRESSURE_BLOCK" in source
+    assert "demo_xau_dom_v191" in workflow
+    assert "steps.refresh_xau_pressure.outcome == 'success'" in workflow
