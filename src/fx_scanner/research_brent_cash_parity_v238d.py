@@ -37,6 +37,8 @@ class ParityThresholds:
     min_overlap: int = 300
     min_return_corr: float = 0.98
     max_median_abs_pct: float = 0.03
+    max_abs_lag_hours: int = 8
+    min_relative_basis_advantage: float = 0.20
 
 
 def _parse_date_env(name: str, default: date) -> date:
@@ -225,6 +227,63 @@ def cash_parity_pass(
     )
 
 
+def lag_sweep(
+    reference: pd.DataFrame,
+    broker: pd.DataFrame,
+    *,
+    max_abs_lag_hours: int = 8,
+) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    for lag in range(-int(max_abs_lag_hours), int(max_abs_lag_hours) + 1):
+        shifted = broker.copy()
+        shifted["timestamp"] = pd.to_datetime(shifted["timestamp"], utc=True) + pd.Timedelta(
+            hours=lag
+        )
+        metrics = parity_metrics(reference, shifted)
+        rows.append({"lag_hours": lag, **metrics})
+    eligible = [row for row in rows if row.get("return_corr") is not None]
+    eligible.sort(
+        key=lambda row: (
+            -float(row.get("return_corr") or -1.0),
+            float(row.get("median_abs_pct") or 1e9),
+            abs(int(row["lag_hours"])),
+        )
+    )
+    best = dict(eligible[0]) if eligible else {}
+    return {
+        "best_lag_hours": best.get("lag_hours"),
+        "best": best,
+        "scan": rows,
+    }
+
+
+def select_preferred_candidate(
+    candidate_results: dict[str, dict[str, Any]],
+    thresholds: ParityThresholds,
+) -> str | None:
+    passing: list[tuple[str, dict[str, Any]]] = []
+    for symbol, result in candidate_results.items():
+        best = dict(result.get("best") or {})
+        if cash_parity_pass(best, thresholds):
+            passing.append((symbol, best))
+    if len(passing) == 1:
+        return passing[0][0]
+    if len(passing) != 2:
+        return None
+
+    passing.sort(key=lambda item: float(item[1].get("median_abs_pct") or 1e9))
+    winner_symbol, winner = passing[0]
+    _, runner = passing[1]
+    winner_basis = float(winner.get("median_abs_pct") or 1e9)
+    runner_basis = float(runner.get("median_abs_pct") or 1e9)
+    if runner_basis <= 0:
+        return None
+    improvement = 1.0 - (winner_basis / runner_basis)
+    if improvement + 1e-12 < thresholds.min_relative_basis_advantage:
+        return None
+    return winner_symbol
+
+
 def run() -> int:
     policy = load_execution_policy(None)
     environment = str(policy.ctrader.get("environment", "")).upper()
@@ -247,11 +306,19 @@ def run() -> int:
     finally:
         feed.close()
 
-    cash_metrics = parity_metrics(histdata, cash)
-    futures_metrics = parity_metrics(histdata, futures)
+    zero_lag_cash = parity_metrics(histdata, cash)
+    zero_lag_futures = parity_metrics(histdata, futures)
     thresholds = ParityThresholds()
-    passed = cash_parity_pass(cash_metrics, thresholds)
-    preferred = CASH_SYMBOL if passed else None
+    candidate_results = {
+        CASH_SYMBOL: lag_sweep(
+            histdata, cash, max_abs_lag_hours=thresholds.max_abs_lag_hours
+        ),
+        FUTURES_SYMBOL: lag_sweep(
+            histdata, futures, max_abs_lag_hours=thresholds.max_abs_lag_hours
+        ),
+    }
+    preferred = select_preferred_candidate(candidate_results, thresholds)
+    passed = preferred is not None
 
     payload = {
         "artifact_contract": "BRENT_CASH_PARITY_V238D_1_EVIDENCE_1",
@@ -261,7 +328,10 @@ def run() -> int:
         "historical_reference": {
             "provider": "HistData",
             "pair": HISTDATA_PAIR,
-            "semantics": "BRENT_CRUDE_OIL_IN_USD",
+            "semantics": (
+                "BRENT_CRUDE_OIL_IN_USD; HISTDATA DOES NOT EXPLICITLY IDENTIFY "
+                "THE FEED AS FP_MARKETS CASH OR FP_MARKETS FUTURES"
+            ),
             "provenance": histdata_provenance,
         },
         "broker": {
@@ -287,22 +357,28 @@ def run() -> int:
             },
         },
         "parity": {
-            CASH_SYMBOL: cash_metrics,
-            FUTURES_SYMBOL: futures_metrics,
+            "zero_lag": {
+                CASH_SYMBOL: zero_lag_cash,
+                FUTURES_SYMBOL: zero_lag_futures,
+            },
+            "lag_adjusted": candidate_results,
         },
         "thresholds": {
             "min_overlap": thresholds.min_overlap,
             "min_return_corr": thresholds.min_return_corr,
             "max_median_abs_pct": thresholds.max_median_abs_pct,
+            "max_abs_lag_hours": thresholds.max_abs_lag_hours,
+            "min_relative_basis_advantage": thresholds.min_relative_basis_advantage,
         },
-        "cash_parity_pass": passed,
+        "identity_parity_pass": passed,
         "preferred_historical_broker_symbol": preferred,
         "mapping_status": "SHADOW_REFERENCE" if passed else "UNRESOLVED",
         "interpretation": (
-            "XBRUSD is the FP Markets Brent cash CFD and is the semantic candidate "
-            "for the continuous HistData BCOUSD research series. BRENT is a distinct "
-            "futures CFD introduced in 2024. H1 price parity is a confirmation gate, "
-            "not execution evidence."
+            "FP Markets documents XBRUSD as Brent cash and BRENT as Brent futures. "
+            "HistData labels BCOUSD as Brent crude oil but does not make that FP Markets "
+            "cash/futures distinction explicit. The preferred shadow mapping is therefore "
+            "chosen from lag-adjusted H1 return parity plus a clear relative price-basis "
+            "advantage. This is source-identity evidence only, not execution evidence."
         ),
         "policy_effect": "SHADOW_ONLY",
         "execution_influence": False,
@@ -315,13 +391,17 @@ def run() -> int:
     output.write_text(json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n")
     print(
         "BRENT_CASH_PARITY_V238D "
-        f"window={start}:{end} cash_overlap={cash_metrics['overlap']} "
-        f"cash_corr={cash_metrics['return_corr']} cash_mape={cash_metrics['median_abs_pct']} "
-        f"future_overlap={futures_metrics['overlap']} future_corr={futures_metrics['return_corr']} "
+        f"window={start}:{end} "
+        f"cash_best_lag={candidate_results[CASH_SYMBOL]['best_lag_hours']} "
+        f"cash_corr={dict(candidate_results[CASH_SYMBOL]['best']).get('return_corr')} "
+        f"cash_mape={dict(candidate_results[CASH_SYMBOL]['best']).get('median_abs_pct')} "
+        f"future_best_lag={candidate_results[FUTURES_SYMBOL]['best_lag_hours']} "
+        f"future_corr={dict(candidate_results[FUTURES_SYMBOL]['best']).get('return_corr')} "
+        f"future_mape={dict(candidate_results[FUTURES_SYMBOL]['best']).get('median_abs_pct')} "
         f"mapping={preferred or 'UNRESOLVED'} execution_authority=0"
     )
     if not passed:
-        raise SystemExit("BRENT_V238D_CASH_PARITY_GATE_FAILED")
+        raise SystemExit("BRENT_V238D_SOURCE_IDENTITY_GATE_FAILED")
     return 0
 
 
