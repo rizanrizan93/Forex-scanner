@@ -33,6 +33,7 @@ from fx_scanner.trade_management_v195 import (
 from fx_scanner.xau_canonical_decision_v240 import build_canonical_xau_decision
 from fx_scanner.xau_profitability_truth_v241 import build_xau_profitability_truth
 from fx_scanner.xau_pressure_transition_v249 import evaluate_pressure_transition
+from fx_scanner.xau_dynamic_depth_hazard_v251 import build_dynamic_depth_hazard
 
 UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
@@ -2148,6 +2149,12 @@ with forecast_tab:
     v240_dom_stale = not bool(v240_pressure_transition.get("fresh"))
     v240_dom_state = str(v240_pressure_transition.get("dom_state") or "UNAVAILABLE")
     v240_pressure_trend = str(v240_pressure_transition.get("state") or "UNAVAILABLE")
+    v240_depth_hazard = build_dynamic_depth_hazard(
+        v226_evaluation=v226_eval,
+        direction=v240_direction,
+        live_price=float(dc_reference_price) if dc_reference_price is not None else 0.0,
+        pressure_transition=v240_pressure_transition,
+    )
 
     if v240_opposing_pressure is None:
         v240_penetration_risk = "UNAVAILABLE"
@@ -2283,6 +2290,59 @@ with forecast_tab:
             "(50≈balanced, >50 lebih BID/buyer, <50 lebih ASK/seller), bukan persentase "
             "volume global COMEX. Pressure sekarang ditampilkan langsung di panel V240."
         )
+
+        st.markdown("###### Dynamic Depth Hazard — next depth / reversal window")
+        hz1, hz2, hz3, hz4 = st.columns(4)
+        hz1.metric(
+            "Current depth",
+            (
+                "—"
+                if v240_depth_hazard.get("current_depth") is None
+                else f"{100.0 * float(v240_depth_hazard.get('current_depth')):.1f}%"
+            ),
+        )
+        hz2.metric(
+            "Next reversal band",
+            (
+                "—"
+                if v240_depth_hazard.get("recommended_depth_low") is None
+                else (
+                    f"{100.0 * float(v240_depth_hazard.get('recommended_depth_low')):.0f}–"
+                    f"{100.0 * float(v240_depth_hazard.get('recommended_depth_high')):.0f}%"
+                )
+            ),
+        )
+        hz3.metric(
+            "Harga band",
+            (
+                "—"
+                if v240_depth_hazard.get("recommended_price_low") is None
+                else (
+                    f"{_fmt_price(v240_depth_hazard.get('recommended_price_low'))}–"
+                    f"{_fmt_price(v240_depth_hazard.get('recommended_price_high'))}"
+                )
+            ),
+        )
+        hz4.metric(
+            "Hazard action",
+            str(v240_depth_hazard.get("action") or "WAIT"),
+        )
+        if str(v240_depth_hazard.get("state") or "") == "DYNAMIC_DEPTH_HAZARD_AVAILABLE":
+            best_hazard = dict(v240_depth_hazard.get("recommended_band") or {})
+            st.info(
+                "Sequential hazard aktif • "
+                f"source={v240_depth_hazard.get('timeframe','—')} • "
+                f"base hazard={float(best_hazard.get('hazard') or 0.0):.1%} • "
+                f"adjusted={float(best_hazard.get('adjusted_hazard') or 0.0):.1%} • "
+                f"action={v240_depth_hazard.get('action','WAIT')}. "
+                "Jika pressure tetap kuat scanner menunggu band lebih dalam; jika fading/"
+                "absorption, band aktif dapat dipakai untuk timing entry."
+            )
+        else:
+            st.warning(
+                "Dynamic Depth Hazard belum tersedia: "
+                + str(v240_depth_hazard.get("reason") or "missing current source zone/hazard prior")
+            )
 
         st.markdown("###### Primary Reversal Watch — area tujuan sebelum potensi reversal")
         rw1, rw2, rw3, rw4 = st.columns(4)
