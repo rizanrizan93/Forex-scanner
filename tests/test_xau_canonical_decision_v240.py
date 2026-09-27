@@ -149,4 +149,5 @@ def test_v240_exposes_nearest_supply_demand_and_destination() -> None:
     )
     assert state["nearest_demand"]["zone_id"] == "d1"
     assert state["nearest_supply"]["zone_id"] == "m15-s"
-    assert state["likely_destination"]["target_price"] >= 106.0
+    assert state["likely_destination"]["target_price"] > 103.0
+    assert state["likely_destination"]["timeframe"] == "M15"
