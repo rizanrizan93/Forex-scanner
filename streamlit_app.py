@@ -2075,16 +2075,16 @@ with forecast_tab:
     v226_ladder_slots = list(v226_four_order_ladder.get("slots") or [])
 
     v240_saved_geometry: dict[str, Any] = {}
-    for v240_event in execution_events:
-        v240_payload = dict(v240_event.get("payload") or {})
+    for chart_event in execution_events:
+        chart_payload = dict(chart_event.get("payload") or {})
         if (
-            str(v240_event.get("event_type") or "") == "DEMO_SIGNAL_GEOMETRY"
+            str(chart_event.get("event_type") or "") == "DEMO_SIGNAL_GEOMETRY"
             and (
-                str(v240_event.get("code") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
-                or str(v240_payload.get("strategy_id") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
+                str(chart_event.get("code") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
+                or str(chart_payload.get("strategy_id") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
             )
         ):
-            v240_saved_geometry = v240_payload
+            v240_saved_geometry = chart_payload
             break
 
     v240_decision = build_canonical_xau_decision(
