@@ -2032,8 +2032,8 @@ with forecast_tab:
             st.warning("Guard aktif: " + ", ".join(str(x) for x in dc_latest_signal_guards))
         elif dc_admission_label == "V229 READY":
             st.success(
-                "V229 memakai jalur khusus. Fresh zone dapat memakai 2 pre-touch LIMIT + "
-                "2 child konfirmasi; H4/H1 retest tetap eligible tetapi masuk melalui "
+                "V229 memakai jalur khusus. Fresh mode = 4-CHILD 2+2 "
+                "(2 pre-touch LIMIT + 2 child konfirmasi); H4/H1 retest tetap eligible tetapi masuk melalui "
                 "confirmation-only L3/L4. Tidak diteruskan ke generic MARKET handoff."
             )
 
