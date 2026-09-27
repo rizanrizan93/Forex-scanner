@@ -18,16 +18,16 @@ from .research_xau_m15_dual_strategy_runtime import _fetch_history, _history_tar
 from .storage.supabase_operational import SupabaseOperationalStore
 
 SYMBOL = "XAUUSD"
-WORKER_NAME = "ctrader_xau_afic_execution_funnel_v176"
+WORKER_NAME = "ctrader_xau_rizan_execution_funnel_v176"
 
 
 def _artifact_path() -> Path:
     raw = os.getenv(
-        "XAU_AFIC_FUNNEL_V176_OUTPUT",
-        "artifacts/xau-afic-execution-funnel-v176.json",
+        "XAU_RIZAN_FUNNEL_V176_OUTPUT",
+        "artifacts/xau-rizan-execution-funnel-v176.json",
     ).strip()
     if not raw:
-        raise SystemExit("XAU_AFIC_FUNNEL_V176_OUTPUT_REQUIRED")
+        raise SystemExit("XAU_RIZAN_FUNNEL_V176_OUTPUT_REQUIRED")
     return Path(raw)
 
 
@@ -66,11 +66,11 @@ def run() -> int:
     cfg = load_project_config(None)
     policy = load_execution_policy(None)
     if str(policy.ctrader.get("environment", "")).upper() != "DEMO":
-        raise SystemExit("XAU_AFIC_FUNNEL_V176_DEMO_ONLY")
+        raise SystemExit("XAU_RIZAN_FUNNEL_V176_DEMO_ONLY")
     if not bool(policy.ctrader.get("require_demo", False)):
-        raise SystemExit("XAU_AFIC_FUNNEL_V176_REQUIRE_DEMO")
+        raise SystemExit("XAU_RIZAN_FUNNEL_V176_REQUIRE_DEMO")
     if SYMBOL not in cfg.pair_map:
-        raise SystemExit("XAU_AFIC_FUNNEL_V176_SYMBOL_NOT_CONFIGURED")
+        raise SystemExit("XAU_RIZAN_FUNNEL_V176_SYMBOL_NOT_CONFIGURED")
 
     target = _history_target()
     observed_at = datetime.now(tz=UTC)
@@ -103,7 +103,7 @@ def run() -> int:
         artifact = _write_artifact(details)
         _heartbeat(details, healthy=False)
         print(
-            "XAU_AFIC_FUNNEL_V176 "
+            "XAU_RIZAN_FUNNEL_V176 "
             f"bars={len(bars)} decision=DATA_INSUFFICIENT artifact={artifact} "
             "execution_influence=0"
         )
@@ -118,7 +118,7 @@ def run() -> int:
     }
     _heartbeat(details, healthy=healthy)
     print(
-        "XAU_AFIC_FUNNEL_V176 "
+        "XAU_RIZAN_FUNNEL_V176 "
         f"bars={len(bars)} episodes={details['evaluation'].get('episodes')} "
         f"decision={details['decision']} artifact={artifact} execution_influence=0"
     )
