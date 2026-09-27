@@ -2087,12 +2087,20 @@ with forecast_tab:
             v240_saved_geometry = chart_payload
             break
 
+    v240_v212_details = (
+        {} if v212_probability_hb is None
+        else dict(v212_probability_hb.get("details") or {})
+    )
+    v240_zone_probabilities = [
+        dict(item) for item in list(v240_v212_details.get("zone_probabilities") or [])
+    ]
     v240_decision = build_canonical_xau_decision(
         v226_evaluation=v226_eval,
         atlas_evaluation=dc_sd_eval,
         price_now=dc_reference_price,
         path_direction=dc_current_leg_direction,
         saved_v229_geometry=v240_saved_geometry,
+        zone_probabilities=v240_zone_probabilities,
         v226_age_seconds=(
             None if v226_depth_map_hb is None
             else _age_seconds(v226_depth_map_hb.get("observed_at"))
@@ -2114,6 +2122,7 @@ with forecast_tab:
     v240_destination = dict(v240_decision.get("likely_destination") or {})
     v240_nearest_demand = dict(v240_decision.get("nearest_demand") or {})
     v240_nearest_supply = dict(v240_decision.get("nearest_supply") or {})
+    v240_reversal_watch = dict(v240_decision.get("primary_reversal_watch") or {})
     v240_hist = dict(v240_decision.get("historical_context") or {})
     v240_conflicts = list(v240_decision.get("conflicts") or [])
     v240_stale = list(v240_decision.get("stale_reasons") or [])
@@ -2184,6 +2193,41 @@ with forecast_tab:
             "Depth source",
             str(v240_decision.get("source_layer") or "—"),
         )
+
+        st.markdown("###### Primary Reversal Watch — area tujuan sebelum potensi reversal")
+        rw1, rw2, rw3, rw4 = st.columns(4)
+        rw1.metric(
+            "Area reversal utama",
+            (
+                f"{_fmt_price(v240_reversal_watch.get('low'))}–"
+                f"{_fmt_price(v240_reversal_watch.get('high'))}"
+                if v240_reversal_watch else "—"
+            ),
+        )
+        rw2.metric("P touch (research)", _fmt_pct(v240_reversal_watch.get("p_touch")))
+        rw3.metric(
+            "P reaksi ≥0.50 ATR",
+            _fmt_pct(v240_reversal_watch.get("p_hold_050")),
+        )
+        rw4.metric(
+            "Touch×Reaction score",
+            _fmt_pct(v240_reversal_watch.get("research_joint_score")),
+        )
+        if v240_reversal_watch:
+            st.caption(
+                f"{v240_reversal_watch.get('timeframe','—')} "
+                f"{v240_reversal_watch.get('direction','—')} • "
+                f"confidence={v240_reversal_watch.get('confidence','—')} • "
+                f"P break={_fmt_pct(v240_reversal_watch.get('p_break'))} • "
+                f"jarak={_fmt_price(v240_reversal_watch.get('distance_points'))} poin. "
+                "Touch×Reaction adalah skor riset untuk meranking zona tujuan + potensi reaksi; "
+                "bukan probabilitas terkalibrasi dan bukan izin entry."
+            )
+        else:
+            st.caption(
+                "Belum ada opposing zone di depan harga yang memiliki evidence V212 lengkap "
+                "untuk touch dan reaction. Dashboard tidak mengarang probabilitas reversal."
+            )
 
         st.caption(
             "Historical reaction context: "
