@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Any, Sequence
 
-from .research_brent_v229_historical_v236 import (
+from .research_brent_v229_historical_v239 import (
     ARTIFACT_CONTRACT,
     CHILD_LOT,
     EXECUTION_AUTHORITY,
@@ -26,7 +26,7 @@ ERAS = {
 
 
 def _shard_dir() -> Path:
-    path = Path(os.getenv("BRENT_V239_SHARD_DIR", "/tmp/brent-v236-shards"))
+    path = Path(os.getenv("BRENT_V239_SHARD_DIR", "/tmp/brent-v239-shards"))
     if not path.exists():
         raise SystemExit(f"BRENT_V239_SHARD_DIR_NOT_FOUND:{path}")
     return path
@@ -36,14 +36,14 @@ def _output_path() -> Path:
     return Path(
         os.getenv(
             "BRENT_V239_FULL_OUTPUT",
-            "artifacts/brent-v229-historical-v236-full.json",
+            "artifacts/brent-v229-historical-v239-full.json",
         )
     )
 
 
 def _load_shards(path: Path) -> list[dict[str, Any]]:
     output: list[dict[str, Any]] = []
-    for file in sorted(path.rglob("brent-v229-historical-v236-*.json")):
+    for file in sorted(path.rglob("brent-v229-historical-v239-*.json")):
         payload = json.loads(file.read_text())
         if "year" in payload:
             output.append(payload)
