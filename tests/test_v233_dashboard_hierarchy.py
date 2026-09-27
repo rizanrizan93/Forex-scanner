@@ -36,7 +36,7 @@ def test_v233_secondary_panels_are_collapsed_by_default() -> None:
 def test_v233_dashboard_recognizes_dedicated_v229_child_lane() -> None:
     assert '"XAU_RIZAN_DEPTH_EXECUTION_V1"' in SOURCE
     assert '"DEDICATED CHILD ELIGIBLE"' in SOURCE
-    assert '"4-CHILD 2+2"' in SOURCE
+    assert "4-CHILD 2+2" in SOURCE
     assert "Tidak diteruskan ke generic MARKET handoff." in SOURCE
 
 
