@@ -62,16 +62,13 @@ def rank_brent_candidates(
 def resolve_unique_brent_candidate(
     candidates: Sequence[dict[str, Any]],
 ) -> dict[str, Any] | None:
-    if not candidates:
+    strong = [dict(row) for row in candidates if int(row.get("score") or 0) >= 80]
+    # More than one strong broker symbol is a semantic ambiguity, even when
+    # one name appears more explicit. Contract metadata must be inspected
+    # before selecting a production mapping.
+    if len(strong) != 1:
         return None
-    top = dict(candidates[0])
-    if int(top.get("score") or 0) < 80:
-        return None
-    if len(candidates) > 1 and int(candidates[1].get("score") or 0) == int(
-        top["score"]
-    ):
-        return None
-    return top
+    return strong[0]
 
 
 def _output_path() -> Path:
@@ -101,12 +98,35 @@ def run() -> int:
         raise SystemExit("BRENT_V238C_REQUIRE_DEMO")
 
     feed = build_ctrader_research_feed(policy, (REFERENCE_SYMBOL,))
+    candidate_contracts: list[dict[str, Any]] = []
     try:
         catalogue = feed.symbol_catalogue()
+        candidates = rank_brent_candidates(catalogue)
+        strong_names = [
+            str(row["symbol_name"])
+            for row in candidates
+            if int(row.get("score") or 0) >= 80
+        ]
+        if strong_names:
+            feed.load_symbol_metadata(strong_names)
+            from google.protobuf.json_format import MessageToDict
+
+            for name in strong_names:
+                info = feed.symbol_info(name)
+                candidate_contracts.append(
+                    {
+                        "symbol_name": name,
+                        "symbol_id": int(getattr(info, "symbolId", 0) or 0),
+                        "contract": MessageToDict(
+                            info,
+                            preserving_proto_field_name=True,
+                            use_integers_for_enums=True,
+                        ),
+                    }
+                )
     finally:
         feed.close()
 
-    candidates = rank_brent_candidates(catalogue)
     resolved = resolve_unique_brent_candidate(candidates)
     payload = {
         "artifact_contract": "BRENT_BROKER_SYMBOL_V238C_1_EVIDENCE_1",
@@ -119,12 +139,15 @@ def run() -> int:
         "catalogue_sha256": _catalogue_fingerprint(catalogue),
         "candidate_count": len(candidates),
         "candidates": candidates,
+        "candidate_contracts": candidate_contracts,
         "resolved": resolved is not None,
         "resolved_symbol": None if resolved is None else resolved["symbol_name"],
         "resolved_symbol_id": None if resolved is None else resolved["symbol_id"],
         "interpretation": (
-            "Read-only cTrader SymbolsList discovery. The result does not subscribe "
-            "to the Brent candidate and does not create, modify, or authorize orders."
+            "Read-only cTrader SymbolsList plus SymbolById contract discovery. Candidate "
+            "metadata is loaded without spot subscription. More than one strong Brent "
+            "candidate remains unresolved until contract semantics are reviewed. The "
+            "result does not create, modify, or authorize orders."
         ),
         "policy_effect": "SHADOW_ONLY",
         "execution_influence": False,
