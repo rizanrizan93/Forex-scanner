@@ -172,7 +172,7 @@ def test_xau_operational_labels_are_indonesian_while_machine_states_remain_audit
     assert 'Menunggu", "H4 MAP BARU"' in text
     assert '"Zona tercapai saat aktif"' in text
     assert '"kelayakan": admission' in text
-    assert '"izin geometry": geometry_code or "—"' in text
+    assert '"izin geometry": _rizan_display(geometry_code or "—")' in text
     assert '"target pertama"' in text
     assert '"target terminal"' in text
     assert '"BROKER ELIGIBLE"' in text
