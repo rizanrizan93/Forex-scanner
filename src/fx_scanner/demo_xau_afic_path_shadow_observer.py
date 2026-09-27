@@ -22,10 +22,10 @@ from .demo_xau_afic_supply_demand_context import (
 from .storage.supabase_operational import SupabaseOperationalStore
 
 SYMBOL="XAUUSD"
-STRATEGY_ID="XAU_AFIC_PATH_SHADOW_V1"
-FORWARD_CONTRACT="XAU_AFIC_PATH_SHADOW_FORWARD_V1"
-WORKER_NAME="ctrader_demo_xau_afic_path_shadow_observer"
-EVENT_TYPE="DEMO_XAU_AFIC_PATH_SHADOW_EVALUATION"
+STRATEGY_ID="XAU_RIZAN_PATH_SHADOW_V1"
+FORWARD_CONTRACT="XAU_RIZAN_PATH_SHADOW_FORWARD_V1"
+WORKER_NAME="ctrader_demo_xau_rizan_path_shadow_observer"
+EVENT_TYPE="DEMO_XAU_RIZAN_PATH_SHADOW_EVALUATION"
 
 REQUEST_COUNT=1500
 LOOKBACK_DAYS=18
@@ -737,14 +737,14 @@ def _persist(store,*,payload,key)->bool:
         return False
     account=_account_label()
     if not account:
-        raise RuntimeError("CTRADER_ACCOUNT_ID_REQUIRED_FOR_AFIC_SHADOW")
+        raise RuntimeError("CTRADER_ACCOUNT_ID_REQUIRED_FOR_RIZAN_SHADOW")
     digest=hashlib.sha256(key.encode()).hexdigest()[:28]
     store.record_order_event(
         backend="CTRADER",account_id=account,
-        signal_key=f"AFIC_SHADOW:{digest}",
+        signal_key=f"RIZAN_SHADOW:{digest}",
         broker_order_id=None,event_type=EVENT_TYPE,
         accepted=None,code=STRATEGY_ID,
-        message="AFIC path-state forward shadow evaluation; no broker action",
+        message="RIZAN path-state forward shadow evaluation; no broker action",
         payload={
             "evaluation_key":key,
             "environment":"DEMO",
@@ -762,11 +762,11 @@ def run()->int:
     cfg=load_project_config(None)
     policy=load_execution_policy(None)
     if str(policy.ctrader.get("environment","")).upper()!="DEMO":
-        raise SystemExit("AFIC_PATH_SHADOW_DEMO_ONLY")
+        raise SystemExit("RIZAN_PATH_SHADOW_DEMO_ONLY")
     if not bool(policy.ctrader.get("require_demo",False)):
-        raise SystemExit("AFIC_PATH_SHADOW_REQUIRE_DEMO")
+        raise SystemExit("RIZAN_PATH_SHADOW_REQUIRE_DEMO")
     if SYMBOL not in cfg.pair_map:
-        raise SystemExit("AFIC_PATH_SHADOW_XAUUSD_NOT_CONFIGURED")
+        raise SystemExit("RIZAN_PATH_SHADOW_XAUUSD_NOT_CONFIGURED")
 
     feed=build_ctrader_research_feed(policy,(SYMBOL,))
     store=SupabaseOperationalStore.from_env()
@@ -811,7 +811,7 @@ def run()->int:
         },
     )
     print(
-        "CTRADER_DEMO_XAU_AFIC_PATH_SHADOW "
+        "CTRADER_DEMO_XAU_RIZAN_PATH_SHADOW "
         f"healthy={int(healthy)} state={payload.get('state','ERROR')} "
         f"persisted={int(persisted)} execution_influence=0"
     )
