@@ -49,7 +49,7 @@ class Query:
         self.payload = payload
         return self
 
-    def insert(self, payload):
+    def insert(self, payload, **_kwargs):
         self.operation = "insert"
         self.payload = payload
         return self
