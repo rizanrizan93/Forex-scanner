@@ -71,3 +71,14 @@ def test_v251_dynamic_depth_hazard_is_visible_in_canonical_dashboard():
     assert "Next reversal band" in SOURCE
     assert "Hazard action" in SOURCE
     assert "build_dynamic_depth_hazard" in SOURCE
+
+
+def test_v252_dashboard_surfaces_retested_htf_lifecycle_and_demo_execution():
+    assert "Supply/Demand Lifecycle — freshness bukan hard gate H4/H1" in SOURCE
+    assert "Candidate lifecycle" in SOURCE
+    assert "Confirmation eligible" in SOURCE
+    assert "HTF retested" in SOURCE
+    assert "V229 DEMO Execution — producer + child executor" in SOURCE
+    assert "Execution phase" in SOURCE
+    assert "Aksi child executor terbaru:" in SOURCE
+    assert "Prior scope:" in SOURCE
