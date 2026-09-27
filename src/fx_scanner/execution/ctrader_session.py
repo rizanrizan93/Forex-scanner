@@ -463,6 +463,23 @@ class CTraderOpenApiSession:
     def health(self) -> bool:
         return self._connected.is_set() and self._authenticated.is_set()
 
+    def symbol_catalogue(self) -> tuple[tuple[int, str], ...]:
+        """Return the current broker symbol catalogue without subscribing or trading."""
+        self.ensure_connected()
+        req = self.msg["SymbolsListReq"]()
+        req.ctidTraderAccountId = self.account_id
+        req.includeArchivedSymbols = False
+        res = self._send_sync(req, client_msg_id=f"symbols-catalogue-{uuid4().hex}")
+        output: list[tuple[int, str]] = []
+        for light in tuple(getattr(res, "symbol", ())):
+            sid = int(getattr(light, "symbolId", 0) or 0)
+            name = str(getattr(light, "symbolName", "") or "").strip()
+            if sid <= 0 or not name:
+                continue
+            output.append((sid, name))
+        output.sort(key=lambda item: (normalize_symbol_name(item[1]), item[0]))
+        return tuple(output)
+
     def load_symbols(self, desired_symbols: list[str]) -> None:
         self.ensure_connected()
         req = self.msg["SymbolsListReq"]()
