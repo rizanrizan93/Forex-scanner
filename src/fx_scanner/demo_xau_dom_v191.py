@@ -425,7 +425,7 @@ def run() -> int:
         "analysis": analysis,
         "source": "CTRADER_OPEN_API_LEVEL_II",
         "source_scope": "BROKER_VENUE_LIQUIDITY_NOT_COMEX_CONSOLIDATED_BOOK",
-        "policy_effect": "SHADOW_CONTEXT_ONLY",
+        "policy_effect": "VISIBLE_OPERATIONAL_CONTEXT",
         "dom_sample_retention_days": DOM_SAMPLE_RETENTION_DAYS,
         "pressure_depth_research_feed": "xau_dom_pressure_samples",
         "execution_influence": False,
