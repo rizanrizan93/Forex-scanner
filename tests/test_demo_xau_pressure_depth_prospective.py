@@ -49,7 +49,7 @@ def test_summary_maps_pressure_to_depth():
     cell = result["by_pressure_bucket"]["OPPOSING_STRONG"]
     assert cell["n"] == 2
     assert cell["turning_depth_median"] == 0.78
-    assert cell["max_depth_median"] == 0.84
+    assert abs(cell["max_depth_median"] - 0.84) < 1e-12
 
 
 def test_bucket_contract():
