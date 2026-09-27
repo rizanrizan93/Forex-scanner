@@ -9,10 +9,11 @@ from . import demo_fresh_ready_handoff as base
 from .demo_execution_fresh_ready_handoff import install_exact_strategy_identity_filter
 
 SYMBOL = "XAUUSD"
-RIZAN_EXECUTION_STRATEGY_ID = "XAU_RIZAN_PATH_EXECUTION_V1"\nLEGACY_RIZAN_EXECUTION_STRATEGY_ID = "XAU_AFIC_PATH_EXECUTION_V1"
+RIZAN_EXECUTION_STRATEGY_ID = "XAU_RIZAN_PATH_EXECUTION_V1"
+LEGACY_AFIC_EXECUTION_STRATEGY_ID = "XAU_AFIC_PATH_EXECUTION_V1"
 WORKER_NAME = "ctrader_demo_xau_rizan_fast_handoff"
 _ALLOWED_RIZAN_STRATEGIES_BY_SYMBOL = {
-    SYMBOL: frozenset({RIZAN_EXECUTION_STRATEGY_ID}),
+    SYMBOL: frozenset({RIZAN_EXECUTION_STRATEGY_ID, LEGACY_AFIC_EXECUTION_STRATEGY_ID}),
 }
 
 def install_afic_execution_identity_filter(*, max_age_seconds: float) -> None:
