@@ -1456,7 +1456,7 @@ with forecast_tab:
 - **Liquidity / Likuiditas:** area dengan potensi konsentrasi order/minat transaksi; pada scanner ini hanya confluence/ranking, bukan pembentuk zone tunggal.
 - **BOS (Break of Structure):** penembusan struktur swing yang dipakai untuk mengaitkan displacement dengan origin zone.
 - **Displacement:** gerakan impulsif yang cukup kuat setelah origin; digunakan untuk membuktikan bahwa origin berhubungan dengan perubahan struktur.
-- **Freshness / Kesegaran:** umur dan riwayat sentuhan zone. Pada H4/H1 ini adalah konteks lifecycle/ranking, bukan syarat first-touch; zona retest tetap aktif sampai struktur invalid. M15 tetap lebih ketat.
+- **Freshness / Kesegaran:** umur dan riwayat sentuhan zone. Pada H4/H1 ini adalah konteks lifecycle/ranking, bukan syarat first-touch; zona retest tetap aktif sampai struktur invalid. M15 multi-test juga tidak langsung dibuang, tetapi wajib pressure transition + fresh M5 confirmation sebelum DEMO execution.
 """
         )
 
@@ -2496,8 +2496,9 @@ with forecast_tab:
         st.caption(
             "H4/H1 yang masih structurally active tetap dipakai walau multi-touch. "
             "Touch count menurunkan lifecycle priority tetapi tidak mematikan zona. "
-            "Jika HTF sudah retest, jalur DEMO menjadi confirmation-only; M15 multi-test "
-            "tetap lebih ketat dan dapat memblokir candidate."
+            "Jika HTF atau M15 sudah retest, jalur DEMO menjadi confirmation-only. "
+            "M15 multi-test tidak lagi menjadi hard reject; pressure transition + fresh "
+            "M5 confirmation wajib sebelum child L3/L4 boleh dieksekusi."
         )
 
         st.markdown("###### V229 DEMO Execution — producer + child executor")
