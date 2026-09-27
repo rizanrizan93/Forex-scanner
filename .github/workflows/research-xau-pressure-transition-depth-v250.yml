@@ -1,0 +1,98 @@
+name: Research XAU Pressure Transition Depth V250
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/research_xau_pressure_transition_depth_v250.py"
+      - "src/fx_scanner/research_xau_pressure_transition_depth_v250_year_runtime.py"
+      - "src/fx_scanner/research_xau_pressure_transition_depth_v250_aggregate.py"
+      - "tests/test_research_xau_pressure_transition_depth_v250.py"
+      - ".github/workflows/research-xau-pressure-transition-depth-v250.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-pressure-transition-depth-v250-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - run: pytest -q tests/test_research_xau_pressure_transition_depth_v250.py
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 95
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v250-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v250-price-provenance-${{ matrix.year }}.json
+      XAU_V250_YEAR: ${{ matrix.year }}
+      XAU_V250_PRICE_CSV: /tmp/histdata/xau-v250-${{ matrix.year }}.csv
+      XAU_V250_YEAR_OUTPUT: artifacts/xau-pressure-transition-depth-v250-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - run: python -m fx_scanner.research_xau_histdata_download_v193
+      - run: python -m fx_scanner.research_xau_pressure_transition_depth_v250_year_runtime
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-pressure-transition-depth-v250-year-${{ matrix.year }}
+          path: artifacts/xau-pressure-transition-depth-v250-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      XAU_V250_SHARD_DIR: /tmp/v250-shards
+      XAU_V250_FULL_OUTPUT: artifacts/xau-pressure-transition-depth-v250-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xau-pressure-transition-depth-v250-year-*
+          path: /tmp/v250-shards
+          merge-multiple: false
+      - run: python -m fx_scanner.research_xau_pressure_transition_depth_v250_aggregate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-pressure-transition-depth-v250-full
+          path: artifacts/xau-pressure-transition-depth-v250-full.json
+          if-no-files-found: error
+          retention-days: 30
