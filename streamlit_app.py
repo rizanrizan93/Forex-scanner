@@ -5281,7 +5281,7 @@ with forecast_tab:
             else:
                 admission = "SHADOW READY"
                 reason = (
-                    f"{geometry_code or 'NO_AUTHORIZED_GEOMETRY'} tidak memiliki izin broker"
+                    f"{_rizan_display(geometry_code or 'NO_AUTHORIZED_GEOMETRY')} tidak memiliki izin broker"
                 )
             admission_rows.append({
                 "waktu (WIB)": _fmt_wib_datetime(row.get("observed_at")),
@@ -5290,7 +5290,7 @@ with forecast_tab:
                 "grade/skor": row.get("final_score"),
                 "status tersimpan": row.get("state"),
                 "kelayakan": admission,
-                "izin geometry": geometry_code or "—",
+                "izin geometry": _rizan_display(geometry_code or "—"),
                 "alasan": reason,
                 "kedaluwarsa (WIB)": _fmt_wib_datetime(row.get("expires_at")),
             })
