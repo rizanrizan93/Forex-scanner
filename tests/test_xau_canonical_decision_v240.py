@@ -151,3 +151,52 @@ def test_v240_exposes_nearest_supply_demand_and_destination() -> None:
     assert state["nearest_supply"]["zone_id"] == "m15-s"
     assert state["likely_destination"]["target_price"] > 103.0
     assert state["likely_destination"]["timeframe"] == "M15"
+
+
+
+def test_v2401_ranks_primary_reversal_watch_with_v212_evidence() -> None:
+    state = build_canonical_xau_decision(
+        v226_evaluation=_v226(),
+        atlas_evaluation=_atlas(),
+        price_now=103.0,
+        path_direction="LONG",
+        zone_probabilities=[
+            {
+                "zone_id": "m15-s",
+                "destination": {"p_touch": 0.90},
+                "reaction": {
+                    "p_hold_050": 0.70,
+                    "p_break": 0.20,
+                    "confidence": "HIGH_HISTORICAL_SUPPORT",
+                    "estimate_type": "SHRUNK_EMPIRICAL_HOLDOUT_ESTIMATE",
+                    "not_calibrated_probability_claim": True,
+                },
+            },
+            {
+                "zone_id": "h1-s",
+                "destination": {"p_touch": 0.80},
+                "reaction": {
+                    "p_hold_050": 0.60,
+                    "p_break": 0.30,
+                    "confidence": "MEDIUM_HISTORICAL_SUPPORT",
+                    "estimate_type": "SHRUNK_EMPIRICAL_HOLDOUT_ESTIMATE",
+                    "not_calibrated_probability_claim": True,
+                },
+            },
+        ],
+    )
+    watch = state["primary_reversal_watch"]
+    assert watch["zone_id"] == "m15-s"
+    assert abs(watch["research_joint_score"] - 0.63) < 1e-12
+    assert watch["not_calibrated_probability_claim"] is True
+
+
+def test_v2401_does_not_invent_reversal_probability_without_v212_evidence() -> None:
+    state = build_canonical_xau_decision(
+        v226_evaluation=_v226(),
+        atlas_evaluation=_atlas(),
+        price_now=103.0,
+        path_direction="LONG",
+        zone_probabilities=[],
+    )
+    assert state["primary_reversal_watch"] == {}
