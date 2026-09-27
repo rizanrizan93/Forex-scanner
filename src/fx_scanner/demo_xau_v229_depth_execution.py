@@ -16,6 +16,7 @@ from .demo_xau_v229_ladder_plan import build_parent_ladder_plan
 from .execution.policy import load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
 from .xau_pressure_transition_v249 import DOM_WORKER, evaluate_pressure_transition
+from .xau_dynamic_depth_hazard_v251 import build_dynamic_depth_hazard
 
 SYMBOL = "XAUUSD"
 STRATEGY_ID = "XAU_RIZAN_DEPTH_EXECUTION_V1"
@@ -385,6 +386,7 @@ def run() -> int:
     error: str | None = None
     prior_invalidated = 0
     pressure_transition: dict[str, Any] = {}
+    depth_hazard: dict[str, Any] = {}
 
     try:
         if not execution_enabled:
@@ -420,6 +422,12 @@ def run() -> int:
                 dom_heartbeat=dom_hb,
                 now=now,
             )
+            depth_hazard = build_dynamic_depth_hazard(
+                v226_evaluation=v226_eval,
+                direction=direction,
+                live_price=live_price,
+                pressure_transition=pressure_transition,
+            )
 
             plan = build_execution_plan(
                 v226_evaluation=v226_eval,
@@ -428,7 +436,7 @@ def run() -> int:
                 min_rr=MIN_PLAN_RR,
             )
             if plan is None:
-                reason = "WAIT_FRESH_DEPTH_CANDIDATE_OR_STRUCTURAL_TARGET"
+                reason = "WAIT_FRESH_OR_FIRST_TOUCH_CONFIRMATION_CANDIDATE"
             elif not (
                 bool(pressure_transition.get("pre_touch_entry_allowed"))
                 or bool(pressure_transition.get("confirmation_entry_allowed"))
@@ -437,8 +445,19 @@ def run() -> int:
                     "WAIT_PRESSURE_TRANSITION:"
                     + str(pressure_transition.get("state") or "UNAVAILABLE")
                 )
+            elif str(depth_hazard.get("state") or "") != "DYNAMIC_DEPTH_HAZARD_AVAILABLE":
+                reason = (
+                    "WAIT_DYNAMIC_DEPTH_HAZARD:"
+                    + str(depth_hazard.get("reason") or "UNAVAILABLE")
+                )
+            elif not bool(depth_hazard.get("execution_ready")):
+                reason = (
+                    "WAIT_DYNAMIC_DEPTH_HAZARD:"
+                    + str(depth_hazard.get("action") or "WAIT")
+                )
             else:
                 plan["pressure_transition"] = dict(pressure_transition)
+                plan["dynamic_depth_hazard"] = dict(depth_hazard)
                 candidate_key = _candidate_key(plan)
                 prior_invalidated = _invalidate_prior_ready(
                     store,
@@ -482,6 +501,8 @@ def run() -> int:
             "microstructure_confirmation_required": "PRESSURE_TRANSITION_ALL_SLOTS_PLUS_M5_SLOTS_3_4",
             "pressure_transition_required": True,
             "pressure_transition": pressure_transition,
+            "dynamic_depth_hazard_required": True,
+            "dynamic_depth_hazard": depth_hazard,
             "reason": reason,
             "signal_id": signal_id,
             "candidate_key": candidate_key,
