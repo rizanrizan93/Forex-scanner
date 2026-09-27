@@ -1,4 +1,4 @@
-name: cTrader Demo XAU AFIC Path Shadow
+name: cTrader Demo XAU RIZAN Path Shadow
 
 on:
   workflow_dispatch:
@@ -52,7 +52,7 @@ jobs:
           pip install pytest==9.0.2
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Unit test AFIC shadow
+      - name: Unit test RIZAN shadow
         run: pytest -q tests/test_demo_xau_afic_path_shadow_observer.py
-      - name: Record AFIC path-state shadow evidence
+      - name: Record RIZAN path-state shadow evidence
         run: python -m fx_scanner.demo_xau_afic_path_shadow_observer
