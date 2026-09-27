@@ -72,8 +72,19 @@ def build_parent_ladder_plan(
         return None
 
     candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
-    fresh_pre_touch = bool(candidate.get("pre_touch_execution_eligible"))
-    confirmation_allowed = bool(candidate.get("confirmation_execution_eligible"))
+    fresh_pre_touch = bool(
+        candidate.get(
+            "pre_touch_execution_eligible",
+            candidate.get("calibrated_fresh_first_touch", False),
+        )
+    )
+    confirmation_allowed = bool(
+        candidate.get(
+            "confirmation_execution_eligible",
+            candidate.get("confirmation_calibrated_first_touch", False)
+            or candidate.get("first_touch_in_progress", False),
+        )
+    )
     confirmation_first_touch = bool(
         candidate.get("confirmation_calibrated_first_touch")
         or candidate.get("first_touch_in_progress")
