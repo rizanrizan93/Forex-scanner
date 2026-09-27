@@ -19,13 +19,14 @@ def test_streamlit_app_boots_offline_without_backend_secrets():
     )
 
 
-def test_streamlit_dashboard_refresh_contract_is_15_seconds():
+def test_streamlit_dashboard_refresh_contract_is_60_seconds():
     text = (ROOT / "streamlit_app.py").read_text()
-    assert '@st.cache_data(ttl=15, show_spinner=False)' in text
-    assert '@st.fragment(run_every="15s")' in text
-    assert '(now - last).total_seconds() >= 14.5' in text
-    assert 'Refresh the read-only dashboard every 15 seconds.' in text
-    assert 'run_every="5s"' not in text
+    assert text.count('@st.cache_data(ttl=60, show_spinner=False)') >= 2
+    assert '@st.fragment(run_every="60s")' in text
+    assert '(now - last).total_seconds() >= 59.5' in text
+    assert 'Refresh the read-only dashboard every 60 seconds.' in text
+    assert 'run_every="15s"' not in text
+    assert 'ttl=15' not in text
     assert 'ttl=2' not in text
 
 
