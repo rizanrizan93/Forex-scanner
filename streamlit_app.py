@@ -100,12 +100,12 @@ def _supabase_client(url: str, secret_key: str):
     return create_client(url, secret_key)
 
 
-@st.cache_data(ttl=15, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def _load_backend_fast_snapshot(url: str, secret_key: str) -> dict[str, Any]:
     """Fast dashboard state needed for manual execution awareness.
 
-    V209 keeps the user-facing 15-second refresh contract for broker state,
-    execution control, current signals, and recent XAU execution events.
+    The user-facing dashboard refresh contract is 60 seconds. Broker execution
+    workers remain independent and continue at their own faster runtime cadence.
     """
     client = _supabase_client(url, secret_key)
     reader = SupabaseDashboardReader(client)
@@ -126,8 +126,8 @@ def _load_backend_fast_snapshot(url: str, secret_key: str) -> dict[str, Any]:
 def _load_backend_slow_snapshot(url: str, secret_key: str) -> dict[str, Any]:
     """Slower observability/research state.
 
-    These producers run at roughly one-to-five minute cadence and do not need
-    to reread wide heartbeat/event JSON on every 15-second Streamlit rerun.
+    These producers run at roughly one-to-five minute cadence. The dashboard
+    reads them on the same 60-second user-facing refresh cycle.
     """
     client = _supabase_client(url, secret_key)
     reader = SupabaseDashboardReader(client)
@@ -148,8 +148,8 @@ def _load_backend_slow_snapshot(url: str, secret_key: str) -> dict[str, Any]:
 
 
 def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
-    # V209 tiered cache: preserve 15-second trading visibility while reducing
-    # wide observability reads (especially runtime_heartbeats/details) by ~4x.
+    # Dashboard reads are intentionally capped at 60 seconds. Execution and
+    # monitoring workers are independent of Streamlit and are not slowed down.
     merged = dict(_load_backend_slow_snapshot(url, secret_key))
     merged.update(_load_backend_fast_snapshot(url, secret_key))
     return merged
@@ -1293,7 +1293,7 @@ with st.sidebar:
     auto_refresh_enabled = st.toggle(
         "Auto refresh monitor",
         value=True,
-        help="Refresh the read-only dashboard every 15 seconds. Scanner/order runtime is independent.",
+        help="Refresh the read-only dashboard every 60 seconds. Scanner/order runtime is independent.",
     )
 
     st.divider()
@@ -1321,13 +1321,13 @@ if "dashboard_auto_refresh_at" not in st.session_state:
     st.session_state["dashboard_auto_refresh_at"] = datetime.now(tz=UTC)
 
 
-@st.fragment(run_every="15s")
+@st.fragment(run_every="60s")
 def _dashboard_auto_refresh_tick() -> None:
     if not auto_refresh_enabled:
         return
     now = datetime.now(tz=UTC)
     last = st.session_state.get("dashboard_auto_refresh_at")
-    if not isinstance(last, datetime) or (now - last).total_seconds() >= 14.5:
+    if not isinstance(last, datetime) or (now - last).total_seconds() >= 59.5:
         st.session_state["dashboard_auto_refresh_at"] = now
         _clear_backend_snapshot_cache(include_slow=False)
         st.rerun()
@@ -1514,6 +1514,12 @@ with forecast_tab:
     )
     v227_depth_calibration_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v227_depth_map_prospective"
+    )
+    v229_depth_execution_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v229_depth_execution"
+    )
+    v229_child_executor_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_v229_child_executor"
     )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
@@ -1993,7 +1999,7 @@ with forecast_tab:
         dc_route_label = "GUARD ACTIVE"
     elif dc_latest_signal_state == "EXECUTION_READY" and dc_latest_geometry_code == "XAU_RIZAN_DEPTH_EXECUTION_V1":
         dc_admission_label = "V229 READY"
-        dc_route_label = "4-CHILD 2+2"
+        dc_route_label = "V229 DEPTH"
     elif dc_latest_signal_state == "EXECUTION_READY" and dc_latest_geometry_code in {
         "XAU_AFIC_PATH_EXECUTION_V1",
         "XAU_M15_EMA_SMC_RECLAIM_V1",
@@ -2026,8 +2032,9 @@ with forecast_tab:
             st.warning("Guard aktif: " + ", ".join(str(x) for x in dc_latest_signal_guards))
         elif dc_admission_label == "V229 READY":
             st.success(
-                "V229 memakai jalur khusus: 2 pre-touch LIMIT + 2 child setelah konfirmasi M5. "
-                "Tidak diteruskan ke generic MARKET handoff."
+                "V229 memakai jalur khusus. Fresh zone dapat memakai 2 pre-touch LIMIT + "
+                "2 child konfirmasi; H4/H1 retest tetap eligible tetapi masuk melalui "
+                "confirmation-only L3/L4. Tidak diteruskan ke generic MARKET handoff."
             )
 
     v226_details = (
