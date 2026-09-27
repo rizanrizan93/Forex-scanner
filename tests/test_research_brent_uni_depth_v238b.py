@@ -66,6 +66,7 @@ def test_v238b_reaction_ladder_is_monotonic() -> None:
             {"timestamp": "2026-01-05T00:01:00Z", "open": 100.0, "high": 100.6, "low": 99.9, "close": 100.4},
             {"timestamp": "2026-01-05T00:02:00Z", "open": 100.4, "high": 100.9, "low": 100.2, "close": 100.8},
             {"timestamp": "2026-01-05T00:03:00Z", "open": 100.8, "high": 101.1, "low": 100.7, "close": 101.0},
+            {"timestamp": "2026-01-05T04:00:00Z", "open": 101.0, "high": 101.0, "low": 101.0, "close": 101.0},
         ]
     )
     row = build_excursion_metrics(frame, [_episode()])[0]
@@ -102,3 +103,16 @@ def test_v238b_histdata_symbol_is_bco_usd() -> None:
     ).read_text(encoding="utf-8")
     assert 'PAIR = "BCOUSD"' in source
     assert 'DISPLAY_INSTRUMENT = "BRENT"' in source
+
+
+def test_v238b_truncated_horizon_is_censored_not_failed() -> None:
+    frame = pd.DataFrame(
+        [
+            {"timestamp": "2026-01-05T00:00:00Z", "open": 100.0, "high": 100.1, "low": 99.8, "close": 100.0},
+            {"timestamp": "2026-01-05T00:01:00Z", "open": 100.0, "high": 100.6, "low": 99.9, "close": 100.4},
+        ]
+    )
+    row = build_excursion_metrics(frame, [_episode()])[0]
+    assert row["complete"] is False
+    assert row["censored"] is True
+    assert summarize_excursions([row])["episodes"] == 0
