@@ -2163,6 +2163,22 @@ with forecast_tab:
         pressure_transition=v240_pressure_transition,
     )
 
+    # Surface the same lifecycle/execution state used by the DEMO route.
+    v226_h4_app = dict(v226_h4.get("applicability") or {})
+    v226_h1_app = dict(v226_h1.get("applicability") or {})
+    v226_m15_app = dict(v226_m15.get("applicability") or {})
+    v226_candidate_reuse = dict(v226_entry_candidate.get("zone_reuse") or {})
+    v229_exec_details = (
+        {} if v229_depth_execution_hb is None
+        else dict(v229_depth_execution_hb.get("details") or {})
+    )
+    v229_exec_plan = dict(v229_exec_details.get("plan") or {})
+    v229_child_details = (
+        {} if v229_child_executor_hb is None
+        else dict(v229_child_executor_hb.get("details") or {})
+    )
+    v229_child_actions = list(v229_child_details.get("actions") or [])
+
     if v240_opposing_pressure is None:
         v240_penetration_risk = "UNAVAILABLE"
     elif float(v240_opposing_pressure) >= 45.0:
@@ -2349,6 +2365,161 @@ with forecast_tab:
             st.warning(
                 "Dynamic Depth Hazard belum tersedia: "
                 + str(v240_depth_hazard.get("reason") or "missing current source zone/hazard prior")
+            )
+
+        hazard_future_rows = [
+            {
+                "band": row.get("band"),
+                "depth_low": row.get("lower_depth"),
+                "depth_high": row.get("upper_depth"),
+                "price_low": row.get("price_low"),
+                "price_high": row.get("price_high"),
+                "base_hazard": row.get("hazard"),
+                "adjusted_hazard": row.get("adjusted_hazard"),
+                "at_risk": row.get("at_risk"),
+                "distance_bands": row.get("distance_bands"),
+            }
+            for row in list(v240_depth_hazard.get("future_bands") or [])
+        ]
+        if hazard_future_rows:
+            st.dataframe(
+                pd.DataFrame(hazard_future_rows),
+                hide_index=True,
+                width="stretch",
+            )
+        st.caption(
+            "Prior scope: "
+            f"{v240_depth_hazard.get('historical_prior_scope','—')} • "
+            f"retest confirmation required="
+            f"{'YES' if v240_depth_hazard.get('retest_confirmation_required') else 'NO'}. "
+            "Pada H4/H1 retest, angka hazard first-touch dipakai sebagai geometry context, "
+            "bukan sebagai probabilitas reuse yang terkalibrasi."
+        )
+
+        st.markdown("###### Supply/Demand Lifecycle — freshness bukan hard gate H4/H1")
+        lifecycle_rows_dashboard = [
+            {
+                "TF": "H4",
+                "zone": (
+                    f"{_fmt_price(dict(v226_h4.get('zone') or {}).get('low'))}–"
+                    f"{_fmt_price(dict(v226_h4.get('zone') or {}).get('high'))}"
+                ),
+                "touch": v226_h4_app.get("touch_count"),
+                "freshness": v226_h4_app.get("freshness"),
+                "state": v226_h4_app.get("state"),
+                "weight": v226_h4_app.get("lifecycle_weight"),
+                "prior_scope": v226_h4_app.get("prior_scope"),
+                "retest_allowed": v226_h4_app.get("htf_retest_allowed"),
+            },
+            {
+                "TF": "H1",
+                "zone": (
+                    f"{_fmt_price(dict(v226_h1.get('zone') or {}).get('low'))}–"
+                    f"{_fmt_price(dict(v226_h1.get('zone') or {}).get('high'))}"
+                ),
+                "touch": v226_h1_app.get("touch_count"),
+                "freshness": v226_h1_app.get("freshness"),
+                "state": v226_h1_app.get("state"),
+                "weight": v226_h1_app.get("lifecycle_weight"),
+                "prior_scope": v226_h1_app.get("prior_scope"),
+                "retest_allowed": v226_h1_app.get("htf_retest_allowed"),
+            },
+            {
+                "TF": "M15",
+                "zone": (
+                    f"{_fmt_price(dict(v226_m15.get('zone') or {}).get('low'))}–"
+                    f"{_fmt_price(dict(v226_m15.get('zone') or {}).get('high'))}"
+                ),
+                "touch": v226_m15_app.get("touch_count"),
+                "freshness": v226_m15_app.get("freshness"),
+                "state": v226_m15_app.get("state"),
+                "weight": v226_m15_app.get("lifecycle_weight"),
+                "prior_scope": v226_m15_app.get("prior_scope"),
+                "retest_allowed": not bool(v226_m15_app.get("strict_lower_tf", True)),
+            },
+        ]
+        st.dataframe(
+            pd.DataFrame(lifecycle_rows_dashboard),
+            hide_index=True,
+            width="stretch",
+        )
+        zl1, zl2, zl3, zl4 = st.columns(4)
+        zl1.metric(
+            "Candidate lifecycle",
+            str(v226_entry_candidate.get("display_status") or "—"),
+        )
+        zl2.metric(
+            "Pre-touch eligible",
+            "YES" if v226_entry_candidate.get("pre_touch_execution_eligible") else "NO",
+        )
+        zl3.metric(
+            "Confirmation eligible",
+            "YES" if v226_entry_candidate.get("confirmation_execution_eligible") else "NO",
+        )
+        zl4.metric(
+            "HTF retested",
+            "YES" if v226_entry_candidate.get("htf_retested") else "NO",
+        )
+        st.caption(
+            "H4/H1 yang masih structurally active tetap dipakai walau multi-touch. "
+            "Touch count menurunkan lifecycle priority tetapi tidak mematikan zona. "
+            "Jika HTF sudah retest, jalur DEMO menjadi confirmation-only; M15 multi-test "
+            "tetap lebih ketat dan dapat memblokir candidate."
+        )
+
+        st.markdown("###### V229 DEMO Execution — producer + child executor")
+        ex1, ex2, ex3, ex4 = st.columns(4)
+        ex1.metric(
+            "Execution producer",
+            str(v229_exec_details.get("reason") or "NO HEARTBEAT"),
+        )
+        ex2.metric(
+            "Execution phase",
+            str(v229_exec_plan.get("execution_phase") or "—"),
+        )
+        ex3.metric(
+            "Signal",
+            str(v229_exec_details.get("signal_id") or "—")[:18],
+        )
+        ex4.metric(
+            "Child executor",
+            "HEALTHY"
+            if v229_child_executor_hb is not None and bool(v229_child_executor_hb.get("healthy"))
+            else "WAIT / NO HEARTBEAT",
+        )
+        if v229_exec_plan:
+            execution_child_rows = []
+            for child in list(v229_exec_plan.get("children") or []):
+                row = dict(child)
+                execution_child_rows.append(
+                    {
+                        "slot": row.get("slot"),
+                        "enabled": row.get("execution_enabled"),
+                        "mode": row.get("execution_mode"),
+                        "entry/ref": row.get("planned_entry") or row.get("reference_price"),
+                        "SL": row.get("planned_sl"),
+                        "TP": row.get("planned_tp"),
+                        "target_tf": row.get("target_timeframe"),
+                        "submit_eligible": row.get("submit_eligible"),
+                    }
+                )
+            if execution_child_rows:
+                st.dataframe(
+                    pd.DataFrame(execution_child_rows),
+                    hide_index=True,
+                    width="stretch",
+                )
+        if v229_child_actions:
+            st.caption("Aksi child executor terbaru:")
+            st.dataframe(
+                pd.DataFrame({"action": v229_child_actions}),
+                hide_index=True,
+                width="stretch",
+            )
+        else:
+            st.caption(
+                "Belum ada aksi child executor pada heartbeat terakhir. Ketika order dipasang, "
+                "ditahan, dibatalkan, atau menunggu depth/pressure/M5, alasan akan muncul di sini."
             )
 
         st.markdown("###### Primary Reversal Watch — area tujuan sebelum potensi reversal")
