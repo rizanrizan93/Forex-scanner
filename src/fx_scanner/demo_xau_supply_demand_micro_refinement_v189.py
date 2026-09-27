@@ -599,7 +599,7 @@ def evaluate_micro_refinement(
         "interpretation": (
             "V189 uses post-source-touch local M5 structure for the executable micro MSS "
             "while preserving the older conservative pre-sweep structural MSS separately. "
-            "Micro pocket remains preparation evidence only; canonical AFIC and completed "
+            "Micro pocket remains preparation evidence only; canonical RIZAN path and completed "
             "M15 confirmation remain required for execution admission."
         ),
         "bars_considered": len(recent),
