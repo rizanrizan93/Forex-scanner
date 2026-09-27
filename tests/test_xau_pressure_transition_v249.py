@@ -13,7 +13,12 @@ def _hb(score, delta, *, age=30, healthy=True, state="BALANCED_OR_CONTESTED"):
                 "state": state,
                 "dom_pressure_score": score,
                 "last_imbalance": (score - 50.0) / 100.0,
-                "cross_run": {"pressure_score_change": delta},
+                "cross_run": {
+                    "pressure_score_change": delta,
+                    "previous_observed_at": (
+                        now - timedelta(seconds=age + 60)
+                    ).isoformat(),
+                },
             }
         },
     }
@@ -55,4 +60,13 @@ def test_stale_dom_fails_closed():
     now, hb = _hb(50.0, 5.0, age=300)
     result = evaluate_pressure_transition(direction="LONG", dom_heartbeat=hb, now=now)
     assert result["state"] == "DOM_STALE"
+    assert result["hard_block"] is True
+
+def test_old_previous_sample_waits_for_second_fresh_comparison():
+    now, hb = _hb(50.0, 5.0, age=30)
+    hb["details"]["analysis"]["cross_run"]["previous_observed_at"] = (
+        now - timedelta(minutes=10)
+    ).isoformat()
+    result = evaluate_pressure_transition(direction="LONG", dom_heartbeat=hb, now=now)
+    assert result["state"] == "WAIT_SECOND_SAMPLE"
     assert result["hard_block"] is True
