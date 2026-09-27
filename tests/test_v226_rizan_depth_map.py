@@ -695,7 +695,7 @@ def test_v226_h1_retest_is_confirmation_eligible_but_not_pretouch() -> None:
     assert candidate["zone_reuse"]["h1_touch_count"] == 3
 
 
-def test_v226_m15_multitest_remains_strict_context_only() -> None:
+def test_v226_m15_multitest_requires_confirmation_but_is_not_rejected() -> None:
     h4 = {
         "zone": _zone("h4", timeframe="H4", direction="LONG", low=100.0, high=110.0),
         "hotspot": {"low":108.0,"high":110.0},
@@ -722,9 +722,13 @@ def test_v226_m15_multitest_remains_strict_context_only() -> None:
             "lifecycle_weight":0.40,
         },
     )
-    assert candidate["display_status"] == "CONTEXT_ONLY_LOWER_TF_REUSE"
+    assert candidate["display_status"] == "CONFIRMATION_ONLY_RETESTED_M15"
     assert candidate["pre_touch_execution_eligible"] is False
-    assert candidate["confirmation_execution_eligible"] is False
+    assert candidate["confirmation_execution_eligible"] is True
+    assert candidate["m15_retested"] is True
+    assert candidate["m15_retest_confirmation_required"] is True
+    assert candidate["zone_reuse"]["m15_multi_test_is_hard_gate"] is False
+    assert candidate["zone_reuse"]["m15_retest_requires_pressure_m5"] is True
 
 
 def test_v226_m15_selector_prefers_cleaner_child_when_locator_overlap_is_equal() -> None:
