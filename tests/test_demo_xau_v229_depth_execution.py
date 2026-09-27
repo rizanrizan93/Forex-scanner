@@ -9,7 +9,7 @@ from fx_scanner.demo_xau_v229_depth_execution import (
 )
 
 
-def _v226(*, fresh: bool = True, first_touch: bool = False) -> dict:
+def _v226(*, fresh: bool = True, first_touch: bool = False, reused: bool = False) -> dict:
     return {
         "focus_direction": "LONG",
         "depth_entry_candidate": {
@@ -24,11 +24,21 @@ def _v226(*, fresh: bool = True, first_touch: bool = False) -> dict:
                 if fresh
                 else "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS"
                 if first_touch
+                else "CONFIRMATION_ONLY_RETESTED_HTF"
+                if reused
                 else "CONTEXT_ONLY_OUT_OF_SAMPLE"
             ),
             "calibrated_fresh_first_touch": fresh,
             "confirmation_calibrated_first_touch": bool(fresh or first_touch),
             "first_touch_in_progress": first_touch,
+            "htf_retested": reused,
+            "retest_confirmation_eligible": reused,
+            "pre_touch_execution_eligible": fresh,
+            "confirmation_execution_eligible": bool(fresh or first_touch or reused),
+            "zone_reuse": {
+                "h4_touch_count": 3 if reused else 0,
+                "h1_touch_count": 2 if reused else 0,
+            },
         },
         "four_order_ladder": {
             "slots": [
@@ -100,9 +110,31 @@ def test_v229_pre_touch_parent_does_not_require_price_inside_candidate() -> None
     assert plan["entry_high"] == 102.0
 
 
-def test_v229_rejects_reused_or_out_of_sample_parent() -> None:
+def test_v229_accepts_retested_htf_as_confirmation_only_parent() -> None:
     plan = build_execution_plan(
-        v226_evaluation=_v226(fresh=False),
+        v226_evaluation=_v226(fresh=False, reused=True),
+        atlas_evaluation=_atlas(),
+        live_price=101.0,
+    )
+    assert plan is not None
+    assert plan["execution_phase"] == "RETEST_CONFIRMATION"
+    assert plan["pretouch_slots"] == []
+    assert plan["confirmation_slots"] == [3, 4]
+    assert plan["retest_confirmation_required"] is True
+    assert [child["execution_enabled"] for child in plan["children"]] == [
+        False,
+        False,
+        True,
+        True,
+    ]
+
+
+def test_v229_rejects_context_only_lower_tf_reuse_parent() -> None:
+    payload = _v226(fresh=False)
+    payload["depth_entry_candidate"]["display_status"] = "CONTEXT_ONLY_LOWER_TF_REUSE"
+    payload["depth_entry_candidate"]["confirmation_execution_eligible"] = False
+    plan = build_execution_plan(
+        v226_evaluation=payload,
         atlas_evaluation=_atlas(),
         live_price=101.0,
     )
