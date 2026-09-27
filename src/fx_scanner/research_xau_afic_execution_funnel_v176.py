@@ -16,8 +16,8 @@ from .research_xau_zone_path_v174 import (
     wilson_lower_bound,
 )
 
-RESEARCH_VERSION = "XAU_AFIC_EXECUTION_FUNNEL_V176"
-ARTIFACT_CONTRACT = "XAU_AFIC_EXECUTION_FUNNEL_V176_EVIDENCE_1"
+RESEARCH_VERSION = "XAU_RIZAN_EXECUTION_FUNNEL_V176"
+ARTIFACT_CONTRACT = "XAU_RIZAN_EXECUTION_FUNNEL_V176_EVIDENCE_1"
 POLICY_EFFECT = "SHADOW_ONLY"
 EXECUTION_INFLUENCE = False
 PROMOTION_ELIGIBLE = False
@@ -986,7 +986,7 @@ def evaluate_execution_funnel_research(bars: Sequence[Bar]) -> dict[str, Any]:
         "label_contract": {
             "touch": "V174 causal zone touch within 64 M15 bars; invalidation wins ambiguity",
             "reaction": "V174 0.75 ATR reversal within 8 M15 bars after touch",
-            "confirmation": "exact AFIC M15 engulf/rejection within 8 M15 bars after touch",
+            "confirmation": "exact RIZAN M15 engulf/rejection within 8 M15 bars after touch",
             "target": "current AFIC terminal target geometry after next-bar-open entry; stop wins same-bar ambiguity",
             "target_horizon_m15": TARGET_HORIZON_M15,
             "split": "60/20/20 chronological maps with >=24h purge",
@@ -1037,8 +1037,8 @@ def evaluate_execution_funnel_research(bars: Sequence[Bar]) -> dict[str, Any]:
         "models": {
             "touch": "P(zone reached | map)",
             "reaction": "P(reversal_0.75ATR | zone reached)",
-            "confirmation": "P(exact M15 AFIC confirmation | zone reached)",
-            "target": "P(terminal target | exact M15 AFIC confirmation)",
+            "confirmation": "P(exact M15 RIZAN confirmation | zone reached)",
+            "target": "P(terminal target | exact M15 RIZAN confirmation)",
         },
         "stages": stage_results,
         "stacked_untouched_test": _stacked_funnel(
@@ -1057,7 +1057,7 @@ def evaluate_execution_funnel_research(bars: Sequence[Bar]) -> dict[str, Any]:
             else "RESEARCH_ONLY_STAGE_GATES_NOT_MET"
         ),
         "notes": [
-            "V176 complements V175 instead of replacing it: V175 ranks competing zones; V176 audits the canonical AFIC execution funnel.",
+            "V176 complements V175 instead of replacing it: V175 ranks competing zones; V176 audits the canonical RIZAN execution funnel.",
             "Every feature used by a stage is available at or before that stage's decision time.",
             "Thresholds are selected only on calibration data and evaluated once on untouched chronological test data.",
             "No V176 probability or threshold has broker execution authority.",
