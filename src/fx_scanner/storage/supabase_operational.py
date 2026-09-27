@@ -126,6 +126,7 @@ class SupabaseOperationalStore:
             self.client.table("fx_symbols").upsert(
                 rows,
                 on_conflict="symbol",
+                returning="minimal",
             ).execute()
         except Exception as exc:
             raise OperationalStoreUnavailable(
@@ -265,7 +266,11 @@ class SupabaseOperationalStore:
             "details": details or {},
         }
         try:
-            self.client.table("runtime_heartbeats").upsert(payload, on_conflict="worker_name").execute()
+            self.client.table("runtime_heartbeats").upsert(
+                payload,
+                on_conflict="worker_name",
+                returning="minimal",
+            ).execute()
         except Exception as exc:
             raise OperationalStoreUnavailable(f"heartbeat write failed: {exc}") from exc
 
@@ -320,6 +325,7 @@ class SupabaseOperationalStore:
                     .upsert(
                         position_rows,
                         on_conflict="backend,account_id,position_id",
+                        returning="minimal",
                     )
                     .execute()
                 )
@@ -345,7 +351,11 @@ class SupabaseOperationalStore:
             }
             (
                 self.client.table("broker_account_state")
-                .upsert(account_row, on_conflict="backend,account_id")
+                .upsert(
+                    account_row,
+                    on_conflict="backend,account_id",
+                    returning="minimal",
+                )
                 .execute()
             )
         except Exception as exc:
@@ -380,7 +390,10 @@ class SupabaseOperationalStore:
             "payload": payload or {},
         }
         try:
-            self.client.table("broker_order_events").insert(row).execute()
+            self.client.table("broker_order_events").insert(
+                row,
+                returning="minimal",
+            ).execute()
         except Exception as exc:
             raise OperationalStoreUnavailable(f"broker_order_events write failed: {exc}") from exc
 
@@ -489,7 +502,10 @@ class SupabaseOperationalStore:
         if not rows:
             return
         try:
-            self.client.table("currency_strength").insert(rows).execute()
+            self.client.table("currency_strength").insert(
+                rows,
+                returning="minimal",
+            ).execute()
         except Exception as exc:
             raise OperationalStoreUnavailable(f"currency_strength write failed: {exc}") from exc
 
@@ -497,7 +513,10 @@ class SupabaseOperationalStore:
         if not rows:
             return
         try:
-            self.client.table("pair_rankings").insert(rows).execute()
+            self.client.table("pair_rankings").insert(
+                rows,
+                returning="minimal",
+            ).execute()
         except Exception as exc:
             raise OperationalStoreUnavailable(f"pair_rankings write failed: {exc}") from exc
 
@@ -523,7 +542,10 @@ class SupabaseOperationalStore:
                         "refusing to persist EXECUTION_READY below coverage 0.80"
                     )
         try:
-            self.client.table("signals").insert(rows).execute()
+            self.client.table("signals").insert(
+                rows,
+                returning="minimal",
+            ).execute()
         except Exception as exc:
             raise OperationalStoreUnavailable(f"signals write failed: {exc}") from exc
 
