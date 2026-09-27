@@ -1044,7 +1044,16 @@ def _depth_entry_candidate(
     h4_active = bool(h4_app.get("structurally_active", True))
     h1_active = bool(h1_app.get("structurally_active", True)) if h1_app else True
     m15_active = bool(m15_app.get("structurally_active", True)) if m15_app else True
-    lower_tf_reuse_ok = not source_layer.startswith("M15") or m15_touches <= 1
+
+    # V252: M15 reuse is no longer a hard rejection. A structurally active
+    # multi-tested M15 locator remains usable as geometry, but it can only
+    # enter the DEMO path through live pressure transition + fresh M5
+    # confirmation. Untouched M15 keeps the stronger first-touch prior.
+    m15_retested = bool(source_layer.startswith("M15") and m15_touches > 1)
+    lower_tf_reuse_ok = bool(
+        not source_layer.startswith("M15")
+        or m15_active
+    )
 
     calibrated_fresh = bool(
         h4_active
@@ -1059,7 +1068,7 @@ def _depth_entry_candidate(
         and h1_active
         and m15_active
         and lower_tf_reuse_ok
-        and htf_retested
+        and (htf_retested or m15_retested)
     )
     confirmation_calibrated = bool(
         h4_active
@@ -1074,10 +1083,10 @@ def _depth_entry_candidate(
         if calibrated_fresh
         else "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS"
         if first_touch_in_progress and confirmation_calibrated
+        else "CONFIRMATION_ONLY_RETESTED_M15"
+        if m15_retested and retest_confirmation_eligible
         else "CONFIRMATION_ONLY_RETESTED_HTF"
         if retest_confirmation_eligible
-        else "CONTEXT_ONLY_LOWER_TF_REUSE"
-        if not lower_tf_reuse_ok
         else "CONTEXT_ONLY_OUT_OF_SAMPLE"
     )
 
@@ -1100,7 +1109,9 @@ def _depth_entry_candidate(
         ),
         "first_touch_in_progress": first_touch_in_progress,
         "htf_retested": htf_retested,
+        "m15_retested": m15_retested,
         "retest_confirmation_eligible": retest_confirmation_eligible,
+        "m15_retest_confirmation_required": m15_retested,
         "pre_touch_execution_eligible": calibrated_fresh,
         "confirmation_execution_eligible": confirmation_calibrated,
         "zone_reuse": {
@@ -1111,7 +1122,8 @@ def _depth_entry_candidate(
             "h1_lifecycle_weight": _f(h1_app.get("lifecycle_weight")),
             "m15_lifecycle_weight": _f(m15_app.get("lifecycle_weight")),
             "freshness_is_hard_gate_h4_h1": False,
-            "m15_multi_test_is_hard_gate": source_layer.startswith("M15"),
+            "m15_multi_test_is_hard_gate": False,
+            "m15_retest_requires_pressure_m5": bool(m15_retested),
             "historical_prior_scope": (
                 "FIRST_TOUCH_CALIBRATED"
                 if calibrated_fresh
@@ -1133,8 +1145,9 @@ def _depth_entry_candidate(
             "note": (
                 "Rates are standalone historical reaction/hold rates, not a combined "
                 "H4→H1→M15 entry-strategy win rate. V225.2 is first-touch calibrated; "
-                "when H4/H1 is retested the depth prior is used as geometry only and "
-                "DEMO execution requires live pressure plus M5 confirmation."
+                "when H4/H1 or M15 is retested the depth prior is used as geometry only. "
+                "A reused M15 is not rejected outright, but DEMO execution requires live "
+                "pressure transition plus fresh M5 confirmation."
             ),
         },
         "policy_effect": POLICY_EFFECT,
