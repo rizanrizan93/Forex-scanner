@@ -30,6 +30,10 @@ from .execution.models import ExecutionMode, OrderIntent, OrderSide, OrderType
 from .execution.policy import load_execution_policy
 from .execution.router import ExecutionRouter
 from .storage.supabase_operational import SupabaseOperationalStore
+from .xau_pressure_transition_v249 import (
+    DOM_WORKER,
+    evaluate_pressure_transition,
+)
 
 SYMBOL = "XAUUSD"
 WORKER_NAME = "ctrader_demo_xau_v229_child_executor"
@@ -362,6 +366,7 @@ def run() -> int:
         atlas_hb = _latest_heartbeat(store, ATLAS_WORKER)
         v226_eval = dict(dict(v226_hb.get("details") or {}).get("evaluation") or {})
         atlas_eval = dict(dict(atlas_hb.get("details") or {}).get("evaluation") or {})
+        dom_hb = _latest_heartbeat(store, DOM_WORKER)
         quote = gateway.market_quote(SYMBOL)
         direction = str(v226_eval.get("focus_direction") or "").upper()
         live_price = (
@@ -377,6 +382,11 @@ def run() -> int:
             live_price=live_price,
         )
         current_key = None if current_plan is None else str(current_plan.get("candidate_key") or "")
+        pressure_transition = evaluate_pressure_transition(
+            direction=direction,
+            dom_heartbeat=dom_hb,
+            now=now,
+        )
 
         for parent in parents:
             parent_signal_id = str(parent.get("signal_key") or "")
@@ -418,6 +428,20 @@ def run() -> int:
             if any(not _position_is_protected(p) for p in _positions(reconcile)):
                 actions.append(f"{parent_signal_id}:UNPROTECTED_POSITION_BLOCK")
                 continue
+
+            # Pressure transition is now part of DEMO execution authority.
+            # Missing/stale/strongly adverse Level-II pressure blocks new orders.
+            # Pending unfilled children are cancelled so they cannot fill later
+            # without a fresh pressure transition.
+            if bool(pressure_transition.get("hard_block")):
+                outcomes = _cancel_pending_plan(session, plan, reconcile)
+                actions.extend(f"{parent_signal_id}:PRESSURE_CANCEL:{x}" for x in outcomes)
+                actions.append(
+                    f"{parent_signal_id}:PRESSURE_BLOCK:{pressure_transition.get('state')}:"
+                    f"{pressure_transition.get('reason')}"
+                )
+                continue
+
             existing = _existing_slots(plan, reconcile)
             future_exposure = len(_positions(reconcile)) + len(_pending_orders(reconcile))
             max_positions = int(policy.demo_safety.get("max_concurrent_positions", 10))
@@ -437,6 +461,23 @@ def run() -> int:
                 if future_exposure >= max_positions:
                     actions.append(f"{parent_signal_id}:L{slot}:ACCOUNT_CAP")
                     break
+
+                if slot <= 2 and not bool(
+                    pressure_transition.get("pre_touch_entry_allowed")
+                ):
+                    actions.append(
+                        f"{parent_signal_id}:L{slot}:WAIT_PRESSURE_TRANSITION:"
+                        f"{pressure_transition.get('state')}"
+                    )
+                    continue
+                if slot >= 3 and not bool(
+                    pressure_transition.get("confirmation_entry_allowed")
+                ):
+                    actions.append(
+                        f"{parent_signal_id}:L{slot}:WAIT_PRESSURE_TRANSITION:"
+                        f"{pressure_transition.get('state')}"
+                    )
+                    continue
 
                 entry, activation = _activation_entry(
                     slot=slot,
@@ -474,7 +515,9 @@ def run() -> int:
                     child=child,
                     entry=float(entry),
                     target=float(target),
-                    activation=activation,
+                    activation=(
+                        f"{activation}|PRESSURE_{pressure_transition.get('state')}"
+                    ),
                     now=now,
                 )
                 actions.append(f"{parent_signal_id}:{detail}")
@@ -505,6 +548,8 @@ def run() -> int:
             "pending_plus_open_guard": True,
             "server_side_sl_tp_required": True,
             "generic_market_handoff_allowed": False,
+            "pressure_transition_required": True,
+            "pressure_transition": pressure_transition if 'pressure_transition' in locals() else {},
             "actions": actions[:40],
             "error": error,
             "observed_at": now.isoformat(),
