@@ -36,6 +36,13 @@ STATE_EVENT_TYPE="DEMO_XAU_RIZAN_FORECAST_STATE"
 STATE_CODE="XAU_RIZAN_PATH_STATE_V1"
 DATA_CONTRACT="XAU_RIZAN_PREPARED_PLAN_FORWARD_V1"
 
+# Read-only compatibility for records created before the RIZAN rename.
+LEGACY_STRATEGY_ID="XAU_AFIC_PATH_PREPARED_V1"
+LEGACY_EXECUTION_STRATEGY_ID="XAU_AFIC_PATH_EXECUTION_V1"
+LEGACY_EVENT_TYPE="DEMO_XAU_AFIC_PREPARED_PLAN"
+LEGACY_STATE_EVENT_TYPE="DEMO_XAU_AFIC_FORECAST_STATE"
+LEGACY_STATE_CODE="XAU_AFIC_PATH_STATE_V1"
+
 MAX_ZONE_DISTANCE_ATR=0.75
 MAX_H4_DIRECTIONAL_CLOSE_LOC=0.65
 CONFIRMED_TTL_SECONDS=300
@@ -423,23 +430,43 @@ def forecast_state_key(payload:dict[str,Any])->str:
     return "|".join(fields)
 
 
-def _forecast_state_recorded(store,key:str)->bool:
-    try:
+def _identity_rows(
+    store,
+    *,
+    identities:tuple[tuple[str,str],...],
+    limit:int,
+)->list[dict[str,Any]]:
+    rows:list[dict[str,Any]]=[]
+    for event_type,code in identities:
         response=(
             store.client.table("broker_order_events")
-            .select("payload,event_type,code")
-            .eq("event_type",STATE_EVENT_TYPE)
-            .eq("code",STATE_CODE)
+            .select("signal_key,payload,event_type,code")
+            .eq("event_type",event_type)
+            .eq("code",code)
             .order("observed_at",desc=True)
-            .limit(240)
+            .limit(int(limit))
             .execute()
+        )
+        rows.extend(dict(row) for row in (response.data or []))
+    return rows
+
+
+def _forecast_state_recorded(store,key:str)->bool:
+    try:
+        rows=_identity_rows(
+            store,
+            identities=(
+                (STATE_EVENT_TYPE,STATE_CODE),
+                (LEGACY_STATE_EVENT_TYPE,LEGACY_STATE_CODE),
+            ),
+            limit=240,
         )
     except Exception:
         # Evidence persistence uncertainty must not create duplicate state rows.
         return True
     return any(
         str(dict(r.get("payload") or {}).get("state_key") or "")==key
-        for r in response.data or []
+        for r in rows
     )
 
 
@@ -487,21 +514,20 @@ def _dedupe_key(payload:dict[str,Any],kind:str)->str:
 
 def _already_recorded(store,key:str)->bool:
     try:
-        response=(
-            store.client.table("broker_order_events")
-            .select("payload,event_type,code")
-            .eq("event_type",EVENT_TYPE)
-            .eq("code",STRATEGY_ID)
-            .order("observed_at",desc=True)
-            .limit(120)
-            .execute()
+        rows=_identity_rows(
+            store,
+            identities=(
+                (EVENT_TYPE,STRATEGY_ID),
+                (LEGACY_EVENT_TYPE,LEGACY_STRATEGY_ID),
+            ),
+            limit=120,
         )
     except Exception:
         # Persistence uncertainty must suppress duplicate signal creation.
         return True
     return any(
         str(dict(r.get("payload") or {}).get("dedupe_key") or "")==key
-        for r in response.data or []
+        for r in rows
     )
 
 
@@ -643,18 +669,17 @@ def _invalidate_superseded_afic_signals(store,*,payload:dict[str,Any])->int:
     current_map=str(payload.get("map_at") or "").strip()
     if not current_map:
         return 0
-    response=(
-        store.client.table("broker_order_events")
-        .select("signal_key,payload,event_type,code")
-        .eq("event_type",EVENT_TYPE)
-        .eq("code",STRATEGY_ID)
-        .order("observed_at",desc=True)
-        .limit(120)
-        .execute()
+    rows=_identity_rows(
+        store,
+        identities=(
+            (EVENT_TYPE,STRATEGY_ID),
+            (LEGACY_EVENT_TYPE,LEGACY_STRATEGY_ID),
+        ),
+        limit=120,
     )
     invalidated=0
     seen=set()
-    for row in response.data or []:
+    for row in rows:
         signal_id=str(row.get("signal_key") or "").strip()
         if not signal_id or signal_id in seen:
             continue
@@ -687,14 +712,13 @@ def _invalidate_superseded_afic_signals(store,*,payload:dict[str,Any])->int:
 
 def _invalidate_stale_execution_ready(store,*,payload:dict[str,Any])->int:
     try:
-        response=(
-            store.client.table("broker_order_events")
-            .select("signal_key,payload,event_type,code")
-            .eq("event_type",EXECUTION_EVENT_TYPE)
-            .eq("code",EXECUTION_STRATEGY_ID)
-            .order("observed_at",desc=True)
-            .limit(40)
-            .execute()
+        rows=_identity_rows(
+            store,
+            identities=(
+                (EXECUTION_EVENT_TYPE,EXECUTION_STRATEGY_ID),
+                (EXECUTION_EVENT_TYPE,LEGACY_EXECUTION_STRATEGY_ID),
+            ),
+            limit=40,
         )
     except Exception:
         # If execution-identity reconciliation cannot be proven, fail closed by
@@ -702,7 +726,7 @@ def _invalidate_stale_execution_ready(store,*,payload:dict[str,Any])->int:
         raise
     invalidated=0
     seen=set()
-    for row in response.data or []:
+    for row in rows:
         signal_id=str(row.get("signal_key") or "").strip()
         if not signal_id or signal_id in seen:
             continue
