@@ -2131,6 +2131,63 @@ with forecast_tab:
     v240_conflicts = list(v240_decision.get("conflicts") or [])
     v240_stale = list(v240_decision.get("stale_reasons") or [])
 
+    # Operational buyer/seller pressure is surfaced directly in V240. It does
+    # not fabricate global order flow: the source is the cTrader broker/venue
+    # Level-II book observed by V191.
+    v240_dom_details = {} if dom_v191_hb is None else dict(dom_v191_hb.get("details") or {})
+    v240_dom = dict(v240_dom_details.get("analysis") or {})
+    v240_dom_score = v240_dom.get("dom_pressure_score")
+    try:
+        v240_dom_score = None if v240_dom_score is None else float(v240_dom_score)
+    except (TypeError, ValueError):
+        v240_dom_score = None
+    v240_buyer_index = v240_dom_score
+    v240_seller_index = None if v240_dom_score is None else 100.0 - v240_dom_score
+    v240_opposing_pressure = None
+    if v240_dom_score is not None and v240_direction in {"LONG", "SHORT"}:
+        signed_buyer = max(-100.0, min(100.0, (v240_dom_score - 50.0) * 2.0))
+        v240_opposing_pressure = -signed_buyer if v240_direction == "LONG" else signed_buyer
+    v240_pressure_cross = dict(v240_dom.get("cross_run") or {})
+    v240_pressure_change = v240_pressure_cross.get("pressure_score_change")
+    try:
+        v240_pressure_change = (
+            None if v240_pressure_change is None else float(v240_pressure_change)
+        )
+    except (TypeError, ValueError):
+        v240_pressure_change = None
+    v240_dom_age = None if dom_v191_hb is None else _age_seconds(dom_v191_hb.get("observed_at"))
+    v240_dom_stale = v240_dom_age is None or v240_dom_age > 180.0
+
+    if v240_opposing_pressure is None:
+        v240_penetration_risk = "UNAVAILABLE"
+    elif v240_opposing_pressure >= 40.0:
+        v240_penetration_risk = "TINGGI — incoming pressure masih kuat"
+    elif v240_opposing_pressure >= 15.0:
+        v240_penetration_risk = "SEDANG — tunggu pressure mereda"
+    elif v240_opposing_pressure > -15.0:
+        v240_penetration_risk = "BALANCED — cari absorption/reclaim"
+    else:
+        v240_penetration_risk = "MEREDA / COUNTER-PRESSURE MULAI DOMINAN"
+
+    if v240_pressure_change is None or v240_direction not in {"LONG", "SHORT"}:
+        v240_pressure_trend = "—"
+    elif v240_direction == "LONG":
+        v240_pressure_trend = (
+            "SELLER FADING / BUYER BUILDING"
+            if v240_pressure_change > 2.0
+            else "SELLER STRENGTHENING"
+            if v240_pressure_change < -2.0
+            else "STABLE / BALANCED SHIFT"
+        )
+    else:
+        v240_pressure_trend = (
+            "BUYER STRENGTHENING"
+            if v240_pressure_change > 2.0
+            else "BUYER FADING / SELLER BUILDING"
+            if v240_pressure_change < -2.0
+            else "STABLE / BALANCED SHIFT"
+        )
+
     st.markdown("### 2 • Zona Utama & Depth Entry")
     with st.container(border=True):
         st.markdown("##### V240 — Canonical XAU Decision Map")
@@ -2196,6 +2253,53 @@ with forecast_tab:
         cc3.metric(
             "Depth source",
             str(v240_decision.get("source_layer") or "—"),
+        )
+
+        st.markdown("###### Buyer / Seller Pressure — timing masuk zona")
+        pr1, pr2, pr3, pr4 = st.columns(4)
+        pr1.metric(
+            "Buyer index",
+            "—" if v240_buyer_index is None else f"{v240_buyer_index:.1f}/100",
+        )
+        pr2.metric(
+            "Seller index",
+            "—" if v240_seller_index is None else f"{v240_seller_index:.1f}/100",
+        )
+        pr3.metric(
+            "Incoming pressure vs zona",
+            "—"
+            if v240_opposing_pressure is None
+            else f"{v240_opposing_pressure:+.1f}",
+        )
+        pr4.metric("Penetration risk", v240_penetration_risk)
+        if v240_dom_score is None:
+            st.warning(
+                "DOM Level-II belum tersedia. Entry depth tetap memakai canonical depth map "
+                "tanpa mengarang buyer/seller pressure."
+            )
+        elif v240_dom_stale:
+            st.warning(
+                f"Pressure terakhir **STALE** (age={'—' if v240_dom_age is None else f'{v240_dom_age:.0f}s'}). "
+                f"State terakhir={v240_dom.get('state','—')} • trend={v240_pressure_trend}. "
+                "Jangan perlakukan sebagai microstructure live sampai V191 refresh."
+            )
+        else:
+            st.info(
+                f"DOM **{v240_dom.get('state','—')}** • trend **{v240_pressure_trend}** • "
+                f"top-5 imbalance="
+                + (
+                    "—"
+                    if v240_dom.get("last_imbalance") is None
+                    else f"{float(v240_dom.get('last_imbalance')):+.2f}"
+                )
+                + ". Jika incoming pressure masih kuat ketika first-touch, canonical entry "
+                "harus mengantisipasi penetrasi lebih dalam; jika pressure fading/absorbed, "
+                "M1 reclaim + M5 confirmation menjadi trigger yang lebih tajam."
+            )
+        st.caption(
+            "Buyer/Seller index adalah indeks relatif dari cTrader Level-II broker/venue "
+            "(50≈balanced, >50 lebih BID/buyer, <50 lebih ASK/seller), bukan persentase "
+            "volume global COMEX. Pressure sekarang ditampilkan langsung di panel V240."
         )
 
         st.markdown("###### Primary Reversal Watch — area tujuan sebelum potensi reversal")
