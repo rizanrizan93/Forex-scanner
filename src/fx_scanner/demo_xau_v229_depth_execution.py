@@ -356,6 +356,7 @@ def _record_execution_geometry(
             "environment": "DEMO",
             "live_execution_enabled": False,
             "server_side_sl_tp_required": True,
+            "pressure_transition": dict(plan.get("pressure_transition") or {}),
             "microstructure_confirmation_required": "PRESSURE_TRANSITION_ALL_SLOTS_PLUS_M5_SLOTS_3_4",
         },
     )
@@ -437,6 +438,7 @@ def run() -> int:
                     + str(pressure_transition.get("state") or "UNAVAILABLE")
                 )
             else:
+                plan["pressure_transition"] = dict(pressure_transition)
                 candidate_key = _candidate_key(plan)
                 prior_invalidated = _invalidate_prior_ready(
                     store,
