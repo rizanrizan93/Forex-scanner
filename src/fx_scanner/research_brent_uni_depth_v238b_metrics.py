@@ -85,17 +85,23 @@ def _episode_metrics(px: PriceArrays, row: DepthEpisode) -> dict[str, Any]:
     if break_rel is None and not horizon_complete:
         return {**base, "complete": False, "censored": True}
 
+    # Favorable reaction starts strictly after the first-touch M1 bar.
+    # The touch bar can contain both the adverse entry into the zone and a
+    # favorable excursion, but their ordering is unknowable.
+    future_high = window_high[1:]
+    future_low = window_low[1:]
+
     target_hits: dict[str, bool] = {}
     target_minutes: dict[str, float | None] = {}
     for multiple in REACTION_LADDER:
         if row.direction == "LONG":
             target = float(row.proximal) + multiple * float(row.atr_points)
-            target_mask = window_high >= target
+            target_mask = future_high >= target
         else:
             target = float(row.proximal) - multiple * float(row.atr_points)
-            target_mask = window_low <= target
+            target_mask = future_low <= target
         positions = np.flatnonzero(target_mask)
-        first_target = int(positions[0]) if len(positions) else None
+        first_target = (int(positions[0]) + 1) if len(positions) else None
         # STOP_FIRST for same-M1 ambiguity: a break on the same bar wins.
         hit = first_target is not None and (break_rel is None or first_target < break_rel)
         key = f"{multiple:.2f}"
@@ -113,19 +119,20 @@ def _episode_metrics(px: PriceArrays, row: DepthEpisode) -> dict[str, Any]:
             )
         )
 
+    favorable_start = start + 1
     favorable_end = end if break_rel is None else start + break_rel
-    if favorable_end <= start:
+    if favorable_end <= favorable_start:
         mfe_atr = 0.0
     elif row.direction == "LONG":
         mfe_atr = max(
             0.0,
-            (float(np.max(px.highs[start:favorable_end])) - float(row.proximal))
+            (float(np.max(px.highs[favorable_start:favorable_end])) - float(row.proximal))
             / max(float(row.atr_points), 1e-12),
         )
     else:
         mfe_atr = max(
             0.0,
-            (float(row.proximal) - float(np.min(px.lows[start:favorable_end])))
+            (float(row.proximal) - float(np.min(px.lows[favorable_start:favorable_end])))
             / max(float(row.atr_points), 1e-12),
         )
 
