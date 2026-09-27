@@ -109,6 +109,14 @@ def build_dynamic_depth_hazard(
             "execution_ready": False,
         }
 
+    candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
+    reuse = dict(candidate.get("zone_reuse") or {})
+    retest_confirmation_required = bool(candidate.get("retest_confirmation_eligible"))
+    prior_scope = str(
+        reuse.get("historical_prior_scope")
+        or "FIRST_TOUCH_CALIBRATED"
+    )
+
     transition_state = str(pressure_transition.get("state") or "UNAVAILABLE")
     hard_block = bool(pressure_transition.get("hard_block"))
     multiplier = float(PRESSURE_MULTIPLIER.get(transition_state, 1.0))
@@ -223,6 +231,9 @@ def build_dynamic_depth_hazard(
         "current_band_index": current_index,
         "pressure_transition_state": transition_state,
         "pressure_hard_block": hard_block,
+        "historical_prior_scope": prior_scope,
+        "retest_confirmation_required": retest_confirmation_required,
+        "zone_reuse": reuse,
         "action": action,
         "execution_ready": execution_ready,
         "recommended_band": best,
@@ -232,7 +243,9 @@ def build_dynamic_depth_hazard(
         "recommended_price_high": float(best["price_high"]),
         "future_bands": eligible[:],
         "interpretation": (
-            "V225 historical hazard supplies the depth-band prior. Current cTrader "
+            "V225 historical hazard supplies the first-touch depth-band prior. On "
+            "retested H4/H1 zones it is used as geometry context rather than a calibrated "
+            "reuse probability; those entries stay confirmation-only. Current cTrader "
             "Level-II pressure transition updates whether to wait deeper or accept a "
             "reversal band. This is a sequential range estimate, not an exact turning price."
         ),
