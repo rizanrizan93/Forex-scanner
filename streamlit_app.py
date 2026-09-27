@@ -568,13 +568,13 @@ def _rizan_chart_png(
             f"{zone.get('timeframe','')} {'DEMAND' if is_demand else 'SUPPLY'}  "
             f"{low:.2f}–{high:.2f}"
         )
-        detail = freshness
-        if p_touch is not None:
-            detail += f" • touch {_fmt_pct(p_touch)}"
-        if p_hold is not None:
-            detail += f" • hold50 {_fmt_pct(p_hold)}"
-        if role:
-            detail += f" • {role}"
+        role_label = {
+            "SOURCE": "SUMBER LEG",
+            "TARGET 1": "ZONA LAWAN",
+            "NEXT SOURCE": "AREA REAKSI",
+            "NEXT TARGET": "TARGET PANTULAN",
+        }.get(role, "")
+        detail = role_label
         if important:
             ax.text(
                 right_edge - 0.6,
@@ -594,18 +594,26 @@ def _rizan_chart_png(
             )
 
     # V226 RIZAN Depth hotspot / nested locator overlays.
+    # Keep only the active-leg overlays; the opposing leg gets its own explicit
+    # reaction-zone/pocket layer below, which is much easier to read on mobile.
     chart_tf = str(timeframe or "M15").upper()
-    for depth in list(depth_overlays or [])[:4]:
+    depth_shown = 0
+    for depth in list(depth_overlays or []):
         visible_on = {str(item).upper() for item in list(depth.get("visible_on") or [])}
         if visible_on and chart_tf not in visible_on:
             continue
+        side = str(depth.get("direction") or "").upper()
+        if side and side != str(current_direction or "").upper():
+            continue
+        if depth_shown >= 3:
+            break
         try:
             depth_low = float(depth["low"])
             depth_high = float(depth["high"])
         except (KeyError, TypeError, ValueError):
             continue
+        depth_shown += 1
         kind = str(depth.get("kind") or "DEPTH_LOCATOR").upper()
-        side = str(depth.get("direction") or "").upper()
         if kind.startswith("H4"):
             depth_edge = "#facc15"
         elif kind.startswith("H1"):
@@ -1078,12 +1086,21 @@ def _rizan_chart_png(
             y_values.extend([float(zone["low"]), float(zone["high"])])
         except (KeyError, TypeError, ValueError):
             pass
-    for depth in list(depth_overlays or [])[:4]:
+    depth_y_shown = 0
+    for depth in list(depth_overlays or []):
         visible_on = {str(item).upper() for item in list(depth.get("visible_on") or [])}
         if visible_on and chart_tf not in visible_on:
             continue
+        if str(depth.get("direction") or "").upper() not in {
+            "",
+            str(current_direction or "").upper(),
+        }:
+            continue
+        if depth_y_shown >= 3:
+            break
         try:
             y_values.extend([float(depth["low"]), float(depth["high"])])
+            depth_y_shown += 1
         except (KeyError, TypeError, ValueError):
             pass
     if active_entry_low is not None and active_entry_high is not None:
