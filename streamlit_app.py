@@ -4108,7 +4108,7 @@ with forecast_tab:
                 )
                 st.caption(
                     "DOM berasal dari Level II cTrader broker/venue, bukan consolidated COMEX book. "
-                    "V191 hanya context/shadow evidence dan tidak memiliki execution authority."
+                    "V191 ditampilkan sebagai operational microstructure context; execution authority tetap mengikuti canonical admission."
                 )
                 bid_wall = dict(dom_context.get("bid_wall") or {})
                 ask_wall = dict(dom_context.get("ask_wall") or {})
