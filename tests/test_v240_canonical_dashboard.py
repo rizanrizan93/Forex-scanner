@@ -56,3 +56,11 @@ def test_v2401_dashboard_surfaces_primary_reversal_watch_without_overclaiming() 
     assert "Touch×Reaction score" in SOURCE
     assert "bukan probabilitas terkalibrasi dan bukan izin entry" in SOURCE
     assert "Dashboard tidak mengarang probabilitas reversal." in SOURCE
+
+
+def test_v249_pressure_transition_is_visible_in_canonical_dashboard():
+    assert "Buyer / Seller Pressure — timing masuk zona" in SOURCE
+    assert "Pressure transition" in SOURCE
+    assert "Pre-touch DEMO" in SOURCE
+    assert "M5-confirm DEMO" in SOURCE
+    assert "evaluate_pressure_transition" in SOURCE
