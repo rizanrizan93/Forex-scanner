@@ -2672,7 +2672,7 @@ with forecast_tab:
                 ),
             )
             st.caption(
-                f"setup={v241_perf.get('setup_type','—')} • "
+                f"setup={_rizan_display(v241_perf.get('setup_type','—'))} • "
                 f"scope={v241_perf.get('sample_scope','—')} • "
                 f"trades={v241_perf.get('trades',0)} • "
                 f"as_of={_fmt_wib_datetime(v241_perf.get('as_of'))}."
@@ -5348,7 +5348,7 @@ with forecast_tab:
                     {
                         "runtime": runtime_status,
                         "waktu (WIB)": _fmt_wib_datetime(row.get("observed_at")),
-                        "setup": row.get("setup_type"),
+                        "setup": _rizan_display(row.get("setup_type")),
                         "arah": row.get("direction"),
                         "status": row.get("state"),
                         "skor": row.get("final_score"),
