@@ -725,3 +725,32 @@ def test_v226_m15_multitest_remains_strict_context_only() -> None:
     assert candidate["display_status"] == "CONTEXT_ONLY_LOWER_TF_REUSE"
     assert candidate["pre_touch_execution_eligible"] is False
     assert candidate["confirmation_execution_eligible"] is False
+
+
+def test_v226_m15_selector_prefers_cleaner_child_when_locator_overlap_is_equal() -> None:
+    parent = _zone("h1", timeframe="H1", direction="LONG", low=100.0, high=110.0)
+    locator = {"low": 104.0, "high": 108.0}
+    reused = _zone(
+        "m15-reused",
+        timeframe="M15",
+        direction="LONG",
+        low=105.0,
+        high=107.0,
+        touches=3,
+    )
+    fresh = _zone(
+        "m15-fresh",
+        timeframe="M15",
+        direction="LONG",
+        low=105.0,
+        high=107.0,
+        touches=0,
+    )
+    selected = _select_m15(
+        [reused, fresh],
+        parent=parent,
+        locator=locator,
+        direction="LONG",
+        price=111.0,
+    )
+    assert selected["zone_id"] == "m15-fresh"
