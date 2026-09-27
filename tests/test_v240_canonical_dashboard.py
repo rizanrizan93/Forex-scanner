@@ -45,3 +45,14 @@ def test_v240_stale_or_conflict_is_explicit_fail_closed() -> None:
 
 def test_v240_reaction_metrics_are_not_mislabeled_as_trading_winrate() -> None:
     assert "Angka ini adalah reaction evidence, bukan win rate trading atau profit factor." in SOURCE
+
+
+
+def test_v2401_dashboard_surfaces_primary_reversal_watch_without_overclaiming() -> None:
+    assert "Primary Reversal Watch — area tujuan sebelum potensi reversal" in SOURCE
+    assert "Area reversal utama" in SOURCE
+    assert "P touch (research)" in SOURCE
+    assert "P reaksi ≥0.50 ATR" in SOURCE
+    assert "Touch×Reaction score" in SOURCE
+    assert "bukan probabilitas terkalibrasi dan bukan izin entry" in SOURCE
+    assert "Dashboard tidak mengarang probabilitas reversal." in SOURCE
