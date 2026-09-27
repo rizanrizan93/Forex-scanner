@@ -1,0 +1,133 @@
+name: Research Brent Cash Parity V238D
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/fx_scanner/research_brent_cash_parity_v238d.py"
+      - "src/fx_scanner/research_brent_source_identity_v238d_aggregate.py"
+      - "tests/test_research_brent_cash_parity_v238d.py"
+      - ".github/workflows/research-brent-cash-parity-v238d.yml"
+  push:
+    branches:
+      - research/v238d-brent-cash-parity
+    paths:
+      - "src/fx_scanner/research_brent_cash_parity_v238d.py"
+      - "src/fx_scanner/research_brent_source_identity_v238d_aggregate.py"
+      - "tests/test_research_brent_cash_parity_v238d.py"
+      - ".github/workflows/research-brent-cash-parity-v238d.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-brent-cash-parity-v238d-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Test V238D
+        run: pytest -q tests/test_research_brent_cash_parity_v238d.py tests/test_demo_brent_symbol_discovery_v238c.py
+
+  parity-window:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - label: "2025-08"
+            start: "2025-08-04"
+            end: "2025-08-29"
+          - label: "2026-01"
+            start: "2026-01-05"
+            end: "2026-01-30"
+          - label: "2026-08"
+            start: "2026-08-03"
+            end: "2026-08-28"
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      BRENT_V238D_START: ${{ matrix.start }}
+      BRENT_V238D_END: ${{ matrix.end }}
+      BRENT_V238D_OUTPUT: artifacts/brent-cash-parity-v238d-${{ matrix.label }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install cTrader and HistData research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Validate BCOUSD broker identity for ${{ matrix.label }}
+        run: python -m fx_scanner.research_brent_cash_parity_v238d
+      - name: Upload parity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brent-v238d-window-${{ matrix.label }}
+          path: artifacts/brent-cash-parity-v238d-${{ matrix.label }}.json
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate:
+    needs: parity-window
+    if: always() && needs.parity-window.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BRENT_V238D_SHARD_DIR: /tmp/brent-v238d-shards
+      BRENT_V238D_FULL_OUTPUT: artifacts/brent-source-identity-v238d-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download parity windows
+        uses: actions/download-artifact@v4
+        with:
+          pattern: brent-v238d-window-*
+          path: /tmp/brent-v238d-shards
+          merge-multiple: false
+      - name: Require cross-window identity consensus
+        run: python -m fx_scanner.research_brent_source_identity_v238d_aggregate
+      - name: Upload full source identity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: brent-source-identity-v238d-full
+          path: artifacts/brent-source-identity-v238d-full.json
+          if-no-files-found: error
+          retention-days: 30
