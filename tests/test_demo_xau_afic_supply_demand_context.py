@@ -143,7 +143,7 @@ def test_supply_demand_context_does_not_change_grade_or_execution_gate():
         grade=after,
     )
     assert state == "ARMED"
-    assert "AFIC_M15_CONFIRMATION_REQUIRED" in guards
+    assert "RIZAN_M15_CONFIRMATION_REQUIRED" in guards
 
 
 def test_afic_first_leg_uses_matching_supply_demand_path(monkeypatch):
