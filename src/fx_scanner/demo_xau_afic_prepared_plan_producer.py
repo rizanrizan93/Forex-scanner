@@ -188,11 +188,11 @@ def signal_state_and_guards(*,execution_enabled:bool,confirmed:bool,grade:str)->
         return "EXECUTION_READY",[]
     guards=[]
     if grade_u not in {"A","B"}:
-        guards.append("AFIC_SELECTOR_GRADE_AB_REQUIRED")
+        guards.append("RIZAN_SELECTOR_GRADE_AB_REQUIRED")
     if not confirmed:
-        guards.append("AFIC_M15_CONFIRMATION_REQUIRED")
+        guards.append("RIZAN_M15_CONFIRMATION_REQUIRED")
     if not execution_enabled:
-        guards.append("AFIC_DEMO_EXECUTION_DISABLED")
+        guards.append("RIZAN_DEMO_EXECUTION_DISABLED")
     return "ARMED",guards
 
 
@@ -204,7 +204,7 @@ def _zone_stop(zone:dict[str,Any],direction:str)->float:
 
 
 def _reference_entry(zone:dict[str,Any],direction:str)->float:
-    # AFIC public-material reconstruction waits for rejection back through the
+    # RIZAN reconstruction waits for rejection back through the
     # proximal edge. Use that edge only as a forecast blueprint reference.
     return float(zone["high"] if direction=="LONG" else zone["low"])
 
@@ -449,7 +449,7 @@ def _record_forecast_state(store,*,payload:dict[str,Any])->bool:
         return False
     account=_account_label()
     if not account:
-        raise SystemExit("CTRADER_ACCOUNT_ID_REQUIRED_FOR_AFIC_FORECAST_STATE")
+        raise SystemExit("CTRADER_ACCOUNT_ID_REQUIRED_FOR_RIZAN_FORECAST_STATE")
     digest=hashlib.sha256(key.encode()).hexdigest()[:24]
     store.record_order_event(
         backend="CTRADER",
@@ -459,7 +459,7 @@ def _record_forecast_state(store,*,payload:dict[str,Any])->bool:
         event_type=STATE_EVENT_TYPE,
         accepted=None,
         code=STATE_CODE,
-        message="AFIC prospective forecast state transition; no broker action",
+        message="RIZAN prospective forecast state transition; no broker action",
         payload={
             "state_key":key,
             "environment":"DEMO",
@@ -511,7 +511,7 @@ def _record_event(
 )->None:
     account=_account_label()
     if not account:
-        raise SystemExit("CTRADER_ACCOUNT_ID_REQUIRED_FOR_AFIC_PREPARED_PLAN")
+        raise SystemExit("CTRADER_ACCOUNT_ID_REQUIRED_FOR_RIZAN_PREPARED_PLAN")
     store.record_order_event(
         backend="CTRADER",
         account_id=account,
@@ -520,7 +520,7 @@ def _record_event(
         event_type=EVENT_TYPE,
         accepted=None,
         code=STRATEGY_ID,
-        message="AFIC forecast/order blueprint prepared; broker action remains gated by Grade-A/B confirmation and exact DEMO handoff",
+        message="RIZAN forecast/order blueprint prepared; broker action remains gated by Grade-A/B confirmation and exact DEMO handoff",
         payload={
             "dedupe_key":key,
             "kind":kind,
@@ -634,7 +634,7 @@ def geometry_matches_current_forecast(
 
 
 def _invalidate_superseded_afic_signals(store,*,payload:dict[str,Any])->int:
-    """Invalidate persisted AFIC signals whose prepared map is no longer current.
+    """Invalidate persisted RIZAN signals whose prepared map is no longer current.
 
     ARMED forecast rows can otherwise outlive an H4 remap because their nominal
     TTL is intentionally long. Superseded maps must become non-actionable even
@@ -679,7 +679,7 @@ def _invalidate_superseded_afic_signals(store,*,payload:dict[str,Any])->int:
             continue
         store.client.table("signals").update({
             "state":"INVALIDATED",
-            "active_guards":["AFIC_MAP_SUPERSEDED"],
+            "active_guards":["RIZAN_MAP_SUPERSEDED"],
         }).eq("id",signal_id).eq("state",prior_state).execute()
         invalidated+=1
     return invalidated
@@ -712,7 +712,7 @@ def _invalidate_stale_execution_ready(store,*,payload:dict[str,Any])->int:
             continue
         result=(
             store.client.table("signals")
-            .update({"state":"INVALIDATED","active_guards":["AFIC_MAP_NO_LONGER_CURRENT"]})
+            .update({"state":"INVALIDATED","active_guards":["RIZAN_MAP_NO_LONGER_CURRENT"]})
             .eq("id",signal_id)
             .eq("state","EXECUTION_READY")
             .execute()
@@ -730,7 +730,7 @@ def _record_execution_geometry(
 )->None:
     account=_account_label()
     if not account:
-        raise SystemExit("CTRADER_ACCOUNT_ID_REQUIRED_FOR_AFIC_EXECUTION_GEOMETRY")
+        raise SystemExit("CTRADER_ACCOUNT_ID_REQUIRED_FOR_RIZAN_EXECUTION_GEOMETRY")
     store.record_order_event(
         backend="CTRADER",
         account_id=account,
@@ -739,7 +739,7 @@ def _record_execution_geometry(
         event_type=EXECUTION_EVENT_TYPE,
         accepted=True,
         code=EXECUTION_STRATEGY_ID,
-        message="user-authorized AFIC grade-A/B confirmed DEMO geometry persisted",
+        message="user-authorized RIZAN grade-A/B confirmed DEMO geometry persisted",
         payload={
             "signal_id":str(signal_id),
             "symbol":SYMBOL,
@@ -772,11 +772,11 @@ def run()->int:
     cfg=load_project_config(None)
     policy=load_execution_policy(None)
     if str(policy.ctrader.get("environment","")).upper()!="DEMO":
-        raise SystemExit("AFIC_PREPARED_PLAN_DEMO_ONLY")
+        raise SystemExit("RIZAN_PREPARED_PLAN_DEMO_ONLY")
     if not bool(policy.ctrader.get("require_demo",False)):
-        raise SystemExit("AFIC_PREPARED_PLAN_REQUIRE_DEMO")
+        raise SystemExit("RIZAN_PREPARED_PLAN_REQUIRE_DEMO")
     if SYMBOL not in cfg.pair_map:
-        raise SystemExit("AFIC_PREPARED_PLAN_XAUUSD_NOT_CONFIGURED")
+        raise SystemExit("RIZAN_PREPARED_PLAN_XAUUSD_NOT_CONFIGURED")
 
     # Environment authorization alone is insufficient: Grade A/B, completed M15
     # confirmation, fresh geometry, exact strategy identity, atomic claim, risk,
