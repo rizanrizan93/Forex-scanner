@@ -75,6 +75,16 @@ def _episode_metrics(px: PriceArrays, row: DepthEpisode) -> dict[str, Any]:
     break_positions = np.flatnonzero(break_mask)
     break_rel = int(break_positions[0]) if len(break_positions) else None
 
+    # Do not turn a truncated year-end horizon into a false negative. A break
+    # resolves the episode immediately; otherwise require the full configured
+    # horizon before scoring any reaction rung.
+    horizon_complete = (
+        bool(px.timestamps)
+        and px.timestamps[-1] >= pd.Timestamp(horizon_end)
+    )
+    if break_rel is None and not horizon_complete:
+        return {**base, "complete": False, "censored": True}
+
     target_hits: dict[str, bool] = {}
     target_minutes: dict[str, float | None] = {}
     for multiple in REACTION_LADDER:
@@ -140,6 +150,7 @@ def _episode_metrics(px: PriceArrays, row: DepthEpisode) -> dict[str, Any]:
         "mfe_atr": float(mfe_atr),
         "mae_atr": float(mae_atr),
         "break_before_horizon": break_rel is not None,
+        "censored": False,
         "complete": True,
     }
 
