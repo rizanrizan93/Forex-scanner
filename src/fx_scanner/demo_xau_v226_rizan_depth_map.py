@@ -356,26 +356,62 @@ def _applicability(zone: dict[str, Any], price: float) -> dict[str, Any]:
     lifecycle = dict(zone.get("lifecycle") or {})
     touches = int(lifecycle.get("touch_count") or 0)
     freshness = str(lifecycle.get("freshness") or "UNKNOWN").upper()
+    timeframe = str(zone.get("timeframe") or "").upper()
     inside = _distance_to_zone(price, zone) <= 1e-9
+    structurally_active = bool(lifecycle.get("active", True)) and freshness != "BROKEN"
 
-    if touches == 0 and freshness == "FRESH":
+    # H4/H1 zones often remain relevant across several defended retests. Touch
+    # count is therefore a lifecycle/priority input, not a hard invalidation
+    # gate. M15 remains stricter because the V225.2 depth prior is first-touch
+    # calibrated and lower-timeframe reuse deteriorates more quickly.
+    htf_retest_allowed = timeframe in {"H4", "H1"} and structurally_active
+    strict_lower_tf = timeframe not in {"H4", "H1"}
+
+    if not structurally_active:
+        state = "STRUCTURALLY_INVALID"
+        note = "Zona sudah broken/inactive; tidak boleh dipakai untuk preparation atau execution."
+    elif touches == 0 and freshness == "FRESH":
         state = "HIGH_FIRST_TOUCH_PRIOR"
         note = "Belum tersentuh; paling dekat dengan populasi first-touch V225.2."
     elif touches <= 1 and inside:
         state = "MEDIUM_FIRST_TOUCH_IN_PROGRESS"
-        note = "First touch sedang/baru berlangsung; prior historis masih kontekstual."
+        note = "Touch pertama sedang berlangsung; prior V225.2 masih paling dekat secara geometri."
+    elif htf_retest_allowed and touches >= 1:
+        state = "ACTIVE_HTF_RETEST"
+        note = (
+            "H4/H1 masih structurally active walau sudah disentuh. Touch count menurunkan "
+            "prioritas, tetapi tidak membatalkan zona; execution harus memakai pressure + M5 confirmation."
+        )
     elif touches <= 1:
         state = "MEDIUM_POST_FIRST_TOUCH_CONTEXT"
-        note = "First touch sudah terjadi; jangan menganggap band sebagai forecast touch baru."
+        note = "Touch pertama selesai; lower-TF prior tetap kontekstual dan perlu konfirmasi."
     else:
         state = "LOW_REUSE_OUT_OF_SAMPLE"
-        note = "Multi-tested/reused; V225.2 tidak mengkalibrasi reuse sebagai first touch baru."
+        note = "M15/lower-TF multi-tested tetap konteks saja; reuse belum dikalibrasi oleh V225.2."
+
+    # Heuristic priority only; this is deliberately not a calibrated probability.
+    if timeframe == "H4":
+        lifecycle_weight = max(0.60, 1.0 - 0.08 * min(touches, 5))
+    elif timeframe == "H1":
+        lifecycle_weight = max(0.50, 1.0 - 0.10 * min(touches, 5))
+    else:
+        lifecycle_weight = 1.0 if touches == 0 else 0.80 if touches == 1 else 0.40
 
     return {
         "state": state,
+        "timeframe": timeframe,
         "touch_count": touches,
         "freshness": freshness,
         "inside_now": inside,
+        "structurally_active": structurally_active,
+        "htf_retest_allowed": htf_retest_allowed,
+        "strict_lower_tf": strict_lower_tf,
+        "lifecycle_weight": lifecycle_weight,
+        "prior_scope": (
+            "FIRST_TOUCH_CALIBRATED"
+            if touches == 0
+            else "FIRST_TOUCH_PRIOR_GEOMETRY_ONLY"
+        ),
         "note": note,
     }
 
@@ -485,29 +521,9 @@ def _select_h4(
     if not candidates:
         return {}
 
-    # V225.2 is a first-touch study. Prefer an untouched fresh H4 parent that
-    # still lies ahead of price on the correct approach side. This keeps the
-    # calibrated parent aligned with the population used to estimate depth.
-    fresh = [
-        zone for zone in candidates
-        if _clean_first_touch_candidate(
-            zone,
-            direction=direction,
-            price=price,
-        )
-    ]
-    if fresh:
-        fresh.sort(
-            key=lambda zone: (
-                _distance_to_zone(price, zone),
-                -float(_f(zone.get("research_score")) or 0.0),
-                _zone_width(zone),
-            )
-        )
-        return fresh[0]
-
-    # If no clean first-touch H4 exists, retain the nearest active H4 only as
-    # contextual research. Applicability will mark reused zones as low.
+    # Structural validity and proximity now lead selection. Freshness/touch
+    # count remains a soft tie-breaker instead of a hard H4 gate: an active H4
+    # that has defended several retests can remain the relevant parent.
     candidates.sort(key=lambda zone: _candidate_sort_key(zone, price))
     return candidates[0]
 
@@ -963,6 +979,8 @@ def _depth_entry_candidate(
     h1_profile: dict[str, Any],
     m15_profile: dict[str, Any],
     h4_selection_mode: str,
+    h1_app: dict[str, Any] | None = None,
+    m15_app: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build one display-only entry candidate from the narrowest causal locator.
 
@@ -1006,20 +1024,55 @@ def _depth_entry_candidate(
 
     h4_profile = dict(h4.get("historical_profile") or {})
     h4_app = dict(h4.get("applicability") or {})
-    calibrated_fresh = (
-        h4_selection_mode == "FRESH_FIRST_TOUCH_CALIBRATED_PARENT"
-        and str(h4_app.get("state") or "") == "HIGH_FIRST_TOUCH_PRIOR"
-    )
-    first_touch_in_progress = (
+    h1_app = dict(h1_app or {})
+    m15_app = dict(m15_app or {})
+
+    h4_touches = int(h4_app.get("touch_count") or 0)
+    h1_touches = int(h1_app.get("touch_count") or 0) if h1_app else 0
+    m15_touches = int(m15_app.get("touch_count") or 0) if m15_app else 0
+    htf_retested = bool(h4_touches > 0 or h1_touches > 0)
+    first_touch_in_progress = bool(
         str(h4_app.get("state") or "") == "MEDIUM_FIRST_TOUCH_IN_PROGRESS"
-        and int(h4_app.get("touch_count") or 0) <= 1
+        or str(h1_app.get("state") or "") == "MEDIUM_FIRST_TOUCH_IN_PROGRESS"
     )
-    confirmation_calibrated = bool(calibrated_fresh or first_touch_in_progress)
+
+    h4_active = bool(h4_app.get("structurally_active", True))
+    h1_active = bool(h1_app.get("structurally_active", True)) if h1_app else True
+    m15_active = bool(m15_app.get("structurally_active", True)) if m15_app else True
+    lower_tf_reuse_ok = not source_layer.startswith("M15") or m15_touches <= 1
+
+    calibrated_fresh = bool(
+        h4_active
+        and h1_active
+        and m15_active
+        and h4_touches == 0
+        and h1_touches == 0
+        and (not source_layer.startswith("M15") or m15_touches == 0)
+    )
+    retest_confirmation_eligible = bool(
+        h4_active
+        and h1_active
+        and m15_active
+        and lower_tf_reuse_ok
+        and htf_retested
+    )
+    confirmation_calibrated = bool(
+        h4_active
+        and h1_active
+        and m15_active
+        and lower_tf_reuse_ok
+        and (calibrated_fresh or first_touch_in_progress or retest_confirmation_eligible)
+    )
+
     display_status = (
         "PREPARE_ONLY_FRESH_FIRST_TOUCH"
         if calibrated_fresh
         else "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS"
-        if first_touch_in_progress
+        if first_touch_in_progress and confirmation_calibrated
+        else "CONFIRMATION_ONLY_RETESTED_HTF"
+        if retest_confirmation_eligible
+        else "CONTEXT_ONLY_LOWER_TF_REUSE"
+        if not lower_tf_reuse_ok
         else "CONTEXT_ONLY_OUT_OF_SAMPLE"
     )
 
@@ -1037,10 +1090,29 @@ def _depth_entry_candidate(
         ),
         "display_status": display_status,
         "calibrated_fresh_first_touch": calibrated_fresh,
-        "confirmation_calibrated_first_touch": confirmation_calibrated,
+        "confirmation_calibrated_first_touch": bool(
+            calibrated_fresh or first_touch_in_progress
+        ),
         "first_touch_in_progress": first_touch_in_progress,
+        "htf_retested": htf_retested,
+        "retest_confirmation_eligible": retest_confirmation_eligible,
         "pre_touch_execution_eligible": calibrated_fresh,
         "confirmation_execution_eligible": confirmation_calibrated,
+        "zone_reuse": {
+            "h4_touch_count": h4_touches,
+            "h1_touch_count": h1_touches,
+            "m15_touch_count": m15_touches,
+            "h4_lifecycle_weight": _f(h4_app.get("lifecycle_weight")),
+            "h1_lifecycle_weight": _f(h1_app.get("lifecycle_weight")),
+            "m15_lifecycle_weight": _f(m15_app.get("lifecycle_weight")),
+            "freshness_is_hard_gate_h4_h1": False,
+            "m15_multi_test_is_hard_gate": source_layer.startswith("M15"),
+            "historical_prior_scope": (
+                "FIRST_TOUCH_CALIBRATED"
+                if calibrated_fresh
+                else "FIRST_TOUCH_PRIOR_GEOMETRY_ONLY"
+            ),
+        },
         "historical_context": {
             "reaction_contract": "REACTION_GTE_0_50_ATR",
             "h4_parent_rate": _f(h4_profile.get("hold_rate")),
@@ -1055,8 +1127,9 @@ def _depth_entry_candidate(
             ),
             "note": (
                 "Rates are standalone historical reaction/hold rates, not a combined "
-                "H4→H1→M15 entry-strategy win rate. The final candidate is being "
-                "validated prospectively by V227."
+                "H4→H1→M15 entry-strategy win rate. V225.2 is first-touch calibrated; "
+                "when H4/H1 is retested the depth prior is used as geometry only and "
+                "DEMO execution requires live pressure plus M5 confirmation."
             ),
         },
         "policy_effect": POLICY_EFFECT,
@@ -1110,13 +1183,9 @@ def _direction_map(
         }
     )
     h4_selection_mode = (
-        "FRESH_FIRST_TOUCH_CALIBRATED_PARENT"
-        if _clean_first_touch_candidate(
-            h4_zone,
-            direction=direction,
-            price=price,
-        )
-        else "FALLBACK_CONTEXT_ONLY"
+        "ACTIVE_HTF_FRESH_PARENT"
+        if int(dict(h4_zone.get("lifecycle") or {}).get("touch_count") or 0) == 0
+        else "ACTIVE_HTF_RETEST_PARENT"
     )
 
     h1_zone = _select_h1(
@@ -1219,6 +1288,8 @@ def _direction_map(
         if h1_zone
         else "H4_DEPTH_HOTSPOT_AVAILABLE"
     )
+    h1_app = dict(h1.get("applicability") or {}) if h1 else {}
+    m15_app = _applicability(m15_zone, price) if m15_zone else {}
     depth_entry_candidate = _depth_entry_candidate(
         direction=direction,
         price=price,
@@ -1228,6 +1299,8 @@ def _direction_map(
         h1_profile=h1_profile,
         m15_profile=m15_profile,
         h4_selection_mode=h4_selection_mode,
+        h1_app=h1_app,
+        m15_app=m15_app,
     )
     four_order_ladder = _four_order_depth_ladder(
         direction=direction,
@@ -1252,7 +1325,7 @@ def _direction_map(
             "zone": m15_zone,
             "nested_locator": m15_nested,
             "standalone_profile_context": m15_profile,
-            "applicability": _applicability(m15_zone, price) if m15_zone else {},
+            "applicability": m15_app,
             "note": (
                 "Standalone M15 uses the causal-close V225.2 first-touch depth profile. "
                 "When M15 is nested under a successful H4/H1 path, V226 keeps that "
@@ -1380,11 +1453,13 @@ def build_depth_map(
             "coordinate": "FULL_ZONE_NEAR_EDGE_TO_FAR_EDGE",
         },
         "interpretation": (
-            "V226 localizes current active H4 supply/demand using V225.2 first-touch "
-            "depth priors. A fresh untouched H4 on the correct approach side is preferred "
-            "as the calibrated parent; the nearest reused H4 is retained separately as "
-            "market context. The calibrated parent is then narrowed with an overlapping "
-            "H1 child and a pre-existing same-direction M15 child when available. "
+            "V226 localizes current active H4 supply/demand using V225.2 depth priors. "
+            "H4/H1 freshness is no longer a hard gate: structurally active retested zones "
+            "remain eligible and touch count becomes lifecycle context/priority. The "
+            "first-touch V225.2 prior is treated as calibrated only on untouched zones; "
+            "for H4/H1 retests it is geometry context and execution requires live pressure "
+            "plus M5 confirmation. The parent is narrowed with an overlapping H1 child and "
+            "a pre-existing same-direction M15 child when available. "
             "Nested child envelopes are clipped to their parent locator so each stage truly "
             "narrows rather than expanding outside the upstream geometry. The narrowest "
             "available geometry is exposed as a display-only Depth Entry Candidate with "
