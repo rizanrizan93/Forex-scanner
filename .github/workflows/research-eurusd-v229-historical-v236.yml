@@ -1,0 +1,110 @@
+name: Research EURUSD V229 Historical V236
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/v236-eurusd-v229-capital-100
+    paths:
+      - "src/fx_scanner/research_eurusd_v229_historical_v236.py"
+      - "src/fx_scanner/research_eurusd_v229_historical_v236_year_runtime.py"
+      - "src/fx_scanner/research_eurusd_v229_historical_v236_aggregate.py"
+      - "tests/test_research_eurusd_v229_historical_v236.py"
+      - ".github/workflows/research-eurusd-v229-historical-v236.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-eurusd-v229-historical-v236-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Test V236
+        run: |
+          pytest -q             tests/test_research_eurusd_v229_historical_v236.py             tests/test_demo_xau_structural_targets_v229.py             tests/test_research_xau_zone_reversal_depth_v225.py
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      EURUSD_V236_YEAR: ${{ matrix.year }}
+      EURUSD_V236_PRICE_CSV: /tmp/histdata/eurusd-v236-${{ matrix.year }}.csv
+      EURUSD_V236_PROVENANCE: artifacts/eurusd-v236-provenance-${{ matrix.year }}.json
+      EURUSD_V236_OUTPUT: artifacts/eurusd-v229-historical-v236-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Run EURUSD V229-style historical year
+        run: python -m fx_scanner.research_eurusd_v229_historical_v236_year_runtime
+      - name: Upload yearly shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: eurusd-v236-year-${{ matrix.year }}
+          path: |
+            artifacts/eurusd-v229-historical-v236-${{ matrix.year }}.json
+            artifacts/eurusd-v236-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      EURUSD_V236_SHARD_DIR: /tmp/eurusd-v236-shards
+      EURUSD_V236_FULL_OUTPUT: artifacts/eurusd-v229-historical-v236-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download all yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: eurusd-v236-year-*
+          path: /tmp/eurusd-v236-shards
+          merge-multiple: false
+      - name: Aggregate 2012-2026 and simulate $100 at 1:100
+        run: python -m fx_scanner.research_eurusd_v229_historical_v236_aggregate
+      - name: Upload full V236 result
+        uses: actions/upload-artifact@v4
+        with:
+          name: eurusd-v229-historical-v236-full
+          path: artifacts/eurusd-v229-historical-v236-full.json
+          if-no-files-found: error
+          retention-days: 30
