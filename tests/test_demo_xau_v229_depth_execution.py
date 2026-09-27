@@ -129,16 +129,28 @@ def test_v229_accepts_retested_htf_as_confirmation_only_parent() -> None:
     ]
 
 
-def test_v229_rejects_context_only_lower_tf_reuse_parent() -> None:
-    payload = _v226(fresh=False)
-    payload["depth_entry_candidate"]["display_status"] = "CONTEXT_ONLY_LOWER_TF_REUSE"
-    payload["depth_entry_candidate"]["confirmation_execution_eligible"] = False
+def test_v229_accepts_reused_m15_as_confirmation_only_parent() -> None:
+    payload = _v226(fresh=False, reused=True)
+    payload["depth_entry_candidate"]["display_status"] = "CONFIRMATION_ONLY_RETESTED_M15"
+    payload["depth_entry_candidate"]["m15_retested"] = True
+    payload["depth_entry_candidate"]["m15_retest_confirmation_required"] = True
+    payload["depth_entry_candidate"]["confirmation_execution_eligible"] = True
     plan = build_execution_plan(
         v226_evaluation=payload,
         atlas_evaluation=_atlas(),
         live_price=101.0,
     )
-    assert plan is None
+    assert plan is not None
+    assert plan["execution_phase"] == "RETEST_CONFIRMATION"
+    assert plan["pretouch_slots"] == []
+    assert plan["confirmation_slots"] == [3, 4]
+    assert plan["m15_retest_confirmation_required"] is True
+    assert [child["execution_enabled"] for child in plan["children"]] == [
+        False,
+        False,
+        True,
+        True,
+    ]
 
 
 def test_v229_parent_is_excluded_from_generic_market_handoff() -> None:
