@@ -2,6 +2,16 @@ name: Research Brent Uni Depth V238B
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/fx_scanner/research_brent_histdata_download_v238b.py"
+      - "src/fx_scanner/research_brent_uni_depth_v238b_metrics.py"
+      - "src/fx_scanner/research_brent_uni_depth_v238b_year_runtime.py"
+      - "src/fx_scanner/research_brent_uni_depth_v238b_aggregate.py"
+      - "tests/test_research_brent_uni_depth_v238b.py"
+      - ".github/workflows/research-brent-uni-depth-v238b.yml"
   push:
     branches:
       - research/v238b-brent-uni-depth
