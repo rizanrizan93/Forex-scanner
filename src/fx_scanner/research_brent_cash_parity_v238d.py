@@ -249,7 +249,8 @@ def run() -> int:
 
     cash_metrics = parity_metrics(histdata, cash)
     futures_metrics = parity_metrics(histdata, futures)
-    passed = cash_parity_pass(cash_metrics)
+    thresholds = ParityThresholds()
+    passed = cash_parity_pass(cash_metrics, thresholds)
     preferred = CASH_SYMBOL if passed else None
 
     payload = {
@@ -290,9 +291,9 @@ def run() -> int:
             FUTURES_SYMBOL: futures_metrics,
         },
         "thresholds": {
-            "min_overlap": ParityThresholds.min_overlap,
-            "min_return_corr": ParityThresholds.min_return_corr,
-            "max_median_abs_pct": ParityThresholds.max_median_abs_pct,
+            "min_overlap": thresholds.min_overlap,
+            "min_return_corr": thresholds.min_return_corr,
+            "max_median_abs_pct": thresholds.max_median_abs_pct,
         },
         "cash_parity_pass": passed,
         "preferred_historical_broker_symbol": preferred,
