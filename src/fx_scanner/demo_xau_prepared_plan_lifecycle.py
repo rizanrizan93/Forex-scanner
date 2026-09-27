@@ -30,8 +30,11 @@ TRACKED_EVENT_TYPES = (
 )
 
 _CANCEL_GUARD_REASON = {
+    # Legacy persisted guards are still accepted for historical continuity.
     "AFIC_MAP_SUPERSEDED": "H4_REMAP",
     "AFIC_MAP_NO_LONGER_CURRENT": "H4_REMAP",
+    "RIZAN_MAP_SUPERSEDED": "H4_REMAP",
+    "RIZAN_MAP_NO_LONGER_CURRENT": "H4_REMAP",
 }
 
 
@@ -59,7 +62,7 @@ def _events(
     store: SupabaseOperationalStore, *, cutoff: datetime
 ) -> tuple[dict[str, Any], ...]:
     # broker_order_events contains high-volume telemetry. A single broad LIMIT
-    # can exclude recent AFIC plans entirely, so fetch only lifecycle-relevant
+    # can exclude recent RIZAN plans entirely, so fetch only lifecycle-relevant
     # event families with an independent bound for each type.
     rows: list[dict[str, Any]] = []
     for event_type in TRACKED_EVENT_TYPES:
