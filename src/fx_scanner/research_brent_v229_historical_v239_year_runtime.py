@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from .research_brent_v229_historical_v236 import (
+from .research_brent_v229_historical_v239 import (
     ARTIFACT_CONTRACT,
     EXECUTION_AUTHORITY,
     EXECUTION_INFLUENCE,
@@ -46,19 +46,19 @@ def _paths(year: int) -> tuple[Path, Path, Path]:
     csv_path = Path(
         os.getenv(
             "BRENT_V239_PRICE_CSV",
-            f"/tmp/histdata/brent-v236-{year}.csv",
+            f"/tmp/histdata/brent-v239-{year}.csv",
         )
     )
     provenance = Path(
         os.getenv(
             "BRENT_V239_PROVENANCE",
-            f"artifacts/brent-v236-provenance-{year}.json",
+            f"artifacts/brent-v239-provenance-{year}.json",
         )
     )
     output = Path(
         os.getenv(
             "BRENT_V239_OUTPUT",
-            f"artifacts/brent-v229-historical-v236-{year}.json",
+            f"artifacts/brent-v229-historical-v239-{year}.json",
         )
     )
     return csv_path, provenance, output
