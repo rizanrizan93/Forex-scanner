@@ -64,3 +64,10 @@ def test_v249_pressure_transition_is_visible_in_canonical_dashboard():
     assert "Pre-touch DEMO" in SOURCE
     assert "M5-confirm DEMO" in SOURCE
     assert "evaluate_pressure_transition" in SOURCE
+
+
+def test_v251_dynamic_depth_hazard_is_visible_in_canonical_dashboard():
+    assert "Dynamic Depth Hazard — next depth / reversal window" in SOURCE
+    assert "Next reversal band" in SOURCE
+    assert "Hazard action" in SOURCE
+    assert "build_dynamic_depth_hazard" in SOURCE
