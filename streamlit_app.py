@@ -459,6 +459,11 @@ def _rizan_chart_png(
     depth_overlays: list[dict[str, Any]] | None = None,
     entry_zone: dict[str, Any] | None = None,
     structural_targets: list[dict[str, Any]] | None = None,
+    next_leg_direction: str | None = None,
+    next_leg_source: dict[str, Any] | None = None,
+    next_leg_target: dict[str, Any] | None = None,
+    next_leg_terminal: dict[str, Any] | None = None,
+    next_leg_micro: dict[str, Any] | None = None,
 ) -> tuple[bytes | None, str | None]:
     frame = _rizan_chart_frame(raw_bars, timeframe)
     if frame.empty or len(frame) < 4:
@@ -668,6 +673,28 @@ def _rizan_chart_png(
         next_target=next_target,
     )
 
+    next_side = str(next_leg_direction or "").upper()
+    reaction_zone = dict(next_leg_source or {})
+    reaction_low = _chart_price(reaction_zone.get("low"))
+    reaction_high = _chart_price(reaction_zone.get("high"))
+    next_target_row = dict(next_leg_target or {})
+    next_reaction_price = _chart_price(next_target_row.get("price"))
+    next_terminal_row = dict(next_leg_terminal or {})
+    next_terminal_low = _chart_price(next_terminal_row.get("low"))
+    next_terminal_high = _chart_price(next_terminal_row.get("high"))
+    next_micro_row = dict(next_leg_micro or {})
+    refined_pocket = dict(next_micro_row.get("refined_entry_pocket") or {})
+    refined_low = _chart_price(refined_pocket.get("low"))
+    refined_high = _chart_price(refined_pocket.get("high"))
+    two_leg_mode = bool(
+        str(current_direction or "").upper() in {"LONG", "SHORT"}
+        and next_side in {"LONG", "SHORT"}
+        and next_side != str(current_direction or "").upper()
+        and reaction_low is not None
+        and reaction_high is not None
+        and reaction_high > reaction_low
+    )
+
     active_entry = dict(entry_zone or {})
     active_entry_low = _chart_price(active_entry.get("entry_low", active_entry.get("low")))
     active_entry_high = _chart_price(active_entry.get("entry_high", active_entry.get("high")))
@@ -705,39 +732,164 @@ def _rizan_chart_png(
         )
 
     target_colors = ("#38bdf8", "#a78bfa", "#f59e0b")
-    for index, target in enumerate(targets):
-        target_price = float(target["price"])
-        target_color = target_colors[min(index, len(target_colors) - 1)]
-        target_label = str(target.get("label") or f"TP{index + 1}")
-        if index == len(targets) - 1 and len(targets) > 1:
-            target_label += " • TARGET BERIKUTNYA"
-        ax.hlines(
-            target_price,
-            max(0.0, len(visible) * 0.58),
-            right_edge - 1.0,
-            color=target_color,
-            linewidth=1.05,
-            linestyle=":",
-            alpha=0.82,
-            zorder=5,
+    if not two_leg_mode:
+        for index, target in enumerate(targets):
+            target_price = float(target["price"])
+            target_color = target_colors[min(index, len(target_colors) - 1)]
+            target_label = str(target.get("label") or f"TP{index + 1}")
+            if index == len(targets) - 1 and len(targets) > 1:
+                target_label += " • TARGET BERIKUTNYA"
+            ax.hlines(
+                target_price,
+                max(0.0, len(visible) * 0.58),
+                right_edge - 1.0,
+                color=target_color,
+                linewidth=1.05,
+                linestyle=":",
+                alpha=0.82,
+                zorder=5,
+            )
+            ax.text(
+                right_edge - 0.6,
+                target_price,
+                f"{target_label}  {target_price:.2f}",
+                ha="right",
+                va="bottom",
+                fontsize=8.1,
+                color=target_color,
+                bbox=dict(
+                    boxstyle="round,pad=0.24",
+                    facecolor="#111827",
+                    edgecolor=target_color,
+                    alpha=0.94,
+                ),
+                zorder=9,
+            )
+    else:
+        checkpoint = _chart_price(current_target)
+        if checkpoint is not None:
+            ax.hlines(
+                checkpoint,
+                max(0.0, len(visible) * 0.64),
+                right_edge - 1.0,
+                color="#38bdf8",
+                linewidth=1.25,
+                linestyle=":",
+                alpha=0.95,
+                zorder=6,
+            )
+            ax.text(
+                right_edge - 0.6,
+                checkpoint,
+                f"CHECKPOINT {str(current_direction).upper()}  {checkpoint:.2f}",
+                ha="right",
+                va="bottom",
+                fontsize=8.2,
+                color="#38bdf8",
+                bbox=dict(
+                    boxstyle="round,pad=0.24",
+                    facecolor="#111827",
+                    edgecolor="#38bdf8",
+                    alpha=0.95,
+                ),
+                zorder=10,
+            )
+
+        reaction_start_x = max(0.0, len(visible) * 0.58)
+        ax.add_patch(
+            Rectangle(
+                (reaction_start_x, float(reaction_low)),
+                right_edge - reaction_start_x - 1.0,
+                float(reaction_high) - float(reaction_low),
+                facecolor="#ef4444" if next_side == "SHORT" else "#22c55e",
+                edgecolor="#fb7185" if next_side == "SHORT" else "#4ade80",
+                alpha=0.15,
+                linewidth=2.2,
+                zorder=3,
+            )
         )
+        reaction_label_color = "#fb7185" if next_side == "SHORT" else "#4ade80"
         ax.text(
             right_edge - 0.6,
-            target_price,
-            f"{target_label}  {target_price:.2f}",
+            (float(reaction_low) + float(reaction_high)) / 2.0,
+            f"AREA REAKSI • PANTAU {next_side}\n"
+            f"{float(reaction_low):.2f}–{float(reaction_high):.2f}",
             ha="right",
-            va="bottom",
-            fontsize=8.1,
-            color=target_color,
+            va="center",
+            fontsize=8.4,
+            color="#f8fafc",
             bbox=dict(
-                boxstyle="round,pad=0.24",
+                boxstyle="round,pad=0.30",
                 facecolor="#111827",
-                edgecolor=target_color,
-                alpha=0.94,
+                edgecolor=reaction_label_color,
+                alpha=0.96,
             ),
-            zorder=9,
+            zorder=11,
         )
 
+        if (
+            refined_low is not None
+            and refined_high is not None
+            and refined_high > refined_low
+        ):
+            pocket_start_x = max(0.0, len(visible) * 0.70)
+            ax.add_patch(
+                Rectangle(
+                    (pocket_start_x, refined_low),
+                    right_edge - pocket_start_x - 1.0,
+                    refined_high - refined_low,
+                    facecolor="#f97316",
+                    edgecolor="#fb923c",
+                    alpha=0.18,
+                    linewidth=1.5,
+                    linestyle="--",
+                    zorder=4,
+                )
+            )
+            ax.text(
+                pocket_start_x + 0.25,
+                refined_high,
+                f"M5 REACTION POCKET  {refined_low:.2f}–{refined_high:.2f}",
+                ha="left",
+                va="bottom",
+                fontsize=7.6,
+                color="#fb923c",
+                bbox=dict(
+                    boxstyle="round,pad=0.22",
+                    facecolor="#111827",
+                    edgecolor="#fb923c",
+                    alpha=0.94,
+                ),
+                zorder=11,
+            )
+
+        if next_reaction_price is not None:
+            ax.hlines(
+                next_reaction_price,
+                max(0.0, len(visible) * 0.68),
+                right_edge - 1.0,
+                color="#fb923c",
+                linewidth=1.15,
+                linestyle=":",
+                alpha=0.95,
+                zorder=6,
+            )
+            ax.text(
+                right_edge - 0.6,
+                next_reaction_price,
+                f"TARGET REAKSI {next_side}  {next_reaction_price:.2f}",
+                ha="right",
+                va="top",
+                fontsize=8.1,
+                color="#fb923c",
+                bbox=dict(
+                    boxstyle="round,pad=0.23",
+                    facecolor="#111827",
+                    edgecolor="#fb923c",
+                    alpha=0.95,
+                ),
+                zorder=10,
+            )
     ax.axhline(float(price_now), color="#f8fafc", linewidth=1.0, linestyle="--", alpha=0.72)
     ax.text(
         right_edge - 0.6,
@@ -751,50 +903,174 @@ def _rizan_chart_png(
         zorder=8,
     )
 
-    path_points: list[tuple[float, float, str]] = [
-        (max(0.0, len(visible) - 5.0), float(price_now), "NOW")
-    ]
-    future_x = len(visible) + 1.2
-    if approaching_entry and entry_reference is not None:
-        path_points.append((future_x, float(entry_reference), "DEPTH / ENTRY"))
-        future_x += 3.3
+    if two_leg_mode:
+        current_side = str(current_direction or "").upper()
+        checkpoint = _chart_price(current_target)
+        current_start_x = max(0.0, len(visible) - 5.0)
+        x1 = len(visible) + 1.0
+        x2 = len(visible) + 4.0
+        x3 = len(visible) + 7.0
 
-    for index, target in enumerate(targets):
-        label = str(target.get("label") or f"TP{index + 1}")
-        if index == len(targets) - 1 and len(targets) > 1:
-            label += " • NEXT TARGET"
-        path_points.append((future_x, float(target["price"]), label))
-        future_x += 3.3
-
-    for idx, ((x1, y1, _), (x2, y2, label2)) in enumerate(zip(path_points, path_points[1:])):
-        if label2 == "DEPTH / ENTRY":
-            line_color = "#fbbf24"
-        else:
-            target_index = max(0, idx - (1 if approaching_entry and entry_reference is not None else 0))
-            line_color = target_colors[min(target_index, len(target_colors) - 1)]
-        arrow = FancyArrowPatch(
-            (x1, y1),
-            (x2, y2),
+        current_destination = (
+            checkpoint
+            if checkpoint is not None
+            else float(reaction_low if current_side == "LONG" else reaction_high)
+        )
+        current_arrow = FancyArrowPatch(
+            (current_start_x, float(price_now)),
+            (x1, float(current_destination)),
             arrowstyle="-|>",
-            mutation_scale=18,
-            linewidth=2.0,
-            color=line_color,
+            mutation_scale=20,
+            linewidth=2.6,
+            color="#38bdf8",
             linestyle="-",
-            connectionstyle="arc3,rad=0.06",
-            zorder=10,
+            connectionstyle="arc3,rad=0.03",
+            zorder=12,
         )
-        ax.add_patch(arrow)
+        ax.add_patch(current_arrow)
         ax.text(
-            x2,
-            y2,
-            label2,
-            fontsize=8.2,
-            color=line_color,
-            va="top" if y2 < y1 else "bottom",
+            (current_start_x + x1) / 2.0,
+            (float(price_now) + float(current_destination)) / 2.0,
+            f"LEG AKTIF {current_side}",
+            fontsize=8.6,
+            color="#38bdf8",
             ha="center",
+            va="bottom",
             fontweight="bold",
-            zorder=11,
+            zorder=13,
         )
+
+        reaction_entry = float(
+            refined_low + (refined_high - refined_low) / 2.0
+            if refined_low is not None and refined_high is not None
+            else reaction_low + (reaction_high - reaction_low) / 2.0
+        )
+        if abs(float(current_destination) - reaction_entry) > 0.05:
+            approach_arrow = FancyArrowPatch(
+                (x1, float(current_destination)),
+                (x2, reaction_entry),
+                arrowstyle="-|>",
+                mutation_scale=18,
+                linewidth=1.8,
+                color="#94a3b8",
+                linestyle="--",
+                connectionstyle="arc3,rad=0.04",
+                zorder=11,
+            )
+            ax.add_patch(approach_arrow)
+            ax.text(
+                x2,
+                reaction_entry,
+                f"CEK REAKSI {next_side}",
+                fontsize=8.1,
+                color=reaction_label_color,
+                ha="center",
+                va="bottom",
+                fontweight="bold",
+                zorder=13,
+            )
+
+        if next_reaction_price is not None:
+            reaction_arrow = FancyArrowPatch(
+                (x2, reaction_entry),
+                (x3, float(next_reaction_price)),
+                arrowstyle="-|>",
+                mutation_scale=20,
+                linewidth=2.4,
+                color="#fb923c",
+                linestyle="--",
+                connectionstyle="arc3,rad=-0.08",
+                zorder=12,
+            )
+            ax.add_patch(reaction_arrow)
+            ax.text(
+                (x2 + x3) / 2.0,
+                (reaction_entry + float(next_reaction_price)) / 2.0,
+                f"JIKA REJECT → {next_side}",
+                fontsize=8.5,
+                color="#fb923c",
+                ha="center",
+                va="top" if next_reaction_price < reaction_entry else "bottom",
+                fontweight="bold",
+                zorder=13,
+            )
+
+            continuation_edge = (
+                next_terminal_low
+                if next_side == "SHORT"
+                else next_terminal_high
+            )
+            if (
+                continuation_edge is not None
+                and abs(float(continuation_edge) - float(next_reaction_price)) > 0.05
+            ):
+                continuation_arrow = FancyArrowPatch(
+                    (x3, float(next_reaction_price)),
+                    (right_edge - 1.3, float(continuation_edge)),
+                    arrowstyle="-|>",
+                    mutation_scale=16,
+                    linewidth=1.5,
+                    color="#fb923c",
+                    linestyle=":",
+                    connectionstyle="arc3,rad=-0.04",
+                    zorder=10,
+                )
+                ax.add_patch(continuation_arrow)
+                ax.text(
+                    right_edge - 1.4,
+                    float(continuation_edge),
+                    f"jika zona target jebol → {float(continuation_edge):.2f}",
+                    fontsize=7.4,
+                    color="#fb923c",
+                    ha="right",
+                    va="top" if next_side == "SHORT" else "bottom",
+                    zorder=12,
+                )
+    else:
+        path_points: list[tuple[float, float, str]] = [
+            (max(0.0, len(visible) - 5.0), float(price_now), "NOW")
+        ]
+        future_x = len(visible) + 1.2
+        if approaching_entry and entry_reference is not None:
+            path_points.append((future_x, float(entry_reference), "DEPTH / ENTRY"))
+            future_x += 3.3
+
+        for index, target in enumerate(targets):
+            label = str(target.get("label") or f"TP{index + 1}")
+            if index == len(targets) - 1 and len(targets) > 1:
+                label += " • NEXT TARGET"
+            path_points.append((future_x, float(target["price"]), label))
+            future_x += 3.3
+
+        for idx, ((x1, y1, _), (x2, y2, label2)) in enumerate(zip(path_points, path_points[1:])):
+            if label2 == "DEPTH / ENTRY":
+                line_color = "#fbbf24"
+            else:
+                target_index = max(0, idx - (1 if approaching_entry and entry_reference is not None else 0))
+                line_color = target_colors[min(target_index, len(target_colors) - 1)]
+            arrow = FancyArrowPatch(
+                (x1, y1),
+                (x2, y2),
+                arrowstyle="-|>",
+                mutation_scale=18,
+                linewidth=2.0,
+                color=line_color,
+                linestyle="-",
+                connectionstyle="arc3,rad=0.06",
+                zorder=10,
+            )
+            ax.add_patch(arrow)
+            ax.text(
+                x2,
+                y2,
+                label2,
+                fontsize=8.2,
+                color=line_color,
+                va="top" if y2 < y1 else "bottom",
+                ha="center",
+                fontweight="bold",
+                zorder=11,
+            )
 
     y_values = [float(visible["low"].min()), float(visible["high"].max()), float(price_now)]
     for zone in zones[:8]:
@@ -814,6 +1090,17 @@ def _rizan_chart_png(
         y_values.extend([active_entry_low, active_entry_high])
     for target in targets:
         y_values.append(float(target["price"]))
+    for scenario_value in (
+        reaction_low,
+        reaction_high,
+        next_reaction_price,
+        next_terminal_low,
+        next_terminal_high,
+        refined_low,
+        refined_high,
+    ):
+        if scenario_value is not None:
+            y_values.append(float(scenario_value))
     pad = max(2.0, (max(y_values) - min(y_values)) * 0.08)
     ax.set_ylim(min(y_values) - pad, max(y_values) + pad)
     ax.set_xlim(-1.0, right_edge)
@@ -835,14 +1122,36 @@ def _rizan_chart_png(
     for spine in ax.spines.values():
         spine.set_color("#334155")
 
+    title_suffix = (
+        f"leg aktif {str(current_direction or '—').upper()} • berikutnya cek {next_side}"
+        if two_leg_mode
+        else f"leg aktif {str(current_direction or '—').upper()} • path: ENTRY → TP berikutnya"
+    )
     ax.set_title(
-        f"XAUUSD • RIZAN-style Supply/Demand • {str(timeframe).upper()} • "
-        f"leg aktif {str(current_direction or '—').upper()} • path: ENTRY → TP berikutnya",
+        f"XAUUSD • RIZAN-style Supply/Demand • {str(timeframe).upper()} • {title_suffix}",
         color="#f8fafc",
         fontsize=12,
         loc="left",
         pad=12,
     )
+    if two_leg_mode:
+        ax.text(
+            0.01,
+            0.985,
+            "Biru solid = leg aktif • Abu putus = masuk area reaksi • Oranye putus = skenario pantulan",
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=8.2,
+            color="#cbd5e1",
+            bbox=dict(
+                boxstyle="round,pad=0.28",
+                facecolor="#111827",
+                edgecolor="#475569",
+                alpha=0.92,
+            ),
+            zorder=14,
+        )
     ax.set_ylabel("Harga XAUUSD", color="#cbd5e1")
     fig.tight_layout()
 
@@ -2045,6 +2354,15 @@ with forecast_tab:
             f"**{_fmt_price(nearest_supply.get('low'))}–{_fmt_price(nearest_supply.get('high'))}**"
             f" • leg aktif **{dc_current_leg_direction}**."
         )
+        chart_map_age = (
+            None if supply_demand_hb is None else _age_seconds(supply_demand_hb.get("observed_at"))
+        )
+        if chart_map_age is not None and chart_map_age > 3600.0:
+            st.warning(
+                "Snapshot scanner ini tidak live. Peta terakhir: "
+                f"{_fmt_wib_datetime(supply_demand_hb.get('observed_at'), seconds=False)}. "
+                "Gunakan sebagai state terakhir yang tersimpan sampai feed pasar aktif kembali."
+            )
 
     chart_v229_geometry: dict[str, Any] = {}
     for chart_event in execution_events:
@@ -2103,36 +2421,69 @@ with forecast_tab:
     )
     chart_next_target = chart_preview_targets[0] if chart_preview_targets else {}
     chart_terminal_target = chart_preview_targets[-1] if chart_preview_targets else {}
+    chart_next_source_low = _chart_price(dc_next_leg_source.get("low"))
+    chart_next_source_high = _chart_price(dc_next_leg_source.get("high"))
+    chart_next_reaction = _chart_price(dc_next_leg_target.get("price"))
+    chart_next_refined_low = _chart_price(dc_next_refined_display.get("low"))
+    chart_next_refined_high = _chart_price(dc_next_refined_display.get("high"))
+    chart_two_leg = bool(
+        dc_current_leg_direction in {"LONG", "SHORT"}
+        and dc_next_leg_direction in {"LONG", "SHORT"}
+        and dc_current_leg_direction != dc_next_leg_direction
+        and chart_next_source_low is not None
+        and chart_next_source_high is not None
+    )
     with st.container(border=True):
         cv1, cv2, cv3, cv4 = st.columns(4)
         cv1.metric("Harga sekarang", _fmt_price(chart_price))
         cv2.metric(
-            "Depth / entry",
-            (
-                f"{_fmt_price(v226_entry_candidate.get('entry_low'))}–"
-                f"{_fmt_price(v226_entry_candidate.get('entry_high'))}"
-                if v226_entry_candidate else "—"
-            ),
+            f"Checkpoint {dc_current_leg_direction}",
+            _fmt_price(dc_current_leg_target.get("price")),
         )
         cv3.metric(
-            "Target berikutnya",
+            f"Area reaksi / cek {dc_next_leg_direction}",
             (
-                f"{chart_next_target.get('label','TP')} {_fmt_price(chart_next_target.get('price'))}"
-                if chart_next_target else "—"
+                f"{_fmt_price(chart_next_source_low)}–{_fmt_price(chart_next_source_high)}"
+                if chart_two_leg else "—"
             ),
         )
         cv4.metric(
-            "Target terminal chart",
-            (
-                f"{chart_terminal_target.get('label','TP')} {_fmt_price(chart_terminal_target.get('price'))}"
-                if chart_terminal_target else "—"
-            ),
+            f"Target reaksi {dc_next_leg_direction}",
+            _fmt_price(chart_next_reaction),
         )
-        st.caption(
-            "Baca chart: harga sekarang → Depth/Entry bila masih pre-touch → TP struktural terdekat "
-            "→ target berikutnya. Panah terakhir selalu berakhir pada target berikutnya/terminal "
-            "yang masih berada di jalur harga."
-        )
+        if chart_two_leg:
+            pocket_text = (
+                f" • refined M5 pocket {_fmt_price(chart_next_refined_low)}–"
+                f"{_fmt_price(chart_next_refined_high)}"
+                if chart_next_refined_low is not None and chart_next_refined_high is not None
+                else ""
+            )
+            st.info(
+                f"**Cara baca chart:** leg aktif **{dc_current_leg_direction}** dari harga sekarang "
+                f"menuju checkpoint **{_fmt_price(dc_current_leg_target.get('price'))}**. "
+                f"Setelah itu harga masuk area supply/demand **{_fmt_price(chart_next_source_low)}–"
+                f"{_fmt_price(chart_next_source_high)}**, tempat scanner memetakan kemungkinan "
+                f"next-leg **{dc_next_leg_direction}**{pocket_text}. "
+                f"Jika reaksi {dc_next_leg_direction} terkonfirmasi, target awalnya "
+                f"**{_fmt_price(chart_next_reaction)}**. Ini skenario bercabang, bukan jalur harga pasti."
+            )
+            current_terminal_high = _chart_price(dc_current_leg_terminal.get("high"))
+            if (
+                dc_current_leg_direction == "LONG"
+                and current_terminal_high is not None
+                and chart_next_source_high is not None
+                and current_terminal_high > chart_next_source_high
+            ):
+                st.caption(
+                    f"Catatan: **{_fmt_price(current_terminal_high)} adalah batas atas zona supply HTF**, "
+                    "bukan TP yang diasumsikan akan disentuh langsung. Harga harus melewati/menahan "
+                    "area reaksi lebih dulu sebelum skenario continuation LONG dianggap relevan."
+                )
+        else:
+            st.caption(
+                "Baca chart: harga sekarang → Depth/Entry bila masih pre-touch → TP struktural terdekat "
+                "→ target berikutnya. Panah menunjukkan skenario, bukan jaminan."
+            )
 
     if chart_price is not None and chart_pool:
         chart_png, chart_error = _rizan_chart_png(
@@ -2149,6 +2500,11 @@ with forecast_tab:
             depth_overlays=v226_overlays,
             entry_zone=v226_entry_candidate,
             structural_targets=chart_structural_targets,
+            next_leg_direction=dc_next_leg_direction,
+            next_leg_source=dc_next_leg_source,
+            next_leg_target=dc_next_leg_target,
+            next_leg_terminal=dc_next_leg_terminal,
+            next_leg_micro=dc_next_micro,
         )
         if chart_png is not None:
             st.image(chart_png, width="stretch")
