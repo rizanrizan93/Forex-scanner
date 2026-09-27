@@ -358,7 +358,8 @@ def _record_execution_geometry(
             "live_execution_enabled": False,
             "server_side_sl_tp_required": True,
             "pressure_transition": dict(plan.get("pressure_transition") or {}),
-            "microstructure_confirmation_required": "PRESSURE_TRANSITION_ALL_SLOTS_PLUS_M5_SLOTS_3_4",
+            "dynamic_depth_hazard": dict(plan.get("dynamic_depth_hazard") or {}),
+            "microstructure_confirmation_required": "PRESSURE_TRANSITION_PLUS_DYNAMIC_HAZARD_ALL_SLOTS_M5_SLOTS_3_4",
         },
     )
 
