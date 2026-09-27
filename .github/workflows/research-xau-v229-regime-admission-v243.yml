@@ -1,0 +1,118 @@
+name: Research XAU V229 Regime Admission V243
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/fx_scanner/research_xau_v229_regime_admission_v243.py"
+      - "src/fx_scanner/research_xau_v229_regime_admission_v243_year_runtime.py"
+      - "src/fx_scanner/research_xau_v229_regime_admission_v243_aggregate.py"
+      - "tests/test_research_xau_v229_regime_admission_v243.py"
+      - ".github/workflows/research-xau-v229-regime-admission-v243.yml"
+  push:
+    branches:
+      - research/v243-xau-regime-admission
+    paths:
+      - "src/fx_scanner/research_xau_v229_regime_admission_v243.py"
+      - "src/fx_scanner/research_xau_v229_regime_admission_v243_year_runtime.py"
+      - "src/fx_scanner/research_xau_v229_regime_admission_v243_aggregate.py"
+      - "tests/test_research_xau_v229_regime_admission_v243.py"
+      - ".github/workflows/research-xau-v229-regime-admission-v243.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-v229-regime-admission-v243-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Test V243
+        run: |
+          pytest -q             tests/test_research_xau_v229_regime_admission_v243.py             tests/test_research_xau_v229_historical_v242.py             tests/test_research_xau_htf_strategic_regime_v180.py
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      XAU_V243_YEAR: ${{ matrix.year }}
+      XAU_V243_PRICE_CSV: /tmp/histdata/xau-v243-${{ matrix.year }}.csv
+      XAU_V243_PROVENANCE: artifacts/xau-v243-provenance-${{ matrix.year }}.json
+      XAU_V243_OUTPUT: artifacts/xau-v229-regime-admission-v243-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Run XAU V229 V180-regime historical year
+        run: python -m fx_scanner.research_xau_v229_regime_admission_v243_year_runtime
+      - name: Upload yearly shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v243-year-${{ matrix.year }}
+          path: |
+            artifacts/xau-v229-regime-admission-v243-${{ matrix.year }}.json
+            artifacts/xau-v243-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      XAU_V243_SHARD_DIR: /tmp/xau-v243-shards
+      XAU_V243_FULL_OUTPUT: artifacts/xau-v229-regime-admission-v243-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download all yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v243-year-*
+          path: /tmp/xau-v243-shards
+          merge-multiple: false
+      - name: Aggregate V180 regime admission study
+        run: python -m fx_scanner.research_xau_v229_regime_admission_v243_aggregate
+      - name: Upload full V243 result
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-v229-regime-admission-v243-full
+          path: artifacts/xau-v229-regime-admission-v243-full.json
+          if-no-files-found: error
+          retention-days: 30
