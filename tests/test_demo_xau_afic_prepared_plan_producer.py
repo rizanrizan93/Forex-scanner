@@ -198,13 +198,13 @@ def test_afic_grade_a_and_b_confirmed_are_demo_auto_ready():
         execution_enabled=True,confirmed=True,grade="C"
     )
     assert state_c=="ARMED"
-    assert "AFIC_SELECTOR_GRADE_AB_REQUIRED" in guards_c
+    assert "RIZAN_SELECTOR_GRADE_AB_REQUIRED" in guards_c
 
     state_wait,guards_wait=signal_state_and_guards(
         execution_enabled=True,confirmed=False,grade="B"
     )
     assert state_wait=="ARMED"
-    assert "AFIC_M15_CONFIRMATION_REQUIRED" in guards_wait
+    assert "RIZAN_M15_CONFIRMATION_REQUIRED" in guards_wait
 
 
 def test_afic_zone_proximity_activates_one_minute_near_zone():
@@ -358,7 +358,7 @@ def test_superseded_afic_armed_signal_is_invalidated_on_new_h4_map():
     )
     assert n==1
     assert signal["state"]=="INVALIDATED"
-    assert signal["active_guards"]==["AFIC_MAP_SUPERSEDED"]
+    assert signal["active_guards"]==["RIZAN_MAP_SUPERSEDED"]
 
 
 def test_same_afic_map_remains_armed():
