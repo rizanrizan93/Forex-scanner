@@ -823,7 +823,7 @@ def _rizan_chart_png(
         ax.text(
             len(visible) + 9.0,
             (float(reaction_low) + float(reaction_high)) / 2.0,
-            f"AREA REAKSI • {next_side}\n"
+            f"AREA REAKSI • PANTAU {next_side}\n"
             f"{float(reaction_low):.2f}–{float(reaction_high):.2f}",
             ha="left",
             va="center",
