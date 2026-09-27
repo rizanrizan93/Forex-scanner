@@ -437,7 +437,7 @@ def run() -> int:
                 min_rr=MIN_PLAN_RR,
             )
             if plan is None:
-                reason = "WAIT_FRESH_OR_FIRST_TOUCH_CONFIRMATION_CANDIDATE"
+                reason = "WAIT_STRUCTURALLY_ACTIVE_DEPTH_CANDIDATE"
             elif not (
                 bool(pressure_transition.get("pre_touch_entry_allowed"))
                 or bool(pressure_transition.get("confirmation_entry_allowed"))
