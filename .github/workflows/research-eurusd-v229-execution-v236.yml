@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: research-eurusd-v229-v236-\${{ github.ref }}
+  group: research-eurusd-v229-v236-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -47,13 +47,13 @@ jobs:
       matrix:
         year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
     env:
-      EURUSD_V235_YEAR: \${{ matrix.year }}
-      EURUSD_V235_PRICE_CSV: /tmp/histdata/eurusd-v236-\${{ matrix.year }}.csv
-      EURUSD_V235_PRICE_PROVENANCE: artifacts/eurusd-v236-price-provenance-\${{ matrix.year }}.json
-      EURUSD_V236_YEAR: \${{ matrix.year }}
-      EURUSD_V236_PRICE_CSV: /tmp/histdata/eurusd-v236-\${{ matrix.year }}.csv
-      EURUSD_V236_PRICE_PROVENANCE: artifacts/eurusd-v236-price-provenance-\${{ matrix.year }}.json
-      EURUSD_V236_YEAR_OUTPUT: artifacts/eurusd-v229-v236-\${{ matrix.year }}.json
+      EURUSD_V235_YEAR: ${{ matrix.year }}
+      EURUSD_V235_PRICE_CSV: /tmp/histdata/eurusd-v236-${{ matrix.year }}.csv
+      EURUSD_V235_PRICE_PROVENANCE: artifacts/eurusd-v236-price-provenance-${{ matrix.year }}.json
+      EURUSD_V236_YEAR: ${{ matrix.year }}
+      EURUSD_V236_PRICE_CSV: /tmp/histdata/eurusd-v236-${{ matrix.year }}.csv
+      EURUSD_V236_PRICE_PROVENANCE: artifacts/eurusd-v236-price-provenance-${{ matrix.year }}.json
+      EURUSD_V236_YEAR_OUTPUT: artifacts/eurusd-v229-v236-${{ matrix.year }}.json
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -72,10 +72,10 @@ jobs:
       - name: Upload yearly V236 shard
         uses: actions/upload-artifact@v4
         with:
-          name: eurusd-v236-year-\${{ matrix.year }}
+          name: eurusd-v236-year-${{ matrix.year }}
           path: |
-            artifacts/eurusd-v229-v236-\${{ matrix.year }}.json
-            artifacts/eurusd-v236-price-provenance-\${{ matrix.year }}.json
+            artifacts/eurusd-v229-v236-${{ matrix.year }}.json
+            artifacts/eurusd-v236-price-provenance-${{ matrix.year }}.json
           if-no-files-found: error
           retention-days: 14
 
