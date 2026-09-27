@@ -28,13 +28,13 @@ from .demo_xau_afic_supply_demand_context import (
 from .storage.supabase_operational import SupabaseOperationalStore
 from .demo_xau_structural_targets_v229 import build_structural_target_plan
 
-STRATEGY_ID="XAU_AFIC_PATH_PREPARED_V1"
-EXECUTION_STRATEGY_ID="XAU_AFIC_PATH_EXECUTION_V1"
-WORKER_NAME="ctrader_demo_xau_afic_prepared_plan_producer"
-EVENT_TYPE="DEMO_XAU_AFIC_PREPARED_PLAN"
-STATE_EVENT_TYPE="DEMO_XAU_AFIC_FORECAST_STATE"
-STATE_CODE="XAU_AFIC_PATH_STATE_V1"
-DATA_CONTRACT="XAU_AFIC_PREPARED_PLAN_FORWARD_V1"
+STRATEGY_ID="XAU_RIZAN_PATH_PREPARED_V1"
+EXECUTION_STRATEGY_ID="XAU_RIZAN_PATH_EXECUTION_V1"
+WORKER_NAME="ctrader_demo_xau_rizan_prepared_plan_producer"
+EVENT_TYPE="DEMO_XAU_RIZAN_PREPARED_PLAN"
+STATE_EVENT_TYPE="DEMO_XAU_RIZAN_FORECAST_STATE"
+STATE_CODE="XAU_RIZAN_PATH_STATE_V1"
+DATA_CONTRACT="XAU_RIZAN_PREPARED_PLAN_FORWARD_V1"
 
 MAX_ZONE_DISTANCE_ATR=0.75
 MAX_H4_DIRECTIONAL_CLOSE_LOC=0.65
@@ -45,7 +45,7 @@ EXECUTION_EVENT_TYPE="DEMO_SIGNAL_GEOMETRY"
 
 # Explicit DEMO-only execution authority. The workflow must set this gate and
 # the exact strategy identity must still pass the shared broker handoff.
-EXECUTION_ENV="CTRADER_DEMO_AFIC_EXECUTION_ENABLED"
+EXECUTION_ENV="CTRADER_DEMO_RIZAN_EXECUTION_ENABLED"
 
 
 def _bool_env(name:str,default:bool=False)->bool:
@@ -454,7 +454,7 @@ def _record_forecast_state(store,*,payload:dict[str,Any])->bool:
     store.record_order_event(
         backend="CTRADER",
         account_id=account,
-        signal_key=f"AFIC_STATE:{digest}",
+        signal_key=f"RIZAN_STATE:{digest}",
         broker_order_id=None,
         event_type=STATE_EVENT_TYPE,
         accepted=None,
@@ -515,7 +515,7 @@ def _record_event(
     store.record_order_event(
         backend="CTRADER",
         account_id=account,
-        signal_key=signal_id or f"AFIC_PREP:{hashlib.sha256(key.encode()).hexdigest()[:24]}",
+        signal_key=signal_id or f"RIZAN_PREP:{hashlib.sha256(key.encode()).hexdigest()[:24]}",
         broker_order_id=None,
         event_type=EVENT_TYPE,
         accepted=None,
@@ -576,7 +576,7 @@ def _write_signal(
         "observed_at":observed_at.isoformat(),
         "symbol":SYMBOL,
         "direction":direction,
-        "setup_type":"AFIC_PATH_CONFIRMED" if confirmed else "AFIC_PATH_FORECAST",
+        "setup_type":"RIZAN_PATH_CONFIRMED" if confirmed else "RIZAN_PATH_FORECAST",
         "state":state,
         "pair_score":score,
         "execution_score":score,
@@ -601,7 +601,7 @@ def _write_signal(
         store.write_signal_rows([row])
         persisted=store.list_signals_for_run(run_id)
         if len(persisted)!=1 or not persisted[0].get("id"):
-            raise RuntimeError("AFIC_PREPARED_SIGNAL_CARDINALITY_INVALID")
+            raise RuntimeError("RIZAN_PREPARED_SIGNAL_CARDINALITY_INVALID")
         signal_id=str(persisted[0]["id"])
         store.finish_scanner_run(run_id,status="COMPLETED",finished_at=datetime.now(tz=UTC))
         return signal_id
@@ -988,7 +988,7 @@ def run()->int:
         },
     )
     print(
-        "CTRADER_DEMO_XAU_AFIC_PREPARED_PLAN "
+        "CTRADER_DEMO_XAU_RIZAN_PREPARED_PLAN "
         f"healthy={int(healthy)} forecast_state={payload.get('state','ERROR')} "
         f"blueprint={kind} grade={None if plan is None else plan.get('selector_grade')} "
         f"forecast_grade={observability.get('forecast_selector_grade')} "
