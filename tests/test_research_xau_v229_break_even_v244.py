@@ -50,6 +50,21 @@ def test_v244_only_pre_registered_management_variants_exist() -> None:
     }
 
 
+def test_v244_fill_bar_trigger_is_ignored_as_noncausal() -> None:
+    result = _run(
+        _px(
+            [
+                (100.0, 100.70, 99.90, 100.40),  # fill bar also prints +0.5R
+                (100.4, 103.10, 99.80, 103.00), # must remain original-stop + target
+            ]
+        ),
+        trigger=0.5,
+    )
+    assert result["state"] == "WIN"
+    assert result["reason"] == "TARGET_HIT"
+    assert result["be_triggered"] is False
+
+
 def test_v244_break_even_activates_only_on_next_m1_bar() -> None:
     result = _run(
         _px(
