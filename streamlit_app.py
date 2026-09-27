@@ -1435,7 +1435,7 @@ with forecast_tab:
 - **Liquidity / Likuiditas:** area dengan potensi konsentrasi order/minat transaksi; pada scanner ini hanya confluence/ranking, bukan pembentuk zone tunggal.
 - **BOS (Break of Structure):** penembusan struktur swing yang dipakai untuk mengaitkan displacement dengan origin zone.
 - **Displacement:** gerakan impulsif yang cukup kuat setelah origin; digunakan untuk membuktikan bahwa origin berhubungan dengan perubahan struktur.
-- **Freshness / Kesegaran:** umur dan riwayat sentuhan zone; makin tua/sering disentuh, evidence reaksinya dapat melemah.
+- **Freshness / Kesegaran:** umur dan riwayat sentuhan zone. Pada H4/H1 ini adalah konteks lifecycle/ranking, bukan syarat first-touch; zona retest tetap aktif sampai struktur invalid. M15 tetap lebih ketat.
 """
         )
 
@@ -2826,8 +2826,10 @@ with forecast_tab:
                     f"pre-touch maksimum={v226_four_order_ladder.get('max_pretouch_lots',0):.2f} lot • "
                     f"total maksimum setelah konfirmasi="
                     f"{v226_four_order_ladder.get('total_lots_if_all_four_eventually_filled',0):.2f} lot. "
-                    "Order 1–2 = pre-touch q10/q35; Order 3–4 dicadangkan untuk reclaim/MSS "
-                    "dan displacement/retest M5. Masih PREVIEW/SHADOW; auto-submit belum diaktifkan."
+                    "Order 1–2 = pre-touch q10/q35 hanya bila candidate benar-benar fresh; "
+                    "Order 3–4 = reclaim/MSS dan displacement/retest M5. V226 sendiri adalah "
+                    "locator, tetapi V229 dapat memberi execution authority DEMO sesuai lifecycle, "
+                    "pressure transition, Dynamic Depth Hazard, dan M5 confirmation."
                 )
 
             d1, d2, d3, d4 = st.columns(4)
@@ -2884,7 +2886,7 @@ with forecast_tab:
                 and calibrated_h4_id != nearest_context_id
             ):
                 st.info(
-                    "**Calibrated H4 parent:** "
+                    "**Selected H4 parent:** "
                     f"{_fmt_price(calibrated_h4_zone.get('low'))}–"
                     f"{_fmt_price(calibrated_h4_zone.get('high'))} "
                     f"({dict(calibrated_h4_zone.get('lifecycle') or {}).get('freshness','—')}, "
@@ -2893,18 +2895,18 @@ with forecast_tab:
                     f"{_fmt_price(v226_nearest_h4_context_zone.get('low'))}–"
                     f"{_fmt_price(v226_nearest_h4_context_zone.get('high'))} "
                     f"({v226_nearest_h4_context_app.get('state','—')}). "
-                    "Prior first-touch memakai calibrated parent; zona terdekat tetap ditampilkan sebagai konteks."
+                    "Selector sekarang mengutamakan structural validity + proximity; first-touch hanya menentukan scope prior/jenis execution, bukan apakah H4 boleh dipakai."
                 )
-            if str(h4_app.get("state") or "").startswith("LOW_"):
-                st.warning(
-                    "H4 aktif sudah multi-tested/reuse. V225.2 adalah first-touch study, "
-                    "jadi depth band ini hanya konteks historis dan tidak boleh dianggap "
-                    "probabilitas entry baru."
+            if str(h4_app.get("state") or "") == "ACTIVE_HTF_RETEST":
+                st.info(
+                    "H4 ini sudah retest/multi-touch tetapi masih structurally active. "
+                    "Zona tetap dipakai. V225.2 first-touch depth hanya menjadi geometry context; "
+                    "jalur DEMO untuk retest wajib confirmation-only melalui pressure + M5."
                 )
             st.info(
                 "V226 menggambar zona lebih awal tanpa menunggu liquidity sweep, MSS, atau reclaim. "
-                "MSS/reclaim tetap boleh menjadi evidence tambahan, tetapi bukan syarat untuk membuat "
-                "RIZAN Depth Map. V226 tetap shadow-only."
+                "V226 adalah locator/depth engine; execution authority diberikan terpisah oleh V229. "
+                "Freshness H4/H1 bukan lagi hard gate selama zona structurally active."
             )
         else:
             st.caption(
