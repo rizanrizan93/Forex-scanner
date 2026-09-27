@@ -10,6 +10,7 @@ import pandas as pd
 from .models import ensure_utc
 from .research_xau_v229_historical_v242 import (
     ARTIFACT_CONTRACT as V242_ARTIFACT_CONTRACT,
+    CHILD_UNITS,
     COMMISSION_PIPS_ROUND_TRIP,
     EXECUTION_AUTHORITY,
     EXECUTION_INFLUENCE,
@@ -187,15 +188,7 @@ def _managed_completed_trade(
     cost_r = explicit_cost_pips / risk_pips
     net_r = gross_r - cost_r
 
-    # Preserve V242 fixed-0.01 PnL semantics by scaling the original $/R.
-    original_r = float(row.get("net_r") or 0.0)
-    original_pnl = float(row.get("net_pnl_usd") or 0.0)
-    pnl_per_r = (
-        original_pnl / original_r
-        if abs(original_r) > 1e-12
-        else risk
-    )
-    net_pnl = net_r * pnl_per_r
+    net_pnl = net_r * risk * CHILD_UNITS
 
     sample_high = px.highs[entry_index : end_index + 1]
     sample_low = px.lows[entry_index : end_index + 1]
