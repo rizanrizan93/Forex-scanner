@@ -355,7 +355,7 @@ def _record_execution_geometry(
             "environment": "DEMO",
             "live_execution_enabled": False,
             "server_side_sl_tp_required": True,
-            "microstructure_confirmation_required": "SLOTS_3_4_ONLY",
+            "microstructure_confirmation_required": "PRESSURE_TRANSITION_ALL_SLOTS_PLUS_M5_SLOTS_3_4",
         },
     )
 
@@ -460,7 +460,7 @@ def run() -> int:
             "execution_enabled": execution_enabled,
             "execution_authority": True,
             "live_execution_enabled": False,
-            "microstructure_confirmation_required": "SLOTS_3_4_ONLY",
+            "microstructure_confirmation_required": "PRESSURE_TRANSITION_ALL_SLOTS_PLUS_M5_SLOTS_3_4",
             "reason": reason,
             "signal_id": signal_id,
             "candidate_key": candidate_key,
