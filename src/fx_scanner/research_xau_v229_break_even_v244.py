@@ -78,13 +78,10 @@ def _managed_limit_trade(
 ) -> dict[str, Any]:
     """Replay one V229 child with causal net-break-even protection.
 
-    The BE trigger is observed on a completed M1 bar. The adjusted stop becomes
-    active only from the NEXT M1 bar. This deliberately avoids assuming whether
-    a favorable excursion or a retracement happened first inside the trigger bar.
-
-    The BE stop is shifted beyond the entry fill by the separately deducted
-    exit slippage/commission term so that a BE stop produces approximately 0R
-    net under the same V242 cost accounting.
+    The BE trigger is observed from a completed M1 bar after the fill bar. The
+    adjusted stop becomes active only from the NEXT M1 bar. Event masks are
+    vectorized, but ordering is identical to the conservative bar-by-bar rule:
+    currently active stop first, then target, then a new BE trigger.
     """
     side = str(direction or "").upper()
     if side not in {"LONG", "SHORT"}:
@@ -142,75 +139,89 @@ def _managed_limit_trade(
     exit_cost_pips = 0.5 * float(slippage_pips) + float(commission_pips)
     be_offset = exit_cost_pips * PIP_SIZE
     be_stop = fill + be_offset if side == "LONG" else fill - be_offset
-    trigger_price = (
-        fill + trigger_r * risk
-        if side == "LONG"
-        else fill - trigger_r * risk
-    )
+    trigger_price = fill + trigger_r * risk if side == "LONG" else fill - trigger_r * risk
 
-    active_stop = original_stop
-    arm_index: int | None = None
+    future_high = px.highs[entry_index:eval_end]
+    future_low = px.lows[entry_index:eval_end]
+    if side == "LONG":
+        original_stop_mask = future_low - half_exit_spread <= original_stop
+        target_mask = future_high - half_exit_spread >= float(target)
+        trigger_mask = future_high - half_exit_spread >= trigger_price
+    else:
+        original_stop_mask = future_high + half_exit_spread >= original_stop
+        target_mask = future_low + half_exit_spread <= float(target)
+        trigger_mask = future_low + half_exit_spread <= trigger_price
+
+    raw_target_on_entry = bool(target_mask[0]) if len(target_mask) else False
+    target_mask = target_mask.copy()
+    trigger_mask = trigger_mask.copy()
+    if len(target_mask):
+        # Fill-bar favorable extremes are not causal: they may have occurred
+        # before the pending limit was filled.
+        target_mask[0] = False
+        trigger_mask[0] = False
+
+    original_events = np.flatnonzero(original_stop_mask | target_mask)
+    trigger_events = np.flatnonzero(trigger_mask)
+    first_original = None if len(original_events) == 0 else int(original_events[0])
+    first_trigger = None if len(trigger_events) == 0 else int(trigger_events[0])
+
+    triggered = bool(
+        first_trigger is not None
+        and (first_original is None or first_trigger < first_original)
+    )
     armed_at: datetime | None = None
-    triggered = False
     exit_at: datetime | None = None
     exit_price: float | None = None
     reason: str | None = None
     end_index: int | None = None
 
-    for absolute in range(entry_index, eval_end):
-        if arm_index is not None and absolute >= arm_index:
-            active_stop = float(be_stop)
-
-        high = float(px.highs[absolute])
-        low = float(px.lows[absolute])
-        if side == "LONG":
-            stop_hit = low - half_exit_spread <= active_stop
-            target_hit = high - half_exit_spread >= float(target)
-            trigger_hit = high - half_exit_spread >= trigger_price
-        else:
-            stop_hit = high + half_exit_spread >= active_stop
-            target_hit = low + half_exit_spread <= float(target)
-            trigger_hit = low + half_exit_spread <= trigger_price
-
-        raw_target_on_entry = bool(absolute == entry_index and target_hit)
-        if absolute == entry_index:
-            target_hit = False
-
-        # Conservative ambiguity contract: the currently active stop wins.
-        if stop_hit:
-            exit_at = ensure_utc(px.timestamps[absolute].to_pydatetime())
-            exit_price = float(active_stop)
-            using_be = arm_index is not None and absolute >= arm_index
-            if using_be:
-                reason = (
-                    "NET_BE_STOP_HIT_AFTER_0_5R"
-                    if abs(trigger_r - 0.5) < 1e-12
-                    else "NET_BE_STOP_HIT_AFTER_1_0R"
-                    if abs(trigger_r - 1.0) < 1e-12
-                    else "NET_BE_STOP_HIT"
-                )
+    if triggered:
+        assert first_trigger is not None
+        arm_rel = first_trigger + 1
+        if arm_rel < len(future_high):
+            armed_at = ensure_utc(px.timestamps[entry_index + arm_rel].to_pydatetime())
+            if side == "LONG":
+                be_stop_mask = future_low[arm_rel:] - half_exit_spread <= be_stop
             else:
-                reason = (
-                    "STOP_FIRST_AMBIGUOUS"
-                    if target_hit or raw_target_on_entry
-                    else "STOP_HIT"
-                )
-            end_index = absolute
-            break
-
-        if target_hit:
-            exit_at = ensure_utc(px.timestamps[absolute].to_pydatetime())
+                be_stop_mask = future_high[arm_rel:] + half_exit_spread >= be_stop
+            managed_target_mask = target_mask[arm_rel:]
+            managed_events = np.flatnonzero(be_stop_mask | managed_target_mask)
+            if len(managed_events):
+                local = int(managed_events[0])
+                rel = arm_rel + local
+                absolute = entry_index + rel
+                if bool(be_stop_mask[local]):
+                    exit_price = float(be_stop)
+                    reason = (
+                        "NET_BE_STOP_HIT_AFTER_0_5R"
+                        if abs(trigger_r - 0.5) < 1e-12
+                        else "NET_BE_STOP_HIT_AFTER_1_0R"
+                        if abs(trigger_r - 1.0) < 1e-12
+                        else "NET_BE_STOP_HIT"
+                    )
+                else:
+                    exit_price = float(target)
+                    reason = "TARGET_HIT"
+                exit_at = ensure_utc(px.timestamps[absolute].to_pydatetime())
+                end_index = absolute
+    elif first_original is not None:
+        rel = int(first_original)
+        absolute = entry_index + rel
+        stop_hit = bool(original_stop_mask[rel])
+        target_hit = bool(target_mask[rel])
+        if stop_hit:
+            exit_price = original_stop
+            reason = (
+                "STOP_FIRST_AMBIGUOUS"
+                if target_hit or (rel == 0 and raw_target_on_entry)
+                else "STOP_HIT"
+            )
+        else:
             exit_price = float(target)
             reason = "TARGET_HIT"
-            end_index = absolute
-            break
-
-        # Do not activate BE inside the same M1 bar that first proves the trigger.
-        if not triggered and trigger_hit:
-            triggered = True
-            if absolute + 1 < eval_end:
-                arm_index = absolute + 1
-                armed_at = ensure_utc(px.timestamps[arm_index].to_pydatetime())
+        exit_at = ensure_utc(px.timestamps[absolute].to_pydatetime())
+        end_index = absolute
 
     if exit_at is None or exit_price is None or end_index is None:
         absolute = min(eval_end - 1, len(px.timestamps) - 1)
@@ -218,19 +229,11 @@ def _managed_limit_trade(
             return {"state": "OPEN", "reason": "HISTORY_ENDED_AFTER_FILL"}
         exit_at = ensure_utc(px.timestamps[absolute].to_pydatetime())
         close = float(px.closes[absolute])
-        exit_price = (
-            close - half_exit_spread
-            if side == "LONG"
-            else close + half_exit_spread
-        )
+        exit_price = close - half_exit_spread if side == "LONG" else close + half_exit_spread
         reason = "V244_MAX_30D_RESEARCH_EXIT"
         end_index = absolute
 
-    gross_price = (
-        float(exit_price) - fill
-        if side == "LONG"
-        else fill - float(exit_price)
-    )
+    gross_price = float(exit_price) - fill if side == "LONG" else fill - float(exit_price)
     gross_r = gross_price / risk
     cost_r = exit_cost_pips / risk_pips
     net_r = gross_r - cost_r
@@ -277,7 +280,6 @@ def _managed_limit_trade(
         "be_stop": float(be_stop),
         "be_armed_at": None if armed_at is None else armed_at.isoformat(),
     }
-
 
 def _managed_copy(
     *,
