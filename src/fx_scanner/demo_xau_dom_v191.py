@@ -22,6 +22,7 @@ DEFAULT_MAX_LEVELS = 10
 NEAR_LEVELS = 5
 MIN_SNAPSHOTS = 5
 DOM_STALE_SECONDS = 10.0
+DOM_SAMPLE_RETENTION_DAYS = 120
 
 
 @dataclass(frozen=True, slots=True)
@@ -251,6 +252,59 @@ def _latest_previous(store: SupabaseOperationalStore) -> dict[str, Any]:
     return {} if not rows else dict(rows[0])
 
 
+def _persist_dom_sample(
+    store: SupabaseOperationalStore,
+    analysis: dict[str, Any],
+) -> str | None:
+    if str(analysis.get("state") or "") in {
+        "ERROR",
+        "INSUFFICIENT_DOM_SAMPLES",
+        "DOM_EMPTY_OR_ONE_SIDED",
+    }:
+        return None
+    observed_at = analysis.get("window_end")
+    if not observed_at:
+        return "MISSING_WINDOW_END"
+    bid_wall = dict(analysis.get("bid_wall") or {})
+    ask_wall = dict(analysis.get("ask_wall") or {})
+    row = {
+        "observed_at": observed_at,
+        "state": str(analysis.get("state") or "UNKNOWN"),
+        "dom_pressure_score": _finite(analysis.get("dom_pressure_score")),
+        "last_imbalance": _finite(analysis.get("last_imbalance")),
+        "mean_imbalance": _finite(analysis.get("mean_imbalance")),
+        "top5_bid_units": _finite(analysis.get("top5_bid_units")),
+        "top5_ask_units": _finite(analysis.get("top5_ask_units")),
+        "bid_top5_change": _finite(analysis.get("bid_top5_change")),
+        "ask_top5_change": _finite(analysis.get("ask_top5_change")),
+        "bid_wall_ratio": _finite(analysis.get("bid_wall_ratio")),
+        "ask_wall_ratio": _finite(analysis.get("ask_wall_ratio")),
+        "bid_wall_price": _finite(bid_wall.get("dominant_wall_price")),
+        "ask_wall_price": _finite(ask_wall.get("dominant_wall_price")),
+        "bid_wall_persistence": _finite(bid_wall.get("wall_persistence")),
+        "ask_wall_persistence": _finite(ask_wall.get("wall_persistence")),
+        "sample_count": int(analysis.get("sample_count") or 0),
+        "source": "CTRADER_LEVEL_II",
+    }
+    try:
+        store.client.table("xau_dom_pressure_samples").upsert(
+            row,
+            on_conflict="observed_at",
+        ).execute()
+        now = datetime.now(tz=UTC)
+        # Hourly cleanup keeps raw one-minute evidence bounded. Resolved
+        # pressure-to-depth episodes are stored separately and survive cleanup.
+        if now.minute < 2:
+            cutoff = now - timedelta(days=DOM_SAMPLE_RETENTION_DAYS)
+            store.client.table("xau_dom_pressure_samples").delete().lt(
+                "observed_at",
+                cutoff.isoformat(),
+            ).execute()
+        return None
+    except Exception as exc:
+        return f"{type(exc).__name__}:{exc}"
+
+
 def _cross_run_change(
     current: dict[str, Any],
     previous_row: dict[str, Any],
@@ -336,6 +390,7 @@ def run() -> int:
 
         analysis = analyze_dom_frames(frames)
         analysis["cross_run"] = _cross_run_change(analysis, previous)
+        analysis["sample_store_error"] = _persist_dom_sample(store, analysis)
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"
         analysis = {
@@ -371,6 +426,8 @@ def run() -> int:
         "source": "CTRADER_OPEN_API_LEVEL_II",
         "source_scope": "BROKER_VENUE_LIQUIDITY_NOT_COMEX_CONSOLIDATED_BOOK",
         "policy_effect": "SHADOW_CONTEXT_ONLY",
+        "dom_sample_retention_days": DOM_SAMPLE_RETENTION_DAYS,
+        "pressure_depth_research_feed": "xau_dom_pressure_samples",
         "execution_influence": False,
         "execution_authority": False,
         "live_execution_enabled": False,
