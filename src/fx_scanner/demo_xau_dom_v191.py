@@ -290,13 +290,16 @@ def _persist_dom_sample(
         store.client.table("xau_dom_pressure_samples").upsert(
             row,
             on_conflict="observed_at",
+            returning="minimal",
         ).execute()
         now = datetime.now(tz=UTC)
         # Hourly cleanup keeps raw one-minute evidence bounded. Resolved
         # pressure-to-depth episodes are stored separately and survive cleanup.
         if now.minute < 2:
             cutoff = now - timedelta(days=DOM_SAMPLE_RETENTION_DAYS)
-            store.client.table("xau_dom_pressure_samples").delete().lt(
+            store.client.table("xau_dom_pressure_samples").delete(
+                returning="minimal",
+            ).lt(
                 "observed_at",
                 cutoff.isoformat(),
             ).execute()
