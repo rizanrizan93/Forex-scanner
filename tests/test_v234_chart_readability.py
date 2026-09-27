@@ -18,7 +18,7 @@ def test_v234_chart_prefers_v229_structural_targets() -> None:
     ).read_text(encoding="utf-8")
 
 
-def test_v234_path_is_now_entry_then_targets_not_next_leg() -> None:
+def test_v234_generic_fallback_path_is_preserved_when_no_two_leg_map() -> None:
     start = SOURCE.index("path_points: list[tuple[float, float, str]]")
     end = SOURCE.index('y_values = [float(visible["low"].min())', start)
     block = SOURCE[start:end]
@@ -28,18 +28,18 @@ def test_v234_path_is_now_entry_then_targets_not_next_leg() -> None:
     assert 'float(target["price"])' in block
 
 
-def test_v234_last_arrow_is_explicitly_next_target() -> None:
+def test_v234_generic_target_labels_remain_available_as_fallback() -> None:
     assert '" • TARGET BERIKUTNYA"' in SOURCE
     assert '" • NEXT TARGET"' in SOURCE
-    assert "Panah terakhir selalu berakhir pada target berikutnya/terminal" in SOURCE
+    assert "if not two_leg_mode:" in SOURCE
 
 
 def test_v234_chart_reduces_visual_clutter() -> None:
     assert "if important:" in SOURCE
-    assert "for depth in list(depth_overlays or [])[:4]:" in SOURCE
+    assert "depth_shown = 0" in SOURCE
+    assert "if depth_shown >= 3:" in SOURCE
     assert "DEPTH / ENTRY AKTIF" in SOURCE
-    assert "Target berikutnya" in SOURCE
-    assert "Target terminal chart" in SOURCE
+    assert "AREA REAKSI • PANTAU" in SOURCE
 
 
 def test_v234_chart_reads_targets_from_current_v229_geometry() -> None:
