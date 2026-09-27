@@ -31,15 +31,16 @@ def test_v209_broker_order_identity_index_is_declared() -> None:
     assert "FOREX_SCANNER_IO_BUDGET_V209" in schema
 
 
-def test_v209_keeps_minute_discovery_and_moves_heavy_calibration_to_5m_lane() -> None:
+def test_v209_keeps_minute_discovery_and_throttles_heavy_calibration_to_hourly() -> None:
     supervisor = _read(".github/workflows/ctrader-demo-auto-supervisor.yml")
     discovery = _read(".github/workflows/ctrader-demo-discovery-pipeline.yml")
     calibration = _read(".github/workflows/ctrader-demo-calibration-pipeline.yml")
 
     assert "discovery_check_seconds=60" in supervisor
-    assert "calibration_cadence_seconds=300" in supervisor
+    assert "calibration_cadence_seconds=3600" in supervisor
     assert "SUPERVISOR_CALIBRATION_DISPATCH" in supervisor
-    assert 'if [ "${cycle}" -eq 1 ]' in supervisor
+    assert "SUPERVISOR_CALIBRATION_SKIP_CADENCE" in supervisor
+    assert 'if [ "${cycle}" -eq 1 ] && [ "$(date -u +%M)" = "02" ]' in supervisor
 
     assert "python -m fx_scanner.demo_xau_technical_producer" in discovery
     assert "python -m fx_scanner.demo_closed_trade_reconciler" not in discovery
