@@ -98,12 +98,16 @@ def build_parent_ladder_plan(
         "PREPARE_ONLY_FRESH_FIRST_TOUCH",
         "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS",
         "CONFIRMATION_ONLY_RETESTED_HTF",
+        "CONFIRMATION_ONLY_RETESTED_M15",
     }
     if display_status not in allowed_statuses:
         return None
     if fresh_pre_touch and display_status != "PREPARE_ONLY_FRESH_FIRST_TOUCH":
         return None
-    if retest_confirmation and display_status != "CONFIRMATION_ONLY_RETESTED_HTF":
+    if retest_confirmation and display_status not in {
+        "CONFIRMATION_ONLY_RETESTED_HTF",
+        "CONFIRMATION_ONLY_RETESTED_M15",
+    }:
         return None
 
     low = _f(candidate.get("entry_low"))
@@ -258,6 +262,9 @@ def build_parent_ladder_plan(
         "confirmation_slots": [3, 4],
         "zone_reuse": dict(candidate.get("zone_reuse") or {}),
         "retest_confirmation_required": retest_confirmation,
+        "m15_retest_confirmation_required": bool(
+            candidate.get("m15_retest_confirmation_required")
+        ),
         "live_price_at_plan": px,
         "generic_market_handoff_allowed": False,
         "environment": "DEMO",
