@@ -23,6 +23,9 @@ class FakeCatalogueSession:
             (3, "UKOIL"),
         )
 
+    def load_symbols(self, symbols):
+        self.loaded = tuple(symbols)
+
     def close(self):
         return None
 
@@ -50,7 +53,7 @@ def test_v238c_ranks_uk_oil_above_generic_oil() -> None:
     assert resolved["symbol_name"] == "UKOIL"
 
 
-def test_v238c_prefers_explicit_brent_name() -> None:
+def test_v238c_multiple_strong_brent_aliases_remain_unresolved() -> None:
     rows = rank_brent_candidates(
         (
             (20, "UKOIL"),
@@ -59,7 +62,19 @@ def test_v238c_prefers_explicit_brent_name() -> None:
         )
     )
     assert rows[0]["symbol_name"] == "Brent.cash"
-    assert resolve_unique_brent_candidate(rows)["symbol_name"] == "Brent.cash"
+    assert resolve_unique_brent_candidate(rows) is None
+
+
+def test_v238c_single_strong_candidate_can_resolve() -> None:
+    rows = rank_brent_candidates(
+        (
+            (20, "USOIL"),
+            (21, "UKOIL"),
+        )
+    )
+    resolved = resolve_unique_brent_candidate(rows)
+    assert resolved is not None
+    assert resolved["symbol_name"] == "UKOIL"
 
 
 def test_v238c_tied_top_candidates_fail_closed() -> None:
@@ -72,6 +87,13 @@ def test_v238c_tied_top_candidates_fail_closed() -> None:
     )
     assert rows[0]["score"] == rows[1]["score"] == 100
     assert resolve_unique_brent_candidate(rows) is None
+
+
+def test_v238c_research_feed_can_load_metadata_without_subscription() -> None:
+    session = FakeCatalogueSession()
+    feed = CTraderResearchFeed(session, ("XAUUSD",))
+    feed.load_symbol_metadata(("BRENT", "XBRUSD"))
+    assert session.loaded == ("BRENT", "XBRUSD")
 
 
 def test_v238c_discovery_module_has_no_execution_authority() -> None:
