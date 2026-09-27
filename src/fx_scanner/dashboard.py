@@ -25,6 +25,7 @@ class DashboardSnapshot:
     afic_prepared_plans: tuple[dict[str, Any], ...]
     afic_execution_geometry: tuple[dict[str, Any], ...]
     xau_execution_events: tuple[dict[str, Any], ...]
+    xau_outcomes: tuple[dict[str, Any], ...] = ()
     xau_prepared_plan_lifecycle: tuple[dict[str, Any], ...] = ()
 
 
@@ -179,6 +180,24 @@ class SupabaseDashboardReader:
             )
         except Exception as exc:
             raise DashboardReadError(f"model_performance read failed: {exc}") from exc
+        return tuple(self._rows(response))
+
+    def latest_xau_outcomes(self, *, limit: int = 500) -> tuple[dict[str, Any], ...]:
+        """Return recent XAU outcome-ledger rows for read-only evidence panels."""
+        try:
+            response = (
+                self.client.table("xau_outcome_ledger")
+                .select(
+                    "episode_key,episode_type,strategy_id,observed_at,direction,grade,"
+                    "status,execution_authority,outcome_at,outcome_class,tp1_hit,tp2_hit,"
+                    "stop_hit,mfe_r,mae_r,metadata"
+                )
+                .order("observed_at", desc=True)
+                .limit(int(limit))
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(f"xau_outcome_ledger read failed: {exc}") from exc
         return tuple(self._rows(response))
 
     def latest_broker_account(self) -> dict[str, Any] | None:
@@ -348,6 +367,7 @@ class SupabaseDashboardReader:
         afic_prepared_plans = self.latest_afic_prepared_plans()
         afic_execution_geometry = self.latest_afic_execution_geometry()
         xau_execution_events = self.latest_xau_execution_events()
+        xau_outcomes = self.latest_xau_outcomes()
         xau_prepared_plan_lifecycle = self.latest_xau_prepared_plan_lifecycle()
         return DashboardSnapshot(
             latest_run=run,
@@ -363,5 +383,6 @@ class SupabaseDashboardReader:
             afic_prepared_plans=afic_prepared_plans,
             afic_execution_geometry=afic_execution_geometry,
             xau_execution_events=xau_execution_events,
+            xau_outcomes=xau_outcomes,
             xau_prepared_plan_lifecycle=xau_prepared_plan_lifecycle,
         )
