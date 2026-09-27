@@ -214,6 +214,27 @@ def _fmt_pct(value: Any) -> str:
         return "—"
 
 
+def _rizan_display(value: Any) -> Any:
+    """User-facing alias for the legacy AFIC research lineage.
+
+    Persisted database keys/strategy IDs remain backward-compatible internally,
+    while every value rendered to the dashboard is branded RIZAN.
+    """
+    if isinstance(value, str):
+        return (
+            value.replace("AFIC", "RIZAN")
+            .replace("Afic", "RIZAN")
+            .replace("afic", "rizan")
+        )
+    if isinstance(value, list):
+        return [_rizan_display(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_rizan_display(item) for item in value)
+    if isinstance(value, dict):
+        return {key: _rizan_display(item) for key, item in value.items()}
+    return value
+
+
 def _state_rank(state: str) -> int:
     order = {
         "EXECUTION_READY": 0,
@@ -2029,7 +2050,10 @@ with forecast_tab:
         flow4.metric("4 • Admission", dc_admission_label)
         flow5.metric("Broker route", dc_route_label)
         if dc_latest_signal_guards:
-            st.warning("Guard aktif: " + ", ".join(str(x) for x in dc_latest_signal_guards))
+            st.warning(
+                "Guard aktif: "
+                + ", ".join(str(_rizan_display(x)) for x in dc_latest_signal_guards)
+            )
         elif dc_admission_label == "V229 READY":
             st.success(
                 "V229 memakai jalur khusus. Fresh mode = 4-CHILD 2+2 "
@@ -5238,7 +5262,7 @@ with forecast_tab:
                 reason = "Masa berlaku (TTL) signal sudah habis"
             elif guards:
                 admission = "BLOCKED"
-                reason = ", ".join(str(x) for x in guards)
+                reason = ", ".join(str(_rizan_display(x)) for x in guards)
             elif state_u != "EXECUTION_READY":
                 admission = "NOT READY"
                 reason = f"Status={state_u or '—'}"
@@ -5250,7 +5274,10 @@ with forecast_tab:
                 )
             elif geometry_code in authorized_geometry_codes:
                 admission = "BROKER ELIGIBLE"
-                reason = f"{geometry_code}; menunggu validasi ulang quote/risiko"
+                reason = (
+                    f"{_rizan_display(geometry_code)}; "
+                    "menunggu validasi ulang quote/risiko"
+                )
             else:
                 admission = "SHADOW READY"
                 reason = (
@@ -5258,7 +5285,7 @@ with forecast_tab:
                 )
             admission_rows.append({
                 "waktu (WIB)": _fmt_wib_datetime(row.get("observed_at")),
-                "setup": row.get("setup_type"),
+                "setup": _rizan_display(row.get("setup_type")),
                 "arah": row.get("direction"),
                 "grade/skor": row.get("final_score"),
                 "status tersimpan": row.get("state"),
@@ -5345,7 +5372,10 @@ with forecast_tab:
                         ),
                         "raw TP1": _fmt_price(row.get("tp1")),
                         "raw TP2": _fmt_price(row.get("tp2")),
-                        "guard/pengaman": ", ".join(str(x) for x in (row.get("active_guards") or [])) or "—",
+                        "guard/pengaman": ", ".join(
+                            str(_rizan_display(x))
+                            for x in (row.get("active_guards") or [])
+                        ) or "—",
                         "kedaluwarsa (WIB)": _fmt_wib_datetime(expires_raw),
                     }
                 )
@@ -6092,8 +6122,13 @@ with scanner_tab:
             ]
             if col in signals.columns
         ]
+        display_signals = signals[display_cols].copy()
+        for display_col in display_signals.columns:
+            display_signals[display_col] = display_signals[display_col].apply(
+                _rizan_display
+            )
         st.dataframe(
-            signals[display_cols],
+            display_signals,
             hide_index=True,
             width="stretch",
         )
