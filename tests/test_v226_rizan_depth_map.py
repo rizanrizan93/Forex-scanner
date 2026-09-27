@@ -283,7 +283,7 @@ def test_v226_rejects_non_v2252_historical_prior() -> None:
     assert result["execution_authority"] is False
 
 
-def test_v226_marks_multitested_zone_as_low_first_touch_applicability() -> None:
+def test_v226_keeps_multitested_h4_structurally_active_for_retest() -> None:
     zone = _zone(
         "d",
         timeframe="H4",
@@ -293,12 +293,15 @@ def test_v226_marks_multitested_zone_as_low_first_touch_applicability() -> None:
         touches=3,
     )
     result = _applicability(zone, 4290.0)
-    assert result["state"] == "LOW_REUSE_OUT_OF_SAMPLE"
+    assert result["state"] == "ACTIVE_HTF_RETEST"
+    assert result["htf_retest_allowed"] is True
+    assert result["structurally_active"] is True
+    assert result["prior_scope"] == "FIRST_TOUCH_PRIOR_GEOMETRY_ONLY"
 
 
 
 
-def test_v226_h4_selector_prefers_fresh_first_touch_over_nearer_reused_zone() -> None:
+def test_v226_h4_selector_prefers_nearer_structurally_active_retest() -> None:
     zones = [
         _zone(
             "near-reused",
@@ -329,11 +332,11 @@ def test_v226_h4_selector_prefers_fresh_first_touch_over_nearer_reused_zone() ->
         direction="SHORT",
         price=4286.0,
     )
-    assert calibrated["zone_id"] == "far-fresh"
+    assert calibrated["zone_id"] == "near-reused"
     assert context["zone_id"] == "near-reused"
 
 
-def test_v226_build_map_separates_calibrated_parent_from_nearest_reused_context() -> None:
+def test_v226_build_map_uses_nearest_active_retested_h4_parent() -> None:
     atlas = {
         "as_of": "2026-09-25T17:45:00+00:00",
         "last_closed_m15_price": 4286.0,
@@ -362,10 +365,12 @@ def test_v226_build_map_separates_calibrated_parent_from_nearest_reused_context(
     }
     result = build_depth_map(atlas_evaluation=atlas, history_details=_history())
     short = result["short"]
-    assert short["h4"]["zone"]["zone_id"] == "far-fresh"
-    assert short["h4_selection_mode"] == "FRESH_FIRST_TOUCH_CALIBRATED_PARENT"
+    assert short["h4"]["zone"]["zone_id"] == "near-reused"
+    assert short["h4_selection_mode"] == "ACTIVE_HTF_RETEST_PARENT"
     assert short["nearest_h4_context"]["zone"]["zone_id"] == "near-reused"
-    assert short["nearest_h4_context"]["same_as_calibrated_parent"] is False
+    assert short["nearest_h4_context"]["same_as_calibrated_parent"] is True
+    assert short["depth_entry_candidate"]["display_status"] == "CONFIRMATION_ONLY_RETESTED_HTF"
+    assert short["depth_entry_candidate"]["confirmation_execution_eligible"] is True
 
 def test_v226_h1_selector_prefers_child_intersecting_h4_hotspot() -> None:
     parent = _zone("h4", timeframe="H4", direction="LONG", low=4240, high=4280)
@@ -478,11 +483,11 @@ def test_v226_workflow_and_dashboard_are_shadow_only() -> None:
     dashboard = (ROOT / "streamlit_app.py").read_text()
     assert "V226 — RIZAN Depth Map" in dashboard
     assert "RIZAN Depth hotspot" in dashboard
-    assert "V226 tetap shadow-only" in dashboard
+    assert "V226 adalah locator/depth engine" in dashboard
     assert "Depth Entry Candidate" in dashboard
     assert "Candidate entry" in dashboard
     assert "4-Order Hybrid Depth Plan" in dashboard
-    assert "auto-submit belum diaktifkan" in dashboard
+    assert "V229 dapat memberi execution authority DEMO" in dashboard
 
     source = (ROOT / "src/fx_scanner/demo_xau_v226_rizan_depth_map.py").read_text()
     assert 'POLICY_EFFECT = "SHADOW_ONLY"' in source
@@ -654,3 +659,69 @@ def test_v226_first_touch_in_progress_remains_confirmation_eligible():
     assert candidate["confirmation_calibrated_first_touch"] is True
     assert candidate["pre_touch_execution_eligible"] is False
     assert candidate["confirmation_execution_eligible"] is True
+
+
+def test_v226_h1_retest_is_confirmation_eligible_but_not_pretouch() -> None:
+    h4 = {
+        "zone": _zone("h4", timeframe="H4", direction="LONG", low=100.0, high=110.0),
+        "hotspot": {"low": 108.0, "high": 110.0},
+        "historical_profile": {"hold_rate": 0.70, "hold_wilson_lower_95": 0.64},
+        "applicability": {
+            "state": "HIGH_FIRST_TOUCH_PRIOR",
+            "touch_count": 0,
+            "structurally_active": True,
+        },
+    }
+    candidate = _depth_entry_candidate(
+        direction="LONG",
+        price=112.0,
+        h4=h4,
+        h1_nested={"envelope":{"low":106.0,"high":108.0},"median":{"price":107.0}},
+        m15_nested={},
+        h1_profile={},
+        m15_profile={},
+        h4_selection_mode="ACTIVE_HTF_FRESH_PARENT",
+        h1_app={
+            "state":"ACTIVE_HTF_RETEST",
+            "touch_count":3,
+            "structurally_active":True,
+            "lifecycle_weight":0.70,
+        },
+    )
+    assert candidate["display_status"] == "CONFIRMATION_ONLY_RETESTED_HTF"
+    assert candidate["pre_touch_execution_eligible"] is False
+    assert candidate["confirmation_execution_eligible"] is True
+    assert candidate["retest_confirmation_eligible"] is True
+    assert candidate["zone_reuse"]["h1_touch_count"] == 3
+
+
+def test_v226_m15_multitest_remains_strict_context_only() -> None:
+    h4 = {
+        "zone": _zone("h4", timeframe="H4", direction="LONG", low=100.0, high=110.0),
+        "hotspot": {"low":108.0,"high":110.0},
+        "historical_profile": {},
+        "applicability": {
+            "state":"HIGH_FIRST_TOUCH_PRIOR",
+            "touch_count":0,
+            "structurally_active":True,
+        },
+    }
+    candidate = _depth_entry_candidate(
+        direction="LONG",
+        price=112.0,
+        h4=h4,
+        h1_nested={},
+        m15_nested={"envelope":{"low":106.0,"high":108.0},"median":{"price":107.0}},
+        h1_profile={},
+        m15_profile={},
+        h4_selection_mode="ACTIVE_HTF_FRESH_PARENT",
+        m15_app={
+            "state":"LOW_REUSE_OUT_OF_SAMPLE",
+            "touch_count":2,
+            "structurally_active":True,
+            "lifecycle_weight":0.40,
+        },
+    )
+    assert candidate["display_status"] == "CONTEXT_ONLY_LOWER_TF_REUSE"
+    assert candidate["pre_touch_execution_eligible"] is False
+    assert candidate["confirmation_execution_eligible"] is False
