@@ -8,7 +8,9 @@ from fx_scanner.research_brent_cash_parity_v238d import (
     HISTDATA_PAIR,
     ParityThresholds,
     cash_parity_pass,
+    lag_sweep,
     parity_metrics,
+    select_preferred_candidate,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,3 +84,67 @@ def test_v238d_source_remains_shadow_only() -> None:
     assert '"execution_authority": False' in source
     assert '"live_execution_enabled": False' in source
     assert "build_broker_gateway" not in source
+
+
+
+def test_v238d_lag_sweep_recovers_shifted_series() -> None:
+    reference = _frame([80.0, 80.5, 80.2, 81.0])
+    broker = _frame([80.0, 80.5, 80.2, 81.0]).copy()
+    broker["timestamp"] = broker["timestamp"] + pd.Timedelta(hours=2)
+    result = lag_sweep(reference, broker, max_abs_lag_hours=3)
+    assert result["best_lag_hours"] == -2
+    assert abs(float(result["best"]["return_corr"]) - 1.0) < 1e-12
+
+
+def test_v238d_selects_candidate_with_clear_basis_advantage() -> None:
+    thresholds = ParityThresholds(
+        min_overlap=300,
+        min_return_corr=0.98,
+        max_median_abs_pct=0.03,
+        max_abs_lag_hours=8,
+        min_relative_basis_advantage=0.20,
+    )
+    results = {
+        "XBRUSD": {
+            "best": {
+                "overlap": 400,
+                "return_corr": 0.995,
+                "median_abs_pct": 0.012,
+            }
+        },
+        "BRENT": {
+            "best": {
+                "overlap": 400,
+                "return_corr": 0.996,
+                "median_abs_pct": 0.004,
+            }
+        },
+    }
+    assert select_preferred_candidate(results, thresholds) == "BRENT"
+
+
+def test_v238d_candidate_selection_stays_unresolved_when_basis_is_close() -> None:
+    thresholds = ParityThresholds(
+        min_overlap=300,
+        min_return_corr=0.98,
+        max_median_abs_pct=0.03,
+        max_abs_lag_hours=8,
+        min_relative_basis_advantage=0.20,
+    )
+    results = {
+        "XBRUSD": {
+            "best": {
+                "overlap": 400,
+                "return_corr": 0.995,
+                "median_abs_pct": 0.010,
+            }
+        },
+        "BRENT": {
+            "best": {
+                "overlap": 400,
+                "return_corr": 0.996,
+                "median_abs_pct": 0.009,
+            }
+        },
+    }
+    assert select_preferred_candidate(results, thresholds) is None
