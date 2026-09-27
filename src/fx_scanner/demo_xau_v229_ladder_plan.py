@@ -72,9 +72,21 @@ def build_parent_ladder_plan(
         return None
 
     candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
-    if not bool(candidate.get("calibrated_fresh_first_touch")):
+    fresh_pre_touch = bool(candidate.get("calibrated_fresh_first_touch"))
+    confirmation_first_touch = bool(
+        candidate.get("confirmation_calibrated_first_touch")
+        or candidate.get("first_touch_in_progress")
+    )
+    if not (fresh_pre_touch or confirmation_first_touch):
         return None
-    if str(candidate.get("display_status") or "") != "PREPARE_ONLY_FRESH_FIRST_TOUCH":
+    display_status = str(candidate.get("display_status") or "")
+    if fresh_pre_touch and display_status != "PREPARE_ONLY_FRESH_FIRST_TOUCH":
+        return None
+    if (
+        not fresh_pre_touch
+        and confirmation_first_touch
+        and display_status != "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS"
+    ):
         return None
 
     low = _f(candidate.get("entry_low"))
@@ -129,13 +141,14 @@ def build_parent_ladder_plan(
             terminal_prices.append(target_price)
             first_targets.append(target_price)
         pretouch = slot_no <= 2
+        execution_enabled = bool(fresh_pre_touch or not pretouch)
         children.append(
             {
                 **slot,
                 "slot": slot_no,
                 "lot": CHILD_LOT,
                 "reference_price": reference,
-                "planned_entry": reference if pretouch else None,
+                "planned_entry": reference if pretouch and execution_enabled else None,
                 "planned_sl": float(stop),
                 "planned_tp": target_price,
                 "target_timeframe": None if chosen is None else chosen.get("timeframe"),
@@ -143,11 +156,19 @@ def build_parent_ladder_plan(
                 "structural_targets": list(structural.get("mapped_targets") or []),
                 "terminal_rr_eligible": bool(structural.get("terminal_rr_eligible")),
                 "submit_eligible": bool(
-                    pretouch
+                    execution_enabled
+                    and pretouch
                     and target_price is not None
                     and _limit_valid_now(direction, reference, px)
                 ),
-                "execution_mode": "LIMIT_PRE_TOUCH" if pretouch else "LIMIT_ON_M5_RETEST",
+                "execution_enabled": execution_enabled,
+                "execution_mode": (
+                    "LIMIT_PRE_TOUCH"
+                    if pretouch and execution_enabled
+                    else "DISABLED_FIRST_TOUCH_IN_PROGRESS"
+                    if pretouch
+                    else "LIMIT_ON_M5_RETEST"
+                ),
             }
         )
 
@@ -155,12 +176,18 @@ def build_parent_ladder_plan(
     if not enabled_children:
         return None
 
+    execution_phase = (
+        "PRE_TOUCH"
+        if fresh_pre_touch
+        else "FIRST_TOUCH_CONFIRMATION"
+    )
     candidate_key = "|".join(
         (
             "XAU_RIZAN_DEPTH_EXECUTION_V1",
             direction,
             str(h4.get("zone_id") or ""),
             str(candidate.get("source_layer") or ""),
+            execution_phase,
             f"{low:.5f}",
             f"{high:.5f}",
         )
@@ -207,7 +234,8 @@ def build_parent_ladder_plan(
         "max_children": MAX_CHILDREN,
         "child_lot": CHILD_LOT,
         "max_total_lot": CHILD_LOT * MAX_CHILDREN,
-        "pretouch_slots": [1, 2],
+        "execution_phase": execution_phase,
+        "pretouch_slots": [1, 2] if fresh_pre_touch else [],
         "confirmation_slots": [3, 4],
         "live_price_at_plan": px,
         "generic_market_handoff_allowed": False,
