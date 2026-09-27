@@ -8,7 +8,7 @@ from .models import ensure_utc
 from .demo_xau_structural_targets_v229 import runtime_m15_target_zones
 from .storage.supabase_operational import SupabaseOperationalStore
 
-CONTRACT = "XAU_AFIC_SUPPLY_DEMAND_CONTEXT_V1"
+CONTRACT = "XAU_RIZAN_SUPPLY_DEMAND_CONTEXT_V1"
 ATLAS_WORKER = "ctrader_demo_xau_supply_demand_atlas_v182"
 DOM_WORKER = "ctrader_demo_xau_dom_v191"
 EVENT_RISK_WORKER = "ctrader_demo_xau_event_risk_v192"
@@ -545,7 +545,7 @@ def attach_supply_demand_context(
         "execution_authority": False,
         "promotion_authority": False,
         "interpretation": (
-            "Supply/demand is AFIC context and preparation evidence only. "
+            "Supply/demand is RIZAN context and preparation evidence only. "
             "Path mapping can identify the next opposing zone and internal waypoints. "
             "If opposing H1 source zones overlap materially, the state is compression/conflict. "
             "V189 microstructure, V191 broker-venue DOM and V192 event risk may provide "
