@@ -11,8 +11,8 @@ from fx_scanner.demo_xau_afic_prepared_plan_producer import (
 UTC=timezone.utc
 
 def test_afic_prepared_identity_and_selector():
-    assert STRATEGY_ID=="XAU_AFIC_PATH_PREPARED_V1"
-    assert EXECUTION_STRATEGY_ID=="XAU_AFIC_PATH_EXECUTION_V1"
+    assert STRATEGY_ID=="XAU_RIZAN_PATH_PREPARED_V1"
+    assert EXECUTION_STRATEGY_ID=="XAU_RIZAN_PATH_EXECUTION_V1"
     assert MAX_ZONE_DISTANCE_ATR==0.75
     assert MAX_H4_DIRECTIONAL_CLOSE_LOC==0.65
     assert selector_grade({"zone_distance_atr":0.4,"h4_directional_close_location":0.55})=="A"
@@ -105,8 +105,8 @@ def test_afic_prepared_observability_explains_confirmed_live_geometry_failure():
 
 
 def test_afic_forecast_state_transition_identity_and_key_are_durable():
-    assert STATE_CODE=="XAU_AFIC_PATH_STATE_V1"
-    assert STATE_EVENT_TYPE=="DEMO_XAU_AFIC_FORECAST_STATE"
+    assert STATE_CODE=="XAU_RIZAN_PATH_STATE_V1"
+    assert STATE_EVENT_TYPE=="DEMO_XAU_RIZAN_FORECAST_STATE"
     base={
         "map_at":"2026-09-22T00:00:00+00:00",
         "state":"ZONE_TOUCHED_WAIT_CONFIRM",
