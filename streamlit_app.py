@@ -2588,7 +2588,7 @@ with forecast_tab:
             )
 
     with st.container(border=True):
-        st.markdown("##### V227 — RISET SAJA: Prospective RIZAN Depth Calibration")
+        st.markdown("##### V227 — Prospective RIZAN Depth Calibration (RISET SAJA)")
         st.caption(
             "V227 hanya mengukur apakah locator V226 benar secara prospective. "
             "Angka V227 bukan entry/SL/TP dan tidak memiliki execution authority."
