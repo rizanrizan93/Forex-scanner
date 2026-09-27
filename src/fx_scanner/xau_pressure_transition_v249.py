@@ -57,6 +57,7 @@ def evaluate_pressure_transition(
     score = _f(analysis.get("dom_pressure_score"))
     cross = dict(analysis.get("cross_run") or {})
     delta = _f(cross.get("pressure_score_change"))
+    previous_observed_at = _dt(cross.get("previous_observed_at"))
     imbalance = _f(analysis.get("last_imbalance"))
 
     age_seconds = None
@@ -70,6 +71,14 @@ def evaluate_pressure_transition(
         "buyer_index": score,
         "seller_index": None if score is None else 100.0 - score,
         "score_change": delta,
+        "previous_observed_at": (
+            None if previous_observed_at is None else previous_observed_at.isoformat()
+        ),
+        "comparison_gap_seconds": (
+            None
+            if observed_at is None or previous_observed_at is None
+            else max(0.0, (observed_at - previous_observed_at).total_seconds())
+        ),
         "last_imbalance": imbalance,
         "observed_at": None if observed_at is None else observed_at.isoformat(),
         "age_seconds": age_seconds,
@@ -90,8 +99,18 @@ def evaluate_pressure_transition(
         return {**base, "state": "DOM_STALE", "reason": "DOM_PRESSURE_STALE"}
     if score is None:
         return {**base, "state": "DOM_SCORE_MISSING", "reason": "DOM_SCORE_MISSING"}
-    if delta is None:
-        return {**base, "state": "WAIT_SECOND_SAMPLE", "reason": "PRESSURE_DELTA_MISSING"}
+    comparison_gap = base.get("comparison_gap_seconds")
+    if (
+        delta is None
+        or previous_observed_at is None
+        or comparison_gap is None
+        or float(comparison_gap) > float(max_age_seconds)
+    ):
+        return {
+            **base,
+            "state": "WAIT_SECOND_SAMPLE",
+            "reason": "PRESSURE_COMPARISON_SAMPLE_MISSING_OR_STALE",
+        }
 
     signed_buyer = max(-100.0, min(100.0, (score - 50.0) * 2.0))
     opposing = -signed_buyer if side == "LONG" else signed_buyer
