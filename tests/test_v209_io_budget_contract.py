@@ -7,11 +7,10 @@ def _read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def test_v209_dashboard_uses_tiered_cache_without_slowing_fast_state() -> None:
+def test_v209_dashboard_uses_60_second_cache_for_user_facing_state() -> None:
     text = _read("streamlit_app.py")
-    assert "@st.cache_data(ttl=15" in text
+    assert text.count("@st.cache_data(ttl=60") >= 2
     assert "def _load_backend_fast_snapshot" in text
-    assert "@st.cache_data(ttl=60" in text
     assert "def _load_backend_slow_snapshot" in text
     assert '"signals": list(reader.latest_signals())' in text
     assert '"broker_account": broker_account' in text
