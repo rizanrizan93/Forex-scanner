@@ -233,9 +233,9 @@ def run() -> int:
         json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
     )
 
-    base_margin = payload["base"]["account_100_usd_1_100"]["margin_only"]
-    base_cap = payload["base"]["account_100_usd_1_100"]["margin_cap_50pct"]
-    stress_cap = payload["stress"]["account_100_usd_1_100"]["margin_cap_50pct"]
+    base_margin = payload["base"]["account_scenarios"]["live_like_1_100_margin_only"]
+    base_cap = payload["base"]["account_scenarios"]["live_like_1_100_margin_cap_50pct"]
+    stress_cap = payload["stress"]["account_scenarios"]["live_like_1_100_margin_cap_50pct"]
     print(
         "XAU_V229_HISTORICAL_V241_FULL "
         f"plans={len(plans)} "
