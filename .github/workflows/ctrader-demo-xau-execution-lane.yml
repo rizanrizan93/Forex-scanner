@@ -97,6 +97,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_afic_prepared_plan_producer
 
+      - name: Refresh XAU Level-II pressure transition
+        id: refresh_xau_pressure
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_dom_v191
+
       - name: Promote fresh RIZAN depth candidate to DEMO execution-ready
         id: produce_rizan_depth
         continue-on-error: true
@@ -107,6 +112,7 @@ jobs:
         if: >-
           ${{ !cancelled() &&
               steps.repair_existing_protection.outcome == 'success' &&
+              steps.refresh_xau_pressure.outcome == 'success' &&
               steps.produce_rizan_depth.outcome == 'success' }}
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v229_child_executor
@@ -128,6 +134,7 @@ jobs:
           V24_OUTCOME: ${{ steps.produce_xau_v24_champion.outcome }}
           CANONICAL_OUTCOME: ${{ steps.produce_xau_m15_ema_smc_reclaim.outcome }}
           AFIC_OUTCOME: ${{ steps.produce_xau_afic.outcome }}
+          PRESSURE_OUTCOME: ${{ steps.refresh_xau_pressure.outcome }}
           RIZAN_DEPTH_OUTCOME: ${{ steps.produce_rizan_depth.outcome }}
           RIZAN_CHILD_OUTCOME: ${{ steps.execute_rizan_children.outcome }}
           HANDOFF_OUTCOME: ${{ steps.execute_fresh_handoff.outcome }}
@@ -140,6 +147,10 @@ jobs:
           fi
           if [ "${AFIC_OUTCOME}" != "success" ]; then
             echo "XAU_EXECUTION_LANE_FAIL stage=AFIC_RECONCILIATION outcome=${AFIC_OUTCOME} safety=FAIL_CLOSED"
+            failed=1
+          fi
+          if [ "${PRESSURE_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_FAIL stage=PRESSURE_TRANSITION outcome=${PRESSURE_OUTCOME} safety=FAIL_CLOSED"
             failed=1
           fi
           if [ "${RIZAN_DEPTH_OUTCOME}" != "success" ]; then
