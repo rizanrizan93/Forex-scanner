@@ -34,6 +34,10 @@ from .xau_pressure_transition_v249 import (
     DOM_WORKER,
     evaluate_pressure_transition,
 )
+from .xau_dynamic_depth_hazard_v251 import (
+    build_dynamic_depth_hazard,
+    child_reference_depth,
+)
 
 SYMBOL = "XAUUSD"
 WORKER_NAME = "ctrader_demo_xau_v229_child_executor"
@@ -387,6 +391,12 @@ def run() -> int:
             dom_heartbeat=dom_hb,
             now=now,
         )
+        depth_hazard = build_dynamic_depth_hazard(
+            v226_evaluation=v226_eval,
+            direction=direction,
+            live_price=live_price,
+            pressure_transition=pressure_transition,
+        )
 
         for parent in parents:
             parent_signal_id = str(parent.get("signal_key") or "")
@@ -441,6 +451,13 @@ def run() -> int:
                     f"{pressure_transition.get('reason')}"
                 )
                 continue
+            if str(depth_hazard.get("state") or "") != "DYNAMIC_DEPTH_HAZARD_AVAILABLE":
+                outcomes = _cancel_pending_plan(session, plan, reconcile)
+                actions.extend(f"{parent_signal_id}:HAZARD_CANCEL:{x}" for x in outcomes)
+                actions.append(
+                    f"{parent_signal_id}:HAZARD_BLOCK:{depth_hazard.get('reason','UNAVAILABLE')}"
+                )
+                continue
 
             existing = _existing_slots(plan, reconcile)
             future_exposure = len(_positions(reconcile)) + len(_pending_orders(reconcile))
@@ -454,6 +471,9 @@ def run() -> int:
             for child in list(plan["children"]):
                 slot = int(child.get("slot") or 0)
                 if slot in existing or slot not in {1, 2, 3, 4}:
+                    continue
+                if not bool(child.get("execution_enabled", True)):
+                    actions.append(f"{parent_signal_id}:L{slot}:DISABLED_BY_EXECUTION_PHASE")
                     continue
                 if len(existing) >= MAX_CHILDREN:
                     actions.append(f"{parent_signal_id}:L{slot}:FOUR_SLOT_CAP")
@@ -488,6 +508,25 @@ def run() -> int:
                 if entry is None:
                     actions.append(f"{parent_signal_id}:L{slot}:{activation}")
                     continue
+
+                if slot <= 2:
+                    child_depth = child_reference_depth(
+                        v226_evaluation=v226_eval,
+                        direction=str(plan["direction"]),
+                        price=float(entry),
+                    )
+                    min_depth = _f(depth_hazard.get("recommended_depth_low"))
+                    if (
+                        child_depth is not None
+                        and min_depth is not None
+                        and float(child_depth) + 1e-9 < float(min_depth)
+                    ):
+                        actions.append(
+                            f"{parent_signal_id}:L{slot}:WAIT_DEEPER_HAZARD:"
+                            f"child_depth={child_depth:.3f}:min={min_depth:.3f}"
+                        )
+                        continue
+
                 quote = gateway.market_quote(SYMBOL)
                 if not _limit_side_valid(
                     str(plan["direction"]),
@@ -550,6 +589,8 @@ def run() -> int:
             "generic_market_handoff_allowed": False,
             "pressure_transition_required": True,
             "pressure_transition": pressure_transition if 'pressure_transition' in locals() else {},
+            "dynamic_depth_hazard_required": True,
+            "dynamic_depth_hazard": depth_hazard if 'depth_hazard' in locals() else {},
             "actions": actions[:40],
             "error": error,
             "observed_at": now.isoformat(),
