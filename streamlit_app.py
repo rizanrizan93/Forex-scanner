@@ -2524,6 +2524,13 @@ with forecast_tab:
         if bool(v240_decision.get("saved_geometry_match"))
         else {}
     )
+    # V234 compatibility/audit: saved child targets remain observable, but they
+    # never override the freshly rebuilt V240 canonical target ladder.
+    chart_saved_structural_targets = [
+        dict(raw_target)
+        for chart_child in list(chart_v229_geometry.get("children") or [])
+        for raw_target in list(dict(chart_child).get("structural_targets") or [])
+    ]
     chart_structural_targets = list(v240_targets)
 
     chart_preview_targets, chart_entry_reference, chart_approaching_entry = _rizan_chart_target_ladder(
