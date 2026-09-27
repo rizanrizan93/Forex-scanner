@@ -97,7 +97,7 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_m15_ema_smc_reclaim_candidate_producer
 
-      - name: Evaluate AFIC prepared/confirmed path
+      - name: Evaluate RIZAN prepared/confirmed path
         id: produce_xau_afic
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_afic_prepared_plan_producer
@@ -138,7 +138,7 @@ jobs:
           REPAIR_OUTCOME: ${{ steps.repair_existing_protection.outcome }}
           V24_OUTCOME: ${{ steps.produce_xau_v24_champion.outcome }}
           CANONICAL_OUTCOME: ${{ steps.produce_xau_m15_ema_smc_reclaim.outcome }}
-          AFIC_OUTCOME: ${{ steps.produce_xau_afic.outcome }}
+          RIZAN_OUTCOME: ${{ steps.produce_xau_afic.outcome }}
           PRESSURE_OUTCOME: ${{ steps.refresh_xau_pressure.outcome }}
           RIZAN_DEPTH_OUTCOME: ${{ steps.produce_rizan_depth.outcome }}
           RIZAN_CHILD_OUTCOME: ${{ steps.execute_rizan_children.outcome }}
@@ -150,8 +150,8 @@ jobs:
             echo "XAU_EXECUTION_LANE_FAIL stage=REPAIR outcome=${REPAIR_OUTCOME}"
             failed=1
           fi
-          if [ "${AFIC_OUTCOME}" != "success" ]; then
-            echo "XAU_EXECUTION_LANE_FAIL stage=AFIC_RECONCILIATION outcome=${AFIC_OUTCOME} safety=FAIL_CLOSED"
+          if [ "${RIZAN_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_FAIL stage=RIZAN_RECONCILIATION outcome=${RIZAN_OUTCOME} safety=FAIL_CLOSED"
             failed=1
           fi
           if [ "${PRESSURE_OUTCOME}" != "success" ]; then
@@ -167,7 +167,7 @@ jobs:
             failed=1
           fi
           if [ "${V24_OUTCOME}" != "success" ] && [ "${CANONICAL_OUTCOME}" != "success" ]; then
-            echo "XAU_EXECUTION_LANE_WARN stage=OTHER_PRODUCERS v24=${V24_OUTCOME} canonical=${CANONICAL_OUTCOME} afic=${AFIC_OUTCOME}"
+            echo "XAU_EXECUTION_LANE_WARN stage=OTHER_PRODUCERS v24=${V24_OUTCOME} canonical=${CANONICAL_OUTCOME} rizan=${RIZAN_OUTCOME}"
           fi
           if [ "${HANDOFF_OUTCOME}" != "success" ]; then
             echo "XAU_EXECUTION_LANE_FAIL stage=HANDOFF outcome=${HANDOFF_OUTCOME}"
