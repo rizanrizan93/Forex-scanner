@@ -1,0 +1,113 @@
+name: Research Brent Uni Depth V238B
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/v238b-brent-uni-depth
+    paths:
+      - "src/fx_scanner/research_brent_histdata_download_v238b.py"
+      - "src/fx_scanner/research_brent_uni_depth_v238b_metrics.py"
+      - "src/fx_scanner/research_brent_uni_depth_v238b_year_runtime.py"
+      - "src/fx_scanner/research_brent_uni_depth_v238b_aggregate.py"
+      - "tests/test_research_brent_uni_depth_v238b.py"
+      - ".github/workflows/research-brent-uni-depth-v238b.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-brent-uni-depth-v238b-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Test V238B
+        run: |
+          pytest -q             tests/test_research_brent_uni_depth_v238b.py             tests/test_research_xau_zone_reversal_depth_v225.py
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      BRENT_V238B_YEAR: ${{ matrix.year }}
+      BRENT_V238B_PRICE_CSV: /tmp/histdata/brent-v238b-${{ matrix.year }}.csv
+      BRENT_V238B_PRICE_PROVENANCE: artifacts/brent-v238b-price-provenance-${{ matrix.year }}.json
+      BRENT_V238B_YEAR_OUTPUT: artifacts/brent-uni-depth-v238b-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download and normalize HistData Brent BCOUSD M1
+        run: python -m fx_scanner.research_brent_histdata_download_v238b
+      - name: Build yearly Brent Uni Depth shard
+        run: python -m fx_scanner.research_brent_uni_depth_v238b_year_runtime
+      - name: Upload yearly shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: brent-v238b-year-${{ matrix.year }}
+          path: |
+            artifacts/brent-uni-depth-v238b-${{ matrix.year }}.json
+            artifacts/brent-v238b-price-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BRENT_V238B_SHARD_DIR: /tmp/brent-v238b-shards
+      BRENT_V238B_FULL_OUTPUT: artifacts/brent-uni-depth-v238b-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download all yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: brent-v238b-year-*
+          path: /tmp/brent-v238b-shards
+          merge-multiple: false
+      - name: Aggregate Brent 2012-2026 Uni Depth benchmark
+        run: python -m fx_scanner.research_brent_uni_depth_v238b_aggregate
+      - name: Upload full benchmark
+        uses: actions/upload-artifact@v4
+        with:
+          name: brent-uni-depth-v238b-full
+          path: artifacts/brent-uni-depth-v238b-full.json
+          if-no-files-found: error
+          retention-days: 30
