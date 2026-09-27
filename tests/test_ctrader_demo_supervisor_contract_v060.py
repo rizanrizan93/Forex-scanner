@@ -16,7 +16,10 @@ def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_hando
     assert "sleep 60" in text
     assert "fast_cadence_seconds=60" in text
     assert "maintenance_cadence_seconds=300" in text
-    assert "calibration_cadence_seconds=300" in text
+    assert "calibration_cadence_seconds=3600" in text
+    assert 'if [ "${cycle}" -eq 1 ] && [ "$(date -u +%M)" = "02" ]' in text
+    assert "SUPERVISOR_CALIBRATION_SKIP_CADENCE" in text
+    assert "execution_authority=NONE" in text
     assert "discovery_check_seconds=60" in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
