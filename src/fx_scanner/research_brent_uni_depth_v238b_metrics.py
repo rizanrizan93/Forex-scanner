@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from bisect import bisect_left, bisect_right
+from dataclasses import dataclass
 from datetime import timedelta
 from statistics import median
 from typing import Any, Sequence
@@ -17,43 +18,60 @@ from .research_xau_zone_reversal_depth_v225 import (
 REACTION_LADDER = (0.25, 0.50, 0.75, 1.00)
 
 
+@dataclass(frozen=True, slots=True)
+class PriceArrays:
+    timestamps: tuple[pd.Timestamp, ...]
+    highs: np.ndarray
+    lows: np.ndarray
+    closes: np.ndarray
+
+
+def _price_arrays(price_m1: pd.DataFrame) -> PriceArrays:
+    frame = price_m1.copy()
+    frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
+    frame = frame.dropna(subset=["timestamp", "high", "low", "close"])
+    frame = frame.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
+    return PriceArrays(
+        timestamps=tuple(pd.Timestamp(value) for value in frame["timestamp"]),
+        highs=frame["high"].to_numpy(dtype=float, copy=False),
+        lows=frame["low"].to_numpy(dtype=float, copy=False),
+        closes=frame["close"].to_numpy(dtype=float, copy=False),
+    )
+
+
 def _quantile(values: Sequence[float], q: float) -> float | None:
     if not values:
         return None
     return float(np.quantile(np.asarray(values, dtype=float), q))
 
 
-def _episode_metrics(price_m1: pd.DataFrame, row: DepthEpisode) -> dict[str, Any]:
-    timestamps = tuple(pd.Timestamp(value) for value in price_m1["timestamp"])
-    highs = price_m1["high"].to_numpy(dtype=float, copy=False)
-    lows = price_m1["low"].to_numpy(dtype=float, copy=False)
-    closes = price_m1["close"].to_numpy(dtype=float, copy=False)
-
+def _episode_metrics(px: PriceArrays, row: DepthEpisode) -> dict[str, Any]:
     touch_at = ensure_utc(row.touch_at)
-    start = bisect_left(timestamps, pd.Timestamp(touch_at))
+    start = bisect_left(px.timestamps, pd.Timestamp(touch_at))
     horizon_end = touch_at + timedelta(minutes=REACTION_HORIZON_MINUTES[row.timeframe])
-    end = bisect_right(timestamps, pd.Timestamp(horizon_end))
-    if start >= len(timestamps) or end <= start:
-        return {
-            "zone_id": row.zone_id,
-            "timeframe": row.timeframe,
-            "direction": row.direction,
-            "touch_at": touch_at.isoformat(),
-            "available_at": ensure_utc(row.available_at).isoformat(),
-            "candidate_to_first_touch_minutes": max(
-                0.0,
-                (touch_at - ensure_utc(row.available_at)).total_seconds() / 60.0,
-            ),
-            "complete": False,
-        }
+    end = bisect_right(px.timestamps, pd.Timestamp(horizon_end))
+    base = {
+        "zone_id": row.zone_id,
+        "timeframe": row.timeframe,
+        "direction": row.direction,
+        "touch_at": touch_at.isoformat(),
+        "available_at": ensure_utc(row.available_at).isoformat(),
+        "candidate_to_first_touch_minutes": max(
+            0.0,
+            (touch_at - ensure_utc(row.available_at)).total_seconds() / 60.0,
+        ),
+    }
+    if start >= len(px.timestamps) or end <= start:
+        return {**base, "complete": False}
 
-    window_high = highs[start:end]
-    window_low = lows[start:end]
-    window_close = closes[start:end]
-    if row.direction == "LONG":
-        break_mask = window_close < float(row.distal)
-    else:
-        break_mask = window_close > float(row.distal)
+    window_high = px.highs[start:end]
+    window_low = px.lows[start:end]
+    window_close = px.closes[start:end]
+    break_mask = (
+        window_close < float(row.distal)
+        if row.direction == "LONG"
+        else window_close > float(row.distal)
+    )
     break_positions = np.flatnonzero(break_mask)
     break_rel = int(break_positions[0]) if len(break_positions) else None
 
@@ -68,6 +86,7 @@ def _episode_metrics(price_m1: pd.DataFrame, row: DepthEpisode) -> dict[str, Any
             target_mask = window_low <= target
         positions = np.flatnonzero(target_mask)
         first_target = int(positions[0]) if len(positions) else None
+        # STOP_FIRST for same-M1 ambiguity: a break on the same bar wins.
         hit = first_target is not None and (break_rel is None or first_target < break_rel)
         key = f"{multiple:.2f}"
         target_hits[key] = bool(hit)
@@ -77,7 +96,7 @@ def _episode_metrics(price_m1: pd.DataFrame, row: DepthEpisode) -> dict[str, Any
             else max(
                 0.0,
                 (
-                    ensure_utc(timestamps[start + first_target].to_pydatetime())
+                    ensure_utc(px.timestamps[start + first_target].to_pydatetime())
                     - touch_at
                 ).total_seconds()
                 / 60.0,
@@ -90,13 +109,13 @@ def _episode_metrics(price_m1: pd.DataFrame, row: DepthEpisode) -> dict[str, Any
     elif row.direction == "LONG":
         mfe_atr = max(
             0.0,
-            (float(np.max(highs[start:favorable_end])) - float(row.proximal))
+            (float(np.max(px.highs[start:favorable_end])) - float(row.proximal))
             / max(float(row.atr_points), 1e-12),
         )
     else:
         mfe_atr = max(
             0.0,
-            (float(row.proximal) - float(np.min(lows[start:favorable_end])))
+            (float(row.proximal) - float(np.min(px.lows[start:favorable_end])))
             / max(float(row.atr_points), 1e-12),
         )
 
@@ -104,26 +123,18 @@ def _episode_metrics(price_m1: pd.DataFrame, row: DepthEpisode) -> dict[str, Any
     if row.direction == "LONG":
         mae_atr = max(
             0.0,
-            (float(row.proximal) - float(np.min(lows[start:adverse_end])))
+            (float(row.proximal) - float(np.min(px.lows[start:adverse_end])))
             / max(float(row.atr_points), 1e-12),
         )
     else:
         mae_atr = max(
             0.0,
-            (float(np.max(highs[start:adverse_end])) - float(row.proximal))
+            (float(np.max(px.highs[start:adverse_end])) - float(row.proximal))
             / max(float(row.atr_points), 1e-12),
         )
 
     return {
-        "zone_id": row.zone_id,
-        "timeframe": row.timeframe,
-        "direction": row.direction,
-        "touch_at": touch_at.isoformat(),
-        "available_at": ensure_utc(row.available_at).isoformat(),
-        "candidate_to_first_touch_minutes": max(
-            0.0,
-            (touch_at - ensure_utc(row.available_at)).total_seconds() / 60.0,
-        ),
+        **base,
         "reaction_hits": target_hits,
         "time_to_reaction_minutes": target_minutes,
         "mfe_atr": float(mfe_atr),
@@ -139,11 +150,8 @@ def build_excursion_metrics(
 ) -> list[dict[str, Any]]:
     if price_m1.empty:
         return []
-    frame = price_m1.copy()
-    frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
-    frame = frame.dropna(subset=["timestamp", "high", "low", "close"])
-    frame = frame.sort_values("timestamp").reset_index(drop=True)
-    return [_episode_metrics(frame, row) for row in episodes]
+    px = _price_arrays(price_m1)
+    return [_episode_metrics(px, row) for row in episodes]
 
 
 def summarize_excursions(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
@@ -155,7 +163,9 @@ def summarize_excursions(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
             "mfe_atr_median": None,
             "mae_atr_median": None,
             "candidate_to_first_touch_minutes_median": None,
-            "time_to_reaction_minutes_median": {f"{m:.2f}": None for m in REACTION_LADDER},
+            "time_to_reaction_minutes_median": {
+                f"{m:.2f}": None for m in REACTION_LADDER
+            },
             "break_before_horizon_rate": None,
         }
 
@@ -189,7 +199,8 @@ def summarize_excursions(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "time_to_reaction_minutes_median": time_to_reaction,
         "break_before_horizon_rate": sum(
             bool(row["break_before_horizon"]) for row in complete
-        ) / len(complete),
+        )
+        / len(complete),
     }
 
 
