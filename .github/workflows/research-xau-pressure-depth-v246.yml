@@ -1,0 +1,114 @@
+name: Research XAU Pressure-to-Depth
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/research_xau_pressure_depth_v246.py"
+      - "src/fx_scanner/research_xau_pressure_depth_v246_year_runtime.py"
+      - "src/fx_scanner/research_xau_pressure_depth_v246_aggregate.py"
+      - "tests/test_research_xau_pressure_depth_v246.py"
+      - ".github/workflows/research-xau-pressure-depth-v246.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-pressure-depth-v246-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Test pressure-to-depth
+        run: pytest -q tests/test_research_xau_pressure_depth_v246.py
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 95
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v246-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v246-price-provenance-${{ matrix.year }}.json
+      XAU_V246_YEAR: ${{ matrix.year }}
+      XAU_V246_PRICE_CSV: /tmp/histdata/xau-v246-${{ matrix.year }}.csv
+      XAU_V246_PRICE_PROVENANCE: artifacts/xau-v246-price-provenance-${{ matrix.year }}.json
+      XAU_V246_YEAR_OUTPUT: artifacts/xau-pressure-depth-v246-${{ matrix.year }}.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download and normalize XAUUSD M1
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Build yearly pressure-to-depth shard
+        run: python -m fx_scanner.research_xau_pressure_depth_v246_year_runtime
+      - name: Upload yearly shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-pressure-depth-v246-year-${{ matrix.year }}
+          path: |
+            artifacts/xau-pressure-depth-v246-${{ matrix.year }}.json
+            artifacts/xau-v246-price-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      XAU_V246_SHARD_DIR: /tmp/v246-shards
+      XAU_V246_FULL_OUTPUT: artifacts/xau-pressure-depth-v246-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-pressure-depth-v246-year-*
+          path: /tmp/v246-shards
+          merge-multiple: false
+      - name: Aggregate 2012-2026 pressure-to-depth map
+        run: python -m fx_scanner.research_xau_pressure_depth_v246_aggregate
+      - name: Upload full map
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-pressure-depth-v246-full
+          path: artifacts/xau-pressure-depth-v246-full.json
+          if-no-files-found: error
+          retention-days: 30
