@@ -28,7 +28,7 @@ def test_v237_does_not_present_far_supply_edge_as_guaranteed_tp() -> None:
 
 
 def test_v237_reduces_depth_overlay_clutter() -> None:
-    assert "if side and side != str(current_direction or "").upper():" in SOURCE
+    assert 'side != str(current_direction or "").upper()' in SOURCE
     assert "if depth_shown >= 3:" in SOURCE
     assert '"SUMBER LEG"' in SOURCE
     assert '"AREA REAKSI"' in SOURCE
