@@ -1461,11 +1461,13 @@ with forecast_tab:
         )
 
     heartbeats = [] if backend is None else backend.get("heartbeats", [])
-    prepared_hb = _latest_heartbeat(
-        heartbeats, "ctrader_demo_xau_afic_prepared_plan_producer"
+    prepared_hb = (
+        _latest_heartbeat(heartbeats, "ctrader_demo_xau_rizan_prepared_plan_producer")
+        or _latest_heartbeat(heartbeats, "ctrader_demo_xau_afic_prepared_plan_producer")
     )
-    fast_handoff_hb = _latest_heartbeat(
-        heartbeats, "ctrader_demo_xau_afic_fast_handoff"
+    fast_handoff_hb = (
+        _latest_heartbeat(heartbeats, "ctrader_demo_xau_rizan_fast_handoff")
+        or _latest_heartbeat(heartbeats, "ctrader_demo_xau_afic_fast_handoff")
     )
     move_hb = _latest_heartbeat(
         heartbeats, "ctrader_xau_expected_move_envelope_v170"
@@ -1556,7 +1558,7 @@ with forecast_tab:
     dedicated_xau_rows = [] if backend is None else backend.get("xau_signals", [])
     xau_technical_signal_rows = [
         dict(row) for row in dedicated_xau_rows
-        if not str(row.get("setup_type") or "").upper().startswith("AFIC_")
+        if not str(row.get("setup_type") or "").upper().startswith(("AFIC_", "RIZAN_"))
     ]
 
     broker_account = {} if backend is None else dict(backend.get("broker_account") or {})
@@ -1594,8 +1596,14 @@ with forecast_tab:
     for event_row in execution_events:
         event_payload = dict(event_row.get("payload") or {})
         if (
-            str(event_row.get("code") or "") == "XAU_AFIC_PATH_EXECUTION_V1"
-            or str(event_payload.get("strategy_id") or "") == "XAU_AFIC_PATH_EXECUTION_V1"
+            str(event_row.get("code") or "") in {
+                "XAU_RIZAN_PATH_EXECUTION_V1",
+                "XAU_AFIC_PATH_EXECUTION_V1",
+            }
+            or str(event_payload.get("strategy_id") or "") in {
+                "XAU_RIZAN_PATH_EXECUTION_V1",
+                "XAU_AFIC_PATH_EXECUTION_V1",
+            }
             or (
                 str(event_payload.get("symbol") or "").upper() == "XAUUSD"
                 and str(event_row.get("signal_key") or "") == str(hb_details.get("signal_id") or "")
@@ -2022,6 +2030,7 @@ with forecast_tab:
         dc_admission_label = "V229 READY"
         dc_route_label = "V229 DEPTH"
     elif dc_latest_signal_state == "EXECUTION_READY" and dc_latest_geometry_code in {
+        "XAU_RIZAN_PATH_EXECUTION_V1",
         "XAU_AFIC_PATH_EXECUTION_V1",
         "XAU_M15_EMA_SMC_RECLAIM_V1",
         "XAU_V24_CHAMPION_DEMO_V1",
