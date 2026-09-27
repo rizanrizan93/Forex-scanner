@@ -30,6 +30,7 @@ from fx_scanner.trade_management_v195 import (
     evaluate_position,
     summarize_positions,
 )
+from fx_scanner.xau_canonical_decision_v240 import build_canonical_xau_decision
 
 UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
@@ -2073,7 +2074,144 @@ with forecast_tab:
     v226_four_order_ladder = dict(v226_eval.get("four_order_ladder") or {})
     v226_ladder_slots = list(v226_four_order_ladder.get("slots") or [])
 
+    v240_saved_geometry: dict[str, Any] = {}
+    for chart_event in execution_events:
+        chart_payload = dict(chart_event.get("payload") or {})
+        if (
+            str(chart_event.get("event_type") or "") == "DEMO_SIGNAL_GEOMETRY"
+            and (
+                str(chart_event.get("code") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
+                or str(chart_payload.get("strategy_id") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
+            )
+        ):
+            v240_saved_geometry = chart_payload
+            break
+
+    v240_decision = build_canonical_xau_decision(
+        v226_evaluation=v226_eval,
+        atlas_evaluation=dc_sd_eval,
+        price_now=dc_reference_price,
+        path_direction=dc_current_leg_direction,
+        saved_v229_geometry=v240_saved_geometry,
+        v226_age_seconds=(
+            None if v226_depth_map_hb is None
+            else _age_seconds(v226_depth_map_hb.get("observed_at"))
+        ),
+        atlas_age_seconds=(
+            None if supply_demand_hb is None
+            else _age_seconds(supply_demand_hb.get("observed_at"))
+        ),
+    )
+    v240_direction = str(v240_decision.get("direction") or dc_current_leg_direction or "—").upper()
+    v240_entry_zone = {
+        "entry_low": v240_decision.get("entry_low"),
+        "entry_high": v240_decision.get("entry_high"),
+        "entry_reference": v240_decision.get("entry_reference"),
+    }
+    v240_targets = [
+        dict(item) for item in list(v240_decision.get("structural_targets") or [])
+    ]
+    v240_destination = dict(v240_decision.get("likely_destination") or {})
+    v240_nearest_demand = dict(v240_decision.get("nearest_demand") or {})
+    v240_nearest_supply = dict(v240_decision.get("nearest_supply") or {})
+    v240_hist = dict(v240_decision.get("historical_context") or {})
+    v240_conflicts = list(v240_decision.get("conflicts") or [])
+    v240_stale = list(v240_decision.get("stale_reasons") or [])
+
     st.markdown("### 2 • Zona Utama & Depth Entry")
+    with st.container(border=True):
+        st.markdown("##### V240 — Canonical XAU Decision Map")
+        st.caption(
+            "Satu sumber kebenaran untuk arah, Depth Candidate, entry, SL, TP dan tujuan berikutnya. "
+            "Entry/SL/TP dihitung dengan builder V229 yang sama dengan jalur DEMO; snapshot lama tidak boleh mengalahkan candidate aktif."
+        )
+        ca1, ca2, ca3, ca4 = st.columns(4)
+        ca1.metric("Arah resmi", v240_direction)
+        ca2.metric(
+            "Primary Depth Entry",
+            (
+                f"{_fmt_price(v240_decision.get('entry_low'))}–"
+                f"{_fmt_price(v240_decision.get('entry_high'))}"
+                if v240_decision.get("entry_low") is not None
+                and v240_decision.get("entry_high") is not None
+                else "—"
+            ),
+        )
+        ca3.metric("Reference entry", _fmt_price(v240_decision.get("entry_reference")))
+        ca4.metric("State", str(v240_decision.get("state") or "WAIT"))
+
+        cb1, cb2, cb3, cb4 = st.columns(4)
+        cb1.metric("SL / invalidation", _fmt_price(v240_decision.get("sl")))
+        cb2.metric(
+            "TP1 struktural",
+            _fmt_price(v240_decision.get("tp1")),
+            delta=(
+                None if v240_decision.get("rr1") is None
+                else f"{float(v240_decision.get('rr1')):.2f}R"
+            ),
+        )
+        cb3.metric(
+            "TP terminal",
+            _fmt_price(v240_decision.get("tp2")),
+            delta=(
+                None if v240_decision.get("rr2") is None
+                else f"{float(v240_decision.get('rr2')):.2f}R"
+            ),
+        )
+        cb4.metric(
+            "Likely destination",
+            _fmt_price(v240_destination.get("target_price")),
+        )
+
+        cc1, cc2, cc3 = st.columns(3)
+        cc1.metric(
+            "Demand terdekat",
+            (
+                f"{_fmt_price(v240_nearest_demand.get('low'))}–"
+                f"{_fmt_price(v240_nearest_demand.get('high'))}"
+                if v240_nearest_demand else "—"
+            ),
+        )
+        cc2.metric(
+            "Supply terdekat",
+            (
+                f"{_fmt_price(v240_nearest_supply.get('low'))}–"
+                f"{_fmt_price(v240_nearest_supply.get('high'))}"
+                if v240_nearest_supply else "—"
+            ),
+        )
+        cc3.metric(
+            "Depth source",
+            str(v240_decision.get("source_layer") or "—"),
+        )
+
+        st.caption(
+            "Historical reaction context: "
+            f"H4 {_fmt_pct(v240_hist.get('h4_parent_rate'))} • "
+            f"H1 {_fmt_pct(v240_hist.get('h1_standalone_rate'))} • "
+            f"M15 {_fmt_pct(v240_hist.get('m15_standalone_rate'))}. "
+            "Angka ini adalah reaction evidence, bukan win rate trading atau profit factor."
+        )
+        if v240_conflicts:
+            st.error(
+                "**CONFLICT WAIT:** " + ", ".join(str(x) for x in v240_conflicts)
+                + ". Tidak ada angka entry/SL/TP lama yang boleh dipromosikan menjadi order baru."
+            )
+        elif v240_stale:
+            st.warning(
+                "**STALE WAIT:** " + ", ".join(str(x) for x in v240_stale)
+                + ". Level tetap ditampilkan sebagai snapshot terakhir, tetapi bukan harga/otoritas live."
+            )
+        elif str(v240_decision.get("state") or "") == "CANONICAL_PLAN_READY":
+            st.success(
+                "**Canonical plan konsisten.** Harga → Depth Entry → SL/invalidation → "
+                "TP struktural terdekat → opposing Supply/Demand. Execution tetap mengikuti admission DEMO."
+            )
+        else:
+            st.info(
+                "Depth/Atlas tersedia sebagai preparation, tetapi V229 belum dapat membentuk plan resmi. "
+                "Jangan mengisi SL/TP dari panel lama secara manual."
+            )
     st.caption(
         "**Peta Harga & Supply/Demand — RIZAN-style.** "
         "Candlestick berasal dari snapshot completed M15 cTrader yang disimpan V182. "
@@ -2381,56 +2519,24 @@ with forecast_tab:
                 "Gunakan sebagai state terakhir yang tersimpan sampai feed pasar aktif kembali."
             )
 
-    chart_v229_geometry: dict[str, Any] = {}
-    for chart_event in execution_events:
-        chart_payload = dict(chart_event.get("payload") or {})
-        if (
-            str(chart_event.get("event_type") or "") == "DEMO_SIGNAL_GEOMETRY"
-            and (
-                str(chart_event.get("code") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
-                or str(chart_payload.get("strategy_id") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
-            )
-        ):
-            candidate_low = _chart_price(chart_payload.get("candidate_low"))
-            candidate_high = _chart_price(chart_payload.get("candidate_high"))
-            active_low = _chart_price(v226_entry_candidate.get("entry_low"))
-            active_high = _chart_price(v226_entry_candidate.get("entry_high"))
-            same_candidate = bool(
-                active_low is None
-                or active_high is None
-                or candidate_low is None
-                or candidate_high is None
-                or (
-                    abs(active_low - candidate_low) < 0.05
-                    and abs(active_high - candidate_high) < 0.05
-                )
-            )
-            if same_candidate:
-                chart_v229_geometry = chart_payload
-                break
-
-    chart_structural_targets: list[dict[str, Any]] = []
-    chart_target_seen: set[tuple[str, str, float]] = set()
-    for chart_child in list(chart_v229_geometry.get("children") or []):
-        for raw_target in list(dict(chart_child).get("structural_targets") or []):
-            target = dict(raw_target or {})
-            target_price = _chart_price(target.get("target_price"))
-            if target_price is None:
-                continue
-            target_key = (
-                str(target.get("timeframe") or "").upper(),
-                str(target.get("zone_id") or ""),
-                round(target_price, 3),
-            )
-            if target_key in chart_target_seen:
-                continue
-            chart_target_seen.add(target_key)
-            chart_structural_targets.append(target)
+    chart_v229_geometry = (
+        v240_saved_geometry
+        if bool(v240_decision.get("saved_geometry_match"))
+        else {}
+    )
+    # V234 compatibility/audit: saved child targets remain observable, but they
+    # never override the freshly rebuilt V240 canonical target ladder.
+    chart_saved_structural_targets = [
+        dict(raw_target)
+        for chart_child in list(chart_v229_geometry.get("children") or [])
+        for raw_target in list(dict(chart_child).get("structural_targets") or [])
+    ]
+    chart_structural_targets = list(v240_targets)
 
     chart_preview_targets, chart_entry_reference, chart_approaching_entry = _rizan_chart_target_ladder(
-        direction=dc_current_leg_direction,
+        direction=v240_direction,
         price_now=float(chart_price) if chart_price is not None else 0.0,
-        entry_zone=v226_entry_candidate,
+        entry_zone=v240_entry_zone,
         structural_targets=chart_structural_targets,
         current_target=dc_current_leg_target.get("price"),
         terminal_zone=dc_current_leg_terminal,
@@ -2454,7 +2560,7 @@ with forecast_tab:
         cv1, cv2, cv3, cv4 = st.columns(4)
         cv1.metric("Harga sekarang", _fmt_price(chart_price))
         cv2.metric(
-            f"Checkpoint {dc_current_leg_direction}",
+            f"Checkpoint {v240_direction}",
             _fmt_price(dc_current_leg_target.get("price")),
         )
         cv3.metric(
@@ -2510,12 +2616,12 @@ with forecast_tab:
             price_now=float(chart_price),
             probability_by_zone=v212_chart_by_zone,
             path_roles=path_zone_ids,
-            current_direction=dc_current_leg_direction,
+            current_direction=v240_direction,
             current_target=dc_current_leg_target.get("price"),
             terminal_zone=dc_current_leg_terminal,
             next_target=dc_next_leg_target.get("price"),
             depth_overlays=v226_overlays,
-            entry_zone=v226_entry_candidate,
+            entry_zone=v240_entry_zone,
             structural_targets=chart_structural_targets,
             next_leg_direction=dc_next_leg_direction,
             next_leg_source=dc_next_leg_source,
