@@ -1,4 +1,4 @@
-name: cTrader Demo XAU AFIC Prepared Lane
+name: cTrader Demo XAU RIZAN Prepared Lane
 
 on:
   workflow_dispatch:
@@ -60,9 +60,9 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      - name: Prepare AFIC forecast/order blueprint
+      - name: Prepare RIZAN forecast/order blueprint
         id: prepare_afic
         run: python -m fx_scanner.demo_xau_afic_prepared_plan_producer
-      - name: Execute fresh AFIC DEMO signal immediately
+      - name: Execute fresh RIZAN DEMO signal immediately
         if: ${{ steps.prepare_afic.outcome == 'success' }}
         run: python -m fx_scanner.demo_xau_afic_fresh_ready_handoff
