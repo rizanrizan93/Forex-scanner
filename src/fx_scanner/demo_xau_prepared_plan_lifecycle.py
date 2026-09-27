@@ -11,10 +11,14 @@ from .storage.supabase_operational import SupabaseOperationalStore
 SYMBOL = "XAUUSD"
 WORKER_NAME = "ctrader_demo_xau_prepared_plan_lifecycle"
 CONTRACT = "XAU_PREPARED_PLAN_LIFECYCLE_V1"
-PREPARED_EVENT_TYPE = "DEMO_XAU_AFIC_PREPARED_PLAN"
-PREPARED_CODE = "XAU_AFIC_PATH_PREPARED_V1"
-FORECAST_EVENT_TYPE = "DEMO_XAU_AFIC_FORECAST_STATE"
-FORECAST_CODE = "XAU_AFIC_PATH_STATE_V1"
+PREPARED_EVENT_TYPE = "DEMO_XAU_RIZAN_PREPARED_PLAN"
+PREPARED_CODE = "XAU_RIZAN_PATH_PREPARED_V1"
+FORECAST_EVENT_TYPE = "DEMO_XAU_RIZAN_FORECAST_STATE"
+FORECAST_CODE = "XAU_RIZAN_PATH_STATE_V1"
+LEGACY_PREPARED_EVENT_TYPE = "DEMO_XAU_AFIC_PREPARED_PLAN"
+LEGACY_PREPARED_CODE = "XAU_AFIC_PATH_PREPARED_V1"
+LEGACY_FORECAST_EVENT_TYPE = "DEMO_XAU_AFIC_FORECAST_STATE"
+LEGACY_FORECAST_CODE = "XAU_AFIC_PATH_STATE_V1"
 LOOKBACK_DAYS = 30
 MAX_EVENT_ROWS_PER_TYPE = 2000
 MAX_SIGNAL_ROWS = 2000
@@ -22,7 +26,9 @@ MAX_OUTCOME_ROWS = 2000
 
 TRACKED_EVENT_TYPES = (
     PREPARED_EVENT_TYPE,
+    LEGACY_PREPARED_EVENT_TYPE,
     FORECAST_EVENT_TYPE,
+    LEGACY_FORECAST_EVENT_TYPE,
     "DEMO_SIGNAL_GEOMETRY",
     "ORDER_ACCEPTED",
     "POSITION_PROTECTION_VERIFIED",
@@ -76,8 +82,12 @@ def _events(
         )
         if event_type == PREPARED_EVENT_TYPE:
             query = query.eq("code", PREPARED_CODE)
+        elif event_type == LEGACY_PREPARED_EVENT_TYPE:
+            query = query.eq("code", LEGACY_PREPARED_CODE)
         elif event_type == FORECAST_EVENT_TYPE:
             query = query.eq("code", FORECAST_CODE)
+        elif event_type == LEGACY_FORECAST_EVENT_TYPE:
+            query = query.eq("code", LEGACY_FORECAST_CODE)
         response = query.execute()
         rows.extend(dict(row) for row in (response.data or []))
 
@@ -125,8 +135,13 @@ def _prepared_events(events: Iterable[dict[str, Any]]) -> tuple[dict[str, Any], 
     return tuple(
         row
         for row in events
-        if str(row.get("event_type") or "") == PREPARED_EVENT_TYPE
-        and str(row.get("code") or "") == PREPARED_CODE
+        if (
+            (str(row.get("event_type") or "") == PREPARED_EVENT_TYPE
+             and str(row.get("code") or "") == PREPARED_CODE)
+            or
+            (str(row.get("event_type") or "") == LEGACY_PREPARED_EVENT_TYPE
+             and str(row.get("code") or "") == LEGACY_PREPARED_CODE)
+        )
     )
 
 
@@ -134,8 +149,13 @@ def _forecast_events(events: Iterable[dict[str, Any]]) -> tuple[dict[str, Any], 
     return tuple(
         row
         for row in events
-        if str(row.get("event_type") or "") == FORECAST_EVENT_TYPE
-        and str(row.get("code") or "") == FORECAST_CODE
+        if (
+            (str(row.get("event_type") or "") == FORECAST_EVENT_TYPE
+             and str(row.get("code") or "") == FORECAST_CODE)
+            or
+            (str(row.get("event_type") or "") == LEGACY_FORECAST_EVENT_TYPE
+             and str(row.get("code") or "") == LEGACY_FORECAST_CODE)
+        )
     )
 
 
