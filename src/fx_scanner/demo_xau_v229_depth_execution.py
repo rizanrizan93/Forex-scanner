@@ -15,6 +15,7 @@ from .execution.factory import build_ctrader_research_feed
 from .demo_xau_v229_ladder_plan import build_parent_ladder_plan
 from .execution.policy import load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
+from .xau_pressure_transition_v249 import DOM_WORKER, evaluate_pressure_transition
 
 SYMBOL = "XAUUSD"
 STRATEGY_ID = "XAU_RIZAN_DEPTH_EXECUTION_V1"
@@ -382,6 +383,7 @@ def run() -> int:
     reason = "NO_READY_CANDIDATE"
     error: str | None = None
     prior_invalidated = 0
+    pressure_transition: dict[str, Any] = {}
 
     try:
         if not execution_enabled:
@@ -389,6 +391,7 @@ def run() -> int:
         else:
             v226_hb = _latest_heartbeat(store, V226_WORKER)
             atlas_hb = _latest_heartbeat(store, ATLAS_WORKER)
+            dom_hb = _latest_heartbeat(store, DOM_WORKER)
             if not bool(v226_hb.get("healthy")):
                 raise RuntimeError("RIZAN_DEPTH_V226_UNHEALTHY")
             if not bool(atlas_hb.get("healthy")):
@@ -411,6 +414,12 @@ def run() -> int:
             else:
                 live_price = (float(quote.bid) + float(quote.ask)) / 2.0
 
+            pressure_transition = evaluate_pressure_transition(
+                direction=direction,
+                dom_heartbeat=dom_hb,
+                now=now,
+            )
+
             plan = build_execution_plan(
                 v226_evaluation=v226_eval,
                 atlas_evaluation=atlas_eval,
@@ -419,6 +428,14 @@ def run() -> int:
             )
             if plan is None:
                 reason = "WAIT_FRESH_DEPTH_CANDIDATE_OR_STRUCTURAL_TARGET"
+            elif not (
+                bool(pressure_transition.get("pre_touch_entry_allowed"))
+                or bool(pressure_transition.get("confirmation_entry_allowed"))
+            ):
+                reason = (
+                    "WAIT_PRESSURE_TRANSITION:"
+                    + str(pressure_transition.get("state") or "UNAVAILABLE")
+                )
             else:
                 candidate_key = _candidate_key(plan)
                 prior_invalidated = _invalidate_prior_ready(
@@ -461,6 +478,8 @@ def run() -> int:
             "execution_authority": True,
             "live_execution_enabled": False,
             "microstructure_confirmation_required": "PRESSURE_TRANSITION_ALL_SLOTS_PLUS_M5_SLOTS_3_4",
+            "pressure_transition_required": True,
+            "pressure_transition": pressure_transition,
             "reason": reason,
             "signal_id": signal_id,
             "candidate_key": candidate_key,
