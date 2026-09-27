@@ -72,6 +72,73 @@ def _nearest_active_zone(
     return _zone_text(candidates[0][2])
 
 
+def _primary_reversal_watch(
+    atlas_evaluation: dict[str, Any],
+    *,
+    direction: str,
+    price: float | None,
+    zone_probabilities: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    if direction not in {"LONG", "SHORT"}:
+        return {}
+    probability_by_id = {
+        str(dict(row).get("zone_id") or ""): dict(row)
+        for row in list(zone_probabilities or [])
+        if dict(row).get("zone_id")
+    }
+    opposing = "SHORT" if direction == "LONG" else "LONG"
+    ranked: list[tuple[float, float, dict[str, Any]]] = []
+    for raw in list(atlas_evaluation.get("zones") or []):
+        zone = dict(raw or {})
+        if str(zone.get("direction") or "").upper() != opposing:
+            continue
+        if not _active_zone(zone):
+            continue
+        low = _f(zone.get("low"))
+        high = _f(zone.get("high"))
+        if low is None or high is None or high <= low:
+            continue
+        if price is not None:
+            if direction == "LONG" and high <= price:
+                continue
+            if direction == "SHORT" and low >= price:
+                continue
+        evidence = dict(probability_by_id.get(str(zone.get("zone_id") or "")) or {})
+        destination = dict(evidence.get("destination") or {})
+        reaction = dict(evidence.get("reaction") or {})
+        p_touch = _f(destination.get("p_touch"))
+        p_hold = _f(reaction.get("p_hold_050"))
+        if p_touch is None or p_hold is None:
+            continue
+        joint_score = max(0.0, min(1.0, p_touch)) * max(0.0, min(1.0, p_hold))
+        if price is None:
+            distance = abs(_f(zone.get("distance_points")) or 1e9)
+        elif price < low:
+            distance = low - price
+        elif price > high:
+            distance = price - high
+        else:
+            distance = 0.0
+        result = {
+            **_zone_text(zone),
+            "p_touch": p_touch,
+            "p_hold_050": p_hold,
+            "p_break": _f(reaction.get("p_break")),
+            "research_joint_score": joint_score,
+            "confidence": str(reaction.get("confidence") or ""),
+            "estimate_type": str(reaction.get("estimate_type") or ""),
+            "not_calibrated_probability_claim": bool(
+                reaction.get("not_calibrated_probability_claim", True)
+            ),
+            "distance_points": distance,
+        }
+        ranked.append((-joint_score, distance, result))
+    if not ranked:
+        return {}
+    ranked.sort(key=lambda row: (row[0], row[1]))
+    return ranked[0][2]
+
+
 def _path_for_direction(
     atlas_evaluation: dict[str, Any],
     direction: str,
@@ -147,6 +214,7 @@ def build_canonical_xau_decision(
     price_now: float | None,
     path_direction: str | None = None,
     saved_v229_geometry: dict[str, Any] | None = None,
+    zone_probabilities: list[dict[str, Any]] | None = None,
     v226_age_seconds: float | None = None,
     atlas_age_seconds: float | None = None,
 ) -> dict[str, Any]:
@@ -252,6 +320,12 @@ def build_canonical_xau_decision(
         direction="SHORT",
         price=px,
     )
+    primary_reversal_watch = _primary_reversal_watch(
+        atlas_evaluation,
+        direction=direction,
+        price=px,
+        zone_probabilities=zone_probabilities,
+    )
 
     state = "WAIT"
     if conflicts:
@@ -285,6 +359,7 @@ def build_canonical_xau_decision(
         "terminal_opposing_zone": terminal_zone,
         "nearest_demand": nearest_demand,
         "nearest_supply": nearest_supply,
+        "primary_reversal_watch": primary_reversal_watch,
         "historical_context": historical_context,
         "depth": {
             "display_status": str(candidate.get("display_status") or ""),
