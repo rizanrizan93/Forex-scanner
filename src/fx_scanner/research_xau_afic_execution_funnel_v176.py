@@ -987,7 +987,7 @@ def evaluate_execution_funnel_research(bars: Sequence[Bar]) -> dict[str, Any]:
             "touch": "V174 causal zone touch within 64 M15 bars; invalidation wins ambiguity",
             "reaction": "V174 0.75 ATR reversal within 8 M15 bars after touch",
             "confirmation": "exact RIZAN M15 engulf/rejection within 8 M15 bars after touch",
-            "target": "current AFIC terminal target geometry after next-bar-open entry; stop wins same-bar ambiguity",
+            "target": "current RIZAN terminal target geometry after next-bar-open entry; stop wins same-bar ambiguity",
             "target_horizon_m15": TARGET_HORIZON_M15,
             "split": "60/20/20 chronological maps with >=24h purge",
         },
