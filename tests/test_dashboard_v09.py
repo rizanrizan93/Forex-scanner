@@ -173,6 +173,29 @@ def test_dashboard_reads_afic_forecast_prepared_and_execution_events():
     assert geometry[0]["code"] == "XAU_AFIC_PATH_EXECUTION_V1"
 
 
+def test_dashboard_prefers_rizan_records_without_reading_legacy_fallback():
+    client = FakeClient({
+        "broker_order_events": [
+            {
+                "observed_at": "2026-09-28T00:01:00Z",
+                "event_type": "DEMO_XAU_RIZAN_FORECAST_STATE",
+                "code": "XAU_RIZAN_PATH_STATE_V1",
+                "payload": {"forecast": {"state": "RIZAN_CURRENT"}},
+            },
+            {
+                "observed_at": "2026-09-27T23:59:00Z",
+                "event_type": "DEMO_XAU_AFIC_FORECAST_STATE",
+                "code": "XAU_AFIC_PATH_STATE_V1",
+                "payload": {"forecast": {"state": "LEGACY_ONLY"}},
+            },
+        ]
+    })
+    rows = SupabaseDashboardReader(client).latest_afic_forecast_states()
+    assert len(rows) == 1
+    assert rows[0]["code"] == "XAU_RIZAN_PATH_STATE_V1"
+    assert client.calls == [("select", "broker_order_events")]
+
+
 def test_dashboard_filters_recent_xau_execution_events():
     client = FakeClient({
         "broker_order_events": [
