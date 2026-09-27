@@ -2152,7 +2152,7 @@ with forecast_tab:
     v240_depth_hazard = build_dynamic_depth_hazard(
         v226_evaluation=v226_eval,
         direction=v240_direction,
-        live_price=float(dc_reference_price) if dc_reference_price is not None else 0.0,
+        live_price=dc_reference_price,
         pressure_transition=v240_pressure_transition,
     )
 
