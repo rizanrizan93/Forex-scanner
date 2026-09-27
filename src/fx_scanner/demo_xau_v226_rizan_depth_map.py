@@ -570,10 +570,13 @@ def _select_h1(
             if h_low is None or h_high is None
             else max(0.0, min(z_high, h_high) - max(z_low, h_low))
         )
+        touches = int(dict(zone.get("lifecycle") or {}).get("touch_count") or 0)
+        reuse_penalty = min(touches, 5)
         return (
             -int(hotspot_overlap > 0),
             -hotspot_overlap,
             _distance_to_zone(price, zone),
+            reuse_penalty,
             -float(_f(zone.get("research_score")) or 0.0),
             _zone_width(zone),
         )
@@ -719,9 +722,11 @@ def _select_m15(
             else max(0.0, min(z_high, l_high) - max(z_low, l_low))
         )
         observed = _dt(zone.get("available_at"))
+        touches = int(dict(zone.get("lifecycle") or {}).get("touch_count") or 0)
         return (
             -int(locator_overlap > 0),
             -locator_overlap,
+            touches,
             _distance_to_zone(price, zone),
             _zone_width(zone),
             -(observed.timestamp() if observed is not None else 0.0),
