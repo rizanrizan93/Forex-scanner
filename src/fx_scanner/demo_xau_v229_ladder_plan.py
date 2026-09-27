@@ -72,21 +72,27 @@ def build_parent_ladder_plan(
         return None
 
     candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
-    fresh_pre_touch = bool(candidate.get("calibrated_fresh_first_touch"))
+    fresh_pre_touch = bool(candidate.get("pre_touch_execution_eligible"))
+    confirmation_allowed = bool(candidate.get("confirmation_execution_eligible"))
     confirmation_first_touch = bool(
         candidate.get("confirmation_calibrated_first_touch")
         or candidate.get("first_touch_in_progress")
     )
-    if not (fresh_pre_touch or confirmation_first_touch):
+    retest_confirmation = bool(candidate.get("retest_confirmation_eligible"))
+    if not (fresh_pre_touch or confirmation_allowed):
         return None
+
     display_status = str(candidate.get("display_status") or "")
+    allowed_statuses = {
+        "PREPARE_ONLY_FRESH_FIRST_TOUCH",
+        "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS",
+        "CONFIRMATION_ONLY_RETESTED_HTF",
+    }
+    if display_status not in allowed_statuses:
+        return None
     if fresh_pre_touch and display_status != "PREPARE_ONLY_FRESH_FIRST_TOUCH":
         return None
-    if (
-        not fresh_pre_touch
-        and confirmation_first_touch
-        and display_status != "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS"
-    ):
+    if retest_confirmation and display_status != "CONFIRMATION_ONLY_RETESTED_HTF":
         return None
 
     low = _f(candidate.get("entry_low"))
@@ -165,7 +171,7 @@ def build_parent_ladder_plan(
                 "execution_mode": (
                     "LIMIT_PRE_TOUCH"
                     if pretouch and execution_enabled
-                    else "DISABLED_FIRST_TOUCH_IN_PROGRESS"
+                    else "DISABLED_CONFIRMATION_ONLY"
                     if pretouch
                     else "LIMIT_ON_M5_RETEST"
                 ),
@@ -179,6 +185,8 @@ def build_parent_ladder_plan(
     execution_phase = (
         "PRE_TOUCH"
         if fresh_pre_touch
+        else "RETEST_CONFIRMATION"
+        if retest_confirmation
         else "FIRST_TOUCH_CONFIRMATION"
     )
     candidate_key = "|".join(
@@ -237,6 +245,8 @@ def build_parent_ladder_plan(
         "execution_phase": execution_phase,
         "pretouch_slots": [1, 2] if fresh_pre_touch else [],
         "confirmation_slots": [3, 4],
+        "zone_reuse": dict(candidate.get("zone_reuse") or {}),
+        "retest_confirmation_required": retest_confirmation,
         "live_price_at_plan": px,
         "generic_market_handoff_allowed": False,
         "environment": "DEMO",
