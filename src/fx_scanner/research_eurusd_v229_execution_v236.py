@@ -336,6 +336,112 @@ def _approach_ok(zone: Any, price: float) -> bool:
     return float(price) < float(zone.low)
 
 
+def _focus_direction_at(
+    zones: Sequence[Any],
+    *,
+    price: float,
+    at: datetime,
+    superseded: dict[str, datetime | None],
+    invalidated: dict[str, datetime | None],
+) -> str:
+    """Approximate V186/V226 active-path focus causally from active H1/H4 sources.
+
+    Runtime active-path routing prefers an entered source, otherwise the nearest
+    demand/supply source in ATR units, with H1 precision preferred on ties.
+    M15 is deliberately excluded because it is a depth locator, not a path source.
+    """
+    best: dict[str, tuple[Any, ...] | None] = {"LONG": None, "SHORT": None}
+    for direction in ("LONG", "SHORT"):
+        candidates: list[tuple[Any, ...]] = []
+        for zone in zones:
+            if zone.timeframe not in {"H1", "H4"} or zone.direction != direction:
+                continue
+            if not _zone_active_at(
+                zone,
+                at,
+                superseded=superseded,
+                invalidated=invalidated,
+            ):
+                continue
+            correct_side = (
+                float(price) >= float(zone.low)
+                if direction == "LONG"
+                else float(price) <= float(zone.high)
+            )
+            if not correct_side:
+                continue
+            inside = float(zone.low) <= float(price) <= float(zone.high)
+            distance_points = _distance(float(price), float(zone.low), float(zone.high))
+            distance_atr = distance_points / max(float(zone.atr_points), 1e-12)
+            tf_rank = 2 if zone.timeframe == "H1" else 1
+            candidates.append(
+                (
+                    0 if inside else 1,
+                    float(distance_atr),
+                    -tf_rank,
+                    float(zone.high) - float(zone.low),
+                    zone.zone_id,
+                )
+            )
+        if candidates:
+            candidates.sort()
+            best[direction] = candidates[0]
+
+    long_row = best["LONG"]
+    short_row = best["SHORT"]
+    if long_row is None:
+        return "SHORT" if short_row is not None else ""
+    if short_row is None:
+        return "LONG"
+    # V186 checks demand-to-supply first when both source zones are actually entered.
+    if long_row[0] == 0:
+        return "LONG"
+    if short_row[0] == 0:
+        return "SHORT"
+    return "LONG" if float(long_row[1]) <= float(short_row[1]) else "SHORT"
+
+
+def _selected_fresh_h4_id(
+    zones: Sequence[Any],
+    *,
+    direction: str,
+    price: float,
+    at: datetime,
+    first_touch_at: dict[str, datetime | None],
+    superseded: dict[str, datetime | None],
+    invalidated: dict[str, datetime | None],
+) -> str:
+    """Mirror V226's fresh-H4 preference using only information known at *at*."""
+    candidates: list[tuple[Any, ...]] = []
+    for zone in zones:
+        if zone.timeframe != "H4" or zone.direction != direction:
+            continue
+        if not _zone_active_at(
+            zone,
+            at,
+            superseded=superseded,
+            invalidated=invalidated,
+        ):
+            continue
+        first_touch = first_touch_at.get(zone.zone_id)
+        if first_touch is not None and ensure_utc(first_touch) < ensure_utc(at):
+            continue
+        if not _approach_ok(zone, float(price)):
+            continue
+        candidates.append(
+            (
+                _distance(float(price), float(zone.low), float(zone.high)),
+                float(zone.high) - float(zone.low),
+                -ensure_utc(zone.available_at).timestamp(),
+                zone.zone_id,
+            )
+        )
+    if not candidates:
+        return ""
+    candidates.sort()
+    return str(candidates[0][-1])
+
+
 def _first_plan_time(
     *,
     zone: Any,
@@ -444,16 +550,26 @@ def _parent_plans(
     }
     m15 = _resample_ohlc(price_m1, "15min")
     plans: list[dict[str, Any]] = []
+    h4_episode_by_id: dict[str, Any] = {}
+    first_touch_at: dict[str, datetime | None] = {}
+    for zone in zones:
+        if zone.timeframe != "H4":
+            continue
+        episode = evaluate_first_touch(
+            price_m1,
+            zone=zone,
+            index=index,
+            valid_until=superseded.get(zone.zone_id),
+        )
+        h4_episode_by_id[zone.zone_id] = episode
+        first_touch_at[zone.zone_id] = (
+            None if episode is None else ensure_utc(episode.touch_at)
+        )
 
     for h4 in zones:
         if h4.timeframe != "H4":
             continue
-        episode = evaluate_first_touch(
-            price_m1,
-            zone=h4,
-            index=index,
-            valid_until=superseded.get(h4.zone_id),
-        )
+        episode = h4_episode_by_id.get(h4.zone_id)
         if episode is None or ensure_utc(episode.touch_at).year != int(target_year):
             continue
         plan_point = _first_plan_time(
@@ -471,6 +587,26 @@ def _parent_plans(
             superseded=superseded,
             invalidated=invalidated,
         ):
+            continue
+        focus_direction = _focus_direction_at(
+            zones,
+            price=reference_price,
+            at=plan_at,
+            superseded=superseded,
+            invalidated=invalidated,
+        )
+        if focus_direction != h4.direction:
+            continue
+        selected_h4 = _selected_fresh_h4_id(
+            zones,
+            direction=h4.direction,
+            price=reference_price,
+            at=plan_at,
+            first_touch_at=first_touch_at,
+            superseded=superseded,
+            invalidated=invalidated,
+        )
+        if selected_h4 != h4.zone_id:
             continue
 
         geometry, source_layer, h1, m15_child = _candidate_geometry(
