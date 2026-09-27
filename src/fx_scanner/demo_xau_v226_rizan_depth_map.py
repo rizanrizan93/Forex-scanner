@@ -1010,9 +1010,16 @@ def _depth_entry_candidate(
         h4_selection_mode == "FRESH_FIRST_TOUCH_CALIBRATED_PARENT"
         and str(h4_app.get("state") or "") == "HIGH_FIRST_TOUCH_PRIOR"
     )
+    first_touch_in_progress = (
+        str(h4_app.get("state") or "") == "MEDIUM_FIRST_TOUCH_IN_PROGRESS"
+        and int(h4_app.get("touch_count") or 0) <= 1
+    )
+    confirmation_calibrated = bool(calibrated_fresh or first_touch_in_progress)
     display_status = (
         "PREPARE_ONLY_FRESH_FIRST_TOUCH"
         if calibrated_fresh
+        else "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS"
+        if first_touch_in_progress
         else "CONTEXT_ONLY_OUT_OF_SAMPLE"
     )
 
@@ -1030,6 +1037,10 @@ def _depth_entry_candidate(
         ),
         "display_status": display_status,
         "calibrated_fresh_first_touch": calibrated_fresh,
+        "confirmation_calibrated_first_touch": confirmation_calibrated,
+        "first_touch_in_progress": first_touch_in_progress,
+        "pre_touch_execution_eligible": calibrated_fresh,
+        "confirmation_execution_eligible": confirmation_calibrated,
         "historical_context": {
             "reaction_contract": "REACTION_GTE_0_50_ATR",
             "h4_parent_rate": _f(h4_profile.get("hold_rate")),
