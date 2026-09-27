@@ -617,3 +617,40 @@ def test_v226_four_order_ladder_is_hybrid_two_plus_two() -> None:
     assert ladder["total_lots_if_all_four_eventually_filled"] == 0.04
     assert ladder["auto_submit"] is False
     assert ladder["execution_authority"] is False
+
+
+def test_v226_first_touch_in_progress_remains_confirmation_eligible():
+    h4 = {
+        "zone": _zone(
+            "h4-touch",
+            timeframe="H4",
+            direction="LONG",
+            low=100.0,
+            high=110.0,
+            touches=1,
+        ),
+        "hotspot": {"low": 108.0, "high": 110.0},
+        "historical_profile": {
+            "hold_rate": 0.71,
+            "hold_wilson_lower_95": 0.65,
+        },
+        "applicability": {
+            "state": "MEDIUM_FIRST_TOUCH_IN_PROGRESS",
+            "touch_count": 1,
+        },
+    }
+    candidate = _depth_entry_candidate(
+        direction="LONG",
+        price=107.0,
+        h4=h4,
+        h1_nested={},
+        m15_nested={},
+        h1_profile={},
+        m15_profile={},
+        h4_selection_mode="FALLBACK_CONTEXT_ONLY",
+    )
+    assert candidate["display_status"] == "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS"
+    assert candidate["calibrated_fresh_first_touch"] is False
+    assert candidate["confirmation_calibrated_first_touch"] is True
+    assert candidate["pre_touch_execution_eligible"] is False
+    assert candidate["confirmation_execution_eligible"] is True
