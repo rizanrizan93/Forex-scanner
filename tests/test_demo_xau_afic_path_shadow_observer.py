@@ -13,8 +13,8 @@ def _bar(ts,px):
 
 def test_afic_shadow_identity():
     assert SYMBOL=="XAUUSD"
-    assert STRATEGY_ID=="XAU_AFIC_PATH_SHADOW_V1"
-    assert FORWARD_CONTRACT=="XAU_AFIC_PATH_SHADOW_FORWARD_V1"
+    assert STRATEGY_ID=="XAU_RIZAN_PATH_SHADOW_V1"
+    assert FORWARD_CONTRACT=="XAU_RIZAN_PATH_SHADOW_FORWARD_V1"
 
 def test_afic_live_resample_excludes_forming_h4():
     start=datetime(2026,9,21,0,0,tzinfo=UTC)
