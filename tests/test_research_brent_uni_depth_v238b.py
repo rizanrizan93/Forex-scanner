@@ -116,3 +116,22 @@ def test_v238b_truncated_horizon_is_censored_not_failed() -> None:
     assert row["complete"] is False
     assert row["censored"] is True
     assert summarize_excursions([row])["episodes"] == 0
+
+
+def test_v238b_touch_bar_favorable_excursion_is_not_counted() -> None:
+    frame = pd.DataFrame(
+        [
+            {"timestamp": "2026-01-05T00:00:00Z", "open": 100.0, "high": 101.2, "low": 99.8, "close": 100.0},
+            {"timestamp": "2026-01-05T00:01:00Z", "open": 100.0, "high": 100.1, "low": 99.9, "close": 100.0},
+            {"timestamp": "2026-01-05T04:00:00Z", "open": 100.0, "high": 100.1, "low": 99.9, "close": 100.0},
+        ]
+    )
+    row = build_excursion_metrics(frame, [_episode()])[0]
+    assert row["complete"] is True
+    assert row["reaction_hits"] == {
+        "0.25": False,
+        "0.50": False,
+        "0.75": False,
+        "1.00": False,
+    }
+    assert row["mfe_atr"] <= 0.1000000001
