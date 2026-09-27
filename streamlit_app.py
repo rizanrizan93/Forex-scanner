@@ -31,6 +31,7 @@ from fx_scanner.trade_management_v195 import (
     summarize_positions,
 )
 from fx_scanner.xau_canonical_decision_v240 import build_canonical_xau_decision
+from fx_scanner.xau_profitability_truth_v241 import build_xau_profitability_truth
 
 UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
@@ -136,6 +137,7 @@ def _load_backend_slow_snapshot(url: str, secret_key: str) -> dict[str, Any]:
         "heartbeats": list(reader.heartbeats()),
         "macro": list(reader.latest_macro()),
         "performance": list(reader.latest_performance()),
+        "xau_outcomes": list(reader.latest_xau_outcomes()),
         "afic_forecast_states": list(reader.latest_afic_forecast_states()),
         "afic_prepared_plans": list(reader.latest_afic_prepared_plans()),
         "afic_execution_geometry": list(reader.latest_afic_execution_geometry()),
@@ -2256,6 +2258,97 @@ with forecast_tab:
                 "Depth/Atlas tersedia sebagai preparation, tetapi V229 belum dapat membentuk plan resmi. "
                 "Jangan mengisi SL/TP dari panel lama secara manual."
             )
+    v241_truth = build_xau_profitability_truth(
+        outcomes=[] if backend is None else list(backend.get("xau_outcomes") or []),
+        performance=[] if backend is None else list(backend.get("performance") or []),
+    )
+    v241_perf = dict(v241_truth.get("performance") or {})
+    v241_sd = dict(v241_truth.get("supply_demand_reaction") or {})
+    v241_exec = dict(v241_truth.get("authorized_execution") or {})
+
+    with st.container(border=True):
+        st.markdown("##### V241 — XAU Profitability Truth")
+        st.caption(
+            "Pisahkan kualitas reaction Supply/Demand dari profitabilitas trading. "
+            "Reaction ≥0,50 ATR bukan win rate; Profit Factor/expectancy hanya boleh berasal "
+            "dari sample execution/OOS yang benar-benar tersimpan."
+        )
+        pt1, pt2, pt3, pt4 = st.columns(4)
+        pt1.metric(
+            "S/D prospective hold",
+            _fmt_pct(v241_sd.get("precision_hold")),
+            delta=f"{v241_sd.get('holds',0)}/{v241_sd.get('resolved',0)} resolved",
+        )
+        pt2.metric(
+            "Primary S/D candidate",
+            _fmt_pct(v241_sd.get("primary_precision")),
+            delta=f"n={v241_sd.get('primary_n',0)} / min {v241_sd.get('minimum_n',50)}",
+        )
+        pt3.metric(
+            "Broker-authorized terminal sample",
+            str(v241_exec.get("terminal_rows", 0)),
+            delta=f"{v241_exec.get('authorized_rows',0)} rows total",
+        )
+        pt4.metric(
+            "Profitability validation",
+            (
+                "AVAILABLE"
+                if v241_perf.get("available")
+                else "NOT VALIDATED"
+            ),
+        )
+
+        if v241_perf.get("available"):
+            pp1, pp2, pp3, pp4 = st.columns(4)
+            pp1.metric("OOS Win rate", _fmt_pct(v241_perf.get("win_rate")))
+            pp2.metric(
+                "Profit Factor",
+                _fmt_number(v241_perf.get("profit_factor"), 2),
+            )
+            pp3.metric(
+                "Expectancy",
+                (
+                    "—"
+                    if v241_perf.get("expectancy_r") is None
+                    else f"{float(v241_perf.get('expectancy_r')):.3f}R"
+                ),
+            )
+            pp4.metric(
+                "Max DD",
+                (
+                    "—"
+                    if v241_perf.get("max_drawdown_r") is None
+                    else f"{float(v241_perf.get('max_drawdown_r')):.2f}R"
+                ),
+            )
+            st.caption(
+                f"setup={v241_perf.get('setup_type','—')} • "
+                f"scope={v241_perf.get('sample_scope','—')} • "
+                f"trades={v241_perf.get('trades',0)} • "
+                f"as_of={_fmt_wib_datetime(v241_perf.get('as_of'))}."
+            )
+        else:
+            st.warning(
+                "**Belum ada row OOS XAU di model_performance.** "
+                "Karena itu dashboard tidak boleh mengklaim win rate atau Profit Factor trading. "
+                "Prospective Supply/Demand saat ini hanya evidence reaction."
+            )
+
+        if v241_sd.get("replication_gate_met"):
+            st.success(
+                "Primary Supply/Demand prospective replication gate terpenuhi, "
+                "tetapi tetap bukan execution authority."
+            )
+        else:
+            st.info(
+                "Primary Supply/Demand masih mengumpulkan sample prospective: "
+                f"{v241_sd.get('primary_holds',0)}/{v241_sd.get('primary_n',0)} HOLD, "
+                f"Wilson LB95={_fmt_pct(v241_sd.get('primary_wilson_lower_95'))}; "
+                f"gate membutuhkan n≥{v241_sd.get('minimum_n',50)}, "
+                f"precision≥{_fmt_pct(v241_sd.get('minimum_precision'))}, "
+                f"Wilson LB≥{_fmt_pct(v241_sd.get('minimum_wilson_lower_95'))}."
+            )
+
     st.caption(
         "**Peta Harga & Supply/Demand — RIZAN-style.** "
         "Candlestick berasal dari snapshot completed M15 cTrader yang disimpan V182. "
