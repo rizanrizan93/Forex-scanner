@@ -247,49 +247,67 @@ class SupabaseDashboardReader:
         return tuple(self._rows(response))
 
     def latest_afic_forecast_states(self, *, limit: int = 24) -> tuple[dict[str, Any], ...]:
+        rows: list[dict[str, Any]] = []
         try:
-            response = (
-                self.client.table("broker_order_events")
-                .select("observed_at,event_type,code,message,payload")
-                .eq("event_type", "DEMO_XAU_AFIC_FORECAST_STATE")
-                .eq("code", "XAU_AFIC_PATH_STATE_V1")
-                .order("observed_at", desc=True)
-                .limit(int(limit))
-                .execute()
-            )
+            for event_type, code in (
+                ("DEMO_XAU_RIZAN_FORECAST_STATE", "XAU_RIZAN_PATH_STATE_V1"),
+                ("DEMO_XAU_AFIC_FORECAST_STATE", "XAU_AFIC_PATH_STATE_V1"),
+            ):
+                response = (
+                    self.client.table("broker_order_events")
+                    .select("observed_at,event_type,code,message,payload")
+                    .eq("event_type", event_type)
+                    .eq("code", code)
+                    .order("observed_at", desc=True)
+                    .limit(int(limit))
+                    .execute()
+                )
+                rows.extend(self._rows(response))
         except Exception as exc:
-            raise DashboardReadError(f"AFIC forecast-state read failed: {exc}") from exc
-        return tuple(self._rows(response))
+            raise DashboardReadError(f"RIZAN forecast-state read failed: {exc}") from exc
+        rows.sort(key=lambda row: str(row.get("observed_at") or ""), reverse=True)
+        return tuple(rows[: int(limit)])
 
     def latest_afic_prepared_plans(self, *, limit: int = 12) -> tuple[dict[str, Any], ...]:
+        rows: list[dict[str, Any]] = []
         try:
-            response = (
-                self.client.table("broker_order_events")
-                .select("observed_at,event_type,code,message,payload")
-                .eq("event_type", "DEMO_XAU_AFIC_PREPARED_PLAN")
-                .eq("code", "XAU_AFIC_PATH_PREPARED_V1")
-                .order("observed_at", desc=True)
-                .limit(int(limit))
-                .execute()
-            )
+            for event_type, code in (
+                ("DEMO_XAU_RIZAN_PREPARED_PLAN", "XAU_RIZAN_PATH_PREPARED_V1"),
+                ("DEMO_XAU_AFIC_PREPARED_PLAN", "XAU_AFIC_PATH_PREPARED_V1"),
+            ):
+                response = (
+                    self.client.table("broker_order_events")
+                    .select("observed_at,event_type,code,message,payload")
+                    .eq("event_type", event_type)
+                    .eq("code", code)
+                    .order("observed_at", desc=True)
+                    .limit(int(limit))
+                    .execute()
+                )
+                rows.extend(self._rows(response))
         except Exception as exc:
-            raise DashboardReadError(f"AFIC prepared-plan read failed: {exc}") from exc
-        return tuple(self._rows(response))
+            raise DashboardReadError(f"RIZAN prepared-plan read failed: {exc}") from exc
+        rows.sort(key=lambda row: str(row.get("observed_at") or ""), reverse=True)
+        return tuple(rows[: int(limit)])
 
     def latest_afic_execution_geometry(self, *, limit: int = 12) -> tuple[dict[str, Any], ...]:
+        rows: list[dict[str, Any]] = []
         try:
-            response = (
-                self.client.table("broker_order_events")
-                .select("observed_at,event_type,code,message,payload")
-                .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
-                .eq("code", "XAU_AFIC_PATH_EXECUTION_V1")
-                .order("observed_at", desc=True)
-                .limit(int(limit))
-                .execute()
-            )
+            for code in ("XAU_RIZAN_PATH_EXECUTION_V1", "XAU_AFIC_PATH_EXECUTION_V1"):
+                response = (
+                    self.client.table("broker_order_events")
+                    .select("observed_at,event_type,code,message,payload")
+                    .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
+                    .eq("code", code)
+                    .order("observed_at", desc=True)
+                    .limit(int(limit))
+                    .execute()
+                )
+                rows.extend(self._rows(response))
         except Exception as exc:
-            raise DashboardReadError(f"AFIC execution-geometry read failed: {exc}") from exc
-        return tuple(self._rows(response))
+            raise DashboardReadError(f"RIZAN execution-geometry read failed: {exc}") from exc
+        rows.sort(key=lambda row: str(row.get("observed_at") or ""), reverse=True)
+        return tuple(rows[: int(limit)])
 
     def latest_xau_prepared_plan_lifecycle(
         self, *, limit: int = 100
@@ -332,6 +350,7 @@ class SupabaseDashboardReader:
             raise DashboardReadError(f"XAU execution-event read failed: {exc}") from exc
 
         exact_codes = {
+            "XAU_RIZAN_PATH_EXECUTION_V1",
             "XAU_AFIC_PATH_EXECUTION_V1",
             "XAU_M15_EMA_SMC_RECLAIM_V1",
             "XAU_V24_CHAMPION_DEMO_V1",
