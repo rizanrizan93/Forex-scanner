@@ -1,13 +1,6 @@
 name: RIZAN Supabase Migration Restore
 
 on:
-  workflow_run:
-    workflows: ["RIZAN Supabase Migration Backup"]
-    types: [completed]
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/supabase-migration-restore.yml"
   workflow_dispatch:
     inputs:
       backup_run_id:
@@ -15,7 +8,7 @@ on:
         required: true
         type: string
       allow_nonempty_target:
-        description: "Safety override for retry only. Leave false on first restore."
+        description: "Safety override for deliberate retry only."
         required: true
         default: "false"
         type: choice
@@ -33,7 +26,6 @@ concurrency:
 
 jobs:
   restore:
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
