@@ -35,11 +35,13 @@ jobs:
           sha256sum -c rizan-supabase-old-backup.tar.gz.enc.sha256
           openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 -in rizan-supabase-old-backup.tar.gz.enc -out "$RUNNER_TEMP/plain.tar.gz" -pass env:BACKUP_PASSPHRASE
           openssl rand 32 > "$RUNNER_TEMP/aes.key"
+          printf '%s' 'rizan-restore-v1' | openssl dgst -sha256 -hmac "$BACKUP_PASSPHRASE" -binary | xxd -p -c 256 > "$RUNNER_TEMP/restore.password"
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -md sha256 -in "$RUNNER_TEMP/plain.tar.gz" -out "$RUNNER_TEMP/out/rizan-migration-session.tar.gz.enc" -pass file:"$RUNNER_TEMP/aes.key"
           printf '%s' 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApzHldGd7Uy9W7kPXhhPublF1Kx9erjINVBH3rsWecPdFxBesdvtVb72H9QrIccDed8J/cCppt2i5OrgvvoTDg16byNj+6oSlDWKCFBKH7FHIVR3nwB8dQm/h6kDyjbm1ON5msnnQu1LOZ3ReUWdyTksH2SYI4R7k3LFLias2cXTGiPWcakZlbD3J5n/tWxSNvL3zsLsIn/RmkEbar8UDlFZsdV+IQC5pIQO9DuJEUxCRHa0LMpEJRZxbEFRRr2mVV3rd9ODL689RtOPFSnXsSTD3jG1LHxONja4AL9WwGvTQSGyvQq4DZt1Kv2do2p9p38t6TlCS4ot//s1rpGX6zQIDAQAB' | base64 -d > "$RUNNER_TEMP/pub.der"
           openssl pkeyutl -encrypt -pubin -inkey "$RUNNER_TEMP/pub.der" -keyform DER -pkeyopt rsa_padding_mode:oaep -in "$RUNNER_TEMP/aes.key" -out "$RUNNER_TEMP/out/aes.key.rsa"
+          openssl pkeyutl -encrypt -pubin -inkey "$RUNNER_TEMP/pub.der" -keyform DER -pkeyopt rsa_padding_mode:oaep -in "$RUNNER_TEMP/restore.password" -out "$RUNNER_TEMP/out/restore.password.rsa"
           sha256sum "$RUNNER_TEMP/out/"* > "$RUNNER_TEMP/out/SHA256SUMS"
-          rm -f "$RUNNER_TEMP/plain.tar.gz" "$RUNNER_TEMP/aes.key"
+          rm -f "$RUNNER_TEMP/plain.tar.gz" "$RUNNER_TEMP/aes.key" "$RUNNER_TEMP/restore.password"
       - name: Upload rewrapped artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
