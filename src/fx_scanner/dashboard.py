@@ -423,11 +423,11 @@ class SupabaseDashboardReader:
         return tuple(self._rows(response))
 
     def latest_afic_forecast_states(self, *, limit: int = 12) -> tuple[dict[str, Any], ...]:
-        """Return one full current forecast plus a compact transition history.
+        """Return compact current forecast state plus transition history.
 
-        The first row preserves the exact payload used by current decision
-        fallbacks. Older rows only need the scalar fields rendered by the
-        history table, avoiding repeated full-map JSON transfer.
+        Structural/path context is sourced from V182 instead of being duplicated
+        inside the minute-level forecast row. Older rows contain only the scalar
+        fields rendered by the history table.
         """
         limit = max(1, min(int(limit), 24))
         try:
