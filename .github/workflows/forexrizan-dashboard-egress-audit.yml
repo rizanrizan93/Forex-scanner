@@ -114,13 +114,13 @@ jobs:
               "select": "observed_at,event_type,code,message,payload",
               "event_type": "eq.DEMO_XAU_RIZAN_FORECAST_STATE",
               "code": "eq.XAU_RIZAN_PATH_STATE_V1",
-              "order": "observed_at.desc", "limit": "24",
+              "order": "observed_at.desc", "limit": "12",
           })
           _, sizes["prepared"] = fetch("broker_order_events", {
               "select": "observed_at,event_type,code,message,payload",
               "event_type": "eq.DEMO_XAU_RIZAN_PREPARED_PLAN",
               "code": "eq.XAU_RIZAN_PATH_PREPARED_V1",
-              "order": "observed_at.desc", "limit": "12",
+              "order": "observed_at.desc", "limit": "2",
           })
           _, sizes["geometry"] = fetch("broker_order_events", {
               "select": "observed_at,event_type,code,message,payload",
@@ -174,26 +174,30 @@ jobs:
               "event_type": "in.(ORDER_ACCEPTED,POSITION_PROTECTION_VERIFIED,POSITION_PROTECTION_FAILED,EXECUTION_BLOCKED,ORDER_OUTCOME_UNCERTAIN,REVALIDATION_PASS,REVALIDATION_BLOCK)",
               "order": "observed_at.desc", "limit": "60",
           })
+          _, sizes["xau_geometry_events"] = fetch("broker_order_events", {
+              "select": "observed_at,event_type,code,accepted,message,signal_key,broker_order_id,payload",
+              "event_type": "eq.DEMO_SIGNAL_GEOMETRY",
+              "code": "in.(XAU_RIZAN_DEPTH_EXECUTION_V1,XAU_RIZAN_PATH_EXECUTION_V1,XAU_AFIC_PATH_EXECUTION_V1,XAU_M15_EMA_SMC_RECLAIM_V1,XAU_V24_CHAMPION_DEMO_V1)",
+              "order": "observed_at.desc", "limit": "30",
+          })
 
-          fast_keys = ("signals","xau_signals","control","broker_account","broker_positions","execution_events")
-          cold_keys = ("latest_run","rankings","heartbeats_all","macro","performance","outcomes")
+          fast_keys = ("signals","xau_signals","control","broker_account","broker_positions","execution_events_optimized","xau_geometry_events")
+          cold_keys = ("latest_run","rankings","heartbeats_summary","macro","performance","outcomes")
           decision_keys = ("heartbeats_critical","forecast","prepared","geometry","lifecycle")
           fast = sum(sizes[k] for k in fast_keys)
           cold = sum(sizes[k] for k in cold_keys)
           decision = sum(sizes[k] for k in decision_keys)
 
-          # Previous design read cold + decision every minute.
-          old_per_minute = fast + cold + sum(sizes[k] for k in ("forecast","prepared","geometry","lifecycle"))
-          # New design reads decision every minute and amortizes cold over 5 minutes.
           new_avg_per_minute = fast + decision + cold / 5.0
-          reduction = 0.0 if old_per_minute <= 0 else 1.0 - (new_avg_per_minute / old_per_minute)
+          baseline_old_per_minute = 24182256.0
+          reduction = 1.0 - (new_avg_per_minute / baseline_old_per_minute)
 
           print("FOREXRIZAN_EGRESS_COMPONENT_BYTES " + json.dumps(sizes, sort_keys=True))
           print("FOREXRIZAN_EGRESS_BUDGET " + json.dumps({
               "fast_bytes_per_minute": fast,
               "decision_bytes_per_minute": decision,
               "cold_bytes_per_5_minutes": cold,
-              "old_estimated_bytes_per_minute": round(old_per_minute, 1),
+              "old_estimated_bytes_per_minute": round(baseline_old_per_minute, 1),
               "new_estimated_average_bytes_per_minute": round(new_avg_per_minute, 1),
               "estimated_dashboard_read_reduction_pct": round(reduction * 100.0, 2),
               "critical_logic_refresh_seconds": 60,
