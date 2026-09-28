@@ -25,6 +25,7 @@ jobs:
       OLD_SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       OLD_SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_CLI_VERSION: 2.118.0
+      PG_DUMP_IMAGE: public.ecr.aws/supabase/postgres:17.6.1.171
 
     steps:
       - name: Validate required secrets
@@ -79,39 +80,55 @@ jobs:
             MIGRATION_ROLE_ACTIVE=1
           fi
 
-          if [ "$MIGRATION_ROLE_ACTIVE" = "1" ]; then
-            printf '%s\n' '-- Built-in Supabase roles are recreated by the destination project.' > roles.sql
-          else
-            npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-              --db-url "$ACTIVE_DB_URL" \
-              -f roles.sql \
-              --role-only
-          fi
+          # Native PostgreSQL 17 dump: no SET ROLE postgres, no writes to source.
+          printf '%s\n' '-- RIZAN migration: built-in Supabase roles are recreated by destination.' > roles.sql
 
-          npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$ACTIVE_DB_URL" \
-            -f schema.sql
+          docker run --rm \
+            -v "$WORKDIR:/work" \
+            --entrypoint pg_dump \
+            "$PG_DUMP_IMAGE" \
+            "$ACTIVE_DB_URL" \
+            --schema=public \
+            --schema-only \
+            --no-owner \
+            --file=/work/schema.sql
 
-          npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$ACTIVE_DB_URL" \
-            -f data.sql \
-            --use-copy \
+          docker run --rm \
+            -v "$WORKDIR:/work" \
+            --entrypoint pg_dump \
+            "$PG_DUMP_IMAGE" \
+            "$ACTIVE_DB_URL" \
+            --schema=public \
             --data-only \
-            -x "storage.buckets_vectors" \
-            -x "storage.vector_indexes"
+            --no-owner \
+            --file=/work/data.sql
 
-          # Preserve Supabase CLI migration history explicitly.
-          npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$ACTIVE_DB_URL" \
-            -f history_schema.sql \
-            --schema supabase_migrations
+          cat > history_schema.sql <<'SQL'
+          create schema if not exists supabase_migrations;
+          create table if not exists supabase_migrations.schema_migrations (
+            version text primary key,
+            statements text[],
+            name text,
+            created_by text,
+            idempotency_key text,
+            rollback text[]
+          );
+          alter table supabase_migrations.schema_migrations add column if not exists created_by text;
+          alter table supabase_migrations.schema_migrations add column if not exists idempotency_key text;
+          alter table supabase_migrations.schema_migrations add column if not exists rollback text[];
+          truncate table supabase_migrations.schema_migrations;
+          SQL
 
-          npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$ACTIVE_DB_URL" \
-            -f history_data.sql \
-            --use-copy \
+          docker run --rm \
+            -v "$WORKDIR:/work" \
+            --entrypoint pg_dump \
+            "$PG_DUMP_IMAGE" \
+            "$ACTIVE_DB_URL" \
+            --table=supabase_migrations.schema_migrations \
             --data-only \
-            --schema supabase_migrations
+            --column-inserts \
+            --no-owner \
+            --file=/work/history_data.sql
 
           test -s roles.sql
           test -s schema.sql
