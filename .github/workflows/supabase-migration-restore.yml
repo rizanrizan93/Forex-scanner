@@ -1,0 +1,216 @@
+name: RIZAN Supabase Migration Restore
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_run_id:
+        description: "Successful RIZAN Supabase Migration Backup run ID"
+        required: true
+        type: string
+      new_project_ref:
+        description: "New Supabase project ref"
+        required: true
+        type: string
+      allow_nonempty_target:
+        description: "Safety override for retry only. Leave false on first restore."
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: rizan-supabase-migration-restore
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEW_DB_URL: ${{ secrets.NEW_SUPABASE_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.MIGRATION_BACKUP_PASSPHRASE }}
+      SOURCE_PROJECT_REF: fotzcxjeypmjldhvfskt
+      NEW_PROJECT_REF: ${{ inputs.new_project_ref }}
+      BACKUP_RUN_ID: ${{ inputs.backup_run_id }}
+      ALLOW_NONEMPTY_TARGET: ${{ inputs.allow_nonempty_target }}
+
+    steps:
+      - name: Validate restore inputs and target safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+
+          test -n "${NEW_DB_URL:-}" || { echo "Missing GitHub Secret: NEW_SUPABASE_DB_URL"; exit 1; }
+          test -n "${BACKUP_PASSPHRASE:-}" || { echo "Missing GitHub Secret: MIGRATION_BACKUP_PASSPHRASE"; exit 1; }
+          test -n "${NEW_PROJECT_REF:-}" || { echo "Missing new_project_ref input."; exit 1; }
+          test -n "${BACKUP_RUN_ID:-}" || { echo "Missing backup_run_id input."; exit 1; }
+
+          case "$NEW_DB_URL" in
+            postgresql://*|postgres://*) ;;
+            *) echo "NEW_SUPABASE_DB_URL must be a PostgreSQL connection string."; exit 1 ;;
+          esac
+
+          if [ "$NEW_PROJECT_REF" = "$SOURCE_PROJECT_REF" ]; then
+            echo "Refusing restore: destination equals OLD project ref."
+            exit 1
+          fi
+
+          if ! printf '%s' "$NEW_DB_URL" | grep -Fq "$NEW_PROJECT_REF"; then
+            echo "NEW_SUPABASE_DB_URL does not appear to belong to new_project_ref."
+            exit 1
+          fi
+
+          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
+
+          EXISTING_PUBLIC_TABLES="$(psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select count(*) from pg_tables where schemaname='public';")"
+          if [ "$EXISTING_PUBLIC_TABLES" != "0" ] && [ "$ALLOW_NONEMPTY_TARGET" != "true" ]; then
+            echo "Safety stop: target already has $EXISTING_PUBLIC_TABLES public tables."
+            echo "For a deliberate retry after a prior restore attempt, set allow_nonempty_target=true."
+            exit 1
+          fi
+
+      - name: Download encrypted backup artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          DEST="$RUNNER_TEMP/rizan-encrypted-artifact"
+          mkdir -p "$DEST"
+          gh run download "$BACKUP_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "rizan-supabase-old-backup-$BACKUP_RUN_ID" \
+            --dir "$DEST"
+          ls -l "$DEST"
+
+      - name: Verify and decrypt backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+
+          ENC_DIR="$RUNNER_TEMP/rizan-encrypted-artifact"
+          WORKDIR="$RUNNER_TEMP/rizan-supabase-restore"
+          mkdir -p "$WORKDIR"
+          chmod 700 "$WORKDIR"
+
+          cd "$ENC_DIR"
+          sha256sum -c rizan-supabase-old-backup.tar.gz.enc.sha256
+
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 \
+            -in rizan-supabase-old-backup.tar.gz.enc \
+            -out "$WORKDIR/rizan-supabase-old-backup.tar.gz" \
+            -pass env:BACKUP_PASSPHRASE
+
+          cd "$WORKDIR"
+          tar -xzf rizan-supabase-old-backup.tar.gz
+          rm -f rizan-supabase-old-backup.tar.gz
+
+          sha256sum -c dump-files.sha256
+          grep -Fxq "project_ref=$SOURCE_PROJECT_REF" manifest.txt
+          grep -Fxq "workflow_run_id=$BACKUP_RUN_ID" manifest.txt
+
+      - name: Restore database
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          cd "$RUNNER_TEMP/rizan-supabase-restore"
+
+          psql \
+            --single-transaction \
+            --variable ON_ERROR_STOP=1 \
+            --file roles.sql \
+            --file schema.sql \
+            --command 'SET session_replication_role = replica' \
+            --file data.sql \
+            --dbname "$NEW_DB_URL"
+
+          psql \
+            --single-transaction \
+            --variable ON_ERROR_STOP=1 \
+            --file history_schema.sql \
+            --file history_data.sql \
+            --dbname "$NEW_DB_URL"
+
+      - name: Verify restored parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          cd "$RUNNER_TEMP/rizan-supabase-restore"
+
+          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc \
+            "select format('select %L as table_name, count(*)::bigint as row_count from %I.%I;', schemaname||'.'||tablename, schemaname, tablename) from pg_tables where schemaname='public' order by tablename;" \
+            | psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' \
+            > target-public-row-counts.tsv
+
+          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select version, name from supabase_migrations.schema_migrations order by version;" \
+            > target-migrations.tsv
+
+          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select n.nspname, p.proname, pg_get_function_identity_arguments(p.oid), p.prosecdef from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' order by 1,2,3;" \
+            > target-public-functions.tsv
+
+          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select event_object_schema, event_object_table, trigger_name, action_timing, event_manipulation from information_schema.triggers where event_object_schema='public' order by 1,2,3,5;" \
+            > target-public-triggers.tsv
+
+          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select schemaname, tablename, rowsecurity from pg_tables where schemaname='public' order by tablename;" \
+            > target-public-rls.tsv
+
+          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select e.extname, e.extversion, n.nspname from pg_extension e join pg_namespace n on n.oid=e.extnamespace order by e.extname;" \
+            > target-extensions.tsv
+
+          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select pg_database_size(current_database()), pg_size_pretty(pg_database_size(current_database()));" \
+            > target-db-size.tsv
+
+          diff -u source-public-row-counts.tsv target-public-row-counts.tsv
+          diff -u source-migrations.tsv target-migrations.tsv
+          diff -u source-public-functions.tsv target-public-functions.tsv
+          diff -u source-public-triggers.tsv target-public-triggers.tsv
+          diff -u source-public-rls.tsv target-public-rls.tsv
+
+          cut -f1 source-extensions.tsv | sort -u > source-extension-names.txt
+          cut -f1 target-extensions.tsv | sort -u > target-extension-names.txt
+          MISSING_EXTENSIONS="$(comm -23 source-extension-names.txt target-extension-names.txt || true)"
+          if [ -n "$MISSING_EXTENSIONS" ]; then
+            echo "Missing source extensions on target:"
+            echo "$MISSING_EXTENSIONS"
+            exit 1
+          fi
+
+          {
+            echo "### RIZAN Supabase restore parity"
+            echo
+            echo "- Source project: `$SOURCE_PROJECT_REF`"
+            echo "- Destination project: `$NEW_PROJECT_REF`"
+            echo "- Backup run: `$BACKUP_RUN_ID`"
+            echo "- Public table row counts: **MATCH**"
+            echo "- Migration history: **MATCH**"
+            echo "- Public functions: **MATCH**"
+            echo "- Public triggers: **MATCH**"
+            echo "- Public RLS flags: **MATCH**"
+            echo "- Source extensions present on target: **YES**"
+            echo "- Source DB size: `$(cat source-db-size.tsv)`"
+            echo "- Target DB size: `$(cat target-db-size.tsv)`"
+            echo
+            echo "Runtime secrets have NOT been switched. DEMO execution remains on the existing configuration until explicit cutover."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove plaintext restore material
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "$RUNNER_TEMP/rizan-supabase-restore" "$RUNNER_TEMP/rizan-encrypted-artifact"
