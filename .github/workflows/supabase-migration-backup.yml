@@ -93,6 +93,9 @@ jobs:
             --no-owner \
             --file=/work/schema.sql
 
+          # The destination already has the managed public schema.
+          sed -i '/^CREATE SCHEMA public;$/d' schema.sql
+
           docker run --rm \
             -v "$WORKDIR:/work" \
             --entrypoint pg_dump \
