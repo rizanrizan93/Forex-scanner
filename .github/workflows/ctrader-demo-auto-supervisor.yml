@@ -12,6 +12,7 @@ on:
     paths:
       - ".github/workflows/ctrader-demo-auto-supervisor.yml"
       - ".github/workflows/ctrader-demo-auto-pipeline.yml"
+      - ".github/workflows/ctrader-demo-token-maintainer.yml"
       - ".github/workflows/ctrader-demo-xau-execution-lane.yml"
       - ".github/workflows/ctrader-demo-xau-afic-prepared-lane.yml"
       - ".github/workflows/ctrader-demo-maintenance-pipeline.yml"
@@ -99,6 +100,7 @@ jobs:
           calibration_busy=0
           forecast_v171_dispatched=0
           forecast_v171_busy=0
+          token_maintainer_dispatched=0
 
           active_count() {
             local workflow_file="$1"
@@ -183,6 +185,33 @@ jobs:
             return 1
           }
 
+          latest_success_age_seconds() {
+            local workflow_file="$1"
+            local updated_at updated_epoch now_epoch
+            if ! updated_at="$(
+              gh api \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/runs?branch=main&per_page=20" \
+                --jq '[.workflow_runs[] | select(.status == "completed" and .conclusion == "success")][0].updated_at // ""' \
+                2>/tmp/gh-latest-success-age.err
+            )"; then
+              echo "-1"
+              return 0
+            fi
+            if [ -z "${updated_at}" ]; then
+              echo "-1"
+              return 0
+            fi
+            if ! updated_epoch="$(date -u -d "${updated_at}" +%s 2>/dev/null)"; then
+              echo "-1"
+              return 0
+            fi
+            now_epoch="$(date -u +%s)"
+            echo $((now_epoch - updated_epoch))
+          }
+
+
           market_open_utc() {
             local weekday hour
             weekday="$(date -u +%u)"
@@ -224,6 +253,25 @@ jobs:
             # extra dispatches after an infrastructure failure.
             printf 'unknown|unknown\n'
           }
+
+          # Token durability is safety-critical but non-trading. GitHub scheduled
+          # events can be delayed or dropped, so the primary supervisor provides
+          # an independent recovery path for the hourly token maintainer.
+          token_maintainer_workflow="ctrader-demo-token-maintainer.yml"
+          token_maintainer_age="$(latest_success_age_seconds "${token_maintainer_workflow}")"
+          active_token_maintainer="$(active_count "${token_maintainer_workflow}")"
+          if [ "${active_token_maintainer}" -eq 0 ] && { [ "${token_maintainer_age}" -lt 0 ] || [ "${token_maintainer_age}" -gt 5400 ]; }; then
+            if dispatch_workflow "${token_maintainer_workflow}"; then
+              token_maintainer_dispatched=1
+              echo "SUPERVISOR_TOKEN_MAINTAINER_RECOVERY action=DISPATCHED age_seconds=${token_maintainer_age} stale_after_seconds=5400"
+            else
+              echo "SUPERVISOR_TOKEN_MAINTAINER_RECOVERY action=DISPATCH_FAILED safety=FAIL_CLOSED age_seconds=${token_maintainer_age}" >&2
+            fi
+          elif [ "${active_token_maintainer}" -gt 0 ]; then
+            echo "SUPERVISOR_TOKEN_MAINTAINER_OK action=ACTIVE_RUN age_seconds=${token_maintainer_age}"
+          else
+            echo "SUPERVISOR_TOKEN_MAINTAINER_OK action=FRESH age_seconds=${token_maintainer_age} stale_after_seconds=5400"
+          fi
 
           # Each supervisor owns one bounded five-minute window. The exact XAU
           # execution lane is checked every minute so the V24 three-minute entry
@@ -398,4 +446,4 @@ jobs:
           else
             echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED source_run=${GITHUB_RUN_ID} latest_execution_status=${latest_execution_status:-NONE} latest_execution_conclusion=${latest_execution_conclusion:-NONE} other_active_supervisors=${other_active_supervisors} handoff_wait_cycles=${handoff_wait_cycles} safety=FAIL_CLOSED"
           fi
-          echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_RIZAN_PATH_PREPARED_V1 execution_dispatched=${execution_dispatched} execution_busy=${execution_busy} rizan_dispatched=${rizan_dispatched} rizan_busy=${rizan_busy} dom_dispatched=${dom_dispatched} dom_busy=${dom_busy} maintenance_dispatched=${maintenance_dispatched} maintenance_busy=${maintenance_busy} forecast_v171_dispatched=${forecast_v171_dispatched} forecast_v171_busy=${forecast_v171_busy} calibration_dispatched=${calibration_dispatched} calibration_busy=${calibration_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 rizan_prepared_check_seconds=60 dom_cadence_seconds=60 maintenance_cadence_seconds=300 forecast_v171_cadence_seconds=300 forecast_v171_authority=SHADOW_ONLY discovery_check_seconds=60 discovery_stale_seconds=1800 calibration_cadence_seconds=3600 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=${self_handoff}"
+          echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_RIZAN_PATH_PREPARED_V1 execution_dispatched=${execution_dispatched} execution_busy=${execution_busy} rizan_dispatched=${rizan_dispatched} rizan_busy=${rizan_busy} dom_dispatched=${dom_dispatched} dom_busy=${dom_busy} maintenance_dispatched=${maintenance_dispatched} maintenance_busy=${maintenance_busy} forecast_v171_dispatched=${forecast_v171_dispatched} forecast_v171_busy=${forecast_v171_busy} token_maintainer_dispatched=${token_maintainer_dispatched} calibration_dispatched=${calibration_dispatched} calibration_busy=${calibration_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 rizan_prepared_check_seconds=60 dom_cadence_seconds=60 maintenance_cadence_seconds=300 forecast_v171_cadence_seconds=300 forecast_v171_authority=SHADOW_ONLY discovery_check_seconds=60 discovery_stale_seconds=1800 calibration_cadence_seconds=3600 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=${self_handoff}"
