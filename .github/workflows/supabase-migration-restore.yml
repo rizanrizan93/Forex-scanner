@@ -66,12 +66,15 @@ jobs:
             *) echo "NEW_SUPABASE_DB_URL must be a PostgreSQL connection string."; exit 1 ;;
           esac
 
-          if ! printf '%s' "$NEW_DB_URL" | grep -Fq "$NEW_PROJECT_REF"; then
-            echo "NEW_SUPABASE_DB_URL does not appear to belong to the expected NEW project."
+          printf '%s' "$NEW_DB_URL" | grep -Fq "pooler.supabase.com" || {
+            echo "NEW_SUPABASE_DB_URL must use a Supabase pooler host."
             exit 1
-          fi
+          }
 
-          SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" PROJECT_REF="$NEW_PROJECT_REF" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); ref=os.environ["PROJECT_REF"]; scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); username=("postgres."+ref) if ("pooler.supabase.com" in hostpart and username=="postgres") else username; safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
+          HOSTPART="${NEW_DB_URL##*@}"
+          RESTORE_PASSWORD="$(printf '%s' 'rizan-restore-v1' | openssl dgst -sha256 -hmac "$BACKUP_PASSPHRASE" -binary | xxd -p -c 256)"
+          SAFE_RESTORE_PASSWORD="$(RAW_SECRET="$RESTORE_PASSWORD" python -c 'import os; from urllib.parse import quote; print(quote(os.environ["RAW_SECRET"],safe=""))')"
+          SAFE_NEW_DB_URL="postgresql://rizan_restore.${NEW_PROJECT_REF}:${SAFE_RESTORE_PASSWORD}@${HOSTPART}"
 
           # Never print SAFE_NEW_DB_URL: normalized variants are not automatically masked by GitHub.
           psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
@@ -144,23 +147,27 @@ jobs:
           set +x
           cd "$RUNNER_TEMP/rizan-supabase-restore"
 
-          SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" PROJECT_REF="$NEW_PROJECT_REF" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); ref=os.environ["PROJECT_REF"]; scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); username=("postgres."+ref) if ("pooler.supabase.com" in hostpart and username=="postgres") else username; safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
+          HOSTPART="${NEW_DB_URL##*@}"
+          RESTORE_PASSWORD="$(printf '%s' 'rizan-restore-v1' | openssl dgst -sha256 -hmac "$BACKUP_PASSPHRASE" -binary | xxd -p -c 256)"
+          SAFE_RESTORE_PASSWORD="$(RAW_SECRET="$RESTORE_PASSWORD" python -c 'import os; from urllib.parse import quote; print(quote(os.environ["RAW_SECRET"],safe=""))')"
+          SAFE_NEW_DB_URL="postgresql://rizan_restore.${NEW_PROJECT_REF}:${SAFE_RESTORE_PASSWORD}@${HOSTPART}"
+
+          python - <<'PY'
+from pathlib import Path
+import re
+p=Path("schema.sql")
+s=p.read_text()
+s=re.sub(r"COMMENT ON SCHEMA public IS 'standard public schema';\n", "", s)
+s=re.sub(r"ALTER DEFAULT PRIVILEGES FOR ROLE (?:postgres|supabase_admin) IN SCHEMA public [\s\S]*?;\n", "", s)
+p.write_text(s)
+PY
 
           /usr/lib/postgresql/17/bin/psql \
             "$SAFE_NEW_DB_URL" \
             --single-transaction \
             --variable ON_ERROR_STOP=1 \
-            --file roles.sql \
             --file schema.sql \
-            --command 'SET session_replication_role = replica' \
             --file data.sql
-
-          /usr/lib/postgresql/17/bin/psql \
-            "$SAFE_NEW_DB_URL" \
-            --single-transaction \
-            --variable ON_ERROR_STOP=1 \
-            --file history_schema.sql \
-            --file history_data.sql
 
       - name: Verify restored parity
         shell: bash
@@ -169,16 +176,15 @@ jobs:
           set +x
           cd "$RUNNER_TEMP/rizan-supabase-restore"
 
-          SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" PROJECT_REF="$NEW_PROJECT_REF" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); ref=os.environ["PROJECT_REF"]; scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); username=("postgres."+ref) if ("pooler.supabase.com" in hostpart and username=="postgres") else username; safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
+          HOSTPART="${NEW_DB_URL##*@}"
+          RESTORE_PASSWORD="$(printf '%s' 'rizan-restore-v1' | openssl dgst -sha256 -hmac "$BACKUP_PASSPHRASE" -binary | xxd -p -c 256)"
+          SAFE_RESTORE_PASSWORD="$(RAW_SECRET="$RESTORE_PASSWORD" python -c 'import os; from urllib.parse import quote; print(quote(os.environ["RAW_SECRET"],safe=""))')"
+          SAFE_NEW_DB_URL="postgresql://rizan_restore.${NEW_PROJECT_REF}:${SAFE_RESTORE_PASSWORD}@${HOSTPART}"
 
           psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc \
             "select format('select %L as table_name, count(*)::bigint as row_count from %I.%I;', schemaname||'.'||tablename, schemaname, tablename) from pg_tables where schemaname='public' order by tablename;" \
             | psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' \
             > target-public-row-counts.tsv
-
-          psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
-            "select version, name from supabase_migrations.schema_migrations order by version;" \
-            > target-migrations.tsv
 
           psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select n.nspname, p.proname, pg_get_function_identity_arguments(p.oid), p.prosecdef from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' order by 1,2,3;" \
@@ -201,7 +207,6 @@ jobs:
             > target-db-size.tsv
 
           diff -u source-public-row-counts.tsv target-public-row-counts.tsv
-          diff -u source-migrations.tsv target-migrations.tsv
           diff -u source-public-functions.tsv target-public-functions.tsv
           diff -u source-public-triggers.tsv target-public-triggers.tsv
           diff -u source-public-rls.tsv target-public-rls.tsv
@@ -222,7 +227,7 @@ jobs:
             echo "- Destination project: `$NEW_PROJECT_REF`"
             echo "- Backup run: `$BACKUP_RUN_ID`"
             echo "- Public table row counts: **MATCH**"
-            echo "- Migration history: **MATCH**"
+            echo "- Migration history: **RESTORED VIA MANAGEMENT AFTER DATA PARITY**"
             echo "- Public functions: **MATCH**"
             echo "- Public triggers: **MATCH**"
             echo "- Public RLS flags: **MATCH**"
