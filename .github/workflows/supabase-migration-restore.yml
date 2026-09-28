@@ -135,19 +135,7 @@ jobs:
           set +x
           cd "$RUNNER_TEMP/rizan-supabase-restore"
 
-          normalize_pg_url() {
-            RAW_DB_URL="$1" python - <<'PY'
-import os
-from urllib.parse import quote, unquote
-raw = os.environ["RAW_DB_URL"].strip()
-scheme, rest = raw.split("://", 1)
-auth, hostpath = rest.rsplit("@", 1)
-user, password = auth.split(":", 1)
-password = quote(unquote(password), safe="")
-print(f"{scheme}://{user}:{password}@{hostpath}")
-PY
-          }
-          SAFE_NEW_DB_URL="$(normalize_pg_url "$NEW_DB_URL")"
+          SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
 
           psql \
             --single-transaction \
@@ -172,19 +160,7 @@ PY
           set +x
           cd "$RUNNER_TEMP/rizan-supabase-restore"
 
-          normalize_pg_url() {
-            RAW_DB_URL="$1" python - <<'PY'
-import os
-from urllib.parse import quote, unquote
-raw = os.environ["RAW_DB_URL"].strip()
-scheme, rest = raw.split("://", 1)
-auth, hostpath = rest.rsplit("@", 1)
-user, password = auth.split(":", 1)
-password = quote(unquote(password), safe="")
-print(f"{scheme}://{user}:{password}@{hostpath}")
-PY
-          }
-          SAFE_NEW_DB_URL="$(normalize_pg_url "$NEW_DB_URL")"
+          SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
 
           psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc \
             "select format('select %L as table_name, count(*)::bigint as row_count from %I.%I;', schemaname||'.'||tablename, schemaname, tablename) from pg_tables where schemaname='public' order by tablename;" \
