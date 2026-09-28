@@ -23,6 +23,8 @@ jobs:
           python-version: "3.11"
       - name: Fetch public dashboard bridge
         shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
         run: |
           set -euo pipefail
           python - <<'PY'
