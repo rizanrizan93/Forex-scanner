@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from typing import Any, Callable
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 CONTRACT = "XAU_RIZAN_STANDALONE_V253"
@@ -10,6 +11,17 @@ DEFAULT_SNAPSHOT_URL = (
     "https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/"
     "runtime-snapshots/runtime/xau_standalone_snapshot.json"
 )
+
+
+def _cache_busted_url(url: str, *, now: datetime | None = None) -> str:
+    current = (now or datetime.now(tz=UTC)).astimezone(UTC)
+    bucket = int(current.timestamp() // 30)
+    parts = urlsplit(str(url))
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query["_rizan"] = str(bucket)
+    return urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
+    )
 
 
 def _timestamp(value: Any) -> datetime | None:
@@ -59,7 +71,7 @@ def fetch_snapshot(
     opener: Callable[..., Any] = urlopen,
 ) -> dict[str, Any]:
     request = Request(
-        str(url),
+        _cache_busted_url(str(url), now=now),
         headers={
             "Accept": "application/json",
             "User-Agent": "RIZAN-XAU-Scanner/1.0",
