@@ -2,9 +2,17 @@ name: cTrader Demo Auto Recovery Watchdog
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ctrader-demo-auto-recovery-watchdog.yml"
   schedule:
     # Independent recovery lane. If the primary 5-minute supervisor goes stale,
     # re-dispatch it without executing orders from this workflow itself.
+    # Keeping a dedicated staggered cron avoids colliding with the primary
+    # supervisor cadence; the self-path push trigger provides a safe health
+    # check whenever this recovery control-plane file is changed.
     - cron: "4,14,24,34,44,54 * * * 0-5"
 
 permissions:
