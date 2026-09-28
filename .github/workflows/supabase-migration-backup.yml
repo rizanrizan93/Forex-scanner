@@ -42,6 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" --version
+          psql --version
 
       - name: Dump old Supabase database
         shell: bash
@@ -53,6 +54,9 @@ jobs:
           mkdir -p "$WORKDIR"
           chmod 700 "$WORKDIR"
           cd "$WORKDIR"
+
+          # Fail early if the old database cannot be reached directly.
+          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
 
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
             --db-url "$OLD_DB_URL" \
@@ -90,7 +94,41 @@ jobs:
           test -s history_schema.sql
           test -s history_data.sql
 
-          sha256sum roles.sql schema.sql data.sql history_schema.sql history_data.sql > dump-files.sha256
+          # Exact public-table row-count fingerprint for post-restore parity.
+          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -Atc \
+            "select format('select %L as table_name, count(*)::bigint as row_count from %I.%I;', schemaname||'.'||tablename, schemaname, tablename) from pg_tables where schemaname='public' order by tablename;" \
+            | psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' \
+            > source-public-row-counts.tsv
+
+          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select version, name from supabase_migrations.schema_migrations order by version;" \
+            > source-migrations.tsv
+
+          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select n.nspname, p.proname, pg_get_function_identity_arguments(p.oid), p.prosecdef from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' order by 1,2,3;" \
+            > source-public-functions.tsv
+
+          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select event_object_schema, event_object_table, trigger_name, action_timing, event_manipulation from information_schema.triggers where event_object_schema='public' order by 1,2,3,5;" \
+            > source-public-triggers.tsv
+
+          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select schemaname, tablename, rowsecurity from pg_tables where schemaname='public' order by tablename;" \
+            > source-public-rls.tsv
+
+          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select e.extname, e.extversion, n.nspname from pg_extension e join pg_namespace n on n.oid=e.extnamespace order by e.extname;" \
+            > source-extensions.tsv
+
+          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select pg_database_size(current_database()), pg_size_pretty(pg_database_size(current_database()));" \
+            > source-db-size.tsv
+
+          sha256sum \
+            roles.sql schema.sql data.sql history_schema.sql history_data.sql \
+            source-public-row-counts.tsv source-migrations.tsv source-public-functions.tsv \
+            source-public-triggers.tsv source-public-rls.tsv source-extensions.tsv source-db-size.tsv \
+            > dump-files.sha256
 
           cat > manifest.txt <<EOF
           project_ref=${SOURCE_PROJECT_REF}
@@ -104,6 +142,8 @@ jobs:
 
           tar -czf rizan-supabase-old-backup.tar.gz \
             roles.sql schema.sql data.sql history_schema.sql history_data.sql \
+            source-public-row-counts.tsv source-migrations.tsv source-public-functions.tsv \
+            source-public-triggers.tsv source-public-rls.tsv source-extensions.tsv source-db-size.tsv \
             dump-files.sha256 manifest.txt
 
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -md sha256 \
@@ -115,7 +155,10 @@ jobs:
           chmod 600 rizan-supabase-old-backup.tar.gz.enc rizan-supabase-old-backup.tar.gz.enc.sha256
 
           # Do not leave plaintext dumps for artifact upload.
-          rm -f roles.sql schema.sql data.sql history_schema.sql history_data.sql \
+          rm -f \
+            roles.sql schema.sql data.sql history_schema.sql history_data.sql \
+            source-public-row-counts.tsv source-migrations.tsv source-public-functions.tsv \
+            source-public-triggers.tsv source-public-rls.tsv source-extensions.tsv source-db-size.tsv \
             dump-files.sha256 manifest.txt rizan-supabase-old-backup.tar.gz
 
           mkdir -p "$RUNNER_TEMP/rizan-encrypted-artifact"
@@ -139,6 +182,7 @@ jobs:
             echo "- Source project: `fotzcxjeypmjldhvfskt`"
             echo "- Artifact contains only encrypted backup material."
             echo "- Plaintext SQL dumps are not uploaded."
+            echo "- Exact public-table row counts are included for restore parity."
             echo "- Retention: 3 days."
             echo "- Keep `MIGRATION_BACKUP_PASSPHRASE` unchanged until restore is complete."
           } >> "$GITHUB_STEP_SUMMARY"
