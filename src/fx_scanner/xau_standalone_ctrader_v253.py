@@ -78,6 +78,7 @@ def collect_standalone_xau_snapshot(
     *,
     root: Path,
     previous_dom_analysis: dict[str, Any] | None = None,
+    previous_projection: dict[str, Any] | None = None,
     sample_seconds: float = 6.0,
     sample_interval_seconds: float = 0.75,
     max_levels: int = DEFAULT_MAX_LEVELS,
@@ -160,6 +161,7 @@ def collect_standalone_xau_snapshot(
         quote_timestamp=quote.timestamp,
         dom_analysis=dom_analysis,
         previous_dom_analysis=previous_dom_analysis,
+        previous_projection=previous_projection,
         history_details=history,
         as_of=datetime.now(tz=UTC),
     )
