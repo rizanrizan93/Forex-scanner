@@ -1,0 +1,50 @@
+name: RIZAN Migration Rewrap
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/supabase-migration-rewrap.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  rewrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BACKUP_RUN_ID: 36393637313
+      BACKUP_PASSPHRASE: ${{ secrets.MIGRATION_BACKUP_PASSPHRASE }}
+    steps:
+      - name: Download backup
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test -n "${BACKUP_PASSPHRASE:-}"
+          mkdir -p "$RUNNER_TEMP/in" "$RUNNER_TEMP/out"
+          gh run download "$BACKUP_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "rizan-supabase-old-backup-$BACKUP_RUN_ID" --dir "$RUNNER_TEMP/in"
+      - name: Rewrap
+        run: |
+          set -euo pipefail
+          set +x
+          cd "$RUNNER_TEMP/in"
+          sha256sum -c rizan-supabase-old-backup.tar.gz.enc.sha256
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 -in rizan-supabase-old-backup.tar.gz.enc -out "$RUNNER_TEMP/plain.tar.gz" -pass env:BACKUP_PASSPHRASE
+          openssl rand 32 > "$RUNNER_TEMP/aes.key"
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -md sha256 -in "$RUNNER_TEMP/plain.tar.gz" -out "$RUNNER_TEMP/out/rizan-migration-session.tar.gz.enc" -pass file:"$RUNNER_TEMP/aes.key"
+          printf '%s' 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwCG0HW2C+4YovHYBtEhHfwuke7WuYLL3N/KskfLKRcXSajpzFnbo7k4YtlH91leYc1VDPbDSjzPWym5UBApcez0T/k3nnPePV+ftgMibX1j2gilxpmlVY3FR44VRJKzIIqTVzahsGMswR0TNa9FtkWmtzn3fOrOFPeEbtpD4ZS/m9EzgUKq/UyfBuRkrtm0k/n1abAxDxexWEDhz7E6t41oMbkg05qretCu2QObc124l7wzakNjuDsZ3ntP5IPv3NGyxUviWGLNjJVGEccxkYPgMsFhJEQo4ZLTINpT4fSCpuh4/L5PWwPU7M880zp2FYM1eeTm6ZHvc4NtioyfCxwIDAQAB' | base64 -d > "$RUNNER_TEMP/pub.der"
+          openssl pkeyutl -encrypt -pubin -inkey "$RUNNER_TEMP/pub.der" -keyform DER -pkeyopt rsa_padding_mode:oaep -in "$RUNNER_TEMP/aes.key" -out "$RUNNER_TEMP/out/aes.key.rsa"
+          sha256sum "$RUNNER_TEMP/out/"* > "$RUNNER_TEMP/out/SHA256SUMS"
+          rm -f "$RUNNER_TEMP/plain.tar.gz" "$RUNNER_TEMP/aes.key"
+      - name: Upload rewrapped artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: rizan-migration-session-rewrap-${{ github.run_id }}
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
