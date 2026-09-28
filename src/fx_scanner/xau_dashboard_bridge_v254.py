@@ -34,7 +34,6 @@ HOT_HEARTBEATS = (
     "ctrader_demo_xau_dom_v191",
     "ctrader_demo_xau_event_risk_v192",
     "ctrader_demo_xau_v203_volatility_shock_guard",
-    "ctrader_demo_xau_v229_depth_execution",
 )
 
 STRUCTURAL_HEARTBEATS = (
@@ -282,6 +281,9 @@ def build_snapshot(
     prepared_heartbeat = reader.latest_rizan_prepared_heartbeat()
     if prepared_heartbeat is not None:
         hot_heartbeats.append(prepared_heartbeat)
+    v229_heartbeat = reader.latest_rizan_v229_execution_heartbeat()
+    if v229_heartbeat is not None:
+        hot_heartbeats.append(v229_heartbeat)
     child_heartbeat = reader.latest_rizan_child_executor_heartbeat()
     if child_heartbeat is not None:
         hot_heartbeats.append(child_heartbeat)
