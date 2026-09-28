@@ -1,14 +1,13 @@
 name: RIZAN Supabase Migration Restore
 
 on:
+  workflow_run:
+    workflows: ["RIZAN Supabase Migration Backup"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       backup_run_id:
         description: "Successful RIZAN Supabase Migration Backup run ID"
-        required: true
-        type: string
-      new_project_ref:
-        description: "New Supabase project ref"
         required: true
         type: string
       allow_nonempty_target:
@@ -30,15 +29,16 @@ concurrency:
 
 jobs:
   restore:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       NEW_DB_URL: ${{ secrets.NEW_SUPABASE_DB_URL }}
       BACKUP_PASSPHRASE: ${{ secrets.MIGRATION_BACKUP_PASSPHRASE }}
       SOURCE_PROJECT_REF: fotzcxjeypmjldhvfskt
-      NEW_PROJECT_REF: ${{ inputs.new_project_ref }}
-      BACKUP_RUN_ID: ${{ inputs.backup_run_id }}
-      ALLOW_NONEMPTY_TARGET: ${{ inputs.allow_nonempty_target }}
+      NEW_PROJECT_REF: naxvdtvlfatljzzwhrmo
+      BACKUP_RUN_ID: ${{ github.event.workflow_run.id || inputs.backup_run_id }}
+      ALLOW_NONEMPTY_TARGET: ${{ inputs.allow_nonempty_target || 'false' }}
 
     steps:
       - name: Validate restore inputs and target safety
@@ -49,30 +49,55 @@ jobs:
 
           test -n "${NEW_DB_URL:-}" || { echo "Missing GitHub Secret: NEW_SUPABASE_DB_URL"; exit 1; }
           test -n "${BACKUP_PASSPHRASE:-}" || { echo "Missing GitHub Secret: MIGRATION_BACKUP_PASSPHRASE"; exit 1; }
-          test -n "${NEW_PROJECT_REF:-}" || { echo "Missing new_project_ref input."; exit 1; }
-          test -n "${BACKUP_RUN_ID:-}" || { echo "Missing backup_run_id input."; exit 1; }
-
-          case "$NEW_DB_URL" in
-            postgresql://*|postgres://*) ;;
-            *) echo "NEW_SUPABASE_DB_URL must be a PostgreSQL connection string."; exit 1 ;;
-          esac
+          test -n "${NEW_PROJECT_REF:-}" || { echo "Missing destination project ref."; exit 1; }
+          test -n "${BACKUP_RUN_ID:-}" || { echo "Missing backup run ID."; exit 1; }
 
           if [ "$NEW_PROJECT_REF" = "$SOURCE_PROJECT_REF" ]; then
             echo "Refusing restore: destination equals OLD project ref."
             exit 1
           fi
 
+          case "$NEW_DB_URL" in
+            postgresql://*|postgres://*) ;;
+            *) echo "NEW_SUPABASE_DB_URL must be a PostgreSQL connection string."; exit 1 ;;
+          esac
+
           if ! printf '%s' "$NEW_DB_URL" | grep -Fq "$NEW_PROJECT_REF"; then
-            echo "NEW_SUPABASE_DB_URL does not appear to belong to new_project_ref."
+            echo "NEW_SUPABASE_DB_URL does not appear to belong to the expected NEW project."
             exit 1
           fi
 
-          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
+          normalize_pg_url() {
+            RAW_DB_URL="$1" python - <<'PY'
+import os
+from urllib.parse import quote, unquote
+raw = os.environ["RAW_DB_URL"].strip()
+scheme, rest = raw.split("://", 1)
+auth, hostpath = rest.rsplit("@", 1)
+user, password = auth.split(":", 1)
+password = quote(unquote(password), safe="")
+print(f"{scheme}://{user}:{password}@{hostpath}")
+PY
+          }
 
-          EXISTING_PUBLIC_TABLES="$(psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select count(*) from pg_tables where schemaname='public';")"
+          SAFE_NEW_DB_URL="$(normalize_pg_url "$NEW_DB_URL")"
+
+          # Never print SAFE_NEW_DB_URL: normalized variants are not automatically masked by GitHub.
+          psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
+
+          DEST_USER="$(psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_user;")"
+          case "$DEST_USER" in
+            *"$NEW_PROJECT_REF"*) ;;
+            *)
+              echo "Safety stop: connected database user does not identify the expected NEW project."
+              exit 1
+              ;;
+          esac
+
+          EXISTING_PUBLIC_TABLES="$(psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select count(*) from pg_tables where schemaname='public';")"
           if [ "$EXISTING_PUBLIC_TABLES" != "0" ] && [ "$ALLOW_NONEMPTY_TARGET" != "true" ]; then
             echo "Safety stop: target already has $EXISTING_PUBLIC_TABLES public tables."
-            echo "For a deliberate retry after a prior restore attempt, set allow_nonempty_target=true."
+            echo "For a deliberate retry after a prior restore attempt, use manual dispatch with allow_nonempty_target=true."
             exit 1
           fi
 
@@ -88,7 +113,6 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --name "rizan-supabase-old-backup-$BACKUP_RUN_ID" \
             --dir "$DEST"
-          ls -l "$DEST"
 
       - name: Verify and decrypt backup
         shell: bash
@@ -124,6 +148,20 @@ jobs:
           set +x
           cd "$RUNNER_TEMP/rizan-supabase-restore"
 
+          normalize_pg_url() {
+            RAW_DB_URL="$1" python - <<'PY'
+import os
+from urllib.parse import quote, unquote
+raw = os.environ["RAW_DB_URL"].strip()
+scheme, rest = raw.split("://", 1)
+auth, hostpath = rest.rsplit("@", 1)
+user, password = auth.split(":", 1)
+password = quote(unquote(password), safe="")
+print(f"{scheme}://{user}:{password}@{hostpath}")
+PY
+          }
+          SAFE_NEW_DB_URL="$(normalize_pg_url "$NEW_DB_URL")"
+
           psql \
             --single-transaction \
             --variable ON_ERROR_STOP=1 \
@@ -131,14 +169,14 @@ jobs:
             --file schema.sql \
             --command 'SET session_replication_role = replica' \
             --file data.sql \
-            --dbname "$NEW_DB_URL"
+            --dbname "$SAFE_NEW_DB_URL"
 
           psql \
             --single-transaction \
             --variable ON_ERROR_STOP=1 \
             --file history_schema.sql \
             --file history_data.sql \
-            --dbname "$NEW_DB_URL"
+            --dbname "$SAFE_NEW_DB_URL"
 
       - name: Verify restored parity
         shell: bash
@@ -147,32 +185,46 @@ jobs:
           set +x
           cd "$RUNNER_TEMP/rizan-supabase-restore"
 
-          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc \
+          normalize_pg_url() {
+            RAW_DB_URL="$1" python - <<'PY'
+import os
+from urllib.parse import quote, unquote
+raw = os.environ["RAW_DB_URL"].strip()
+scheme, rest = raw.split("://", 1)
+auth, hostpath = rest.rsplit("@", 1)
+user, password = auth.split(":", 1)
+password = quote(unquote(password), safe="")
+print(f"{scheme}://{user}:{password}@{hostpath}")
+PY
+          }
+          SAFE_NEW_DB_URL="$(normalize_pg_url "$NEW_DB_URL")"
+
+          psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc \
             "select format('select %L as table_name, count(*)::bigint as row_count from %I.%I;', schemaname||'.'||tablename, schemaname, tablename) from pg_tables where schemaname='public' order by tablename;" \
-            | psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' \
+            | psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' \
             > target-public-row-counts.tsv
 
-          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select version, name from supabase_migrations.schema_migrations order by version;" \
             > target-migrations.tsv
 
-          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select n.nspname, p.proname, pg_get_function_identity_arguments(p.oid), p.prosecdef from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' order by 1,2,3;" \
             > target-public-functions.tsv
 
-          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select event_object_schema, event_object_table, trigger_name, action_timing, event_manipulation from information_schema.triggers where event_object_schema='public' order by 1,2,3,5;" \
             > target-public-triggers.tsv
 
-          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
-            "select schemaname, tablename, rowsecurity from pg_tables where schemaname='public' order by tablename;" \
+          psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+            "select n.nspname, c.relname, c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in ('r','p') order by c.relname;" \
             > target-public-rls.tsv
 
-          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select e.extname, e.extversion, n.nspname from pg_extension e join pg_namespace n on n.oid=e.extnamespace order by e.extname;" \
             > target-extensions.tsv
 
-          psql "$NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select pg_database_size(current_database()), pg_size_pretty(pg_database_size(current_database()));" \
             > target-db-size.tsv
 
@@ -206,7 +258,7 @@ jobs:
             echo "- Source DB size: `$(cat source-db-size.tsv)`"
             echo "- Target DB size: `$(cat target-db-size.tsv)`"
             echo
-            echo "Runtime secrets have NOT been switched. DEMO execution remains on the existing configuration until explicit cutover."
+            echo "Runtime secrets have NOT been switched yet. DEMO execution remains on the existing configuration until explicit cutover."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Remove plaintext restore material
