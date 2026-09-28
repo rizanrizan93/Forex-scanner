@@ -67,24 +67,15 @@ jobs:
           MIGRATION_ROLE_ACTIVE=0
 
           if ! psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null 2>&1; then
-            test -n "${OLD_SUPABASE_SECRET_KEY:-}" || { echo "SUPABASE_SECRET_KEY is unavailable."; exit 1; }
-
             HOSTPART="${SAFE_OLD_DB_URL##*@}"
             MIGRATION_TEMP_PASSWORD="$(printf '%s' 'rizan-migration-role-v1' | openssl dgst -sha256 -hmac "$BACKUP_PASSPHRASE" -binary | xxd -p -c 256)"
-            BRIDGE_BODY="$(jq -nc --arg a setup --arg p "$MIGRATION_TEMP_PASSWORD" '{action:$a,password:$p}')"
-            BRIDGE_STATUS="$(curl -sS -o "$RUNNER_TEMP/rizan-edge-bridge.json" -w "%{http_code}" \
-              -X POST "$OLD_SUPABASE_URL/functions/v1/rizan-migration-db-bridge-v1" \
-              -H "x-rizan-migration-key: $OLD_SUPABASE_SECRET_KEY" \
-              -H "Content-Type: application/json" \
-              --data "$BRIDGE_BODY")"
-            if [ "$BRIDGE_STATUS" != "200" ]; then
-              echo "Direct-DB migration bridge failed with HTTP $BRIDGE_STATUS."
-              exit 1
-            fi
-
             SAFE_RUNTIME_PASSWORD="$(RAW_SECRET="$MIGRATION_TEMP_PASSWORD" python -c 'import os; from urllib.parse import quote; print(quote(os.environ["RAW_SECRET"],safe=""))')"
             ACTIVE_DB_URL="postgresql://rizan_migration.${SOURCE_PROJECT_REF}:${SAFE_RUNTIME_PASSWORD}@${HOSTPART}"
-            psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
+
+            if ! psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null 2>&1; then
+              echo "Temporary read-only migration role is unavailable."
+              exit 1
+            fi
             MIGRATION_ROLE_ACTIVE=1
           fi
 
@@ -147,7 +138,7 @@ jobs:
             > source-public-triggers.tsv
 
           psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
-            "select schemaname, tablename, rowsecurity from pg_tables where schemaname='public' order by tablename;" \
+            "select n.nspname, c.relname, c.relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in ('r','p') order by c.relname;" \
             > source-public-rls.tsv
 
           psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
@@ -206,20 +197,6 @@ jobs:
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
-
-      - name: Disable temporary migration role
-        if: always()
-        shell: bash
-        run: |
-          set +e
-          if [ -n "${OLD_SUPABASE_SECRET_KEY:-}" ]; then
-            BRIDGE_BODY="$(jq -nc --arg a cleanup '{action:$a,password:null}')"
-            curl -sS -o /dev/null \
-              -X POST "$OLD_SUPABASE_URL/functions/v1/rizan-migration-db-bridge-v1" \
-              -H "x-rizan-migration-key: $OLD_SUPABASE_SECRET_KEY" \
-              -H "Content-Type: application/json" \
-              --data "$BRIDGE_BODY" || true
-          fi
 
       - name: Migration backup summary
         shell: bash
