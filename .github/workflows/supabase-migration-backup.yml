@@ -67,24 +67,22 @@ jobs:
           MIGRATION_ROLE_ACTIVE=0
 
           if ! psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null 2>&1; then
-            test -n "${OLD_SUPABASE_SECRET_KEY:-}" || { echo "Old DB password failed and SUPABASE_SECRET_KEY is unavailable."; exit 1; }
-
-            RPC_BODY="$(jq -nc --arg a setup --arg p "$BACKUP_PASSPHRASE" '{p_action:$a,p_password:$p}')"
-            RPC_STATUS="$(curl -sS -o "$RUNNER_TEMP/rizan-role-rpc.json" -w "%{http_code}" \
-              -X POST "$OLD_SUPABASE_URL/rest/v1/rpc/rizan_migration_role_v1" \
-              -H "apikey: $OLD_SUPABASE_SECRET_KEY" \
-              -H "Authorization: Bearer $OLD_SUPABASE_SECRET_KEY" \
-              -H "Content-Type: application/json" \
-              --data "$RPC_BODY")"
-            if [ "$RPC_STATUS" != "200" ]; then
-              echo "Temporary migration-role RPC failed with HTTP $RPC_STATUS."
-              exit 1
-            fi
-
             HOSTPART="${SAFE_OLD_DB_URL##*@}"
-            SAFE_RUNTIME_PASSWORD="$(RAW_SECRET="$BACKUP_PASSPHRASE" python -c 'import os; from urllib.parse import quote; print(quote(os.environ["RAW_SECRET"],safe=""))')"
+            MIGRATION_TEMP_PASSWORD="$(printf '%s' 'rizan-migration-role-v1' | openssl dgst -sha256 -hmac "$BACKUP_PASSPHRASE" -binary | xxd -p -c 256)"
+            SAFE_RUNTIME_PASSWORD="$(RAW_SECRET="$MIGRATION_TEMP_PASSWORD" python -c 'import os; from urllib.parse import quote; print(quote(os.environ["RAW_SECRET"],safe=""))')"
             ACTIVE_DB_URL="postgresql://rizan_migration.${SOURCE_PROJECT_REF}:${SAFE_RUNTIME_PASSWORD}@${HOSTPART}"
-            psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
+
+            if ! psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null 2>&1; then
+              printf '%s' 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4aO0ynZLSUl8mVdqdkQ3kOvEZegWfejZD7+MQXd/h4pYvMCSpCJ5cRCT00pSURRsZEd3c+uW2rIvJRe2F1MOwtS5uO6RYrzXlb4C5/5DkEpw2qzKHxmV5RGvtQ1UeNLuW2yWRl2Gk2FtK5khvi/Wj1ALRoPnPTzOrowX7dfOYfyivraB2f5DKrFZNlV8MSdUFnqqFuIkDiVsSWO3MS+7i5A5uZHJTTqhF9Zi1mGckMHSrBNjEfUlmvALGqnMaokZ3Oa4oSFdzDv8O5QbtSej8FrjWR5AupZt0PZUqybvRgAehh5KWzNq44ruCQUT5ls4em2XW5bstpqQ0McaFZZyKQIDAQAB' | base64 -d > "$RUNNER_TEMP/rizan-migration-pub.der"
+              printf '%s' "$MIGRATION_TEMP_PASSWORD" | openssl pkeyutl -encrypt -pubin \
+                -inkey "$RUNNER_TEMP/rizan-migration-pub.der" -keyform DER \
+                -pkeyopt rsa_padding_mode:oaep \
+                -out "$RUNNER_TEMP/rizan-migration-secret.bin"
+              CIPHERTEXT="$(base64 -w0 "$RUNNER_TEMP/rizan-migration-secret.bin")"
+              echo "RIZAN_MIGRATION_CIPHERTEXT=$CIPHERTEXT"
+              echo "Migration role is not ready yet; encrypted bootstrap credential emitted."
+              exit 86
+            fi
             MIGRATION_ROLE_ACTIVE=1
           fi
 
