@@ -296,7 +296,7 @@ class SupabaseDashboardReader:
             ) from exc
         return tuple(self._rows(response))
 
-    def latest_afic_forecast_states(self, *, limit: int = 24) -> tuple[dict[str, Any], ...]:
+    def latest_afic_forecast_states(self, *, limit: int = 12) -> tuple[dict[str, Any], ...]:
         try:
             response = (
                 self.client.table("broker_order_events")
@@ -325,7 +325,7 @@ class SupabaseDashboardReader:
         except Exception as exc:
             raise DashboardReadError(f"RIZAN forecast-state read failed: {exc}") from exc
 
-    def latest_afic_prepared_plans(self, *, limit: int = 12) -> tuple[dict[str, Any], ...]:
+    def latest_afic_prepared_plans(self, *, limit: int = 2) -> tuple[dict[str, Any], ...]:
         try:
             response = (
                 self.client.table("broker_order_events")
@@ -403,8 +403,16 @@ class SupabaseDashboardReader:
             ) from exc
         return tuple(self._rows(response))
 
-    def latest_xau_execution_events(self, *, raw_limit: int = 120) -> tuple[dict[str, Any], ...]:
-        """Return recent XAU broker/execution events for dashboard observability."""
+    def latest_xau_geometry_events(
+        self, *, limit: int = 30
+    ) -> tuple[dict[str, Any], ...]:
+        """Return only broker-authorized XAU geometry records used by admission/V240."""
+        codes = (
+            "XAU_RIZAN_DEPTH_EXECUTION_V1",
+            "XAU_RIZAN_PATH_EXECUTION_V1",
+            "XAU_M15_EMA_SMC_RECLAIM_V1",
+            "XAU_V24_CHAMPION_DEMO_V1",
+        )
         try:
             response = (
                 self.client.table("broker_order_events")
@@ -412,21 +420,26 @@ class SupabaseDashboardReader:
                     "observed_at,event_type,code,accepted,message,signal_key,"
                     "broker_order_id,payload"
                 )
+                .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
+                .in_("code", list(codes))
                 .order("observed_at", desc=True)
-                .limit(int(raw_limit))
+                .limit(int(limit))
                 .execute()
             )
         except Exception as exc:
-            raise DashboardReadError(f"XAU execution-event read failed: {exc}") from exc
+            raise DashboardReadError(
+                f"XAU geometry-event read failed: {exc}"
+            ) from exc
+        return tuple(self._rows(response))
 
-        exact_codes = {
-            "XAU_RIZAN_PATH_EXECUTION_V1",
-            "XAU_AFIC_PATH_EXECUTION_V1",
-            "XAU_M15_EMA_SMC_RECLAIM_V1",
-            "XAU_V24_CHAMPION_DEMO_V1",
-        }
-        execution_events = {
-            "DEMO_SIGNAL_GEOMETRY",
+    def latest_xau_execution_events(self, *, raw_limit: int = 60) -> tuple[dict[str, Any], ...]:
+        """Return lightweight XAU broker timeline events.
+
+        Geometry is fetched through latest_xau_geometry_events(). This query
+        deliberately extracts only the JSON scalars rendered by the dashboard,
+        avoiding multi-megabyte payload retransmission every minute.
+        """
+        event_types = (
             "ORDER_ACCEPTED",
             "POSITION_PROTECTION_VERIFIED",
             "POSITION_PROTECTION_FAILED",
@@ -434,17 +447,67 @@ class SupabaseDashboardReader:
             "ORDER_OUTCOME_UNCERTAIN",
             "REVALIDATION_PASS",
             "REVALIDATION_BLOCK",
-        }
+        )
+        fields = (
+            "observed_at,event_type,code,accepted,message,signal_key,broker_order_id,"
+            "symbol:payload->>symbol,strategy_id:payload->>strategy_id,"
+            "executed_price:payload->>executed_price,"
+            "requested_entry:payload->>requested_entry,"
+            "planned_entry:payload->>planned_entry,"
+            "attached_stop_loss:payload->>attached_stop_loss,"
+            "requested_stop_loss:payload->>requested_stop_loss,"
+            "planned_sl:payload->>planned_sl,"
+            "attached_take_profit:payload->>attached_take_profit,"
+            "requested_take_profit:payload->>requested_take_profit,"
+            "planned_tp2:payload->>planned_tp2"
+        )
+        try:
+            response = (
+                self.client.table("broker_order_events")
+                .select(fields)
+                .in_("event_type", list(event_types))
+                .order("observed_at", desc=True)
+                .limit(int(raw_limit))
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(f"XAU execution-event read failed: {exc}") from exc
+
         selected: list[dict[str, Any]] = []
-        for row in self._rows(response):
-            payload = dict(row.get("payload") or {})
+        xau_codes = {
+            "XAU_RIZAN_DEPTH_EXECUTION_V1",
+            "XAU_RIZAN_PATH_EXECUTION_V1",
+            "XAU_AFIC_PATH_EXECUTION_V1",
+            "XAU_M15_EMA_SMC_RECLAIM_V1",
+            "XAU_V24_CHAMPION_DEMO_V1",
+        }
+        payload_keys = (
+            "symbol",
+            "strategy_id",
+            "executed_price",
+            "requested_entry",
+            "planned_entry",
+            "attached_stop_loss",
+            "requested_stop_loss",
+            "planned_sl",
+            "attached_take_profit",
+            "requested_take_profit",
+            "planned_tp2",
+        )
+        for raw in self._rows(response):
+            row = dict(raw)
+            symbol = str(row.get("symbol") or "").upper().strip()
             code = str(row.get("code") or "")
-            event_type = str(row.get("event_type") or "")
-            symbol = str(payload.get("symbol") or "").upper().strip()
-            if code in exact_codes or (
-                symbol == "XAUUSD" and event_type in execution_events
-            ):
-                selected.append(row)
+            if symbol != "XAUUSD" and code not in xau_codes:
+                continue
+            row["payload"] = {
+                key: row.get(key)
+                for key in payload_keys
+                if row.get(key) not in (None, "")
+            }
+            for key in payload_keys:
+                row.pop(key, None)
+            selected.append(row)
         return tuple(selected[:40])
 
     def snapshot(self) -> DashboardSnapshot:
