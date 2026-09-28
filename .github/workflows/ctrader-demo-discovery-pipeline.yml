@@ -24,8 +24,8 @@ jobs:
       CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
       CTRADER_TOKEN_STATE_DURABLE: "1"
       CTRADER_DISABLE_TOKEN_REFRESH: "1"
-      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
       FX_KILL_SWITCH: "0"
       CTRADER_DEMO_AUTOTRADE_ENABLED: ${{ secrets.CTRADER_DEMO_AUTOTRADE_ENABLED }}
       CTRADER_DEMO_EXECUTION_CANDIDATE_MIN: "50.01"
