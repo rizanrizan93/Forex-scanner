@@ -197,6 +197,91 @@ class SupabaseDashboardReader:
             ) from exc
         return tuple(self._rows(response))
 
+    def latest_rizan_prepared_heartbeat(self) -> dict[str, Any] | None:
+        """Return the current prepared-plan heartbeat without duplicated atlas JSON.
+
+        The prepared worker carries a large supply_demand_context copy that is
+        already available from V182. The dashboard only needs scalar admission,
+        zone and lifecycle fields from this heartbeat on the 60-second path.
+        """
+        select_expr = (
+            "worker_name,observed_at,healthy,lag_seconds,"
+            "forecast_state:details->>forecast_state,"
+            "continuation_direction:details->>continuation_direction,"
+            "zone_low:details->zone_low,"
+            "zone_high:details->zone_high,"
+            "forecast_selector_grade:details->>forecast_selector_grade,"
+            "live_price:details->live_price,"
+            "distance_to_zone_points:details->distance_to_zone_points,"
+            "distance_to_zone_atr:details->distance_to_zone_atr,"
+            "proximity_state:details->>proximity_state,"
+            "effective_scan_seconds:details->effective_scan_seconds,"
+            "execution_enabled_env:details->execution_enabled_env,"
+            "handoff_allowlisted:details->handoff_allowlisted,"
+            "signal_id:details->>signal_id,"
+            "map_at:details->>map_at,"
+            "first_touch_at:details->>first_touch_at,"
+            "map_first_touch_at:details->>map_first_touch_at,"
+            "zone_diagnostics:details->zone_diagnostics,"
+            "touch_lifecycle:details->touch_lifecycle,"
+            "zone_lifecycle:details->zone_lifecycle,"
+            "blueprint_block_reason:details->>blueprint_block_reason"
+        )
+        worker_names = (
+            "ctrader_demo_xau_rizan_prepared_plan_producer",
+            "ctrader_demo_xau_afic_prepared_plan_producer",
+        )
+        for worker_name in worker_names:
+            try:
+                response = (
+                    self.client.table("runtime_heartbeats")
+                    .select(select_expr)
+                    .eq("worker_name", worker_name)
+                    .order("observed_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+            except Exception as exc:
+                raise DashboardReadError(
+                    f"prepared heartbeat read failed for {worker_name}: {exc}"
+                ) from exc
+            rows = self._rows(response)
+            if not rows:
+                continue
+            raw = dict(rows[0])
+            if isinstance(raw.get("details"), dict):
+                return raw
+            detail_fields = (
+                "forecast_state",
+                "continuation_direction",
+                "zone_low",
+                "zone_high",
+                "forecast_selector_grade",
+                "live_price",
+                "distance_to_zone_points",
+                "distance_to_zone_atr",
+                "proximity_state",
+                "effective_scan_seconds",
+                "execution_enabled_env",
+                "handoff_allowlisted",
+                "signal_id",
+                "map_at",
+                "first_touch_at",
+                "map_first_touch_at",
+                "zone_diagnostics",
+                "touch_lifecycle",
+                "zone_lifecycle",
+                "blueprint_block_reason",
+            )
+            details = {
+                key: raw.pop(key)
+                for key in detail_fields
+                if raw.get(key) is not None
+            }
+            raw["details"] = details
+            return raw
+        return None
+
     def latest_macro(self, *, raw_limit: int = 96) -> tuple[dict[str, Any], ...]:
         """Return the newest durable macro snapshot per currency."""
         try:
