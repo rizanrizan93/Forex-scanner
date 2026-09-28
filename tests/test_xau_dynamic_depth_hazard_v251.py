@@ -70,3 +70,37 @@ def test_child_reference_depth_uses_source_zone():
         direction="LONG",
         price=107.0,
     ) == 0.3
+
+
+def test_absorption_ahead_of_zone_waits_for_zone():
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=_v226(),
+        direction="LONG",
+        live_price=112.0,
+        pressure_transition={
+            "state":"BALANCED_ABSORPTION",
+            "hard_block":False,
+            "pre_touch_entry_allowed":True,
+            "confirmation_entry_allowed":True,
+        },
+    )
+    assert result["location_state"] == "AHEAD_OF_ZONE"
+    assert result["action"] == "WAIT_ZONE"
+    assert result["execution_ready"] is False
+
+
+def test_absorption_beyond_distal_requires_remap():
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=_v226(),
+        direction="LONG",
+        live_price=99.0,
+        pressure_transition={
+            "state":"CONTROL_FLIP",
+            "hard_block":False,
+            "pre_touch_entry_allowed":True,
+            "confirmation_entry_allowed":True,
+        },
+    )
+    assert result["location_state"] == "AT_OR_BEYOND_DISTAL"
+    assert result["action"] == "WAIT_STRUCTURE_REMAP"
+    assert result["execution_ready"] is False
