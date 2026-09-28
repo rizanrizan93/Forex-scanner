@@ -40,7 +40,10 @@ def build_standalone_ctrader_feed(
         account_id=None,
         environment="demo",
         request_timeout_seconds=10.0,
-        allow_token_refresh=bool(refresh_token),
+        # Restricted mode has no durable token writer. Never rotate a refresh
+        # token in-memory because the next GitHub run would be stranded on the
+        # already-invalidated credential pair.
+        allow_token_refresh=False,
     )
     try:
         session.resolve_granted_account(
