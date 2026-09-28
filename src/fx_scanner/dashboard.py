@@ -297,58 +297,139 @@ class SupabaseDashboardReader:
         return tuple(self._rows(response))
 
     def latest_afic_forecast_states(self, *, limit: int = 12) -> tuple[dict[str, Any], ...]:
+        """Return one full current forecast plus a compact transition history.
+
+        The first row preserves the exact payload used by current decision
+        fallbacks. Older rows only need the scalar fields rendered by the
+        history table, avoiding repeated full-map JSON transfer.
+        """
+        limit = max(1, min(int(limit), 24))
         try:
-            response = (
+            latest_response = (
                 self.client.table("broker_order_events")
                 .select("observed_at,event_type,code,message,payload")
                 .eq("event_type", "DEMO_XAU_RIZAN_FORECAST_STATE")
                 .eq("code", "XAU_RIZAN_PATH_STATE_V1")
                 .order("observed_at", desc=True)
-                .limit(int(limit))
+                .limit(1)
                 .execute()
             )
-            rows = self._rows(response)
-            if rows:
-                return tuple(rows[: int(limit)])
-            # Legacy records are historical read-only compatibility. Query them
-            # only when no RIZAN record exists, avoiding duplicate hot-path egress.
+            latest_rows = self._rows(latest_response)
+            if latest_rows:
+                latest = latest_rows[0]
+                history_response = (
+                    self.client.table("broker_order_events")
+                    .select(
+                        "observed_at,"
+                        "map_at:payload->forecast->>map_at,"
+                        "state:payload->forecast->>state,"
+                        "direction:payload->forecast->>continuation_direction,"
+                        "zone_low:payload->forecast->zone->>low,"
+                        "zone_high:payload->forecast->zone->>high,"
+                        "first_touch_at:payload->forecast->>first_touch_at,"
+                        "confirm_at:payload->forecast->>confirm_at,"
+                        "invalidated_at:payload->forecast->>invalidated_at"
+                    )
+                    .eq("event_type", "DEMO_XAU_RIZAN_FORECAST_STATE")
+                    .eq("code", "XAU_RIZAN_PATH_STATE_V1")
+                    .order("observed_at", desc=True)
+                    .limit(limit)
+                    .execute()
+                )
+                compact: list[dict[str, Any]] = [latest]
+                latest_at = str(latest.get("observed_at") or "")
+                for raw in self._rows(history_response):
+                    if str(raw.get("observed_at") or "") == latest_at:
+                        continue
+                    if isinstance(raw.get("payload"), dict):
+                        # Test/fallback clients may ignore projected select aliases.
+                        compact.append(raw)
+                    else:
+                        compact.append(
+                            {
+                                "observed_at": raw.get("observed_at"),
+                                "event_type": "DEMO_XAU_RIZAN_FORECAST_STATE",
+                                "code": "XAU_RIZAN_PATH_STATE_V1",
+                                "message": None,
+                                "payload": {
+                                    "forecast": {
+                                        "map_at": raw.get("map_at"),
+                                        "state": raw.get("state"),
+                                        "continuation_direction": raw.get("direction"),
+                                        "zone": {
+                                            "low": raw.get("zone_low"),
+                                            "high": raw.get("zone_high"),
+                                        },
+                                        "first_touch_at": raw.get("first_touch_at"),
+                                        "confirm_at": raw.get("confirm_at"),
+                                        "invalidated_at": raw.get("invalidated_at"),
+                                    }
+                                },
+                            }
+                        )
+                    if len(compact) >= limit:
+                        break
+                return tuple(compact[:limit])
+
+            # Legacy records remain read-only compatibility and are queried only
+            # if no RIZAN state exists in the target database.
             response = (
                 self.client.table("broker_order_events")
                 .select("observed_at,event_type,code,message,payload")
                 .eq("event_type", "DEMO_XAU_AFIC_FORECAST_STATE")
                 .eq("code", "XAU_AFIC_PATH_STATE_V1")
                 .order("observed_at", desc=True)
-                .limit(int(limit))
+                .limit(limit)
                 .execute()
             )
-            return tuple(self._rows(response)[: int(limit)])
+            return tuple(self._rows(response)[:limit])
         except Exception as exc:
             raise DashboardReadError(f"RIZAN forecast-state read failed: {exc}") from exc
 
-    def latest_afic_prepared_plans(self, *, limit: int = 2) -> tuple[dict[str, Any], ...]:
+    def latest_afic_prepared_plans(self, *, limit: int = 1) -> tuple[dict[str, Any], ...]:
+        """Return only the current prepared plan with the fields the UI consumes."""
+        limit = max(1, min(int(limit), 2))
         try:
             response = (
                 self.client.table("broker_order_events")
-                .select("observed_at,event_type,code,message,payload")
+                .select(
+                    "observed_at,event_type,code,message,"
+                    "prepared_plan:payload->prepared_plan,"
+                    "map_at:payload->forecast->>map_at"
+                )
                 .eq("event_type", "DEMO_XAU_RIZAN_PREPARED_PLAN")
                 .eq("code", "XAU_RIZAN_PATH_PREPARED_V1")
                 .order("observed_at", desc=True)
-                .limit(int(limit))
+                .limit(1)
                 .execute()
             )
             rows = self._rows(response)
             if rows:
-                return tuple(rows[: int(limit)])
+                row = rows[0]
+                if isinstance(row.get("payload"), dict):
+                    return (row,)
+                return (
+                    {
+                        "observed_at": row.get("observed_at"),
+                        "event_type": row.get("event_type") or "DEMO_XAU_RIZAN_PREPARED_PLAN",
+                        "code": row.get("code") or "XAU_RIZAN_PATH_PREPARED_V1",
+                        "message": row.get("message"),
+                        "payload": {
+                            "prepared_plan": dict(row.get("prepared_plan") or {}),
+                            "forecast": {"map_at": row.get("map_at")},
+                        },
+                    },
+                )
             response = (
                 self.client.table("broker_order_events")
                 .select("observed_at,event_type,code,message,payload")
                 .eq("event_type", "DEMO_XAU_AFIC_PREPARED_PLAN")
                 .eq("code", "XAU_AFIC_PATH_PREPARED_V1")
                 .order("observed_at", desc=True)
-                .limit(int(limit))
+                .limit(1)
                 .execute()
             )
-            return tuple(self._rows(response)[: int(limit)])
+            return tuple(self._rows(response)[:1])
         except Exception as exc:
             raise DashboardReadError(f"RIZAN prepared-plan read failed: {exc}") from exc
 
