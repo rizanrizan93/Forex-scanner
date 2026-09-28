@@ -635,6 +635,7 @@ begin
       delete from public.signals s
         where s.observed_at < now() - signal_keep
           and s.setup_type not like 'AFIC_%'
+          and s.setup_type not like 'RIZAN_%'
           and s.state <> 'EXECUTION_READY'
           and not exists (
             select 1 from public.paper_trades p where p.signal_id = s.id
