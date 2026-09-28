@@ -314,7 +314,15 @@ class SupabaseDashboardReader:
         try:
             latest_response = (
                 self.client.table("broker_order_events")
-                .select("observed_at,event_type,code,message,payload")
+                .select(
+                    "observed_at,event_type,code,message,"
+                    "map_at:payload->forecast->>map_at,"
+                    "state:payload->forecast->>state,"
+                    "direction:payload->forecast->>continuation_direction,"
+                    "zone:payload->forecast->zone,"
+                    "zone_diagnostics:payload->forecast->zone_diagnostics,"
+                    "supply_demand_context:payload->forecast->supply_demand_context"
+                )
                 .eq("event_type", "DEMO_XAU_RIZAN_FORECAST_STATE")
                 .eq("code", "XAU_RIZAN_PATH_STATE_V1")
                 .order("observed_at", desc=True)
@@ -323,7 +331,28 @@ class SupabaseDashboardReader:
             )
             latest_rows = self._rows(latest_response)
             if latest_rows:
-                latest = latest_rows[0]
+                latest_raw = latest_rows[0]
+                if isinstance(latest_raw.get("payload"), dict):
+                    latest = latest_raw
+                else:
+                    latest = {
+                        "observed_at": latest_raw.get("observed_at"),
+                        "event_type": latest_raw.get("event_type") or "DEMO_XAU_RIZAN_FORECAST_STATE",
+                        "code": latest_raw.get("code") or "XAU_RIZAN_PATH_STATE_V1",
+                        "message": latest_raw.get("message"),
+                        "payload": {
+                            "forecast": {
+                                "map_at": latest_raw.get("map_at"),
+                                "state": latest_raw.get("state"),
+                                "continuation_direction": latest_raw.get("direction"),
+                                "zone": dict(latest_raw.get("zone") or {}),
+                                "zone_diagnostics": dict(latest_raw.get("zone_diagnostics") or {}),
+                                "supply_demand_context": dict(
+                                    latest_raw.get("supply_demand_context") or {}
+                                ),
+                            }
+                        },
+                    }
                 history_response = (
                     self.client.table("broker_order_events")
                     .select(
@@ -444,9 +473,15 @@ class SupabaseDashboardReader:
         try:
             response = (
                 self.client.table("broker_order_events")
-                .select("observed_at,event_type,code,message,payload")
+                .select("observed_at,event_type,code,message,signal_key,payload")
                 .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
-                .eq("code", "XAU_RIZAN_PATH_EXECUTION_V1")
+                .in_(
+                    "code",
+                    [
+                        "XAU_RIZAN_DEPTH_EXECUTION_V1",
+                        "XAU_RIZAN_PATH_EXECUTION_V1",
+                    ],
+                )
                 .order("observed_at", desc=True)
                 .limit(int(limit))
                 .execute()
