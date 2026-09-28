@@ -59,9 +59,18 @@ jobs:
           chmod 700 "$WORKDIR"
           cd "$WORKDIR"
 
-          # Normalize reserved URI characters before libpq parses the connection string.
-          SAFE_OLD_DB_URL="${OLD_DB_URL//#/%23}"
-          SAFE_OLD_DB_URL="${SAFE_OLD_DB_URL//]/%5D}"
+          # Normalize the userinfo using the final @ as the host separator.
+          SAFE_OLD_DB_URL="$(RAW_DB_URL="$OLD_DB_URL" python - <<'PY'
+import os
+from urllib.parse import quote, unquote
+raw = os.environ["RAW_DB_URL"].strip()
+scheme, rest = raw.split("://", 1)
+userinfo, hostpart = rest.rsplit("@", 1)
+username, raw_secret = userinfo.split(":", 1)
+safe_secret = quote(unquote(raw_secret), safe="")
+print(f"{scheme}://{username}:{safe_secret}@{hostpart}")
+PY
+          )"
           psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
 
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
