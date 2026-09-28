@@ -1,0 +1,193 @@
+name: ForexRizan Runtime Audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/forexrizan-runtime-audit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forexrizan-runtime-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Audit ForexRizan runtime state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.parse
+          import urllib.request
+          from datetime import datetime, timezone
+
+          url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+          key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+          expected_ref = "naxvdtvlfatljzzwhrmo"
+          old_ref = "fotzcxjeypmjldhvfskt"
+
+          if not url or expected_ref not in url or old_ref in url:
+              raise SystemExit("FOREXRIZAN_AUDIT_BAD_SUPABASE_URL")
+          if not key:
+              raise SystemExit("FOREXRIZAN_AUDIT_SERVICE_ROLE_KEY_MISSING")
+
+          headers = {
+              "apikey": key,
+              "Authorization": f"Bearer {key}",
+              "Accept": "application/json",
+          }
+
+          def get(path, params):
+              query = urllib.parse.urlencode(params, doseq=True, safe="(),.*:")
+              req = urllib.request.Request(
+                  f"{url}/rest/v1/{path}?{query}",
+                  headers=headers,
+                  method="GET",
+              )
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  return json.loads(resp.read().decode("utf-8"))
+
+          control = get(
+              "execution_control",
+              {
+                  "select": "control_key,execution_mode,new_orders_enabled,emergency_stop,close_all_requested,version,updated_at,metadata",
+                  "control_key": "eq.primary",
+                  "limit": "1",
+              },
+          )
+          if not control:
+              raise SystemExit("FOREXRIZAN_AUDIT_EXECUTION_CONTROL_MISSING")
+
+          c = dict(control[0])
+          metadata = dict(c.get("metadata") or {})
+          control_summary = {
+              "execution_mode": c.get("execution_mode"),
+              "new_orders_enabled": c.get("new_orders_enabled"),
+              "emergency_stop": c.get("emergency_stop"),
+              "close_all_requested": c.get("close_all_requested"),
+              "version": c.get("version"),
+              "updated_at": c.get("updated_at"),
+              "migration_hold": metadata.get("migration_hold"),
+              "demo_only": metadata.get("demo_only"),
+              "live_execution_enabled": metadata.get("live_execution_enabled"),
+          }
+          print("FOREXRIZAN_AUDIT_CONTROL " + json.dumps(control_summary, sort_keys=True))
+
+          critical_workers = {
+              "ctrader_demo_xau_execution_lane",
+              "ctrader_demo_xau_dom_v191",
+              "ctrader_demo_xau_v226_rizan_depth_map",
+              "ctrader_demo_xau_v229_depth_execution",
+              "ctrader_demo_xau_rizan_prepared_plan_producer",
+              "ctrader_demo_autotrade",
+              "ctrader_demo_token_maintainer",
+          }
+
+          heartbeats = get(
+              "runtime_heartbeats",
+              {
+                  "select": "worker_name,observed_at,healthy,lag_seconds,details",
+                  "order": "observed_at.desc",
+                  "limit": "250",
+              },
+          )
+          latest = {}
+          for row in heartbeats:
+              worker = str(row.get("worker_name") or "")
+              if worker in critical_workers and worker not in latest:
+                  latest[worker] = row
+
+          now = datetime.now(timezone.utc)
+          missing = []
+          unhealthy = []
+          stale = []
+          for worker in sorted(critical_workers):
+              row = latest.get(worker)
+              if row is None:
+                  missing.append(worker)
+                  continue
+              observed_raw = str(row.get("observed_at") or "")
+              try:
+                  observed = datetime.fromisoformat(observed_raw.replace("Z", "+00:00"))
+                  age = max(0.0, (now - observed.astimezone(timezone.utc)).total_seconds())
+              except Exception:
+                  age = None
+              details = dict(row.get("details") or {})
+              summary = {
+                  "worker": worker,
+                  "observed_at": observed_raw,
+                  "age_seconds": None if age is None else round(age, 1),
+                  "healthy": bool(row.get("healthy")),
+                  "reason": details.get("reason"),
+                  "error": details.get("error"),
+                  "environment": details.get("environment"),
+                  "live_execution_enabled": details.get("live_execution_enabled"),
+              }
+              print("FOREXRIZAN_AUDIT_HEARTBEAT " + json.dumps(summary, sort_keys=True))
+              if not bool(row.get("healthy")):
+                  unhealthy.append(worker)
+              # token maintainer can be lower cadence; other execution workers should be fresher.
+              max_age = 5400 if worker == "ctrader_demo_token_maintainer" else 1200
+              if age is None or age > max_age:
+                  stale.append(worker)
+
+          events = get(
+              "broker_order_events",
+              {
+                  "select": "observed_at,event_type,accepted,code,broker_order_id",
+                  "order": "observed_at.desc",
+                  "limit": "25",
+              },
+          )
+          event_summary = [
+              {
+                  "observed_at": row.get("observed_at"),
+                  "event_type": row.get("event_type"),
+                  "accepted": row.get("accepted"),
+                  "code": row.get("code"),
+                  "has_broker_order_id": bool(row.get("broker_order_id")),
+              }
+              for row in events
+          ]
+          print("FOREXRIZAN_AUDIT_EVENTS " + json.dumps(event_summary, sort_keys=True))
+
+          blockers = []
+          if str(c.get("execution_mode") or "").upper() != "AUTO":
+              blockers.append("EXECUTION_MODE_NOT_AUTO")
+          if c.get("new_orders_enabled") is not True:
+              blockers.append("NEW_ORDERS_DISABLED")
+          if c.get("emergency_stop") is True:
+              blockers.append("EMERGENCY_STOP")
+          if metadata.get("migration_hold") is True:
+              blockers.append("MIGRATION_HOLD")
+          if metadata.get("demo_only") is not True:
+              blockers.append("DEMO_ONLY_METADATA_NOT_TRUE")
+          if metadata.get("live_execution_enabled") is True:
+              blockers.append("LIVE_EXECUTION_METADATA_TRUE")
+          if missing:
+              blockers.append("MISSING:" + ",".join(sorted(missing)))
+          if unhealthy:
+              blockers.append("UNHEALTHY:" + ",".join(sorted(unhealthy)))
+          if stale:
+              blockers.append("STALE:" + ",".join(sorted(stale)))
+
+          if blockers:
+              print("FOREXRIZAN_RUNTIME_AUDIT_FAIL " + " | ".join(blockers))
+              sys.exit(2)
+
+          print("FOREXRIZAN_RUNTIME_AUDIT_OK target=ForexRizan safety=DEMO_ONLY")
+          PY
