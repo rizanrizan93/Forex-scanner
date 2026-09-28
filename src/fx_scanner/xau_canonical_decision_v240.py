@@ -72,6 +72,38 @@ def _nearest_active_zone(
     return _zone_text(candidates[0][2])
 
 
+def _local_zone_supersedes_candidate(
+    *,
+    direction: str,
+    price: float | None,
+    candidate: dict[str, Any],
+    local_zone: dict[str, Any],
+) -> bool:
+    """True when an active same-direction atlas zone sits between price and V226.
+
+    V226 is intentionally H4-parent hierarchical. That can leave a valid but very
+    distant nested locator selected while a newer standalone H1/M15 structural zone
+    has formed closer to price. The dashboard must not label the distant locator as
+    the primary entry in that case. This helper is display/fail-closed only; it does
+    not grant execution authority to the local atlas zone.
+    """
+    px = _f(price)
+    c_low = _f(candidate.get("entry_low"))
+    c_high = _f(candidate.get("entry_high"))
+    l_low = _f(local_zone.get("low"))
+    l_high = _f(local_zone.get("high"))
+    side = str(direction or "").upper()
+    if None in {px, c_low, c_high, l_low, l_high}:
+        return False
+    assert px is not None and c_low is not None and c_high is not None
+    assert l_low is not None and l_high is not None
+    if side == "SHORT":
+        return bool(px <= l_high < c_low)
+    if side == "LONG":
+        return bool(c_high < l_low <= px)
+    return False
+
+
 def _primary_reversal_watch(
     atlas_evaluation: dict[str, Any],
     *,
@@ -240,30 +272,72 @@ def build_canonical_xau_decision(
     if atlas_age_seconds is not None and atlas_age_seconds > 900.0:
         stale_reasons.append("ATLAS_STALE")
 
-    current_plan = (
-        build_parent_ladder_plan(
-            v226_evaluation=v226_evaluation,
-            atlas_evaluation=atlas_evaluation,
-            live_price=px,
-        )
-        if px is not None
-        else None
-    )
-
     candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
     historical_context = dict(candidate.get("historical_context") or {})
+    provisional_direction = (
+        focus_direction
+        if focus_direction in {"LONG", "SHORT"}
+        else path_side
+    )
+
+    nearest_demand = _nearest_active_zone(
+        atlas_evaluation,
+        direction="LONG",
+        price=px,
+    )
+    nearest_supply = _nearest_active_zone(
+        atlas_evaluation,
+        direction="SHORT",
+        price=px,
+    )
+    provisional_local_zone = (
+        nearest_demand
+        if provisional_direction == "LONG"
+        else nearest_supply
+        if provisional_direction == "SHORT"
+        else {}
+    )
+    local_structure_supersedes = _local_zone_supersedes_candidate(
+        direction=provisional_direction,
+        price=px,
+        candidate=candidate,
+        local_zone=provisional_local_zone,
+    )
+
+    # Fail closed when a newer/closer same-direction structure is physically
+    # between price and the hierarchical V226 locator. V229 may continue to wait
+    # for a valid H4-parent candidate, but V240 must not present the old distant
+    # locator as the primary current entry.
+    current_plan = (
+        None
+        if local_structure_supersedes
+        else (
+            build_parent_ladder_plan(
+                v226_evaluation=v226_evaluation,
+                atlas_evaluation=atlas_evaluation,
+                live_price=px,
+            )
+            if px is not None
+            else None
+        )
+    )
+
     direction = (
         str(current_plan.get("direction") or "").upper()
         if current_plan
-        else focus_direction
-        if focus_direction in {"LONG", "SHORT"}
-        else path_side
+        else provisional_direction
     )
 
     saved_geometry = dict(saved_v229_geometry or {})
     saved_match = bool(current_plan and _saved_geometry_matches(saved_geometry, current_plan))
     if saved_geometry and current_plan and not saved_match:
         conflicts.append("SAVED_V229_GEOMETRY_MISMATCH")
+
+    remap_reasons: list[str] = []
+    local_structure_override: dict[str, Any] = {}
+    if local_structure_supersedes:
+        remap_reasons.append("LOCAL_STRUCTURE_AHEAD_OF_V226_CANDIDATE")
+        local_structure_override = dict(provisional_local_zone)
 
     if current_plan:
         entry_low = _f(current_plan.get("entry_low"))
@@ -279,6 +353,30 @@ def build_canonical_xau_decision(
         candidate_key = str(current_plan.get("candidate_key") or "")
         source_layer = str(current_plan.get("source_layer") or "")
         h4_zone_id = str(current_plan.get("h4_zone_id") or "")
+    elif local_structure_supersedes:
+        entry_low = _f(local_structure_override.get("low"))
+        entry_high = _f(local_structure_override.get("high"))
+        proximal = _f(local_structure_override.get("proximal"))
+        if proximal is not None:
+            entry_reference = proximal
+        elif entry_low is not None and entry_high is not None:
+            entry_reference = (entry_low + entry_high) / 2.0
+        else:
+            entry_reference = None
+        stop = None
+        tp1 = None
+        tp2 = None
+        rr1 = None
+        rr2 = None
+        targets = []
+        authority = "LOCAL_STRUCTURE_WATCH_NO_V229_AUTHORITY"
+        candidate_key = ""
+        source_layer = (
+            "ATLAS_LOCAL_"
+            + str(local_structure_override.get("timeframe") or "STRUCTURE").upper()
+            + "_WATCH"
+        )
+        h4_zone_id = ""
     else:
         entry_low = _f(candidate.get("entry_low"))
         entry_high = _f(candidate.get("entry_high"))
@@ -310,16 +408,6 @@ def build_canonical_xau_decision(
         }
     )
 
-    nearest_demand = _nearest_active_zone(
-        atlas_evaluation,
-        direction="LONG",
-        price=px,
-    )
-    nearest_supply = _nearest_active_zone(
-        atlas_evaluation,
-        direction="SHORT",
-        price=px,
-    )
     primary_reversal_watch = _primary_reversal_watch(
         atlas_evaluation,
         direction=direction,
@@ -332,6 +420,8 @@ def build_canonical_xau_decision(
         state = "CONFLICT_WAIT"
     elif stale_reasons:
         state = "STALE_WAIT"
+    elif remap_reasons:
+        state = "LOCAL_REMAP_WAIT"
     elif current_plan:
         state = "CANONICAL_PLAN_READY"
     elif entry_low is not None and entry_high is not None:
@@ -372,6 +462,8 @@ def build_canonical_xau_decision(
         "saved_geometry_match": saved_match,
         "conflicts": conflicts,
         "stale_reasons": stale_reasons,
+        "remap_reasons": remap_reasons,
+        "local_structure_override": local_structure_override,
         "execution_influence": False,
         "live_execution_enabled": False,
     }
