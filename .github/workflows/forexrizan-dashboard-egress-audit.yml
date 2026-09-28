@@ -66,6 +66,18 @@ jobs:
               "ctrader_xau_forecast_ensemble_v171",
               "ctrader_xau_htf_strategic_regime_v180",
           )
+          hot = (
+              "ctrader_demo_xau_rizan_prepared_plan_producer",
+              "ctrader_demo_xau_rizan_fast_handoff",
+              "ctrader_demo_xau_dom_v191",
+              "ctrader_demo_xau_event_risk_v192",
+              "ctrader_demo_xau_supply_demand_atlas_v182",
+              "ctrader_demo_xau_v203_volatility_shock_guard",
+              "ctrader_demo_xau_v226_rizan_depth_map",
+              "ctrader_demo_xau_v229_depth_execution",
+              "ctrader_demo_xau_v229_child_executor",
+          )
+          support = tuple(worker for worker in critical if worker not in set(hot))
 
           def fetch(table, params):
               query = urllib.parse.urlencode(params, doseq=True, safe="(),.*:")
@@ -97,6 +109,16 @@ jobs:
               "select": "worker_name,observed_at,healthy,lag_seconds,details",
               "worker_name": "in.(" + ",".join(critical) + ")",
               "order": "observed_at.desc", "limit": str(len(critical)),
+          })
+          _, sizes["heartbeats_hot"] = fetch("runtime_heartbeats", {
+              "select": "worker_name,observed_at,healthy,lag_seconds,details",
+              "worker_name": "in.(" + ",".join(hot) + ")",
+              "order": "observed_at.desc", "limit": str(len(hot)),
+          })
+          _, sizes["heartbeats_support"] = fetch("runtime_heartbeats", {
+              "select": "worker_name,observed_at,healthy,lag_seconds,details",
+              "worker_name": "in.(" + ",".join(support) + ")",
+              "order": "observed_at.desc", "limit": str(len(support)),
           })
           _, sizes["macro"] = fetch("currency_macro_state", {
               "select": "currency,observed_at,rate_score,central_bank_score,inflation_score,growth_score,labour_score,yield_score,risk_score,positioning_score,macro_score,coverage,freshness_seconds",
@@ -183,12 +205,14 @@ jobs:
 
           fast_keys = ("signals","xau_signals","control","broker_account","broker_positions","execution_events_optimized","xau_geometry_events")
           cold_keys = ("latest_run","rankings","heartbeats_summary","macro","performance","outcomes")
-          decision_keys = ("heartbeats_critical","forecast","prepared","geometry","lifecycle")
+          hot_decision_keys = ("heartbeats_hot","forecast_latest_full","forecast_history_scalar","prepared_compact","geometry","lifecycle")
+          support_keys = ("heartbeats_support",)
           fast = sum(sizes[k] for k in fast_keys)
           cold = sum(sizes[k] for k in cold_keys)
-          decision = sum(sizes[k] for k in decision_keys)
+          decision = sum(sizes[k] for k in hot_decision_keys)
+          support_bytes = sum(sizes[k] for k in support_keys)
 
-          new_avg_per_minute = fast + decision + cold / 5.0
+          new_avg_per_minute = fast + decision + (cold + support_bytes) / 5.0
           baseline_old_per_minute = 24182256.0
           reduction = 1.0 - (new_avg_per_minute / baseline_old_per_minute)
 
@@ -220,12 +244,20 @@ jobs:
               "order": "observed_at.desc", "limit": "1",
           })
 
+          _, sizes["prepared_compact"] = fetch("broker_order_events", {
+              "select": "observed_at,event_type,code,message,prepared_plan:payload->prepared_plan,map_at:payload->forecast->>map_at",
+              "event_type": "eq.DEMO_XAU_RIZAN_PREPARED_PLAN",
+              "code": "eq.XAU_RIZAN_PATH_PREPARED_V1",
+              "order": "observed_at.desc", "limit": "1",
+          })
+
           print("FOREXRIZAN_EGRESS_CRITICAL_WORKER_BYTES " + json.dumps(per_worker, sort_keys=True))
           print("FOREXRIZAN_EGRESS_COMPONENT_BYTES " + json.dumps(sizes, sort_keys=True))
           print("FOREXRIZAN_EGRESS_BUDGET " + json.dumps({
               "fast_bytes_per_minute": fast,
               "decision_bytes_per_minute": decision,
               "cold_bytes_per_5_minutes": cold,
+              "support_heartbeat_bytes_per_5_minutes": support_bytes,
               "old_estimated_bytes_per_minute": round(baseline_old_per_minute, 1),
               "new_estimated_average_bytes_per_minute": round(new_avg_per_minute, 1),
               "estimated_dashboard_read_reduction_pct": round(reduction * 100.0, 2),
