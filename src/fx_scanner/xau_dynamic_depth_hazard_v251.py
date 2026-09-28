@@ -131,6 +131,31 @@ def build_dynamic_depth_hazard(
         current_index = min(9, max(0, int(depth * 10.0)))
         location_state = "INSIDE_ZONE"
 
+    if location_state == "AT_OR_BEYOND_DISTAL":
+        return {
+            "state": "DYNAMIC_DEPTH_HAZARD_AVAILABLE",
+            "direction": side,
+            "timeframe": timeframe,
+            "source_zone": zone,
+            "source_profile_touch_count": int(profile.get("touches") or 0),
+            "location_state": location_state,
+            "current_depth": float(depth),
+            "current_band_index": current_index,
+            "pressure_transition_state": transition_state,
+            "pressure_hard_block": hard_block,
+            "historical_prior_scope": prior_scope,
+            "retest_confirmation_required": retest_confirmation_required,
+            "zone_reuse": reuse,
+            "action": "WAIT_STRUCTURE_REMAP",
+            "execution_ready": False,
+            "recommended_band": {},
+            "future_bands": [],
+            "interpretation": (
+                "Price is at or beyond the distal edge of the selected source zone. "
+                "The zone must be structurally remapped before any entry window can exist."
+            ),
+        }
+
     enriched: list[dict[str, Any]] = []
     for raw in bands:
         lower = _f(raw.get("lower_depth"))
