@@ -102,6 +102,16 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_afic_prepared_plan_producer
 
+      - name: Refresh XAU Supply/Demand Atlas V182
+        id: refresh_xau_atlas
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_supply_demand_atlas_v182
+
+      - name: Refresh RIZAN Depth Map V226
+        id: refresh_rizan_depth_map
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v226_rizan_depth_map
+
       - name: Refresh XAU Level-II pressure transition
         id: refresh_xau_pressure
         continue-on-error: true
@@ -139,6 +149,8 @@ jobs:
           V24_OUTCOME: ${{ steps.produce_xau_v24_champion.outcome }}
           CANONICAL_OUTCOME: ${{ steps.produce_xau_m15_ema_smc_reclaim.outcome }}
           RIZAN_OUTCOME: ${{ steps.produce_xau_afic.outcome }}
+          ATLAS_OUTCOME: ${{ steps.refresh_xau_atlas.outcome }}
+          V226_OUTCOME: ${{ steps.refresh_rizan_depth_map.outcome }}
           PRESSURE_OUTCOME: ${{ steps.refresh_xau_pressure.outcome }}
           RIZAN_DEPTH_OUTCOME: ${{ steps.produce_rizan_depth.outcome }}
           RIZAN_CHILD_OUTCOME: ${{ steps.execute_rizan_children.outcome }}
@@ -152,6 +164,14 @@ jobs:
           fi
           if [ "${RIZAN_OUTCOME}" != "success" ]; then
             echo "XAU_EXECUTION_LANE_FAIL stage=RIZAN_RECONCILIATION outcome=${RIZAN_OUTCOME} safety=FAIL_CLOSED"
+            failed=1
+          fi
+          if [ "${ATLAS_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_FAIL stage=SUPPLY_DEMAND_ATLAS_V182 outcome=${ATLAS_OUTCOME} safety=FAIL_CLOSED"
+            failed=1
+          fi
+          if [ "${V226_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_FAIL stage=RIZAN_DEPTH_MAP_V226 outcome=${V226_OUTCOME} safety=FAIL_CLOSED"
             failed=1
           fi
           if [ "${PRESSURE_OUTCOME}" != "success" ]; then
