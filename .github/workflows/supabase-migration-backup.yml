@@ -1,0 +1,144 @@
+name: RIZAN Supabase Migration Backup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rizan-supabase-migration-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OLD_DB_URL: ${{ secrets.OLD_SUPABASE_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.MIGRATION_BACKUP_PASSPHRASE }}
+      SOURCE_PROJECT_REF: fotzcxjeypmjldhvfskt
+      SUPABASE_CLI_VERSION: 2.118.0
+
+    steps:
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          test -n "${OLD_DB_URL:-}" || { echo "Missing GitHub Secret: OLD_SUPABASE_DB_URL"; exit 1; }
+          test -n "${BACKUP_PASSPHRASE:-}" || { echo "Missing GitHub Secret: MIGRATION_BACKUP_PASSPHRASE"; exit 1; }
+          case "$OLD_DB_URL" in
+            postgresql://*|postgres://*) ;;
+            *) echo "OLD_SUPABASE_DB_URL must be a PostgreSQL connection string."; exit 1 ;;
+          esac
+          if [ "${#BACKUP_PASSPHRASE}" -lt 20 ]; then
+            echo "MIGRATION_BACKUP_PASSPHRASE must be at least 20 characters."
+            exit 1
+          fi
+
+      - name: Verify pinned Supabase CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes "supabase@${SUPABASE_CLI_VERSION}" --version
+
+      - name: Dump old Supabase database
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+
+          WORKDIR="$RUNNER_TEMP/rizan-supabase-backup"
+          mkdir -p "$WORKDIR"
+          chmod 700 "$WORKDIR"
+          cd "$WORKDIR"
+
+          npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
+            --db-url "$OLD_DB_URL" \
+            -f roles.sql \
+            --role-only
+
+          npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
+            --db-url "$OLD_DB_URL" \
+            -f schema.sql
+
+          npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
+            --db-url "$OLD_DB_URL" \
+            -f data.sql \
+            --use-copy \
+            --data-only \
+            -x "storage.buckets_vectors" \
+            -x "storage.vector_indexes"
+
+          # Preserve Supabase CLI migration history explicitly.
+          npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
+            --db-url "$OLD_DB_URL" \
+            -f history_schema.sql \
+            --schema supabase_migrations
+
+          npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
+            --db-url "$OLD_DB_URL" \
+            -f history_data.sql \
+            --use-copy \
+            --data-only \
+            --schema supabase_migrations
+
+          test -s roles.sql
+          test -s schema.sql
+          test -s data.sql
+          test -s history_schema.sql
+          test -s history_data.sql
+
+          sha256sum roles.sql schema.sql data.sql history_schema.sql history_data.sql > dump-files.sha256
+
+          cat > manifest.txt <<EOF
+          project_ref=${SOURCE_PROJECT_REF}
+          head_sha=${GITHUB_SHA}
+          workflow_run_id=${GITHUB_RUN_ID}
+          supabase_cli_version=${SUPABASE_CLI_VERSION}
+          created_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          encryption=AES-256-CBC/PBKDF2/SHA-256
+          plaintext_uploaded=false
+          EOF
+
+          tar -czf rizan-supabase-old-backup.tar.gz \
+            roles.sql schema.sql data.sql history_schema.sql history_data.sql \
+            dump-files.sha256 manifest.txt
+
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -md sha256 \
+            -in rizan-supabase-old-backup.tar.gz \
+            -out rizan-supabase-old-backup.tar.gz.enc \
+            -pass env:BACKUP_PASSPHRASE
+
+          sha256sum rizan-supabase-old-backup.tar.gz.enc > rizan-supabase-old-backup.tar.gz.enc.sha256
+          chmod 600 rizan-supabase-old-backup.tar.gz.enc rizan-supabase-old-backup.tar.gz.enc.sha256
+
+          # Do not leave plaintext dumps for artifact upload.
+          rm -f roles.sql schema.sql data.sql history_schema.sql history_data.sql \
+            dump-files.sha256 manifest.txt rizan-supabase-old-backup.tar.gz
+
+          mkdir -p "$RUNNER_TEMP/rizan-encrypted-artifact"
+          mv rizan-supabase-old-backup.tar.gz.enc* "$RUNNER_TEMP/rizan-encrypted-artifact/"
+
+      - name: Upload encrypted migration artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rizan-supabase-old-backup-${{ github.run_id }}
+          path: ${{ runner.temp }}/rizan-encrypted-artifact/
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+
+      - name: Migration backup summary
+        shell: bash
+        run: |
+          {
+            echo "### RIZAN Supabase migration backup"
+            echo
+            echo "- Source project: `fotzcxjeypmjldhvfskt`"
+            echo "- Artifact contains only encrypted backup material."
+            echo "- Plaintext SQL dumps are not uploaded."
+            echo "- Retention: 3 days."
+            echo "- Keep `MIGRATION_BACKUP_PASSPHRASE` unchanged until restore is complete."
+          } >> "$GITHUB_STEP_SUMMARY"
