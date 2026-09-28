@@ -54,9 +54,13 @@ def test_fetch_bridge_accepts_json_without_ctrader_dependency():
         def read(self):
             return body
 
-    def opener(_request, timeout):
+    seen = {}
+
+    def opener(request, timeout):
         assert timeout == 8.0
+        seen["url"] = request.full_url
         return Response()
 
     out = fetch_snapshot("https://example.invalid/snapshot.json", now=now, opener=opener)
     assert out["bridge"]["fresh"] is True
+    assert "_rizan=" in seen["url"]
