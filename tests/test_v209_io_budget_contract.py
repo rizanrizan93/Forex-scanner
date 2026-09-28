@@ -12,9 +12,14 @@ def test_v209_dashboard_uses_60_second_cache_for_user_facing_state() -> None:
     assert text.count("@st.cache_data(ttl=60") >= 2
     assert "def _load_backend_fast_snapshot" in text
     assert "def _load_backend_slow_snapshot" in text
+    assert "def _load_backend_decision_snapshot" in text
+    assert "@st.cache_data(ttl=300" in text
     assert '"signals": list(reader.latest_signals())' in text
     assert '"broker_account": broker_account' in text
-    assert '"heartbeats": list(reader.heartbeats())' in text
+    assert '"heartbeats": list(reader.heartbeat_summaries())' in text
+    assert "reader.heartbeats_for_workers" in text
+    assert "def _load_full_heartbeat_details" in text
+    assert '"xau_geometry_events": list(reader.latest_xau_geometry_events())' in text
     assert "merged.update(_load_backend_fast_snapshot" in text
 
 
