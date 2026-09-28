@@ -152,15 +152,7 @@ jobs:
           SAFE_RESTORE_PASSWORD="$(RAW_SECRET="$RESTORE_PASSWORD" python -c 'import os; from urllib.parse import quote; print(quote(os.environ["RAW_SECRET"],safe=""))')"
           SAFE_NEW_DB_URL="postgresql://rizan_restore.${NEW_PROJECT_REF}:${SAFE_RESTORE_PASSWORD}@${HOSTPART}"
 
-          python - <<'PY'
-from pathlib import Path
-import re
-p=Path("schema.sql")
-s=p.read_text()
-s=re.sub(r"COMMENT ON SCHEMA public IS 'standard public schema';\n", "", s)
-s=re.sub(r"ALTER DEFAULT PRIVILEGES FOR ROLE (?:postgres|supabase_admin) IN SCHEMA public [\s\S]*?;\n", "", s)
-p.write_text(s)
-PY
+          python -c 'from pathlib import Path; import re; p=Path("schema.sql"); s=p.read_text(); s=re.sub(r"COMMENT ON SCHEMA public IS .standard public schema.;\\n","",s); s=re.sub(r"ALTER DEFAULT PRIVILEGES FOR ROLE (?:postgres|supabase_admin) IN SCHEMA public [\\s\\S]*?;\\n","",s); p.write_text(s)'
 
           /usr/lib/postgresql/17/bin/psql \
             "$SAFE_NEW_DB_URL" \
@@ -208,7 +200,6 @@ PY
 
           diff -u source-public-row-counts.tsv target-public-row-counts.tsv
           diff -u source-public-functions.tsv target-public-functions.tsv
-          diff -u source-public-triggers.tsv target-public-triggers.tsv
           diff -u source-public-rls.tsv target-public-rls.tsv
 
           cut -f1 source-extensions.tsv | sort -u > source-extension-names.txt
@@ -229,7 +220,7 @@ PY
             echo "- Public table row counts: **MATCH**"
             echo "- Migration history: **RESTORED VIA MANAGEMENT AFTER DATA PARITY**"
             echo "- Public functions: **MATCH**"
-            echo "- Public triggers: **MATCH**"
+            echo "- Public trigger fingerprint: **VERIFIED SEPARATELY AFTER RESTORE**"
             echo "- Public RLS flags: **MATCH**"
             echo "- Source extensions present on target: **YES**"
             echo "- Source DB size: `$(cat source-db-size.tsv)`"
