@@ -192,6 +192,35 @@ jobs:
           baseline_old_per_minute = 24182256.0
           reduction = 1.0 - (new_avg_per_minute / baseline_old_per_minute)
 
+          per_worker = {}
+          for worker in critical:
+              _, worker_bytes = fetch("runtime_heartbeats", {
+                  "select": "worker_name,observed_at,healthy,lag_seconds,details",
+                  "worker_name": f"eq.{worker}",
+                  "limit": "1",
+              })
+              per_worker[worker] = worker_bytes
+
+          _, sizes["forecast_latest_full"] = fetch("broker_order_events", {
+              "select": "observed_at,event_type,code,message,payload",
+              "event_type": "eq.DEMO_XAU_RIZAN_FORECAST_STATE",
+              "code": "eq.XAU_RIZAN_PATH_STATE_V1",
+              "order": "observed_at.desc", "limit": "1",
+          })
+          _, sizes["forecast_history_scalar"] = fetch("broker_order_events", {
+              "select": "observed_at,map_at:payload->forecast->>map_at,state:payload->forecast->>state,direction:payload->forecast->>continuation_direction,zone_low:payload->forecast->zone->>low,zone_high:payload->forecast->zone->>high,first_touch_at:payload->forecast->>first_touch_at,confirm_at:payload->forecast->>confirm_at,invalidated_at:payload->forecast->>invalidated_at",
+              "event_type": "eq.DEMO_XAU_RIZAN_FORECAST_STATE",
+              "code": "eq.XAU_RIZAN_PATH_STATE_V1",
+              "order": "observed_at.desc", "limit": "12",
+          })
+          _, sizes["prepared_latest_full"] = fetch("broker_order_events", {
+              "select": "observed_at,event_type,code,message,payload",
+              "event_type": "eq.DEMO_XAU_RIZAN_PREPARED_PLAN",
+              "code": "eq.XAU_RIZAN_PATH_PREPARED_V1",
+              "order": "observed_at.desc", "limit": "1",
+          })
+
+          print("FOREXRIZAN_EGRESS_CRITICAL_WORKER_BYTES " + json.dumps(per_worker, sort_keys=True))
           print("FOREXRIZAN_EGRESS_COMPONENT_BYTES " + json.dumps(sizes, sort_keys=True))
           print("FOREXRIZAN_EGRESS_BUDGET " + json.dumps({
               "fast_bytes_per_minute": fast,
