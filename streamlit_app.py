@@ -1477,8 +1477,8 @@ except Exception as exc:
     policy_error = f"{type(exc).__name__}: {exc}"
 
 supabase_url = _secret("SUPABASE_URL")
-supabase_secret = _secret("SUPABASE_SECRET_KEY") or _secret(
-    "SUPABASE_SERVICE_ROLE_KEY"
+supabase_secret = _secret("SUPABASE_SERVICE_ROLE_KEY") or _secret(
+    "SUPABASE_SECRET_KEY"
 )
 backend_configured = bool(supabase_url and supabase_secret)
 
