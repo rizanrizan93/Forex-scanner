@@ -32,6 +32,8 @@ jobs:
       CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
       CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
       CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +49,44 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-research-cloud.txt
+
+      - name: Recover encrypted durable cTrader token
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            "$SUPABASE_URL/functions/v1/ctrader-token-vault-recovery-v1" \
+            -H "Authorization: Bearer $SUPABASE_SECRET_KEY" \
+            -H "apikey: $SUPABASE_SECRET_KEY" \
+            -H "Accept: application/json" \
+            -o /tmp/ctrader-token.enc.json
+
+          python - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+          associated = b"forex-scanner/ctrader-token-state/v1"
+          encrypted = json.load(open("/tmp/ctrader-token.enc.json", "r", encoding="utf-8"))
+          key = hashlib.sha256(
+              associated + b"\\x00" + os.environ["CTRADER_CLIENT_SECRET"].encode("utf-8")
+          ).digest()
+          plaintext = AESGCM(key).decrypt(
+              base64.b64decode(encrypted["nonce_b64"]),
+              base64.b64decode(encrypted["ciphertext_b64"]),
+              associated,
+          )
+          tokens = json.loads(plaintext.decode("utf-8"))
+          access = str(tokens["access_token"])
+          refresh = str(tokens["refresh_token"])
+          print(f"::add-mask::{access}")
+          print(f"::add-mask::{refresh}")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+              handle.write(f"CTRADER_ACCESS_TOKEN={access}\\n")
+              handle.write(f"CTRADER_REFRESH_TOKEN={refresh}\\n")
+          PY
 
       - name: Configure runtime snapshot branch
         run: |
