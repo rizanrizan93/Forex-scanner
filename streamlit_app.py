@@ -42,22 +42,33 @@ from fx_scanner.xau_standalone_bridge_v253 import (
 UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 
-RIZAN_DASHBOARD_CRITICAL_HEARTBEATS = (
+RIZAN_DASHBOARD_HOT_HEARTBEATS = (
+    # 60-second decision/admission path. Keep V182 + V226 fresh because V240
+    # rebuilds the canonical parent ladder from both layers.
     "ctrader_demo_xau_rizan_prepared_plan_producer",
     "ctrader_demo_xau_rizan_fast_handoff",
-    "ctrader_demo_xau_afic_prepared_plan_producer",
-    "ctrader_demo_xau_afic_fast_handoff",
     "ctrader_demo_xau_dom_v191",
     "ctrader_demo_xau_event_risk_v192",
-    "ctrader_demo_xau_premap_candidate_v181",
     "ctrader_demo_xau_supply_demand_atlas_v182",
+    "ctrader_demo_xau_v203_volatility_shock_guard",
+    "ctrader_demo_xau_v226_rizan_depth_map",
+    "ctrader_demo_xau_v229_depth_execution",
+    "ctrader_demo_xau_v229_child_executor",
+)
+
+RIZAN_DASHBOARD_SUPPORT_HEARTBEATS = (
+    # Full details remain available exactly as before, but these evidence/research
+    # layers do not authorize a broker order and therefore use the 5-minute
+    # observability budget.
+    "ctrader_demo_xau_afic_prepared_plan_producer",
+    "ctrader_demo_xau_afic_fast_handoff",
+    "ctrader_demo_xau_premap_candidate_v181",
     "ctrader_demo_xau_supply_demand_prospective_v184",
     "ctrader_xau_supply_demand_reaction_v183",
     "ctrader_xau_supply_demand_timeframe_v185",
     "ctrader_demo_xau_v196_shadow_evidence",
     "ctrader_demo_xau_v198_evidence_analytics",
     "ctrader_demo_xau_v201_reaction_ladder",
-    "ctrader_demo_xau_v203_volatility_shock_guard",
     "ctrader_demo_xau_v212_zone_reaction_probability",
     "ctrader_demo_xau_v213_post_zone_path",
     "ctrader_demo_xau_v214_pocket_lifecycle",
@@ -67,10 +78,7 @@ RIZAN_DASHBOARD_CRITICAL_HEARTBEATS = (
     "ctrader_demo_xau_v222_m5_pocket_quality",
     "ctrader_demo_xau_v223_m5_pocket_cluster_selector",
     "ctrader_demo_xau_v224_primary_pocket_prospective",
-    "ctrader_demo_xau_v226_rizan_depth_map",
     "ctrader_demo_xau_v227_depth_map_prospective",
-    "ctrader_demo_xau_v229_depth_execution",
-    "ctrader_demo_xau_v229_child_executor",
     "ctrader_xau_expected_move_envelope_v170",
     "ctrader_xau_forecast_ensemble_v171",
     "ctrader_xau_htf_strategic_regime_v180",
@@ -178,12 +186,24 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
     reader = SupabaseDashboardReader(client)
     return {
         "critical_heartbeats": list(
-            reader.heartbeats_for_workers(list(RIZAN_DASHBOARD_CRITICAL_HEARTBEATS))
+            reader.heartbeats_for_workers(list(RIZAN_DASHBOARD_HOT_HEARTBEATS))
         ),
         "afic_forecast_states": list(reader.latest_afic_forecast_states()),
         "afic_prepared_plans": list(reader.latest_afic_prepared_plans()),
         "afic_execution_geometry": list(reader.latest_afic_execution_geometry()),
         "xau_prepared_plan_lifecycle": list(reader.latest_xau_prepared_plan_lifecycle()),
+    }
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _load_backend_support_snapshot(url: str, secret_key: str) -> dict[str, Any]:
+    """Full detail for non-authoritative research/evidence workers."""
+    client = _supabase_client(url, secret_key)
+    reader = SupabaseDashboardReader(client)
+    return {
+        "support_heartbeats": list(
+            reader.heartbeats_for_workers(list(RIZAN_DASHBOARD_SUPPORT_HEARTBEATS))
+        )
     }
 
 
@@ -241,10 +261,15 @@ def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
     # Operational/decision state remains 60s. Heavy history/observability is
     # cached for five minutes to reduce Supabase data-plane egress.
     merged = dict(_load_backend_slow_snapshot(url, secret_key))
+    support = dict(_load_backend_support_snapshot(url, secret_key))
     decision = dict(_load_backend_decision_snapshot(url, secret_key))
+    support_and_summary = _merge_heartbeat_rows(
+        list(support.get("support_heartbeats", []) or []),
+        list(merged.get("heartbeats", []) or []),
+    )
     merged["heartbeats"] = _merge_heartbeat_rows(
         list(decision.pop("critical_heartbeats", []) or []),
-        list(merged.get("heartbeats", []) or []),
+        support_and_summary,
     )
     merged.update(decision)
     merged.update(_load_backend_fast_snapshot(url, secret_key))
@@ -257,6 +282,7 @@ def _clear_backend_snapshot_cache(*, include_slow: bool) -> None:
     _load_backend_decision_snapshot.clear()
     if include_slow:
         _load_backend_slow_snapshot.clear()
+        _load_backend_support_snapshot.clear()
         _load_full_heartbeat_details.clear()
 
 
