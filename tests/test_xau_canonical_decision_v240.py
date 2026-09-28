@@ -200,3 +200,72 @@ def test_v2401_does_not_invent_reversal_probability_without_v212_evidence() -> N
         zone_probabilities=[],
     )
     assert state["primary_reversal_watch"] == {}
+
+
+def test_v240_local_structure_supersedes_distant_v226_candidate_fail_closed() -> None:
+    v226 = {
+        "focus_direction": "SHORT",
+        "depth_entry_candidate": {
+            "direction": "SHORT",
+            "entry_low": 4357.64,
+            "entry_high": 4359.52,
+            "entry_reference": 4358.40,
+            "source_layer": "M15_NESTED_LOCATOR",
+            "display_status": "PREPARE_ONLY_FRESH_FIRST_TOUCH",
+            "pre_touch_execution_eligible": True,
+            "confirmation_execution_eligible": True,
+            "calibrated_fresh_first_touch": True,
+            "historical_context": {},
+        },
+        "short": {
+            "h4": {
+                "zone": {
+                    "zone_id": "far-h4",
+                    "direction": "SHORT",
+                    "low": 4357.0,
+                    "high": 4365.0,
+                    "atr_points": 30.0,
+                }
+            }
+        },
+        "four_order_ladder": {"slots": []},
+    }
+    atlas = {
+        "zones": [
+            {
+                "zone_id": "local-h1-supply",
+                "timeframe": "H1",
+                "direction": "SHORT",
+                "low": 4136.55,
+                "high": 4160.48,
+                "proximal": 4136.55,
+                "research_score": 67.99,
+                "lifecycle": {
+                    "active": True,
+                    "freshness": "PARTIALLY_MITIGATED",
+                    "touch_count": 2,
+                },
+            }
+        ],
+        "path_map": {},
+        "chart_bars_m15": [],
+    }
+
+    state = build_canonical_xau_decision(
+        v226_evaluation=v226,
+        atlas_evaluation=atlas,
+        price_now=4128.37,
+        path_direction="SHORT",
+    )
+
+    assert state["state"] == "LOCAL_REMAP_WAIT"
+    assert state["authority"] == "LOCAL_STRUCTURE_WATCH_NO_V229_AUTHORITY"
+    assert state["source_layer"] == "ATLAS_LOCAL_H1_WATCH"
+    assert state["entry_low"] == 4136.55
+    assert state["entry_high"] == 4160.48
+    assert state["entry_reference"] == 4136.55
+    assert state["sl"] is None
+    assert state["tp1"] is None
+    assert state["tp2"] is None
+    assert state["remap_reasons"] == ["LOCAL_STRUCTURE_AHEAD_OF_V226_CANDIDATE"]
+    assert state["local_structure_override"]["zone_id"] == "local-h1-supply"
