@@ -22,6 +22,8 @@ jobs:
       OLD_DB_URL: ${{ secrets.OLD_SUPABASE_DB_URL }}
       BACKUP_PASSPHRASE: ${{ secrets.MIGRATION_BACKUP_PASSPHRASE }}
       SOURCE_PROJECT_REF: fotzcxjeypmjldhvfskt
+      OLD_SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      OLD_SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_CLI_VERSION: 2.118.0
 
     steps:
@@ -61,19 +63,46 @@ jobs:
 
           # Normalize the userinfo using the final @ as the host separator.
           SAFE_OLD_DB_URL="$(RAW_DB_URL="$OLD_DB_URL" PROJECT_REF="$SOURCE_PROJECT_REF" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); ref=os.environ["PROJECT_REF"]; scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); username=("postgres."+ref) if ("pooler.supabase.com" in hostpart and username=="postgres") else username; safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
-          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
+          ACTIVE_DB_URL="$SAFE_OLD_DB_URL"
+          MIGRATION_ROLE_ACTIVE=0
+
+          if ! psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null 2>&1; then
+            test -n "${OLD_SUPABASE_SECRET_KEY:-}" || { echo "Old DB password failed and SUPABASE_SECRET_KEY is unavailable."; exit 1; }
+
+            RPC_BODY="$(jq -nc --arg a setup --arg p "$BACKUP_PASSPHRASE" '{p_action:$a,p_password:$p}')"
+            RPC_STATUS="$(curl -sS -o "$RUNNER_TEMP/rizan-role-rpc.json" -w "%{http_code}" \
+              -X POST "$OLD_SUPABASE_URL/rest/v1/rpc/rizan_migration_role_v1" \
+              -H "apikey: $OLD_SUPABASE_SECRET_KEY" \
+              -H "Authorization: Bearer $OLD_SUPABASE_SECRET_KEY" \
+              -H "Content-Type: application/json" \
+              --data "$RPC_BODY")"
+            if [ "$RPC_STATUS" != "200" ]; then
+              echo "Temporary migration-role RPC failed with HTTP $RPC_STATUS."
+              exit 1
+            fi
+
+            HOSTPART="${SAFE_OLD_DB_URL##*@}"
+            SAFE_RUNTIME_PASSWORD="$(RAW_SECRET="$BACKUP_PASSPHRASE" python -c 'import os; from urllib.parse import quote; print(quote(os.environ["RAW_SECRET"],safe=""))')"
+            ACTIVE_DB_URL="postgresql://rizan_migration.${SOURCE_PROJECT_REF}:${SAFE_RUNTIME_PASSWORD}@${HOSTPART}"
+            psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
+            MIGRATION_ROLE_ACTIVE=1
+          fi
+
+          if [ "$MIGRATION_ROLE_ACTIVE" = "1" ]; then
+            printf '%s\n' '-- Built-in Supabase roles are recreated by the destination project.' > roles.sql
+          else
+            npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
+              --db-url "$ACTIVE_DB_URL" \
+              -f roles.sql \
+              --role-only
+          fi
 
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$SAFE_OLD_DB_URL" \
-            -f roles.sql \
-            --role-only
-
-          npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$SAFE_OLD_DB_URL" \
+            --db-url "$ACTIVE_DB_URL" \
             -f schema.sql
 
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$SAFE_OLD_DB_URL" \
+            --db-url "$ACTIVE_DB_URL" \
             -f data.sql \
             --use-copy \
             --data-only \
@@ -82,12 +111,12 @@ jobs:
 
           # Preserve Supabase CLI migration history explicitly.
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$SAFE_OLD_DB_URL" \
+            --db-url "$ACTIVE_DB_URL" \
             -f history_schema.sql \
             --schema supabase_migrations
 
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$SAFE_OLD_DB_URL" \
+            --db-url "$ACTIVE_DB_URL" \
             -f history_data.sql \
             --use-copy \
             --data-only \
@@ -100,32 +129,32 @@ jobs:
           test -s history_data.sql
 
           # Exact public-table row-count fingerprint for post-restore parity.
-          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -Atc \
+          psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -Atc \
             "select format('select %L as table_name, count(*)::bigint as row_count from %I.%I;', schemaname||'.'||tablename, schemaname, tablename) from pg_tables where schemaname='public' order by tablename;" \
-            | psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' \
+            | psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' \
             > source-public-row-counts.tsv
 
-          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select version, name from supabase_migrations.schema_migrations order by version;" \
             > source-migrations.tsv
 
-          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select n.nspname, p.proname, pg_get_function_identity_arguments(p.oid), p.prosecdef from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' order by 1,2,3;" \
             > source-public-functions.tsv
 
-          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select event_object_schema, event_object_table, trigger_name, action_timing, event_manipulation from information_schema.triggers where event_object_schema='public' order by 1,2,3,5;" \
             > source-public-triggers.tsv
 
-          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select schemaname, tablename, rowsecurity from pg_tables where schemaname='public' order by tablename;" \
             > source-public-rls.tsv
 
-          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select e.extname, e.extversion, n.nspname from pg_extension e join pg_namespace n on n.oid=e.extnamespace order by e.extname;" \
             > source-extensions.tsv
 
-          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$ACTIVE_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select pg_database_size(current_database()), pg_size_pretty(pg_database_size(current_database()));" \
             > source-db-size.tsv
 
@@ -177,6 +206,21 @@ jobs:
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
+
+      - name: Disable temporary migration role
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -n "${OLD_SUPABASE_SECRET_KEY:-}" ]; then
+            RPC_BODY="$(jq -nc --arg a cleanup '{p_action:$a,p_password:null}')"
+            curl -sS -o /dev/null \
+              -X POST "$OLD_SUPABASE_URL/rest/v1/rpc/rizan_migration_role_v1" \
+              -H "apikey: $OLD_SUPABASE_SECRET_KEY" \
+              -H "Authorization: Bearer $OLD_SUPABASE_SECRET_KEY" \
+              -H "Content-Type: application/json" \
+              --data "$RPC_BODY" || true
+          fi
 
       - name: Migration backup summary
         shell: bash
