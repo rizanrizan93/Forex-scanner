@@ -203,19 +203,6 @@ jobs:
               "order": "observed_at.desc", "limit": "30",
           })
 
-          fast_keys = ("signals","xau_signals","control","broker_account","broker_positions","execution_events_optimized","xau_geometry_events")
-          cold_keys = ("latest_run","rankings","heartbeats_summary","macro","performance","outcomes")
-          hot_decision_keys = ("heartbeats_hot","forecast_latest_full","forecast_history_scalar","prepared_compact","geometry","lifecycle")
-          support_keys = ("heartbeats_support",)
-          fast = sum(sizes[k] for k in fast_keys)
-          cold = sum(sizes[k] for k in cold_keys)
-          decision = sum(sizes[k] for k in hot_decision_keys)
-          support_bytes = sum(sizes[k] for k in support_keys)
-
-          new_avg_per_minute = fast + decision + (cold + support_bytes) / 5.0
-          baseline_old_per_minute = 24182256.0
-          reduction = 1.0 - (new_avg_per_minute / baseline_old_per_minute)
-
           per_worker = {}
           for worker in critical:
               _, worker_bytes = fetch("runtime_heartbeats", {
@@ -250,6 +237,19 @@ jobs:
               "code": "eq.XAU_RIZAN_PATH_PREPARED_V1",
               "order": "observed_at.desc", "limit": "1",
           })
+
+          fast_keys = ("signals","xau_signals","control","broker_account","broker_positions","execution_events_optimized","xau_geometry_events")
+          cold_keys = ("latest_run","rankings","heartbeats_summary","macro","performance","outcomes")
+          hot_decision_keys = ("heartbeats_hot","forecast_latest_full","forecast_history_scalar","prepared_compact","geometry","lifecycle")
+          support_keys = ("heartbeats_support",)
+          fast = sum(sizes[k] for k in fast_keys)
+          cold = sum(sizes[k] for k in cold_keys)
+          decision = sum(sizes[k] for k in hot_decision_keys)
+          support_bytes = sum(sizes[k] for k in support_keys)
+
+          new_avg_per_minute = fast + decision + (cold + support_bytes) / 5.0
+          baseline_old_per_minute = 24182256.0
+          reduction = 1.0 - (new_avg_per_minute / baseline_old_per_minute)
 
           print("FOREXRIZAN_EGRESS_CRITICAL_WORKER_BYTES " + json.dumps(per_worker, sort_keys=True))
           print("FOREXRIZAN_EGRESS_COMPONENT_BYTES " + json.dumps(sizes, sort_keys=True))
