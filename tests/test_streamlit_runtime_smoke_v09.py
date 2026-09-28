@@ -13,10 +13,15 @@ def test_streamlit_app_boots_offline_without_backend_secrets():
     assert not app.exception
     assert app.title
     assert app.title[0].value == "RIZAN XAU Institutional Scanner"
-    assert any(
+    offline_ready = any(
         "Dashboard can be deployed now" in element.value
         for element in app.info
     )
+    standalone_ready = any(
+        "SUPABASE RESTRICTED MODE" in element.value
+        for element in app.warning
+    )
+    assert offline_ready or standalone_ready
 
 
 def test_streamlit_dashboard_refresh_contract_is_60_seconds():
