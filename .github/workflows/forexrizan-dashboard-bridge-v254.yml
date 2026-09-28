@@ -1,0 +1,78 @@
+name: ForexRizan Dashboard Bridge V254
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "3 * * * 0-5"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/fx_scanner/dashboard.py"
+      - "src/fx_scanner/xau_dashboard_bridge_v254.py"
+      - ".github/workflows/forexrizan-dashboard-bridge-v254.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: forexrizan-dashboard-bridge-v254
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 78
+    env:
+      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dashboard bridge runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+
+      - name: Configure snapshot publisher
+        run: |
+          git config user.name "RIZAN Dashboard Runtime"
+          git config user.email "actions@users.noreply.github.com"
+
+      - name: Publish continuous one-minute dashboard snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 65); do
+            started="$(date +%s)"
+            python -m fx_scanner.xau_dashboard_bridge_v254               --output runtime/xau_dashboard_snapshot.json
+
+            git add -f runtime/xau_dashboard_snapshot.json
+            if git diff --cached --quiet; then
+              :
+            elif [ "$i" -eq 1 ]; then
+              git commit -m "runtime: refresh ForexRizan dashboard snapshot"
+            else
+              git commit --amend --no-edit
+            fi
+
+            if git rev-parse --verify HEAD >/dev/null 2>&1; then
+              git push --force origin HEAD:dashboard-snapshots
+            fi
+
+            if [ "$i" -lt 65 ]; then
+              elapsed="$(( $(date +%s) - started ))"
+              sleep_for="$(( 60 - elapsed ))"
+              if [ "$sleep_for" -gt 0 ]; then
+                sleep "$sleep_for"
+              fi
+            fi
+          done
