@@ -129,10 +129,17 @@ class SupabaseDashboardReader:
         return tuple(self._rows(response))
 
     def heartbeats(self) -> tuple[dict[str, Any], ...]:
+        """Return compact observability rows.
+
+        Full heartbeat details are intentionally reserved for
+        :meth:`heartbeats_for_workers`, which is bounded to the decision-critical
+        worker set. This prevents the System tab from retransmitting multi-megabyte
+        diagnostic JSON on every dashboard refresh.
+        """
         try:
             response = (
                 self.client.table("runtime_heartbeats")
-                .select("worker_name,observed_at,healthy,lag_seconds,details")
+                .select("worker_name,observed_at,healthy,lag_seconds")
                 .order("observed_at", desc=True)
                 .execute()
             )
@@ -514,14 +521,23 @@ class SupabaseDashboardReader:
             ) from exc
         return tuple(self._rows(response))
 
-    def latest_xau_execution_events(self, *, raw_limit: int = 60) -> tuple[dict[str, Any], ...]:
-        """Return lightweight XAU broker timeline events.
+    def latest_xau_execution_events(self) -> tuple[dict[str, Any], ...]:
+        """Return only broker/execution events needed by the XAU dashboard.
 
-        Geometry is fetched through latest_xau_geometry_events(). This query
-        deliberately extracts only the JSON scalars rendered by the dashboard,
-        avoiding multi-megabyte payload retransmission every minute.
+        The previous implementation downloaded the newest 120 broker events
+        across every event family and filtered locally. Some shadow/context
+        payloads are very large, so that approach dominated dashboard egress.
+        This version filters event families in PostgREST first and keeps the
+        same user-facing timeline/admission semantics.
         """
-        event_types = (
+        geometry_codes = (
+            "XAU_RIZAN_PATH_EXECUTION_V1",
+            "XAU_RIZAN_DEPTH_EXECUTION_V1",
+            "XAU_AFIC_PATH_EXECUTION_V1",
+            "XAU_M15_EMA_SMC_RECLAIM_V1",
+            "XAU_V24_CHAMPION_DEMO_V1",
+        )
+        execution_events = (
             "ORDER_ACCEPTED",
             "POSITION_PROTECTION_VERIFIED",
             "POSITION_PROTECTION_FAILED",
@@ -530,67 +546,57 @@ class SupabaseDashboardReader:
             "REVALIDATION_PASS",
             "REVALIDATION_BLOCK",
         )
+        rows: list[dict[str, Any]] = []
         fields = (
-            "observed_at,event_type,code,accepted,message,signal_key,broker_order_id,"
-            "symbol:payload->>symbol,strategy_id:payload->>strategy_id,"
-            "executed_price:payload->>executed_price,"
-            "requested_entry:payload->>requested_entry,"
-            "planned_entry:payload->>planned_entry,"
-            "attached_stop_loss:payload->>attached_stop_loss,"
-            "requested_stop_loss:payload->>requested_stop_loss,"
-            "planned_sl:payload->>planned_sl,"
-            "attached_take_profit:payload->>attached_take_profit,"
-            "requested_take_profit:payload->>requested_take_profit,"
-            "planned_tp2:payload->>planned_tp2"
+            "observed_at,event_type,code,accepted,message,signal_key,"
+            "broker_order_id,payload"
         )
         try:
-            response = (
+            geometry_response = (
                 self.client.table("broker_order_events")
                 .select(fields)
-                .in_("event_type", list(event_types))
+                .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
+                .in_("code", list(geometry_codes))
                 .order("observed_at", desc=True)
-                .limit(int(raw_limit))
+                .limit(24)
                 .execute()
             )
+            rows.extend(self._rows(geometry_response))
+
+            execution_response = (
+                self.client.table("broker_order_events")
+                .select(fields)
+                .in_("event_type", list(execution_events))
+                .order("observed_at", desc=True)
+                .limit(60)
+                .execute()
+            )
+            for row in self._rows(execution_response):
+                payload = dict(row.get("payload") or {})
+                symbol = str(payload.get("symbol") or "").upper().strip()
+                code = str(row.get("code") or "")
+                if symbol == "XAUUSD" or code in geometry_codes:
+                    rows.append(row)
         except Exception as exc:
             raise DashboardReadError(f"XAU execution-event read failed: {exc}") from exc
 
+        rows.sort(key=lambda row: str(row.get("observed_at") or ""), reverse=True)
         selected: list[dict[str, Any]] = []
-        xau_codes = {
-            "XAU_RIZAN_DEPTH_EXECUTION_V1",
-            "XAU_RIZAN_PATH_EXECUTION_V1",
-            "XAU_AFIC_PATH_EXECUTION_V1",
-            "XAU_M15_EMA_SMC_RECLAIM_V1",
-            "XAU_V24_CHAMPION_DEMO_V1",
-        }
-        payload_keys = (
-            "symbol",
-            "strategy_id",
-            "executed_price",
-            "requested_entry",
-            "planned_entry",
-            "attached_stop_loss",
-            "requested_stop_loss",
-            "planned_sl",
-            "attached_take_profit",
-            "requested_take_profit",
-            "planned_tp2",
-        )
-        for raw in self._rows(response):
-            row = dict(raw)
-            symbol = str(row.get("symbol") or "").upper().strip()
-            code = str(row.get("code") or "")
-            if symbol != "XAUUSD" and code not in xau_codes:
+        seen: set[tuple[str, str, str, str]] = set()
+        for row in rows:
+            identity = (
+                str(row.get("observed_at") or ""),
+                str(row.get("event_type") or ""),
+                str(row.get("signal_key") or ""),
+                str(row.get("broker_order_id") or ""),
+            )
+            if identity in seen:
                 continue
-            row["payload"] = {
-                key: row.get(key)
-                for key in payload_keys
-                if row.get(key) not in (None, "")
-            }
-            for key in payload_keys:
-                row.pop(key, None)
+            seen.add(identity)
             selected.append(row)
-        return tuple(selected[:40])
+            if len(selected) >= 40:
+                break
+        return tuple(selected)
 
     def snapshot(self) -> DashboardSnapshot:
         run = self.latest_run()
