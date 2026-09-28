@@ -193,7 +193,6 @@ def _load_backend_fast_snapshot(url: str, secret_key: str) -> dict[str, Any]:
     broker_account = reader.latest_broker_account()
 
     return {
-        "signals": list(reader.latest_signals()),
         "xau_signals": list(reader.latest_signals_for_symbol("XAUUSD")),
         "control": asdict(store.get_execution_control()),
         "broker_account": broker_account,
@@ -260,6 +259,7 @@ def _load_backend_slow_snapshot(url: str, secret_key: str) -> dict[str, Any]:
     return {
         "latest_run": run,
         "rankings": list(reader.rankings_for_run(None if run is None else run.get("id"))),
+        "signals": list(reader.latest_signals()),
         "heartbeats": list(reader.heartbeat_summaries()),
         "macro": list(reader.latest_macro()),
         "performance": list(reader.latest_performance()),
