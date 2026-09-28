@@ -1,0 +1,193 @@
+name: ForexRizan Dashboard Egress Audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/forexrizan-dashboard-egress-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Measure dashboard data-plane payload budget
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+
+          base = os.environ["SUPABASE_URL"].rstrip("/")
+          key = os.environ["SUPABASE_SERVICE_ROLE_KEY"].strip()
+          headers = {"apikey": key, "Authorization": f"Bearer {key}", "Accept": "application/json"}
+
+          critical = (
+              "ctrader_demo_xau_rizan_prepared_plan_producer",
+              "ctrader_demo_xau_rizan_fast_handoff",
+              "ctrader_demo_xau_afic_prepared_plan_producer",
+              "ctrader_demo_xau_afic_fast_handoff",
+              "ctrader_demo_xau_dom_v191",
+              "ctrader_demo_xau_event_risk_v192",
+              "ctrader_demo_xau_premap_candidate_v181",
+              "ctrader_demo_xau_supply_demand_atlas_v182",
+              "ctrader_demo_xau_supply_demand_prospective_v184",
+              "ctrader_xau_supply_demand_reaction_v183",
+              "ctrader_xau_supply_demand_timeframe_v185",
+              "ctrader_demo_xau_v196_shadow_evidence",
+              "ctrader_demo_xau_v198_evidence_analytics",
+              "ctrader_demo_xau_v201_reaction_ladder",
+              "ctrader_demo_xau_v203_volatility_shock_guard",
+              "ctrader_demo_xau_v212_zone_reaction_probability",
+              "ctrader_demo_xau_v213_post_zone_path",
+              "ctrader_demo_xau_v214_pocket_lifecycle",
+              "ctrader_demo_xau_v216_lifecycle_calibration",
+              "ctrader_demo_xau_v217_direction_probability",
+              "ctrader_demo_xau_v220_direction_prospective_calibration",
+              "ctrader_demo_xau_v222_m5_pocket_quality",
+              "ctrader_demo_xau_v223_m5_pocket_cluster_selector",
+              "ctrader_demo_xau_v224_primary_pocket_prospective",
+              "ctrader_demo_xau_v226_rizan_depth_map",
+              "ctrader_demo_xau_v227_depth_map_prospective",
+              "ctrader_demo_xau_v229_depth_execution",
+              "ctrader_demo_xau_v229_child_executor",
+              "ctrader_xau_expected_move_envelope_v170",
+              "ctrader_xau_forecast_ensemble_v171",
+              "ctrader_xau_htf_strategic_regime_v180",
+          )
+
+          def fetch(table, params):
+              query = urllib.parse.urlencode(params, doseq=True, safe="(),.*:")
+              req = urllib.request.Request(f"{base}/rest/v1/{table}?{query}", headers=headers)
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  raw = resp.read()
+              return json.loads(raw.decode("utf-8")), len(raw)
+
+          sizes = {}
+          rows, sizes["latest_run"] = fetch("scanner_runs", {
+              "select": "id,started_at,finished_at,mode,status,code_version,data_contract_version",
+              "order": "started_at.desc", "limit": "1",
+          })
+          run_id = str(rows[0].get("id")) if rows else ""
+
+          if run_id:
+              _, sizes["rankings"] = fetch("pair_rankings", {
+                  "select": "observed_at,symbol,direction,macro_edge,technical_edge,cross_asset_score,session_score,volatility_score,spread_score,pair_opportunity_score,rank,coverage",
+                  "run_id": f"eq.{run_id}", "order": "rank.asc", "limit": "15",
+              })
+          else:
+              sizes["rankings"] = 2
+
+          _, sizes["heartbeats_all"] = fetch("runtime_heartbeats", {
+              "select": "worker_name,observed_at,healthy,lag_seconds,details",
+              "order": "observed_at.desc",
+          })
+          _, sizes["heartbeats_critical"] = fetch("runtime_heartbeats", {
+              "select": "worker_name,observed_at,healthy,lag_seconds,details",
+              "worker_name": "in.(" + ",".join(critical) + ")",
+              "order": "observed_at.desc", "limit": str(len(critical)),
+          })
+          _, sizes["macro"] = fetch("currency_macro_state", {
+              "select": "currency,observed_at,rate_score,central_bank_score,inflation_score,growth_score,labour_score,yield_score,risk_score,positioning_score,macro_score,coverage,freshness_seconds",
+              "order": "observed_at.desc", "limit": "96",
+          })
+          _, sizes["performance"] = fetch("model_performance", {
+              "select": "as_of,setup_type,symbol,session,regime,sample_scope,trades,wins,losses,win_rate,expectancy_r,profit_factor,max_drawdown_r",
+              "order": "as_of.desc", "limit": "50",
+          })
+          _, sizes["outcomes"] = fetch("xau_outcome_ledger", {
+              "select": "episode_key,episode_type,strategy_id,observed_at,direction,grade,status,execution_authority,outcome_at,outcome_class,tp1_hit,tp2_hit,stop_hit,mfe_r,mae_r,metadata",
+              "order": "observed_at.desc", "limit": "500",
+          })
+          _, sizes["forecast"] = fetch("broker_order_events", {
+              "select": "observed_at,event_type,code,message,payload",
+              "event_type": "eq.DEMO_XAU_RIZAN_FORECAST_STATE",
+              "code": "eq.XAU_RIZAN_PATH_STATE_V1",
+              "order": "observed_at.desc", "limit": "24",
+          })
+          _, sizes["prepared"] = fetch("broker_order_events", {
+              "select": "observed_at,event_type,code,message,payload",
+              "event_type": "eq.DEMO_XAU_RIZAN_PREPARED_PLAN",
+              "code": "eq.XAU_RIZAN_PATH_PREPARED_V1",
+              "order": "observed_at.desc", "limit": "12",
+          })
+          _, sizes["geometry"] = fetch("broker_order_events", {
+              "select": "observed_at,event_type,code,message,payload",
+              "event_type": "eq.DEMO_SIGNAL_GEOMETRY",
+              "code": "eq.XAU_RIZAN_PATH_EXECUTION_V1",
+              "order": "observed_at.desc", "limit": "12",
+          })
+          _, sizes["lifecycle"] = fetch("xau_prepared_plan_lifecycle", {
+              "select": "plan_key,signal_id,zone_id,map_at,created_at,updated_at,direction,grade,zone_low,zone_high,entry_price,stop_price,tp1_price,tp2_price,lifecycle_state,cancel_reason,cancelled_at,first_touch_at,confirmed_at,execution_ready_at,order_accepted_at,protection_verified_at,outcome_at,outcome_class,tp1_hit,tp2_hit,stop_hit,mfe_r,mae_r,post_cancel_terminal_hit,metadata",
+              "order": "created_at.desc", "limit": "100",
+          })
+
+          # Fast state is unchanged by the egress patch; measure it so the total
+          # dashboard read budget remains transparent.
+          _, sizes["signals"] = fetch("signals", {
+              "select": "id,observed_at,symbol,direction,setup_type,state,pair_score,execution_score,final_score,entry_low,entry_high,sl,tp1,tp2,tp3,rr1,rr2,rr3,macro_bias,h4_bias,h1_bias,active_guards,data_coverage,expires_at",
+              "order": "observed_at.desc", "limit": "30",
+          })
+          _, sizes["xau_signals"] = fetch("signals", {
+              "select": "id,observed_at,symbol,direction,setup_type,state,pair_score,execution_score,final_score,entry_low,entry_high,sl,tp1,tp2,tp3,rr1,rr2,rr3,macro_bias,h4_bias,h1_bias,active_guards,data_coverage,expires_at",
+              "symbol": "eq.XAUUSD", "order": "observed_at.desc", "limit": "20",
+          })
+          control_rows, sizes["control"] = fetch("execution_control", {
+              "select": "control_key,execution_mode,new_orders_enabled,emergency_stop,close_all_requested,version,updated_at",
+              "control_key": "eq.primary", "limit": "2",
+          })
+          account_rows, sizes["broker_account"] = fetch("broker_account_state", {
+              "select": "backend,account_id,snapshot_id,observed_at,broker_name,environment,currency,balance,equity,floating_profit,margin,margin_free,margin_level,leverage,trade_allowed,connection_healthy,metadata",
+              "order": "observed_at.desc", "limit": "1",
+          })
+          sizes["broker_positions"] = 2
+          if account_rows:
+              a = account_rows[0]
+              _, sizes["broker_positions"] = fetch("broker_position_state", {
+                  "select": "observed_at,position_id,symbol,side,volume,open_price,current_price,sl,tp,profit,swap,magic,comment,opened_at",
+                  "backend": f"eq.{a.get('backend')}",
+                  "account_id": f"eq.{a.get('account_id')}",
+                  "snapshot_id": f"eq.{a.get('snapshot_id')}",
+                  "order": "profit.desc",
+              })
+          _, sizes["execution_events"] = fetch("broker_order_events", {
+              "select": "observed_at,event_type,code,accepted,message,signal_key,broker_order_id,payload",
+              "order": "observed_at.desc", "limit": "120",
+          })
+
+          fast_keys = ("signals","xau_signals","control","broker_account","broker_positions","execution_events")
+          cold_keys = ("latest_run","rankings","heartbeats_all","macro","performance","outcomes")
+          decision_keys = ("heartbeats_critical","forecast","prepared","geometry","lifecycle")
+          fast = sum(sizes[k] for k in fast_keys)
+          cold = sum(sizes[k] for k in cold_keys)
+          decision = sum(sizes[k] for k in decision_keys)
+
+          # Previous design read cold + decision every minute.
+          old_per_minute = fast + cold + sum(sizes[k] for k in ("forecast","prepared","geometry","lifecycle"))
+          # New design reads decision every minute and amortizes cold over 5 minutes.
+          new_avg_per_minute = fast + decision + cold / 5.0
+          reduction = 0.0 if old_per_minute <= 0 else 1.0 - (new_avg_per_minute / old_per_minute)
+
+          print("FOREXRIZAN_EGRESS_COMPONENT_BYTES " + json.dumps(sizes, sort_keys=True))
+          print("FOREXRIZAN_EGRESS_BUDGET " + json.dumps({
+              "fast_bytes_per_minute": fast,
+              "decision_bytes_per_minute": decision,
+              "cold_bytes_per_5_minutes": cold,
+              "old_estimated_bytes_per_minute": round(old_per_minute, 1),
+              "new_estimated_average_bytes_per_minute": round(new_avg_per_minute, 1),
+              "estimated_dashboard_read_reduction_pct": round(reduction * 100.0, 2),
+              "critical_logic_refresh_seconds": 60,
+              "cold_observability_refresh_seconds": 300,
+          }, sort_keys=True))
+          PY
