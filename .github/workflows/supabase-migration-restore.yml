@@ -152,7 +152,8 @@ jobs:
           SAFE_RESTORE_PASSWORD="$(RAW_SECRET="$RESTORE_PASSWORD" python -c 'import os; from urllib.parse import quote; print(quote(os.environ["RAW_SECRET"],safe=""))')"
           SAFE_NEW_DB_URL="postgresql://rizan_restore.${NEW_PROJECT_REF}:${SAFE_RESTORE_PASSWORD}@${HOSTPART}"
 
-          python -c 'from pathlib import Path; import re; p=Path("schema.sql"); s=p.read_text(); s=s.replace("COMMENT ON SCHEMA public IS \'standard public schema\';\\n",""); s=re.sub(r"ALTER DEFAULT PRIVILEGES FOR ROLE (?:postgres|supabase_admin) IN SCHEMA public [\\s\\S]*?;\\n","",s); p.write_text(s)'
+          sed -i "/^COMMENT ON SCHEMA public IS 'standard public schema';$/d" schema.sql
+          sed -i '/^ALTER DEFAULT PRIVILEGES FOR ROLE \(postgres\|supabase_admin\) IN SCHEMA public /d' schema.sql
 
           /usr/lib/postgresql/17/bin/psql \
             "$SAFE_NEW_DB_URL" \
