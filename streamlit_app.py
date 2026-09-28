@@ -34,6 +34,10 @@ from fx_scanner.xau_canonical_decision_v240 import build_canonical_xau_decision
 from fx_scanner.xau_profitability_truth_v241 import build_xau_profitability_truth
 from fx_scanner.xau_pressure_transition_v249 import evaluate_pressure_transition
 from fx_scanner.xau_dynamic_depth_hazard_v251 import build_dynamic_depth_hazard
+from fx_scanner.xau_standalone_ctrader_v253 import (
+    build_standalone_ctrader_feed,
+    collect_standalone_xau_snapshot,
+)
 
 UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
@@ -98,6 +102,50 @@ def _supabase_client(url: str, secret_key: str):
     from supabase import create_client
 
     return create_client(url, secret_key)
+
+
+@st.cache_resource(show_spinner=False)
+def _standalone_ctrader_feed(
+    client_id: str,
+    client_secret: str,
+    access_token: str,
+    refresh_token: str,
+    trader_login: int,
+    account_id: int | None,
+):
+    return build_standalone_ctrader_feed(
+        client_id=client_id,
+        client_secret=client_secret,
+        access_token=access_token,
+        refresh_token=refresh_token or None,
+        trader_login=trader_login,
+        account_id=account_id,
+    )
+
+
+def _load_standalone_snapshot(
+    *,
+    client_id: str,
+    client_secret: str,
+    access_token: str,
+    refresh_token: str,
+    trader_login: int,
+    account_id: int | None,
+    previous_dom_analysis: dict[str, Any] | None,
+) -> dict[str, Any]:
+    feed = _standalone_ctrader_feed(
+        client_id,
+        client_secret,
+        access_token,
+        refresh_token,
+        trader_login,
+        account_id,
+    )
+    return collect_standalone_xau_snapshot(
+        feed,
+        root=ROOT,
+        previous_dom_analysis=previous_dom_analysis,
+    )
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -1282,6 +1330,134 @@ def _afic_next_action(
     return "WAIT FORECAST", "No execution-ready RIZAN-style path is active yet."
 
 
+def _render_standalone_dashboard(state: dict[str, Any]) -> None:
+    quote = dict(state.get("quote") or {})
+    canonical = dict(state.get("canonical") or {})
+    pressure = dict(state.get("pressure_transition") or {})
+    dynamic = dict(state.get("dynamic_depth") or {})
+    regime = dict(state.get("strategic_regime") or {})
+    strategic = dict(regime.get("current") or {})
+    atlas = dict(state.get("atlas") or {})
+    projection = dict(state.get("m5_projection") or {})
+    current_leg = dict(projection.get("current_leg") or {})
+    collection = dict(state.get("collection") or {})
+
+    st.warning(
+        "SUPABASE RESTRICTED MODE • cTrader DIRECT • MANUAL ANALYSIS ONLY • "
+        "DEMO auto-execution OFF. Tidak ada order yang dikirim dari mode ini."
+    )
+    st.caption(
+        f"Update {_fmt_wib_datetime(state.get('as_of'))} • "
+        f"quote age {_fmt_number(quote.get('age_seconds'), 1)} dtk • "
+        f"M15 {collection.get('m15_bars', 0)} bar • M5 {collection.get('m5_bars', 0)} bar • "
+        f"DOM {collection.get('dom_frames', 0)} frame • Supabase I/O 0"
+    )
+
+    direction = str(canonical.get("direction") or "WAIT")
+    entry_low = canonical.get("entry_low")
+    entry_high = canonical.get("entry_high")
+    entry_text = (
+        f"{_fmt_price(entry_low)}–{_fmt_price(entry_high)}"
+        if entry_low is not None and entry_high is not None
+        else "—"
+    )
+    q1, q2, q3, q4, q5 = st.columns(5)
+    q1.metric("Arah RIZAN", direction)
+    q2.metric("XAU Mid", _fmt_price(quote.get("mid")))
+    q3.metric("Entry Zone", entry_text)
+    q4.metric("SL Struktural", _fmt_price(canonical.get("sl")))
+    q5.metric("TP1", _fmt_price(canonical.get("tp1")))
+
+    depth_value = dynamic.get("current_depth")
+    depth_text = _fmt_pct(depth_value) if depth_value is not None else "—"
+    p1, p2, p3, p4, p5 = st.columns(5)
+    p1.metric("Strategic Bias", str(strategic.get("strategic_bias") or "—"))
+    p2.metric("Source", str(canonical.get("source_layer") or "—"))
+    p3.metric("Depth Saat Ini", depth_text)
+    p4.metric("Buyer Index", _fmt_number(pressure.get("buyer_index"), 1))
+    p5.metric("Seller Index", _fmt_number(pressure.get("seller_index"), 1))
+
+    action = str(dynamic.get("action") or pressure.get("state") or canonical.get("state") or "WAIT")
+    if action == "ENTRY_WINDOW":
+        st.success(f"Decision: {action} • tetap manual-only pada Standalone Mode.")
+    elif "WAIT" in action or bool(pressure.get("hard_block")):
+        st.info(f"Decision: {action} • {pressure.get('reason') or canonical.get('state') or 'WAIT'}")
+    else:
+        st.info(f"Decision: {action}")
+
+    d1, d2 = st.columns(2)
+    with d1:
+        st.markdown("**Demand terdekat**")
+        demand = dict(canonical.get("nearest_demand") or {})
+        st.write(
+            f"{demand.get('timeframe') or '—'} • "
+            f"{_fmt_price(demand.get('low'))}–{_fmt_price(demand.get('high'))} • "
+            f"touch {demand.get('touch_count', '—')}"
+        )
+    with d2:
+        st.markdown("**Supply terdekat**")
+        supply = dict(canonical.get("nearest_supply") or {})
+        st.write(
+            f"{supply.get('timeframe') or '—'} • "
+            f"{_fmt_price(supply.get('low'))}–{_fmt_price(supply.get('high'))} • "
+            f"touch {supply.get('touch_count', '—')}"
+        )
+
+    recommended = dict(dynamic.get("recommended_band") or {})
+    if recommended:
+        st.markdown("### Dynamic Depth V251")
+        x1, x2, x3, x4 = st.columns(4)
+        x1.metric(
+            "Band reversal",
+            f"{_fmt_pct(recommended.get('lower_depth'))}–{_fmt_pct(recommended.get('upper_depth'))}",
+        )
+        x2.metric(
+            "Area harga",
+            f"{_fmt_price(dynamic.get('recommended_price_low'))}–{_fmt_price(dynamic.get('recommended_price_high'))}",
+        )
+        x3.metric("Hazard adj.", _fmt_pct(recommended.get("adjusted_hazard")))
+        x4.metric("Pressure", str(pressure.get("state") or "—"))
+
+    st.markdown("### Jalur harga & M5")
+    st.write(
+        f"M5 current leg: **{current_leg.get('direction') or '—'}** • "
+        f"state **{current_leg.get('pocket_state') or projection.get('state') or '—'}** • "
+        f"reference entry **{_fmt_price(canonical.get('entry_reference'))}** • "
+        f"TP2 **{_fmt_price(canonical.get('tp2'))}**"
+    )
+
+    chart = _rizan_chart_frame(list(atlas.get("chart_bars_m15") or []), "M15")
+    if not chart.empty:
+        st.markdown("### XAU M15 — live cTrader")
+        st.line_chart(chart[["close"]], height=320)
+
+    future = [dict(x) for x in list(dynamic.get("future_bands") or [])]
+    if future:
+        table = pd.DataFrame(future[:10])
+        wanted = [
+            col for col in (
+                "band", "lower_depth", "upper_depth", "hazard", "adjusted_hazard",
+                "at_risk", "price_low", "price_high", "eligible"
+            ) if col in table.columns
+        ]
+        st.markdown("### Depth bands berikutnya")
+        st.dataframe(table[wanted], hide_index=True, width="stretch")
+
+    with st.expander("Detail Standalone / audit"):
+        st.json(
+            _rizan_display(
+                {
+                    "state": state.get("state"),
+                    "canonical": canonical,
+                    "pressure_transition": pressure,
+                    "dynamic_depth": dynamic,
+                    "collection": collection,
+                    "safety": state.get("safety"),
+                }
+            )
+        )
+
+
 cfg, config_error = _safe_config()
 policy = None
 policy_error = None
@@ -1304,6 +1480,39 @@ if backend_configured:
     except (DashboardReadError, OperationalStoreUnavailable, Exception) as exc:
         backend_error = f"{type(exc).__name__}: {exc}"
 
+ctrader_client_id = _secret("CTRADER_CLIENT_ID")
+ctrader_client_secret = _secret("CTRADER_CLIENT_SECRET")
+ctrader_access_token = _secret("CTRADER_ACCESS_TOKEN")
+ctrader_refresh_token = _secret("CTRADER_REFRESH_TOKEN")
+ctrader_trader_login_raw = _secret("CTRADER_TRADER_LOGIN")
+ctrader_account_id_raw = _secret("CTRADER_ACCOUNT_ID")
+standalone_configured = bool(
+    ctrader_client_id
+    and ctrader_client_secret
+    and ctrader_access_token
+    and ctrader_trader_login_raw
+)
+standalone: dict[str, Any] | None = None
+standalone_error: str | None = None
+if backend is None and standalone_configured:
+    try:
+        standalone = _load_standalone_snapshot(
+            client_id=ctrader_client_id,
+            client_secret=ctrader_client_secret,
+            access_token=ctrader_access_token,
+            refresh_token=ctrader_refresh_token,
+            trader_login=int(ctrader_trader_login_raw),
+            account_id=(int(ctrader_account_id_raw) if ctrader_account_id_raw else None),
+            previous_dom_analysis=dict(
+                st.session_state.get("standalone_dom_analysis") or {}
+            ),
+        )
+        st.session_state["standalone_dom_analysis"] = dict(
+            standalone.get("dom_analysis") or {}
+        )
+    except Exception as exc:
+        standalone_error = f"{type(exc).__name__}: {exc}"
+
 with st.sidebar:
     st.title("RIZAN XAU Scanner")
     st.caption(f"RIZAN-style decision dashboard • Engine v{__version__}")
@@ -1319,20 +1528,28 @@ with st.sidebar:
 
     st.divider()
     st.markdown("**Runtime model**")
-    st.write("Research/decision engine runs outside Streamlit.")
-    st.write("Streamlit only reads durable snapshots and health state.")
+    if standalone is not None:
+        st.write("Restricted Mode: Streamlit reads XAU directly from cTrader.")
+        st.write("Analysis only; no broker order submission is exposed.")
+    else:
+        st.write("Research/decision engine runs outside Streamlit.")
+        st.write("Streamlit reads durable snapshots and health state.")
 
     st.divider()
     st.markdown("**Backend**")
     if backend_configured and backend is not None:
         st.success("Supabase connected")
+    elif standalone is not None:
+        st.success("cTrader Direct • Standalone")
     elif backend_configured:
         st.error("Supabase connection error")
     else:
         st.warning("Supabase Secret not configured")
 
     st.markdown("**Execution safety**")
-    if policy is not None and str(policy.ctrader.get("environment", "")).upper() == "DEMO":
+    if standalone is not None:
+        st.code("STANDALONE MANUAL ONLY / AUTO OFF / LIVE OFF", language=None)
+    elif policy is not None and str(policy.ctrader.get("environment", "")).upper() == "DEMO":
         st.code("DEMO AUTO CAPABLE / LIVE OFF", language=None)
     else:
         st.code("LIVE EXECUTION NOT AUTHORIZED", language=None)
@@ -1359,8 +1576,8 @@ _dashboard_auto_refresh_tick()
 
 st.title("RIZAN XAU Institutional Scanner")
 st.caption(
-    "Fast research dashboard • Top-8 macro shortlist • Top-5 MTF deep scan • "
-    "Streamlit is not in the quote/order hot path."
+    "RIZAN XAU decision dashboard • Normal mode uses durable Supabase snapshots; "
+    "Restricted Mode reads cTrader directly and never submits orders."
 )
 
 if config_error:
@@ -1369,6 +1586,14 @@ if policy_error:
     st.error(f"Execution policy invalid: {policy_error}")
 if backend_error:
     st.warning(f"Backend snapshot unavailable: {backend_error}")
+if standalone_error:
+    st.warning(f"Standalone cTrader unavailable: {standalone_error}")
+if backend is None and standalone is None and not standalone_configured:
+    st.info(
+        "Untuk Restricted Mode, tambahkan CTRADER_CLIENT_ID, CTRADER_CLIENT_SECRET, "
+        "CTRADER_ACCESS_TOKEN, CTRADER_REFRESH_TOKEN, dan CTRADER_TRADER_LOGIN ke "
+        "Streamlit Secrets. CTRADER_ACCOUNT_ID opsional."
+    )
 
 mode = "—" if cfg is None else str(cfg.risk.get("mode", "—"))
 pairs = 0 if cfg is None else len(cfg.pairs)
@@ -1379,8 +1604,10 @@ if policy is not None:
     execution_watch = f"{policy.scheduler['execution_watch_seconds'] * 1000:.0f} ms"
 
 backend_label = (
-    "CONNECTED"
+    "SUPABASE"
     if backend is not None
+    else "CTRADER DIRECT"
+    if standalone is not None
     else "ERROR"
     if backend_configured
     else "OFFLINE"
@@ -1392,6 +1619,10 @@ m2.metric("Pairs", pairs)
 m3.metric("Top-5 Scan Cadence", fast_setup)
 m4.metric("Execution Watch", execution_watch)
 m5.metric("Dashboard Backend", backend_label)
+
+if standalone is not None:
+    _render_standalone_dashboard(standalone)
+    st.stop()
 
 if backend is not None:
     control = backend["control"]
