@@ -384,6 +384,13 @@ def build_snapshot(
         "xau_prepared_plan_lifecycle": lifecycle,
         "control": control_snapshot,
     }
+    hot_component_bytes = {
+        "heartbeats": int(hot_heartbeat_bytes),
+        **{
+            key: int(_json_size(value))
+            for key, value in hot_backend_values.items()
+        },
+    }
     hot_backend_bytes = _json_size(hot_backend_values)
     cycle_bytes += hot_backend_bytes
     hot_payload_bytes = hot_heartbeat_bytes + hot_backend_bytes
@@ -443,6 +450,7 @@ def build_snapshot(
             "egress_budget": {
                 "cycle_payload_bytes": int(cycle_bytes),
                 "hot_payload_bytes": int(hot_payload_bytes),
+                "hot_component_bytes": hot_component_bytes,
                 "structural_payload_bytes": int(tier_bytes["structural"]),
                 "support_payload_bytes": int(tier_bytes["support"]),
                 "cold_payload_bytes": int(tier_bytes["cold"]),
