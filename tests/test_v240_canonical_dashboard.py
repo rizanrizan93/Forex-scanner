@@ -9,13 +9,17 @@ def test_v240_dashboard_has_canonical_decision_map() -> None:
     assert "##### V240 — Canonical XAU Decision Map" in SOURCE
     assert "Satu sumber kebenaran untuk arah, Depth Candidate, entry, SL, TP" in SOURCE
     for label in (
-        "Arah resmi",
-        "Primary Depth Entry",
+        "1 • Arah / Kondisi",
+        "3 • H4 Supply/Demand",
+        "4 • H1 Supply/Demand",
+        "5 • M15 confirmation / retest",
+        "6 • M5 timing",
+        "7 • Primary Depth Entry",
         "Reference entry",
-        "SL / invalidation",
+        "11 • SL / invalidation",
         "TP1 struktural",
         "TP terminal",
-        "Likely destination",
+        "13 • Likely destination / opposing zone",
         "Demand terdekat",
         "Supply terdekat",
     ):
@@ -85,9 +89,36 @@ def test_v252_dashboard_surfaces_retested_htf_lifecycle_and_demo_execution():
 
 
 def test_v240_mobile_operational_strip_has_price_session_gate_and_children() -> None:
-    assert 'metric("Harga sekarang"' in SOURCE
-    assert 'metric("Session (WIB)"' in SOURCE
-    assert 'metric("WAIT / BLOCK reason"' in SOURCE
+    assert 'metric("2 • Harga XAU sekarang"' in SOURCE
+    assert 'metric("16 • Session WIB"' in SOURCE
+    assert 'metric("14 • WAIT / BLOCK reason"' in SOURCE
     assert "Child L1–L4 — status eksekusi DEMO" in SOURCE
     for slot in ("L1", "L2", "L3", "L4"):
         assert f'metric("{slot}"' in SOURCE
+
+
+def test_v240_smartphone_sequence_matches_operational_contract() -> None:
+    assert "1–6 • Struktur market → lokasi → timing" in SOURCE
+    assert "7–10 • Entry → depth → pressure → admission" in SOURCE
+    assert "11–16 • Risk → target → lifecycle → session" in SOURCE
+
+    ordered = (
+        "1 • Arah / Kondisi",
+        "2 • Harga XAU sekarang",
+        "3 • H4 Supply/Demand",
+        "4 • H1 Supply/Demand",
+        "5 • M15 confirmation / retest",
+        "6 • M5 timing",
+        "7 • Primary Depth Entry",
+        "8 • Dynamic Depth",
+        "9 • Pressure transition",
+        "10 • Execution Admission",
+        "11 • SL / invalidation",
+        "12 • TP ladder",
+        "13 • Likely destination / opposing zone",
+        "14 • WAIT / BLOCK reason",
+        "15 • Lifecycle",
+        "16 • Session WIB",
+    )
+    positions = [SOURCE.index(label) for label in ordered]
+    assert positions == sorted(positions)
