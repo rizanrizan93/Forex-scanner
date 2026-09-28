@@ -140,6 +140,41 @@ class SupabaseDashboardReader:
             raise DashboardReadError(f"runtime_heartbeats read failed: {exc}") from exc
         return tuple(self._rows(response))
 
+    def heartbeats_for_workers(
+        self,
+        worker_names: tuple[str, ...] | list[str],
+    ) -> tuple[dict[str, Any], ...]:
+        """Return full heartbeat details only for dashboard-critical workers.
+
+        This keeps the 60-second decision path fresh without retransmitting every
+        observability heartbeat payload on every Streamlit refresh.
+        """
+        normalized = tuple(
+            dict.fromkeys(
+                str(name).strip()
+                for name in worker_names
+                if str(name).strip()
+            )
+        )
+        if not normalized:
+            return ()
+        if len(normalized) > 64:
+            raise ValueError("dashboard heartbeat worker budget exceeds 64")
+        try:
+            response = (
+                self.client.table("runtime_heartbeats")
+                .select("worker_name,observed_at,healthy,lag_seconds,details")
+                .in_("worker_name", list(normalized))
+                .order("observed_at", desc=True)
+                .limit(len(normalized))
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"critical runtime_heartbeats read failed: {exc}"
+            ) from exc
+        return tuple(self._rows(response))
+
     def latest_macro(self, *, raw_limit: int = 96) -> tuple[dict[str, Any], ...]:
         """Return the newest durable macro snapshot per currency."""
         try:
