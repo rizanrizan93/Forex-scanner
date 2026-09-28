@@ -29,14 +29,14 @@ def _json_default(value: Any):
     raise TypeError(f"not JSON serializable: {type(value).__name__}")
 
 
-def _previous_dom(path: Path) -> dict[str, Any]:
+def _previous_snapshot(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return {}
-    return dict(payload.get("dom_analysis") or {})
+    return dict(payload or {})
 
 
 def write_snapshot(output: Path) -> dict[str, Any]:
@@ -50,10 +50,12 @@ def write_snapshot(output: Path) -> dict[str, Any]:
         account_id=int(account_raw) if account_raw else None,
     )
     try:
+        previous = _previous_snapshot(output)
         state = collect_standalone_xau_snapshot(
             feed,
             root=Path(__file__).resolve().parents[2],
-            previous_dom_analysis=_previous_dom(output),
+            previous_dom_analysis=dict(previous.get("dom_analysis") or {}),
+            previous_projection=dict(previous.get("m5_projection") or {}),
         )
     finally:
         try:
