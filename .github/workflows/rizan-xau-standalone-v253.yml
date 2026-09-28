@@ -1,0 +1,79 @@
+name: RIZAN XAU Standalone Snapshot V253
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * 1-5"
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/xau_standalone_mode_v253.py"
+      - "src/fx_scanner/xau_standalone_ctrader_v253.py"
+      - "src/fx_scanner/xau_standalone_snapshot_v253.py"
+      - "src/fx_scanner/xau_standalone_bridge_v253.py"
+      - "calibration/xau_v225_2_depth_prior.json"
+      - ".github/workflows/rizan-xau-standalone-v253.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rizan-xau-standalone-v253
+  cancel-in-progress: true
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install isolated cTrader runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+
+      - name: Configure runtime snapshot branch
+        run: |
+          git config user.name "RIZAN Runtime"
+          git config user.email "actions@users.noreply.github.com"
+
+      - name: Publish five one-minute snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5; do
+            started="$(date +%s)"
+            python -m fx_scanner.xau_standalone_snapshot_v253               --output runtime/xau_standalone_snapshot.json
+
+            git add -f runtime/xau_standalone_snapshot.json
+            if [ "$i" -eq 1 ]; then
+              git commit -m "runtime: refresh RIZAN XAU standalone snapshot"
+            else
+              git commit --amend --no-edit
+            fi
+            git push --force origin HEAD:runtime-snapshots
+
+            if [ "$i" -lt 5 ]; then
+              elapsed="$(( $(date +%s) - started ))"
+              sleep_for="$(( 60 - elapsed ))"
+              if [ "$sleep_for" -gt 0 ]; then
+                sleep "$sleep_for"
+              fi
+            fi
+          done
