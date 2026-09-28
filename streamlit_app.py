@@ -35,6 +35,10 @@ from fx_scanner.xau_canonical_decision_v240 import build_canonical_xau_decision
 from fx_scanner.xau_profitability_truth_v241 import build_xau_profitability_truth
 from fx_scanner.xau_pressure_transition_v249 import evaluate_pressure_transition
 from fx_scanner.xau_dynamic_depth_hazard_v251 import build_dynamic_depth_hazard
+from fx_scanner.xau_dashboard_bridge_v254 import (
+    DEFAULT_SNAPSHOT_URL as DEFAULT_DASHBOARD_SNAPSHOT_URL,
+    fetch_snapshot as fetch_dashboard_snapshot,
+)
 from fx_scanner.xau_standalone_bridge_v253 import (
     DEFAULT_SNAPSHOT_URL,
     fetch_snapshot as fetch_standalone_snapshot,
@@ -150,6 +154,11 @@ def _supabase_client(url: str, secret_key: str):
 @st.cache_data(ttl=45, show_spinner=False)
 def _load_standalone_bridge(url: str) -> dict[str, Any]:
     return fetch_standalone_snapshot(url)
+
+
+@st.cache_data(ttl=45, show_spinner=False)
+def _load_dashboard_bridge(url: str) -> dict[str, Any]:
+    return fetch_dashboard_snapshot(url)
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -1599,28 +1608,80 @@ supabase_secret = _secret("SUPABASE_SERVICE_ROLE_KEY") or _secret(
 backend_configured = bool(supabase_url and supabase_secret)
 
 backend: dict[str, Any] | None = None
+backend_source = "OFFLINE"
+backend_bridge_meta: dict[str, Any] = {}
 backend_error: str | None = None
-supabase_restricted_until = float(st.session_state.get("supabase_restricted_until", 0.0) or 0.0)
+direct_backend_error: str | None = None
+dashboard_bridge_error: str | None = None
+
+supabase_restricted_until = float(
+    st.session_state.get("supabase_restricted_until", 0.0) or 0.0
+)
 now_epoch = datetime.now(tz=UTC).timestamp()
-if backend_configured and now_epoch >= supabase_restricted_until:
+
+# A publishable key is valid for the public API but must never be granted broad
+# table SELECT just to make the dashboard work. In that case we go straight to
+# the curated read-only GitHub bridge.
+publishable_key_configured = supabase_secret.startswith("sb_publishable_")
+
+if (
+    backend_configured
+    and not publishable_key_configured
+    and now_epoch >= supabase_restricted_until
+):
     try:
         backend = _load_backend_snapshot(supabase_url, supabase_secret)
+        backend_source = "SUPABASE_DIRECT"
     except (DashboardReadError, OperationalStoreUnavailable, Exception) as exc:
-        backend_error = f"{type(exc).__name__}: {exc}"
-        lowered = backend_error.lower()
+        direct_backend_error = f"{type(exc).__name__}: {exc}"
+        lowered = direct_backend_error.lower()
         if "402" in lowered or "egress_quota" in lowered or "exceed_egress" in lowered:
             st.session_state["supabase_restricted_until"] = now_epoch + 1800.0
-elif backend_configured:
-    backend_error = "SUPABASE_RESTRICTED_COOLDOWN: Data API temporarily bypassed to protect egress."
+        elif (
+            "42501" in lowered
+            or "permission denied" in lowered
+            or "role anon" in lowered
+        ):
+            # Do not hammer protected tables once Streamlit is known to have
+            # only an anon/publishable credential. The bridge remains fresh
+            # while database tables stay private.
+            st.session_state["supabase_restricted_until"] = now_epoch + 21600.0
+elif backend_configured and not publishable_key_configured:
+    direct_backend_error = (
+        "SUPABASE_DIRECT_COOLDOWN: direct Data API temporarily bypassed; "
+        "using the curated dashboard bridge."
+    )
+elif publishable_key_configured:
+    direct_backend_error = (
+        "SUPABASE_PUBLISHABLE_KEY: direct protected-table reads intentionally disabled."
+    )
+
+dashboard_bridge_url = (
+    _secret("RIZAN_DASHBOARD_SNAPSHOT_URL") or DEFAULT_DASHBOARD_SNAPSHOT_URL
+)
+if backend is None:
+    try:
+        dashboard_bridge_payload = _load_dashboard_bridge(dashboard_bridge_url)
+        backend = dict(dashboard_bridge_payload.get("backend") or {})
+        backend_bridge_meta = dict(dashboard_bridge_payload.get("bridge") or {})
+        if backend:
+            backend_source = "GITHUB_DASHBOARD_BRIDGE"
+        else:
+            raise ValueError("dashboard bridge returned an empty backend snapshot")
+    except Exception as exc:
+        dashboard_bridge_error = f"{type(exc).__name__}: {exc}"
 
 standalone_url = _secret("RIZAN_STANDALONE_SNAPSHOT_URL") or DEFAULT_SNAPSHOT_URL
 standalone: dict[str, Any] | None = None
 standalone_error: str | None = None
 if backend is None:
+    backend_error = direct_backend_error
     try:
         standalone = _load_standalone_bridge(standalone_url)
     except Exception as exc:
         standalone_error = f"{type(exc).__name__}: {exc}"
+else:
+    backend_error = None
 
 with st.sidebar:
     st.title("RIZAN XAU Scanner")
@@ -1647,14 +1708,21 @@ with st.sidebar:
 
     st.divider()
     st.markdown("**Backend**")
-    if backend_configured and backend is not None:
-        st.success("Supabase connected")
+    if backend is not None and backend_source == "SUPABASE_DIRECT":
+        st.success("ForexRizan • Supabase direct")
+    elif backend is not None and backend_source == "GITHUB_DASHBOARD_BRIDGE":
+        st.success("ForexRizan • Dashboard Bridge")
+        age = backend_bridge_meta.get("age_seconds")
+        st.caption(
+            "Snapshot read-only GitHub"
+            + (" • age " + _fmt_number(age, 0) + " dtk" if age is not None else "")
+        )
     elif standalone is not None:
         st.success("cTrader Snapshot Bridge • Standalone")
     elif backend_configured:
-        st.error("Supabase connection error")
+        st.error("ForexRizan backend unavailable")
     else:
-        st.warning("Supabase Secret not configured")
+        st.warning("Backend credential/snapshot unavailable")
 
     st.markdown("**Execution safety**")
     if standalone is not None:
@@ -1678,6 +1746,7 @@ def _dashboard_auto_refresh_tick() -> None:
     if not isinstance(last, datetime) or (now - last).total_seconds() >= 59.5:
         st.session_state["dashboard_auto_refresh_at"] = now
         _clear_backend_snapshot_cache(include_slow=False)
+        _load_dashboard_bridge.clear()
         _load_standalone_bridge.clear()
         st.rerun()
 
@@ -1687,8 +1756,9 @@ _dashboard_auto_refresh_tick()
 
 st.title("RIZAN XAU Institutional Scanner")
 st.caption(
-    "RIZAN XAU decision dashboard • Normal mode uses durable Supabase snapshots; "
-    "Restricted Mode reads an isolated cTrader snapshot bridge and never submits orders."
+    "RIZAN XAU decision dashboard • Normal mode uses durable ForexRizan snapshots "
+    "via direct Supabase or the curated Dashboard Bridge; Restricted Mode is only "
+    "used when both normal backends are unavailable."
 )
 
 if config_error:
@@ -1697,6 +1767,13 @@ if policy_error:
     st.error(f"Execution policy invalid: {policy_error}")
 if backend_error:
     st.warning(f"Backend snapshot unavailable: {backend_error}")
+elif backend_source == "GITHUB_DASHBOARD_BRIDGE" and direct_backend_error:
+    st.caption(
+        "Direct Supabase table access is unavailable in Streamlit; "
+        "dashboard is using the fresh curated ForexRizan bridge instead."
+    )
+if dashboard_bridge_error and backend is None:
+    st.warning(f"Dashboard Bridge belum tersedia: {dashboard_bridge_error}")
 if standalone_error:
     st.warning(f"Standalone snapshot belum tersedia: {standalone_error}")
 if backend is None and standalone is None:
@@ -1715,7 +1792,9 @@ if policy is not None:
 
 backend_label = (
     "SUPABASE"
-    if backend is not None
+    if backend is not None and backend_source == "SUPABASE_DIRECT"
+    else "RIZAN BRIDGE"
+    if backend is not None and backend_source == "GITHUB_DASHBOARD_BRIDGE"
     else "CTRADER BRIDGE"
     if standalone is not None
     else "ERROR"
