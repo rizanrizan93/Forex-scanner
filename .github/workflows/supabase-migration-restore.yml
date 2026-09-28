@@ -39,7 +39,6 @@ jobs:
       NEW_PROJECT_REF: naxvdtvlfatljzzwhrmo
       BACKUP_RUN_ID: ${{ github.event.workflow_run.id || inputs.backup_run_id }}
       ALLOW_NONEMPTY_TARGET: ${{ inputs.allow_nonempty_target || 'false' }}
-      PG_RESTORE_IMAGE: public.ecr.aws/supabase/postgres:17.6.1.171
 
     steps:
       - name: Validate restore inputs and target safety
@@ -79,6 +78,14 @@ jobs:
             echo "For a deliberate retry after a prior restore attempt, use manual dispatch with allow_nonempty_target=true."
             exit 1
           fi
+
+      - name: Install PostgreSQL 17 client
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
+          /usr/lib/postgresql/17/bin/psql --version
 
       - name: Download encrypted backup artifact
         shell: bash
@@ -129,27 +136,21 @@ jobs:
 
           SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" PROJECT_REF="$NEW_PROJECT_REF" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); ref=os.environ["PROJECT_REF"]; scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); username=("postgres."+ref) if ("pooler.supabase.com" in hostpart and username=="postgres") else username; safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
 
-          docker run --rm \
-            -v "$RUNNER_TEMP/rizan-supabase-restore:/work" \
-            --entrypoint psql \
-            "$PG_RESTORE_IMAGE" \
+          /usr/lib/postgresql/17/bin/psql \
             "$SAFE_NEW_DB_URL" \
             --single-transaction \
             --variable ON_ERROR_STOP=1 \
-            --file /work/roles.sql \
-            --file /work/schema.sql \
+            --file roles.sql \
+            --file schema.sql \
             --command 'SET session_replication_role = replica' \
-            --file /work/data.sql
+            --file data.sql
 
-          docker run --rm \
-            -v "$RUNNER_TEMP/rizan-supabase-restore:/work" \
-            --entrypoint psql \
-            "$PG_RESTORE_IMAGE" \
+          /usr/lib/postgresql/17/bin/psql \
             "$SAFE_NEW_DB_URL" \
             --single-transaction \
             --variable ON_ERROR_STOP=1 \
-            --file /work/history_schema.sql \
-            --file /work/history_data.sql
+            --file history_schema.sql \
+            --file history_data.sql
 
       - name: Verify restored parity
         shell: bash
