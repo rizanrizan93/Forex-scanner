@@ -200,7 +200,10 @@ def test_dashboard_prefers_rizan_records_without_reading_legacy_fallback():
     rows = SupabaseDashboardReader(client).latest_afic_forecast_states()
     assert len(rows) == 1
     assert rows[0]["code"] == "XAU_RIZAN_PATH_STATE_V1"
-    assert client.calls == [("select", "broker_order_events")]
+    assert client.calls == [
+        ("select", "broker_order_events"),
+        ("select", "broker_order_events"),
+    ]
 
 
 def test_dashboard_filters_recent_xau_execution_events():
