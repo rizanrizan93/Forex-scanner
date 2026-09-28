@@ -204,7 +204,13 @@ def build_dynamic_depth_hazard(
     min_entry_depth = float(best.get("lower_depth") or 0.0)
     upper_entry_depth = float(best.get("upper_depth") or min_entry_depth)
 
-    if hard_block:
+    if location_state == "AHEAD_OF_ZONE":
+        action = "WAIT_ZONE"
+        execution_ready = False
+    elif location_state == "AT_OR_BEYOND_DISTAL":
+        action = "WAIT_STRUCTURE_REMAP"
+        execution_ready = False
+    elif hard_block:
         action = "WAIT_PRESSURE"
         execution_ready = False
     elif transition_state in {"OPPOSING_FADING_EARLY", "FADING_EARLY"}:
