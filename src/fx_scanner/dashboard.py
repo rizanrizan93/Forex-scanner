@@ -282,6 +282,40 @@ class SupabaseDashboardReader:
             return raw
         return None
 
+    def latest_rizan_child_executor_heartbeat(self) -> dict[str, Any] | None:
+        """Return only child-executor state consumed by the dashboard."""
+        select_expr = (
+            "worker_name,observed_at,healthy,lag_seconds,"
+            "actions:details->actions,"
+            "error:details->>error,"
+            "enabled:details->enabled"
+        )
+        try:
+            response = (
+                self.client.table("runtime_heartbeats")
+                .select(select_expr)
+                .eq("worker_name", "ctrader_demo_xau_v229_child_executor")
+                .order("observed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"V229 child heartbeat read failed: {exc}"
+            ) from exc
+        rows = self._rows(response)
+        if not rows:
+            return None
+        raw = dict(rows[0])
+        if isinstance(raw.get("details"), dict):
+            return raw
+        raw["details"] = {
+            "actions": list(raw.pop("actions", []) or []),
+            "error": raw.pop("error", None),
+            "enabled": raw.pop("enabled", None),
+        }
+        return raw
+
     def latest_macro(self, *, raw_limit: int = 96) -> tuple[dict[str, Any], ...]:
         """Return the newest durable macro snapshot per currency."""
         try:
