@@ -1305,7 +1305,7 @@ def _render_standalone_dashboard(state: dict[str, Any]) -> None:
     bridge = dict(state.get("bridge") or {})
 
     st.warning(
-        "SUPABASE RESTRICTED MODE • cTrader DIRECT • MANUAL ANALYSIS ONLY • "
+        "SUPABASE RESTRICTED MODE • CTRADER BRIDGE • MANUAL ANALYSIS ONLY • "
         "DEMO auto-execution OFF. Tidak ada order yang dikirim dari mode ini."
     )
     st.caption(
