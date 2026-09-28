@@ -3,7 +3,7 @@ name: RIZAN XAU Standalone Snapshot V253
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * 1-5"
+    - cron: "7,37 * * * 1-5"
   push:
     branches: [main]
     paths:
@@ -24,7 +24,7 @@ concurrency:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 80
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -53,11 +53,11 @@ jobs:
           git config user.name "RIZAN Runtime"
           git config user.email "actions@users.noreply.github.com"
 
-      - name: Publish five one-minute snapshots
+      - name: Publish continuous one-minute snapshots
         shell: bash
         run: |
           set -euo pipefail
-          for i in 1 2 3 4 5; do
+          for i in $(seq 1 70); do
             started="$(date +%s)"
             python -m fx_scanner.xau_standalone_snapshot_v253 \
               --output runtime/xau_standalone_snapshot.json
@@ -70,7 +70,7 @@ jobs:
             fi
             git push --force origin HEAD:runtime-snapshots
 
-            if [ "$i" -lt 5 ]; then
+            if [ "$i" -lt 70 ]; then
               elapsed="$(( $(date +%s) - started ))"
               sleep_for="$(( 60 - elapsed ))"
               if [ "$sleep_for" -gt 0 ]; then
