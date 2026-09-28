@@ -82,3 +82,12 @@ def test_v252_dashboard_surfaces_retested_htf_lifecycle_and_demo_execution():
     assert "Execution phase" in SOURCE
     assert "Aksi child executor terbaru:" in SOURCE
     assert "Prior scope:" in SOURCE
+
+
+def test_v240_mobile_operational_strip_has_price_session_gate_and_children() -> None:
+    assert 'metric("Harga sekarang"' in SOURCE
+    assert 'metric("Session (WIB)"' in SOURCE
+    assert 'metric("WAIT / BLOCK reason"' in SOURCE
+    assert "Child L1–L4 — status eksekusi DEMO" in SOURCE
+    for slot in ("L1", "L2", "L3", "L4"):
+        assert f'metric("{slot}"' in SOURCE
