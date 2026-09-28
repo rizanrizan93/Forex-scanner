@@ -42,6 +42,40 @@ from fx_scanner.xau_standalone_bridge_v253 import (
 UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 
+RIZAN_DASHBOARD_CRITICAL_HEARTBEATS = (
+    "ctrader_demo_xau_rizan_prepared_plan_producer",
+    "ctrader_demo_xau_rizan_fast_handoff",
+    "ctrader_demo_xau_afic_prepared_plan_producer",
+    "ctrader_demo_xau_afic_fast_handoff",
+    "ctrader_demo_xau_dom_v191",
+    "ctrader_demo_xau_event_risk_v192",
+    "ctrader_demo_xau_premap_candidate_v181",
+    "ctrader_demo_xau_supply_demand_atlas_v182",
+    "ctrader_demo_xau_supply_demand_prospective_v184",
+    "ctrader_xau_supply_demand_reaction_v183",
+    "ctrader_xau_supply_demand_timeframe_v185",
+    "ctrader_demo_xau_v196_shadow_evidence",
+    "ctrader_demo_xau_v198_evidence_analytics",
+    "ctrader_demo_xau_v201_reaction_ladder",
+    "ctrader_demo_xau_v203_volatility_shock_guard",
+    "ctrader_demo_xau_v212_zone_reaction_probability",
+    "ctrader_demo_xau_v213_post_zone_path",
+    "ctrader_demo_xau_v214_pocket_lifecycle",
+    "ctrader_demo_xau_v216_lifecycle_calibration",
+    "ctrader_demo_xau_v217_direction_probability",
+    "ctrader_demo_xau_v220_direction_prospective_calibration",
+    "ctrader_demo_xau_v222_m5_pocket_quality",
+    "ctrader_demo_xau_v223_m5_pocket_cluster_selector",
+    "ctrader_demo_xau_v224_primary_pocket_prospective",
+    "ctrader_demo_xau_v226_rizan_depth_map",
+    "ctrader_demo_xau_v227_depth_map_prospective",
+    "ctrader_demo_xau_v229_depth_execution",
+    "ctrader_demo_xau_v229_child_executor",
+    "ctrader_xau_expected_move_envelope_v170",
+    "ctrader_xau_forecast_ensemble_v171",
+    "ctrader_xau_htf_strategic_regime_v180",
+)
+
 st.set_page_config(
     page_title="RIZAN XAU Scanner",
     page_icon="📈",
@@ -132,11 +166,32 @@ def _load_backend_fast_snapshot(url: str, secret_key: str) -> dict[str, Any]:
 
 
 @st.cache_data(ttl=60, show_spinner=False)
-def _load_backend_slow_snapshot(url: str, secret_key: str) -> dict[str, Any]:
-    """Slower observability/research state.
+def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]:
+    """60-second XAU decision state.
 
-    These producers run at roughly one-to-five minute cadence. The dashboard
-    reads them on the same 60-second user-facing refresh cycle.
+    V240/V249/V251 and execution-admission inputs stay on the original
+    user-facing cadence. Only the bounded set of heartbeat payloads required by
+    the decision dashboard is retransmitted every minute.
+    """
+    client = _supabase_client(url, secret_key)
+    reader = SupabaseDashboardReader(client)
+    return {
+        "critical_heartbeats": list(
+            reader.heartbeats_for_workers(list(RIZAN_DASHBOARD_CRITICAL_HEARTBEATS))
+        ),
+        "afic_forecast_states": list(reader.latest_afic_forecast_states()),
+        "afic_prepared_plans": list(reader.latest_afic_prepared_plans()),
+        "afic_execution_geometry": list(reader.latest_afic_execution_geometry()),
+        "xau_prepared_plan_lifecycle": list(reader.latest_xau_prepared_plan_lifecycle()),
+    }
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _load_backend_slow_snapshot(url: str, secret_key: str) -> dict[str, Any]:
+    """Non-critical observability/history state with a five-minute egress budget.
+
+    This preserves the same dashboard data and fields while avoiding repeated
+    retransmission of heavy historical/heartbeat payloads every 60 seconds.
     """
     client = _supabase_client(url, secret_key)
     reader = SupabaseDashboardReader(client)
@@ -149,24 +204,48 @@ def _load_backend_slow_snapshot(url: str, secret_key: str) -> dict[str, Any]:
         "macro": list(reader.latest_macro()),
         "performance": list(reader.latest_performance()),
         "xau_outcomes": list(reader.latest_xau_outcomes()),
-        "afic_forecast_states": list(reader.latest_afic_forecast_states()),
-        "afic_prepared_plans": list(reader.latest_afic_prepared_plans()),
-        "afic_execution_geometry": list(reader.latest_afic_execution_geometry()),
-        "xau_prepared_plan_lifecycle": list(reader.latest_xau_prepared_plan_lifecycle()),
     }
 
 
+def _merge_heartbeat_rows(
+    critical_rows: list[dict[str, Any]],
+    observability_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Overlay fresh critical heartbeats on the cached full observability set."""
+    by_worker: dict[str, dict[str, Any]] = {}
+    for row in list(observability_rows or []):
+        worker = str(dict(row).get("worker_name") or "")
+        if worker:
+            by_worker[worker] = dict(row)
+    for row in list(critical_rows or []):
+        worker = str(dict(row).get("worker_name") or "")
+        if worker:
+            by_worker[worker] = dict(row)
+    return sorted(
+        by_worker.values(),
+        key=lambda row: str(row.get("observed_at") or ""),
+        reverse=True,
+    )
+
+
 def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
-    # Dashboard reads are intentionally capped at 60 seconds. Execution and
-    # monitoring workers are independent of Streamlit and are not slowed down.
+    # Operational/decision state remains 60s. Heavy history/observability is
+    # cached for five minutes to reduce Supabase data-plane egress.
     merged = dict(_load_backend_slow_snapshot(url, secret_key))
+    decision = dict(_load_backend_decision_snapshot(url, secret_key))
+    merged["heartbeats"] = _merge_heartbeat_rows(
+        list(decision.pop("critical_heartbeats", []) or []),
+        list(merged.get("heartbeats", []) or []),
+    )
+    merged.update(decision)
     merged.update(_load_backend_fast_snapshot(url, secret_key))
     return merged
 
 
 def _clear_backend_snapshot_cache(*, include_slow: bool) -> None:
-    """Clear the actual cached V209 readers, not the uncached merge wrapper."""
+    """Clear hot caches every minute; cold observability only on manual refresh."""
     _load_backend_fast_snapshot.clear()
+    _load_backend_decision_snapshot.clear()
     if include_slow:
         _load_backend_slow_snapshot.clear()
 
