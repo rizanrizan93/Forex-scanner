@@ -44,9 +44,9 @@ class SupabaseResearchStore:
     @classmethod
     def from_env(cls, **kwargs) -> "SupabaseResearchStore":
         url = os.getenv("SUPABASE_URL", "").strip()
-        secret = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+        secret = os.getenv("SUPABASE_SECRET_KEY", "").strip()
         if not secret:
-            secret = os.getenv("SUPABASE_SECRET_KEY", "").strip()
+            secret = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
         return cls(url, secret, **kwargs)
 
     @staticmethod
