@@ -34,9 +34,9 @@ from fx_scanner.xau_canonical_decision_v240 import build_canonical_xau_decision
 from fx_scanner.xau_profitability_truth_v241 import build_xau_profitability_truth
 from fx_scanner.xau_pressure_transition_v249 import evaluate_pressure_transition
 from fx_scanner.xau_dynamic_depth_hazard_v251 import build_dynamic_depth_hazard
-from fx_scanner.xau_standalone_ctrader_v253 import (
-    build_standalone_ctrader_feed,
-    collect_standalone_xau_snapshot,
+from fx_scanner.xau_standalone_bridge_v253 import (
+    DEFAULT_SNAPSHOT_URL,
+    fetch_snapshot as fetch_standalone_snapshot,
 )
 
 UTC = timezone.utc
@@ -104,48 +104,9 @@ def _supabase_client(url: str, secret_key: str):
     return create_client(url, secret_key)
 
 
-@st.cache_resource(show_spinner=False)
-def _standalone_ctrader_feed(
-    client_id: str,
-    client_secret: str,
-    access_token: str,
-    refresh_token: str,
-    trader_login: int,
-    account_id: int | None,
-):
-    return build_standalone_ctrader_feed(
-        client_id=client_id,
-        client_secret=client_secret,
-        access_token=access_token,
-        refresh_token=refresh_token or None,
-        trader_login=trader_login,
-        account_id=account_id,
-    )
-
-
-def _load_standalone_snapshot(
-    *,
-    client_id: str,
-    client_secret: str,
-    access_token: str,
-    refresh_token: str,
-    trader_login: int,
-    account_id: int | None,
-    previous_dom_analysis: dict[str, Any] | None,
-) -> dict[str, Any]:
-    feed = _standalone_ctrader_feed(
-        client_id,
-        client_secret,
-        access_token,
-        refresh_token,
-        trader_login,
-        account_id,
-    )
-    return collect_standalone_xau_snapshot(
-        feed,
-        root=ROOT,
-        previous_dom_analysis=previous_dom_analysis,
-    )
+@st.cache_data(ttl=45, show_spinner=False)
+def _load_standalone_bridge(url: str) -> dict[str, Any]:
+    return fetch_standalone_snapshot(url)
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -1341,6 +1302,7 @@ def _render_standalone_dashboard(state: dict[str, Any]) -> None:
     projection = dict(state.get("m5_projection") or {})
     current_leg = dict(projection.get("current_leg") or {})
     collection = dict(state.get("collection") or {})
+    bridge = dict(state.get("bridge") or {})
 
     st.warning(
         "SUPABASE RESTRICTED MODE • cTrader DIRECT • MANUAL ANALYSIS ONLY • "
@@ -1352,6 +1314,14 @@ def _render_standalone_dashboard(state: dict[str, Any]) -> None:
         f"M15 {collection.get('m15_bars', 0)} bar • M5 {collection.get('m5_bars', 0)} bar • "
         f"DOM {collection.get('dom_frames', 0)} frame • Supabase I/O 0"
     )
+
+    if bridge and not bool(bridge.get("fresh")):
+        st.error(
+            "Snapshot RIZAN sudah stale. Entry/SL/TP disembunyikan sampai snapshot cTrader baru tersedia. "
+            f"Snapshot age: {_fmt_number(bridge.get('age_seconds'), 0)} detik."
+        )
+        st.metric("Harga snapshot terakhir", _fmt_price(quote.get("mid")))
+        return
 
     direction = str(canonical.get("direction") or "WAIT")
     entry_low = canonical.get("entry_low")
@@ -1474,42 +1444,25 @@ backend_configured = bool(supabase_url and supabase_secret)
 
 backend: dict[str, Any] | None = None
 backend_error: str | None = None
-if backend_configured:
+supabase_restricted_until = float(st.session_state.get("supabase_restricted_until", 0.0) or 0.0)
+now_epoch = datetime.now(tz=UTC).timestamp()
+if backend_configured and now_epoch >= supabase_restricted_until:
     try:
         backend = _load_backend_snapshot(supabase_url, supabase_secret)
     except (DashboardReadError, OperationalStoreUnavailable, Exception) as exc:
         backend_error = f"{type(exc).__name__}: {exc}"
+        lowered = backend_error.lower()
+        if "402" in lowered or "egress_quota" in lowered or "exceed_egress" in lowered:
+            st.session_state["supabase_restricted_until"] = now_epoch + 1800.0
+elif backend_configured:
+    backend_error = "SUPABASE_RESTRICTED_COOLDOWN: Data API temporarily bypassed to protect egress."
 
-ctrader_client_id = _secret("CTRADER_CLIENT_ID")
-ctrader_client_secret = _secret("CTRADER_CLIENT_SECRET")
-ctrader_access_token = _secret("CTRADER_ACCESS_TOKEN")
-ctrader_refresh_token = _secret("CTRADER_REFRESH_TOKEN")
-ctrader_trader_login_raw = _secret("CTRADER_TRADER_LOGIN")
-ctrader_account_id_raw = _secret("CTRADER_ACCOUNT_ID")
-standalone_configured = bool(
-    ctrader_client_id
-    and ctrader_client_secret
-    and ctrader_access_token
-    and ctrader_trader_login_raw
-)
+standalone_url = _secret("RIZAN_STANDALONE_SNAPSHOT_URL") or DEFAULT_SNAPSHOT_URL
 standalone: dict[str, Any] | None = None
 standalone_error: str | None = None
-if backend is None and standalone_configured:
+if backend is None:
     try:
-        standalone = _load_standalone_snapshot(
-            client_id=ctrader_client_id,
-            client_secret=ctrader_client_secret,
-            access_token=ctrader_access_token,
-            refresh_token=ctrader_refresh_token,
-            trader_login=int(ctrader_trader_login_raw),
-            account_id=(int(ctrader_account_id_raw) if ctrader_account_id_raw else None),
-            previous_dom_analysis=dict(
-                st.session_state.get("standalone_dom_analysis") or {}
-            ),
-        )
-        st.session_state["standalone_dom_analysis"] = dict(
-            standalone.get("dom_analysis") or {}
-        )
+        standalone = _load_standalone_bridge(standalone_url)
     except Exception as exc:
         standalone_error = f"{type(exc).__name__}: {exc}"
 
@@ -1519,6 +1472,7 @@ with st.sidebar:
 
     if st.button("Refresh dashboard", width="stretch"):
         _clear_backend_snapshot_cache(include_slow=True)
+        _load_standalone_bridge.clear()
         st.rerun()
     auto_refresh_enabled = st.toggle(
         "Auto refresh monitor",
@@ -1529,8 +1483,8 @@ with st.sidebar:
     st.divider()
     st.markdown("**Runtime model**")
     if standalone is not None:
-        st.write("Restricted Mode: Streamlit reads XAU directly from cTrader.")
-        st.write("Analysis only; no broker order submission is exposed.")
+        st.write("Restricted Mode: cTrader analysis runs in isolated GitHub Actions.")
+        st.write("Streamlit reads the latest read-only RIZAN snapshot; no order submission.")
     else:
         st.write("Research/decision engine runs outside Streamlit.")
         st.write("Streamlit reads durable snapshots and health state.")
@@ -1540,7 +1494,7 @@ with st.sidebar:
     if backend_configured and backend is not None:
         st.success("Supabase connected")
     elif standalone is not None:
-        st.success("cTrader Direct • Standalone")
+        st.success("cTrader Snapshot Bridge • Standalone")
     elif backend_configured:
         st.error("Supabase connection error")
     else:
@@ -1568,6 +1522,7 @@ def _dashboard_auto_refresh_tick() -> None:
     if not isinstance(last, datetime) or (now - last).total_seconds() >= 59.5:
         st.session_state["dashboard_auto_refresh_at"] = now
         _clear_backend_snapshot_cache(include_slow=False)
+        _load_standalone_bridge.clear()
         st.rerun()
 
 
@@ -1577,7 +1532,7 @@ _dashboard_auto_refresh_tick()
 st.title("RIZAN XAU Institutional Scanner")
 st.caption(
     "RIZAN XAU decision dashboard • Normal mode uses durable Supabase snapshots; "
-    "Restricted Mode reads cTrader directly and never submits orders."
+    "Restricted Mode reads an isolated cTrader snapshot bridge and never submits orders."
 )
 
 if config_error:
@@ -1587,12 +1542,11 @@ if policy_error:
 if backend_error:
     st.warning(f"Backend snapshot unavailable: {backend_error}")
 if standalone_error:
-    st.warning(f"Standalone cTrader unavailable: {standalone_error}")
-if backend is None and standalone is None and not standalone_configured:
+    st.warning(f"Standalone snapshot belum tersedia: {standalone_error}")
+if backend is None and standalone is None:
     st.info(
-        "Untuk Restricted Mode, tambahkan CTRADER_CLIENT_ID, CTRADER_CLIENT_SECRET, "
-        "CTRADER_ACCESS_TOKEN, CTRADER_REFRESH_TOKEN, dan CTRADER_TRADER_LOGIN ke "
-        "Streamlit Secrets. CTRADER_ACCOUNT_ID opsional."
+        "Restricted Mode sedang menunggu snapshot RIZAN pertama dari GitHub Actions. "
+        "Tidak diperlukan credential cTrader di Streamlit."
     )
 
 mode = "—" if cfg is None else str(cfg.risk.get("mode", "—"))
@@ -1606,7 +1560,7 @@ if policy is not None:
 backend_label = (
     "SUPABASE"
     if backend is not None
-    else "CTRADER DIRECT"
+    else "CTRADER BRIDGE"
     if standalone is not None
     else "ERROR"
     if backend_configured
