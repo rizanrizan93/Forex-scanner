@@ -439,8 +439,7 @@ class SupabaseDashboardReader:
                     "state:payload->forecast->>state,"
                     "direction:payload->forecast->>continuation_direction,"
                     "zone:payload->forecast->zone,"
-                    "zone_diagnostics:payload->forecast->zone_diagnostics,"
-                    "supply_demand_context:payload->forecast->supply_demand_context"
+                    "zone_diagnostics:payload->forecast->zone_diagnostics"
                 )
                 .eq("event_type", "DEMO_XAU_RIZAN_FORECAST_STATE")
                 .eq("code", "XAU_RIZAN_PATH_STATE_V1")
@@ -466,9 +465,6 @@ class SupabaseDashboardReader:
                                 "continuation_direction": latest_raw.get("direction"),
                                 "zone": dict(latest_raw.get("zone") or {}),
                                 "zone_diagnostics": dict(latest_raw.get("zone_diagnostics") or {}),
-                                "supply_demand_context": dict(
-                                    latest_raw.get("supply_demand_context") or {}
-                                ),
                             }
                         },
                     }
