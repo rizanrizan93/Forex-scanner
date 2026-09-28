@@ -1315,15 +1315,44 @@ def _render_standalone_dashboard(state: dict[str, Any]) -> None:
         f"DOM {collection.get('dom_frames', 0)} frame • Supabase I/O 0"
     )
 
+    direction = str(canonical.get("direction") or "WAIT")
+    action = str(dynamic.get("action") or pressure.get("state") or canonical.get("state") or "WAIT")
+    decision_labels = {
+        "ENTRY_WINDOW": "ENTRY WINDOW — kandidat entry manual",
+        "WAIT_ZONE": "WAIT — BELUM ENTRY (harga belum di zona)",
+        "WAIT_PRESSURE": "WAIT — tekanan belum mendukung",
+        "WAIT_M5_CONFIRM": "WAIT — tunggu konfirmasi M5",
+        "WAIT_STRUCTURE_REMAP": "WAIT — zona perlu remap",
+        "WAIT_OR_DEEPER": "WAIT — tunggu harga lebih dalam",
+        "WAIT_SECOND_SAMPLE": "WAIT — tunggu sampel pressure berikutnya",
+    }
+    decision_label = decision_labels.get(action, action)
+
+    st.markdown("### Keputusan Entry RIZAN")
     if bridge and not bool(bridge.get("fresh")):
         st.error(
-            "Snapshot RIZAN sudah stale. Entry/SL/TP disembunyikan sampai snapshot cTrader baru tersedia. "
+            f"DATA STALE • Keputusan terakhir: {decision_label}. "
+            "Jangan gunakan sebagai entry live sampai snapshot baru masuk. "
             f"Snapshot age: {_fmt_number(bridge.get('age_seconds'), 0)} detik."
         )
-        st.metric("Harga snapshot terakhir", _fmt_price(quote.get("mid")))
+        s1, s2, s3 = st.columns(3)
+        s1.metric("Arah terakhir", direction)
+        s2.metric("Keputusan terakhir", decision_label)
+        s3.metric("Harga snapshot", _fmt_price(quote.get("mid")))
+        st.caption(
+            "Entry/SL/TP live tetap disembunyikan saat stale. "
+            f"State terakhir: {canonical.get('state') or '—'} • "
+            f"lokasi: {dynamic.get('location_state') or '—'}."
+        )
         return
 
-    direction = str(canonical.get("direction") or "WAIT")
+    if action == "ENTRY_WINDOW":
+        st.success(f"KEPUTUSAN ENTRY: {decision_label} • Standalone tetap manual-only.")
+    elif "WAIT" in action or bool(pressure.get("hard_block")):
+        st.info(f"KEPUTUSAN ENTRY: {decision_label}")
+    else:
+        st.info(f"KEPUTUSAN ENTRY: {decision_label}")
+
     entry_low = canonical.get("entry_low")
     entry_high = canonical.get("entry_high")
     entry_text = (
@@ -1346,14 +1375,6 @@ def _render_standalone_dashboard(state: dict[str, Any]) -> None:
     p3.metric("Depth Saat Ini", depth_text)
     p4.metric("Buyer Index", _fmt_number(pressure.get("buyer_index"), 1))
     p5.metric("Seller Index", _fmt_number(pressure.get("seller_index"), 1))
-
-    action = str(dynamic.get("action") or pressure.get("state") or canonical.get("state") or "WAIT")
-    if action == "ENTRY_WINDOW":
-        st.success(f"Decision: {action} • tetap manual-only pada Standalone Mode.")
-    elif "WAIT" in action or bool(pressure.get("hard_block")):
-        st.info(f"Decision: {action} • {pressure.get('reason') or canonical.get('state') or 'WAIT'}")
-    else:
-        st.info(f"Decision: {action}")
 
     d1, d2 = st.columns(2)
     with d1:
