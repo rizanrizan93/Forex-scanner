@@ -641,13 +641,16 @@ class SupabaseDashboardReader:
             ) from exc
         return tuple(self._rows(response))
 
-    def latest_xau_execution_events(self) -> tuple[dict[str, Any], ...]:
+    def latest_xau_execution_events(
+        self, *, limit: int = 20
+    ) -> tuple[dict[str, Any], ...]:
         """Return compact broker/execution timeline rows.
 
         Geometry is read from the dedicated geometry feed instead of this
         method. Only display-relevant JSON keys are projected server-side so the
         dashboard does not retransmit large shadow/context payloads.
         """
+        limit = max(1, min(int(limit), 40))
         execution_events = (
             "ORDER_ACCEPTED",
             "POSITION_PROTECTION_VERIFIED",
@@ -677,7 +680,7 @@ class SupabaseDashboardReader:
                 .select(select_expr)
                 .in_("event_type", list(execution_events))
                 .order("observed_at", desc=True)
-                .limit(60)
+                .limit(limit)
                 .execute()
             )
         except Exception as exc:
