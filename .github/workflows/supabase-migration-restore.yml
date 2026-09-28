@@ -41,7 +41,7 @@ jobs:
       BACKUP_PASSPHRASE: ${{ secrets.MIGRATION_BACKUP_PASSPHRASE }}
       SOURCE_PROJECT_REF: fotzcxjeypmjldhvfskt
       NEW_PROJECT_REF: mkxszgrpxbulpdovglcm
-      BACKUP_RUN_ID: ${{ github.event.workflow_run.id || inputs.backup_run_id }}
+      BACKUP_RUN_ID: 36393637313
       ALLOW_NONEMPTY_TARGET: ${{ inputs.allow_nonempty_target || 'false' }}
 
     steps:
