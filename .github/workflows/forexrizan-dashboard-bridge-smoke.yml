@@ -30,7 +30,22 @@ jobs:
           python - <<'PY'
           from fx_scanner.xau_dashboard_bridge_v254 import fetch_snapshot
 
-          payload = fetch_snapshot(timeout_seconds=20.0)
+          import time
+
+          payload = None
+          last_error = None
+          for attempt in range(1, 7):
+              try:
+                  payload = fetch_snapshot(timeout_seconds=20.0)
+                  break
+              except Exception as exc:
+                  last_error = exc
+                  print(f"BRIDGE_SMOKE_RETRY attempt={attempt}/6 error={type(exc).__name__}:{exc}")
+                  if attempt < 6:
+                      time.sleep(20)
+          if payload is None:
+              raise SystemExit(f"BRIDGE_SMOKE_FETCH_FAILED: {last_error}")
+
           backend = dict(payload.get("backend") or {})
           control = dict(backend.get("control") or {})
           bridge = dict(payload.get("bridge") or {})
