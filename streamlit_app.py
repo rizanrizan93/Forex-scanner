@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import sys
@@ -142,6 +143,26 @@ def _secret(name: str) -> str:
     except Exception:
         raw = ""
     return str(raw).strip()
+
+
+def _supabase_key_role(value: str) -> str:
+    """Identify legacy JWT anon/service_role keys without verifying the token."""
+    token = str(value or "").strip()
+    if token.startswith("sb_publishable_"):
+        return "anon"
+    if token.startswith("sb_secret_"):
+        return "service_role"
+    parts = token.split(".")
+    if len(parts) != 3:
+        return ""
+    try:
+        payload_raw = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(
+            base64.urlsafe_b64decode(payload_raw.encode("ascii")).decode("utf-8")
+        )
+    except Exception:
+        return ""
+    return str(payload.get("role") or "").strip().lower()
 
 
 @st.cache_resource(show_spinner=False)
@@ -1622,7 +1643,7 @@ now_epoch = datetime.now(tz=UTC).timestamp()
 # A publishable key is valid for the public API but must never be granted broad
 # table SELECT just to make the dashboard work. In that case we go straight to
 # the curated read-only GitHub bridge.
-publishable_key_configured = supabase_secret.startswith("sb_publishable_")
+publishable_key_configured = _supabase_key_role(supabase_secret) == "anon"
 
 if (
     backend_configured
