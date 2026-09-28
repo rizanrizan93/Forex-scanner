@@ -1718,6 +1718,7 @@ with st.sidebar:
 
     if st.button("Refresh dashboard", width="stretch"):
         _clear_backend_snapshot_cache(include_slow=True)
+        _load_dashboard_bridge.clear()
         _load_standalone_bridge.clear()
         st.rerun()
     auto_refresh_enabled = st.toggle(
