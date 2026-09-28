@@ -2,11 +2,6 @@ name: ForexRizan Dashboard Egress Audit
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/forexrizan-dashboard-egress-audit.yml"
 
 permissions:
   contents: read
