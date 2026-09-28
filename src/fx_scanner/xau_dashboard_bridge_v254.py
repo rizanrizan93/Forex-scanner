@@ -151,7 +151,7 @@ def build_snapshot() -> dict[str, Any]:
 
     run = reader.latest_run()
     account = reader.latest_broker_account()
-    compact_heartbeats = reader.heartbeats()
+    compact_heartbeats = reader.heartbeat_summaries()
     critical_heartbeats = reader.heartbeats_for_workers(list(CRITICAL_HEARTBEATS))
 
     backend = {
@@ -170,6 +170,7 @@ def build_snapshot() -> dict[str, Any]:
         "afic_prepared_plans": list(reader.latest_afic_prepared_plans()),
         "afic_execution_geometry": list(reader.latest_afic_execution_geometry()),
         "xau_execution_events": list(reader.latest_xau_execution_events()),
+        "xau_geometry_events": list(reader.latest_xau_geometry_events()),
         "xau_outcomes": list(reader.latest_xau_outcomes()),
         "xau_prepared_plan_lifecycle": list(
             reader.latest_xau_prepared_plan_lifecycle()
@@ -247,6 +248,7 @@ def validate_snapshot(
         "afic_forecast_states",
         "afic_prepared_plans",
         "xau_execution_events",
+        "xau_geometry_events",
     }
     missing = sorted(required.difference(backend))
     if missing:
