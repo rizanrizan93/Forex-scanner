@@ -25,7 +25,6 @@ jobs:
       OLD_SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
       OLD_SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_CLI_VERSION: 2.118.0
-      PG_DUMP_IMAGE: public.ecr.aws/supabase/postgres:17.6.1.171
 
     steps:
       - name: Validate required secrets
@@ -50,6 +49,14 @@ jobs:
           set -euo pipefail
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" --version
           psql --version
+
+      - name: Install PostgreSQL 17 client
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
 
       - name: Dump old Supabase database
         shell: bash
@@ -83,28 +90,22 @@ jobs:
           # Native PostgreSQL 17 dump: no SET ROLE postgres, no writes to source.
           printf '%s\n' '-- RIZAN migration: built-in Supabase roles are recreated by destination.' > roles.sql
 
-          docker run --rm \
-            -v "$WORKDIR:/work" \
-            --entrypoint pg_dump \
-            "$PG_DUMP_IMAGE" \
+          /usr/lib/postgresql/17/bin/pg_dump \
             "$ACTIVE_DB_URL" \
             --schema=public \
             --schema-only \
             --no-owner \
-            --file=/work/schema.sql
+            --file=schema.sql
 
           # The destination already has the managed public schema.
           sed -i '/^CREATE SCHEMA public;$/d' schema.sql
 
-          docker run --rm \
-            -v "$WORKDIR:/work" \
-            --entrypoint pg_dump \
-            "$PG_DUMP_IMAGE" \
+          /usr/lib/postgresql/17/bin/pg_dump \
             "$ACTIVE_DB_URL" \
             --schema=public \
             --data-only \
             --no-owner \
-            --file=/work/data.sql
+            --file=data.sql
 
           cat > history_schema.sql <<'SQL'
           create schema if not exists supabase_migrations;
@@ -122,16 +123,13 @@ jobs:
           truncate table supabase_migrations.schema_migrations;
           SQL
 
-          docker run --rm \
-            -v "$WORKDIR:/work" \
-            --entrypoint pg_dump \
-            "$PG_DUMP_IMAGE" \
+          /usr/lib/postgresql/17/bin/pg_dump \
             "$ACTIVE_DB_URL" \
             --table=supabase_migrations.schema_migrations \
             --data-only \
             --column-inserts \
             --no-owner \
-            --file=/work/history_data.sql
+            --file=history_data.sql
 
           test -s roles.sql
           test -s schema.sql
