@@ -150,8 +150,6 @@ def _supabase_key_role(value: str) -> str:
     token = str(value or "").strip()
     if token.startswith("sb_publishable_"):
         return "anon"
-    if token.startswith("sb_secret_"):
-        return "service_role"
     parts = token.split(".")
     if len(parts) != 3:
         return ""
@@ -1792,6 +1790,11 @@ elif backend_source == "GITHUB_DASHBOARD_BRIDGE" and direct_backend_error:
     st.caption(
         "Direct Supabase table access is unavailable in Streamlit; "
         "dashboard is using the fresh curated ForexRizan bridge instead."
+    )
+if backend_source == "GITHUB_DASHBOARD_BRIDGE" and not backend_configured:
+    st.info(
+        "Dashboard can be deployed now without backend secrets; "
+        "the read-only ForexRizan Dashboard Bridge is active."
     )
 if dashboard_bridge_error and backend is None:
     st.warning(f"Dashboard Bridge belum tersedia: {dashboard_bridge_error}")
