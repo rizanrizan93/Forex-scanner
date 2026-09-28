@@ -63,3 +63,19 @@ def test_v209_keeps_minute_discovery_and_throttles_heavy_calibration_to_hourly()
     assert "ctrader_demo_auto_pipeline SUCCESS" in auto
     assert "ctrader_demo_discovery_pipeline RUNNING" not in discovery
     assert "ctrader_demo_discovery_pipeline SUCCESS" in discovery
+
+
+def test_v209_dashboard_hot_path_keeps_bounded_egress_contract() -> None:
+    app = _read("streamlit_app.py")
+    dashboard = _read("src/fx_scanner/dashboard.py")
+
+    assert "RIZAN_DASHBOARD_HOT_HEARTBEATS" in app
+    assert "RIZAN_DASHBOARD_SUPPORT_HEARTBEATS" in app
+    assert "def _load_backend_support_snapshot" in app
+    assert "def heartbeat_summaries" in dashboard
+    assert "def heartbeats_for_workers" in dashboard
+    assert "def latest_xau_geometry_events" in dashboard
+    assert "symbol:payload->>symbol" in dashboard
+    assert "prepared_plan:payload->prepared_plan" in dashboard
+    assert "map_at:payload->forecast->>map_at" in dashboard
+    assert '"heartbeats": list(reader.heartbeat_summaries())' in app
