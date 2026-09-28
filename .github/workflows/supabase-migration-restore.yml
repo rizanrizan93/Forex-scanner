@@ -40,7 +40,7 @@ jobs:
       NEW_DB_URL: ${{ secrets.NEW_SUPABASE_DB_URL }}
       BACKUP_PASSPHRASE: ${{ secrets.MIGRATION_BACKUP_PASSPHRASE }}
       SOURCE_PROJECT_REF: fotzcxjeypmjldhvfskt
-      NEW_PROJECT_REF: mkxszgrpxbulpdovglcm
+      NEW_PROJECT_REF: naxvdtvlfatljzzwhrmo
       BACKUP_RUN_ID: 36393637313
       ALLOW_NONEMPTY_TARGET: ${{ inputs.allow_nonempty_target || 'false' }}
 
