@@ -1,0 +1,74 @@
+name: ForexRizan Bridge Egress Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/forexrizan-bridge-egress-gate.yml"
+      - "src/fx_scanner/xau_dashboard_bridge_v254.py"
+      - "src/fx_scanner/dashboard.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forexrizan-bridge-egress-gate
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install bridge runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Measure full tier payload and enforce monthly budget
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f /tmp/forexrizan-egress-gate.json
+          python -m fx_scanner.xau_dashboard_bridge_v254             --output /tmp/forexrizan-egress-gate.json
+          python - <<'PY'
+          import json
+
+          with open("/tmp/forexrizan-egress-gate.json", "r", encoding="utf-8") as handle:
+              snapshot = json.load(handle)
+          source = dict(snapshot.get("source") or {})
+          budget = dict(source.get("egress_budget") or {})
+          required = (
+              "cycle_payload_bytes",
+              "hot_payload_bytes",
+              "structural_payload_bytes",
+              "support_payload_bytes",
+              "cold_payload_bytes",
+              "outcome_payload_bytes",
+              "steady_state_estimated_bytes_per_minute",
+              "projected_24x5_month_gib",
+          )
+          missing = [key for key in required if budget.get(key) is None]
+          if missing:
+              raise SystemExit("FOREXRIZAN_EGRESS_GATE_MISSING=" + ",".join(missing))
+          print("FOREXRIZAN_BRIDGE_EGRESS_GATE " + json.dumps(budget, sort_keys=True))
+          projected = float(budget["projected_24x5_month_gib"])
+          target = float(budget.get("target_month_gib") or 3.5)
+          if projected > target:
+              raise SystemExit(
+                  f"FOREXRIZAN_EGRESS_GATE_FAIL projected={projected:.3f}GiB "
+                  f"target={target:.3f}GiB"
+              )
+          print(
+              f"FOREXRIZAN_EGRESS_GATE_OK projected={projected:.3f}GiB "
+              f"target={target:.3f}GiB"
+          )
+          PY
