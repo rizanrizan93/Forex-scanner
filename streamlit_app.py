@@ -55,16 +55,18 @@ RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     "ctrader_demo_xau_rizan_fast_handoff",
     "ctrader_demo_xau_dom_v191",
     "ctrader_demo_xau_event_risk_v192",
-    "ctrader_demo_xau_supply_demand_atlas_v182",
     "ctrader_demo_xau_v203_volatility_shock_guard",
-    "ctrader_demo_xau_v226_rizan_depth_map",
     "ctrader_demo_xau_v229_depth_execution",
-    "ctrader_demo_xau_v229_child_executor",
+)
+
+RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS = (
+    "ctrader_demo_xau_supply_demand_atlas_v182",
+    "ctrader_demo_xau_v226_rizan_depth_map",
 )
 
 RIZAN_DASHBOARD_SUPPORT_HEARTBEATS = (
     # Full details remain available exactly as before, but these evidence/research
-    # layers do not authorize a broker order and therefore use the 5-minute
+    # layers do not authorize a broker order and therefore use the hourly
     # observability budget.
     "ctrader_demo_xau_afic_prepared_plan_producer",
     "ctrader_demo_xau_afic_fast_handoff",
@@ -224,6 +226,9 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
     prepared_heartbeat = reader.latest_rizan_prepared_heartbeat()
     if prepared_heartbeat is not None:
         critical_heartbeats.append(prepared_heartbeat)
+    child_heartbeat = reader.latest_rizan_child_executor_heartbeat()
+    if child_heartbeat is not None:
+        critical_heartbeats.append(child_heartbeat)
     return {
         "critical_heartbeats": critical_heartbeats,
         "afic_forecast_states": list(reader.latest_afic_forecast_states()),
@@ -234,6 +239,18 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
 
 
 @st.cache_data(ttl=300, show_spinner=False)
+def _load_backend_structural_snapshot(url: str, secret_key: str) -> dict[str, Any]:
+    """Completed-structure V182/V226 detail; refreshed every five minutes."""
+    client = _supabase_client(url, secret_key)
+    reader = SupabaseDashboardReader(client)
+    return {
+        "structural_heartbeats": list(
+            reader.heartbeats_for_workers(list(RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS))
+        )
+    }
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
 def _load_backend_support_snapshot(url: str, secret_key: str) -> dict[str, Any]:
     """Full detail for non-authoritative research/evidence workers."""
     client = _supabase_client(url, secret_key)
@@ -263,8 +280,15 @@ def _load_backend_slow_snapshot(url: str, secret_key: str) -> dict[str, Any]:
         "heartbeats": list(reader.heartbeat_summaries()),
         "macro": list(reader.latest_macro()),
         "performance": list(reader.latest_performance()),
-        "xau_outcomes": list(reader.latest_xau_outcomes()),
     }
+
+
+@st.cache_data(ttl=21600, show_spinner=False)
+def _load_backend_outcome_snapshot(url: str, secret_key: str) -> dict[str, Any]:
+    """Prospective/OOS evidence changes slowly; refresh every six hours."""
+    client = _supabase_client(url, secret_key)
+    reader = SupabaseDashboardReader(client)
+    return {"xau_outcomes": list(reader.latest_xau_outcomes())}
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -300,15 +324,21 @@ def _load_backend_snapshot(url: str, secret_key: str) -> dict[str, Any]:
     # Operational/decision state remains 60s. Heavy history/observability is
     # cached for five minutes to reduce Supabase data-plane egress.
     merged = dict(_load_backend_slow_snapshot(url, secret_key))
+    merged.update(_load_backend_outcome_snapshot(url, secret_key))
     support = dict(_load_backend_support_snapshot(url, secret_key))
+    structural = dict(_load_backend_structural_snapshot(url, secret_key))
     decision = dict(_load_backend_decision_snapshot(url, secret_key))
     support_and_summary = _merge_heartbeat_rows(
         list(support.get("support_heartbeats", []) or []),
         list(merged.get("heartbeats", []) or []),
     )
+    structural_and_support = _merge_heartbeat_rows(
+        list(structural.get("structural_heartbeats", []) or []),
+        support_and_summary,
+    )
     merged["heartbeats"] = _merge_heartbeat_rows(
         list(decision.pop("critical_heartbeats", []) or []),
-        support_and_summary,
+        structural_and_support,
     )
     merged.update(decision)
     merged.update(_load_backend_fast_snapshot(url, secret_key))
@@ -321,7 +351,9 @@ def _clear_backend_snapshot_cache(*, include_slow: bool) -> None:
     _load_backend_decision_snapshot.clear()
     if include_slow:
         _load_backend_slow_snapshot.clear()
+        _load_backend_structural_snapshot.clear()
         _load_backend_support_snapshot.clear()
+        _load_backend_outcome_snapshot.clear()
         _load_full_heartbeat_details.clear()
 
 
