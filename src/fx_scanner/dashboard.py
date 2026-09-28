@@ -282,6 +282,47 @@ class SupabaseDashboardReader:
             return raw
         return None
 
+    def latest_rizan_v229_execution_heartbeat(self) -> dict[str, Any] | None:
+        """Return only V229 execution fields consumed by the dashboard.
+
+        Pressure transition and Dynamic Depth are already supplied by V191/V226
+        and recomputed by V249/V251 in the dashboard. Projecting the V229 row
+        avoids retransmitting those duplicated nested payloads every minute.
+        """
+        select_expr = (
+            "worker_name,observed_at,healthy,lag_seconds,"
+            "reason:details->>reason,"
+            "signal_id:details->>signal_id,"
+            "error:details->>error,"
+            "plan:details->plan"
+        )
+        try:
+            response = (
+                self.client.table("runtime_heartbeats")
+                .select(select_expr)
+                .eq("worker_name", "ctrader_demo_xau_v229_depth_execution")
+                .order("observed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"V229 execution heartbeat read failed: {exc}"
+            ) from exc
+        rows = self._rows(response)
+        if not rows:
+            return None
+        raw = dict(rows[0])
+        if isinstance(raw.get("details"), dict):
+            return raw
+        raw["details"] = {
+            "reason": raw.pop("reason", None),
+            "signal_id": raw.pop("signal_id", None),
+            "error": raw.pop("error", None),
+            "plan": dict(raw.pop("plan", {}) or {}),
+        }
+        return raw
+
     def latest_rizan_child_executor_heartbeat(self) -> dict[str, Any] | None:
         """Return only child-executor state consumed by the dashboard."""
         select_expr = (
