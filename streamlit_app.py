@@ -2718,6 +2718,8 @@ with forecast_tab:
     v240_hist = dict(v240_decision.get("historical_context") or {})
     v240_conflicts = list(v240_decision.get("conflicts") or [])
     v240_stale = list(v240_decision.get("stale_reasons") or [])
+    v240_remap = list(v240_decision.get("remap_reasons") or [])
+    v240_local_structure = dict(v240_decision.get("local_structure_override") or {})
 
     # Operational buyer/seller pressure is surfaced directly in V240 and uses
     # the same classifier as the cTrader DEMO child executor.
@@ -2741,6 +2743,26 @@ with forecast_tab:
         live_price=dc_reference_price,
         pressure_transition=v240_pressure_transition,
     )
+    if v240_remap:
+        # V226 can legitimately retain a distant H4-parent locator while a newer
+        # standalone H1/M15 structure has formed closer to price. In that state,
+        # do not display a huge negative depth or a misleading reversal band.
+        # Execution remains fail-closed until the hierarchical map remaps.
+        v240_depth_hazard = {
+            "state": "UNAVAILABLE",
+            "reason": "LOCAL_STRUCTURE_AHEAD_OF_V226_CANDIDATE",
+            "location_state": "LOCAL_REMAP",
+            "action": "WAIT_STRUCTURE_REMAP",
+            "execution_ready": False,
+            "current_depth": None,
+            "recommended_depth_low": None,
+            "recommended_depth_high": None,
+            "recommended_price_low": None,
+            "recommended_price_high": None,
+            "future_bands": [],
+            "historical_prior_scope": "REMAP_REQUIRED",
+            "retest_confirmation_required": False,
+        }
 
     # Surface the same lifecycle/execution state used by the DEMO route.
     v226_h4_app = dict(v226_h4.get("applicability") or {})
@@ -2795,8 +2817,16 @@ with forecast_tab:
         v240_h4_quick = dict(
             v226_h4.get("zone") or v226_nearest_h4_context_zone or {}
         )
-        v240_h1_quick = dict(v226_h1.get("zone") or {})
-        v240_m15_quick = dict(v226_m15.get("zone") or {})
+        v240_h1_quick = dict(
+            v240_local_structure
+            if str(v240_local_structure.get("timeframe") or "").upper() == "H1"
+            else v226_h1.get("zone") or {}
+        )
+        v240_m15_quick = dict(
+            v240_local_structure
+            if str(v240_local_structure.get("timeframe") or "").upper() == "M15"
+            else v226_m15.get("zone") or {}
+        )
         v240_m5_quick = dict(
             dc_refined_display
             or dc_initial_candidate
@@ -2825,8 +2855,17 @@ with forecast_tab:
             and v240_decision.get("entry_high") is not None
             else "—"
         )
+        v240_depth_location = str(
+            v240_depth_hazard.get("location_state") or ""
+        ).upper()
         v240_depth_text = (
-            "—"
+            "REMAP LOCAL"
+            if v240_depth_location == "LOCAL_REMAP"
+            else "BELUM MASUK ZONA"
+            if v240_depth_location == "AHEAD_OF_ZONE"
+            else "LEWATI DISTAL"
+            if v240_depth_location == "AT_OR_BEYOND_DISTAL"
+            else "—"
             if v240_depth_hazard.get("current_depth") is None
             else f"{100.0 * float(v240_depth_hazard.get('current_depth')):.1f}%"
         )
@@ -2922,9 +2961,25 @@ with forecast_tab:
         qr5, qr6 = st.columns(2)
         qr5.metric(
             "15 • Lifecycle",
-            str(v226_entry_candidate.get("display_status") or v240_decision.get("state") or "WAIT"),
+            (
+                "LOCAL_REMAP_WAIT"
+                if v240_remap
+                else str(
+                    v226_entry_candidate.get("display_status")
+                    or v240_decision.get("state")
+                    or "WAIT"
+                )
+            ),
         )
         qr6.metric("16 • Session WIB", f"{v240_session} • {v240_wib_clock}")
+
+        if v240_remap:
+            st.warning(
+                "Local structure lebih dekat telah muncul dan berada di antara harga sekarang "
+                "dengan locator V226 lama. V240 menampilkan zona lokal sebagai **watch/remap**, "
+                "bukan sebagai order-ready entry. V229 tetap fail-closed sampai hierarchy "
+                "H4→H1→M15 membentuk candidate baru yang konsisten."
+            )
 
         st.markdown("###### Buyer / Seller Pressure — timing masuk zona")
         pr1, pr2, pr3, pr4 = st.columns(4)
@@ -2987,11 +3042,7 @@ with forecast_tab:
         hz1, hz2, hz3, hz4 = st.columns(4)
         hz1.metric(
             "Current depth",
-            (
-                "—"
-                if v240_depth_hazard.get("current_depth") is None
-                else f"{100.0 * float(v240_depth_hazard.get('current_depth')):.1f}%"
-            ),
+            v240_depth_text,
         )
         hz2.metric(
             "Next reversal band",
