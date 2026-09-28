@@ -12,6 +12,7 @@ class Query:
         self.client = client
         self.table_name = table
         self.filters = {}
+        self.in_filters = {}
         self.limit_value = None
 
     def select(self, *args, **kwargs):
@@ -29,10 +30,16 @@ class Query:
         self.filters[str(key)] = value
         return self
 
+    def in_(self, key, values):
+        self.in_filters[str(key)] = set(values)
+        return self
+
     def execute(self):
         rows = list(self.client.data.get(self.table_name, []))
         for key, value in self.filters.items():
             rows = [row for row in rows if row.get(key) == value]
+        for key, values in self.in_filters.items():
+            rows = [row for row in rows if row.get(key) in values]
         if self.limit_value is not None:
             rows = rows[: self.limit_value]
         return Response(rows)
@@ -206,7 +213,8 @@ def test_dashboard_filters_recent_xau_execution_events():
                 "accepted": True,
                 "signal_key": "afic-signal",
                 "broker_order_id": "123",
-                "payload": {"symbol": "XAUUSD", "requested_entry": 4350.0},
+                "symbol": "XAUUSD",
+                "requested_entry": "4350.0",
             },
             {
                 "observed_at": "2026-09-22T03:19:00Z",
@@ -222,13 +230,18 @@ def test_dashboard_filters_recent_xau_execution_events():
                 "code": "2",
                 "accepted": True,
                 "signal_key": "eur-signal",
-                "payload": {"symbol": "EURUSD"},
+                "symbol": "EURUSD",
             },
         ]
     })
-    rows = SupabaseDashboardReader(client).latest_xau_execution_events()
-    assert len(rows) == 2
-    assert {row["signal_key"] for row in rows} == {"afic-signal"}
+    reader = SupabaseDashboardReader(client)
+    rows = reader.latest_xau_execution_events()
+    geometry = reader.latest_xau_geometry_events()
+    assert len(rows) == 1
+    assert rows[0]["signal_key"] == "afic-signal"
+    assert rows[0]["payload"]["requested_entry"] == "4350.0"
+    assert len(geometry) == 1
+    assert geometry[0]["code"] == "XAU_AFIC_PATH_EXECUTION_V1"
 
 
 def test_dashboard_reader_has_dedicated_xau_signal_feed():
