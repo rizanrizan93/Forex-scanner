@@ -4,6 +4,10 @@ on:
   workflow_run:
     workflows: ["RIZAN Supabase Migration Backup"]
     types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/supabase-migration-restore.yml"
   workflow_dispatch:
     inputs:
       backup_run_id:
@@ -29,7 +33,7 @@ concurrency:
 
 jobs:
   restore:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
