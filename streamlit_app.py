@@ -1824,6 +1824,26 @@ if policy is not None:
     fast_setup = f"{policy.scheduler['fast_setup_seconds']:.0f}s"
     execution_watch = f"{policy.scheduler['execution_watch_seconds'] * 1000:.0f} ms"
 
+runtime_mode = mode
+if backend is not None:
+    _summary_control = dict(backend.get("control") or {})
+    _summary_execution_mode = str(
+        _summary_control.get("execution_mode") or ""
+    ).upper()
+    _summary_demo = bool(
+        policy is not None
+        and str(policy.ctrader.get("environment", "")).upper() == "DEMO"
+        and bool(policy.ctrader.get("require_demo", False))
+    )
+    if _summary_demo:
+        runtime_mode = (
+            f"DEMO {_summary_execution_mode}"
+            if _summary_execution_mode
+            else "DEMO"
+        )
+    elif _summary_execution_mode:
+        runtime_mode = _summary_execution_mode
+
 backend_label = (
     "SUPABASE"
     if backend is not None and backend_source == "SUPABASE_DIRECT"
@@ -1837,7 +1857,7 @@ backend_label = (
 )
 
 m1, m2, m3, m4, m5 = st.columns(5)
-m1.metric("Risk Mode", mode)
+m1.metric("Runtime Mode", runtime_mode)
 m2.metric("Pairs", pairs)
 m3.metric("Top-5 Scan Cadence", fast_setup)
 m4.metric("Execution Watch", execution_watch)
