@@ -67,7 +67,7 @@ jobs:
             exit 1
           fi
 
-          SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
+          SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" PROJECT_REF="$NEW_PROJECT_REF" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); ref=os.environ["PROJECT_REF"]; scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); username=("postgres."+ref) if ("pooler.supabase.com" in hostpart and username=="postgres") else username; safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
 
           # Never print SAFE_NEW_DB_URL: normalized variants are not automatically masked by GitHub.
           psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
@@ -135,7 +135,7 @@ jobs:
           set +x
           cd "$RUNNER_TEMP/rizan-supabase-restore"
 
-          SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
+          SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" PROJECT_REF="$NEW_PROJECT_REF" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); ref=os.environ["PROJECT_REF"]; scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); username=("postgres."+ref) if ("pooler.supabase.com" in hostpart and username=="postgres") else username; safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
 
           psql \
             --single-transaction \
@@ -160,7 +160,7 @@ jobs:
           set +x
           cd "$RUNNER_TEMP/rizan-supabase-restore"
 
-          SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
+          SAFE_NEW_DB_URL="$(RAW_DB_URL="$NEW_DB_URL" PROJECT_REF="$NEW_PROJECT_REF" python -c 'import os; from urllib.parse import quote,unquote; raw=os.environ["RAW_DB_URL"].strip(); ref=os.environ["PROJECT_REF"]; scheme,rest=raw.split("://",1); userinfo,hostpart=rest.rsplit("@",1); username,raw_secret=userinfo.split(":",1); username=("postgres."+ref) if ("pooler.supabase.com" in hostpart and username=="postgres") else username; safe_secret=quote(unquote(raw_secret),safe=""); print("{}://{}:{}@{}".format(scheme,username,safe_secret,hostpart))')"
 
           psql "$SAFE_NEW_DB_URL" -X -v ON_ERROR_STOP=1 -Atc \
             "select format('select %L as table_name, count(*)::bigint as row_count from %I.%I;', schemaname||'.'||tablename, schemaname, tablename) from pg_tables where schemaname='public' order by tablename;" \
