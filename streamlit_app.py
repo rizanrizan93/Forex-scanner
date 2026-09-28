@@ -2788,69 +2788,141 @@ with forecast_tab:
             "Satu sumber kebenaran untuk arah, Depth Candidate, entry, SL, TP dan tujuan berikutnya. "
             "Entry/SL/TP dihitung dengan builder V229 yang sama dengan jalur DEMO; snapshot lama tidak boleh mengalahkan candidate aktif."
         )
-        cx1, cx2, cx3 = st.columns(3)
-        cx1.metric("Harga sekarang", _fmt_price(dc_reference_price))
-        cx2.metric("Session (WIB)", f"{v240_session} • {v240_wib_clock}")
-        cx3.metric("WAIT / BLOCK reason", _rizan_display(v240_gate_reason))
-        ca1, ca2, ca3, ca4 = st.columns(4)
-        ca1.metric("Arah resmi", v240_direction)
-        ca2.metric(
-            "Primary Depth Entry",
-            (
-                f"{_fmt_price(v240_decision.get('entry_low'))}–"
-                f"{_fmt_price(v240_decision.get('entry_high'))}"
-                if v240_decision.get("entry_low") is not None
-                and v240_decision.get("entry_high") is not None
-                else "—"
-            ),
+        # Smartphone-first operational sequence. Keep this block at two columns
+        # maximum so the decision path remains readable on narrow screens.
+        v240_h4_quick = dict(
+            v226_h4.get("zone") or v226_nearest_h4_context_zone or {}
         )
-        ca3.metric("Reference entry", _fmt_price(v240_decision.get("entry_reference")))
-        ca4.metric("State", str(v240_decision.get("state") or "WAIT"))
-
-        cb1, cb2, cb3, cb4 = st.columns(4)
-        cb1.metric("SL / invalidation", _fmt_price(v240_decision.get("sl")))
-        cb2.metric(
-            "TP1 struktural",
-            _fmt_price(v240_decision.get("tp1")),
-            delta=(
-                None if v240_decision.get("rr1") is None
-                else f"{float(v240_decision.get('rr1')):.2f}R"
-            ),
-        )
-        cb3.metric(
-            "TP terminal",
-            _fmt_price(v240_decision.get("tp2")),
-            delta=(
-                None if v240_decision.get("rr2") is None
-                else f"{float(v240_decision.get('rr2')):.2f}R"
-            ),
-        )
-        cb4.metric(
-            "Likely destination",
-            _fmt_price(v240_destination.get("target_price")),
+        v240_h1_quick = dict(v226_h1.get("zone") or {})
+        v240_m15_quick = dict(v226_m15.get("zone") or {})
+        v240_m5_quick = dict(
+            dc_refined_display
+            or dc_initial_candidate
+            or dc_current_projected_pocket
+            or {}
         )
 
-        cc1, cc2, cc3 = st.columns(3)
-        cc1.metric(
-            "Demand terdekat",
-            (
+        def _quick_zone_text(zone_row: dict[str, Any]) -> str:
+            if not zone_row:
+                return "—"
+            direction = str(zone_row.get("direction") or "").upper()
+            zone_kind = (
+                "Demand" if direction == "LONG"
+                else "Supply" if direction == "SHORT"
+                else "Zone"
+            )
+            return (
+                f"{zone_kind} • {_fmt_price(zone_row.get('low'))}–"
+                f"{_fmt_price(zone_row.get('high'))}"
+            )
+
+        v240_primary_entry_text = (
+            f"{_fmt_price(v240_decision.get('entry_low'))}–"
+            f"{_fmt_price(v240_decision.get('entry_high'))}"
+            if v240_decision.get("entry_low") is not None
+            and v240_decision.get("entry_high") is not None
+            else "—"
+        )
+        v240_depth_text = (
+            "—"
+            if v240_depth_hazard.get("current_depth") is None
+            else f"{100.0 * float(v240_depth_hazard.get('current_depth')):.1f}%"
+        )
+        v240_depth_band_text = (
+            "—"
+            if v240_depth_hazard.get("recommended_depth_low") is None
+            else (
+                f"{100.0 * float(v240_depth_hazard.get('recommended_depth_low')):.0f}–"
+                f"{100.0 * float(v240_depth_hazard.get('recommended_depth_high')):.0f}%"
+            )
+        )
+        v240_m5_state_quick = (
+            dc_current_pocket_state
+            or ("REFINED_M5_POCKET" if dc_refined_display else "")
+            or ("CANDIDATE_M5_POCKET" if dc_initial_candidate else "")
+            or "WAIT_M5"
+        )
+        v240_m5_price_quick = (
+            f"{_fmt_price(v240_m5_quick.get('low'))}–"
+            f"{_fmt_price(v240_m5_quick.get('high'))}"
+            if v240_m5_quick else "—"
+        )
+
+        st.markdown("###### 1–6 • Struktur market → lokasi → timing")
+        qs1, qs2 = st.columns(2)
+        qs1.metric("1 • Arah / Kondisi", f"{v240_direction} • {state}")
+        qs2.metric("2 • Harga XAU sekarang", _fmt_price(dc_reference_price))
+        qs3, qs4 = st.columns(2)
+        qs3.metric("3 • H4 Supply/Demand", _quick_zone_text(v240_h4_quick))
+        qs4.metric("4 • H1 Supply/Demand", _quick_zone_text(v240_h1_quick))
+        qs5, qs6 = st.columns(2)
+        qs5.metric("5 • M15 confirmation / retest", f"{dc_m15_direction} • {dc_m15_state}")
+        qs6.metric("6 • M5 timing", f"{v240_m5_state_quick} • {v240_m5_price_quick}")
+        st.caption(
+            "Demand terdekat: "
+            + (
                 f"{_fmt_price(v240_nearest_demand.get('low'))}–"
                 f"{_fmt_price(v240_nearest_demand.get('high'))}"
                 if v240_nearest_demand else "—"
-            ),
-        )
-        cc2.metric(
-            "Supply terdekat",
-            (
+            )
+            + " • Supply terdekat: "
+            + (
                 f"{_fmt_price(v240_nearest_supply.get('low'))}–"
                 f"{_fmt_price(v240_nearest_supply.get('high'))}"
                 if v240_nearest_supply else "—"
-            ),
+            )
         )
-        cc3.metric(
-            "Depth source",
-            str(v240_decision.get("source_layer") or "—"),
+
+        st.markdown("###### 7–10 • Entry → depth → pressure → admission")
+        qe1, qe2 = st.columns(2)
+        qe1.metric("7 • Primary Depth Entry", v240_primary_entry_text)
+        qe2.metric("8 • Dynamic Depth", f"{v240_depth_text} → {v240_depth_band_text}")
+        st.caption(
+            f"Reference entry: {_fmt_price(v240_decision.get('entry_reference'))} • "
+            f"Depth source: {v240_decision.get('source_layer') or '—'}"
         )
+        qe3, qe4 = st.columns(2)
+        qe3.metric(
+            "9 • Pressure transition",
+            f"{v240_pressure_trend} • B {_fmt_number(v240_buyer_index, 0)} / "
+            f"S {_fmt_number(v240_seller_index, 0)}",
+        )
+        qe4.metric(
+            "10 • Execution Admission",
+            f"{dc_admission_label} • {dc_route_label}",
+        )
+
+        st.markdown("###### 11–16 • Risk → target → lifecycle → session")
+        qr1, qr2 = st.columns(2)
+        qr1.metric("11 • SL / invalidation", _fmt_price(v240_decision.get("sl")))
+        qr2.metric(
+            "12 • TP ladder",
+            f"{_fmt_price(v240_decision.get('tp1'))} → {_fmt_price(v240_decision.get('tp2'))}",
+        )
+        st.caption(
+            f"TP1 struktural: {_fmt_price(v240_decision.get('tp1'))}"
+            + (
+                "" if v240_decision.get("rr1") is None
+                else f" ({float(v240_decision.get('rr1')):.2f}R)"
+            )
+            + f" • TP terminal: {_fmt_price(v240_decision.get('tp2'))}"
+            + (
+                "" if v240_decision.get("rr2") is None
+                else f" ({float(v240_decision.get('rr2')):.2f}R)"
+            )
+        )
+        qr3, qr4 = st.columns(2)
+        qr3.metric(
+            "13 • Likely destination / opposing zone",
+            _fmt_price(v240_destination.get("target_price")),
+        )
+        qr4.metric("14 • WAIT / BLOCK reason", _rizan_display(v240_gate_reason))
+        qr5, qr6 = st.columns(2)
+        qr5.metric(
+            "15 • Lifecycle",
+            str(v226_entry_candidate.get("display_status") or v240_decision.get("state") or "WAIT"),
+        )
+        qr6.metric("16 • Session WIB", f"{v240_session} • {v240_wib_clock}")
 
         st.markdown("###### Buyer / Seller Pressure — timing masuk zona")
         pr1, pr2, pr3, pr4 = st.columns(4)
