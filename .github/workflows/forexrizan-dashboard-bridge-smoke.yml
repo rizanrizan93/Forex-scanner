@@ -1,0 +1,57 @@
+name: ForexRizan Dashboard Bridge Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/forexrizan-dashboard-bridge-smoke.yml"
+      - "src/fx_scanner/xau_dashboard_bridge_v254.py"
+      - "streamlit_app.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Fetch public dashboard bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from fx_scanner.xau_dashboard_bridge_v254 import fetch_snapshot
+
+          payload = fetch_snapshot(timeout_seconds=20.0)
+          backend = dict(payload.get("backend") or {})
+          control = dict(backend.get("control") or {})
+          bridge = dict(payload.get("bridge") or {})
+          required = (
+              "heartbeats",
+              "xau_signals",
+              "afic_forecast_states",
+              "afic_prepared_plans",
+              "afic_execution_geometry",
+              "xau_execution_events",
+              "xau_prepared_plan_lifecycle",
+              "control",
+          )
+          missing = [key for key in required if key not in backend]
+          if missing:
+              raise SystemExit("BRIDGE_SMOKE_MISSING=" + ",".join(missing))
+          if not bridge.get("fresh"):
+              raise SystemExit("BRIDGE_SMOKE_STALE")
+          print(
+              "FOREXRIZAN_DASHBOARD_BRIDGE_SMOKE_OK "
+              f"age_seconds={bridge.get('age_seconds')} "
+              f"execution_mode={control.get('execution_mode')} "
+              f"heartbeats={len(list(backend.get('heartbeats') or []))} "
+              f"xau_signals={len(list(backend.get('xau_signals') or []))}"
+          )
+          PY
