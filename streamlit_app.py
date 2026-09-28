@@ -21,6 +21,7 @@ from fx_scanner import __version__
 from fx_scanner.config import ProjectConfig, load_project_config
 from fx_scanner.dashboard import DashboardReadError, SupabaseDashboardReader
 from fx_scanner.execution.policy import load_execution_policy
+from fx_scanner.sessions import session_label
 from fx_scanner.providers.factory import build_provider_runtime
 from fx_scanner.storage.supabase_operational import (
     OperationalStoreUnavailable,
@@ -2569,6 +2570,20 @@ with forecast_tab:
     else:
         v240_penetration_risk = "RENDAH — control mulai berbalik"
 
+    v240_session = "OFF_SESSION"
+    if cfg is not None:
+        try:
+            v240_session = session_label(datetime.now(tz=UTC), cfg.sessions)
+        except Exception:
+            v240_session = "SESSION_UNAVAILABLE"
+    v240_wib_clock = datetime.now(tz=UTC).astimezone(WIB).strftime("%H:%M WIB")
+    v240_gate_reason = str(
+        v229_exec_details.get("reason")
+        or v240_depth_hazard.get("action")
+        or v240_decision.get("state")
+        or "WAIT"
+    )
+
     st.markdown("### 2 • Zona Utama & Depth Entry")
     with st.container(border=True):
         st.markdown("##### V240 — Canonical XAU Decision Map")
@@ -2576,6 +2591,10 @@ with forecast_tab:
             "Satu sumber kebenaran untuk arah, Depth Candidate, entry, SL, TP dan tujuan berikutnya. "
             "Entry/SL/TP dihitung dengan builder V229 yang sama dengan jalur DEMO; snapshot lama tidak boleh mengalahkan candidate aktif."
         )
+        cx1, cx2, cx3 = st.columns(3)
+        cx1.metric("Harga sekarang", _fmt_price(dc_reference_price))
+        cx2.metric("Session (WIB)", f"{v240_session} • {v240_wib_clock}")
+        cx3.metric("WAIT / BLOCK reason", _rizan_display(v240_gate_reason))
         ca1, ca2, ca3, ca4 = st.columns(4)
         ca1.metric("Arah resmi", v240_direction)
         ca2.metric(
@@ -2729,6 +2748,31 @@ with forecast_tab:
             "Hazard action",
             str(v240_depth_hazard.get("action") or "WAIT"),
         )
+        child_status_by_slot: dict[str, str] = {}
+        for raw_child in list(v229_exec_plan.get("children") or []):
+            child = dict(raw_child)
+            slot = str(child.get("slot") or "").upper()
+            if not slot:
+                continue
+            if bool(child.get("submit_eligible")):
+                status = "ELIGIBLE"
+            elif bool(child.get("execution_enabled")):
+                status = "ARMED / WAIT"
+            else:
+                status = "OFF / CONFIRM"
+            child_status_by_slot[slot] = status
+        st.markdown("###### Child L1–L4 — status eksekusi DEMO")
+        l1, l2, l3, l4 = st.columns(4)
+        l1.metric("L1", child_status_by_slot.get("L1", "WAIT"))
+        l2.metric("L2", child_status_by_slot.get("L2", "WAIT"))
+        l3.metric("L3", child_status_by_slot.get("L3", "WAIT"))
+        l4.metric("L4", child_status_by_slot.get("L4", "WAIT"))
+        st.caption(
+            "L1/L2 = pre-touch depth child bila lifecycle mengizinkan; "
+            "L3/L4 = confirmation child. Pada retest M15, L1/L2 tetap OFF dan L3/L4 "
+            "baru boleh aktif setelah pressure + M5 confirmation."
+        )
+
         if str(v240_depth_hazard.get("state") or "") == "DYNAMIC_DEPTH_HAZARD_AVAILABLE":
             best_hazard = dict(v240_depth_hazard.get("recommended_band") or {})
             st.info(
