@@ -20,22 +20,42 @@ DEFAULT_SNAPSHOT_URL = (
 )
 FRESH_SECONDS = 180.0
 
-CRITICAL_HEARTBEATS = (
-    "ctrader_demo_xau_rizan_prepared_plan_producer",
+HOT_REFRESH_SECONDS = 60.0
+STRUCTURAL_REFRESH_SECONDS = 300.0
+SUPPORT_REFRESH_SECONDS = 1800.0
+COLD_REFRESH_SECONDS = 900.0
+OUTCOME_REFRESH_SECONDS = 21600.0
+
+HOT_HEARTBEATS = (
+    # Price/pressure/admission state that materially changes the current action.
+    # Prepared-plan state is read separately through a projected compact query.
     "ctrader_demo_xau_rizan_fast_handoff",
-    "ctrader_demo_xau_afic_prepared_plan_producer",
     "ctrader_demo_xau_afic_fast_handoff",
     "ctrader_demo_xau_dom_v191",
     "ctrader_demo_xau_event_risk_v192",
-    "ctrader_demo_xau_premap_candidate_v181",
+    "ctrader_demo_xau_v203_volatility_shock_guard",
+    "ctrader_demo_xau_v229_depth_execution",
+    "ctrader_demo_xau_v229_child_executor",
+)
+
+STRUCTURAL_HEARTBEATS = (
+    # V182/V226 are built from completed structure. Five-minute transport
+    # freshness is enough for the read-only dashboard; the broker execution
+    # lane refreshes these independently before admission.
     "ctrader_demo_xau_supply_demand_atlas_v182",
+    "ctrader_demo_xau_v226_rizan_depth_map",
+)
+
+SUPPORT_HEARTBEATS = (
+    # Research/evidence layers shown in detail panels. They do not authorize
+    # broker orders and therefore must not consume minute-level Data API egress.
+    "ctrader_demo_xau_premap_candidate_v181",
     "ctrader_demo_xau_supply_demand_prospective_v184",
     "ctrader_xau_supply_demand_reaction_v183",
     "ctrader_xau_supply_demand_timeframe_v185",
     "ctrader_demo_xau_v196_shadow_evidence",
     "ctrader_demo_xau_v198_evidence_analytics",
     "ctrader_demo_xau_v201_reaction_ladder",
-    "ctrader_demo_xau_v203_volatility_shock_guard",
     "ctrader_demo_xau_v212_zone_reaction_probability",
     "ctrader_demo_xau_v213_post_zone_path",
     "ctrader_demo_xau_v214_pocket_lifecycle",
@@ -45,48 +65,18 @@ CRITICAL_HEARTBEATS = (
     "ctrader_demo_xau_v222_m5_pocket_quality",
     "ctrader_demo_xau_v223_m5_pocket_cluster_selector",
     "ctrader_demo_xau_v224_primary_pocket_prospective",
-    "ctrader_demo_xau_v226_rizan_depth_map",
     "ctrader_demo_xau_v227_depth_map_prospective",
-    "ctrader_demo_xau_v229_depth_execution",
-    "ctrader_demo_xau_v229_child_executor",
     "ctrader_xau_expected_move_envelope_v170",
     "ctrader_xau_forecast_ensemble_v171",
     "ctrader_xau_htf_strategic_regime_v180",
 )
 
-
-COLD_REFRESH_SECONDS = 300.0
-HOT_HEARTBEATS = (
-    "ctrader_demo_xau_rizan_prepared_plan_producer",
-    "ctrader_demo_xau_rizan_fast_handoff",
-    "ctrader_demo_xau_dom_v191",
-    "ctrader_demo_xau_event_risk_v192",
-    "ctrader_demo_xau_premap_candidate_v181",
-    "ctrader_demo_xau_supply_demand_atlas_v182",
-    "ctrader_xau_supply_demand_reaction_v183",
-    "ctrader_xau_supply_demand_timeframe_v185",
-    "ctrader_demo_xau_v203_volatility_shock_guard",
-    "ctrader_demo_xau_v212_zone_reaction_probability",
-    "ctrader_demo_xau_v217_direction_probability",
-    "ctrader_demo_xau_v222_m5_pocket_quality",
-    "ctrader_demo_xau_v223_m5_pocket_cluster_selector",
-    "ctrader_demo_xau_v224_primary_pocket_prospective",
-    "ctrader_demo_xau_v226_rizan_depth_map",
-    "ctrader_demo_xau_v229_depth_execution",
-    "ctrader_demo_xau_v229_child_executor",
-    "ctrader_xau_expected_move_envelope_v170",
-    "ctrader_xau_forecast_ensemble_v171",
-    "ctrader_xau_htf_strategic_regime_v180",
-)
-COLD_HEARTBEATS = tuple(
-    worker for worker in CRITICAL_HEARTBEATS if worker not in set(HOT_HEARTBEATS)
-)
 COLD_BACKEND_KEYS = (
     "latest_run",
     "rankings",
+    "signals",
     "macro",
     "performance",
-    "xau_outcomes",
 )
 
 SENSITIVE_KEY_PARTS = (
@@ -179,16 +169,18 @@ def _load_previous_snapshot(output: Path) -> dict[str, Any]:
     return dict(raw)
 
 
-def _cold_snapshot_is_fresh(
+def _tier_is_fresh(
     previous: dict[str, Any],
     *,
+    source_key: str,
+    max_age_seconds: float,
     now: datetime,
 ) -> bool:
     source = dict(previous.get("source") or {})
-    observed = _timestamp(source.get("cold_as_of"))
+    observed = _timestamp(source.get(source_key))
     if observed is None:
         return False
-    return max(0.0, (now - observed).total_seconds()) < COLD_REFRESH_SECONDS
+    return max(0.0, (now - observed).total_seconds()) < float(max_age_seconds)
 
 
 def _overlay_heartbeat_rows(
@@ -223,10 +215,8 @@ def build_snapshot(
     current = (now or datetime.now(tz=UTC)).astimezone(UTC)
     previous_payload = dict(previous or {})
     previous_backend = dict(previous_payload.get("backend") or {})
-    reuse_cold = bool(previous_backend) and _cold_snapshot_is_fresh(
-        previous_payload,
-        now=current,
-    )
+    previous_source = dict(previous_payload.get("source") or {})
+    has_previous = bool(previous_backend)
 
     url = _required("SUPABASE_URL").rstrip("/")
     secret = (
@@ -240,55 +230,123 @@ def build_snapshot(
     reader = SupabaseDashboardReader(client)
     store = SupabaseOperationalStore(url, secret, client=client)
 
-    account = reader.latest_broker_account()
-    hot_heartbeats = reader.heartbeats_for_workers(list(HOT_HEARTBEATS))
+    structural_reused = has_previous and _tier_is_fresh(
+        previous_payload,
+        source_key="structural_as_of",
+        max_age_seconds=STRUCTURAL_REFRESH_SECONDS,
+        now=current,
+    )
+    support_reused = has_previous and _tier_is_fresh(
+        previous_payload,
+        source_key="support_as_of",
+        max_age_seconds=SUPPORT_REFRESH_SECONDS,
+        now=current,
+    )
+    cold_reused = has_previous and _tier_is_fresh(
+        previous_payload,
+        source_key="cold_as_of",
+        max_age_seconds=COLD_REFRESH_SECONDS,
+        now=current,
+    )
+    outcomes_reused = has_previous and _tier_is_fresh(
+        previous_payload,
+        source_key="outcomes_as_of",
+        max_age_seconds=OUTCOME_REFRESH_SECONDS,
+        now=current,
+    )
 
-    if reuse_cold:
-        heartbeats = _overlay_heartbeat_rows(
-            list(previous_backend.get("heartbeats") or []),
-            hot_heartbeats,
+    # Minute-level state: small projected/operational payloads only.
+    hot_heartbeats = list(reader.heartbeats_for_workers(list(HOT_HEARTBEATS)))
+    prepared_heartbeat = reader.latest_rizan_prepared_heartbeat()
+    if prepared_heartbeat is not None:
+        hot_heartbeats.append(prepared_heartbeat)
+
+    # Preserve previously published detail rows and overlay only tiers that are
+    # due. This keeps every dashboard panel populated without re-reading the DB.
+    heartbeats = list(previous_backend.get("heartbeats") or [])
+    if not heartbeats:
+        heartbeats = list(reader.heartbeat_summaries())
+
+    if not structural_reused:
+        structural_rows = reader.heartbeats_for_workers(
+            list(STRUCTURAL_HEARTBEATS)
         )
+        heartbeats = _overlay_heartbeat_rows(heartbeats, structural_rows)
+        structural_as_of = current.isoformat()
+    else:
+        structural_as_of = str(
+            previous_source.get("structural_as_of") or current.isoformat()
+        )
+
+    if not support_reused:
+        summary_rows = reader.heartbeat_summaries()
+        support_rows = reader.heartbeats_for_workers(list(SUPPORT_HEARTBEATS))
+        heartbeats = _overlay_heartbeat_rows(list(summary_rows), tuple(heartbeats))
+        heartbeats = _overlay_heartbeat_rows(heartbeats, support_rows)
+        support_as_of = current.isoformat()
+    else:
+        support_as_of = str(
+            previous_source.get("support_as_of") or current.isoformat()
+        )
+
+    heartbeats = _overlay_heartbeat_rows(heartbeats, tuple(hot_heartbeats))
+
+    if cold_reused:
         cold_values = {
             key: previous_backend.get(key)
             for key in COLD_BACKEND_KEYS
         }
         cold_as_of = str(
-            dict(previous_payload.get("source") or {}).get("cold_as_of")
-            or current.isoformat()
+            previous_source.get("cold_as_of") or current.isoformat()
         )
     else:
         run = reader.latest_run()
-        heartbeat_summaries = reader.heartbeat_summaries()
-        cold_heartbeats = reader.heartbeats_for_workers(list(COLD_HEARTBEATS))
-        heartbeats = _merge_heartbeats(
-            heartbeat_summaries,
-            tuple(list(hot_heartbeats) + list(cold_heartbeats)),
-        )
         cold_values = {
             "latest_run": run,
             "rankings": list(
                 reader.rankings_for_run(None if run is None else run.get("id"))
             ),
+            "signals": list(reader.latest_signals()),
             "macro": list(reader.latest_macro()),
             "performance": list(reader.latest_performance()),
-            "xau_outcomes": list(reader.latest_xau_outcomes()),
         }
         cold_as_of = current.isoformat()
 
+    if outcomes_reused:
+        xau_outcomes = list(previous_backend.get("xau_outcomes") or [])
+        outcomes_as_of = str(
+            previous_source.get("outcomes_as_of") or current.isoformat()
+        )
+    else:
+        xau_outcomes = list(reader.latest_xau_outcomes())
+        outcomes_as_of = current.isoformat()
+
+    account = reader.latest_broker_account()
+    geometry_events = list(reader.latest_xau_geometry_events(limit=12))
+    rizan_geometry = [
+        row for row in geometry_events
+        if str(dict(row).get("code") or "") in {
+            "XAU_RIZAN_DEPTH_EXECUTION_V1",
+            "XAU_RIZAN_PATH_EXECUTION_V1",
+        }
+    ][:12]
+
     backend = {
         **cold_values,
-        "signals": list(reader.latest_signals()),
         "xau_signals": list(reader.latest_signals_for_symbol("XAUUSD")),
         "heartbeats": heartbeats,
         "broker_account": account,
         "broker_positions": list(reader.broker_positions_for_account(account)),
         "afic_forecast_states": list(reader.latest_afic_forecast_states()),
         "afic_prepared_plans": list(reader.latest_afic_prepared_plans()),
-        "afic_execution_geometry": list(reader.latest_afic_execution_geometry()),
-        "xau_execution_events": list(reader.latest_xau_execution_events()),
-        "xau_geometry_events": list(reader.latest_xau_geometry_events()),
+        # Same semantics as the old feed, but reuse the already-fetched geometry
+        # rows instead of issuing a duplicate broker_order_events query.
+        "afic_execution_geometry": rizan_geometry,
+        "xau_execution_events": list(reader.latest_xau_execution_events(limit=20)),
+        "xau_geometry_events": geometry_events,
+        "xau_outcomes": xau_outcomes,
         "xau_prepared_plan_lifecycle": list(
-            reader.latest_xau_prepared_plan_lifecycle()
+            reader.latest_xau_prepared_plan_lifecycle(limit=25)
         ),
         "control": asdict(store.get_execution_control()),
     }
@@ -301,17 +359,25 @@ def build_snapshot(
         "source": {
             "project_ref": project_ref,
             "mode": "SUPABASE_SERVICE_ROLE_TO_PUBLIC_READ_ONLY_BRIDGE",
-            "dashboard_refresh_seconds": 60,
+            "dashboard_refresh_seconds": int(HOT_REFRESH_SECONDS),
+            "structural_refresh_seconds": int(STRUCTURAL_REFRESH_SECONDS),
+            "support_refresh_seconds": int(SUPPORT_REFRESH_SECONDS),
             "cold_refresh_seconds": int(COLD_REFRESH_SECONDS),
+            "outcome_refresh_seconds": int(OUTCOME_REFRESH_SECONDS),
+            "structural_as_of": structural_as_of,
+            "support_as_of": support_as_of,
             "cold_as_of": cold_as_of,
-            "cold_reused": reuse_cold,
+            "outcomes_as_of": outcomes_as_of,
+            "structural_reused": structural_reused,
+            "support_reused": support_reused,
+            "cold_reused": cold_reused,
+            "outcomes_reused": outcomes_reused,
             "execution_authority": False,
             "mutates_database": False,
         },
         "backend": _sanitize(backend),
     }
     return payload
-
 
 def write_snapshot(output: Path) -> dict[str, Any]:
     previous = _load_previous_snapshot(output)
@@ -434,7 +500,10 @@ def main(argv: list[str] | None = None) -> int:
         f"xau_signals={len(list(backend.get('xau_signals') or []))} "
         f"execution_mode={control.get('execution_mode') or 'UNKNOWN'} "
         f"new_orders_enabled={bool(control.get('new_orders_enabled'))} "
-        f"cold_reused={bool(dict(payload.get('source') or {}).get('cold_reused'))}"
+        f"structural_reused={bool(dict(payload.get('source') or {}).get('structural_reused'))} "
+        f"support_reused={bool(dict(payload.get('source') or {}).get('support_reused'))} "
+        f"cold_reused={bool(dict(payload.get('source') or {}).get('cold_reused'))} "
+        f"outcomes_reused={bool(dict(payload.get('source') or {}).get('outcomes_reused'))}"
     )
     return 0
 
