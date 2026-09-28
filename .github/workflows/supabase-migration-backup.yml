@@ -55,20 +55,22 @@ jobs:
           chmod 700 "$WORKDIR"
           cd "$WORKDIR"
 
-          # Fail early if the old database cannot be reached directly.
-          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
+          # Normalize reserved URI characters before libpq parses the connection string.
+          SAFE_OLD_DB_URL="${OLD_DB_URL//#/%23}"
+          SAFE_OLD_DB_URL="${SAFE_OLD_DB_URL//]/%5D}"
+          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -Atc "select current_database(), current_user;" >/dev/null
 
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$OLD_DB_URL" \
+            --db-url "$SAFE_OLD_DB_URL" \
             -f roles.sql \
             --role-only
 
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$OLD_DB_URL" \
+            --db-url "$SAFE_OLD_DB_URL" \
             -f schema.sql
 
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$OLD_DB_URL" \
+            --db-url "$SAFE_OLD_DB_URL" \
             -f data.sql \
             --use-copy \
             --data-only \
@@ -77,12 +79,12 @@ jobs:
 
           # Preserve Supabase CLI migration history explicitly.
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$OLD_DB_URL" \
+            --db-url "$SAFE_OLD_DB_URL" \
             -f history_schema.sql \
             --schema supabase_migrations
 
           npx --yes "supabase@${SUPABASE_CLI_VERSION}" db dump \
-            --db-url "$OLD_DB_URL" \
+            --db-url "$SAFE_OLD_DB_URL" \
             -f history_data.sql \
             --use-copy \
             --data-only \
@@ -95,32 +97,32 @@ jobs:
           test -s history_data.sql
 
           # Exact public-table row-count fingerprint for post-restore parity.
-          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -Atc \
+          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -Atc \
             "select format('select %L as table_name, count(*)::bigint as row_count from %I.%I;', schemaname||'.'||tablename, schemaname, tablename) from pg_tables where schemaname='public' order by tablename;" \
-            | psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' \
+            | psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' \
             > source-public-row-counts.tsv
 
-          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select version, name from supabase_migrations.schema_migrations order by version;" \
             > source-migrations.tsv
 
-          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select n.nspname, p.proname, pg_get_function_identity_arguments(p.oid), p.prosecdef from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' order by 1,2,3;" \
             > source-public-functions.tsv
 
-          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select event_object_schema, event_object_table, trigger_name, action_timing, event_manipulation from information_schema.triggers where event_object_schema='public' order by 1,2,3,5;" \
             > source-public-triggers.tsv
 
-          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select schemaname, tablename, rowsecurity from pg_tables where schemaname='public' order by tablename;" \
             > source-public-rls.tsv
 
-          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select e.extname, e.extversion, n.nspname from pg_extension e join pg_namespace n on n.oid=e.extnamespace order by e.extname;" \
             > source-extensions.tsv
 
-          psql "$OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
+          psql "$SAFE_OLD_DB_URL" -X -v ON_ERROR_STOP=1 -At -F $'\t' -c \
             "select pg_database_size(current_database()), pg_size_pretty(pg_database_size(current_database()));" \
             > source-db-size.tsv
 
