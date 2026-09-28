@@ -165,6 +165,15 @@ jobs:
               "select": "observed_at,event_type,code,accepted,message,signal_key,broker_order_id,payload",
               "order": "observed_at.desc", "limit": "120",
           })
+          _, sizes["heartbeats_summary"] = fetch("runtime_heartbeats", {
+              "select": "worker_name,observed_at,healthy,lag_seconds",
+              "order": "observed_at.desc",
+          })
+          _, sizes["execution_events_optimized"] = fetch("broker_order_events", {
+              "select": "observed_at,event_type,code,accepted,message,signal_key,broker_order_id,symbol:payload->>symbol,strategy_id:payload->>strategy_id,executed_price:payload->>executed_price,requested_entry:payload->>requested_entry,planned_entry:payload->>planned_entry,attached_stop_loss:payload->>attached_stop_loss,requested_stop_loss:payload->>requested_stop_loss,planned_sl:payload->>planned_sl,attached_take_profit:payload->>attached_take_profit,requested_take_profit:payload->>requested_take_profit,planned_tp2:payload->>planned_tp2",
+              "event_type": "in.(ORDER_ACCEPTED,POSITION_PROTECTION_VERIFIED,POSITION_PROTECTION_FAILED,EXECUTION_BLOCKED,ORDER_OUTCOME_UNCERTAIN,REVALIDATION_PASS,REVALIDATION_BLOCK)",
+              "order": "observed_at.desc", "limit": "60",
+          })
 
           fast_keys = ("signals","xau_signals","control","broker_account","broker_positions","execution_events")
           cold_keys = ("latest_run","rankings","heartbeats_all","macro","performance","outcomes")
