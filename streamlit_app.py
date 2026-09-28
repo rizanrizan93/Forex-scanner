@@ -162,6 +162,7 @@ def _load_backend_fast_snapshot(url: str, secret_key: str) -> dict[str, Any]:
         "broker_account": broker_account,
         "broker_positions": list(reader.broker_positions_for_account(broker_account)),
         "xau_execution_events": list(reader.latest_xau_execution_events()),
+        "xau_geometry_events": list(reader.latest_xau_geometry_events()),
     }
 
 
@@ -1866,7 +1867,13 @@ with forecast_tab:
     forecast_rows = [] if backend is None else backend.get("afic_forecast_states", [])
     prepared_rows = [] if backend is None else backend.get("afic_prepared_plans", [])
     geometry_rows = [] if backend is None else backend.get("afic_execution_geometry", [])
-    execution_events = [] if backend is None else backend.get("xau_execution_events", [])
+    broker_timeline_events = [] if backend is None else list(backend.get("xau_execution_events", []) or [])
+    geometry_events = [] if backend is None else list(backend.get("xau_geometry_events", []) or [])
+    execution_events = sorted(
+        [*geometry_events, *broker_timeline_events],
+        key=lambda row: str(dict(row).get("observed_at") or ""),
+        reverse=True,
+    )
     lifecycle_rows = [] if backend is None else backend.get("xau_prepared_plan_lifecycle", [])
     dedicated_xau_rows = [] if backend is None else backend.get("xau_signals", [])
     xau_technical_signal_rows = [
