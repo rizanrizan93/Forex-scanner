@@ -1545,8 +1545,8 @@ if standalone_error:
     st.warning(f"Standalone snapshot belum tersedia: {standalone_error}")
 if backend is None and standalone is None:
     st.info(
-        "Restricted Mode sedang menunggu snapshot RIZAN pertama dari GitHub Actions. "
-        "Tidak diperlukan credential cTrader di Streamlit."
+        "Dashboard can be deployed now. Restricted Mode sedang menunggu snapshot "
+        "RIZAN pertama dari GitHub Actions. Tidak diperlukan credential cTrader di Streamlit."
     )
 
 mode = "—" if cfg is None else str(cfg.risk.get("mode", "—"))
