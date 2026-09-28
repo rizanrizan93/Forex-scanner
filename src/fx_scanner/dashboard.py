@@ -410,6 +410,7 @@ class SupabaseDashboardReader:
         codes = (
             "XAU_RIZAN_DEPTH_EXECUTION_V1",
             "XAU_RIZAN_PATH_EXECUTION_V1",
+            "XAU_AFIC_PATH_EXECUTION_V1",
             "XAU_M15_EMA_SMC_RECLAIM_V1",
             "XAU_V24_CHAMPION_DEMO_V1",
         )
