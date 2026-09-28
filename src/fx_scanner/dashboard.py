@@ -140,6 +140,21 @@ class SupabaseDashboardReader:
             raise DashboardReadError(f"runtime_heartbeats read failed: {exc}") from exc
         return tuple(self._rows(response))
 
+    def heartbeat_summaries(self) -> tuple[dict[str, Any], ...]:
+        """Return lightweight health rows without large worker detail payloads."""
+        try:
+            response = (
+                self.client.table("runtime_heartbeats")
+                .select("worker_name,observed_at,healthy,lag_seconds")
+                .order("observed_at", desc=True)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"runtime_heartbeat summary read failed: {exc}"
+            ) from exc
+        return tuple(self._rows(response))
+
     def heartbeats_for_workers(
         self,
         worker_names: tuple[str, ...] | list[str],
