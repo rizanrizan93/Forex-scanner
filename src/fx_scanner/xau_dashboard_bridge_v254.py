@@ -22,7 +22,7 @@ FRESH_SECONDS = 180.0
 
 HOT_REFRESH_SECONDS = 60.0
 STRUCTURAL_REFRESH_SECONDS = 300.0
-SUPPORT_REFRESH_SECONDS = 1800.0
+SUPPORT_REFRESH_SECONDS = 3600.0
 COLD_REFRESH_SECONDS = 900.0
 OUTCOME_REFRESH_SECONDS = 21600.0
 
@@ -35,7 +35,6 @@ HOT_HEARTBEATS = (
     "ctrader_demo_xau_event_risk_v192",
     "ctrader_demo_xau_v203_volatility_shock_guard",
     "ctrader_demo_xau_v229_depth_execution",
-    "ctrader_demo_xau_v229_child_executor",
 )
 
 STRUCTURAL_HEARTBEATS = (
@@ -283,6 +282,9 @@ def build_snapshot(
     prepared_heartbeat = reader.latest_rizan_prepared_heartbeat()
     if prepared_heartbeat is not None:
         hot_heartbeats.append(prepared_heartbeat)
+    child_heartbeat = reader.latest_rizan_child_executor_heartbeat()
+    if child_heartbeat is not None:
+        hot_heartbeats.append(child_heartbeat)
     hot_heartbeat_bytes = _json_size(hot_heartbeats)
     cycle_bytes += hot_heartbeat_bytes
 
