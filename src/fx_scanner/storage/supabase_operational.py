@@ -80,9 +80,9 @@ class SupabaseOperationalStore:
     @classmethod
     def from_env(cls, **kwargs) -> "SupabaseOperationalStore":
         url = os.getenv("SUPABASE_URL", "").strip()
-        secret = os.getenv("SUPABASE_SECRET_KEY", "").strip()
+        secret = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
         if not secret:
-            secret = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+            secret = os.getenv("SUPABASE_SECRET_KEY", "").strip()
         return cls(url, secret, **kwargs)
 
     def ensure_reference_symbols(self, pairs: Any) -> None:
