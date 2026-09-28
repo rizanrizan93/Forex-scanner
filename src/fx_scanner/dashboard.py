@@ -522,21 +522,12 @@ class SupabaseDashboardReader:
         return tuple(self._rows(response))
 
     def latest_xau_execution_events(self) -> tuple[dict[str, Any], ...]:
-        """Return only broker/execution events needed by the XAU dashboard.
+        """Return compact broker/execution timeline rows.
 
-        The previous implementation downloaded the newest 120 broker events
-        across every event family and filtered locally. Some shadow/context
-        payloads are very large, so that approach dominated dashboard egress.
-        This version filters event families in PostgREST first and keeps the
-        same user-facing timeline/admission semantics.
+        Geometry is read from the dedicated geometry feed instead of this
+        method. Only display-relevant JSON keys are projected server-side so the
+        dashboard does not retransmit large shadow/context payloads.
         """
-        geometry_codes = (
-            "XAU_RIZAN_PATH_EXECUTION_V1",
-            "XAU_RIZAN_DEPTH_EXECUTION_V1",
-            "XAU_AFIC_PATH_EXECUTION_V1",
-            "XAU_M15_EMA_SMC_RECLAIM_V1",
-            "XAU_V24_CHAMPION_DEMO_V1",
-        )
         execution_events = (
             "ORDER_ACCEPTED",
             "POSITION_PROTECTION_VERIFIED",
@@ -546,57 +537,61 @@ class SupabaseDashboardReader:
             "REVALIDATION_PASS",
             "REVALIDATION_BLOCK",
         )
-        rows: list[dict[str, Any]] = []
-        fields = (
-            "observed_at,event_type,code,accepted,message,signal_key,"
-            "broker_order_id,payload"
+        select_expr = (
+            "observed_at,event_type,code,accepted,message,signal_key,broker_order_id,"
+            "symbol:payload->>symbol,"
+            "strategy_id:payload->>strategy_id,"
+            "executed_price:payload->>executed_price,"
+            "requested_entry:payload->>requested_entry,"
+            "planned_entry:payload->>planned_entry,"
+            "attached_stop_loss:payload->>attached_stop_loss,"
+            "requested_stop_loss:payload->>requested_stop_loss,"
+            "planned_sl:payload->>planned_sl,"
+            "attached_take_profit:payload->>attached_take_profit,"
+            "requested_take_profit:payload->>requested_take_profit,"
+            "planned_tp2:payload->>planned_tp2"
         )
         try:
-            geometry_response = (
+            response = (
                 self.client.table("broker_order_events")
-                .select(fields)
-                .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
-                .in_("code", list(geometry_codes))
-                .order("observed_at", desc=True)
-                .limit(24)
-                .execute()
-            )
-            rows.extend(self._rows(geometry_response))
-
-            execution_response = (
-                self.client.table("broker_order_events")
-                .select(fields)
+                .select(select_expr)
                 .in_("event_type", list(execution_events))
                 .order("observed_at", desc=True)
                 .limit(60)
                 .execute()
             )
-            for row in self._rows(execution_response):
-                payload = dict(row.get("payload") or {})
-                symbol = str(payload.get("symbol") or "").upper().strip()
-                code = str(row.get("code") or "")
-                if symbol == "XAUUSD" or code in geometry_codes:
-                    rows.append(row)
         except Exception as exc:
-            raise DashboardReadError(f"XAU execution-event read failed: {exc}") from exc
+            raise DashboardReadError(
+                f"XAU compact execution-event read failed: {exc}"
+            ) from exc
 
-        rows.sort(key=lambda row: str(row.get("observed_at") or ""), reverse=True)
-        selected: list[dict[str, Any]] = []
-        seen: set[tuple[str, str, str, str]] = set()
-        for row in rows:
-            identity = (
-                str(row.get("observed_at") or ""),
-                str(row.get("event_type") or ""),
-                str(row.get("signal_key") or ""),
-                str(row.get("broker_order_id") or ""),
-            )
-            if identity in seen:
+        payload_fields = (
+            "symbol",
+            "strategy_id",
+            "executed_price",
+            "requested_entry",
+            "planned_entry",
+            "attached_stop_loss",
+            "requested_stop_loss",
+            "planned_sl",
+            "attached_take_profit",
+            "requested_take_profit",
+            "planned_tp2",
+        )
+        rows: list[dict[str, Any]] = []
+        for raw in self._rows(response):
+            row = dict(raw)
+            symbol = str(row.get("symbol") or "").upper().strip()
+            code = str(row.get("code") or "")
+            if symbol not in {"", "XAUUSD"} and "XAU" not in code.upper():
                 continue
-            seen.add(identity)
-            selected.append(row)
-            if len(selected) >= 40:
-                break
-        return tuple(selected)
+            row["payload"] = {
+                key: row.pop(key)
+                for key in payload_fields
+                if row.get(key) not in (None, "")
+            }
+            rows.append(row)
+        return tuple(rows)
 
     def snapshot(self) -> DashboardSnapshot:
         run = self.latest_run()
