@@ -139,6 +139,20 @@ def _sanitize(value: Any) -> Any:
     return value
 
 
+def _json_size(value: Any) -> int:
+    try:
+        raw = json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        )
+    except Exception:
+        return 0
+    return len(raw.encode("utf-8"))
+
+
 def _merge_heartbeats(
     compact_rows: tuple[dict[str, Any], ...],
     critical_rows: tuple[dict[str, Any], ...],
@@ -230,6 +244,15 @@ def build_snapshot(
     reader = SupabaseDashboardReader(client)
     store = SupabaseOperationalStore(url, secret, client=client)
 
+    previous_budget = dict(previous_source.get("egress_budget") or {})
+    tier_bytes = {
+        "structural": int(previous_budget.get("structural_payload_bytes") or 0),
+        "support": int(previous_budget.get("support_payload_bytes") or 0),
+        "cold": int(previous_budget.get("cold_payload_bytes") or 0),
+        "outcomes": int(previous_budget.get("outcome_payload_bytes") or 0),
+    }
+    cycle_bytes = 0
+
     structural_reused = has_previous and _tier_is_fresh(
         previous_payload,
         source_key="structural_as_of",
@@ -260,6 +283,8 @@ def build_snapshot(
     prepared_heartbeat = reader.latest_rizan_prepared_heartbeat()
     if prepared_heartbeat is not None:
         hot_heartbeats.append(prepared_heartbeat)
+    hot_heartbeat_bytes = _json_size(hot_heartbeats)
+    cycle_bytes += hot_heartbeat_bytes
 
     # Preserve previously published detail rows and overlay only tiers that are
     # due. This keeps every dashboard panel populated without re-reading the DB.
@@ -271,6 +296,8 @@ def build_snapshot(
         structural_rows = reader.heartbeats_for_workers(
             list(STRUCTURAL_HEARTBEATS)
         )
+        tier_bytes["structural"] = _json_size(structural_rows)
+        cycle_bytes += tier_bytes["structural"]
         heartbeats = _overlay_heartbeat_rows(heartbeats, structural_rows)
         structural_as_of = current.isoformat()
     else:
@@ -281,6 +308,8 @@ def build_snapshot(
     if not support_reused:
         summary_rows = reader.heartbeat_summaries()
         support_rows = reader.heartbeats_for_workers(list(SUPPORT_HEARTBEATS))
+        tier_bytes["support"] = _json_size(summary_rows) + _json_size(support_rows)
+        cycle_bytes += tier_bytes["support"]
         heartbeats = _overlay_heartbeat_rows(list(summary_rows), tuple(heartbeats))
         heartbeats = _overlay_heartbeat_rows(heartbeats, support_rows)
         support_as_of = current.isoformat()
@@ -310,6 +339,8 @@ def build_snapshot(
             "macro": list(reader.latest_macro()),
             "performance": list(reader.latest_performance()),
         }
+        tier_bytes["cold"] = _json_size(cold_values)
+        cycle_bytes += tier_bytes["cold"]
         cold_as_of = current.isoformat()
 
     if outcomes_reused:
@@ -319,10 +350,19 @@ def build_snapshot(
         )
     else:
         xau_outcomes = list(reader.latest_xau_outcomes())
+        tier_bytes["outcomes"] = _json_size(xau_outcomes)
+        cycle_bytes += tier_bytes["outcomes"]
         outcomes_as_of = current.isoformat()
 
     account = reader.latest_broker_account()
+    broker_positions = list(reader.broker_positions_for_account(account))
+    xau_signals = list(reader.latest_signals_for_symbol("XAUUSD"))
+    forecast_states = list(reader.latest_afic_forecast_states())
+    prepared_plans = list(reader.latest_afic_prepared_plans())
     geometry_events = list(reader.latest_xau_geometry_events(limit=12))
+    execution_events = list(reader.latest_xau_execution_events(limit=20))
+    lifecycle = list(reader.latest_xau_prepared_plan_lifecycle(limit=25))
+    control_snapshot = asdict(store.get_execution_control())
     rizan_geometry = [
         row for row in geometry_events
         if str(dict(row).get("code") or "") in {
@@ -331,24 +371,50 @@ def build_snapshot(
         }
     ][:12]
 
+    hot_backend_values = {
+        "xau_signals": xau_signals,
+        "broker_account": account,
+        "broker_positions": broker_positions,
+        "afic_forecast_states": forecast_states,
+        "afic_prepared_plans": prepared_plans,
+        "xau_execution_events": execution_events,
+        "xau_geometry_events": geometry_events,
+        "xau_prepared_plan_lifecycle": lifecycle,
+        "control": control_snapshot,
+    }
+    hot_backend_bytes = _json_size(hot_backend_values)
+    cycle_bytes += hot_backend_bytes
+    hot_payload_bytes = hot_heartbeat_bytes + hot_backend_bytes
+
+    steady_state_bytes_per_minute = (
+        hot_payload_bytes
+        + tier_bytes["structural"] / (STRUCTURAL_REFRESH_SECONDS / 60.0)
+        + tier_bytes["support"] / (SUPPORT_REFRESH_SECONDS / 60.0)
+        + tier_bytes["cold"] / (COLD_REFRESH_SECONDS / 60.0)
+        + tier_bytes["outcomes"] / (OUTCOME_REFRESH_SECONDS / 60.0)
+    )
+    conservative_24x5_month_minutes = 60.0 * 24.0 * 22.0
+    projected_month_gib = (
+        steady_state_bytes_per_minute * conservative_24x5_month_minutes
+        / (1024.0 ** 3)
+    )
+
     backend = {
         **cold_values,
-        "xau_signals": list(reader.latest_signals_for_symbol("XAUUSD")),
+        "xau_signals": xau_signals,
         "heartbeats": heartbeats,
         "broker_account": account,
-        "broker_positions": list(reader.broker_positions_for_account(account)),
-        "afic_forecast_states": list(reader.latest_afic_forecast_states()),
-        "afic_prepared_plans": list(reader.latest_afic_prepared_plans()),
+        "broker_positions": broker_positions,
+        "afic_forecast_states": forecast_states,
+        "afic_prepared_plans": prepared_plans,
         # Same semantics as the old feed, but reuse the already-fetched geometry
         # rows instead of issuing a duplicate broker_order_events query.
         "afic_execution_geometry": rizan_geometry,
-        "xau_execution_events": list(reader.latest_xau_execution_events(limit=20)),
+        "xau_execution_events": execution_events,
         "xau_geometry_events": geometry_events,
         "xau_outcomes": xau_outcomes,
-        "xau_prepared_plan_lifecycle": list(
-            reader.latest_xau_prepared_plan_lifecycle(limit=25)
-        ),
-        "control": asdict(store.get_execution_control()),
+        "xau_prepared_plan_lifecycle": lifecycle,
+        "control": control_snapshot,
     }
 
     project_ref = urlsplit(url).hostname or ""
@@ -372,6 +438,19 @@ def build_snapshot(
             "support_reused": support_reused,
             "cold_reused": cold_reused,
             "outcomes_reused": outcomes_reused,
+            "egress_budget": {
+                "cycle_payload_bytes": int(cycle_bytes),
+                "hot_payload_bytes": int(hot_payload_bytes),
+                "structural_payload_bytes": int(tier_bytes["structural"]),
+                "support_payload_bytes": int(tier_bytes["support"]),
+                "cold_payload_bytes": int(tier_bytes["cold"]),
+                "outcome_payload_bytes": int(tier_bytes["outcomes"]),
+                "steady_state_estimated_bytes_per_minute": round(
+                    steady_state_bytes_per_minute, 1
+                ),
+                "projected_24x5_month_gib": round(projected_month_gib, 3),
+                "target_month_gib": 3.5,
+            },
             "execution_authority": False,
             "mutates_database": False,
         },
