@@ -47,6 +47,14 @@ jobs:
           git config user.name "RIZAN Dashboard Runtime"
           git config user.email "actions@users.noreply.github.com"
 
+      - name: Hydrate previous dashboard snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p runtime
+          git fetch origin dashboard-snapshots --depth=1 || true
+          git show FETCH_HEAD:runtime/xau_dashboard_snapshot.json             > runtime/xau_dashboard_snapshot.json 2>/dev/null || true
+
       - name: Publish continuous one-minute dashboard snapshots
         shell: bash
         run: |
