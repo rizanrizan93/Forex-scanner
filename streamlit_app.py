@@ -1434,6 +1434,25 @@ def _render_standalone_dashboard(state: dict[str, Any]) -> None:
         st.markdown("### Depth bands berikutnya")
         st.dataframe(table[wanted], hide_index=True, width="stretch")
 
+    parity = dict(state.get("logic_parity") or {})
+    if parity:
+        with st.expander("Logic Parity — apakah sama dengan scanner utama?"):
+            p1, p2 = st.columns(2)
+            p1.metric(
+                "Core analysis",
+                "SAME LOGIC" if parity.get("analysis_core_parity") else "DIFFERENT",
+            )
+            p2.metric(
+                "End-to-end execution",
+                "SAME" if parity.get("end_to_end_execution_parity") else "DISABLED / NOT PARITY",
+            )
+            st.markdown("**Core yang memakai logic produksi yang sama**")
+            st.write(", ".join(str(x) for x in list(parity.get("core_same_logic") or [])) or "—")
+            st.markdown("**Pengganti khusus Restricted Mode**")
+            st.write(", ".join(str(x) for x in list(parity.get("standalone_substitutes") or [])) or "—")
+            st.markdown("**Layer stateful yang sementara tidak aktif**")
+            st.write(", ".join(str(x) for x in list(parity.get("disabled_stateful_layers") or [])) or "—")
+
     with st.expander("Detail Standalone / audit"):
         st.json(
             _rizan_display(
