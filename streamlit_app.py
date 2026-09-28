@@ -2425,7 +2425,7 @@ with forecast_tab:
 
 
     dc_geometry_code_by_signal: dict[str, str] = {}
-    for dc_event_row in execution_events:
+    for dc_event_row in geometry_rows:
         if str(dc_event_row.get("event_type") or "") != "DEMO_SIGNAL_GEOMETRY":
             continue
         dc_signal_key = str(dc_event_row.get("signal_key") or "")
@@ -2547,7 +2547,7 @@ with forecast_tab:
     v226_ladder_slots = list(v226_four_order_ladder.get("slots") or [])
 
     v240_saved_geometry: dict[str, Any] = {}
-    for chart_event in execution_events:
+    for chart_event in geometry_rows:
         chart_payload = dict(chart_event.get("payload") or {})
         if (
             str(chart_event.get("event_type") or "") == "DEMO_SIGNAL_GEOMETRY"
@@ -3728,7 +3728,7 @@ with forecast_tab:
     ui_h4_zone = dict(v226_h4.get("zone") or {})
     ui_h4_zone_id = str(ui_h4_zone.get("zone_id") or "")
     ui_v229_geometry: dict[str, Any] = {}
-    for ui_event_row in execution_events:
+    for ui_event_row in geometry_rows:
         ui_payload = dict(ui_event_row.get("payload") or {})
         if (
             str(ui_event_row.get("event_type") or "") == "DEMO_SIGNAL_GEOMETRY"
@@ -5707,7 +5707,7 @@ with forecast_tab:
             "XAU_RIZAN_DEPTH_EXECUTION_V1",
         }
         geometry_code_by_signal = {}
-        for event_row in execution_events:
+        for event_row in geometry_rows:
             if str(event_row.get("event_type") or "") != "DEMO_SIGNAL_GEOMETRY":
                 continue
             signal_key = str(event_row.get("signal_key") or "")
