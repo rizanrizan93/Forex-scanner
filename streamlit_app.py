@@ -2916,11 +2916,17 @@ with forecast_tab:
 
         st.markdown("###### 7–10 • Entry → depth → pressure → admission")
         qe1, qe2 = st.columns(2)
-        qe1.metric("7 • Primary Depth Entry", v240_primary_entry_text)
+        qe1.metric(
+            "7 • Local structure watch" if v240_remap else "7 • Primary Depth Entry",
+            v240_primary_entry_text,
+        )
         qe2.metric("8 • Dynamic Depth", f"{v240_depth_text} → {v240_depth_band_text}")
         st.caption(
-            f"Reference entry: {_fmt_price(v240_decision.get('entry_reference'))} • "
-            f"Depth source: {v240_decision.get('source_layer') or '—'}"
+            (
+                "Reference watch: " if v240_remap else "Reference entry: "
+            )
+            + f"{_fmt_price(v240_decision.get('entry_reference'))} • "
+            + f"Depth source: {v240_decision.get('source_layer') or '—'}"
         )
         qe3, qe4 = st.columns(2)
         qe3.metric(
