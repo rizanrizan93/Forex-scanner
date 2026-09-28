@@ -200,11 +200,19 @@ def _load_backend_slow_snapshot(url: str, secret_key: str) -> dict[str, Any]:
     return {
         "latest_run": run,
         "rankings": list(reader.rankings_for_run(None if run is None else run.get("id"))),
-        "heartbeats": list(reader.heartbeats()),
+        "heartbeats": list(reader.heartbeat_summaries()),
         "macro": list(reader.latest_macro()),
         "performance": list(reader.latest_performance()),
         "xau_outcomes": list(reader.latest_xau_outcomes()),
     }
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _load_full_heartbeat_details(url: str, secret_key: str) -> list[dict[str, Any]]:
+    """On-demand full worker details; excluded from the automatic refresh path."""
+    client = _supabase_client(url, secret_key)
+    reader = SupabaseDashboardReader(client)
+    return list(reader.heartbeats())
 
 
 def _merge_heartbeat_rows(
@@ -248,6 +256,7 @@ def _clear_backend_snapshot_cache(*, include_slow: bool) -> None:
     _load_backend_decision_snapshot.clear()
     if include_slow:
         _load_backend_slow_snapshot.clear()
+        _load_full_heartbeat_details.clear()
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -6510,9 +6519,29 @@ with system_tab:
         st.info("Execution-control snapshot requires backend connection.")
 
     st.subheader("Status Runtime / Heartbeat")
-    if backend is not None and backend["heartbeats"]:
+    heartbeat_rows = [] if backend is None else list(backend.get("heartbeats") or [])
+    load_full_heartbeat_details = st.toggle(
+        "Muat detail JSON semua worker",
+        value=False,
+        help=(
+            "Default hanya memuat detail penuh untuk worker yang dipakai V240/pressure/depth. "
+            "Aktifkan ini hanya saat audit karena payload observability jauh lebih besar."
+        ),
+    )
+    if load_full_heartbeat_details and backend_configured:
+        try:
+            heartbeat_rows = _load_full_heartbeat_details(
+                supabase_url,
+                supabase_secret,
+            )
+        except Exception as exc:
+            st.warning(
+                "Detail heartbeat lengkap gagal dimuat; menggunakan ringkasan: "
+                f"{type(exc).__name__}: {exc}"
+            )
+    if heartbeat_rows:
         heartbeats = _convert_frame_times_to_wib(
-            _frame(backend["heartbeats"]),
+            _frame(heartbeat_rows),
             ("observed_at",),
         ).rename(columns={"observed_at": "observed_at (WIB)"})
         if "details" in heartbeats.columns:
@@ -6527,6 +6556,11 @@ with system_tab:
                 else value
             )
         st.dataframe(heartbeats, hide_index=True, width="stretch")
+        if not load_full_heartbeat_details:
+            st.caption(
+                "Mode hemat egress: detail JSON worker V240/pressure/depth tetap fresh 60 detik; "
+                "worker observability lain ditampilkan sebagai status ringkas."
+            )
     else:
         st.info("No runtime heartbeat snapshots are available.")
 
