@@ -213,10 +213,20 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
     """
     client = _supabase_client(url, secret_key)
     reader = SupabaseDashboardReader(client)
+    prepared_worker_names = {
+        "ctrader_demo_xau_rizan_prepared_plan_producer",
+        "ctrader_demo_xau_afic_prepared_plan_producer",
+    }
+    hot_workers = [
+        name for name in RIZAN_DASHBOARD_HOT_HEARTBEATS
+        if name not in prepared_worker_names
+    ]
+    critical_heartbeats = list(reader.heartbeats_for_workers(hot_workers))
+    prepared_heartbeat = reader.latest_rizan_prepared_heartbeat()
+    if prepared_heartbeat is not None:
+        critical_heartbeats.append(prepared_heartbeat)
     return {
-        "critical_heartbeats": list(
-            reader.heartbeats_for_workers(list(RIZAN_DASHBOARD_HOT_HEARTBEATS))
-        ),
+        "critical_heartbeats": critical_heartbeats,
         "afic_forecast_states": list(reader.latest_afic_forecast_states()),
         "afic_prepared_plans": list(reader.latest_afic_prepared_plans()),
         "afic_execution_geometry": list(reader.latest_afic_execution_geometry()),
@@ -2093,6 +2103,37 @@ with forecast_tab:
         or state_payload.get("supply_demand_context")
         or {}
     )
+    if not afic_sd_context and supply_demand_hb is not None:
+        # V182 is the canonical source for structural/path context. Prepared and
+        # forecast hot payloads intentionally no longer duplicate the same large
+        # structure JSON every minute.
+        _sd_seed_details = dict(supply_demand_hb.get("details") or {})
+        _sd_seed_eval = dict(_sd_seed_details.get("evaluation") or {})
+        _sd_seed_path_map = dict(_sd_seed_eval.get("path_map") or {})
+        afic_sd_context = {
+            "first_leg_path": dict(_sd_seed_path_map.get("active_path") or {}),
+            "active_reaction_path": dict(_sd_seed_path_map.get("active_path") or {}),
+            "first_leg_m5_path_projection": dict(
+                _sd_seed_eval.get("m5_path_projection")
+                or _sd_seed_path_map.get("m5_path_projection")
+                or {}
+            ),
+            "m5_path_projection": dict(
+                _sd_seed_eval.get("m5_path_projection")
+                or _sd_seed_path_map.get("m5_path_projection")
+                or {}
+            ),
+            "first_leg_micro_refinement": dict(
+                _sd_seed_eval.get("micro_refinement")
+                or _sd_seed_path_map.get("micro_refinement")
+                or {}
+            ),
+            "micro_refinement": dict(
+                _sd_seed_eval.get("micro_refinement")
+                or _sd_seed_path_map.get("micro_refinement")
+                or {}
+            ),
+        }
 
     valid_zone_now = bool(
         zone_low is not None
