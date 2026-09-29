@@ -71,6 +71,11 @@ def _micro(atlas_evaluation: dict[str, Any]) -> dict[str, Any]:
 
 
 def _selected_band_bounds(plan: dict[str, Any]) -> tuple[float | None, float | None]:
+    if bool(plan.get("confirmation_window_only")):
+        low = _f(plan.get("confirmation_entry_low"))
+        high = _f(plan.get("confirmation_entry_high"))
+        if low is not None and high is not None:
+            return low, high
     candidate = dict(plan.get("candidate") or {})
     low = _f(candidate.get("entry_low"))
     high = _f(candidate.get("entry_high"))
@@ -247,7 +252,6 @@ def evaluate_reversal_stage(
     # M5 confirmation/new geometry and must still pass RR at the child.
     missed_entry = bool(
         passed_band
-        and not m5_confirmed
         and not setup_invalid
     )
 
@@ -304,6 +308,7 @@ def evaluate_reversal_stage(
         and terminal_rr_ok
         and strict_pressure_ok
         and bool(depth_hazard.get("execution_ready"))
+        and m5_confirmed
         and not setup_invalid
         and not missed_entry
         and not break_risk
