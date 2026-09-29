@@ -5,7 +5,7 @@ from math import isfinite
 from typing import Any, Sequence
 
 from .demo_xau_supply_demand_micro_refinement_v189 import evaluate_micro_refinement
-from .models import Bar
+from .models import Bar, ensure_utc
 
 CONTRACT = "XAU_BIDIRECTIONAL_M5_PATH_V196"
 
