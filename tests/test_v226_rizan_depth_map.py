@@ -484,10 +484,10 @@ def test_v226_workflow_and_dashboard_are_shadow_only() -> None:
     assert "V226 — RIZAN Depth Map" in dashboard
     assert "RIZAN Depth hotspot" in dashboard
     assert "V226 adalah locator/depth engine" in dashboard
-    assert "Depth Entry Candidate" in dashboard
-    assert "Candidate entry" in dashboard
-    assert "4-Order Hybrid Depth Plan" in dashboard
-    assert "V229 dapat memberi execution authority DEMO" in dashboard
+    assert "Historical Depth Locator" in dashboard
+    assert "Locator range (riset)" in dashboard
+    assert "V226 4-slot research reference — TIDAK AKTIF" in dashboard
+    assert "Execution authority DEMO hanya berasal dari V229 canonical geometry" in dashboard
 
     source = (ROOT / "src/fx_scanner/demo_xau_v226_rizan_depth_map.py").read_text()
     assert 'POLICY_EFFECT = "SHADOW_ONLY"' in source
