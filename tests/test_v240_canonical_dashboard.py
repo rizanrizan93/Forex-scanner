@@ -259,3 +259,21 @@ def test_v276_dashboard_explains_adaptive_early_arm_without_relaxing_strict_slot
     assert "M30 parent overlap ≥70%" in SOURCE
     assert "composite pressure mendukung arah yang sama" in SOURCE
     assert "L2/L3/L4 tetap strict" in SOURCE
+
+
+def test_v279_dashboard_uses_fresh_price_failover_instead_of_stale_prepared_only() -> None:
+    assert "Price source=" in SOURCE
+    assert "FP_MARKETS_CTRADER_QUOTE" in SOURCE
+    assert "V182_LAST_CLOSED_M15" in SOURCE
+    assert "V226_PRICE_REFERENCE" in SOURCE
+    assert "PREPARED_LIVE_PRICE" in SOURCE
+    assert "dc_price_candidates.sort" in SOURCE
+    assert "dc_reference_price = (" in SOURCE
+    assert "live_price = dc_reference_price" in SOURCE
+    assert "execution authority tetap ForexRizan" in SOURCE
+
+
+def test_v279_standalone_quote_overlay_loads_even_when_canonical_backend_exists() -> None:
+    assert "Quote overlay is always loaded when available." in SOURCE
+    assert "backend_error = direct_backend_error if backend is None else None" in SOURCE
+    assert "standalone = _load_standalone_bridge(standalone_url)" in SOURCE
