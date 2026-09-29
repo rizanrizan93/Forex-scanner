@@ -1027,6 +1027,133 @@ class SupabaseDashboardReader:
         except Exception as exc:
             raise DashboardReadError(f"RIZAN execution-geometry read failed: {exc}") from exc
 
+    def latest_rizan_execution_geometry_compact(
+        self, *, limit: int = 1
+    ) -> tuple[dict[str, Any], ...]:
+        """Return only fields V240/admission needs from saved RIZAN geometry."""
+
+        limit = max(1, min(int(limit), 4))
+        select_expr = (
+            "observed_at,event_type,code,accepted,message,signal_key,broker_order_id,"
+            "strategy_id:payload->>strategy_id,"
+            "direction:payload->>direction,"
+            "candidate_low:payload->candidate_low,"
+            "candidate_high:payload->candidate_high,"
+            "entry_mode:payload->>entry_mode,"
+            "planned_entry:payload->planned_entry,"
+            "planned_sl:payload->planned_sl,"
+            "planned_tp2:payload->planned_tp2"
+        )
+        try:
+            response = (
+                self.client.table("broker_order_events")
+                .select(select_expr)
+                .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
+                .in_(
+                    "code",
+                    [
+                        "XAU_RIZAN_DEPTH_EXECUTION_V1",
+                        "XAU_RIZAN_PATH_EXECUTION_V1",
+                    ],
+                )
+                .order("observed_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"compact RIZAN execution-geometry read failed: {exc}"
+            ) from exc
+
+        rows: list[dict[str, Any]] = []
+        for raw_row in self._rows(response):
+            raw = dict(raw_row)
+            payload = {
+                key: raw.pop(key)
+                for key in (
+                    "strategy_id",
+                    "direction",
+                    "candidate_low",
+                    "candidate_high",
+                    "entry_mode",
+                    "planned_entry",
+                    "planned_sl",
+                    "planned_tp2",
+                )
+                if raw.get(key) is not None
+            }
+            raw["payload"] = payload
+            rows.append(raw)
+        return tuple(rows)
+
+    def latest_xau_geometry_events_compact(
+        self, *, limit: int = 4
+    ) -> tuple[dict[str, Any], ...]:
+        """Return compact authorized geometry rows for UI timeline/admission."""
+
+        limit = max(1, min(int(limit), 12))
+        codes = (
+            "XAU_RIZAN_DEPTH_EXECUTION_V1",
+            "XAU_RIZAN_PATH_EXECUTION_V1",
+            "XAU_AFIC_PATH_EXECUTION_V1",
+            "XAU_M15_EMA_SMC_RECLAIM_V1",
+            "XAU_V24_CHAMPION_DEMO_V1",
+        )
+        select_expr = (
+            "observed_at,event_type,code,accepted,message,signal_key,broker_order_id,"
+            "symbol:payload->>symbol,"
+            "strategy_id:payload->>strategy_id,"
+            "direction:payload->>direction,"
+            "executed_price:payload->executed_price,"
+            "requested_entry:payload->requested_entry,"
+            "planned_entry:payload->planned_entry,"
+            "attached_stop_loss:payload->attached_stop_loss,"
+            "requested_stop_loss:payload->requested_stop_loss,"
+            "planned_sl:payload->planned_sl,"
+            "attached_take_profit:payload->attached_take_profit,"
+            "requested_take_profit:payload->requested_take_profit,"
+            "planned_tp2:payload->planned_tp2"
+        )
+        try:
+            response = (
+                self.client.table("broker_order_events")
+                .select(select_expr)
+                .eq("event_type", "DEMO_SIGNAL_GEOMETRY")
+                .in_("code", list(codes))
+                .order("observed_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"compact XAU geometry-event read failed: {exc}"
+            ) from exc
+
+        rows: list[dict[str, Any]] = []
+        payload_keys = (
+            "symbol",
+            "strategy_id",
+            "direction",
+            "executed_price",
+            "requested_entry",
+            "planned_entry",
+            "attached_stop_loss",
+            "requested_stop_loss",
+            "planned_sl",
+            "attached_take_profit",
+            "requested_take_profit",
+            "planned_tp2",
+        )
+        for raw_row in self._rows(response):
+            raw = dict(raw_row)
+            raw["payload"] = {
+                key: raw.pop(key)
+                for key in payload_keys
+                if raw.get(key) is not None
+            }
+            rows.append(raw)
+        return tuple(rows)
+
     def latest_xau_prepared_plan_lifecycle(
         self, *, limit: int = 100
     ) -> tuple[dict[str, Any], ...]:

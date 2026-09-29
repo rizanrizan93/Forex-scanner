@@ -379,13 +379,13 @@ def build_snapshot(
     xau_signals = list(reader.latest_signals_for_symbol("XAUUSD", limit=8))
     forecast_states = list(reader.latest_afic_forecast_states(limit=6))
     prepared_plans = list(reader.latest_afic_prepared_plans(limit=1))
-    geometry_events = list(reader.latest_xau_geometry_events(limit=2))
+    geometry_events = list(reader.latest_xau_geometry_events_compact(limit=2))
     execution_events = list(reader.latest_xau_execution_events(limit=4))
     lifecycle = list(reader.latest_xau_prepared_plan_lifecycle(limit=4))
     control_snapshot = asdict(store.get_execution_control())
     # V240 needs the newest saved RIZAN geometry for parity/mismatch checks.
     # Fetch exactly one dedicated row so the generic geometry timeline can stay tiny.
-    rizan_geometry = list(reader.latest_afic_execution_geometry(limit=1))
+    rizan_geometry = list(reader.latest_rizan_execution_geometry_compact(limit=1))
 
     # Keep minute-level egress bounded. The UI needs current admission plus a
     # short audit trail; older history remains in Supabase and is not deleted.

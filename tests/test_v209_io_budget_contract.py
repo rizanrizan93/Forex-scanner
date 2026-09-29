@@ -19,7 +19,7 @@ def test_v209_dashboard_uses_60_second_cache_for_user_facing_state() -> None:
     assert '"heartbeats": list(reader.heartbeat_summaries())' in text
     assert "reader.heartbeats_for_workers" in text
     assert "def _load_full_heartbeat_details" in text
-    assert '"xau_geometry_events": list(reader.latest_xau_geometry_events(limit=2))' in text
+    assert '"xau_geometry_events": list(reader.latest_xau_geometry_events_compact(limit=2))' in text
     assert "merged.update(_load_backend_fast_snapshot" in text
 
 
@@ -79,3 +79,11 @@ def test_v209_dashboard_hot_path_keeps_bounded_egress_contract() -> None:
     assert "prepared_plan:payload->prepared_plan" in dashboard
     assert "map_at:payload->forecast->>map_at" in dashboard
     assert '"heartbeats": list(reader.heartbeat_summaries())' in app
+
+
+def test_v2593_geometry_hot_path_is_server_projected() -> None:
+    dashboard = _read("src/fx_scanner/dashboard.py")
+    assert "def latest_xau_geometry_events_compact" in dashboard
+    assert "def latest_rizan_execution_geometry_compact" in dashboard
+    assert "candidate_low:payload->candidate_low" in dashboard
+    assert "planned_sl:payload->planned_sl" in dashboard
