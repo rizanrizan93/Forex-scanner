@@ -1364,6 +1364,202 @@ def _direction_map(
     }
 
 
+def _active_path_local_candidate(
+    *,
+    atlas_evaluation: dict[str, Any],
+    history_details: dict[str, Any],
+    direction: str,
+    price: float,
+) -> dict[str, Any]:
+    """Map the current V182 H4/H1 source with the matching V225 standalone prior.
+
+    V226 historically required an H4 parent before an H1 locator could become the
+    focus candidate. During fast structural remaps this can leave a distant H4
+    locator selected while V182 already has a newer local H1 source. This helper
+    keeps the historical depth research useful without granting authority by
+    itself: untouched sources may remain pre-touch candidates, while any reused
+    H4/H1 source is confirmation-only.
+    """
+    path_map = dict(atlas_evaluation.get("path_map") or {})
+    active_path = dict(path_map.get("active_path") or {})
+    if _direction(active_path.get("reaction_direction")) != direction:
+        return {}
+
+    source_zone = dict(active_path.get("source_zone") or {})
+    if not source_zone:
+        projection = dict(atlas_evaluation.get("m5_path_projection") or {})
+        current_leg = dict(projection.get("current_leg") or {})
+        if _direction(current_leg.get("direction")) == direction:
+            source_zone = dict(current_leg.get("source_zone") or {})
+    if not source_zone or not _active(source_zone):
+        return {}
+    if _direction(source_zone.get("direction")) != direction:
+        return {}
+
+    timeframe = str(source_zone.get("timeframe") or "").upper()
+    if timeframe not in {"H4", "H1"}:
+        return {}
+
+    profile = _historical_profile(history_details, timeframe, direction)
+    layer = _standalone_layer(source_zone, profile, price=price)
+    hotspot = dict(layer.get("hotspot") or {})
+    low = _f(hotspot.get("low"))
+    high = _f(hotspot.get("high"))
+    if low is None or high is None or high <= low:
+        return {}
+
+    app = dict(layer.get("applicability") or {})
+    touches = int(app.get("touch_count") or 0)
+    structurally_active = bool(app.get("structurally_active", True))
+    first_touch_in_progress = bool(
+        str(app.get("state") or "") == "MEDIUM_FIRST_TOUCH_IN_PROGRESS"
+    )
+    calibrated_fresh = bool(
+        structurally_active
+        and touches == 0
+        and str(app.get("freshness") or "").upper() == "FRESH"
+    )
+    retest_confirmation = bool(
+        structurally_active and touches > 0 and not first_touch_in_progress
+    )
+    confirmation_allowed = bool(
+        structurally_active
+        and (calibrated_fresh or first_touch_in_progress or retest_confirmation)
+    )
+
+    median_depth = _f(profile.get("depth_median"))
+    reference = (
+        _full_zone_price(source_zone, median_depth)
+        if median_depth is not None
+        else None
+    )
+    if reference is None:
+        reference = (low + high) / 2.0
+    reference = min(max(float(reference), low), high)
+
+    if low <= price <= high:
+        approach_state = "INSIDE_CANDIDATE"
+    elif direction == "LONG":
+        approach_state = "AHEAD" if price > high else "PASSED_BEYOND_CANDIDATE"
+    else:
+        approach_state = "AHEAD" if price < low else "PASSED_BEYOND_CANDIDATE"
+
+    h4_profile = _historical_profile(history_details, "H4", direction)
+    h1_profile = _historical_profile(history_details, "H1", direction)
+    m15_profile = _historical_profile(history_details, "M15", direction)
+    display_status = (
+        "PREPARE_ONLY_FRESH_FIRST_TOUCH"
+        if calibrated_fresh
+        else "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS"
+        if first_touch_in_progress and confirmation_allowed
+        else "CONFIRMATION_ONLY_RETESTED_HTF"
+        if retest_confirmation and confirmation_allowed
+        else "CONTEXT_ONLY_OUT_OF_SAMPLE"
+    )
+
+    return {
+        "candidate_type": "V182_ACTIVE_SOURCE_DEPTH_ENTRY_CANDIDATE",
+        "candidate_selection_mode": "V182_ACTIVE_SOURCE_HISTORICAL_REMAP",
+        "direction": direction,
+        "entry_low": float(low),
+        "entry_high": float(high),
+        "entry_reference": float(reference),
+        "source_layer": f"V182_ACTIVE_{timeframe}_HISTORICAL_HOTSPOT",
+        "source_timeframe": timeframe,
+        "source_zone": source_zone,
+        "source_profile": profile,
+        "approach_state": approach_state,
+        "distance_points": _distance_to_zone(
+            price,
+            {"low": float(low), "high": float(high)},
+        ),
+        "display_status": display_status,
+        "calibrated_fresh_first_touch": calibrated_fresh,
+        "confirmation_calibrated_first_touch": bool(
+            calibrated_fresh or first_touch_in_progress
+        ),
+        "first_touch_in_progress": first_touch_in_progress,
+        "htf_retested": touches > 0,
+        "m15_retested": False,
+        "retest_confirmation_eligible": retest_confirmation,
+        "m15_retest_confirmation_required": False,
+        "pre_touch_execution_eligible": calibrated_fresh,
+        "confirmation_execution_eligible": confirmation_allowed,
+        "zone_reuse": {
+            "h4_touch_count": touches if timeframe == "H4" else 0,
+            "h1_touch_count": touches if timeframe == "H1" else 0,
+            "m15_touch_count": 0,
+            "h4_lifecycle_weight": (
+                _f(app.get("lifecycle_weight")) if timeframe == "H4" else None
+            ),
+            "h1_lifecycle_weight": (
+                _f(app.get("lifecycle_weight")) if timeframe == "H1" else None
+            ),
+            "m15_lifecycle_weight": None,
+            "freshness_is_hard_gate_h4_h1": False,
+            "m15_multi_test_is_hard_gate": False,
+            "m15_retest_requires_pressure_m5": False,
+            "historical_prior_scope": (
+                "FIRST_TOUCH_CALIBRATED"
+                if calibrated_fresh
+                else "FIRST_TOUCH_PRIOR_GEOMETRY_ONLY"
+            ),
+        },
+        "historical_context": {
+            "reaction_contract": "REACTION_GTE_0_50_ATR",
+            "h4_parent_rate": _f(h4_profile.get("hold_rate")),
+            "h4_parent_wilson_lower_95": _f(
+                h4_profile.get("hold_wilson_lower_95")
+            ),
+            "h1_standalone_rate": _f(h1_profile.get("hold_rate")),
+            "h1_standalone_wilson_lower_95": _f(
+                h1_profile.get("hold_wilson_lower_95")
+            ),
+            "m15_standalone_rate": _f(m15_profile.get("hold_rate")),
+            "m15_standalone_wilson_lower_95": _f(
+                m15_profile.get("hold_wilson_lower_95")
+            ),
+            "selected_timeframe": timeframe,
+            "selected_hold_rate": _f(profile.get("hold_rate")),
+            "selected_hold_wilson_lower_95": _f(
+                profile.get("hold_wilson_lower_95")
+            ),
+            "prior_scope": (
+                "FIRST_TOUCH_CALIBRATED"
+                if calibrated_fresh
+                else "FIRST_TOUCH_PRIOR_GEOMETRY_ONLY"
+            ),
+            "note": (
+                "Entry riset historis dipetakan dari V225.2 pada source V182 aktif. "
+                "Untuk H4/H1 yang sudah retest, band hanya menjadi geometry/prior "
+                "context dan DEMO tetap wajib pressure + fresh M5 confirmation."
+            ),
+        },
+        "policy_effect": POLICY_EFFECT,
+        "execution_influence": False,
+        "execution_authority": False,
+        "promotion_authority": False,
+    }
+
+
+def _candidate_overlaps_active_source(
+    candidate: dict[str, Any],
+    source_candidate: dict[str, Any],
+) -> bool:
+    if not candidate or not source_candidate:
+        return False
+    source_zone = dict(source_candidate.get("source_zone") or {})
+    c_low = _f(candidate.get("entry_low"))
+    c_high = _f(candidate.get("entry_high"))
+    s_low = _f(source_zone.get("low"))
+    s_high = _f(source_zone.get("high"))
+    if None in {c_low, c_high, s_low, s_high}:
+        return False
+    assert c_low is not None and c_high is not None
+    assert s_low is not None and s_high is not None
+    return max(c_low, s_low) <= min(c_high, s_high)
+
+
 def build_depth_map(
     *,
     atlas_evaluation: dict[str, Any],
@@ -1442,7 +1638,60 @@ def build_depth_map(
 
     overlays = list(long_map.get("overlays") or []) + list(short_map.get("overlays") or [])
     focus_map = long_map if focus == "LONG" else short_map
-    focus_entry_candidate = dict(focus_map.get("depth_entry_candidate") or {})
+    legacy_focus_candidate = dict(focus_map.get("depth_entry_candidate") or {})
+    local_active_candidate = _active_path_local_candidate(
+        atlas_evaluation=atlas_evaluation,
+        history_details=history_details,
+        direction=focus,
+        price=price,
+    )
+    use_local_candidate = bool(
+        local_active_candidate
+        and not _candidate_overlaps_active_source(
+            legacy_focus_candidate,
+            local_active_candidate,
+        )
+    )
+    focus_entry_candidate = (
+        dict(local_active_candidate)
+        if use_local_candidate
+        else dict(legacy_focus_candidate)
+    )
+
+    focus_h4_profile = _historical_profile(history_details, "H4", focus)
+    focus_h1_profile = _historical_profile(history_details, "H1", focus)
+    focus_m15_profile = _historical_profile(history_details, "M15", focus)
+    focus_ladder = (
+        _four_order_depth_ladder(
+            direction=focus,
+            candidate=focus_entry_candidate,
+            h4_profile=focus_h4_profile,
+            h1_profile=focus_h1_profile,
+            m15_profile=focus_m15_profile,
+        )
+        if use_local_candidate
+        else dict(focus_map.get("four_order_ladder") or {})
+    )
+    long_entry_candidate = (
+        dict(focus_entry_candidate)
+        if focus == "LONG"
+        else dict(long_map.get("depth_entry_candidate") or {})
+    )
+    short_entry_candidate = (
+        dict(focus_entry_candidate)
+        if focus == "SHORT"
+        else dict(short_map.get("depth_entry_candidate") or {})
+    )
+    long_ladder = (
+        dict(focus_ladder)
+        if focus == "LONG"
+        else dict(long_map.get("four_order_ladder") or {})
+    )
+    short_ladder = (
+        dict(focus_ladder)
+        if focus == "SHORT"
+        else dict(short_map.get("four_order_ladder") or {})
+    )
     return {
         "contract": CONTRACT,
         "state": "RIZAN_DEPTH_MAP_AVAILABLE",
@@ -1450,14 +1699,21 @@ def build_depth_map(
         "price_reference": price,
         "focus_direction": focus,
         "depth_entry_candidate": focus_entry_candidate,
+        "historical_research_entry": dict(focus_entry_candidate),
+        "candidate_selection_mode": (
+            "V182_ACTIVE_SOURCE_HISTORICAL_REMAP"
+            if use_local_candidate
+            else "H4_HIERARCHICAL_V226"
+        ),
+        "local_active_source_candidate": dict(local_active_candidate),
         "entry_candidates": {
-            "long": dict(long_map.get("depth_entry_candidate") or {}),
-            "short": dict(short_map.get("depth_entry_candidate") or {}),
+            "long": long_entry_candidate,
+            "short": short_entry_candidate,
         },
-        "four_order_ladder": dict(focus_map.get("four_order_ladder") or {}),
+        "four_order_ladder": focus_ladder,
         "order_ladders": {
-            "long": dict(long_map.get("four_order_ladder") or {}),
-            "short": dict(short_map.get("four_order_ladder") or {}),
+            "long": long_ladder,
+            "short": short_ladder,
         },
         "long": long_map,
         "short": short_map,
