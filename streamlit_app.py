@@ -3102,7 +3102,7 @@ with forecast_tab:
         v240_admission_label = "DATA STALE" if backend_snapshot_stale else "WAIT"
         v240_route_label = "NO ORDER"
 
-    st.markdown("### 2 • Zona Aktif & Dynamic Depth")
+    st.markdown("### 2 • Zona Utama & Depth Entry — Dynamic Depth")
     with st.container(border=True):
         st.markdown("##### V240 — Canonical XAU Decision Map")
         st.caption(
