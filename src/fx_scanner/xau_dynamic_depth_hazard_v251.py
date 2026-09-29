@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from math import isfinite
+import os
 from typing import Any
 
 MIN_AT_RISK = 30
@@ -16,6 +17,48 @@ PRESSURE_MULTIPLIER = {
     "CONTROL_FLIP": 1.40,
     "CONTESTED": 1.00,
 }
+
+
+def _calibration_probe_depth_ceiling() -> float:
+    raw = os.getenv("CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH", "0.70").strip()
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        value = 0.70
+    if not isfinite(value):
+        value = 0.70
+    return min(1.0, max(0.10, value))
+
+
+def _calibration_probe_depth_status(
+    *,
+    depth: float,
+    location_state: str,
+) -> dict[str, Any]:
+    """Depth-only advisory for the 0.01 DEMO probe; never execution authority."""
+    ceiling = _calibration_probe_depth_ceiling()
+    if location_state == "AHEAD_OF_ZONE":
+        action = "WAIT_ZONE"
+        eligible = False
+    elif location_state == "AT_OR_BEYOND_DISTAL":
+        action = "WAIT_STRUCTURE_REMAP"
+        eligible = False
+    elif float(depth) > ceiling + 1e-9:
+        action = "NO_CHASE_DEEP_ZONE"
+        eligible = False
+    else:
+        action = "ELIGIBLE_BY_DEPTH_ONLY"
+        eligible = True
+    return {
+        "depth_ceiling": ceiling,
+        "depth_eligible": eligible,
+        "depth_action": action,
+        "note": (
+            "Depth-only DEMO calibration-probe advisory. Pressure, actual M5 pocket, "
+            "limit side, source containment, opposing structural target and RR are "
+            "still required before any broker submit."
+        ),
+    }
 
 
 def _f(value: Any) -> float | None:
@@ -258,6 +301,10 @@ def build_dynamic_depth_hazard(
         location_state = "INSIDE_ZONE"
 
     if location_state == "AT_OR_BEYOND_DISTAL":
+        probe_depth = _calibration_probe_depth_status(
+            depth=float(depth),
+            location_state=location_state,
+        )
         return {
             "state": "DYNAMIC_DEPTH_HAZARD_AVAILABLE",
             "direction": side,
@@ -274,6 +321,10 @@ def build_dynamic_depth_hazard(
             "zone_reuse": reuse,
             "action": "WAIT_STRUCTURE_REMAP",
             "execution_ready": False,
+            "calibration_probe_depth_ceiling": probe_depth["depth_ceiling"],
+            "calibration_probe_depth_eligible": probe_depth["depth_eligible"],
+            "calibration_probe_depth_action": probe_depth["depth_action"],
+            "calibration_probe_depth_note": probe_depth["note"],
             "recommended_band": {},
             "future_bands": [],
             "interpretation": (
@@ -377,6 +428,11 @@ def build_dynamic_depth_hazard(
         action = "WAIT_OR_DEEPER"
         execution_ready = bool(pressure_transition.get("confirmation_entry_allowed"))
 
+    probe_depth = _calibration_probe_depth_status(
+        depth=float(depth),
+        location_state=location_state,
+    )
+
     return {
         "state": "DYNAMIC_DEPTH_HAZARD_AVAILABLE",
         "direction": side,
@@ -393,6 +449,10 @@ def build_dynamic_depth_hazard(
         "zone_reuse": reuse,
         "action": action,
         "execution_ready": execution_ready,
+        "calibration_probe_depth_ceiling": probe_depth["depth_ceiling"],
+        "calibration_probe_depth_eligible": probe_depth["depth_eligible"],
+        "calibration_probe_depth_action": probe_depth["depth_action"],
+        "calibration_probe_depth_note": probe_depth["note"],
         "recommended_band": best,
         "recommended_depth_low": min_entry_depth,
         "recommended_depth_high": upper_entry_depth,
@@ -404,6 +464,8 @@ def build_dynamic_depth_hazard(
             "retested H4/H1 zones it is used as geometry context rather than a calibrated "
             "reuse probability; those entries stay confirmation-only. Current cTrader "
             "Level-II pressure transition updates whether to wait deeper or accept a "
-            "reversal band. This is a sequential range estimate, not an exact turning price."
+            "reversal band. This is a sequential range estimate, not an exact turning price. "
+            "The DEMO calibration probe has a separate no-chase depth ceiling and must "
+            "not be inferred from the strict confirmation execution_ready field."
         ),
     }
