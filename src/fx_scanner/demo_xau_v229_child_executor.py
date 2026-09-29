@@ -880,7 +880,8 @@ def run() -> int:
         error = f"{type(exc).__name__}:{exc}"
     finally:
         try:
-            control.stop(timeout=2.0)
+            if hasattr(control, "stop"):
+                control.stop(timeout=2.0)
         except Exception:
             pass
         try:
