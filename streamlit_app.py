@@ -2909,7 +2909,11 @@ with forecast_tab:
             else _age_seconds(supply_demand_hb.get("observed_at"))
         ),
     )
-    v240_direction = str(v240_decision.get("direction") or dc_current_leg_direction or "—").upper()
+    v240_direction = str(
+        v240_decision.get("direction") or dc_current_leg_direction or "—"
+    ).upper()
+    v240_authority = str(v240_decision.get("authority") or "")
+    v240_entry_authorized = bool(v240_decision.get("entry_authorized"))
     v240_entry_zone = {
         "entry_low": v240_decision.get("entry_low"),
         "entry_high": v240_decision.get("entry_high"),
@@ -2924,9 +2928,13 @@ with forecast_tab:
     v240_reversal_watch = dict(v240_decision.get("primary_reversal_watch") or {})
     v240_hist = dict(v240_decision.get("historical_context") or {})
     v240_conflicts = list(v240_decision.get("conflicts") or [])
+    v240_blocking_conflicts = list(
+        v240_decision.get("blocking_conflicts") or []
+    )
     v240_stale = list(v240_decision.get("stale_reasons") or [])
     v240_remap = list(v240_decision.get("remap_reasons") or [])
     v240_local_structure = dict(v240_decision.get("local_structure_override") or {})
+    v240_active_source = dict(v240_decision.get("active_path_source") or {})
 
     # Operational buyer/seller pressure is surfaced directly in V240 and uses
     # the same classifier as the cTrader DEMO child executor.
@@ -2944,31 +2952,44 @@ with forecast_tab:
     v240_dom_stale = not bool(v240_pressure_transition.get("fresh"))
     v240_dom_state = str(v240_pressure_transition.get("dom_state") or "UNAVAILABLE")
     v240_pressure_trend = str(v240_pressure_transition.get("state") or "UNAVAILABLE")
-    v240_depth_hazard = build_dynamic_depth_hazard(
-        v226_evaluation=v226_eval,
-        direction=v240_direction,
-        live_price=dc_reference_price,
-        pressure_transition=v240_pressure_transition,
+
+    # Calibrated dynamic hazard is valid only when current V229/V226 geometry is
+    # aligned and authoritative. Otherwise show physical depth of the current
+    # V182 source only; never project an old hazard band onto a new local zone.
+    v240_depth_zone = dict(
+        v240_active_source
+        or v240_local_structure
+        or (
+            v240_nearest_demand
+            if v240_direction == "LONG"
+            else v240_nearest_supply
+            if v240_direction == "SHORT"
+            else {}
+        )
     )
-    if v240_remap:
-        # V226 can legitimately retain a distant H4-parent locator while a newer
-        # standalone H1/M15 structure has formed closer to price. In that state,
-        # do not display a huge negative depth or a misleading reversal band.
-        # Execution remains fail-closed until the hierarchical map remaps.
+    if (
+        v240_authority == "V229_CANONICAL_GEOMETRY"
+        and v240_entry_authorized
+        and not v240_remap
+        and not v240_stale
+        and not v240_blocking_conflicts
+    ):
+        v240_depth_hazard = build_dynamic_depth_hazard(
+            v226_evaluation=v226_eval,
+            direction=v240_direction,
+            live_price=dc_reference_price,
+            pressure_transition=v240_pressure_transition,
+        )
+    elif dc_reference_price is not None and v240_depth_zone:
+        v240_depth_hazard = build_geometry_depth_status(
+            zone=v240_depth_zone,
+            live_price=float(dc_reference_price),
+        )
+    else:
         v240_depth_hazard = {
             "state": "UNAVAILABLE",
-            "reason": "LOCAL_STRUCTURE_AHEAD_OF_V226_CANDIDATE",
-            "location_state": "LOCAL_REMAP",
-            "action": "WAIT_STRUCTURE_REMAP",
+            "reason": "NO_CURRENT_DEPTH_GEOMETRY",
             "execution_ready": False,
-            "current_depth": None,
-            "recommended_depth_low": None,
-            "recommended_depth_high": None,
-            "recommended_price_low": None,
-            "recommended_price_high": None,
-            "future_bands": [],
-            "historical_prior_scope": "REMAP_REQUIRED",
-            "retest_confirmation_required": False,
         }
 
     # Surface the same lifecycle/execution state used by the DEMO route.
