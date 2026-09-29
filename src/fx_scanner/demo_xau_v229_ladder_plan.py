@@ -178,18 +178,32 @@ def build_parent_ladder_plan(
 
     side_map = dict(v226_evaluation.get(direction.lower()) or {})
     h4 = dict(dict(side_map.get("h4") or {}).get("zone") or {})
-    h4_low = _f(h4.get("low"))
-    h4_high = _f(h4.get("high"))
-    h4_atr = _f(h4.get("atr_points"))
-    if None in {h4_low, h4_high, h4_atr}:
+    candidate_source = dict(candidate.get("source_zone") or {})
+    candidate_source_direction = str(candidate_source.get("direction") or "").upper()
+    candidate_source_tf = str(
+        candidate.get("source_timeframe")
+        or candidate_source.get("timeframe")
+        or ""
+    ).upper()
+    use_local_source_stop = bool(
+        candidate_source
+        and str(candidate.get("source_layer") or "").startswith("V182_ACTIVE_")
+        and candidate_source_direction == direction
+        and candidate_source_tf in {"H4", "H1"}
+    )
+    stop_zone = dict(candidate_source if use_local_source_stop else h4)
+    stop_low = _f(stop_zone.get("low"))
+    stop_high = _f(stop_zone.get("high"))
+    stop_atr = _f(stop_zone.get("atr_points"))
+    if None in {stop_low, stop_high, stop_atr}:
         return None
-    assert h4_low is not None and h4_high is not None and h4_atr is not None
-    if h4_high <= h4_low or h4_atr <= 0:
+    assert stop_low is not None and stop_high is not None and stop_atr is not None
+    if stop_high <= stop_low or stop_atr <= 0:
         return None
     stop = (
-        h4_low - H4_STOP_BUFFER_ATR * h4_atr
+        stop_low - H4_STOP_BUFFER_ATR * stop_atr
         if direction == "LONG"
-        else h4_high + H4_STOP_BUFFER_ATR * h4_atr
+        else stop_high + H4_STOP_BUFFER_ATR * stop_atr
     )
 
     source_ladder = dict(v226_evaluation.get("four_order_ladder") or {})
@@ -268,7 +282,7 @@ def build_parent_ladder_plan(
         (
             "XAU_RIZAN_DEPTH_EXECUTION_V1",
             direction,
-            str(h4.get("zone_id") or ""),
+            str(stop_zone.get("zone_id") or ""),
             str(candidate.get("source_layer") or ""),
             execution_phase,
             f"{low:.5f}",
@@ -311,7 +325,10 @@ def build_parent_ladder_plan(
         "rr1": float(rr1),
         "rr2": float(rr2),
         "source_layer": str(candidate.get("source_layer") or ""),
+        "source_timeframe": str(candidate.get("source_timeframe") or candidate_source_tf),
         "h4_zone_id": str(h4.get("zone_id") or ""),
+        "structural_stop_zone_id": str(stop_zone.get("zone_id") or ""),
+        "structural_stop_timeframe": str(stop_zone.get("timeframe") or "").upper(),
         "candidate": candidate,
         "children": children,
         "max_children": MAX_CHILDREN,
