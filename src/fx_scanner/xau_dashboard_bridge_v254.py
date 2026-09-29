@@ -377,19 +377,15 @@ def build_snapshot(
     account = reader.latest_broker_account()
     broker_positions = list(reader.broker_positions_for_account(account))
     xau_signals = list(reader.latest_signals_for_symbol("XAUUSD", limit=8))
-    forecast_states = list(reader.latest_afic_forecast_states())
-    prepared_plans = list(reader.latest_afic_prepared_plans())
-    geometry_events = list(reader.latest_xau_geometry_events(limit=4))
-    execution_events = list(reader.latest_xau_execution_events(limit=6))
-    lifecycle = list(reader.latest_xau_prepared_plan_lifecycle(limit=8))
+    forecast_states = list(reader.latest_afic_forecast_states(limit=6))
+    prepared_plans = list(reader.latest_afic_prepared_plans(limit=1))
+    geometry_events = list(reader.latest_xau_geometry_events(limit=2))
+    execution_events = list(reader.latest_xau_execution_events(limit=4))
+    lifecycle = list(reader.latest_xau_prepared_plan_lifecycle(limit=4))
     control_snapshot = asdict(store.get_execution_control())
-    rizan_geometry = [
-        row for row in geometry_events
-        if str(dict(row).get("code") or "") in {
-            "XAU_RIZAN_DEPTH_EXECUTION_V1",
-            "XAU_RIZAN_PATH_EXECUTION_V1",
-        }
-    ][:12]
+    # V240 needs the newest saved RIZAN geometry for parity/mismatch checks.
+    # Fetch exactly one dedicated row so the generic geometry timeline can stay tiny.
+    rizan_geometry = list(reader.latest_afic_execution_geometry(limit=1))
 
     # Keep minute-level egress bounded. The UI needs current admission plus a
     # short audit trail; older history remains in Supabase and is not deleted.
@@ -401,6 +397,7 @@ def build_snapshot(
         "broker_positions": broker_positions,
         "afic_forecast_states": forecast_states,
         "afic_prepared_plans": prepared_plans,
+        "afic_execution_geometry": rizan_geometry,
         "xau_execution_events": execution_events,
         "xau_geometry_events": geometry_events,
         "xau_prepared_plan_lifecycle": lifecycle,
