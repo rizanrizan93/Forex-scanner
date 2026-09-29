@@ -408,3 +408,56 @@ def test_v2564_reused_source_resets_current_m5_evidence_at_latest_touch() -> Non
     assert current["micro_refinement"]["eligibility_not_before"] == (
         t0 + timedelta(minutes=180)
     ).isoformat()
+
+
+
+def test_v2572_next_leg_uses_later_of_current_activation_and_next_source_retest() -> None:
+    t0 = datetime(2026, 9, 29, 0, 0, tzinfo=UTC)
+    path_map = _long_then_short_path()
+    supply = dict(path_map["active_path"]["terminal_target_zone"])
+    supply["available_at"] = t0.isoformat()
+    supply["lifecycle"] = {
+        "active": True,
+        "freshness": "PARTIALLY_MITIGATED",
+        "touch_count": 4,
+        "first_touch_at": (t0 + timedelta(minutes=30)).isoformat(),
+        "last_touch_at": (t0 + timedelta(minutes=180)).isoformat(),
+    }
+    path_map["active_path"]["terminal_target_zone"] = supply
+    path_map["active_path"]["primary_opposing_zone"] = supply
+    path_map["supply_to_demand"]["source_zone"] = supply
+
+    demand = dict(path_map["active_path"]["source_zone"])
+    demand["available_at"] = t0.isoformat()
+    demand["lifecycle"] = {
+        "active": True,
+        "freshness": "FIRST_TEST",
+        "touch_count": 1,
+        "first_touch_at": (t0 + timedelta(minutes=60)).isoformat(),
+        "last_touch_at": (t0 + timedelta(minutes=60)).isoformat(),
+    }
+    path_map["active_path"]["source_zone"] = demand
+    path_map["demand_to_supply"]["source_zone"] = demand
+
+    bars = []
+    for i in range(60):
+        ts = t0 + timedelta(minutes=5 * i)
+        if i == 20:
+            # Old opposing-zone touch after current leg activation but BEFORE
+            # the latest opposing-zone retest boundary.
+            bars.append(_bar(ts, 121.0, 126.0, 120.5, 123.0))
+        else:
+            bars.append(_bar(ts, 111.0, 113.0, 110.5, 112.0))
+
+    out = evaluate_bidirectional_m5_path(
+        tuple(bars),
+        path_map=path_map,
+        as_of=t0 + timedelta(minutes=5 * 61),
+    )
+
+    next_leg = out["next_leg"]
+    assert next_leg["touch_cycle_start"] == (t0 + timedelta(minutes=180)).isoformat()
+    assert next_leg["eligibility_not_before"] == (t0 + timedelta(minutes=180)).isoformat()
+    assert next_leg["pocket_state"] == "NO_M5_POCKET_YET"
+    assert next_leg["m5_pocket"] == {}
+    assert next_leg["micro_refinement"]["state"] == "WAIT_SOURCE_TOUCH"
