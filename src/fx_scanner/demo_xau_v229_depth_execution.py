@@ -60,6 +60,7 @@ def _fresh_first_touch_calibration_context(
     *,
     plan: dict[str, Any],
     atlas_evaluation: dict[str, Any],
+    live_price: float | None = None,
 ) -> dict[str, Any]:
     """Derive an operational pre-touch arm radius from M30 overlap + composite pressure.
 
@@ -73,6 +74,31 @@ def _fresh_first_touch_calibration_context(
     source = dict(candidate.get("source_zone") or {})
     source_id = str(source.get("zone_id") or "")
     direction = str(plan.get("direction") or candidate.get("direction") or "").upper()
+
+    snapshot_distance_atr = _f(source.get("distance_atr"))
+    source_low = _f(source.get("low"))
+    source_high = _f(source.get("high"))
+    source_atr = _f(source.get("atr_points"))
+    live_distance_atr: float | None = None
+    if (
+        live_price is not None
+        and source_low is not None
+        and source_high is not None
+        and source_atr is not None
+        and source_atr > 0.0
+    ):
+        if direction == "SHORT":
+            live_distance_points = max(float(source_low) - float(live_price), 0.0)
+        elif direction == "LONG":
+            live_distance_points = max(float(live_price) - float(source_high), 0.0)
+        else:
+            live_distance_points = 0.0
+        live_distance_atr = live_distance_points / float(source_atr)
+    effective_distance_atr = (
+        live_distance_atr
+        if live_distance_atr is not None
+        else snapshot_distance_atr
+    )
 
     m30_shadow = dict(atlas_evaluation.get("m30_shadow_v272") or {})
     matching_overlaps: list[float] = []
@@ -110,6 +136,9 @@ def _fresh_first_touch_calibration_context(
     return {
         "source_zone_id": source_id or None,
         "direction": direction or None,
+        "snapshot_approach_distance_atr": snapshot_distance_atr,
+        "live_approach_distance_atr": live_distance_atr,
+        "effective_approach_distance_atr": effective_distance_atr,
         "m30_parent_overlap_ratio": m30_overlap,
         "high_m30_overlap": m30_overlap >= HIGH_M30_PARENT_OVERLAP_RATIO,
         "composite_pressure_available": composite_available,
@@ -130,6 +159,7 @@ def _fresh_first_touch_calibration_arm_allowed(
     pressure_transition: dict[str, Any],
     depth_hazard: dict[str, Any],
     atlas_evaluation: dict[str, Any],
+    live_price: float | None = None,
 ) -> bool:
     """Allow one DEMO-only L1 arm before a fresh first touch without opening strict slots."""
     if bool(plan.get("confirmation_window_only")):
@@ -147,15 +177,15 @@ def _fresh_first_touch_calibration_arm_allowed(
         return False
     if str(depth_hazard.get("location_state") or "") != "AHEAD_OF_ZONE":
         return False
-    source = dict(candidate.get("source_zone") or {})
-    distance_atr = _f(source.get("distance_atr"))
-    if distance_atr is None:
-        return False
     context = _fresh_first_touch_calibration_context(
         plan=plan,
         atlas_evaluation=atlas_evaluation,
+        live_price=live_price,
     )
     plan["calibration_approach_context"] = context
+    distance_atr = _f(context.get("effective_approach_distance_atr"))
+    if distance_atr is None:
+        return False
     return 0.0 <= float(distance_atr) <= float(
         context["max_approach_distance_atr"]
     )
@@ -658,6 +688,7 @@ def run() -> int:
                     pressure_transition=pressure_transition,
                     depth_hazard=depth_hazard,
                     atlas_evaluation=atlas_eval,
+                    live_price=live_price,
                 )
                 if not strict_pressure_allowed and not fresh_calibration_arm:
                     reason = (
