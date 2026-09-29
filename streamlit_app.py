@@ -1946,7 +1946,8 @@ st.title("RIZAN XAU Institutional Scanner")
 st.caption(
     "RIZAN XAU decision dashboard • Normal mode uses durable ForexRizan snapshots "
     "via direct Supabase or the curated ForexRizan Dashboard Bridge. "
-    "cTrader standalone is never treated as the dashboard backend."
+    "cTrader standalone is never treated as the dashboard backend. "
+    f"Build: {DASHBOARD_BUILD_ID}."
 )
 
 if config_error:
@@ -2033,6 +2034,14 @@ m2.metric("Pairs", pairs)
 m3.metric("Top-5 Scan Cadence", fast_setup)
 m4.metric("Execution Watch", execution_watch)
 m5.metric("Dashboard Backend", backend_label)
+if backend is not None and backend_source.startswith("GITHUB_DASHBOARD_BRIDGE"):
+    st.caption(
+        "ForexRizan transport: "
+        + str(backend_bridge_meta.get("source_url_kind") or "UNKNOWN")
+        + " • snapshot age "
+        + _fmt_number(backend_bridge_meta.get("age_seconds"), 0)
+        + " detik"
+    )
 
 if backend is None and standalone is not None:
     standalone_quote = dict(standalone.get("quote") or {})
