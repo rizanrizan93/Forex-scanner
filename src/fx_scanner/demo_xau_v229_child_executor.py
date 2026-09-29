@@ -755,18 +755,23 @@ def run() -> int:
             # is neutral/supportive. Existing pending orders are always cancelled
             # before this calibration-only bypass is considered.
             pressure_hard_block = bool(pressure_transition.get("hard_block"))
+            dom_wait_second_sample = (
+                str(pressure_transition.get("state") or "") == "WAIT_SECOND_SAMPLE"
+            )
             dom_state = str(pressure_transition.get("state") or "")
             dom_calibration_allowed = bool(
                 pressure_transition.get("calibration_entry_allowed")
             )
             composite_fallback_allowed = bool(
                 pressure_hard_block
-                and dom_state in {
-                    "DOM_STALE",
-                    "UNAVAILABLE",
-                    "DOM_SCORE_MISSING",
-                    "WAIT_SECOND_SAMPLE",
-                }
+                and (
+                    dom_wait_second_sample
+                    or dom_state in {
+                        "DOM_STALE",
+                        "UNAVAILABLE",
+                        "DOM_SCORE_MISSING",
+                    }
+                )
                 and composite_calibration_allowed
             )
             calibration_pressure_allowed = bool(
