@@ -17,7 +17,7 @@ permissions:
 
 concurrency:
   group: forexrizan-dashboard-bridge-v254
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -58,22 +58,45 @@ jobs:
       - name: Publish continuous one-minute dashboard snapshots
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           for i in $(seq 1 65); do
             started="$(date +%s)"
-            python -m fx_scanner.xau_dashboard_bridge_v254               --output runtime/xau_dashboard_snapshot.json
+            snapshot_ok=0
+            for attempt in 1 2 3; do
+              if python -m fx_scanner.xau_dashboard_bridge_v254 --output runtime/xau_dashboard_snapshot.json; then
+                snapshot_ok=1
+                break
+              fi
+              echo "::warning::Dashboard snapshot attempt ${attempt}/3 failed; retrying"
+              sleep "$(( attempt * 5 ))"
+            done
 
-            git add -f runtime/xau_dashboard_snapshot.json
-            if git diff --cached --quiet; then
-              :
-            elif [ "$i" -eq 1 ]; then
-              git commit -m "runtime: refresh ForexRizan dashboard snapshot"
+            if [ "$snapshot_ok" -eq 1 ]; then
+              git add -f runtime/xau_dashboard_snapshot.json
+              if git diff --cached --quiet; then
+                :
+              elif [ "$i" -eq 1 ]; then
+                git commit -m "runtime: refresh ForexRizan dashboard snapshot"
+              else
+                git commit --amend --no-edit
+              fi
+
+              if git rev-parse --verify HEAD >/dev/null 2>&1; then
+                push_ok=0
+                for push_attempt in 1 2 3; do
+                  if git push --force origin HEAD:dashboard-snapshots; then
+                    push_ok=1
+                    break
+                  fi
+                  echo "::warning::Dashboard snapshot push ${push_attempt}/3 failed; retrying"
+                  sleep "$(( push_attempt * 5 ))"
+                done
+                if [ "$push_ok" -ne 1 ]; then
+                  echo "::warning::Dashboard snapshot publish skipped this cycle; worker will continue"
+                fi
+              fi
             else
-              git commit --amend --no-edit
-            fi
-
-            if git rev-parse --verify HEAD >/dev/null 2>&1; then
-              git push --force origin HEAD:dashboard-snapshots
+              echo "::warning::Dashboard snapshot generation failed this cycle; worker will continue"
             fi
 
             if [ "$i" -lt 65 ]; then
