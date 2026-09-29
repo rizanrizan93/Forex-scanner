@@ -169,9 +169,10 @@ def test_v263_dashboard_separates_historical_entry_from_rr_confirmation_window()
     assert "RR-eligible M5 confirmation window" in SOURCE
     assert "RR threshold entry" in SOURCE
     assert "**Belum ada order.** Window ini hanya menunjukkan area" in SOURCE
-    assert "L1/L2 tetap OFF" in SOURCE
-    assert "TP dan RR" in SOURCE
-    assert "dihitung ulang dari harga entry aktual" in SOURCE
+    assert "L2 tetap OFF" in SOURCE
+    assert "DEMO calibration probe" in SOURCE
+    assert "L3/L4 tetap jalur strict" in SOURCE
+    assert "TP/SL selalu dihitung dari struktur aktual" in SOURCE
     assert "CONFIRMATION_WINDOW_ARMED" in SOURCE
     assert "WAIT_NO_RR_ELIGIBLE_CONFIRMATION_WINDOW" in SOURCE
 
