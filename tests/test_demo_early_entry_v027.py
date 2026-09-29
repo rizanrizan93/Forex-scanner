@@ -229,8 +229,11 @@ def test_supervisor_uses_one_minute_non_overlap_dispatch():
     assert "authority=SCHEDULE_5M" in text
     assert "self_handoff=SAFE_CONDITIONAL" in text
     assert "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED" in text
-    assert '[ "${latest_execution_status}" = "completed" ]' in text
-    assert '[ "${latest_execution_conclusion}" = "success" ]' in text
+    assert "execution_overlap_guard=ACTIVE_COUNT" in text
+    assert '[ "${other_active_supervisors}" -eq 0 ]' in text
+    assert '[ "${latest_execution_status}" = "completed" ]' not in text
+    assert '[ "${latest_execution_conclusion}" = "success" ]' not in text
+    assert "cancel_stale_lane_runs" in text
 
 
 def test_pipeline_keeps_chase_limit_and_enables_fresh_fvg_profile():
