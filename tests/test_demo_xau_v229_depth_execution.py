@@ -446,12 +446,6 @@ def test_v261_v226_prefers_current_v182_h1_source_over_unrelated_h4_requirement(
                 "source_zone": source,
             }
         },
-        "m5_path_projection": {
-            "current_leg": {
-                "direction": "SHORT",
-                "source_zone": source,
-            }
-        },
     }
 
     result = build_depth_map(
