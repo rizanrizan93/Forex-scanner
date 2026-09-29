@@ -5621,18 +5621,49 @@ with forecast_tab:
         )
         sd_details = {} if supply_demand_hb is None else dict(supply_demand_hb.get("details") or {})
         sd_eval = dict(sd_details.get("evaluation") or {})
-        sd_zones = list(sd_eval.get("zones") or [])
+        sd_raw_zones = [dict(item) for item in list(sd_eval.get("zones") or [])]
+        nearest_demand = dict(sd_eval.get("nearest_demand") or {})
+        nearest_supply = dict(sd_eval.get("nearest_supply") or {})
+        sd_path_map = dict(sd_eval.get("path_map") or {})
+        sd_active_path = dict(sd_path_map.get("active_path") or {})
+
+        # Keep path-critical zones visible even when an older score-ranked V182
+        # snapshot omitted them from its flat top-12 export. New V182 snapshots
+        # already guarantee this; the UI union protects migration-era snapshots.
+        sd_critical_zones = [
+            nearest_demand,
+            nearest_supply,
+            dict(sd_active_path.get("source_zone") or {}),
+            dict(sd_active_path.get("primary_opposing_zone") or {}),
+            dict(sd_active_path.get("terminal_target_zone") or {}),
+        ]
+        sd_zones: list[dict[str, Any]] = []
+        sd_seen: set[tuple[Any, ...]] = set()
+        for item in [*sd_critical_zones, *sd_raw_zones]:
+            if not item:
+                continue
+            zone_id = str(item.get("zone_id") or "")
+            key = (
+                "ID",
+                zone_id,
+            ) if zone_id else (
+                "GEO",
+                str(item.get("timeframe") or ""),
+                str(item.get("direction") or ""),
+                item.get("low"),
+                item.get("high"),
+            )
+            if key in sd_seen:
+                continue
+            sd_seen.add(key)
+            sd_zones.append(item)
+
         if sd_zones:
             sd1, sd2, sd3, sd4 = st.columns(4)
             sd1.metric("Zona aktif", sd_eval.get("active_count", 0))
-            sd2.metric("Zona ditampilkan", sd_eval.get("display_count", len(sd_zones)))
+            sd2.metric("Zona current + riset", len(sd_zones))
             sd3.metric("Konteks sesi", str(sd_eval.get("session_context") or "—"))
             sd4.metric("Izin eksekusi", "TIDAK ADA")
-
-            nearest_demand = dict(sd_eval.get("nearest_demand") or {})
-            nearest_supply = dict(sd_eval.get("nearest_supply") or {})
-            sd_path_map = dict(sd_eval.get("path_map") or {})
-            sd_active_path = dict(sd_path_map.get("active_path") or {})
             nd_col, ns_col = st.columns(2)
             with nd_col:
                 if nearest_demand:
