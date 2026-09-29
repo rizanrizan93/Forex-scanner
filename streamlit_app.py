@@ -52,7 +52,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V256_CANONICAL_TRUTH_UI_20260929"
+DASHBOARD_BUILD_ID = "RIZAN_V256_3_PARENT_RESCUE_CHART_TRUTH_20260929"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -2439,6 +2439,7 @@ with forecast_tab:
     ).upper()
     dc_parent_rescue = dict(dc_micro.get("parent_reversal_rescue") or {})
     dc_parent_rescue_active = bool(dc_parent_rescue.get("active"))
+    dc_parent_source_zone = dict(dc_projection_current.get("parent_source_zone") or {})
     dc_current_projected_pocket = dict(
         dc_projection_current.get("m5_pocket") or {}
     )
@@ -3290,6 +3291,8 @@ with forecast_tab:
                 "HTF PARENT REVERSAL RESCUE AKTIF • H1 child sudah ditembus, tetapi sweep masih "
                 f"berada di dalam {dc_parent_rescue.get('parent_timeframe') or 'HTF'} parent yang valid. "
                 f"Mode={dc_parent_rescue.get('mode') or 'HTF_PARENT_RESCUE'} • "
+                f"parent zone={_fmt_price(dc_parent_source_zone.get('low'))}–"
+                f"{_fmt_price(dc_parent_source_zone.get('high'))} • "
                 f"penetrasi child={_fmt_distance(dc_parent_rescue.get('child_penetration_atr'), ' ATR')}. "
                 "M5 candidate/refined tetap dipertahankan sebagai SHADOW/PREPARE; kondisi ini sendiri "
                 "tidak memberi execution authority."
@@ -4482,7 +4485,7 @@ with forecast_tab:
             )
 
     with st.expander("Detail setup multi-timeframe — H1 / M5 / M15 / DOM / Event", expanded=False):
-        st.markdown("#### 2. H1 — Zona Reaksi Utama")
+        st.markdown("#### 2. H1 / HTF — Zona Reaksi Utama")
         if dc_source:
             dc_source_freshness = str(
                 dict(dc_source.get("lifecycle") or {}).get("freshness") or "—"
@@ -4650,7 +4653,9 @@ with forecast_tab:
         if dc_parent_rescue_active:
             st.info(
                 "Parent-reversal rescue • microstructure M5 tidak dibuang hanya karena H1 child invalid. "
-                f"Parent={dc_parent_rescue.get('parent_timeframe') or 'HTF'} • "
+                f"Parent={dc_parent_rescue.get('parent_timeframe') or 'HTF'} "
+                f"{_fmt_price(dc_parent_source_zone.get('low'))}–"
+                f"{_fmt_price(dc_parent_source_zone.get('high'))} • "
                 f"mode={dc_parent_rescue.get('mode') or '—'} • "
                 "status tetap SHADOW/PREPARE sampai confirmation/admission canonical lolos."
             )
