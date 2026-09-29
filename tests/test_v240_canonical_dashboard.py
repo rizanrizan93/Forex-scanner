@@ -174,3 +174,15 @@ def test_v263_dashboard_separates_historical_entry_from_rr_confirmation_window()
     assert "dihitung ulang dari harga entry aktual" in SOURCE
     assert "CONFIRMATION_WINDOW_ARMED" in SOURCE
     assert "WAIT_NO_RR_ELIGIBLE_CONFIRMATION_WINDOW" in SOURCE
+
+
+def test_v265_dashboard_has_four_layer_entry_map_and_overlap_status() -> None:
+    assert "Peta Entry — riset → M5 → DEMO → broker" in SOURCE
+    assert "1 • Historical research entry" in SOURCE
+    assert "2 • M5 pocket saat ini" in SOURCE
+    assert "3 • RR-eligible DEMO window" in SOURCE
+    assert "4 • Official broker entry" in SOURCE
+    assert "BELOW WINDOW • M5 masih terlalu dangkal untuk RR ≥1,50R" in SOURCE
+    assert "OVERLAP • M5 sudah menyentuh RR-eligible window" in SOURCE
+    assert "historical entry = prior riset" in SOURCE
+    assert "official broker entry = baru ada setelah semua gate lolos" in SOURCE
