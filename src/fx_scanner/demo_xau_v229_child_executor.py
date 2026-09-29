@@ -39,6 +39,7 @@ from .xau_dynamic_depth_hazard_v251 import (
     build_dynamic_depth_hazard,
     child_reference_depth,
 )
+from .xau_reversal_break_forecast_v278 import build_reversal_break_forecast
 
 SYMBOL = "XAUUSD"
 WORKER_NAME = "ctrader_demo_xau_v229_child_executor"
@@ -144,6 +145,21 @@ def _promote_armed_calibration_parent(
         .update({"state": "EXECUTION_READY", "active_guards": []})
         .eq("id", signal_id)
         .eq("state", "ARMED")
+        .execute()
+    )
+    return len(list(result.data or [])) == 1
+
+
+def _invalidate_signal_v278(
+    store: SupabaseOperationalStore,
+    signal_id: str,
+    *,
+    guard: str,
+) -> bool:
+    result = (
+        store.client.table("signals")
+        .update({"state": "INVALIDATED", "active_guards": [guard]})
+        .eq("id", signal_id)
         .execute()
     )
     return len(list(result.data or [])) == 1
@@ -864,6 +880,42 @@ def run() -> int:
                 actions.extend(f"{parent_signal_id}:{x}" for x in outcomes)
                 continue
 
+            v278_forecast = build_reversal_break_forecast(
+                v226_evaluation=v226_eval,
+                atlas_evaluation=atlas_eval,
+                direction=str(plan.get("direction") or direction).upper(),
+                price_now=live_price,
+                pressure_transition=pressure_transition,
+                v229_plan=plan,
+                base_entry_authorized=state in {"EXECUTION_READY", "COOLDOWN"},
+                now=datetime.now(UTC),
+            )
+            v278_stage = str(v278_forecast.get("stage") or "WAIT").upper()
+            if v278_stage in {
+                "BREAK_RISK",
+                "SETUP_INVALID",
+                "MISSED_ENTRY_WAIT_NEXT_SETUP",
+            }:
+                outcomes = _cancel_pending_plan(session, plan, reconcile)
+                actions.extend(
+                    f"{parent_signal_id}:V278_{v278_stage}_CANCEL:{x}"
+                    for x in outcomes
+                )
+                if v278_stage in {
+                    "SETUP_INVALID",
+                    "MISSED_ENTRY_WAIT_NEXT_SETUP",
+                }:
+                    _invalidate_signal_v278(
+                        store,
+                        parent_signal_id,
+                        guard="V278_" + v278_stage,
+                    )
+                actions.append(
+                    f"{parent_signal_id}:V278_{v278_stage}:"
+                    f"{v278_forecast.get('reason') or 'SAFETY_BLOCK'}"
+                )
+                continue
+
             armed_confirmation_window = bool(
                 state == "ARMED" and plan.get("confirmation_window_only")
             )
@@ -1328,6 +1380,7 @@ def run() -> int:
             "calibration_probe_enabled": calibration_probe_enabled,
             "fresh_first_touch_calibration_arm_supported": True,
             "fresh_first_touch_calibration_slots": [1],
+            "v278_safety_cancellation_enabled": True,
             "calibration_probe_lot": CHILD_LOT,
             "calibration_probe_min_rr": calibration_probe_min_rr,
             "calibration_probe_max_depth_ceiling": calibration_probe_max_depth,
