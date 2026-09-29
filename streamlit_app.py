@@ -4127,18 +4127,31 @@ with forecast_tab:
     ):
         st.markdown("##### V226 — RIZAN Depth Map")
         if v226_eval and str(v226_eval.get("state") or "") == "RIZAN_DEPTH_MAP_AVAILABLE":
-            st.markdown("###### RISET / PREPARATION — Depth Entry Candidate")
+            v226_operationally_aligned = bool(
+                v240_entry_authorized
+                and v240_authority == "V229_CANONICAL_GEOMETRY"
+                and str(v226_entry_candidate.get("direction") or "").upper()
+                == v240_direction
+            )
+            st.markdown("###### RISET / PREPARATION — Historical Depth Locator")
             st.caption(
                 "Untuk keputusan rutin gunakan V240 Canonical XAU Decision Map. "
                 "V226 hanya locator/depth evidence dan tidak mengalahkan angka canonical."
             )
+            if v226_entry_candidate and not v226_operationally_aligned:
+                st.warning(
+                    "V226 locator di bawah **TIDAK AKTIF untuk keputusan operasional saat ini**. "
+                    "Angka dapat berasal dari locator historis yang jauh dari current V182 path. "
+                    "Jangan gunakan sebagai entry, SL, TP, atau pending order; hanya V240/V229 di panel utama "
+                    "yang boleh menjadi geometry eksekusi."
+                )
             ec1, ec2, ec3, ec4 = st.columns(4)
             ec1.metric(
-                "Arah",
+                "Arah locator (riset)",
                 str(v226_entry_candidate.get("direction") or "—"),
             )
             ec2.metric(
-                "Candidate entry",
+                "Locator range (riset)",
                 (
                     f"{_fmt_price(v226_entry_candidate.get('entry_low'))}–"
                     f"{_fmt_price(v226_entry_candidate.get('entry_high'))}"
@@ -4146,7 +4159,7 @@ with forecast_tab:
                 ),
             )
             ec3.metric(
-                "Reference entry",
+                "Reference locator",
                 _fmt_price(v226_entry_candidate.get("entry_reference")),
             )
             ec4.metric(
@@ -4172,16 +4185,24 @@ with forecast_tab:
                 "Focus direction menentukan kandidat utama yang ditonjolkan."
             )
             if len(v226_ladder_slots) == 4:
-                st.markdown("###### 4-Order Hybrid Depth Plan — 0,01 lot per order")
+                st.markdown(
+                    "###### V226 4-slot execution detail"
+                    if v226_operationally_aligned
+                    else "###### V226 4-slot research reference — TIDAK AKTIF"
+                )
                 lc1, lc2, lc3, lc4 = st.columns(4)
                 for col, slot in zip((lc1, lc2, lc3, lc4), v226_ladder_slots):
                     display_price = (
                         _fmt_price(slot.get("price"))
-                        if slot.get("submit_eligible")
-                        else f"WAIT M5 • ref {_fmt_price(slot.get('reference_price'))}"
+                        if v226_operationally_aligned and slot.get("submit_eligible")
+                        else f"REF {_fmt_price(slot.get('reference_price'))} • riset"
                     )
                     col.metric(
-                        f"Order {slot.get('slot','—')} • 0,01 lot",
+                        (
+                            f"Order {slot.get('slot','—')} • 0,01 lot"
+                            if v226_operationally_aligned
+                            else f"Slot {slot.get('slot','—')} • research"
+                        ),
                         display_price,
                         f"depth {_fmt_pct(slot.get('depth'))}",
                     )
@@ -4192,10 +4213,10 @@ with forecast_tab:
                     f"pre-touch maksimum={v226_four_order_ladder.get('max_pretouch_lots',0):.2f} lot • "
                     f"total maksimum setelah konfirmasi="
                     f"{v226_four_order_ladder.get('total_lots_if_all_four_eventually_filled',0):.2f} lot. "
-                    "Order 1–2 = pre-touch q10/q35 hanya bila candidate benar-benar fresh; "
-                    "Order 3–4 = reclaim/MSS dan displacement/retest M5. V226 sendiri adalah "
-                    "locator, tetapi V229 dapat memberi execution authority DEMO sesuai lifecycle, "
-                    "pressure transition, Dynamic Depth Hazard, dan M5 confirmation."
+                    "Slot V226 adalah locator/depth reference. Jika status panel utama belum "
+                    "V229 READY, seluruh slot di sini tetap RISET dan tidak boleh dipakai sebagai pending order. "
+                    "Execution authority DEMO hanya berasal dari V229 canonical geometry + lifecycle + "
+                    "pressure transition + Dynamic Depth Hazard + M5 confirmation yang aligned."
                 )
 
             d1, d2, d3, d4 = st.columns(4)

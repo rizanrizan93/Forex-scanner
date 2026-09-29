@@ -301,3 +301,14 @@ def test_v2572_terminal_zone_moves_primary_m5_focus_to_next_leg() -> None:
     assert "TARGET TERCAPAI • NEXT" in text
     assert "Pocket M5 berikutnya adalah" in text
     assert "WATCH ONLY — belum refined dan belum entry resmi" in text
+
+
+
+def test_v2573_v226_panel_cannot_look_like_current_entry_when_not_aligned() -> None:
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "Historical Depth Locator" in text
+    assert "TIDAK AKTIF untuk keputusan operasional saat ini" in text
+    assert "Locator range (riset)" in text
+    assert "Reference locator" in text
+    assert "V226 4-slot research reference — TIDAK AKTIF" in text
+    assert "seluruh slot di sini tetap RISET" in text
