@@ -364,3 +364,47 @@ def test_v196_next_leg_does_not_recycle_old_opposing_zone_touch() -> None:
     assert out["next_leg"]["pocket_state"] == "NO_M5_POCKET_YET"
     assert out["next_leg"]["m5_pocket"] == {}
     assert out["next_leg"]["micro_refinement"]["state"] == "WAIT_SOURCE_TOUCH"
+
+
+
+def test_v2564_reused_source_resets_current_m5_evidence_at_latest_touch() -> None:
+    t0 = datetime(2026, 9, 29, 0, 0, tzinfo=UTC)
+    path_map = _long_then_short_path()
+    source = dict(path_map["active_path"]["source_zone"])
+    source["available_at"] = t0.isoformat()
+    source["lifecycle"] = {
+        "active": True,
+        "freshness": "PARTIALLY_MITIGATED",
+        "touch_count": 3,
+        "first_touch_at": (t0 + timedelta(minutes=30)).isoformat(),
+        "last_touch_at": (t0 + timedelta(minutes=180)).isoformat(),
+    }
+    path_map["active_path"]["source_zone"] = source
+    path_map["demand_to_supply"]["source_zone"] = source
+
+    bars = []
+    for i in range(60):
+        ts = t0 + timedelta(minutes=5 * i)
+        if i == 10:
+            # Old source interaction from the prior touch-cycle.
+            bars.append(_bar(ts, 108.0, 109.0, 104.0, 106.0))
+        elif i == 14:
+            bars.append(_bar(ts, 106.0, 108.0, 101.0, 103.0))
+        else:
+            # No source touch after the latest H1 lifecycle touch boundary.
+            bars.append(_bar(ts, 112.0, 114.0, 111.0, 113.0))
+
+    out = evaluate_bidirectional_m5_path(
+        tuple(bars),
+        path_map=path_map,
+        as_of=t0 + timedelta(minutes=5 * 61),
+    )
+
+    current = out["current_leg"]
+    assert current["touch_cycle_start"] == (t0 + timedelta(minutes=180)).isoformat()
+    assert current["pocket_state"] == "NO_M5_POCKET_YET"
+    assert current["m5_pocket"] == {}
+    assert current["micro_refinement"]["state"] == "WAIT_SOURCE_TOUCH"
+    assert current["micro_refinement"]["eligibility_not_before"] == (
+        t0 + timedelta(minutes=180)
+    ).isoformat()
