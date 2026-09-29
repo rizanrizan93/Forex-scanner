@@ -331,7 +331,7 @@ class SupabaseDashboardReader:
         return tuple(self._rows(response))
 
     def latest_xau_atlas_operational_heartbeat(self) -> dict[str, Any] | None:
-        """Return current V182 path/M5 fields without the heavy historical payload."""
+        """Return only the V182 fields needed for the current 60-second decision."""
 
         select_expr = (
             "worker_name,observed_at,healthy,lag_seconds,"
@@ -339,16 +339,8 @@ class SupabaseDashboardReader:
             "as_of:details->evaluation->>as_of,"
             "last_closed_m15_price:details->evaluation->last_closed_m15_price,"
             "strategic_bias:details->evaluation->>strategic_bias,"
-            "nearest_demand:details->evaluation->nearest_demand,"
-            "nearest_supply:details->evaluation->nearest_supply,"
             "active_direction:details->evaluation->path_map->active_path->>reaction_direction,"
             "active_state:details->evaluation->path_map->active_path->>state,"
-            "active_source_zone:details->evaluation->path_map->active_path->source_zone,"
-            "active_reaction_target:details->evaluation->path_map->active_path->reaction_target,"
-            "active_primary_opposing_zone:details->evaluation->path_map->active_path->primary_opposing_zone,"
-            "active_terminal_target_zone:details->evaluation->path_map->active_path->terminal_target_zone,"
-            "d2s_destination_stack:details->evaluation->path_map->demand_to_supply->destination_stack,"
-            "s2d_destination_stack:details->evaluation->path_map->supply_to_demand->destination_stack,"
             "current_leg_direction:details->evaluation->m5_path_projection->current_leg->>direction,"
             "current_leg_path_state:details->evaluation->m5_path_projection->current_leg->>path_state,"
             "current_leg_pocket_state:details->evaluation->m5_path_projection->current_leg->>pocket_state,"
@@ -356,7 +348,18 @@ class SupabaseDashboardReader:
             "current_leg_m5_pocket:details->evaluation->m5_path_projection->current_leg->m5_pocket,"
             "current_leg_reaction_target:details->evaluation->m5_path_projection->current_leg->reaction_target,"
             "current_leg_terminal_target_zone:details->evaluation->m5_path_projection->current_leg->terminal_target_zone,"
-            "current_leg_micro_refinement:details->evaluation->m5_path_projection->current_leg->micro_refinement,"
+            "current_micro_state:details->evaluation->m5_path_projection->current_leg->micro_refinement->>state,"
+            "current_micro_direction:details->evaluation->m5_path_projection->current_leg->micro_refinement->>direction,"
+            "current_micro_first_touch:details->evaluation->m5_path_projection->current_leg->micro_refinement->>first_eligible_touch_at,"
+            "current_micro_sweep:details->evaluation->m5_path_projection->current_leg->micro_refinement->sweep,"
+            "current_micro_candidate:details->evaluation->m5_path_projection->current_leg->micro_refinement->candidate_entry_pocket,"
+            "current_micro_refined:details->evaluation->m5_path_projection->current_leg->micro_refinement->refined_entry_pocket,"
+            "current_micro_parent_rescue:details->evaluation->m5_path_projection->current_leg->micro_refinement->parent_reversal_rescue,"
+            "current_micro_reclaim_level:details->evaluation->m5_path_projection->current_leg->micro_refinement->source_proximal_reclaim_level,"
+            "current_micro_mss_level:details->evaluation->m5_path_projection->current_leg->micro_refinement->mss_level,"
+            "current_micro_reclaim_at:details->evaluation->m5_path_projection->current_leg->micro_refinement->>reclaim_at,"
+            "current_micro_mss_at:details->evaluation->m5_path_projection->current_leg->micro_refinement->>mss_at,"
+            "current_micro_displacement_at:details->evaluation->m5_path_projection->current_leg->micro_refinement->>displacement_at,"
             "current_leg_touch_cycle_start:details->evaluation->m5_path_projection->current_leg->>touch_cycle_start,"
             "next_leg_direction:details->evaluation->m5_path_projection->next_leg->>direction,"
             "next_leg_path_state:details->evaluation->m5_path_projection->next_leg->>path_state,"
@@ -365,10 +368,15 @@ class SupabaseDashboardReader:
             "next_leg_m5_pocket:details->evaluation->m5_path_projection->next_leg->m5_pocket,"
             "next_leg_reaction_target:details->evaluation->m5_path_projection->next_leg->reaction_target,"
             "next_leg_terminal_target_zone:details->evaluation->m5_path_projection->next_leg->terminal_target_zone,"
-            "next_leg_micro_refinement:details->evaluation->m5_path_projection->next_leg->micro_refinement,"
-            "next_leg_touch_cycle_start:details->evaluation->m5_path_projection->next_leg->>touch_cycle_start,"
-            "projection_state:details->evaluation->m5_path_projection->>state,"
-            "micro_refinement:details->evaluation->micro_refinement"
+            "next_micro_state:details->evaluation->m5_path_projection->next_leg->micro_refinement->>state,"
+            "next_micro_direction:details->evaluation->m5_path_projection->next_leg->micro_refinement->>direction,"
+            "next_micro_first_touch:details->evaluation->m5_path_projection->next_leg->micro_refinement->>first_eligible_touch_at,"
+            "next_micro_sweep:details->evaluation->m5_path_projection->next_leg->micro_refinement->sweep,"
+            "next_micro_candidate:details->evaluation->m5_path_projection->next_leg->micro_refinement->candidate_entry_pocket,"
+            "next_micro_refined:details->evaluation->m5_path_projection->next_leg->micro_refinement->refined_entry_pocket,"
+            "next_micro_reclaim_at:details->evaluation->m5_path_projection->next_leg->micro_refinement->>reclaim_at,"
+            "next_micro_mss_at:details->evaluation->m5_path_projection->next_leg->micro_refinement->>mss_at,"
+            "projection_state:details->evaluation->m5_path_projection->>state"
         )
         try:
             response = (
@@ -388,33 +396,67 @@ class SupabaseDashboardReader:
             return None
         raw = dict(rows[0])
 
-        active_path = {
-            "reaction_direction": raw.pop("active_direction", None),
-            "state": raw.pop("active_state", None),
-            "source_zone": dict(raw.pop("active_source_zone", {}) or {}),
-            "reaction_target": dict(raw.pop("active_reaction_target", {}) or {}),
-            "primary_opposing_zone": dict(
-                raw.pop("active_primary_opposing_zone", {}) or {}
+        current_source = dict(raw.pop("current_leg_source_zone", {}) or {})
+        current_target = dict(raw.pop("current_leg_reaction_target", {}) or {})
+        current_terminal = dict(
+            raw.pop("current_leg_terminal_target_zone", {}) or {}
+        )
+        active_direction = str(
+            raw.pop("active_direction", None)
+            or raw.get("current_leg_direction")
+            or ""
+        ).upper()
+
+        current_micro = {
+            "state": raw.pop("current_micro_state", None),
+            "direction": raw.pop("current_micro_direction", None),
+            "first_eligible_touch_at": raw.pop(
+                "current_micro_first_touch", None
             ),
-            "terminal_target_zone": dict(
-                raw.pop("active_terminal_target_zone", {}) or {}
+            "sweep": dict(raw.pop("current_micro_sweep", {}) or {}),
+            "candidate_entry_pocket": dict(
+                raw.pop("current_micro_candidate", {}) or {}
+            ),
+            "refined_entry_pocket": dict(
+                raw.pop("current_micro_refined", {}) or {}
+            ),
+            "parent_reversal_rescue": dict(
+                raw.pop("current_micro_parent_rescue", {}) or {}
+            ),
+            "source_proximal_reclaim_level": raw.pop(
+                "current_micro_reclaim_level", None
+            ),
+            "mss_level": raw.pop("current_micro_mss_level", None),
+            "reclaim_at": raw.pop("current_micro_reclaim_at", None),
+            "mss_at": raw.pop("current_micro_mss_at", None),
+            "displacement_at": raw.pop(
+                "current_micro_displacement_at", None
             ),
         }
+        next_micro = {
+            "state": raw.pop("next_micro_state", None),
+            "direction": raw.pop("next_micro_direction", None),
+            "first_eligible_touch_at": raw.pop("next_micro_first_touch", None),
+            "sweep": dict(raw.pop("next_micro_sweep", {}) or {}),
+            "candidate_entry_pocket": dict(
+                raw.pop("next_micro_candidate", {}) or {}
+            ),
+            "refined_entry_pocket": dict(
+                raw.pop("next_micro_refined", {}) or {}
+            ),
+            "reclaim_at": raw.pop("next_micro_reclaim_at", None),
+            "mss_at": raw.pop("next_micro_mss_at", None),
+        }
+
         current_leg = {
             "direction": raw.pop("current_leg_direction", None),
             "path_state": raw.pop("current_leg_path_state", None),
             "pocket_state": raw.pop("current_leg_pocket_state", None),
-            "source_zone": dict(raw.pop("current_leg_source_zone", {}) or {}),
+            "source_zone": current_source,
             "m5_pocket": dict(raw.pop("current_leg_m5_pocket", {}) or {}),
-            "reaction_target": dict(
-                raw.pop("current_leg_reaction_target", {}) or {}
-            ),
-            "terminal_target_zone": dict(
-                raw.pop("current_leg_terminal_target_zone", {}) or {}
-            ),
-            "micro_refinement": dict(
-                raw.pop("current_leg_micro_refinement", {}) or {}
-            ),
+            "reaction_target": current_target,
+            "terminal_target_zone": current_terminal,
+            "micro_refinement": current_micro,
             "touch_cycle_start": raw.pop("current_leg_touch_cycle_start", None),
         }
         next_leg = {
@@ -427,27 +469,35 @@ class SupabaseDashboardReader:
             "terminal_target_zone": dict(
                 raw.pop("next_leg_terminal_target_zone", {}) or {}
             ),
-            "micro_refinement": dict(raw.pop("next_leg_micro_refinement", {}) or {}),
+            "micro_refinement": next_micro,
             "touch_cycle_start": raw.pop("next_leg_touch_cycle_start", None),
         }
+
+        # For the operational dashboard, current source and current terminal are
+        # the actionable nearest same/opposite structural zones. The full V182
+        # zone universe remains available in the five-minute detail heartbeat.
+        nearest_demand = (
+            current_source if active_direction == "LONG" else current_terminal
+        )
+        nearest_supply = (
+            current_terminal if active_direction == "LONG" else current_source
+        )
+
         evaluation = {
             "state": raw.pop("state", None),
             "as_of": raw.pop("as_of", None),
             "last_closed_m15_price": raw.pop("last_closed_m15_price", None),
             "strategic_bias": raw.pop("strategic_bias", None),
-            "nearest_demand": dict(raw.pop("nearest_demand", {}) or {}),
-            "nearest_supply": dict(raw.pop("nearest_supply", {}) or {}),
+            "nearest_demand": dict(nearest_demand or {}),
+            "nearest_supply": dict(nearest_supply or {}),
             "path_map": {
-                "active_path": active_path,
-                "demand_to_supply": {
-                    "destination_stack": list(
-                        raw.pop("d2s_destination_stack", []) or []
-                    )
-                },
-                "supply_to_demand": {
-                    "destination_stack": list(
-                        raw.pop("s2d_destination_stack", []) or []
-                    )
+                "active_path": {
+                    "reaction_direction": active_direction or None,
+                    "state": raw.pop("active_state", None),
+                    "source_zone": current_source,
+                    "reaction_target": current_target,
+                    "primary_opposing_zone": current_terminal,
+                    "terminal_target_zone": current_terminal,
                 },
             },
             "m5_path_projection": {
@@ -455,7 +505,7 @@ class SupabaseDashboardReader:
                 "current_leg": current_leg,
                 "next_leg": next_leg,
             },
-            "micro_refinement": dict(raw.pop("micro_refinement", {}) or {}),
+            "micro_refinement": current_micro,
         }
         raw["details"] = {
             "evaluation": evaluation,
@@ -464,7 +514,7 @@ class SupabaseDashboardReader:
         return raw
 
     def latest_xau_v226_operational_heartbeat(self) -> dict[str, Any] | None:
-        """Return current V226 candidate/zone identity without historical profiles."""
+        """Return current V226 candidate identity with only H4 execution geometry."""
 
         select_expr = (
             "worker_name,observed_at,healthy,lag_seconds,"
@@ -475,11 +525,7 @@ class SupabaseDashboardReader:
             "entry_candidates:details->evaluation->entry_candidates,"
             "four_order_ladder:details->evaluation->four_order_ladder,"
             "long_h4_zone:details->evaluation->long->h4->zone,"
-            "long_h1_zone:details->evaluation->long->h1->zone,"
-            "long_m15_zone:details->evaluation->long->m15->zone,"
-            "short_h4_zone:details->evaluation->short->h4->zone,"
-            "short_h1_zone:details->evaluation->short->h1->zone,"
-            "short_m15_zone:details->evaluation->short->m15->zone"
+            "short_h4_zone:details->evaluation->short->h4->zone"
         )
         try:
             response = (
@@ -509,13 +555,9 @@ class SupabaseDashboardReader:
             "four_order_ladder": dict(raw.pop("four_order_ladder", {}) or {}),
             "long": {
                 "h4": {"zone": dict(raw.pop("long_h4_zone", {}) or {})},
-                "h1": {"zone": dict(raw.pop("long_h1_zone", {}) or {})},
-                "m15": {"zone": dict(raw.pop("long_m15_zone", {}) or {})},
             },
             "short": {
                 "h4": {"zone": dict(raw.pop("short_h4_zone", {}) or {})},
-                "h1": {"zone": dict(raw.pop("short_h1_zone", {}) or {})},
-                "m15": {"zone": dict(raw.pop("short_m15_zone", {}) or {})},
             },
         }
         raw["details"] = {
