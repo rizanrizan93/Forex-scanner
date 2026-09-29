@@ -483,7 +483,7 @@ def run() -> int:
     )
     calibration_probe_max_depth = min(
         1.0,
-        max(0.10, _float_env(CALIBRATION_PROBE_MAX_DEPTH_ENV, 0.35)),
+        max(0.10, _float_env(CALIBRATION_PROBE_MAX_DEPTH_ENV, 0.70)),
     )
     store = SupabaseOperationalStore.from_env(execution_ready_score_floor=65.0)
     now = datetime.now(tz=UTC)
@@ -745,14 +745,23 @@ def run() -> int:
                             f"child_depth={child_depth:.3f}:min={min_depth:.3f}"
                         )
                         continue
+                    recommended_high = _f(
+                        depth_hazard.get("recommended_depth_high")
+                    )
+                    effective_probe_max_depth = float(calibration_probe_max_depth)
+                    if recommended_high is not None:
+                        effective_probe_max_depth = min(
+                            effective_probe_max_depth,
+                            float(recommended_high) + 0.10,
+                        )
                     if (
                         calibration_probe
                         and child_depth is not None
-                        and float(child_depth) > float(calibration_probe_max_depth) + 1e-9
+                        and float(child_depth) > effective_probe_max_depth + 1e-9
                     ):
                         actions.append(
                             f"{parent_signal_id}:L{slot}:PROBE_DEPTH_TOO_DEEP:"
-                            f"child_depth={child_depth:.3f}:max={calibration_probe_max_depth:.3f}"
+                            f"child_depth={child_depth:.3f}:max={effective_probe_max_depth:.3f}"
                         )
                         continue
                     if calibration_probe and not _entry_inside_active_source(
@@ -877,9 +886,11 @@ def run() -> int:
             "calibration_probe_enabled": calibration_probe_enabled,
             "calibration_probe_lot": CHILD_LOT,
             "calibration_probe_min_rr": calibration_probe_min_rr,
-            "calibration_probe_max_depth": calibration_probe_max_depth,
+            "calibration_probe_max_depth_ceiling": calibration_probe_max_depth,
+            "calibration_probe_dynamic_depth_buffer": 0.10,
             "calibration_probe_policy": (
-                "ONE_L1_M5_POCKET_PROBE_PER_ARMED_RETEST_PARENT_DEMO_ONLY"
+                "ONE_L1_REAL_M5_POCKET_PROBE_PER_ARMED_RETEST_PARENT_"
+                "DYNAMIC_DEPTH_PLUS_10PCT_CAPPED_DEMO_ONLY"
             ),
             "pending_plus_open_guard": True,
             "server_side_sl_tp_required": True,
