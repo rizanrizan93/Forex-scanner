@@ -316,7 +316,7 @@ def test_v2592_direct_dashboard_reads_are_egress_bounded() -> None:
     text = (ROOT / "streamlit_app.py").read_text()
     assert 'latest_signals_for_symbol("XAUUSD", limit=8)' in text
     assert "latest_xau_execution_events(limit=4)" in text
-    assert "latest_xau_geometry_events(limit=2)" in text
+    assert "latest_xau_geometry_events_compact(limit=2)" in text
     assert "latest_afic_forecast_states(limit=6)" in text
-    assert "latest_afic_execution_geometry(limit=1)" in text
+    assert "latest_rizan_execution_geometry_compact(limit=1)" in text
     assert "latest_xau_prepared_plan_lifecycle(limit=4)" in text
