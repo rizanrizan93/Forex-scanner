@@ -128,6 +128,28 @@ def build_parent_ladder_plan(
     if low is None or high is None or px is None or not 0 < low < high:
         return None
 
+    # Keep execution parity with V240. If the current V182 active source is on
+    # the same side but physically sits between live price and the older V226
+    # candidate, the local structure supersedes that locator. V229 must remap
+    # instead of preserving a far parent that the dashboard correctly hides.
+    active_source = dict(active_path.get("source_zone") or {})
+    source_lifecycle = dict(active_source.get("lifecycle") or {})
+    source_active = bool(active_source) and source_lifecycle.get("active", True) is not False
+    source_direction = str(active_source.get("direction") or "").upper()
+    source_low = _f(active_source.get("low"))
+    source_high = _f(active_source.get("high"))
+    if (
+        source_active
+        and source_direction == direction
+        and source_low is not None
+        and source_high is not None
+        and source_high > source_low
+    ):
+        if direction == "SHORT" and px <= source_high < low:
+            return None
+        if direction == "LONG" and high < source_low <= px:
+            return None
+
     side_map = dict(v226_evaluation.get(direction.lower()) or {})
     h4 = dict(dict(side_map.get("h4") or {}).get("zone") or {})
     h4_low = _f(h4.get("low"))

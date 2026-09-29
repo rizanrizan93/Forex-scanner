@@ -195,3 +195,48 @@ def test_v229_fails_closed_when_current_v182_path_opposes_v226_focus() -> None:
     )
     assert plan is None
 
+def test_v229_fails_closed_when_local_v182_source_supersedes_far_same_side_locator() -> None:
+    payload = _v226()
+    payload["focus_direction"] = "SHORT"
+    candidate = payload["depth_entry_candidate"]
+    candidate.update(
+        {
+            "direction": "SHORT",
+            "entry_low": 4357.64,
+            "entry_high": 4359.52,
+            "entry_reference": 4358.40,
+        }
+    )
+    payload["short"] = {
+        "h4": {
+            "zone": {
+                "zone_id": "old-far-h4-supply",
+                "direction": "SHORT",
+                "low": 4357.0,
+                "high": 4365.0,
+                "atr_points": 30.0,
+            }
+        }
+    }
+
+    atlas = _atlas()
+    atlas["path_map"]["active_path"] = {
+        "reaction_direction": "SHORT",
+        "source_zone": {
+            "zone_id": "current-local-h1-supply",
+            "timeframe": "H1",
+            "direction": "SHORT",
+            "low": 4136.55,
+            "high": 4160.48,
+            "proximal": 4136.55,
+            "lifecycle": {"active": True, "touch_count": 4},
+        },
+    }
+
+    plan = build_execution_plan(
+        v226_evaluation=payload,
+        atlas_evaluation=atlas,
+        live_price=4136.46,
+    )
+    assert plan is None
+
