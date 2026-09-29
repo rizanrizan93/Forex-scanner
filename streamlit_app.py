@@ -235,7 +235,7 @@ def _load_backend_fast_snapshot(url: str, secret_key: str) -> dict[str, Any]:
         "broker_account": broker_account,
         "broker_positions": list(reader.broker_positions_for_account(broker_account)),
         "xau_execution_events": list(reader.latest_xau_execution_events(limit=4)),
-        "xau_geometry_events": list(reader.latest_xau_geometry_events(limit=2)),
+        "xau_geometry_events": list(reader.latest_xau_geometry_events_compact(limit=2)),
     }
 
 
@@ -277,7 +277,7 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
         "critical_heartbeats": critical_heartbeats,
         "afic_forecast_states": list(reader.latest_afic_forecast_states(limit=6)),
         "afic_prepared_plans": list(reader.latest_afic_prepared_plans(limit=1)),
-        "afic_execution_geometry": list(reader.latest_afic_execution_geometry(limit=1)),
+        "afic_execution_geometry": list(reader.latest_rizan_execution_geometry_compact(limit=1)),
         "xau_prepared_plan_lifecycle": list(reader.latest_xau_prepared_plan_lifecycle(limit=4)),
     }
 
