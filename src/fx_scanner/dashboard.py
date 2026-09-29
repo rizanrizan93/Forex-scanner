@@ -17,7 +17,7 @@ def merge_runtime_heartbeat_rows(
     """Overlay fresh compact operational heartbeats without losing cached detail.
 
     V182/V226 full payloads are intentionally expensive and can stay on the
-    five-minute detail budget. Their current path/candidate fields are projected
+    ten-minute detail budget. Their current path/candidate fields are projected
     every minute. This merger replaces the operational fields wholesale so an
     empty new candidate clears an old candidate, while retaining historical
     research/detail fields from the cached full heartbeat.
@@ -475,7 +475,7 @@ class SupabaseDashboardReader:
 
         # For the operational dashboard, current source and current terminal are
         # the actionable nearest same/opposite structural zones. The full V182
-        # zone universe remains available in the five-minute detail heartbeat.
+        # zone universe remains available in the ten-minute detail heartbeat.
         nearest_demand = (
             current_source if active_direction == "LONG" else current_terminal
         )
