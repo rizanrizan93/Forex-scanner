@@ -595,6 +595,7 @@ def _rizan_chart_target_ladder(
     current_target: Any,
     terminal_zone: dict[str, Any] | None,
     next_target: Any,
+    order_targets_authorized: bool = False,
 ) -> tuple[list[dict[str, Any]], float | None, bool]:
     """Return a clean geometric target ladder for the chart.
 
@@ -689,7 +690,8 @@ def _rizan_chart_target_ladder(
 
     for index, item in enumerate(targets, start=1):
         tf = str(item.get("timeframe") or "")
-        item["label"] = f"TP{index}" + (f" {tf}" if tf else "")
+        prefix = "TP" if order_targets_authorized else "PATH"
+        item["label"] = f"{prefix}{index}" + (f" {tf}" if tf else "")
     return targets, entry_ref, approaching_entry
 
 
@@ -713,6 +715,7 @@ def _rizan_chart_png(
     next_leg_target: dict[str, Any] | None = None,
     next_leg_terminal: dict[str, Any] | None = None,
     next_leg_micro: dict[str, Any] | None = None,
+    order_targets_authorized: bool = False,
 ) -> tuple[bytes | None, str | None]:
     frame = _rizan_chart_frame(raw_bars, timeframe)
     if frame.empty or len(frame) < 4:
@@ -928,6 +931,7 @@ def _rizan_chart_png(
         current_target=current_target,
         terminal_zone=terminal_zone,
         next_target=next_target,
+        order_targets_authorized=order_targets_authorized,
     )
 
     next_side = str(next_leg_direction or "").upper()
@@ -4114,15 +4118,22 @@ with forecast_tab:
         for raw_target in list(dict(chart_child).get("structural_targets") or [])
     ]
     chart_structural_targets = list(v240_targets)
+    chart_entry_zone = dict(v240_entry_zone) if v240_entry_authorized else {}
+    chart_depth_overlays = list(v226_overlays) if v240_entry_authorized else []
+    chart_next_micro = dict(dc_next_micro)
+    if not dc_next_pocket_causally_fresh:
+        chart_next_micro.pop("candidate_entry_pocket", None)
+        chart_next_micro.pop("refined_entry_pocket", None)
 
     chart_preview_targets, chart_entry_reference, chart_approaching_entry = _rizan_chart_target_ladder(
         direction=v240_direction,
         price_now=float(chart_price) if chart_price is not None else 0.0,
-        entry_zone=v240_entry_zone,
+        entry_zone=chart_entry_zone,
         structural_targets=chart_structural_targets,
         current_target=dc_current_leg_target.get("price"),
         terminal_zone=dc_current_leg_terminal,
         next_target=dc_next_leg_target.get("price"),
+        order_targets_authorized=v240_entry_authorized,
     )
     chart_next_target = chart_preview_targets[0] if chart_preview_targets else {}
     chart_terminal_target = chart_preview_targets[-1] if chart_preview_targets else {}
@@ -4186,8 +4197,12 @@ with forecast_tab:
                 )
         else:
             st.caption(
-                "Baca chart: harga sekarang → Depth/Entry bila masih pre-touch → TP struktural terdekat "
-                "→ target berikutnya. Panah menunjukkan skenario, bukan jaminan."
+                (
+                    "Baca chart: harga sekarang → entry resmi → TP struktural terdekat → target berikutnya. "
+                    if v240_entry_authorized
+                    else "Baca chart: harga sekarang → current path target / opposing zone. Tidak ada entry/TP order resmi. "
+                )
+                + "Panah menunjukkan skenario, bukan jaminan."
             )
 
     if chart_price is not None and chart_pool:
@@ -4202,14 +4217,15 @@ with forecast_tab:
             current_target=dc_current_leg_target.get("price"),
             terminal_zone=dc_current_leg_terminal,
             next_target=dc_next_leg_target.get("price"),
-            depth_overlays=v226_overlays,
-            entry_zone=v240_entry_zone,
+            depth_overlays=chart_depth_overlays,
+            entry_zone=chart_entry_zone,
             structural_targets=chart_structural_targets,
             next_leg_direction=dc_next_leg_direction,
             next_leg_source=dc_next_leg_source,
             next_leg_target=dc_next_leg_target,
             next_leg_terminal=dc_next_leg_terminal,
-            next_leg_micro=dc_next_micro,
+            next_leg_micro=chart_next_micro,
+            order_targets_authorized=v240_entry_authorized,
         )
         if chart_png is not None:
             st.image(chart_png, width="stretch")
