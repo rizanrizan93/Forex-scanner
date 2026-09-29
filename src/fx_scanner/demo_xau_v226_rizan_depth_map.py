@@ -190,6 +190,99 @@ def _depth_band_prices(
     }
 
 
+def _reversal_heatmap(
+    zone: dict[str, Any],
+    profile: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Project the V225 historical reversal hazard bands onto the live zone."""
+    if not zone or not profile:
+        return []
+    rows: list[dict[str, Any]] = []
+    hazards = [
+        float(row.get("hazard") or 0.0)
+        for row in list(profile.get("hazard_bands") or [])
+        if _f(row.get("hazard")) is not None
+    ]
+    max_hazard = max(hazards) if hazards else 0.0
+    for raw in list(profile.get("hazard_bands") or []):
+        row = dict(raw)
+        lower = _f(row.get("lower_depth"))
+        upper = _f(row.get("upper_depth"))
+        hazard = _f(row.get("hazard"))
+        if lower is None or upper is None or hazard is None:
+            continue
+        geometry = _depth_band_prices(zone, lower, upper)
+        if not geometry:
+            continue
+        rows.append(
+            {
+                "band": str(row.get("band") or ""),
+                "lower_depth": float(lower),
+                "upper_depth": float(upper),
+                "price_low": float(geometry["low"]),
+                "price_high": float(geometry["high"]),
+                "hazard": float(hazard),
+                "wilson_lower_95": _f(row.get("wilson_lower_95")),
+                "at_risk": int(row.get("at_risk") or 0),
+                "reversals": int(row.get("reversals") or 0),
+                "cumulative_reversal_share_of_all_touches": _f(
+                    row.get("cumulative_reversal_share_of_all_touches")
+                ),
+                "is_highest_hazard": bool(
+                    max_hazard > 0.0 and abs(float(hazard) - max_hazard) <= 1e-12
+                ),
+            }
+        )
+    return rows
+
+
+def _projected_m5_watch_pocket(
+    *,
+    direction: str,
+    parent_geometry: dict[str, Any],
+    m15_profile: dict[str, Any],
+    source_label: str,
+) -> dict[str, Any]:
+    """Always expose a projected M5 watch pocket without pretending M5 confirmed.
+
+    The projection refines the narrowest H4→H1→M15 geometry with the historical
+    M15 highest-hazard depth band. Actual M5 candidate/refined pockets remain the
+    only microstructure evidence used by the executor.
+    """
+    low = _f(parent_geometry.get("low"))
+    high = _f(parent_geometry.get("high"))
+    if low is None or high is None or high <= low:
+        return {}
+    top = dict(m15_profile.get("highest_hazard_band") or {})
+    lower = _f(top.get("lower_depth"))
+    upper = _f(top.get("upper_depth"))
+    if lower is None or upper is None or upper <= lower:
+        return {}
+    geometry = _depth_band_prices(
+        {"low": float(low), "high": float(high), "direction": direction},
+        float(lower),
+        float(upper),
+    )
+    if not geometry:
+        return {}
+    return {
+        "low": float(geometry["low"]),
+        "high": float(geometry["high"]),
+        "direction": direction,
+        "state": "PROJECTED_M5_WATCH_POCKET",
+        "source": source_label,
+        "historical_depth_band": str(top.get("band") or ""),
+        "historical_hazard": _f(top.get("hazard")),
+        "historical_wilson_lower_95": _f(top.get("wilson_lower_95")),
+        "at_risk": int(top.get("at_risk") or 0),
+        "execution_authority": False,
+        "note": (
+            "Projected watch geometry only. Actual M5 candidate/refined structure "
+            "overrides this projection for execution."
+        ),
+    }
+
+
 def _profile_key_findings(
     history_details: dict[str, Any],
     timeframe: str,
@@ -1677,6 +1770,66 @@ def build_depth_map(
         if use_local_candidate
         else dict(focus_map.get("four_order_ladder") or {})
     )
+
+    focus_source_tf = str(
+        focus_entry_candidate.get("source_timeframe") or ""
+    ).upper()
+    focus_source_zone = dict(focus_entry_candidate.get("source_zone") or {})
+    focus_source_profile = dict(focus_entry_candidate.get("source_profile") or {})
+    if not focus_source_zone:
+        if focus_source_tf == "M15":
+            focus_source_zone = dict(dict(focus_map.get("m15") or {}).get("zone") or {})
+        elif focus_source_tf == "H1":
+            focus_source_zone = dict(dict(focus_map.get("h1") or {}).get("zone") or {})
+        else:
+            focus_source_zone = dict(dict(focus_map.get("h4") or {}).get("zone") or {})
+    if not focus_source_profile:
+        focus_source_profile = (
+            focus_m15_profile
+            if focus_source_tf == "M15"
+            else focus_h1_profile
+            if focus_source_tf == "H1"
+            else focus_h4_profile
+        )
+
+    reversal_depth_heatmap = _reversal_heatmap(
+        focus_source_zone,
+        focus_source_profile,
+    )
+
+    focus_m15_envelope = dict(
+        dict(dict(focus_map.get("m15") or {}).get("nested_locator") or {}).get(
+            "envelope"
+        )
+        or {}
+    )
+    focus_h1_envelope = dict(
+        dict(dict(focus_map.get("h1") or {}).get("nested_locator") or {}).get(
+            "envelope"
+        )
+        or {}
+    )
+    projected_parent = (
+        focus_m15_envelope
+        or focus_h1_envelope
+        or {
+            "low": focus_entry_candidate.get("entry_low"),
+            "high": focus_entry_candidate.get("entry_high"),
+        }
+    )
+    projected_source = (
+        "M15_NESTED_LOCATOR"
+        if focus_m15_envelope
+        else "H1_NESTED_LOCATOR"
+        if focus_h1_envelope
+        else "FOCUS_DEPTH_CANDIDATE"
+    )
+    projected_m5_watch_pocket = _projected_m5_watch_pocket(
+        direction=focus,
+        parent_geometry=projected_parent,
+        m15_profile=focus_m15_profile,
+        source_label=projected_source,
+    )
     long_entry_candidate = (
         dict(focus_entry_candidate)
         if focus == "LONG"
@@ -1716,6 +1869,15 @@ def build_depth_map(
             "short": short_entry_candidate,
         },
         "four_order_ladder": focus_ladder,
+        "projected_m5_watch_pocket": projected_m5_watch_pocket,
+        "reversal_depth_heatmap": reversal_depth_heatmap,
+        "reversal_depth_heatmap_source": {
+            "timeframe": focus_source_tf or None,
+            "direction": focus,
+            "zone_id": focus_source_zone.get("zone_id"),
+            "coordinate": "FULL_ZONE_NEAR_EDGE_TO_FAR_EDGE",
+            "research_version": REQUIRED_HISTORY_VERSION,
+        },
         "order_ladders": {
             "long": long_ladder,
             "short": short_ladder,
@@ -1742,8 +1904,12 @@ def build_depth_map(
             "Nested child envelopes are clipped to their parent locator so each stage truly "
             "narrows rather than expanding outside the upstream geometry. The narrowest "
             "available geometry is exposed as a display-only Depth Entry Candidate with "
-            "direction, price range and reference price. No MSS/reclaim is required to draw "
-            "the map, and the map/candidate have no execution authority."
+            "direction, price range and reference price. V266 additionally exposes an "
+            "always-visible projected M5 watch pocket by refining the narrowest available "
+            "H4→H1→M15 geometry with the historical M15 highest-hazard band. It is display "
+            "geometry only; actual M5 candidate/refined structure still controls execution. "
+            "No MSS/reclaim is required to draw the map, and the map/candidate have no "
+            "execution authority."
         ),
         "policy_effect": POLICY_EFFECT,
         "execution_influence": False,
