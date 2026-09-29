@@ -10,7 +10,7 @@ def _read(path: str) -> str:
 def test_dashboard_publisher_has_serialized_schedule_and_self_handoff() -> None:
     text = _read(".github/workflows/forexrizan-dashboard-bridge-v254.yml")
     assert 'cron: "3,33 * * * 0-5"' in text
-    assert "cancel-in-progress: true" in text
+    assert "cancel-in-progress: false" in text
     assert "actions: write" in text
     assert "for i in $(seq 1 64)" in text
     assert "gh workflow run forexrizan-dashboard-bridge-v254.yml --ref main" in text
@@ -32,6 +32,10 @@ def test_bridge_watchdog_can_recover_missed_publisher_schedule() -> None:
     assert 'cron: "8,18,28,38,48,58 * * * 0-5"' in text
     assert "actions: write" in text
     assert "Recover dashboard publisher when bridge is stale" in text
+    assert "active_publishers" in text
+    assert 'if [ "${active_publishers}" -eq 0 ]' in text
+    assert "publisher already active; wait without cancelling/restarting it" in text
+    assert "for attempt in range(1, 17)" in text
     assert "gh workflow run forexrizan-dashboard-bridge-v254.yml --ref main" in text
 
 

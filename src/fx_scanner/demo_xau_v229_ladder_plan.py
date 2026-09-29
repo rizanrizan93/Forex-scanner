@@ -80,6 +80,32 @@ def build_parent_ladder_plan(
     if active_direction in {"LONG", "SHORT"} and active_direction != direction:
         return None
 
+    # A current-direction parent must not be created after the structural leg has
+    # already delivered its reaction target / entered the opposing terminal zone.
+    # At that point the correct state is handoff/reversal watch, not re-entry into
+    # the completed leg.
+    if active_direction == direction:
+        active_reaction = dict(active_path.get("reaction_target") or {})
+        reaction_price = _f(active_reaction.get("price"))
+        active_terminal = dict(
+            active_path.get("terminal_target_zone")
+            or active_path.get("primary_opposing_zone")
+            or {}
+        )
+        terminal_low = _f(active_terminal.get("low"))
+        terminal_high = _f(active_terminal.get("high"))
+        if (
+            terminal_low is not None
+            and terminal_high is not None
+            and terminal_low <= float(live_price) <= terminal_high
+        ):
+            return None
+        if reaction_price is not None:
+            if direction == "LONG" and float(live_price) >= reaction_price:
+                return None
+            if direction == "SHORT" and float(live_price) <= reaction_price:
+                return None
+
     candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
     candidate_direction = str(candidate.get("direction") or "").upper()
     if candidate_direction in {"LONG", "SHORT"} and candidate_direction != direction:

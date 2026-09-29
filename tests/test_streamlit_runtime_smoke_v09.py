@@ -290,3 +290,14 @@ def test_v2571_dashboard_separates_completed_leg_from_next_leg_watch() -> None:
     assert "Path target (BUKAN TP order)" in text
     assert "SUDAH TERCAPAI • " in text
     assert "fokus berikutnya adalah watch next-leg, bukan mengejar target lama" in text
+
+
+
+def test_v2572_terminal_zone_moves_primary_m5_focus_to_next_leg() -> None:
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "dc_current_leg_completed" in text
+    assert "NEXT_CANDIDATE_M5_WATCH" in text
+    assert "NEXT_REFINED_M5_WATCH" in text
+    assert "TARGET TERCAPAI • NEXT" in text
+    assert "Pocket M5 berikutnya adalah" in text
+    assert "WATCH ONLY — belum refined dan belum entry resmi" in text

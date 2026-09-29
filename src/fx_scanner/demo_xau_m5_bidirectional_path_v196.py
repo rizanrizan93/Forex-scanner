@@ -178,6 +178,26 @@ def _source_touch_cycle_start(source: dict[str, Any]) -> str | None:
     return None
 
 
+def _latest_boundary(*values: Any) -> str | None:
+    parsed: list[datetime] = []
+    for value in values:
+        if value in (None, ""):
+            continue
+        if isinstance(value, datetime):
+            dt = value
+        else:
+            try:
+                dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                continue
+        if dt.tzinfo is None:
+            continue
+        parsed.append(ensure_utc(dt))
+    if not parsed:
+        return None
+    return max(parsed).isoformat()
+
+
 def _target_snapshot(path: dict[str, Any]) -> dict[str, Any]:
     return {
         "reaction_target": dict(path.get("reaction_target") or {}),
@@ -344,13 +364,18 @@ def evaluate_bidirectional_m5_path(
         next_source = dict(next_path.get("source_zone") or {})
 
     target_source_aligned = _same_zone(current_terminal, next_source)
+    next_source_cycle_start = _source_touch_cycle_start(next_source)
+    next_eligibility_start = _latest_boundary(
+        current_leg_activation_at,
+        next_source_cycle_start,
+    )
 
     if next_path and next_source:
         next_micro = evaluate_micro_refinement(
             m5_bars,
             path_map={"active_path": next_path},
             as_of=as_of,
-            not_before=current_leg_activation_at,
+            not_before=next_eligibility_start,
         )
         next_leg = _leg_payload(
             direction=next_direction,
@@ -358,6 +383,8 @@ def evaluate_bidirectional_m5_path(
             micro=next_micro,
         )
         next_leg["parent_matches_current_terminal"] = target_source_aligned
+        next_leg["touch_cycle_start"] = next_source_cycle_start
+        next_leg["eligibility_not_before"] = next_eligibility_start
         next_leg["activation_rule"] = (
             "The next opposing leg must originate from the current leg terminal opposing "
             "zone, preferably an active H1 precision source nested inside it. It remains "
@@ -398,8 +425,8 @@ def evaluate_bidirectional_m5_path(
             "invalidates it. The next opposing leg is anchored "
             "to the current terminal opposing zone and prefers an active nested H1 precision "
             "source. It is only called an M5 pocket after fresh M5 evidence exists. "
-            "Current-leg M5 evidence is reset at the latest structural touch on reused zones, "
-            "and next-leg evidence must occur after that active touch cycle, so historical "
-            "pockets cannot be recycled as fresh timing signals."
+            "Current-leg M5 evidence is reset at the latest structural touch on reused zones. "
+            "Next-leg evidence starts at the later of current-leg activation and the opposing "
+            "source's latest touch-cycle, so historical pockets cannot be recycled as fresh timing signals."
         ),
     }
