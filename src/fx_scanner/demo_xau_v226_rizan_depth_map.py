@@ -895,10 +895,11 @@ def _four_order_depth_ladder(
     if low is None or high is None or high <= low:
         return {}
     source = str(candidate.get("source_layer") or "")
-    if source.startswith("M15"):
+    source_timeframe = str(candidate.get("source_timeframe") or "").upper()
+    if source_timeframe == "M15" or source.startswith("M15"):
         profile = m15_profile
         profile_tf = "M15"
-    elif source.startswith("H1"):
+    elif source_timeframe == "H1" or source.startswith("H1"):
         profile = h1_profile
         profile_tf = "H1"
     else:
