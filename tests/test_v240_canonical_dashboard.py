@@ -41,7 +41,8 @@ def test_v240_dashboard_uses_canonical_builder() -> None:
 def test_v240_chart_uses_canonical_entry_and_structural_targets() -> None:
     assert "chart_structural_targets = list(v240_targets)" in SOURCE
     assert "direction=v240_direction" in SOURCE
-    assert "entry_zone=v240_entry_zone" in SOURCE
+    assert "chart_entry_zone = dict(v240_entry_zone) if v240_entry_authorized else {}" in SOURCE
+    assert "entry_zone=chart_entry_zone" in SOURCE
     assert "structural_targets=chart_structural_targets" in SOURCE
     assert "current_direction=v240_direction" in SOURCE
 
@@ -102,10 +103,13 @@ def test_v240_mobile_operational_strip_has_price_session_gate_and_children() -> 
 
 
 def test_v240_smartphone_sequence_matches_operational_contract() -> None:
-    assert "Apa yang harus dilakukan sekarang" in SOURCE
-    assert "Struktur aktif — bukan locator historis" in SOURCE
-    assert "Entry → Dynamic Depth → Admission" in SOURCE
-    assert "Risk & target" in SOURCE
+    section_start = SOURCE.index("##### V240 — Canonical XAU Decision Map")
+    section_end = SOURCE.index("##### V226 — RIZAN Depth Map")
+    section = SOURCE[section_start:section_end]
+    assert "Apa yang harus dilakukan sekarang" in section
+    assert "Struktur aktif — bukan locator historis" in section
+    assert "Entry → Dynamic Depth → Admission" in section
+    assert "Risk & target" in section
 
     ordered = (
         "Apa yang harus dilakukan sekarang",
@@ -126,5 +130,5 @@ def test_v240_smartphone_sequence_matches_operational_contract() -> None:
         "15 • Lifecycle",
         "16 • Session WIB",
     )
-    positions = [SOURCE.index(label) for label in ordered]
+    positions = [section.index(label) for label in ordered]
     assert positions == sorted(positions)
