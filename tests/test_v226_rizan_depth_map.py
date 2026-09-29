@@ -8,6 +8,8 @@ from fx_scanner.demo_xau_v226_rizan_depth_map import (
     _four_order_depth_ladder,
     _historical_profile,
     _nested_locator,
+    _projected_m5_watch_pocket,
+    _reversal_heatmap,
     _select_h1,
     _select_h4,
     _select_m15,
@@ -758,3 +760,102 @@ def test_v226_m15_selector_prefers_cleaner_child_when_locator_overlap_is_equal()
         price=111.0,
     )
     assert selected["zone_id"] == "m15-fresh"
+
+
+def test_v266_reversal_heatmap_projects_highest_hazard_band_to_live_zone() -> None:
+    zone = _zone(
+        "short-supply",
+        timeframe="H1",
+        direction="SHORT",
+        low=100.0,
+        high=120.0,
+    )
+    profile = {
+        "hazard_bands": [
+            {
+                "band": "00-10%",
+                "lower_depth": 0.0,
+                "upper_depth": 0.1,
+                "hazard": 0.24,
+                "wilson_lower_95": 0.22,
+                "at_risk": 1000,
+                "reversals": 240,
+            },
+            {
+                "band": "10-20%",
+                "lower_depth": 0.1,
+                "upper_depth": 0.2,
+                "hazard": 0.15,
+                "wilson_lower_95": 0.13,
+                "at_risk": 760,
+                "reversals": 114,
+            },
+        ]
+    }
+    heat = _reversal_heatmap(zone, profile)
+    assert len(heat) == 2
+    assert heat[0]["band"] == "00-10%"
+    assert heat[0]["price_low"] == 100.0
+    assert heat[0]["price_high"] == 102.0
+    assert heat[0]["is_highest_hazard"] is True
+    assert heat[1]["is_highest_hazard"] is False
+
+
+def test_v266_projected_m5_watch_pocket_refines_parent_without_execution_authority() -> None:
+    profile = {
+        "highest_hazard_band": {
+            "band": "00-10%",
+            "lower_depth": 0.0,
+            "upper_depth": 0.1,
+            "hazard": 0.22,
+            "wilson_lower_95": 0.21,
+            "at_risk": 24000,
+        }
+    }
+    short_watch = _projected_m5_watch_pocket(
+        direction="SHORT",
+        parent_geometry={"low": 110.0, "high": 120.0},
+        m15_profile=profile,
+        source_label="M15_NESTED_LOCATOR",
+    )
+    assert short_watch["low"] == 110.0
+    assert short_watch["high"] == 111.0
+    assert short_watch["state"] == "PROJECTED_M5_WATCH_POCKET"
+    assert short_watch["execution_authority"] is False
+
+    long_watch = _projected_m5_watch_pocket(
+        direction="LONG",
+        parent_geometry={"low": 110.0, "high": 120.0},
+        m15_profile=profile,
+        source_label="M15_NESTED_LOCATOR",
+    )
+    assert long_watch["low"] == 119.0
+    assert long_watch["high"] == 120.0
+    assert long_watch["execution_authority"] is False
+
+
+def test_v266_build_map_exposes_heatmap_and_projected_m5_watch() -> None:
+    atlas = {
+        "as_of": "2026-09-29T09:00:00+00:00",
+        "last_closed_m15_price": 112.0,
+        "zones": [
+            _zone("h4d", timeframe="H4", direction="LONG", low=100.0, high=110.0),
+            _zone("h1d", timeframe="H1", direction="LONG", low=104.0, high=109.0),
+            _zone("h4s", timeframe="H4", direction="SHORT", low=120.0, high=130.0),
+            _zone("h1s", timeframe="H1", direction="SHORT", low=121.0, high=126.0),
+        ],
+        "chart_bars_m15": [],
+        "m5_path_projection": {"current_leg": {"direction": "LONG"}},
+    }
+    result = build_depth_map(atlas_evaluation=atlas, history_details=_history())
+    assert result["reversal_depth_heatmap"]
+    assert result["reversal_depth_heatmap"][0]["band"] == "00-10%"
+    watch = result["projected_m5_watch_pocket"]
+    assert watch
+    assert watch["execution_authority"] is False
+    assert (
+        float(result["depth_entry_candidate"]["entry_low"])
+        <= float(watch["low"])
+        <= float(watch["high"])
+        <= float(result["depth_entry_candidate"]["entry_high"])
+    )

@@ -45,6 +45,9 @@ WORKER_NAME = "ctrader_demo_xau_v229_child_executor"
 CHILD_EVENT_TYPE = "DEMO_XAU_RIZAN_DEPTH_CHILD"
 CHILD_EVENT_CODE = "XAU_RIZAN_DEPTH_CHILD_EXECUTION_V229_1"
 MAX_PARENT_EVENTS = 24
+CALIBRATION_PROBE_ENABLED_ENV = "CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_ENABLED"
+CALIBRATION_PROBE_MIN_RR_ENV = "CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MIN_RR"
+CALIBRATION_PROBE_MAX_DEPTH_ENV = "CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH"
 
 
 def _f(value: Any) -> float | None:
@@ -53,6 +56,24 @@ def _f(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return parsed if isfinite(parsed) else None
+
+
+def _bool_env(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return bool(default)
+    return raw.strip().upper() in {"1", "TRUE", "YES", "ON"}
+
+
+def _float_env(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw in (None, ""):
+        return float(default)
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return float(default)
+    return value if isfinite(value) else float(default)
 
 
 def _account_label() -> str:
@@ -209,6 +230,79 @@ def _activation_entry(
     return None, "INVALID_SLOT"
 
 
+def _calibration_probe_entry(
+    *,
+    direction: str,
+    micro: dict[str, Any],
+) -> tuple[float | None, str]:
+    """Use the favorable edge of a real M5 pocket for one DEMO-only probe."""
+    if str(micro.get("direction") or "").upper() != direction:
+        return None, "PROBE_M5_DIRECTION_MISMATCH"
+    refined = dict(micro.get("refined_entry_pocket") or {})
+    candidate = dict(micro.get("candidate_entry_pocket") or {})
+    pocket = refined or candidate
+    if not pocket:
+        return None, "WAIT_M5_POCKET"
+    low = _f(pocket.get("low"))
+    high = _f(pocket.get("high"))
+    if low is None or high is None or high <= low:
+        return None, "WAIT_VALID_M5_POCKET"
+    entry = float(low) if direction == "LONG" else float(high)
+    state = (
+        "M5_REFINED_CALIBRATION_PROBE"
+        if refined
+        else "M5_CANDIDATE_CALIBRATION_PROBE"
+    )
+    return entry, state
+
+
+def _entry_inside_active_source(
+    *,
+    direction: str,
+    entry: float,
+    atlas_evaluation: dict[str, Any],
+) -> bool:
+    path_map = dict(atlas_evaluation.get("path_map") or {})
+    active_path = dict(path_map.get("active_path") or {})
+    source = dict(active_path.get("source_zone") or {})
+    if not source:
+        projection = dict(atlas_evaluation.get("m5_path_projection") or {})
+        current_leg = dict(projection.get("current_leg") or {})
+        source = dict(current_leg.get("source_zone") or {})
+    if str(source.get("direction") or "").upper() != direction:
+        return False
+    low = _f(source.get("low"))
+    high = _f(source.get("high"))
+    return bool(
+        low is not None
+        and high is not None
+        and float(low) <= float(entry) <= float(high)
+    )
+
+
+def _target_with_min_rr(
+    *,
+    direction: str,
+    entry: float,
+    stop: float,
+    atlas_evaluation: dict[str, Any],
+    minimum_rr: float,
+) -> tuple[float | None, dict[str, Any]]:
+    m15_targets, htf_targets = _target_pool(atlas_evaluation)
+    structural = build_structural_target_plan(
+        direction=direction,
+        entry=entry,
+        stop=stop,
+        m15_zones=m15_targets,
+        htf_zones=htf_targets,
+        minimum_rr=float(minimum_rr),
+    )
+    terminal = dict(structural.get("terminal_structural_target") or {})
+    if not bool(structural.get("terminal_rr_eligible")):
+        return None, structural
+    return _f(terminal.get("target_price")), structural
+
+
 def _limit_side_valid(direction: str, entry: float, *, bid: float, ask: float) -> bool:
     if direction == "LONG":
         return entry < ask
@@ -242,6 +336,27 @@ def _slot_target(
     else:
         chosen = targets[-1]
     return _f(chosen.get("target_price")), structural
+
+
+def _calibration_probe_already_accepted(
+    store: SupabaseOperationalStore,
+    parent_signal_id: str,
+) -> bool:
+    """A parent gets at most one broker-accepted DEMO calibration probe."""
+    response = (
+        store.client.table("broker_order_events")
+        .select("accepted,payload,event_type")
+        .eq("signal_key", parent_signal_id)
+        .eq("event_type", CHILD_EVENT_TYPE)
+        .order("observed_at", desc=True)
+        .limit(20)
+        .execute()
+    )
+    for row in response.data or []:
+        payload = dict(row.get("payload") or {})
+        if bool(row.get("accepted")) and bool(payload.get("calibration_only")):
+            return True
+    return False
 
 
 def _record_child_event(
@@ -286,6 +401,8 @@ def _submit_child(
     target: float,
     activation: str,
     now: datetime,
+    calibration_only: bool = False,
+    minimum_rr: float | None = None,
 ) -> tuple[bool, str]:
     slot = int(child["slot"])
     child_id = child_client_order_id(str(plan["plan_id"]), slot)
@@ -321,6 +438,8 @@ def _submit_child(
                 "entry": entry,
                 "sl": plan["sl"],
                 "tp": target,
+                "calibration_only": bool(calibration_only),
+                "minimum_rr": minimum_rr,
             },
         )
         return False, f"L{slot}:{type(exc).__name__}:{exc}"
@@ -339,6 +458,8 @@ def _submit_child(
             "sl": plan["sl"],
             "tp": target,
             "lot": CHILD_LOT,
+            "calibration_only": bool(calibration_only),
+            "minimum_rr": minimum_rr,
         },
     )
     return bool(receipt.accepted), f"L{slot}:{'ACCEPTED' if receipt.accepted else 'REJECTED'}"
@@ -352,6 +473,18 @@ def run() -> int:
         raise SystemExit("RIZAN_CHILD_EXECUTOR_REQUIRE_DEMO")
 
     enabled = os.getenv("CTRADER_DEMO_DEPTH_EXECUTION_ENABLED", "0").strip() == "1"
+    calibration_probe_enabled = _bool_env(
+        CALIBRATION_PROBE_ENABLED_ENV,
+        True,
+    )
+    calibration_probe_min_rr = max(
+        0.50,
+        _float_env(CALIBRATION_PROBE_MIN_RR_ENV, 1.00),
+    )
+    calibration_probe_max_depth = min(
+        1.0,
+        max(0.10, _float_env(CALIBRATION_PROBE_MAX_DEPTH_ENV, 0.70)),
+    )
     store = SupabaseOperationalStore.from_env(execution_ready_score_floor=65.0)
     now = datetime.now(tz=UTC)
     if not enabled:
@@ -519,12 +652,32 @@ def run() -> int:
                 or dict(atlas_eval.get("path_map") or {}).get("micro_refinement")
                 or {}
             )
+            probe_already_accepted = _calibration_probe_already_accepted(
+                store,
+                parent_signal_id,
+            )
 
             for child in list(plan["children"]):
                 slot = int(child.get("slot") or 0)
                 if slot in existing or slot not in {1, 2, 3, 4}:
                     continue
-                if not bool(child.get("execution_enabled", True)):
+                calibration_probe = bool(
+                    calibration_probe_enabled
+                    and armed_confirmation_window
+                    and slot == 1
+                    and not probe_already_accepted
+                )
+                if (
+                    calibration_probe_enabled
+                    and armed_confirmation_window
+                    and slot == 1
+                    and probe_already_accepted
+                ):
+                    actions.append(
+                        f"{parent_signal_id}:L1:CALIBRATION_PROBE_ALREADY_ACCEPTED"
+                    )
+                    continue
+                if not bool(child.get("execution_enabled", True)) and not calibration_probe:
                     actions.append(f"{parent_signal_id}:L{slot}:DISABLED_BY_EXECUTION_PHASE")
                     continue
                 if len(existing) >= MAX_CHILDREN:
@@ -534,7 +687,15 @@ def run() -> int:
                     actions.append(f"{parent_signal_id}:L{slot}:ACCOUNT_CAP")
                     break
 
-                if slot <= 2 and not bool(
+                if calibration_probe and not bool(
+                    pressure_transition.get("confirmation_entry_allowed")
+                ):
+                    actions.append(
+                        f"{parent_signal_id}:L{slot}:PROBE_WAIT_PRESSURE_TRANSITION:"
+                        f"{pressure_transition.get('state')}"
+                    )
+                    continue
+                if slot <= 2 and not calibration_probe and not bool(
                     pressure_transition.get("pre_touch_entry_allowed")
                 ):
                     actions.append(
@@ -551,12 +712,18 @@ def run() -> int:
                     )
                     continue
 
-                entry, activation = _activation_entry(
-                    slot=slot,
-                    direction=str(plan["direction"]),
-                    child=child,
-                    micro=micro,
-                )
+                if calibration_probe:
+                    entry, activation = _calibration_probe_entry(
+                        direction=str(plan["direction"]),
+                        micro=micro,
+                    )
+                else:
+                    entry, activation = _activation_entry(
+                        slot=slot,
+                        direction=str(plan["direction"]),
+                        child=child,
+                        micro=micro,
+                    )
                 if entry is None:
                     actions.append(f"{parent_signal_id}:L{slot}:{activation}")
                     continue
@@ -578,6 +745,34 @@ def run() -> int:
                             f"child_depth={child_depth:.3f}:min={min_depth:.3f}"
                         )
                         continue
+                    recommended_high = _f(
+                        depth_hazard.get("recommended_depth_high")
+                    )
+                    effective_probe_max_depth = float(calibration_probe_max_depth)
+                    if recommended_high is not None:
+                        effective_probe_max_depth = min(
+                            effective_probe_max_depth,
+                            float(recommended_high) + 0.10,
+                        )
+                    if (
+                        calibration_probe
+                        and child_depth is not None
+                        and float(child_depth) > effective_probe_max_depth + 1e-9
+                    ):
+                        actions.append(
+                            f"{parent_signal_id}:L{slot}:PROBE_DEPTH_TOO_DEEP:"
+                            f"child_depth={child_depth:.3f}:max={effective_probe_max_depth:.3f}"
+                        )
+                        continue
+                    if calibration_probe and not _entry_inside_active_source(
+                        direction=str(plan["direction"]),
+                        entry=float(entry),
+                        atlas_evaluation=atlas_eval,
+                    ):
+                        actions.append(
+                            f"{parent_signal_id}:L{slot}:PROBE_OUTSIDE_ACTIVE_SOURCE"
+                        )
+                        continue
 
                 quote = gateway.market_quote(SYMBOL)
                 submit_now = datetime.now(UTC)
@@ -596,18 +791,34 @@ def run() -> int:
                 ):
                     actions.append(f"{parent_signal_id}:L{slot}:WAIT_RETEST_LIMIT_SIDE")
                     continue
-                target, structural = _slot_target(
-                    slot=slot,
-                    direction=str(plan["direction"]),
-                    entry=float(entry),
-                    stop=float(plan["sl"]),
-                    atlas_evaluation=atlas_eval,
-                )
+                if calibration_probe:
+                    target, structural = _target_with_min_rr(
+                        direction=str(plan["direction"]),
+                        entry=float(entry),
+                        stop=float(plan["sl"]),
+                        atlas_evaluation=atlas_eval,
+                        minimum_rr=calibration_probe_min_rr,
+                    )
+                else:
+                    target, structural = _slot_target(
+                        slot=slot,
+                        direction=str(plan["direction"]),
+                        entry=float(entry),
+                        stop=float(plan["sl"]),
+                        atlas_evaluation=atlas_eval,
+                    )
                 if target is None or not bool(structural.get("terminal_rr_eligible")):
-                    actions.append(f"{parent_signal_id}:L{slot}:NO_VALID_STRUCTURAL_TP")
+                    actions.append(
+                        f"{parent_signal_id}:L{slot}:"
+                        + (
+                            f"PROBE_RR_BELOW_{calibration_probe_min_rr:.2f}"
+                            if calibration_probe
+                            else "NO_VALID_STRUCTURAL_TP"
+                        )
+                    )
                     continue
 
-                if armed_confirmation_window:
+                if armed_confirmation_window and not calibration_probe:
                     if not _promote_armed_confirmation_window(
                         store,
                         parent_signal_id,
@@ -638,11 +849,19 @@ def run() -> int:
                         f"{activation}|PRESSURE_{pressure_transition.get('state')}"
                     ),
                     now=now,
+                    calibration_only=calibration_probe,
+                    minimum_rr=(
+                        calibration_probe_min_rr
+                        if calibration_probe
+                        else MIN_TERMINAL_RR
+                    ),
                 )
                 actions.append(f"{parent_signal_id}:{detail}")
                 if accepted:
                     existing.add(slot)
                     future_exposure += 1
+                    if calibration_probe:
+                        probe_already_accepted = True
 
             # Only the newest current parent may own execution. Older rows are
             # reconciled/cancelled above, then ignored.
@@ -664,6 +883,15 @@ def run() -> int:
             "environment": "DEMO",
             "max_children_per_parent": MAX_CHILDREN,
             "child_lot": CHILD_LOT,
+            "calibration_probe_enabled": calibration_probe_enabled,
+            "calibration_probe_lot": CHILD_LOT,
+            "calibration_probe_min_rr": calibration_probe_min_rr,
+            "calibration_probe_max_depth_ceiling": calibration_probe_max_depth,
+            "calibration_probe_dynamic_depth_buffer": 0.10,
+            "calibration_probe_policy": (
+                "ONE_L1_REAL_M5_POCKET_PROBE_PER_ARMED_RETEST_PARENT_"
+                "DYNAMIC_DEPTH_PLUS_10PCT_CAPPED_DEMO_ONLY"
+            ),
             "pending_plus_open_guard": True,
             "server_side_sl_tp_required": True,
             "generic_market_handoff_allowed": False,
