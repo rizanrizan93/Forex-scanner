@@ -465,7 +465,7 @@ def test_v261_v226_prefers_current_v182_h1_source_over_unrelated_h4_requirement(
     assert 100.0 <= candidate["entry_low"] < candidate["entry_high"] <= 110.0
 
 
-def test_v262_v229_reports_terminal_rr_below_minimum_instead_of_missing_candidate() -> None:
+def test_v263_v229_arms_rr_eligible_retest_window_instead_of_dropping_parent() -> None:
     source = {
         "zone_id": "local-h1-supply",
         "timeframe": "H1",
@@ -542,11 +542,106 @@ def test_v262_v229_reports_terminal_rr_below_minimum_instead_of_missing_candidat
         diagnostics=diagnostics,
     )
 
-    assert plan is None
-    assert diagnostics["state"] == "PLAN_REJECTED"
-    assert diagnostics["reason"] == "TERMINAL_RR_BELOW_MINIMUM"
+    assert plan is not None
+    assert plan["confirmation_window_only"] is True
+    assert plan["broker_entry_authorized"] is False
+    assert plan["terminal_rr_recheck_required"] is True
+    assert plan["confirmation_entry_low"] >= source["low"]
+    assert plan["confirmation_entry_high"] <= source["high"]
+    assert plan["confirmation_entry_low"] < plan["confirmation_entry_high"]
+    assert plan["confirmation_entry_reference"] >= plan["confirmation_entry_low"]
+    assert plan["rr2"] >= 1.5
+    assert plan["pretouch_slots"] == []
+    assert [child["execution_enabled"] for child in plan["children"]] == [
+        False,
+        False,
+        True,
+        True,
+    ]
+    assert diagnostics["state"] == "PLAN_AVAILABLE"
+    assert diagnostics["confirmation_window_only"] is True
+    assert diagnostics["rr_recheck_at_child"] is True
     assert diagnostics["minimum_terminal_rr"] == 1.5
     assert diagnostics["best_terminal_rr"] < 1.5
     assert diagnostics["structural_stop_zone_id"] == "local-h1-supply"
     assert diagnostics["structural_stop_timeframe"] == "H1"
     assert diagnostics["slot_diagnostics"]
+
+
+def test_v263_v229_still_rejects_when_no_source_slice_can_reach_1_50r() -> None:
+    source = {
+        "zone_id": "tight-h1-supply",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 118.0,
+        "high": 120.0,
+        "proximal": 118.0,
+        "distal": 120.0,
+        "atr_points": 10.0,
+        "status": "IN_ZONE_PREPARE_ONLY",
+        "lifecycle": {
+            "active": True,
+            "freshness": "PARTIALLY_MITIGATED",
+            "touch_count": 3,
+        },
+    }
+    payload = {
+        "focus_direction": "SHORT",
+        "depth_entry_candidate": {
+            "direction": "SHORT",
+            "entry_low": 118.2,
+            "entry_high": 119.0,
+            "entry_reference": 118.6,
+            "source_layer": "V182_ACTIVE_H1_HISTORICAL_HOTSPOT",
+            "source_timeframe": "H1",
+            "source_zone": source,
+            "display_status": "CONFIRMATION_ONLY_RETESTED_HTF",
+            "htf_retested": True,
+            "retest_confirmation_eligible": True,
+            "pre_touch_execution_eligible": False,
+            "confirmation_execution_eligible": True,
+        },
+        "four_order_ladder": {
+            "slots": [
+                {"slot": 1, "lot": 0.01, "reference_price": 118.25},
+                {"slot": 2, "lot": 0.01, "reference_price": 118.45},
+                {"slot": 3, "lot": 0.01, "reference_price": 118.65},
+                {"slot": 4, "lot": 0.01, "reference_price": 118.85},
+            ]
+        },
+        "short": {},
+    }
+    demand = {
+        "zone_id": "too-close-demand",
+        "timeframe": "H1",
+        "direction": "LONG",
+        "low": 116.8,
+        "high": 117.8,
+        "status": "ACTIVE",
+        "lifecycle": {"active": True},
+    }
+    atlas = {
+        "chart_bars_m15": [],
+        "zones": [source, demand],
+        "path_map": {
+            "active_path": {
+                "reaction_direction": "SHORT",
+                "source_zone": source,
+                "reaction_target": {"price": 117.8},
+                "terminal_target_zone": demand,
+                "primary_opposing_zone": demand,
+            },
+            "supply_to_demand": {"destination_stack": [demand]},
+        },
+    }
+    diagnostics: dict = {}
+    plan = build_execution_plan(
+        v226_evaluation=payload,
+        atlas_evaluation=atlas,
+        live_price=119.2,
+        diagnostics=diagnostics,
+    )
+    assert plan is None
+    assert diagnostics["state"] == "PLAN_REJECTED"
+    assert diagnostics["reason"] == "NO_RR_ELIGIBLE_CONFIRMATION_WINDOW"
+    assert diagnostics["minimum_terminal_rr"] == 1.5
