@@ -632,6 +632,9 @@ def build_canonical_xau_decision(
         "rr1": rr1,
         "rr2": rr2,
         "structural_targets": targets,
+        "children": [
+            dict(child) for child in list((current_plan or {}).get("children") or [])
+        ],
         "likely_destination": likely_destination,
         "terminal_opposing_zone": terminal_zone,
         "nearest_demand": nearest_demand,
