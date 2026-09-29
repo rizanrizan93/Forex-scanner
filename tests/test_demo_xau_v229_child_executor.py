@@ -668,3 +668,16 @@ def test_v275_child_allows_only_l1_before_strict_promotion() -> None:
     assert "slot != 1" in source
     assert "CALIBRATION_PARENT_PROMOTED_STRICT" in source
     assert "fresh_first_touch_calibration_slots" in source
+
+
+def test_v280_child_cancels_pending_and_invalidates_on_hard_stage() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_child_executor.py"
+    ).read_text()
+    assert "evaluate_reversal_stage" in source
+    assert "_invalidate_signal_for_reversal_stage" in source
+    assert "V280_CANCEL" in source
+    assert "V280_BLOCK" in source
+    assert '"state": "INVALIDATED"' in source
+    assert 'for prior_state in ("ARMED", "EXECUTION_READY", "COOLDOWN")' in source
