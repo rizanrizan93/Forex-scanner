@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import os
 from dataclasses import asdict
@@ -19,6 +20,7 @@ DEFAULT_SNAPSHOT_URL = (
     "dashboard-snapshots/runtime/xau_dashboard_snapshot.json"
 )
 FRESH_SECONDS = 180.0
+MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024
 
 HOT_REFRESH_SECONDS = 60.0
 STRUCTURAL_REFRESH_SECONDS = 300.0
@@ -556,7 +558,7 @@ def validate_snapshot(
 def fetch_snapshot(
     url: str = DEFAULT_SNAPSHOT_URL,
     *,
-    timeout_seconds: float = 8.0,
+    timeout_seconds: float = 20.0,
     now: datetime | None = None,
     opener: Callable[..., Any] = urlopen,
     require_fresh: bool = True,
@@ -565,12 +567,24 @@ def fetch_snapshot(
         _cache_busted_url(str(url), now=now),
         headers={
             "Accept": "application/json",
+            "Accept-Encoding": "gzip",
             "User-Agent": "RIZAN-XAU-Dashboard/1.0",
             "Cache-Control": "no-cache",
         },
     )
     with opener(request, timeout=float(timeout_seconds)) as response:
-        raw = response.read()
+        raw = response.read(MAX_SNAPSHOT_BYTES + 1)
+        if len(raw) > MAX_SNAPSHOT_BYTES:
+            raise ValueError("dashboard bridge snapshot exceeds safety size limit")
+        headers = getattr(response, "headers", None)
+        encoding = ""
+        if headers is not None:
+            try:
+                encoding = str(headers.get("Content-Encoding") or "").lower()
+            except Exception:
+                encoding = ""
+    if encoding == "gzip":
+        raw = gzip.decompress(raw)
     payload = json.loads(raw.decode("utf-8"))
     return validate_snapshot(payload, now=now, require_fresh=require_fresh)
 
