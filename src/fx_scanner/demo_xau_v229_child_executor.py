@@ -907,7 +907,9 @@ def run() -> int:
             ),
             "pending_plus_open_guard": True,
             "server_side_sl_tp_required": True,
-            "control_plane_refresh_worker": control.health(),
+            "control_plane_refresh_worker": (
+                control.health() if hasattr(control, "health") else {}
+            ),
             "control_plane_refresh_interval_seconds": 1.0,
             "control_plane_pre_submit_refresh": True,
             "generic_market_handoff_allowed": False,
