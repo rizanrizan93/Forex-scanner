@@ -23,6 +23,7 @@ FRESH_SECONDS = 180.0
 MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024
 
 HOT_REFRESH_SECONDS = 60.0
+AUDIT_REFRESH_SECONDS = 300.0
 STRUCTURAL_REFRESH_SECONDS = 300.0
 SUPPORT_REFRESH_SECONDS = 3600.0
 COLD_REFRESH_SECONDS = 900.0
@@ -79,6 +80,11 @@ COLD_BACKEND_KEYS = (
     "performance",
 )
 
+PRIVATE_ACCOUNT_FIELDS = {
+    "balance", "equity", "floating_profit", "margin", "margin_free",
+    "margin_level", "account_balance", "account_equity", "free_margin",
+}
+
 SENSITIVE_KEY_PARTS = (
     "token",
     "secret",
@@ -114,7 +120,7 @@ def _sanitize(value: Any) -> Any:
         for key, item in value.items():
             key_s = str(key)
             lowered = key_s.lower()
-            if any(part in lowered for part in SENSITIVE_KEY_PARTS):
+            if lowered in PRIVATE_ACCOUNT_FIELDS or any(part in lowered for part in SENSITIVE_KEY_PARTS):
                 continue
             if lowered in {"account_id", "trader_login", "ctidtraderaccountid"}:
                 out[key_s] = _mask_identifier(item)
@@ -250,6 +256,7 @@ def build_snapshot(
         "support": int(previous_budget.get("support_payload_bytes") or 0),
         "cold": int(previous_budget.get("cold_payload_bytes") or 0),
         "outcomes": int(previous_budget.get("outcome_payload_bytes") or 0),
+        "audit": int(previous_budget.get("audit_payload_bytes") or 0),
     }
     cycle_bytes = 0
 
@@ -276,6 +283,11 @@ def build_snapshot(
         source_key="outcomes_as_of",
         max_age_seconds=OUTCOME_REFRESH_SECONDS,
         now=current,
+    )
+
+    audit_reused = has_previous and _tier_is_fresh(
+        previous_payload, source_key="audit_as_of",
+        max_age_seconds=AUDIT_REFRESH_SECONDS, now=current,
     )
 
     # Minute-level state: small projected/operational payloads only.
@@ -360,14 +372,26 @@ def build_snapshot(
         cycle_bytes += tier_bytes["outcomes"]
         outcomes_as_of = current.isoformat()
 
-    account = reader.latest_broker_account()
-    broker_positions = list(reader.broker_positions_for_account(account))
+    # This transport is public. Private account telemetry stays in Supabase;
+    # do not fetch it or republish it from a cached older snapshot.
+    account = None
+    broker_positions = []
     xau_signals = list(reader.latest_signals_for_symbol("XAUUSD", limit=12))
     forecast_states = list(reader.latest_afic_forecast_states())
     prepared_plans = list(reader.latest_afic_prepared_plans())
-    geometry_events = list(reader.latest_xau_geometry_events(limit=8))
-    execution_events = list(reader.latest_xau_execution_events(limit=12))
-    lifecycle = list(reader.latest_xau_prepared_plan_lifecycle(limit=15))
+    if audit_reused:
+        geometry_events = list(previous_backend.get("xau_geometry_events") or [])
+        execution_events = list(previous_backend.get("xau_execution_events") or [])
+        lifecycle = list(previous_backend.get("xau_prepared_plan_lifecycle") or [])
+        audit_as_of = str(previous_source["audit_as_of"])
+    else:
+        geometry_events = list(reader.latest_xau_geometry_events(limit=8))
+        execution_events = list(reader.latest_xau_execution_events(limit=12))
+        lifecycle = list(reader.latest_xau_prepared_plan_lifecycle(limit=15))
+        tier_bytes["audit"] = _json_size({"geometry": geometry_events,
+                                        "execution": execution_events, "lifecycle": lifecycle})
+        cycle_bytes += tier_bytes["audit"]
+        audit_as_of = current.isoformat()
     control_snapshot = asdict(store.get_execution_control())
     rizan_geometry = [
         row for row in geometry_events
@@ -385,11 +409,9 @@ def build_snapshot(
         "xau_signals": xau_signals,
         "broker_account": account,
         "broker_positions": broker_positions,
+        "account_telemetry_redacted": True,
         "afic_forecast_states": forecast_states,
         "afic_prepared_plans": prepared_plans,
-        "xau_execution_events": execution_events,
-        "xau_geometry_events": geometry_events,
-        "xau_prepared_plan_lifecycle": lifecycle,
         "control": control_snapshot,
     }
     hot_component_bytes = {
@@ -405,6 +427,7 @@ def build_snapshot(
 
     steady_state_bytes_per_minute = (
         hot_payload_bytes
+        + tier_bytes["audit"] / (AUDIT_REFRESH_SECONDS / 60.0)
         + tier_bytes["structural"] / (STRUCTURAL_REFRESH_SECONDS / 60.0)
         + tier_bytes["support"] / (SUPPORT_REFRESH_SECONDS / 60.0)
         + tier_bytes["cold"] / (COLD_REFRESH_SECONDS / 60.0)
@@ -422,6 +445,7 @@ def build_snapshot(
         "heartbeats": heartbeats,
         "broker_account": account,
         "broker_positions": broker_positions,
+        "account_telemetry_redacted": True,
         "afic_forecast_states": forecast_states,
         "afic_prepared_plans": prepared_plans,
         # Same semantics as the old feed, but reuse the already-fetched geometry
@@ -444,6 +468,10 @@ def build_snapshot(
             "mode": "SUPABASE_SERVICE_ROLE_TO_PUBLIC_READ_ONLY_BRIDGE",
             "dashboard_refresh_seconds": int(HOT_REFRESH_SECONDS),
             "structural_refresh_seconds": int(STRUCTURAL_REFRESH_SECONDS),
+            "audit_refresh_seconds": int(AUDIT_REFRESH_SECONDS),
+            "audit_as_of": audit_as_of,
+            "audit_reused": audit_reused,
+            "account_telemetry_public": False,
             "support_refresh_seconds": int(SUPPORT_REFRESH_SECONDS),
             "cold_refresh_seconds": int(COLD_REFRESH_SECONDS),
             "outcome_refresh_seconds": int(OUTCOME_REFRESH_SECONDS),
@@ -463,6 +491,7 @@ def build_snapshot(
                 "support_payload_bytes": int(tier_bytes["support"]),
                 "cold_payload_bytes": int(tier_bytes["cold"]),
                 "outcome_payload_bytes": int(tier_bytes["outcomes"]),
+                "audit_payload_bytes": int(tier_bytes["audit"]),
                 "steady_state_estimated_bytes_per_minute": round(
                     steady_state_bytes_per_minute, 1
                 ),

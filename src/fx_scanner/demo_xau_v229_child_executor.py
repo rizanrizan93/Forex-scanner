@@ -30,6 +30,7 @@ from .execution.models import ExecutionMode, OrderIntent, OrderSide, OrderType
 from .execution.policy import load_execution_policy
 from .execution.router import ExecutionRouter
 from .storage.supabase_operational import SupabaseOperationalStore
+from .xau_structure_admission import evaluate_structure_admission
 from .xau_pressure_transition_v249 import (
     DOM_WORKER,
     evaluate_pressure_transition,
@@ -380,12 +381,19 @@ def run() -> int:
             if direction == "SHORT"
             else (float(quote.bid) + float(quote.ask)) / 2.0
         )
+        structure_admission = evaluate_structure_admission(
+            v226_heartbeat=v226_hb, atlas_heartbeat=atlas_hb,
+            live_price=live_price, now=datetime.now(tz=UTC),
+        )
+        if not structure_admission["allowed"]:
+            actions.append("STRUCTURE_BLOCK:" + structure_admission["reason"])
         current_plan = build_parent_ladder_plan(
             v226_evaluation=v226_eval,
             atlas_evaluation=atlas_eval,
             live_price=live_price,
         )
-        current_key = None if current_plan is None else str(current_plan.get("candidate_key") or "")
+        current_key = (str(current_plan.get("candidate_key") or "")
+                       if current_plan and structure_admission["allowed"] else None)
         pressure_transition = evaluate_pressure_transition(
             direction=direction,
             dom_heartbeat=dom_hb,
@@ -418,7 +426,8 @@ def run() -> int:
             invalid_parent = bool(
                 not current_key
                 or str(plan.get("candidate_key") or "") != current_key
-                or (expires_at is not None and now > expires_at)
+                or expires_at is None
+                or now > expires_at
                 or state == "INVALIDATED"
             )
             if invalid_parent:
@@ -528,6 +537,17 @@ def run() -> int:
                         continue
 
                 quote = gateway.market_quote(SYMBOL)
+                checked_at = datetime.now(tz=UTC)
+                child_admission = evaluate_structure_admission(
+                    v226_heartbeat=v226_hb, atlas_heartbeat=atlas_hb,
+                    live_price=float(quote.ask if plan["direction"] == "LONG" else quote.bid),
+                    now=checked_at,
+                )
+                if not child_admission["allowed"] or checked_at > expires_at:
+                    outcomes = _cancel_pending_plan(session, plan, session.reconcile())
+                    actions.extend(f"{parent_signal_id}:STRUCTURE_CANCEL:{x}" for x in outcomes)
+                    actions.append(f"{parent_signal_id}:STRUCTURE_BLOCK:{child_admission['reason']}")
+                    break
                 if not _limit_side_valid(
                     str(plan["direction"]),
                     float(entry),
@@ -591,6 +611,7 @@ def run() -> int:
             "pressure_transition": pressure_transition if 'pressure_transition' in locals() else {},
             "dynamic_depth_hazard_required": True,
             "dynamic_depth_hazard": depth_hazard if 'depth_hazard' in locals() else {},
+            "structure_admission": structure_admission if "structure_admission" in locals() else {},
             "actions": actions[:40],
             "error": error,
             "observed_at": now.isoformat(),

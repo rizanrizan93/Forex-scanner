@@ -17,6 +17,7 @@ from .execution.policy import load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
 from .xau_pressure_transition_v249 import DOM_WORKER, evaluate_pressure_transition
 from .xau_dynamic_depth_hazard_v251 import build_dynamic_depth_hazard
+from .xau_structure_admission import evaluate_structure_admission
 
 SYMBOL = "XAUUSD"
 STRATEGY_ID = "XAU_RIZAN_DEPTH_EXECUTION_V1"
@@ -388,6 +389,7 @@ def run() -> int:
     prior_invalidated = 0
     pressure_transition: dict[str, Any] = {}
     depth_hazard: dict[str, Any] = {}
+    structure_admission: dict[str, Any] = {}
 
     try:
         if not execution_enabled:
@@ -418,6 +420,10 @@ def run() -> int:
             else:
                 live_price = (float(quote.bid) + float(quote.ask)) / 2.0
 
+            structure_admission = evaluate_structure_admission(
+                v226_heartbeat=v226_hb, atlas_heartbeat=atlas_hb,
+                live_price=live_price, now=datetime.now(tz=UTC),
+            )
             pressure_transition = evaluate_pressure_transition(
                 direction=direction,
                 dom_heartbeat=dom_hb,
@@ -436,7 +442,13 @@ def run() -> int:
                 live_price=live_price,
                 min_rr=MIN_PLAN_RR,
             )
-            if plan is None:
+            if not structure_admission["allowed"]:
+                reason = "WAIT_STRUCTURE:" + structure_admission["reason"]
+                plan = None
+                depth_hazard = {"state": "UNAVAILABLE", "action": reason,
+                                "execution_ready": False}
+                prior_invalidated = _invalidate_prior_ready(store, current_key="STRUCTURE_BLOCKED")
+            elif plan is None:
                 reason = "WAIT_STRUCTURALLY_ACTIVE_DEPTH_CANDIDATE"
             elif not (
                 bool(pressure_transition.get("pre_touch_entry_allowed"))
@@ -505,6 +517,7 @@ def run() -> int:
             "dynamic_depth_hazard_required": True,
             "dynamic_depth_hazard": depth_hazard,
             "reason": reason,
+            "structure_admission": structure_admission,
             "signal_id": signal_id,
             "candidate_key": candidate_key,
             "plan": plan or {},

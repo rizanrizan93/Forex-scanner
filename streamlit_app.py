@@ -33,6 +33,7 @@ from fx_scanner.trade_management_v195 import (
     summarize_positions,
 )
 from fx_scanner.xau_canonical_decision_v240 import build_canonical_xau_decision
+from fx_scanner.xau_structure_admission import evaluate_structure_admission
 from fx_scanner.xau_profitability_truth_v241 import build_xau_profitability_truth
 from fx_scanner.xau_pressure_transition_v249 import evaluate_pressure_transition
 from fx_scanner.xau_dynamic_depth_hazard_v251 import build_dynamic_depth_hazard
@@ -49,7 +50,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V255_TRANSPORT_HARDENING_20260929"
+DASHBOARD_BUILD_ID = "RIZAN_V257_STRUCTURE_ADMISSION_20260929"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -2870,6 +2871,17 @@ with forecast_tab:
             else _age_seconds(supply_demand_hb.get("observed_at"))
         ),
     )
+    v240_admission = evaluate_structure_admission(
+        v226_heartbeat=dict(v226_depth_map_hb or {}),
+        atlas_heartbeat=dict(supply_demand_hb or {}),
+        live_price=dc_reference_price, now=datetime.now(tz=UTC),
+    )
+    if not v240_admission["allowed"]:
+        v240_decision["state"] = v240_admission["state"]
+        if v240_admission["state"] == "STALE_WAIT":
+            v240_decision["stale_reasons"] = v240_admission["reasons"]
+            for key in ("entry_reference", "sl", "tp1", "tp2", "rr1", "rr2"):
+                v240_decision[key] = None
     v240_direction = str(v240_decision.get("direction") or dc_current_leg_direction or "—").upper()
     v240_entry_zone = {
         "entry_low": v240_decision.get("entry_low"),
@@ -2911,16 +2923,16 @@ with forecast_tab:
         live_price=dc_reference_price,
         pressure_transition=v240_pressure_transition,
     )
-    if v240_remap:
+    if not v240_admission["allowed"]:
         # V226 can legitimately retain a distant H4-parent locator while a newer
         # standalone H1/M15 structure has formed closer to price. In that state,
         # do not display a huge negative depth or a misleading reversal band.
         # Execution remains fail-closed until the hierarchical map remaps.
         v240_depth_hazard = {
             "state": "UNAVAILABLE",
-            "reason": "LOCAL_STRUCTURE_AHEAD_OF_V226_CANDIDATE",
-            "location_state": "LOCAL_REMAP",
-            "action": "WAIT_STRUCTURE_REMAP",
+            "reason": v240_admission["reason"],
+            "location_state": v240_admission["state"],
+            "action": "WAIT_STRUCTURE:" + v240_admission["reason"],
             "execution_ready": False,
             "current_depth": None,
             "recommended_depth_low": None,
@@ -2967,7 +2979,8 @@ with forecast_tab:
             v240_session = "SESSION_UNAVAILABLE"
     v240_wib_clock = datetime.now(tz=UTC).astimezone(WIB).strftime("%H:%M WIB")
     v240_gate_reason = str(
-        v229_exec_details.get("reason")
+        ("WAIT_STRUCTURE:" + v240_admission["reason"] if not v240_admission["allowed"] else None)
+        or v229_exec_details.get("reason")
         or v240_depth_hazard.get("action")
         or v240_decision.get("state")
         or "WAIT"
@@ -4788,15 +4801,17 @@ with forecast_tab:
 
     tm1, tm2, tm3, tm4 = st.columns(4)
     tm1.metric("Sumber", f"cTrader {tm_account_env}")
-    tm2.metric("Posisi XAU aktif", tm_summary.get("count", 0))
-    tm3.metric("Total volume", f"{float(tm_summary.get('total_volume') or 0.0):.2f}")
+    tm2.metric("Posisi XAU aktif", tm_summary.get("count", 0) if tm_snapshot_fresh else "—")
+    tm3.metric("Total volume", f"{float(tm_summary.get('total_volume') or 0.0):.2f}" if tm_snapshot_fresh else "—")
     tm4.metric(
         "Floating P/L",
         "—"
-        if tm_summary.get("total_profit") is None
+        if not tm_snapshot_fresh or tm_summary.get("total_profit") is None
         else f"{float(tm_summary.get('total_profit') or 0.0):+.2f}",
     )
 
+    if backend is not None and backend.get("account_telemetry_redacted"):
+        st.info("Data posisi bersifat privat dan tidak dimuat di snapshot publik. Periksa posisi aktif di cTrader.")
     if broker_account and not tm_snapshot_fresh:
         st.warning(
             "Snapshot broker DEMO tidak cukup fresh untuk Trade Management Center. "
@@ -4968,10 +4983,10 @@ with forecast_tab:
         )
     else:
         st.info(
-            "Tidak ada posisi XAUUSD aktif pada snapshot cTrader DEMO scanner. "
-            "Jika Anda memiliki posisi LIVE pribadi (misalnya posisi yang terlihat pada screenshot), "
-            "posisi tersebut memang tidak akan muncul di panel ini karena sumber LIVE dan DEMO "
-            "sengaja dipisahkan."
+            "Data posisi tidak tersedia di snapshot publik; periksa cTrader."
+            if backend is not None and backend.get("account_telemetry_redacted")
+            else "Tidak ada posisi XAUUSD aktif pada snapshot cTrader DEMO scanner. "
+            "Posisi LIVE pribadi tidak dicampurkan dengan snapshot DEMO."
         )
 
     with st.expander("Riset & evidence prospective — V197 sampai V201", expanded=False):
@@ -6918,8 +6933,10 @@ with account_tab:
             st.info("No open cTrader DEMO positions in the latest broker snapshot.")
     else:
         st.info(
-            "No broker telemetry yet. Streamlit is read-only; the cloud cTrader DEMO "
-            "runtime will publish balance and positions when the next broker snapshot arrives."
+            "Data akun dan posisi disembunyikan dari snapshot publik. "
+            "Periksa akun di cTrader; tampilan ini tidak menyatakan posisi Anda kosong."
+            if backend is not None and backend.get("account_telemetry_redacted")
+            else "Belum ada snapshot akun broker yang dapat ditampilkan."
         )
 
 with scanner_tab:
@@ -7047,6 +7064,15 @@ with data_tab:
     st.subheader("Makro Mata Uang (Currency Macro)")
     if backend is not None and backend["macro"]:
         macro = _frame(backend["macro"])
+        macro["status_data"] = macro["observed_at"].apply(
+            lambda value: "KEDALUWARSA — konteks historis saja"
+            if (_age_seconds(value) is None or _age_seconds(value) > 48 * 3600)
+            else "PEMERIKSAAN TERBARU — lihat coverage"
+        )
+        if macro["status_data"].str.startswith("KEDALUWARSA").any():
+            st.warning("Data makro belum mutakhir. Jangan gunakan snapshot lama ini untuk menjelaskan pergerakan saat ini.")
+        if "macro_score" in macro.columns and macro["macro_score"].isna().any():
+            st.warning("Sebagian skor makro tidak tersedia; waktu pemeriksaan baru tidak menjamin kelengkapan sumber.")
         if "coverage" in macro.columns:
             macro["coverage"] = macro["coverage"].apply(_fmt_pct)
         st.dataframe(macro, hide_index=True, width="stretch")

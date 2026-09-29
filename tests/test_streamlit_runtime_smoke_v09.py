@@ -6,7 +6,15 @@ from streamlit.testing.v1 import AppTest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_streamlit_app_boots_offline_without_backend_secrets():
+def test_streamlit_app_boots_offline_without_backend_secrets(monkeypatch):
+    # Offline smoke must not depend on GitHub availability or network timeouts.
+    from fx_scanner import xau_dashboard_bridge_v254, xau_standalone_bridge_v253
+
+    def unavailable(*args, **kwargs):
+        raise ValueError("offline test transport")
+
+    monkeypatch.setattr(xau_dashboard_bridge_v254, "fetch_snapshot", unavailable)
+    monkeypatch.setattr(xau_standalone_bridge_v253, "fetch_snapshot", unavailable)
     app = AppTest.from_file(
         ROOT / "main.py",
         default_timeout=10,
