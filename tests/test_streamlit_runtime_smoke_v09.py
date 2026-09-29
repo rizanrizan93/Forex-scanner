@@ -244,7 +244,7 @@ def test_dashboard_standalone_fallback_is_diagnostic_only_without_page_stop():
 
 def test_v256_dashboard_hides_research_locator_from_operational_decision_path():
     text = (ROOT / "streamlit_app.py").read_text()
-    assert 'DASHBOARD_BUILD_ID = "RIZAN_V256_CANONICAL_TRUTH_UI_20260929"' in text
+    assert 'DASHBOARD_BUILD_ID = "RIZAN_V259_LIVE_STRUCTURAL_TRUTH_20260929"' in text
     assert "Zone watch (BUKAN ENTRY)" in text
     assert "Path target (BUKAN TP order)" in text
     assert "Geometry only — hanya posisi harga relatif terhadap source zone" in text
@@ -301,3 +301,12 @@ def test_v2572_terminal_zone_moves_primary_m5_focus_to_next_leg() -> None:
     assert "TARGET TERCAPAI • NEXT" in text
     assert "Pocket M5 berikutnya adalah" in text
     assert "WATCH ONLY — belum refined dan belum entry resmi" in text
+
+
+def test_v259_streamlit_direct_path_overlays_operational_structure_every_60s() -> None:
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "latest_xau_atlas_operational_heartbeat()" in text
+    assert "latest_xau_v226_operational_heartbeat()" in text
+    assert "merge_runtime_heartbeat_rows" in text
+    assert "V182 age=" in text
+    assert "V226 age=" in text
