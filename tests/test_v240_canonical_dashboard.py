@@ -208,7 +208,8 @@ def test_v266_dashboard_keeps_m5_visible_and_colors_reversal_heatmap() -> None:
 def test_v266_dashboard_explains_probe_and_strict_execution_lanes() -> None:
     assert "DEMO calibration probe 0,01 lot" in SOURCE
     assert "RR ≥1,00R" in SOURCE
-    assert "Dynamic Depth recommended band + buffer 10% (hard cap 70%)" in SOURCE
+    assert "post-rejection LIMIT retest" in SOURCE
+    assert "maksimum 60 menit" in SOURCE
     assert "L3/L4 tetap jalur strict ≥1,50R" in SOURCE
     assert "L2 tetap OFF" in SOURCE
 
@@ -221,3 +222,11 @@ def test_v269_dashboard_separates_probe_no_chase_from_strict_confirmation() -> N
     assert "Status probe terpisah dari strict L3/L4" in SOURCE
     assert "strict masih wajib M5 reclaim/MSS" in SOURCE
     assert "hard ceiling 70%" in SOURCE
+
+
+def test_v270_dashboard_explains_post_rejection_demo_retest_without_relaxing_strict_path() -> None:
+    assert "post-rejection LIMIT retest" in SOURCE
+    assert "closed M5 sudah reject keluar dari pocket" in SOURCE
+    assert "Hard ceiling tetap 70%" in SOURCE
+    assert "L3/L4 tetap jalur strict ≥1,50R" in SOURCE
+    assert "opposing-zone RR ≥1,00R" in SOURCE
