@@ -15,6 +15,7 @@ from fx_scanner.demo_xau_v229_child_executor import (
     _existing_slots,
     _limit_side_valid,
     _pending_side_valid,
+    _promote_armed_calibration_parent,
     _promote_armed_confirmation_window,
     _slot_target,
     _source_depth_boundary_price,
@@ -642,3 +643,28 @@ def test_v274_stop_is_calibration_fallback_only_and_strict_default_remains_limit
     assert "child_order_type = OrderType.STOP" in source
     assert "PROBE_DEEP_REJECTION_EXIT_STOP_ARMED" in source
     assert "calibration_probe_exit_stop_enabled" in source
+
+
+def test_v275_armed_calibration_parent_promotes_atomically_when_strict_ready() -> None:
+    store = _PromotionStore()
+    assert _promote_armed_calibration_parent(store, "signal-1") is True
+    assert store.updated_payload == {
+        "state": "EXECUTION_READY",
+        "active_guards": [],
+    }
+    assert ("id", "signal-1") in store.filters
+    assert ("state", "ARMED") in store.filters
+
+
+def test_v275_child_allows_only_l1_before_strict_promotion() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_child_executor.py"
+    ).read_text()
+    assert "armed_calibration_first_touch" in source
+    assert "ARMED_FRESH_FIRST_TOUCH_CALIBRATION_L1_ONLY" in source
+    assert "FRESH_FIRST_TOUCH_CALIBRATION_LIMIT" in source
+    assert "DISABLED_CALIBRATION_ARM" in source
+    assert "slot != 1" in source
+    assert "CALIBRATION_PARENT_PROMOTED_STRICT" in source
+    assert "fresh_first_touch_calibration_slots" in source
