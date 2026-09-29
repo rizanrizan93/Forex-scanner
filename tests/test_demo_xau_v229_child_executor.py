@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from pathlib import Path
+from datetime import datetime
 
 from fx_scanner.demo_xau_v229_child_executor import (
     _activation_entry,
     _calibration_probe_already_accepted,
     _calibration_probe_entry,
+    _calibration_rejection_retest_entry,
     _cancel_pending_plan,
     _entry_inside_active_source,
     _existing_slots,
@@ -377,3 +379,113 @@ def test_v267_child_executor_keeps_control_plane_fresh_until_submit() -> None:
     assert pre_submit_refresh != -1
     assert "control_plane_pre_submit_refresh" in source
     assert "control_plane_refresh_worker" in source
+
+
+def test_v270_short_deep_m5_pocket_rejection_rearms_limit_inside_no_chase_band() -> None:
+    entry, state = _calibration_rejection_retest_entry(
+        direction="SHORT",
+        micro={
+            "direction": "SHORT",
+            "last_closed_m5_price": 4151.83,
+            "candidate_entry_pocket": {
+                "low": 4155.01,
+                "high": 4158.74,
+                "origin_at": "2026-09-29T12:30:00+00:00",
+            },
+        },
+        depth_hazard={
+            "calibration_probe_depth_eligible": True,
+            "recommended_price_low": 4150.908,
+            "recommended_price_high": 4153.301,
+        },
+        now=datetime.fromisoformat("2026-09-29T13:00:00+00:00"),
+        max_age_seconds=3600,
+    )
+    assert entry == 4153.301
+    assert state == "M5_CANDIDATE_REJECTION_RETEST_PROBE"
+
+
+def test_v270_long_deep_m5_pocket_rejection_rearms_limit_inside_no_chase_band() -> None:
+    entry, state = _calibration_rejection_retest_entry(
+        direction="LONG",
+        micro={
+            "direction": "LONG",
+            "last_closed_m5_price": 101.5,
+            "candidate_entry_pocket": {
+                "low": 98.0,
+                "high": 100.0,
+                "origin_at": "2026-09-29T12:30:00+00:00",
+            },
+        },
+        depth_hazard={
+            "calibration_probe_depth_eligible": True,
+            "recommended_price_low": 96.5,
+            "recommended_price_high": 97.5,
+        },
+        now=datetime.fromisoformat("2026-09-29T13:00:00+00:00"),
+        max_age_seconds=3600,
+    )
+    assert entry == 96.5
+    assert state == "M5_CANDIDATE_REJECTION_RETEST_PROBE"
+
+
+def test_v270_rejection_retest_fails_closed_without_closed_m5_exit_or_freshness() -> None:
+    waiting, reason = _calibration_rejection_retest_entry(
+        direction="SHORT",
+        micro={
+            "direction": "SHORT",
+            "last_closed_m5_price": 4156.0,
+            "candidate_entry_pocket": {
+                "low": 4155.01,
+                "high": 4158.74,
+                "origin_at": "2026-09-29T12:30:00+00:00",
+            },
+        },
+        depth_hazard={
+            "calibration_probe_depth_eligible": True,
+            "recommended_price_low": 4150.908,
+            "recommended_price_high": 4153.301,
+        },
+        now=datetime.fromisoformat("2026-09-29T13:00:00+00:00"),
+        max_age_seconds=3600,
+    )
+    assert waiting is None
+    assert reason == "PROBE_REJECTION_WAIT_CLOSED_M5_EXIT"
+
+    stale, stale_reason = _calibration_rejection_retest_entry(
+        direction="SHORT",
+        micro={
+            "direction": "SHORT",
+            "last_closed_m5_price": 4151.0,
+            "candidate_entry_pocket": {
+                "low": 4155.01,
+                "high": 4158.74,
+                "origin_at": "2026-09-29T10:00:00+00:00",
+            },
+        },
+        depth_hazard={
+            "calibration_probe_depth_eligible": True,
+            "recommended_price_low": 4150.908,
+            "recommended_price_high": 4153.301,
+        },
+        now=datetime.fromisoformat("2026-09-29T13:00:00+00:00"),
+        max_age_seconds=3600,
+    )
+    assert stale is None
+    assert stale_reason == "PROBE_REJECTION_M5_TOO_OLD"
+
+
+def test_v270_rejection_retest_remains_demo_bounded_and_limit_only() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_child_executor.py"
+    ).read_text()
+    workflow = (
+        Path(__file__).resolve().parents[1]
+        / ".github/workflows/ctrader-demo-xau-execution-lane.yml"
+    ).read_text()
+    assert "M5_CANDIDATE_REJECTION_RETEST_PROBE" in source
+    assert "calibration_probe_depth_eligible" in source
+    assert "OrderType.LIMIT" in source
+    assert "CTRADER_DEMO_DEPTH_CALIBRATION_REJECTION_MAX_AGE_SECONDS" in workflow
+    assert '"3600"' in workflow

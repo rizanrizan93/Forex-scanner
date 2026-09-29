@@ -48,6 +48,9 @@ MAX_PARENT_EVENTS = 24
 CALIBRATION_PROBE_ENABLED_ENV = "CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_ENABLED"
 CALIBRATION_PROBE_MIN_RR_ENV = "CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MIN_RR"
 CALIBRATION_PROBE_MAX_DEPTH_ENV = "CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH"
+CALIBRATION_REJECTION_MAX_AGE_SECONDS_ENV = (
+    "CTRADER_DEMO_DEPTH_CALIBRATION_REJECTION_MAX_AGE_SECONDS"
+)
 
 
 def _f(value: Any) -> float | None:
@@ -254,6 +257,80 @@ def _calibration_probe_entry(
         else "M5_CANDIDATE_CALIBRATION_PROBE"
     )
     return entry, state
+
+
+def _calibration_rejection_retest_entry(
+    *,
+    direction: str,
+    micro: dict[str, Any],
+    depth_hazard: dict[str, Any],
+    now: datetime,
+    max_age_seconds: float,
+) -> tuple[float | None, str]:
+    """Convert a real deep M5 pocket rejection into a bounded retest LIMIT.
+
+    This is DEMO calibration only. It never uses the display-only projected M5
+    pocket. The actual M5 candidate/refined pocket must have been touched, then a
+    closed M5 price must reject out of that pocket in the intended direction.
+    The resulting LIMIT sits inside the current Dynamic Depth no-chase band.
+    """
+    if str(micro.get("direction") or "").upper() != direction:
+        return None, "PROBE_REJECTION_M5_DIRECTION_MISMATCH"
+    if not bool(depth_hazard.get("calibration_probe_depth_eligible")):
+        return None, "PROBE_REJECTION_DEPTH_NOT_ELIGIBLE"
+
+    refined = dict(micro.get("refined_entry_pocket") or {})
+    candidate = dict(micro.get("candidate_entry_pocket") or {})
+    pocket = refined or candidate
+    if not pocket:
+        return None, "PROBE_REJECTION_WAIT_M5_POCKET"
+
+    low = _f(pocket.get("low"))
+    high = _f(pocket.get("high"))
+    last_close = _f(micro.get("last_closed_m5_price"))
+    if low is None or high is None or last_close is None or high <= low:
+        return None, "PROBE_REJECTION_INVALID_M5_GEOMETRY"
+
+    if direction == "SHORT":
+        rejected = float(last_close) < float(low)
+    elif direction == "LONG":
+        rejected = float(last_close) > float(high)
+    else:
+        return None, "PROBE_REJECTION_INVALID_DIRECTION"
+    if not rejected:
+        return None, "PROBE_REJECTION_WAIT_CLOSED_M5_EXIT"
+
+    sweep = dict(micro.get("sweep") or {})
+    origin_at = _dt(
+        pocket.get("origin_at")
+        or sweep.get("at")
+        or micro.get("first_eligible_touch_at")
+    )
+    if origin_at is None:
+        return None, "PROBE_REJECTION_M5_TIME_MISSING"
+    age_seconds = (now - origin_at).total_seconds()
+    if age_seconds < 0 or age_seconds > float(max_age_seconds):
+        return None, "PROBE_REJECTION_M5_TOO_OLD"
+
+    recommended_low = _f(depth_hazard.get("recommended_price_low"))
+    recommended_high = _f(depth_hazard.get("recommended_price_high"))
+    if (
+        recommended_low is None
+        or recommended_high is None
+        or recommended_high <= recommended_low
+    ):
+        return None, "PROBE_REJECTION_DEPTH_PRICE_WINDOW_MISSING"
+
+    entry = (
+        float(recommended_low)
+        if direction == "LONG"
+        else float(recommended_high)
+    )
+    return entry, (
+        "M5_REFINED_REJECTION_RETEST_PROBE"
+        if refined
+        else "M5_CANDIDATE_REJECTION_RETEST_PROBE"
+    )
 
 
 def _entry_inside_active_source(
@@ -484,6 +561,13 @@ def run() -> int:
     calibration_probe_max_depth = min(
         1.0,
         max(0.10, _float_env(CALIBRATION_PROBE_MAX_DEPTH_ENV, 0.70)),
+    )
+    calibration_rejection_max_age_seconds = min(
+        7200.0,
+        max(
+            300.0,
+            _float_env(CALIBRATION_REJECTION_MAX_AGE_SECONDS_ENV, 3600.0),
+        ),
     )
     store = SupabaseOperationalStore.from_env(execution_ready_score_floor=65.0)
     now = datetime.now(tz=UTC)
@@ -765,11 +849,46 @@ def run() -> int:
                         and child_depth is not None
                         and float(child_depth) > effective_probe_max_depth + 1e-9
                     ):
-                        actions.append(
-                            f"{parent_signal_id}:L{slot}:PROBE_DEPTH_TOO_DEEP:"
-                            f"child_depth={child_depth:.3f}:max={effective_probe_max_depth:.3f}"
+                        fallback_entry, fallback_activation = (
+                            _calibration_rejection_retest_entry(
+                                direction=str(plan["direction"]),
+                                micro=micro,
+                                depth_hazard=depth_hazard,
+                                now=datetime.now(UTC),
+                                max_age_seconds=calibration_rejection_max_age_seconds,
+                            )
                         )
-                        continue
+                        fallback_depth = (
+                            None
+                            if fallback_entry is None
+                            else child_reference_depth(
+                                v226_evaluation=v226_eval,
+                                direction=str(plan["direction"]),
+                                price=float(fallback_entry),
+                            )
+                        )
+                        if (
+                            fallback_entry is None
+                            or fallback_depth is None
+                            or float(fallback_depth) > effective_probe_max_depth + 1e-9
+                            or (
+                                min_depth is not None
+                                and float(fallback_depth) + 1e-9 < float(min_depth)
+                            )
+                        ):
+                            actions.append(
+                                f"{parent_signal_id}:L{slot}:PROBE_DEPTH_TOO_DEEP:"
+                                f"child_depth={child_depth:.3f}:max={effective_probe_max_depth:.3f}:"
+                                f"fallback={fallback_activation}"
+                            )
+                            continue
+                        entry = float(fallback_entry)
+                        child_depth = float(fallback_depth)
+                        activation = fallback_activation
+                        actions.append(
+                            f"{parent_signal_id}:L{slot}:PROBE_REJECTION_RETEST_ARMED:"
+                            f"entry={entry:.3f}:depth={child_depth:.3f}"
+                        )
                     if calibration_probe and not _entry_inside_active_source(
                         direction=str(plan["direction"]),
                         entry=float(entry),
@@ -902,9 +1021,13 @@ def run() -> int:
             "calibration_probe_min_rr": calibration_probe_min_rr,
             "calibration_probe_max_depth_ceiling": calibration_probe_max_depth,
             "calibration_probe_dynamic_depth_buffer": 0.10,
+            "calibration_rejection_retest_enabled": True,
+            "calibration_rejection_max_age_seconds": (
+                calibration_rejection_max_age_seconds
+            ),
             "calibration_probe_policy": (
-                "ONE_L1_REAL_M5_POCKET_PROBE_PER_ARMED_RETEST_PARENT_"
-                "DYNAMIC_DEPTH_PLUS_10PCT_CAPPED_DEMO_ONLY"
+                "ONE_L1_REAL_M5_POCKET_OR_POST_REJECTION_RETEST_PROBE_PER_"
+                "ARMED_RETEST_PARENT_DYNAMIC_DEPTH_PLUS_10PCT_CAPPED_DEMO_ONLY"
             ),
             "pending_plus_open_guard": True,
             "server_side_sl_tp_required": True,
