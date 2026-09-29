@@ -589,3 +589,19 @@ def test_v2571_marks_path_target_reached_when_price_is_inside_opposing_zone() ->
     assert state["likely_destination"]["role"] == "PATH_TARGET_REACHED"
     assert state["likely_destination"]["target_price"] == 4136.55
     assert state["likely_destination"]["destination_state"] == "INSIDE_OPPOSING_ZONE"
+
+
+def test_v261_v240_exposes_historical_research_entry_without_broker_authority() -> None:
+    state = build_canonical_xau_decision(
+        v226_evaluation=_v226(),
+        atlas_evaluation=_atlas(),
+        price_now=103.0,
+        path_direction="LONG",
+    )
+    research = dict(state["historical_research_entry"])
+    assert research["label"] == "HISTORICAL_RESEARCH_ENTRY_NOT_ORDER"
+    assert research["direction"] == "LONG"
+    assert research["low"] == 100.0
+    assert research["high"] == 102.0
+    assert research["reference"] == 101.0
+    assert research["execution_authority"] is False
