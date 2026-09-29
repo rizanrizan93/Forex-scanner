@@ -2,7 +2,10 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from fx_scanner.execution.broker_gateway import BrokerBackend
-from fx_scanner.execution.ctrader_gateway import CTraderExecutionGateway
+from fx_scanner.execution.ctrader_gateway import (
+    CTraderExecutionGateway,
+    _absolute_price,
+)
 from fx_scanner.execution.ctrader_session import CTraderQuote, normalize_symbol_name
 from fx_scanner.execution.models import OrderIntent, OrderSide, OrderType
 
@@ -139,3 +142,57 @@ def test_ctrader_submit_normalizes_lots_and_order_id():
     assert result.broker_order_id == "42"
     assert result.executed_volume == 0.05
     assert result.executed_price == 1.10012
+
+
+def test_ctrader_absolute_price_uses_broker_symbol_digits():
+    symbol = SimpleNamespace(digits=2)
+    assert _absolute_price(4164.38563341325, symbol) == 4164.39
+    assert _absolute_price(4148.435139307018, symbol) == 4148.44
+    assert _absolute_price(4256.52, symbol) == 4256.52
+
+
+def test_ctrader_pending_xau_prices_are_normalized_before_submit():
+    session = FakeSession()
+    session.symbol.digits = 2
+    gateway = CTraderExecutionGateway(session)
+    xau = OrderIntent(
+        signal_id="RZ229:precision-test",
+        symbol="XAUUSD",
+        side=OrderSide.BUY,
+        order_type=OrderType.LIMIT,
+        created_at=datetime.now(tz=UTC),
+        volume=0.05,
+        entry_price=4164.38563341325,
+        stop_loss=4148.435139307018,
+        take_profit=4256.52,
+        risk_pct=0.25,
+    )
+    preflight = gateway.preflight(xau, {"comment_prefix": "FXIS"})
+    assert preflight.accepted
+    req = preflight.request.request
+    assert req.limitPrice == 4164.39
+    assert req.stopLoss == 4148.44
+    assert req.takeProfit == 4256.52
+    assert preflight.request.planned_stop_loss == 4148.44
+    assert preflight.request.planned_take_profit == 4256.52
+
+
+def test_ctrader_pending_rounding_fails_closed_if_geometry_collapses():
+    session = FakeSession()
+    session.symbol.digits = 2
+    gateway = CTraderExecutionGateway(session)
+    collapsed = OrderIntent(
+        signal_id="RZ229:collapsed-precision",
+        symbol="XAUUSD",
+        side=OrderSide.BUY,
+        order_type=OrderType.LIMIT,
+        created_at=datetime.now(tz=UTC),
+        volume=0.05,
+        entry_price=100.004,
+        stop_loss=100.003,
+        take_profit=100.005,
+        risk_pct=0.25,
+    )
+    preflight = gateway.preflight(collapsed, {"comment_prefix": "FXIS"})
+    assert preflight.accepted is False
+    assert "normalized pending SL/entry/TP geometry is invalid" in preflight.message
