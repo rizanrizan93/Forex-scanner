@@ -645,3 +645,16 @@ def test_v263_v229_still_rejects_when_no_source_slice_can_reach_1_50r() -> None:
     assert diagnostics["state"] == "PLAN_REJECTED"
     assert diagnostics["reason"] == "NO_RR_ELIGIBLE_CONFIRMATION_WINDOW"
     assert diagnostics["minimum_terminal_rr"] == 1.5
+
+
+def test_v264_confirmation_window_is_persisted_armed_not_execution_ready() -> None:
+    from pathlib import Path
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_depth_execution.py"
+    ).read_text(encoding="utf-8")
+    assert '"state": "ARMED" if confirmation_window_only else "EXECUTION_READY"' in source
+    assert 'if state in {"ARMED", "EXECUTION_READY"}:' in source
+    assert '"M5_ACTUAL_ENTRY_REQUIRED"' in source
+    assert '"TERMINAL_RR_RECHECK_1_50R"' in source
+    assert "confirmation_authority_only" in source
