@@ -239,3 +239,28 @@ def test_dashboard_standalone_fallback_is_diagnostic_only_without_page_stop():
     assert "cTrader quote backup (diagnostic only)" in text
     assert "supply/demand, V240, admission, SL/TP, dan order tidak diambil" in text
     assert "_render_standalone_dashboard(standalone)\n    st.stop()" not in text
+
+
+
+def test_v256_dashboard_hides_research_locator_from_operational_decision_path():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'DASHBOARD_BUILD_ID = "RIZAN_V256_CANONICAL_TRUTH_UI_20260929"' in text
+    assert "Zone watch (BUKAN ENTRY)" in text
+    assert "Path target (BUKAN TP order)" in text
+    assert "Geometry only — tanpa hazard prior" in text
+    assert "Riset V226 — locator historis/depth evidence (BUKAN entry utama)" in text
+    assert 'm2.metric("Pair aktif", "XAUUSD")' in text
+
+
+def test_v256_dashboard_uses_v182_current_leg_not_v180_tactical_leg_as_active_direction():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'top3.metric("Arah aktif (V182)", dc_current_leg_label)' in text
+    assert 'flow2.metric("2 • Path aktif V182", dc_current_leg_direction)' in text
+    assert 'top3.metric("Leg aktif", dc_tactical_first_leg)' not in text
+
+
+def test_v256_dynamic_depth_uses_geometry_only_without_v229_authority():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "build_geometry_depth_status" in text
+    assert 'v240_authority == "V229_CANONICAL_GEOMETRY"' in text
+    assert "Dynamic Depth tidak pernah menjadi izin order sendirian." in text
