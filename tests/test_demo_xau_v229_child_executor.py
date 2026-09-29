@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fx_scanner.demo_xau_v229_child_executor import (
     _activation_entry,
+    _calibration_probe_already_accepted,
     _calibration_probe_entry,
     _cancel_pending_plan,
     _entry_inside_active_source,
@@ -304,3 +305,54 @@ def test_v266_workflow_enables_bounded_demo_calibration_probe() -> None:
     assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_ENABLED: "1"' in workflow
     assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MIN_RR: "1.00"' in workflow
     assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.35"' in workflow
+
+
+class _ProbeAuditQuery:
+    def __init__(self, rows):
+        self.rows = rows
+    def select(self, *_args, **_kwargs):
+        return self
+    def eq(self, *_args, **_kwargs):
+        return self
+    def order(self, *_args, **_kwargs):
+        return self
+    def limit(self, *_args, **_kwargs):
+        return self
+    def execute(self):
+        return SimpleNamespace(data=self.rows)
+
+
+class _ProbeAuditClient:
+    def __init__(self, rows):
+        self.rows = rows
+    def table(self, _name):
+        return _ProbeAuditQuery(self.rows)
+
+
+class _ProbeAuditStore:
+    def __init__(self, rows):
+        self.client = _ProbeAuditClient(rows)
+
+
+def test_v266_parent_allows_only_one_accepted_calibration_probe() -> None:
+    accepted = _ProbeAuditStore(
+        [
+            {
+                "accepted": True,
+                "payload": {"calibration_only": True, "slot": 1},
+                "event_type": "DEMO_XAU_RIZAN_DEPTH_CHILD",
+            }
+        ]
+    )
+    assert _calibration_probe_already_accepted(accepted, "parent-1") is True
+
+    rejected_only = _ProbeAuditStore(
+        [
+            {
+                "accepted": False,
+                "payload": {"calibration_only": True, "slot": 1},
+                "event_type": "DEMO_XAU_RIZAN_DEPTH_CHILD",
+            }
+        ]
+    )
+    assert _calibration_probe_already_accepted(rejected_only, "parent-1") is False
