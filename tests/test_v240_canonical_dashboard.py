@@ -187,3 +187,25 @@ def test_v265_dashboard_has_four_layer_entry_map_and_overlap_status() -> None:
     assert "historical entry = prior riset" in SOURCE
     assert '"DEMO window = area yang secara struktural masih bisa memenuhi RR, official "' in SOURCE
     assert '"broker entry = baru ada setelah semua gate lolos. "' in SOURCE
+
+
+def test_v266_dashboard_keeps_m5_visible_and_colors_reversal_heatmap() -> None:
+    assert "PROJECTED_M5_WATCH" in SOURCE
+    assert "Projected M5 Watch Pocket" in SOURCE
+    assert "narrowing H4→H1→M15" in SOURCE
+    assert "bukan entry broker" in SOURCE
+    assert "Historical Reversal Depth Heatmap — V225.2 (2012–2026)" in SOURCE
+    assert "is_highest_hazard" in SOURCE
+    assert "#991b1b" in SOURCE
+    assert "#c2410c" in SOURCE
+    assert "#ca8a04" in SOURCE
+    assert "#166534" in SOURCE
+    assert "Hazard adalah conditional reversal rate per depth band, bukan win rate order." in SOURCE
+
+
+def test_v266_dashboard_explains_probe_and_strict_execution_lanes() -> None:
+    assert "DEMO calibration probe 0,01 lot" in SOURCE
+    assert "RR ≥1,00R" in SOURCE
+    assert "depth ≤35%" in SOURCE
+    assert "L3/L4 tetap jalur strict ≥1,50R" in SOURCE
+    assert "L2 tetap OFF" in SOURCE
