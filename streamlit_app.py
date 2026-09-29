@@ -3594,6 +3594,72 @@ with forecast_tab:
                 "dihitung ulang dari harga entry aktual."
             )
 
+        st.markdown("###### Peta Entry — riset → M5 → DEMO → broker")
+        em1, em2 = st.columns(2)
+        em1.metric(
+            "1 • Historical research entry",
+            (
+                f"{_fmt_price(v240_hist_entry.get('low'))}–"
+                f"{_fmt_price(v240_hist_entry.get('high'))}"
+                if v240_hist_entry
+                else "Belum tersedia"
+            ),
+        )
+        em2.metric(
+            "2 • M5 pocket saat ini",
+            v240_m5_price_quick,
+        )
+        em3, em4 = st.columns(2)
+        em3.metric(
+            "3 • RR-eligible DEMO window",
+            (
+                f"{_fmt_price(v240_confirmation_window.get('low'))}–"
+                f"{_fmt_price(v240_confirmation_window.get('high'))}"
+                if v240_confirmation_window_armed and v240_confirmation_window
+                else "Tidak aktif"
+            ),
+        )
+        em4.metric(
+            "4 • Official broker entry",
+            (
+                v240_watch_text
+                if v240_entry_authorized
+                else "Belum ada • ARMED"
+                if v240_confirmation_window_armed
+                else "Belum ada • WAIT"
+            ),
+        )
+
+        m5_window_relation = "UNAVAILABLE"
+        try:
+            m5_low = float(v240_m5_quick.get("low"))
+            m5_high = float(v240_m5_quick.get("high"))
+            window_low = float(v240_confirmation_window.get("low"))
+            window_high = float(v240_confirmation_window.get("high"))
+            overlap_low = max(m5_low, window_low)
+            overlap_high = min(m5_high, window_high)
+            if overlap_low <= overlap_high:
+                m5_window_relation = (
+                    "OVERLAP • M5 sudah menyentuh RR-eligible window "
+                    f"{_fmt_price(overlap_low)}–{_fmt_price(overlap_high)}"
+                )
+            elif m5_high < window_low:
+                m5_window_relation = (
+                    "BELOW WINDOW • M5 masih terlalu dangkal untuk RR ≥1,50R"
+                )
+            else:
+                m5_window_relation = (
+                    "ABOVE WINDOW • M5 berada melewati execution window"
+                )
+        except (TypeError, ValueError):
+            pass
+        st.caption(
+            "Urutan baca: historical entry = prior riset, M5 pocket = timing aktual, "
+            "DEMO window = area yang secara struktural masih bisa memenuhi RR, official "
+            "broker entry = baru ada setelah semua gate lolos. "
+            f"Relasi M5↔window: **{m5_window_relation}**."
+        )
+
         st.markdown("###### Entry → Dynamic Depth → Admission")
         qe1, qe2 = st.columns(2)
         qe1.metric(v240_entry_label, v240_watch_text)
