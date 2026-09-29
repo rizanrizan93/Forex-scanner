@@ -1044,6 +1044,124 @@ def _chart_bar_payload(rows: Sequence[Bar]) -> list[dict[str, Any]]:
     ]
 
 
+
+def _handoff_time(*values: Any) -> datetime | None:
+    for value in values:
+        if value in (None, ""):
+            continue
+        if isinstance(value, datetime):
+            parsed = value
+        else:
+            try:
+                parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                continue
+        if parsed.tzinfo is None:
+            continue
+        return ensure_utc(parsed)
+    return None
+
+
+def _promote_confirmed_opposing_leg_v257(
+    path_map: dict[str, Any],
+    projection: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Promote a causally confirmed opposing leg into the structural active path.
+
+    V196 already prevents historical next-leg touches from being recycled by
+    requiring next-leg evidence to occur after the current-leg activation. V257
+    adds the missing path-state handoff: once the opposing source is the current
+    terminal zone and its fresh M5 sequence reaches reclaim + MSS + displacement,
+    the atlas should no longer keep the completed prior leg as the user-facing
+    active direction merely because its old source is still geographically near.
+
+    This changes structural/shadow path state only. It never creates execution
+    authority; M15/admission/protection remain independent fail-closed gates.
+    """
+    current_leg = dict(projection.get("current_leg") or {})
+    next_leg = dict(projection.get("next_leg") or {})
+    current_direction = str(current_leg.get("direction") or "").upper()
+    next_direction = str(next_leg.get("direction") or "").upper()
+    next_micro = dict(next_leg.get("micro_refinement") or {})
+    current_micro = dict(current_leg.get("micro_refinement") or {})
+    next_source = dict(next_leg.get("source_zone") or {})
+    next_lifecycle = dict(next_source.get("lifecycle") or {})
+
+    base = {
+        "contract": "XAU_CAUSAL_OPPOSING_LEG_HANDOFF_V257",
+        "promoted": False,
+        "from_direction": current_direction or None,
+        "to_direction": next_direction or None,
+        "execution_influence": False,
+        "execution_authority": False,
+        "promotion_authority": False,
+    }
+
+    if current_direction not in {"LONG", "SHORT"} or next_direction not in {"LONG", "SHORT"}:
+        return dict(path_map), base | {"state": "NO_DIRECTIONAL_HANDOFF"}
+    if current_direction == next_direction:
+        return dict(path_map), base | {"state": "SAME_DIRECTION_NO_HANDOFF"}
+    if not bool(next_leg.get("parent_matches_current_terminal")):
+        return dict(path_map), base | {"state": "NEXT_SOURCE_NOT_CURRENT_TERMINAL"}
+    if next_lifecycle and next_lifecycle.get("active") is False:
+        return dict(path_map), base | {"state": "NEXT_SOURCE_INACTIVE"}
+    if str(next_leg.get("pocket_state") or "").upper() != "REFINED_M5_POCKET":
+        return dict(path_map), base | {"state": "WAIT_NEXT_REFINED_M5"}
+    if str(next_micro.get("state") or "").upper() != "M5_REFINEMENT_CONFIRMED_SHADOW":
+        return dict(path_map), base | {"state": "WAIT_NEXT_M5_CONFIRMATION"}
+
+    next_confirmed_at = _handoff_time(
+        next_micro.get("displacement_at"),
+        next_micro.get("mss_at"),
+        next_micro.get("reclaim_at"),
+        next_micro.get("first_eligible_touch_at"),
+    )
+    current_confirmed_at = _handoff_time(
+        current_micro.get("displacement_at"),
+        current_micro.get("mss_at"),
+        current_micro.get("reclaim_at"),
+        current_micro.get("first_eligible_touch_at"),
+    )
+    if next_confirmed_at is None:
+        return dict(path_map), base | {"state": "NEXT_CONFIRMATION_TIME_UNKNOWN"}
+    if current_confirmed_at is not None and next_confirmed_at <= current_confirmed_at:
+        return dict(path_map), base | {
+            "state": "NEXT_CONFIRMATION_NOT_NEWER",
+            "next_confirmed_at": next_confirmed_at.isoformat(),
+            "current_confirmed_at": current_confirmed_at.isoformat(),
+        }
+
+    path_key = "demand_to_supply" if next_direction == "LONG" else "supply_to_demand"
+    promoted_path = dict(path_map.get(path_key) or {})
+    if not promoted_path or not next_source:
+        return dict(path_map), base | {"state": "PROMOTION_PATH_UNAVAILABLE"}
+
+    promoted_path["reaction_direction"] = next_direction
+    promoted_path["source_zone"] = next_source
+    promoted_path["source_role"] = "V257_CAUSAL_OPPOSING_LEG_HANDOFF"
+    promoted_path["state"] = "CONFIRMED_OPPOSING_LEG_HANDOFF"
+
+    updated = dict(path_map)
+    updated["active_path"] = promoted_path
+    handoff = base | {
+        "state": "PROMOTED_CONFIRMED_OPPOSING_LEG",
+        "promoted": True,
+        "path_key": path_key,
+        "source_zone_id": next_source.get("zone_id"),
+        "source_timeframe": next_source.get("timeframe"),
+        "confirmed_at": next_confirmed_at.isoformat(),
+        "prior_confirmed_at": (
+            None if current_confirmed_at is None else current_confirmed_at.isoformat()
+        ),
+        "reason": (
+            "Current terminal/opposing zone produced a causally fresh refined M5 "
+            "reversal after the prior leg confirmation."
+        ),
+    }
+    updated["leg_handoff_v257"] = handoff
+    return updated, handoff
+
+
 def evaluate_supply_demand_atlas(
     bars: Sequence[Bar],
     *,
@@ -1293,6 +1411,19 @@ def run() -> int:
             as_of=now,
             previous_projection=previous_projection,
         )
+        path_map, leg_handoff_v257 = _promote_confirmed_opposing_leg_v257(
+            path_map,
+            m5_path_projection,
+        )
+        if bool(leg_handoff_v257.get("promoted")):
+            m5_path_projection = evaluate_bidirectional_m5_path(
+                raw_m5,
+                path_map=path_map,
+                as_of=now,
+                previous_projection=m5_path_projection,
+            )
+        m5_path_projection["leg_handoff_v257"] = leg_handoff_v257
+        payload["leg_handoff_v257"] = leg_handoff_v257
         reuse_v200 = evaluate_bidirectional_reuse(m5_path_projection)
         for leg_name in ("current_leg", "next_leg"):
             leg = dict(m5_path_projection.get(leg_name) or {})
