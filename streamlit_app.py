@@ -2642,6 +2642,73 @@ with forecast_tab:
         else dc_sd_eval.get("last_closed_m15_price")
     )
 
+    def _m5_pocket_limit_side_valid(
+        direction: str,
+        pocket: dict[str, Any],
+        price: Any,
+    ) -> bool:
+        low = _chart_price(dict(pocket or {}).get("low"))
+        high = _chart_price(dict(pocket or {}).get("high"))
+        px = _chart_price(price)
+        side = str(direction or "").upper()
+        if low is None or high is None or px is None or high <= low:
+            return False
+        # The DEMO child executor uses limit-side semantics for M5 retest entries:
+        # BUY entry must be below ask/current price; SELL entry must be above bid/current price.
+        if side == "LONG":
+            return bool(high < px)
+        if side == "SHORT":
+            return bool(low > px)
+        return False
+
+    dc_current_refined_limit_side_valid = bool(
+        dc_current_pocket_state == "REFINED_M5_POCKET"
+        and dc_current_projected_pocket
+        and _m5_pocket_limit_side_valid(
+            dc_current_leg_direction,
+            dc_current_projected_pocket,
+            dc_reference_price,
+        )
+    )
+    dc_current_refined_historical = bool(
+        dc_current_pocket_state == "REFINED_M5_POCKET"
+        and dc_current_projected_pocket
+        and not dc_current_refined_limit_side_valid
+    )
+
+    dc_terminal_low = _chart_price(dc_current_leg_terminal.get("low"))
+    dc_terminal_high = _chart_price(dc_current_leg_terminal.get("high"))
+    dc_price_float = _chart_price(dc_reference_price)
+    dc_inside_current_terminal = bool(
+        dc_price_float is not None
+        and dc_terminal_low is not None
+        and dc_terminal_high is not None
+        and dc_terminal_low <= dc_price_float <= dc_terminal_high
+    )
+    dc_next_leg_watch_text = (
+        f"{dc_next_leg_direction} • "
+        + (
+            "Refined "
+            if dc_next_pocket_state == "REFINED_M5_POCKET"
+            else "Candidate "
+            if dc_next_pocket_state == "CANDIDATE_M5_POCKET"
+            else "Watch "
+        )
+        + (
+            f"{_fmt_price(dc_next_projected_pocket.get('low'))}–"
+            f"{_fmt_price(dc_next_projected_pocket.get('high'))}"
+            if dc_next_projected_pocket
+            else (
+                f"{_fmt_price(dc_next_leg_source.get('low'))}–"
+                f"{_fmt_price(dc_next_leg_source.get('high'))}"
+                if dc_next_leg_source
+                else "Belum ada"
+            )
+        )
+        if dc_next_leg_direction in {"LONG", "SHORT"}
+        else "Belum ada"
+    )
+
     dc_m15_row = None
     dc_now = datetime.now(tz=UTC)
     for dc_row in xau_technical_signal_rows:
@@ -2771,10 +2838,14 @@ with forecast_tab:
     dc_setup_summary = (
         "MANAGE POSITION"
         if dc_position_mode
+        else f"TERMINAL ZONE • NEXT {dc_next_leg_direction} WATCH"
+        if dc_inside_current_terminal and dc_next_leg_direction in {"LONG", "SHORT"}
         else "M15 READY"
         if dc_m15_ready
-        else "M5 REFINED • PREPARE"
-        if dc_current_pocket_state == "REFINED_M5_POCKET"
+        else "M5 REFINED • RETEST WATCH"
+        if dc_current_refined_limit_side_valid
+        else "M5 REFINED LAMA • WAIT NEW TRIGGER"
+        if dc_current_refined_historical
         else "M5 CANDIDATE • WAIT"
         if dc_current_pocket_state == "CANDIDATE_M5_POCKET"
         else "WAIT"
@@ -2794,15 +2865,25 @@ with forecast_tab:
                 "Prioritas: proteksi SL → BE/partial → target reaksi → opposing zone."
             )
         else:
-            st.info(
-                f"**Path aktif {dc_current_leg_label}** ({dc_leg_relation})"
-                f" → target reaksi {_fmt_price(dc_current_leg_target.get('price'))}"
-                f" → opposing zone "
-                f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
-                f"{_fmt_price(dc_current_leg_terminal.get('high'))}. "
-                "**Konteks HTF bukan perintah entry.** Entry resmi hanya muncul setelah "
-                "V240/V229 + M15 + protection/admission konsisten; izin order tetap mengikuti admission dan protection contract."
-            )
+            if dc_inside_current_terminal and dc_next_leg_direction in {"LONG", "SHORT"}:
+                st.warning(
+                    f"**Path {dc_current_leg_label} sudah mencapai opposing/terminal zone** "
+                    f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
+                    f"{_fmt_price(dc_current_leg_terminal.get('high'))}. "
+                    f"Next leg watch: **{dc_next_leg_watch_text}**. "
+                    "Next leg belum menjadi entry resmi sampai handoff struktural + V240/V229 + "
+                    "M15 + pressure/admission konsisten."
+                )
+            else:
+                st.info(
+                    f"**Path aktif {dc_current_leg_label}** ({dc_leg_relation})"
+                    f" → target reaksi {_fmt_price(dc_current_leg_target.get('price'))}"
+                    f" → opposing zone "
+                    f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
+                    f"{_fmt_price(dc_current_leg_terminal.get('high'))}. "
+                    "**Konteks HTF bukan perintah entry.** Entry resmi hanya muncul setelah "
+                    "V240/V229 + M15 + protection/admission konsisten; izin order tetap mengikuti admission dan protection contract."
+                )
 
         st.caption(
             f"HTF context {dc_htf_context_bias} • H4 parent {dc_h4_text} • D1 parent {dc_d1_text} • "
@@ -2875,6 +2956,11 @@ with forecast_tab:
         flow3.metric("3 • M15", dc_m15_state)
         flow4.metric("4 • Admission", dc_admission_label)
         flow5.metric("Broker route", dc_route_label)
+        if dc_inside_current_terminal and dc_next_leg_direction in {"LONG", "SHORT"}:
+            st.caption(
+                f"Next leg watch (BUKAN ENTRY): {dc_next_leg_watch_text}. "
+                "Current path sudah mencapai terminal/opposing zone."
+            )
         if dc_latest_signal_guards:
             st.warning(
                 "Guard aktif: "
@@ -3160,7 +3246,13 @@ with forecast_tab:
             else "—"
         )
         v240_m5_quick = dict(dc_current_projected_pocket or {})
-        v240_m5_state_quick = dc_current_pocket_state or "WAIT_M5"
+        v240_m5_state_quick = (
+            "REFINED_M5_POCKET"
+            if dc_current_refined_limit_side_valid
+            else "REFINED_M5_HISTORICAL"
+            if dc_current_refined_historical
+            else dc_current_pocket_state or "WAIT_M5"
+        )
         v240_m5_price_quick = (
             f"{_fmt_price(v240_m5_quick.get('low'))}–"
             f"{_fmt_price(v240_m5_quick.get('high'))}"
@@ -3195,14 +3287,19 @@ with forecast_tab:
         else:
             v240_depth_text = "Belum tersedia"
 
+        v240_depth_state = str(v240_depth_hazard.get("state") or "").upper()
+        v240_depth_calibrated = v240_depth_state == "DYNAMIC_DEPTH_HAZARD_AVAILABLE"
         if v240_depth_hazard.get("recommended_depth_low") is not None:
             v240_depth_band_text = (
-                f"Band riset "
+                f"Band hazard riset "
                 f"{100.0 * float(v240_depth_hazard.get('recommended_depth_low')):.0f}–"
                 f"{100.0 * float(v240_depth_hazard.get('recommended_depth_high')):.0f}%"
             )
         else:
-            v240_depth_band_text = "Geometry only — tanpa hazard prior"
+            v240_depth_band_text = (
+                "Geometry only — hanya posisi harga relatif terhadap source zone; "
+                "bukan forecast reversal dan bukan entry band"
+            )
 
         v240_action_now = (
             "MANAGE POSITION"
@@ -3263,8 +3360,10 @@ with forecast_tab:
         qs6.metric(
             "M5 timing",
             (
-                "Refined • " + v240_m5_price_quick
+                "Refined retest • " + v240_m5_price_quick
                 if v240_m5_state_quick == "REFINED_M5_POCKET"
+                else "Refined lama • tunggu baru"
+                if v240_m5_state_quick == "REFINED_M5_HISTORICAL"
                 else "Candidate • " + v240_m5_price_quick
                 if v240_m5_state_quick == "CANDIDATE_M5_POCKET"
                 else "Belum aktif"
@@ -3278,8 +3377,14 @@ with forecast_tab:
             )
         elif v240_m5_state_quick == "REFINED_M5_POCKET":
             st.caption(
-                "M5 refined pocket tersedia sebagai timing evidence. "
+                "M5 refined pocket berada pada sisi limit/retest yang masih valid. "
                 "Tetap bukan entry resmi sebelum V240/V229 admission lolos."
+            )
+        elif v240_m5_state_quick == "REFINED_M5_HISTORICAL":
+            st.warning(
+                "Refined pocket yang terlihat berasal dari reaksi sebelumnya dan sudah berada "
+                "di sisi harga yang tidak valid untuk limit/retest DEMO saat ini. Dashboard "
+                "tidak mempromosikannya sebagai entry; tunggu pocket baru dari touch-cycle aktif."
             )
         else:
             st.caption(
@@ -3301,11 +3406,20 @@ with forecast_tab:
         st.markdown("###### Entry → Dynamic Depth → Admission")
         qe1, qe2 = st.columns(2)
         qe1.metric(v240_entry_label, v240_watch_text)
-        qe2.metric("8 • Dynamic Depth", v240_depth_text)
+        qe2.metric(
+            "8 • Dynamic Depth Hazard"
+            if v240_depth_calibrated
+            else "8 • Lokasi vs source zone",
+            v240_depth_text,
+        )
         st.caption(
             f"{v240_depth_band_text} • source={v240_decision.get('source_layer') or 'V182 current path'} • "
             f"reference={_fmt_price(v240_decision.get('entry_reference'))}. "
-            "Dynamic Depth tidak pernah menjadi izin order sendirian."
+            + (
+                "Hazard hanya menjadi timing context dan tidak pernah memberi izin order sendirian."
+                if v240_depth_calibrated
+                else "Tanpa V229 geometry yang aligned, dashboard sengaja tidak menghitung reversal band."
+            )
         )
         qe3, qe4 = st.columns(2)
         qe3.metric(
@@ -3330,7 +3444,10 @@ with forecast_tab:
         qr3.metric(
             "13 • Path target (BUKAN TP order)",
             (
-                _fmt_price(v240_destination.get("target_price"))
+                "SUDAH TERCAPAI • " + _fmt_price(v240_destination.get("target_price"))
+                if v240_destination.get("role") == "PATH_TARGET_REACHED"
+                and v240_destination.get("target_price") is not None
+                else _fmt_price(v240_destination.get("target_price"))
                 if v240_destination.get("target_price") is not None
                 else "Belum tersedia"
             ),
@@ -3344,8 +3461,13 @@ with forecast_tab:
                 "Opposing zone tujuan: "
                 f"{_fmt_price(v240_destination.get('zone_low'))}–"
                 f"{_fmt_price(v240_destination.get('zone_high'))} • "
+                f"state={v240_destination.get('destination_state') or v240_decision.get('path_destination_state') or '—'} • "
                 f"role={v240_destination.get('role') or 'PATH WATCH'}. "
-                "Jika belum ada admission, angka ini adalah tujuan struktur, bukan TP order."
+                + (
+                    "Current leg sudah mencapai area tujuan; fokus berikutnya adalah watch next-leg, bukan mengejar target lama."
+                    if v240_destination.get("role") == "PATH_TARGET_REACHED"
+                    else "Jika belum ada admission, angka ini adalah tujuan struktur, bukan TP order."
+                )
             )
         qr5, qr6 = st.columns(2)
         qr5.metric("15 • Lifecycle", _human_wait_reason(v240_state))
@@ -3397,8 +3519,12 @@ with forecast_tab:
         )
         if v240_dom_score is None:
             st.warning(
-                "DOM Level-II belum tersedia. Entry depth tetap memakai canonical depth map "
-                "tanpa mengarang buyer/seller pressure."
+                "DOM Level-II belum tersedia. Dashboard tidak mengarang buyer/seller pressure. "
+                + (
+                    "Dynamic Depth hazard tetap hanya context dari geometry V229 yang sudah aligned."
+                    if v240_depth_calibrated
+                    else "Karena V229 belum aligned, yang ditampilkan hanya posisi geometris dalam zona."
+                )
             )
         elif v240_dom_stale:
             st.warning(
@@ -3425,7 +3551,11 @@ with forecast_tab:
             "volume global COMEX. Pressure sekarang ditampilkan langsung di panel V240."
         )
 
-        st.markdown("###### Dynamic Depth Hazard — next depth / reversal window")
+        st.markdown(
+            "###### Dynamic Depth Hazard — next depth / reversal window"
+            if v240_depth_calibrated
+            else "###### Lokasi vs source zone — geometry only (BUKAN reversal forecast)"
+        )
         hz1, hz2, hz3, hz4 = st.columns(4)
         hz1.metric(
             "Current depth",

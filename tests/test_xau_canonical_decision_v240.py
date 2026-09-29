@@ -521,3 +521,69 @@ def test_v240_empty_v226_candidate_uses_current_path_source_watch() -> None:
     assert state["entry_high"] == 105.0
     assert state["entry_authorized"] is False
     assert state["likely_destination"]["target_price"] == 110.0
+
+
+
+def test_v2571_marks_path_target_reached_when_price_is_inside_opposing_zone() -> None:
+    v226 = {
+        "focus_direction": "SHORT",
+        "depth_entry_candidate": {
+            "direction": "SHORT",
+            "entry_low": 4357.64,
+            "entry_high": 4359.52,
+            "entry_reference": 4358.40,
+            "source_layer": "M15_NESTED_LOCATOR",
+        },
+        "four_order_ladder": {"slots": []},
+    }
+    demand = {
+        "zone_id": "demand-now",
+        "timeframe": "H1",
+        "direction": "LONG",
+        "low": 4114.50,
+        "high": 4127.83,
+        "proximal": 4127.40,
+        "lifecycle": {"active": True, "touch_count": 1},
+    }
+    supply = {
+        "zone_id": "supply-now",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 4136.55,
+        "high": 4160.48,
+        "proximal": 4136.55,
+        "lifecycle": {"active": True, "touch_count": 4},
+    }
+    atlas = {
+        "zones": [],
+        "path_map": {
+            "active_path": {
+                "reaction_direction": "LONG",
+                "source_zone": demand,
+                "reaction_target": {"price": 4136.55},
+                "primary_opposing_zone": supply,
+                "terminal_target_zone": supply,
+            },
+            "demand_to_supply": {
+                "reaction_direction": "LONG",
+                "source_zone": demand,
+                "reaction_target": {"price": 4136.55},
+                "primary_opposing_zone": supply,
+                "terminal_target_zone": supply,
+            },
+        },
+    }
+
+    state = build_canonical_xau_decision(
+        v226_evaluation=v226,
+        atlas_evaluation=atlas,
+        price_now=4139.45,
+        path_direction="LONG",
+    )
+
+    assert state["direction"] == "LONG"
+    assert state["entry_authorized"] is False
+    assert state["path_destination_state"] == "INSIDE_OPPOSING_ZONE"
+    assert state["likely_destination"]["role"] == "PATH_TARGET_REACHED"
+    assert state["likely_destination"]["target_price"] == 4136.55
+    assert state["likely_destination"]["destination_state"] == "INSIDE_OPPOSING_ZONE"
