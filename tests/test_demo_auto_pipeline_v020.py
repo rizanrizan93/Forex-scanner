@@ -193,10 +193,14 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" in text
     assert "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_DISPATCHED" in text
     assert "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED" in text
-    assert "latest_execution_status" in text
-    assert '[ "${latest_execution_status}" = "completed" ]' in text
-    assert '[ "${latest_execution_conclusion}" = "success" ]' in text
+    assert "execution_overlap_guard=ACTIVE_COUNT" in text
     assert "other_active_supervisors" in text
+    assert '[ "${other_active_supervisors}" -eq 0 ]' in text
+    assert '[ "${latest_execution_status}" = "completed" ]' not in text
+    assert '[ "${latest_execution_conclusion}" = "success" ]' not in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-execution-lane.yml" "EXECUTION" 600' in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-afic-prepared-lane.yml" "RIZAN_PREPARED" 600' in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-dom-v191.yml" "DOM_V191" 600' in text
     assert "safety=FAIL_CLOSED" in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
