@@ -102,8 +102,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
       XAU_V225_SHARD_DIR: /tmp/v225-shards
       XAU_V225_FULL_OUTPUT: artifacts/xau-zone-reversal-depth-v225-full.json
 
