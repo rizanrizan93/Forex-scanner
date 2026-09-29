@@ -227,9 +227,16 @@ def _competing_risk_heatmap(
         )
         rows.append(
             {
-                **row,
+                "band": row.get("band"),
+                "lower_depth": lower,
+                "upper_depth": upper,
                 "price_low": float(geometry["low"]),
                 "price_high": float(geometry["high"]),
+                "at_risk": int(row.get("at_risk") or 0),
+                "p_reversal_first": p_reversal,
+                "p_break_first": p_break,
+                "reversal_wilson_95": dict(row.get("reversal_wilson_95") or {}),
+                "break_wilson_95": dict(row.get("break_wilson_95") or {}),
                 "dominant_outcome": dominant,
                 "label": (
                     "RISET OOS FIRST-TOUCH 2025-2026"
@@ -571,11 +578,6 @@ def _historical_profile(
 ) -> dict[str, Any]:
     finding = _profile_key_findings(history_details, timeframe, direction)
     bands = _hazard_bands(history_details, timeframe, direction)
-    competing = _competing_risk_bands(
-        history_details,
-        timeframe,
-        direction,
-    )
     oos_competing = _competing_risk_bands(
         history_details,
         timeframe,
@@ -645,9 +647,14 @@ def _historical_profile(
         "depth_p75": _f(finding.get("depth_p75")),
         "highest_hazard_band": top,
         "hazard_bands": enriched,
-        "competing_risk_bands": competing,
-        "oos_2025_2026_competing_risk_bands": oos_competing,
-        "break_crossover_band": _break_crossover_band(competing),
+        "oos_2025_2026_competing_risk_bands": [
+            {
+                key: value
+                for key, value in row.items()
+                if key not in {"eras"}
+            }
+            for row in oos_competing
+        ],
         "oos_2025_2026_break_crossover_band": _break_crossover_band(oos_competing),
         "competing_risk_scope": "FIRST_TOUCH_ONLY",
         "retest_competing_risk_calibrated": False,
