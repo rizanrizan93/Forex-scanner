@@ -3462,77 +3462,89 @@ with forecast_tab:
             )
         )
 
-        st.markdown("###### Supply/Demand Lifecycle — freshness bukan hard gate H4/H1")
-        lifecycle_rows_dashboard = [
-            {
-                "TF": "H4",
-                "zone": (
-                    f"{_fmt_price(dict(v226_h4.get('zone') or {}).get('low'))}–"
-                    f"{_fmt_price(dict(v226_h4.get('zone') or {}).get('high'))}"
-                ),
-                "touch": v226_h4_app.get("touch_count"),
-                "freshness": v226_h4_app.get("freshness"),
-                "state": v226_h4_app.get("state"),
-                "weight": v226_h4_app.get("lifecycle_weight"),
-                "prior_scope": v226_h4_app.get("prior_scope"),
-                "retest_allowed": v226_h4_app.get("htf_retest_allowed"),
-            },
-            {
-                "TF": "H1",
-                "zone": (
-                    f"{_fmt_price(dict(v226_h1.get('zone') or {}).get('low'))}–"
-                    f"{_fmt_price(dict(v226_h1.get('zone') or {}).get('high'))}"
-                ),
-                "touch": v226_h1_app.get("touch_count"),
-                "freshness": v226_h1_app.get("freshness"),
-                "state": v226_h1_app.get("state"),
-                "weight": v226_h1_app.get("lifecycle_weight"),
-                "prior_scope": v226_h1_app.get("prior_scope"),
-                "retest_allowed": v226_h1_app.get("htf_retest_allowed"),
-            },
-            {
-                "TF": "M15",
-                "zone": (
-                    f"{_fmt_price(dict(v226_m15.get('zone') or {}).get('low'))}–"
-                    f"{_fmt_price(dict(v226_m15.get('zone') or {}).get('high'))}"
-                ),
-                "touch": v226_m15_app.get("touch_count"),
-                "freshness": v226_m15_app.get("freshness"),
-                "state": v226_m15_app.get("state"),
-                "weight": v226_m15_app.get("lifecycle_weight"),
-                "prior_scope": v226_m15_app.get("prior_scope"),
-                "retest_allowed": not bool(v226_m15_app.get("strict_lower_tf", True)),
-            },
-        ]
-        st.dataframe(
-            pd.DataFrame(lifecycle_rows_dashboard),
-            hide_index=True,
-            width="stretch",
-        )
-        zl1, zl2, zl3, zl4 = st.columns(4)
-        zl1.metric(
-            "Candidate lifecycle",
-            str(v226_entry_candidate.get("display_status") or "—"),
-        )
-        zl2.metric(
-            "Pre-touch eligible",
-            "YES" if v226_entry_candidate.get("pre_touch_execution_eligible") else "NO",
-        )
-        zl3.metric(
-            "Confirmation eligible",
-            "YES" if v226_entry_candidate.get("confirmation_execution_eligible") else "NO",
-        )
-        zl4.metric(
-            "HTF retested",
-            "YES" if v226_entry_candidate.get("htf_retested") else "NO",
-        )
+        st.markdown("###### Current Supply/Demand Lifecycle")
+        lifecycle_rows_dashboard = []
+        for role, zone in (
+            ("CURRENT SOURCE", v240_active_source or v240_local_structure),
+            ("NEAREST DEMAND", v240_nearest_demand),
+            ("NEAREST SUPPLY", v240_nearest_supply),
+        ):
+            zone = dict(zone or {})
+            if not zone:
+                continue
+            lifecycle_rows_dashboard.append(
+                {
+                    "role": role,
+                    "TF": zone.get("timeframe"),
+                    "direction": zone.get("direction"),
+                    "zone": (
+                        f"{_fmt_price(zone.get('low'))}–"
+                        f"{_fmt_price(zone.get('high'))}"
+                    ),
+                    "touch": zone.get("touch_count"),
+                    "freshness": zone.get("freshness"),
+                    "score": zone.get("research_score"),
+                }
+            )
+        if lifecycle_rows_dashboard:
+            st.dataframe(
+                pd.DataFrame(lifecycle_rows_dashboard),
+                hide_index=True,
+                width="stretch",
+            )
+        else:
+            st.info("Lifecycle current path belum tersedia.")
+
         st.caption(
-            "H4/H1 yang masih structurally active tetap dipakai walau multi-touch. "
-            "Touch count menurunkan lifecycle priority tetapi tidak mematikan zona. "
-            "Jika HTF atau M15 sudah retest, jalur DEMO menjadi confirmation-only. "
-            "M15 multi-test tidak lagi menjadi hard reject; pressure transition + fresh "
-            "M5 confirmation wajib sebelum child L3/L4 boleh dieksekusi."
+            "Tabel ini hanya menampilkan struktur current V182/V240. "
+            "Lifecycle H4/H1/M15 V226 historis dipindahkan ke panel riset V226 agar "
+            "tidak terlihat seperti zona entry operasional."
         )
+        with st.expander("Riset lifecycle V226 historis", expanded=False):
+            v226_lifecycle_rows = [
+                {
+                    "TF": "H4",
+                    "zone": (
+                        f"{_fmt_price(dict(v226_h4.get('zone') or {}).get('low'))}–"
+                        f"{_fmt_price(dict(v226_h4.get('zone') or {}).get('high'))}"
+                    ),
+                    "touch": v226_h4_app.get("touch_count"),
+                    "freshness": v226_h4_app.get("freshness"),
+                    "state": v226_h4_app.get("state"),
+                    "prior_scope": v226_h4_app.get("prior_scope"),
+                },
+                {
+                    "TF": "H1",
+                    "zone": (
+                        f"{_fmt_price(dict(v226_h1.get('zone') or {}).get('low'))}–"
+                        f"{_fmt_price(dict(v226_h1.get('zone') or {}).get('high'))}"
+                    ),
+                    "touch": v226_h1_app.get("touch_count"),
+                    "freshness": v226_h1_app.get("freshness"),
+                    "state": v226_h1_app.get("state"),
+                    "prior_scope": v226_h1_app.get("prior_scope"),
+                },
+                {
+                    "TF": "M15",
+                    "zone": (
+                        f"{_fmt_price(dict(v226_m15.get('zone') or {}).get('low'))}–"
+                        f"{_fmt_price(dict(v226_m15.get('zone') or {}).get('high'))}"
+                    ),
+                    "touch": v226_m15_app.get("touch_count"),
+                    "freshness": v226_m15_app.get("freshness"),
+                    "state": v226_m15_app.get("state"),
+                    "prior_scope": v226_m15_app.get("prior_scope"),
+                },
+            ]
+            st.dataframe(
+                pd.DataFrame(v226_lifecycle_rows),
+                hide_index=True,
+                width="stretch",
+            )
+            st.caption(
+                "V226 lifecycle = research/depth context. Candidate lama tidak mengalahkan "
+                "current V182 path dan tidak menjadi entry tanpa aligned V229 plan."
+            )
 
         st.markdown("###### V229 DEMO Execution — producer + child executor")
         ex1, ex2, ex3, ex4 = st.columns(4)
