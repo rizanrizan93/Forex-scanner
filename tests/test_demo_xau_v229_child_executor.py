@@ -304,7 +304,13 @@ def test_v266_workflow_enables_bounded_demo_calibration_probe() -> None:
     ).read_text()
     assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_ENABLED: "1"' in workflow
     assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MIN_RR: "1.00"' in workflow
-    assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.35"' in workflow
+    assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.70"' in workflow
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_child_executor.py"
+    ).read_text()
+    assert 'float(recommended_high) + 0.10' in source
+    assert 'effective_probe_max_depth' in source
 
 
 class _ProbeAuditQuery:
