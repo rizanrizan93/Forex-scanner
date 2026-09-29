@@ -32,6 +32,8 @@ H4_STOP_BUFFER_ATR = 0.15
 MIN_PLAN_RR = 1.0
 SCORE = 93.0
 MAX_FRESH_CALIBRATION_APPROACH_ATR = 0.50
+MAX_HIGH_OVERLAP_CALIBRATION_APPROACH_ATR = 1.00
+HIGH_M30_PARENT_OVERLAP_RATIO = 0.70
 
 
 def _bool_env(name: str, default: bool = False) -> bool:
@@ -54,11 +56,110 @@ def _f(value: Any) -> float | None:
     return parsed if isfinite(parsed) else None
 
 
+def _fresh_first_touch_calibration_context(
+    *,
+    plan: dict[str, Any],
+    atlas_evaluation: dict[str, Any],
+    live_price: float | None = None,
+) -> dict[str, Any]:
+    """Derive an operational pre-touch arm radius from M30 overlap + composite pressure.
+
+    V273 shows that high M30/H1-H4 overlap has materially stronger holdout reaction
+    evidence than no overlap. This does not become standalone authority; it only
+    permits an earlier pending LIMIT when V272 composite pressure also supports
+    the same direction. The pending order remains at the canonical first-touch
+    price and is cancelled when the source/candidate is superseded.
+    """
+    candidate = dict(plan.get("candidate") or {})
+    source = dict(candidate.get("source_zone") or {})
+    source_id = str(source.get("zone_id") or "")
+    direction = str(plan.get("direction") or candidate.get("direction") or "").upper()
+
+    snapshot_distance_atr = _f(source.get("distance_atr"))
+    source_low = _f(source.get("low"))
+    source_high = _f(source.get("high"))
+    source_atr = _f(source.get("atr_points"))
+    live_distance_atr: float | None = None
+    if (
+        live_price is not None
+        and source_low is not None
+        and source_high is not None
+        and source_atr is not None
+        and source_atr > 0.0
+    ):
+        if direction == "SHORT":
+            live_distance_points = max(float(source_low) - float(live_price), 0.0)
+        elif direction == "LONG":
+            live_distance_points = max(float(live_price) - float(source_high), 0.0)
+        else:
+            live_distance_points = 0.0
+        live_distance_atr = live_distance_points / float(source_atr)
+    effective_distance_atr = (
+        live_distance_atr
+        if live_distance_atr is not None
+        else snapshot_distance_atr
+    )
+
+    m30_shadow = dict(atlas_evaluation.get("m30_shadow_v272") or {})
+    matching_overlaps: list[float] = []
+    for raw in list(m30_shadow.get("zones") or []):
+        zone = dict(raw)
+        if str(zone.get("direction") or "").upper() != direction:
+            continue
+        if source_id and str(zone.get("canonical_match_zone_id") or "") != source_id:
+            continue
+        overlap = _f(zone.get("canonical_overlap_ratio"))
+        if overlap is not None:
+            matching_overlaps.append(float(overlap))
+    m30_overlap = max(matching_overlaps) if matching_overlaps else 0.0
+
+    composite = dict(atlas_evaluation.get("composite_pressure_v272") or {})
+    composite_available = bool(composite.get("available"))
+    composite_direction_allowed = bool(
+        composite.get(
+            "long_calibration_allowed"
+            if direction == "LONG"
+            else "short_calibration_allowed"
+        )
+    ) if direction in {"LONG", "SHORT"} else False
+
+    high_overlap_supported = bool(
+        m30_overlap >= HIGH_M30_PARENT_OVERLAP_RATIO
+        and composite_available
+        and composite_direction_allowed
+    )
+    max_distance_atr = (
+        MAX_HIGH_OVERLAP_CALIBRATION_APPROACH_ATR
+        if high_overlap_supported
+        else MAX_FRESH_CALIBRATION_APPROACH_ATR
+    )
+    return {
+        "source_zone_id": source_id or None,
+        "direction": direction or None,
+        "snapshot_approach_distance_atr": snapshot_distance_atr,
+        "live_approach_distance_atr": live_distance_atr,
+        "effective_approach_distance_atr": effective_distance_atr,
+        "m30_parent_overlap_ratio": m30_overlap,
+        "high_m30_overlap": m30_overlap >= HIGH_M30_PARENT_OVERLAP_RATIO,
+        "composite_pressure_available": composite_available,
+        "composite_direction_allowed": composite_direction_allowed,
+        "composite_state": composite.get("state"),
+        "max_approach_distance_atr": float(max_distance_atr),
+        "policy": (
+            "HIGH_M30_OVERLAP_PLUS_COMPOSITE_SUPPORT_1_00_ATR"
+            if high_overlap_supported
+            else "BASE_FIRST_TOUCH_0_50_ATR"
+        ),
+    }
+
+
 def _fresh_first_touch_calibration_arm_allowed(
     *,
     plan: dict[str, Any],
     pressure_transition: dict[str, Any],
     depth_hazard: dict[str, Any],
+    atlas_evaluation: dict[str, Any],
+    live_price: float | None = None,
 ) -> bool:
     """Allow one DEMO-only L1 arm before a fresh first touch without opening strict slots."""
     if bool(plan.get("confirmation_window_only")):
@@ -76,11 +177,18 @@ def _fresh_first_touch_calibration_arm_allowed(
         return False
     if str(depth_hazard.get("location_state") or "") != "AHEAD_OF_ZONE":
         return False
-    source = dict(candidate.get("source_zone") or {})
-    distance_atr = _f(source.get("distance_atr"))
+    context = _fresh_first_touch_calibration_context(
+        plan=plan,
+        atlas_evaluation=atlas_evaluation,
+        live_price=live_price,
+    )
+    plan["calibration_approach_context"] = context
+    distance_atr = _f(context.get("effective_approach_distance_atr"))
     if distance_atr is None:
         return False
-    return 0.0 <= float(distance_atr) <= MAX_FRESH_CALIBRATION_APPROACH_ATR
+    return 0.0 <= float(distance_atr) <= float(
+        context["max_approach_distance_atr"]
+    )
 
 
 def _dt(value: Any) -> datetime | None:
@@ -432,6 +540,9 @@ def _record_execution_geometry(
             "historical_entry_high": plan.get("historical_entry_high"),
             "confirmation_window_only": bool(plan.get("confirmation_window_only")),
             "calibration_only_armed": bool(plan.get("calibration_only_armed")),
+            "calibration_approach_context": dict(
+                plan.get("calibration_approach_context") or {}
+            ),
             "confirmation_entry_low": plan.get("confirmation_entry_low"),
             "confirmation_entry_high": plan.get("confirmation_entry_high"),
             "confirmation_entry_reference": plan.get("confirmation_entry_reference"),
@@ -576,6 +687,8 @@ def run() -> int:
                     plan=plan,
                     pressure_transition=pressure_transition,
                     depth_hazard=depth_hazard,
+                    atlas_evaluation=atlas_eval,
+                    live_price=live_price,
                 )
                 if not strict_pressure_allowed and not fresh_calibration_arm:
                     reason = (
@@ -657,6 +770,9 @@ def run() -> int:
             "signal_id": signal_id,
             "candidate_key": candidate_key,
             "plan": plan or {},
+            "fresh_calibration_approach_policy": dict(
+                (plan or {}).get("calibration_approach_context") or {}
+            ),
             "plan_diagnostics": plan_diagnostics,
             "structure_admission": admission if "admission" in locals() else {},
             "prior_ready_invalidated": prior_invalidated,

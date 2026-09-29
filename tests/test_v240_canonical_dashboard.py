@@ -242,8 +242,20 @@ def test_v271_dashboard_separates_single_sample_demo_pressure_from_strict_transi
 
 
 def test_v275_dashboard_separates_fresh_l1_calibration_from_strict_slots() -> None:
-    assert "V275: pada fresh first-touch yang berjarak ≤0,50 ATR" in SOURCE
+    assert "V275/V276: fresh first-touch memakai radius arm adaptif." in SOURCE
+    assert "Base ≤0,50 ATR" in SOURCE
+    assert "sampai ≤1,00 ATR" in SOURCE
+    assert "M30 parent overlap ≥70%" in SOURCE
+    assert "composite pressure mendukung arah yang sama" in SOURCE
     assert "L1 DEMO 0,01 lot boleh" in SOURCE
     assert "L2/L3/L4 tetap strict" in SOURCE
     assert "FRESH_FIRST_TOUCH_CALIBRATION_ARMED" in SOURCE
     assert "L1 DEMO calibration armed — L2/L3/L4 tetap strict" in SOURCE
+
+
+def test_v276_dashboard_explains_adaptive_early_arm_without_relaxing_strict_slots() -> None:
+    assert "radius arm adaptif" in SOURCE
+    assert "Base ≤0,50 ATR" in SOURCE
+    assert "M30 parent overlap ≥70%" in SOURCE
+    assert "composite pressure mendukung arah yang sama" in SOURCE
+    assert "L2/L3/L4 tetap strict" in SOURCE

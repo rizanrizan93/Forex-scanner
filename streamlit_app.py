@@ -3018,8 +3018,10 @@ with forecast_tab:
             st.success(
                 "V229 memakai jalur khusus. Fresh mode = 4-CHILD 2+2 "
                 "(2 pre-touch LIMIT + 2 child konfirmasi); H4/H1 retest tetap eligible. "
-                "V275: pada fresh first-touch yang berjarak ≤0,50 ATR, L1 DEMO 0,01 lot boleh "
-                "di-arm lebih awal bila calibration pressure aman; L2/L3/L4 tetap strict. "
+                "V275/V276: fresh first-touch memakai radius arm adaptif. Base ≤0,50 ATR; "
+                "boleh diperluas sampai ≤1,00 ATR hanya bila M30 parent overlap ≥70% dan "
+                "composite pressure mendukung arah yang sama. L1 DEMO 0,01 lot boleh di-arm "
+                "lebih awal; L2/L3/L4 tetap strict. "
                 "Untuk retest, L1 DEMO calibration probe 0,01 lot memakai M5 pocket aktual. Jika pocket aktual "
                 "sudah disentuh terlalu dalam lalu closed M5 reject kembali ke no-chase band, V270 boleh "
                 "memasang satu LIMIT retest di Dynamic Depth band yang masih eligible (maksimum umur M5 60 menit). "

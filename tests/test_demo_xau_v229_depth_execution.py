@@ -6,6 +6,7 @@ from fx_scanner.demo_execution_fresh_ready_handoff import (
 from fx_scanner.demo_xau_v229_depth_execution import (
     STRATEGY_ID,
     _fresh_first_touch_calibration_arm_allowed,
+    _fresh_first_touch_calibration_context,
     build_execution_plan,
 )
 from fx_scanner.demo_xau_v226_rizan_depth_map import build_depth_map
@@ -686,6 +687,7 @@ def test_v275_fresh_first_touch_calibration_arm_requires_nearby_fresh_candidate(
         plan=plan,
         pressure_transition=pressure,
         depth_hazard=hazard,
+        atlas_evaluation={},
     ) is True
 
     too_far = {
@@ -699,6 +701,7 @@ def test_v275_fresh_first_touch_calibration_arm_requires_nearby_fresh_candidate(
         plan=too_far,
         pressure_transition=pressure,
         depth_hazard=hazard,
+        atlas_evaluation={},
     ) is False
 
     not_fresh = {
@@ -712,6 +715,7 @@ def test_v275_fresh_first_touch_calibration_arm_requires_nearby_fresh_candidate(
         plan=not_fresh,
         pressure_transition=pressure,
         depth_hazard=hazard,
+        atlas_evaluation={},
     ) is False
 
 
@@ -727,3 +731,155 @@ def test_v275_producer_persists_calibration_arm_without_opening_strict_authority
     assert '"calibration_authority_only"' in source
     assert '"DEMO_CALIBRATION_L1_ONLY"' in source
     assert "not plan.get(\"calibration_only_armed\")" in source
+
+
+def test_v276_high_m30_overlap_plus_same_direction_composite_extends_arm_to_one_atr() -> None:
+    plan = {
+        "direction": "SHORT",
+        "execution_phase": "PRE_TOUCH",
+        "confirmation_window_only": False,
+        "candidate": {
+            "calibrated_fresh_first_touch": True,
+            "pre_touch_execution_eligible": True,
+            "direction": "SHORT",
+            "source_zone": {
+                "zone_id": "fresh-h1-supply",
+                "distance_atr": 0.80,
+            },
+        },
+    }
+    atlas = {
+        "m30_shadow_v272": {
+            "available": True,
+            "zones": [
+                {
+                    "direction": "SHORT",
+                    "canonical_match_zone_id": "fresh-h1-supply",
+                    "canonical_overlap_ratio": 1.0,
+                }
+            ],
+        },
+        "composite_pressure_v272": {
+            "available": True,
+            "state": "SELLER_LEAN",
+            "short_calibration_allowed": True,
+            "long_calibration_allowed": False,
+        },
+    }
+    pressure = {"calibration_entry_allowed": True}
+    hazard = {
+        "state": "DYNAMIC_DEPTH_HAZARD_AVAILABLE",
+        "location_state": "AHEAD_OF_ZONE",
+    }
+
+    context = _fresh_first_touch_calibration_context(
+        plan=plan,
+        atlas_evaluation=atlas,
+    )
+    assert context["m30_parent_overlap_ratio"] == 1.0
+    assert context["high_m30_overlap"] is True
+    assert context["composite_direction_allowed"] is True
+    assert context["max_approach_distance_atr"] == 1.0
+    assert context["policy"] == "HIGH_M30_OVERLAP_PLUS_COMPOSITE_SUPPORT_1_00_ATR"
+    assert _fresh_first_touch_calibration_arm_allowed(
+        plan=plan,
+        pressure_transition=pressure,
+        depth_hazard=hazard,
+        atlas_evaluation=atlas,
+    ) is True
+
+
+def test_v276_opposing_composite_keeps_base_half_atr_even_with_full_m30_overlap() -> None:
+    plan = {
+        "direction": "SHORT",
+        "execution_phase": "PRE_TOUCH",
+        "confirmation_window_only": False,
+        "candidate": {
+            "calibrated_fresh_first_touch": True,
+            "pre_touch_execution_eligible": True,
+            "direction": "SHORT",
+            "source_zone": {
+                "zone_id": "fresh-h1-supply",
+                "distance_atr": 0.658,
+            },
+        },
+    }
+    atlas = {
+        "m30_shadow_v272": {
+            "zones": [
+                {
+                    "direction": "SHORT",
+                    "canonical_match_zone_id": "fresh-h1-supply",
+                    "canonical_overlap_ratio": 1.0,
+                }
+            ],
+        },
+        "composite_pressure_v272": {
+            "available": True,
+            "state": "BUYER_LEAN",
+            "short_calibration_allowed": False,
+            "long_calibration_allowed": True,
+        },
+    }
+    pressure = {"calibration_entry_allowed": True}
+    hazard = {
+        "state": "DYNAMIC_DEPTH_HAZARD_AVAILABLE",
+        "location_state": "AHEAD_OF_ZONE",
+    }
+
+    context = _fresh_first_touch_calibration_context(
+        plan=plan,
+        atlas_evaluation=atlas,
+    )
+    assert context["m30_parent_overlap_ratio"] == 1.0
+    assert context["composite_direction_allowed"] is False
+    assert context["max_approach_distance_atr"] == 0.5
+    assert context["policy"] == "BASE_FIRST_TOUCH_0_50_ATR"
+    assert _fresh_first_touch_calibration_arm_allowed(
+        plan=plan,
+        pressure_transition=pressure,
+        depth_hazard=hazard,
+        atlas_evaluation=atlas,
+    ) is False
+
+
+def test_v276_live_ctrader_price_overrides_stale_snapshot_distance_for_arm() -> None:
+    plan = {
+        "direction": "SHORT",
+        "execution_phase": "PRE_TOUCH",
+        "confirmation_window_only": False,
+        "candidate": {
+            "calibrated_fresh_first_touch": True,
+            "pre_touch_execution_eligible": True,
+            "direction": "SHORT",
+            "source_zone": {
+                "zone_id": "fresh-h1-supply",
+                "low": 4179.03,
+                "high": 4197.99,
+                "atr_points": 17.43257897762935,
+                "distance_atr": 0.658,
+            },
+        },
+    }
+    pressure = {"calibration_entry_allowed": True}
+    hazard = {
+        "state": "DYNAMIC_DEPTH_HAZARD_AVAILABLE",
+        "location_state": "AHEAD_OF_ZONE",
+    }
+    # Live bid has moved closer: (4179.03 - 4172.50) / 17.4326 ~= 0.375 ATR.
+    context = _fresh_first_touch_calibration_context(
+        plan=plan,
+        atlas_evaluation={},
+        live_price=4172.50,
+    )
+    assert context["snapshot_approach_distance_atr"] == 0.658
+    assert 0.37 < context["live_approach_distance_atr"] < 0.38
+    assert context["effective_approach_distance_atr"] == context["live_approach_distance_atr"]
+    assert context["max_approach_distance_atr"] == 0.5
+    assert _fresh_first_touch_calibration_arm_allowed(
+        plan=plan,
+        pressure_transition=pressure,
+        depth_hazard=hazard,
+        atlas_evaluation={},
+        live_price=4172.50,
+    ) is True
