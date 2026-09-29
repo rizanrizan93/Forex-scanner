@@ -326,7 +326,11 @@ def build_parent_ladder_plan(
         "rr2": float(rr2),
         "source_layer": str(candidate.get("source_layer") or ""),
         "source_timeframe": str(candidate.get("source_timeframe") or candidate_source_tf),
-        "h4_zone_id": str(h4.get("zone_id") or ""),
+        "h4_zone_id": (
+            str(h4.get("zone_id") or "")
+            if str(stop_zone.get("timeframe") or "").upper() == "H4"
+            else ""
+        ),
         "structural_stop_zone_id": str(stop_zone.get("zone_id") or ""),
         "structural_stop_timeframe": str(stop_zone.get("timeframe") or "").upper(),
         "candidate": candidate,
