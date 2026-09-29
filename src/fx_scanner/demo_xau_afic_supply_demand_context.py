@@ -251,8 +251,39 @@ def attach_supply_demand_context(
     demand_to_supply = dict(path_map.get("demand_to_supply") or {})
     supply_to_demand = dict(path_map.get("supply_to_demand") or {})
     active_path = dict(path_map.get("active_path") or {})
+    active_path_direction = str(active_path.get("reaction_direction") or "").upper()
+
+    # V258 observability fallback: when the legacy RIZAN forecast has no canonical
+    # H4 map, keep the current V182 structural path visible as PREPARE/SHADOW
+    # context. This must never back-fill continuation_direction or create an order
+    # blueprint; it only prevents a valid structural handoff from being displayed
+    # as "no context".
+    structural_direction = (
+        continuation
+        if continuation in {"LONG", "SHORT"}
+        else active_path_direction
+        if active_path_direction in {"LONG", "SHORT"}
+        else first_leg
+        if first_leg in {"LONG", "SHORT"}
+        else ""
+    )
+    structural_direction_source = (
+        "CANONICAL_FORECAST"
+        if continuation in {"LONG", "SHORT"}
+        else "V182_ACTIVE_PATH_PREPARE_ONLY"
+        if active_path_direction in {"LONG", "SHORT"}
+        else "LEGACY_FIRST_LEG_PREPARE_ONLY"
+        if first_leg in {"LONG", "SHORT"}
+        else "UNAVAILABLE"
+    )
+    if first_leg not in {"LONG", "SHORT"} and active_path_direction in {"LONG", "SHORT"}:
+        first_leg = active_path_direction
+
     first_leg_path = (
-        demand_to_supply
+        active_path
+        if active_path
+        and str(active_path.get("reaction_direction") or "").upper() == first_leg
+        else demand_to_supply
         if first_leg == "LONG"
         else supply_to_demand
         if first_leg == "SHORT"
@@ -275,10 +306,13 @@ def attach_supply_demand_context(
         and path_overlap_ratio >= 0.25
     )
     continuation_path = (
-        demand_to_supply
-        if continuation == "LONG"
+        active_path
+        if active_path
+        and str(active_path.get("reaction_direction") or "").upper() == structural_direction
+        else demand_to_supply
+        if structural_direction == "LONG"
         else supply_to_demand
-        if continuation == "SHORT"
+        if structural_direction == "SHORT"
         else {}
     )
     last_price = _finite(atlas.get("last_closed_m15_price"))
@@ -289,8 +323,8 @@ def attach_supply_demand_context(
         list(atlas.get("chart_bars_m15") or [])
     )
     wanted_target_direction = (
-        "SHORT" if continuation == "LONG"
-        else "LONG" if continuation == "SHORT"
+        "SHORT" if structural_direction == "LONG"
+        else "LONG" if structural_direction == "SHORT"
         else ""
     )
     m15_target_zones = [
@@ -320,7 +354,7 @@ def attach_supply_demand_context(
 
     structural_target_context = {
         "contract": "XAU_STRUCTURAL_TARGET_CONTEXT_V229_1",
-        "direction": continuation or None,
+        "direction": structural_direction or None,
         "m15_opposing_zones": m15_target_zones[:12],
         "htf_destination_stack": htf_target_pool,
         "execution_influence": False,
@@ -375,10 +409,10 @@ def attach_supply_demand_context(
                 f"{conflict_resolution_evidence}_EVENT_RISK_{event_state}"
             )
 
-    if continuation == "LONG":
+    if structural_direction == "LONG":
         same_direction = nearest_demand
         opposite_direction = nearest_supply
-    elif continuation == "SHORT":
+    elif structural_direction == "SHORT":
         same_direction = nearest_supply
         opposite_direction = nearest_demand
     else:
@@ -459,6 +493,8 @@ def attach_supply_demand_context(
         "last_closed_m15_price": last_price,
         "session_context": atlas.get("session_context"),
         "continuation_direction": continuation or None,
+        "structural_direction": structural_direction or None,
+        "structural_direction_source": structural_direction_source,
         "first_leg_direction": first_leg or None,
         "canonical_zone_present": bool(canonical),
         "canonical_zone_id": canonical.get("zone_id"),
@@ -546,6 +582,8 @@ def attach_supply_demand_context(
         "promotion_authority": False,
         "interpretation": (
             "Supply/demand is RIZAN context and preparation evidence only. "
+            "When the legacy canonical forecast has no map, V182 active_path may remain "
+            "visible as structural PREPARE context without creating an order blueprint. "
             "Path mapping can identify the next opposing zone and internal waypoints. "
             "If opposing H1 source zones overlap materially, the state is compression/conflict. "
             "V189 microstructure, V191 broker-venue DOM and V192 event risk may provide "
