@@ -8,16 +8,20 @@ from fx_scanner.demo_xau_v229_child_executor import (
     _activation_entry,
     _calibration_probe_already_accepted,
     _calibration_probe_entry,
+    _calibration_rejection_exit_stop_entry,
     _calibration_rejection_retest_entry,
     _cancel_pending_plan,
     _entry_inside_active_source,
     _existing_slots,
     _limit_side_valid,
+    _pending_side_valid,
     _promote_armed_confirmation_window,
     _slot_target,
+    _source_depth_boundary_price,
     _target_with_min_rr,
 )
 from fx_scanner.demo_xau_v229_ladder_plan import child_client_order_id
+from fx_scanner.execution.models import OrderType
 
 
 def _plan():
@@ -505,3 +509,136 @@ def test_v271_child_pressure_bypass_is_calibration_only_and_strict_stays_two_sam
     assert '"calibration_single_sample_pressure_allowed": True' in source
     assert '"calibration_single_sample_max_opposing_pressure": 15.0' in source
     assert 'pressure_transition.get("confirmation_entry_allowed")' in source
+
+
+def test_v274_source_depth_boundary_price_is_direction_aware() -> None:
+    short_atlas = {
+        "path_map": {
+            "active_path": {
+                "source_zone": {
+                    "direction": "SHORT",
+                    "low": 100.0,
+                    "high": 120.0,
+                }
+            }
+        }
+    }
+    long_atlas = {
+        "path_map": {
+            "active_path": {
+                "source_zone": {
+                    "direction": "LONG",
+                    "low": 100.0,
+                    "high": 120.0,
+                }
+            }
+        }
+    }
+    assert _source_depth_boundary_price(
+        atlas_evaluation=short_atlas,
+        direction="SHORT",
+        depth=0.70,
+    ) == 114.0
+    assert _source_depth_boundary_price(
+        atlas_evaluation=long_atlas,
+        direction="LONG",
+        depth=0.70,
+    ) == 106.0
+
+
+def test_v274_deep_rejection_can_stage_short_exit_stop_at_no_chase_boundary() -> None:
+    atlas = {
+        "path_map": {
+            "active_path": {
+                "source_zone": {
+                    "direction": "SHORT",
+                    "low": 4136.55,
+                    "high": 4160.48,
+                }
+            }
+        }
+    }
+    entry, state = _calibration_rejection_exit_stop_entry(
+        direction="SHORT",
+        micro={
+            "direction": "SHORT",
+            "candidate_entry_pocket": {
+                "low": 4155.0,
+                "high": 4159.0,
+                "origin_at": "2026-09-29T13:40:00+00:00",
+            },
+            "last_closed_m5_price": 4154.5,
+        },
+        atlas_evaluation=atlas,
+        max_depth=0.70,
+        now=datetime.fromisoformat("2026-09-29T14:00:00+00:00"),
+        max_age_seconds=3600.0,
+    )
+    assert round(float(entry), 3) == 4153.301
+    assert state == "M5_CANDIDATE_DEEP_REJECTION_EXIT_STOP"
+
+
+def test_v274_deep_rejection_can_stage_long_exit_stop_at_no_chase_boundary() -> None:
+    atlas = {
+        "path_map": {
+            "active_path": {
+                "source_zone": {
+                    "direction": "LONG",
+                    "low": 100.0,
+                    "high": 120.0,
+                }
+            }
+        }
+    }
+    entry, state = _calibration_rejection_exit_stop_entry(
+        direction="LONG",
+        micro={
+            "direction": "LONG",
+            "candidate_entry_pocket": {
+                "low": 101.0,
+                "high": 105.0,
+                "origin_at": "2026-09-29T13:40:00+00:00",
+            },
+            "last_closed_m5_price": 105.5,
+        },
+        atlas_evaluation=atlas,
+        max_depth=0.70,
+        now=datetime.fromisoformat("2026-09-29T14:00:00+00:00"),
+        max_age_seconds=3600.0,
+    )
+    assert entry == 106.0
+    assert state == "M5_CANDIDATE_DEEP_REJECTION_EXIT_STOP"
+
+
+def test_v274_pending_side_validation_distinguishes_limit_and_stop() -> None:
+    assert _pending_side_valid(
+        "SHORT", OrderType.LIMIT, 102.0, bid=101.0, ask=101.2
+    ) is True
+    assert _pending_side_valid(
+        "SHORT", OrderType.STOP, 100.0, bid=101.0, ask=101.2
+    ) is True
+    assert _pending_side_valid(
+        "SHORT", OrderType.STOP, 102.0, bid=101.0, ask=101.2
+    ) is False
+
+    assert _pending_side_valid(
+        "LONG", OrderType.LIMIT, 100.0, bid=101.0, ask=101.2
+    ) is True
+    assert _pending_side_valid(
+        "LONG", OrderType.STOP, 102.0, bid=101.0, ask=101.2
+    ) is True
+    assert _pending_side_valid(
+        "LONG", OrderType.STOP, 100.0, bid=101.0, ask=101.2
+    ) is False
+
+
+def test_v274_stop_is_calibration_fallback_only_and_strict_default_remains_limit() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_child_executor.py"
+    ).read_text()
+    assert "order_type: OrderType = OrderType.LIMIT" in source
+    assert "child_order_type = OrderType.LIMIT" in source
+    assert "child_order_type = OrderType.STOP" in source
+    assert "PROBE_DEEP_REJECTION_EXIT_STOP_ARMED" in source
+    assert "calibration_probe_exit_stop_enabled" in source
