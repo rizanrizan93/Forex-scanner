@@ -2915,11 +2915,22 @@ with forecast_tab:
                     "V240/V229 + M15 + protection/admission konsisten; izin order tetap mengikuti admission dan protection contract."
                 )
 
+        dc_v182_age = (
+            None
+            if supply_demand_hb is None
+            else _age_seconds(supply_demand_hb.get("observed_at"))
+        )
+        dc_v226_age = (
+            None
+            if v226_depth_map_hb is None
+            else _age_seconds(v226_depth_map_hb.get("observed_at"))
+        )
+        dc_v182_age_text = "—" if dc_v182_age is None else f"{dc_v182_age:.0f}s"
+        dc_v226_age_text = "—" if dc_v226_age is None else f"{dc_v226_age:.0f}s"
         st.caption(
             f"HTF context {dc_htf_context_bias} • H4 parent {dc_h4_text} • D1 parent {dc_d1_text} • "
             f"current path map {_fmt_wib_datetime(current_map, seconds=False)} • "
-            f"V182 age={'—' if supply_demand_hb is None else f'{_age_seconds(supply_demand_hb.get("observed_at")):.0f}s'} • "
-            f"V226 age={'—' if v226_depth_map_hb is None else f'{_age_seconds(v226_depth_map_hb.get("observed_at")):.0f}s'} • "
+            f"V182 age={dc_v182_age_text} • V226 age={dc_v226_age_text} • "
             f"dashboard {_fmt_wib_datetime(datetime.now(tz=UTC), seconds=False)}."
         )
 
