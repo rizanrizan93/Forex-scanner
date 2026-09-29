@@ -30,17 +30,17 @@ def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_hando
     assert "dispatch_workflow ctrader-demo-auto-supervisor.yml" in text
     assert "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_DISPATCHED" in text
     assert "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED" in text
-    assert "latest_execution_status" in text
-    assert '.workflow_runs[0].status // ""' in text
-    assert '[ "${latest_execution_status}" = "completed" ]' in text
-    assert '[ "${latest_execution_conclusion}" = "success" ]' in text
-    assert "latest_execution_state()" in text
-    assert "handoff_wait_max_cycles=8" in text
-    assert "handoff_wait_seconds=15" in text
-    assert "CTRADER_DEMO_SUPERVISOR_HANDOFF_WAIT" in text
-    assert 'queued|in_progress|waiting|pending)' in text
-    assert "never fall back to an" in text
+    assert "execution_overlap_guard=ACTIVE_COUNT" in text
     assert "other_active_supervisors" in text
+    assert '[ "${other_active_supervisors}" -eq 0 ]' in text
+    assert '[ "${latest_execution_status}" = "completed" ]' not in text
+    assert '[ "${latest_execution_conclusion}" = "success" ]' not in text
+    assert "handoff_wait_max_cycles" not in text
+    assert "CTRADER_DEMO_SUPERVISOR_HANDOFF_WAIT" not in text
+    assert "cancel_stale_lane_runs()" in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-execution-lane.yml" "EXECUTION" 600' in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-afic-prepared-lane.yml" "RIZAN_PREPARED" 600' in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-dom-v191.yml" "DOM_V191" 600' in text
     assert "safety=FAIL_CLOSED" in text
     assert "SUPERVISOR_GH_API_RETRY" in text
     assert "SUPERVISOR_GH_API_FAIL_CLOSED" in text
