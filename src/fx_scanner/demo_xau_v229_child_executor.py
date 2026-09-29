@@ -513,7 +513,13 @@ def run() -> int:
     actions: list[str] = []
     error: str | None = None
     try:
+        # Keep the execution control snapshot fresh for the entire one-shot
+        # child-executor cycle. V266 only refreshed once at startup; by the time
+        # structure/DOM/reconcile checks finished, the 5s fail-closed cache could
+        # legitimately be stale even though Supabase control state was healthy.
         control.refresh_once()
+        if hasattr(control, "start"):
+            control.start()
         parents = _latest_parent_rows(store)
         v226_hb = _latest_heartbeat(store, V226_WORKER)
         atlas_hb = _latest_heartbeat(store, ATLAS_WORKER)
@@ -837,6 +843,10 @@ def run() -> int:
                         f"{parent_signal_id}:CONFIRMATION_PROMOTED_AFTER_M5_RR"
                     )
 
+                # Re-anchor control state immediately before crossing into the
+                # broker path; the background worker then keeps it fresh across
+                # preflight and the router's final mutable-safety recheck.
+                control.refresh_once()
                 accepted, detail = _submit_child(
                     router=router,
                     store=store,
@@ -870,6 +880,10 @@ def run() -> int:
         error = f"{type(exc).__name__}:{exc}"
     finally:
         try:
+            control.stop(timeout=2.0)
+        except Exception:
+            pass
+        try:
             session.close()
         except Exception:
             pass
@@ -894,6 +908,11 @@ def run() -> int:
             ),
             "pending_plus_open_guard": True,
             "server_side_sl_tp_required": True,
+            "control_plane_refresh_worker": (
+                control.health() if hasattr(control, "health") else {}
+            ),
+            "control_plane_refresh_interval_seconds": 1.0,
+            "control_plane_pre_submit_refresh": True,
             "generic_market_handoff_allowed": False,
             "pressure_transition_required": True,
             "pressure_transition": pressure_transition if 'pressure_transition' in locals() else {},
