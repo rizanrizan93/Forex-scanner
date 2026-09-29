@@ -3979,7 +3979,7 @@ with forecast_tab:
             str(v240_penetration_risk).split(" —", 1)[0],
         )
         pt1, pt2 = st.columns(2)
-        pt1.metric("Pressure state", v240_effective_pressure_state)
+        pt1.metric("Pressure transition", v240_effective_pressure_state)
         pt2.metric(
             "Pre-touch strict",
             "ALLOW" if v240_pressure_transition.get("pre_touch_entry_allowed") else "WAIT",
