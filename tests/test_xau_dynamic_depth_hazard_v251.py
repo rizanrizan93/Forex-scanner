@@ -239,3 +239,70 @@ def test_v261_dynamic_depth_uses_active_v182_local_source_profile() -> None:
     assert result["historical_prior_scope"] == "FIRST_TOUCH_PRIOR_GEOMETRY_ONLY"
     assert result["retest_confirmation_required"] is True
     assert result["execution_ready"] is True
+
+
+def test_v269_probe_depth_is_separate_from_strict_execution_ready(monkeypatch) -> None:
+    monkeypatch.setenv("CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH", "0.70")
+    payload = _v226()
+    payload["long"]["m15"]["standalone_profile_context"]["hazard_bands"] = [
+        {
+            "band": f"{i * 10:02d}-{(i + 1) * 10:02d}%",
+            "lower_depth": i / 10,
+            "upper_depth": (i + 1) / 10,
+            "hazard": 0.20 - i * 0.01,
+            "wilson_lower_95": 0.10,
+            "at_risk": 500 - i * 20,
+        }
+        for i in range(10)
+    ]
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=payload,
+        direction="LONG",
+        live_price=102.0,
+        pressure_transition={
+            "state":"BALANCED_ABSORPTION",
+            "hard_block":False,
+            "pre_touch_entry_allowed":True,
+            "confirmation_entry_allowed":True,
+        },
+    )
+    assert result["current_depth"] == 0.8
+    assert result["action"] == "ENTRY_WINDOW"
+    assert result["execution_ready"] is True
+    assert result["calibration_probe_depth_ceiling"] == 0.70
+    assert result["calibration_probe_depth_eligible"] is False
+    assert result["calibration_probe_depth_action"] == "NO_CHASE_DEEP_ZONE"
+
+
+def test_v269_probe_depth_is_eligible_when_not_too_deep(monkeypatch) -> None:
+    monkeypatch.setenv("CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH", "0.70")
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=_v226(),
+        direction="LONG",
+        live_price=107.0,
+        pressure_transition={
+            "state":"BALANCED_ABSORPTION",
+            "hard_block":False,
+            "pre_touch_entry_allowed":True,
+            "confirmation_entry_allowed":True,
+        },
+    )
+    assert result["current_depth"] == 0.3
+    assert result["calibration_probe_depth_eligible"] is True
+    assert result["calibration_probe_depth_action"] == "ELIGIBLE_BY_DEPTH_ONLY"
+
+
+def test_v269_probe_depth_ceiling_env_is_bounded(monkeypatch) -> None:
+    monkeypatch.setenv("CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH", "1.50")
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=_v226(),
+        direction="LONG",
+        live_price=107.0,
+        pressure_transition={
+            "state":"BALANCED_ABSORPTION",
+            "hard_block":False,
+            "pre_touch_entry_allowed":True,
+            "confirmation_entry_allowed":True,
+        },
+    )
+    assert result["calibration_probe_depth_ceiling"] == 1.0
