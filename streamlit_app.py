@@ -47,6 +47,7 @@ from fx_scanner.xau_standalone_bridge_v253 import (
 
 UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
+DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 3600.0
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -177,8 +178,12 @@ def _load_standalone_bridge(url: str) -> dict[str, Any]:
 
 
 @st.cache_data(ttl=45, show_spinner=False)
-def _load_dashboard_bridge(url: str) -> dict[str, Any]:
-    return fetch_dashboard_snapshot(url)
+def _load_dashboard_bridge(
+    url: str,
+    *,
+    require_fresh: bool = True,
+) -> dict[str, Any]:
+    return fetch_dashboard_snapshot(url, require_fresh=require_fresh)
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -1676,6 +1681,7 @@ backend_bridge_meta: dict[str, Any] = {}
 backend_error: str | None = None
 direct_backend_error: str | None = None
 dashboard_bridge_error: str | None = None
+dashboard_bridge_degraded_error: str | None = None
 
 supabase_restricted_until = float(
     st.session_state.get("supabase_restricted_until", 0.0) or 0.0
@@ -1724,7 +1730,10 @@ dashboard_bridge_url = (
 )
 if backend is None:
     try:
-        dashboard_bridge_payload = _load_dashboard_bridge(dashboard_bridge_url)
+        dashboard_bridge_payload = _load_dashboard_bridge(
+            dashboard_bridge_url,
+            require_fresh=True,
+        )
         backend = dict(dashboard_bridge_payload.get("backend") or {})
         backend_bridge_meta = dict(dashboard_bridge_payload.get("bridge") or {})
         if backend:
@@ -1733,6 +1742,38 @@ if backend is None:
             raise ValueError("dashboard bridge returned an empty backend snapshot")
     except Exception as exc:
         dashboard_bridge_error = f"{type(exc).__name__}: {exc}"
+        # Do not drop to the much poorer standalone page solely because the
+        # curated bridge missed its 180-second transport SLA. A recent stale
+        # bridge still contains the full V182/V226/V240 context. We render it
+        # in degraded/read-only mode and force all dashboard admission labels
+        # to NO ORDER until a fresh transport snapshot returns.
+        try:
+            degraded_payload = _load_dashboard_bridge(
+                dashboard_bridge_url,
+                require_fresh=False,
+            )
+            degraded_backend = dict(degraded_payload.get("backend") or {})
+            degraded_meta = dict(degraded_payload.get("bridge") or {})
+            degraded_age = degraded_meta.get("age_seconds")
+            degraded_age_f = (
+                None if degraded_age is None else float(degraded_age)
+            )
+            if (
+                degraded_backend
+                and degraded_age_f is not None
+                and degraded_age_f <= DASHBOARD_DEGRADED_MAX_AGE_SECONDS
+            ):
+                backend = degraded_backend
+                backend_bridge_meta = degraded_meta
+                backend_source = "GITHUB_DASHBOARD_BRIDGE_STALE"
+            else:
+                raise ValueError(
+                    "dashboard bridge stale beyond degraded-read window"
+                )
+        except Exception as degraded_exc:
+            dashboard_bridge_degraded_error = (
+                f"{type(degraded_exc).__name__}: {degraded_exc}"
+            )
 
 standalone_url = _secret("RIZAN_STANDALONE_SNAPSHOT_URL") or DEFAULT_SNAPSHOT_URL
 standalone: dict[str, Any] | None = None
@@ -1745,6 +1786,11 @@ if backend is None:
         standalone_error = f"{type(exc).__name__}: {exc}"
 else:
     backend_error = None
+
+backend_snapshot_stale = bool(
+    backend is not None
+    and backend_source == "GITHUB_DASHBOARD_BRIDGE_STALE"
+)
 
 with st.sidebar:
     st.title("RIZAN XAU Scanner")
@@ -1781,6 +1827,13 @@ with st.sidebar:
             "Snapshot read-only GitHub"
             + (" • age " + _fmt_number(age, 0) + " dtk" if age is not None else "")
         )
+    elif backend is not None and backend_source == "GITHUB_DASHBOARD_BRIDGE_STALE":
+        age = backend_bridge_meta.get("age_seconds")
+        st.warning("ForexRizan • Dashboard Bridge STALE")
+        st.caption(
+            "Full diagnostic view tetap tersedia, tetapi admission UI dipaksa NO ORDER"
+            + (" • age " + _fmt_number(age, 0) + " dtk" if age is not None else "")
+        )
     elif standalone is not None:
         st.success("cTrader Snapshot Bridge • Standalone")
     elif backend_configured:
@@ -1791,6 +1844,8 @@ with st.sidebar:
     st.markdown("**Execution safety**")
     if standalone is not None:
         st.code("STANDALONE MANUAL ONLY / AUTO OFF / LIVE OFF", language=None)
+    elif backend_snapshot_stale:
+        st.code("STALE MONITOR / UI NO ORDER / DEMO RUNTIME INDEPENDENT", language=None)
     elif policy is not None and str(policy.ctrader.get("environment", "")).upper() == "DEMO":
         st.code("DEMO AUTO CAPABLE / LIVE OFF", language=None)
     else:
@@ -1831,6 +1886,13 @@ if policy_error:
     st.error(f"Execution policy invalid: {policy_error}")
 if backend_error:
     st.warning(f"Backend snapshot unavailable: {backend_error}")
+elif backend_snapshot_stale:
+    age = backend_bridge_meta.get("age_seconds")
+    st.error(
+        "DASHBOARD BRIDGE STALE • full diagnostic tetap ditampilkan agar halaman tidak "
+        "berhenti, tetapi data ini tidak boleh dipakai sebagai entry baru. "
+        f"Snapshot age: {_fmt_number(age, 0)} detik. Admission UI = NO ORDER sampai bridge fresh."
+    )
 elif backend_source == "GITHUB_DASHBOARD_BRIDGE" and direct_backend_error:
     st.caption(
         "Direct Supabase table access is unavailable in Streamlit; "
@@ -1884,6 +1946,8 @@ backend_label = (
     if backend is not None and backend_source == "SUPABASE_DIRECT"
     else "RIZAN BRIDGE"
     if backend is not None and backend_source == "GITHUB_DASHBOARD_BRIDGE"
+    else "RIZAN BRIDGE STALE"
+    if backend is not None and backend_source == "GITHUB_DASHBOARD_BRIDGE_STALE"
     else "CTRADER BRIDGE"
     if standalone is not None
     else "ERROR"
@@ -1912,7 +1976,12 @@ if backend is not None:
     mode_now = str(control.get("execution_mode", "")).upper()
     orders_now = bool(control.get("new_orders_enabled"))
     emergency_now = bool(control.get("emergency_stop"))
-    if demo_locked and mode_now == "AUTO" and orders_now and not emergency_now:
+    if backend_snapshot_stale:
+        st.warning(
+            "Status execution-control pada dashboard bersifat historis karena transport snapshot stale. "
+            "Runtime DEMO broker tetap independen; jangan membuat keputusan entry dari panel ini sampai fresh."
+        )
+    elif demo_locked and mode_now == "AUTO" and orders_now and not emergency_now:
         st.success(
             "DEMO automation armed • new orders ON • server-side SL/TP required • "
             "LIVE-money execution remains locked out by cTrader DEMO policy."
@@ -2588,6 +2657,10 @@ with forecast_tab:
         dc_route_label = "NO AUTHORITY"
     else:
         dc_admission_label = "WAIT"
+        dc_route_label = "NO ORDER"
+
+    if backend_snapshot_stale:
+        dc_admission_label = "DATA STALE"
         dc_route_label = "NO ORDER"
 
     st.markdown(

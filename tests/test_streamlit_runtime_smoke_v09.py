@@ -22,7 +22,11 @@ def test_streamlit_app_boots_offline_without_backend_secrets():
         "SUPABASE RESTRICTED MODE" in element.value
         for element in app.warning
     )
-    assert offline_ready or standalone_ready
+    degraded_bridge_ready = any(
+        "DASHBOARD BRIDGE STALE" in element.value
+        for element in app.error
+    )
+    assert offline_ready or standalone_ready or degraded_bridge_ready
 
 
 def test_streamlit_dashboard_refresh_contract_is_60_seconds():
