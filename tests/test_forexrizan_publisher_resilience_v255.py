@@ -10,7 +10,7 @@ def _read(path: str) -> str:
 def test_dashboard_publisher_has_serialized_schedule_and_self_handoff() -> None:
     text = _read(".github/workflows/forexrizan-dashboard-bridge-v254.yml")
     assert 'cron: "3,33 * * * 0-5"' in text
-    assert "cancel-in-progress: false" in text
+    assert "cancel-in-progress: true" in text
     assert "actions: write" in text
     assert "for i in $(seq 1 64)" in text
     assert "gh workflow run forexrizan-dashboard-bridge-v254.yml --ref main" in text

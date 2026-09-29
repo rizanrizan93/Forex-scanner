@@ -119,7 +119,7 @@ def test_xau_dashboard_prefers_live_v170_20k_and_separates_reference_100k():
 
 def test_xau_dashboard_shows_prepared_plan_lifecycle_and_cancel_reason():
     text = (ROOT / "streamlit_app.py").read_text()
-    assert '"xau_prepared_plan_lifecycle": list(reader.latest_xau_prepared_plan_lifecycle())' in text
+    assert '"xau_prepared_plan_lifecycle": list(reader.latest_xau_prepared_plan_lifecycle(limit=4))' in text
     assert 'Prepared Plan Lifecycle' in text
     assert 'Rencana persiapan terakhir:' in text
     assert '"alasan batal": row.get("cancel_reason") or "—"' in text
@@ -310,3 +310,13 @@ def test_v259_streamlit_direct_path_overlays_operational_structure_every_60s() -
     assert "merge_runtime_heartbeat_rows" in text
     assert "V182 age=" in text
     assert "V226 age=" in text
+
+
+def test_v2592_direct_dashboard_reads_are_egress_bounded() -> None:
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert 'latest_signals_for_symbol("XAUUSD", limit=8)' in text
+    assert "latest_xau_execution_events(limit=4)" in text
+    assert "latest_xau_geometry_events(limit=2)" in text
+    assert "latest_afic_forecast_states(limit=6)" in text
+    assert "latest_afic_execution_geometry(limit=1)" in text
+    assert "latest_xau_prepared_plan_lifecycle(limit=4)" in text

@@ -19,7 +19,7 @@ def test_v209_dashboard_uses_60_second_cache_for_user_facing_state() -> None:
     assert '"heartbeats": list(reader.heartbeat_summaries())' in text
     assert "reader.heartbeats_for_workers" in text
     assert "def _load_full_heartbeat_details" in text
-    assert '"xau_geometry_events": list(reader.latest_xau_geometry_events())' in text
+    assert '"xau_geometry_events": list(reader.latest_xau_geometry_events(limit=2))' in text
     assert "merged.update(_load_backend_fast_snapshot" in text
 
 
