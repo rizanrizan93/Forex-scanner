@@ -4050,30 +4050,54 @@ with forecast_tab:
         if v240_composite_available:
             comp_m5 = dict(v240_composite_pressure.get("m5") or {})
             comp_m15 = dict(v240_composite_pressure.get("m15") or {})
-            cp1, cp2, cp3 = st.columns(3)
+            composite_gap = (
+                None
+                if v240_dom_score is None or v240_composite_buyer is None
+                else abs(float(v240_dom_score) - float(v240_composite_buyer))
+            )
+            cp1, cp2 = st.columns(2)
             cp1.metric(
                 "Composite M5",
                 f"{float(comp_m5.get('buyer_index') or 50.0):.1f} buyer",
             )
             cp2.metric(
+                "Composite M15",
+                f"{float(comp_m15.get('buyer_index') or 50.0):.1f} buyer",
+            )
+            cp3, cp4 = st.columns(2)
+            cp3.metric(
                 "M5 ADX / ADXR",
                 (
                     f"{float(comp_m5.get('adx14') or 0.0):.1f} / "
                     f"{float(comp_m5.get('adxr14') or 0.0):.1f}"
                 ),
             )
-            cp3.metric(
+            cp4.metric(
                 "M15 ADX / ADXR",
                 (
                     f"{float(comp_m15.get('adx14') or 0.0):.1f} / "
                     f"{float(comp_m15.get('adxr14') or 0.0):.1f}"
                 ),
             )
+            st.caption(
+                "DOM ↔ Composite gap: "
+                + ("—" if composite_gap is None else f"{composite_gap:.1f} poin")
+                + ". Gap besar adalah konflik evidence, bukan alasan otomatis untuk entry."
+            )
 
         m30_supply = dict(v240_m30_shadow.get("nearest_supply") or {})
         m30_demand = dict(v240_m30_shadow.get("nearest_demand") or {})
         if m30_supply or m30_demand:
             st.markdown("###### M30 Parent Zone Shadow — kalibrasi gaya Afiq")
+            m30_focus = (
+                m30_demand
+                if v240_direction == "LONG"
+                else m30_supply
+                if v240_direction == "SHORT"
+                else {}
+            )
+            m30_overlap = m30_focus.get("canonical_overlap_ratio") if m30_focus else None
+            m30_match_tf = m30_focus.get("canonical_match_timeframe") if m30_focus else None
             mz1, mz2 = st.columns(2)
             mz1.metric(
                 "M30 demand",
@@ -4091,9 +4115,20 @@ with forecast_tab:
                     else f"{_fmt_price(m30_supply.get('low'))}–{_fmt_price(m30_supply.get('high'))}"
                 ),
             )
+            mz3, mz4 = st.columns(2)
+            mz3.metric(
+                "Overlap canonical",
+                (
+                    "—"
+                    if m30_overlap is None
+                    else f"{100.0 * float(m30_overlap):.0f}%"
+                ),
+            )
+            mz4.metric("Parent match", str(m30_match_tf or "NONE"))
             st.caption(
                 "M30 adalah shadow parent-zone saja. H4/H1 tetap canonical, M15/M5 tetap refinement. "
-                "Overlap M30 dengan H1/H4 dipakai sebagai evidence kalibrasi, bukan authority order."
+                "V273 menguji apakah overlap tinggi M30↔H1/H4 benar-benar menaikkan reaction ≥0,50 ATR; "
+                "hasil research tidak otomatis menjadi authority order."
             )
 
         st.markdown(
