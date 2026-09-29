@@ -573,7 +573,11 @@ def fetch_snapshot(
         },
     )
     with opener(request, timeout=float(timeout_seconds)) as response:
-        raw = response.read(MAX_SNAPSHOT_BYTES + 1)
+        try:
+            raw = response.read(MAX_SNAPSHOT_BYTES + 1)
+        except TypeError:
+            # Lightweight test/custom openers may implement read() without a size argument.
+            raw = response.read()
         if len(raw) > MAX_SNAPSHOT_BYTES:
             raise ValueError("dashboard bridge snapshot exceeds safety size limit")
         headers = getattr(response, "headers", None)
