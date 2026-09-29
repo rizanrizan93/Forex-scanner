@@ -43,6 +43,7 @@ from fx_scanner.xau_dynamic_depth_hazard_v251 import (
     build_dynamic_depth_hazard,
     build_geometry_depth_status,
 )
+from fx_scanner.xau_reversal_stage_v278 import evaluate_reversal_stage
 from fx_scanner.xau_dashboard_bridge_v254 import (
     DEFAULT_SNAPSHOT_URL as DEFAULT_DASHBOARD_SNAPSHOT_URL,
     fetch_snapshot as fetch_dashboard_snapshot,
@@ -56,7 +57,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V259_LIVE_STRUCTURAL_TRUTH_20260929"
+DASHBOARD_BUILD_ID = "RIZAN_V278_REVERSAL_STAGE_NO_CHASE_20260929"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -3280,6 +3281,39 @@ with forecast_tab:
         else dict(v229_child_executor_hb.get("details") or {})
     )
     v229_child_actions = list(v229_child_details.get("actions") or [])
+    v240_reversal_stage = dict(
+        v229_exec_details.get("reversal_stage")
+        or v229_exec_plan.get("reversal_stage")
+        or {}
+    )
+    v240_reversal_stage_candidate = str(
+        v229_exec_details.get("candidate_key") or v229_exec_plan.get("candidate_key") or ""
+    )
+    if (
+        v240_reversal_stage
+        and v240_reversal_stage_candidate
+        and str(v240_decision.get("candidate_key") or "")
+        and v240_reversal_stage_candidate != str(v240_decision.get("candidate_key") or "")
+    ):
+        v240_reversal_stage = {}
+    if (
+        not v240_reversal_stage
+        and v229_exec_plan
+        and dc_reference_price is not None
+        and str(v229_exec_plan.get("direction") or "").upper() == v240_direction
+    ):
+        try:
+            v240_reversal_stage = evaluate_reversal_stage(
+                plan=v229_exec_plan,
+                atlas_evaluation=dc_sd_eval,
+                depth_hazard=v240_depth_hazard,
+                pressure_transition=v240_pressure_transition,
+                live_price=float(dc_reference_price),
+                now=datetime.now(tz=UTC),
+            )
+            v240_reversal_stage["dashboard_recomputed_without_live_spread"] = True
+        except Exception:
+            v240_reversal_stage = {}
 
     if v240_effective_opposing_pressure is None:
         v240_penetration_risk = "UNAVAILABLE"
@@ -3359,6 +3393,9 @@ with forecast_tab:
                 "TARGET_REACHED_WAIT_HANDOFF": "Target current leg tercapai — tunggu handoff",
                 "STALE_WAIT": "Data stale — no order",
                 "CONFLICT_WAIT": "Konflik data — no order",
+                "BLOCK_MISSED_ENTRY_WAIT_NEXT_SETUP:SELECTED_ENTRY_BAND_PASSED_WITHOUT_M5_CONFIRMATION": "MISSED ENTRY — band lama terlewati; tunggu setup baru",
+                "BLOCK_BREAK_RISK:BREAKDOWN_EVIDENCE_STRONGER_THAN_REVERSAL": "BREAK RISK — jangan tambah entry",
+                "BLOCK_SETUP_INVALID:DISTAL_CLOSE_ACCEPTANCE_OR_ZONE_BROKEN": "SETUP INVALID — close acceptance melewati distal / zone broken",
             }
             return mapping.get(raw, raw.replace("_", " ").title())
 
@@ -3468,6 +3505,16 @@ with forecast_tab:
                 "bukan forecast reversal dan bukan entry band"
             )
 
+        v278_stage = str(v240_reversal_stage.get("stage") or "PREPARE").upper()
+        v278_hard_block = bool(v240_reversal_stage.get("hard_execution_block"))
+        v278_demo_allowed = bool(
+            v240_reversal_stage.get("demo_entry_allowed")
+            and not v278_hard_block
+        )
+        v240_effective_entry_authorized = bool(
+            v240_entry_authorized and v278_demo_allowed
+        )
+
         v240_action_now = (
             "MANAGE POSITION"
             if dc_position_mode
@@ -3478,30 +3525,106 @@ with forecast_tab:
                 else "TARGET TERCAPAI • WAIT HANDOFF"
             )
             if v240_state == "TARGET_REACHED_WAIT_HANDOFF"
+            else "MISSED ENTRY — WAIT NEXT SETUP"
+            if v278_stage == "MISSED_ENTRY_WAIT_NEXT_SETUP"
+            else "SETUP INVALID — NO ORDER"
+            if v278_stage == "SETUP_INVALID"
+            else "BREAK RISK — NO NEW ENTRY"
+            if v278_stage == "BREAK_RISK"
             else "EXECUTION READY"
-            if v240_entry_authorized
+            if v240_effective_entry_authorized
             and v240_admission_label in {"V229 READY", "BROKER ELIGIBLE"}
             and not backend_snapshot_stale
             else "WAIT • NO ORDER"
         )
         v240_entry_label = (
             "7 • Entry resmi"
-            if v240_entry_authorized
+            if v240_effective_entry_authorized
             else "7 • Source zone (SUDAH DIREAKSI)"
             if v240_depth_location == "AFTER_REACTION"
             else "7 • Zone watch (BUKAN ENTRY)"
         )
         v240_sl_text = (
             _fmt_price(v240_decision.get("sl"))
-            if v240_entry_authorized and v240_decision.get("sl") is not None
+            if v240_effective_entry_authorized and v240_decision.get("sl") is not None
             else "Belum ada — belum admitted"
         )
         v240_tp_text = (
             f"{_fmt_price(v240_decision.get('tp1'))} → "
             f"{_fmt_price(v240_decision.get('tp2'))}"
-            if v240_entry_authorized
+            if v240_effective_entry_authorized
             and v240_decision.get("tp1") is not None
             else "Belum ada — belum admitted"
+        )
+
+        st.markdown("###### Tahap Reversal V278 — RISET/FORECAST → DEMO")
+        stage_reason_text = " • ".join(
+            str(x).replace("_", " ")
+            for x in list(v240_reversal_stage.get("reasons") or [])
+        ) or "Menunggu bukti tahap berikutnya"
+        stage_label_map = {
+            "PREPARE": "PERSIAPAN",
+            "REVERSAL_WATCH": "REVERSAL WATCH",
+            "REACTION_VISIBLE": "REAKSI TERLIHAT",
+            "M5_CONFIRMATION": "KONFIRMASI M5",
+            "DEMO_ENTRY_ALLOWED": "ENTRY DEMO DIIZINKAN",
+            "BREAK_RISK": "BREAK RISK",
+            "SETUP_INVALID": "SETUP INVALID",
+            "MISSED_ENTRY_WAIT_NEXT_SETUP": "MISSED ENTRY — WAIT NEXT SETUP",
+        }
+        stage_label = stage_label_map.get(v278_stage, v278_stage.replace("_", " "))
+        if v278_stage == "DEMO_ENTRY_ALLOWED":
+            st.success(f"**{stage_label}** • {stage_reason_text}")
+        elif v278_stage in {"SETUP_INVALID", "MISSED_ENTRY_WAIT_NEXT_SETUP"}:
+            st.error(f"**{stage_label}** • {stage_reason_text}")
+        elif v278_stage == "BREAK_RISK":
+            st.warning(f"**{stage_label}** • {stage_reason_text}")
+        elif v278_stage in {"REACTION_VISIBLE", "M5_CONFIRMATION"}:
+            st.warning(f"**{stage_label}** • {stage_reason_text}")
+        else:
+            st.info(f"**{stage_label}** • {stage_reason_text}")
+
+        stage_cols = st.columns(2)
+        stage_cols[0].metric(
+            "Band entry terpilih",
+            (
+                f"{_fmt_price(v240_reversal_stage.get('selected_entry_low'))}–"
+                f"{_fmt_price(v240_reversal_stage.get('selected_entry_high'))}"
+                if v240_reversal_stage.get("selected_entry_low") is not None
+                else "Belum tersedia"
+            ),
+        )
+        stage_cols[1].metric(
+            "Depth sekarang",
+            (
+                f"{100.0 * float(v240_reversal_stage.get('depth')):.1f}%"
+                if v240_reversal_stage.get("depth") is not None
+                else "N/A"
+            ),
+        )
+        stage_cols2 = st.columns(2)
+        stage_cols2[0].metric(
+            "Break / invalidasi",
+            (
+                f"distal {_fmt_price(dict(v240_reversal_stage.get('distal') or {}).get('distal'))}"
+                if dict(v240_reversal_stage.get("distal") or {}).get("distal") is not None
+                else "Belum tersedia"
+            ),
+        )
+        stage_cols2[1].metric(
+            "M5 status",
+            (
+                "CONFIRMED"
+                if v240_reversal_stage.get("m5_confirmed")
+                else "Reaksi terlihat"
+                if v240_reversal_stage.get("reaction_visible")
+                else str(dc_micro.get("state") or "WAIT")
+            ),
+        )
+        st.caption(
+            "Urutan: REVERSAL WATCH → REAKSI TERLIHAT → KONFIRMASI M5 → ENTRY DEMO DIIZINKAN. "
+            "BREAK RISK / SETUP INVALID / MISSED ENTRY menghentikan promosi. "
+            "V225 tetap prior historis first-touch; stage ini bukan probabilitas reversal terkalibrasi."
         )
 
         st.markdown("###### Apa yang harus dilakukan sekarang")
