@@ -3981,12 +3981,12 @@ with forecast_tab:
         pt1, pt2 = st.columns(2)
         pt1.metric("Pressure transition", v240_effective_pressure_state)
         pt2.metric(
-            "Pre-touch strict",
+            "Pre-touch DEMO (strict)",
             "ALLOW" if v240_pressure_transition.get("pre_touch_entry_allowed") else "WAIT",
         )
         pc1, pc2 = st.columns(2)
         pc1.metric(
-            "M5-confirm strict",
+            "M5-confirm DEMO (strict)",
             "ALLOW" if v240_pressure_transition.get("confirmation_entry_allowed") else "WAIT",
         )
         composite_calibration_allowed = bool(
