@@ -3204,6 +3204,7 @@ with forecast_tab:
         else dict(v229_depth_execution_hb.get("details") or {})
     )
     v229_exec_plan = dict(v229_exec_details.get("plan") or {})
+    v229_plan_diagnostics = dict(v229_exec_details.get("plan_diagnostics") or {})
     v229_child_details = (
         {} if v229_child_executor_hb is None
         else dict(v229_child_executor_hb.get("details") or {})
@@ -3269,7 +3270,9 @@ with forecast_tab:
         def _human_wait_reason(value: Any) -> str:
             raw = str(_rizan_display(value) or "WAIT").upper()
             mapping = {
-                "WAIT_STRUCTURALLY_ACTIVE_DEPTH_CANDIDATE": "Menunggu depth candidate baru",
+                "WAIT_STRUCTURALLY_ACTIVE_DEPTH_CANDIDATE": "Plan V229 belum terbentuk — cek struktur/RR",
+                "WAIT_TERMINAL_RR_BELOW_MINIMUM": "RR terminal struktural < 1,50R — NO ORDER",
+                "WAIT_NO_FORWARD_STRUCTURAL_TARGET": "Belum ada target struktural forward — NO ORDER",
                 "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_ZONE": "Menunggu harga masuk zona aktif",
                 "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_PRESSURE": "Menunggu tekanan DOM membaik",
                 "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_M5_CONFIRM": "Menunggu konfirmasi M5",
@@ -3536,6 +3539,25 @@ with forecast_tab:
             st.info(
                 "Historical research entry belum tersedia untuk source aktif. "
                 "Dashboard tidak menggunakan locator historis lama sebagai pengganti."
+            )
+
+        if str(v240_gate_reason).upper() == "WAIT_TERMINAL_RR_BELOW_MINIMUM":
+            rr_best = v229_plan_diagnostics.get("best_terminal_rr")
+            rr_min = v229_plan_diagnostics.get("minimum_terminal_rr")
+            rr_stop = v229_plan_diagnostics.get("structural_stop")
+            st.warning(
+                "**DEMO belum boleh entry karena RR struktural.** "
+                f"RR terminal terbaik saat plan dibangun = "
+                f"{_fmt_number(rr_best, 2) if rr_best is not None else 'N/A'}R "
+                f"(minimum {_fmt_number(rr_min, 2) if rr_min is not None else '1.50'}R). "
+                f"SL struktur={_fmt_price(rr_stop)}. "
+                "Scanner sengaja fail-closed; historical entry tetap ditampilkan sebagai riset, "
+                "bukan dipaksa menjadi order."
+            )
+        elif str(v240_gate_reason).upper() == "WAIT_NO_FORWARD_STRUCTURAL_TARGET":
+            st.warning(
+                "**DEMO belum boleh entry:** belum ada opposing Supply/Demand forward "
+                "yang dapat menjadi target struktural broker."
             )
 
         st.markdown("###### Entry → Dynamic Depth → Admission")
