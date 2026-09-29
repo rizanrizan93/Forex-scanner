@@ -262,7 +262,13 @@ def _write_signal(
         "observed_at": observed_at.isoformat(),
         "symbol": SYMBOL,
         "direction": plan["direction"],
-        "setup_type": "RIZAN_DEPTH_FIRST_TOUCH",
+        "setup_type": (
+            "RIZAN_DEPTH_RETEST_CONFIRMATION"
+            if str(plan.get("execution_phase") or "") == "RETEST_CONFIRMATION"
+            else "RIZAN_DEPTH_FIRST_TOUCH_CONFIRMATION"
+            if str(plan.get("execution_phase") or "") == "FIRST_TOUCH_CONFIRMATION"
+            else "RIZAN_DEPTH_FIRST_TOUCH"
+        ),
         "state": "EXECUTION_READY",
         "pair_score": SCORE,
         "execution_score": SCORE,
@@ -327,7 +333,7 @@ def _record_execution_geometry(
         event_type=EVENT_TYPE,
         accepted=True,
         code=STRATEGY_ID,
-        message="user-authorized fresh V226 depth candidate promoted to cTrader DEMO execution",
+        message="user-authorized aligned V182/V226 depth candidate promoted to cTrader DEMO execution",
         payload={
             "signal_id": signal_id,
             "candidate_key": candidate_key,
@@ -344,8 +350,12 @@ def _record_execution_geometry(
             "rr1": plan["rr1"],
             "rr2": plan["rr2"],
             "source_layer": plan["source_layer"],
+            "source_timeframe": plan.get("source_timeframe"),
+            "execution_phase": plan.get("execution_phase"),
             "target_source": "STRUCTURAL_M15_H1_H4",
-            "h4_zone_id": plan["h4_zone_id"],
+            "h4_zone_id": plan.get("h4_zone_id"),
+            "structural_stop_zone_id": plan.get("structural_stop_zone_id"),
+            "structural_stop_timeframe": plan.get("structural_stop_timeframe"),
             "plan_id": plan.get("plan_id"),
             "children": list(plan.get("children") or []),
             "max_children": plan.get("max_children"),
