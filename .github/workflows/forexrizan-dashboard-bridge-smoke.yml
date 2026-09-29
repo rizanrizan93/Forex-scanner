@@ -1,27 +1,32 @@
 name: ForexRizan Dashboard Bridge Smoke
 
 on:
+  workflow_dispatch:
+  schedule:
+    - cron: "8,18,28,38,48,58 * * * 0-5"
   push:
     branches: [main]
     paths:
       - ".github/workflows/forexrizan-dashboard-bridge-smoke.yml"
       - "src/fx_scanner/xau_dashboard_bridge_v254.py"
       - "streamlit_app.py"
-  workflow_dispatch:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Fetch public dashboard bridge
+        id: bridge_smoke
+        continue-on-error: true
         shell: bash
         env:
           PYTHONPATH: ${{ github.workspace }}/src
@@ -34,21 +39,22 @@ jobs:
 
           payload = None
           last_error = None
-          for attempt in range(1, 7):
+          for attempt in range(1, 4):
               try:
                   payload = fetch_snapshot(timeout_seconds=20.0)
                   break
               except Exception as exc:
                   last_error = exc
-                  print(f"BRIDGE_SMOKE_RETRY attempt={attempt}/6 error={type(exc).__name__}:{exc}")
-                  if attempt < 6:
-                      time.sleep(20)
+                  print(f"BRIDGE_SMOKE_RETRY attempt={attempt}/3 error={type(exc).__name__}:{exc}")
+                  if attempt < 3:
+                      time.sleep(10)
           if payload is None:
               raise SystemExit(f"BRIDGE_SMOKE_FETCH_FAILED: {last_error}")
 
           backend = dict(payload.get("backend") or {})
           control = dict(backend.get("control") or {})
           bridge = dict(payload.get("bridge") or {})
+          source = dict(payload.get("source") or {})
           required = (
               "heartbeats",
               "xau_signals",
@@ -62,6 +68,8 @@ jobs:
           missing = [key for key in required if key not in backend]
           if missing:
               raise SystemExit("BRIDGE_SMOKE_MISSING=" + ",".join(missing))
+          if source.get("project_ref") != "naxvdtvlfatljzzwhrmo":
+              raise SystemExit("BRIDGE_SMOKE_PROJECT_MISMATCH")
           if not bridge.get("fresh"):
               raise SystemExit("BRIDGE_SMOKE_STALE")
           print(
@@ -70,5 +78,31 @@ jobs:
               f"execution_mode={control.get('execution_mode')} "
               f"heartbeats={len(list(backend.get('heartbeats') or []))} "
               f"xau_signals={len(list(backend.get('xau_signals') or []))}"
+          )
+          PY
+
+      - name: Recover dashboard publisher when bridge is stale
+        if: ${{ steps.bridge_smoke.outcome == 'failure' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          echo "::warning::ForexRizan bridge stale/unreachable; dispatching publisher recovery"
+          gh workflow run forexrizan-dashboard-bridge-v254.yml --ref main
+          sleep 75
+          python - <<'PY'
+          from fx_scanner.xau_dashboard_bridge_v254 import fetch_snapshot
+          payload = fetch_snapshot(timeout_seconds=20.0)
+          bridge = dict(payload.get("bridge") or {})
+          source = dict(payload.get("source") or {})
+          if source.get("project_ref") != "naxvdtvlfatljzzwhrmo":
+              raise SystemExit("BRIDGE_RECOVERY_PROJECT_MISMATCH")
+          if not bridge.get("fresh"):
+              raise SystemExit("BRIDGE_RECOVERY_STILL_STALE")
+          print(
+              "FOREXRIZAN_DASHBOARD_BRIDGE_RECOVERED "
+              f"age_seconds={bridge.get('age_seconds')}"
           )
           PY
