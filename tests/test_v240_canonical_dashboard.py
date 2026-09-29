@@ -221,7 +221,7 @@ def test_v269_dashboard_separates_probe_no_chase_from_strict_confirmation() -> N
     assert "calibration_probe_depth_ceiling" in SOURCE
     assert "Status probe terpisah dari strict L3/L4" in SOURCE
     assert "strict masih wajib M5 reclaim/MSS" in SOURCE
-    assert "hard ceiling 70%" in SOURCE
+    assert "Hard ceiling tetap 70%" in SOURCE
 
 
 def test_v270_dashboard_explains_post_rejection_demo_retest_without_relaxing_strict_path() -> None:
