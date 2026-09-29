@@ -2647,9 +2647,9 @@ with forecast_tab:
         pocket: dict[str, Any],
         price: Any,
     ) -> bool:
-        low = _safe_float(dict(pocket or {}).get("low"))
-        high = _safe_float(dict(pocket or {}).get("high"))
-        px = _safe_float(price)
+        low = _chart_price(dict(pocket or {}).get("low"))
+        high = _chart_price(dict(pocket or {}).get("high"))
+        px = _chart_price(price)
         side = str(direction or "").upper()
         if low is None or high is None or px is None or high <= low:
             return False
@@ -2676,9 +2676,9 @@ with forecast_tab:
         and not dc_current_refined_limit_side_valid
     )
 
-    dc_terminal_low = _safe_float(dc_current_leg_terminal.get("low"))
-    dc_terminal_high = _safe_float(dc_current_leg_terminal.get("high"))
-    dc_price_float = _safe_float(dc_reference_price)
+    dc_terminal_low = _chart_price(dc_current_leg_terminal.get("low"))
+    dc_terminal_high = _chart_price(dc_current_leg_terminal.get("high"))
+    dc_price_float = _chart_price(dc_reference_price)
     dc_inside_current_terminal = bool(
         dc_price_float is not None
         and dc_terminal_low is not None
@@ -3403,7 +3403,7 @@ with forecast_tab:
                 "tidak memberi execution authority."
             )
 
-        st.markdown("###### Entry → Depth → Admission")
+        st.markdown("###### Entry → Dynamic Depth → Admission")
         qe1, qe2 = st.columns(2)
         qe1.metric(v240_entry_label, v240_watch_text)
         qe2.metric(
