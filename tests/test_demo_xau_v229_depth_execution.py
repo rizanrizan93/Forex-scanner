@@ -174,3 +174,24 @@ def test_v229_first_touch_in_progress_builds_confirmation_only_parent() -> None:
         True,
         True,
     ]
+
+def test_v229_fails_closed_when_current_v182_path_opposes_v226_focus() -> None:
+    atlas = _atlas()
+    atlas["path_map"]["active_path"] = {
+        "reaction_direction": "SHORT",
+        "source_zone": {
+            "zone_id": "current-short-source",
+            "timeframe": "H1",
+            "direction": "SHORT",
+            "low": 106.0,
+            "high": 108.0,
+            "lifecycle": {"active": True},
+        },
+    }
+    plan = build_execution_plan(
+        v226_evaluation=_v226(),
+        atlas_evaluation=atlas,
+        live_price=103.0,
+    )
+    assert plan is None
+

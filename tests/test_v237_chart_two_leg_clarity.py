@@ -39,7 +39,8 @@ def test_v237_dashboard_passes_next_leg_mapping_to_chart() -> None:
     assert "next_leg_source=dc_next_leg_source" in SOURCE
     assert "next_leg_target=dc_next_leg_target" in SOURCE
     assert "next_leg_terminal=dc_next_leg_terminal" in SOURCE
-    assert "next_leg_micro=dc_next_micro" in SOURCE
+    assert "next_leg_micro=chart_next_micro" in SOURCE
+    assert "if not dc_next_pocket_causally_fresh:" in SOURCE
 
 
 def test_v237_warns_when_saved_map_is_stale() -> None:

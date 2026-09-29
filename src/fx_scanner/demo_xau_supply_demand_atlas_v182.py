@@ -1153,7 +1153,6 @@ def evaluate_supply_demand_atlas(
             -TIMEFRAME_PRIORITY.get(str(item.get("timeframe") or ""), 0),
         )
     )
-    selected = payloads[:MAX_DISPLAY_ZONES]
     path_map = _build_path_map(
         payloads=payloads,
         levels=levels,
@@ -1161,6 +1160,44 @@ def evaluate_supply_demand_atlas(
     )
     nearest_demand = dict(path_map.get("nearest_demand") or {}) or None
     nearest_supply = dict(path_map.get("nearest_supply") or {}) or None
+
+    # The flat display/export set must always contain the zones that currently
+    # define the path. The older score-first selection could fill all 12 slots
+    # with distant, highly nested supply zones and omit the actual current
+    # demand/source. That made exports and downstream UI look stale even though
+    # path_map itself was fresh.
+    payload_by_id = {
+        str(item.get("zone_id") or ""): item
+        for item in payloads
+        if str(item.get("zone_id") or "")
+    }
+    active_path = dict(path_map.get("active_path") or {})
+    critical_zone_rows = [
+        nearest_demand or {},
+        nearest_supply or {},
+        dict(active_path.get("source_zone") or {}),
+        dict(active_path.get("primary_opposing_zone") or {}),
+        dict(active_path.get("terminal_target_zone") or {}),
+    ]
+    selected: list[dict[str, Any]] = []
+    selected_ids: set[str] = set()
+    for row in critical_zone_rows:
+        zone_id = str(dict(row).get("zone_id") or "")
+        full = payload_by_id.get(zone_id)
+        if not full or zone_id in selected_ids:
+            continue
+        selected.append(full)
+        selected_ids.add(zone_id)
+    for item in payloads:
+        zone_id = str(item.get("zone_id") or "")
+        if zone_id and zone_id in selected_ids:
+            continue
+        selected.append(item)
+        if zone_id:
+            selected_ids.add(zone_id)
+        if len(selected) >= MAX_DISPLAY_ZONES:
+            break
+    selected = selected[:MAX_DISPLAY_ZONES]
 
     return {
         "contract": CONTRACT,

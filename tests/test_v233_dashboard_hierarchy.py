@@ -9,7 +9,7 @@ SOURCE = (ROOT / "streamlit_app.py").read_text(encoding="utf-8")
 
 def test_v233_operational_hierarchy_is_explicit_and_ordered() -> None:
     summary = SOURCE.index("1 • RINGKASAN KEPUTUSAN")
-    zone = SOURCE.index("### 2 • Zona Utama & Depth Entry")
+    zone = SOURCE.index("### 2 • Zona Aktif & Dynamic Depth")
     execution = SOURCE.index("### 3 • Eksekusi Sekarang")
     position = SOURCE.index("### 4 • Manajemen Posisi XAUUSD")
 

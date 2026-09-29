@@ -1,5 +1,6 @@
 from fx_scanner.xau_dynamic_depth_hazard_v251 import (
     build_dynamic_depth_hazard,
+    build_geometry_depth_status,
     child_reference_depth,
     normalized_depth,
 )
@@ -104,3 +105,86 @@ def test_absorption_beyond_distal_requires_remap():
     assert result["location_state"] == "AT_OR_BEYOND_DISTAL"
     assert result["action"] == "WAIT_STRUCTURE_REMAP"
     assert result["execution_ready"] is False
+
+
+
+def test_geometry_only_depth_marks_touched_zone_after_reaction() -> None:
+    zone = {
+        "direction": "LONG",
+        "timeframe": "H1",
+        "low": 100.0,
+        "high": 110.0,
+        "touch_count": 1,
+    }
+    result = build_geometry_depth_status(zone=zone, live_price=112.0)
+    assert result["state"] == "GEOMETRY_ONLY"
+    assert result["location_state"] == "AFTER_REACTION"
+    assert result["action"] == "WAIT_NEW_TRIGGER"
+    assert result["recommended_depth_low"] is None
+    assert result["execution_ready"] is False
+
+
+def test_geometry_only_depth_ahead_if_zone_never_touched() -> None:
+    zone = {
+        "direction": "LONG",
+        "timeframe": "H1",
+        "low": 100.0,
+        "high": 110.0,
+        "touch_count": 0,
+    }
+    result = build_geometry_depth_status(zone=zone, live_price=112.0)
+    assert result["location_state"] == "AHEAD_OF_ZONE"
+    assert result["action"] == "WAIT_ZONE"
+
+
+def test_geometry_only_depth_reports_physical_depth_without_hazard_prior() -> None:
+    zone = {
+        "direction": "LONG",
+        "timeframe": "H1",
+        "low": 100.0,
+        "high": 110.0,
+        "touch_count": 1,
+    }
+    result = build_geometry_depth_status(zone=zone, live_price=107.0)
+    assert result["location_state"] == "INSIDE_ZONE"
+    assert result["current_depth"] == 0.3
+    assert result["recommended_band"] == {}
+    assert result["historical_prior_scope"] == "GEOMETRY_ONLY_NO_CALIBRATED_PRIOR"
+
+def test_dynamic_depth_rejects_opposite_v226_focus_direction() -> None:
+    payload = _v226()
+    payload["focus_direction"] = "SHORT"
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=payload,
+        direction="LONG",
+        live_price=107.0,
+        pressure_transition={
+            "state": "BALANCED_ABSORPTION",
+            "hard_block": False,
+            "pre_touch_entry_allowed": True,
+            "confirmation_entry_allowed": True,
+        },
+    )
+    assert result["state"] == "UNAVAILABLE"
+    assert result["reason"] == "V226_FOCUS_DIRECTION_MISMATCH"
+    assert result["execution_ready"] is False
+
+
+def test_dynamic_depth_rejects_opposite_candidate_direction() -> None:
+    payload = _v226()
+    payload["depth_entry_candidate"]["direction"] = "SHORT"
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=payload,
+        direction="LONG",
+        live_price=107.0,
+        pressure_transition={
+            "state": "BALANCED_ABSORPTION",
+            "hard_block": False,
+            "pre_touch_entry_allowed": True,
+            "confirmation_entry_allowed": True,
+        },
+    )
+    assert result["state"] == "UNAVAILABLE"
+    assert result["reason"] == "V226_CANDIDATE_DIRECTION_MISMATCH"
+    assert result["execution_ready"] is False
+

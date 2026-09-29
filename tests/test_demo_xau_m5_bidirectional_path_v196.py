@@ -333,3 +333,34 @@ def test_v219_re_evaluates_invalid_h1_child_inside_active_h4_parent():
     assert current["pocket_state"] == "CANDIDATE_M5_POCKET"
     assert current["m5_pocket"]
     assert out["execution_authority"] is False
+
+
+
+def test_v196_next_leg_does_not_recycle_old_opposing_zone_touch() -> None:
+    t0 = datetime(2026, 9, 29, 0, 0, tzinfo=UTC)
+    path_map = _long_then_short_path()
+    bars = []
+    for i in range(60):
+        ts = t0 + timedelta(minutes=5 * i)
+        if i == 5:
+            # Historical SHORT supply touch before the LONG leg begins.
+            bars.append(_bar(ts, 121.0, 126.0, 120.5, 123.0))
+        elif i == 25:
+            # Current LONG demand leg activates later.
+            bars.append(_bar(ts, 108.0, 109.0, 104.0, 106.0))
+        elif i > 25:
+            bars.append(_bar(ts, 111.0, 113.0, 110.5, 112.0))
+        else:
+            bars.append(_bar(ts, 111.0, 113.0, 110.5, 112.0))
+
+    out = evaluate_bidirectional_m5_path(
+        tuple(bars),
+        path_map=path_map,
+        as_of=t0 + timedelta(minutes=5 * 61),
+    )
+
+    assert out["current_leg"]["direction"] == "LONG"
+    assert out["next_leg"]["direction"] == "SHORT"
+    assert out["next_leg"]["pocket_state"] == "NO_M5_POCKET_YET"
+    assert out["next_leg"]["m5_pocket"] == {}
+    assert out["next_leg"]["micro_refinement"]["state"] == "WAIT_SOURCE_TOUCH"
