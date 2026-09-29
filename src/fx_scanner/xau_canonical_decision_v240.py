@@ -378,6 +378,27 @@ def build_canonical_xau_decision(
     if raw_candidate and not candidate_aligned:
         diagnostics.append("V226_CANDIDATE_DIRECTION_MISMATCH")
     historical_context = dict(candidate.get("historical_context") or {})
+    historical_research_entry = (
+        {
+            "direction": direction,
+            "low": _f(candidate.get("entry_low")),
+            "high": _f(candidate.get("entry_high")),
+            "reference": _f(candidate.get("entry_reference")),
+            "source_layer": str(candidate.get("source_layer") or ""),
+            "source_timeframe": str(candidate.get("source_timeframe") or "").upper(),
+            "display_status": str(candidate.get("display_status") or ""),
+            "prior_scope": str(
+                dict(candidate.get("zone_reuse") or {}).get("historical_prior_scope")
+                or historical_context.get("prior_scope")
+                or ""
+            ),
+            "historical_context": historical_context,
+            "execution_authority": False,
+            "label": "HISTORICAL_RESEARCH_ENTRY_NOT_ORDER",
+        }
+        if candidate
+        else {}
+    )
 
     nearest_demand = _nearest_active_zone(
         atlas_evaluation,
@@ -677,6 +698,7 @@ def build_canonical_xau_decision(
         "nearest_supply": nearest_supply,
         "primary_reversal_watch": primary_reversal_watch,
         "historical_context": historical_context,
+        "historical_research_entry": historical_research_entry,
         "depth": {
             "display_status": str(candidate.get("display_status") or ""),
             "approach_state": str(candidate.get("approach_state") or ""),
