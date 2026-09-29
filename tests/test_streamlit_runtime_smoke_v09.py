@@ -6,7 +6,11 @@ from streamlit.testing.v1 import AppTest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_streamlit_app_boots_offline_without_backend_secrets():
+def test_streamlit_app_boots_offline_without_backend_secrets(monkeypatch):
+    def offline(*args, **kwargs):
+        raise ValueError("offline test transport")
+    monkeypatch.setattr("fx_scanner.xau_dashboard_bridge_v254.fetch_snapshot", offline)
+    monkeypatch.setattr("fx_scanner.xau_standalone_bridge_v253.fetch_snapshot", offline)
     app = AppTest.from_file(
         ROOT / "main.py",
         default_timeout=10,

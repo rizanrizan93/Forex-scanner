@@ -108,13 +108,19 @@ def _mask_identifier(value: Any) -> str | None:
     return "*" * max(4, len(raw) - 4) + raw[-4:]
 
 
+PRIVATE_ACCOUNT_FIELDS = {
+    "balance", "equity", "floating_profit", "margin", "margin_free", "margin_level",
+    "account_balance", "account_equity", "free_margin",
+}
+
+
 def _sanitize(value: Any) -> Any:
     if isinstance(value, dict):
         out: dict[str, Any] = {}
         for key, item in value.items():
             key_s = str(key)
             lowered = key_s.lower()
-            if any(part in lowered for part in SENSITIVE_KEY_PARTS):
+            if lowered in PRIVATE_ACCOUNT_FIELDS or any(part in lowered for part in SENSITIVE_KEY_PARTS):
                 continue
             if lowered in {"account_id", "trader_login", "ctidtraderaccountid"}:
                 out[key_s] = _mask_identifier(item)
@@ -374,8 +380,9 @@ def build_snapshot(
         cycle_bytes += tier_bytes["outcomes"]
         outcomes_as_of = current.isoformat()
 
-    account = reader.latest_broker_account()
-    broker_positions = list(reader.broker_positions_for_account(account))
+    # Public GitHub snapshots must not export private broker telemetry.
+    account = None
+    broker_positions = []
     xau_signals = list(reader.latest_signals_for_symbol("XAUUSD", limit=8))
     forecast_states = list(reader.latest_afic_forecast_states(limit=6))
     prepared_plans = list(reader.latest_afic_prepared_plans(limit=1))
@@ -429,6 +436,7 @@ def build_snapshot(
 
     backend = {
         **cold_values,
+        "account_telemetry_redacted": True,
         "xau_signals": xau_signals,
         "heartbeats": heartbeats,
         "broker_account": account,
@@ -452,6 +460,7 @@ def build_snapshot(
         "as_of": current.isoformat(),
         "source": {
             "project_ref": project_ref,
+            "account_telemetry_public": False,
             "mode": "SUPABASE_SERVICE_ROLE_TO_PUBLIC_READ_ONLY_BRIDGE",
             "dashboard_refresh_seconds": int(HOT_REFRESH_SECONDS),
             "operational_structure_refresh_seconds": int(HOT_REFRESH_SECONDS),
