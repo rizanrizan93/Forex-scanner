@@ -70,6 +70,9 @@ jobs:
       CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MIN_RR: "1.00"
       CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.70"
       CTRADER_DEMO_DEPTH_CALIBRATION_REJECTION_MAX_AGE_SECONDS: "3600"
+      # V272 is a one-time DEMO broker-route proof. The worker self-disables
+      # permanently after one accepted + cleanly cancelled smoke LIMIT.
+      CTRADER_DEMO_BROKER_SMOKE_V272_ENABLED: "1"
       XAU_DOM_V191_SAMPLE_SECONDS: "30"
       XAU_DOM_V191_SAMPLE_INTERVAL_SECONDS: "1"
       XAU_DOM_V191_MAX_LEVELS: "10"
@@ -86,7 +89,14 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Validate fail-closed config
         run: python -m fx_scanner.cli validate-config
-      # Protection repair is intentionally first. A new entry is never allowed
+      - name: One-time cTrader DEMO broker route smoke V272
+        id: broker_route_smoke_v272
+        continue-on-error: true
+        run: python -m fx_scanner.demo_broker_order_smoke_v272
+      # Protection repair remains ahead of every strategy entry path. The V272
+      # smoke order is a remote pending LIMIT that is cancelled before this step.
+      # A new strategy entry is never allowed to outrun remediation of a
+      # scanner-linked position missing broker SL/TP.
       # to outrun remediation of a scanner-linked position missing broker SL/TP.
       - name: Repair missing SL/TP on scanner-linked DEMO positions
         id: repair_existing_protection
