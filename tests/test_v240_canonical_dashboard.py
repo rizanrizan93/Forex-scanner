@@ -239,3 +239,11 @@ def test_v271_dashboard_separates_single_sample_demo_pressure_from_strict_transi
     assert "DEMO calibration pressure eligible" in SOURCE
     assert "strict L3/L4 tetap BLOCK sampai dua-sample transition valid" in SOURCE
     assert "absolute opposing pressure masih terlalu kuat" in SOURCE
+
+
+def test_v275_dashboard_separates_fresh_l1_calibration_from_strict_slots() -> None:
+    assert "V275: pada fresh first-touch yang berjarak ≤0,50 ATR" in SOURCE
+    assert "L1 DEMO 0,01 lot boleh" in SOURCE
+    assert "L2/L3/L4 tetap strict" in SOURCE
+    assert "FRESH_FIRST_TOUCH_CALIBRATION_ARMED" in SOURCE
+    assert "L1 DEMO calibration armed — L2/L3/L4 tetap strict" in SOURCE
