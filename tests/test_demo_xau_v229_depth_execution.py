@@ -463,3 +463,90 @@ def test_v261_v226_prefers_current_v182_h1_source_over_unrelated_h4_requirement(
     assert candidate["confirmation_execution_eligible"] is True
     assert candidate["zone_reuse"]["historical_prior_scope"] == "FIRST_TOUCH_PRIOR_GEOMETRY_ONLY"
     assert 100.0 <= candidate["entry_low"] < candidate["entry_high"] <= 110.0
+
+
+def test_v262_v229_reports_terminal_rr_below_minimum_instead_of_missing_candidate() -> None:
+    source = {
+        "zone_id": "local-h1-supply",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 100.0,
+        "high": 120.0,
+        "proximal": 100.0,
+        "distal": 120.0,
+        "atr_points": 10.0,
+        "status": "IN_ZONE_PREPARE_ONLY",
+        "lifecycle": {
+            "active": True,
+            "freshness": "PARTIALLY_MITIGATED",
+            "touch_count": 3,
+        },
+    }
+    payload = {
+        "focus_direction": "SHORT",
+        "depth_entry_candidate": {
+            "candidate_type": "V182_ACTIVE_SOURCE_DEPTH_ENTRY_CANDIDATE",
+            "direction": "SHORT",
+            "entry_low": 101.0,
+            "entry_high": 104.0,
+            "entry_reference": 102.0,
+            "source_layer": "V182_ACTIVE_H1_HISTORICAL_HOTSPOT",
+            "source_timeframe": "H1",
+            "source_zone": source,
+            "display_status": "CONFIRMATION_ONLY_RETESTED_HTF",
+            "htf_retested": True,
+            "retest_confirmation_eligible": True,
+            "pre_touch_execution_eligible": False,
+            "confirmation_execution_eligible": True,
+        },
+        "four_order_ladder": {
+            "slots": [
+                {"slot": 1, "lot": 0.01, "reference_price": 101.4},
+                {"slot": 2, "lot": 0.01, "reference_price": 102.0},
+                {"slot": 3, "lot": 0.01, "reference_price": 102.6},
+                {"slot": 4, "lot": 0.01, "reference_price": 103.2},
+            ]
+        },
+        "short": {},
+    }
+    near_demand = {
+        "zone_id": "near-h1-demand",
+        "timeframe": "H1",
+        "direction": "LONG",
+        "low": 95.0,
+        "high": 98.0,
+        "status": "ACTIVE",
+        "lifecycle": {"active": True},
+    }
+    atlas = {
+        "chart_bars_m15": [],
+        "zones": [source, near_demand],
+        "path_map": {
+            "active_path": {
+                "reaction_direction": "SHORT",
+                "source_zone": source,
+                "reaction_target": {"price": 98.0},
+                "terminal_target_zone": near_demand,
+                "primary_opposing_zone": near_demand,
+            },
+            "supply_to_demand": {
+                "destination_stack": [near_demand],
+            },
+        },
+    }
+    diagnostics: dict = {}
+    plan = build_execution_plan(
+        v226_evaluation=payload,
+        atlas_evaluation=atlas,
+        live_price=110.0,
+        diagnostics=diagnostics,
+    )
+
+    assert plan is None
+    assert diagnostics["state"] == "PLAN_REJECTED"
+    assert diagnostics["reason"] == "TERMINAL_RR_BELOW_MINIMUM"
+    assert diagnostics["minimum_terminal_rr"] == 1.5
+    assert diagnostics["best_terminal_rr"] < 1.5
+    assert diagnostics["structural_stop_zone_id"] == "local-h1-supply"
+    assert diagnostics["structural_stop_timeframe"] == "H1"
+    assert diagnostics["slot_diagnostics"]
