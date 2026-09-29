@@ -1338,6 +1338,9 @@ def run() -> int:
             ),
             "calibration_probe_exit_stop_enabled": True,
             "calibration_probe_exit_stop_boundary": "NO_CHASE_MAX_DEPTH",
+            "calibration_probe_exit_stop_role": (
+                "SECONDARY_RECOVERY_ONLY_AFTER_PRIMARY_NEAR_EDGE_MISSED"
+            ),
             "calibration_probe_policy": (
                 "ONE_L1_REAL_M5_POCKET_OR_POST_REJECTION_RETEST_PROBE_PER_"
                 "ARMED_RETEST_PARENT_DYNAMIC_DEPTH_PLUS_10PCT_CAPPED_DEMO_ONLY"

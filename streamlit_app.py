@@ -3197,6 +3197,7 @@ with forecast_tab:
     v240_composite_pressure = dict(dc_sd_eval.get("composite_pressure_v272") or {})
     v240_m30_shadow = dict(dc_sd_eval.get("m30_shadow_v272") or {})
     v240_m30_rejection = dict(dc_sd_eval.get("m30_deep_rejection_v277") or {})
+    v240_m30_policy = dict(dc_sd_eval.get("m30_entry_policy_v278") or {})
     v240_composite_available = bool(v240_composite_pressure.get("available"))
     v240_composite_buyer = v240_composite_pressure.get("buyer_index")
     v240_composite_seller = v240_composite_pressure.get("seller_index")
@@ -4165,11 +4166,29 @@ with forecast_tab:
                     else f"{100.0 * float(rejection_retreat):.0f}% lebar zona"
                 ),
             )
+            policy_lane = str(v240_m30_policy.get("lane") or "NONE")
+            policy_state = str(v240_m30_policy.get("lane_state") or "WAIT")
+            policy_ev = dict(v240_m30_policy.get("research_evidence") or {})
+            near_rate = policy_ev.get("near_edge_hold_050_same_confirmed_population")
+            deep_rate = policy_ev.get("deep_rejection_hold_050_rate")
+            policy1, policy2 = st.columns(2)
+            policy1.metric("V278 lane", policy_lane)
+            policy2.metric("Lane state", policy_state)
+            if near_rate is not None and deep_rate is not None:
+                st.info(
+                    "V278 frozen 100K-bar evidence • near-edge first-touch **"
+                    f"{100.0 * float(near_rate):.1f}%** vs deep-rejection **"
+                    f"{100.0 * float(deep_rate):.1f}%** reaction ≥0,50 ATR "
+                    "pada populasi holdout yang sama. Ini **research rate**, bukan "
+                    "probabilitas live. Near-edge tetap primary DEMO calibration; "
+                    "deep-rejection hanya recovery/re-entry bila primary terlewat."
+                )
             if rejection_state == "DEEP_REJECTION_CONFIRMED":
                 st.success(
                     "V277: parent M30 sudah penetrasi ≥60% lalu closed kembali ≤55% depth "
-                    "dengan retreat ≥20% lebar zona. Ini **deep-rejection confirmed**, "
-                    "tetapi masih shadow evidence: tunggu M5 retest/structure untuk order strict."
+                    "dengan retreat ≥20% lebar zona. Ini **deep-rejection confirmed**. "
+                    "V278 memperlakukannya sebagai recovery watch, bukan primary entry; "
+                    "order strict tetap menunggu M5 retest/structure."
                 )
             elif rejection_state == "DEEP_TOUCH_WAIT_REJECTION":
                 st.warning(
@@ -4186,7 +4205,8 @@ with forecast_tab:
                 "V273 menguji apakah overlap tinggi M30↔H1/H4 benar-benar menaikkan reaction ≥0,50 ATR; "
                 "V277 membandingkan near-edge dengan deep-rejection "
                 "(≥60% penetration → retreat ≥20% → close ≤55% depth). "
-                "Keduanya tidak otomatis menjadi authority order."
+                "V278 membekukan hasil holdout: near-edge sebagai primary, deep-rejection sebagai recovery. "
+                "Semua angka tetap research evidence dan tidak otomatis menjadi authority order."
             )
 
         st.markdown(
