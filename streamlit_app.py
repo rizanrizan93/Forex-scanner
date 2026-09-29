@@ -3196,6 +3196,7 @@ with forecast_tab:
     # execution authority. Strict L3/L4 still use the normal structure/RR path.
     v240_composite_pressure = dict(dc_sd_eval.get("composite_pressure_v272") or {})
     v240_m30_shadow = dict(dc_sd_eval.get("m30_shadow_v272") or {})
+    v240_m30_rejection = dict(dc_sd_eval.get("m30_deep_rejection_v277") or {})
     v240_composite_available = bool(v240_composite_pressure.get("available"))
     v240_composite_buyer = v240_composite_pressure.get("buyer_index")
     v240_composite_seller = v240_composite_pressure.get("seller_index")
@@ -4130,10 +4131,62 @@ with forecast_tab:
                 ),
             )
             mz4.metric("Parent match", str(m30_match_tf or "NONE"))
+            rejection_state = str(v240_m30_rejection.get("state") or "UNAVAILABLE")
+            rejection_max_depth = v240_m30_rejection.get("max_depth")
+            rejection_close_depth = v240_m30_rejection.get("latest_close_depth")
+            rejection_retreat = v240_m30_rejection.get("confirmation_retreat")
+            rz1, rz2 = st.columns(2)
+            rz1.metric(
+                "M30 deep-rejection",
+                rejection_state,
+            )
+            rz2.metric(
+                "Max depth",
+                (
+                    "—"
+                    if rejection_max_depth is None
+                    else f"{100.0 * float(rejection_max_depth):.0f}%"
+                ),
+            )
+            rz3, rz4 = st.columns(2)
+            rz3.metric(
+                "Close depth sekarang",
+                (
+                    "—"
+                    if rejection_close_depth is None
+                    else f"{100.0 * float(rejection_close_depth):.0f}%"
+                ),
+            )
+            rz4.metric(
+                "Retreat dari max",
+                (
+                    "—"
+                    if rejection_retreat is None
+                    else f"{100.0 * float(rejection_retreat):.0f}% lebar zona"
+                ),
+            )
+            if rejection_state == "DEEP_REJECTION_CONFIRMED":
+                st.success(
+                    "V277: parent M30 sudah penetrasi ≥60% lalu closed kembali ≤55% depth "
+                    "dengan retreat ≥20% lebar zona. Ini **deep-rejection confirmed**, "
+                    "tetapi masih shadow evidence: tunggu M5 retest/structure untuk order strict."
+                )
+            elif rejection_state == "DEEP_TOUCH_WAIT_REJECTION":
+                st.warning(
+                    "V277: harga sudah deep touch parent M30, tetapi rejection belum cukup. "
+                    "Jangan menganggap depth dalam sebagai reversal otomatis."
+                )
+            elif rejection_state == "PARENT_INVALIDATED":
+                st.error(
+                    "V277: completed M5 sudah menerima harga melewati distal parent M30. "
+                    "Parent zone ini dianggap invalid."
+                )
             st.caption(
                 "M30 adalah shadow parent-zone saja. H4/H1 tetap canonical, M15/M5 tetap refinement. "
                 "V273 menguji apakah overlap tinggi M30↔H1/H4 benar-benar menaikkan reaction ≥0,50 ATR; "
-                "hasil research tidak otomatis menjadi authority order."
+                "V277 membandingkan near-edge dengan deep-rejection "
+                "(≥60% penetration → retreat ≥20% → close ≤55% depth). "
+                "Keduanya tidak otomatis menjadi authority order."
             )
 
         st.markdown(
