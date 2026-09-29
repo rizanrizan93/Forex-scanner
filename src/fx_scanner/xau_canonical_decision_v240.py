@@ -506,7 +506,7 @@ def build_canonical_xau_decision(
         authority = "LOCAL_STRUCTURE_WATCH_NO_V229_AUTHORITY"
         candidate_key = ""
         source_layer = (
-            "ATLAS_CURRENT_PATH_"
+            "ATLAS_LOCAL_"
             + str(local_structure_override.get("timeframe") or "STRUCTURE").upper()
             + "_WATCH"
         )
