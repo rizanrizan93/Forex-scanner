@@ -2698,7 +2698,12 @@ with forecast_tab:
             f"{_fmt_price(dc_next_projected_pocket.get('low'))}–"
             f"{_fmt_price(dc_next_projected_pocket.get('high'))}"
             if dc_next_projected_pocket
-            else _quick_zone_text(dc_next_leg_source)
+            else (
+                f"{_fmt_price(dc_next_leg_source.get('low'))}–"
+                f"{_fmt_price(dc_next_leg_source.get('high'))}"
+                if dc_next_leg_source
+                else "Belum ada"
+            )
         )
         if dc_next_leg_direction in {"LONG", "SHORT"}
         else "Belum ada"
