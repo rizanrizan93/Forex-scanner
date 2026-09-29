@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   group: rizan-xau-standalone-v253
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   snapshot:
@@ -64,19 +64,45 @@ jobs:
       - name: Publish continuous one-minute snapshots
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           for i in $(seq 1 70); do
             started="$(date +%s)"
-            python -m fx_scanner.xau_standalone_snapshot_v253 \
-              --output runtime/xau_standalone_snapshot.json
+            snapshot_ok=0
+            for attempt in 1 2 3; do
+              if python -m fx_scanner.xau_standalone_snapshot_v253 \
+                --output runtime/xau_standalone_snapshot.json; then
+                snapshot_ok=1
+                break
+              fi
+              echo "::warning::Standalone snapshot attempt ${attempt}/3 failed; retrying"
+              sleep "$(( attempt * 5 ))"
+            done
 
-            git add -f runtime/xau_standalone_snapshot.json
-            if [ "$i" -eq 1 ]; then
-              git commit -m "runtime: refresh RIZAN XAU standalone snapshot"
+            if [ "$snapshot_ok" -eq 1 ]; then
+              git add -f runtime/xau_standalone_snapshot.json
+              if git diff --cached --quiet; then
+                :
+              elif [ "$i" -eq 1 ]; then
+                git commit -m "runtime: refresh RIZAN XAU standalone snapshot"
+              else
+                git commit --amend --no-edit
+              fi
+
+              push_ok=0
+              for push_attempt in 1 2 3; do
+                if git push --force origin HEAD:runtime-snapshots; then
+                  push_ok=1
+                  break
+                fi
+                echo "::warning::Standalone snapshot push ${push_attempt}/3 failed; retrying"
+                sleep "$(( push_attempt * 5 ))"
+              done
+              if [ "$push_ok" -ne 1 ]; then
+                echo "::warning::Standalone snapshot publish skipped this cycle; worker will continue"
+              fi
             else
-              git commit --amend --no-edit
+              echo "::warning::Standalone snapshot generation failed this cycle; worker will continue"
             fi
-            git push --force origin HEAD:runtime-snapshots
 
             if [ "$i" -lt 70 ]; then
               elapsed="$(( $(date +%s) - started ))"
