@@ -335,14 +335,14 @@ def evaluate_reversal_stage(
         stage = "SETUP_INVALID"
         hard_execution_block = True
         reasons.append("DISTAL_CLOSE_ACCEPTANCE_OR_ZONE_BROKEN")
-    elif missed_entry:
-        stage = "MISSED_ENTRY_WAIT_NEXT_SETUP"
-        hard_execution_block = True
-        reasons.append("SELECTED_ENTRY_BAND_PASSED_WITHOUT_M5_CONFIRMATION")
     elif break_risk:
         stage = "BREAK_RISK"
         hard_execution_block = True
         reasons.append("BREAKDOWN_EVIDENCE_STRONGER_THAN_REVERSAL")
+    elif missed_entry:
+        stage = "MISSED_ENTRY_WAIT_NEXT_SETUP"
+        hard_execution_block = True
+        reasons.append("SELECTED_ENTRY_BAND_PASSED_WITHOUT_M5_CONFIRMATION")
     elif demo_entry_allowed:
         stage = "DEMO_ENTRY_ALLOWED"
         reasons.append("STRICT_PRESSURE_DEPTH_RR_AND_GEOMETRY_READY")
