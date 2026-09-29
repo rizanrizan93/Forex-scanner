@@ -595,7 +595,7 @@ def _rizan_chart_target_ladder(
     current_target: Any,
     terminal_zone: dict[str, Any] | None,
     next_target: Any,
-    order_targets_authorized: bool = False,
+    order_targets_authorized: bool = True,
 ) -> tuple[list[dict[str, Any]], float | None, bool]:
     """Return a clean geometric target ladder for the chart.
 
@@ -715,7 +715,7 @@ def _rizan_chart_png(
     next_leg_target: dict[str, Any] | None = None,
     next_leg_terminal: dict[str, Any] | None = None,
     next_leg_micro: dict[str, Any] | None = None,
-    order_targets_authorized: bool = False,
+    order_targets_authorized: bool = True,
 ) -> tuple[bytes | None, str | None]:
     frame = _rizan_chart_frame(raw_bars, timeframe)
     if frame.empty or len(frame) < 4:
