@@ -33,6 +33,151 @@ def _mae(y, pred):
     return float(np.mean(np.abs(np.asarray(y, dtype=float) - np.asarray(pred, dtype=float))))
 
 
+def _wilson_interval(successes, total, z=1.959963984540054):
+    if int(total) <= 0:
+        return [None, None]
+    n = float(total)
+    p = max(0.0, min(1.0, float(successes) / n))
+    z2 = z * z
+    denominator = 1.0 + z2 / n
+    center = (p + z2 / (2.0 * n)) / denominator
+    margin = z * ((p * (1.0 - p) / n + z2 / (4.0 * n * n)) ** 0.5) / denominator
+    return [max(0.0, center - margin), min(1.0, center + margin)]
+
+
+def _volatility_thresholds(train_rows):
+    out = {}
+    for timeframe in ("H4", "H1", "M15"):
+        values = [
+            float(r.get("atr_pct") or 0.0)
+            for r in train_rows
+            if r.get("timeframe") == timeframe and float(r.get("atr_pct") or 0.0) > 0.0
+        ]
+        if values:
+            out[timeframe] = [
+                float(np.quantile(values, 1.0 / 3.0)),
+                float(np.quantile(values, 2.0 / 3.0)),
+            ]
+    return out
+
+
+def _volatility_bucket(row, thresholds):
+    value = float(row.get("atr_pct") or 0.0)
+    low, high = thresholds.get(row.get("timeframe"), [0.0, float("inf")])
+    if value <= low:
+        return "LOW"
+    if value <= high:
+        return "MEDIUM"
+    return "HIGH"
+
+
+def _pressure_bucket(row):
+    value = float(row.get("late_opposing_pressure") or 0.0)
+    if value >= 40.0:
+        return "OPPOSING_STRONG"
+    if value >= 15.0:
+        return "OPPOSING"
+    if value > -15.0:
+        return "BALANCED"
+    return "REVERSAL_SIDE_CONTROL"
+
+
+def _competing_risk_groups(rows, group_keys, *, min_n=30):
+    bands = [(i / 10.0, (i + 1) / 10.0) for i in range(10)]
+    groups = {}
+    for row in rows:
+        key = tuple(str(row.get(k) or "UNKNOWN") for k in group_keys)
+        groups.setdefault(key, []).append(row)
+
+    output = []
+    for key, group_rows in sorted(groups.items()):
+        band_rows = []
+        for lower, upper in bands:
+            at_risk = [
+                row
+                for row in group_rows
+                if float(row.get("max_depth_reached") or 0.0) + 1e-12 >= lower
+            ]
+            n = len(at_risk)
+            if n < min_n:
+                continue
+            reversal = sum(bool(row.get("reaction_hit")) for row in at_risk)
+            broken = sum(bool(row.get("break_hit")) for row in at_risk)
+            unresolved = max(0, n - reversal - broken)
+            band_rows.append(
+                {
+                    "band": f"{int(lower*100):02d}-{int(upper*100):02d}%",
+                    "lower_depth": lower,
+                    "upper_depth": upper,
+                    "at_risk": n,
+                    "reversal_first": reversal,
+                    "break_first": broken,
+                    "unresolved": unresolved,
+                    "p_reversal_first": reversal / n,
+                    "p_break_first": broken / n,
+                    "p_unresolved": unresolved / n,
+                    "reversal_wilson_95": _wilson_interval(reversal, n),
+                    "break_wilson_95": _wilson_interval(broken, n),
+                    "break_minus_reversal": (broken - reversal) / n,
+                }
+            )
+        if band_rows:
+            output.append(
+                {
+                    "group": {name: value for name, value in zip(group_keys, key)},
+                    "episodes": len(group_rows),
+                    "bands": band_rows,
+                    "break_crossover_band": next(
+                        (
+                            row["band"]
+                            for row in band_rows
+                            if row["p_break_first"] > row["p_reversal_first"]
+                        ),
+                        None,
+                    ),
+                }
+            )
+    return output
+
+
+def _walk_forward_depth(rows):
+    output = []
+    for test_year in range(2019, 2027):
+        train = [
+            r for r in rows
+            if int(r["year"]) < test_year
+            and bool(r["reaction_hit"])
+            and r.get("target") is not None
+        ]
+        test = [
+            r for r in rows
+            if int(r["year"]) == test_year
+            and bool(r["reaction_hit"])
+            and r.get("target") is not None
+        ]
+        if len(train) < 500 or len(test) < 50:
+            continue
+        y = [float(r["target"]) for r in test]
+        base = _median_lookup(train, test, ["timeframe", "direction"])
+        pressure = _median_lookup(
+            train,
+            test,
+            ["timeframe", "direction", "transition_state", "session"],
+        )
+        output.append(
+            {
+                "test_year": test_year,
+                "train_end_year": test_year - 1,
+                "n_train": len(train),
+                "n_test": len(test),
+                "base_mae_depth_fraction": _mae(y, base),
+                "pressure_session_mae_depth_fraction": _mae(y, pressure),
+                "mae_improvement": _mae(y, base) - _mae(y, pressure),
+            }
+        )
+    return output
+
+
 def _ridge_features(rows, categories):
     out = []
     for row in rows:
@@ -90,6 +235,11 @@ def run() -> int:
     for row in rows:
         depth = row.get("turning_depth")
         row["target"] = None if depth is None else max(0.0, min(1.0, float(depth)))
+    causal_train_rows = [r for r in rows if int(r["year"]) <= 2024]
+    vol_thresholds = _volatility_thresholds(causal_train_rows)
+    for row in rows:
+        row["volatility_bucket"] = _volatility_bucket(row, vol_thresholds)
+        row["pressure_bucket"] = _pressure_bucket(row)
     train = [r for r in rows if int(r["year"]) <= 2024 and bool(r["reaction_hit"]) and r["target"] is not None]
     test = [r for r in rows if int(r["year"]) >= 2025 and bool(r["reaction_hit"]) and r["target"] is not None]
     y = np.asarray([float(r["target"]) for r in test], dtype=float)
@@ -155,7 +305,48 @@ def run() -> int:
         "test_reaction_rows": len(test),
         "variants": variants,
         "two_stage_confidence": confidence,
-        "interpretation": "Depth is only predicted conditional on a reaction. Live execution uses true cTrader Level-II transition, not this historical OHLC proxy.",
+        "walk_forward_depth": _walk_forward_depth(rows),
+        "volatility_thresholds_atr_pct_train_2012_2024": vol_thresholds,
+        "competing_risk": {
+            "denominator_contract": "ALL_FIRST_TOUCH_EPISODES_THAT_REACHED_BAND_LOWER_BOUND",
+            "outcome_contract": "REACTION_GTE_0_50_ATR_VS_CLOSE_BREAK_BEYOND_DISTAL",
+            "historical_pressure_source": "CAUSAL_M1_OHLC_TRANSITION_PROXY_NOT_DOM",
+            "oos_2025_2026_by_timeframe_direction": _competing_risk_groups(
+                [r for r in rows if int(r["year"]) >= 2025],
+                ["timeframe", "direction"],
+            ),
+            "oos_2025_2026_by_session": _competing_risk_groups(
+                [r for r in rows if int(r["year"]) >= 2025],
+                ["timeframe", "direction", "session"],
+            ),
+            "oos_2025_2026_by_pressure_transition": _competing_risk_groups(
+                [r for r in rows if int(r["year"]) >= 2025],
+                ["timeframe", "direction", "transition_state"],
+            ),
+            "oos_2025_2026_by_pressure_level": _competing_risk_groups(
+                [r for r in rows if int(r["year"]) >= 2025],
+                ["timeframe", "direction", "pressure_bucket"],
+            ),
+            "oos_2025_2026_by_volatility": _competing_risk_groups(
+                [r for r in rows if int(r["year"]) >= 2025],
+                ["timeframe", "direction", "volatility_bucket"],
+            ),
+            "eras_by_timeframe_direction": {
+                "2012_2018": _competing_risk_groups(
+                    [r for r in rows if 2012 <= int(r["year"]) <= 2018],
+                    ["timeframe", "direction"],
+                ),
+                "2019_2024": _competing_risk_groups(
+                    [r for r in rows if 2019 <= int(r["year"]) <= 2024],
+                    ["timeframe", "direction"],
+                ),
+                "2025_2026": _competing_risk_groups(
+                    [r for r in rows if 2025 <= int(r["year"]) <= 2026],
+                    ["timeframe", "direction"],
+                ),
+            },
+        },
+        "interpretation": "Depth is only predicted conditional on a reaction. Competing-risk reports use every first-touch episode that reached each band. Historical pressure is a causal M1 OHLC proxy; live execution uses true cTrader Level-II transition and never treats the proxy as DOM.",
         "execution_influence": False,
         "execution_authority": False,
     }
