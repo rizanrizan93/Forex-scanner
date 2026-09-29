@@ -1191,7 +1191,7 @@ def run() -> int:
                             activation = exit_activation
                             child_order_type = OrderType.STOP
                             actions.append(
-                                f"{parent_signal_id}:L{slot}:PROBE_DEEP_REJECTION_RECOVERY_STOP_ARMED:"
+                                f"{parent_signal_id}:L{slot}:PROBE_DEEP_REJECTION_EXIT_STOP_ARMED:"
                                 f"entry={entry:.3f}:depth={child_depth:.3f}"
                             )
                     if calibration_probe and not _entry_inside_active_source(
