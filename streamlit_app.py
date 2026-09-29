@@ -4304,79 +4304,60 @@ with forecast_tab:
             )
 
 
-    ui_h4_zone = dict(v226_h4.get("zone") or {})
-    ui_h4_zone_id = str(ui_h4_zone.get("zone_id") or "")
-    ui_v229_geometry: dict[str, Any] = {}
-    for ui_event_row in geometry_rows:
-        ui_payload = dict(ui_event_row.get("payload") or {})
-        if (
-            str(ui_event_row.get("event_type") or "") == "DEMO_SIGNAL_GEOMETRY"
-            and (
-                str(ui_event_row.get("code") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
-                or str(ui_payload.get("strategy_id") or "") == "XAU_RIZAN_DEPTH_EXECUTION_V1"
-            )
-        ):
-            same_h4 = not ui_h4_zone_id or str(ui_payload.get("h4_zone_id") or "") == ui_h4_zone_id
-            same_low = (
-                v226_entry_candidate.get("entry_low") is None
-                or ui_payload.get("candidate_low") is None
-                or abs(float(v226_entry_candidate.get("entry_low")) - float(ui_payload.get("candidate_low"))) < 1e-6
-            )
-            same_high = (
-                v226_entry_candidate.get("entry_high") is None
-                or ui_payload.get("candidate_high") is None
-                or abs(float(v226_entry_candidate.get("entry_high")) - float(ui_payload.get("candidate_high"))) < 1e-6
-            )
-            if same_h4 and same_low and same_high:
-                ui_v229_geometry = ui_payload
-                break
-
-    ui_entry_low = v226_entry_candidate.get("entry_low")
-    ui_entry_high = v226_entry_candidate.get("entry_high")
-    ui_reference_entry = (
-        v226_entry_candidate.get("entry_reference")
-        or (prep_plan_now.get("entry") if prep_current_now else None)
-    )
-    ui_stop = (
-        ui_v229_geometry.get("planned_sl")
-        if ui_v229_geometry
-        else (prep_plan_now.get("stop") if prep_current_now else None)
-    )
-    ui_tp1 = (
-        ui_v229_geometry.get("planned_tp1")
-        if ui_v229_geometry
-        else (prep_plan_now.get("tp1") if prep_current_now else None)
-    )
-    ui_tp2 = (
-        ui_v229_geometry.get("planned_tp2")
-        if ui_v229_geometry
-        else (prep_plan_now.get("tp2") if prep_current_now else None)
-    )
+    # Execution Now must use exactly the same V240/V229 geometry shown above.
+    # Never fall back to a legacy V226 locator or an older prepared-plan number.
+    ui_entry_low = v240_decision.get("entry_low")
+    ui_entry_high = v240_decision.get("entry_high")
+    ui_reference_entry = v240_decision.get("entry_reference")
+    ui_stop = v240_decision.get("sl") if v240_entry_authorized else None
+    ui_tp1 = v240_decision.get("tp1") if v240_entry_authorized else None
+    ui_tp2 = v240_decision.get("tp2") if v240_entry_authorized else None
 
     st.markdown("### 3 • Eksekusi Sekarang")
     with st.container(border=True):
-        ex1, ex2, ex3, ex4, ex5 = st.columns(5)
+        ex1, ex2 = st.columns(2)
         ex1.metric(
-            "Depth / reaction zone",
+            "Entry resmi" if v240_entry_authorized else "Zone watch (bukan entry)",
             (
                 f"{_fmt_price(ui_entry_low)}–{_fmt_price(ui_entry_high)}"
-                if ui_entry_low is not None or ui_entry_high is not None
-                else f"{_fmt_price(zone_low)}–{_fmt_price(zone_high)}"
+                if ui_entry_low is not None and ui_entry_high is not None
+                else "Belum ada"
             ),
         )
-        ex2.metric("Reference entry", _fmt_price(ui_reference_entry))
-        ex3.metric("Stop Loss", _fmt_price(ui_stop))
-        ex4.metric("Scale-out awal", _fmt_price(ui_tp1))
-        ex5.metric("Target terminal", _fmt_price(ui_tp2))
+        ex2.metric(
+            "Reference entry" if v240_entry_authorized else "Reference watch",
+            _fmt_price(ui_reference_entry) if ui_reference_entry is not None else "Belum ada",
+        )
+        ex3, ex4, ex5 = st.columns(3)
+        ex3.metric(
+            "Stop Loss resmi",
+            _fmt_price(ui_stop) if ui_stop is not None else "Belum ada — no admission",
+        )
+        ex4.metric(
+            "TP1 order",
+            _fmt_price(ui_tp1) if ui_tp1 is not None else "Belum ada — no admission",
+        )
+        ex5.metric(
+            "TP terminal order",
+            _fmt_price(ui_tp2) if ui_tp2 is not None else "Belum ada — no admission",
+        )
 
-        if dc_admission_label in {"V229 READY", "BROKER ELIGIBLE"}:
-            st.success(f"Admission: **{dc_admission_label}** • route: **{dc_route_label}**")
-        elif dc_admission_label in {"BLOCKED", "INVALIDATED", "EXPIRED", "SHADOW READY"}:
-            st.warning(f"Admission: **{dc_admission_label}** • belum boleh menjadi order baru.")
+        if v240_admission_label in {"V229 READY", "BROKER ELIGIBLE"} and v240_entry_authorized:
+            st.success(
+                f"Admission: **{v240_admission_label}** • route: **{v240_route_label}**"
+            )
+        elif v240_admission_label in {"DATA STALE", "BLOCKED", "INVALIDATED", "EXPIRED"}:
+            st.warning(
+                f"Admission: **{v240_admission_label}** • **NO ORDER**. "
+                "Angka watch/path tidak boleh diperlakukan sebagai entry."
+            )
         else:
-            st.info("Belum ada setup yang lolos admission. Tetap tunggu struktur/konfirmasi berikutnya.")
+            st.info(
+                "Belum ada setup canonical yang lolos admission. "
+                "Section ini tidak mengambil angka fallback dari V226/standalone/plan lama."
+            )
 
-        if v226_ladder_slots:
+        if v240_entry_authorized and v226_ladder_slots:
             ladder_rows = []
             for ui_slot in v226_ladder_slots:
                 ui_slot_no = int(ui_slot.get("slot") or 0)
@@ -4401,6 +4382,11 @@ with forecast_tab:
             st.caption(
                 "V229 child ladder: maksimum 4 × 0,01 lot. L1–L2 pre-touch LIMIT; "
                 "L3–L4 hanya setelah evidence M5 masing-masing. Semua child wajib SL/TP server-side."
+            )
+        elif v226_ladder_slots:
+            st.caption(
+                "Ladder V226/V229 research ada di backend tetapi **disembunyikan dari eksekusi** "
+                "karena current V240 belum mempunyai entry authority."
             )
 
     with st.expander("Detail setup multi-timeframe — H1 / M5 / M15 / DOM / Event", expanded=False):
