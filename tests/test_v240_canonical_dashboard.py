@@ -153,4 +153,5 @@ def test_v261_historical_entry_is_visibly_non_operational() -> None:
     assert "Entry riset historis — BUKAN ORDER" in SOURCE
     assert "Ini hasil pemetaan riset V225/V226 pada source V182 aktif" in SOURCE
     assert "bukan order broker dan bukan win rate trading" in SOURCE
-    assert "DEMO tetap menunggu pressure + fresh M5 confirmation" in SOURCE
+    assert "DEMO tetap menunggu pressure + fresh M5" in SOURCE
+    assert "confirmation sebelum child order boleh dikirim." in SOURCE
