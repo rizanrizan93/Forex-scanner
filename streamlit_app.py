@@ -2737,7 +2737,7 @@ with forecast_tab:
                 f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
                 f"{_fmt_price(dc_current_leg_terminal.get('high'))}. "
                 "**Konteks HTF bukan perintah entry.** Entry resmi hanya muncul setelah "
-                "V240/V229 + M15 + protection/admission konsisten."
+                "V240/V229 + M15 + protection/admission konsisten; izin order tetap mengikuti admission dan protection contract."
             )
 
         st.caption(
