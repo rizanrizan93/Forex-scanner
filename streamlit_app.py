@@ -47,7 +47,9 @@ from fx_scanner.xau_standalone_bridge_v253 import (
 
 UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
-DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 3600.0
+FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
+DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
+DASHBOARD_BUILD_ID = "RIZAN_V255_TRANSPORT_HARDENING_20260929"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -146,6 +148,13 @@ def _secret(name: str) -> str:
         raw = ""
     return str(raw).strip()
 
+
+def _supabase_project_ref(url: str) -> str:
+    raw = str(url or "").strip()
+    if not raw:
+        return ""
+    host = raw.split("://", 1)[-1].split("/", 1)[0].strip().lower()
+    return host.split(".", 1)[0] if host else ""
 
 def _supabase_key_role(value: str) -> str:
     """Identify legacy JWT anon/service_role keys without verifying the token."""
@@ -1674,6 +1683,10 @@ supabase_secret = _secret("SUPABASE_SERVICE_ROLE_KEY") or _secret(
     "SUPABASE_SECRET_KEY"
 )
 backend_configured = bool(supabase_url and supabase_secret)
+supabase_project_ref = _supabase_project_ref(supabase_url)
+supabase_project_matches = bool(
+    not supabase_url or supabase_project_ref == FOREXRIZAN_PROJECT_REF
+)
 
 backend: dict[str, Any] | None = None
 backend_source = "OFFLINE"
@@ -1682,6 +1695,8 @@ backend_error: str | None = None
 direct_backend_error: str | None = None
 dashboard_bridge_error: str | None = None
 dashboard_bridge_degraded_error: str | None = None
+dashboard_bridge_selected_url: str | None = None
+dashboard_bridge_attempts: list[str] = []
 
 supabase_restricted_until = float(
     st.session_state.get("supabase_restricted_until", 0.0) or 0.0
@@ -1695,6 +1710,7 @@ publishable_key_configured = _supabase_key_role(supabase_secret) == "anon"
 
 if (
     backend_configured
+    and supabase_project_matches
     and not publishable_key_configured
     and now_epoch >= supabase_restricted_until
 ):
@@ -1715,6 +1731,12 @@ if (
             # only an anon/publishable credential. The bridge remains fresh
             # while database tables stay private.
             st.session_state["supabase_restricted_until"] = now_epoch + 21600.0
+elif backend_configured and not supabase_project_matches:
+    direct_backend_error = (
+        "SUPABASE_PROJECT_MISMATCH: Streamlit secret points to "
+        f"{supabase_project_ref or 'UNKNOWN'}; expected {FOREXRIZAN_PROJECT_REF}. "
+        "Direct reads disabled; using canonical ForexRizan bridge."
+    )
 elif backend_configured and not publishable_key_configured:
     direct_backend_error = (
         "SUPABASE_DIRECT_COOLDOWN: direct Data API temporarily bypassed; "
@@ -1725,56 +1747,99 @@ elif publishable_key_configured:
         "SUPABASE_PUBLISHABLE_KEY: direct protected-table reads intentionally disabled."
     )
 
-dashboard_bridge_url = (
-    _secret("RIZAN_DASHBOARD_SNAPSHOT_URL") or DEFAULT_DASHBOARD_SNAPSHOT_URL
-)
-if backend is None:
-    try:
-        dashboard_bridge_payload = _load_dashboard_bridge(
-            dashboard_bridge_url,
-            require_fresh=True,
+configured_dashboard_bridge_url = _secret("RIZAN_DASHBOARD_SNAPSHOT_URL")
+dashboard_bridge_urls = [DEFAULT_DASHBOARD_SNAPSHOT_URL]
+if (
+    configured_dashboard_bridge_url
+    and configured_dashboard_bridge_url not in dashboard_bridge_urls
+):
+    dashboard_bridge_urls.append(configured_dashboard_bridge_url)
+
+def _accept_dashboard_bridge_payload(
+    payload: dict[str, Any],
+    *,
+    source_url: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    source = dict(payload.get("source") or {})
+    project_ref = str(source.get("project_ref") or "")
+    if project_ref != FOREXRIZAN_PROJECT_REF:
+        raise ValueError(
+            f"dashboard bridge project mismatch: {project_ref or 'UNKNOWN'}"
         )
-        backend = dict(dashboard_bridge_payload.get("backend") or {})
-        backend_bridge_meta = dict(dashboard_bridge_payload.get("bridge") or {})
-        if backend:
-            backend_source = "GITHUB_DASHBOARD_BRIDGE"
-        else:
-            raise ValueError("dashboard bridge returned an empty backend snapshot")
-    except Exception as exc:
-        dashboard_bridge_error = f"{type(exc).__name__}: {exc}"
-        # Do not drop to the much poorer standalone page solely because the
-        # curated bridge missed its 180-second transport SLA. A recent stale
-        # bridge still contains the full V182/V226/V240 context. We render it
-        # in degraded/read-only mode and force all dashboard admission labels
-        # to NO ORDER until a fresh transport snapshot returns.
+    candidate_backend = dict(payload.get("backend") or {})
+    if not candidate_backend:
+        raise ValueError("dashboard bridge returned an empty backend snapshot")
+    meta = dict(payload.get("bridge") or {})
+    meta["source_url_kind"] = (
+        "CANONICAL"
+        if source_url == DEFAULT_DASHBOARD_SNAPSHOT_URL
+        else "CONFIGURED_FALLBACK"
+    )
+    return candidate_backend, meta
+
+if backend is None:
+    fresh_errors: list[str] = []
+    for candidate_url in dashboard_bridge_urls:
         try:
-            degraded_payload = _load_dashboard_bridge(
-                dashboard_bridge_url,
-                require_fresh=False,
+            dashboard_bridge_payload = _load_dashboard_bridge(
+                candidate_url,
+                require_fresh=True,
             )
-            degraded_backend = dict(degraded_payload.get("backend") or {})
-            degraded_meta = dict(degraded_payload.get("bridge") or {})
-            degraded_age = degraded_meta.get("age_seconds")
-            degraded_age_f = (
-                None if degraded_age is None else float(degraded_age)
+            backend, backend_bridge_meta = _accept_dashboard_bridge_payload(
+                dashboard_bridge_payload,
+                source_url=candidate_url,
             )
-            if (
-                degraded_backend
-                and degraded_age_f is not None
-                and degraded_age_f <= DASHBOARD_DEGRADED_MAX_AGE_SECONDS
-            ):
+            backend_source = "GITHUB_DASHBOARD_BRIDGE"
+            dashboard_bridge_selected_url = candidate_url
+            break
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            fresh_errors.append(error)
+            dashboard_bridge_attempts.append(
+                ("CANONICAL" if candidate_url == DEFAULT_DASHBOARD_SNAPSHOT_URL else "CONFIGURED")
+                + ":FRESH_FAIL:" + error
+            )
+    if backend is None:
+        dashboard_bridge_error = " | ".join(fresh_errors) or "no dashboard bridge candidate"
+
+        degraded_errors: list[str] = []
+        for candidate_url in dashboard_bridge_urls:
+            try:
+                degraded_payload = _load_dashboard_bridge(
+                    candidate_url,
+                    require_fresh=False,
+                )
+                degraded_backend, degraded_meta = _accept_dashboard_bridge_payload(
+                    degraded_payload,
+                    source_url=candidate_url,
+                )
+                degraded_age = degraded_meta.get("age_seconds")
+                degraded_age_f = (
+                    None if degraded_age is None else float(degraded_age)
+                )
+                if (
+                    degraded_age_f is None
+                    or degraded_age_f > DASHBOARD_DEGRADED_MAX_AGE_SECONDS
+                ):
+                    raise ValueError(
+                        "dashboard bridge stale beyond degraded-read window"
+                    )
                 backend = degraded_backend
                 backend_bridge_meta = degraded_meta
                 backend_source = "GITHUB_DASHBOARD_BRIDGE_STALE"
-            else:
-                raise ValueError(
-                    "dashboard bridge stale beyond degraded-read window"
+                dashboard_bridge_selected_url = candidate_url
+                break
+            except Exception as exc:
+                error = f"{type(exc).__name__}: {exc}"
+                degraded_errors.append(error)
+                dashboard_bridge_attempts.append(
+                    ("CANONICAL" if candidate_url == DEFAULT_DASHBOARD_SNAPSHOT_URL else "CONFIGURED")
+                    + ":STALE_FAIL:" + error
                 )
-        except Exception as degraded_exc:
+        if backend is None:
             dashboard_bridge_degraded_error = (
-                f"{type(degraded_exc).__name__}: {degraded_exc}"
+                " | ".join(degraded_errors) or "no degraded dashboard bridge candidate"
             )
-
 standalone_url = _secret("RIZAN_STANDALONE_SNAPSHOT_URL") or DEFAULT_SNAPSHOT_URL
 standalone: dict[str, Any] | None = None
 standalone_error: str | None = None
@@ -1809,12 +1874,9 @@ with st.sidebar:
 
     st.divider()
     st.markdown("**Runtime model**")
-    if standalone is not None:
-        st.write("Restricted Mode: cTrader analysis runs in isolated GitHub Actions.")
-        st.write("Streamlit reads the latest read-only RIZAN snapshot; no order submission.")
-    else:
-        st.write("Research/decision engine runs outside Streamlit.")
-        st.write("Streamlit reads durable snapshots and health state.")
+    st.write("ForexRizan is the canonical dashboard backend.")
+    st.write("cTrader standalone is quote/diagnostic backup only; it never replaces ForexRizan.")
+    st.caption(f"Build: {DASHBOARD_BUILD_ID}")
 
     st.divider()
     st.markdown("**Backend**")
@@ -1834,18 +1896,25 @@ with st.sidebar:
             "Full diagnostic view tetap tersedia, tetapi admission UI dipaksa NO ORDER"
             + (" • age " + _fmt_number(age, 0) + " dtk" if age is not None else "")
         )
-    elif standalone is not None:
-        st.success("cTrader Snapshot Bridge • Standalone")
     elif backend_configured:
         st.error("ForexRizan backend unavailable")
     else:
-        st.warning("Backend credential/snapshot unavailable")
+        st.error("ForexRizan bridge unavailable")
+    if standalone is not None:
+        standalone_meta = dict(standalone.get("bridge") or {})
+        standalone_age = standalone_meta.get("age_seconds")
+        st.caption(
+            "cTrader quote backup: "
+            + ("FRESH" if bool(standalone_meta.get("fresh")) else "STALE")
+            + (" • age " + _fmt_number(standalone_age, 0) + " dtk" if standalone_age is not None else "")
+            + " • diagnostic only"
+        )
 
     st.markdown("**Execution safety**")
-    if standalone is not None:
-        st.code("STANDALONE MANUAL ONLY / AUTO OFF / LIVE OFF", language=None)
-    elif backend_snapshot_stale:
+    if backend_snapshot_stale:
         st.code("STALE MONITOR / UI NO ORDER / DEMO RUNTIME INDEPENDENT", language=None)
+    elif backend is None:
+        st.code("FOREXRIZAN UNAVAILABLE / UI NO ORDER / LIVE OFF", language=None)
     elif policy is not None and str(policy.ctrader.get("environment", "")).upper() == "DEMO":
         st.code("DEMO AUTO CAPABLE / LIVE OFF", language=None)
     else:
@@ -1904,7 +1973,12 @@ if backend_source == "GITHUB_DASHBOARD_BRIDGE" and not backend_configured:
         "the read-only ForexRizan Dashboard Bridge is active."
     )
 if dashboard_bridge_error and backend is None:
-    st.warning(f"Dashboard Bridge belum tersedia: {dashboard_bridge_error}")
+    st.warning(f"ForexRizan Dashboard Bridge belum tersedia: {dashboard_bridge_error}")
+    if dashboard_bridge_degraded_error:
+        st.caption("Degraded bridge juga gagal: " + dashboard_bridge_degraded_error)
+    if dashboard_bridge_attempts:
+        with st.expander("Diagnostik transport ForexRizan", expanded=False):
+            st.code("\n".join(dashboard_bridge_attempts), language=None)
 if standalone_error:
     st.warning(f"Standalone snapshot belum tersedia: {standalone_error}")
 if backend is None and standalone is None:
@@ -1948,11 +2022,9 @@ backend_label = (
     if backend is not None and backend_source == "GITHUB_DASHBOARD_BRIDGE"
     else "RIZAN BRIDGE STALE"
     if backend is not None and backend_source == "GITHUB_DASHBOARD_BRIDGE_STALE"
-    else "CTRADER BRIDGE"
-    if standalone is not None
-    else "ERROR"
-    if backend_configured
-    else "OFFLINE"
+    else "FOREXRIZAN ERROR"
+    if backend is None
+    else "FOREXRIZAN"
 )
 
 m1, m2, m3, m4, m5 = st.columns(5)
@@ -1962,9 +2034,23 @@ m3.metric("Top-5 Scan Cadence", fast_setup)
 m4.metric("Execution Watch", execution_watch)
 m5.metric("Dashboard Backend", backend_label)
 
-if standalone is not None:
-    _render_standalone_dashboard(standalone)
-    st.stop()
+if backend is None and standalone is not None:
+    standalone_quote = dict(standalone.get("quote") or {})
+    standalone_meta = dict(standalone.get("bridge") or {})
+    st.warning(
+        "ForexRizan belum tersedia. cTrader standalone hanya dipakai sebagai quote backup "
+        "untuk diagnostik; supply/demand, V240, admission, SL/TP, dan order tidak diambil "
+        "dari jalur standalone."
+    )
+    with st.expander("cTrader quote backup (diagnostic only)", expanded=False):
+        st.write(
+            {
+                "mid": standalone_quote.get("mid"),
+                "snapshot_age_seconds": standalone_meta.get("age_seconds"),
+                "fresh": standalone_meta.get("fresh"),
+                "execution_authority": False,
+            }
+        )
 
 if backend is not None:
     control = backend["control"]
