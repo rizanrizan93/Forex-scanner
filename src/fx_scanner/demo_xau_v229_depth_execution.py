@@ -423,12 +423,6 @@ def run() -> int:
                 dom_heartbeat=dom_hb,
                 now=now,
             )
-            depth_hazard = build_dynamic_depth_hazard(
-                v226_evaluation=v226_eval,
-                direction=direction,
-                live_price=live_price,
-                pressure_transition=pressure_transition,
-            )
 
             plan = build_execution_plan(
                 v226_evaluation=v226_eval,
@@ -437,8 +431,24 @@ def run() -> int:
                 min_rr=MIN_PLAN_RR,
             )
             if plan is None:
+                # Do not publish a calibrated Dynamic Depth state for geometry
+                # that V229 has already rejected/remapped. This heartbeat is
+                # operational telemetry and must agree with execution authority.
+                depth_hazard = {
+                    "state": "UNAVAILABLE",
+                    "reason": "NO_CURRENT_ALIGNED_V229_PLAN",
+                    "action": "WAIT_STRUCTURE_REMAP",
+                    "execution_ready": False,
+                }
                 reason = "WAIT_STRUCTURALLY_ACTIVE_DEPTH_CANDIDATE"
-            elif not (
+            else:
+                depth_hazard = build_dynamic_depth_hazard(
+                    v226_evaluation=v226_eval,
+                    direction=direction,
+                    live_price=live_price,
+                    pressure_transition=pressure_transition,
+                )
+            if plan is not None and not (
                 bool(pressure_transition.get("pre_touch_entry_allowed"))
                 or bool(pressure_transition.get("confirmation_entry_allowed"))
             ):
