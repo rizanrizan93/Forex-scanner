@@ -462,15 +462,7 @@ def run() -> int:
             )
             if not admission["allowed"]:
                 prior_invalidated = _invalidate_prior_ready(store, current_key="STRUCTURE_BLOCKED")
-                raise RuntimeError("WAIT_STRUCTURE:" + admission["reason"])
-            if not bool(v226_hb.get("healthy")):
-                raise RuntimeError("RIZAN_DEPTH_V226_UNHEALTHY")
-            if not bool(atlas_hb.get("healthy")):
-                raise RuntimeError("RIZAN_DEPTH_ATLAS_UNHEALTHY")
-
-            v226_at = _dt(v226_hb.get("observed_at"))
-            if v226_at is None or (now - v226_at).total_seconds() > MAX_V226_AGE_SECONDS:
-                raise RuntimeError("RIZAN_DEPTH_V226_STALE")
+                plan_diagnostics["reason"] = "STRUCTURE:" + admission["reason"]
 
             v226_eval = dict(dict(v226_hb.get("details") or {}).get("evaluation") or {})
             atlas_eval = dict(dict(atlas_hb.get("details") or {}).get("evaluation") or {})
@@ -497,7 +489,7 @@ def run() -> int:
                 live_price=live_price,
                 min_rr=MIN_PLAN_RR,
                 diagnostics=plan_diagnostics,
-            )
+            ) if admission["allowed"] else None
             if plan is None:
                 # Do not publish a calibrated Dynamic Depth state for geometry
                 # that V229 has already rejected/remapped. This heartbeat is

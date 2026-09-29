@@ -175,3 +175,29 @@ def test_bridge_does_not_read_or_republish_cached_private_account(monkeypatch):
     assert out["backend"]["broker_positions"] == []
     assert out["backend"]["account_telemetry_redacted"] is True
     assert out["source"]["account_telemetry_public"] is False
+
+
+def test_v229_query_projects_display_fields_without_duplicate_candidate_or_hazard():
+    from types import SimpleNamespace
+    from fx_scanner.dashboard import SupabaseDashboardReader
+    selected = []
+    class Query:
+        def table(self, name): return self
+        def select(self, fields): selected.append(fields); return self
+        def eq(self, *a): return self
+        def order(self, *a, **kw): return self
+        def limit(self, n): return self
+        def execute(self):
+            return SimpleNamespace(data=[{
+                "worker_name": "ctrader_demo_xau_v229_depth_execution",
+                "plan_execution_phase": "RETEST_CONFIRMATION",
+                "plan_children": [{"slot": 3, "submit_eligible": False}],
+                "plan_diagnostics": {"reason": "TERMINAL_RR_BELOW_MINIMUM"},
+                "structure_admission": {"allowed": True},
+            }])
+    result = SupabaseDashboardReader(Query()).latest_rizan_v229_execution_heartbeat()
+    assert "plan:details->plan" not in selected[0]
+    assert "plan_children:details->plan->children" in selected[0]
+    assert result["details"]["plan"]["execution_phase"] == "RETEST_CONFIRMATION"
+    assert result["details"]["plan"]["children"][0]["submit_eligible"] is False
+    assert result["details"]["plan_diagnostics"]["reason"] == "TERMINAL_RR_BELOW_MINIMUM"
