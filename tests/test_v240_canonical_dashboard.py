@@ -185,5 +185,5 @@ def test_v265_dashboard_has_four_layer_entry_map_and_overlap_status() -> None:
     assert "BELOW WINDOW • M5 masih terlalu dangkal untuk RR ≥1,50R" in SOURCE
     assert "OVERLAP • M5 sudah menyentuh RR-eligible window" in SOURCE
     assert "historical entry = prior riset" in SOURCE
-    assert "official broker entry = baru ada setelah" in SOURCE
-    assert "semua gate lolos" in SOURCE
+    assert '"DEMO window = area yang secara struktural masih bisa memenuhi RR, official "' in SOURCE
+    assert '"broker entry = baru ada setelah semua gate lolos. "' in SOURCE
