@@ -605,3 +605,90 @@ def test_v261_v240_exposes_historical_research_entry_without_broker_authority() 
     assert research["high"] == 102.0
     assert research["reference"] == 101.0
     assert research["execution_authority"] is False
+
+
+def test_v263_v240_confirmation_window_is_visible_but_not_official_entry() -> None:
+    source = {
+        "zone_id": "local-h1-supply",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 100.0,
+        "high": 120.0,
+        "proximal": 100.0,
+        "distal": 120.0,
+        "atr_points": 10.0,
+        "status": "IN_ZONE_PREPARE_ONLY",
+        "lifecycle": {
+            "active": True,
+            "freshness": "PARTIALLY_MITIGATED",
+            "touch_count": 3,
+        },
+    }
+    v226 = {
+        "focus_direction": "SHORT",
+        "depth_entry_candidate": {
+            "direction": "SHORT",
+            "entry_low": 101.0,
+            "entry_high": 104.0,
+            "entry_reference": 102.0,
+            "source_layer": "V182_ACTIVE_H1_HISTORICAL_HOTSPOT",
+            "source_timeframe": "H1",
+            "source_zone": source,
+            "display_status": "CONFIRMATION_ONLY_RETESTED_HTF",
+            "htf_retested": True,
+            "retest_confirmation_eligible": True,
+            "pre_touch_execution_eligible": False,
+            "confirmation_execution_eligible": True,
+            "historical_context": {"h1_standalone_rate": 0.70},
+        },
+        "four_order_ladder": {
+            "slots": [
+                {"slot": 1, "lot": 0.01, "reference_price": 101.4},
+                {"slot": 2, "lot": 0.01, "reference_price": 102.0},
+                {"slot": 3, "lot": 0.01, "reference_price": 102.6},
+                {"slot": 4, "lot": 0.01, "reference_price": 103.2},
+            ]
+        },
+        "short": {},
+    }
+    demand = {
+        "zone_id": "terminal-h1-demand",
+        "timeframe": "H1",
+        "direction": "LONG",
+        "low": 95.0,
+        "high": 98.0,
+        "status": "ACTIVE",
+        "lifecycle": {"active": True},
+    }
+    atlas = {
+        "chart_bars_m15": [],
+        "zones": [source, demand],
+        "path_map": {
+            "active_path": {
+                "reaction_direction": "SHORT",
+                "source_zone": source,
+                "reaction_target": {"price": 98.0},
+                "terminal_target_zone": demand,
+                "primary_opposing_zone": demand,
+            },
+            "supply_to_demand": {"destination_stack": [demand]},
+        },
+    }
+
+    state = build_canonical_xau_decision(
+        v226_evaluation=v226,
+        atlas_evaluation=atlas,
+        price_now=110.0,
+        path_direction="SHORT",
+    )
+
+    assert state["state"] == "CONFIRMATION_WINDOW_ARMED"
+    assert state["authority"] == "V229_CONFIRMATION_WINDOW_PENDING_M5"
+    assert state["entry_authorized"] is False
+    assert state["confirmation_window_armed"] is True
+    assert state["terminal_rr_recheck_required"] is True
+    window = dict(state["confirmation_entry_window"])
+    assert 100.0 <= window["low"] < window["high"] <= 120.0
+    assert state["active_entry_zone"]["role"] == "M5_CONFIRMATION_WINDOW_NOT_ORDER"
+    assert state["historical_research_entry"]["low"] == 101.0
+    assert state["historical_research_entry"]["high"] == 104.0
