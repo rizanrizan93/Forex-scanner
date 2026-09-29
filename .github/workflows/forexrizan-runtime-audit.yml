@@ -93,6 +93,7 @@ jobs:
               "ctrader_demo_xau_v226_rizan_depth_map",
               "ctrader_demo_xau_v229_depth_execution",
               "ctrader_demo_xau_rizan_prepared_plan_producer",
+              "ctrader_demo_xau_rizan_fast_handoff",
               "ctrader_demo_autotrade",
               "ctrader_demo_token_maintainer",
           }

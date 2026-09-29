@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   group: rizan-xau-standalone-v253
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   snapshot:

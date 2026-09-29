@@ -3,13 +3,15 @@ name: ForexRizan Dashboard Bridge V254
 on:
   workflow_dispatch:
   schedule:
-    - cron: "3 * * * 0-5"
+    - cron: "3,33 * * * 0-5"
   push:
     branches:
       - main
     paths:
       - "src/fx_scanner/dashboard.py"
       - "src/fx_scanner/xau_dashboard_bridge_v254.py"
+      - "src/fx_scanner/xau_canonical_decision_v240.py"
+      - "streamlit_app.py"
       - ".github/workflows/forexrizan-dashboard-bridge-v254.yml"
 
 permissions:
@@ -17,12 +19,12 @@ permissions:
 
 concurrency:
   group: forexrizan-dashboard-bridge-v254
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 78
+    timeout-minutes: 75
     env:
       SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -59,7 +61,7 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          for i in $(seq 1 65); do
+          for i in $(seq 1 64); do
             started="$(date +%s)"
             snapshot_ok=0
             for attempt in 1 2 3; do
@@ -99,7 +101,7 @@ jobs:
               echo "::warning::Dashboard snapshot generation failed this cycle; worker will continue"
             fi
 
-            if [ "$i" -lt 65 ]; then
+            if [ "$i" -lt 64 ]; then
               elapsed="$(( $(date +%s) - started ))"
               sleep_for="$(( 60 - elapsed ))"
               if [ "$sleep_for" -gt 0 ]; then

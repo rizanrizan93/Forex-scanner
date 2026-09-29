@@ -26,7 +26,11 @@ def test_streamlit_app_boots_offline_without_backend_secrets():
         "DASHBOARD BRIDGE STALE" in element.value
         for element in app.error
     )
-    assert offline_ready or standalone_ready or degraded_bridge_ready
+    forexrizan_unavailable = any(
+        "ForexRizan belum tersedia" in element.value
+        for element in app.warning
+    )
+    assert offline_ready or standalone_ready or degraded_bridge_ready or forexrizan_unavailable
 
 
 def test_streamlit_dashboard_refresh_contract_is_60_seconds():
@@ -208,3 +212,30 @@ def test_signal_expiry_status_still_uses_absolute_utc_time():
     assert 'expires_dt < admission_now' in text
     assert 'now_utc = datetime.now(tz=UTC)' in text
     assert 'expires_dt < now_utc' in text
+
+
+def test_dashboard_never_promotes_ctrader_standalone_to_backend():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert '"CTRADER BRIDGE"' not in text
+    assert "cTrader standalone is quote/diagnostic backup only" in text
+    assert "ForexRizan is the canonical dashboard backend" in text
+    assert "FOREXRIZAN_PROJECT_REF = \"naxvdtvlfatljzzwhrmo\"" in text
+    assert "DEFAULT_DASHBOARD_SNAPSHOT_URL" in text
+    assert "dashboard_bridge_urls = [DEFAULT_DASHBOARD_SNAPSHOT_URL]" in text
+    assert 'backend_source = "GITHUB_DASHBOARD_BRIDGE"' in text
+    assert 'backend_source = "GITHUB_DASHBOARD_BRIDGE_STALE"' in text
+
+
+def test_dashboard_rejects_old_supabase_project_secret_and_uses_canonical_bridge():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "SUPABASE_PROJECT_MISMATCH" in text
+    assert "supabase_project_matches" in text
+    assert "Direct reads disabled; using canonical ForexRizan bridge." in text
+    assert "dashboard bridge project mismatch" in text
+
+
+def test_dashboard_standalone_fallback_is_diagnostic_only_without_page_stop():
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "cTrader quote backup (diagnostic only)" in text
+    assert "supply/demand, V240, admission, SL/TP, dan order tidak diambil" in text
+    assert "_render_standalone_dashboard(standalone)\n    st.stop()" not in text

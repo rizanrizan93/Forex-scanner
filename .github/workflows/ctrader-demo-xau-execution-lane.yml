@@ -132,6 +132,15 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v229_child_executor
 
+      - name: Execute fresh RIZAN prepared-path DEMO signal
+        id: execute_rizan_path_handoff
+        if: >-
+          ${{ !cancelled() &&
+              steps.repair_existing_protection.outcome == 'success' &&
+              steps.produce_xau_afic.outcome == 'success' }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_afic_fresh_ready_handoff
+
       - name: Execute fresh exact-authorized DEMO signals
         id: execute_fresh_handoff
         if: >-
@@ -154,6 +163,7 @@ jobs:
           PRESSURE_OUTCOME: ${{ steps.refresh_xau_pressure.outcome }}
           RIZAN_DEPTH_OUTCOME: ${{ steps.produce_rizan_depth.outcome }}
           RIZAN_CHILD_OUTCOME: ${{ steps.execute_rizan_children.outcome }}
+          RIZAN_PATH_HANDOFF_OUTCOME: ${{ steps.execute_rizan_path_handoff.outcome }}
           HANDOFF_OUTCOME: ${{ steps.execute_fresh_handoff.outcome }}
         run: |
           set -euo pipefail
@@ -188,6 +198,10 @@ jobs:
           fi
           if [ "${V24_OUTCOME}" != "success" ] && [ "${CANONICAL_OUTCOME}" != "success" ]; then
             echo "XAU_EXECUTION_LANE_WARN stage=OTHER_PRODUCERS v24=${V24_OUTCOME} canonical=${CANONICAL_OUTCOME} rizan=${RIZAN_OUTCOME}"
+          fi
+          if [ "${RIZAN_PATH_HANDOFF_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_FAIL stage=RIZAN_PATH_HANDOFF outcome=${RIZAN_PATH_HANDOFF_OUTCOME}"
+            failed=1
           fi
           if [ "${HANDOFF_OUTCOME}" != "success" ]; then
             echo "XAU_EXECUTION_LANE_FAIL stage=HANDOFF outcome=${HANDOFF_OUTCOME}"
