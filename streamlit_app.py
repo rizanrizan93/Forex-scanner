@@ -3790,7 +3790,10 @@ with forecast_tab:
     chart_pool.sort(key=_chart_zone_priority)
     chart_pool = chart_pool[:8]
 
-    with st.container(border=True):
+    with st.expander(
+        "Riset V226 — locator historis/depth evidence (BUKAN entry utama)",
+        expanded=False,
+    ):
         st.markdown("##### V226 — RIZAN Depth Map")
         if v226_eval and str(v226_eval.get("state") or "") == "RIZAN_DEPTH_MAP_AVAILABLE":
             st.markdown("###### RISET / PREPARATION — Depth Entry Candidate")
