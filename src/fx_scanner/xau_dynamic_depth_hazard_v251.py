@@ -33,6 +33,20 @@ def _source_context(
     side = dict(v226_evaluation.get(str(direction).lower()) or {})
     candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
     source = str(candidate.get("source_layer") or "")
+    candidate_zone = dict(candidate.get("source_zone") or {})
+    candidate_profile = dict(candidate.get("source_profile") or {})
+    candidate_tf = str(
+        candidate.get("source_timeframe")
+        or candidate_zone.get("timeframe")
+        or ""
+    ).upper()
+    if (
+        source.startswith("V182_ACTIVE_")
+        and candidate_tf in {"H4", "H1", "M15"}
+        and candidate_zone
+        and candidate_profile
+    ):
+        return candidate_tf, candidate_zone, candidate_profile
     if source.startswith("M15"):
         layer = dict(side.get("m15") or {})
         return "M15", dict(layer.get("zone") or {}), dict(layer.get("standalone_profile_context") or {})
