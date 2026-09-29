@@ -1439,7 +1439,7 @@ def _rizan_chart_png(
     return output.getvalue(), None
 
 
-def _afic_path_text(direction: str, state: str) -> str:
+def _rizan_path_text(direction: str, state: str) -> str:
     side = str(direction or "").upper()
     current = str(state or "").upper()
     if side == "LONG":
@@ -1473,7 +1473,7 @@ def _age_seconds(value: Any) -> float | None:
     return max(0.0, (datetime.now(tz=UTC) - parsed.astimezone(UTC)).total_seconds())
 
 
-def _afic_next_action(
+def _rizan_next_action(
     *,
     state: str,
     grade: str,
@@ -2307,7 +2307,7 @@ with forecast_tab:
             latest_exec_row = event_row
             latest_exec_event = str(event_row.get("event_type") or "")
             break
-    next_action, next_reason = _afic_next_action(
+    next_action, next_reason = _rizan_next_action(
         state=state,
         grade=grade,
         proximity=proximity,
@@ -2437,6 +2437,8 @@ with forecast_tab:
     dc_current_pocket_state = str(
         dc_projection_current.get("pocket_state") or ""
     ).upper()
+    dc_parent_rescue = dict(dc_micro.get("parent_reversal_rescue") or {})
+    dc_parent_rescue_active = bool(dc_parent_rescue.get("active"))
     dc_current_projected_pocket = dict(
         dc_projection_current.get("m5_pocket") or {}
     )
@@ -3283,6 +3285,16 @@ with forecast_tab:
                 "Belum ada M5 pocket aktif. Dashboard tidak membuat pocket sintetis dari parent zone."
             )
 
+        if dc_parent_rescue_active:
+            st.warning(
+                "HTF PARENT REVERSAL RESCUE AKTIF • H1 child sudah ditembus, tetapi sweep masih "
+                f"berada di dalam {dc_parent_rescue.get('parent_timeframe') or 'HTF'} parent yang valid. "
+                f"Mode={dc_parent_rescue.get('mode') or 'HTF_PARENT_RESCUE'} • "
+                f"penetrasi child={_fmt_distance(dc_parent_rescue.get('child_penetration_atr'), ' ATR')}. "
+                "M5 candidate/refined tetap dipertahankan sebagai SHADOW/PREPARE; kondisi ini sendiri "
+                "tidak memberi execution authority."
+            )
+
         st.markdown("###### Entry → Dynamic Depth → Admission")
         qe1, qe2 = st.columns(2)
         qe1.metric(v240_entry_label, v240_watch_text)
@@ -3846,6 +3858,12 @@ with forecast_tab:
     ):
         zone = dict(raw_zone or {})
         if not zone or zone.get("low") is None or zone.get("high") is None:
+            continue
+        zone_lifecycle = dict(zone.get("lifecycle") or {})
+        zone_status = str(zone.get("status") or "").upper()
+        if zone_lifecycle and zone_lifecycle.get("active") is False:
+            continue
+        if "BROKEN" in zone_status or "INVALID" in zone_status:
             continue
         zone_key = str(zone.get("zone_id") or "") or (
             f"{zone.get('timeframe')}:{zone.get('direction')}:{zone.get('low')}:{zone.get('high')}"
@@ -4628,6 +4646,14 @@ with forecast_tab:
                     f"state={v222_eval.get('family_state')} • "
                     "pocket terbaru tidak otomatis menggusur kandidat lama dalam evaluasi kualitas."
                 )
+
+        if dc_parent_rescue_active:
+            st.info(
+                "Parent-reversal rescue • microstructure M5 tidak dibuang hanya karena H1 child invalid. "
+                f"Parent={dc_parent_rescue.get('parent_timeframe') or 'HTF'} • "
+                f"mode={dc_parent_rescue.get('mode') or '—'} • "
+                "status tetap SHADOW/PREPARE sampai confirmation/admission canonical lolos."
+            )
 
         dc_current_pocket_shown = False
         if dc_initial_candidate:
@@ -6841,7 +6867,7 @@ with forecast_tab:
             f"• **Proximity:** {proximity}  "
             f"• **Distance:** {_fmt_distance(distance_atr, ' ATR')}"
         )
-    st.info(_afic_path_text(direction, state))
+    st.info(_rizan_path_text(direction, state))
 
     if grade in {"A", "B"}:
         st.success(
@@ -7370,6 +7396,13 @@ with system_tab:
             _frame(heartbeat_rows),
             ("observed_at",),
         ).rename(columns={"observed_at": "observed_at (WIB)"})
+        if "worker_name" in heartbeats.columns:
+            heartbeats["worker_name"] = (
+                heartbeats["worker_name"]
+                .astype(str)
+                .str.replace("AFIC", "RIZAN", regex=False)
+                .str.replace("afic", "rizan", regex=False)
+            )
         if "details" in heartbeats.columns:
             heartbeats["details"] = heartbeats["details"].apply(
                 lambda value: json.dumps(
@@ -7380,6 +7413,12 @@ with system_tab:
                 )
                 if isinstance(value, (dict, list, tuple))
                 else value
+            )
+            heartbeats["details"] = (
+                heartbeats["details"]
+                .astype(str)
+                .str.replace("AFIC", "RIZAN", regex=False)
+                .str.replace("afic", "rizan", regex=False)
             )
         st.dataframe(heartbeats, hide_index=True, width="stretch")
         if not load_full_heartbeat_details:
@@ -7393,7 +7432,12 @@ with system_tab:
     if backend is not None and backend.get("latest_run"):
         st.subheader("Proses Scanner Terbaru (Latest Scanner Run)")
         run = backend["latest_run"]
-        st.json(run, expanded=False)
+        run_display = json.loads(
+            json.dumps(run, ensure_ascii=False, default=str)
+            .replace("AFIC", "RIZAN")
+            .replace("afic", "rizan")
+        )
+        st.json(run_display, expanded=False)
 
 with validation_tab:
     st.subheader("Gerbang Validasi (Acceptance Gates)")
