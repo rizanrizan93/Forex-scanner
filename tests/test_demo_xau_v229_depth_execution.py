@@ -841,3 +841,45 @@ def test_v276_opposing_composite_keeps_base_half_atr_even_with_full_m30_overlap(
         depth_hazard=hazard,
         atlas_evaluation=atlas,
     ) is False
+
+
+def test_v276_live_ctrader_price_overrides_stale_snapshot_distance_for_arm() -> None:
+    plan = {
+        "direction": "SHORT",
+        "execution_phase": "PRE_TOUCH",
+        "confirmation_window_only": False,
+        "candidate": {
+            "calibrated_fresh_first_touch": True,
+            "pre_touch_execution_eligible": True,
+            "direction": "SHORT",
+            "source_zone": {
+                "zone_id": "fresh-h1-supply",
+                "low": 4179.03,
+                "high": 4197.99,
+                "atr_points": 17.43257897762935,
+                "distance_atr": 0.658,
+            },
+        },
+    }
+    pressure = {"calibration_entry_allowed": True}
+    hazard = {
+        "state": "DYNAMIC_DEPTH_HAZARD_AVAILABLE",
+        "location_state": "AHEAD_OF_ZONE",
+    }
+    # Live bid has moved closer: (4179.03 - 4172.50) / 17.4326 ~= 0.375 ATR.
+    context = _fresh_first_touch_calibration_context(
+        plan=plan,
+        atlas_evaluation={},
+        live_price=4172.50,
+    )
+    assert context["snapshot_approach_distance_atr"] == 0.658
+    assert 0.37 < context["live_approach_distance_atr"] < 0.38
+    assert context["effective_approach_distance_atr"] == context["live_approach_distance_atr"]
+    assert context["max_approach_distance_atr"] == 0.5
+    assert _fresh_first_touch_calibration_arm_allowed(
+        plan=plan,
+        pressure_transition=pressure,
+        depth_hazard=hazard,
+        atlas_evaluation={},
+        live_price=4172.50,
+    ) is True
