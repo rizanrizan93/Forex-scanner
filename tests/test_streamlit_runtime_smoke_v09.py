@@ -244,10 +244,10 @@ def test_dashboard_standalone_fallback_is_diagnostic_only_without_page_stop():
 
 def test_v256_dashboard_hides_research_locator_from_operational_decision_path():
     text = (ROOT / "streamlit_app.py").read_text()
-    assert 'DASHBOARD_BUILD_ID = "RIZAN_V256_CANONICAL_TRUTH_UI_20260929"' in text
+    assert 'DASHBOARD_BUILD_ID = "RIZAN_V256_4_TOUCH_CYCLE_TRUTH_20260929"' in text
     assert "Zone watch (BUKAN ENTRY)" in text
     assert "Path target (BUKAN TP order)" in text
-    assert "Geometry only — tanpa hazard prior" in text
+    assert "Geometry only — hanya posisi harga di dalam zona" in text
     assert "Riset V226 — locator historis/depth evidence (BUKAN entry utama)" in text
     assert 'm2.metric("Pair aktif", "XAUUSD")' in text
 
@@ -263,4 +263,20 @@ def test_v256_dynamic_depth_uses_geometry_only_without_v229_authority():
     text = (ROOT / "streamlit_app.py").read_text()
     assert "build_geometry_depth_status" in text
     assert 'v240_authority == "V229_CANONICAL_GEOMETRY"' in text
-    assert "Dynamic Depth tidak pernah menjadi izin order sendirian." in text
+    assert "Tanpa V229 geometry yang aligned, dashboard sengaja tidak menghitung reversal band." in text
+
+
+
+def test_v2564_dashboard_does_not_promote_historical_refined_pocket() -> None:
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "REFINED_M5_HISTORICAL" in text
+    assert "M5 REFINED LAMA • WAIT NEW TRIGGER" in text
+    assert "Refined lama • tunggu baru" in text
+    assert "tunggu pocket baru dari touch-cycle aktif" in text
+
+
+def test_v2564_dynamic_depth_labels_geometry_as_non_forecast() -> None:
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "8 • Posisi harga dalam zona" in text
+    assert "geometry only (BUKAN reversal forecast)" in text
+    assert "bukan forecast reversal dan bukan entry band" in text
