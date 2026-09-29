@@ -9,19 +9,24 @@ def test_v240_dashboard_has_canonical_decision_map() -> None:
     assert "##### V240 — Canonical XAU Decision Map" in SOURCE
     assert "Satu sumber kebenaran untuk arah, Depth Candidate, entry, SL, TP" in SOURCE
     for label in (
-        "1 • Arah / Kondisi",
-        "3 • H4 Supply/Demand",
-        "4 • H1 Supply/Demand",
-        "5 • M15 confirmation / retest",
-        "6 • M5 timing",
-        "7 • Primary Depth Entry",
-        "Reference entry",
-        "11 • SL / invalidation",
-        "TP1 struktural",
-        "TP terminal",
-        "13 • Likely destination / opposing zone",
+        "Apa yang harus dilakukan sekarang",
+        "Arah aktif V182",
+        "Struktur aktif — bukan locator historis",
         "Demand terdekat",
         "Supply terdekat",
+        "M15 confirmation",
+        "M5 timing",
+        "7 • Entry resmi",
+        "7 • Zone watch (BUKAN ENTRY)",
+        "8 • Dynamic Depth",
+        "9 • Pressure / DOM",
+        "10 • Execution Admission",
+        "11 • SL resmi",
+        "12 • TP order resmi",
+        "13 • Path target (BUKAN TP order)",
+        "14 • WAIT / BLOCK reason",
+        "15 • Lifecycle",
+        "16 • Session WIB",
     ):
         assert label in SOURCE
 
@@ -89,33 +94,35 @@ def test_v252_dashboard_surfaces_retested_htf_lifecycle_and_demo_execution():
 
 
 def test_v240_mobile_operational_strip_has_price_session_gate_and_children() -> None:
-    assert 'metric("2 • Harga XAU sekarang"' in SOURCE
+    assert 'metric("Harga XAU sekarang"' in SOURCE
     assert 'metric("16 • Session WIB"' in SOURCE
-    assert 'metric("14 • WAIT / BLOCK reason"' in SOURCE
+    assert '"14 • WAIT / BLOCK reason"' in SOURCE
     assert "Child L1–L4 — status eksekusi DEMO" in SOURCE
     for slot in ("L1", "L2", "L3", "L4"):
         assert f'metric("{slot}"' in SOURCE
 
 
 def test_v240_smartphone_sequence_matches_operational_contract() -> None:
-    assert "1–6 • Struktur market → lokasi → timing" in SOURCE
-    assert "7–10 • Entry → depth → pressure → admission" in SOURCE
-    assert "11–16 • Risk → target → lifecycle → session" in SOURCE
+    assert "Apa yang harus dilakukan sekarang" in SOURCE
+    assert "Struktur aktif — bukan locator historis" in SOURCE
+    assert "Entry → Dynamic Depth → Admission" in SOURCE
+    assert "Risk & target" in SOURCE
 
     ordered = (
-        "1 • Arah / Kondisi",
-        "2 • Harga XAU sekarang",
-        "3 • H4 Supply/Demand",
-        "4 • H1 Supply/Demand",
-        "5 • M15 confirmation / retest",
-        "6 • M5 timing",
-        "7 • Primary Depth Entry",
+        "Apa yang harus dilakukan sekarang",
+        "Struktur aktif — bukan locator historis",
+        "Demand terdekat",
+        "Supply terdekat",
+        "M15 confirmation",
+        "M5 timing",
+        "Entry → Dynamic Depth → Admission",
         "8 • Dynamic Depth",
-        "9 • Pressure transition",
+        "9 • Pressure / DOM",
         "10 • Execution Admission",
-        "11 • SL / invalidation",
-        "12 • TP ladder",
-        "13 • Likely destination / opposing zone",
+        "Risk & target",
+        "11 • SL resmi",
+        "12 • TP order resmi",
+        "13 • Path target (BUKAN TP order)",
         "14 • WAIT / BLOCK reason",
         "15 • Lifecycle",
         "16 • Session WIB",
