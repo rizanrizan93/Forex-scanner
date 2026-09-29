@@ -322,3 +322,30 @@ def test_v219_h1_child_break_inside_valid_h4_parent_preserves_candidate():
     assert result["state"] != "SOURCE_INVALIDATED_NO_REFINEMENT"
     assert result["candidate_entry_pocket"]
     assert result["execution_authority"] is False
+
+
+
+def test_v189_not_before_rejects_old_touch_from_previous_leg() -> None:
+    t0 = datetime(2026, 9, 29, 0, 0, tzinfo=UTC)
+    path = _path(direction="SHORT")
+    path["active_path"]["source_zone"]["available_at"] = t0.isoformat()
+    bars = []
+    for i in range(50):
+        ts = t0 + timedelta(minutes=5 * i)
+        if i == 8:
+            # Valid source touch after zone creation, but before the current leg
+            # activation boundary. It must not be reused for a new next-leg pocket.
+            bars.append(_bar(ts, 106.0, 109.0, 104.0, 105.0))
+        else:
+            bars.append(_bar(ts, 95.0, 96.0, 94.0, 95.0))
+
+    not_before = t0 + timedelta(minutes=100)
+    result = evaluate_micro_refinement(
+        tuple(bars),
+        path_map=path,
+        as_of=t0 + timedelta(minutes=5 * 51),
+        not_before=not_before,
+    )
+    assert result["state"] == "WAIT_SOURCE_TOUCH"
+    assert result["eligibility_not_before"] == not_before.isoformat()
+    assert result["pre_source_touch_count_ignored"] >= 1
