@@ -190,6 +190,59 @@ def _depth_band_prices(
     }
 
 
+def _competing_risk_heatmap(
+    zone: dict[str, Any],
+    profile: dict[str, Any],
+    *,
+    oos_only: bool = True,
+) -> list[dict[str, Any]]:
+    """Project conditional first-touch reversal-vs-break evidence onto zone geometry."""
+    if not zone or not profile:
+        return []
+    key = (
+        "oos_2025_2026_competing_risk_bands"
+        if oos_only
+        else "competing_risk_bands"
+    )
+    rows: list[dict[str, Any]] = []
+    for raw in list(profile.get(key) or []):
+        row = dict(raw)
+        lower = _f(row.get("lower_depth"))
+        upper = _f(row.get("upper_depth"))
+        if lower is None or upper is None:
+            continue
+        geometry = _depth_band_prices(zone, lower, upper)
+        if not geometry:
+            continue
+        p_reversal = _f(row.get("p_reversal_first"))
+        p_break = _f(row.get("p_break_first"))
+        dominant = (
+            "BREAK"
+            if p_break is not None
+            and p_reversal is not None
+            and p_break > p_reversal
+            else "REVERSAL"
+            if p_break is not None and p_reversal is not None
+            else "UNRESOLVED"
+        )
+        rows.append(
+            {
+                **row,
+                "price_low": float(geometry["low"]),
+                "price_high": float(geometry["high"]),
+                "dominant_outcome": dominant,
+                "label": (
+                    "RISET OOS FIRST-TOUCH 2025-2026"
+                    if oos_only
+                    else "RISET FIRST-TOUCH 2012-2026"
+                ),
+                "not_current_calibrated_probability": True,
+                "execution_authority": False,
+            }
+        )
+    return rows
+
+
 def _reversal_heatmap(
     zone: dict[str, Any],
     profile: dict[str, Any],
@@ -1970,6 +2023,11 @@ def build_depth_map(
         focus_source_zone,
         focus_source_profile,
     )
+    competing_risk_heatmap_oos = _competing_risk_heatmap(
+        focus_source_zone,
+        focus_source_profile,
+        oos_only=True,
+    )
 
     focus_m15_envelope = dict(
         dict(dict(focus_map.get("m15") or {}).get("nested_locator") or {}).get(
@@ -2064,6 +2122,9 @@ def build_depth_map(
             )
         ),
         "reversal_depth_heatmap": reversal_depth_heatmap,
+        "competing_risk_heatmap_oos": competing_risk_heatmap_oos,
+        "competing_risk_scope": "FIRST_TOUCH_ONLY",
+        "retest_competing_risk_calibrated": False,
         "reversal_depth_heatmap_source": {
             "timeframe": focus_source_tf or None,
             "direction": focus,
