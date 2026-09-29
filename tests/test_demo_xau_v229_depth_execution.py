@@ -7,6 +7,7 @@ from fx_scanner.demo_xau_v229_depth_execution import (
     STRATEGY_ID,
     build_execution_plan,
 )
+from fx_scanner.demo_xau_v226_rizan_depth_map import build_depth_map
 
 
 def _v226(*, fresh: bool = True, first_touch: bool = False, reused: bool = False) -> dict:
@@ -375,3 +376,96 @@ def test_v261_v229_accepts_active_v182_h1_research_remap_without_old_h4_parent()
         True,
         True,
     ]
+
+
+def test_v261_v226_prefers_current_v182_h1_source_over_unrelated_h4_requirement() -> None:
+    source = {
+        "zone_id": "current-h1-supply",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 100.0,
+        "high": 110.0,
+        "proximal": 100.0,
+        "distal": 110.0,
+        "atr_points": 5.0,
+        "status": "IN_ZONE_PREPARE_ONLY",
+        "lifecycle": {
+            "active": True,
+            "freshness": "PARTIALLY_MITIGATED",
+            "touch_count": 3,
+        },
+    }
+    history = {
+        "contract": "XAU_ZONE_REVERSAL_DEPTH_RESEARCH",
+        "research_version": "XAU_ZONE_REVERSAL_DEPTH_V225_2",
+        "years": list(range(2012, 2027)),
+        "year_count": 15,
+        "episode_count": 1000,
+        "key_findings": [
+            {
+                "timeframe": "H1",
+                "direction": "SHORT",
+                "touches": 300,
+                "hold_rate": 0.70,
+                "hold_wilson_lower_95": 0.65,
+                "depth_p25": 0.20,
+                "depth_median": 0.35,
+                "depth_p75": 0.60,
+            }
+        ],
+        "eras": {
+            era: {
+                "summary": {
+                    "H1": {
+                        "SHORT": {
+                            "touches": 100,
+                            "hold_rate": 0.70,
+                            "depth_median": 0.35,
+                            "hazard_by_depth_band": [
+                                {"band": "00-20%", "lower_depth": 0.0, "upper_depth": 0.2, "at_risk": 100, "reversals": 20, "hazard": 0.20},
+                                {"band": "20-40%", "lower_depth": 0.2, "upper_depth": 0.4, "at_risk": 80, "reversals": 24, "hazard": 0.30},
+                                {"band": "40-60%", "lower_depth": 0.4, "upper_depth": 0.6, "at_risk": 60, "reversals": 12, "hazard": 0.20},
+                                {"band": "60-80%", "lower_depth": 0.6, "upper_depth": 0.8, "at_risk": 40, "reversals": 8, "hazard": 0.20},
+                            ],
+                        }
+                    }
+                }
+            }
+            for era in ("2012_2018", "2019_2024", "2025_2026")
+        },
+        "hierarchy": {},
+    }
+    atlas = {
+        "last_closed_m15_price": 104.0,
+        "as_of": "2026-09-29T07:00:00+00:00",
+        "chart_bars_m15": [],
+        "zones": [source],
+        "path_map": {
+            "active_path": {
+                "reaction_direction": "SHORT",
+                "source_zone": source,
+            }
+        },
+        "m5_path_projection": {
+            "current_leg": {
+                "direction": "SHORT",
+                "source_zone": source,
+            }
+        },
+    }
+
+    result = build_depth_map(
+        atlas_evaluation=atlas,
+        history_details=history,
+    )
+
+    candidate = dict(result["depth_entry_candidate"])
+    assert result["focus_direction"] == "SHORT"
+    assert result["candidate_selection_mode"] == "V182_ACTIVE_SOURCE_HISTORICAL_REMAP"
+    assert candidate["source_layer"] == "V182_ACTIVE_H1_HISTORICAL_HOTSPOT"
+    assert candidate["source_zone"]["zone_id"] == "current-h1-supply"
+    assert candidate["display_status"] == "CONFIRMATION_ONLY_RETESTED_HTF"
+    assert candidate["pre_touch_execution_eligible"] is False
+    assert candidate["confirmation_execution_eligible"] is True
+    assert candidate["zone_reuse"]["historical_prior_scope"] == "FIRST_TOUCH_PRIOR_GEOMETRY_ONLY"
+    assert 100.0 <= candidate["entry_low"] < candidate["entry_high"] <= 110.0
