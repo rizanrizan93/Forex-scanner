@@ -3018,7 +3018,9 @@ with forecast_tab:
             st.success(
                 "V229 memakai jalur khusus. Fresh mode = 4-CHILD 2+2 "
                 "(2 pre-touch LIMIT + 2 child konfirmasi); H4/H1 retest tetap eligible. "
-                "L1 DEMO calibration probe 0,01 lot memakai M5 pocket aktual. Jika pocket aktual "
+                "V275: pada fresh first-touch yang berjarak ≤0,50 ATR, L1 DEMO 0,01 lot boleh "
+                "di-arm lebih awal bila calibration pressure aman; L2/L3/L4 tetap strict. "
+                "Untuk retest, L1 DEMO calibration probe 0,01 lot memakai M5 pocket aktual. Jika pocket aktual "
                 "sudah disentuh terlalu dalam lalu closed M5 reject kembali ke no-chase band, V270 boleh "
                 "memasang satu LIMIT retest di Dynamic Depth band yang masih eligible (maksimum umur M5 60 menit). "
                 "RR tetap ≥1,00R dan hard cap probe 70%; L3/L4 tetap jalur strict ≥1,50R. "
@@ -3340,6 +3342,7 @@ with forecast_tab:
                 "WAIT_NO_RR_ELIGIBLE_CONFIRMATION_WINDOW": "Tidak ada area M5 dalam source zone yang bisa mencapai 1,50R — NO ORDER",
                 "WAIT_NO_FORWARD_STRUCTURAL_TARGET": "Belum ada target struktural forward — NO ORDER",
                 "CONFIRMATION_WINDOW_ARMED": "M5 confirmation window aktif — tunggu entry aktual + RR ≥1,50R",
+                "FRESH_FIRST_TOUCH_CALIBRATION_ARMED": "L1 DEMO calibration armed — L2/L3/L4 tetap strict",
                 "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_ZONE": "Menunggu harga masuk zona aktif",
                 "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_PRESSURE": "Menunggu tekanan DOM membaik",
                 "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_M5_CONFIRM": "Menunggu konfirmasi M5",

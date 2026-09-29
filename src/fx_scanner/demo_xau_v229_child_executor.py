@@ -134,6 +134,21 @@ def _promote_armed_confirmation_window(
     return len(list(result.data or [])) == 1
 
 
+def _promote_armed_calibration_parent(
+    store: SupabaseOperationalStore,
+    signal_id: str,
+) -> bool:
+    """Promote a DEMO calibration parent only after strict pressure+depth become ready."""
+    result = (
+        store.client.table("signals")
+        .update({"state": "EXECUTION_READY", "active_guards": []})
+        .eq("id", signal_id)
+        .eq("state", "ARMED")
+        .execute()
+    )
+    return len(list(result.data or [])) == 1
+
+
 def _pending_orders(reconcile: Any) -> tuple[Any, ...]:
     return tuple(getattr(reconcile, "order", ()) or ())
 
@@ -821,6 +836,9 @@ def run() -> int:
                 "confirmation_window_only": bool(
                     payload.get("confirmation_window_only")
                 ),
+                "calibration_only_armed": bool(
+                    payload.get("calibration_only_armed")
+                ),
                 "confirmation_entry_low": payload.get("confirmation_entry_low"),
                 "confirmation_entry_high": payload.get("confirmation_entry_high"),
                 "confirmation_rr_threshold": payload.get(
@@ -849,6 +867,9 @@ def run() -> int:
             armed_confirmation_window = bool(
                 state == "ARMED" and plan.get("confirmation_window_only")
             )
+            armed_calibration_first_touch = bool(
+                state == "ARMED" and plan.get("calibration_only_armed")
+            )
             if state == "EXECUTION_READY":
                 if not store.claim_signal_for_execution(parent_signal_id):
                     actions.append(f"{parent_signal_id}:CLAIM_LOST")
@@ -859,6 +880,10 @@ def run() -> int:
             elif armed_confirmation_window:
                 actions.append(
                     f"{parent_signal_id}:ARMED_WAIT_M5_ACTUAL_ENTRY_AND_RR"
+                )
+            elif armed_calibration_first_touch:
+                actions.append(
+                    f"{parent_signal_id}:ARMED_FRESH_FIRST_TOUCH_CALIBRATION_L1_ONLY"
                 )
             else:
                 continue
@@ -898,10 +923,39 @@ def run() -> int:
             )
             calibration_pressure_bypass = bool(
                 pressure_hard_block
-                and armed_confirmation_window
+                and (
+                    armed_confirmation_window
+                    or armed_calibration_first_touch
+                )
                 and calibration_probe_enabled
                 and calibration_pressure_allowed
             )
+            strict_parent_ready = bool(
+                not pressure_hard_block
+                and (
+                    pressure_transition.get("pre_touch_entry_allowed")
+                    or pressure_transition.get("confirmation_entry_allowed")
+                )
+                and bool(depth_hazard.get("execution_ready"))
+            )
+            if armed_calibration_first_touch and strict_parent_ready:
+                if not _promote_armed_calibration_parent(
+                    store,
+                    parent_signal_id,
+                ):
+                    actions.append(
+                        f"{parent_signal_id}:CALIBRATION_STRICT_PROMOTION_LOST"
+                    )
+                    continue
+                if not store.claim_signal_for_execution(parent_signal_id):
+                    actions.append(
+                        f"{parent_signal_id}:CALIBRATION_STRICT_CLAIM_LOST"
+                    )
+                    continue
+                armed_calibration_first_touch = False
+                actions.append(
+                    f"{parent_signal_id}:CALIBRATION_PARENT_PROMOTED_STRICT"
+                )
             if pressure_hard_block:
                 outcomes = _cancel_pending_plan(session, plan, reconcile)
                 actions.extend(f"{parent_signal_id}:PRESSURE_CANCEL:{x}" for x in outcomes)
@@ -951,18 +1005,29 @@ def run() -> int:
                     continue
                 calibration_probe = bool(
                     calibration_probe_enabled
-                    and armed_confirmation_window
+                    and (
+                        armed_confirmation_window
+                        or armed_calibration_first_touch
+                    )
                     and slot == 1
                     and not probe_already_accepted
                 )
                 if (
                     calibration_probe_enabled
-                    and armed_confirmation_window
+                    and (
+                        armed_confirmation_window
+                        or armed_calibration_first_touch
+                    )
                     and slot == 1
                     and probe_already_accepted
                 ):
                     actions.append(
                         f"{parent_signal_id}:L1:CALIBRATION_PROBE_ALREADY_ACCEPTED"
+                    )
+                    continue
+                if armed_calibration_first_touch and slot != 1:
+                    actions.append(
+                        f"{parent_signal_id}:L{slot}:DISABLED_CALIBRATION_ARM"
                     )
                     continue
                 if not bool(child.get("execution_enabled", True)) and not calibration_probe:
@@ -1001,7 +1066,10 @@ def run() -> int:
                     continue
 
                 child_order_type = OrderType.LIMIT
-                if calibration_probe:
+                if calibration_probe and armed_calibration_first_touch:
+                    entry = _f(child.get("reference_price"))
+                    activation = "FRESH_FIRST_TOUCH_CALIBRATION_LIMIT"
+                elif calibration_probe:
                     entry, activation = _calibration_probe_entry(
                         direction=str(plan["direction"]),
                         micro=micro,
@@ -1258,6 +1326,8 @@ def run() -> int:
             "max_children_per_parent": MAX_CHILDREN,
             "child_lot": CHILD_LOT,
             "calibration_probe_enabled": calibration_probe_enabled,
+            "fresh_first_touch_calibration_arm_supported": True,
+            "fresh_first_touch_calibration_slots": [1],
             "calibration_probe_lot": CHILD_LOT,
             "calibration_probe_min_rr": calibration_probe_min_rr,
             "calibration_probe_max_depth_ceiling": calibration_probe_max_depth,

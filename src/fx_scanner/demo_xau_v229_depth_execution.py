@@ -31,6 +31,7 @@ MAX_V226_AGE_SECONDS = 600
 H4_STOP_BUFFER_ATR = 0.15
 MIN_PLAN_RR = 1.0
 SCORE = 93.0
+MAX_FRESH_CALIBRATION_APPROACH_ATR = 0.50
 
 
 def _bool_env(name: str, default: bool = False) -> bool:
@@ -51,6 +52,35 @@ def _f(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return parsed if isfinite(parsed) else None
+
+
+def _fresh_first_touch_calibration_arm_allowed(
+    *,
+    plan: dict[str, Any],
+    pressure_transition: dict[str, Any],
+    depth_hazard: dict[str, Any],
+) -> bool:
+    """Allow one DEMO-only L1 arm before a fresh first touch without opening strict slots."""
+    if bool(plan.get("confirmation_window_only")):
+        return False
+    if str(plan.get("execution_phase") or "").upper() != "PRE_TOUCH":
+        return False
+    candidate = dict(plan.get("candidate") or {})
+    if not bool(candidate.get("calibrated_fresh_first_touch")):
+        return False
+    if not bool(candidate.get("pre_touch_execution_eligible")):
+        return False
+    if not bool(pressure_transition.get("calibration_entry_allowed")):
+        return False
+    if str(depth_hazard.get("state") or "") != "DYNAMIC_DEPTH_HAZARD_AVAILABLE":
+        return False
+    if str(depth_hazard.get("location_state") or "") != "AHEAD_OF_ZONE":
+        return False
+    source = dict(candidate.get("source_zone") or {})
+    distance_atr = _f(source.get("distance_atr"))
+    if distance_atr is None:
+        return False
+    return 0.0 <= float(distance_atr) <= MAX_FRESH_CALIBRATION_APPROACH_ATR
 
 
 def _dt(value: Any) -> datetime | None:
@@ -262,6 +292,7 @@ def _write_signal(
         started_at=observed_at,
     )
     confirmation_window_only = bool(plan.get("confirmation_window_only"))
+    calibration_only_armed = bool(plan.get("calibration_only_armed"))
     signal_entry_low = (
         _f(plan.get("confirmation_entry_low"))
         if confirmation_window_only
@@ -280,7 +311,9 @@ def _write_signal(
         "symbol": SYMBOL,
         "direction": plan["direction"],
         "setup_type": (
-            "RIZAN_DEPTH_RETEST_CONFIRMATION_WINDOW"
+            "RIZAN_DEPTH_FIRST_TOUCH_CALIBRATION_ARM"
+            if calibration_only_armed
+            else "RIZAN_DEPTH_RETEST_CONFIRMATION_WINDOW"
             if confirmation_window_only
             else "RIZAN_DEPTH_RETEST_CONFIRMATION"
             if str(plan.get("execution_phase") or "") == "RETEST_CONFIRMATION"
@@ -288,7 +321,11 @@ def _write_signal(
             if str(plan.get("execution_phase") or "") == "FIRST_TOUCH_CONFIRMATION"
             else "RIZAN_DEPTH_FIRST_TOUCH"
         ),
-        "state": "ARMED" if confirmation_window_only else "EXECUTION_READY",
+        "state": (
+            "ARMED"
+            if confirmation_window_only or calibration_only_armed
+            else "EXECUTION_READY"
+        ),
         "pair_score": SCORE,
         "execution_score": SCORE,
         "final_score": SCORE,
@@ -310,6 +347,11 @@ def _write_signal(
                 "TERMINAL_RR_RECHECK_1_50R",
             ]
             if confirmation_window_only
+            else [
+                "DEMO_CALIBRATION_L1_ONLY",
+                "STRICT_PRESSURE_AND_DEPTH_REQUIRED_FOR_L2_L4",
+            ]
+            if calibration_only_armed
             else []
         ),
         "data_coverage": 1.0,
@@ -357,10 +399,18 @@ def _record_execution_geometry(
         signal_key=signal_id,
         broker_order_id=f"GEOMETRY:{signal_id}",
         event_type=EVENT_TYPE,
-        accepted=(None if bool(plan.get("confirmation_window_only")) else True),
+        accepted=(
+            None
+            if bool(plan.get("confirmation_window_only"))
+            or bool(plan.get("calibration_only_armed"))
+            else True
+        ),
         code=STRATEGY_ID,
         message=(
-            "RIZAN retest confirmation window armed; broker order remains gated by "
+            "RIZAN fresh first-touch DEMO calibration armed; only L1 0.01 lot may "
+            "submit before strict pressure/depth admission"
+            if bool(plan.get("calibration_only_armed"))
+            else "RIZAN retest confirmation window armed; broker order remains gated by "
             "actual M5 entry and terminal RR recheck"
             if bool(plan.get("confirmation_window_only"))
             else "user-authorized aligned V182/V226 depth candidate promoted to cTrader DEMO execution"
@@ -381,6 +431,7 @@ def _record_execution_geometry(
             "historical_entry_low": plan.get("historical_entry_low"),
             "historical_entry_high": plan.get("historical_entry_high"),
             "confirmation_window_only": bool(plan.get("confirmation_window_only")),
+            "calibration_only_armed": bool(plan.get("calibration_only_armed")),
             "confirmation_entry_low": plan.get("confirmation_entry_low"),
             "confirmation_entry_high": plan.get("confirmation_entry_high"),
             "confirmation_entry_reference": plan.get("confirmation_entry_reference"),
@@ -407,12 +458,17 @@ def _record_execution_geometry(
             "generic_market_handoff_allowed": False,
             "execution_influence": bool(
                 not plan.get("confirmation_window_only")
+                and not plan.get("calibration_only_armed")
             ),
             "execution_authority": bool(
                 not plan.get("confirmation_window_only")
+                and not plan.get("calibration_only_armed")
             ),
             "confirmation_authority_only": bool(
                 plan.get("confirmation_window_only")
+            ),
+            "calibration_authority_only": bool(
+                plan.get("calibration_only_armed")
             ),
             "environment": "DEMO",
             "live_execution_enabled": False,
@@ -512,10 +568,16 @@ def run() -> int:
                     live_price=live_price,
                     pressure_transition=pressure_transition,
                 )
-                if not (
-                    bool(pressure_transition.get("pre_touch_entry_allowed"))
-                    or bool(pressure_transition.get("confirmation_entry_allowed"))
-                ):
+                strict_pressure_allowed = bool(
+                    pressure_transition.get("pre_touch_entry_allowed")
+                    or pressure_transition.get("confirmation_entry_allowed")
+                )
+                fresh_calibration_arm = _fresh_first_touch_calibration_arm_allowed(
+                    plan=plan,
+                    pressure_transition=pressure_transition,
+                    depth_hazard=depth_hazard,
+                )
+                if not strict_pressure_allowed and not fresh_calibration_arm:
                     reason = (
                         "WAIT_PRESSURE_TRANSITION:"
                         + str(pressure_transition.get("state") or "UNAVAILABLE")
@@ -525,12 +587,13 @@ def run() -> int:
                         "WAIT_DYNAMIC_DEPTH_HAZARD:"
                         + str(depth_hazard.get("reason") or "UNAVAILABLE")
                     )
-                elif not bool(depth_hazard.get("execution_ready")):
+                elif not bool(depth_hazard.get("execution_ready")) and not fresh_calibration_arm:
                     reason = (
                         "WAIT_DYNAMIC_DEPTH_HAZARD:"
                         + str(depth_hazard.get("action") or "WAIT")
                     )
                 else:
+                    plan["calibration_only_armed"] = bool(fresh_calibration_arm)
                     plan["pressure_transition"] = dict(pressure_transition)
                     plan["dynamic_depth_hazard"] = dict(depth_hazard)
                     candidate_key = _candidate_key(plan)
@@ -540,7 +603,9 @@ def run() -> int:
                     )
                     if _already_recorded(store, candidate_key, now=now):
                         reason = (
-                            "CONFIRMATION_WINDOW_ARMED"
+                            "FRESH_FIRST_TOUCH_CALIBRATION_ARMED"
+                            if bool(plan.get("calibration_only_armed"))
+                            else "CONFIRMATION_WINDOW_ARMED"
                             if bool(plan.get("confirmation_window_only"))
                             else "CANDIDATE_ALREADY_EMITTED"
                         )
@@ -557,7 +622,9 @@ def run() -> int:
                             plan=plan,
                         )
                         reason = (
-                            "CONFIRMATION_WINDOW_ARMED"
+                            "FRESH_FIRST_TOUCH_CALIBRATION_ARMED"
+                            if bool(plan.get("calibration_only_armed"))
+                            else "CONFIRMATION_WINDOW_ARMED"
                             if bool(plan.get("confirmation_window_only"))
                             else "EXECUTION_READY_EMITTED"
                         )

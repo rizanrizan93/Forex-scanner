@@ -5,6 +5,7 @@ from fx_scanner.demo_execution_fresh_ready_handoff import (
 )
 from fx_scanner.demo_xau_v229_depth_execution import (
     STRATEGY_ID,
+    _fresh_first_touch_calibration_arm_allowed,
     build_execution_plan,
 )
 from fx_scanner.demo_xau_v226_rizan_depth_map import build_depth_map
@@ -653,8 +654,76 @@ def test_v264_confirmation_window_is_persisted_armed_not_execution_ready() -> No
         Path(__file__).resolve().parents[1]
         / "src/fx_scanner/demo_xau_v229_depth_execution.py"
     ).read_text(encoding="utf-8")
-    assert '"state": "ARMED" if confirmation_window_only else "EXECUTION_READY"' in source
+    assert '"RIZAN_DEPTH_FIRST_TOUCH_CALIBRATION_ARM"' in source
+    assert '"DEMO_CALIBRATION_L1_ONLY"' in source
+    assert '"state": (' in source
     assert 'if state in {"ARMED", "EXECUTION_READY"}:' in source
     assert '"M5_ACTUAL_ENTRY_REQUIRED"' in source
     assert '"TERMINAL_RR_RECHECK_1_50R"' in source
     assert "confirmation_authority_only" in source
+
+
+def test_v275_fresh_first_touch_calibration_arm_requires_nearby_fresh_candidate() -> None:
+    plan = {
+        "execution_phase": "PRE_TOUCH",
+        "confirmation_window_only": False,
+        "candidate": {
+            "calibrated_fresh_first_touch": True,
+            "pre_touch_execution_eligible": True,
+            "source_zone": {"distance_atr": 0.35},
+        },
+    }
+    pressure = {
+        "state": "WAIT_SECOND_SAMPLE",
+        "calibration_entry_allowed": True,
+    }
+    hazard = {
+        "state": "DYNAMIC_DEPTH_HAZARD_AVAILABLE",
+        "location_state": "AHEAD_OF_ZONE",
+        "execution_ready": False,
+    }
+    assert _fresh_first_touch_calibration_arm_allowed(
+        plan=plan,
+        pressure_transition=pressure,
+        depth_hazard=hazard,
+    ) is True
+
+    too_far = {
+        **plan,
+        "candidate": {
+            **plan["candidate"],
+            "source_zone": {"distance_atr": 0.51},
+        },
+    }
+    assert _fresh_first_touch_calibration_arm_allowed(
+        plan=too_far,
+        pressure_transition=pressure,
+        depth_hazard=hazard,
+    ) is False
+
+    not_fresh = {
+        **plan,
+        "candidate": {
+            **plan["candidate"],
+            "calibrated_fresh_first_touch": False,
+        },
+    }
+    assert _fresh_first_touch_calibration_arm_allowed(
+        plan=not_fresh,
+        pressure_transition=pressure,
+        depth_hazard=hazard,
+    ) is False
+
+
+def test_v275_producer_persists_calibration_arm_without_opening_strict_authority() -> None:
+    from pathlib import Path
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_depth_execution.py"
+    ).read_text(encoding="utf-8")
+    assert "MAX_FRESH_CALIBRATION_APPROACH_ATR = 0.50" in source
+    assert 'plan["calibration_only_armed"] = bool(fresh_calibration_arm)' in source
+    assert '"FRESH_FIRST_TOUCH_CALIBRATION_ARMED"' in source
+    assert '"calibration_authority_only"' in source
+    assert '"DEMO_CALIBRATION_L1_ONLY"' in source
+    assert "not plan.get(\"calibration_only_armed\")" in source
