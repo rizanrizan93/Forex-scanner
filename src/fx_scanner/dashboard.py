@@ -663,7 +663,10 @@ class SupabaseDashboardReader:
             "reason:details->>reason,"
             "signal_id:details->>signal_id,"
             "error:details->>error,"
-            "plan:details->plan"
+            "plan_execution_phase:details->plan->>execution_phase,"
+            "plan_children:details->plan->children,"
+            "plan_diagnostics:details->plan_diagnostics,"
+            "structure_admission:details->structure_admission"
         )
         try:
             response = (
@@ -688,7 +691,12 @@ class SupabaseDashboardReader:
             "reason": raw.pop("reason", None),
             "signal_id": raw.pop("signal_id", None),
             "error": raw.pop("error", None),
-            "plan": dict(raw.pop("plan", {}) or {}),
+            "plan": ({
+                "execution_phase": raw.pop("plan_execution_phase", None),
+                "children": list(raw.pop("plan_children", []) or []),
+            } if raw.get("plan_execution_phase") is not None or raw.get("plan_children") else {}),
+            "plan_diagnostics": dict(raw.pop("plan_diagnostics", {}) or {}),
+            "structure_admission": dict(raw.pop("structure_admission", {}) or {}),
         }
         return raw
 
