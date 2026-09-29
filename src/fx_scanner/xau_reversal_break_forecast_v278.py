@@ -221,7 +221,17 @@ def build_reversal_break_forecast(
     break_risk = bool(
         not invalid_reasons
         and (
-            (historical_break_dominant and pressure_break_support)
+            (
+                touch_count == 0
+                and historical_break_dominant
+                and pressure_break_support
+            )
+            or (
+                touch_count > 0
+                and depth is not None
+                and depth >= 0.70
+                and pressure_break_support
+            )
             or (
                 depth is not None
                 and depth >= 0.90
