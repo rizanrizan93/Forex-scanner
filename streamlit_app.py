@@ -3297,7 +3297,7 @@ with forecast_tab:
             )
         else:
             v240_depth_band_text = (
-                "Geometry only — hanya posisi harga di dalam zona; "
+                "Geometry only — hanya posisi harga relatif terhadap source zone; "
                 "bukan forecast reversal dan bukan entry band"
             )
 
@@ -3409,7 +3409,7 @@ with forecast_tab:
         qe2.metric(
             "8 • Dynamic Depth Hazard"
             if v240_depth_calibrated
-            else "8 • Posisi harga dalam zona",
+            else "8 • Lokasi vs source zone",
             v240_depth_text,
         )
         st.caption(
@@ -3554,7 +3554,7 @@ with forecast_tab:
         st.markdown(
             "###### Dynamic Depth Hazard — next depth / reversal window"
             if v240_depth_calibrated
-            else "###### Depth posisi dalam zona — geometry only (BUKAN reversal forecast)"
+            else "###### Lokasi vs source zone — geometry only (BUKAN reversal forecast)"
         )
         hz1, hz2, hz3, hz4 = st.columns(4)
         hz1.metric(
