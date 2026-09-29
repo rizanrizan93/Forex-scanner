@@ -3171,7 +3171,19 @@ with forecast_tab:
     v240_opposing_pressure = v240_pressure_transition.get("opposing_pressure")
     v240_pressure_change = v240_pressure_transition.get("score_change")
     v240_dom_age = v240_pressure_transition.get("age_seconds")
-    v240_dom_stale = not bool(v240_pressure_transition.get("fresh"))
+    v240_current_dom_sample_fresh = bool(
+        v240_pressure_transition.get(
+            "current_sample_fresh",
+            v240_pressure_transition.get("fresh"),
+        )
+    )
+    v240_calibration_pressure_allowed = bool(
+        v240_pressure_transition.get("calibration_entry_allowed")
+    )
+    v240_calibration_pressure_reason = str(
+        v240_pressure_transition.get("calibration_pressure_reason") or ""
+    )
+    v240_dom_stale = not v240_current_dom_sample_fresh
     v240_dom_state = str(v240_pressure_transition.get("dom_state") or "UNAVAILABLE")
     v240_pressure_trend = str(v240_pressure_transition.get("state") or "UNAVAILABLE")
 
@@ -3643,7 +3655,9 @@ with forecast_tab:
                 "tetapi closed M5 sudah reject keluar dari pocket dan kembali ke Dynamic Depth band yang masih "
                 "eligible, V270 boleh memakai **post-rejection LIMIT retest** berumur maksimum 60 menit. "
                 "Hard ceiling tetap 70%; jika kondisi depth tidak eligible dashboard menulis **PROBE NO-CHASE**. "
-                "Limit-side harus valid "
+                "V271: bila DOM current sample masih fresh tetapi sample pembanding terlambat, hanya DEMO "
+                "calibration yang boleh lanjut bila pressure absolut netral/supportive; strict L3/L4 tetap "
+                "wajib transition dua-sample. Limit-side harus valid "
                 "dan opposing-zone RR ≥1,00R. L3/L4 tetap jalur strict: reclaim/MSS atau displacement "
                 "valid dan terminal RR ≥1,50R. TP/SL selalu dihitung dari struktur aktual."
             )
@@ -3805,14 +3819,43 @@ with forecast_tab:
             (
                 "STALE"
                 if v240_dom_stale
-                else f"{v240_pressure_trend} • "
-                f"B {_fmt_number(v240_buyer_index, 0)} / S {_fmt_number(v240_seller_index, 0)}"
+                else (
+                    f"{v240_pressure_trend}"
+                    + (
+                        " • DEMO CAL OK"
+                        if (
+                            v240_pressure_trend == "WAIT_SECOND_SAMPLE"
+                            and v240_calibration_pressure_allowed
+                        )
+                        else ""
+                    )
+                    + f" • B {_fmt_number(v240_buyer_index, 0)} / S {_fmt_number(v240_seller_index, 0)}"
+                )
             ),
         )
         qe4.metric(
             "10 • Execution Admission",
             f"{v240_admission_label} • {v240_route_label}",
         )
+        if (
+            v240_pressure_trend == "WAIT_SECOND_SAMPLE"
+            and v240_current_dom_sample_fresh
+        ):
+            st.caption(
+                "DOM current sample masih fresh, tetapi strict transition belum punya second sample yang "
+                "cukup dekat. "
+                + (
+                    "**DEMO calibration pressure eligible** — hanya jalur calibration 0,01 lot; "
+                    "strict L3/L4 tetap BLOCK sampai dua-sample transition valid."
+                    if v240_calibration_pressure_allowed
+                    else "**DEMO calibration pressure BLOCK** — absolute opposing pressure masih terlalu kuat."
+                )
+                + (
+                    f" • {v240_calibration_pressure_reason}"
+                    if v240_calibration_pressure_reason
+                    else ""
+                )
+            )
 
         st.markdown("###### Risk & target")
         qr1, qr2 = st.columns(2)
