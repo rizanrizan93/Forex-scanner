@@ -714,18 +714,33 @@ def run() -> int:
                 actions.append(f"{parent_signal_id}:UNPROTECTED_POSITION_BLOCK")
                 continue
 
-            # Pressure transition is now part of DEMO execution authority.
-            # Missing/stale/strongly adverse Level-II pressure blocks new orders.
-            # Pending unfilled children are cancelled so they cannot fill later
-            # without a fresh pressure transition.
-            if bool(pressure_transition.get("hard_block")):
+            # Strict children still require the normal two-sample pressure
+            # transition. A retest-parent DEMO calibration probe may continue on
+            # WAIT_SECOND_SAMPLE only when the current fresh absolute DOM sample
+            # is neutral/supportive. Existing pending orders are always cancelled
+            # before this calibration-only bypass is considered.
+            pressure_hard_block = bool(pressure_transition.get("hard_block"))
+            calibration_pressure_bypass = bool(
+                pressure_hard_block
+                and armed_confirmation_window
+                and calibration_probe_enabled
+                and str(pressure_transition.get("state") or "") == "WAIT_SECOND_SAMPLE"
+                and bool(pressure_transition.get("calibration_entry_allowed"))
+            )
+            if pressure_hard_block:
                 outcomes = _cancel_pending_plan(session, plan, reconcile)
                 actions.extend(f"{parent_signal_id}:PRESSURE_CANCEL:{x}" for x in outcomes)
-                actions.append(
-                    f"{parent_signal_id}:PRESSURE_BLOCK:{pressure_transition.get('state')}:"
-                    f"{pressure_transition.get('reason')}"
-                )
-                continue
+                if calibration_pressure_bypass:
+                    actions.append(
+                        f"{parent_signal_id}:PRESSURE_CALIBRATION_ONLY:"
+                        f"{pressure_transition.get('calibration_pressure_reason')}"
+                    )
+                else:
+                    actions.append(
+                        f"{parent_signal_id}:PRESSURE_BLOCK:{pressure_transition.get('state')}:"
+                        f"{pressure_transition.get('reason')}"
+                    )
+                    continue
             if str(depth_hazard.get("state") or "") != "DYNAMIC_DEPTH_HAZARD_AVAILABLE":
                 outcomes = _cancel_pending_plan(session, plan, reconcile)
                 actions.extend(f"{parent_signal_id}:HAZARD_CANCEL:{x}" for x in outcomes)
@@ -778,7 +793,10 @@ def run() -> int:
                     break
 
                 if calibration_probe and not bool(
-                    pressure_transition.get("confirmation_entry_allowed")
+                    pressure_transition.get(
+                        "calibration_entry_allowed",
+                        pressure_transition.get("confirmation_entry_allowed"),
+                    )
                 ):
                     actions.append(
                         f"{parent_signal_id}:L{slot}:PROBE_WAIT_PRESSURE_TRANSITION:"
@@ -1038,6 +1056,9 @@ def run() -> int:
             "control_plane_pre_submit_refresh": True,
             "generic_market_handoff_allowed": False,
             "pressure_transition_required": True,
+            "strict_pressure_transition_requires_two_samples": True,
+            "calibration_single_sample_pressure_allowed": True,
+            "calibration_single_sample_max_opposing_pressure": 15.0,
             "pressure_transition": pressure_transition if 'pressure_transition' in locals() else {},
             "dynamic_depth_hazard_required": True,
             "dynamic_depth_hazard": depth_hazard if 'depth_hazard' in locals() else {},

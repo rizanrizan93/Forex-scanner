@@ -70,3 +70,45 @@ def test_old_previous_sample_waits_for_second_fresh_comparison():
     result = evaluate_pressure_transition(direction="LONG", dom_heartbeat=hb, now=now)
     assert result["state"] == "WAIT_SECOND_SAMPLE"
     assert result["hard_block"] is True
+
+
+def test_v271_fresh_neutral_single_sample_allows_demo_calibration_only():
+    now, hb = _hb(50.0, 5.0, age=20)
+    hb["details"]["analysis"]["cross_run"]["previous_observed_at"] = (
+        now - timedelta(minutes=10)
+    ).isoformat()
+    result = evaluate_pressure_transition(direction="SHORT", dom_heartbeat=hb, now=now)
+    assert result["state"] == "WAIT_SECOND_SAMPLE"
+    assert result["current_sample_fresh"] is True
+    assert result["hard_block"] is True
+    assert result["pre_touch_entry_allowed"] is False
+    assert result["confirmation_entry_allowed"] is False
+    assert result["calibration_entry_allowed"] is True
+    assert (
+        result["calibration_pressure_reason"]
+        == "FRESH_SINGLE_SAMPLE_NEUTRAL_OR_SUPPORTIVE"
+    )
+
+
+def test_v271_fresh_materially_opposing_single_sample_blocks_demo_calibration():
+    now, hb = _hb(60.0, 5.0, age=20, state="BID_DOMINANT")
+    hb["details"]["analysis"]["cross_run"]["previous_observed_at"] = (
+        now - timedelta(minutes=10)
+    ).isoformat()
+    result = evaluate_pressure_transition(direction="SHORT", dom_heartbeat=hb, now=now)
+    assert result["state"] == "WAIT_SECOND_SAMPLE"
+    assert result["opposing_pressure"] == 20.0
+    assert result["hard_block"] is True
+    assert result["calibration_entry_allowed"] is False
+    assert (
+        result["calibration_pressure_reason"]
+        == "FRESH_SINGLE_SAMPLE_MATERIALLY_OPPOSING"
+    )
+
+
+def test_v271_stale_current_sample_never_gets_calibration_bypass():
+    now, hb = _hb(50.0, 5.0, age=300)
+    result = evaluate_pressure_transition(direction="SHORT", dom_heartbeat=hb, now=now)
+    assert result["state"] == "DOM_STALE"
+    assert result["current_sample_fresh"] is False
+    assert result["calibration_entry_allowed"] is False

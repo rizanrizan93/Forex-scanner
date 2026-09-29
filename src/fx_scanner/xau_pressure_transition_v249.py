@@ -83,11 +83,14 @@ def evaluate_pressure_transition(
         "observed_at": None if observed_at is None else observed_at.isoformat(),
         "age_seconds": age_seconds,
         "fresh": False,
+        "current_sample_fresh": False,
         "opposing_pressure": None,
         "transition_toward_confirmation": None,
         "state": "UNAVAILABLE",
         "pre_touch_entry_allowed": False,
         "confirmation_entry_allowed": False,
+        "calibration_entry_allowed": False,
+        "calibration_pressure_reason": "DOM_UNAVAILABLE",
         "hard_block": True,
         "reason": "DOM_UNAVAILABLE",
     }
@@ -100,20 +103,32 @@ def evaluate_pressure_transition(
     if score is None:
         return {**base, "state": "DOM_SCORE_MISSING", "reason": "DOM_SCORE_MISSING"}
     comparison_gap = base.get("comparison_gap_seconds")
+    signed_buyer = max(-100.0, min(100.0, (score - 50.0) * 2.0))
+    opposing = -signed_buyer if side == "LONG" else signed_buyer
     if (
         delta is None
         or previous_observed_at is None
         or comparison_gap is None
         or float(comparison_gap) > float(max_age_seconds)
     ):
+        # Strict execution still fails closed without a fresh two-sample
+        # transition. DEMO calibration may use the fresh absolute snapshot only
+        # when it is neutral/supportive rather than materially opposing.
+        calibration_allowed = bool(opposing <= 15.0)
         return {
             **base,
+            "current_sample_fresh": True,
+            "opposing_pressure": opposing,
             "state": "WAIT_SECOND_SAMPLE",
+            "calibration_entry_allowed": calibration_allowed,
+            "calibration_pressure_reason": (
+                "FRESH_SINGLE_SAMPLE_NEUTRAL_OR_SUPPORTIVE"
+                if calibration_allowed
+                else "FRESH_SINGLE_SAMPLE_MATERIALLY_OPPOSING"
+            ),
             "reason": "PRESSURE_COMPARISON_SAMPLE_MISSING_OR_STALE",
         }
 
-    signed_buyer = max(-100.0, min(100.0, (score - 50.0) * 2.0))
-    opposing = -signed_buyer if side == "LONG" else signed_buyer
     toward = delta if side == "LONG" else -delta
 
     state = "CONTESTED"
@@ -163,14 +178,25 @@ def evaluate_pressure_transition(
         confirm = True
         reason = "COUNTER_PRESSURE_HAS_TAKEN_CONTROL"
 
+    strict_pre_touch = bool(pre_touch and not hard_block)
+    strict_confirmation = bool(confirm and not hard_block)
     return {
         **base,
         "fresh": True,
+        "current_sample_fresh": True,
         "opposing_pressure": opposing,
         "transition_toward_confirmation": toward,
         "state": state,
-        "pre_touch_entry_allowed": bool(pre_touch and not hard_block),
-        "confirmation_entry_allowed": bool(confirm and not hard_block),
+        "pre_touch_entry_allowed": strict_pre_touch,
+        "confirmation_entry_allowed": strict_confirmation,
+        "calibration_entry_allowed": bool(
+            (strict_pre_touch or strict_confirmation) and not hard_block
+        ),
+        "calibration_pressure_reason": (
+            "STRICT_TRANSITION_PRESSURE_ELIGIBLE"
+            if (strict_pre_touch or strict_confirmation) and not hard_block
+            else reason
+        ),
         "hard_block": bool(hard_block),
         "reason": reason,
     }

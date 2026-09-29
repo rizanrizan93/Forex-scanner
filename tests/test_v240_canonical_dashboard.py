@@ -230,3 +230,12 @@ def test_v270_dashboard_explains_post_rejection_demo_retest_without_relaxing_str
     assert "Hard ceiling tetap 70%" in SOURCE
     assert "L3/L4 tetap jalur strict ≥1,50R" in SOURCE
     assert "opposing-zone RR ≥1,00R" in SOURCE
+
+
+def test_v271_dashboard_separates_single_sample_demo_pressure_from_strict_transition() -> None:
+    assert "current_sample_fresh" in SOURCE
+    assert "calibration_entry_allowed" in SOURCE
+    assert "DEMO CAL OK" in SOURCE
+    assert "DEMO calibration pressure eligible" in SOURCE
+    assert "strict L3/L4 tetap BLOCK sampai dua-sample transition valid" in SOURCE
+    assert "absolute opposing pressure masih terlalu kuat" in SOURCE
