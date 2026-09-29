@@ -149,3 +149,12 @@ def test_v273_workflow_is_research_only() -> None:
     assert "Run 100K-bar M30 parent-zone calibration" in workflow
     assert "execution_influence" in runtime
     assert '"SHADOW_ONLY"' in runtime
+
+
+def test_v273_dashboard_surfaces_overlap_and_dom_composite_conflict() -> None:
+    source = (
+        Path(__file__).resolve().parents[1] / "streamlit_app.py"
+    ).read_text()
+    assert "Overlap canonical" in source
+    assert "DOM ↔ Composite gap" in source
+    assert "V273 menguji apakah overlap tinggi M30↔H1/H4" in source
