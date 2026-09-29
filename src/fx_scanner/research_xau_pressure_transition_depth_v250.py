@@ -30,6 +30,7 @@ class TransitionDepthEpisode:
     max_depth_reached: float
     zone_width: float
     atr_points: float
+    atr_pct: float
     level_opposing_pressure: float
     early_opposing_pressure: float
     late_opposing_pressure: float
@@ -148,6 +149,12 @@ def build_transition_depth_rows(
         features = transition_features_before_touch(price_m1, episode=ep)
         if level is None or features is None:
             continue
+        zone_mid = (float(ep.zone_low) + float(ep.zone_high)) / 2.0
+        atr_pct = (
+            float(ep.atr_points) / zone_mid
+            if zone_mid > 0.0
+            else 0.0
+        )
         out.append(
             TransitionDepthEpisode(
                 zone_id=ep.zone_id,
@@ -162,6 +169,7 @@ def build_transition_depth_rows(
                 max_depth_reached=float(ep.max_depth_reached),
                 zone_width=float(ep.zone_width),
                 atr_points=float(ep.atr_points),
+                atr_pct=float(atr_pct),
                 level_opposing_pressure=float(level.opposing_pressure_score),
                 early_opposing_pressure=float(features["early_opposing_pressure"]),
                 late_opposing_pressure=float(features["late_opposing_pressure"]),
