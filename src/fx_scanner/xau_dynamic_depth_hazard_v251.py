@@ -72,6 +72,83 @@ def price_at_depth(zone: dict[str, Any], depth: float) -> float | None:
     return None
 
 
+def build_geometry_depth_status(
+    *,
+    zone: dict[str, Any],
+    live_price: float,
+) -> dict[str, Any]:
+    """Describe physical location inside a current structural zone without a hazard prior.
+
+    This is intentionally geometry-only. It is used by the dashboard whenever
+    V229/V226 calibrated depth geometry is not aligned with the current V182 path.
+    No historical hazard band, execution readiness, or turning-price claim is
+    inferred from this status.
+    """
+    if not zone:
+        return {
+            "state": "UNAVAILABLE",
+            "reason": "NO_CURRENT_STRUCTURAL_ZONE",
+            "execution_ready": False,
+        }
+    depth = normalized_depth(zone, live_price)
+    low = _f(zone.get("low"))
+    high = _f(zone.get("high"))
+    direction = str(zone.get("direction") or "").upper()
+    if (
+        direction not in {"LONG", "SHORT"}
+        or low is None
+        or high is None
+        or high <= low
+        or depth is None
+    ):
+        return {
+            "state": "UNAVAILABLE",
+            "reason": "INVALID_CURRENT_STRUCTURAL_ZONE",
+            "execution_ready": False,
+        }
+
+    lifecycle = dict(zone.get("lifecycle") or {})
+    touch_count = int(lifecycle.get("touch_count") or 0)
+    if depth < 0.0:
+        # A previously touched zone with price back beyond its proximal edge has
+        # already produced/attempted a reaction. Calling this "ahead of zone"
+        # would be misleading because the market has in fact visited the zone.
+        location_state = "AFTER_REACTION" if touch_count > 0 else "AHEAD_OF_ZONE"
+        action = "WAIT_NEW_TRIGGER" if touch_count > 0 else "WAIT_ZONE"
+    elif depth >= 1.0:
+        location_state = "AT_OR_BEYOND_DISTAL"
+        action = "WAIT_STRUCTURE_REMAP"
+    else:
+        location_state = "INSIDE_ZONE"
+        action = "WAIT_CONFIRMATION"
+
+    return {
+        "state": "GEOMETRY_ONLY",
+        "reason": "NO_ALIGNED_V226_HAZARD_PRIOR",
+        "direction": direction,
+        "timeframe": str(zone.get("timeframe") or "").upper(),
+        "source_zone": dict(zone),
+        "location_state": location_state,
+        "current_depth": float(depth),
+        "touch_count": touch_count,
+        "action": action,
+        "execution_ready": False,
+        "recommended_band": {},
+        "recommended_depth_low": None,
+        "recommended_depth_high": None,
+        "recommended_price_low": None,
+        "recommended_price_high": None,
+        "future_bands": [],
+        "historical_prior_scope": "GEOMETRY_ONLY_NO_CALIBRATED_PRIOR",
+        "interpretation": (
+            "Physical depth only. No V225/V226 hazard prior is applied because "
+            "the current V182 structural path is not backed by aligned V229/V226 "
+            "entry geometry. This status cannot authorize an order."
+        ),
+    }
+
+
+
 def child_reference_depth(
     *,
     v226_evaluation: dict[str, Any],
