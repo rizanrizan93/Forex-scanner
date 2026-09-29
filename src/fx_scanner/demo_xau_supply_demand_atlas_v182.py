@@ -25,6 +25,7 @@ from .demo_xau_m5_bidirectional_path_v196 import (
 )
 from .demo_xau_zone_reuse_v200 import evaluate_bidirectional_reuse
 from .xau_composite_pressure_v272 import evaluate_xau_composite_pressure_v272
+from .xau_m30_deep_rejection_v277 import evaluate_m30_deep_rejection_v277
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .models import Bar, ensure_utc
@@ -1539,6 +1540,19 @@ def run() -> int:
 
         current_leg = dict(m5_path_projection.get("current_leg") or {})
         micro_refinement = dict(current_leg.get("micro_refinement") or {})
+        active_path = dict(path_map.get("active_path") or {})
+        active_source = dict(active_path.get("source_zone") or {})
+        rejection_direction = str(
+            current_leg.get("direction")
+            or active_source.get("direction")
+            or ""
+        ).upper()
+        payload["m30_deep_rejection_v277"] = evaluate_m30_deep_rejection_v277(
+            m30_shadow=dict(payload.get("m30_shadow_v272") or {}),
+            m5_bars=raw_m5,
+            direction=rejection_direction,
+            as_of=now,
+        )
         payload["micro_refinement"] = micro_refinement
         payload["m5_path_projection"] = m5_path_projection
         payload["zone_reuse_v200"] = reuse_v200
