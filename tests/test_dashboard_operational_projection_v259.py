@@ -139,3 +139,40 @@ def test_v259_v182_current_path_and_refined_m5_replace_cached_leg_only() -> None
         "low": 4122.14,
         "high": 4129.96,
     }
+
+
+def test_v279_prepared_null_live_price_clears_cached_old_price() -> None:
+    base = [
+        {
+            "worker_name": "ctrader_demo_xau_rizan_prepared_plan_producer",
+            "observed_at": "2026-09-29T20:59:08+00:00",
+            "healthy": True,
+            "lag_seconds": 0,
+            "details": {
+                "forecast_state": "NO_MAP_ZONE",
+                "live_price": 4166.165,
+                "distance_to_zone_points": 12.0,
+                "proximity_state": "FAR",
+            },
+        }
+    ]
+    overlay = [
+        {
+            "worker_name": "ctrader_demo_xau_rizan_prepared_plan_producer",
+            "observed_at": "2026-09-29T21:04:51+00:00",
+            "healthy": True,
+            "lag_seconds": 0,
+            "details": {
+                "forecast_state": "NO_MAP_ZONE",
+                "live_price": None,
+                "distance_to_zone_points": None,
+                "proximity_state": "UNKNOWN",
+            },
+        }
+    ]
+
+    row = merge_runtime_heartbeat_rows(base, overlay)[0]
+    assert row["observed_at"] == "2026-09-29T21:04:51+00:00"
+    assert row["details"]["live_price"] is None
+    assert row["details"]["distance_to_zone_points"] is None
+    assert row["details"]["proximity_state"] == "UNKNOWN"

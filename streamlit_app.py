@@ -1869,14 +1869,15 @@ if backend is None:
 standalone_url = _secret("RIZAN_STANDALONE_SNAPSHOT_URL") or DEFAULT_SNAPSHOT_URL
 standalone: dict[str, Any] | None = None
 standalone_error: str | None = None
-if backend is None:
-    backend_error = direct_backend_error
-    try:
-        standalone = _load_standalone_bridge(standalone_url)
-    except Exception as exc:
-        standalone_error = f"{type(exc).__name__}: {exc}"
-else:
-    backend_error = None
+backend_error = direct_backend_error if backend is None else None
+# Quote overlay is always loaded when available. It never replaces ForexRizan
+# as the canonical backend and never grants execution authority; it exists only
+# to prevent the user-facing XAU price from freezing on an older prepared-plan
+# heartbeat while a fresher FP Markets/cTrader quote is already published.
+try:
+    standalone = _load_standalone_bridge(standalone_url)
+except Exception as exc:
+    standalone_error = f"{type(exc).__name__}: {exc}"
 
 backend_snapshot_stale = bool(
     backend is not None
@@ -2646,11 +2647,102 @@ with forecast_tab:
         ),
         {},
     )
-    dc_reference_price = (
-        live_price
-        if live_price is not None
-        else dc_sd_eval.get("last_closed_m15_price")
+    # Select the freshest ForexRizan backend price first. The prepared-plan
+    # heartbeat can legitimately lag when there is NO_MAP/WAIT, so it must not
+    # permanently dominate newer V182/V226 observations.
+    dc_price_candidates: list[tuple[datetime, float, str]] = []
+
+    def _add_dc_price_candidate(
+        value: Any,
+        observed_at: Any,
+        source: str,
+    ) -> None:
+        px = _chart_price(value)
+        ts = _parse_timestamp(observed_at)
+        if px is None or ts is None:
+            return
+        dc_price_candidates.append((ts, float(px), source))
+
+    _add_dc_price_candidate(
+        live_price,
+        None if prepared_hb is None else prepared_hb.get("observed_at"),
+        "PREPARED_LIVE_PRICE",
     )
+    _add_dc_price_candidate(
+        dc_sd_eval.get("last_closed_m15_price"),
+        dc_sd_eval.get("as_of")
+        or (None if supply_demand_hb is None else supply_demand_hb.get("observed_at")),
+        "V182_LAST_CLOSED_M15",
+    )
+    _v226_price_details = (
+        {}
+        if v226_depth_map_hb is None
+        else dict(v226_depth_map_hb.get("details") or {})
+    )
+    _v226_price_eval = dict(_v226_price_details.get("evaluation") or {})
+    _add_dc_price_candidate(
+        _v226_price_eval.get("price_reference"),
+        _v226_price_eval.get("as_of")
+        or (None if v226_depth_map_hb is None else v226_depth_map_hb.get("observed_at")),
+        "V226_PRICE_REFERENCE",
+    )
+
+    dc_backend_reference_price = None
+    dc_backend_price_source = "UNAVAILABLE"
+    dc_backend_price_observed_at: datetime | None = None
+    if dc_price_candidates:
+        dc_price_candidates.sort(key=lambda item: item[0], reverse=True)
+        (
+            dc_backend_price_observed_at,
+            dc_backend_reference_price,
+            dc_backend_price_source,
+        ) = dc_price_candidates[0]
+
+    # Fresh standalone quote is from the same FP Markets/cTrader feed but remains
+    # diagnostic-only. It may update the displayed/visual price and geometry
+    # monitor, but it does not replace ForexRizan admission or broker authority.
+    dc_quote_overlay = {} if standalone is None else dict(standalone.get("quote") or {})
+    dc_quote_bridge = {} if standalone is None else dict(standalone.get("bridge") or {})
+    dc_quote_mid = _chart_price(dc_quote_overlay.get("mid"))
+    dc_quote_timestamp = _parse_timestamp(dc_quote_overlay.get("timestamp"))
+    dc_quote_age = (
+        None
+        if dc_quote_timestamp is None
+        else max(0.0, (datetime.now(tz=UTC) - dc_quote_timestamp).total_seconds())
+    )
+    dc_quote_fresh = bool(
+        dc_quote_mid is not None
+        and bool(dc_quote_bridge.get("fresh"))
+        and dc_quote_age is not None
+        and dc_quote_age <= 180.0
+    )
+
+    dc_reference_price = (
+        float(dc_quote_mid)
+        if dc_quote_fresh
+        else dc_backend_reference_price
+    )
+    dc_reference_price_source = (
+        "FP_MARKETS_CTRADER_QUOTE"
+        if dc_quote_fresh
+        else dc_backend_price_source
+    )
+    dc_reference_price_age = (
+        dc_quote_age
+        if dc_quote_fresh
+        else (
+            None
+            if dc_backend_price_observed_at is None
+            else max(
+                0.0,
+                (datetime.now(tz=UTC) - dc_backend_price_observed_at).total_seconds(),
+            )
+        )
+    )
+
+    # Keep legacy display panels aligned with the same current-price truth.
+    if dc_reference_price is not None:
+        live_price = dc_reference_price
 
     def _m5_pocket_limit_side_valid(
         direction: str,
@@ -2889,6 +2981,24 @@ with forecast_tab:
         top1, top2 = st.columns(2)
         top1.metric("Harga XAUUSD", _fmt_price(dc_reference_price))
         top2.metric("Action sekarang", dc_setup_summary)
+        st.caption(
+            "Price source="
+            + str(dc_reference_price_source)
+            + (
+                " • age="
+                + f"{float(dc_reference_price_age):.0f}s"
+                if dc_reference_price_age is not None
+                else ""
+            )
+            + (
+                " • backend ref="
+                + _fmt_price(dc_backend_reference_price)
+                + " (" + str(dc_backend_price_source) + ")"
+                if dc_backend_reference_price is not None
+                else ""
+            )
+            + ". FP Markets/cTrader quote overlay is display/geometry only; execution authority tetap ForexRizan."
+        )
         top3, top4 = st.columns(2)
         top3.metric("Arah aktif (V182)", dc_current_leg_label)
         top4.metric("Konteks HTF", dc_htf_context_bias)
@@ -7500,7 +7610,7 @@ with forecast_tab:
         f1.metric("H4 continuation", direction)
         f2.metric("State", state)
         f3.metric("Selector", grade)
-        f4.metric("Live XAU", _fmt_price(live_price))
+        f4.metric("Live XAU", _fmt_price(dc_reference_price))
         f5.metric("Distance to zone", _fmt_distance(distance_points, " pts"))
         f6.metric("RIZAN scan", f"{int(scan_seconds)}s" if scan_seconds else "—")
         st.caption(
