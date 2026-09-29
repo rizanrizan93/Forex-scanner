@@ -1507,7 +1507,7 @@ def _render_standalone_dashboard(state: dict[str, Any]) -> None:
     bridge = dict(state.get("bridge") or {})
 
     st.warning(
-        "SUPABASE RESTRICTED MODE • CTRADER BRIDGE • MANUAL ANALYSIS ONLY • "
+        "CTRADER QUOTE BACKUP • DIAGNOSTIC ONLY • NO DASHBOARD AUTHORITY • "
         "DEMO auto-execution OFF. Tidak ada order yang dikirim dari mode ini."
     )
     st.caption(
@@ -1945,8 +1945,8 @@ _dashboard_auto_refresh_tick()
 st.title("RIZAN XAU Institutional Scanner")
 st.caption(
     "RIZAN XAU decision dashboard • Normal mode uses durable ForexRizan snapshots "
-    "via direct Supabase or the curated Dashboard Bridge; Restricted Mode is only "
-    "used when both normal backends are unavailable."
+    "via direct Supabase or the curated ForexRizan Dashboard Bridge. "
+    "cTrader standalone is never treated as the dashboard backend."
 )
 
 if config_error:
