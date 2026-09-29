@@ -132,6 +132,7 @@ def build_execution_plan(
     atlas_evaluation: dict[str, Any],
     live_price: float,
     min_rr: float = MIN_PLAN_RR,
+    diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Build the DEMO-only four-child parent plan before first touch.
 
@@ -144,6 +145,7 @@ def build_execution_plan(
         v226_evaluation=v226_evaluation,
         atlas_evaluation=atlas_evaluation,
         live_price=live_price,
+        diagnostics=diagnostics,
     )
 
 def _candidate_key(plan: dict[str, Any]) -> str:
@@ -398,6 +400,7 @@ def run() -> int:
     prior_invalidated = 0
     pressure_transition: dict[str, Any] = {}
     depth_hazard: dict[str, Any] = {}
+    plan_diagnostics: dict[str, Any] = {}
 
     try:
         if not execution_enabled:
@@ -439,6 +442,7 @@ def run() -> int:
                 atlas_evaluation=atlas_eval,
                 live_price=live_price,
                 min_rr=MIN_PLAN_RR,
+                diagnostics=plan_diagnostics,
             )
             if plan is None:
                 # Do not publish a calibrated Dynamic Depth state for geometry
@@ -450,7 +454,11 @@ def run() -> int:
                     "action": "WAIT_STRUCTURE_REMAP",
                     "execution_ready": False,
                 }
-                reason = "WAIT_STRUCTURALLY_ACTIVE_DEPTH_CANDIDATE"
+                reject_reason = str(
+                    plan_diagnostics.get("reason")
+                    or "STRUCTURALLY_ACTIVE_DEPTH_CANDIDATE"
+                ).upper()
+                reason = f"WAIT_{reject_reason}"
             else:
                 depth_hazard = build_dynamic_depth_hazard(
                     v226_evaluation=v226_eval,
@@ -528,6 +536,7 @@ def run() -> int:
             "signal_id": signal_id,
             "candidate_key": candidate_key,
             "plan": plan or {},
+            "plan_diagnostics": plan_diagnostics,
             "prior_ready_invalidated": prior_invalidated,
             "error": error,
             "code_version": os.getenv("GITHUB_SHA", "LOCAL"),

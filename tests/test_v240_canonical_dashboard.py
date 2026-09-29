@@ -155,3 +155,11 @@ def test_v261_historical_entry_is_visibly_non_operational() -> None:
     assert "bukan order broker dan bukan win rate trading" in SOURCE
     assert "DEMO tetap menunggu pressure + fresh M5" in SOURCE
     assert "confirmation sebelum child order boleh dikirim." in SOURCE
+
+
+def test_v262_dashboard_explains_rr_fail_closed_in_plain_language() -> None:
+    assert "WAIT_TERMINAL_RR_BELOW_MINIMUM" in SOURCE
+    assert "RR terminal struktural < 1,50R — NO ORDER" in SOURCE
+    assert "**DEMO belum boleh entry karena RR struktural.**" in SOURCE
+    assert "Scanner sengaja fail-closed" in SOURCE
+    assert "WAIT_NO_FORWARD_STRUCTURAL_TARGET" in SOURCE

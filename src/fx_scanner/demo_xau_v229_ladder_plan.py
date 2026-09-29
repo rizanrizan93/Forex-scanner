@@ -66,6 +66,7 @@ def build_parent_ladder_plan(
     v226_evaluation: dict[str, Any],
     atlas_evaluation: dict[str, Any],
     live_price: float,
+    diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     direction = str(v226_evaluation.get("focus_direction") or "").upper()
     if direction not in {"LONG", "SHORT"}:
@@ -215,6 +216,7 @@ def build_parent_ladder_plan(
     children: list[dict[str, Any]] = []
     terminal_prices: list[float] = []
     first_targets: list[float] = []
+    slot_diagnostics: list[dict[str, Any]] = []
 
     for slot in raw_slots:
         slot_no = int(slot.get("slot") or 0)
@@ -230,6 +232,33 @@ def build_parent_ladder_plan(
             minimum_rr=MIN_TERMINAL_RR,
         )
         targets = [dict(x) for x in list(structural.get("broker_scaleout_targets") or [])]
+        terminal_structural = dict(structural.get("terminal_structural_target") or {})
+        slot_diagnostics.append(
+            {
+                "slot": slot_no,
+                "entry": reference,
+                "risk_points": _f(structural.get("risk_points")),
+                "terminal_rr_eligible": bool(structural.get("terminal_rr_eligible")),
+                "terminal_rr": _f(terminal_structural.get("rr")),
+                "terminal_target_price": _f(terminal_structural.get("target_price")),
+                "terminal_target_timeframe": str(
+                    terminal_structural.get("timeframe") or ""
+                ).upper(),
+                "terminal_target_zone_id": str(
+                    terminal_structural.get("zone_id") or ""
+                ),
+                "mapped_targets": [
+                    {
+                        "timeframe": str(item.get("timeframe") or "").upper(),
+                        "zone_id": item.get("zone_id"),
+                        "target_price": _f(item.get("target_price")),
+                        "rr": _f(item.get("rr")),
+                        "rr_eligible": bool(item.get("rr_eligible")),
+                    }
+                    for item in list(structural.get("mapped_targets") or [])
+                ],
+            }
+        )
         chosen = _slot_target(targets, slot_no)
         target_price = None if chosen is None else _f(chosen.get("target_price"))
         if target_price is not None:
@@ -269,6 +298,51 @@ def build_parent_ladder_plan(
 
     enabled_children = [c for c in children if c.get("planned_tp") is not None]
     if not enabled_children:
+        terminal_rr_values = [
+            float(item["terminal_rr"])
+            for item in slot_diagnostics
+            if item.get("terminal_rr") is not None
+        ]
+        mapped_target_count = sum(
+            len(list(item.get("mapped_targets") or []))
+            for item in slot_diagnostics
+        )
+        reject_reason = (
+            "TERMINAL_RR_BELOW_MINIMUM"
+            if terminal_rr_values and mapped_target_count > 0
+            else "NO_FORWARD_STRUCTURAL_TARGET"
+        )
+        if diagnostics is not None:
+            diagnostics.update(
+                {
+                    "state": "PLAN_REJECTED",
+                    "reason": reject_reason,
+                    "minimum_terminal_rr": MIN_TERMINAL_RR,
+                    "best_terminal_rr": (
+                        max(terminal_rr_values)
+                        if terminal_rr_values
+                        else None
+                    ),
+                    "structural_stop": float(stop),
+                    "structural_stop_zone_id": str(stop_zone.get("zone_id") or ""),
+                    "structural_stop_timeframe": str(
+                        stop_zone.get("timeframe") or ""
+                    ).upper(),
+                    "candidate_low": low,
+                    "candidate_high": high,
+                    "candidate_reference": _f(candidate.get("entry_reference")),
+                    "live_price": px,
+                    "source_layer": str(candidate.get("source_layer") or ""),
+                    "execution_phase": (
+                        "PRE_TOUCH"
+                        if fresh_pre_touch
+                        else "RETEST_CONFIRMATION"
+                        if retest_confirmation
+                        else "FIRST_TOUCH_CONFIRMATION"
+                    ),
+                    "slot_diagnostics": slot_diagnostics,
+                }
+            )
         return None
 
     execution_phase = (
@@ -310,6 +384,29 @@ def build_parent_ladder_plan(
         if direction == "LONG"
         else (midpoint - terminal_tp) / risk
     )
+
+    if diagnostics is not None:
+        diagnostics.update(
+            {
+                "state": "PLAN_AVAILABLE",
+                "reason": "PLAN_AVAILABLE",
+                "minimum_terminal_rr": MIN_TERMINAL_RR,
+                "best_terminal_rr": max(
+                    [
+                        float(item["terminal_rr"])
+                        for item in slot_diagnostics
+                        if item.get("terminal_rr") is not None
+                    ],
+                    default=None,
+                ),
+                "structural_stop": float(stop),
+                "structural_stop_zone_id": str(stop_zone.get("zone_id") or ""),
+                "structural_stop_timeframe": str(
+                    stop_zone.get("timeframe") or ""
+                ).upper(),
+                "slot_diagnostics": slot_diagnostics,
+            }
+        )
 
     return {
         "contract": "XAU_RIZAN_DEPTH_CHILD_LADDER_V229_1",
