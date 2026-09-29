@@ -20,6 +20,7 @@ def test_dashboard_publisher_has_serialized_schedule_and_self_handoff() -> None:
 
 def test_standalone_publisher_is_serialized_and_self_handoff_only() -> None:
     text = _read(".github/workflows/rizan-xau-standalone-v253.yml")
+    assert 'cron: "7,37 * * * 0-5"' in text
     assert "cancel-in-progress: true" in text
     assert "actions: write" in text
     assert "gh workflow run rizan-xau-standalone-v253.yml --ref main" in text
