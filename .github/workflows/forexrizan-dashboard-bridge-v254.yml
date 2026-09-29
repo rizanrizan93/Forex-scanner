@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: forexrizan-dashboard-bridge-v254
@@ -109,3 +110,30 @@ jobs:
               fi
             fi
           done
+
+      - name: Self-handoff publisher if scheduler misses the next window
+        if: ${{ success() && !cancelled() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          market_open_utc() {
+            weekday="$(date -u +%u)"
+            hour="$(date -u +%H)"
+            if [ "${weekday}" -eq 7 ]; then
+              [ "${hour}" -ge 21 ]
+            elif [ "${weekday}" -ge 1 ] && [ "${weekday}" -le 4 ]; then
+              return 0
+            elif [ "${weekday}" -eq 5 ]; then
+              [ "${hour}" -lt 22 ]
+            else
+              return 1
+            fi
+          }
+          if market_open_utc; then
+            gh workflow run forexrizan-dashboard-bridge-v254.yml --ref main
+            echo "FOREXRIZAN_DASHBOARD_PUBLISHER_SELF_HANDOFF_DISPATCHED"
+          else
+            echo "FOREXRIZAN_DASHBOARD_PUBLISHER_SELF_HANDOFF_SKIPPED market=closed"
+          fi

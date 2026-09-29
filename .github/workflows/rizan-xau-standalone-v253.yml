@@ -3,7 +3,7 @@ name: RIZAN XAU Standalone Snapshot V253
 on:
   workflow_dispatch:
   schedule:
-    - cron: "7,37 * * * 1-5"
+    - cron: "7,37 * * * 0-5"
   push:
     branches: [main]
     paths:
@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: rizan-xau-standalone-v253
@@ -112,3 +113,30 @@ jobs:
               fi
             fi
           done
+
+      - name: Self-handoff publisher if scheduler misses the next window
+        if: ${{ success() && !cancelled() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          market_open_utc() {
+            weekday="$(date -u +%u)"
+            hour="$(date -u +%H)"
+            if [ "${weekday}" -eq 7 ]; then
+              [ "${hour}" -ge 21 ]
+            elif [ "${weekday}" -ge 1 ] && [ "${weekday}" -le 4 ]; then
+              return 0
+            elif [ "${weekday}" -eq 5 ]; then
+              [ "${hour}" -lt 22 ]
+            else
+              return 1
+            fi
+          }
+          if market_open_utc; then
+            gh workflow run rizan-xau-standalone-v253.yml --ref main
+            echo "RIZAN_STANDALONE_PUBLISHER_SELF_HANDOFF_DISPATCHED"
+          else
+            echo "RIZAN_STANDALONE_PUBLISHER_SELF_HANDOFF_SKIPPED market=closed"
+          fi
