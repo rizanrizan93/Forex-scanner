@@ -886,6 +886,8 @@ def test_v276_live_ctrader_price_overrides_stale_snapshot_distance_for_arm() -> 
 
 
 def test_v280_producer_blocks_missed_break_and_invalid_before_signal_persist() -> None:
+    from pathlib import Path
+
     source = (
         Path(__file__).resolve().parents[1]
         / "src/fx_scanner/demo_xau_v229_depth_execution.py"
