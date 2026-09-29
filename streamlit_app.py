@@ -3144,6 +3144,8 @@ with forecast_tab:
         v240_entry_label = (
             "7 • Entry resmi"
             if v240_entry_authorized
+            else "7 • Source zone (SUDAH DIREAKSI)"
+            if v240_depth_location == "AFTER_REACTION"
             else "7 • Zone watch (BUKAN ENTRY)"
         )
         v240_sl_text = (
@@ -3196,6 +3198,21 @@ with forecast_tab:
                 else "Belum aktif"
             ),
         )
+        if v240_m5_state_quick == "CANDIDATE_M5_POCKET":
+            st.caption(
+                "M5 candidate sudah terpetakan tetapi **belum refined**. "
+                f"Micro state={dc_micro.get('state') or 'WAIT'}; tunggu reclaim + MSS/displacement "
+                "sesuai confirmation contract sebelum dianggap timing entry."
+            )
+        elif v240_m5_state_quick == "REFINED_M5_POCKET":
+            st.caption(
+                "M5 refined pocket tersedia sebagai timing evidence. "
+                "Tetap bukan entry resmi sebelum V240/V229 admission lolos."
+            )
+        else:
+            st.caption(
+                "Belum ada M5 pocket aktif. Dashboard tidak membuat pocket sintetis dari parent zone."
+            )
 
         st.markdown("###### Entry → Dynamic Depth → Admission")
         qe1, qe2 = st.columns(2)
