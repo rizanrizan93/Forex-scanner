@@ -381,6 +381,136 @@ def _hazard_bands(
     return rows
 
 
+def _wilson_interval(successes: int, total: int, z: float = 1.959963984540054) -> tuple[float | None, float | None]:
+    if total <= 0:
+        return None, None
+    n = float(total)
+    p = max(0.0, min(1.0, float(successes) / n))
+    z2 = z * z
+    denominator = 1.0 + z2 / n
+    center = (p + z2 / (2.0 * n)) / denominator
+    margin = (
+        z
+        * ((p * (1.0 - p) / n + z2 / (4.0 * n * n)) ** 0.5)
+        / denominator
+    )
+    return max(0.0, center - margin), min(1.0, center + margin)
+
+
+def _competing_risk_bands(
+    history_details: dict[str, Any],
+    timeframe: str,
+    direction: str,
+    *,
+    era_names: tuple[str, ...] | None = None,
+) -> list[dict[str, Any]]:
+    """Conditional first-touch outcomes after an episode has actually reached each band.
+
+    The denominator is the V225 at-risk population for that depth lower bound.
+    Reversal is the eventual >=0.50 ATR favorable reaction before a close beyond
+    distal. Break is the eventual first close beyond distal before that reaction.
+    Any remainder is unresolved/stall within the registered horizon.
+
+    This remains historical first-touch evidence only. It is not a calibrated
+    probability for a current retest and has no execution authority.
+    """
+    eras = dict(history_details.get("eras") or {})
+    selected_names = tuple(era_names or tuple(eras.keys()))
+    combined: dict[int, dict[str, Any]] = {}
+
+    for era_name in selected_names:
+        raw_era = dict(eras.get(era_name) or {})
+        summary = dict(raw_era.get("summary") or {})
+        side = dict(dict(summary.get(timeframe) or {}).get(direction) or {})
+        hazards = [dict(row) for row in list(side.get("hazard_by_depth_band") or [])]
+        if not hazards:
+            continue
+        plus_100 = int(side.get("successes_100pct_plus") or 0)
+        breaks = int(side.get("breaks") or 0)
+        for index, band in enumerate(hazards):
+            at_risk = int(band.get("at_risk") or 0)
+            future_reversals = plus_100 + sum(
+                int(row.get("reversals") or 0)
+                for row in hazards[index:]
+            )
+            bucket = combined.setdefault(
+                index,
+                {
+                    "band": str(band.get("band") or ""),
+                    "lower_depth": _f(band.get("lower_depth")),
+                    "upper_depth": _f(band.get("upper_depth")),
+                    "at_risk": 0,
+                    "reversal_first": 0,
+                    "break_first": 0,
+                    "unresolved": 0,
+                    "eras": [],
+                },
+            )
+            unresolved = max(0, at_risk - future_reversals - breaks)
+            bucket["at_risk"] += at_risk
+            bucket["reversal_first"] += future_reversals
+            bucket["break_first"] += breaks
+            bucket["unresolved"] += unresolved
+            bucket["eras"].append(
+                {
+                    "era": era_name,
+                    "at_risk": at_risk,
+                    "reversal_first": future_reversals,
+                    "break_first": breaks,
+                    "unresolved": unresolved,
+                }
+            )
+
+    rows: list[dict[str, Any]] = []
+    for index in sorted(combined):
+        item = combined[index]
+        total = int(item["at_risk"])
+        reversal = int(item["reversal_first"])
+        broken = int(item["break_first"])
+        unresolved = int(item["unresolved"])
+        rev_lo, rev_hi = _wilson_interval(reversal, total)
+        brk_lo, brk_hi = _wilson_interval(broken, total)
+        unres_lo, unres_hi = _wilson_interval(unresolved, total)
+        rows.append(
+            {
+                **item,
+                "p_reversal_first": None if total <= 0 else reversal / total,
+                "p_break_first": None if total <= 0 else broken / total,
+                "p_unresolved": None if total <= 0 else unresolved / total,
+                "reversal_wilson_95": {"low": rev_lo, "high": rev_hi},
+                "break_wilson_95": {"low": brk_lo, "high": brk_hi},
+                "unresolved_wilson_95": {"low": unres_lo, "high": unres_hi},
+                "break_minus_reversal": (
+                    None if total <= 0 else (broken - reversal) / total
+                ),
+                "denominator_contract": "EPISODES_THAT_REACHED_BAND_LOWER_BOUND",
+                "outcome_contract": "REACTION_GTE_0_50_ATR_VS_FIRST_CLOSE_BEYOND_DISTAL",
+                "scope": "FIRST_TOUCH_ONLY",
+                "execution_authority": False,
+            }
+        )
+    return rows
+
+
+def _break_crossover_band(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    for row in rows:
+        p_break = _f(row.get("p_break_first"))
+        p_reversal = _f(row.get("p_reversal_first"))
+        if p_break is None or p_reversal is None:
+            continue
+        if p_break > p_reversal:
+            return {
+                "band": row.get("band"),
+                "lower_depth": row.get("lower_depth"),
+                "upper_depth": row.get("upper_depth"),
+                "p_break_first": p_break,
+                "p_reversal_first": p_reversal,
+                "at_risk": int(row.get("at_risk") or 0),
+                "scope": "FIRST_TOUCH_ONLY",
+            }
+    return {}
+
+
 def _historical_profile(
     history_details: dict[str, Any],
     timeframe: str,
@@ -388,6 +518,17 @@ def _historical_profile(
 ) -> dict[str, Any]:
     finding = _profile_key_findings(history_details, timeframe, direction)
     bands = _hazard_bands(history_details, timeframe, direction)
+    competing = _competing_risk_bands(
+        history_details,
+        timeframe,
+        direction,
+    )
+    oos_competing = _competing_risk_bands(
+        history_details,
+        timeframe,
+        direction,
+        era_names=("2025_2026",),
+    )
     touches = int(finding.get("touches") or 0)
 
     running = 0
@@ -451,6 +592,12 @@ def _historical_profile(
         "depth_p75": _f(finding.get("depth_p75")),
         "highest_hazard_band": top,
         "hazard_bands": enriched,
+        "competing_risk_bands": competing,
+        "oos_2025_2026_competing_risk_bands": oos_competing,
+        "break_crossover_band": _break_crossover_band(competing),
+        "oos_2025_2026_break_crossover_band": _break_crossover_band(oos_competing),
+        "competing_risk_scope": "FIRST_TOUCH_ONLY",
+        "retest_competing_risk_calibrated": False,
         "era_top_bands": era_top_bands,
         "stable_top_band_across_eras": len(distinct_top) == 1 and len(era_top_bands) >= 3,
         "coordinate": "FULL_ZONE_NEAR_EDGE_TO_FAR_EDGE",
