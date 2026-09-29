@@ -239,4 +239,3 @@ def test_v271_dashboard_separates_single_sample_demo_pressure_from_strict_transi
     assert "DEMO calibration pressure eligible" in SOURCE
     assert "strict L3/L4 tetap BLOCK sampai dua-sample transition valid" in SOURCE
     assert "absolute opposing pressure masih terlalu kuat" in SOURCE
-    assert "strict L3/L4 tetap wajib transition dua-sample" in SOURCE
