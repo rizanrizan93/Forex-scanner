@@ -71,7 +71,19 @@ def build_parent_ladder_plan(
     if direction not in {"LONG", "SHORT"}:
         return None
 
+    # V182 current structural path is the operational direction authority.
+    # V226 is a locator/depth engine; if its focus has not remapped yet, never
+    # let the older locator create or keep a DEMO execution parent.
+    path_map = dict(atlas_evaluation.get("path_map") or {})
+    active_path = dict(path_map.get("active_path") or {})
+    active_direction = str(active_path.get("reaction_direction") or "").upper()
+    if active_direction in {"LONG", "SHORT"} and active_direction != direction:
+        return None
+
     candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
+    candidate_direction = str(candidate.get("direction") or "").upper()
+    if candidate_direction in {"LONG", "SHORT"} and candidate_direction != direction:
+        return None
     fresh_pre_touch = bool(
         candidate.get(
             "pre_touch_execution_eligible",
