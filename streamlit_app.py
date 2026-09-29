@@ -2955,6 +2955,9 @@ with forecast_tab:
     v240_targets = [
         dict(item) for item in list(v240_decision.get("structural_targets") or [])
     ]
+    v240_children = [
+        dict(item) for item in list(v240_decision.get("children") or [])
+    ]
     v240_destination = dict(v240_decision.get("likely_destination") or {})
     v240_nearest_demand = dict(v240_decision.get("nearest_demand") or {})
     v240_nearest_supply = dict(v240_decision.get("nearest_supply") or {})
@@ -4400,9 +4403,9 @@ with forecast_tab:
                 "Section ini tidak mengambil angka fallback dari V226/standalone/plan lama."
             )
 
-        if v240_entry_authorized and v226_ladder_slots:
+        if v240_entry_authorized and v240_children:
             ladder_rows = []
-            for ui_slot in v226_ladder_slots:
+            for ui_slot in v240_children:
                 ui_slot_no = int(ui_slot.get("slot") or 0)
                 ladder_rows.append(
                     {
