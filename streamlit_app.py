@@ -3383,6 +3383,27 @@ with forecast_tab:
 
         v240_depth_state = str(v240_depth_hazard.get("state") or "").upper()
         v240_depth_calibrated = v240_depth_state == "DYNAMIC_DEPTH_HAZARD_AVAILABLE"
+        v240_probe_depth_action = str(
+            v240_depth_hazard.get("calibration_probe_depth_action") or ""
+        ).upper()
+        v240_probe_depth_eligible = bool(
+            v240_depth_hazard.get("calibration_probe_depth_eligible")
+        )
+        v240_probe_depth_ceiling = v240_depth_hazard.get(
+            "calibration_probe_depth_ceiling"
+        )
+        v240_probe_depth_text = (
+            "PROBE NO-CHASE"
+            if v240_probe_depth_action == "NO_CHASE_DEEP_ZONE"
+            else "Probe depth OK"
+            if v240_probe_depth_eligible
+            else "Probe menunggu"
+        )
+        if (
+            v240_depth_location == "INSIDE_ZONE"
+            and v240_probe_depth_action == "NO_CHASE_DEEP_ZONE"
+        ):
+            v240_depth_text += " • PROBE NO-CHASE"
         if v240_depth_hazard.get("recommended_depth_low") is not None:
             v240_depth_band_text = (
                 f"Band hazard riset "
@@ -3618,7 +3639,8 @@ with forecast_tab:
                 "di mana entry M5 aktual masih berpotensi memenuhi terminal RR ≥1,50R. "
                 "Pada parent retest, L2 tetap OFF. L1 boleh dipakai sekali sebagai **DEMO calibration probe "
                 "0,01 lot** hanya dari M5 pocket aktual bila pressure valid, depth masih dalam "
-                "recommended band + buffer 10% (maksimum 70%), limit-side valid "
+                "recommended band + buffer 10% dan tidak melewati hard ceiling 70%; jika lebih dalam "
+                "dashboard menulis **PROBE NO-CHASE**. Limit-side harus valid "
                 "dan opposing-zone RR ≥1,00R. L3/L4 tetap jalur strict: reclaim/MSS atau displacement "
                 "valid dan terminal RR ≥1,50R. TP/SL selalu dihitung dari struktur aktual."
             )
@@ -3761,7 +3783,15 @@ with forecast_tab:
             f"{v240_depth_band_text} • source={v240_decision.get('source_layer') or 'V182 current path'} • "
             f"reference={_fmt_price(v240_decision.get('entry_reference'))}. "
             + (
-                "Hazard hanya menjadi timing context dan tidak pernah memberi izin order sendirian."
+                "Hazard hanya menjadi timing context dan tidak pernah memberi izin order sendirian. "
+                + (
+                    f"DEMO probe 0,01 lot: **{v240_probe_depth_text}** "
+                    f"(hard ceiling {_fmt_pct(v240_probe_depth_ceiling)}). "
+                    "Status probe terpisah dari strict L3/L4; strict masih wajib M5 reclaim/MSS "
+                    "atau displacement + terminal RR ≥1,50R."
+                    if v240_probe_depth_ceiling is not None
+                    else ""
+                )
                 if v240_depth_calibrated
                 else "Tanpa V229 geometry yang aligned, dashboard sengaja tidak menghitung reversal band."
             )
