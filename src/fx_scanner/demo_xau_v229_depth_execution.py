@@ -423,12 +423,6 @@ def run() -> int:
                 dom_heartbeat=dom_hb,
                 now=now,
             )
-            depth_hazard = build_dynamic_depth_hazard(
-                v226_evaluation=v226_eval,
-                direction=direction,
-                live_price=live_price,
-                pressure_transition=pressure_transition,
-            )
 
             plan = build_execution_plan(
                 v226_evaluation=v226_eval,
@@ -437,48 +431,64 @@ def run() -> int:
                 min_rr=MIN_PLAN_RR,
             )
             if plan is None:
+                # Do not publish a calibrated Dynamic Depth state for geometry
+                # that V229 has already rejected/remapped. This heartbeat is
+                # operational telemetry and must agree with execution authority.
+                depth_hazard = {
+                    "state": "UNAVAILABLE",
+                    "reason": "NO_CURRENT_ALIGNED_V229_PLAN",
+                    "action": "WAIT_STRUCTURE_REMAP",
+                    "execution_ready": False,
+                }
                 reason = "WAIT_STRUCTURALLY_ACTIVE_DEPTH_CANDIDATE"
-            elif not (
-                bool(pressure_transition.get("pre_touch_entry_allowed"))
-                or bool(pressure_transition.get("confirmation_entry_allowed"))
-            ):
-                reason = (
-                    "WAIT_PRESSURE_TRANSITION:"
-                    + str(pressure_transition.get("state") or "UNAVAILABLE")
-                )
-            elif str(depth_hazard.get("state") or "") != "DYNAMIC_DEPTH_HAZARD_AVAILABLE":
-                reason = (
-                    "WAIT_DYNAMIC_DEPTH_HAZARD:"
-                    + str(depth_hazard.get("reason") or "UNAVAILABLE")
-                )
-            elif not bool(depth_hazard.get("execution_ready")):
-                reason = (
-                    "WAIT_DYNAMIC_DEPTH_HAZARD:"
-                    + str(depth_hazard.get("action") or "WAIT")
-                )
             else:
-                plan["pressure_transition"] = dict(pressure_transition)
-                plan["dynamic_depth_hazard"] = dict(depth_hazard)
-                candidate_key = _candidate_key(plan)
-                prior_invalidated = _invalidate_prior_ready(
-                    store,
-                    current_key=candidate_key,
+                depth_hazard = build_dynamic_depth_hazard(
+                    v226_evaluation=v226_eval,
+                    direction=direction,
+                    live_price=live_price,
+                    pressure_transition=pressure_transition,
                 )
-                if _already_recorded(store, candidate_key, now=now):
-                    reason = "CANDIDATE_ALREADY_EMITTED"
+                if not (
+                    bool(pressure_transition.get("pre_touch_entry_allowed"))
+                    or bool(pressure_transition.get("confirmation_entry_allowed"))
+                ):
+                    reason = (
+                        "WAIT_PRESSURE_TRANSITION:"
+                        + str(pressure_transition.get("state") or "UNAVAILABLE")
+                    )
+                elif str(depth_hazard.get("state") or "") != "DYNAMIC_DEPTH_HAZARD_AVAILABLE":
+                    reason = (
+                        "WAIT_DYNAMIC_DEPTH_HAZARD:"
+                        + str(depth_hazard.get("reason") or "UNAVAILABLE")
+                    )
+                elif not bool(depth_hazard.get("execution_ready")):
+                    reason = (
+                        "WAIT_DYNAMIC_DEPTH_HAZARD:"
+                        + str(depth_hazard.get("action") or "WAIT")
+                    )
                 else:
-                    signal_id = _write_signal(
+                    plan["pressure_transition"] = dict(pressure_transition)
+                    plan["dynamic_depth_hazard"] = dict(depth_hazard)
+                    candidate_key = _candidate_key(plan)
+                    prior_invalidated = _invalidate_prior_ready(
                         store,
-                        plan=plan,
-                        observed_at=now,
+                        current_key=candidate_key,
                     )
-                    _record_execution_geometry(
-                        store,
-                        signal_id=signal_id,
-                        candidate_key=candidate_key,
-                        plan=plan,
-                    )
-                    reason = "EXECUTION_READY_EMITTED"
+                    if _already_recorded(store, candidate_key, now=now):
+                        reason = "CANDIDATE_ALREADY_EMITTED"
+                    else:
+                        signal_id = _write_signal(
+                            store,
+                            plan=plan,
+                            observed_at=now,
+                        )
+                        _record_execution_geometry(
+                            store,
+                            signal_id=signal_id,
+                            candidate_key=candidate_key,
+                            plan=plan,
+                        )
+                        reason = "EXECUTION_READY_EMITTED"
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"
     finally:
