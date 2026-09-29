@@ -151,7 +151,11 @@ st.markdown(
             overflow:visible;
             text-overflow:clip;
         }
-        div[data-testid="stMetricLabel"] {font-size:.76rem;}
+        div[data-testid="stMetricLabel"] {
+            font-size:.78rem;
+            line-height:1.18;
+            white-space:normal;
+        }
         h1 {font-size:2rem !important;}
     }
     </style>
@@ -2993,12 +2997,13 @@ with forecast_tab:
         unsafe_allow_html=True,
     )
     with st.container(border=True):
-        flow1, flow2, flow3, flow4, flow5 = st.columns(5)
+        flow1, flow2 = st.columns(2)
         flow1.metric("1 • HTF context", dc_htf_context_bias)
         flow2.metric("2 • Path aktif V182", dc_current_leg_direction)
+        flow3, flow4 = st.columns(2)
         flow3.metric("3 • M15", dc_m15_state)
         flow4.metric("4 • Admission", dc_admission_label)
-        flow5.metric("Broker route", dc_route_label)
+        st.info(f"**Broker route:** {dc_route_label}")
         if dc_inside_current_terminal and dc_next_leg_direction in {"LONG", "SHORT"}:
             st.caption(
                 f"Next leg watch (BUKAN ENTRY): {dc_next_leg_watch_text}. "
@@ -3562,6 +3567,10 @@ with forecast_tab:
         qr5, qr6 = st.columns(2)
         qr5.metric("15 • Lifecycle", _human_wait_reason(v240_state))
         qr6.metric("16 • Session WIB", f"{v240_session} • {v240_wib_clock}")
+        st.info(
+            "**Alasan keputusan saat ini:** "
+            + _human_wait_reason(v240_gate_reason)
+        )
 
         if not v240_entry_authorized:
             st.warning(
@@ -3581,7 +3590,7 @@ with forecast_tab:
             )
 
         st.markdown("###### Buyer / Seller Pressure — timing masuk zona")
-        pr1, pr2, pr3, pr4 = st.columns(4)
+        pr1, pr2 = st.columns(2)
         pr1.metric(
             "Buyer index",
             "—" if v240_buyer_index is None else f"{v240_buyer_index:.1f}/100",
@@ -3590,23 +3599,28 @@ with forecast_tab:
             "Seller index",
             "—" if v240_seller_index is None else f"{v240_seller_index:.1f}/100",
         )
+        pr3, pr4 = st.columns(2)
         pr3.metric(
             "Incoming pressure vs zona",
             "—"
             if v240_opposing_pressure is None
             else f"{v240_opposing_pressure:+.1f}",
         )
-        pr4.metric("Penetration risk", v240_penetration_risk)
-        pt1, pt2, pt3 = st.columns(3)
+        pr4.metric(
+            "Penetration risk",
+            str(v240_penetration_risk).split(" —", 1)[0],
+        )
+        pt1, pt2 = st.columns(2)
         pt1.metric("Pressure transition", v240_pressure_trend)
         pt2.metric(
             "Pre-touch DEMO",
             "ALLOW" if v240_pressure_transition.get("pre_touch_entry_allowed") else "WAIT",
         )
-        pt3.metric(
+        st.metric(
             "M5-confirm DEMO",
             "ALLOW" if v240_pressure_transition.get("confirmation_entry_allowed") else "WAIT",
         )
+        st.caption(f"Penetration detail: {v240_penetration_risk}")
         if v240_dom_score is None:
             st.warning(
                 "DOM Level-II belum tersedia. Dashboard tidak mengarang buyer/seller pressure. "
@@ -3646,12 +3660,17 @@ with forecast_tab:
             if v240_depth_calibrated
             else "###### Lokasi vs source zone — geometry only (BUKAN reversal forecast)"
         )
-        hz1, hz2, hz3, hz4 = st.columns(4)
+        hz1, hz2 = st.columns(2)
         hz1.metric(
             "Current depth",
             v240_depth_text,
         )
         hz2.metric(
+            "Hazard action",
+            _human_wait_reason(v240_depth_hazard.get("action") or "WAIT"),
+        )
+        hz3, hz4 = st.columns(2)
+        hz3.metric(
             "Next reversal band",
             (
                 "N/A — geometry only"
@@ -3664,7 +3683,7 @@ with forecast_tab:
                 )
             ),
         )
-        hz3.metric(
+        hz4.metric(
             "Harga band",
             (
                 "N/A — geometry only"
@@ -3676,10 +3695,6 @@ with forecast_tab:
                     f"{_fmt_price(v240_depth_hazard.get('recommended_price_high'))}"
                 )
             ),
-        )
-        hz4.metric(
-            "Hazard action",
-            _human_wait_reason(v240_depth_hazard.get("action") or "WAIT"),
         )
         child_status_by_slot: dict[str, str] = {}
         for raw_child in list(v229_exec_plan.get("children") or []):
@@ -3695,9 +3710,10 @@ with forecast_tab:
                 status = "OFF / CONFIRM"
             child_status_by_slot[slot] = status
         st.markdown("###### Child L1–L4 — status eksekusi DEMO")
-        l1, l2, l3, l4 = st.columns(4)
+        l1, l2 = st.columns(2)
         l1.metric("L1", child_status_by_slot.get("L1", "WAIT"))
         l2.metric("L2", child_status_by_slot.get("L2", "WAIT"))
+        l3, l4 = st.columns(2)
         l3.metric("L3", child_status_by_slot.get("L3", "WAIT"))
         l4.metric("L4", child_status_by_slot.get("L4", "WAIT"))
         st.caption(
