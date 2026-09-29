@@ -565,18 +565,47 @@ def build_canonical_xau_decision(
             or {}
         )
     )
+    reaction_price = _f(reaction_target.get("price"))
+    terminal_low = _f(terminal_zone.get("low"))
+    terminal_high = _f(terminal_zone.get("high"))
+    inside_terminal = bool(
+        px is not None
+        and terminal_low is not None
+        and terminal_high is not None
+        and terminal_low <= px <= terminal_high
+    )
+    reaction_reached = bool(
+        px is not None
+        and reaction_price is not None
+        and (
+            (direction == "LONG" and px >= reaction_price)
+            or (direction == "SHORT" and px <= reaction_price)
+        )
+    )
+    path_destination_state = (
+        "INSIDE_OPPOSING_ZONE"
+        if inside_terminal
+        else "REACTION_TARGET_REACHED"
+        if reaction_reached
+        else "TARGET_AHEAD"
+        if reaction_price is not None
+        else "UNAVAILABLE"
+    )
     likely_destination = (
         dict(targets[0])
         if targets
         else {
-            "target_price": _f(reaction_target.get("price")),
+            "target_price": reaction_price,
             "timeframe": str(terminal_zone.get("timeframe") or ""),
             "zone_id": str(terminal_zone.get("zone_id") or ""),
             "role": (
                 "CANONICAL_TP"
                 if current_plan
+                else "PATH_TARGET_REACHED"
+                if reaction_reached
                 else "PATH_TARGET_WATCH_NOT_ORDER_TP"
             ),
+            "destination_state": path_destination_state,
             "zone_low": terminal_zone.get("low"),
             "zone_high": terminal_zone.get("high"),
             "rr": None,
@@ -636,6 +665,7 @@ def build_canonical_xau_decision(
             dict(child) for child in list((current_plan or {}).get("children") or [])
         ],
         "likely_destination": likely_destination,
+        "path_destination_state": path_destination_state,
         "terminal_opposing_zone": terminal_zone,
         "nearest_demand": nearest_demand,
         "nearest_supply": nearest_supply,
