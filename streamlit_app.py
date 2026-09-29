@@ -5361,15 +5361,17 @@ with forecast_tab:
 
     tm1, tm2, tm3, tm4 = st.columns(4)
     tm1.metric("Sumber", f"cTrader {tm_account_env}")
-    tm2.metric("Posisi XAU aktif", tm_summary.get("count", 0))
-    tm3.metric("Total volume", f"{float(tm_summary.get('total_volume') or 0.0):.2f}")
+    tm2.metric("Posisi XAU aktif", tm_summary.get("count", 0) if tm_snapshot_fresh else "—")
+    tm3.metric("Total volume", f"{float(tm_summary.get('total_volume') or 0.0):.2f}" if tm_snapshot_fresh else "—")
     tm4.metric(
         "Floating P/L",
         "—"
-        if tm_summary.get("total_profit") is None
+        if not tm_snapshot_fresh or tm_summary.get("total_profit") is None
         else f"{float(tm_summary.get('total_profit') or 0.0):+.2f}",
     )
 
+    if backend and backend.get("account_telemetry_redacted"):
+        st.info("Informasi akun disembunyikan dari dashboard publik. Periksa posisi di cTrader; tanda — bukan berarti tidak ada posisi.")
     if broker_account and not tm_snapshot_fresh:
         st.warning(
             "Snapshot broker DEMO tidak cukup fresh untuk Trade Management Center. "
@@ -7520,6 +7522,8 @@ with account_tab:
             )
         else:
             st.info("No open cTrader DEMO positions in the latest broker snapshot.")
+    elif backend and backend.get("account_telemetry_redacted"):
+        st.info("Saldo, equity, dan posisi tidak dipublikasikan. Periksa akun langsung di cTrader.")
     else:
         st.info(
             "No broker telemetry yet. Streamlit is read-only; the cloud cTrader DEMO "
@@ -7651,6 +7655,12 @@ with data_tab:
     st.subheader("Makro Mata Uang (Currency Macro)")
     if backend is not None and backend["macro"]:
         macro = _frame(backend["macro"])
+        if "observed_at" in macro.columns:
+            checked = pd.to_datetime(macro["observed_at"], utc=True, errors="coerce")
+            stale = checked.isna() | ((pd.Timestamp.now(tz="UTC") - checked).dt.total_seconds() > 172800)
+            macro["status_data"] = stale.map({True: "KEDALUWARSA — konteks historis saja", False: "PEMERIKSAAN TERBARU — lihat coverage"})
+        if "macro_score" in macro.columns and macro["macro_score"].isna().any():
+            st.warning("Sebagian data makro belum lengkap; skor kosong bukan sinyal netral.")
         if "coverage" in macro.columns:
             macro["coverage"] = macro["coverage"].apply(_fmt_pct)
         st.dataframe(macro, hide_index=True, width="stretch")

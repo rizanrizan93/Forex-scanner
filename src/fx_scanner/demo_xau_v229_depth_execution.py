@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from math import isfinite
 from typing import Any
 
+from .xau_structure_admission import evaluate_structure_admission
 from .config import load_project_config
 from .demo_xau_v226_rizan_depth_map import (
     ATLAS_WORKER,
@@ -448,6 +449,12 @@ def run() -> int:
             v226_hb = _latest_heartbeat(store, V226_WORKER)
             atlas_hb = _latest_heartbeat(store, ATLAS_WORKER)
             dom_hb = _latest_heartbeat(store, DOM_WORKER)
+            admission = evaluate_structure_admission(
+                v226_heartbeat=v226_hb, atlas_heartbeat=atlas_hb, now=datetime.now(UTC),
+            )
+            if not admission["allowed"]:
+                prior_invalidated = _invalidate_prior_ready(store, current_key="STRUCTURE_BLOCKED")
+                raise RuntimeError("WAIT_STRUCTURE:" + admission["reason"])
             if not bool(v226_hb.get("healthy")):
                 raise RuntimeError("RIZAN_DEPTH_V226_UNHEALTHY")
             if not bool(atlas_hb.get("healthy")):
@@ -584,6 +591,7 @@ def run() -> int:
             "candidate_key": candidate_key,
             "plan": plan or {},
             "plan_diagnostics": plan_diagnostics,
+            "structure_admission": admission if "admission" in locals() else {},
             "prior_ready_invalidated": prior_invalidated,
             "error": error,
             "code_version": os.getenv("GITHUB_SHA", "LOCAL"),

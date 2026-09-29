@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from math import isfinite
 from typing import Any
 
+from .xau_structure_admission import evaluate_structure_admission
 from .demo_xau_structural_targets_v229 import build_structural_target_plan
 from .demo_xau_v229_depth_execution import (
     ATLAS_WORKER,
@@ -380,11 +381,18 @@ def run() -> int:
             if direction == "SHORT"
             else (float(quote.bid) + float(quote.ask)) / 2.0
         )
+        admission = evaluate_structure_admission(
+            v226_heartbeat=v226_hb, atlas_heartbeat=atlas_hb, now=datetime.now(UTC),
+        )
+        if not admission["allowed"]:
+            actions.append("STRUCTURE_BLOCK:" + admission["reason"])
         current_plan = build_parent_ladder_plan(
             v226_evaluation=v226_eval,
             atlas_evaluation=atlas_eval,
             live_price=live_price,
         )
+        if not admission["allowed"]:
+            current_plan = None
         current_key = None if current_plan is None else str(current_plan.get("candidate_key") or "")
         pressure_transition = evaluate_pressure_transition(
             direction=direction,
@@ -429,7 +437,8 @@ def run() -> int:
             invalid_parent = bool(
                 not current_key
                 or str(plan.get("candidate_key") or "") != current_key
-                or (expires_at is not None and now > expires_at)
+                or expires_at is None
+                or datetime.now(UTC) > expires_at
                 or state == "INVALIDATED"
             )
             if invalid_parent:
@@ -539,6 +548,14 @@ def run() -> int:
                         continue
 
                 quote = gateway.market_quote(SYMBOL)
+                submit_now = datetime.now(UTC)
+                admission = evaluate_structure_admission(
+                    v226_heartbeat=v226_hb, atlas_heartbeat=atlas_hb, now=submit_now,
+                )
+                if not admission["allowed"] or expires_at is None or submit_now > expires_at:
+                    actions.append(f"{parent_signal_id}:STRUCTURE_BLOCK_OR_EXPIRED")
+                    actions.extend(_cancel_pending_plan(session, plan, session.reconcile()))
+                    break
                 if not _limit_side_valid(
                     str(plan["direction"]),
                     float(entry),
@@ -602,6 +619,7 @@ def run() -> int:
             "pressure_transition": pressure_transition if 'pressure_transition' in locals() else {},
             "dynamic_depth_hazard_required": True,
             "dynamic_depth_hazard": depth_hazard if 'depth_hazard' in locals() else {},
+            "structure_admission": admission if "admission" in locals() else {},
             "actions": actions[:40],
             "error": error,
             "observed_at": now.isoformat(),
