@@ -240,3 +240,36 @@ def test_v229_fails_closed_when_local_v182_source_supersedes_far_same_side_locat
     )
     assert plan is None
 
+
+
+
+def test_v2572_v229_blocks_reentry_after_active_path_target_reached() -> None:
+    atlas = _atlas()
+    atlas["path_map"]["active_path"] = {
+        "reaction_direction": "LONG",
+        "source_zone": {
+            "zone_id": "current-demand",
+            "timeframe": "H1",
+            "direction": "LONG",
+            "low": 99.0,
+            "high": 102.0,
+            "lifecycle": {"active": True},
+        },
+        "reaction_target": {"price": 102.5},
+        "terminal_target_zone": {
+            "zone_id": "current-supply",
+            "timeframe": "H1",
+            "direction": "SHORT",
+            "low": 102.5,
+            "high": 107.0,
+            "lifecycle": {"active": True},
+        },
+    }
+
+    plan = build_execution_plan(
+        v226_evaluation=_v226(),
+        atlas_evaluation=atlas,
+        live_price=103.0,
+    )
+
+    assert plan is None
