@@ -174,7 +174,43 @@ def build_dynamic_depth_hazard(
     large out of sample.
     """
     side = str(direction or "").upper()
+    if side not in {"LONG", "SHORT"}:
+        return {
+            "state": "UNAVAILABLE",
+            "reason": "INVALID_DIRECTION",
+            "execution_ready": False,
+        }
+
+    focus_direction = str(v226_evaluation.get("focus_direction") or "").upper()
+    candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
+    candidate_direction = str(candidate.get("direction") or "").upper()
+    if focus_direction in {"LONG", "SHORT"} and focus_direction != side:
+        return {
+            "state": "UNAVAILABLE",
+            "reason": "V226_FOCUS_DIRECTION_MISMATCH",
+            "execution_ready": False,
+        }
+    if candidate_direction in {"LONG", "SHORT"} and candidate_direction != side:
+        return {
+            "state": "UNAVAILABLE",
+            "reason": "V226_CANDIDATE_DIRECTION_MISMATCH",
+            "execution_ready": False,
+        }
+    if not candidate:
+        return {
+            "state": "UNAVAILABLE",
+            "reason": "MISSING_DEPTH_ENTRY_CANDIDATE",
+            "execution_ready": False,
+        }
+
     timeframe, zone, profile = _source_context(v226_evaluation, side)
+    zone_direction = str(zone.get("direction") or "").upper()
+    if zone_direction in {"LONG", "SHORT"} and zone_direction != side:
+        return {
+            "state": "UNAVAILABLE",
+            "reason": "SOURCE_ZONE_DIRECTION_MISMATCH",
+            "execution_ready": False,
+        }
     zone_low = _f(zone.get("low"))
     zone_high = _f(zone.get("high"))
     depth = normalized_depth(zone, live_price)
@@ -186,7 +222,6 @@ def build_dynamic_depth_hazard(
             "execution_ready": False,
         }
 
-    candidate = dict(v226_evaluation.get("depth_entry_candidate") or {})
     reuse = dict(candidate.get("zone_reuse") or {})
     retest_confirmation_required = bool(candidate.get("retest_confirmation_eligible"))
     prior_scope = str(
