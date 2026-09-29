@@ -2519,6 +2519,35 @@ with forecast_tab:
         or {}
     )
 
+    # Migration-era snapshots may contain a next-leg pocket created from an old
+    # touch of the future opposing zone. Suppress it in the UI unless its evidence
+    # occurred after the current leg activation. V196 now enforces the same rule
+    # at source, this is a defensive display guard for older cached snapshots.
+    dc_current_source_lifecycle = dict(
+        dict(dc_projection_current.get("source_zone") or dc_source or {}).get("lifecycle")
+        or {}
+    )
+    dc_current_leg_activation = _parse_timestamp(
+        dc_micro.get("first_eligible_touch_at")
+        or dc_current_source_lifecycle.get("first_touch_at")
+    )
+    dc_next_evidence_at = _parse_timestamp(
+        dc_next_micro.get("first_eligible_touch_at")
+        or dict(dc_next_micro.get("sweep") or {}).get("at")
+        or dc_next_refined_display.get("origin_at")
+        or dc_next_initial_candidate.get("origin_at")
+    )
+    dc_next_pocket_causally_fresh = bool(
+        dc_current_leg_activation is not None
+        and dc_next_evidence_at is not None
+        and dc_next_evidence_at >= dc_current_leg_activation
+    )
+    if dc_current_leg_activation is not None and not dc_next_pocket_causally_fresh:
+        dc_next_initial_candidate = {}
+        dc_next_refined_display = {}
+        if dc_next_pocket_state in {"CANDIDATE_M5_POCKET", "REFINED_M5_POCKET"}:
+            dc_next_pocket_state = "NO_M5_POCKET_YET"
+
     dc_dom = dict(afic_sd_context.get("dom_context") or {})
     if not dc_dom and dom_v191_hb is not None:
         dc_dom_details = dict(dom_v191_hb.get("details") or {})
@@ -3777,8 +3806,6 @@ with forecast_tab:
             dc_current_leg_terminal,
             dc_next_leg_source,
             dc_next_leg_terminal,
-            dict(v226_h4.get("zone") or {}),
-            v226_nearest_h4_context_zone,
         ]
         + chart_zones
     ):
