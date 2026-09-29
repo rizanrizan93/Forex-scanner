@@ -3017,8 +3017,10 @@ with forecast_tab:
         elif dc_admission_label == "V229 READY":
             st.success(
                 "V229 memakai jalur khusus. Fresh mode = 4-CHILD 2+2 "
-                "(2 pre-touch LIMIT + 2 child konfirmasi); H4/H1 retest tetap eligible tetapi masuk melalui "
-                "confirmation-only L3/L4. Tidak diteruskan ke generic MARKET handoff."
+                "(2 pre-touch LIMIT + 2 child konfirmasi); H4/H1 retest tetap eligible. "
+                "V266 menambahkan satu L1 DEMO calibration probe 0,01 lot dari M5 pocket aktual "
+                "dengan RR ≥1,00R dan depth ≤35%, sementara L3/L4 tetap jalur strict ≥1,50R. "
+                "Tidak diteruskan ke generic MARKET handoff."
             )
 
     v226_details = (
@@ -3613,9 +3615,10 @@ with forecast_tab:
             st.info(
                 "**Belum ada order.** Window ini hanya menunjukkan area di dalam source H1/H4 "
                 "di mana entry M5 aktual masih berpotensi memenuhi terminal RR ≥1,50R. "
-                "L1/L2 tetap OFF. L3/L4 baru boleh submit setelah M5 reclaim/MSS atau "
-                "displacement valid, pressure mengizinkan, limit-side valid, lalu TP dan RR "
-                "dihitung ulang dari harga entry aktual."
+                "Pada parent retest, L2 tetap OFF. L1 boleh dipakai sekali sebagai **DEMO calibration probe "
+                "0,01 lot** hanya dari M5 pocket aktual bila pressure valid, depth ≤35%, limit-side valid "
+                "dan opposing-zone RR ≥1,00R. L3/L4 tetap jalur strict: reclaim/MSS atau displacement "
+                "valid dan terminal RR ≥1,50R. TP/SL selalu dihitung dari struktur aktual."
             )
 
         st.markdown("###### Peta Entry — riset → M5 → DEMO → broker")
