@@ -35,7 +35,10 @@ from fx_scanner.trade_management_v195 import (
 from fx_scanner.xau_canonical_decision_v240 import build_canonical_xau_decision
 from fx_scanner.xau_profitability_truth_v241 import build_xau_profitability_truth
 from fx_scanner.xau_pressure_transition_v249 import evaluate_pressure_transition
-from fx_scanner.xau_dynamic_depth_hazard_v251 import build_dynamic_depth_hazard
+from fx_scanner.xau_dynamic_depth_hazard_v251 import (
+    build_dynamic_depth_hazard,
+    build_geometry_depth_status,
+)
 from fx_scanner.xau_dashboard_bridge_v254 import (
     DEFAULT_SNAPSHOT_URL as DEFAULT_DASHBOARD_SNAPSHOT_URL,
     fetch_snapshot as fetch_dashboard_snapshot,
@@ -49,7 +52,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V255_TRANSPORT_HARDENING_20260929"
+DASHBOARD_BUILD_ID = "RIZAN_V256_CANONICAL_TRUTH_UI_20260929"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -111,6 +114,13 @@ st.markdown(
         padding: .55rem .7rem;
     }
     div[data-testid="stMetricLabel"] {font-size: .82rem;}
+    div[data-testid="stMetricValue"] {
+        font-size: 1.75rem;
+        line-height: 1.15;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
     .rizan-kicker {font-size:.82rem; opacity:.68; margin-bottom:.2rem;}
     .rizan-title {font-size:1.55rem; font-weight:700; margin-bottom:.15rem;}
     .rizan-note {font-size:.86rem; opacity:.78;}
@@ -131,6 +141,8 @@ st.markdown(
         .rizan-title {font-size:1.28rem;}
         .rizan-kicker, .rizan-note {font-size:.78rem;}
         div[data-testid="stMetric"] {padding:.45rem .55rem;}
+        div[data-testid="stMetricValue"] {font-size:1.38rem;}
+        h1 {font-size:2rem !important;}
     }
     </style>
     """,
@@ -2030,7 +2042,7 @@ backend_label = (
 
 m1, m2, m3, m4, m5 = st.columns(5)
 m1.metric("Runtime Mode", runtime_mode)
-m2.metric("Pairs", pairs)
+m2.metric("Pair aktif", "XAUUSD")
 m3.metric("Top-5 Scan Cadence", fast_setup)
 m4.metric("Execution Watch", execution_watch)
 m5.metric("Dashboard Backend", backend_label)
@@ -2674,15 +2686,43 @@ with forecast_tab:
     )
     v220_summary = dict(v220_details.get("summary") or {})
 
+    dc_htf_context_bias = str(
+        v217_htf_context.get("strategic_bias")
+        or dc_strategic_bias
+        or "NEUTRAL"
+    ).upper()
+    dc_current_leg_label = (
+        dc_current_leg_direction
+        if dc_current_leg_direction in {"LONG", "SHORT"}
+        else "WAIT"
+    )
+    dc_leg_relation = (
+        "SEARAH HTF"
+        if dc_current_leg_label == dc_htf_context_bias
+        else "COUNTERTREND / RETRACE"
+        if dc_current_leg_label in {"LONG", "SHORT"}
+        and dc_htf_context_bias in {"LONG", "SHORT"}
+        else "BELUM TERKLASIFIKASI"
+    )
+    dc_setup_summary = (
+        "MANAGE POSITION"
+        if dc_position_mode
+        else "M15 READY"
+        if dc_m15_ready
+        else "M5 REFINED • PREPARE"
+        if dc_current_pocket_state == "REFINED_M5_POCKET"
+        else "M5 CANDIDATE • WAIT"
+        if dc_current_pocket_state == "CANDIDATE_M5_POCKET"
+        else "WAIT"
+    )
+
     with st.container(border=True):
-        top1, top2, top3, top4 = st.columns(4)
+        top1, top2 = st.columns(2)
         top1.metric("Harga XAUUSD", _fmt_price(dc_reference_price))
-        top2.metric("Bias strategis", dc_strategic_bias)
-        top3.metric("Leg aktif", dc_tactical_first_leg)
-        top4.metric(
-            "Status",
-            "MANAGE POSITION" if dc_position_mode else dc_entry_status,
-        )
+        top2.metric("Action sekarang", dc_setup_summary)
+        top3, top4 = st.columns(2)
+        top3.metric("Arah aktif (V182)", dc_current_leg_label)
+        top4.metric("Konteks HTF", dc_htf_context_bias)
 
         if dc_position_mode:
             st.success(
@@ -2690,20 +2730,19 @@ with forecast_tab:
                 "Prioritas: proteksi SL → BE/partial → target reaksi → opposing zone."
             )
         else:
-            next_leg_label = str(v217_next.get("direction") or dc_next_leg_direction or "—")
             st.info(
-                f"**Rencana sekarang:** {dc_tactical_first_leg} sebagai leg aktif"
-                f" → reaction target {_fmt_price(dc_current_leg_target.get('price'))}"
+                f"**Path aktif {dc_current_leg_label}** ({dc_leg_relation})"
+                f" → target reaksi {_fmt_price(dc_current_leg_target.get('price'))}"
                 f" → opposing zone "
                 f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
-                f"{_fmt_price(dc_current_leg_terminal.get('high'))}"
-                f" → pantau next-leg **{next_leg_label}**. "
-                "Status ini adalah decision map; izin order tetap mengikuti admission dan protection contract."
+                f"{_fmt_price(dc_current_leg_terminal.get('high'))}. "
+                "**Konteks HTF bukan perintah entry.** Entry resmi hanya muncul setelah "
+                "V240/V229 + M15 + protection/admission konsisten."
             )
 
         st.caption(
-            f"HTF: {dc_strategic_bias} • H4 parent {dc_h4_text} • D1 parent {dc_d1_text} • "
-            f"map {_fmt_wib_datetime(current_map, seconds=False)} • "
+            f"HTF context {dc_htf_context_bias} • H4 parent {dc_h4_text} • D1 parent {dc_d1_text} • "
+            f"current path map {_fmt_wib_datetime(current_map, seconds=False)} • "
             f"dashboard {_fmt_wib_datetime(datetime.now(tz=UTC), seconds=False)}."
         )
 
@@ -2767,8 +2806,8 @@ with forecast_tab:
     )
     with st.container(border=True):
         flow1, flow2, flow3, flow4, flow5 = st.columns(5)
-        flow1.metric("1 • Bias HTF", dc_strategic_bias)
-        flow2.metric("2 • Leg aktif", dc_current_leg_direction)
+        flow1.metric("1 • HTF context", dc_htf_context_bias)
+        flow2.metric("2 • Path aktif V182", dc_current_leg_direction)
         flow3.metric("3 • M15", dc_m15_state)
         flow4.metric("4 • Admission", dc_admission_label)
         flow5.metric("Broker route", dc_route_label)
