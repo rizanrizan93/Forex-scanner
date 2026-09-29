@@ -2685,6 +2685,30 @@ with forecast_tab:
         and dc_terminal_high is not None
         and dc_terminal_low <= dc_price_float <= dc_terminal_high
     )
+    dc_reaction_price = _chart_price(dc_current_leg_target.get("price"))
+    dc_current_reaction_reached = bool(
+        dc_price_float is not None
+        and dc_reaction_price is not None
+        and (
+            (
+                dc_current_leg_direction == "LONG"
+                and dc_price_float >= dc_reaction_price
+            )
+            or (
+                dc_current_leg_direction == "SHORT"
+                and dc_price_float <= dc_reaction_price
+            )
+        )
+    )
+    dc_current_leg_completed = bool(
+        dc_inside_current_terminal or dc_current_reaction_reached
+    )
+    if dc_current_leg_completed and dc_current_pocket_state == "REFINED_M5_POCKET":
+        # A refined pocket belonging to a completed leg is historical evidence,
+        # not a fresh re-entry invitation. Timing focus moves to the opposing leg.
+        dc_current_refined_limit_side_valid = False
+        dc_current_refined_historical = True
+
     dc_next_leg_watch_text = (
         f"{dc_next_leg_direction} • "
         + (
@@ -3231,6 +3255,7 @@ with forecast_tab:
                 "WAIT_STRUCTURE_REMAP": "Menunggu remap struktur",
                 "LOCAL_PATH_WATCH": "Watch path lokal — belum entry",
                 "LOCAL_REMAP_WAIT": "Remap lokal — belum entry",
+                "TARGET_REACHED_WAIT_HANDOFF": "Target current leg tercapai — tunggu handoff",
                 "STALE_WAIT": "Data stale — no order",
                 "CONFLICT_WAIT": "Konflik data — no order",
             }
@@ -3245,9 +3270,24 @@ with forecast_tab:
             and dc_htf_context_bias in {"LONG", "SHORT"}
             else "—"
         )
-        v240_m5_quick = dict(dc_current_projected_pocket or {})
+        v240_m5_quick = dict(
+            dc_next_projected_pocket
+            if dc_current_leg_completed and dc_next_projected_pocket
+            else dc_current_projected_pocket
+            or {}
+        )
         v240_m5_state_quick = (
-            "REFINED_M5_POCKET"
+            "NEXT_REFINED_M5_WATCH"
+            if dc_current_leg_completed
+            and dc_next_pocket_state == "REFINED_M5_POCKET"
+            and dc_next_projected_pocket
+            else "NEXT_CANDIDATE_M5_WATCH"
+            if dc_current_leg_completed
+            and dc_next_pocket_state == "CANDIDATE_M5_POCKET"
+            and dc_next_projected_pocket
+            else "NEXT_LEG_WAIT"
+            if dc_current_leg_completed
+            else "REFINED_M5_POCKET"
             if dc_current_refined_limit_side_valid
             else "REFINED_M5_HISTORICAL"
             if dc_current_refined_historical
@@ -3304,6 +3344,13 @@ with forecast_tab:
         v240_action_now = (
             "MANAGE POSITION"
             if dc_position_mode
+            else (
+                f"TARGET TERCAPAI • NEXT {dc_next_leg_direction} WATCH"
+                if dc_current_leg_completed
+                and dc_next_leg_direction in {"LONG", "SHORT"}
+                else "TARGET TERCAPAI • WAIT HANDOFF"
+            )
+            if v240_state == "TARGET_REACHED_WAIT_HANDOFF"
             else "EXECUTION READY"
             if v240_entry_authorized
             and v240_admission_label in {"V229 READY", "BROKER ELIGIBLE"}
@@ -3360,7 +3407,14 @@ with forecast_tab:
         qs6.metric(
             "M5 timing",
             (
-                "Refined retest • " + v240_m5_price_quick
+                f"Next {dc_next_leg_direction} refined • " + v240_m5_price_quick
+                if v240_m5_state_quick == "NEXT_REFINED_M5_WATCH"
+                else f"Next {dc_next_leg_direction} candidate • " + v240_m5_price_quick
+                if v240_m5_state_quick == "NEXT_CANDIDATE_M5_WATCH"
+                else f"Next {dc_next_leg_direction} • belum confirmed"
+                if v240_m5_state_quick == "NEXT_LEG_WAIT"
+                and dc_next_leg_direction in {"LONG", "SHORT"}
+                else "Refined retest • " + v240_m5_price_quick
                 if v240_m5_state_quick == "REFINED_M5_POCKET"
                 else "Refined lama • tunggu baru"
                 if v240_m5_state_quick == "REFINED_M5_HISTORICAL"
@@ -3369,7 +3423,24 @@ with forecast_tab:
                 else "Belum aktif"
             ),
         )
-        if v240_m5_state_quick == "CANDIDATE_M5_POCKET":
+        if v240_m5_state_quick == "NEXT_CANDIDATE_M5_WATCH":
+            st.warning(
+                f"Current leg {v240_direction} sudah mencapai target/opposing zone. "
+                f"Pocket M5 berikutnya adalah **{dc_next_leg_direction} candidate** "
+                f"{v240_m5_price_quick}, tetapi masih WATCH ONLY — belum refined dan belum entry resmi."
+            )
+        elif v240_m5_state_quick == "NEXT_REFINED_M5_WATCH":
+            st.warning(
+                f"Current leg {v240_direction} sudah selesai. Next {dc_next_leg_direction} refined "
+                f"{v240_m5_price_quick} adalah handoff watch, bukan entry resmi sampai V182 handoff "
+                "dan V240/V229/M15/pressure admission konsisten."
+            )
+        elif v240_m5_state_quick == "NEXT_LEG_WAIT":
+            st.caption(
+                f"Current leg {v240_direction} sudah mencapai tujuan. Menunggu M5 baru untuk "
+                f"next {dc_next_leg_direction} dari opposing zone."
+            )
+        elif v240_m5_state_quick == "CANDIDATE_M5_POCKET":
             st.caption(
                 "M5 candidate sudah terpetakan tetapi **belum refined**. "
                 f"Micro state={dc_micro.get('state') or 'WAIT'}; tunggu reclaim + MSS/displacement "
