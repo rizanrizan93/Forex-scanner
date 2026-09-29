@@ -18,6 +18,7 @@ from .execution.policy import load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
 from .xau_pressure_transition_v249 import DOM_WORKER, evaluate_pressure_transition
 from .xau_dynamic_depth_hazard_v251 import build_dynamic_depth_hazard
+from .xau_reversal_break_forecast_v278 import build_reversal_break_forecast
 
 SYMBOL = "XAUUSD"
 STRATEGY_ID = "XAU_RIZAN_DEPTH_EXECUTION_V1"
@@ -616,6 +617,7 @@ def run() -> int:
     pressure_transition: dict[str, Any] = {}
     depth_hazard: dict[str, Any] = {}
     plan_diagnostics: dict[str, Any] = {}
+    v278_safety: dict[str, Any] = {}
 
     try:
         if not execution_enabled:
@@ -679,6 +681,25 @@ def run() -> int:
                     live_price=live_price,
                     pressure_transition=pressure_transition,
                 )
+                v278_forecast = build_reversal_break_forecast(
+                    v226_evaluation=v226_eval,
+                    atlas_evaluation=atlas_eval,
+                    direction=direction,
+                    price_now=live_price,
+                    pressure_transition=pressure_transition,
+                    v229_plan=plan,
+                    base_entry_authorized=False,
+                    now=now,
+                )
+                v278_stage = str(v278_forecast.get("stage") or "WAIT").upper()
+                v278_safety = {
+                    "stage": v278_stage,
+                    "reason": v278_forecast.get("reason"),
+                    "current_depth": v278_forecast.get("current_depth"),
+                    "prior_scope": v278_forecast.get("prior_scope"),
+                    "break_risk": dict(v278_forecast.get("break_risk") or {}),
+                    "no_chase": dict(v278_forecast.get("no_chase") or {}),
+                }
                 strict_pressure_allowed = bool(
                     pressure_transition.get("pre_touch_entry_allowed")
                     or pressure_transition.get("confirmation_entry_allowed")
@@ -690,7 +711,20 @@ def run() -> int:
                     atlas_evaluation=atlas_eval,
                     live_price=live_price,
                 )
-                if not strict_pressure_allowed and not fresh_calibration_arm:
+                if v278_stage in {
+                    "BREAK_RISK",
+                    "SETUP_INVALID",
+                    "MISSED_ENTRY_WAIT_NEXT_SETUP",
+                }:
+                    prior_invalidated = _invalidate_prior_ready(
+                        store,
+                        current_key=f"V278_{v278_stage}",
+                    )
+                    reason = (
+                        "V278_" + v278_stage + ":"
+                        + str(v278_forecast.get("reason") or "SAFETY_BLOCK")
+                    )
+                elif not strict_pressure_allowed and not fresh_calibration_arm:
                     reason = (
                         "WAIT_PRESSURE_TRANSITION:"
                         + str(pressure_transition.get("state") or "UNAVAILABLE")
@@ -773,6 +807,7 @@ def run() -> int:
             "fresh_calibration_approach_policy": dict(
                 (plan or {}).get("calibration_approach_context") or {}
             ),
+            "v278_safety": v278_safety,
             "plan_diagnostics": plan_diagnostics,
             "structure_admission": admission if "admission" in locals() else {},
             "prior_ready_invalidated": prior_invalidated,
