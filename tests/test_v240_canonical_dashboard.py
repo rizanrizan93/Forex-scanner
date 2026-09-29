@@ -259,3 +259,16 @@ def test_v276_dashboard_explains_adaptive_early_arm_without_relaxing_strict_slot
     assert "M30 parent overlap ≥70%" in SOURCE
     assert "composite pressure mendukung arah yang sama" in SOURCE
     assert "L2/L3/L4 tetap strict" in SOURCE
+
+
+def test_v278_dashboard_shows_reversal_stages_and_no_chase_contract() -> None:
+    assert "Tahap Reversal V278 — RISET/FORECAST → DEMO" in SOURCE
+    assert "REVERSAL WATCH" in SOURCE
+    assert "REAKSI TERLIHAT" in SOURCE
+    assert "KONFIRMASI M5" in SOURCE
+    assert "ENTRY DEMO DIIZINKAN" in SOURCE
+    assert "BREAK RISK" in SOURCE
+    assert "SETUP INVALID" in SOURCE
+    assert "MISSED ENTRY — WAIT NEXT SETUP" in SOURCE
+    assert "v240_effective_entry_authorized" in SOURCE
+    assert "V225 tetap prior historis first-touch" in SOURCE
