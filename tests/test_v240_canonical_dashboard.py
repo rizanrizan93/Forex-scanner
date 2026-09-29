@@ -132,3 +132,15 @@ def test_v240_smartphone_sequence_matches_operational_contract() -> None:
     )
     positions = [section.index(label) for label in ordered]
     assert positions == sorted(positions)
+
+
+def test_v260_operational_cards_use_mobile_readable_layout() -> None:
+    section_start = SOURCE.index("##### V240 — Canonical XAU Decision Map")
+    section_end = SOURCE.index("##### V226 — RIZAN Depth Map")
+    section = SOURCE[section_start:section_end]
+    assert "flow1, flow2, flow3, flow4, flow5 = st.columns(5)" not in section
+    assert "pr1, pr2, pr3, pr4 = st.columns(4)" not in section
+    assert "hz1, hz2, hz3, hz4 = st.columns(4)" not in section
+    assert "l1, l2, l3, l4 = st.columns(4)" not in section
+    assert "**Alasan keputusan saat ini:**" in section
+    assert "Penetration detail:" in section
