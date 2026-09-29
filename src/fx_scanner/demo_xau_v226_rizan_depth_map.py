@@ -1623,8 +1623,12 @@ def build_depth_map(
         hierarchy=hierarchy,
     )
 
+    path_map = dict(atlas_evaluation.get("path_map") or {})
+    active_path = dict(path_map.get("active_path") or {})
     projection = dict(atlas_evaluation.get("m5_path_projection") or {})
-    focus = _direction(dict(projection.get("current_leg") or {}).get("direction"))
+    focus = _direction(active_path.get("reaction_direction"))
+    if not focus:
+        focus = _direction(dict(projection.get("current_leg") or {}).get("direction"))
     if not focus:
         focus = min(
             ("LONG", "SHORT"),
