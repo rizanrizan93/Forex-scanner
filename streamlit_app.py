@@ -3070,6 +3070,16 @@ with forecast_tab:
     v226_short_entry_candidate = dict(v226_entry_candidates.get("short") or {})
     v226_four_order_ladder = dict(v226_eval.get("four_order_ladder") or {})
     v226_ladder_slots = list(v226_four_order_ladder.get("slots") or [])
+    v226_projected_m5_watch = dict(
+        v226_eval.get("projected_m5_watch_pocket") or {}
+    )
+    v226_reversal_heatmap = [
+        dict(item)
+        for item in list(v226_eval.get("reversal_depth_heatmap") or [])
+    ]
+    v226_reversal_heatmap_source = dict(
+        v226_eval.get("reversal_depth_heatmap_source") or {}
+    )
 
     v240_saved_geometry: dict[str, Any] = {}
     for chart_event in geometry_rows:
@@ -3310,6 +3320,7 @@ with forecast_tab:
             dc_next_projected_pocket
             if dc_current_leg_completed and dc_next_projected_pocket
             else dc_current_projected_pocket
+            or v226_projected_m5_watch
             or {}
         )
         v240_m5_state_quick = (
@@ -3327,7 +3338,11 @@ with forecast_tab:
             if dc_current_refined_limit_side_valid
             else "REFINED_M5_HISTORICAL"
             if dc_current_refined_historical
-            else dc_current_pocket_state or "WAIT_M5"
+            else dc_current_pocket_state
+            if dc_current_projected_pocket
+            else "PROJECTED_M5_WATCH"
+            if v226_projected_m5_watch
+            else "WAIT_M5"
         )
         v240_m5_price_quick = (
             f"{_fmt_price(v240_m5_quick.get('low'))}–"
@@ -3456,6 +3471,8 @@ with forecast_tab:
                 if v240_m5_state_quick == "REFINED_M5_HISTORICAL"
                 else "Candidate • " + v240_m5_price_quick
                 if v240_m5_state_quick == "CANDIDATE_M5_POCKET"
+                else "Projected watch • " + v240_m5_price_quick
+                if v240_m5_state_quick == "PROJECTED_M5_WATCH"
                 else "Belum aktif"
             ),
         )
@@ -3493,9 +3510,16 @@ with forecast_tab:
                 "di sisi harga yang tidak valid untuk limit/retest DEMO saat ini. Dashboard "
                 "tidak mempromosikannya sebagai entry; tunggu pocket baru dari touch-cycle aktif."
             )
+        elif v240_m5_state_quick == "PROJECTED_M5_WATCH":
+            st.info(
+                "M5 aktual belum membentuk candidate/refined pocket. Agar peta tidak pernah kosong, "
+                "dashboard menampilkan **Projected M5 Watch Pocket** dari narrowing H4→H1→M15 "
+                "dan historical M15 highest-hazard depth. Ini penanda observasi, **bukan entry broker**; "
+                "begitu M5 aktual muncul, pocket aktual otomatis menggantikannya."
+            )
         else:
             st.caption(
-                "Belum ada M5 pocket aktif. Dashboard tidak membuat pocket sintetis dari parent zone."
+                "M5 aktual belum aktif dan projected watch pocket belum tersedia."
             )
 
         if dc_parent_rescue_active:
@@ -3659,6 +3683,61 @@ with forecast_tab:
             "broker entry = baru ada setelah semua gate lolos. "
             f"Relasi M5↔window: **{m5_window_relation}**."
         )
+
+        st.markdown("###### Historical Reversal Depth Heatmap — V225.2 (2012–2026)")
+        if v226_reversal_heatmap:
+            heat_max = max(
+                float(item.get("hazard") or 0.0)
+                for item in v226_reversal_heatmap
+            )
+            heat_cells = []
+            for heat_row in v226_reversal_heatmap:
+                heat_hazard = float(heat_row.get("hazard") or 0.0)
+                heat_ratio = 0.0 if heat_max <= 0 else heat_hazard / heat_max
+                heat_bg = (
+                    "#991b1b"
+                    if bool(heat_row.get("is_highest_hazard"))
+                    else "#c2410c"
+                    if heat_ratio >= 0.80
+                    else "#ca8a04"
+                    if heat_ratio >= 0.60
+                    else "#166534"
+                )
+                heat_cells.append(
+                    "<div style='flex:1;min-width:92px;padding:8px;margin:2px;"
+                    f"border-radius:8px;background:{heat_bg};color:white'>"
+                    f"<b>{heat_row.get('band') or '—'}</b><br>"
+                    f"{_fmt_price(heat_row.get('price_low'))}–"
+                    f"{_fmt_price(heat_row.get('price_high'))}<br>"
+                    f"hazard {_fmt_pct(heat_row.get('hazard'))}<br>"
+                    f"n={int(heat_row.get('at_risk') or 0):,}"
+                    "</div>"
+                )
+            st.markdown(
+                "<div style='display:flex;flex-wrap:wrap;gap:2px'>"
+                + "".join(heat_cells)
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+            top_heat = next(
+                (
+                    item
+                    for item in v226_reversal_heatmap
+                    if bool(item.get("is_highest_hazard"))
+                ),
+                {},
+            )
+            st.caption(
+                f"Source {v226_reversal_heatmap_source.get('timeframe') or '—'} "
+                f"{v226_reversal_heatmap_source.get('direction') or '—'} • "
+                "0% = sisi pertama harga memasuki zona, 100% = sisi terdalam. "
+                f"Band reversal hazard tertinggi saat ini: **{top_heat.get('band') or '—'}** "
+                f"({_fmt_price(top_heat.get('price_low'))}–{_fmt_price(top_heat.get('price_high'))}, "
+                f"hazard {_fmt_pct(top_heat.get('hazard'))}). "
+                "Hazard adalah conditional reversal rate per depth band, bukan win rate order."
+            )
+        else:
+            st.caption("Heatmap depth historis belum tersedia untuk source aktif.")
 
         st.markdown("###### Entry → Dynamic Depth → Admission")
         qe1, qe2 = st.columns(2)
