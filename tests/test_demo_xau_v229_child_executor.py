@@ -362,3 +362,18 @@ def test_v266_parent_allows_only_one_accepted_calibration_probe() -> None:
         ]
     )
     assert _calibration_probe_already_accepted(rejected_only, "parent-1") is False
+
+
+def test_v267_child_executor_keeps_control_plane_fresh_until_submit() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_child_executor.py"
+    ).read_text()
+    assert "control.refresh_once()" in source
+    assert "control.start()" in source
+    assert "control.stop(timeout=2.0)" in source
+    submit_anchor = source.index("accepted, detail = _submit_child(")
+    pre_submit_refresh = source.rfind("control.refresh_once()", 0, submit_anchor)
+    assert pre_submit_refresh != -1
+    assert "control_plane_pre_submit_refresh" in source
+    assert "control_plane_refresh_worker" in source
