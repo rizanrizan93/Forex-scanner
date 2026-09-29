@@ -583,6 +583,8 @@ def test_v2571_marks_path_target_reached_when_price_is_inside_opposing_zone() ->
 
     assert state["direction"] == "LONG"
     assert state["entry_authorized"] is False
+    assert state["state"] == "TARGET_REACHED_WAIT_HANDOFF"
+    assert state["path_completed"] is True
     assert state["path_destination_state"] == "INSIDE_OPPOSING_ZONE"
     assert state["likely_destination"]["role"] == "PATH_TARGET_REACHED"
     assert state["likely_destination"]["target_price"] == 4136.55
