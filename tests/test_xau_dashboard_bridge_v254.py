@@ -85,7 +85,7 @@ def test_dashboard_bridge_bounds_minute_level_history_payload() -> None:
     root = Path(__file__).resolve().parents[1]
     text = (root / "src/fx_scanner/xau_dashboard_bridge_v254.py").read_text()
     assert 'latest_signals_for_symbol("XAUUSD", limit=8)' in text
-    assert "latest_xau_geometry_events(limit=2)" in text
+    assert "latest_xau_geometry_events_compact(limit=2)" in text
     assert "latest_xau_execution_events(limit=4)" in text
     assert "latest_xau_prepared_plan_lifecycle(limit=4)" in text
 
@@ -107,5 +107,17 @@ def test_v2592_bridge_keeps_one_dedicated_rizan_geometry_for_v240_parity() -> No
     root = Path(__file__).resolve().parents[1]
     text = (root / "src/fx_scanner/xau_dashboard_bridge_v254.py").read_text()
     assert "latest_afic_forecast_states(limit=6)" in text
-    assert "latest_afic_execution_geometry(limit=1)" in text
+    assert "latest_rizan_execution_geometry_compact(limit=1)" in text
     assert '"afic_execution_geometry": rizan_geometry' in text
+
+
+def test_v2593_geometry_hot_path_never_fetches_full_payload() -> None:
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    bridge = (root / "src/fx_scanner/xau_dashboard_bridge_v254.py").read_text()
+    dashboard = (root / "src/fx_scanner/dashboard.py").read_text()
+    assert "latest_xau_geometry_events_compact(limit=2)" in bridge
+    assert "latest_rizan_execution_geometry_compact(limit=1)" in bridge
+    assert "def latest_xau_geometry_events_compact" in dashboard
+    assert "def latest_rizan_execution_geometry_compact" in dashboard
