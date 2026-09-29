@@ -272,3 +272,25 @@ def test_v278_entry_stage_requires_v229_authority_and_m5_confirmation() -> None:
     assert forecast["stage"] == "ENTRY_DEMO_DIIZINKAN"
     assert forecast["entry_demo"]["allowed_by_v278"] is True
     assert forecast["execution_authority"] is False
+
+
+def test_v278_retest_break_risk_needs_live_depth_plus_pressure_not_first_touch_reference() -> None:
+    shallow_retest = build_reversal_break_forecast(
+        v226_evaluation=_v226(touches=2),
+        atlas_evaluation=_atlas(),
+        direction="SHORT",
+        price_now=105.0,
+        pressure_transition={"state": "OPPOSING_REACCELERATION", "hard_block": True},
+    )
+    assert shallow_retest["prior_scope"] == "RETEST_REFERENCE_ONLY_NOT_CALIBRATED"
+    assert shallow_retest["break_risk"]["historical_break_dominant"] is True
+    assert shallow_retest["stage"] != "BREAK_RISK"
+
+    deep_retest = build_reversal_break_forecast(
+        v226_evaluation=_v226(touches=2),
+        atlas_evaluation=_atlas(),
+        direction="SHORT",
+        price_now=108.0,
+        pressure_transition={"state": "OPPOSING_REACCELERATION", "hard_block": True},
+    )
+    assert deep_retest["stage"] == "BREAK_RISK"
