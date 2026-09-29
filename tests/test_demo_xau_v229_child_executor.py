@@ -8,6 +8,7 @@ from fx_scanner.demo_xau_v229_child_executor import (
     _cancel_pending_plan,
     _existing_slots,
     _limit_side_valid,
+    _promote_armed_confirmation_window,
     _slot_target,
 )
 from fx_scanner.demo_xau_v229_ladder_plan import child_client_order_id
@@ -160,3 +161,49 @@ def test_v263_child_rechecks_terminal_rr_from_actual_m5_entry() -> None:
     assert deep_enough is not None
     assert deep_plan["terminal_rr_eligible"] is True
     assert deep_plan["terminal_structural_target"]["rr"] >= 1.5
+
+
+class _PromotionQuery:
+    def __init__(self, store):
+        self.store = store
+        self.filters = []
+    def update(self, payload):
+        self.store.updated_payload = dict(payload)
+        return self
+    def eq(self, key, value):
+        self.filters.append((key, value))
+        return self
+    def execute(self):
+        self.store.filters = list(self.filters)
+        state_filter = dict(self.filters).get("state")
+        return SimpleNamespace(
+            data=[{"id": "signal-1"}] if state_filter == "ARMED" else []
+        )
+
+
+class _PromotionClient:
+    def __init__(self, store):
+        self.store = store
+    def table(self, name):
+        self.store.table_name = name
+        return _PromotionQuery(self.store)
+
+
+class _PromotionStore:
+    def __init__(self):
+        self.table_name = None
+        self.updated_payload = None
+        self.filters = []
+        self.client = _PromotionClient(self)
+
+
+def test_v264_armed_confirmation_window_promotes_atomically_before_broker_submit():
+    store = _PromotionStore()
+    assert _promote_armed_confirmation_window(store, "signal-1") is True
+    assert store.table_name == "signals"
+    assert store.updated_payload == {
+        "state": "EXECUTION_READY",
+        "active_guards": [],
+    }
+    assert ("id", "signal-1") in store.filters
+    assert ("state", "ARMED") in store.filters

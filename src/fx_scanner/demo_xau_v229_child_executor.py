@@ -95,6 +95,21 @@ def _signal_row(store: SupabaseOperationalStore, signal_id: str) -> dict[str, An
     return {} if not rows else dict(rows[0])
 
 
+def _promote_armed_confirmation_window(
+    store: SupabaseOperationalStore,
+    signal_id: str,
+) -> bool:
+    """Atomically remove confirmation guards only after an executable M5 child exists."""
+    result = (
+        store.client.table("signals")
+        .update({"state": "EXECUTION_READY", "active_guards": []})
+        .eq("id", signal_id)
+        .eq("state", "ARMED")
+        .execute()
+    )
+    return len(list(result.data or [])) == 1
+
+
 def _pending_orders(reconcile: Any) -> tuple[Any, ...]:
     return tuple(getattr(reconcile, "order", ()) or ())
 
@@ -426,6 +441,14 @@ def run() -> int:
                 "direction": payload.get("direction"),
                 "sl": payload.get("planned_sl"),
                 "children": list(payload.get("children") or []),
+                "confirmation_window_only": bool(
+                    payload.get("confirmation_window_only")
+                ),
+                "confirmation_entry_low": payload.get("confirmation_entry_low"),
+                "confirmation_entry_high": payload.get("confirmation_entry_high"),
+                "confirmation_rr_threshold": payload.get(
+                    "confirmation_rr_threshold"
+                ),
             }
             if not plan["plan_id"] or len(plan["children"]) != MAX_CHILDREN:
                 continue
@@ -446,12 +469,21 @@ def run() -> int:
                 actions.extend(f"{parent_signal_id}:{x}" for x in outcomes)
                 continue
 
+            armed_confirmation_window = bool(
+                state == "ARMED" and plan.get("confirmation_window_only")
+            )
             if state == "EXECUTION_READY":
                 if not store.claim_signal_for_execution(parent_signal_id):
                     actions.append(f"{parent_signal_id}:CLAIM_LOST")
                     continue
                 actions.append(f"{parent_signal_id}:PARENT_CLAIMED")
-            elif state != "COOLDOWN":
+            elif state == "COOLDOWN":
+                pass
+            elif armed_confirmation_window:
+                actions.append(
+                    f"{parent_signal_id}:ARMED_WAIT_M5_ACTUAL_ENTRY_AND_RR"
+                )
+            else:
                 continue
 
             reconcile = session.reconcile()
@@ -574,6 +606,26 @@ def run() -> int:
                 if target is None or not bool(structural.get("terminal_rr_eligible")):
                     actions.append(f"{parent_signal_id}:L{slot}:NO_VALID_STRUCTURAL_TP")
                     continue
+
+                if armed_confirmation_window:
+                    if not _promote_armed_confirmation_window(
+                        store,
+                        parent_signal_id,
+                    ):
+                        actions.append(
+                            f"{parent_signal_id}:CONFIRMATION_PROMOTION_LOST"
+                        )
+                        break
+                    if not store.claim_signal_for_execution(parent_signal_id):
+                        actions.append(
+                            f"{parent_signal_id}:CONFIRMATION_CLAIM_LOST"
+                        )
+                        break
+                    armed_confirmation_window = False
+                    actions.append(
+                        f"{parent_signal_id}:CONFIRMATION_PROMOTED_AFTER_M5_RR"
+                    )
+
                 accepted, detail = _submit_child(
                     router=router,
                     store=store,

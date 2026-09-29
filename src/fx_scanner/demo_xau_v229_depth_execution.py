@@ -198,7 +198,7 @@ def _already_recorded(
         state = str(signal.get("state") or "").upper()
         if state == "COOLDOWN":
             return True
-        if state == "EXECUTION_READY":
+        if state in {"ARMED", "EXECUTION_READY"}:
             expires_at = _dt(signal.get("expires_at"))
             if expires_at is None or now <= expires_at:
                 return True
@@ -232,19 +232,20 @@ def _invalidate_prior_ready(
         payload = dict(row.get("payload") or {})
         if str(payload.get("candidate_key") or "") == current_key:
             continue
-        result = (
-            store.client.table("signals")
-            .update(
-                {
-                    "state": "INVALIDATED",
-                    "active_guards": ["RIZAN_DEPTH_CANDIDATE_SUPERSEDED"],
-                }
+        for prior_state in ("ARMED", "EXECUTION_READY"):
+            result = (
+                store.client.table("signals")
+                .update(
+                    {
+                        "state": "INVALIDATED",
+                        "active_guards": ["RIZAN_DEPTH_CANDIDATE_SUPERSEDED"],
+                    }
+                )
+                .eq("id", signal_id)
+                .eq("state", prior_state)
+                .execute()
             )
-            .eq("id", signal_id)
-            .eq("state", "EXECUTION_READY")
-            .execute()
-        )
-        invalidated += len(list(result.data or []))
+            invalidated += len(list(result.data or []))
     return invalidated
 
 
@@ -287,7 +288,7 @@ def _write_signal(
             if str(plan.get("execution_phase") or "") == "FIRST_TOUCH_CONFIRMATION"
             else "RIZAN_DEPTH_FIRST_TOUCH"
         ),
-        "state": "EXECUTION_READY",
+        "state": "ARMED" if confirmation_window_only else "EXECUTION_READY",
         "pair_score": SCORE,
         "execution_score": SCORE,
         "final_score": SCORE,
@@ -356,7 +357,7 @@ def _record_execution_geometry(
         signal_key=signal_id,
         broker_order_id=f"GEOMETRY:{signal_id}",
         event_type=EVENT_TYPE,
-        accepted=True,
+        accepted=(None if bool(plan.get("confirmation_window_only")) else True),
         code=STRATEGY_ID,
         message=(
             "RIZAN retest confirmation window armed; broker order remains gated by "
@@ -404,8 +405,15 @@ def _record_execution_geometry(
             "child_lot": plan.get("child_lot"),
             "max_total_lot": plan.get("max_total_lot"),
             "generic_market_handoff_allowed": False,
-            "execution_influence": True,
-            "execution_authority": True,
+            "execution_influence": bool(
+                not plan.get("confirmation_window_only")
+            ),
+            "execution_authority": bool(
+                not plan.get("confirmation_window_only")
+            ),
+            "confirmation_authority_only": bool(
+                plan.get("confirmation_window_only")
+            ),
             "environment": "DEMO",
             "live_execution_enabled": False,
             "server_side_sl_tp_required": True,
