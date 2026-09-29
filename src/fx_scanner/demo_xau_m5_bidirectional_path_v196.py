@@ -160,6 +160,24 @@ def _next_precision_source(
     return dict(current_terminal)
 
 
+def _source_touch_cycle_start(source: dict[str, Any]) -> str | None:
+    """Return the current source-touch cycle boundary.
+
+    Reused H1 zones are allowed, but M5 evidence from an older touch must not be
+    carried into a later retest. For multi-touch zones the latest completed
+    structural touch is the reset boundary; first-touch zones use first_touch_at.
+    """
+    lifecycle = dict(source.get("lifecycle") or {})
+    touch_count = int(lifecycle.get("touch_count") or source.get("touch_count") or 0)
+    last_touch = lifecycle.get("last_touch_at")
+    first_touch = lifecycle.get("first_touch_at")
+    if touch_count > 1 and last_touch:
+        return str(last_touch)
+    if first_touch:
+        return str(first_touch)
+    return None
+
+
 def _target_snapshot(path: dict[str, Any]) -> dict[str, Any]:
     return {
         "reaction_target": dict(path.get("reaction_target") or {}),
@@ -243,11 +261,14 @@ def evaluate_bidirectional_m5_path(
         if precision_source_latched
         else {}
     )
+    current_source = dict(current_eval_path.get("source_zone") or {})
+    current_cycle_start = _source_touch_cycle_start(current_source)
     current_micro = evaluate_micro_refinement(
         m5_bars,
         path_map={"active_path": current_eval_path},
         as_of=as_of,
         parent_source_zone=parent_context,
+        not_before=current_cycle_start,
     )
 
     # V218: if the H1 child is invalid but the overlapping HTF parent remains
@@ -258,10 +279,13 @@ def evaluate_bidirectional_m5_path(
     ).upper():
         current_eval_path = active_path
         precision_source_latched = False
+        fallback_source = dict(active_path.get("source_zone") or {})
+        current_cycle_start = _source_touch_cycle_start(fallback_source)
         current_micro = evaluate_micro_refinement(
             m5_bars,
             path_map={"active_path": active_path},
             as_of=as_of,
+            not_before=current_cycle_start,
         )
 
     current_leg = _leg_payload(
@@ -284,9 +308,12 @@ def evaluate_bidirectional_m5_path(
     )
     current_leg_activation_at = (
         current_micro.get("first_eligible_touch_at")
+        or current_cycle_start
+        or current_source_lifecycle.get("last_touch_at")
         or current_source_lifecycle.get("first_touch_at")
         or ensure_utc(as_of).isoformat()
     )
+    current_leg["touch_cycle_start"] = current_cycle_start
 
     next_direction = "SHORT" if direction == "LONG" else "LONG"
     next_path_key = "supply_to_demand" if next_direction == "SHORT" else "demand_to_supply"
@@ -371,7 +398,8 @@ def evaluate_bidirectional_m5_path(
             "invalidates it. The next opposing leg is anchored "
             "to the current terminal opposing zone and prefers an active nested H1 precision "
             "source. It is only called an M5 pocket after fresh M5 evidence exists. "
-            "Next-leg M5 evidence must also occur after the current leg activation, so "
-            "historical touches cannot be recycled as a fresh pocket."
+            "Current-leg M5 evidence is reset at the latest structural touch on reused zones, "
+            "and next-leg evidence must occur after that active touch cycle, so historical "
+            "pockets cannot be recycled as fresh timing signals."
         ),
     }
