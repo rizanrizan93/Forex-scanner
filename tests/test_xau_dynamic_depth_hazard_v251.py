@@ -150,3 +150,41 @@ def test_geometry_only_depth_reports_physical_depth_without_hazard_prior() -> No
     assert result["current_depth"] == 0.3
     assert result["recommended_band"] == {}
     assert result["historical_prior_scope"] == "GEOMETRY_ONLY_NO_CALIBRATED_PRIOR"
+
+def test_dynamic_depth_rejects_opposite_v226_focus_direction() -> None:
+    payload = _v226()
+    payload["focus_direction"] = "SHORT"
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=payload,
+        direction="LONG",
+        live_price=107.0,
+        pressure_transition={
+            "state": "BALANCED_ABSORPTION",
+            "hard_block": False,
+            "pre_touch_entry_allowed": True,
+            "confirmation_entry_allowed": True,
+        },
+    )
+    assert result["state"] == "UNAVAILABLE"
+    assert result["reason"] == "V226_FOCUS_DIRECTION_MISMATCH"
+    assert result["execution_ready"] is False
+
+
+def test_dynamic_depth_rejects_opposite_candidate_direction() -> None:
+    payload = _v226()
+    payload["depth_entry_candidate"]["direction"] = "SHORT"
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=payload,
+        direction="LONG",
+        live_price=107.0,
+        pressure_transition={
+            "state": "BALANCED_ABSORPTION",
+            "hard_block": False,
+            "pre_touch_entry_allowed": True,
+            "confirmation_entry_allowed": True,
+        },
+    )
+    assert result["state"] == "UNAVAILABLE"
+    assert result["reason"] == "V226_CANDIDATE_DIRECTION_MISMATCH"
+    assert result["execution_ready"] is False
+
