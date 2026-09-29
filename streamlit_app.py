@@ -3040,191 +3040,231 @@ with forecast_tab:
             "Satu sumber kebenaran untuk arah, Depth Candidate, entry, SL, TP dan tujuan berikutnya. "
             "Entry/SL/TP dihitung dengan builder V229 yang sama dengan jalur DEMO; snapshot lama tidak boleh mengalahkan candidate aktif."
         )
-        # Smartphone-first operational sequence. Keep this block at two columns
-        # maximum so the decision path remains readable on narrow screens.
-        v240_h4_quick = dict(
-            v226_h4.get("zone") or v226_nearest_h4_context_zone or {}
-        )
-        v240_h1_quick = dict(
-            v240_local_structure
-            if str(v240_local_structure.get("timeframe") or "").upper() == "H1"
-            else v226_h1.get("zone") or {}
-        )
-        v240_m15_quick = dict(
-            v240_local_structure
-            if str(v240_local_structure.get("timeframe") or "").upper() == "M15"
-            else v226_m15.get("zone") or {}
-        )
-        v240_m5_quick = dict(
-            dc_refined_display
-            or dc_initial_candidate
-            or dc_current_projected_pocket
-            or {}
-        )
-
+        # Smartphone-first operational sequence. Only current V182/V240
+        # structure is shown here. V226 historical locator data lives in a
+        # collapsed research panel further below.
         def _quick_zone_text(zone_row: dict[str, Any]) -> str:
             if not zone_row:
-                return "—"
+                return "Belum tersedia"
             direction = str(zone_row.get("direction") or "").upper()
             zone_kind = (
-                "Demand" if direction == "LONG"
-                else "Supply" if direction == "SHORT"
+                "Demand"
+                if direction == "LONG"
+                else "Supply"
+                if direction == "SHORT"
                 else "Zone"
             )
             return (
-                f"{zone_kind} • {_fmt_price(zone_row.get('low'))}–"
+                f"{zone_kind} {_fmt_price(zone_row.get('low'))}–"
                 f"{_fmt_price(zone_row.get('high'))}"
             )
 
-        v240_primary_entry_text = (
+        def _human_wait_reason(value: Any) -> str:
+            raw = str(_rizan_display(value) or "WAIT").upper()
+            mapping = {
+                "WAIT_STRUCTURALLY_ACTIVE_DEPTH_CANDIDATE": "Menunggu depth candidate baru",
+                "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_ZONE": "Menunggu harga masuk zona aktif",
+                "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_PRESSURE": "Menunggu tekanan DOM membaik",
+                "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_M5_CONFIRM": "Menunggu konfirmasi M5",
+                "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_STRUCTURE_REMAP": "Menunggu remap struktur",
+                "WAIT_ZONE": "Menunggu harga masuk zona",
+                "WAIT_NEW_TRIGGER": "Zona sudah bereaksi; tunggu trigger baru",
+                "WAIT_CONFIRMATION": "Harga di zona; tunggu konfirmasi",
+                "WAIT_STRUCTURE_REMAP": "Menunggu remap struktur",
+                "LOCAL_PATH_WATCH": "Watch path lokal — belum entry",
+                "LOCAL_REMAP_WAIT": "Remap lokal — belum entry",
+                "STALE_WAIT": "Data stale — no order",
+                "CONFLICT_WAIT": "Konflik data — no order",
+            }
+            return mapping.get(raw, raw.replace("_", " ").title())
+
+        v240_state = str(v240_decision.get("state") or "WAIT").upper()
+        v240_current_path_relation = (
+            "SEARAH HTF"
+            if v240_direction == dc_htf_context_bias
+            else "COUNTERTREND / RETRACE"
+            if v240_direction in {"LONG", "SHORT"}
+            and dc_htf_context_bias in {"LONG", "SHORT"}
+            else "—"
+        )
+        v240_m5_quick = dict(dc_current_projected_pocket or {})
+        v240_m5_state_quick = dc_current_pocket_state or "WAIT_M5"
+        v240_m5_price_quick = (
+            f"{_fmt_price(v240_m5_quick.get('low'))}–"
+            f"{_fmt_price(v240_m5_quick.get('high'))}"
+            if v240_m5_quick
+            else "Belum ada"
+        )
+        v240_watch_text = (
             f"{_fmt_price(v240_decision.get('entry_low'))}–"
             f"{_fmt_price(v240_decision.get('entry_high'))}"
             if v240_decision.get("entry_low") is not None
             and v240_decision.get("entry_high") is not None
-            else "—"
+            else "Belum ada"
         )
         v240_depth_location = str(
             v240_depth_hazard.get("location_state") or ""
         ).upper()
-        v240_depth_text = (
-            "REMAP LOCAL"
-            if v240_depth_location == "LOCAL_REMAP"
-            else "BELUM MASUK ZONA"
-            if v240_depth_location == "AHEAD_OF_ZONE"
-            else "LEWATI DISTAL"
-            if v240_depth_location == "AT_OR_BEYOND_DISTAL"
-            else "—"
-            if v240_depth_hazard.get("current_depth") is None
-            else f"{100.0 * float(v240_depth_hazard.get('current_depth')):.1f}%"
-        )
-        v240_depth_band_text = (
-            "—"
-            if v240_depth_hazard.get("recommended_depth_low") is None
-            else (
+        if v240_depth_location == "AHEAD_OF_ZONE":
+            v240_depth_text = "Belum masuk zona"
+        elif v240_depth_location == "AFTER_REACTION":
+            v240_depth_text = "Sudah bereaksi / keluar zona"
+        elif v240_depth_location == "AT_OR_BEYOND_DISTAL":
+            v240_depth_text = "Lewati distal — remap"
+        elif v240_depth_location == "INSIDE_ZONE":
+            v240_depth_text = (
+                "Di dalam zona • "
+                + (
+                    f"{100.0 * float(v240_depth_hazard.get('current_depth')):.1f}% depth"
+                    if v240_depth_hazard.get("current_depth") is not None
+                    else "depth N/A"
+                )
+            )
+        else:
+            v240_depth_text = "Belum tersedia"
+
+        if v240_depth_hazard.get("recommended_depth_low") is not None:
+            v240_depth_band_text = (
+                f"Band riset "
                 f"{100.0 * float(v240_depth_hazard.get('recommended_depth_low')):.0f}–"
                 f"{100.0 * float(v240_depth_hazard.get('recommended_depth_high')):.0f}%"
             )
+        else:
+            v240_depth_band_text = "Geometry only — tanpa hazard prior"
+
+        v240_action_now = (
+            "MANAGE POSITION"
+            if dc_position_mode
+            else "EXECUTION READY"
+            if v240_entry_authorized
+            and dc_admission_label in {"V229 READY", "BROKER ELIGIBLE"}
+            and not backend_snapshot_stale
+            else "WAIT • NO ORDER"
         )
-        v240_m5_state_quick = (
-            dc_current_pocket_state
-            or ("REFINED_M5_POCKET" if dc_refined_display else "")
-            or ("CANDIDATE_M5_POCKET" if dc_initial_candidate else "")
-            or "WAIT_M5"
+        v240_entry_label = (
+            "7 • Entry resmi"
+            if v240_entry_authorized
+            else "7 • Zone watch (BUKAN ENTRY)"
         )
-        v240_m5_price_quick = (
-            f"{_fmt_price(v240_m5_quick.get('low'))}–"
-            f"{_fmt_price(v240_m5_quick.get('high'))}"
-            if v240_m5_quick else "—"
+        v240_sl_text = (
+            _fmt_price(v240_decision.get("sl"))
+            if v240_entry_authorized and v240_decision.get("sl") is not None
+            else "Belum ada — belum admitted"
+        )
+        v240_tp_text = (
+            f"{_fmt_price(v240_decision.get('tp1'))} → "
+            f"{_fmt_price(v240_decision.get('tp2'))}"
+            if v240_entry_authorized
+            and v240_decision.get("tp1") is not None
+            else "Belum ada — belum admitted"
         )
 
-        st.markdown("###### 1–6 • Struktur market → lokasi → timing")
+        st.markdown("###### Apa yang harus dilakukan sekarang")
+        act1, act2 = st.columns(2)
+        act1.metric("Action", v240_action_now)
+        act2.metric("Arah aktif V182", v240_direction)
+        st.caption(
+            f"HTF context={dc_htf_context_bias} • hubungan={v240_current_path_relation} • "
+            f"V240 state={v240_state} • direction source="
+            f"{v240_decision.get('direction_source') or '—'}."
+        )
+
+        st.markdown("###### Struktur aktif — bukan locator historis")
         qs1, qs2 = st.columns(2)
-        qs1.metric("1 • Arah / Kondisi", f"{v240_direction} • {state}")
-        qs2.metric("2 • Harga XAU sekarang", _fmt_price(dc_reference_price))
+        qs1.metric("Demand terdekat", _quick_zone_text(v240_nearest_demand))
+        qs2.metric("Supply terdekat", _quick_zone_text(v240_nearest_supply))
         qs3, qs4 = st.columns(2)
-        v240_h4_label = (
-            "3 • H4 Parent / HTF Context"
-            if v240_remap
-            else "3 • H4 Supply/Demand"
+        qs3.metric("Harga XAU sekarang", _fmt_price(dc_reference_price))
+        qs4.metric(
+            "Source path aktif",
+            _quick_zone_text(v240_active_source or v240_local_structure),
         )
-        v240_h1_label = (
-            "4 • H1 Local Supply/Demand"
-            if v240_remap
-            and str(v240_local_structure.get("timeframe") or "").upper() == "H1"
-            else "4 • H1 Supply/Demand"
-        )
-        qs3.metric(v240_h4_label, _quick_zone_text(v240_h4_quick))
-        qs4.metric(v240_h1_label, _quick_zone_text(v240_h1_quick))
         qs5, qs6 = st.columns(2)
-        qs5.metric("5 • M15 confirmation / retest", f"{dc_m15_direction} • {dc_m15_state}")
-        qs6.metric("6 • M5 timing", f"{v240_m5_state_quick} • {v240_m5_price_quick}")
-        st.caption(
-            "Demand terdekat: "
-            + (
-                f"{_fmt_price(v240_nearest_demand.get('low'))}–"
-                f"{_fmt_price(v240_nearest_demand.get('high'))}"
-                if v240_nearest_demand else "—"
-            )
-            + " • Supply terdekat: "
-            + (
-                f"{_fmt_price(v240_nearest_supply.get('low'))}–"
-                f"{_fmt_price(v240_nearest_supply.get('high'))}"
-                if v240_nearest_supply else "—"
-            )
+        qs5.metric(
+            "M15 confirmation",
+            "Belum ada"
+            if dc_m15_row is None
+            else f"{dc_m15_direction} • {dc_m15_state}",
+        )
+        qs6.metric(
+            "M5 timing",
+            (
+                "Refined • " + v240_m5_price_quick
+                if v240_m5_state_quick == "REFINED_M5_POCKET"
+                else "Candidate • " + v240_m5_price_quick
+                if v240_m5_state_quick == "CANDIDATE_M5_POCKET"
+                else "Belum aktif"
+            ),
         )
 
-        st.markdown("###### 7–10 • Entry → depth → pressure → admission")
+        st.markdown("###### Entry → Dynamic Depth → Admission")
         qe1, qe2 = st.columns(2)
-        qe1.metric(
-            "7 • Local structure watch" if v240_remap else "7 • Primary Depth Entry",
-            v240_primary_entry_text,
-        )
-        qe2.metric("8 • Dynamic Depth", f"{v240_depth_text} → {v240_depth_band_text}")
+        qe1.metric(v240_entry_label, v240_watch_text)
+        qe2.metric("8 • Dynamic Depth", v240_depth_text)
         st.caption(
-            (
-                "Reference watch: " if v240_remap else "Reference entry: "
-            )
-            + f"{_fmt_price(v240_decision.get('entry_reference'))} • "
-            + f"Depth source: {v240_decision.get('source_layer') or '—'}"
+            f"{v240_depth_band_text} • source={v240_decision.get('source_layer') or 'V182 current path'} • "
+            f"reference={_fmt_price(v240_decision.get('entry_reference'))}. "
+            "Dynamic Depth tidak pernah menjadi izin order sendirian."
         )
         qe3, qe4 = st.columns(2)
         qe3.metric(
-            "9 • Pressure transition",
-            f"{v240_pressure_trend} • B {_fmt_number(v240_buyer_index, 0)} / "
-            f"S {_fmt_number(v240_seller_index, 0)}",
+            "9 • Pressure / DOM",
+            (
+                "STALE"
+                if v240_dom_stale
+                else f"{v240_pressure_trend} • "
+                f"B {_fmt_number(v240_buyer_index, 0)} / S {_fmt_number(v240_seller_index, 0)}"
+            ),
         )
         qe4.metric(
             "10 • Execution Admission",
             f"{dc_admission_label} • {dc_route_label}",
         )
 
-        st.markdown("###### 11–16 • Risk → target → lifecycle → session")
+        st.markdown("###### Risk & target")
         qr1, qr2 = st.columns(2)
-        qr1.metric("11 • SL / invalidation", _fmt_price(v240_decision.get("sl")))
-        qr2.metric(
-            "12 • TP ladder",
-            f"{_fmt_price(v240_decision.get('tp1'))} → {_fmt_price(v240_decision.get('tp2'))}",
-        )
-        st.caption(
-            f"TP1 struktural: {_fmt_price(v240_decision.get('tp1'))}"
-            + (
-                "" if v240_decision.get("rr1") is None
-                else f" ({float(v240_decision.get('rr1')):.2f}R)"
-            )
-            + f" • TP terminal: {_fmt_price(v240_decision.get('tp2'))}"
-            + (
-                "" if v240_decision.get("rr2") is None
-                else f" ({float(v240_decision.get('rr2')):.2f}R)"
-            )
-        )
+        qr1.metric("11 • SL resmi", v240_sl_text)
+        qr2.metric("12 • TP order resmi", v240_tp_text)
         qr3, qr4 = st.columns(2)
         qr3.metric(
-            "13 • Likely destination / opposing zone",
-            _fmt_price(v240_destination.get("target_price")),
-        )
-        qr4.metric("14 • WAIT / BLOCK reason", _rizan_display(v240_gate_reason))
-        qr5, qr6 = st.columns(2)
-        qr5.metric(
-            "15 • Lifecycle",
+            "13 • Path target (BUKAN TP order)",
             (
-                "LOCAL_REMAP_WAIT"
-                if v240_remap
-                else str(
-                    v226_entry_candidate.get("display_status")
-                    or v240_decision.get("state")
-                    or "WAIT"
-                )
+                _fmt_price(v240_destination.get("target_price"))
+                if v240_destination.get("target_price") is not None
+                else "Belum tersedia"
             ),
         )
+        qr4.metric(
+            "14 • WAIT / BLOCK reason",
+            _human_wait_reason(v240_gate_reason),
+        )
+        if v240_destination:
+            st.caption(
+                "Opposing zone tujuan: "
+                f"{_fmt_price(v240_destination.get('zone_low'))}–"
+                f"{_fmt_price(v240_destination.get('zone_high'))} • "
+                f"role={v240_destination.get('role') or 'PATH WATCH'}. "
+                "Jika belum ada admission, angka ini adalah tujuan struktur, bukan TP order."
+            )
+        qr5, qr6 = st.columns(2)
+        qr5.metric("15 • Lifecycle", _human_wait_reason(v240_state))
         qr6.metric("16 • Session WIB", f"{v240_session} • {v240_wib_clock}")
 
-        if v240_remap:
+        if not v240_entry_authorized:
             st.warning(
-                "Local structure lebih dekat telah muncul dan berada di antara harga sekarang "
-                "dengan locator V226 lama. V240 menampilkan zona lokal sebagai **watch/remap**, "
-                "bukan sebagai order-ready entry. H4 yang masih terlihat pada kartu di atas "
-                "adalah **parent/HTF context**, bukan supply operasional terdekat. V229 tetap "
-                "fail-closed sampai hierarchy H4→H1→M15 membentuk candidate baru yang konsisten."
+                "**Belum ada entry resmi.** Zona yang ditampilkan adalah watch/current path. "
+                "SL dan TP order sengaja disembunyikan sampai V229 geometry, M15, pressure, "
+                "freshness, dan broker admission konsisten."
+            )
+        if v240_conflicts:
+            st.caption(
+                "Diagnostik (tidak otomatis menjadi arah): "
+                + ", ".join(str(x) for x in v240_conflicts)
+            )
+        if v240_stale or backend_snapshot_stale:
+            st.error(
+                "Data decision stale. Semua angka di panel ini hanya konteks diagnostik; "
+                "Admission dipaksa NO ORDER sampai snapshot fresh."
             )
 
         st.markdown("###### Buyer / Seller Pressure — timing masuk zona")
