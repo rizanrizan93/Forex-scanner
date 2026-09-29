@@ -2676,6 +2676,34 @@ with forecast_tab:
         and not dc_current_refined_limit_side_valid
     )
 
+    dc_terminal_low = _safe_float(dc_current_leg_terminal.get("low"))
+    dc_terminal_high = _safe_float(dc_current_leg_terminal.get("high"))
+    dc_price_float = _safe_float(dc_reference_price)
+    dc_inside_current_terminal = bool(
+        dc_price_float is not None
+        and dc_terminal_low is not None
+        and dc_terminal_high is not None
+        and dc_terminal_low <= dc_price_float <= dc_terminal_high
+    )
+    dc_next_leg_watch_text = (
+        f"{dc_next_leg_direction} • "
+        + (
+            "Refined "
+            if dc_next_pocket_state == "REFINED_M5_POCKET"
+            else "Candidate "
+            if dc_next_pocket_state == "CANDIDATE_M5_POCKET"
+            else "Watch "
+        )
+        + (
+            f"{_fmt_price(dc_next_projected_pocket.get('low'))}–"
+            f"{_fmt_price(dc_next_projected_pocket.get('high'))}"
+            if dc_next_projected_pocket
+            else _quick_zone_text(dc_next_leg_source)
+        )
+        if dc_next_leg_direction in {"LONG", "SHORT"}
+        else "Belum ada"
+    )
+
     dc_m15_row = None
     dc_now = datetime.now(tz=UTC)
     for dc_row in xau_technical_signal_rows:
@@ -2805,6 +2833,8 @@ with forecast_tab:
     dc_setup_summary = (
         "MANAGE POSITION"
         if dc_position_mode
+        else f"TERMINAL ZONE • NEXT {dc_next_leg_direction} WATCH"
+        if dc_inside_current_terminal and dc_next_leg_direction in {"LONG", "SHORT"}
         else "M15 READY"
         if dc_m15_ready
         else "M5 REFINED • RETEST WATCH"
@@ -2830,15 +2860,25 @@ with forecast_tab:
                 "Prioritas: proteksi SL → BE/partial → target reaksi → opposing zone."
             )
         else:
-            st.info(
-                f"**Path aktif {dc_current_leg_label}** ({dc_leg_relation})"
-                f" → target reaksi {_fmt_price(dc_current_leg_target.get('price'))}"
-                f" → opposing zone "
-                f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
-                f"{_fmt_price(dc_current_leg_terminal.get('high'))}. "
-                "**Konteks HTF bukan perintah entry.** Entry resmi hanya muncul setelah "
-                "V240/V229 + M15 + protection/admission konsisten; izin order tetap mengikuti admission dan protection contract."
-            )
+            if dc_inside_current_terminal and dc_next_leg_direction in {"LONG", "SHORT"}:
+                st.warning(
+                    f"**Path {dc_current_leg_label} sudah mencapai opposing/terminal zone** "
+                    f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
+                    f"{_fmt_price(dc_current_leg_terminal.get('high'))}. "
+                    f"Next leg watch: **{dc_next_leg_watch_text}**. "
+                    "Next leg belum menjadi entry resmi sampai handoff struktural + V240/V229 + "
+                    "M15 + pressure/admission konsisten."
+                )
+            else:
+                st.info(
+                    f"**Path aktif {dc_current_leg_label}** ({dc_leg_relation})"
+                    f" → target reaksi {_fmt_price(dc_current_leg_target.get('price'))}"
+                    f" → opposing zone "
+                    f"{_fmt_price(dc_current_leg_terminal.get('low'))}–"
+                    f"{_fmt_price(dc_current_leg_terminal.get('high'))}. "
+                    "**Konteks HTF bukan perintah entry.** Entry resmi hanya muncul setelah "
+                    "V240/V229 + M15 + protection/admission konsisten; izin order tetap mengikuti admission dan protection contract."
+                )
 
         st.caption(
             f"HTF context {dc_htf_context_bias} • H4 parent {dc_h4_text} • D1 parent {dc_d1_text} • "
@@ -2911,6 +2951,11 @@ with forecast_tab:
         flow3.metric("3 • M15", dc_m15_state)
         flow4.metric("4 • Admission", dc_admission_label)
         flow5.metric("Broker route", dc_route_label)
+        if dc_inside_current_terminal and dc_next_leg_direction in {"LONG", "SHORT"}:
+            st.caption(
+                f"Next leg watch (BUKAN ENTRY): {dc_next_leg_watch_text}. "
+                "Current path sudah mencapai terminal/opposing zone."
+            )
         if dc_latest_signal_guards:
             st.warning(
                 "Guard aktif: "
@@ -3394,7 +3439,10 @@ with forecast_tab:
         qr3.metric(
             "13 • Path target (BUKAN TP order)",
             (
-                _fmt_price(v240_destination.get("target_price"))
+                "SUDAH TERCAPAI • " + _fmt_price(v240_destination.get("target_price"))
+                if v240_destination.get("role") == "PATH_TARGET_REACHED"
+                and v240_destination.get("target_price") is not None
+                else _fmt_price(v240_destination.get("target_price"))
                 if v240_destination.get("target_price") is not None
                 else "Belum tersedia"
             ),
@@ -3408,8 +3456,13 @@ with forecast_tab:
                 "Opposing zone tujuan: "
                 f"{_fmt_price(v240_destination.get('zone_low'))}–"
                 f"{_fmt_price(v240_destination.get('zone_high'))} • "
+                f"state={v240_destination.get('destination_state') or v240_decision.get('path_destination_state') or '—'} • "
                 f"role={v240_destination.get('role') or 'PATH WATCH'}. "
-                "Jika belum ada admission, angka ini adalah tujuan struktur, bukan TP order."
+                + (
+                    "Current leg sudah mencapai area tujuan; fokus berikutnya adalah watch next-leg, bukan mengejar target lama."
+                    if v240_destination.get("role") == "PATH_TARGET_REACHED"
+                    else "Jika belum ada admission, angka ini adalah tujuan struktur, bukan TP order."
+                )
             )
         qr5, qr6 = st.columns(2)
         qr5.metric("15 • Lifecycle", _human_wait_reason(v240_state))
