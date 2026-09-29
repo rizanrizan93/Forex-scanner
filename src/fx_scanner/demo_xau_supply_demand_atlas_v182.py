@@ -24,6 +24,7 @@ from .demo_xau_m5_bidirectional_path_v196 import (
     evaluate_bidirectional_m5_path,
 )
 from .demo_xau_zone_reuse_v200 import evaluate_bidirectional_reuse
+from .xau_composite_pressure_v272 import evaluate_xau_composite_pressure_v272
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .models import Bar, ensure_utc
@@ -44,21 +45,27 @@ TIMEFRAME_RULES = {
     "H4": "4h",
     "D1": "1D",
 }
-TIMEFRAME_PRIORITY = {"D1": 3, "H4": 2, "H1": 1}
+# V272 Afiq-style M30 is deliberately shadow-only: it can explain/refine a
+# parent zone but is not inserted into the canonical H4/H1 path authority.
+M30_SHADOW_RULE = "30min"
+TIMEFRAME_PRIORITY = {"D1": 3, "H4": 2, "H1": 1, "M30": 0}
 ROUND_STEP_USD = 10.0
 LIQUIDITY_NEAR_ATR = 0.30
 
 MIN_DEPARTURE_RANGE_ATR = {
+    "M30": 1.00,
     "H1": 0.95,
     "H4": 0.85,
     "D1": 0.80,
 }
 MIN_DEPARTURE_BODY_FRACTION = {
+    "M30": 0.50,
     "H1": 0.48,
     "H4": 0.45,
     "D1": 0.42,
 }
 MAX_BASE_RANGE_ATR = {
+    "M30": 1.25,
     "H1": 1.30,
     "H4": 1.35,
     "D1": 1.40,
@@ -555,6 +562,91 @@ def _approach_quality(
         "efficiency": round(efficiency, 4),
         "range_acceleration": round(acceleration, 4),
         "directional_close_fraction": round(directional, 4),
+    }
+
+
+def _m30_shadow_zone_map(
+    rows: Sequence[Bar],
+    *,
+    as_of: datetime,
+    canonical_zones: Sequence[SDZone],
+    last_price: float,
+) -> dict[str, Any]:
+    """Build Afiq-style wide M30 parent zones without changing canonical authority."""
+    frame = _resample_completed(rows, M30_SHADOW_RULE, as_of=as_of)
+    detected = list(_dedupe_zones(_detect_base_departure_zones(frame, timeframe="M30")))
+    canonical_active = [
+        zone
+        for zone in canonical_zones
+        if zone.timeframe in {"H1", "H4", "D1"}
+    ]
+    payloads: list[dict[str, Any]] = []
+    for zone in detected:
+        lifecycle = _zone_lifecycle(zone, bars=rows)
+        distance = _distance_to_zone(last_price, zone.low, zone.high)
+        matches: list[tuple[float, SDZone]] = []
+        for parent in canonical_active:
+            if parent.direction != zone.direction:
+                continue
+            overlap = _overlap_ratio(zone, parent)
+            if overlap > 0.0:
+                matches.append((overlap, parent))
+        matches.sort(
+            key=lambda item: (
+                -float(item[0]),
+                -TIMEFRAME_PRIORITY.get(item[1].timeframe, 0),
+            )
+        )
+        best_overlap, best = matches[0] if matches else (0.0, None)
+        payloads.append(
+            {
+                **asdict(zone),
+                "available_at": zone.available_at.isoformat(),
+                "origin_at": zone.origin_at.isoformat(),
+                "departure_at": zone.departure_at.isoformat(),
+                "lifecycle": lifecycle,
+                "distance_points": round(float(distance), 4),
+                "canonical_overlap_ratio": round(float(best_overlap), 4),
+                "canonical_match_zone_id": None if best is None else best.zone_id,
+                "canonical_match_timeframe": None if best is None else best.timeframe,
+                "afiq_style_role": "M30_PARENT_ZONE_SHADOW",
+                "execution_influence": False,
+                "execution_authority": False,
+            }
+        )
+    payloads.sort(
+        key=lambda item: (
+            not bool(dict(item.get("lifecycle") or {}).get("active")),
+            float(item.get("distance_points") or 999999.0),
+            -float(item.get("canonical_overlap_ratio") or 0.0),
+            -float(item.get("departure_range_atr") or 0.0),
+        )
+    )
+    active = [
+        item
+        for item in payloads
+        if bool(dict(item.get("lifecycle") or {}).get("active"))
+    ]
+    nearest_demand = next(
+        (dict(item) for item in active if str(item.get("direction") or "") == "LONG"),
+        None,
+    )
+    nearest_supply = next(
+        (dict(item) for item in active if str(item.get("direction") or "") == "SHORT"),
+        None,
+    )
+    return {
+        "contract": "XAU_AFIQ_M30_PARENT_ZONE_SHADOW_V272",
+        "state": "AVAILABLE" if payloads else "NO_M30_ZONE",
+        "execution_influence": False,
+        "execution_authority": False,
+        "nearest_demand": nearest_demand,
+        "nearest_supply": nearest_supply,
+        "zones": payloads[:8],
+        "note": (
+            "M30 is a shadow parent-zone calibration layer. H4/H1 remain canonical; "
+            "M15/M5 remain execution refinement. Overlap is evidence, not authority."
+        ),
     }
 
 
@@ -1271,6 +1363,13 @@ def evaluate_supply_demand_atlas(
             -TIMEFRAME_PRIORITY.get(str(item.get("timeframe") or ""), 0),
         )
     )
+    m30_shadow = _m30_shadow_zone_map(
+        rows,
+        as_of=now,
+        canonical_zones=zones,
+        last_price=last_price,
+    )
+
     path_map = _build_path_map(
         payloads=payloads,
         levels=levels,
@@ -1332,6 +1431,7 @@ def evaluate_supply_demand_atlas(
         "timeframe_imbalance_counts": timeframe_counts,
         "nearest_demand": nearest_demand,
         "nearest_supply": nearest_supply,
+        "m30_shadow_v272": m30_shadow,
         "path_map": path_map,
         "zones": selected,
         "chart_bars_m15": _chart_bar_payload(rows),
@@ -1403,6 +1503,11 @@ def run() -> int:
             raw,
             as_of=now,
             strategic_bias=strategic_bias,
+        )
+        payload["composite_pressure_v272"] = evaluate_xau_composite_pressure_v272(
+            m5_bars=raw_m5,
+            m15_bars=raw,
+            as_of=now,
         )
         path_map = dict(payload.get("path_map") or {})
         m5_path_projection = evaluate_bidirectional_m5_path(

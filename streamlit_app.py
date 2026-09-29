@@ -3187,6 +3187,39 @@ with forecast_tab:
     v240_dom_state = str(v240_pressure_transition.get("dom_state") or "UNAVAILABLE")
     v240_pressure_trend = str(v240_pressure_transition.get("state") or "UNAVAILABLE")
 
+    # V272 price-derived pressure remains available when broker DOM is stale.
+    # It is explicitly not order-flow volume and never becomes standalone
+    # execution authority. Strict L3/L4 still use the normal structure/RR path.
+    v240_composite_pressure = dict(dc_sd_eval.get("composite_pressure_v272") or {})
+    v240_m30_shadow = dict(dc_sd_eval.get("m30_shadow_v272") or {})
+    v240_composite_available = bool(v240_composite_pressure.get("available"))
+    v240_composite_buyer = v240_composite_pressure.get("buyer_index")
+    v240_composite_seller = v240_composite_pressure.get("seller_index")
+    v240_pressure_source = "DOM"
+    v240_effective_buyer_index = v240_buyer_index
+    v240_effective_seller_index = v240_seller_index
+    v240_effective_pressure_state = v240_pressure_trend
+    v240_effective_opposing_pressure = v240_opposing_pressure
+    if (
+        (v240_dom_score is None or v240_dom_stale)
+        and v240_composite_available
+        and v240_composite_buyer is not None
+    ):
+        v240_pressure_source = "RIZAN_COMPOSITE"
+        v240_effective_buyer_index = float(v240_composite_buyer)
+        v240_effective_seller_index = float(v240_composite_seller)
+        v240_effective_pressure_state = str(
+            v240_composite_pressure.get("state") or "UNAVAILABLE"
+        )
+        signed_buyer = (float(v240_composite_buyer) - 50.0) * 2.0
+        v240_effective_opposing_pressure = (
+            -signed_buyer
+            if v240_direction == "LONG"
+            else signed_buyer
+            if v240_direction == "SHORT"
+            else None
+        )
+
     # Calibrated dynamic hazard is valid only when current V229/V226 geometry is
     # aligned and authoritative. Otherwise show physical depth of the current
     # V182 source only; never project an old hazard band onto a new local zone.
@@ -3243,13 +3276,13 @@ with forecast_tab:
     )
     v229_child_actions = list(v229_child_details.get("actions") or [])
 
-    if v240_opposing_pressure is None:
+    if v240_effective_opposing_pressure is None:
         v240_penetration_risk = "UNAVAILABLE"
-    elif float(v240_opposing_pressure) >= 45.0:
+    elif float(v240_effective_opposing_pressure) >= 45.0:
         v240_penetration_risk = "TINGGI — opposing pressure masih kuat"
-    elif float(v240_opposing_pressure) >= 15.0:
+    elif float(v240_effective_opposing_pressure) >= 15.0:
         v240_penetration_risk = "SEDANG — pressure sedang mereda"
-    elif float(v240_opposing_pressure) > -15.0:
+    elif float(v240_effective_opposing_pressure) > -15.0:
         v240_penetration_risk = "BALANCED / ABSORPTION"
     else:
         v240_penetration_risk = "RENDAH — control mulai berbalik"
@@ -3916,35 +3949,67 @@ with forecast_tab:
             )
 
         st.markdown("###### Buyer / Seller Pressure — timing masuk zona")
+        st.caption(
+            f"Pressure source aktif: **{v240_pressure_source}**. "
+            "DOM tetap ditampilkan terpisah; RIZAN Composite adalah pressure berbasis harga, "
+            "bukan volume/order-flow global."
+        )
         pr1, pr2 = st.columns(2)
         pr1.metric(
             "Buyer index",
-            "—" if v240_buyer_index is None else f"{v240_buyer_index:.1f}/100",
+            "—"
+            if v240_effective_buyer_index is None
+            else f"{float(v240_effective_buyer_index):.1f}/100",
         )
         pr2.metric(
             "Seller index",
-            "—" if v240_seller_index is None else f"{v240_seller_index:.1f}/100",
+            "—"
+            if v240_effective_seller_index is None
+            else f"{float(v240_effective_seller_index):.1f}/100",
         )
         pr3, pr4 = st.columns(2)
         pr3.metric(
             "Incoming pressure vs zona",
             "—"
-            if v240_opposing_pressure is None
-            else f"{v240_opposing_pressure:+.1f}",
+            if v240_effective_opposing_pressure is None
+            else f"{float(v240_effective_opposing_pressure):+.1f}",
         )
         pr4.metric(
             "Penetration risk",
             str(v240_penetration_risk).split(" —", 1)[0],
         )
         pt1, pt2 = st.columns(2)
-        pt1.metric("Pressure transition", v240_pressure_trend)
+        pt1.metric("Pressure transition", v240_effective_pressure_state)
         pt2.metric(
-            "Pre-touch DEMO",
+            "Pre-touch DEMO (strict)",
             "ALLOW" if v240_pressure_transition.get("pre_touch_entry_allowed") else "WAIT",
         )
-        st.metric(
-            "M5-confirm DEMO",
+        pc1, pc2 = st.columns(2)
+        pc1.metric(
+            "M5-confirm DEMO (strict)",
             "ALLOW" if v240_pressure_transition.get("confirmation_entry_allowed") else "WAIT",
+        )
+        composite_calibration_allowed = bool(
+            v240_composite_pressure.get(
+                "long_calibration_allowed"
+                if v240_direction == "LONG"
+                else "short_calibration_allowed"
+                if v240_direction == "SHORT"
+                else "",
+                False,
+            )
+        )
+        pc2.metric(
+            "DEMO calibration",
+            "ALLOW"
+            if (
+                v240_calibration_pressure_allowed
+                or (
+                    v240_pressure_source == "RIZAN_COMPOSITE"
+                    and composite_calibration_allowed
+                )
+            )
+            else "WAIT",
         )
         st.caption(f"Penetration detail: {v240_penetration_risk}")
         if v240_dom_score is None:
@@ -3976,10 +4041,60 @@ with forecast_tab:
                 "fading tetapi reclaim/MSS/displacement sudah terkonfirmasi."
             )
         st.caption(
-            "Buyer/Seller index adalah indeks relatif dari cTrader Level-II broker/venue "
-            "(50≈balanced, >50 lebih BID/buyer, <50 lebih ASK/seller), bukan persentase "
-            "volume global COMEX. Pressure sekarang ditampilkan langsung di panel V240."
+            "DOM Buyer/Seller index berasal dari cTrader Level-II broker/venue. Jika DOM stale/tidak "
+            "tersedia, V272 menampilkan RIZAN Composite Pressure dari M5/M15: DI + EMA structure/slope "
+            "+ candle pressure + directional efficiency, dengan ADX/ADXR hanya sebagai pengukur "
+            "kekuatan/stabilitas tren. Composite bukan volume global COMEX dan bukan probabilitas."
         )
+
+        if v240_composite_available:
+            comp_m5 = dict(v240_composite_pressure.get("m5") or {})
+            comp_m15 = dict(v240_composite_pressure.get("m15") or {})
+            cp1, cp2, cp3 = st.columns(3)
+            cp1.metric(
+                "Composite M5",
+                f"{float(comp_m5.get('buyer_index') or 50.0):.1f} buyer",
+            )
+            cp2.metric(
+                "M5 ADX / ADXR",
+                (
+                    f"{float(comp_m5.get('adx14') or 0.0):.1f} / "
+                    f"{float(comp_m5.get('adxr14') or 0.0):.1f}"
+                ),
+            )
+            cp3.metric(
+                "M15 ADX / ADXR",
+                (
+                    f"{float(comp_m15.get('adx14') or 0.0):.1f} / "
+                    f"{float(comp_m15.get('adxr14') or 0.0):.1f}"
+                ),
+            )
+
+        m30_supply = dict(v240_m30_shadow.get("nearest_supply") or {})
+        m30_demand = dict(v240_m30_shadow.get("nearest_demand") or {})
+        if m30_supply or m30_demand:
+            st.markdown("###### M30 Parent Zone Shadow — kalibrasi gaya Afiq")
+            mz1, mz2 = st.columns(2)
+            mz1.metric(
+                "M30 demand",
+                (
+                    "—"
+                    if not m30_demand
+                    else f"{_fmt_price(m30_demand.get('low'))}–{_fmt_price(m30_demand.get('high'))}"
+                ),
+            )
+            mz2.metric(
+                "M30 supply",
+                (
+                    "—"
+                    if not m30_supply
+                    else f"{_fmt_price(m30_supply.get('low'))}–{_fmt_price(m30_supply.get('high'))}"
+                ),
+            )
+            st.caption(
+                "M30 adalah shadow parent-zone saja. H4/H1 tetap canonical, M15/M5 tetap refinement. "
+                "Overlap M30 dengan H1/H4 dipakai sebagai evidence kalibrasi, bukan authority order."
+            )
 
         st.markdown(
             "###### Dynamic Depth Hazard — next depth / reversal window"

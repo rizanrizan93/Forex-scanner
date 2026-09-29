@@ -333,6 +333,34 @@ def _calibration_rejection_retest_entry(
     )
 
 
+def _composite_calibration_pressure_allowed(
+    *,
+    direction: str,
+    composite_pressure: dict[str, Any],
+) -> tuple[bool, str]:
+    """Allow only the tiny DEMO calibration lane to fall back from stale DOM.
+
+    The V272 price-derived pressure has no standalone execution authority. It
+    can merely replace a stale/unavailable DOM sample for the 0.01-lot
+    calibration child. Fresh materially-opposing DOM still wins and blocks.
+    """
+    side = str(direction or "").upper()
+    if not bool(composite_pressure.get("available")):
+        return False, "COMPOSITE_PRESSURE_UNAVAILABLE"
+    if side == "LONG":
+        allowed = bool(composite_pressure.get("long_calibration_allowed"))
+    elif side == "SHORT":
+        allowed = bool(composite_pressure.get("short_calibration_allowed"))
+    else:
+        return False, "COMPOSITE_PRESSURE_NO_DIRECTION"
+    return (
+        allowed,
+        "COMPOSITE_PRICE_PRESSURE_NOT_MATERIALLY_OPPOSING"
+        if allowed
+        else "COMPOSITE_PRICE_PRESSURE_OPPOSING",
+    )
+
+
 def _entry_inside_active_source(
     *,
     direction: str,
@@ -637,6 +665,13 @@ def run() -> int:
             dom_heartbeat=dom_hb,
             now=now,
         )
+        composite_pressure = dict(atlas_eval.get("composite_pressure_v272") or {})
+        composite_calibration_allowed, composite_calibration_reason = (
+            _composite_calibration_pressure_allowed(
+                direction=direction,
+                composite_pressure=composite_pressure,
+            )
+        )
         if current_plan is None:
             # The parent geometry is no longer canonical. Keep telemetry
             # fail-closed too, so a stale V226 hazard cannot look live in
@@ -720,20 +755,49 @@ def run() -> int:
             # is neutral/supportive. Existing pending orders are always cancelled
             # before this calibration-only bypass is considered.
             pressure_hard_block = bool(pressure_transition.get("hard_block"))
+            dom_wait_second_sample = (
+                str(pressure_transition.get("state") or "") == "WAIT_SECOND_SAMPLE"
+            )
+            dom_state = str(pressure_transition.get("state") or "")
+            dom_calibration_allowed = bool(
+                pressure_transition.get("calibration_entry_allowed")
+            )
+            composite_fallback_allowed = bool(
+                pressure_hard_block
+                and (
+                    dom_wait_second_sample
+                    or dom_state in {
+                        "DOM_STALE",
+                        "UNAVAILABLE",
+                        "DOM_SCORE_MISSING",
+                    }
+                )
+                and composite_calibration_allowed
+            )
+            calibration_pressure_allowed = bool(
+                dom_calibration_allowed or composite_fallback_allowed
+            )
             calibration_pressure_bypass = bool(
                 pressure_hard_block
                 and armed_confirmation_window
                 and calibration_probe_enabled
-                and str(pressure_transition.get("state") or "") == "WAIT_SECOND_SAMPLE"
-                and bool(pressure_transition.get("calibration_entry_allowed"))
+                and calibration_pressure_allowed
             )
             if pressure_hard_block:
                 outcomes = _cancel_pending_plan(session, plan, reconcile)
                 actions.extend(f"{parent_signal_id}:PRESSURE_CANCEL:{x}" for x in outcomes)
                 if calibration_pressure_bypass:
+                    pressure_reason = (
+                        composite_calibration_reason
+                        if composite_fallback_allowed
+                        else str(
+                            pressure_transition.get("calibration_pressure_reason")
+                            or "DOM_CALIBRATION_ALLOWED"
+                        )
+                    )
                     actions.append(
                         f"{parent_signal_id}:PRESSURE_CALIBRATION_ONLY:"
-                        f"{pressure_transition.get('calibration_pressure_reason')}"
+                        f"{pressure_reason}"
                     )
                 else:
                     actions.append(
@@ -793,10 +857,7 @@ def run() -> int:
                     break
 
                 if calibration_probe and not bool(
-                    pressure_transition.get(
-                        "calibration_entry_allowed",
-                        pressure_transition.get("confirmation_entry_allowed"),
-                    )
+                    calibration_pressure_allowed
                 ):
                     actions.append(
                         f"{parent_signal_id}:L{slot}:PROBE_WAIT_PRESSURE_TRANSITION:"
@@ -1058,6 +1119,8 @@ def run() -> int:
             "pressure_transition_required": True,
             "strict_pressure_transition_requires_two_samples": True,
             "calibration_single_sample_pressure_allowed": True,
+            "calibration_composite_pressure_fallback_allowed": True,
+            "composite_pressure_v272": composite_pressure if 'composite_pressure' in locals() else {},
             "calibration_single_sample_max_opposing_pressure": 15.0,
             "pressure_transition": pressure_transition if 'pressure_transition' in locals() else {},
             "dynamic_depth_hazard_required": True,
