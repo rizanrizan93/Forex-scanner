@@ -10,6 +10,139 @@ class DashboardReadError(FXScannerError):
     """Read-only dashboard query failed."""
 
 
+def merge_runtime_heartbeat_rows(
+    base_rows: list[dict[str, Any]] | tuple[dict[str, Any], ...],
+    overlay_rows: list[dict[str, Any]] | tuple[dict[str, Any], ...],
+) -> list[dict[str, Any]]:
+    """Overlay fresh compact operational heartbeats without losing cached detail.
+
+    V182/V226 full payloads are intentionally expensive and can stay on the
+    five-minute detail budget. Their current path/candidate fields are projected
+    every minute. This merger replaces the operational fields wholesale so an
+    empty new candidate clears an old candidate, while retaining historical
+    research/detail fields from the cached full heartbeat.
+    """
+
+    by_worker: dict[str, dict[str, Any]] = {
+        str(dict(row).get("worker_name") or ""): dict(row)
+        for row in list(base_rows or [])
+        if str(dict(row).get("worker_name") or "")
+    }
+
+    for raw in list(overlay_rows or []):
+        fresh = dict(raw or {})
+        worker = str(fresh.get("worker_name") or "")
+        if not worker:
+            continue
+        base = dict(by_worker.get(worker) or {})
+        if not base:
+            by_worker[worker] = fresh
+            continue
+
+        merged = dict(base)
+        for key in ("worker_name", "observed_at", "healthy", "lag_seconds"):
+            if key in fresh:
+                merged[key] = fresh.get(key)
+
+        old_details = dict(base.get("details") or {})
+        new_details = dict(fresh.get("details") or {})
+        old_eval = dict(old_details.get("evaluation") or {})
+        new_eval = dict(new_details.get("evaluation") or {})
+
+        if worker == "ctrader_demo_xau_supply_demand_atlas_v182":
+            for key in (
+                "state",
+                "as_of",
+                "last_closed_m15_price",
+                "strategic_bias",
+                "nearest_demand",
+                "nearest_supply",
+            ):
+                if key in new_eval:
+                    old_eval[key] = new_eval.get(key)
+
+            old_path_map = dict(old_eval.get("path_map") or {})
+            new_path_map = dict(new_eval.get("path_map") or {})
+            if "active_path" in new_path_map:
+                old_path_map["active_path"] = dict(
+                    new_path_map.get("active_path") or {}
+                )
+            if "demand_to_supply" in new_path_map:
+                old_d2s = dict(old_path_map.get("demand_to_supply") or {})
+                old_d2s.update(dict(new_path_map.get("demand_to_supply") or {}))
+                old_path_map["demand_to_supply"] = old_d2s
+            if "supply_to_demand" in new_path_map:
+                old_s2d = dict(old_path_map.get("supply_to_demand") or {})
+                old_s2d.update(dict(new_path_map.get("supply_to_demand") or {}))
+                old_path_map["supply_to_demand"] = old_s2d
+            old_eval["path_map"] = old_path_map
+
+            old_projection = dict(old_eval.get("m5_path_projection") or {})
+            new_projection = dict(new_eval.get("m5_path_projection") or {})
+            for leg in ("current_leg", "next_leg"):
+                if leg in new_projection:
+                    old_projection[leg] = dict(new_projection.get(leg) or {})
+            if "state" in new_projection:
+                old_projection["state"] = new_projection.get("state")
+            old_eval["m5_path_projection"] = old_projection
+
+            if "micro_refinement" in new_eval:
+                old_eval["micro_refinement"] = dict(
+                    new_eval.get("micro_refinement") or {}
+                )
+
+        elif worker == "ctrader_demo_xau_v226_rizan_depth_map":
+            for key in (
+                "state",
+                "focus_direction",
+                "price_reference",
+                "depth_entry_candidate",
+                "entry_candidates",
+                "four_order_ladder",
+            ):
+                if key in new_eval:
+                    old_eval[key] = new_eval.get(key)
+
+            for side in ("long", "short"):
+                fresh_side = dict(new_eval.get(side) or {})
+                if not fresh_side:
+                    continue
+                old_side = dict(old_eval.get(side) or {})
+                for timeframe in ("h4", "h1", "m15"):
+                    fresh_layer = dict(fresh_side.get(timeframe) or {})
+                    if not fresh_layer:
+                        continue
+                    old_layer = dict(old_side.get(timeframe) or {})
+                    if "zone" in fresh_layer:
+                        old_layer["zone"] = dict(fresh_layer.get("zone") or {})
+                    if "applicability" in fresh_layer:
+                        old_layer["applicability"] = dict(
+                            fresh_layer.get("applicability") or {}
+                        )
+                    old_side[timeframe] = old_layer
+                if "h4_selection_mode" in fresh_side:
+                    old_side["h4_selection_mode"] = fresh_side.get(
+                        "h4_selection_mode"
+                    )
+                old_eval[side] = old_side
+        else:
+            old_details.update(new_details)
+
+        if new_eval or "evaluation" in new_details:
+            old_details["evaluation"] = old_eval
+        for key, value in new_details.items():
+            if key != "evaluation":
+                old_details[key] = value
+        merged["details"] = old_details
+        by_worker[worker] = merged
+
+    return sorted(
+        by_worker.values(),
+        key=lambda row: str(row.get("observed_at") or ""),
+        reverse=True,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class DashboardSnapshot:
     latest_run: dict[str, Any] | None
@@ -196,6 +329,200 @@ class SupabaseDashboardReader:
                 f"critical runtime_heartbeats read failed: {exc}"
             ) from exc
         return tuple(self._rows(response))
+
+    def latest_xau_atlas_operational_heartbeat(self) -> dict[str, Any] | None:
+        """Return current V182 path/M5 fields without the heavy historical payload."""
+
+        select_expr = (
+            "worker_name,observed_at,healthy,lag_seconds,"
+            "state:details->evaluation->>state,"
+            "as_of:details->evaluation->>as_of,"
+            "last_closed_m15_price:details->evaluation->last_closed_m15_price,"
+            "strategic_bias:details->evaluation->>strategic_bias,"
+            "nearest_demand:details->evaluation->nearest_demand,"
+            "nearest_supply:details->evaluation->nearest_supply,"
+            "active_direction:details->evaluation->path_map->active_path->>reaction_direction,"
+            "active_state:details->evaluation->path_map->active_path->>state,"
+            "active_source_zone:details->evaluation->path_map->active_path->source_zone,"
+            "active_reaction_target:details->evaluation->path_map->active_path->reaction_target,"
+            "active_primary_opposing_zone:details->evaluation->path_map->active_path->primary_opposing_zone,"
+            "active_terminal_target_zone:details->evaluation->path_map->active_path->terminal_target_zone,"
+            "d2s_destination_stack:details->evaluation->path_map->demand_to_supply->destination_stack,"
+            "s2d_destination_stack:details->evaluation->path_map->supply_to_demand->destination_stack,"
+            "current_leg_direction:details->evaluation->m5_path_projection->current_leg->>direction,"
+            "current_leg_path_state:details->evaluation->m5_path_projection->current_leg->>path_state,"
+            "current_leg_pocket_state:details->evaluation->m5_path_projection->current_leg->>pocket_state,"
+            "current_leg_source_zone:details->evaluation->m5_path_projection->current_leg->source_zone,"
+            "current_leg_m5_pocket:details->evaluation->m5_path_projection->current_leg->m5_pocket,"
+            "current_leg_reaction_target:details->evaluation->m5_path_projection->current_leg->reaction_target,"
+            "current_leg_terminal_target_zone:details->evaluation->m5_path_projection->current_leg->terminal_target_zone,"
+            "current_leg_micro_refinement:details->evaluation->m5_path_projection->current_leg->micro_refinement,"
+            "current_leg_touch_cycle_start:details->evaluation->m5_path_projection->current_leg->>touch_cycle_start,"
+            "next_leg_direction:details->evaluation->m5_path_projection->next_leg->>direction,"
+            "next_leg_path_state:details->evaluation->m5_path_projection->next_leg->>path_state,"
+            "next_leg_pocket_state:details->evaluation->m5_path_projection->next_leg->>pocket_state,"
+            "next_leg_source_zone:details->evaluation->m5_path_projection->next_leg->source_zone,"
+            "next_leg_m5_pocket:details->evaluation->m5_path_projection->next_leg->m5_pocket,"
+            "next_leg_reaction_target:details->evaluation->m5_path_projection->next_leg->reaction_target,"
+            "next_leg_terminal_target_zone:details->evaluation->m5_path_projection->next_leg->terminal_target_zone,"
+            "next_leg_micro_refinement:details->evaluation->m5_path_projection->next_leg->micro_refinement,"
+            "next_leg_touch_cycle_start:details->evaluation->m5_path_projection->next_leg->>touch_cycle_start,"
+            "projection_state:details->evaluation->m5_path_projection->>state,"
+            "micro_refinement:details->evaluation->micro_refinement"
+        )
+        try:
+            response = (
+                self.client.table("runtime_heartbeats")
+                .select(select_expr)
+                .eq("worker_name", "ctrader_demo_xau_supply_demand_atlas_v182")
+                .order("observed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"V182 operational heartbeat read failed: {exc}"
+            ) from exc
+        rows = self._rows(response)
+        if not rows:
+            return None
+        raw = dict(rows[0])
+
+        active_path = {
+            "reaction_direction": raw.pop("active_direction", None),
+            "state": raw.pop("active_state", None),
+            "source_zone": dict(raw.pop("active_source_zone", {}) or {}),
+            "reaction_target": dict(raw.pop("active_reaction_target", {}) or {}),
+            "primary_opposing_zone": dict(
+                raw.pop("active_primary_opposing_zone", {}) or {}
+            ),
+            "terminal_target_zone": dict(
+                raw.pop("active_terminal_target_zone", {}) or {}
+            ),
+        }
+        current_leg = {
+            "direction": raw.pop("current_leg_direction", None),
+            "path_state": raw.pop("current_leg_path_state", None),
+            "pocket_state": raw.pop("current_leg_pocket_state", None),
+            "source_zone": dict(raw.pop("current_leg_source_zone", {}) or {}),
+            "m5_pocket": dict(raw.pop("current_leg_m5_pocket", {}) or {}),
+            "reaction_target": dict(
+                raw.pop("current_leg_reaction_target", {}) or {}
+            ),
+            "terminal_target_zone": dict(
+                raw.pop("current_leg_terminal_target_zone", {}) or {}
+            ),
+            "micro_refinement": dict(
+                raw.pop("current_leg_micro_refinement", {}) or {}
+            ),
+            "touch_cycle_start": raw.pop("current_leg_touch_cycle_start", None),
+        }
+        next_leg = {
+            "direction": raw.pop("next_leg_direction", None),
+            "path_state": raw.pop("next_leg_path_state", None),
+            "pocket_state": raw.pop("next_leg_pocket_state", None),
+            "source_zone": dict(raw.pop("next_leg_source_zone", {}) or {}),
+            "m5_pocket": dict(raw.pop("next_leg_m5_pocket", {}) or {}),
+            "reaction_target": dict(raw.pop("next_leg_reaction_target", {}) or {}),
+            "terminal_target_zone": dict(
+                raw.pop("next_leg_terminal_target_zone", {}) or {}
+            ),
+            "micro_refinement": dict(raw.pop("next_leg_micro_refinement", {}) or {}),
+            "touch_cycle_start": raw.pop("next_leg_touch_cycle_start", None),
+        }
+        evaluation = {
+            "state": raw.pop("state", None),
+            "as_of": raw.pop("as_of", None),
+            "last_closed_m15_price": raw.pop("last_closed_m15_price", None),
+            "strategic_bias": raw.pop("strategic_bias", None),
+            "nearest_demand": dict(raw.pop("nearest_demand", {}) or {}),
+            "nearest_supply": dict(raw.pop("nearest_supply", {}) or {}),
+            "path_map": {
+                "active_path": active_path,
+                "demand_to_supply": {
+                    "destination_stack": list(
+                        raw.pop("d2s_destination_stack", []) or []
+                    )
+                },
+                "supply_to_demand": {
+                    "destination_stack": list(
+                        raw.pop("s2d_destination_stack", []) or []
+                    )
+                },
+            },
+            "m5_path_projection": {
+                "state": raw.pop("projection_state", None),
+                "current_leg": current_leg,
+                "next_leg": next_leg,
+            },
+            "micro_refinement": dict(raw.pop("micro_refinement", {}) or {}),
+        }
+        raw["details"] = {
+            "evaluation": evaluation,
+            "transport_projection": "V182_OPERATIONAL_60S",
+        }
+        return raw
+
+    def latest_xau_v226_operational_heartbeat(self) -> dict[str, Any] | None:
+        """Return current V226 candidate/zone identity without historical profiles."""
+
+        select_expr = (
+            "worker_name,observed_at,healthy,lag_seconds,"
+            "state:details->evaluation->>state,"
+            "focus_direction:details->evaluation->>focus_direction,"
+            "price_reference:details->evaluation->price_reference,"
+            "depth_entry_candidate:details->evaluation->depth_entry_candidate,"
+            "entry_candidates:details->evaluation->entry_candidates,"
+            "four_order_ladder:details->evaluation->four_order_ladder,"
+            "long_h4_zone:details->evaluation->long->h4->zone,"
+            "long_h1_zone:details->evaluation->long->h1->zone,"
+            "long_m15_zone:details->evaluation->long->m15->zone,"
+            "short_h4_zone:details->evaluation->short->h4->zone,"
+            "short_h1_zone:details->evaluation->short->h1->zone,"
+            "short_m15_zone:details->evaluation->short->m15->zone"
+        )
+        try:
+            response = (
+                self.client.table("runtime_heartbeats")
+                .select(select_expr)
+                .eq("worker_name", "ctrader_demo_xau_v226_rizan_depth_map")
+                .order("observed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"V226 operational heartbeat read failed: {exc}"
+            ) from exc
+        rows = self._rows(response)
+        if not rows:
+            return None
+        raw = dict(rows[0])
+        evaluation = {
+            "state": raw.pop("state", None),
+            "focus_direction": raw.pop("focus_direction", None),
+            "price_reference": raw.pop("price_reference", None),
+            "depth_entry_candidate": dict(
+                raw.pop("depth_entry_candidate", {}) or {}
+            ),
+            "entry_candidates": dict(raw.pop("entry_candidates", {}) or {}),
+            "four_order_ladder": dict(raw.pop("four_order_ladder", {}) or {}),
+            "long": {
+                "h4": {"zone": dict(raw.pop("long_h4_zone", {}) or {})},
+                "h1": {"zone": dict(raw.pop("long_h1_zone", {}) or {})},
+                "m15": {"zone": dict(raw.pop("long_m15_zone", {}) or {})},
+            },
+            "short": {
+                "h4": {"zone": dict(raw.pop("short_h4_zone", {}) or {})},
+                "h1": {"zone": dict(raw.pop("short_h1_zone", {}) or {})},
+                "m15": {"zone": dict(raw.pop("short_m15_zone", {}) or {})},
+            },
+        }
+        raw["details"] = {
+            "evaluation": evaluation,
+            "transport_projection": "V226_OPERATIONAL_60S",
+        }
+        return raw
 
     def latest_rizan_prepared_heartbeat(self) -> dict[str, Any] | None:
         """Return the current prepared-plan heartbeat without duplicated atlas JSON.

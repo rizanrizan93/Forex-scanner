@@ -84,7 +84,18 @@ def test_dashboard_bridge_bounds_minute_level_history_payload() -> None:
 
     root = Path(__file__).resolve().parents[1]
     text = (root / "src/fx_scanner/xau_dashboard_bridge_v254.py").read_text()
-    assert 'latest_signals_for_symbol("XAUUSD", limit=12)' in text
-    assert "latest_xau_geometry_events(limit=8)" in text
-    assert "latest_xau_execution_events(limit=12)" in text
-    assert "latest_xau_prepared_plan_lifecycle(limit=15)" in text
+    assert 'latest_signals_for_symbol("XAUUSD", limit=8)' in text
+    assert "latest_xau_geometry_events(limit=4)" in text
+    assert "latest_xau_execution_events(limit=6)" in text
+    assert "latest_xau_prepared_plan_lifecycle(limit=8)" in text
+
+
+def test_v259_bridge_refreshes_compact_operational_structure_each_minute() -> None:
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "src/fx_scanner/xau_dashboard_bridge_v254.py").read_text()
+    assert "latest_xau_atlas_operational_heartbeat()" in text
+    assert "latest_xau_v226_operational_heartbeat()" in text
+    assert "merge_runtime_heartbeat_rows" in text
+    assert '"operational_structure_refresh_seconds": int(HOT_REFRESH_SECONDS)' in text

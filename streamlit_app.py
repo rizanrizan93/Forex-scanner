@@ -20,7 +20,11 @@ if str(SRC) not in sys.path:
 
 from fx_scanner import __version__
 from fx_scanner.config import ProjectConfig, load_project_config
-from fx_scanner.dashboard import DashboardReadError, SupabaseDashboardReader
+from fx_scanner.dashboard import (
+    DashboardReadError,
+    SupabaseDashboardReader,
+    merge_runtime_heartbeat_rows,
+)
 from fx_scanner.execution.policy import load_execution_policy
 from fx_scanner.sessions import session_label
 from fx_scanner.providers.factory import build_provider_runtime
@@ -52,7 +56,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V256_CANONICAL_TRUTH_UI_20260929"
+DASHBOARD_BUILD_ID = "RIZAN_V259_LIVE_STRUCTURAL_TRUTH_20260929"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -141,7 +145,13 @@ st.markdown(
         .rizan-title {font-size:1.28rem;}
         .rizan-kicker, .rizan-note {font-size:.78rem;}
         div[data-testid="stMetric"] {padding:.45rem .55rem;}
-        div[data-testid="stMetricValue"] {font-size:1.38rem;}
+        div[data-testid="stMetricValue"] {
+            font-size:1.20rem;
+            line-height:1.18;
+            overflow:visible;
+            text-overflow:clip;
+        }
+        div[data-testid="stMetricLabel"] {font-size:.76rem;}
         h1 {font-size:2rem !important;}
     }
     </style>
@@ -257,6 +267,12 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
     child_heartbeat = reader.latest_rizan_child_executor_heartbeat()
     if child_heartbeat is not None:
         critical_heartbeats.append(child_heartbeat)
+    atlas_operational = reader.latest_xau_atlas_operational_heartbeat()
+    if atlas_operational is not None:
+        critical_heartbeats.append(atlas_operational)
+    v226_operational = reader.latest_xau_v226_operational_heartbeat()
+    if v226_operational is not None:
+        critical_heartbeats.append(v226_operational)
     return {
         "critical_heartbeats": critical_heartbeats,
         "afic_forecast_states": list(reader.latest_afic_forecast_states()),
@@ -331,20 +347,10 @@ def _merge_heartbeat_rows(
     critical_rows: list[dict[str, Any]],
     observability_rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Overlay fresh critical heartbeats on the cached full observability set."""
-    by_worker: dict[str, dict[str, Any]] = {}
-    for row in list(observability_rows or []):
-        worker = str(dict(row).get("worker_name") or "")
-        if worker:
-            by_worker[worker] = dict(row)
-    for row in list(critical_rows or []):
-        worker = str(dict(row).get("worker_name") or "")
-        if worker:
-            by_worker[worker] = dict(row)
-    return sorted(
-        by_worker.values(),
-        key=lambda row: str(row.get("observed_at") or ""),
-        reverse=True,
+    """Overlay fresh operational rows while preserving cached research detail."""
+    return merge_runtime_heartbeat_rows(
+        list(observability_rows or []),
+        list(critical_rows or []),
     )
 
 
@@ -2909,9 +2915,22 @@ with forecast_tab:
                     "V240/V229 + M15 + protection/admission konsisten; izin order tetap mengikuti admission dan protection contract."
                 )
 
+        dc_v182_age = (
+            None
+            if supply_demand_hb is None
+            else _age_seconds(supply_demand_hb.get("observed_at"))
+        )
+        dc_v226_age = (
+            None
+            if v226_depth_map_hb is None
+            else _age_seconds(v226_depth_map_hb.get("observed_at"))
+        )
+        dc_v182_age_text = "—" if dc_v182_age is None else f"{dc_v182_age:.0f}s"
+        dc_v226_age_text = "—" if dc_v226_age is None else f"{dc_v226_age:.0f}s"
         st.caption(
             f"HTF context {dc_htf_context_bias} • H4 parent {dc_h4_text} • D1 parent {dc_d1_text} • "
             f"current path map {_fmt_wib_datetime(current_map, seconds=False)} • "
+            f"V182 age={dc_v182_age_text} • V226 age={dc_v226_age_text} • "
             f"dashboard {_fmt_wib_datetime(datetime.now(tz=UTC), seconds=False)}."
         )
 

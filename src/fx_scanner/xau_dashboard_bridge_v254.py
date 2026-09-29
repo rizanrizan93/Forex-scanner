@@ -11,7 +11,7 @@ from typing import Any, Callable
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
-from .dashboard import SupabaseDashboardReader
+from .dashboard import SupabaseDashboardReader, merge_runtime_heartbeat_rows
 from .storage.supabase_operational import SupabaseOperationalStore
 
 CONTRACT = "XAU_RIZAN_DASHBOARD_BRIDGE_V254"
@@ -39,9 +39,9 @@ HOT_HEARTBEATS = (
 )
 
 STRUCTURAL_HEARTBEATS = (
-    # V182/V226 are built from completed structure. Five-minute transport
-    # freshness is enough for the read-only dashboard; the broker execution
-    # lane refreshes these independently before admission.
+    # Full V182/V226 historical/detail payloads stay on the five-minute budget.
+    # Their decision-critical path/candidate identity is projected separately
+    # every 60 seconds so the dashboard cannot show an old leg or old locator.
     "ctrader_demo_xau_supply_demand_atlas_v182",
     "ctrader_demo_xau_v226_rizan_depth_map",
 )
@@ -289,6 +289,17 @@ def build_snapshot(
     child_heartbeat = reader.latest_rizan_child_executor_heartbeat()
     if child_heartbeat is not None:
         hot_heartbeats.append(child_heartbeat)
+
+    # Current V182 path/M5 and V226 candidate identity must not wait for the
+    # five-minute historical-detail tier. These projected rows are deliberately
+    # compact and are merged into the cached full heartbeats below.
+    atlas_operational = reader.latest_xau_atlas_operational_heartbeat()
+    if atlas_operational is not None:
+        hot_heartbeats.append(atlas_operational)
+    v226_operational = reader.latest_xau_v226_operational_heartbeat()
+    if v226_operational is not None:
+        hot_heartbeats.append(v226_operational)
+
     hot_heartbeat_bytes = _json_size(hot_heartbeats)
     cycle_bytes += hot_heartbeat_bytes
 
@@ -324,7 +335,10 @@ def build_snapshot(
             previous_source.get("support_as_of") or current.isoformat()
         )
 
-    heartbeats = _overlay_heartbeat_rows(heartbeats, tuple(hot_heartbeats))
+    heartbeats = merge_runtime_heartbeat_rows(
+        heartbeats,
+        hot_heartbeats,
+    )
 
     if cold_reused:
         cold_values = {
@@ -362,12 +376,12 @@ def build_snapshot(
 
     account = reader.latest_broker_account()
     broker_positions = list(reader.broker_positions_for_account(account))
-    xau_signals = list(reader.latest_signals_for_symbol("XAUUSD", limit=12))
+    xau_signals = list(reader.latest_signals_for_symbol("XAUUSD", limit=8))
     forecast_states = list(reader.latest_afic_forecast_states())
     prepared_plans = list(reader.latest_afic_prepared_plans())
-    geometry_events = list(reader.latest_xau_geometry_events(limit=8))
-    execution_events = list(reader.latest_xau_execution_events(limit=12))
-    lifecycle = list(reader.latest_xau_prepared_plan_lifecycle(limit=15))
+    geometry_events = list(reader.latest_xau_geometry_events(limit=4))
+    execution_events = list(reader.latest_xau_execution_events(limit=6))
+    lifecycle = list(reader.latest_xau_prepared_plan_lifecycle(limit=8))
     control_snapshot = asdict(store.get_execution_control())
     rizan_geometry = [
         row for row in geometry_events
@@ -443,6 +457,7 @@ def build_snapshot(
             "project_ref": project_ref,
             "mode": "SUPABASE_SERVICE_ROLE_TO_PUBLIC_READ_ONLY_BRIDGE",
             "dashboard_refresh_seconds": int(HOT_REFRESH_SECONDS),
+            "operational_structure_refresh_seconds": int(HOT_REFRESH_SECONDS),
             "structural_refresh_seconds": int(STRUCTURAL_REFRESH_SECONDS),
             "support_refresh_seconds": int(SUPPORT_REFRESH_SECONDS),
             "cold_refresh_seconds": int(COLD_REFRESH_SECONDS),
