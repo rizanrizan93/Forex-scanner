@@ -512,6 +512,7 @@ def validate_snapshot(
     *,
     now: datetime | None = None,
     fresh_seconds: float = FRESH_SECONDS,
+    require_fresh: bool = True,
 ) -> dict[str, Any]:
     data = dict(payload or {})
     if str(data.get("contract") or "") != CONTRACT:
@@ -543,7 +544,7 @@ def validate_snapshot(
         "fresh": fresh,
         "fresh_seconds": float(fresh_seconds),
     }
-    if not fresh:
+    if require_fresh and not fresh:
         raise ValueError(
             "dashboard bridge snapshot stale"
             if age is not None
@@ -558,6 +559,7 @@ def fetch_snapshot(
     timeout_seconds: float = 8.0,
     now: datetime | None = None,
     opener: Callable[..., Any] = urlopen,
+    require_fresh: bool = True,
 ) -> dict[str, Any]:
     request = Request(
         _cache_busted_url(str(url), now=now),
@@ -570,7 +572,7 @@ def fetch_snapshot(
     with opener(request, timeout=float(timeout_seconds)) as response:
         raw = response.read()
     payload = json.loads(raw.decode("utf-8"))
-    return validate_snapshot(payload, now=now)
+    return validate_snapshot(payload, now=now, require_fresh=require_fresh)
 
 
 def main(argv: list[str] | None = None) -> int:
