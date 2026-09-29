@@ -275,6 +275,7 @@ def evaluate_micro_refinement(
     path_map: dict[str, Any],
     as_of: datetime,
     parent_source_zone: dict[str, Any] | None = None,
+    not_before: datetime | str | None = None,
 ) -> dict[str, Any]:
     active_path = dict(path_map.get("active_path") or {})
     source = dict(active_path.get("source_zone") or {})
@@ -312,18 +313,23 @@ def evaluate_micro_refinement(
             ),
         }
 
+    eligibility_not_before = _safe_datetime(not_before)
+    eligibility_start = source_available_at
+    if eligibility_not_before is not None and eligibility_not_before > eligibility_start:
+        eligibility_start = eligibility_not_before
+
     recent = rows[-MAX_RECENT_M5_BARS:]
     global_offset = len(rows) - len(recent)
     pre_source_touch_count = sum(
         1
         for row in recent
-        if ensure_utc(row.timestamp) < source_available_at
+        if ensure_utc(row.timestamp) < eligibility_start
         and _touches_source(row, source)
     )
     touch_indices = [
         i
         for i, row in enumerate(recent)
-        if ensure_utc(row.timestamp) >= source_available_at
+        if ensure_utc(row.timestamp) >= eligibility_start
         and _touches_source(row, source)
     ]
     if not touch_indices:
@@ -331,6 +337,7 @@ def evaluate_micro_refinement(
             "state": "WAIT_SOURCE_TOUCH",
             "last_closed_m5_price": float(recent[-1].close),
             "source_available_at": source_available_at.isoformat(),
+            "eligibility_not_before": eligibility_start.isoformat(),
             "pre_source_touch_count_ignored": pre_source_touch_count,
         }
 
@@ -532,6 +539,7 @@ def evaluate_micro_refinement(
         "state": state,
         "last_closed_m5_price": float(recent[-1].close),
         "source_available_at": source_available_at.isoformat(),
+        "eligibility_not_before": eligibility_start.isoformat(),
         "pre_source_touch_count_ignored": pre_source_touch_count,
         "first_eligible_touch_at": ensure_utc(recent[touch_indices[0]].timestamp).isoformat(),
         "sweep": {
