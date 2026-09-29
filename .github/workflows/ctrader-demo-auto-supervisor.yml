@@ -167,6 +167,48 @@ jobs:
             done <<< "${rows}"
           }
 
+          cancel_stale_lane_runs() {
+            local workflow_file="$1"
+            local label="$2"
+            local stale_after_seconds="$3"
+            local now_epoch rows run_id status created_at created_epoch age_seconds
+
+            now_epoch="$(date -u +%s)"
+            if ! rows="$(
+              gh api \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_file}/runs?branch=main&per_page=20" \
+                --jq '.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending") | [.id, .status, .created_at] | join("|")' \
+                2>/tmp/gh-stale-lane.err
+            )"; then
+              echo "SUPERVISOR_${label}_STALE_CHECK_FAILED safety=FAIL_CLOSED" >&2
+              return 0
+            fi
+
+            while IFS='|' read -r run_id status created_at; do
+              [ -n "${run_id:-}" ] || continue
+              if ! created_epoch="$(date -u -d "${created_at}" +%s 2>/dev/null)"; then
+                echo "SUPERVISOR_${label}_STALE_PARSE_FAILED run_id=${run_id} status=${status} safety=FAIL_CLOSED" >&2
+                continue
+              fi
+              age_seconds=$((now_epoch - created_epoch))
+              if [ "${age_seconds}" -lt "${stale_after_seconds}" ]; then
+                continue
+              fi
+
+              if gh api --method POST \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" \
+                >/dev/null 2>/tmp/gh-stale-lane-cancel.err; then
+                echo "SUPERVISOR_${label}_STALE_CANCELLED run_id=${run_id} status=${status} age_seconds=${age_seconds} stale_after_seconds=${stale_after_seconds}"
+              else
+                echo "SUPERVISOR_${label}_STALE_CANCEL_FAILED run_id=${run_id} status=${status} age_seconds=${age_seconds} safety=FAIL_CLOSED" >&2
+              fi
+            done <<< "${rows}"
+          }
+
           dispatch_workflow() {
             local workflow_file="$1"
             local attempt
@@ -297,6 +339,13 @@ jobs:
               exit 0
             fi
 
+            # A queued/in-progress GitHub run can survive indefinitely before
+            # job-level timeout starts. Retire only clearly stale lane runs so one
+            # orphaned queue item cannot block the whole scanner indefinitely.
+            cancel_stale_lane_runs "ctrader-demo-xau-execution-lane.yml" "EXECUTION" 600
+            cancel_stale_lane_runs "ctrader-demo-xau-afic-prepared-lane.yml" "RIZAN_PREPARED" 600
+            cancel_stale_lane_runs "ctrader-demo-xau-dom-v191.yml" "DOM_V191" 600
+
             active_execution="$(active_count ctrader-demo-xau-execution-lane.yml)"
             if [ "${active_execution}" -eq 0 ]; then
               echo "SUPERVISOR_EXECUTION_DISPATCH cycle=${cycle}/5 cadence_seconds=60 head_sha=${GITHUB_SHA}"
@@ -383,49 +432,11 @@ jobs:
             fi
           done
 
-          # GitHub scheduled delivery can occasionally go stale. Keep one bounded
-          # supervisor chain alive only when the absolute latest XAU execution
-          # run has completed successfully. The final minute execution dispatch
-          # commonly remains active when this supervisor reaches handoff. Poll
-          # that exact latest run for at most two minutes; never fall back to an
-          # older success and never hand off after a failed/cancelled latest run.
-          latest_execution_state() {
-            local attempt value
-            for attempt in 1 2 3; do
-              if value="$(
-                gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/workflows/ctrader-demo-xau-execution-lane.yml/runs?branch=main&per_page=20" --jq '[.workflow_runs[0].status // "", .workflow_runs[0].conclusion // ""] | join("|")' 2>/tmp/gh-latest-execution.err
-              )"; then
-                printf '%s\n' "${value}"
-                return 0
-              fi
-              echo "SUPERVISOR_GH_API_RETRY operation=latest_execution_state attempt=${attempt}/3" >&2
-              sleep $((attempt * 2))
-            done
-            # Unknown latest state must prevent self-handoff.
-            printf 'unknown|unknown\n'
-          }
-
-          execution_state="$(latest_execution_state)"
-          IFS='|' read -r latest_execution_status latest_execution_conclusion <<< "${execution_state}"
-
-          handoff_wait_cycles=0
-          handoff_wait_max_cycles=8
-          handoff_wait_seconds=15
-          while market_open_utc && [ "${handoff_wait_cycles}" -lt "${handoff_wait_max_cycles}" ]; do
-            case "${latest_execution_status}" in
-              queued|in_progress|waiting|pending)
-                handoff_wait_cycles=$((handoff_wait_cycles + 1))
-                echo "CTRADER_DEMO_SUPERVISOR_HANDOFF_WAIT cycle=${handoff_wait_cycles}/${handoff_wait_max_cycles} latest_execution_status=${latest_execution_status} wait_seconds=${handoff_wait_seconds}"
-                sleep "${handoff_wait_seconds}"
-                execution_state="$(latest_execution_state)"
-                IFS='|' read -r latest_execution_status latest_execution_conclusion <<< "${execution_state}"
-                ;;
-              *)
-                break
-                ;;
-            esac
-          done
-
+          # The supervisor has no broker execution authority; it only dispatches
+          # bounded workers that each enforce their own concurrency/idempotency gates.
+          # Therefore the next supervisor may be queued even while the latest XAU
+          # execution lane is still finishing. Requiring that lane to complete first
+          # previously broke the self-handoff chain whenever a normal lane took >2m.
           other_active_supervisors=1
           for supervisor_query_attempt in 1 2 3; do
             if other_active_supervisors="$(
@@ -439,11 +450,14 @@ jobs:
           done
 
           self_handoff=0
-          if market_open_utc && [ "${latest_execution_status}" = "completed" ] && [ "${latest_execution_conclusion}" = "success" ] && [ "${other_active_supervisors}" -eq 0 ]; then
-            dispatch_workflow ctrader-demo-auto-supervisor.yml
-            self_handoff=1
-            echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_DISPATCHED source_run=${GITHUB_RUN_ID} latest_execution_status=${latest_execution_status} latest_execution_conclusion=${latest_execution_conclusion} handoff_wait_cycles=${handoff_wait_cycles}"
+          if market_open_utc && [ "${other_active_supervisors}" -eq 0 ]; then
+            if dispatch_workflow ctrader-demo-auto-supervisor.yml; then
+              self_handoff=1
+              echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_DISPATCHED source_run=${GITHUB_RUN_ID} safety=DISPATCH_ONLY execution_overlap_guard=ACTIVE_COUNT"
+            else
+              echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_DISPATCH_FAILED source_run=${GITHUB_RUN_ID} safety=FAIL_CLOSED" >&2
+            fi
           else
-            echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED source_run=${GITHUB_RUN_ID} latest_execution_status=${latest_execution_status:-NONE} latest_execution_conclusion=${latest_execution_conclusion:-NONE} other_active_supervisors=${other_active_supervisors} handoff_wait_cycles=${handoff_wait_cycles} safety=FAIL_CLOSED"
+            echo "CTRADER_DEMO_SUPERVISOR_SELF_HANDOFF_SKIPPED source_run=${GITHUB_RUN_ID} other_active_supervisors=${other_active_supervisors} market_open_check=FAILED_OR_DUPLICATE safety=FAIL_CLOSED"
           fi
           echo "CTRADER_DEMO_SUPERVISOR_OK head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_RIZAN_PATH_PREPARED_V1 execution_dispatched=${execution_dispatched} execution_busy=${execution_busy} rizan_dispatched=${rizan_dispatched} rizan_busy=${rizan_busy} dom_dispatched=${dom_dispatched} dom_busy=${dom_busy} maintenance_dispatched=${maintenance_dispatched} maintenance_busy=${maintenance_busy} forecast_v171_dispatched=${forecast_v171_dispatched} forecast_v171_busy=${forecast_v171_busy} token_maintainer_dispatched=${token_maintainer_dispatched} calibration_dispatched=${calibration_dispatched} calibration_busy=${calibration_busy} discovery_dispatched=${discovery_dispatched} discovery_busy=${discovery_busy} fast_cadence_seconds=60 rizan_prepared_check_seconds=60 dom_cadence_seconds=60 maintenance_cadence_seconds=300 forecast_v171_cadence_seconds=300 forecast_v171_authority=SHADOW_ONLY discovery_check_seconds=60 discovery_stale_seconds=1800 calibration_cadence_seconds=3600 overlap_within_lane=DISABLED authority=SCHEDULE_5M push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=${self_handoff}"
