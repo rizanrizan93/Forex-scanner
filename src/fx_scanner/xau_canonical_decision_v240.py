@@ -189,7 +189,7 @@ def _primary_reversal_watch(
     }
     opposing = "SHORT" if direction == "LONG" else "LONG"
     ranked: list[tuple[float, float, dict[str, Any]]] = []
-    for raw in list(atlas_evaluation.get("zones") or []):
+    for raw in _structural_zone_candidates(atlas_evaluation):
         zone = dict(raw or {})
         if str(zone.get("direction") or "").upper() != opposing:
             continue
