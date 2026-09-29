@@ -518,7 +518,8 @@ def run() -> int:
         # structure/DOM/reconcile checks finished, the 5s fail-closed cache could
         # legitimately be stale even though Supabase control state was healthy.
         control.refresh_once()
-        control.start()
+        if hasattr(control, "start"):
+            control.start()
         parents = _latest_parent_rows(store)
         v226_hb = _latest_heartbeat(store, V226_WORKER)
         atlas_hb = _latest_heartbeat(store, ATLAS_WORKER)
