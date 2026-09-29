@@ -43,6 +43,9 @@ from fx_scanner.xau_dynamic_depth_hazard_v251 import (
     build_dynamic_depth_hazard,
     build_geometry_depth_status,
 )
+from fx_scanner.xau_reversal_break_forecast_v278 import (
+    build_reversal_break_forecast,
+)
 from fx_scanner.xau_dashboard_bridge_v254 import (
     DEFAULT_SNAPSHOT_URL as DEFAULT_DASHBOARD_SNAPSHOT_URL,
     fetch_snapshot as fetch_dashboard_snapshot,
@@ -3088,6 +3091,10 @@ with forecast_tab:
     v226_reversal_heatmap_source = dict(
         v226_eval.get("reversal_depth_heatmap_source") or {}
     )
+    v226_competing_risk_oos = [
+        dict(item)
+        for item in list(v226_eval.get("competing_risk_heatmap_oos") or [])
+    ]
 
     v240_saved_geometry: dict[str, Any] = {}
     for chart_event in geometry_rows:
@@ -3275,6 +3282,31 @@ with forecast_tab:
     )
     v229_exec_plan = dict(v229_exec_details.get("plan") or {})
     v229_plan_diagnostics = dict(v229_exec_details.get("plan_diagnostics") or {})
+    v278_forecast = build_reversal_break_forecast(
+        v226_evaluation=v226_eval,
+        atlas_evaluation=dc_sd_eval,
+        direction=v240_direction,
+        price_now=dc_reference_price,
+        pressure_transition=v240_pressure_transition,
+        v229_plan=(
+            v229_exec_plan
+            if v229_exec_plan
+            else {
+                "sl": v240_decision.get("sl"),
+                "tp1": v240_decision.get("tp1"),
+                "tp2": v240_decision.get("tp2"),
+                "children": v240_children,
+            }
+        ),
+        base_entry_authorized=v240_entry_authorized,
+        now=datetime.now(tz=UTC),
+    )
+    v278_stage = str(v278_forecast.get("stage") or "WAIT").upper()
+    v278_reason = str(v278_forecast.get("reason") or "WAIT")
+    v278_break = dict(v278_forecast.get("break_risk") or {})
+    v278_no_chase = dict(v278_forecast.get("no_chase") or {})
+    v278_micro = dict(v278_forecast.get("microstructure") or {})
+    v278_competing = dict(v278_forecast.get("competing_risk_reference") or {})
     v229_child_details = (
         {} if v229_child_executor_hb is None
         else dict(v229_child_executor_hb.get("details") or {})
@@ -3503,6 +3535,103 @@ with forecast_tab:
             and v240_decision.get("tp1") is not None
             else "Belum ada — belum admitted"
         )
+
+        st.markdown("###### V278 • Tahap reversal / break risk")
+        stage_cols = st.columns(4)
+        stage_order = [
+            ("REVERSAL WATCH", "REVERSAL_WATCH"),
+            ("REAKSI TERLIHAT", "REAKSI_TERLIHAT"),
+            ("KONFIRMASI M5", "KONFIRMASI_M5"),
+            ("ENTRY DEMO", "ENTRY_DEMO_DIIZINKAN"),
+        ]
+        stage_rank = {
+            "WAIT": -1,
+            "REVERSAL_WATCH": 0,
+            "REAKSI_TERLIHAT": 1,
+            "KONFIRMASI_M5": 2,
+            "ENTRY_DEMO_DIIZINKAN": 3,
+        }
+        current_rank = stage_rank.get(v278_stage, -1)
+        for idx, (label, code) in enumerate(stage_order):
+            marker = "AKTIF" if v278_stage == code else "SELESAI" if current_rank > idx else "MENUNGGU"
+            stage_cols[idx].metric(label, marker)
+
+        if v278_stage == "SETUP_INVALID":
+            st.error(f"SETUP INVALID • {v278_reason}")
+        elif v278_stage == "BREAK_RISK":
+            st.warning(
+                "BREAK RISK • "
+                + v278_reason.replace("_", " ")
+                + " • entry tidak dipromosikan dari statistik saja."
+            )
+        elif v278_stage == "MISSED_ENTRY_WAIT_NEXT_SETUP":
+            st.warning(
+                "MISSED ENTRY — WAIT NEXT SETUP • "
+                + v278_reason.replace("_", " ")
+                + " • scanner tidak memindahkan entry untuk mengejar harga."
+            )
+        elif v278_stage == "ENTRY_DEMO_DIIZINKAN":
+            st.success("ENTRY DEMO DIIZINKAN • tetap tunduk pada broker/risk/protection gate.")
+        elif v278_stage in {"REVERSAL_WATCH", "REAKSI_TERLIHAT", "KONFIRMASI_M5"}:
+            st.info(f"{v278_stage.replace('_', ' ')} • {v278_reason.replace('_', ' ')}")
+        else:
+            st.caption(f"V278 WAIT • {v278_reason.replace('_', ' ')}")
+
+        v278_depth = v278_forecast.get("current_depth")
+        v278_p_rev = v278_competing.get("p_reversal_first")
+        v278_p_break = v278_competing.get("p_break_first")
+        v278_n = v278_competing.get("at_risk")
+        risk_cols = st.columns(4)
+        risk_cols[0].metric(
+            "Depth source",
+            "—" if v278_depth is None else f"{100.0 * float(v278_depth):.1f}%",
+        )
+        risk_cols[1].metric(
+            "Ref reversal*",
+            "—" if v278_p_rev is None else f"{100.0 * float(v278_p_rev):.1f}%",
+        )
+        risk_cols[2].metric(
+            "Ref break*",
+            "—" if v278_p_break is None else f"{100.0 * float(v278_p_break):.1f}%",
+        )
+        risk_cols[3].metric("n at-risk*", "—" if v278_n is None else str(v278_n))
+        st.caption(
+            "* RISET OOS 2025–2026 FIRST-TOUCH, denominator = episode yang benar-benar "
+            "mencapai batas bawah band. Bukan probabilitas terkalibrasi kondisi live. "
+            f"Scope sekarang: {v278_forecast.get('prior_scope') or '—'}."
+        )
+
+        v278_candidate_pocket = dict(v278_micro.get("candidate_pocket") or {})
+        v278_refined_pocket = dict(v278_micro.get("refined_pocket") or {})
+        pocket_cols = st.columns(2)
+        pocket_cols[0].metric(
+            "M5 pocket",
+            (
+                f"{_fmt_price(v278_candidate_pocket.get('low'))}–"
+                f"{_fmt_price(v278_candidate_pocket.get('high'))}"
+                if v278_candidate_pocket
+                else "Belum ada"
+            ),
+        )
+        pocket_cols[1].metric(
+            "M5 refined pocket",
+            (
+                f"{_fmt_price(v278_refined_pocket.get('low'))}–"
+                f"{_fmt_price(v278_refined_pocket.get('high'))}"
+                if v278_refined_pocket
+                else "Belum terkonfirmasi"
+            ),
+        )
+        if bool(v278_break.get("active")):
+            st.caption(
+                "Break evidence: "
+                + ", ".join(str(x).replace("_", " ") for x in list(v278_break.get("reasons") or []))
+            )
+        if bool(v278_no_chase.get("active")):
+            st.caption(
+                "NO CHASE: "
+                + ", ".join(str(x).replace("_", " ") for x in list(v278_no_chase.get("reasons") or []))
+            )
 
         st.markdown("###### Apa yang harus dilakukan sekarang")
         act1, act2 = st.columns(2)
