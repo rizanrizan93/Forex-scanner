@@ -3019,7 +3019,8 @@ with forecast_tab:
                 "V229 memakai jalur khusus. Fresh mode = 4-CHILD 2+2 "
                 "(2 pre-touch LIMIT + 2 child konfirmasi); H4/H1 retest tetap eligible. "
                 "V266 menambahkan satu L1 DEMO calibration probe 0,01 lot dari M5 pocket aktual "
-                "dengan RR ≥1,00R dan depth ≤35%, sementara L3/L4 tetap jalur strict ≥1,50R. "
+                "dengan RR ≥1,00R dan Dynamic Depth recommended band + buffer 10% (hard cap 70%), "
+                "sementara L3/L4 tetap jalur strict ≥1,50R. "
                 "Tidak diteruskan ke generic MARKET handoff."
             )
 
@@ -3616,7 +3617,8 @@ with forecast_tab:
                 "**Belum ada order.** Window ini hanya menunjukkan area di dalam source H1/H4 "
                 "di mana entry M5 aktual masih berpotensi memenuhi terminal RR ≥1,50R. "
                 "Pada parent retest, L2 tetap OFF. L1 boleh dipakai sekali sebagai **DEMO calibration probe "
-                "0,01 lot** hanya dari M5 pocket aktual bila pressure valid, depth ≤35%, limit-side valid "
+                "0,01 lot** hanya dari M5 pocket aktual bila pressure valid, depth masih dalam "
+                "recommended band + buffer 10% (maksimum 70%), limit-side valid "
                 "dan opposing-zone RR ≥1,00R. L3/L4 tetap jalur strict: reclaim/MSS atau displacement "
                 "valid dan terminal RR ≥1,50R. TP/SL selalu dihitung dari struktur aktual."
             )
