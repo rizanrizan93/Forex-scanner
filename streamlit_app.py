@@ -3128,6 +3128,7 @@ with forecast_tab:
     v240_nearest_supply = dict(v240_decision.get("nearest_supply") or {})
     v240_reversal_watch = dict(v240_decision.get("primary_reversal_watch") or {})
     v240_hist = dict(v240_decision.get("historical_context") or {})
+    v240_hist_entry = dict(v240_decision.get("historical_research_entry") or {})
     v240_conflicts = list(v240_decision.get("conflicts") or [])
     v240_blocking_conflicts = list(
         v240_decision.get("blocking_conflicts") or []
@@ -3496,6 +3497,45 @@ with forecast_tab:
                 f"penetrasi child={_fmt_distance(dc_parent_rescue.get('child_penetration_atr'), ' ATR')}. "
                 "M5 candidate/refined tetap dipertahankan sebagai SHADOW/PREPARE; kondisi ini sendiri "
                 "tidak memberi execution authority."
+            )
+
+        st.markdown("###### Entry riset historis — BUKAN ORDER")
+        if v240_hist_entry:
+            hr1, hr2 = st.columns(2)
+            hr1.metric(
+                "Historical entry band",
+                (
+                    f"{_fmt_price(v240_hist_entry.get('low'))}–"
+                    f"{_fmt_price(v240_hist_entry.get('high'))}"
+                ),
+            )
+            hr2.metric(
+                "Historical reference",
+                _fmt_price(v240_hist_entry.get("reference")),
+            )
+            hist_ctx = dict(v240_hist_entry.get("historical_context") or {})
+            st.caption(
+                f"arah={v240_hist_entry.get('direction') or '—'} • "
+                f"TF={v240_hist_entry.get('source_timeframe') or '—'} • "
+                f"source={v240_hist_entry.get('source_layer') or '—'} • "
+                f"prior={v240_hist_entry.get('prior_scope') or '—'} • "
+                f"status={v240_hist_entry.get('display_status') or '—'}. "
+                f"Reaction evidence H4={_fmt_pct(hist_ctx.get('h4_parent_rate'))}, "
+                f"H1={_fmt_pct(hist_ctx.get('h1_standalone_rate'))}, "
+                f"M15={_fmt_pct(hist_ctx.get('m15_standalone_rate'))}. "
+                "Ini hasil pemetaan riset V225/V226 pada source V182 aktif; "
+                "bukan order broker dan bukan win rate trading."
+            )
+            if str(v240_hist_entry.get("prior_scope") or "").upper() != "FIRST_TOUCH_CALIBRATED":
+                st.info(
+                    "Zona sudah pernah disentuh/retest: historical entry dipakai sebagai "
+                    "geometry/prior context saja. DEMO tetap menunggu pressure + fresh M5 "
+                    "confirmation sebelum child order boleh dikirim."
+                )
+        else:
+            st.info(
+                "Historical research entry belum tersedia untuk source aktif. "
+                "Dashboard tidak menggunakan locator historis lama sebagai pengganti."
             )
 
         st.markdown("###### Entry → Dynamic Depth → Admission")

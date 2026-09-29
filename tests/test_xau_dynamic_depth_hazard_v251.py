@@ -188,3 +188,54 @@ def test_dynamic_depth_rejects_opposite_candidate_direction() -> None:
     assert result["reason"] == "V226_CANDIDATE_DIRECTION_MISMATCH"
     assert result["execution_ready"] is False
 
+
+
+def test_v261_dynamic_depth_uses_active_v182_local_source_profile() -> None:
+    bands = [
+        {"band": "00-20%", "lower_depth": 0.0, "upper_depth": 0.2, "hazard": 0.20, "wilson_lower_95": 0.15, "at_risk": 300},
+        {"band": "20-40%", "lower_depth": 0.2, "upper_depth": 0.4, "hazard": 0.25, "wilson_lower_95": 0.18, "at_risk": 240},
+        {"band": "40-60%", "lower_depth": 0.4, "upper_depth": 0.6, "hazard": 0.18, "wilson_lower_95": 0.12, "at_risk": 180},
+    ]
+    source = {
+        "zone_id": "current-h1-supply",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 100.0,
+        "high": 110.0,
+        "lifecycle": {"active": True, "touch_count": 3},
+    }
+    payload = {
+        "focus_direction": "SHORT",
+        "depth_entry_candidate": {
+            "direction": "SHORT",
+            "source_layer": "V182_ACTIVE_H1_HISTORICAL_HOTSPOT",
+            "source_timeframe": "H1",
+            "source_zone": source,
+            "source_profile": {"touches": 1200, "hazard_bands": bands},
+            "retest_confirmation_eligible": True,
+            "zone_reuse": {
+                "historical_prior_scope": "FIRST_TOUCH_PRIOR_GEOMETRY_ONLY",
+                "h1_touch_count": 3,
+            },
+        },
+        "short": {},
+    }
+
+    result = build_dynamic_depth_hazard(
+        v226_evaluation=payload,
+        direction="SHORT",
+        live_price=103.0,
+        pressure_transition={
+            "state": "BALANCED_ABSORPTION",
+            "hard_block": False,
+            "pre_touch_entry_allowed": False,
+            "confirmation_entry_allowed": True,
+        },
+    )
+
+    assert result["state"] == "DYNAMIC_DEPTH_HAZARD_AVAILABLE"
+    assert result["timeframe"] == "H1"
+    assert result["source_zone"]["zone_id"] == "current-h1-supply"
+    assert result["historical_prior_scope"] == "FIRST_TOUCH_PRIOR_GEOMETRY_ONLY"
+    assert result["retest_confirmation_required"] is True
+    assert result["execution_ready"] is True
