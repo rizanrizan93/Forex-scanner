@@ -16,6 +16,9 @@ def test_v240_dashboard_has_canonical_decision_map() -> None:
         "Supply terdekat",
         "M15 confirmation",
         "M5 timing",
+        "Entry riset historis — BUKAN ORDER",
+        "Historical entry band",
+        "Historical reference",
         "7 • Entry resmi",
         "7 • Zone watch (BUKAN ENTRY)",
         "8 • Dynamic Depth",
@@ -144,3 +147,10 @@ def test_v260_operational_cards_use_mobile_readable_layout() -> None:
     assert "l1, l2, l3, l4 = st.columns(4)" not in section
     assert "**Alasan keputusan saat ini:**" in section
     assert "Penetration detail:" in section
+
+
+def test_v261_historical_entry_is_visibly_non_operational() -> None:
+    assert "Entry riset historis — BUKAN ORDER" in SOURCE
+    assert "Ini hasil pemetaan riset V225/V226 pada source V182 aktif" in SOURCE
+    assert "bukan order broker dan bukan win rate trading" in SOURCE
+    assert "DEMO tetap menunggu pressure + fresh M5 confirmation" in SOURCE
