@@ -1,0 +1,34 @@
+{
+  "contract": "XAU_M30_ENTRY_POLICY_V278_EVIDENCE_1",
+  "source_research": "XAU_M30_DEEP_REJECTION_CALIBRATION_V277",
+  "source_main_sha": "c98a948df65118796bec8dce2498c7d7418f5c1d",
+  "source_workflow_run_id": 36591919644,
+  "history_closed_m15_bars": 99999,
+  "episodes": 8493,
+  "holdout_n": 2563,
+  "holdout_deep_touch_rate": 0.8482247366367538,
+  "holdout_deep_rejection_confirm_n": 1381,
+  "holdout_deep_rejection_confirm_rate_given_deep_touch": 0.6352345906163753,
+  "holdout_deep_rejection_hold_050_rate": 0.6451846488052136,
+  "holdout_near_edge_hold_050_same_confirmed_population": 0.7552498189717596,
+  "holdout_confirmation_minus_near_edge_delta": -0.11006517016654593,
+  "holdout_median_max_depth_confirmed": 0.8352745424292828,
+  "holdout_median_confirmation_depth": 0.2390745501285227,
+  "holdout_median_confirmation_retreat": 0.6521739130433983,
+  "holdout_median_confirmed_mfe_atr": 0.5770874389605836,
+  "holdout_median_confirmed_mae_atr": 0.5415858665342326,
+  "holdout_high_overlap": {
+    "n": 1593,
+    "deep_rejection_confirm_n": 875,
+    "deep_rejection_hold_050_rate": 0.6468571428571429,
+    "near_edge_hold_050_same_confirmed_population": 0.7737142857142857,
+    "delta": -0.12685714285714278
+  },
+  "policy_interpretation": {
+    "primary_demo_calibration_lane": "NEAR_EDGE_FIRST_TOUCH_L1",
+    "secondary_recovery_lane": "DEEP_REJECTION_IF_PRIMARY_MISSED",
+    "deep_rejection_primary_promotion": false,
+    "strict_l2_l3_l4_unchanged": true,
+    "note": "Historical reaction rates are research evidence, not calibrated live probabilities."
+  }
+}
