@@ -243,8 +243,20 @@ def test_v261_dynamic_depth_uses_active_v182_local_source_profile() -> None:
 
 def test_v269_probe_depth_is_separate_from_strict_execution_ready(monkeypatch) -> None:
     monkeypatch.setenv("CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH", "0.70")
+    payload = _v226()
+    payload["long"]["m15"]["standalone_profile_context"]["hazard_bands"] = [
+        {
+            "band": f"{i * 10:02d}-{(i + 1) * 10:02d}%",
+            "lower_depth": i / 10,
+            "upper_depth": (i + 1) / 10,
+            "hazard": 0.20 - i * 0.01,
+            "wilson_lower_95": 0.10,
+            "at_risk": 500 - i * 20,
+        }
+        for i in range(10)
+    ]
     result = build_dynamic_depth_hazard(
-        v226_evaluation=_v226(),
+        v226_evaluation=payload,
         direction="LONG",
         live_price=102.0,
         pressure_transition={
