@@ -211,3 +211,13 @@ def test_v266_dashboard_explains_probe_and_strict_execution_lanes() -> None:
     assert "Dynamic Depth recommended band + buffer 10% (hard cap 70%)" in SOURCE
     assert "L3/L4 tetap jalur strict ≥1,50R" in SOURCE
     assert "L2 tetap OFF" in SOURCE
+
+
+def test_v269_dashboard_separates_probe_no_chase_from_strict_confirmation() -> None:
+    assert "PROBE NO-CHASE" in SOURCE
+    assert "calibration_probe_depth_action" in SOURCE
+    assert "calibration_probe_depth_eligible" in SOURCE
+    assert "calibration_probe_depth_ceiling" in SOURCE
+    assert "Status probe terpisah dari strict L3/L4" in SOURCE
+    assert "strict masih wajib M5 reclaim/MSS" in SOURCE
+    assert "hard ceiling 70%" in SOURCE
