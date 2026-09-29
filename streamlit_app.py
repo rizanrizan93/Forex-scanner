@@ -3032,6 +3032,11 @@ with forecast_tab:
         or v240_decision.get("state")
         or "WAIT"
     )
+    v240_admission_label = dc_admission_label
+    v240_route_label = dc_route_label
+    if not dc_position_mode and not v240_entry_authorized:
+        v240_admission_label = "DATA STALE" if backend_snapshot_stale else "WAIT"
+        v240_route_label = "NO ORDER"
 
     st.markdown("### 2 • Zona Utama & Depth Entry")
     with st.container(border=True):
@@ -3137,7 +3142,7 @@ with forecast_tab:
             if dc_position_mode
             else "EXECUTION READY"
             if v240_entry_authorized
-            and dc_admission_label in {"V229 READY", "BROKER ELIGIBLE"}
+            and v240_admission_label in {"V229 READY", "BROKER ELIGIBLE"}
             and not backend_snapshot_stale
             else "WAIT • NO ORDER"
         )
@@ -3235,7 +3240,7 @@ with forecast_tab:
         )
         qe4.metric(
             "10 • Execution Admission",
-            f"{dc_admission_label} • {dc_route_label}",
+            f"{v240_admission_label} • {v240_route_label}",
         )
 
         st.markdown("###### Risk & target")
@@ -3350,7 +3355,9 @@ with forecast_tab:
         hz2.metric(
             "Next reversal band",
             (
-                "—"
+                "N/A — geometry only"
+                if str(v240_depth_hazard.get("state") or "") == "GEOMETRY_ONLY"
+                else "Belum tersedia"
                 if v240_depth_hazard.get("recommended_depth_low") is None
                 else (
                     f"{100.0 * float(v240_depth_hazard.get('recommended_depth_low')):.0f}–"
@@ -3361,7 +3368,9 @@ with forecast_tab:
         hz3.metric(
             "Harga band",
             (
-                "—"
+                "N/A — geometry only"
+                if str(v240_depth_hazard.get("state") or "") == "GEOMETRY_ONLY"
+                else "Belum tersedia"
                 if v240_depth_hazard.get("recommended_price_low") is None
                 else (
                     f"{_fmt_price(v240_depth_hazard.get('recommended_price_low'))}–"
@@ -3371,7 +3380,7 @@ with forecast_tab:
         )
         hz4.metric(
             "Hazard action",
-            str(v240_depth_hazard.get("action") or "WAIT"),
+            _human_wait_reason(v240_depth_hazard.get("action") or "WAIT"),
         )
         child_status_by_slot: dict[str, str] = {}
         for raw_child in list(v229_exec_plan.get("children") or []):
@@ -3406,13 +3415,19 @@ with forecast_tab:
                 f"base hazard={float(best_hazard.get('hazard') or 0.0):.1%} • "
                 f"adjusted={float(best_hazard.get('adjusted_hazard') or 0.0):.1%} • "
                 f"action={v240_depth_hazard.get('action','WAIT')}. "
-                "Jika pressure tetap kuat scanner menunggu band lebih dalam; jika fading/"
-                "absorption, band aktif dapat dipakai untuk timing entry."
+                "Band ini hanya berlaku pada V229/V226 geometry yang aligned; admission tetap wajib."
+            )
+        elif str(v240_depth_hazard.get("state") or "") == "GEOMETRY_ONLY":
+            st.info(
+                "Dynamic Depth **geometry-only** • "
+                f"lokasi={v240_depth_hazard.get('location_state','—')} • "
+                f"depth={v240_depth_text}. Tidak ada reversal/hazard band yang diproyeksikan "
+                "karena V226/V229 belum aligned dengan current V182 path. **NO ORDER authority.**"
             )
         else:
             st.warning(
-                "Dynamic Depth Hazard belum tersedia: "
-                + str(v240_depth_hazard.get("reason") or "missing current source zone/hazard prior")
+                "Dynamic Depth belum tersedia: "
+                + str(v240_depth_hazard.get("reason") or "missing current structural geometry")
             )
 
         hazard_future_rows = [
@@ -3440,8 +3455,11 @@ with forecast_tab:
             f"{v240_depth_hazard.get('historical_prior_scope','—')} • "
             f"retest confirmation required="
             f"{'YES' if v240_depth_hazard.get('retest_confirmation_required') else 'NO'}. "
-            "Pada H4/H1 retest, angka hazard first-touch dipakai sebagai geometry context, "
-            "bukan sebagai probabilitas reuse yang terkalibrasi."
+            + (
+                "Geometry-only berarti hanya posisi fisik harga terhadap zona; tidak ada klaim probabilitas reversal."
+                if str(v240_depth_hazard.get("state") or "") == "GEOMETRY_ONLY"
+                else "Hazard prior tetap tidak boleh dipakai sebagai probabilitas reuse atau izin order."
+            )
         )
 
         st.markdown("###### Supply/Demand Lifecycle — freshness bukan hard gate H4/H1")
