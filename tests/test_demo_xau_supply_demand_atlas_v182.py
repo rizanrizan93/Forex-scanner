@@ -10,6 +10,7 @@ from fx_scanner.demo_xau_supply_demand_atlas_v182 import (
     _correct_side,
     _detect_base_departure_zones,
     _research_score,
+    _promote_confirmed_opposing_leg_v257,
     _session_bucket_wib,
     _zone_lifecycle,
 )
@@ -155,3 +156,114 @@ def test_wib_session_bucket_marks_afic_observation_window():
     # 12:45 UTC == 19:45 WIB.
     ts = datetime(2026, 9, 23, 12, 45, tzinfo=UTC)
     assert _session_bucket_wib(ts) == "US_MACRO_WINDOW_1930_2029_WIB"
+
+
+def _handoff_fixture(*, refined: bool = True, parent_match: bool = True):
+    demand = {
+        "zone_id": "demand-h1",
+        "timeframe": "H1",
+        "direction": "LONG",
+        "low": 100.0,
+        "high": 110.0,
+        "lifecycle": {"active": True},
+    }
+    supply = {
+        "zone_id": "supply-h1",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 120.0,
+        "high": 130.0,
+        "lifecycle": {"active": True},
+    }
+    path_map = {
+        "active_path": {
+            "reaction_direction": "SHORT",
+            "source_zone": supply,
+            "terminal_target_zone": demand,
+        },
+        "supply_to_demand": {
+            "reaction_direction": "SHORT",
+            "source_zone": supply,
+            "terminal_target_zone": demand,
+        },
+        "demand_to_supply": {
+            "reaction_direction": "LONG",
+            "source_zone": demand,
+            "terminal_target_zone": supply,
+            "reaction_target": {"price": 118.0},
+        },
+    }
+    projection = {
+        "current_leg": {
+            "direction": "SHORT",
+            "source_zone": supply,
+            "micro_refinement": {
+                "state": "M5_REFINEMENT_CONFIRMED_SHADOW",
+                "displacement_at": "2026-09-29T01:00:00+00:00",
+            },
+        },
+        "next_leg": {
+            "direction": "LONG",
+            "source_zone": demand,
+            "parent_matches_current_terminal": parent_match,
+            "pocket_state": "REFINED_M5_POCKET" if refined else "CANDIDATE_M5_POCKET",
+            "micro_refinement": {
+                "state": (
+                    "M5_REFINEMENT_CONFIRMED_SHADOW"
+                    if refined
+                    else "M5_RECLAIM_WAIT_MSS"
+                ),
+                "displacement_at": (
+                    "2026-09-29T02:00:00+00:00"
+                    if refined
+                    else None
+                ),
+            },
+        },
+    }
+    return path_map, projection
+
+
+def test_v257_promotes_newer_causal_refined_opposing_leg() -> None:
+    path_map, projection = _handoff_fixture()
+    updated, handoff = _promote_confirmed_opposing_leg_v257(path_map, projection)
+
+    assert handoff["promoted"] is True
+    assert handoff["state"] == "PROMOTED_CONFIRMED_OPPOSING_LEG"
+    assert handoff["from_direction"] == "SHORT"
+    assert handoff["to_direction"] == "LONG"
+    assert updated["active_path"]["reaction_direction"] == "LONG"
+    assert updated["active_path"]["source_zone"]["zone_id"] == "demand-h1"
+    assert updated["active_path"]["state"] == "CONFIRMED_OPPOSING_LEG_HANDOFF"
+    assert handoff["execution_authority"] is False
+    assert handoff["execution_influence"] is False
+
+
+def test_v257_does_not_promote_candidate_only_next_leg() -> None:
+    path_map, projection = _handoff_fixture(refined=False)
+    updated, handoff = _promote_confirmed_opposing_leg_v257(path_map, projection)
+
+    assert handoff["promoted"] is False
+    assert handoff["state"] == "WAIT_NEXT_REFINED_M5"
+    assert updated["active_path"]["reaction_direction"] == "SHORT"
+
+
+def test_v257_requires_next_source_to_match_current_terminal() -> None:
+    path_map, projection = _handoff_fixture(parent_match=False)
+    updated, handoff = _promote_confirmed_opposing_leg_v257(path_map, projection)
+
+    assert handoff["promoted"] is False
+    assert handoff["state"] == "NEXT_SOURCE_NOT_CURRENT_TERMINAL"
+    assert updated["active_path"]["reaction_direction"] == "SHORT"
+
+
+def test_v257_rejects_older_next_leg_confirmation() -> None:
+    path_map, projection = _handoff_fixture()
+    projection["next_leg"]["micro_refinement"]["displacement_at"] = (
+        "2026-09-29T00:30:00+00:00"
+    )
+    updated, handoff = _promote_confirmed_opposing_leg_v257(path_map, projection)
+
+    assert handoff["promoted"] is False
+    assert handoff["state"] == "NEXT_CONFIRMATION_NOT_NEWER"
+    assert updated["active_path"]["reaction_direction"] == "SHORT"
