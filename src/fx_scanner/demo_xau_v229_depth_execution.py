@@ -730,8 +730,6 @@ def run() -> int:
                         "WAIT_DYNAMIC_DEPTH_HAZARD:"
                         + str(depth_hazard.get("action") or "WAIT")
                     )
-                elif bool(reversal_stage.get("hard_execution_block")):
-                    pass
                 else:
                     plan["calibration_only_armed"] = bool(fresh_calibration_arm)
                     plan["pressure_transition"] = dict(pressure_transition)
