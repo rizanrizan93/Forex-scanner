@@ -391,12 +391,23 @@ def run() -> int:
             dom_heartbeat=dom_hb,
             now=now,
         )
-        depth_hazard = build_dynamic_depth_hazard(
-            v226_evaluation=v226_eval,
-            direction=direction,
-            live_price=live_price,
-            pressure_transition=pressure_transition,
-        )
+        if current_plan is None:
+            # The parent geometry is no longer canonical. Keep telemetry
+            # fail-closed too, so a stale V226 hazard cannot look live in
+            # diagnostics after the V182 local-remap rule retired the plan.
+            depth_hazard = {
+                "state": "UNAVAILABLE",
+                "reason": "NO_CURRENT_ALIGNED_V229_PLAN",
+                "action": "WAIT_STRUCTURE_REMAP",
+                "execution_ready": False,
+            }
+        else:
+            depth_hazard = build_dynamic_depth_hazard(
+                v226_evaluation=v226_eval,
+                direction=direction,
+                live_price=live_price,
+                pressure_transition=pressure_transition,
+            )
 
         for parent in parents:
             parent_signal_id = str(parent.get("signal_key") or "")
