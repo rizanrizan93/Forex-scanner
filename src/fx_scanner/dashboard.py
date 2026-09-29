@@ -642,10 +642,14 @@ class SupabaseDashboardReader:
                 "zone_lifecycle",
                 "blueprint_block_reason",
             )
+            # Operational projection fields are authoritative for the current
+            # heartbeat even when their value is NULL. Preserving explicit NULLs
+            # is critical: otherwise merge_runtime_heartbeat_rows would retain an
+            # older cached live_price/zone/distance and make a fresh heartbeat look
+            # current while displaying stale market state.
             details = {
-                key: raw.pop(key)
+                key: raw.pop(key, None)
                 for key in detail_fields
-                if raw.get(key) is not None
             }
             raw["details"] = details
             return raw
