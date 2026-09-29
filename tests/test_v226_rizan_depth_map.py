@@ -7,6 +7,7 @@ from fx_scanner.demo_xau_v226_rizan_depth_map import (
     _depth_entry_candidate,
     _four_order_depth_ladder,
     _historical_profile,
+    _intersect_price_geometry,
     _nested_locator,
     _projected_m5_watch_pocket,
     _reversal_heatmap,
@@ -859,3 +860,33 @@ def test_v266_build_map_exposes_heatmap_and_projected_m5_watch() -> None:
         <= float(watch["high"])
         <= float(result["depth_entry_candidate"]["entry_high"])
     )
+
+
+def test_v268_projected_m5_rejects_stale_locator_outside_active_candidate() -> None:
+    stale = _intersect_price_geometry(
+        {"low": 4357.64, "high": 4359.52},
+        {"low": 4136.55, "high": 4138.943},
+    )
+    assert stale == {}
+
+
+def test_v268_projected_m5_clips_valid_locator_to_active_candidate() -> None:
+    clipped = _intersect_price_geometry(
+        {"low": 4135.0, "high": 4138.0},
+        {"low": 4136.55, "high": 4138.943},
+    )
+    assert clipped["low"] == 4136.55
+    assert clipped["high"] == 4138.0
+    assert clipped["clipped_to_active_candidate"] is True
+
+
+def test_v268_projection_path_falls_back_to_focus_candidate_when_legacy_locator_is_stale() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v226_rizan_depth_map.py"
+    ).read_text()
+    assert "_intersect_price_geometry(" in source
+    assert "clipped_m15_envelope" in source
+    assert "clipped_h1_envelope" in source
+    assert '"FOCUS_DEPTH_CANDIDATE"' in source
+    assert '"projected_m5_legacy_locator_rejected"' in source
