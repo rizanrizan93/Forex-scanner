@@ -2894,8 +2894,19 @@ with forecast_tab:
         qs1.metric("1 • Arah / Kondisi", f"{v240_direction} • {state}")
         qs2.metric("2 • Harga XAU sekarang", _fmt_price(dc_reference_price))
         qs3, qs4 = st.columns(2)
-        qs3.metric("3 • H4 Supply/Demand", _quick_zone_text(v240_h4_quick))
-        qs4.metric("4 • H1 Supply/Demand", _quick_zone_text(v240_h1_quick))
+        v240_h4_label = (
+            "3 • H4 Parent / HTF Context"
+            if v240_remap
+            else "3 • H4 Supply/Demand"
+        )
+        v240_h1_label = (
+            "4 • H1 Local Supply/Demand"
+            if v240_remap
+            and str(v240_local_structure.get("timeframe") or "").upper() == "H1"
+            else "4 • H1 Supply/Demand"
+        )
+        qs3.metric(v240_h4_label, _quick_zone_text(v240_h4_quick))
+        qs4.metric(v240_h1_label, _quick_zone_text(v240_h1_quick))
         qs5, qs6 = st.columns(2)
         qs5.metric("5 • M15 confirmation / retest", f"{dc_m15_direction} • {dc_m15_state}")
         qs6.metric("6 • M5 timing", f"{v240_m5_state_quick} • {v240_m5_price_quick}")
@@ -2983,8 +2994,9 @@ with forecast_tab:
             st.warning(
                 "Local structure lebih dekat telah muncul dan berada di antara harga sekarang "
                 "dengan locator V226 lama. V240 menampilkan zona lokal sebagai **watch/remap**, "
-                "bukan sebagai order-ready entry. V229 tetap fail-closed sampai hierarchy "
-                "H4→H1→M15 membentuk candidate baru yang konsisten."
+                "bukan sebagai order-ready entry. H4 yang masih terlihat pada kartu di atas "
+                "adalah **parent/HTF context**, bukan supply operasional terdekat. V229 tetap "
+                "fail-closed sampai hierarchy H4→H1→M15 membentuk candidate baru yang konsisten."
             )
 
         st.markdown("###### Buyer / Seller Pressure — timing masuk zona")
