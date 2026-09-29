@@ -333,6 +333,104 @@ def _calibration_rejection_retest_entry(
     )
 
 
+def _source_depth_boundary_price(
+    *,
+    atlas_evaluation: dict[str, Any],
+    direction: str,
+    depth: float,
+) -> float | None:
+    """Map normalized source-zone depth back to price.
+
+    SHORT supply depth grows from proximal low -> distal high.
+    LONG demand depth grows from proximal high -> distal low.
+    """
+    path_map = dict(atlas_evaluation.get("path_map") or {})
+    active_path = dict(path_map.get("active_path") or {})
+    source = dict(active_path.get("source_zone") or {})
+    if not source:
+        projection = dict(atlas_evaluation.get("m5_path_projection") or {})
+        current_leg = dict(projection.get("current_leg") or {})
+        source = dict(current_leg.get("source_zone") or {})
+    side = str(direction or "").upper()
+    if str(source.get("direction") or "").upper() != side:
+        return None
+    low = _f(source.get("low"))
+    high = _f(source.get("high"))
+    if low is None or high is None or high <= low:
+        return None
+    d = min(1.0, max(0.0, float(depth)))
+    width = float(high) - float(low)
+    if side == "SHORT":
+        return float(low) + width * d
+    if side == "LONG":
+        return float(high) - width * d
+    return None
+
+
+def _calibration_rejection_exit_stop_entry(
+    *,
+    direction: str,
+    micro: dict[str, Any],
+    atlas_evaluation: dict[str, Any],
+    max_depth: float,
+    now: datetime,
+    max_age_seconds: float,
+) -> tuple[float | None, str]:
+    """Stage a DEMO-only STOP at the no-chase boundary after a deep M5 rejection.
+
+    The real M5 pocket must first reject in the intended reversal direction.
+    Unlike the LIMIT retest path, current live depth may still be beyond the
+    no-chase ceiling; the STOP waits at the ceiling and only triggers once price
+    actually exits the deep zone.
+    """
+    side = str(direction or "").upper()
+    if str(micro.get("direction") or "").upper() != side:
+        return None, "PROBE_EXIT_STOP_M5_DIRECTION_MISMATCH"
+    refined = dict(micro.get("refined_entry_pocket") or {})
+    candidate = dict(micro.get("candidate_entry_pocket") or {})
+    pocket = refined or candidate
+    if not pocket:
+        return None, "PROBE_EXIT_STOP_WAIT_M5_POCKET"
+    low = _f(pocket.get("low"))
+    high = _f(pocket.get("high"))
+    last_close = _f(micro.get("last_closed_m5_price"))
+    if low is None or high is None or last_close is None or high <= low:
+        return None, "PROBE_EXIT_STOP_INVALID_M5_GEOMETRY"
+    if side == "SHORT":
+        rejected = float(last_close) < float(low)
+    elif side == "LONG":
+        rejected = float(last_close) > float(high)
+    else:
+        return None, "PROBE_EXIT_STOP_INVALID_DIRECTION"
+    if not rejected:
+        return None, "PROBE_EXIT_STOP_WAIT_CLOSED_M5_REJECTION"
+
+    sweep = dict(micro.get("sweep") or {})
+    origin_at = _dt(
+        pocket.get("origin_at")
+        or sweep.get("at")
+        or micro.get("first_eligible_touch_at")
+    )
+    if origin_at is None:
+        return None, "PROBE_EXIT_STOP_M5_TIME_MISSING"
+    age_seconds = (now - origin_at).total_seconds()
+    if age_seconds < 0 or age_seconds > float(max_age_seconds):
+        return None, "PROBE_EXIT_STOP_M5_TOO_OLD"
+
+    entry = _source_depth_boundary_price(
+        atlas_evaluation=atlas_evaluation,
+        direction=side,
+        depth=float(max_depth),
+    )
+    if entry is None:
+        return None, "PROBE_EXIT_STOP_SOURCE_DEPTH_UNAVAILABLE"
+    return float(entry), (
+        "M5_REFINED_DEEP_REJECTION_EXIT_STOP"
+        if refined
+        else "M5_CANDIDATE_DEEP_REJECTION_EXIT_STOP"
+    )
+
+
 def _composite_calibration_pressure_allowed(
     *,
     direction: str,
@@ -412,6 +510,24 @@ def _limit_side_valid(direction: str, entry: float, *, bid: float, ask: float) -
     if direction == "LONG":
         return entry < ask
     return entry > bid
+
+
+def _pending_side_valid(
+    direction: str,
+    order_type: OrderType,
+    entry: float,
+    *,
+    bid: float,
+    ask: float,
+) -> bool:
+    if order_type == OrderType.LIMIT:
+        return _limit_side_valid(direction, entry, bid=bid, ask=ask)
+    if order_type == OrderType.STOP:
+        if direction == "LONG":
+            return entry > ask
+        if direction == "SHORT":
+            return entry < bid
+    return False
 
 
 def _slot_target(
@@ -508,6 +624,7 @@ def _submit_child(
     now: datetime,
     calibration_only: bool = False,
     minimum_rr: float | None = None,
+    order_type: OrderType = OrderType.LIMIT,
 ) -> tuple[bool, str]:
     slot = int(child["slot"])
     child_id = child_client_order_id(str(plan["plan_id"]), slot)
@@ -517,7 +634,7 @@ def _submit_child(
         signal_id=child_id,
         symbol=SYMBOL,
         side=side,
-        order_type=OrderType.LIMIT,
+        order_type=order_type,
         created_at=now,
         volume=CHILD_LOT,
         entry_price=float(entry),
@@ -545,6 +662,7 @@ def _submit_child(
                 "tp": target,
                 "calibration_only": bool(calibration_only),
                 "minimum_rr": minimum_rr,
+                "order_type": order_type.value,
             },
         )
         return False, f"L{slot}:{type(exc).__name__}:{exc}"
@@ -565,6 +683,7 @@ def _submit_child(
             "lot": CHILD_LOT,
             "calibration_only": bool(calibration_only),
             "minimum_rr": minimum_rr,
+            "order_type": order_type.value,
         },
     )
     return bool(receipt.accepted), f"L{slot}:{'ACCEPTED' if receipt.accepted else 'REJECTED'}"
@@ -881,6 +1000,7 @@ def run() -> int:
                     )
                     continue
 
+                child_order_type = OrderType.LIMIT
                 if calibration_probe:
                     entry, activation = _calibration_probe_entry(
                         direction=str(plan["direction"]),
@@ -946,28 +1066,66 @@ def run() -> int:
                                 price=float(fallback_entry),
                             )
                         )
-                        if (
-                            fallback_entry is None
-                            or fallback_depth is None
-                            or float(fallback_depth) > effective_probe_max_depth + 1e-9
-                            or (
-                                min_depth is not None
-                                and float(fallback_depth) + 1e-9 < float(min_depth)
+                        limit_fallback_eligible = bool(
+                            fallback_entry is not None
+                            and fallback_depth is not None
+                            and float(fallback_depth)
+                            <= effective_probe_max_depth + 1e-9
+                            and (
+                                min_depth is None
+                                or float(fallback_depth) + 1e-9 >= float(min_depth)
                             )
-                        ):
-                            actions.append(
-                                f"{parent_signal_id}:L{slot}:PROBE_DEPTH_TOO_DEEP:"
-                                f"child_depth={child_depth:.3f}:max={effective_probe_max_depth:.3f}:"
-                                f"fallback={fallback_activation}"
-                            )
-                            continue
-                        entry = float(fallback_entry)
-                        child_depth = float(fallback_depth)
-                        activation = fallback_activation
-                        actions.append(
-                            f"{parent_signal_id}:L{slot}:PROBE_REJECTION_RETEST_ARMED:"
-                            f"entry={entry:.3f}:depth={child_depth:.3f}"
                         )
+                        if limit_fallback_eligible:
+                            entry = float(fallback_entry)
+                            child_depth = float(fallback_depth)
+                            activation = fallback_activation
+                            child_order_type = OrderType.LIMIT
+                            actions.append(
+                                f"{parent_signal_id}:L{slot}:PROBE_REJECTION_RETEST_ARMED:"
+                                f"entry={entry:.3f}:depth={child_depth:.3f}"
+                            )
+                        else:
+                            exit_entry, exit_activation = (
+                                _calibration_rejection_exit_stop_entry(
+                                    direction=str(plan["direction"]),
+                                    micro=micro,
+                                    atlas_evaluation=atlas_eval,
+                                    max_depth=effective_probe_max_depth,
+                                    now=datetime.now(UTC),
+                                    max_age_seconds=calibration_rejection_max_age_seconds,
+                                )
+                            )
+                            exit_depth = (
+                                None
+                                if exit_entry is None
+                                else child_reference_depth(
+                                    v226_evaluation=v226_eval,
+                                    direction=str(plan["direction"]),
+                                    price=float(exit_entry),
+                                )
+                            )
+                            if (
+                                exit_entry is None
+                                or exit_depth is None
+                                or float(exit_depth)
+                                > effective_probe_max_depth + 1e-9
+                            ):
+                                actions.append(
+                                    f"{parent_signal_id}:L{slot}:PROBE_DEPTH_TOO_DEEP:"
+                                    f"child_depth={child_depth:.3f}:max={effective_probe_max_depth:.3f}:"
+                                    f"limit_fallback={fallback_activation}:"
+                                    f"exit_stop={exit_activation}"
+                                )
+                                continue
+                            entry = float(exit_entry)
+                            child_depth = float(exit_depth)
+                            activation = exit_activation
+                            child_order_type = OrderType.STOP
+                            actions.append(
+                                f"{parent_signal_id}:L{slot}:PROBE_DEEP_REJECTION_EXIT_STOP_ARMED:"
+                                f"entry={entry:.3f}:depth={child_depth:.3f}"
+                            )
                     if calibration_probe and not _entry_inside_active_source(
                         direction=str(plan["direction"]),
                         entry=float(entry),
@@ -987,13 +1145,16 @@ def run() -> int:
                     actions.append(f"{parent_signal_id}:STRUCTURE_BLOCK_OR_EXPIRED")
                     actions.extend(_cancel_pending_plan(session, plan, session.reconcile()))
                     break
-                if not _limit_side_valid(
+                if not _pending_side_valid(
                     str(plan["direction"]),
+                    child_order_type,
                     float(entry),
                     bid=float(quote.bid),
                     ask=float(quote.ask),
                 ):
-                    actions.append(f"{parent_signal_id}:L{slot}:WAIT_RETEST_LIMIT_SIDE")
+                    actions.append(
+                        f"{parent_signal_id}:L{slot}:WAIT_{child_order_type.value}_SIDE"
+                    )
                     continue
                 if calibration_probe:
                     target, structural = _target_with_min_rr(
@@ -1063,6 +1224,7 @@ def run() -> int:
                         if calibration_probe
                         else MIN_TERMINAL_RR
                     ),
+                    order_type=child_order_type,
                 )
                 actions.append(f"{parent_signal_id}:{detail}")
                 if accepted:
@@ -1104,6 +1266,8 @@ def run() -> int:
             "calibration_rejection_max_age_seconds": (
                 calibration_rejection_max_age_seconds
             ),
+            "calibration_probe_exit_stop_enabled": True,
+            "calibration_probe_exit_stop_boundary": "NO_CHASE_MAX_DEPTH",
             "calibration_probe_policy": (
                 "ONE_L1_REAL_M5_POCKET_OR_POST_REJECTION_RETEST_PROBE_PER_"
                 "ARMED_RETEST_PARENT_DYNAMIC_DEPTH_PLUS_10PCT_CAPPED_DEMO_ONLY"
