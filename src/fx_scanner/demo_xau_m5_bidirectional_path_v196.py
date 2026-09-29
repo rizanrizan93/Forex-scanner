@@ -275,6 +275,19 @@ def evaluate_bidirectional_m5_path(
             current_eval_path.get("parent_source_zone") or {}
         )
 
+    # A next-leg pocket must be caused by a fresh interaction that occurs after
+    # the current leg actually activates. Without this causal boundary, an old
+    # touch of the future opposing zone can be recycled as a "refined" pocket
+    # while price is still completing the current leg.
+    current_source_lifecycle = dict(
+        dict(current_leg.get("source_zone") or {}).get("lifecycle") or {}
+    )
+    current_leg_activation_at = (
+        current_micro.get("first_eligible_touch_at")
+        or current_source_lifecycle.get("first_touch_at")
+        or ensure_utc(as_of).isoformat()
+    )
+
     next_direction = "SHORT" if direction == "LONG" else "LONG"
     next_path_key = "supply_to_demand" if next_direction == "SHORT" else "demand_to_supply"
     reverse_template = dict(path_map.get(next_path_key) or {})
@@ -310,6 +323,7 @@ def evaluate_bidirectional_m5_path(
             m5_bars,
             path_map={"active_path": next_path},
             as_of=as_of,
+            not_before=current_leg_activation_at,
         )
         next_leg = _leg_payload(
             direction=next_direction,
@@ -356,6 +370,7 @@ def evaluate_bidirectional_m5_path(
             "is latched across an overlapping H4/D1 parent handoff until current M5 evidence "
             "invalidates it. The next opposing leg is anchored "
             "to the current terminal opposing zone and prefers an active nested H1 precision "
-            "source. It is only called an M5 pocket after fresh M5 evidence exists."
+            "source. Next-leg M5 evidence must occur after the current leg activation, so "
+            "historical touches cannot be recycled as a fresh pocket."
         ),
     }
