@@ -259,13 +259,28 @@ def _write_signal(
         data_contract_version=DATA_CONTRACT,
         started_at=observed_at,
     )
+    confirmation_window_only = bool(plan.get("confirmation_window_only"))
+    signal_entry_low = (
+        _f(plan.get("confirmation_entry_low"))
+        if confirmation_window_only
+        else _f(plan.get("entry_low"))
+    )
+    signal_entry_high = (
+        _f(plan.get("confirmation_entry_high"))
+        if confirmation_window_only
+        else _f(plan.get("entry_high"))
+    )
+    if signal_entry_low is None or signal_entry_high is None:
+        raise RuntimeError("RIZAN_DEPTH_SIGNAL_ENTRY_WINDOW_MISSING")
     row = {
         "run_id": run_id,
         "observed_at": observed_at.isoformat(),
         "symbol": SYMBOL,
         "direction": plan["direction"],
         "setup_type": (
-            "RIZAN_DEPTH_RETEST_CONFIRMATION"
+            "RIZAN_DEPTH_RETEST_CONFIRMATION_WINDOW"
+            if confirmation_window_only
+            else "RIZAN_DEPTH_RETEST_CONFIRMATION"
             if str(plan.get("execution_phase") or "") == "RETEST_CONFIRMATION"
             else "RIZAN_DEPTH_FIRST_TOUCH_CONFIRMATION"
             if str(plan.get("execution_phase") or "") == "FIRST_TOUCH_CONFIRMATION"
@@ -275,8 +290,8 @@ def _write_signal(
         "pair_score": SCORE,
         "execution_score": SCORE,
         "final_score": SCORE,
-        "entry_low": float(plan["entry_low"]),
-        "entry_high": float(plan["entry_high"]),
+        "entry_low": float(signal_entry_low),
+        "entry_high": float(signal_entry_high),
         "sl": float(plan["sl"]),
         "tp1": float(plan["tp1"]),
         "tp2": float(plan["tp2"]),
@@ -287,7 +302,14 @@ def _write_signal(
         "macro_bias": plan["direction"],
         "h4_bias": plan["direction"],
         "h1_bias": plan["direction"],
-        "active_guards": [],
+        "active_guards": (
+            [
+                "M5_ACTUAL_ENTRY_REQUIRED",
+                "TERMINAL_RR_RECHECK_1_50R",
+            ]
+            if confirmation_window_only
+            else []
+        ),
         "data_coverage": 1.0,
         "expires_at": (
             observed_at + timedelta(seconds=SIGNAL_TTL_SECONDS)
@@ -335,7 +357,12 @@ def _record_execution_geometry(
         event_type=EVENT_TYPE,
         accepted=True,
         code=STRATEGY_ID,
-        message="user-authorized aligned V182/V226 depth candidate promoted to cTrader DEMO execution",
+        message=(
+            "RIZAN retest confirmation window armed; broker order remains gated by "
+            "actual M5 entry and terminal RR recheck"
+            if bool(plan.get("confirmation_window_only"))
+            else "user-authorized aligned V182/V226 depth candidate promoted to cTrader DEMO execution"
+        ),
         payload={
             "signal_id": signal_id,
             "candidate_key": candidate_key,
@@ -349,6 +376,18 @@ def _record_execution_geometry(
             "planned_sl": plan["sl"],
             "planned_tp1": plan["tp1"],
             "planned_tp2": plan["tp2"],
+            "historical_entry_low": plan.get("historical_entry_low"),
+            "historical_entry_high": plan.get("historical_entry_high"),
+            "confirmation_window_only": bool(plan.get("confirmation_window_only")),
+            "confirmation_entry_low": plan.get("confirmation_entry_low"),
+            "confirmation_entry_high": plan.get("confirmation_entry_high"),
+            "confirmation_entry_reference": plan.get("confirmation_entry_reference"),
+            "confirmation_rr_threshold": plan.get("confirmation_rr_threshold"),
+            "reference_terminal_target": plan.get("reference_terminal_target"),
+            "terminal_rr_recheck_required": bool(
+                plan.get("terminal_rr_recheck_required")
+            ),
+            "broker_entry_authorized": bool(plan.get("broker_entry_authorized", True)),
             "rr1": plan["rr1"],
             "rr2": plan["rr2"],
             "source_layer": plan["source_layer"],
@@ -493,7 +532,11 @@ def run() -> int:
                         current_key=candidate_key,
                     )
                     if _already_recorded(store, candidate_key, now=now):
-                        reason = "CANDIDATE_ALREADY_EMITTED"
+                        reason = (
+                            "CONFIRMATION_WINDOW_ARMED"
+                            if bool(plan.get("confirmation_window_only"))
+                            else "CANDIDATE_ALREADY_EMITTED"
+                        )
                     else:
                         signal_id = _write_signal(
                             store,
@@ -506,7 +549,11 @@ def run() -> int:
                             candidate_key=candidate_key,
                             plan=plan,
                         )
-                        reason = "EXECUTION_READY_EMITTED"
+                        reason = (
+                            "CONFIRMATION_WINDOW_ARMED"
+                            if bool(plan.get("confirmation_window_only"))
+                            else "EXECUTION_READY_EMITTED"
+                        )
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"
     finally:

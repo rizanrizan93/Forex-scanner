@@ -3112,6 +3112,12 @@ with forecast_tab:
     ).upper()
     v240_authority = str(v240_decision.get("authority") or "")
     v240_entry_authorized = bool(v240_decision.get("entry_authorized"))
+    v240_confirmation_window_armed = bool(
+        v240_decision.get("confirmation_window_armed")
+    )
+    v240_confirmation_window = dict(
+        v240_decision.get("confirmation_entry_window") or {}
+    )
     v240_entry_zone = {
         "entry_low": v240_decision.get("entry_low"),
         "entry_high": v240_decision.get("entry_high"),
@@ -3272,7 +3278,9 @@ with forecast_tab:
             mapping = {
                 "WAIT_STRUCTURALLY_ACTIVE_DEPTH_CANDIDATE": "Plan V229 belum terbentuk — cek struktur/RR",
                 "WAIT_TERMINAL_RR_BELOW_MINIMUM": "RR terminal struktural < 1,50R — NO ORDER",
+                "WAIT_NO_RR_ELIGIBLE_CONFIRMATION_WINDOW": "Tidak ada area M5 dalam source zone yang bisa mencapai 1,50R — NO ORDER",
                 "WAIT_NO_FORWARD_STRUCTURAL_TARGET": "Belum ada target struktural forward — NO ORDER",
+                "CONFIRMATION_WINDOW_ARMED": "M5 confirmation window aktif — tunggu entry aktual + RR ≥1,50R",
                 "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_ZONE": "Menunggu harga masuk zona aktif",
                 "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_PRESSURE": "Menunggu tekanan DOM membaik",
                 "WAIT_DYNAMIC_DEPTH_HAZARD:WAIT_M5_CONFIRM": "Menunggu konfirmasi M5",
@@ -3554,10 +3562,36 @@ with forecast_tab:
                 "Scanner sengaja fail-closed; historical entry tetap ditampilkan sebagai riset, "
                 "bukan dipaksa menjadi order."
             )
+        elif str(v240_gate_reason).upper() == "WAIT_NO_RR_ELIGIBLE_CONFIRMATION_WINDOW":
+            st.warning(
+                "**DEMO belum boleh entry:** source zone aktif tidak memiliki area entry M5 "
+                "yang dapat mencapai terminal RR minimum 1,50R dengan SL struktural saat ini."
+            )
         elif str(v240_gate_reason).upper() == "WAIT_NO_FORWARD_STRUCTURAL_TARGET":
             st.warning(
                 "**DEMO belum boleh entry:** belum ada opposing Supply/Demand forward "
                 "yang dapat menjadi target struktural broker."
+            )
+
+        if v240_confirmation_window_armed and v240_confirmation_window:
+            cw1, cw2 = st.columns(2)
+            cw1.metric(
+                "RR-eligible M5 confirmation window",
+                (
+                    f"{_fmt_price(v240_confirmation_window.get('low'))}–"
+                    f"{_fmt_price(v240_confirmation_window.get('high'))}"
+                ),
+            )
+            cw2.metric(
+                "RR threshold entry",
+                _fmt_price(v240_confirmation_window.get("threshold")),
+            )
+            st.info(
+                "**Belum ada order.** Window ini hanya menunjukkan area di dalam source H1/H4 "
+                "di mana entry M5 aktual masih berpotensi memenuhi terminal RR ≥1,50R. "
+                "L1/L2 tetap OFF. L3/L4 baru boleh submit setelah M5 reclaim/MSS atau "
+                "displacement valid, pressure mengizinkan, limit-side valid, lalu TP dan RR "
+                "dihitung ulang dari harga entry aktual."
             )
 
         st.markdown("###### Entry → Dynamic Depth → Admission")

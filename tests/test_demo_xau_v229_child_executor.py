@@ -8,6 +8,7 @@ from fx_scanner.demo_xau_v229_child_executor import (
     _cancel_pending_plan,
     _existing_slots,
     _limit_side_valid,
+    _slot_target,
 )
 from fx_scanner.demo_xau_v229_ladder_plan import child_client_order_id
 
@@ -122,3 +123,40 @@ def test_v229_child_executor_requires_pressure_transition_and_demo_lane_refresh(
     assert "execution_enabled" in source
     assert "demo_xau_dom_v191" in workflow
     assert "steps.refresh_xau_pressure.outcome == 'success'" in workflow
+
+
+def test_v263_child_rechecks_terminal_rr_from_actual_m5_entry() -> None:
+    demand = {
+        "zone_id": "target-demand",
+        "timeframe": "H1",
+        "direction": "LONG",
+        "low": 95.0,
+        "high": 98.0,
+        "status": "ACTIVE",
+        "lifecycle": {"active": True},
+    }
+    atlas = {
+        "chart_bars_m15": [],
+        "zones": [demand],
+        "path_map": {"supply_to_demand": {"destination_stack": [demand]}},
+    }
+    too_shallow, shallow_plan = _slot_target(
+        slot=3,
+        direction="SHORT",
+        entry=103.0,
+        stop=121.5,
+        atlas_evaluation=atlas,
+    )
+    assert too_shallow is None
+    assert shallow_plan["terminal_rr_eligible"] is False
+
+    deep_enough, deep_plan = _slot_target(
+        slot=3,
+        direction="SHORT",
+        entry=115.0,
+        stop=121.5,
+        atlas_evaluation=atlas,
+    )
+    assert deep_enough is not None
+    assert deep_plan["terminal_rr_eligible"] is True
+    assert deep_plan["terminal_structural_target"]["rr"] >= 1.5

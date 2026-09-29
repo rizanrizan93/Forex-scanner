@@ -466,6 +466,15 @@ def build_canonical_xau_decision(
         else None
     )
 
+    confirmation_window_only = bool(
+        current_plan and current_plan.get("confirmation_window_only")
+    )
+    confirmation_window = (
+        dict(current_plan.get("confirmation_entry_window") or {})
+        if current_plan
+        else {}
+    )
+
     saved_geometry = dict(saved_v229_geometry or {})
     saved_match = bool(
         current_plan and _saved_geometry_matches(saved_geometry, current_plan)
@@ -488,16 +497,32 @@ def build_canonical_xau_decision(
 
     if current_plan:
         direction = str(current_plan.get("direction") or direction).upper()
-        entry_low = _f(current_plan.get("entry_low"))
-        entry_high = _f(current_plan.get("entry_high"))
-        entry_reference = _f(current_plan.get("entry"))
+        entry_low = (
+            _f(current_plan.get("confirmation_entry_low"))
+            if confirmation_window_only
+            else _f(current_plan.get("entry_low"))
+        )
+        entry_high = (
+            _f(current_plan.get("confirmation_entry_high"))
+            if confirmation_window_only
+            else _f(current_plan.get("entry_high"))
+        )
+        entry_reference = (
+            _f(current_plan.get("confirmation_entry_reference"))
+            if confirmation_window_only
+            else _f(current_plan.get("entry"))
+        )
         stop = _f(current_plan.get("sl"))
         tp1 = _f(current_plan.get("tp1"))
         tp2 = _f(current_plan.get("tp2"))
         rr1 = _f(current_plan.get("rr1"))
         rr2 = _f(current_plan.get("rr2"))
         targets = _collect_structural_targets(current_plan)
-        authority = "V229_CANONICAL_GEOMETRY"
+        authority = (
+            "V229_CONFIRMATION_WINDOW_PENDING_M5"
+            if confirmation_window_only
+            else "V229_CANONICAL_GEOMETRY"
+        )
         candidate_key = str(current_plan.get("candidate_key") or "")
         source_layer = str(current_plan.get("source_layer") or "")
         h4_zone_id = str(current_plan.get("h4_zone_id") or "")
@@ -505,7 +530,11 @@ def build_canonical_xau_decision(
             "low": entry_low,
             "high": entry_high,
             "reference": entry_reference,
-            "role": "CANONICAL_ENTRY",
+            "role": (
+                "M5_CONFIRMATION_WINDOW_NOT_ORDER"
+                if confirmation_window_only
+                else "CANONICAL_ENTRY"
+            ),
         }
     elif local_structure_override:
         entry_low = _f(local_structure_override.get("low"))
@@ -651,6 +680,8 @@ def build_canonical_xau_decision(
         state = "TARGET_REACHED_WAIT_HANDOFF"
     elif remap_reasons:
         state = "LOCAL_REMAP_WAIT"
+    elif current_plan and confirmation_window_only:
+        state = "CONFIRMATION_WINDOW_ARMED"
     elif current_plan:
         state = "CANONICAL_PLAN_READY"
     elif local_structure_override:
@@ -669,9 +700,21 @@ def build_canonical_xau_decision(
         "authority": authority,
         "entry_authorized": bool(
             current_plan
+            and not confirmation_window_only
             and not stale_reasons
             and not blocking_conflicts
             and not path_completed
+        ),
+        "confirmation_window_armed": bool(
+            current_plan
+            and confirmation_window_only
+            and not stale_reasons
+            and not blocking_conflicts
+            and not path_completed
+        ),
+        "confirmation_entry_window": confirmation_window,
+        "terminal_rr_recheck_required": bool(
+            current_plan and current_plan.get("terminal_rr_recheck_required")
         ),
         "candidate_key": candidate_key,
         "source_layer": source_layer,

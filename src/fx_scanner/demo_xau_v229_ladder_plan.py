@@ -61,6 +61,56 @@ def _limit_valid_now(direction: str, entry: float, live_price: float) -> bool:
     return entry > live_price
 
 
+def _rr_confirmation_window(
+    *,
+    direction: str,
+    stop_zone: dict[str, Any],
+    stop: float,
+    target: float,
+    minimum_rr: float,
+) -> dict[str, float] | None:
+    """Return the source-zone slice where an actual M5 entry can still meet RR.
+
+    This does not authorize an order. It only proves that a confirmation-only
+    parent is worth keeping alive until the child executor receives an actual
+    M5 entry, at which point structural targets and RR are rebuilt again.
+    """
+    low = _f(stop_zone.get("low"))
+    high = _f(stop_zone.get("high"))
+    if low is None or high is None or high <= low or minimum_rr <= 0:
+        return None
+    side = str(direction or "").upper()
+    denominator = 1.0 + float(minimum_rr)
+    threshold = (
+        (float(target) + float(minimum_rr) * float(stop)) / denominator
+    )
+    if side == "SHORT":
+        window_low = max(float(low), float(threshold))
+        window_high = float(high)
+        if window_low > window_high:
+            return None
+    elif side == "LONG":
+        window_low = float(low)
+        window_high = min(float(high), float(threshold))
+        if window_low > window_high:
+            return None
+    else:
+        return None
+    reference = (window_low + window_high) / 2.0
+    risk = reference - float(stop) if side == "LONG" else float(stop) - reference
+    reward = float(target) - reference if side == "LONG" else reference - float(target)
+    if risk <= 0 or reward <= 0:
+        return None
+    return {
+        "low": float(window_low),
+        "high": float(window_high),
+        "reference": float(reference),
+        "threshold": float(threshold),
+        "target": float(target),
+        "reference_rr": float(reward / risk),
+    }
+
+
 def build_parent_ladder_plan(
     *,
     v226_evaluation: dict[str, Any],
@@ -297,18 +347,81 @@ def build_parent_ladder_plan(
         )
 
     enabled_children = [c for c in children if c.get("planned_tp") is not None]
-    if not enabled_children:
-        terminal_rr_values = [
-            float(item["terminal_rr"])
+    confirmation_window_only = False
+    confirmation_window: dict[str, float] = {}
+    reference_target: float | None = None
+    terminal_rr_values = [
+        float(item["terminal_rr"])
+        for item in slot_diagnostics
+        if item.get("terminal_rr") is not None
+    ]
+    mapped_target_count = sum(
+        len(list(item.get("mapped_targets") or []))
+        for item in slot_diagnostics
+    )
+
+    if not enabled_children and retest_confirmation and mapped_target_count > 0:
+        terminal_prices_available = [
+            float(item["terminal_target_price"])
             for item in slot_diagnostics
-            if item.get("terminal_rr") is not None
+            if item.get("terminal_target_price") is not None
         ]
-        mapped_target_count = sum(
-            len(list(item.get("mapped_targets") or []))
-            for item in slot_diagnostics
-        )
+        if terminal_prices_available:
+            reference_target = (
+                min(terminal_prices_available)
+                if direction == "SHORT"
+                else max(terminal_prices_available)
+            )
+            candidate_window = _rr_confirmation_window(
+                direction=direction,
+                stop_zone=stop_zone,
+                stop=float(stop),
+                target=float(reference_target),
+                minimum_rr=MIN_TERMINAL_RR,
+            )
+            if candidate_window:
+                confirmation_window_only = True
+                confirmation_window = dict(candidate_window)
+                for child in children:
+                    slot_no = int(child.get("slot") or 0)
+                    if slot_no < 3:
+                        child["planned_tp"] = None
+                        child["submit_eligible"] = False
+                        child["execution_enabled"] = False
+                        child["execution_mode"] = "DISABLED_CONFIRMATION_ONLY"
+                        continue
+                    matching = next(
+                        (
+                            row
+                            for row in slot_diagnostics
+                            if int(row.get("slot") or 0) == slot_no
+                        ),
+                        {},
+                    )
+                    child["planned_tp"] = float(reference_target)
+                    child["target_timeframe"] = str(
+                        matching.get("terminal_target_timeframe") or ""
+                    )
+                    child["target_zone_id"] = str(
+                        matching.get("terminal_target_zone_id") or ""
+                    )
+                    child["submit_eligible"] = False
+                    child["execution_enabled"] = True
+                    child["execution_mode"] = "LIMIT_ON_M5_RETEST_RR_RECHECK"
+                    child["target_reference_only"] = True
+                    child["rr_recheck_required"] = True
+                enabled_children = [
+                    child
+                    for child in children
+                    if int(child.get("slot") or 0) >= 3
+                    and child.get("planned_tp") is not None
+                ]
+
+    if not enabled_children:
         reject_reason = (
-            "TERMINAL_RR_BELOW_MINIMUM"
+            "NO_RR_ELIGIBLE_CONFIRMATION_WINDOW"
+            if retest_confirmation and terminal_rr_values and mapped_target_count > 0
+            else "TERMINAL_RR_BELOW_MINIMUM"
             if terminal_rr_values and mapped_target_count > 0
             else "NO_FORWARD_STRUCTURAL_TARGET"
         )
@@ -364,7 +477,11 @@ def build_parent_ladder_plan(
         )
     )
     digest = hashlib.sha256(candidate_key.encode()).hexdigest()[:18]
-    midpoint = (low + high) / 2.0
+    midpoint = (
+        float(confirmation_window.get("reference"))
+        if confirmation_window_only
+        else (low + high) / 2.0
+    )
     risk = midpoint - stop if direction == "LONG" else stop - midpoint
     if risk <= 0:
         return None
@@ -405,6 +522,9 @@ def build_parent_ladder_plan(
                     stop_zone.get("timeframe") or ""
                 ).upper(),
                 "slot_diagnostics": slot_diagnostics,
+                "confirmation_window_only": confirmation_window_only,
+                "confirmation_entry_window": confirmation_window,
+                "rr_recheck_at_child": confirmation_window_only,
             }
         )
 
@@ -416,6 +536,33 @@ def build_parent_ladder_plan(
         "entry_low": low,
         "entry_high": high,
         "entry": midpoint,
+        "historical_entry_low": low,
+        "historical_entry_high": high,
+        "confirmation_window_only": confirmation_window_only,
+        "confirmation_entry_window": confirmation_window,
+        "confirmation_entry_low": (
+            _f(confirmation_window.get("low"))
+            if confirmation_window_only
+            else None
+        ),
+        "confirmation_entry_high": (
+            _f(confirmation_window.get("high"))
+            if confirmation_window_only
+            else None
+        ),
+        "confirmation_entry_reference": (
+            _f(confirmation_window.get("reference"))
+            if confirmation_window_only
+            else None
+        ),
+        "confirmation_rr_threshold": (
+            _f(confirmation_window.get("threshold"))
+            if confirmation_window_only
+            else None
+        ),
+        "reference_terminal_target": reference_target,
+        "rr_recheck_at_child": confirmation_window_only,
+        "broker_entry_authorized": not confirmation_window_only,
         "sl": float(stop),
         "tp1": float(first_tp),
         "tp2": float(terminal_tp),
@@ -440,6 +587,8 @@ def build_parent_ladder_plan(
         "confirmation_slots": [3, 4],
         "zone_reuse": dict(candidate.get("zone_reuse") or {}),
         "retest_confirmation_required": retest_confirmation,
+        "m15_actual_entry_required": confirmation_window_only,
+        "terminal_rr_recheck_required": confirmation_window_only,
         "m15_retest_confirmation_required": bool(
             candidate.get("m15_retest_confirmation_required")
         ),
