@@ -108,7 +108,7 @@ def build_geometry_depth_status(
         }
 
     lifecycle = dict(zone.get("lifecycle") or {})
-    touch_count = int(lifecycle.get("touch_count") or 0)
+    touch_count = int(lifecycle.get("touch_count") or zone.get("touch_count") or 0)
     if depth < 0.0:
         # A previously touched zone with price back beyond its proximal edge has
         # already produced/attempted a reaction. Calling this "ahead of zone"
