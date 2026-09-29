@@ -23,7 +23,7 @@ FRESH_SECONDS = 180.0
 MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024
 
 HOT_REFRESH_SECONDS = 60.0
-STRUCTURAL_REFRESH_SECONDS = 300.0
+STRUCTURAL_REFRESH_SECONDS = 600.0
 SUPPORT_REFRESH_SECONDS = 3600.0
 COLD_REFRESH_SECONDS = 900.0
 OUTCOME_REFRESH_SECONDS = 21600.0
@@ -39,7 +39,7 @@ HOT_HEARTBEATS = (
 )
 
 STRUCTURAL_HEARTBEATS = (
-    # Full V182/V226 historical/detail payloads stay on the five-minute budget.
+    # Full V182/V226 historical/detail payloads stay on the ten-minute budget.
     # Their decision-critical path/candidate identity is projected separately
     # every 60 seconds so the dashboard cannot show an old leg or old locator.
     "ctrader_demo_xau_supply_demand_atlas_v182",
@@ -297,7 +297,7 @@ def build_snapshot(
         hot_heartbeats.append(child_heartbeat)
 
     # Current V182 path/M5 and V226 candidate identity must not wait for the
-    # five-minute historical-detail tier. These projected rows are deliberately
+    # ten-minute historical-detail tier. These projected rows are deliberately
     # compact and are merged into the cached full heartbeats below.
     atlas_operational = reader.latest_xau_atlas_operational_heartbeat()
     if atlas_operational is not None:
