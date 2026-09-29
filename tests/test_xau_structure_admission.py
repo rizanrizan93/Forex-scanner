@@ -81,3 +81,29 @@ def test_child_run_cancels_stale_parent_pending_orders_without_submitting(monkey
     assert child.run() == 0
     assert cancelled == [11]
     assert any("STRUCTURE_BLOCK" in action for action in heartbeats[-1]["details"]["actions"])
+
+
+def test_stale_producer_invalidates_ready_signal_and_keeps_cleanup_lane_running(monkeypatch):
+    from fx_scanner import demo_xau_v229_depth_execution as producer
+    heartbeats, invalidations = [], []
+    store = SimpleNamespace(ensure_reference_symbols=lambda _: None,
+                            write_heartbeat=lambda *a, **kw: heartbeats.append(kw))
+    feed = SimpleNamespace(ensure_connected=lambda: None, close=lambda: None,
+                           quote=lambda *a, **kw: SimpleNamespace(ask=103.0, bid=102.9))
+    monkeypatch.setenv(producer.EXECUTION_ENV, "1")
+    monkeypatch.setattr(producer, "load_project_config", lambda _: SimpleNamespace(pair_map={"XAUUSD": {}}))
+    monkeypatch.setattr(producer, "load_execution_policy", lambda _: SimpleNamespace(ctrader={"environment": "DEMO", "require_demo": True}))
+    monkeypatch.setattr(producer.SupabaseOperationalStore, "from_env", lambda **kw: store)
+    monkeypatch.setattr(producer, "build_ctrader_research_feed", lambda *a: feed)
+    monkeypatch.setattr(producer, "_latest_heartbeat", lambda _, name:
+                        _hb(_v226(), 86400) if name == producer.V226_WORKER else
+                        _hb(_atlas(), 86400) if name == producer.ATLAS_WORKER else {})
+    monkeypatch.setattr(producer, "_invalidate_prior_ready", lambda *a, **kw: (invalidations.append(kw) or 1))
+    def no_plan(**kwargs):
+        raise AssertionError("Stale data must not reach plan creation")
+    monkeypatch.setattr(producer, "build_execution_plan", no_plan)
+    assert producer.run() == 0
+    assert invalidations == [{"current_key": "STRUCTURE_BLOCKED"}]
+    assert heartbeats[-1]["healthy"] is True
+    assert heartbeats[-1]["details"]["reason"].startswith("WAIT_STRUCTURE:")
+    assert not heartbeats[-1]["details"]["plan"]
