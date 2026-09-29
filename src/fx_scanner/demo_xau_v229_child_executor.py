@@ -338,6 +338,27 @@ def _slot_target(
     return _f(chosen.get("target_price")), structural
 
 
+def _calibration_probe_already_accepted(
+    store: SupabaseOperationalStore,
+    parent_signal_id: str,
+) -> bool:
+    """A parent gets at most one broker-accepted DEMO calibration probe."""
+    response = (
+        store.client.table("broker_order_events")
+        .select("accepted,payload,event_type")
+        .eq("signal_key", parent_signal_id)
+        .eq("event_type", CHILD_EVENT_TYPE)
+        .order("observed_at", desc=True)
+        .limit(20)
+        .execute()
+    )
+    for row in response.data or []:
+        payload = dict(row.get("payload") or {})
+        if bool(row.get("accepted")) and bool(payload.get("calibration_only")):
+            return True
+    return False
+
+
 def _record_child_event(
     store: SupabaseOperationalStore,
     *,
@@ -631,6 +652,10 @@ def run() -> int:
                 or dict(atlas_eval.get("path_map") or {}).get("micro_refinement")
                 or {}
             )
+            probe_already_accepted = _calibration_probe_already_accepted(
+                store,
+                parent_signal_id,
+            )
 
             for child in list(plan["children"]):
                 slot = int(child.get("slot") or 0)
@@ -640,7 +665,18 @@ def run() -> int:
                     calibration_probe_enabled
                     and armed_confirmation_window
                     and slot == 1
+                    and not probe_already_accepted
                 )
+                if (
+                    calibration_probe_enabled
+                    and armed_confirmation_window
+                    and slot == 1
+                    and probe_already_accepted
+                ):
+                    actions.append(
+                        f"{parent_signal_id}:L1:CALIBRATION_PROBE_ALREADY_ACCEPTED"
+                    )
+                    continue
                 if not bool(child.get("execution_enabled", True)) and not calibration_probe:
                     actions.append(f"{parent_signal_id}:L{slot}:DISABLED_BY_EXECUTION_PHASE")
                     continue
@@ -815,6 +851,8 @@ def run() -> int:
                 if accepted:
                     existing.add(slot)
                     future_exposure += 1
+                    if calibration_probe:
+                        probe_already_accepted = True
 
             # Only the newest current parent may own execution. Older rows are
             # reconciled/cancelled above, then ignored.
