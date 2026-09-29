@@ -2498,30 +2498,58 @@ with forecast_tab:
     dc_current_reuse = dict(dc_projection_current.get("zone_reuse_v200") or {})
     dc_next_reuse = dict(dc_projection_next.get("zone_reuse_v200") or {})
 
-    dc_initial_candidate = dict(
-        dc_micro.get("candidate_entry_pocket")
-        or dc_current_reuse.get("active_candidate_micro_pocket")
-        or dc_candidate
-        or {}
-    )
-    dc_next_initial_candidate = dict(
-        dc_next_micro.get("candidate_entry_pocket")
-        or dc_next_reuse.get("active_candidate_micro_pocket")
-        or dc_next_candidate
-        or {}
-    )
-    dc_refined_display = dict(
-        dc_micro.get("refined_entry_pocket")
-        or dc_current_reuse.get("active_refined_micro_pocket")
-        or dc_refined
-        or {}
-    )
-    dc_next_refined_display = dict(
-        dc_next_micro.get("refined_entry_pocket")
-        or dc_next_reuse.get("active_refined_micro_pocket")
-        or dc_next_refined
-        or {}
-    )
+    if dc_projection_current:
+        # The explicit V196 pocket_state is authoritative. Do not resurrect a
+        # prior reuse/refined pocket when the current projection says CANDIDATE
+        # or NO_M5_POCKET_YET.
+        dc_initial_candidate = (
+            dict(dc_current_projected_pocket)
+            if dc_current_pocket_state == "CANDIDATE_M5_POCKET"
+            else {}
+        )
+        dc_refined_display = (
+            dict(dc_current_projected_pocket)
+            if dc_current_pocket_state == "REFINED_M5_POCKET"
+            else {}
+        )
+    else:
+        dc_initial_candidate = dict(
+            dc_micro.get("candidate_entry_pocket")
+            or dc_current_reuse.get("active_candidate_micro_pocket")
+            or dc_candidate
+            or {}
+        )
+        dc_refined_display = dict(
+            dc_micro.get("refined_entry_pocket")
+            or dc_current_reuse.get("active_refined_micro_pocket")
+            or dc_refined
+            or {}
+        )
+
+    if dc_projection_next:
+        dc_next_initial_candidate = (
+            dict(dc_next_projected_pocket)
+            if dc_next_pocket_state == "CANDIDATE_M5_POCKET"
+            else {}
+        )
+        dc_next_refined_display = (
+            dict(dc_next_projected_pocket)
+            if dc_next_pocket_state == "REFINED_M5_POCKET"
+            else {}
+        )
+    else:
+        dc_next_initial_candidate = dict(
+            dc_next_micro.get("candidate_entry_pocket")
+            or dc_next_reuse.get("active_candidate_micro_pocket")
+            or dc_next_candidate
+            or {}
+        )
+        dc_next_refined_display = dict(
+            dc_next_micro.get("refined_entry_pocket")
+            or dc_next_reuse.get("active_refined_micro_pocket")
+            or dc_next_refined
+            or {}
+        )
 
     # Migration-era snapshots may contain a next-leg pocket created from an old
     # touch of the future opposing zone. Suppress it in the UI unless its evidence
