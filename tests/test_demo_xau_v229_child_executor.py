@@ -489,3 +489,19 @@ def test_v270_rejection_retest_remains_demo_bounded_and_limit_only() -> None:
     assert "OrderType.LIMIT" in source
     assert "CTRADER_DEMO_DEPTH_CALIBRATION_REJECTION_MAX_AGE_SECONDS" in workflow
     assert '"3600"' in workflow
+
+
+def test_v271_child_pressure_bypass_is_calibration_only_and_strict_stays_two_sample() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_child_executor.py"
+    ).read_text()
+    assert 'str(pressure_transition.get("state") or "") == "WAIT_SECOND_SAMPLE"' in source
+    assert 'pressure_transition.get("calibration_entry_allowed")' in source
+    assert "calibration_pressure_bypass" in source
+    assert "armed_confirmation_window" in source
+    assert "calibration_probe_enabled" in source
+    assert '"strict_pressure_transition_requires_two_samples": True' in source
+    assert '"calibration_single_sample_pressure_allowed": True' in source
+    assert '"calibration_single_sample_max_opposing_pressure": 15.0' in source
+    assert 'pressure_transition.get("confirmation_entry_allowed")' in source
