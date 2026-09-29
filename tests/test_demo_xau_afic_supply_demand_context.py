@@ -540,3 +540,78 @@ def test_v192_pre_event_keeps_m5_dom_alignment_shadow_only(monkeypatch):
     assert sd["conflict_resolution_evidence"] == "M5_DOM_ALIGNED_BUT_EVENT_RISK_WAIT"
     assert sd["event_risk_context"]["state"] == "PRE_EVENT"
     assert sd["execution_authority"] is False
+
+
+def test_v258_no_canonical_map_surfaces_v182_active_path_prepare_only(monkeypatch):
+    now = datetime(2026, 9, 29, 3, 40, tzinfo=UTC)
+    atlas = _atlas()
+    atlas["path_map"] = {
+        "contract": "XAU_SUPPLY_DEMAND_PATH_ENGINE_V186",
+        "demand_to_supply": {
+            "state": "CONFIRMED_OPPOSING_LEG_HANDOFF",
+            "reaction_direction": "LONG",
+            "source_zone": {
+                "zone_id": "demand-1",
+                "timeframe": "H1",
+                "direction": "LONG",
+                "low": 4273.96,
+                "high": 4300.95,
+                "lifecycle": {"active": True},
+            },
+            "primary_opposing_zone": {
+                "zone_id": "supply-1",
+                "timeframe": "H1",
+                "direction": "SHORT",
+                "low": 4342.5,
+                "high": 4347.3,
+                "lifecycle": {"active": True},
+            },
+            "execution_authority": False,
+        },
+        "supply_to_demand": {},
+        "active_path": {
+            "state": "CONFIRMED_OPPOSING_LEG_HANDOFF",
+            "reaction_direction": "LONG",
+            "source_zone": {
+                "zone_id": "demand-1",
+                "timeframe": "H1",
+                "direction": "LONG",
+                "low": 4273.96,
+                "high": 4300.95,
+                "lifecycle": {"active": True},
+            },
+            "primary_opposing_zone": {
+                "zone_id": "supply-1",
+                "timeframe": "H1",
+                "direction": "SHORT",
+                "low": 4342.5,
+                "high": 4347.3,
+                "lifecycle": {"active": True},
+            },
+            "execution_authority": False,
+        },
+    }
+    monkeypatch.setattr(ctx, "latest_atlas", lambda store: (now, atlas))
+
+    out = ctx.attach_supply_demand_context(
+        DummyStore(),
+        {
+            "state": "NO_MAP_ZONE",
+            "map_price": 4303.82,
+        },
+        observed_at=now,
+    )
+    sd = out["supply_demand_context"]
+
+    assert out.get("continuation_direction") is None
+    assert sd["continuation_direction"] is None
+    assert sd["structural_direction"] == "LONG"
+    assert sd["structural_direction_source"] == "V182_ACTIVE_PATH_PREPARE_ONLY"
+    assert sd["first_leg_direction"] == "LONG"
+    assert sd["first_leg_path"]["reaction_direction"] == "LONG"
+    assert sd["first_leg_path"]["source_zone"]["zone_id"] == "demand-1"
+    assert sd["prepare_only_fallback"] is True
+    assert sd["required_for_execution"] is False
+    assert sd["execution_influence"] is False
+    assert sd["execution_authority"] is False
+    assert sd["promotion_authority"] is False
