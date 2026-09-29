@@ -44,6 +44,36 @@ def _money(value: int | float, digits: int | None) -> float:
     return float(value) / (10 ** exponent)
 
 
+def _absolute_price(value: float, symbol_info) -> float:
+    """Normalize an absolute pending-order price to broker symbol precision."""
+    digits = int(getattr(symbol_info, "digits", -1))
+    if digits < 0:
+        raise CollectorUnavailable("cTrader symbol digits unavailable")
+    quantum = Decimal("1").scaleb(-digits)
+    normalized = Decimal(str(float(value))).quantize(
+        quantum,
+        rounding=ROUND_HALF_UP,
+    )
+    return float(normalized)
+
+
+def _assert_pending_geometry(
+    *,
+    side: OrderSide,
+    entry: float,
+    stop_loss: float,
+    take_profit: float,
+) -> None:
+    if side == OrderSide.BUY:
+        valid = stop_loss < entry < take_profit
+    else:
+        valid = take_profit < entry < stop_loss
+    if not valid:
+        raise CollectorUnavailable(
+            "cTrader normalized pending SL/entry/TP geometry is invalid"
+        )
+
+
 def _relative_protection_distance(distance: float, symbol_info) -> int:
     """Normalize a scanner price distance to cTrader's 1e-5 relative units.
 
@@ -186,6 +216,8 @@ class CTraderExecutionGateway:
         request.comment = f"{prefix}:{intent.signal_id}"[:512]
 
         is_market = intent.order_type == OrderType.MARKET
+        planned_stop_loss = float(intent.stop_loss)
+        planned_take_profit = float(intent.take_profit)
         if is_market:
             request.orderType = 1
             sl_distance = executable_price - intent.stop_loss if intent.side == OrderSide.BUY else intent.stop_loss - executable_price
@@ -197,17 +229,35 @@ class CTraderExecutionGateway:
         elif intent.order_type == OrderType.LIMIT:
             if intent.entry_price is None:
                 raise CollectorUnavailable("cTrader LIMIT requires entry_price")
+            entry_price = _absolute_price(intent.entry_price, symbol)
+            planned_stop_loss = _absolute_price(intent.stop_loss, symbol)
+            planned_take_profit = _absolute_price(intent.take_profit, symbol)
+            _assert_pending_geometry(
+                side=intent.side,
+                entry=entry_price,
+                stop_loss=planned_stop_loss,
+                take_profit=planned_take_profit,
+            )
             request.orderType = 2
-            request.limitPrice = float(intent.entry_price)
-            request.stopLoss = float(intent.stop_loss)
-            request.takeProfit = float(intent.take_profit)
+            request.limitPrice = entry_price
+            request.stopLoss = planned_stop_loss
+            request.takeProfit = planned_take_profit
         elif intent.order_type == OrderType.STOP:
             if intent.entry_price is None:
                 raise CollectorUnavailable("cTrader STOP requires entry_price")
+            entry_price = _absolute_price(intent.entry_price, symbol)
+            planned_stop_loss = _absolute_price(intent.stop_loss, symbol)
+            planned_take_profit = _absolute_price(intent.take_profit, symbol)
+            _assert_pending_geometry(
+                side=intent.side,
+                entry=entry_price,
+                stop_loss=planned_stop_loss,
+                take_profit=planned_take_profit,
+            )
             request.orderType = 3
-            request.stopPrice = float(intent.entry_price)
-            request.stopLoss = float(intent.stop_loss)
-            request.takeProfit = float(intent.take_profit)
+            request.stopPrice = entry_price
+            request.stopLoss = planned_stop_loss
+            request.takeProfit = planned_take_profit
         else:
             raise CollectorUnavailable(f"unsupported cTrader order type: {intent.order_type}")
 
@@ -227,8 +277,8 @@ class CTraderExecutionGateway:
             symbol_id=symbol_id,
             trade_side=trade_side,
             volume_cents=volume_cents,
-            planned_stop_loss=float(intent.stop_loss),
-            planned_take_profit=float(intent.take_profit),
+            planned_stop_loss=planned_stop_loss,
+            planned_take_profit=planned_take_profit,
             is_market=is_market,
         )
 
