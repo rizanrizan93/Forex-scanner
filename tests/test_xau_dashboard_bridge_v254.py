@@ -77,3 +77,14 @@ def test_dashboard_bridge_fetch_accepts_gzip_large_transport() -> None:
     assert out["bridge"]["fresh"] is True
     assert seen["timeout"] == 20.0
     assert str(seen["accept_encoding"]).lower() == "gzip"
+
+
+def test_dashboard_bridge_bounds_minute_level_history_payload() -> None:
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "src/fx_scanner/xau_dashboard_bridge_v254.py").read_text()
+    assert 'latest_signals_for_symbol("XAUUSD", limit=12)' in text
+    assert "latest_xau_geometry_events(limit=8)" in text
+    assert "latest_xau_execution_events(limit=12)" in text
+    assert "latest_xau_prepared_plan_lifecycle(limit=15)" in text
