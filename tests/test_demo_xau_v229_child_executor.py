@@ -5,11 +5,14 @@ from pathlib import Path
 
 from fx_scanner.demo_xau_v229_child_executor import (
     _activation_entry,
+    _calibration_probe_entry,
     _cancel_pending_plan,
+    _entry_inside_active_source,
     _existing_slots,
     _limit_side_valid,
     _promote_armed_confirmation_window,
     _slot_target,
+    _target_with_min_rr,
 )
 from fx_scanner.demo_xau_v229_ladder_plan import child_client_order_id
 
@@ -207,3 +210,97 @@ def test_v264_armed_confirmation_window_promotes_atomically_before_broker_submit
     }
     assert ("id", "signal-1") in store.filters
     assert ("state", "ARMED") in store.filters
+
+
+def test_v266_demo_probe_uses_real_m5_pocket_favorable_edge() -> None:
+    short_entry, short_state = _calibration_probe_entry(
+        direction="SHORT",
+        micro={
+            "direction": "SHORT",
+            "candidate_entry_pocket": {"low": 4141.20, "high": 4143.75},
+        },
+    )
+    assert short_entry == 4143.75
+    assert short_state == "M5_CANDIDATE_CALIBRATION_PROBE"
+
+    long_entry, long_state = _calibration_probe_entry(
+        direction="LONG",
+        micro={
+            "direction": "LONG",
+            "candidate_entry_pocket": {"low": 4141.20, "high": 4143.75},
+        },
+    )
+    assert long_entry == 4141.20
+    assert long_state == "M5_CANDIDATE_CALIBRATION_PROBE"
+
+
+def test_v266_demo_probe_must_remain_inside_active_source_zone() -> None:
+    atlas = {
+        "path_map": {
+            "active_path": {
+                "source_zone": {
+                    "direction": "SHORT",
+                    "low": 4136.55,
+                    "high": 4160.48,
+                }
+            }
+        }
+    }
+    assert _entry_inside_active_source(
+        direction="SHORT",
+        entry=4143.75,
+        atlas_evaluation=atlas,
+    ) is True
+    assert _entry_inside_active_source(
+        direction="SHORT",
+        entry=4165.0,
+        atlas_evaluation=atlas,
+    ) is False
+
+
+def test_v266_probe_can_use_opposing_demand_at_1r_while_strict_path_stays_1_5r() -> None:
+    demand = {
+        "zone_id": "m15-demand",
+        "timeframe": "M15",
+        "direction": "LONG",
+        "low": 4114.53,
+        "high": 4121.93,
+        "status": "ACTIVE",
+        "lifecycle": {"active": True},
+    }
+    atlas = {
+        "chart_bars_m15": [],
+        "zones": [demand],
+        "path_map": {"supply_to_demand": {"destination_stack": [demand]}},
+    }
+    probe_target, probe_structural = _target_with_min_rr(
+        direction="SHORT",
+        entry=4143.75,
+        stop=4163.424944768374,
+        atlas_evaluation=atlas,
+        minimum_rr=1.0,
+    )
+    assert probe_target is not None
+    assert probe_structural["terminal_rr_eligible"] is True
+    assert probe_structural["terminal_structural_target"]["source"] == "OPPOSING_SUPPLY_DEMAND"
+    assert probe_structural["terminal_structural_target"]["rr"] >= 1.0
+
+    strict_target, strict_structural = _slot_target(
+        slot=3,
+        direction="SHORT",
+        entry=4143.75,
+        stop=4163.424944768374,
+        atlas_evaluation=atlas,
+    )
+    assert strict_target is None
+    assert strict_structural["terminal_rr_eligible"] is False
+
+
+def test_v266_workflow_enables_bounded_demo_calibration_probe() -> None:
+    workflow = (
+        Path(__file__).resolve().parents[1]
+        / ".github/workflows/ctrader-demo-xau-execution-lane.yml"
+    ).read_text()
+    assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_ENABLED: "1"' in workflow
+    assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MIN_RR: "1.00"' in workflow
+    assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.35"' in workflow
