@@ -370,7 +370,8 @@ def evaluate_bidirectional_m5_path(
             "is latched across an overlapping H4/D1 parent handoff until current M5 evidence "
             "invalidates it. The next opposing leg is anchored "
             "to the current terminal opposing zone and prefers an active nested H1 precision "
-            "source. Next-leg M5 evidence must occur after the current leg activation, so "
+            "source. It is only called an M5 pocket after fresh M5 evidence exists. "
+            "Next-leg M5 evidence must also occur after the current leg activation, so "
             "historical touches cannot be recycled as a fresh pocket."
         ),
     }
