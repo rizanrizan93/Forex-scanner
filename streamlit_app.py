@@ -230,12 +230,12 @@ def _load_backend_fast_snapshot(url: str, secret_key: str) -> dict[str, Any]:
     broker_account = reader.latest_broker_account()
 
     return {
-        "xau_signals": list(reader.latest_signals_for_symbol("XAUUSD")),
+        "xau_signals": list(reader.latest_signals_for_symbol("XAUUSD", limit=8)),
         "control": asdict(store.get_execution_control()),
         "broker_account": broker_account,
         "broker_positions": list(reader.broker_positions_for_account(broker_account)),
-        "xau_execution_events": list(reader.latest_xau_execution_events()),
-        "xau_geometry_events": list(reader.latest_xau_geometry_events()),
+        "xau_execution_events": list(reader.latest_xau_execution_events(limit=4)),
+        "xau_geometry_events": list(reader.latest_xau_geometry_events(limit=2)),
     }
 
 
@@ -275,10 +275,10 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
         critical_heartbeats.append(v226_operational)
     return {
         "critical_heartbeats": critical_heartbeats,
-        "afic_forecast_states": list(reader.latest_afic_forecast_states()),
-        "afic_prepared_plans": list(reader.latest_afic_prepared_plans()),
-        "afic_execution_geometry": list(reader.latest_afic_execution_geometry()),
-        "xau_prepared_plan_lifecycle": list(reader.latest_xau_prepared_plan_lifecycle()),
+        "afic_forecast_states": list(reader.latest_afic_forecast_states(limit=6)),
+        "afic_prepared_plans": list(reader.latest_afic_prepared_plans(limit=1)),
+        "afic_execution_geometry": list(reader.latest_afic_execution_geometry(limit=1)),
+        "xau_prepared_plan_lifecycle": list(reader.latest_xau_prepared_plan_lifecycle(limit=4)),
     }
 
 
