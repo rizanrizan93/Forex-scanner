@@ -206,6 +206,6 @@ def test_v266_dashboard_keeps_m5_visible_and_colors_reversal_heatmap() -> None:
 def test_v266_dashboard_explains_probe_and_strict_execution_lanes() -> None:
     assert "DEMO calibration probe 0,01 lot" in SOURCE
     assert "RR ≥1,00R" in SOURCE
-    assert "depth ≤35%" in SOURCE
+    assert "Dynamic Depth recommended band + buffer 10% (hard cap 70%)" in SOURCE
     assert "L3/L4 tetap jalur strict ≥1,50R" in SOURCE
     assert "L2 tetap OFF" in SOURCE
