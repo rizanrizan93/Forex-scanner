@@ -7,6 +7,7 @@ from fx_scanner.demo_xau_v226_rizan_depth_map import (
     _depth_entry_candidate,
     _four_order_depth_ladder,
     _historical_profile,
+    _intersect_geometry,
     _nested_locator,
     _projected_m5_watch_pocket,
     _reversal_heatmap,
@@ -859,3 +860,15 @@ def test_v266_build_map_exposes_heatmap_and_projected_m5_watch() -> None:
         <= float(watch["high"])
         <= float(result["depth_entry_candidate"]["entry_high"])
     )
+
+
+def test_v267_projected_m5_rejects_stale_nested_geometry_outside_active_source() -> None:
+    active = {"low": 4136.55, "high": 4160.48}
+    stale = {"low": 4357.64, "high": 4359.52}
+    assert _intersect_geometry(stale, active) == {}
+
+    partial = {"low": 4158.0, "high": 4162.0}
+    assert _intersect_geometry(partial, active) == {
+        "low": 4158.0,
+        "high": 4160.48,
+    }

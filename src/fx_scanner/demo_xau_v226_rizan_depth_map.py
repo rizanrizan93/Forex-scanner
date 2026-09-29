@@ -236,6 +236,31 @@ def _reversal_heatmap(
     return rows
 
 
+def _intersect_geometry(
+    geometry: dict[str, Any],
+    active_zone: dict[str, Any],
+) -> dict[str, float]:
+    """Keep display refinements physically inside the current active source."""
+    low = _f(geometry.get("low"))
+    high = _f(geometry.get("high"))
+    active_low = _f(active_zone.get("low"))
+    active_high = _f(active_zone.get("high"))
+    if (
+        low is None
+        or high is None
+        or active_low is None
+        or active_high is None
+        or high <= low
+        or active_high <= active_low
+    ):
+        return {}
+    clipped_low = max(float(low), float(active_low))
+    clipped_high = min(float(high), float(active_high))
+    if clipped_high <= clipped_low:
+        return {}
+    return {"low": clipped_low, "high": clipped_high}
+
+
 def _projected_m5_watch_pocket(
     *,
     direction: str,
@@ -1809,20 +1834,35 @@ def build_depth_map(
         )
         or {}
     )
+    active_m15_envelope = _intersect_geometry(
+        focus_m15_envelope,
+        focus_source_zone,
+    )
+    active_h1_envelope = _intersect_geometry(
+        focus_h1_envelope,
+        focus_source_zone,
+    )
     projected_parent = (
-        focus_m15_envelope
-        or focus_h1_envelope
+        active_m15_envelope
+        or active_h1_envelope
+        or _intersect_geometry(
+            {
+                "low": focus_entry_candidate.get("entry_low"),
+                "high": focus_entry_candidate.get("entry_high"),
+            },
+            focus_source_zone,
+        )
         or {
-            "low": focus_entry_candidate.get("entry_low"),
-            "high": focus_entry_candidate.get("entry_high"),
+            "low": focus_source_zone.get("low"),
+            "high": focus_source_zone.get("high"),
         }
     )
     projected_source = (
-        "M15_NESTED_LOCATOR"
-        if focus_m15_envelope
-        else "H1_NESTED_LOCATOR"
-        if focus_h1_envelope
-        else "FOCUS_DEPTH_CANDIDATE"
+        "M15_NESTED_LOCATOR_ACTIVE_OVERLAP"
+        if active_m15_envelope
+        else "H1_NESTED_LOCATOR_ACTIVE_OVERLAP"
+        if active_h1_envelope
+        else "FOCUS_DEPTH_CANDIDATE_ACTIVE_SOURCE"
     )
     projected_m5_watch_pocket = _projected_m5_watch_pocket(
         direction=focus,
@@ -1906,7 +1946,8 @@ def build_depth_map(
             "available geometry is exposed as a display-only Depth Entry Candidate with "
             "direction, price range and reference price. V266 additionally exposes an "
             "always-visible projected M5 watch pocket by refining the narrowest available "
-            "H4→H1→M15 geometry with the historical M15 highest-hazard band. It is display "
+            "H4→H1→M15 geometry that still overlaps the current active V182 source, "
+            "then applies the historical M15 highest-hazard band. It is display "
             "geometry only; actual M5 candidate/refined structure still controls execution. "
             "No MSS/reclaim is required to draw the map, and the map/candidate have no "
             "execution authority."

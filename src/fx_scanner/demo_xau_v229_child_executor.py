@@ -837,6 +837,15 @@ def run() -> int:
                         f"{parent_signal_id}:CONFIRMATION_PROMOTED_AFTER_M5_RR"
                     )
 
+                # Keep the 5s control-plane freshness contract strict, but refresh
+                # immediately before crossing the broker side-effect boundary. The
+                # sequential Atlas/M5/target computations can legitimately consume
+                # several seconds and must not create a false stale block.
+                control.run_once()
+                actions.append(
+                    f"{parent_signal_id}:L{slot}:CONTROL_PLANE_REFRESHED_PRE_SUBMIT"
+                )
+
                 accepted, detail = _submit_child(
                     router=router,
                     store=store,
