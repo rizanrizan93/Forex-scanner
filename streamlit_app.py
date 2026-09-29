@@ -4183,7 +4183,8 @@ with forecast_tab:
                 )
             st.caption(
                 "M30 adalah shadow parent-zone saja. H4/H1 tetap canonical, M15/M5 tetap refinement. "
-                "V273 menguji overlap parent; V277 membandingkan near-edge dengan deep-rejection "
+                "V273 menguji apakah overlap tinggi M30↔H1/H4 benar-benar menaikkan reaction ≥0,50 ATR; "
+                "V277 membandingkan near-edge dengan deep-rejection "
                 "(≥60% penetration → retreat ≥20% → close ≤55% depth). "
                 "Keduanya tidak otomatis menjadi authority order."
             )
