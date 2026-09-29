@@ -280,3 +280,13 @@ def test_v2564_dynamic_depth_labels_geometry_as_non_forecast() -> None:
     assert "8 • Posisi harga dalam zona" in text
     assert "geometry only (BUKAN reversal forecast)" in text
     assert "bukan forecast reversal dan bukan entry band" in text
+
+
+
+def test_v2571_dashboard_separates_completed_leg_from_next_leg_watch() -> None:
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "TERMINAL ZONE • NEXT" in text
+    assert "Next leg watch (BUKAN ENTRY)" in text
+    assert "Path target (BUKAN TP order)" in text
+    assert "SUDAH TERCAPAI • " in text
+    assert "fokus berikutnya adalah watch next-leg, bukan mengejar target lama" in text
