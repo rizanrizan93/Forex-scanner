@@ -70,6 +70,9 @@ jobs:
       CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MIN_RR: "1.00"
       CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.70"
       CTRADER_DEMO_DEPTH_CALIBRATION_REJECTION_MAX_AGE_SECONDS: "3600"
+      # V272: one-time DEMO-only broker transport canary. It submits a far-away
+      # 0.01-lot pending LIMIT with SL/TP, then immediately cancels and reconciles.
+      CTRADER_DEMO_BROKER_CANARY_ENABLED: "1"
       XAU_DOM_V191_SAMPLE_SECONDS: "30"
       XAU_DOM_V191_SAMPLE_INTERVAL_SECONDS: "1"
       XAU_DOM_V191_MAX_LEVELS: "10"
@@ -92,6 +95,11 @@ jobs:
         id: repair_existing_protection
         continue-on-error: true
         run: python -m fx_scanner.demo_existing_protection_repair
+
+      - name: Verify one-time DEMO broker submit-cancel canary
+        id: verify_broker_canary
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_broker_canary_v272
 
       - name: Evaluate XAU V24 champion D1 plus M15 L12 L20
         id: produce_xau_v24_champion
@@ -161,6 +169,7 @@ jobs:
         shell: bash
         env:
           REPAIR_OUTCOME: ${{ steps.repair_existing_protection.outcome }}
+          CANARY_OUTCOME: ${{ steps.verify_broker_canary.outcome }}
           V24_OUTCOME: ${{ steps.produce_xau_v24_champion.outcome }}
           CANONICAL_OUTCOME: ${{ steps.produce_xau_m15_ema_smc_reclaim.outcome }}
           RIZAN_OUTCOME: ${{ steps.produce_xau_afic.outcome }}
@@ -177,6 +186,9 @@ jobs:
           if [ "${REPAIR_OUTCOME}" != "success" ]; then
             echo "XAU_EXECUTION_LANE_FAIL stage=REPAIR outcome=${REPAIR_OUTCOME}"
             failed=1
+          fi
+          if [ "${CANARY_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_WARN stage=DEMO_BROKER_CANARY outcome=${CANARY_OUTCOME} diagnostic_only=1"
           fi
           if [ "${RIZAN_OUTCOME}" != "success" ]; then
             echo "XAU_EXECUTION_LANE_FAIL stage=RIZAN_RECONCILIATION outcome=${RIZAN_OUTCOME} safety=FAIL_CLOSED"
