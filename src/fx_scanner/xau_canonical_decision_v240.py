@@ -619,11 +619,15 @@ def build_canonical_xau_decision(
         zone_probabilities=zone_probabilities,
     )
 
+    path_completed = bool(inside_terminal or reaction_reached)
+
     state = "WAIT"
     if stale_reasons:
         state = "STALE_WAIT"
     elif blocking_conflicts:
         state = "CONFLICT_WAIT"
+    elif path_completed:
+        state = "TARGET_REACHED_WAIT_HANDOFF"
     elif remap_reasons:
         state = "LOCAL_REMAP_WAIT"
     elif current_plan:
@@ -646,6 +650,7 @@ def build_canonical_xau_decision(
             current_plan
             and not stale_reasons
             and not blocking_conflicts
+            and not path_completed
         ),
         "candidate_key": candidate_key,
         "source_layer": source_layer,
@@ -666,6 +671,7 @@ def build_canonical_xau_decision(
         ],
         "likely_destination": likely_destination,
         "path_destination_state": path_destination_state,
+        "path_completed": path_completed,
         "terminal_opposing_zone": terminal_zone,
         "nearest_demand": nearest_demand,
         "nearest_supply": nearest_supply,
