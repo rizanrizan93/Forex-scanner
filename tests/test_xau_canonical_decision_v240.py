@@ -202,6 +202,99 @@ def test_v2401_does_not_invent_reversal_probability_without_v212_evidence() -> N
     assert state["primary_reversal_watch"] == {}
 
 
+def test_v240_discovers_active_path_source_missing_from_flat_zone_list() -> None:
+    """Regression: 29 Sep local H1 supply must supersede stale 4357 V226 geometry."""
+    v226 = {
+        "focus_direction": "SHORT",
+        "depth_entry_candidate": {
+            "direction": "SHORT",
+            "entry_low": 4357.644579093432,
+            "entry_high": 4359.524467329546,
+            "entry_reference": 4358.397659318671,
+            "source_layer": "M15_NESTED_LOCATOR",
+            "display_status": "PREPARE_ONLY_FRESH_FIRST_TOUCH",
+            "pre_touch_execution_eligible": True,
+            "confirmation_execution_eligible": True,
+            "calibrated_fresh_first_touch": True,
+            "historical_context": {},
+        },
+        "short": {
+            "h4": {
+                "zone": {
+                    "zone_id": "old-h4-supply",
+                    "timeframe": "H4",
+                    "direction": "SHORT",
+                    "low": 4357.51,
+                    "high": 4365.51,
+                    "atr_points": 33.8,
+                }
+            }
+        },
+        "four_order_ladder": {"slots": []},
+    }
+    current_h1 = {
+        "zone_id": "current-h1-supply",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 4136.55,
+        "high": 4160.48,
+        "proximal": 4136.55,
+        "research_score": 67.82,
+        "status": "APPROACHING_PREPARE_ONLY",
+        "lifecycle": {
+            "active": True,
+            "freshness": "PARTIALLY_MITIGATED",
+            "touch_count": 2,
+        },
+    }
+    atlas = {
+        # Deliberately omit current_h1 from the flat list. This is the production
+        # condition that caused V240 to keep showing the 4357 V226 candidate.
+        "zones": [
+            {
+                "zone_id": "far-flat-supply",
+                "timeframe": "H1",
+                "direction": "SHORT",
+                "low": 4257.52,
+                "high": 4266.31,
+                "research_score": 89.17,
+                "lifecycle": {"active": True, "freshness": "FRESH", "touch_count": 0},
+            }
+        ],
+        "path_map": {
+            "active_path": {
+                "reaction_direction": "SHORT",
+                "source_zone": current_h1,
+            }
+        },
+        "m5_path_projection": {
+            "current_leg": {
+                "direction": "SHORT",
+                "source_zone": current_h1,
+            }
+        },
+        "chart_bars_m15": [],
+    }
+
+    state = build_canonical_xau_decision(
+        v226_evaluation=v226,
+        atlas_evaluation=atlas,
+        price_now=4127.42,
+        path_direction="SHORT",
+    )
+
+    assert state["state"] == "LOCAL_REMAP_WAIT"
+    assert state["nearest_supply"]["zone_id"] == "current-h1-supply"
+    assert state["local_structure_override"]["zone_id"] == "current-h1-supply"
+    assert state["entry_low"] == 4136.55
+    assert state["entry_high"] == 4160.48
+    assert state["entry_reference"] == 4136.55
+    assert state["sl"] is None
+    assert state["tp1"] is None
+    assert state["tp2"] is None
+    assert state["source_layer"] == "ATLAS_LOCAL_H1_WATCH"
+
+
 def test_v240_local_structure_supersedes_distant_v226_candidate_fail_closed() -> None:
     v226 = {
         "focus_direction": "SHORT",
