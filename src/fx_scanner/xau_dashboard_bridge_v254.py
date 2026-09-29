@@ -362,12 +362,12 @@ def build_snapshot(
 
     account = reader.latest_broker_account()
     broker_positions = list(reader.broker_positions_for_account(account))
-    xau_signals = list(reader.latest_signals_for_symbol("XAUUSD"))
+    xau_signals = list(reader.latest_signals_for_symbol("XAUUSD", limit=12))
     forecast_states = list(reader.latest_afic_forecast_states())
     prepared_plans = list(reader.latest_afic_prepared_plans())
-    geometry_events = list(reader.latest_xau_geometry_events(limit=12))
-    execution_events = list(reader.latest_xau_execution_events(limit=20))
-    lifecycle = list(reader.latest_xau_prepared_plan_lifecycle(limit=25))
+    geometry_events = list(reader.latest_xau_geometry_events(limit=8))
+    execution_events = list(reader.latest_xau_execution_events(limit=12))
+    lifecycle = list(reader.latest_xau_prepared_plan_lifecycle(limit=15))
     control_snapshot = asdict(store.get_execution_control())
     rizan_geometry = [
         row for row in geometry_events
@@ -377,6 +377,10 @@ def build_snapshot(
         }
     ][:12]
 
+    # Keep minute-level egress bounded. The UI needs current admission plus a
+    # short audit trail; older history remains in Supabase and is not deleted.
+    # These limits deliberately preserve enough rows for current-state geometry
+    # matching while preventing historical JSON from being retransmitted every minute.
     hot_backend_values = {
         "xau_signals": xau_signals,
         "broker_account": account,
