@@ -39,6 +39,73 @@ def _zone_text(zone: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _structural_zone_candidates(
+    atlas_evaluation: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Return every currently mapped structural zone V240 is allowed to inspect.
+
+    V182 can promote a newly formed H1/M15 source into path_map.active_path or
+    m5_path_projection before that source is represented in the legacy flat zones
+    collection. Restricting V240 to zones therefore leaves the dashboard pinned
+    to an older V226 H4 parent.
+
+    This union is read-only. Discovering a closer local source never grants
+    execution authority; it only allows the existing LOCAL_REMAP fail-closed
+    path to see the structure and suppress obsolete V226 entry geometry.
+    """
+    collected: list[dict[str, Any]] = [
+        dict(item or {}) for item in list(atlas_evaluation.get("zones") or [])
+    ]
+
+    path_map = dict(atlas_evaluation.get("path_map") or {})
+    for path_name in ("active_path", "demand_to_supply", "supply_to_demand"):
+        path = dict(path_map.get(path_name) or {})
+        for key in ("source_zone", "primary_opposing_zone", "terminal_target_zone"):
+            zone = dict(path.get(key) or {})
+            if zone:
+                collected.append(zone)
+        for raw in list(path.get("destination_stack") or []):
+            zone = dict(raw or {})
+            if zone:
+                collected.append(zone)
+
+    projections = [
+        dict(atlas_evaluation.get("m5_path_projection") or {}),
+        dict(path_map.get("m5_path_projection") or {}),
+    ]
+    for projection in projections:
+        for leg_name in ("current_leg", "next_leg"):
+            leg = dict(projection.get(leg_name) or {})
+            zone = dict(leg.get("source_zone") or {})
+            if zone:
+                collected.append(zone)
+            terminal = dict(leg.get("terminal_target_zone") or {})
+            if terminal:
+                collected.append(terminal)
+
+    unique: list[dict[str, Any]] = []
+    seen: set[tuple[Any, ...]] = set()
+    for zone in collected:
+        low = _f(zone.get("low"))
+        high = _f(zone.get("high"))
+        zone_id = str(zone.get("zone_id") or "")
+        key = (
+            "ID",
+            zone_id,
+        ) if zone_id else (
+            "GEOMETRY",
+            str(zone.get("timeframe") or "").upper(),
+            str(zone.get("direction") or "").upper(),
+            None if low is None else round(low, 4),
+            None if high is None else round(high, 4),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(zone)
+    return unique
+
+
 def _nearest_active_zone(
     atlas_evaluation: dict[str, Any],
     *,
@@ -46,7 +113,7 @@ def _nearest_active_zone(
     price: float | None,
 ) -> dict[str, Any]:
     candidates: list[tuple[float, float, dict[str, Any]]] = []
-    for raw in list(atlas_evaluation.get("zones") or []):
+    for raw in _structural_zone_candidates(atlas_evaluation):
         zone = dict(raw or {})
         if str(zone.get("direction") or "").upper() != direction:
             continue
@@ -79,13 +146,15 @@ def _local_zone_supersedes_candidate(
     candidate: dict[str, Any],
     local_zone: dict[str, Any],
 ) -> bool:
-    """True when an active same-direction atlas zone sits between price and V226.
+    """True when an active same-direction local zone sits between price and V226.
 
     V226 is intentionally H4-parent hierarchical. That can leave a valid but very
-    distant nested locator selected while a newer standalone H1/M15 structural zone
-    has formed closer to price. The dashboard must not label the distant locator as
-    the primary entry in that case. This helper is display/fail-closed only; it does
-    not grant execution authority to the local atlas zone.
+    distant nested locator selected while a newer H1/M15 structural source has
+    formed closer to price. The local source may come from the flat atlas zone list
+    or directly from V182 active/current path. The dashboard must not label the
+    distant locator as the primary entry in that case. This helper is
+    display/fail-closed only; it does not grant execution authority to the local
+    structure.
     """
     px = _f(price)
     c_low = _f(candidate.get("entry_low"))
