@@ -283,6 +283,33 @@ def _projected_m5_watch_pocket(
     }
 
 
+def _intersect_price_geometry(
+    geometry: dict[str, Any],
+    bounds: dict[str, Any],
+) -> dict[str, Any]:
+    """Return geometry clipped to bounds, or empty when there is no overlap."""
+    g_low = _f(geometry.get("low"))
+    g_high = _f(geometry.get("high"))
+    b_low = _f(bounds.get("low"))
+    b_high = _f(bounds.get("high"))
+    if None in {g_low, g_high, b_low, b_high}:
+        return {}
+    assert g_low is not None and g_high is not None
+    assert b_low is not None and b_high is not None
+    low = max(float(g_low), float(b_low))
+    high = min(float(g_high), float(b_high))
+    if high <= low:
+        return {}
+    return {
+        **dict(geometry),
+        "low": low,
+        "high": high,
+        "clipped_to_active_candidate": bool(
+            low != float(g_low) or high != float(g_high)
+        ),
+    }
+
+
 def _profile_key_findings(
     history_details: dict[str, Any],
     timeframe: str,
@@ -1809,19 +1836,28 @@ def build_depth_map(
         )
         or {}
     )
+    active_candidate_bounds = {
+        "low": focus_entry_candidate.get("entry_low"),
+        "high": focus_entry_candidate.get("entry_high"),
+    }
+    clipped_m15_envelope = _intersect_price_geometry(
+        focus_m15_envelope,
+        active_candidate_bounds,
+    )
+    clipped_h1_envelope = _intersect_price_geometry(
+        focus_h1_envelope,
+        active_candidate_bounds,
+    )
     projected_parent = (
-        focus_m15_envelope
-        or focus_h1_envelope
-        or {
-            "low": focus_entry_candidate.get("entry_low"),
-            "high": focus_entry_candidate.get("entry_high"),
-        }
+        clipped_m15_envelope
+        or clipped_h1_envelope
+        or active_candidate_bounds
     )
     projected_source = (
-        "M15_NESTED_LOCATOR"
-        if focus_m15_envelope
-        else "H1_NESTED_LOCATOR"
-        if focus_h1_envelope
+        "M15_NESTED_LOCATOR_CLIPPED_TO_ACTIVE_CANDIDATE"
+        if clipped_m15_envelope
+        else "H1_NESTED_LOCATOR_CLIPPED_TO_ACTIVE_CANDIDATE"
+        if clipped_h1_envelope
         else "FOCUS_DEPTH_CANDIDATE"
     )
     projected_m5_watch_pocket = _projected_m5_watch_pocket(
@@ -1870,6 +1906,16 @@ def build_depth_map(
         },
         "four_order_ladder": focus_ladder,
         "projected_m5_watch_pocket": projected_m5_watch_pocket,
+        "projected_m5_watch_parent": projected_parent,
+        "projected_m5_watch_source": projected_source,
+        "projected_m5_legacy_locator_rejected": bool(
+            (focus_m15_envelope and not clipped_m15_envelope)
+            or (
+                not focus_m15_envelope
+                and focus_h1_envelope
+                and not clipped_h1_envelope
+            )
+        ),
         "reversal_depth_heatmap": reversal_depth_heatmap,
         "reversal_depth_heatmap_source": {
             "timeframe": focus_source_tf or None,

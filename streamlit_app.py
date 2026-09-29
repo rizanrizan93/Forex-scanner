@@ -3699,14 +3699,16 @@ with forecast_tab:
             for heat_row in v226_reversal_heatmap:
                 heat_hazard = float(heat_row.get("hazard") or 0.0)
                 heat_ratio = 0.0 if heat_max <= 0 else heat_hazard / heat_max
+                # Reversal-opportunity semantics: greener = higher
+                # conditional reversal hazard; redder = lower/no-chase.
                 heat_bg = (
-                    "#991b1b"
+                    "#166534"
                     if bool(heat_row.get("is_highest_hazard"))
-                    else "#c2410c"
+                    else "#65a30d"
                     if heat_ratio >= 0.80
                     else "#ca8a04"
                     if heat_ratio >= 0.60
-                    else "#166534"
+                    else "#b91c1c"
                 )
                 heat_cells.append(
                     "<div style='flex:1;min-width:92px;padding:8px;margin:2px;"
@@ -3739,7 +3741,9 @@ with forecast_tab:
                 f"Band reversal hazard tertinggi saat ini: **{top_heat.get('band') or '—'}** "
                 f"({_fmt_price(top_heat.get('price_low'))}–{_fmt_price(top_heat.get('price_high'))}, "
                 f"hazard {_fmt_pct(top_heat.get('hazard'))}). "
-                "Hazard adalah conditional reversal rate per depth band, bukan win rate order."
+                "Hazard adalah conditional reversal rate per depth band, bukan win rate order. "
+                "Warna hijau = reversal hazard relatif lebih tinggi; kuning = menengah; "
+                "merah = reversal hazard rendah / NO-CHASE."
             )
         else:
             st.caption("Heatmap depth historis belum tersedia untuk source aktif.")

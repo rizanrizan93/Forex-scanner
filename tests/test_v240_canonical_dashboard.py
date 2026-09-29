@@ -197,11 +197,12 @@ def test_v266_dashboard_keeps_m5_visible_and_colors_reversal_heatmap() -> None:
     assert "bukan entry broker" in SOURCE
     assert "Historical Reversal Depth Heatmap — V225.2 (2012–2026)" in SOURCE
     assert "is_highest_hazard" in SOURCE
-    assert "#991b1b" in SOURCE
-    assert "#c2410c" in SOURCE
-    assert "#ca8a04" in SOURCE
     assert "#166534" in SOURCE
+    assert "#65a30d" in SOURCE
+    assert "#ca8a04" in SOURCE
+    assert "#b91c1c" in SOURCE
     assert "Hazard adalah conditional reversal rate per depth band, bukan win rate order." in SOURCE
+    assert "merah = reversal hazard rendah / NO-CHASE." in SOURCE
 
 
 def test_v266_dashboard_explains_probe_and_strict_execution_lanes() -> None:
