@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fx_scanner.demo_xau_decision_center_v296 import (
     _engine_direction,
@@ -229,3 +230,20 @@ def test_v296_rizan_geometry_marks_research_probe_only_when_runtime_gates_allow(
     assert len(rows) == 1
     assert rows[0]["research_probe_eligible"] is True
     assert rows[0]["geometry_authority"] is True
+
+
+
+def test_v296_dashboard_and_execution_lane_contract() -> None:
+    root = Path(__file__).resolve().parents[1]
+    dashboard = (root / "streamlit_app.py").read_text()
+    workflow = (
+        root / ".github" / "workflows" / "ctrader-demo-xau-execution-lane.yml"
+    ).read_text()
+
+    assert '"ctrader_demo_xau_decision_center_v296"' in dashboard
+    assert "Kesimpulan Final Ensemble V296" in dashboard
+    assert "Confidence ensemble bukan winrate" in dashboard
+    assert "Entry/SL/TP antar-engine tidak pernah dirata-ratakan" in dashboard
+    assert "Lihat keputusan & kalibrasi tiap engine" in dashboard
+    assert "python -m fx_scanner.demo_xau_decision_center_v296" in workflow
+    assert "continue-on-error: true" in workflow
