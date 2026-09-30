@@ -43,3 +43,12 @@ def test_schema_failure_is_not_misclassified_as_transient(monkeypatch):
         raise AssertionError("schema error was swallowed")
     assert _transient_db_unavailable(ValueError("bad query")) is False
     assert _transient_db_unavailable(TimeoutError("connect")) is True
+
+
+def test_runner_postgrest_stringified_522_is_recognized_without_swallowing_400():
+    ApiError = type("APIError", (Exception,), {"__module__": "postgrest.exceptions"})
+    assert _transient_db_unavailable(ApiError("{'message': 'JSON could not be generated', 'code': 522, 'details': 'Cloudflare'}"))
+    assert not _transient_db_unavailable(ApiError("{'message': 'missing column', 'code': 400}"))
+    actual_shape = ApiError("{'message': 'JSON could not be generated', 'code': 522}")
+    actual_shape.code = 522
+    assert _transient_db_unavailable(actual_shape)
