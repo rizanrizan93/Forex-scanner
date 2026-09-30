@@ -71,6 +71,7 @@ RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     "ctrader_demo_xau_dom_v191",
     "ctrader_demo_xau_event_risk_v192",
     "ctrader_demo_xau_v203_volatility_shock_guard",
+    "ctrader_demo_xau_decision_center_v296",
 )
 
 RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS = (
@@ -2253,6 +2254,9 @@ with forecast_tab:
     v229_child_executor_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v229_child_executor"
     )
+    v296_decision_center_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_decision_center_v296"
+    )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
     )
@@ -2927,6 +2931,167 @@ with forecast_tab:
         '<div class="rizan-note">Satu layar untuk bias, leg aktif, status setup, dan prioritas tindakan.</div>',
         unsafe_allow_html=True,
     )
+
+    v296_meta_details = (
+        {}
+        if v296_decision_center_hb is None
+        else dict(v296_decision_center_hb.get("details") or {})
+    )
+    v296_meta_decision = dict(v296_meta_details.get("decision") or {})
+    v296_meta_age = (
+        None
+        if v296_decision_center_hb is None
+        else _age_seconds(v296_decision_center_hb.get("observed_at"))
+    )
+    v296_meta_fresh = bool(
+        v296_meta_decision
+        and bool(v296_decision_center_hb.get("healthy"))
+        and v296_meta_age is not None
+        and v296_meta_age <= 180.0
+    )
+    v296_geometry = dict(v296_meta_decision.get("geometry") or {})
+    v296_direction = str(
+        v296_meta_decision.get("consensus_direction") or "WAIT"
+    ).upper()
+    v296_action = str(v296_meta_decision.get("action") or "WAIT")
+    if not v296_meta_fresh:
+        v296_direction = "WAIT"
+        v296_action = "DATA_STALE_WAIT"
+    v296_confidence = float(v296_meta_decision.get("confidence") or 0.0)
+    v296_agreement = float(v296_meta_decision.get("agreement") or 0.0)
+    v296_coverage = float(v296_meta_decision.get("coverage") or 0.0)
+    v296_evidence_coverage = float(
+        v296_meta_decision.get("evidence_coverage") or 0.0
+    )
+    v296_action_display = {
+        "DEMO_ORDER_ELIGIBLE": "DEMO ORDER ELIGIBLE",
+        "DEMO_RESEARCH_PROBE_ELIGIBLE": "DEMO RESEARCH PROBE",
+        "PREPARE_WAIT_CONFIRMATION": "PREPARE • WAIT CONFIRMATION",
+        "WAIT_ENGINE_CONFLICT": "WAIT • ENGINE CONFLICT",
+        "WAIT_NO_CANONICAL_GEOMETRY": "WAIT • NO CANONICAL GEOMETRY",
+        "DATA_STALE_WAIT": "WAIT • META DATA STALE",
+    }.get(v296_action, _rizan_display(v296_action))
+
+    with st.container(border=True):
+        st.markdown("### Kesimpulan Final Ensemble V296")
+        meta1, meta2, meta3, meta4 = st.columns(4)
+        meta1.metric("Arah final", v296_direction)
+        meta2.metric("Action", v296_action_display)
+        meta3.metric("Confidence ensemble", f"{v296_confidence:.1f}%")
+        meta4.metric("Agreement engine", f"{v296_agreement * 100.0:.1f}%")
+        st.caption(
+            "Confidence ensemble bukan winrate. Bobot engine memprioritaskan "
+            "hasil DEMO executed bila sample cukup; sebelum itu memakai geometry prior "
+            "dari forward/outcome ledger dan engine dengan sample kecil dibatasi. "
+            f"Coverage engine={v296_coverage * 100.0:.1f}% • "
+            f"evidence calibrated={v296_evidence_coverage * 100.0:.1f}% • "
+            + (
+                f"age={v296_meta_age:.0f}s"
+                if v296_meta_age is not None
+                else "age=—"
+            )
+            + "."
+        )
+
+        if v296_geometry and v296_meta_fresh:
+            entry_low = v296_geometry.get("entry_low")
+            entry_high = v296_geometry.get("entry_high")
+            geo1, geo2, geo3, geo4 = st.columns(4)
+            geo1.metric(
+                "Entry canonical",
+                f"{_fmt_price(entry_low)}–{_fmt_price(entry_high)}",
+            )
+            geo2.metric("SL", _fmt_price(v296_geometry.get("sl")))
+            geo3.metric("TP1", _fmt_price(v296_geometry.get("tp1")))
+            geo4.metric("TP2", _fmt_price(v296_geometry.get("tp2")))
+            st.caption(
+                "Geometry dipilih utuh dari **"
+                + str(v296_geometry.get("engine") or "—")
+                + "** • signal="
+                + str(v296_geometry.get("signal_id") or "—")
+                + " • state="
+                + str(v296_geometry.get("state") or "—")
+                + " • RR terminal="
+                + (
+                    f"{float(v296_geometry.get('rr2')):.2f}R"
+                    if v296_geometry.get("rr2") is not None
+                    else "—"
+                )
+                + ". Entry/SL/TP antar-engine tidak pernah dirata-ratakan."
+            )
+        else:
+            st.info(
+                "Belum ada geometry canonical ensemble yang fresh. "
+                "Arah/context boleh tersedia, tetapi dashboard tidak menampilkan "
+                "entry/SL/TP resmi sampai satu geometry utuh lolos seleksi."
+            )
+
+        v296_hard_blocks = list(v296_meta_decision.get("hard_blocks") or [])
+        if v296_hard_blocks:
+            st.error(
+                "Hard block: "
+                + ", ".join(
+                    f"{str(dict(row).get('name') or 'GATE')}="
+                    f"{str(dict(row).get('state') or dict(row).get('reason') or 'BLOCK')}"
+                    for row in v296_hard_blocks
+                )
+            )
+
+        with st.expander("Lihat keputusan & kalibrasi tiap engine", expanded=False):
+            vote_rows = []
+            for raw_vote in list(v296_meta_decision.get("votes") or []):
+                vote = dict(raw_vote or {})
+                cal = dict(vote.get("calibration") or {})
+                vote_rows.append(
+                    {
+                        "Engine": vote.get("engine"),
+                        "Role": vote.get("role"),
+                        "Keputusan": vote.get("direction"),
+                        "Weight efektif": round(float(vote.get("effective_weight") or 0.0), 3),
+                        "Sample decisive": int(cal.get("decisive") or 0),
+                        "TP1/Win rate": (
+                            None
+                            if cal.get("win_rate") is None
+                            else round(float(cal.get("win_rate")) * 100.0, 1)
+                        ),
+                        "Wilson lower 95%": (
+                            None
+                            if cal.get("wilson_lower_95") is None
+                            else round(float(cal.get("wilson_lower_95")) * 100.0, 1)
+                        ),
+                        "Basis": cal.get("basis"),
+                        "Executed n": int(cal.get("executed_decisive") or 0),
+                        "Geometry n": int(cal.get("geometry_decisive") or cal.get("decisive") or 0),
+                        "Kalibrasi": cal.get("state"),
+                        "Reason": vote.get("reason"),
+                    }
+                )
+            if vote_rows:
+                st.dataframe(
+                    pd.DataFrame(vote_rows),
+                    width="stretch",
+                    hide_index=True,
+                )
+            else:
+                st.caption("Belum ada vote engine V296.")
+
+            support_rows = [
+                {
+                    "Engine/Gate": dict(row).get("engine"),
+                    "Role": dict(row).get("role"),
+                    "Decision": dict(row).get("decision"),
+                    "State": dict(row).get("state"),
+                    "Detail": dict(row).get("detail"),
+                }
+                for row in list(v296_meta_decision.get("support_evidence") or [])
+            ]
+            if support_rows:
+                st.markdown("**Evidence / gate non-voting**")
+                st.dataframe(
+                    pd.DataFrame(support_rows),
+                    width="stretch",
+                    hide_index=True,
+                )
 
     dc_h4_text = (
         f"{_fmt_price(dc_h4_parent.get('low'))}–{_fmt_price(dc_h4_parent.get('high'))}"
