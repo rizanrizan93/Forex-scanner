@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import asdict
-from datetime import timedelta
+from datetime import datetime, timedelta
 from statistics import median
 from typing import Any, Sequence
 
@@ -26,6 +26,13 @@ POLICY_EFFECT = "RESEARCH_ONLY"
 EXECUTION_INFLUENCE = False
 EXECUTION_AUTHORITY = False
 PROMOTION_AUTHORITY = False
+
+
+def _dt(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        return ensure_utc(value)
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    return ensure_utc(parsed)
 
 
 def _next_episode(
@@ -59,7 +66,7 @@ def _evaluate_cycles_from_dataset(
 
     output: list[dict[str, Any]] = []
     for handoff in handoffs:
-        reaction_at = ensure_utc(handoff["reaction_at"])
+        reaction_at = _dt(handoff["reaction_at"])
         selected_id = str(handoff.get("selected_zone_id") or "")
         origin = handoff.get("selected_origin")
         if not selected_id:
