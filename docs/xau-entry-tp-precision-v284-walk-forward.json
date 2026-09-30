@@ -1,0 +1,254 @@
+{
+  "censored_plans": 24,
+  "execution_authority": false,
+  "execution_influence": false,
+  "fill_proxy": "M1_MID_OHLC_FIXED_SPREAD_QUOTE_SIDE_NOT_BROKER_FILL",
+  "folds": [
+    {
+      "eligible": false,
+      "reason": "INSUFFICIENT_PAIRED_HISTORY",
+      "test_year": 2012
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2013
+    },
+    {
+      "baseline": {
+        "base": {
+          "expectancy_r_per_opportunity": -0.007011151474257818,
+          "fill_rate": 0.30414746543778803,
+          "filled": 66,
+          "joint_success_per_opportunity": 0.08294930875576037,
+          "joint_wilson_95_lower": 0.05311177138164775,
+          "opportunities": 217,
+          "precise_tp": 18,
+          "precision_5_and_tp_given_fill": 0.2727272727272727,
+          "tp": 19,
+          "tp_given_fill": 0.2878787878787879,
+          "tp_per_opportunity": 0.08755760368663594
+        },
+        "stress": {
+          "expectancy_r_per_opportunity": -0.007109103947847353,
+          "fill_rate": 0.30414746543778803,
+          "filled": 66,
+          "joint_success_per_opportunity": 0.08294930875576037,
+          "joint_wilson_95_lower": 0.05311177138164775,
+          "opportunities": 217,
+          "precise_tp": 18,
+          "precision_5_and_tp_given_fill": 0.2727272727272727,
+          "tp": 19,
+          "tp_given_fill": 0.2878787878787879,
+          "tp_per_opportunity": 0.08755760368663594
+        }
+      },
+      "eligible": true,
+      "selected": {
+        "base": {
+          "expectancy_r_per_opportunity": -0.11729977409665972,
+          "fill_rate": 0.511520737327189,
+          "filled": 111,
+          "joint_success_per_opportunity": 0.10599078341013825,
+          "joint_wilson_95_lower": 0.0716712345251482,
+          "opportunities": 217,
+          "precise_tp": 23,
+          "precision_5_and_tp_given_fill": 0.2072072072072072,
+          "tp": 25,
+          "tp_given_fill": 0.22522522522522523,
+          "tp_per_opportunity": 0.1152073732718894
+        },
+        "stress": {
+          "expectancy_r_per_opportunity": -0.11741178036681106,
+          "fill_rate": 0.511520737327189,
+          "filled": 111,
+          "joint_success_per_opportunity": 0.10599078341013825,
+          "joint_wilson_95_lower": 0.0716712345251482,
+          "opportunities": 217,
+          "precise_tp": 23,
+          "precision_5_and_tp_given_fill": 0.2072072072072072,
+          "tp": 25,
+          "tp_given_fill": 0.22522522522522523,
+          "tp_per_opportunity": 0.1152073732718894
+        }
+      },
+      "selected_pair": "E1_T2",
+      "test_plans": 217,
+      "test_year": 2014,
+      "train_plans": 438
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2015
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2016
+    },
+    {
+      "baseline": {
+        "base": {
+          "expectancy_r_per_opportunity": -0.1829832338677562,
+          "fill_rate": 0.352112676056338,
+          "filled": 75,
+          "joint_success_per_opportunity": 0.046948356807511735,
+          "joint_wilson_95_lower": 0.025698400422747764,
+          "opportunities": 213,
+          "precise_tp": 10,
+          "precision_5_and_tp_given_fill": 0.13333333333333333,
+          "tp": 10,
+          "tp_given_fill": 0.13333333333333333,
+          "tp_per_opportunity": 0.046948356807511735
+        },
+        "stress": {
+          "expectancy_r_per_opportunity": -0.18308157360316313,
+          "fill_rate": 0.352112676056338,
+          "filled": 75,
+          "joint_success_per_opportunity": 0.046948356807511735,
+          "joint_wilson_95_lower": 0.025698400422747764,
+          "opportunities": 213,
+          "precise_tp": 10,
+          "precision_5_and_tp_given_fill": 0.13333333333333333,
+          "tp": 10,
+          "tp_given_fill": 0.13333333333333333,
+          "tp_per_opportunity": 0.046948356807511735
+        }
+      },
+      "eligible": true,
+      "selected": {
+        "base": {
+          "expectancy_r_per_opportunity": -0.11106504308264119,
+          "fill_rate": 0.5492957746478874,
+          "filled": 117,
+          "joint_success_per_opportunity": 0.11267605633802817,
+          "joint_wilson_95_lower": 0.0768963761734983,
+          "opportunities": 213,
+          "precise_tp": 24,
+          "precision_5_and_tp_given_fill": 0.20512820512820512,
+          "tp": 24,
+          "tp_given_fill": 0.20512820512820512,
+          "tp_per_opportunity": 0.11267605633802817
+        },
+        "stress": {
+          "expectancy_r_per_opportunity": -0.1112735582217957,
+          "fill_rate": 0.5492957746478874,
+          "filled": 117,
+          "joint_success_per_opportunity": 0.11267605633802817,
+          "joint_wilson_95_lower": 0.0768963761734983,
+          "opportunities": 213,
+          "precise_tp": 24,
+          "precision_5_and_tp_given_fill": 0.20512820512820512,
+          "tp": 24,
+          "tp_given_fill": 0.20512820512820512,
+          "tp_per_opportunity": 0.11267605633802817
+        }
+      },
+      "selected_pair": "E1_T2",
+      "test_plans": 213,
+      "test_year": 2017,
+      "train_plans": 1127
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2018
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2019
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2020
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2021
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2022
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2023
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2024
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2025
+    },
+    {
+      "eligible": false,
+      "reason": "NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS",
+      "test_year": 2026
+    }
+  ],
+  "max_entry_error_usd": 5.0,
+  "plans": 3352,
+  "price_end_by_year": {
+    "2012": "2013-02-01T21:59:00+00:00",
+    "2013": "2014-02-03T04:59:00+00:00",
+    "2014": "2015-02-03T04:59:00+00:00",
+    "2015": "2016-02-03T04:59:00+00:00",
+    "2016": "2017-02-03T04:59:00+00:00",
+    "2017": "2018-02-02T21:59:00+00:00",
+    "2018": "2019-02-01T21:59:00+00:00",
+    "2019": "2020-02-03T04:59:00+00:00",
+    "2020": "2021-02-03T04:59:00+00:00",
+    "2021": "2022-02-03T04:59:00+00:00",
+    "2022": "2023-02-03T04:59:00+00:00",
+    "2023": "2024-02-02T21:59:00+00:00",
+    "2024": "2025-02-03T04:59:00+00:00",
+    "2025": "2026-02-03T04:59:00+00:00",
+    "2026": "2026-09-25T00:58:00+00:00"
+  },
+  "research_version": "XAU_ENTRY_TP_PRECISION_V284_1",
+  "same_bar_policy": "STOP_FIRST_TARGET_ON_FILL_BAR_IGNORED",
+  "source_sha256_by_year": {
+    "2012": "9ecf597e20bfa2dcba76e5b8872399a949f3628102c85e923ebc176234f8efee",
+    "2013": "b7bfbad3ab182a52e5b4d10d7afe8d635d775a6ee6f5364f056509fa5884e108",
+    "2014": "091a764b6790e19dd2c8252cafc73f389e03eed9c078b38463cc1004f1593fef",
+    "2015": "f07d31e87a2e0b3162f4349a96cf365cb14c982d33487595a6f48036053a2e73",
+    "2016": "b3fa71e30a4b02ec84fd5224f39204eaa81b260b301c8b03f16fef2ac5e1fd9c",
+    "2017": "c573ecde165e5094c6470f052460faf600fe51dadb145160281e69e540f6a968",
+    "2018": "c1cea7fc612e6debf269f7581887b9d8a06652f1fbbacbb422c2637174d7cfc8",
+    "2019": "c5b3535f4177cb5d071ce30be735e7e48bd31fbbfe2bcecebc9822c4d419c202",
+    "2020": "e184356c2ce868b28e41b347e5e5ee2014dc037467b1d1c0eb6862fca89311ba",
+    "2021": "6818a3b87a72152926d80d3e553a88813c98c629ca85ceac4ead0470a28785bb",
+    "2022": "11d4713274b05619f81ffaa987db1c08bb138869d099728d5cd2f3e768b908e1",
+    "2023": "3c070e3952c0feb3a0cdad43e22e8bc1138bfd6d265757ec6b2ecff63f102f28",
+    "2024": "c5ac4464f30ea7e8c0c2fd1f15ecdc547ccad60f4bf062a4321e7668d181e1c4",
+    "2025": "4e18a5249128f057d64d7914fe0738ab6cf28c072f8fd747cdf09b9f38e4f54c",
+    "2026": "09477130e4f8926c5fca459970c90f59353e819a1190297240c0e7a8b1b6bcf6"
+  },
+  "years": [
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+  ]
+}
