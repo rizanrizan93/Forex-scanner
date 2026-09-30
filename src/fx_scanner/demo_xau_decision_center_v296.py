@@ -137,7 +137,8 @@ def _outcome_rows(store: SupabaseOperationalStore) -> list[dict[str, Any]]:
     response = (
         store.client.table("xau_outcome_ledger")
         .select(
-            "strategy_id,outcome_class,tp1_hit,stop_hit,mfe_r,mae_r,observed_at,outcome_at"
+            "strategy_id,outcome_class,tp1_hit,stop_hit,mfe_r,mae_r,observed_at,outcome_at,"
+            "order_accepted_at,protection_verified_at,missed_execution"
         )
         .order("observed_at", desc=True)
         .limit(800)
@@ -160,7 +161,27 @@ def _calibration_by_engine(rows: list[dict[str, Any]]) -> dict[str, dict[str, An
             )
             and row.get("outcome_class")
         ]
-        output[engine] = calibrate_outcomes(selected)
+        geometry_cal = calibrate_outcomes(selected)
+        executed = [
+            row
+            for row in selected
+            if row.get("order_accepted_at")
+            and not bool(row.get("missed_execution"))
+        ]
+        executed_cal = calibrate_outcomes(executed)
+        chosen = dict(
+            executed_cal
+            if int(executed_cal.get("decisive") or 0) >= 5
+            else geometry_cal
+        )
+        chosen["basis"] = (
+            "EXECUTED_DEMO"
+            if int(executed_cal.get("decisive") or 0) >= 5
+            else "GEOMETRY_PRIOR"
+        )
+        chosen["executed_decisive"] = int(executed_cal.get("decisive") or 0)
+        chosen["geometry_decisive"] = int(geometry_cal.get("decisive") or 0)
+        output[engine] = chosen
     return output
 
 
