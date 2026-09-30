@@ -4,7 +4,8 @@ import os
 from dataclasses import replace
 from datetime import UTC, datetime
 from math import isfinite
-from typing import Any
+from time import sleep
+from typing import Any, Callable
 
 from .xau_structure_admission import evaluate_structure_admission
 from .demo_xau_structural_targets_v229 import build_structural_target_plan
@@ -31,6 +32,7 @@ from .execution.models import ExecutionMode, OrderIntent, OrderSide, OrderType
 from .execution.policy import load_execution_policy
 from .execution.router import ExecutionRouter
 from .storage.supabase_operational import SupabaseOperationalStore
+from .transient import TRANSIENT_RETRY_DELAYS, is_transient_backend_error
 from .xau_pressure_transition_v249 import (
     DOM_WORKER,
     evaluate_pressure_transition,
@@ -89,16 +91,41 @@ def _account_label() -> str:
     )
 
 
+def _read_with_transient_retry(
+    operation: Callable[[], Any],
+    *,
+    delays: tuple[float, ...] = TRANSIENT_RETRY_DELAYS,
+    sleeper: Callable[[float], None] = sleep,
+) -> Any:
+    """Retry read-only backend I/O only for classified transient failures."""
+    last_exc: BaseException | None = None
+    for delay in delays:
+        if delay:
+            sleeper(float(delay))
+        try:
+            return operation()
+        except Exception as exc:
+            if not is_transient_backend_error(exc):
+                raise
+            last_exc = exc
+    if last_exc is None:
+        raise RuntimeError("TRANSIENT_READ_RETRY_EXHAUSTED_WITHOUT_ATTEMPT")
+    raise last_exc
+
+
 def _latest_parent_rows(store: SupabaseOperationalStore) -> list[dict[str, Any]]:
-    response = (
-        store.client.table("broker_order_events")
-        .select("signal_key,observed_at,payload,event_type,code")
-        .eq("event_type", EVENT_TYPE)
-        .eq("code", STRATEGY_ID)
-        .order("observed_at", desc=True)
-        .limit(MAX_PARENT_EVENTS)
-        .execute()
-    )
+    def fetch() -> Any:
+        return (
+            store.client.table("broker_order_events")
+            .select("signal_key,observed_at,payload,event_type,code")
+            .eq("event_type", EVENT_TYPE)
+            .eq("code", STRATEGY_ID)
+            .order("observed_at", desc=True)
+            .limit(MAX_PARENT_EVENTS)
+            .execute()
+        )
+
+    response = _read_with_transient_retry(fetch)
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
     for raw in response.data or []:
@@ -111,13 +138,16 @@ def _latest_parent_rows(store: SupabaseOperationalStore) -> list[dict[str, Any]]
 
 
 def _signal_row(store: SupabaseOperationalStore, signal_id: str) -> dict[str, Any]:
-    response = (
-        store.client.table("signals")
-        .select("id,state,expires_at,active_guards,observed_at")
-        .eq("id", signal_id)
-        .limit(1)
-        .execute()
-    )
+    def fetch() -> Any:
+        return (
+            store.client.table("signals")
+            .select("id,state,expires_at,active_guards,observed_at")
+            .eq("id", signal_id)
+            .limit(1)
+            .execute()
+        )
+
+    response = _read_with_transient_retry(fetch)
     rows = list(response.data or [])
     return {} if not rows else dict(rows[0])
 
@@ -850,7 +880,11 @@ def run() -> int:
     gate = ControlPlaneGate(
         max_age_seconds=float(policy.live_safety.get("control_state_max_age_seconds", 5))
     )
-    control = ControlPlaneRefreshWorker(store, gate, interval_seconds=1.0)
+    # Keep background control-plane I/O on a dedicated Supabase client so
+    # periodic refreshes cannot contend with the main executor's operational
+    # reads/writes on the same HTTP connection pool.
+    control_store = SupabaseOperationalStore.from_env(execution_ready_score_floor=65.0)
+    control = ControlPlaneRefreshWorker(control_store, gate, interval_seconds=1.0)
     router = ExecutionRouter(
         policy,
         gateway=gateway,
@@ -1532,6 +1566,8 @@ def run() -> int:
             ),
             "control_plane_refresh_interval_seconds": 1.0,
             "control_plane_pre_submit_refresh": True,
+            "control_plane_dedicated_store": True,
+            "operational_read_transient_retry_delays": list(TRANSIENT_RETRY_DELAYS),
             "generic_market_handoff_allowed": False,
             "pressure_transition_required": True,
             "strict_pressure_transition_requires_two_samples": True,

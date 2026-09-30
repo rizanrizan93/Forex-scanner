@@ -19,6 +19,7 @@ from fx_scanner.demo_xau_v229_child_executor import (
     _pending_side_valid,
     _promote_armed_calibration_parent,
     _promote_armed_confirmation_window,
+    _read_with_transient_retry,
     _slot_target,
     _source_depth_boundary_price,
     _target_with_min_rr,
@@ -185,6 +186,55 @@ def test_v229_child_executor_requires_pressure_transition_and_demo_lane_refresh(
     assert "execution_enabled" in source
     assert "demo_xau_dom_v191" in workflow
     assert "steps.refresh_xau_pressure.outcome == 'success'" in workflow
+
+
+def test_v294_transient_read_retries_then_recovers_without_sleep():
+    attempts = []
+
+    def operation():
+        attempts.append(len(attempts) + 1)
+        if len(attempts) < 3:
+            raise RuntimeError("Server disconnected")
+        return {"ok": True}
+
+    result = _read_with_transient_retry(
+        operation,
+        delays=(0.0, 0.0, 0.0),
+        sleeper=lambda _delay: None,
+    )
+    assert result == {"ok": True}
+    assert attempts == [1, 2, 3]
+
+
+def test_v294_transient_read_does_not_retry_permanent_schema_error():
+    attempts = []
+
+    def operation():
+        attempts.append(1)
+        raise ValueError("missing column")
+
+    try:
+        _read_with_transient_retry(
+            operation,
+            delays=(0.0, 0.0, 0.0),
+            sleeper=lambda _delay: None,
+        )
+    except ValueError as exc:
+        assert str(exc) == "missing column"
+    else:
+        raise AssertionError("permanent backend error was retried/swallowed")
+    assert attempts == [1]
+
+
+def test_v294_child_uses_dedicated_control_plane_store():
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_child_executor.py"
+    ).read_text()
+    assert "control_store = SupabaseOperationalStore.from_env" in source
+    assert "ControlPlaneRefreshWorker(control_store, gate" in source
+    assert '"control_plane_dedicated_store": True' in source
+    assert "operational_read_transient_retry_delays" in source
 
 
 def test_v263_child_rechecks_terminal_rr_from_actual_m5_entry() -> None:
