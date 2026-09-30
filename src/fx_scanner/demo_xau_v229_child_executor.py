@@ -84,6 +84,25 @@ def _float_env(name: str, default: float) -> float:
     return value if isfinite(value) else float(default)
 
 
+def _initial_stale_quote_is_operational_block(
+    exc: BaseException,
+    quote: Any | None,
+) -> bool:
+    """Treat a bounded initial quote timeout as WAIT, not a software crash.
+
+    No parent can be evaluated/submitted before the initial executable quote.
+    Returning a successful fail-closed cycle keeps the supervisor alive while
+    preserving the stale-quote reason in telemetry.
+    """
+    message = str(exc).lower()
+    return bool(
+        quote is None
+        and type(exc).__name__ == "CollectorUnavailable"
+        and "stale quote" in message
+        and "bounded wait" in message
+    )
+
+
 def _account_label() -> str:
     return (
         os.getenv("CTRADER_ACCOUNT_ID", "").strip()
@@ -895,6 +914,8 @@ def run() -> int:
 
     actions: list[str] = []
     error: str | None = None
+    operational_block: str | None = None
+    quote = None
     try:
         # Keep the execution control snapshot fresh for the entire one-shot
         # child-executor cycle. V266 only refreshed once at startup; by the time
@@ -1522,7 +1543,11 @@ def run() -> int:
             # reconciled/cancelled above, then ignored.
             break
     except Exception as exc:
-        error = f"{type(exc).__name__}:{exc}"
+        if _initial_stale_quote_is_operational_block(exc, quote):
+            operational_block = f"{type(exc).__name__}:{exc}"
+            actions.append("QUOTE_STALE_FAIL_CLOSED_NO_EXECUTION")
+        else:
+            error = f"{type(exc).__name__}:{exc}"
     finally:
         try:
             control.stop(timeout=2.0)
@@ -1592,13 +1617,16 @@ def run() -> int:
             "structure_admission": admission if "admission" in locals() else {},
             "actions": actions[:40],
             "error": error,
+            "operational_block": operational_block,
+            "execution_blocked": bool(operational_block),
             "observed_at": now.isoformat(),
             "code_version": os.getenv("GITHUB_SHA", "LOCAL"),
         },
     )
     print(
         "CTRADER_DEMO_XAU_RIZAN_CHILD_EXECUTOR "
-        f"healthy={int(error is None)} actions={len(actions)} error={error or 'NONE'}"
+        f"healthy={int(error is None)} actions={len(actions)} "
+        f"error={error or 'NONE'} block={operational_block or 'NONE'}"
     )
     return 0 if error is None else 2
 
