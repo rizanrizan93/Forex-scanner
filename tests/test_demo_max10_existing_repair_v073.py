@@ -5,9 +5,12 @@ import pytest
 
 from fx_scanner.demo_existing_protection_repair import (
     _exact_broker_identity,
+    _load_repair_plan,
     _load_signal_plan,
+    _load_v229_child_plan,
     _position_unprotected,
     _protection_gate_healthy,
+    _scanner_key_from_comment,
     _signal_id_from_comment,
 )
 from fx_scanner.demo_fresh_ready_handoff import (
@@ -85,6 +88,103 @@ def test_signal_comment_must_be_exact_scanner_uuid():
     assert _signal_id_from_comment(f"FXIS:{signal_id}", "FXIS") == signal_id
     assert _signal_id_from_comment(f"OTHER:{signal_id}", "FXIS") is None
     assert _signal_id_from_comment("FXIS:not-a-uuid", "FXIS") is None
+
+
+def test_v293_scanner_comment_accepts_exact_v229_child_only():
+    child_id = "RZ229:ab3a37665dbe83c307:L3"
+    assert _signal_id_from_comment(f"FXIS:{child_id}", "FXIS") is None
+    assert _scanner_key_from_comment(f"FXIS:{child_id}", "FXIS") == child_id
+    assert _scanner_key_from_comment("FXIS:RZ229:ab3a37665dbe83c307:L5", "FXIS") is None
+    assert _scanner_key_from_comment("FXIS:RZ229:nothex:L3", "FXIS") is None
+    assert _scanner_key_from_comment(f"OTHER:{child_id}", "FXIS") is None
+
+
+class _EventQuery(_Query):
+    def order(self, *_args, **_kwargs):
+        return self
+
+
+class _EventClient:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def table(self, name):
+        assert name == "broker_order_events"
+        return _EventQuery(self.rows)
+
+
+def _accepted_child_event(child_id: str, *, stop=4143.5758, entry=4172.66, target=4256.52):
+    return {
+        "signal_key": child_id,
+        "observed_at": "2026-09-30T06:35:07+00:00",
+        "event_type": "ORDER_ACCEPTED",
+        "accepted": True,
+        "broker_order_id": "50945727",
+        "payload": {
+            "symbol": "XAUUSD",
+            "signal_id": child_id,
+            "order_type": "LIMIT",
+            "requested_entry": entry,
+            "requested_stop_loss": stop,
+            "requested_take_profit": target,
+            "requested_volume": 0.01,
+        },
+    }
+
+
+def test_v293_v229_child_plan_recovers_immutable_accepted_protection():
+    child_id = "RZ229:ab3a37665dbe83c307:L3"
+    store = SimpleNamespace(client=_EventClient([_accepted_child_event(child_id)]))
+
+    row = _load_v229_child_plan(
+        store,
+        child_id=child_id,
+        symbol="XAUUSD",
+        side="BUY",
+    )
+
+    assert row["id"] == child_id
+    assert row["direction"] == "LONG"
+    assert row["sl"] == 4143.5758
+    assert row["tp2"] == 4256.52
+    assert row["broker_order_id"] == "50945727"
+    assert row["source"] == "V229_CHILD_ORDER_ACCEPTED"
+
+    same = _load_repair_plan(
+        store,
+        scanner_key=child_id,
+        symbol="XAUUSD",
+        side="BUY",
+    )
+    assert same == row
+
+
+def test_v293_v229_child_plan_rejects_side_or_geometry_mismatch():
+    child_id = "RZ229:ab3a37665dbe83c307:L3"
+    store = SimpleNamespace(client=_EventClient([_accepted_child_event(child_id)]))
+    assert _load_v229_child_plan(
+        store,
+        child_id=child_id,
+        symbol="XAUUSD",
+        side="SELL",
+    ) is None
+
+    invalid = SimpleNamespace(
+        client=_EventClient([
+            _accepted_child_event(
+                child_id,
+                stop=4180.0,
+                entry=4172.66,
+                target=4256.52,
+            )
+        ])
+    )
+    assert _load_v229_child_plan(
+        invalid,
+        child_id=child_id,
+        symbol="XAUUSD",
+        side="BUY",
+    ) is None
 
 
 def test_signal_plan_requires_symbol_direction_and_structural_stop():
