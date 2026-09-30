@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from .storage.supabase_operational import SupabaseOperationalStore
@@ -14,6 +16,11 @@ EVENT_TYPE = "DEMO_XAU_META_DECISION"
 EVENT_CODE = "XAU_META_DECISION_V296_1"
 SYMBOL = "XAUUSD"
 MAX_HEARTBEAT_AGE_SECONDS = 900.0
+V284_PRECISION_REPORT_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "docs"
+    / "xau-entry-tp-precision-v284-walk-forward.json"
+)
 
 ENGINE_SPECS = {
     "RIZAN_DEPTH": {
@@ -393,6 +400,58 @@ def _gates(latest: dict[str, dict[str, Any]], now: datetime) -> list[dict[str, A
     return gates
 
 
+def _v284_precision_evidence(
+    report_path: Path = V284_PRECISION_REPORT_PATH,
+) -> dict[str, Any]:
+    """Expose V284 only as historical precision calibration, never as a vote."""
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {
+            "engine": "V284_ENTRY_TP_PRECISION",
+            "role": "NON_VOTING_HISTORICAL_PRECISION_CALIBRATION",
+            "decision": "CONTEXT",
+            "state": "REPORT_UNAVAILABLE",
+            "detail": f"{type(exc).__name__}",
+            "execution_authority": False,
+            "execution_influence": False,
+        }
+
+    folds = {
+        int(row.get("test_year")): dict(row)
+        for row in list(payload.get("folds") or [])
+        if row.get("test_year") is not None
+    }
+    y2025 = folds.get(2025, {})
+    y2026 = folds.get(2026, {})
+    authority = bool(payload.get("execution_authority"))
+    influence = bool(payload.get("execution_influence"))
+    blocked = bool(
+        not authority
+        and not influence
+        and not bool(y2025.get("eligible"))
+        and not bool(y2026.get("eligible"))
+    )
+    state = "BLOCKED_RESEARCH_ONLY" if blocked else "REVIEW_REQUIRED"
+    detail = (
+        f"plans={int(payload.get('plans') or 0)}; "
+        f"censored={int(payload.get('censored_plans') or 0)}; "
+        f"2025={str(y2025.get('reason') or 'UNKNOWN')}; "
+        f"2026={str(y2026.get('reason') or 'UNKNOWN')}; "
+        f"fill_proxy={str(payload.get('fill_proxy') or 'UNKNOWN')}"
+    )
+    return {
+        "engine": "V284_ENTRY_TP_PRECISION",
+        "role": "NON_VOTING_HISTORICAL_PRECISION_CALIBRATION",
+        "decision": "CONTEXT",
+        "state": state,
+        "detail": detail,
+        "execution_authority": False,
+        "execution_influence": False,
+        "research_version": str(payload.get("research_version") or "V284"),
+    }
+
+
 def _support_evidence(latest: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     v226 = dict(latest.get("ctrader_demo_xau_v226_rizan_depth_map") or {})
     v226_eval = dict(dict(v226.get("details") or {}).get("evaluation") or {})
@@ -447,6 +506,7 @@ def _support_evidence(latest: dict[str, dict[str, Any]]) -> list[dict[str, Any]]
             "state": str(event_risk.get("state") or "UNAVAILABLE"),
             "detail": str(event_risk.get("action") or ""),
         },
+        _v284_precision_evidence(),
     ]
 
 

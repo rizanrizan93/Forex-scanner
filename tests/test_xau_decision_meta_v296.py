@@ -7,6 +7,7 @@ from fx_scanner.demo_xau_decision_center_v296 import (
     _engine_direction,
     _geometry_candidates,
     _v171_direction,
+    _v284_precision_evidence,
 )
 from fx_scanner.xau_decision_meta_v296 import (
     build_meta_decision,
@@ -321,3 +322,29 @@ def test_v298_wait_keeps_dominant_bias_and_reference_geometry() -> None:
     assert decision["reference_geometry"]["signal_id"] == "short-ref"
     assert decision["reference_geometry_execution_authority"] is False
     assert decision["action"] == "WAIT_ENGINE_CONFLICT"
+
+
+
+def test_v300_v284_precision_report_is_non_voting_blocked_research_evidence() -> None:
+    evidence = _v284_precision_evidence()
+
+    assert evidence["engine"] == "V284_ENTRY_TP_PRECISION"
+    assert evidence["role"] == "NON_VOTING_HISTORICAL_PRECISION_CALIBRATION"
+    assert evidence["decision"] == "CONTEXT"
+    assert evidence["state"] == "BLOCKED_RESEARCH_ONLY"
+    assert evidence["execution_authority"] is False
+    assert evidence["execution_influence"] is False
+    assert "plans=3352" in evidence["detail"]
+    assert "censored=24" in evidence["detail"]
+    assert "2025=NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS" in evidence["detail"]
+    assert "2026=NO_TRAINING_PAIR_MEETS_FILL_TP_STRESS" in evidence["detail"]
+    assert "M1_MID_OHLC_FIXED_SPREAD_QUOTE_SIDE_NOT_BROKER_FILL" in evidence["detail"]
+
+
+def test_v300_v284_missing_report_fails_closed_as_context_only(tmp_path) -> None:
+    evidence = _v284_precision_evidence(tmp_path / "missing-v284.json")
+
+    assert evidence["state"] == "REPORT_UNAVAILABLE"
+    assert evidence["execution_authority"] is False
+    assert evidence["execution_influence"] is False
+    assert evidence["role"] == "NON_VOTING_HISTORICAL_PRECISION_CALIBRATION"
