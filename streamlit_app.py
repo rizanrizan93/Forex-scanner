@@ -46,6 +46,7 @@ from fx_scanner.xau_dynamic_depth_hazard_v251 import (
 from fx_scanner.xau_reversal_stage_v280 import evaluate_reversal_stage
 from fx_scanner.xau_competing_risk_prior_v285 import (
     evaluate_v281_competing_risk_prior,
+    evaluate_v281_contextual_competing_risk,
 )
 from fx_scanner.xau_dashboard_bridge_v254 import (
     DEFAULT_SNAPSHOT_URL as DEFAULT_DASHBOARD_SNAPSHOT_URL,
@@ -3470,6 +3471,24 @@ with forecast_tab:
         except Exception:
             v240_session = "SESSION_UNAVAILABLE"
     v240_wib_clock = datetime.now(tz=UTC).astimezone(WIB).strftime("%H:%M WIB")
+    v286_contextual_risk = evaluate_v281_contextual_competing_risk(
+        timeframe=str(
+            v240_reversal_stage.get("source_timeframe")
+            or v226_reversal_heatmap_source.get("timeframe")
+            or v240_active_source.get("timeframe")
+            or ""
+        ),
+        depth=(
+            v240_reversal_stage.get("depth")
+            if v240_reversal_stage.get("depth") is not None
+            else v240_depth_hazard.get("current_depth")
+        ),
+        session=v240_session,
+        atr_points=v240_active_source.get("atr_points"),
+        live_pressure_state=v240_pressure_trend,
+        first_touch_calibrated=v284_first_touch_calibrated,
+        year=datetime.now(tz=UTC).year,
+    )
     v240_gate_reason = str(
         v229_exec_details.get("reason")
         or v240_depth_hazard.get("action")
@@ -4123,6 +4142,79 @@ with forecast_tab:
                 f"reason={v284_competing_risk.get('reason') or 'UNAVAILABLE'} • "
                 "V281 mengukur first-touch saja. Untuk retest, dashboard hanya memakai "
                 "geometry context + pressure/M5 prospective; tidak mengimpor probabilitas first-touch."
+            )
+
+        st.markdown("###### V286 Contextual Competing Risk — RISET FIRST-TOUCH")
+        if bool(v286_contextual_risk.get("available")):
+            context_cells = dict(v286_contextual_risk.get("cells") or {})
+            context_specs = [
+                (
+                    "Session",
+                    context_cells.get("session") or {},
+                    str(v286_contextual_risk.get("session") or "—"),
+                ),
+                (
+                    "Volatilitas",
+                    context_cells.get("volatility") or {},
+                    str(v286_contextual_risk.get("volatility_bucket") or "—"),
+                ),
+                (
+                    "Pressure proxy historis",
+                    context_cells.get("historical_pressure_proxy") or {},
+                    str(
+                        dict(v286_contextual_risk.get("pressure_bridge") or {}).get(
+                            "historical_proxy_bucket"
+                        )
+                        or "—"
+                    ),
+                ),
+                (
+                    "Era",
+                    context_cells.get("era") or {},
+                    str(v286_contextual_risk.get("era") or "—"),
+                ),
+            ]
+            for start in (0, 2):
+                cols = st.columns(2)
+                for col, (label, cell, key) in zip(cols, context_specs[start : start + 2]):
+                    selected = dict(cell.get("selected") or {})
+                    col.metric(
+                        f"{label} • {key}",
+                        (
+                            f"REV {_fmt_pct(selected.get('p_reversal'))} / "
+                            f"BREAK {_fmt_pct(selected.get('p_break'))}"
+                            if selected
+                            else "N/A"
+                        ),
+                        (
+                            f"n={int(selected.get('at_risk') or 0):,}"
+                            if selected
+                            else "cell unavailable"
+                        ),
+                    )
+            bridge = dict(v286_contextual_risk.get("pressure_bridge") or {})
+            st.caption(
+                f"Band={v286_contextual_risk.get('band') or '—'} • "
+                f"session={v286_contextual_risk.get('session') or '—'} • "
+                f"volatility={v286_contextual_risk.get('volatility_bucket') or '—'} • "
+                f"DOM live={bridge.get('live_dom_state') or 'UNAVAILABLE'} → "
+                f"proxy historis={bridge.get('historical_proxy_bucket') or 'UNAVAILABLE'} "
+                "(semantic bridge only). "
+                "Keempat kartu adalah **marginal contextual splits**, bukan joint probability. "
+                "Historical pressure memakai causal M1 OHLC proxy; DOM live tetap cTrader Level-II "
+                "dan tidak pernah dianggap sebagai DOM historis."
+            )
+            st.info(
+                "V286 tetap **RISET/FORECAST**: tidak memberi execution authority/influence. "
+                "Volatility threshold dibekukan dari 2012–2024; OOS 2025–2026 dipakai untuk "
+                "evaluasi event forecast, bukan win rate/PF trading."
+            )
+        else:
+            st.info(
+                "**V286 contextual prior tidak berlaku pada retest/reused zone.** "
+                f"reason={v286_contextual_risk.get('reason') or 'UNAVAILABLE'} • "
+                "Session/volatility/pressure historical first-touch tidak dipromosikan menjadi "
+                "probabilitas live pada zona yang sudah disentuh."
             )
 
         st.markdown("###### Historical Reversal Depth Heatmap — V225.2 (2012–2026)")
