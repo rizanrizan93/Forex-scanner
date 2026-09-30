@@ -524,10 +524,21 @@ def _support_evidence(latest: dict[str, dict[str, Any]]) -> list[dict[str, Any]]
 
 
 def _decision_signature(decision: dict[str, Any]) -> str:
-    geometry = dict(decision.get("geometry") or {})
+    geometry = dict(
+        decision.get("geometry")
+        or decision.get("reference_geometry")
+        or {}
+    )
+    directional_key = str(
+        decision.get("consensus_direction")
+        if str(decision.get("consensus_direction") or "").upper()
+        in {"LONG", "SHORT"}
+        else decision.get("dominant_direction")
+        or "WAIT"
+    )
     payload = "|".join(
         [
-            str(decision.get("consensus_direction") or ""),
+            directional_key,
             str(decision.get("action") or ""),
             str(geometry.get("signal_id") or ""),
             str(round(float(geometry.get("entry_low") or 0.0), 3)),
