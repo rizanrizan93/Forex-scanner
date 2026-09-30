@@ -3125,7 +3125,7 @@ with forecast_tab:
                 + " • RR terminal="
                 + (
                     f"{float(v296_display_geometry.get('rr2')):.2f}R"
-                    if v296_geometry.get("rr2") is not None
+                    if v296_display_geometry.get("rr2") is not None
                     else "—"
                 )
                 + (
