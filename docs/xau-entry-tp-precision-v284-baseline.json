@@ -1,0 +1,203 @@
+{
+  "eras": {
+    "2012_2018": {
+      "L1": {
+        "fill_rate": 0.7165206508135169,
+        "filled": 1145,
+        "joint_success_per_opportunity": 0.29662077596996245,
+        "opportunities": 1598,
+        "tp": 495,
+        "tp_given_fill": 0.43231441048034935,
+        "tp_mae_median_usd": 1.229774138543462,
+        "tp_with_adverse_at_most_5_usd": 474
+      },
+      "L2": {
+        "fill_rate": 0.7202753441802253,
+        "filled": 1151,
+        "joint_success_per_opportunity": 0.22340425531914893,
+        "opportunities": 1598,
+        "tp": 374,
+        "tp_given_fill": 0.32493483927019984,
+        "tp_mae_median_usd": 1.4004798705249186,
+        "tp_with_adverse_at_most_5_usd": 357
+      },
+      "L3": {
+        "fill_rate": 0.22903629536921152,
+        "filled": 366,
+        "joint_success_per_opportunity": 0.05381727158948686,
+        "opportunities": 1598,
+        "tp": 92,
+        "tp_given_fill": 0.25136612021857924,
+        "tp_mae_median_usd": 1.405999999999949,
+        "tp_with_adverse_at_most_5_usd": 86
+      },
+      "L4": {
+        "fill_rate": 0.18085106382978725,
+        "filled": 289,
+        "joint_success_per_opportunity": 0.04755944931163955,
+        "opportunities": 1598,
+        "tp": 86,
+        "tp_given_fill": 0.2975778546712803,
+        "tp_mae_median_usd": 1.6459999999999582,
+        "tp_with_adverse_at_most_5_usd": 76
+      }
+    },
+    "2019_2024": {
+      "L1": {
+        "fill_rate": 0.7218442932728647,
+        "filled": 955,
+        "joint_success_per_opportunity": 0.26303854875283444,
+        "opportunities": 1323,
+        "tp": 400,
+        "tp_given_fill": 0.418848167539267,
+        "tp_mae_median_usd": 1.6212585274126923,
+        "tp_with_adverse_at_most_5_usd": 348
+      },
+      "L2": {
+        "fill_rate": 0.7294028722600151,
+        "filled": 965,
+        "joint_success_per_opportunity": 0.1836734693877551,
+        "opportunities": 1323,
+        "tp": 282,
+        "tp_given_fill": 0.2922279792746114,
+        "tp_mae_median_usd": 1.6993340178519247,
+        "tp_with_adverse_at_most_5_usd": 243
+      },
+      "L3": {
+        "fill_rate": 0.2653061224489796,
+        "filled": 351,
+        "joint_success_per_opportunity": 0.04837490551776266,
+        "opportunities": 1323,
+        "tp": 73,
+        "tp_given_fill": 0.20797720797720798,
+        "tp_mae_median_usd": 1.66599999999994,
+        "tp_with_adverse_at_most_5_usd": 64
+      },
+      "L4": {
+        "fill_rate": 0.21012849584278157,
+        "filled": 278,
+        "joint_success_per_opportunity": 0.04081632653061224,
+        "opportunities": 1323,
+        "tp": 62,
+        "tp_given_fill": 0.22302158273381295,
+        "tp_mae_median_usd": 2.3759999999998627,
+        "tp_with_adverse_at_most_5_usd": 54
+      }
+    },
+    "2025_2026": {
+      "L1": {
+        "fill_rate": 0.6853146853146853,
+        "filled": 294,
+        "joint_success_per_opportunity": 0.14685314685314685,
+        "opportunities": 429,
+        "tp": 123,
+        "tp_given_fill": 0.41836734693877553,
+        "tp_mae_median_usd": 4.934036554168415,
+        "tp_with_adverse_at_most_5_usd": 63
+      },
+      "L2": {
+        "fill_rate": 0.6993006993006993,
+        "filled": 300,
+        "joint_success_per_opportunity": 0.08158508158508158,
+        "opportunities": 429,
+        "tp": 92,
+        "tp_given_fill": 0.30666666666666664,
+        "tp_mae_median_usd": 7.618303115283197,
+        "tp_with_adverse_at_most_5_usd": 35
+      },
+      "L3": {
+        "fill_rate": 0.2680652680652681,
+        "filled": 115,
+        "joint_success_per_opportunity": 0.030303030303030304,
+        "opportunities": 429,
+        "tp": 25,
+        "tp_given_fill": 0.21739130434782608,
+        "tp_mae_median_usd": 4.915999999999258,
+        "tp_with_adverse_at_most_5_usd": 13
+      },
+      "L4": {
+        "fill_rate": 0.19347319347319347,
+        "filled": 83,
+        "joint_success_per_opportunity": 0.016317016317016316,
+        "opportunities": 429,
+        "tp": 20,
+        "tp_given_fill": 0.24096385542168675,
+        "tp_mae_median_usd": 8.887499999999818,
+        "tp_with_adverse_at_most_5_usd": 7
+      }
+    },
+    "ALL": {
+      "L1": {
+        "fill_rate": 0.7146268656716418,
+        "filled": 2394,
+        "joint_success_per_opportunity": 0.26417910447761195,
+        "opportunities": 3350,
+        "tp": 1018,
+        "tp_given_fill": 0.4252297410192147,
+        "tp_mae_median_usd": 1.5587458291967096,
+        "tp_with_adverse_at_most_5_usd": 885
+      },
+      "L2": {
+        "fill_rate": 0.7211940298507463,
+        "filled": 2416,
+        "joint_success_per_opportunity": 0.18955223880597014,
+        "opportunities": 3350,
+        "tp": 748,
+        "tp_given_fill": 0.30960264900662254,
+        "tp_mae_median_usd": 1.7109680963599203,
+        "tp_with_adverse_at_most_5_usd": 635
+      },
+      "L3": {
+        "fill_rate": 0.24835820895522387,
+        "filled": 832,
+        "joint_success_per_opportunity": 0.048656716417910445,
+        "opportunities": 3350,
+        "tp": 190,
+        "tp_given_fill": 0.2283653846153846,
+        "tp_mae_median_usd": 1.745999999999981,
+        "tp_with_adverse_at_most_5_usd": 163
+      },
+      "L4": {
+        "fill_rate": 0.19402985074626866,
+        "filled": 650,
+        "joint_success_per_opportunity": 0.0408955223880597,
+        "opportunities": 3350,
+        "tp": 168,
+        "tp_given_fill": 0.25846153846153846,
+        "tp_mae_median_usd": 2.1009999999998854,
+        "tp_with_adverse_at_most_5_usd": 137
+      }
+    }
+  },
+  "execution_authority": false,
+  "execution_influence": false,
+  "limitations": [
+    "V242_MID_OHLC_TOUCH_FILL_NOT_BROKER_CONFIRMED",
+    "RETROSPECTIVE_CURRENT_PARAMETER_REPLAY_NOT_INDEPENDENT_OOS",
+    "M5_CONFIRMED_SLOTS_HAVE_DIFFERENT_ACTIVATION_AND_FILL_OPPORTUNITY"
+  ],
+  "max_entry_error_usd": 5.0,
+  "measurement": "MAX_M1_OHLC_ADVERSE_EXCURSION_FROM_FILL_THROUGH_TP",
+  "parent_plans": 3350,
+  "price_end_by_year": {
+    "2012": "2013-02-01T21:59:00+00:00",
+    "2013": "2014-02-03T04:59:00+00:00",
+    "2014": "2015-02-03T04:59:00+00:00",
+    "2015": "2016-02-03T04:59:00+00:00",
+    "2016": "2017-02-03T04:59:00+00:00",
+    "2017": "2018-02-02T21:59:00+00:00",
+    "2018": "2019-02-01T21:59:00+00:00",
+    "2019": "2020-02-03T04:59:00+00:00",
+    "2020": "2021-02-03T04:59:00+00:00",
+    "2021": "2022-02-03T04:59:00+00:00",
+    "2022": "2023-02-03T04:59:00+00:00",
+    "2023": "2024-02-02T21:59:00+00:00",
+    "2024": "2025-02-03T04:59:00+00:00",
+    "2025": "2026-02-03T04:59:00+00:00",
+    "2026": "2026-09-18T21:58:00+00:00"
+  },
+  "raw_trade_records": 26800,
+  "research_version": "XAU_ENTRY_TP_PRECISION_V284_1",
+  "source_version": "XAU_V229_HISTORICAL_EXECUTION_V242_1",
+  "year_count": 15
+}
