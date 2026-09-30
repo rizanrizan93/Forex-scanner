@@ -326,3 +326,32 @@ def test_v287_dashboard_surfaces_forward_latency_without_claiming_performance() 
     assert "bukan untuk menyimpulkan win rate/PF/expectancy" in SOURCE
     assert "support cadence 1 jam" in SOURCE
     assert "Tidak ada polling baru per 60 detik." in SOURCE
+
+
+def test_v289_all_official_broker_surfaces_obey_v280_effective_authorization() -> None:
+    assert "v240_effective_entry_authorized" in SOURCE
+    assert "V280 effective authorization veto" in SOURCE
+    assert 'order_targets_authorized=v240_effective_entry_authorized' in SOURCE
+    assert 'if not v240_effective_entry_authorized:' in SOURCE
+
+    official_block = SOURCE[SOURCE.index('"4 • Official broker entry"'):]
+    official_block = official_block[:900]
+    assert "if v240_effective_entry_authorized" in official_block
+    assert "if v240_entry_authorized" not in official_block
+
+    chart_block = SOURCE[SOURCE.index("chart_entry_zone ="):]
+    chart_block = chart_block[:8500]
+    assert "v240_effective_entry_authorized" in chart_block
+    assert "order_targets_authorized=v240_entry_authorized" not in chart_block
+
+    execution_block = SOURCE[SOURCE.index('"### 3 • Eksekusi Sekarang"'):]
+    execution_block = execution_block[:7500]
+    assert '"Entry resmi"' in execution_block
+    assert "v240_effective_entry_authorized" in execution_block
+    assert "if v240_entry_authorized and v240_children" not in execution_block
+
+    effective_block = SOURCE[SOURCE.index("v240_effective_entry_authorized = bool("):]
+    effective_block = effective_block[:1100]
+    assert 'v240_admission_label = (' in effective_block
+    assert '"INVALIDATED" if v280_stage == "SETUP_INVALID" else "BLOCKED"' in effective_block
+    assert 'v240_route_label = "NO ORDER"' in effective_block
