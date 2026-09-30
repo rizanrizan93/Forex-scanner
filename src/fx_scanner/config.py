@@ -83,16 +83,8 @@ def load_project_config(root: str | Path | None = None) -> ProjectConfig:
 
     pair_data = _read_yaml(cfg / "pairs.yaml")
     raw_pairs = pair_data.get("pairs", [])
-    if not isinstance(raw_pairs, list) or len(raw_pairs) != 1:
-        raise ConfigurationError(
-            "V298 XAU-only runtime requires exactly 1 configured instrument, "
-            f"got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}"
-        )
-    configured_symbol = str(dict(raw_pairs[0]).get("symbol") or "").upper().strip()
-    if configured_symbol != "XAUUSD":
-        raise ConfigurationError(
-            f"V298 XAU-only runtime requires XAUUSD, got {configured_symbol or '<missing>'}"
-        )
+    if not isinstance(raw_pairs, list) or len(raw_pairs) != 20:
+        raise ConfigurationError(f"DEMO technical universe requires exactly 20 configured instruments, got {len(raw_pairs) if isinstance(raw_pairs, list) else 'invalid'}")
 
     pairs: list[PairSpec] = []
     seen: set[str] = set()
