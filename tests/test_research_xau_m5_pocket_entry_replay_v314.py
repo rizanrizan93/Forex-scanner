@@ -122,7 +122,7 @@ def test_v314_limit_replay_can_fill_and_hit_tp_with_stop_first_contract():
         pocket=pocket,
         entry_mode="POCKET_PROXIMAL_LIMIT",
         stop_mode="POCKET_DISTAL_0P10_ATR",
-        target_atr=0.50,
+        target_atr=0.75,
     )
     assert out["filled"] is True
     assert out["state"] == "TP"
