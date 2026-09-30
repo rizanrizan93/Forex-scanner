@@ -19,6 +19,7 @@ LEGACY_PREPARED_EVENT_TYPE = "DEMO_XAU_AFIC_PREPARED_PLAN"
 LEGACY_PREPARED_CODE = "XAU_AFIC_PATH_PREPARED_V1"
 LEGACY_FORECAST_EVENT_TYPE = "DEMO_XAU_AFIC_FORECAST_STATE"
 LEGACY_FORECAST_CODE = "XAU_AFIC_PATH_STATE_V1"
+V280_STAGE_BLOCK_EVENT_TYPE = "DEMO_XAU_RIZAN_STAGE_BLOCK"
 # Reconstruct only the recent active/recently-resolved window. Lifecycle rows are
 # durable in xau_prepared_plan_lifecycle, so rescanning 30 days every maintenance
 # cycle only increases PostgREST egress. Seven days is far beyond the V229 plan
@@ -37,6 +38,7 @@ TRACKED_EVENT_TYPES = (
     "ORDER_ACCEPTED",
     "POSITION_PROTECTION_VERIFIED",
     "DEMO_TRADE_CLOSED",
+    V280_STAGE_BLOCK_EVENT_TYPE,
 )
 
 _CANCEL_GUARD_REASON = {
@@ -91,6 +93,8 @@ def _events(
         select_fields = (
             "observed_at,event_type,signal_key,code,payload"
             if event_type in rich_types
+            else "observed_at,event_type,signal_key,accepted,code"
+            if event_type == V280_STAGE_BLOCK_EVENT_TYPE
             else "observed_at,event_type,signal_key,accepted"
         )
         query = (
@@ -296,6 +300,24 @@ def _next_map_transition(
     return None
 
 
+def _v280_stage_block_transition(
+    signal_events: Sequence[dict[str, Any]],
+    *,
+    created_at: datetime,
+) -> tuple[datetime | None, str | None]:
+    for row in signal_events:
+        if str(row.get("event_type") or "") != V280_STAGE_BLOCK_EVENT_TYPE:
+            continue
+        at = _dt(row.get("observed_at"))
+        if at is None or at < created_at:
+            continue
+        guard = str(row.get("code") or "").strip()
+        reason = _CANCEL_GUARD_REASON.get(guard)
+        if reason is not None:
+            return at, reason
+    return None, None
+
+
 def _cancel_reason(
     signal: dict[str, Any],
     *,
@@ -303,6 +325,7 @@ def _cancel_reason(
     map_at: str,
     forecast_events: Sequence[dict[str, Any]],
     now: datetime,
+    signal_events: Sequence[dict[str, Any]] = (),
 ) -> tuple[datetime | None, str | None]:
     state = str(signal.get("state") or "").upper()
     guards = [str(value) for value in (signal.get("active_guards") or [])]
@@ -312,8 +335,21 @@ def _cancel_reason(
         created_at=created_at,
         map_at=map_at,
     )
-    if same_map_reason is not None:
-        return same_map_at, same_map_reason
+    v280_at, v280_reason = _v280_stage_block_transition(
+        signal_events,
+        created_at=created_at,
+    )
+    transition_candidates = [
+        (at, reason)
+        for at, reason in (
+            (same_map_at, same_map_reason),
+            (v280_at, v280_reason),
+        )
+        if at is not None and reason is not None
+    ]
+    if transition_candidates:
+        transition_candidates.sort(key=lambda item: item[0])
+        return transition_candidates[0]
 
     if state == "INVALIDATED":
         for guard in guards:
@@ -439,6 +475,7 @@ def _lifecycle_rows(
             map_at=map_at,
             forecast_events=forecast_events,
             now=now,
+            signal_events=signal_events,
         )
         # Broker side-effects are authoritative. Never mark an already accepted
         # order as cancelled because a later H4 map superseded the forecast.
