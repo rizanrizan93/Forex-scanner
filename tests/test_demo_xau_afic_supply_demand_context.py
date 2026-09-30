@@ -615,3 +615,89 @@ def test_v258_no_canonical_map_surfaces_v182_active_path_prepare_only(monkeypatc
     assert sd["execution_influence"] is False
     assert sd["execution_authority"] is False
     assert sd["promotion_authority"] is False
+
+
+class _ProjectionResp:
+    def __init__(self, data):
+        self.data = data
+
+
+class _ProjectionQuery:
+    def __init__(self, row):
+        self.row = row
+        self.selected = None
+    def table(self, _name):
+        return self
+    def select(self, fields):
+        self.selected = fields
+        return self
+    def eq(self, *_args):
+        return self
+    def order(self, *_args, **_kwargs):
+        return self
+    def limit(self, *_args, **_kwargs):
+        return self
+    def execute(self):
+        return _ProjectionResp([self.row])
+
+
+class _ProjectionStore:
+    def __init__(self, row):
+        self.client = _ProjectionQuery(row)
+
+
+def test_runtime_atlas_reader_projects_only_consumed_evaluation_fields():
+    row = {
+        "observed_at": "2026-10-01T00:00:00+00:00",
+        "state": "ATLAS_AVAILABLE",
+        "session_context": "ASIA",
+        "last_closed_m15_price": 4150.0,
+        "nearest_demand": {"zone_id": "d"},
+        "nearest_supply": {"zone_id": "s"},
+        "path_map": {"active_path": {"reaction_direction": "SHORT"}},
+        "micro_refinement": {"state": "WAIT"},
+        "m5_path_projection": {"state": "WAIT"},
+        "chart_bars_m15": [{"timestamp": "2026-10-01T00:00:00+00:00"}],
+        "zones": [{"zone_id": "d"}],
+    }
+    store = _ProjectionStore(row)
+    observed, atlas = ctx.latest_atlas(store)
+    assert observed == datetime(2026, 10, 1, 0, 0, tzinfo=UTC)
+    assert atlas["nearest_demand"]["zone_id"] == "d"
+    assert atlas["path_map"]["active_path"]["reaction_direction"] == "SHORT"
+    assert store.client.selected != "observed_at,healthy,details"
+    assert ",details," not in store.client.selected
+    assert "nearest_demand:details->evaluation->nearest_demand" in store.client.selected
+    assert "chart_bars_m15:details->evaluation->chart_bars_m15" in store.client.selected
+
+
+def test_runtime_dom_and_event_readers_do_not_fetch_full_details():
+    dom_store = _ProjectionStore({
+        "observed_at": "2026-10-01T00:00:00+00:00",
+        "state": "ASK_DOMINANT",
+        "dom_pressure_score": 67.0,
+        "last_imbalance": -0.2,
+        "top5_bid_units": 10,
+        "top5_ask_units": 20,
+        "bid_wall": {"price": 4140},
+        "ask_wall": {"price": 4160},
+    })
+    _, dom = ctx.latest_dom(dom_store)
+    assert dom["state"] == "ASK_DOMINANT"
+    assert dom_store.client.selected != "observed_at,healthy,details"
+    assert ",details," not in dom_store.client.selected
+    assert "state:details->analysis->>state" in dom_store.client.selected
+
+    event_store = _ProjectionStore({
+        "observed_at": "2026-10-01T00:00:00+00:00",
+        "risk": {"state": "CLEAR"},
+        "official_or_cadence_verified_count": 2,
+        "discovery_unverified_count": 0,
+        "source_status": {"CALENDAR": "OK"},
+    })
+    _, event = ctx.latest_event_risk(event_store)
+    assert event["risk"]["state"] == "CLEAR"
+    assert event["official_or_cadence_verified_count"] == 2
+    assert event_store.client.selected != "observed_at,healthy,details"
+    assert ",details," not in event_store.client.selected
+    assert "risk:details->risk" in event_store.client.selected

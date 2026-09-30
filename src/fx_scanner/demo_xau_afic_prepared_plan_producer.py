@@ -826,6 +826,8 @@ def run()->int:
     observability:dict[str,Any]={}
     proximity=zone_proximity(price=None,zone=None)
     live_quote_error=None
+    quote=None
+    live_mid=None
     stale_ready_invalidated=0
     superseded_signals_invalidated=0
     try:
@@ -848,8 +850,6 @@ def run()->int:
             store,payload=payload
         )
 
-        quote=None
-        live_mid=None
         diagnostics=dict(payload.get("zone_diagnostics") or {})
         needs_live_quote=bool(payload.get("zone")) or bool(
             diagnostics.get("active_alternative_watch_count")
