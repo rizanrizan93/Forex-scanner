@@ -1,0 +1,69 @@
+name: XAU Reusable Primary Reversal V312
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_reusable_primary_reversal_v312.py"
+      - "src/fx_scanner/research_xau_reusable_primary_reversal_v312_runtime.py"
+      - "tests/test_research_xau_reusable_primary_reversal_v312.py"
+      - ".github/workflows/research-xau-reusable-primary-reversal-v312.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/research_xau_reusable_primary_reversal_v312.py"
+      - "src/fx_scanner/research_xau_reusable_primary_reversal_v312_runtime.py"
+      - ".github/workflows/research-xau-reusable-primary-reversal-v312.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-reusable-primary-reversal-v312
+  cancel-in-progress: true
+
+jobs:
+  reusable-primary-reversal-v312:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
+      CTRADER_XAU_M15_RESEARCH_HISTORY_BARS: "100000"
+      XAU_REUSABLE_PRIMARY_REVERSAL_V312_OUTPUT: artifacts/xau-reusable-primary-reversal-v312.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Unit test V312
+        run: pytest -q tests/test_research_xau_reusable_primary_reversal_v312.py
+      - name: Run 100K-bar reusable Primary Reversal research
+        if: ${{ github.event_name != 'pull_request' }}
+        run: python -m fx_scanner.research_xau_reusable_primary_reversal_v312_runtime
+      - name: Upload V312 evidence
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-reusable-primary-reversal-v312
+          path: artifacts/xau-reusable-primary-reversal-v312.json
+          if-no-files-found: error
+          retention-days: 30
