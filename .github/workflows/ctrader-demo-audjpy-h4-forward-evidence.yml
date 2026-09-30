@@ -2,16 +2,6 @@ name: cTrader Demo AUDJPY H4 Forward Evidence
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - research/watch-gbpaud-audjpy-crossfeed-v1
-    paths:
-      - "src/fx_scanner/demo_audjpy_forward_evidence.py"
-      - "src/fx_scanner/demo_audjpy_forward_observer.py"
-      - ".github/workflows/ctrader-demo-audjpy-h4-forward-evidence.yml"
-  schedule:
-    - cron: "37 */4 * * 1-5"
-
 permissions:
   contents: read
 
