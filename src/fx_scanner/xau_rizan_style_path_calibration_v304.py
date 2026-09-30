@@ -157,6 +157,21 @@ def _route_distance_to_zone(
     return min(distances) if distances else None
 
 
+def _route_distance_to_price(
+    route: Sequence[dict[str, Any]],
+    price: Any,
+) -> float | None:
+    target = _f(price)
+    if target is None:
+        return None
+    distances = [
+        abs(float(parsed) - target)
+        for parsed in (_f(dict(row or {}).get("price")) for row in route)
+        if parsed is not None
+    ]
+    return min(distances) if distances else None
+
+
 def evaluate_reference_alignment(
     *,
     style_path: dict[str, Any],
@@ -218,6 +233,13 @@ def evaluate_reference_alignment(
         ref_acceptance_first,
     )
 
+    reference_roadblock = dict(reference.get("roadblock_key") or {})
+    primary_path = dict(style_path.get("primary_path") or {})
+    roadblock_route_error = _route_distance_to_price(
+        [dict(row or {}) for row in list(primary_path.get("route") or [])],
+        reference_roadblock.get("price"),
+    )
+
     ref_width = None
     ref_bounds = _bounds(ref_zone)
     if ref_bounds is not None:
@@ -268,6 +290,8 @@ def evaluate_reference_alignment(
             acceptance_zone_overlap,
             6,
         ),
+        "reference_roadblock_price": _f(reference_roadblock.get("price")),
+        "roadblock_route_error_points": roadblock_route_error,
         "reference_alignment_score": round(alignment_score, 3),
         "score_semantics": "REFERENCE_GEOMETRY_ALIGNMENT_NOT_WIN_RATE",
         "execution_authority": EXECUTION_AUTHORITY,
