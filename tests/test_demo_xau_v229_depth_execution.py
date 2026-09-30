@@ -9,7 +9,10 @@ from fx_scanner.demo_xau_v229_depth_execution import (
     _fresh_first_touch_calibration_context,
     build_execution_plan,
 )
-from fx_scanner.demo_xau_v226_rizan_depth_map import build_depth_map
+from fx_scanner.demo_xau_v226_rizan_depth_map import (
+    _depth_entry_candidate,
+    build_depth_map,
+)
 
 
 def _v226(*, fresh: bool = True, first_touch: bool = False, reused: bool = False) -> dict:
@@ -915,3 +918,105 @@ def test_v282_v280_hard_block_persists_specific_guard_and_one_shot_event() -> No
     assert "if changed and guard.startswith(\"V280_\"):" in source
     assert "store.record_order_event(" in source
     assert "telemetry write must never undo or fail that block" in source
+
+
+
+def test_v290_htf_retest_parent_overrides_nested_first_touch_status() -> None:
+    candidate = _depth_entry_candidate(
+        direction="LONG",
+        price=101.0,
+        h4={
+            "hotspot": {"low": 99.0, "high": 103.0},
+            "historical_profile": {},
+            "applicability": {
+                "state": "ACTIVE_HTF_RETEST",
+                "touch_count": 5,
+                "structurally_active": True,
+                "lifecycle_weight": 0.60,
+            },
+        },
+        h1_nested={
+            "envelope": {"low": 100.0, "high": 102.0},
+            "median": {"price": 101.0},
+        },
+        m15_nested={},
+        h1_profile={},
+        m15_profile={},
+        h4_selection_mode="STRUCTURAL_ACTIVE_NEAREST",
+        h1_app={
+            "state": "MEDIUM_FIRST_TOUCH_IN_PROGRESS",
+            "touch_count": 1,
+            "structurally_active": True,
+            "lifecycle_weight": 0.90,
+        },
+        m15_app={
+            "state": "HIGH_FIRST_TOUCH_PRIOR",
+            "touch_count": 0,
+            "structurally_active": True,
+            "lifecycle_weight": 1.0,
+        },
+    )
+
+    assert candidate["first_touch_in_progress"] is True
+    assert candidate["htf_retested"] is True
+    assert candidate["retest_confirmation_eligible"] is True
+    assert candidate["display_status"] == "CONFIRMATION_ONLY_RETESTED_HTF"
+    assert candidate["confirmation_calibrated_first_touch"] is False
+    assert candidate["zone_reuse"]["htf_retest_confirmation"] is True
+    assert candidate["zone_reuse"]["historical_prior_scope"] == "FIRST_TOUCH_PRIOR_GEOMETRY_ONLY"
+
+
+def test_v290_v229_builds_confirmation_parent_for_mixed_htf_retest_and_nested_first_touch() -> None:
+    payload = _v226(fresh=False, reused=True)
+    candidate = _depth_entry_candidate(
+        direction="LONG",
+        price=101.0,
+        h4={
+            "hotspot": {"low": 99.0, "high": 103.0},
+            "historical_profile": {},
+            "applicability": {
+                "state": "ACTIVE_HTF_RETEST",
+                "touch_count": 5,
+                "structurally_active": True,
+                "lifecycle_weight": 0.60,
+            },
+        },
+        h1_nested={
+            "envelope": {"low": 100.0, "high": 102.0},
+            "median": {"price": 101.0},
+        },
+        m15_nested={},
+        h1_profile={},
+        m15_profile={},
+        h4_selection_mode="STRUCTURAL_ACTIVE_NEAREST",
+        h1_app={
+            "state": "MEDIUM_FIRST_TOUCH_IN_PROGRESS",
+            "touch_count": 1,
+            "structurally_active": True,
+            "lifecycle_weight": 0.90,
+        },
+        m15_app={
+            "state": "HIGH_FIRST_TOUCH_PRIOR",
+            "touch_count": 0,
+            "structurally_active": True,
+            "lifecycle_weight": 1.0,
+        },
+    )
+    payload["depth_entry_candidate"] = candidate
+
+    plan = build_execution_plan(
+        v226_evaluation=payload,
+        atlas_evaluation=_atlas(),
+        live_price=101.0,
+    )
+
+    assert plan is not None
+    assert plan["execution_phase"] == "RETEST_CONFIRMATION"
+    assert plan["pretouch_slots"] == []
+    assert plan["confirmation_slots"] == [3, 4]
+    assert [child["execution_enabled"] for child in plan["children"]] == [
+        False,
+        False,
+        True,
+        True,
+    ]
