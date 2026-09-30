@@ -366,7 +366,7 @@ def test_v301_conflict_probe_requires_near_consensus_and_aligned_rizan_reference
             "engine": "M15_SMC_RECLAIM",
             "direction": "LONG",
             "available": True,
-            "base_weight": 0.90,
+            "base_weight": 0.80,
             "freshness_factor": 1.0,
             "calibration": {"reliability_multiplier": 0.35},
         },
@@ -402,7 +402,7 @@ def test_v301_conflict_probe_requires_near_consensus_and_aligned_rizan_reference
         votes=votes,
         geometry_candidates=[reference],
         gates=[],
-        possible_base_weight=1.90,
+        possible_base_weight=1.80,
     )
 
     assert decision["consensus_direction"] == "WAIT"
