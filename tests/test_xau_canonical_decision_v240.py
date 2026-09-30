@@ -153,7 +153,10 @@ def test_v240_exposes_nearest_supply_demand_and_destination() -> None:
         path_direction="LONG",
     )
     assert state["nearest_demand"]["zone_id"] == "d1"
-    assert state["nearest_supply"]["zone_id"] == "m15-s"
+    # Operational V289 display uses the active path's forward opposing zone.
+    assert state["nearest_supply"]["zone_id"] == "h1-s"
+    # The physically closest raw zone is retained for diagnostics.
+    assert state["raw_nearest_supply"]["zone_id"] == "m15-s"
     assert state["likely_destination"]["target_price"] > 103.0
     assert state["likely_destination"]["timeframe"] == "M15"
 
