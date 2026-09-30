@@ -436,6 +436,35 @@ def evaluate_reference_outcome(
     }
 
 
+def _compact_style_snapshot(style_path: dict[str, Any]) -> dict[str, Any]:
+    decision_zone = dict(style_path.get("next_decision_zone") or {})
+    keys = dict(style_path.get("key_levels") or {})
+    acceptance = dict(style_path.get("acceptance_branch") or {})
+    rejection = dict(style_path.get("rejection_branch") or {})
+    return {
+        "state": style_path.get("state"),
+        "price_now": _f(style_path.get("price_now")),
+        "active_direction": style_path.get("active_direction"),
+        "decision_zone": {
+            "zone_id": decision_zone.get("zone_id"),
+            "timeframe": decision_zone.get("timeframe"),
+            "direction": decision_zone.get("direction"),
+            "low": _f(decision_zone.get("low")),
+            "high": _f(decision_zone.get("high")),
+        },
+        "key_levels": {
+            "rejection_reclaim_key": _f(keys.get("rejection_reclaim_key")),
+            "break_acceptance_key": _f(keys.get("break_acceptance_key")),
+            "midpoint": _f(keys.get("midpoint")),
+        },
+        "rejection_direction": rejection.get("direction"),
+        "acceptance_direction": acceptance.get("direction"),
+        "acceptance_next_destination_zone": dict(
+            acceptance.get("next_destination_zone") or {}
+        ),
+    }
+
+
 def evaluate_v304(
     *,
     style_path: dict[str, Any],
@@ -450,6 +479,7 @@ def evaluate_v304(
     )
     return {
         "contract": CONTRACT,
+        "rizan_baseline_snapshot": _compact_style_snapshot(style_path),
         "reference": {
             "reference_id": reference.get("reference_id"),
             "source_name": reference.get("source_name"),
