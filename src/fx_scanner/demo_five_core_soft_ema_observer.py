@@ -26,7 +26,7 @@ WORKER_NAME = "ctrader_demo_five_core_soft_ema_observer"
 EVENT_TYPE = "DEMO_FIVE_CORE_SOFT_EMA_EVALUATION"
 CONTRACT = "FIVE_CORE_SOFT_EMA_FORWARD_V3"
 REQUEST_COUNT = 232
-SYMBOL_TIMEFRAMES = {"XAUUSD": "D1", "USDJPY": "H4"}
+SYMBOL_TIMEFRAMES = {"XAUUSD": "D1"}
 
 
 def _account_label() -> str:
