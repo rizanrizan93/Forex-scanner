@@ -475,6 +475,9 @@ def _support_evidence(latest: dict[str, dict[str, Any]]) -> list[dict[str, Any]]
         atlas_evaluation=atlas_eval,
         price_now=atlas_eval.get("last_closed_m15_price"),
     )
+    v304 = dict(atlas_eval.get("rizan_style_path_calibration_v304") or {})
+    v304_alignment = dict(v304.get("alignment") or {})
+    v304_outcome = dict(v304.get("outcome") or {})
     candidate = dict(v226_eval.get("depth_entry_candidate") or {})
     child = dict(latest.get("ctrader_demo_xau_v229_child_executor") or {})
     child_details = dict(child.get("details") or {})
@@ -495,6 +498,17 @@ def _support_evidence(latest: dict[str, dict[str, Any]]) -> list[dict[str, Any]]
             "detail": (
                 f"decision_zone={dict(style_path.get('next_decision_zone') or {}).get('zone_id') or 'NONE'};"
                 f" branch={style_path.get('branch_preference') or 'WAIT_DECISION'}"
+            ),
+        },
+        {
+            "engine": "RIZAN_STYLE_PATH_CALIBRATION_V304",
+            "role": "NON_VOTING_PUBLIC_REFERENCE_CALIBRATION",
+            "decision": "CONTEXT",
+            "state": str(v304_alignment.get("state") or "UNAVAILABLE"),
+            "detail": (
+                f"reference={v304_alignment.get('reference_id') or 'NONE'};"
+                f" alignment={v304_alignment.get('reference_alignment_score')};"
+                f" branch_outcome={v304_outcome.get('branch_outcome') or 'PENDING'}"
             ),
         },
         {
@@ -640,6 +654,9 @@ def run() -> int:
     decision["rizan_style_path_engine"] = build_rizan_style_path_engine(
         atlas_evaluation=atlas_eval,
         price_now=atlas_eval.get("last_closed_m15_price"),
+    )
+    decision["rizan_style_path_calibration_v304"] = dict(
+        atlas_eval.get("rizan_style_path_calibration_v304") or {}
     )
     decision["support_evidence"] = _support_evidence(latest)
 
