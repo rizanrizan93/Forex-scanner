@@ -22,6 +22,8 @@ from .research_xau_forecast_ensemble_v171 import (
 from .research_xau_expected_move_envelope_v170 import evaluate_expected_move_v170
 from .research_xau_m15_dual_strategy_runtime import _fetch_history
 from .storage.supabase_operational import SupabaseOperationalStore
+from .xau_standalone_ctrader_v253 import build_standalone_ctrader_feed
+from .exceptions import ConfigurationError
 
 SYMBOL = "XAUUSD"
 WORKER_NAME = "ctrader_xau_forecast_ensemble_v171"
@@ -64,6 +66,29 @@ def _reference_components(client: Any) -> tuple[dict[str, Any], dict[str, Any], 
             "TRANSIENT_DB_UNAVAILABLE",
         )
     return afic, v170, "OK"
+
+
+def _build_shadow_feed(policy: Any, operational_read_status: str) -> Any:
+    if operational_read_status == "OK":
+        return build_ctrader_research_feed(policy, (SYMBOL,))
+    # The existing V253 standalone feed has no order gateway, token writer or
+    # refresh. It can use the runner's DEMO secrets during a DB outage without
+    # changing the durable token policy for execution jobs.
+    cfg = policy.ctrader
+    def required(name: str) -> str:
+        value = os.getenv(str(cfg[name]), "").strip()
+        if not value:
+            raise ConfigurationError(f"missing cTrader shadow credential: {name}")
+        return value
+    pinned = os.getenv(str(cfg["account_id_env"]), "").strip()
+    return build_standalone_ctrader_feed(
+        client_id=required("client_id_env"),
+        client_secret=required("client_secret_env"),
+        access_token=required("access_token_env"),
+        refresh_token=required("refresh_token_env"),
+        trader_login=int(required("trader_login_env")),
+        account_id=int(pinned) if pinned else None,
+    )
 
 
 def _rows(response: Any) -> list[dict[str, Any]]:
@@ -253,7 +278,7 @@ def run() -> int:
     store = SupabaseOperationalStore.from_env()
     afic, reference_v170, operational_read_status = _reference_components(store.client)
 
-    feed = build_ctrader_research_feed(policy, (SYMBOL,))
+    feed = _build_shadow_feed(policy, operational_read_status)
     try:
         feed.ensure_connected()
         bars, pages = _fetch_history(feed, target=HISTORY_TARGET, as_of=now)
