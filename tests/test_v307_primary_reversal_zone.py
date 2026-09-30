@@ -83,7 +83,7 @@ def test_v307_deeply_mitigated_nearest_demand_cannot_outrank_healthier_reversal_
     assert selected is not None
     assert selected["zone_id"] == "healthy-primary"
     assert selected["zone_role"] == "PRIMARY_REVERSAL_ZONE"
-    assert selected["selection_policy"] == "V307_PRIMARY_REVERSAL_AUTHORITY"
+    assert selected["selection_policy"] == "V309_REACHABLE_PRIMARY_REVERSAL_AUTHORITY"
 
 
 def test_v307_short_bias_keeps_short_path_until_confirmed_handoff():
@@ -124,3 +124,42 @@ def test_v307_short_bias_keeps_short_path_until_confirmed_handoff():
     assert result["display_policy"] == "PRIMARY_REVERSAL_ZONE_ONLY"
     assert result["active_path"]["reaction_direction"] == "SHORT"
     assert result["active_path"]["primary_opposing_zone"]["zone_id"] == "primary-demand"
+
+
+
+def test_v309_remote_high_nesting_supply_cannot_beat_reachable_fresh_supply():
+    reachable = _zone(
+        "reachable-supply",
+        "SHORT",
+        4257.0,
+        4266.0,
+        distance_atr=5.0,
+        mitigation=0.0,
+        freshness="FRESH",
+        nesting=2,
+        structural=True,
+        research_score=84.0,
+    )
+    remote = _zone(
+        "remote-supply",
+        "SHORT",
+        4408.0,
+        4431.0,
+        distance_atr=13.6,
+        mitigation=0.0,
+        freshness="FRESH",
+        nesting=3,
+        structural=True,
+        research_score=70.0,
+    )
+
+    selected = _primary_reversal_zone(
+        (reachable, remote),
+        direction="SHORT",
+    )
+
+    assert selected is not None
+    assert selected["zone_id"] == "reachable-supply"
+    assert selected["selection_policy"] == "V309_REACHABLE_PRIMARY_REVERSAL_AUTHORITY"
+    assert selected["nearest_healthy_distance_atr"] == 5.0
+    assert selected["forward_relevance_ceiling_atr"] == 8.0

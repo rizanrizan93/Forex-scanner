@@ -230,7 +230,7 @@ def test_v307_primary_reversal_watch_keeps_zone_without_probability_evidence() -
     watch = state["primary_reversal_watch"]
     assert watch["zone_id"] == "h1-s"
     assert watch.get("p_touch") is None
-    assert watch["selection_policy"] == "V307_PRIMARY_REVERSAL_AUTHORITY"
+    assert watch["selection_policy"] == "V309_REACHABLE_PRIMARY_REVERSAL_AUTHORITY"
 
 
 def test_v240_discovers_active_path_source_missing_from_flat_zone_list() -> None:

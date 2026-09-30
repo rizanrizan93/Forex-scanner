@@ -793,7 +793,10 @@ def _primary_reversal_authority_score(item: dict[str, Any]) -> float:
     tf = str(item.get("timeframe") or "").upper()
     timeframe_points = {"H1": 10.0, "H4": 8.0, "D1": 6.0}.get(tf, 0.0)
     research = 0.30 * float(item.get("research_score") or 0.0)
-    distance_penalty = min(18.0, 3.0 * float(item.get("distance_atr") or 0.0))
+    # V309: distance must remain economically meaningful. V307 capped the
+    # penalty at 18 points, which allowed a 13+ ATR old supply to beat a fresh
+    # 5 ATR structural supply merely because it had one extra HTF nesting layer.
+    distance_penalty = 3.0 * float(item.get("distance_atr") or 0.0)
     mitigation_penalty = 35.0 if mitigation >= 0.75 else 12.0 if mitigation >= 0.50 else 0.0
     return round(
         freshness_points
@@ -832,8 +835,28 @@ def _primary_reversal_zone(
         not in {"DEEPLY_MITIGATED", "MULTI_TESTED"}
     ]
     pool = healthier or candidates
+
+    # V309 forward-relevance gate: a primary reversal zone should be reachable
+    # on the current structural path, not simply the globally highest-scoring
+    # untouched zone. Keep candidates within 3 ATR of the nearest healthy zone.
+    # This still allows a slightly farther but materially stronger nested zone
+    # to win, while preventing remote historical supply/demand from becoming
+    # the operational dashboard authority.
+    nearest_distance_atr = min(
+        float(item.get("distance_atr") or 0.0)
+        for item in pool
+    )
+    relevance_ceiling_atr = nearest_distance_atr + 3.0
+    forward_pool = [
+        item for item in pool
+        if float(item.get("distance_atr") or 0.0) <= relevance_ceiling_atr
+    ]
+    pool = forward_pool or pool
+
     for item in pool:
         item["primary_reversal_authority_score"] = _primary_reversal_authority_score(item)
+        item["nearest_healthy_distance_atr"] = round(nearest_distance_atr, 4)
+        item["forward_relevance_ceiling_atr"] = round(relevance_ceiling_atr, 4)
     pool.sort(
         key=lambda item: (
             -float(item.get("primary_reversal_authority_score") or 0.0),
@@ -844,7 +867,7 @@ def _primary_reversal_zone(
     )
     selected = dict(pool[0])
     selected["zone_role"] = "PRIMARY_REVERSAL_ZONE"
-    selected["selection_policy"] = "V307_PRIMARY_REVERSAL_AUTHORITY"
+    selected["selection_policy"] = "V309_REACHABLE_PRIMARY_REVERSAL_AUTHORITY"
     return selected
 
 
