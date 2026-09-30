@@ -313,3 +313,16 @@ def test_v286_dashboard_surfaces_contextual_competing_risk_as_research_only() ->
     assert "DOM live tetap cTrader Level-II" in SOURCE
     assert "tidak memberi execution authority/influence" in SOURCE
     assert "contextual prior tidak berlaku pada retest/reused zone" in SOURCE
+
+
+def test_v287_dashboard_surfaces_forward_latency_without_claiming_performance() -> None:
+    assert '"ctrader_demo_xau_prepared_plan_lifecycle"' in SOURCE
+    assert "V282 Forward Latency — observability DEMO" in SOURCE
+    assert "Touch → konfirmasi" in SOURCE
+    assert "Konfirmasi → ready" in SOURCE
+    assert "Ready → order accepted" in SOURCE
+    assert "V280 entry dicegah" in SOURCE
+    assert "Forward sample belum cukup untuk inferensi performa." in SOURCE
+    assert "bukan untuk menyimpulkan win rate/PF/expectancy" in SOURCE
+    assert "support cadence 1 jam" in SOURCE
+    assert "Tidak ada polling baru per 60 detik." in SOURCE
