@@ -44,6 +44,9 @@ from fx_scanner.xau_dynamic_depth_hazard_v251 import (
     build_geometry_depth_status,
 )
 from fx_scanner.xau_reversal_stage_v280 import evaluate_reversal_stage
+from fx_scanner.xau_competing_risk_prior_v285 import (
+    evaluate_v281_competing_risk_prior,
+)
 from fx_scanner.xau_dashboard_bridge_v254 import (
     DEFAULT_SNAPSHOT_URL as DEFAULT_DASHBOARD_SNAPSHOT_URL,
     fetch_snapshot as fetch_dashboard_snapshot,
@@ -3428,6 +3431,27 @@ with forecast_tab:
         except Exception:
             v240_reversal_stage = {}
 
+    v284_first_touch_calibrated = bool(
+        v240_reversal_stage.get("first_touch_calibrated")
+        or str(v226_candidate_reuse.get("historical_prior_scope") or "").upper()
+        == "FIRST_TOUCH_CALIBRATED"
+    )
+    v284_competing_risk = evaluate_v281_competing_risk_prior(
+        timeframe=str(
+            v240_reversal_stage.get("source_timeframe")
+            or v226_reversal_heatmap_source.get("timeframe")
+            or v240_active_source.get("timeframe")
+            or ""
+        ),
+        direction=v240_direction,
+        depth=(
+            v240_reversal_stage.get("depth")
+            if v240_reversal_stage.get("depth") is not None
+            else v240_depth_hazard.get("current_depth")
+        ),
+        first_touch_calibrated=v284_first_touch_calibrated,
+    )
+
     if v240_effective_opposing_pressure is None:
         v240_penetration_risk = "UNAVAILABLE"
     elif float(v240_effective_opposing_pressure) >= 45.0:
@@ -4003,6 +4027,103 @@ with forecast_tab:
             "broker entry = baru ada setelah semua gate lolos. "
             f"Relasi M5↔window: **{m5_window_relation}**."
         )
+
+        st.markdown("###### V281 Competing Risk — reversal vs break (RISET FIRST-TOUCH)")
+        if bool(v284_competing_risk.get("available")):
+            v284_rows = list(v284_competing_risk.get("all_bands") or [])
+            v284_selected_band = str(v284_competing_risk.get("band") or "")
+            v284_cells = []
+            for row in v284_rows:
+                rev = float(row.get("p_reversal") or 0.0)
+                brk = float(row.get("p_break") or 0.0)
+                margin = rev - brk
+                if margin >= 0.15:
+                    bg = "#166534"
+                elif margin > 0.0:
+                    bg = "#65a30d"
+                elif margin > -0.10:
+                    bg = "#ca8a04"
+                else:
+                    bg = "#b91c1c"
+                matching_price = next(
+                    (
+                        h
+                        for h in v226_reversal_heatmap
+                        if str(h.get("band") or "") == str(row.get("band") or "")
+                    ),
+                    {},
+                )
+                border = (
+                    "2px solid #ffffff"
+                    if str(row.get("band") or "") == v284_selected_band
+                    else "1px solid rgba(255,255,255,.18)"
+                )
+                price_line = (
+                    f"{_fmt_price(matching_price.get('price_low'))}–"
+                    f"{_fmt_price(matching_price.get('price_high'))}<br>"
+                    if matching_price
+                    else ""
+                )
+                v284_cells.append(
+                    "<div style='flex:1;min-width:104px;padding:8px;margin:2px;"
+                    f"border-radius:8px;background:{bg};color:white;border:{border}'>"
+                    f"<b>{row.get('band') or '—'}</b><br>"
+                    + price_line
+                    + f"REV {_fmt_pct(row.get('p_reversal'))}<br>"
+                    + f"BREAK {_fmt_pct(row.get('p_break'))}<br>"
+                    + f"n={int(row.get('at_risk') or 0):,}"
+                    + "</div>"
+                )
+            st.markdown(
+                "<div style='display:flex;flex-wrap:wrap;gap:2px'>"
+                + "".join(v284_cells)
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+            selected_risk = dict(v284_competing_risk.get("selected") or {})
+            rev_ci = list(selected_risk.get("reversal_wilson_95") or [])
+            brk_ci = list(selected_risk.get("break_wilson_95") or [])
+            cr1, cr2 = st.columns(2)
+            cr1.metric(
+                "Historical reversal ≥0,50 ATR",
+                _fmt_pct(selected_risk.get("p_reversal")),
+            )
+            cr2.metric(
+                "Historical break / invalid",
+                _fmt_pct(selected_risk.get("p_break")),
+            )
+            st.caption(
+                f"Source {v284_competing_risk.get('timeframe') or '—'} "
+                f"{v284_competing_risk.get('direction') or '—'} • "
+                f"band sekarang={v284_selected_band or '—'} • "
+                f"n-at-risk={int(selected_risk.get('at_risk') or 0):,} • "
+                f"95% CI reversal="
+                f"{_fmt_pct(rev_ci[0]) if len(rev_ci) == 2 else '—'}–"
+                f"{_fmt_pct(rev_ci[1]) if len(rev_ci) == 2 else '—'} • "
+                f"95% CI break="
+                f"{_fmt_pct(brk_ci[0]) if len(brk_ci) == 2 else '—'}–"
+                f"{_fmt_pct(brk_ci[1]) if len(brk_ci) == 2 else '—'}. "
+                f"Band pertama break historis mengungguli reversal: "
+                f"**{v284_competing_risk.get('first_break_dominant_band') or '—'}**."
+            )
+            oos = dict(v284_competing_risk.get("oos") or {})
+            st.info(
+                "V281 memakai denominator semua episode **first-touch** yang benar-benar "
+                "mencapai band tersebut. Ini conditional historical frequency, bukan "
+                "probabilitas live terkalibrasi dan bukan win rate trading. "
+                f"OOS {oos.get('test_years') or '2025–2026'}: "
+                f"{int(oos.get('test_episode_count') or 0):,} episode / "
+                f"{int(oos.get('resolved_exposures') or 0):,} resolved band exposures; "
+                f"classification accuracy={_fmt_pct(oos.get('classification_accuracy_resolved_exposures'))}. "
+                "Historical pressure stratification memakai causal M1 OHLC proxy; DOM live tetap sumber terpisah."
+            )
+        else:
+            st.info(
+                "**V281 tidak dipakai sebagai peluang pada zona retest.** "
+                f"reason={v284_competing_risk.get('reason') or 'UNAVAILABLE'} • "
+                "V281 mengukur first-touch saja. Untuk retest, dashboard hanya memakai "
+                "geometry context + pressure/M5 prospective; tidak mengimpor probabilitas first-touch."
+            )
 
         st.markdown("###### Historical Reversal Depth Heatmap — V225.2 (2012–2026)")
         if v226_reversal_heatmap:
