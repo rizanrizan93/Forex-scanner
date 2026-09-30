@@ -118,6 +118,11 @@ def year_replay(year, frame, provenance):
             row["censored"]=True
         else:
             row["pairs"]=pairs
+            exits=[pd.Timestamp(v["exit_at"]) for pair in pairs.values() for v in pair.values() if v.get("exit_at")]
+            exits += [pd.Timestamp(v["cycle"]["next_result"]["exit_at"])
+                      for pair in pairs.values() for v in pair.values()
+                      if v.get("cycle",{}).get("next_result",{}).get("exit_at")]
+            row["mature_at"]=max([mature]+exits).isoformat()
         rows.append(row)
     return dict(research_version=RESEARCH_VERSION,year=year,price_provenance=provenance,
                 price_end=px.timestamps[-1].isoformat(),rows=rows)

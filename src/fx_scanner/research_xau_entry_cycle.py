@@ -138,12 +138,18 @@ def replay(*, px: PriceArrays, plan: dict[str, Any], candidate: dict[str, Any],
                           else max(stop, float(px.opens[i])+half)+slippage_usd) if stop_hit else target
             break
     else:
-        if not px.timestamps or px.timestamps[-1]+MINUTE < horizon:
-            return dict(state="CENSORED", reason="INCOMPLETE_POSITION_HISTORY")
-        i = last-1
-        state = "TIME_EXIT"
-        exit_price = float(px.closes[i])-sign*(half+slippage_usd)
-    exit_at = px.timestamps[i]+MINUTE  # outcome known only at bar completion
+        # A market exit uses the first available open at/after the deadline.
+        # Do not backdate it to the last candle before a weekend/data gap.
+        if last >= len(px.timestamps):
+            return dict(state="CENSORED", reason="NO_EXECUTABLE_TIME_EXIT_QUOTE")
+        i = last
+        quote = float(px.opens[i])-sign*half
+        adverse = max(adverse, sign*(fill-quote))
+        state = "STOP" if sign*(quote-stop) <= 0 else "TIME_EXIT"
+        exit_price = quote-sign*slippage_usd
+        exit_at = px.timestamps[i]
+    if state in ("STOP", "TP") and i < last:
+        exit_at = px.timestamps[i]+MINUTE  # intrabar outcome known at completion
     reaction_minutes = (reaction_at-fill_at).total_seconds()/60 if reaction_at is not None else None
     precise = state == "TP" and adverse <= MAX_ADVERSE_USD
     return dict(state=state, fill_at=fill_at.isoformat(), exit_at=exit_at.isoformat(),

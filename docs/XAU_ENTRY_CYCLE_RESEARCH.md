@@ -41,7 +41,8 @@ M1 timestamps denote bar opens. Close-based decisions/outcomes are available
 only at bar completion. Buys fill on ask, sells on bid; exits use the opposite
 quote. Limits are filled at their limit (no assumed price improvement).
 Market reclaim, stops and time exits include slippage; opening stop gaps take
-the worse price. A fill candle cannot earn TP/reaction credit, and SL wins
+the worse price. Timed exits use the first available quote at/after the deadline;
+a weekend/data gap may extend the actual hold beyond four hours. A fill candle cannot earn TP/reaction credit, and SL wins
 ambiguous bars. Full candle adverse excursion is conservative and can include
 movement before fill or after TP. Fixed spreads and candle touch cannot prove
 real broker execution, liquidity or latency.

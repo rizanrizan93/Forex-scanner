@@ -34,7 +34,7 @@ class CycleTests(unittest.TestCase):
         self.assertFalse(EXECUTION_AUTHORITY)
 
     def test_fill_candle_target_not_credited(self):
-        r=self.run_replay([(101,121,99,101)],hold_minutes=1)
+        r=self.run_replay([(101,121,99,101),(101,102,100,101)],hold_minutes=1)
         self.assertEqual(r["state"],"TIME_EXIT")
 
     def test_ambiguous_stop_never_precise(self):
@@ -58,6 +58,15 @@ class CycleTests(unittest.TestCase):
     def test_incomplete_history_censored(self):
         self.assertEqual(self.run_replay([(101,102,100.5,101)])["state"],"CENSORED")
         self.assertEqual(self.run_replay([(101,102,99,101)])["state"],"CENSORED")
+
+    def test_time_exit_uses_next_available_quote_not_past_close(self):
+        data=px([(101,102,99,101),(80,82,79,81)])
+        from dataclasses import replace
+        data=replace(data,timestamps=(data.timestamps[0],pd.Timestamp(AT)+pd.Timedelta(days=3)))
+        r=replay(px=data,plan=plan(),candidate=candidate(),spread_usd=0,slippage_usd=0,hold_minutes=4)
+        self.assertEqual(r["state"],"STOP")
+        self.assertEqual(r["exit_price"],80)
+        self.assertEqual(r["holding_minutes"],4320)
 
     def test_stop_gap_and_cost(self):
         r=replay(px=px([(101,102,99,101),(85,88,84,86)]),plan=plan(),candidate=candidate(),spread_usd=.4,slippage_usd=.1)
