@@ -22,6 +22,8 @@ def _decision() -> dict:
             "signal_id": "parent",
             "direction": "SHORT",
             "state": "ARMED",
+            "aligned_parent": True,
+            "research_probe_eligible": True,
             "entry_low": 4190.0,
             "entry_high": 4198.0,
             "sl": 4202.0,
@@ -44,7 +46,7 @@ def test_v297_research_eligibility_requires_meta_action_rizan_geometry_and_no_bl
     decision = _decision()
     assert sampler._research_eligible(decision) == (
         True,
-        "META_RESEARCH_ELIGIBLE",
+        "META_RESEARCH_ELIGIBLE:CONSENSUS_RESEARCH",
     )
 
     blocked = dict(decision, hard_blocks=[{"name": "PRESSURE"}])
@@ -338,5 +340,92 @@ def test_v297_workflow_and_dashboard_contract() -> None:
     assert "Executed sample" in dashboard
     assert "Executed TP/Win rate" in dashboard
     assert "Wilson lower 95%" in dashboard
+    assert "DEMO CONFLICT RESEARCH PROBE" in dashboard
+    assert "next required=" in dashboard
     assert "one_meta_position_or_pending_max" in source
     assert "DEMO_META_RESEARCH_ONLY" in source
+
+
+
+def test_v301_conflict_research_selection_uses_dominant_reference_geometry() -> None:
+    decision = {
+        "action": "DEMO_CONFLICT_RESEARCH_PROBE_ELIGIBLE",
+        "consensus_direction": "WAIT",
+        "dominant_direction": "SHORT",
+        "hard_blocks": [],
+        "conflict_research_probe_eligible": True,
+        "reference_geometry": {
+            "engine": "RIZAN_DEPTH",
+            "direction": "SHORT",
+            "state": "ARMED",
+            "aligned_parent": True,
+            "research_probe_eligible": True,
+            "signal_id": "parent-short",
+        },
+    }
+
+    direction, geometry, mode = sampler._research_selection(decision)
+    assert direction == "SHORT"
+    assert geometry["signal_id"] == "parent-short"
+    assert mode == "CONFLICT_DOMINANT_RESEARCH"
+    assert sampler._research_eligible(decision) == (
+        True,
+        "META_RESEARCH_ELIGIBLE:CONFLICT_DOMINANT_RESEARCH",
+    )
+
+
+def test_v301_conflict_research_rejects_unaligned_reference_geometry() -> None:
+    decision = {
+        "action": "DEMO_CONFLICT_RESEARCH_PROBE_ELIGIBLE",
+        "consensus_direction": "WAIT",
+        "dominant_direction": "SHORT",
+        "hard_blocks": [],
+        "conflict_research_probe_eligible": True,
+        "reference_geometry": {
+            "engine": "RIZAN_DEPTH",
+            "direction": "SHORT",
+            "state": "ARMED",
+            "aligned_parent": False,
+            "research_probe_eligible": True,
+            "signal_id": "stale-parent",
+        },
+    }
+    assert sampler._research_eligible(decision) == (
+        False,
+        "META_GEOMETRY_PARENT_NOT_ALIGNED",
+    )
+
+
+
+def test_v301_wait_context_reports_exact_next_requirement() -> None:
+    blocked = {
+        "action": "WAIT_ENGINE_CONFLICT",
+        "dominant_direction": "SHORT",
+        "hard_blocks": [
+            {
+                "name": "V280_REVERSAL_STAGE",
+                "state": "PREPARE",
+                "reason": "NO_CURRENT_ALIGNED_V229_PLAN",
+            }
+        ],
+        "reference_geometry": {},
+    }
+    assert sampler._next_required(
+        blocked,
+        "META_ACTION:WAIT_ENGINE_CONFLICT",
+    ) == "CLEAR_HARD_BLOCK:V280_REVERSAL_STAGE=PREPARE"
+
+    unaligned = {
+        "action": "WAIT_ENGINE_CONFLICT",
+        "dominant_direction": "SHORT",
+        "hard_blocks": [],
+        "reference_geometry": {
+            "engine": "RIZAN_DEPTH",
+            "aligned_parent": False,
+            "research_probe_eligible": False,
+        },
+    }
+    assert sampler._next_required(
+        unaligned,
+        "META_ACTION:WAIT_ENGINE_CONFLICT",
+    ) == "ALIGN_CURRENT_RIZAN_PARENT"

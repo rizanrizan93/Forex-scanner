@@ -306,6 +306,11 @@ def _geometry_candidates(
     pressure = dict(child_details.get("pressure_transition") or {})
     reversal = dict(child_details.get("reversal_stage") or {})
     hazard = dict(child_details.get("dynamic_depth_hazard") or {})
+    aligned_parent_signal_ids = {
+        str(value)
+        for value in list(child_details.get("aligned_parent_signal_ids") or [])
+        if str(value)
+    }
     research_probe_ok = bool(
         not bool(pressure.get("hard_block"))
         and bool(pressure.get("calibration_entry_allowed"))
@@ -330,10 +335,16 @@ def _geometry_candidates(
         if any(row.get(key) is None for key in ("entry_low", "entry_high", "sl", "tp1")):
             continue
         engine = _engine_for_signal(row)
+        signal_id = str(row.get("id") or "")
+        aligned_parent = bool(
+            engine == "RIZAN_DEPTH"
+            and signal_id
+            and signal_id in aligned_parent_signal_ids
+        )
         output.append(
             {
                 "engine": engine,
-                "signal_id": str(row.get("id") or ""),
+                "signal_id": signal_id,
                 "direction": direction,
                 "state": state,
                 "score": row.get("final_score"),
@@ -346,8 +357,10 @@ def _geometry_candidates(
                 "rr2": row.get("rr2"),
                 "active_guards": list(row.get("active_guards") or []),
                 "geometry_authority": engine == "RIZAN_DEPTH",
+                "aligned_parent": aligned_parent,
                 "research_probe_eligible": bool(
                     engine == "RIZAN_DEPTH"
+                    and aligned_parent
                     and research_probe_ok
                     and state in {"ARMED", "EXECUTION_READY"}
                 ),
@@ -511,10 +524,21 @@ def _support_evidence(latest: dict[str, dict[str, Any]]) -> list[dict[str, Any]]
 
 
 def _decision_signature(decision: dict[str, Any]) -> str:
-    geometry = dict(decision.get("geometry") or {})
+    geometry = dict(
+        decision.get("geometry")
+        or decision.get("reference_geometry")
+        or {}
+    )
+    directional_key = str(
+        decision.get("consensus_direction")
+        if str(decision.get("consensus_direction") or "").upper()
+        in {"LONG", "SHORT"}
+        else decision.get("dominant_direction")
+        or "WAIT"
+    )
     payload = "|".join(
         [
-            str(decision.get("consensus_direction") or ""),
+            directional_key,
             str(decision.get("action") or ""),
             str(geometry.get("signal_id") or ""),
             str(round(float(geometry.get("entry_low") or 0.0), 3)),

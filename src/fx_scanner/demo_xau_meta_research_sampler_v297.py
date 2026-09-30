@@ -144,13 +144,35 @@ def _decision_state(
     return decision, "OK"
 
 
+def _research_selection(
+    decision: dict[str, Any],
+) -> tuple[str, dict[str, Any], str]:
+    action = str(decision.get("action") or "")
+    if action == "DEMO_RESEARCH_PROBE_ELIGIBLE":
+        return (
+            str(decision.get("consensus_direction") or "").upper(),
+            dict(decision.get("geometry") or {}),
+            "CONSENSUS_RESEARCH",
+        )
+    if action == "DEMO_CONFLICT_RESEARCH_PROBE_ELIGIBLE":
+        return (
+            str(decision.get("dominant_direction") or "").upper(),
+            dict(decision.get("reference_geometry") or {}),
+            "CONFLICT_DOMINANT_RESEARCH",
+        )
+    return "", {}, "NOT_RESEARCH_ELIGIBLE"
+
+
 def _research_eligible(decision: dict[str, Any]) -> tuple[bool, str]:
-    if str(decision.get("action") or "") != "DEMO_RESEARCH_PROBE_ELIGIBLE":
+    action = str(decision.get("action") or "")
+    if action not in {
+        "DEMO_RESEARCH_PROBE_ELIGIBLE",
+        "DEMO_CONFLICT_RESEARCH_PROBE_ELIGIBLE",
+    }:
         return False, f"META_ACTION:{decision.get('action') or 'WAIT'}"
-    direction = str(decision.get("consensus_direction") or "").upper()
+    direction, geometry, research_mode = _research_selection(decision)
     if direction not in {"LONG", "SHORT"}:
         return False, "META_DIRECTION_WAIT"
-    geometry = dict(decision.get("geometry") or {})
     if str(geometry.get("engine") or "") != "RIZAN_DEPTH":
         return False, "META_GEOMETRY_NOT_RIZAN_DEPTH"
     if str(geometry.get("direction") or "").upper() != direction:
@@ -159,9 +181,47 @@ def _research_eligible(decision: dict[str, Any]) -> tuple[bool, str]:
         return False, "META_GEOMETRY_STATE_NOT_RESEARCH_READY"
     if list(decision.get("hard_blocks") or []):
         return False, "META_HARD_BLOCK_PRESENT"
-    if not bool(decision.get("research_probe_eligible")):
+    decision_flag = (
+        decision.get("conflict_research_probe_eligible")
+        if research_mode == "CONFLICT_DOMINANT_RESEARCH"
+        else decision.get("research_probe_eligible")
+    )
+    if not bool(decision_flag):
         return False, "META_RESEARCH_FLAG_FALSE"
-    return True, "META_RESEARCH_ELIGIBLE"
+    if not bool(geometry.get("research_probe_eligible")):
+        return False, "META_GEOMETRY_RESEARCH_FLAG_FALSE"
+    if not bool(geometry.get("aligned_parent")):
+        return False, "META_GEOMETRY_PARENT_NOT_ALIGNED"
+    return True, f"META_RESEARCH_ELIGIBLE:{research_mode}"
+
+
+def _next_required(
+    decision: dict[str, Any],
+    eligibility_reason: str,
+) -> str:
+    hard_blocks = [dict(row) for row in list(decision.get("hard_blocks") or [])]
+    if hard_blocks:
+        parts = [
+            f"{str(row.get('name') or 'GATE')}={str(row.get('state') or row.get('reason') or 'BLOCK')}"
+            for row in hard_blocks
+        ]
+        return "CLEAR_HARD_BLOCK:" + ",".join(parts)
+
+    action = str(decision.get("action") or "")
+    reference = dict(decision.get("reference_geometry") or {})
+    if action == "WAIT_ENGINE_CONFLICT":
+        if not reference:
+            return "WAIT_CURRENT_RIZAN_REFERENCE_GEOMETRY"
+        if not bool(reference.get("aligned_parent")):
+            return "ALIGN_CURRENT_RIZAN_PARENT"
+        if not bool(reference.get("research_probe_eligible")):
+            return "PASS_V280_DEPTH_PRESSURE_RESEARCH_GATES"
+        return "REACH_55PCT_NEAR_CONSENSUS_OR_FULL_CONSENSUS"
+    if action == "WAIT_NO_CANONICAL_GEOMETRY":
+        return "WAIT_COMPLETE_RIZAN_ENTRY_SL_TP_GEOMETRY"
+    if action == "PREPARE_WAIT_CONFIRMATION":
+        return "WAIT_M5_CONFIRMATION_AND_RR"
+    return str(eligibility_reason or "WAIT_ELIGIBLE_META_ACTION")
 
 
 def _actual_micro_entry(
@@ -516,6 +576,9 @@ def run() -> int:
     meta_hb = _latest_heartbeat(store, META_WORKER)
     decision, decision_reason = _decision_state(meta_hb, now=now)
     eligible, eligibility_reason = _research_eligible(decision)
+    research_direction, research_geometry, research_mode = _research_selection(
+        decision
+    )
     signature = str(decision.get("decision_signature") or "")
     current_signal_id = meta_signal_id(signature) if eligible and signature else None
 
@@ -622,6 +685,20 @@ def run() -> int:
                     "reason": eligibility_reason,
                     "decision_reason": decision_reason,
                     "decision_signature": signature or None,
+                    "decision_action": decision.get("action"),
+                    "consensus_direction": decision.get("consensus_direction"),
+                    "dominant_direction": decision.get("dominant_direction"),
+                    "meta_confidence": decision.get("confidence"),
+                    "meta_agreement": decision.get("agreement"),
+                    "meta_coverage": decision.get("coverage"),
+                    "hard_blocks": list(decision.get("hard_blocks") or []),
+                    "reference_geometry": dict(
+                        decision.get("reference_geometry") or {}
+                    ),
+                    "next_required": _next_required(
+                        decision,
+                        eligibility_reason,
+                    ),
                 },
             )
             return 0
@@ -656,8 +733,8 @@ def run() -> int:
         atlas_eval = dict(dict(atlas_hb.get("details") or {}).get("evaluation") or {})
         v226_eval = dict(dict(v226_hb.get("details") or {}).get("evaluation") or {})
         child_details = dict(child_hb.get("details") or {})
-        geometry = dict(decision.get("geometry") or {})
-        direction = str(decision.get("consensus_direction") or "").upper()
+        geometry = dict(research_geometry or {})
+        direction = str(research_direction or "").upper()
 
         quote = gateway.market_quote(SYMBOL)
         entry, depth, activation = _actual_micro_entry(
@@ -757,6 +834,8 @@ def run() -> int:
                 "consensus_direction": direction,
                 "meta_confidence": decision.get("confidence"),
                 "meta_agreement": decision.get("agreement"),
+                "research_mode": research_mode,
+                "dominant_direction": decision.get("dominant_direction"),
                 "entry": entry,
                 "depth": depth,
                 "activation": activation,
@@ -786,6 +865,9 @@ def run() -> int:
             details={
                 "signal_id": current_signal_id,
                 "decision_signature": signature,
+                "research_mode": research_mode,
+                "consensus_direction": decision.get("consensus_direction"),
+                "dominant_direction": decision.get("dominant_direction"),
                 "broker_order_id": receipt.broker_order_id,
                 "entry": entry,
                 "depth": depth,

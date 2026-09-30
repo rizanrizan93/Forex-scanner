@@ -800,3 +800,15 @@ def test_v295_research_probe_ceiling_is_85pct_without_changing_strict_children()
     assert "confirmation_entry_allowed" in source
     assert "MIN_TERMINAL_RR" in source
     assert '"child_lot": CHILD_LOT' in source
+
+
+
+def test_v301_child_heartbeat_exposes_only_current_aligned_parent_ids() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_child_executor.py"
+    ).read_text()
+    assert "aligned_parent_signal_ids: list[str] = []" in source
+    assert "aligned_parent_signal_ids.append(parent_signal_id)" in source
+    assert '"aligned_parent_signal_ids": (' in source
+    assert '"current_candidate_key": current_key' in source

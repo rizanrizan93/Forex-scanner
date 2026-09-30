@@ -2992,6 +2992,7 @@ with forecast_tab:
     v296_action_display = {
         "DEMO_ORDER_ELIGIBLE": "DEMO ORDER ELIGIBLE",
         "DEMO_RESEARCH_PROBE_ELIGIBLE": "DEMO RESEARCH PROBE",
+        "DEMO_CONFLICT_RESEARCH_PROBE_ELIGIBLE": "DEMO CONFLICT RESEARCH PROBE",
         "PREPARE_WAIT_CONFIRMATION": "PREPARE • WAIT CONFIRMATION",
         "WAIT_ENGINE_CONFLICT": "WAIT • ENGINE CONFLICT",
         "WAIT_NO_CANONICAL_GEOMETRY": "WAIT • NO CANONICAL GEOMETRY",
@@ -3087,6 +3088,17 @@ with forecast_tab:
             "meta pada satu waktu dan satu sample per decision signature. "
             "Statistik ini berasal dari outcome ledger dan tidak dicampur dengan "
             "confidence internal engine."
+        )
+        v297_reason = str(v297_sampler_details.get("reason") or "—")
+        v297_next = str(v297_sampler_details.get("next_required") or "—")
+        v297_bias = str(
+            v297_sampler_details.get("dominant_direction")
+            or v296_dominant_direction
+            or "WAIT"
+        ).upper()
+        st.caption(
+            f"Sampler reason={v297_reason} • bias={v297_bias} • "
+            f"next required={v297_next}."
         )
         if str(v297_sampler_state).upper() == "ORDER_ACCEPTED":
             st.success(

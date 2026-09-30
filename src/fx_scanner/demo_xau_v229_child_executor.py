@@ -979,6 +979,7 @@ def run() -> int:
             }
         )
 
+        aligned_parent_signal_ids: list[str] = []
         for parent in parents:
             parent_signal_id = str(parent.get("signal_key") or "")
             payload = dict(parent.get("payload") or {})
@@ -1025,6 +1026,8 @@ def run() -> int:
                 )
                 actions.extend(f"{parent_signal_id}:{x}" for x in outcomes)
                 continue
+
+            aligned_parent_signal_ids.append(parent_signal_id)
 
             if bool(reversal_stage.get("hard_execution_block")):
                 outcomes = _cancel_pending_plan(
@@ -1580,6 +1583,12 @@ def run() -> int:
             "dynamic_depth_hazard_required": True,
             "dynamic_depth_hazard": depth_hazard if 'depth_hazard' in locals() else {},
             "reversal_stage": reversal_stage if 'reversal_stage' in locals() else {},
+            "aligned_parent_signal_ids": (
+                aligned_parent_signal_ids
+                if "aligned_parent_signal_ids" in locals()
+                else []
+            ),
+            "current_candidate_key": current_key if "current_key" in locals() else None,
             "structure_admission": admission if "admission" in locals() else {},
             "actions": actions[:40],
             "error": error,
