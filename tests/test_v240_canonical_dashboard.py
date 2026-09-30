@@ -277,3 +277,16 @@ def test_v279_standalone_quote_overlay_loads_even_when_canonical_backend_exists(
     assert "Quote overlay is always loaded when available." in SOURCE
     assert "backend_error = direct_backend_error if backend is None else None" in SOURCE
     assert "standalone = _load_standalone_bridge(standalone_url)" in SOURCE
+
+
+def test_v280_dashboard_shows_reversal_stages_and_no_chase_contract() -> None:
+    assert "Tahap Reversal V280 — RISET/FORECAST → DEMO" in SOURCE
+    assert "REVERSAL WATCH" in SOURCE
+    assert "REAKSI TERLIHAT" in SOURCE
+    assert "KONFIRMASI M5" in SOURCE
+    assert "ENTRY DEMO DIIZINKAN" in SOURCE
+    assert "BREAK RISK" in SOURCE
+    assert "SETUP INVALID" in SOURCE
+    assert "MISSED ENTRY — WAIT NEXT SETUP" in SOURCE
+    assert "v240_effective_entry_authorized" in SOURCE
+    assert "V225 tetap prior historis first-touch" in SOURCE
