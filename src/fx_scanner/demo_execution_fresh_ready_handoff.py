@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, timezone
 
 from . import demo_fresh_ready_handoff as base
+from .demo_market_schedule import _forex_week_open_utc
 from .demo_five_core_router import PAIR_STRATEGY_IDS
 from .demo_xau_expansion_v42 import STRATEGY_ID as XAU_EXPANSION_V42_STRATEGY_ID
 from .demo_xau_m15_ema_reversal_recovery import STRATEGY_ID as XAU_M15_EMA_REVERSAL_STRATEGY_ID
@@ -64,6 +66,32 @@ def _load_xau_only_demo_project_config(root=None):
     if len(selected) != 1:
         raise RuntimeError("XAU_ONLY_HANDOFF_CONFIG_MISSING_XAUUSD")
     return replace(cfg, pairs=selected)
+
+
+def _apply_xau_only_demo_market_schedule(cfg, *, now=None):
+    """Apply the market calendar to an already narrowed XAUUSD-only runtime.
+
+    The canonical library config still retains its legacy multi-pair contract,
+    but this handoff intentionally receives only XAUUSD. Requiring the legacy
+    20-pair weekday count here would re-expand a runtime that is deliberately
+    XAU-only and caused V298 handoff failure.
+    """
+    symbols = tuple(str(pair.symbol).upper() for pair in cfg.pairs)
+    if symbols != ("XAUUSD",):
+        raise RuntimeError(
+            "XAU_ONLY_HANDOFF_UNIVERSE_INVALID:"
+            + ",".join(symbols or ("EMPTY",))
+        )
+    current = now or datetime.now(tz=timezone.utc)
+    if current.tzinfo is None:
+        raise ValueError("XAU-only demo market schedule requires timezone-aware datetime")
+    current = current.astimezone(timezone.utc)
+    mode = (
+        "XAUUSD_ONLY_FOREX_WEEK"
+        if _forex_week_open_utc(current)
+        else "XAUUSD_ONLY_BROKER_GATED_CLOSED_WINDOW"
+    )
+    return cfg, mode
 
 
 def install_exact_strategy_identity_filter(
@@ -138,6 +166,13 @@ def main() -> int:
     """Execute only fresh, exact authorized XAU DEMO strategy signals."""
     base.install_fresh_execution_ready_handoff = _install_five_core_identity_filter
     base.load_demo_project_config = _load_xau_only_demo_project_config
+
+    # base.main wires the calibration runtime after these patches. Override only
+    # its market-schedule selector so the already-narrowed XAU config is not
+    # rejected by the legacy 20-pair weekday invariant.
+    from . import demo_calibration_autotrade as calibration_runtime
+
+    calibration_runtime.apply_demo_market_schedule = _apply_xau_only_demo_market_schedule
     return base.main()
 
 

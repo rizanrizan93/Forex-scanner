@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fx_scanner.demo_conviction_sizing import select_demo_conviction_sizing
@@ -9,6 +10,7 @@ from fx_scanner.demo_execution_fresh_ready_handoff import (
     _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY,
     _XAU_D1_TSMOM_STRATEGY,
     _XAU_SHADOW_STRATEGIES,
+    _apply_xau_only_demo_market_schedule,
     _load_xau_only_demo_project_config,
 )
 from fx_scanner.demo_five_core_router import (
@@ -153,3 +155,33 @@ def test_v298_operational_runtime_focus_is_xau_only_without_deleting_legacy_cont
         assert "workflow_dispatch:" in trigger
         assert "schedule:" not in trigger
         assert "\n  push:" not in trigger
+
+
+
+def test_v299_xau_only_handoff_market_schedule_never_reexpands_pair_universe():
+    cfg = _load_xau_only_demo_project_config(None)
+
+    weekday_cfg, weekday_mode = _apply_xau_only_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 9, 30, 9, 0, tzinfo=timezone.utc),
+    )
+    assert tuple(pair.symbol for pair in weekday_cfg.pairs) == ("XAUUSD",)
+    assert weekday_mode == "XAUUSD_ONLY_FOREX_WEEK"
+
+    weekend_cfg, weekend_mode = _apply_xau_only_demo_market_schedule(
+        cfg,
+        now=datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc),
+    )
+    assert tuple(pair.symbol for pair in weekend_cfg.pairs) == ("XAUUSD",)
+    assert weekend_mode == "XAUUSD_ONLY_BROKER_GATED_CLOSED_WINDOW"
+
+
+def test_v299_handoff_wires_xau_only_market_schedule_into_calibration_runtime():
+    handoff = (
+        ROOT / "src/fx_scanner/demo_execution_fresh_ready_handoff.py"
+    ).read_text()
+    assert (
+        "calibration_runtime.apply_demo_market_schedule = "
+        "_apply_xau_only_demo_market_schedule"
+    ) in handoff
+    assert "XAU_ONLY_HANDOFF_UNIVERSE_INVALID" in handoff
