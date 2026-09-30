@@ -26,8 +26,10 @@ V280_STAGE_BLOCK_EVENT_TYPE = "DEMO_XAU_RIZAN_STAGE_BLOCK"
 # TTL / normal XAU outcome horizon while retaining late broker reconciliation.
 LOOKBACK_DAYS = 7
 MAX_EVENT_ROWS_PER_TYPE = 2000
+MAX_PREPARED_ROWS_PER_TYPE = 500
 MAX_SIGNAL_ROWS = 1500
 MAX_OUTCOME_ROWS = 1500
+EVENT_CUTOFF_PAD_MINUTES = 15
 
 TRACKED_EVENT_TYPES = (
     PREPARED_EVENT_TYPE,
@@ -73,55 +75,188 @@ def _finite(value: Any) -> float | None:
     return parsed if isfinite(parsed) else None
 
 
-def _events(
-    store: SupabaseOperationalStore, *, cutoff: datetime
+def _event_query(
+    store: SupabaseOperationalStore,
+    *,
+    event_type: str,
+    cutoff: datetime,
+    limit: int,
 ) -> tuple[dict[str, Any], ...]:
-    # broker_order_events contains high-volume telemetry. A single broad LIMIT
-    # can exclude recent RIZAN plans entirely, so fetch only lifecycle-relevant
-    # event families with an independent bound for each type.
-    rows: list[dict[str, Any]] = []
     rich_types = {
         PREPARED_EVENT_TYPE,
         LEGACY_PREPARED_EVENT_TYPE,
         FORECAST_EVENT_TYPE,
         LEGACY_FORECAST_EVENT_TYPE,
     }
-    for event_type in TRACKED_EVENT_TYPES:
-        # Prepared/forecast rows need payload to reconstruct map/touch/confirm.
-        # Broker lifecycle events only need timestamps + signal identity. Avoid
-        # repeatedly transferring wide JSON payloads for those high-volume rows.
-        select_fields = (
-            "observed_at,event_type,signal_key,code,payload"
-            if event_type in rich_types
-            else "observed_at,event_type,signal_key,accepted,code"
-            if event_type == V280_STAGE_BLOCK_EVENT_TYPE
-            else "observed_at,event_type,signal_key,accepted"
+    select_fields = (
+        "observed_at,event_type,signal_key,code,payload"
+        if event_type in rich_types
+        else "observed_at,event_type,signal_key,accepted,code"
+        if event_type == V280_STAGE_BLOCK_EVENT_TYPE
+        else "observed_at,event_type,signal_key,accepted"
+    )
+    query = (
+        store.client.table("broker_order_events")
+        .select(select_fields)
+        .eq("event_type", event_type)
+        .gte("observed_at", cutoff.isoformat())
+        .order("observed_at", desc=True)
+        .limit(int(limit))
+    )
+    if event_type == PREPARED_EVENT_TYPE:
+        query = query.eq("code", PREPARED_CODE)
+    elif event_type == LEGACY_PREPARED_EVENT_TYPE:
+        query = query.eq("code", LEGACY_PREPARED_CODE)
+    elif event_type == FORECAST_EVENT_TYPE:
+        query = query.eq("code", FORECAST_CODE)
+    elif event_type == LEGACY_FORECAST_EVENT_TYPE:
+        query = query.eq("code", LEGACY_FORECAST_CODE)
+    elif event_type in {"ORDER_ACCEPTED", "POSITION_PROTECTION_VERIFIED"}:
+        query = query.eq("accepted", True)
+    response = query.execute()
+    return tuple(dict(row) for row in (response.data or []))
+
+
+def _effective_event_cutoff(
+    *,
+    requested_cutoff: datetime,
+    prepared_rows: Sequence[dict[str, Any]],
+) -> datetime:
+    parsed = [
+        _dt(row.get("observed_at"))
+        for row in prepared_rows
+        if _dt(row.get("observed_at")) is not None
+    ]
+    if not parsed:
+        return requested_cutoff
+    earliest = min(value for value in parsed if value is not None)
+    padded = earliest - timedelta(minutes=EVENT_CUTOFF_PAD_MINUTES)
+    return max(requested_cutoff, padded)
+
+
+def _events_with_diagnostics(
+    store: SupabaseOperationalStore, *, cutoff: datetime
+) -> tuple[tuple[dict[str, Any], ...], dict[str, Any]]:
+    """Fetch only event families needed by actual recent prepared plans.
+
+    RIZAN prepared plans are authoritative. Legacy AFIC prepared/forecast rows
+    are queried only as a fallback when no current RIZAN prepared row exists.
+    Each non-prepared event family is fail-soft so one PostgREST statement
+    timeout does not erase all lifecycle telemetry.
+    """
+    rows: list[dict[str, Any]] = []
+    errors: list[dict[str, str]] = []
+    counts: dict[str, int] = {}
+
+    def fetch(
+        event_type: str,
+        *,
+        event_cutoff: datetime,
+        limit: int = MAX_EVENT_ROWS_PER_TYPE,
+        critical: bool = False,
+    ) -> tuple[dict[str, Any], ...]:
+        try:
+            found = _event_query(
+                store,
+                event_type=event_type,
+                cutoff=event_cutoff,
+                limit=limit,
+            )
+        except Exception as exc:
+            errors.append(
+                {
+                    "source": f"broker_order_events:{event_type}",
+                    "error": f"{type(exc).__name__}:{exc}",
+                    "severity": "CRITICAL" if critical else "DEGRADED",
+                }
+            )
+            counts[event_type] = 0
+            return ()
+        counts[event_type] = len(found)
+        rows.extend(found)
+        return found
+
+    rizan_prepared = fetch(
+        PREPARED_EVENT_TYPE,
+        event_cutoff=cutoff,
+        limit=MAX_PREPARED_ROWS_PER_TYPE,
+        critical=True,
+    )
+    legacy_fallback_used = False
+    legacy_prepared: tuple[dict[str, Any], ...] = ()
+    if not rizan_prepared and not any(
+        item.get("severity") == "CRITICAL" for item in errors
+    ):
+        legacy_fallback_used = True
+        legacy_prepared = fetch(
+            LEGACY_PREPARED_EVENT_TYPE,
+            event_cutoff=cutoff,
+            limit=MAX_PREPARED_ROWS_PER_TYPE,
+            critical=False,
         )
-        query = (
-            store.client.table("broker_order_events")
-            .select(select_fields)
-            .eq("event_type", event_type)
-            .gte("observed_at", cutoff.isoformat())
-            .order("observed_at", desc=True)
-            .limit(MAX_EVENT_ROWS_PER_TYPE)
+
+    prepared_rows = tuple(rizan_prepared) + tuple(legacy_prepared)
+    event_cutoff = _effective_event_cutoff(
+        requested_cutoff=cutoff,
+        prepared_rows=prepared_rows,
+    )
+
+    # Only query rich forecast payloads if a prepared plan exists to consume
+    # them. This avoids retransmitting thousands of wide JSON rows when there
+    # is no plan to reconstruct.
+    if prepared_rows:
+        fetch(
+            FORECAST_EVENT_TYPE,
+            event_cutoff=event_cutoff,
         )
-        if event_type == PREPARED_EVENT_TYPE:
-            query = query.eq("code", PREPARED_CODE)
-        elif event_type == LEGACY_PREPARED_EVENT_TYPE:
-            query = query.eq("code", LEGACY_PREPARED_CODE)
-        elif event_type == FORECAST_EVENT_TYPE:
-            query = query.eq("code", FORECAST_CODE)
-        elif event_type == LEGACY_FORECAST_EVENT_TYPE:
-            query = query.eq("code", LEGACY_FORECAST_CODE)
-        elif event_type in {"ORDER_ACCEPTED", "POSITION_PROTECTION_VERIFIED"}:
-            query = query.eq("accepted", True)
-        response = query.execute()
-        rows.extend(dict(row) for row in (response.data or []))
+        if legacy_fallback_used:
+            fetch(
+                LEGACY_FORECAST_EVENT_TYPE,
+                event_cutoff=event_cutoff,
+            )
+
+        for event_type in (
+            "DEMO_SIGNAL_GEOMETRY",
+            "ORDER_ACCEPTED",
+            "POSITION_PROTECTION_VERIFIED",
+            "DEMO_TRADE_CLOSED",
+            V280_STAGE_BLOCK_EVENT_TYPE,
+        ):
+            fetch(
+                event_type,
+                event_cutoff=event_cutoff,
+            )
 
     floor = datetime.min.replace(tzinfo=UTC)
     rows.sort(key=lambda row: _dt(row.get("observed_at")) or floor)
-    return tuple(rows)
+    diagnostics = {
+        "requested_cutoff": cutoff.isoformat(),
+        "effective_event_cutoff": event_cutoff.isoformat(),
+        "prepared_rows": len(prepared_rows),
+        "rizan_prepared_rows": len(rizan_prepared),
+        "legacy_prepared_rows": len(legacy_prepared),
+        "legacy_fallback_used": legacy_fallback_used,
+        "event_counts": counts,
+        "query_errors": errors,
+        "degraded_sources": [
+            item["source"]
+            for item in errors
+            if item.get("severity") == "DEGRADED"
+        ],
+        "critical_sources": [
+            item["source"]
+            for item in errors
+            if item.get("severity") == "CRITICAL"
+        ],
+    }
+    return tuple(rows), diagnostics
 
+
+def _events(
+    store: SupabaseOperationalStore, *, cutoff: datetime
+) -> tuple[dict[str, Any], ...]:
+    rows, _ = _events_with_diagnostics(store, cutoff=cutoff)
+    return rows
 
 def _signals(
     store: SupabaseOperationalStore, *, cutoff: datetime
