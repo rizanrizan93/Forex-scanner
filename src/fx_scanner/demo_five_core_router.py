@@ -12,17 +12,16 @@ from .models import Bar, SignalState, ensure_utc
 from .ranking import PairRank
 from .strategy import SetupType, TradePlan
 
-FIVE_CORE_SYMBOLS = ("XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD")
-EXECUTION_SYMBOLS = frozenset({"XAUUSD", "USDJPY", "GBPUSD"})
+# V298 operational freeze: scanner runtime is XAUUSD-only.
+# Historical code for other pairs remains in the repository but is not part of
+# the active candidate/history universe until explicitly re-enabled.
+FIVE_CORE_SYMBOLS = ("XAUUSD",)
+EXECUTION_SYMBOLS = frozenset({"XAUUSD"})
 SHADOW_SYMBOLS = frozenset()
-NO_TRADE_SYMBOLS = frozenset({"EURUSD", "AUDUSD"})
+NO_TRADE_SYMBOLS = frozenset()
 
 PAIR_STRATEGY_IDS = {
     "XAUUSD": "D1_TSMOM_60_200",
-    "USDJPY": "D1_DONCHIAN55_200",
-    "GBPUSD": "H4_MEAN_REVERT_Z2_TO_SMA20",
-    "EURUSD": "NO_TRADE_UNTIL_VALIDATED",
-    "AUDUSD": "NO_TRADE_UNTIL_VALIDATED",
 }
 
 D1_STOP_ATR = 2.0
