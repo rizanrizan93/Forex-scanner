@@ -142,6 +142,11 @@ def test_v297_actual_micro_entry_blocks_beyond_85pct(monkeypatch) -> None:
         "child_reference_depth",
         lambda **_kwargs: 0.86,
     )
+    monkeypatch.setattr(
+        sampler,
+        "_calibration_rejection_retest_entry",
+        lambda **_kwargs: (None, "NO_REJECTION_RETEST"),
+    )
     entry, depth, reason = sampler._actual_micro_entry(
         direction="SHORT",
         geometry=_decision()["geometry"],
@@ -154,6 +159,66 @@ def test_v297_actual_micro_entry_blocks_beyond_85pct(monkeypatch) -> None:
     assert entry is None
     assert depth == 0.86
     assert reason == "META_NO_CHASE_DEPTH"
+
+
+
+def test_v297_deep_primary_can_fallback_to_v229_rejection_retest(monkeypatch) -> None:
+    atlas = {
+        "micro_refinement": {
+            "direction": "SHORT",
+            "candidate_entry_pocket": {"low": 4195.04, "high": 4199.01},
+        },
+        "path_map": {
+            "active_path": {
+                "source_zone": {
+                    "direction": "SHORT",
+                    "low": 4179.03,
+                    "high": 4197.99,
+                }
+            }
+        },
+    }
+    child_details = {
+        "dynamic_depth_hazard": {
+            "recommended_depth_low": 0.60,
+            "recommended_depth_high": 0.70,
+        },
+        "pressure_transition": {
+            "hard_block": False,
+            "calibration_entry_allowed": True,
+        },
+        "reversal_stage": {
+            "hard_execution_block": False,
+            "setup_invalid": False,
+        },
+    }
+
+    def depth(**kwargs):
+        return 0.70 if float(kwargs["price"]) < 4194.0 else 0.95
+
+    monkeypatch.setattr(sampler, "child_reference_depth", depth)
+    monkeypatch.setattr(
+        sampler,
+        "_calibration_rejection_retest_entry",
+        lambda **_kwargs: (4192.302, "M5_CANDIDATE_REJECTION_RETEST_PROBE"),
+    )
+
+    entry, depth_value, activation = sampler._actual_micro_entry(
+        direction="SHORT",
+        geometry={
+            "entry_low": 4180.23,
+            "entry_high": 4197.99,
+        },
+        atlas_eval=atlas,
+        v226_eval={},
+        child_details=child_details,
+        bid=4192.02,
+        ask=4192.16,
+    )
+
+    assert entry == 4192.302
+    assert depth_value == 0.70
+    assert activation == "M5_CANDIDATE_REJECTION_RETEST_PROBE"
 
 
 def test_v297_target_requires_at_least_one_r() -> None:
