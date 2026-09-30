@@ -3119,9 +3119,15 @@ with forecast_tab:
         if v296_display_geometry:
             entry_low = v296_display_geometry.get("entry_low")
             entry_high = v296_display_geometry.get("entry_high")
+            geometry_age = _age_seconds(v296_display_geometry.get("observed_at"))
+            entry_label = (
+                "Entry referensi terakhir"
+                if v296_geometry_reference_only
+                else "Entry canonical aktif"
+            )
             geo1, geo2, geo3, geo4 = st.columns(4)
             geo1.metric(
-                "Entry canonical",
+                entry_label,
                 f"{_fmt_price(entry_low)}–{_fmt_price(entry_high)}",
             )
             geo2.metric("SL", _fmt_price(v296_display_geometry.get("sl")))
@@ -3144,6 +3150,11 @@ with forecast_tab:
                     " • **REFERENCE ONLY / BUKAN IZIN ORDER**"
                     if v296_geometry_reference_only
                     else " • canonical aligned geometry"
+                )
+                + (
+                    f" • geometry age={geometry_age:.0f}s"
+                    if geometry_age is not None
+                    else " • geometry age=unknown"
                 )
                 + ". Entry/SL/TP antar-engine tidak pernah dirata-ratakan."
             )

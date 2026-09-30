@@ -246,6 +246,9 @@ def test_v296_dashboard_and_execution_lane_contract() -> None:
     assert "Kesimpulan Final Ensemble V296" in dashboard
     assert "Confidence ensemble bukan winrate" in dashboard
     assert "Entry/SL/TP antar-engine tidak pernah dirata-ratakan" in dashboard
+    assert "Entry referensi terakhir" in dashboard
+    assert "Entry canonical aktif" in dashboard
+    assert "geometry age=" in dashboard
     assert "Lihat keputusan & kalibrasi tiap engine" in dashboard
     assert "python -m fx_scanner.demo_xau_decision_center_v296" in workflow
     assert "continue-on-error: true" in workflow
