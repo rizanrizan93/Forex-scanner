@@ -1,0 +1,50 @@
+{
+  "contract": "AFIQ_PUBLIC_FORECAST_REFERENCE_CORPUS_V304",
+  "policy_effect": "RESEARCH_ONLY",
+  "execution_authority": false,
+  "execution_influence": false,
+  "references": [
+    {
+      "reference_id": "AFIQ_PUBLIC_CAPTURE_20260930_01",
+      "symbol": "XAUUSD",
+      "source_name": "AKADEMI AFIQ INDONESIA / @bro_afiqq",
+      "source_type": "USER_CAPTURE_OF_PUBLIC_FORECAST",
+      "source_url": null,
+      "available_from": "2026-09-30T10:06:00+00:00",
+      "source_published_at": null,
+      "horizon_hours": 48,
+      "captured_price": 4187.81,
+      "timeframe_context": ["H2", "H1", "M30", "M15"],
+      "decision_zone": {
+        "direction": "SHORT",
+        "low": 4200.35,
+        "high": 4212.03
+      },
+      "key_band": {
+        "low": 4208.00,
+        "high": 4212.03,
+        "interpretation": "annotated KEY band visible on the supplied public-forecast capture"
+      },
+      "rejection_path": {
+        "direction": "SHORT",
+        "destinations": [
+          {"low": 4153.04, "high": 4166.38, "role": "FIRST_LOWER_REACTION_AREA"},
+          {"low": 4124.62, "high": 4139.57, "role": "DEEPER_DEMAND_SOURCE"}
+        ]
+      },
+      "acceptance_path": {
+        "direction": "LONG",
+        "destinations": [
+          {"low": 4261.96, "high": 4272.86, "role": "NEXT_SUPPLY"},
+          {"low": 4283.74, "high": 4297.34, "role": "UPPER_TERMINAL_SUPPLY"}
+        ]
+      },
+      "provenance_note": "The numeric geometry is transcribed from the public-forecast screenshot supplied in chat. available_from is the time the capture became available to this project, not a claimed original publication timestamp. This preserves prospective no-lookahead evaluation.",
+      "quality_flags": [
+        "PUBLIC_FORECAST_CAPTURE",
+        "ORIGINAL_PUBLICATION_TIMESTAMP_UNVERIFIED",
+        "MANUAL_GEOMETRY_TRANSCRIPTION"
+      ]
+    }
+  ]
+}
