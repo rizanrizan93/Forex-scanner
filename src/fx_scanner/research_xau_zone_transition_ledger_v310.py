@@ -132,12 +132,16 @@ def build_transition_ledger(
             event_type = "REACTION_BREAK"
         else:
             event_type = "REACTION_STALL"
+        outcome_bar_at = ensure_utc(outcome_at)
+        known_at = outcome_bar_at + timedelta(minutes=15)
         events.append(
             _event(
-                at=outcome_at,
+                at=known_at,
                 event_type=event_type,
                 zone=zone,
                 details={
+                    "outcome_bar_at": outcome_bar_at.isoformat(),
+                    "known_at": known_at.isoformat(),
                     "touch_at": ensure_utc(episode.touch_at).isoformat(),
                     "touch_ordinal": int(episode.touch_ordinal),
                     "touch_bucket": episode.touch_bucket,
@@ -210,26 +214,27 @@ def _evaluate_reaction_handoffs_from_dataset(
     for episode in episodes:
         if episode.outcome.status != "HOLD" or episode.outcome.outcome_at is None:
             continue
-        outcome_at = ensure_utc(episode.outcome.outcome_at)
-        bar = bars_by_time.get(outcome_at)
+        outcome_bar_at = ensure_utc(episode.outcome.outcome_at)
+        reaction_known_at = outcome_bar_at + timedelta(minutes=15)
+        bar = bars_by_time.get(outcome_bar_at)
         if bar is None:
             continue
         price = float(bar.close)
         active = active_opposite_zones_at(
             destinations=destinations,
             direction=episode.direction,
-            at=outcome_at,
+            at=reaction_known_at,
             price=price,
         )
         nearby_active = [row for row in active if float(row["gap_usd"]) <= handoff_gap_usd]
 
-        deadline = outcome_at + timedelta(minutes=handoff_window_minutes)
+        deadline = reaction_known_at + timedelta(minutes=handoff_window_minutes)
         new_after = []
         for zone in destinations:
             if zone.direction == episode.direction:
                 continue
             available = ensure_utc(zone.available_at)
-            if not (outcome_at < available <= deadline):
+            if not (reaction_known_at < available <= deadline):
                 continue
             gap = _zone_gap(price, zone)
             if gap <= handoff_gap_usd:
@@ -261,7 +266,8 @@ def _evaluate_reaction_handoffs_from_dataset(
                 "source_zone_id": episode.zone_id,
                 "source_direction": episode.direction,
                 "source_timeframe": episode.timeframe,
-                "reaction_at": outcome_at.isoformat(),
+                "reaction_bar_at": outcome_bar_at.isoformat(),
+                "reaction_at": reaction_known_at.isoformat(),
                 "reaction_price_close": price,
                 "touch_ordinal": int(episode.touch_ordinal),
                 "active_opposite_count": len(active),
@@ -370,7 +376,7 @@ def summarize_transition_research(
         "reaction_handoffs": list(handoffs),
         "interpretation": (
             "V310 measures chronological zone-transition and opposite-zone coverage "
-            "at V183 0.50 ATR reaction milestones. It is not a TP/win-rate study and "
+            "at causally-known V183 0.50 ATR reaction milestones (M15 bar close). It is not a TP/win-rate study and "
             "does not change production or DEMO execution parameters."
         ),
     }
