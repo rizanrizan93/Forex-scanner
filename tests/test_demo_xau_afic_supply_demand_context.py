@@ -665,7 +665,8 @@ def test_runtime_atlas_reader_projects_only_consumed_evaluation_fields():
     assert observed == datetime(2026, 10, 1, 0, 0, tzinfo=UTC)
     assert atlas["nearest_demand"]["zone_id"] == "d"
     assert atlas["path_map"]["active_path"]["reaction_direction"] == "SHORT"
-    assert "details" not in store.client.selected
+    assert store.client.selected != "observed_at,healthy,details"
+    assert ",details," not in store.client.selected
     assert "nearest_demand:details->evaluation->nearest_demand" in store.client.selected
     assert "chart_bars_m15:details->evaluation->chart_bars_m15" in store.client.selected
 
@@ -683,7 +684,8 @@ def test_runtime_dom_and_event_readers_do_not_fetch_full_details():
     })
     _, dom = ctx.latest_dom(dom_store)
     assert dom["state"] == "ASK_DOMINANT"
-    assert "details" not in dom_store.client.selected
+    assert dom_store.client.selected != "observed_at,healthy,details"
+    assert ",details," not in dom_store.client.selected
     assert "state:details->analysis->>state" in dom_store.client.selected
 
     event_store = _ProjectionStore({
@@ -696,5 +698,6 @@ def test_runtime_dom_and_event_readers_do_not_fetch_full_details():
     _, event = ctx.latest_event_risk(event_store)
     assert event["risk"]["state"] == "CLEAR"
     assert event["official_or_cadence_verified_count"] == 2
-    assert "details" not in event_store.client.selected
+    assert event_store.client.selected != "observed_at,healthy,details"
+    assert ",details," not in event_store.client.selected
     assert "risk:details->risk" in event_store.client.selected
