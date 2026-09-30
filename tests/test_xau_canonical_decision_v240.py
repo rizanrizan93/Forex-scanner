@@ -692,3 +692,77 @@ def test_v263_v240_confirmation_window_is_visible_but_not_official_entry() -> No
     assert state["active_entry_zone"]["role"] == "M5_CONFIRMATION_WINDOW_NOT_ORDER"
     assert state["historical_research_entry"]["low"] == 101.0
     assert state["historical_research_entry"]["high"] == 104.0
+
+
+def test_v289_operational_zone_roles_hide_raw_overlap_from_primary_dashboard() -> None:
+    demand = {
+        "zone_id": "active-demand",
+        "timeframe": "H1",
+        "direction": "LONG",
+        "low": 4167.34,
+        "high": 4181.59,
+        "proximal": 4176.67,
+        "status": "IN_ZONE_PREPARE_ONLY",
+        "lifecycle": {"active": True, "freshness": "PARTIALLY_MITIGATED", "touch_count": 1},
+    }
+    overlapping_supply = {
+        "zone_id": "raw-overlap-supply",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 4179.03,
+        "high": 4197.99,
+        "proximal": 4179.42,
+        "status": "APPROACHING_PREPARE_ONLY",
+        "research_score": 80.0,
+        "lifecycle": {"active": True, "freshness": "PARTIALLY_MITIGATED", "touch_count": 4},
+    }
+    forward_supply = {
+        "zone_id": "forward-opposing-supply",
+        "timeframe": "H1",
+        "direction": "SHORT",
+        "low": 4194.22,
+        "high": 4200.19,
+        "proximal": 4194.73,
+        "status": "ACTIVE_WATCH_PREPARE_ONLY",
+        "lifecycle": {"active": True, "freshness": "FRESH", "touch_count": 0},
+    }
+    atlas = {
+        "zones": [demand, overlapping_supply, forward_supply],
+        "path_map": {
+            "active_path": {
+                "reaction_direction": "LONG",
+                "source_zone": demand,
+                "reaction_target": {"price": 4190.0},
+                "primary_opposing_zone": forward_supply,
+                "terminal_target_zone": forward_supply,
+            },
+            "demand_to_supply": {
+                "reaction_direction": "LONG",
+                "source_zone": demand,
+                "reaction_target": {"price": 4190.0},
+                "primary_opposing_zone": forward_supply,
+                "terminal_target_zone": forward_supply,
+            },
+        },
+    }
+    v226 = {
+        "focus_direction": "LONG",
+        "depth_entry_candidate": {},
+        "four_order_ladder": {"slots": []},
+    }
+
+    state = build_canonical_xau_decision(
+        v226_evaluation=v226,
+        atlas_evaluation=atlas,
+        price_now=4177.60,
+        path_direction="LONG",
+    )
+
+    assert state["direction"] == "LONG"
+    assert state["nearest_demand"]["zone_id"] == "active-demand"
+    assert state["nearest_supply"]["zone_id"] == "forward-opposing-supply"
+    assert state["raw_nearest_supply"]["zone_id"] == "raw-overlap-supply"
+    assert state["zone_role_state"]["raw_overlap_detected"] is True
+    assert state["zone_role_state"]["source_role"] == "DEMAND_SOURCE"
+    assert state["zone_role_state"]["opposing_role"] == "SUPPLY_DESTINATION"
+    assert "RAW_NEAREST_SUPPLY_DEMAND_OVERLAP_DIAGNOSTIC_ONLY" in state["conflicts"]
