@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -33,9 +34,16 @@ def _transient_db_unavailable(exc: Exception) -> bool:
     if isinstance(exc, (TimeoutError, ConnectionError)):
         return True
     error = exc.args[0] if exc.args else None
+    if str(getattr(exc, "code", "")) in {"408", "502", "503", "504", "522", "524"}:
+        return True
     if isinstance(error, dict) and str(error.get("code")) in {"408", "502", "503", "504", "522", "524"}:
         return True
     cls = type(exc)
+    # postgrest.APIError in the runner stringifies its response mapping in
+    # args[0], including the numeric Cloudflare status. Match the code field
+    # only; free-form HTML or unrelated 522 text must not swallow query bugs.
+    if cls.__module__.startswith("postgrest") and cls.__name__ == "APIError":
+        return bool(re.search(r"['\"]code['\"]:\s*['\"]?(?:408|502|503|504|522|524)\b", str(exc)[:600]))
     return cls.__module__.startswith(("httpx", "httpcore")) and (
         "Timeout" in cls.__name__ or "ConnectError" in cls.__name__
     )
