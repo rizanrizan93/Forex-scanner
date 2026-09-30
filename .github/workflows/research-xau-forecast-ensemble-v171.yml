@@ -63,3 +63,11 @@ jobs:
       - name: Run shadow forecast ensemble
         if: ${{ github.event_name != 'pull_request' }}
         run: python -m fx_scanner.research_xau_forecast_ensemble_v171_runtime
+      - name: Preserve standalone shadow evidence during database outage
+        if: ${{ always() && github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-forecast-v171-${{ github.run_id }}
+          path: artifacts/xau-forecast-ensemble-v171.json
+          if-no-files-found: ignore
+          retention-days: 7

@@ -28,6 +28,36 @@ HISTORY_TARGET = 20_000
 CFTC_GOLD_URL = "https://www.cftc.gov/dea/futures/other_lf.htm"
 
 
+def _transient_db_unavailable(exc: Exception) -> bool:
+    """Recognize transport/5xx failures; never hide schema or logic errors."""
+    if isinstance(exc, (TimeoutError, ConnectionError)):
+        return True
+    error = exc.args[0] if exc.args else None
+    if isinstance(error, dict) and str(error.get("code")) in {"408", "502", "503", "504", "522", "524"}:
+        return True
+    cls = type(exc)
+    return cls.__module__.startswith(("httpx", "httpcore")) and (
+        "Timeout" in cls.__name__ or "ConnectError" in cls.__name__
+    )
+
+
+def _reference_components(client: Any) -> tuple[dict[str, Any], dict[str, Any], str]:
+    try:
+        afic = _load_afic_component(client)
+        v170 = _load_v170(client)
+    except Exception as exc:
+        if not _transient_db_unavailable(exc):
+            raise
+        # No cached direction/price is promoted to a new forecast. The live
+        # cTrader history can still produce an independent shadow component.
+        return (
+            {"available": False, "direction": "NEUTRAL", "reason": "DB_REFERENCE_UNAVAILABLE"},
+            {"available": False, "reason": "DB_REFERENCE_UNAVAILABLE"},
+            "TRANSIENT_DB_UNAVAILABLE",
+        )
+    return afic, v170, "OK"
+
+
 def _rows(response: Any) -> list[dict[str, Any]]:
     return [dict(row) for row in (getattr(response, "data", None) or [])]
 
@@ -213,8 +243,7 @@ def run() -> int:
 
     now = datetime.now(tz=UTC)
     store = SupabaseOperationalStore.from_env()
-    afic = _load_afic_component(store.client)
-    reference_v170 = _load_v170(store.client)
+    afic, reference_v170, operational_read_status = _reference_components(store.client)
 
     feed = build_ctrader_research_feed(policy, (SYMBOL,))
     try:
@@ -273,6 +302,7 @@ def run() -> int:
         "history_target_bars": HISTORY_TARGET,
         "history_actual_closed_bars": len(bars),
         "history_pages": pages,
+        "operational_read_status": operational_read_status,
         "ensemble": ensemble,
         "source_freshness": {
             "afic_observed_at": afic.get("observed_at"),
@@ -282,13 +312,6 @@ def run() -> int:
         },
         "code_version": os.getenv("GITHUB_SHA", "LOCAL"),
     }
-    store.write_heartbeat(
-        WORKER_NAME,
-        healthy=True,
-        lag_seconds=0.0,
-        details=details,
-    )
-
     path = Path(
         os.getenv(
             "V171_OUTPUT",
@@ -310,6 +333,21 @@ def run() -> int:
         + "\n"
     )
 
+    # Persist the standalone result before attempting the database write so
+    # a 522 cannot erase the independently computed research evidence.
+    try:
+        store.write_heartbeat(
+            WORKER_NAME,
+            healthy=operational_read_status == "OK",
+            lag_seconds=0.0,
+            details=details,
+        )
+    except Exception as exc:
+        if not _transient_db_unavailable(exc):
+            raise
+        print(f"V171_DB_WRITE_UNAVAILABLE artifact={path} error_type={type(exc).__name__}")
+        return 2
+
     primary = dict(ensemble.get("primary_scenario") or {})
     print(
         "V171_RESULT "
@@ -317,7 +355,7 @@ def run() -> int:
         f"confidence={primary.get('confidence')} coverage={ensemble.get('coverage')} "
         f"cot_available={cot.get('available')} execution_influence=0 artifact={path}"
     )
-    return 0
+    return 0 if operational_read_status == "OK" else 2
 
 
 if __name__ == "__main__":
