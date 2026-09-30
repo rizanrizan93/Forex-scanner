@@ -9,6 +9,7 @@ from fx_scanner.demo_execution_fresh_ready_handoff import (
     _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY,
     _XAU_D1_TSMOM_STRATEGY,
     _XAU_SHADOW_STRATEGIES,
+    _load_xau_only_demo_project_config,
 )
 from fx_scanner.demo_five_core_router import (
     EXECUTION_SYMBOLS,
@@ -89,7 +90,8 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in auto
     assert "demo_execution_fresh_ready_handoff" in auto
     assert "demo_xau_canonical_position_manager" in auto
-    assert "demo_five_core_time_exit" in auto
+    assert "demo_five_core_time_exit" not in auto
+    assert "demo_euraud_gbpaud_chandelier" not in auto
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"' in auto
     assert 'CTRADER_DEMO_RISK_PER_TRADE_PCT: "20.0"' in auto
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in auto
@@ -113,3 +115,41 @@ def test_active_workflows_use_all_valid_setup_handoff_and_bounded_demo_contract(
     assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1,XAU_RIZAN_DEPTH_EXECUTION_V1" in supervisor
     assert "FX_LIVE_TRADING_ENABLED" not in auto
     assert "I_UNDERSTAND_LIVE_ORDERS" not in auto
+
+
+
+def test_v298_operational_runtime_focus_is_xau_only_without_deleting_legacy_contracts():
+    cfg = _load_xau_only_demo_project_config(None)
+    assert tuple(pair.symbol for pair in cfg.pairs) == ("XAUUSD",)
+
+    maintenance = (
+        ROOT / ".github/workflows/ctrader-demo-maintenance-pipeline.yml"
+    ).read_text()
+    supervisor = (
+        ROOT / ".github/workflows/ctrader-demo-auto-supervisor.yml"
+    ).read_text()
+    handoff = (
+        ROOT / "src/fx_scanner/demo_execution_fresh_ready_handoff.py"
+    ).read_text()
+
+    assert "demo_five_core_time_exit" not in maintenance
+    assert "demo_euraud_gbpaud_chandelier" not in maintenance
+    assert "SUPERVISOR_CALIBRATION_PAUSED_XAU_ONLY" in supervisor
+    assert "dispatch_workflow ctrader-demo-calibration-pipeline.yml" not in supervisor
+    assert "base.load_demo_project_config = _load_xau_only_demo_project_config" in handoff
+
+    paused = (
+        "ctrader-demo-audjpy-h4-forward-evidence.yml",
+        "ctrader-demo-euraud-gbpaud-forward-evidence.yml",
+        "ctrader-demo-donchian-contextual-v2.yml",
+        "ctrader-demo-donchian-forward-shadow.yml",
+        "ctrader-demo-donchian-tournament.yml",
+        "ctrader-demo-five-core-history-probe.yml",
+        "ctrader-demo-five-core-soft-ema-observer.yml",
+    )
+    for name in paused:
+        workflow = (ROOT / ".github/workflows" / name).read_text()
+        trigger = workflow.split("permissions:", 1)[0]
+        assert "workflow_dispatch:" in trigger
+        assert "schedule:" not in trigger
+        assert "\n  push:" not in trigger

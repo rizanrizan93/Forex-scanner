@@ -61,7 +61,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V259_LIVE_STRUCTURAL_TRUTH_20260929"
+DASHBOARD_BUILD_ID = "RIZAN_V298_FILLED_META_XAU_ONLY_RUNTIME_20260930"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -2954,13 +2954,35 @@ with forecast_tab:
         and v296_meta_age <= 180.0
     )
     v296_geometry = dict(v296_meta_decision.get("geometry") or {})
+    v296_reference_geometry = dict(
+        v296_meta_decision.get("reference_geometry") or {}
+    )
+    v296_display_geometry = v296_geometry or v296_reference_geometry
+    v296_geometry_reference_only = bool(
+        not v296_geometry and v296_reference_geometry
+    )
     v296_direction = str(
         v296_meta_decision.get("consensus_direction") or "WAIT"
     ).upper()
+    v296_dominant_direction = str(
+        v296_meta_decision.get("dominant_direction")
+        or v296_direction
+        or "WAIT"
+    ).upper()
+    v296_direction_display = (
+        f"{v296_direction} • bias {v296_dominant_direction}"
+        if v296_direction == "WAIT"
+        and v296_dominant_direction in {"LONG", "SHORT"}
+        else v296_direction
+    )
     v296_action = str(v296_meta_decision.get("action") or "WAIT")
-    if not v296_meta_fresh:
-        v296_direction = "WAIT"
-        v296_action = "DATA_STALE_WAIT"
+    v296_freshness_display = (
+        "LIVE"
+        if v296_meta_fresh
+        else "STALE • LAST-KNOWN"
+        if v296_meta_decision
+        else "BELUM ADA SNAPSHOT"
+    )
     v296_confidence = float(v296_meta_decision.get("confidence") or 0.0)
     v296_agreement = float(v296_meta_decision.get("agreement") or 0.0)
     v296_coverage = float(v296_meta_decision.get("coverage") or 0.0)
@@ -2975,6 +2997,8 @@ with forecast_tab:
         "WAIT_NO_CANONICAL_GEOMETRY": "WAIT • NO CANONICAL GEOMETRY",
         "DATA_STALE_WAIT": "WAIT • META DATA STALE",
     }.get(v296_action, _rizan_display(v296_action))
+    if not v296_meta_fresh:
+        v296_action_display += " • " + v296_freshness_display
 
     v297_sampler_details = (
         {}
@@ -2994,7 +3018,11 @@ with forecast_tab:
         and v297_sampler_age <= 180.0
     )
     if not v297_sampler_fresh:
-        v297_sampler_state = "STALE / WAIT"
+        v297_sampler_state = (
+            f"STALE • LAST-KNOWN {v297_sampler_state}"
+            if v297_sampler_details
+            else "BELUM ADA SNAPSHOT"
+        )
 
     v297_meta_calibration = dict(
         v296_meta_decision.get("meta_research_calibration") or {}
@@ -3009,16 +3037,23 @@ with forecast_tab:
     with st.container(border=True):
         st.markdown("### Kesimpulan Final Ensemble V296")
         meta1, meta2, meta3, meta4 = st.columns(4)
-        meta1.metric("Arah final", v296_direction)
+        meta1.metric("Arah final", v296_direction_display)
         meta2.metric("Action", v296_action_display)
-        meta3.metric("Confidence ensemble", f"{v296_confidence:.1f}%")
-        meta4.metric("Agreement engine", f"{v296_agreement * 100.0:.1f}%")
+        meta3.metric(
+            "Confidence ensemble",
+            f"{v296_confidence:.1f}%" if v296_meta_decision else "BELUM ADA DATA",
+        )
+        meta4.metric(
+            "Agreement engine",
+            f"{v296_agreement * 100.0:.1f}%" if v296_meta_decision else "BELUM ADA DATA",
+        )
         st.caption(
             "Confidence ensemble bukan winrate. Bobot engine memprioritaskan "
             "hasil DEMO executed bila sample cukup; sebelum itu memakai geometry prior "
             "dari forward/outcome ledger dan engine dengan sample kecil dibatasi. "
             f"Coverage engine={v296_coverage * 100.0:.1f}% • "
             f"evidence calibrated={v296_evidence_coverage * 100.0:.1f}% • "
+            f"freshness={v296_freshness_display} • "
             + (
                 f"age={v296_meta_age:.0f}s"
                 if v296_meta_age is not None
@@ -3029,16 +3064,21 @@ with forecast_tab:
 
         rs1, rs2, rs3, rs4 = st.columns(4)
         rs1.metric("V297 Research Sampler", _rizan_display(v297_sampler_state))
-        rs2.metric("Executed sample", str(v297_executed_n))
+        rs2.metric(
+            "Executed sample",
+            f"{v297_executed_n} • collecting"
+            if v297_executed_n == 0
+            else str(v297_executed_n),
+        )
         rs3.metric(
             "Executed TP/Win rate",
-            "—"
+            "BELUM ADA EXECUTED SAMPLE"
             if v297_win_rate is None
             else f"{float(v297_win_rate) * 100.0:.1f}%",
         )
         rs4.metric(
             "Wilson lower 95%",
-            "—"
+            "MENUNGGU SAMPLE"
             if v297_wilson is None
             else f"{float(v297_wilson) * 100.0:.1f}%",
         )
@@ -3064,37 +3104,42 @@ with forecast_tab:
                 )
             )
 
-        if v296_geometry and v296_meta_fresh:
-            entry_low = v296_geometry.get("entry_low")
-            entry_high = v296_geometry.get("entry_high")
+        if v296_display_geometry:
+            entry_low = v296_display_geometry.get("entry_low")
+            entry_high = v296_display_geometry.get("entry_high")
             geo1, geo2, geo3, geo4 = st.columns(4)
             geo1.metric(
                 "Entry canonical",
                 f"{_fmt_price(entry_low)}–{_fmt_price(entry_high)}",
             )
-            geo2.metric("SL", _fmt_price(v296_geometry.get("sl")))
-            geo3.metric("TP1", _fmt_price(v296_geometry.get("tp1")))
-            geo4.metric("TP2", _fmt_price(v296_geometry.get("tp2")))
+            geo2.metric("SL", _fmt_price(v296_display_geometry.get("sl")))
+            geo3.metric("TP1", _fmt_price(v296_display_geometry.get("tp1")))
+            geo4.metric("TP2", _fmt_price(v296_display_geometry.get("tp2")))
             st.caption(
                 "Geometry dipilih utuh dari **"
-                + str(v296_geometry.get("engine") or "—")
+                + str(v296_display_geometry.get("engine") or "—")
                 + "** • signal="
-                + str(v296_geometry.get("signal_id") or "—")
+                + str(v296_display_geometry.get("signal_id") or "—")
                 + " • state="
-                + str(v296_geometry.get("state") or "—")
+                + str(v296_display_geometry.get("state") or "—")
                 + " • RR terminal="
                 + (
-                    f"{float(v296_geometry.get('rr2')):.2f}R"
-                    if v296_geometry.get("rr2") is not None
+                    f"{float(v296_display_geometry.get('rr2')):.2f}R"
+                    if v296_display_geometry.get("rr2") is not None
                     else "—"
+                )
+                + (
+                    " • **REFERENCE ONLY / BUKAN IZIN ORDER**"
+                    if v296_geometry_reference_only
+                    else " • canonical aligned geometry"
                 )
                 + ". Entry/SL/TP antar-engine tidak pernah dirata-ratakan."
             )
         else:
             st.info(
-                "Belum ada geometry canonical ensemble yang fresh. "
-                "Arah/context boleh tersedia, tetapi dashboard tidak menampilkan "
-                "entry/SL/TP resmi sampai satu geometry utuh lolos seleksi."
+                "Belum ada geometry utuh dari engine. Dashboard tetap menampilkan "
+                "arah, action, votes, gates, dan freshness; entry/SL/TP tidak diisi "
+                "dengan angka buatan."
             )
 
         v296_hard_blocks = list(v296_meta_decision.get("hard_blocks") or [])

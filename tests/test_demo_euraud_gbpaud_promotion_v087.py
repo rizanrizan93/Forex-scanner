@@ -85,16 +85,20 @@ def test_chandelier_and_max_hold_contracts_match_frozen_research_rules():
     assert TIME_EXIT_CONTRACTS["GBPAUD"][3] == 120
 
 
-def test_auto_pipeline_runs_cross_candidates_and_chandelier_as_separate_processes():
+def test_auto_pipeline_keeps_cross_pair_contracts_archived_but_paused():
     wrapper = (ROOT / "src/fx_scanner/demo_execution_fast_candidate_producer.py").read_text()
     pipeline = (ROOT / ".github/workflows/ctrader-demo-auto-pipeline.yml").read_text()
+    dedicated = (
+        ROOT / ".github/workflows/ctrader-demo-euraud-gbpaud-forward-evidence.yml"
+    ).read_text()
     assert "run_cross_candidates" not in wrapper
     assert "run_cross_chandelier" not in wrapper
     assert "python -m fx_scanner.demo_euraud_gbpaud_candidate_producer" not in pipeline
-    assert "python -m fx_scanner.demo_euraud_gbpaud_chandelier" in pipeline
-    assert pipeline.index("demo_execution_fresh_ready_handoff") < pipeline.index(
-        "demo_euraud_gbpaud_chandelier"
-    )
+    assert "python -m fx_scanner.demo_euraud_gbpaud_chandelier" not in pipeline
+    trigger = dedicated.split("permissions:", 1)[0]
+    assert "workflow_dispatch:" in trigger
+    assert "schedule:" not in trigger
+    assert "\n  push:" not in trigger
     assert "FX_LIVE_TRADING_ENABLED" not in pipeline
     assert "I_UNDERSTAND_LIVE_ORDERS" not in pipeline
 

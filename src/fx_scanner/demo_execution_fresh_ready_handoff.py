@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from . import demo_fresh_ready_handoff as base
 from .demo_five_core_router import PAIR_STRATEGY_IDS
 from .demo_xau_expansion_v42 import STRATEGY_ID as XAU_EXPANSION_V42_STRATEGY_ID
@@ -13,6 +15,7 @@ from .storage.supabase_operational import (
 )
 
 _ORIGINAL_INSTALL_FRESH = base.install_fresh_execution_ready_handoff
+_ORIGINAL_LOAD_DEMO_PROJECT_CONFIG = base.load_demo_project_config
 
 # XAU DEMO execution authority is an exact strategy allowlist. RIZAN V229 is
 # deliberately excluded here because its dedicated child executor owns the
@@ -52,6 +55,15 @@ _ALLOWED_STRATEGIES_BY_SYMBOL = {
 # Runtime filtering below uses the pair-specific map instead.
 _ALLOWED_SYMBOL = "XAUUSD"
 _ALLOWED_STRATEGIES = _ALLOWED_STRATEGIES_BY_SYMBOL[_ALLOWED_SYMBOL]
+
+
+def _load_xau_only_demo_project_config(root=None):
+    """Return the canonical config narrowed only for the live DEMO handoff."""
+    cfg = _ORIGINAL_LOAD_DEMO_PROJECT_CONFIG(root)
+    selected = tuple(pair for pair in cfg.pairs if pair.symbol == "XAUUSD")
+    if len(selected) != 1:
+        raise RuntimeError("XAU_ONLY_HANDOFF_CONFIG_MISSING_XAUUSD")
+    return replace(cfg, pairs=selected)
 
 
 def install_exact_strategy_identity_filter(
@@ -125,6 +137,7 @@ def _install_five_core_identity_filter(*, max_age_seconds: float) -> None:
 def main() -> int:
     """Execute only fresh, exact authorized XAU DEMO strategy signals."""
     base.install_fresh_execution_ready_handoff = _install_five_core_identity_filter
+    base.load_demo_project_config = _load_xau_only_demo_project_config
     return base.main()
 
 

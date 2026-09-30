@@ -2,14 +2,6 @@ name: cTrader Demo Five-Core History Probe
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/demo_five_core_history_probe.py"
-      - "src/fx_scanner/demo_five_core_candidate_producer.py"
-      - "src/fx_scanner/execution/ctrader_research.py"
-      - ".github/workflows/ctrader-demo-five-core-history-probe.yml"
-
 permissions:
   contents: read
 

@@ -2,16 +2,6 @@ name: cTrader Demo EURAUD GBPAUD Forward Evidence
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feature/euraud-gbpaud-forward-shadow-v1
-    paths:
-      - "src/fx_scanner/demo_euraud_gbpaud_forward_evidence.py"
-      - "src/fx_scanner/demo_euraud_gbpaud_forward_observer.py"
-      - ".github/workflows/ctrader-demo-euraud-gbpaud-forward-evidence.yml"
-  schedule:
-    - cron: "17 23 * * 1-5"
-
 permissions:
   contents: read
 

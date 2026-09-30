@@ -2,18 +2,6 @@ name: cTrader Demo Donchian Adaptive Tournament
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "35 22 * * 1-5"
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/demo_donchian_adaptive_tournament.py"
-      - "src/fx_scanner/demo_donchian_tournament_runtime.py"
-      - "src/fx_scanner/demo_donchian_export_evidence.py"
-      - "src/fx_scanner/demo_donchian_atr_h1.py"
-      - "config/validation.yaml"
-      - ".github/workflows/ctrader-demo-donchian-tournament.yml"
-
 permissions:
   contents: read
 

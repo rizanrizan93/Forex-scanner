@@ -2,15 +2,6 @@ name: cTrader Demo Donchian Contextual V2
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/demo_donchian_contextual_v2.py"
-      - "src/fx_scanner/demo_donchian_contextual_runtime.py"
-      - "src/fx_scanner/technical.py"
-      - "config/validation.yaml"
-      - ".github/workflows/ctrader-demo-donchian-contextual-v2.yml"
-
 permissions:
   contents: read
 
