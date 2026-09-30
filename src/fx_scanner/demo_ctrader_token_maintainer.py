@@ -8,7 +8,7 @@ from .execution.ctrader_session import CTraderOpenApiSession
 from .execution.ctrader_tokens import CTraderTokenStateStore
 from .execution.policy import load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
-from .storage.transient_supabase import is_transient_supabase_unavailable
+from .transient import is_transient_backend_error
 
 PROACTIVE_ROTATION_AGE = timedelta(days=20)
 
@@ -78,7 +78,7 @@ def run() -> int:
             fallback_refresh=_required_env(cfg["refresh_token_env"]),
         )
     except Exception as exc:
-        if not is_transient_supabase_unavailable(exc):
+        if not is_transient_backend_error(exc):
             raise
         print(
             "CTRADER_DEMO_TOKEN_MAINTAINER_DEFERRED "
