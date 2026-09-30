@@ -3144,7 +3144,7 @@ with forecast_tab:
                 "Untuk retest, L1 DEMO calibration probe 0,01 lot memakai M5 pocket aktual. Jika pocket aktual "
                 "sudah disentuh terlalu dalam lalu closed M5 reject kembali ke no-chase band, V270 boleh "
                 "memasang satu LIMIT retest di Dynamic Depth band yang masih eligible (maksimum umur M5 60 menit). "
-                "RR tetap ≥1,00R dan hard cap probe 70%; L3/L4 tetap jalur strict ≥1,50R. "
+                "RR probe tetap ≥1,00R dan research cap probe 85%; L3/L4 tetap jalur strict ≥1,50R. "
                 "Tidak diteruskan ke generic MARKET handoff."
             )
 
@@ -4013,7 +4013,7 @@ with forecast_tab:
                 "0,01 lot** memakai M5 pocket aktual bila pressure valid. Jika raw pocket terlalu dalam "
                 "tetapi closed M5 sudah reject keluar dari pocket dan kembali ke Dynamic Depth band yang masih "
                 "eligible, V270 boleh memakai **post-rejection LIMIT retest** berumur maksimum 60 menit. "
-                "Hard ceiling tetap 70%; jika kondisi depth tidak eligible dashboard menulis **PROBE NO-CHASE**. "
+                "Research ceiling L1 adalah 85%; jika depth/hazard/pressure tidak eligible dashboard tetap menulis **PROBE NO-CHASE**. "
                 "V271: bila DOM current sample masih fresh tetapi sample pembanding terlambat, hanya DEMO "
                 "calibration yang boleh lanjut bila pressure absolut netral/supportive; strict L3/L4 tetap "
                 "wajib transition dua-sample. Limit-side harus valid "
