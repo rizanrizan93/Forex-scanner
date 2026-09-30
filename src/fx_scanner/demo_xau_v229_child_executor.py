@@ -35,6 +35,7 @@ from .xau_pressure_transition_v249 import (
     DOM_WORKER,
     evaluate_pressure_transition,
 )
+from .xau_reversal_stage_v280 import evaluate_reversal_stage
 from .xau_dynamic_depth_hazard_v251 import (
     build_dynamic_depth_hazard,
     child_reference_depth,
@@ -147,6 +148,25 @@ def _promote_armed_calibration_parent(
         .execute()
     )
     return len(list(result.data or [])) == 1
+
+
+def _invalidate_signal_for_reversal_stage(
+    store: SupabaseOperationalStore,
+    signal_id: str,
+    stage: str,
+) -> int:
+    guards = [f"V280_{str(stage or 'BLOCK').upper()}"]
+    updated = 0
+    for prior_state in ("ARMED", "EXECUTION_READY", "COOLDOWN"):
+        result = (
+            store.client.table("signals")
+            .update({"state": "INVALIDATED", "active_guards": guards})
+            .eq("id", signal_id)
+            .eq("state", prior_state)
+            .execute()
+        )
+        updated += len(list(result.data or []))
+    return updated
 
 
 def _pending_orders(reconcile: Any) -> tuple[Any, ...]:
@@ -823,6 +843,24 @@ def run() -> int:
                 live_price=live_price,
                 pressure_transition=pressure_transition,
             )
+        reversal_stage = (
+            evaluate_reversal_stage(
+                plan=current_plan,
+                atlas_evaluation=atlas_eval,
+                depth_hazard=depth_hazard,
+                pressure_transition=pressure_transition,
+                live_price=live_price,
+                bid=float(quote.bid),
+                ask=float(quote.ask),
+                now=now,
+            )
+            if current_plan is not None
+            else {
+                "stage": "PREPARE",
+                "hard_execution_block": True,
+                "reasons": ["NO_CURRENT_ALIGNED_V229_PLAN"],
+            }
+        )
 
         for parent in parents:
             parent_signal_id = str(parent.get("signal_key") or "")
@@ -862,6 +900,25 @@ def run() -> int:
             if invalid_parent:
                 outcomes = _cancel_pending_plan(session, plan, reconcile)
                 actions.extend(f"{parent_signal_id}:{x}" for x in outcomes)
+                continue
+
+            if bool(reversal_stage.get("hard_execution_block")):
+                outcomes = _cancel_pending_plan(session, plan, reconcile)
+                actions.extend(
+                    f"{parent_signal_id}:V280_CANCEL:{x}" for x in outcomes
+                )
+                stage = str(reversal_stage.get("stage") or "BLOCK").upper()
+                _invalidate_signal_for_reversal_stage(
+                    store,
+                    parent_signal_id,
+                    stage,
+                )
+                actions.append(
+                    f"{parent_signal_id}:V280_BLOCK:{stage}:"
+                    + "|".join(
+                        str(x) for x in list(reversal_stage.get("reasons") or [])
+                    )
+                )
                 continue
 
             armed_confirmation_window = bool(
@@ -1362,6 +1419,7 @@ def run() -> int:
             "pressure_transition": pressure_transition if 'pressure_transition' in locals() else {},
             "dynamic_depth_hazard_required": True,
             "dynamic_depth_hazard": depth_hazard if 'depth_hazard' in locals() else {},
+            "reversal_stage": reversal_stage if 'reversal_stage' in locals() else {},
             "structure_admission": admission if "admission" in locals() else {},
             "actions": actions[:40],
             "error": error,
