@@ -5,6 +5,8 @@ from pathlib import Path
 from datetime import datetime
 
 from fx_scanner.demo_xau_v229_child_executor import (
+    CHILD_CANCEL_EVENT_CODE,
+    CHILD_CANCEL_EVENT_TYPE,
     _activation_entry,
     _calibration_probe_already_accepted,
     _calibration_probe_entry,
@@ -121,6 +123,54 @@ def test_v229_parent_invalidation_cancels_only_its_pending_children():
     outcomes=_cancel_pending_plan(session,plan,reconcile)
     assert session.cancelled==[11]
     assert outcomes==["CANCELLED:11"]
+
+
+
+class _AuditStore:
+    def __init__(self):
+        self.events=[]
+
+    def record_order_event(self, **kwargs):
+        self.events.append(kwargs)
+
+
+class _ReconcileCancelSession(_Session):
+    def reconcile(self):
+        return SimpleNamespace(order=[],position=[])
+
+
+def test_v292_cancel_ack_is_durably_audited_and_reconciled_absent():
+    plan=_plan()
+    cid1=child_client_order_id(plan["plan_id"],1)
+    reconcile=SimpleNamespace(
+        order=[SimpleNamespace(clientOrderId=cid1,orderId=50942017)],
+        position=[],
+    )
+    session=_ReconcileCancelSession()
+    store=_AuditStore()
+
+    outcomes=_cancel_pending_plan(
+        session,
+        plan,
+        reconcile,
+        store=store,
+        parent_signal_id="parent-signal",
+        reason="PARENT_INVALID_OR_SUPERSEDED",
+    )
+
+    assert outcomes==["CANCELLED:50942017"]
+    assert session.cancelled==[50942017]
+    assert len(store.events)==1
+    event=store.events[0]
+    assert event["event_type"]==CHILD_CANCEL_EVENT_TYPE
+    assert event["code"]==CHILD_CANCEL_EVENT_CODE
+    assert event["broker_order_id"]=="50942017"
+    assert event["accepted"] is True
+    assert event["message"]=="CANCEL_ACK_RECONCILED_ABSENT"
+    assert event["payload"]["parent_signal_id"]=="parent-signal"
+    assert event["payload"]["child_id"]==cid1
+    assert event["payload"]["cancel_reason"]=="PARENT_INVALID_OR_SUPERSEDED"
+    assert event["payload"]["reconciled_absent"] is True
 
 
 def test_v229_child_executor_requires_pressure_transition_and_demo_lane_refresh():

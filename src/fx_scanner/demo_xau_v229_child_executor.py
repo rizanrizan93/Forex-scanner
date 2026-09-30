@@ -45,6 +45,8 @@ SYMBOL = "XAUUSD"
 WORKER_NAME = "ctrader_demo_xau_v229_child_executor"
 CHILD_EVENT_TYPE = "DEMO_XAU_RIZAN_DEPTH_CHILD"
 CHILD_EVENT_CODE = "XAU_RIZAN_DEPTH_CHILD_EXECUTION_V229_1"
+CHILD_CANCEL_EVENT_TYPE = "DEMO_XAU_RIZAN_DEPTH_CHILD_CANCEL"
+CHILD_CANCEL_EVENT_CODE = "XAU_RIZAN_DEPTH_CHILD_CANCEL_V292_1"
 MAX_PARENT_EVENTS = 24
 CALIBRATION_PROBE_ENABLED_ENV = "CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_ENABLED"
 CALIBRATION_PROBE_MIN_RR_ENV = "CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MIN_RR"
@@ -226,19 +228,100 @@ def _pending_for_plan(plan: dict[str, Any], reconcile: Any) -> list[Any]:
     ]
 
 
-def _cancel_pending_plan(session: Any, plan: dict[str, Any], reconcile: Any) -> list[str]:
+def _cancel_pending_plan(
+    session: Any,
+    plan: dict[str, Any],
+    reconcile: Any,
+    *,
+    store: SupabaseOperationalStore | None = None,
+    parent_signal_id: str | None = None,
+    reason: str = "UNSPECIFIED",
+) -> list[str]:
+    """Cancel only children belonging to one parent and durably audit the result.
+
+    Broker cancellation remains authoritative. Audit/reconcile telemetry is
+    fail-soft and must never turn a successful cancel ACK into a retry.
+    """
     outcomes: list[str] = []
+    attempts: list[dict[str, Any]] = []
     for order in _pending_for_plan(plan, reconcile):
         order_id = int(getattr(order, "orderId", 0) or 0)
+        child_id = _order_client_id(order)
         if order_id <= 0:
             outcomes.append("ORDER_ID_MISSING")
             continue
         response = session.cancel_order(order_id)
         execution_type = int(getattr(response, "executionType", -1))
-        if execution_type != 5:
-            outcomes.append(f"CANCEL_REJECTED:{order_id}:{execution_type}")
-        else:
+        broker_ack = execution_type == 5
+        attempts.append(
+            {
+                "order_id": order_id,
+                "child_id": child_id,
+                "execution_type": execution_type,
+                "broker_ack": broker_ack,
+            }
+        )
+        if broker_ack:
             outcomes.append(f"CANCELLED:{order_id}")
+        else:
+            outcomes.append(f"CANCEL_REJECTED:{order_id}:{execution_type}")
+
+    reconciled_pending_ids: set[int] | None = None
+    reconcile_error: str | None = None
+    if any(bool(row["broker_ack"]) for row in attempts):
+        try:
+            post_cancel = session.reconcile()
+            reconciled_pending_ids = {
+                int(getattr(order, "orderId", 0) or 0)
+                for order in _pending_orders(post_cancel)
+                if int(getattr(order, "orderId", 0) or 0) > 0
+            }
+        except Exception as exc:
+            reconcile_error = f"{type(exc).__name__}:{exc}"
+
+    if store is not None:
+        for row in attempts:
+            order_id = int(row["order_id"])
+            broker_ack = bool(row["broker_ack"])
+            reconciled_absent = (
+                None
+                if reconciled_pending_ids is None
+                else order_id not in reconciled_pending_ids
+            )
+            if not broker_ack:
+                audit_code = "CANCEL_REJECTED"
+            elif reconciled_absent is True:
+                audit_code = "CANCEL_ACK_RECONCILED_ABSENT"
+            elif reconciled_absent is False:
+                audit_code = "CANCEL_ACK_STILL_PENDING_ON_RECONCILE"
+            else:
+                audit_code = "CANCEL_ACK_RECONCILE_UNAVAILABLE"
+            try:
+                store.record_order_event(
+                    backend="CTRADER",
+                    account_id=_account_label(),
+                    signal_key=str(parent_signal_id or row["child_id"] or plan.get("plan_id") or "UNKNOWN"),
+                    event_type=CHILD_CANCEL_EVENT_TYPE,
+                    broker_order_id=str(order_id),
+                    accepted=broker_ack,
+                    code=CHILD_CANCEL_EVENT_CODE,
+                    message=audit_code,
+                    payload={
+                        "environment": "DEMO",
+                        "plan_id": str(plan.get("plan_id") or ""),
+                        "parent_signal_id": str(parent_signal_id or ""),
+                        "child_id": str(row["child_id"] or ""),
+                        "cancel_reason": str(reason or "UNSPECIFIED"),
+                        "broker_execution_type": int(row["execution_type"]),
+                        "broker_cancel_ack": broker_ack,
+                        "reconciled_absent": reconciled_absent,
+                        "reconcile_error": reconcile_error,
+                    },
+                )
+            except Exception as exc:
+                outcomes.append(
+                    f"CANCEL_AUDIT_WRITE_FAILED:{order_id}:{type(exc).__name__}"
+                )
     return outcomes
 
 
@@ -898,12 +981,29 @@ def run() -> int:
                 or state == "INVALIDATED"
             )
             if invalid_parent:
-                outcomes = _cancel_pending_plan(session, plan, reconcile)
+                outcomes = _cancel_pending_plan(
+                    session,
+                    plan,
+                    reconcile,
+                    store=store,
+                    parent_signal_id=parent_signal_id,
+                    reason="PARENT_INVALID_OR_SUPERSEDED",
+                )
                 actions.extend(f"{parent_signal_id}:{x}" for x in outcomes)
                 continue
 
             if bool(reversal_stage.get("hard_execution_block")):
-                outcomes = _cancel_pending_plan(session, plan, reconcile)
+                outcomes = _cancel_pending_plan(
+                    session,
+                    plan,
+                    reconcile,
+                    store=store,
+                    parent_signal_id=parent_signal_id,
+                    reason=(
+                        "V280_"
+                        + str(reversal_stage.get("stage") or "BLOCK").upper()
+                    ),
+                )
                 actions.extend(
                     f"{parent_signal_id}:V280_CANCEL:{x}" for x in outcomes
                 )
@@ -1014,7 +1114,14 @@ def run() -> int:
                     f"{parent_signal_id}:CALIBRATION_PARENT_PROMOTED_STRICT"
                 )
             if pressure_hard_block:
-                outcomes = _cancel_pending_plan(session, plan, reconcile)
+                outcomes = _cancel_pending_plan(
+                    session,
+                    plan,
+                    reconcile,
+                    store=store,
+                    parent_signal_id=parent_signal_id,
+                    reason="PRESSURE_HARD_BLOCK",
+                )
                 actions.extend(f"{parent_signal_id}:PRESSURE_CANCEL:{x}" for x in outcomes)
                 if calibration_pressure_bypass:
                     pressure_reason = (
@@ -1036,7 +1143,14 @@ def run() -> int:
                     )
                     continue
             if str(depth_hazard.get("state") or "") != "DYNAMIC_DEPTH_HAZARD_AVAILABLE":
-                outcomes = _cancel_pending_plan(session, plan, reconcile)
+                outcomes = _cancel_pending_plan(
+                    session,
+                    plan,
+                    reconcile,
+                    store=store,
+                    parent_signal_id=parent_signal_id,
+                    reason="DYNAMIC_DEPTH_HAZARD_UNAVAILABLE",
+                )
                 actions.extend(f"{parent_signal_id}:HAZARD_CANCEL:{x}" for x in outcomes)
                 actions.append(
                     f"{parent_signal_id}:HAZARD_BLOCK:{depth_hazard.get('reason','UNAVAILABLE')}"
@@ -1268,7 +1382,16 @@ def run() -> int:
                 )
                 if not admission["allowed"] or expires_at is None or submit_now > expires_at:
                     actions.append(f"{parent_signal_id}:STRUCTURE_BLOCK_OR_EXPIRED")
-                    actions.extend(_cancel_pending_plan(session, plan, session.reconcile()))
+                    actions.extend(
+                        _cancel_pending_plan(
+                            session,
+                            plan,
+                            session.reconcile(),
+                            store=store,
+                            parent_signal_id=parent_signal_id,
+                            reason="STRUCTURE_BLOCK_OR_EXPIRED",
+                        )
+                    )
                     break
                 if not _pending_side_valid(
                     str(plan["direction"]),
