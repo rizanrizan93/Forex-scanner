@@ -3991,7 +3991,7 @@ with forecast_tab:
             "4 • Official broker entry",
             (
                 v240_watch_text
-                if v240_entry_authorized
+                if v240_effective_entry_authorized
                 else "Belum ada • ARMED"
                 if v240_confirmation_window_armed
                 else "Belum ada • WAIT"
@@ -4295,7 +4295,7 @@ with forecast_tab:
             + _human_wait_reason(v240_gate_reason)
         )
 
-        if not v240_entry_authorized:
+        if not v240_effective_entry_authorized:
             st.warning(
                 "**Belum ada entry resmi.** Zona yang ditampilkan adalah watch/current path. "
                 "SL dan TP order sengaja disembunyikan sampai V229 geometry, M15, pressure, "
@@ -5317,8 +5317,12 @@ with forecast_tab:
         for raw_target in list(dict(chart_child).get("structural_targets") or [])
     ]
     chart_structural_targets = list(v240_targets)
-    chart_entry_zone = dict(v240_entry_zone) if v240_entry_authorized else {}
-    chart_depth_overlays = list(v226_overlays) if v240_entry_authorized else []
+    chart_entry_zone = (
+        dict(v240_entry_zone) if v240_effective_entry_authorized else {}
+    )
+    chart_depth_overlays = (
+        list(v226_overlays) if v240_effective_entry_authorized else []
+    )
     chart_next_micro = dict(dc_next_micro)
     if not dc_next_pocket_causally_fresh:
         chart_next_micro.pop("candidate_entry_pocket", None)
@@ -5332,7 +5336,7 @@ with forecast_tab:
         current_target=dc_current_leg_target.get("price"),
         terminal_zone=dc_current_leg_terminal,
         next_target=dc_next_leg_target.get("price"),
-        order_targets_authorized=v240_entry_authorized,
+        order_targets_authorized=v240_effective_entry_authorized,
     )
     chart_next_target = chart_preview_targets[0] if chart_preview_targets else {}
     chart_terminal_target = chart_preview_targets[-1] if chart_preview_targets else {}
@@ -5398,7 +5402,7 @@ with forecast_tab:
             st.caption(
                 (
                     "Baca chart: harga sekarang → entry resmi → TP struktural terdekat → target berikutnya. "
-                    if v240_entry_authorized
+                    if v240_effective_entry_authorized
                     else "Baca chart: harga sekarang → current path target / opposing zone. Tidak ada entry/TP order resmi. "
                 )
                 + "Panah menunjukkan skenario, bukan jaminan."
@@ -5424,7 +5428,7 @@ with forecast_tab:
             next_leg_target=dc_next_leg_target,
             next_leg_terminal=dc_next_leg_terminal,
             next_leg_micro=chart_next_micro,
-            order_targets_authorized=v240_entry_authorized,
+            order_targets_authorized=v240_effective_entry_authorized,
         )
         if chart_png is not None:
             st.image(chart_png, width="stretch")
@@ -5551,15 +5555,23 @@ with forecast_tab:
     ui_entry_low = v240_decision.get("entry_low")
     ui_entry_high = v240_decision.get("entry_high")
     ui_reference_entry = v240_decision.get("entry_reference")
-    ui_stop = v240_decision.get("sl") if v240_entry_authorized else None
-    ui_tp1 = v240_decision.get("tp1") if v240_entry_authorized else None
-    ui_tp2 = v240_decision.get("tp2") if v240_entry_authorized else None
+    ui_stop = (
+        v240_decision.get("sl") if v240_effective_entry_authorized else None
+    )
+    ui_tp1 = (
+        v240_decision.get("tp1") if v240_effective_entry_authorized else None
+    )
+    ui_tp2 = (
+        v240_decision.get("tp2") if v240_effective_entry_authorized else None
+    )
 
     st.markdown("### 3 • Eksekusi Sekarang")
     with st.container(border=True):
         ex1, ex2 = st.columns(2)
         ex1.metric(
-            "Entry resmi" if v240_entry_authorized else "Zone watch (bukan entry)",
+            "Entry resmi"
+            if v240_effective_entry_authorized
+            else "Zone watch (bukan entry)",
             (
                 f"{_fmt_price(ui_entry_low)}–{_fmt_price(ui_entry_high)}"
                 if ui_entry_low is not None and ui_entry_high is not None
@@ -5567,9 +5579,18 @@ with forecast_tab:
             ),
         )
         ex2.metric(
-            "Reference entry" if v240_entry_authorized else "Reference watch",
+            "Reference entry"
+            if v240_effective_entry_authorized
+            else "Reference watch",
             _fmt_price(ui_reference_entry) if ui_reference_entry is not None else "Belum ada",
         )
+        if v240_entry_authorized and not v240_effective_entry_authorized:
+            st.warning(
+                "V280 effective authorization veto: geometri V240 lama mungkin masih "
+                "memiliki entry, tetapi stage reversal/no-chase saat ini **tidak "
+                "mengizinkan order**. Entry/SL/TP resmi disembunyikan sampai setup baru "
+                "lolos kembali."
+            )
         ex3, ex4, ex5 = st.columns(3)
         ex3.metric(
             "Stop Loss resmi",
@@ -5584,7 +5605,10 @@ with forecast_tab:
             _fmt_price(ui_tp2) if ui_tp2 is not None else "Belum ada — no admission",
         )
 
-        if v240_admission_label in {"V229 READY", "BROKER ELIGIBLE"} and v240_entry_authorized:
+        if (
+            v240_admission_label in {"V229 READY", "BROKER ELIGIBLE"}
+            and v240_effective_entry_authorized
+        ):
             st.success(
                 f"Admission: **{v240_admission_label}** • route: **{v240_route_label}**"
             )
@@ -5599,7 +5623,7 @@ with forecast_tab:
                 "Section ini tidak mengambil angka fallback dari V226/standalone/plan lama."
             )
 
-        if v240_entry_authorized and v240_children:
+        if v240_effective_entry_authorized and v240_children:
             ladder_rows = []
             for ui_slot in v240_children:
                 ui_slot_no = int(ui_slot.get("slot") or 0)
