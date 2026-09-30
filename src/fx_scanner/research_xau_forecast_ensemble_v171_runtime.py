@@ -33,6 +33,19 @@ CFTC_GOLD_URL = "https://www.cftc.gov/dea/futures/other_lf.htm"
 
 def _transient_db_unavailable(exc: Exception) -> bool:
     """Recognize transport/5xx failures; never hide schema or logic errors."""
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    for _ in range(4):
+        if current is None or id(current) in seen:
+            break
+        seen.add(id(current))
+        if _direct_transient_db_error(current):
+            return True
+        current = current.__cause__
+    return False
+
+
+def _direct_transient_db_error(exc: BaseException) -> bool:
     if isinstance(exc, (TimeoutError, ConnectionError)):
         return True
     error = exc.args[0] if exc.args else None
