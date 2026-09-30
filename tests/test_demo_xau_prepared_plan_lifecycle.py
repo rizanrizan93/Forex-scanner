@@ -5,6 +5,7 @@ from fx_scanner.demo_xau_prepared_plan_lifecycle import (
     PREPARED_EVENT_TYPE,
     TRACKED_EVENT_TYPES,
     _cancel_reason,
+    _effective_event_cutoff,
     _same_map_touch_confirm,
     lifecycle_metrics,
     lifecycle_state,
@@ -439,3 +440,55 @@ def test_v282_v280_stage_block_event_supplies_exact_invalidation_time() -> None:
     )
     assert at == blocked
     assert reason == "MISSED_ENTRY_NO_CHASE"
+
+
+def test_v288_effective_event_cutoff_tracks_oldest_actual_prepared_plan() -> None:
+    requested = datetime(2026, 9, 23, 0, 0, tzinfo=UTC)
+    prepared_at = datetime(2026, 9, 29, 8, 0, tzinfo=UTC)
+    cutoff = _effective_event_cutoff(
+        requested_cutoff=requested,
+        prepared_rows=(
+            {"observed_at": prepared_at.isoformat()},
+            {"observed_at": (prepared_at + timedelta(hours=2)).isoformat()},
+        ),
+    )
+    assert cutoff == prepared_at - timedelta(minutes=15)
+
+
+def test_v288_effective_event_cutoff_falls_back_to_requested_without_plans() -> None:
+    requested = datetime(2026, 9, 23, 0, 0, tzinfo=UTC)
+    assert _effective_event_cutoff(
+        requested_cutoff=requested,
+        prepared_rows=(),
+    ) == requested
+
+
+def test_v288_lifecycle_event_reads_are_plan_scoped_and_fail_soft() -> None:
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_prepared_plan_lifecycle.py"
+    ).read_text()
+    assert "MAX_PREPARED_ROWS_PER_TYPE = 500" in source
+    assert "EVENT_CUTOFF_PAD_MINUTES = 15" in source
+    assert "def _events_with_diagnostics(" in source
+    assert "legacy_fallback_used" in source
+    assert "if prepared_rows:" in source
+    assert '"severity": "DEGRADED"' in source
+    assert '"severity": "CRITICAL"' in source
+    assert '"event_read_contract": "V288_PLAN_SCOPED_FAIL_SOFT_RECONSTRUCTION"' in source
+    assert '"event_diagnostics": event_diagnostics' in source
+    assert '"degraded_sources"' in source
+
+
+def test_v288_noncritical_query_failures_do_not_define_worker_health() -> None:
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_prepared_plan_lifecycle.py"
+    ).read_text()
+    assert "healthy = not critical_errors" in source
+    assert "degraded = bool(errors)" in source
+    assert "return 0 if healthy else 2" in source
