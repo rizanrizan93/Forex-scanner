@@ -24,7 +24,7 @@ NY = ZoneInfo("America/New_York")
 # These weights are preregistered for V171. V170 is magnitude-only and is not
 # allowed to vote on direction.
 DIRECTION_WEIGHTS = {
-    "afic": 0.40,
+    "rizan": 0.40,
     "conditional": 0.25,
     "acd": 0.20,
     "cot": 0.15,
@@ -373,27 +373,31 @@ def _component_vote(component: dict[str, Any] | None) -> float | None:
 
 def build_forecast_ensemble(
     *,
-    afic: dict[str, Any] | None,
     expected_move: dict[str, Any] | None,
     conditional: dict[str, Any] | None,
     acd: dict[str, Any] | None,
     cot: dict[str, Any] | None,
+    rizan: dict[str, Any] | None = None,
+    afic: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    # afic is a read-only compatibility input for historical callers.
+    # New artifacts and runtime payloads expose only the RIZAN structural key.
+    structural = dict(rizan if rizan is not None else afic or {})
     components = {
-        "afic": dict(afic or {}),
+        "rizan": structural,
         "conditional": dict(conditional or {}),
         "acd": dict(acd or {}),
         "cot": dict(cot or {}),
     }
 
-    afic_direction = str(components["afic"].get("direction") or "").upper()
-    afic_grade = str(components["afic"].get("grade") or "").upper()
-    afic_state = str(components["afic"].get("state") or "").upper()
-    afic_available = bool(components["afic"].get("available")) and afic_direction in {"LONG", "SHORT"}
-    if afic_available:
-        components["afic"]["direction_score"] = 1.0 if afic_direction == "LONG" else -1.0
+    rizan_direction = str(components["rizan"].get("direction") or "").upper()
+    rizan_grade = str(components["rizan"].get("grade") or "").upper()
+    rizan_state = str(components["rizan"].get("state") or "").upper()
+    rizan_available = bool(components["rizan"].get("available")) and rizan_direction in {"LONG", "SHORT"}
+    if rizan_available:
+        components["rizan"]["direction_score"] = 1.0 if rizan_direction == "LONG" else -1.0
     else:
-        components["afic"]["available"] = False
+        components["rizan"]["available"] = False
 
     weighted = 0.0
     available_weight = 0.0
@@ -412,8 +416,8 @@ def build_forecast_ensemble(
         "LONG" if score >= 0.15 else "SHORT" if score <= -0.15 else "NEUTRAL"
     )
     primary_direction = prior_direction if prior_direction != "NEUTRAL" else "UNCLEAR"
-    structural_invalid = "INVALID" in afic_state or "REMAP" in afic_state
-    if not afic_available:
+    structural_invalid = "INVALID" in rizan_state or "REMAP" in rizan_state
+    if not rizan_available:
         primary_direction = "WAIT_H4_MAP"
     elif structural_invalid:
         primary_direction = "WAIT_REMAP"
@@ -424,11 +428,11 @@ def build_forecast_ensemble(
         conflict = any(v > 0 for v in nonzero) and any(v < 0 for v in nonzero)
 
     structural_penalty = 1.0
-    if not afic_available:
+    if not rizan_available:
         structural_penalty *= 0.35
-    elif afic_grade == "B":
+    elif rizan_grade == "B":
         structural_penalty *= 0.82
-    elif afic_grade not in {"A", ""}:
+    elif rizan_grade not in {"A", ""}:
         structural_penalty *= 0.68
     if structural_invalid:
         structural_penalty *= 0.45
@@ -437,7 +441,7 @@ def build_forecast_ensemble(
     if conflict:
         raw_conf *= 0.85
     confidence = max(0.0, min(0.90, raw_conf))
-    if not afic_available:
+    if not rizan_available:
         confidence = min(confidence, 0.25)
 
     alternative = "WAIT_FOR_REMAP"
@@ -445,15 +449,15 @@ def build_forecast_ensemble(
         alternative = "SHORT_REVERSAL_IF_PRIMARY_INVALIDATES"
     elif primary_direction == "SHORT":
         alternative = "LONG_REVERSAL_IF_PRIMARY_INVALIDATES"
-    elif not afic_available:
+    elif not rizan_available:
         alternative = f"{prior_direction}_PRIOR_PENDING_H4_MAP"
     elif structural_invalid:
         conditional_direction = str(components["conditional"].get("direction") or "NEUTRAL").upper()
         alternative = f"{conditional_direction}_PRIOR_PENDING_H4_REMAP"
-    elif afic_direction in {"LONG", "SHORT"}:
-        alternative = f"{afic_direction}_STRUCTURAL_PATH_PENDING_CONFIRMATION"
+    elif rizan_direction in {"LONG", "SHORT"}:
+        alternative = f"{rizan_direction}_STRUCTURAL_PATH_PENDING_CONFIRMATION"
 
-    invalidation = components["afic"].get("invalidation")
+    invalidation = components["rizan"].get("invalidation")
     if invalidation is None and acd and acd.get("available"):
         levels = dict(acd.get("levels") or {})
         if primary_direction == "LONG":
@@ -470,7 +474,7 @@ def build_forecast_ensemble(
         "live_execution_enabled": LIVE_EXECUTION_ENABLED,
         "primary_scenario": {
             "direction": primary_direction,
-            "structural_path": components["afic"].get("path"),
+            "structural_path": components["rizan"].get("path"),
             "confidence": confidence,
             "direction_score": score,
         },
@@ -489,7 +493,7 @@ def build_forecast_ensemble(
         },
         "expected_move": envelope,
         "components": {
-            "afic": components["afic"],
+            "rizan": components["rizan"],
             "conditional": components["conditional"],
             "acd": components["acd"],
             "cot": components["cot"],
@@ -502,8 +506,8 @@ def build_forecast_ensemble(
             "promotion": False,
             "execution_change": False,
             "note": (
-                "V171 is a dashboard/research ensemble. It must not alter AFIC "
-                "Grade-A execution authority until separately forward-validated."
+                "V171 is a dashboard/research ensemble. It must not alter RIZAN "
+                "Grade-A/B execution authority until separately forward-validated."
             ),
         },
     }
