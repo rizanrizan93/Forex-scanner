@@ -2976,6 +2976,36 @@ with forecast_tab:
         "DATA_STALE_WAIT": "WAIT • META DATA STALE",
     }.get(v296_action, _rizan_display(v296_action))
 
+    v297_sampler_details = (
+        {}
+        if v297_meta_sampler_hb is None
+        else dict(v297_meta_sampler_hb.get("details") or {})
+    )
+    v297_sampler_state = str(v297_sampler_details.get("state") or "WAIT")
+    v297_sampler_age = (
+        None
+        if v297_meta_sampler_hb is None
+        else _age_seconds(v297_meta_sampler_hb.get("observed_at"))
+    )
+    v297_sampler_fresh = bool(
+        v297_meta_sampler_hb is not None
+        and bool(v297_meta_sampler_hb.get("healthy"))
+        and v297_sampler_age is not None
+        and v297_sampler_age <= 180.0
+    )
+    if not v297_sampler_fresh:
+        v297_sampler_state = "STALE / WAIT"
+
+    v297_meta_calibration = dict(
+        v296_meta_decision.get("meta_research_calibration") or {}
+    )
+    v297_executed_cal = dict(
+        v297_meta_calibration.get("executed_demo") or {}
+    )
+    v297_executed_n = int(v297_executed_cal.get("decisive") or 0)
+    v297_win_rate = v297_executed_cal.get("win_rate")
+    v297_wilson = v297_executed_cal.get("wilson_lower_95")
+
     with st.container(border=True):
         st.markdown("### Kesimpulan Final Ensemble V296")
         meta1, meta2, meta3, meta4 = st.columns(4)
@@ -2996,6 +3026,43 @@ with forecast_tab:
             )
             + "."
         )
+
+        rs1, rs2, rs3, rs4 = st.columns(4)
+        rs1.metric("V297 Research Sampler", _rizan_display(v297_sampler_state))
+        rs2.metric("Executed sample", str(v297_executed_n))
+        rs3.metric(
+            "Executed TP/Win rate",
+            "—"
+            if v297_win_rate is None
+            else f"{float(v297_win_rate) * 100.0:.1f}%",
+        )
+        rs4.metric(
+            "Wilson lower 95%",
+            "—"
+            if v297_wilson is None
+            else f"{float(v297_wilson) * 100.0:.1f}%",
+        )
+        st.caption(
+            "V297 = order DEMO 0.01 untuk riset ensemble, maksimal satu pending/position "
+            "meta pada satu waktu dan satu sample per decision signature. "
+            "Statistik ini berasal dari outcome ledger dan tidak dicampur dengan "
+            "confidence internal engine."
+        )
+        if str(v297_sampler_state).upper() == "ORDER_ACCEPTED":
+            st.success(
+                "Meta research order accepted • entry="
+                + _fmt_price(v297_sampler_details.get("entry"))
+                + " • SL="
+                + _fmt_price(v297_sampler_details.get("sl"))
+                + " • TP="
+                + _fmt_price(v297_sampler_details.get("tp"))
+                + " • RR="
+                + (
+                    f"{float(v297_sampler_details.get('rr')):.2f}R"
+                    if v297_sampler_details.get("rr") is not None
+                    else "—"
+                )
+            )
 
         if v296_geometry and v296_meta_fresh:
             entry_low = v296_geometry.get("entry_low")
