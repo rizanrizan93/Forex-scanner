@@ -196,20 +196,14 @@ def active_opposite_zones_at(
     return tuple(rows)
 
 
-def evaluate_reaction_handoffs(
-    bars: Sequence[Bar],
+def _evaluate_reaction_handoffs_from_dataset(
+    rows: Sequence[Bar],
     *,
-    handoff_window_minutes: int = HANDOFF_WINDOW_MINUTES,
-    handoff_gap_usd: float = HANDOFF_GAP_USD,
+    destinations: Sequence[ZoneDestination],
+    episodes: Sequence[ReactionEpisode],
+    handoff_window_minutes: int,
+    handoff_gap_usd: float,
 ) -> tuple[dict[str, Any], ...]:
-    """Measure opposite-zone coverage at a confirmed 0.50 ATR reaction.
-
-    This is deliberately not a trading-cycle or TP metric. A V183 HOLD outcome is
-    treated as a structural reaction milestone, then V310 asks whether an opposite
-    zone was already active nearby or became available shortly afterward.
-    """
-    rows = _validate_bars(bars)
-    destinations, episodes, _ = build_transition_ledger(rows)
     bars_by_time = _bar_lookup(rows)
     output: list[dict[str, Any]] = []
 
@@ -289,12 +283,41 @@ def evaluate_reaction_handoffs(
     return tuple(output)
 
 
+def evaluate_reaction_handoffs(
+    bars: Sequence[Bar],
+    *,
+    handoff_window_minutes: int = HANDOFF_WINDOW_MINUTES,
+    handoff_gap_usd: float = HANDOFF_GAP_USD,
+) -> tuple[dict[str, Any], ...]:
+    """Measure opposite-zone coverage at a confirmed 0.50 ATR reaction.
+
+    This is deliberately not a trading-cycle or TP metric. A V183 HOLD outcome is
+    treated as a structural reaction milestone, then V310 asks whether an opposite
+    zone was already active nearby or became available shortly afterward.
+    """
+    rows = _validate_bars(bars)
+    destinations, episodes, _ = build_transition_ledger(rows)
+    return _evaluate_reaction_handoffs_from_dataset(
+        rows,
+        destinations=destinations,
+        episodes=episodes,
+        handoff_window_minutes=handoff_window_minutes,
+        handoff_gap_usd=handoff_gap_usd,
+    )
+
+
 def summarize_transition_research(
     bars: Sequence[Bar],
 ) -> dict[str, Any]:
     rows = _validate_bars(bars)
     destinations, episodes, ledger = build_transition_ledger(rows)
-    handoffs = evaluate_reaction_handoffs(rows)
+    handoffs = _evaluate_reaction_handoffs_from_dataset(
+        rows,
+        destinations=destinations,
+        episodes=episodes,
+        handoff_window_minutes=HANDOFF_WINDOW_MINUTES,
+        handoff_gap_usd=HANDOFF_GAP_USD,
+    )
 
     active_at_reaction = [
         row for row in handoffs if row.get("selected_origin") == "ACTIVE_AT_REACTION"
