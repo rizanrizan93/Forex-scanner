@@ -180,64 +180,55 @@ def _primary_reversal_watch(
     price: float | None,
     zone_probabilities: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
+    """Return the single V307 canonical opposing reversal zone.
+
+    Probability evidence may annotate the zone, but it cannot select a different
+    zone. This keeps path, dashboard and research labels on one reversal authority.
+    """
     if direction not in {"LONG", "SHORT"}:
         return {}
-    probability_by_id = {
-        str(dict(row).get("zone_id") or ""): dict(row)
-        for row in list(zone_probabilities or [])
-        if dict(row).get("zone_id")
+    key = "primary_reversal_supply" if direction == "LONG" else "primary_reversal_demand"
+    zone = dict(atlas_evaluation.get(key) or {})
+    if not zone:
+        path_map = dict(atlas_evaluation.get("path_map") or {})
+        zone = dict(path_map.get(key) or {})
+    if not zone or not _active_zone(zone):
+        return {}
+
+    result = {
+        **_zone_text(zone),
+        "zone_role": "PRIMARY_REVERSAL_ZONE",
+        "selection_policy": "V307_PRIMARY_REVERSAL_AUTHORITY",
     }
-    opposing = "SHORT" if direction == "LONG" else "LONG"
-    ranked: list[tuple[float, float, dict[str, Any]]] = []
-    for raw in _structural_zone_candidates(atlas_evaluation):
-        zone = dict(raw or {})
-        if str(zone.get("direction") or "").upper() != opposing:
+    zone_id = str(zone.get("zone_id") or "")
+    for raw in list(zone_probabilities or []):
+        evidence = dict(raw or {})
+        if str(evidence.get("zone_id") or "") != zone_id:
             continue
-        if not _active_zone(zone):
-            continue
-        low = _f(zone.get("low"))
-        high = _f(zone.get("high"))
-        if low is None or high is None or high <= low:
-            continue
-        if price is not None:
-            if direction == "LONG" and high <= price:
-                continue
-            if direction == "SHORT" and low >= price:
-                continue
-        evidence = dict(probability_by_id.get(str(zone.get("zone_id") or "")) or {})
         destination = dict(evidence.get("destination") or {})
         reaction = dict(evidence.get("reaction") or {})
         p_touch = _f(destination.get("p_touch"))
         p_hold = _f(reaction.get("p_hold_050"))
-        if p_touch is None or p_hold is None:
-            continue
-        joint_score = max(0.0, min(1.0, p_touch)) * max(0.0, min(1.0, p_hold))
-        if price is None:
-            distance = abs(_f(zone.get("distance_points")) or 1e9)
-        elif price < low:
-            distance = low - price
-        elif price > high:
-            distance = price - high
-        else:
-            distance = 0.0
-        result = {
-            **_zone_text(zone),
-            "p_touch": p_touch,
-            "p_hold_050": p_hold,
-            "p_break": _f(reaction.get("p_break")),
-            "research_joint_score": joint_score,
-            "confidence": str(reaction.get("confidence") or ""),
-            "estimate_type": str(reaction.get("estimate_type") or ""),
-            "not_calibrated_probability_claim": bool(
-                reaction.get("not_calibrated_probability_claim", True)
-            ),
-            "distance_points": distance,
-        }
-        ranked.append((-joint_score, distance, result))
-    if not ranked:
-        return {}
-    ranked.sort(key=lambda row: (row[0], row[1]))
-    return ranked[0][2]
+        result.update(
+            {
+                "p_touch": p_touch,
+                "p_hold_050": p_hold,
+                "p_break": _f(reaction.get("p_break")),
+                "research_joint_score": (
+                    None
+                    if p_touch is None or p_hold is None
+                    else max(0.0, min(1.0, p_touch))
+                    * max(0.0, min(1.0, p_hold))
+                ),
+                "confidence": str(reaction.get("confidence") or ""),
+                "estimate_type": str(reaction.get("estimate_type") or ""),
+                "not_calibrated_probability_claim": bool(
+                    reaction.get("not_calibrated_probability_claim", True)
+                ),
+            }
+        )
+        break
+    return result
 
 
 def _path_for_direction(
@@ -404,15 +395,25 @@ def build_canonical_xau_decision(
     # overlap when independent supply and demand structures coexist at different
     # ages/timeframes. The operational dashboard must instead show the source
     # zone of the active path and its forward opposing/destination zone.
-    raw_nearest_demand = _nearest_active_zone(
-        atlas_evaluation,
-        direction="LONG",
-        price=px,
+    raw_nearest_demand = dict(
+        atlas_evaluation.get("raw_nearest_demand")
+        or _nearest_active_zone(atlas_evaluation, direction="LONG", price=px)
+        or {}
     )
-    raw_nearest_supply = _nearest_active_zone(
-        atlas_evaluation,
-        direction="SHORT",
-        price=px,
+    raw_nearest_supply = dict(
+        atlas_evaluation.get("raw_nearest_supply")
+        or _nearest_active_zone(atlas_evaluation, direction="SHORT", price=px)
+        or {}
+    )
+    primary_reversal_demand = dict(
+        atlas_evaluation.get("primary_reversal_demand")
+        or atlas_evaluation.get("nearest_demand")
+        or {}
+    )
+    primary_reversal_supply = dict(
+        atlas_evaluation.get("primary_reversal_supply")
+        or atlas_evaluation.get("nearest_supply")
+        or {}
     )
 
     path = {}
@@ -777,8 +778,10 @@ def build_canonical_xau_decision(
         "path_destination_state": path_destination_state,
         "path_completed": path_completed,
         "terminal_opposing_zone": terminal_zone,
-        "nearest_demand": nearest_demand,
-        "nearest_supply": nearest_supply,
+        "nearest_demand": primary_reversal_demand or nearest_demand,
+        "nearest_supply": primary_reversal_supply or nearest_supply,
+        "primary_reversal_demand": primary_reversal_demand or nearest_demand,
+        "primary_reversal_supply": primary_reversal_supply or nearest_supply,
         "raw_nearest_demand": raw_nearest_demand,
         "raw_nearest_supply": raw_nearest_supply,
         "zone_role_state": {
@@ -786,7 +789,7 @@ def build_canonical_xau_decision(
             "source_role": "DEMAND_SOURCE" if direction == "LONG" else "SUPPLY_SOURCE" if direction == "SHORT" else "UNAVAILABLE",
             "opposing_role": "SUPPLY_DESTINATION" if direction == "LONG" else "DEMAND_DESTINATION" if direction == "SHORT" else "UNAVAILABLE",
             "raw_overlap_detected": raw_overlap,
-            "display_policy": "ACTIVE_PATH_SOURCE_AND_FORWARD_OPPOSING_ZONE",
+            "display_policy": "PRIMARY_REVERSAL_ZONE_ONLY",
         },
         "primary_reversal_watch": primary_reversal_watch,
         "historical_context": historical_context,

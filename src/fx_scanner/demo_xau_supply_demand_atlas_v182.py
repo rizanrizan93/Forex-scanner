@@ -776,6 +776,78 @@ def _source_zone_stack(
     return tuple(pool[:8])
 
 
+def _primary_reversal_authority_score(item: dict[str, Any]) -> float:
+    lifecycle = dict(item.get("lifecycle") or {})
+    mitigation = float(lifecycle.get("mitigation_depth") or 0.0)
+    freshness = str(lifecycle.get("freshness") or "")
+    freshness_points = {
+        "FRESH": 24.0,
+        "FIRST_TEST": 20.0,
+        "SECOND_TEST": 15.0,
+        "PARTIALLY_MITIGATED": 10.0,
+        "DEEPLY_MITIGATED": 0.0,
+        "MULTI_TESTED": 0.0,
+    }.get(freshness, 0.0)
+    structural = 18.0 if bool(item.get("structural_bos")) else 8.0
+    nesting = min(24.0, 8.0 * int(item.get("htf_nesting_count") or 0))
+    tf = str(item.get("timeframe") or "").upper()
+    timeframe_points = {"H1": 10.0, "H4": 8.0, "D1": 6.0}.get(tf, 0.0)
+    research = 0.30 * float(item.get("research_score") or 0.0)
+    distance_penalty = min(18.0, 3.0 * float(item.get("distance_atr") or 0.0))
+    mitigation_penalty = 35.0 if mitigation >= 0.75 else 12.0 if mitigation >= 0.50 else 0.0
+    return round(
+        freshness_points
+        + structural
+        + nesting
+        + timeframe_points
+        + research
+        - distance_penalty
+        - mitigation_penalty,
+        4,
+    )
+
+
+def _primary_reversal_zone(
+    payloads: Sequence[dict[str, Any]],
+    *,
+    direction: str,
+) -> dict[str, Any] | None:
+    candidates = [
+        dict(item)
+        for item in payloads
+        if str(item.get("direction") or "").upper() == direction
+        and bool(item.get("correct_side"))
+        and bool(dict(item.get("lifecycle") or {}).get("active"))
+    ]
+    if not candidates:
+        return None
+
+    # A deeply consumed zone can still create a local bounce, but it must not
+    # outrank a healthier structural zone as the primary reversal authority.
+    healthier = [
+        item
+        for item in candidates
+        if float(dict(item.get("lifecycle") or {}).get("mitigation_depth") or 0.0) < 0.75
+        and str(dict(item.get("lifecycle") or {}).get("freshness") or "")
+        not in {"DEEPLY_MITIGATED", "MULTI_TESTED"}
+    ]
+    pool = healthier or candidates
+    for item in pool:
+        item["primary_reversal_authority_score"] = _primary_reversal_authority_score(item)
+    pool.sort(
+        key=lambda item: (
+            -float(item.get("primary_reversal_authority_score") or 0.0),
+            float(item.get("distance_atr") or 999.0),
+            -int(item.get("htf_nesting_count") or 0),
+            -_precision_timeframe_rank(item),
+        )
+    )
+    selected = dict(pool[0])
+    selected["zone_role"] = "PRIMARY_REVERSAL_ZONE"
+    selected["selection_policy"] = "V307_PRIMARY_REVERSAL_AUTHORITY"
+    return selected
+
+
 def _true_nearest_zone(
     payloads: Sequence[dict[str, Any]],
     *,
@@ -1061,6 +1133,7 @@ def _build_path_map(
     payloads: Sequence[dict[str, Any]],
     levels: Sequence[dict[str, Any]],
     last_price: float,
+    strategic_bias: str = "NEUTRAL",
 ) -> dict[str, Any]:
     active_payloads = _active_payloads(payloads)
     demand_stack = _source_zone_stack(
@@ -1073,17 +1146,27 @@ def _build_path_map(
         direction="SHORT",
         last_price=last_price,
     )
-    nearest_demand = None if not demand_stack else demand_stack[0]
-    nearest_supply = None if not supply_stack else supply_stack[0]
+    raw_nearest_demand = None if not demand_stack else demand_stack[0]
+    raw_nearest_supply = None if not supply_stack else supply_stack[0]
+    primary_reversal_demand = _primary_reversal_zone(
+        active_payloads,
+        direction="LONG",
+    )
+    primary_reversal_supply = _primary_reversal_zone(
+        active_payloads,
+        direction="SHORT",
+    )
+    nearest_demand = primary_reversal_demand
+    nearest_supply = primary_reversal_supply
     demand_to_supply = _build_directional_path(
-        source=nearest_demand,
+        source=primary_reversal_demand,
         reaction_direction="LONG",
         active_payloads=active_payloads,
         levels=levels,
         last_price=last_price,
     )
     supply_to_demand = _build_directional_path(
-        source=nearest_supply,
+        source=primary_reversal_supply,
         reaction_direction="SHORT",
         active_payloads=active_payloads,
         levels=levels,
@@ -1091,10 +1174,19 @@ def _build_path_map(
     )
 
     active_path = None
-    for candidate in (demand_to_supply, supply_to_demand):
-        if candidate and candidate.get("state") == "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION":
-            active_path = candidate
-            break
+    bias = str(strategic_bias or "NEUTRAL").upper()
+    if bias == "SHORT" and supply_to_demand:
+        # Stay on the bearish travel path until the destination demand produces
+        # a causally confirmed opposing-leg handoff (V257). Merely entering
+        # demand is not enough to flip the scanner LONG.
+        active_path = supply_to_demand
+    elif bias == "LONG" and demand_to_supply:
+        active_path = demand_to_supply
+    else:
+        for candidate in (demand_to_supply, supply_to_demand):
+            if candidate and candidate.get("state") == "SOURCE_ZONE_ENTERED_WAIT_REACTION_CONFIRMATION":
+                active_path = candidate
+                break
     if active_path is None:
         entered = []
         for candidate in (demand_to_supply, supply_to_demand):
@@ -1110,8 +1202,13 @@ def _build_path_map(
 
     return {
         "contract": "XAU_SUPPLY_DEMAND_PATH_ENGINE_V186",
-        "nearest_demand": _compact_path_zone(nearest_demand),
-        "nearest_supply": _compact_path_zone(nearest_supply),
+        "nearest_demand": _compact_path_zone(primary_reversal_demand),
+        "nearest_supply": _compact_path_zone(primary_reversal_supply),
+        "primary_reversal_demand": _compact_path_zone(primary_reversal_demand),
+        "primary_reversal_supply": _compact_path_zone(primary_reversal_supply),
+        "raw_nearest_demand": _compact_path_zone(raw_nearest_demand),
+        "raw_nearest_supply": _compact_path_zone(raw_nearest_supply),
+        "display_policy": "PRIMARY_REVERSAL_ZONE_ONLY",
         "demand_source_stack": [
             _compact_path_zone(item) for item in demand_stack[:5]
         ],
@@ -1378,6 +1475,7 @@ def evaluate_supply_demand_atlas(
         payloads=payloads,
         levels=levels,
         last_price=last_price,
+        strategic_bias=strategic_bias,
     )
     nearest_demand = dict(path_map.get("nearest_demand") or {}) or None
     nearest_supply = dict(path_map.get("nearest_supply") or {}) or None
@@ -1435,6 +1533,11 @@ def evaluate_supply_demand_atlas(
         "timeframe_imbalance_counts": timeframe_counts,
         "nearest_demand": nearest_demand,
         "nearest_supply": nearest_supply,
+        "primary_reversal_demand": nearest_demand,
+        "primary_reversal_supply": nearest_supply,
+        "raw_nearest_demand": dict(path_map.get("raw_nearest_demand") or {}) or None,
+        "raw_nearest_supply": dict(path_map.get("raw_nearest_supply") or {}) or None,
+        "reversal_zone_policy": "PRIMARY_REVERSAL_ZONE_ONLY",
         "m30_shadow_v272": m30_shadow,
         "path_map": path_map,
         "zones": selected,
@@ -1443,12 +1546,12 @@ def evaluate_supply_demand_atlas(
             "purpose": "EARLY_HTF_SUPPLY_DEMAND_PREPARATION_RESEARCH",
             "zone_authority": "STRUCTURAL_H1_OR_BASE_DEPARTURE_IMBALANCE_D1_H4_H1",
             "liquidity_role": "CONFLUENCE_ONLY_NOT_STANDALONE_ZONE_GENERATOR",
-            "freshness_model": "TOUCH_COUNT_PLUS_MITIGATION_PLUS_STRUCTURAL_BREAK",
+            "freshness_model": "TOUCH_COUNT_PLUS_MITIGATION_PLUS_STRUCTURAL_BREAK;DEEP_75PCT_ZONES_CANNOT_OUTRANK_HEALTHIER_PRIMARY_REVERSAL_ZONES",
             "geometry": "FULL_BASE_WITH_PROXIMAL_DISTAL_BODY_AWARE_BOUNDARIES",
-            "execution_rule": "NO_EXECUTION_AUTHORITY_CANONICAL_AFIC_REMAINS_UNCHANGED",
+            "execution_rule": "NO_EXECUTION_AUTHORITY_RIZAN_EXECUTION_GATES_REMAIN_FAIL_CLOSED",
             "score_note": "RESEARCH_SCORE_IS_RANKING_EVIDENCE_NOT_CALIBRATED_WIN_PROBABILITY",
             "session_note": "WIB_SESSION_BUCKET_IS_RESEARCH_CONTEXT_NOT_A_TRADING_GATE",
-            "path_engine": "DEMAND_TO_OPPOSING_SUPPLY_AND_SUPPLY_TO_OPPOSING_DEMAND_WITH_INTERNAL_WAYPOINTS",
+            "path_engine": "PRIMARY_REVERSAL_ZONE_TO_OPPOSING_PRIMARY_REVERSAL_ZONE_WITH_INTERNAL_WAYPOINTS",
         },
     }
 

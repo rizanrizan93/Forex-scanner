@@ -1615,7 +1615,7 @@ def _render_standalone_dashboard(state: dict[str, Any]) -> None:
 
     d1, d2 = st.columns(2)
     with d1:
-        st.markdown("**Demand terdekat**")
+        st.markdown("**Demand reversal utama**")
         demand = dict(canonical.get("nearest_demand") or {})
         st.write(
             f"{demand.get('timeframe') or '—'} • "
@@ -1623,7 +1623,7 @@ def _render_standalone_dashboard(state: dict[str, Any]) -> None:
             f"touch {demand.get('touch_count', '—')}"
         )
     with d2:
-        st.markdown("**Supply terdekat**")
+        st.markdown("**Supply reversal utama**")
         supply = dict(canonical.get("nearest_supply") or {})
         st.write(
             f"{supply.get('timeframe') or '—'} • "
@@ -3572,8 +3572,16 @@ with forecast_tab:
         dict(item) for item in list(v240_decision.get("children") or [])
     ]
     v240_destination = dict(v240_decision.get("likely_destination") or {})
-    v240_nearest_demand = dict(v240_decision.get("nearest_demand") or {})
-    v240_nearest_supply = dict(v240_decision.get("nearest_supply") or {})
+    v240_nearest_demand = dict(
+        v240_decision.get("primary_reversal_demand")
+        or v240_decision.get("nearest_demand")
+        or {}
+    )
+    v240_nearest_supply = dict(
+        v240_decision.get("primary_reversal_supply")
+        or v240_decision.get("nearest_supply")
+        or {}
+    )
     v240_reversal_watch = dict(v240_decision.get("primary_reversal_watch") or {})
     v240_hist = dict(v240_decision.get("historical_context") or {})
     v240_hist_entry = dict(v240_decision.get("historical_research_entry") or {})
@@ -4236,11 +4244,12 @@ with forecast_tab:
             demand_role = "STRUCTURAL"
             supply_role = "STRUCTURAL"
         qs1, qs2 = st.columns(2)
-        qs1.metric("Demand terdekat", _quick_zone_text(v240_nearest_demand))
-        qs2.metric("Supply terdekat", _quick_zone_text(v240_nearest_supply))
+        qs1.metric("Demand reversal utama", _quick_zone_text(v240_nearest_demand))
+        qs2.metric("Supply reversal utama", _quick_zone_text(v240_nearest_supply))
         st.caption(
             f"Role path aktif: Demand={demand_role} • Supply={supply_role}. "
-            "Label legacy dipertahankan agar kontrak dashboard stabil; role menentukan cara membacanya."
+            "Dashboard operasional V307 hanya menampilkan PRIMARY REVERSAL ZONE; "
+            "zona dekat/roadblock tetap diagnostic dan tidak menjadi authority path."
         )
         if bool(v240_zone_role_state.get("raw_overlap_detected")):
             st.info(
@@ -5306,8 +5315,8 @@ with forecast_tab:
         lifecycle_rows_dashboard = []
         for role, zone in (
             ("CURRENT SOURCE", v240_active_source or v240_local_structure),
-            ("NEAREST DEMAND", v240_nearest_demand),
-            ("NEAREST SUPPLY", v240_nearest_supply),
+            ("PRIMARY REVERSAL DEMAND", v240_nearest_demand),
+            ("PRIMARY REVERSAL SUPPLY", v240_nearest_supply),
         ):
             zone = dict(zone or {})
             if not zone:
@@ -5611,15 +5620,14 @@ with forecast_tab:
 
     chart_seen: set[str] = set()
     chart_pool: list[dict[str, Any]] = []
-    for raw_zone in (
-        [
-            dc_source,
-            dc_current_leg_terminal,
-            dc_next_leg_source,
-            dc_next_leg_terminal,
-        ]
-        + chart_zones
-    ):
+    for raw_zone in [
+        v240_nearest_demand,
+        v240_nearest_supply,
+        dc_source,
+        dc_current_leg_terminal,
+        dc_next_leg_source,
+        dc_next_leg_terminal,
+    ]:
         zone = dict(raw_zone or {})
         if not zone or zone.get("low") is None or zone.get("high") is None:
             continue
@@ -5887,24 +5895,12 @@ with forecast_tab:
             key="rizan_chart_timeframe",
         )
     with chart_control_2:
-        nearest_demand = next(
-            (
-                zone for zone in chart_pool
-                if str(zone.get("direction") or "").upper() == "LONG"
-            ),
-            {},
-        )
-        nearest_supply = next(
-            (
-                zone for zone in chart_pool
-                if str(zone.get("direction") or "").upper() == "SHORT"
-            ),
-            {},
-        )
+        nearest_demand = dict(v240_nearest_demand or {})
+        nearest_supply = dict(v240_nearest_supply or {})
         st.caption(
-            "Demand terdekat "
+            "Demand reversal utama "
             f"**{_fmt_price(nearest_demand.get('low'))}–{_fmt_price(nearest_demand.get('high'))}**"
-            " • Supply terdekat "
+            " • Supply reversal utama "
             f"**{_fmt_price(nearest_supply.get('low'))}–{_fmt_price(nearest_supply.get('high'))}**"
             f" • leg aktif **{dc_current_leg_direction}**."
         )
@@ -7595,7 +7591,7 @@ with forecast_tab:
                     nd_lifecycle = dict(nearest_demand.get("lifecycle") or {})
                     nd_approach = dict(nearest_demand.get("approach") or {})
                     st.info(
-                        "Demand terdekat: "
+                        "Demand reversal utama: "
                         f"{nearest_demand.get('timeframe','—')} "
                         f"{nearest_demand.get('pattern','—')} • "
                         f"{_fmt_price(nearest_demand.get('low'))}–"
@@ -7611,7 +7607,7 @@ with forecast_tab:
                     ns_lifecycle = dict(nearest_supply.get("lifecycle") or {})
                     ns_approach = dict(nearest_supply.get("approach") or {})
                     st.warning(
-                        "Supply terdekat: "
+                        "Supply reversal utama: "
                         f"{nearest_supply.get('timeframe','—')} "
                         f"{nearest_supply.get('pattern','—')} • "
                         f"{_fmt_price(nearest_supply.get('low'))}–"
