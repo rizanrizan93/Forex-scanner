@@ -1,26 +1,20 @@
 from __future__ import annotations
 
-"""Canonical pair-specific cTrader DEMO runtime authority.
+"""Canonical cTrader DEMO execution authority.
 
-This authority is DEMO-only. Existing XAUUSD, USDJPY and GBPUSD strategies
-remain authorized. On 2026-09-14 the user explicitly authorized the frozen
-EURAUD and GBPAUD research survivors for actual DEMO broker execution so
-forward fills and lifecycle outcomes can be collected.
-
-EURUSD and AUDUSD remain non-execution research/component lanes. LIVE
-execution is controlled elsewhere and remains locked.
+V298 freezes the operational scanner to XAUUSD only. Historical strategy code
+and evidence for other pairs remain available in the repository, but no
+non-XAU symbol is authorized for the active DEMO execution lane. LIVE remains
+locked elsewhere.
 """
 
-AUTHORITY_CONTRACT = "PAIR_SPECIFIC_DEMO_AUTHORITY_V4_EURAUD_GBPAUD"
-PREVIOUS_DEMOTION_REASON = "PREREGISTERED_XAU_ROLLING_STABILITY_GATE_FAILED"
-PROMOTION_REASON = "USER_AUTHORIZED_DEMO_TRADING_DATA_COLLECTION"
-DEMOTION_REASON = "SUPERSEDED_BY_PAIR_SPECIFIC_DEMO_AUTHORITY_V4"
+AUTHORITY_CONTRACT = "XAUUSD_ONLY_DEMO_AUTHORITY_V298"
+PREVIOUS_DEMOTION_REASON = "PAIR_SPECIFIC_DEMO_AUTHORITY_V4_EURAUD_GBPAUD"
+PROMOTION_REASON = "USER_REQUESTED_XAUUSD_ONLY_OPERATIONAL_FOCUS"
+DEMOTION_REASON = "NON_XAU_RUNTIME_PAUSED_V298"
 
-# Exact pair-specific DEMO authority. Unknown or legacy strategy identities are
-# still rejected by the downstream exact strategy-identity handoff.
-EXECUTION_SYMBOLS = frozenset(
-    {"XAUUSD", "USDJPY", "GBPUSD", "EURAUD", "GBPAUD"}
-)
+# Fail closed: the only broker-authorized symbol is XAUUSD.
+EXECUTION_SYMBOLS = frozenset({"XAUUSD"})
 
 SHADOW_SYMBOLS = frozenset()
 
