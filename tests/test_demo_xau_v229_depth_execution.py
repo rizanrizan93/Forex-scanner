@@ -897,5 +897,5 @@ def test_v280_producer_blocks_missed_break_and_invalid_before_signal_persist() -
     assert '"V280_BLOCK:" + block_stage' in source
     assert '"reversal_stage": reversal_stage' in source
     block_pos = source.index('if bool(reversal_stage.get("hard_execution_block")):')
-    write_pos = source.index("_write_signal(")
+    write_pos = source.index("_write_signal(", block_pos)
     assert block_pos < write_pos
