@@ -265,10 +265,27 @@ def build_meta_decision(
         and bool(geometry.get("research_probe_eligible"))
     )
 
+    reference_state = str(reference_geometry.get("state") or "").upper()
+    conflict_research_probe_eligible = bool(
+        consensus == "WAIT"
+        and dominant_direction in {"LONG", "SHORT"}
+        and agreement >= 0.55
+        and abs(direction_score) >= 0.10
+        and reference_geometry
+        and str(reference_geometry.get("engine") or "") == "RIZAN_DEPTH"
+        and str(reference_geometry.get("direction") or "").upper()
+        == dominant_direction
+        and reference_state in {"ARMED", "EXECUTION_READY"}
+        and not hard_blocks
+        and bool(reference_geometry.get("research_probe_eligible"))
+    )
+
     if broker_eligible:
         action = "DEMO_ORDER_ELIGIBLE"
     elif research_probe_eligible:
         action = "DEMO_RESEARCH_PROBE_ELIGIBLE"
+    elif conflict_research_probe_eligible:
+        action = "DEMO_CONFLICT_RESEARCH_PROBE_ELIGIBLE"
     elif geometry_complete and consensus in {"LONG", "SHORT"}:
         action = "PREPARE_WAIT_CONFIRMATION"
     elif consensus == "WAIT":
@@ -298,6 +315,7 @@ def build_meta_decision(
         "warnings": warnings,
         "broker_eligible": broker_eligible,
         "research_probe_eligible": research_probe_eligible,
+        "conflict_research_probe_eligible": conflict_research_probe_eligible,
         "action": action,
         "execution_authority": False,
         "interpretation": (
@@ -305,6 +323,8 @@ def build_meta_decision(
             "engine evidence but cannot itself authorize broker execution. Geometry "
             "is selected intact from one aligned engine; entry/SL/TP are never averaged. "
             "When consensus is WAIT, reference_geometry may still expose the best intact "
-            "dominant-bias geometry for display/research only and never grants execution."
+            "dominant-bias geometry. A narrowly bounded DEMO-only conflict probe may be "
+            "eligible only when that exact RIZAN parent is currently aligned and all hard "
+            "gates pass; it never grants production execution authority."
         ),
     }
