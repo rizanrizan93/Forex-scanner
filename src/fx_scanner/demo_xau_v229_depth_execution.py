@@ -24,6 +24,7 @@ SYMBOL = "XAUUSD"
 STRATEGY_ID = "XAU_RIZAN_DEPTH_EXECUTION_V1"
 WORKER_NAME = "ctrader_demo_xau_v229_depth_execution"
 EVENT_TYPE = "DEMO_SIGNAL_GEOMETRY"
+V280_STAGE_BLOCK_EVENT_TYPE = "DEMO_XAU_RIZAN_STAGE_BLOCK"
 DATA_CONTRACT = "XAU_RIZAN_DEPTH_EXECUTION_V229_1"
 EXECUTION_ENV = "CTRADER_DEMO_DEPTH_EXECUTION_ENABLED"
 
@@ -351,6 +352,7 @@ def _invalidate_prior_ready(
     store: SupabaseOperationalStore,
     *,
     current_key: str,
+    guard: str = "RIZAN_DEPTH_CANDIDATE_SUPERSEDED",
 ) -> int:
     response = (
         store.client.table("broker_order_events")
@@ -377,14 +379,42 @@ def _invalidate_prior_ready(
                 .update(
                     {
                         "state": "INVALIDATED",
-                        "active_guards": ["RIZAN_DEPTH_CANDIDATE_SUPERSEDED"],
+                        "active_guards": [guard],
                     }
                 )
                 .eq("id", signal_id)
                 .eq("state", prior_state)
                 .execute()
             )
-            invalidated += len(list(result.data or []))
+            changed = len(list(result.data or []))
+            invalidated += changed
+            if changed and guard.startswith("V280_"):
+                account = _account_label()
+                if account:
+                    try:
+                        store.record_order_event(
+                            backend="CTRADER",
+                            account_id=account,
+                            signal_key=signal_id,
+                            broker_order_id=f"V280_BLOCK:{signal_id}:{guard}",
+                            event_type=V280_STAGE_BLOCK_EVENT_TYPE,
+                            accepted=None,
+                            code=guard,
+                            message=(
+                                "RIZAN V280 hard stage invalidated the prior DEMO "
+                                "signal; related pending entry must not be chased."
+                            ),
+                            payload={
+                                "guard": guard,
+                                "current_key": current_key,
+                                "execution_influence": True,
+                                "live_execution_enabled": False,
+                            },
+                        )
+                    except Exception:
+                        # The signal invalidation is safety-authoritative. A
+                        # telemetry write must never undo or fail that block.
+                        pass
     return invalidated
 
 
@@ -714,6 +744,7 @@ def run() -> int:
                     prior_invalidated = _invalidate_prior_ready(
                         store,
                         current_key="V280_BLOCK:" + block_stage,
+                        guard="V280_" + block_stage,
                     )
                 elif not strict_pressure_allowed and not fresh_calibration_arm:
                     reason = (

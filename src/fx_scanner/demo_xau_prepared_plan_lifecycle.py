@@ -19,10 +19,15 @@ LEGACY_PREPARED_EVENT_TYPE = "DEMO_XAU_AFIC_PREPARED_PLAN"
 LEGACY_PREPARED_CODE = "XAU_AFIC_PATH_PREPARED_V1"
 LEGACY_FORECAST_EVENT_TYPE = "DEMO_XAU_AFIC_FORECAST_STATE"
 LEGACY_FORECAST_CODE = "XAU_AFIC_PATH_STATE_V1"
-LOOKBACK_DAYS = 30
+V280_STAGE_BLOCK_EVENT_TYPE = "DEMO_XAU_RIZAN_STAGE_BLOCK"
+# Reconstruct only the recent active/recently-resolved window. Lifecycle rows are
+# durable in xau_prepared_plan_lifecycle, so rescanning 30 days every maintenance
+# cycle only increases PostgREST egress. Seven days is far beyond the V229 plan
+# TTL / normal XAU outcome horizon while retaining late broker reconciliation.
+LOOKBACK_DAYS = 7
 MAX_EVENT_ROWS_PER_TYPE = 2000
-MAX_SIGNAL_ROWS = 2000
-MAX_OUTCOME_ROWS = 2000
+MAX_SIGNAL_ROWS = 1500
+MAX_OUTCOME_ROWS = 1500
 
 TRACKED_EVENT_TYPES = (
     PREPARED_EVENT_TYPE,
@@ -33,6 +38,7 @@ TRACKED_EVENT_TYPES = (
     "ORDER_ACCEPTED",
     "POSITION_PROTECTION_VERIFIED",
     "DEMO_TRADE_CLOSED",
+    V280_STAGE_BLOCK_EVENT_TYPE,
 )
 
 _CANCEL_GUARD_REASON = {
@@ -41,6 +47,9 @@ _CANCEL_GUARD_REASON = {
     "AFIC_MAP_NO_LONGER_CURRENT": "H4_REMAP",
     "RIZAN_MAP_SUPERSEDED": "H4_REMAP",
     "RIZAN_MAP_NO_LONGER_CURRENT": "H4_REMAP",
+    "V280_MISSED_ENTRY_WAIT_NEXT_SETUP": "MISSED_ENTRY_NO_CHASE",
+    "V280_BREAK_RISK": "BREAK_RISK",
+    "V280_SETUP_INVALID": "SETUP_INVALID",
 }
 
 
@@ -71,10 +80,26 @@ def _events(
     # can exclude recent RIZAN plans entirely, so fetch only lifecycle-relevant
     # event families with an independent bound for each type.
     rows: list[dict[str, Any]] = []
+    rich_types = {
+        PREPARED_EVENT_TYPE,
+        LEGACY_PREPARED_EVENT_TYPE,
+        FORECAST_EVENT_TYPE,
+        LEGACY_FORECAST_EVENT_TYPE,
+    }
     for event_type in TRACKED_EVENT_TYPES:
+        # Prepared/forecast rows need payload to reconstruct map/touch/confirm.
+        # Broker lifecycle events only need timestamps + signal identity. Avoid
+        # repeatedly transferring wide JSON payloads for those high-volume rows.
+        select_fields = (
+            "observed_at,event_type,signal_key,code,payload"
+            if event_type in rich_types
+            else "observed_at,event_type,signal_key,accepted,code"
+            if event_type == V280_STAGE_BLOCK_EVENT_TYPE
+            else "observed_at,event_type,signal_key,accepted"
+        )
         query = (
             store.client.table("broker_order_events")
-            .select("observed_at,event_type,signal_key,accepted,code,payload")
+            .select(select_fields)
             .eq("event_type", event_type)
             .gte("observed_at", cutoff.isoformat())
             .order("observed_at", desc=True)
@@ -88,6 +113,8 @@ def _events(
             query = query.eq("code", FORECAST_CODE)
         elif event_type == LEGACY_FORECAST_EVENT_TYPE:
             query = query.eq("code", LEGACY_FORECAST_CODE)
+        elif event_type in {"ORDER_ACCEPTED", "POSITION_PROTECTION_VERIFIED"}:
+            query = query.eq("accepted", True)
         response = query.execute()
         rows.extend(dict(row) for row in (response.data or []))
 
@@ -273,6 +300,24 @@ def _next_map_transition(
     return None
 
 
+def _v280_stage_block_transition(
+    signal_events: Sequence[dict[str, Any]],
+    *,
+    created_at: datetime,
+) -> tuple[datetime | None, str | None]:
+    for row in signal_events:
+        if str(row.get("event_type") or "") != V280_STAGE_BLOCK_EVENT_TYPE:
+            continue
+        at = _dt(row.get("observed_at"))
+        if at is None or at < created_at:
+            continue
+        guard = str(row.get("code") or "").strip()
+        reason = _CANCEL_GUARD_REASON.get(guard)
+        if reason is not None:
+            return at, reason
+    return None, None
+
+
 def _cancel_reason(
     signal: dict[str, Any],
     *,
@@ -280,6 +325,7 @@ def _cancel_reason(
     map_at: str,
     forecast_events: Sequence[dict[str, Any]],
     now: datetime,
+    signal_events: Sequence[dict[str, Any]] = (),
 ) -> tuple[datetime | None, str | None]:
     state = str(signal.get("state") or "").upper()
     guards = [str(value) for value in (signal.get("active_guards") or [])]
@@ -289,8 +335,21 @@ def _cancel_reason(
         created_at=created_at,
         map_at=map_at,
     )
-    if same_map_reason is not None:
-        return same_map_at, same_map_reason
+    v280_at, v280_reason = _v280_stage_block_transition(
+        signal_events,
+        created_at=created_at,
+    )
+    transition_candidates = [
+        (at, reason)
+        for at, reason in (
+            (same_map_at, same_map_reason),
+            (v280_at, v280_reason),
+        )
+        if at is not None and reason is not None
+    ]
+    if transition_candidates:
+        transition_candidates.sort(key=lambda item: item[0])
+        return transition_candidates[0]
 
     if state == "INVALIDATED":
         for guard in guards:
@@ -416,6 +475,7 @@ def _lifecycle_rows(
             map_at=map_at,
             forecast_events=forecast_events,
             now=now,
+            signal_events=signal_events,
         )
         # Broker side-effects are authoritative. Never mark an already accepted
         # order as cancelled because a later H4 map superseded the forecast.
@@ -578,6 +638,37 @@ def _metric_flag(row: dict[str, Any], key: str) -> bool:
     return False
 
 
+def _minutes_between(start: Any, end: Any) -> float | None:
+    start_at = _dt(start)
+    end_at = _dt(end)
+    if start_at is None or end_at is None or end_at < start_at:
+        return None
+    return (end_at - start_at).total_seconds() / 60.0
+
+
+def _percentile(values: Sequence[float], q: float) -> float | None:
+    clean = sorted(float(value) for value in values if isfinite(float(value)))
+    if not clean:
+        return None
+    if len(clean) == 1:
+        return clean[0]
+    pos = (len(clean) - 1) * max(0.0, min(1.0, float(q)))
+    lo = int(pos)
+    hi = min(lo + 1, len(clean) - 1)
+    weight = pos - lo
+    return clean[lo] * (1.0 - weight) + clean[hi] * weight
+
+
+def _latency_summary(values: Sequence[float]) -> dict[str, Any]:
+    clean = [float(value) for value in values if isfinite(float(value))]
+    return {
+        "n": len(clean),
+        "median_minutes": _percentile(clean, 0.50),
+        "p90_minutes": _percentile(clean, 0.90),
+        "max_minutes": None if not clean else max(clean),
+    }
+
+
 def lifecycle_metrics(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     total = len(rows)
     active_reached = sum(_metric_flag(row, "touch_while_active") for row in rows)
@@ -598,6 +689,44 @@ def lifecycle_metrics(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
         for row in rows
         if str(row.get("lifecycle_state") or "") == "CANCELLED"
     )
+    cancellation_reason_counts: dict[str, int] = {}
+    for row in rows:
+        reason = str(row.get("cancel_reason") or "").strip()
+        if reason:
+            cancellation_reason_counts[reason] = (
+                cancellation_reason_counts.get(reason, 0) + 1
+            )
+
+    created_to_touch = []
+    touch_to_confirm = []
+    confirm_to_ready = []
+    ready_to_order = []
+    order_to_protection = []
+    touch_to_cancel = []
+    for row in rows:
+        for bucket, start_key, end_key in (
+            (created_to_touch, "created_at", "first_touch_at"),
+            (touch_to_confirm, "first_touch_at", "confirmed_at"),
+            (confirm_to_ready, "confirmed_at", "execution_ready_at"),
+            (ready_to_order, "execution_ready_at", "order_accepted_at"),
+            (order_to_protection, "order_accepted_at", "protection_verified_at"),
+            (touch_to_cancel, "first_touch_at", "cancelled_at"),
+        ):
+            value = _minutes_between(row.get(start_key), row.get(end_key))
+            if value is not None:
+                bucket.append(value)
+
+    v280_reasons = {
+        "MISSED_ENTRY_NO_CHASE",
+        "BREAK_RISK",
+        "SETUP_INVALID",
+    }
+    v280_prevented = sum(
+        count
+        for reason, count in cancellation_reason_counts.items()
+        if reason in v280_reasons
+    )
+
     return {
         "plans": total,
         "active_zone_reach_rate": None if total == 0 else active_reached / total,
@@ -612,6 +741,27 @@ def lifecycle_metrics(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "post_cancel_terminal_hit_rate": None
         if cancelled == 0
         else post_cancel_terminal / cancelled,
+        "cancellation_reason_counts": cancellation_reason_counts,
+        "v280_prevented_entry_count": v280_prevented,
+        "v280_no_chase_prevented_count": cancellation_reason_counts.get(
+            "MISSED_ENTRY_NO_CHASE", 0
+        ),
+        "v280_break_risk_block_count": cancellation_reason_counts.get(
+            "BREAK_RISK", 0
+        ),
+        "v280_setup_invalid_block_count": cancellation_reason_counts.get(
+            "SETUP_INVALID", 0
+        ),
+        "latency": {
+            "created_to_first_touch": _latency_summary(created_to_touch),
+            "first_touch_to_confirmation": _latency_summary(touch_to_confirm),
+            "confirmation_to_execution_ready": _latency_summary(confirm_to_ready),
+            "execution_ready_to_order_accepted": _latency_summary(ready_to_order),
+            "order_accepted_to_protection": _latency_summary(order_to_protection),
+            "first_touch_to_cancel_or_invalidation": _latency_summary(
+                touch_to_cancel
+            ),
+        },
     }
 
 
@@ -657,6 +807,10 @@ def run() -> int:
             "execution_influence": False,
             "live_execution_enabled": False,
             "lookback_days": LOOKBACK_DAYS,
+            "event_read_contract": "V282_NARROW_FIELDS_RECENT_RECONSTRUCTION",
+            "max_event_rows_per_type": MAX_EVENT_ROWS_PER_TYPE,
+            "max_signal_rows": MAX_SIGNAL_ROWS,
+            "max_outcome_rows": MAX_OUTCOME_ROWS,
             "rows_upserted": written,
             "metrics": metrics,
             "error": error,
