@@ -170,10 +170,18 @@ def build_meta_decision(
     if total_weight <= 1e-12:
         direction_score = 0.0
         agreement = 0.0
+        dominant_direction = "WAIT"
         consensus = "WAIT"
     else:
         direction_score = (long_weight - short_weight) / total_weight
         agreement = max(long_weight, short_weight) / total_weight
+        dominant_direction = (
+            "LONG"
+            if long_weight > short_weight
+            else "SHORT"
+            if short_weight > long_weight
+            else "WAIT"
+        )
         consensus = (
             "LONG"
             if direction_score >= 0.15 and agreement >= 0.58
@@ -207,18 +215,37 @@ def build_meta_decision(
         and bool(dict(gate).get("warning"))
     ]
 
-    aligned = [
+    complete_candidates = [
         dict(candidate)
         for candidate in geometry_candidates
-        if consensus in {"LONG", "SHORT"}
-        and str(dict(candidate).get("direction") or "").upper() == consensus
+        if str(dict(candidate).get("direction") or "").upper() in {"LONG", "SHORT"}
         and _f(dict(candidate).get("entry_low")) is not None
         and _f(dict(candidate).get("entry_high")) is not None
         and _f(dict(candidate).get("sl")) is not None
         and _f(dict(candidate).get("tp1")) is not None
     ]
+    aligned = [
+        candidate
+        for candidate in complete_candidates
+        if consensus in {"LONG", "SHORT"}
+        and str(candidate.get("direction") or "").upper() == consensus
+    ]
     aligned.sort(key=_geometry_rank, reverse=True)
     geometry = aligned[0] if aligned else {}
+
+    reference_aligned = [
+        candidate
+        for candidate in complete_candidates
+        if dominant_direction in {"LONG", "SHORT"}
+        and str(candidate.get("direction") or "").upper() == dominant_direction
+    ]
+    reference_aligned.sort(key=_geometry_rank, reverse=True)
+    reference_geometry = (
+        reference_aligned[0]
+        if reference_aligned
+        else (sorted(complete_candidates, key=_geometry_rank, reverse=True)[0]
+              if complete_candidates else {})
+    )
 
     state = str(geometry.get("state") or "").upper()
     guards = list(geometry.get("active_guards") or [])
@@ -252,6 +279,7 @@ def build_meta_decision(
     return {
         "contract": META_CONTRACT,
         "consensus_direction": consensus,
+        "dominant_direction": dominant_direction,
         "direction_score": direction_score,
         "confidence": confidence,
         "agreement": agreement,
@@ -263,6 +291,8 @@ def build_meta_decision(
         "engine_count": len(normalized_votes),
         "votes": normalized_votes,
         "geometry": geometry,
+        "reference_geometry": reference_geometry,
+        "reference_geometry_execution_authority": False,
         "gates": list(gates),
         "hard_blocks": hard_blocks,
         "warnings": warnings,
@@ -273,6 +303,8 @@ def build_meta_decision(
         "interpretation": (
             "V296 is a calibrated meta-decision layer. It may rank and summarize "
             "engine evidence but cannot itself authorize broker execution. Geometry "
-            "is selected intact from one aligned engine; entry/SL/TP are never averaged."
+            "is selected intact from one aligned engine; entry/SL/TP are never averaged. "
+            "When consensus is WAIT, reference_geometry may still expose the best intact "
+            "dominant-bias geometry for display/research only and never grants execution."
         ),
     }
