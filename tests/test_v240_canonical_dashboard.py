@@ -44,7 +44,7 @@ def test_v240_dashboard_uses_canonical_builder() -> None:
 def test_v240_chart_uses_canonical_entry_and_structural_targets() -> None:
     assert "chart_structural_targets = list(v240_targets)" in SOURCE
     assert "direction=v240_direction" in SOURCE
-    assert "chart_entry_zone = dict(v240_entry_zone) if v240_entry_authorized else {}" in SOURCE
+    assert "dict(v240_entry_zone) if v240_effective_entry_authorized else {}" in SOURCE
     assert "entry_zone=chart_entry_zone" in SOURCE
     assert "structural_targets=chart_structural_targets" in SOURCE
     assert "current_direction=v240_direction" in SOURCE
