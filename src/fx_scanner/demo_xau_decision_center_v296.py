@@ -9,6 +9,7 @@ from typing import Any
 
 from .storage.supabase_operational import SupabaseOperationalStore
 from .xau_decision_meta_v296 import calibrate_outcomes, build_meta_decision
+from .xau_rizan_style_path_engine_v303 import build_rizan_style_path_engine
 
 
 WORKER_NAME = "ctrader_demo_xau_decision_center_v296"
@@ -468,6 +469,12 @@ def _v284_precision_evidence(
 def _support_evidence(latest: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     v226 = dict(latest.get("ctrader_demo_xau_v226_rizan_depth_map") or {})
     v226_eval = dict(dict(v226.get("details") or {}).get("evaluation") or {})
+    atlas = dict(latest.get("ctrader_demo_xau_supply_demand_atlas_v182") or {})
+    atlas_eval = dict(dict(atlas.get("details") or {}).get("evaluation") or {})
+    style_path = build_rizan_style_path_engine(
+        atlas_evaluation=atlas_eval,
+        price_now=atlas_eval.get("last_closed_m15_price"),
+    )
     candidate = dict(v226_eval.get("depth_entry_candidate") or {})
     child = dict(latest.get("ctrader_demo_xau_v229_child_executor") or {})
     child_details = dict(child.get("details") or {})
@@ -480,6 +487,16 @@ def _support_evidence(latest: dict[str, dict[str, Any]]) -> list[dict[str, Any]]
     event_risk = dict(dict(event.get("details") or {}).get("risk") or {})
 
     return [
+        {
+            "engine": "RIZAN_STYLE_PATH_ENGINE",
+            "role": "NON_VOTING_BRANCHING_STRUCTURAL_FORECAST",
+            "decision": str(style_path.get("active_direction") or "WAIT").upper(),
+            "state": str(style_path.get("state") or "UNAVAILABLE"),
+            "detail": (
+                f"decision_zone={dict(style_path.get('next_decision_zone') or {}).get('zone_id') or 'NONE'};"
+                f" branch={style_path.get('branch_preference') or 'WAIT_DECISION'}"
+            ),
+        },
         {
             "engine": "V226_DEPTH_MAP",
             "role": "NON_VOTING_GEOMETRY_CONTEXT",
@@ -618,6 +635,12 @@ def run() -> int:
     decision["calibration_source"] = "XAU_OUTCOME_LEDGER_FORWARD_FIRST"
     decision["calibration_min_decisive_sample"] = 30
     decision["meta_research_calibration"] = meta_research_calibration
+    atlas_hb = dict(latest.get("ctrader_demo_xau_supply_demand_atlas_v182") or {})
+    atlas_eval = dict(dict(atlas_hb.get("details") or {}).get("evaluation") or {})
+    decision["rizan_style_path_engine"] = build_rizan_style_path_engine(
+        atlas_evaluation=atlas_eval,
+        price_now=atlas_eval.get("last_closed_m15_price"),
+    )
     decision["support_evidence"] = _support_evidence(latest)
 
     store.write_heartbeat(
