@@ -306,3 +306,108 @@ def test_lifecycle_metrics_fallback_classifies_touch_chronology_without_metadata
     metrics = lifecycle_metrics(rows)
     assert metrics["active_zone_reach_rate"] == 0.5
     assert metrics["post_cancel_zone_reach_rate"] == 0.5
+
+
+def test_v282_cancel_reason_maps_v280_operational_guards() -> None:
+    created = datetime(2026, 9, 30, 1, 0, tzinfo=UTC)
+    cases = {
+        "V280_MISSED_ENTRY_WAIT_NEXT_SETUP": "MISSED_ENTRY_NO_CHASE",
+        "V280_BREAK_RISK": "BREAK_RISK",
+        "V280_SETUP_INVALID": "SETUP_INVALID",
+    }
+    for guard, expected in cases.items():
+        signal = {
+            "state": "INVALIDATED",
+            "active_guards": [guard],
+            "expires_at": (created + timedelta(hours=12)).isoformat(),
+        }
+        at, reason = _cancel_reason(
+            signal,
+            created_at=created,
+            map_at="2026-09-30T00:00:00+00:00",
+            forecast_events=(),
+            now=created + timedelta(minutes=5),
+        )
+        assert at == created
+        assert reason == expected
+
+
+def test_v282_lifecycle_metrics_report_stage_latencies_and_v280_prevention() -> None:
+    rows = (
+        {
+            "created_at": "2026-09-30T00:00:00+00:00",
+            "first_touch_at": "2026-09-30T00:10:00+00:00",
+            "confirmed_at": "2026-09-30T00:14:00+00:00",
+            "execution_ready_at": "2026-09-30T00:15:00+00:00",
+            "order_accepted_at": "2026-09-30T00:16:00+00:00",
+            "protection_verified_at": "2026-09-30T00:17:00+00:00",
+            "cancelled_at": None,
+            "cancel_reason": None,
+            "lifecycle_state": "PROTECTED",
+            "post_cancel_terminal_hit": False,
+            "metadata": {
+                "touch_while_active": True,
+                "post_cancel_touch": False,
+                "confirmation_while_active": True,
+            },
+        },
+        {
+            "created_at": "2026-09-30T00:20:00+00:00",
+            "first_touch_at": "2026-09-30T00:25:00+00:00",
+            "confirmed_at": None,
+            "execution_ready_at": None,
+            "order_accepted_at": None,
+            "protection_verified_at": None,
+            "cancelled_at": "2026-09-30T00:28:00+00:00",
+            "cancel_reason": "MISSED_ENTRY_NO_CHASE",
+            "lifecycle_state": "CANCELLED",
+            "post_cancel_terminal_hit": False,
+            "metadata": {
+                "touch_while_active": True,
+                "post_cancel_touch": False,
+                "confirmation_while_active": False,
+            },
+        },
+        {
+            "created_at": "2026-09-30T00:30:00+00:00",
+            "first_touch_at": None,
+            "confirmed_at": None,
+            "execution_ready_at": None,
+            "order_accepted_at": None,
+            "protection_verified_at": None,
+            "cancelled_at": "2026-09-30T00:34:00+00:00",
+            "cancel_reason": "BREAK_RISK",
+            "lifecycle_state": "CANCELLED",
+            "post_cancel_terminal_hit": False,
+            "metadata": {
+                "touch_while_active": False,
+                "post_cancel_touch": False,
+                "confirmation_while_active": False,
+            },
+        },
+    )
+    metrics = lifecycle_metrics(rows)
+    assert metrics["v280_prevented_entry_count"] == 2
+    assert metrics["v280_no_chase_prevented_count"] == 1
+    assert metrics["v280_break_risk_block_count"] == 1
+    assert metrics["v280_setup_invalid_block_count"] == 0
+    assert metrics["latency"]["created_to_first_touch"]["n"] == 2
+    assert metrics["latency"]["created_to_first_touch"]["median_minutes"] == 7.5
+    assert metrics["latency"]["first_touch_to_confirmation"]["median_minutes"] == 4.0
+    assert metrics["latency"]["confirmation_to_execution_ready"]["median_minutes"] == 1.0
+    assert metrics["latency"]["execution_ready_to_order_accepted"]["median_minutes"] == 1.0
+    assert metrics["latency"]["order_accepted_to_protection"]["median_minutes"] == 1.0
+    assert metrics["latency"]["first_touch_to_cancel_or_invalidation"]["median_minutes"] == 3.0
+
+
+def test_v282_lifecycle_reconstruction_reduces_postgrest_egress() -> None:
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_prepared_plan_lifecycle.py"
+    ).read_text()
+    assert "LOOKBACK_DAYS = 7" in source
+    assert 'else "observed_at,event_type,signal_key,accepted"' in source
+    assert '.eq("accepted", True)' in source
+    assert '"event_read_contract": "V282_NARROW_FIELDS_RECENT_RECONSTRUCTION"' in source
