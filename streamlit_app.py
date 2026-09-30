@@ -3813,7 +3813,7 @@ with forecast_tab:
             f"{v240_decision.get('direction_source') or '—'}."
         )
 
-        st.markdown("###### Struktur aktif — role-aware, bukan locator historis")
+        st.markdown("###### Struktur aktif — bukan locator historis • role-aware")
         v240_zone_role_state = dict(v240_decision.get("zone_role_state") or {})
         if v240_direction == "LONG":
             demand_label = "Demand aktif / source"
