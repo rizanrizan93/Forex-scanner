@@ -14,7 +14,8 @@ def test_demo_auto_pipeline_is_dispatch_only_xauusd_fast_lane_and_demo_only():
     assert "demo_xau_m15_ema_smc_reclaim_candidate_producer" in text
     assert "demo_execution_fresh_ready_handoff --limit 10" in text
     assert "demo_xau_canonical_position_manager" in text
-    assert "demo_five_core_time_exit" in text
+    assert "demo_five_core_time_exit" not in text
+    assert "demo_euraud_gbpaud_chandelier" not in text
     assert text.index("demo_xau_v24_champion_candidate_producer") < text.index(
         "demo_execution_fresh_ready_handoff"
     )
@@ -25,7 +26,7 @@ def test_demo_auto_pipeline_is_dispatch_only_xauusd_fast_lane_and_demo_only():
         "demo_xau_canonical_position_manager"
     )
     assert text.index("demo_xau_canonical_position_manager") < text.index(
-        "demo_five_core_time_exit"
+        "demo_xau_v24_champion_time_exit"
     )
     assert "demo_closed_trade_reconciler" not in text
     assert "macro-refresh" not in text
@@ -71,11 +72,11 @@ def test_demo_auto_pipeline_keeps_existing_position_protection_alive_on_shadow_p
     assert "id: execute_fresh_handoff" in text
     assert "id: xau_canonical_manager" in text
     assert "id: xau_v24_time_exit" in text
-    assert "id: pair_time_exit" in text
-    assert "id: euraud_gbpaud_chandelier" in text
+    assert "id: pair_time_exit" not in text
+    assert "id: euraud_gbpaud_chandelier" not in text
     assert "id: xau_v42_time_exit" in text
     assert "id: xau_v42_profit_lock" in text
-    assert text.count("if: ${{ always() && !cancelled() }}") >= 8
+    assert text.count("if: ${{ always() && !cancelled() }}") >= 6
 
     handoff = text.split("- name: Execute all fresh strategy-authorized DEMO signals", 1)[1]
     handoff = handoff.split("- name: Manage canonical XAU filled positions", 1)[0]
@@ -271,7 +272,8 @@ def test_maintenance_lane_has_no_new_entry_authority():
     assert "demo_existing_protection_repair" in text
     assert "demo_xau_canonical_position_manager" in text
     assert "demo_xau_v24_champion_time_exit" in text
-    assert "demo_five_core_time_exit" in text
+    assert "demo_five_core_time_exit" not in text
+    assert "demo_euraud_gbpaud_chandelier" not in text
     assert "demo_xau_expansion_v42_candidate_producer" in text
     assert "demo_execution_fresh_ready_handoff" not in text
     assert "demo_xau_v24_champion_candidate_producer" not in text
