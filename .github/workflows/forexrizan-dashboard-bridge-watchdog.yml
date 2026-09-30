@@ -1,0 +1,79 @@
+name: ForexRizan Dashboard Bridge Watchdog
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: forexrizan-dashboard-bridge-watchdog
+  cancel-in-progress: true
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify dashboard snapshot freshness
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          market_open_utc() {
+            weekday="$(date -u +%u)"
+            hour="$(date -u +%H)"
+            if [ "${weekday}" -eq 7 ]; then
+              [ "${hour}" -ge 21 ]
+            elif [ "${weekday}" -ge 1 ] && [ "${weekday}" -le 4 ]; then
+              return 0
+            elif [ "${weekday}" -eq 5 ]; then
+              [ "${hour}" -lt 22 ]
+            else
+              return 1
+            fi
+          }
+
+          if ! market_open_utc; then
+            echo "FOREXRIZAN_BRIDGE_WATCHDOG market=closed action=SKIP"
+            exit 0
+          fi
+
+          now_epoch="$(date -u +%s)"
+          snapshot_date="$(
+            gh api "repos/${GITHUB_REPOSITORY}/branches/dashboard-snapshots"               --jq '.commit.commit.committer.date' 2>/dev/null || true
+          )"
+
+          if [ -z "${snapshot_date}" ]; then
+            age=999999
+          else
+            snapshot_epoch="$(date -u -d "${snapshot_date}" +%s)"
+            age="$(( now_epoch - snapshot_epoch ))"
+            if [ "${age}" -lt 0 ]; then
+              age=0
+            fi
+          fi
+
+          echo "FOREXRIZAN_BRIDGE_WATCHDOG snapshot_age_seconds=${age}"
+
+          if [ "${age}" -le 150 ]; then
+            echo "FOREXRIZAN_BRIDGE_WATCHDOG action=HEALTHY"
+            exit 0
+          fi
+
+          active="$(
+            gh run list               --workflow forexrizan-dashboard-bridge-v254.yml               --limit 10               --json status               --jq '[.[] | select(.status=="queued" or .status=="in_progress")] | length'               2>/dev/null || echo 0
+          )"
+
+          if [ "${active}" -gt 0 ] && [ "${age}" -le 600 ]; then
+            echo "FOREXRIZAN_BRIDGE_WATCHDOG action=WAIT_ACTIVE_PUBLISHER active=${active}"
+            exit 0
+          fi
+
+          gh workflow run forexrizan-dashboard-bridge-v254.yml --ref main
+          echo "FOREXRIZAN_BRIDGE_WATCHDOG action=DISPATCH age=${age} active=${active}"
