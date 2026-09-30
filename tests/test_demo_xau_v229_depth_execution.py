@@ -899,3 +899,19 @@ def test_v280_producer_blocks_missed_break_and_invalid_before_signal_persist() -
     block_pos = source.index('if bool(reversal_stage.get("hard_execution_block")):')
     write_pos = source.index("_write_signal(", block_pos)
     assert block_pos < write_pos
+
+
+def test_v282_v280_hard_block_persists_specific_guard_and_one_shot_event() -> None:
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_depth_execution.py"
+    ).read_text()
+    assert 'V280_STAGE_BLOCK_EVENT_TYPE = "DEMO_XAU_RIZAN_STAGE_BLOCK"' in source
+    assert 'guard: str = "RIZAN_DEPTH_CANDIDATE_SUPERSEDED"' in source
+    assert '"active_guards": [guard]' in source
+    assert 'guard="V280_" + block_stage' in source
+    assert "if changed and guard.startswith(\"V280_\"):" in source
+    assert "store.record_order_event(" in source
+    assert "telemetry write must never undo or fail that block" in source
