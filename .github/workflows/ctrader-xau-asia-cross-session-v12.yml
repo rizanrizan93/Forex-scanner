@@ -1,0 +1,58 @@
+name: cTrader XAU Asia Cross Session V12
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_asia_cross_session_v12.py"
+      - "src/fx_scanner/research_xau_asia_cross_session_v12_runtime.py"
+      - "src/fx_scanner/research_xau_h1_history.py"
+      - "config/validation.yaml"
+      - ".github/workflows/ctrader-xau-asia-cross-session-v12.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-xau-asia-cross-session-v12-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  xau-v12:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      XAU_V12_EVIDENCE_OUTPUT: artifacts/xau-asia-cross-session-v12.json
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Validate config
+        run: python -m fx_scanner.cli validate-config
+      - name: Run Asia cross-session V12
+        run: python -m fx_scanner.research_xau_asia_cross_session_v12_runtime
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-asia-cross-session-v12
+          path: artifacts/xau-asia-cross-session-v12.json
+          if-no-files-found: error
+          retention-days: 30
