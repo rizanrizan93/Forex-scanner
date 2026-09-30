@@ -180,7 +180,7 @@ def _primary_reversal_watch(
     price: float | None,
     zone_probabilities: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
-    """Return the single V307 canonical opposing reversal zone.
+    """Return the single V309 reachable canonical opposing reversal zone.
 
     Probability evidence may annotate the zone, but it cannot select a different
     zone. This keeps path, dashboard and research labels on one reversal authority.
@@ -198,7 +198,7 @@ def _primary_reversal_watch(
     result = {
         **_zone_text(zone),
         "zone_role": "PRIMARY_REVERSAL_ZONE",
-        "selection_policy": "V307_PRIMARY_REVERSAL_AUTHORITY",
+        "selection_policy": "V309_REACHABLE_PRIMARY_REVERSAL_AUTHORITY",
     }
     zone_id = str(zone.get("zone_id") or "")
     for raw in list(zone_probabilities or []):
