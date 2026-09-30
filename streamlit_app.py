@@ -4248,7 +4248,7 @@ with forecast_tab:
         qs2.metric("Supply reversal utama", _quick_zone_text(v240_nearest_supply))
         st.caption(
             f"Role path aktif: Demand={demand_role} • Supply={supply_role}. "
-            "Dashboard operasional V307 hanya menampilkan PRIMARY REVERSAL ZONE; "
+            "Dashboard operasional V309 hanya menampilkan PRIMARY REVERSAL ZONE yang forward-reachable; "
             "zona dekat/roadblock tetap diagnostic dan tidak menjadi authority path."
         )
         if bool(v240_zone_role_state.get("raw_overlap_detected")):
