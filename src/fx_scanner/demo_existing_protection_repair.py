@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 import re
+from dataclasses import asdict
 from typing import Any
 from uuid import UUID, uuid4
 
