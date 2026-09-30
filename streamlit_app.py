@@ -5620,15 +5620,14 @@ with forecast_tab:
 
     chart_seen: set[str] = set()
     chart_pool: list[dict[str, Any]] = []
-    for raw_zone in (
-        [
-            dc_source,
-            dc_current_leg_terminal,
-            dc_next_leg_source,
-            dc_next_leg_terminal,
-        ]
-        + chart_zones
-    ):
+    for raw_zone in [
+        v240_nearest_demand,
+        v240_nearest_supply,
+        dc_source,
+        dc_current_leg_terminal,
+        dc_next_leg_source,
+        dc_next_leg_terminal,
+    ]:
         zone = dict(raw_zone or {})
         if not zone or zone.get("low") is None or zone.get("high") is None:
             continue
