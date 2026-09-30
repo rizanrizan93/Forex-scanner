@@ -15,6 +15,7 @@ from fx_scanner.demo_xau_v229_child_executor import (
     _cancel_pending_plan,
     _entry_inside_active_source,
     _existing_slots,
+    _initial_stale_quote_is_operational_block,
     _limit_side_valid,
     _pending_side_valid,
     _promote_armed_calibration_parent,
@@ -812,3 +813,32 @@ def test_v301_child_heartbeat_exposes_only_current_aligned_parent_ids() -> None:
     assert "aligned_parent_signal_ids.append(parent_signal_id)" in source
     assert '"aligned_parent_signal_ids": (' in source
     assert '"current_candidate_key": current_key' in source
+
+
+def test_child_initial_stale_quote_is_fail_closed_operational_wait():
+    class CollectorUnavailable(Exception):
+        pass
+
+    exc = CollectorUnavailable(
+        "cTrader stale quote after bounded wait: 9.868s"
+    )
+    assert _initial_stale_quote_is_operational_block(exc, None) is True
+    assert _initial_stale_quote_is_operational_block(
+        exc,
+        SimpleNamespace(bid=1.0, ask=1.1),
+    ) is False
+    assert _initial_stale_quote_is_operational_block(
+        CollectorUnavailable("market metadata unavailable"),
+        None,
+    ) is False
+
+
+def test_child_stale_quote_block_is_observable_and_does_not_weaken_submit_guards():
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_child_executor.py"
+    ).read_text()
+    assert "QUOTE_STALE_FAIL_CLOSED_NO_EXECUTION" in source
+    assert '"execution_blocked": bool(operational_block)' in source
+    assert "accepted, detail = _submit_child(" in source
+    assert "control.refresh_once()" in source
