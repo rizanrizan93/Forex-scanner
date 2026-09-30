@@ -62,29 +62,21 @@ def _d1_bars(*, symbol: str = "XAUUSD", rising: bool) -> tuple[Bar, ...]:
 
 
 def test_five_core_registry_and_pair_specific_demo_authority_are_exact():
-    assert FIVE_CORE_SYMBOLS == ("XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD")
-    assert EXECUTION_SYMBOLS == frozenset(
-        {"XAUUSD", "USDJPY", "GBPUSD", "EURAUD", "GBPAUD"}
-    )
+    assert FIVE_CORE_SYMBOLS == ("XAUUSD",)
+    assert EXECUTION_SYMBOLS == frozenset({"XAUUSD"})
     assert SHADOW_SYMBOLS == frozenset()
-    assert NO_TRADE_SYMBOLS == frozenset({"EURUSD", "AUDUSD"})
-    assert PAIR_STRATEGY_IDS["XAUUSD"] == "D1_TSMOM_60_200"
-    assert PAIR_STRATEGY_IDS["USDJPY"] == "D1_DONCHIAN55_200"
-    assert PAIR_STRATEGY_IDS["GBPUSD"] == "H4_MEAN_REVERT_Z2_TO_SMA20"
+    assert NO_TRADE_SYMBOLS == frozenset()
+    assert PAIR_STRATEGY_IDS == {"XAUUSD": "D1_TSMOM_60_200"}
     assert FORWARD_DEMO_SCORE == 60.0
     assert D1_MAX_HOLD_BARS == 30
     assert H4_MAX_HOLD_BARS == 12
     assert execution_authorized("XAUUSD") is True
-    assert execution_authorized("USDJPY") is True
-    assert execution_authorized("GBPUSD") is True
-    assert execution_authorized("EURAUD") is True
-    assert execution_authorized("GBPAUD") is True
-    assert execution_authorized("EURUSD") is False
-    assert execution_authorized("AUDUSD") is False
-    assert AUTHORITY_CONTRACT == "PAIR_SPECIFIC_DEMO_AUTHORITY_V4_EURAUD_GBPAUD"
-    assert PREVIOUS_DEMOTION_REASON == "PREREGISTERED_XAU_ROLLING_STABILITY_GATE_FAILED"
-    assert PROMOTION_REASON == "USER_AUTHORIZED_DEMO_TRADING_DATA_COLLECTION"
-    assert DEMOTION_REASON == "SUPERSEDED_BY_PAIR_SPECIFIC_DEMO_AUTHORITY_V4"
+    for symbol in ("USDJPY", "GBPUSD", "EURAUD", "GBPAUD", "EURUSD", "AUDUSD"):
+        assert execution_authorized(symbol) is False
+    assert AUTHORITY_CONTRACT == "XAUUSD_ONLY_DEMO_AUTHORITY_V298"
+    assert PREVIOUS_DEMOTION_REASON == "PAIR_SPECIFIC_DEMO_AUTHORITY_V4_EURAUD_GBPAUD"
+    assert PROMOTION_REASON == "USER_REQUESTED_XAUUSD_ONLY_OPERATIONAL_FOCUS"
+    assert DEMOTION_REASON == "NON_XAU_RUNTIME_PAUSED_V298"
 
 
 def test_slow_history_window_pads_24x5_calendar_gaps_without_expanding_fast_timeframes():
