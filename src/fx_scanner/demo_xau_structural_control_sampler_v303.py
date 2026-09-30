@@ -15,6 +15,7 @@ from .execution.models import ExecutionMode, OrderIntent, OrderSide, OrderType
 from .execution.policy import load_execution_policy
 from .execution.router import ExecutionRouter
 from .storage.supabase_operational import SupabaseOperationalStore
+from .xau_decision_meta_v296 import calibrate_outcomes
 
 
 SYMBOL = "XAUUSD"
@@ -424,6 +425,43 @@ def _cancel_stale_control_pending(
     return actions, safe
 
 
+def _control_calibration(
+    store: SupabaseOperationalStore,
+) -> dict[str, Any]:
+    try:
+        response = (
+            store.client.table("xau_outcome_ledger")
+            .select(
+                "order_accepted_at,outcome_class,tp1_hit,stop_hit,mfe_r,mae_r"
+            )
+            .eq("strategy_id", SETUP_TYPE)
+            .order("observed_at", desc=True)
+            .limit(500)
+            .execute()
+        )
+        rows = [dict(row or {}) for row in (response.data or [])]
+    except Exception as exc:
+        return {
+            "state": "LEDGER_UNAVAILABLE",
+            "accepted_orders": 0,
+            "decisive": 0,
+            "win_rate": None,
+            "wilson_lower_95": None,
+            "error": f"{type(exc).__name__}:{exc}",
+        }
+
+    calibrated = calibrate_outcomes(rows)
+    return {
+        **calibrated,
+        "accepted_orders": sum(
+            1 for row in rows if row.get("order_accepted_at") is not None
+        ),
+        "ledger_rows": len(rows),
+        "basis": "EXECUTED_DEMO_CONTROL_OUTCOMES",
+        "execution_influence": False,
+    }
+
+
 def _heartbeat(
     store: SupabaseOperationalStore,
     *,
@@ -444,6 +482,7 @@ def _heartbeat(
             "minimum_rr": MIN_RR,
             "one_research_position_or_pending_max": True,
             "setup_type": SETUP_TYPE,
+            "control_calibration": _control_calibration(store),
             "execution_influence": "DEMO_RESEARCH_CONTROL_ONLY",
             "code_version": os.getenv("GITHUB_SHA", "LOCAL"),
             **details,
