@@ -146,6 +146,12 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v229_child_executor
 
+      - name: Build calibrated XAU Meta Decision Center V296
+        id: build_xau_meta_decision
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_decision_center_v296
+
       - name: Execute fresh RIZAN prepared-path DEMO signal
         id: execute_rizan_path_handoff
         if: >-
