@@ -195,6 +195,35 @@ def _research_eligible(decision: dict[str, Any]) -> tuple[bool, str]:
     return True, f"META_RESEARCH_ELIGIBLE:{research_mode}"
 
 
+def _next_required(
+    decision: dict[str, Any],
+    eligibility_reason: str,
+) -> str:
+    hard_blocks = [dict(row) for row in list(decision.get("hard_blocks") or [])]
+    if hard_blocks:
+        parts = [
+            f"{str(row.get('name') or 'GATE')}={str(row.get('state') or row.get('reason') or 'BLOCK')}"
+            for row in hard_blocks
+        ]
+        return "CLEAR_HARD_BLOCK:" + ",".join(parts)
+
+    action = str(decision.get("action") or "")
+    reference = dict(decision.get("reference_geometry") or {})
+    if action == "WAIT_ENGINE_CONFLICT":
+        if not reference:
+            return "WAIT_CURRENT_RIZAN_REFERENCE_GEOMETRY"
+        if not bool(reference.get("aligned_parent")):
+            return "ALIGN_CURRENT_RIZAN_PARENT"
+        if not bool(reference.get("research_probe_eligible")):
+            return "PASS_V280_DEPTH_PRESSURE_RESEARCH_GATES"
+        return "REACH_55PCT_NEAR_CONSENSUS_OR_FULL_CONSENSUS"
+    if action == "WAIT_NO_CANONICAL_GEOMETRY":
+        return "WAIT_COMPLETE_RIZAN_ENTRY_SL_TP_GEOMETRY"
+    if action == "PREPARE_WAIT_CONFIRMATION":
+        return "WAIT_M5_CONFIRMATION_AND_RR"
+    return str(eligibility_reason or "WAIT_ELIGIBLE_META_ACTION")
+
+
 def _actual_micro_entry(
     *,
     direction: str,
@@ -656,6 +685,20 @@ def run() -> int:
                     "reason": eligibility_reason,
                     "decision_reason": decision_reason,
                     "decision_signature": signature or None,
+                    "decision_action": decision.get("action"),
+                    "consensus_direction": decision.get("consensus_direction"),
+                    "dominant_direction": decision.get("dominant_direction"),
+                    "meta_confidence": decision.get("confidence"),
+                    "meta_agreement": decision.get("agreement"),
+                    "meta_coverage": decision.get("coverage"),
+                    "hard_blocks": list(decision.get("hard_blocks") or []),
+                    "reference_geometry": dict(
+                        decision.get("reference_geometry") or {}
+                    ),
+                    "next_required": _next_required(
+                        decision,
+                        eligibility_reason,
+                    ),
                 },
             )
             return 0
