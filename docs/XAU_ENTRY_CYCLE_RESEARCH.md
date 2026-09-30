@@ -77,3 +77,44 @@ python -m fx_scanner.research_xau_entry_cycle_runtime --shards artifacts --outpu
 
 Reports preserve source checksums, coverage/failures and price end dates.
 Provider failed periods fail the run rather than silently improving fill statistics.
+
+## Pilot result — 2026-09-30
+
+Completed run: https://github.com/rizanrizan93/Forex-scanner/actions/runs/36683495653
+Code tested: `a5cec79659f2a11917effc867a5e092917e9957f`.
+16 focused tests and the project CI passed. The reproducible aggregate report is
+`docs/xau-entry-cycle-pilot.json`; it includes provider checksums and end dates.
+2026 prices end on 2026-09-25; this is not a current-price forecast.
+
+672 mature opportunities: 241 in 2024, 237 in 2025, 194 in 2026.
+2024 cannot be a selection test because this pilot has no earlier training year.
+Neither the 2025 nor 2026 fold has a candidate passing all training gates.
+**No change to production/demo entry or TP parameters is supported by this pilot.**
+
+Illustrative predeclared candidates below are descriptive across all three years,
+not selected OOS improvements. All use the same four-hour research hold.
+
+| Candidate | Filled / 672 | TP | Fast precise TP | Expectancy R / opportunity |
+| --- | ---: | ---: | ---: | ---: |
+| Frozen E1/T1 baseline | 205 | 24 | 16 | -0.0381 |
+| 75% depth, T1 minus $0.50, limit | 245 | 23 | 15 | -0.0683 |
+| Same levels, completed reclaim | 111 | 14 | 11 | -0.0160 |
+
+Deeper passive entry increased fill while worsening the combined outcome.
+Reclaim reduced fills substantially; a higher conditional success ratio cannot
+compensate automatically for skipped opportunities and negative expectancy.
+Do not generalize this four-hour experiment to the existing thirty-day strategy.
+
+No candidate produced a newly published opposite setup meeting the 30-minute/
+$5 cycle rule. This does **not** establish that nearby market reversals are
+absent: the inherited catalog contains retrospective H4 first-touch plans and
+excludes older active setups. That catalog is too limited to validate the user's
+full TP-to-next-entry objective. Zero qualifying plans is a coverage finding,
+not a calibrated zero reversal probability.
+
+The next useful data improvement is a chronological ledger of all active zones
+and setup transitions (publication, first touch, reclaim, invalidation, expiry,
+broker quote and actual fill), including never-filled opportunities. Then test
+whether approach speed, spread/session and repeated touches improve the entry
+rule on unseen data, and track still-valid opposite setups before the first TP.
+Do not tune those filters against this pilot and relabel the same sample OOS.
