@@ -20,8 +20,14 @@ EXECUTION_SYMBOLS = frozenset({"XAUUSD"})
 SHADOW_SYMBOLS = frozenset()
 NO_TRADE_SYMBOLS = frozenset()
 
+# Legacy identifiers remain importable for historical analytics/time-exit code,
+# but they are outside FIVE_CORE_SYMBOLS and outside broker execution authority.
 PAIR_STRATEGY_IDS = {
     "XAUUSD": "D1_TSMOM_60_200",
+    "USDJPY": "D1_DONCHIAN55_200",
+    "GBPUSD": "H4_MEAN_REVERT_Z2_TO_SMA20",
+    "EURUSD": "NO_TRADE_UNTIL_VALIDATED",
+    "AUDUSD": "NO_TRADE_UNTIL_VALIDATED",
 }
 
 D1_STOP_ATR = 2.0
