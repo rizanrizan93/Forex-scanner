@@ -185,6 +185,27 @@ def _calibration_by_engine(rows: list[dict[str, Any]]) -> dict[str, dict[str, An
     return output
 
 
+def _meta_research_calibration(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    selected = [
+        row
+        for row in rows
+        if str(row.get("strategy_id") or "") == "RIZAN_META_RESEARCH_V297"
+        and row.get("outcome_class")
+    ]
+    executed = [
+        row
+        for row in selected
+        if row.get("order_accepted_at")
+        and not bool(row.get("missed_execution"))
+    ]
+    return {
+        "all_geometry": calibrate_outcomes(selected),
+        "executed_demo": calibrate_outcomes(executed),
+        "basis": "EXECUTED_DEMO_TRUTH",
+        "promotion_authority": False,
+    }
+
+
 def _v171_direction(details: dict[str, Any]) -> str | None:
     ensemble = dict(details.get("ensemble") or {})
     components = dict(ensemble.get("components") or {})
@@ -466,6 +487,7 @@ def run() -> int:
     latest = _latest_heartbeats(store)
     outcomes = _outcome_rows(store)
     calibrations = _calibration_by_engine(outcomes)
+    meta_research_calibration = _meta_research_calibration(outcomes)
 
     votes: list[dict[str, Any]] = []
     for engine, spec in ENGINE_SPECS.items():
@@ -511,6 +533,7 @@ def run() -> int:
     decision["decision_signature"] = _decision_signature(decision)
     decision["calibration_source"] = "XAU_OUTCOME_LEDGER_FORWARD_FIRST"
     decision["calibration_min_decisive_sample"] = 30
+    decision["meta_research_calibration"] = meta_research_calibration
     decision["support_evidence"] = _support_evidence(latest)
 
     store.write_heartbeat(
