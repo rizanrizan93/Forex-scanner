@@ -290,3 +290,14 @@ def test_v280_dashboard_shows_reversal_stages_and_no_chase_contract() -> None:
     assert "MISSED ENTRY — WAIT NEXT SETUP" in SOURCE
     assert "v240_effective_entry_authorized" in SOURCE
     assert "V225 tetap prior historis first-touch" in SOURCE
+
+
+def test_v285_dashboard_shows_competing_risk_without_retest_probability_leak() -> None:
+    assert "V281 Competing Risk — reversal vs break (RISET FIRST-TOUCH)" in SOURCE
+    assert "Historical reversal ≥0,50 ATR" in SOURCE
+    assert "Historical break / invalid" in SOURCE
+    assert "Band pertama break historis mengungguli reversal" in SOURCE
+    assert "conditional historical frequency, bukan" in SOURCE
+    assert "V281 tidak dipakai sebagai peluang pada zona retest." in SOURCE
+    assert "Historical pressure stratification memakai causal M1 OHLC proxy" in SOURCE
+    assert "DOM live tetap sumber terpisah" in SOURCE
