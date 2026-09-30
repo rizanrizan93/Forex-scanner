@@ -446,3 +446,18 @@ def test_afic_v229_legacy_round_fallback_requires_no_structural_target():
     assert plan["target_model"]=="LEGACY_RR_ROUND_FALLBACK_NO_STRUCTURAL_TARGET"
     assert plan["structural_target_ladder"]==[]
     assert plan["rr2"]>=1.5
+
+
+def test_rizan_prepared_run_initializes_live_quote_state_before_guarded_runtime():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    text = (
+        root / "src/fx_scanner/demo_xau_afic_prepared_plan_producer.py"
+    ).read_text()
+    run = text.split("def run()->int:", 1)[1]
+    first_try = run.index("    try:")
+    assert run.index("    quote=None") < first_try
+    assert run.index("    live_mid=None") < first_try
+    # Regression: an exception before the quote block must still allow the
+    # heartbeat/error path to reference live_mid without masking the root cause.
+    assert '"live_price":live_mid if live_mid is not None' in run
