@@ -1,5 +1,6 @@
 from fx_scanner.research_xau_forecast_ensemble_v171 import build_forecast_ensemble
 from fx_scanner.research_xau_forecast_ensemble_v171_runtime import (
+    _build_shadow_feed,
     _reference_components,
     _transient_db_unavailable,
 )
@@ -52,3 +53,25 @@ def test_runner_postgrest_stringified_522_is_recognized_without_swallowing_400()
     actual_shape = ApiError("{'message': 'JSON could not be generated', 'code': 522}")
     actual_shape.code = 522
     assert _transient_db_unavailable(actual_shape)
+
+
+def test_database_outage_uses_read_only_standalone_feed_only_for_shadow(monkeypatch):
+    import fx_scanner.research_xau_forecast_ensemble_v171_runtime as runtime
+
+    keys = {name: f"test_{name}" for name in (
+        "client_id_env", "client_secret_env", "access_token_env",
+        "refresh_token_env", "trader_login_env", "account_id_env",
+    )}
+    values = {"client_id_env": "id", "client_secret_env": "secret",
+              "access_token_env": "access", "refresh_token_env": "refresh",
+              "trader_login_env": "123", "account_id_env": ""}
+    for name, key in keys.items():
+        monkeypatch.setenv(key, values[name])
+    policy = type("Policy", (), {"ctrader": keys})()
+    called = []
+    monkeypatch.setattr(runtime, "build_standalone_ctrader_feed", lambda **kw: called.append(kw) or "standalone")
+    monkeypatch.setattr(runtime, "build_ctrader_research_feed", lambda *_args: "durable")
+    assert _build_shadow_feed(policy, "OK") == "durable"
+    assert _build_shadow_feed(policy, "TRANSIENT_DB_UNAVAILABLE") == "standalone"
+    assert called[0]["trader_login"] == 123
+    assert called[0]["account_id"] is None
