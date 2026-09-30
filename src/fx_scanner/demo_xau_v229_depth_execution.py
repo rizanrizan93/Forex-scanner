@@ -18,6 +18,7 @@ from .execution.policy import load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
 from .xau_pressure_transition_v249 import DOM_WORKER, evaluate_pressure_transition
 from .xau_dynamic_depth_hazard_v251 import build_dynamic_depth_hazard
+from .xau_reversal_stage_v280 import evaluate_reversal_stage
 
 SYMBOL = "XAUUSD"
 STRATEGY_ID = "XAU_RIZAN_DEPTH_EXECUTION_V1"
@@ -586,6 +587,7 @@ def _record_execution_geometry(
             "server_side_sl_tp_required": True,
             "pressure_transition": dict(plan.get("pressure_transition") or {}),
             "dynamic_depth_hazard": dict(plan.get("dynamic_depth_hazard") or {}),
+            "reversal_stage": dict(plan.get("reversal_stage") or {}),
             "microstructure_confirmation_required": "PRESSURE_TRANSITION_PLUS_DYNAMIC_HAZARD_ALL_SLOTS_M5_SLOTS_3_4",
         },
     )
@@ -616,6 +618,7 @@ def run() -> int:
     pressure_transition: dict[str, Any] = {}
     depth_hazard: dict[str, Any] = {}
     plan_diagnostics: dict[str, Any] = {}
+    reversal_stage: dict[str, Any] = {}
 
     try:
         if not execution_enabled:
@@ -679,6 +682,17 @@ def run() -> int:
                     live_price=live_price,
                     pressure_transition=pressure_transition,
                 )
+                reversal_stage = evaluate_reversal_stage(
+                    plan=plan,
+                    atlas_evaluation=atlas_eval,
+                    depth_hazard=depth_hazard,
+                    pressure_transition=pressure_transition,
+                    live_price=live_price,
+                    bid=float(quote.bid),
+                    ask=float(quote.ask),
+                    now=now,
+                )
+                plan["reversal_stage"] = dict(reversal_stage)
                 strict_pressure_allowed = bool(
                     pressure_transition.get("pre_touch_entry_allowed")
                     or pressure_transition.get("confirmation_entry_allowed")
@@ -690,7 +704,18 @@ def run() -> int:
                     atlas_evaluation=atlas_eval,
                     live_price=live_price,
                 )
-                if not strict_pressure_allowed and not fresh_calibration_arm:
+                if bool(reversal_stage.get("hard_execution_block")):
+                    block_stage = str(reversal_stage.get("stage") or "BLOCK").upper()
+                    block_reasons = list(reversal_stage.get("reasons") or [])
+                    reason = "BLOCK_" + block_stage
+                    if block_reasons:
+                        reason += ":" + str(block_reasons[0])
+                    plan_diagnostics["v280_reversal_stage"] = dict(reversal_stage)
+                    prior_invalidated = _invalidate_prior_ready(
+                        store,
+                        current_key="V280_BLOCK:" + block_stage,
+                    )
+                elif not strict_pressure_allowed and not fresh_calibration_arm:
                     reason = (
                         "WAIT_PRESSURE_TRANSITION:"
                         + str(pressure_transition.get("state") or "UNAVAILABLE")
@@ -766,6 +791,7 @@ def run() -> int:
             "pressure_transition": pressure_transition,
             "dynamic_depth_hazard_required": True,
             "dynamic_depth_hazard": depth_hazard,
+            "reversal_stage": reversal_stage,
             "reason": reason,
             "signal_id": signal_id,
             "candidate_key": candidate_key,
