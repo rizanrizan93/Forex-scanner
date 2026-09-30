@@ -61,6 +61,26 @@ def _atlas() -> dict:
                 "status":"ACTIVE","lifecycle":{"active":True,"freshness":"FRESH","touch_count":0},
             },
         ],
+        "primary_reversal_demand": {
+            "zone_id":"d1","timeframe":"H1","direction":"LONG",
+            "low":99.0,"high":101.0,"research_score":70,
+            "lifecycle":{"active":True,"freshness":"FRESH","touch_count":0},
+        },
+        "primary_reversal_supply": {
+            "zone_id":"h1-s","timeframe":"H1","direction":"SHORT",
+            "low":110.0,"high":112.0,"research_score":75,
+            "status":"ACTIVE","lifecycle":{"active":True,"freshness":"FRESH","touch_count":0},
+        },
+        "raw_nearest_demand": {
+            "zone_id":"d1","timeframe":"H1","direction":"LONG",
+            "low":99.0,"high":101.0,"research_score":70,
+            "lifecycle":{"active":True,"freshness":"FRESH","touch_count":0},
+        },
+        "raw_nearest_supply": {
+            "zone_id":"m15-s","timeframe":"M15","direction":"SHORT",
+            "low":106.0,"high":107.0,"research_score":80,
+            "status":"ACTIVE","lifecycle":{"active":True,"freshness":"FRESH","touch_count":0},
+        },
         "path_map": {
             "demand_to_supply": {
                 "reaction_target": {"price": 106.0},
@@ -162,7 +182,7 @@ def test_v240_exposes_nearest_supply_demand_and_destination() -> None:
 
 
 
-def test_v2401_ranks_primary_reversal_watch_with_v212_evidence() -> None:
+def test_v307_primary_reversal_watch_annotates_but_does_not_reselect_with_v212() -> None:
     state = build_canonical_xau_decision(
         v226_evaluation=_v226(),
         atlas_evaluation=_atlas(),
@@ -194,12 +214,12 @@ def test_v2401_ranks_primary_reversal_watch_with_v212_evidence() -> None:
         ],
     )
     watch = state["primary_reversal_watch"]
-    assert watch["zone_id"] == "m15-s"
-    assert abs(watch["research_joint_score"] - 0.63) < 1e-12
+    assert watch["zone_id"] == "h1-s"
+    assert abs(watch["research_joint_score"] - 0.48) < 1e-12
     assert watch["not_calibrated_probability_claim"] is True
 
 
-def test_v2401_does_not_invent_reversal_probability_without_v212_evidence() -> None:
+def test_v307_primary_reversal_watch_keeps_zone_without_probability_evidence() -> None:
     state = build_canonical_xau_decision(
         v226_evaluation=_v226(),
         atlas_evaluation=_atlas(),
@@ -207,7 +227,10 @@ def test_v2401_does_not_invent_reversal_probability_without_v212_evidence() -> N
         path_direction="LONG",
         zone_probabilities=[],
     )
-    assert state["primary_reversal_watch"] == {}
+    watch = state["primary_reversal_watch"]
+    assert watch["zone_id"] == "h1-s"
+    assert watch.get("p_touch") is None
+    assert watch["selection_policy"] == "V307_PRIMARY_REVERSAL_AUTHORITY"
 
 
 def test_v240_discovers_active_path_source_missing_from_flat_zone_list() -> None:
