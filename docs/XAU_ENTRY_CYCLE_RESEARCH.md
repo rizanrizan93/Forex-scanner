@@ -118,3 +118,42 @@ broker quote and actual fill), including never-filled opportunities. Then test
 whether approach speed, spread/session and repeated touches improve the entry
 rule on unseen data, and track still-valid opposite setups before the first TP.
 Do not tune those filters against this pilot and relabel the same sample OOS.
+
+
+## V308 continuation — chronological setup-transition ledger
+
+The Work/agentic pilot stopped after identifying a coverage failure: the original
+cycle evaluator only searched for a **new** opposite publication after the first
+TP. That excluded opposite setups published earlier which could still be active
+and unfilled at TP.
+
+V308 continues that work without changing any entry/TP production parameter.
+
+The research engine now reconstructs a causal setup state at the first TP using
+only completed M1 bars available by that timestamp. States include:
+
+- `ACTIVE_UNFILLED`
+- `TOUCHED_WAIT_RECLAIM`
+- `RECLAIM_CONFIRMED_WAIT_OPEN`
+- `FILLED_BEFORE_CUTOFF`
+- `INVALIDATED_BEFORE_CONFIRMATION`
+- `EXPIRED_UNFILLED`
+
+For the expanded cycle metric, an opposite setup may be selected from:
+
+1. a setup published before TP that is still active/unfilled at TP; or
+2. the first qualifying new opposite publication after TP.
+
+Existing active setups become eligible at TP. If several are simultaneously
+active, selection is deterministic and outcome-free: smallest entry gap to TP,
+then oldest publication, then plan id. A setup already filled, invalidated or
+expired before TP cannot be recycled.
+
+The original `cycle` metric remains unchanged for comparability. The new
+`cycle_with_active_ledger` metric is reported separately, including counts of
+`ACTIVE_AT_TP` versus `NEW_PUBLICATION_AFTER_TP` selections.
+
+This remains retrospective synthetic quote-side research. Historical M1 OHLC
+cannot prove actual broker fills, latency or queue position. V307 Primary
+Reversal Zone authority is not modified by this experiment, and V308 has no
+execution authority or influence.
