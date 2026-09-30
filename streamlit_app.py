@@ -61,7 +61,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V298_FILLED_META_XAU_ONLY_RUNTIME_20260930"
+DASHBOARD_BUILD_ID = "RIZAN_V303_XAU_ONLY_META_CONTROL_RESEARCH_20260930"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -73,6 +73,7 @@ RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     "ctrader_demo_xau_v203_volatility_shock_guard",
     "ctrader_demo_xau_decision_center_v296",
     "ctrader_demo_xau_meta_research_sampler_v297",
+    "ctrader_demo_xau_structural_control_sampler_v303",
 )
 
 RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS = (
@@ -2261,6 +2262,9 @@ with forecast_tab:
     v297_meta_sampler_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_meta_research_sampler_v297"
     )
+    v303_control_sampler_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_structural_control_sampler_v303"
+    )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
     )
@@ -3035,6 +3039,20 @@ with forecast_tab:
     v297_win_rate = v297_executed_cal.get("win_rate")
     v297_wilson = v297_executed_cal.get("wilson_lower_95")
 
+    v303_control_details = (
+        {}
+        if v303_control_sampler_hb is None
+        else dict(v303_control_sampler_hb.get("details") or {})
+    )
+    v303_control_state = str(v303_control_details.get("state") or "WAIT")
+    v303_control_reason = str(v303_control_details.get("reason") or "MENUNGGU GEOMETRY")
+    v303_control_geometry = dict(v303_control_details.get("geometry") or {})
+    v303_control_cal = dict(v303_control_details.get("control_calibration") or {})
+    v303_control_accepted = int(v303_control_cal.get("accepted_orders") or 0)
+    v303_control_decisive = int(v303_control_cal.get("decisive") or 0)
+    v303_control_win_rate = v303_control_cal.get("win_rate")
+    v303_control_wilson = v303_control_cal.get("wilson_lower_95")
+
     with st.container(border=True):
         st.markdown("### Kesimpulan Final Ensemble V296")
         meta1, meta2, meta3, meta4 = st.columns(4)
@@ -3114,6 +3132,49 @@ with forecast_tab:
                     if v297_sampler_details.get("rr") is not None
                     else "—"
                 )
+            )
+
+        st.markdown("#### V303 Structural Control Research")
+        cs1, cs2, cs3, cs4 = st.columns(4)
+        cs1.metric("Control sampler", _rizan_display(v303_control_state))
+        cs2.metric("Accepted control", str(v303_control_accepted))
+        cs3.metric(
+            "Mature outcome",
+            str(v303_control_decisive) if v303_control_decisive else "COLLECTING",
+        )
+        cs4.metric(
+            "Control win rate",
+            "BELUM ADA MATURE SAMPLE"
+            if v303_control_win_rate is None
+            else f"{float(v303_control_win_rate) * 100.0:.1f}%",
+        )
+        st.caption(
+            "V303 adalah cohort kontrol DEMO 0.01: entry V226 + distal source-zone V182 "
+            "+ reaction target V182. Hasilnya tidak masuk bobot keputusan strict/meta. "
+            f"state={v303_control_state} • reason={v303_control_reason} • "
+            + (
+                f"Wilson95={float(v303_control_wilson) * 100.0:.1f}%"
+                if v303_control_wilson is not None
+                else "Wilson95=menunggu mature sample"
+            )
+        )
+        if v303_control_geometry:
+            st.caption(
+                "Control geometry: "
+                + str(v303_control_geometry.get("direction") or "WAIT")
+                + " • entry="
+                + _fmt_price(v303_control_geometry.get("entry"))
+                + " • SL="
+                + _fmt_price(v303_control_geometry.get("sl"))
+                + " • TP="
+                + _fmt_price(v303_control_geometry.get("tp"))
+                + " • RR="
+                + (
+                    f"{float(v303_control_geometry.get('rr')):.2f}R"
+                    if v303_control_geometry.get("rr") is not None
+                    else "—"
+                )
+                + " • RESEARCH CONTROL ONLY."
             )
 
         if v296_display_geometry:
