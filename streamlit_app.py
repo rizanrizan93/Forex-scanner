@@ -37,6 +37,7 @@ from fx_scanner.trade_management_v195 import (
     summarize_positions,
 )
 from fx_scanner.xau_canonical_decision_v240 import build_canonical_xau_decision
+from fx_scanner.xau_rizan_style_path_engine_v303 import build_rizan_style_path_engine
 from fx_scanner.xau_profitability_truth_v241 import build_xau_profitability_truth
 from fx_scanner.xau_pressure_transition_v249 import evaluate_pressure_transition
 from fx_scanner.xau_dynamic_depth_hazard_v251 import (
@@ -3814,6 +3815,112 @@ with forecast_tab:
     if not dc_position_mode and not v240_entry_authorized:
         v240_admission_label = "DATA STALE" if backend_snapshot_stale else "WAIT"
         v240_route_label = "NO ORDER"
+
+    # V303 RIZAN STYLE PATH ENGINE: branching structural forecast built from
+    # the same current V182 map and the freshest dashboard price. This is
+    # deliberately non-voting and cannot authorize an order.
+    rizan_style_path = build_rizan_style_path_engine(
+        atlas_evaluation=dc_sd_eval,
+        price_now=dc_reference_price,
+        path_direction=v240_direction,
+    )
+    rizan_style_zone = dict(rizan_style_path.get("next_decision_zone") or {})
+    rizan_style_keys = dict(rizan_style_path.get("key_levels") or {})
+    rizan_style_primary = dict(rizan_style_path.get("primary_path") or {})
+    rizan_style_rejection = dict(rizan_style_path.get("rejection_branch") or {})
+    rizan_style_acceptance = dict(rizan_style_path.get("acceptance_branch") or {})
+
+    def _rizan_style_zone_text(zone_row: dict[str, Any]) -> str:
+        if not zone_row:
+            return "Belum tersedia"
+        side = str(zone_row.get("direction") or "").upper()
+        kind = "Demand" if side == "LONG" else "Supply" if side == "SHORT" else "Zone"
+        tf = str(zone_row.get("timeframe") or "").upper()
+        return (
+            f"{kind} {tf} {_fmt_price(zone_row.get('low'))}–"
+            f"{_fmt_price(zone_row.get('high'))}"
+        )
+
+    def _rizan_style_route_text(route_rows: Any) -> str:
+        prices = []
+        for raw in list(route_rows or []):
+            row = dict(raw or {})
+            if row.get("price") is None:
+                continue
+            prices.append(_fmt_price(row.get("price")))
+        return " → ".join(prices) if prices else "Belum ada waypoint valid"
+
+    with st.container(border=True):
+        st.markdown("### RIZAN STYLE PATH ENGINE")
+        st.caption(
+            "Peta alur bercabang: source → decision zone → rejection atau acceptance → "
+            "destination berikutnya. Ini forecast struktural, bukan jaminan harga dan "
+            "tidak memberi execution authority."
+        )
+        rp1, rp2 = st.columns(2)
+        rp1.metric(
+            "Arah leg aktif",
+            str(rizan_style_path.get("active_direction") or "WAIT"),
+        )
+        rp2.metric(
+            "State path",
+            _rizan_display(rizan_style_path.get("state") or "NO_STRUCTURAL_PATH"),
+        )
+        st.markdown(
+            "**Decision zone berikut:** "
+            + _rizan_style_zone_text(rizan_style_zone)
+        )
+        k1, k2 = st.columns(2)
+        k1.metric(
+            "KEY rejection / reclaim",
+            _fmt_price(rizan_style_keys.get("rejection_reclaim_key")),
+        )
+        k2.metric(
+            "KEY break / acceptance",
+            _fmt_price(rizan_style_keys.get("break_acceptance_key")),
+        )
+        st.markdown(
+            "**Primary path:** "
+            + str(rizan_style_primary.get("direction") or "WAIT")
+            + " • "
+            + _rizan_style_route_text(rizan_style_primary.get("route"))
+        )
+        st.markdown(
+            "**Jika REJECTION terkonfirmasi:** "
+            + str(rizan_style_rejection.get("direction") or "WAIT")
+            + " • "
+            + _rizan_style_route_text(rizan_style_rejection.get("route"))
+        )
+        st.caption(
+            "Trigger rejection: "
+            + str(rizan_style_rejection.get("condition") or "WAIT_REJECTION")
+            + " • M5="
+            + str(rizan_style_rejection.get("m5_state") or "WAIT")
+        )
+        next_break_zone = dict(
+            rizan_style_acceptance.get("next_destination_zone") or {}
+        )
+        st.markdown(
+            "**Jika ACCEPTANCE / break:** "
+            + str(rizan_style_acceptance.get("direction") or "WAIT")
+            + " → "
+            + _rizan_style_zone_text(next_break_zone)
+        )
+        st.caption(
+            "Trigger acceptance: "
+            + str(rizan_style_acceptance.get("condition") or "WAIT_ACCEPTANCE")
+            + " • branch="
+            + str(rizan_style_path.get("branch_preference") or "WAIT_DECISION")
+            + "."
+        )
+        if str(rizan_style_path.get("state") or "").upper() == "DECISION_ZONE_REJECTION_CONFIRMED":
+            st.success("RIZAN path: rejection branch terkonfirmasi secara struktural/M5.")
+        elif str(rizan_style_path.get("state") or "").upper() == "DECISION_ZONE_ACCEPTED_BREAK":
+            st.warning("RIZAN path: decision zone diterima/break — ikuti continuation map, jangan fade zona lama.")
+        elif str(rizan_style_path.get("state") or "").upper() == "DECISION_ZONE_ACTIVE":
+            st.info("RIZAN path: harga sedang berada di decision zone — tunggu rejection vs acceptance.")
+        else:
+            st.info("RIZAN path: harga masih menuju decision zone berikut.")
 
     st.markdown("### 2 • Zona Aktif & Dynamic Depth")
     with st.container(border=True):
