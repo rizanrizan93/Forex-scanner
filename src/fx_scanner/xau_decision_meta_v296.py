@@ -131,41 +131,138 @@ def build_meta_decision(
     geometry_candidates: list[dict[str, Any]],
     gates: list[dict[str, Any]],
     possible_base_weight: float | None = None,
+    family_caps: dict[str, float] | None = None,
 ) -> dict[str, Any]:
-    normalized_votes: list[dict[str, Any]] = []
-    long_weight = short_weight = 0.0
-    active_base = 0.0
-    calibrated_active_weight = 0.0
+    caps = {
+        str(key): max(0.0, float(value))
+        for key, value in dict(family_caps or {}).items()
+        if float(value) > 0.0
+    }
+
+    prepared: list[dict[str, Any]] = []
+    family_raw: dict[str, float] = {}
+    family_available: set[str] = set()
+    family_base_available: dict[str, float] = {}
 
     for raw in votes:
         vote = dict(raw or {})
         direction = str(vote.get("direction") or "").upper()
         available = bool(vote.get("available")) and direction in {"LONG", "SHORT"}
-        weight = _vote_weight(vote) if available else 0.0
+        family = str(vote.get("family") or vote.get("engine") or "UNCLASSIFIED")
+        raw_weight = _vote_weight(vote) if available else 0.0
+        base_weight = max(0.0, _f(vote.get("base_weight")) or 0.0)
         if available:
-            active_base += _f(vote.get("base_weight")) or 0.0
+            family_raw[family] = family_raw.get(family, 0.0) + raw_weight
+            family_available.add(family)
+            family_base_available[family] = (
+                family_base_available.get(family, 0.0) + base_weight
+            )
+        prepared.append(
+            {
+                **vote,
+                "family": family,
+                "direction": (
+                    direction if direction in {"LONG", "SHORT"} else "ABSTAIN"
+                ),
+                "available": available,
+                "raw_effective_weight": raw_weight,
+            }
+        )
+
+    family_scale: dict[str, float] = {}
+    for family, raw_weight in family_raw.items():
+        cap = caps.get(family)
+        if cap is None or raw_weight <= 1e-12:
+            family_scale[family] = 1.0
+        else:
+            family_scale[family] = min(1.0, float(cap) / raw_weight)
+
+    normalized_votes: list[dict[str, Any]] = []
+    long_weight = short_weight = 0.0
+    calibrated_active_weight = 0.0
+    family_summary: dict[str, dict[str, Any]] = {}
+
+    for vote in prepared:
+        family = str(vote["family"])
+        scale = family_scale.get(family, 1.0)
+        weight = (
+            float(vote["raw_effective_weight"]) * scale
+            if bool(vote["available"])
+            else 0.0
+        )
+        direction = str(vote["direction"])
+        if bool(vote["available"]):
             if direction == "LONG":
                 long_weight += weight
-            else:
+            elif direction == "SHORT":
                 short_weight += weight
-            if str(dict(vote.get("calibration") or {}).get("state") or "") == "CALIBRATED":
+            if (
+                str(dict(vote.get("calibration") or {}).get("state") or "")
+                == "CALIBRATED"
+            ):
                 calibrated_active_weight += weight
+
+        summary = family_summary.setdefault(
+            family,
+            {
+                "family": family,
+                "cap": caps.get(family),
+                "raw_weight": 0.0,
+                "effective_weight": 0.0,
+                "long_weight": 0.0,
+                "short_weight": 0.0,
+                "available_engines": [],
+                "scale": scale,
+            },
+        )
+        if bool(vote["available"]):
+            summary["raw_weight"] += float(vote["raw_effective_weight"])
+            summary["effective_weight"] += weight
+            summary["available_engines"].append(vote.get("engine"))
+            if direction == "LONG":
+                summary["long_weight"] += weight
+            elif direction == "SHORT":
+                summary["short_weight"] += weight
+
         normalized_votes.append(
             {
                 **vote,
-                "direction": direction if direction in {"LONG", "SHORT"} else "ABSTAIN",
-                "available": available,
+                "family_scale": scale,
                 "effective_weight": weight,
             }
         )
 
     total_weight = long_weight + short_weight
-    possible = (
-        float(possible_base_weight)
-        if possible_base_weight is not None and possible_base_weight > 0
-        else sum(max(0.0, _f(v.get("base_weight")) or 0.0) for v in votes)
+
+    if caps:
+        possible = (
+            float(possible_base_weight)
+            if possible_base_weight is not None and possible_base_weight > 0
+            else sum(caps.values())
+        )
+        active_base = sum(
+            caps.get(
+                family,
+                family_base_available.get(family, 0.0),
+            )
+            for family in family_available
+        )
+    else:
+        possible = (
+            float(possible_base_weight)
+            if possible_base_weight is not None and possible_base_weight > 0
+            else sum(
+                max(0.0, _f(v.get("base_weight")) or 0.0)
+                for v in votes
+            )
+        )
+        active_base = sum(family_base_available.values())
+
+    coverage = (
+        0.0
+        if possible <= 0
+        else _clip(active_base / possible, 0.0, 1.0)
     )
-    coverage = 0.0 if possible <= 0 else _clip(active_base / possible, 0.0, 1.0)
 
     if total_weight <= 1e-12:
         direction_score = 0.0
@@ -259,8 +356,18 @@ def build_meta_decision(
         "evidence_coverage": evidence_coverage,
         "long_weight": long_weight,
         "short_weight": short_weight,
-        "active_engine_count": sum(1 for row in normalized_votes if row["available"]),
+        "active_engine_count": sum(
+            1 for row in normalized_votes if row["available"]
+        ),
         "engine_count": len(normalized_votes),
+        "active_family_count": len(family_available),
+        "family_count": (
+            len(caps)
+            if caps
+            else len({str(row["family"]) for row in normalized_votes})
+        ),
+        "family_caps_enabled": bool(caps),
+        "family_weight_summary": list(family_summary.values()),
         "votes": normalized_votes,
         "geometry": geometry,
         "gates": list(gates),
@@ -271,8 +378,11 @@ def build_meta_decision(
         "action": action,
         "execution_authority": False,
         "interpretation": (
-            "V296 is a calibrated meta-decision layer. It may rank and summarize "
-            "engine evidence but cannot itself authorize broker execution. Geometry "
-            "is selected intact from one aligned engine; entry/SL/TP are never averaged."
+            "V296/V298 is a calibrated meta-decision layer. Correlated engines "
+            "are capped by evidence family so adding more derivative modules cannot "
+            "inflate consensus confidence. Geometry is selected intact from one "
+            "aligned engine; entry/SL/TP are never averaged. The meta layer cannot "
+            "itself authorize LIVE execution."
         ),
     }
+
