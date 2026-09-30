@@ -216,11 +216,10 @@ def _decision_zone(
         return source, "CURRENT_SOURCE_REACTION"
 
     destinations = _destination_stack(active_path)
-    for zone in destinations:
-        relation = _zone_relation(price, zone)
-        if relation in {"INSIDE", "REACTION_SIDE"}:
-            return zone, "NEXT_OPPOSING_DECISION"
-
+    # V182 orders the destination stack nearest-first. Keep the first structural
+    # decision zone selected even immediately after a distal break so V303 can
+    # explicitly emit ACCEPTED_BREAK and hand off to the following destination,
+    # instead of silently skipping the broken zone.
     if destinations:
         return destinations[0], "NEXT_OPPOSING_DECISION"
     if _active_zone(source):
