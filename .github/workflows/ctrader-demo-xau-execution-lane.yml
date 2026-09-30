@@ -68,7 +68,7 @@ jobs:
       # unchanged while allowing one 0.01-lot M5-pocket calibration order.
       CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_ENABLED: "1"
       CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MIN_RR: "1.00"
-      CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.70"
+      CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.85"
       CTRADER_DEMO_DEPTH_CALIBRATION_REJECTION_MAX_AGE_SECONDS: "3600"
       # V272: one-time DEMO-only broker transport canary. It submits a far-away
       # 0.01-lot pending LIMIT with SL/TP, then immediately cancels and reconciles.
