@@ -411,3 +411,31 @@ def test_v282_lifecycle_reconstruction_reduces_postgrest_egress() -> None:
     assert 'else "observed_at,event_type,signal_key,accepted"' in source
     assert '.eq("accepted", True)' in source
     assert '"event_read_contract": "V282_NARROW_FIELDS_RECENT_RECONSTRUCTION"' in source
+
+
+def test_v282_v280_stage_block_event_supplies_exact_invalidation_time() -> None:
+    created = datetime(2026, 9, 30, 1, 0, tzinfo=UTC)
+    blocked = created + timedelta(minutes=7)
+    signal = {
+        "state": "INVALIDATED",
+        "active_guards": ["V280_MISSED_ENTRY_WAIT_NEXT_SETUP"],
+        "expires_at": (created + timedelta(hours=12)).isoformat(),
+    }
+    signal_events = (
+        {
+            "observed_at": blocked.isoformat(),
+            "event_type": "DEMO_XAU_RIZAN_STAGE_BLOCK",
+            "signal_key": "signal-1",
+            "code": "V280_MISSED_ENTRY_WAIT_NEXT_SETUP",
+        },
+    )
+    at, reason = _cancel_reason(
+        signal,
+        created_at=created,
+        map_at="2026-09-30T00:00:00+00:00",
+        forecast_events=(),
+        signal_events=signal_events,
+        now=blocked + timedelta(minutes=1),
+    )
+    assert at == blocked
+    assert reason == "MISSED_ENTRY_NO_CHASE"
