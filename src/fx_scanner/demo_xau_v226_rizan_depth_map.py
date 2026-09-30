@@ -1157,6 +1157,10 @@ def _depth_entry_candidate(
     h1_touches = int(h1_app.get("touch_count") or 0) if h1_app else 0
     m15_touches = int(m15_app.get("touch_count") or 0) if m15_app else 0
     htf_retested = bool(h4_touches > 0 or h1_touches > 0)
+    htf_retest_confirmation = bool(
+        str(h4_app.get("state") or "") == "ACTIVE_HTF_RETEST"
+        or str(h1_app.get("state") or "") == "ACTIVE_HTF_RETEST"
+    )
     first_touch_in_progress = bool(
         str(h4_app.get("state") or "") == "MEDIUM_FIRST_TOUCH_IN_PROGRESS"
         or str(h1_app.get("state") or "") == "MEDIUM_FIRST_TOUCH_IN_PROGRESS"
@@ -1189,7 +1193,7 @@ def _depth_entry_candidate(
         and h1_active
         and m15_active
         and lower_tf_reuse_ok
-        and (htf_retested or m15_retested)
+        and (htf_retest_confirmation or m15_retested)
     )
     confirmation_calibrated = bool(
         h4_active
@@ -1202,12 +1206,12 @@ def _depth_entry_candidate(
     display_status = (
         "PREPARE_ONLY_FRESH_FIRST_TOUCH"
         if calibrated_fresh
-        else "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS"
-        if first_touch_in_progress and confirmation_calibrated
         else "CONFIRMATION_ONLY_RETESTED_M15"
         if m15_retested and retest_confirmation_eligible
         else "CONFIRMATION_ONLY_RETESTED_HTF"
-        if retest_confirmation_eligible
+        if htf_retest_confirmation and retest_confirmation_eligible
+        else "CONFIRMATION_ONLY_FIRST_TOUCH_IN_PROGRESS"
+        if first_touch_in_progress and confirmation_calibrated
         else "CONTEXT_ONLY_OUT_OF_SAMPLE"
     )
 
@@ -1226,7 +1230,12 @@ def _depth_entry_candidate(
         "display_status": display_status,
         "calibrated_fresh_first_touch": calibrated_fresh,
         "confirmation_calibrated_first_touch": bool(
-            calibrated_fresh or first_touch_in_progress
+            calibrated_fresh
+            or (
+                first_touch_in_progress
+                and not htf_retest_confirmation
+                and not m15_retested
+            )
         ),
         "first_touch_in_progress": first_touch_in_progress,
         "htf_retested": htf_retested,
@@ -1239,6 +1248,7 @@ def _depth_entry_candidate(
             "h4_touch_count": h4_touches,
             "h1_touch_count": h1_touches,
             "m15_touch_count": m15_touches,
+            "htf_retest_confirmation": bool(htf_retest_confirmation),
             "h4_lifecycle_weight": _f(h4_app.get("lifecycle_weight")),
             "h1_lifecycle_weight": _f(h1_app.get("lifecycle_weight")),
             "m15_lifecycle_weight": _f(m15_app.get("lifecycle_weight")),
