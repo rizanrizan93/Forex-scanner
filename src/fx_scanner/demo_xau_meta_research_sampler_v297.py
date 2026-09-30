@@ -9,6 +9,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from .demo_xau_v229_child_executor import (
     _calibration_probe_entry,
+    _calibration_rejection_retest_entry,
     _entry_inside_active_source,
     _limit_side_valid,
 )
@@ -178,36 +179,6 @@ def _actual_micro_entry(
         or dict(atlas_eval.get("path_map") or {}).get("micro_refinement")
         or {}
     )
-    entry, activation = _calibration_probe_entry(
-        direction=direction,
-        micro=micro,
-    )
-    if entry is None:
-        return None, None, activation
-
-    low = _f(geometry.get("entry_low"))
-    high = _f(geometry.get("entry_high"))
-    if low is None or high is None or high <= low:
-        return None, None, "META_GEOMETRY_ENTRY_RANGE_INVALID"
-    if not (float(low) <= float(entry) <= float(high)):
-        return None, None, "META_M5_ENTRY_OUTSIDE_CANONICAL_RANGE"
-    if not _entry_inside_active_source(
-        direction=direction,
-        entry=float(entry),
-        atlas_evaluation=atlas_eval,
-    ):
-        return None, None, "META_M5_ENTRY_OUTSIDE_ACTIVE_SOURCE"
-    if not _limit_side_valid(direction, float(entry), bid=float(bid), ask=float(ask)):
-        return None, None, "META_LIMIT_SIDE_INVALID"
-
-    depth = child_reference_depth(
-        v226_evaluation=v226_eval,
-        direction=direction,
-        price=float(entry),
-    )
-    if depth is None:
-        return None, None, "META_ENTRY_DEPTH_UNAVAILABLE"
-
     hazard = dict(child_details.get("dynamic_depth_hazard") or {})
     pressure = dict(child_details.get("pressure_transition") or {})
     reversal = dict(child_details.get("reversal_stage") or {})
@@ -215,23 +186,83 @@ def _actual_micro_entry(
     if bool(pressure.get("hard_block")) or not bool(
         pressure.get("calibration_entry_allowed")
     ):
-        return None, depth, "META_PRESSURE_BLOCK"
+        return None, None, "META_PRESSURE_BLOCK"
     if bool(reversal.get("hard_execution_block")) or bool(
         reversal.get("setup_invalid")
     ):
-        return None, depth, "META_V280_BLOCK"
+        return None, None, "META_V280_BLOCK"
+
+    low = _f(geometry.get("entry_low"))
+    high = _f(geometry.get("entry_high"))
+    if low is None or high is None or high <= low:
+        return None, None, "META_GEOMETRY_ENTRY_RANGE_INVALID"
 
     min_depth = _f(hazard.get("recommended_depth_low"))
     recommended_high = _f(hazard.get("recommended_depth_high"))
     max_depth = MAX_DEPTH
     if recommended_high is not None:
         max_depth = min(max_depth, float(recommended_high) + 0.10)
-    if min_depth is not None and float(depth) + 1e-9 < float(min_depth):
-        return None, depth, "META_WAIT_DEEPER"
-    if float(depth) > float(max_depth) + 1e-9:
-        return None, depth, "META_NO_CHASE_DEPTH"
 
-    return float(entry), float(depth), activation
+    def validate(
+        candidate: float | None,
+        activation: str,
+    ) -> tuple[float | None, float | None, str]:
+        if candidate is None:
+            return None, None, activation
+        entry = float(candidate)
+        if not (float(low) <= entry <= float(high)):
+            return None, None, "META_M5_ENTRY_OUTSIDE_CANONICAL_RANGE"
+        if not _entry_inside_active_source(
+            direction=direction,
+            entry=entry,
+            atlas_evaluation=atlas_eval,
+        ):
+            return None, None, "META_M5_ENTRY_OUTSIDE_ACTIVE_SOURCE"
+        if not _limit_side_valid(
+            direction,
+            entry,
+            bid=float(bid),
+            ask=float(ask),
+        ):
+            return None, None, "META_LIMIT_SIDE_INVALID"
+        depth = child_reference_depth(
+            v226_evaluation=v226_eval,
+            direction=direction,
+            price=entry,
+        )
+        if depth is None:
+            return None, None, "META_ENTRY_DEPTH_UNAVAILABLE"
+        if min_depth is not None and float(depth) + 1e-9 < float(min_depth):
+            return None, float(depth), "META_WAIT_DEEPER"
+        if float(depth) > float(max_depth) + 1e-9:
+            return None, float(depth), "META_NO_CHASE_DEPTH"
+        return entry, float(depth), activation
+
+    primary_entry, primary_activation = _calibration_probe_entry(
+        direction=direction,
+        micro=micro,
+    )
+    primary = validate(primary_entry, primary_activation)
+    if primary[0] is not None:
+        return primary
+
+    fallback_entry, fallback_activation = _calibration_rejection_retest_entry(
+        direction=direction,
+        micro=micro,
+        depth_hazard=hazard,
+        now=datetime.now(UTC),
+        max_age_seconds=3600.0,
+    )
+    fallback = validate(fallback_entry, fallback_activation)
+    if fallback[0] is not None:
+        return fallback
+
+    # Keep the more actionable fallback reason when a real rejection retest
+    # existed but failed a live safety constraint; otherwise preserve the
+    # primary pocket diagnosis.
+    if fallback_entry is not None:
+        return fallback
+    return primary
 
 
 def _target_for_rr(
