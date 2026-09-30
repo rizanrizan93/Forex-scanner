@@ -3069,7 +3069,7 @@ with forecast_tab:
             if vote_rows:
                 st.dataframe(
                     pd.DataFrame(vote_rows),
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
             else:
@@ -3089,7 +3089,7 @@ with forecast_tab:
                 st.markdown("**Evidence / gate non-voting**")
                 st.dataframe(
                     pd.DataFrame(support_rows),
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
 
