@@ -215,7 +215,7 @@ def test_auto_workflow_repairs_before_new_orders_and_allows_bounded_valid_stacks
     source = (ROOT / ".github" / "workflows" / "ctrader-demo-auto-pipeline.yml").read_text(encoding="utf-8")
     repair = "python -m fx_scanner.demo_existing_protection_repair"
     execute = "python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10"
-    time_exit = "python -m fx_scanner.demo_five_core_time_exit"
+    time_exit = "python -m fx_scanner.demo_xau_v24_champion_time_exit"
     assert 'CTRADER_DEMO_MAX_CONCURRENT_POSITIONS: "10"' in source
     assert 'CTRADER_DEMO_MAX_ORDER_LOTS: "0.50"' in source
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in source
