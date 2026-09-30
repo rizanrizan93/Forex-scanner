@@ -340,6 +340,8 @@ def test_v297_workflow_and_dashboard_contract() -> None:
     assert "Executed sample" in dashboard
     assert "Executed TP/Win rate" in dashboard
     assert "Wilson lower 95%" in dashboard
+    assert "DEMO CONFLICT RESEARCH PROBE" in dashboard
+    assert "next required=" in dashboard
     assert "one_meta_position_or_pending_max" in source
     assert "DEMO_META_RESEARCH_ONLY" in source
 
@@ -392,3 +394,38 @@ def test_v301_conflict_research_rejects_unaligned_reference_geometry() -> None:
         False,
         "META_GEOMETRY_PARENT_NOT_ALIGNED",
     )
+
+
+
+def test_v301_wait_context_reports_exact_next_requirement() -> None:
+    blocked = {
+        "action": "WAIT_ENGINE_CONFLICT",
+        "dominant_direction": "SHORT",
+        "hard_blocks": [
+            {
+                "name": "V280_REVERSAL_STAGE",
+                "state": "PREPARE",
+                "reason": "NO_CURRENT_ALIGNED_V229_PLAN",
+            }
+        ],
+        "reference_geometry": {},
+    }
+    assert sampler._next_required(
+        blocked,
+        "META_ACTION:WAIT_ENGINE_CONFLICT",
+    ) == "CLEAR_HARD_BLOCK:V280_REVERSAL_STAGE=PREPARE"
+
+    unaligned = {
+        "action": "WAIT_ENGINE_CONFLICT",
+        "dominant_direction": "SHORT",
+        "hard_blocks": [],
+        "reference_geometry": {
+            "engine": "RIZAN_DEPTH",
+            "aligned_parent": False,
+            "research_probe_eligible": False,
+        },
+    }
+    assert sampler._next_required(
+        unaligned,
+        "META_ACTION:WAIT_ENGINE_CONFLICT",
+    ) == "ALIGN_CURRENT_RIZAN_PARENT"
