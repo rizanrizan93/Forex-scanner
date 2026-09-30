@@ -480,6 +480,8 @@ def test_v288_lifecycle_event_reads_are_plan_scoped_and_fail_soft() -> None:
     assert '"event_read_contract": "V288_PLAN_SCOPED_FAIL_SOFT_RECONSTRUCTION"' in source
     assert '"event_diagnostics": event_diagnostics' in source
     assert '"degraded_sources"' in source
+    assert '"downstream_reads_skipped_without_prepared_plan"' in source
+    assert "if prepared_events:" in source
 
 
 def test_v288_noncritical_query_failures_do_not_define_worker_health() -> None:
