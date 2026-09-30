@@ -400,12 +400,16 @@ def build_canonical_xau_decision(
         else {}
     )
 
-    nearest_demand = _nearest_active_zone(
+    # Raw nearest zones are retained as diagnostics only. They can legitimately
+    # overlap when independent supply and demand structures coexist at different
+    # ages/timeframes. The operational dashboard must instead show the source
+    # zone of the active path and its forward opposing/destination zone.
+    raw_nearest_demand = _nearest_active_zone(
         atlas_evaluation,
         direction="LONG",
         price=px,
     )
-    nearest_supply = _nearest_active_zone(
+    raw_nearest_supply = _nearest_active_zone(
         atlas_evaluation,
         direction="SHORT",
         price=px,
@@ -427,6 +431,42 @@ def build_canonical_xau_decision(
         and str(active_source_raw.get("direction") or "").upper() == direction
         else {}
     )
+
+    opposing_direction = "SHORT" if direction == "LONG" else "LONG" if direction == "SHORT" else ""
+    opposing_raw = dict(
+        path.get("terminal_target_zone")
+        or path.get("primary_opposing_zone")
+        or {}
+    )
+    operational_opposing = (
+        _zone_text(opposing_raw)
+        if _active_zone(opposing_raw)
+        and str(opposing_raw.get("direction") or "").upper() == opposing_direction
+        else {}
+    )
+
+    if direction == "LONG":
+        nearest_demand = dict(active_source or raw_nearest_demand or {})
+        nearest_supply = dict(operational_opposing or raw_nearest_supply or {})
+    elif direction == "SHORT":
+        nearest_supply = dict(active_source or raw_nearest_supply or {})
+        nearest_demand = dict(operational_opposing or raw_nearest_demand or {})
+    else:
+        nearest_demand = dict(raw_nearest_demand or {})
+        nearest_supply = dict(raw_nearest_supply or {})
+
+    raw_overlap = False
+    try:
+        rd_low = float(raw_nearest_demand.get("low"))
+        rd_high = float(raw_nearest_demand.get("high"))
+        rs_low = float(raw_nearest_supply.get("low"))
+        rs_high = float(raw_nearest_supply.get("high"))
+        raw_overlap = max(rd_low, rs_low) <= min(rd_high, rs_high)
+    except (TypeError, ValueError):
+        raw_overlap = False
+    if raw_overlap:
+        diagnostics.append("RAW_NEAREST_SUPPLY_DEMAND_OVERLAP_DIAGNOSTIC_ONLY")
+
     nearest_same_direction = (
         nearest_demand
         if direction == "LONG"
@@ -739,6 +779,15 @@ def build_canonical_xau_decision(
         "terminal_opposing_zone": terminal_zone,
         "nearest_demand": nearest_demand,
         "nearest_supply": nearest_supply,
+        "raw_nearest_demand": raw_nearest_demand,
+        "raw_nearest_supply": raw_nearest_supply,
+        "zone_role_state": {
+            "direction": direction,
+            "source_role": "DEMAND_SOURCE" if direction == "LONG" else "SUPPLY_SOURCE" if direction == "SHORT" else "UNAVAILABLE",
+            "opposing_role": "SUPPLY_DESTINATION" if direction == "LONG" else "DEMAND_DESTINATION" if direction == "SHORT" else "UNAVAILABLE",
+            "raw_overlap_detected": raw_overlap,
+            "display_policy": "ACTIVE_PATH_SOURCE_AND_FORWARD_OPPOSING_ZONE",
+        },
         "primary_reversal_watch": primary_reversal_watch,
         "historical_context": historical_context,
         "historical_research_entry": historical_research_entry,
