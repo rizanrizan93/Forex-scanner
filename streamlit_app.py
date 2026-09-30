@@ -72,6 +72,7 @@ RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     "ctrader_demo_xau_event_risk_v192",
     "ctrader_demo_xau_v203_volatility_shock_guard",
     "ctrader_demo_xau_decision_center_v296",
+    "ctrader_demo_xau_meta_research_sampler_v297",
 )
 
 RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS = (
@@ -2256,6 +2257,9 @@ with forecast_tab:
     )
     v296_decision_center_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_decision_center_v296"
+    )
+    v297_meta_sampler_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_meta_research_sampler_v297"
     )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
