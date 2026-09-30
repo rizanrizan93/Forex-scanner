@@ -81,7 +81,7 @@ Changes in Commitments from: September 08, 2026
 
 def test_ensemble_reports_scenarios_without_execution_authority():
     result = build_forecast_ensemble(
-        afic={
+        rizan={
             "available": True,
             "direction": "LONG",
             "grade": "A",
@@ -115,11 +115,14 @@ def test_ensemble_reports_scenarios_without_execution_authority():
     assert 0.0 < result["confidence"] <= 0.90
     assert result["execution_influence"] is False
     assert result["decision"]["promotion"] is False
+    assert "rizan" in result["components"]
+    assert "afic" not in result["components"]
+    assert result["vote_weights"]["rizan"] == 0.40
 
 
-def test_invalidated_afic_forces_wait_remap_even_if_priors_are_bullish():
+def test_invalidated_rizan_forces_wait_remap_even_if_priors_are_bullish():
     result = build_forecast_ensemble(
-        afic={
+        rizan={
             "available": True,
             "direction": "LONG",
             "grade": "B",
@@ -159,6 +162,8 @@ def test_streamlit_contains_live_ensemble_contract():
     assert "Invalidation" in text
     assert "ctrader_xau_forecast_ensemble_v171" in text
     assert "does not alter RIZAN-style Grade-A/B execution authority" in text
+    assert '("rizan", "RIZAN structural")' in text
+    assert 'ensemble_components.get("afic")' in text
 
 
 def test_v171_runtime_refreshes_v170_from_same_live_history():
@@ -170,11 +175,15 @@ def test_v171_runtime_refreshes_v170_from_same_live_history():
     assert "XAU_EXPECTED_MOVE_ENVELOPE_V170_LIVE_20K" in text
     assert "directional_vote" in text
     assert "reference_100k" in text
+    assert "ctrader_demo_xau_rizan_prepared_plan_producer" in text
+    assert "DEMO_XAU_RIZAN_FORECAST_STATE" in text
+    assert "XAU_RIZAN_PATH_STATE_V1" in text
+    assert '"rizan_observed_at"' in text
 
 
-def test_missing_afic_zone_forces_wait_h4_map_but_preserves_directional_prior():
+def test_missing_rizan_zone_forces_wait_h4_map_but_preserves_directional_prior():
     result = build_forecast_ensemble(
-        afic={
+        rizan={
             "available": False,
             "direction": "NEUTRAL",
             "raw_direction": "SHORT",
@@ -207,7 +216,7 @@ def test_missing_afic_zone_forces_wait_h4_map_but_preserves_directional_prior():
     assert result["execution_influence"] is False
 
 
-def test_runtime_marks_no_map_zone_afic_unavailable():
+def test_runtime_marks_no_map_zone_rizan_unavailable():
     root = __import__("pathlib").Path(__file__).resolve().parents[1]
     text = (
         root / "src/fx_scanner/research_xau_forecast_ensemble_v171_runtime.py"

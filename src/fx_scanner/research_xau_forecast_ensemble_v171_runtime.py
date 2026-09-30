@@ -31,6 +31,19 @@ WORKER_NAME = "ctrader_xau_forecast_ensemble_v171"
 HISTORY_TARGET = 20_000
 CFTC_GOLD_URL = "https://www.cftc.gov/dea/futures/other_lf.htm"
 
+RIZAN_WORKER_NAME = "ctrader_demo_xau_rizan_prepared_plan_producer"
+RIZAN_FORECAST_EVENT_TYPE = "DEMO_XAU_RIZAN_FORECAST_STATE"
+RIZAN_FORECAST_CODE = "XAU_RIZAN_PATH_STATE_V1"
+RIZAN_PLAN_EVENT_TYPE = "DEMO_XAU_RIZAN_PREPARED_PLAN"
+RIZAN_PLAN_CODE = "XAU_RIZAN_PATH_PREPARED_V1"
+
+# Read-only compatibility for historical records created before the RIZAN rename.
+LEGACY_WORKER_NAME = "ctrader_demo_xau_afic_prepared_plan_producer"
+LEGACY_FORECAST_EVENT_TYPE = "DEMO_XAU_AFIC_FORECAST_STATE"
+LEGACY_FORECAST_CODE = "XAU_AFIC_PATH_STATE_V1"
+LEGACY_PLAN_EVENT_TYPE = "DEMO_XAU_AFIC_PREPARED_PLAN"
+LEGACY_PLAN_CODE = "XAU_AFIC_PATH_PREPARED_V1"
+
 
 def _transient_db_unavailable(exc: Exception) -> bool:
     """Compatibility wrapper around the shared backend outage classifier."""
@@ -58,7 +71,7 @@ def _direct_transient_db_error(exc: BaseException) -> bool:
 
 def _reference_components(client: Any) -> tuple[dict[str, Any], dict[str, Any], str]:
     try:
-        afic = _load_afic_component(client)
+        rizan = _load_rizan_component(client)
         v170 = _load_v170(client)
     except Exception as exc:
         if not _transient_db_unavailable(exc):
@@ -70,7 +83,7 @@ def _reference_components(client: Any) -> tuple[dict[str, Any], dict[str, Any], 
             {"available": False, "reason": "DB_REFERENCE_UNAVAILABLE"},
             "TRANSIENT_DB_UNAVAILABLE",
         )
-    return afic, v170, "OK"
+    return rizan, v170, "OK"
 
 
 def _build_shadow_feed(policy: Any, operational_read_status: str) -> Any:
@@ -132,20 +145,39 @@ def _latest_event(
     return rows[0] if rows else None
 
 
-def _load_afic_component(client: Any) -> dict[str, Any]:
-    hb = _latest_heartbeat(
-        client, "ctrader_demo_xau_afic_prepared_plan_producer"
-    )
-    event = _latest_event(
+def _load_rizan_component(client: Any) -> dict[str, Any]:
+    rizan_hb = _latest_heartbeat(client, RIZAN_WORKER_NAME)
+    rizan_event = _latest_event(
         client,
-        event_type="DEMO_XAU_AFIC_FORECAST_STATE",
-        code="XAU_AFIC_PATH_STATE_V1",
+        event_type=RIZAN_FORECAST_EVENT_TYPE,
+        code=RIZAN_FORECAST_CODE,
     )
-    plan_event = _latest_event(
+    rizan_plan_event = _latest_event(
         client,
-        event_type="DEMO_XAU_AFIC_PREPARED_PLAN",
-        code="XAU_AFIC_PATH_PREPARED_V1",
+        event_type=RIZAN_PLAN_EVENT_TYPE,
+        code=RIZAN_PLAN_CODE,
     )
+
+    # Do not mix a current RIZAN heartbeat with stale legacy forecast geometry.
+    # Legacy records are consulted only when no RIZAN lineage exists at all.
+    if any(row is not None for row in (rizan_hb, rizan_event, rizan_plan_event)):
+        hb = rizan_hb
+        event = rizan_event
+        plan_event = rizan_plan_event
+        source_lineage = "RIZAN"
+    else:
+        hb = _latest_heartbeat(client, LEGACY_WORKER_NAME)
+        event = _latest_event(
+            client,
+            event_type=LEGACY_FORECAST_EVENT_TYPE,
+            code=LEGACY_FORECAST_CODE,
+        )
+        plan_event = _latest_event(
+            client,
+            event_type=LEGACY_PLAN_EVENT_TYPE,
+            code=LEGACY_PLAN_CODE,
+        )
+        source_lineage = "LEGACY_READ_ONLY"
 
     details = {} if hb is None else dict(hb.get("details") or {})
     forecast = (
@@ -177,8 +209,7 @@ def _load_afic_component(client: Any) -> dict[str, Any]:
     ).upper()
     invalidation = prepared.get("invalidation_close")
     if invalidation is None:
-        # This fallback is only a displayed structural boundary, not an
-        # execution stop. The AFIC producer remains authoritative for orders.
+        # Displayed structural boundary only, not an execution stop.
         if direction == "LONG":
             invalidation = zone_low
         elif direction == "SHORT":
@@ -195,13 +226,19 @@ def _load_afic_component(client: Any) -> dict[str, Any]:
         and "INSUFFICIENT" not in state
     )
     available = direction in {"LONG", "SHORT"} and zone_valid and structural_state
+    observed_at = (
+        None if hb is None else hb.get("observed_at")
+    ) or (
+        None if event is None else event.get("observed_at")
+    )
     return {
         "available": available,
         "direction": direction if available else "NEUTRAL",
         "grade": grade or None,
         "state": state or None,
         "map_at": details.get("map_at") or forecast.get("map_at"),
-        "observed_at": None if hb is None else hb.get("observed_at"),
+        "observed_at": observed_at,
+        "source_lineage": source_lineage,
         "zone": {"low": zone_low, "high": zone_high},
         "zone_valid": zone_valid,
         "raw_direction": direction or None,
@@ -213,8 +250,8 @@ def _load_afic_component(client: Any) -> dict[str, Any]:
         },
         "execution_influence": False,
         "note": (
-            "V171 reads AFIC state for dashboard consensus only. "
-            "AFIC V161 remains the sole structural execution authority."
+            "V171 reads the current RIZAN structural state for dashboard consensus only. "
+            "V171 remains shadow-only and cannot grant execution authority."
         ),
     }
 
@@ -281,7 +318,7 @@ def run() -> int:
 
     now = datetime.now(tz=UTC)
     store = SupabaseOperationalStore.from_env()
-    afic, reference_v170, operational_read_status = _reference_components(store.client)
+    rizan, reference_v170, operational_read_status = _reference_components(store.client)
 
     feed = _build_shadow_feed(policy, operational_read_status)
     try:
@@ -324,7 +361,7 @@ def run() -> int:
         }
 
     ensemble = build_forecast_ensemble(
-        afic=afic,
+        rizan=rizan,
         expected_move=v170,
         conditional=conditional,
         acd=acd,
@@ -343,7 +380,8 @@ def run() -> int:
         "operational_read_status": operational_read_status,
         "ensemble": ensemble,
         "source_freshness": {
-            "afic_observed_at": afic.get("observed_at"),
+            "rizan_observed_at": rizan.get("observed_at"),
+            "rizan_source_lineage": rizan.get("source_lineage"),
             "v170_observed_at": v170.get("observed_at"),
             "v170_reference_100k_observed_at": reference_v170.get("observed_at"),
             "cot_report_label": cot.get("report_label"),

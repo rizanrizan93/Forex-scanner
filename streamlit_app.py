@@ -8131,6 +8131,10 @@ with forecast_tab:
         alternative = dict(ensemble.get("alternative_scenario") or {})
         ensemble_age = None if ensemble_hb is None else _age_seconds(ensemble_hb.get("observed_at"))
         ensemble_components = dict(ensemble.get("components") or {})
+        if "rizan" not in ensemble_components:
+            legacy_structural = dict(ensemble_components.get("afic") or {})
+            if legacy_structural:
+                ensemble_components["rizan"] = legacy_structural
 
         if ensemble:
             e1, e2, e3, e4 = st.columns(4)
@@ -8178,7 +8182,7 @@ with forecast_tab:
 
             component_rows = []
             for name, label in (
-                ("afic", "RIZAN structural"),
+                ("rizan", "RIZAN structural"),
                 ("conditional", "Empirical conditional"),
                 ("acd", "Fisher/ACD session"),
                 ("cot", "Weekly COT prior"),

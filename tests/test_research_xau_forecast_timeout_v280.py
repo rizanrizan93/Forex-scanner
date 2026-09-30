@@ -16,15 +16,15 @@ def test_522_falls_back_to_unavailable_structure_and_non_actionable_forecast(mon
     def fail(_client):
         raise Postgrest522({"code": 522, "message": "JSON could not be generated"})
 
-    monkeypatch.setattr(runtime, "_load_afic_component", fail)
-    afic, v170, status = _reference_components(object())
+    monkeypatch.setattr(runtime, "_load_rizan_component", fail)
+    rizan, v170, status = _reference_components(object())
     ensemble = build_forecast_ensemble(
-        afic=afic, expected_move=v170,
+        rizan=rizan, expected_move=v170,
         conditional={"available": True, "direction": "LONG", "probability": 0.7},
         acd={}, cot={},
     )
     assert status == "TRANSIENT_DB_UNAVAILABLE"
-    assert afic["available"] is False
+    assert rizan["available"] is False
     assert ensemble["primary_scenario"]["direction"] == "WAIT_H4_MAP"
     assert ensemble["execution_influence"] is False
 
@@ -35,7 +35,7 @@ def test_schema_failure_is_not_misclassified_as_transient(monkeypatch):
     def fail(_client):
         raise ValueError("missing column")
 
-    monkeypatch.setattr(runtime, "_load_afic_component", fail)
+    monkeypatch.setattr(runtime, "_load_rizan_component", fail)
     try:
         _reference_components(object())
     except ValueError as exc:
@@ -87,3 +87,73 @@ def test_wrapped_heartbeat_522_is_transient_but_wrapped_schema_error_is_not():
     other = RuntimeError("heartbeat write failed")
     other.__cause__ = ValueError("missing column")
     assert not _transient_db_unavailable(other)
+
+
+
+def test_v291_runtime_prefers_current_rizan_lineage_without_legacy_mixing(monkeypatch):
+    import fx_scanner.research_xau_forecast_ensemble_v171_runtime as runtime
+
+    heartbeat_calls = []
+
+    def fake_heartbeat(_client, worker_name):
+        heartbeat_calls.append(worker_name)
+        if worker_name == runtime.RIZAN_WORKER_NAME:
+            return {
+                "observed_at": "2026-09-30T05:54:24+00:00",
+                "details": {
+                    "continuation_direction": "LONG",
+                    "forecast_state": "APPROACHING_ZONE",
+                    "zone_low": 4170.0,
+                    "zone_high": 4180.0,
+                    "map_at": "2026-09-30T04:00:00+00:00",
+                },
+            }
+        if worker_name == runtime.LEGACY_WORKER_NAME:
+            return {
+                "observed_at": "2026-09-25T21:59:45+00:00",
+                "details": {
+                    "continuation_direction": "SHORT",
+                    "forecast_state": "APPROACHING_ZONE",
+                    "zone_low": 4100.0,
+                    "zone_high": 4110.0,
+                },
+            }
+        return None
+
+    monkeypatch.setattr(runtime, "_latest_heartbeat", fake_heartbeat)
+    monkeypatch.setattr(runtime, "_latest_event", lambda *_args, **_kwargs: None)
+
+    component = runtime._load_rizan_component(object())
+
+    assert component["source_lineage"] == "RIZAN"
+    assert component["direction"] == "LONG"
+    assert component["zone"] == {"low": 4170.0, "high": 4180.0}
+    assert runtime.LEGACY_WORKER_NAME not in heartbeat_calls
+
+
+def test_v291_legacy_lineage_is_read_only_fallback_when_rizan_absent(monkeypatch):
+    import fx_scanner.research_xau_forecast_ensemble_v171_runtime as runtime
+
+    def fake_heartbeat(_client, worker_name):
+        if worker_name == runtime.RIZAN_WORKER_NAME:
+            return None
+        if worker_name == runtime.LEGACY_WORKER_NAME:
+            return {
+                "observed_at": "2026-09-25T21:59:45+00:00",
+                "details": {
+                    "continuation_direction": "SHORT",
+                    "forecast_state": "APPROACHING_ZONE",
+                    "zone_low": 4100.0,
+                    "zone_high": 4110.0,
+                },
+            }
+        return None
+
+    monkeypatch.setattr(runtime, "_latest_heartbeat", fake_heartbeat)
+    monkeypatch.setattr(runtime, "_latest_event", lambda *_args, **_kwargs: None)
+
+    component = runtime._load_rizan_component(object())
+
+    assert component["source_lineage"] == "LEGACY_READ_ONLY"
+    assert component["direction"] == "SHORT"
+    assert component["execution_influence"] is False
