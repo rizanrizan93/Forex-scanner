@@ -73,6 +73,9 @@ jobs:
       # V297: one 0.01-lot DEMO research order per eligible V296 decision signature.
       # This lane is research-only and never unlocks LIVE execution.
       CTRADER_DEMO_XAU_META_RESEARCH_SAMPLER_ENABLED: "1"
+      # V303: structural control cohort. One 0.01-lot research LIMIT using
+      # V226 entry + V182 source distal / structural reaction target.
+      CTRADER_DEMO_XAU_STRUCTURAL_CONTROL_SAMPLER_ENABLED: "1"
       # V272: one-time DEMO-only broker transport canary. It submits a far-away
       # 0.01-lot pending LIMIT with SL/TP, then immediately cancels and reconciles.
       CTRADER_DEMO_BROKER_CANARY_ENABLED: "1"
@@ -163,6 +166,16 @@ jobs:
               steps.build_xau_meta_decision.outcome == 'success' }}
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_meta_research_sampler_v297
+
+      - name: Execute XAU Structural Control Research Sampler V303
+        id: execute_xau_structural_control
+        if: >-
+          ${{ !cancelled() &&
+              steps.repair_existing_protection.outcome == 'success' &&
+              steps.refresh_xau_atlas.outcome == 'success' &&
+              steps.refresh_rizan_depth_map.outcome == 'success' }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_structural_control_sampler_v303
 
       - name: Execute fresh RIZAN prepared-path DEMO signal
         id: execute_rizan_path_handoff
