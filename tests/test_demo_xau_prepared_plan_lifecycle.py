@@ -411,7 +411,7 @@ def test_v282_lifecycle_reconstruction_reduces_postgrest_egress() -> None:
     assert "LOOKBACK_DAYS = 7" in source
     assert 'else "observed_at,event_type,signal_key,accepted"' in source
     assert '.eq("accepted", True)' in source
-    assert '"event_read_contract": "V282_NARROW_FIELDS_RECENT_RECONSTRUCTION"' in source
+    assert '"event_read_contract": "V288_PLAN_SCOPED_FAIL_SOFT_RECONSTRUCTION"' in source
 
 
 def test_v282_v280_stage_block_event_supplies_exact_invalidation_time() -> None:
