@@ -301,3 +301,15 @@ def test_v285_dashboard_shows_competing_risk_without_retest_probability_leak() -
     assert "V281 tidak dipakai sebagai peluang pada zona retest." in SOURCE
     assert "Historical pressure stratification memakai causal M1 OHLC proxy" in SOURCE
     assert "DOM live tetap sumber terpisah" in SOURCE
+
+
+def test_v286_dashboard_surfaces_contextual_competing_risk_as_research_only() -> None:
+    assert "V286 Contextual Competing Risk — RISET FIRST-TOUCH" in SOURCE
+    assert "evaluate_v281_contextual_competing_risk" in SOURCE
+    assert "Pressure proxy historis" in SOURCE
+    assert "marginal contextual splits" in SOURCE
+    assert "semantic bridge only" in SOURCE
+    assert "Historical pressure memakai causal M1 OHLC proxy" in SOURCE
+    assert "DOM live tetap cTrader Level-II" in SOURCE
+    assert "tidak memberi execution authority/influence" in SOURCE
+    assert "contextual prior tidak berlaku pada retest/reused zone" in SOURCE
