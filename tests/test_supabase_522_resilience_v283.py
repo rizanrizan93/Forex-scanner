@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fx_scanner.storage.transient_supabase import is_transient_supabase_unavailable
+from fx_scanner.transient import is_transient_backend_error
 from fx_scanner.demo_xau_dom_v191 import (
     _latest_previous_safe,
     _write_heartbeat_safe,
@@ -52,12 +52,12 @@ def test_v283_transient_supabase_classifier_handles_wrapped_522_only() -> None:
     api.code = 522
     wrapper = RuntimeError("durable backend probe failed")
     wrapper.__cause__ = api
-    assert is_transient_supabase_unavailable(wrapper) is True
+    assert is_transient_backend_error(wrapper) is True
 
     schema = ApiError("{'code': 400, 'message': 'missing column'}")
     schema.code = 400
-    assert is_transient_supabase_unavailable(schema) is False
-    assert is_transient_supabase_unavailable(ValueError("logic bug")) is False
+    assert is_transient_backend_error(schema) is False
+    assert is_transient_backend_error(ValueError("logic bug")) is False
 
 
 def test_v283_dom_previous_read_and_heartbeat_write_fail_soft_on_522() -> None:
@@ -92,4 +92,17 @@ def test_v283_token_maintainer_defer_is_before_ctrader_session_creation() -> Non
     session = source.index("session = CTraderOpenApiSession(")
     assert defer < session
     assert "token_refresh_attempted=0" in source
-    assert "if not is_transient_supabase_unavailable(exc):" in source
+    assert "if not is_transient_backend_error(exc):" in source
+
+
+def test_v283_dom_uses_read_only_standalone_feed_when_db_context_is_down() -> None:
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "src/fx_scanner/demo_xau_dom_v191.py").read_text()
+    assert "STANDALONE_READ_ONLY_DB_OUTAGE" in source
+    assert "build_standalone_ctrader_feed" in source
+    assert "token_update_callback=None" in (
+        root / "src/fx_scanner/xau_standalone_ctrader_v253.py"
+    ).read_text()
+    assert "allow_token_refresh=False" in (
+        root / "src/fx_scanner/xau_standalone_ctrader_v253.py"
+    ).read_text()
