@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import patch
 import pandas as pd
 from fx_scanner.research_xau_v229_historical_v242 import price_arrays
-from fx_scanner.research_xau_entry_cycle import candidate_grid, replay, next_cycle, EXECUTION_AUTHORITY
+from fx_scanner.research_xau_entry_cycle import (candidate_grid, replay, next_cycle, setup_state_at, next_cycle_with_active_ledger, EXECUTION_AUTHORITY)
 
 AT = datetime(2024, 1, 2, tzinfo=UTC)
 
@@ -97,6 +97,106 @@ class CycleTests(unittest.TestCase):
                  candidate=dict(entry=122,target=100,mode="LIMIT"),spread_usd=.4,slippage_usd=.1)
         self.assertEqual(r["state"],"TP")
         self.assertTrue(r["precision_5_and_tp"])
+
+
+    def test_ledger_keeps_unfilled_opposite_setup_active_at_tp(self):
+        opposite=plan("SHORT",0,"old-opposite")
+        opposite["signal_expires_at"]=(AT+timedelta(minutes=40)).isoformat()
+        opposite["entry_low"]=118.
+        opposite["entry_high"]=122.
+        opposite["children"][0]["reference_price"]=122.
+        opposite["children"][0]["planned_target"]=100.
+        data=px([
+            (110,111,109,110),
+            (111,112,110,111),
+            (120,121,119,120),
+            (120,123,119,122),
+            (121,122,99,100),
+        ] + [(100,101,99,100)]*40)
+        state=setup_state_at(
+            px=data,
+            plan=opposite,
+            candidate=dict(entry=122.,target=100.,mode="LIMIT"),
+            as_of=AT+timedelta(minutes=3),
+            spread_usd=0,
+            slippage_usd=0,
+        )
+        self.assertTrue(state["active"])
+        self.assertEqual(state["state"],"ACTIVE_UNFILLED")
+
+    def test_active_at_tp_opposite_setup_precedes_later_publication(self):
+        first=dict(
+            state="TP",
+            exit_at=(AT+timedelta(minutes=3)).isoformat(),
+            exit_price=120.,
+            fast_precision_tp=True,
+        )
+        old=plan("SHORT",0,"old")
+        old["signal_expires_at"]=(AT+timedelta(minutes=30)).isoformat()
+        old["entry_low"]=118.
+        old["entry_high"]=122.
+        old["children"][0]["reference_price"]=120.
+        old["children"][0]["planned_target"]=100.
+        later=plan("SHORT",4,"later")
+        later["signal_expires_at"]=(AT+timedelta(minutes=20)).isoformat()
+        later["entry_low"]=118.
+        later["entry_high"]=122.
+        later["children"][0]["reference_price"]=120.
+        later["children"][0]["planned_target"]=100.
+        data=px([
+            (110,111,109,110),
+            (111,112,110,111),
+            (119,119.5,118.5,119),
+            (120,120.5,119.5,120),
+            (120,120.5,119.5,120),
+            (120,121,119,120),
+            (120,121,99,100),
+        ] + [(100,101,99,100)]*30)
+        result=next_cycle_with_active_ledger(
+            first=first,
+            first_plan=plan("LONG",0,"first"),
+            plans=[later,old],
+            px=data,
+            key="E1_T1",
+            spread_usd=0,
+            slippage_usd=0,
+            hold_minutes=30,
+        )
+        self.assertEqual(result["state"],"SELECTED")
+        self.assertEqual(result["next_plan_id"],"old")
+        self.assertEqual(result["selection_origin"],"ACTIVE_AT_TP")
+
+    def test_already_filled_opposite_is_not_reused_at_tp(self):
+        first=dict(
+            state="TP",
+            exit_at=(AT+timedelta(minutes=4)).isoformat(),
+            exit_price=120.,
+            fast_precision_tp=True,
+        )
+        old=plan("SHORT",0,"old-filled")
+        old["signal_expires_at"]=(AT+timedelta(minutes=30)).isoformat()
+        old["entry_low"]=118.
+        old["entry_high"]=122.
+        old["children"][0]["reference_price"]=120.
+        old["children"][0]["planned_target"]=100.
+        data=px([
+            (120,121,119,120),
+            (120,121,119,120),
+            (120,121,119,120),
+            (120,121,119,120),
+            (120,121,119,120),
+        ] + [(120,121,119,120)]*30)
+        result=next_cycle_with_active_ledger(
+            first=first,
+            first_plan=plan("LONG",0,"first"),
+            plans=[old],
+            px=data,
+            key="E1_T1",
+            spread_usd=0,
+            slippage_usd=0,
+            hold_minutes=30,
+        )
+        self.assertEqual(result["state"],"NO_ELIGIBLE_OPPOSITE_SETUP")
 
 class RuntimeTests(unittest.TestCase):
     def test_complete_paired_grid_and_report(self):
