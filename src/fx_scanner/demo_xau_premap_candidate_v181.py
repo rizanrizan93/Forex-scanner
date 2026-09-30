@@ -548,7 +548,7 @@ def evaluate_premap_candidates(
         "explanation": {
             "zone_definition": "H1_BOS_DISPLACEMENT_CAUSAL_ORIGIN_ONLY",
             "liquidity_role": "CONFLUENCE_AND_RANKING_ONLY_NOT_ZONE_AUTHORITY",
-            "promotion_rule": "MUST_SURVIVE_UNTIL_NEXT_COMPLETED_H4_MAP_AND_PASS_CANONICAL_AFIC_SELECTION",
+            "promotion_rule": "MUST_SURVIVE_UNTIL_NEXT_COMPLETED_H4_MAP_AND_PASS_CANONICAL_RIZAN_SELECTION",
             "research_priors_are_candidate_specific": False,
             "research_prior_note": (
                 "V175/V177/V178/V179 values are directional untouched-test priors, "
