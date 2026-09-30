@@ -247,3 +247,77 @@ def test_v296_dashboard_and_execution_lane_contract() -> None:
     assert "Lihat keputusan & kalibrasi tiap engine" in dashboard
     assert "python -m fx_scanner.demo_xau_decision_center_v296" in workflow
     assert "continue-on-error: true" in workflow
+
+
+
+def test_v298_wait_keeps_dominant_bias_and_reference_geometry() -> None:
+    votes = [
+        {
+            "engine": "V182_STRUCTURE",
+            "direction": "SHORT",
+            "available": True,
+            "base_weight": 0.60,
+            "freshness_factor": 1.0,
+            "calibration": {"reliability_multiplier": 0.35},
+        },
+        {
+            "engine": "M15_SMC_RECLAIM",
+            "direction": "LONG",
+            "available": True,
+            "base_weight": 0.70,
+            "freshness_factor": 1.0,
+            "calibration": {"reliability_multiplier": 0.35},
+        },
+        {
+            "engine": "V171_ENSEMBLE",
+            "direction": "SHORT",
+            "available": True,
+            "base_weight": 0.50,
+            "freshness_factor": 1.0,
+            "calibration": {"reliability_multiplier": 0.35},
+        },
+    ]
+    geometry = [
+        {
+            "engine": "RIZAN_DEPTH",
+            "signal_id": "short-ref",
+            "direction": "SHORT",
+            "entry_low": 4190.0,
+            "entry_high": 4198.0,
+            "sl": 4202.0,
+            "tp1": 4175.0,
+            "tp2": 4149.0,
+            "rr2": 2.5,
+            "state": "ARMED",
+            "geometry_authority": True,
+            "research_probe_eligible": False,
+            "active_guards": ["WAIT_CONFIRMATION"],
+        },
+        {
+            "engine": "M15_SMC_RECLAIM",
+            "signal_id": "long-ref",
+            "direction": "LONG",
+            "entry_low": 4170.0,
+            "entry_high": 4174.0,
+            "sl": 4158.0,
+            "tp1": 4190.0,
+            "tp2": 4200.0,
+            "rr2": 2.0,
+            "state": "ARMED",
+            "geometry_authority": False,
+            "research_probe_eligible": False,
+            "active_guards": [],
+        },
+    ]
+    decision = build_meta_decision(
+        votes=votes,
+        geometry_candidates=geometry,
+        gates=[],
+    )
+
+    assert decision["consensus_direction"] == "WAIT"
+    assert decision["dominant_direction"] == "SHORT"
+    assert decision["geometry"] == {}
+    assert decision["reference_geometry"]["signal_id"] == "short-ref"
+    assert decision["reference_geometry_execution_authority"] is False
+    assert decision["action"] == "WAIT_ENGINE_CONFLICT"
