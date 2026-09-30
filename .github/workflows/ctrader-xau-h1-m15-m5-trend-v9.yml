@@ -1,0 +1,57 @@
+name: cTrader XAU H1 M15 M5 Trend V9
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_h1_m15_m5_trend_v9.py"
+      - "src/fx_scanner/research_xau_h1_m15_m5_trend_v9_runtime.py"
+      - "config/validation.yaml"
+      - ".github/workflows/ctrader-xau-h1-m15-m5-trend-v9.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-xau-h1-m15-m5-trend-v9-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  xau-h1-m15-m5-trend-v9:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      XAU_TREND_V9_EVIDENCE_OUTPUT: artifacts/xau-h1-m15-m5-trend-v9.json
+      SUPABASE_URL: https://fotzcxjeypmjldhvfskt.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install cTrader research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Validate fail-closed config
+        run: python -m fx_scanner.cli validate-config
+      - name: Run XAU H1-M15-M5 trend pullback V9 on 300k M5 bars
+        run: python -m fx_scanner.research_xau_h1_m15_m5_trend_v9_runtime
+      - name: Upload XAU trend V9 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-h1-m15-m5-trend-v9
+          path: artifacts/xau-h1-m15-m5-trend-v9.json
+          if-no-files-found: error
+          retention-days: 30
