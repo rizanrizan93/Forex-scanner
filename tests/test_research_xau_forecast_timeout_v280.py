@@ -75,3 +75,15 @@ def test_database_outage_uses_read_only_standalone_feed_only_for_shadow(monkeypa
     assert _build_shadow_feed(policy, "TRANSIENT_DB_UNAVAILABLE") == "standalone"
     assert called[0]["trader_login"] == 123
     assert called[0]["account_id"] is None
+
+
+def test_wrapped_heartbeat_522_is_transient_but_wrapped_schema_error_is_not():
+    ApiError = type("APIError", (Exception,), {"__module__": "postgrest.exceptions"})
+    api = ApiError("JSON could not be generated")
+    api.code = 522
+    wrapper = RuntimeError("heartbeat write failed")
+    wrapper.__cause__ = api
+    assert _transient_db_unavailable(wrapper)
+    other = RuntimeError("heartbeat write failed")
+    other.__cause__ = ValueError("missing column")
+    assert not _transient_db_unavailable(other)
