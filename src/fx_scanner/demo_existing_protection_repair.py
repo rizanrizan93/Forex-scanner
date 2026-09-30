@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+import re
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -13,6 +14,7 @@ from .execution.policy import load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
 
 STATE_WORKER = "ctrader_demo_existing_protection_repair"
+V229_CHILD_ID_RE = re.compile(r"^RZ229:[0-9a-f]{18}:L[1-4]$")
 
 
 def _positive(value: Any) -> float | None:
@@ -52,6 +54,19 @@ def _signal_id_from_comment(comment: str | None, prefix: str) -> str | None:
         return None
 
 
+def _scanner_key_from_comment(comment: str | None, prefix: str) -> str | None:
+    """Resolve only exact scanner-owned identities from broker comments."""
+    signal_id = _signal_id_from_comment(comment, prefix)
+    if signal_id is not None:
+        return signal_id
+    text = str(comment or "").strip()
+    marker = f"{str(prefix).strip()}:"
+    if not text.startswith(marker):
+        return None
+    candidate = text[len(marker):].strip()
+    return candidate if V229_CHILD_ID_RE.fullmatch(candidate) else None
+
+
 def _load_signal_plan(
     store: SupabaseOperationalStore,
     *,
@@ -78,6 +93,94 @@ def _load_signal_plan(
     if _positive(row.get("sl")) is None:
         return None
     return row
+
+
+def _load_v229_child_plan(
+    store: SupabaseOperationalStore,
+    *,
+    child_id: str,
+    symbol: str,
+    side: str,
+) -> dict[str, Any] | None:
+    """Recover immutable submitted SL/TP for an exact V229 child order."""
+    if not V229_CHILD_ID_RE.fullmatch(str(child_id or "")):
+        return None
+    try:
+        response = (
+            store.client.table("broker_order_events")
+            .select("signal_key,observed_at,event_type,accepted,broker_order_id,payload")
+            .eq("signal_key", child_id)
+            .eq("event_type", "ORDER_ACCEPTED")
+            .eq("accepted", True)
+            .order("observed_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        return None
+
+    rows = [dict(row) for row in (response.data or [])]
+    if len(rows) != 1:
+        return None
+    row = rows[0]
+    payload = dict(row.get("payload") or {})
+    if str(payload.get("symbol") or "").upper() != str(symbol).upper():
+        return None
+    if str(payload.get("signal_id") or "") != str(child_id):
+        return None
+
+    entry = _positive(payload.get("requested_entry"))
+    stop = _positive(payload.get("requested_stop_loss"))
+    target = _positive(payload.get("requested_take_profit"))
+    volume = _positive(payload.get("requested_volume"))
+    if None in {entry, stop, target, volume}:
+        return None
+
+    side_text = str(side).upper()
+    if side_text == "BUY":
+        geometry_ok = float(stop) < float(entry) < float(target)
+        direction = "LONG"
+    elif side_text == "SELL":
+        geometry_ok = float(target) < float(entry) < float(stop)
+        direction = "SHORT"
+    else:
+        return None
+    if not geometry_ok:
+        return None
+
+    return {
+        "id": str(child_id),
+        "symbol": str(symbol).upper(),
+        "direction": direction,
+        "sl": float(stop),
+        "tp2": float(target),
+        "entry": float(entry),
+        "volume": float(volume),
+        "broker_order_id": row.get("broker_order_id"),
+        "source": "V229_CHILD_ORDER_ACCEPTED",
+    }
+
+
+def _load_repair_plan(
+    store: SupabaseOperationalStore,
+    *,
+    scanner_key: str,
+    symbol: str,
+    side: str,
+) -> dict[str, Any] | None:
+    if V229_CHILD_ID_RE.fullmatch(str(scanner_key or "")):
+        return _load_v229_child_plan(
+            store,
+            child_id=str(scanner_key),
+            symbol=symbol,
+            side=side,
+        )
+    return _load_signal_plan(
+        store,
+        signal_id=str(scanner_key),
+        symbol=symbol,
+        side=side,
+    )
 
 
 def _exact_broker_identity(session, *, position_id: int, symbol: str, side: str) -> tuple[int, int, int] | None:
@@ -174,19 +277,20 @@ def run() -> int:
             if not _position_unprotected(position):
                 continue
 
-            signal_id = _signal_id_from_comment(position.comment, prefix)
-            if signal_id is None:
+            scanner_key = _scanner_key_from_comment(position.comment, prefix)
+            if scanner_key is None:
                 skipped += 1
                 continue
-            signal = _load_signal_plan(
+            signal = _load_repair_plan(
                 store,
-                signal_id=signal_id,
+                scanner_key=scanner_key,
                 symbol=symbol,
                 side=side,
             )
             if signal is None:
                 skipped += 1
                 continue
+            signal_id = scanner_key
             linked += 1
 
             identity = _exact_broker_identity(
@@ -283,8 +387,8 @@ def run() -> int:
         for position in after.positions:
             if not _position_unprotected(position):
                 continue
-            signal_id = _signal_id_from_comment(position.comment, prefix)
-            if signal_id is None:
+            scanner_key = _scanner_key_from_comment(position.comment, prefix)
+            if scanner_key is None:
                 unprotected_unmanaged_positions.append(str(position.position_id))
             else:
                 unprotected_scanner_positions.append(str(position.position_id))
