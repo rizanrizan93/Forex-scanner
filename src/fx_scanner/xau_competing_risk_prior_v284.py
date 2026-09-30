@@ -128,6 +128,7 @@ def evaluate_v281_competing_risk_prior(
     side = base["direction"]
     tf_payload = dict(dict(payload.get("tf_dir") or {}).get(tf) or {})
     rows = list(tf_payload.get(side) or [])
+    decoded_rows = [_decode_row(raw) for raw in rows]
     selected = _row_for_band(rows, band)
     overall = _row_for_band(list(payload.get("ALL") or []), band)
     if not selected:
@@ -150,6 +151,7 @@ def evaluate_v281_competing_risk_prior(
         "reason": "FIRST_TOUCH_RESEARCH_PRIOR_AVAILABLE",
         "selected": selected,
         "overall": overall,
+        "all_bands": decoded_rows,
         "first_break_dominant_band": first_break_dominant,
         "source_run_id": payload.get("source_run_id"),
         "source_artifact_id": payload.get("source_artifact_id"),
