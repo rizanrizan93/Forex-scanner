@@ -22,7 +22,7 @@ from .research_xau_forecast_ensemble_v171 import (
 from .research_xau_expected_move_envelope_v170 import evaluate_expected_move_v170
 from .research_xau_m15_dual_strategy_runtime import _fetch_history
 from .storage.supabase_operational import SupabaseOperationalStore
-from .storage.transient_supabase import is_transient_supabase_unavailable
+from .transient import is_transient_backend_error
 from .xau_standalone_ctrader_v253 import build_standalone_ctrader_feed
 from .exceptions import ConfigurationError
 
@@ -33,8 +33,8 @@ CFTC_GOLD_URL = "https://www.cftc.gov/dea/futures/other_lf.htm"
 
 
 def _transient_db_unavailable(exc: Exception) -> bool:
-    """Compatibility wrapper around the shared Supabase outage classifier."""
-    return is_transient_supabase_unavailable(exc)
+    """Compatibility wrapper around the shared backend outage classifier."""
+    return is_transient_backend_error(exc)
 
 
 def _direct_transient_db_error(exc: BaseException) -> bool:
