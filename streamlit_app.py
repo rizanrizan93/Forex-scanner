@@ -3075,6 +3075,24 @@ with forecast_tab:
             else:
                 st.caption("Belum ada vote engine V296.")
 
+            support_rows = [
+                {
+                    "Engine/Gate": dict(row).get("engine"),
+                    "Role": dict(row).get("role"),
+                    "Decision": dict(row).get("decision"),
+                    "State": dict(row).get("state"),
+                    "Detail": dict(row).get("detail"),
+                }
+                for row in list(v296_meta_decision.get("support_evidence") or [])
+            ]
+            if support_rows:
+                st.markdown("**Evidence / gate non-voting**")
+                st.dataframe(
+                    pd.DataFrame(support_rows),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
     dc_h4_text = (
         f"{_fmt_price(dc_h4_parent.get('low'))}–{_fmt_price(dc_h4_parent.get('high'))}"
         if dc_h4_parent else "—"
