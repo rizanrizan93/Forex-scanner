@@ -129,16 +129,6 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_m15_liquidity_sweep_fade_candidate_producer
 
-      - name: Enforce pair-specific max-hold exits
-        id: pair_time_exit
-        if: ${{ always() && !cancelled() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_five_core_time_exit
-      - name: Apply EURAUD and GBPAUD completed-D1 Chandelier stops
-        id: euraud_gbpaud_chandelier
-        if: ${{ always() && !cancelled() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_euraud_gbpaud_chandelier
       - name: Enforce legacy XAU Expansion V4.2 seven-D1-bar max-hold exit
         id: xau_v42_time_exit
         if: ${{ always() && !cancelled() }}
@@ -168,8 +158,6 @@ jobs:
           HANDOFF_OUTCOME: ${{ steps.execute_fresh_handoff.outcome }}
           XAU_CANONICAL_MANAGER_OUTCOME: ${{ steps.xau_canonical_manager.outcome }}
           XAU_V24_TIME_EXIT_OUTCOME: ${{ steps.xau_v24_time_exit.outcome }}
-          PAIR_EXIT_OUTCOME: ${{ steps.pair_time_exit.outcome }}
-          CHANDELIER_OUTCOME: ${{ steps.euraud_gbpaud_chandelier.outcome }}
           XAU_EXIT_OUTCOME: ${{ steps.xau_v42_time_exit.outcome }}
           XAU_LOCK_OUTCOME: ${{ steps.xau_v42_profit_lock.outcome }}
         run: |
@@ -184,8 +172,6 @@ jobs:
             "HANDOFF:${HANDOFF_OUTCOME}" \
             "XAU_CANONICAL_MANAGER:${XAU_CANONICAL_MANAGER_OUTCOME}" \
             "XAU_V24_TIME_EXIT:${XAU_V24_TIME_EXIT_OUTCOME}" \
-            "PAIR_EXIT:${PAIR_EXIT_OUTCOME}" \
-            "CHANDELIER:${CHANDELIER_OUTCOME}" \
             "XAU_EXIT:${XAU_EXIT_OUTCOME}" \
             "XAU_LOCK:${XAU_LOCK_OUTCOME}"; do
             stage="${item%%:*}"
