@@ -411,7 +411,7 @@ def test_v266_workflow_enables_bounded_demo_calibration_probe() -> None:
     ).read_text()
     assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_ENABLED: "1"' in workflow
     assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MIN_RR: "1.00"' in workflow
-    assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.70"' in workflow
+    assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.85"' in workflow
     source = (
         Path(__file__).resolve().parents[1]
         / "src/fx_scanner/demo_xau_v229_child_executor.py"
@@ -783,3 +783,20 @@ def test_v280_child_cancels_pending_and_invalidates_on_hard_stage() -> None:
     assert "V280_BLOCK" in source
     assert '"state": "INVALIDATED"' in source
     assert 'for prior_state in ("ARMED", "EXECUTION_READY", "COOLDOWN")' in source
+
+
+def test_v295_research_probe_ceiling_is_85pct_without_changing_strict_children() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_v229_child_executor.py"
+    ).read_text()
+    workflow = (
+        Path(__file__).resolve().parents[1]
+        / ".github/workflows/ctrader-demo-xau-execution-lane.yml"
+    ).read_text()
+    assert '_float_env(CALIBRATION_PROBE_MAX_DEPTH_ENV, 0.85)' in source
+    assert 'CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.85"' in workflow
+    assert "if slot >= 3 and not bool(" in source
+    assert "confirmation_entry_allowed" in source
+    assert "MIN_TERMINAL_RR" in source
+    assert '"child_lot": CHILD_LOT' in source

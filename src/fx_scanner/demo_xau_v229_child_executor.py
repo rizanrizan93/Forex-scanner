@@ -855,7 +855,7 @@ def run() -> int:
     )
     calibration_probe_max_depth = min(
         1.0,
-        max(0.10, _float_env(CALIBRATION_PROBE_MAX_DEPTH_ENV, 0.70)),
+        max(0.10, _float_env(CALIBRATION_PROBE_MAX_DEPTH_ENV, 0.85)),
     )
     calibration_rejection_max_age_seconds = min(
         7200.0,
@@ -1557,7 +1557,8 @@ def run() -> int:
             ),
             "calibration_probe_policy": (
                 "ONE_L1_REAL_M5_POCKET_OR_POST_REJECTION_RETEST_PROBE_PER_"
-                "ARMED_RETEST_PARENT_DYNAMIC_DEPTH_PLUS_10PCT_CAPPED_DEMO_ONLY"
+                "ARMED_RETEST_PARENT_DYNAMIC_DEPTH_PLUS_10PCT_RESEARCH_CAP_85PCT_"
+                "DEMO_ONLY"
             ),
             "pending_plus_open_guard": True,
             "server_side_sl_tp_required": True,
