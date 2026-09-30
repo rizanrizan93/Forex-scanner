@@ -70,6 +70,9 @@ jobs:
       CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MIN_RR: "1.00"
       CTRADER_DEMO_DEPTH_CALIBRATION_PROBE_MAX_DEPTH: "0.85"
       CTRADER_DEMO_DEPTH_CALIBRATION_REJECTION_MAX_AGE_SECONDS: "3600"
+      # V297: one 0.01-lot DEMO research order per eligible V296 decision signature.
+      # This lane is research-only and never unlocks LIVE execution.
+      CTRADER_DEMO_XAU_META_RESEARCH_SAMPLER_ENABLED: "1"
       # V272: one-time DEMO-only broker transport canary. It submits a far-away
       # 0.01-lot pending LIMIT with SL/TP, then immediately cancels and reconciles.
       CTRADER_DEMO_BROKER_CANARY_ENABLED: "1"
@@ -151,6 +154,15 @@ jobs:
         if: ${{ always() && !cancelled() }}
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_decision_center_v296
+
+      - name: Execute calibrated XAU Meta Research Sampler V297
+        id: execute_xau_meta_research
+        if: >-
+          ${{ !cancelled() &&
+              steps.repair_existing_protection.outcome == 'success' &&
+              steps.build_xau_meta_decision.outcome == 'success' }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_meta_research_sampler_v297
 
       - name: Execute fresh RIZAN prepared-path DEMO signal
         id: execute_rizan_path_handoff
