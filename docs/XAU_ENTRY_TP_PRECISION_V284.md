@@ -45,3 +45,32 @@ multiple years. Yearly V242 artifacts do not include raw M1 candles. Until
 matching M1 inputs and independent prospective broker-fill evidence exist,
 the selected pair has no execution authority. The $5 bound is a measured
 historical condition, not a guarantee that the next reversal stays within $5.
+
+## Completed 15-year replay (2026-09-30)
+
+The [walk-forward report](xau-entry-tp-precision-v284-walk-forward.json) was
+produced by successful [Actions run 36656796466](https://github.com/rizanrizan93/Forex-scanner/actions/runs/36656796466).
+All 15 year shards (2012–2026) completed: 3,352 plans, of which 24 were
+censored for insufficient future M1 bars. The 2026 M1 source ends on
+2026-09-25; these are retrospective synthetic bid/ask fills, not observed
+broker executions.
+
+| Mature plans | Pair | Valid structural pair | Quote-side fill | TP | TP with ≤$5 adverse |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 2025–2026 (407) | E1_T1 | 176 (43.2%) | 132 (32.4%) | 34 (8.4%) | 16 (3.9%) |
+| 2025–2026 (407) | E1_T2 | 274 (67.3%) | 213 (52.3%) | 47 (11.5%) | 13 (3.2%) |
+
+The percentages use all 407 mature opportunities as denominator. A missing
+structural target is not silently replaced with an invented TP. Of the 407
+E1_T1 plans, 231 lack a valid structural entry/target pair, another 44 have
+an unfilled quote-side limit, and 132 fill. Among the fills, 34 reach TP and
+16 reach TP within the $5 adverse bound.
+
+The preceding-year selection gate found no admissible candidate for either
+2025 or 2026. It selected E1_T2 in the 2014 and 2017 historical folds, where
+joint success improved from 28/430 to 47/430 opportunities combined, but
+selected-pair test expectancy was negative in both years. There is no
+validated pair to promote to the dashboard's official entry or DEMO order.
+The earlier V242 L1 baseline uses a different fill assumption and target
+coverage, so its 14.7% result for 2025–2026 is not a like-for-like estimate
+of the new replay's 3.9%.
