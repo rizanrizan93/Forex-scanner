@@ -123,9 +123,28 @@ def _compact_zone(zone: dict[str, Any] | None) -> dict[str, Any] | None:
 def latest_atlas(
     store: SupabaseOperationalStore,
 ) -> tuple[datetime | None, dict[str, Any]]:
+    """Read only the V182 fields consumed by the prepared-path runtime.
+
+    The full V182 heartbeat is tens of kilobytes and is refreshed frequently.
+    Projecting the exact evaluation fields preserves policy semantics while
+    avoiding retransmission of unrelated diagnostics on every reconciliation.
+    """
+    fields = (
+        "observed_at,healthy,"
+        "state:details->evaluation->>state,"
+        "session_context:details->evaluation->session_context,"
+        "last_closed_m15_price:details->evaluation->last_closed_m15_price,"
+        "nearest_demand:details->evaluation->nearest_demand,"
+        "nearest_supply:details->evaluation->nearest_supply,"
+        "path_map:details->evaluation->path_map,"
+        "micro_refinement:details->evaluation->micro_refinement,"
+        "m5_path_projection:details->evaluation->m5_path_projection,"
+        "chart_bars_m15:details->evaluation->chart_bars_m15,"
+        "zones:details->evaluation->zones"
+    )
     response = (
         store.client.table("runtime_heartbeats")
-        .select("observed_at,healthy,details")
+        .select(fields)
         .eq("worker_name", ATLAS_WORKER)
         .order("observed_at", desc=True)
         .limit(1)
@@ -135,8 +154,22 @@ def latest_atlas(
     if not rows:
         return None, {}
     row = dict(rows[0])
-    details = dict(row.get("details") or {})
-    evaluation = dict(details.get("evaluation") or {})
+    evaluation = {
+        key: row.get(key)
+        for key in (
+            "state",
+            "session_context",
+            "last_closed_m15_price",
+            "nearest_demand",
+            "nearest_supply",
+            "path_map",
+            "micro_refinement",
+            "m5_path_projection",
+            "chart_bars_m15",
+            "zones",
+        )
+        if row.get(key) is not None
+    }
     return _dt(row.get("observed_at")), evaluation
 
 
@@ -145,9 +178,19 @@ def latest_dom(
 ) -> tuple[datetime | None, dict[str, Any]]:
     if not hasattr(store, "client"):
         return None, {}
+    fields = (
+        "observed_at,healthy,"
+        "state:details->analysis->>state,"
+        "dom_pressure_score:details->analysis->dom_pressure_score,"
+        "last_imbalance:details->analysis->last_imbalance,"
+        "top5_bid_units:details->analysis->top5_bid_units,"
+        "top5_ask_units:details->analysis->top5_ask_units,"
+        "bid_wall:details->analysis->bid_wall,"
+        "ask_wall:details->analysis->ask_wall"
+    )
     response = (
         store.client.table("runtime_heartbeats")
-        .select("observed_at,healthy,details")
+        .select(fields)
         .eq("worker_name", DOM_WORKER)
         .order("observed_at", desc=True)
         .limit(1)
@@ -157,8 +200,19 @@ def latest_dom(
     if not rows:
         return None, {}
     row = dict(rows[0])
-    details = dict(row.get("details") or {})
-    analysis = dict(details.get("analysis") or {})
+    analysis = {
+        key: row.get(key)
+        for key in (
+            "state",
+            "dom_pressure_score",
+            "last_imbalance",
+            "top5_bid_units",
+            "top5_ask_units",
+            "bid_wall",
+            "ask_wall",
+        )
+        if row.get(key) is not None
+    }
     return _dt(row.get("observed_at")), analysis
 
 
@@ -167,9 +221,16 @@ def latest_event_risk(
 ) -> tuple[datetime | None, dict[str, Any]]:
     if not hasattr(store, "client"):
         return None, {}
+    fields = (
+        "observed_at,healthy,"
+        "risk:details->risk,"
+        "official_or_cadence_verified_count:details->official_or_cadence_verified_count,"
+        "discovery_unverified_count:details->discovery_unverified_count,"
+        "source_status:details->source_status"
+    )
     response = (
         store.client.table("runtime_heartbeats")
-        .select("observed_at,healthy,details")
+        .select(fields)
         .eq("worker_name", EVENT_RISK_WORKER)
         .order("observed_at", desc=True)
         .limit(1)
@@ -179,7 +240,17 @@ def latest_event_risk(
     if not rows:
         return None, {}
     row = dict(rows[0])
-    return _dt(row.get("observed_at")), dict(row.get("details") or {})
+    details = {
+        key: row.get(key)
+        for key in (
+            "risk",
+            "official_or_cadence_verified_count",
+            "discovery_unverified_count",
+            "source_status",
+        )
+        if row.get(key) is not None
+    }
+    return _dt(row.get("observed_at")), details
 
 
 def attach_supply_demand_context(
