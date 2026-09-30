@@ -66,7 +66,9 @@ def test_five_core_registry_and_pair_specific_demo_authority_are_exact():
     assert EXECUTION_SYMBOLS == frozenset({"XAUUSD"})
     assert SHADOW_SYMBOLS == frozenset()
     assert NO_TRADE_SYMBOLS == frozenset()
-    assert PAIR_STRATEGY_IDS == {"XAUUSD": "D1_TSMOM_60_200"}
+    assert PAIR_STRATEGY_IDS["XAUUSD"] == "D1_TSMOM_60_200"
+    assert PAIR_STRATEGY_IDS["USDJPY"] == "D1_DONCHIAN55_200"
+    assert PAIR_STRATEGY_IDS["GBPUSD"] == "H4_MEAN_REVERT_Z2_TO_SMA20"
     assert FORWARD_DEMO_SCORE == 60.0
     assert D1_MAX_HOLD_BARS == 30
     assert H4_MAX_HOLD_BARS == 12
