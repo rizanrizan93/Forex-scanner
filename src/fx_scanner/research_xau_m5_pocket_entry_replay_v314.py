@@ -449,8 +449,9 @@ def _summary(
         "profit_factor": (
             sum(positive) / abs(sum(negative))
             if negative
-            else inf if positive else None
+            else None
         ),
+        "profit_factor_unbounded": bool(positive and not negative),
         "precision_5_and_tp": len(precise),
         "precision_5_and_tp_rate": (
             len(precise) / len(resolved) if resolved else None
@@ -522,11 +523,13 @@ def _select_development_combo(grid: dict[str, Any]) -> str | None:
         pf = summary.get("profit_factor")
         avg_r = summary.get("avg_net_r")
         fill_rate = summary.get("fill_rate")
-        if pf is None or avg_r is None or fill_rate is None:
+        unbounded_pf = bool(summary.get("profit_factor_unbounded"))
+        if (pf is None and not unbounded_pf) or avg_r is None or fill_rate is None:
             continue
+        rank_pf = 1_000_000.0 if unbounded_pf else float(pf)
         eligible.append(
             (
-                -float(pf),
+                -rank_pf,
                 -float(avg_r),
                 -float(summary.get("precision_5_and_tp_rate") or 0.0),
                 -float(fill_rate),
@@ -544,7 +547,11 @@ def _holdout_gate(summary: dict[str, Any]) -> dict[str, Any]:
     fill_rate = float(summary.get("fill_rate") or 0.0)
     tp_rate = float(summary.get("tp_rate") or 0.0)
     wilson = float(summary.get("tp_wilson_lower_95") or 0.0)
-    pf = float(summary.get("profit_factor") or 0.0)
+    pf = (
+        1_000_000.0
+        if bool(summary.get("profit_factor_unbounded"))
+        else float(summary.get("profit_factor") or 0.0)
+    )
     avg_r = float(summary.get("avg_net_r") or 0.0)
     precise = float(summary.get("precision_5_and_tp_rate") or 0.0)
     passed = bool(
