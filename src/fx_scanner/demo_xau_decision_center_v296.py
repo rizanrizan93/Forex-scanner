@@ -300,7 +300,7 @@ def _geometry_candidates(
                 "research_probe_eligible": bool(
                     engine == "RIZAN_DEPTH"
                     and research_probe_ok
-                    and state in {"ARMED", "EXECUTION_READY", "COOLDOWN"}
+                    and state in {"ARMED", "EXECUTION_READY"}
                 ),
                 "calibration": calibrations.get(engine, {}),
                 "observed_at": row.get("observed_at"),
