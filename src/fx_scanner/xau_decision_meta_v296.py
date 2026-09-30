@@ -233,7 +233,7 @@ def build_meta_decision(
     research_probe_eligible = bool(
         geometry_complete
         and consensus in {"LONG", "SHORT"}
-        and state in {"ARMED", "EXECUTION_READY", "COOLDOWN"}
+        and state in {"ARMED", "EXECUTION_READY"}
         and not hard_blocks
         and bool(geometry.get("research_probe_eligible"))
     )
