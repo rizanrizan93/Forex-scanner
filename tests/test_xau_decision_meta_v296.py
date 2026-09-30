@@ -207,6 +207,7 @@ def test_v296_rizan_geometry_marks_research_probe_only_when_runtime_gates_allow(
     ]
     child_hb = {
         "details": {
+            "aligned_parent_signal_ids": ["sig"],
             "pressure_transition": {
                 "hard_block": False,
                 "calibration_entry_allowed": True,
@@ -348,3 +349,121 @@ def test_v300_v284_missing_report_fails_closed_as_context_only(tmp_path) -> None
     assert evidence["execution_authority"] is False
     assert evidence["execution_influence"] is False
     assert evidence["role"] == "NON_VOTING_HISTORICAL_PRECISION_CALIBRATION"
+
+
+
+def test_v301_conflict_probe_requires_near_consensus_and_aligned_rizan_reference() -> None:
+    votes = [
+        {
+            "engine": "V182_STRUCTURE",
+            "direction": "SHORT",
+            "available": True,
+            "base_weight": 0.60,
+            "freshness_factor": 1.0,
+            "calibration": {"reliability_multiplier": 0.35},
+        },
+        {
+            "engine": "M15_SMC_RECLAIM",
+            "direction": "LONG",
+            "available": True,
+            "base_weight": 0.90,
+            "freshness_factor": 1.0,
+            "calibration": {"reliability_multiplier": 0.35},
+        },
+        {
+            "engine": "V171_ENSEMBLE",
+            "direction": "SHORT",
+            "available": True,
+            "base_weight": 0.40,
+            "freshness_factor": 1.0,
+            "calibration": {"reliability_multiplier": 0.35},
+        },
+    ]
+    reference = {
+        "engine": "RIZAN_DEPTH",
+        "signal_id": "aligned-parent",
+        "direction": "SHORT",
+        "state": "ARMED",
+        "score": 93,
+        "entry_low": 4180.2,
+        "entry_high": 4198.0,
+        "sl": 4200.6,
+        "tp1": 4149.7,
+        "tp2": 4149.7,
+        "rr2": 3.4,
+        "active_guards": ["M5_ACTUAL_ENTRY_REQUIRED"],
+        "geometry_authority": True,
+        "aligned_parent": True,
+        "research_probe_eligible": True,
+        "calibration": {"reliability_multiplier": 0.35},
+    }
+
+    decision = build_meta_decision(
+        votes=votes,
+        geometry_candidates=[reference],
+        gates=[],
+        possible_base_weight=1.90,
+    )
+
+    assert decision["consensus_direction"] == "WAIT"
+    assert decision["dominant_direction"] == "SHORT"
+    assert decision["agreement"] >= 0.55
+    assert abs(decision["direction_score"]) >= 0.10
+    assert decision["reference_geometry"]["signal_id"] == "aligned-parent"
+    assert decision["conflict_research_probe_eligible"] is True
+    assert decision["action"] == "DEMO_CONFLICT_RESEARCH_PROBE_ELIGIBLE"
+
+
+def test_v301_conflict_probe_fails_closed_when_reference_parent_not_aligned() -> None:
+    votes = [
+        {
+            "engine": "SHORT_A",
+            "direction": "SHORT",
+            "available": True,
+            "base_weight": 0.60,
+            "freshness_factor": 1.0,
+            "calibration": {"reliability_multiplier": 0.35},
+        },
+        {
+            "engine": "LONG",
+            "direction": "LONG",
+            "available": True,
+            "base_weight": 0.90,
+            "freshness_factor": 1.0,
+            "calibration": {"reliability_multiplier": 0.35},
+        },
+        {
+            "engine": "SHORT_B",
+            "direction": "SHORT",
+            "available": True,
+            "base_weight": 0.40,
+            "freshness_factor": 1.0,
+            "calibration": {"reliability_multiplier": 0.35},
+        },
+    ]
+    stale_reference = {
+        "engine": "RIZAN_DEPTH",
+        "signal_id": "stale-parent",
+        "direction": "SHORT",
+        "state": "ARMED",
+        "entry_low": 4180.2,
+        "entry_high": 4198.0,
+        "sl": 4200.6,
+        "tp1": 4149.7,
+        "tp2": 4149.7,
+        "rr2": 3.4,
+        "geometry_authority": True,
+        "aligned_parent": False,
+        "research_probe_eligible": False,
+        "calibration": {"reliability_multiplier": 0.35},
+    }
+    decision = build_meta_decision(
+        votes=votes,
+        geometry_candidates=[stale_reference],
+        gates=[],
+        possible_base_weight=1.90,
+    )
+
+    assert decision["consensus_direction"] == "WAIT"
+    assert decision["conflict_research_probe_eligible"] is False
+    assert decision["action"] == "WAIT_ENGINE_CONFLICT"
