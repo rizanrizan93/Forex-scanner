@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from statistics import median
 import pandas as pd
-from .research_xau_entry_cycle import candidate_grid, replay, next_cycle, RESEARCH_VERSION
+from .research_xau_entry_cycle import (candidate_grid, replay, next_cycle, next_cycle_with_active_ledger, RESEARCH_VERSION)
 from .research_xau_entry_tp_precision_v284 import metrics, _wilson_lower
 from .research_xau_v229_historical_v242 import price_arrays, simulate_year
 from .research_xau_v229_historical_v242_year_runtime import _download
@@ -23,13 +23,31 @@ def score(rows, key, mode):
     times=[r["holding_minutes"] for r in sample if r["state"]=="TP"]
     reaction=[r["reaction_minutes"] for r in sample if r.get("reaction_minutes") is not None]
     cycles=[r["cycle"] for r in sample if r.get("cycle",{}).get("state") != "CENSORED"]
+    ledger_cycles=[
+        r["cycle_with_active_ledger"]
+        for r in sample
+        if r.get("cycle_with_active_ledger",{}).get("state") != "CENSORED"
+    ]
     result.update(fast_precision_tp=fast, fast_joint_rate=fast/len(sample) if sample else None,
                   fast_wilson_lower=_wilson_lower(fast,len(sample)),
                   median_tp_minutes=median(times) if times else None,
                   median_reaction_minutes=median(reaction) if reaction else None,
                   cycle_evaluable_opportunities=len(cycles),
                   cycle_successes=sum(bool(r.get("cycle_success")) for r in cycles),
-                  next_opposite_candidates=sum(r.get("state")=="SELECTED" for r in cycles))
+                  next_opposite_candidates=sum(r.get("state")=="SELECTED" for r in cycles),
+                  ledger_cycle_evaluable_opportunities=len(ledger_cycles),
+                  ledger_cycle_successes=sum(bool(r.get("cycle_success")) for r in ledger_cycles),
+                  ledger_next_opposite_candidates=sum(r.get("state")=="SELECTED" for r in ledger_cycles),
+                  ledger_active_at_tp_candidates=sum(
+                      r.get("state")=="SELECTED"
+                      and r.get("selection_origin")=="ACTIVE_AT_TP"
+                      for r in ledger_cycles
+                  ),
+                  ledger_new_after_tp_candidates=sum(
+                      r.get("state")=="SELECTED"
+                      and r.get("selection_origin")=="NEW_PUBLICATION_AFTER_TP"
+                      for r in ledger_cycles
+                  ))
     return result
 
 
@@ -72,7 +90,9 @@ def aggregate(shards):
                 limitations=["RETROSPECTIVE_V242_PARENT_TOUCH_CONDITIONED_UNIVERSE_NOT_PROSPECTIVE_OOS",
                              "FIXED_SPREAD_M1_PROXY_NOT_BROKER_FILL",
                              "FOUR_HOUR_HOLD_DIFFERS_FROM_V284_THIRTY_DAYS",
-                             "NEW_OPPOSITE_PUBLICATIONS_ONLY_NO_AUTOMATIC_REVERSE",
+                             "LEGACY_CYCLE_METRIC_REMAINS_NEW_PUBLICATION_ONLY_FOR_COMPARABILITY",
+                             "V308_LEDGER_ADDS_ALREADY_ACTIVE_OPPOSITE_SETUPS_AT_FIRST_TP",
+                             "HISTORICAL_LEDGER_USES_SYNTHETIC_M1_QUOTES_NOT_ACTUAL_BROKER_EVENTS",
                              "MULTIPLE_CANDIDATES_REQUIRE_FORWARD_DEMO_VALIDATION"],
                 sources=[dict(year=s["year"],price_end=s["price_end"],provenance=s["price_provenance"]) for s in shards])
 
@@ -113,8 +133,23 @@ def year_replay(year, frame, provenance):
                     result["cycle"]=dict(state="CENSORED",reason="NEXT_YEAR_PLAN_CATALOG_UNAVAILABLE")
                 else:
                     result["cycle"]=next_cycle(first=result,first_plan=plan,plans=plans,px=px,key=key,spread_usd=spread,slippage_usd=slip,hold_minutes=HOLD_MINUTES)
+                    result["cycle_with_active_ledger"]=next_cycle_with_active_ledger(
+                        first=result,
+                        first_plan=plan,
+                        plans=plans,
+                        px=px,
+                        key=key,
+                        spread_usd=spread,
+                        slippage_usd=slip,
+                        hold_minutes=HOLD_MINUTES,
+                    )
                 pairs[key][mode]=result
-        if any(v["state"]=="CENSORED" for pair in pairs.values() for v in pair.values()):
+        if any(
+            v["state"]=="CENSORED"
+            or v.get("cycle",{}).get("state")=="CENSORED"
+            or v.get("cycle_with_active_ledger",{}).get("state")=="CENSORED"
+            for pair in pairs.values() for v in pair.values()
+        ):
             row["censored"]=True
         else:
             row["pairs"]=pairs
@@ -122,6 +157,9 @@ def year_replay(year, frame, provenance):
             exits += [pd.Timestamp(v["cycle"]["next_result"]["exit_at"])
                       for pair in pairs.values() for v in pair.values()
                       if v.get("cycle",{}).get("next_result",{}).get("exit_at")]
+            exits += [pd.Timestamp(v["cycle_with_active_ledger"]["next_result"]["exit_at"])
+                      for pair in pairs.values() for v in pair.values()
+                      if v.get("cycle_with_active_ledger",{}).get("next_result",{}).get("exit_at")]
             row["mature_at"]=max([mature]+exits).isoformat()
         rows.append(row)
     return dict(research_version=RESEARCH_VERSION,year=year,price_provenance=provenance,
