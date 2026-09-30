@@ -57,6 +57,7 @@ on:
       - "src/fx_scanner/xau_decision_meta_v296.py"
       - "src/fx_scanner/demo_xau_decision_center_v296.py"
       - "src/fx_scanner/demo_xau_meta_research_sampler_v297.py"
+      - "src/fx_scanner/demo_xau_structural_control_sampler_v303.py"
       - "src/fx_scanner/xau_pressure_transition_v249.py"
       - "src/fx_scanner/xau_dynamic_depth_hazard_v251.py"
       - "src/fx_scanner/demo_xau_v229_ladder_plan.py"
