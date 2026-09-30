@@ -16,9 +16,9 @@ def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_hando
     assert "sleep 60" in text
     assert "fast_cadence_seconds=60" in text
     assert "maintenance_cadence_seconds=300" in text
-    assert "calibration_cadence_seconds=3600" in text
-    assert 'if [ "${cycle}" -eq 1 ] && [ "$(date -u +%M)" = "02" ]' in text
-    assert "SUPERVISOR_CALIBRATION_SKIP_CADENCE" in text
+    assert "calibration_mode=PAUSED_XAU_ONLY" in text
+    assert "SUPERVISOR_CALIBRATION_PAUSED_XAU_ONLY" in text
+    assert "dispatch_workflow ctrader-demo-calibration-pipeline.yml" not in text
     assert "execution_authority=NONE" in text
     assert "discovery_check_seconds=60" in text
     assert "universe=XAUUSD" in text
@@ -82,7 +82,8 @@ def test_split_lanes_remain_fail_safe_and_discovery_never_executes() -> None:
     assert "python -m fx_scanner.demo_xau_v24_champion_candidate_producer" in fast
     assert "python -m fx_scanner.demo_xau_m15_ema_smc_reclaim_candidate_producer" in fast
     assert "python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10" in fast
-    assert "python -m fx_scanner.demo_five_core_time_exit" in fast
+    assert "python -m fx_scanner.demo_five_core_time_exit" not in fast
+    assert "python -m fx_scanner.demo_euraud_gbpaud_chandelier" not in fast
     assert "python -m fx_scanner.demo_structural_profit_protector" in fast
     assert 'CTRADER_DEMO_FAST_MAX_SYMBOLS: "1"' in fast
     assert 'CTRADER_DEMO_ALLOW_SAME_SYMBOL_STACKING: "1"' in fast
