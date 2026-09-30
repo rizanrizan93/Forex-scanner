@@ -912,12 +912,51 @@ def run() -> int:
     cutoff = now - timedelta(days=LOOKBACK_DAYS)
     rows: tuple[dict[str, Any], ...] = ()
     written = 0
-    error: str | None = None
+    errors: list[dict[str, str]] = []
+    event_diagnostics: dict[str, Any] = {}
 
     try:
-        events = _events(store, cutoff=cutoff)
+        events, event_diagnostics = _events_with_diagnostics(
+            store,
+            cutoff=cutoff,
+        )
+    except Exception as exc:
+        events = ()
+        errors.append(
+            {
+                "source": "events",
+                "severity": "CRITICAL",
+                "error": f"{type(exc).__name__}:{exc}",
+            }
+        )
+
+    errors.extend(list(event_diagnostics.get("query_errors") or []))
+
+    try:
         signals = _signals(store, cutoff=cutoff)
+    except Exception as exc:
+        signals = ()
+        errors.append(
+            {
+                "source": "signals",
+                "severity": "CRITICAL",
+                "error": f"{type(exc).__name__}:{exc}",
+            }
+        )
+
+    try:
         outcomes = _outcomes(store, cutoff=cutoff)
+    except Exception as exc:
+        outcomes = ()
+        errors.append(
+            {
+                "source": "outcomes",
+                "severity": "DEGRADED",
+                "error": f"{type(exc).__name__}:{exc}",
+            }
+        )
+
+    try:
         rows = _lifecycle_rows(
             prepared_events=_prepared_events(events),
             forecast_events=_forecast_events(events),
@@ -926,12 +965,41 @@ def run() -> int:
             outcomes=outcomes,
             now=now,
         )
-        written = _upsert_rows(store, rows)
     except Exception as exc:
-        error = f"{type(exc).__name__}:{exc}"
+        rows = ()
+        errors.append(
+            {
+                "source": "lifecycle_reconstruction",
+                "severity": "CRITICAL",
+                "error": f"{type(exc).__name__}:{exc}",
+            }
+        )
+
+    if rows:
+        try:
+            written = _upsert_rows(store, rows)
+        except Exception as exc:
+            errors.append(
+                {
+                    "source": "lifecycle_upsert",
+                    "severity": "CRITICAL",
+                    "error": f"{type(exc).__name__}:{exc}",
+                }
+            )
 
     metrics = lifecycle_metrics(rows)
-    healthy = error is None
+    critical_errors = [
+        item for item in errors if str(item.get("severity") or "") == "CRITICAL"
+    ]
+    degraded_errors = [
+        item for item in errors if str(item.get("severity") or "") == "DEGRADED"
+    ]
+    healthy = not critical_errors
+    degraded = bool(errors)
+    error = " | ".join(
+        f"{item.get('source')}={item.get('error')}"
+        for item in errors
+    ) or None
     store.write_heartbeat(
         WORKER_NAME,
         healthy=healthy,
@@ -942,10 +1010,20 @@ def run() -> int:
             "execution_influence": False,
             "live_execution_enabled": False,
             "lookback_days": LOOKBACK_DAYS,
-            "event_read_contract": "V282_NARROW_FIELDS_RECENT_RECONSTRUCTION",
+            "event_read_contract": "V288_PLAN_SCOPED_FAIL_SOFT_RECONSTRUCTION",
             "max_event_rows_per_type": MAX_EVENT_ROWS_PER_TYPE,
+            "max_prepared_rows_per_type": MAX_PREPARED_ROWS_PER_TYPE,
             "max_signal_rows": MAX_SIGNAL_ROWS,
             "max_outcome_rows": MAX_OUTCOME_ROWS,
+            "event_cutoff_pad_minutes": EVENT_CUTOFF_PAD_MINUTES,
+            "event_diagnostics": event_diagnostics,
+            "degraded": degraded,
+            "degraded_sources": [
+                str(item.get("source") or "") for item in degraded_errors
+            ],
+            "critical_sources": [
+                str(item.get("source") or "") for item in critical_errors
+            ],
             "rows_upserted": written,
             "metrics": metrics,
             "error": error,
@@ -954,9 +1032,12 @@ def run() -> int:
     )
     print(
         "CTRADER_DEMO_XAU_PREPARED_PLAN_LIFECYCLE "
-        f"healthy={healthy} plans={metrics['plans']} rows_upserted={written} "
+        f"healthy={healthy} degraded={degraded} "
+        f"plans={metrics['plans']} rows_upserted={written} "
         f"cancel_rate={metrics['cancellation_rate']} "
         f"execution_conversion={metrics['execution_conversion_rate']} "
+        f"critical_sources={len(critical_errors)} "
+        f"degraded_sources={len(degraded_errors)} "
         f"error={error or 'NONE'}"
     )
     return 0 if healthy else 2
