@@ -372,6 +372,63 @@ def _gates(latest: dict[str, dict[str, Any]], now: datetime) -> list[dict[str, A
     return gates
 
 
+def _support_evidence(latest: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    v226 = dict(latest.get("ctrader_demo_xau_v226_rizan_depth_map") or {})
+    v226_eval = dict(dict(v226.get("details") or {}).get("evaluation") or {})
+    candidate = dict(v226_eval.get("depth_entry_candidate") or {})
+    child = dict(latest.get("ctrader_demo_xau_v229_child_executor") or {})
+    child_details = dict(child.get("details") or {})
+    pressure = dict(child_details.get("pressure_transition") or {})
+    reversal = dict(child_details.get("reversal_stage") or {})
+    hazard = dict(child_details.get("dynamic_depth_hazard") or {})
+    dom = dict(latest.get("ctrader_demo_xau_dom_v191") or {})
+    dom_analysis = dict(dict(dom.get("details") or {}).get("analysis") or {})
+    event = dict(latest.get("ctrader_demo_xau_event_risk_v192") or {})
+    event_risk = dict(dict(event.get("details") or {}).get("risk") or {})
+
+    return [
+        {
+            "engine": "V226_DEPTH_MAP",
+            "role": "NON_VOTING_GEOMETRY_CONTEXT",
+            "decision": str(v226_eval.get("focus_direction") or "WAIT").upper(),
+            "state": str(candidate.get("display_status") or v226_eval.get("state") or "UNAVAILABLE"),
+            "detail": (
+                f"depth={candidate.get('entry_reference')}"
+                if candidate
+                else "NO_DEPTH_CANDIDATE"
+            ),
+        },
+        {
+            "engine": "V280_REVERSAL_STAGE",
+            "role": "NON_VOTING_EXECUTION_GATE",
+            "decision": str(reversal.get("direction") or "WAIT").upper(),
+            "state": str(reversal.get("stage") or "UNAVAILABLE"),
+            "detail": ",".join(str(x) for x in (reversal.get("reasons") or [])),
+        },
+        {
+            "engine": "V251_DYNAMIC_DEPTH",
+            "role": "NON_VOTING_EXECUTION_GATE",
+            "decision": str(hazard.get("direction") or "WAIT").upper(),
+            "state": str(hazard.get("action") or "UNAVAILABLE"),
+            "detail": f"depth={hazard.get('current_depth')}",
+        },
+        {
+            "engine": "V191_DOM_PRESSURE",
+            "role": "NON_VOTING_TIMING_GATE",
+            "decision": str(pressure.get("direction") or "WAIT").upper(),
+            "state": str(pressure.get("state") or dom_analysis.get("state") or "UNAVAILABLE"),
+            "detail": str(pressure.get("reason") or ""),
+        },
+        {
+            "engine": "V192_EVENT_RISK",
+            "role": "NON_VOTING_CONTEXT_GATE",
+            "decision": "CONTEXT",
+            "state": str(event_risk.get("state") or "UNAVAILABLE"),
+            "detail": str(event_risk.get("action") or ""),
+        },
+    ]
+
+
 def _decision_signature(decision: dict[str, Any]) -> str:
     geometry = dict(decision.get("geometry") or {})
     payload = "|".join(
@@ -454,6 +511,7 @@ def run() -> int:
     decision["decision_signature"] = _decision_signature(decision)
     decision["calibration_source"] = "XAU_OUTCOME_LEDGER_FORWARD_FIRST"
     decision["calibration_min_decisive_sample"] = 30
+    decision["support_evidence"] = _support_evidence(latest)
 
     store.write_heartbeat(
         WORKER_NAME,
