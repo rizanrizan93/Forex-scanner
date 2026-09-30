@@ -101,6 +101,7 @@ RIZAN_DASHBOARD_SUPPORT_HEARTBEATS = (
     "ctrader_demo_xau_v223_m5_pocket_cluster_selector",
     "ctrader_demo_xau_v224_primary_pocket_prospective",
     "ctrader_demo_xau_v227_depth_map_prospective",
+    "ctrader_demo_xau_prepared_plan_lifecycle",
     "ctrader_xau_expected_move_envelope_v170",
     "ctrader_xau_forecast_ensemble_v171",
     "ctrader_xau_htf_strategic_regime_v180",
@@ -2246,6 +2247,9 @@ with forecast_tab:
     v229_depth_execution_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v229_depth_execution"
     )
+    v282_lifecycle_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_prepared_plan_lifecycle"
+    )
     v229_child_executor_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v229_child_executor"
     )
@@ -3395,6 +3399,12 @@ with forecast_tab:
         {} if v229_child_executor_hb is None
         else dict(v229_child_executor_hb.get("details") or {})
     )
+    v282_lifecycle_details = (
+        {} if v282_lifecycle_hb is None
+        else dict(v282_lifecycle_hb.get("details") or {})
+    )
+    v282_lifecycle_metrics = dict(v282_lifecycle_details.get("metrics") or {})
+    v282_latency_metrics = dict(v282_lifecycle_metrics.get("latency") or {})
     v229_child_actions = list(v229_child_details.get("actions") or [])
     v240_reversal_stage = dict(
         v229_exec_details.get("reversal_stage")
@@ -4778,6 +4788,77 @@ with forecast_tab:
                 if str(v240_depth_hazard.get("state") or "") == "GEOMETRY_ONLY"
                 else "Hazard prior tetap tidak boleh dipakai sebagai probabilitas reuse atau izin order."
             )
+        )
+
+        st.markdown("###### V282 Forward Latency — observability DEMO")
+        v282_plan_count = int(v282_lifecycle_metrics.get("plans") or 0)
+        v282_cancel_rate = v282_lifecycle_metrics.get("cancellation_rate")
+        v282_execution_rate = v282_lifecycle_metrics.get("execution_conversion_rate")
+        v282_prevented = int(v282_lifecycle_metrics.get("v280_prevented_entry_count") or 0)
+        lat1, lat2 = st.columns(2)
+        lat1.metric(
+            "Forward plans",
+            f"{v282_plan_count:,}",
+            (
+                "sample kecil"
+                if v282_plan_count < 25
+                else "sample observability"
+            ),
+        )
+        lat2.metric(
+            "Execution conversion",
+            _fmt_pct(v282_execution_rate),
+            f"cancel {_fmt_pct(v282_cancel_rate)}",
+        )
+
+        def _latency_median(label: str) -> str:
+            row = dict(v282_latency_metrics.get(label) or {})
+            value = row.get("median_minutes")
+            n = int(row.get("n") or 0)
+            return (
+                f"{float(value):.1f} menit • n={n}"
+                if value is not None
+                else f"N/A • n={n}"
+            )
+
+        lat3, lat4 = st.columns(2)
+        lat3.metric(
+            "Touch → konfirmasi",
+            _latency_median("first_touch_to_confirmation"),
+        )
+        lat4.metric(
+            "Konfirmasi → ready",
+            _latency_median("confirmation_to_execution_ready"),
+        )
+        lat5, lat6 = st.columns(2)
+        lat5.metric(
+            "Ready → order accepted",
+            _latency_median("execution_ready_to_order_accepted"),
+        )
+        lat6.metric(
+            "V280 entry dicegah",
+            str(v282_prevented),
+            (
+                f"no-chase={int(v282_lifecycle_metrics.get('v280_no_chase_prevented_count') or 0)} • "
+                f"break={int(v282_lifecycle_metrics.get('v280_break_risk_block_count') or 0)} • "
+                f"invalid={int(v282_lifecycle_metrics.get('v280_setup_invalid_block_count') or 0)}"
+            ),
+        )
+        if v282_plan_count < 25:
+            st.warning(
+                "**Forward sample belum cukup untuk inferensi performa.** "
+                f"Baru {v282_plan_count} plan lifecycle dalam window observability. "
+                "Gunakan panel ini untuk mengukur bottleneck waktu dan entry yang dicegah, "
+                "bukan untuk menyimpulkan win rate/PF/expectancy."
+            )
+        else:
+            st.info(
+                "V282 adalah telemetry forward DEMO. Latency dihitung dari timestamp lifecycle "
+                "aktual; tetap bukan bukti profitabilitas sampai jumlah trade OOS/forward memenuhi gate."
+            )
+        st.caption(
+            "Egress: heartbeat V282 dibaca pada support cadence 1 jam; lifecycle reconstruction "
+            "sendiri dibatasi 7 hari dengan narrow fields. Tidak ada polling baru per 60 detik."
         )
 
         st.markdown("###### Current Supply/Demand Lifecycle")
