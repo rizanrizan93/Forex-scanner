@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import re
+
 
 TRANSIENT_RETRY_DELAYS = (0.0, 0.5, 1.0)
-_TRANSIENT_STATUS_CODES = frozenset({"408", "429", "502", "503", "504"})
+_TRANSIENT_STATUS_CODES = frozenset({"408", "429", "502", "503", "504", "522", "524"})
 _TRANSIENT_MARKERS = (
     "gateway timeout",
     "bad gateway",
@@ -38,6 +40,22 @@ def is_transient_backend_error(exc: BaseException) -> bool:
             raw = getattr(current, attr, None)
             if raw is not None and str(raw).strip() in _TRANSIENT_STATUS_CODES:
                 return True
+
+        first_arg = current.args[0] if current.args else None
+        if (
+            isinstance(first_arg, dict)
+            and str(first_arg.get("code") or "").strip() in _TRANSIENT_STATUS_CODES
+        ):
+            return True
+        if (
+            type(current).__module__.startswith("postgrest")
+            and type(current).__name__ == "APIError"
+            and re.search(
+                r"['\"]code['\"]:\s*['\"]?(?:408|429|502|503|504|522|524)\b",
+                str(current)[:800],
+            )
+        ):
+            return True
 
         text = f"{type(current).__name__}: {current}".lower()
         if any(marker in text for marker in _TRANSIENT_MARKERS):

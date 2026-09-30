@@ -22,6 +22,7 @@ from .research_xau_forecast_ensemble_v171 import (
 from .research_xau_expected_move_envelope_v170 import evaluate_expected_move_v170
 from .research_xau_m15_dual_strategy_runtime import _fetch_history
 from .storage.supabase_operational import SupabaseOperationalStore
+from .transient import is_transient_backend_error
 from .xau_standalone_ctrader_v253 import build_standalone_ctrader_feed
 from .exceptions import ConfigurationError
 
@@ -32,17 +33,8 @@ CFTC_GOLD_URL = "https://www.cftc.gov/dea/futures/other_lf.htm"
 
 
 def _transient_db_unavailable(exc: Exception) -> bool:
-    """Recognize transport/5xx failures; never hide schema or logic errors."""
-    seen: set[int] = set()
-    current: BaseException | None = exc
-    for _ in range(4):
-        if current is None or id(current) in seen:
-            break
-        seen.add(id(current))
-        if _direct_transient_db_error(current):
-            return True
-        current = current.__cause__
-    return False
+    """Compatibility wrapper around the shared backend outage classifier."""
+    return is_transient_backend_error(exc)
 
 
 def _direct_transient_db_error(exc: BaseException) -> bool:
@@ -391,8 +383,11 @@ def run() -> int:
     except Exception as exc:
         if not _transient_db_unavailable(exc):
             raise
-        print(f"V171_DB_WRITE_UNAVAILABLE artifact={path} error_type={type(exc).__name__}")
-        return 2
+        print(
+            f"V171_DB_WRITE_UNAVAILABLE artifact={path} "
+            f"error_type={type(exc).__name__} degraded_shadow=1"
+        )
+        return 0
 
     primary = dict(ensemble.get("primary_scenario") or {})
     print(
@@ -401,7 +396,9 @@ def run() -> int:
         f"confidence={primary.get('confidence')} coverage={ensemble.get('coverage')} "
         f"cot_available={cot.get('available')} execution_influence=0 artifact={path}"
     )
-    return 0 if operational_read_status == "OK" else 2
+    # This worker is SHADOW_ONLY. Transient DB loss is reported in the artifact
+    # but is not a forecast computation failure. No execution authority exists.
+    return 0
 
 
 if __name__ == "__main__":

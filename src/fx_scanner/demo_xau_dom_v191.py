@@ -11,6 +11,7 @@ from .config import load_project_config
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
+from .transient import is_transient_backend_error
 
 SYMBOL = "XAUUSD"
 WORKER_NAME = "ctrader_demo_xau_dom_v191"
@@ -239,6 +240,37 @@ def _to_frame(snapshot) -> DomFrame:
     )
 
 
+def _latest_previous_safe(
+    store: SupabaseOperationalStore,
+) -> tuple[dict[str, Any], str]:
+    try:
+        return _latest_previous(store), "OK"
+    except Exception as exc:
+        if not is_transient_backend_error(exc):
+            raise
+        return {}, "TRANSIENT_DB_UNAVAILABLE"
+
+
+def _write_heartbeat_safe(
+    store: SupabaseOperationalStore,
+    *,
+    healthy: bool,
+    details: dict[str, Any],
+) -> str:
+    try:
+        store.write_heartbeat(
+            WORKER_NAME,
+            healthy=healthy,
+            lag_seconds=0.0,
+            details=details,
+        )
+        return "OK"
+    except Exception as exc:
+        if not is_transient_backend_error(exc):
+            raise
+        return "TRANSIENT_DB_UNAVAILABLE"
+
+
 def _latest_previous(store: SupabaseOperationalStore) -> dict[str, Any]:
     response = (
         store.client.table("runtime_heartbeats")
@@ -334,6 +366,41 @@ def _cross_run_change(
     }
 
 
+def _build_dom_feed(policy: Any, operational_read_status: str):
+    """Prefer durable research feed, but keep read-only DOM alive during DB outage."""
+    if operational_read_status == "OK":
+        try:
+            return build_ctrader_research_feed(policy, (SYMBOL,)), "DURABLE_RESEARCH_FEED"
+        except Exception as exc:
+            if not is_transient_backend_error(exc):
+                raise
+
+    # Local import avoids a module cycle: the standalone module reuses this
+    # module's DomFrame/analyzer, while this fallback is only resolved at run time.
+    from .xau_standalone_ctrader_v253 import build_standalone_ctrader_feed
+
+    cfg = policy.ctrader
+
+    def required(env_key: str) -> str:
+        value = os.getenv(str(cfg[env_key]), "").strip()
+        if not value:
+            raise RuntimeError(f"missing cTrader standalone credential: {env_key}")
+        return value
+
+    account_raw = os.getenv(str(cfg["account_id_env"]), "").strip()
+    return (
+        build_standalone_ctrader_feed(
+            client_id=required("client_id_env"),
+            client_secret=required("client_secret_env"),
+            access_token=required("access_token_env"),
+            refresh_token=required("refresh_token_env"),
+            trader_login=int(required("trader_login_env")),
+            account_id=(None if not account_raw else int(account_raw)),
+        ),
+        "STANDALONE_READ_ONLY_DB_OUTAGE",
+    )
+
+
 def run() -> int:
     cfg = load_project_config(None)
     policy = load_execution_policy(None)
@@ -364,8 +431,8 @@ def run() -> int:
     )
 
     store = SupabaseOperationalStore.from_env()
-    previous = _latest_previous(store)
-    feed = build_ctrader_research_feed(policy, (SYMBOL,))
+    previous, operational_read_status = _latest_previous_safe(store)
+    feed, feed_mode = _build_dom_feed(policy, operational_read_status)
     frames: list[DomFrame] = []
     error: str | None = None
     subscribed = False
@@ -427,6 +494,7 @@ def run() -> int:
         "frames_collected": len(frames),
         "analysis": analysis,
         "source": "CTRADER_OPEN_API_LEVEL_II",
+        "feed_mode": feed_mode,
         "source_scope": "BROKER_VENUE_LIQUIDITY_NOT_COMEX_CONSOLIDATED_BOOK",
         "policy_effect": "VISIBLE_OPERATIONAL_CONTEXT",
         "dom_sample_retention_days": DOM_SAMPLE_RETENTION_DAYS,
@@ -435,21 +503,27 @@ def run() -> int:
         "execution_authority": False,
         "live_execution_enabled": False,
         "error": error,
+        "operational_read_status": operational_read_status,
         "code_version": os.getenv("GITHUB_SHA", "LOCAL"),
     }
-    store.write_heartbeat(
-        WORKER_NAME,
+    heartbeat_write_status = _write_heartbeat_safe(
+        store,
         healthy=healthy,
-        lag_seconds=0.0,
         details=details,
     )
+    details["heartbeat_write_status"] = heartbeat_write_status
     print(
         "CTRADER_DEMO_XAU_DOM_V191 "
         f"healthy={int(healthy)} frames={len(frames)} "
         f"state={analysis.get('state')} "
         f"score={analysis.get('dom_pressure_score')} "
+        f"db_read={operational_read_status} "
+        f"db_write={heartbeat_write_status} "
         f"execution_authority=0"
     )
+    # DOM is observability-only. A transient Supabase outage must not erase the
+    # independently collected cTrader Level-II evidence or look like a broker
+    # failure. Execution consumers still fail closed on stale/missing DB state.
     return 0 if error is None else 2
 
 

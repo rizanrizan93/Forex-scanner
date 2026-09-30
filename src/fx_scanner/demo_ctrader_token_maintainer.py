@@ -8,6 +8,7 @@ from .execution.ctrader_session import CTraderOpenApiSession
 from .execution.ctrader_tokens import CTraderTokenStateStore
 from .execution.policy import load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
+from .transient import is_transient_backend_error
 
 PROACTIVE_ROTATION_AGE = timedelta(days=20)
 
@@ -65,14 +66,26 @@ def run() -> int:
 
     token_store = CTraderTokenStateStore(_required_env(cfg["token_state_path_env"]))
     # A refresh invalidates the old refresh token. Prove the durable backend is
-    # writable before crossing that irreversible boundary.
-    token_store.probe_durable_backend()
-    had_durable_state = token_store.has_durable_state()
-    durable_age = token_store.durable_state_age_seconds()
-    tokens = token_store.load(
-        fallback_access=_required_env(cfg["access_token_env"]),
-        fallback_refresh=_required_env(cfg["refresh_token_env"]),
-    )
+    # writable before crossing that irreversible boundary. If Supabase itself
+    # is transiently unavailable, do nothing: no token read, no refresh, no
+    # rotation. This is a safe defer, not evidence that cTrader auth is broken.
+    try:
+        token_store.probe_durable_backend()
+        had_durable_state = token_store.has_durable_state()
+        durable_age = token_store.durable_state_age_seconds()
+        tokens = token_store.load(
+            fallback_access=_required_env(cfg["access_token_env"]),
+            fallback_refresh=_required_env(cfg["refresh_token_env"]),
+        )
+    except Exception as exc:
+        if not is_transient_backend_error(exc):
+            raise
+        print(
+            "CTRADER_DEMO_TOKEN_MAINTAINER_DEFERRED "
+            "reason=TRANSIENT_DURABLE_BACKEND_UNAVAILABLE "
+            "rotation=NONE token_refresh_attempted=0"
+        )
+        return 0
 
     pinned_account_id = _optional_env(cfg["account_id_env"])
     session = CTraderOpenApiSession(
