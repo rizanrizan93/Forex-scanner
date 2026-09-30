@@ -27,6 +27,8 @@ from .demo_xau_zone_reuse_v200 import evaluate_bidirectional_reuse
 from .xau_composite_pressure_v272 import evaluate_xau_composite_pressure_v272
 from .xau_m30_deep_rejection_v277 import evaluate_m30_deep_rejection_v277
 from .xau_m30_entry_policy_v278 import evaluate_m30_entry_policy_v278
+from .xau_rizan_style_path_engine_v303 import build_rizan_style_path_engine
+from .xau_rizan_style_path_calibration_v304 import evaluate_v304
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .models import Bar, ensure_utc
@@ -1567,6 +1569,20 @@ def run() -> int:
         path_map["m5_path_projection"] = m5_path_projection
         path_map["zone_reuse_v200"] = reuse_v200
         payload["path_map"] = path_map
+
+        # V304 evaluates the public-reference forecast only after the current
+        # structural path is fully built. It is research-only and cannot alter
+        # V182 path authority, V229 geometry, or broker admission.
+        style_path_v303 = build_rizan_style_path_engine(
+            atlas_evaluation=payload,
+            price_now=payload.get("last_closed_m15_price"),
+        )
+        payload["rizan_style_path_engine_v303"] = style_path_v303
+        payload["rizan_style_path_calibration_v304"] = evaluate_v304(
+            style_path=style_path_v303,
+            bars=raw,
+            as_of=now,
+        )
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"
     finally:
