@@ -931,34 +931,39 @@ def run() -> int:
         )
 
     errors.extend(list(event_diagnostics.get("query_errors") or []))
+    prepared_events = _prepared_events(events)
 
-    try:
-        signals = _signals(store, cutoff=cutoff)
-    except Exception as exc:
+    if prepared_events:
+        try:
+            signals = _signals(store, cutoff=cutoff)
+        except Exception as exc:
+            signals = ()
+            errors.append(
+                {
+                    "source": "signals",
+                    "severity": "CRITICAL",
+                    "error": f"{type(exc).__name__}:{exc}",
+                }
+            )
+
+        try:
+            outcomes = _outcomes(store, cutoff=cutoff)
+        except Exception as exc:
+            outcomes = ()
+            errors.append(
+                {
+                    "source": "outcomes",
+                    "severity": "DEGRADED",
+                    "error": f"{type(exc).__name__}:{exc}",
+                }
+            )
+    else:
         signals = ()
-        errors.append(
-            {
-                "source": "signals",
-                "severity": "CRITICAL",
-                "error": f"{type(exc).__name__}:{exc}",
-            }
-        )
-
-    try:
-        outcomes = _outcomes(store, cutoff=cutoff)
-    except Exception as exc:
         outcomes = ()
-        errors.append(
-            {
-                "source": "outcomes",
-                "severity": "DEGRADED",
-                "error": f"{type(exc).__name__}:{exc}",
-            }
-        )
 
     try:
         rows = _lifecycle_rows(
-            prepared_events=_prepared_events(events),
+            prepared_events=prepared_events,
             forecast_events=_forecast_events(events),
             signals=signals,
             all_events=events,
@@ -1017,6 +1022,7 @@ def run() -> int:
             "max_outcome_rows": MAX_OUTCOME_ROWS,
             "event_cutoff_pad_minutes": EVENT_CUTOFF_PAD_MINUTES,
             "event_diagnostics": event_diagnostics,
+            "downstream_reads_skipped_without_prepared_plan": not bool(prepared_events),
             "degraded": degraded,
             "degraded_sources": [
                 str(item.get("source") or "") for item in degraded_errors
