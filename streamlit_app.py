@@ -3813,10 +3813,31 @@ with forecast_tab:
             f"{v240_decision.get('direction_source') or '—'}."
         )
 
-        st.markdown("###### Struktur aktif — bukan locator historis")
+        st.markdown("###### Struktur aktif — bukan locator historis • role-aware")
+        v240_zone_role_state = dict(v240_decision.get("zone_role_state") or {})
+        if v240_direction == "LONG":
+            demand_role = "ACTIVE SOURCE"
+            supply_role = "FORWARD OPPOSING / DESTINATION"
+        elif v240_direction == "SHORT":
+            demand_role = "FORWARD OPPOSING / DESTINATION"
+            supply_role = "ACTIVE SOURCE"
+        else:
+            demand_role = "STRUCTURAL"
+            supply_role = "STRUCTURAL"
         qs1, qs2 = st.columns(2)
         qs1.metric("Demand terdekat", _quick_zone_text(v240_nearest_demand))
         qs2.metric("Supply terdekat", _quick_zone_text(v240_nearest_supply))
+        st.caption(
+            f"Role path aktif: Demand={demand_role} • Supply={supply_role}. "
+            "Label legacy dipertahankan agar kontrak dashboard stabil; role menentukan cara membacanya."
+        )
+        if bool(v240_zone_role_state.get("raw_overlap_detected")):
+            st.info(
+                "Atlas mendeteksi supply dan demand mentah yang saling overlap. "
+                "Itu boleh terjadi karena zona dibentuk independen pada timeframe/umur berbeda, "
+                "tetapi dashboard operasional TIDAK lagi memakai keduanya sebagai dua arah entry. "
+                "Panel ini menampilkan source dari path aktif dan opposing zone forward sebagai tujuan."
+            )
         qs3, qs4 = st.columns(2)
         qs3.metric("Harga XAU sekarang", _fmt_price(dc_reference_price))
         qs4.metric(
