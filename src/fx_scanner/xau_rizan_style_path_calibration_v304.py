@@ -310,7 +310,8 @@ def evaluate_reference_outcome(
     rows = tuple(
         row
         for row in sorted(tuple(bars), key=lambda x: ensure_utc(x.timestamp))
-        if available <= ensure_utc(row.timestamp) <= end_at
+        if available <= ensure_utc(row.timestamp)
+        and ensure_utc(row.timestamp) + timedelta(minutes=15) <= end_at
     )
     decision_zone = dict(reference.get("decision_zone") or {})
     key_band = dict(reference.get("key_band") or {})

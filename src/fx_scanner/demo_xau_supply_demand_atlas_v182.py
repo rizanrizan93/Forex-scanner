@@ -28,7 +28,7 @@ from .xau_composite_pressure_v272 import evaluate_xau_composite_pressure_v272
 from .xau_m30_deep_rejection_v277 import evaluate_m30_deep_rejection_v277
 from .xau_m30_entry_policy_v278 import evaluate_m30_entry_policy_v278
 from .xau_rizan_style_path_engine_v303 import build_rizan_style_path_engine
-from .xau_rizan_style_path_calibration_v304 import evaluate_v304
+from .xau_rizan_style_path_calibration_v304 import evaluate_v304, select_reference
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .models import Bar, ensure_utc
@@ -1578,11 +1578,73 @@ def run() -> int:
             price_now=payload.get("last_closed_m15_price"),
         )
         payload["rizan_style_path_engine_v303"] = style_path_v303
-        payload["rizan_style_path_calibration_v304"] = evaluate_v304(
-            style_path=style_path_v303,
+
+        # V305 hardens V304 causality: alignment must compare the public
+        # reference with a RIZAN map reconstructed at the instant that reference
+        # first became available to this project. Comparing a frozen human
+        # reference with today's moving RIZAN map would create a drifting and
+        # misleading imitation score.
+        style_path_for_v304 = style_path_v303
+        v304_baseline = {
+            "mode": "CURRENT_PATH_FALLBACK",
+            "as_of": now.isoformat(),
+            "strategic_bias": strategic_bias,
+            "causal": False,
+        }
+        v304_reference = select_reference(as_of=now, symbol=SYMBOL)
+        reference_available_raw = v304_reference.get("available_from")
+        reference_available = None
+        if reference_available_raw:
+            try:
+                reference_available = ensure_utc(
+                    datetime.fromisoformat(
+                        str(reference_available_raw).replace("Z", "+00:00")
+                    )
+                )
+            except (TypeError, ValueError):
+                reference_available = None
+
+        if reference_available is not None and reference_available <= now:
+            baseline_atlas = evaluate_supply_demand_atlas(
+                raw,
+                as_of=reference_available,
+                strategic_bias="NEUTRAL",
+            )
+            baseline_path_map = dict(baseline_atlas.get("path_map") or {})
+            baseline_m5 = tuple(
+                row
+                for row in raw_m5
+                if ensure_utc(row.timestamp) + timedelta(minutes=5)
+                <= reference_available
+            )
+            baseline_projection = evaluate_bidirectional_m5_path(
+                baseline_m5,
+                path_map=baseline_path_map,
+                as_of=reference_available,
+                previous_projection={},
+            )
+            baseline_atlas["m5_path_projection"] = baseline_projection
+            baseline_path_map["m5_path_projection"] = baseline_projection
+            baseline_atlas["path_map"] = baseline_path_map
+            style_path_for_v304 = build_rizan_style_path_engine(
+                atlas_evaluation=baseline_atlas,
+                price_now=baseline_atlas.get("last_closed_m15_price"),
+            )
+            v304_baseline = {
+                "mode": "RECONSTRUCTED_AT_REFERENCE_AVAILABLE_FROM",
+                "as_of": reference_available.isoformat(),
+                "strategic_bias": "NEUTRAL_NO_FUTURE_REGIME_LEAK",
+                "causal": True,
+                "closed_m5_bars": len(baseline_m5),
+            }
+
+        v304_result = evaluate_v304(
+            style_path=style_path_for_v304,
             bars=raw,
             as_of=now,
         )
+        v304_result["baseline"] = v304_baseline
+        payload["rizan_style_path_calibration_v304"] = v304_result
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"
     finally:
