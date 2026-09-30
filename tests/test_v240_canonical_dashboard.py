@@ -301,3 +301,23 @@ def test_v285_dashboard_shows_competing_risk_without_retest_probability_leak() -
     assert "V281 tidak dipakai sebagai peluang pada zona retest." in SOURCE
     assert "Historical pressure stratification memakai causal M1 OHLC proxy" in SOURCE
     assert "DOM live tetap sumber terpisah" in SOURCE
+
+
+def test_v286_all_official_broker_surfaces_use_v280_effective_authorization() -> None:
+    assert "v240_effective_entry_authorized" in SOURCE
+    assert "V280 effective authorization veto" in SOURCE
+    assert 'if v240_effective_entry_authorized' in SOURCE
+    assert 'order_targets_authorized=v240_effective_entry_authorized' in SOURCE
+    assert 'if not v240_effective_entry_authorized:' in SOURCE
+    assert 'if v240_entry_authorized and not v240_effective_entry_authorized:' in SOURCE
+
+    official_block = SOURCE[SOURCE.index('"4 • Official broker entry"'):]
+    official_block = official_block[:900]
+    assert "if v240_effective_entry_authorized" in official_block
+    assert "if v240_entry_authorized" not in official_block
+
+    execution_block = SOURCE[SOURCE.index('"### 3 • Eksekusi Sekarang"'):]
+    execution_block = execution_block[:7000]
+    assert '"Entry resmi"' in execution_block
+    assert "v240_effective_entry_authorized" in execution_block
+    assert 'if v240_entry_authorized and v240_children' not in execution_block
