@@ -2,16 +2,6 @@ name: cTrader Demo Five-Core Soft EMA Observer
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/demo_five_core_soft_ema_research.py"
-      - "src/fx_scanner/demo_five_core_soft_ema_observer.py"
-      - "src/fx_scanner/execution/ctrader_research.py"
-      - ".github/workflows/ctrader-demo-five-core-soft-ema-observer.yml"
-  schedule:
-    - cron: "23 */4 * * 1-5"
-
 permissions:
   contents: read
 
