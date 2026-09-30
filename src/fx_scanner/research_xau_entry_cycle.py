@@ -18,7 +18,7 @@ from .research_xau_v229_historical_v242 import (
 
 EXECUTION_AUTHORITY = False
 EXECUTION_INFLUENCE = False
-RESEARCH_VERSION = "XAU_ENTRY_CYCLE_1"
+RESEARCH_VERSION = "XAU_ENTRY_CYCLE_2_LEDGER"
 MINUTE = pd.Timedelta(minutes=1)
 # Preregistered hypotheses, not fitted recommendations or broker points.
 MAX_ADVERSE_USD = 5.0
@@ -60,7 +60,8 @@ def candidate_grid(plan: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 def replay(*, px: PriceArrays, plan: dict[str, Any], candidate: dict[str, Any],
            spread_usd: float = .37, slippage_usd: float = .002,
-           hold_minutes: int = 43200) -> dict[str, Any]:
+           hold_minutes: int = 43200, not_before: Any | None = None,
+           armed_before_start: bool = False) -> dict[str, Any]:
     """Stop wins ties; no target/reaction credit on the fill candle.
 
     Reclaim requires touch and close back across the entry, then executes at
@@ -79,15 +80,18 @@ def replay(*, px: PriceArrays, plan: dict[str, Any], candidate: dict[str, Any],
     at, expiry = pd.Timestamp(plan["plan_at"]), pd.Timestamp(plan["signal_expires_at"])
     if at.tzinfo is None or expiry.tzinfo is None or expiry <= at:
         raise ValueError("invalid publication window")
-    start, end = bisect_left(px.timestamps, at), bisect_left(px.timestamps, expiry)
+    start_at = at if not_before is None else max(at, pd.Timestamp(not_before))
+    if start_at.tzinfo is None:
+        raise ValueError("not_before must be timezone-aware")
+    start, end = bisect_left(px.timestamps, start_at), bisect_left(px.timestamps, expiry)
     half = spread_usd / 2
     missed = lambda reason: dict(state="MISSED", reason=reason, net_r=0.0,
                                  precision_5_and_tp=False, fast_precision_tp=False)
-    armed = False
+    armed = bool(armed_before_start)
     fill_i = None
     for i in range(start, end):
         # Never use a partially observed bar after a sub-minute publication.
-        if px.timestamps[i] < at:
+        if px.timestamps[i] < start_at:
             continue
         exit_extreme = float(px.lows[i])-half if sign == 1 else float(px.highs[i])+half
         if sign*(exit_extreme-stop) <= 0:
@@ -191,3 +195,220 @@ def next_cycle(*, first: dict[str, Any], first_plan: dict[str, Any],
                     gap_usd=abs(candidate["entry"]-first["exit_price"]),
                     cycle_success=bool(first.get("fast_precision_tp") and second.get("fast_precision_tp")))
     return dict(state="NO_NEW_ELIGIBLE_OPPOSITE_PLAN", cycle_success=False)
+
+
+def setup_state_at(*, px: PriceArrays, plan: dict[str, Any],
+                   candidate: dict[str, Any], as_of: Any,
+                   spread_usd: float = .37,
+                   slippage_usd: float = .002) -> dict[str, Any]:
+    """Causal setup state at a timestamp, before evaluating any later outcome.
+
+    The ledger uses only completed M1 bars available by the requested cutoff.
+    It is a synthetic quote-side state reconstruction, not broker execution evidence.
+    """
+    if plan["direction"] not in ("LONG", "SHORT"):
+        raise ValueError("unknown direction")
+    if candidate["mode"] not in ("LIMIT", "RECLAIM"):
+        raise ValueError("unknown mode")
+    at = pd.Timestamp(plan["plan_at"])
+    expiry = pd.Timestamp(plan["signal_expires_at"])
+    cutoff = pd.Timestamp(as_of)
+    if at.tzinfo is None or expiry.tzinfo is None or cutoff.tzinfo is None:
+        raise ValueError("timestamps must be timezone-aware")
+    if expiry <= at:
+        raise ValueError("invalid publication window")
+    if cutoff < at:
+        return dict(state="NOT_PUBLISHED", active=False, armed=False)
+
+    sign = 1 if plan["direction"] == "LONG" else -1
+    entry = float(candidate["entry"])
+    stop = float(plan["stop"])
+    half = spread_usd / 2
+    start = bisect_left(px.timestamps, at)
+    end = bisect_left(px.timestamps, min(cutoff, expiry))
+    armed = False
+    first_touch_at = None
+
+    for i in range(start, end):
+        bar_at = px.timestamps[i]
+        known_at = bar_at + MINUTE
+        if known_at > cutoff or bar_at >= expiry:
+            break
+        exit_extreme = (
+            float(px.lows[i]) - half
+            if sign == 1
+            else float(px.highs[i]) + half
+        )
+        touched = (
+            float(px.lows[i]) + half <= entry
+            if sign == 1
+            else float(px.highs[i]) - half >= entry
+        )
+        if touched and first_touch_at is None:
+            first_touch_at = known_at
+
+        if candidate["mode"] == "LIMIT" and touched:
+            return dict(
+                state="FILLED_BEFORE_CUTOFF",
+                active=False,
+                armed=True,
+                first_touch_at=first_touch_at.isoformat(),
+                fill_observed_at=known_at.isoformat(),
+            )
+
+        if candidate["mode"] == "RECLAIM":
+            if sign * (exit_extreme - stop) <= 0:
+                return dict(
+                    state="INVALIDATED_BEFORE_CONFIRMATION",
+                    active=False,
+                    armed=armed,
+                    first_touch_at=None if first_touch_at is None else first_touch_at.isoformat(),
+                    invalidated_at=known_at.isoformat(),
+                )
+            armed |= bool(touched)
+            close_quote = float(px.closes[i]) + sign * half
+            if armed and sign * (close_quote - entry) >= 0:
+                j = i + 1
+                if j < len(px.timestamps) and px.timestamps[j] == bar_at + MINUTE:
+                    fill_at = px.timestamps[j]
+                    if fill_at < expiry and fill_at <= cutoff:
+                        fill = float(px.opens[j]) + sign * (half + slippage_usd)
+                        if abs(fill - entry) <= MAX_CHASE_USD:
+                            return dict(
+                                state="FILLED_BEFORE_CUTOFF",
+                                active=False,
+                                armed=True,
+                                first_touch_at=None if first_touch_at is None else first_touch_at.isoformat(),
+                                reclaim_confirmed_at=known_at.isoformat(),
+                                fill_at=fill_at.isoformat(),
+                            )
+                return dict(
+                    state="RECLAIM_CONFIRMED_WAIT_OPEN",
+                    active=True,
+                    armed=True,
+                    first_touch_at=None if first_touch_at is None else first_touch_at.isoformat(),
+                    reclaim_confirmed_at=known_at.isoformat(),
+                )
+
+    if cutoff >= expiry:
+        return dict(
+            state="EXPIRED_UNFILLED",
+            active=False,
+            armed=armed,
+            first_touch_at=None if first_touch_at is None else first_touch_at.isoformat(),
+        )
+    return dict(
+        state="TOUCHED_WAIT_RECLAIM" if armed else "ACTIVE_UNFILLED",
+        active=True,
+        armed=armed,
+        first_touch_at=None if first_touch_at is None else first_touch_at.isoformat(),
+    )
+
+
+def next_cycle_with_active_ledger(
+    *, first: dict[str, Any], first_plan: dict[str, Any],
+    plans: list[dict[str, Any]], px: PriceArrays, key: str,
+    spread_usd: float = .37, slippage_usd: float = .002,
+    hold_minutes: int = 43200,
+) -> dict[str, Any]:
+    """Evaluate opposite setups already active at TP before later publications."""
+    if first["state"] != "TP":
+        return dict(state="NO_FIRST_TP", cycle_success=False)
+
+    tp_at = pd.Timestamp(first["exit_at"])
+    deadline = tp_at + pd.Timedelta(minutes=CYCLE_WINDOW_MINUTES)
+    eligible = []
+
+    for plan in plans:
+        if plan["direction"] == first_plan["direction"]:
+            continue
+        publication = pd.Timestamp(plan["plan_at"])
+        expiry = pd.Timestamp(plan["signal_expires_at"])
+        if publication >= deadline or expiry <= tp_at:
+            continue
+        candidate = candidate_grid(plan).get(key)
+        if candidate is None:
+            continue
+        gap = abs(float(candidate["entry"]) - float(first["exit_price"]))
+        if gap > MAX_CYCLE_GAP_USD:
+            continue
+
+        if publication < tp_at:
+            ledger = setup_state_at(
+                px=px,
+                plan=plan,
+                candidate=candidate,
+                as_of=tp_at,
+                spread_usd=spread_usd,
+                slippage_usd=slippage_usd,
+            )
+            if not ledger.get("active"):
+                continue
+            if ledger.get("state") == "RECLAIM_CONFIRMED_WAIT_OPEN":
+                continue
+            eligible_at = tp_at
+            origin = "ACTIVE_AT_TP"
+        else:
+            ledger = dict(state="NEW_PUBLICATION_AFTER_TP", active=True, armed=False)
+            eligible_at = publication
+            origin = "NEW_PUBLICATION_AFTER_TP"
+
+        eligible.append(
+            (
+                eligible_at,
+                gap,
+                publication,
+                str(plan["plan_id"]),
+                plan,
+                candidate,
+                {**ledger, "selection_origin": origin},
+            )
+        )
+
+    if not eligible:
+        return dict(state="NO_ELIGIBLE_OPPOSITE_SETUP", cycle_success=False)
+
+    eligible.sort(key=lambda row: (row[0], row[1], row[2], row[3]))
+    eligible_at, gap, publication, _, plan, candidate, ledger = eligible[0]
+    bounded = {
+        **plan,
+        "signal_expires_at": min(
+            deadline,
+            pd.Timestamp(plan["signal_expires_at"]),
+        ).isoformat(),
+    }
+    second = replay(
+        px=px,
+        plan=bounded,
+        candidate=candidate,
+        spread_usd=spread_usd,
+        slippage_usd=slippage_usd,
+        hold_minutes=hold_minutes,
+        not_before=eligible_at,
+        armed_before_start=bool(ledger.get("armed")),
+    )
+    if second["state"] == "CENSORED":
+        return dict(
+            state="CENSORED",
+            reason="INCOMPLETE_SECOND_LEG_HISTORY",
+            selection_origin=ledger.get("selection_origin"),
+        )
+    return dict(
+        state="SELECTED",
+        selection_origin=ledger.get("selection_origin"),
+        ledger_state_at_tp=ledger.get("state"),
+        next_plan_id=plan["plan_id"],
+        next_plan_published_at=publication.isoformat(),
+        eligible_at=eligible_at.isoformat(),
+        next_result=second,
+        tp_to_next_fill_minutes=(
+            (pd.Timestamp(second["fill_at"]) - tp_at).total_seconds() / 60
+            if second.get("fill_at")
+            else None
+        ),
+        gap_usd=gap,
+        cycle_success=bool(
+            first.get("fast_precision_tp")
+            and second.get("fast_precision_tp")
+        ),
+    )
