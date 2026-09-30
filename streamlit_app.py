@@ -2980,8 +2980,9 @@ with forecast_tab:
         meta3.metric("Confidence ensemble", f"{v296_confidence:.1f}%")
         meta4.metric("Agreement engine", f"{v296_agreement * 100.0:.1f}%")
         st.caption(
-            "Confidence ensemble bukan winrate. Bobot engine dikalibrasi dari "
-            "forward/outcome ledger; engine dengan sample kecil dibatasi. "
+            "Confidence ensemble bukan winrate. Bobot engine memprioritaskan "
+            "hasil DEMO executed bila sample cukup; sebelum itu memakai geometry prior "
+            "dari forward/outcome ledger dan engine dengan sample kecil dibatasi. "
             f"Coverage engine={v296_coverage * 100.0:.1f}% • "
             f"evidence calibrated={v296_evidence_coverage * 100.0:.1f}% • "
             + (
@@ -3048,7 +3049,7 @@ with forecast_tab:
                         "Keputusan": vote.get("direction"),
                         "Weight efektif": round(float(vote.get("effective_weight") or 0.0), 3),
                         "Sample decisive": int(cal.get("decisive") or 0),
-                        "Win/TP1 rate": (
+                        "TP1/Win rate": (
                             None
                             if cal.get("win_rate") is None
                             else round(float(cal.get("win_rate")) * 100.0, 1)
@@ -3058,6 +3059,9 @@ with forecast_tab:
                             if cal.get("wilson_lower_95") is None
                             else round(float(cal.get("wilson_lower_95")) * 100.0, 1)
                         ),
+                        "Basis": cal.get("basis"),
+                        "Executed n": int(cal.get("executed_decisive") or 0),
+                        "Geometry n": int(cal.get("geometry_decisive") or cal.get("decisive") or 0),
                         "Kalibrasi": cal.get("state"),
                         "Reason": vote.get("reason"),
                     }
