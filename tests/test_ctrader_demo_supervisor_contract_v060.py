@@ -43,8 +43,8 @@ def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_hando
     assert "CTRADER_DEMO_SUPERVISOR_HANDOFF_WAIT" not in text
     assert "cancel_stale_lane_runs()" in text
     assert 'cancel_stale_lane_runs "ctrader-demo-xau-execution-lane.yml" "EXECUTION" 600' in text
-    assert 'cancel_stale_lane_runs "ctrader-demo-xau-afic-prepared-lane.yml" "RIZAN_PREPARED" 600' not in text
-    assert 'cancel_stale_lane_runs "ctrader-demo-xau-dom-v191.yml" "DOM_V191" 600' not in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-afic-prepared-lane.yml" "RIZAN_PREPARED" 600' in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-dom-v191.yml" "DOM_V191" 600' in text
     assert "safety=FAIL_CLOSED" in text
     assert "SUPERVISOR_GH_API_RETRY" in text
     assert "SUPERVISOR_GH_API_FAIL_CLOSED" in text
