@@ -347,17 +347,17 @@ def build_snapshot(
     _append_operational(
         label="PREPARED",
         worker_name="ctrader_demo_xau_rizan_prepared_plan_producer",
-        fetcher=reader.latest_rizan_prepared_heartbeat,
+        fetcher=lambda: reader.latest_rizan_prepared_heartbeat(),
     )
     _append_operational(
         label="V229_EXECUTION",
         worker_name="ctrader_demo_xau_v229_depth_execution",
-        fetcher=reader.latest_rizan_v229_execution_heartbeat,
+        fetcher=lambda: reader.latest_rizan_v229_execution_heartbeat(),
     )
     _append_operational(
         label="V229_CHILD",
         worker_name="ctrader_demo_xau_v229_child_executor",
-        fetcher=reader.latest_rizan_child_executor_heartbeat,
+        fetcher=lambda: reader.latest_rizan_child_executor_heartbeat(),
     )
 
     # Current V182 path/M5 and V226 candidate identity must not wait for the
@@ -367,12 +367,12 @@ def build_snapshot(
     _append_operational(
         label="V182_OPERATIONAL",
         worker_name="ctrader_demo_xau_supply_demand_atlas_v182",
-        fetcher=reader.latest_xau_atlas_operational_heartbeat,
+        fetcher=lambda: reader.latest_xau_atlas_operational_heartbeat(),
     )
     _append_operational(
         label="V226_OPERATIONAL",
         worker_name="ctrader_demo_xau_v226_rizan_depth_map",
-        fetcher=reader.latest_xau_v226_operational_heartbeat,
+        fetcher=lambda: reader.latest_xau_v226_operational_heartbeat(),
     )
 
     hot_heartbeat_bytes = _json_size(hot_heartbeats)
