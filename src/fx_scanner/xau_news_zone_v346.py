@@ -234,6 +234,7 @@ def evaluate_news_zone(
     bars_m5: Iterable[Any],
     bars_m15: Iterable[Any],
     now: datetime,
+    source_status: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     current = ensure_utc(now)
     zone = dict(sd_evaluation.get("decision_zone") or {})
@@ -241,6 +242,14 @@ def evaluate_news_zone(
     price = _f(sd_evaluation.get("price_now"))
     event_list = sorted(events, key=lambda x: x.scheduled_at)
     focal, risk_state, delta = _focal_event(event_list, now=current)
+    source_status = dict(source_status or {})
+    economic_sources = [
+        value for key, value in source_status.items()
+        if key != "GEOPOLITICAL_SHOCK_FEED"
+    ]
+    news_source_available = any(str(value).startswith("OK:") for value in economic_sources)
+    if not news_source_available:
+        risk_state = "NEWS_SOURCE_UNAVAILABLE"
 
     zone_distance_atr = None
     zone_coupled = False
@@ -282,7 +291,11 @@ def evaluate_news_zone(
         else {}
     )
 
-    if risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
+    if risk_state == "NEWS_SOURCE_UNAVAILABLE":
+        decision_state = "WAIT_NEWS_DATA"
+        preferred = "WAIT_FOR_NEWS_SOURCE_RECOVERY"
+        alternative = "DO_NOT_TREAT_MISSING_CALENDAR_AS_CLEAR"
+    elif risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
         decision_state = "WAIT_EVENT_VOLATILITY"
         preferred = "WAIT_FOR_RELEASE_THEN_REASSESS_ZONE"
         alternative = "NO_DIRECTIONAL_NEWS_BET"
@@ -306,7 +319,9 @@ def evaluate_news_zone(
     effective_entry_state = str(
         dict(sd_evaluation.get("entry_guide") or {}).get("state") or "WAIT_CONFIRMATION"
     )
-    if risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
+    if risk_state == "NEWS_SOURCE_UNAVAILABLE":
+        effective_entry_state = "WAIT_NEWS_DATA"
+    elif risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
         effective_entry_state = "WAIT_FOR_NEWS"
     elif risk_state == "POST_EVENT_DISCOVERY" and not confirmed:
         effective_entry_state = "WAIT_POST_NEWS_M5_M15_CONFIRMATION"
@@ -327,6 +342,8 @@ def evaluate_news_zone(
         "focal_event": None if focal is None else focal.as_dict(),
         "minutes_to_focal": delta,
         "next_events": upcoming,
+        "source_status": source_status,
+        "news_source_available": news_source_available,
         "zone_coupled": zone_coupled,
         "zone_distance_atr": zone_distance_atr,
         "overshoot_risk": overshoot,
