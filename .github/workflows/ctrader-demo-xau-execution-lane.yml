@@ -116,11 +116,11 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_supply_demand_atlas_v182
 
-      - name: Build RIZAN Style Micro Handoff Confluence V322
-        id: build_rizan_micro_handoff_v322
+      - name: Build RIZAN Style Opposing Zone Cascade V328
+        id: build_rizan_micro_destination_v328
         if: ${{ always() && !cancelled() }}
         continue-on-error: true
-        run: python -m fx_scanner.demo_xau_micro_handoff_v322
+        run: python -m fx_scanner.demo_xau_micro_destination_v328
 
       - name: Evaluate XAU V24 champion D1 plus M15 L12 L20
         id: produce_xau_v24_champion

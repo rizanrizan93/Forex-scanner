@@ -63,7 +63,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V325_BRIDGE_ENTRY_CLARITY_20261001"
+DASHBOARD_BUILD_ID = "RIZAN_V328_OPPOSING_ZONE_CASCADE_20261001"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -79,6 +79,7 @@ RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     "ctrader_demo_xau_micro_entry_refinement_v320",
     "ctrader_demo_xau_micro_entry_dual_cycle_v321",
     "ctrader_demo_xau_micro_handoff_v322",
+    "ctrader_demo_xau_micro_destination_v328",
 )
 
 RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS = (
@@ -2279,6 +2280,9 @@ with forecast_tab:
     v322_micro_handoff_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_micro_handoff_v322"
     )
+    v328_micro_destination_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_micro_destination_v328"
+    )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
     )
@@ -4154,9 +4158,15 @@ with forecast_tab:
             prices.append(_fmt_price(row.get("price")))
         return " → ".join(prices) if prices else "Belum ada waypoint valid"
 
-    # V322 adds no-chase handoff + V182 micro confluence. V321/V320 remain
-    # compatibility fallbacks while older bridge snapshots age out.
-    micro_hb = v322_micro_handoff_hb or v321_micro_entry_hb or v320_micro_entry_hb
+    # V328 rejects stale opposing zones once live price is beyond distal and
+    # cascades to the next still-valid structural destination. V322/V321/V320
+    # remain compatibility fallbacks while older bridge snapshots age out.
+    micro_hb = (
+        v328_micro_destination_hb
+        or v322_micro_handoff_hb
+        or v321_micro_entry_hb
+        or v320_micro_entry_hb
+    )
     v320_micro_details = (
         {}
         if micro_hb is None
@@ -4190,6 +4200,16 @@ with forecast_tab:
         or v320_micro_primary.get("setup_role")
         or "V320_COMPATIBILITY"
     )
+    v328_destination_cascade = dict(
+        v320_micro_eval.get("destination_cascade") or {}
+    )
+    v328_liquidity_context = dict(
+        v320_micro_eval.get("liquidity_sweep_context") or {}
+    )
+    v328_skipped_zones = [
+        dict(row or {})
+        for row in list(v328_destination_cascade.get("skipped_zones") or [])
+    ]
 
     tab_supply, tab_micro = st.tabs(
         [
@@ -4385,7 +4405,7 @@ with forecast_tab:
             )
 
         with st.container(border=True):
-            st.markdown("### RIZAN STYLE MICRO ENTRY REFINEMENT • V322")
+            st.markdown("### RIZAN STYLE MICRO ENTRY REFINEMENT • V328")
             st.caption(
                 "Dua siklus dipisahkan: (1) micro-entry pada source H4/H1 yang sedang "
                 "aktif/disentuh, dan (2) pre-map entry pada opposing zone berikutnya. "
@@ -4394,13 +4414,13 @@ with forecast_tab:
             )
             if not v320_micro_eval:
                 st.warning(
-                    "V322 belum memiliki snapshot. Tunggu worker micro-handoff membaca "
+                    "V328 belum memiliki snapshot. Tunggu worker destination-cascade membaca "
                     "atlas H4/H1 dan data M5/M15/H1."
                 )
             else:
                 top1, top2, top3 = st.columns(3)
                 top1.metric(
-                    "State dual-cycle",
+                    "State cascade",
                     _rizan_display(v320_micro_eval.get("state") or "WAIT"),
                 )
                 top2.metric("Primary sekarang", _rizan_display(v321_primary_role))
@@ -4411,6 +4431,68 @@ with forecast_tab:
                         or v320_micro_primary.get("price_now")
                     ),
                 )
+
+                cas1, cas2, cas3 = st.columns(3)
+                cas1.metric(
+                    "Cascade",
+                    (
+                        "DEEPER ZONE"
+                        if bool(v328_destination_cascade.get("cascaded"))
+                        or int(v328_destination_cascade.get("skipped_count") or 0) > 0
+                        else "DIRECT"
+                    ),
+                )
+                cas2.metric(
+                    "Selected rank",
+                    (
+                        f"#{int(v328_destination_cascade.get('selected_rank'))}"
+                        if v328_destination_cascade.get("selected_rank") is not None
+                        else "—"
+                    ),
+                )
+                cas3.metric(
+                    "Liquidity state",
+                    _rizan_display(
+                        v328_liquidity_context.get("state") or "CLEAR"
+                    ),
+                )
+
+                if v328_skipped_zones:
+                    first_skipped = dict(v328_skipped_zones[0] or {})
+                    st.warning(
+                        "OPPOSING ZONE TERLEWATI: "
+                        + _fmt_price(first_skipped.get("low"))
+                        + "–"
+                        + _fmt_price(first_skipped.get("high"))
+                        + " • "
+                        + str(first_skipped.get("reason") or "LIVE_PRICE_BEYOND_DISTAL")
+                        + ". Zona ini tidak dipakai lagi sebagai clean entry; scanner "
+                        "beralih ke zona struktural berikutnya."
+                    )
+                    with st.expander(
+                        "Detail zona yang dilewati / liquidity sweep context",
+                        expanded=False,
+                    ):
+                        for skipped_zone in v328_skipped_zones[:6]:
+                            st.caption(
+                                str(skipped_zone.get("timeframe") or "—")
+                                + " "
+                                + str(skipped_zone.get("direction") or "—")
+                                + " "
+                                + _fmt_price(skipped_zone.get("low"))
+                                + "–"
+                                + _fmt_price(skipped_zone.get("high"))
+                                + " • relation="
+                                + str(skipped_zone.get("relation") or "—")
+                                + " • reason="
+                                + str(skipped_zone.get("reason") or "—")
+                            )
+                        st.caption(
+                            str(
+                                v328_liquidity_context.get("note")
+                                or "Zona breached tetap disimpan sebagai konteks sweep/acceptance."
+                            )
+                        )
 
                 active_m5 = dict(v321_active_source.get("m5") or {})
                 active_h1 = dict(v321_active_source.get("h1") or {})
@@ -4480,11 +4562,11 @@ with forecast_tab:
 
                 st.divider()
                 _render_micro_setup(
-                    "NEXT OPPOSING ZONE • M5 pre-map",
+                    "SELECTED OPPOSING ZONE • M5 pre-map",
                     next_m5,
                     primary=v321_primary_role == "NEXT_OPPOSING_M5",
                 )
-                with st.expander("NEXT OPPOSING • H1 swing ladder", expanded=False):
+                with st.expander("SELECTED OPPOSING • H1 swing ladder", expanded=False):
                     _render_micro_setup(
                         "H1 swing",
                         next_h1,
@@ -4492,10 +4574,11 @@ with forecast_tab:
                     )
 
                 st.info(
-                    "Cara baca V322: ACTIVE SOURCE menjadi primary saat harga masih di source "
-                    "atau masih dalam retest window ≤0,75 ATR. Jika harga sudah bergerak terlalu "
-                    "jauh, NO CHASE aktif dan NEXT OPPOSING menjadi fokus persiapan. Saat harga "
-                    "masuk NEXT OPPOSING, handoff dilakukan ke cycle reversal berikutnya."
+                    "Cara baca V328: ACTIVE SOURCE tetap menjadi konteks awal. Jika live price "
+                    "sudah melewati distal opposing zone, zona itu tidak lagi dipakai sebagai "
+                    "clean reversal entry. Scanner menandainya sebagai kemungkinan liquidity "
+                    "sweep/acceptance lalu cascade ke opposing zone yang lebih dalam. Jika tidak "
+                    "ada zona aman berikutnya, status berubah WAIT STRUCTURAL REMAP."
                 )
                 st.caption(
                     "Snapshot "

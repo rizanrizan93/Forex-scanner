@@ -248,7 +248,7 @@ def test_dashboard_standalone_fallback_is_diagnostic_only_without_page_stop():
 
 def test_v256_dashboard_hides_research_locator_from_operational_decision_path():
     text = (ROOT / "streamlit_app.py").read_text()
-    assert 'DASHBOARD_BUILD_ID = "RIZAN_V325_BRIDGE_ENTRY_CLARITY_20261001"' in text
+    assert 'DASHBOARD_BUILD_ID = "RIZAN_V328_OPPOSING_ZONE_CASCADE_20261001"' in text
     assert "Zone watch (BUKAN ENTRY)" in text
     assert "Path target (BUKAN TP order)" in text
     assert "Geometry only — hanya posisi harga relatif terhadap source zone" in text
@@ -256,12 +256,15 @@ def test_v256_dashboard_hides_research_locator_from_operational_decision_path():
     assert 'm2.metric("Pair aktif", "XAUUSD")' in text
     assert "1 • RIZAN Supply/Demand + Liquidity" in text
     assert "2 • RIZAN Micro Entry Refinement" in text
-    assert "RIZAN STYLE MICRO ENTRY REFINEMENT • V322" in text
+    assert "RIZAN STYLE MICRO ENTRY REFINEMENT • V328" in text
     assert "ACTIVE SOURCE = NO CHASE" in text
     assert '"Sweep", _fmt_price(v322_sweep.get("price"))' in text
     assert '"MSS level", _fmt_price(v322_micro_context.get("mss_level"))' in text
     assert "ACTIVE SOURCE • M5 fast entry" in text
-    assert "NEXT OPPOSING ZONE • M5 pre-map" in text
+    assert "SELECTED OPPOSING ZONE • M5 pre-map" in text
+    assert "OPPOSING ZONE TERLEWATI" in text
+    assert "v328_liquidity_context" in text
+    assert "v328_destination_cascade" in text
 
 
 def test_v256_dashboard_uses_v182_current_leg_not_v180_tactical_leg_as_active_direction():

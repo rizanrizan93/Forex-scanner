@@ -211,3 +211,4 @@ def test_v317_bridge_refreshes_v296_v297_in_hot_tier():
     assert "ctrader_demo_xau_micro_entry_refinement_v320" in HOT_HEARTBEATS
     assert "ctrader_demo_xau_micro_entry_dual_cycle_v321" in HOT_HEARTBEATS
     assert "ctrader_demo_xau_micro_handoff_v322" in HOT_HEARTBEATS
+    assert "ctrader_demo_xau_micro_destination_v328" in HOT_HEARTBEATS
