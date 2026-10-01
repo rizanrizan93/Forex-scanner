@@ -10,7 +10,7 @@ import pandas as pd
 
 from .models import ensure_utc
 
-CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_2_PARENT_HIERARCHY_ROADBLOCK"
+CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_3_STRUCTURAL_ROOM_GATE"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
 EXECUTION_AUTHORITY = False
 EXECUTION_INFLUENCE = False
@@ -979,6 +979,61 @@ def _roadblocks(
     return rows[:6]
 
 
+def _structural_room_gate(
+    *,
+    parent_zone: dict[str, Any],
+    direction: str,
+    path_start: float,
+    destination: dict[str, Any] | None,
+    entry: float | None,
+    invalidation: float | None,
+) -> dict[str, Any]:
+    parent_atr = max(float(parent_zone.get("atr") or 0.0), 1e-9)
+    terminal = _f((destination or {}).get("price"))
+    if direction not in {"LONG", "SHORT"} or terminal is None:
+        return {
+            "state": "NO_TERMINAL_HTF_DESTINATION",
+            "blocked": False,
+            "distance_points": None,
+            "distance_parent_atr": None,
+            "planned_rr": None,
+            "threshold_parent_atr": 0.50,
+            "threshold_rr": 1.50,
+        }
+
+    distance = abs(float(terminal) - float(path_start))
+    distance_atr = distance / parent_atr
+    planned_rr = None
+    if entry is not None and invalidation is not None:
+        risk = abs(float(entry) - float(invalidation))
+        if risk > 1e-9:
+            planned_rr = abs(float(terminal) - float(entry)) / risk
+
+    compressed = distance_atr < 0.50
+    rr_blocked = planned_rr is not None and planned_rr < 1.50
+    blocked = bool(compressed or rr_blocked)
+    if compressed:
+        state = "COMPRESSED_HTF_CORRIDOR"
+    elif rr_blocked:
+        state = "STRUCTURAL_RR_TOO_SMALL"
+    else:
+        state = "STRUCTURAL_ROOM_OK"
+
+    return {
+        "state": state,
+        "blocked": blocked,
+        "distance_points": distance,
+        "distance_parent_atr": distance_atr,
+        "planned_rr": planned_rr,
+        "threshold_parent_atr": 0.50,
+        "threshold_rr": 1.50,
+        "rule": (
+            "WAIT when opposing HTF destination is <0.50 parent ATR away; "
+            "after entry geometry exists also require >=1.50R to terminal HTF destination."
+        ),
+    }
+
+
 def _targets(
     *,
     direction: str,
@@ -1132,12 +1187,31 @@ def evaluate_sd_liquidity(
         if direction in {"LONG", "SHORT"}
         else []
     )
+    invalidation = _f(micro.get("invalidation"))
+    structural_room = _structural_room_gate(
+        parent_zone=decision_zone,
+        direction=direction,
+        path_start=path_start,
+        destination=destination,
+        entry=entry,
+        invalidation=invalidation,
+    ) if decision_zone else {
+        "state": "NO_DECISION_ZONE",
+        "blocked": False,
+    }
     targets = _targets(
         direction=direction,
         entry=entry,
         active_zones=active,
         fallback_atr=float(decision_zone.get("atr") or atr_ref),
     ) if direction in {"LONG", "SHORT"} else []
+    guide_state = (
+        "WAIT_STRUCTURAL_ROOM"
+        if bool(structural_room.get("blocked"))
+        else "CONFIRMED_GUIDANCE"
+        if bool(micro.get("confirmed"))
+        else "WAIT_CONFIRMATION"
+    )
 
     return {
         "contract": CONTRACT,
@@ -1158,17 +1232,18 @@ def evaluate_sd_liquidity(
         "hierarchy_selection": hierarchy_selection,
         "expected_reversal_direction": direction,
         "structural_destination": destination,
+        "structural_room": structural_room,
         "roadblocks": roadblocks,
         "nearest_roadblock": dict(roadblocks[0]) if roadblocks else {},
         "liquidity_map": sweep_map,
         "micro_confirmation": micro,
         "entry_guide": {
-            "state": "CONFIRMED_GUIDANCE" if bool(micro.get("confirmed")) else "WAIT_CONFIRMATION",
+            "state": guide_state,
             "direction": direction,
             "entry_low": micro.get("entry_low"),
             "entry_high": micro.get("entry_high"),
             "entry_reference": entry,
-            "invalidation": micro.get("invalidation"),
+            "invalidation": invalidation,
             "targets": targets,
             "rule": (
                 "HTF_ZONE -> LIQUIDITY_SWEEP_OPTIONAL -> RECLAIM -> MSS -> DISPLACEMENT -> RETEST"
@@ -1193,6 +1268,10 @@ def evaluate_sd_liquidity(
                 "Opposing zones on the projected path are ROADBLOCKS and do not override H4 solely by proximity."
             ),
             "roadblock": "OPPOSING_ACTIVE_ZONE_BETWEEN_PATH_START_AND_OPPOSING_H4_DESTINATION",
+            "structural_room_gate": (
+                "WAIT_IF_TERMINAL_OPPOSING_HTF_DESTINATION_LT_0P50_PARENT_ATR; "
+                "WHEN_ENTRY_GEOMETRY_EXISTS_REQUIRE_TERMINAL_RR_GTE_1P50"
+            ),
             "reversal_confirmation": "TOUCH/SWEEP + RECLAIM + LOCAL_MSS + DISPLACEMENT",
             "rebuild_policy": "RECALCULATE_FROM_COMPLETED_H4_H1_M15_M5_ON_EACH_RUNTIME_CYCLE",
         },
