@@ -9635,10 +9635,8 @@ with forecast_tab:
         c1, c2 = st.columns(2)
         with c1:
             st.markdown(
-                f"**REJECTION → {simple_rejection.get('direction') or 'WAIT'}**  
-"
-                f"Trigger: {simple_rejection.get('trigger') or 'Tunggu reclaim/MSS/displacement'}  
-"
+                f"**REJECTION → {simple_rejection.get('direction') or 'WAIT'}**  \n"
+                f"Trigger: {simple_rejection.get('trigger') or 'Tunggu reclaim/MSS/displacement'}  \n"
                 f"Key: {rej_key}"
             )
         with c2:
@@ -9649,10 +9647,8 @@ with forecast_tab:
                 else ""
             )
             st.markdown(
-                f"**ACCEPTANCE/BREAK → {simple_acceptance.get('direction') or 'WAIT'}**  
-"
-                f"Trigger: {simple_acceptance.get('trigger') or 'Tunggu close acceptance'}  
-"
+                f"**ACCEPTANCE/BREAK → {simple_acceptance.get('direction') or 'WAIT'}**  \n"
+                f"Trigger: {simple_acceptance.get('trigger') or 'Tunggu close acceptance'}  \n"
                 f"Key: {acc_key}{next_text}"
             )
 
