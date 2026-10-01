@@ -3433,6 +3433,44 @@ with forecast_tab:
                 "dengan angka buatan."
             )
 
+        v296_protection_gate = next(
+            (
+                dict(row)
+                for row in list(v296_meta_decision.get("gates") or [])
+                if str(dict(row).get("name") or "") == "PROTECTION_INTEGRITY"
+            ),
+            {},
+        )
+        if v296_protection_gate:
+            protection_details = dict(v296_protection_gate.get("details") or {})
+            unmanaged_count = int(
+                protection_details.get("unmanaged_unprotected_count") or 0
+            )
+            scanner_unprotected_count = int(
+                protection_details.get("scanner_unprotected_count") or 0
+            )
+            if bool(v296_protection_gate.get("hard_block")):
+                st.error(
+                    "EXECUTION SAFETY BLOCK • "
+                    + str(v296_protection_gate.get("reason") or "Protection integrity failed")
+                    + ". New DEMO orders remain blocked until protection is verified. "
+                    + (
+                        f"Unmanaged without verified scanner linkage={unmanaged_count}. "
+                        if unmanaged_count else ""
+                    )
+                    + (
+                        f"Scanner-linked unprotected={scanner_unprotected_count}. "
+                        if scanner_unprotected_count else ""
+                    )
+                    + "Scanner will not invent SL/TP for an unknown position."
+                )
+            elif bool(v296_protection_gate.get("warning")):
+                st.warning(
+                    "Protection status warning • "
+                    + str(v296_protection_gate.get("reason") or "status unavailable")
+                    + "."
+                )
+
         if v296_hard_blocks:
             st.error(
                 "Hard block: "
