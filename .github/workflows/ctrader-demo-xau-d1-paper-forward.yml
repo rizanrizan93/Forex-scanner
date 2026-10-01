@@ -9,8 +9,6 @@ on:
       - "src/fx_scanner/demo_five_core_router.py"
       - "src/fx_scanner/execution/ctrader_research.py"
       - ".github/workflows/ctrader-demo-xau-d1-paper-forward.yml"
-  schedule:
-    - cron: "23 1,5,9,13,17,21 * * 1-5"
 
 permissions:
   contents: read
