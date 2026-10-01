@@ -264,3 +264,67 @@ def test_dashboard_reader_has_dedicated_xau_signal_feed():
 def test_dashboard_xau_signal_feed_exposes_ids_for_exact_admission_join():
     source = (Path(__file__).resolve().parents[1] / "src/fx_scanner/dashboard.py").read_text()
     assert '"id,observed_at,symbol,direction,setup_type,state,pair_score,"' in source
+
+
+
+def test_hot_heartbeat_reader_returns_one_latest_row_per_worker():
+    client = FakeClient({
+        "runtime_heartbeats": [
+            {
+                "worker_name": "fast",
+                "observed_at": "2026-10-01T07:10:00Z",
+                "details": {"seq": 3, "blob": "x" * 1000},
+            },
+            {
+                "worker_name": "fast",
+                "observed_at": "2026-10-01T07:09:00Z",
+                "details": {"seq": 2, "blob": "x" * 1000},
+            },
+            {
+                "worker_name": "slow",
+                "observed_at": "2026-10-01T06:00:00Z",
+                "details": {"seq": 1},
+            },
+        ]
+    })
+    rows = SupabaseDashboardReader(client).heartbeats_for_workers(["fast", "slow"])
+    assert len(rows) == 2
+    assert {row["worker_name"] for row in rows} == {"fast", "slow"}
+    fast = next(row for row in rows if row["worker_name"] == "fast")
+    assert fast["details"]["seq"] == 3
+    # One bounded latest-row query per requested worker; never LIMIT N across
+    # the union where a high-frequency worker can consume every row.
+    assert client.calls.count(("select", "runtime_heartbeats")) == 2
+
+
+def test_hot_heartbeat_reader_keeps_partial_rows_when_one_worker_read_fails():
+    class SelectiveQuery(Query):
+        def execute(self):
+            if self.filters.get("worker_name") == "broken":
+                raise RuntimeError("temporary backend failure")
+            return super().execute()
+
+    class SelectiveClient(FakeClient):
+        def table(self, name):
+            return SelectiveQuery(self, name)
+
+    client = SelectiveClient({
+        "runtime_heartbeats": [
+            {
+                "worker_name": "healthy",
+                "observed_at": "2026-10-01T07:10:00Z",
+                "details": {"state": "OK"},
+            }
+        ]
+    })
+    rows = SupabaseDashboardReader(client).heartbeats_for_workers(
+        ["healthy", "broken"]
+    )
+    assert len(rows) == 1
+    assert rows[0]["worker_name"] == "healthy"
+
+
+def test_hot_heartbeat_reader_fails_closed_when_all_worker_reads_fail():
+    reader = SupabaseDashboardReader(BrokenClient({}))
+    with pytest.raises(DashboardReadError, match="reads all failed"):
+        reader.heartbeats_for_workers(["a", "b"])
