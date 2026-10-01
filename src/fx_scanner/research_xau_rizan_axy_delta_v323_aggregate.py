@@ -197,6 +197,8 @@ def run() -> int:
                 "+0.08*fill_rate_of_anchors +0.03*min(PF,5) "
                 "-0.04*mean_entry_error_ATR"
             ),
+            "delta_basis": "CAUSAL_M5_ATR14_AT_ANCHOR_CONFIRMATION",
+            "impulse_atr_basis": "LAST_M5_ATR14_KNOWN_AT_OR_BEFORE_PARENT_TOUCH",
             "friction": "NOT_INCLUDED_GROSS_RESEARCH",
         },
         "selected_train_candidate": selected,
@@ -214,8 +216,9 @@ def run() -> int:
         },
         "all_candidates": candidates,
         "interpretation": (
-            "V323 calibrates the reconstructed A/X/Y spacing without using 2025-2026 "
-            "to choose the model. Anchor A is formed causally from post-touch M5 reclaim, "
+            "V323 calibrates the reconstructed A/X/Y spacing as a fraction of causal M5 ATR14 "
+            "without using 2025-2026 to choose the model. Anchor A is formed causally from "
+            "post-touch M5 reclaim, "
             "impulse and the first confirmed pullback pivot. Entry fill requires a later "
             "M1 touch of A/X/Y. Same-M1 SL/TP ambiguity is resolved STOP_FIRST. Results "
             "exclude spread/commission/slippage and therefore are gross research evidence, "
