@@ -5,10 +5,13 @@ on:
   pull_request:
     paths:
       - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
+      - "src/fx_scanner/xau_news_zone_source_v346.py"
+      - "src/fx_scanner/xau_news_zone_v346.py"
       - "src/fx_scanner/research_xau_sd_liquidity_v345.py"
       - "src/fx_scanner/research_xau_sd_liquidity_v345_year_runtime.py"
       - "src/fx_scanner/research_xau_sd_liquidity_v345_aggregate.py"
       - "tests/test_research_xau_sd_liquidity_v345.py"
+      - "tests/test_xau_news_zone_v346.py"
       - ".github/workflows/research-xau-sd-liquidity-v345.yml"
   push:
     branches: [main]
@@ -44,6 +47,7 @@ jobs:
           pytest -q \
             tests/test_xau_sd_liquidity_engine_v342.py \
             tests/test_xau_friend_entry_engine_v343.py \
+            tests/test_xau_news_zone_v346.py \
             tests/test_research_xau_sd_liquidity_v345.py
 
   backfill-year:
