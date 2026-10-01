@@ -12,8 +12,6 @@ on:
     paths:
       - "src/fx_scanner/demo_xau_afic_path_shadow_observer.py"
       - ".github/workflows/ctrader-demo-xau-afic-path-shadow.yml"
-  schedule:
-    - cron: "*/5 * * * 1-5"
 
 permissions:
   contents: read
