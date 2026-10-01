@@ -60,11 +60,11 @@ from fx_scanner.xau_standalone_bridge_v253 import (
     fetch_snapshot as fetch_standalone_snapshot,
 )
 
-UTC = timezone.utc
+from fx_scanner.xau_dual_engine_dashboard_v344 import render_xau_dual_engine_dashboard\n\nUTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V336_SIMPLE_DECISION_20261001"
+DASHBOARD_BUILD_ID = "RIZAN_V344_DUAL_ISOLATED_20261001"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # Generic minute-tier reads are intentionally small. Prepared/V182/V226,
@@ -2144,7 +2144,7 @@ else:
         "after Supabase backend credentials and runtime snapshots are available."
     )
 
-simple_tab, forecast_tab, account_tab, scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
+# V344: user-directed simplification. Only the two isolated engines below are\n# allowed to present market opinions. Legacy dashboard code remains in the file\n# for audit/rollback, but is unreachable while this V344 gate is active.\n_v344_heartbeats = [] if backend is None else list(backend.get("heartbeats") or [])\n_v342_sd_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_sd_liquidity_v342")\n_v343_friend_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_friend_entry_v343")\nrender_xau_dual_engine_dashboard(\n    sd_heartbeat=_v342_sd_hb,\n    friend_heartbeat=_v343_friend_hb,\n)\n# LEGACY_DECISION_UI_STOP_V344\nst.stop()\n\nsimple_tab, forecast_tab, account_tab, scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
     [
         "RIZAN SIMPLE",
         "Detail Engine",
