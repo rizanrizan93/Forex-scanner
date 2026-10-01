@@ -295,26 +295,85 @@ def build_snapshot(
     )
 
     # Minute-level state: small projected/operational payloads only.
-    hot_heartbeats = list(reader.heartbeats_for_workers(list(HOT_HEARTBEATS)))
-    prepared_heartbeat = reader.latest_rizan_prepared_heartbeat()
-    if prepared_heartbeat is not None:
-        hot_heartbeats.append(prepared_heartbeat)
-    v229_heartbeat = reader.latest_rizan_v229_execution_heartbeat()
-    if v229_heartbeat is not None:
-        hot_heartbeats.append(v229_heartbeat)
-    child_heartbeat = reader.latest_rizan_child_executor_heartbeat()
-    if child_heartbeat is not None:
-        hot_heartbeats.append(child_heartbeat)
+    #
+    # V330 resilience: the dashboard transport must not stop publishing merely
+    # because one projected Supabase read times out. When a previous public
+    # snapshot exists, retain its last-known heartbeat for that worker and
+    # publish explicit degraded-read metadata. Individual heartbeat timestamps
+    # remain authoritative, so Streamlit still marks stale components as stale.
+    operational_read_errors: list[str] = []
+    previous_heartbeats = [
+        dict(row or {})
+        for row in list(previous_backend.get("heartbeats") or [])
+    ]
+    previous_by_worker = {
+        str(row.get("worker_name") or ""): row
+        for row in previous_heartbeats
+        if str(row.get("worker_name") or "")
+    }
+
+    try:
+        hot_heartbeats = list(
+            reader.heartbeats_for_workers(list(HOT_HEARTBEATS))
+        )
+    except Exception as exc:
+        operational_read_errors.append(
+            f"HOT_HEARTBEATS:{type(exc).__name__}"
+        )
+        hot_heartbeats = [
+            dict(previous_by_worker[name])
+            for name in HOT_HEARTBEATS
+            if name in previous_by_worker
+        ]
+        if not hot_heartbeats and not has_previous:
+            raise
+
+    def _append_operational(
+        *,
+        label: str,
+        worker_name: str,
+        fetcher: Callable[[], dict[str, Any] | None],
+    ) -> None:
+        try:
+            row = fetcher()
+        except Exception as exc:
+            operational_read_errors.append(
+                f"{label}:{type(exc).__name__}"
+            )
+            row = previous_by_worker.get(worker_name)
+        if row is not None:
+            hot_heartbeats.append(dict(row))
+
+    _append_operational(
+        label="PREPARED",
+        worker_name="ctrader_demo_xau_rizan_prepared_plan_producer",
+        fetcher=reader.latest_rizan_prepared_heartbeat,
+    )
+    _append_operational(
+        label="V229_EXECUTION",
+        worker_name="ctrader_demo_xau_v229_depth_execution",
+        fetcher=reader.latest_rizan_v229_execution_heartbeat,
+    )
+    _append_operational(
+        label="V229_CHILD",
+        worker_name="ctrader_demo_xau_v229_child_executor",
+        fetcher=reader.latest_rizan_child_executor_heartbeat,
+    )
 
     # Current V182 path/M5 and V226 candidate identity must not wait for the
     # ten-minute historical-detail tier. These projected rows are deliberately
-    # compact and are merged into the cached full heartbeats below.
-    atlas_operational = reader.latest_xau_atlas_operational_heartbeat()
-    if atlas_operational is not None:
-        hot_heartbeats.append(atlas_operational)
-    v226_operational = reader.latest_xau_v226_operational_heartbeat()
-    if v226_operational is not None:
-        hot_heartbeats.append(v226_operational)
+    # compact and are merged into cached full heartbeats. A transient timeout
+    # falls back to the last public snapshot instead of freezing the bridge.
+    _append_operational(
+        label="V182_OPERATIONAL",
+        worker_name="ctrader_demo_xau_supply_demand_atlas_v182",
+        fetcher=reader.latest_xau_atlas_operational_heartbeat,
+    )
+    _append_operational(
+        label="V226_OPERATIONAL",
+        worker_name="ctrader_demo_xau_v226_rizan_depth_map",
+        fetcher=reader.latest_xau_v226_operational_heartbeat,
+    )
 
     hot_heartbeat_bytes = _json_size(hot_heartbeats)
     cycle_bytes += hot_heartbeat_bytes
@@ -486,6 +545,8 @@ def build_snapshot(
             "support_reused": support_reused,
             "cold_reused": cold_reused,
             "outcomes_reused": outcomes_reused,
+            "operational_read_degraded": bool(operational_read_errors),
+            "operational_read_errors": operational_read_errors,
             "egress_budget": {
                 "cycle_payload_bytes": int(cycle_bytes),
                 "hot_payload_bytes": int(hot_payload_bytes),
