@@ -36,6 +36,11 @@ HOT_HEARTBEATS = (
     "ctrader_demo_xau_dom_v191",
     "ctrader_demo_xau_event_risk_v192",
     "ctrader_demo_xau_v203_volatility_shock_guard",
+    # V296/V297 drive the top Decision Center. Keeping them out of the
+    # minute-tier caused the UI to show an empty/stale center while backend
+    # heartbeats were healthy and fresh.
+    "ctrader_demo_xau_decision_center_v296",
+    "ctrader_demo_xau_meta_research_sampler_v297",
 )
 
 STRUCTURAL_HEARTBEATS = (

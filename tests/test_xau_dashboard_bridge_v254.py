@@ -201,3 +201,9 @@ def test_v229_query_projects_display_fields_without_duplicate_candidate_or_hazar
     assert result["details"]["plan"]["execution_phase"] == "RETEST_CONFIRMATION"
     assert result["details"]["plan"]["children"][0]["submit_eligible"] is False
     assert result["details"]["plan_diagnostics"]["reason"] == "TERMINAL_RR_BELOW_MINIMUM"
+
+
+def test_v317_bridge_refreshes_v296_v297_in_hot_tier():
+    from fx_scanner.xau_dashboard_bridge_v254 import HOT_HEARTBEATS
+    assert "ctrader_demo_xau_decision_center_v296" in HOT_HEARTBEATS
+    assert "ctrader_demo_xau_meta_research_sampler_v297" in HOT_HEARTBEATS
