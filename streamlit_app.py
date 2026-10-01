@@ -62,7 +62,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V321_DUAL_CYCLE_MICRO_REFINEMENT_20261001"
+DASHBOARD_BUILD_ID = "RIZAN_V322_MICRO_HANDOFF_CONFLUENCE_20261001"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -77,6 +77,7 @@ RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     "ctrader_demo_xau_structural_research_probe_v318",
     "ctrader_demo_xau_micro_entry_refinement_v320",
     "ctrader_demo_xau_micro_entry_dual_cycle_v321",
+    "ctrader_demo_xau_micro_handoff_v322",
 )
 
 RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS = (
@@ -2274,6 +2275,9 @@ with forecast_tab:
     v321_micro_entry_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_micro_entry_dual_cycle_v321"
     )
+    v322_micro_handoff_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_micro_handoff_v322"
+    )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
     )
@@ -4027,9 +4031,9 @@ with forecast_tab:
             prices.append(_fmt_price(row.get("price")))
         return " → ".join(prices) if prices else "Belum ada waypoint valid"
 
-    # V321 prefers the dual-cycle heartbeat. V320 remains a temporary
-    # compatibility fallback while old dashboard snapshots age out.
-    micro_hb = v321_micro_entry_hb or v320_micro_entry_hb
+    # V322 adds no-chase handoff + V182 micro confluence. V321/V320 remain
+    # compatibility fallbacks while older bridge snapshots age out.
+    micro_hb = v322_micro_handoff_hb or v321_micro_entry_hb or v320_micro_entry_hb
     v320_micro_details = (
         {}
         if micro_hb is None
@@ -4250,7 +4254,7 @@ with forecast_tab:
             )
 
         with st.container(border=True):
-            st.markdown("### RIZAN STYLE MICRO ENTRY REFINEMENT • V321")
+            st.markdown("### RIZAN STYLE MICRO ENTRY REFINEMENT • V322")
             st.caption(
                 "Dua siklus dipisahkan: (1) micro-entry pada source H4/H1 yang sedang "
                 "aktif/disentuh, dan (2) pre-map entry pada opposing zone berikutnya. "
@@ -4259,7 +4263,7 @@ with forecast_tab:
             )
             if not v320_micro_eval:
                 st.warning(
-                    "V321 belum memiliki snapshot. Tunggu worker dual-cycle membaca "
+                    "V322 belum memiliki snapshot. Tunggu worker micro-handoff membaca "
                     "atlas H4/H1 dan data M5/M15/H1."
                 )
             else:
@@ -4287,6 +4291,55 @@ with forecast_tab:
                     active_m5,
                     primary=v321_primary_role == "ACTIVE_SOURCE_M5",
                 )
+
+                v322_micro_context = dict(v321_active_source.get("micro_context") or {})
+                v322_sweep = dict(v322_micro_context.get("sweep") or {})
+                v322_candidate_pocket = dict(
+                    v322_micro_context.get("candidate_micro_pocket") or {}
+                )
+                v322_refined_pocket = dict(
+                    v322_micro_context.get("refined_micro_pocket") or {}
+                )
+                mc1, mc2, mc3, mc4 = st.columns(4)
+                mc1.metric(
+                    "V182 M5 state",
+                    _rizan_display(v322_micro_context.get("state") or "WAIT"),
+                )
+                mc2.metric("Sweep", _fmt_price(v322_sweep.get("price")))
+                mc3.metric("MSS level", _fmt_price(v322_micro_context.get("mss_level")))
+                mc4.metric(
+                    "Source distance",
+                    (
+                        f"{float(v321_active_source.get('distance_atr')):.2f} ATR"
+                        if v321_active_source.get("distance_atr") is not None
+                        else "—"
+                    ),
+                )
+                if bool(v321_active_source.get("no_chase")):
+                    st.warning(
+                        "ACTIVE SOURCE = NO CHASE. Harga sudah >0,75 ATR meninggalkan "
+                        "source setelah reaction; source tetap konteks, tetapi fokus persiapan "
+                        "dipindahkan ke NEXT OPPOSING."
+                    )
+                if v322_candidate_pocket:
+                    st.caption(
+                        "M5 candidate pocket "
+                        + _fmt_price(v322_candidate_pocket.get("low"))
+                        + "–"
+                        + _fmt_price(v322_candidate_pocket.get("high"))
+                        + " • source="
+                        + str(v322_candidate_pocket.get("source") or "—")
+                        + "."
+                    )
+                if v322_refined_pocket:
+                    st.success(
+                        "M5 refined pocket "
+                        + _fmt_price(v322_refined_pocket.get("low"))
+                        + "–"
+                        + _fmt_price(v322_refined_pocket.get("high"))
+                        + " • confluence V182 aktif."
+                    )
+
                 with st.expander("ACTIVE SOURCE • H1 swing ladder", expanded=False):
                     _render_micro_setup(
                         "H1 swing",
@@ -4308,9 +4361,10 @@ with forecast_tab:
                     )
 
                 st.info(
-                    "Cara baca: bila harga sedang INSIDE / baru bereaksi dari source aktif, "
-                    "ikuti panel ACTIVE SOURCE sebagai micro forecast. NEXT OPPOSING hanya "
-                    "persiapan untuk reversal berikutnya sampai zona tersebut benar-benar disentuh."
+                    "Cara baca V322: ACTIVE SOURCE menjadi primary saat harga masih di source "
+                    "atau masih dalam retest window ≤0,75 ATR. Jika harga sudah bergerak terlalu "
+                    "jauh, NO CHASE aktif dan NEXT OPPOSING menjadi fokus persiapan. Saat harga "
+                    "masuk NEXT OPPOSING, handoff dilakukan ke cycle reversal berikutnya."
                 )
                 st.caption(
                     "Snapshot "
