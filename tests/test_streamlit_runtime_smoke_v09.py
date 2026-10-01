@@ -256,7 +256,10 @@ def test_v256_dashboard_hides_research_locator_from_operational_decision_path():
     assert 'm2.metric("Pair aktif", "XAUUSD")' in text
     assert "1 • RIZAN Supply/Demand + Liquidity" in text
     assert "2 • RIZAN Micro Entry Refinement" in text
-    assert "RIZAN STYLE MICRO ENTRY REFINEMENT • V322" in text\n    assert "ACTIVE SOURCE = NO CHASE" in text\n    assert '"Sweep", _fmt_price(v322_sweep.get("price"))' in text\n    assert '"MSS level", _fmt_price(v322_micro_context.get("mss_level"))' in text
+    assert "RIZAN STYLE MICRO ENTRY REFINEMENT • V322" in text
+    assert "ACTIVE SOURCE = NO CHASE" in text
+    assert '"Sweep", _fmt_price(v322_sweep.get("price"))' in text
+    assert '"MSS level", _fmt_price(v322_micro_context.get("mss_level"))' in text
     assert "ACTIVE SOURCE • M5 fast entry" in text
     assert "NEXT OPPOSING ZONE • M5 pre-map" in text
 
