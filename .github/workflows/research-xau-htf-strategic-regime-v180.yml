@@ -2,20 +2,6 @@ name: XAU HTF Strategic Regime V180
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "35 0 * * 1"
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/research_xau_htf_strategic_regime_v180.py"
-      - "src/fx_scanner/research_xau_htf_strategic_regime_v180_runtime.py"
-      - ".github/workflows/research-xau-htf-strategic-regime-v180.yml"
-  pull_request:
-    paths:
-      - "src/fx_scanner/research_xau_htf_strategic_regime_v180.py"
-      - "src/fx_scanner/research_xau_htf_strategic_regime_v180_runtime.py"
-      - "tests/test_research_xau_htf_strategic_regime_v180.py"
-      - ".github/workflows/research-xau-htf-strategic-regime-v180.yml"
 
 permissions:
   contents: read
