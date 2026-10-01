@@ -60,7 +60,9 @@ from fx_scanner.xau_standalone_bridge_v253 import (
     fetch_snapshot as fetch_standalone_snapshot,
 )
 
-from fx_scanner.xau_dual_engine_dashboard_v344 import render_xau_dual_engine_dashboard\n\nUTC = timezone.utc
+from fx_scanner.xau_dual_engine_dashboard_v344 import render_xau_dual_engine_dashboard
+
+UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
