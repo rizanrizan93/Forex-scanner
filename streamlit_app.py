@@ -3464,6 +3464,23 @@ with forecast_tab:
                     )
                     + "Scanner will not invent SL/TP for an unknown position."
                 )
+                protection_positions = [
+                    dict(row)
+                    for row in list(protection_details.get("positions") or [])
+                    if isinstance(row, dict)
+                ]
+                if protection_positions:
+                    st.markdown("**Posisi yang memblokir order baru:**")
+                    for row in protection_positions[:6]:
+                        opened_at = str(row.get("opened_at") or "—")
+                        st.caption(
+                            f"• {str(row.get('side') or '—')} "
+                            f"{_fmt_number(row.get('volume'), 2)} {str(row.get('symbol') or '')} "
+                            f"@ {_fmt_price(row.get('open_price'))} • opened={opened_at} • "
+                            f"SL={'ADA' if row.get('has_stop_loss') else 'TIDAK ADA'} • "
+                            f"TP={'ADA' if row.get('has_take_profit') else 'TIDAK ADA'} • "
+                            f"linkage={str(row.get('scanner_linkage') or 'UNVERIFIED')}"
+                        )
             elif bool(v296_protection_gate.get("warning")):
                 st.warning(
                     "Protection status warning • "

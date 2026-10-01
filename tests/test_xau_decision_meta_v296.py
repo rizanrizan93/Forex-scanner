@@ -256,6 +256,8 @@ def test_v296_dashboard_and_execution_lane_contract() -> None:
     assert "EXECUTION SAFETY BLOCK" in dashboard
     assert "PROTECTION_INTEGRITY" in dashboard
     assert "Scanner will not invent SL/TP for an unknown position." in dashboard
+    assert "Posisi yang memblokir order baru:" in dashboard
+    assert "linkage=" in dashboard
 
 
 
