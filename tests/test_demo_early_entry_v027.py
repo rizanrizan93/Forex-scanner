@@ -224,7 +224,9 @@ def test_supervisor_uses_one_minute_non_overlap_dispatch():
     assert "seq 1 5" in text
     assert "sleep 60" in text
     assert "SUPERVISOR_EXECUTION_SKIP_BUSY" in text
-    assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
+    assert "SUPERVISOR_DISCOVERY_SKIP" in text
+    assert "SUPERVISOR_RIZAN_PREPARED_INTEGRATED" in text
+    assert "SUPERVISOR_DOM_V191_INTEGRATED" in text
     assert "overlap_within_lane=DISABLED" in text
     assert "authority=SCHEDULE_5M" in text
     assert "self_handoff=SAFE_CONDITIONAL" in text
