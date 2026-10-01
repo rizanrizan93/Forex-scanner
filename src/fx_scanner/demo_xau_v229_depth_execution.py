@@ -19,6 +19,9 @@ from .storage.supabase_operational import SupabaseOperationalStore
 from .xau_pressure_transition_v249 import DOM_WORKER, evaluate_pressure_transition
 from .xau_dynamic_depth_hazard_v251 import build_dynamic_depth_hazard
 from .xau_reversal_stage_v280 import evaluate_reversal_stage
+from .xau_liquidity_sweep_admission_guard_v331 import (
+    build_liquidity_sweep_admission_guard,
+)
 
 SYMBOL = "XAUUSD"
 STRATEGY_ID = "XAU_RIZAN_DEPTH_EXECUTION_V1"
@@ -649,6 +652,7 @@ def run() -> int:
     depth_hazard: dict[str, Any] = {}
     plan_diagnostics: dict[str, Any] = {}
     reversal_stage: dict[str, Any] = {}
+    liquidity_sweep_guard: dict[str, Any] = {}
 
     try:
         if not execution_enabled:
@@ -723,6 +727,12 @@ def run() -> int:
                     now=now,
                 )
                 plan["reversal_stage"] = dict(reversal_stage)
+                liquidity_sweep_guard = build_liquidity_sweep_admission_guard(
+                    atlas_evaluation=atlas_eval,
+                    plan=plan,
+                    live_price=live_price,
+                )
+                plan["liquidity_sweep_guard"] = dict(liquidity_sweep_guard)
                 strict_pressure_allowed = bool(
                     pressure_transition.get("pre_touch_entry_allowed")
                     or pressure_transition.get("confirmation_entry_allowed")
@@ -745,6 +755,16 @@ def run() -> int:
                         store,
                         current_key="V280_BLOCK:" + block_stage,
                         guard="V280_" + block_stage,
+                    )
+                elif bool(liquidity_sweep_guard.get("hard_execution_block")):
+                    reason = "WAIT_LIQUIDITY_SWEEP_CONFIRMATION"
+                    plan_diagnostics["v331_liquidity_sweep_guard"] = dict(
+                        liquidity_sweep_guard
+                    )
+                    prior_invalidated = _invalidate_prior_ready(
+                        store,
+                        current_key="V331_LIQUIDITY_SWEEP_BLOCK",
+                        guard="V331_LIQUIDITY_SWEEP",
                     )
                 elif not strict_pressure_allowed and not fresh_calibration_arm:
                     reason = (
@@ -823,6 +843,7 @@ def run() -> int:
             "dynamic_depth_hazard_required": True,
             "dynamic_depth_hazard": depth_hazard,
             "reversal_stage": reversal_stage,
+            "liquidity_sweep_guard": liquidity_sweep_guard,
             "reason": reason,
             "signal_id": signal_id,
             "candidate_key": candidate_key,
