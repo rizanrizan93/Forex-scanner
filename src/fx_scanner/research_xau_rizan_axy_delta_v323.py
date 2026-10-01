@@ -71,6 +71,16 @@ def _anchor_for_episode(
         return None
     touch_at = pd.Timestamp(ensure_utc(episode.touch_at))
     horizon_at = touch_at + pd.Timedelta(minutes=HORIZON_MINUTES[timeframe])
+    prior_atr_rows = m5[
+        (m5["known_at"] <= touch_at)
+        & m5["atr14"].notna()
+    ]
+    if prior_atr_rows.empty:
+        return None
+    touch_atr = _f(prior_atr_rows.iloc[-1]["atr14"])
+    if touch_atr is None or touch_atr <= 0:
+        return None
+
     rows = m5[
         (m5["known_at"] > touch_at)
         & (m5["timestamp"] < horizon_at)
@@ -80,16 +90,6 @@ def _anchor_for_episode(
 
     direction = str(episode.direction).upper()
     proximal = float(episode.proximal)
-    touch_atr = next(
-        (
-            float(value)
-            for value in rows["atr14"].tolist()
-            if _f(value) is not None and float(value) > 0
-        ),
-        None,
-    )
-    if touch_atr is None:
-        return None
     impulse_threshold = (
         proximal + IMPULSE_ATR_MULTIPLE * touch_atr
         if direction == "LONG"
@@ -446,6 +446,7 @@ def evaluate_year(
         "target_multiples": list(TARGET_MULTIPLES),
         "anchor_contract": {
             "reclaim": "TWO_CONSECUTIVE_M5_CLOSES_BEYOND_PARENT_PROXIMAL",
+            "touch_atr": "LAST_M5_ATR14_KNOWN_AT_OR_BEFORE_PARENT_TOUCH",
             "impulse": f"{IMPULSE_ATR_MULTIPLE:.2f}_CAUSAL_M5_ATR14_FROM_PROXIMAL",
             "a": "FIRST_CAUSALLY_CONFIRMED_POST_IMPULSE_M5_PULLBACK_PIVOT",
             "a_known_at": "CLOSE_OF_M5_BAR_AFTER_PIVOT",
