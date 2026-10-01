@@ -101,7 +101,7 @@ def test_active_xau_supervisor_runs_one_minute_checks_without_weekend_crypto_fal
     assert 'cron: "17 * * * 1-5"' in heartbeat
     assert "market_open_utc" in supervisor
     assert "fast_cadence_seconds=60" in supervisor
-    assert "discovery_check_seconds=60" in supervisor
+    assert "discovery_check_seconds=900" in supervisor
     assert "universe=XAUUSD" in supervisor
     assert "universe=XAUUSD,EURUSD" not in supervisor
     assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in supervisor
