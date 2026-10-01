@@ -24,9 +24,13 @@ from .models import ensure_utc
 from .demo_xau_afic_supply_demand_context import (
     attach_supply_demand_context,
     context_token as supply_demand_context_token,
+    latest_atlas,
 )
 from .storage.supabase_operational import SupabaseOperationalStore
 from .demo_xau_structural_targets_v229 import build_structural_target_plan
+from .xau_liquidity_sweep_admission_guard_v331 import (
+    build_liquidity_sweep_admission_guard,
+)
 
 STRATEGY_ID="XAU_RIZAN_PATH_PREPARED_V1"
 EXECUTION_STRATEGY_ID="XAU_RIZAN_PATH_EXECUTION_V1"
@@ -189,9 +193,21 @@ def enrich_alternative_reversal_watches(
     return {**payload,"zone_diagnostics":diagnostics}
 
 
-def signal_state_and_guards(*,execution_enabled:bool,confirmed:bool,grade:str)->tuple[str,list[str]]:
+def signal_state_and_guards(
+    *,
+    execution_enabled:bool,
+    confirmed:bool,
+    grade:str,
+    liquidity_sweep_block:bool=False,
+)->tuple[str,list[str]]:
     grade_u=str(grade).upper()
-    if execution_enabled and confirmed and grade_u in {"A","B"}:
+    ready=bool(
+        execution_enabled
+        and confirmed
+        and grade_u in {"A","B"}
+        and not liquidity_sweep_block
+    )
+    if ready:
         return "EXECUTION_READY",[]
     guards=[]
     if grade_u not in {"A","B"}:
@@ -200,6 +216,8 @@ def signal_state_and_guards(*,execution_enabled:bool,confirmed:bool,grade:str)->
         guards.append("RIZAN_M15_CONFIRMATION_REQUIRED")
     if not execution_enabled:
         guards.append("RIZAN_DEMO_EXECUTION_DISABLED")
+    if liquidity_sweep_block:
+        guards.append("V331_LIQUIDITY_SWEEP_CONFIRMATION_REQUIRED")
     return "ARMED",guards
 
 
@@ -573,6 +591,7 @@ def _write_signal(
     plan:dict[str,Any],
     observed_at:datetime,
     execution_enabled:bool,
+    liquidity_sweep_block:bool=False,
 )->str:
     direction=str(payload["continuation_direction"]).upper()
     grade=str(plan["selector_grade"])
@@ -581,6 +600,7 @@ def _write_signal(
         execution_enabled=execution_enabled,
         confirmed=confirmed,
         grade=grade,
+        liquidity_sweep_block=liquidity_sweep_block,
     )
     score={"A":95.0,"B":90.0,"C":85.0}[grade]
     risk=abs(float(plan["entry"])-float(plan["stop"]))
@@ -745,6 +765,49 @@ def _invalidate_stale_execution_ready(store,*,payload:dict[str,Any])->int:
     return invalidated
 
 
+def _invalidate_liquidity_blocked_ready(
+    store,
+    *,
+    payload:dict[str,Any],
+)->int:
+    """Invalidate same-map prepared-path authority when V331 turns fail-closed.
+
+    This closes the small race where an EXECUTION_READY row was emitted on a
+    previous cycle and a newer liquidity map subsequently requires M5
+    reclaim+MSS+displacement before entry.
+    """
+    rows=_identity_rows(
+        store,
+        identities=(
+            (EXECUTION_EVENT_TYPE,EXECUTION_STRATEGY_ID),
+            (EXECUTION_EVENT_TYPE,LEGACY_EXECUTION_STRATEGY_ID),
+        ),
+        limit=40,
+    )
+    invalidated=0
+    seen=set()
+    for row in rows:
+        signal_id=str(row.get("signal_key") or "").strip()
+        if not signal_id or signal_id in seen:
+            continue
+        seen.add(signal_id)
+        geometry=dict(row.get("payload") or {})
+        if not geometry_matches_current_forecast(geometry,payload):
+            continue
+        result=(
+            store.client.table("signals")
+            .update({
+                "state":"INVALIDATED",
+                "active_guards":["V331_LIQUIDITY_SWEEP_CONFIRMATION_REQUIRED"],
+            })
+            .eq("id",signal_id)
+            .eq("state","EXECUTION_READY")
+            .execute()
+        )
+        invalidated+=len(list(result.data or []))
+    return invalidated
+
+
 def _record_execution_geometry(
     store,
     *,
@@ -830,6 +893,9 @@ def run()->int:
     live_mid=None
     stale_ready_invalidated=0
     superseded_signals_invalidated=0
+    liquidity_ready_invalidated=0
+    liquidity_sweep_guard:dict[str,Any]={}
+    liquidity_sweep_block=False
     try:
         feed.ensure_connected()
         raw=tuple(feed.historical_bars(
@@ -906,6 +972,37 @@ def run()->int:
         elif plan is not None:
             kind="FORECAST_BLUEPRINT"
 
+        # V339: the dedicated prepared-path lane must respect the same liquidity
+        # sweep danger contract as V229. A completed M15 rejection alone is not
+        # sufficient when aligned V328/V331 context still requires M5
+        # reclaim+MSS+displacement.
+        if confirmed and plan is not None and live_mid is not None:
+            _atlas_at, guard_atlas=latest_atlas(store)
+            if not guard_atlas:
+                raise RuntimeError("V339_LIQUIDITY_GUARD_ATLAS_UNAVAILABLE")
+            direction=str(payload.get("continuation_direction") or "").upper()
+            guard_source=dict(payload.get("zone") or {})
+            liquidity_sweep_guard=build_liquidity_sweep_admission_guard(
+                atlas_evaluation=guard_atlas,
+                plan={
+                    "direction":direction,
+                    "candidate":{
+                        "direction":direction,
+                        "source_zone":guard_source,
+                    },
+                },
+                live_price=live_mid,
+            )
+            liquidity_sweep_block=bool(
+                liquidity_sweep_guard.get("hard_execution_block")
+            )
+            plan["liquidity_sweep_guard"]=dict(liquidity_sweep_guard)
+            if liquidity_sweep_block:
+                liquidity_ready_invalidated=_invalidate_liquidity_blocked_ready(
+                    store,
+                    payload=payload,
+                )
+
         observability=prepared_observability(
             payload,
             prepared_reference=prepared_reference,
@@ -923,6 +1020,7 @@ def run()->int:
                     plan=plan,
                     observed_at=now,
                     execution_enabled=execution_enabled,
+                    liquidity_sweep_block=liquidity_sweep_block,
                 )
                 _record_event(
                     store,key=key,kind=kind,payload=payload,plan=plan,signal_id=signal_id,
@@ -932,6 +1030,7 @@ def run()->int:
                     execution_enabled
                     and confirmed
                     and str(plan.get("selector_grade") or "").upper() in {"A","B"}
+                    and not liquidity_sweep_block
                 )
                 if auto_authorized:
                     _record_execution_geometry(
@@ -1003,6 +1102,21 @@ def run()->int:
             "live_quote_error":live_quote_error,
             "stale_ready_invalidated":stale_ready_invalidated,
             "superseded_signals_invalidated":superseded_signals_invalidated,
+            "liquidity_ready_invalidated":liquidity_ready_invalidated,
+            "liquidity_sweep_block":liquidity_sweep_block,
+            "liquidity_sweep_guard":{
+                "state":liquidity_sweep_guard.get("state"),
+                "reason":liquidity_sweep_guard.get("reason"),
+                "risk_grade":liquidity_sweep_guard.get("risk_grade"),
+                "source_aligned":liquidity_sweep_guard.get("source_aligned"),
+                "first_touch_warning":liquidity_sweep_guard.get("first_touch_warning"),
+                "hard_execution_block":liquidity_sweep_guard.get("hard_execution_block"),
+                "micro_reconfirmed":liquidity_sweep_guard.get("micro_reconfirmed"),
+                "sweep_band":dict(liquidity_sweep_guard.get("sweep_band") or {}),
+                "primary_liquidity_pool":dict(
+                    liquidity_sweep_guard.get("primary_liquidity_pool") or {}
+                ),
+            } if liquidity_sweep_guard else {},
             "signal_id":signal_id,
             "confirmation_detection_lag_seconds":confirmation_lag,
             "entry_drift_r":drift_metrics.get("entry_drift_r"),
@@ -1019,6 +1133,7 @@ def run()->int:
         f"block={observability.get('blueprint_block_reason')} "
         f"confirm_lag_s={confirmation_lag} drift_r={drift_metrics.get('entry_drift_r')} "
         f"emitted={int(emitted)} state_persisted={int(state_transition_persisted)} "
+        f"liquidity_block={int(liquidity_sweep_block)} "
         f"execution_authority=0"
     )
     return 0 if healthy else 2
