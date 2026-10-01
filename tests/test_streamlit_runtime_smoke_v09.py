@@ -248,7 +248,7 @@ def test_dashboard_standalone_fallback_is_diagnostic_only_without_page_stop():
 
 def test_v256_dashboard_hides_research_locator_from_operational_decision_path():
     text = (ROOT / "streamlit_app.py").read_text()
-    assert 'DASHBOARD_BUILD_ID = "RIZAN_V322_MICRO_HANDOFF_CONFLUENCE_20261001"' in text
+    assert 'DASHBOARD_BUILD_ID = "RIZAN_V325_BRIDGE_ENTRY_CLARITY_20261001"' in text
     assert "Zone watch (BUKAN ENTRY)" in text
     assert "Path target (BUKAN TP order)" in text
     assert "Geometry only — hanya posisi harga relatif terhadap source zone" in text
@@ -332,3 +332,22 @@ def test_v2592_direct_dashboard_reads_are_egress_bounded() -> None:
     assert "latest_afic_forecast_states(limit=6)" in text
     assert "latest_rizan_execution_geometry_compact(limit=1)" in text
     assert "latest_xau_prepared_plan_lifecycle(limit=4)" in text
+
+
+def test_v325_dashboard_separates_current_plan_from_next_leg_watch() -> None:
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "CURRENT PLAN • Entry canonical" in text
+    assert "Entry referensi terakhir — JANGAN ENTRY" in text
+    assert "NEXT LEG WATCH •" in text
+    assert "NEXT LEG WATCH — BUKAN ENTRY SAAT INI" in text
+    assert "Jangan mencampur level NEXT LEG dengan entry/TP CURRENT PLAN." in text
+
+
+def test_v325_dashboard_collapses_duplicate_tp_and_respects_stale_hard_blocks() -> None:
+    text = (ROOT / "streamlit_app.py").read_text()
+    assert "duplicate_targets" in text
+    assert "Checkpoint path • BUKAN TP order" in text
+    assert "TP terminal geometry" in text
+    assert 'and not backend_snapshot_stale' in text
+    assert 'and v296_action == "DEMO_ORDER_ELIGIBLE"' in text
+    assert "and not v296_hard_blocks" in text
