@@ -2,12 +2,6 @@ name: cTrader Demo XAU Event Prospective V193
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/demo_xau_event_prospective_v193.py"
-      - "tests/test_demo_xau_event_prospective_v193.py"
-      - ".github/workflows/ctrader-demo-xau-event-prospective-v193.yml"
 
 permissions:
   contents: read
