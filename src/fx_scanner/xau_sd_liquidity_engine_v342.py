@@ -17,6 +17,8 @@ EXECUTION_INFLUENCE = False
 LIVE_EXECUTION_ENABLED = False
 
 # Frozen first-generation thresholds. They are deliberately simple and causal.
+TF_MINUTES = {"M5": 5, "M15": 15, "H1": 60, "H4": 240}
+
 TF_PARAMS = {
     "H1": {
         "departure_range_atr": 0.90,
@@ -184,7 +186,10 @@ def detect_zones(
     frame = _bar_frame(bars)
     if len(frame) < 24:
         return ()
-    frame = frame[frame["timestamp"] < pd.Timestamp(ensure_utc(as_of))].copy()
+    known_delta = pd.Timedelta(minutes=TF_MINUTES[tf])
+    frame = frame[
+        (frame["timestamp"] + known_delta) <= pd.Timestamp(ensure_utc(as_of))
+    ].copy()
     if len(frame) < 24:
         return ()
     frame["atr14"] = _atr(frame)
@@ -262,7 +267,9 @@ def detect_zones(
             continue
 
         origin_at = ensure_utc(base.iloc[0]["timestamp"].to_pydatetime())
-        available_at = ensure_utc(departure["timestamp"].to_pydatetime())
+        available_at = ensure_utc(
+            (departure["timestamp"] + known_delta).to_pydatetime()
+        )
         pre_close = float(frame.iloc[i - base_len - 1]["close"])
         zone_class = "STRUCTURAL_BOS" if structural_bos else "DISPLACEMENT"
         score = (
@@ -309,9 +316,12 @@ def _lifecycle(zone: SDZone, bars: Iterable[Any], *, as_of: datetime) -> dict[st
     frame = _bar_frame(bars)
     if frame.empty:
         return {"active": True, "touch_count": 0, "freshness": "UNKNOWN"}
+    known_delta = pd.Timedelta(minutes=TF_MINUTES[zone.timeframe])
+    frame = frame.copy()
+    frame["known_at"] = frame["timestamp"] + known_delta
     future = frame[
-        (frame["timestamp"] > pd.Timestamp(zone.available_at))
-        & (frame["timestamp"] < pd.Timestamp(ensure_utc(as_of)))
+        (frame["known_at"] > pd.Timestamp(zone.available_at))
+        & (frame["known_at"] <= pd.Timestamp(ensure_utc(as_of)))
     ]
     width = max(zone.high - zone.low, 1e-9)
     touch_count = 0
@@ -325,7 +335,7 @@ def _lifecycle(zone: SDZone, bars: Iterable[Any], *, as_of: datetime) -> dict[st
         high = float(row["high"])
         low = float(row["low"])
         close = float(row["close"])
-        ts = ensure_utc(row["timestamp"].to_pydatetime())
+        ts = ensure_utc(row["known_at"].to_pydatetime())
         inside = high >= zone.low and low <= zone.high
         if inside and not was_inside:
             touch_count += 1
@@ -422,8 +432,17 @@ def _dedupe(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
     return kept
 
 
-def _market_structure(bars: Iterable[Any], *, timeframe: str) -> dict[str, Any]:
+def _market_structure(
+    bars: Iterable[Any],
+    *,
+    timeframe: str,
+    as_of: datetime,
+) -> dict[str, Any]:
     frame = _bar_frame(bars)
+    known_delta = pd.Timedelta(minutes=TF_MINUTES[timeframe])
+    frame = frame[
+        (frame["timestamp"] + known_delta) <= pd.Timestamp(ensure_utc(as_of))
+    ].copy()
     if len(frame) < 24:
         return {"timeframe": timeframe, "state": "UNKNOWN"}
     frame["ema20"] = frame["close"].ewm(span=20, adjust=False).mean()
@@ -461,11 +480,19 @@ def _pivot_levels(
     frame = _bar_frame(bars)
     if len(frame) < 7:
         return []
+    known_delta = pd.Timedelta(minutes=TF_MINUTES[timeframe])
+    frame = frame[
+        (frame["timestamp"] + known_delta) <= pd.Timestamp(ensure_utc(as_of))
+    ].copy()
+    if len(frame) < 7:
+        return []
     frame["atr14"] = _atr(frame)
     output: list[dict[str, Any]] = []
     for i in range(2, len(frame) - 2):
         # A pivot is only known after two later candles close.
-        known_at = ensure_utc(frame.iloc[i + 2]["timestamp"].to_pydatetime())
+        known_at = ensure_utc(
+            (frame.iloc[i + 2]["timestamp"] + known_delta).to_pydatetime()
+        )
         if known_at >= ensure_utc(as_of):
             continue
         row = frame.iloc[i]
@@ -638,11 +665,21 @@ def _micro_confirmation(
     bars_m5: Iterable[Any],
     bars_m15: Iterable[Any],
     price_now: float,
+    as_of: datetime,
 ) -> dict[str, Any]:
     direction = str(zone["direction"])
     m5 = _bar_frame(bars_m5)
     m15 = _bar_frame(bars_m15)
-    frame = m5 if len(m5) >= 20 else m15
+    if len(m5) >= 20:
+        frame = m5.copy()
+        micro_tf = "M5"
+    else:
+        frame = m15.copy()
+        micro_tf = "M15"
+    known_delta = pd.Timedelta(minutes=TF_MINUTES[micro_tf])
+    frame = frame[
+        (frame["timestamp"] + known_delta) <= pd.Timestamp(ensure_utc(as_of))
+    ].copy()
     if len(frame) < 20:
         return {"stage": "NO_MICRO_DATA", "confirmed": False}
     frame = frame.tail(96).copy()
@@ -862,6 +899,7 @@ def evaluate_sd_liquidity(
             bars_m5=bars_m5,
             bars_m15=bars_m15,
             price_now=current,
+            as_of=now,
         )
         if decision_zone
         else {"stage": "NO_DECISION_ZONE", "confirmed": False}
@@ -882,8 +920,8 @@ def evaluate_sd_liquidity(
         "as_of": now.isoformat(),
         "price_now": current,
         "market_structure": {
-            "H4": _market_structure(bars_h4, timeframe="H4"),
-            "H1": _market_structure(bars_h1, timeframe="H1"),
+            "H4": _market_structure(bars_h4, timeframe="H4", as_of=now),
+            "H1": _market_structure(bars_h1, timeframe="H1", as_of=now),
         },
         "nearest_demand": nearest_demand,
         "nearest_supply": nearest_supply,
