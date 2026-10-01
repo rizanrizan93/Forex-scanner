@@ -9,6 +9,7 @@ from fx_scanner.xau_sd_liquidity_engine_v342 import (
     _roadblocks,
     _select_parent_and_refinement,
     _structural_destination,
+    _structural_room_gate,
     detect_zones,
     evaluate_sd_liquidity,
 )
@@ -186,3 +187,56 @@ def test_v347_roadblock_only_exists_before_opposing_h4_destination():
     assert destination["zone_id"] == "h4-supply"
     assert [r["zone_id"] for r in roadblocks] == ["h1-supply-near"]
     assert roadblocks[0]["type"] == "SUPPLY"
+
+
+
+def test_v348_blocks_compressed_htf_corridor_before_entry():
+    parent = _zone_row(
+        "h4-supply",
+        "H4",
+        "SHORT",
+        4176.54,
+        4219.29,
+        atr=32.177857142857,
+        price=4182.21,
+    )
+    destination = {
+        "price": 4175.17,
+        "low": 4144.56,
+        "high": 4175.17,
+        "zone_id": "h4-demand",
+    }
+    result = _structural_room_gate(
+        parent_zone=parent,
+        direction="SHORT",
+        path_start=4182.21,
+        destination=destination,
+        entry=None,
+        invalidation=None,
+    )
+    assert result["state"] == "COMPRESSED_HTF_CORRIDOR"
+    assert result["blocked"] is True
+    assert result["distance_parent_atr"] < 0.50
+
+
+def test_v348_allows_room_when_destination_is_far_enough():
+    parent = _zone_row(
+        "h4-supply",
+        "H4",
+        "SHORT",
+        4176.0,
+        4220.0,
+        atr=30.0,
+        price=4180.0,
+    )
+    result = _structural_room_gate(
+        parent_zone=parent,
+        direction="SHORT",
+        path_start=4180.0,
+        destination={"price": 4140.0},
+        entry=None,
+        invalidation=None,
+    )
+    assert result["state"] == "STRUCTURAL_ROOM_OK"
+    assert result["blocked"] is False
+    assert result["distance_parent_atr"] > 0.50
