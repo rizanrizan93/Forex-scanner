@@ -172,6 +172,28 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v229_child_executor
 
+      - name: Execute fresh RIZAN prepared-path DEMO signal
+        id: execute_rizan_path_handoff
+        if: >-
+          ${{ !cancelled() &&
+              steps.repair_existing_protection.outcome == 'success' &&
+              steps.produce_xau_afic.outcome == 'success' }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_afic_fresh_ready_handoff
+
+      # V334: broker-facing handoffs are intentionally ahead of research-only
+      # probes/analytics. A normal full-lane runtime can approach the 10-minute
+      # job budget, so execution attempts must not be starved by V318/V296/V297.
+      # Decision logic is unchanged; this is orchestration priority only.
+      - name: Execute fresh exact-authorized DEMO signals
+        id: execute_fresh_handoff
+        if: >-
+          ${{ !cancelled() &&
+              steps.repair_existing_protection.outcome == 'success' &&
+              steps.produce_xau_afic.outcome == 'success' }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
+
       - name: Execute independent H1/H4 structural DEMO research probe V318
         id: execute_structural_research_probe
         if: >-
@@ -196,24 +218,6 @@ jobs:
               steps.build_xau_meta_decision.outcome == 'success' }}
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_meta_research_sampler_v297
-
-      - name: Execute fresh RIZAN prepared-path DEMO signal
-        id: execute_rizan_path_handoff
-        if: >-
-          ${{ !cancelled() &&
-              steps.repair_existing_protection.outcome == 'success' &&
-              steps.produce_xau_afic.outcome == 'success' }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_xau_afic_fresh_ready_handoff
-
-      - name: Execute fresh exact-authorized DEMO signals
-        id: execute_fresh_handoff
-        if: >-
-          ${{ !cancelled() &&
-              steps.repair_existing_protection.outcome == 'success' &&
-              steps.produce_xau_afic.outcome == 'success' }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
 
       - name: Assert execution lane critical stages
         if: ${{ always() && !cancelled() }}
