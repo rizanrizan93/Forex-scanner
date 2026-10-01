@@ -3064,6 +3064,121 @@ with forecast_tab:
             + "."
         )
 
+        # V317: Decision Center must remain informative even when the execution
+        # layer correctly returns WAIT_NO_CANONICAL_GEOMETRY. Structural route
+        # and liquidity-sweep context are informational only; they never invent
+        # an entry or grant broker authority.
+        v296_style_path = dict(
+            v296_meta_decision.get("rizan_style_path_engine") or {}
+        )
+        v296_liquidity_map = dict(
+            v296_meta_decision.get("liquidity_sweep_map_v317") or {}
+        )
+        v296_decision_zone = dict(
+            v296_style_path.get("next_decision_zone")
+            or v296_liquidity_map.get("decision_zone")
+            or {}
+        )
+        v296_sweep_band = dict(v296_liquidity_map.get("sweep_band") or {})
+        v296_acceptance = dict(v296_style_path.get("acceptance_branch") or {})
+        v296_rejection = dict(v296_style_path.get("rejection_branch") or {})
+        v296_next_destination = dict(
+            v296_acceptance.get("next_destination_zone") or {}
+        )
+        v296_structural_direction = str(
+            v296_style_path.get("active_direction")
+            or v296_dominant_direction
+            or "WAIT"
+        ).upper()
+        v296_price_now = v296_style_path.get("price_now")
+
+        st.markdown("**Peta operasional saat ini — tetap terisi walau action WAIT**")
+        op1, op2, op3, op4 = st.columns(4)
+        op1.metric("Harga referensi", _fmt_price(v296_price_now))
+        op2.metric("Bias struktural", v296_structural_direction)
+        op3.metric(
+            "Decision zone",
+            (
+                f"{_fmt_price(v296_decision_zone.get('low'))}–"
+                f"{_fmt_price(v296_decision_zone.get('high'))}"
+                if v296_decision_zone else "BELUM ADA"
+            ),
+        )
+        op4.metric(
+            "Liquidity sweep risk",
+            str(v296_liquidity_map.get("risk_grade") or "BELUM ADA"),
+        )
+
+        op5, op6, op7, op8 = st.columns(4)
+        op5.metric(
+            "Sweep danger band",
+            (
+                f"{_fmt_price(v296_sweep_band.get('low'))}–"
+                f"{_fmt_price(v296_sweep_band.get('high'))}"
+                if v296_sweep_band else "BELUM ADA"
+            ),
+        )
+        op6.metric(
+            "Next destination",
+            (
+                f"{_fmt_price(v296_next_destination.get('low'))}–"
+                f"{_fmt_price(v296_next_destination.get('high'))}"
+                if v296_next_destination else "BELUM ADA"
+            ),
+        )
+        op7.metric(
+            "Branch",
+            str(v296_style_path.get("branch_preference") or "WAIT_DECISION"),
+        )
+        op8.metric(
+            "Canonical entry",
+            "ADA" if v296_geometry else "BELUM ADA • WAIT",
+        )
+
+        if v296_liquidity_map.get("first_touch_warning"):
+            st.warning(
+                "V317 LIQUIDITY SWEEP WARNING • decision zone bukan otomatis titik reversal. "
+                "Ada parent/liquidity extension di luar batas zona sempit. "
+                "Tunggu sweep exhaustion + M5/M15 reclaim/MSS/displacement sebelum "
+                "menganggap reversal selesai. Danger band="
+                f"{_fmt_price(v296_sweep_band.get('low'))}–"
+                f"{_fmt_price(v296_sweep_band.get('high'))}."
+            )
+        elif v296_liquidity_map:
+            st.info(
+                "V317 liquidity map aktif • sweep side="
+                + str(v296_liquidity_map.get("sweep_side") or "—")
+                + " • confluence="
+                + str(v296_liquidity_map.get("liquidity_confluence_count") or 0)
+                + " • context only / bukan izin order."
+            )
+
+        v296_liquidity_levels = list(
+            v296_liquidity_map.get("liquidity_levels") or []
+        )
+        if v296_liquidity_levels:
+            st.caption(
+                "Liquidity sebelum reversal: "
+                + " • ".join(
+                    f"{str(dict(row).get('source') or 'LEVEL')} "
+                    f"{_fmt_price(dict(row).get('price'))}"
+                    for row in v296_liquidity_levels[:6]
+                )
+                + "."
+            )
+        if v296_decision_zone and not v296_geometry:
+            st.caption(
+                "Execution center sedang WAIT karena canonical geometry belum lolos. "
+                "Namun structural map tetap tersedia: zone="
+                f"{_fmt_price(v296_decision_zone.get('low'))}–"
+                f"{_fmt_price(v296_decision_zone.get('high'))} • "
+                "rejection rule="
+                + str(v296_rejection.get("condition") or "—")
+                + " • acceptance rule="
+                + str(v296_acceptance.get("condition") or "—")
+                + "."
+            )
+
         rs1, rs2, rs3, rs4 = st.columns(4)
         rs1.metric("V297 Research Sampler", _rizan_display(v297_sampler_state))
         rs2.metric(
