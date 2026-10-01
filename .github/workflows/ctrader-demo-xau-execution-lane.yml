@@ -127,6 +127,12 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_supply_demand_atlas_v182
 
+      - name: Build RIZAN Style Micro Entry Refinement V320
+        id: build_rizan_micro_entry_v320
+        if: ${{ !cancelled() && steps.refresh_xau_atlas.outcome == 'success' }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_micro_entry_refinement_v320
+
       - name: Refresh RIZAN Depth Map V226
         id: refresh_rizan_depth_map
         continue-on-error: true
