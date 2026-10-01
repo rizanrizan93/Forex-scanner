@@ -1,4 +1,6 @@
 from pathlib import Path
+
+import pytest
 from fx_scanner.dashboard import DashboardReadError, SupabaseDashboardReader
 
 
