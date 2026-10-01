@@ -49,6 +49,9 @@ def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_hando
     assert "SUPERVISOR_GH_API_RETRY" in text
     assert "SUPERVISOR_GH_API_FAIL_CLOSED" in text
     assert "SUPERVISOR_EXECUTION_FAILURE_CIRCUIT_BREAK" in text
+    assert "SUPERVISOR_EXECUTION_CANCELLED_RECOVERABLE" in text
+    assert "action=ALLOW_REDISPATCH" in text
+    assert "cancelled_lane_recovery=ENABLED" in text
     assert "SUPERVISOR_EXECUTION_STATE_UNKNOWN" in text
     assert "action=STOP_REDISPATCH" in text
     assert "latest_execution_guard_state()" in text
