@@ -62,7 +62,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V318_DUAL_LANE_STRUCTURAL_PROBE_20261001"
+DASHBOARD_BUILD_ID = "RIZAN_V320_TWO_TAB_MICRO_REFINEMENT_20261001"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -75,6 +75,7 @@ RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     "ctrader_demo_xau_decision_center_v296",
     "ctrader_demo_xau_meta_research_sampler_v297",
     "ctrader_demo_xau_structural_research_probe_v318",
+    "ctrader_demo_xau_micro_entry_refinement_v320",
 )
 
 RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS = (
@@ -2266,6 +2267,9 @@ with forecast_tab:
     v318_structural_probe_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_structural_research_probe_v318"
     )
+    v320_micro_entry_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_micro_entry_refinement_v320"
+    )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
     )
@@ -4019,77 +4023,273 @@ with forecast_tab:
             prices.append(_fmt_price(row.get("price")))
         return " → ".join(prices) if prices else "Belum ada waypoint valid"
 
-    with st.container(border=True):
-        st.markdown("### RIZAN STYLE PATH ENGINE")
-        st.caption(
-            "Peta alur bercabang: source → decision zone → rejection atau acceptance → "
-            "destination berikutnya. Ini forecast struktural, bukan jaminan harga dan "
-            "tidak memberi execution authority."
-        )
-        rp1, rp2 = st.columns(2)
-        rp1.metric(
-            "Arah leg aktif",
-            str(rizan_style_path.get("active_direction") or "WAIT"),
-        )
-        rp2.metric(
-            "State path",
-            _rizan_display(rizan_style_path.get("state") or "NO_STRUCTURAL_PATH"),
-        )
-        st.markdown(
-            "**Decision zone berikut:** "
-            + _rizan_style_zone_text(rizan_style_zone)
-        )
-        k1, k2 = st.columns(2)
-        k1.metric(
-            "KEY rejection / reclaim",
-            _fmt_price(rizan_style_keys.get("rejection_reclaim_key")),
-        )
-        k2.metric(
-            "KEY break / acceptance",
-            _fmt_price(rizan_style_keys.get("break_acceptance_key")),
-        )
-        st.markdown(
-            "**Primary path:** "
-            + str(rizan_style_primary.get("direction") or "WAIT")
-            + " • "
-            + _rizan_style_route_text(rizan_style_primary.get("route"))
-        )
-        st.markdown(
-            "**Jika REJECTION terkonfirmasi:** "
-            + str(rizan_style_rejection.get("direction") or "WAIT")
-            + " • "
-            + _rizan_style_route_text(rizan_style_rejection.get("route"))
-        )
-        st.caption(
-            "Trigger rejection: "
-            + str(rizan_style_rejection.get("condition") or "WAIT_REJECTION")
-            + " • M5="
-            + str(rizan_style_rejection.get("m5_state") or "WAIT")
-        )
-        next_break_zone = dict(
-            rizan_style_acceptance.get("next_destination_zone") or {}
-        )
-        st.markdown(
-            "**Jika ACCEPTANCE / break:** "
-            + str(rizan_style_acceptance.get("direction") or "WAIT")
-            + " → "
-            + _rizan_style_zone_text(next_break_zone)
-        )
-        st.caption(
-            "Trigger acceptance: "
-            + str(rizan_style_acceptance.get("condition") or "WAIT_ACCEPTANCE")
-            + " • branch="
-            + str(rizan_style_path.get("branch_preference") or "WAIT_DECISION")
-            + "."
-        )
-        if str(rizan_style_path.get("state") or "").upper() == "DECISION_ZONE_REJECTION_CONFIRMED":
-            st.success("RIZAN path: rejection branch terkonfirmasi secara struktural/M5.")
-        elif str(rizan_style_path.get("state") or "").upper() == "DECISION_ZONE_ACCEPTED_BREAK":
-            st.warning("RIZAN path: decision zone diterima/break — ikuti continuation map, jangan fade zona lama.")
-        elif str(rizan_style_path.get("state") or "").upper() == "DECISION_ZONE_ACTIVE":
-            st.info("RIZAN path: harga sedang berada di decision zone — tunggu rejection vs acceptance.")
-        else:
-            st.info("RIZAN path: harga masih menuju decision zone berikut.")
+    v320_micro_details = (
+        {}
+        if v320_micro_entry_hb is None
+        else dict(v320_micro_entry_hb.get("details") or {})
+    )
+    v320_micro_eval = dict(v320_micro_details.get("evaluation") or {})
+    v320_micro_age = (
+        None
+        if v320_micro_entry_hb is None
+        else _age_seconds(v320_micro_entry_hb.get("observed_at"))
+    )
+    v320_micro_fresh = bool(
+        v320_micro_entry_hb is not None
+        and bool(v320_micro_entry_hb.get("healthy"))
+        and v320_micro_age is not None
+        and v320_micro_age <= 300.0
+    )
+    v320_micro_levels = dict(v320_micro_eval.get("levels") or {})
+    v320_micro_anchor = dict(v320_micro_eval.get("anchor") or {})
+    v320_micro_delta = dict(v320_micro_eval.get("delta") or {})
+    v320_micro_parent = dict(v320_micro_eval.get("decision_zone") or {})
+    v320_micro_targets = list(v320_micro_eval.get("targets") or [])
+    v320_micro_opposing = dict(v320_micro_eval.get("nearest_opposing_zone") or {})
+
+    tab_supply, tab_micro = st.tabs(
+        [
+            "1 • RIZAN Supply/Demand + Liquidity",
+            "2 • RIZAN Micro Entry Refinement",
+        ]
+    )
+    with tab_supply:
+        with st.container(border=True):
+            st.markdown("### RIZAN STYLE PATH ENGINE")
+            st.caption(
+                "Peta alur bercabang: source → decision zone → rejection atau acceptance → "
+                "destination berikutnya. Ini forecast struktural, bukan jaminan harga dan "
+                "tidak memberi execution authority."
+            )
+            rp1, rp2 = st.columns(2)
+            rp1.metric(
+                "Arah leg aktif",
+                str(rizan_style_path.get("active_direction") or "WAIT"),
+            )
+            rp2.metric(
+                "State path",
+                _rizan_display(rizan_style_path.get("state") or "NO_STRUCTURAL_PATH"),
+            )
+            st.markdown(
+                "**Decision zone berikut:** "
+                + _rizan_style_zone_text(rizan_style_zone)
+            )
+            k1, k2 = st.columns(2)
+            k1.metric(
+                "KEY rejection / reclaim",
+                _fmt_price(rizan_style_keys.get("rejection_reclaim_key")),
+            )
+            k2.metric(
+                "KEY break / acceptance",
+                _fmt_price(rizan_style_keys.get("break_acceptance_key")),
+            )
+            st.markdown(
+                "**Primary path:** "
+                + str(rizan_style_primary.get("direction") or "WAIT")
+                + " • "
+                + _rizan_style_route_text(rizan_style_primary.get("route"))
+            )
+            st.markdown(
+                "**Jika REJECTION terkonfirmasi:** "
+                + str(rizan_style_rejection.get("direction") or "WAIT")
+                + " • "
+                + _rizan_style_route_text(rizan_style_rejection.get("route"))
+            )
+            st.caption(
+                "Trigger rejection: "
+                + str(rizan_style_rejection.get("condition") or "WAIT_REJECTION")
+                + " • M5="
+                + str(rizan_style_rejection.get("m5_state") or "WAIT")
+            )
+            next_break_zone = dict(
+                rizan_style_acceptance.get("next_destination_zone") or {}
+            )
+            st.markdown(
+                "**Jika ACCEPTANCE / break:** "
+                + str(rizan_style_acceptance.get("direction") or "WAIT")
+                + " → "
+                + _rizan_style_zone_text(next_break_zone)
+            )
+            st.caption(
+                "Trigger acceptance: "
+                + str(rizan_style_acceptance.get("condition") or "WAIT_ACCEPTANCE")
+                + " • branch="
+                + str(rizan_style_path.get("branch_preference") or "WAIT_DECISION")
+                + "."
+            )
+            if str(rizan_style_path.get("state") or "").upper() == "DECISION_ZONE_REJECTION_CONFIRMED":
+                st.success("RIZAN path: rejection branch terkonfirmasi secara struktural/M5.")
+            elif str(rizan_style_path.get("state") or "").upper() == "DECISION_ZONE_ACCEPTED_BREAK":
+                st.warning("RIZAN path: decision zone diterima/break — ikuti continuation map, jangan fade zona lama.")
+            elif str(rizan_style_path.get("state") or "").upper() == "DECISION_ZONE_ACTIVE":
+                st.info("RIZAN path: harga sedang berada di decision zone — tunggu rejection vs acceptance.")
+            else:
+                st.info("RIZAN path: harga masih menuju decision zone berikut.")
+    
+    
+        with st.container(border=True):
+            st.markdown("### Zona Liquidity & Reversal Validation")
+            st.caption(
+                "Tab 1 mempertahankan peta besar H4/H1. Saat harga masuk decision zone, "
+                "V317 memetakan liquidity sweep band dan scanner menunggu validasi reversal "
+                "M5/M15; zona sempit tidak dianggap otomatis sebagai titik balik."
+            )
+            liq1, liq2, liq3 = st.columns(3)
+            liq1.metric(
+                "Decision zone",
+                (
+                    f"{_fmt_price(v296_decision_zone.get('low'))}–"
+                    f"{_fmt_price(v296_decision_zone.get('high'))}"
+                    if v296_decision_zone else "BELUM ADA"
+                ),
+            )
+            liq2.metric(
+                "Liquidity sweep band",
+                (
+                    f"{_fmt_price(v296_sweep_band.get('low'))}–"
+                    f"{_fmt_price(v296_sweep_band.get('high'))}"
+                    if v296_sweep_band else "BELUM ADA"
+                ),
+            )
+            liq3.metric(
+                "Sweep risk",
+                str(v296_liquidity_map.get("risk_grade") or "BELUM ADA"),
+            )
+            if v296_liquidity_levels:
+                st.caption(
+                    "Level liquidity: "
+                    + " • ".join(
+                        f"{str(dict(row).get('source') or 'LEVEL')} "
+                        f"{_fmt_price(dict(row).get('price'))}"
+                        for row in v296_liquidity_levels[:8]
+                    )
+                )
+            rejection_rule = str(
+                dict(rizan_style_path.get("rejection_branch") or {}).get("condition")
+                or "WAIT_M5_M15_RECLAIM"
+            )
+            acceptance_rule = str(
+                dict(rizan_style_path.get("acceptance_branch") or {}).get("condition")
+                or "WAIT_M15_ACCEPTANCE"
+            )
+            st.info(
+                "Validasi reversal: " + rejection_rule
+                + " • Jika gagal dan terjadi acceptance: " + acceptance_rule + "."
+            )
+
+    with tab_micro:
+        with st.container(border=True):
+            st.markdown("### RIZAN STYLE MICRO ENTRY REFINEMENT • V320")
+            st.caption(
+                "Rekonstruksi prospektif dari pola A → X → Y → TP 5Δ / 8Δ / 13Δ "
+                "yang terlihat berulang pada screenshot strategi referensi. Formula asli "
+                "indikator referensi tidak diketahui; engine ini research-only sampai "
+                "forward validation cukup."
+            )
+            if not v320_micro_eval:
+                st.warning(
+                    "V320 belum memiliki snapshot. Tunggu worker micro refinement selesai "
+                    "membaca atlas H4/H1 dan data M5/M15."
+                )
+            else:
+                mt1, mt2, mt3, mt4 = st.columns(4)
+                mt1.metric(
+                    "Arah micro",
+                    str(v320_micro_eval.get("direction") or "WAIT"),
+                )
+                mt2.metric(
+                    "Phase",
+                    _rizan_display(v320_micro_eval.get("phase") or "WAIT"),
+                )
+                mt3.metric(
+                    "TF refinement",
+                    str(v320_micro_eval.get("selected_timeframe") or "—"),
+                )
+                mt4.metric(
+                    "Confidence riset",
+                    (
+                        f"{float(v320_micro_eval.get('confidence')):.0f}%"
+                        if v320_micro_eval.get("confidence") is not None
+                        else "—"
+                    ),
+                )
+
+                st.markdown(
+                    "**Parent H4/H1 reversal zone:** "
+                    + (
+                        f"{str(v320_micro_parent.get('timeframe') or '—')} "
+                        f"{_fmt_price(v320_micro_parent.get('low'))}–"
+                        f"{_fmt_price(v320_micro_parent.get('high'))}"
+                        if v320_micro_parent else "BELUM ADA"
+                    )
+                )
+                a1, a2, a3 = st.columns(3)
+                a1.metric(
+                    "A • Anchor",
+                    _fmt_price(v320_micro_levels.get("a")),
+                )
+                a2.metric(
+                    "X • Reclaim",
+                    _fmt_price(v320_micro_levels.get("x")),
+                )
+                a3.metric(
+                    "Y • Acceptance",
+                    _fmt_price(v320_micro_levels.get("y")),
+                )
+
+                s1, s2, s3, s4 = st.columns(4)
+                s1.metric("SL struktural", _fmt_price(v320_micro_levels.get("sl")))
+                s2.metric("TP1 • 5Δ", _fmt_price(v320_micro_levels.get("tp1")))
+                s3.metric("TP2 • 8Δ", _fmt_price(v320_micro_levels.get("tp2")))
+                s4.metric("TP3 • 13Δ", _fmt_price(v320_micro_levels.get("tp3")))
+
+                anchor_confirmed = bool(v320_micro_anchor.get("confirmed"))
+                reclaim_confirmed = bool(v320_micro_eval.get("reclaim_confirmed"))
+                if anchor_confirmed and reclaim_confirmed:
+                    st.success(
+                        "MICRO LADDER CONFIRMED • A sudah terbentuk dari post-impulse pullback "
+                        "dan reclaim parent zone telah dikonfirmasi."
+                    )
+                else:
+                    st.info(
+                        "PROJECTED / PREPARE ONLY • A belum confirmed atau reclaim belum lengkap. "
+                        "Level ditampilkan sebagai forecast, bukan izin order."
+                    )
+
+                st.caption(
+                    "Δ="
+                    + _fmt_price(v320_micro_delta.get("value"))
+                    + " • ATR14="
+                    + _fmt_price(v320_micro_delta.get("atr14"))
+                    + " • seed="
+                    + _fmt_number(
+                        (
+                            float(v320_micro_delta.get("atr_fraction")) * 100.0
+                            if v320_micro_delta.get("atr_fraction") is not None
+                            else None
+                        ),
+                        1,
+                    )
+                    + "% ATR. Exact formula referensi: BELUM TERVERIFIKASI."
+                )
+                if v320_micro_opposing:
+                    st.warning(
+                        "Opposing structural zone terdekat: "
+                        f"{str(v320_micro_opposing.get('timeframe') or '—')} "
+                        f"{_fmt_price(v320_micro_opposing.get('low'))}–"
+                        f"{_fmt_price(v320_micro_opposing.get('high'))}. "
+                        "Target ladder yang melewati zona ini harus dianggap conditional."
+                    )
+                st.caption(
+                    "Snapshot "
+                    + ("FRESH" if v320_micro_fresh else "LAST-KNOWN/STALE")
+                    + (
+                        f" • age {v320_micro_age:.0f}s"
+                        if v320_micro_age is not None else ""
+                    )
+                    + " • execution authority = FALSE."
+                )
+
 
     st.markdown("### 2 • Zona Aktif & Dynamic Depth")
     with st.container(border=True):

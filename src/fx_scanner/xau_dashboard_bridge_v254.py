@@ -42,6 +42,7 @@ HOT_HEARTBEATS = (
     "ctrader_demo_xau_decision_center_v296",
     "ctrader_demo_xau_meta_research_sampler_v297",
     "ctrader_demo_xau_structural_research_probe_v318",
+    "ctrader_demo_xau_micro_entry_refinement_v320",
 )
 
 STRUCTURAL_HEARTBEATS = (
