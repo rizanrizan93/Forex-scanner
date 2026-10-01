@@ -1894,10 +1894,13 @@ standalone_url = _secret("RIZAN_STANDALONE_SNAPSHOT_URL") or DEFAULT_SNAPSHOT_UR
 standalone: dict[str, Any] | None = None
 standalone_error: str | None = None
 backend_error = direct_backend_error if backend is None else None
-# V344 simplification: the legacy standalone decision snapshot is paused.
-# Current price/structure for the user-facing decision comes only from V342/V343.
-standalone = None
-standalone_error = None
+# Quote overlay is always loaded when available. It never replaces ForexRizan
+# as the canonical backend and never grants execution authority; V342/V343 remain
+# the only user-facing market-opinion engines.
+try:
+    standalone = _load_standalone_bridge(standalone_url)
+except Exception as exc:
+    standalone_error = f"{type(exc).__name__}: {exc}"
 
 backend_snapshot_stale = bool(
     backend is not None
