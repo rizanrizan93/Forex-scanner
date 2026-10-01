@@ -248,12 +248,16 @@ def test_dashboard_standalone_fallback_is_diagnostic_only_without_page_stop():
 
 def test_v256_dashboard_hides_research_locator_from_operational_decision_path():
     text = (ROOT / "streamlit_app.py").read_text()
-    assert 'DASHBOARD_BUILD_ID = "RIZAN_V328_OPPOSING_ZONE_CASCADE_20261001"' in text
+    assert 'DASHBOARD_BUILD_ID = "RIZAN_V336_SIMPLE_DECISION_20261001"' in text
     assert "Zone watch (BUKAN ENTRY)" in text
     assert "Path target (BUKAN TP order)" in text
     assert "Geometry only — hanya posisi harga relatif terhadap source zone" in text
     assert "Riset V226 — locator historis/depth evidence (BUKAN entry utama)" in text
     assert 'm2.metric("Pair aktif", "XAUUSD")' in text
+    assert "RIZAN SIMPLE" in text
+    assert "Detail Engine" in text
+    assert 'st.subheader("RIZAN SIMPLE • XAUUSD")' in text
+    assert "build_simple_decision" in text
     assert "1 • RIZAN Supply/Demand + Liquidity" in text
     assert "2 • RIZAN Micro Entry Refinement" in text
     assert "RIZAN STYLE MICRO ENTRY REFINEMENT • V328" in text
