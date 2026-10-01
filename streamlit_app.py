@@ -1892,14 +1892,10 @@ standalone_url = _secret("RIZAN_STANDALONE_SNAPSHOT_URL") or DEFAULT_SNAPSHOT_UR
 standalone: dict[str, Any] | None = None
 standalone_error: str | None = None
 backend_error = direct_backend_error if backend is None else None
-# Quote overlay is always loaded when available. It never replaces ForexRizan
-# as the canonical backend and never grants execution authority; it exists only
-# to prevent the user-facing XAU price from freezing on an older prepared-plan
-# heartbeat while a fresher FP Markets/cTrader quote is already published.
-try:
-    standalone = _load_standalone_bridge(standalone_url)
-except Exception as exc:
-    standalone_error = f"{type(exc).__name__}: {exc}"
+# V344 simplification: the legacy standalone decision snapshot is paused.
+# Current price/structure for the user-facing decision comes only from V342/V343.
+standalone = None
+standalone_error = None
 
 backend_snapshot_stale = bool(
     backend is not None
@@ -2036,6 +2032,19 @@ if backend is None and standalone is None:
         "Dashboard can be deployed now. Restricted Mode sedang menunggu snapshot "
         "RIZAN pertama dari GitHub Actions. Tidak diperlukan credential cTrader di Streamlit."
     )
+
+# V344: user-directed simplification. Only the two isolated engines below are
+# allowed to present market opinions. Legacy dashboard code remains in the file
+# for audit/rollback, but is unreachable while this V344 gate is active.
+_v344_heartbeats = [] if backend is None else list(backend.get("heartbeats") or [])
+_v342_sd_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_sd_liquidity_v342")
+_v343_friend_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_friend_entry_v343")
+render_xau_dual_engine_dashboard(
+    sd_heartbeat=_v342_sd_hb,
+    friend_heartbeat=_v343_friend_hb,
+)
+# LEGACY_DECISION_UI_STOP_V344
+st.stop()
 
 mode = "—" if cfg is None else str(cfg.risk.get("mode", "—"))
 pairs = 0 if cfg is None else len(cfg.pairs)
