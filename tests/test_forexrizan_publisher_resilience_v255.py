@@ -47,3 +47,12 @@ def test_canonical_xau_lane_refreshes_rizan_fast_handoff() -> None:
     assert "Execute fresh RIZAN prepared-path DEMO signal" in text
     assert "python -m fx_scanner.demo_xau_afic_fresh_ready_handoff" in text
     assert "RIZAN_PATH_HANDOFF_OUTCOME" in text
+
+
+def test_v324_structural_and_micro_refresh_precede_slow_prepared_path() -> None:
+    text = _read(".github/workflows/ctrader-demo-xau-execution-lane.yml")
+    atlas = text.index("Refresh XAU Supply/Demand Atlas V182")
+    micro = text.index("Build RIZAN Style Micro Handoff Confluence V322")
+    legacy = text.index("Evaluate RIZAN prepared/confirmed path")
+    assert atlas < micro < legacy
+    assert "Tab 1/Tab 2 fresh" in text
