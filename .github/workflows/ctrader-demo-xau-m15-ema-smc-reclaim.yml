@@ -2,14 +2,6 @@ name: cTrader Demo XAU M15 EMA SMC Reclaim
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/demo_xau_m15_ema_smc_reclaim.py"
-      - "src/fx_scanner/demo_xau_m15_ema_smc_reclaim_observer.py"
-      - ".github/workflows/ctrader-demo-xau-m15-ema-smc-reclaim.yml"
-  schedule:
-    - cron: "*/5 * * * 1-5"
 
 permissions:
   contents: read
