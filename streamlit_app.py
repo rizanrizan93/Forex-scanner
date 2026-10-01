@@ -38,6 +38,7 @@ from fx_scanner.trade_management_v195 import (
 )
 from fx_scanner.xau_canonical_decision_v240 import build_canonical_xau_decision
 from fx_scanner.xau_rizan_style_path_engine_v303 import build_rizan_style_path_engine
+from fx_scanner.xau_liquidity_pool_envelope_v328 import build_liquidity_pool_envelope
 from fx_scanner.xau_profitability_truth_v241 import build_xau_profitability_truth
 from fx_scanner.xau_pressure_transition_v249 import evaluate_pressure_transition
 from fx_scanner.xau_dynamic_depth_hazard_v251 import (
@@ -2970,6 +2971,28 @@ with forecast_tab:
         and v296_meta_age is not None
         and v296_meta_age <= 180.0
     )
+
+    # V328 resilience: if the meta-decision heartbeat is temporarily stale or
+    # absent while V182 remains available, keep the XAU center populated with
+    # structural/liquidity context. This fallback is display-only and cannot
+    # create confidence, entry geometry, or broker authority.
+    v296_structural_fallback: dict[str, Any] = {}
+    v296_liquidity_fallback: dict[str, Any] = {}
+    if (not v296_meta_fresh) and dc_sd_eval:
+        try:
+            v296_structural_fallback = build_rizan_style_path_engine(
+                atlas_evaluation=dc_sd_eval,
+                price_now=dc_reference_price,
+            )
+            v296_liquidity_fallback = build_liquidity_pool_envelope(
+                atlas_evaluation=dc_sd_eval,
+                style_path=v296_structural_fallback,
+                price_now=dc_reference_price,
+            )
+        except Exception:
+            v296_structural_fallback = {}
+            v296_liquidity_fallback = {}
+
     v296_geometry = dict(v296_meta_decision.get("geometry") or {})
     v296_reference_geometry = dict(
         v296_meta_decision.get("reference_geometry") or {}
@@ -2983,6 +3006,7 @@ with forecast_tab:
     ).upper()
     v296_dominant_direction = str(
         v296_meta_decision.get("dominant_direction")
+        or v296_structural_fallback.get("active_direction")
         or v296_direction
         or "WAIT"
     ).upper()
@@ -2992,7 +3016,10 @@ with forecast_tab:
         and v296_dominant_direction in {"LONG", "SHORT"}
         else v296_direction
     )
-    v296_action = str(v296_meta_decision.get("action") or "WAIT")
+    v296_action = str(
+        v296_meta_decision.get("action")
+        or ("WAIT_STRUCTURAL_CONTEXT_ONLY" if v296_structural_fallback else "WAIT")
+    )
     v296_freshness_display = (
         "LIVE"
         if v296_meta_fresh
@@ -3014,6 +3041,7 @@ with forecast_tab:
         "WAIT_ENGINE_CONFLICT": "WAIT • ENGINE CONFLICT",
         "WAIT_NO_CANONICAL_GEOMETRY": "WAIT • NO CANONICAL GEOMETRY",
         "DATA_STALE_WAIT": "WAIT • META DATA STALE",
+        "WAIT_STRUCTURAL_CONTEXT_ONLY": "WAIT • STRUCTURAL MAP ONLY",
     }.get(v296_action, _rizan_display(v296_action))
     if not v296_meta_fresh:
         v296_action_display += " • " + v296_freshness_display
@@ -3085,10 +3113,15 @@ with forecast_tab:
         # and liquidity-sweep context are informational only; they never invent
         # an entry or grant broker authority.
         v296_style_path = dict(
-            v296_meta_decision.get("rizan_style_path_engine") or {}
+            v296_meta_decision.get("rizan_style_path_engine")
+            or v296_structural_fallback
+            or {}
         )
         v296_liquidity_map = dict(
-            v296_meta_decision.get("liquidity_sweep_map_v317") or {}
+            v296_meta_decision.get("liquidity_sweep_map_v328")
+            or v296_meta_decision.get("liquidity_sweep_map_v317")
+            or v296_liquidity_fallback
+            or {}
         )
         v296_decision_zone = dict(
             v296_style_path.get("next_decision_zone")
@@ -3151,6 +3184,29 @@ with forecast_tab:
             "ADA" if v296_geometry else "BELUM ADA • WAIT",
         )
 
+        v296_primary_liquidity_pool = dict(
+            v296_liquidity_map.get("primary_liquidity_pool") or {}
+        )
+        v296_liquidity_pools = [
+            dict(row)
+            for row in list(v296_liquidity_map.get("liquidity_pools") or [])
+        ]
+        if v296_primary_liquidity_pool:
+            st.markdown(
+                "**Liquidity pool utama sebelum reversal:** "
+                + _fmt_price(v296_primary_liquidity_pool.get("low"))
+                + "–"
+                + _fmt_price(v296_primary_liquidity_pool.get("high"))
+                + " • sumber="
+                + ", ".join(
+                    str(item)
+                    for item in list(v296_primary_liquidity_pool.get("sources") or [])
+                )
+                + " • confluence="
+                + str(v296_primary_liquidity_pool.get("confluence_score") or "—")
+                + "."
+            )
+
         if v296_liquidity_map.get("first_touch_warning"):
             st.warning(
                 "V317 LIQUIDITY SWEEP WARNING • decision zone bukan otomatis titik reversal. "
@@ -3172,6 +3228,19 @@ with forecast_tab:
         v296_liquidity_levels = list(
             v296_liquidity_map.get("liquidity_levels") or []
         )
+        if v296_liquidity_pools:
+            st.caption(
+                "Liquidity pools V328: "
+                + " • ".join(
+                    (
+                        f"{_fmt_price(dict(row).get('low'))}–"
+                        f"{_fmt_price(dict(row).get('high'))} "
+                        f"[{','.join(str(x) for x in list(dict(row).get('sources') or []))}]"
+                    )
+                    for row in v296_liquidity_pools[:5]
+                )
+                + "."
+            )
         if v296_liquidity_levels:
             st.caption(
                 "Liquidity sebelum reversal: "
@@ -4206,7 +4275,7 @@ with forecast_tab:
             st.markdown("### Zona Liquidity & Reversal Validation")
             st.caption(
                 "Tab 1 mempertahankan peta besar H4/H1. Saat harga masuk decision zone, "
-                "V317 memetakan liquidity sweep band dan scanner menunggu validasi reversal "
+                "V328 memetakan liquidity pools + sweep danger band dan scanner menunggu validasi reversal "
                 "M5/M15; zona sempit tidak dianggap otomatis sebagai titik balik."
             )
             liq1, liq2, liq3 = st.columns(3)
@@ -4230,6 +4299,14 @@ with forecast_tab:
                 "Sweep risk",
                 str(v296_liquidity_map.get("risk_grade") or "BELUM ADA"),
             )
+            if v296_primary_liquidity_pool:
+                st.metric(
+                    "Pool liquidity utama",
+                    (
+                        f"{_fmt_price(v296_primary_liquidity_pool.get('low'))}–"
+                        f"{_fmt_price(v296_primary_liquidity_pool.get('high'))}"
+                    ),
+                )
             if v296_liquidity_levels:
                 st.caption(
                     "Level liquidity: "
