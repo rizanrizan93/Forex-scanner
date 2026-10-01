@@ -48,7 +48,7 @@ def render_xau_dual_engine_dashboard(
 
     st.markdown(
         '<div class="rizan-kicker">RIZAN NEW ENGINE • LEGACY PAUSED</div>'
-        '<div class="rizan-title">XAUUSD — Supply/Demand & Micro Entry</div>'
+        '<div class="rizan-title">XAUUSD — Supply/Demand, News-Zone & Micro Entry</div>'
         '<div class="rizan-note">Dua engine independen. Tidak ada ensemble/voting engine lama. '
         'Semua output saat ini research/forecast only; execution authority = OFF.</div>',
         unsafe_allow_html=True,
@@ -69,6 +69,7 @@ def render_xau_dual_engine_dashboard(
             micro = dict(sd.get("micro_confirmation") or {})
             guide = dict(sd.get("entry_guide") or {})
             sweep = dict(sd.get("liquidity_map") or {})
+            news = dict(sd.get("news_zone") or {})
             structure = dict(sd.get("market_structure") or {})
             h4 = dict(structure.get("H4") or {})
             h1 = dict(structure.get("H1") or {})
@@ -106,6 +107,64 @@ def render_xau_dual_engine_dashboard(
                         f"median turning depth={_pct(prior.get('turning_depth_median'))} • "
                         f"P75={_pct(prior.get('turning_depth_p75'))}. "
                         "Ini statistik deskriptif, bukan probabilitas setup saat ini."
+                    )
+
+            st.markdown("### News-zone")
+            focal = dict(news.get("focal_event") or {})
+            interaction = dict(news.get("zone_interaction") or {})
+            next_zone = dict(news.get("next_same_type_htf_zone") or {})
+            n1, n2, n3, n4 = st.columns(4)
+            n1.metric("News risk", str(news.get("risk_state") or "UNKNOWN"))
+            n2.metric("Event", str(focal.get("title") or "—"))
+            n3.metric("Overshoot risk", str(news.get("overshoot_risk") or "BASELINE"))
+            n4.metric("Entry gate", str(news.get("effective_entry_state") or "WAIT"))
+
+            if focal:
+                st.caption(
+                    "Next/focal event • "
+                    + str(focal.get("scheduled_at_wib") or focal.get("scheduled_at") or "—")
+                    + " • "
+                    + str(focal.get("category") or "—")
+                    + " • source="
+                    + str(focal.get("source_tier") or focal.get("source") or "—")
+                )
+            if str(news.get("risk_state") or "") in {"PRE_EVENT", "EVENT_WINDOW"}:
+                st.warning(
+                    "WAIT — EVENT VOLATILITY. News tidak dipakai untuk menebak arah. "
+                    "Tunggu rilis, lalu validasi sweep → reclaim → MSS/displacement."
+                )
+            elif str(news.get("risk_state") or "") == "NEWS_SOURCE_UNAVAILABLE":
+                st.error(
+                    "News calendar unavailable. Status tidak boleh dianggap CLEAR; "
+                    "entry guide dipaksa WAIT_NEWS_DATA."
+                )
+            elif str(news.get("risk_state") or "") == "POST_EVENT_DISCOVERY":
+                st.info(
+                    "POST-NEWS PRICE DISCOVERY • fokus pada interaksi harga dengan decision zone, "
+                    "bukan pada arah headline."
+                )
+
+            if news:
+                st.write(
+                    {
+                        "zone_interaction": interaction.get("state"),
+                        "zone_coupled": news.get("zone_coupled"),
+                        "zone_distance_atr": news.get("zone_distance_atr"),
+                        "preferred_path": news.get("preferred_path"),
+                        "alternative_path": news.get("alternative_path"),
+                    }
+                )
+                if interaction.get("state") == "ZONE_FAILED_AFTER_NEWS":
+                    st.error(
+                        "Zona utama gagal setelah news: strong close / dua close M5 melewati distal. "
+                        "Jangan pakai zona tersebut sebagai entry reversal baru."
+                    )
+                    if next_zone:
+                        st.info("Zona HTF berikutnya • " + _zone_label(next_zone))
+                elif interaction.get("state") == "NEWS_SWEEP_REVERSAL_CONFIRMED":
+                    st.success(
+                        "Sweep distal sudah direclaim dan konfirmasi micro setelah event tersedia. "
+                        "Ini adalah validasi reversal berbasis harga; news sendiri tetap tidak memberi arah."
                     )
 
             st.markdown("### Liquidity sweep sebelum reversal")
@@ -177,6 +236,7 @@ def render_xau_dual_engine_dashboard(
             entries = dict(friend.get("entries") or {})
             targets = dict(friend.get("targets") or {})
             evidence = dict(friend.get("historical_evidence") or {})
+            friend_news = dict(friend.get("news_zone_context") or {})
             full = dict(evidence.get("full_2012_2026") or {})
             oos = dict(evidence.get("oos_2025_2026") or {})
 
@@ -185,6 +245,16 @@ def render_xau_dual_engine_dashboard(
             m2.metric("Phase", str(friend.get("state") or "WAIT"))
             m3.metric("Primary entry", _px(entries.get("historical_primary_price")))
             m4.metric("SL struktural", _px(friend.get("stop_loss")))
+
+            if friend_news:
+                st.caption(
+                    "News-zone context • "
+                    f"{friend_news.get('risk_state','UNKNOWN')} • "
+                    f"gate={friend_news.get('effective_entry_state','WAIT')} • "
+                    "geometry A/X/Y tidak diubah oleh news."
+                )
+                if str(friend_news.get("risk_state") or "") in {"PRE_EVENT", "EVENT_WINDOW"}:
+                    st.warning("A/X/Y tetap ditampilkan sebagai geometry reference, tetapi entry = WAIT FOR NEWS.")
 
             st.caption("Parent zone • " + _zone_label(parent))
             st.markdown("### Geometry A / X / Y")
