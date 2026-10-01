@@ -3266,7 +3266,7 @@ with forecast_tab:
             entry_label = (
                 "Entry referensi terakhir — JANGAN ENTRY"
                 if geometry_reference_only_ui
-                else "CURRENT PLAN • Entry canonical"
+                else "CURRENT PLAN • Entry canonical aktif"
             )
 
             raw_tp1 = v296_display_geometry.get("tp1")
@@ -6495,7 +6495,7 @@ with forecast_tab:
                 f"{_fmt_price(chart_next_source_high)}** hanya dipakai untuk mengecek kemungkinan "
                 f"reversal **{dc_next_leg_direction}**{pocket_text}. "
                 f"Baru jika next-leg terkonfirmasi, target awalnya **{_fmt_price(chart_next_reaction)}**. "
-                "Jangan mencampur level NEXT LEG dengan entry/TP CURRENT PLAN."
+                "Jangan mencampur level NEXT LEG dengan entry/TP CURRENT PLAN. Ini skenario bercabang, bukan jalur harga pasti."
             )
             current_terminal_high = _chart_price(dc_current_leg_terminal.get("high"))
             if (
