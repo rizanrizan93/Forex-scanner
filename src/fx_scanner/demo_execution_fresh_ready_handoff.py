@@ -29,14 +29,23 @@ _ORIGINAL_LOAD_DEMO_PROJECT_CONFIG = base.load_demo_project_config
 # comparator so the champion D1 leg cannot be duplicated at the broker.
 _XAU_CANONICAL_STRATEGY = XAU_M15_EMA_SMC_RECLAIM_STRATEGY_ID
 _XAU_CHAMPION_STRATEGY = XAU_V24_CHAMPION_STRATEGY_ID
-_XAU_AFIC_EXECUTION_STRATEGY = "XAU_AFIC_PATH_EXECUTION_V1"
+_XAU_RIZAN_PATH_EXECUTION_STRATEGY = "XAU_RIZAN_PATH_EXECUTION_V1"
+_XAU_LEGACY_AFIC_EXECUTION_STRATEGY = "XAU_AFIC_PATH_EXECUTION_V1"
+# Historical tests/observers still import the pre-rename symbol. Keep it as an
+# alias only; new runtime geometry remains RIZAN-only.
+_XAU_AFIC_EXECUTION_STRATEGY = _XAU_LEGACY_AFIC_EXECUTION_STRATEGY
 _XAU_RIZAN_DEPTH_EXECUTION_STRATEGY = "XAU_RIZAN_DEPTH_EXECUTION_V1"
 _XAU_D1_TSMOM_STRATEGY = PAIR_STRATEGY_IDS["XAUUSD"]
 _XAU_DEMO_EXECUTION_STRATEGIES = frozenset(
     {
         _XAU_CANONICAL_STRATEGY,
         _XAU_CHAMPION_STRATEGY,
-        _XAU_AFIC_EXECUTION_STRATEGY,
+        # The current RIZAN prepared-path identity is handled only by the
+        # dedicated RIZAN handoff above. Keeping it out of the generic MARKET
+        # handoff prevents duplicate broker execution.
+        # Historical AFIC rows remain readable for compatibility with the
+        # pre-rename generic handoff contract.
+        _XAU_LEGACY_AFIC_EXECUTION_STRATEGY,
     }
 )
 _XAU_SHADOW_STRATEGIES = frozenset(

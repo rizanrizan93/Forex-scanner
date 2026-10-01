@@ -300,3 +300,40 @@ def test_maintenance_lane_has_no_new_entry_authority():
     assert "CTRADER_DEMO_MAINTENANCE_CRITICAL_STAGES_OK" in text
     assert "FX_LIVE_TRADING_ENABLED" not in text
     assert "I_UNDERSTAND_LIVE_ORDERS" not in text
+
+
+
+def test_xau_execution_lane_attempts_failclosed_handoffs_after_upstream_timeout():
+    text = (ROOT / ".github/workflows/ctrader-demo-xau-execution-lane.yml").read_text()
+
+    rizan_handoff = text.split(
+        "- name: Execute fresh RIZAN prepared-path DEMO signal", 1
+    )[1].split("- name: Execute fresh exact-authorized DEMO signals", 1)[0]
+    exact_handoff = text.split(
+        "- name: Execute fresh exact-authorized DEMO signals", 1
+    )[1].split(
+        "- name: Execute independent H1/H4 structural DEMO research probe V318", 1
+    )[0]
+
+    for block in (rizan_handoff, exact_handoff):
+        assert "always() && !cancelled()" in block
+        assert "steps.repair_existing_protection.outcome == 'success'" in block
+        assert "steps.produce_xau_afic.outcome == 'success'" not in block
+
+    # Producer failures remain visible in the final fail-closed lane assertion;
+    # removing the skip dependency does not make the lane look healthy.
+    assert 'if [ "${RIZAN_OUTCOME}" != "success" ]; then' in text
+    assert "CTRADER_DEMO_XAU_EXECUTION_LANE_FAIL_CLOSED" in text
+
+
+def test_current_rizan_path_identity_stays_on_dedicated_handoff_only():
+    generic = (ROOT / "src/fx_scanner/demo_execution_fresh_ready_handoff.py").read_text()
+    dedicated = (ROOT / "src/fx_scanner/demo_xau_afic_fresh_ready_handoff.py").read_text()
+
+    assert '_XAU_RIZAN_PATH_EXECUTION_STRATEGY = "XAU_RIZAN_PATH_EXECUTION_V1"' in generic
+    assert "_XAU_RIZAN_PATH_EXECUTION_STRATEGY," not in generic.split(
+        "_XAU_DEMO_EXECUTION_STRATEGIES = frozenset(", 1
+    )[1].split(")", 1)[0]
+    assert 'RIZAN_EXECUTION_STRATEGY_ID = "XAU_RIZAN_PATH_EXECUTION_V1"' in dedicated
+    assert "RIZAN_EXECUTION_STRATEGY_ID" in dedicated
+    assert '_XAU_LEGACY_AFIC_EXECUTION_STRATEGY = "XAU_AFIC_PATH_EXECUTION_V1"' in generic

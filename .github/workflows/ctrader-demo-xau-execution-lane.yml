@@ -174,10 +174,13 @@ jobs:
 
       - name: Execute fresh RIZAN prepared-path DEMO signal
         id: execute_rizan_path_handoff
+        # V338: do not let a transient producer/Supabase failure turn a broker
+        # handoff into SKIPPED. The handoff re-reads durable EXECUTION_READY rows
+        # and independently enforces freshness, exact strategy identity, DEMO
+        # policy, protection repair, and broker-side safety gates.
         if: >-
-          ${{ !cancelled() &&
-              steps.repair_existing_protection.outcome == 'success' &&
-              steps.produce_xau_afic.outcome == 'success' }}
+          ${{ always() && !cancelled() &&
+              steps.repair_existing_protection.outcome == 'success' }}
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_afic_fresh_ready_handoff
 
@@ -187,10 +190,12 @@ jobs:
       # Decision logic is unchanged; this is orchestration priority only.
       - name: Execute fresh exact-authorized DEMO signals
         id: execute_fresh_handoff
+        # Same boundary rule as the dedicated RIZAN handoff: attempt the
+        # fail-closed reader even when an upstream producer timed out. A stale
+        # or unauthorized row still yields no broker order.
         if: >-
-          ${{ !cancelled() &&
-              steps.repair_existing_protection.outcome == 'success' &&
-              steps.produce_xau_afic.outcome == 'success' }}
+          ${{ always() && !cancelled() &&
+              steps.repair_existing_protection.outcome == 'success' }}
         continue-on-error: true
         run: python -m fx_scanner.demo_execution_fresh_ready_handoff --limit 10
 
