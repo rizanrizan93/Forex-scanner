@@ -204,8 +204,8 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert '[ "${latest_execution_status}" = "completed" ]' not in text
     assert '[ "${latest_execution_conclusion}" = "success" ]' not in text
     assert 'cancel_stale_lane_runs "ctrader-demo-xau-execution-lane.yml" "EXECUTION" 600' in text
-    assert 'cancel_stale_lane_runs "ctrader-demo-xau-afic-prepared-lane.yml" "RIZAN_PREPARED" 600' not in text
-    assert 'cancel_stale_lane_runs "ctrader-demo-xau-dom-v191.yml" "DOM_V191" 600' not in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-afic-prepared-lane.yml" "RIZAN_PREPARED" 600' in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-dom-v191.yml" "DOM_V191" 600' in text
     assert "safety=FAIL_CLOSED" in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
