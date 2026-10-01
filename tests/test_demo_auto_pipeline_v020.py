@@ -213,6 +213,9 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert '"src/fx_scanner/demo_xau_v24_champion_candidate_producer.py"' in text
     assert "challengers=IMPULSE_RETEST_V2" in text
     assert "SUPERVISOR_EXECUTION_SKIP_BUSY" in text
+    assert "SUPERVISOR_EXECUTION_CANCELLED_RECOVERABLE" in text
+    assert "action=ALLOW_REDISPATCH" in text
+    assert "cancelled_lane_recovery=ENABLED" in text
     assert "SUPERVISOR_DISCOVERY_SKIP" in text
     assert "active_count" in text
     assert "overlap_within_lane=DISABLED" in text
