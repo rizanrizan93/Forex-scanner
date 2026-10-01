@@ -67,7 +67,7 @@ jobs:
           fi
 
           active="$(
-            gh run list               --workflow forexrizan-dashboard-bridge-v254.yml               --limit 10               --json status               --jq '[.[] | select(.status=="queued" or .status=="in_progress")] | length'               2>/dev/null || echo 0
+            gh run list               -R "${GITHUB_REPOSITORY}"               --workflow forexrizan-dashboard-bridge-v254.yml               --limit 10               --json status               --jq '[.[] | select(.status=="queued" or .status=="in_progress")] | length'               2>/dev/null || echo 0
           )"
 
           if [ "${active}" -gt 0 ] && [ "${age}" -le 600 ]; then
@@ -75,5 +75,5 @@ jobs:
             exit 0
           fi
 
-          gh workflow run forexrizan-dashboard-bridge-v254.yml --ref main
+          gh workflow run -R "${GITHUB_REPOSITORY}" forexrizan-dashboard-bridge-v254.yml --ref main
           echo "FOREXRIZAN_BRIDGE_WATCHDOG action=DISPATCH age=${age} active=${active}"

@@ -20,7 +20,7 @@ permissions:
 
 concurrency:
   group: forexrizan-dashboard-bridge-v254
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -132,7 +132,7 @@ jobs:
             fi
           }
           if market_open_utc; then
-            gh workflow run forexrizan-dashboard-bridge-v254.yml --ref main
+            gh workflow run -R "${GITHUB_REPOSITORY}" forexrizan-dashboard-bridge-v254.yml --ref main
             echo "FOREXRIZAN_DASHBOARD_PUBLISHER_SELF_HANDOFF_DISPATCHED"
           else
             echo "FOREXRIZAN_DASHBOARD_PUBLISHER_SELF_HANDOFF_SKIPPED market=closed"
