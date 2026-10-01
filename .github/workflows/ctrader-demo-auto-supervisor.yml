@@ -2,67 +2,6 @@ name: cTrader Demo Auto Supervisor
 
 on:
   workflow_dispatch:
-  schedule:
-    # Primary 5-minute authority. A separate recovery watchdog can re-dispatch
-    # this bounded supervisor if GitHub stops delivering the primary cron.
-    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * 0-5"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/ctrader-demo-auto-supervisor.yml"
-      - ".github/workflows/ctrader-demo-auto-pipeline.yml"
-      - ".github/workflows/ctrader-demo-token-maintainer.yml"
-      - ".github/workflows/ctrader-demo-xau-execution-lane.yml"
-      - ".github/workflows/ctrader-demo-xau-afic-prepared-lane.yml"
-      - ".github/workflows/ctrader-demo-maintenance-pipeline.yml"
-      - ".github/workflows/ctrader-demo-xau-v218-htf-snapshot.yml"
-      - ".github/workflows/ctrader-demo-discovery-pipeline.yml"
-      - ".github/workflows/ctrader-demo-calibration-pipeline.yml"
-      - ".github/workflows/ctrader-demo-xau-dom-v191.yml"
-      - ".github/workflows/research-xau-forecast-ensemble-v171.yml"
-      - "src/fx_scanner/research_xau_forecast_ensemble_v171.py"
-      - "src/fx_scanner/research_xau_forecast_ensemble_v171_runtime.py"
-      - ".github/workflows/ctrader-demo-auto-recovery-watchdog.yml"
-      - "src/fx_scanner/demo_xau_v24_champion_candidate_producer.py"
-      - "src/fx_scanner/demo_xau_v24_utc_d1_context.py"
-      - "src/fx_scanner/demo_xau_v24_champion_time_exit.py"
-      - "src/fx_scanner/demo_five_core_candidate_producer.py"
-      - "src/fx_scanner/demo_five_core_router.py"
-      - "src/fx_scanner/demo_xau_m15_ema_smc_reclaim.py"
-      - "src/fx_scanner/demo_xau_m15_ema_smc_reclaim_execution.py"
-      - "src/fx_scanner/demo_xau_m15_ema_smc_reclaim_candidate_producer.py"
-      - "src/fx_scanner/demo_xau_m15_liquidity_sweep_fade.py"
-      - "src/fx_scanner/demo_xau_m15_liquidity_sweep_fade_candidate_producer.py"
-      - "src/fx_scanner/demo_xau_afic_path_shadow_observer.py"
-      - "src/fx_scanner/demo_xau_afic_prepared_plan_producer.py"
-      - "src/fx_scanner/demo_xau_afic_fresh_ready_handoff.py"
-      - "src/fx_scanner/demo_xau_outcome_ledger.py"
-      - "src/fx_scanner/demo_xau_prepared_plan_lifecycle.py"
-      - "src/fx_scanner/demo_xau_premap_candidate_v181.py"
-      - "src/fx_scanner/demo_xau_supply_demand_atlas_v182.py"
-      - "src/fx_scanner/demo_xau_v196_shadow_evidence_v197.py"
-      - "src/fx_scanner/demo_xau_v198_evidence_analytics.py"
-      - "src/fx_scanner/demo_xau_v201_reaction_ladder.py"
-      - "src/fx_scanner/demo_xau_v217_direction_probability.py"
-      - "src/fx_scanner/demo_xau_v218_htf_strategic_snapshot.py"
-      - "src/fx_scanner/demo_xau_v220_direction_prospective_calibration.py"
-      - "src/fx_scanner/demo_xau_v222_m5_pocket_quality.py"
-      - "src/fx_scanner/demo_xau_v223_m5_pocket_cluster_selector.py"
-      - "src/fx_scanner/demo_xau_v224_primary_pocket_prospective.py"
-      - "src/fx_scanner/demo_xau_v226_rizan_depth_map.py"
-      - "src/fx_scanner/demo_xau_v227_depth_map_prospective.py"
-      - "src/fx_scanner/demo_xau_v229_depth_execution.py"
-      - "src/fx_scanner/demo_xau_v229_child_executor.py"
-      - "src/fx_scanner/xau_decision_meta_v296.py"
-      - "src/fx_scanner/demo_xau_decision_center_v296.py"
-      - "src/fx_scanner/demo_xau_meta_research_sampler_v297.py"
-      - "src/fx_scanner/xau_pressure_transition_v249.py"
-      - "src/fx_scanner/xau_dynamic_depth_hazard_v251.py"
-      - "src/fx_scanner/demo_xau_v229_ladder_plan.py"
-      - "src/fx_scanner/demo_xau_v203_volatility_shock_guard.py"
-      - "src/fx_scanner/demo_execution_fresh_ready_handoff.py"
-      - "src/fx_scanner/demo_fresh_ready_handoff.py"
 
 permissions:
   actions: write
