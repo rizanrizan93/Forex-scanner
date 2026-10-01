@@ -66,6 +66,11 @@ def render_xau_dual_engine_dashboard(
         else:
             price = sd.get("price_now")
             decision = dict(sd.get("decision_zone") or {})
+            main_zone = dict(sd.get("main_reversal_zone") or decision)
+            refinement = dict(sd.get("refinement_zone") or {})
+            destination = dict(sd.get("structural_destination") or {})
+            roadblocks = list(sd.get("roadblocks") or [])
+            nearest_roadblock = dict(sd.get("nearest_roadblock") or {})
             micro = dict(sd.get("micro_confirmation") or {})
             guide = dict(sd.get("entry_guide") or {})
             sweep = dict(sd.get("liquidity_map") or {})
@@ -88,13 +93,63 @@ def render_xau_dual_engine_dashboard(
             z1.info("Demand terdekat • " + _zone_label(dict(sd.get("nearest_demand") or {})))
             z2.warning("Supply terdekat • " + _zone_label(dict(sd.get("nearest_supply") or {})))
 
-            if decision:
+            if main_zone:
                 st.markdown(
-                    f"**Decision zone:** {_zone_label(decision)} • "
-                    f"pattern={decision.get('pattern','—')} • "
-                    f"score={decision.get('score','—')} • "
-                    f"freshness={dict(decision.get('lifecycle') or {}).get('freshness','—')}"
+                    f"**MAIN H4 reversal zone:** {_zone_label(main_zone)} • "
+                    f"pattern={main_zone.get('pattern','—')} • "
+                    f"score={main_zone.get('score','—')} • "
+                    f"freshness={dict(main_zone.get('lifecycle') or {}).get('freshness','—')}"
                 )
+                if refinement:
+                    st.success(
+                        "**H1 refinement:** "
+                        + _zone_label(refinement)
+                        + f" • overlap parent={_pct(refinement.get('parent_overlap_ratio'))}"
+                    )
+                else:
+                    st.caption("Belum ada H1 refinement searah yang valid di dalam parent H4.")
+
+                r1, r2 = st.columns(2)
+                if nearest_roadblock:
+                    r1.warning(
+                        "**Roadblock terdekat:** "
+                        + f"{nearest_roadblock.get('timeframe','—')} "
+                        + f"{nearest_roadblock.get('type','—')} "
+                        + f"{_px(nearest_roadblock.get('low'))}–{_px(nearest_roadblock.get('high'))} "
+                        + f"• {nearest_roadblock.get('severity','—')}"
+                    )
+                else:
+                    r1.info("Roadblock terdekat • tidak ada opposing zone sebelum destination H4.")
+                if destination:
+                    r2.info(
+                        "**Destination H4:** "
+                        + f"{_px(destination.get('low'))}–{_px(destination.get('high'))} "
+                        + f"• edge {_px(destination.get('price'))}"
+                    )
+                else:
+                    r2.info("Destination H4 • belum ada opposing H4 aktif di arah perjalanan.")
+
+                if roadblocks:
+                    with st.expander("Roadblock di jalur harga"):
+                        st.dataframe(
+                            [
+                                {
+                                    "TF": rb.get("timeframe"),
+                                    "Type": rb.get("type"),
+                                    "Low": rb.get("low"),
+                                    "High": rb.get("high"),
+                                    "Near edge": rb.get("near_edge"),
+                                    "Severity": rb.get("severity"),
+                                    "Score": rb.get("score"),
+                                    "Freshness": rb.get("freshness"),
+                                }
+                                for rb in roadblocks
+                            ],
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+
+            if decision:
                 prior = dict(sd.get("historical_depth_prior") or {}).get(
                     str(decision.get("timeframe") or ""),
                     {},
@@ -213,6 +268,7 @@ def render_xau_dual_engine_dashboard(
                         "TF": zone.get("timeframe"),
                         "Type": "DEMAND" if zone.get("direction") == "LONG" else "SUPPLY",
                         "Pattern": zone.get("pattern"),
+                        "Role": zone.get("hierarchy_role"),
                         "Low": zone.get("low"),
                         "High": zone.get("high"),
                         "Score": zone.get("score"),

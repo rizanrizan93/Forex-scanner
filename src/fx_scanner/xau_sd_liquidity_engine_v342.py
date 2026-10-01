@@ -10,7 +10,7 @@ import pandas as pd
 
 from .models import ensure_utc
 
-CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_1"
+CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_2_PARENT_HIERARCHY_ROADBLOCK"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
 EXECUTION_AUTHORITY = False
 EXECUTION_INFLUENCE = False
@@ -774,6 +774,211 @@ def _micro_confirmation(
     }
 
 
+def _overlap_ratio(a: dict[str, Any], b: dict[str, Any]) -> float:
+    overlap = max(
+        0.0,
+        min(float(a["high"]), float(b["high"]))
+        - max(float(a["low"]), float(b["low"])),
+    )
+    minimum = max(
+        min(
+            float(a["high"]) - float(a["low"]),
+            float(b["high"]) - float(b["low"]),
+        ),
+        1e-9,
+    )
+    return overlap / minimum
+
+
+def _classify_hierarchy(
+    active_zones: Sequence[dict[str, Any]],
+    *,
+    price_now: float,
+) -> list[dict[str, Any]]:
+    """Attach HTF hierarchy without allowing H1 proximity to override H4 context."""
+    h4 = [dict(z) for z in active_zones if z.get("timeframe") == "H4"]
+    output: list[dict[str, Any]] = []
+    for raw in active_zones:
+        row = dict(raw)
+        if row.get("timeframe") == "H4":
+            row["hierarchy_role"] = "MAIN_REVERSAL_ZONE"
+            row["parent_zone_id"] = None
+            row["parent_overlap_ratio"] = None
+            output.append(row)
+            continue
+
+        same = [z for z in h4 if z.get("direction") == row.get("direction")]
+        opposite = [z for z in h4 if z.get("direction") != row.get("direction")]
+        same_ranked = sorted(
+            same,
+            key=lambda z: (
+                _overlap_ratio(row, z),
+                -_distance(
+                    (float(row["low"]) + float(row["high"])) / 2.0,
+                    float(z["low"]),
+                    float(z["high"]),
+                ),
+            ),
+            reverse=True,
+        )
+        parent = same_ranked[0] if same_ranked else None
+        overlap = _overlap_ratio(row, parent) if parent else 0.0
+        center = (float(row["low"]) + float(row["high"])) / 2.0
+        center_inside_parent = bool(
+            parent
+            and float(parent["low"]) <= center <= float(parent["high"])
+        )
+        near_parent = False
+        if parent:
+            gap = _distance(center, float(parent["low"]), float(parent["high"]))
+            near_parent = gap <= 0.35 * max(float(parent["atr"]), float(row["atr"]))
+
+        opposing_overlap = max((_overlap_ratio(row, z) for z in opposite), default=0.0)
+        if opposing_overlap >= 0.25:
+            role = "H1_INTERNAL_OPPOSING_ROADBLOCK"
+        elif parent and (overlap >= 0.50 or center_inside_parent):
+            role = "H1_REFINEMENT"
+        elif parent and (overlap > 0.0 or near_parent):
+            role = "H1_SECONDARY_REACTION"
+        else:
+            role = "H1_STANDALONE_REACTION"
+
+        row["hierarchy_role"] = role
+        row["parent_zone_id"] = parent.get("zone_id") if parent else None
+        row["parent_overlap_ratio"] = round(overlap, 4) if parent else None
+        row["distance_from_price"] = _distance(
+            price_now, float(row["low"]), float(row["high"])
+        )
+        output.append(row)
+    return output
+
+
+def _select_parent_and_refinement(
+    active_zones: Sequence[dict[str, Any]],
+    *,
+    price_now: float,
+) -> tuple[dict[str, Any], dict[str, Any], str]:
+    h4 = [z for z in active_zones if z.get("timeframe") == "H4"]
+    source = h4 if h4 else list(active_zones)
+    candidates = sorted(
+        source,
+        key=lambda z: (
+            float(z.get("distance_points") or _distance(price_now, float(z["low"]), float(z["high"])))
+            / max(float(z.get("atr") or 1.0), 1e-9),
+            -float(z.get("score") or 0.0),
+        ),
+    )
+    parent = dict(candidates[0]) if candidates else {}
+    if not parent:
+        return {}, {}, "NO_ACTIVE_ZONE"
+
+    refinement: dict[str, Any] = {}
+    if parent.get("timeframe") == "H4":
+        children = []
+        for z in active_zones:
+            if z.get("timeframe") != "H1" or z.get("direction") != parent.get("direction"):
+                continue
+            overlap = _overlap_ratio(z, parent)
+            center = (float(z["low"]) + float(z["high"])) / 2.0
+            if overlap >= 0.25 or float(parent["low"]) <= center <= float(parent["high"]):
+                children.append(
+                    (
+                        overlap,
+                        float(z.get("score") or 0.0),
+                        -_distance(price_now, float(z["low"]), float(z["high"])),
+                        z,
+                    )
+                )
+        if children:
+            children.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
+            refinement = dict(children[0][3])
+
+    selection = "H4_PARENT" if parent.get("timeframe") == "H4" else "H1_FALLBACK_NO_H4"
+    return parent, refinement, selection
+
+
+def _structural_destination(
+    *,
+    direction: str,
+    start_price: float,
+    active_zones: Sequence[dict[str, Any]],
+) -> dict[str, Any]:
+    opposite = "SHORT" if direction == "LONG" else "LONG"
+    h4_targets = []
+    for z in active_zones:
+        if z.get("timeframe") != "H4" or z.get("direction") != opposite:
+            continue
+        edge = float(z["low"]) if direction == "LONG" else float(z["high"])
+        if direction == "LONG" and edge <= start_price:
+            continue
+        if direction == "SHORT" and edge >= start_price:
+            continue
+        h4_targets.append((abs(edge - start_price), edge, z))
+    h4_targets.sort(key=lambda x: x[0])
+    if not h4_targets:
+        return {}
+    distance, edge, zone = h4_targets[0]
+    return {
+        "zone_id": zone["zone_id"],
+        "timeframe": zone["timeframe"],
+        "direction": zone["direction"],
+        "low": zone["low"],
+        "high": zone["high"],
+        "price": edge,
+        "distance_points": distance,
+        "role": "OPPOSING_H4_DESTINATION",
+    }
+
+
+def _roadblocks(
+    *,
+    direction: str,
+    start_price: float,
+    active_zones: Sequence[dict[str, Any]],
+    destination: dict[str, Any] | None,
+    parent_zone_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Find opposing zones lying on the travel path before the terminal H4 destination."""
+    if direction not in {"LONG", "SHORT"}:
+        return []
+    opposite = "SHORT" if direction == "LONG" else "LONG"
+    terminal = _f((destination or {}).get("price"))
+    rows: list[dict[str, Any]] = []
+    for z in active_zones:
+        if z.get("zone_id") == parent_zone_id or z.get("direction") != opposite:
+            continue
+        near_edge = float(z["low"]) if direction == "LONG" else float(z["high"])
+        far_edge = float(z["high"]) if direction == "LONG" else float(z["low"])
+        ahead = near_edge > start_price if direction == "LONG" else near_edge < start_price
+        if not ahead:
+            continue
+        if terminal is not None:
+            before_terminal = near_edge < terminal if direction == "LONG" else near_edge > terminal
+            if not before_terminal:
+                continue
+        distance = abs(near_edge - start_price)
+        severity = "MAJOR" if z.get("timeframe") == "H4" else "INTERNAL"
+        rows.append(
+            {
+                "zone_id": z["zone_id"],
+                "timeframe": z["timeframe"],
+                "type": "SUPPLY" if opposite == "SHORT" else "DEMAND",
+                "low": z["low"],
+                "high": z["high"],
+                "near_edge": near_edge,
+                "far_edge": far_edge,
+                "distance_points": distance,
+                "distance_atr": distance / max(float(z.get("atr") or 1.0), 1e-9),
+                "score": z.get("score"),
+                "freshness": dict(z.get("lifecycle") or {}).get("freshness"),
+                "hierarchy_role": z.get("hierarchy_role"),
+                "severity": severity,
+            }
+        )
+    rows.sort(key=lambda r: (float(r["distance_points"]), -float(r.get("score") or 0.0)))
+    return rows[:6]
+
+
 def _targets(
     *,
     direction: str,
@@ -862,13 +1067,19 @@ def evaluate_sd_liquidity(
         )
         payloads.append(row)
 
-    active = _dedupe(payloads)
+    active = _classify_hierarchy(_dedupe(payloads), price_now=current)
     demands = [x for x in active if x["direction"] == "LONG"]
     supplies = [x for x in active if x["direction"] == "SHORT"]
     demands.sort(key=lambda x: (float(x["distance_points"]), -float(x["score"])))
     supplies.sort(key=lambda x: (float(x["distance_points"]), -float(x["score"])))
     nearest_demand = dict(demands[0]) if demands else {}
     nearest_supply = dict(supplies[0]) if supplies else {}
+
+    decision_zone, refinement_zone, hierarchy_selection = _select_parent_and_refinement(
+        active,
+        price_now=current,
+    )
+    confirmation_zone = dict(refinement_zone or decision_zone)
 
     h1_atr_series = _atr(h1_frame)
     atr_ref = _f(h1_atr_series.iloc[-1]) or max(current * 0.002, 1.0)
@@ -882,14 +1093,6 @@ def evaluate_sd_liquidity(
         atr_reference=float(atr_ref),
     )
 
-    candidates = [x for x in (nearest_demand, nearest_supply) if x]
-    candidates.sort(
-        key=lambda x: (
-            float(x["distance_points"]) / max(float(x["atr"]), 1e-9),
-            -float(x["score"]),
-        )
-    )
-    decision_zone = dict(candidates[0]) if candidates else {}
     sweep_map = (
         _sweep_map(decision_zone, zones=active, liquidity=liquidity)
         if decision_zone
@@ -897,17 +1100,38 @@ def evaluate_sd_liquidity(
     )
     micro = (
         _micro_confirmation(
-            decision_zone,
+            confirmation_zone,
             bars_m5=bars_m5,
             bars_m15=bars_m15,
             price_now=current,
             as_of=now,
         )
-        if decision_zone
+        if confirmation_zone
         else {"stage": "NO_DECISION_ZONE", "confirmed": False}
     )
     direction = str(decision_zone.get("direction") or "WAIT")
     entry = _f(micro.get("entry_reference"))
+    path_start = entry if entry is not None else current
+    destination = (
+        _structural_destination(
+            direction=direction,
+            start_price=path_start,
+            active_zones=active,
+        )
+        if direction in {"LONG", "SHORT"}
+        else {}
+    )
+    roadblocks = (
+        _roadblocks(
+            direction=direction,
+            start_price=path_start,
+            active_zones=active,
+            destination=destination,
+            parent_zone_id=str(decision_zone.get("zone_id") or "") or None,
+        )
+        if direction in {"LONG", "SHORT"}
+        else []
+    )
     targets = _targets(
         direction=direction,
         entry=entry,
@@ -928,7 +1152,14 @@ def evaluate_sd_liquidity(
         "nearest_demand": nearest_demand,
         "nearest_supply": nearest_supply,
         "decision_zone": decision_zone,
+        "main_reversal_zone": decision_zone,
+        "refinement_zone": refinement_zone,
+        "confirmation_zone": confirmation_zone,
+        "hierarchy_selection": hierarchy_selection,
         "expected_reversal_direction": direction,
+        "structural_destination": destination,
+        "roadblocks": roadblocks,
+        "nearest_roadblock": dict(roadblocks[0]) if roadblocks else {},
         "liquidity_map": sweep_map,
         "micro_confirmation": micro,
         "entry_guide": {
@@ -957,6 +1188,11 @@ def evaluate_sd_liquidity(
                 "confirmed swing clusters + round-number candidates + overlapping H4 parent; "
                 "liquidity levels are hypotheses, not proof of resting institutional orders."
             ),
+            "hierarchy": (
+                "H4 defines MAIN_REVERSAL_ZONE; same-direction H1 may refine it. "
+                "Opposing zones on the projected path are ROADBLOCKS and do not override H4 solely by proximity."
+            ),
+            "roadblock": "OPPOSING_ACTIVE_ZONE_BETWEEN_PATH_START_AND_OPPOSING_H4_DESTINATION",
             "reversal_confirmation": "TOUCH/SWEEP + RECLAIM + LOCAL_MSS + DISPLACEMENT",
             "rebuild_policy": "RECALCULATE_FROM_COMPLETED_H4_H1_M15_M5_ON_EACH_RUNTIME_CYCLE",
         },
