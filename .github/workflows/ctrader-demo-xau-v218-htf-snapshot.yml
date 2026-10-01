@@ -2,6 +2,14 @@ name: XAU HTF Strategic Snapshot V218
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "10 0,4,8,12,16,20 * * 1-5"
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/demo_xau_v218_htf_strategic_snapshot.py"
+      - "src/fx_scanner/demo_xau_v217_direction_probability.py"
+      - ".github/workflows/ctrader-demo-xau-v218-htf-snapshot.yml"
 
 permissions:
   contents: read
@@ -12,6 +20,7 @@ concurrency:
 
 jobs:
   strategic-snapshot-v218:
+    if: ${{ false }} # LEGACY_ENGINE_PAUSED_V346
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
