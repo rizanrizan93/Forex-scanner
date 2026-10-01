@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fx_scanner.demo_xau_decision_center_v296 import (
     _engine_direction,
+    _gates,
     _geometry_candidates,
     _v171_direction,
     _v284_precision_evidence,
@@ -470,3 +471,43 @@ def test_v301_conflict_probe_fails_closed_when_reference_parent_not_aligned() ->
     assert decision["consensus_direction"] == "WAIT"
     assert decision["conflict_research_probe_eligible"] is False
     assert decision["action"] == "WAIT_ENGINE_CONFLICT"
+
+
+
+def test_v340_protection_integrity_blocks_when_unmanaged_demo_position_lacks_sl_tp() -> None:
+    now = datetime(2026, 10, 1, 10, 0, tzinfo=UTC)
+    latest = {
+        "ctrader_demo_existing_protection_repair": {
+            "observed_at": "2026-10-01T09:59:30+00:00",
+            "healthy": False,
+            "details": {
+                "unprotected_unmanaged_position_ids": ["41985040", "41985041"],
+                "unprotected_scanner_position_ids": [],
+                "new_orders_blocked_by_unprotected_unmanaged": True,
+            },
+        }
+    }
+    gates = _gates(latest, now)
+    protection = next(row for row in gates if row["name"] == "PROTECTION_INTEGRITY")
+    assert protection["hard_block"] is True
+    assert protection["state"] == "UNMANAGED_POSITION_MISSING_SL_TP"
+    assert protection["details"]["unmanaged_unprotected_count"] == 2
+    assert protection["details"]["unmanaged_position_ids"] == ["41985040", "41985041"]
+
+
+def test_v340_stale_protection_status_is_warning_not_synthetic_execution_block() -> None:
+    now = datetime(2026, 10, 1, 10, 30, tzinfo=UTC)
+    latest = {
+        "ctrader_demo_existing_protection_repair": {
+            "observed_at": "2026-10-01T10:00:00+00:00",
+            "healthy": False,
+            "details": {
+                "unprotected_unmanaged_position_ids": ["old-position"],
+            },
+        }
+    }
+    gates = _gates(latest, now)
+    protection = next(row for row in gates if row["name"] == "PROTECTION_INTEGRITY")
+    assert protection["hard_block"] is False
+    assert protection["warning"] is True
+    assert protection["state"] == "UNMANAGED_POSITION_MISSING_SL_TP"
