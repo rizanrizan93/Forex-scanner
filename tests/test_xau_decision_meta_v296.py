@@ -253,6 +253,9 @@ def test_v296_dashboard_and_execution_lane_contract() -> None:
     assert "Lihat keputusan & kalibrasi tiap engine" in dashboard
     assert "python -m fx_scanner.demo_xau_decision_center_v296" in workflow
     assert "continue-on-error: true" in workflow
+    assert "EXECUTION SAFETY BLOCK" in dashboard
+    assert "PROTECTION_INTEGRITY" in dashboard
+    assert "Scanner will not invent SL/TP for an unknown position." in dashboard
 
 
 
