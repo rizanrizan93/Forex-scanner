@@ -186,6 +186,26 @@ def test_live_quote_churn_does_not_change_alternative_lifecycle_state_key():
     assert forecast_state_key(base)==forecast_state_key(quote_update)
 
 
+def test_rizan_v339_liquidity_sweep_block_prevents_execution_ready():
+    state,guards=signal_state_and_guards(
+        execution_enabled=True,
+        confirmed=True,
+        grade="A",
+        liquidity_sweep_block=True,
+    )
+    assert state=="ARMED"
+    assert "V331_LIQUIDITY_SWEEP_CONFIRMATION_REQUIRED" in guards
+
+    released,released_guards=signal_state_and_guards(
+        execution_enabled=True,
+        confirmed=True,
+        grade="A",
+        liquidity_sweep_block=False,
+    )
+    assert released=="EXECUTION_READY"
+    assert released_guards==[]
+
+
 def test_afic_grade_a_and_b_confirmed_are_demo_auto_ready():
     for grade in ("A","B"):
         state,guards=signal_state_and_guards(
@@ -461,3 +481,16 @@ def test_rizan_prepared_run_initializes_live_quote_state_before_guarded_runtime(
     # Regression: an exception before the quote block must still allow the
     # heartbeat/error path to reference live_mid without masking the root cause.
     assert '"live_price":live_mid if live_mid is not None' in run
+
+
+def test_rizan_v339_prepared_lane_uses_v331_before_auto_authority():
+    from pathlib import Path
+    root=Path(__file__).resolve().parents[1]
+    text=(root/"src/fx_scanner/demo_xau_afic_prepared_plan_producer.py").read_text()
+    assert "build_liquidity_sweep_admission_guard" in text
+    assert "V339_LIQUIDITY_GUARD_ATLAS_UNAVAILABLE" in text
+    assert "liquidity_sweep_block=bool(" in text
+    assert "and not liquidity_sweep_block" in text
+    assert '"V331_LIQUIDITY_SWEEP_CONFIRMATION_REQUIRED"' in text
+    assert "_invalidate_liquidity_blocked_ready(" in text
+    assert '"liquidity_sweep_guard":{' in text
