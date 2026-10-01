@@ -1,0 +1,118 @@
+name: Research Brent Direct M15 V240
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/fx_scanner/research_brent_direct_m15_depth_v240.py"
+      - "src/fx_scanner/research_brent_direct_m15_depth_v240_year_runtime.py"
+      - "src/fx_scanner/research_brent_direct_m15_depth_v240_aggregate.py"
+      - "tests/test_research_brent_direct_m15_depth_v240.py"
+      - ".github/workflows/research-brent-direct-m15-v240.yml"
+  push:
+    branches:
+      - research/v240-brent-direct-m15-depth
+    paths:
+      - "src/fx_scanner/research_brent_direct_m15_depth_v240.py"
+      - "src/fx_scanner/research_brent_direct_m15_depth_v240_year_runtime.py"
+      - "src/fx_scanner/research_brent_direct_m15_depth_v240_aggregate.py"
+      - "tests/test_research_brent_direct_m15_depth_v240.py"
+      - ".github/workflows/research-brent-direct-m15-v240.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-brent-direct-m15-v240-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Test V240
+        run: |
+          pytest -q             tests/test_research_brent_direct_m15_depth_v240.py             tests/test_research_xau_zone_reversal_depth_v225.py             tests/test_research_brent_v229_historical_v239.py
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      BRENT_V240_YEAR: ${{ matrix.year }}
+      BRENT_V240_PRICE_CSV: /tmp/histdata/brent-v240-${{ matrix.year }}.csv
+      BRENT_V240_PROVENANCE: artifacts/brent-v240-provenance-${{ matrix.year }}.json
+      BRENT_V240_OUTPUT: artifacts/brent-direct-m15-v240-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Run Brent direct M15 year
+        run: python -m fx_scanner.research_brent_direct_m15_depth_v240_year_runtime
+      - name: Upload yearly shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: brent-v240-year-${{ matrix.year }}
+          path: |
+            artifacts/brent-direct-m15-v240-${{ matrix.year }}.json
+            artifacts/brent-v240-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BRENT_V240_SHARD_DIR: /tmp/brent-v240-shards
+      BRENT_V240_FULL_OUTPUT: artifacts/brent-direct-m15-v240-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: brent-v240-year-*
+          path: /tmp/brent-v240-shards
+          merge-multiple: false
+      - name: Aggregate direct M15 2012-2026
+        run: python -m fx_scanner.research_brent_direct_m15_depth_v240_aggregate
+      - name: Upload full V240 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: brent-direct-m15-v240-full
+          path: artifacts/brent-direct-m15-v240-full.json
+          if-no-files-found: error
+          retention-days: 30
