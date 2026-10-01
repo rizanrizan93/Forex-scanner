@@ -29,6 +29,27 @@ def _position_unprotected(position) -> bool:
     return _positive(position.stop_loss) is None or _positive(position.take_profit) is None
 
 
+def _safe_unprotected_position_summary(position, *, scanner_key: str | None) -> dict[str, Any]:
+    """Bounded non-secret identity metadata for dashboard safety diagnostics."""
+    return {
+        "position_id": str(position.position_id),
+        "symbol": str(position.symbol).upper(),
+        "side": str(position.side).upper(),
+        "volume": float(position.volume),
+        "open_price": float(position.open_price),
+        "current_price": (
+            None if position.current_price is None else float(position.current_price)
+        ),
+        "opened_at": (
+            None if position.opened_at is None else position.opened_at.isoformat()
+        ),
+        "has_stop_loss": _positive(position.stop_loss) is not None,
+        "has_take_profit": _positive(position.take_profit) is not None,
+        "comment_present": bool(str(position.comment or "").strip()),
+        "scanner_linkage": "VERIFIED_COMMENT_ID" if scanner_key else "UNVERIFIED",
+    }
+
+
 def _protection_gate_healthy(
     *,
     failed: int,
@@ -384,10 +405,17 @@ def run() -> int:
         )
         unprotected_scanner_positions: list[str] = []
         unprotected_unmanaged_positions: list[str] = []
+        unprotected_position_diagnostics: list[dict[str, Any]] = []
         for position in after.positions:
             if not _position_unprotected(position):
                 continue
             scanner_key = _scanner_key_from_comment(position.comment, prefix)
+            unprotected_position_diagnostics.append(
+                _safe_unprotected_position_summary(
+                    position,
+                    scanner_key=scanner_key,
+                )
+            )
             if scanner_key is None:
                 unprotected_unmanaged_positions.append(str(position.position_id))
             else:
@@ -412,6 +440,7 @@ def run() -> int:
                 "skipped_non_scanner_or_unusable": skipped,
                 "unprotected_scanner_position_ids": unprotected_scanner_positions[-32:],
                 "unprotected_unmanaged_position_ids": unprotected_unmanaged_positions[-32:],
+                "unprotected_position_diagnostics": unprotected_position_diagnostics[-16:],
                 "new_orders_blocked_by_unprotected_unmanaged": bool(unprotected_unmanaged_positions),
                 "failures": failures[-32:],
                 "same_symbol_policy_mutated": False,
