@@ -71,7 +71,7 @@ def test_v342_detects_causal_h1_demand_zone():
     assert zones
     zone = zones[-1]
     assert zone.direction == "LONG"
-    assert zone.available_at == bars[25].timestamp
+    assert zone.available_at == bars[25].timestamp + timedelta(hours=1)
     assert zone.low < zone.high
     assert zone.structural_bos is True
 
