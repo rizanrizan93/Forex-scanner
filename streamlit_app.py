@@ -62,7 +62,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V320_TWO_TAB_MICRO_REFINEMENT_20261001"
+DASHBOARD_BUILD_ID = "RIZAN_V321_DUAL_CYCLE_MICRO_REFINEMENT_20261001"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -76,6 +76,7 @@ RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     "ctrader_demo_xau_meta_research_sampler_v297",
     "ctrader_demo_xau_structural_research_probe_v318",
     "ctrader_demo_xau_micro_entry_refinement_v320",
+    "ctrader_demo_xau_micro_entry_dual_cycle_v321",
 )
 
 RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS = (
@@ -2270,6 +2271,9 @@ with forecast_tab:
     v320_micro_entry_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_micro_entry_refinement_v320"
     )
+    v321_micro_entry_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_micro_entry_dual_cycle_v321"
+    )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
     )
@@ -4023,29 +4027,42 @@ with forecast_tab:
             prices.append(_fmt_price(row.get("price")))
         return " → ".join(prices) if prices else "Belum ada waypoint valid"
 
+    # V321 prefers the dual-cycle heartbeat. V320 remains a temporary
+    # compatibility fallback while old dashboard snapshots age out.
+    micro_hb = v321_micro_entry_hb or v320_micro_entry_hb
     v320_micro_details = (
         {}
-        if v320_micro_entry_hb is None
-        else dict(v320_micro_entry_hb.get("details") or {})
+        if micro_hb is None
+        else dict(micro_hb.get("details") or {})
     )
     v320_micro_eval = dict(v320_micro_details.get("evaluation") or {})
     v320_micro_age = (
         None
-        if v320_micro_entry_hb is None
-        else _age_seconds(v320_micro_entry_hb.get("observed_at"))
+        if micro_hb is None
+        else _age_seconds(micro_hb.get("observed_at"))
     )
     v320_micro_fresh = bool(
-        v320_micro_entry_hb is not None
-        and bool(v320_micro_entry_hb.get("healthy"))
+        micro_hb is not None
+        and bool(micro_hb.get("healthy"))
         and v320_micro_age is not None
         and v320_micro_age <= 300.0
     )
-    v320_micro_levels = dict(v320_micro_eval.get("levels") or {})
-    v320_micro_anchor = dict(v320_micro_eval.get("anchor") or {})
-    v320_micro_delta = dict(v320_micro_eval.get("delta") or {})
-    v320_micro_parent = dict(v320_micro_eval.get("decision_zone") or {})
-    v320_micro_targets = list(v320_micro_eval.get("targets") or [])
-    v320_micro_opposing = dict(v320_micro_eval.get("nearest_opposing_zone") or {})
+    v320_micro_primary = dict(
+        v320_micro_eval.get("primary") or v320_micro_eval
+    )
+    v320_micro_levels = dict(v320_micro_primary.get("levels") or {})
+    v320_micro_anchor = dict(v320_micro_primary.get("anchor") or {})
+    v320_micro_delta = dict(v320_micro_primary.get("delta") or {})
+    v320_micro_parent = dict(v320_micro_primary.get("decision_zone") or {})
+    v320_micro_targets = list(v320_micro_primary.get("targets") or [])
+    v320_micro_opposing = dict(v320_micro_primary.get("nearest_opposing_zone") or {})
+    v321_active_source = dict(v320_micro_eval.get("active_source") or {})
+    v321_next_opposing = dict(v320_micro_eval.get("next_opposing") or {})
+    v321_primary_role = str(
+        v320_micro_eval.get("primary_setup_role")
+        or v320_micro_primary.get("setup_role")
+        or "V320_COMPATIBILITY"
+    )
 
     tab_supply, tab_micro = st.tabs(
         [
@@ -4178,108 +4195,123 @@ with forecast_tab:
             )
 
     with tab_micro:
-        with st.container(border=True):
-            st.markdown("### RIZAN STYLE MICRO ENTRY REFINEMENT • V320")
+        def _render_micro_setup(
+            title: str,
+            setup: dict[str, Any],
+            *,
+            primary: bool = False,
+        ) -> None:
+            row = dict(setup or {})
+            if not row or str(row.get("state") or "") == "NO_ZONE":
+                st.caption(title + ": belum ada structural zone yang valid.")
+                return
+            levels = dict(row.get("levels") or {})
+            anchor = dict(row.get("anchor") or {})
+            delta = dict(row.get("delta") or {})
+            zone_row = dict(row.get("decision_zone") or {})
+            badge = " • PRIMARY" if primary else ""
+            st.markdown("**" + title + badge + "**")
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Arah", str(row.get("direction") or "WAIT"))
+            c2.metric("TF", str(row.get("selected_timeframe") or "—"))
+            c3.metric("Phase", _rizan_display(row.get("phase") or "WAIT"))
+            c4.metric(
+                "Confidence",
+                (
+                    f"{float(row.get('confidence')):.0f}%"
+                    if row.get("confidence") is not None else "—"
+                ),
+            )
             st.caption(
-                "Rekonstruksi prospektif dari pola A → X → Y → TP 5Δ / 8Δ / 13Δ "
-                "yang terlihat berulang pada screenshot strategi referensi. Formula asli "
-                "indikator referensi tidak diketahui; engine ini research-only sampai "
-                "forward validation cukup."
+                "Parent "
+                + str(zone_row.get("timeframe") or "—")
+                + " "
+                + _fmt_price(zone_row.get("low"))
+                + "–"
+                + _fmt_price(zone_row.get("high"))
+                + " • "
+                + ("A CONFIRMED" if bool(anchor.get("confirmed")) else "A PROJECTED")
+            )
+            e1, e2, e3 = st.columns(3)
+            e1.metric("A", _fmt_price(levels.get("a")))
+            e2.metric("X", _fmt_price(levels.get("x")))
+            e3.metric("Y", _fmt_price(levels.get("y")))
+            t1, t2, t3, t4 = st.columns(4)
+            t1.metric("SL", _fmt_price(levels.get("sl")))
+            t2.metric("TP1 • 5Δ", _fmt_price(levels.get("tp1")))
+            t3.metric("TP2 • 8Δ", _fmt_price(levels.get("tp2")))
+            t4.metric("TP3 • 13Δ", _fmt_price(levels.get("tp3")))
+            st.caption(
+                "Δ="
+                + _fmt_price(delta.get("value"))
+                + " • ATR14="
+                + _fmt_price(delta.get("atr14"))
+                + " • exact formula referensi belum terverifikasi."
+            )
+
+        with st.container(border=True):
+            st.markdown("### RIZAN STYLE MICRO ENTRY REFINEMENT • V321")
+            st.caption(
+                "Dua siklus dipisahkan: (1) micro-entry pada source H4/H1 yang sedang "
+                "aktif/disentuh, dan (2) pre-map entry pada opposing zone berikutnya. "
+                "M5 dipakai untuk timing cepat; H1 memberi ladder swing yang lebih lebar. "
+                "Model A → X → Y → 5Δ / 8Δ / 13Δ tetap research-only."
             )
             if not v320_micro_eval:
                 st.warning(
-                    "V320 belum memiliki snapshot. Tunggu worker micro refinement selesai "
-                    "membaca atlas H4/H1 dan data M5/M15."
+                    "V321 belum memiliki snapshot. Tunggu worker dual-cycle membaca "
+                    "atlas H4/H1 dan data M5/M15/H1."
                 )
             else:
-                mt1, mt2, mt3, mt4 = st.columns(4)
-                mt1.metric(
-                    "Arah micro",
-                    str(v320_micro_eval.get("direction") or "WAIT"),
+                top1, top2, top3 = st.columns(3)
+                top1.metric(
+                    "State dual-cycle",
+                    _rizan_display(v320_micro_eval.get("state") or "WAIT"),
                 )
-                mt2.metric(
-                    "Phase",
-                    _rizan_display(v320_micro_eval.get("phase") or "WAIT"),
-                )
-                mt3.metric(
-                    "TF refinement",
-                    str(v320_micro_eval.get("selected_timeframe") or "—"),
-                )
-                mt4.metric(
-                    "Confidence riset",
-                    (
-                        f"{float(v320_micro_eval.get('confidence')):.0f}%"
-                        if v320_micro_eval.get("confidence") is not None
-                        else "—"
+                top2.metric("Primary sekarang", _rizan_display(v321_primary_role))
+                top3.metric(
+                    "Harga",
+                    _fmt_price(
+                        v320_micro_eval.get("price_now")
+                        or v320_micro_primary.get("price_now")
                     ),
                 )
 
-                st.markdown(
-                    "**Parent H4/H1 reversal zone:** "
-                    + (
-                        f"{str(v320_micro_parent.get('timeframe') or '—')} "
-                        f"{_fmt_price(v320_micro_parent.get('low'))}–"
-                        f"{_fmt_price(v320_micro_parent.get('high'))}"
-                        if v320_micro_parent else "BELUM ADA"
-                    )
-                )
-                a1, a2, a3 = st.columns(3)
-                a1.metric(
-                    "A • Anchor",
-                    _fmt_price(v320_micro_levels.get("a")),
-                )
-                a2.metric(
-                    "X • Reclaim",
-                    _fmt_price(v320_micro_levels.get("x")),
-                )
-                a3.metric(
-                    "Y • Acceptance",
-                    _fmt_price(v320_micro_levels.get("y")),
-                )
+                active_m5 = dict(v321_active_source.get("m5") or {})
+                active_h1 = dict(v321_active_source.get("h1") or {})
+                next_m5 = dict(v321_next_opposing.get("m5") or {})
+                next_h1 = dict(v321_next_opposing.get("h1") or {})
 
-                s1, s2, s3, s4 = st.columns(4)
-                s1.metric("SL struktural", _fmt_price(v320_micro_levels.get("sl")))
-                s2.metric("TP1 • 5Δ", _fmt_price(v320_micro_levels.get("tp1")))
-                s3.metric("TP2 • 8Δ", _fmt_price(v320_micro_levels.get("tp2")))
-                s4.metric("TP3 • 13Δ", _fmt_price(v320_micro_levels.get("tp3")))
-
-                anchor_confirmed = bool(v320_micro_anchor.get("confirmed"))
-                reclaim_confirmed = bool(v320_micro_eval.get("reclaim_confirmed"))
-                if anchor_confirmed and reclaim_confirmed:
-                    st.success(
-                        "MICRO LADDER CONFIRMED • A sudah terbentuk dari post-impulse pullback "
-                        "dan reclaim parent zone telah dikonfirmasi."
-                    )
-                else:
-                    st.info(
-                        "PROJECTED / PREPARE ONLY • A belum confirmed atau reclaim belum lengkap. "
-                        "Level ditampilkan sebagai forecast, bukan izin order."
+                _render_micro_setup(
+                    "ACTIVE SOURCE • M5 fast entry",
+                    active_m5,
+                    primary=v321_primary_role == "ACTIVE_SOURCE_M5",
+                )
+                with st.expander("ACTIVE SOURCE • H1 swing ladder", expanded=False):
+                    _render_micro_setup(
+                        "H1 swing",
+                        active_h1,
+                        primary=False,
                     )
 
-                st.caption(
-                    "Δ="
-                    + _fmt_price(v320_micro_delta.get("value"))
-                    + " • ATR14="
-                    + _fmt_price(v320_micro_delta.get("atr14"))
-                    + " • seed="
-                    + _fmt_number(
-                        (
-                            float(v320_micro_delta.get("atr_fraction")) * 100.0
-                            if v320_micro_delta.get("atr_fraction") is not None
-                            else None
-                        ),
-                        1,
-                    )
-                    + "% ATR. Exact formula referensi: BELUM TERVERIFIKASI."
+                st.divider()
+                _render_micro_setup(
+                    "NEXT OPPOSING ZONE • M5 pre-map",
+                    next_m5,
+                    primary=v321_primary_role == "NEXT_OPPOSING_M5",
                 )
-                if v320_micro_opposing:
-                    st.warning(
-                        "Opposing structural zone terdekat: "
-                        f"{str(v320_micro_opposing.get('timeframe') or '—')} "
-                        f"{_fmt_price(v320_micro_opposing.get('low'))}–"
-                        f"{_fmt_price(v320_micro_opposing.get('high'))}. "
-                        "Target ladder yang melewati zona ini harus dianggap conditional."
+                with st.expander("NEXT OPPOSING • H1 swing ladder", expanded=False):
+                    _render_micro_setup(
+                        "H1 swing",
+                        next_h1,
+                        primary=False,
                     )
+
+                st.info(
+                    "Cara baca: bila harga sedang INSIDE / baru bereaksi dari source aktif, "
+                    "ikuti panel ACTIVE SOURCE sebagai micro forecast. NEXT OPPOSING hanya "
+                    "persiapan untuk reversal berikutnya sampai zona tersebut benar-benar disentuh."
+                )
                 st.caption(
                     "Snapshot "
                     + ("FRESH" if v320_micro_fresh else "LAST-KNOWN/STALE")
@@ -4287,7 +4319,7 @@ with forecast_tab:
                         f" • age {v320_micro_age:.0f}s"
                         if v320_micro_age is not None else ""
                     )
-                    + " • execution authority = FALSE."
+                    + " • execution authority = FALSE • LIVE OFF."
                 )
 
 
