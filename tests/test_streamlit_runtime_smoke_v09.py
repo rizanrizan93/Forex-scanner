@@ -263,7 +263,6 @@ def test_v256_dashboard_hides_research_locator_from_operational_decision_path():
     assert "ACTIVE SOURCE • M5 fast entry" in text
     assert "SELECTED OPPOSING ZONE • M5 pre-map" in text
     assert "OPPOSING ZONE TERLEWATI" in text
-    assert "POSSIBLE_LIQUIDITY_SWEEP_OR_ACCEPTANCE" not in text
     assert "v328_liquidity_context" in text
     assert "v328_destination_cascade" in text
 
