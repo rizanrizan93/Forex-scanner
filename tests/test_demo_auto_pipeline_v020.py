@@ -19,18 +19,6 @@ def test_demo_auto_pipeline_is_dispatch_only_xauusd_fast_lane_and_demo_only():
     assert text.index("demo_xau_v24_champion_candidate_producer") < text.index(
         "demo_execution_fresh_ready_handoff"
     )
-    assert text.index("demo_xau_afic_fresh_ready_handoff") < text.index(
-        "demo_xau_structural_research_probe_v318"
-    )
-    assert text.index("demo_execution_fresh_ready_handoff") < text.index(
-        "demo_xau_structural_research_probe_v318"
-    )
-    assert text.index("demo_execution_fresh_ready_handoff") < text.index(
-        "demo_xau_decision_center_v296"
-    )
-    assert text.index("demo_execution_fresh_ready_handoff") < text.index(
-        "demo_xau_meta_research_sampler_v297"
-    )
     assert text.index("demo_xau_m15_ema_smc_reclaim_candidate_producer") < text.index(
         "demo_execution_fresh_ready_handoff"
     )
@@ -270,6 +258,18 @@ def test_minute_xau_execution_lane_is_exact_authority_and_demo_only():
     )
     assert text.index("demo_xau_v24_champion_candidate_producer") < text.index(
         "demo_execution_fresh_ready_handoff"
+    )
+    assert text.index("demo_xau_afic_fresh_ready_handoff") < text.index(
+        "demo_xau_structural_research_probe_v318"
+    )
+    assert text.index("demo_execution_fresh_ready_handoff") < text.index(
+        "demo_xau_structural_research_probe_v318"
+    )
+    assert text.index("demo_execution_fresh_ready_handoff") < text.index(
+        "demo_xau_decision_center_v296"
+    )
+    assert text.index("demo_execution_fresh_ready_handoff") < text.index(
+        "demo_xau_meta_research_sampler_v297"
     )
     assert "demo_xau_v24_champion_time_exit" not in text
     assert "demo_xau_expansion_v42_candidate_producer" not in text
