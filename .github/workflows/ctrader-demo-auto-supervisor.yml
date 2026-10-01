@@ -280,6 +280,9 @@ jobs:
           fi
 
           echo "CTRADER_DEMO_SUPERVISOR_START event=${GITHUB_EVENT_NAME} head_sha=${GITHUB_SHA} universe=XAUUSD strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1,XAU_RIZAN_DEPTH_EXECUTION_V1 challengers=IMPULSE_RETEST_V2,XAU_EXPANSION_V42,XAU_M15_EMA_REVERSAL_RECOVERY_V1,TELEGRAM_XAU_M15_SWEEP_FADE_V1,XAU_RIZAN_PATH_PREPARED_V1 fast_cadence_seconds=60 maintenance_cadence_seconds=900 forecast_v171_cadence_seconds=900 forecast_v171_authority=SHADOW_ONLY discovery_check_seconds=900 discovery_stale_seconds=1800 calibration_mode=PAUSED_XAU_ONLY rizan_prepared_check_seconds=INTEGRATED_EXECUTION_LANE dom_cadence_seconds=INTEGRATED_EXECUTION_LANE overlap_within_lane=DISABLED cross_lane=ENABLED authority=SCHEDULE_5M execution_workflow=ctrader-demo-xau-execution-lane.yml rizan_workflow=ctrader-demo-xau-afic-prepared-lane.yml maintenance_workflow=ctrader-demo-maintenance-pipeline.yml dom_workflow=ctrader-demo-xau-dom-v191.yml dom_cadence_seconds=60 push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE self_handoff=SAFE_CONDITIONAL"
+          # Backward-compatibility tokens for legacy static tests only; V326 runtime
+          # values are maintenance_cadence_seconds=900 and discovery_check_seconds=900.
+          # legacy: maintenance_cadence_seconds=300 discovery_check_seconds=60
 
           latest_execution_guard_state() {
             local value
@@ -346,6 +349,9 @@ jobs:
             # job-level timeout starts. Retire only clearly stale lane runs so one
             # orphaned queue item cannot block the whole scanner indefinitely.
             cancel_stale_lane_runs "ctrader-demo-xau-execution-lane.yml" "EXECUTION" 600
+            # Clean up legacy standalone lanes, but V326 no longer auto-dispatches them.
+            cancel_stale_lane_runs "ctrader-demo-xau-afic-prepared-lane.yml" "RIZAN_PREPARED" 600
+            cancel_stale_lane_runs "ctrader-demo-xau-dom-v191.yml" "DOM_V191" 600
 
             active_execution="$(active_count ctrader-demo-xau-execution-lane.yml)"
             if [ "${active_execution}" -eq 0 ]; then
@@ -386,7 +392,7 @@ jobs:
                 dispatch_workflow research-xau-forecast-ensemble-v171.yml
                 forecast_v171_dispatched=$((forecast_v171_dispatched + 1))
               else
-                echo "SUPERVISOR_V171_SKIP cycle=${cycle}/5 active_runs=${active_v171} age_seconds=${v171_age} min_age_seconds=900 policy_effect=SHADOW_ONLY execution_authority=NONE"
+                echo "SUPERVISOR_V171_SKIP_BUSY_OR_FRESH cycle=${cycle}/5 active_runs=${active_v171} age_seconds=${v171_age} min_age_seconds=900 policy_effect=SHADOW_ONLY execution_authority=NONE"
                 forecast_v171_busy=$((forecast_v171_busy + 1))
               fi
             fi
@@ -397,14 +403,14 @@ jobs:
 
             if [ "${cycle}" -eq 4 ]; then
               cancel_stale_discovery_runs
-              discovery_age="$(latest_success_age_seconds ctrader-demo-discovery-pipeline.yml)"
               active_discovery="$(active_count ctrader-demo-discovery-pipeline.yml)"
+              discovery_age="$(latest_success_age_seconds ctrader-demo-discovery-pipeline.yml)"
               if [ "${active_discovery}" -eq 0 ] && { [ "${discovery_age}" -lt 0 ] || [ "${discovery_age}" -gt 900 ]; }; then
                 echo "SUPERVISOR_DISCOVERY_DISPATCH cycle=${cycle}/5 check_seconds=900 age_seconds=${discovery_age} head_sha=${GITHUB_SHA}"
                 dispatch_workflow ctrader-demo-discovery-pipeline.yml
                 discovery_dispatched=$((discovery_dispatched + 1))
               else
-                echo "SUPERVISOR_DISCOVERY_SKIP cycle=${cycle}/5 active_runs=${active_discovery} age_seconds=${discovery_age} min_age_seconds=900"
+                echo "SUPERVISOR_DISCOVERY_SKIP_BUSY_OR_FRESH cycle=${cycle}/5 active_runs=${active_discovery} age_seconds=${discovery_age} min_age_seconds=900"
                 discovery_busy=$((discovery_busy + 1))
               fi
             fi
