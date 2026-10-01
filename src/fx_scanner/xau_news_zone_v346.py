@@ -323,10 +323,10 @@ def evaluate_news_zone(
         effective_entry_state = "WAIT_NEWS_DATA"
     elif risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
         effective_entry_state = "WAIT_FOR_NEWS"
-    elif risk_state == "POST_EVENT_DISCOVERY" and not confirmed:
-        effective_entry_state = "WAIT_POST_NEWS_M5_M15_CONFIRMATION"
     elif failed:
         effective_entry_state = "BLOCK_FAILED_ZONE"
+    elif risk_state == "POST_EVENT_DISCOVERY" and not confirmed:
+        effective_entry_state = "WAIT_POST_NEWS_M5_M15_CONFIRMATION"
 
     upcoming = [
         event.as_dict()
