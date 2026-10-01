@@ -15,12 +15,12 @@ def test_supervisor_keeps_bounded_one_minute_cadence_with_fail_closed_self_hando
     assert "for cycle in $(seq 1 5)" in text
     assert "sleep 60" in text
     assert "fast_cadence_seconds=60" in text
-    assert "maintenance_cadence_seconds=300" in text
+    assert "maintenance_cadence_seconds=900" in text
     assert "calibration_mode=PAUSED_XAU_ONLY" in text
     assert "SUPERVISOR_CALIBRATION_PAUSED_XAU_ONLY" in text
     assert "dispatch_workflow ctrader-demo-calibration-pipeline.yml" not in text
     assert "execution_authority=NONE" in text
-    assert "discovery_check_seconds=60" in text
+    assert "discovery_check_seconds=900" in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
     assert "strategies=XAU_V24_CHAMPION_DEMO_V1,XAU_M15_EMA_SMC_RECLAIM_V1" in text
@@ -122,11 +122,11 @@ def test_supervisor_owns_v171_shadow_cadence_without_execution_authority() -> No
 
     assert "research-xau-forecast-ensemble-v171.yml" in supervisor
     assert "SUPERVISOR_V171_DISPATCH" in supervisor
-    assert "SUPERVISOR_V171_SKIP_BUSY" in supervisor
-    assert "forecast_v171_cadence_seconds=300" in supervisor
+    assert "SUPERVISOR_V171_SKIP_BUSY_OR_FRESH" in supervisor
+    assert "forecast_v171_cadence_seconds=900" in supervisor
     assert "forecast_v171_authority=SHADOW_ONLY" in supervisor
     assert "execution_authority=NONE" in supervisor
-    assert 'if [ "${cycle}" -eq 1 ]' in supervisor
+    assert 'if [ "${cycle}" -eq 2 ]' in supervisor
 
     parsed = yaml.safe_load(v171)
     triggers = parsed[True]
