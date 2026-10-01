@@ -375,12 +375,17 @@ def build_micro_entry_refinement(
     atlas_evaluation: dict[str, Any],
     bars_m5: Iterable[Any],
     bars_m15: Iterable[Any],
+    bars_h1: Iterable[Any] = (),
     price_now: float | None = None,
+    zone_override: dict[str, Any] | None = None,
+    timeframe_preference: str | None = None,
+    setup_role: str | None = None,
 ) -> dict[str, Any]:
     atlas = dict(atlas_evaluation or {})
     m5 = _normalize_bars(bars_m5)
     m15 = _normalize_bars(bars_m15)
-    zone = _candidate_reversal_zone(atlas)
+    h1 = _normalize_bars(bars_h1)
+    zone = dict(zone_override or {}) or _candidate_reversal_zone(atlas)
     if not zone:
         return {
             "contract": CONTRACT,
@@ -402,8 +407,25 @@ def build_micro_entry_refinement(
             "execution_influence": False,
         }
 
-    selected_tf = "M5" if len(m5) >= MIN_BARS_FOR_ATR else "M15"
-    selected = m5 if selected_tf == "M5" else m15
+    requested_tf = str(timeframe_preference or "").upper()
+    if requested_tf == "H1" and len(h1) >= MIN_BARS_FOR_ATR:
+        selected_tf = "H1"
+        selected = h1
+    elif requested_tf == "M15" and len(m15) >= MIN_BARS_FOR_ATR:
+        selected_tf = "M15"
+        selected = m15
+    elif requested_tf == "M5" and len(m5) >= MIN_BARS_FOR_ATR:
+        selected_tf = "M5"
+        selected = m5
+    elif len(m5) >= MIN_BARS_FOR_ATR:
+        selected_tf = "M5"
+        selected = m5
+    elif len(m15) >= MIN_BARS_FOR_ATR:
+        selected_tf = "M15"
+        selected = m15
+    else:
+        selected_tf = "H1"
+        selected = h1
     atr_points = _atr(selected)
     if atr_points is None:
         zone_atr = _f(zone.get("atr_points"))
@@ -504,6 +526,7 @@ def build_micro_entry_refinement(
         "direction": direction,
         "price_now": current,
         "selected_timeframe": selected_tf,
+        "setup_role": setup_role or "NEXT_OPPOSING_REVERSAL",
         "decision_zone": {
             key: zone.get(key)
             for key in (
