@@ -307,9 +307,9 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
     }
 
 
-@st.cache_data(ttl=1800, show_spinner=False)
+@st.cache_data(ttl=2400, show_spinner=False)
 def _load_backend_structural_snapshot(url: str, secret_key: str) -> dict[str, Any]:
-    """Completed-structure V182/V226 detail; refreshed every thirty minutes."""
+    """Completed-structure V182/V226 detail; refreshed every forty minutes."""
     client = _supabase_client(url, secret_key)
     reader = SupabaseDashboardReader(client)
     return {

@@ -221,7 +221,7 @@ def test_v332_bridge_keeps_small_hot_workers_and_projects_heavy_current_state():
 
     assert "ctrader_demo_xau_decision_center_v296" in SUPPORT_HEARTBEATS
     assert "ctrader_demo_xau_micro_destination_v328" in SUPPORT_HEARTBEATS
-    assert STRUCTURAL_REFRESH_SECONDS == 1800.0
+    assert STRUCTURAL_REFRESH_SECONDS == 2400.0
 
     root = Path(__file__).resolve().parents[1]
     bridge = (root / "src/fx_scanner/xau_dashboard_bridge_v254.py").read_text()
