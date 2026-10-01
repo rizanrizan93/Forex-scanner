@@ -326,9 +326,14 @@ def test_xau_execution_lane_attempts_failclosed_handoffs_after_upstream_timeout(
     assert "CTRADER_DEMO_XAU_EXECUTION_LANE_FAIL_CLOSED" in text
 
 
-def test_exact_xau_handoff_accepts_current_rizan_path_identity():
-    text = (ROOT / "src/fx_scanner/demo_execution_fresh_ready_handoff.py").read_text()
+def test_current_rizan_path_identity_stays_on_dedicated_handoff_only():
+    generic = (ROOT / "src/fx_scanner/demo_execution_fresh_ready_handoff.py").read_text()
+    dedicated = (ROOT / "src/fx_scanner/demo_xau_afic_fresh_ready_handoff.py").read_text()
 
-    assert '_XAU_RIZAN_PATH_EXECUTION_STRATEGY = "XAU_RIZAN_PATH_EXECUTION_V1"' in text
-    assert "_XAU_RIZAN_PATH_EXECUTION_STRATEGY," in text
-    assert '_XAU_LEGACY_AFIC_EXECUTION_STRATEGY = "XAU_AFIC_PATH_EXECUTION_V1"' in text
+    assert '_XAU_RIZAN_PATH_EXECUTION_STRATEGY = "XAU_RIZAN_PATH_EXECUTION_V1"' in generic
+    assert "_XAU_RIZAN_PATH_EXECUTION_STRATEGY," not in generic.split(
+        "_XAU_DEMO_EXECUTION_STRATEGIES = frozenset(", 1
+    )[1].split(")", 1)[0]
+    assert 'RIZAN_EXECUTION_STRATEGY_ID = "XAU_RIZAN_PATH_EXECUTION_V1"' in dedicated
+    assert "RIZAN_EXECUTION_STRATEGY_ID" in dedicated
+    assert '_XAU_LEGACY_AFIC_EXECUTION_STRATEGY = "XAU_AFIC_PATH_EXECUTION_V1"' in generic
