@@ -125,6 +125,20 @@ def merge_runtime_heartbeat_rows(
                         "h4_selection_mode"
                     )
                 old_eval[side] = old_side
+        elif worker == "ctrader_demo_xau_decision_center_v296":
+            old_decision = dict(old_details.get("decision") or {})
+            new_decision = dict(new_details.get("decision") or {})
+            old_decision.update(new_decision)
+            old_details["decision"] = old_decision
+            new_details = {
+                key: value
+                for key, value in new_details.items()
+                if key != "decision"
+            }
+            for key, value in new_details.items():
+                old_details[key] = value
+        elif worker == "ctrader_demo_xau_micro_destination_v328":
+            old_eval.update(new_eval)
         else:
             old_details.update(new_details)
 
@@ -588,6 +602,162 @@ class SupabaseDashboardReader:
         raw["details"] = {
             "evaluation": evaluation,
             "transport_projection": "V226_OPERATIONAL_60S",
+        }
+        return raw
+
+    def latest_xau_decision_center_operational_heartbeat(
+        self,
+    ) -> dict[str, Any] | None:
+        """Return current V296 decision fields without research-calibration bulk."""
+
+        select_expr = (
+            "worker_name,observed_at,healthy,lag_seconds,"
+            "action:details->decision->>action,"
+            "agreement:details->decision->agreement,"
+            "confidence:details->decision->confidence,"
+            "consensus_direction:details->decision->>consensus_direction,"
+            "coverage:details->decision->coverage,"
+            "dominant_direction:details->decision->>dominant_direction,"
+            "evidence_coverage:details->decision->evidence_coverage,"
+            "geometry:details->decision->geometry,"
+            "hard_blocks:details->decision->hard_blocks,"
+            "liquidity_sweep_map_v328:details->decision->liquidity_sweep_map_v328,"
+            "meta_research_calibration:details->decision->meta_research_calibration,"
+            "reference_geometry:details->decision->reference_geometry,"
+            "rizan_style_path_engine:details->decision->rizan_style_path_engine,"
+            "support_evidence:details->decision->support_evidence,"
+            "code_version:details->decision->>code_version"
+        )
+        try:
+            response = (
+                self.client.table("runtime_heartbeats")
+                .select(select_expr)
+                .eq("worker_name", "ctrader_demo_xau_decision_center_v296")
+                .order("observed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"V296 operational heartbeat read failed: {exc}"
+            ) from exc
+        rows = self._rows(response)
+        if not rows:
+            return None
+        raw = dict(rows[0])
+        decision_keys = (
+            "action",
+            "agreement",
+            "confidence",
+            "consensus_direction",
+            "coverage",
+            "dominant_direction",
+            "evidence_coverage",
+            "geometry",
+            "hard_blocks",
+            "liquidity_sweep_map_v328",
+            "meta_research_calibration",
+            "reference_geometry",
+            "rizan_style_path_engine",
+            "support_evidence",
+            "code_version",
+        )
+        decision = {
+            key: raw.pop(key, None)
+            for key in decision_keys
+        }
+        raw["details"] = {
+            "decision": decision,
+            "transport_projection": "V296_OPERATIONAL_60S",
+        }
+        return raw
+
+    def latest_xau_micro_destination_operational_heartbeat(
+        self,
+    ) -> dict[str, Any] | None:
+        """Return the V328 micro destination without duplicated H1/M5 payloads."""
+
+        select_expr = (
+            "worker_name,observed_at,healthy,lag_seconds,"
+            "state:details->evaluation->>state,"
+            "direction:details->evaluation->>direction,"
+            "phase:details->evaluation->>phase,"
+            "price_now:details->evaluation->price_now,"
+            "confidence:details->evaluation->confidence,"
+            "primary:details->evaluation->primary,"
+            "decision_zone:details->evaluation->decision_zone,"
+            "entries:details->evaluation->entries,"
+            "targets:details->evaluation->targets,"
+            "anchor:details->evaluation->anchor,"
+            "levels:details->evaluation->levels,"
+            "nearest_opposing_zone:details->evaluation->nearest_opposing_zone,"
+            "destination_cascade:details->evaluation->destination_cascade,"
+            "liquidity_sweep_context:details->evaluation->liquidity_sweep_context,"
+            "primary_setup_role:details->evaluation->>primary_setup_role,"
+            "active_zone:details->evaluation->active_source->zone,"
+            "active_no_chase:details->evaluation->active_source->no_chase,"
+            "active_distance_atr:details->evaluation->active_source->distance_atr,"
+            "active_price_relation:details->evaluation->active_source->>price_relation,"
+            "next_zone:details->evaluation->next_opposing->zone,"
+            "next_selected_rank:details->evaluation->next_opposing->selected_rank,"
+            "next_price_relation:details->evaluation->next_opposing->>price_relation,"
+            "next_cascaded:details->evaluation->next_opposing->cascaded"
+        )
+        try:
+            response = (
+                self.client.table("runtime_heartbeats")
+                .select(select_expr)
+                .eq("worker_name", "ctrader_demo_xau_micro_destination_v328")
+                .order("observed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"V328 micro destination read failed: {exc}"
+            ) from exc
+        rows = self._rows(response)
+        if not rows:
+            return None
+        raw = dict(rows[0])
+        evaluation = {
+            "state": raw.pop("state", None),
+            "direction": raw.pop("direction", None),
+            "phase": raw.pop("phase", None),
+            "price_now": raw.pop("price_now", None),
+            "confidence": raw.pop("confidence", None),
+            "primary": dict(raw.pop("primary", {}) or {}),
+            "decision_zone": dict(raw.pop("decision_zone", {}) or {}),
+            "entries": list(raw.pop("entries", []) or []),
+            "targets": list(raw.pop("targets", []) or []),
+            "anchor": dict(raw.pop("anchor", {}) or {}),
+            "levels": dict(raw.pop("levels", {}) or {}),
+            "nearest_opposing_zone": dict(
+                raw.pop("nearest_opposing_zone", {}) or {}
+            ),
+            "destination_cascade": dict(
+                raw.pop("destination_cascade", {}) or {}
+            ),
+            "liquidity_sweep_context": dict(
+                raw.pop("liquidity_sweep_context", {}) or {}
+            ),
+            "primary_setup_role": raw.pop("primary_setup_role", None),
+            "active_source": {
+                "zone": dict(raw.pop("active_zone", {}) or {}),
+                "no_chase": raw.pop("active_no_chase", None),
+                "distance_atr": raw.pop("active_distance_atr", None),
+                "price_relation": raw.pop("active_price_relation", None),
+            },
+            "next_opposing": {
+                "zone": dict(raw.pop("next_zone", {}) or {}),
+                "selected_rank": raw.pop("next_selected_rank", None),
+                "price_relation": raw.pop("next_price_relation", None),
+                "cascaded": raw.pop("next_cascaded", None),
+            },
+        }
+        raw["details"] = {
+            "evaluation": evaluation,
+            "transport_projection": "V328_OPERATIONAL_60S",
         }
         return raw
 

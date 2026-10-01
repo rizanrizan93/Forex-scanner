@@ -203,12 +203,27 @@ def test_v229_query_projects_display_fields_without_duplicate_candidate_or_hazar
     assert result["details"]["plan_diagnostics"]["reason"] == "TERMINAL_RR_BELOW_MINIMUM"
 
 
-def test_v317_bridge_refreshes_v296_v297_in_hot_tier():
-    from fx_scanner.xau_dashboard_bridge_v254 import HOT_HEARTBEATS
-    assert "ctrader_demo_xau_decision_center_v296" in HOT_HEARTBEATS
+def test_v332_bridge_keeps_small_hot_workers_and_projects_heavy_current_state():
+    from pathlib import Path
+    from fx_scanner.xau_dashboard_bridge_v254 import (
+        HOT_HEARTBEATS,
+        SUPPORT_HEARTBEATS,
+        STRUCTURAL_REFRESH_SECONDS,
+    )
+
     assert "ctrader_demo_xau_meta_research_sampler_v297" in HOT_HEARTBEATS
     assert "ctrader_demo_xau_structural_research_probe_v318" in HOT_HEARTBEATS
-    assert "ctrader_demo_xau_micro_entry_refinement_v320" in HOT_HEARTBEATS
-    assert "ctrader_demo_xau_micro_entry_dual_cycle_v321" in HOT_HEARTBEATS
-    assert "ctrader_demo_xau_micro_handoff_v322" in HOT_HEARTBEATS
-    assert "ctrader_demo_xau_micro_destination_v328" in HOT_HEARTBEATS
+    assert "ctrader_demo_xau_decision_center_v296" not in HOT_HEARTBEATS
+    assert "ctrader_demo_xau_micro_entry_refinement_v320" not in HOT_HEARTBEATS
+    assert "ctrader_demo_xau_micro_entry_dual_cycle_v321" not in HOT_HEARTBEATS
+    assert "ctrader_demo_xau_micro_handoff_v322" not in HOT_HEARTBEATS
+    assert "ctrader_demo_xau_micro_destination_v328" not in HOT_HEARTBEATS
+
+    assert "ctrader_demo_xau_decision_center_v296" in SUPPORT_HEARTBEATS
+    assert "ctrader_demo_xau_micro_destination_v328" in SUPPORT_HEARTBEATS
+    assert STRUCTURAL_REFRESH_SECONDS == 1800.0
+
+    root = Path(__file__).resolve().parents[1]
+    bridge = (root / "src/fx_scanner/xau_dashboard_bridge_v254.py").read_text()
+    assert "latest_xau_decision_center_operational_heartbeat()" in bridge
+    assert "latest_xau_micro_destination_operational_heartbeat()" in bridge

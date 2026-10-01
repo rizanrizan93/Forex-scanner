@@ -23,29 +23,21 @@ FRESH_SECONDS = 180.0
 MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024
 
 HOT_REFRESH_SECONDS = 60.0
-STRUCTURAL_REFRESH_SECONDS = 600.0
+STRUCTURAL_REFRESH_SECONDS = 1800.0
 SUPPORT_REFRESH_SECONDS = 3600.0
 COLD_REFRESH_SECONDS = 900.0
 OUTCOME_REFRESH_SECONDS = 21600.0
 
 HOT_HEARTBEATS = (
-    # Price/pressure/admission state that materially changes the current action.
-    # Prepared-plan state is read separately through a projected compact query.
+    # Only small, truly minute-sensitive payloads stay in the generic hot set.
+    # V296 and V328 are projected separately below so their large research
+    # details do not consume minute-level Supabase egress.
     "ctrader_demo_xau_rizan_fast_handoff",
     "ctrader_demo_xau_afic_fast_handoff",
     "ctrader_demo_xau_dom_v191",
     "ctrader_demo_xau_event_risk_v192",
-    "ctrader_demo_xau_v203_volatility_shock_guard",
-    # V296/V297 drive the top Decision Center. Keeping them out of the
-    # minute-tier caused the UI to show an empty/stale center while backend
-    # heartbeats were healthy and fresh.
-    "ctrader_demo_xau_decision_center_v296",
     "ctrader_demo_xau_meta_research_sampler_v297",
     "ctrader_demo_xau_structural_research_probe_v318",
-    "ctrader_demo_xau_micro_entry_refinement_v320",
-    "ctrader_demo_xau_micro_entry_dual_cycle_v321",
-    "ctrader_demo_xau_micro_handoff_v322",
-    "ctrader_demo_xau_micro_destination_v328",
 )
 
 STRUCTURAL_HEARTBEATS = (
@@ -59,6 +51,14 @@ STRUCTURAL_HEARTBEATS = (
 SUPPORT_HEARTBEATS = (
     # Research/evidence layers shown in detail panels. They do not authorize
     # broker orders and therefore must not consume minute-level Data API egress.
+    # Full V296/V328/micro payloads are retained here for expandable diagnostics;
+    # compact current-state projections are overlaid every minute.
+    "ctrader_demo_xau_decision_center_v296",
+    "ctrader_demo_xau_micro_entry_refinement_v320",
+    "ctrader_demo_xau_micro_entry_dual_cycle_v321",
+    "ctrader_demo_xau_micro_handoff_v322",
+    "ctrader_demo_xau_micro_destination_v328",
+    "ctrader_demo_xau_v203_volatility_shock_guard",
     "ctrader_demo_xau_premap_candidate_v181",
     "ctrader_demo_xau_supply_demand_prospective_v184",
     "ctrader_xau_supply_demand_reaction_v183",
@@ -373,6 +373,16 @@ def build_snapshot(
         label="V226_OPERATIONAL",
         worker_name="ctrader_demo_xau_v226_rizan_depth_map",
         fetcher=lambda: reader.latest_xau_v226_operational_heartbeat(),
+    )
+    _append_operational(
+        label="V296_OPERATIONAL",
+        worker_name="ctrader_demo_xau_decision_center_v296",
+        fetcher=lambda: reader.latest_xau_decision_center_operational_heartbeat(),
+    )
+    _append_operational(
+        label="V328_OPERATIONAL",
+        worker_name="ctrader_demo_xau_micro_destination_v328",
+        fetcher=lambda: reader.latest_xau_micro_destination_operational_heartbeat(),
     )
 
     hot_heartbeat_bytes = _json_size(hot_heartbeats)

@@ -66,20 +66,14 @@ DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
 DASHBOARD_BUILD_ID = "RIZAN_V328_OPPOSING_ZONE_CASCADE_20261001"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
-    # 60-second decision/admission path. Keep V182 + V226 fresh because V240
-    # rebuilds the canonical parent ladder from both layers.
+    # Generic minute-tier reads are intentionally small. Prepared/V182/V226,
+    # V296 and V328 use dedicated compact projections below.
     "ctrader_demo_xau_rizan_prepared_plan_producer",
     "ctrader_demo_xau_rizan_fast_handoff",
     "ctrader_demo_xau_dom_v191",
     "ctrader_demo_xau_event_risk_v192",
-    "ctrader_demo_xau_v203_volatility_shock_guard",
-    "ctrader_demo_xau_decision_center_v296",
     "ctrader_demo_xau_meta_research_sampler_v297",
     "ctrader_demo_xau_structural_research_probe_v318",
-    "ctrader_demo_xau_micro_entry_refinement_v320",
-    "ctrader_demo_xau_micro_entry_dual_cycle_v321",
-    "ctrader_demo_xau_micro_handoff_v322",
-    "ctrader_demo_xau_micro_destination_v328",
 )
 
 RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS = (
@@ -88,9 +82,15 @@ RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS = (
 )
 
 RIZAN_DASHBOARD_SUPPORT_HEARTBEATS = (
-    # Full details remain available exactly as before, but these evidence/research
-    # layers do not authorize a broker order and therefore use the hourly
-    # observability budget.
+    # Full details remain available for expandable diagnostics, but heavy
+    # decision/micro workers use compact minute projections and only refresh
+    # their full payload here on the hourly observability budget.
+    "ctrader_demo_xau_decision_center_v296",
+    "ctrader_demo_xau_micro_entry_refinement_v320",
+    "ctrader_demo_xau_micro_entry_dual_cycle_v321",
+    "ctrader_demo_xau_micro_handoff_v322",
+    "ctrader_demo_xau_micro_destination_v328",
+    "ctrader_demo_xau_v203_volatility_shock_guard",
     "ctrader_demo_xau_afic_prepared_plan_producer",
     "ctrader_demo_xau_afic_fast_handoff",
     "ctrader_demo_xau_premap_candidate_v181",
@@ -292,6 +292,12 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
     v226_operational = reader.latest_xau_v226_operational_heartbeat()
     if v226_operational is not None:
         critical_heartbeats.append(v226_operational)
+    v296_operational = reader.latest_xau_decision_center_operational_heartbeat()
+    if v296_operational is not None:
+        critical_heartbeats.append(v296_operational)
+    v328_operational = reader.latest_xau_micro_destination_operational_heartbeat()
+    if v328_operational is not None:
+        critical_heartbeats.append(v328_operational)
     return {
         "critical_heartbeats": critical_heartbeats,
         "afic_forecast_states": list(reader.latest_afic_forecast_states(limit=6)),
@@ -301,9 +307,9 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
     }
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def _load_backend_structural_snapshot(url: str, secret_key: str) -> dict[str, Any]:
-    """Completed-structure V182/V226 detail; refreshed every five minutes."""
+    """Completed-structure V182/V226 detail; refreshed every thirty minutes."""
     client = _supabase_client(url, secret_key)
     reader = SupabaseDashboardReader(client)
     return {
