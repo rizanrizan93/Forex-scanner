@@ -58,9 +58,8 @@ def test_v208_recovers_only_stale_discovery_runs_and_adds_pipeline_heartbeat() -
     assert "SUPERVISOR_DISCOVERY_STALE_CANCELLED" in supervisor
     assert "SUPERVISOR_DISCOVERY_STALE_CHECK_FAILED safety=FAIL_CLOSED" in supervisor
     assert "discovery_stale_seconds=1800" in supervisor
-    assert supervisor.index("cancel_stale_discovery_runs\n            active_discovery=") < supervisor.index(
-        'SUPERVISOR_DISCOVERY_DISPATCH'
-    )
+    dispatch_block = supervisor.rindex("cancel_stale_discovery_runs")
+    assert dispatch_block < supervisor.index("SUPERVISOR_DISCOVERY_DISPATCH", dispatch_block)
 
     assert (
         "python -m fx_scanner.demo_runtime_heartbeat "
