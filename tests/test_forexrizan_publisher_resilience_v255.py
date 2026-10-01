@@ -37,9 +37,12 @@ def test_bridge_watchdog_can_recover_missed_publisher_schedule() -> None:
     assert "Recover dashboard publisher when bridge is stale" in text
     assert "active_publishers" in text
     assert 'if [ "${active_publishers}" -eq 0 ]' in text
-    assert "publisher already active; wait without cancelling/restarting it" in text
+    assert "cancelling zombie/stalled publisher" in text
+    assert "snapshot_age" in text
+    assert "gh run cancel" in text
+    assert "recovery publisher is active/queued" in text
     assert "for attempt in range(1, 17)" in text
-    assert "gh workflow run forexrizan-dashboard-bridge-v254.yml --ref main" in text
+    assert 'gh workflow run -R "${GITHUB_REPOSITORY}" forexrizan-dashboard-bridge-v254.yml --ref main' in text
 
 
 def test_canonical_xau_lane_refreshes_rizan_fast_handoff() -> None:
