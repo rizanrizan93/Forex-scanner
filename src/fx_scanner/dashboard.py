@@ -130,9 +130,13 @@ def merge_runtime_heartbeat_rows(
             new_decision = dict(new_details.get("decision") or {})
             old_decision.update(new_decision)
             old_details["decision"] = old_decision
+            new_details = {
+                key: value
+                for key, value in new_details.items()
+                if key != "decision"
+            }
             for key, value in new_details.items():
-                if key != "decision":
-                    old_details[key] = value
+                old_details[key] = value
         elif worker == "ctrader_demo_xau_micro_destination_v328":
             old_eval.update(new_eval)
         else:
