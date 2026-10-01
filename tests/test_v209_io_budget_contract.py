@@ -36,12 +36,12 @@ def test_v209_broker_order_identity_index_is_declared() -> None:
     assert "FOREX_SCANNER_IO_BUDGET_V209" in schema
 
 
-def test_v209_keeps_minute_discovery_and_throttles_heavy_calibration_to_hourly() -> None:
+def test_v209_keeps_bounded_discovery_and_pauses_heavy_calibration() -> None:
     supervisor = _read(".github/workflows/ctrader-demo-auto-supervisor.yml")
     discovery = _read(".github/workflows/ctrader-demo-discovery-pipeline.yml")
     calibration = _read(".github/workflows/ctrader-demo-calibration-pipeline.yml")
 
-    assert "discovery_check_seconds=60" in supervisor
+    assert "discovery_check_seconds=900" in supervisor
     assert "calibration_mode=PAUSED_XAU_ONLY" in supervisor
     assert "SUPERVISOR_CALIBRATION_PAUSED_XAU_ONLY" in supervisor
     assert "dispatch_workflow ctrader-demo-calibration-pipeline.yml" not in supervisor
