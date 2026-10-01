@@ -62,7 +62,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V322_MICRO_HANDOFF_CONFLUENCE_20261001"
+DASHBOARD_BUILD_ID = "RIZAN_V325_BRIDGE_ENTRY_CLARITY_20261001"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -3248,23 +3248,73 @@ with forecast_tab:
                 )
             )
 
+        v296_hard_blocks = list(v296_meta_decision.get("hard_blocks") or [])
+        v296_geometry_actionable = bool(
+            v296_display_geometry
+            and not v296_geometry_reference_only
+            and v296_meta_fresh
+            and not backend_snapshot_stale
+            and v296_action == "DEMO_ORDER_ELIGIBLE"
+            and not v296_hard_blocks
+        )
+
         if v296_display_geometry:
             entry_low = v296_display_geometry.get("entry_low")
             entry_high = v296_display_geometry.get("entry_high")
             geometry_age = _age_seconds(v296_display_geometry.get("observed_at"))
+            geometry_reference_only_ui = not v296_geometry_actionable
             entry_label = (
-                "Entry referensi terakhir"
-                if v296_geometry_reference_only
-                else "Entry canonical aktif"
+                "Entry referensi terakhir — JANGAN ENTRY"
+                if geometry_reference_only_ui
+                else "CURRENT PLAN • Entry canonical"
             )
+
+            raw_tp1 = v296_display_geometry.get("tp1")
+            raw_tp2 = v296_display_geometry.get("tp2")
+            duplicate_targets = False
+            try:
+                duplicate_targets = (
+                    raw_tp1 is not None
+                    and raw_tp2 is not None
+                    and abs(float(raw_tp1) - float(raw_tp2)) <= 0.05
+                )
+            except (TypeError, ValueError):
+                duplicate_targets = False
+
+            path_checkpoint = dc_current_leg_target.get("price")
             geo1, geo2, geo3, geo4 = st.columns(4)
             geo1.metric(
                 entry_label,
                 f"{_fmt_price(entry_low)}–{_fmt_price(entry_high)}",
             )
-            geo2.metric("SL", _fmt_price(v296_display_geometry.get("sl")))
-            geo3.metric("TP1", _fmt_price(v296_display_geometry.get("tp1")))
-            geo4.metric("TP2", _fmt_price(v296_display_geometry.get("tp2")))
+            geo2.metric(
+                "SL canonical" if v296_geometry_actionable else "SL referensi",
+                _fmt_price(v296_display_geometry.get("sl")),
+            )
+            if duplicate_targets:
+                geo3.metric(
+                    "Checkpoint path • BUKAN TP order",
+                    _fmt_price(path_checkpoint),
+                )
+                geo4.metric(
+                    "TP terminal geometry",
+                    _fmt_price(raw_tp2),
+                )
+            else:
+                geo3.metric("TP1 geometry", _fmt_price(raw_tp1))
+                geo4.metric("TP2 / terminal", _fmt_price(raw_tp2))
+
+            if geometry_reference_only_ui:
+                st.warning(
+                    "Geometry ini hanya LAST-KNOWN/REFERENCE. Jangan membuka entry baru dari angka ini "
+                    "sampai bridge + Decision Center fresh, action=DEMO_ORDER_ELIGIBLE, dan hard block kosong."
+                )
+            else:
+                st.success(
+                    "CURRENT PLAN canonical aktif. NEXT LEG pada panel/chart di bawah tetap skenario berikutnya, "
+                    "bukan entry tambahan saat ini."
+                )
+
             st.caption(
                 "Geometry dipilih utuh dari **"
                 + str(v296_display_geometry.get("engine") or "—")
@@ -3280,8 +3330,13 @@ with forecast_tab:
                 )
                 + (
                     " • **REFERENCE ONLY / BUKAN IZIN ORDER**"
-                    if v296_geometry_reference_only
-                    else " • canonical aligned geometry"
+                    if geometry_reference_only_ui
+                    else " • **CURRENT PLAN / canonical aligned**"
+                )
+                + (
+                    " • TP1=TP2 pada raw geometry; duplikasi disembunyikan dan checkpoint path ditampilkan terpisah."
+                    if duplicate_targets
+                    else ""
                 )
                 + (
                     f" • geometry age={geometry_age:.0f}s"
@@ -3297,7 +3352,6 @@ with forecast_tab:
                 "dengan angka buatan."
             )
 
-        v296_hard_blocks = list(v296_meta_decision.get("hard_blocks") or [])
         if v296_hard_blocks:
             st.error(
                 "Hard block: "
@@ -6413,18 +6467,18 @@ with forecast_tab:
         cv1, cv2, cv3, cv4 = st.columns(4)
         cv1.metric("Harga sekarang", _fmt_price(chart_price))
         cv2.metric(
-            f"Checkpoint {v240_direction}",
+            f"CURRENT LEG • checkpoint {v240_direction}",
             _fmt_price(dc_current_leg_target.get("price")),
         )
         cv3.metric(
-            f"Area reaksi / cek {dc_next_leg_direction}",
+            f"NEXT LEG WATCH • {dc_next_leg_direction} source",
             (
                 f"{_fmt_price(chart_next_source_low)}–{_fmt_price(chart_next_source_high)}"
                 if chart_two_leg else "—"
             ),
         )
         cv4.metric(
-            f"Target reaksi {dc_next_leg_direction}",
+            f"NEXT LEG target • jika confirmed",
             _fmt_price(chart_next_reaction),
         )
         if chart_two_leg:
@@ -6435,13 +6489,13 @@ with forecast_tab:
                 else ""
             )
             st.info(
-                f"**Cara baca chart:** leg aktif **{dc_current_leg_direction}** dari harga sekarang "
-                f"menuju checkpoint **{_fmt_price(dc_current_leg_target.get('price'))}**. "
-                f"Setelah itu harga masuk area supply/demand **{_fmt_price(chart_next_source_low)}–"
-                f"{_fmt_price(chart_next_source_high)}**, tempat scanner memetakan kemungkinan "
-                f"next-leg **{dc_next_leg_direction}**{pocket_text}. "
-                f"Jika reaksi {dc_next_leg_direction} terkonfirmasi, target awalnya "
-                f"**{_fmt_price(chart_next_reaction)}**. Ini skenario bercabang, bukan jalur harga pasti."
+                f"**CURRENT LEG:** **{dc_current_leg_direction}** dari harga sekarang menuju "
+                f"checkpoint **{_fmt_price(dc_current_leg_target.get('price'))}**. "
+                f"**NEXT LEG WATCH — BUKAN ENTRY SAAT INI:** area **{_fmt_price(chart_next_source_low)}–"
+                f"{_fmt_price(chart_next_source_high)}** hanya dipakai untuk mengecek kemungkinan "
+                f"reversal **{dc_next_leg_direction}**{pocket_text}. "
+                f"Baru jika next-leg terkonfirmasi, target awalnya **{_fmt_price(chart_next_reaction)}**. "
+                "Jangan mencampur level NEXT LEG dengan entry/TP CURRENT PLAN."
             )
             current_terminal_high = _chart_price(dc_current_leg_terminal.get("high"))
             if (
