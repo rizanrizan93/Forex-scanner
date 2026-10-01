@@ -2,18 +2,6 @@ name: cTrader Demo XAU RIZAN Path Shadow
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - "src/fx_scanner/demo_xau_afic_path_shadow_observer.py"
-      - "tests/test_demo_xau_afic_path_shadow_observer.py"
-      - ".github/workflows/ctrader-demo-xau-afic-path-shadow.yml"
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/demo_xau_afic_path_shadow_observer.py"
-      - ".github/workflows/ctrader-demo-xau-afic-path-shadow.yml"
-  schedule:
-    - cron: "*/5 * * * 1-5"
 
 permissions:
   contents: read

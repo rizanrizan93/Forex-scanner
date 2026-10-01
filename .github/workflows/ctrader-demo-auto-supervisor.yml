@@ -74,10 +74,7 @@ concurrency:
 
 jobs:
   dispatch-xau-execution-and-research-lanes:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'schedule' ||
-      github.event_name == 'push'
+    if: ${{ false }} # LEGACY_ENGINE_PAUSED_V346
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:

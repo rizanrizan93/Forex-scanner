@@ -60,11 +60,13 @@ from fx_scanner.xau_standalone_bridge_v253 import (
     fetch_snapshot as fetch_standalone_snapshot,
 )
 
+from fx_scanner.xau_dual_engine_dashboard_v344 import render_xau_dual_engine_dashboard
+
 UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V336_SIMPLE_DECISION_20261001"
+DASHBOARD_BUILD_ID = "RIZAN_V344_DUAL_ISOLATED_20261001"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # Generic minute-tier reads are intentionally small. Prepared/V182/V226,
@@ -1893,9 +1895,8 @@ standalone: dict[str, Any] | None = None
 standalone_error: str | None = None
 backend_error = direct_backend_error if backend is None else None
 # Quote overlay is always loaded when available. It never replaces ForexRizan
-# as the canonical backend and never grants execution authority; it exists only
-# to prevent the user-facing XAU price from freezing on an older prepared-plan
-# heartbeat while a fresher FP Markets/cTrader quote is already published.
+# as the canonical backend and never grants execution authority; V342/V343 remain
+# the only user-facing market-opinion engines.
 try:
     standalone = _load_standalone_bridge(standalone_url)
 except Exception as exc:
@@ -2037,6 +2038,19 @@ if backend is None and standalone is None:
         "RIZAN pertama dari GitHub Actions. Tidak diperlukan credential cTrader di Streamlit."
     )
 
+# V344: user-directed simplification. Only the two isolated engines below are
+# allowed to present market opinions. Legacy dashboard code remains in the file
+# for audit/rollback, but is unreachable while this V344 gate is active.
+_v344_heartbeats = [] if backend is None else list(backend.get("heartbeats") or [])
+_v342_sd_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_sd_liquidity_v342")
+_v343_friend_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_friend_entry_v343")
+render_xau_dual_engine_dashboard(
+    sd_heartbeat=_v342_sd_hb,
+    friend_heartbeat=_v343_friend_hb,
+)
+# LEGACY_DECISION_UI_STOP_V344
+st.stop()
+
 mode = "—" if cfg is None else str(cfg.risk.get("mode", "—"))
 pairs = 0 if cfg is None else len(cfg.pairs)
 fast_setup = "—"
@@ -2143,6 +2157,19 @@ else:
         "Dashboard can be deployed now. Durable ranking/signal data will appear "
         "after Supabase backend credentials and runtime snapshots are available."
     )
+
+# V344: user-directed simplification. Only the two isolated engines below are
+# allowed to present market opinions. Legacy dashboard code remains in the file
+# for audit/rollback, but is unreachable while this V344 gate is active.
+_v344_heartbeats = [] if backend is None else list(backend.get("heartbeats") or [])
+_v342_sd_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_sd_liquidity_v342")
+_v343_friend_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_friend_entry_v343")
+render_xau_dual_engine_dashboard(
+    sd_heartbeat=_v342_sd_hb,
+    friend_heartbeat=_v343_friend_hb,
+)
+# LEGACY_DECISION_UI_STOP_V344
+st.stop()
 
 simple_tab, forecast_tab, account_tab, scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
     [

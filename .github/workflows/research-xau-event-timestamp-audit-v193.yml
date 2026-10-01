@@ -2,15 +2,6 @@ name: Research XAU Event Timestamp Audit V193
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/research_xau_event_supplement_v193.py"
-      - "src/fx_scanner/research_xau_event_timestamp_audit_v193.py"
-      - "tests/test_research_xau_event_timestamp_audit_v193.py"
-      - ".github/workflows/research-xau-event-timestamp-audit-v193.yml"
-  schedule:
-    - cron: "17 2 * * 1-5"
 
 permissions:
   contents: read

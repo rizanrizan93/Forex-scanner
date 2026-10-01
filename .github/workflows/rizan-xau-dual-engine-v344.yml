@@ -1,26 +1,32 @@
-name: XAU HTF Strategic Snapshot V218
+name: RIZAN XAU Dual Engine V344
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "10 0,4,8,12,16,20 * * 1-5"
+    - cron: "*/5 * * * 0-5"
   push:
     branches: [main]
     paths:
-      - "src/fx_scanner/demo_xau_v218_htf_strategic_snapshot.py"
-      - "src/fx_scanner/demo_xau_v217_direction_probability.py"
-      - ".github/workflows/ctrader-demo-xau-v218-htf-snapshot.yml"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
+      - "src/fx_scanner/xau_friend_entry_engine_v343.py"
+      - "src/fx_scanner/xau_news_zone_source_v346.py"
+      - "src/fx_scanner/xau_news_zone_v346.py"
+      - "src/fx_scanner/demo_xau_dual_engine_runtime_v344.py"
+      - "src/fx_scanner/xau_dual_engine_dashboard_v344.py"
+      - "tests/test_xau_sd_liquidity_engine_v342.py"
+      - "tests/test_xau_friend_entry_engine_v343.py"
+      - "tests/test_xau_news_zone_v346.py"
+      - ".github/workflows/rizan-xau-dual-engine-v344.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: ctrader-demo-xau-v218-htf-snapshot
+  group: rizan-xau-dual-engine-v344
   cancel-in-progress: true
 
 jobs:
-  strategic-snapshot-v218:
-    if: ${{ false }} # LEGACY_ENGINE_PAUSED_V346
+  test-and-refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -35,23 +41,27 @@ jobs:
       CTRADER_DISABLE_TOKEN_REFRESH: "1"
       SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
-      XAU_V218_HISTORY_BARS: "20000"
-
+      FX_KILL_SWITCH: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install
+      - name: Install runtime
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-research-cloud.txt
           pip install pytest==9.0.2
-      - name: Validate fail-closed config
-        run: python -m fx_scanner.cli validate-config
-      - name: Unit test V218
-        run: pytest -q tests/test_v218_htf_strategic_snapshot.py tests/test_v217_direction_probability.py
-      - name: Refresh bounded D1/H4 strategic snapshot
+      - name: Test isolated engines
+        run: |
+          pytest -q \
+            tests/test_xau_sd_liquidity_engine_v342.py \
+            tests/test_xau_friend_entry_engine_v343.py \
+            tests/test_xau_news_zone_v346.py
+      - name: Validate configuration
         if: ${{ github.event_name != 'pull_request' }}
-        run: python -m fx_scanner.demo_xau_v218_htf_strategic_snapshot
+        run: python -m fx_scanner.cli validate-config
+      - name: Refresh V342 + V343 snapshots
+        if: ${{ github.event_name != 'pull_request' }}
+        run: python -m fx_scanner.demo_xau_dual_engine_runtime_v344

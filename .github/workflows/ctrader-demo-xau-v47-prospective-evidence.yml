@@ -2,14 +2,6 @@ name: cTrader Demo XAU V47 Prospective Evidence
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/ctrader-demo-xau-v47-prospective-evidence.yml"
-  schedule:
-    - cron: "*/15 * * * 1-5"
-    - cron: "3,18,33,48 21-23 * * 0"
 
 permissions:
   contents: read

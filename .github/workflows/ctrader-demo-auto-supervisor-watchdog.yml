@@ -27,6 +27,7 @@ concurrency:
 
 jobs:
   recover-supervisor-if-needed:
+    if: ${{ false }} # LEGACY_ENGINE_PAUSED_V346
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:

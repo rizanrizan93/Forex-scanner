@@ -24,6 +24,7 @@ concurrency:
 
 jobs:
   snapshot:
+    if: ${{ false }} # LEGACY_ENGINE_PAUSED_V346
     runs-on: ubuntu-latest
     timeout-minutes: 80
     env:

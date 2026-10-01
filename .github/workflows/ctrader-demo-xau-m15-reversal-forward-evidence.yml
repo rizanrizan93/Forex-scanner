@@ -2,14 +2,6 @@ name: cTrader Demo XAU M15 Reversal Forward Evidence
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/demo_xau_m15_ema_reversal_forward_evidence.py"
-      - "src/fx_scanner/demo_xau_m15_ema_reversal_recovery.py"
-      - ".github/workflows/ctrader-demo-xau-m15-reversal-forward-evidence.yml"
-  schedule:
-    - cron: "*/5 * * * 1-5"
 
 permissions:
   contents: read
