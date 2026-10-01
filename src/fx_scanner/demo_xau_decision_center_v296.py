@@ -11,6 +11,7 @@ from .storage.supabase_operational import SupabaseOperationalStore
 from .xau_decision_meta_v296 import calibrate_outcomes, build_meta_decision
 from .xau_rizan_style_path_engine_v303 import build_rizan_style_path_engine
 from .xau_liquidity_sweep_map_v317 import build_liquidity_sweep_map
+from .xau_liquidity_pool_envelope_v327 import build_liquidity_pool_envelope
 
 
 WORKER_NAME = "ctrader_demo_xau_decision_center_v296"
@@ -657,6 +658,11 @@ def run() -> int:
         price_now=atlas_eval.get("last_closed_m15_price"),
     )
     decision["liquidity_sweep_map_v317"] = build_liquidity_sweep_map(
+        atlas_evaluation=atlas_eval,
+        style_path=decision["rizan_style_path_engine"],
+        price_now=atlas_eval.get("last_closed_m15_price"),
+    )
+    decision["liquidity_sweep_map_v327"] = build_liquidity_pool_envelope(
         atlas_evaluation=atlas_eval,
         style_path=decision["rizan_style_path_engine"],
         price_now=atlas_eval.get("last_closed_m15_price"),
