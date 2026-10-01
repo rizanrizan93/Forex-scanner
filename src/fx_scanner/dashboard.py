@@ -299,10 +299,17 @@ class SupabaseDashboardReader:
         self,
         worker_names: tuple[str, ...] | list[str],
     ) -> tuple[dict[str, Any], ...]:
-        """Return full heartbeat details only for dashboard-critical workers.
+        """Return exactly the latest full heartbeat for each requested worker.
 
-        This keeps the 60-second decision path fresh without retransmitting every
-        observability heartbeat payload on every Streamlit refresh.
+        A single IN-query ordered by observed_at with LIMIT N does not mean one
+        row per worker: a high-frequency worker can occupy most or all of the
+        limit. Besides dropping slower workers from the dashboard, that
+        retransmits repeated large JSON details and inflates bridge egress.
+
+        Query each bounded worker with LIMIT 1 instead. Partial read failures do
+        not invalidate the whole read-only snapshot; successfully retrieved
+        workers are returned and the bridge retains cached rows for any missing
+        worker. If every requested worker fails, fail closed.
         """
         normalized = tuple(
             dict.fromkeys(
@@ -315,20 +322,38 @@ class SupabaseDashboardReader:
             return ()
         if len(normalized) > 64:
             raise ValueError("dashboard heartbeat worker budget exceeds 64")
-        try:
-            response = (
-                self.client.table("runtime_heartbeats")
-                .select("worker_name,observed_at,healthy,lag_seconds,details")
-                .in_("worker_name", list(normalized))
-                .order("observed_at", desc=True)
-                .limit(len(normalized))
-                .execute()
-            )
-        except Exception as exc:
+
+        rows: list[dict[str, Any]] = []
+        failures: list[str] = []
+        for worker_name in normalized:
+            try:
+                response = (
+                    self.client.table("runtime_heartbeats")
+                    .select("worker_name,observed_at,healthy,lag_seconds,details")
+                    .eq("worker_name", worker_name)
+                    .order("observed_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+                fetched = self._rows(response)
+            except Exception as exc:
+                failures.append(f"{worker_name}:{type(exc).__name__}")
+                continue
+            if fetched:
+                rows.append(dict(fetched[0]))
+
+        if not rows and failures:
             raise DashboardReadError(
-                f"critical runtime_heartbeats read failed: {exc}"
-            ) from exc
-        return tuple(self._rows(response))
+                "critical runtime_heartbeats reads all failed: "
+                + ",".join(failures)
+            )
+        return tuple(
+            sorted(
+                rows,
+                key=lambda row: str(row.get("observed_at") or ""),
+                reverse=True,
+            )
+        )
 
     def latest_xau_atlas_operational_heartbeat(self) -> dict[str, Any] | None:
         """Return only the V182 fields needed for the current 60-second decision."""
