@@ -2,13 +2,6 @@ name: cTrader Demo XAU D1 Paper Forward
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/demo_xau_d1_tsmom_paper_forward.py"
-      - "src/fx_scanner/demo_five_core_router.py"
-      - "src/fx_scanner/execution/ctrader_research.py"
-      - ".github/workflows/ctrader-demo-xau-d1-paper-forward.yml"
 
 permissions:
   contents: read
