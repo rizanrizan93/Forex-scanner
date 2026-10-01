@@ -62,7 +62,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V298_FILLED_META_XAU_ONLY_RUNTIME_20260930"
+DASHBOARD_BUILD_ID = "RIZAN_V318_DUAL_LANE_STRUCTURAL_PROBE_20261001"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # 60-second decision/admission path. Keep V182 + V226 fresh because V240
@@ -74,6 +74,7 @@ RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     "ctrader_demo_xau_v203_volatility_shock_guard",
     "ctrader_demo_xau_decision_center_v296",
     "ctrader_demo_xau_meta_research_sampler_v297",
+    "ctrader_demo_xau_structural_research_probe_v318",
 )
 
 RIZAN_DASHBOARD_STRUCTURAL_HEARTBEATS = (
@@ -2262,6 +2263,9 @@ with forecast_tab:
     v297_meta_sampler_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_meta_research_sampler_v297"
     )
+    v318_structural_probe_hb = _latest_heartbeat(
+        heartbeats, "ctrader_demo_xau_structural_research_probe_v318"
+    )
     v217_direction_hb = _latest_heartbeat(
         heartbeats, "ctrader_demo_xau_v217_direction_probability"
     )
@@ -3528,11 +3532,37 @@ with forecast_tab:
         dc_admission_label = "DATA STALE"
         dc_route_label = "NO ORDER"
 
+    v318_probe_details = (
+        {}
+        if v318_structural_probe_hb is None
+        else dict(v318_structural_probe_hb.get("details") or {})
+    )
+    v318_probe_geometry = dict(v318_probe_details.get("geometry") or {})
+    v318_probe_age = (
+        None
+        if v318_structural_probe_hb is None
+        else _age_seconds(v318_structural_probe_hb.get("observed_at"))
+    )
+    v318_probe_fresh = bool(
+        v318_structural_probe_hb is not None
+        and bool(v318_structural_probe_hb.get("healthy"))
+        and v318_probe_age is not None
+        and v318_probe_age <= 180.0
+    )
+    v318_probe_state = str(v318_probe_details.get("state") or "BELUM ADA SNAPSHOT")
+    v318_probe_label = (
+        v318_probe_state
+        if v318_probe_fresh
+        else f"LAST-KNOWN • {v318_probe_state}"
+        if v318_structural_probe_hb is not None
+        else "BELUM ADA SNAPSHOT"
+    )
+
     st.markdown(
         '<div class="rizan-flow-note"><b>Urutan baca utama:</b> '
         '1 Ringkasan keputusan → 2 Zona & Depth → 3 Eksekusi sekarang → '
-        '4 Manajemen posisi. Panel lain adalah detail/riset dan tidak perlu dibaca '
-        'untuk keputusan rutin.</div>',
+        '4 Manajemen posisi. <b>Strict lane</b> dan <b>DEMO Research Probe</b> '
+        'ditampilkan terpisah agar forecast tidak lagi disamakan dengan izin order.</div>',
         unsafe_allow_html=True,
     )
     with st.container(border=True):
@@ -3542,7 +3572,23 @@ with forecast_tab:
         flow3, flow4 = st.columns(2)
         flow3.metric("3 • M15", dc_m15_state)
         flow4.metric("4 • Admission", dc_admission_label)
-        st.info(f"**Broker route:** {dc_route_label}")
+        st.info(f"**Strict lane / Broker route:** {dc_route_label}")
+        st.info(
+            "**DEMO Research Probe V318:** "
+            + v318_probe_label
+            + " • 0.01 lot • H1/H4 structural source • tidak wajib M15/pressure confirmation. "
+            "Fresh cTrader quote, structural SL/TP, no-chase, RR ≥1R, dan explicit event/shock block tetap wajib."
+        )
+        if v318_probe_geometry:
+            st.caption(
+                "V318 geometry • "
+                f"{v318_probe_geometry.get('direction') or '—'} • "
+                f"entry {_fmt_price(v318_probe_geometry.get('entry'))} • "
+                f"SL {_fmt_price(v318_probe_geometry.get('sl'))} • "
+                f"TP {_fmt_price(v318_probe_geometry.get('tp'))} • "
+                f"RR {_fmt_number(v318_probe_geometry.get('rr'), 2)} • "
+                f"source {v318_probe_geometry.get('source_timeframe') or '—'}."
+            )
         if dc_inside_current_terminal and dc_next_leg_direction in {"LONG", "SHORT"}:
             st.caption(
                 f"Next leg watch (BUKAN ENTRY): {dc_next_leg_watch_text}. "
