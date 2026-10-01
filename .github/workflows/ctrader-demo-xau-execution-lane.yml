@@ -107,6 +107,21 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_broker_canary_v272
 
+      # V324: structural map + micro forecast are user-facing decision data and
+      # must refresh before slower legacy/prepared-path evaluators. This keeps
+      # Tab 1/Tab 2 fresh even if the full execution lane later approaches its
+      # workflow time budget.
+      - name: Refresh XAU Supply/Demand Atlas V182
+        id: refresh_xau_atlas
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_supply_demand_atlas_v182
+
+      - name: Build RIZAN Style Micro Handoff Confluence V322
+        id: build_rizan_micro_handoff_v322
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_micro_handoff_v322
+
       - name: Evaluate XAU V24 champion D1 plus M15 L12 L20
         id: produce_xau_v24_champion
         continue-on-error: true
@@ -121,17 +136,6 @@ jobs:
         id: produce_xau_afic
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_afic_prepared_plan_producer
-
-      - name: Refresh XAU Supply/Demand Atlas V182
-        id: refresh_xau_atlas
-        continue-on-error: true
-        run: python -m fx_scanner.demo_xau_supply_demand_atlas_v182
-
-      - name: Build RIZAN Style Micro Handoff Confluence V322
-        id: build_rizan_micro_handoff_v322
-        if: ${{ always() && !cancelled() }}
-        continue-on-error: true
-        run: python -m fx_scanner.demo_xau_micro_handoff_v322
 
       - name: Refresh RIZAN Depth Map V226
         id: refresh_rizan_depth_map
