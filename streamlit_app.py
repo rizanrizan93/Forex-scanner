@@ -2155,7 +2155,20 @@ else:
         "after Supabase backend credentials and runtime snapshots are available."
     )
 
-# V344: user-directed simplification. Only the two isolated engines below are\n# allowed to present market opinions. Legacy dashboard code remains in the file\n# for audit/rollback, but is unreachable while this V344 gate is active.\n_v344_heartbeats = [] if backend is None else list(backend.get("heartbeats") or [])\n_v342_sd_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_sd_liquidity_v342")\n_v343_friend_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_friend_entry_v343")\nrender_xau_dual_engine_dashboard(\n    sd_heartbeat=_v342_sd_hb,\n    friend_heartbeat=_v343_friend_hb,\n)\n# LEGACY_DECISION_UI_STOP_V344\nst.stop()\n\nsimple_tab, forecast_tab, account_tab, scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
+# V344: user-directed simplification. Only the two isolated engines below are
+# allowed to present market opinions. Legacy dashboard code remains in the file
+# for audit/rollback, but is unreachable while this V344 gate is active.
+_v344_heartbeats = [] if backend is None else list(backend.get("heartbeats") or [])
+_v342_sd_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_sd_liquidity_v342")
+_v343_friend_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_friend_entry_v343")
+render_xau_dual_engine_dashboard(
+    sd_heartbeat=_v342_sd_hb,
+    friend_heartbeat=_v343_friend_hb,
+)
+# LEGACY_DECISION_UI_STOP_V344
+st.stop()
+
+simple_tab, forecast_tab, account_tab, scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
     [
         "RIZAN SIMPLE",
         "Detail Engine",
