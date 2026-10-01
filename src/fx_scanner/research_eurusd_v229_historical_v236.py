@@ -930,6 +930,7 @@ def simulate_year(
                     target=float(target),
                     spread_pips=float(spread_pips),
                     slippage_pips=float(slippage_pips),
+                    commission_pips=float(COMMISSION_PIPS_ROUND_TRIP),
                 )
                 trades.append(
                     {

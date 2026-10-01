@@ -1,0 +1,197 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+from .research_brent_v229_historical_v238e import (
+    ARTIFACT_CONTRACT,
+    BROKER_SHADOW_REFERENCE,
+    EXECUTION_AUTHORITY,
+    EXECUTION_INFLUENCE,
+    HISTDATA_PAIR,
+    LIVE_EXECUTION_ENABLED,
+    POLICY_EFFECT,
+    RESEARCH_VERSION,
+    simulate_year,
+)
+from .research_xau_histdata_download_v193 import (
+    FIXED_EST,
+    PROVIDER_COMMIT,
+    SOURCE_TIER,
+    _normalize_frame,
+)
+
+SOURCE = "HISTDATA_BCOUSD_M1"
+
+
+def _year() -> int:
+    year = int(os.getenv("BRENT_V238E_YEAR", "0") or 0)
+    if year < 2012 or year > datetime.now(tz=UTC).year:
+        raise SystemExit(f"BRENT_V238E_YEAR_INVALID:{year}")
+    return year
+
+
+def _window(year: int) -> tuple[date, date]:
+    start = date(year - 1, 10, 1)
+    if year == datetime.now(tz=UTC).year:
+        end = datetime.now(tz=UTC).date()
+    else:
+        end = date(year + 1, 2, 2)
+    return start, end
+
+
+def _paths(year: int) -> tuple[Path, Path, Path]:
+    csv_path = Path(
+        os.getenv(
+            "BRENT_V238E_PRICE_CSV",
+            f"/tmp/histdata/brent-v238e-{year}.csv",
+        )
+    )
+    provenance = Path(
+        os.getenv(
+            "BRENT_V238E_PROVENANCE",
+            f"artifacts/brent-v238e-provenance-{year}.json",
+        )
+    )
+    output = Path(
+        os.getenv(
+            "BRENT_V238E_OUTPUT",
+            f"artifacts/brent-v229-historical-v238e-{year}.json",
+        )
+    )
+    return csv_path, provenance, output
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _download(year: int, csv_path: Path, provenance_path: Path) -> dict[str, Any]:
+    try:
+        from histdata_fetcher import fetch_data
+    except ModuleNotFoundError as exc:
+        raise SystemExit("HISTDATA_FETCHER_NOT_INSTALLED") from exc
+
+    start, end = _window(year)
+    result = fetch_data(
+        pair=HISTDATA_PAIR,
+        start_date=start,
+        end_date=end,
+        timeframe="1min",
+        output_format=None,
+        max_workers=1,
+    )
+    if result.data.empty:
+        raise SystemExit(f"BRENT_V238E_HISTDATA_EMPTY:{year}")
+    normalized = _normalize_frame(result.data)
+
+    start_utc = datetime.combine(start, datetime.min.time(), tzinfo=FIXED_EST).astimezone(UTC)
+    end_exclusive = (
+        datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=FIXED_EST)
+        .astimezone(UTC)
+    )
+    normalized = normalized[
+        (normalized["timestamp"] >= start_utc)
+        & (normalized["timestamp"] < end_exclusive)
+    ].reset_index(drop=True)
+    if normalized.empty:
+        raise SystemExit(f"BRENT_V238E_NORMALIZED_EMPTY:{year}")
+
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    provenance_path.parent.mkdir(parents=True, exist_ok=True)
+    normalized.to_csv(csv_path, index=False)
+    checksum = _sha256(csv_path)
+    payload: dict[str, Any] = {
+        "contract": "BRENT_HISTDATA_BCOUSD_M1_V238E_1",
+        "source": SOURCE,
+        "source_tier": SOURCE_TIER,
+        "provider_package": "histdata-fetcher",
+        "provider_commit": PROVIDER_COMMIT,
+        "pair": HISTDATA_PAIR,
+        "broker_shadow_reference": BROKER_SHADOW_REFERENCE,
+        "source_identity_evidence": "V238D_3_WINDOW_CONSENSUS",
+        "timeframe": "M1",
+        "year": year,
+        "window_start": start.isoformat(),
+        "window_end": end.isoformat(),
+        "partial_current_year": year == datetime.now(tz=UTC).year,
+        "rows": len(normalized),
+        "first_timestamp_utc": normalized["timestamp"].iloc[0].isoformat(),
+        "last_timestamp_utc": normalized["timestamp"].iloc[-1].isoformat(),
+        "sha256": checksum,
+        "failed_periods": [
+            {
+                "period_label": row.period_label,
+                "period_start": row.period_start.isoformat(),
+                "period_end": row.period_end.isoformat(),
+                "reason": row.reason,
+            }
+            for row in result.failed_periods
+        ],
+        "execution_influence": False,
+        "execution_authority": False,
+    }
+    provenance_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    )
+    return payload
+
+
+def run() -> int:
+    year = _year()
+    csv_path, provenance_path, output_path = _paths(year)
+    provenance = _download(year, csv_path, provenance_path)
+
+    import pandas as pd
+
+    price = pd.read_csv(csv_path)
+    price["timestamp"] = pd.to_datetime(price["timestamp"], utc=True)
+    for column in ("open", "high", "low", "close"):
+        price[column] = pd.to_numeric(price[column], errors="raise")
+
+    result = simulate_year(price, target_year=year)
+    payload = {
+        **result,
+        "artifact_contract": f"{ARTIFACT_CONTRACT}_YEAR_SHARD_1",
+        "price_provenance": provenance,
+        "price_rows": len(price),
+        "price_start": price["timestamp"].iloc[0].isoformat(),
+        "price_end": price["timestamp"].iloc[-1].isoformat(),
+        "partial_current_year": bool(provenance["partial_current_year"]),
+        "policy_effect": POLICY_EFFECT,
+        "execution_influence": EXECUTION_INFLUENCE,
+        "execution_authority": EXECUTION_AUTHORITY,
+        "live_execution_enabled": LIVE_EXECUTION_ENABLED,
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    )
+
+    completed = sum(
+        str(row.get("state") or "") in {"WIN", "LOSS", "BREAKEVEN"}
+        and str(row.get("cost_mode") or "") == "BASE"
+        for row in list(payload.get("trades") or [])
+    )
+    print(
+        "BRENT_V229_HISTORICAL_V238E_YEAR "
+        f"year={year} parents={payload['parent_h4_first_touch_count']} "
+        f"plans={payload['plan_count']} base_completed={completed} "
+        f"partial={int(payload['partial_current_year'])} execution_authority=0"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(run())
