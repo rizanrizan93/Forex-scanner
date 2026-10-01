@@ -2,6 +2,20 @@ name: cTrader Demo Auto Supervisor Watchdog
 
 on:
   workflow_dispatch:
+  schedule:
+    # Independent hourly recovery window. This does not execute trades or data
+    # acquisition itself; it only ensures the bounded primary supervisor keeps
+    # being re-dispatched if the primary 5-minute cron delivery stalls.
+    - cron: "32 * * * 0-5"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ctrader-demo-auto-supervisor-watchdog.yml"
+      - ".github/workflows/ctrader-demo-auto-supervisor.yml"
+      - ".github/workflows/ctrader-demo-auto-pipeline.yml"
+      - ".github/workflows/ctrader-demo-xau-execution-lane.yml"
+      - ".github/workflows/ctrader-demo-maintenance-pipeline.yml"
 
 permissions:
   actions: write
@@ -13,6 +27,7 @@ concurrency:
 
 jobs:
   recover-supervisor-if-needed:
+    if: ${{ false }} # LEGACY_ENGINE_PAUSED_V346
     runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
