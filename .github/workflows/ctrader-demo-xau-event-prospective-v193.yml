@@ -2,8 +2,6 @@ name: cTrader Demo XAU Event Prospective V193
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * 1-5"
   push:
     branches: [main]
     paths:
