@@ -207,3 +207,4 @@ def test_v317_bridge_refreshes_v296_v297_in_hot_tier():
     from fx_scanner.xau_dashboard_bridge_v254 import HOT_HEARTBEATS
     assert "ctrader_demo_xau_decision_center_v296" in HOT_HEARTBEATS
     assert "ctrader_demo_xau_meta_research_sampler_v297" in HOT_HEARTBEATS
+    assert "ctrader_demo_xau_structural_research_probe_v318" in HOT_HEARTBEATS

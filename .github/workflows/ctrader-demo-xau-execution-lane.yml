@@ -13,7 +13,7 @@ concurrency:
 jobs:
   exact-xau-entry:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -73,6 +73,9 @@ jobs:
       # V297: one 0.01-lot DEMO research order per eligible V296 decision signature.
       # This lane is research-only and never unlocks LIVE execution.
       CTRADER_DEMO_XAU_META_RESEARCH_SAMPLER_ENABLED: "1"
+      # V318: independent 0.01-lot DEMO structural probe. It can sample an
+      # active H1/H4 source before the strict M15/pressure chain completes.
+      CTRADER_DEMO_XAU_STRUCTURAL_RESEARCH_PROBE_ENABLED: "1"
       # V272: one-time DEMO-only broker transport canary. It submits a far-away
       # 0.01-lot pending LIMIT with SL/TP, then immediately cancels and reconciles.
       CTRADER_DEMO_BROKER_CANARY_ENABLED: "1"
@@ -134,6 +137,16 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_dom_v191
 
+      - name: Refresh XAU event-risk context
+        id: refresh_xau_event_risk
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_event_risk_v192
+
+      - name: Refresh XAU volatility-shock context
+        id: refresh_xau_shock_guard
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_v203_volatility_shock_guard
+
       - name: Promote fresh RIZAN depth candidate to DEMO execution-ready
         id: produce_rizan_depth
         continue-on-error: true
@@ -148,6 +161,16 @@ jobs:
               steps.produce_rizan_depth.outcome == 'success' }}
         continue-on-error: true
         run: python -m fx_scanner.demo_xau_v229_child_executor
+
+      - name: Execute independent H1/H4 structural DEMO research probe V318
+        id: execute_structural_research_probe
+        if: >-
+          ${{ !cancelled() &&
+              steps.repair_existing_protection.outcome == 'success' &&
+              steps.refresh_xau_atlas.outcome == 'success' &&
+              steps.refresh_rizan_depth_map.outcome == 'success' }}
+        continue-on-error: true
+        run: python -m fx_scanner.demo_xau_structural_research_probe_v318
 
       - name: Build calibrated XAU Meta Decision Center V296
         id: build_xau_meta_decision
@@ -196,6 +219,7 @@ jobs:
           PRESSURE_OUTCOME: ${{ steps.refresh_xau_pressure.outcome }}
           RIZAN_DEPTH_OUTCOME: ${{ steps.produce_rizan_depth.outcome }}
           RIZAN_CHILD_OUTCOME: ${{ steps.execute_rizan_children.outcome }}
+          STRUCTURAL_PROBE_OUTCOME: ${{ steps.execute_structural_research_probe.outcome }}
           RIZAN_PATH_HANDOFF_OUTCOME: ${{ steps.execute_rizan_path_handoff.outcome }}
           HANDOFF_OUTCOME: ${{ steps.execute_fresh_handoff.outcome }}
         run: |
@@ -231,6 +255,9 @@ jobs:
           if [ "${RIZAN_CHILD_OUTCOME}" != "success" ]; then
             echo "XAU_EXECUTION_LANE_FAIL stage=RIZAN_CHILD_EXECUTION outcome=${RIZAN_CHILD_OUTCOME} safety=FAIL_CLOSED"
             failed=1
+          fi
+          if [ "${STRUCTURAL_PROBE_OUTCOME}" != "success" ]; then
+            echo "XAU_EXECUTION_LANE_WARN stage=STRUCTURAL_RESEARCH_PROBE_V318 outcome=${STRUCTURAL_PROBE_OUTCOME} research_only=1"
           fi
           if [ "${V24_OUTCOME}" != "success" ] && [ "${CANONICAL_OUTCOME}" != "success" ]; then
             echo "XAU_EXECUTION_LANE_WARN stage=OTHER_PRODUCERS v24=${V24_OUTCOME} canonical=${CANONICAL_OUTCOME} rizan=${RIZAN_OUTCOME}"

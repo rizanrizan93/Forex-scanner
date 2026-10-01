@@ -41,6 +41,7 @@ HOT_HEARTBEATS = (
     # heartbeats were healthy and fresh.
     "ctrader_demo_xau_decision_center_v296",
     "ctrader_demo_xau_meta_research_sampler_v297",
+    "ctrader_demo_xau_structural_research_probe_v318",
 )
 
 STRUCTURAL_HEARTBEATS = (
