@@ -22,10 +22,40 @@ MAX_SIGNAL_ROWS = 1000
 MAX_EVENT_ROWS = 5000
 
 AUTHORIZED_GEOMETRY_CODES = {
+    # Current RIZAN execution geometries.
+    "XAU_RIZAN_PATH_EXECUTION_V1",
+    "XAU_RIZAN_DEPTH_EXECUTION_V1",
+    "IMPULSE_RETEST_V2",
+    "XAU_M15_LIQUIDITY_SWEEP_FADE_V1",
+    # Backward-compatible historical geometries.
     "XAU_AFIC_PATH_EXECUTION_V1",
     "XAU_M15_EMA_SMC_RECLAIM_V1",
     "XAU_V24_CHAMPION_DEMO_V1",
 }
+
+PREPARED_PLAN_EVENT_TYPES = {
+    "DEMO_XAU_RIZAN_PREPARED_PLAN",
+    "DEMO_XAU_AFIC_PREPARED_PLAN",
+}
+
+PATH_FORECAST_SETUP_TYPES = {
+    "RIZAN_PATH_FORECAST",
+    "AFIC_PATH_FORECAST",
+}
+
+PATH_SHADOW_WORKERS = (
+    "ctrader_demo_xau_rizan_path_shadow_observer",
+    "ctrader_demo_xau_afic_path_shadow_observer",
+)
+
+LEDGER_EVENT_TYPES = (
+    "DEMO_XAU_RIZAN_PREPARED_PLAN",
+    "DEMO_XAU_AFIC_PREPARED_PLAN",
+    "ORDER_ACCEPTED",
+    "POSITION_PROTECTION_VERIFIED",
+    "DEMO_TRADE_CLOSED",
+    "DEMO_SIGNAL_GEOMETRY",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +118,7 @@ def _grade_for_signal(row: dict[str, Any], prepared: dict[str, dict[str, Any]]) 
         return grade
     setup = str(row.get("setup_type") or "").upper()
     score = _finite(row.get("final_score"))
-    if setup.startswith("AFIC_") and score is not None:
+    if setup in PATH_FORECAST_SETUP_TYPES and score is not None:
         if score >= 95:
             return "A"
         if score >= 90:
@@ -244,6 +274,7 @@ def _events(store: SupabaseOperationalStore, *, cutoff: datetime) -> tuple[dict[
     response = (
         store.client.table("broker_order_events")
         .select("observed_at,event_type,signal_key,accepted,code,payload")
+        .in_("event_type", list(LEDGER_EVENT_TYPES))
         .gte("observed_at", cutoff.isoformat())
         .order("observed_at", desc=False)
         .limit(MAX_EVENT_ROWS)
@@ -255,7 +286,7 @@ def _events(store: SupabaseOperationalStore, *, cutoff: datetime) -> tuple[dict[
 def _prepared_by_signal(events: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for row in events:
-        if str(row.get("event_type") or "") != "DEMO_XAU_AFIC_PREPARED_PLAN":
+        if str(row.get("event_type") or "") not in PREPARED_PLAN_EVENT_TYPES:
             continue
         key = str(row.get("signal_key") or "")
         if key:
@@ -372,7 +403,7 @@ def _signal_rows(
         stop = _finite(signal.get("sl"))
         first_target, terminal_target = _targets(signal)
         setup_type = str(signal.get("setup_type") or "").upper()
-        entry_activation_required = setup_type == "AFIC_PATH_FORECAST"
+        entry_activation_required = setup_type in PATH_FORECAST_SETUP_TYPES
         path = evaluate_signal_path(
             bars,
             observed_at=observed_at,
@@ -463,11 +494,12 @@ def _signal_rows(
     return tuple(rows)
 
 
-def _latest_afic_shadow(store: SupabaseOperationalStore) -> dict[str, Any] | None:
+def _latest_rizan_shadow(store: SupabaseOperationalStore) -> dict[str, Any] | None:
     response = (
         store.client.table("runtime_heartbeats")
         .select("observed_at,details")
-        .eq("worker_name", "ctrader_demo_xau_afic_path_shadow_observer")
+        .in_("worker_name", list(PATH_SHADOW_WORKERS))
+        .order("observed_at", desc=True)
         .limit(1)
         .execute()
     )
@@ -476,7 +508,7 @@ def _latest_afic_shadow(store: SupabaseOperationalStore) -> dict[str, Any] | Non
 
 
 def _zone_rows(store: SupabaseOperationalStore, *, now: datetime) -> tuple[dict[str, Any], ...]:
-    heartbeat = _latest_afic_shadow(store)
+    heartbeat = _latest_rizan_shadow(store)
     if heartbeat is None:
         return ()
     details = dict(heartbeat.get("details") or {})
@@ -488,7 +520,7 @@ def _zone_rows(store: SupabaseOperationalStore, *, now: datetime) -> tuple[dict[
     candidates: list[tuple[str, dict[str, Any]]] = []
     zone = dict(evaluation.get("zone") or {})
     if zone:
-        candidates.append(("PRIMARY_AFIC_ZONE", zone))
+        candidates.append(("PRIMARY_RIZAN_ZONE", zone))
     for watch in list(diagnostics.get("alternative_reversal_watch_zones") or []):
         candidates.append(("PRIOR_ORIGIN_REVISIT", dict(watch)))
 
@@ -503,7 +535,7 @@ def _zone_rows(store: SupabaseOperationalStore, *, now: datetime) -> tuple[dict[
         first_touch = _dt(item.get("first_touch_at") or evaluation.get("first_touch_at"))
         map_touch = _dt(item.get("map_first_touch_at") or evaluation.get("map_first_touch_at"))
         invalidated = _dt(item.get("invalidated_at") or evaluation.get("invalidated_at"))
-        confirmed = _dt(evaluation.get("confirm_at")) if episode_type == "PRIMARY_AFIC_ZONE" else None
+        confirmed = _dt(evaluation.get("confirm_at")) if episode_type == "PRIMARY_RIZAN_ZONE" else None
         status = str(item.get("status") or evaluation.get("state") or "WATCH")
         if invalidated is not None:
             status = "INVALIDATED"
@@ -511,9 +543,9 @@ def _zone_rows(store: SupabaseOperationalStore, *, now: datetime) -> tuple[dict[
             status = "ZONE_TOUCHED"
         rows.append(
             {
-                "episode_key": f"AFIC_ZONE:{zone_id}:{map_at.isoformat()}",
+                "episode_key": f"RIZAN_ZONE:{zone_id}:{map_at.isoformat()}",
                 "episode_type": episode_type,
-                "strategy_id": "XAU_AFIC_PATH_SHADOW_V1",
+                "strategy_id": "XAU_RIZAN_PATH_SHADOW_V1",
                 "signal_id": None,
                 "zone_id": zone_id,
                 "map_at": map_at.isoformat(),

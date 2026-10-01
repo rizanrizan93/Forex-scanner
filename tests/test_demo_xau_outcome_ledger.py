@@ -1,6 +1,12 @@
 from datetime import UTC, datetime, timedelta
 
 from fx_scanner.demo_xau_outcome_ledger import (
+    AUTHORIZED_GEOMETRY_CODES,
+    PATH_FORECAST_SETUP_TYPES,
+    PREPARED_PLAN_EVENT_TYPES,
+    _geometry_authority,
+    _grade_for_signal,
+    _prepared_by_signal,
     _signal_status,
     _stable_zone_id,
     evaluate_signal_path,
@@ -167,3 +173,60 @@ def test_afic_forecast_without_entry_touch_has_no_target_outcome():
     assert out.stop_hit is False
     assert out.outcome_at is None
     assert out.outcome_class is None
+
+
+
+def test_rizan_contracts_are_first_class_in_outcome_ledger():
+    assert "RIZAN_PATH_FORECAST" in PATH_FORECAST_SETUP_TYPES
+    assert "DEMO_XAU_RIZAN_PREPARED_PLAN" in PREPARED_PLAN_EVENT_TYPES
+    assert "XAU_RIZAN_PATH_EXECUTION_V1" in AUTHORIZED_GEOMETRY_CODES
+    assert "XAU_RIZAN_DEPTH_EXECUTION_V1" in AUTHORIZED_GEOMETRY_CODES
+
+
+def test_prepared_by_signal_accepts_rizan_and_legacy_rows():
+    events = (
+        {
+            "event_type": "DEMO_XAU_RIZAN_PREPARED_PLAN",
+            "signal_key": "rizan-1",
+            "payload": {"prepared_plan": {"selector_grade": "A"}},
+        },
+        {
+            "event_type": "DEMO_XAU_AFIC_PREPARED_PLAN",
+            "signal_key": "legacy-1",
+            "payload": {"prepared_plan": {"selector_grade": "B"}},
+        },
+    )
+    prepared = _prepared_by_signal(events)
+    assert prepared["rizan-1"]["prepared_plan"]["selector_grade"] == "A"
+    assert prepared["legacy-1"]["prepared_plan"]["selector_grade"] == "B"
+
+
+def test_current_rizan_depth_geometry_is_recognized_as_execution_authority():
+    authority = _geometry_authority(
+        (
+            {
+                "event_type": "DEMO_SIGNAL_GEOMETRY",
+                "code": "XAU_RIZAN_DEPTH_EXECUTION_V1",
+            },
+        )
+    )
+    assert authority == "XAU_RIZAN_DEPTH_EXECUTION_V1"
+
+
+def test_current_tactical_geometries_are_recognized_as_execution_authority():
+    for code in ("IMPULSE_RETEST_V2", "XAU_M15_LIQUIDITY_SWEEP_FADE_V1"):
+        assert (
+            _geometry_authority(
+                ({"event_type": "DEMO_SIGNAL_GEOMETRY", "code": code},)
+            )
+            == code
+        )
+
+
+def test_rizan_path_forecast_grade_fallback_matches_legacy_thresholds():
+    row = {
+        "id": "rizan-forecast-1",
+        "setup_type": "RIZAN_PATH_FORECAST",
+        "final_score": 92.0,
+    }
+    assert _grade_for_signal(row, {}) == "B"
