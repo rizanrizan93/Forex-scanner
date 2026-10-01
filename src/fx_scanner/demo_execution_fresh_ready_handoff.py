@@ -40,9 +40,11 @@ _XAU_DEMO_EXECUTION_STRATEGIES = frozenset(
     {
         _XAU_CANONICAL_STRATEGY,
         _XAU_CHAMPION_STRATEGY,
-        _XAU_RIZAN_PATH_EXECUTION_STRATEGY,
-        # Read-only compatibility for historical EXECUTION_READY rows created
-        # before the AFIC -> RIZAN rename. New geometry is RIZAN-only.
+        # The current RIZAN prepared-path identity is handled only by the
+        # dedicated RIZAN handoff above. Keeping it out of the generic MARKET
+        # handoff prevents duplicate broker execution.
+        # Historical AFIC rows remain readable for compatibility with the
+        # pre-rename generic handoff contract.
         _XAU_LEGACY_AFIC_EXECUTION_STRATEGY,
     }
 )
