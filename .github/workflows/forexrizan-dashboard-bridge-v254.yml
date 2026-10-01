@@ -62,7 +62,9 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          # V325: one stuck PostgREST statement must never freeze the public bridge for minutes.\n          # A failed bounded cycle is safer than publishing old data as fresh; the next minute retries.\n          for i in $(seq 1 55); do
+          # V325: one stuck PostgREST statement must never freeze the public bridge for minutes.
+          # A failed bounded cycle is safer than publishing old data as fresh; the next minute retries.
+          for i in $(seq 1 55); do
             started="$(date +%s)"
             snapshot_ok=0
             if timeout --signal=TERM --kill-after=5s 35s \
