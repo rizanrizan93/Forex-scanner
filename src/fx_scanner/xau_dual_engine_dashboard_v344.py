@@ -69,6 +69,7 @@ def render_xau_dual_engine_dashboard(
             main_zone = dict(sd.get("main_reversal_zone") or decision)
             refinement = dict(sd.get("refinement_zone") or {})
             destination = dict(sd.get("structural_destination") or {})
+            structural_room = dict(sd.get("structural_room") or {})
             roadblocks = list(sd.get("roadblocks") or [])
             nearest_roadblock = dict(sd.get("nearest_roadblock") or {})
             micro = dict(sd.get("micro_confirmation") or {})
@@ -128,6 +129,25 @@ def render_xau_dual_engine_dashboard(
                     )
                 else:
                     r2.info("Destination H4 • belum ada opposing H4 aktif di arah perjalanan.")
+
+                room_state = str(structural_room.get("state") or "UNKNOWN")
+                room_atr = structural_room.get("distance_parent_atr")
+                room_rr = structural_room.get("planned_rr")
+                if bool(structural_room.get("blocked")):
+                    st.error(
+                        "**Structural room gate: WAIT** • "
+                        + room_state
+                        + (f" • room={float(room_atr):.2f} ATR" if room_atr is not None else "")
+                        + (f" • terminal RR={float(room_rr):.2f}R" if room_rr is not None else "")
+                        + ". Opposing HTF destination terlalu dekat untuk mengejar entry."
+                    )
+                elif structural_room:
+                    st.caption(
+                        "Structural room • "
+                        + room_state
+                        + (f" • {float(room_atr):.2f} ATR" if room_atr is not None else "")
+                        + (f" • terminal RR={float(room_rr):.2f}R" if room_rr is not None else "")
+                    )
 
                 if roadblocks:
                     with st.expander("Roadblock di jalur harga"):
