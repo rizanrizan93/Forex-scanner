@@ -426,6 +426,13 @@ def _gates(latest: dict[str, dict[str, Any]], now: datetime) -> list[dict[str, A
         )
         if str(value)
     ]
+    position_diagnostics = [
+        dict(value)
+        for value in list(
+            protection_details.get("unprotected_position_diagnostics") or []
+        )
+        if isinstance(value, dict)
+    ]
     protection_block = bool(
         protection_fresh
         and (
@@ -509,6 +516,7 @@ def _gates(latest: dict[str, dict[str, Any]], now: datetime) -> list[dict[str, A
                 "scanner_unprotected_count": len(scanner_unprotected_ids),
                 "unmanaged_position_ids": unmanaged_ids[-10:],
                 "scanner_position_ids": scanner_unprotected_ids[-10:],
+                "positions": position_diagnostics[-10:],
             },
         },
         {
