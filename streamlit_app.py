@@ -38,6 +38,7 @@ from fx_scanner.trade_management_v195 import (
 )
 from fx_scanner.xau_canonical_decision_v240 import build_canonical_xau_decision
 from fx_scanner.xau_rizan_style_path_engine_v303 import build_rizan_style_path_engine
+from fx_scanner.xau_simple_decision_v336 import build_simple_decision
 from fx_scanner.xau_liquidity_pool_envelope_v328 import build_liquidity_pool_envelope
 from fx_scanner.xau_profitability_truth_v241 import build_xau_profitability_truth
 from fx_scanner.xau_pressure_transition_v249 import evaluate_pressure_transition
@@ -63,7 +64,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V328_OPPOSING_ZONE_CASCADE_20261001"
+DASHBOARD_BUILD_ID = "RIZAN_V336_SIMPLE_DECISION_20261001"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # Generic minute-tier reads are intentionally small. Prepared/V182/V226,
@@ -2143,9 +2144,10 @@ else:
         "after Supabase backend credentials and runtime snapshots are available."
     )
 
-forecast_tab, account_tab, scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
+simple_tab, forecast_tab, account_tab, scanner_tab, data_tab, system_tab, validation_tab = st.tabs(
     [
-        "Prakiraan XAU (XAU Forecast)",
+        "RIZAN SIMPLE",
+        "Detail Engine",
         "Akun & Posisi (Account & Positions)",
         "Pemindai (Scanner)",
         "Makro & Data",
@@ -9562,6 +9564,125 @@ with forecast_tab:
             st.dataframe(pd.DataFrame(history_rows), hide_index=True, width="stretch")
         else:
             st.caption("No durable RIZAN-style forecast transitions have been recorded yet.")
+
+
+with simple_tab:
+    st.subheader("RIZAN SIMPLE • XAUUSD")
+    st.caption(
+        "Satu cerita pasar saja: **perjalanan harga → zona keputusan → skenario reversal/break → "
+        "entry hanya bila admitted**. Engine lain tetap bekerja sebagai evidence pada tab Detail Engine."
+    )
+
+    simple_decision = build_simple_decision(
+        price_now=locals().get("dc_reference_price"),
+        path_engine=dict(locals().get("rizan_style_path") or {}),
+        micro_evaluation=dict(locals().get("v320_micro_eval") or {}),
+        canonical_decision=dict(locals().get("v240_decision") or {}),
+        reversal_stage=dict(locals().get("v240_reversal_stage") or {}),
+        admission_label=str(locals().get("v240_admission_label") or "WAIT"),
+        backend_stale=bool(locals().get("backend_snapshot_stale", False)),
+        position_mode=bool(locals().get("dc_position_mode", False)),
+        effective_entry_authorized=bool(
+            locals().get("v240_effective_entry_authorized", False)
+        ),
+    )
+    simple_zone = dict(simple_decision.get("decision_zone") or {})
+    simple_geometry = dict(simple_decision.get("geometry") or {})
+    simple_rejection = dict(simple_decision.get("rejection_scenario") or {})
+    simple_acceptance = dict(simple_decision.get("acceptance_scenario") or {})
+    simple_next_zone = dict(simple_acceptance.get("next_destination_zone") or {})
+
+    s1, s2 = st.columns(2)
+    s1.metric("Harga sekarang", _fmt_price(simple_decision.get("price_now")))
+    s2.metric("KEPUTUSAN", str(simple_decision.get("action") or "WAIT"))
+
+    s3, s4 = st.columns(2)
+    s3.metric(
+        "Perjalanan sekarang",
+        str(simple_decision.get("travel_direction") or "WAIT"),
+    )
+    s4.metric(
+        "Zona keputusan",
+        (
+            f"{simple_decision.get('decision_zone_kind') or 'ZONE'} "
+            f"{str(simple_zone.get('timeframe') or '').upper()} "
+            f"{_fmt_price(simple_zone.get('low'))}–{_fmt_price(simple_zone.get('high'))}"
+            if simple_zone
+            else "Belum tersedia"
+        ),
+    )
+
+    relation = str(simple_decision.get("decision_zone_relation") or "UNKNOWN")
+    stage = str(simple_decision.get("reversal_stage") or "PREPARE")
+    st.info(
+        f"**Status:** harga {relation.replace('_', ' ')} zona keputusan • "
+        f"validasi reversal: {stage.replace('_', ' ')} • "
+        f"micro: {str(simple_decision.get('micro_phase') or 'WAIT').replace('_', ' ')}."
+    )
+
+    if simple_decision.get("travel_vs_reversal") == "SEQUENTIAL_NOT_CONFLICT":
+        st.caption(
+            "SHORT/LONG yang berbeda di sini **bukan dua vote yang bertentangan**: "
+            "yang pertama adalah arah perjalanan menuju zona, yang kedua adalah arah reversal "
+            "yang baru dicari setelah harga sampai di zona tersebut."
+        )
+
+    st.markdown("#### Dua skenario saja")
+    rej_key = _fmt_price(simple_rejection.get("key"))
+    acc_key = _fmt_price(simple_acceptance.get("key"))
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(
+            f"**REJECTION → {simple_rejection.get('direction') or 'WAIT'}**  \n"
+            f"Trigger: {simple_rejection.get('trigger') or 'Tunggu reclaim/MSS/displacement'}  \n"
+            f"Key: {rej_key}"
+        )
+    with c2:
+        next_text = (
+            f" → {_fmt_price(simple_next_zone.get('low'))}–"
+            f"{_fmt_price(simple_next_zone.get('high'))}"
+            if simple_next_zone
+            else ""
+        )
+        st.markdown(
+            f"**ACCEPTANCE/BREAK → {simple_acceptance.get('direction') or 'WAIT'}**  \n"
+            f"Trigger: {simple_acceptance.get('trigger') or 'Tunggu close acceptance'}  \n"
+            f"Key: {acc_key}{next_text}"
+        )
+
+    st.markdown("#### Entry")
+    if simple_decision.get("entry_authorized"):
+        entry_low = simple_geometry.get("entry_low")
+        entry_high = simple_geometry.get("entry_high")
+        entry_text = (
+            f"{_fmt_price(entry_low)}–{_fmt_price(entry_high)}"
+            if entry_low is not None and entry_high is not None
+            else _fmt_price(simple_geometry.get("entry"))
+        )
+        e1, e2, e3 = st.columns(3)
+        e1.metric("ENTRY", entry_text)
+        e2.metric("SL", _fmt_price(simple_geometry.get("sl")))
+        e3.metric(
+            "TP",
+            f"{_fmt_price(simple_geometry.get('tp1'))} → "
+            f"{_fmt_price(simple_geometry.get('tp2'))}",
+        )
+        st.success(
+            "ENTRY READY hanya ditampilkan ketika canonical geometry + reversal stage + "
+            "admission DEMO benar-benar lolos."
+        )
+    else:
+        st.warning(
+            "**NO ORDER.** Entry, SL, dan TP sengaja tidak ditampilkan sebagai angka resmi "
+            "sampai validasi reversal dan admission selesai. Zona di atas adalah area tunggu, "
+            "bukan perintah entry."
+        )
+
+    st.caption(
+        "Detail V182/V226/V229/V296/V318/V328, pressure, depth, research probe, dan "
+        "diagnostik tetap tersedia pada tab **Detail Engine** untuk audit—bukan untuk dibaca "
+        "sebagai keputusan yang berdiri sendiri."
+    )
 
 with account_tab:
     st.subheader("Pemantauan Akun Broker (Broker Account Monitor)")
