@@ -39,6 +39,7 @@ def _valid_zone(zone: dict[str, Any]) -> bool:
         and high > low
         and direction in {"LONG", "SHORT"}
         and lifecycle.get("active", True) is not False
+        and not lifecycle.get("invalidated_at")
         and "BROKEN" not in status
         and "INVALID" not in status
     )
