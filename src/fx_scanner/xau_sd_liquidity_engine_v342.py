@@ -761,7 +761,9 @@ def _micro_confirmation(
         "confirmed": confirmed,
         "touched": touched,
         "sweep_seen": sweep,
-        "reclaim_at": ensure_utc(reclaim["timestamp"].to_pydatetime()).isoformat(),
+        "reclaim_at": ensure_utc(
+            (reclaim["timestamp"] + known_delta).to_pydatetime()
+        ).isoformat(),
         "mss_confirmed": bool(mss),
         "mss_level": mss_level,
         "displacement_confirmed": displacement,
