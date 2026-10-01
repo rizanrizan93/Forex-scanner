@@ -72,8 +72,6 @@ def category_from_title(title: str) -> str | None:
         return "NFP"
     if "ISM" in text and ("PMI" in text or "MANUFACTURING" in text or "SERVICES" in text):
         return "ISM"
-    if "FOMC" in text or "FEDERAL FUNDS RATE" in text or "FED FUNDS RATE" in text:
-        return "FOMC"
     if (
         "JOBLESS CLAIM" in text
         or "UNEMPLOYMENT CLAIM" in text
@@ -105,6 +103,8 @@ def category_from_title(title: str) -> str | None:
     )
     if fed_person and any(word in text for word in ("SPEAK", "SPEECH", "TESTIF", "REMARK")):
         return "FED_SPEECH"
+    if "FOMC" in text or "FEDERAL FUNDS RATE" in text or "FED FUNDS RATE" in text:
+        return "FOMC"
     return None
 
 
