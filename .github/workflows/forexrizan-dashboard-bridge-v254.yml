@@ -19,7 +19,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: forexrizan-dashboard-bridge-v254
+  group: forexrizan-dashboard-bridge-v325
   cancel-in-progress: false
 
 jobs:
