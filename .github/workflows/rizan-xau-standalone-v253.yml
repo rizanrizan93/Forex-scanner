@@ -2,17 +2,6 @@ name: RIZAN XAU Standalone Snapshot V253
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "7,37 * * * 0-5"
-  push:
-    branches: [main]
-    paths:
-      - "src/fx_scanner/xau_standalone_mode_v253.py"
-      - "src/fx_scanner/xau_standalone_ctrader_v253.py"
-      - "src/fx_scanner/xau_standalone_snapshot_v253.py"
-      - "src/fx_scanner/xau_standalone_bridge_v253.py"
-      - "calibration/xau_v225_2_depth_prior.json"
-      - ".github/workflows/rizan-xau-standalone-v253.yml"
 
 permissions:
   contents: write
@@ -24,6 +13,7 @@ concurrency:
 
 jobs:
   snapshot:
+    if: ${{ false }} # LEGACY_ENGINE_PAUSED_V342
     runs-on: ubuntu-latest
     timeout-minutes: 80
     env:
