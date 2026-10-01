@@ -48,6 +48,16 @@ def _resample_m5(price_m1: pd.DataFrame) -> pd.DataFrame:
         .dropna()
         .reset_index()
     )
+    previous_close = out["close"].shift(1)
+    tr = pd.concat(
+        [
+            out["high"] - out["low"],
+            (out["high"] - previous_close).abs(),
+            (out["low"] - previous_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    out["atr14"] = tr.rolling(14, min_periods=8).mean()
     out["known_at"] = out["timestamp"] + pd.Timedelta(minutes=5)
     return out
 
@@ -61,6 +71,16 @@ def _anchor_for_episode(
         return None
     touch_at = pd.Timestamp(ensure_utc(episode.touch_at))
     horizon_at = touch_at + pd.Timedelta(minutes=HORIZON_MINUTES[timeframe])
+    prior_atr_rows = m5[
+        (m5["known_at"] <= touch_at)
+        & m5["atr14"].notna()
+    ]
+    if prior_atr_rows.empty:
+        return None
+    touch_atr = _f(prior_atr_rows.iloc[-1]["atr14"])
+    if touch_atr is None or touch_atr <= 0:
+        return None
+
     rows = m5[
         (m5["known_at"] > touch_at)
         & (m5["timestamp"] < horizon_at)
@@ -70,11 +90,10 @@ def _anchor_for_episode(
 
     direction = str(episode.direction).upper()
     proximal = float(episode.proximal)
-    atr = max(float(episode.atr_points), 1e-9)
     impulse_threshold = (
-        proximal + IMPULSE_ATR_MULTIPLE * atr
+        proximal + IMPULSE_ATR_MULTIPLE * touch_atr
         if direction == "LONG"
-        else proximal - IMPULSE_ATR_MULTIPLE * atr
+        else proximal - IMPULSE_ATR_MULTIPLE * touch_atr
     )
 
     impulse_idx: int | None = None
@@ -125,6 +144,9 @@ def _anchor_for_episode(
         confirmed_at = pd.Timestamp(next_row["known_at"])
         if confirmed_at >= horizon_at:
             return None
+        confirmed_atr = _f(next_row.get("atr14"))
+        if confirmed_atr is None or confirmed_atr <= 0:
+            confirmed_atr = touch_atr
         return {
             "a": anchor,
             "pivot_at": pd.Timestamp(row["timestamp"]),
@@ -132,6 +154,8 @@ def _anchor_for_episode(
             "impulse_at": pd.Timestamp(rows.iloc[impulse_idx]["known_at"]),
             "reclaim_at": pd.Timestamp(rows.iloc[reclaim_idx]["known_at"]),
             "horizon_at": horizon_at,
+            "touch_atr14_m5": float(touch_atr),
+            "atr14_m5": float(confirmed_atr),
         }
     return None
 
@@ -278,7 +302,7 @@ def evaluate_year(
         direction = str(episode.direction).upper()
         if direction not in {"LONG", "SHORT"}:
             continue
-        atr = max(float(episode.atr_points), 1e-9)
+        parent_atr = max(float(episode.atr_points), 1e-9)
         anchor = _anchor_for_episode(m5, episode)
         touch_at = pd.Timestamp(ensure_utc(episode.touch_at))
         horizon_at = touch_at + pd.Timedelta(
@@ -303,6 +327,8 @@ def evaluate_year(
                     "confirmed_at": pd.Timestamp(anchor["confirmed_at"]).isoformat(),
                     "turning_price": episode.turning_price,
                     "reaction_hit": bool(episode.reaction_hit),
+                    "m5_atr14": float(anchor["atr14_m5"]),
+                    "parent_atr": parent_atr,
                 }
             )
 
@@ -315,14 +341,15 @@ def evaluate_year(
 
         sign = 1.0 if direction == "LONG" else -1.0
         distal = float(episode.distal)
+        micro_atr = max(float(anchor["atr14_m5"]), 1e-9)
         sl = (
-            distal - STRUCTURAL_SL_BUFFER_ATR * atr
+            distal - STRUCTURAL_SL_BUFFER_ATR * micro_atr
             if direction == "LONG"
-            else distal + STRUCTURAL_SL_BUFFER_ATR * atr
+            else distal + STRUCTURAL_SL_BUFFER_ATR * micro_atr
         )
 
         for frac in DELTA_FRACTIONS:
-            delta = float(frac) * atr
+            delta = float(frac) * micro_atr
             a = float(anchor["a"])
             entry_levels = {
                 "A_RETEST": a,
@@ -366,7 +393,7 @@ def evaluate_year(
                     row["planned_rr_n"] += 1
                     if episode.turning_price is not None:
                         row["entry_error_atr_sum"] += (
-                            abs(entry - float(episode.turning_price)) / atr
+                            abs(entry - float(episode.turning_price)) / micro_atr
                         )
                         row["entry_error_atr_n"] += 1
                     outcome = _resolve_trade(
@@ -414,18 +441,20 @@ def evaluate_year(
         "promotion_authority": PROMOTION_AUTHORITY,
         "source_timeframes": list(SOURCE_TIMEFRAMES),
         "delta_fractions": list(DELTA_FRACTIONS),
+        "delta_basis": "CAUSAL_M5_ATR14_AT_ANCHOR_CONFIRMATION",
         "entry_tiers": list(ENTRY_TIERS),
         "target_multiples": list(TARGET_MULTIPLES),
         "anchor_contract": {
             "reclaim": "TWO_CONSECUTIVE_M5_CLOSES_BEYOND_PARENT_PROXIMAL",
-            "impulse": f"{IMPULSE_ATR_MULTIPLE:.2f}_PARENT_ATR_FROM_PROXIMAL",
+            "touch_atr": "LAST_M5_ATR14_KNOWN_AT_OR_BEFORE_PARENT_TOUCH",
+            "impulse": f"{IMPULSE_ATR_MULTIPLE:.2f}_CAUSAL_M5_ATR14_FROM_PROXIMAL",
             "a": "FIRST_CAUSALLY_CONFIRMED_POST_IMPULSE_M5_PULLBACK_PIVOT",
             "a_known_at": "CLOSE_OF_M5_BAR_AFTER_PIVOT",
             "no_future_turning_price_used_for_signal": True,
         },
         "trade_contract": {
             "entry_fill": "M1_TOUCH_AFTER_A_KNOWN",
-            "sl": f"PARENT_DISTAL_PLUS_{STRUCTURAL_SL_BUFFER_ATR:.2f}_ATR_BUFFER",
+            "sl": f"PARENT_DISTAL_PLUS_{STRUCTURAL_SL_BUFFER_ATR:.2f}_M5_ATR14_BUFFER",
             "same_m1_stop_target_precedence": "STOP_FIRST",
             "friction": "NOT_INCLUDED_GROSS_RESEARCH",
             "horizon_minutes": dict(HORIZON_MINUTES),

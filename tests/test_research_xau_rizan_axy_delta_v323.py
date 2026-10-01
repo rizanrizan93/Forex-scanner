@@ -55,10 +55,12 @@ def _episode(direction: str = "LONG") -> DepthEpisode:
 
 
 def _m1_long() -> pd.DataFrame:
-    start = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
+    # Two hours of pre-touch history make ATR14 fully causal at the 00:05 touch.
+    start = datetime(2025, 12, 31, 22, 0, tzinfo=UTC)
+    base = 120
     rows = []
-    # Default quiet bars across the full H1 research horizon.
-    for i in range(8 * 60 + 30):
+    # Default quiet bars across prehistory + the full H1 research horizon.
+    for i in range(10 * 60 + 30):
         ts = start + timedelta(minutes=i)
         rows.append(
             {
@@ -74,25 +76,25 @@ def _m1_long() -> pd.DataFrame:
         rows[i].update(open=o, high=h, low=l, close=c)
 
     # Touch / first reclaim.
-    for i in range(5, 10):
+    for i in range(base + 5, base + 10):
         set_bar(i, 109.0, 112.5, 108.0, 112.0)
     # Second close above proximal + >=0.75 ATR impulse.
-    for i in range(10, 15):
+    for i in range(base + 10, base + 15):
         set_bar(i, 112.0, 119.0, 111.0, 118.0)
     # Post-impulse pullback sequence. M5 bar 20-24 becomes pivot A=113,
     # causally known only after bar 25-29 closes at 00:30.
-    for i in range(15, 20):
+    for i in range(base + 15, base + 20):
         set_bar(i, 118.0, 119.0, 115.0, 117.0)
-    for i in range(20, 25):
+    for i in range(base + 20, base + 25):
         set_bar(i, 117.0, 117.5, 113.0, 114.0)
-    for i in range(25, 30):
+    for i in range(base + 25, base + 30):
         set_bar(i, 114.0, 117.0, 114.0, 116.0)
     # After A is known: retest A, then rally through X/Y/5Δ.
-    set_bar(30, 116.0, 116.2, 113.0, 113.5)
-    set_bar(31, 113.5, 114.5, 113.2, 114.2)
-    set_bar(32, 114.2, 116.0, 114.0, 115.5)
-    set_bar(33, 115.5, 118.5, 115.0, 118.0)
-    set_bar(34, 118.0, 120.0, 117.5, 119.5)
+    set_bar(base + 30, 116.0, 116.2, 113.0, 113.5)
+    set_bar(base + 31, 113.5, 114.5, 113.2, 114.2)
+    set_bar(base + 32, 114.2, 116.0, 114.0, 115.5)
+    set_bar(base + 33, 115.5, 118.5, 115.0, 118.0)
+    set_bar(base + 34, 118.0, 120.0, 117.5, 119.5)
     return pd.DataFrame(rows)
 
 
