@@ -3,7 +3,7 @@ name: ForexRizan Dashboard Bridge V254
 on:
   workflow_dispatch:
   schedule:
-    - cron: "3,33 * * * 0-5"
+    - cron: "3 * * * 0-5"
   push:
     branches:
       - main
@@ -62,17 +62,17 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          for i in $(seq 1 64); do
+          # V325: one stuck PostgREST statement must never freeze the public bridge for minutes.\n          # A failed bounded cycle is safer than publishing old data as fresh; the next minute retries.\n          for i in $(seq 1 55); do
             started="$(date +%s)"
             snapshot_ok=0
-            for attempt in 1 2 3; do
-              if python -m fx_scanner.xau_dashboard_bridge_v254 --output runtime/xau_dashboard_snapshot.json; then
-                snapshot_ok=1
-                break
-              fi
-              echo "::warning::Dashboard snapshot attempt ${attempt}/3 failed; retrying"
-              sleep "$(( attempt * 5 ))"
-            done
+            if timeout --signal=TERM --kill-after=5s 35s \
+              python -m fx_scanner.xau_dashboard_bridge_v254 \
+              --output runtime/xau_dashboard_snapshot.json; then
+              snapshot_ok=1
+            else
+              rc="$?"
+              echo "::warning::Dashboard snapshot cycle failed/timeout rc=${rc}; next minute will retry"
+            fi
 
             if [ "$snapshot_ok" -eq 1 ]; then
               git add -f runtime/xau_dashboard_snapshot.json
@@ -102,7 +102,7 @@ jobs:
               echo "::warning::Dashboard snapshot generation failed this cycle; worker will continue"
             fi
 
-            if [ "$i" -lt 64 ]; then
+            if [ "$i" -lt 55 ]; then
               elapsed="$(( $(date +%s) - started ))"
               sleep_for="$(( 60 - elapsed ))"
               if [ "$sleep_for" -gt 0 ]; then
