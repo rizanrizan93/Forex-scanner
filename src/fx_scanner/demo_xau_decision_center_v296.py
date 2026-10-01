@@ -110,21 +110,40 @@ def _age_seconds(value: Any, now: datetime) -> float | None:
 
 
 def _latest_heartbeats(store: SupabaseOperationalStore) -> dict[str, dict[str, Any]]:
-    names = [spec["worker"] for spec in ENGINE_SPECS.values()] + list(SUPPORT_WORKERS)
-    response = (
-        store.client.table("runtime_heartbeats")
-        .select("worker_name,observed_at,healthy,details")
-        .in_("worker_name", names)
-        .order("observed_at", desc=True)
-        .limit(max(64, len(names) * 4))
-        .execute()
-    )
+    """Fetch exactly one newest row per decision-center worker.
+
+    The previous IN + global LIMIT query could return many rows from a fast
+    worker while omitting slower workers. It also retransmitted repeated large
+    V182/V229 JSON payloads, increasing Supabase egress and occasionally making
+    the XAU center look empty despite healthy backend workers.
+    """
+    names = tuple(dict.fromkeys(
+        [spec["worker"] for spec in ENGINE_SPECS.values()]
+        + list(SUPPORT_WORKERS)
+    ))
     latest: dict[str, dict[str, Any]] = {}
-    for raw in response.data or []:
-        row = dict(raw or {})
-        name = str(row.get("worker_name") or "")
-        if name and name not in latest:
-            latest[name] = row
+    failures: list[str] = []
+    for name in names:
+        try:
+            response = (
+                store.client.table("runtime_heartbeats")
+                .select("worker_name,observed_at,healthy,details")
+                .eq("worker_name", name)
+                .order("observed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            failures.append(f"{name}:{type(exc).__name__}")
+            continue
+        rows = list(response.data or [])
+        if rows:
+            latest[name] = dict(rows[0] or {})
+
+    if not latest and failures:
+        raise RuntimeError(
+            "V296 heartbeat reads all failed: " + ",".join(failures)
+        )
     return latest
 
 
