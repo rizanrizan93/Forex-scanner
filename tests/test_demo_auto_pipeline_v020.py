@@ -186,7 +186,11 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert "seq 1 5" in text
     assert "sleep 60" in text
     assert "fast_cadence_seconds=60" in text
-    assert "discovery_check_seconds=60" in text
+    assert "discovery_check_seconds=900" in text
+    assert "rizan_prepared_check_seconds=INTEGRATED_EXECUTION_LANE" in text
+    assert "dom_cadence_seconds=INTEGRATED_EXECUTION_LANE" in text
+    assert "SUPERVISOR_RIZAN_PREPARED_INTEGRATED" in text
+    assert "SUPERVISOR_DOM_V191_INTEGRATED" in text
     assert "authority=SCHEDULE_5M" in text
     assert "push_kick=SUPERVISOR_EXECUTION_OR_MAINTENANCE_CHANGE" in text
     assert "head_sha=${GITHUB_SHA}" in text
@@ -200,8 +204,8 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert '[ "${latest_execution_status}" = "completed" ]' not in text
     assert '[ "${latest_execution_conclusion}" = "success" ]' not in text
     assert 'cancel_stale_lane_runs "ctrader-demo-xau-execution-lane.yml" "EXECUTION" 600' in text
-    assert 'cancel_stale_lane_runs "ctrader-demo-xau-afic-prepared-lane.yml" "RIZAN_PREPARED" 600' in text
-    assert 'cancel_stale_lane_runs "ctrader-demo-xau-dom-v191.yml" "DOM_V191" 600' in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-afic-prepared-lane.yml" "RIZAN_PREPARED" 600' not in text
+    assert 'cancel_stale_lane_runs "ctrader-demo-xau-dom-v191.yml" "DOM_V191" 600' not in text
     assert "safety=FAIL_CLOSED" in text
     assert "universe=XAUUSD" in text
     assert "universe=XAUUSD,EURUSD" not in text
@@ -209,7 +213,7 @@ def test_demo_auto_supervisor_has_single_schedule_authority_and_dispatches_xau_l
     assert '"src/fx_scanner/demo_xau_v24_champion_candidate_producer.py"' in text
     assert "challengers=IMPULSE_RETEST_V2" in text
     assert "SUPERVISOR_EXECUTION_SKIP_BUSY" in text
-    assert "SUPERVISOR_DISCOVERY_SKIP_BUSY" in text
+    assert "SUPERVISOR_DISCOVERY_SKIP" in text
     assert "active_count" in text
     assert "overlap_within_lane=DISABLED" in text
     assert "cross_lane=ENABLED" in text
