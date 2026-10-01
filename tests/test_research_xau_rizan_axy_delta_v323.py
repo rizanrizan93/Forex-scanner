@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 import pandas as pd
@@ -149,13 +150,7 @@ def test_v323_stop_first_on_same_m1_bar() -> None:
 
 
 def test_v323_filters_out_m15_parent_episodes() -> None:
-    episode = _episode("LONG")
-    episode = DepthEpisode(
-        **{
-            **episode.__dict__,
-            "timeframe": "M15",
-        }
-    )
+    episode = replace(_episode("LONG"), timeframe="M15")
     report = evaluate_year(_m1_long(), [episode])
     assert report["episodes"] == 0
     assert all(row["episodes"] == 0 for row in report["candidates"])
