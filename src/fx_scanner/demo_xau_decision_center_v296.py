@@ -87,6 +87,7 @@ SUPPORT_WORKERS = (
     "ctrader_demo_xau_v229_child_executor",
     "ctrader_demo_xau_event_risk_v192",
     "ctrader_demo_xau_dom_v191",
+    "ctrader_demo_existing_protection_repair",
 )
 
 
@@ -405,6 +406,59 @@ def _gates(latest: dict[str, dict[str, Any]], now: datetime) -> list[dict[str, A
     v229_details = dict(v229.get("details") or {})
     liquidity_guard = dict(v229_details.get("liquidity_sweep_guard") or {})
 
+    protection = dict(latest.get("ctrader_demo_existing_protection_repair") or {})
+    protection_details = dict(protection.get("details") or {})
+    protection_age = _age_seconds(protection.get("observed_at"), now)
+    protection_fresh = bool(
+        protection_age is not None and protection_age <= MAX_HEARTBEAT_AGE_SECONDS
+    )
+    unmanaged_ids = [
+        str(value)
+        for value in list(
+            protection_details.get("unprotected_unmanaged_position_ids") or []
+        )
+        if str(value)
+    ]
+    scanner_unprotected_ids = [
+        str(value)
+        for value in list(
+            protection_details.get("unprotected_scanner_position_ids") or []
+        )
+        if str(value)
+    ]
+    protection_block = bool(
+        protection_fresh
+        and (
+            unmanaged_ids
+            or scanner_unprotected_ids
+            or not bool(protection.get("healthy", False))
+        )
+    )
+    if unmanaged_ids:
+        protection_state = "UNMANAGED_POSITION_MISSING_SL_TP"
+        protection_reason = (
+            f"{len(unmanaged_ids)} open DEMO position(s) have missing SL/TP "
+            "without a verified scanner linkage"
+        )
+    elif scanner_unprotected_ids:
+        protection_state = "SCANNER_POSITION_MISSING_SL_TP"
+        protection_reason = (
+            f"{len(scanner_unprotected_ids)} scanner-linked DEMO position(s) "
+            "remain unprotected"
+        )
+    elif protection and not protection_fresh:
+        protection_state = "PROTECTION_STATUS_STALE"
+        protection_reason = "latest protection-repair heartbeat is stale"
+    elif protection and not bool(protection.get("healthy", False)):
+        protection_state = "PROTECTION_REPAIR_UNHEALTHY"
+        protection_reason = "protection repair did not verify a safe account state"
+    elif protection:
+        protection_state = "PROTECTION_OK"
+        protection_reason = "no unprotected blocking DEMO positions"
+    else:
+        protection_state = "PROTECTION_STATUS_UNAVAILABLE"
+        protection_reason = "no protection-repair heartbeat available"
+
     gates = [
         {
             "name": "V280_REVERSAL_STAGE",
@@ -436,6 +490,26 @@ def _gates(latest: dict[str, dict[str, Any]], now: datetime) -> list[dict[str, A
             ),
             "state": str(liquidity_guard.get("state") or "UNAVAILABLE"),
             "reason": str(liquidity_guard.get("reason") or ""),
+        },
+        {
+            "name": "PROTECTION_INTEGRITY",
+            "hard_block": protection_block,
+            "warning": bool(
+                protection
+                and (
+                    not protection_fresh
+                    or not bool(protection.get("healthy", False))
+                )
+            ),
+            "state": protection_state,
+            "reason": protection_reason,
+            "details": {
+                "age_seconds": protection_age,
+                "unmanaged_unprotected_count": len(unmanaged_ids),
+                "scanner_unprotected_count": len(scanner_unprotected_ids),
+                "unmanaged_position_ids": unmanaged_ids[-10:],
+                "scanner_position_ids": scanner_unprotected_ids[-10:],
+            },
         },
         {
             "name": "EVENT_RISK",
