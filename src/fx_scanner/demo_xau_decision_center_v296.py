@@ -401,6 +401,9 @@ def _gates(latest: dict[str, dict[str, Any]], now: datetime) -> list[dict[str, A
     hazard = dict(child_details.get("dynamic_depth_hazard") or {})
     event = dict(latest.get("ctrader_demo_xau_event_risk_v192") or {})
     event_risk = dict(dict(event.get("details") or {}).get("risk") or {})
+    v229 = dict(latest.get("ctrader_demo_xau_v229_depth_execution") or {})
+    v229_details = dict(v229.get("details") or {})
+    liquidity_guard = dict(v229_details.get("liquidity_sweep_guard") or {})
 
     gates = [
         {
@@ -423,6 +426,16 @@ def _gates(latest: dict[str, dict[str, Any]], now: datetime) -> list[dict[str, A
             "warning": str(hazard.get("action") or "") not in {"ENTRY_WINDOW"},
             "state": str(hazard.get("action") or "UNAVAILABLE"),
             "reason": str(hazard.get("location_state") or ""),
+        },
+        {
+            "name": "V331_LIQUIDITY_SWEEP",
+            "hard_block": bool(liquidity_guard.get("hard_execution_block")),
+            "warning": bool(
+                liquidity_guard.get("first_touch_warning")
+                and not liquidity_guard.get("micro_reconfirmed")
+            ),
+            "state": str(liquidity_guard.get("state") or "UNAVAILABLE"),
+            "reason": str(liquidity_guard.get("reason") or ""),
         },
         {
             "name": "EVENT_RISK",
