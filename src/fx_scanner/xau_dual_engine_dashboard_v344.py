@@ -37,17 +37,33 @@ _DAY_ID = {
 }
 
 
-def _event_wib(value: Any) -> str:
+def _event_datetime(value: Any) -> datetime | None:
     if not value:
-        return "—"
+        return None
     try:
         parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except (TypeError, ValueError):
-        return str(value)
+        return None
     if parsed.tzinfo is None:
-        return str(value)
-    local = parsed.astimezone(WIB)
-    return f"{_DAY_ID[local.weekday()]}, {local:%d-%m-%Y %H:%M} WIB"
+        return None
+    return parsed.astimezone(WIB)
+
+
+def _event_wib(value: Any) -> str:
+    local = _event_datetime(value)
+    if local is None:
+        return "—" if not value else str(value)
+    return f"{local:%Y-%m-%d %H.%M} WIB"
+
+
+def _sort_events_latest_first(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def sort_key(item: dict[str, Any]) -> float:
+        parsed = _event_datetime(
+            item.get("scheduled_at_wib") or item.get("scheduled_at")
+        )
+        return float("-inf") if parsed is None else parsed.timestamp()
+
+    return sorted((dict(item or {}) for item in events), key=sort_key, reverse=True)
 
 
 def _macro_bias_label(value: Any) -> str:
@@ -530,13 +546,15 @@ def render_xau_dual_engine_dashboard(
                     + ". Prediksi pra-event adalah consensus tilt. Actual-vs-forecast dipakai hanya bila sumber kalender menyediakan actual; jika kosong, rilis harus diverifikasi dari sumber resmi."
                 )
 
-            upcoming = list(macro.get("upcoming_events") or [])
+            upcoming = _sort_events_latest_first(
+                list(macro.get("upcoming_events") or [])
+            )
             if upcoming:
                 event_rows = []
                 for item in upcoming:
                     event_rows.append(
                         {
-                            "Hari / Tanggal / Jam WIB": _event_wib(
+                            "Waktu WIB": _event_wib(
                                 item.get("scheduled_at_wib") or item.get("scheduled_at")
                             ),
                             "Event": item.get("title"),
