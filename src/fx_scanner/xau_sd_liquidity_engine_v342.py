@@ -11,7 +11,7 @@ import pandas as pd
 from .models import ensure_utc
 from .xau_structural_sr_map_v363 import build_structural_sr_map
 
-CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_11_DESTINATION_LADDER_V368"
+CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_12_INTRADAY_REROUTE_V369"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
 EXECUTION_AUTHORITY = True
 EXECUTION_INFLUENCE = True
@@ -390,6 +390,114 @@ def _lifecycle(zone: SDZone, bars: Iterable[Any], *, as_of: datetime) -> dict[st
     }
 
 
+def _intraday_breach_status(
+    zone: dict[str, Any],
+    *,
+    bars_m15: Iterable[Any],
+    as_of: datetime,
+) -> dict[str, Any]:
+    """Quarantine an HTF zone after a causal M15 breach before H4 close.
+
+    The canonical H4 lifecycle remains unchanged. This guard only prevents an
+    already-breached parent from continuing to publish a stale PREPARE band
+    while waiting for the next H4 candle close.
+
+    A zone is quarantined when the latest completed M15 close is:
+    - >=0.25 parent ATR beyond the distal boundary, or
+    - the second consecutive completed M15 close >=0.05 ATR beyond distal.
+
+    A later completed M15 reclaim back inside the 0.05 ATR buffer releases the
+    quarantine, so a transient sweep is not permanently classified as failure.
+    """
+    frame = _bar_frame(bars_m15)
+    if frame.empty:
+        return {
+            "state": "NO_M15_DATA",
+            "quarantined": False,
+            "validation_timeframe": "M15",
+        }
+
+    known_delta = pd.Timedelta(minutes=TF_MINUTES["M15"])
+    now = pd.Timestamp(ensure_utc(as_of))
+    available_raw = zone.get("available_at")
+    available_at = pd.Timestamp(available_raw) if available_raw else None
+    if available_at is not None:
+        if available_at.tzinfo is None:
+            available_at = available_at.tz_localize("UTC")
+        else:
+            available_at = available_at.tz_convert("UTC")
+
+    completed = frame[(frame["timestamp"] + known_delta) <= now].copy()
+    if available_at is not None:
+        completed = completed[(completed["timestamp"] + known_delta) > available_at].copy()
+    completed = completed.tail(4).reset_index(drop=True)
+    if completed.empty:
+        return {
+            "state": "WAIT_COMPLETED_M15_AFTER_ZONE_AVAILABLE",
+            "quarantined": False,
+            "validation_timeframe": "M15",
+        }
+
+    atr = max(float(zone.get("atr") or 0.0), 1e-9)
+    distal = float(zone.get("distal"))
+    direction = str(zone.get("direction") or "")
+    soft = 0.05 * atr
+    deep = 0.25 * atr
+    closes = completed["close"].astype(float)
+
+    if direction == "LONG":
+        beyond = closes < (distal - soft)
+        deep_beyond = closes < (distal - deep)
+        depth_atr = max(0.0, distal - float(closes.iloc[-1])) / atr
+    elif direction == "SHORT":
+        beyond = closes > (distal + soft)
+        deep_beyond = closes > (distal + deep)
+        depth_atr = max(0.0, float(closes.iloc[-1]) - distal) / atr
+    else:
+        return {
+            "state": "INVALID_DIRECTION",
+            "quarantined": False,
+            "validation_timeframe": "M15",
+        }
+
+    latest_beyond = bool(beyond.iloc[-1])
+    deep_latest = bool(deep_beyond.iloc[-1])
+    two_consecutive = bool(
+        len(beyond) >= 2 and bool(beyond.iloc[-1]) and bool(beyond.iloc[-2])
+    )
+    quarantined = bool(latest_beyond and (deep_latest or two_consecutive))
+    if quarantined:
+        state = "INTRADAY_BREACH_QUARANTINED"
+    elif latest_beyond:
+        state = "INTRADAY_BREACH_WATCH"
+    else:
+        state = "NO_ACTIVE_INTRADAY_BREACH"
+
+    last_row = completed.iloc[-1]
+    completed_at = ensure_utc(
+        (last_row["timestamp"] + known_delta).to_pydatetime()
+    ).isoformat()
+    return {
+        "state": state,
+        "quarantined": quarantined,
+        "validation_timeframe": "M15",
+        "latest_completed_at": completed_at,
+        "latest_close": float(closes.iloc[-1]),
+        "distal": distal,
+        "soft_buffer_atr": 0.05,
+        "deep_buffer_atr": 0.25,
+        "breach_depth_atr": round(depth_atr, 4),
+        "latest_beyond": latest_beyond,
+        "deep_latest": deep_latest,
+        "two_consecutive": two_consecutive,
+        "completed_bars_beyond": int(beyond.sum()),
+        "rule": (
+            "M15_DEEP_CLOSE_GTE_0P25_PARENT_ATR_OR_TWO_CONSECUTIVE_CLOSES_"
+            "BEYOND_DISTAL_PLUS_0P05_ATR; RECLAIM_RELEASES_QUARANTINE"
+        ),
+    }
+
+
 def _distance(price: float, low: float, high: float) -> float:
     if price < low:
         return low - price
@@ -751,6 +859,8 @@ def _main_reversal_profile(
     base_range = float(zone.get("base_range_atr") or 0.8)
 
     hard_reasons: list[str] = []
+    if bool(zone.get("intraday_quarantined")):
+        hard_reasons.append("INTRADAY_BREACH_QUARANTINED")
     if freshness in {"BROKEN", "EXPIRED"}:
         hard_reasons.append(freshness)
     if condition in {"DEGRADED", "NEAR_EXHAUSTED"}:
@@ -2164,11 +2274,26 @@ def evaluate_sd_liquidity(
 
     active = _classify_hierarchy(_dedupe(payloads), price_now=current)
     for row in active:
+        intraday = _intraday_breach_status(
+            row,
+            bars_m15=bars_m15,
+            as_of=now,
+        )
+        row["intraday_breach"] = intraday
+        row["intraday_quarantined"] = bool(intraday.get("quarantined"))
         profile = _main_reversal_profile(row, price_now=current)
         row["main_reversal_eligible"] = bool(profile["eligible"])
         row["main_reversal_score"] = profile["quality_score"]
         row["main_reversal_reasons"] = list(profile["reasons"])
         row["main_reversal_distance_atr"] = profile["distance_atr"]
+
+    quarantined_zones = sorted(
+        [dict(row) for row in active if row.get("intraday_quarantined")],
+        key=lambda row: (
+            float(row.get("distance_points") or 0.0),
+            -float(row.get("score") or 0.0),
+        ),
+    )
 
     demands = [x for x in active if x["direction"] == "LONG"]
     supplies = [x for x in active if x["direction"] == "SHORT"]
@@ -2176,8 +2301,14 @@ def evaluate_sd_liquidity(
     supplies.sort(key=lambda x: (float(x["distance_points"]), -float(x["score"])))
     main_demands = [x for x in demands if x.get("main_reversal_eligible")]
     main_supplies = [x for x in supplies if x.get("main_reversal_eligible")]
-    nearest_demand = dict((main_demands or demands)[0]) if demands else {}
-    nearest_supply = dict((main_supplies or supplies)[0]) if supplies else {}
+    usable_demands = [x for x in demands if not x.get("intraday_quarantined")]
+    usable_supplies = [x for x in supplies if not x.get("intraday_quarantined")]
+    nearest_demand = (
+        dict((main_demands or usable_demands or demands)[0]) if demands else {}
+    )
+    nearest_supply = (
+        dict((main_supplies or usable_supplies or supplies)[0]) if supplies else {}
+    )
 
     decision_zone, refinement_zone, hierarchy_selection = _select_parent_and_refinement(
         active,
@@ -2428,6 +2559,7 @@ def evaluate_sd_liquidity(
             for row in active
             if not row.get("main_reversal_eligible")
         ],
+        "intraday_quarantined_zones": quarantined_zones[:6],
         "decision_zone": decision_zone,
         "main_reversal_zone": decision_zone,
         "refinement_zone": refinement_zone,
@@ -2525,6 +2657,11 @@ def evaluate_sd_liquidity(
                 "AND_PROMOTE_NEXT_ELIGIBLE_MAIN_REVERSAL_ZONE"
             ),
             "reversal_confirmation": "TOUCH/SWEEP + RECLAIM + LOCAL_MSS + DISPLACEMENT",
+            "intraday_parent_reroute": (
+                "V369: completed M15 deep breach >=0.25 parent ATR or two consecutive closes "
+                "beyond distal+0.05 ATR temporarily quarantines the HTF parent and reroutes "
+                "PREPARE to the next eligible main-reversal zone; M15 reclaim releases quarantine."
+            ),
             "rebuild_policy": "RECALCULATE_FROM_COMPLETED_H4_H1_M15_M5_ON_EACH_RUNTIME_CYCLE",
         },
         "execution_authority": EXECUTION_AUTHORITY,
