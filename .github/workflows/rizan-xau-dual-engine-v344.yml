@@ -62,7 +62,8 @@ jobs:
           pytest -q \
             tests/test_xau_sd_liquidity_engine_v342.py \
             tests/test_xau_friend_entry_engine_v343.py \
-            tests/test_xau_news_zone_v346.py
+            tests/test_xau_news_zone_v346.py \
+            tests/test_demo_xau_v351_executor.py
       - name: Validate configuration
         if: ${{ github.event_name != 'pull_request' }}
         run: python -m fx_scanner.cli validate-config
