@@ -286,6 +286,10 @@ def _zone_audit(zone: dict[str, Any]) -> dict[str, Any]:
         "pattern",
         "score",
         "parent_zone_id",
+        "source",
+        "lifecycle_state",
+        "current_role",
+        "status",
     )
     return {key: zone.get(key) for key in keys if zone.get(key) is not None}
 
