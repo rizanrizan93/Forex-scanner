@@ -1319,8 +1319,13 @@ def _structural_destination(
 ) -> dict[str, Any]:
     opposite = "SHORT" if direction == "LONG" else "LONG"
     h4_targets = []
+    quality_profile_available = any(
+        "main_reversal_eligible" in z for z in active_zones
+    )
     for z in active_zones:
         if z.get("timeframe") != "H4" or z.get("direction") != opposite:
+            continue
+        if quality_profile_available and not bool(z.get("main_reversal_eligible")):
             continue
         edge = float(z["low"]) if direction == "LONG" else float(z["high"])
         if direction == "LONG" and edge <= start_price:
@@ -1340,7 +1345,9 @@ def _structural_destination(
         "high": zone["high"],
         "price": edge,
         "distance_points": distance,
-        "role": "OPPOSING_H4_DESTINATION",
+        "role": "OPPOSING_H4_MAIN_REVERSAL_DESTINATION",
+        "main_reversal_score": zone.get("main_reversal_score"),
+        "condition": zone.get("condition"),
     }
 
 
@@ -1391,9 +1398,16 @@ def _roadblocks(
             if entry is not None and risk is not None
             else None
         )
+        main_reversal_eligible = bool(z.get("main_reversal_eligible"))
+        # A degraded/exhausted opposing zone can still react and remains a TP
+        # checkpoint, but it must not hard-block a valid parent solely because
+        # it is close. Only a genuine main-reversal roadblock uses the 0.50 ATR
+        # proximity veto. Every roadblock still respects the >=1.50R rule when
+        # entry geometry exists.
         reduces_room = bool(
             (
-                distance_parent_atr is not None
+                main_reversal_eligible
+                and distance_parent_atr is not None
                 and distance_parent_atr < 0.50
             )
             or (
@@ -1419,6 +1433,12 @@ def _roadblocks(
                 "score": z.get("score"),
                 "freshness": dict(z.get("lifecycle") or {}).get("freshness"),
                 "hierarchy_role": z.get("hierarchy_role"),
+                "main_reversal_eligible": main_reversal_eligible,
+                "reversal_class": (
+                    "MAIN_REVERSAL"
+                    if main_reversal_eligible
+                    else "REACTION_ONLY"
+                ),
                 "severity": severity,
             }
         )
