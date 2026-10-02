@@ -8,6 +8,7 @@ from fx_scanner.xau_sd_liquidity_engine_v342 import (
     _classify_hierarchy,
     _conditional_failure_path,
     _h2_frame_from_h1,
+    _prepared_entry_band,
     _roadblocks,
     _select_parent_and_refinement,
     _structural_destination,
@@ -83,6 +84,22 @@ def test_v342_detects_causal_h1_demand_zone():
     assert zone.available_at == bars[25].timestamp + timedelta(hours=1)
     assert zone.low < zone.high
     assert zone.structural_bos is True
+
+
+def test_v354_prepared_entry_band_is_available_before_micro_confirmation():
+    demand = _zone_row(
+        "h4-demand",
+        "H4",
+        "LONG",
+        4144.56,
+        4175.17,
+        price=4171.8,
+    )
+    prepared = _prepared_entry_band(demand)
+    assert prepared["state"] == "PREPARE_FORECAST"
+    assert prepared["execution_authority"] is False
+    assert 4144.56 < prepared["entry_low"] < prepared["entry_high"] < 4175.17
+    assert prepared["entry_low"] < prepared["entry_reference"] < prepared["entry_high"]
 
 
 def test_v352_evaluation_is_isolated_and_demo_execution_authorized():
