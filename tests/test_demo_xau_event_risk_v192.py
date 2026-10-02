@@ -193,12 +193,12 @@ def test_v355_official_merge_preserves_discovery_forecast_values():
     assert merged[0].previous == 162_000.0
 
 
-def test_v355_event_horizon_includes_next_seven_days():
+def test_v355_event_horizon_includes_next_thirty_days():
     now = datetime(2026, 10, 2, 12, 0, tzinfo=UTC)
     event = RiskEvent(
         event_id="future",
         title="Consumer Price Index",
-        scheduled_at=now + timedelta(days=6, hours=23),
+        scheduled_at=now + timedelta(days=29, hours=23),
         impact="HIGH",
         category="CPI",
         source="BLS_OFFICIAL_ICS",
@@ -207,3 +207,12 @@ def test_v355_event_horizon_includes_next_seven_days():
     )
     risk = evaluate_event_risk((event,), now=now)
     assert len(risk["upcoming_events"]) == 1
+
+
+
+def test_v355_labor_components_do_not_collapse_into_one_category():
+    from fx_scanner.demo_xau_event_risk_v192 import _category
+
+    assert _category("Non-Farm Employment Change") == "EMPLOYMENT"
+    assert _category("Unemployment Rate") == "UNEMPLOYMENT_RATE"
+    assert _category("Average Hourly Earnings m/m") == "WAGES"
