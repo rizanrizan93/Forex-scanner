@@ -140,7 +140,13 @@ def merge_runtime_heartbeat_rows(
         elif worker == "ctrader_demo_xau_micro_destination_v328":
             old_eval.update(new_eval)
         else:
-            old_details.update(new_details)
+            # Generic compact operational projections (including V342/V343)
+            # must merge their evaluation payload instead of letting the cached
+            # summary row overwrite it with an empty dict.
+            old_eval.update(new_eval)
+            for key, value in new_details.items():
+                if key != "evaluation":
+                    old_details[key] = value
 
         if new_eval or "evaluation" in new_details:
             old_details["evaluation"] = old_eval
