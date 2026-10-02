@@ -1909,12 +1909,21 @@ def evaluate_sd_liquidity(
         payloads.append(row)
 
     active = _classify_hierarchy(_dedupe(payloads), price_now=current)
+    for row in active:
+        profile = _main_reversal_profile(row, price_now=current)
+        row["main_reversal_eligible"] = bool(profile["eligible"])
+        row["main_reversal_score"] = profile["quality_score"]
+        row["main_reversal_reasons"] = list(profile["reasons"])
+        row["main_reversal_distance_atr"] = profile["distance_atr"]
+
     demands = [x for x in active if x["direction"] == "LONG"]
     supplies = [x for x in active if x["direction"] == "SHORT"]
     demands.sort(key=lambda x: (float(x["distance_points"]), -float(x["score"])))
     supplies.sort(key=lambda x: (float(x["distance_points"]), -float(x["score"])))
-    nearest_demand = dict(demands[0]) if demands else {}
-    nearest_supply = dict(supplies[0]) if supplies else {}
+    main_demands = [x for x in demands if x.get("main_reversal_eligible")]
+    main_supplies = [x for x in supplies if x.get("main_reversal_eligible")]
+    nearest_demand = dict((main_demands or demands)[0]) if demands else {}
+    nearest_supply = dict((main_supplies or supplies)[0]) if supplies else {}
 
     decision_zone, refinement_zone, hierarchy_selection = _select_parent_and_refinement(
         active,
@@ -2061,6 +2070,21 @@ def evaluate_sd_liquidity(
         },
         "nearest_demand": nearest_demand,
         "nearest_supply": nearest_supply,
+        "main_reversal_candidates": [
+            dict(row)
+            for row in sorted(
+                [x for x in active if x.get("main_reversal_eligible")],
+                key=lambda x: (
+                    float(x.get("main_reversal_distance_atr") or 0.0),
+                    -float(x.get("main_reversal_score") or 0.0),
+                ),
+            )[:6]
+        ],
+        "reaction_zones": [
+            dict(row)
+            for row in active
+            if not row.get("main_reversal_eligible")
+        ],
         "decision_zone": decision_zone,
         "main_reversal_zone": decision_zone,
         "refinement_zone": refinement_zone,
