@@ -12,6 +12,20 @@ quorum:
   minimum_success: 1
   maximum_numeric_conflict: 10.0
 
+intraday_market:
+  US10Y_YAHOO_TNX:
+    enabled: true
+    official: false
+    base_url: https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX
+    allowed_host: query1.finance.yahoo.com
+    interval: 1m
+    range: 1d
+    max_age_seconds: 1200
+    post_event_window_hours: 8
+    minimum_initial_drop_bps: 1.5
+    reversal_threshold_bps: 3.0
+    strong_reversal_threshold_bps: 5.0
+
 sources:
   ECB_DATA_PORTAL:
     enabled: true
