@@ -20,9 +20,9 @@ permissions:
 
 concurrency:
   group: forexrizan-dashboard-bridge-v344-isolated
-  # A newer main commit must supersede a publisher running older bridge code.
-  # The next run hydrates the last published snapshot before continuing.
-  cancel-in-progress: true
+  # Keep the continuous publisher serialized. Hotfixes use the isolated V344
+  # snapshot lane, so an older legacy publisher cannot overwrite this branch.
+  cancel-in-progress: false
 
 jobs:
   publish:
