@@ -185,7 +185,7 @@ def test_v344_v342_projection_keeps_structural_tab_fields_without_full_details()
         "refinement_zone": {"timeframe": "H1", "direction": "SHORT"},
         "structural_destination": {"low": 4144.56, "high": 4175.17},
         "structural_room": {"state": "COMPRESSED_HTF_CORRIDOR", "blocked": True},
-        "structural_path": {"state": "PATH_AVAILABLE", "checkpoints": [{"order": 1}]},
+        "structural_checkpoints": [{"order": 1}],
         "failure_path": {"state": "CONDITIONAL_ONLY", "checkpoints": []},
         "support_resistance": [{"kind": "RESISTANCE", "price": 4187.3}],
         "nearest_roadblock": {},
