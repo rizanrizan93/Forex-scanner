@@ -1,0 +1,76 @@
+name: ForexRizan V344 Snapshot Hotfix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/forexrizan-v344-snapshot-hotfix.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: forexrizan-v344-snapshot-hotfix
+  cancel-in-progress: true
+
+jobs:
+  publish-once:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dashboard bridge runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+
+      - name: Build fresh V344 snapshot
+        run: |
+          rm -rf runtime
+          mkdir -p runtime
+          python -m fx_scanner.xau_dashboard_bridge_v254 \
+            --output runtime/xau_dashboard_snapshot.json
+
+      - name: Verify V342 and V343 are present
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path("runtime/xau_dashboard_snapshot.json").read_text())
+          rows = list((payload.get("backend") or {}).get("heartbeats") or [])
+          by_worker = {str(r.get("worker_name") or ""): r for r in rows}
+          required = [
+              "ctrader_demo_xau_sd_liquidity_v342",
+              "ctrader_demo_xau_friend_entry_v343",
+          ]
+          missing = [name for name in required if name not in by_worker]
+          if missing:
+              raise SystemExit("V344_SNAPSHOT_MISSING=" + ",".join(missing))
+          for name in required:
+              evaluation = dict((by_worker[name].get("details") or {}).get("evaluation") or {})
+              if not evaluation:
+                  raise SystemExit("V344_EVALUATION_EMPTY=" + name)
+              print(name, evaluation.get("state"))
+          PY
+
+      - name: Publish to both snapshot lanes
+        run: |
+          set -euo pipefail
+          git config user.name "RIZAN Dashboard Hotfix"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f runtime/xau_dashboard_snapshot.json
+          git commit -m "runtime: publish V344 snapshot hotfix"
+          git push --force origin HEAD:dashboard-snapshots-v344
+          git push --force origin HEAD:dashboard-snapshots
