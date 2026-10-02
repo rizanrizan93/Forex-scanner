@@ -216,3 +216,186 @@ def test_v355_labor_components_do_not_collapse_into_one_category():
     assert _category("Non-Farm Employment Change") == "EMPLOYMENT"
     assert _category("Unemployment Rate") == "UNEMPLOYMENT_RATE"
     assert _category("Average Hourly Earnings m/m") == "WAGES"
+
+
+
+def test_v361_parse_current_bls_employment_actuals():
+    from fx_scanner.demo_xau_event_risk_v192 import parse_bls_employment_release
+
+    body = b"""
+    <html><body>
+    Transmission of material in this news release is embargoed until USDL-26-9999
+    8:30 a.m. (ET) Friday, October 2, 2026
+
+    THE EMPLOYMENT SITUATION - SEPTEMBER 2026
+
+    Total nonfarm payroll employment changed little in September (+29,000), and the
+    unemployment rate rose to 4.2 percent, the U.S. Bureau of Labor Statistics reported today.
+
+    In September, average hourly earnings for all employees on private nonfarm payrolls rose
+    by 8 cents, or 0.2 percent, to $37.83. Over the year, average hourly earnings have
+    increased by 3.1 percent.
+    </body></html>
+    """
+    out = parse_bls_employment_release(
+        body,
+        source_url="https://www.bls.gov/news.release/empsit.nr0.htm",
+        now=datetime(2026, 10, 2, 12, 45, tzinfo=UTC),
+    )
+    assert out["release_at"] == datetime(2026, 10, 2, 12, 30, tzinfo=UTC)
+    assert out["report_period"] == "September 2026"
+    assert out["EMPLOYMENT"] == 29_000.0
+    assert out["UNEMPLOYMENT_RATE"] == 4.2
+    assert out["WAGES"] == 0.2
+    assert out["WAGES_YOY"] == 3.1
+
+
+def test_v361_stale_bls_employment_page_is_rejected():
+    from fx_scanner.demo_xau_event_risk_v192 import parse_bls_employment_release
+
+    body = b"""
+    <html><body>
+    8:30 a.m. (ET) Friday, September 4, 2026
+    THE EMPLOYMENT SITUATION - AUGUST 2026
+    Total nonfarm payroll employment rose by 162,000 in August, and the unemployment rate
+    was unchanged at 4.1 percent.
+    </body></html>
+    """
+    out = parse_bls_employment_release(
+        body,
+        source_url="https://www.bls.gov/news.release/empsit.nr0.htm",
+        now=datetime(2026, 10, 2, 12, 45, tzinfo=UTC),
+    )
+    assert out == {}
+
+
+def test_v361_overlay_preserves_consensus_and_adds_official_actuals():
+    from fx_scanner.demo_xau_event_risk_v192 import overlay_bls_employment_actuals
+
+    at = datetime(2026, 10, 2, 12, 30, tzinfo=UTC)
+    base = (
+        RiskEvent(
+            event_id="nfp",
+            title="Employment Situation",
+            scheduled_at=at,
+            impact="HIGH",
+            category="EMPLOYMENT",
+            source="BLS_OFFICIAL_ICS",
+            source_tier="OFFICIAL",
+            source_url="https://www.bls.gov/schedule/news_release/bls.ics",
+            forecast=89_000.0,
+            previous=162_000.0,
+        ),
+        RiskEvent(
+            event_id="unemp",
+            title="Unemployment Rate",
+            scheduled_at=at,
+            impact="HIGH",
+            category="UNEMPLOYMENT_RATE",
+            source="FOREX_FACTORY_WEEKLY",
+            source_tier="DISCOVERY_UNVERIFIED",
+            source_url="https://example.com/calendar",
+            forecast=4.1,
+            previous=4.1,
+        ),
+        RiskEvent(
+            event_id="wages",
+            title="Average Hourly Earnings m/m",
+            scheduled_at=at,
+            impact="HIGH",
+            category="WAGES",
+            source="FOREX_FACTORY_WEEKLY",
+            source_tier="DISCOVERY_UNVERIFIED",
+            source_url="https://example.com/calendar",
+            forecast=0.3,
+            previous=0.3,
+        ),
+    )
+    out = overlay_bls_employment_actuals(
+        base,
+        {
+            "release_at": at,
+            "source_url": "https://www.bls.gov/news.release/empsit.nr0.htm",
+            "EMPLOYMENT": 29_000.0,
+            "UNEMPLOYMENT_RATE": 4.2,
+            "WAGES": 0.2,
+        },
+    )
+    rows = {event.category: event for event in out}
+    assert rows["EMPLOYMENT"].actual == 29_000.0
+    assert rows["EMPLOYMENT"].forecast == 89_000.0
+    assert rows["EMPLOYMENT"].previous == 162_000.0
+    assert rows["UNEMPLOYMENT_RATE"].actual == 4.2
+    assert rows["WAGES"].actual == 0.2
+    assert rows["EMPLOYMENT"].source_tier == "OFFICIAL_ACTUAL_WITH_DISCOVERY_CONSENSUS"
+
+
+def test_v361_post_release_bias_is_bullish_xau_for_weak_jobs_and_higher_unemployment():
+    from fx_scanner.demo_xau_event_risk_v192 import overlay_bls_employment_actuals
+
+    at = datetime(2026, 10, 2, 12, 30, tzinfo=UTC)
+    events = (
+        RiskEvent(
+            event_id="nfp",
+            title="Employment Situation",
+            scheduled_at=at,
+            impact="HIGH",
+            category="EMPLOYMENT",
+            source="BLS_OFFICIAL_ICS",
+            source_tier="OFFICIAL",
+            source_url="https://www.bls.gov/schedule/news_release/bls.ics",
+            forecast=89_000.0,
+            previous=162_000.0,
+        ),
+        RiskEvent(
+            event_id="unemp",
+            title="Unemployment Rate",
+            scheduled_at=at,
+            impact="HIGH",
+            category="UNEMPLOYMENT_RATE",
+            source="FOREX_FACTORY_WEEKLY",
+            source_tier="DISCOVERY_UNVERIFIED",
+            source_url="https://example.com/calendar",
+            forecast=4.1,
+            previous=4.1,
+        ),
+    )
+    enriched = overlay_bls_employment_actuals(
+        events,
+        {
+            "release_at": at,
+            "source_url": "https://www.bls.gov/news.release/empsit.nr0.htm",
+            "EMPLOYMENT": 29_000.0,
+            "UNEMPLOYMENT_RATE": 4.2,
+        },
+    )
+    rows = {event.category: event.as_dict() for event in enriched}
+    assert rows["EMPLOYMENT"]["gold_bias"] == "GOLD_BULLISH"
+    assert rows["EMPLOYMENT"]["gold_bias_confidence"] == "POST_RELEASE"
+    assert rows["EMPLOYMENT"]["gold_bias_basis"] == "ACTUAL_VS_FORECAST"
+    assert rows["UNEMPLOYMENT_RATE"]["gold_bias"] == "GOLD_BULLISH"
+    assert rows["UNEMPLOYMENT_RATE"]["gold_bias_confidence"] == "POST_RELEASE"
+
+
+def test_v361_dashboard_projection_contains_actual_values():
+    from fx_scanner.demo_xau_event_risk_v192 import build_dashboard_projection
+
+    projection = build_dashboard_projection(
+        {
+            "state": "POST_EVENT_DISCOVERY",
+            "action": "REVALIDATE_SPREAD_DOM_STRUCTURE",
+            "focal_event": {
+                "title": "Employment Situation",
+                "actual": 29_000.0,
+                "forecast": 89_000.0,
+                "previous": 162_000.0,
+                "gold_bias": "GOLD_BULLISH",
+                "gold_bias_confidence": "POST_RELEASE",
+                "gold_bias_basis": "ACTUAL_VS_FORECAST",
+            },
+            "upcoming_events": [],
+            "minutes_to_focal": -15.0,
+        }
+    )
+    assert projection["focal_event"]["actual"] == 29_000.0
+    assert projection["focal_event"]["gold_bias_confidence"] == "POST_RELEASE"
