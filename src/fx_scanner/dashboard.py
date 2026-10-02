@@ -375,6 +375,118 @@ class SupabaseDashboardReader:
             )
         )
 
+    def latest_xau_event_risk_operational_heartbeat(
+        self,
+    ) -> dict[str, Any] | None:
+        """Return compact V192 event calendar/consensus state for the dashboard."""
+
+        select_expr = (
+            "worker_name,observed_at,healthy,lag_seconds,"
+            "state:details->risk->>state,"
+            "action:details->risk->>action,"
+            "focal_event:details->risk->focal_event,"
+            "upcoming_events:details->risk->upcoming_events,"
+            "minutes_to_focal:details->risk->minutes_to_focal,"
+            "execution_authority:details->risk->execution_authority,"
+            "execution_influence:details->risk->execution_influence"
+        )
+        try:
+            response = (
+                self.client.table("runtime_heartbeats")
+                .select(select_expr)
+                .eq("worker_name", "ctrader_demo_xau_event_risk_v192")
+                .order("observed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"V192 operational heartbeat read failed: {exc}"
+            ) from exc
+        rows = self._rows(response)
+        if not rows:
+            return None
+        raw = dict(rows[0])
+        risk = {
+            "state": raw.pop("state", None),
+            "action": raw.pop("action", None),
+            "focal_event": dict(raw.pop("focal_event", {}) or {}),
+            "upcoming_events": list(raw.pop("upcoming_events", []) or []),
+            "minutes_to_focal": raw.pop("minutes_to_focal", None),
+            "execution_authority": bool(raw.pop("execution_authority", False)),
+            "execution_influence": bool(raw.pop("execution_influence", False)),
+        }
+        return {
+            **raw,
+            "details": {
+                "risk": risk,
+                "transport_projection": "V192_EVENT_OPERATIONAL_60S",
+            },
+        }
+
+    def latest_xau_macro_attribution_operational_heartbeat(
+        self,
+    ) -> dict[str, Any] | None:
+        """Return compact V357 broader macro state for the dashboard."""
+
+        select_expr = (
+            "worker_name,observed_at,healthy,lag_seconds,"
+            "state:details->evaluation->>state,"
+            "broader_macro_bias:details->evaluation->>broader_macro_bias,"
+            "macro_score:details->evaluation->macro_score,"
+            "confidence:details->evaluation->>confidence,"
+            "coverage:details->evaluation->coverage,"
+            "components:details->evaluation->components,"
+            "event_consensus_bias:details->evaluation->>event_consensus_bias,"
+            "consensus_relationship:details->evaluation->>consensus_relationship,"
+            "fed_repricing_proxy:details->evaluation->fed_repricing_proxy,"
+            "available_components:details->evaluation->available_components,"
+            "missing_components:details->evaluation->missing_components,"
+            "dxy_note:details->evaluation->>dxy_note,"
+            "execution_authority:details->evaluation->execution_authority,"
+            "execution_influence:details->evaluation->execution_influence"
+        )
+        try:
+            response = (
+                self.client.table("runtime_heartbeats")
+                .select(select_expr)
+                .eq("worker_name", "ctrader_demo_xau_macro_attribution_v357")
+                .order("observed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            raise DashboardReadError(
+                f"V357 operational heartbeat read failed: {exc}"
+            ) from exc
+        rows = self._rows(response)
+        if not rows:
+            return None
+        raw = dict(rows[0])
+        evaluation = {
+            "state": raw.pop("state", None),
+            "broader_macro_bias": raw.pop("broader_macro_bias", None),
+            "macro_score": raw.pop("macro_score", None),
+            "confidence": raw.pop("confidence", None),
+            "coverage": raw.pop("coverage", None),
+            "components": dict(raw.pop("components", {}) or {}),
+            "event_consensus_bias": raw.pop("event_consensus_bias", None),
+            "consensus_relationship": raw.pop("consensus_relationship", None),
+            "fed_repricing_proxy": dict(raw.pop("fed_repricing_proxy", {}) or {}),
+            "available_components": list(raw.pop("available_components", []) or []),
+            "missing_components": list(raw.pop("missing_components", []) or []),
+            "dxy_note": raw.pop("dxy_note", None),
+            "execution_authority": bool(raw.pop("execution_authority", False)),
+            "execution_influence": bool(raw.pop("execution_influence", False)),
+        }
+        return {
+            **raw,
+            "details": {
+                "evaluation": evaluation,
+                "transport_projection": "V357_MACRO_OPERATIONAL_60S",
+            },
+        }
+
     def latest_xau_sd_liquidity_operational_heartbeat(
         self,
     ) -> dict[str, Any] | None:
