@@ -386,11 +386,23 @@ class SupabaseDashboardReader:
             "failure_path:details->evaluation->failure_path,"
             "micro_confirmation:details->evaluation->micro_confirmation,"
             "entry_guide:details->evaluation->entry_guide,"
-            "liquidity_map:details->evaluation->liquidity_map,"
-            "news_zone:details->evaluation->news_zone,"
+            "liquidity_side:details->evaluation->liquidity_map->>side,"
+            "liquidity_low:details->evaluation->liquidity_map->low,"
+            "liquidity_high:details->evaluation->liquidity_map->high,"
+            "liquidity_extension_atr:details->evaluation->liquidity_map->extension_atr,"
+            "liquidity_warning:details->evaluation->liquidity_map->>warning,"
+            "news_risk_state:details->evaluation->news_zone->>risk_state,"
+            "news_focal_event:details->evaluation->news_zone->focal_event,"
+            "news_overshoot_risk:details->evaluation->news_zone->>overshoot_risk,"
+            "news_effective_entry_state:details->evaluation->news_zone->>effective_entry_state,"
+            "news_zone_interaction:details->evaluation->news_zone->zone_interaction,"
+            "news_next_zone:details->evaluation->news_zone->next_same_type_htf_zone,"
+            "news_zone_coupled:details->evaluation->news_zone->zone_coupled,"
+            "news_zone_distance_atr:details->evaluation->news_zone->zone_distance_atr,"
+            "news_preferred_path:details->evaluation->news_zone->>preferred_path,"
+            "news_alternative_path:details->evaluation->news_zone->>alternative_path,"
             "market_structure:details->evaluation->market_structure,"
-            "expected_reversal_direction:details->evaluation->>expected_reversal_direction,"
-            "historical_depth_prior:details->evaluation->historical_depth_prior"
+            "expected_reversal_direction:details->evaluation->>expected_reversal_direction"
         )
         try:
             response = (
@@ -431,15 +443,37 @@ class SupabaseDashboardReader:
             "nearest_roadblock": {},
             "micro_confirmation": dict(raw.pop("micro_confirmation", {}) or {}),
             "entry_guide": dict(raw.pop("entry_guide", {}) or {}),
-            "liquidity_map": dict(raw.pop("liquidity_map", {}) or {}),
-            "news_zone": dict(raw.pop("news_zone", {}) or {}),
+            "liquidity_map": {
+                "side": raw.pop("liquidity_side", None),
+                "low": raw.pop("liquidity_low", None),
+                "high": raw.pop("liquidity_high", None),
+                "extension_atr": raw.pop("liquidity_extension_atr", None),
+                "warning": raw.pop("liquidity_warning", None),
+                "liquidity_candidates": [],
+            },
+            "news_zone": {
+                "risk_state": raw.pop("news_risk_state", None),
+                "focal_event": dict(raw.pop("news_focal_event", {}) or {}),
+                "overshoot_risk": raw.pop("news_overshoot_risk", None),
+                "effective_entry_state": raw.pop(
+                    "news_effective_entry_state", None
+                ),
+                "zone_interaction": dict(
+                    raw.pop("news_zone_interaction", {}) or {}
+                ),
+                "next_same_type_htf_zone": dict(
+                    raw.pop("news_next_zone", {}) or {}
+                ),
+                "zone_coupled": raw.pop("news_zone_coupled", None),
+                "zone_distance_atr": raw.pop("news_zone_distance_atr", None),
+                "preferred_path": raw.pop("news_preferred_path", None),
+                "alternative_path": raw.pop("news_alternative_path", None),
+            },
             "market_structure": dict(raw.pop("market_structure", {}) or {}),
             "expected_reversal_direction": raw.pop(
                 "expected_reversal_direction", None
             ),
-            "historical_depth_prior": dict(
-                raw.pop("historical_depth_prior", {}) or {}
-            ),
+            "historical_depth_prior": {},
         }
         raw["details"] = {
             "evaluation": evaluation,
