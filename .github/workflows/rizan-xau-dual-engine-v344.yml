@@ -24,8 +24,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: rizan-xau-dual-engine-v344
-  cancel-in-progress: true
+  group: rizan-xau-dual-engine-v352-demo-execution
+  cancel-in-progress: false
 
 jobs:
   test-and-refresh:
