@@ -189,6 +189,7 @@ def _zone_interaction(
 
     failed = bool(strong_break or consecutive_break)
     micro_confirmed = bool(micro.get("confirmed"))
+    micro_early_confirmed = bool(micro.get("early_confirmed"))
     micro_reclaim_at = str(micro.get("reclaim_at") or "")
     micro_after_event = True
     if event_at is not None and micro_reclaim_at:
@@ -204,8 +205,10 @@ def _zone_interaction(
         state = "ZONE_FAILED_AFTER_NEWS"
     elif swept and reclaimed and micro_confirmed and micro_after_event:
         state = "NEWS_SWEEP_REVERSAL_CONFIRMED"
+    elif swept and reclaimed and micro_early_confirmed and micro_after_event:
+        state = "NEWS_SWEEP_EARLY_REVERSAL_CONFIRMED"
     elif swept and reclaimed:
-        state = "NEWS_SWEEP_RECLAIM_WAIT_MSS"
+        state = "NEWS_SWEEP_RECLAIM_WAIT_LOCAL_MSS"
     elif swept:
         state = "NEWS_SWEEP_WAIT_RECLAIM"
     elif bool(
@@ -222,6 +225,7 @@ def _zone_interaction(
         "strong_close_failure": strong_break,
         "two_close_failure": consecutive_break,
         "micro_confirmed": micro_confirmed,
+        "micro_early_confirmed": micro_early_confirmed,
         "micro_after_event": micro_after_event,
         "zone_direction": direction,
     }
@@ -282,6 +286,7 @@ def evaluate_news_zone(
 
     failed = interaction.get("state") == "ZONE_FAILED_AFTER_NEWS"
     confirmed = interaction.get("state") == "NEWS_SWEEP_REVERSAL_CONFIRMED"
+    early_confirmed = interaction.get("state") == "NEWS_SWEEP_EARLY_REVERSAL_CONFIRMED"
     next_zone = (
         _next_same_zone(
             list(sd_evaluation.get("active_zones") or []),
@@ -307,6 +312,10 @@ def evaluate_news_zone(
         decision_state = "POST_NEWS_REVERSAL_CONFIRMED"
         preferred = "REVERSAL_FROM_HTF_ZONE_TOWARD_OPPOSING_ZONE"
         alternative = "INVALIDATE_IF_RECLAIM_FAILS_OR_STRONG_DISTAL_CLOSE_RETURNS"
+    elif early_confirmed:
+        decision_state = "POST_NEWS_EARLY_REVERSAL_CONFIRMED"
+        preferred = "BOUNDED_DEMO_PROBE_FROM_RECLAIM_WITH_STRUCTURAL_INVALIDATION"
+        alternative = "WAIT_FULL_LOCAL_MSS_FOR_STRONGER_CONFIRMATION"
     elif risk_state == "POST_EVENT_DISCOVERY":
         decision_state = "WAIT_POST_NEWS_CONFIRMATION"
         preferred = "WAIT_SWEEP_RECLAIM_MSS_DISPLACEMENT"
@@ -325,7 +334,7 @@ def evaluate_news_zone(
         effective_entry_state = "WAIT_FOR_NEWS"
     elif failed:
         effective_entry_state = "BLOCK_FAILED_ZONE"
-    elif risk_state == "POST_EVENT_DISCOVERY" and not confirmed:
+    elif risk_state == "POST_EVENT_DISCOVERY" and not (confirmed or early_confirmed):
         effective_entry_state = "WAIT_POST_NEWS_M5_M15_CONFIRMATION"
 
     upcoming = [
