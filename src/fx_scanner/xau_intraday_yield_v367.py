@@ -4,7 +4,9 @@ import json
 from datetime import UTC, datetime, timedelta
 from math import isfinite
 from typing import Any, Iterable, Mapping
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
+
+from curl_cffi import requests as curl_requests
 
 CONTRACT = "XAU_US10Y_INTRADAY_REVERSAL_V367"
 
@@ -61,12 +63,12 @@ def parse_yahoo_tnx_chart(body: bytes) -> tuple[dict[str, Any], ...]:
 
 
 def fetch_intraday_us10y(
-    transport: Any,
     *,
     base_url: str,
     allowed_host: str,
     interval: str = "1m",
     range_name: str = "1d",
+    timeout_seconds: float = 10.0,
 ) -> tuple[dict[str, Any], ...]:
     query = urlencode(
         {
@@ -76,18 +78,20 @@ def fetch_intraday_us10y(
             "events": "div,splits",
         }
     )
-    response = transport.get(
+    parsed = urlparse(base_url)
+    if parsed.scheme != "https" or parsed.hostname != allowed_host:
+        raise ValueError("intraday yield source HTTPS host contract is invalid")
+    response = curl_requests.get(
         f"{base_url}?{query}",
-        allowed_host=allowed_host,
-        headers={
-            "Accept": "application/json,*/*;q=0.1",
-            "User-Agent": (
-                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-            ),
-        },
+        headers={"Accept": "application/json,*/*;q=0.1"},
+        timeout=float(timeout_seconds),
+        impersonate="chrome",
     )
-    return parse_yahoo_tnx_chart(response.body)
+    response.raise_for_status()
+    final = urlparse(str(response.url))
+    if final.scheme != "https" or final.hostname != allowed_host:
+        raise ValueError("intraday yield source redirected outside allowed host")
+    return parse_yahoo_tnx_chart(bytes(response.content))
 
 
 def select_latest_post_release_event(

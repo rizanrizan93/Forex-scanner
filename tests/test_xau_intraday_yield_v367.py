@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 from fx_scanner.xau_intraday_yield_v367 import (
     evaluate_post_event_yield_reversal,
+    fetch_intraday_us10y,
     parse_yahoo_tnx_chart,
     select_latest_post_release_event,
 )
@@ -122,3 +123,48 @@ def test_v367_stale_intraday_yield_fails_closed():
     assert out["available"] is False
     assert out["state"] == "INTRADAY_YIELD_STALE"
     assert out["execution_authority"] is False
+
+
+def test_v367_fetch_uses_browser_tls_impersonation(monkeypatch):
+    at = datetime(2026, 10, 2, 12, 30, tzinfo=UTC)
+    body = json.dumps(
+        {
+            "chart": {
+                "result": [
+                    {
+                        "timestamp": [int(at.timestamp())],
+                        "indicators": {"quote": [{"close": [5.24]}]},
+                    }
+                ],
+                "error": None,
+            }
+        }
+    ).encode()
+    observed = {}
+
+    class Response:
+        url = "https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1m"
+
+        def raise_for_status(self):
+            return None
+
+        @property
+        def content(self):
+            return body
+
+    def fake_get(url, **kwargs):
+        observed["url"] = url
+        observed.update(kwargs)
+        return Response()
+
+    monkeypatch.setattr(
+        "fx_scanner.xau_intraday_yield_v367.curl_requests.get",
+        fake_get,
+    )
+    rows = fetch_intraday_us10y(
+        base_url="https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX",
+        allowed_host="query1.finance.yahoo.com",
+    )
+    assert rows[0]["yield_pct"] == 5.24
+    assert observed["impersonate"] == "chrome"
+    assert observed["timeout"] == 10.0

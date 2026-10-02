@@ -239,11 +239,13 @@ def run() -> int:
     if bool(intraday_cfg.get("enabled", False)) and anchor:
         try:
             points = fetch_intraday_us10y(
-                runtime.transport,
                 base_url=str(intraday_cfg["base_url"]),
                 allowed_host=str(intraday_cfg["allowed_host"]),
                 interval=str(intraday_cfg.get("interval") or "1m"),
                 range_name=str(intraday_cfg.get("range") or "1d"),
+                timeout_seconds=float(
+                    dict(cfg.providers.get("transport") or {}).get("timeout_seconds") or 10.0
+                ),
             )
             intraday_yield = evaluate_post_event_yield_reversal(
                 points,
