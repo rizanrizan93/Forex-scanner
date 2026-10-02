@@ -94,6 +94,39 @@ def _checkpoint_label(checkpoint: dict[str, Any]) -> str:
     return f"{checkpoint.get('zone_type','S/R')} ~{_px(checkpoint.get('price'))}"
 
 
+def _sr_state_label(value: Any) -> str:
+    labels = {
+        "ACTIVE_SUPPORT": "ACTIVE SUPPORT",
+        "ACTIVE_RESISTANCE": "ACTIVE RESISTANCE",
+        "ACTIVE_FLIP_CONTEXT": "FLIP CONTEXT",
+        "BULL_BREAKOUT_AWAIT_RETEST": "BULL BREAKOUT • WAIT RETEST",
+        "BULL_RETEST_IN_PROGRESS": "BULL RETEST • WAIT HOLD",
+        "CONFIRMED_SUPPORT_FLIP": "CONFIRMED SUPPORT FLIP",
+        "FAILED_BULL_BREAKOUT_RECLAIM_REQUIRED": "FAILED BULL BREAKOUT • RECLAIM REQUIRED",
+        "BEAR_BREAKDOWN_AWAIT_RETEST": "BEAR BREAK • WAIT RETEST",
+        "BEAR_RETEST_IN_PROGRESS": "BEAR RETEST • WAIT HOLD",
+        "CONFIRMED_RESISTANCE_FLIP": "CONFIRMED RESISTANCE FLIP",
+        "FAILED_BEAR_BREAKDOWN_RECLAIM_REQUIRED": "FAILED BEAR BREAK • RECLAIM REQUIRED",
+        "UPSIDE_SWEEP_LIKE_REJECTION": "UPSIDE SWEEP-LIKE REJECTION",
+        "DOWNSIDE_SWEEP_LIKE_REJECTION": "DOWNSIDE SWEEP-LIKE REJECTION",
+        "PRICE_ABOVE_RESISTANCE_UNRESOLVED": "ABOVE RESISTANCE • UNRESOLVED",
+        "PRICE_BELOW_SUPPORT_UNRESOLVED": "BELOW SUPPORT • UNRESOLVED",
+    }
+    raw = str(value or "UNAVAILABLE").upper()
+    return labels.get(raw, raw.replace("_", " "))
+
+
+def _sr_path_text(path: dict[str, Any]) -> str:
+    row = dict(path or {})
+    checkpoints = [
+        _px(dict(item or {}).get("price"))
+        for item in list(row.get("checkpoints") or [])
+        if dict(item or {}).get("price") is not None
+    ]
+    route = " → ".join(checkpoints) if checkpoints else "belum ada level berikut"
+    return f"{row.get('prerequisite') or 'WAIT_CONFIRMATION'} → {route}"
+
+
 def render_xau_dual_engine_dashboard(
     *,
     sd_heartbeat: dict[str, Any] | None,
@@ -150,6 +183,13 @@ def render_xau_dual_engine_dashboard(
             structural_path = dict(sd.get("structural_path") or {})
             failure_path = dict(sd.get("failure_path") or {})
             support_resistance = list(sd.get("support_resistance") or [])
+            sr_map = dict(sd.get("support_resistance_map") or {})
+            sr_levels = list(sr_map.get("levels") or support_resistance)
+            sr_support = dict(sr_map.get("nearest_support") or {})
+            sr_resistance = dict(sr_map.get("nearest_resistance") or {})
+            sr_flip = dict(sr_map.get("flip_watch") or {})
+            sr_bull_path = dict(sr_map.get("bull_path") or {})
+            sr_bear_path = dict(sr_map.get("bear_path") or {})
             roadblocks = list(sd.get("roadblocks") or [])
             nearest_roadblock = dict(sd.get("nearest_roadblock") or {})
             micro = dict(sd.get("micro_confirmation") or {})
@@ -167,6 +207,87 @@ def render_xau_dual_engine_dashboard(
             c3.metric("Arah struktural", str(sd.get("expected_reversal_direction") or "WAIT"))
             c4.metric("Entry gate", entry_gate)
             st.caption("H1 structure • " + str(h1.get("state") or "—"))
+
+            st.markdown("### RIZAN STRUCTURAL S/R MAP")
+            st.caption(
+                "Support/resistance dinilai sebagai level dengan lifecycle. Resistance baru berubah "
+                "menjadi support setelah breakout diterima oleh completed bar lalu retest/hold; "
+                "breakout yang kembali gagal diberi status RECLAIM REQUIRED. S/R tidak memberi arah "
+                "atau izin order sendiri."
+            )
+            sr1, sr2, sr3 = st.columns(3)
+            sr1.metric(
+                "Nearest support",
+                (
+                    f"{_px(sr_support.get('price'))} • {_sr_state_label(sr_support.get('lifecycle_state'))}"
+                    if sr_support else "—"
+                ),
+            )
+            sr2.metric(
+                "Nearest resistance",
+                (
+                    f"{_px(sr_resistance.get('price'))} • {_sr_state_label(sr_resistance.get('lifecycle_state'))}"
+                    if sr_resistance else "—"
+                ),
+            )
+            sr3.metric(
+                "S/R flip watch",
+                (
+                    f"{_px(sr_flip.get('price'))} • {_sr_state_label(sr_flip.get('lifecycle_state'))}"
+                    if sr_flip else "—"
+                ),
+            )
+            if sr_flip:
+                flip_state = str(sr_flip.get("lifecycle_state") or "")
+                flip_band = (
+                    f"{_px(sr_flip.get('band_low'))}–{_px(sr_flip.get('band_high'))}"
+                )
+                if bool(sr_flip.get("reclaim_required")):
+                    st.warning(
+                        "**Failed breakout / breakdown.** "
+                        + f"Level {_px(sr_flip.get('price'))} ({flip_band}) belum boleh diperlakukan "
+                        "sebagai role-flip baru; reclaim + hold completed-bar diperlukan."
+                    )
+                elif bool(sr_flip.get("confirmed_flip")):
+                    st.success(
+                        "**Role flip terkonfirmasi:** "
+                        + _sr_state_label(flip_state)
+                        + f" di {_px(sr_flip.get('price'))} • band {flip_band}."
+                    )
+                else:
+                    st.info(
+                        "**Flip belum final:** "
+                        + _sr_state_label(flip_state)
+                        + f" di {_px(sr_flip.get('price'))} • tunggu retest/hold."
+                    )
+
+            srp1, srp2 = st.columns(2)
+            srp1.caption("Bull path (conditional) • " + _sr_path_text(sr_bull_path))
+            srp2.caption("Bear path (conditional) • " + _sr_path_text(sr_bear_path))
+            if sr_levels:
+                with st.expander("Detail S/R lifecycle"):
+                    st.dataframe(
+                        [
+                            {
+                                "Level": row.get("price"),
+                                "Role awal": row.get("base_kind") or row.get("kind"),
+                                "Role sekarang": row.get("current_role") or row.get("kind"),
+                                "Lifecycle": _sr_state_label(row.get("lifecycle_state")),
+                                "Strength": row.get("strength"),
+                                "Band low": row.get("band_low"),
+                                "Band high": row.get("band_high"),
+                                "Sources": ", ".join(row.get("sources") or []),
+                            }
+                            for row in sr_levels[:10]
+                        ],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+            st.caption(
+                "Aturan eksekusi tetap terpisah: support ≠ auto BUY dan resistance ≠ auto SELL. "
+                "Entry DEMO tetap membutuhkan geometry yang valid + reclaim/MSS/displacement "
+                "sesuai engine utama."
+            )
 
             st.markdown("### Jalur struktural utama")
             if main_zone:
@@ -477,8 +598,8 @@ def render_xau_dual_engine_dashboard(
                         "Ini adalah validasi reversal berbasis harga; news sendiri tetap bukan otoritas entry."
                     )
 
-            if support_resistance:
-                with st.expander("Detail H2 support/resistance — konteks saja"):
+            if support_resistance and not sr_levels:
+                with st.expander("Detail H2 support/resistance — fallback konteks"):
                     st.dataframe(
                         [
                             {
