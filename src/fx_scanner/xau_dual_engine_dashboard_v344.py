@@ -519,6 +519,60 @@ def render_xau_dual_engine_dashboard(
                         "konteks, tetapi tetap bukan execution authority."
                     )
 
+                intraday_yield = dict(macro_eval.get("intraday_yield_context") or {})
+                post_event_state = str(
+                    macro_eval.get("post_event_macro_state") or "INTRADAY_YIELD_UNAVAILABLE"
+                )
+                if intraday_yield:
+                    y1, y2, y3, y4 = st.columns(4)
+                    y1.metric(
+                        "US10Y intraday",
+                        str(intraday_yield.get("state") or "UNAVAILABLE"),
+                    )
+                    y2.metric(
+                        "Yield saat event",
+                        (
+                            "—"
+                            if intraday_yield.get("yield_at_release") is None
+                            else f"{float(intraday_yield.get('yield_at_release')):.3f}%"
+                        ),
+                    )
+                    y3.metric(
+                        "Low pasca-event",
+                        (
+                            "—"
+                            if intraday_yield.get("post_event_low") is None
+                            else f"{float(intraday_yield.get('post_event_low')):.3f}%"
+                        ),
+                    )
+                    y4.metric(
+                        "Yield sekarang / rebound",
+                        (
+                            "—"
+                            if intraday_yield.get("current") is None
+                            else (
+                                f"{float(intraday_yield.get('current')):.3f}% / "
+                                f"{float(intraday_yield.get('rebound_from_low_bps') or 0.0):+.1f} bps"
+                            )
+                        ),
+                    )
+                    if post_event_state == "POST_NEWS_MACRO_REVERSAL":
+                        st.warning(
+                            "POST-NEWS MACRO REVERSAL • arah event dan reaksi US10Y intraday "
+                            "sudah berlawanan. Prioritaskan yield reversal + price structure; "
+                            "jangan mempertahankan bias news awal secara statis."
+                        )
+                    elif post_event_state == "POST_NEWS_MACRO_CONFIRMATION":
+                        st.info(
+                            "POST-NEWS MACRO CONFIRMATION • arah event dan reaksi US10Y intraday "
+                            "masih searah."
+                        )
+                    st.caption(
+                        "US10Y intraday memakai ^TNX sebagai secondary market-data proxy. "
+                        "FRED DGS10/DFII10 tetap menjadi referensi resmi harian; proxy intraday "
+                        "tidak memiliki execution authority."
+                    )
+
                 macro_rows = []
                 for name, row in dict(macro_eval.get("components") or {}).items():
                     row = dict(row or {})
