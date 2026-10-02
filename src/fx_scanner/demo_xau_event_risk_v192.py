@@ -22,8 +22,8 @@ CONTRACT = "XAU_USD_EVENT_RISK_LAYER_V192"
 NY = ZoneInfo("America/New_York")
 WIB = ZoneInfo("Asia/Jakarta")
 
-EVENT_HORIZON_HOURS = 7 * 24
-DISPLAY_EVENTS = 30
+EVENT_HORIZON_HOURS = 30 * 24
+DISPLAY_EVENTS = 60
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,8 +68,8 @@ def _gold_outlook(event: RiskEvent) -> dict[str, str]:
 
     This is context only. It never creates execution authority.
     """
-    direct_hawkish = {"EMPLOYMENT", "CPI", "PPI", "PCE", "GDP", "JOLTS"}
-    inverse_hawkish = {"JOBLESS_CLAIMS"}
+    direct_hawkish = {"EMPLOYMENT", "WAGES", "CPI", "PPI", "PCE", "GDP", "JOLTS"}
+    inverse_hawkish = {"JOBLESS_CLAIMS", "UNEMPLOYMENT_RATE"}
 
     def _direction(lhs: float | None, rhs: float | None) -> str:
         if lhs is None or rhs is None:
@@ -128,6 +128,10 @@ def _category(title: str) -> str:
         or "UI WEEKLY CLAIMS" in text
     ):
         return "JOBLESS_CLAIMS"
+    if "UNEMPLOYMENT RATE" in text:
+        return "UNEMPLOYMENT_RATE"
+    if "AVERAGE HOURLY EARNINGS" in text or "EMPLOYMENT COST INDEX" in text:
+        return "WAGES"
     if "EMPLOYMENT SITUATION" in text or "NONFARM" in text or "PAYROLL" in text:
         return "EMPLOYMENT"
     if "CONSUMER PRICE INDEX" in text or re.search(r"\bCPI\b", text):
@@ -161,7 +165,16 @@ def _category(title: str) -> str:
 
 def _official_impact(title: str) -> str:
     category = _category(title)
-    if category in {"EMPLOYMENT", "CPI", "PPI", "PCE", "GDP", "FOMC"}:
+    if category in {
+        "EMPLOYMENT",
+        "UNEMPLOYMENT_RATE",
+        "WAGES",
+        "CPI",
+        "PPI",
+        "PCE",
+        "GDP",
+        "FOMC",
+    }:
         return EventImpact.HIGH.value
     if category in {
         "JOBLESS_CLAIMS",
