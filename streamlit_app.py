@@ -277,9 +277,14 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
         "ctrader_demo_xau_rizan_prepared_plan_producer",
         "ctrader_demo_xau_afic_prepared_plan_producer",
     }
+    dedicated_operational_workers = {
+        "ctrader_demo_xau_event_risk_v192",
+        "ctrader_demo_xau_macro_attribution_v357",
+    }
     hot_workers = [
         name for name in RIZAN_DASHBOARD_HOT_HEARTBEATS
         if name not in prepared_worker_names
+        and name not in dedicated_operational_workers
     ]
     critical_heartbeats = list(reader.heartbeats_for_workers(hot_workers))
     prepared_heartbeat = reader.latest_rizan_prepared_heartbeat()
@@ -303,6 +308,12 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
     v328_operational = reader.latest_xau_micro_destination_operational_heartbeat()
     if v328_operational is not None:
         critical_heartbeats.append(v328_operational)
+    v192_operational = reader.latest_xau_event_risk_operational_heartbeat()
+    if v192_operational is not None:
+        critical_heartbeats.append(v192_operational)
+    v357_operational = reader.latest_xau_macro_attribution_operational_heartbeat()
+    if v357_operational is not None:
+        critical_heartbeats.append(v357_operational)
     v342_operational = reader.latest_xau_sd_liquidity_operational_heartbeat()
     if v342_operational is not None:
         critical_heartbeats.append(v342_operational)
