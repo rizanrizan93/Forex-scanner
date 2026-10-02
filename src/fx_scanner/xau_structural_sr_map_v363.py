@@ -78,6 +78,7 @@ def _parse_available_at(value: Any) -> pd.Timestamp | None:
 def _accepted_breaks(
     frame: pd.DataFrame,
     *,
+    timeframe: str,
     band_low: float,
     band_high: float,
     buffer: float,
@@ -107,7 +108,7 @@ def _accepted_breaks(
                         "break_at": ensure_utc(
                             (
                                 frame.iloc[i]["timestamp"]
-                                + pd.Timedelta(minutes=1)
+                                + pd.Timedelta(minutes=_TF_MINUTES[timeframe])
                             ).to_pydatetime()
                         ).isoformat(),
                     }
@@ -127,7 +128,7 @@ def _accepted_breaks(
                         "break_at": ensure_utc(
                             (
                                 frame.iloc[i]["timestamp"]
-                                + pd.Timedelta(minutes=1)
+                                + pd.Timedelta(minutes=_TF_MINUTES[timeframe])
                             ).to_pydatetime()
                         ).isoformat(),
                     }
@@ -176,6 +177,7 @@ def _classify_level_lifecycle(
 
     events = _accepted_breaks(
         working,
+        timeframe=timeframe,
         band_low=band_low,
         band_high=band_high,
         buffer=acceptance_buffer,
