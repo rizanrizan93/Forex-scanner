@@ -36,7 +36,6 @@ HOT_HEARTBEATS = (
     "ctrader_demo_xau_rizan_fast_handoff",
     "ctrader_demo_xau_afic_fast_handoff",
     "ctrader_demo_xau_dom_v191",
-    "ctrader_demo_xau_event_risk_v192",
     "ctrader_demo_xau_meta_research_sampler_v297",
     "ctrader_demo_xau_structural_research_probe_v318",
 )
@@ -385,6 +384,17 @@ def build_snapshot(
         worker_name="ctrader_demo_xau_micro_destination_v328",
         fetcher=lambda: reader.latest_xau_micro_destination_operational_heartbeat(),
     )
+    _append_operational(
+        label="V192_EVENT_OPERATIONAL",
+        worker_name="ctrader_demo_xau_event_risk_v192",
+        fetcher=lambda: reader.latest_xau_event_risk_operational_heartbeat(),
+    )
+    _append_operational(
+        label="V357_MACRO_OPERATIONAL",
+        worker_name="ctrader_demo_xau_macro_attribution_v357",
+        fetcher=lambda: reader.latest_xau_macro_attribution_operational_heartbeat(),
+    )
+
     _append_operational(
         label="V342_OPERATIONAL",
         worker_name="ctrader_demo_xau_sd_liquidity_v342",
