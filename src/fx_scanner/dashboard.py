@@ -382,13 +382,7 @@ class SupabaseDashboardReader:
 
         select_expr = (
             "worker_name,observed_at,healthy,lag_seconds,"
-            "state:details->risk->>state,"
-            "action:details->risk->>action,"
-            "focal_event:details->risk->focal_event,"
-            "upcoming_events:details->risk->upcoming_events,"
-            "minutes_to_focal:details->risk->minutes_to_focal,"
-            "execution_authority:details->risk->execution_authority,"
-            "execution_influence:details->risk->execution_influence"
+            "dashboard:details->dashboard_projection"
         )
         try:
             response = (
@@ -407,36 +401,7 @@ class SupabaseDashboardReader:
         if not rows:
             return None
         raw = dict(rows[0])
-
-        def _compact_event(value: Any) -> dict[str, Any]:
-            event = dict(value or {})
-            keys = (
-                "title",
-                "actual",
-                "impact",
-                "category",
-                "forecast",
-                "previous",
-                "gold_bias",
-                "scheduled_at",
-                "scheduled_at_wib",
-                "gold_bias_basis",
-                "gold_bias_confidence",
-            )
-            return {key: event.get(key) for key in keys if key in event}
-
-        risk = {
-            "state": raw.pop("state", None),
-            "action": raw.pop("action", None),
-            "focal_event": _compact_event(raw.pop("focal_event", {})),
-            "upcoming_events": [
-                _compact_event(item)
-                for item in list(raw.pop("upcoming_events", []) or [])
-            ],
-            "minutes_to_focal": raw.pop("minutes_to_focal", None),
-            "execution_authority": bool(raw.pop("execution_authority", False)),
-            "execution_influence": bool(raw.pop("execution_influence", False)),
-        }
+        risk = dict(raw.pop("dashboard", {}) or {})
         return {
             **raw,
             "details": {
@@ -452,20 +417,7 @@ class SupabaseDashboardReader:
 
         select_expr = (
             "worker_name,observed_at,healthy,lag_seconds,"
-            "state:details->evaluation->>state,"
-            "broader_macro_bias:details->evaluation->>broader_macro_bias,"
-            "macro_score:details->evaluation->macro_score,"
-            "confidence:details->evaluation->>confidence,"
-            "coverage:details->evaluation->coverage,"
-            "components:details->evaluation->components,"
-            "event_consensus_bias:details->evaluation->>event_consensus_bias,"
-            "consensus_relationship:details->evaluation->>consensus_relationship,"
-            "fed_repricing_proxy:details->evaluation->fed_repricing_proxy,"
-            "available_components:details->evaluation->available_components,"
-            "missing_components:details->evaluation->missing_components,"
-            "dxy_note:details->evaluation->>dxy_note,"
-            "execution_authority:details->evaluation->execution_authority,"
-            "execution_influence:details->evaluation->execution_influence"
+            "dashboard:details->dashboard_projection"
         )
         try:
             response = (
@@ -484,43 +436,7 @@ class SupabaseDashboardReader:
         if not rows:
             return None
         raw = dict(rows[0])
-        raw_components = dict(raw.pop("components", {}) or {})
-        component_keys = (
-            "freshness",
-            "current",
-            "previous",
-            "delta",
-            "delta_unit",
-            "score",
-            "provider",
-            "source",
-        )
-        components = {
-            name: {
-                key: dict(value or {}).get(key)
-                for key in component_keys
-                if key in dict(value or {})
-            }
-            for name, value in raw_components.items()
-        }
-        fed_proxy = dict(raw.pop("fed_repricing_proxy", {}) or {})
-        evaluation = {
-            "state": raw.pop("state", None),
-            "broader_macro_bias": raw.pop("broader_macro_bias", None),
-            "macro_score": raw.pop("macro_score", None),
-            "confidence": raw.pop("confidence", None),
-            "coverage": raw.pop("coverage", None),
-            "components": components,
-            "event_consensus_bias": raw.pop("event_consensus_bias", None),
-            "consensus_relationship": raw.pop("consensus_relationship", None),
-            "fed_repricing_proxy": {
-                key: fed_proxy.get(key)
-                for key in ("state", "delta_bps")
-                if key in fed_proxy
-            },
-            "execution_authority": bool(raw.pop("execution_authority", False)),
-            "execution_influence": bool(raw.pop("execution_influence", False)),
-        }
+        evaluation = dict(raw.pop("dashboard", {}) or {})
         return {
             **raw,
             "details": {
