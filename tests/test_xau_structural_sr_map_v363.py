@@ -98,8 +98,9 @@ def test_v363_ignores_incomplete_breakout_candle():
     result = _map(rows, as_of=as_of)
     level = result["levels"][0]
 
-    assert level["lifecycle_state"] == "ACTIVE_RESISTANCE"
-    assert level["current_role"] == "RESISTANCE"
+    assert level["lifecycle_state"] == "PRICE_ABOVE_RESISTANCE_UNRESOLVED"
+    assert level["current_role"] == "FLIP_CANDIDATE"
+    assert level["confirmed_flip"] is False
 
 
 def test_v363_paths_are_conditional_context_not_execution_signals():
