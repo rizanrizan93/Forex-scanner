@@ -69,6 +69,8 @@ jobs:
       FX_KILL_SWITCH: "0"
       FX_IDEMPOTENCY_STATE_PATH: /tmp/v351_execution_idempotency.json
       CTRADER_DEMO_AUTOTRADE_ENABLED: I_UNDERSTAND_DEMO_ORDERS
+      RIZAN_RUNTIME_HEAD_SHA: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -129,10 +131,21 @@ jobs:
 
             # Graceful code handoff: finish the current market/execution cycle
             # before yielding to a queued run built from newer main.
-            git fetch origin main --depth=1 >/dev/null 2>&1 || true
-            latest_main="$(git rev-parse FETCH_HEAD 2>/dev/null || true)"
-            if [ -n "$latest_main" ] && [ "$latest_main" != "$GITHUB_SHA" ]; then
-              echo "V360_GRACEFUL_HANDOFF current=$GITHUB_SHA latest_main=$latest_main"
+            latest_main=""
+            for attempt in 1 2 3; do
+              latest_main="$(gh api "/repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha 2>/tmp/v365-main-sha.err || true)"
+              if [ -n "$latest_main" ]; then
+                break
+              fi
+              echo "V365_MAIN_SHA_RETRY attempt=${attempt}/3"
+              sleep $((attempt * 2))
+            done
+            if [ -z "$latest_main" ]; then
+              echo "V365_HANDOFF_FAIL_CLOSED reason=MAIN_SHA_UNVERIFIED current=$GITHUB_SHA"
+              break
+            fi
+            if [ "$latest_main" != "$GITHUB_SHA" ]; then
+              echo "V365_GRACEFUL_HANDOFF current=$GITHUB_SHA latest_main=$latest_main"
               break
             fi
             sleep 60
