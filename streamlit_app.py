@@ -71,6 +71,10 @@ DASHBOARD_BUILD_ID = "RIZAN_V344_DUAL_ISOLATED_20261001"
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # Generic minute-tier reads are intentionally small. Prepared/V182/V226,
     # V296 and V328 use dedicated compact projections below.
+    # V342/V343 must be full-detail reads because the isolated dashboard
+    # renders details.evaluation directly; heartbeat summaries omit details.
+    "ctrader_demo_xau_sd_liquidity_v342",
+    "ctrader_demo_xau_friend_entry_v343",
     "ctrader_demo_xau_rizan_prepared_plan_producer",
     "ctrader_demo_xau_rizan_fast_handoff",
     "ctrader_demo_xau_dom_v191",
