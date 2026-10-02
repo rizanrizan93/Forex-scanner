@@ -88,6 +88,7 @@ def render_xau_dual_engine_dashboard(
             refinement = dict(sd.get("refinement_zone") or {})
             destination = dict(sd.get("structural_destination") or {})
             structural_room = dict(sd.get("structural_room") or {})
+            roadblock_room = dict(sd.get("roadblock_room") or {})
             structural_path = dict(sd.get("structural_path") or {})
             failure_path = dict(sd.get("failure_path") or {})
             support_resistance = list(sd.get("support_resistance") or [])
@@ -124,6 +125,14 @@ def render_xau_dual_engine_dashboard(
                     )
                 else:
                     st.caption("Belum ada H1 refinement searah yang valid di dalam parent H4.")
+
+                if destination:
+                    st.info(
+                        "**Terminal H4 destination:** "
+                        + _zone_label(destination)
+                    )
+                else:
+                    st.caption("Terminal H4 destination belum tersedia pada arah parent saat ini.")
 
                 checkpoints = list(structural_path.get("checkpoints") or [])
                 if checkpoints:
@@ -165,11 +174,25 @@ def render_xau_dual_engine_dashboard(
                     )
 
                 if nearest_roadblock:
-                    st.warning(
-                        "**Roadblock:** "
-                        + f"{nearest_roadblock.get('timeframe','—')} "
-                        + f"{nearest_roadblock.get('type','—')} "
-                        + f"{_px(nearest_roadblock.get('low'))}–{_px(nearest_roadblock.get('high'))}"
+                    rb_atr = nearest_roadblock.get("distance_parent_atr")
+                    rb_rr = nearest_roadblock.get("planned_rr_to_roadblock")
+                    rb_status = str(nearest_roadblock.get("status") or "PATH_OBSTACLE")
+                    rb_text = (
+                        f"{nearest_roadblock.get('timeframe','—')} "
+                        f"{nearest_roadblock.get('type','—')} "
+                        f"{_px(nearest_roadblock.get('low'))}–{_px(nearest_roadblock.get('high'))} "
+                        f"• status={rb_status}"
+                        + (f" • room={float(rb_atr):.2f} parent ATR" if rb_atr is not None else "")
+                        + (f" • RR ke roadblock={float(rb_rr):.2f}R" if rb_rr is not None else "")
+                    )
+                    if bool(roadblock_room.get("blocked")):
+                        st.error("**Roadblock gate: WAIT** • " + rb_text)
+                    else:
+                        st.warning("**Roadblock di jalur:** " + rb_text)
+                else:
+                    st.caption(
+                        "**Roadblock sebelum terminal H4:** tidak ada. "
+                        "Artinya obstacle berikutnya adalah destination H4 itu sendiri, bukan H1 lawan di tengah jalur."
                     )
 
                 room_state = str(structural_room.get("state") or "UNKNOWN")
