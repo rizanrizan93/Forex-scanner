@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from html.parser import HTMLParser
@@ -22,8 +22,8 @@ CONTRACT = "XAU_USD_EVENT_RISK_LAYER_V192"
 NY = ZoneInfo("America/New_York")
 WIB = ZoneInfo("Asia/Jakarta")
 
-EVENT_HORIZON_HOURS = 36
-DISPLAY_EVENTS = 10
+EVENT_HORIZON_HOURS = 7 * 24
+DISPLAY_EVENTS = 30
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,8 +36,12 @@ class RiskEvent:
     source: str
     source_tier: str
     source_url: str
+    actual: float | None = None
+    forecast: float | None = None
+    previous: float | None = None
 
     def as_dict(self) -> dict[str, Any]:
+        outlook = _gold_outlook(self)
         return {
             "event_id": self.event_id,
             "title": self.title,
@@ -48,8 +52,67 @@ class RiskEvent:
             "source": self.source,
             "source_tier": self.source_tier,
             "source_url": self.source_url,
+            "actual": self.actual,
+            "forecast": self.forecast,
+            "previous": self.previous,
+            "gold_bias": outlook["gold_bias"],
+            "gold_bias_confidence": outlook["confidence"],
+            "gold_bias_basis": outlook["basis"],
+            "release_reaction": outlook["release_reaction"],
         }
 
+
+
+def _gold_outlook(event: RiskEvent) -> dict[str, str]:
+    """Translate consensus/surprise into a transparent XAU macro tilt.
+
+    This is context only. It never creates execution authority.
+    """
+    direct_hawkish = {"EMPLOYMENT", "CPI", "PPI", "PCE", "GDP", "JOLTS"}
+    inverse_hawkish = {"JOBLESS_CLAIMS"}
+
+    def _direction(lhs: float | None, rhs: float | None) -> str:
+        if lhs is None or rhs is None:
+            return "UNKNOWN"
+        tolerance = max(abs(rhs) * 0.01, 1e-9)
+        if abs(lhs - rhs) <= tolerance:
+            return "NEUTRAL"
+        if event.category in inverse_hawkish:
+            return "GOLD_BULLISH" if lhs > rhs else "GOLD_BEARISH"
+        if event.category in direct_hawkish:
+            return "GOLD_BEARISH" if lhs > rhs else "GOLD_BULLISH"
+        return "TWO_SIDED"
+
+    release = _direction(event.actual, event.forecast)
+    if event.actual is not None and event.forecast is not None:
+        return {
+            "gold_bias": release,
+            "confidence": "POST_RELEASE",
+            "basis": "ACTUAL_VS_FORECAST",
+            "release_reaction": release,
+        }
+
+    pre = _direction(event.forecast, event.previous)
+    if pre in {"GOLD_BULLISH", "GOLD_BEARISH"}:
+        return {
+            "gold_bias": pre,
+            "confidence": "LOW",
+            "basis": "CONSENSUS_VS_PREVIOUS",
+            "release_reaction": "PENDING",
+        }
+    if event.category in {"FOMC", "FED_SPEECH"}:
+        return {
+            "gold_bias": "TWO_SIDED",
+            "confidence": "LOW",
+            "basis": "LANGUAGE_DEPENDENT",
+            "release_reaction": "PENDING",
+        }
+    return {
+        "gold_bias": "NEUTRAL_UNKNOWN",
+        "confidence": "LOW",
+        "basis": "INSUFFICIENT_NUMERIC_CONTEXT",
+        "release_reaction": "PENDING",
+    }
 
 def _event_id(source: str, title: str, scheduled_at: datetime) -> str:
     raw = f"{source}|{scheduled_at.astimezone(UTC).isoformat()}|{title}".encode()
@@ -288,6 +351,9 @@ def _from_discovery(event: EconomicEvent) -> RiskEvent:
         source=event.source,
         source_tier=source_tier,
         source_url=event.source_url,
+        actual=event.actual,
+        forecast=event.forecast,
+        previous=event.previous,
     )
 
 
@@ -318,7 +384,22 @@ def _merge_events(events: Iterable[RiskEvent]) -> tuple[RiskEvent, ...]:
             event.source_tier.startswith("OFFICIAL")
             and not existing.source_tier.startswith("OFFICIAL")
         ):
-            merged[duplicate_index] = event
+            merged[duplicate_index] = replace(
+                event,
+                actual=existing.actual,
+                forecast=existing.forecast,
+                previous=existing.previous,
+            )
+        elif (
+            existing.source_tier.startswith("OFFICIAL")
+            and not event.source_tier.startswith("OFFICIAL")
+        ):
+            merged[duplicate_index] = replace(
+                existing,
+                actual=event.actual if event.actual is not None else existing.actual,
+                forecast=event.forecast if event.forecast is not None else existing.forecast,
+                previous=event.previous if event.previous is not None else existing.previous,
+            )
     return tuple(sorted(merged, key=lambda event: event.scheduled_at))
 
 
@@ -383,7 +464,8 @@ def evaluate_event_risk(
         "execution_authority": False,
         "interpretation": (
             "Event-risk state controls preparation and revalidation context only. "
-            "It does not predict event direction or authorize/block an order."
+            "It exposes a low-confidence consensus tilt before release and actual-vs-forecast "
+            "reaction after release. Neither can authorize/block an order."
         ),
     }
 
