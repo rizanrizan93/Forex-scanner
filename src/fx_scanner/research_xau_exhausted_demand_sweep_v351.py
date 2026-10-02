@@ -416,6 +416,7 @@ def _supply_outcome(
     supply: SDZone,
     confirm_at: datetime,
     invalidation_level: float,
+    observed_end: datetime,
 ) -> dict[str, Any]:
     end_at = ensure_utc(confirm_at) + timedelta(hours=SUPPLY_TARGET_HORIZON_HOURS)
     ts = list(price_m1["timestamp"])
@@ -443,11 +444,20 @@ def _supply_outcome(
                     0.0, (at - ensure_utc(confirm_at)).total_seconds() / 60.0
                 ),
             }
+    if ensure_utc(observed_end) < end_at:
+        return {
+            "supply_hit": False,
+            "clean_supply_hit": False,
+            "outcome": "CENSORED",
+            "outcome_at": ensure_utc(observed_end).isoformat(),
+            "censored": True,
+        }
     return {
         "supply_hit": False,
         "clean_supply_hit": False,
         "outcome": "SUPPLY_NOT_HIT_IN_HORIZON",
         "outcome_at": end_at.isoformat(),
+        "censored": False,
     }
 
 
@@ -482,6 +492,7 @@ def _fresh_h1_below(
 def evaluate_year(price_m1: pd.DataFrame, *, target_year: int) -> dict[str, Any]:
     price_m1 = price_m1.copy()
     price_m1["timestamp"] = pd.to_datetime(price_m1["timestamp"], utc=True)
+    observed_end = _dt(price_m1.iloc[-1]["timestamp"]) + timedelta(minutes=1)
     h1_frame = resample_ohlc(price_m1, "1h")
     h4_frame = resample_ohlc(price_m1, "4h")
     zones = build_htf_zones(price_m1)
@@ -513,6 +524,7 @@ def evaluate_year(price_m1: pd.DataFrame, *, target_year: int) -> dict[str, Any]
 
         event: dict[str, Any] = {
             "year": int(target_year),
+            "censored": False,
             "parent_zone": _zone_record(parent),
             "parent_touch_count": int(parent_state["touch_count"]),
             "parent_mitigation_depth": float(parent_state["mitigation_depth"]),
@@ -536,6 +548,12 @@ def evaluate_year(price_m1: pd.DataFrame, *, target_year: int) -> dict[str, Any]
             continue
 
         chain_end = exhausted_at + timedelta(hours=CHAIN_HORIZON_HOURS)
+        if chain_end > observed_end:
+            event["censored"] = True
+            event["censor_reason"] = "CHAIN_HORIZON_NOT_FULLY_OBSERVED"
+            event["observed_end"] = observed_end.isoformat()
+            events.append(event)
+            continue
         h1_touch = _first_touch(
             price_m1,
             low=float(child.low),
@@ -640,6 +658,7 @@ def evaluate_year(price_m1: pd.DataFrame, *, target_year: int) -> dict[str, Any]
             supply=supply,
             confirm_at=confirm_at,
             invalidation_level=invalidation_level,
+            observed_end=observed_end,
         )
         event.update(outcome)
         events.append(event)
@@ -672,6 +691,10 @@ def evaluate_year(price_m1: pd.DataFrame, *, target_year: int) -> dict[str, Any]
                 "range>=0.80 M5 ATR and body>=0.50 within 8h"
             ),
             "target": "nearest active H1/H4 supply above confirmation, 72h horizon",
+            "right_censoring": (
+                "exclude chain events without full 72h observation; supply outcomes unresolved at dataset end "
+                "are labeled CENSORED and excluded from target-rate denominators"
+            ),
             "development_period": "2012-2024",
             "oos_period": "2025-2026",
             "execution_authority": False,
@@ -683,16 +706,27 @@ def evaluate_year(price_m1: pd.DataFrame, *, target_year: int) -> dict[str, Any]
 
 
 def summarize(events: Sequence[dict[str, Any]]) -> dict[str, Any]:
-    total = len(events)
-    fresh = [e for e in events if e.get("fresh_h1_available")]
+    total_raw = len(events)
+    censored = [e for e in events if bool(e.get("censored"))]
+    eligible = [e for e in events if not bool(e.get("censored"))]
+    total = len(eligible)
+    fresh = [e for e in eligible if e.get("fresh_h1_available")]
     h2_map = [e for e in fresh if e.get("h2_cluster_available")]
     h1_touch = [e for e in h2_map if e.get("h1_touched")]
     h2_reach = [e for e in h1_touch if e.get("h2_reached")]
     h2_before_rebound = [e for e in h2_reach if e.get("h2_before_parent_rebound")]
     confirmed = [e for e in h2_reach if e.get("confirmed")]
-    supply_ready = [e for e in confirmed if e.get("opposing_supply_available")]
+    supply_ready_all = [e for e in confirmed if e.get("opposing_supply_available")]
+    supply_censored = [
+        e for e in supply_ready_all if str(e.get("outcome") or "") == "CENSORED"
+    ]
+    supply_ready = [
+        e for e in supply_ready_all if str(e.get("outcome") or "") != "CENSORED"
+    ]
     clean = [e for e in supply_ready if e.get("clean_supply_hit")]
     return {
+        "parent_exhausted_events_raw": total_raw,
+        "right_censored_events": len(censored),
         "parent_exhausted_events": total,
         "with_fresh_h1_below": len(fresh),
         "with_preknown_h2_cluster": len(h2_map),
@@ -706,6 +740,8 @@ def summarize(events: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "confirmation_rate_after_h2": (
             None if not h2_reach else len(confirmed) / len(h2_reach)
         ),
+        "opposing_supply_available_after_confirmation_raw": len(supply_ready_all),
+        "supply_outcome_right_censored": len(supply_censored),
         "opposing_supply_available_after_confirmation": len(supply_ready),
         "clean_opposing_supply_hits": len(clean),
         "clean_supply_rate_after_confirmation": (
