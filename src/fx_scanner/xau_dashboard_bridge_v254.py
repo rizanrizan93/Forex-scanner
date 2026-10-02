@@ -32,6 +32,10 @@ HOT_HEARTBEATS = (
     # Only small, truly minute-sensitive payloads stay in the generic hot set.
     # V296 and V328 are projected separately below so their large research
     # details do not consume minute-level Supabase egress.
+    # V342/V343 are the only market-opinion engines exposed by the V344 UI and
+    # must retain details.evaluation in the public bridge snapshot.
+    "ctrader_demo_xau_sd_liquidity_v342",
+    "ctrader_demo_xau_friend_entry_v343",
     "ctrader_demo_xau_rizan_fast_handoff",
     "ctrader_demo_xau_afic_fast_handoff",
     "ctrader_demo_xau_dom_v191",
