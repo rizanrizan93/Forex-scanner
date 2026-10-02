@@ -105,7 +105,9 @@ def test_v357_post_release_event_gets_stronger_weight_but_no_execution_authority
         },
     )
     assert out["components"]["EVENT_CONSENSUS"]["score"] == 70.0
-    assert out["broader_macro_bias"] == "BULLISH_XAU"
+    assert out["event_consensus_bias"] == "BULLISH_XAU"
+    assert out["broader_macro_bias"] == "UNAVAILABLE"
+    assert out["state"] == "BROAD_MACRO_PARTIAL"
     assert out["confidence"] == "LOW"
     assert out["execution_authority"] is False
 
