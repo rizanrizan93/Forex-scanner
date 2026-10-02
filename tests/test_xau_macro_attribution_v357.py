@@ -117,3 +117,47 @@ def test_v357_no_data_fails_closed():
     assert out["state"] == "MACRO_DATA_UNAVAILABLE"
     assert out["broader_macro_bias"] == "UNAVAILABLE"
     assert out["macro_score"] is None
+
+
+def test_v367_post_release_bullish_event_is_overridden_by_intraday_yield_headwind_context():
+    out = evaluate_broader_macro_bias(
+        cross_asset={
+            "USD_BROAD_PROXY": _row(-0.20),
+            "US2Y": _row(-1.0),
+            "US10Y": _row(3.0),
+            "REAL_YIELD_10Y": _row(2.0),
+        },
+        event_context={
+            "focal_event": {
+                "title": "Future event",
+                "scheduled_at": "2026-10-03T12:30:00+00:00",
+            },
+            "upcoming_events": [
+                {
+                    "title": "Employment Situation",
+                    "category": "EMPLOYMENT",
+                    "scheduled_at": "2026-10-02T12:30:00+00:00",
+                    "actual": 29_000.0,
+                    "forecast": 90_000.0,
+                    "gold_bias": "GOLD_BULLISH",
+                    "gold_bias_confidence": "POST_RELEASE",
+                    "gold_bias_basis": "ACTUAL_VS_FORECAST",
+                }
+            ],
+        },
+        intraday_yield_context={
+            "available": True,
+            "state": "YIELD_REVERSAL_UP_STRONG",
+            "gold_implication": "GOLD_HEADWIND_CONFIRMED",
+            "yield_at_release": 5.24,
+            "post_event_low": 5.175,
+            "current": 5.25,
+            "rebound_from_low_bps": 7.5,
+        },
+    )
+    assert out["event_consensus_bias"] == "BULLISH_XAU"
+    assert out["intraday_yield_state"] == "YIELD_REVERSAL_UP_STRONG"
+    assert out["post_event_macro_state"] == "POST_NEWS_MACRO_REVERSAL"
+    assert out["post_event_gold_pressure"] == "GOLD_HEADWIND_CONFIRMED"
+    assert out["event_intraday_relationship"] == "EVENT_BULLISH_YIELD_REVERSAL_HEADWIND"
+    assert out["execution_authority"] is False
