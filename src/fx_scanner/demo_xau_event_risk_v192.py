@@ -314,7 +314,7 @@ def parse_bls_employment_release(
         return {}
 
     report_match = re.search(
-        r"THE\s+EMPLOYMENT\s+SITUATION\s*-\s*([A-Za-z]+)\s+(\d{4})",
+        r"THE\s+EMPLOYMENT\s+SITUATION\s*--?\s*([A-Za-z]+)\s+(\d{4})",
         text,
         flags=re.IGNORECASE,
     )
@@ -325,7 +325,7 @@ def parse_bls_employment_release(
     payroll = None
     signed_match = re.search(
         r"Total nonfarm payroll employment changed little in [A-Za-z]+\s*"
-        r"\((-?[\d,]+)\)",
+        r"\(([+-]?[\d,]+)\)",
         text,
         flags=re.IGNORECASE,
     )
@@ -333,7 +333,7 @@ def parse_bls_employment_release(
         payroll = float(signed_match.group(1).replace(",", ""))
     else:
         payroll_match = re.search(
-            r"Total nonfarm payroll employment\s+"
+            r"(?:Total\s+)?nonfarm payroll employment\s+"
             r"(increased|rose|decreased|declined)\s+by\s+([\d,]+)",
             text,
             flags=re.IGNORECASE,
