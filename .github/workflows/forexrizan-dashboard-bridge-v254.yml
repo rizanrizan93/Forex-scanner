@@ -19,9 +19,10 @@ permissions:
   actions: write
 
 concurrency:
-  group: forexrizan-dashboard-bridge-v344-isolated
-  # Newer main revisions supersede publishers running stale bridge code.
-  cancel-in-progress: true
+  group: forexrizan-dashboard-bridge-v360-graceful
+  # Keep the current publisher alive until it has emitted one final fresh
+  # snapshot; then hand off to the queued run from newer main.
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -78,15 +79,6 @@ jobs:
             fi
 
             if [ "$snapshot_ok" -eq 1 ]; then
-              # Never let an hour-long publisher based on an older main revision
-              # overwrite a snapshot produced by newer dashboard/transport code.
-              git fetch origin main --depth=1
-              latest_main="$(git rev-parse FETCH_HEAD)"
-              if [ "$latest_main" != "$GITHUB_SHA" ]; then
-                echo "::notice::Stopping stale publisher head=$GITHUB_SHA latest_main=$latest_main"
-                exit 0
-              fi
-
               git add -f runtime/xau_dashboard_snapshot.json
               if git diff --cached --quiet; then
                 :
@@ -109,6 +101,15 @@ jobs:
                 if [ "$push_ok" -ne 1 ]; then
                   echo "::warning::Dashboard snapshot publish skipped this cycle; worker will continue"
                 fi
+              fi
+
+              # Check for newer dashboard code only after publishing the fresh
+              # snapshot. This avoids a multi-minute stale gap during deploys.
+              git fetch origin main --depth=1 >/dev/null 2>&1 || true
+              latest_main="$(git rev-parse FETCH_HEAD 2>/dev/null || true)"
+              if [ -n "$latest_main" ] && [ "$latest_main" != "$GITHUB_SHA" ]; then
+                echo "::notice::V360 graceful bridge handoff head=$GITHUB_SHA latest_main=$latest_main"
+                exit 0
               fi
             else
               echo "::warning::Dashboard snapshot generation failed this cycle; worker will continue"
