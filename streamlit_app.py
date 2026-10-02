@@ -76,6 +76,7 @@ RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     "ctrader_demo_xau_rizan_fast_handoff",
     "ctrader_demo_xau_dom_v191",
     "ctrader_demo_xau_event_risk_v192",
+    "ctrader_demo_xau_macro_attribution_v357",
     "ctrader_demo_xau_meta_research_sampler_v297",
     "ctrader_demo_xau_structural_research_probe_v318",
 )
@@ -2060,10 +2061,12 @@ _v344_heartbeats = [] if backend is None else list(backend.get("heartbeats") or 
 _v342_sd_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_sd_liquidity_v342")
 _v343_friend_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_friend_entry_v343")
 _v192_event_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_event_risk_v192")
+_v357_macro_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_macro_attribution_v357")
 render_xau_dual_engine_dashboard(
     sd_heartbeat=_v342_sd_hb,
     friend_heartbeat=_v343_friend_hb,
     event_heartbeat=_v192_event_hb,
+    macro_heartbeat=_v357_macro_hb,
 )
 # LEGACY_DECISION_UI_STOP_V344
 st.stop()
@@ -2182,10 +2185,12 @@ _v344_heartbeats = [] if backend is None else list(backend.get("heartbeats") or 
 _v342_sd_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_sd_liquidity_v342")
 _v343_friend_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_friend_entry_v343")
 _v192_event_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_event_risk_v192")
+_v357_macro_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_macro_attribution_v357")
 render_xau_dual_engine_dashboard(
     sd_heartbeat=_v342_sd_hb,
     friend_heartbeat=_v343_friend_hb,
     event_heartbeat=_v192_event_hb,
+    macro_heartbeat=_v357_macro_hb,
 )
 # LEGACY_DECISION_UI_STOP_V344
 st.stop()
