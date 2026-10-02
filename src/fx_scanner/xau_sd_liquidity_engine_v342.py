@@ -10,7 +10,7 @@ import pandas as pd
 
 from .models import ensure_utc
 
-CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_4_UNIFIED_STRUCTURAL_PATH_V349"
+CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_5_CONDITIONAL_FAILURE_PATH_V350"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
 EXECUTION_AUTHORITY = False
 EXECUTION_INFLUENCE = False
@@ -1410,6 +1410,137 @@ def _structural_path(
     }
 
 
+def _conditional_failure_path(
+    *,
+    parent_zone: dict[str, Any],
+    direction: str,
+    active_zones: Sequence[dict[str, Any]],
+    support_resistance: Sequence[dict[str, Any]],
+    liquidity: Sequence[dict[str, Any]],
+    parent_atr: float,
+) -> dict[str, Any]:
+    """Map what lies beyond parent invalidation; this is not a second direction signal."""
+    if direction not in {"LONG", "SHORT"} or not parent_zone:
+        return {"state": "NO_PARENT", "checkpoints": []}
+
+    trigger = _zone_break_level(parent_zone)
+    failure_direction = "SHORT" if direction == "LONG" else "LONG"
+    base = _structural_path(
+        direction=failure_direction,
+        start_price=trigger,
+        active_zones=active_zones,
+        support_resistance=[],
+        liquidity=liquidity,
+        parent_atr=parent_atr,
+    )
+    zone_steps = [
+        dict(cp)
+        for cp in list(base.get("checkpoints") or [])
+        if cp.get("type") == "ZONE"
+    ][:2]
+
+    checkpoints: list[dict[str, Any]] = []
+    if zone_steps:
+        first = dict(zone_steps[0])
+        first["order"] = 1
+        first["role"] = "AFTER_PARENT_FAILURE_FIRST_REACTION"
+        checkpoints.append(first)
+
+        first_boundary = (
+            float(first["low"])
+            if failure_direction == "SHORT"
+            else float(first["high"])
+        )
+        second_boundary = None
+        if len(zone_steps) > 1:
+            second_boundary = (
+                float(zone_steps[1]["high"])
+                if failure_direction == "SHORT"
+                else float(zone_steps[1]["low"])
+            )
+
+        compatible: list[dict[str, Any]] = []
+        for level in support_resistance:
+            px = float(level["price"])
+            kind = str(level.get("kind") or "")
+            if failure_direction == "SHORT":
+                if px >= first_boundary:
+                    continue
+                if second_boundary is not None and px <= second_boundary:
+                    continue
+                if kind not in {"SUPPORT", "FLIP"}:
+                    continue
+            else:
+                if px <= first_boundary:
+                    continue
+                if second_boundary is not None and px >= second_boundary:
+                    continue
+                if kind not in {"RESISTANCE", "FLIP"}:
+                    continue
+            if abs(px - first_boundary) > 1.25 * max(parent_atr, 1e-9):
+                continue
+            compatible.append(level)
+
+        if compatible:
+            compatible.sort(
+                key=lambda x: (
+                    -float(x.get("strength") or 0.0),
+                    abs(float(x["price"]) - first_boundary),
+                )
+            )
+            anchor_level = compatible[0]
+            anchor_px = float(anchor_level["price"])
+            cluster = [
+                x
+                for x in compatible
+                if abs(float(x["price"]) - anchor_px)
+                <= max(0.25 * parent_atr, 1.0)
+            ]
+            low = min(float(x["price"]) for x in cluster)
+            high = max(float(x["price"]) for x in cluster)
+            checkpoints.append(
+                {
+                    "order": 2,
+                    "type": "SUPPORT_RESISTANCE",
+                    "role": "AFTER_ZONE_BREAK_H2_SR_CLUSTER",
+                    "zone_type": "SUPPORT_CLUSTER" if failure_direction == "SHORT" else "RESISTANCE_CLUSTER",
+                    "low": low,
+                    "high": high,
+                    "price": anchor_px,
+                    "strength": max(float(x.get("strength") or 0.0) for x in cluster),
+                    "sources": sorted(
+                        {
+                            source
+                            for x in cluster
+                            for source in list(x.get("sources") or [])
+                        }
+                    ),
+                    "continuation_rule": "CONTEXT_ONLY_WAIT_FOR_SWEEP_RECLAIM_OR_CLEAN_BREAK",
+                }
+            )
+
+        if len(zone_steps) > 1:
+            second = dict(zone_steps[1])
+            second["order"] = len(checkpoints) + 1
+            second["role"] = "AFTER_SR_NEXT_REACTION"
+            checkpoints.append(second)
+
+    return {
+        "state": "CONDITIONAL_ONLY" if checkpoints else "NO_FAILURE_CHECKPOINT",
+        "trigger": trigger,
+        "trigger_rule": (
+            "PARENT_INVALIDATED_BY_CAUSAL_CLOSE_BEYOND_DISTAL_PLUS_0P05_ATR"
+        ),
+        "parent_direction": direction,
+        "failure_direction": failure_direction,
+        "checkpoints": checkpoints,
+        "rule": (
+            "NOT_A_SECOND_SIGNAL. This path is visible only as contingency: "
+            "use it only after the parent zone is causally invalidated."
+        ),
+    }
+
+
 def _targets(
     *,
     direction: str,
@@ -1595,6 +1726,17 @@ def evaluate_sd_liquidity(
         "checkpoints": [],
         "support_resistance_context": support_resistance,
     }
+    failure_path = _conditional_failure_path(
+        parent_zone=decision_zone,
+        direction=direction,
+        active_zones=active,
+        support_resistance=support_resistance,
+        liquidity=liquidity,
+        parent_atr=float(decision_zone.get("atr") or atr_ref),
+    ) if decision_zone else {
+        "state": "NO_DECISION_ZONE",
+        "checkpoints": [],
+    }
     targets = _targets(
         direction=direction,
         entry=entry,
@@ -1630,6 +1772,7 @@ def evaluate_sd_liquidity(
         "structural_destination": destination,
         "structural_room": structural_room,
         "structural_path": structural_path,
+        "failure_path": failure_path,
         "support_resistance": support_resistance,
         "roadblocks": roadblocks,
         "nearest_roadblock": dict(roadblocks[0]) if roadblocks else {},
@@ -1676,6 +1819,9 @@ def evaluate_sd_liquidity(
             ),
             "support_resistance": (
                 "CAUSAL_H2_SWING_PIVOTS_PLUS_PRIOR_DAY_WEEK_LEVELS; CONTEXT_ONLY_NO_DIRECTION_SIGNAL"
+            ),
+            "failure_path": (
+                "CONDITIONAL_ONLY_AFTER_PARENT_CAUSAL_INVALIDATION; NEVER_A_SECOND_DIRECTION_SIGNAL"
             ),
             "reversal_confirmation": "TOUCH/SWEEP + RECLAIM + LOCAL_MSS + DISPLACEMENT",
             "rebuild_policy": "RECALCULATE_FROM_COMPLETED_H4_H1_M15_M5_ON_EACH_RUNTIME_CYCLE",
