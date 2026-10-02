@@ -335,15 +335,26 @@ def render_xau_dual_engine_dashboard(
                 st.caption("Belum ada sweep envelope yang layak dipetakan.")
 
             st.markdown("### Validasi reversal & entry guide")
+            targets = list(guide.get("targets") or [])
             e1, e2, e3, e4 = st.columns(4)
             e1.metric("Stage", str(micro.get("stage") or "WAIT"))
-            e2.metric("Entry", _px(guide.get("entry_reference")))
-            e3.metric("Invalidation", _px(guide.get("invalidation")))
-            targets = list(guide.get("targets") or [])
-            e4.metric("TP terdekat", _px(targets[0].get("price") if targets else None))
+            e2.metric(
+                "PREPARE forecast",
+                f"{_px(guide.get('prepared_entry_low'))}–{_px(guide.get('prepared_entry_high'))}",
+            )
+            e3.metric("Fresh confirm ref", _px(guide.get("confirmation_entry_reference")))
+            e4.metric(
+                "Retest entry",
+                f"{_px(guide.get('entry_low'))}–{_px(guide.get('entry_high'))}",
+            )
             st.caption(
-                "Entry hanya aktif setelah struktur memberi ruang yang cukup, news gate aman, dan "
-                "touch/sweep + reclaim + local MSS + displacement terkonfirmasi."
+                "PREPARE = area reaksi yang dipetakan sebelum konfirmasi (bukan auto-entry). "
+                "Setelah MSS + displacement valid, executor dapat masuk pada fresh confirmation "
+                "selama masih baru/dekat; jika tidak, ia menunggu retest dan tidak mengejar harga."
+            )
+            st.caption(
+                f"Invalidation {_px(guide.get('invalidation'))} • "
+                f"TP terdekat {_px(targets[0].get('price') if targets else None)}"
             )
 
             rows = []
