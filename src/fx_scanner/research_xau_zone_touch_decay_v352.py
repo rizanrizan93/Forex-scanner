@@ -382,6 +382,12 @@ def evaluate_zone_touches(
     zone: SDZone,
     valid_until: datetime | None = None,
 ) -> list[dict[str, Any]]:
+    """Evaluate sequential zone visits using vectorized touch boundaries.
+
+    A distinct touch begins only after at least one full M1 bar outside the zone.
+    The prior visit fails with RETOUCH_BEFORE_050 if the next distinct touch starts
+    before a 0.50 ATR reaction. This keeps repeated-touch buckets non-overlapping.
+    """
     timestamps = list(price_m1["timestamp"])
     if not timestamps:
         return []
@@ -398,6 +404,15 @@ def evaluate_zone_touches(
     if end <= start:
         return []
 
+    seg_high = highs[start:end]
+    seg_low = lows[start:end]
+    seg_close = closes[start:end]
+    inside = (seg_high >= float(zone.low)) & (seg_low <= float(zone.high))
+    previous_inside = np.r_[False, inside[:-1]]
+    touch_rel = np.flatnonzero(inside & ~previous_inside)
+    if len(touch_rel) == 0:
+        return []
+
     target = (
         float(zone.proximal) + TARGET_ATR * float(zone.atr)
         if zone.direction == "LONG"
@@ -408,151 +423,167 @@ def evaluate_zone_touches(
         if zone.direction == "LONG"
         else float(zone.distal) + BREAK_BUFFER_ATR * float(zone.atr)
     )
+    invalid_mask = (
+        seg_close < invalid_level
+        if zone.direction == "LONG"
+        else seg_close > invalid_level
+    )
+    invalid_rel = np.flatnonzero(invalid_mask)
+    first_invalid_rel = int(invalid_rel[0]) if len(invalid_rel) else None
+
     width = max(float(zone.high) - float(zone.low), 1e-12)
-
     touches: list[dict[str, Any]] = []
-    touch_count = 0
-    i = start
-    was_inside = False
 
-    while i < end:
-        high = float(highs[i])
-        low = float(lows[i])
-        close = float(closes[i])
-        inside = high >= float(zone.low) and low <= float(zone.high)
-        invalid = close < invalid_level if zone.direction == "LONG" else close > invalid_level
-        if invalid:
+    for position, rel_raw in enumerate(touch_rel):
+        rel = int(rel_raw)
+        if first_invalid_rel is not None and rel > first_invalid_rel:
             break
+        absolute = start + rel
+        touch_at = ensure_utc(timestamps[absolute].to_pydatetime()) + timedelta(minutes=1)
+        horizon = min(
+            touch_at + timedelta(hours=REACTION_HORIZON_HOURS[zone.timeframe]),
+            expiry,
+        )
+        horizon_abs = min(bisect_left(timestamps, pd.Timestamp(horizon)), end)
 
-        if inside and not was_inside:
-            prior_touches = touch_count
-            touch_count += 1
-            touch_open = ensure_utc(timestamps[i].to_pydatetime())
-            touch_at = touch_open + timedelta(minutes=1)
-            horizon = min(
-                touch_at + timedelta(hours=REACTION_HORIZON_HOURS[zone.timeframe]),
-                expiry,
-            )
-            horizon_idx = min(
-                bisect_left(timestamps, pd.Timestamp(horizon)),
-                end,
-            )
+        next_touch_abs: int | None = None
+        if position + 1 < len(touch_rel):
+            candidate = start + int(touch_rel[position + 1])
+            if candidate < horizon_abs:
+                next_touch_abs = candidate
 
-            sweep_seen = bool(
-                low < float(zone.distal)
-                if zone.direction == "LONG"
-                else high > float(zone.distal)
+        break_abs: int | None = None
+        if first_invalid_rel is not None:
+            candidate = start + first_invalid_rel
+            if absolute <= candidate < horizon_abs:
+                break_abs = candidate
+
+        terminal_exclusive = horizon_abs
+        if next_touch_abs is not None:
+            terminal_exclusive = min(terminal_exclusive, next_touch_abs)
+        if break_abs is not None:
+            terminal_exclusive = min(terminal_exclusive, break_abs + 1)
+        terminal_exclusive = max(absolute + 1, terminal_exclusive)
+
+        if zone.direction == "LONG":
+            target_mask = highs[absolute:terminal_exclusive] >= target
+        else:
+            target_mask = lows[absolute:terminal_exclusive] <= target
+        target_positions = np.flatnonzero(target_mask)
+        target_abs = (
+            absolute + int(target_positions[0])
+            if len(target_positions)
+            else None
+        )
+
+        same_m1_ambiguity = bool(
+            target_abs is not None
+            and break_abs is not None
+            and target_abs == break_abs
+        )
+        reaction_hit = False
+        break_hit = False
+        retouch_before_reversal = False
+
+        if same_m1_ambiguity:
+            outcome = "BREAK_AMBIGUOUS"
+            outcome_abs = int(break_abs)
+            break_hit = True
+        elif break_abs is not None and (
+            target_abs is None or break_abs < target_abs
+        ):
+            outcome = "BREAK"
+            outcome_abs = int(break_abs)
+            break_hit = True
+        elif target_abs is not None:
+            outcome_abs = int(target_abs)
+            reaction_hit = True
+            # For a successful target bar, exclude that bar from sweep
+            # classification because intrabar target-vs-wick ordering is unknown.
+            adverse_end = max(absolute + 1, outcome_abs)
+            if zone.direction == "LONG":
+                adverse_for_sweep = float(np.min(lows[absolute:adverse_end]))
+                sweep_seen = adverse_for_sweep < float(zone.distal)
+            else:
+                adverse_for_sweep = float(np.max(highs[absolute:adverse_end]))
+                sweep_seen = adverse_for_sweep > float(zone.distal)
+            outcome = (
+                "REVERSAL_050_AFTER_SWEEP"
+                if sweep_seen
+                else "REVERSAL_050_DIRECT"
             )
-            adverse = low if zone.direction == "LONG" else high
-            left_zone = False
+        elif next_touch_abs is not None:
+            outcome = "RETOUCH_BEFORE_050"
+            outcome_abs = next_touch_abs
+            retouch_before_reversal = True
+        else:
             outcome = "STALL"
-            outcome_idx = max(i, horizon_idx - 1)
-            reaction_hit = False
-            break_hit = False
-            retouch_before_reversal = False
-            same_m1_ambiguity = False
+            outcome_abs = max(absolute, horizon_abs - 1)
 
-            j = i
-            while j < horizon_idx:
-                h = float(highs[j])
-                l = float(lows[j])
-                c = float(closes[j])
-                row_inside = h >= float(zone.low) and l <= float(zone.high)
+        if reaction_hit:
+            adverse_end = max(absolute + 1, outcome_abs)
+        elif retouch_before_reversal:
+            adverse_end = max(absolute + 1, outcome_abs)
+        else:
+            adverse_end = min(end, outcome_abs + 1)
+        adverse_end = max(absolute + 1, adverse_end)
 
-                if zone.direction == "LONG":
-                    adverse = min(adverse, l)
-                    current_sweep = l < float(zone.distal)
-                    target_now = h >= target
-                    break_now = c < invalid_level
-                else:
-                    adverse = max(adverse, h)
-                    current_sweep = h > float(zone.distal)
-                    target_now = l <= target
-                    break_now = c > invalid_level
+        if zone.direction == "LONG":
+            adverse = float(np.min(lows[absolute:adverse_end]))
+            sweep_seen = adverse < float(zone.distal)
+            turning_depth = (float(zone.high) - adverse) / width
+            sweep_extension = max(0.0, float(zone.distal) - adverse)
+        else:
+            adverse = float(np.max(highs[absolute:adverse_end]))
+            sweep_seen = adverse > float(zone.distal)
+            turning_depth = (adverse - float(zone.low)) / width
+            sweep_extension = max(0.0, adverse - float(zone.distal))
 
-                sweep_seen = bool(sweep_seen or current_sweep)
-
-                if target_now and break_now:
-                    same_m1_ambiguity = True
-                    break_hit = True
-                    outcome = "BREAK_AMBIGUOUS"
-                    outcome_idx = j
-                    break
-
-                if break_now:
-                    break_hit = True
-                    outcome = "BREAK"
-                    outcome_idx = j
-                    break
-
-                if target_now:
-                    reaction_hit = True
-                    outcome = "REVERSAL_050_AFTER_SWEEP" if sweep_seen else "REVERSAL_050_DIRECT"
-                    outcome_idx = j
-                    break
-
-                if not row_inside:
-                    left_zone = True
-                elif left_zone and j > i:
-                    retouch_before_reversal = True
-                    outcome = "RETOUCH_BEFORE_050"
-                    outcome_idx = j
-                    break
-
-                j += 1
-
-            outcome_at = ensure_utc(timestamps[outcome_idx].to_pydatetime()) + timedelta(minutes=1)
-            sweep_extension = (
-                max(0.0, float(zone.distal) - adverse)
-                if zone.direction == "LONG"
-                else max(0.0, adverse - float(zone.distal))
+        # Preserve conservative target-bar handling for liquidity classification.
+        if reaction_hit:
+            if zone.direction == "LONG":
+                adverse_success = float(np.min(lows[absolute:max(absolute + 1, outcome_abs)]))
+                sweep_seen = adverse_success < float(zone.distal)
+            else:
+                adverse_success = float(np.max(highs[absolute:max(absolute + 1, outcome_abs)]))
+                sweep_seen = adverse_success > float(zone.distal)
+            outcome = (
+                "REVERSAL_050_AFTER_SWEEP"
+                if sweep_seen
+                else "REVERSAL_050_DIRECT"
             )
-            turning_depth = (
-                (float(zone.high) - adverse) / width
-                if zone.direction == "LONG"
-                else (adverse - float(zone.low)) / width
-            )
-            touches.append(
-                {
-                    **_zone_record(zone),
-                    "prior_touch_count": prior_touches,
-                    "touch_bucket": _bucket(prior_touches),
-                    "touch_number": prior_touches + 1,
-                    "touch_at": touch_at.isoformat(),
-                    "outcome_at": outcome_at.isoformat(),
-                    "outcome": outcome,
-                    "reaction_hit": reaction_hit,
-                    "break_hit": break_hit,
-                    "retouch_before_reversal": retouch_before_reversal,
-                    "sweep_seen": sweep_seen,
-                    "reversal_after_sweep": bool(reaction_hit and sweep_seen),
-                    "direct_reversal": bool(reaction_hit and not sweep_seen),
-                    "target_price": target,
-                    "invalid_level": invalid_level,
-                    "turning_depth": turning_depth,
-                    "sweep_extension_points": sweep_extension,
-                    "sweep_extension_atr": sweep_extension / max(float(zone.atr), 1e-12),
-                    "sweep_extension_zone_width": sweep_extension / width,
-                    "same_m1_ambiguity": same_m1_ambiguity,
-                    "minutes_to_outcome": max(
-                        0.0, (outcome_at - touch_at).total_seconds() / 60.0
-                    ),
-                }
-            )
-            if break_hit:
-                break
 
-            # Continue from the outcome; force a new transition before another touch.
-            i = max(i + 1, outcome_idx + 1)
-            was_inside = bool(
-                i - 1 < len(highs)
-                and float(highs[i - 1]) >= float(zone.low)
-                and float(lows[i - 1]) <= float(zone.high)
-            )
-            continue
-
-        was_inside = inside
-        i += 1
+        outcome_at = ensure_utc(timestamps[outcome_abs].to_pydatetime()) + timedelta(minutes=1)
+        prior_touches = position
+        touches.append(
+            {
+                **_zone_record(zone),
+                "prior_touch_count": prior_touches,
+                "touch_bucket": _bucket(prior_touches),
+                "touch_number": prior_touches + 1,
+                "touch_at": touch_at.isoformat(),
+                "outcome_at": outcome_at.isoformat(),
+                "outcome": outcome,
+                "reaction_hit": reaction_hit,
+                "break_hit": break_hit,
+                "retouch_before_reversal": retouch_before_reversal,
+                "sweep_seen": bool(sweep_seen),
+                "reversal_after_sweep": bool(reaction_hit and sweep_seen),
+                "direct_reversal": bool(reaction_hit and not sweep_seen),
+                "target_price": target,
+                "invalid_level": invalid_level,
+                "turning_depth": turning_depth,
+                "sweep_extension_points": sweep_extension,
+                "sweep_extension_atr": sweep_extension / max(float(zone.atr), 1e-12),
+                "sweep_extension_zone_width": sweep_extension / width,
+                "same_m1_ambiguity": same_m1_ambiguity,
+                "minutes_to_outcome": max(
+                    0.0, (outcome_at - touch_at).total_seconds() / 60.0
+                ),
+            }
+        )
+        if break_hit:
+            break
 
     return touches
 
