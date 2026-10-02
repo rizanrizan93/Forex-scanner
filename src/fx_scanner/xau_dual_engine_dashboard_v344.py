@@ -625,6 +625,11 @@ def render_xau_dual_engine_dashboard(
             st.markdown("### Event Macro & Prediksi XAU")
             macro = dict(event_context or news)
             focal = dict(macro.get("focal_event") or news.get("focal_event") or {})
+            latest_release = dict(
+                macro.get("latest_released_event")
+                or news.get("latest_released_event")
+                or {}
+            )
             interaction = dict(news.get("zone_interaction") or {})
             next_zone = dict(news.get("next_same_type_htf_zone") or {})
             risk_state = str(
@@ -634,34 +639,49 @@ def render_xau_dual_engine_dashboard(
             )
             n1, n2, n3, n4 = st.columns(4)
             n1.metric("Event risk", risk_state)
-            n2.metric("Event terdekat", str(focal.get("title") or "—"))
-            n3.metric("Prediksi XAU (consensus)", _macro_bias_label(focal.get("gold_bias")))
+            n2.metric("Rilis makro terakhir", str(latest_release.get("title") or "—"))
+            n3.metric("Dampak XAU rilis", _macro_bias_label(latest_release.get("gold_bias")))
             n4.metric(
                 "Entry gate",
                 str(news.get("effective_entry_state") or macro.get("action") or "WAIT"),
             )
 
-            if focal:
+            if latest_release:
                 st.caption(
-                    "Jadwal • "
-                    + _event_wib(focal.get("scheduled_at_wib") or focal.get("scheduled_at"))
+                    "Rilis terakhir • "
+                    + _event_wib(
+                        latest_release.get("scheduled_at_wib")
+                        or latest_release.get("scheduled_at")
+                    )
                     + " • "
-                    + str(focal.get("category") or "—")
+                    + str(latest_release.get("category") or "—")
                     + " • impact="
-                    + str(focal.get("impact") or "—")
+                    + str(latest_release.get("impact") or "—")
                     + " • confidence="
-                    + str(focal.get("gold_bias_confidence") or "LOW")
+                    + str(latest_release.get("gold_bias_confidence") or "LOW")
                     + " • basis="
-                    + str(focal.get("gold_bias_basis") or "—")
+                    + str(latest_release.get("gold_bias_basis") or "—")
                 )
                 st.caption(
-                    "Forecast="
-                    + str(focal.get("forecast") if focal.get("forecast") is not None else "—")
+                    "Actual="
+                    + str(latest_release.get("actual") if latest_release.get("actual") is not None else "—")
+                    + " • Forecast="
+                    + str(latest_release.get("forecast") if latest_release.get("forecast") is not None else "—")
                     + " • Previous="
-                    + str(focal.get("previous") if focal.get("previous") is not None else "—")
-                    + " • Actual="
-                    + str(focal.get("actual") if focal.get("actual") is not None else "—")
-                    + ". Prediksi pra-event adalah consensus tilt. Actual-vs-forecast dipakai hanya bila sumber kalender menyediakan actual; jika kosong, rilis harus diverifikasi dari sumber resmi."
+                    + str(latest_release.get("previous") if latest_release.get("previous") is not None else "—")
+                    + ". Setelah rilis, actual-vs-forecast menjadi konteks utama event."
+                )
+
+            if focal:
+                st.info(
+                    "**Event berikutnya:** "
+                    + str(focal.get("title") or "—")
+                    + " • "
+                    + _event_wib(focal.get("scheduled_at_wib") or focal.get("scheduled_at"))
+                    + " • prediksi pra-event="
+                    + _macro_bias_label(focal.get("gold_bias"))
+                    + " • confidence="
+                    + str(focal.get("gold_bias_confidence") or "LOW")
                 )
 
             upcoming = _sort_events_latest_first(
