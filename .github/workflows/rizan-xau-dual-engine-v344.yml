@@ -13,6 +13,7 @@ on:
       - "src/fx_scanner/xau_news_zone_v346.py"
       - "src/fx_scanner/demo_xau_dual_engine_runtime_v344.py"
       - "src/fx_scanner/xau_dual_engine_dashboard_v344.py"
+      - "streamlit_app.py"
       - "tests/test_xau_sd_liquidity_engine_v342.py"
       - "tests/test_xau_friend_entry_engine_v343.py"
       - "tests/test_xau_news_zone_v346.py"
