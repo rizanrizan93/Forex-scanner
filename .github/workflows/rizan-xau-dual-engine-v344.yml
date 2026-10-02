@@ -28,10 +28,13 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
-  group: rizan-xau-dual-engine-v353-continuous-demo-execution
-  cancel-in-progress: true
+  group: rizan-xau-dual-engine-v360-graceful-demo-execution
+  # Never kill a healthy runtime in the middle of a cycle. A newer main
+  # revision is detected after the current cycle and handed off cleanly.
+  cancel-in-progress: false
 
 jobs:
   test-and-refresh:
