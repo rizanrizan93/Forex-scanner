@@ -11,7 +11,7 @@ import pandas as pd
 from .models import ensure_utc
 from .xau_structural_sr_map_v363 import build_structural_sr_map
 
-CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_8_ADAPTIVE_ENTRY_V354"
+CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_9_SR_ROADBLOCK_V364"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
 EXECUTION_AUTHORITY = True
 EXECUTION_INFLUENCE = True
@@ -1263,6 +1263,121 @@ def _roadblocks(
     return rows[:6]
 
 
+def _sr_roadblocks(
+    *,
+    direction: str,
+    start_price: float,
+    support_resistance_map: dict[str, Any],
+    destination: dict[str, Any] | None,
+    parent_atr: float,
+    entry: float | None = None,
+    invalidation: float | None = None,
+) -> list[dict[str, Any]]:
+    """Treat validated structural S/R as an obstacle, never as a direction signal.
+
+    V363 role-flip lifecycle is allowed to *reduce* usable room in an already
+    selected H4 direction. It cannot create LONG/SHORT authority by itself.
+    """
+    if direction not in {"LONG", "SHORT"}:
+        return []
+
+    terminal = _f((destination or {}).get("price"))
+    parent_atr_ref = max(float(parent_atr), 1e-9)
+    risk = None
+    if entry is not None and invalidation is not None:
+        raw_risk = abs(float(entry) - float(invalidation))
+        if raw_risk > 1e-9:
+            risk = raw_risk
+
+    rows: list[dict[str, Any]] = []
+    for raw in list(dict(support_resistance_map or {}).get("levels") or []):
+        level = dict(raw or {})
+        px = _f(level.get("price"))
+        if px is None:
+            continue
+        state = str(level.get("lifecycle_state") or "").upper()
+        role = str(level.get("current_role") or level.get("kind") or "").upper()
+
+        if direction == "LONG":
+            acts_as_opposition = role == "RESISTANCE" or state in {
+                "FAILED_BULL_BREAKOUT_RECLAIM_REQUIRED",
+                "UPSIDE_SWEEP_LIKE_REJECTION",
+            }
+            if not acts_as_opposition:
+                continue
+            near_edge = _f(level.get("band_low")) or px
+            far_edge = _f(level.get("band_high")) or px
+            if near_edge <= start_price:
+                continue
+            if terminal is not None and near_edge >= terminal:
+                continue
+            obstacle_type = "RESISTANCE"
+        else:
+            acts_as_opposition = role == "SUPPORT" or state in {
+                "FAILED_BEAR_BREAKDOWN_RECLAIM_REQUIRED",
+                "DOWNSIDE_SWEEP_LIKE_REJECTION",
+            }
+            if not acts_as_opposition:
+                continue
+            near_edge = _f(level.get("band_high")) or px
+            far_edge = _f(level.get("band_low")) or px
+            if near_edge >= start_price:
+                continue
+            if terminal is not None and near_edge <= terminal:
+                continue
+            obstacle_type = "SUPPORT"
+
+        distance = abs(float(near_edge) - start_price)
+        distance_parent_atr = distance / parent_atr_ref
+        planned_rr_to_roadblock = (
+            abs(float(near_edge) - float(entry)) / risk
+            if entry is not None and risk is not None
+            else None
+        )
+        reduces_room = bool(
+            distance_parent_atr < 0.50
+            or (
+                planned_rr_to_roadblock is not None
+                and planned_rr_to_roadblock < 1.50
+            )
+        )
+        rows.append(
+            {
+                "zone_id": f"SR::{str(level.get('price'))}",
+                "timeframe": "H2/SR",
+                "type": obstacle_type,
+                "low": min(float(near_edge), float(far_edge)),
+                "high": max(float(near_edge), float(far_edge)),
+                "near_edge": float(near_edge),
+                "far_edge": float(far_edge),
+                "distance_points": distance,
+                "distance_atr": distance_parent_atr,
+                "distance_parent_atr": distance_parent_atr,
+                "planned_rr_to_roadblock": planned_rr_to_roadblock,
+                "reduces_room": reduces_room,
+                "status": "BLOCKS_ENTRY_ROOM" if reduces_room else "PATH_OBSTACLE",
+                "score": float(level.get("strength") or 0.0),
+                "freshness": state,
+                "hierarchy_role": "STRUCTURAL_SR_ROADBLOCK",
+                "severity": "STRUCTURAL_SR",
+                "source": "RIZAN_STRUCTURAL_SR_MAP_V363",
+                "sr_price": px,
+                "lifecycle_state": state,
+                "current_role": role,
+                "sources": list(level.get("sources") or []),
+                "direction_signal": False,
+            }
+        )
+
+    rows.sort(
+        key=lambda row: (
+            float(row.get("distance_points") or 0.0),
+            -float(row.get("score") or 0.0),
+        )
+    )
+    return rows[:6]
+
+
 def _roadblock_room_gate(
     roadblocks: Sequence[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -1281,8 +1396,9 @@ def _roadblock_room_gate(
         "threshold_parent_atr": 0.50,
         "threshold_rr": 1.50,
         "rule": (
-            "Roadblock is an opposing active zone before the terminal H4 destination. "
-            "WAIT when the nearest roadblock is <0.50 parent ATR away or offers <1.50R "
+            "Roadblock is an opposing active HTF zone or validated structural S/R barrier "
+            "before the terminal H4 destination. WAIT when the nearest roadblock is "
+            "<0.50 parent ATR away or offers <1.50R "
             "after entry/invalidation geometry exists."
         ),
     }
@@ -1815,7 +1931,7 @@ def evaluate_sd_liquidity(
         else {}
     )
     invalidation = _f(micro.get("invalidation"))
-    roadblocks = (
+    htf_roadblocks = (
         _roadblocks(
             direction=direction,
             start_price=path_start,
@@ -1829,6 +1945,26 @@ def evaluate_sd_liquidity(
         if direction in {"LONG", "SHORT"}
         else []
     )
+    sr_roadblocks = (
+        _sr_roadblocks(
+            direction=direction,
+            start_price=path_start,
+            support_resistance_map=support_resistance_map,
+            destination=destination,
+            parent_atr=float(decision_zone.get("atr") or atr_ref),
+            entry=entry,
+            invalidation=invalidation,
+        )
+        if direction in {"LONG", "SHORT"}
+        else []
+    )
+    roadblocks = sorted(
+        [*htf_roadblocks, *sr_roadblocks],
+        key=lambda row: (
+            float(row.get("distance_points") or 0.0),
+            -float(row.get("score") or 0.0),
+        ),
+    )[:8]
     nearest_roadblock = dict(roadblocks[0]) if roadblocks else {}
     roadblock_room = _roadblock_room_gate(roadblocks)
     structural_room = _structural_room_gate(
@@ -1909,6 +2045,8 @@ def evaluate_sd_liquidity(
         "support_resistance": support_resistance,
         "support_resistance_map": support_resistance_map,
         "roadblocks": roadblocks,
+        "htf_roadblocks": htf_roadblocks,
+        "sr_roadblocks": sr_roadblocks,
         "nearest_roadblock": nearest_roadblock,
         "roadblock_room": roadblock_room,
         "liquidity_map": sweep_map,
@@ -1952,7 +2090,8 @@ def evaluate_sd_liquidity(
                 "Opposing zones on the projected path are ROADBLOCKS and do not override H4 solely by proximity."
             ),
             "roadblock": (
-                "OPPOSING_ACTIVE_ZONE_BETWEEN_PATH_START_AND_OPPOSING_H4_DESTINATION; "
+                "OPPOSING_ACTIVE_HTF_ZONE_OR_VALIDATED_STRUCTURAL_SR_BARRIER_BETWEEN_PATH_START_"
+                "AND_OPPOSING_H4_DESTINATION; S/R CAN_VETO_OR_CAP_ROOM_BUT_NEVER_CREATE_DIRECTION; "
                 "WAIT_IF_NEAREST_ROADBLOCK_LT_0P50_PARENT_ATR_OR_LT_1P50R_WHEN_ENTRY_EXISTS"
             ),
             "structural_room_gate": (
