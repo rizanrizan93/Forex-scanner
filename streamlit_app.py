@@ -55,6 +55,10 @@ from fx_scanner.xau_dashboard_bridge_v254 import (
     DEFAULT_SNAPSHOT_URL as DEFAULT_DASHBOARD_SNAPSHOT_URL,
     fetch_snapshot as fetch_dashboard_snapshot,
 )
+from fx_scanner.xau_public_hot_v362 import (
+    fetch_public_hot_snapshot,
+    overlay_public_hot_backend,
+)
 from fx_scanner.xau_standalone_bridge_v253 import (
     DEFAULT_SNAPSHOT_URL,
     fetch_snapshot as fetch_standalone_snapshot,
@@ -66,7 +70,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V344_DUAL_ISOLATED_FIX_20261002_1316"
+DASHBOARD_BUILD_ID = "RIZAN_V362_SUPABASE_HOT_20261002"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # Generic minute-tier reads are intentionally small. Prepared/V182/V226,
@@ -239,6 +243,12 @@ def _load_dashboard_bridge(
     require_fresh: bool = True,
 ) -> dict[str, Any]:
     return fetch_dashboard_snapshot(url, require_fresh=require_fresh)
+
+
+@st.cache_data(ttl=45, show_spinner=False)
+def _load_public_hot_snapshot() -> dict[str, Any]:
+    """Small direct Supabase feed for decision-critical XAU state."""
+    return fetch_public_hot_snapshot()
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -430,6 +440,7 @@ def _clear_backend_snapshot_cache(*, include_slow: bool) -> None:
     """Clear hot caches every minute; cold observability only on manual refresh."""
     _load_backend_fast_snapshot.clear()
     _load_backend_decision_snapshot.clear()
+    _load_public_hot_snapshot.clear()
     if include_slow:
         _load_backend_slow_snapshot.clear()
         _load_backend_structural_snapshot.clear()
@@ -1917,6 +1928,30 @@ if backend is None:
             dashboard_bridge_degraded_error = (
                 " | ".join(degraded_errors) or "no degraded dashboard bridge candidate"
             )
+# V362: decision-critical XAU state bypasses the 2+ MB GitHub Raw bridge.
+# The public RPC exposes only a compact read-only projection and never grants
+# broker/execution write authority.
+public_hot: dict[str, Any] | None = None
+public_hot_error: str | None = None
+public_hot_meta: dict[str, Any] = {}
+public_hot_fresh = False
+full_bridge_was_stale = bool(
+    backend is not None and backend_source == "GITHUB_DASHBOARD_BRIDGE_STALE"
+)
+if backend_source != "SUPABASE_DIRECT":
+    try:
+        public_hot = _load_public_hot_snapshot()
+        public_hot_meta = dict(public_hot.get("hot_transport") or {})
+        public_hot_fresh = bool(public_hot_meta.get("fresh"))
+        if public_hot_fresh:
+            backend = overlay_public_hot_backend(backend, public_hot)
+            if full_bridge_was_stale:
+                backend_source = "SUPABASE_PUBLIC_HOT_OVERLAY"
+            elif backend is not None and backend_source == "OFFLINE":
+                backend_source = "SUPABASE_PUBLIC_HOT"
+    except Exception as exc:
+        public_hot_error = f"{type(exc).__name__}: {exc}"
+
 standalone_url = _secret("RIZAN_STANDALONE_SNAPSHOT_URL") or DEFAULT_SNAPSHOT_URL
 standalone: dict[str, Any] | None = None
 standalone_error: str | None = None
@@ -1931,7 +1966,8 @@ except Exception as exc:
 
 backend_snapshot_stale = bool(
     backend is not None
-    and backend_source == "GITHUB_DASHBOARD_BRIDGE_STALE"
+    and full_bridge_was_stale
+    and not public_hot_fresh
 )
 
 with st.sidebar:
@@ -1941,6 +1977,7 @@ with st.sidebar:
     if st.button("Refresh dashboard", width="stretch"):
         _clear_backend_snapshot_cache(include_slow=True)
         _load_dashboard_bridge.clear()
+        _load_public_hot_snapshot.clear()
         _load_standalone_bridge.clear()
         st.rerun()
     auto_refresh_enabled = st.toggle(
@@ -1965,6 +2002,14 @@ with st.sidebar:
         st.caption(
             "Snapshot read-only GitHub"
             + (" • age " + _fmt_number(age, 0) + " dtk" if age is not None else "")
+        )
+    elif backend is not None and backend_source in {"SUPABASE_PUBLIC_HOT_OVERLAY", "SUPABASE_PUBLIC_HOT"}:
+        hot_age = public_hot_meta.get("age_seconds")
+        st.success("ForexRizan • Supabase HOT feed")
+        st.caption(
+            "Decision-critical XAU direct dari Supabase"
+            + (" • age " + _fmt_number(hot_age, 0) + " dtk" if hot_age is not None else "")
+            + (" • GitHub full snapshot tertinggal" if full_bridge_was_stale else "")
         )
     elif backend is not None and backend_source == "GITHUB_DASHBOARD_BRIDGE_STALE":
         age = backend_bridge_meta.get("age_seconds")
@@ -2012,6 +2057,7 @@ def _dashboard_auto_refresh_tick() -> None:
         st.session_state["dashboard_auto_refresh_at"] = now
         _clear_backend_snapshot_cache(include_slow=False)
         _load_dashboard_bridge.clear()
+        _load_public_hot_snapshot.clear()
         _load_standalone_bridge.clear()
         st.rerun()
 
@@ -2038,7 +2084,15 @@ elif backend_snapshot_stale:
     st.error(
         "DASHBOARD BRIDGE STALE • full diagnostic tetap ditampilkan agar halaman tidak "
         "berhenti, tetapi data ini tidak boleh dipakai sebagai entry baru. "
-        f"Snapshot age: {_fmt_number(age, 0)} detik. Admission UI = NO ORDER sampai bridge fresh."
+        f"Snapshot age: {_fmt_number(age, 0)} detik. Admission UI = NO ORDER sampai feed kritis fresh."
+    )
+elif full_bridge_was_stale and public_hot_fresh:
+    hot_age = public_hot_meta.get("age_seconds")
+    cold_age = backend_bridge_meta.get("age_seconds")
+    st.info(
+        "XAU HOT FEED FRESH • state entry/arah/zona/executor dibaca langsung dari Supabase "
+        f"(age {_fmt_number(hot_age, 0)} detik). GitHub full diagnostic snapshot sedang tertinggal "
+        f"(age {_fmt_number(cold_age, 0)} detik) dan hanya dipakai untuk panel non-kritis."
     )
 elif backend_source == "GITHUB_DASHBOARD_BRIDGE" and direct_backend_error:
     st.caption(
