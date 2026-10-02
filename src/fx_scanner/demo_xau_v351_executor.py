@@ -103,14 +103,26 @@ def _margin_room_ok(gateway: Any) -> tuple[bool, str, float | None]:
     account = gateway.account_snapshot()
     equity = _f(getattr(account, "equity", None))
     margin = _f(getattr(account, "margin", None))
+    margin_free = _f(getattr(account, "margin_free", None))
     if equity is None or equity <= 0:
         return False, "ACCOUNT_EQUITY_UNAVAILABLE", None
-    if margin is None:
+
+    # cTrader's gateway snapshot exposes margin_free rather than a dedicated
+    # margin field. Prefer explicit broker margin when present; otherwise derive
+    # used margin from equity - margin_free. Missing both remains fail-closed.
+    if margin is not None:
+        used_margin = max(0.0, margin)
+        margin_source = "EXPLICIT_MARGIN"
+    elif margin_free is not None:
+        used_margin = max(0.0, equity - margin_free)
+        margin_source = "DERIVED_FROM_MARGIN_FREE"
+    else:
         return False, "ACCOUNT_MARGIN_UNAVAILABLE", None
-    usage = max(0.0, margin) / equity
+
+    usage = used_margin / equity
     if usage >= MAX_MARGIN_USAGE_FRACTION:
-        return False, "MARGIN_USAGE_AT_OR_ABOVE_50PCT", usage
-    return True, "MARGIN_ROOM_OK", usage
+        return False, f"MARGIN_USAGE_AT_OR_ABOVE_50PCT:{margin_source}", usage
+    return True, f"MARGIN_ROOM_OK:{margin_source}", usage
 
 
 def _candidate(
