@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from fx_scanner.xau_sd_liquidity_engine_v342 import (
     HISTORICAL_DEPTH_PRIOR,
     _classify_hierarchy,
+    _conditional_failure_path,
     _h2_frame_from_h1,
     _roadblocks,
     _select_parent_and_refinement,
@@ -350,3 +351,76 @@ def test_v349_structural_path_is_single_direction_and_maps_deeper_zone_then_sr()
     assert checkpoints[1]["condition"] == "FRESH"
     assert checkpoints[2]["type"] == "SUPPORT_RESISTANCE"
     assert checkpoints[2]["price"] == 4117.2
+
+
+
+def test_v350_failure_path_maps_deeper_demand_and_h2_cluster_only_after_parent_break():
+    parent = _zone_row(
+        "main-h4-demand",
+        "H4",
+        "LONG",
+        4144.56,
+        4175.17,
+        atr=35.567,
+        price=4147.0,
+    )
+    parent["lifecycle"] = {
+        "freshness": "DEEPLY_MITIGATED",
+        "touch_count": 2,
+        "mitigation_depth": 1.0,
+    }
+    parent["condition"] = _zone_condition(parent)
+
+    h1_demand = _zone_row(
+        "fresh-h1-demand",
+        "H1",
+        "LONG",
+        4124.76,
+        4134.17,
+        atr=15.26,
+        price=4147.0,
+    )
+    h1_demand["lifecycle"] = {
+        "freshness": "FRESH",
+        "touch_count": 0,
+        "mitigation_depth": 0.0,
+    }
+    h1_demand["condition"] = _zone_condition(h1_demand)
+
+    lower_h4 = _zone_row(
+        "lower-h4-demand",
+        "H4",
+        "LONG",
+        4065.54,
+        4085.82,
+        atr=29.64,
+        price=4147.0,
+    )
+    lower_h4["lifecycle"] = {
+        "freshness": "FRESH",
+        "touch_count": 0,
+        "mitigation_depth": 0.0,
+    }
+    lower_h4["condition"] = _zone_condition(lower_h4)
+
+    result = _conditional_failure_path(
+        parent_zone=parent,
+        direction="LONG",
+        active_zones=[parent, h1_demand, lower_h4],
+        support_resistance=[
+            {"kind": "FLIP", "price": 4120.99, "strength": 2.0, "sources": ["H2_SWING_HIGH", "H2_SWING_LOW"]},
+            {"kind": "FLIP", "price": 4116.436, "strength": 5.0, "sources": ["H2_SWING_HIGH", "H2_SWING_LOW"]},
+            {"kind": "FLIP", "price": 4113.07, "strength": 2.0, "sources": ["H2_SWING_HIGH", "H2_SWING_LOW"]},
+        ],
+        liquidity=[],
+        parent_atr=35.567,
+    )
+    assert result["state"] == "CONDITIONAL_ONLY"
+    assert result["failure_direction"] == "SHORT"
+    assert result["trigger"] < 4144.56
+    checkpoints = result["checkpoints"]
+    assert checkpoints[0]["zone_id"] == "fresh-h1-demand"
+    assert checkpoints[1]["type"] == "SUPPORT_RESISTANCE"
+    assert checkpoints[1]["low"] <= 4113.07
+    assert checkpoints[1]["high"] >= 4120.99
+    assert checkpoints[-1]["zone_id"] == "lower-h4-demand"
