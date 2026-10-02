@@ -267,6 +267,162 @@ def parse_bls_ics(body: bytes, *, source_url: str) -> tuple[RiskEvent, ...]:
     return tuple(sorted(events, key=lambda event: event.scheduled_at))
 
 
+class _TextParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        value = re.sub(r"\s+", " ", str(data)).strip()
+        if value:
+            self.parts.append(value)
+
+    def text(self) -> str:
+        return re.sub(r"\s+", " ", " ".join(self.parts)).strip()
+
+
+def parse_bls_employment_release(
+    body: bytes,
+    *,
+    source_url: str,
+    now: datetime,
+) -> dict[str, Any]:
+    parser = _TextParser()
+    parser.feed(body.decode("utf-8", errors="replace"))
+    text = parser.text()
+    if not text:
+        return {}
+
+    release_match = re.search(
+        r"8:30\s*a\.m\.\s*\(ET\)\s*"
+        r"(?:Monday|Tuesday|Wednesday|Thursday|Friday),?\s+"
+        r"([A-Za-z]+\s+\d{1,2},\s+\d{4})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if release_match is None:
+        return {}
+    try:
+        release_local = datetime.strptime(
+            release_match.group(1),
+            "%B %d, %Y",
+        ).replace(hour=8, minute=30, tzinfo=NY)
+    except ValueError:
+        return {}
+    release_at = release_local.astimezone(UTC)
+    if release_local.date() != now.astimezone(NY).date():
+        return {}
+
+    report_match = re.search(
+        r"THE\s+EMPLOYMENT\s+SITUATION\s*--?\s*([A-Za-z]+)\s+(\d{4})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    report_period = None
+    if report_match:
+        report_period = f"{report_match.group(1).title()} {report_match.group(2)}"
+
+    payroll = None
+    signed_match = re.search(
+        r"Total nonfarm payroll employment changed little in [A-Za-z]+\s*"
+        r"\(([+-]?[\d,]+)\)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if signed_match is not None:
+        payroll = float(signed_match.group(1).replace(",", ""))
+    else:
+        payroll_match = re.search(
+            r"(?:Total\s+)?nonfarm payroll employment\s+"
+            r"(increased|rose|decreased|declined)\s+by\s+([\d,]+)",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if payroll_match is not None:
+            payroll = float(payroll_match.group(2).replace(",", ""))
+            if payroll_match.group(1).lower() in {"decreased", "declined"}:
+                payroll = -payroll
+
+    unemployment = None
+    unemployment_patterns = (
+        r"unemployment rate\s+(?:rose|increased|edged up)\s+to\s+([\d.]+)\s+percent",
+        r"unemployment rate\s+(?:fell|declined|edged down)\s+to\s+([\d.]+)\s+percent",
+        r"unemployment rate\s+(?:was\s+)?unchanged\s+at\s+([\d.]+)\s+percent",
+        r"unemployment rate,?\s+at\s+([\d.]+)\s+percent",
+    )
+    for pattern in unemployment_patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match is not None:
+            unemployment = float(match.group(1))
+            break
+
+    wage_mom = None
+    wage_match = re.search(
+        r"average hourly earnings for all employees.*?"
+        r"(rose|increased|edged up|declined|decreased|edged down).*?"
+        r"or\s+([\d.]+)\s+percent",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if wage_match is not None:
+        wage_mom = float(wage_match.group(2))
+        if wage_match.group(1).lower() in {"declined", "decreased", "edged down"}:
+            wage_mom = -wage_mom
+
+    wage_yoy = None
+    wage_yoy_match = re.search(
+        r"Over the year, average hourly earnings (?:have )?"
+        r"(?:increased|rose) by\s+([\d.]+)\s+percent",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if wage_yoy_match is not None:
+        wage_yoy = float(wage_yoy_match.group(1))
+
+    if payroll is None and unemployment is None and wage_mom is None:
+        return {}
+
+    return {
+        "release_at": release_at,
+        "report_period": report_period,
+        "source_url": source_url,
+        "EMPLOYMENT": payroll,
+        "UNEMPLOYMENT_RATE": unemployment,
+        "WAGES": wage_mom,
+        "WAGES_YOY": wage_yoy,
+    }
+
+
+def overlay_bls_employment_actuals(
+    events: Iterable[RiskEvent],
+    actuals: dict[str, Any],
+) -> tuple[RiskEvent, ...]:
+    release_at = actuals.get("release_at")
+    if not isinstance(release_at, datetime):
+        return tuple(events)
+    source_url = str(actuals.get("source_url") or "").strip()
+    out: list[RiskEvent] = []
+    for event in events:
+        actual = actuals.get(event.category)
+        if (
+            actual is not None
+            and event.category in {"EMPLOYMENT", "UNEMPLOYMENT_RATE", "WAGES"}
+            and abs((event.scheduled_at - release_at).total_seconds()) <= 120
+        ):
+            out.append(
+                replace(
+                    event,
+                    actual=float(actual),
+                    source="BLS_OFFICIAL_EMPLOYMENT_RELEASE",
+                    source_tier="OFFICIAL_ACTUAL_WITH_DISCOVERY_CONSENSUS",
+                    source_url=source_url or event.source_url,
+                )
+            )
+        else:
+            out.append(event)
+    return tuple(sorted(out, key=lambda event: event.scheduled_at))
+
+
 class _TableParser(HTMLParser):
     def __init__(self):
         super().__init__()
@@ -568,6 +724,27 @@ def run() -> int:
         except Exception as exc:
             source_status["BLS_OFFICIAL_ICS"] = f"ERROR:{type(exc).__name__}:{exc}"
 
+    bls_release_actuals: dict[str, Any] = {}
+    bls_release_cfg = calendar_cfg.get("BLS_EMPLOYMENT_RELEASE", {})
+    if bool(bls_release_cfg.get("enabled", False)):
+        try:
+            response = transport.get(
+                str(bls_release_cfg["base_url"]),
+                allowed_host=str(bls_release_cfg["allowed_host"]),
+                headers={"Accept": "text/html,*/*;q=0.1"},
+            )
+            bls_release_actuals = parse_bls_employment_release(
+                response.body,
+                source_url=str(bls_release_cfg["base_url"]),
+                now=now,
+            )
+            status = "CURRENT" if bls_release_actuals else "NO_CURRENT_RELEASE"
+            source_status["BLS_EMPLOYMENT_RELEASE"] = f"OK:{status}"
+        except Exception as exc:
+            source_status["BLS_EMPLOYMENT_RELEASE"] = (
+                f"ERROR:{type(exc).__name__}:{exc}"
+            )
+
     bea_cfg = calendar_cfg.get("BEA_OFFICIAL_SCHEDULE", {})
     if bool(bea_cfg.get("enabled", False)):
         try:
@@ -587,6 +764,8 @@ def run() -> int:
             source_status["BEA_OFFICIAL_SCHEDULE"] = f"ERROR:{type(exc).__name__}:{exc}"
 
     merged = _merge_events(events)
+    if bls_release_actuals:
+        merged = overlay_bls_employment_actuals(merged, bls_release_actuals)
     risk = evaluate_event_risk(merged, now=now)
     official_count = sum(event.source_tier.startswith("OFFICIAL") for event in merged)
     discovery_count = sum(event.source_tier == "DISCOVERY_UNVERIFIED" for event in merged)
