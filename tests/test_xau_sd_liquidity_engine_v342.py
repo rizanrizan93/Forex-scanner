@@ -10,6 +10,7 @@ from fx_scanner.xau_sd_liquidity_engine_v342 import (
     _h2_frame_from_h1,
     _prepared_entry_band,
     _roadblocks,
+    _sr_roadblocks,
     _select_parent_and_refinement,
     _structural_destination,
     _structural_path,
@@ -443,3 +444,98 @@ def test_v350_failure_path_maps_deeper_demand_and_h2_cluster_only_after_parent_b
     assert checkpoints[1]["low"] <= 4113.07
     assert checkpoints[1]["high"] >= 4120.99
     assert checkpoints[-1]["zone_id"] == "lower-h4-demand"
+
+
+
+def test_v364_failed_bull_breakout_becomes_long_sr_roadblock():
+    sr_map = {
+        "levels": [
+            {
+                "price": 4192.89,
+                "band_low": 4192.30,
+                "band_high": 4193.48,
+                "strength": 2.5,
+                "current_role": "RESISTANCE_CANDIDATE",
+                "lifecycle_state": "FAILED_BULL_BREAKOUT_RECLAIM_REQUIRED",
+                "sources": ["H2_SWING_HIGH", "PRIOR_DAY_HIGH"],
+            }
+        ]
+    }
+    rows = _sr_roadblocks(
+        direction="LONG",
+        start_price=4186.0,
+        support_resistance_map=sr_map,
+        destination={"price": 4230.0},
+        parent_atr=36.0,
+        entry=None,
+        invalidation=None,
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["type"] == "RESISTANCE"
+    assert row["source"] == "RIZAN_STRUCTURAL_SR_MAP_V363"
+    assert row["near_edge"] == 4192.30
+    assert row["reduces_room"] is True
+    assert row["direction_signal"] is False
+
+
+def test_v364_sr_roadblock_caps_room_by_rr_after_entry_geometry_exists():
+    sr_map = {
+        "levels": [
+            {
+                "price": 4192.89,
+                "band_low": 4192.30,
+                "band_high": 4193.48,
+                "strength": 3.0,
+                "current_role": "RESISTANCE",
+                "lifecycle_state": "UPSIDE_SWEEP_LIKE_REJECTION",
+                "sources": ["H2_SWING_HIGH"],
+            }
+        ]
+    }
+    rows = _sr_roadblocks(
+        direction="LONG",
+        start_price=4188.0,
+        support_resistance_map=sr_map,
+        destination={"price": 4230.0},
+        parent_atr=20.0,
+        entry=4188.0,
+        invalidation=4184.0,
+    )
+    assert rows
+    assert rows[0]["planned_rr_to_roadblock"] < 1.50
+    assert rows[0]["reduces_room"] is True
+
+
+def test_v364_confirmed_support_is_not_long_roadblock_but_is_short_roadblock():
+    sr_map = {
+        "levels": [
+            {
+                "price": 4169.99,
+                "band_low": 4169.40,
+                "band_high": 4170.58,
+                "strength": 4.0,
+                "current_role": "SUPPORT",
+                "lifecycle_state": "CONFIRMED_SUPPORT_FLIP",
+                "sources": ["H2_SWING_LOW", "H2_SWING_HIGH"],
+            }
+        ]
+    }
+    long_rows = _sr_roadblocks(
+        direction="LONG",
+        start_price=4186.0,
+        support_resistance_map=sr_map,
+        destination={"price": 4230.0},
+        parent_atr=36.0,
+    )
+    short_rows = _sr_roadblocks(
+        direction="SHORT",
+        start_price=4186.0,
+        support_resistance_map=sr_map,
+        destination={"price": 4130.0},
+        parent_atr=36.0,
+    )
+    assert long_rows == []
+    assert len(short_rows) == 1
+    assert short_rows[0]["type"] == "SUPPORT"
+    assert short_rows[0]["near_edge"] == 4170.58
