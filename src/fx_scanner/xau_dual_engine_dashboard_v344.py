@@ -58,6 +58,10 @@ def _macro_bias_label(value: Any) -> str:
         "NEUTRAL_UNKNOWN": "BELUM JELAS",
         "TWO_SIDED": "TWO-SIDED",
         "PENDING": "MENUNGGU RILIS",
+        "BULLISH_XAU": "BULLISH XAU",
+        "BEARISH_XAU": "BEARISH XAU",
+        "NEUTRAL_MIXED": "NETRAL / MIXED",
+        "UNAVAILABLE": "BELUM TERSEDIA",
     }
     raw = str(value or "NEUTRAL_UNKNOWN").upper()
     return labels.get(raw, raw)
@@ -95,18 +99,22 @@ def render_xau_dual_engine_dashboard(
     sd_heartbeat: dict[str, Any] | None,
     friend_heartbeat: dict[str, Any] | None,
     event_heartbeat: dict[str, Any] | None = None,
+    macro_heartbeat: dict[str, Any] | None = None,
 ) -> None:
     import streamlit as st
 
     sd_hb = dict(sd_heartbeat or {})
     friend_hb = dict(friend_heartbeat or {})
     event_hb = dict(event_heartbeat or {})
+    macro_hb = dict(macro_heartbeat or {})
     sd_details = dict(sd_hb.get("details") or {})
     friend_details = dict(friend_hb.get("details") or {})
     event_details = dict(event_hb.get("details") or {})
+    macro_details = dict(macro_hb.get("details") or {})
     sd = dict(sd_details.get("evaluation") or {})
     friend = dict(friend_details.get("evaluation") or {})
     event_context = dict(event_details.get("risk") or {})
+    macro_eval = dict(macro_details.get("evaluation") or {})
 
     demo_execution_on = bool(sd.get("execution_authority")) and (
         str(sd.get("execution_scope") or "").upper() == "DEMO_ONLY"
@@ -278,6 +286,85 @@ def render_xau_dual_engine_dashboard(
                         f"P75={_pct(prior.get('turning_depth_p75'))}. "
                         "Ini statistik deskriptif, bukan probabilitas setup saat ini."
                     )
+
+            st.markdown("### Broader Macro Attribution")
+            if macro_eval:
+                broader_bias = str(macro_eval.get("broader_macro_bias") or "UNAVAILABLE")
+                macro_score = macro_eval.get("macro_score")
+                macro_coverage = macro_eval.get("coverage")
+                relationship = str(
+                    macro_eval.get("consensus_relationship")
+                    or "NO_CLEAR_DIRECTIONAL_COMPARISON"
+                )
+                b1, b2, b3, b4 = st.columns(4)
+                b1.metric("Broader Macro Bias", _macro_bias_label(broader_bias))
+                b2.metric(
+                    "Macro score",
+                    "—" if macro_score is None else f"{float(macro_score):+.1f}",
+                )
+                b3.metric(
+                    "Confidence",
+                    str(macro_eval.get("confidence") or "LOW"),
+                )
+                b4.metric(
+                    "Coverage",
+                    "—" if macro_coverage is None else f"{float(macro_coverage) * 100.0:.0f}%",
+                )
+
+                event_bias = _macro_bias_label(macro_eval.get("event_consensus_bias"))
+                st.caption(
+                    "Consensus event tilt: **"
+                    + event_bias
+                    + "** • Broader macro: **"
+                    + _macro_bias_label(broader_bias)
+                    + "** • Fed repricing proxy: **"
+                    + str(dict(macro_eval.get("fed_repricing_proxy") or {}).get("state") or "UNAVAILABLE")
+                    + "**."
+                )
+                if relationship == "CONSENSUS_DIVERGENT_FROM_BROADER_MACRO":
+                    st.warning(
+                        "DIVERGENSI MAKRO • Consensus event dan cross-asset memberi arah berbeda. "
+                        "Jangan pakai consensus event sebagai arah entry tunggal; tunggu reaksi harga "
+                        "dan konfirmasi struktur."
+                    )
+                elif relationship == "CONSENSUS_ALIGNED_WITH_BROADER_MACRO":
+                    st.info(
+                        "Consensus event dan broader cross-asset sedang searah. Ini meningkatkan "
+                        "konteks, tetapi tetap bukan execution authority."
+                    )
+
+                macro_rows = []
+                for name, row in dict(macro_eval.get("components") or {}).items():
+                    row = dict(row or {})
+                    macro_rows.append(
+                        {
+                            "Komponen": name,
+                            "Freshness": row.get("freshness") or ("EVENT" if name == "EVENT_CONSENSUS" else "—"),
+                            "Current": row.get("current"),
+                            "Previous": row.get("previous"),
+                            "Delta": row.get("delta"),
+                            "Unit": row.get("delta_unit"),
+                            "Gold score": row.get("score"),
+                            "Source": row.get("provider") or row.get("source"),
+                        }
+                    )
+                if macro_rows:
+                    st.dataframe(
+                        macro_rows,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                st.caption(
+                    "USD_BROAD_PROXY memakai FRED DTWEXBGS sebagai proxy resmi USD broad index, "
+                    "bukan proprietary ICE DXY. US2Y digunakan sebagai proxy Fed repricing dan "
+                    "tidak dihitung dua kali. Cross-asset FRED bersifat harian, sehingga confidence "
+                    "V357 dibatasi maksimum MEDIUM."
+                )
+            else:
+                st.caption(
+                    "Broader Macro V357 belum tersedia. Event calendar tetap tampil, tetapi "
+                    "consensus event belum dibandingkan dengan USD/yield/real-yield."
+                )
 
             st.markdown("### Event Macro & Prediksi XAU")
             macro = dict(event_context or news)
