@@ -399,3 +399,30 @@ def test_v361_dashboard_projection_contains_actual_values():
     )
     assert projection["focal_event"]["actual"] == 29_000.0
     assert projection["focal_event"]["gold_bias_confidence"] == "POST_RELEASE"
+
+
+def test_v366_post_release_event_remains_visible_for_dashboard_actuals():
+    now = datetime(2026, 10, 2, 14, 30, tzinfo=UTC)
+    event = RiskEvent(
+        event_id="nfp-post",
+        title="Employment Situation",
+        scheduled_at=datetime(2026, 10, 2, 12, 30, tzinfo=UTC),
+        impact="HIGH",
+        category="EMPLOYMENT",
+        source="BLS_OFFICIAL_EMPLOYMENT_RELEASE",
+        source_tier="OFFICIAL_ACTUAL_WITH_DISCOVERY_CONSENSUS",
+        source_url="https://www.bls.gov/news.release/empsit.nr0.htm",
+        actual=29_000.0,
+        forecast=90_000.0,
+        previous=133_000.0,
+    )
+    risk = evaluate_event_risk((event,), now=now)
+    assert len(risk["upcoming_events"]) == 1
+    row = risk["upcoming_events"][0]
+    assert row["actual"] == 29_000.0
+    assert row["forecast"] == 90_000.0
+    assert row["gold_bias"] == "GOLD_BULLISH"
+    assert row["gold_bias_confidence"] == "POST_RELEASE"
+    assert row["gold_bias_basis"] == "ACTUAL_VS_FORECAST"
+    assert risk["state"] == "CLEAR"
+    assert risk["focal_event"] is None
