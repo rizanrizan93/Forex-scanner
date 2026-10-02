@@ -41,9 +41,12 @@ def _checkpoint_label(checkpoint: dict[str, Any]) -> str:
             f"{tfs} {checkpoint.get('zone_type','ZONE')} "
             f"{_px(checkpoint.get('low'))}–{_px(checkpoint.get('high'))}"
         )
-    return (
-        f"{checkpoint.get('zone_type','S/R')} ~{_px(checkpoint.get('price'))}"
-    )
+    if checkpoint.get("low") is not None and checkpoint.get("high") is not None:
+        return (
+            f"{checkpoint.get('zone_type','S/R')} "
+            f"{_px(checkpoint.get('low'))}–{_px(checkpoint.get('high'))}"
+        )
+    return f"{checkpoint.get('zone_type','S/R')} ~{_px(checkpoint.get('price'))}"
 
 
 def render_xau_dual_engine_dashboard(
@@ -86,6 +89,7 @@ def render_xau_dual_engine_dashboard(
             destination = dict(sd.get("structural_destination") or {})
             structural_room = dict(sd.get("structural_room") or {})
             structural_path = dict(sd.get("structural_path") or {})
+            failure_path = dict(sd.get("failure_path") or {})
             support_resistance = list(sd.get("support_resistance") or [])
             roadblocks = list(sd.get("roadblocks") or [])
             nearest_roadblock = dict(sd.get("nearest_roadblock") or {})
@@ -147,6 +151,18 @@ def render_xau_dual_engine_dashboard(
                             )
                 elif destination:
                     st.info("Destination H4 • " + _zone_label(destination))
+
+                failure_steps = list(failure_path.get("checkpoints") or [])
+                if failure_steps:
+                    failure_labels = " → ".join(
+                        _checkpoint_label(cp) for cp in failure_steps[:3]
+                    )
+                    trigger = failure_path.get("trigger")
+                    comparator = "<" if str(failure_path.get("failure_direction")) == "SHORT" else ">"
+                    st.info(
+                        "**Jika MAIN H4 gagal (conditional, bukan sinyal kedua):** "
+                        + f"close {comparator} {_px(trigger)} → {failure_labels}"
+                    )
 
                 if nearest_roadblock:
                     st.warning(
