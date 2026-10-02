@@ -26,6 +26,18 @@ WINDOWS = {
 }
 
 
+def _event_blocks_execution(event: NewsZoneEvent | None) -> bool:
+    """Only verified calendar evidence may create a hard execution blackout.
+
+    Discovery-only events remain visible as volatility context but cannot
+    silently override a fully confirmed structural setup. Missing all economic
+    calendar sources still fails closed elsewhere.
+    """
+    if event is None:
+        return False
+    return str(event.source_tier or "").upper() != "DISCOVERY_UNVERIFIED"
+
+
 def _f(value: Any) -> float | None:
     try:
         parsed = float(value)
@@ -246,6 +258,8 @@ def evaluate_news_zone(
     price = _f(sd_evaluation.get("price_now"))
     event_list = sorted(events, key=lambda x: x.scheduled_at)
     focal, risk_state, delta = _focal_event(event_list, now=current)
+    event_execution_blocking = _event_blocks_execution(focal)
+    gate_risk_state = risk_state if event_execution_blocking else "CLEAR"
     source_status = dict(source_status or {})
     economic_sources = [
         value for key, value in source_status.items()
@@ -254,6 +268,7 @@ def evaluate_news_zone(
     news_source_available = any(str(value).startswith("OK:") for value in economic_sources)
     if not news_source_available:
         risk_state = "NEWS_SOURCE_UNAVAILABLE"
+        gate_risk_state = "NEWS_SOURCE_UNAVAILABLE"
 
     zone_distance_atr = None
     zone_coupled = False
@@ -296,11 +311,11 @@ def evaluate_news_zone(
         else {}
     )
 
-    if risk_state == "NEWS_SOURCE_UNAVAILABLE":
+    if gate_risk_state == "NEWS_SOURCE_UNAVAILABLE":
         decision_state = "WAIT_NEWS_DATA"
         preferred = "WAIT_FOR_NEWS_SOURCE_RECOVERY"
         alternative = "DO_NOT_TREAT_MISSING_CALENDAR_AS_CLEAR"
-    elif risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
+    elif gate_risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
         decision_state = "WAIT_EVENT_VOLATILITY"
         preferred = "WAIT_FOR_RELEASE_THEN_REASSESS_ZONE"
         alternative = "NO_DIRECTIONAL_NEWS_BET"
@@ -316,7 +331,7 @@ def evaluate_news_zone(
         decision_state = "POST_NEWS_EARLY_REVERSAL_CONFIRMED"
         preferred = "BOUNDED_DEMO_PROBE_FROM_RECLAIM_WITH_STRUCTURAL_INVALIDATION"
         alternative = "WAIT_FULL_LOCAL_MSS_FOR_STRONGER_CONFIRMATION"
-    elif risk_state == "POST_EVENT_DISCOVERY":
+    elif gate_risk_state == "POST_EVENT_DISCOVERY":
         decision_state = "WAIT_POST_NEWS_CONFIRMATION"
         preferred = "WAIT_SWEEP_RECLAIM_MSS_DISPLACEMENT"
         alternative = "ZONE_FAILURE_THEN_SEARCH_NEXT_HTF_ZONE"
@@ -328,13 +343,13 @@ def evaluate_news_zone(
     effective_entry_state = str(
         dict(sd_evaluation.get("entry_guide") or {}).get("state") or "WAIT_CONFIRMATION"
     )
-    if risk_state == "NEWS_SOURCE_UNAVAILABLE":
+    if gate_risk_state == "NEWS_SOURCE_UNAVAILABLE":
         effective_entry_state = "WAIT_NEWS_DATA"
-    elif risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
+    elif gate_risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
         effective_entry_state = "WAIT_FOR_NEWS"
     elif failed:
         effective_entry_state = "BLOCK_FAILED_ZONE"
-    elif risk_state == "POST_EVENT_DISCOVERY" and not (confirmed or early_confirmed):
+    elif gate_risk_state == "POST_EVENT_DISCOVERY" and not (confirmed or early_confirmed):
         effective_entry_state = "WAIT_POST_NEWS_M5_M15_CONFIRMATION"
 
     upcoming = [
@@ -347,6 +362,8 @@ def evaluate_news_zone(
         "contract": CONTRACT,
         "state": decision_state,
         "risk_state": risk_state,
+        "execution_risk_state": gate_risk_state,
+        "event_execution_blocking": event_execution_blocking,
         "observed_at": current.isoformat(),
         "focal_event": None if focal is None else focal.as_dict(),
         "minutes_to_focal": delta,
@@ -364,6 +381,8 @@ def evaluate_news_zone(
         "effective_entry_state": effective_entry_state,
         "policy": {
             "news_direction_prediction": False,
+            "verified_event_hard_gate": "SOURCE_TIER_NOT_DISCOVERY_UNVERIFIED",
+            "discovery_unverified": "CONTEXT_ONLY_NO_HARD_EXECUTION_BLACKOUT",
             "pre_event": "WAIT_EVENT_VOLATILITY",
             "post_event": "SWEEP_RECLAIM_MSS_DISPLACEMENT_OR_ZONE_FAILURE",
             "failure": "STRONG_CLOSE_OR_TWO_M5_CLOSES_BEYOND_DISTAL",
