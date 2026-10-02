@@ -10,10 +10,11 @@ import pandas as pd
 
 from .models import ensure_utc
 
-CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_6_HIERARCHY_ROADBLOCK_RISK_V351"
+CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_7_DEMO_EXECUTION_V352"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
-EXECUTION_AUTHORITY = False
-EXECUTION_INFLUENCE = False
+EXECUTION_AUTHORITY = True
+EXECUTION_INFLUENCE = True
+EXECUTION_SCOPE = "DEMO_ONLY"
 LIVE_EXECUTION_ENABLED = False
 
 # Frozen first-generation thresholds. They are deliberately simple and causal.
@@ -1811,6 +1812,8 @@ def evaluate_sd_liquidity(
         if bool(roadblock_room.get("blocked"))
         else "WAIT_STRUCTURAL_ROOM"
         if bool(structural_room.get("blocked"))
+        else "WAIT_NO_TERMINAL_HTF_DESTINATION"
+        if not destination
         else "CONFIRMED_GUIDANCE"
         if bool(micro.get("confirmed"))
         else "WAIT_CONFIRMATION"
@@ -1897,5 +1900,6 @@ def evaluate_sd_liquidity(
         },
         "execution_authority": EXECUTION_AUTHORITY,
         "execution_influence": EXECUTION_INFLUENCE,
+        "execution_scope": EXECUTION_SCOPE,
         "live_execution_enabled": LIVE_EXECUTION_ENABLED,
     }

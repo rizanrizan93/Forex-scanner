@@ -63,12 +63,17 @@ def render_xau_dual_engine_dashboard(
     sd = dict(sd_details.get("evaluation") or {})
     friend = dict(friend_details.get("evaluation") or {})
 
+    demo_execution_on = bool(sd.get("execution_authority")) and (
+        str(sd.get("execution_scope") or "").upper() == "DEMO_ONLY"
+    )
+    execution_label = "DEMO execution = ON • LIVE = OFF" if demo_execution_on else "Execution = OFF"
     st.markdown(
         '<div class="rizan-kicker">RIZAN NEW ENGINE • LEGACY PAUSED</div>'
         '<div class="rizan-title">XAUUSD — Structural Path & Micro Entry</div>'
         '<div class="rizan-note">Satu jalur struktural utama: H4 parent → H1 refinement → '
         'reaction/roadblock → destination. H2 support/resistance hanya konteks, bukan sinyal arah. '
-        'Execution authority = OFF.</div>',
+        + execution_label
+        + '.</div>',
         unsafe_allow_html=True,
     )
     tab_sd, tab_friend = st.tabs(

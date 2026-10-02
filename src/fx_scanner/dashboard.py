@@ -410,7 +410,10 @@ class SupabaseDashboardReader:
             "news_preferred_path:details->evaluation->news_zone->>preferred_path,"
             "news_alternative_path:details->evaluation->news_zone->>alternative_path,"
             "market_structure:details->evaluation->market_structure,"
-            "expected_reversal_direction:details->evaluation->>expected_reversal_direction"
+            "expected_reversal_direction:details->evaluation->>expected_reversal_direction,"
+            "execution_authority:details->evaluation->execution_authority,"
+            "execution_scope:details->evaluation->>execution_scope,"
+            "live_execution_enabled:details->evaluation->live_execution_enabled"
         )
         try:
             response = (
@@ -482,6 +485,9 @@ class SupabaseDashboardReader:
             "expected_reversal_direction": raw.pop(
                 "expected_reversal_direction", None
             ),
+            "execution_authority": bool(raw.pop("execution_authority", False)),
+            "execution_scope": raw.pop("execution_scope", None),
+            "live_execution_enabled": bool(raw.pop("live_execution_enabled", False)),
             "historical_depth_prior": {},
         }
         raw["details"] = {

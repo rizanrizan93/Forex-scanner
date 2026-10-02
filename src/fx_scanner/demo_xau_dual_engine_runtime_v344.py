@@ -15,7 +15,7 @@ from .xau_sd_liquidity_engine_v342 import evaluate_sd_liquidity
 SYMBOL = "XAUUSD"
 SD_WORKER = "ctrader_demo_xau_sd_liquidity_v342"
 FRIEND_WORKER = "ctrader_demo_xau_friend_entry_v343"
-CONTRACT = "XAU_RIZAN_DUAL_ISOLATED_RUNTIME_V344_2_NEWS_ZONE"
+CONTRACT = "XAU_RIZAN_DUAL_ISOLATED_RUNTIME_V344_3_DEMO_EXECUTION_V352"
 
 
 def _last_close(rows: tuple[Any, ...]) -> float | None:
@@ -130,10 +130,8 @@ def run() -> int:
     healthy = error is None
     common = {
         "runtime_contract": CONTRACT,
-        "environment": "DEMO_READ_ONLY_RESEARCH",
+        "environment": "DEMO_NEW_ENGINE_RUNTIME",
         "legacy_engines_paused": True,
-        "execution_authority": False,
-        "execution_influence": False,
         "live_execution_enabled": False,
         "bar_counts": counts,
         "news_source_status": news_source_status,
@@ -143,19 +141,33 @@ def run() -> int:
         SD_WORKER,
         healthy=healthy,
         lag_seconds=0.0,
-        details={**common, "evaluation": sd_payload},
+        details={
+            **common,
+            "execution_authority": bool(sd_payload.get("execution_authority")),
+            "execution_influence": bool(sd_payload.get("execution_influence")),
+            "execution_scope": str(sd_payload.get("execution_scope") or "DEMO_ONLY"),
+            "evaluation": sd_payload,
+        },
     )
     store.write_heartbeat(
         FRIEND_WORKER,
         healthy=healthy,
         lag_seconds=0.0,
-        details={**common, "evaluation": friend_payload},
+        details={
+            **common,
+            "execution_authority": False,
+            "execution_influence": False,
+            "execution_scope": "SHADOW_ONLY",
+            "evaluation": friend_payload,
+        },
     )
     print(
         "XAU_RIZAN_DUAL_V344 "
         f"healthy={int(healthy)} sd={sd_payload.get('state','ERROR')} "
         f"friend={friend_payload.get('state','ERROR')} "
-        f"news={news_payload.get('state','ERROR')} execution_authority=0"
+        f"news={news_payload.get('state','ERROR')} "
+        f"execution_authority={int(bool(sd_payload.get('execution_authority')))} "
+        "scope=DEMO_ONLY live=0"
     )
     return 0 if healthy else 2
 

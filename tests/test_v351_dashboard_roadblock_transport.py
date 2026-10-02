@@ -61,10 +61,18 @@ def test_v351_compact_dashboard_keeps_roadblock_fields():
         "entry_guide": {"state": "WAIT_ROADBLOCK"},
         "market_structure": {},
         "expected_reversal_direction": "SHORT",
+        "execution_authority": True,
+        "execution_scope": "DEMO_ONLY",
+        "live_execution_enabled": False,
     })
     row = SupabaseDashboardReader(query).latest_xau_sd_liquidity_operational_heartbeat()
     ev = row["details"]["evaluation"]
     assert ev["nearest_roadblock"]["status"] == "BLOCKS_ENTRY_ROOM"
     assert ev["roadblock_room"]["state"] == "ROADBLOCK_ROOM_TOO_SMALL"
+    assert ev["execution_authority"] is True
+    assert ev["execution_scope"] == "DEMO_ONLY"
+    assert ev["live_execution_enabled"] is False
     assert "nearest_roadblock:details->evaluation->nearest_roadblock" in query.selected
     assert "roadblock_room:details->evaluation->roadblock_room" in query.selected
+    assert "execution_authority:details->evaluation->execution_authority" in query.selected
+    assert "execution_scope:details->evaluation->>execution_scope" in query.selected
