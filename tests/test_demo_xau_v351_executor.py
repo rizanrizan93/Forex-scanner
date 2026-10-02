@@ -294,6 +294,7 @@ def test_v354_evidence_ledger_carries_full_decision_path():
 def test_v364_early_confirmed_setup_can_send_bounded_demo_probe():
     hb = _heartbeat(guide_state="EARLY_CONFIRMED_GUIDANCE")
     evaluation = hb["details"]["evaluation"]
+    evaluation["structural_destination"]["price"] = 88.0
     evaluation["micro_confirmation"].update(
         {
             "confirmed": False,
