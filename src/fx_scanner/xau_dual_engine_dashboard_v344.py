@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime
 from math import isfinite
 from typing import Any
+from zoneinfo import ZoneInfo
+
+WIB = ZoneInfo("Asia/Jakarta")
 
 
 def _f(value: Any) -> float | None:
@@ -20,6 +24,43 @@ def _px(value: Any) -> str:
 def _pct(value: Any) -> str:
     number = _f(value)
     return "—" if number is None else f"{number * 100.0:.1f}%"
+
+
+_DAY_ID = {
+    0: "Senin",
+    1: "Selasa",
+    2: "Rabu",
+    3: "Kamis",
+    4: "Jumat",
+    5: "Sabtu",
+    6: "Minggu",
+}
+
+
+def _event_wib(value: Any) -> str:
+    if not value:
+        return "—"
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return str(value)
+    if parsed.tzinfo is None:
+        return str(value)
+    local = parsed.astimezone(WIB)
+    return f"{_DAY_ID[local.weekday()]}, {local:%d-%m-%Y %H:%M} WIB"
+
+
+def _macro_bias_label(value: Any) -> str:
+    labels = {
+        "GOLD_BULLISH": "BULLISH XAU",
+        "GOLD_BEARISH": "BEARISH XAU",
+        "NEUTRAL": "NETRAL",
+        "NEUTRAL_UNKNOWN": "BELUM JELAS",
+        "TWO_SIDED": "TWO-SIDED",
+        "PENDING": "MENUNGGU RILIS",
+    }
+    raw = str(value or "NEUTRAL_UNKNOWN").upper()
+    return labels.get(raw, raw)
 
 
 def _zone_label(zone: dict[str, Any]) -> str:
@@ -53,15 +94,19 @@ def render_xau_dual_engine_dashboard(
     *,
     sd_heartbeat: dict[str, Any] | None,
     friend_heartbeat: dict[str, Any] | None,
+    event_heartbeat: dict[str, Any] | None = None,
 ) -> None:
     import streamlit as st
 
     sd_hb = dict(sd_heartbeat or {})
     friend_hb = dict(friend_heartbeat or {})
+    event_hb = dict(event_heartbeat or {})
     sd_details = dict(sd_hb.get("details") or {})
     friend_details = dict(friend_hb.get("details") or {})
+    event_details = dict(event_hb.get("details") or {})
     sd = dict(sd_details.get("evaluation") or {})
     friend = dict(friend_details.get("evaluation") or {})
+    event_context = dict(event_details.get("risk") or {})
 
     demo_execution_on = bool(sd.get("execution_authority")) and (
         str(sd.get("execution_scope") or "").upper() == "DEMO_ONLY"
@@ -234,39 +279,92 @@ def render_xau_dual_engine_dashboard(
                         "Ini statistik deskriptif, bukan probabilitas setup saat ini."
                     )
 
-            st.markdown("### News-zone")
-            focal = dict(news.get("focal_event") or {})
+            st.markdown("### Event Macro & Prediksi XAU")
+            macro = dict(event_context or news)
+            focal = dict(macro.get("focal_event") or news.get("focal_event") or {})
             interaction = dict(news.get("zone_interaction") or {})
             next_zone = dict(news.get("next_same_type_htf_zone") or {})
+            risk_state = str(
+                macro.get("state")
+                or news.get("risk_state")
+                or "UNKNOWN"
+            )
             n1, n2, n3, n4 = st.columns(4)
-            n1.metric("News risk", str(news.get("risk_state") or "UNKNOWN"))
-            n2.metric("Event", str(focal.get("title") or "—"))
-            n3.metric("Overshoot risk", str(news.get("overshoot_risk") or "BASELINE"))
-            n4.metric("Entry gate", str(news.get("effective_entry_state") or "WAIT"))
+            n1.metric("Event risk", risk_state)
+            n2.metric("Event terdekat", str(focal.get("title") or "—"))
+            n3.metric("Prediksi XAU", _macro_bias_label(focal.get("gold_bias")))
+            n4.metric(
+                "Entry gate",
+                str(news.get("effective_entry_state") or macro.get("action") or "WAIT"),
+            )
 
             if focal:
                 st.caption(
-                    "Next/focal event • "
-                    + str(focal.get("scheduled_at_wib") or focal.get("scheduled_at") or "—")
+                    "Jadwal • "
+                    + _event_wib(focal.get("scheduled_at_wib") or focal.get("scheduled_at"))
                     + " • "
                     + str(focal.get("category") or "—")
-                    + " • source="
-                    + str(focal.get("source_tier") or focal.get("source") or "—")
+                    + " • impact="
+                    + str(focal.get("impact") or "—")
+                    + " • confidence="
+                    + str(focal.get("gold_bias_confidence") or "LOW")
+                    + " • basis="
+                    + str(focal.get("gold_bias_basis") or "—")
                 )
-            if str(news.get("risk_state") or "") in {"PRE_EVENT", "EVENT_WINDOW"}:
+                st.caption(
+                    "Forecast="
+                    + str(focal.get("forecast") if focal.get("forecast") is not None else "—")
+                    + " • Previous="
+                    + str(focal.get("previous") if focal.get("previous") is not None else "—")
+                    + " • Actual="
+                    + str(focal.get("actual") if focal.get("actual") is not None else "—")
+                    + ". Prediksi pra-event adalah consensus tilt; setelah rilis dashboard memakai actual-vs-forecast."
+                )
+
+            upcoming = list(macro.get("upcoming_events") or [])
+            if upcoming:
+                event_rows = []
+                for item in upcoming:
+                    event_rows.append(
+                        {
+                            "Hari / Tanggal / Jam WIB": _event_wib(
+                                item.get("scheduled_at_wib") or item.get("scheduled_at")
+                            ),
+                            "Event": item.get("title"),
+                            "Impact": item.get("impact"),
+                            "Forecast": item.get("forecast"),
+                            "Previous": item.get("previous"),
+                            "Actual": item.get("actual"),
+                            "Prediksi XAU": _macro_bias_label(item.get("gold_bias")),
+                            "Confidence": item.get("gold_bias_confidence"),
+                            "Basis": item.get("gold_bias_basis"),
+                        }
+                    )
+                st.dataframe(
+                    event_rows,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+                st.caption(
+                    "Kalender V355 menampilkan maksimal 7 hari event USD yang tersedia dari sumber "
+                    "resmi/discovery. Event dengan data numerik memakai consensus-vs-previous sebelum "
+                    "rilis dan actual-vs-forecast setelah rilis."
+                )
+
+            if risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
                 st.warning(
-                    "WAIT — EVENT VOLATILITY. News tidak dipakai untuk menebak arah. "
-                    "Tunggu rilis, lalu validasi sweep → reclaim → MSS/displacement."
+                    "WAIT — EVENT VOLATILITY. Bias makro hanya context. "
+                    "Eksekusi tetap menunggu reaksi harga: liquidity sweep → reclaim → MSS/displacement."
                 )
-            elif str(news.get("risk_state") or "") == "NEWS_SOURCE_UNAVAILABLE":
+            elif risk_state == "NEWS_SOURCE_UNAVAILABLE":
                 st.error(
                     "News calendar unavailable. Status tidak boleh dianggap CLEAR; "
                     "entry guide dipaksa WAIT_NEWS_DATA."
                 )
-            elif str(news.get("risk_state") or "") == "POST_EVENT_DISCOVERY":
+            elif risk_state == "POST_EVENT_DISCOVERY":
                 st.info(
-                    "POST-NEWS PRICE DISCOVERY • fokus pada interaksi harga dengan decision zone, "
-                    "bukan pada arah headline."
+                    "POST-NEWS PRICE DISCOVERY • utamakan actual-vs-forecast, DXY/yield, "
+                    "dan interaksi harga dengan decision zone."
                 )
 
             if news:
@@ -289,7 +387,7 @@ def render_xau_dual_engine_dashboard(
                 elif interaction.get("state") == "NEWS_SWEEP_REVERSAL_CONFIRMED":
                     st.success(
                         "Sweep distal sudah direclaim dan konfirmasi micro setelah event tersedia. "
-                        "Ini adalah validasi reversal berbasis harga; news sendiri tetap tidak memberi arah."
+                        "Ini adalah validasi reversal berbasis harga; news sendiri tetap bukan otoritas entry."
                     )
 
             if support_resistance:
