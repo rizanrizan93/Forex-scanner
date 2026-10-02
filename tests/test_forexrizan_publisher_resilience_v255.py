@@ -10,10 +10,11 @@ def _read(path: str) -> str:
 def test_dashboard_publisher_has_serialized_schedule_and_self_handoff() -> None:
     text = _read(".github/workflows/forexrizan-dashboard-bridge-v254.yml")
     assert 'cron: "3 * * * 0-5"' in text
-    # V325 keeps one serialized publisher alive without overlapping half-hour
-    # schedule backlog; each database cycle is bounded so PostgREST cannot freeze
-    # the bridge for several minutes.
-    assert "cancel-in-progress: false" in text
+    # V344 cancels stale long-running publishers when newer dashboard transport
+    # code reaches main, preventing an old runner from force-pushing stale JSON.
+    assert "cancel-in-progress: true" in text
+    assert "Stopping stale publisher" in text
+    assert 'latest_main="$(git rev-parse FETCH_HEAD)"' in text
     assert "actions: write" in text
     assert "for i in $(seq 1 55)" in text
     assert 'gh workflow run -R "${GITHUB_REPOSITORY}" forexrizan-dashboard-bridge-v254.yml --ref main' in text
