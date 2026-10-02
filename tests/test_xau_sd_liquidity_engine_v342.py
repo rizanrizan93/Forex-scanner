@@ -7,6 +7,7 @@ from fx_scanner.xau_sd_liquidity_engine_v342 import (
     HISTORICAL_DEPTH_PRIOR,
     _classify_hierarchy,
     _conditional_failure_path,
+    _destination_ladder,
     _h2_frame_from_h1,
     _micro_confirmation,
     _prepared_entry_band,
@@ -786,3 +787,69 @@ def test_v367_confirmed_support_only_blocks_short_path():
     assert len(short_rows) == 1
     assert short_rows[0]["type"] == "SUPPORT"
     assert short_rows[0]["near_edge"] == 4170.58
+
+
+def test_v368_destination_ladder_keeps_far_3900_like_target_conditional():
+    price = 4200.0
+    first = _zone_row(
+        "h4-demand-1", "H4", "LONG", 4144.56, 4175.17, price=price, score=90.0
+    )
+    second = _zone_row(
+        "h4-demand-2", "H4", "LONG", 4065.54, 4085.82, price=price, score=86.0
+    )
+    far = _zone_row(
+        "h4-demand-3", "H4", "LONG", 3885.0, 3910.0, price=price, score=82.0
+    )
+    for idx, zone in enumerate((first, second, far)):
+        zone["main_reversal_eligible"] = True
+        zone["main_reversal_score"] = 90.0 - idx
+
+    result = _destination_ladder(
+        direction="SHORT",
+        start_price=price,
+        active_zones=[first, second, far],
+    )
+
+    assert result["state"] == "LADDER_AVAILABLE"
+    stages = result["stages"]
+    assert [row["zone_id"] for row in stages] == [
+        "h4-demand-1",
+        "h4-demand-2",
+        "h4-demand-3",
+    ]
+    assert stages[0]["role"] == "PRIMARY_HTF_DESTINATION"
+    assert stages[0]["status"] == "ACTIVE_AFTER_REVERSAL_CONFIRMATION"
+    assert stages[1]["role"] == "CONTINUATION_HTF_DESTINATION"
+    assert stages[1]["status"] == "CONDITIONAL_IF_PREVIOUS_HTF_ZONE_FAILS"
+    assert stages[-1]["role"] == "TERMINAL_SCENARIO"
+    assert stages[-1]["price"] == 3910.0
+    assert result["terminal_scenario"]["zone_id"] == "h4-demand-3"
+
+
+def test_v368_failure_ladder_promotes_next_deeper_zone_not_failed_parent():
+    failed_parent = _zone_row(
+        "failed-main-demand", "H4", "LONG", 4144.56, 4175.17, price=4142.0, score=90.0
+    )
+    next_demand = _zone_row(
+        "next-h4-demand", "H4", "LONG", 4065.54, 4085.82, price=4142.0, score=88.0
+    )
+    far_demand = _zone_row(
+        "far-h4-demand", "H4", "LONG", 3885.0, 3910.0, price=4142.0, score=84.0
+    )
+    for zone in (failed_parent, next_demand, far_demand):
+        zone["main_reversal_eligible"] = True
+        zone["main_reversal_score"] = float(zone.get("score") or 0.0)
+
+    trigger = 4142.0
+    result = _destination_ladder(
+        direction="SHORT",
+        start_price=trigger,
+        active_zones=[failed_parent, next_demand, far_demand],
+    )
+
+    assert result["primary"]["zone_id"] == "next-h4-demand"
+    assert result["primary"]["price"] == 4085.82
+    assert result["terminal_scenario"]["zone_id"] == "far-h4-demand"
+    assert result["terminal_scenario"]["activation_rule"] == (
+        "ONLY_AFTER_PREVIOUS_HTF_ZONE_CAUSAL_INVALIDATION"
+    )
