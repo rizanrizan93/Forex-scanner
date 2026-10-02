@@ -2,6 +2,18 @@ name: RIZAN XAU Dual Engine V344
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
+      - "src/fx_scanner/xau_friend_entry_engine_v343.py"
+      - "src/fx_scanner/xau_news_zone_v346.py"
+      - "src/fx_scanner/demo_xau_v351_executor.py"
+      - "tests/test_xau_sd_liquidity_engine_v342.py"
+      - "tests/test_xau_friend_entry_engine_v343.py"
+      - "tests/test_xau_news_zone_v346.py"
+      - "tests/test_demo_xau_v351_executor.py"
+      - ".github/workflows/rizan-xau-dual-engine-v344.yml"
   schedule:
     # Low-frequency fallback only; continuous self-handoff is primary.
     - cron: "47 */6 * * 0-5"
@@ -24,6 +36,7 @@ on:
       - "tests/test_xau_sd_liquidity_engine_v342.py"
       - "tests/test_xau_friend_entry_engine_v343.py"
       - "tests/test_xau_news_zone_v346.py"
+      - "tests/test_demo_xau_v351_executor.py"
       - "tests/test_xau_macro_attribution_v357.py"
       - ".github/workflows/rizan-xau-dual-engine-v344.yml"
 
@@ -72,8 +85,15 @@ jobs:
           python - <<'PY'
           import fx_scanner.demo_xau_dual_engine_runtime_v344
           import fx_scanner.demo_xau_v351_executor
-          print("V360_RUNTIME_IMPORT_SMOKE_OK")
+          print("V364_RUNTIME_IMPORT_SMOKE_OK")
           PY
+      - name: Run V364 reversal-entry regressions
+        run: |
+          pytest -q \
+            tests/test_xau_sd_liquidity_engine_v342.py \
+            tests/test_xau_friend_entry_engine_v343.py \
+            tests/test_xau_news_zone_v346.py \
+            tests/test_demo_xau_v351_executor.py
       - name: Validate configuration
         if: ${{ github.event_name != 'pull_request' }}
         run: python -m fx_scanner.cli validate-config
@@ -119,7 +139,7 @@ jobs:
           done
 
       - name: Self-handoff continuous XAU runtime
-        if: ${{ success() && !cancelled() }}
+        if: ${{ success() && !cancelled() && github.event_name != 'pull_request' }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
