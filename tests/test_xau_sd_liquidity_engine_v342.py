@@ -6,10 +6,13 @@ from types import SimpleNamespace
 from fx_scanner.xau_sd_liquidity_engine_v342 import (
     HISTORICAL_DEPTH_PRIOR,
     _classify_hierarchy,
+    _h2_frame_from_h1,
     _roadblocks,
     _select_parent_and_refinement,
     _structural_destination,
+    _structural_path,
     _structural_room_gate,
+    _zone_condition,
     detect_zones,
     evaluate_sd_liquidity,
 )
@@ -240,3 +243,110 @@ def test_v348_allows_room_when_destination_is_far_enough():
     assert result["state"] == "STRUCTURAL_ROOM_OK"
     assert result["blocked"] is False
     assert result["distance_parent_atr"] > 0.50
+
+
+
+def test_v349_builds_causal_h2_from_completed_h1_pairs():
+    start = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
+    bars = []
+    for i in range(6):
+        bars.append(
+            SimpleNamespace(
+                timestamp=start + timedelta(hours=i),
+                open=100.0 + i,
+                high=101.0 + i,
+                low=99.0 + i,
+                close=100.5 + i,
+            )
+        )
+    frame = _h2_frame_from_h1(
+        bars,
+        as_of=start + timedelta(hours=6),
+    )
+    assert len(frame) == 3
+    assert float(frame.iloc[0]["open"]) == 100.0
+    assert float(frame.iloc[0]["close"]) == 101.5
+    assert float(frame.iloc[0]["high"]) == 102.0
+    assert float(frame.iloc[0]["low"]) == 99.0
+
+
+def test_v349_zone_condition_decays_after_repeated_deep_touches():
+    zone = _zone_row("degraded", "H4", "LONG", 95.0, 105.0)
+    zone["lifecycle"] = {
+        "freshness": "DEEPLY_MITIGATED",
+        "touch_count": 2,
+        "mitigation_depth": 1.0,
+    }
+    assert _zone_condition(zone) == "NEAR_EXHAUSTED"
+
+    fresh = _zone_row("fresh", "H1", "LONG", 90.0, 94.0)
+    fresh["lifecycle"] = {
+        "freshness": "FRESH",
+        "touch_count": 0,
+        "mitigation_depth": 0.0,
+    }
+    assert _zone_condition(fresh) == "FRESH"
+
+
+def test_v349_structural_path_is_single_direction_and_maps_deeper_zone_then_sr():
+    h4_demand = _zone_row(
+        "h4-demand",
+        "H4",
+        "LONG",
+        4144.56,
+        4175.17,
+        atr=35.56,
+        price=4182.0,
+    )
+    h4_demand["lifecycle"] = {
+        "freshness": "DEEPLY_MITIGATED",
+        "touch_count": 2,
+        "mitigation_depth": 1.0,
+    }
+    h4_demand["condition"] = _zone_condition(h4_demand)
+
+    h1_demand = _zone_row(
+        "h1-demand",
+        "H1",
+        "LONG",
+        4124.76,
+        4134.17,
+        atr=15.26,
+        price=4182.0,
+    )
+    h1_demand["lifecycle"] = {
+        "freshness": "FRESH",
+        "touch_count": 0,
+        "mitigation_depth": 0.0,
+    }
+    h1_demand["condition"] = _zone_condition(h1_demand)
+
+    result = _structural_path(
+        direction="SHORT",
+        start_price=4182.0,
+        active_zones=[h4_demand, h1_demand],
+        support_resistance=[
+            {
+                "kind": "SUPPORT",
+                "price": 4117.2,
+                "strength": 2.0,
+                "sources": ["H2_SWING_LOW", "PRIOR_DAY_LOW"],
+            }
+        ],
+        liquidity=[
+            {
+                "price": 4117.0,
+                "sources": ["H1_SWING_LOW"],
+            }
+        ],
+        parent_atr=32.0,
+    )
+    assert result["direction"] == "SHORT"
+    assert result["state"] == "PATH_AVAILABLE"
+    checkpoints = result["checkpoints"]
+    assert checkpoints[0]["zone_id"] == "h4-demand"
+    assert checkpoints[0]["condition"] == "NEAR_EXHAUSTED"
+    assert checkpoints[1]["zone_id"] == "h1-demand"
+    assert checkpoints[1]["condition"] == "FRESH"
+    assert checkpoints[2]["type"] == "SUPPORT_RESISTANCE"
+    assert checkpoints[2]["price"] == 4117.2

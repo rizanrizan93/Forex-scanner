@@ -32,6 +32,20 @@ def _zone_label(zone: dict[str, Any]) -> str:
     )
 
 
+def _checkpoint_label(checkpoint: dict[str, Any]) -> str:
+    if not checkpoint:
+        return "—"
+    if checkpoint.get("type") == "ZONE":
+        tfs = "/".join(checkpoint.get("timeframes") or [])
+        return (
+            f"{tfs} {checkpoint.get('zone_type','ZONE')} "
+            f"{_px(checkpoint.get('low'))}–{_px(checkpoint.get('high'))}"
+        )
+    return (
+        f"{checkpoint.get('zone_type','S/R')} ~{_px(checkpoint.get('price'))}"
+    )
+
+
 def render_xau_dual_engine_dashboard(
     *,
     sd_heartbeat: dict[str, Any] | None,
@@ -48,13 +62,14 @@ def render_xau_dual_engine_dashboard(
 
     st.markdown(
         '<div class="rizan-kicker">RIZAN NEW ENGINE • LEGACY PAUSED</div>'
-        '<div class="rizan-title">XAUUSD — Supply/Demand, News-Zone & Micro Entry</div>'
-        '<div class="rizan-note">Dua engine independen. Tidak ada ensemble/voting engine lama. '
-        'Semua output saat ini research/forecast only; execution authority = OFF.</div>',
+        '<div class="rizan-title">XAUUSD — Structural Path & Micro Entry</div>'
+        '<div class="rizan-note">Satu jalur struktural utama: H4 parent → H1 refinement → '
+        'reaction/roadblock → destination. H2 support/resistance hanya konteks, bukan sinyal arah. '
+        'Execution authority = OFF.</div>',
         unsafe_allow_html=True,
     )
     tab_sd, tab_friend = st.tabs(
-        ["1 • Supply / Demand + Liquidity", "2 • Micro Entry Reconstruction"]
+        ["1 • Structural Path", "2 • Micro Entry Reconstruction"]
     )
 
     with tab_sd:
@@ -70,6 +85,8 @@ def render_xau_dual_engine_dashboard(
             refinement = dict(sd.get("refinement_zone") or {})
             destination = dict(sd.get("structural_destination") or {})
             structural_room = dict(sd.get("structural_room") or {})
+            structural_path = dict(sd.get("structural_path") or {})
+            support_resistance = list(sd.get("support_resistance") or [])
             roadblocks = list(sd.get("roadblocks") or [])
             nearest_roadblock = dict(sd.get("nearest_roadblock") or {})
             micro = dict(sd.get("micro_confirmation") or {})
@@ -80,26 +97,20 @@ def render_xau_dual_engine_dashboard(
             h4 = dict(structure.get("H4") or {})
             h1 = dict(structure.get("H1") or {})
 
+            entry_gate = str(news.get("effective_entry_state") or guide.get("state") or "WAIT")
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Harga XAU", _px(price))
             c2.metric("H4 structure", str(h4.get("state") or "—"))
-            c3.metric("H1 structure", str(h1.get("state") or "—"))
-            c4.metric(
-                "Reversal watch",
-                str(sd.get("expected_reversal_direction") or "WAIT"),
-            )
+            c3.metric("Arah struktural", str(sd.get("expected_reversal_direction") or "WAIT"))
+            c4.metric("Entry gate", entry_gate)
+            st.caption("H1 structure • " + str(h1.get("state") or "—"))
 
-            st.markdown("### Peta utama")
-            z1, z2 = st.columns(2)
-            z1.info("Demand terdekat • " + _zone_label(dict(sd.get("nearest_demand") or {})))
-            z2.warning("Supply terdekat • " + _zone_label(dict(sd.get("nearest_supply") or {})))
-
+            st.markdown("### Jalur struktural utama")
             if main_zone:
                 st.markdown(
-                    f"**MAIN H4 reversal zone:** {_zone_label(main_zone)} • "
-                    f"pattern={main_zone.get('pattern','—')} • "
-                    f"score={main_zone.get('score','—')} • "
-                    f"freshness={dict(main_zone.get('lifecycle') or {}).get('freshness','—')}"
+                    f"**MAIN H4:** {_zone_label(main_zone)} • "
+                    f"condition={main_zone.get('condition') or dict(main_zone.get('lifecycle') or {}).get('freshness','—')} • "
+                    f"pattern={main_zone.get('pattern','—')}"
                 )
                 if refinement:
                     st.success(
@@ -110,25 +121,40 @@ def render_xau_dual_engine_dashboard(
                 else:
                     st.caption("Belum ada H1 refinement searah yang valid di dalam parent H4.")
 
-                r1, r2 = st.columns(2)
+                checkpoints = list(structural_path.get("checkpoints") or [])
+                if checkpoints:
+                    for cp in checkpoints:
+                        order = int(cp.get("order") or 0)
+                        condition = str(cp.get("condition") or cp.get("role") or "CONTEXT")
+                        label = _checkpoint_label(cp)
+                        if cp.get("type") == "ZONE":
+                            break_level = cp.get("break_level")
+                            if order == 1:
+                                st.warning(
+                                    f"**{order}. Reaction:** {label} • {condition} • "
+                                    f"lanjut hanya jika close menembus {_px(break_level)}"
+                                )
+                            else:
+                                st.info(
+                                    f"**{order}. Jika tembus:** {label} • {condition} • "
+                                    f"break {_px(break_level)}"
+                                )
+                        else:
+                            st.caption(
+                                f"**{order}. S/R + liquidity watch:** {label} • "
+                                + ", ".join(cp.get("sources") or [])
+                                + ". Ini konteks, bukan sinyal entry."
+                            )
+                elif destination:
+                    st.info("Destination H4 • " + _zone_label(destination))
+
                 if nearest_roadblock:
-                    r1.warning(
-                        "**Roadblock terdekat:** "
+                    st.warning(
+                        "**Roadblock:** "
                         + f"{nearest_roadblock.get('timeframe','—')} "
                         + f"{nearest_roadblock.get('type','—')} "
-                        + f"{_px(nearest_roadblock.get('low'))}–{_px(nearest_roadblock.get('high'))} "
-                        + f"• {nearest_roadblock.get('severity','—')}"
+                        + f"{_px(nearest_roadblock.get('low'))}–{_px(nearest_roadblock.get('high'))}"
                     )
-                else:
-                    r1.info("Roadblock terdekat • tidak ada opposing zone sebelum destination H4.")
-                if destination:
-                    r2.info(
-                        "**Destination H4:** "
-                        + f"{_px(destination.get('low'))}–{_px(destination.get('high'))} "
-                        + f"• edge {_px(destination.get('price'))}"
-                    )
-                else:
-                    r2.info("Destination H4 • belum ada opposing H4 aktif di arah perjalanan.")
 
                 room_state = str(structural_room.get("state") or "UNKNOWN")
                 room_atr = structural_room.get("distance_parent_atr")
@@ -148,26 +174,6 @@ def render_xau_dual_engine_dashboard(
                         + (f" • {float(room_atr):.2f} ATR" if room_atr is not None else "")
                         + (f" • terminal RR={float(room_rr):.2f}R" if room_rr is not None else "")
                     )
-
-                if roadblocks:
-                    with st.expander("Roadblock di jalur harga"):
-                        st.dataframe(
-                            [
-                                {
-                                    "TF": rb.get("timeframe"),
-                                    "Type": rb.get("type"),
-                                    "Low": rb.get("low"),
-                                    "High": rb.get("high"),
-                                    "Near edge": rb.get("near_edge"),
-                                    "Severity": rb.get("severity"),
-                                    "Score": rb.get("score"),
-                                    "Freshness": rb.get("freshness"),
-                                }
-                                for rb in roadblocks
-                            ],
-                            use_container_width=True,
-                            hide_index=True,
-                        )
 
             if decision:
                 prior = dict(sd.get("historical_depth_prior") or {}).get(
@@ -242,6 +248,22 @@ def render_xau_dual_engine_dashboard(
                         "Ini adalah validasi reversal berbasis harga; news sendiri tetap tidak memberi arah."
                     )
 
+            if support_resistance:
+                with st.expander("Detail H2 support/resistance — konteks saja"):
+                    st.dataframe(
+                        [
+                            {
+                                "Type": row.get("kind"),
+                                "Price": row.get("price"),
+                                "Strength": row.get("strength"),
+                                "Sources": ", ".join(row.get("sources") or []),
+                            }
+                            for row in support_resistance[:8]
+                        ],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
             st.markdown("### Liquidity sweep sebelum reversal")
             if sweep:
                 st.warning(
@@ -276,8 +298,8 @@ def render_xau_dual_engine_dashboard(
             targets = list(guide.get("targets") or [])
             e4.metric("TP terdekat", _px(targets[0].get("price") if targets else None))
             st.caption(
-                "Entry hanya ditampilkan sesudah touch/sweep + reclaim + local MSS + displacement. "
-                "Sebelum itu status wajib WAIT_CONFIRMATION."
+                "Entry hanya aktif setelah struktur memberi ruang yang cukup, news gate aman, dan "
+                "touch/sweep + reclaim + local MSS + displacement terkonfirmasi."
             )
 
             rows = []
@@ -293,7 +315,7 @@ def render_xau_dual_engine_dashboard(
                         "High": zone.get("high"),
                         "Score": zone.get("score"),
                         "Touch": life.get("touch_count"),
-                        "Freshness": life.get("freshness"),
+                        "Condition": zone.get("condition") or life.get("freshness"),
                         "Distance ATR": zone.get("distance_atr"),
                     }
                 )

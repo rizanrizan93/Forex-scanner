@@ -10,7 +10,7 @@ import pandas as pd
 
 from .models import ensure_utc
 
-CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_3_STRUCTURAL_ROOM_GATE"
+CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_4_UNIFIED_STRUCTURAL_PATH_V349"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
 EXECUTION_AUTHORITY = False
 EXECUTION_INFLUENCE = False
@@ -521,6 +521,200 @@ def _pivot_levels(
                 }
             )
     return output[-80:]
+
+
+def _h2_frame_from_h1(
+    bars_h1: Iterable[Any],
+    *,
+    as_of: datetime,
+) -> pd.DataFrame:
+    """Build causal UTC H2 candles from two completed H1 candles."""
+    frame = _bar_frame(bars_h1)
+    if frame.empty:
+        return frame
+    now = pd.Timestamp(ensure_utc(as_of))
+    frame = frame[(frame["timestamp"] + pd.Timedelta(hours=1)) <= now].copy()
+    if frame.empty:
+        return frame
+    frame["bucket"] = frame["timestamp"].dt.floor("2h")
+    rows: list[dict[str, Any]] = []
+    for bucket, group in frame.groupby("bucket", sort=True):
+        g = group.sort_values("timestamp")
+        expected = [bucket, bucket + pd.Timedelta(hours=1)]
+        actual = list(g["timestamp"].iloc[:2])
+        if len(g) < 2 or actual != expected:
+            continue
+        if bucket + pd.Timedelta(hours=2) > now:
+            continue
+        rows.append(
+            {
+                "timestamp": bucket,
+                "open": float(g.iloc[0]["open"]),
+                "high": float(g.iloc[:2]["high"].max()),
+                "low": float(g.iloc[:2]["low"].min()),
+                "close": float(g.iloc[1]["close"]),
+            }
+        )
+    if not rows:
+        return pd.DataFrame(columns=["timestamp", "open", "high", "low", "close"])
+    return pd.DataFrame(rows).sort_values("timestamp").reset_index(drop=True)
+
+
+def _h2_support_resistance(
+    bars_h1: Iterable[Any],
+    *,
+    as_of: datetime,
+    price_now: float,
+    atr_reference: float,
+) -> list[dict[str, Any]]:
+    """Map H2 pivots plus prior-day/week S/R as context, never as a direction signal."""
+    now = pd.Timestamp(ensure_utc(as_of))
+    h2 = _h2_frame_from_h1(bars_h1, as_of=as_of)
+    raw: list[dict[str, Any]] = []
+
+    if len(h2) >= 7:
+        for i in range(2, len(h2) - 2):
+            row = h2.iloc[i]
+            around = h2.iloc[i - 2 : i + 3]
+            known_at = h2.iloc[i + 2]["timestamp"] + pd.Timedelta(hours=2)
+            if known_at > now:
+                continue
+            if float(row["high"]) >= float(around["high"].max()):
+                raw.append(
+                    {
+                        "kind": "RESISTANCE",
+                        "price": float(row["high"]),
+                        "source": "H2_SWING_HIGH",
+                        "available_at": known_at.isoformat(),
+                        "weight": 1.0,
+                    }
+                )
+            if float(row["low"]) <= float(around["low"].min()):
+                raw.append(
+                    {
+                        "kind": "SUPPORT",
+                        "price": float(row["low"]),
+                        "source": "H2_SWING_LOW",
+                        "available_at": known_at.isoformat(),
+                        "weight": 1.0,
+                    }
+                )
+
+    h1 = _bar_frame(bars_h1)
+    if not h1.empty:
+        h1 = h1[(h1["timestamp"] + pd.Timedelta(hours=1)) <= now].copy()
+    if not h1.empty:
+        h1["day"] = h1["timestamp"].dt.floor("D")
+        current_day = now.floor("D")
+        previous_days = h1[h1["day"] < current_day]
+        if not previous_days.empty:
+            prior_day = previous_days["day"].max()
+            day_frame = previous_days[previous_days["day"] == prior_day]
+            raw.extend(
+                [
+                    {
+                        "kind": "RESISTANCE",
+                        "price": float(day_frame["high"].max()),
+                        "source": "PRIOR_DAY_HIGH",
+                        "available_at": current_day.isoformat(),
+                        "weight": 1.5,
+                    },
+                    {
+                        "kind": "SUPPORT",
+                        "price": float(day_frame["low"].min()),
+                        "source": "PRIOR_DAY_LOW",
+                        "available_at": current_day.isoformat(),
+                        "weight": 1.5,
+                    },
+                ]
+            )
+
+        h1["week_start"] = (
+            h1["timestamp"].dt.floor("D")
+            - pd.to_timedelta(h1["timestamp"].dt.weekday, unit="D")
+        )
+        current_week = now.floor("D") - pd.Timedelta(days=now.weekday())
+        previous_weeks = h1[h1["week_start"] < current_week]
+        if not previous_weeks.empty:
+            prior_week = previous_weeks["week_start"].max()
+            week_frame = previous_weeks[previous_weeks["week_start"] == prior_week]
+            raw.extend(
+                [
+                    {
+                        "kind": "RESISTANCE",
+                        "price": float(week_frame["high"].max()),
+                        "source": "PRIOR_WEEK_HIGH",
+                        "available_at": current_week.isoformat(),
+                        "weight": 2.0,
+                    },
+                    {
+                        "kind": "SUPPORT",
+                        "price": float(week_frame["low"].min()),
+                        "source": "PRIOR_WEEK_LOW",
+                        "available_at": current_week.isoformat(),
+                        "weight": 2.0,
+                    },
+                ]
+            )
+
+    if not raw:
+        return []
+
+    tolerance = max(0.10 * max(float(atr_reference), 1e-9), 1.0)
+    raw.sort(key=lambda x: float(x["price"]))
+    groups: list[list[dict[str, Any]]] = []
+    for level in raw:
+        if not groups:
+            groups.append([level])
+            continue
+        center = sum(float(x["price"]) * float(x["weight"]) for x in groups[-1]) / sum(
+            float(x["weight"]) for x in groups[-1]
+        )
+        if abs(float(level["price"]) - center) <= tolerance:
+            groups[-1].append(level)
+        else:
+            groups.append([level])
+
+    output: list[dict[str, Any]] = []
+    for group in groups:
+        total_weight = sum(float(x["weight"]) for x in group)
+        center = sum(float(x["price"]) * float(x["weight"]) for x in group) / total_weight
+        supports = sum(float(x["weight"]) for x in group if x["kind"] == "SUPPORT")
+        resistances = sum(float(x["weight"]) for x in group if x["kind"] == "RESISTANCE")
+        if supports > 0 and resistances > 0:
+            kind = "FLIP"
+        elif supports >= resistances:
+            kind = "SUPPORT"
+        else:
+            kind = "RESISTANCE"
+        output.append(
+            {
+                "kind": kind,
+                "price": center,
+                "strength": round(total_weight, 2),
+                "sources": sorted({str(x["source"]) for x in group}),
+                "distance_points": abs(center - price_now),
+                "distance_atr": abs(center - price_now) / max(float(atr_reference), 1e-9),
+                "role": "CONTEXT_ONLY_NO_DIRECTION_SIGNAL",
+            }
+        )
+    output.sort(key=lambda x: (float(x["distance_points"]), -float(x["strength"])))
+    return output[:18]
+
+
+def _zone_condition(zone: dict[str, Any]) -> str:
+    life = dict(zone.get("lifecycle") or {})
+    touch = int(life.get("touch_count") or 0)
+    mitigation = float(life.get("mitigation_depth") or 0.0)
+    if mitigation >= 0.95 or touch >= 4:
+        return "NEAR_EXHAUSTED"
+    if mitigation >= 0.75 or touch >= 2:
+        return "DEGRADED"
+    if touch >= 1 or mitigation >= 0.35:
+        return "TESTED"
+    if touch == 0 and mitigation < 0.10:
+        return "FRESH"
+    return "ACTIVE"
 
 
 def _cluster_liquidity(
@@ -1034,6 +1228,188 @@ def _structural_room_gate(
     }
 
 
+def _zone_break_level(zone: dict[str, Any]) -> float:
+    atr = max(float(zone.get("atr") or 0.0), 1e-9)
+    if str(zone.get("direction")) == "LONG":
+        return float(zone["low"]) - 0.05 * atr
+    return float(zone["high"]) + 0.05 * atr
+
+
+def _structural_path(
+    *,
+    direction: str,
+    start_price: float,
+    active_zones: Sequence[dict[str, Any]],
+    support_resistance: Sequence[dict[str, Any]],
+    liquidity: Sequence[dict[str, Any]],
+    parent_atr: float,
+) -> dict[str, Any]:
+    """Produce one conditional path; S/R is context and can never change the direction."""
+    if direction not in {"LONG", "SHORT"}:
+        return {
+            "state": "NO_DIRECTION",
+            "direction": "WAIT",
+            "checkpoints": [],
+            "support_resistance_context": [],
+        }
+
+    opposite = "SHORT" if direction == "LONG" else "LONG"
+    zone_candidates: list[dict[str, Any]] = []
+    for z in active_zones:
+        if str(z.get("direction")) != opposite:
+            continue
+        near_edge = float(z["low"]) if direction == "LONG" else float(z["high"])
+        ahead = near_edge > start_price if direction == "LONG" else near_edge < start_price
+        if not ahead:
+            continue
+        zone_candidates.append(
+            {
+                "zone": z,
+                "near_edge": near_edge,
+                "distance": abs(near_edge - start_price),
+            }
+        )
+    zone_candidates.sort(
+        key=lambda x: (
+            float(x["distance"]),
+            0 if str(x["zone"].get("timeframe")) == "H4" else 1,
+            -float(x["zone"].get("score") or 0.0),
+        )
+    )
+
+    # Collapse only genuinely overlapping nested H4/H1 zones to avoid duplicate cards.
+    clusters: list[list[dict[str, Any]]] = []
+    for candidate in zone_candidates:
+        z = candidate["zone"]
+        placed = False
+        for cluster in clusters:
+            low = min(float(x["zone"]["low"]) for x in cluster)
+            high = max(float(x["zone"]["high"]) for x in cluster)
+            overlap = max(
+                0.0,
+                min(high, float(z["high"])) - max(low, float(z["low"])),
+            )
+            smaller = max(
+                min(high - low, float(z["high"]) - float(z["low"])),
+                1e-9,
+            )
+            if overlap / smaller >= 0.50:
+                cluster.append(candidate)
+                placed = True
+                break
+        if not placed:
+            clusters.append([candidate])
+
+    checkpoints: list[dict[str, Any]] = []
+    last_zone_boundary: float | None = None
+    for index, cluster in enumerate(clusters[:3], start=1):
+        zones = [x["zone"] for x in cluster]
+        primary = sorted(
+            zones,
+            key=lambda z: (
+                0 if str(z.get("timeframe")) == "H4" else 1,
+                -float(z.get("score") or 0.0),
+            ),
+        )[0]
+        low = min(float(z["low"]) for z in zones)
+        high = max(float(z["high"]) for z in zones)
+        near_edge = low if direction == "LONG" else high
+        condition = str(primary.get("condition") or _zone_condition(primary))
+        checkpoints.append(
+            {
+                "order": index,
+                "type": "ZONE",
+                "role": "PRIMARY_REACTION" if index == 1 else "IF_BREAK_NEXT_REACTION",
+                "zone_type": "SUPPLY" if opposite == "SHORT" else "DEMAND",
+                "timeframes": sorted({str(z.get("timeframe")) for z in zones}, reverse=True),
+                "low": low,
+                "high": high,
+                "near_edge": near_edge,
+                "distance_points": abs(near_edge - start_price),
+                "condition": condition,
+                "score": primary.get("score"),
+                "zone_id": primary.get("zone_id"),
+                "break_level": _zone_break_level(primary),
+                "continuation_rule": (
+                    "CONTINUE_ONLY_AFTER_CAUSAL_CLOSE_THROUGH_ZONE"
+                    if index > 1 or condition in {"DEGRADED", "NEAR_EXHAUSTED"}
+                    else "EXPECT_REACTION_CONFIRM_REVERSAL_OR_BREAK"
+                ),
+                "nested_zone_ids": [z.get("zone_id") for z in zones if z.get("zone_id") != primary.get("zone_id")],
+            }
+        )
+        last_zone_boundary = low if direction == "SHORT" else high
+
+    # One S/R checkpoint beyond the last mapped zone keeps the main display simple.
+    sr_candidates: list[dict[str, Any]] = []
+    for level in support_resistance:
+        px = float(level["price"])
+        if direction == "SHORT":
+            threshold = last_zone_boundary if last_zone_boundary is not None else start_price
+            if px >= threshold:
+                continue
+            compatible = str(level.get("kind")) in {"SUPPORT", "FLIP"}
+        else:
+            threshold = last_zone_boundary if last_zone_boundary is not None else start_price
+            if px <= threshold:
+                continue
+            compatible = str(level.get("kind")) in {"RESISTANCE", "FLIP"}
+        if not compatible:
+            continue
+        if abs(px - start_price) > 4.0 * max(parent_atr, 1e-9):
+            continue
+        sr_candidates.append(level)
+
+    if sr_candidates:
+        sr_candidates.sort(
+            key=lambda x: (
+                abs(float(x["price"]) - (last_zone_boundary if last_zone_boundary is not None else start_price)),
+                -float(x.get("strength") or 0.0),
+            )
+        )
+        sr = dict(sr_candidates[0])
+        px = float(sr["price"])
+        nearby_liquidity = [
+            x for x in liquidity
+            if abs(float(x.get("price") or 0.0) - px) <= max(0.15 * parent_atr, 1.0)
+        ]
+        checkpoints.append(
+            {
+                "order": len(checkpoints) + 1,
+                "type": "SUPPORT_RESISTANCE",
+                "role": "IF_ZONE_BREAKS_LIQUIDITY_SR_WATCH",
+                "zone_type": sr.get("kind"),
+                "price": px,
+                "strength": sr.get("strength"),
+                "sources": sr.get("sources"),
+                "distance_points": abs(px - start_price),
+                "liquidity_sources": sorted(
+                    {
+                        source
+                        for item in nearby_liquidity[:6]
+                        for source in list(item.get("sources") or [])
+                    }
+                ),
+                "continuation_rule": "CONTEXT_ONLY_WAIT_FOR_SWEEP_RECLAIM_OR_CLEAN_BREAK",
+            }
+        )
+
+    return {
+        "state": "PATH_AVAILABLE" if checkpoints else "NO_PATH_CHECKPOINT",
+        "direction": direction,
+        "start_price": start_price,
+        "checkpoints": checkpoints,
+        "primary_checkpoint": dict(checkpoints[0]) if checkpoints else {},
+        "terminal_checkpoint": dict(checkpoints[-1]) if checkpoints else {},
+        "support_resistance_context": list(support_resistance[:8]),
+        "rule": (
+            "ONE_DIRECTION_ONLY: parent H4 defines direction; checkpoints are conditional. "
+            "S/R never generates LONG/SHORT. At every opposing zone, reversal confirmation stops continuation; "
+            "continuation requires a causal close through the zone."
+        ),
+    }
+
+
 def _targets(
     *,
     direction: str,
@@ -1114,6 +1490,7 @@ def evaluate_sd_liquidity(
         mitigation = float(life.get("mitigation_depth") or 0.0)
         touch_penalty = min(18.0, int(life.get("touch_count") or 0) * 4.0)
         row["lifecycle"] = life
+        row["condition"] = _zone_condition(row)
         row["distance_points"] = _distance(current, zone.low, zone.high)
         row["distance_atr"] = row["distance_points"] / max(zone.atr, 1e-9)
         row["score"] = round(
@@ -1138,6 +1515,12 @@ def evaluate_sd_liquidity(
 
     h1_atr_series = _atr(h1_frame)
     atr_ref = _f(h1_atr_series.iloc[-1]) or max(current * 0.002, 1.0)
+    support_resistance = _h2_support_resistance(
+        bars_h1,
+        as_of=now,
+        price_now=current,
+        atr_reference=float(atr_ref),
+    )
     raw_levels = [
         *_pivot_levels(bars_h4, timeframe="H4", as_of=now),
         *_pivot_levels(bars_h1, timeframe="H1", as_of=now),
@@ -1199,6 +1582,19 @@ def evaluate_sd_liquidity(
         "state": "NO_DECISION_ZONE",
         "blocked": False,
     }
+    structural_path = _structural_path(
+        direction=direction,
+        start_price=path_start,
+        active_zones=active,
+        support_resistance=support_resistance,
+        liquidity=liquidity,
+        parent_atr=float(decision_zone.get("atr") or atr_ref),
+    ) if decision_zone else {
+        "state": "NO_DECISION_ZONE",
+        "direction": "WAIT",
+        "checkpoints": [],
+        "support_resistance_context": support_resistance,
+    }
     targets = _targets(
         direction=direction,
         entry=entry,
@@ -1233,6 +1629,8 @@ def evaluate_sd_liquidity(
         "expected_reversal_direction": direction,
         "structural_destination": destination,
         "structural_room": structural_room,
+        "structural_path": structural_path,
+        "support_resistance": support_resistance,
         "roadblocks": roadblocks,
         "nearest_roadblock": dict(roadblocks[0]) if roadblocks else {},
         "liquidity_map": sweep_map,
@@ -1271,6 +1669,13 @@ def evaluate_sd_liquidity(
             "structural_room_gate": (
                 "WAIT_IF_TERMINAL_OPPOSING_HTF_DESTINATION_LT_0P50_PARENT_ATR; "
                 "WHEN_ENTRY_GEOMETRY_EXISTS_REQUIRE_TERMINAL_RR_GTE_1P50"
+            ),
+            "structural_path": (
+                "ONE_PARENT_DIRECTION -> OPPOSING_ZONE_CHECKPOINTS -> CONDITIONAL_BREAK -> "
+                "OPTIONAL_H2_SUPPORT_RESISTANCE_LIQUIDITY_CONTEXT"
+            ),
+            "support_resistance": (
+                "CAUSAL_H2_SWING_PIVOTS_PLUS_PRIOR_DAY_WEEK_LEVELS; CONTEXT_ONLY_NO_DIRECTION_SIGNAL"
             ),
             "reversal_confirmation": "TOUCH/SWEEP + RECLAIM + LOCAL_MSS + DISPLACEMENT",
             "rebuild_policy": "RECALCULATE_FROM_COMPLETED_H4_H1_M15_M5_ON_EACH_RUNTIME_CYCLE",
