@@ -107,8 +107,8 @@ def test_v352_retouch_before_target_is_not_a_reversal_for_prior_touch():
     frame = _frame(
         [
             (101.1, 101.2, 100.4, 100.8),  # first touch
-            (100.8, 101.1, 100.7, 101.05), # exits above zone
-            (101.05, 101.1, 100.8, 100.95),# re-touch before +0.5 ATR target
+            (101.02, 101.2, 101.01, 101.10), # fully exits above zone
+            (101.05, 101.1, 100.8, 100.95),  # re-touch before +0.5 ATR target
             (100.95, 102.0, 100.9, 101.9),
         ]
     )
