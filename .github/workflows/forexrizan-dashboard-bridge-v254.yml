@@ -19,7 +19,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: forexrizan-dashboard-bridge-v325
+  group: forexrizan-dashboard-bridge-v344-isolated
   # A newer main commit must supersede a publisher running older bridge code.
   # The next run hydrates the last published snapshot before continuing.
   cancel-in-progress: true
@@ -57,7 +57,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p runtime
-          git fetch origin dashboard-snapshots --depth=1 || true
+          git fetch origin dashboard-snapshots-v344 --depth=1 || true
           git show FETCH_HEAD:runtime/xau_dashboard_snapshot.json             > runtime/xau_dashboard_snapshot.json 2>/dev/null || true
 
       - name: Publish continuous one-minute dashboard snapshots
@@ -91,7 +91,7 @@ jobs:
               if git rev-parse --verify HEAD >/dev/null 2>&1; then
                 push_ok=0
                 for push_attempt in 1 2 3; do
-                  if git push --force origin HEAD:dashboard-snapshots; then
+                  if git push --force origin HEAD:dashboard-snapshots-v344; then
                     push_ok=1
                     break
                   fi
