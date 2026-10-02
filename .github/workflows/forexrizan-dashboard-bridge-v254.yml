@@ -20,9 +20,8 @@ permissions:
 
 concurrency:
   group: forexrizan-dashboard-bridge-v344-isolated
-  # Keep the continuous publisher serialized. Hotfixes use the isolated V344
-  # snapshot lane, so an older legacy publisher cannot overwrite this branch.
-  cancel-in-progress: false
+  # Newer main revisions supersede publishers running stale bridge code.
+  cancel-in-progress: true
 
 jobs:
   publish:
@@ -79,6 +78,15 @@ jobs:
             fi
 
             if [ "$snapshot_ok" -eq 1 ]; then
+              # Never let an hour-long publisher based on an older main revision
+              # overwrite a snapshot produced by newer dashboard/transport code.
+              git fetch origin main --depth=1
+              latest_main="$(git rev-parse FETCH_HEAD)"
+              if [ "$latest_main" != "$GITHUB_SHA" ]; then
+                echo "::notice::Stopping stale publisher head=$GITHUB_SHA latest_main=$latest_main"
+                exit 0
+              fi
+
               git add -f runtime/xau_dashboard_snapshot.json
               if git diff --cached --quiet; then
                 :
