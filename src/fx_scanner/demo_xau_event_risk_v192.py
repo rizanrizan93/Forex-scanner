@@ -132,7 +132,12 @@ def _category(title: str) -> str:
         return "UNEMPLOYMENT_RATE"
     if "AVERAGE HOURLY EARNINGS" in text or "EMPLOYMENT COST INDEX" in text:
         return "WAGES"
-    if "EMPLOYMENT SITUATION" in text or "NONFARM" in text or "PAYROLL" in text:
+    if (
+        "EMPLOYMENT SITUATION" in text
+        or "NONFARM" in text
+        or "NON-FARM" in text
+        or "PAYROLL" in text
+    ):
         return "EMPLOYMENT"
     if "CONSUMER PRICE INDEX" in text or re.search(r"\bCPI\b", text):
         return "CPI"
