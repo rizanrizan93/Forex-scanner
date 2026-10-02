@@ -256,10 +256,11 @@ def evaluate_friend_entry(
     as_of: datetime,
     price_now: float | None = None,
 ) -> dict[str, Any]:
-    """Reconstruct the friend's A/X/Y geometry as an isolated shadow engine.
+    """Reconstruct the friend's A/X/Y geometry as isolated forecast evidence.
 
-    This module intentionally consumes only one explicit parent-zone payload and
-    M5 bars. It does not vote with, import, or average any legacy decision engine.
+    The module can influence DEMO setup confidence but has no direct broker
+    authority. It consumes one explicit parent zone and M5 bars without reviving
+    or averaging legacy engines.
     """
     parent = dict(parent_zone or {})
     direction = str(parent.get("direction") or "").upper()
@@ -343,7 +344,7 @@ def evaluate_friend_entry(
             "formula": "A -> X=A±Δ -> Y=A±2Δ -> TP=5Δ/8Δ/13Δ",
             "historical_evidence": HISTORICAL_EVIDENCE,
             "execution_authority": False,
-            "execution_influence": False,
+            "execution_influence": EXECUTION_INFLUENCE,
         }
 
     a = float(anchor["a"])
