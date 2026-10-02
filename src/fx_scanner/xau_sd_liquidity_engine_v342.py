@@ -11,7 +11,7 @@ import pandas as pd
 from .models import ensure_utc
 from .xau_structural_sr_map_v363 import build_structural_sr_map
 
-CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_8_ADAPTIVE_ENTRY_V354"
+CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_9_MAIN_REVERSAL_EARLY_ENTRY_V364"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
 EXECUTION_AUTHORITY = True
 EXECUTION_INFLUENCE = True
@@ -722,6 +722,80 @@ def _zone_condition(zone: dict[str, Any]) -> str:
     return "ACTIVE"
 
 
+def _main_reversal_profile(
+    zone: dict[str, Any],
+    *,
+    price_now: float,
+) -> dict[str, Any]:
+    """Classify whether a zone can lead the next HTF reversal plan.
+
+    Proximity alone is deliberately insufficient. Main reversal candidates must
+    retain usable freshness and causal departure quality. Degraded zones remain
+    visible as reaction/roadblock context but do not lead the entry plan.
+    """
+    life = dict(zone.get("lifecycle") or {})
+    condition = str(zone.get("condition") or _zone_condition(zone))
+    freshness = str(life.get("freshness") or "")
+    touch_count = int(life.get("touch_count") or 0)
+    mitigation = float(life.get("mitigation_depth") or 0.0)
+    raw_score = float(zone.get("score") or zone.get("score_seed") or 80.0)
+    atr = max(float(zone.get("atr") or 1.0), 1e-9)
+    distance_atr = _distance(
+        price_now, float(zone["low"]), float(zone["high"])
+    ) / atr
+
+    structural_raw = zone.get("structural_bos")
+    structural_bos = True if structural_raw is None else bool(structural_raw)
+    departure = float(zone.get("departure_range_atr") or 1.0)
+    body_fraction = float(zone.get("departure_body_fraction") or 0.55)
+    base_range = float(zone.get("base_range_atr") or 0.8)
+
+    hard_reasons: list[str] = []
+    if freshness in {"BROKEN", "EXPIRED"}:
+        hard_reasons.append(freshness)
+    if condition in {"DEGRADED", "NEAR_EXHAUSTED"}:
+        hard_reasons.append(condition)
+    if mitigation >= 0.80:
+        hard_reasons.append("MITIGATION_GTE_80PCT")
+    if touch_count >= 3:
+        hard_reasons.append("TOUCH_COUNT_GTE_3")
+    if raw_score < 70.0:
+        hard_reasons.append("ZONE_SCORE_LT_70")
+    if not structural_bos and not (
+        departure >= 1.50 and body_fraction >= 0.55 and raw_score >= 80.0
+    ):
+        hard_reasons.append("NO_CAUSAL_BOS_OR_EXCEPTIONAL_DISPLACEMENT")
+
+    condition_bonus = {
+        "FRESH": 18.0,
+        "TESTED": 10.0,
+        "ACTIVE": 6.0,
+    }.get(condition, -10.0)
+    quality = (
+        0.45 * raw_score
+        + condition_bonus
+        + (14.0 if structural_bos else 4.0)
+        + min(12.0, max(0.0, departure - 0.75) * 8.0)
+        + min(6.0, max(0.0, body_fraction - 0.40) * 20.0)
+        - min(10.0, max(0.0, base_range - 0.80) * 8.0)
+        - 18.0 * mitigation
+        - 3.0 * max(0, touch_count - 1)
+    )
+    return {
+        "eligible": not hard_reasons,
+        "quality_score": round(quality, 2),
+        "condition": condition,
+        "freshness": freshness or condition,
+        "distance_atr": distance_atr,
+        "reasons": hard_reasons,
+        "selection_rule": (
+            "H4/H1_CAUSAL_QUALITY_FIRST: fresh/tested causal zone, "
+            "structural BOS or exceptional displacement; degraded/exhausted "
+            "zones remain context-only."
+        ),
+    }
+
+
 def _cluster_liquidity(
     levels: Sequence[dict[str, Any]],
     *,
@@ -913,6 +987,14 @@ def _micro_confirmation(
     price_now: float,
     as_of: datetime,
 ) -> dict[str, Any]:
+    """Causal two-stage reversal confirmation.
+
+    EARLY confirmation is intentionally Afiq-style: HTF touch/sweep plus a
+    proximal reclaim and directional rejection/displacement. FULL confirmation
+    additionally requires a local internal break after the reclaim. The local
+    MSS level is anchored to the reclaim candle rather than an old six-bar
+    extreme, preventing a news spike from moving the trigger far away.
+    """
     direction = str(zone["direction"])
     m5 = _bar_frame(bars_m5)
     m15 = _bar_frame(bars_m15)
@@ -927,28 +1009,50 @@ def _micro_confirmation(
         (frame["timestamp"] + known_delta) <= pd.Timestamp(ensure_utc(as_of))
     ].copy()
     if len(frame) < 20:
-        return {"stage": "NO_MICRO_DATA", "confirmed": False}
+        return {
+            "stage": "NO_MICRO_DATA",
+            "confirmed": False,
+            "early_confirmed": False,
+        }
+
     frame = frame.tail(96).copy()
     frame["atr14"] = _atr(frame)
+    recent = frame.tail(30).reset_index(drop=True)
     zone_low, zone_high = float(zone["low"]), float(zone["high"])
+    proximal = _f(zone.get("proximal"))
+    if proximal is None:
+        proximal = zone_high if direction == "LONG" else zone_low
     atr = max(float(zone["atr"]), 1e-9)
-    recent = frame.tail(30)
-    touched = bool(
-        ((recent["high"] >= zone_low) & (recent["low"] <= zone_high)).any()
-    )
-    sweep = bool(
-        (recent["low"] < zone_low).any()
-        if direction == "LONG"
-        else (recent["high"] > zone_high).any()
+
+    touch_mask = (recent["high"] >= zone_low) & (recent["low"] <= zone_high)
+    touched = bool(touch_mask.any())
+    if direction == "LONG":
+        sweep_mask = recent["low"] < zone_low
+    else:
+        sweep_mask = recent["high"] > zone_high
+    sweep = bool(sweep_mask.any())
+
+    interaction_indices = [int(i) for i, flag in enumerate(touch_mask.tolist()) if flag]
+    sweep_indices = [int(i) for i, flag in enumerate(sweep_mask.tolist()) if flag]
+    trigger_idx = (
+        sweep_indices[-1]
+        if sweep_indices
+        else interaction_indices[-1]
+        if interaction_indices
+        else None
     )
 
     reclaim_idx: int | None = None
-    for i in range(1, len(recent)):
-        row = recent.iloc[i]
-        if direction == "LONG" and float(row["close"]) > zone_low and float(row["low"]) < zone_high:
-            reclaim_idx = i
-        if direction == "SHORT" and float(row["close"]) < zone_high and float(row["high"]) > zone_low:
-            reclaim_idx = i
+    if trigger_idx is not None:
+        for i in range(trigger_idx, len(recent)):
+            row = recent.iloc[i]
+            if direction == "LONG" and float(row["close"]) > float(proximal):
+                reclaim_idx = i
+                break
+            if direction == "SHORT" and float(row["close"]) < float(proximal):
+                reclaim_idx = i
+                break
+
     if reclaim_idx is None:
         relation = (
             "INSIDE_ZONE"
@@ -960,51 +1064,78 @@ def _micro_confirmation(
         return {
             "stage": "SWEEP_RISK" if sweep else relation,
             "confirmed": False,
+            "early_confirmed": False,
             "touched": touched,
             "sweep_seen": sweep,
         }
 
-    local = recent.iloc[max(0, reclaim_idx - 6) : reclaim_idx + 1]
     reclaim = recent.iloc[reclaim_idx]
-    local_atr = _f(reclaim.get("atr14")) or atr / (12.0 if zone["timeframe"] == "H1" else 48.0)
+    local_atr = _f(reclaim.get("atr14")) or atr / (
+        12.0 if zone["timeframe"] == "H1" else 48.0
+    )
     local_atr = max(float(local_atr), 1e-9)
-    rng = max(float(reclaim["high"]) - float(reclaim["low"]), 1e-9)
-    body_fraction = abs(float(reclaim["close"]) - float(reclaim["open"])) / rng
-    displacement = bool(rng >= 0.80 * local_atr and body_fraction >= 0.50)
 
-    before = recent.iloc[max(0, reclaim_idx - 6) : reclaim_idx]
-    if before.empty:
-        mss = False
-        mss_level = None
-    elif direction == "LONG":
-        mss_level = float(before["high"].max())
-        mss = float(reclaim["close"]) > mss_level
+    def _directional_displacement(row: Any) -> bool:
+        rng = max(float(row["high"]) - float(row["low"]), 1e-9)
+        body = float(row["close"]) - float(row["open"])
+        body_fraction = abs(body) / rng
+        direction_ok = body > 0 if direction == "LONG" else body < 0
+        return bool(direction_ok and rng >= 0.70 * local_atr and body_fraction >= 0.45)
+
+    reclaim_displacement = _directional_displacement(reclaim)
+    post = recent.iloc[reclaim_idx + 1 : min(len(recent), reclaim_idx + 4)]
+    post_displacement = any(_directional_displacement(row) for _, row in post.iterrows())
+    displacement = bool(reclaim_displacement or post_displacement)
+
+    # Local internal MSS: break the reclaim candle's directional extreme.
+    # This is causal and cannot inherit a distant pre-news six-bar extreme.
+    mss_level = (
+        float(reclaim["high"]) if direction == "LONG" else float(reclaim["low"])
+    )
+    if direction == "LONG":
+        mss = bool((post["close"].astype(float) > mss_level).any()) if not post.empty else False
     else:
-        mss_level = float(before["low"].min())
-        mss = float(reclaim["close"]) < mss_level
+        mss = bool((post["close"].astype(float) < mss_level).any()) if not post.empty else False
 
-    confirmed = bool(touched and mss and displacement)
-    if confirmed:
-        # 38-62% retrace of the confirmation candle, clipped to the broad
-        # structural zone/sweep envelope. This is guidance only.
+    reclaimed = True
+    rejection = bool(
+        (direction == "LONG" and float(reclaim["close"]) >= float(proximal))
+        or (direction == "SHORT" and float(reclaim["close"]) <= float(proximal))
+    )
+    early_confirmed = bool(
+        touched
+        and reclaimed
+        and rejection
+        and (sweep or displacement)
+    )
+    confirmed = bool(early_confirmed and mss and displacement)
+
+    if early_confirmed:
         lo, hi = float(reclaim["low"]), float(reclaim["high"])
         if direction == "LONG":
             entry_low = lo + 0.38 * (hi - lo)
             entry_high = lo + 0.62 * (hi - lo)
-            invalidation = min(zone_low, float(recent["low"].min())) - 0.10 * local_atr
+            invalidation = min(zone_low, float(recent.iloc[trigger_idx:]["low"].min())) - 0.10 * local_atr
         else:
             entry_low = hi - 0.62 * (hi - lo)
             entry_high = hi - 0.38 * (hi - lo)
-            invalidation = max(zone_high, float(recent["high"].max())) + 0.10 * local_atr
+            invalidation = max(zone_high, float(recent.iloc[trigger_idx:]["high"].max())) + 0.10 * local_atr
         entry_reference = (entry_low + entry_high) / 2.0
-        stage = "REVERSAL_CONFIRMED"
     else:
         entry_low = entry_high = entry_reference = invalidation = None
-        stage = "RECLAIM_WAIT_MSS_DISPLACEMENT"
 
+    stage = (
+        "REVERSAL_CONFIRMED"
+        if confirmed
+        else "EARLY_REVERSAL_CONFIRMED"
+        if early_confirmed
+        else "RECLAIM_WAIT_LOCAL_MSS"
+    )
     return {
         "stage": stage,
+        "confirmation_tier": "FULL" if confirmed else "EARLY" if early_confirmed else "WAIT",
         "confirmed": confirmed,
+        "early_confirmed": early_confirmed,
         "touched": touched,
         "sweep_seen": sweep,
         "reclaim_at": ensure_utc(
@@ -1017,13 +1148,15 @@ def _micro_confirmation(
         "local_atr": local_atr,
         "mss_confirmed": bool(mss),
         "mss_level": mss_level,
+        "mss_definition": "LOCAL_RECLAIM_EXTREME_BREAK",
         "displacement_confirmed": displacement,
+        "reclaim_displacement": reclaim_displacement,
+        "post_reclaim_displacement": post_displacement,
         "entry_low": entry_low,
         "entry_high": entry_high,
         "entry_reference": entry_reference,
         "invalidation": invalidation,
     }
-
 
 def _overlap_ratio(a: dict[str, Any], b: dict[str, Any]) -> float:
     overlap = max(
@@ -1109,25 +1242,51 @@ def _select_parent_and_refinement(
     *,
     price_now: float,
 ) -> tuple[dict[str, Any], dict[str, Any], str]:
-    h4 = [z for z in active_zones if z.get("timeframe") == "H4"]
-    source = h4 if h4 else list(active_zones)
+    """Choose the next main reversal zone by causal quality, not proximity alone."""
+    profiled: list[dict[str, Any]] = []
+    for raw in active_zones:
+        row = dict(raw)
+        profile = _main_reversal_profile(row, price_now=price_now)
+        row["main_reversal_eligible"] = bool(profile["eligible"])
+        row["main_reversal_score"] = profile["quality_score"]
+        row["main_reversal_reasons"] = list(profile["reasons"])
+        row["main_reversal_distance_atr"] = profile["distance_atr"]
+        profiled.append(row)
+
+    eligible_h4 = [
+        z for z in profiled
+        if z.get("timeframe") == "H4" and z.get("main_reversal_eligible")
+    ]
+    eligible_h1 = [
+        z for z in profiled
+        if z.get("timeframe") == "H1" and z.get("main_reversal_eligible")
+    ]
+    source = eligible_h4 if eligible_h4 else eligible_h1
+    if not source:
+        return {}, {}, "NO_MAIN_REVERSAL_ELIGIBLE"
+
+    # The next actionable zone is the nearest high-quality eligible zone.
+    # Inside/near zones are prioritized; quality breaks ties so a degraded
+    # nearby zone can never override a fresh causal parent.
     candidates = sorted(
         source,
         key=lambda z: (
-            float(z.get("distance_points") or _distance(price_now, float(z["low"]), float(z["high"])))
-            / max(float(z.get("atr") or 1.0), 1e-9),
+            float(z.get("main_reversal_distance_atr") or 0.0),
+            -float(z.get("main_reversal_score") or 0.0),
             -float(z.get("score") or 0.0),
         ),
     )
-    parent = dict(candidates[0]) if candidates else {}
-    if not parent:
-        return {}, {}, "NO_ACTIVE_ZONE"
+    parent = dict(candidates[0])
 
     refinement: dict[str, Any] = {}
     if parent.get("timeframe") == "H4":
         children = []
-        for z in active_zones:
-            if z.get("timeframe") != "H1" or z.get("direction") != parent.get("direction"):
+        for z in profiled:
+            if (
+                z.get("timeframe") != "H1"
+                or z.get("direction") != parent.get("direction")
+                or not z.get("main_reversal_eligible")
+            ):
                 continue
             overlap = _overlap_ratio(z, parent)
             center = (float(z["low"]) + float(z["high"])) / 2.0
@@ -1135,18 +1294,22 @@ def _select_parent_and_refinement(
                 children.append(
                     (
                         overlap,
+                        float(z.get("main_reversal_score") or 0.0),
                         float(z.get("score") or 0.0),
                         -_distance(price_now, float(z["low"]), float(z["high"])),
                         z,
                     )
                 )
         if children:
-            children.sort(key=lambda x: (x[0], x[1], x[2]), reverse=True)
-            refinement = dict(children[0][3])
+            children.sort(key=lambda x: (x[0], x[1], x[2], x[3]), reverse=True)
+            refinement = dict(children[0][4])
 
-    selection = "H4_PARENT" if parent.get("timeframe") == "H4" else "H1_FALLBACK_NO_H4"
+    selection = (
+        "H4_MAIN_REVERSAL_QUALITY"
+        if parent.get("timeframe") == "H4"
+        else "H1_MAIN_REVERSAL_FALLBACK_NO_H4"
+    )
     return parent, refinement, selection
-
 
 def _structural_destination(
     *,
@@ -1881,6 +2044,8 @@ def evaluate_sd_liquidity(
         if not destination
         else "CONFIRMED_GUIDANCE"
         if bool(micro.get("confirmed"))
+        else "EARLY_CONFIRMED_GUIDANCE"
+        if bool(micro.get("early_confirmed"))
         else "WAIT_CONFIRMATION"
     )
 
@@ -1927,7 +2092,11 @@ def evaluate_sd_liquidity(
             "confirmation_at": micro.get("reclaim_at"),
             "invalidation": invalidation,
             "targets": targets,
-            "execution_modes": ["FRESH_CONFIRMATION_ENTRY", "RETEST_ENTRY"],
+            "execution_modes": [
+                "EARLY_CONFIRMATION_DEMO_PROBE",
+                "FRESH_CONFIRMATION_ENTRY",
+                "RETEST_ENTRY",
+            ],
             "rule": (
                 "HTF_PREPARE -> LIQUIDITY_SWEEP_OPTIONAL -> RECLAIM -> MSS -> "
                 "DISPLACEMENT -> FRESH_CONFIRMATION_OR_RETEST"
