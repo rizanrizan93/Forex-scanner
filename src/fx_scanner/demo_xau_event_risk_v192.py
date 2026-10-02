@@ -23,6 +23,7 @@ NY = ZoneInfo("America/New_York")
 WIB = ZoneInfo("Asia/Jakarta")
 
 EVENT_HORIZON_HOURS = 30 * 24
+POST_RELEASE_DISPLAY_HOURS = 24
 DISPLAY_EVENTS = 60
 
 
@@ -587,7 +588,7 @@ def evaluate_event_risk(
     relevant = [
         event
         for event in events
-        if current - timedelta(minutes=45) <= event.scheduled_at <= horizon_end
+        if current - timedelta(hours=POST_RELEASE_DISPLAY_HOURS) <= event.scheduled_at <= horizon_end
     ]
 
     active: list[tuple[int, RiskEvent, float, str]] = []
