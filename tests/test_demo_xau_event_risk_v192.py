@@ -426,3 +426,68 @@ def test_v366_post_release_event_remains_visible_for_dashboard_actuals():
     assert row["gold_bias_basis"] == "ACTUAL_VS_FORECAST"
     assert risk["state"] == "CLEAR"
     assert risk["focal_event"] is None
+    assert risk["latest_released_event"]["title"] == "Employment Situation"
+    assert risk["latest_released_event"]["actual"] == 29_000.0
+    assert risk["latest_released_event"]["gold_bias"] == "GOLD_BULLISH"
+
+
+def test_v369_latest_release_prefers_nfp_package_headline_at_same_timestamp():
+    now = datetime(2026, 10, 2, 16, 30, tzinfo=UTC)
+    scheduled = datetime(2026, 10, 2, 12, 30, tzinfo=UTC)
+    events = (
+        RiskEvent(
+            event_id="wages",
+            title="Average Hourly Earnings m/m",
+            scheduled_at=scheduled,
+            impact="HIGH",
+            category="WAGES",
+            source="BLS_OFFICIAL_EMPLOYMENT_RELEASE",
+            source_tier="OFFICIAL_ACTUAL_WITH_DISCOVERY_CONSENSUS",
+            source_url="https://www.bls.gov/news.release/empsit.nr0.htm",
+            actual=0.1,
+            forecast=0.3,
+            previous=0.3,
+        ),
+        RiskEvent(
+            event_id="unemployment",
+            title="Unemployment Rate",
+            scheduled_at=scheduled,
+            impact="HIGH",
+            category="UNEMPLOYMENT_RATE",
+            source="BLS_OFFICIAL_EMPLOYMENT_RELEASE",
+            source_tier="OFFICIAL_ACTUAL_WITH_DISCOVERY_CONSENSUS",
+            source_url="https://www.bls.gov/news.release/empsit.nr0.htm",
+            actual=4.2,
+            forecast=4.1,
+            previous=4.1,
+        ),
+        RiskEvent(
+            event_id="nfp",
+            title="Employment Situation",
+            scheduled_at=scheduled,
+            impact="HIGH",
+            category="EMPLOYMENT",
+            source="BLS_OFFICIAL_EMPLOYMENT_RELEASE",
+            source_tier="OFFICIAL_ACTUAL_WITH_DISCOVERY_CONSENSUS",
+            source_url="https://www.bls.gov/news.release/empsit.nr0.htm",
+            actual=29_000.0,
+            forecast=89_000.0,
+            previous=162_000.0,
+        ),
+        RiskEvent(
+            event_id="next",
+            title="U.S. International Trade in Goods and Services",
+            scheduled_at=datetime(2026, 10, 6, 12, 30, tzinfo=UTC),
+            impact="MEDIUM",
+            category="TRADE",
+            source="BEA_OFFICIAL_SCHEDULE",
+            source_tier="OFFICIAL",
+            source_url="https://www.bea.gov/news/schedule",
+        ),
+    )
+
+    risk = evaluate_event_risk(events, now=now)
+
+    assert risk["latest_released_event"]["title"] == "Employment Situation"
+    assert risk["latest_released_event"]["gold_bias"] == "GOLD_BULLISH"
+    assert risk["focal_event"]["title"] == "U.S. International Trade in Goods and Services"
