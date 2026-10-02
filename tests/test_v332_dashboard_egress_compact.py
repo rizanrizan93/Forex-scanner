@@ -240,3 +240,57 @@ def test_v344_v343_projection_keeps_micro_entry_tab_fields_without_full_details(
     assert "details" not in query.selected.split(",")
     assert "historical_evidence:details->evaluation->historical_evidence" in query.selected
     assert row["details"]["transport_projection"] == "V343_OPERATIONAL_60S"
+
+
+def test_v344_generic_merge_preserves_v342_compact_evaluation_over_summary_row():
+    base = [{
+        "worker_name": "ctrader_demo_xau_sd_liquidity_v342",
+        "observed_at": "2026-10-02T06:00:00+00:00",
+        "healthy": True,
+        "lag_seconds": 0,
+    }]
+    overlay = [{
+        "worker_name": "ctrader_demo_xau_sd_liquidity_v342",
+        "observed_at": "2026-10-02T06:01:00+00:00",
+        "healthy": True,
+        "lag_seconds": 0,
+        "details": {
+            "evaluation": {
+                "state": "MAP_AVAILABLE",
+                "price_now": 4187.99,
+                "entry_guide": {"state": "WAIT_STRUCTURAL_ROOM"},
+            },
+            "transport_projection": "V342_OPERATIONAL_60S_COMPACT",
+        },
+    }]
+    merged = merge_runtime_heartbeat_rows(base, overlay)
+    assert merged[0]["details"]["evaluation"]["state"] == "MAP_AVAILABLE"
+    assert merged[0]["details"]["evaluation"]["price_now"] == 4187.99
+    assert merged[0]["details"]["transport_projection"] == "V342_OPERATIONAL_60S_COMPACT"
+
+
+def test_v344_generic_merge_preserves_v343_compact_evaluation_over_summary_row():
+    base = [{
+        "worker_name": "ctrader_demo_xau_friend_entry_v343",
+        "observed_at": "2026-10-02T06:00:00+00:00",
+        "healthy": True,
+        "lag_seconds": 0,
+    }]
+    overlay = [{
+        "worker_name": "ctrader_demo_xau_friend_entry_v343",
+        "observed_at": "2026-10-02T06:01:00+00:00",
+        "healthy": True,
+        "lag_seconds": 0,
+        "details": {
+            "evaluation": {
+                "state": "Y_RETEST_WINDOW",
+                "direction": "SHORT",
+                "entries": {"historical_primary_price": 4149.11},
+            },
+            "transport_projection": "V343_OPERATIONAL_60S",
+        },
+    }]
+    merged = merge_runtime_heartbeat_rows(base, overlay)
+    assert merged[0]["details"]["evaluation"]["state"] == "Y_RETEST_WINDOW"
+    assert merged[0]["details"]["evaluation"]["direction"] == "SHORT"
+    assert merged[0]["details"]["transport_projection"] == "V343_OPERATIONAL_60S"
