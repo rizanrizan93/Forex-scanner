@@ -346,7 +346,7 @@ def render_xau_dual_engine_dashboard(
                     hide_index=True,
                 )
                 st.caption(
-                    "Kalender V355 menampilkan maksimal 7 hari event USD yang tersedia dari sumber "
+                    "Kalender V355 menampilkan maksimal 30 hari event USD yang tersedia dari sumber "
                     "resmi/discovery. Event dengan data numerik memakai consensus-vs-previous sebelum "
                     "rilis dan actual-vs-forecast setelah rilis."
                 )
