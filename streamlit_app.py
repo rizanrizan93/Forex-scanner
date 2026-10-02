@@ -71,10 +71,7 @@ DASHBOARD_BUILD_ID = "RIZAN_V344_DUAL_ISOLATED_20261001"
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # Generic minute-tier reads are intentionally small. Prepared/V182/V226,
     # V296 and V328 use dedicated compact projections below.
-    # V342/V343 must be full-detail reads because the isolated dashboard
-    # renders details.evaluation directly; heartbeat summaries omit details.
-    "ctrader_demo_xau_sd_liquidity_v342",
-    "ctrader_demo_xau_friend_entry_v343",
+    # V342/V343 use dedicated compact operational projections below.
     "ctrader_demo_xau_rizan_prepared_plan_producer",
     "ctrader_demo_xau_rizan_fast_handoff",
     "ctrader_demo_xau_dom_v191",
@@ -305,6 +302,12 @@ def _load_backend_decision_snapshot(url: str, secret_key: str) -> dict[str, Any]
     v328_operational = reader.latest_xau_micro_destination_operational_heartbeat()
     if v328_operational is not None:
         critical_heartbeats.append(v328_operational)
+    v342_operational = reader.latest_xau_sd_liquidity_operational_heartbeat()
+    if v342_operational is not None:
+        critical_heartbeats.append(v342_operational)
+    v343_operational = reader.latest_xau_friend_entry_operational_heartbeat()
+    if v343_operational is not None:
+        critical_heartbeats.append(v343_operational)
     return {
         "critical_heartbeats": critical_heartbeats,
         "afic_forecast_states": list(reader.latest_afic_forecast_states(limit=6)),
