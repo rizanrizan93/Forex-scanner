@@ -629,10 +629,38 @@ def evaluate_event_risk(
     else:
         action = "NORMAL_EVENT_RISK_CONTEXT"
 
+    released_with_actual = [
+        event
+        for event in relevant
+        if event.scheduled_at <= current
+        and event.actual is not None
+        and event.forecast is not None
+    ]
+    release_priority = {
+        "EMPLOYMENT": 5,
+        "UNEMPLOYMENT_RATE": 4,
+        "WAGES": 3,
+        "CPI": 2,
+        "PPI": 2,
+        "PCE": 2,
+        "GDP": 2,
+    }
+    released_with_actual.sort(
+        key=lambda event: (
+            event.scheduled_at,
+            release_priority.get(event.category, 0),
+        ),
+        reverse=True,
+    )
+    latest_released = released_with_actual[0] if released_with_actual else None
+
     return {
         "state": state,
         "action": action,
         "focal_event": None if focal is None else focal.as_dict(),
+        "latest_released_event": (
+            None if latest_released is None else latest_released.as_dict()
+        ),
         "minutes_to_focal": delta_minutes,
         "upcoming_events": [event.as_dict() for event in relevant[:DISPLAY_EVENTS]],
         "execution_influence": False,
@@ -675,6 +703,9 @@ def build_dashboard_projection(risk: dict[str, Any]) -> dict[str, Any]:
         "state": risk.get("state"),
         "action": risk.get("action"),
         "focal_event": _compact_dashboard_event(risk.get("focal_event")),
+        "latest_released_event": _compact_dashboard_event(
+            risk.get("latest_released_event")
+        ),
         "upcoming_events": [
             _compact_dashboard_event(item)
             for item in list(risk.get("upcoming_events") or [])
