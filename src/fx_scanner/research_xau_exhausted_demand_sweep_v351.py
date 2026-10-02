@@ -572,10 +572,14 @@ def evaluate_year(price_m1: pd.DataFrame, *, target_year: int) -> dict[str, Any]
             events.append(event)
             continue
 
+        # Strict sweep definition: price must reach the pre-known H2 cluster
+        # at or below the H1 distal. A level slightly overlapping the H1 zone
+        # cannot qualify merely because the H1 zone itself was touched.
+        h2_sweep_high = min(float(cluster["high"]), float(child.low))
         h2_touch = _first_touch(
             price_m1,
             low=float(cluster["low"]),
-            high=float(cluster["high"]),
+            high=h2_sweep_high,
             start_at=h1_touch["at"],
             end_at=min(
                 chain_end,
@@ -587,6 +591,7 @@ def evaluate_year(price_m1: pd.DataFrame, *, target_year: int) -> dict[str, Any]
             continue
 
         event["h2_reached"] = True
+        event["h2_sweep_below_h1_distal"] = bool(float(h2_touch["low"]) < float(child.low))
         event["h2_touch_at"] = h2_touch["at"].isoformat()
         event["minutes_h1_to_h2"] = (
             h2_touch["at"] - h1_touch["at"]
