@@ -388,6 +388,8 @@ class SupabaseDashboardReader:
             "refinement_zone:details->evaluation->refinement_zone,"
             "structural_destination:details->evaluation->structural_destination,"
             "structural_room:details->evaluation->structural_room,"
+            "nearest_roadblock:details->evaluation->nearest_roadblock,"
+            "roadblock_room:details->evaluation->roadblock_room,"
             "structural_checkpoints:details->evaluation->structural_path->checkpoints,"
             "failure_path:details->evaluation->failure_path,"
             "micro_confirmation:details->evaluation->micro_confirmation,"
@@ -438,6 +440,8 @@ class SupabaseDashboardReader:
             "refinement_zone": dict(raw.pop("refinement_zone", {}) or {}),
             "structural_destination": dict(raw.pop("structural_destination", {}) or {}),
             "structural_room": dict(raw.pop("structural_room", {}) or {}),
+            "nearest_roadblock": dict(raw.pop("nearest_roadblock", {}) or {}),
+            "roadblock_room": dict(raw.pop("roadblock_room", {}) or {}),
             "structural_path": {
                 "checkpoints": list(raw.pop("structural_checkpoints", []) or []),
             },
@@ -446,7 +450,6 @@ class SupabaseDashboardReader:
             # Primary checkpoints already carry the relevant reaction context.
             "support_resistance": [],
             "active_zones": [],
-            "nearest_roadblock": {},
             "micro_confirmation": dict(raw.pop("micro_confirmation", {}) or {}),
             "entry_guide": dict(raw.pop("entry_guide", {}) or {}),
             "liquidity_map": {
