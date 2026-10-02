@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/forexrizan-v344-snapshot-hotfix.yml"
+      - "src/fx_scanner/dashboard.py"
+      - "src/fx_scanner/xau_dashboard_bridge_v254.py"
+      - "streamlit_app.py"
 
 permissions:
   contents: write
