@@ -182,6 +182,9 @@ def render_xau_dual_engine_dashboard(
             roadblock_room = dict(sd.get("roadblock_room") or {})
             structural_path = dict(sd.get("structural_path") or {})
             failure_path = dict(sd.get("failure_path") or {})
+            destination_ladder = dict(sd.get("destination_ladder") or {})
+            failure_destination_ladder = dict(sd.get("failure_destination_ladder") or {})
+            zone_chain = dict(sd.get("zone_chain") or {})
             support_resistance = list(sd.get("support_resistance") or [])
             sr_map = dict(sd.get("support_resistance_map") or {})
             sr_levels = list(sr_map.get("levels") or support_resistance)
@@ -309,11 +312,52 @@ def render_xau_dual_engine_dashboard(
 
                 if destination:
                     st.info(
-                        "**Terminal H4 destination:** "
+                        "**Primary HTF destination:** "
                         + _zone_label(destination)
                     )
                 else:
-                    st.caption("Terminal H4 destination belum tersedia pada arah parent saat ini.")
+                    st.caption("Primary HTF destination belum tersedia pada arah parent saat ini.")
+
+                delivery_stages = list(destination_ladder.get("stages") or [])
+                if delivery_stages:
+                    route = " → ".join(
+                        (
+                            f"{int(stage.get('order') or 0)}. "
+                            f"{stage.get('timeframe','—')} "
+                            f"{'DEMAND' if str(stage.get('direction')) == 'LONG' else 'SUPPLY'} "
+                            f"{_px(stage.get('low'))}–{_px(stage.get('high'))}"
+                        )
+                        for stage in delivery_stages
+                    )
+                    st.markdown("**Delivery map:** " + route)
+                    terminal_stage = dict(destination_ladder.get("terminal_scenario") or {})
+                    if terminal_stage:
+                        st.caption(
+                            "Terminal scenario • "
+                            + _zone_label(terminal_stage)
+                            + " • CONDITIONAL: bukan TP aktif; baru dipromosikan bila seluruh "
+                            "HTF destination sebelumnya gagal secara kausal."
+                        )
+
+                next_zone = dict(zone_chain.get("next_after_failure") or {})
+                if next_zone:
+                    comparator = "<" if str(failure_path.get("failure_direction")) == "SHORT" else ">"
+                    st.warning(
+                        "**Jika MAIN gagal → NEXT HTF:** "
+                        + f"close {comparator} {_px(zone_chain.get('promotion_trigger'))} → "
+                        + _zone_label(next_zone)
+                        + ". Engine rebuild dan mempromosikan zona berikutnya; tidak averaging "
+                        "pada zona yang sudah invalid."
+                    )
+                    fail_terminal = dict(
+                        failure_destination_ladder.get("terminal_scenario") or {}
+                    )
+                    if fail_terminal:
+                        st.caption(
+                            "Failure-path terminal scenario • "
+                            + _zone_label(fail_terminal)
+                            + " • tetap conditional sampai checkpoint sebelumnya ditembus."
+                        )
 
                 checkpoints = list(structural_path.get("checkpoints") or [])
                 if checkpoints:

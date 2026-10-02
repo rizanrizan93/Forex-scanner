@@ -11,7 +11,7 @@ import pandas as pd
 from .models import ensure_utc
 from .xau_structural_sr_map_v363 import build_structural_sr_map
 
-CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_10_MAIN_REVERSAL_SR_ROADBLOCK_V367"
+CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_11_DESTINATION_LADDER_V368"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
 EXECUTION_AUTHORITY = True
 EXECUTION_INFLUENCE = True
@@ -1351,6 +1351,120 @@ def _structural_destination(
     }
 
 
+def _destination_ladder(
+    *,
+    direction: str,
+    start_price: float,
+    active_zones: Sequence[dict[str, Any]],
+    max_stages: int = 4,
+) -> dict[str, Any]:
+    """Map staged HTF delivery targets without turning distant targets into active TP.
+
+    Stage 1 is the active opposing main-reversal destination. Every deeper stage
+    is conditional on a causal invalidation of the preceding HTF zone. This is
+    intentionally different from stacking all zones as simultaneous targets.
+    """
+    if direction not in {"LONG", "SHORT"}:
+        return {
+            "state": "NO_DIRECTION",
+            "direction": "WAIT",
+            "stages": [],
+            "primary": {},
+            "terminal_scenario": {},
+        }
+
+    opposite = "SHORT" if direction == "LONG" else "LONG"
+    quality_profile_available = any(
+        "main_reversal_eligible" in row for row in active_zones
+    )
+
+    def _ahead(zone: dict[str, Any]) -> tuple[bool, float]:
+        edge = float(zone["low"]) if direction == "LONG" else float(zone["high"])
+        ok = edge > start_price if direction == "LONG" else edge < start_price
+        return ok, edge
+
+    h4: list[tuple[float, float, dict[str, Any]]] = []
+    h1: list[tuple[float, float, dict[str, Any]]] = []
+    for raw in active_zones:
+        zone = dict(raw)
+        if str(zone.get("direction")) != opposite:
+            continue
+        if quality_profile_available and not bool(zone.get("main_reversal_eligible")):
+            continue
+        ahead, edge = _ahead(zone)
+        if not ahead:
+            continue
+        item = (abs(edge - start_price), edge, zone)
+        if str(zone.get("timeframe")) == "H4":
+            h4.append(item)
+        elif str(zone.get("timeframe")) == "H1":
+            h1.append(item)
+
+    source = h4 if h4 else h1
+    source.sort(key=lambda item: (float(item[0]), -float(item[2].get("main_reversal_score") or item[2].get("score") or 0.0)))
+    selected = source[: max(1, int(max_stages))]
+
+    stages: list[dict[str, Any]] = []
+    for idx, (distance, edge, zone) in enumerate(selected):
+        is_primary = idx == 0
+        is_terminal = idx == len(selected) - 1 and idx > 0
+        role = (
+            "PRIMARY_HTF_DESTINATION"
+            if is_primary
+            else "TERMINAL_SCENARIO"
+            if is_terminal
+            else "CONTINUATION_HTF_DESTINATION"
+        )
+        stages.append(
+            {
+                "order": idx + 1,
+                "role": role,
+                "status": (
+                    "ACTIVE_AFTER_REVERSAL_CONFIRMATION"
+                    if is_primary
+                    else "CONDITIONAL_IF_PREVIOUS_HTF_ZONE_FAILS"
+                ),
+                "activation_rule": (
+                    "ACTIVE_AFTER_REVERSAL_CONFIRMATION"
+                    if is_primary
+                    else "ONLY_AFTER_PREVIOUS_HTF_ZONE_CAUSAL_INVALIDATION"
+                ),
+                "travel_direction": direction,
+                "zone_id": zone.get("zone_id"),
+                "timeframe": zone.get("timeframe"),
+                "direction": zone.get("direction"),
+                "low": zone.get("low"),
+                "high": zone.get("high"),
+                "price": edge,
+                "distance_points": distance,
+                "break_level": _zone_break_level(zone),
+                "condition": zone.get("condition"),
+                "main_reversal_score": zone.get("main_reversal_score"),
+                "freshness": dict(zone.get("lifecycle") or {}).get("freshness"),
+            }
+        )
+
+    return {
+        "state": "LADDER_AVAILABLE" if stages else "NO_HTF_DESTINATION",
+        "direction": direction,
+        "start_price": start_price,
+        "source_timeframe": (
+            str(stages[0].get("timeframe")) if stages else None
+        ),
+        "stages": stages,
+        "primary": dict(stages[0]) if stages else {},
+        "continuation": [dict(row) for row in stages[1:]],
+        "terminal_scenario": (
+            dict(stages[-1]) if len(stages) > 1 else {}
+        ),
+        "rule": (
+            "PRIMARY destination is active only after reversal confirmation. "
+            "Deeper destinations are conditional scenarios and become active only "
+            "after the preceding HTF zone is causally invalidated."
+        ),
+    }
+
+
 def _roadblocks(
     *,
     direction: str,
@@ -2126,6 +2240,21 @@ def evaluate_sd_liquidity(
         if direction in {"LONG", "SHORT"}
         else {}
     )
+    destination_ladder = (
+        _destination_ladder(
+            direction=direction,
+            start_price=path_start,
+            active_zones=active,
+        )
+        if direction in {"LONG", "SHORT"}
+        else {
+            "state": "NO_DIRECTION",
+            "direction": "WAIT",
+            "stages": [],
+            "primary": {},
+            "terminal_scenario": {},
+        }
+    )
     invalidation = _f(micro.get("invalidation"))
     htf_roadblocks = (
         _roadblocks(
@@ -2197,6 +2326,38 @@ def evaluate_sd_liquidity(
     ) if decision_zone else {
         "state": "NO_DECISION_ZONE",
         "checkpoints": [],
+    }
+    failure_direction = str(failure_path.get("failure_direction") or "WAIT")
+    failure_start = _f(failure_path.get("trigger"))
+    failure_destination_ladder = (
+        _destination_ladder(
+            direction=failure_direction,
+            start_price=float(failure_start),
+            active_zones=active,
+        )
+        if failure_direction in {"LONG", "SHORT"} and failure_start is not None
+        else {
+            "state": "NO_FAILURE_PATH",
+            "direction": "WAIT",
+            "stages": [],
+            "primary": {},
+            "terminal_scenario": {},
+        }
+    )
+    next_after_failure = dict(failure_destination_ladder.get("primary") or {})
+    zone_chain = {
+        "state": "ACTIVE_PRIMARY" if decision_zone else "NO_ACTIVE_PRIMARY",
+        "active_zone_id": decision_zone.get("zone_id"),
+        "active_timeframe": decision_zone.get("timeframe"),
+        "active_direction": direction,
+        "promotion_trigger": failure_path.get("trigger"),
+        "promotion_rule": (
+            "ON_CAUSAL_INVALIDATION_REBUILD_AND_PROMOTE_NEXT_ELIGIBLE_MAIN_REVERSAL_ZONE"
+        ),
+        "next_after_failure": next_after_failure,
+        "terminal_after_failure": dict(
+            failure_destination_ladder.get("terminal_scenario") or {}
+        ),
     }
     targets = _targets(
         direction=direction,
@@ -2274,6 +2435,9 @@ def evaluate_sd_liquidity(
         "hierarchy_selection": hierarchy_selection,
         "expected_reversal_direction": direction,
         "structural_destination": destination,
+        "destination_ladder": destination_ladder,
+        "failure_destination_ladder": failure_destination_ladder,
+        "zone_chain": zone_chain,
         "structural_room": structural_room,
         "structural_path": structural_path,
         "failure_path": failure_path,
@@ -2350,6 +2514,15 @@ def evaluate_sd_liquidity(
             ),
             "failure_path": (
                 "CONDITIONAL_ONLY_AFTER_PARENT_CAUSAL_INVALIDATION; NEVER_A_SECOND_DIRECTION_SIGNAL"
+            ),
+            "destination_ladder": (
+                "PRIMARY_ACTIVE_AFTER_REVERSAL_CONFIRMATION -> "
+                "CONTINUATION_ONLY_IF_PREVIOUS_HTF_ZONE_FAILS -> "
+                "TERMINAL_SCENARIO_NOT_DIRECT_TP"
+            ),
+            "zone_promotion": (
+                "WHEN_ACTIVE_MAIN_ZONE_IS_CAUSALLY_INVALIDATED, REBUILD_FROM_COMPLETED_BARS "
+                "AND_PROMOTE_NEXT_ELIGIBLE_MAIN_REVERSAL_ZONE"
             ),
             "reversal_confirmation": "TOUCH/SWEEP + RECLAIM + LOCAL_MSS + DISPLACEMENT",
             "rebuild_policy": "RECALCULATE_FROM_COMPLETED_H4_H1_M15_M5_ON_EACH_RUNTIME_CYCLE",
