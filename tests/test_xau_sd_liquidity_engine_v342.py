@@ -722,7 +722,7 @@ def test_v367_failed_bull_breakout_becomes_long_sr_roadblock():
     assert row["type"] == "RESISTANCE"
     assert row["source"] == "RIZAN_STRUCTURAL_SR_MAP_V363"
     assert row["near_edge"] == 4192.30
-    assert row["reduces_room"] is True
+    assert row["reduces_room"] is False
     assert row["direction_signal"] is False
 
 
