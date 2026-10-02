@@ -265,6 +265,8 @@ def run() -> int:
         control.refresh_once()
         control.start()
         gate.assert_orders_allowed(ExecutionMode.AUTO.value)
+        if hasattr(session, "ensure_connected"):
+            session.ensure_connected()
 
         protected, protection_reason = _protected_positions_only(session)
         if not protected:
