@@ -292,7 +292,7 @@ def render_xau_dual_engine_dashboard(
             n1, n2, n3, n4 = st.columns(4)
             n1.metric("Event risk", risk_state)
             n2.metric("Event terdekat", str(focal.get("title") or "—"))
-            n3.metric("Prediksi XAU", _macro_bias_label(focal.get("gold_bias")))
+            n3.metric("Prediksi XAU (consensus)", _macro_bias_label(focal.get("gold_bias")))
             n4.metric(
                 "Entry gate",
                 str(news.get("effective_entry_state") or macro.get("action") or "WAIT"),
@@ -318,7 +318,7 @@ def render_xau_dual_engine_dashboard(
                     + str(focal.get("previous") if focal.get("previous") is not None else "—")
                     + " • Actual="
                     + str(focal.get("actual") if focal.get("actual") is not None else "—")
-                    + ". Prediksi pra-event adalah consensus tilt; setelah rilis dashboard memakai actual-vs-forecast."
+                    + ". Prediksi pra-event adalah consensus tilt. Actual-vs-forecast dipakai hanya bila sumber kalender menyediakan actual; jika kosong, rilis harus diverifikasi dari sumber resmi."
                 )
 
             upcoming = list(macro.get("upcoming_events") or [])
@@ -346,9 +346,9 @@ def render_xau_dual_engine_dashboard(
                     hide_index=True,
                 )
                 st.caption(
-                    "Kalender V355 menampilkan maksimal 30 hari event USD yang tersedia dari sumber "
-                    "resmi/discovery. Event dengan data numerik memakai consensus-vs-previous sebelum "
-                    "rilis dan actual-vs-forecast setelah rilis."
+                    "Kalender V355 menampilkan hingga 30 hari event USD yang tersedia: jadwal resmi BLS/BEA "
+                    "ditambah discovery mingguan untuk event lain. Consensus-vs-previous adalah tilt "
+                    "pra-event, bukan kepastian arah; actual-vs-forecast hanya dipakai jika actual tersedia."
                 )
 
             if risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
