@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
+      - "src/fx_scanner/xau_structural_sr_map_v363.py"
       - "src/fx_scanner/xau_friend_entry_engine_v343.py"
       - "src/fx_scanner/xau_news_zone_source_v346.py"
       - "src/fx_scanner/xau_news_zone_v346.py"
@@ -22,6 +23,8 @@ on:
       - "src/fx_scanner/xau_dual_engine_dashboard_v344.py"
       - "streamlit_app.py"
       - "tests/test_xau_sd_liquidity_engine_v342.py"
+      - "tests/test_xau_structural_sr_map_v363.py"
+      - "tests/test_v363_structural_sr_dashboard.py"
       - "tests/test_xau_friend_entry_engine_v343.py"
       - "tests/test_xau_news_zone_v346.py"
       - "tests/test_xau_macro_attribution_v357.py"
