@@ -170,3 +170,72 @@ def test_v332_compact_v328_overlay_preserves_hourly_diagnostic_fields():
     assert ev["state"] == "READY"
     assert ev["primary"] == {"new": True}
     assert ev["h1_debug"]["large"] is True
+
+
+def test_v344_v342_projection_keeps_structural_tab_fields_without_full_details():
+    query = _Query({
+        "worker_name": "ctrader_demo_xau_sd_liquidity_v342",
+        "observed_at": "2026-10-02T04:25:45+00:00",
+        "healthy": True,
+        "lag_seconds": 0,
+        "state": "MAP_AVAILABLE",
+        "price_now": 4187.99,
+        "decision_zone": {"timeframe": "H4", "low": 4176.54, "high": 4219.29},
+        "main_reversal_zone": {"timeframe": "H4", "direction": "SHORT"},
+        "refinement_zone": {"timeframe": "H1", "direction": "SHORT"},
+        "structural_destination": {"low": 4144.56, "high": 4175.17},
+        "structural_room": {"state": "COMPRESSED_HTF_CORRIDOR", "blocked": True},
+        "structural_path": {"state": "PATH_AVAILABLE", "checkpoints": [{"order": 1}]},
+        "failure_path": {"state": "CONDITIONAL_ONLY", "checkpoints": []},
+        "support_resistance": [{"kind": "RESISTANCE", "price": 4187.3}],
+        "nearest_roadblock": {},
+        "micro_confirmation": {"stage": "RECLAIM_WAIT_MSS_DISPLACEMENT"},
+        "entry_guide": {"state": "WAIT_STRUCTURAL_ROOM"},
+        "liquidity_map": {"side": "BUY_SIDE"},
+        "news_zone": {"risk_state": "CLEAR"},
+        "market_structure": {"H4": {"state": "BEARISH_RANGE"}},
+        "expected_reversal_direction": "SHORT",
+        "historical_depth_prior": {"H4": {"touches": 4831}},
+        "active_zones": [{"timeframe": "H4", "direction": "SHORT"}],
+    })
+    row = SupabaseDashboardReader(query).latest_xau_sd_liquidity_operational_heartbeat()
+    assert row is not None
+    ev = row["details"]["evaluation"]
+    assert ev["state"] == "MAP_AVAILABLE"
+    assert ev["price_now"] == 4187.99
+    assert ev["structural_path"]["state"] == "PATH_AVAILABLE"
+    assert ev["entry_guide"]["state"] == "WAIT_STRUCTURAL_ROOM"
+    assert ev["market_structure"]["H4"]["state"] == "BEARISH_RANGE"
+    assert "details" not in query.selected
+    assert "active_zones:details->evaluation->active_zones" in query.selected
+    assert row["details"]["transport_projection"] == "V342_OPERATIONAL_60S"
+
+
+def test_v344_v343_projection_keeps_micro_entry_tab_fields_without_full_details():
+    query = _Query({
+        "worker_name": "ctrader_demo_xau_friend_entry_v343",
+        "observed_at": "2026-10-02T04:25:45+00:00",
+        "healthy": True,
+        "lag_seconds": 0,
+        "state": "Y_RETEST_WINDOW",
+        "direction": "SHORT",
+        "price_now": 4187.99,
+        "delta": 0.5431,
+        "parent_zone": {"timeframe": "H4", "direction": "SHORT"},
+        "levels": {"A": 4150.2, "X": 4149.65, "Y": 4149.11},
+        "entries": {"historical_primary_price": 4149.11},
+        "targets": {"TP5": 4147.48, "TP8": 4145.85, "TP13": 4143.14},
+        "stop_loss": 4219.83,
+        "historical_evidence": {"full_2012_2026": {"fills": 13933}},
+        "news_zone_context": {"risk_state": "CLEAR"},
+    })
+    row = SupabaseDashboardReader(query).latest_xau_friend_entry_operational_heartbeat()
+    assert row is not None
+    ev = row["details"]["evaluation"]
+    assert ev["state"] == "Y_RETEST_WINDOW"
+    assert ev["direction"] == "SHORT"
+    assert ev["entries"]["historical_primary_price"] == 4149.11
+    assert ev["targets"]["TP13"] == 4143.14
+    assert "details" not in query.selected
+    assert "historical_evidence:details->evaluation->historical_evidence" in query.selected
+    assert row["details"]["transport_projection"] == "V343_OPERATIONAL_60S"
