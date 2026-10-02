@@ -289,3 +289,49 @@ def test_v354_evidence_ledger_carries_full_decision_path():
     assert ledger["order_plan"]["sl"] == 105.0
     assert ledger["order_plan"]["tp"] == 90.0
 
+
+
+def test_v364_early_confirmed_setup_can_send_bounded_demo_probe():
+    hb = _heartbeat(guide_state="EARLY_CONFIRMED_GUIDANCE")
+    evaluation = hb["details"]["evaluation"]
+    evaluation["structural_destination"]["price"] = 88.0
+    evaluation["micro_confirmation"].update(
+        {
+            "confirmed": False,
+            "early_confirmed": True,
+            "confirmation_close": 98.8,
+            "local_atr": 1.0,
+            "reclaim_at": "2026-10-02T07:59:30+00:00",
+        }
+    )
+    candidate, reason = _candidate(
+        heartbeat=hb,
+        bid=98.7,
+        ask=98.8,
+        now=datetime(2026, 10, 2, 8, 0, 30, tzinfo=UTC),
+    )
+    assert reason == "ELIGIBLE"
+    assert candidate is not None
+    assert candidate["confirmation_tier"] == "EARLY"
+    assert candidate["entry_mode"] == "EARLY_CONFIRMATION_DEMO_PROBE"
+    assert candidate["rr"] >= 1.50
+
+
+def test_v364_early_lane_still_fails_closed_when_news_tier_does_not_match():
+    hb = _heartbeat(guide_state="EARLY_CONFIRMED_GUIDANCE")
+    evaluation = hb["details"]["evaluation"]
+    evaluation["micro_confirmation"].update(
+        {
+            "confirmed": False,
+            "early_confirmed": True,
+        }
+    )
+    evaluation["news_zone"]["effective_entry_state"] = "CONFIRMED_GUIDANCE"
+    candidate, reason = _candidate(
+        heartbeat=hb,
+        bid=100.0,
+        ask=100.1,
+        now=datetime(2026, 10, 2, 8, 0, 30, tzinfo=UTC),
+    )
+    assert candidate is None
+    assert reason.startswith("NEWS_GATE_TIER_MISMATCH:")

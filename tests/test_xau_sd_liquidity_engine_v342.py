@@ -8,6 +8,7 @@ from fx_scanner.xau_sd_liquidity_engine_v342 import (
     _classify_hierarchy,
     _conditional_failure_path,
     _h2_frame_from_h1,
+    _micro_confirmation,
     _prepared_entry_band,
     _roadblocks,
     _select_parent_and_refinement,
@@ -443,3 +444,173 @@ def test_v350_failure_path_maps_deeper_demand_and_h2_cluster_only_after_parent_b
     assert checkpoints[1]["low"] <= 4113.07
     assert checkpoints[1]["high"] >= 4120.99
     assert checkpoints[-1]["zone_id"] == "lower-h4-demand"
+
+
+def test_v364_degraded_near_zone_cannot_override_fresh_main_reversal_zone():
+    price = 100.0
+    degraded_near = _zone_row(
+        "h4-degraded-supply",
+        "H4",
+        "SHORT",
+        99.0,
+        101.0,
+        price=price,
+        score=92.0,
+    )
+    degraded_near.update(
+        {
+            "structural_bos": True,
+            "departure_range_atr": 1.8,
+            "departure_body_fraction": 0.70,
+            "base_range_atr": 0.70,
+            "lifecycle": {
+                "freshness": "DEEPLY_MITIGATED",
+                "touch_count": 3,
+                "mitigation_depth": 0.90,
+            },
+        }
+    )
+    degraded_near["condition"] = _zone_condition(degraded_near)
+
+    fresh_main = _zone_row(
+        "h4-fresh-demand",
+        "H4",
+        "LONG",
+        94.0,
+        97.0,
+        price=price,
+        score=84.0,
+    )
+    fresh_main.update(
+        {
+            "structural_bos": True,
+            "departure_range_atr": 1.4,
+            "departure_body_fraction": 0.62,
+            "base_range_atr": 0.72,
+            "lifecycle": {
+                "freshness": "FRESH",
+                "touch_count": 0,
+                "mitigation_depth": 0.0,
+            },
+        }
+    )
+    fresh_main["condition"] = _zone_condition(fresh_main)
+
+    classified = _classify_hierarchy(
+        [degraded_near, fresh_main],
+        price_now=price,
+    )
+    parent, _, selection = _select_parent_and_refinement(
+        classified,
+        price_now=price,
+    )
+    assert parent["zone_id"] == "h4-fresh-demand"
+    assert parent["main_reversal_eligible"] is True
+    assert selection == "H4_PARENT"
+
+
+def test_v364_local_mss_ignores_old_news_spike_and_confirms_reclaim_break():
+    start = datetime(2026, 10, 2, 10, 0, tzinfo=UTC)
+    bars = []
+    for i in range(24):
+        px = 102.0
+        high = 110.0 if i == 20 else 102.6
+        bars.append(
+            SimpleNamespace(
+                timestamp=start + timedelta(minutes=5 * i),
+                open=px,
+                high=high,
+                low=101.4,
+                close=102.1,
+            )
+        )
+    bars.extend(
+        [
+            SimpleNamespace(
+                timestamp=start + timedelta(minutes=5 * 24),
+                open=101.0,
+                high=99.0,
+                low=97.4,
+                close=98.4,
+            ),
+            SimpleNamespace(
+                timestamp=start + timedelta(minutes=5 * 25),
+                open=98.5,
+                high=100.4,
+                low=98.0,
+                close=100.2,
+            ),
+            SimpleNamespace(
+                timestamp=start + timedelta(minutes=5 * 26),
+                open=100.2,
+                high=101.0,
+                low=100.0,
+                close=100.8,
+            ),
+        ]
+    )
+    zone = {
+        "timeframe": "H1",
+        "direction": "LONG",
+        "low": 98.0,
+        "high": 100.0,
+        "proximal": 99.0,
+        "distal": 98.0,
+        "atr": 2.0,
+    }
+    result = _micro_confirmation(
+        zone,
+        bars_m5=bars,
+        bars_m15=[],
+        price_now=100.8,
+        as_of=bars[-1].timestamp + timedelta(minutes=5),
+    )
+    assert result["early_confirmed"] is True
+    assert result["confirmed"] is True
+    assert result["stage"] == "REVERSAL_CONFIRMED"
+    assert result["mss_definition"] == "LOCAL_RECLAIM_EXTREME_BREAK"
+    assert result["mss_level"] < 105.0
+
+
+def test_v364_sweep_reclaim_can_arm_early_demo_before_full_local_mss():
+    start = datetime(2026, 10, 2, 10, 0, tzinfo=UTC)
+    bars = _bars("M5", start, 24, timedelta(minutes=5), 102.0)
+    bars.extend(
+        [
+            SimpleNamespace(
+                timestamp=start + timedelta(minutes=5 * 24),
+                open=100.5,
+                high=99.0,
+                low=97.4,
+                close=98.4,
+            ),
+            SimpleNamespace(
+                timestamp=start + timedelta(minutes=5 * 25),
+                open=98.5,
+                high=100.4,
+                low=98.0,
+                close=100.1,
+            ),
+        ]
+    )
+    zone = {
+        "timeframe": "H1",
+        "direction": "LONG",
+        "low": 98.0,
+        "high": 100.0,
+        "proximal": 99.0,
+        "distal": 98.0,
+        "atr": 2.0,
+    }
+    result = _micro_confirmation(
+        zone,
+        bars_m5=bars,
+        bars_m15=[],
+        price_now=100.1,
+        as_of=bars[-1].timestamp + timedelta(minutes=5),
+    )
+    assert result["early_confirmed"] is True
+    assert result["confirmed"] is False
+    assert result["stage"] == "EARLY_REVERSAL_CONFIRMED"
+    assert result["entry_low"] is not None
+    assert result["invalidation"] is not None

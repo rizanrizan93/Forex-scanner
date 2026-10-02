@@ -294,7 +294,8 @@ def render_xau_dual_engine_dashboard(
                 st.markdown(
                     f"**MAIN H4:** {_zone_label(main_zone)} • "
                     f"condition={main_zone.get('condition') or dict(main_zone.get('lifecycle') or {}).get('freshness','—')} • "
-                    f"pattern={main_zone.get('pattern','—')}"
+                    f"pattern={main_zone.get('pattern','—')} • "
+                    f"reversal quality={_f(main_zone.get('main_reversal_score')) or 0.0:.1f}"
                 )
                 if refinement:
                     st.success(
@@ -654,9 +655,10 @@ def render_xau_dual_engine_dashboard(
                 f"{_px(guide.get('entry_low'))}–{_px(guide.get('entry_high'))}",
             )
             st.caption(
-                "PREPARE = area reaksi yang dipetakan sebelum konfirmasi (bukan auto-entry). "
-                "Setelah MSS + displacement valid, executor dapat masuk pada fresh confirmation "
-                "selama masih baru/dekat; jika tidak, ia menunggu retest dan tidak mengejar harga."
+                "PREPARE = area reaksi forecast, bukan order. EARLY = touch/sweep + proximal reclaim "
+                "+ rejection/displacement; hanya boleh probe DEMO 0.01 dengan SL struktural dan RR valid. "
+                "FULL = local MSS pada reclaim extreme + displacement. Jika harga sudah drift terlalu jauh, "
+                "executor tetap no-chase dan menunggu retest."
             )
             st.caption(
                 f"Invalidation {_px(guide.get('invalidation'))} • "
@@ -675,6 +677,12 @@ def render_xau_dual_engine_dashboard(
                         "Low": zone.get("low"),
                         "High": zone.get("high"),
                         "Score": zone.get("score"),
+                        "Reversal class": (
+                            "MAIN_REVERSAL"
+                            if zone.get("main_reversal_eligible")
+                            else "REACTION/ROADBLOCK"
+                        ),
+                        "Main score": zone.get("main_reversal_score"),
                         "Touch": life.get("touch_count"),
                         "Condition": zone.get("condition") or life.get("freshness"),
                         "Distance ATR": zone.get("distance_atr"),
@@ -715,7 +723,12 @@ def render_xau_dual_engine_dashboard(
                 if str(friend_news.get("risk_state") or "") in {"PRE_EVENT", "EVENT_WINDOW"}:
                     st.warning("A/X/Y tetap ditampilkan sebagai geometry reference, tetapi entry = WAIT FOR NEWS.")
 
-            st.caption("Parent zone • " + _zone_label(parent))
+            st.caption(
+                "Parent zone • "
+                + _zone_label(parent)
+                + " • touch="
+                + str(friend.get("parent_touch_source") or "HTF_LIFECYCLE")
+            )
             st.markdown("### Geometry A / X / Y")
             a1, a2, a3, a4 = st.columns(4)
             a1.metric("A", _px(levels.get("A")))
@@ -743,8 +756,9 @@ def render_xau_dual_engine_dashboard(
             h4c.metric("OOS expectancy", f"{_f(oos.get('expectancy_r_all_fills')) or 0.0:.3f}R")
             st.warning(
                 "OOS gate V323 = NOT READY karena expectancy 2025–2026 < 0.10R/fill. "
-                "Hit-rate tinggi tidak boleh dibaca sebagai readiness karena planned reward relatif kecil "
-                "terhadap structural risk dan friction belum termasuk. Engine ini shadow/forecast only."
+                "Hit-rate tinggi tidak boleh dibaca sebagai standalone readiness karena planned reward relatif kecil "
+                "terhadap structural risk dan friction belum termasuk. V343 tidak punya direct broker authority; "
+                "ia hanya menjadi forecast/confidence evidence untuk jalur DEMO."
             )
 
     st.caption(

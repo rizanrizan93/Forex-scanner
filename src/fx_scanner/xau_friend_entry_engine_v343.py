@@ -11,7 +11,7 @@ from .models import ensure_utc
 CONTRACT = "XAU_RIZAN_FRIEND_ENTRY_V343_1"
 DISPLAY_NAME = "RIZAN MICRO ENTRY RECONSTRUCTION"
 EXECUTION_AUTHORITY = False
-EXECUTION_INFLUENCE = False
+EXECUTION_INFLUENCE = True
 LIVE_EXECUTION_ENABLED = False
 
 # Frozen from the completed V323 2012-2026 reconstruction.
@@ -111,6 +111,44 @@ def _parent_touch_at(parent: dict[str, Any]) -> datetime | None:
         return ensure_utc(datetime.fromisoformat(str(raw).replace("Z", "+00:00")))
     except (TypeError, ValueError):
         return None
+
+
+def _live_parent_touch_at(
+    parent: dict[str, Any],
+    *,
+    m5: pd.DataFrame,
+    as_of: datetime,
+) -> datetime | None:
+    """Recover a causal M5 touch when HTF lifecycle metadata has not caught up.
+
+    The fallback is only allowed after the HTF zone was available. This avoids
+    inventing historical touches from M5 bars that predate zone publication.
+    """
+    available_raw = parent.get("available_at")
+    if not available_raw or m5.empty:
+        return None
+    try:
+        available_at = ensure_utc(
+            datetime.fromisoformat(str(available_raw).replace("Z", "+00:00"))
+        )
+    except (TypeError, ValueError):
+        return None
+    low = _f(parent.get("low"))
+    high = _f(parent.get("high"))
+    if low is None or high is None or high <= low:
+        return None
+
+    work = m5.copy()
+    work["known_at"] = work["timestamp"] + pd.Timedelta(minutes=5)
+    rows = work[
+        (work["known_at"] > pd.Timestamp(available_at))
+        & (work["known_at"] <= pd.Timestamp(ensure_utc(as_of)))
+        & (work["high"].astype(float) >= low)
+        & (work["low"].astype(float) <= high)
+    ]
+    if rows.empty:
+        return None
+    return ensure_utc(rows.iloc[0]["known_at"].to_pydatetime())
 
 
 def _anchor(
@@ -218,10 +256,11 @@ def evaluate_friend_entry(
     as_of: datetime,
     price_now: float | None = None,
 ) -> dict[str, Any]:
-    """Reconstruct the friend's A/X/Y geometry as an isolated shadow engine.
+    """Reconstruct the friend's A/X/Y geometry as isolated forecast evidence.
 
-    This module intentionally consumes only one explicit parent-zone payload and
-    M5 bars. It does not vote with, import, or average any legacy decision engine.
+    The module can influence DEMO setup confidence but has no direct broker
+    authority. It consumes one explicit parent zone and M5 bars without reviving
+    or averaging legacy engines.
     """
     parent = dict(parent_zone or {})
     direction = str(parent.get("direction") or "").upper()
@@ -263,6 +302,14 @@ def evaluate_friend_entry(
         current = float(m5.iloc[-1]["close"])
 
     touch_at = _parent_touch_at(parent)
+    touch_source = "HTF_LIFECYCLE"
+    if touch_at is None:
+        touch_at = _live_parent_touch_at(
+            parent,
+            m5=m5,
+            as_of=ensure_utc(as_of),
+        )
+        touch_source = "M5_CAUSAL_LIVE_OVERLAP"
     if touch_at is None:
         return {
             "contract": CONTRACT,
@@ -274,7 +321,7 @@ def evaluate_friend_entry(
             "formula": "A -> X=A±Δ -> Y=A±2Δ -> TP=5Δ/8Δ/13Δ",
             "historical_evidence": HISTORICAL_EVIDENCE,
             "execution_authority": False,
-            "execution_influence": False,
+            "execution_influence": EXECUTION_INFLUENCE,
         }
 
     anchor = _anchor(
@@ -292,11 +339,12 @@ def evaluate_friend_entry(
             "direction": direction,
             "price_now": current,
             "parent_zone": parent,
+            "parent_touch_source": touch_source,
             "anchor": anchor,
             "formula": "A -> X=A±Δ -> Y=A±2Δ -> TP=5Δ/8Δ/13Δ",
             "historical_evidence": HISTORICAL_EVIDENCE,
             "execution_authority": False,
-            "execution_influence": False,
+            "execution_influence": EXECUTION_INFLUENCE,
         }
 
     a = float(anchor["a"])
@@ -335,6 +383,7 @@ def evaluate_friend_entry(
         "direction": direction,
         "price_now": current,
         "parent_zone": parent,
+        "parent_touch_source": touch_source,
         "anchor": anchor,
         "delta": delta,
         "delta_fraction_m5_atr": DELTA_FRACTION,

@@ -27,6 +27,8 @@ MAX_SOURCE_AGE_SECONDS = 120.0
 MAX_MARGIN_USAGE_FRACTION = 0.50
 FRESH_CONFIRMATION_MAX_AGE_SECONDS = 420.0
 FRESH_CONFIRMATION_MAX_DRIFT_ATR = 0.35
+EARLY_CONFIRMATION_MAX_AGE_SECONDS = 300.0
+EARLY_CONFIRMATION_MAX_DRIFT_ATR = 0.25
 
 
 def _f(value: Any) -> float | None:
@@ -161,17 +163,26 @@ def _candidate(
     destination = dict(evaluation.get("structural_destination") or {})
     roadblock = dict(evaluation.get("nearest_roadblock") or {})
 
-    if str(guide.get("state") or "") != "CONFIRMED_GUIDANCE":
-        return None, f"ENTRY_GATE:{guide.get('state') or 'WAIT'}"
-    if not bool(micro.get("confirmed")):
+    guide_state = str(guide.get("state") or "")
+    early_lane = guide_state == "EARLY_CONFIRMED_GUIDANCE"
+    full_lane = guide_state == "CONFIRMED_GUIDANCE"
+    if not (early_lane or full_lane):
+        return None, f"ENTRY_GATE:{guide_state or 'WAIT'}"
+    if full_lane and not bool(micro.get("confirmed")):
         return None, "MICRO_NOT_CONFIRMED"
+    if early_lane and not bool(micro.get("early_confirmed")):
+        return None, "MICRO_EARLY_CONFIRMATION_MISSING"
     if bool(structural_room.get("blocked")):
         return None, f"STRUCTURAL_ROOM_BLOCK:{structural_room.get('state') or 'BLOCK'}"
     if bool(roadblock_room.get("blocked")):
         return None, f"ROADBLOCK_ROOM_BLOCK:{roadblock_room.get('state') or 'BLOCK'}"
-    effective_news = str(news.get("effective_entry_state") or guide.get("state") or "")
-    if effective_news != "CONFIRMED_GUIDANCE":
+    effective_news = str(news.get("effective_entry_state") or guide_state or "")
+    allowed_news_states = {"CONFIRMED_GUIDANCE", "EARLY_CONFIRMED_GUIDANCE"}
+    if effective_news not in allowed_news_states:
         return None, f"NEWS_GATE:{effective_news or 'WAIT'}"
+    if early_lane and effective_news != "EARLY_CONFIRMED_GUIDANCE":
+        # Do not silently promote an early setup through a mismatched news state.
+        return None, f"NEWS_GATE_TIER_MISMATCH:{effective_news or 'WAIT'}"
 
     direction = str(guide.get("direction") or evaluation.get("expected_reversal_direction") or "").upper()
     if direction not in {"LONG", "SHORT"}:
@@ -213,11 +224,25 @@ def _candidate(
         ):
             confirmation_age_seconds = (now - confirmation_at).total_seconds()
             confirmation_drift_atr = abs(executable - confirmation_close) / local_atr
+            max_age = (
+                EARLY_CONFIRMATION_MAX_AGE_SECONDS
+                if early_lane
+                else FRESH_CONFIRMATION_MAX_AGE_SECONDS
+            )
+            max_drift = (
+                EARLY_CONFIRMATION_MAX_DRIFT_ATR
+                if early_lane
+                else FRESH_CONFIRMATION_MAX_DRIFT_ATR
+            )
             if (
-                -1.0 <= confirmation_age_seconds <= FRESH_CONFIRMATION_MAX_AGE_SECONDS
-                and confirmation_drift_atr <= FRESH_CONFIRMATION_MAX_DRIFT_ATR
+                -1.0 <= confirmation_age_seconds <= max_age
+                and confirmation_drift_atr <= max_drift
             ):
-                entry_mode = "FRESH_CONFIRMATION_ENTRY"
+                entry_mode = (
+                    "EARLY_CONFIRMATION_DEMO_PROBE"
+                    if early_lane
+                    else "FRESH_CONFIRMATION_ENTRY"
+                )
 
     if entry_mode is None:
         return None, "WAIT_ENTRY_RETEST_OR_FRESH_CONFIRMATION"
@@ -257,6 +282,7 @@ def _candidate(
         "direction": direction,
         "entry": executable,
         "entry_mode": entry_mode,
+        "confirmation_tier": "EARLY" if early_lane else "FULL",
         "entry_low": entry_low,
         "entry_high": entry_high,
         "confirmation_age_seconds": confirmation_age_seconds,

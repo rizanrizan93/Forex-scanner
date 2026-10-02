@@ -49,3 +49,26 @@ def test_v343_historical_selection_is_shadow_only():
     assert HISTORICAL_EVIDENCE["selected_candidate"] == "D0.10|Y|TP5"
     assert HISTORICAL_EVIDENCE["oos_gate_pass"] is False
     assert HISTORICAL_EVIDENCE["oos_2025_2026"]["expectancy_r_all_fills"] < 0.10
+
+
+def test_v364_recovers_parent_touch_from_causal_m5_overlap():
+    bars = _m5()
+    parent = {
+        "direction": "LONG",
+        "low": 1990.0,
+        "high": 2000.0,
+        "proximal": 1998.0,
+        "distal": 1990.0,
+        "available_at": datetime(2026, 9, 1, tzinfo=UTC).isoformat(),
+        "lifecycle": {"touch_count": 0},
+    }
+    result = evaluate_friend_entry(
+        parent_zone=parent,
+        bars_m5=bars,
+        as_of=datetime(2026, 9, 2, tzinfo=UTC),
+        price_now=2005.0,
+    )
+    assert result["state"] != "WAIT_PARENT_TOUCH"
+    assert result["parent_touch_source"] == "M5_CAUSAL_LIVE_OVERLAP"
+    assert result["execution_authority"] is False
+    assert result["execution_influence"] is True
