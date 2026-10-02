@@ -1,0 +1,52 @@
+name: XAU Macro Attribution V357
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */4 * * 0-5"
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/xau_macro_attribution_v357.py"
+      - "src/fx_scanner/demo_xau_macro_attribution_v357.py"
+      - "src/fx_scanner/demo_xau_event_risk_v192.py"
+      - "src/fx_scanner/providers/news.py"
+      - "src/fx_scanner/providers/official.py"
+      - "config/providers.yaml"
+      - "tests/test_xau_macro_attribution_v357.py"
+      - ".github/workflows/xau-macro-attribution-v357.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xau-macro-attribution-v357
+  cancel-in-progress: true
+
+jobs:
+  macro-refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - name: Test V357
+        run: pytest -q tests/test_xau_macro_attribution_v357.py
+      - name: Validate configuration
+        run: python -m fx_scanner.cli validate-config
+      - name: Refresh V192 event context
+        run: python -m fx_scanner.demo_xau_event_risk_v192
+      - name: Refresh V357 broader macro
+        run: python -m fx_scanner.demo_xau_macro_attribution_v357
