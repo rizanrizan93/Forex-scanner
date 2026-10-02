@@ -2,12 +2,22 @@ name: ForexRizan Bridge Egress Gate
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/forexrizan-bridge-egress-gate.yml"
+      - "src/fx_scanner/xau_dashboard_bridge_v254.py"
+      - "src/fx_scanner/dashboard.py"
+      - "src/fx_scanner/demo_xau_event_risk_v192.py"
+      - "src/fx_scanner/demo_xau_macro_attribution_v357.py"
   push:
     branches: [main]
     paths:
       - ".github/workflows/forexrizan-bridge-egress-gate.yml"
       - "src/fx_scanner/xau_dashboard_bridge_v254.py"
       - "src/fx_scanner/dashboard.py"
+      - "src/fx_scanner/demo_xau_event_risk_v192.py"
+      - "src/fx_scanner/demo_xau_macro_attribution_v357.py"
 
 permissions:
   contents: read
