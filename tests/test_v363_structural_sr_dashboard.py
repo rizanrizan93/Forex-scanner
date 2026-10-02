@@ -24,3 +24,11 @@ def test_v363_is_integrated_into_v342_without_becoming_third_execution_engine():
     assert "build_structural_sr_map" in ENGINE
     assert '"support_resistance_map": support_resistance_map' in ENGINE
     assert "CONTEXT_ONLY_NO_DIRECTION_SIGNAL" in ENGINE
+
+
+
+def test_v369_dashboard_surfaces_intraday_reroute():
+    assert "INTRADAY REROUTE aktif" in DASHBOARD
+    assert "PREPARE forecast aktif" in DASHBOARD
+    assert "intraday_quarantined_zones" in DASHBOARD
+    assert "completed M15" in DASHBOARD
