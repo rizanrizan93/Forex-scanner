@@ -203,7 +203,7 @@ def test_v344_v342_projection_keeps_structural_tab_fields_without_full_details()
     ev = row["details"]["evaluation"]
     assert ev["state"] == "MAP_AVAILABLE"
     assert ev["price_now"] == 4187.99
-    assert ev["structural_path"]["state"] == "PATH_AVAILABLE"
+    assert ev["structural_path"]["checkpoints"][0]["order"] == 1
     assert ev["entry_guide"]["state"] == "WAIT_STRUCTURAL_ROOM"
     assert ev["market_structure"]["H4"]["state"] == "BEARISH_RANGE"
     assert "details" not in query.selected.split(",")
