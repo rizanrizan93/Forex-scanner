@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime
 import hashlib
+import os
 from math import isfinite
 from typing import Any
 
@@ -540,6 +541,11 @@ def run() -> int:
         details={
             "state": state,
             "reason": reason,
+            "git_sha": (
+                os.getenv("RIZAN_RUNTIME_HEAD_SHA")
+                or os.getenv("GITHUB_SHA")
+                or "UNKNOWN"
+            ),
             "execution_scope": EXECUTION_SCOPE,
             "live_execution_enabled": False,
             "lot": LOT,
