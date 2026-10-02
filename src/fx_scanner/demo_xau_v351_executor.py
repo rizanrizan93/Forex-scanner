@@ -239,6 +239,106 @@ def _candidate(
     }, "ELIGIBLE"
 
 
+def _zone_audit(zone: dict[str, Any]) -> dict[str, Any]:
+    keys = (
+        "zone_id",
+        "timeframe",
+        "hierarchy_role",
+        "direction",
+        "low",
+        "high",
+        "proximal",
+        "distal",
+        "condition",
+        "pattern",
+        "score",
+        "parent_zone_id",
+    )
+    return {key: zone.get(key) for key in keys if zone.get(key) is not None}
+
+
+def _evidence_ledger(
+    heartbeat: dict[str, Any],
+    candidate: dict[str, Any],
+) -> dict[str, Any]:
+    evaluation = dict(dict(heartbeat.get("details") or {}).get("evaluation") or {})
+    parent = dict(evaluation.get("main_reversal_zone") or {})
+    refinement = dict(evaluation.get("refinement_zone") or {})
+    liquidity = dict(evaluation.get("liquidity_map") or {})
+    roadblock = dict(evaluation.get("nearest_roadblock") or {})
+    roadblock_room = dict(evaluation.get("roadblock_room") or {})
+    structural_room = dict(evaluation.get("structural_room") or {})
+    news = dict(evaluation.get("news_zone") or {})
+    focal_event = dict(news.get("focal_event") or {})
+    micro = dict(evaluation.get("micro_confirmation") or {})
+
+    return {
+        "schema": "XAU_RIZAN_DEMO_EVIDENCE_LEDGER_V354_1",
+        "setup_observed_at": heartbeat.get("observed_at"),
+        "engine_contract": evaluation.get("contract"),
+        "execution_scope": EXECUTION_SCOPE,
+        "direction": evaluation.get("expected_reversal_direction"),
+        "parent_h4": _zone_audit(parent),
+        "h1_refinement": _zone_audit(refinement),
+        "liquidity": {
+            "side": liquidity.get("side"),
+            "low": liquidity.get("low"),
+            "high": liquidity.get("high"),
+            "warning": liquidity.get("warning"),
+            "extension_atr": liquidity.get("extension_atr"),
+            "sweep_seen": bool(micro.get("sweep_seen")),
+        },
+        "roadblock": _zone_audit(roadblock),
+        "roadblock_room": {
+            "state": roadblock_room.get("state"),
+            "blocked": bool(roadblock_room.get("blocked")),
+        },
+        "structural_room": {
+            "state": structural_room.get("state"),
+            "blocked": bool(structural_room.get("blocked")),
+            "distance_parent_atr": structural_room.get("distance_parent_atr"),
+            "planned_rr": structural_room.get("planned_rr"),
+        },
+        "news": {
+            "risk_state": news.get("risk_state"),
+            "effective_entry_state": news.get("effective_entry_state"),
+            "overshoot_risk": news.get("overshoot_risk"),
+            "focal_event": {
+                "event_id": focal_event.get("event_id"),
+                "category": focal_event.get("category"),
+                "impact": focal_event.get("impact"),
+                "scheduled_at": focal_event.get("scheduled_at"),
+                "scheduled_at_wib": focal_event.get("scheduled_at_wib"),
+                "source_tier": focal_event.get("source_tier"),
+            },
+        },
+        "micro_confirmation": {
+            "stage": micro.get("stage"),
+            "confirmed": bool(micro.get("confirmed")),
+            "touched": bool(micro.get("touched")),
+            "sweep_seen": bool(micro.get("sweep_seen")),
+            "reclaim_at": micro.get("reclaim_at"),
+            "mss_confirmed": bool(micro.get("mss_confirmed")),
+            "displacement_confirmed": bool(micro.get("displacement_confirmed")),
+            "entry_low": micro.get("entry_low"),
+            "entry_high": micro.get("entry_high"),
+            "entry_reference": micro.get("entry_reference"),
+            "invalidation": micro.get("invalidation"),
+        },
+        "order_plan": {
+            "signal_id": candidate.get("signal_id"),
+            "entry": candidate.get("entry"),
+            "sl": candidate.get("stop_loss"),
+            "tp": candidate.get("take_profit"),
+            "rr": candidate.get("rr"),
+            "target_source": candidate.get("target_source"),
+            "parent_zone_id": candidate.get("parent_zone_id"),
+            "destination_zone_id": candidate.get("destination_zone_id"),
+            "reclaim_at": candidate.get("reclaim_at"),
+        },
+    }
+
+
 def run() -> int:
     base_policy = load_execution_policy(None)
     if str(base_policy.broker.get("execution", "")).upper() != "CTRADER":
@@ -352,6 +452,7 @@ def run() -> int:
                                 "parent_zone_id": candidate["parent_zone_id"],
                                 "destination_zone_id": candidate["destination_zone_id"],
                                 "reclaim_at": candidate["reclaim_at"],
+                                "evidence_ledger": _evidence_ledger(heartbeat, candidate),
                             },
                         )
                     except Exception:
