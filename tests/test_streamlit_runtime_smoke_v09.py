@@ -10,6 +10,7 @@ def test_streamlit_app_boots_offline_without_backend_secrets(monkeypatch):
     def offline(*args, **kwargs):
         raise ValueError("offline test transport")
     monkeypatch.setattr("fx_scanner.xau_dashboard_bridge_v254.fetch_snapshot", offline)
+    monkeypatch.setattr("fx_scanner.xau_public_hot_v362.fetch_public_hot_snapshot", offline)
     monkeypatch.setattr("fx_scanner.xau_standalone_bridge_v253.fetch_snapshot", offline)
     app = AppTest.from_file(
         ROOT / "main.py",
@@ -248,7 +249,7 @@ def test_dashboard_standalone_fallback_is_diagnostic_only_without_page_stop():
 
 def test_v256_dashboard_hides_research_locator_from_operational_decision_path():
     text = (ROOT / "streamlit_app.py").read_text()
-    assert 'DASHBOARD_BUILD_ID = "RIZAN_V344_DUAL_ISOLATED_FIX_20261002_1316"' in text
+    assert 'DASHBOARD_BUILD_ID = "RIZAN_V362_SUPABASE_HOT_20261002"' in text
     assert "Zone watch (BUKAN ENTRY)" in text
     assert "Path target (BUKAN TP order)" in text
     assert "Geometry only — hanya posisi harga relatif terhadap source zone" in text
