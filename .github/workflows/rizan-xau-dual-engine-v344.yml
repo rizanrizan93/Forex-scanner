@@ -11,6 +11,9 @@ on:
       - "src/fx_scanner/xau_friend_entry_engine_v343.py"
       - "src/fx_scanner/xau_news_zone_source_v346.py"
       - "src/fx_scanner/xau_news_zone_v346.py"
+      - "src/fx_scanner/demo_xau_event_risk_v192.py"
+      - "src/fx_scanner/providers/news.py"
+      - "config/providers.yaml"
       - "src/fx_scanner/demo_xau_dual_engine_runtime_v344.py"
       - "src/fx_scanner/demo_xau_v351_executor.py"
       - "src/fx_scanner/xau_dual_engine_dashboard_v344.py"
@@ -83,6 +86,9 @@ jobs:
           while [ $(date +%s) -lt "$end_epoch" ]; do
             cycle=$((cycle + 1))
             echo "V353_CONTINUOUS_CYCLE cycle=$cycle at=$(date -u +%FT%TZ)"
+            if [ "$cycle" -eq 1 ] || [ $((cycle % 5)) -eq 0 ]; then
+              python -m fx_scanner.demo_xau_event_risk_v192 || echo "V192_EVENT_REFRESH_RETRY_NEXT_WINDOW rc=$?"
+            fi
             runtime_rc=0
             python -m fx_scanner.demo_xau_dual_engine_runtime_v344 || runtime_rc=$?
             if [ "$runtime_rc" -eq 0 ]; then
