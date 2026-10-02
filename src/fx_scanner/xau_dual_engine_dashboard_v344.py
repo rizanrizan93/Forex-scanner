@@ -285,8 +285,9 @@ def render_xau_dual_engine_dashboard(
                     )
             st.caption(
                 "Aturan eksekusi tetap terpisah: support ≠ auto BUY dan resistance ≠ auto SELL. "
-                "Entry DEMO tetap membutuhkan geometry yang valid + reclaim/MSS/displacement "
-                "sesuai engine utama."
+                "V367 hanya mengizinkan S/R tervalidasi menjadi roadblock/target cap pada arah H4 "
+                "yang sudah dipilih; S/R tidak pernah menciptakan arah. Entry DEMO tetap membutuhkan "
+                "geometry valid + reclaim/MSS/displacement sesuai engine utama."
             )
 
             st.markdown("### Jalur struktural utama")
@@ -357,11 +358,14 @@ def render_xau_dual_engine_dashboard(
                     rb_atr = nearest_roadblock.get("distance_parent_atr")
                     rb_rr = nearest_roadblock.get("planned_rr_to_roadblock")
                     rb_status = str(nearest_roadblock.get("status") or "PATH_OBSTACLE")
+                    rb_source = str(nearest_roadblock.get("source") or "HTF_ZONE")
+                    rb_lifecycle = str(nearest_roadblock.get("lifecycle_state") or "")
                     rb_text = (
                         f"{nearest_roadblock.get('timeframe','—')} "
                         f"{nearest_roadblock.get('type','—')} "
                         f"{_px(nearest_roadblock.get('low'))}–{_px(nearest_roadblock.get('high'))} "
-                        f"• status={rb_status}"
+                        f"• status={rb_status} • source={rb_source}"
+                        + (f" • lifecycle={_sr_state_label(rb_lifecycle)}" if rb_lifecycle else "")
                         + (f" • room={float(rb_atr):.2f} parent ATR" if rb_atr is not None else "")
                         + (f" • RR ke roadblock={float(rb_rr):.2f}R" if rb_rr is not None else "")
                     )
