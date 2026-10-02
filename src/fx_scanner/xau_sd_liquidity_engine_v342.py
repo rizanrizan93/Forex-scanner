@@ -1518,12 +1518,13 @@ def _sr_roadblocks(
             if entry is not None and risk is not None
             else None
         )
+        # V366 principle: S/R is weaker than a main-reversal HTF zone.
+        # It may cap TP immediately, but it does not veto solely because it is
+        # <0.50 parent ATR away. Hard admission veto starts only when actual
+        # entry/invalidation geometry shows <1.50R to the S/R barrier.
         reduces_room = bool(
-            distance_parent_atr < 0.50
-            or (
-                planned_rr_to_roadblock is not None
-                and planned_rr_to_roadblock < 1.50
-            )
+            planned_rr_to_roadblock is not None
+            and planned_rr_to_roadblock < 1.50
         )
 
         rows.append(
@@ -2330,8 +2331,9 @@ def evaluate_sd_liquidity(
             ),
             "roadblock": (
                 "OPPOSING_ACTIVE_HTF_ZONE_OR_VALIDATED_STRUCTURAL_SR_BARRIER_BETWEEN_PATH_START_"
-                "AND_OPPOSING_H4_DESTINATION; S/R MAY_VETO_OR_CAP_ROOM_BUT_NEVER_CREATE_DIRECTION; "
-                "WAIT_IF_NEAREST_ROADBLOCK_COMPRESSES_0P50_PARENT_ATR_OR_LT_1P50R_WHEN_ENTRY_EXISTS"
+                "AND_OPPOSING_H4_DESTINATION; S/R MAY_CAP_TARGET_BUT_NEVER_CREATE_DIRECTION; "
+                "S/R_HARD_VETO_ONLY_IF_ENTRY_GEOMETRY_GIVES_LT_1P50R; "
+                "HTF_MAIN_REVERSAL_KEEPS_0P50_PARENT_ATR_PROXIMITY_RULE"
             ),
             "structural_room_gate": (
                 "WAIT_IF_TERMINAL_OPPOSING_HTF_DESTINATION_LT_0P50_PARENT_ATR; "
