@@ -117,11 +117,15 @@ def evaluate_broader_macro_bias(
     total_weight = sum(COMPONENT_WEIGHTS.values())
     coverage = observed_weight / total_weight if total_weight else 0.0
     score = None if observed_weight <= 0 else weighted_sum / observed_weight
-    bias = _direction(score)
+    raw_bias = _direction(score)
+    bias = raw_bias if coverage >= 0.35 else "UNAVAILABLE"
 
     if score is None:
         confidence = "LOW"
         state = "MACRO_DATA_UNAVAILABLE"
+    elif coverage < 0.35:
+        confidence = "LOW"
+        state = "BROAD_MACRO_PARTIAL"
     elif coverage >= 0.75 and abs(score) >= 40.0:
         # Daily cross-asset proxies cap confidence at MEDIUM.
         confidence = "MEDIUM"
