@@ -85,7 +85,7 @@ def test_v342_detects_causal_h1_demand_zone():
     assert zone.structural_bos is True
 
 
-def test_v342_evaluation_is_isolated_and_non_executable():
+def test_v352_evaluation_is_isolated_and_demo_execution_authorized():
     h1 = _with_bull_departure("H1", timedelta(hours=1))
     h4 = _with_bull_departure("H4", timedelta(hours=4))
     m15 = _bars("M15", datetime(2026, 1, 1, tzinfo=UTC), 120, timedelta(minutes=15), 2012.0)
@@ -99,8 +99,10 @@ def test_v342_evaluation_is_isolated_and_non_executable():
         as_of=as_of,
         price_now=2012.0,
     )
-    assert result["execution_authority"] is False
-    assert result["execution_influence"] is False
+    assert result["execution_authority"] is True
+    assert result["execution_influence"] is True
+    assert result["execution_scope"] == "DEMO_ONLY"
+    assert result["live_execution_enabled"] is False
     assert result["historical_depth_prior"]["episodes_all_timeframes"] == 68094
     assert HISTORICAL_DEPTH_PRIOR["years"][0] == 2012
     assert HISTORICAL_DEPTH_PRIOR["years"][-1] == 2026
