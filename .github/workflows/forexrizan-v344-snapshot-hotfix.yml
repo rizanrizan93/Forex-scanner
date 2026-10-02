@@ -46,26 +46,40 @@ jobs:
           python -m fx_scanner.xau_dashboard_bridge_v254 \
             --output runtime/xau_dashboard_snapshot.json
 
-      - name: Verify V342 and V343 are present
+      - name: Verify V342 and V343 are present in Streamlit lookup order
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
           payload = json.loads(Path("runtime/xau_dashboard_snapshot.json").read_text())
           rows = list((payload.get("backend") or {}).get("heartbeats") or [])
-          by_worker = {str(r.get("worker_name") or ""): r for r in rows}
           required = [
               "ctrader_demo_xau_sd_liquidity_v342",
               "ctrader_demo_xau_friend_entry_v343",
           ]
-          missing = [name for name in required if name not in by_worker]
-          if missing:
-              raise SystemExit("V344_SNAPSHOT_MISSING=" + ",".join(missing))
           for name in required:
-              evaluation = dict((by_worker[name].get("details") or {}).get("evaluation") or {})
+              matches = [
+                  row for row in rows
+                  if str(row.get("worker_name") or "") == name
+              ]
+              if not matches:
+                  raise SystemExit("V344_SNAPSHOT_MISSING=" + name)
+              if len(matches) != 1:
+                  raise SystemExit(
+                      f"V344_DUPLICATE_WORKER={name}:count={len(matches)}"
+                  )
+              first = matches[0]
+              evaluation = dict(
+                  (first.get("details") or {}).get("evaluation") or {}
+              )
               if not evaluation:
-                  raise SystemExit("V344_EVALUATION_EMPTY=" + name)
-              print(name, evaluation.get("state"))
+                  raise SystemExit("V344_FIRST_EVALUATION_EMPTY=" + name)
+              print(
+                  "V344_STREAMLIT_LOOKUP_OK",
+                  name,
+                  evaluation.get("state"),
+                  (first.get("details") or {}).get("transport_projection"),
+              )
           PY
 
       - name: Publish to both snapshot lanes
@@ -77,3 +91,49 @@ jobs:
           git commit -m "runtime: publish V344 snapshot hotfix"
           git push --force origin HEAD:dashboard-snapshots-v344
           git push --force origin HEAD:dashboard-snapshots
+
+      - name: Verify both remote snapshot lanes exactly as Streamlit reads them
+        run: |
+          python - <<'PY'
+          import json
+          import time
+          from urllib.request import Request, urlopen
+
+          required = [
+              "ctrader_demo_xau_sd_liquidity_v342",
+              "ctrader_demo_xau_friend_entry_v343",
+          ]
+          lanes = ("dashboard-snapshots-v344", "dashboard-snapshots")
+          for lane in lanes:
+              url = (
+                  "https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/"
+                  f"{lane}/runtime/xau_dashboard_snapshot.json"
+                  f"?verify={time.time_ns()}"
+              )
+              req = Request(url, headers={"Cache-Control": "no-cache"})
+              with urlopen(req, timeout=30) as response:
+                  payload = json.loads(response.read().decode("utf-8"))
+              rows = list((payload.get("backend") or {}).get("heartbeats") or [])
+              for name in required:
+                  matches = [
+                      row for row in rows
+                      if str(row.get("worker_name") or "") == name
+                  ]
+                  if len(matches) != 1:
+                      raise SystemExit(
+                          f"REMOTE_{lane}_{name}_COUNT={len(matches)}"
+                      )
+                  evaluation = dict(
+                      (matches[0].get("details") or {}).get("evaluation") or {}
+                  )
+                  if not evaluation:
+                      raise SystemExit(
+                          f"REMOTE_{lane}_{name}_EVALUATION_EMPTY"
+                      )
+                  print(
+                      "REMOTE_STREAMLIT_LOOKUP_OK",
+                      lane,
+                      name,
+                      evaluation.get("state"),
+                  )
+          PY
