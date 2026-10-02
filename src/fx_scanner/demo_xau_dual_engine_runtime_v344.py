@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+import os
 from typing import Any
 
 from .config import load_project_config
@@ -15,7 +16,7 @@ from .xau_sd_liquidity_engine_v342 import evaluate_sd_liquidity
 SYMBOL = "XAUUSD"
 SD_WORKER = "ctrader_demo_xau_sd_liquidity_v342"
 FRIEND_WORKER = "ctrader_demo_xau_friend_entry_v343"
-CONTRACT = "XAU_RIZAN_DUAL_ISOLATED_RUNTIME_V344_3_DEMO_EXECUTION_V352"
+CONTRACT = "XAU_RIZAN_DUAL_ISOLATED_RUNTIME_V344_4_V365_RUNTIME_IDENTITY"
 
 
 def _last_close(rows: tuple[Any, ...]) -> float | None:
@@ -128,8 +129,14 @@ def run() -> int:
             pass
 
     healthy = error is None
+    runtime_head_sha = (
+        os.getenv("RIZAN_RUNTIME_HEAD_SHA")
+        or os.getenv("GITHUB_SHA")
+        or "UNKNOWN"
+    )
     common = {
         "runtime_contract": CONTRACT,
+        "git_sha": runtime_head_sha,
         "environment": "DEMO_NEW_ENGINE_RUNTIME",
         "legacy_engines_paused": True,
         "live_execution_enabled": False,
@@ -156,8 +163,8 @@ def run() -> int:
         details={
             **common,
             "execution_authority": False,
-            "execution_influence": False,
-            "execution_scope": "SHADOW_ONLY",
+            "execution_influence": bool(friend_payload.get("execution_influence")),
+            "execution_scope": "FORECAST_EVIDENCE_DEMO_ONLY",
             "evaluation": friend_payload,
         },
     )
@@ -167,7 +174,7 @@ def run() -> int:
         f"friend={friend_payload.get('state','ERROR')} "
         f"news={news_payload.get('state','ERROR')} "
         f"execution_authority={int(bool(sd_payload.get('execution_authority')))} "
-        "scope=DEMO_ONLY live=0"
+        f"head={runtime_head_sha[:12]} scope=DEMO_ONLY live=0"
     )
     return 0 if healthy else 2
 
