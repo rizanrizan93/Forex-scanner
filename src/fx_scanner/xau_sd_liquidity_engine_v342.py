@@ -1305,9 +1305,9 @@ def _select_parent_and_refinement(
             refinement = dict(children[0][4])
 
     selection = (
-        "H4_MAIN_REVERSAL_QUALITY"
+        "H4_PARENT"
         if parent.get("timeframe") == "H4"
-        else "H1_MAIN_REVERSAL_FALLBACK_NO_H4"
+        else "H1_FALLBACK_NO_H4"
     )
     return parent, refinement, selection
 
