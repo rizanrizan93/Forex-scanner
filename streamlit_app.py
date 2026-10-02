@@ -66,7 +66,7 @@ UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
 FOREXRIZAN_PROJECT_REF = "naxvdtvlfatljzzwhrmo"
 DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
-DASHBOARD_BUILD_ID = "RIZAN_V344_DUAL_ISOLATED_20261001"
+DASHBOARD_BUILD_ID = "RIZAN_V344_DUAL_ISOLATED_FIX_20261002_1316"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
     # Generic minute-tier reads are intentionally small. Prepared/V182/V226,
@@ -515,10 +515,18 @@ def _state_rank(state: str) -> int:
 
 
 def _latest_heartbeat(rows: list[dict[str, Any]], worker_name: str) -> dict[str, Any] | None:
-    for row in rows:
-        if str(row.get("worker_name") or "") == worker_name:
+    matches = [
+        row for row in rows
+        if str(row.get("worker_name") or "") == worker_name
+    ]
+    # Prefer the operational row that actually carries the engine evaluation.
+    # This is defensive against a stale summary duplicate appearing before the
+    # compact projection in a transport payload.
+    for row in matches:
+        details = dict(row.get("details") or {})
+        if dict(details.get("evaluation") or {}):
             return row
-    return None
+    return matches[0] if matches else None
 
 
 def _fmt_price(value: Any) -> str:
