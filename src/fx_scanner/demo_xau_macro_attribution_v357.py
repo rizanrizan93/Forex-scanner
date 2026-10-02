@@ -95,6 +95,47 @@ def _cross_asset_row(result: Any, *, kind: str) -> dict[str, Any]:
     }
 
 
+
+MACRO_COMPONENT_DASHBOARD_KEYS = (
+    "freshness",
+    "current",
+    "previous",
+    "delta",
+    "delta_unit",
+    "score",
+    "provider",
+    "source",
+)
+
+
+def build_dashboard_projection(evaluation: dict[str, Any]) -> dict[str, Any]:
+    components = {}
+    for name, value in dict(evaluation.get("components") or {}).items():
+        row = dict(value or {})
+        components[name] = {
+            key: row.get(key)
+            for key in MACRO_COMPONENT_DASHBOARD_KEYS
+            if key in row
+        }
+    fed_proxy = dict(evaluation.get("fed_repricing_proxy") or {})
+    return {
+        "state": evaluation.get("state"),
+        "broader_macro_bias": evaluation.get("broader_macro_bias"),
+        "macro_score": evaluation.get("macro_score"),
+        "confidence": evaluation.get("confidence"),
+        "coverage": evaluation.get("coverage"),
+        "components": components,
+        "event_consensus_bias": evaluation.get("event_consensus_bias"),
+        "consensus_relationship": evaluation.get("consensus_relationship"),
+        "fed_repricing_proxy": {
+            key: fed_proxy.get(key)
+            for key in ("state", "delta_bps")
+            if key in fed_proxy
+        },
+        "execution_authority": bool(evaluation.get("execution_authority", False)),
+        "execution_influence": bool(evaluation.get("execution_influence", False)),
+    }
+
 def run() -> int:
     now = datetime.now(tz=UTC)
     cfg = load_project_config(None)
@@ -123,6 +164,7 @@ def run() -> int:
         "symbol": "XAUUSD",
         "observed_at": now.isoformat(),
         "evaluation": evaluation,
+        "dashboard_projection": build_dashboard_projection(evaluation),
         "cross_asset": cross_asset,
         "event_observed_at": event_observed_at,
         "data_policy": {
