@@ -10,7 +10,7 @@ import pandas as pd
 
 from .models import ensure_utc
 
-CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_5_CONDITIONAL_FAILURE_PATH_V350"
+CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_6_HIERARCHY_ROADBLOCK_RISK_V351"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
 EXECUTION_AUTHORITY = False
 EXECUTION_INFLUENCE = False
@@ -1131,12 +1131,23 @@ def _roadblocks(
     active_zones: Sequence[dict[str, Any]],
     destination: dict[str, Any] | None,
     parent_zone_id: str | None = None,
+    parent_atr: float | None = None,
+    entry: float | None = None,
+    invalidation: float | None = None,
 ) -> list[dict[str, Any]]:
-    """Find opposing zones lying on the travel path before the terminal H4 destination."""
+    """Find opposing zones on path and quantify whether they compress usable room."""
     if direction not in {"LONG", "SHORT"}:
         return []
     opposite = "SHORT" if direction == "LONG" else "LONG"
     terminal = _f((destination or {}).get("price"))
+    parent_atr_ref = (
+        max(float(parent_atr), 1e-9) if parent_atr is not None else None
+    )
+    risk = None
+    if entry is not None and invalidation is not None:
+        raw_risk = abs(float(entry) - float(invalidation))
+        if raw_risk > 1e-9:
+            risk = raw_risk
     rows: list[dict[str, Any]] = []
     for z in active_zones:
         if z.get("zone_id") == parent_zone_id or z.get("direction") != opposite:
@@ -1152,6 +1163,24 @@ def _roadblocks(
                 continue
         distance = abs(near_edge - start_price)
         severity = "MAJOR" if z.get("timeframe") == "H4" else "INTERNAL"
+        distance_parent_atr = (
+            distance / parent_atr_ref if parent_atr_ref is not None else None
+        )
+        planned_rr_to_roadblock = (
+            abs(near_edge - float(entry)) / risk
+            if entry is not None and risk is not None
+            else None
+        )
+        reduces_room = bool(
+            (
+                distance_parent_atr is not None
+                and distance_parent_atr < 0.50
+            )
+            or (
+                planned_rr_to_roadblock is not None
+                and planned_rr_to_roadblock < 1.50
+            )
+        )
         rows.append(
             {
                 "zone_id": z["zone_id"],
@@ -1163,6 +1192,10 @@ def _roadblocks(
                 "far_edge": far_edge,
                 "distance_points": distance,
                 "distance_atr": distance / max(float(z.get("atr") or 1.0), 1e-9),
+                "distance_parent_atr": distance_parent_atr,
+                "planned_rr_to_roadblock": planned_rr_to_roadblock,
+                "reduces_room": reduces_room,
+                "status": "BLOCKS_ENTRY_ROOM" if reduces_room else "PATH_OBSTACLE",
                 "score": z.get("score"),
                 "freshness": dict(z.get("lifecycle") or {}).get("freshness"),
                 "hierarchy_role": z.get("hierarchy_role"),
@@ -1171,6 +1204,31 @@ def _roadblocks(
         )
     rows.sort(key=lambda r: (float(r["distance_points"]), -float(r.get("score") or 0.0)))
     return rows[:6]
+
+
+def _roadblock_room_gate(
+    roadblocks: Sequence[dict[str, Any]],
+) -> dict[str, Any]:
+    if not roadblocks:
+        return {
+            "state": "NO_ROADBLOCK_BEFORE_DESTINATION",
+            "blocked": False,
+            "nearest": {},
+        }
+    nearest = dict(roadblocks[0])
+    blocked = bool(nearest.get("reduces_room"))
+    return {
+        "state": "ROADBLOCK_ROOM_TOO_SMALL" if blocked else "ROADBLOCK_AHEAD",
+        "blocked": blocked,
+        "nearest": nearest,
+        "threshold_parent_atr": 0.50,
+        "threshold_rr": 1.50,
+        "rule": (
+            "Roadblock is an opposing active zone before the terminal H4 destination. "
+            "WAIT when the nearest roadblock is <0.50 parent ATR away or offers <1.50R "
+            "after entry/invalidation geometry exists."
+        ),
+    }
 
 
 def _structural_room_gate(
@@ -1690,6 +1748,7 @@ def evaluate_sd_liquidity(
         if direction in {"LONG", "SHORT"}
         else {}
     )
+    invalidation = _f(micro.get("invalidation"))
     roadblocks = (
         _roadblocks(
             direction=direction,
@@ -1697,11 +1756,15 @@ def evaluate_sd_liquidity(
             active_zones=active,
             destination=destination,
             parent_zone_id=str(decision_zone.get("zone_id") or "") or None,
+            parent_atr=float(decision_zone.get("atr") or atr_ref),
+            entry=entry,
+            invalidation=invalidation,
         )
         if direction in {"LONG", "SHORT"}
         else []
     )
-    invalidation = _f(micro.get("invalidation"))
+    nearest_roadblock = dict(roadblocks[0]) if roadblocks else {}
+    roadblock_room = _roadblock_room_gate(roadblocks)
     structural_room = _structural_room_gate(
         parent_zone=decision_zone,
         direction=direction,
@@ -1744,7 +1807,9 @@ def evaluate_sd_liquidity(
         fallback_atr=float(decision_zone.get("atr") or atr_ref),
     ) if direction in {"LONG", "SHORT"} else []
     guide_state = (
-        "WAIT_STRUCTURAL_ROOM"
+        "WAIT_ROADBLOCK"
+        if bool(roadblock_room.get("blocked"))
+        else "WAIT_STRUCTURAL_ROOM"
         if bool(structural_room.get("blocked"))
         else "CONFIRMED_GUIDANCE"
         if bool(micro.get("confirmed"))
@@ -1775,7 +1840,8 @@ def evaluate_sd_liquidity(
         "failure_path": failure_path,
         "support_resistance": support_resistance,
         "roadblocks": roadblocks,
-        "nearest_roadblock": dict(roadblocks[0]) if roadblocks else {},
+        "nearest_roadblock": nearest_roadblock,
+        "roadblock_room": roadblock_room,
         "liquidity_map": sweep_map,
         "micro_confirmation": micro,
         "entry_guide": {
@@ -1808,7 +1874,10 @@ def evaluate_sd_liquidity(
                 "H4 defines MAIN_REVERSAL_ZONE; same-direction H1 may refine it. "
                 "Opposing zones on the projected path are ROADBLOCKS and do not override H4 solely by proximity."
             ),
-            "roadblock": "OPPOSING_ACTIVE_ZONE_BETWEEN_PATH_START_AND_OPPOSING_H4_DESTINATION",
+            "roadblock": (
+                "OPPOSING_ACTIVE_ZONE_BETWEEN_PATH_START_AND_OPPOSING_H4_DESTINATION; "
+                "WAIT_IF_NEAREST_ROADBLOCK_LT_0P50_PARENT_ATR_OR_LT_1P50R_WHEN_ENTRY_EXISTS"
+            ),
             "structural_room_gate": (
                 "WAIT_IF_TERMINAL_OPPOSING_HTF_DESTINATION_LT_0P50_PARENT_ATR; "
                 "WHEN_ENTRY_GEOMETRY_EXISTS_REQUIRE_TERMINAL_RR_GTE_1P50"
