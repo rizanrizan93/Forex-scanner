@@ -614,3 +614,79 @@ def test_v364_sweep_reclaim_can_arm_early_demo_before_full_local_mss():
     assert result["stage"] == "EARLY_REVERSAL_CONFIRMED"
     assert result["entry_low"] is not None
     assert result["invalidation"] is not None
+
+
+def test_v366_terminal_destination_ignores_degraded_reaction_h4_zone():
+    zones = [
+        {
+            "zone_id": "degraded-near-supply",
+            "timeframe": "H4",
+            "direction": "SHORT",
+            "low": 102.0,
+            "high": 104.0,
+            "atr": 10.0,
+            "score": 92.0,
+            "condition": "DEGRADED",
+            "main_reversal_eligible": False,
+            "main_reversal_score": 55.0,
+            "lifecycle": {"freshness": "DEEPLY_MITIGATED"},
+        },
+        {
+            "zone_id": "fresh-main-supply",
+            "timeframe": "H4",
+            "direction": "SHORT",
+            "low": 120.0,
+            "high": 124.0,
+            "atr": 10.0,
+            "score": 88.0,
+            "condition": "FRESH",
+            "main_reversal_eligible": True,
+            "main_reversal_score": 86.0,
+            "lifecycle": {"freshness": "FRESH"},
+        },
+    ]
+    destination = _structural_destination(
+        direction="LONG",
+        start_price=100.0,
+        active_zones=zones,
+    )
+    assert destination["zone_id"] == "fresh-main-supply"
+    assert destination["role"] == "OPPOSING_H4_MAIN_REVERSAL_DESTINATION"
+
+
+def test_v366_degraded_reaction_roadblock_does_not_block_only_for_proximity():
+    reaction = {
+        "zone_id": "reaction-supply",
+        "timeframe": "H4",
+        "direction": "SHORT",
+        "low": 102.0,
+        "high": 104.0,
+        "atr": 8.0,
+        "score": 75.0,
+        "condition": "DEGRADED",
+        "main_reversal_eligible": False,
+        "hierarchy_role": "MAIN_REVERSAL_ZONE",
+        "lifecycle": {"freshness": "DEEPLY_MITIGATED"},
+    }
+    terminal = {
+        "zone_id": "main-supply",
+        "timeframe": "H4",
+        "direction": "SHORT",
+        "low": 120.0,
+        "high": 124.0,
+        "price": 120.0,
+    }
+    rows = _roadblocks(
+        direction="LONG",
+        start_price=100.0,
+        active_zones=[reaction],
+        destination=terminal,
+        parent_atr=20.0,
+        entry=100.0,
+        invalidation=99.0,
+    )
+    assert rows[0]["distance_parent_atr"] < 0.50
+    assert rows[0]["planned_rr_to_roadblock"] >= 1.50
+    assert rows[0]["main_reversal_eligible"] is False
+    assert rows[0]["reversal_class"] == "REACTION_ONLY"
+    assert rows[0]["reduces_room"] is False
