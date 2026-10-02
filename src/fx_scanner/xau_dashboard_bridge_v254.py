@@ -17,7 +17,7 @@ from .storage.supabase_operational import SupabaseOperationalStore
 CONTRACT = "XAU_RIZAN_DASHBOARD_BRIDGE_V254"
 DEFAULT_SNAPSHOT_URL = (
     "https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/"
-    "dashboard-snapshots/runtime/xau_dashboard_snapshot.json"
+    "dashboard-snapshots-v344/runtime/xau_dashboard_snapshot.json"
 )
 FRESH_SECONDS = 180.0
 MAX_SNAPSHOT_BYTES = 8 * 1024 * 1024
