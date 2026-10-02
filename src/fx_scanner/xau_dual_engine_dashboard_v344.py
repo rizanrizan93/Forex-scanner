@@ -214,6 +214,7 @@ def render_xau_dual_engine_dashboard(
             micro = dict(sd.get("micro_confirmation") or {})
             guide = dict(sd.get("entry_guide") or {})
             sweep = dict(sd.get("liquidity_map") or {})
+            quarantined = list(sd.get("intraday_quarantined_zones") or [])
             news = dict(sd.get("news_zone") or {})
             structure = dict(sd.get("market_structure") or {})
             h4 = dict(structure.get("H4") or {})
@@ -226,6 +227,21 @@ def render_xau_dual_engine_dashboard(
             c3.metric("Arah struktural", str(sd.get("expected_reversal_direction") or "WAIT"))
             c4.metric("Entry gate", entry_gate)
             st.caption("H1 structure • " + str(h1.get("state") or "—"))
+
+            if quarantined:
+                q = dict(quarantined[0] or {})
+                q_intraday = dict(q.get("intraday_breach") or {})
+                q_direction = str(q.get("direction") or "")
+                q_type = "DEMAND" if q_direction == "LONG" else "SUPPLY"
+                next_label = _zone_label(main_zone) if main_zone else "belum ada parent pengganti"
+                st.error(
+                    "**INTRADAY REROUTE aktif.** "
+                    + f"{q.get('timeframe','HTF')} {q_type} {_px(q.get('low'))}–{_px(q.get('high'))} "
+                    + f"dikarantina setelah completed M15 menembus distal "
+                    + f"{float(q_intraday.get('breach_depth_atr') or 0.0):.2f} ATR. "
+                    + "PREPARE lama dinonaktifkan. Parent aktif sekarang: "
+                    + next_label
+                )
 
             st.markdown("### RIZAN STRUCTURAL S/R MAP")
             st.caption(
@@ -766,7 +782,7 @@ def render_xau_dual_engine_dashboard(
             e1, e2, e3, e4 = st.columns(4)
             e1.metric("Stage", str(micro.get("stage") or "WAIT"))
             e2.metric(
-                "PREPARE forecast",
+                "PREPARE forecast aktif",
                 f"{_px(guide.get('prepared_entry_low'))}–{_px(guide.get('prepared_entry_high'))}",
             )
             e3.metric("Fresh confirm ref", _px(guide.get("confirmation_entry_reference")))
@@ -775,7 +791,8 @@ def render_xau_dual_engine_dashboard(
                 f"{_px(guide.get('entry_low'))}–{_px(guide.get('entry_high'))}",
             )
             st.caption(
-                "PREPARE = area reaksi forecast, bukan order. EARLY = touch/sweep + proximal reclaim "
+                "PREPARE = area reaksi dari parent yang masih aktif; V369 otomatis memindahkan PREPARE "
+                "bila completed M15 mengonfirmasi breach intraday yang cukup dalam. EARLY = touch/sweep + proximal reclaim "
                 "+ rejection/displacement; hanya boleh probe DEMO 0.01 dengan SL struktural dan RR valid. "
                 "FULL = local MSS pada reclaim extreme + displacement. Jika harga sudah drift terlalu jauh, "
                 "executor tetap no-chase dan menunggu retest."
