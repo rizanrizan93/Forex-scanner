@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fx_scanner.demo_xau_v351_executor import _candidate
+from fx_scanner.demo_xau_v351_executor import _candidate, _margin_room_ok
 
 
 def _heartbeat(*, guide_state="CONFIRMED_GUIDANCE", live=False, roadblock=None, roadblock_blocked=False, room_blocked=False):
@@ -115,3 +115,46 @@ def test_v352_no_chase_outside_retest_band():
     )
     assert candidate is None
     assert reason == "WAIT_ENTRY_RETEST_NO_CHASE"
+
+
+
+class _Account:
+    def __init__(self, *, equity, margin=None, margin_free=None):
+        self.equity = equity
+        self.margin = margin
+        self.margin_free = margin_free
+
+
+class _Gateway:
+    def __init__(self, account):
+        self.account = account
+
+    def account_snapshot(self):
+        return self.account
+
+
+def test_v352_margin_guard_derives_used_margin_from_margin_free():
+    ok, reason, usage = _margin_room_ok(
+        _Gateway(_Account(equity=100.0, margin=None, margin_free=80.0))
+    )
+    assert ok is True
+    assert reason == "MARGIN_ROOM_OK:DERIVED_FROM_MARGIN_FREE"
+    assert abs(float(usage) - 0.20) < 1e-9
+
+
+def test_v352_margin_guard_blocks_at_fifty_percent():
+    ok, reason, usage = _margin_room_ok(
+        _Gateway(_Account(equity=100.0, margin=None, margin_free=50.0))
+    )
+    assert ok is False
+    assert reason == "MARGIN_USAGE_AT_OR_ABOVE_50PCT:DERIVED_FROM_MARGIN_FREE"
+    assert abs(float(usage) - 0.50) < 1e-9
+
+
+def test_v352_margin_guard_fails_closed_when_margin_data_missing():
+    ok, reason, usage = _margin_room_ok(
+        _Gateway(_Account(equity=100.0, margin=None, margin_free=None))
+    )
+    assert ok is False
+    assert reason == "ACCOUNT_MARGIN_UNAVAILABLE"
+    assert usage is None
