@@ -372,29 +372,25 @@ class SupabaseDashboardReader:
     def latest_xau_sd_liquidity_operational_heartbeat(
         self,
     ) -> dict[str, Any] | None:
-        """Return only V342 fields rendered by the isolated Structural Path tab."""
+        """Return the compact V342 state rendered by the Structural Path tab."""
 
         select_expr = (
             "worker_name,observed_at,healthy,lag_seconds,"
             "state:details->evaluation->>state,"
             "price_now:details->evaluation->price_now,"
-            "decision_zone:details->evaluation->decision_zone,"
             "main_reversal_zone:details->evaluation->main_reversal_zone,"
             "refinement_zone:details->evaluation->refinement_zone,"
             "structural_destination:details->evaluation->structural_destination,"
             "structural_room:details->evaluation->structural_room,"
-            "structural_path:details->evaluation->structural_path,"
+            "structural_checkpoints:details->evaluation->structural_path->checkpoints,"
             "failure_path:details->evaluation->failure_path,"
-            "support_resistance:details->evaluation->support_resistance,"
-            "nearest_roadblock:details->evaluation->nearest_roadblock,"
             "micro_confirmation:details->evaluation->micro_confirmation,"
             "entry_guide:details->evaluation->entry_guide,"
             "liquidity_map:details->evaluation->liquidity_map,"
             "news_zone:details->evaluation->news_zone,"
             "market_structure:details->evaluation->market_structure,"
             "expected_reversal_direction:details->evaluation->>expected_reversal_direction,"
-            "historical_depth_prior:details->evaluation->historical_depth_prior,"
-            "active_zones:details->evaluation->active_zones"
+            "historical_depth_prior:details->evaluation->historical_depth_prior"
         )
         try:
             response = (
@@ -413,18 +409,26 @@ class SupabaseDashboardReader:
         if not rows:
             return None
         raw = dict(rows[0])
+        main_zone = dict(raw.pop("main_reversal_zone", {}) or {})
         evaluation = {
             "state": raw.pop("state", None),
             "price_now": raw.pop("price_now", None),
-            "decision_zone": dict(raw.pop("decision_zone", {}) or {}),
-            "main_reversal_zone": dict(raw.pop("main_reversal_zone", {}) or {}),
+            # The V342 decision zone is the selected MAIN H4 parent. Reuse the
+            # same projected object instead of retransmitting an identical JSON copy.
+            "decision_zone": dict(main_zone),
+            "main_reversal_zone": main_zone,
             "refinement_zone": dict(raw.pop("refinement_zone", {}) or {}),
             "structural_destination": dict(raw.pop("structural_destination", {}) or {}),
             "structural_room": dict(raw.pop("structural_room", {}) or {}),
-            "structural_path": dict(raw.pop("structural_path", {}) or {}),
+            "structural_path": {
+                "checkpoints": list(raw.pop("structural_checkpoints", []) or []),
+            },
             "failure_path": dict(raw.pop("failure_path", {}) or {}),
-            "support_resistance": list(raw.pop("support_resistance", []) or []),
-            "nearest_roadblock": dict(raw.pop("nearest_roadblock", {}) or {}),
+            # Full H2 tables and the full zone universe are cold diagnostics.
+            # Primary checkpoints already carry the relevant reaction context.
+            "support_resistance": [],
+            "active_zones": [],
+            "nearest_roadblock": {},
             "micro_confirmation": dict(raw.pop("micro_confirmation", {}) or {}),
             "entry_guide": dict(raw.pop("entry_guide", {}) or {}),
             "liquidity_map": dict(raw.pop("liquidity_map", {}) or {}),
@@ -436,11 +440,10 @@ class SupabaseDashboardReader:
             "historical_depth_prior": dict(
                 raw.pop("historical_depth_prior", {}) or {}
             ),
-            "active_zones": list(raw.pop("active_zones", []) or []),
         }
         raw["details"] = {
             "evaluation": evaluation,
-            "transport_projection": "V342_OPERATIONAL_60S",
+            "transport_projection": "V342_OPERATIONAL_60S_COMPACT",
         }
         return raw
 
