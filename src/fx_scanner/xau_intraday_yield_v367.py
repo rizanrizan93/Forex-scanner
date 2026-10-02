@@ -79,7 +79,13 @@ def fetch_intraday_us10y(
     response = transport.get(
         f"{base_url}?{query}",
         allowed_host=allowed_host,
-        headers={"Accept": "application/json,*/*;q=0.1"},
+        headers={
+            "Accept": "application/json,*/*;q=0.1",
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+            ),
+        },
     )
     return parse_yahoo_tnx_chart(response.body)
 
