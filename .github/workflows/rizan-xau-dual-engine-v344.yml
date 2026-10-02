@@ -3,7 +3,7 @@ name: RIZAN XAU Dual Engine V344
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * 0-5"
+    - cron: "47 */2 * * 0-5"
   push:
     branches: [main]
     paths:
@@ -24,13 +24,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: rizan-xau-dual-engine-v352-demo-execution
-  cancel-in-progress: false
+  group: rizan-xau-dual-engine-v353-continuous-demo-execution
+  cancel-in-progress: true
 
 jobs:
   test-and-refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 350
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -67,16 +67,28 @@ jobs:
       - name: Validate configuration
         if: ${{ github.event_name != 'pull_request' }}
         run: python -m fx_scanner.cli validate-config
-      - name: Refresh V342 + V343 snapshots
-        if: ${{ github.event_name != 'pull_request' }}
-        run: python -m fx_scanner.demo_xau_dual_engine_runtime_v344
-
       - name: Repair missing SL TP on scanner-linked DEMO positions
         id: repair_v351_protection
         if: ${{ github.event_name != 'pull_request' }}
         continue-on-error: true
         run: python -m fx_scanner.demo_existing_protection_repair
 
-      - name: Execute confirmed V351 DEMO setup
+      - name: Run continuous V342 forecast + V351 DEMO execution
         if: ${{ github.event_name != 'pull_request' }}
-        run: python -m fx_scanner.demo_xau_v351_executor
+        shell: bash
+        run: |
+          set -u
+          end_epoch=$(( $(date +%s) + 19800 ))
+          cycle=0
+          while [ $(date +%s) -lt "$end_epoch" ]; do
+            cycle=$((cycle + 1))
+            echo "V353_CONTINUOUS_CYCLE cycle=$cycle at=$(date -u +%FT%TZ)"
+            runtime_rc=0
+            python -m fx_scanner.demo_xau_dual_engine_runtime_v344 || runtime_rc=$?
+            if [ "$runtime_rc" -eq 0 ]; then
+              python -m fx_scanner.demo_xau_v351_executor || echo "V351_EXECUTOR_RETRY_NEXT_CYCLE rc=$?"
+            else
+              echo "V344_RUNTIME_RETRY_NEXT_CYCLE rc=$runtime_rc"
+            fi
+            sleep 60
+          done
