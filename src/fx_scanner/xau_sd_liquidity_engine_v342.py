@@ -10,7 +10,7 @@ import pandas as pd
 
 from .models import ensure_utc
 
-CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_7_DEMO_EXECUTION_V352"
+CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_8_ADAPTIVE_ENTRY_V354"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
 EXECUTION_AUTHORITY = True
 EXECUTION_INFLUENCE = True
@@ -854,6 +854,53 @@ def _sweep_map(
     }
 
 
+
+def _prepared_entry_band(zone: dict[str, Any]) -> dict[str, Any]:
+    """Forecast a preparation band before micro confirmation.
+
+    The band uses the existing V225 historical turning-depth distribution. It is
+    informational only: DEMO execution still requires fresh price confirmation.
+    """
+    if not zone:
+        return {}
+    timeframe = str(zone.get("timeframe") or "")
+    prior = dict(HISTORICAL_DEPTH_PRIOR.get(timeframe) or {})
+    median = _f(prior.get("turning_depth_median"))
+    p75 = _f(prior.get("turning_depth_p75"))
+    low = _f(zone.get("low"))
+    high = _f(zone.get("high"))
+    direction = str(zone.get("direction") or "")
+    if (
+        median is None
+        or p75 is None
+        or low is None
+        or high is None
+        or high <= low
+        or direction not in {"LONG", "SHORT"}
+    ):
+        return {}
+    shallow = min(median, p75)
+    deep = max(median, p75)
+    width = high - low
+    if direction == "LONG":
+        entry_low = high - deep * width
+        entry_high = high - shallow * width
+    else:
+        entry_low = low + shallow * width
+        entry_high = low + deep * width
+    return {
+        "state": "PREPARE_FORECAST",
+        "direction": direction,
+        "entry_low": entry_low,
+        "entry_high": entry_high,
+        "entry_reference": (entry_low + entry_high) / 2.0,
+        "source": str(HISTORICAL_DEPTH_PRIOR.get("source") or "V225"),
+        "depth_median": median,
+        "depth_p75": p75,
+        "execution_authority": False,
+    }
+
+
 def _micro_confirmation(
     zone: dict[str, Any],
     *,
@@ -959,6 +1006,11 @@ def _micro_confirmation(
         "reclaim_at": ensure_utc(
             (reclaim["timestamp"] + known_delta).to_pydatetime()
         ).isoformat(),
+        "micro_timeframe": micro_tf,
+        "confirmation_close": float(reclaim["close"]),
+        "confirmation_low": float(reclaim["low"]),
+        "confirmation_high": float(reclaim["high"]),
+        "local_atr": local_atr,
         "mss_confirmed": bool(mss),
         "mss_level": mss_level,
         "displacement_confirmed": displacement,
@@ -1726,6 +1778,7 @@ def evaluate_sd_liquidity(
         if decision_zone
         else {}
     )
+    prepared_entry = _prepared_entry_band(confirmation_zone or decision_zone)
     micro = (
         _micro_confirmation(
             confirmation_zone,
@@ -1850,13 +1903,21 @@ def evaluate_sd_liquidity(
         "entry_guide": {
             "state": guide_state,
             "direction": direction,
+            "prepared_entry_low": prepared_entry.get("entry_low"),
+            "prepared_entry_high": prepared_entry.get("entry_high"),
+            "prepared_entry_reference": prepared_entry.get("entry_reference"),
+            "prepared_entry_source": prepared_entry.get("source"),
             "entry_low": micro.get("entry_low"),
             "entry_high": micro.get("entry_high"),
             "entry_reference": entry,
+            "confirmation_entry_reference": micro.get("confirmation_close"),
+            "confirmation_at": micro.get("reclaim_at"),
             "invalidation": invalidation,
             "targets": targets,
+            "execution_modes": ["FRESH_CONFIRMATION_ENTRY", "RETEST_ENTRY"],
             "rule": (
-                "HTF_ZONE -> LIQUIDITY_SWEEP_OPTIONAL -> RECLAIM -> MSS -> DISPLACEMENT -> RETEST"
+                "HTF_PREPARE -> LIQUIDITY_SWEEP_OPTIONAL -> RECLAIM -> MSS -> "
+                "DISPLACEMENT -> FRESH_CONFIRMATION_OR_RETEST"
             ),
         },
         "liquidity_candidates": liquidity,

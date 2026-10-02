@@ -25,6 +25,8 @@ RISK_PCT = 1.0
 MIN_RR = 1.50
 MAX_SOURCE_AGE_SECONDS = 120.0
 MAX_MARGIN_USAGE_FRACTION = 0.50
+FRESH_CONFIRMATION_MAX_AGE_SECONDS = 420.0
+FRESH_CONFIRMATION_MAX_DRIFT_ATR = 0.35
 
 
 def _f(value: Any) -> float | None:
@@ -189,8 +191,36 @@ def _candidate(
         return None, "ENTRY_OR_STOP_GEOMETRY_INVALID"
 
     executable = float(ask if direction == "LONG" else bid)
-    if not (entry_low <= executable <= entry_high):
-        return None, "WAIT_ENTRY_RETEST_NO_CHASE"
+    entry_mode = "RETEST_ENTRY" if entry_low <= executable <= entry_high else None
+    confirmation_age_seconds = None
+    confirmation_drift_atr = None
+
+    if entry_mode is None:
+        confirmation_at = _dt(micro.get("reclaim_at"))
+        confirmation_close = _f(micro.get("confirmation_close"))
+        local_atr = _f(micro.get("local_atr"))
+        moving_with_setup = (
+            direction == "LONG" and executable > entry_high
+        ) or (
+            direction == "SHORT" and executable < entry_low
+        )
+        if (
+            confirmation_at is not None
+            and confirmation_close is not None
+            and local_atr is not None
+            and local_atr > 0
+            and moving_with_setup
+        ):
+            confirmation_age_seconds = (now - confirmation_at).total_seconds()
+            confirmation_drift_atr = abs(executable - confirmation_close) / local_atr
+            if (
+                -1.0 <= confirmation_age_seconds <= FRESH_CONFIRMATION_MAX_AGE_SECONDS
+                and confirmation_drift_atr <= FRESH_CONFIRMATION_MAX_DRIFT_ATR
+            ):
+                entry_mode = "FRESH_CONFIRMATION_ENTRY"
+
+    if entry_mode is None:
+        return None, "WAIT_ENTRY_RETEST_OR_FRESH_CONFIRMATION"
 
     target = None
     target_source = None
@@ -226,8 +256,11 @@ def _candidate(
         "signal_id": signal_id,
         "direction": direction,
         "entry": executable,
+        "entry_mode": entry_mode,
         "entry_low": entry_low,
         "entry_high": entry_high,
+        "confirmation_age_seconds": confirmation_age_seconds,
+        "confirmation_drift_atr": confirmation_drift_atr,
         "stop_loss": stop_loss,
         "take_profit": target,
         "target_source": target_source,
@@ -444,6 +477,9 @@ def run() -> int:
                                 "execution_scope": EXECUTION_SCOPE,
                                 "direction": candidate["direction"],
                                 "entry": candidate["entry"],
+                                "entry_mode": candidate.get("entry_mode"),
+                                "confirmation_age_seconds": candidate.get("confirmation_age_seconds"),
+                                "confirmation_drift_atr": candidate.get("confirmation_drift_atr"),
                                 "sl": candidate["stop_loss"],
                                 "tp": candidate["take_profit"],
                                 "rr": candidate["rr"],
