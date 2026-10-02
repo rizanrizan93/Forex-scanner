@@ -2059,9 +2059,11 @@ if backend is None and standalone is None:
 _v344_heartbeats = [] if backend is None else list(backend.get("heartbeats") or [])
 _v342_sd_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_sd_liquidity_v342")
 _v343_friend_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_friend_entry_v343")
+_v192_event_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_event_risk_v192")
 render_xau_dual_engine_dashboard(
     sd_heartbeat=_v342_sd_hb,
     friend_heartbeat=_v343_friend_hb,
+    event_heartbeat=_v192_event_hb,
 )
 # LEGACY_DECISION_UI_STOP_V344
 st.stop()
@@ -2179,9 +2181,11 @@ else:
 _v344_heartbeats = [] if backend is None else list(backend.get("heartbeats") or [])
 _v342_sd_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_sd_liquidity_v342")
 _v343_friend_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_friend_entry_v343")
+_v192_event_hb = _latest_heartbeat(_v344_heartbeats, "ctrader_demo_xau_event_risk_v192")
 render_xau_dual_engine_dashboard(
     sd_heartbeat=_v342_sd_hb,
     friend_heartbeat=_v343_friend_hb,
+    event_heartbeat=_v192_event_hb,
 )
 # LEGACY_DECISION_UI_STOP_V344
 st.stop()
