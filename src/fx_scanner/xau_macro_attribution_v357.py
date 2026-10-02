@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from math import isfinite
 from typing import Any, Mapping
 
@@ -43,9 +44,37 @@ def _gold_score_from_delta(name: str, delta: Any) -> float | None:
     return _clamp(-100.0 * numeric / SCALES[name])
 
 
+def _event_time(value: Any) -> float:
+    if not value:
+        return float("-inf")
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return float("-inf")
+    if parsed.tzinfo is None:
+        return float("-inf")
+    return parsed.astimezone(UTC).timestamp()
+
+
 def _event_component(event_context: Mapping[str, Any] | None) -> dict[str, Any]:
     context = dict(event_context or {})
     focal = dict(context.get("focal_event") or {})
+    released = [
+        dict(item or {})
+        for item in list(context.get("upcoming_events") or [])
+        if isinstance(item, Mapping)
+        and item.get("actual") is not None
+        and str(item.get("gold_bias_confidence") or "").upper() == "POST_RELEASE"
+    ]
+    if released:
+        released.sort(
+            key=lambda row: (
+                _event_time(row.get("scheduled_at_wib") or row.get("scheduled_at")),
+                1 if str(row.get("category") or "").upper() == "EMPLOYMENT" else 0,
+            ),
+            reverse=True,
+        )
+        focal = released[0]
     bias = str(focal.get("gold_bias") or "NEUTRAL_UNKNOWN").upper()
     confidence = str(focal.get("gold_bias_confidence") or "LOW").upper()
     mapping = {
@@ -84,6 +113,7 @@ def evaluate_broader_macro_bias(
     *,
     cross_asset: Mapping[str, Mapping[str, Any]] | None = None,
     event_context: Mapping[str, Any] | None = None,
+    intraday_yield_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     cross = {str(k): dict(v) for k, v in dict(cross_asset or {}).items()}
     components: dict[str, dict[str, Any]] = {}
@@ -160,6 +190,41 @@ def evaluate_broader_macro_bias(
     else:
         relationship = "CONSENSUS_DIVERGENT_FROM_BROADER_MACRO"
 
+    intraday = dict(intraday_yield_context or {})
+    intraday_available = bool(intraday.get("available"))
+    intraday_state = str(intraday.get("state") or "UNAVAILABLE").upper()
+    intraday_implication = str(intraday.get("gold_implication") or "UNAVAILABLE").upper()
+    if not intraday_available:
+        post_event_macro_state = "INTRADAY_YIELD_UNAVAILABLE"
+        post_event_gold_pressure = "UNAVAILABLE"
+        event_intraday_relationship = "NO_INTRADAY_COMPARISON"
+    elif intraday_implication in {"GOLD_HEADWIND", "GOLD_HEADWIND_CONFIRMED"}:
+        post_event_gold_pressure = intraday_implication
+        if event_direction == "BULLISH_XAU":
+            post_event_macro_state = "POST_NEWS_MACRO_REVERSAL"
+            event_intraday_relationship = "EVENT_BULLISH_YIELD_REVERSAL_HEADWIND"
+        elif event_direction == "BEARISH_XAU":
+            post_event_macro_state = "POST_NEWS_MACRO_CONFIRMATION"
+            event_intraday_relationship = "EVENT_BEARISH_YIELD_HEADWIND_ALIGNED"
+        else:
+            post_event_macro_state = "INTRADAY_YIELD_HEADWIND"
+            event_intraday_relationship = "EVENT_DIRECTION_UNCLEAR_YIELD_HEADWIND"
+    elif intraday_implication == "GOLD_SUPPORT":
+        post_event_gold_pressure = "GOLD_SUPPORT"
+        if event_direction == "BEARISH_XAU":
+            post_event_macro_state = "POST_NEWS_MACRO_REVERSAL"
+            event_intraday_relationship = "EVENT_BEARISH_YIELD_REVERSAL_SUPPORT"
+        elif event_direction == "BULLISH_XAU":
+            post_event_macro_state = "POST_NEWS_MACRO_CONFIRMATION"
+            event_intraday_relationship = "EVENT_BULLISH_YIELD_SUPPORT_ALIGNED"
+        else:
+            post_event_macro_state = "INTRADAY_YIELD_SUPPORT"
+            event_intraday_relationship = "EVENT_DIRECTION_UNCLEAR_YIELD_SUPPORT"
+    else:
+        post_event_macro_state = "POST_NEWS_PRICE_DISCOVERY"
+        post_event_gold_pressure = "MIXED"
+        event_intraday_relationship = "NO_CLEAR_EVENT_YIELD_ALIGNMENT"
+
     available = [name for name, row in components.items() if row.get("available")]
     missing = [name for name, row in components.items() if not row.get("available")]
 
@@ -176,6 +241,11 @@ def evaluate_broader_macro_bias(
         "components": components,
         "event_consensus_bias": event_direction,
         "consensus_relationship": relationship,
+        "intraday_yield_context": intraday,
+        "intraday_yield_state": intraday_state,
+        "post_event_macro_state": post_event_macro_state,
+        "post_event_gold_pressure": post_event_gold_pressure,
+        "event_intraday_relationship": event_intraday_relationship,
         "fed_repricing_proxy": {
             "state": fed_proxy,
             "source": "US2Y_DAILY_DELTA_PROXY_NOT_FED_FUNDS_FUTURES",
@@ -193,6 +263,7 @@ def evaluate_broader_macro_bias(
             "and real yields are treated as gold headwinds; lower readings as support. "
             "Missing or stale evidence is excluded rather than converted to neutral. "
             "Event consensus is low-weight before release and stronger only after an "
-            "actual-vs-forecast value is available."
+            "actual-vs-forecast value is available. Intraday US10Y reversal context is "
+            "kept separate from the daily weighted score and cannot authorize execution."
         ),
     }

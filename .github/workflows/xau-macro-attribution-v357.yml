@@ -8,12 +8,14 @@ on:
     branches: [main]
     paths:
       - "src/fx_scanner/xau_macro_attribution_v357.py"
+      - "src/fx_scanner/xau_intraday_yield_v367.py"
       - "src/fx_scanner/demo_xau_macro_attribution_v357.py"
       - "src/fx_scanner/demo_xau_event_risk_v192.py"
       - "src/fx_scanner/providers/news.py"
       - "src/fx_scanner/providers/official.py"
       - "config/providers.yaml"
       - "tests/test_xau_macro_attribution_v357.py"
+      - "tests/test_xau_intraday_yield_v367.py"
       - ".github/workflows/xau-macro-attribution-v357.yml"
 
 permissions:
@@ -42,8 +44,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
           pip install pytest==9.0.2
-      - name: Test V357
-        run: pytest -q tests/test_xau_macro_attribution_v357.py
+      - name: Test V357/V367
+        run: |
+          pytest -q \
+            tests/test_xau_macro_attribution_v357.py \
+            tests/test_xau_intraday_yield_v367.py
       - name: Validate configuration
         run: python -m fx_scanner.cli validate-config
       - name: Refresh V192 event context

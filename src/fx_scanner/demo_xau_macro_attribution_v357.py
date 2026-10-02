@@ -7,10 +7,16 @@ from .config import load_project_config
 from .providers.factory import build_provider_runtime
 from .providers.semantics import ProviderStatus
 from .storage.supabase_operational import SupabaseOperationalStore
+from .xau_intraday_yield_v367 import (
+    evaluate_post_event_yield_reversal,
+    fetch_intraday_us10y,
+    select_latest_post_release_event,
+)
 from .xau_macro_attribution_v357 import CONTRACT, evaluate_broader_macro_bias
 
 WORKER_NAME = "ctrader_demo_xau_macro_attribution_v357"
 EVENT_WORKER = "ctrader_demo_xau_event_risk_v192"
+DAILY_CROSS_ASSET_REFRESH_SECONDS = 15 * 60
 
 FRED_SPECS = {
     "USD_BROAD_PROXY": {
@@ -51,6 +57,29 @@ def _event_context(store: SupabaseOperationalStore) -> tuple[dict[str, Any], str
     row = dict(rows[0])
     details = dict(row.get("details") or {})
     return dict(details.get("risk") or {}), row.get("observed_at")
+
+
+def _dt(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return parsed.astimezone(UTC) if parsed.tzinfo else None
+
+
+def _latest_worker_details(store: SupabaseOperationalStore) -> dict[str, Any]:
+    response = (
+        store.client.table("runtime_heartbeats")
+        .select("observed_at,details")
+        .eq("worker_name", WORKER_NAME)
+        .order("observed_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = list(response.data or [])
+    return {} if not rows else dict(dict(rows[0]).get("details") or {})
 
 
 def _cross_asset_row(result: Any, *, kind: str) -> dict[str, Any]:
@@ -127,6 +156,31 @@ def build_dashboard_projection(evaluation: dict[str, Any]) -> dict[str, Any]:
         "components": components,
         "event_consensus_bias": evaluation.get("event_consensus_bias"),
         "consensus_relationship": evaluation.get("consensus_relationship"),
+        "intraday_yield_state": evaluation.get("intraday_yield_state"),
+        "post_event_macro_state": evaluation.get("post_event_macro_state"),
+        "post_event_gold_pressure": evaluation.get("post_event_gold_pressure"),
+        "event_intraday_relationship": evaluation.get("event_intraday_relationship"),
+        "intraday_yield_context": {
+            key: dict(evaluation.get("intraday_yield_context") or {}).get(key)
+            for key in (
+                "available",
+                "state",
+                "gold_implication",
+                "event",
+                "event_at",
+                "yield_at_release",
+                "post_event_low",
+                "post_event_low_at",
+                "current",
+                "current_at",
+                "initial_drop_bps",
+                "rebound_from_low_bps",
+                "net_from_release_bps",
+                "age_seconds",
+                "source",
+            )
+            if key in dict(evaluation.get("intraday_yield_context") or {})
+        },
         "fed_repricing_proxy": {
             key: fed_proxy.get(key)
             for key in ("state", "delta_bps")
@@ -143,19 +197,105 @@ def run() -> int:
     fred = runtime.providers["FEDERAL_RESERVE_FRED"]
     store = SupabaseOperationalStore.from_env()
 
-    cross_asset: dict[str, dict[str, Any]] = {}
-    for name, spec in FRED_SPECS.items():
-        result = runtime.orchestrator.fetch(
-            fred,
-            str(spec["series"]),
-            max_age_seconds=float(spec["max_age_seconds"]),
-        )
-        cross_asset[name] = _cross_asset_row(result, kind=str(spec["kind"]))
+    previous_details = _latest_worker_details(store)
+    previous_refresh_at = _dt(previous_details.get("cross_asset_refreshed_at"))
+    previous_cross_asset = dict(previous_details.get("cross_asset") or {})
+    reuse_daily = bool(
+        previous_refresh_at
+        and previous_cross_asset
+        and 0.0 <= (now - previous_refresh_at).total_seconds()
+        <= DAILY_CROSS_ASSET_REFRESH_SECONDS
+    )
+    if reuse_daily:
+        cross_asset = {
+            str(name): dict(value or {})
+            for name, value in previous_cross_asset.items()
+        }
+        cross_asset_refreshed_at = previous_refresh_at.isoformat()
+        cross_asset_refresh_mode = "REUSED_PRIOR_HEARTBEAT"
+    else:
+        cross_asset: dict[str, dict[str, Any]] = {}
+        for name, spec in FRED_SPECS.items():
+            result = runtime.orchestrator.fetch(
+                fred,
+                str(spec["series"]),
+                max_age_seconds=float(spec["max_age_seconds"]),
+            )
+            cross_asset[name] = _cross_asset_row(result, kind=str(spec["kind"]))
+        cross_asset_refreshed_at = now.isoformat()
+        cross_asset_refresh_mode = "REFRESHED_FRED"
 
     event_context, event_observed_at = _event_context(store)
+    intraday_cfg = dict(
+        dict(cfg.providers.get("intraday_market") or {}).get("US10Y_YAHOO_TNX") or {}
+    )
+    anchor = select_latest_post_release_event(
+        event_context,
+        now=now,
+        max_age_hours=float(intraday_cfg.get("post_event_window_hours") or 8.0),
+    )
+    intraday_yield: dict[str, Any]
+    intraday_source_status = "DISABLED"
+    if bool(intraday_cfg.get("enabled", False)) and anchor:
+        try:
+            points = fetch_intraday_us10y(
+                runtime.transport,
+                base_url=str(intraday_cfg["base_url"]),
+                allowed_host=str(intraday_cfg["allowed_host"]),
+                interval=str(intraday_cfg.get("interval") or "1m"),
+                range_name=str(intraday_cfg.get("range") or "1d"),
+            )
+            intraday_yield = evaluate_post_event_yield_reversal(
+                points,
+                event=anchor,
+                now=now,
+                max_age_seconds=float(intraday_cfg.get("max_age_seconds") or 1200.0),
+                minimum_initial_drop_bps=float(
+                    intraday_cfg.get("minimum_initial_drop_bps") or 1.5
+                ),
+                reversal_threshold_bps=float(
+                    intraday_cfg.get("reversal_threshold_bps") or 3.0
+                ),
+                strong_reversal_threshold_bps=float(
+                    intraday_cfg.get("strong_reversal_threshold_bps") or 5.0
+                ),
+            )
+            intraday_source_status = (
+                "OK:" + str(intraday_yield.get("state") or "UNKNOWN")
+            )
+        except Exception as exc:
+            intraday_yield = {
+                "available": False,
+                "state": "INTRADAY_YIELD_SOURCE_ERROR",
+                "gold_implication": "UNAVAILABLE",
+                "source": "YAHOO_FINANCE_TNX_INTRADAY_PROXY",
+                "error": f"{type(exc).__name__}:{exc}",
+                "execution_authority": False,
+                "execution_influence": False,
+            }
+            intraday_source_status = f"ERROR:{type(exc).__name__}:{exc}"
+    elif anchor:
+        intraday_yield = {
+            "available": False,
+            "state": "INTRADAY_YIELD_DISABLED",
+            "gold_implication": "UNAVAILABLE",
+            "execution_authority": False,
+            "execution_influence": False,
+        }
+    else:
+        intraday_yield = {
+            "available": False,
+            "state": "NO_POST_RELEASE_EVENT_ANCHOR",
+            "gold_implication": "UNAVAILABLE",
+            "execution_authority": False,
+            "execution_influence": False,
+        }
+        intraday_source_status = "NO_POST_RELEASE_EVENT_ANCHOR"
+
     evaluation = evaluate_broader_macro_bias(
         cross_asset=cross_asset,
         event_context=event_context,
+        intraday_yield_context=intraday_yield,
     )
     healthy = bool(evaluation.get("available_components"))
 
@@ -166,9 +306,15 @@ def run() -> int:
         "evaluation": evaluation,
         "dashboard_projection": build_dashboard_projection(evaluation),
         "cross_asset": cross_asset,
+        "cross_asset_refreshed_at": cross_asset_refreshed_at,
+        "cross_asset_refresh_mode": cross_asset_refresh_mode,
+        "intraday_us10y": intraday_yield,
+        "intraday_source_status": intraday_source_status,
         "event_observed_at": event_observed_at,
         "data_policy": {
-            "cross_asset_frequency": "DAILY",
+            "cross_asset_frequency": "DAILY_WITH_15M_REUSE",
+            "intraday_us10y_frequency": "RUNTIME_CYCLE",
+            "intraday_us10y_source": "YAHOO_FINANCE_TNX_SECONDARY_PROXY",
             "dxy_proxy": "DTWEXBGS_NOT_ICE_DXY",
             "fed_repricing": "US2Y_DAILY_DELTA_PROXY_NOT_FUTURES",
             "execution_authority": False,
@@ -185,7 +331,9 @@ def run() -> int:
         f"healthy={int(healthy)} "
         f"bias={evaluation.get('broader_macro_bias')} "
         f"score={evaluation.get('macro_score')} "
-        f"coverage={evaluation.get('coverage')}"
+        f"coverage={evaluation.get('coverage')} "
+        f"intraday_yield={evaluation.get('intraday_yield_state')} "
+        f"post_event={evaluation.get('post_event_macro_state')}"
     )
     return 0 if healthy else 2
 
