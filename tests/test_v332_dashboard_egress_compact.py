@@ -206,9 +206,10 @@ def test_v344_v342_projection_keeps_structural_tab_fields_without_full_details()
     assert ev["structural_path"]["state"] == "PATH_AVAILABLE"
     assert ev["entry_guide"]["state"] == "WAIT_STRUCTURAL_ROOM"
     assert ev["market_structure"]["H4"]["state"] == "BEARISH_RANGE"
-    assert "details" not in query.selected
-    assert "active_zones:details->evaluation->active_zones" in query.selected
-    assert row["details"]["transport_projection"] == "V342_OPERATIONAL_60S"
+    assert "details" not in query.selected.split(",")
+    assert "structural_checkpoints:details->evaluation->structural_path->checkpoints" in query.selected
+    assert "active_zones:" not in query.selected
+    assert row["details"]["transport_projection"] == "V342_OPERATIONAL_60S_COMPACT"
 
 
 def test_v344_v343_projection_keeps_micro_entry_tab_fields_without_full_details():
@@ -236,6 +237,6 @@ def test_v344_v343_projection_keeps_micro_entry_tab_fields_without_full_details(
     assert ev["direction"] == "SHORT"
     assert ev["entries"]["historical_primary_price"] == 4149.11
     assert ev["targets"]["TP13"] == 4143.14
-    assert "details" not in query.selected
+    assert "details" not in query.selected.split(",")
     assert "historical_evidence:details->evaluation->historical_evidence" in query.selected
     assert row["details"]["transport_projection"] == "V343_OPERATIONAL_60S"
