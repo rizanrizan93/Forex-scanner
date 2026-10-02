@@ -381,6 +381,7 @@ def evaluate_zone_touches(
     *,
     zone: SDZone,
     valid_until: datetime | None = None,
+    price_context: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Evaluate sequential zone visits using vectorized touch boundaries.
 
@@ -388,12 +389,18 @@ def evaluate_zone_touches(
     The prior visit fails with RETOUCH_BEFORE_050 if the next distinct touch starts
     before a 0.50 ATR reaction. This keeps repeated-touch buckets non-overlapping.
     """
-    timestamps = list(price_m1["timestamp"])
+    ctx = price_context or {
+        "timestamps": list(price_m1["timestamp"]),
+        "high": price_m1["high"].to_numpy(dtype=float, copy=False),
+        "low": price_m1["low"].to_numpy(dtype=float, copy=False),
+        "close": price_m1["close"].to_numpy(dtype=float, copy=False),
+    }
+    timestamps = ctx["timestamps"]
     if not timestamps:
         return []
-    highs = price_m1["high"].to_numpy(dtype=float, copy=False)
-    lows = price_m1["low"].to_numpy(dtype=float, copy=False)
-    closes = price_m1["close"].to_numpy(dtype=float, copy=False)
+    highs = ctx["high"]
+    lows = ctx["low"]
+    closes = ctx["close"]
 
     available = ensure_utc(zone.available_at)
     start = bisect_left(timestamps, pd.Timestamp(available))
@@ -665,6 +672,12 @@ def evaluate_year(price_m1: pd.DataFrame, *, target_year: int) -> dict[str, Any]
     price_m1["timestamp"] = pd.to_datetime(price_m1["timestamp"], utc=True)
     zones = build_zones(price_m1)
     superseded = causal_superseded_at(zones)
+    price_context = {
+        "timestamps": list(price_m1["timestamp"]),
+        "high": price_m1["high"].to_numpy(dtype=float, copy=False),
+        "low": price_m1["low"].to_numpy(dtype=float, copy=False),
+        "close": price_m1["close"].to_numpy(dtype=float, copy=False),
+    }
     episodes: list[dict[str, Any]] = []
 
     for zone in zones:
@@ -672,6 +685,7 @@ def evaluate_year(price_m1: pd.DataFrame, *, target_year: int) -> dict[str, Any]
             price_m1,
             zone=zone,
             valid_until=superseded.get(zone.zone_id),
+            price_context=price_context,
         )
         for row in rows:
             touch_year = datetime.fromisoformat(
