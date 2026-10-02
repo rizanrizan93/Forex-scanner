@@ -488,6 +488,45 @@ def evaluate_event_risk(
     }
 
 
+
+DASHBOARD_EVENT_KEYS = (
+    "title",
+    "actual",
+    "impact",
+    "category",
+    "forecast",
+    "previous",
+    "gold_bias",
+    "scheduled_at",
+    "scheduled_at_wib",
+    "gold_bias_basis",
+    "gold_bias_confidence",
+)
+
+
+def _compact_dashboard_event(value: Any) -> dict[str, Any]:
+    event = dict(value or {})
+    return {
+        key: event.get(key)
+        for key in DASHBOARD_EVENT_KEYS
+        if key in event
+    }
+
+
+def build_dashboard_projection(risk: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "state": risk.get("state"),
+        "action": risk.get("action"),
+        "focal_event": _compact_dashboard_event(risk.get("focal_event")),
+        "upcoming_events": [
+            _compact_dashboard_event(item)
+            for item in list(risk.get("upcoming_events") or [])
+        ],
+        "minutes_to_focal": risk.get("minutes_to_focal"),
+        "execution_authority": bool(risk.get("execution_authority", False)),
+        "execution_influence": bool(risk.get("execution_influence", False)),
+    }
+
 def run() -> int:
     cfg = load_project_config(None)
     calendar_cfg = cfg.providers.get("calendar", {})
@@ -559,6 +598,7 @@ def run() -> int:
         "currency_focus": "USD",
         "observed_at": now.isoformat(),
         "risk": risk,
+        "dashboard_projection": build_dashboard_projection(risk),
         "source_status": source_status,
         "event_count": len(merged),
         "official_or_cadence_verified_count": official_count,
