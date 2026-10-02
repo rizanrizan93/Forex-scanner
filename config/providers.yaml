@@ -189,6 +189,12 @@ calendar:
     base_url: https://www.bls.gov/schedule/news_release/bls.ics
     allowed_host: www.bls.gov
 
+  BLS_EMPLOYMENT_RELEASE:
+    enabled: true
+    official: true
+    base_url: https://www.bls.gov/news.release/empsit.nr0.htm
+    allowed_host: www.bls.gov
+
   BEA_OFFICIAL_SCHEDULE:
     enabled: true
     official: true
