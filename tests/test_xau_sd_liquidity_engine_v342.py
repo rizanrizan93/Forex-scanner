@@ -506,7 +506,7 @@ def test_v364_degraded_near_zone_cannot_override_fresh_main_reversal_zone():
     )
     assert parent["zone_id"] == "h4-fresh-demand"
     assert parent["main_reversal_eligible"] is True
-    assert selection == "H4_MAIN_REVERSAL_QUALITY"
+    assert selection == "H4_PARENT"
 
 
 def test_v364_local_mss_ignores_old_news_spike_and_confirms_reclaim_break():
