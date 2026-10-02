@@ -102,6 +102,31 @@ class EconomicCalendarSnapshot:
     source_url: str
 
 
+def _parse_calendar_number(value: Any) -> float | None:
+    """Parse common economic-calendar numeric strings without guessing units."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        parsed = float(value)
+        return parsed if isfinite(parsed) else None
+    text = str(value).strip().upper().replace(",", "")
+    if not text or text in {"N/A", "NA", "-", "--"}:
+        return None
+    text = text.replace("%", "").replace("$", "")
+    multiplier = 1.0
+    if text.endswith("K"):
+        multiplier, text = 1_000.0, text[:-1]
+    elif text.endswith("M"):
+        multiplier, text = 1_000_000.0, text[:-1]
+    elif text.endswith("B"):
+        multiplier, text = 1_000_000_000.0, text[:-1]
+    try:
+        parsed = float(text) * multiplier
+    except ValueError:
+        return None
+    return parsed if isfinite(parsed) else None
+
+
 class ForexFactoryCalendarProvider:
     """Fetch the public weekly calendar and fail closed if it is not current."""
 
@@ -172,6 +197,9 @@ class ForexFactoryCalendarProvider:
                     impact=impact,
                     source="FOREX_FACTORY_WEEKLY",
                     source_url=self.url,
+                    actual=_parse_calendar_number(item.get("actual")),
+                    forecast=_parse_calendar_number(item.get("forecast")),
+                    previous=_parse_calendar_number(item.get("previous")),
                 )
             )
 
