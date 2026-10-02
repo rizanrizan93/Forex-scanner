@@ -1,0 +1,30 @@
+name: V354 Branch Verification
+
+on:
+  push:
+    branches:
+      - fix/v354-adaptive-confirmation-entry
+
+permissions:
+  contents: read
+
+jobs:
+  verify-v354:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install test runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
+      - name: Run focused V354 tests
+        run: |
+          pytest -q \
+            tests/test_xau_sd_liquidity_engine_v342.py \
+            tests/test_demo_xau_v351_executor.py
