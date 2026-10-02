@@ -20,7 +20,9 @@ permissions:
 
 concurrency:
   group: forexrizan-dashboard-bridge-v325
-  cancel-in-progress: false
+  # A newer main commit must supersede a publisher running older bridge code.
+  # The next run hydrates the last published snapshot before continuing.
+  cancel-in-progress: true
 
 jobs:
   publish:
