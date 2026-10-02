@@ -9,6 +9,7 @@ from fx_scanner.xau_sd_liquidity_engine_v342 import (
     _conditional_failure_path,
     _destination_ladder,
     _h2_frame_from_h1,
+    _intraday_breach_status,
     _micro_confirmation,
     _prepared_entry_band,
     _roadblocks,
@@ -853,3 +854,121 @@ def test_v368_failure_ladder_promotes_next_deeper_zone_not_failed_parent():
     assert result["terminal_scenario"]["activation_rule"] == (
         "ONLY_AFTER_PREVIOUS_HTF_ZONE_CAUSAL_INVALIDATION"
     )
+
+
+
+def _m15_closes(start: datetime, closes: list[float]):
+    rows = []
+    for i, close in enumerate(closes):
+        open_ = closes[i - 1] if i else close
+        rows.append(
+            SimpleNamespace(
+                timestamp=start + timedelta(minutes=15 * i),
+                open=open_,
+                high=max(open_, close) + 0.5,
+                low=min(open_, close) - 0.5,
+                close=close,
+            )
+        )
+    return rows
+
+
+def test_v369_deep_completed_m15_close_quarantines_long_parent_before_h4_close():
+    start = datetime(2026, 10, 2, 13, 0, tzinfo=UTC)
+    zone = {
+        "direction": "LONG",
+        "distal": 4177.53,
+        "atr": 37.03,
+        "available_at": start.isoformat(),
+    }
+    bars = _m15_closes(start, [4184.0, 4180.0, 4167.0])
+    result = _intraday_breach_status(
+        zone,
+        bars_m15=bars,
+        as_of=start + timedelta(minutes=45),
+    )
+    assert result["state"] == "INTRADAY_BREACH_QUARANTINED"
+    assert result["quarantined"] is True
+    assert result["deep_latest"] is True
+    assert result["breach_depth_atr"] >= 0.25
+
+
+def test_v369_single_shallow_m15_close_is_watch_not_parent_failure():
+    start = datetime(2026, 10, 2, 13, 0, tzinfo=UTC)
+    zone = {
+        "direction": "LONG",
+        "distal": 4177.53,
+        "atr": 37.03,
+        "available_at": start.isoformat(),
+    }
+    bars = _m15_closes(start, [4184.0, 4175.0])
+    result = _intraday_breach_status(
+        zone,
+        bars_m15=bars,
+        as_of=start + timedelta(minutes=30),
+    )
+    assert result["state"] == "INTRADAY_BREACH_WATCH"
+    assert result["quarantined"] is False
+
+
+def test_v369_two_consecutive_m15_closes_beyond_soft_buffer_quarantine_parent():
+    start = datetime(2026, 10, 2, 13, 0, tzinfo=UTC)
+    zone = {
+        "direction": "LONG",
+        "distal": 4177.53,
+        "atr": 37.03,
+        "available_at": start.isoformat(),
+    }
+    bars = _m15_closes(start, [4184.0, 4175.0, 4174.5])
+    result = _intraday_breach_status(
+        zone,
+        bars_m15=bars,
+        as_of=start + timedelta(minutes=45),
+    )
+    assert result["state"] == "INTRADAY_BREACH_QUARANTINED"
+    assert result["two_consecutive"] is True
+    assert result["quarantined"] is True
+
+
+def test_v369_m15_reclaim_releases_intraday_quarantine():
+    start = datetime(2026, 10, 2, 13, 0, tzinfo=UTC)
+    zone = {
+        "direction": "LONG",
+        "distal": 4177.53,
+        "atr": 37.03,
+        "available_at": start.isoformat(),
+    }
+    bars = _m15_closes(start, [4184.0, 4165.0, 4181.0])
+    result = _intraday_breach_status(
+        zone,
+        bars_m15=bars,
+        as_of=start + timedelta(minutes=45),
+    )
+    assert result["state"] == "NO_ACTIVE_INTRADAY_BREACH"
+    assert result["quarantined"] is False
+
+
+def test_v369_parent_selection_skips_intraday_quarantined_zone():
+    price = 4136.0
+    stale = _zone_row(
+        "breached-near-demand", "H4", "LONG", 4177.53, 4196.84, price=price, score=90.0
+    )
+    stale["intraday_quarantined"] = True
+    stale["condition"] = "FRESH"
+    stale["lifecycle"] = {"freshness": "FRESH", "touch_count": 0, "mitigation_depth": 0.0}
+    stale["structural_bos"] = True
+
+    next_zone = _zone_row(
+        "next-demand", "H4", "LONG", 4065.54, 4085.82, price=price, score=92.0
+    )
+    next_zone["intraday_quarantined"] = False
+    next_zone["condition"] = "FRESH"
+    next_zone["lifecycle"] = {"freshness": "FRESH", "touch_count": 0, "mitigation_depth": 0.0}
+    next_zone["structural_bos"] = True
+
+    parent, _, selection = _select_parent_and_refinement(
+        [stale, next_zone],
+        price_now=price,
+    )
+    assert parent["zone_id"] == "next-demand"
+    assert selection == "H4_PARENT"
