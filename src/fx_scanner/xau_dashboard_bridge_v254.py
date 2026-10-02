@@ -32,10 +32,7 @@ HOT_HEARTBEATS = (
     # Only small, truly minute-sensitive payloads stay in the generic hot set.
     # V296 and V328 are projected separately below so their large research
     # details do not consume minute-level Supabase egress.
-    # V342/V343 are the only market-opinion engines exposed by the V344 UI and
-    # must retain details.evaluation in the public bridge snapshot.
-    "ctrader_demo_xau_sd_liquidity_v342",
-    "ctrader_demo_xau_friend_entry_v343",
+    # V342/V343 use dedicated compact operational projections below.
     "ctrader_demo_xau_rizan_fast_handoff",
     "ctrader_demo_xau_afic_fast_handoff",
     "ctrader_demo_xau_dom_v191",
@@ -387,6 +384,16 @@ def build_snapshot(
         label="V328_OPERATIONAL",
         worker_name="ctrader_demo_xau_micro_destination_v328",
         fetcher=lambda: reader.latest_xau_micro_destination_operational_heartbeat(),
+    )
+    _append_operational(
+        label="V342_OPERATIONAL",
+        worker_name="ctrader_demo_xau_sd_liquidity_v342",
+        fetcher=lambda: reader.latest_xau_sd_liquidity_operational_heartbeat(),
+    )
+    _append_operational(
+        label="V343_OPERATIONAL",
+        worker_name="ctrader_demo_xau_friend_entry_v343",
+        fetcher=lambda: reader.latest_xau_friend_entry_operational_heartbeat(),
     )
 
     hot_heartbeat_bytes = _json_size(hot_heartbeats)
