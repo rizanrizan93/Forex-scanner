@@ -114,7 +114,54 @@ def test_v352_no_chase_outside_retest_band():
         now=datetime(2026, 10, 2, 8, 0, 30, tzinfo=UTC),
     )
     assert candidate is None
-    assert reason == "WAIT_ENTRY_RETEST_NO_CHASE"
+    assert reason == "WAIT_ENTRY_RETEST_OR_FRESH_CONFIRMATION"
+
+
+def test_v354_fresh_confirmation_can_enter_without_waiting_for_deep_retest():
+    hb = _heartbeat()
+    evaluation = hb["details"]["evaluation"]
+    evaluation["structural_destination"]["price"] = 88.0
+    evaluation["entry_guide"]["invalidation"] = 101.5
+    evaluation["micro_confirmation"].update(
+        {
+            "confirmation_close": 97.2,
+            "local_atr": 2.0,
+            "reclaim_at": "2026-10-02T08:00:00+00:00",
+        }
+    )
+    candidate, reason = _candidate(
+        heartbeat=hb,
+        bid=97.0,
+        ask=97.1,
+        now=datetime(2026, 10, 2, 8, 1, 0, tzinfo=UTC),
+    )
+    assert reason == "ELIGIBLE"
+    assert candidate is not None
+    assert candidate["entry_mode"] == "FRESH_CONFIRMATION_ENTRY"
+    assert candidate["entry"] == 97.0
+    assert candidate["rr"] >= 1.50
+
+
+def test_v354_stale_confirmation_does_not_chase():
+    hb = _heartbeat()
+    evaluation = hb["details"]["evaluation"]
+    evaluation["structural_destination"]["price"] = 88.0
+    evaluation["entry_guide"]["invalidation"] = 101.5
+    evaluation["micro_confirmation"].update(
+        {
+            "confirmation_close": 97.2,
+            "local_atr": 2.0,
+            "reclaim_at": "2026-10-02T07:50:00+00:00",
+        }
+    )
+    candidate, reason = _candidate(
+        heartbeat=hb,
+        bid=97.0,
+        ask=97.1,
+        now=datetime(2026, 10, 2, 8, 0, 30, tzinfo=UTC),
+    )
+    assert candidate is None
+    assert reason == "WAIT_ENTRY_RETEST_OR_FRESH_CONFIRMATION"
 
 
 
