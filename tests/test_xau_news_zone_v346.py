@@ -168,3 +168,34 @@ def test_v346_missing_calendar_is_not_treated_as_clear():
     assert result["risk_state"] == "NEWS_SOURCE_UNAVAILABLE"
     assert result["state"] == "WAIT_NEWS_DATA"
     assert result["effective_entry_state"] == "WAIT_NEWS_DATA"
+
+
+def test_v366_discovery_unverified_event_is_context_only_not_hard_gate():
+    now = datetime(2026, 10, 2, 13, 50, tzinfo=UTC)
+    event = NewsZoneEvent(
+        event_id="ff-fed-speech",
+        title="FOMC Member Logan Speaks",
+        scheduled_at=datetime(2026, 10, 2, 14, 0, tzinfo=UTC),
+        category="FED_SPEECH",
+        impact="MEDIUM",
+        source="FOREX_FACTORY_WEEKLY",
+        source_tier="DISCOVERY_UNVERIFIED",
+        source_url="https://example.com/discovery",
+    )
+    bars = _bars(
+        now - timedelta(hours=1),
+        [(100.5, 100.9, 100.2, 100.6)] * 20,
+    )
+    result = evaluate_news_zone(
+        sd_evaluation=_sd(True),
+        events=[event],
+        bars_m5=bars,
+        bars_m15=[],
+        now=now,
+        source_status={"FOREX_FACTORY_WEEKLY": "OK:1"},
+    )
+    assert result["risk_state"] == "PRE_EVENT"
+    assert result["execution_risk_state"] == "CLEAR"
+    assert result["event_execution_blocking"] is False
+    assert result["effective_entry_state"] == "CONFIRMED_GUIDANCE"
+    assert result["policy"]["discovery_unverified"] == "CONTEXT_ONLY_NO_HARD_EXECUTION_BLACKOUT"
