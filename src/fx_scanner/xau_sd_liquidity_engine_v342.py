@@ -2008,6 +2008,27 @@ def evaluate_sd_liquidity(
         active_zones=active,
         fallback_atr=float(decision_zone.get("atr") or atr_ref),
     ) if direction in {"LONG", "SHORT"} else []
+    if entry is not None and nearest_roadblock:
+        roadblock_target = _f(nearest_roadblock.get("near_edge"))
+        if roadblock_target is not None:
+            target_row = {
+                "price": roadblock_target,
+                "source": (
+                    "STRUCTURAL_SR_ROADBLOCK"
+                    if str(nearest_roadblock.get("source") or "") == "RIZAN_STRUCTURAL_SR_MAP_V363"
+                    else "HTF_ROADBLOCK"
+                ),
+                "zone_id": nearest_roadblock.get("zone_id"),
+                "distance": abs(roadblock_target - entry),
+            }
+            targets = [
+                target_row,
+                *[
+                    row
+                    for row in targets
+                    if abs(float(row.get("price") or 0.0) - roadblock_target) > 1e-9
+                ],
+            ][:3]
     guide_state = (
         "WAIT_ROADBLOCK"
         if bool(roadblock_room.get("blocked"))
@@ -2068,7 +2089,7 @@ def evaluate_sd_liquidity(
             "execution_modes": ["FRESH_CONFIRMATION_ENTRY", "RETEST_ENTRY"],
             "rule": (
                 "HTF_PREPARE -> LIQUIDITY_SWEEP_OPTIONAL -> RECLAIM -> MSS -> "
-                "DISPLACEMENT -> FRESH_CONFIRMATION_OR_RETEST"
+                "DISPLACEMENT -> S/R_AND_HTF_ROADBLOCK_ROOM -> FRESH_CONFIRMATION_OR_RETEST"
             ),
         },
         "liquidity_candidates": liquidity,
