@@ -9,6 +9,7 @@ from typing import Any, Iterable, Sequence
 import pandas as pd
 
 from .models import ensure_utc
+from .xau_structural_sr_map_v363 import build_structural_sr_map
 
 CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V342_8_ADAPTIVE_ENTRY_V354"
 DISPLAY_NAME = "RIZAN SUPPLY DEMAND + LIQUIDITY"
@@ -694,6 +695,9 @@ def _h2_support_resistance(
                 "price": center,
                 "strength": round(total_weight, 2),
                 "sources": sorted({str(x["source"]) for x in group}),
+                "available_at": max(
+                    str(x.get("available_at") or "") for x in group
+                ),
                 "distance_points": abs(center - price_now),
                 "distance_atr": abs(center - price_now) / max(float(atr_reference), 1e-9),
                 "role": "CONTEXT_ONLY_NO_DIRECTION_SIGNAL",
@@ -1763,6 +1767,14 @@ def evaluate_sd_liquidity(
         price_now=current,
         atr_reference=float(atr_ref),
     )
+    support_resistance_map = build_structural_sr_map(
+        levels=support_resistance,
+        bars_m15=bars_m15,
+        bars_m5=bars_m5,
+        as_of=now,
+        price_now=current,
+        atr_reference=float(atr_ref),
+    )
     raw_levels = [
         *_pivot_levels(bars_h4, timeframe="H4", as_of=now),
         *_pivot_levels(bars_h1, timeframe="H1", as_of=now),
@@ -1895,6 +1907,7 @@ def evaluate_sd_liquidity(
         "structural_path": structural_path,
         "failure_path": failure_path,
         "support_resistance": support_resistance,
+        "support_resistance_map": support_resistance_map,
         "roadblocks": roadblocks,
         "nearest_roadblock": nearest_roadblock,
         "roadblock_room": roadblock_room,
@@ -1951,7 +1964,9 @@ def evaluate_sd_liquidity(
                 "OPTIONAL_H2_SUPPORT_RESISTANCE_LIQUIDITY_CONTEXT"
             ),
             "support_resistance": (
-                "CAUSAL_H2_SWING_PIVOTS_PLUS_PRIOR_DAY_WEEK_LEVELS; CONTEXT_ONLY_NO_DIRECTION_SIGNAL"
+                "CAUSAL_H2_SWING_PIVOTS_PLUS_PRIOR_DAY_WEEK_LEVELS; V363 adds completed-bar "
+                "BREAKOUT -> ACCEPTANCE -> RETEST -> HOLD role-flip lifecycle. "
+                "CONTEXT_ONLY_NO_DIRECTION_SIGNAL"
             ),
             "failure_path": (
                 "CONDITIONAL_ONLY_AFTER_PARENT_CAUSAL_INVALIDATION; NEVER_A_SECOND_DIRECTION_SIGNAL"
