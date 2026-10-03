@@ -8,7 +8,7 @@ from typing import Any
 from . import demo_xau_v351_executor as base
 from .xau_reaction_interceptor_v374 import evaluate_reaction_interceptor
 
-EXECUTOR_CONTRACT = "XAU_RIZAN_DEMO_REACTION_EXECUTOR_V375"
+EXECUTOR_CONTRACT = "XAU_RIZAN_DEMO_REACTION_EXECUTOR_V375_2_AFIQ_BEHAVIOR_V376"
 EXECUTION_LANE_REACTION = "V374_REACTION_INTERCEPTOR"
 EXECUTION_LANE_STANDARD = "V342_MICRO_CONFIRMATION"
 REACTION_ENTRY_MODE = "REACTION_EARLY_DEMO_PROBE"
@@ -39,6 +39,16 @@ def _dt(value: Any) -> datetime | None:
     return out.astimezone(UTC)
 
 
+def _behavioral_block_reason(heartbeat: dict[str, Any]) -> str | None:
+    evaluation = dict(dict(heartbeat.get("details") or {}).get("evaluation") or {})
+    behavior = dict(evaluation.get("afiq_behavioral") or {})
+    gate = str(behavior.get("demo_entry_gate") or "ALLOW_WITH_EXISTING_GATES").upper()
+    if gate.startswith("BLOCK_"):
+        reason = str(behavior.get("hard_block_reason") or gate)
+        return f"AFIQ_BEHAVIOR_BLOCK:{reason}"
+    return None
+
+
 def _reaction_signal_id(evaluation: dict[str, Any], reaction: dict[str, Any]) -> str:
     candidate = dict(reaction.get("candidate") or {})
     destination = dict(evaluation.get("structural_destination") or {})
@@ -67,8 +77,8 @@ def _reaction_candidate(
 
     The lane deliberately relaxes the *full MSS first* requirement, but it does
     not relax source freshness, V342 DEMO authority, event blackout, structural
-    room, roadblock room, structural SL/TP geometry, minimum RR, or no-chase.
-    The broker executable quote must still be inside the V374 early-entry band.
+    room, roadblock room, structural SL/TP geometry, minimum RR, no-chase, or
+    a V376 causal behavioral-failure block.
     """
     if not heartbeat or not bool(heartbeat.get("healthy")):
         return None, "SOURCE_HEARTBEAT_UNHEALTHY"
@@ -216,7 +226,11 @@ def _candidate(
     ask: float,
     now: datetime,
 ) -> tuple[dict[str, Any] | None, str]:
-    """Prefer the existing V342 confirmed lane; otherwise try V374 interception."""
+    """Prefer V342 confirmation, then V374 reaction, with V376 failure veto."""
+    behavior_block = _behavioral_block_reason(heartbeat)
+    if behavior_block:
+        return None, behavior_block
+
     standard, standard_reason = _BASE_CANDIDATE(
         heartbeat=heartbeat,
         bid=bid,
@@ -238,8 +252,6 @@ def _candidate(
     if reaction is not None:
         return reaction, reaction_reason
 
-    # Preserve the more safety-critical reason when the base lane failed before
-    # it ever reached its normal entry gate. Otherwise surface the V374 reason.
     foundational_prefixes = (
         "SOURCE_",
         "ENGINE_",
@@ -247,6 +259,7 @@ def _candidate(
         "STRUCTURAL_ROOM_BLOCK:",
         "ROADBLOCK_ROOM_BLOCK:",
         "NEWS_",
+        "AFIQ_BEHAVIOR_BLOCK:",
     )
     if standard_reason.startswith(foundational_prefixes):
         return None, standard_reason
@@ -258,10 +271,23 @@ def _evidence_ledger(
     candidate: dict[str, Any],
 ) -> dict[str, Any]:
     ledger = dict(_BASE_EVIDENCE_LEDGER(heartbeat, candidate))
-    ledger["schema"] = "XAU_RIZAN_DEMO_EVIDENCE_LEDGER_V375_1"
+    evaluation = dict(dict(heartbeat.get("details") or {}).get("evaluation") or {})
+    behavior = dict(evaluation.get("afiq_behavioral") or {})
+    ledger["schema"] = "XAU_RIZAN_DEMO_EVIDENCE_LEDGER_V376_1"
     ledger["executor_contract"] = EXECUTOR_CONTRACT
     ledger["execution_lane"] = candidate.get("execution_lane")
     ledger["reaction_interceptor"] = dict(candidate.get("reaction_interceptor") or {})
+    ledger["afiq_behavioral"] = {
+        "contract": behavior.get("contract"),
+        "regime": dict(behavior.get("regime") or {}).get("state"),
+        "active_zone_role": dict(behavior.get("active_zone_role") or {}).get("role"),
+        "acceptance_rejection": dict(behavior.get("acceptance_rejection") or {}).get("state"),
+        "m30_internal": dict(behavior.get("m30_internal") or {}).get("state"),
+        "response_timer": dict(behavior.get("response_timer") or {}).get("state"),
+        "manual_decision_state": behavior.get("manual_decision_state"),
+        "demo_entry_gate": behavior.get("demo_entry_gate"),
+        "hard_block_reason": behavior.get("hard_block_reason"),
+    }
     order_plan = dict(ledger.get("order_plan") or {})
     order_plan.update(
         {
@@ -271,6 +297,7 @@ def _evidence_ledger(
             "reaction_center": candidate.get("reaction_center"),
             "reaction_lifecycle_state": candidate.get("reaction_lifecycle_state"),
             "reaction_score": candidate.get("reaction_score"),
+            "afiq_behavior_gate": behavior.get("demo_entry_gate"),
         }
     )
     ledger["order_plan"] = order_plan
@@ -278,7 +305,7 @@ def _evidence_ledger(
 
 
 def run() -> int:
-    """Run the proven V351 DEMO router with the V375 candidate selector."""
+    """Run the proven V351 DEMO router with V375 selector + V376 failure veto."""
     base._candidate = _candidate
     base._evidence_ledger = _evidence_ledger
     base.EVENT_TYPE = EVENT_TYPE
