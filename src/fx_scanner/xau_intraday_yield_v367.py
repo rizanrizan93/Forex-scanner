@@ -9,6 +9,7 @@ from urllib.parse import urlencode, urlparse
 from curl_cffi import requests as curl_requests
 
 CONTRACT = "XAU_US10Y_INTRADAY_REVERSAL_V367"
+CONTINUOUS_CONTRACT = "XAU_US10Y_INTRADAY_PRESSURE_V378"
 
 
 def _number(value: Any) -> float | None:
@@ -147,6 +148,102 @@ def select_latest_post_release_event(
         return None
     usable.sort(key=lambda row: (row[0], row[1]), reverse=True)
     return usable[0][2]
+
+
+def evaluate_intraday_yield_pressure(
+    points: Iterable[Mapping[str, Any]],
+    *,
+    now: datetime,
+    max_age_seconds: float = 1200.0,
+    window_minutes: float = 120.0,
+    flat_threshold_bps: float = 1.0,
+) -> dict[str, Any]:
+    """Classify continuous US10Y intraday pressure without requiring a news anchor.
+
+    ^TNX is a secondary public proxy.  The result is context-only and has no
+    independent execution authority.
+    """
+    current = now.astimezone(UTC)
+    rows: list[tuple[datetime, float]] = []
+    for raw in points:
+        row = dict(raw or {})
+        at = _dt(row.get("observed_at"))
+        value = _number(row.get("yield_pct"))
+        if at is None or value is None or at > current:
+            continue
+        rows.append((at, value))
+    rows.sort(key=lambda row: row[0])
+    if not rows:
+        return {
+            "contract": CONTINUOUS_CONTRACT,
+            "available": False,
+            "state": "INTRADAY_YIELD_MISSING",
+            "gold_implication": "UNAVAILABLE",
+            "source": "YAHOO_FINANCE_TNX_INTRADAY_PROXY",
+            "execution_authority": False,
+            "execution_influence": False,
+        }
+
+    latest_at, latest_value = rows[-1]
+    age_seconds = max(0.0, (current - latest_at).total_seconds())
+    cutoff = current - timedelta(minutes=max(5.0, float(window_minutes)))
+    window = [(at, value) for at, value in rows if at >= cutoff]
+    if not window:
+        window = rows[-1:]
+    reference_at, reference_value = window[0]
+    high_at, high_value = max(window, key=lambda row: row[1])
+    low_at, low_value = min(window, key=lambda row: row[1])
+    net_bps = (latest_value - reference_value) * 100.0
+    rebound_from_low_bps = (latest_value - low_value) * 100.0
+    pullback_from_high_bps = (latest_value - high_value) * 100.0
+
+    stale = age_seconds > float(max_age_seconds)
+    if stale:
+        state = "INTRADAY_YIELD_STALE"
+        implication = "UNAVAILABLE"
+        available = False
+    elif net_bps >= abs(float(flat_threshold_bps)):
+        state = "INTRADAY_YIELD_UP"
+        implication = "GOLD_HEADWIND"
+        available = True
+    elif net_bps <= -abs(float(flat_threshold_bps)):
+        state = "INTRADAY_YIELD_DOWN"
+        implication = "GOLD_SUPPORT"
+        available = True
+    else:
+        state = "INTRADAY_YIELD_FLAT"
+        implication = "MIXED"
+        available = True
+
+    return {
+        "contract": CONTINUOUS_CONTRACT,
+        "available": available,
+        "state": state,
+        "gold_implication": implication,
+        "current": latest_value,
+        "current_at": latest_at.isoformat(),
+        "reference": reference_value,
+        "reference_at": reference_at.isoformat(),
+        "window_minutes": float(window_minutes),
+        "window_high": high_value,
+        "window_high_at": high_at.isoformat(),
+        "window_low": low_value,
+        "window_low_at": low_at.isoformat(),
+        "net_bps": net_bps,
+        "rebound_from_low_bps": rebound_from_low_bps,
+        "pullback_from_high_bps": pullback_from_high_bps,
+        "age_seconds": age_seconds,
+        "freshness_limit_seconds": float(max_age_seconds),
+        "sample_count": len(window),
+        "source": "YAHOO_FINANCE_TNX_INTRADAY_PROXY",
+        "source_note": (
+            "^TNX is a secondary intraday 10Y Treasury-yield proxy, not an official "
+            "Treasury/FRED intraday feed. It is context-only and may be delayed."
+        ),
+        "confidence_cap": "MEDIUM_SECONDARY_INTRADAY_SOURCE",
+        "execution_authority": False,
+        "execution_influence": False,
+    }
 
 
 def evaluate_post_event_yield_reversal(
