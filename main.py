@@ -10,9 +10,15 @@ from __future__ import annotations
 import runpy
 from pathlib import Path
 
+from fx_scanner.xau_event_dashboard_patch_v377 import (
+    install_event_macro_dashboard_patch,
+)
+
 APP = Path(__file__).resolve().with_name("streamlit_app.py")
 
 if not APP.is_file():
     raise RuntimeError(f"Streamlit dashboard implementation is missing: {APP}")
 
+# V377 changes presentation semantics only: raw event numerics remain floats/None.
+install_event_macro_dashboard_patch()
 runpy.run_path(str(APP), run_name="__main__")
