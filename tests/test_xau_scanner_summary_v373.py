@@ -15,6 +15,7 @@ def _base_sd() -> dict:
             "distance_atr": 1.85,
             "condition": "FRESH",
             "main_reversal_score": 91.48,
+            "atr": 20.0,
         },
         "market_structure": {
             "H4": {"state": "BEARISH_RANGE"},
@@ -80,7 +81,7 @@ def _macro() -> dict:
     }
 
 
-def test_v373_waits_for_main_zone_when_price_is_still_far_above_demand():
+def test_v374_waits_on_path_not_mandatory_main_touch_when_no_reaction_is_promoted():
     summary = build_scanner_summary(
         sd_eval=_base_sd(),
         friend_eval={},
@@ -88,12 +89,79 @@ def test_v373_waits_for_main_zone_when_price_is_still_far_above_demand():
         macro_eval=_macro(),
     )
 
-    assert summary["decision"]["state"] == "WAIT_FOR_ZONE_LONG"
-    assert summary["decision"]["label"] == "WAIT FOR LONG ZONE"
+    assert summary["decision"]["state"] == "WAIT_FOR_PATH_LONG"
+    assert summary["decision"]["label"] == "WAIT FOR LONG PATH"
     assert summary["main_zone_label"] == "H4 DEMAND 4,065.54–4,085.82"
+    assert summary["main_zone_role"] == "PRIMARY_HTF_FALLBACK"
     assert summary["macro"]["yield"]["daily"]["gold_bias"] == "BULLISH_XAU"
     assert summary["macro"]["yield"]["intraday"]["gold_bias"] == "UNAVAILABLE"
     assert summary["execution_authority"] is False
+
+
+def test_v374_promotes_reaction_liquidity_zone_before_main_zone_is_touched():
+    sd = _base_sd()
+    sd["price_now"] = 4112.0
+    sd["support_resistance_map"]["nearest_support"] = {
+        "price": 4112.0,
+        "band_low": 4110.0,
+        "band_high": 4114.0,
+        "current_role": "SUPPORT",
+        "lifecycle_state": "DOWNSIDE_SWEEP_LIKE_REJECTION",
+        "strength": 2.0,
+        "sources": ["H2_SWING_LOW", "ROUND_10"],
+    }
+    sd["support_resistance_map"]["levels"] = [
+        sd["support_resistance_map"]["nearest_support"]
+    ]
+    sd["liquidity_candidates"] = [
+        {"side": "SELL_SIDE", "price": 4111.10, "distance_atr": 0.04},
+    ]
+
+    summary = build_scanner_summary(
+        sd_eval=sd,
+        friend_eval={},
+        event_risk={"state": "CLEAR"},
+        macro_eval=_macro(),
+    )
+
+    assert summary["decision"]["state"] == "EARLY_REACTION_LONG"
+    assert summary["decision"]["label"] == "EARLY LONG • REACTION"
+    assert summary["decision"]["entry_gate"] == "REACTION_EARLY_CANDIDATE"
+    assert summary["reaction_interceptor"]["promoted"] is True
+    assert summary["active_reversal_candidate"]["low"] == 4110.0
+    assert summary["main_zone_role"] == "DEEP_FALLBACK_NOT_MANDATORY_TOUCH"
+    assert summary["entry"]["reaction_early_low"] == 4110.0
+    assert summary["entry"]["reaction_early_high"] == 4114.0
+
+
+def test_v374_does_not_chase_after_promoted_reaction_has_already_moved_far():
+    sd = _base_sd()
+    sd["price_now"] = 4130.0
+    support = {
+        "price": 4112.0,
+        "band_low": 4110.0,
+        "band_high": 4114.0,
+        "current_role": "SUPPORT",
+        "lifecycle_state": "DOWNSIDE_SWEEP_LIKE_REJECTION",
+        "strength": 2.0,
+    }
+    sd["support_resistance_map"]["nearest_support"] = support
+    sd["support_resistance_map"]["levels"] = [support]
+    sd["liquidity_candidates"] = [
+        {"side": "SELL_SIDE", "price": 4111.10, "distance_atr": 0.04},
+    ]
+
+    summary = build_scanner_summary(
+        sd_eval=sd,
+        friend_eval={},
+        event_risk={"state": "CLEAR"},
+        macro_eval=_macro(),
+    )
+
+    assert summary["decision"]["state"] == "NO_CHASE"
+    assert summary["decision"]["label"] == "MOVE MISSED • NO CHASE"
+    assert summary["decision"]["entry_gate"] == "NO_CHASE"
+    assert summary["reaction_interceptor"]["no_chase"] is True
 
 
 def test_v373_ready_long_requires_micro_confirmation_and_geometry():

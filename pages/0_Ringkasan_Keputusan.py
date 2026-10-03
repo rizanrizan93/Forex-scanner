@@ -31,6 +31,17 @@ def zone_label(zone: dict[str, Any]) -> str:
     return f"{zone.get('timeframe','HTF')} {kind} {px(zone.get('low'))}–{px(zone.get('high'))}"
 
 
+def candidate_label(candidate: dict[str, Any], direction: str) -> str:
+    if not candidate:
+        return "—"
+    low = candidate.get("low")
+    high = candidate.get("high")
+    if low is None or high is None:
+        return zone_label(candidate)
+    kind = "REACTION DEMAND" if direction == "LONG" else "REACTION SUPPLY"
+    return f"{kind} {px(low)}–{px(high)}"
+
+
 def bias_label(value: Any) -> str:
     labels = {
         "BULLISH_XAU": "BULLISH XAU",
@@ -64,8 +75,8 @@ def event_risk(hb: dict[str, Any]) -> dict[str, Any]:
 st.set_page_config(page_title="RIZAN Decision Summary", page_icon="🎯", layout="wide")
 st.title("RIZAN — Ringkasan Keputusan Scanner")
 st.caption(
-    "Satu halaman untuk membaca keputusan scanner dari struktur XAU, MAIN zone, liquidity, S/R, "
-    "macro, US10Y daily/intraday, event, micro confirmation, entry, SL dan destination."
+    "Satu halaman untuk membaca keputusan scanner. V374 dapat mempromosikan reaction/liquidity area "
+    "menjadi reversal candidate sebelum MAIN HTF disentuh, sehingga full MSS tidak selalu menjadi trigger pertama."
 )
 
 try:
@@ -97,6 +108,8 @@ summary = build_scanner_summary(
 
 decision = d(summary.get("decision"))
 main_zone = d(summary.get("main_zone"))
+reaction = d(summary.get("reaction_interceptor"))
+active_candidate = d(summary.get("active_reversal_candidate"))
 entry = d(summary.get("entry"))
 macro_summary = d(summary.get("macro"))
 yield_summary = d(macro_summary.get("yield"))
@@ -109,11 +122,12 @@ destination = d(summary.get("destination"))
 primary_destination = d(destination.get("primary"))
 terminal_destination = d(destination.get("terminal"))
 sr = d(summary.get("support_resistance"))
+direction = str(decision.get("direction") or "WAIT")
 
 st.markdown("## Keputusan scanner sekarang")
 a, b, c, e = st.columns(4)
 a.metric("Keputusan", str(decision.get("label") or "WAIT"))
-b.metric("Arah", str(decision.get("direction") or "WAIT"))
+b.metric("Arah", direction)
 c.metric("Harga", px(summary.get("price")))
 e.metric("Context", str(decision.get("context_alignment") or "UNAVAILABLE"))
 
@@ -129,22 +143,48 @@ else:
     st.info("**ACTION:** " + action)
 
 st.caption(
-    "Ringkasan V373 tidak membuat order sendiri. Otoritas struktur tetap V342; macro/event/yield adalah "
-    "context, dan V343 hanya secondary evidence."
+    "V374 merangkum dan mengintersep reversal lebih awal, tetapi tidak menambah live execution authority. "
+    "MAIN HTF adalah fallback struktural; reaction zone dapat mengambil alih bila evidence causal cukup."
 )
 
-st.markdown("## 1 • Struktur & lokasi")
+st.markdown("## 1 • Struktur & active reversal candidate")
 s1, s2, s3, s4 = st.columns(4)
 s1.metric("H4", str(d(summary.get("structure")).get("H4") or "—"))
 s2.metric("H1", str(d(summary.get("structure")).get("H1") or "—"))
-s3.metric("MAIN zone", zone_label(main_zone))
-s4.metric("Posisi vs zone", str(summary.get("zone_location") or "—"))
+s3.metric(
+    "Active candidate",
+    candidate_label(active_candidate, direction) if reaction.get("promoted") else zone_label(active_candidate),
+)
+s4.metric("MAIN HTF fallback", zone_label(main_zone))
 st.caption(
     "Distance MAIN zone: "
     + ("—" if summary.get("distance_atr") is None else f"{float(summary.get('distance_atr')):.2f} ATR")
-    + " • MAIN score="
-    + ("—" if main_zone.get("main_reversal_score") is None else f"{float(main_zone.get('main_reversal_score')):.1f}")
+    + " • MAIN role="
+    + str(summary.get("main_zone_role") or "PRIMARY_HTF_FALLBACK")
 )
+
+if reaction.get("promoted"):
+    candidate = d(reaction.get("candidate"))
+    liq_near = list(reaction.get("nearby_liquidity") or [])
+    st.warning(
+        "**Reaction zone promoted:** "
+        + candidate_label(candidate, direction)
+        + " • state="
+        + str(reaction.get("state") or "—")
+        + " • lifecycle="
+        + str(candidate.get("lifecycle_state") or "—")
+        + " • score="
+        + str(candidate.get("score") or "—")
+    )
+    if liq_near:
+        st.caption(
+            "Liquidity pendukung • "
+            + " | ".join(f"{row.get('side','—')} {px(row.get('price'))}" for row in liq_near)
+        )
+    st.caption(
+        "MAIN HTF tidak dibatalkan; ia menjadi deep fallback jika reaction candidate gagal. "
+        "Jika reaction sudah bergerak > batas no-chase tanpa entry, scanner tidak mengejar harga."
+    )
 
 st.markdown("## 2 • Macro, US10Y & event")
 m1, m2, m3, m4 = st.columns(4)
@@ -188,14 +228,28 @@ if liq:
     )
 
 st.markdown("## 4 • Entry, SL & target")
+reaction_low = entry.get("reaction_early_low")
+reaction_high = entry.get("reaction_early_high")
+reaction_sl = entry.get("reaction_invalidation")
 e1, e2, e3, e4 = st.columns(4)
 e1.metric(
-    "PREPARE area",
+    "Early reaction band",
+    f"{px(reaction_low)}–{px(reaction_high)}" if reaction_low is not None and reaction_high is not None else "—",
+)
+e2.metric(
+    "MAIN PREPARE",
     f"{px(entry.get('prepared_low'))}–{px(entry.get('prepared_high'))}",
 )
-e2.metric("Confirm ref", px(entry.get("confirmation_reference")))
-e3.metric("Invalidation / SL", px(entry.get("invalidation")))
+e3.metric(
+    "Invalidation / SL ref",
+    px(reaction_sl if reaction_sl is not None else entry.get("invalidation")),
+)
 e4.metric("Entry gate", str(decision.get("entry_gate") or "WAIT"))
+
+st.caption(
+    "Early layer: sweep/rejection/role-flip + liquidity dapat memicu EARLY WATCH/REACTION sebelum full MSS. "
+    "Full MSS/displacement tetap digunakan untuk confirmation/add-on. Jika harga sudah lari, status berubah NO CHASE dan menunggu retest/refined pocket."
+)
 
 published_targets = list(entry.get("targets") or [])
 if published_targets:
@@ -230,7 +284,7 @@ with st.expander("Secondary evidence — Micro Entry Reconstruction"):
 
 st.markdown("## Cara pakai halaman ini")
 st.write(
-    "Baca dari atas: **Keputusan → Struktur/MAIN zone → Macro/US10Y → S/R & liquidity → "
-    "Entry gate → SL/TP**. Jika keputusan masih WAIT/PREPARE, jangan memperlakukan forecast sebagai entry. "
-    "READY baru muncul setelah konfirmasi microstructure dan geometry tersedia."
+    "Urutan baca: **Keputusan → Active candidate → MAIN fallback → Macro/US10Y → S/R/liquidity → Entry gate → SL/TP**. "
+    "REACTION WATCH berarti area dekat sedang diuji. EARLY REACTION berarti area tersebut sudah dipromosikan tanpa menunggu MAIN atau full MSS. "
+    "READY adalah confirmation penuh. NO CHASE berarti jangan mengejar jika entry awal terlewat; tunggu retest atau setup berikutnya."
 )
