@@ -24,6 +24,27 @@ def px(value: Any) -> str:
     return "—" if number is None else f"{number:,.2f}"
 
 
+def yield_pct(value: Any) -> str:
+    number = f(value)
+    return "BELUM TERSEDIA" if number is None else f"{number:.3f}%"
+
+
+def bps(value: Any) -> str:
+    number = f(value)
+    if number is None:
+        return "—"
+    return f"{number:+.1f} bp"
+
+
+def age_label(value: Any) -> str:
+    seconds = f(value)
+    if seconds is None:
+        return "—"
+    if seconds < 60:
+        return f"{seconds:.0f} dtk"
+    return f"{seconds / 60.0:.1f} mnt"
+
+
 def zone_label(zone: dict[str, Any]) -> str:
     if not zone:
         return "—"
@@ -75,9 +96,9 @@ def event_risk(hb: dict[str, Any]) -> dict[str, Any]:
 st.set_page_config(page_title="RIZAN Decision Summary", page_icon="🎯", layout="wide")
 st.title("RIZAN — Ringkasan Keputusan Scanner")
 st.caption(
-    "Satu halaman untuk membaca keputusan scanner. V376 menambahkan regime, fungsi zona, "
-    "acceptance/rejection, M30 internal structure, dan response timer di atas V342. "
-    "DEMO boleh dieksekusi oleh lane yang sudah berizin; LIVE tetap keputusan manual."
+    "Satu halaman untuk membaca keputusan scanner. V378 menambahkan Decision Confidence berbasis evidence "
+    "serta menampilkan US10Y FRED daily dan pressure intraday secara langsung. "
+    "Score adalah kualitas evidence, bukan probabilitas menang. LIVE tetap keputusan manual."
 )
 
 try:
@@ -108,6 +129,7 @@ summary = build_scanner_summary(
 )
 
 decision = d(summary.get("decision"))
+decision_confidence = d(summary.get("decision_confidence"))
 main_zone = d(summary.get("main_zone"))
 reaction = d(summary.get("reaction_interceptor"))
 active_candidate = d(summary.get("active_reversal_candidate"))
@@ -149,9 +171,43 @@ elif state in {"WAIT_NEWS", "NO_CHASE", "REBUILD"}:
 else:
     st.info("**ACTION:** " + action)
 
+st.markdown("### V378 Decision Confidence")
+if decision_confidence:
+    dc1, dc2, dc3, dc4 = st.columns(4)
+    dc1.metric("Evidence score", f"{float(decision_confidence.get('evidence_score') or 0):.1f}/100")
+    dc2.metric("Confidence band", str(decision_confidence.get("confidence_band") or "LOW"))
+    dc3.metric("Evidence coverage", f"{float(decision_confidence.get('coverage_pct') or 0):.0f}%")
+    dc4.metric("Arah yang dinilai", str(decision_confidence.get("direction") or "WAIT"))
+    st.caption("Decision Confidence mengukur kualitas dan keselarasan evidence; bukan calibrated win probability dan bukan trigger entry mandiri.")
+    components = list(decision_confidence.get("components") or [])
+    if components:
+        st.dataframe(
+            [
+                {
+                    "Komponen": row.get("name"),
+                    "Bobot": row.get("weight"),
+                    "Score": row.get("score"),
+                    "Kontribusi": row.get("contribution"),
+                    "Available": row.get("available"),
+                    "State": row.get("state"),
+                }
+                for row in components
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+    conflicts = list(decision_confidence.get("conflicting_factors") or [])
+    missing = list(decision_confidence.get("missing_evidence") or [])
+    if conflicts:
+        st.warning("Conflict evidence • " + " | ".join(str(x) for x in conflicts))
+    if missing:
+        st.caption("Evidence belum tersedia • " + " | ".join(str(x) for x in missing))
+else:
+    st.info("V378 Decision Confidence belum tersedia pada snapshot ini. Tunggu heartbeat baru setelah deployment.")
+
 st.caption(
     "MAIN HTF tetap menjadi anchor struktural. Reaction candidate dapat dipromosikan lebih awal, "
-    "tetapi V376 sekarang dapat memblokir DEMO jika completed-bar evidence menunjukkan thesis aktif gagal."
+    "tetapi V376 dapat memblokir DEMO jika completed-bar evidence menunjukkan thesis aktif gagal."
 )
 
 st.markdown("## 1 • Struktur & active reversal candidate")
@@ -286,20 +342,70 @@ else:
 st.markdown("## 3 • Macro, US10Y & event")
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Broader macro", bias_label(macro_summary.get("broader_bias")))
-m2.metric("US10Y Daily", bias_label(daily_yield.get("gold_bias")))
-m3.metric("US10Y Intraday", bias_label(intraday_yield.get("gold_bias")))
+m2.metric("US10Y FRED Daily", yield_pct(daily_yield.get("current")), delta=bps(daily_yield.get("delta_bps")))
+m3.metric("US10Y Intraday ^TNX", yield_pct(intraday_yield.get("current")), delta=bps(intraday_yield.get("net_bps")))
 m4.metric("Yield alignment", str(yield_summary.get("alignment") or "UNAVAILABLE"))
+
+fy1, fy2 = st.columns(2)
+with fy1:
+    st.markdown("**FRED US10Y daily (DGS10)**")
+    st.write(
+        {
+            "state": daily_yield.get("state") or "UNAVAILABLE",
+            "current": yield_pct(daily_yield.get("current")),
+            "previous": yield_pct(daily_yield.get("previous")),
+            "daily_change": bps(daily_yield.get("delta_bps")),
+            "gold_bias": bias_label(daily_yield.get("gold_bias")),
+            "freshness": daily_yield.get("freshness") or "UNAVAILABLE",
+            "observed_at": daily_yield.get("observed_at") or "BELUM TERSEDIA",
+            "source": daily_yield.get("source") or "FEDERAL_RESERVE_FRED",
+            "series": daily_yield.get("series") or "DGS10",
+        }
+    )
+with fy2:
+    st.markdown("**US10Y intraday timing (^TNX secondary proxy)**")
+    st.write(
+        {
+            "state": intraday_yield.get("state") or "UNAVAILABLE",
+            "current": yield_pct(intraday_yield.get("current")),
+            "reference": yield_pct(intraday_yield.get("reference")),
+            "window_change": bps(intraday_yield.get("net_bps")),
+            "window_minutes": intraday_yield.get("window_minutes") or "—",
+            "gold_bias": bias_label(intraday_yield.get("gold_bias")),
+            "age": age_label(intraday_yield.get("age_seconds")),
+            "source": intraday_yield.get("source") or "INTRADAY_SECONDARY_PROXY",
+            "available": bool(intraday_yield.get("available")),
+        }
+    )
+    if not intraday_yield.get("available"):
+        st.warning("US10Y intraday belum fresh/tersedia. Jangan gunakan intraday yield sebagai timing trigger sampai feed kembali valid.")
+    post_event = d(intraday_yield.get("post_event_diagnostic"))
+    if post_event:
+        st.caption(
+            "Post-event diagnostic • "
+            + str(post_event.get("state") or "UNAVAILABLE")
+            + " • net release="
+            + bps(post_event.get("net_from_release_bps"))
+            + " • rebound="
+            + bps(post_event.get("rebound_from_low_bps"))
+        )
+
+st.caption(str(yield_summary.get("decision_note") or "Yield adalah context/timing evidence, bukan trigger entry mandiri."))
 
 if latest_event:
     st.write(
         "**Rilis terakhir:** "
         + str(latest_event.get("title") or "—")
         + " • Actual="
-        + str(latest_event.get("actual") if latest_event.get("actual") is not None else "—")
+        + str(latest_event.get("actual") if latest_event.get("actual") is not None else "BELUM TERSEDIA")
         + " • Forecast="
-        + str(latest_event.get("forecast") if latest_event.get("forecast") is not None else "—")
+        + str(latest_event.get("forecast") if latest_event.get("forecast") is not None else "BELUM ADA KONSENSUS")
         + " • bias="
         + bias_label(latest_event.get("gold_bias"))
+        + " • data="
+        + str(latest_event.get("data_confidence") or "UNAVAILABLE")
+        + " • arah="
+        + str(latest_event.get("direction_confidence") or "UNAVAILABLE")
     )
 if next_event:
     st.caption(
@@ -344,8 +450,7 @@ e3.metric(
 e4.metric("Entry gate", str(decision.get("entry_gate") or "WAIT"))
 
 st.caption(
-    "V376 tidak membuat entry baru sendiri. Ia menambah fungsi zona, acceptance/rejection, M30, "
-    "dan response timer; hard block hanya ketika completed-bar evidence menunjukkan thesis aktif gagal. "
+    "V378 Decision Confidence tidak membuat entry baru. V376 tetap menangani regime/zone-role/acceptance/M30/response timer. "
     "SL tetap structural dan TP mengikuti S/R/liquidity → opposing H1/H4."
 )
 
@@ -371,6 +476,11 @@ if behavior:
     st.write("• V376 acceptance/rejection: " + str(behavior_acceptance.get("state") or "UNKNOWN"))
     st.write("• V376 M30: " + str(behavior_m30.get("state") or "UNKNOWN"))
     st.write("• V376 response: " + str(behavior_response.get("state") or "NOT_STARTED"))
+if decision_confidence:
+    for factor in list(decision_confidence.get("supporting_factors") or []):
+        st.write("• V378 support: " + str(factor))
+    for factor in list(decision_confidence.get("conflicting_factors") or []):
+        st.write("• V378 conflict: " + str(factor))
 
 friend_evidence = d(summary.get("friend_evidence"))
 with st.expander("Secondary evidence — Micro Entry Reconstruction"):
@@ -388,8 +498,8 @@ with st.expander("Secondary evidence — Micro Entry Reconstruction"):
 
 st.markdown("## Cara pakai halaman ini")
 st.write(
-    "Urutan baca: **Keputusan → Regime → Zone role → Expected path → Acceptance/Rejection → M30 → "
-    "M15/M5 confirmation → Response timer → Entry gate → Structural SL/TP**. "
+    "Urutan baca: **Keputusan → Decision Confidence → Regime → Zone role → Expected path → Acceptance/Rejection → "
+    "US10Y FRED/intraday → M30 → M15/M5 confirmation → Response timer → Entry gate → Structural SL/TP**. "
     "Untuk akun LIVE, halaman ini adalah decision support: order tetap manual. "
-    "Untuk DEMO, behavioral hard-failure dapat memveto candidate, tetapi V376 sendiri tidak menciptakan order baru."
+    "Untuk DEMO, behavioral hard-failure dapat memveto candidate, tetapi V378 score sendiri belum menjadi execution gate."
 )

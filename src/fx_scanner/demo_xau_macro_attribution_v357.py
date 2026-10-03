@@ -8,6 +8,7 @@ from .providers.factory import build_provider_runtime
 from .providers.semantics import ProviderStatus
 from .storage.supabase_operational import SupabaseOperationalStore
 from .xau_intraday_yield_v367 import (
+    evaluate_intraday_yield_pressure,
     evaluate_post_event_yield_reversal,
     fetch_intraday_us10y,
     select_latest_post_release_event,
@@ -124,7 +125,6 @@ def _cross_asset_row(result: Any, *, kind: str) -> dict[str, Any]:
     }
 
 
-
 MACRO_COMPONENT_DASHBOARD_KEYS = (
     "freshness",
     "current",
@@ -147,6 +147,7 @@ def build_dashboard_projection(evaluation: dict[str, Any]) -> dict[str, Any]:
             if key in row
         }
     fed_proxy = dict(evaluation.get("fed_repricing_proxy") or {})
+    intraday = dict(evaluation.get("intraday_yield_context") or {})
     return {
         "state": evaluation.get("state"),
         "broader_macro_bias": evaluation.get("broader_macro_bias"),
@@ -161,25 +162,26 @@ def build_dashboard_projection(evaluation: dict[str, Any]) -> dict[str, Any]:
         "post_event_gold_pressure": evaluation.get("post_event_gold_pressure"),
         "event_intraday_relationship": evaluation.get("event_intraday_relationship"),
         "intraday_yield_context": {
-            key: dict(evaluation.get("intraday_yield_context") or {}).get(key)
+            key: intraday.get(key)
             for key in (
                 "available",
                 "state",
                 "gold_implication",
-                "event",
-                "event_at",
-                "yield_at_release",
-                "post_event_low",
-                "post_event_low_at",
                 "current",
                 "current_at",
-                "initial_drop_bps",
+                "reference",
+                "reference_at",
+                "window_minutes",
+                "window_high",
+                "window_low",
+                "net_bps",
                 "rebound_from_low_bps",
-                "net_from_release_bps",
+                "pullback_from_high_bps",
                 "age_seconds",
                 "source",
+                "post_event_diagnostic",
             )
-            if key in dict(evaluation.get("intraday_yield_context") or {})
+            if key in intraday
         },
         "fed_repricing_proxy": {
             key: fed_proxy.get(key)
@@ -189,6 +191,7 @@ def build_dashboard_projection(evaluation: dict[str, Any]) -> dict[str, Any]:
         "execution_authority": bool(evaluation.get("execution_authority", False)),
         "execution_influence": bool(evaluation.get("execution_influence", False)),
     }
+
 
 def run() -> int:
     now = datetime.now(tz=UTC)
@@ -236,7 +239,7 @@ def run() -> int:
     )
     intraday_yield: dict[str, Any]
     intraday_source_status = "DISABLED"
-    if bool(intraday_cfg.get("enabled", False)) and anchor:
+    if bool(intraday_cfg.get("enabled", False)):
         try:
             points = fetch_intraday_us10y(
                 base_url=str(intraday_cfg["base_url"]),
@@ -247,24 +250,31 @@ def run() -> int:
                     dict(cfg.providers.get("transport") or {}).get("timeout_seconds") or 10.0
                 ),
             )
-            intraday_yield = evaluate_post_event_yield_reversal(
+            intraday_yield = evaluate_intraday_yield_pressure(
                 points,
-                event=anchor,
                 now=now,
                 max_age_seconds=float(intraday_cfg.get("max_age_seconds") or 1200.0),
-                minimum_initial_drop_bps=float(
-                    intraday_cfg.get("minimum_initial_drop_bps") or 1.5
-                ),
-                reversal_threshold_bps=float(
-                    intraday_cfg.get("reversal_threshold_bps") or 3.0
-                ),
-                strong_reversal_threshold_bps=float(
-                    intraday_cfg.get("strong_reversal_threshold_bps") or 5.0
-                ),
+                window_minutes=float(intraday_cfg.get("pressure_window_minutes") or 120.0),
+                flat_threshold_bps=float(intraday_cfg.get("flat_threshold_bps") or 1.0),
             )
-            intraday_source_status = (
-                "OK:" + str(intraday_yield.get("state") or "UNKNOWN")
-            )
+            if anchor:
+                post_event = evaluate_post_event_yield_reversal(
+                    points,
+                    event=anchor,
+                    now=now,
+                    max_age_seconds=float(intraday_cfg.get("max_age_seconds") or 1200.0),
+                    minimum_initial_drop_bps=float(
+                        intraday_cfg.get("minimum_initial_drop_bps") or 1.5
+                    ),
+                    reversal_threshold_bps=float(
+                        intraday_cfg.get("reversal_threshold_bps") or 3.0
+                    ),
+                    strong_reversal_threshold_bps=float(
+                        intraday_cfg.get("strong_reversal_threshold_bps") or 5.0
+                    ),
+                )
+                intraday_yield["post_event_diagnostic"] = post_event
+            intraday_source_status = "OK:" + str(intraday_yield.get("state") or "UNKNOWN")
         except Exception as exc:
             intraday_yield = {
                 "available": False,
@@ -276,23 +286,15 @@ def run() -> int:
                 "execution_influence": False,
             }
             intraday_source_status = f"ERROR:{type(exc).__name__}:{exc}"
-    elif anchor:
+    else:
         intraday_yield = {
             "available": False,
             "state": "INTRADAY_YIELD_DISABLED",
             "gold_implication": "UNAVAILABLE",
+            "source": "YAHOO_FINANCE_TNX_INTRADAY_PROXY",
             "execution_authority": False,
             "execution_influence": False,
         }
-    else:
-        intraday_yield = {
-            "available": False,
-            "state": "NO_POST_RELEASE_EVENT_ANCHOR",
-            "gold_implication": "UNAVAILABLE",
-            "execution_authority": False,
-            "execution_influence": False,
-        }
-        intraday_source_status = "NO_POST_RELEASE_EVENT_ANCHOR"
 
     evaluation = evaluate_broader_macro_bias(
         cross_asset=cross_asset,
