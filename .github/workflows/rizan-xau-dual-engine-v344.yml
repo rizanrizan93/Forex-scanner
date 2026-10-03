@@ -9,13 +9,17 @@ on:
       - "src/fx_scanner/xau_structural_sr_map_v363.py"
       - "src/fx_scanner/xau_friend_entry_engine_v343.py"
       - "src/fx_scanner/xau_news_zone_v346.py"
+      - "src/fx_scanner/xau_reaction_interceptor_v374.py"
       - "src/fx_scanner/demo_xau_v351_executor.py"
+      - "src/fx_scanner/demo_xau_v375_reaction_executor.py"
       - "tests/test_xau_sd_liquidity_engine_v342.py"
       - "tests/test_xau_structural_sr_map_v363.py"
       - "tests/test_v363_structural_sr_dashboard.py"
       - "tests/test_xau_friend_entry_engine_v343.py"
       - "tests/test_xau_news_zone_v346.py"
+      - "tests/test_xau_reaction_interceptor_v374.py"
       - "tests/test_demo_xau_v351_executor.py"
+      - "tests/test_demo_xau_v375_reaction_executor.py"
       - ".github/workflows/rizan-xau-dual-engine-v344.yml"
   schedule:
     # Low-frequency fallback only; continuous self-handoff is primary.
@@ -28,6 +32,7 @@ on:
       - "src/fx_scanner/xau_friend_entry_engine_v343.py"
       - "src/fx_scanner/xau_news_zone_source_v346.py"
       - "src/fx_scanner/xau_news_zone_v346.py"
+      - "src/fx_scanner/xau_reaction_interceptor_v374.py"
       - "src/fx_scanner/demo_xau_event_risk_v192.py"
       - "src/fx_scanner/xau_macro_attribution_v357.py"
       - "src/fx_scanner/xau_intraday_yield_v367.py"
@@ -36,6 +41,7 @@ on:
       - "config/providers.yaml"
       - "src/fx_scanner/demo_xau_dual_engine_runtime_v344.py"
       - "src/fx_scanner/demo_xau_v351_executor.py"
+      - "src/fx_scanner/demo_xau_v375_reaction_executor.py"
       - "src/fx_scanner/xau_dual_engine_dashboard_v344.py"
       - "streamlit_app.py"
       - "tests/test_xau_sd_liquidity_engine_v342.py"
@@ -43,7 +49,9 @@ on:
       - "tests/test_v363_structural_sr_dashboard.py"
       - "tests/test_xau_friend_entry_engine_v343.py"
       - "tests/test_xau_news_zone_v346.py"
+      - "tests/test_xau_reaction_interceptor_v374.py"
       - "tests/test_demo_xau_v351_executor.py"
+      - "tests/test_demo_xau_v375_reaction_executor.py"
       - "tests/test_xau_macro_attribution_v357.py"
       - "tests/test_xau_intraday_yield_v367.py"
       - ".github/workflows/rizan-xau-dual-engine-v344.yml"
@@ -95,15 +103,19 @@ jobs:
           python - <<'PY'
           import fx_scanner.demo_xau_dual_engine_runtime_v344
           import fx_scanner.demo_xau_v351_executor
-          print("V364_RUNTIME_IMPORT_SMOKE_OK")
+          import fx_scanner.demo_xau_v375_reaction_executor
+          import fx_scanner.xau_reaction_interceptor_v374
+          print("V375_RUNTIME_IMPORT_SMOKE_OK")
           PY
-      - name: Run V364 reversal-entry regressions
+      - name: Run V375 reversal-entry regressions
         run: |
           pytest -q \
             tests/test_xau_sd_liquidity_engine_v342.py \
             tests/test_xau_friend_entry_engine_v343.py \
             tests/test_xau_news_zone_v346.py \
+            tests/test_xau_reaction_interceptor_v374.py \
             tests/test_demo_xau_v351_executor.py \
+            tests/test_demo_xau_v375_reaction_executor.py \
             tests/test_xau_macro_attribution_v357.py \
             tests/test_xau_intraday_yield_v367.py
       - name: Validate configuration
@@ -115,7 +127,7 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_existing_protection_repair
 
-      - name: Run continuous V342 forecast + V351 DEMO execution
+      - name: Run continuous V342 forecast + V375 DEMO reaction execution
         if: ${{ github.event_name != 'pull_request' }}
         shell: bash
         run: |
@@ -124,7 +136,7 @@ jobs:
           cycle=0
           while [ $(date +%s) -lt "$end_epoch" ]; do
             cycle=$((cycle + 1))
-            echo "V353_CONTINUOUS_CYCLE cycle=$cycle at=$(date -u +%FT%TZ)"
+            echo "V375_CONTINUOUS_CYCLE cycle=$cycle at=$(date -u +%FT%TZ)"
             if [ "$cycle" -eq 1 ] || [ $((cycle % 5)) -eq 0 ]; then
               python -m fx_scanner.demo_xau_event_risk_v192 || echo "V192_EVENT_REFRESH_RETRY_NEXT_WINDOW rc=$?"
             fi
@@ -134,7 +146,7 @@ jobs:
             runtime_rc=0
             python -m fx_scanner.demo_xau_dual_engine_runtime_v344 || runtime_rc=$?
             if [ "$runtime_rc" -eq 0 ]; then
-              python -m fx_scanner.demo_xau_v351_executor || echo "V351_EXECUTOR_RETRY_NEXT_CYCLE rc=$?"
+              python -m fx_scanner.demo_xau_v375_reaction_executor || echo "V375_EXECUTOR_RETRY_NEXT_CYCLE rc=$?"
             else
               echo "V344_RUNTIME_RETRY_NEXT_CYCLE rc=$runtime_rc"
             fi
