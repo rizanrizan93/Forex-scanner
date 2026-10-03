@@ -117,25 +117,33 @@ def test_v377_heartbeat_transform_is_display_only_and_covers_all_event_slots():
 
 def test_v377_worker_wrapper_adds_metadata_without_changing_numeric_payload():
     from fx_scanner import demo_xau_event_risk_v192 as base
-    from fx_scanner.demo_xau_event_risk_v377 import CONTRACT as WORKER_CONTRACT
-    from fx_scanner.demo_xau_event_risk_v377 import install_v377
+    from fx_scanner import demo_xau_event_risk_v377 as wrapper
 
-    install_v377()
-    at = datetime.now(tz=UTC) + timedelta(days=1)
-    event = base.RiskEvent(
-        event_id="cpi",
-        title="Consumer Price Index",
-        scheduled_at=at,
-        impact="HIGH",
-        category="CPI",
-        source="BLS_OFFICIAL_ICS",
-        source_tier="OFFICIAL",
-        source_url="https://www.bls.gov/example",
-    )
-    payload = event.as_dict()
-    assert base.CONTRACT == WORKER_CONTRACT
-    assert payload["actual"] is None
-    assert payload["forecast"] is None
-    assert payload["previous"] is None
-    assert payload["data_confidence"] == "LOW"
-    assert payload["direction_confidence"] == "UNAVAILABLE"
+    original_method = base.RiskEvent.as_dict
+    original_contract = base.CONTRACT
+    original_installed = wrapper._INSTALLED
+    try:
+        wrapper._INSTALLED = False
+        wrapper.install_v377()
+        at = datetime.now(tz=UTC) + timedelta(days=1)
+        event = base.RiskEvent(
+            event_id="cpi",
+            title="Consumer Price Index",
+            scheduled_at=at,
+            impact="HIGH",
+            category="CPI",
+            source="BLS_OFFICIAL_ICS",
+            source_tier="OFFICIAL",
+            source_url="https://www.bls.gov/example",
+        )
+        payload = event.as_dict()
+        assert base.CONTRACT == wrapper.CONTRACT
+        assert payload["actual"] is None
+        assert payload["forecast"] is None
+        assert payload["previous"] is None
+        assert payload["data_confidence"] == "LOW"
+        assert payload["direction_confidence"] == "UNAVAILABLE"
+    finally:
+        base.RiskEvent.as_dict = original_method
+        base.CONTRACT = original_contract
+        wrapper._INSTALLED = original_installed
