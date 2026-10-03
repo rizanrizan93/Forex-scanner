@@ -1363,30 +1363,43 @@ def _select_parent_and_refinement(
         row["main_reversal_distance_atr"] = profile["distance_atr"]
         profiled.append(row)
 
-    eligible_h4 = [
-        z for z in profiled
-        if z.get("timeframe") == "H4" and z.get("main_reversal_eligible")
-    ]
-    eligible_h1 = [
-        z for z in profiled
-        if z.get("timeframe") == "H1" and z.get("main_reversal_eligible")
-    ]
-    source = eligible_h4 if eligible_h4 else eligible_h1
+    source = [z for z in profiled if z.get("main_reversal_eligible")]
     if not source:
         return {}, {}, "NO_MAIN_REVERSAL_ELIGIBLE"
 
-    # The next actionable zone is the nearest high-quality eligible zone.
-    # Inside/near zones are prioritized; quality breaks ties so a degraded
-    # nearby zone can never override a fresh causal parent.
+    # V376 challenger: do not hard-code H4 precedence. Rank H4 and H1 together
+    # using only information causally available at as_of. A modest H4 prior
+    # preserves parent context without allowing timeframe alone to override a
+    # materially stronger/closer H1 reversal zone.
+    def _selector_score(z: dict[str, Any]) -> float:
+        distance = float(z.get("main_reversal_distance_atr") or 0.0)
+        quality = float(z.get("main_reversal_score") or 0.0)
+        raw = float(z.get("score") or 0.0)
+        life = dict(z.get("lifecycle") or {})
+        mitigation = float(life.get("mitigation_depth") or 0.0)
+        touches = int(life.get("touch_count") or 0)
+        tf_prior = 4.0 if z.get("timeframe") == "H4" else 0.0
+        hierarchy = str(z.get("hierarchy_role") or "")
+        hierarchy_bonus = 5.0 if hierarchy == "H1_REFINEMENT" else 0.0
+        return (
+            quality
+            + 0.20 * raw
+            + tf_prior
+            + hierarchy_bonus
+            - 12.0 * distance
+            - 10.0 * mitigation
+            - 2.0 * touches
+        )
+
     candidates = sorted(
         source,
         key=lambda z: (
+            -_selector_score(z),
             float(z.get("main_reversal_distance_atr") or 0.0),
-            -float(z.get("main_reversal_score") or 0.0),
-            -float(z.get("score") or 0.0),
         ),
     )
     parent = dict(candidates[0])
+    parent["selector_score_v376"] = round(_selector_score(parent), 4)
 
     refinement: dict[str, Any] = {}
     if parent.get("timeframe") == "H4":
@@ -1415,9 +1428,9 @@ def _select_parent_and_refinement(
             refinement = dict(children[0][4])
 
     selection = (
-        "H4_PARENT"
+        "V376_CAUSAL_RANK_H4"
         if parent.get("timeframe") == "H4"
-        else "H1_FALLBACK_NO_H4"
+        else "V376_CAUSAL_RANK_H1"
     )
     return parent, refinement, selection
 
