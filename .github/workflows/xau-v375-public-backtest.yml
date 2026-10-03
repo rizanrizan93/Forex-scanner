@@ -1,37 +1,25 @@
 name: XAU V375 Public M1 Backtest
 
 on:
-  workflow_dispatch:
-    inputs:
-      start:
-        description: Start date UTC
-        required: false
-        default: "2025-01-01"
-      end:
-        description: End date UTC
-        required: false
-        default: "2025-12-31"
-      step_minutes:
-        description: Replay scan cadence in minutes
-        required: false
-        default: "60"
   push:
     branches: [research-v375-public-backtest]
     paths:
       - "research/xau_v375_public_m1_replay.py"
       - ".github/workflows/xau-v375-public-backtest.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  pilot-2025:
+  backtest-year:
     runs-on: ubuntu-latest
     timeout-minutes: 180
-    env:
-      START: ${{ github.event_name == 'workflow_dispatch' && inputs.start || '2025-01-01' }}
-      END: ${{ github.event_name == 'workflow_dispatch' && inputs.end || '2025-12-31' }}
-      STEP: ${{ github.event_name == 'workflow_dispatch' && inputs.step_minutes || '60' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -44,27 +32,32 @@ jobs:
           pip install -r requirements-research-cloud.txt
       - name: Run causal V375 public-M1 replay
         run: |
+          if [ "${{ matrix.year }}" = "2026" ]; then
+            END="2026-10-03"
+          else
+            END="${{ matrix.year }}-12-31"
+          fi
           python research/xau_v375_public_m1_replay.py \
-            --start "${START}" \
-            --end "${END}" \
-            --step-minutes "${STEP}" \
+            --start "${{ matrix.year }}-01-01" \
+            --end "$END" \
+            --step-minutes "60" \
             --spread 0.30 \
             --entry-slippage 0.05 \
             --stop-slippage 0.10 \
-            --output research/results/xau_v375_public_m1_replay.json \
-            --trades-output research/results/xau_v375_public_m1_trades.csv
+            --output "research/results/xau_v375_${{ matrix.year }}.json" \
+            --trades-output "research/results/xau_v375_${{ matrix.year }}_trades.csv"
       - name: Print summary
         if: always()
         run: |
-          if [ -f research/results/xau_v375_public_m1_replay.json ]; then
-            cat research/results/xau_v375_public_m1_replay.json
+          if [ -f "research/results/xau_v375_${{ matrix.year }}.json" ]; then
+            cat "research/results/xau_v375_${{ matrix.year }}.json"
           fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: xau-v375-public-m1-replay
+          name: xau-v375-year-${{ matrix.year }}
           path: |
-            research/results/xau_v375_public_m1_replay.json
-            research/results/xau_v375_public_m1_trades.csv
+            research/results/xau_v375_${{ matrix.year }}.json
+            research/results/xau_v375_${{ matrix.year }}_trades.csv
           if-no-files-found: warn
           retention-days: 14
