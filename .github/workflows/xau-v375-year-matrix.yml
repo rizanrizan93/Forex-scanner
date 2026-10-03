@@ -1,0 +1,62 @@
+name: XAU V375 Year Matrix Backtest
+
+on:
+  push:
+    branches: [research-v375-public-backtest]
+    paths:
+      - ".github/workflows/xau-v375-year-matrix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backtest-year:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Run causal replay for year
+        run: |
+          if [ "${{ matrix.year }}" = "2026" ]; then
+            END="2026-10-03"
+          else
+            END="${{ matrix.year }}-12-31"
+          fi
+          python research/xau_v375_public_m1_replay.py \
+            --start "${{ matrix.year }}-01-01" \
+            --end "$END" \
+            --step-minutes "60" \
+            --spread 0.30 \
+            --entry-slippage 0.05 \
+            --stop-slippage 0.10 \
+            --output "research/results/xau_v375_${{ matrix.year }}.json" \
+            --trades-output "research/results/xau_v375_${{ matrix.year }}_trades.csv"
+      - name: Print summary
+        if: always()
+        run: |
+          if [ -f "research/results/xau_v375_${{ matrix.year }}.json" ]; then
+            cat "research/results/xau_v375_${{ matrix.year }}.json"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v375-year-${{ matrix.year }}
+          path: |
+            research/results/xau_v375_${{ matrix.year }}.json
+            research/results/xau_v375_${{ matrix.year }}_trades.csv
+          if-no-files-found: warn
+          retention-days: 14
