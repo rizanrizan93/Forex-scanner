@@ -1,3 +1,4 @@
+# Research-only causal replay; production/demo logic is unchanged.
 name: XAU V342 Afiq Behavioral Replay
 
 on:
