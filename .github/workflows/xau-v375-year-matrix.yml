@@ -5,18 +5,23 @@ on:
     branches: [research-v375-public-backtest]
     paths:
       - ".github/workflows/xau-v375-year-matrix.yml"
+      - "research/xau_v375_public_m1_replay.py"
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: xau-v375-year-matrix-fast-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backtest-year:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 120
     strategy:
       fail-fast: false
-      max-parallel: 6
+      max-parallel: 12
       matrix:
         year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
     steps:
@@ -29,6 +34,26 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-research-cloud.txt
+      - name: Bound replay windows to production lifecycle horizons
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("research/xau_v375_public_m1_replay.py")
+          text = path.read_text()
+          replacements = {
+              "h4_bars: int = 650": "h4_bars: int = 400",
+              "h1_bars: int = 2200": "h1_bars: int = 560",
+              "m15_bars: int = 800": "m15_bars: int = 192",
+              "m5_bars: int = 2400": "m5_bars: int = 192",
+              "lookback_days: int = 100": "lookback_days: int = 75",
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f"expected replay constant not found: {old}")
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          print("FAST_REPLAY_WINDOWS H4=400 H1=560 M15=192 M5=192 LOOKBACK_DAYS=75")
+          PY
       - name: Run causal replay for year
         run: |
           if [ "${{ matrix.year }}" = "2026" ]; then
