@@ -20,7 +20,7 @@ from fx_scanner.research_xau_sd_liquidity_v345 import (
 )
 from fx_scanner.xau_sd_liquidity_engine_v342 import evaluate_sd_liquidity
 
-SCHEMA = "XAU_V342_AFIQ_BEHAVIORAL_REPLAY_V1"
+SCHEMA = "XAU_V342_AFIQ_BEHAVIORAL_REPLAY_V2_EFFECTIVE_ZONE"
 OFFSETS_MINUTES = (0, 15, 30, 60, 120)
 WINDOWS = {"H4": 400, "H1": 560, "M30": 320, "M15": 256, "M5": 384}
 RULES = {"H4": "4h", "H1": "1h", "M30": "30min", "M15": "15min", "M5": "5min"}
@@ -98,13 +98,17 @@ def _snapshot(
         price_now=price_now,
     )
     decision = dict(evaluation.get("decision_zone") or {})
+    refinement = dict(evaluation.get("refinement_zone") or {})
+    effective = dict(evaluation.get("confirmation_zone") or refinement or decision)
     micro = dict(evaluation.get("micro_confirmation") or {})
     guide = dict(evaluation.get("entry_guide") or {})
     destination = dict(evaluation.get("structural_destination") or {})
     liquidity = dict(evaluation.get("liquidity_map") or {})
     candidates = list(evaluation.get("main_reversal_candidates") or [])
     exact = str(decision.get("zone_id") or "") == str(touched_zone.zone_id)
+    effective_exact = str(effective.get("zone_id") or "") == str(touched_zone.zone_id)
     overlap = _zone_overlap(decision, touched_zone)
+    effective_overlap = _zone_overlap(effective, touched_zone)
     same_direction = str(decision.get("direction") or "") == str(touched_zone.direction)
     candidate_rank = None
     for idx, row in enumerate(candidates, start=1):
@@ -124,6 +128,11 @@ def _snapshot(
         "decision_low": decision.get("low"),
         "decision_high": decision.get("high"),
         "decision_exact_touched_zone": exact,
+        "effective_zone_id": effective.get("zone_id"),
+        "effective_timeframe": effective.get("timeframe"),
+        "effective_direction": effective.get("direction"),
+        "effective_exact_touched_zone": effective_exact,
+        "effective_overlap_ratio": effective_overlap,
         "decision_overlap_ratio": overlap,
         "decision_same_direction": same_direction,
         "touched_zone_candidate_rank": candidate_rank,
@@ -183,6 +192,7 @@ def run(year: int, csv_path: Path, output: Path) -> dict[str, Any]:
 
         valid = [s for s in snapshots if s.get("state") != "INSUFFICIENT_WINDOW"]
         any_exact = any(bool(s.get("decision_exact_touched_zone")) for s in valid)
+        any_effective_exact = any(bool(s.get("effective_exact_touched_zone")) for s in valid)
         any_same_direction = any(bool(s.get("decision_same_direction")) for s in valid)
         any_early = any(bool(s.get("early_confirmed")) for s in valid)
         any_full = any(bool(s.get("full_confirmed")) for s in valid)
@@ -212,6 +222,7 @@ def run(year: int, csv_path: Path, output: Path) -> dict[str, Any]:
             "turning_depth": episode.get("turning_depth"),
             "sweep_extension_atr": episode.get("sweep_extension_atr"),
             "v342_selected_exact": any_exact,
+            "v342_effective_zone_selected_exact": any_effective_exact,
             "v342_selected_same_direction": any_same_direction,
             "v342_early_confirmed": any_early,
             "v342_full_confirmed": any_full,
@@ -245,13 +256,16 @@ def run(year: int, csv_path: Path, output: Path) -> dict[str, Any]:
         "summary": {
             "reaction_050_rate": rate(episodes, "reaction_hit_050_atr"),
             "v342_exact_zone_selection_rate": rate(episodes, "v342_selected_exact"),
+            "v342_effective_zone_exact_selection_rate": rate(episodes, "v342_effective_zone_selected_exact"),
             "v342_same_direction_selection_rate": rate(episodes, "v342_selected_same_direction"),
             "v342_early_confirmation_rate": rate(episodes, "v342_early_confirmed"),
             "v342_full_confirmation_rate": rate(episodes, "v342_full_confirmed"),
             "v342_sweep_detection_rate": rate(episodes, "v342_sweep_seen"),
             "m30_alignment_rate": rate(episodes, "m30_direction_aligned"),
             "reaction_exact_zone_selection_rate": rate(reactions, "v342_selected_exact"),
+            "reaction_effective_zone_exact_selection_rate": rate(reactions, "v342_effective_zone_selected_exact"),
             "break_exact_zone_selection_rate": rate(breaks, "v342_selected_exact"),
+            "break_effective_zone_exact_selection_rate": rate(breaks, "v342_effective_zone_selected_exact"),
             "reaction_m30_alignment_rate": rate(reactions, "m30_direction_aligned"),
             "break_m30_alignment_rate": rate(breaks, "m30_direction_aligned"),
             "confirmed_episode_precision_for_050_reaction": None if not confirmed else len(confirmed_reactions) / len(confirmed),
