@@ -75,8 +75,9 @@ def event_risk(hb: dict[str, Any]) -> dict[str, Any]:
 st.set_page_config(page_title="RIZAN Decision Summary", page_icon="🎯", layout="wide")
 st.title("RIZAN — Ringkasan Keputusan Scanner")
 st.caption(
-    "Satu halaman untuk membaca keputusan scanner. V374 dapat mempromosikan reaction/liquidity area "
-    "menjadi reversal candidate sebelum MAIN HTF disentuh, sehingga full MSS tidak selalu menjadi trigger pertama."
+    "Satu halaman untuk membaca keputusan scanner. V376 menambahkan regime, fungsi zona, "
+    "acceptance/rejection, M30 internal structure, dan response timer di atas V342. "
+    "DEMO boleh dieksekusi oleh lane yang sudah berizin; LIVE tetap keputusan manual."
 )
 
 try:
@@ -123,6 +124,12 @@ primary_destination = d(destination.get("primary"))
 terminal_destination = d(destination.get("terminal"))
 sr = d(summary.get("support_resistance"))
 direction = str(decision.get("direction") or "WAIT")
+behavior = d(sd.get("afiq_behavioral"))
+behavior_regime = d(behavior.get("regime"))
+behavior_role = d(behavior.get("active_zone_role"))
+behavior_acceptance = d(behavior.get("acceptance_rejection"))
+behavior_m30 = d(behavior.get("m30_internal"))
+behavior_response = d(behavior.get("response_timer"))
 
 st.markdown("## Keputusan scanner sekarang")
 a, b, c, e = st.columns(4)
@@ -143,8 +150,8 @@ else:
     st.info("**ACTION:** " + action)
 
 st.caption(
-    "V374 merangkum dan mengintersep reversal lebih awal, tetapi tidak menambah live execution authority. "
-    "MAIN HTF adalah fallback struktural; reaction zone dapat mengambil alih bila evidence causal cukup."
+    "MAIN HTF tetap menjadi anchor struktural. Reaction candidate dapat dipromosikan lebih awal, "
+    "tetapi V376 sekarang dapat memblokir DEMO jika completed-bar evidence menunjukkan thesis aktif gagal."
 )
 
 st.markdown("## 1 • Struktur & active reversal candidate")
@@ -183,10 +190,100 @@ if reaction.get("promoted"):
         )
     st.caption(
         "MAIN HTF tidak dibatalkan; ia menjadi deep fallback jika reaction candidate gagal. "
-        "Jika reaction sudah bergerak > batas no-chase tanpa entry, scanner tidak mengejar harga."
+        "Jika reaction sudah bergerak terlalu jauh tanpa entry, scanner tetap NO CHASE."
     )
 
-st.markdown("## 2 • Macro, US10Y & event")
+st.markdown("## 2 • V376 Afiq Behavioral Context")
+if not behavior:
+    st.info("V376 belum tersedia pada heartbeat ini. Tunggu runtime baru melakukan refresh.")
+else:
+    q1, q2, q3, q4 = st.columns(4)
+    q1.metric("Market regime", str(behavior_regime.get("state") or "UNKNOWN"))
+    q2.metric("Fungsi MAIN zone", str(behavior_role.get("role") or "UNKNOWN"))
+    q3.metric("Acceptance / rejection", str(behavior_acceptance.get("state") or "UNKNOWN"))
+    q4.metric("M30 internal", str(behavior_m30.get("state") or "UNKNOWN"))
+
+    r1, r2, r3 = st.columns(3)
+    r1.metric("Response timer", str(behavior_response.get("state") or "NOT_STARTED"))
+    r2.metric("Manual decision", str(behavior.get("manual_decision_state") or "WAIT"))
+    r3.metric("DEMO behavior gate", str(behavior.get("demo_entry_gate") or "UNKNOWN"))
+
+    if str(behavior.get("demo_entry_gate") or "").startswith("BLOCK_"):
+        st.error(
+            "**Behavioral hard block:** "
+            + str(behavior.get("hard_block_reason") or "THESIS_FAILED")
+            + ". V375/V342 DEMO candidate tidak boleh diteruskan sampai engine rebuild."
+        )
+    elif bool(behavior.get("m30_conflict")):
+        st.warning(
+            "M30 saat ini berlawanan dengan arah HTF candidate. Ini WATCH/WAIT untuk manual decision; "
+            "belum menjadi hard block kecuali acceptance/reaction failure terkonfirmasi."
+        )
+
+    if behavior_acceptance:
+        st.caption(
+            "Zone test • penetration="
+            + (
+                "—"
+                if behavior_acceptance.get("penetration_atr") is None
+                else f"{float(behavior_acceptance.get('penetration_atr')):.2f} ATR"
+            )
+            + " • outside closes last4="
+            + str(behavior_acceptance.get("outside_close_count_last4") or 0)
+            + " • reclaim="
+            + str(bool(behavior_acceptance.get("reclaim_seen")))
+        )
+
+    if behavior_response and behavior_response.get("state") != "NOT_STARTED":
+        st.caption(
+            "Response timer • M5 bars="
+            + str(behavior_response.get("bars_elapsed") or 0)
+            + " • MFE="
+            + (
+                "—"
+                if behavior_response.get("favorable_excursion_local_atr") is None
+                else f"{float(behavior_response.get('favorable_excursion_local_atr')):.2f} local ATR"
+            )
+            + " • MAE="
+            + (
+                "—"
+                if behavior_response.get("adverse_excursion_local_atr") is None
+                else f"{float(behavior_response.get('adverse_excursion_local_atr')):.2f} local ATR"
+            )
+        )
+
+    path = list(behavior.get("expected_path") or [])
+    if path:
+        st.markdown("**Expected path:**")
+        for step in path[:6]:
+            row = d(step)
+            if row.get("low") is not None and row.get("high") is not None:
+                level = f"{px(row.get('low'))}–{px(row.get('high'))}"
+            else:
+                level = px(row.get("price"))
+            st.write(f"• {row.get('role','CONTEXT')} → {level}")
+
+    roles = list(behavior.get("zone_roles") or [])
+    if roles:
+        with st.expander("Zone role map"):
+            st.dataframe(
+                [
+                    {
+                        "TF": row.get("timeframe"),
+                        "Direction": row.get("direction"),
+                        "Low": row.get("low"),
+                        "High": row.get("high"),
+                        "Role": row.get("role"),
+                        "Condition": row.get("condition"),
+                        "Quality": row.get("quality_score"),
+                    }
+                    for row in roles[:12]
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+
+st.markdown("## 3 • Macro, US10Y & event")
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Broader macro", bias_label(macro_summary.get("broader_bias")))
 m2.metric("US10Y Daily", bias_label(daily_yield.get("gold_bias")))
@@ -212,7 +309,7 @@ if next_event:
         + str(next_event.get("scheduled_at_wib") or next_event.get("scheduled_at") or "—")
     )
 
-st.markdown("## 3 • S/R & liquidity")
+st.markdown("## 4 • S/R & liquidity")
 r1, r2, r3 = st.columns(3)
 r1.metric("Nearest support", px(d(sr.get("support")).get("price")))
 r2.metric("Nearest resistance", px(d(sr.get("resistance")).get("price")))
@@ -227,7 +324,7 @@ if liq:
         )
     )
 
-st.markdown("## 4 • Entry, SL & target")
+st.markdown("## 5 • Entry, SL & target")
 reaction_low = entry.get("reaction_early_low")
 reaction_high = entry.get("reaction_early_high")
 reaction_sl = entry.get("reaction_invalidation")
@@ -247,8 +344,9 @@ e3.metric(
 e4.metric("Entry gate", str(decision.get("entry_gate") or "WAIT"))
 
 st.caption(
-    "Early layer: sweep/rejection/role-flip + liquidity dapat memicu EARLY WATCH/REACTION sebelum full MSS. "
-    "Full MSS/displacement tetap digunakan untuk confirmation/add-on. Jika harga sudah lari, status berubah NO CHASE dan menunggu retest/refined pocket."
+    "V376 tidak membuat entry baru sendiri. Ia menambah fungsi zona, acceptance/rejection, M30, "
+    "dan response timer; hard block hanya ketika completed-bar evidence menunjukkan thesis aktif gagal. "
+    "SL tetap structural dan TP mengikuti S/R/liquidity → opposing H1/H4."
 )
 
 published_targets = list(entry.get("targets") or [])
@@ -264,9 +362,15 @@ if terminal_destination:
         + " • conditional; bukan TP aktif sebelum checkpoint sebelumnya gagal/tertembus secara kausal."
     )
 
-st.markdown("## 5 • Kenapa scanner mengambil keputusan ini")
+st.markdown("## 6 • Kenapa scanner mengambil keputusan ini")
 for reason in list(summary.get("reasons") or []):
     st.write("• " + str(reason))
+if behavior:
+    st.write("• V376 regime: " + str(behavior_regime.get("state") or "UNKNOWN"))
+    st.write("• V376 zone role: " + str(behavior_role.get("role") or "UNKNOWN"))
+    st.write("• V376 acceptance/rejection: " + str(behavior_acceptance.get("state") or "UNKNOWN"))
+    st.write("• V376 M30: " + str(behavior_m30.get("state") or "UNKNOWN"))
+    st.write("• V376 response: " + str(behavior_response.get("state") or "NOT_STARTED"))
 
 friend_evidence = d(summary.get("friend_evidence"))
 with st.expander("Secondary evidence — Micro Entry Reconstruction"):
@@ -284,7 +388,8 @@ with st.expander("Secondary evidence — Micro Entry Reconstruction"):
 
 st.markdown("## Cara pakai halaman ini")
 st.write(
-    "Urutan baca: **Keputusan → Active candidate → MAIN fallback → Macro/US10Y → S/R/liquidity → Entry gate → SL/TP**. "
-    "REACTION WATCH berarti area dekat sedang diuji. EARLY REACTION berarti area tersebut sudah dipromosikan tanpa menunggu MAIN atau full MSS. "
-    "READY adalah confirmation penuh. NO CHASE berarti jangan mengejar jika entry awal terlewat; tunggu retest atau setup berikutnya."
+    "Urutan baca: **Keputusan → Regime → Zone role → Expected path → Acceptance/Rejection → M30 → "
+    "M15/M5 confirmation → Response timer → Entry gate → Structural SL/TP**. "
+    "Untuk akun LIVE, halaman ini adalah decision support: order tetap manual. "
+    "Untuk DEMO, behavioral hard-failure dapat memveto candidate, tetapi V376 sendiri tidak menciptakan order baru."
 )
