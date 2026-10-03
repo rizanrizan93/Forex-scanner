@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/xau-v375-year-matrix.yml"
       - "research/xau_v375_public_m1_replay.py"
+      - "research/xau_v375_public_m1_replay_fast.py"
   workflow_dispatch:
 
 permissions:
@@ -54,14 +55,16 @@ jobs:
           path.write_text(text)
           print("FAST_REPLAY_WINDOWS H4=400 H1=560 M15=192 M5=192 LOOKBACK_DAYS=75")
           PY
-      - name: Run causal replay for year
+      - name: Run accelerated causal replay for year
+        env:
+          PYTHONUNBUFFERED: "1"
         run: |
           if [ "${{ matrix.year }}" = "2026" ]; then
             END="2026-10-03"
           else
             END="${{ matrix.year }}-12-31"
           fi
-          python research/xau_v375_public_m1_replay.py \
+          python research/xau_v375_public_m1_replay_fast.py \
             --start "${{ matrix.year }}-01-01" \
             --end "$END" \
             --step-minutes "60" \
