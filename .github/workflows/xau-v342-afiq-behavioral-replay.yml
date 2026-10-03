@@ -1,0 +1,72 @@
+name: XAU V342 Afiq Behavioral Replay
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v342-afiq-behavioral-replay]
+    paths:
+      - "research/xau_v342_afiq_behavioral_replay.py"
+      - ".github/workflows/xau-v342-afiq-behavioral-replay.yml"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
+      - "src/fx_scanner/research_xau_sd_liquidity_v345.py"
+      - "src/fx_scanner/research_xau_histdata_download_v193.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xau-v342-afiq-behavioral-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay-year:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: [2025, 2026]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v342-afiq-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v342-afiq-price-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download causal public XAUUSD M1 shard
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Replay current V342 at causal zone-touch episodes
+        run: |
+          python research/xau_v342_afiq_behavioral_replay.py \
+            --year "${{ matrix.year }}" \
+            --csv "$XAU_V193_PRICE_CSV" \
+            --output "artifacts/xau-v342-afiq-behavioral-${{ matrix.year }}.json"
+      - name: Print behavioral summary
+        if: always()
+        run: |
+          FILE="artifacts/xau-v342-afiq-behavioral-${{ matrix.year }}.json"
+          if [ -f "$FILE" ]; then
+            python - "$FILE" <<'PY'
+          import json, sys
+          p=json.load(open(sys.argv[1]))
+          print(json.dumps({"year":p["year"],"episodes":p["episode_count"],"summary":p["summary"]}, indent=2, sort_keys=True))
+          PY
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v342-afiq-behavioral-${{ matrix.year }}
+          path: |
+            artifacts/xau-v342-afiq-behavioral-${{ matrix.year }}.json
+            artifacts/xau-v342-afiq-price-${{ matrix.year }}.json
+          if-no-files-found: warn
+          retention-days: 14
