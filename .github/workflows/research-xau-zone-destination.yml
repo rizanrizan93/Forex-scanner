@@ -1,0 +1,89 @@
+name: Research XAU Causal Zone Destination
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, codex/causal-zone-destination]
+    paths:
+      - "src/fx_scanner/research_xau_zone_destination*.py"
+      - ".github/workflows/research-xau-zone-destination.yml"
+  pull_request:
+    paths:
+      - "src/fx_scanner/research_xau_zone_destination*.py"
+      - "scripts/research_xau_zone_destination*.py"
+      - "tests/test_research_xau_zone_destination.py"
+      - ".github/workflows/research-xau-zone-destination.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-zone-destination-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e . pytest==9.0.2
+      - run: pytest -q tests/test_research_xau_zone_destination.py
+
+  backfill-year:
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2024, 2025, 2026]
+    env:
+      XAU_V242_YEAR: ${{ matrix.year }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: |
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - run: python -m fx_scanner.research_xau_zone_destination_runtime --year ${{ matrix.year }} --output artifacts/xau-zone-destination-${{ matrix.year }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-zone-destination-year-${{ matrix.year }}
+          path: |
+            artifacts/xau-zone-destination-${{ matrix.year }}*.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    if: ${{ github.event_name != 'pull_request' }}
+    needs: backfill-year
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xau-zone-destination-year-*
+          path: /tmp/zone-destination-shards
+      - run: python -m fx_scanner.research_xau_zone_destination_runtime --shards /tmp/zone-destination-shards --output artifacts/xau-zone-destination-full.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-zone-destination-full
+          path: artifacts/xau-zone-destination-full.json
+          if-no-files-found: error
+          retention-days: 30
