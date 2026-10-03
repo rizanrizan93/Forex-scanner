@@ -9,6 +9,8 @@ on:
       - ".github/workflows/rizan-xau-dual-engine-v344.yml"
       - "src/fx_scanner/demo_xau_dual_engine_runtime_v344.py"
       - "src/fx_scanner/demo_xau_v351_executor.py"
+      - "src/fx_scanner/demo_xau_v375_reaction_executor.py"
+      - "src/fx_scanner/xau_reaction_interceptor_v374.py"
 
 permissions:
   actions: write
@@ -90,7 +92,7 @@ jobs:
               continue
             fi
             if [ "${status}" = "in_progress" ] || [ "${status}" = "queued" ] || [ "${status}" = "waiting" ] || [ "${status}" = "pending" ]; then
-              gh api --method POST                 -H "Accept: application/vnd.github+json"                 -H "X-GitHub-Api-Version: 2022-11-28"                 "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" >/dev/null || true
+              gh api --method POST                 -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" >/dev/null || true
               cancelled=$((cancelled + 1))
               echo "V365_CANCELLED_STALE_RUNTIME run_id=${run_id} status=${status} old_sha=${head_sha}"
             fi
