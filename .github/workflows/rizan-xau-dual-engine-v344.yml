@@ -10,6 +10,8 @@ on:
       - "src/fx_scanner/xau_friend_entry_engine_v343.py"
       - "src/fx_scanner/xau_news_zone_v346.py"
       - "src/fx_scanner/xau_reaction_interceptor_v374.py"
+      - "src/fx_scanner/xau_event_confidence_v377.py"
+      - "src/fx_scanner/demo_xau_event_risk_v377.py"
       - "src/fx_scanner/demo_xau_v351_executor.py"
       - "src/fx_scanner/demo_xau_v375_reaction_executor.py"
       - "tests/test_xau_sd_liquidity_engine_v342.py"
@@ -17,6 +19,7 @@ on:
       - "tests/test_v363_structural_sr_dashboard.py"
       - "tests/test_xau_friend_entry_engine_v343.py"
       - "tests/test_xau_news_zone_v346.py"
+      - "tests/test_xau_event_confidence_v377.py"
       - "tests/test_demo_xau_v351_executor.py"
       - "tests/test_demo_xau_v375_reaction_executor.py"
       - ".github/workflows/rizan-xau-dual-engine-v344.yml"
@@ -33,6 +36,9 @@ on:
       - "src/fx_scanner/xau_news_zone_v346.py"
       - "src/fx_scanner/xau_reaction_interceptor_v374.py"
       - "src/fx_scanner/demo_xau_event_risk_v192.py"
+      - "src/fx_scanner/xau_event_confidence_v377.py"
+      - "src/fx_scanner/demo_xau_event_risk_v377.py"
+      - "src/fx_scanner/xau_event_dashboard_patch_v377.py"
       - "src/fx_scanner/xau_macro_attribution_v357.py"
       - "src/fx_scanner/xau_intraday_yield_v367.py"
       - "src/fx_scanner/demo_xau_macro_attribution_v357.py"
@@ -42,12 +48,14 @@ on:
       - "src/fx_scanner/demo_xau_v351_executor.py"
       - "src/fx_scanner/demo_xau_v375_reaction_executor.py"
       - "src/fx_scanner/xau_dual_engine_dashboard_v344.py"
+      - "main.py"
       - "streamlit_app.py"
       - "tests/test_xau_sd_liquidity_engine_v342.py"
       - "tests/test_xau_structural_sr_map_v363.py"
       - "tests/test_v363_structural_sr_dashboard.py"
       - "tests/test_xau_friend_entry_engine_v343.py"
       - "tests/test_xau_news_zone_v346.py"
+      - "tests/test_xau_event_confidence_v377.py"
       - "tests/test_demo_xau_v351_executor.py"
       - "tests/test_demo_xau_v375_reaction_executor.py"
       - "tests/test_xau_macro_attribution_v357.py"
@@ -100,17 +108,19 @@ jobs:
         run: |
           python - <<'PY'
           import fx_scanner.demo_xau_dual_engine_runtime_v344
+          import fx_scanner.demo_xau_event_risk_v377
           import fx_scanner.demo_xau_v351_executor
           import fx_scanner.demo_xau_v375_reaction_executor
           import fx_scanner.xau_reaction_interceptor_v374
-          print("V375_RUNTIME_IMPORT_SMOKE_OK")
+          print("V377_RUNTIME_IMPORT_SMOKE_OK")
           PY
-      - name: Run V375 reversal-entry regressions
+      - name: Run V375 reversal-entry regressions plus V377 event semantics
         run: |
           pytest -q \
             tests/test_xau_sd_liquidity_engine_v342.py \
             tests/test_xau_friend_entry_engine_v343.py \
             tests/test_xau_news_zone_v346.py \
+            tests/test_xau_event_confidence_v377.py \
             tests/test_demo_xau_v351_executor.py \
             tests/test_demo_xau_v375_reaction_executor.py \
             tests/test_xau_macro_attribution_v357.py \
@@ -135,7 +145,7 @@ jobs:
             cycle=$((cycle + 1))
             echo "V375_CONTINUOUS_CYCLE cycle=$cycle at=$(date -u +%FT%TZ)"
             if [ "$cycle" -eq 1 ] || [ $((cycle % 5)) -eq 0 ]; then
-              python -m fx_scanner.demo_xau_event_risk_v192 || echo "V192_EVENT_REFRESH_RETRY_NEXT_WINDOW rc=$?"
+              python -m fx_scanner.demo_xau_event_risk_v377 || echo "V377_EVENT_REFRESH_RETRY_NEXT_WINDOW rc=$?"
             fi
             if [ "$cycle" -eq 1 ] || [ $((cycle % 2)) -eq 0 ]; then
               python -m fx_scanner.demo_xau_macro_attribution_v357 || echo "V357_MACRO_REFRESH_RETRY_NEXT_WINDOW rc=$?"
