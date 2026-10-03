@@ -87,7 +87,10 @@ def test_v377_dashboard_copy_replaces_blank_cells_with_status_labels():
 
 
 def test_v377_post_release_missing_actual_is_visible_not_blank():
-    now, event = _event(scheduled_at=(now - timedelta(hours=2)).isoformat())
+    fixture_now = datetime(2026, 10, 4, 0, 0, tzinfo=UTC)
+    now, event = _event(
+        scheduled_at=(fixture_now - timedelta(hours=2)).isoformat()
+    )
     out = prepare_dashboard_event(event, now=now)
     assert out["actual"] == "BELUM TERSEDIA"
     assert out["actual_status"] == "NOT_AVAILABLE_POST_RELEASE"
