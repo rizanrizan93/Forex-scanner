@@ -1,0 +1,52 @@
+name: XAU V376 Afiq Behavioral Layer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - v376-afiq-behavioral-layer
+      - main
+    paths:
+      - "src/fx_scanner/xau_afiq_behavioral_layer_v376.py"
+      - "src/fx_scanner/demo_xau_dual_engine_runtime_v344.py"
+      - "src/fx_scanner/demo_xau_v375_reaction_executor.py"
+      - "pages/0_Ringkasan_Keputusan.py"
+      - "tests/test_xau_afiq_behavioral_layer_v376.py"
+      - ".github/workflows/xau-v376-afiq-behavioral-layer.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xau-v376-afiq-behavioral-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest==9.0.2
+      - run: |
+          pytest -q \
+            tests/test_xau_afiq_behavioral_layer_v376.py \
+            tests/test_xau_sd_liquidity_engine_v342.py \
+            tests/test_demo_xau_v375_reaction_executor.py
+      - name: Import smoke check
+        run: |
+          python - <<'PY'
+          from fx_scanner.xau_afiq_behavioral_layer_v376 import CONTRACT
+          from fx_scanner.demo_xau_dual_engine_runtime_v344 import CONTRACT as RUNTIME_CONTRACT
+          from fx_scanner.demo_xau_v375_reaction_executor import EXECUTOR_CONTRACT
+          print(CONTRACT)
+          print(RUNTIME_CONTRACT)
+          print(EXECUTOR_CONTRACT)
+          PY
