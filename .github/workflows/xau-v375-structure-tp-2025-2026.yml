@@ -1,0 +1,102 @@
+name: XAU V375 Structure TP 2025-2026
+
+on:
+  push:
+    branches: [research-v375-public-backtest]
+    paths:
+      - ".github/workflows/xau-v375-structure-tp-2025-2026.yml"
+      - "research/xau_v375_structure_tp_replay.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xau-v375-structure-tp-2025-2026-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        year: [2025, 2026]
+        mode: [baseline, structure]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Bound baseline replay windows
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("research/xau_v375_public_m1_replay.py")
+          text = path.read_text()
+          replacements = {
+              "h4_bars: int = 650": "h4_bars: int = 400",
+              "h1_bars: int = 2200": "h1_bars: int = 560",
+              "m15_bars: int = 800": "m15_bars: int = 192",
+              "m5_bars: int = 2400": "m5_bars: int = 192",
+              "lookback_days: int = 100": "lookback_days: int = 75",
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f"expected replay constant not found: {old}")
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - name: Run comparison replay
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          if [ "${{ matrix.year }}" = "2026" ]; then
+            END="2026-10-03"
+          else
+            END="2025-12-31"
+          fi
+          OUT="research/results/xau_v375_${{ matrix.mode }}_${{ matrix.year }}.json"
+          TRADES="research/results/xau_v375_${{ matrix.mode }}_${{ matrix.year }}_trades.csv"
+          if [ "${{ matrix.mode }}" = "structure" ]; then
+            python research/xau_v375_structure_tp_replay.py \
+              --start "${{ matrix.year }}-01-01" \
+              --end "$END" \
+              --step-minutes 60 \
+              --spread 0.30 \
+              --entry-slippage 0.05 \
+              --stop-slippage 0.10 \
+              --output "$OUT" \
+              --trades-output "$TRADES"
+          else
+            python research/xau_v375_public_m1_replay_fast.py \
+              --start "${{ matrix.year }}-01-01" \
+              --end "$END" \
+              --step-minutes 60 \
+              --spread 0.30 \
+              --entry-slippage 0.05 \
+              --stop-slippage 0.10 \
+              --output "$OUT" \
+              --trades-output "$TRADES"
+          fi
+      - name: Print summary
+        if: always()
+        run: |
+          FILE="research/results/xau_v375_${{ matrix.mode }}_${{ matrix.year }}.json"
+          if [ -f "$FILE" ]; then cat "$FILE"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v375-${{ matrix.mode }}-${{ matrix.year }}
+          path: |
+            research/results/xau_v375_${{ matrix.mode }}_${{ matrix.year }}.json
+            research/results/xau_v375_${{ matrix.mode }}_${{ matrix.year }}_trades.csv
+          if-no-files-found: warn
+          retention-days: 14
