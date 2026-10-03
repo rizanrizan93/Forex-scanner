@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from .xau_reaction_interceptor_v374 import evaluate_reaction_interceptor
 from .xau_yield_regime_view_v372 import yield_regime_summary
 
 
@@ -117,34 +118,67 @@ def _decision_state(
         return (
             f"READY_{direction}",
             label,
-            "Konfirmasi reversal sudah lengkap. Gunakan hanya geometry entry/SL/TP yang dipublikasikan scanner.",
+            "Konfirmasi reversal penuh tersedia. Gunakan geometry entry/SL/TP scanner; bila harga sudah lari, tetap patuhi no-chase.",
         )
     if early_confirmed and has_geometry:
         label = "EARLY LONG • DEMO" if direction == "LONG" else "EARLY SHORT • DEMO"
         return (
             f"EARLY_{direction}_DEMO",
             label,
-            "Early confirmation tersedia untuk probe DEMO saja bila SL struktural dan RR tetap valid.",
+            "Early confirmation tersedia sebelum MSS penuh untuk probe DEMO bila SL struktural dan RR tetap valid.",
         )
     if location == "IN_ZONE" or stage not in {"FAR", "WAIT", "UNAVAILABLE"}:
-        label = "WAIT CONFIRM LONG" if direction == "LONG" else "WAIT CONFIRM SHORT"
+        label = "WAIT EARLY TRIGGER LONG" if direction == "LONG" else "WAIT EARLY TRIGGER SHORT"
         trigger = (
-            "Tunggu sweep/touch → reclaim → MSS/CHOCH → displacement M5/M15."
+            "Pantau touch/sweep → rejection/proximal reclaim/displacement awal. MSS penuh adalah confirmation/add-on, bukan syarat pertama untuk semua entry."
         )
-        return (f"WAIT_CONFIRMATION_{direction}", label, trigger)
+        return (f"WAIT_EARLY_TRIGGER_{direction}", label, trigger)
     if distance_atr is not None and distance_atr <= 0.75:
         label = "PREPARE LONG" if direction == "LONG" else "PREPARE SHORT"
         return (
             f"PREPARE_{direction}",
             label,
-            "Harga mendekati MAIN zone. Bersiap, tetapi belum entry sampai konfirmasi microstructure muncul.",
+            "Harga mendekati MAIN zone. Bersiap, tetapi reaction/liquidity area yang valid boleh mengambil alih lebih dahulu.",
         )
-    label = "WAIT FOR LONG ZONE" if direction == "LONG" else "WAIT FOR SHORT ZONE"
+    label = "WAIT FOR LONG PATH" if direction == "LONG" else "WAIT FOR SHORT PATH"
     return (
-        f"WAIT_FOR_ZONE_{direction}",
+        f"WAIT_FOR_PATH_{direction}",
         label,
-        "Belum entry. Tunggu harga mencapai area MAIN reversal atau sampai engine mereroute ke zona baru.",
+        "Belum entry. Pantau reaction/liquidity area sepanjang jalur; MAIN zone adalah fallback HTF, bukan level yang wajib disentuh.",
     )
+
+
+def _apply_reaction_override(
+    *,
+    base_state: str,
+    base_label: str,
+    base_action: str,
+    direction: str,
+    reaction: dict[str, Any],
+    news: dict[str, Any],
+) -> tuple[str, str, str]:
+    risk_state = str(news.get("risk_state") or "CLEAR").upper()
+    if risk_state in {"PRE_EVENT", "EVENT_WINDOW"}:
+        return base_state, base_label, base_action
+    if base_state.startswith("READY_") or base_state.startswith("EARLY_"):
+        return base_state, base_label, base_action
+    if base_state in {"REBUILD", "WAIT_NEWS"}:
+        return base_state, base_label, base_action
+
+    state = str(reaction.get("state") or "NONE")
+    action = str(reaction.get("action") or base_action)
+    if state == "MISSED_NO_CHASE":
+        return "NO_CHASE", "MOVE MISSED • NO CHASE", action
+    if state == f"EARLY_REACTION_{direction}":
+        label = "EARLY LONG • REACTION" if direction == "LONG" else "EARLY SHORT • REACTION"
+        return state, label, action
+    if state == f"EARLY_REVERSAL_WATCH_{direction}":
+        label = "EARLY LONG WATCH" if direction == "LONG" else "EARLY SHORT WATCH"
+        return state, label, action
+    if state == f"REACTION_WATCH_{direction}":
+        label = "REACTION LONG WATCH" if direction == "LONG" else "REACTION SHORT WATCH"
+        return state, label, action
+    return base_state, base_label, base_action
 
 
 def build_scanner_summary(
@@ -154,11 +188,12 @@ def build_scanner_summary(
     event_risk: dict[str, Any] | None,
     macro_eval: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Build a single read-only decision summary from the active XAU engines.
+    """Build one scanner decision while allowing early reaction interception.
 
-    The summary does not create execution authority. V342 remains the structural
-    authority, V357/V372 provide macro context, V192 provides event context, and
-    V343 remains secondary reconstruction evidence only.
+    V342 remains structural authority. V374 only promotes already-causal S/R and
+    liquidity evidence into an earlier user-facing interception state so a
+    reversal does not have to touch the deeper MAIN zone or wait for full MSS.
+    The summary itself has no broker execution authority.
     """
     sd = _dict(sd_eval)
     friend = _dict(friend_eval)
@@ -234,6 +269,24 @@ def build_scanner_summary(
     else:
         context_alignment = "MIXED"
 
+    reaction = (
+        evaluate_reaction_interceptor(
+            sd,
+            direction=direction,
+            context_alignment=context_alignment,
+        )
+        if direction in {"LONG", "SHORT"}
+        else {}
+    )
+    decision_state, decision_label, action_text = _apply_reaction_override(
+        base_state=decision_state,
+        base_label=decision_label,
+        base_action=action_text,
+        direction=direction,
+        reaction=reaction,
+        news=news,
+    )
+
     latest_event = _latest_released_event(event)
     next_event = _dict(event.get("focal_event"))
     latest_event_match = _bias_matches(direction, latest_event.get("gold_bias"))
@@ -249,10 +302,18 @@ def build_scanner_summary(
     reasons: list[str] = []
     if main_zone:
         reasons.append(
-            f"Arah struktural {direction}; MAIN zone {_format_zone(main_zone)}; location={location}."
+            f"Arah struktural {direction}; MAIN fallback {_format_zone(main_zone)}; location={location}. MAIN tidak wajib disentuh bila reaction zone terpromosi."
+        )
+    if reaction.get("promoted"):
+        candidate = _dict(reaction.get("candidate"))
+        reasons.append(
+            "Reaction interceptor="
+            + str(reaction.get("state"))
+            + f"; candidate={_f(candidate.get('low')) or 0:,.2f}–{_f(candidate.get('high')) or 0:,.2f}; "
+            + f"lifecycle={candidate.get('lifecycle_state') or 'UNKNOWN'}; score={candidate.get('score')}."
         )
     reasons.append(
-        f"H4={h4.get('state') or '—'}; H1={h1.get('state') or '—'}; micro stage={micro.get('stage') or 'WAIT'}."
+        f"H4={h4.get('state') or '—'}; H1={h1.get('state') or '—'}; MAIN micro stage={micro.get('stage') or 'WAIT'}."
     )
     reasons.append(
         "Macro alignment=" + context_alignment
@@ -269,7 +330,9 @@ def build_scanner_summary(
             event_note += " belum memberi bias numerik yang cukup."
         reasons.append(event_note)
     if not bool(micro.get("confirmed")):
-        reasons.append("Konfirmasi microstructure belum lengkap; forecast bukan izin entry.")
+        reasons.append(
+            "Full MSS belum lengkap. V374 tetap boleh menaikkan reaction zone menjadi EARLY WATCH/REACTION candidate; full MSS dipakai sebagai confirmation/add-on, bukan syarat awal universal."
+        )
 
     friend_direction = str(friend.get("direction") or "WAIT").upper()
     friend_entries = _dict(friend.get("entries"))
@@ -277,8 +340,20 @@ def build_scanner_summary(
     evidence = _dict(friend.get("historical_evidence"))
     oos = _dict(evidence.get("oos_2025_2026"))
 
+    reaction_band = _dict(reaction.get("early_entry_band"))
+    reaction_candidate = _dict(reaction.get("candidate"))
+    entry_gate = str(news.get("effective_entry_state") or guide.get("state") or "WAIT")
+    if str(reaction.get("state") or "").startswith("EARLY_REACTION_"):
+        entry_gate = "REACTION_EARLY_CANDIDATE"
+    elif str(reaction.get("state") or "").startswith("EARLY_REVERSAL_WATCH_"):
+        entry_gate = "REACTION_EARLY_WATCH"
+    elif str(reaction.get("state") or "").startswith("REACTION_WATCH_"):
+        entry_gate = "REACTION_WATCH"
+    elif reaction.get("no_chase"):
+        entry_gate = "NO_CHASE"
+
     return {
-        "contract": "XAU_RIZAN_SCANNER_SUMMARY_V373",
+        "contract": "XAU_RIZAN_SCANNER_SUMMARY_V374_REACTION_INTERCEPTOR",
         "execution_authority": False,
         "execution_influence": False,
         "decision": {
@@ -286,7 +361,7 @@ def build_scanner_summary(
             "label": decision_label,
             "direction": direction,
             "action": action_text,
-            "entry_gate": str(news.get("effective_entry_state") or guide.get("state") or "WAIT"),
+            "entry_gate": entry_gate,
             "context_alignment": context_alignment,
         },
         "price": price,
@@ -296,8 +371,11 @@ def build_scanner_summary(
         },
         "main_zone": main_zone,
         "main_zone_label": _format_zone(main_zone),
+        "main_zone_role": reaction.get("main_zone_role") or "PRIMARY_HTF_FALLBACK",
         "zone_location": location,
         "distance_atr": distance_atr,
+        "reaction_interceptor": reaction,
+        "active_reversal_candidate": reaction_candidate if reaction.get("promoted") else main_zone,
         "micro": micro,
         "entry": {
             "prepared_low": guide.get("prepared_entry_low"),
@@ -307,6 +385,9 @@ def build_scanner_summary(
             "entry_high": guide.get("entry_high"),
             "invalidation": guide.get("invalidation"),
             "targets": targets,
+            "reaction_early_low": reaction_band.get("low"),
+            "reaction_early_high": reaction_band.get("high"),
+            "reaction_invalidation": reaction.get("invalidation"),
         },
         "support_resistance": {
             "support": _dict(sr_map.get("nearest_support")),
