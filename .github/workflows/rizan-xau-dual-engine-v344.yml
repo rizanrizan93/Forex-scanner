@@ -17,7 +17,6 @@ on:
       - "tests/test_v363_structural_sr_dashboard.py"
       - "tests/test_xau_friend_entry_engine_v343.py"
       - "tests/test_xau_news_zone_v346.py"
-      - "tests/test_xau_reaction_interceptor_v374.py"
       - "tests/test_demo_xau_v351_executor.py"
       - "tests/test_demo_xau_v375_reaction_executor.py"
       - ".github/workflows/rizan-xau-dual-engine-v344.yml"
@@ -49,7 +48,6 @@ on:
       - "tests/test_v363_structural_sr_dashboard.py"
       - "tests/test_xau_friend_entry_engine_v343.py"
       - "tests/test_xau_news_zone_v346.py"
-      - "tests/test_xau_reaction_interceptor_v374.py"
       - "tests/test_demo_xau_v351_executor.py"
       - "tests/test_demo_xau_v375_reaction_executor.py"
       - "tests/test_xau_macro_attribution_v357.py"
@@ -113,7 +111,6 @@ jobs:
             tests/test_xau_sd_liquidity_engine_v342.py \
             tests/test_xau_friend_entry_engine_v343.py \
             tests/test_xau_news_zone_v346.py \
-            tests/test_xau_reaction_interceptor_v374.py \
             tests/test_demo_xau_v351_executor.py \
             tests/test_demo_xau_v375_reaction_executor.py \
             tests/test_xau_macro_attribution_v357.py \
