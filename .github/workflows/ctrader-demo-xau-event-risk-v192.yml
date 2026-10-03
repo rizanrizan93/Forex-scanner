@@ -1,4 +1,4 @@
-name: cTrader Demo XAU Event Risk V192
+name: cTrader Demo XAU Event Risk V377
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  xau-event-risk-v192:
+  xau-event-risk-v377:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -31,7 +31,7 @@ jobs:
           pip install pytest==9.0.2
       - name: Validate config
         run: python -m fx_scanner.cli validate-config
-      - name: Unit test V192
-        run: pytest -q tests/test_demo_xau_event_risk_v192.py
-      - name: Refresh XAU USD event-risk context
-        run: python -m fx_scanner.demo_xau_event_risk_v192
+      - name: Unit test event risk V192 + V377
+        run: pytest -q tests/test_demo_xau_event_risk_v192.py tests/test_xau_event_confidence_v377.py
+      - name: Refresh XAU USD event-risk context with V377 semantics
+        run: python -m fx_scanner.demo_xau_event_risk_v377
