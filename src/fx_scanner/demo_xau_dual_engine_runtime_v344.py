@@ -8,6 +8,7 @@ from .config import load_project_config
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
 from .storage.supabase_operational import SupabaseOperationalStore
+from .xau_afiq_behavioral_layer_v376 import evaluate_afiq_behavioral_layer
 from .xau_friend_entry_engine_v343 import evaluate_friend_entry
 from .xau_news_zone_source_v346 import collect_news_zone_events
 from .xau_news_zone_v346 import evaluate_news_zone
@@ -16,7 +17,7 @@ from .xau_sd_liquidity_engine_v342 import evaluate_sd_liquidity
 SYMBOL = "XAUUSD"
 SD_WORKER = "ctrader_demo_xau_sd_liquidity_v342"
 FRIEND_WORKER = "ctrader_demo_xau_friend_entry_v343"
-CONTRACT = "XAU_RIZAN_DUAL_ISOLATED_RUNTIME_V344_4_V365_RUNTIME_IDENTITY"
+CONTRACT = "XAU_RIZAN_DUAL_ISOLATED_RUNTIME_V344_5_AFIQ_BEHAVIOR_V376"
 
 
 def _last_close(rows: tuple[Any, ...]) -> float | None:
@@ -42,6 +43,7 @@ def run() -> int:
     sd_payload: dict[str, Any] = {}
     friend_payload: dict[str, Any] = {}
     news_payload: dict[str, Any] = {}
+    behavior_payload: dict[str, Any] = {}
     news_source_status: dict[str, str] = {}
     error: str | None = None
     counts = {"H4": 0, "H1": 0, "M15": 0, "M5": 0}
@@ -105,6 +107,14 @@ def run() -> int:
             source_status=news_source_status,
         )
         sd_payload["news_zone"] = news_payload
+        behavior_payload = evaluate_afiq_behavioral_layer(
+            sd_evaluation=sd_payload,
+            bars_m15=m15,
+            bars_m5=m5,
+            as_of=now,
+            price_now=price_now,
+        )
+        sd_payload["afiq_behavioral"] = behavior_payload
         parent = dict(sd_payload.get("decision_zone") or {})
         friend_payload = evaluate_friend_entry(
             parent_zone=parent,
@@ -173,6 +183,8 @@ def run() -> int:
         f"healthy={int(healthy)} sd={sd_payload.get('state','ERROR')} "
         f"friend={friend_payload.get('state','ERROR')} "
         f"news={news_payload.get('state','ERROR')} "
+        f"behavior={behavior_payload.get('manual_decision_state','ERROR')} "
+        f"behavior_gate={behavior_payload.get('demo_entry_gate','UNKNOWN')} "
         f"execution_authority={int(bool(sd_payload.get('execution_authority')))} "
         f"head={runtime_head_sha[:12]} scope=DEMO_ONLY live=0"
     )
