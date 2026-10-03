@@ -1,0 +1,70 @@
+name: XAU V375 Public M1 Backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: Start date UTC
+        required: false
+        default: "2025-01-01"
+      end:
+        description: End date UTC
+        required: false
+        default: "2025-12-31"
+      step_minutes:
+        description: Replay scan cadence in minutes
+        required: false
+        default: "60"
+  push:
+    branches: [research-v375-public-backtest]
+    paths:
+      - "research/xau_v375_public_m1_replay.py"
+      - ".github/workflows/xau-v375-public-backtest.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pilot-2025:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      START: ${{ github.event_name == 'workflow_dispatch' && inputs.start || '2025-01-01' }}
+      END: ${{ github.event_name == 'workflow_dispatch' && inputs.end || '2025-12-31' }}
+      STEP: ${{ github.event_name == 'workflow_dispatch' && inputs.step_minutes || '60' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+      - name: Run causal V375 public-M1 replay
+        run: |
+          python research/xau_v375_public_m1_replay.py \
+            --start "${START}" \
+            --end "${END}" \
+            --step-minutes "${STEP}" \
+            --spread 0.30 \
+            --entry-slippage 0.05 \
+            --stop-slippage 0.10 \
+            --output research/results/xau_v375_public_m1_replay.json \
+            --trades-output research/results/xau_v375_public_m1_trades.csv
+      - name: Print summary
+        if: always()
+        run: |
+          if [ -f research/results/xau_v375_public_m1_replay.json ]; then
+            cat research/results/xau_v375_public_m1_replay.json
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v375-public-m1-replay
+          path: |
+            research/results/xau_v375_public_m1_replay.json
+            research/results/xau_v375_public_m1_trades.csv
+          if-no-files-found: warn
+          retention-days: 14
