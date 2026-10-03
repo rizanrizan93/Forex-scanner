@@ -1,0 +1,69 @@
+{
+  "schema": "XAU_AFIQ_LABELED_CASE_V1",
+  "case_id": "",
+  "source_class": "USER_CAPTURED_AFIQ_CASES",
+  "source_url": null,
+  "captured_at_utc": null,
+  "forecast_published_at_utc": null,
+  "forecast_published_at_wib": null,
+  "outcome_known_at_capture": false,
+  "symbol": "XAUUSD",
+  "price_at_forecast": null,
+  "timeframes_visible": [],
+  "raw_text": "",
+  "htf_bias": "UNKNOWN",
+  "regime": "UNKNOWN",
+  "zones": [
+    {
+      "low": null,
+      "high": null,
+      "timeframe": null,
+      "side": "UNKNOWN",
+      "role": "UNKNOWN",
+      "label_from_afiq": null
+    }
+  ],
+  "expected_path": [],
+  "liquidity": {
+    "side": "UNKNOWN",
+    "low": null,
+    "high": null,
+    "reason": null
+  },
+  "m30_structure": "UNKNOWN",
+  "m15_confirmation_required": null,
+  "m15_confirmation_observed": null,
+  "m5_refinement": null,
+  "entry": {
+    "direction": "UNKNOWN",
+    "low": null,
+    "high": null,
+    "exact": null,
+    "timing_rule": null
+  },
+  "invalidation": {
+    "price": null,
+    "rule": null
+  },
+  "targets": [],
+  "position_management": {
+    "partial": null,
+    "breakeven": null,
+    "runner": null,
+    "layering": null
+  },
+  "next_plan": null,
+  "no_trade_or_wait_reason": null,
+  "post_outcome": {
+    "filled": null,
+    "main_zone_reacted": null,
+    "liquidity_swept": null,
+    "reversal_direction_correct": null,
+    "entry_error_points": null,
+    "first_target_hit": null,
+    "invalidation_hit": null,
+    "notes": null
+  },
+  "annotation_confidence": "LOW",
+  "annotation_notes": ""
+}
