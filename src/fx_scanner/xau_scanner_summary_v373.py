@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from .xau_decision_confidence_v378 import build_decision_confidence
 from .xau_reaction_interceptor_v374 import evaluate_reaction_interceptor
 from .xau_yield_regime_view_v372 import yield_regime_summary
 
@@ -188,13 +189,7 @@ def build_scanner_summary(
     event_risk: dict[str, Any] | None,
     macro_eval: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Build one scanner decision while allowing early reaction interception.
-
-    V342 remains structural authority. V374 only promotes already-causal S/R and
-    liquidity evidence into an earlier user-facing interception state so a
-    reversal does not have to touch the deeper MAIN zone or wait for full MSS.
-    The summary itself has no broker execution authority.
-    """
+    """Build one scanner decision with causal reaction and evidence-quality context."""
     sd = _dict(sd_eval)
     friend = _dict(friend_eval)
     event = _dict(event_risk)
@@ -211,6 +206,7 @@ def build_scanner_summary(
     sr_map = _dict(sd.get("support_resistance_map"))
     destination = _dict(sd.get("structural_destination"))
     ladder = _dict(sd.get("destination_ladder"))
+    behavior = _dict(sd.get("afiq_behavioral"))
 
     direction = str(
         sd.get("expected_reversal_direction")
@@ -352,8 +348,24 @@ def build_scanner_summary(
     elif reaction.get("no_chase"):
         entry_gate = "NO_CHASE"
 
+    macro_summary_payload = {
+        "broader_bias": broader_bias,
+        "confidence": macro.get("confidence"),
+        "yield": yield_summary,
+        "alignment": context_alignment,
+    }
+    decision_confidence = build_decision_confidence(
+        direction=direction,
+        sd=sd,
+        behavior=behavior,
+        micro=micro,
+        reaction=reaction,
+        macro_summary=macro_summary_payload,
+        latest_event=latest_event,
+    )
+
     return {
-        "contract": "XAU_RIZAN_SCANNER_SUMMARY_V374_REACTION_INTERCEPTOR",
+        "contract": "XAU_RIZAN_SCANNER_SUMMARY_V378_DECISION_CONFIDENCE",
         "execution_authority": False,
         "execution_influence": False,
         "decision": {
@@ -364,6 +376,7 @@ def build_scanner_summary(
             "entry_gate": entry_gate,
             "context_alignment": context_alignment,
         },
+        "decision_confidence": decision_confidence,
         "price": price,
         "structure": {
             "H4": h4.get("state"),
@@ -395,12 +408,7 @@ def build_scanner_summary(
             "flip_watch": _dict(sr_map.get("flip_watch")),
         },
         "liquidity": liquidity,
-        "macro": {
-            "broader_bias": broader_bias,
-            "confidence": macro.get("confidence"),
-            "yield": yield_summary,
-            "alignment": context_alignment,
-        },
+        "macro": macro_summary_payload,
         "event": {
             "state": event.get("state") or news.get("risk_state"),
             "latest_released": latest_event,
