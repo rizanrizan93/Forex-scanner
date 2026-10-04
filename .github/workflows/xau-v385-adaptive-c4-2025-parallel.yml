@@ -1,0 +1,136 @@
+name: XAU V385 2025 Parallel Adaptive C4 Replay
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v383-adaptive-c4-reforecast]
+    paths:
+      - "research/xau_v385_adaptive_c4_reforecast_parallel.py"
+      - ".github/workflows/xau-v385-adaptive-c4-2025-parallel.yml"
+      - "research/xau_v384_adaptive_c4_reforecast_cached.py"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342_legacy.py"
+      - "src/fx_scanner/research_xau_sd_liquidity_v345.py"
+      - "src/fx_scanner/research_xau_histdata_download_v193.py"
+
+permissions:
+  contents: read
+
+env:
+  XAU_V193_YEAR: 2025
+
+concurrency:
+  group: xau-v385-adaptive-c4-2025-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        config:
+          - M15_LB8_B010
+          - M15_LB12_B010
+          - M15_LB16_B010
+          - M15_LB12_B020
+    env:
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v385-adaptive-2025-${{ matrix.config }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v385-adaptive-price-2025-${{ matrix.config }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download causal public XAUUSD M1 2025 shard
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Replay one V385 adaptive configuration
+        run: |
+          python research/xau_v385_adaptive_c4_reforecast_parallel.py \
+            --year 2025 \
+            --config "${{ matrix.config }}" \
+            --csv "$XAU_V193_PRICE_CSV" \
+            --output "artifacts/xau-v385-adaptive-c4-2025-${{ matrix.config }}.json"
+      - name: Print V385 configuration summary
+        if: always()
+        run: |
+          FILE="artifacts/xau-v385-adaptive-c4-2025-${{ matrix.config }}.json"
+          if [ -f "$FILE" ]; then
+            python - "$FILE" <<'PY'
+          import json, sys
+          p=json.load(open(sys.argv[1]))
+          print(json.dumps({
+              "year": p["year"],
+              "config": p["config"]["config"],
+              "forecast_cache": p.get("forecast_cache"),
+              "summary": p["config"]["summary"],
+          }, indent=2, sort_keys=True))
+          PY
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v385-adaptive-c4-2025-${{ matrix.config }}
+          path: |
+            artifacts/xau-v385-adaptive-c4-2025-${{ matrix.config }}.json
+            artifacts/xau-v385-adaptive-price-2025-${{ matrix.config }}.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  aggregate:
+    needs: replay-config
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v385-adaptive-c4-2025-*
+          path: artifacts/v385-configs
+          merge-multiple: true
+      - name: Aggregate successful configuration results
+        run: |
+          python - <<'PY'
+          import glob, json, os
+          files=sorted(glob.glob('artifacts/v385-configs/xau-v385-adaptive-c4-2025-M15_*.json'))
+          rows=[]
+          for path in files:
+              with open(path, encoding='utf-8') as f:
+                  p=json.load(f)
+              rows.append({
+                  'config': p['config']['config'],
+                  'parameters': p['config']['parameters'],
+                  'summary': p['config']['summary'],
+                  'forecast_cache': p.get('forecast_cache'),
+              })
+          payload={
+              'schema':'XAU_V385_2025_PARALLEL_AGGREGATE_V1',
+              'year':2025,
+              'methodology_parent':'XAU_V384_ADAPTIVE_C4_REFORECAST_CACHED_V1',
+              'champion_selector':'V376_C4_NEXT_ZONE_PATH_FROZEN',
+              'execution_authority':False,
+              'expected_configs':4,
+              'completed_configs':len(rows),
+              'configs':rows,
+          }
+          os.makedirs('artifacts', exist_ok=True)
+          with open('artifacts/xau-v385-adaptive-c4-2025-aggregate.json','w',encoding='utf-8') as f:
+              json.dump(payload,f,indent=2,sort_keys=True,allow_nan=False)
+              f.write('\n')
+          print(json.dumps(payload, indent=2, sort_keys=True))
+          if len(rows) != 4:
+              raise SystemExit(f'Expected 4 completed configs, got {len(rows)}')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v385-adaptive-c4-2025-aggregate
+          path: artifacts/xau-v385-adaptive-c4-2025-aggregate.json
+          if-no-files-found: error
+          retention-days: 14
