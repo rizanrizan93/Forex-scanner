@@ -4,7 +4,7 @@ name: XAU V342 Afiq Behavioral Replay
 on:
   workflow_dispatch:
   push:
-    branches: [research-v342-afiq-behavioral-replay, research-v376-exact-zone-selector]
+    branches: [research-v342-afiq-behavioral-replay, research-v376-exact-zone-selector, research-v376-c2-approach-geometry]
     paths:
       - "research/xau_v342_afiq_behavioral_replay.py"
       - ".github/workflows/xau-v342-afiq-behavioral-replay.yml"
