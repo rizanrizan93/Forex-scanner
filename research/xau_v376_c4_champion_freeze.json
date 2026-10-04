@@ -1,0 +1,71 @@
+{
+  "schema": "XAU_V376_C4_CHAMPION_FREEZE_V1",
+  "status": "FROZEN_PROMOTED",
+  "frozen_at": "2026-10-04",
+  "champion_id": "V376_C4_NEXT_ZONE_PATH",
+  "objective": "select the next actionable H1/H4 main reversal zone causally",
+  "deployment_scope": "XAUUSD production analysis and DEMO execution path only; LIVE execution remains disabled",
+  "research_provenance": {
+    "branch": "research-v376-c4-next-zone-path",
+    "commit": "4a26ae46b599ab7d7492ca35e42b28d4d3226e21",
+    "workflow_run_id": 37182590310,
+    "artifact_2025": {
+      "id": 11297690187,
+      "sha256": "3f227680d103e747ca682ea8ce451aca4942b86b8923f4911ceade78861d1d48"
+    },
+    "artifact_2026": {
+      "id": 11296751909,
+      "sha256": "848b7ae7c7bb7edc5cd5ad15eb9746b1acc7aab78d943b27d48c029469bba633"
+    }
+  },
+  "replay": {
+    "episodes_total": 1485,
+    "2025": {
+      "episodes": 895,
+      "effective_exact_zone_rate": 0.5072625698324023,
+      "raw_exact_zone_rate": 0.5463687150837989,
+      "reaction_050_rate": 0.7921787709497207,
+      "same_direction_rate": 0.8134078212290503,
+      "confirmed_precision_reaction_050": 0.7586206896551724
+    },
+    "2026": {
+      "episodes": 590,
+      "effective_exact_zone_rate": 0.5050847457627119,
+      "raw_exact_zone_rate": 0.5254237288135594,
+      "reaction_050_rate": 0.8135593220338984,
+      "same_direction_rate": 0.788135593220339,
+      "confirmed_precision_reaction_050": 0.8
+    },
+    "weighted": {
+      "effective_exact_zone_rate": 0.5063973063973064,
+      "raw_exact_zone_rate": 0.538047138047138,
+      "reaction_050_rate": 0.8006734006734006,
+      "same_direction_rate": 0.8033670033670034
+    }
+  },
+  "promotion_decision": {
+    "result": "PASS_PROMOTE",
+    "reason": "C4 improved effective exact-zone selection in both 2025 and 2026 while preserving the underlying >=0.50 ATR reaction rate.",
+    "c1_combined_effective_exact_zone_rate_approx": 0.4714,
+    "c4_combined_effective_exact_zone_rate": 0.5063973063973064,
+    "combined_improvement_percentage_points_approx": 3.50,
+    "stopping_rule": "Do not add C5 unless a new, specific and independently testable failure mode is identified."
+  },
+  "probability_semantics": {
+    "dashboard_reversal_probability": 0.8006734006734006,
+    "meaning": "descriptive 2025-2026 replay prior for reaction >=0.50 ATR",
+    "not_meaning": "not a live setup-specific calibrated probability"
+  },
+  "selector": {
+    "eligible_timeframes": ["H1", "H4"],
+    "path_rank": "ordinal number of same-direction non-overlapping eligible zones encountered before candidate",
+    "path_bonus": {
+      "inside": 12.0,
+      "rank_1": 9.0,
+      "rank_2": 3.0,
+      "rank_3": 0.0,
+      "wrong_side": -14.0
+    },
+    "score_terms": "quality + 0.20*raw + H4_prior + H1_refinement_bonus + path_bonus - 12*distance_atr - 10*mitigation - 2*touches"
+  }
+}
