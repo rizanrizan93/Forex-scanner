@@ -1,0 +1,73 @@
+name: XAU V383 Adaptive C4 Reforecast Replay
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v383-adaptive-c4-reforecast]
+    paths:
+      - "research/xau_v383_adaptive_c4_reforecast.py"
+      - ".github/workflows/xau-v383-adaptive-c4-reforecast.yml"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342_legacy.py"
+      - "src/fx_scanner/research_xau_sd_liquidity_v345.py"
+      - "src/fx_scanner/research_xau_histdata_download_v193.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xau-v383-adaptive-c4-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay-year:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: [2025, 2026]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v383-adaptive-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v383-adaptive-price-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download causal public XAUUSD M1 shard
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Replay V383 adaptive C4 reforecast
+        run: |
+          python research/xau_v383_adaptive_c4_reforecast.py \
+            --year "${{ matrix.year }}" \
+            --csv "$XAU_V193_PRICE_CSV" \
+            --output "artifacts/xau-v383-adaptive-c4-${{ matrix.year }}.json"
+      - name: Print V383 summary
+        if: always()
+        run: |
+          FILE="artifacts/xau-v383-adaptive-c4-${{ matrix.year }}.json"
+          if [ -f "$FILE" ]; then
+            python - "$FILE" <<'PY'
+          import json, sys
+          p=json.load(open(sys.argv[1]))
+          print(json.dumps({"year":p["year"],"configs":[{"config":x["config"],"summary":x["summary"]} for x in p["configs"]]}, indent=2, sort_keys=True))
+          PY
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v383-adaptive-c4-${{ matrix.year }}
+          path: |
+            artifacts/xau-v383-adaptive-c4-${{ matrix.year }}.json
+            artifacts/xau-v383-adaptive-price-${{ matrix.year }}.json
+          if-no-files-found: warn
+          retention-days: 14
