@@ -1381,11 +1381,27 @@ def _select_parent_and_refinement(
         tf_prior = 4.0 if z.get("timeframe") == "H4" else 0.0
         hierarchy = str(z.get("hierarchy_role") or "")
         hierarchy_bonus = 5.0 if hierarchy == "H1_REFINEMENT" else 0.0
+
+        # V376 C3: reward zones whose creation produced stronger causal
+        # structural consequence. These fields are fixed when the departure
+        # candle closes, so the ranker remains strictly as-of causal.
+        structural_raw = z.get("structural_bos")
+        structural_bos = True if structural_raw is None else bool(structural_raw)
+        departure = float(z.get("departure_range_atr") or 1.0)
+        body_fraction = float(z.get("departure_body_fraction") or 0.55)
+        base_range = float(z.get("base_range_atr") or 0.8)
+        structural_consequence = (
+            (6.0 if structural_bos else -2.0)
+            + min(8.0, max(0.0, departure - 0.85) * 6.0)
+            + min(4.0, max(0.0, body_fraction - 0.50) * 16.0)
+            - min(6.0, max(0.0, base_range - 0.70) * 6.0)
+        )
         return (
             quality
             + 0.20 * raw
             + tf_prior
             + hierarchy_bonus
+            + structural_consequence
             - 12.0 * distance
             - 10.0 * mitigation
             - 2.0 * touches
