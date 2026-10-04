@@ -22,6 +22,7 @@ concurrency:
 
 jobs:
   replay-year:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
