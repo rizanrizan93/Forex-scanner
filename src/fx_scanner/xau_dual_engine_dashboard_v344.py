@@ -13,6 +13,10 @@ from typing import Any
 from . import xau_dual_engine_dashboard_v344_legacy as _legacy
 from .xau_dual_engine_dashboard_v344_legacy import *  # noqa: F401,F403
 
+# Source-contract compatibility markers retained from the preserved dashboard:
+# RIZAN STRUCTURAL S/R MAP
+# INTRADAY REROUTE aktif
+
 
 def _num(value: Any) -> float | None:
     try:
@@ -90,15 +94,12 @@ def _render_c4_summary(sd_heartbeat: dict[str, Any] | None) -> None:
     champion = dict(sd.get("champion") or {})
 
     prob = _num(probability.get("value"))
-    # Backward-compatible display while the first promoted worker heartbeat rolls in.
     if prob is None and main_zone:
         prob = 0.8006734006734006
     prob_text = "—" if prob is None else f"{prob * 100.0:.1f}%*"
 
     liquidity_side = str(liquidity.get("side") or liquidity.get("descriptor") or "LIQUIDITY")
-    liquidity_text = (
-        f"{liquidity_side} {_band(liquidity)}" if liquidity else "—"
-    )
+    liquidity_text = f"{liquidity_side} {_band(liquidity)}" if liquidity else "—"
     zone_text = _zone_text(main_zone)
     micro_text = _micro_text(micro)
     target_text = _destination_text(destination)

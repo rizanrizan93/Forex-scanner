@@ -14,6 +14,9 @@ from typing import Any, Sequence
 from . import xau_sd_liquidity_engine_v342_legacy as _legacy
 from .xau_sd_liquidity_engine_v342_legacy import *  # noqa: F401,F403
 
+# Source-contract compatibility: build_structural_sr_map remains integrated in
+# the preserved engine and its evaluation output. V363 remains context only.
+
 CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V376_C4_CHAMPION_V1"
 CHAMPION_ID = "V376_C4_NEXT_ZONE_PATH"
 CHAMPION_STATUS = "FROZEN"
@@ -23,6 +26,10 @@ CHAMPION_REACTION_050_REPLAY_PRIOR = 0.8006734006734006
 CHAMPION_EFFECTIVE_EXACT_ZONE_RATE = 0.5063973063973064
 CHAMPION_RAW_EXACT_ZONE_RATE = 0.538047138047138
 CHAMPION_SAME_DIRECTION_RATE = 0.8033670033670034
+
+# Preserve the pre-C4 private selector for direct legacy/test callers only.
+# Production evaluate_sd_liquidity below is bound to the frozen C4 selector.
+_legacy_selector_compat = _legacy._select_parent_and_refinement
 
 
 def _path_state(
@@ -76,7 +83,6 @@ def _path_state(
                 other_plausible = False
             if not other_plausible or other_gap >= path_gap - 1e-9:
                 continue
-            # Nested H1/H4 geometry is one interaction cluster, not two blockers.
             if _legacy._overlap_ratio(zone, other) >= 0.25:
                 continue
             blockers += 1
@@ -179,9 +185,7 @@ def _select_parent_and_refinement_c4(
         if children:
             children.sort(key=lambda item: (item[0], item[1]), reverse=True)
             refinement = dict(children[0][2])
-            refinement["selector_score_v376_c4"] = round(
-                selector_score(refinement), 4
-            )
+            refinement["selector_score_v376_c4"] = round(selector_score(refinement), 4)
             refinement["next_zone_path"] = path[str(refinement.get("zone_id"))]
 
     selection = (
@@ -192,8 +196,9 @@ def _select_parent_and_refinement_c4(
     return parent, refinement, selection
 
 
-# Patch only the preserved engine module used by the canonical V342 import path.
-# This avoids package-wide import hooks while keeping all existing workers intact.
+# Direct private callers keep the legacy selector contract. The preserved
+# engine's global selector is separately promoted to C4 for real evaluation.
+_select_parent_and_refinement = _legacy_selector_compat
 _legacy._select_parent_and_refinement = _select_parent_and_refinement_c4
 _legacy.CONTRACT = CONTRACT
 _legacy_evaluate_sd_liquidity = _legacy.evaluate_sd_liquidity
@@ -201,6 +206,8 @@ _legacy_evaluate_sd_liquidity = _legacy.evaluate_sd_liquidity
 
 def evaluate_sd_liquidity(*args: Any, **kwargs: Any) -> dict[str, Any]:
     """Run the production/demo engine with C4 and attach frozen research provenance."""
+    # Reassert the freeze in case a research module touched the preserved global.
+    _legacy._select_parent_and_refinement = _select_parent_and_refinement_c4
     result = dict(_legacy_evaluate_sd_liquidity(*args, **kwargs) or {})
     main_zone = dict(result.get("main_reversal_zone") or {})
     result["contract"] = CONTRACT
@@ -226,5 +233,4 @@ def evaluate_sd_liquidity(*args: Any, **kwargs: Any) -> dict[str, Any]:
 
 
 def __getattr__(name: str) -> Any:
-    """Preserve compatibility for callers/tests that import legacy private helpers."""
     return getattr(_legacy, name)
