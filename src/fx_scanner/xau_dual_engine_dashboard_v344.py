@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-"""Canonical V344 dashboard with a compact V376 C4 champion decision path.
+"""Canonical V344 dashboard with a prominent V376 C4 champion decision path.
 
 The previous V344 dashboard is preserved in the sibling legacy module. This
-wrapper adds one decision-first strip above it and then renders all existing
-diagnostics unchanged.
+wrapper renders C4 first, always shows champion/deployment identity, and then
+renders all existing diagnostics unchanged.
 """
 
 from math import isfinite
@@ -12,6 +12,8 @@ from typing import Any
 
 from . import xau_dual_engine_dashboard_v344_legacy as _legacy
 from .xau_dual_engine_dashboard_v344_legacy import *  # noqa: F401,F403
+
+C4_DASHBOARD_BUILD = "V380_C4_CHAMPION_VISIBLE"
 
 # Source-contract compatibility markers retained from the preserved dashboard:
 # RIZAN STRUCTURAL S/R MAP
@@ -85,13 +87,17 @@ def _render_c4_summary(sd_heartbeat: dict[str, Any] | None) -> None:
     details = dict(hb.get("details") or {})
     sd = dict(details.get("evaluation") or {})
 
-    st.markdown("### C4 CHAMPION — XAUUSD DECISION PATH")
+    st.success("🏆 C4 CHAMPION AKTIF • V376_C4_NEXT_ZONE_PATH • FROZEN")
+    st.markdown("## C4 CHAMPION — XAUUSD DECISION PATH")
     st.caption(
-        "Frozen V376 C4 path-rank selector • urutan baca: arah → next main zone → "
+        f"Dashboard {C4_DASHBOARD_BUILD} • urutan baca: arah → next main zone → "
         "liquidity → reversal prior → M15/M5 → opposing target."
     )
     if not sd:
-        st.info("Snapshot C4/V342 belum tersedia dari runtime.")
+        st.warning(
+            "C4 dashboard sudah termuat, tetapi snapshot runtime V342/C4 belum tersedia. "
+            "Jika pesan ini muncul, masalahnya ada pada data/heartbeat — bukan deployment UI."
+        )
         return
 
     direction = str(sd.get("expected_reversal_direction") or "WAIT").upper()
@@ -101,6 +107,10 @@ def _render_c4_summary(sd_heartbeat: dict[str, Any] | None) -> None:
     micro = dict(sd.get("micro_confirmation") or {})
     destination = dict(sd.get("structural_destination") or {})
     champion = dict(sd.get("champion") or {})
+
+    champion_id = str(champion.get("id") or "V376_C4_NEXT_ZONE_PATH")
+    champion_status = str(champion.get("status") or "FROZEN").upper()
+    st.caption(f"Engine aktif: {champion_id} • status: {champion_status}")
 
     prob = _num(probability.get("value"))
     if prob is None and main_zone:
@@ -138,7 +148,6 @@ def _render_c4_summary(sd_heartbeat: dict[str, Any] | None) -> None:
     c5.metric("M15/M5 status", micro_text)
     c6.metric("Opposing target", target_text)
 
-    champion_id = str(champion.get("id") or "V376_C4_NEXT_ZONE_PATH")
     sample = int(probability.get("sample_size") or champion.get("replay_episodes") or 1485)
     st.caption(
         f"* {prob_text} adalah prior replay C4 2025–2026 (n={sample}, reaction ≥0.50 ATR), "
