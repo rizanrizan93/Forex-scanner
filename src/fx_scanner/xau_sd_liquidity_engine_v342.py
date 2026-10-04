@@ -9,6 +9,7 @@ No live execution permission is added: execution scope remains inherited from
 the legacy engine and is still DEMO_ONLY.
 """
 
+from math import isfinite
 from typing import Any, Sequence
 
 from . import xau_sd_liquidity_engine_v342_legacy as _legacy
@@ -33,6 +34,14 @@ CHAMPION_SAME_DIRECTION_RATE = 0.8033670033670034
 # Preserve the pre-C4 private selector for direct legacy/test callers only.
 # Production evaluate_sd_liquidity below is bound to the frozen C4 selector.
 _legacy_selector_compat = _legacy._select_parent_and_refinement
+
+
+def _safe_float(value: Any) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if isfinite(parsed) else None
 
 
 def _path_state(
@@ -199,6 +208,136 @@ def _select_parent_and_refinement_c4(
     return parent, refinement, selection
 
 
+def _horizon_bucket(distance_atr: float | None) -> str:
+    """Describe volatility distance without pretending it is a clock ETA."""
+    if distance_atr is None:
+        return "UNKNOWN"
+    if distance_atr <= 1.0:
+        return "NEAR"
+    if distance_atr <= 3.0:
+        return "MEDIUM"
+    if distance_atr <= 6.0:
+        return "FAR"
+    return "VERY_FAR"
+
+
+def _directional_checkpoint(
+    result: dict[str, Any],
+    *,
+    price_now: float,
+    target_price: float,
+    direction: str,
+) -> dict[str, Any]:
+    """Use an already-mapped roadblock only when it lies on the current leg."""
+    row = dict(result.get("nearest_roadblock") or {})
+    if not row:
+        return {}
+    candidate = _safe_float(row.get("near_edge"))
+    if candidate is None:
+        low = _safe_float(row.get("low"))
+        high = _safe_float(row.get("high"))
+        if low is not None and high is not None:
+            candidate = low if direction == "LONG" else high
+    if candidate is None:
+        return {}
+    on_path = (
+        direction == "LONG" and price_now < candidate < target_price
+    ) or (
+        direction == "SHORT" and target_price < candidate < price_now
+    )
+    if not on_path:
+        return {}
+    return {
+        "price": candidate,
+        "zone_id": row.get("zone_id"),
+        "timeframe": row.get("timeframe"),
+        "type": row.get("type") or row.get("zone_type"),
+    }
+
+
+def _current_leg_forecast(
+    result: dict[str, Any],
+    *,
+    price_now: float | None,
+) -> dict[str, Any]:
+    """Separate the NOW path from the future C4 reversal direction.
+
+    This is causal geometric context, not a standalone order signal. A supply
+    above price implies an upward path *toward* that candidate reversal zone;
+    a demand below price implies a downward path toward it. The layer explicitly
+    refuses to invent calendar ETA until time-to-touch has been calibrated.
+    """
+    zone = dict(result.get("main_reversal_zone") or result.get("decision_zone") or {})
+    px = _safe_float(price_now)
+    low = _safe_float(zone.get("low"))
+    high = _safe_float(zone.get("high"))
+    reversal_direction = str(zone.get("direction") or "").upper()
+    if px is None or low is None or high is None or high <= low:
+        return {
+            "state": "UNAVAILABLE",
+            "direction": "WAIT",
+            "execution_authority": False,
+            "eta_status": "UNAVAILABLE",
+        }
+
+    if low <= px <= high:
+        return {
+            "state": "AT_MAIN_REVERSAL_ZONE",
+            "direction": "WAIT_REACTION",
+            "price_now": px,
+            "target_price": (low + high) / 2.0,
+            "next_reversal_direction": reversal_direction or "WAIT",
+            "distance_points": 0.0,
+            "distance_atr": 0.0,
+            "horizon": "NOW",
+            "eta_status": "AT_ZONE",
+            "execution_authority": False,
+            "basis": "C4_GEOMETRIC_PATH_CONTEXT",
+        }
+
+    if px < low:
+        current_direction = "LONG"
+        target_price = low
+        relation = "BELOW_MAIN_ZONE"
+    else:
+        current_direction = "SHORT"
+        target_price = high
+        relation = "ABOVE_MAIN_ZONE"
+
+    expected_reversal_for_path = "SHORT" if current_direction == "LONG" else "LONG"
+    path_consistent = reversal_direction == expected_reversal_for_path
+    distance_points = abs(target_price - px)
+    atr = _safe_float(zone.get("atr"))
+    distance_atr = None if atr is None or atr <= 0 else distance_points / atr
+    checkpoint = _directional_checkpoint(
+        result,
+        price_now=px,
+        target_price=target_price,
+        direction=current_direction,
+    )
+
+    return {
+        "state": "TOWARD_NEXT_REVERSAL_ZONE" if path_consistent else "PATH_CONFLICT_RECOMPUTE",
+        "direction": current_direction if path_consistent else "WAIT",
+        "relation": relation,
+        "price_now": px,
+        "target_price": target_price,
+        "target_zone_id": zone.get("zone_id"),
+        "target_timeframe": zone.get("timeframe"),
+        "target_low": low,
+        "target_high": high,
+        "next_reversal_direction": reversal_direction or "WAIT",
+        "checkpoint": checkpoint,
+        "distance_points": round(distance_points, 6),
+        "distance_atr": None if distance_atr is None else round(distance_atr, 3),
+        "horizon": _horizon_bucket(distance_atr),
+        "eta_status": "PENDING_TIME_TO_TOUCH_REPLAY_CALIBRATION",
+        "eta_clock": None,
+        "execution_authority": False,
+        "basis": "C4_GEOMETRIC_PATH_CONTEXT_NOT_ENTRY_SIGNAL",
+    }
+
+
 # Direct private callers keep the legacy selector contract. The preserved
 # engine's global selector is separately promoted to C4 for real evaluation.
 _select_parent_and_refinement = _legacy_selector_compat
@@ -232,6 +371,10 @@ def evaluate_sd_liquidity(*args: Any, **kwargs: Any) -> dict[str, Any]:
         "threshold": "REACTION_GTE_0.50_ATR",
         "calibration": "RESEARCH_PRIOR_NOT_LIVE_CONDITIONAL_PROBABILITY",
     }
+    result["current_leg_forecast"] = _current_leg_forecast(
+        result,
+        price_now=kwargs.get("price_now"),
+    )
     return result
 
 
