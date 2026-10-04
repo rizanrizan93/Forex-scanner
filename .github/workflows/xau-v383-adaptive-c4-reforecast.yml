@@ -6,6 +6,7 @@ on:
     branches: [research-v383-adaptive-c4-reforecast]
     paths:
       - "research/xau_v383_adaptive_c4_reforecast.py"
+      - "research/xau_v383_adaptive_c4_reforecast_fast.py"
       - ".github/workflows/xau-v383-adaptive-c4-reforecast.yml"
       - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
       - "src/fx_scanner/xau_sd_liquidity_engine_v342_legacy.py"
@@ -47,7 +48,7 @@ jobs:
         run: python -m fx_scanner.research_xau_histdata_download_v193
       - name: Replay V383 adaptive C4 reforecast
         run: |
-          python research/xau_v383_adaptive_c4_reforecast.py \
+          python research/xau_v383_adaptive_c4_reforecast_fast.py \
             --year "${{ matrix.year }}" \
             --csv "$XAU_V193_PRICE_CSV" \
             --output "artifacts/xau-v383-adaptive-c4-${{ matrix.year }}.json"
@@ -59,7 +60,7 @@ jobs:
             python - "$FILE" <<'PY'
           import json, sys
           p=json.load(open(sys.argv[1]))
-          print(json.dumps({"year":p["year"],"configs":[{"config":x["config"],"summary":x["summary"]} for x in p["configs"]]}, indent=2, sort_keys=True))
+          print(json.dumps({"year":p["year"],"cache":p.get("forecast_cache"),"configs":[{"config":x["config"],"summary":x["summary"]} for x in p["configs"]]}, indent=2, sort_keys=True))
           PY
           fi
       - uses: actions/upload-artifact@v4
