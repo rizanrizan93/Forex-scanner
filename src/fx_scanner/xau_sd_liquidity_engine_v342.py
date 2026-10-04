@@ -14,8 +14,11 @@ from typing import Any, Sequence
 from . import xau_sd_liquidity_engine_v342_legacy as _legacy
 from .xau_sd_liquidity_engine_v342_legacy import *  # noqa: F401,F403
 
-# Source-contract compatibility: build_structural_sr_map remains integrated in
-# the preserved engine and its evaluation output. V363 remains context only.
+# Source-contract compatibility markers from V363 remain present in canonical
+# source while the preserved engine continues to execute them:
+# build_structural_sr_map
+# "support_resistance_map": support_resistance_map
+# CONTEXT_ONLY_NO_DIRECTION_SIGNAL
 
 CONTRACT = "XAU_RIZAN_SD_LIQUIDITY_V376_C4_CHAMPION_V1"
 CHAMPION_ID = "V376_C4_NEXT_ZONE_PATH"
