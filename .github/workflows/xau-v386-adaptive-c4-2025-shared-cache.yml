@@ -1,0 +1,68 @@
+name: XAU V386 2025 Shared Cache Adaptive C4 Replay
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v383-adaptive-c4-reforecast]
+    paths:
+      - ".github/workflows/xau-v386-adaptive-c4-2025-shared-cache.yml"
+      - "research/xau_v384_adaptive_c4_reforecast_cached.py"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342_legacy.py"
+      - "src/fx_scanner/research_xau_sd_liquidity_v345.py"
+      - "src/fx_scanner/research_xau_histdata_download_v193.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xau-v386-2025-shared-cache-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay-2025:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      XAU_V193_YEAR: 2025
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v386-adaptive-2025.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v386-adaptive-price-2025.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download causal public XAUUSD M1 2025 shard
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Replay V386 2025 with shared C4 cache across all four configs
+        run: |
+          python research/xau_v384_adaptive_c4_reforecast_cached.py \
+            --year 2025 \
+            --csv "$XAU_V193_PRICE_CSV" \
+            --output "artifacts/xau-v386-adaptive-c4-2025.json"
+      - name: Print V386 summary
+        if: always()
+        run: |
+          FILE="artifacts/xau-v386-adaptive-c4-2025.json"
+          if [ -f "$FILE" ]; then
+            python - "$FILE" <<'PY'
+          import json, sys
+          p=json.load(open(sys.argv[1]))
+          print(json.dumps({"year":p["year"],"forecast_cache":p.get("forecast_cache"),"configs":[{"config":x["config"],"summary":x["summary"]} for x in p["configs"]]}, indent=2, sort_keys=True))
+          PY
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v386-adaptive-c4-2025
+          path: |
+            artifacts/xau-v386-adaptive-c4-2025.json
+            artifacts/xau-v386-adaptive-price-2025.json
+          if-no-files-found: warn
+          retention-days: 14
