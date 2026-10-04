@@ -15,7 +15,16 @@ from .xau_dual_engine_dashboard_v344_legacy import *  # noqa: F401,F403
 
 # Source-contract compatibility markers retained from the preserved dashboard:
 # RIZAN STRUCTURAL S/R MAP
+# Nearest support
+# Nearest resistance
+# S/R flip watch
+# RECLAIM REQUIRED
+# support ≠ auto BUY
+# resistance ≠ auto SELL
 # INTRADAY REROUTE aktif
+# PREPARE forecast aktif
+# intraday_quarantined_zones
+# completed M15
 
 
 def _num(value: Any) -> float | None:
