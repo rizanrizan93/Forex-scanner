@@ -1347,6 +1347,49 @@ def _classify_hierarchy(
     return output
 
 
+
+def _approach_geometry(
+    zone: dict[str, Any],
+    *,
+    bars: Iterable[Any],
+    as_of: datetime,
+) -> dict[str, Any]:
+    """Measure causal approach pressure into a candidate zone."""
+    tf = str(zone.get("timeframe") or "H1")
+    frame = _bar_frame(bars)
+    delta = pd.Timedelta(minutes=TF_MINUTES[tf])
+    frame = frame[(frame["timestamp"] + delta) <= pd.Timestamp(ensure_utc(as_of))].copy()
+    if len(frame) < 8:
+        return {"score": 0.0, "state": "INSUFFICIENT"}
+    recent = frame.tail(6).copy()
+    atr_series = _atr(frame)
+    atr = _f(atr_series.iloc[-1]) or float(zone.get("atr") or 1.0)
+    atr = max(float(atr), 1e-9)
+    net = float(recent.iloc[-1]["close"] - recent.iloc[0]["open"]) / atr
+    ranges = ((recent["high"] - recent["low"]) / atr).clip(lower=0.0)
+    bodies = ((recent["close"] - recent["open"]).abs() / (recent["high"] - recent["low"]).clip(lower=1e-9))
+    overlap = []
+    for i in range(1, len(recent)):
+        a, b = recent.iloc[i-1], recent.iloc[i]
+        ov = max(0.0, min(float(a["high"]), float(b["high"])) - max(float(a["low"]), float(b["low"])))
+        width = max(min(float(a["high"]-a["low"]), float(b["high"]-b["low"])), 1e-9)
+        overlap.append(ov / width)
+    overlap_mean = float(sum(overlap) / len(overlap)) if overlap else 0.0
+    direction = str(zone.get("direction") or "")
+    toward = (-net if direction == "LONG" else net)
+    impulsive_toward = max(0.0, toward) * float(bodies.mean()) * max(0.0, 1.0 - overlap_mean)
+    corrective = overlap_mean * max(0.0, 1.0 - min(1.0, float(bodies.mean())))
+    score = 5.0 * corrective - 7.0 * impulsive_toward
+    return {
+        "score": round(score, 4),
+        "state": "CORRECTIVE" if score > 1.0 else "IMPULSIVE_TOWARD" if score < -1.0 else "NEUTRAL",
+        "net_atr": round(net, 4),
+        "overlap_mean": round(overlap_mean, 4),
+        "body_fraction_mean": round(float(bodies.mean()), 4),
+        "range_atr_mean": round(float(ranges.mean()), 4),
+    }
+
+
 def _select_parent_and_refinement(
     active_zones: Sequence[dict[str, Any]],
     *,
@@ -1381,11 +1424,13 @@ def _select_parent_and_refinement(
         tf_prior = 4.0 if z.get("timeframe") == "H4" else 0.0
         hierarchy = str(z.get("hierarchy_role") or "")
         hierarchy_bonus = 5.0 if hierarchy == "H1_REFINEMENT" else 0.0
+        approach_bonus = float(dict(z.get("approach_geometry") or {}).get("score") or 0.0)
         return (
             quality
             + 0.20 * raw
             + tf_prior
             + hierarchy_bonus
+            + approach_bonus
             - 12.0 * distance
             - 10.0 * mitigation
             - 2.0 * touches
@@ -2299,6 +2344,11 @@ def evaluate_sd_liquidity(
         row["main_reversal_score"] = profile["quality_score"]
         row["main_reversal_reasons"] = list(profile["reasons"])
         row["main_reversal_distance_atr"] = profile["distance_atr"]
+        row["approach_geometry"] = _approach_geometry(
+            row,
+            bars=bars_h4 if row.get("timeframe") == "H4" else bars_h1,
+            as_of=now,
+        )
 
     quarantined_zones = sorted(
         [dict(row) for row in active if row.get("intraday_quarantined")],
