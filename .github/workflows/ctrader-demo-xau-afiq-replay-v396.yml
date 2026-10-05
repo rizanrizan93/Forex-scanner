@@ -55,13 +55,38 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-research-cloud.txt
       - name: V396 deterministic regression tests
-        run: pytest -q tests/test_xau_afiq_challenger_v395.py tests/test_xau_afiq_replay_v396.py
+        id: regression
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          pytest -q tests/test_xau_afiq_challenger_v395.py tests/test_xau_afiq_replay_v396.py 2>&1 | tee v396_pytest.txt
       - name: Run no-lookahead XAUUSD replay
-        run: python -m fx_scanner.demo_xau_afiq_replay_v396
-      - name: Upload replay evidence
+        if: steps.regression.outcome == 'success'
+        id: replay_run
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m fx_scanner.demo_xau_afiq_replay_v396 2>&1 | tee v396_replay_log.txt
+      - name: Upload V396 diagnostics and replay evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v396-xau-afiq-replay
-          path: v396_replay.json
-          if-no-files-found: error
+          name: v396-xau-afiq-replay-diagnostics
+          path: |
+            v396_pytest.txt
+            v396_replay_log.txt
+            v396_replay.json
+          if-no-files-found: warn
           retention-days: 30
+      - name: Enforce regression gate
+        if: steps.regression.outcome != 'success'
+        run: |
+          echo 'V396 regression gate failed; replay intentionally not executed.'
+          exit 1
+      - name: Enforce replay gate
+        if: steps.regression.outcome == 'success' && steps.replay_run.outcome != 'success'
+        run: |
+          echo 'V396 historical replay failed; inspect uploaded diagnostics.'
+          exit 1
