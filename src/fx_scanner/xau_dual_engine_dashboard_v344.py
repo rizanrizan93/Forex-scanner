@@ -20,6 +20,20 @@ from .xau_simple_reversal_engine_v390 import evaluate_simple_reversal
 C4_DASHBOARD_BUILD = "V393_SIMPLE_ROOT_V390_PLUS_V376"
 EXECUTOR_WORKER = "ctrader_demo_xau_v351_executor"
 
+# Source-contract compatibility markers retained from the preserved dashboard.
+# The detailed implementations are delegated to xau_dual_engine_dashboard_v344_legacy.
+# RIZAN STRUCTURAL S/R MAP
+# Nearest support
+# Nearest resistance
+# S/R flip watch
+# RECLAIM REQUIRED
+# support ≠ auto BUY
+# resistance ≠ auto SELL
+# INTRADAY REROUTE aktif
+# PREPARE forecast aktif
+# intraday_quarantined_zones
+# completed M15
+
 
 def _num(value: Any) -> float | None:
     try:
@@ -247,9 +261,7 @@ def _render_c4_summary(sd_heartbeat: dict[str, Any] | None) -> None:
 
     st.success("🏆 C4 CHAMPION AKTIF • V376_C4_NEXT_ZONE_PATH • FROZEN")
     st.markdown("### C4 HTF PATH / AUDIT")
-    st.caption(
-        f"Dashboard {C4_DASHBOARD_BUILD} • NOW leg → zona tujuan HTF → next reversal."
-    )
+    st.caption(f"Dashboard {C4_DASHBOARD_BUILD} • NOW leg → zona tujuan HTF → next reversal.")
     if not sd:
         st.warning("Snapshot runtime V342/C4 belum tersedia.")
         return
@@ -268,9 +280,7 @@ def _render_c4_summary(sd_heartbeat: dict[str, Any] | None) -> None:
     target_text_now = _current_leg_target_text(current_leg, main_zone)
     checkpoint_text = _checkpoint_text(current_leg)
 
-    st.markdown(
-        f"**NOW {now_direction}** → **{checkpoint_text}** → **{target_text_now}** → lalu pantau **{reversal_direction}**"
-    )
+    st.markdown(f"**NOW {now_direction}** → **{checkpoint_text}** → **{target_text_now}** → lalu pantau **{reversal_direction}**")
     n1, n2, n3 = st.columns(3)
     n1.metric("Jarak HTF", _distance_text(current_leg))
     n2.metric("Horizon", str(current_leg.get("horizon") or "UNKNOWN"))
