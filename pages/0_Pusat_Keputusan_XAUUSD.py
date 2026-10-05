@@ -5,7 +5,7 @@ from typing import Any
 import streamlit as st
 
 from fx_scanner.xau_public_hot_v362 import fetch_public_hot_snapshot
-from fx_scanner.xau_scanner_summary_v373 import build_scanner_summary
+from fx_scanner.xau_simple_reversal_engine_v390 import evaluate_simple_reversal
 
 
 def d(value: Any) -> dict[str, Any]:
@@ -24,14 +24,6 @@ def px(value: Any) -> str:
     return "—" if number is None else f"{number:,.2f}"
 
 
-def zone_label(zone: dict[str, Any]) -> str:
-    if not zone:
-        return "—"
-    direction = str(zone.get("direction") or "").upper()
-    kind = "DEMAND" if direction == "LONG" else "SUPPLY" if direction == "SHORT" else "ZONE"
-    return f"{zone.get('timeframe', 'HTF')} {kind} {px(zone.get('low'))}–{px(zone.get('high'))}"
-
-
 def heartbeat(snapshot: dict[str, Any], worker: str) -> dict[str, Any]:
     for raw in list(snapshot.get("heartbeats") or []):
         row = d(raw)
@@ -44,39 +36,29 @@ def evaluation(hb: dict[str, Any]) -> dict[str, Any]:
     return d(d(hb.get("details")).get("evaluation"))
 
 
-def event_risk(hb: dict[str, Any]) -> dict[str, Any]:
-    return d(d(hb.get("details")).get("risk"))
+def zone_text(zone: dict[str, Any], side: str) -> str:
+    if not zone:
+        return "BELUM TERSEDIA"
+    return f"{side} {px(zone.get('low'))}–{px(zone.get('high'))}"
 
 
-def direction_label(value: Any) -> str:
-    raw = str(value or "WAIT").upper()
-    if raw in {"LONG", "BUY"}:
-        return "BUY"
-    if raw in {"SHORT", "SELL"}:
-        return "SELL"
-    return "WAIT"
+def readiness_label(value: Any) -> str:
+    labels = {
+        "READY_EARLY": "READY",
+        "WATCH_REACTION": "WATCH REACTION",
+        "PREPARE": "PREPARE",
+        "WAIT": "WAIT",
+        "NONE": "NONE",
+    }
+    raw = str(value or "NONE").upper()
+    return labels.get(raw, raw.replace("_", " "))
 
 
-def entry_band(entry: dict[str, Any]) -> tuple[Any, Any, str]:
-    early_low = entry.get("reaction_early_low")
-    early_high = entry.get("reaction_early_high")
-    if early_low is not None and early_high is not None:
-        return early_low, early_high, "Reaction / refined"
-    return entry.get("prepared_low"), entry.get("prepared_high"), "Main prepared"
-
-
-def first_target(entry: dict[str, Any]) -> Any:
-    targets = list(entry.get("targets") or [])
-    if not targets:
-        return None
-    return d(targets[0]).get("price")
-
-
-st.set_page_config(page_title="Pusat Keputusan XAUUSD", page_icon="🎯", layout="wide")
-st.title("Pusat Keputusan XAUUSD")
+st.set_page_config(page_title="RIZAN XAU Reversal", page_icon="🎯", layout="wide")
+st.title("RIZAN — XAUUSD Reversal Decision")
 st.caption(
-    "Baca dari atas ke bawah: keputusan → zona → entry/SL/TP → alasan. "
-    "Detail engine, macro, dan validasi dipindahkan ke bagian riset agar halaman utama tetap sederhana."
+    "Tujuan halaman ini hanya satu: tunjukkan zona reversal lokal terdekat dan arah reversal-nya. "
+    "H4/H1 yang jauh tetap disimpan sebagai struktur/fallback, tetapi tidak lagi memaksa user menunggu harga ke sana."
 )
 
 try:
@@ -86,174 +68,112 @@ except Exception as exc:
     st.stop()
 
 sd_hb = heartbeat(snapshot, "ctrader_demo_xau_sd_liquidity_v342")
-friend_hb = heartbeat(snapshot, "ctrader_demo_xau_friend_entry_v343")
-event_hb = heartbeat(snapshot, "ctrader_demo_xau_event_risk_v192")
-macro_hb = heartbeat(snapshot, "ctrader_demo_xau_macro_attribution_v357")
-
 sd = evaluation(sd_hb)
-friend = evaluation(friend_hb)
-event = event_risk(event_hb)
-macro = evaluation(macro_hb)
-
 if not sd:
-    st.warning("Data struktural XAUUSD belum tersedia. Decision Center tetap fail-closed sampai snapshot valid masuk.")
+    st.warning("Data S/D XAUUSD belum tersedia. Scanner tetap fail-closed sampai heartbeat valid masuk.")
     st.stop()
 
-summary = build_scanner_summary(sd_eval=sd, friend_eval=friend, event_risk=event, macro_eval=macro)
-decision = d(summary.get("decision"))
-confidence = d(summary.get("decision_confidence"))
-main_zone = d(summary.get("main_zone"))
-reaction = d(summary.get("reaction_interceptor"))
-active_zone = d(summary.get("active_reversal_candidate"))
-entry = d(summary.get("entry"))
-destination = d(summary.get("destination"))
-primary_destination = d(destination.get("primary"))
-terminal_destination = d(destination.get("terminal"))
-sr = d(summary.get("support_resistance"))
-macro_summary = d(summary.get("macro"))
-event_summary = d(summary.get("event"))
-behavior = d(sd.get("afiq_behavioral"))
-
-state = str(decision.get("state") or "WAIT").upper()
-direction = direction_label(decision.get("direction"))
-label = str(decision.get("label") or direction)
-action = str(decision.get("action") or "Tunggu setup yang valid.")
-entry_gate = str(decision.get("entry_gate") or "WAIT")
-low, high, entry_source = entry_band(entry)
-sl = entry.get("reaction_invalidation")
-if sl is None:
-    sl = entry.get("invalidation")
-tp1 = first_target(entry)
-if tp1 is None:
-    tp1 = d(sr.get("resistance" if direction == "BUY" else "support")).get("price")
-terminal = primary_destination.get("low") if direction == "SELL" else primary_destination.get("high")
-if terminal is None:
-    terminal = terminal_destination.get("low") if direction == "SELL" else terminal_destination.get("high")
+plan = evaluate_simple_reversal(sd)
+state = str(plan.get("state") or "UNAVAILABLE")
+direction = str(plan.get("direction") or "WAIT")
+long_zone = d(plan.get("long_zone"))
+short_zone = d(plan.get("short_zone"))
+selected = d(plan.get("selected_zone"))
+entry = d(plan.get("entry"))
+local_range = d(plan.get("range"))
+deep = d(plan.get("deep_htf_fallback"))
 
 st.markdown("## Keputusan sekarang")
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("Keputusan", label)
-k2.metric("Arah", direction)
-k3.metric("Harga", px(summary.get("price")))
-k4.metric("Entry gate", entry_gate)
+a, b, c = st.columns(3)
+a.metric("State", state.replace("_", " "))
+b.metric("Arah", direction)
+c.metric("Harga", px(plan.get("price_now")))
 
-if state.startswith("READY_"):
-    st.success("**READY — " + action + "**")
-elif state.startswith("EARLY_"):
-    st.warning("**EARLY — " + action + "**")
-elif state in {"WAIT_NEWS", "NO_CHASE", "REBUILD"}:
-    st.warning("**" + state.replace("_", " ") + " — " + action + "**")
+if state == "READY_LONG":
+    st.success("**LONG REVERSAL READY** — harga berada di demand lokal dengan evidence reversal awal.")
+elif state == "READY_SHORT":
+    st.error("**SHORT REVERSAL READY** — harga berada di supply lokal dengan evidence reversal awal.")
+elif state in {"WATCH_LONG", "PREPARE_LONG"}:
+    st.warning("**LONG WATCH** — fokus ke demand lokal; jangan menunggu H4 supply jauh.")
+elif state in {"WATCH_SHORT", "PREPARE_SHORT"}:
+    st.warning("**SHORT WATCH** — fokus ke supply lokal; jangan menunggu H4 supply/demand jauh.")
+elif state == "RANGE_WAIT":
+    st.info("**RANGE / WAIT** — harga berada di antara demand lokal dan supply lokal. Entry di tengah range dihindari.")
 else:
-    st.info("**WAIT — " + action + "**")
+    st.info("Belum ada trigger lokal yang cukup kuat. Zona terdekat tetap ditampilkan supaya scanner tidak kosong.")
 
-score = f(confidence.get("evidence_score"))
-band = str(confidence.get("confidence_band") or "BELUM TERSEDIA")
-if score is not None:
-    st.caption(f"Confidence evidence: {score:.1f}/100 • {band}. Ini kualitas evidence, bukan probabilitas menang.")
+st.write(str(plan.get("action") or ""))
 
-st.markdown("## Peta harga")
-z1, z2, z3 = st.columns(3)
-z1.metric("Zona reversal aktif", zone_label(active_zone) if active_zone else zone_label(main_zone))
-z2.metric("MAIN HTF fallback", zone_label(main_zone))
-z3.metric("Status reaction", str(reaction.get("state") or ("PROMOTED" if reaction.get("promoted") else "NORMAL")))
-
-liq = list(summary.get("liquidity") or [])
-if liq:
-    st.caption("Liquidity terdekat • " + " | ".join(f"{row.get('side', '—')} {px(row.get('price'))}" for row in liq[:4]))
-
-path = list(behavior.get("expected_path") or [])
-if path:
-    path_text: list[str] = []
-    for raw in path[:4]:
-        row = d(raw)
-        if row.get("low") is not None and row.get("high") is not None:
-            level = f"{px(row.get('low'))}–{px(row.get('high'))}"
-        else:
-            level = px(row.get("price"))
-        path_text.append(f"{row.get('role', 'PATH')} → {level}")
-    st.write("**Expected path:** " + " → ".join(path_text))
-
-st.markdown("## Entry, SL & TP")
-e1, e2, e3, e4 = st.columns(4)
-e1.metric("Entry", f"{px(low)}–{px(high)}" if low is not None and high is not None else "—")
-e2.metric("SL struktural", px(sl))
-e3.metric("TP1", px(tp1))
-e4.metric("TP terminal", px(terminal))
-st.caption(f"Entry source: {entry_source} • TP mengikuti struktur/liquidity menuju opposing H1/H4.")
-
-published_targets = list(entry.get("targets") or [])
-if published_targets:
-    st.write("**TP ladder:** " + " → ".join(px(d(row).get("price")) for row in published_targets[:4]))
-
-st.markdown("## Kenapa keputusan ini")
-reasons = [str(reason) for reason in list(summary.get("reasons") or []) if str(reason).strip()]
-if not reasons:
-    st.write("• Belum ada alasan terstruktur pada snapshot ini; scanner tetap WAIT/fail-closed.")
-else:
-    for reason in reasons[:4]:
-        st.write("• " + reason)
-
-next_event = d(event_summary.get("next_event"))
-if next_event:
-    st.caption(
-        "Event berikutnya • "
-        + str(next_event.get("title") or "—")
-        + " • "
-        + str(next_event.get("scheduled_at_wib") or next_event.get("scheduled_at") or "—")
-    )
-
-with st.expander("Riset & validasi engine"):
-    st.caption(
-        "Bagian ini untuk audit. V388 belum menjadi execution authority sampai kalibrasi 2025 H1/H2 lolos. "
-        "Policy internal C60/C120/EC60/EC120 tidak perlu dibaca untuk keputusan harian."
-    )
-    r1, r2, r3, r4 = st.columns(4)
-    r1.metric("Evidence score", "—" if score is None else f"{score:.1f}/100")
-    r2.metric("Confidence band", band)
-    r3.metric("Context", str(decision.get("context_alignment") or "UNAVAILABLE"))
-    r4.metric("Execution policy", "V388 PENDING VALIDATION")
-
-    st.write(
-        {
-            "H4": d(summary.get("structure")).get("H4"),
-            "H1": d(summary.get("structure")).get("H1"),
-            "market_regime": d(behavior.get("regime")).get("state"),
-            "zone_role": d(behavior.get("active_zone_role")).get("role"),
-            "acceptance_rejection": d(behavior.get("acceptance_rejection")).get("state"),
-            "m30_internal": d(behavior.get("m30_internal")).get("state"),
-            "response_timer": d(behavior.get("response_timer")).get("state"),
-            "macro_bias": macro_summary.get("broader_bias"),
-        }
-    )
-
-    components = list(confidence.get("components") or [])
-    if components:
-        st.dataframe(
-            [
-                {
-                    "Komponen": row.get("name"),
-                    "Bobot": row.get("weight"),
-                    "Score": row.get("score"),
-                    "State": row.get("state"),
-                }
-                for row in components
-            ],
-            use_container_width=True,
-            hide_index=True,
+st.markdown("## Zona reversal terdekat")
+z1, z2 = st.columns(2)
+with z1:
+    st.markdown("### 🟢 Demand → LONG")
+    st.metric("Zona LONG", zone_text(long_zone, "DEMAND"))
+    st.metric("Status", readiness_label(plan.get("long_readiness")))
+    if long_zone:
+        st.caption(
+            "Distance=" + f"{float(long_zone.get('distance_atr') or 0):.2f} ATR"
+            + " • source=" + str(long_zone.get("source_type") or "—")
+            + " • lifecycle=" + str(long_zone.get("lifecycle_state") or "—")
         )
 
-    friend_evidence = d(summary.get("friend_evidence"))
+with z2:
+    st.markdown("### 🔴 Supply → SHORT")
+    st.metric("Zona SHORT", zone_text(short_zone, "SUPPLY"))
+    st.metric("Status", readiness_label(plan.get("short_readiness")))
+    if short_zone:
+        st.caption(
+            "Distance=" + f"{float(short_zone.get('distance_atr') or 0):.2f} ATR"
+            + " • source=" + str(short_zone.get("source_type") or "—")
+            + " • lifecycle=" + str(short_zone.get("lifecycle_state") or "—")
+        )
+
+if local_range:
+    st.markdown("## Local range")
+    r1, r2, r3 = st.columns(3)
+    r1.metric("Floor / demand", px(local_range.get("floor")))
+    r2.metric("Mid", px(local_range.get("mid")))
+    r3.metric("Ceiling / supply", px(local_range.get("ceiling")))
+    st.caption(
+        "Aturan baca: dekat floor → cari LONG reversal; dekat ceiling → cari SHORT reversal; "
+        "di tengah → WAIT. Breakout yang bertahan membatalkan range dan engine akan memetakan zona berikutnya."
+    )
+
+st.markdown("## Entry plan aktif")
+if selected:
+    e1, e2, e3, e4 = st.columns(4)
+    e1.metric("Arah", direction)
+    e2.metric("Entry zone", f"{px(entry.get('low'))}–{px(entry.get('high'))}")
+    e3.metric("Invalidation", px(entry.get("invalidation")))
+    e4.metric("TP1 opposing local zone", px(entry.get("tp1_opposite_local_zone")))
+    st.caption("Entry adalah zone-based reference. Jangan chase jika harga sudah meninggalkan band.")
+else:
+    st.info("Belum ada entry aktif karena harga belum berada/dekat salah satu reversal zone. Ini bukan blank: dua zona keputusan tetap ada di atas.")
+
+st.markdown("## Liquidity di zona")
+for side, zone in (("LONG", long_zone), ("SHORT", short_zone)):
+    liquidity = list(zone.get("liquidity") or []) if zone else []
+    if liquidity:
+        st.write(
+            f"**{side}:** "
+            + " | ".join(f"{row.get('side', '—')} {px(row.get('price'))}" for row in liquidity[:4])
+        )
+
+with st.expander("Struktur HTF / audit"):
+    st.caption(
+        "Bagian ini bukan trigger entry utama. H4/H1 jauh dipakai sebagai context, fallback, dan destination conditional."
+    )
     st.write(
         {
-            "micro_direction": friend_evidence.get("direction"),
-            "micro_state": friend_evidence.get("state"),
-            "micro_primary_entry": friend_evidence.get("primary_entry"),
-            "micro_stop_loss": friend_evidence.get("stop_loss"),
-            "micro_targets": friend_evidence.get("targets"),
-            "micro_authority": friend_evidence.get("authority"),
+            "deep_htf_zone": deep,
+            "deep_htf_is_entry_trigger": bool(plan.get("deep_htf_is_entry_trigger")),
+            "candidate_counts": plan.get("candidate_counts"),
+            "atr_reference": plan.get("atr_reference"),
+            "contract": plan.get("contract"),
+            "validation_status": plan.get("validation_status"),
         }
     )
 
 st.caption(
-    "LIVE: decision support/manual. DEMO: hanya execution policy yang telah lolos validasi dan gate runtime yang boleh mengirim order."
+    "V390 saat ini decision-support/shadow: LIVE tidak diberi auto-execution authority dan DEMO auto-order belum dipromosikan sebelum replay validation."
 )
