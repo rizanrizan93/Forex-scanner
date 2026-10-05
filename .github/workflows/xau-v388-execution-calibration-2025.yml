@@ -1,0 +1,111 @@
+name: XAU V388 2025 Execution Calibration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v388-execution-calibration]
+    paths:
+      - ".github/workflows/xau-v388-execution-calibration-2025.yml"
+      - "research/xau_v388_execution_calibration.py"
+      - "research/xau_v387_execution_pnl_replay.py"
+      - "research/xau_v384_adaptive_c4_reforecast_cached.py"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342_legacy.py"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: xau-v388-execution-calibration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay-shards:
+    name: calibrate-2025-s${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      XAU_V193_YEAR: 2025
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v388-2025-s${{ matrix.shard }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v388-price-2025-s${{ matrix.shard }}.json
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rizanrizan93/Forex-scanner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+
+      - name: Download frozen V386 2025 adaptive artifact
+        run: |
+          mkdir -p /tmp/adaptive
+          gh run download 37238066989 -n xau-v386-adaptive-c4-2025 -D /tmp/adaptive
+          FILE="/tmp/adaptive/xau-v386-adaptive-c4-2025.json"
+          test -s "$FILE"
+          echo "ADAPTIVE_JSON=$FILE" >> "$GITHUB_ENV"
+
+      - name: Download causal public XAUUSD M1 2025
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+
+      - name: Run V388 calibration shard with live progress
+        run: |
+          python -u research/xau_v388_execution_calibration.py shard \
+            --adaptive-json "$ADAPTIVE_JSON" \
+            --csv "$XAU_V193_PRICE_CSV" \
+            --shard-index "${{ matrix.shard }}" \
+            --shard-count 4 \
+            --output "artifacts/xau-v388-calibration-2025-s${{ matrix.shard }}.json"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v388-calibration-2025-s${{ matrix.shard }}
+          path: |
+            artifacts/xau-v388-calibration-2025-s${{ matrix.shard }}.json
+            artifacts/xau-v388-price-2025-s${{ matrix.shard }}.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  aggregate-calibration:
+    name: aggregate-and-select-2025
+    needs: replay-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregate runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download four V388 shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v388-calibration-2025-s*
+          path: /tmp/v388/shards
+          merge-multiple: true
+      - name: Aggregate 2025 and select only if H1 and H2 are both robust
+        run: |
+          python -u research/xau_v388_execution_calibration.py aggregate \
+            --inputs "/tmp/v388/shards/xau-v388-calibration-2025-s*.json" \
+            --output "artifacts/xau-v388-calibration-2025-aggregate.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v388-calibration-2025-aggregate
+          path: artifacts/xau-v388-calibration-2025-aggregate.json
+          retention-days: 14
