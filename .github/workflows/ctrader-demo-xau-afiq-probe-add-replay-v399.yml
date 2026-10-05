@@ -1,0 +1,95 @@
+name: V399 XAU AFIQ Probe Add Replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: Replay start (ISO-8601 UTC)
+        required: false
+        default: "2025-01-01T00:00:00+00:00"
+      end:
+        description: Replay end (ISO-8601 UTC; blank = now)
+        required: false
+        default: ""
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/xau_afiq_probe_add_replay_v399.py"
+      - "src/fx_scanner/demo_xau_afiq_probe_add_replay_v399.py"
+      - "tests/test_xau_afiq_probe_add_replay_v399.py"
+      - ".github/workflows/ctrader-demo-xau-afiq-probe-add-replay-v399.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-demo-xau-afiq-probe-add-replay-v399
+  cancel-in-progress: true
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: "1"
+      CTRADER_DISABLE_TOKEN_REFRESH: "1"
+      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
+      V399_START: ${{ github.event.inputs.start || '2025-01-01T00:00:00+00:00' }}
+      V399_END: ${{ github.event.inputs.end || '' }}
+      V399_OUTPUT_PATH: v399_replay.json
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install cTrader research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
+      - name: V399 deterministic regression tests
+        id: regression
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          pytest -q tests/test_xau_afiq_challenger_v395.py tests/test_xau_afiq_replay_v396.py tests/test_xau_afiq_risk_replay_v397.py tests/test_xau_afiq_frozen_reclaim_replay_v398.py tests/test_xau_afiq_probe_add_replay_v399.py 2>&1 | tee v399_pytest.txt
+      - name: Run V399 no-lookahead probe-add replay
+        if: steps.regression.outcome == 'success'
+        id: replay_run
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m fx_scanner.demo_xau_afiq_probe_add_replay_v399 2>&1 | tee v399_replay_log.txt
+      - name: Upload V399 diagnostics and replay evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v399-xau-afiq-probe-add-replay-diagnostics
+          path: |
+            v399_pytest.txt
+            v399_replay_log.txt
+            v399_replay.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Enforce regression gate
+        if: steps.regression.outcome != 'success'
+        run: |
+          echo 'V399 regression gate failed; replay intentionally not executed.'
+          exit 1
+      - name: Enforce replay gate
+        if: steps.regression.outcome == 'success' && steps.replay_run.outcome != 'success'
+        run: |
+          echo 'V399 historical replay failed; inspect uploaded diagnostics.'
+          exit 1
