@@ -15,6 +15,15 @@ REACTION_ENTRY_MODE = "REACTION_EARLY_DEMO_PROBE"
 REACTION_CONFIRMATION_TIER = "REACTION_EARLY"
 EVENT_TYPE = "DEMO_XAU_V375_REACTION_EXECUTION"
 
+# V392: the frozen V376 C4 champion still emits the same V342 evaluation
+# schema/fields used by this DEMO router, but its contract name no longer starts
+# with the legacy V342 prefix. Keep the allow-list explicit and narrow so this
+# cannot silently authorize arbitrary future engine contracts.
+ACCEPTED_ENGINE_CONTRACT_PREFIXES = (
+    "XAU_RIZAN_SD_LIQUIDITY_V342_",
+    "XAU_RIZAN_SD_LIQUIDITY_V376_C4_CHAMPION_V1",
+)
+
 _BASE_CANDIDATE = base._candidate
 _BASE_EVIDENCE_LEDGER = base._evidence_ledger
 
@@ -76,7 +85,7 @@ def _reaction_candidate(
     """Admit a V374 early reaction only to the DEMO executor.
 
     The lane deliberately relaxes the *full MSS first* requirement, but it does
-    not relax source freshness, V342 DEMO authority, event blackout, structural
+    not relax source freshness, DEMO authority, event blackout, structural
     room, roadblock room, structural SL/TP geometry, minimum RR, no-chase, or
     a V376 causal behavioral-failure block.
     """
@@ -92,7 +101,7 @@ def _reaction_candidate(
 
     evaluation = dict(dict(heartbeat.get("details") or {}).get("evaluation") or {})
     contract = str(evaluation.get("contract") or "")
-    if not contract.startswith(base.ENGINE_CONTRACT_PREFIX):
+    if not contract.startswith(ACCEPTED_ENGINE_CONTRACT_PREFIXES):
         return None, "ENGINE_CONTRACT_MISMATCH"
     if not bool(evaluation.get("execution_authority")):
         return None, "ENGINE_DEMO_EXECUTION_NOT_AUTHORIZED"
@@ -226,11 +235,14 @@ def _candidate(
     ask: float,
     now: datetime,
 ) -> tuple[dict[str, Any] | None, str]:
-    """Prefer V342 confirmation, then V374 reaction, with V376 failure veto."""
+    """Prefer V342/V376 confirmation, then V374 reaction, with V376 failure veto."""
     behavior_block = _behavioral_block_reason(heartbeat)
     if behavior_block:
         return None, behavior_block
 
+    # The base V351 selector references its module-level contract prefix at
+    # runtime. Supply the same narrow compatibility tuple used by this wrapper.
+    base.ENGINE_CONTRACT_PREFIX = ACCEPTED_ENGINE_CONTRACT_PREFIXES
     standard, standard_reason = _BASE_CANDIDATE(
         heartbeat=heartbeat,
         bid=bid,
@@ -306,6 +318,7 @@ def _evidence_ledger(
 
 def run() -> int:
     """Run the proven V351 DEMO router with V375 selector + V376 failure veto."""
+    base.ENGINE_CONTRACT_PREFIX = ACCEPTED_ENGINE_CONTRACT_PREFIXES
     base._candidate = _candidate
     base._evidence_ledger = _evidence_ledger
     base.EVENT_TYPE = EVENT_TYPE
