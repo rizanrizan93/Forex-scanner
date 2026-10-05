@@ -139,7 +139,7 @@ k4.metric("Entry gate", entry_gate)
 
 if state.startswith("READY_"):
     st.success("**READY — " + action + "**")
-elif state.startswith("EARLY_\"):
+elif state.startswith("EARLY_"):
     st.warning("**EARLY — " + action + "**")
 elif state in {"WAIT_NEWS", "NO_CHASE", "REBUILD"}:
     st.warning("**" + state.replace("_", " ") + " — " + action + "**")
