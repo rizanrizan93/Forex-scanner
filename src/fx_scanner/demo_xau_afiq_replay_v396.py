@@ -83,10 +83,10 @@ def run() -> int:
     if end <= start:
         raise SystemExit("V396_REPLAY_INVALID_PERIOD")
 
-    # Add causal warm-up history. Trades in the first 120 H1 bars are suppressed
-    # by the replay core, but this buffer also lets H4/H1 zones exist near the
-    # requested research start without borrowing future information.
-    fetch_start = start - timedelta(days=90)
+    # Fetch begins exactly at the requested boundary. The core then suppresses
+    # its first 120 H1 bars as a causal warm-up, so no pre-period trades can leak
+    # into the reported statistics.
+    fetch_start = start
     feed = build_ctrader_research_feed(policy, [SYMBOL])
     try:
         feed.ensure_connected()
@@ -100,7 +100,7 @@ def run() -> int:
 
     result = run_replay(h1, h4)
     result["requested_period"] = {"start": start.isoformat(), "end": end.isoformat()}
-    result["fetch_warmup_start"] = fetch_start.isoformat()
+    result["warmup"] = "FIRST_120_H1_BARS_NO_SIGNALS"
     result["note"] = (
         "V396 is a gross, causal research replay. It does not change the DEMO or LIVE executor. "
         "Historical transaction costs and the scheduled-event archive are not yet applied."
