@@ -21,10 +21,34 @@ intraday_market:
     interval: 1m
     range: 1d
     max_age_seconds: 1200
+    pressure_window_minutes: 120
+    flat_threshold_bps: 1.0
     post_event_window_hours: 8
     minimum_initial_drop_bps: 1.5
     reversal_threshold_bps: 3.0
     strong_reversal_threshold_bps: 5.0
+
+  DXY_YAHOO_ICE:
+    enabled: true
+    official: false
+    base_url: https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB
+    allowed_host: query1.finance.yahoo.com
+    interval: 5m
+    range: 1d
+    max_age_seconds: 1200
+    pressure_window_minutes: 120
+    flat_threshold_pct: 0.05
+
+  FED_FUNDS_YAHOO_ZQ:
+    enabled: true
+    official: false
+    base_url: https://query1.finance.yahoo.com/v8/finance/chart/ZQ%3DF
+    allowed_host: query1.finance.yahoo.com
+    interval: 5m
+    range: 1d
+    max_age_seconds: 1200
+    pressure_window_minutes: 120
+    flat_threshold_bps: 1.0
 
 sources:
   ECB_DATA_PORTAL:
