@@ -1,0 +1,114 @@
+name: Research XAU Donchian Cost Raw V395
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/v390-xau-slr-raw
+    paths:
+      - "src/fx_scanner/research_xau_donchian_cost_v395.py"
+      - "src/fx_scanner/research_xau_donchian_cost_v395_year_runtime.py"
+      - "src/fx_scanner/research_xau_donchian_cost_v395_aggregate.py"
+      - ".github/workflows/research-xau-donchian-cost-raw-v395.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-donchian-cost-raw-v395-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Smoke V395 research harness
+        run: |
+          python - <<'PY'
+          from fx_scanner.research_xau_donchian_cost_v395 import config_grid
+          configs = config_grid()
+          assert len(configs) == 32
+          assert {c.max_stress_cost_r for c in configs} == {0.25, 0.30}
+          print("V395_SMOKE_OK configs=32 execution_authority=0")
+          PY
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      XAU_DONCHIAN_COST_V395_YEAR: ${{ matrix.year }}
+      XAU_DONCHIAN_COST_V395_PRICE_CSV: /tmp/histdata/xau-donchian-cost-v395-${{ matrix.year }}.csv
+      XAU_DONCHIAN_COST_V395_PROVENANCE: artifacts/xau-donchian-cost-v395-provenance-${{ matrix.year }}.json
+      XAU_DONCHIAN_COST_V395_OUTPUT: artifacts/xau-donchian-cost-v395-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install raw historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Run XAU cost-aware Donchian raw year
+        run: python -m fx_scanner.research_xau_donchian_cost_v395_year_runtime
+      - name: Upload yearly shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-donchian-cost-v395-year-${{ matrix.year }}
+          path: |
+            artifacts/xau-donchian-cost-v395-${{ matrix.year }}.json
+            artifacts/xau-donchian-cost-v395-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      XAU_DONCHIAN_COST_V395_SHARD_DIR: /tmp/xau-donchian-cost-v395-shards
+      XAU_DONCHIAN_COST_V395_FULL_OUTPUT: artifacts/xau-donchian-cost-raw-v395-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download all yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-donchian-cost-v395-year-*
+          path: /tmp/xau-donchian-cost-v395-shards
+          merge-multiple: false
+      - name: Aggregate rolling 3y train to 1y OOS
+        run: python -m fx_scanner.research_xau_donchian_cost_v395_aggregate
+      - name: Upload V395 full result
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-donchian-cost-raw-v395-full
+          path: artifacts/xau-donchian-cost-raw-v395-full.json
+          if-no-files-found: error
+          retention-days: 30
