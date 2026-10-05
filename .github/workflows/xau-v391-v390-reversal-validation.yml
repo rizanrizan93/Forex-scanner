@@ -1,0 +1,152 @@
+name: XAU V391 V390 Local Reversal Validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v391-v390-reversal-validation]
+    paths:
+      - "research/xau_v391_v390_reversal_validation.py"
+      - ".github/workflows/xau-v391-v390-reversal-validation.yml"
+      - "src/fx_scanner/xau_simple_reversal_engine_v390.py"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
+      - "src/fx_scanner/research_xau_sd_liquidity_v345.py"
+      - "src/fx_scanner/research_xau_histdata_download_v193.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xau-v391-v390-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay-year:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        year: [2025, 2026]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v391-v390-${{ matrix.year }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v391-v390-price-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download causal public XAUUSD M1 shard
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Replay V390 local reversal map
+        run: |
+          python -u research/xau_v391_v390_reversal_validation.py \
+            --year "${{ matrix.year }}" \
+            --csv "$XAU_V193_PRICE_CSV" \
+            --output "artifacts/xau-v391-v390-validation-${{ matrix.year }}.json"
+      - name: Print year summary
+        if: always()
+        run: |
+          FILE="artifacts/xau-v391-v390-validation-${{ matrix.year }}.json"
+          if [ -f "$FILE" ]; then
+            python - "$FILE" <<'PY'
+          import json, sys
+          p=json.load(open(sys.argv[1]))
+          print(json.dumps({"year":p["year"],"year_pass":p["year_pass"],"checks":p["checks"],"summary":p["summary"]}, indent=2, sort_keys=True))
+          PY
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v391-v390-validation-${{ matrix.year }}
+          path: |
+            artifacts/xau-v391-v390-validation-${{ matrix.year }}.json
+            artifacts/xau-v391-v390-price-${{ matrix.year }}.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  aggregate:
+    needs: replay-year
+    if: always() && needs.replay-year.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v391-v390-validation-20*
+          path: /tmp/v391
+          merge-multiple: true
+      - name: Aggregate frozen validation gates
+        run: |
+          python - <<'PY'
+          import glob, json, pathlib
+
+          files=sorted(glob.glob('/tmp/v391/xau-v391-v390-validation-20*.json'))
+          rows=[json.load(open(f)) for f in files]
+          criteria=rows[0]['pass_criteria'] if rows else {}
+
+          scored=[]
+          closer_touched=[]
+          ready_scored=[]
+          total_eps=0
+          year_passes=[]
+          years={}
+          for p in rows:
+              total_eps += int(p['summary']['episodes'])
+              year_passes.append(bool(p['year_pass']))
+              years[str(p['year'])]=p['summary']
+              for e in p['episodes']:
+                  primary=e.get('primary') or {}
+                  score=primary.get('score') or {}
+                  if e.get('primary_candidate_touched') and not e.get('primary_candidate_ambiguous') and score.get('state') in {'REVERSAL_050_ATR','INVALIDATED_FIRST','TIMEOUT'}:
+                      scored.append(e)
+                  if e.get('primary_local_closer_than_deep') and e.get('primary_candidate_touched'):
+                      closer_touched.append(e)
+                  if e.get('primary_ready_early') and e.get('primary_candidate_touched') and not e.get('primary_candidate_ambiguous'):
+                      ready_scored.append(e)
+
+          reversal_rate=(sum(bool(e.get('primary_candidate_success')) for e in scored)/len(scored)) if scored else None
+          before_deep_rate=(sum(bool(e.get('primary_local_touch_before_deep')) for e in closer_touched)/len(closer_touched)) if closer_touched else None
+          ready_precision=(sum(bool(e.get('primary_candidate_success')) for e in ready_scored)/len(ready_scored)) if ready_scored else None
+
+          checks={
+              'both_years_pass': len(rows)==2 and all(year_passes),
+              'combined_reversal_rate': reversal_rate is not None and reversal_rate >= float(criteria.get('min_combined_reversal_success_rate', 0.60)),
+              'combined_local_before_deep_rate': before_deep_rate is not None and before_deep_rate >= float(criteria.get('min_local_before_deep_rate_combined', 0.50)),
+              'combined_ready_precision': len(ready_scored)<10 or (ready_precision is not None and ready_precision >= float(criteria.get('ready_precision_floor_if_n_ge_10', 0.60))),
+          }
+          zone_direction_pass=all(checks.values())
+          payload={
+              'schema':'XAU_V391_V390_LOCAL_REVERSAL_AGGREGATE_V1',
+              'years':years,
+              'total_episodes':total_eps,
+              'combined_scored_local_touches':len(scored),
+              'combined_reversal_050_before_invalidation_rate':reversal_rate,
+              'combined_local_before_deep_denominator':len(closer_touched),
+              'combined_local_touch_before_deep_rate':before_deep_rate,
+              'combined_ready_early_scored_count':len(ready_scored),
+              'combined_ready_early_reversal_precision':ready_precision,
+              'criteria':criteria,
+              'checks':checks,
+              'decision':'V390_ZONE_DIRECTION_PASS' if zone_direction_pass else 'V390_ZONE_DIRECTION_REJECT_OR_RECALIBRATE',
+              'execution_authority':False,
+              'demo_auto_execution':False,
+              'live_execution_enabled':False,
+              'next_gate':'Separate cost-aware entry/SL/TP PF-expectancy replay before any DEMO auto-execution.',
+          }
+          pathlib.Path('artifacts').mkdir(exist_ok=True)
+          out='artifacts/xau-v391-v390-validation-aggregate.json'
+          pathlib.Path(out).write_text(json.dumps(payload, indent=2, sort_keys=True)+'\n')
+          print('V391_V390_AGGREGATE='+json.dumps(payload, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v391-v390-validation-aggregate
+          path: artifacts/xau-v391-v390-validation-aggregate.json
+          retention-days: 14
