@@ -1,0 +1,49 @@
+name: XAU V395 Sweep Regime Filter 2025
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v395-sweep-regime-filter]
+    paths:
+      - ".github/workflows/xau-v395-sweep-regime-filter-2025.yml"
+      - "research/xau_v395_sweep_regime_filter.py"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: xau-v395-sweep-regime-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  select-regime-filter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Syntax smoke V395
+        run: python -m py_compile research/xau_v395_sweep_regime_filter.py
+      - name: Download frozen V394 2025 shards
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: rizanrizan93/Forex-scanner
+        run: |
+          mkdir -p /tmp/v395/shards
+          for i in $(seq 0 15); do
+            gh run download 37298214365 -n "xau-v394-profitability-2025-s${i}" -D /tmp/v395/shards
+          done
+          test "$(find /tmp/v395/shards -name 'xau-v394-profitability-2025-s*.json' | wc -l)" -eq 16
+      - name: Select only causal filters stable in both 2025 halves
+        run: |
+          python -u research/xau_v395_sweep_regime_filter.py \
+            --inputs "/tmp/v395/shards/xau-v394-profitability-2025-s*.json" \
+            --output "artifacts/xau-v395-sweep-regime-filter-2025.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v395-sweep-regime-filter-2025
+          path: artifacts/xau-v395-sweep-regime-filter-2025.json
+          retention-days: 14
