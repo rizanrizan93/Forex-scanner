@@ -60,7 +60,7 @@ def choose(rows):
     # Robustness-first: positive expectancy required; then PF, expectancy, lower DD.
     positive=[r for r in eligible if (r["metrics"]["expectancy_r"] or -999)>0]
     pool=positive or eligible
-    return max(pool,key=lambda r=((r["metrics"]["profit_factor_r"] if r["metrics"]["profit_factor_r"] is not None else 999.0),r["metrics"]["expectancy_r"],-r["metrics"]["max_drawdown_r"]): key(r))
+    return max(pool, key=lambda r: ((r["metrics"]["profit_factor_r"] if r["metrics"]["profit_factor_r"] is not None else 999.0), r["metrics"]["expectancy_r"], -r["metrics"]["max_drawdown_r"]))
 
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument("--cal",type=Path,required=True); ap.add_argument("--holdout",type=Path,required=True); ap.add_argument("--out",type=Path,required=True); a=ap.parse_args()
