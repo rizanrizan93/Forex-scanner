@@ -48,6 +48,52 @@ def _dt(value: Any) -> datetime | None:
     return out.astimezone(UTC)
 
 
+def _protected_xau_positions_only(session: Any) -> tuple[bool, str]:
+    """Block new XAU orders only for unprotected XAU positions.
+
+    V351 historically inspected every position in the DEMO account. That meant
+    an unrelated manual/non-XAU position without SL/TP could freeze the XAU
+    research executor. V393 keeps fail-closed protection for XAUUSD itself while
+    ignoring positions that are provably a different symbol. Unknown symbol
+    identity remains fail-closed.
+    """
+    try:
+        target_symbol_id = int(session.symbol_id(base.SYMBOL))
+    except Exception:
+        try:
+            loader = getattr(session, "load_symbols", None)
+            if callable(loader):
+                loader([base.SYMBOL])
+            target_symbol_id = int(session.symbol_id(base.SYMBOL))
+        except Exception as exc:
+            return False, f"XAU_SYMBOL_ID_UNAVAILABLE:{type(exc).__name__}"
+
+    if target_symbol_id <= 0:
+        return False, "XAU_SYMBOL_ID_INVALID"
+
+    reconcile = session.reconcile()
+    checked = 0
+    for position in tuple(getattr(reconcile, "position", ())):
+        position_id = int(getattr(position, "positionId", 0) or 0)
+        trade_data = getattr(position, "tradeData", None)
+        try:
+            position_symbol_id = int(getattr(trade_data, "symbolId", 0) or 0)
+        except (TypeError, ValueError):
+            position_symbol_id = 0
+        if position_symbol_id <= 0:
+            return False, f"POSITION_SYMBOL_UNKNOWN:{position_id or 'UNKNOWN'}"
+        if position_symbol_id != target_symbol_id:
+            continue
+
+        checked += 1
+        stop_loss = _f(getattr(position, "stopLoss", None))
+        take_profit = _f(getattr(position, "takeProfit", None))
+        if stop_loss is None or stop_loss <= 0 or take_profit is None or take_profit <= 0:
+            return False, f"UNPROTECTED_XAU_POSITION:{position_id or 'UNKNOWN'}"
+
+    return True, f"ALL_XAU_POSITIONS_PROTECTED:{checked}"
+
+
 def _behavioral_block_reason(heartbeat: dict[str, Any]) -> str | None:
     evaluation = dict(dict(heartbeat.get("details") or {}).get("evaluation") or {})
     behavior = dict(evaluation.get("afiq_behavioral") or {})
@@ -317,10 +363,11 @@ def _evidence_ledger(
 
 
 def run() -> int:
-    """Run the proven V351 DEMO router with V375 selector + V376 failure veto."""
+    """Run the V351 DEMO router with V375 selector, V376 veto and XAU-only protection guard."""
     base.ENGINE_CONTRACT_PREFIX = ACCEPTED_ENGINE_CONTRACT_PREFIXES
     base._candidate = _candidate
     base._evidence_ledger = _evidence_ledger
+    base._protected_positions_only = _protected_xau_positions_only
     base.EVENT_TYPE = EVENT_TYPE
     return base.run()
 
