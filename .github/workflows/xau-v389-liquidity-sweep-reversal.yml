@@ -1,0 +1,24 @@
+name: XAU V389 Liquidity Sweep Reversal
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v389-liquidity-sweep-reversal]
+    paths:
+      - ".github/workflows/xau-v389-liquidity-sweep-reversal.yml"
+      - "research/xau_v389_liquidity_sweep_reversal.py"
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - name: Freeze V389 discovery contract before replay
+        run: python research/xau_v389_liquidity_sweep_reversal.py artifacts/xau-v389-manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v389-frozen-research-contract
+          path: artifacts/xau-v389-manifest.json
+          retention-days: 30
