@@ -2,13 +2,15 @@ name: Forex Official Macro Refresh
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "23 */6 * * 0-5"
 
 permissions:
   contents: read
 
 concurrency:
   group: forex-official-macro-refresh
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   refresh:
