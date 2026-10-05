@@ -1,0 +1,69 @@
+name: XAU V387b Aggregate Existing V387 Shards
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v387-execution-pnl-replay]
+    paths:
+      - ".github/workflows/xau-v387b-aggregate-existing-shards.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregate runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download completed V387 shards from original run
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v387-exec-*
+          path: /tmp/v387/shards
+          merge-multiple: true
+          repository: rizanrizan93/Forex-scanner
+          run-id: 37251779992
+          github-token: ${{ github.token }}
+      - name: Aggregate 2025
+        run: |
+          python research/xau_v387_execution_pnl_replay.py aggregate \
+            --year 2025 \
+            --inputs "/tmp/v387/shards/xau-v387-exec-2025-s*.json" \
+            --output "artifacts/xau-v387-exec-aggregate-2025.json"
+      - name: Aggregate 2026
+        run: |
+          python research/xau_v387_execution_pnl_replay.py aggregate \
+            --year 2026 \
+            --inputs "/tmp/v387/shards/xau-v387-exec-2026-s*.json" \
+            --output "artifacts/xau-v387-exec-aggregate-2026.json"
+      - name: Compare 2025 calibration vs 2026 holdout
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p25=json.load(open('artifacts/xau-v387-exec-aggregate-2025.json'))
+          p26=json.load(open('artifacts/xau-v387-exec-aggregate-2026.json'))
+          s25=p25['summary']; s26=p26['summary']
+          keys=['trades_after_max10_overlap_gate','win_rate','profit_factor_r','expectancy_r','total_r','max_drawdown_r','median_mae_r','median_mfe_r','median_duration_hours','pnl_usd_0p01_lot_assumption']
+          cmp={'schema':'XAU_V387B_2025_2026_EXECUTION_HOLDOUT_COMPARE_V1','calibration_year':2025,'holdout_year':2026,'adaptive_config':p25.get('adaptive_config'),'2025':{k:s25.get(k) for k in keys},'2026':{k:s26.get(k) for k in keys},'execution_authority':False,'live_execution_enabled':False}
+          Path('artifacts/xau-v387b-2025-vs-2026.json').write_text(json.dumps(cmp,indent=2,sort_keys=True)+'\n')
+          print('V387B_COMPARE='+json.dumps(cmp,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v387b-aggregate-and-holdout
+          path: |
+            artifacts/xau-v387-exec-aggregate-2025.json
+            artifacts/xau-v387-exec-aggregate-2026.json
+            artifacts/xau-v387b-2025-vs-2026.json
+          retention-days: 14
