@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     env:
       XAU_V193_YEAR: 2025
       XAU_V193_PRICE_CSV: /tmp/histdata/xau-v394-2025-s${{ matrix.shard }}.csv
@@ -63,7 +63,7 @@ jobs:
             --adaptive-json "$ADAPTIVE_JSON" \
             --csv "$XAU_V193_PRICE_CSV" \
             --shard-index "${{ matrix.shard }}" \
-            --shard-count 4 \
+            --shard-count 16 \
             --output "artifacts/xau-v394-profitability-2025-s${{ matrix.shard }}.json"
       - uses: actions/upload-artifact@v4
         if: always()
