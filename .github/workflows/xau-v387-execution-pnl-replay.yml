@@ -1,0 +1,141 @@
+name: XAU V387 Structural Execution PnL Replay
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v387-execution-pnl-replay]
+    paths:
+      - ".github/workflows/xau-v387-execution-pnl-replay.yml"
+      - "research/xau_v387_execution_pnl_replay.py"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
+      - "src/fx_scanner/xau_sd_liquidity_engine_v342_legacy.py"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: xau-v387-execution-pnl-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay-shards:
+    name: replay-${{ matrix.year }}-s${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        year: [2025, 2026]
+        shard: [0, 1, 2, 3]
+    env:
+      XAU_V193_YEAR: ${{ matrix.year }}
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v387-${{ matrix.year }}-s${{ matrix.shard }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v387-price-${{ matrix.year }}-s${{ matrix.shard }}.json
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rizanrizan93/Forex-scanner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install research runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+
+      - name: Download frozen adaptive artifact
+        run: |
+          mkdir -p /tmp/adaptive
+          if [ "${{ matrix.year }}" = "2025" ]; then
+            gh run download 37238066989 -n xau-v386-adaptive-c4-2025 -D /tmp/adaptive
+            FILE="/tmp/adaptive/xau-v386-adaptive-c4-2025.json"
+          else
+            gh run download 37205746219 -n xau-v384-adaptive-c4-2026 -D /tmp/adaptive
+            FILE="/tmp/adaptive/xau-v384-adaptive-c4-2026.json"
+          fi
+          test -s "$FILE"
+          echo "ADAPTIVE_JSON=$FILE" >> "$GITHUB_ENV"
+          echo "Adaptive artifact: $FILE"
+
+      - name: Download causal public XAUUSD M1
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+
+      - name: Replay V387 execution shard with live progress
+        run: |
+          python -u research/xau_v387_execution_pnl_replay.py shard \
+            --year "${{ matrix.year }}" \
+            --adaptive-json "$ADAPTIVE_JSON" \
+            --csv "$XAU_V193_PRICE_CSV" \
+            --shard-index "${{ matrix.shard }}" \
+            --shard-count 4 \
+            --output "artifacts/xau-v387-exec-${{ matrix.year }}-s${{ matrix.shard }}.json"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v387-exec-${{ matrix.year }}-s${{ matrix.shard }}
+          path: |
+            artifacts/xau-v387-exec-${{ matrix.year }}-s${{ matrix.shard }}.json
+            artifacts/xau-v387-price-${{ matrix.year }}-s${{ matrix.shard }}.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  aggregate-year:
+    name: aggregate-${{ matrix.year }}
+    needs: replay-shards
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        year: [2025, 2026]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download four completed shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v387-exec-${{ matrix.year }}-s*
+          path: /tmp/v387/shards
+          merge-multiple: true
+      - name: Aggregate PnL metrics and enforce max-10 overlap gate
+        run: |
+          python research/xau_v387_execution_pnl_replay.py aggregate \
+            --year "${{ matrix.year }}" \
+            --inputs "/tmp/v387/shards/xau-v387-exec-${{ matrix.year }}-s*.json" \
+            --output "artifacts/xau-v387-exec-aggregate-${{ matrix.year }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v387-exec-aggregate-${{ matrix.year }}
+          path: artifacts/xau-v387-exec-aggregate-${{ matrix.year }}.json
+          retention-days: 14
+
+  compare-holdout:
+    name: compare-2025-vs-2026
+    needs: aggregate-year
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v387-exec-aggregate-*
+          path: /tmp/v387/aggregate
+          merge-multiple: true
+      - name: Print frozen-policy calibration vs holdout comparison
+        run: |
+          python - <<'PY'
+          import glob, json
+          rows={}
+          for f in glob.glob('/tmp/v387/aggregate/xau-v387-exec-aggregate-*.json'):
+              p=json.load(open(f))
+              rows[int(p['year'])]=p['summary']
+          if set(rows) != {2025, 2026}:
+              raise SystemExit(f'Expected 2025 and 2026, got {sorted(rows)}')
+          keys=['trades_after_max10_overlap_gate','win_rate','profit_factor_r','expectancy_r','total_r','max_drawdown_r','median_mae_r','median_mfe_r','median_duration_hours','pnl_usd_0p01_lot_assumption']
+          out={str(y):{k:rows[y].get(k) for k in keys} for y in (2025,2026)}
+          print('V387_HOLDOUT_COMPARISON='+json.dumps(out, sort_keys=True))
+          PY
