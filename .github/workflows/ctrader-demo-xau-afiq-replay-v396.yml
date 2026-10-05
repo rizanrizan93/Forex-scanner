@@ -54,6 +54,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-research-cloud.txt
+          pip install pytest==9.0.2
       - name: V396 deterministic regression tests
         id: regression
         continue-on-error: true
