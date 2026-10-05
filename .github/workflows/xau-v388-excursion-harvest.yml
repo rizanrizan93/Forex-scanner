@@ -1,0 +1,40 @@
+name: XAU V388 Excursion Harvest Challenger
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v388-excursion-harvest-challenger]
+    paths:
+      - ".github/workflows/xau-v388-excursion-harvest.yml"
+      - "research/xau_v388_excursion_harvest.py"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download frozen V387 aggregates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/v387
+          gh run download 37253511333 -n xau-v387b-aggregate-and-holdout -D /tmp/v387
+          find /tmp/v387 -type f -maxdepth 2 -print
+          CAL=$(find /tmp/v387 -type f -name '*2025*.json' | head -1)
+          HOLD=$(find /tmp/v387 -type f -name '*2026*.json' | head -1)
+          test -s "$CAL" && test -s "$HOLD"
+          echo "CAL=$CAL" >> "$GITHUB_ENV"
+          echo "HOLD=$HOLD" >> "$GITHUB_ENV"
+      - name: Select on 2025 then blind-test frozen policy on 2026
+        run: |
+          python research/xau_v388_excursion_harvest.py --cal "$CAL" --holdout "$HOLD" --out artifacts/xau-v388-excursion-harvest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v388-excursion-harvest
+          path: artifacts/xau-v388-excursion-harvest.json
+          retention-days: 14
