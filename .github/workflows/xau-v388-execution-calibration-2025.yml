@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/xau-v388-execution-calibration-2025.yml"
       - "research/xau_v388_execution_calibration.py"
+      - "research/xau_v388_execution_calibration_jsonsafe.py"
       - "research/xau_v387_execution_pnl_replay.py"
       - "research/xau_v384_adaptive_c4_reforecast_cached.py"
       - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
@@ -61,7 +62,7 @@ jobs:
 
       - name: Run V388 calibration shard with live progress
         run: |
-          python -u research/xau_v388_execution_calibration.py shard \
+          python -u research/xau_v388_execution_calibration_jsonsafe.py shard \
             --adaptive-json "$ADAPTIVE_JSON" \
             --csv "$XAU_V193_PRICE_CSV" \
             --shard-index "${{ matrix.shard }}" \
@@ -101,7 +102,7 @@ jobs:
           merge-multiple: true
       - name: Aggregate 2025 and select only if H1 and H2 are both robust
         run: |
-          python -u research/xau_v388_execution_calibration.py aggregate \
+          python -u research/xau_v388_execution_calibration_jsonsafe.py aggregate \
             --inputs "/tmp/v388/shards/xau-v388-calibration-2025-s*.json" \
             --output "artifacts/xau-v388-calibration-2025-aggregate.json"
       - uses: actions/upload-artifact@v4
