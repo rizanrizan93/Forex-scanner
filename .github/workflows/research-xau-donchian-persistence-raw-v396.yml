@@ -1,0 +1,114 @@
+name: Research XAU Donchian Persistence Raw V396
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/v390-xau-slr-raw
+    paths:
+      - "src/fx_scanner/research_xau_donchian_persistence_v396.py"
+      - "src/fx_scanner/research_xau_donchian_persistence_v396_year_runtime.py"
+      - "src/fx_scanner/research_xau_donchian_persistence_v396_aggregate.py"
+      - ".github/workflows/research-xau-donchian-persistence-raw-v396.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-xau-donchian-persistence-raw-v396-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Smoke V396 research harness
+        run: |
+          python - <<'PY'
+          from fx_scanner.research_xau_donchian_persistence_v396 import config_grid, MIN_BREAKOUT_DISTANCE_ATR
+          configs = config_grid()
+          assert len(configs) == 32
+          assert MIN_BREAKOUT_DISTANCE_ATR == 0.10
+          print("V396_SMOKE_OK configs=32 execution_authority=0")
+          PY
+
+  backfill-year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        year: [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    env:
+      XAU_DONCHIAN_PERSIST_V396_YEAR: ${{ matrix.year }}
+      XAU_DONCHIAN_PERSIST_V396_PRICE_CSV: /tmp/histdata/xau-donchian-persist-v396-${{ matrix.year }}.csv
+      XAU_DONCHIAN_PERSIST_V396_PROVENANCE: artifacts/xau-donchian-persist-v396-provenance-${{ matrix.year }}.json
+      XAU_DONCHIAN_PERSIST_V396_OUTPUT: artifacts/xau-donchian-persist-v396-${{ matrix.year }}.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install raw historical runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Run XAU persistent breakout raw year
+        run: python -m fx_scanner.research_xau_donchian_persistence_v396_year_runtime
+      - name: Upload yearly shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-donchian-persist-v396-year-${{ matrix.year }}
+          path: |
+            artifacts/xau-donchian-persist-v396-${{ matrix.year }}.json
+            artifacts/xau-donchian-persist-v396-provenance-${{ matrix.year }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  aggregate:
+    needs: backfill-year
+    if: always() && needs.backfill-year.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      XAU_DONCHIAN_PERSIST_V396_SHARD_DIR: /tmp/xau-donchian-persist-v396-shards
+      XAU_DONCHIAN_PERSIST_V396_FULL_OUTPUT: artifacts/xau-donchian-persist-raw-v396-full.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install aggregator
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Download all yearly shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: xau-donchian-persist-v396-year-*
+          path: /tmp/xau-donchian-persist-v396-shards
+          merge-multiple: false
+      - name: Aggregate rolling 3y train to 1y OOS
+        run: python -m fx_scanner.research_xau_donchian_persistence_v396_aggregate
+      - name: Upload V396 full result
+        uses: actions/upload-artifact@v4
+        with:
+          name: xau-donchian-persist-raw-v396-full
+          path: artifacts/xau-donchian-persist-raw-v396-full.json
+          if-no-files-found: error
+          retention-days: 30
