@@ -1,0 +1,84 @@
+{
+  "contract": "XAU_RIZAN_AFIQ_CHALLENGER_POLICY_V395",
+  "engine_contract": "XAU_RIZAN_AFIQ_CHALLENGER_V395",
+  "reference_corpus": "calibration/xau_v394_afiq_reference_corpus.json",
+  "mode": "RESEARCH_SHADOW_ONLY",
+  "execution_authority": false,
+  "demo_auto_execution": false,
+  "live_execution_enabled": false,
+  "live_execution_influence": false,
+  "objective": "Test whether a causal SMC/ICT supply-demand and liquidity model can reproduce the useful behavior pattern seen in the AFIQ reference cases without copying AFIQ forecast prices into runtime decisions.",
+  "state_machine": {
+    "EARLY_TAKE_RISK": "High-quality effective HTF zone is reached, bounded liquidity context exists, structural invalidation is intact, and first-target RR is at least 1.50. Reclaim/MSS is not mandatory for this initial research state.",
+    "CONFIRMED": "A causal reclaim/acceptance level is subsequently confirmed; this upgrades confidence rather than creating the first entry from scratch.",
+    "BLOCKED_EVENT": "High-impact event blackout overrides anticipatory entry.",
+    "INVALIDATED": "Structural invalidation is accepted beyond, defined as explicit acceptance or at least two closes beyond the structural boundary; a wick alone is insufficient.",
+    "WATCH_ZONE": "Zone is reached but quality or RR is below the frozen threshold.",
+    "PREPARE": "Price is near the selected effective zone.",
+    "WAIT": "Selected effective zone is not reached."
+  },
+  "frozen_parameters": {
+    "min_effective_score": 7.0,
+    "min_rr": 1.5,
+    "event_blackout_minutes": 60,
+    "prepare_distance_zone_widths": 0.35,
+    "structural_acceptance_closes": 2
+  },
+  "zone_selection": {
+    "principle": "Effective zone, not every zone.",
+    "priority_factors": [
+      "H4/H1 location",
+      "main reversal/source/origin role",
+      "structurally active lifecycle",
+      "zone strength",
+      "nearby correct-side liquidity",
+      "price location",
+      "touch degradation",
+      "RR to opposing destination"
+    ],
+    "minor_reaction_can_be_candidate": true,
+    "minor_reaction_must_not_automatically_override_main_zone": true
+  },
+  "path_model": {
+    "primary": [
+      "EFFECTIVE_HTF_ZONE",
+      "EARLY_TAKE_RISK",
+      "RECLAIM_VALIDATION",
+      "OPPOSING_HTF_DESTINATION"
+    ],
+    "alternative": [
+      "DEEPER_LIQUIDITY_SWEEP",
+      "NO_STRUCTURAL_ACCEPTANCE_BEYOND_INVALIDATION",
+      "RECLAIM_OR_RETURN_TO_ZONE"
+    ],
+    "invalidation": "TWO_ACCEPTANCE_CLOSES_BEYOND_STRUCTURAL_INVALIDATION_OR_EXPLICIT_ACCEPTANCE_FLAG"
+  },
+  "no_lookahead_policy": {
+    "afiq_raw_prices_are_runtime_inputs": false,
+    "afiq_reference_role": "CALIBRATION_AND_REGRESSION_ONLY",
+    "source_and_derived_fields_must_remain_separate": true,
+    "historical_outcomes_must_not_backfill_signal_inputs": true,
+    "translation_invariance_regression_required": true
+  },
+  "regression_cases": [
+    "2026-10-05 style LONG: effective H4 demand permits EARLY_TAKE_RISK before reclaim when score/RR pass",
+    "Post-entry reclaim upgrades state to CONFIRMED",
+    "Liquidity wick beyond structural floor does not invalidate without acceptance",
+    "Two closes beyond structural floor invalidate",
+    "High-impact event blackout blocks anticipatory entry",
+    "Main effective zone outranks minor reaction when quality is materially stronger",
+    "Price-translation invariance prevents memorized AFIQ level logic",
+    "SHORT side remains symmetric",
+    "No LIVE/DEMO execution authority"
+  ],
+  "promotion_gates": {
+    "unit_tests_required": true,
+    "ci_required": true,
+    "replay_no_lookahead_required": true,
+    "walk_forward_required": true,
+    "minimum_profit_factor_target": 1.5,
+    "expectancy_must_be_positive": true,
+    "champion_executor_change_allowed_now": false,
+    "promotion_decision": "DO_NOT_PROMOTE_UNTIL_EVIDENCE_GATES_PASS"
+  }
+}
