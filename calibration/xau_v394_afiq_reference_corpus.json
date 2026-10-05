@@ -1,0 +1,201 @@
+{
+  "contract": "AFIQ_REFERENCE_CORPUS_V394",
+  "supersedes_for_research": "AFIQ_PUBLIC_FORECAST_REFERENCE_CORPUS_V304",
+  "policy_effect": "RESEARCH_AND_CALIBRATION_ONLY",
+  "execution_authority": false,
+  "live_execution_influence": false,
+  "calibration_influence": true,
+  "provenance_policy": {
+    "raw_source_fields": "Preserve only what was visible or stated in user-supplied AFIQ captures/messages.",
+    "derived_fields": "SMC/ICT/RIZAN reconstruction is stored separately and must not be represented as AFIQ's exact wording.",
+    "timestamp_policy": "available_from is when the evidence became available to this project; source_published_at remains null unless independently verified.",
+    "no_lookahead": true
+  },
+  "references": [
+    {
+      "reference_id": "AFIQ_USER_CAPTURE_20260929_01",
+      "symbol": "XAUUSD",
+      "source_name": "AFIQ / user-supplied forecast capture",
+      "source_type": "USER_CAPTURE_OF_FORECAST",
+      "source_url": null,
+      "available_from": "2026-09-29T13:45:37+00:00",
+      "source_published_at": null,
+      "timeframe_context": ["H1", "M30"],
+      "raw_source": {
+        "direction": "SHORT",
+        "entry_call": 4161.0,
+        "supply_context": {"low": 4160.0, "high": 4171.0},
+        "confirmation": "M30 SELL CONFIRMED",
+        "target": 4140.0
+      },
+      "derived_reconstruction": {
+        "entry_depth_pct_of_supply_from_proximal": 9.1,
+        "path": [
+          {"low": 4143.0, "high": 4144.0, "role": "INTERMEDIATE_REACTION"},
+          {"low": 4140.0, "high": 4141.0, "role": "TARGET_CLUSTER"}
+        ],
+        "structural_invalidation": {"rule": "DISTAL_BREAK", "level": 4171.0},
+        "mapped_lower_demand": [
+          {"low": 4133.7, "high": 4140.9, "role": "NEAR_DEMAND"},
+          {"low": 4111.0, "high": 4122.0, "role": "DEEPER_MAIN_DEMAND"}
+        ],
+        "mapped_higher_supply": {"low": 4194.0, "high": 4199.0}
+      },
+      "quality_flags": ["USER_SUPPLIED_REFERENCE", "ORIGINAL_PUBLICATION_TIMESTAMP_UNVERIFIED", "RAW_AND_DERIVED_FIELDS_SEPARATED"]
+    },
+    {
+      "reference_id": "AFIQ_PUBLIC_CAPTURE_20260930_01",
+      "symbol": "XAUUSD",
+      "source_name": "AKADEMI AFIQ INDONESIA / @bro_afiqq",
+      "source_type": "USER_CAPTURE_OF_PUBLIC_FORECAST",
+      "source_url": null,
+      "available_from": "2026-09-30T10:06:00+00:00",
+      "source_published_at": null,
+      "horizon_hours": 48,
+      "captured_price": 4187.81,
+      "timeframe_context": ["H2", "H1", "M30", "M15"],
+      "raw_source": {
+        "decision_zone": {"direction": "SHORT", "low": 4200.35, "high": 4212.03},
+        "key_band": {"low": 4208.0, "high": 4212.03},
+        "roadblock_key": {"price": 4183.85, "role": "S_R_FLIP_BASE_SUPPORT_ROADBLOCK"},
+        "upper_invalidation_key": {"price": 4212.03, "rule": "H1_BREAKOUT_ABOVE_INVALIDATES_OR_FORCES_EXIT_OF_SHORT_BIAS"}
+      },
+      "derived_reconstruction": {
+        "rejection_path": {
+          "direction": "SHORT",
+          "destinations": [
+            {"low": 4153.04, "high": 4166.38, "role": "FIRST_LOWER_REACTION_AREA"},
+            {"low": 4124.62, "high": 4139.57, "role": "DEEPER_DEMAND_SOURCE"}
+          ]
+        },
+        "acceptance_path": {
+          "direction": "LONG",
+          "destinations": [
+            {"low": 4261.96, "high": 4272.86, "role": "NEXT_SUPPLY"},
+            {"low": 4283.74, "high": 4297.34, "role": "UPPER_TERMINAL_SUPPLY"}
+          ]
+        }
+      },
+      "public_evidence": {
+        "channel_archive": "Telemetrio public posts archive for AKADEMI AFIQ INDONESIA",
+        "observed_2026_09_30": true,
+        "method_points": [
+          "H4 bias described as strongly bearish while price is held by supply",
+          "4212 is treated as an upper H1 breakout/invalidation key",
+          "4183.85 is described as prior resistance turned base support and only a roadblock on the path to demand",
+          "lower demand is the sell objective before a later recovery structure",
+          "far upside recovery range is described around 4261-4297"
+        ]
+      },
+      "quality_flags": ["PUBLIC_FORECAST_CAPTURE", "ORIGINAL_PUBLICATION_TIMESTAMP_UNVERIFIED", "MANUAL_GEOMETRY_TRANSCRIPTION", "RAW_AND_DERIVED_FIELDS_SEPARATED"]
+    },
+    {
+      "reference_id": "AFIQ_USER_CAPTURE_20261001_01",
+      "symbol": "XAUUSD",
+      "source_name": "AFIQ / user-supplied forecast capture",
+      "source_type": "USER_CAPTURE_OF_FORECAST",
+      "source_url": null,
+      "available_from": "2026-10-01T04:17:31+00:00",
+      "source_published_at": null,
+      "captured_price_approx": 4174.0,
+      "raw_source": {
+        "lower_low_or_demand_key": 4139.57,
+        "bullish_rejection_path": [
+          {"low": 4203.0, "high": 4220.0, "role": "UPSIDE_REACTION_BAND"},
+          {"price_approx": 4262.0, "role": "UPSIDE_DESTINATION"}
+        ],
+        "bearish_breakdown_path": [
+          {"price": 4124.0, "role": "LOWER_DESTINATION"},
+          {"price": 4117.0, "role": "DEEPER_DESTINATION"}
+        ]
+      },
+      "derived_reconstruction": {
+        "branching_model": "REACTION_VS_BREAKDOWN",
+        "principle": "Do not force one directional forecast; branch at the effective demand and update after acceptance/rejection."
+      },
+      "quality_flags": ["USER_SUPPLIED_REFERENCE", "ORIGINAL_PUBLICATION_TIMESTAMP_UNVERIFIED", "MANUAL_GEOMETRY_TRANSCRIPTION", "RAW_AND_DERIVED_FIELDS_SEPARATED"]
+    },
+    {
+      "reference_id": "AFIQ_USER_CAPTURE_20261001_02",
+      "symbol": "XAUUSD",
+      "source_name": "AFIQ / user-supplied forecast text",
+      "source_type": "USER_QUOTED_FORECAST",
+      "source_url": null,
+      "available_from": "2026-10-01T13:44:10+00:00",
+      "source_published_at": null,
+      "raw_source": {
+        "direction": "LONG",
+        "strong_footing_zone": {"low": 4113.0, "high": 4130.0},
+        "key_level_for_buy": 4111.0,
+        "upside_target_range": {"low": 4261.0, "high": 4297.0},
+        "event_risk_instruction": "Avoid taking the risk before the scheduled news release; wait for news."
+      },
+      "derived_reconstruction": {
+        "minor_reaction_zone": {"low": 4140.0, "high": 4155.0},
+        "main_reversal_demand": {"low": 4113.0, "high": 4130.0},
+        "liquidity_sweep_reference": {"around_or_below": 4111.0},
+        "preferred_sequence": ["MAIN_DEMAND_APPROACH", "LIQUIDITY_SWEEP", "RECLAIM", "BULLISH_REVERSAL", "OPPOSING_HTF_DESTINATION"],
+        "destination_ladder": [4261.0, 4297.0]
+      },
+      "quality_flags": ["USER_QUOTED_REFERENCE", "ORIGINAL_PUBLICATION_TIMESTAMP_UNVERIFIED", "NEWS_CONDITION_PRESENT", "RAW_AND_DERIVED_FIELDS_SEPARATED"]
+    },
+    {
+      "reference_id": "AFIQ_USER_CAPTURE_20261005_01",
+      "case_alias": "AFIQ-2026-10-05-A",
+      "symbol": "XAUUSD",
+      "source_name": "AFIQ / user-supplied forecast text + H4 screenshot",
+      "source_type": "USER_QUOTED_FORECAST_WITH_SCREENSHOT",
+      "source_url": null,
+      "available_from": "2026-10-05T14:22:00+00:00",
+      "source_published_at": null,
+      "timeframe_context": ["H4"],
+      "raw_source": {
+        "direction": "LONG",
+        "entry_call": 4142.0,
+        "risk_wording": "TAKE_RISK",
+        "margin_reference": 4132.0,
+        "market_condition": "SIDEWAYS_WITH_HEAVY_NOISE",
+        "short_term_target_at_least": 4280.0,
+        "conditional_reclaim": {"level": 4200.0, "opens_probability_toward": 4240.0},
+        "screenshot_observations": {
+          "visible_h4_ohlc": {"open": 4156.56, "high": 4158.0, "low": 4131.48, "close": 4141.88},
+          "marked_internal_levels": [4143.43, 4139.62, 4133.02, 4126.76],
+          "upper_marked_highs_approx": [4218.0, 4228.0]
+        }
+      },
+      "derived_reconstruction": {
+        "entry_class": "ANTICIPATORY_TAKE_RISK",
+        "confirmation_class": "POST_ENTRY_RECLAIM",
+        "main_h4_demand_approx": {"low": 4110.0, "high": 4144.0},
+        "structural_floor_approx": {"low": 4110.0, "high": 4111.0},
+        "refined_reaction_ladder": [
+          {"low": 4139.0, "high": 4144.0, "role": "PRIMARY_REACTION"},
+          {"low": 4131.0, "high": 4134.0, "role": "DEEP_REACTION"},
+          {"low": 4125.0, "high": 4128.0, "role": "SWEEP_POCKET"}
+        ],
+        "validation_level": 4200.0,
+        "destination_ladder": [4218.0, 4228.0, 4240.0, 4280.0],
+        "alternative_path": "If 4200 fails to reclaim, revisit of 4140/4132/4127/4111 remains structurally plausible.",
+        "core_behavioral_hypothesis": "Enter from high-quality HTF location before full confirmation, tolerate bounded liquidity noise/sweep, then use reclaim as post-entry validation rather than as the initial entry trigger."
+      },
+      "verification_note": "The visible H4 low 4131.48 is close to the stated 4132 margin reference, but sequence relative to the original AFIQ entry time has not been independently verified; do not label 4132 as a proven predicted sweep target.",
+      "quality_flags": ["USER_QUOTED_REFERENCE", "USER_SUPPLIED_SCREENSHOT", "ORIGINAL_PUBLICATION_TIMESTAMP_UNVERIFIED", "ANTICIPATORY_ENTRY_EXAMPLE", "OUTCOME_PENDING_OR_NOT_BACKFILLED", "RAW_AND_DERIVED_FIELDS_SEPARATED"]
+    }
+  ],
+  "research_hypotheses": {
+    "effective_zone_not_every_zone": true,
+    "anticipatory_entry_before_reclaim": true,
+    "reclaim_as_post_entry_validation": true,
+    "liquidity_sweep_tolerance": true,
+    "conditional_path_tree": true,
+    "main_zone_vs_minor_reaction_separation": true,
+    "news_condition_can_override_zone_entry": true
+  },
+  "engine_calibration_targets": {
+    "zone_selection": "Identify the next meaningful H4/H1 reversal zone rather than treating every supply/demand zone equally.",
+    "entry_timing": "Permit EARLY/TAKE_RISK mode inside a high-quality effective zone when structural invalidation and RR remain valid; do not require MSS/reclaim for every initial entry.",
+    "confirmation": "Use reclaim/acceptance as confidence upgrade and continuation validation.",
+    "pathing": "Produce Primary / Alternative / Invalidation branches and an intermediate-liquidity-to-opposing-HTF destination ladder.",
+    "provenance": "Never mix source facts with derived reconstruction."
+  }
+}
