@@ -1,0 +1,43 @@
+name: V405 Whalezone Reconstruction Regression
+
+on:
+  pull_request:
+    paths:
+      - "src/fx_scanner/xau_whalezone_reconstruction_v405.py"
+      - "tests/test_xau_whalezone_reconstruction_v405.py"
+      - "pages/3_Whalezone_Reconstruction.py"
+      - "docs/V405_WHALEZONE_RECONSTRUCTION.md"
+      - ".github/workflows/v405-whalezone-regression.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/xau_whalezone_reconstruction_v405.py"
+      - "tests/test_xau_whalezone_reconstruction_v405.py"
+      - "pages/3_Whalezone_Reconstruction.py"
+      - "docs/V405_WHALEZONE_RECONSTRUCTION.md"
+      - ".github/workflows/v405-whalezone-regression.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install test runner
+        run: python -m pip install --upgrade pip pytest==9.0.2
+      - name: Compile V405
+        env:
+          PYTHONPATH: src
+        run: python -m py_compile src/fx_scanner/xau_whalezone_reconstruction_v405.py
+      - name: Run V405 regression tests
+        env:
+          PYTHONPATH: src
+        run: pytest -q tests/test_xau_whalezone_reconstruction_v405.py
