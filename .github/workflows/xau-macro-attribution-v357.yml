@@ -1,4 +1,4 @@
-name: XAU Macro Attribution V398
+name: XAU Macro Attribution V399
 
 on:
   workflow_dispatch:
@@ -10,8 +10,10 @@ on:
       - "src/fx_scanner/xau_macro_attribution_v357.py"
       - "src/fx_scanner/xau_intraday_yield_v367.py"
       - "src/fx_scanner/xau_intraday_macro_v398.py"
+      - "src/fx_scanner/xau_treasury_session_v399.py"
       - "src/fx_scanner/demo_xau_macro_attribution_v357.py"
       - "src/fx_scanner/demo_xau_macro_attribution_v398.py"
+      - "src/fx_scanner/demo_xau_macro_attribution_v399.py"
       - "src/fx_scanner/demo_xau_event_risk_v192.py"
       - "src/fx_scanner/providers/news.py"
       - "src/fx_scanner/providers/official.py"
@@ -19,25 +21,29 @@ on:
       - "tests/test_xau_macro_attribution_v357.py"
       - "tests/test_xau_intraday_yield_v367.py"
       - "tests/test_xau_intraday_macro_v398.py"
+      - "tests/test_xau_treasury_session_v399.py"
       - ".github/workflows/xau-macro-attribution-v357.yml"
   pull_request:
     paths:
       - "src/fx_scanner/xau_macro_attribution_v357.py"
       - "src/fx_scanner/xau_intraday_yield_v367.py"
       - "src/fx_scanner/xau_intraday_macro_v398.py"
+      - "src/fx_scanner/xau_treasury_session_v399.py"
       - "src/fx_scanner/demo_xau_macro_attribution_v357.py"
       - "src/fx_scanner/demo_xau_macro_attribution_v398.py"
+      - "src/fx_scanner/demo_xau_macro_attribution_v399.py"
       - "config/providers.yaml"
       - "tests/test_xau_macro_attribution_v357.py"
       - "tests/test_xau_intraday_yield_v367.py"
       - "tests/test_xau_intraday_macro_v398.py"
+      - "tests/test_xau_treasury_session_v399.py"
       - ".github/workflows/xau-macro-attribution-v357.yml"
 
 permissions:
   contents: read
 
 concurrency:
-  group: xau-macro-attribution-v398-${{ github.ref }}
+  group: xau-macro-attribution-v399-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -59,17 +65,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
           pip install pytest==9.0.2
-      - name: Test V357/V367/V398
+      - name: Test V357/V367/V398/V399
         run: |
           pytest -q \
             tests/test_xau_macro_attribution_v357.py \
             tests/test_xau_intraday_yield_v367.py \
-            tests/test_xau_intraday_macro_v398.py
+            tests/test_xau_intraday_macro_v398.py \
+            tests/test_xau_treasury_session_v399.py
       - name: Validate configuration
         run: python -m fx_scanner.cli validate-config
       - name: Refresh V192 event context
         if: github.event_name != 'pull_request'
         run: python -m fx_scanner.demo_xau_event_risk_v192
-      - name: Refresh V398 macro heartbeat
+      - name: Refresh V399 macro heartbeat
         if: github.event_name != 'pull_request'
-        run: python -m fx_scanner.demo_xau_macro_attribution_v398
+        run: python -m fx_scanner.demo_xau_macro_attribution_v399
