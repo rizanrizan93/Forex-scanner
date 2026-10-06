@@ -1,4 +1,4 @@
-name: V404 Runtime Decision Regression
+name: V404-V405 XAU Runtime Regression
 
 on:
   pull_request:
@@ -9,7 +9,9 @@ on:
       - "src/fx_scanner/xau_afiq_challenger_v395.py"
       - "src/fx_scanner/xau_afiq_scanner_bridge_v403.py"
       - "src/fx_scanner/xau_runtime_decision_v404.py"
+      - "src/fx_scanner/xau_whalezone_reconstruction_v405.py"
       - "tests/test_xau_runtime_decision_v404.py"
+      - "tests/test_xau_whalezone_reconstruction_v405.py"
       - "tests/test_streamlit_import_bootstrap_v404.py"
       - ".github/workflows/v404-runtime-decision-regression.yml"
   push:
@@ -21,7 +23,9 @@ on:
       - "src/fx_scanner/xau_afiq_challenger_v395.py"
       - "src/fx_scanner/xau_afiq_scanner_bridge_v403.py"
       - "src/fx_scanner/xau_runtime_decision_v404.py"
+      - "src/fx_scanner/xau_whalezone_reconstruction_v405.py"
       - "tests/test_xau_runtime_decision_v404.py"
+      - "tests/test_xau_whalezone_reconstruction_v405.py"
       - "tests/test_streamlit_import_bootstrap_v404.py"
       - ".github/workflows/v404-runtime-decision-regression.yml"
   workflow_dispatch:
@@ -41,7 +45,7 @@ jobs:
           cache: "pip"
       - name: Install test runner
         run: python -m pip install --upgrade pip pytest==9.0.2
-      - name: Compile V390/V395/V403/V404
+      - name: Compile V390/V395/V403/V404/V405
         env:
           PYTHONPATH: src
         run: |
@@ -49,11 +53,13 @@ jobs:
             src/fx_scanner/xau_simple_reversal_engine_v390.py \
             src/fx_scanner/xau_afiq_challenger_v395.py \
             src/fx_scanner/xau_afiq_scanner_bridge_v403.py \
-            src/fx_scanner/xau_runtime_decision_v404.py
-      - name: Run V404 regression tests
+            src/fx_scanner/xau_runtime_decision_v404.py \
+            src/fx_scanner/xau_whalezone_reconstruction_v405.py
+      - name: Run XAU runtime regression tests
         env:
           PYTHONPATH: src
         run: |
           pytest -q \
             tests/test_xau_runtime_decision_v404.py \
+            tests/test_xau_whalezone_reconstruction_v405.py \
             tests/test_streamlit_import_bootstrap_v404.py
