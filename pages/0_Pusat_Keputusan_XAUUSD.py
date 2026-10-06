@@ -14,6 +14,9 @@ if SRC.is_dir() and str(SRC) not in sys.path:
 from fx_scanner.xau_public_hot_v362 import fetch_public_hot_snapshot  # noqa: E402
 from fx_scanner.xau_runtime_decision_v404 import evaluate_runtime_decision_v404  # noqa: E402
 from fx_scanner.xau_simple_reversal_engine_v390 import evaluate_simple_reversal  # noqa: E402
+from fx_scanner.xau_whalezone_reconstruction_v405 import (  # noqa: E402
+    evaluate_whalezone_reconstruction_v405,
+)
 
 
 def d(value: Any) -> dict[str, Any]:
@@ -66,11 +69,38 @@ def direction_badge(direction: str) -> str:
     return {"LONG": "🟢 LONG", "SHORT": "🔴 SHORT"}.get(direction, "⚪ WAIT")
 
 
+def render_tier(zone: dict[str, Any], *, side: str) -> None:
+    label = str(zone.get("label") or side)
+    low = px(zone.get("low"))
+    high = px(zone.get("high"))
+    readiness = readiness_label(zone.get("readiness"))
+    tf = str(zone.get("timeframe") or "—")
+    source = str(zone.get("source_type") or "—")
+    distance = f(zone.get("distance_atr"))
+    distance_text = "—" if distance is None else f"{distance:.2f} ATR"
+    if side == "SELL":
+        st.error(f"**🔴 {label}**  •  {low}–{high}")
+    else:
+        st.info(f"**⚪ {label}**  •  {low}–{high}")
+    st.caption(
+        f"{readiness} • {tf}/{source} • distance {distance_text} • "
+        f"lifecycle={zone.get('lifecycle_state', '—')}"
+    )
+    liquidity = list(zone.get("liquidity") or [])
+    if liquidity:
+        st.caption(
+            "Liquidity: "
+            + " | ".join(
+                f"{row.get('side', '—')} {px(row.get('price'))}" for row in liquidity[:3]
+            )
+        )
+
+
 st.set_page_config(page_title="RIZAN XAU Decision", page_icon="🎯", layout="wide")
 st.title("RIZAN — Pusat Keputusan XAUUSD")
 st.caption(
     "V404 menggabungkan reversal lokal V390 dengan challenger/liquidity V403 menjadi satu keputusan fail-closed. "
-    "Zona tetap ditampilkan saat WAIT agar dashboard tidak kosong, tetapi konflik/event block tidak dipaksa menjadi entry."
+    "V405 menambahkan peta tiered BUY/SELL berbasis struktur kausal; bukan klaim formula proprietary."
 )
 
 try:
@@ -87,6 +117,7 @@ if not sd:
 
 plan = evaluate_simple_reversal(sd)
 decision = evaluate_runtime_decision_v404(sd)
+whale = evaluate_whalezone_reconstruction_v405(sd)
 
 v404_state = str(decision.get("state") or "UNAVAILABLE")
 v404_direction = str(decision.get("direction") or "WAIT")
@@ -133,10 +164,55 @@ if decision.get("rr_first_target") is not None:
 
 if decision.get("research_candidate"):
     st.warning(
-        "V404 menandai setup ini sebagai kandidat riset, BUKAN otoritas order. DEMO auto-execution tetap OFF sampai walk-forward/out-of-sample lulus gate."
+        "V404 menandai setup ini sebagai kandidat kalibrasi A/B. Engine keputusan tetap tidak mempunyai otoritas broker langsung; LIVE selalu OFF."
     )
 else:
-    st.caption("Execution: SHADOW • DEMO auto-order OFF • LIVE auto-order OFF.")
+    st.caption("Execution decision layer: SHADOW • LIVE auto-order OFF.")
+
+st.markdown("---")
+st.markdown("## V405 — RIZAN Tiered Reaction Map")
+st.caption(
+    "Rekonstruksi perilaku dari pola visual yang dibagikan: zona reaksi disusun bertingkat dari yang terdekat ke struktur berikutnya. "
+    "H4/H1 = struktur, M15 = validasi, M5 = refinement. Exact formula indikator pihak lain tidak diklaim."
+)
+
+w1, w2, w3, w4 = st.columns(4)
+w1.metric("V405 State", str(whale.get("state") or "UNAVAILABLE").replace("_", " "))
+w2.metric("Focus", direction_badge(str(whale.get("direction") or "WAIT")))
+w3.metric("BUY side", str(whale.get("buy_state") or "UNAVAILABLE").replace("_", " "))
+w4.metric("SELL side", str(whale.get("sell_state") or "UNAVAILABLE").replace("_", " "))
+st.caption(f"Reason: {whale.get('reason', '—')} • ATR reference: {px(whale.get('atr_reference'))}")
+
+buy_zones = [d(row) for row in list(whale.get("buy_zones") or [])]
+sell_zones = [d(row) for row in list(whale.get("sell_zones") or [])]
+left, right = st.columns(2)
+with left:
+    st.markdown("### ⚪ BUY zones")
+    if buy_zones:
+        for row in buy_zones:
+            render_tier(row, side="BUY")
+    else:
+        st.caption("Tidak ada BUY zone valid pada snapshot saat ini.")
+with right:
+    st.markdown("### 🩷 SELL zones")
+    if sell_zones:
+        for row in sell_zones:
+            render_tier(row, side="SELL")
+    else:
+        st.caption("Tidak ada SELL zone valid pada snapshot saat ini.")
+
+whale_range = d(whale.get("range"))
+if whale_range.get("state") == "LOCAL_RANGE":
+    st.markdown("### Struktur sideways / local range")
+    q1, q2, q3, q4 = st.columns(4)
+    q1.metric("Floor", px(whale_range.get("floor")))
+    q2.metric("Mid", px(whale_range.get("mid")))
+    q3.metric("Ceiling", px(whale_range.get("ceiling")))
+    q4.metric("Posisi harga", str(whale_range.get("price_location") or "—").replace("_", " "))
+    st.caption(
+        "Tier 1 adalah reaction edge terdekat. Jika M15 menerima harga secara solid di luar edge, fokus bergeser ke tier berikutnya; "
+        "wick/sweep saja tidak otomatis membatalkan zona pada hipotesis V405."
+    )
 
 st.markdown("---")
 st.markdown("## Peta reversal V390")
@@ -211,13 +287,18 @@ for side, zone in (("LONG", long_zone), ("SHORT", short_zone)):
             + " | ".join(f"{row.get('side', '—')} {px(row.get('price'))}" for row in liquidity[:4])
         )
 
-with st.expander("Audit V404 + struktur HTF"):
+with st.expander("Audit V404/V405 + struktur HTF"):
     st.write(
         {
             "v404_contract": decision.get("contract"),
             "v404_validation_status": decision.get("validation_status"),
             "v404_research_gates": decision.get("required_research_gates"),
             "v403_reason": decision.get("v403_reason"),
+            "v405_contract": whale.get("contract"),
+            "v405_validation_status": whale.get("validation_status"),
+            "v405_reconstruction_basis": whale.get("reconstruction_basis"),
+            "v405_proprietary_formula_claimed": whale.get("proprietary_formula_claimed"),
+            "v405_confirmation_model": whale.get("confirmation_model"),
             "deep_htf_zone": deep,
             "deep_htf_is_entry_trigger": bool(plan.get("deep_htf_is_entry_trigger")),
             "candidate_counts": plan.get("candidate_counts"),
@@ -228,5 +309,6 @@ with st.expander("Audit V404 + struktur HTF"):
     )
 
 st.caption(
-    "V404 adalah decision-support/shadow consensus. LIVE auto-execution = OFF. DEMO auto-execution = OFF sampai evidence walk-forward memenuhi research gates."
+    "V404/V405 adalah decision-support dan reconstruction research. LIVE auto-execution = OFF. "
+    "DEMO forward calibration tetap harus melalui jalur eksekusi DEMO terpisah dengan broker-side SL/TP dan audit order."
 )
