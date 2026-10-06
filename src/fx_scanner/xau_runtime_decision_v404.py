@@ -20,18 +20,24 @@ from .xau_simple_reversal_engine_v390 import evaluate_simple_reversal
 CONTRACT = "XAU_RIZAN_RUNTIME_DECISION_V404"
 MODE = "SHADOW_CONSENSUS"
 
-RESEARCH_GATES: dict[str, float] = {
-    "profit_factor_min": 1.50,
-    "expectancy_r_min": 0.04,
-    "max_drawdown_pct_max": 15.0,
-    "precision_min": 0.60,
-    "false_positive_rate_max": 0.40,
-    "trades_per_year_min": 24.0,
+# Keep runtime promotion requirements aligned with the existing V402
+# walk-forward discipline instead of introducing an easier V404-only target.
+RESEARCH_GATES: dict[str, Any] = {
+    "all_expected_years_present": True,
+    "total_trades_min": 100,
+    "fixed_price_profit_factor_min": 1.50,
+    "expectancy_price_positive": True,
+    "cost_stress_price_units": 0.50,
+    "cost_stress_profit_factor_min": 1.20,
+    "robust_year_min_trades": 5,
+    "robust_year_profit_factor_min": 1.00,
+    "held_out_validation_required": True,
+    "causal_event_blackout_required": True,
+    "historical_spread_commission_validation_required": True,
 }
 
 _DIRECTIONAL = {"LONG", "SHORT"}
 _V390_READY = {"READY_LONG": "LONG", "READY_SHORT": "SHORT"}
-_V403_BLOCKING = {"BLOCKED_EVENT", "INVALIDATED", "UNAVAILABLE"}
 
 
 def _d(value: Any) -> dict[str, Any]:
