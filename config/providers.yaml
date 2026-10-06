@@ -28,6 +28,17 @@ intraday_market:
     reversal_threshold_bps: 3.0
     strong_reversal_threshold_bps: 5.0
 
+  US10Y_FUTURES_YAHOO_ZN:
+    enabled: true
+    official: false
+    base_url: https://query1.finance.yahoo.com/v8/finance/chart/ZN%3DF
+    allowed_host: query1.finance.yahoo.com
+    interval: 5m
+    range: 1d
+    max_age_seconds: 1200
+    pressure_window_minutes: 120
+    flat_threshold_points: 0.03125
+
   DXY_YAHOO_ICE:
     enabled: true
     official: false
