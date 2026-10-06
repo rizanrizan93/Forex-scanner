@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Any
 
 import streamlit as st
 
-from fx_scanner.xau_public_hot_v362 import fetch_public_hot_snapshot
-from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if SRC.is_dir() and str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+from fx_scanner.xau_public_hot_v362 import fetch_public_hot_snapshot  # noqa: E402
+from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary  # noqa: E402
 
 
 def fmt(value: Any, suffix: str = "") -> str:
