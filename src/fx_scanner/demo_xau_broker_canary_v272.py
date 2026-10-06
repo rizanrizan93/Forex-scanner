@@ -60,6 +60,34 @@ def _record(
     )
 
 
+def _record_safe(
+    store: SupabaseOperationalStore,
+    **kwargs: Any,
+) -> str | None:
+    """Telemetry must never interrupt broker cleanup after a side effect."""
+    try:
+        _record(store, **kwargs)
+    except Exception as exc:
+        return f"{type(exc).__name__}:{exc}"
+    return None
+
+
+def _accepted_once(store: SupabaseOperationalStore) -> dict[str, Any]:
+    response = (
+        store.client.table("broker_order_events")
+        .select("accepted,code,event_type,broker_order_id,payload,observed_at")
+        .eq("signal_key", SIGNAL_ID)
+        .eq("event_type", EVENT_TYPE)
+        .eq("code", "CANARY_ORDER_ACCEPTED")
+        .eq("accepted", True)
+        .order("observed_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = list(response.data or [])
+    return {} if not rows else dict(rows[0])
+
+
 def _already_verified(store: SupabaseOperationalStore) -> bool:
     response = (
         store.client.table("broker_order_events")
@@ -186,6 +214,7 @@ def run() -> int:
 
         cleanup_ok, cleanup_actions = _cleanup_pending_canaries(session)
         actions.extend(cleanup_actions)
+        recovered_prior_pending = bool(cleanup_actions)
         if not cleanup_ok:
             raise RuntimeError("CANARY_STALE_PENDING_CLEANUP_FAILED")
 
@@ -193,9 +222,38 @@ def run() -> int:
         if _canary_positions(reconcile):
             raise RuntimeError("CANARY_UNEXPECTED_POSITION_PRESENT")
 
+        prior_accepted = _accepted_once(store)
         if _already_verified(store):
             verified = True
             actions.append("CANARY_ALREADY_VERIFIED")
+            return_code = 0
+        elif recovered_prior_pending or prior_accepted:
+            # A prior broker ACK is enough to prohibit a second canary. If the
+            # previous run died during telemetry, startup cleanup above cancels
+            # the stale pending order first and this path only persists recovery.
+            verified = True
+            receipt_order_id = str(
+                prior_accepted.get("broker_order_id") or ""
+            ) or receipt_order_id
+            actions.append("CANARY_PRIOR_ACK_RECOVERED_NO_RESUBMIT")
+            telemetry_error = _record_safe(
+                store,
+                accepted=True,
+                broker_order_id=receipt_order_id,
+                code="CANARY_CANCELLED_CONFIRMED",
+                message=(
+                    "prior broker-accepted DEMO canary was absent after startup "
+                    "cleanup; no second canary submitted"
+                ),
+                payload={
+                    "recovered_prior_pending": recovered_prior_pending,
+                    "recovered_from_prior_ack": bool(prior_accepted),
+                    "pending_after_cleanup": 0,
+                    "position_after_cleanup": 0,
+                },
+            )
+            if telemetry_error:
+                actions.append(f"CANARY_TELEMETRY_WARN:{telemetry_error}")
             return_code = 0
         elif tuple(getattr(reconcile, "position", ()) or ()):
             actions.append("CANARY_DEFER_OPEN_POSITION_PRESENT")
@@ -227,20 +285,10 @@ def run() -> int:
                     f"CANARY_BROKER_NOT_ACCEPTED:{receipt.message}"
                 )
             actions.append(f"CANARY_BROKER_ACCEPTED:{receipt_order_id}")
-            _record(
-                store,
-                accepted=True,
-                broker_order_id=receipt_order_id,
-                code="CANARY_ORDER_ACCEPTED",
-                message=receipt.message,
-                payload={
-                    "entry": entry,
-                    "sl": stop,
-                    "tp": target,
-                    "side": "SELL",
-                },
-            )
 
+            # Broker cleanup has priority over observability. Do not write any
+            # Supabase event here: a telemetry disconnect after ACK must never
+            # prevent the immediate cancel attempt.
             cancelled = False
             cancel_errors: list[str] = []
             for attempt in range(1, 4):
@@ -260,7 +308,7 @@ def run() -> int:
             unexpected_position = bool(_canary_positions(reconcile_after))
             verified = bool(cancelled and cleanup_ok and not unexpected_position)
             if not verified:
-                _record(
+                telemetry_error = _record_safe(
                     store,
                     accepted=False,
                     broker_order_id=receipt_order_id,
@@ -272,9 +320,29 @@ def run() -> int:
                         "unexpected_position": unexpected_position,
                     },
                 )
+                if telemetry_error:
+                    actions.append(f"CANARY_TELEMETRY_WARN:{telemetry_error}")
                 raise RuntimeError("CANARY_CANCEL_VERIFY_FAILED")
 
-            _record(
+            accepted_telemetry_error = _record_safe(
+                store,
+                accepted=True,
+                broker_order_id=receipt_order_id,
+                code="CANARY_ORDER_ACCEPTED",
+                message=receipt.message,
+                payload={
+                    "entry": entry,
+                    "sl": stop,
+                    "tp": target,
+                    "side": "SELL",
+                    "cancelled_before_telemetry": True,
+                },
+            )
+            if accepted_telemetry_error:
+                actions.append(
+                    f"CANARY_TELEMETRY_WARN:{accepted_telemetry_error}"
+                )
+            final_telemetry_error = _record_safe(
                 store,
                 accepted=True,
                 broker_order_id=receipt_order_id,
@@ -290,12 +358,14 @@ def run() -> int:
                     "position_after_cancel": 0,
                 },
             )
+            if final_telemetry_error:
+                actions.append(f"CANARY_TELEMETRY_WARN:{final_telemetry_error}")
             actions.append(f"CANARY_CANCELLED_CONFIRMED:{receipt_order_id}")
             return_code = 0
     except Exception as exc:
         error = f"{type(exc).__name__}:{exc}"
         return_code = 2
-        _record(
+        telemetry_error = _record_safe(
             store,
             accepted=False,
             broker_order_id=receipt_order_id,
@@ -303,6 +373,8 @@ def run() -> int:
             message=error,
             payload={"actions": actions[-12:]},
         )
+        if telemetry_error:
+            actions.append(f"CANARY_TELEMETRY_WARN:{telemetry_error}")
     finally:
         try:
             control.stop(timeout=2.0)
@@ -312,25 +384,29 @@ def run() -> int:
             session.close()
         except Exception:
             pass
-        store.write_heartbeat(
-            WORKER_NAME,
-            healthy=error is None,
-            lag_seconds=0.0,
-            details={
-                "enabled": True,
-                "environment": "DEMO",
-                "diagnostic_only": True,
-                "exclude_from_strategy_stats": True,
-                "verified": verified,
-                "signal_id": SIGNAL_ID,
-                "lot": LOT,
-                "order_type": "SELL_LIMIT_THEN_IMMEDIATE_CANCEL",
-                "actions": actions[-20:],
-                "error": error,
-                "code_version": os.getenv("GITHUB_SHA", "LOCAL"),
-                "observed_at": datetime.now(UTC).isoformat(),
-            },
-        )
+        try:
+            store.write_heartbeat(
+                WORKER_NAME,
+                healthy=error is None,
+                lag_seconds=0.0,
+                details={
+                    "enabled": True,
+                    "environment": "DEMO",
+                    "diagnostic_only": True,
+                    "exclude_from_strategy_stats": True,
+                    "verified": verified,
+                    "signal_id": SIGNAL_ID,
+                    "lot": LOT,
+                    "order_type": "SELL_LIMIT_THEN_IMMEDIATE_CANCEL",
+                    "actions": actions[-20:],
+                    "error": error,
+                    "code_version": os.getenv("GITHUB_SHA", "LOCAL"),
+                    "observed_at": datetime.now(UTC).isoformat(),
+                },
+            )
+        except Exception:
+            # Broker cleanup/result is authoritative; heartbeat telemetry is not.
+            pass
     return return_code
 
 
