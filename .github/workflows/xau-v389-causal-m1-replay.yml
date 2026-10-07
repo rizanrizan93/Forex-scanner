@@ -1,0 +1,225 @@
+name: XAU V389 Causal M1 Sweep Reversal Replay
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research-v389-causal-m1-replay]
+    paths:
+      - ".github/workflows/xau-v389-causal-m1-replay.yml"
+      - "research/xau_v389_causal_m1_replay.py"
+      - "research/xau_v389_liquidity_sweep_reversal.py"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: xau-v389-causal-m1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile causal replay and freeze discovery grid
+        run: |
+          python -m py_compile research/xau_v389_causal_m1_replay.py research/xau_v389_liquidity_sweep_reversal.py
+          python research/xau_v389_liquidity_sweep_reversal.py artifacts/xau-v389-manifest.json
+          python - <<'PY'
+          import json
+          p=json.load(open('artifacts/xau-v389-manifest.json'))
+          assert p['c4_selector']=='M15_LB12_B020_FROZEN'
+          assert len(p['discovery_grid'])==3
+          assert p['promotion_contract']['live_execution_enabled'] is False
+          print('V389_PREFLIGHT_OK', p['c4_selector'])
+          PY
+
+  calibration_shards:
+    name: calibration-2025-s${{ matrix.shard }}
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      XAU_V193_YEAR: "2025"
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v389-2025-s${{ matrix.shard }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v389-price-2025-s${{ matrix.shard }}.json
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rizanrizan93/Forex-scanner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install frozen research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - name: Download V386 frozen 2025 adaptive artifact
+        run: |
+          mkdir -p /tmp/adaptive
+          gh run download 37238066989 -n xau-v386-adaptive-c4-2025 -D /tmp/adaptive
+          test -s /tmp/adaptive/xau-v386-adaptive-c4-2025.json
+      - name: Download historical causal M1
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Replay all predeclared policies on 2025 only
+        run: |
+          python -u research/xau_v389_causal_m1_replay.py shard \
+            --year 2025 \
+            --adaptive-json /tmp/adaptive/xau-v386-adaptive-c4-2025.json \
+            --csv "$XAU_V193_PRICE_CSV" \
+            --shard-index "${{ matrix.shard }}" --shard-count 4 \
+            --policy all \
+            --output "artifacts/xau-v389-calibration-2025-s${{ matrix.shard }}.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v389-calibration-2025-s${{ matrix.shard }}
+          path: |
+            artifacts/xau-v389-calibration-2025-s${{ matrix.shard }}.json
+            artifacts/xau-v389-price-2025-s${{ matrix.shard }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  select_2025:
+    name: select-and-freeze-2025
+    needs: calibration_shards
+    runs-on: ubuntu-latest
+    outputs:
+      holdout: ${{ steps.selection.outputs.holdout }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v389-calibration-2025-s*
+          path: /tmp/v389/shards
+          merge-multiple: true
+      - name: Aggregate and freeze 2025 winner before any 2026 replay
+        id: selection
+        run: |
+          python research/xau_v389_causal_m1_replay.py aggregate \
+            --year 2025 \
+            --inputs "/tmp/v389/shards/xau-v389-calibration-2025-s*.json" \
+            --output artifacts/xau-v389-calibration-2025.json \
+            --freeze artifacts/xau-v389-frozen-policy.json
+          if jq -e '.selected_policy != null' artifacts/xau-v389-frozen-policy.json >/dev/null; then
+            echo "holdout=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "holdout=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v389-frozen-2025
+          path: |
+            artifacts/xau-v389-calibration-2025.json
+            artifacts/xau-v389-frozen-policy.json
+          retention-days: 30
+
+  holdout_shards:
+    name: blind-2026-s${{ matrix.shard }}
+    needs: select_2025
+    if: needs.select_2025.outputs.holdout == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      XAU_V193_YEAR: "2026"
+      XAU_V193_PRICE_CSV: /tmp/histdata/xau-v389-2026-s${{ matrix.shard }}.csv
+      XAU_V193_PRICE_PROVENANCE: artifacts/xau-v389-price-2026-s${{ matrix.shard }}.json
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rizanrizan93/Forex-scanner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install frozen research dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install "git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8"
+      - uses: actions/download-artifact@v4
+        with:
+          name: xau-v389-frozen-2025
+          path: /tmp/v389/frozen
+      - name: Download untouched V384 2026 adaptive artifact
+        run: |
+          mkdir -p /tmp/adaptive
+          gh run download 37205746219 -n xau-v384-adaptive-c4-2026 -D /tmp/adaptive
+          test -s /tmp/adaptive/xau-v384-adaptive-c4-2026.json
+      - name: Download historical causal M1
+        run: python -m fx_scanner.research_xau_histdata_download_v193
+      - name: Replay ONLY frozen 2025 winner on blind 2026
+        run: |
+          POLICY="$(jq -r '.selected_policy' /tmp/v389/frozen/xau-v389-frozen-policy.json)"
+          test "$POLICY" != null
+          python -u research/xau_v389_causal_m1_replay.py shard \
+            --year 2026 \
+            --adaptive-json /tmp/adaptive/xau-v384-adaptive-c4-2026.json \
+            --csv "$XAU_V193_PRICE_CSV" \
+            --shard-index "${{ matrix.shard }}" --shard-count 4 \
+            --policy "$POLICY" \
+            --output "artifacts/xau-v389-blind-2026-s${{ matrix.shard }}.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xau-v389-blind-2026-s${{ matrix.shard }}
+          path: |
+            artifacts/xau-v389-blind-2026-s${{ matrix.shard }}.json
+            artifacts/xau-v389-price-2026-s${{ matrix.shard }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  holdout_aggregate:
+    name: blind-holdout-conclusion
+    needs: [select_2025, holdout_shards]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xau-v389-blind-2026-s*
+          path: /tmp/v389/holdout
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: xau-v389-frozen-2025
+          path: /tmp/v389/frozen
+      - name: Aggregate blind 2026 and apply frozen promotion gate
+        run: |
+          python research/xau_v389_causal_m1_replay.py aggregate \
+            --year 2026 \
+            --inputs "/tmp/v389/holdout/xau-v389-blind-2026-s*.json" \
+            --output artifacts/xau-v389-blind-2026.json
+          python research/xau_v389_causal_m1_replay.py holdout \
+            --calibration /tmp/v389/frozen/xau-v389-frozen-policy.json \
+            --holdout-json artifacts/xau-v389-blind-2026.json \
+            --output artifacts/xau-v389-holdout-decision.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xau-v389-blind-holdout-decision
+          path: |
+            artifacts/xau-v389-blind-2026.json
+            artifacts/xau-v389-holdout-decision.json
+          retention-days: 30
