@@ -81,7 +81,7 @@ def _signal(
     threshold = float(policy["min_sweep_r"]) * ref_r
     displacement = float(policy["min_displacement_r"]) * ref_r
     boundary = zone_low if direction == "LONG" else zone_high
-    first = bisect_right(m5["completed"], touch_at - timedelta(minutes=5))
+    first = bisect_left(m5["completed"], touch_at)
     deadline = touch_at + timedelta(hours=MAX_SIGNAL_HOURS)
     last = bisect_right(m5["completed"], deadline)
     extreme = boundary
