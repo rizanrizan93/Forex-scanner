@@ -322,7 +322,7 @@ def render_xau_dual_engine_dashboard(
                             }
                             for row in sr_levels[:10]
                         ],
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
             st.caption(
@@ -614,7 +614,7 @@ def render_xau_dual_engine_dashboard(
                 if macro_rows:
                     st.dataframe(
                         macro_rows,
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
                 st.caption(
@@ -714,7 +714,7 @@ def render_xau_dual_engine_dashboard(
                     )
                 st.dataframe(
                     event_rows,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
                 st.caption(
@@ -774,7 +774,7 @@ def render_xau_dual_engine_dashboard(
                             }
                             for row in support_resistance[:8]
                         ],
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
 
@@ -798,7 +798,7 @@ def render_xau_dual_engine_dashboard(
                             }
                             for row in levels[:8]
                         ],
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
             else:
@@ -854,7 +854,7 @@ def render_xau_dual_engine_dashboard(
                 )
             if rows:
                 with st.expander("Semua zona H4/H1 aktif"):
-                    st.dataframe(rows, use_container_width=True, hide_index=True)
+                    st.dataframe(rows, width="stretch", hide_index=True)
 
     with tab_friend:
         if not friend:

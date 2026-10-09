@@ -1972,7 +1972,7 @@ backend_snapshot_stale = bool(
     and not public_hot_fresh
 )
 
-with st.sidebar:
+def _render_dashboard_settings():
     st.title("RIZAN XAU Scanner")
     st.caption(f"RIZAN-style decision dashboard • Engine v{__version__}")
 
@@ -1982,9 +1982,10 @@ with st.sidebar:
         _load_public_hot_snapshot.clear()
         _load_standalone_bridge.clear()
         st.rerun()
-    auto_refresh_enabled = st.toggle(
+    st.toggle(
         "Auto refresh monitor",
         value=True,
+        key="rizan_auto_refresh",
         help="Refresh the read-only dashboard every 60 seconds. Scanner/order runtime is independent.",
     )
 
@@ -2045,6 +2046,8 @@ with st.sidebar:
         st.code("LIVE EXECUTION NOT AUTHORIZED", language=None)
 
 
+auto_refresh_enabled = st.session_state.get("rizan_auto_refresh", True)
+
 if "dashboard_auto_refresh_at" not in st.session_state:
     st.session_state["dashboard_auto_refresh_at"] = datetime.now(tz=UTC)
 
@@ -2067,13 +2070,50 @@ def _dashboard_auto_refresh_tick() -> None:
 _dashboard_auto_refresh_tick()
 
 
-st.title("RIZAN XAU Institutional Scanner")
-st.caption(
-    "RIZAN XAU decision dashboard • Normal mode uses durable ForexRizan snapshots "
-    "via direct Supabase or the curated ForexRizan Dashboard Bridge. "
-    "cTrader standalone is never treated as the dashboard backend. "
-    f"Build: {DASHBOARD_BUILD_ID}."
-)
+def _render_database_and_broker():
+    _turso_budget = next((r for r in ([] if backend is None else backend.get("heartbeats", []))
+        if r.get("worker_name") == "turso_free_tier_budget_v1"), None)
+    with st.expander("Turso • Kuota gratis dan pemakaian scanner", expanded=False):
+        if _turso_budget is None:
+            st.info("Menunggu laporan pemakaian database.")
+        else:
+            _budget = dict(_turso_budget.get("details") or {})
+            _usage = dict(_budget.get("observed_usage") or {})
+            st.write("Update:", _fmt_wib_datetime(_turso_budget.get("observed_at")))
+            st.write("Periode UTC:", _budget.get("month_utc"))
+            st.write("Baca tercatat / kuota bulanan:", _usage.get("rows_read", 0), "/ 500.000.000")
+            st.write("Tulis tercatat / kuota bulanan:", _usage.get("rows_written", 0), "/ 10.000.000")
+            st.write("Ukuran database teralokasi:", round(float(_budget.get("database_allocated_bytes", 0))/1_000_000, 2), "MB / 5.000 MB")
+            st.write("Status pemakaian tercatat:", _budget.get("status"))
+            if not _budget.get("metering_complete", False):
+                st.caption("Sebagian respons tidak menyertakan meter baris; angka tercatat belum lengkap.")
+            st.caption("Mencakup proses scanner yang sudah diinstrumentasi. Pemakaian sebelum aktivasi, proses yang masih berjalan, dan overhead pencatatan belum termasuk. Total resmi tetap di dashboard Turso.")
+    _order_audit = next((x for x in ([] if backend is None else backend.get("heartbeats", []))
+        if x.get("worker_name") == "ctrader_demo_order_protection_audit"), None)
+    with st.expander("Bukti broker DEMO • Order, posisi, SL dan TP", expanded=True):
+        if _order_audit is None:
+            st.info("Menunggu pemeriksaan langsung dari broker.")
+        else:
+            _audit = dict(_order_audit.get("details") or {})
+            st.write("Waktu pemeriksaan broker:", _fmt_wib_datetime(_order_audit.get("observed_at")))
+            st.write("Order diterima sejak migrasi:", _audit.get("accepted_orders_since_migration", 0))
+            _positions = list(_audit.get("open_positions") or [])
+            st.write("Posisi XAUUSD / EURUSD terbuka:", len(_positions))
+            if _positions:
+                st.dataframe(_positions, hide_index=True, width="stretch")
+            else:
+                st.info("Belum ada posisi terbuka pada waktu pemeriksaan ini.")
+            if _audit.get("latest_accepted_orders"):
+                st.write("Order terbaru yang diterima broker:")
+                st.dataframe(_audit["latest_accepted_orders"], hide_index=True, width="stretch")
+            st.caption("SL dan TP di tabel berasal dari posisi broker aktual. Periksa waktu pembaruan sebelum memakai data ini.")
+
+if globals().get("RIZAN_SETTINGS_ONLY", False):
+    _render_dashboard_settings()
+    _render_database_and_broker()
+    st.stop()
+
+st.title("XAUUSD • Setup & zona")
 
 if config_error:
     st.error(f"Configuration invalid: {config_error}")
@@ -2184,58 +2224,6 @@ m2.metric("Pair aktif", "XAUUSD + EURUSD")
 m3.metric("Top-5 Scan Cadence", fast_setup)
 m4.metric("Execution Watch", execution_watch)
 m5.metric("Dashboard Backend", backend_label)
-_eurusd_hb = next((x for x in ([] if backend is None else backend.get("heartbeats", []))
-    if x.get("worker_name") == "ctrader_demo_eurusd_frozen_dd37"), None)
-with st.expander("EURUSD • Setup compounding dibekukan • DEMO", expanded=False):
-    st.caption("Liquidity sweep M15 • H1 netral • SL 3×ATR14, 5–60 pip • TP 4R • Risiko basket 27,25% • Margin awal 60%")
-    if _eurusd_hb is None:
-        st.info("Menunggu heartbeat EURUSD. Belum dapat memastikan runtime aktif.")
-    else:
-        _eu = dict(_eurusd_hb.get("details") or {})
-        _eu_age = (datetime.now(UTC) - datetime.fromisoformat(str(_eurusd_hb.get("observed_at")).replace("Z", "+00:00"))).total_seconds()
-        st.write("Status:", "STALE" if _eu_age > 180 else str(_eu.get("state") or "UNKNOWN"))
-        st.write("Alasan:", str(_eu.get("reason") or "UNKNOWN"))
-        st.write("Update:", str(_eurusd_hb.get("observed_at")))
-        st.write("Layer rencana / diterima:", _eu.get("planned_children", 0), "/", _eu.get("accepted_children", 0))
-        if _eu.get("entry"):
-            st.write("Entry / SL / TP:", _eu.get("entry"), "/", _eu.get("sl"), "/", _eu.get("tp"))
-        st.caption("DD 37,08% adalah hasil replay 10 tahun; bukan batas DD. Dua pair memakai equity dan margin akun demo yang sama.")
-_turso_budget = next((r for r in ([] if backend is None else backend.get("heartbeats", []))
-    if r.get("worker_name") == "turso_free_tier_budget_v1"), None)
-with st.expander("Turso • Kuota gratis dan pemakaian scanner", expanded=False):
-    if _turso_budget is None:
-        st.info("Menunggu laporan pemakaian database.")
-    else:
-        _budget = dict(_turso_budget.get("details") or {})
-        _usage = dict(_budget.get("observed_usage") or {})
-        st.write("Update:", _fmt_wib_datetime(_turso_budget.get("observed_at")))
-        st.write("Periode UTC:", _budget.get("month_utc"))
-        st.write("Baca tercatat / kuota bulanan:", _usage.get("rows_read", 0), "/ 500.000.000")
-        st.write("Tulis tercatat / kuota bulanan:", _usage.get("rows_written", 0), "/ 10.000.000")
-        st.write("Ukuran database teralokasi:", round(float(_budget.get("database_allocated_bytes", 0))/1_000_000, 2), "MB / 5.000 MB")
-        st.write("Status pemakaian tercatat:", _budget.get("status"))
-        if not _budget.get("metering_complete", False):
-            st.caption("Sebagian respons tidak menyertakan meter baris; angka tercatat belum lengkap.")
-        st.caption("Mencakup proses scanner yang sudah diinstrumentasi. Pemakaian sebelum aktivasi, proses yang masih berjalan, dan overhead pencatatan belum termasuk. Total resmi tetap di dashboard Turso.")
-_order_audit = next((x for x in ([] if backend is None else backend.get("heartbeats", []))
-    if x.get("worker_name") == "ctrader_demo_order_protection_audit"), None)
-with st.expander("Bukti broker DEMO • Order, posisi, SL dan TP", expanded=True):
-    if _order_audit is None:
-        st.info("Menunggu pemeriksaan langsung dari broker.")
-    else:
-        _audit = dict(_order_audit.get("details") or {})
-        st.write("Waktu pemeriksaan broker:", _fmt_wib_datetime(_order_audit.get("observed_at")))
-        st.write("Order diterima sejak migrasi:", _audit.get("accepted_orders_since_migration", 0))
-        _positions = list(_audit.get("open_positions") or [])
-        st.write("Posisi XAUUSD / EURUSD terbuka:", len(_positions))
-        if _positions:
-            st.dataframe(_positions, hide_index=True, width="stretch")
-        else:
-            st.info("Belum ada posisi terbuka pada waktu pemeriksaan ini.")
-        if _audit.get("latest_accepted_orders"):
-            st.write("Order terbaru yang diterima broker:")
-            st.dataframe(_audit["latest_accepted_orders"], hide_index=True, width="stretch")
-        st.caption("SL dan TP di tabel berasal dari posisi broker aktual. Periksa waktu pembaruan sebelum memakai data ini.")
 if backend is not None and backend_source.startswith("GITHUB_DASHBOARD_BRIDGE"):
     st.caption(
         "ForexRizan transport: "

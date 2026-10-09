@@ -150,3 +150,12 @@ def test_v377_worker_wrapper_adds_metadata_without_changing_numeric_payload():
         base.RiskEvent.as_dict = original_method
         base.CONTRACT = original_contract
         wrapper._INSTALLED = original_installed
+def test_mixed_calendar_values_serialize_to_arrow():
+    import pandas as pd
+    import pyarrow as pa
+    from fx_scanner.xau_dual_engine_dashboard_v344_legacy import _event_value
+
+    values = [None, 175.0, "2.1%", float("nan"), -0.4]
+    frame = pd.DataFrame({column: [_event_value(value) for value in values]
+                          for column in ("Forecast", "Previous", "Actual")})
+    assert pa.Table.from_pandas(frame).num_rows == len(values)

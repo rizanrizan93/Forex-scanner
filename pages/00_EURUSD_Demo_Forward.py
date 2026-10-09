@@ -14,10 +14,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from fx_scanner.xau_dashboard_bridge_v254 import (  # noqa: E402
-    DEFAULT_SNAPSHOT_URL,
-    fetch_snapshot,
-)
+from fx_scanner.dashboard_snapshot_transport import fetch_eurusd_snapshot  # noqa: E402
 
 UTC = timezone.utc
 WIB = ZoneInfo("Asia/Jakarta")
@@ -119,14 +116,11 @@ REASON_TEXT = {
 @st.cache_data(ttl=30, show_spinner=False)
 def _load_snapshot() -> tuple[dict[str, Any] | None, str | None, bool]:
     try:
-        payload = fetch_snapshot(DEFAULT_SNAPSHOT_URL, require_fresh=True)
-        return payload, None, False
-    except Exception as fresh_exc:
-        try:
-            payload = fetch_snapshot(DEFAULT_SNAPSHOT_URL, require_fresh=False)
-            return payload, str(fresh_exc), True
-        except Exception as degraded_exc:
-            return None, f"{type(degraded_exc).__name__}: {degraded_exc}", True
+        payload = fetch_eurusd_snapshot()
+        degraded = not bool(payload["bridge"]["fresh"])
+        return payload, ("Snapshot publikasi kedaluwarsa" if degraded else None), degraded
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}", True
 
 
 def _contains_eurusd(row: Any) -> bool:
@@ -145,11 +139,24 @@ st.markdown(
 
 refresh_col, note_col = st.columns([1, 3])
 with refresh_col:
-    if st.button("↻ Refresh EURUSD", use_container_width=True):
-        st.cache_data.clear()
+    if st.button("↻ Refresh EURUSD", width="stretch"):
+        _load_snapshot.clear()
         st.rerun()
 with note_col:
     st.caption("Snapshot dashboard diperbarui sekitar 60 detik. Runtime broker tetap berjalan independen dari halaman ini.")
+
+@st.fragment(run_every="60s")
+def _eurusd_refresh_tick():
+    now = datetime.now(UTC)
+    last = st.session_state.get("eurusd_refresh_at")
+    if not isinstance(last, datetime):
+        st.session_state["eurusd_refresh_at"] = now
+    elif (now - last).total_seconds() >= 59.5:
+        st.session_state["eurusd_refresh_at"] = now
+        _load_snapshot.clear()
+        st.rerun()
+
+_eurusd_refresh_tick()
 
 payload, load_error, degraded = _load_snapshot()
 if payload is None:
@@ -164,8 +171,6 @@ eu_hb = _latest_heartbeat(heartbeats, EURUSD_WORKER)
 audit_hb = _latest_heartbeat(heartbeats, ORDER_AUDIT_WORKER)
 bridge_age = bridge.get("age_seconds")
 
-if degraded:
-    st.warning("Bridge tersedia tetapi snapshot tidak memenuhi freshness target. Status trading di bawah harus dianggap observasi, bukan sinyal baru.")
 if load_error:
     st.caption("Freshness note: " + load_error)
 
@@ -178,7 +183,7 @@ eu_age = _age_seconds(observed_at)
 eu = dict(eu_hb.get("details") or {})
 state = str(eu.get("state") or "UNKNOWN").upper()
 reason = str(eu.get("reason") or "UNKNOWN")
-stale = bool(eu_age is None or eu_age > 180)
+stale = bool(degraded or eu_age is None or eu_age > 180)
 
 candidate = dict(eu.get("candidate") or {})
 side_raw = candidate.get("side")
@@ -193,6 +198,8 @@ else:
 
 if stale:
     effective_state = "STALE"
+elif not eu_hb.get("healthy", False):
+    effective_state = "ERROR_FAIL_CLOSED"
 else:
     effective_state = state
 
@@ -201,97 +208,107 @@ if effective_state == "ORDER_ACCEPTED":
 elif effective_state in {"BLOCKED", "ERROR", "ERROR_FAIL_CLOSED"}:
     st.error(f"EURUSD {effective_state} • entry baru tidak boleh diteruskan.")
 elif effective_state == "STALE":
-    st.error("EURUSD STALE • heartbeat lebih tua dari 180 detik. Jangan memakai angka entry sebagai sinyal fresh.")
+    st.error("EURUSD STALE • snapshot atau heartbeat belum fresh. Angka entry adalah catatan terakhir.")
 else:
     st.info(f"EURUSD {effective_state} • {REASON_TEXT.get(reason, reason)}")
 
-c1, c2 = st.columns(2)
-with c1:
-    st.metric("Arah", direction)
-with c2:
-    st.metric("Status", effective_state)
+setup_tab, positions_tab, strategy_tab, diagnostics_tab = st.tabs(
+    ["Setup", "Posisi & order", "Strategi", "Diagnostik"])
+with setup_tab:
+    c1, c2 = st.columns(2)
+    with c1:
+        st.metric("Arah", direction)
+    with c2:
+        st.metric("Status", effective_state)
 
-st.markdown(
-    f"""
-    <div class="eu-card">
-      <div class="eu-kicker">Alasan runtime</div>
-      <div class="eu-reason"><b>{reason}</b><br>{REASON_TEXT.get(reason, 'Lihat kode alasan runtime di atas; engine tetap fail-closed bila syarat broker atau data tidak lengkap.')}</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.subheader("Entry plan")
-entry = eu.get("entry")
-sl = eu.get("sl")
-tp = eu.get("tp")
-if entry is None:
-    st.info("Belum ada harga entry aktif. Engine sedang menunggu setup baru; dashboard tidak membuat angka entry buatan.")
-else:
-    p1, p2, p3 = st.columns(3)
-    p1.metric("ENTRY", _fmt_price(entry))
-    p2.metric("SL", _fmt_price(sl))
-    p3.metric("TP", _fmt_price(tp))
-    st.caption("Target frozen contract = 4R. SL berbasis 3× ATR14 dan dibatasi 5–60 pip.")
-
-l1, l2 = st.columns(2)
-l1.metric("Layer rencana", int(eu.get("planned_children") or 0))
-l2.metric("Layer diterima", int(eu.get("accepted_children") or 0))
-lot_plan = float(eu.get("planned_total_lot") or 0.0)
-lot_live = int(eu.get("accepted_children") or 0) * 0.01
-st.caption(f"Rencana total {lot_plan:.2f} lot • diterima broker pada cycle ini {lot_live:.2f} lot • setiap child 0,01 lot.")
-
-m1, m2 = st.columns(2)
-m1.metric("Sizing multiplier", _fmt_num(eu.get("sizing_multiplier"), 3))
-m2.metric("Update runtime", _fmt_wib(observed_at))
-
-with st.expander("Kesehatan strategy & signal", expanded=True):
-    h1, h2 = st.columns(2)
-    h1.metric("Fast EMA outcome (R)", _fmt_num(eu.get("fast_ema_r"), 3))
-    h2.metric("Slow EMA outcome (R)", _fmt_num(eu.get("slow_ema_r"), 3))
-    st.write("M1 selesai terakhir:", eu.get("last_completed_m1") or "—")
-    st.write("Policy hash:", eu.get("policy_hash") or "—")
-    st.write("Git SHA runtime:", eu.get("git_sha") or "—")
-    st.write("Execution scope:", eu.get("execution_scope") or "—")
-    st.write("LIVE execution:", "AKTIF" if eu.get("live_execution_enabled") else "TIDAK AKTIF")
-    if candidate:
-        st.write("Candidate M15:", candidate)
-
-st.subheader("Posisi & order broker EURUSD")
-if audit_hb is None:
-    st.warning("Heartbeat broker protection audit belum tersedia pada snapshot ini.")
-else:
-    audit = dict(audit_hb.get("details") or {})
-    positions = [row for row in list(audit.get("open_positions") or []) if _contains_eurusd(row)]
-    accepted = [row for row in list(audit.get("latest_accepted_orders") or []) if _contains_eurusd(row)]
-    a1, a2 = st.columns(2)
-    a1.metric("Posisi EURUSD terbuka", len(positions))
-    a2.metric("Audit broker", _fmt_wib(audit_hb.get("observed_at")))
-    if positions:
-        st.dataframe(positions, hide_index=True, use_container_width=True)
-        st.caption("SL/TP pada tabel berasal dari posisi broker DEMO yang diaudit, bukan hanya rencana scanner.")
-    else:
-        st.info("Tidak ada posisi EURUSD terbuka yang teridentifikasi pada audit broker terakhir.")
-    if accepted:
-        with st.expander("Order EURUSD terbaru yang diterima broker", expanded=False):
-            st.dataframe(accepted, hide_index=True, use_container_width=True)
-
-with st.expander("Kontrak strategy EURUSD yang dibekukan", expanded=False):
     st.markdown(
-        """
-- **Signal:** liquidity sweep M15 terhadap 8 candle sebelumnya + body ratio; H1 harus netral menurut kontrak frozen.
-- **Window signal:** hanya sinyal fresh pada pembukaan M15; sinyal yang terlambat tidak dikejar.
-- **Stop:** 3× ATR14 sederhana, dibatasi 5–60 pip.
-- **Target:** 4R.
-- **Basket risk reference:** 27,25% equity, tetapi jumlah child aktual tetap dibatasi free margin dan expected broker margin.
-- **Initial margin budget:** 60% reference equity sebelum multiplier.
-- **Child order:** 0,01 lot per child; semua child wajib memiliki server-side SL + TP.
-- **Timeout:** maksimum 240 menit dan tidak ditahan melewati 20:00 UTC.
-- **Scope:** DEMO only. XAUUSD tidak mewarisi override risiko EURUSD.
-
-Hasil replay terpilih 2016–2025 ($100 → $11.820,23; PF 2,211; floating DD 37,08%) adalah hasil historis terpilih, **bukan** proyeksi return atau batas drawdown forward.
-        """
+        f"""
+        <div class="eu-card">
+          <div class="eu-kicker">Alasan runtime</div>
+          <div class="eu-reason"><b>{reason}</b><br>{REASON_TEXT.get(reason, 'Lihat kode alasan runtime di atas; engine tetap fail-closed bila syarat broker atau data tidak lengkap.')}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
+
+    st.subheader("Entry plan")
+    entry = eu.get("entry")
+    sl = eu.get("sl")
+    tp = eu.get("tp")
+    if entry is None:
+        st.info("Belum ada harga entry aktif. Engine sedang menunggu setup baru; dashboard tidak membuat angka entry buatan.")
+    else:
+        p1, p2, p3 = st.columns(3)
+        p1.metric("ENTRY", _fmt_price(entry))
+        p2.metric("SL", _fmt_price(sl))
+        p3.metric("TP", _fmt_price(tp))
+        st.caption("Target frozen contract = 4R. SL berbasis 3× ATR14 dan dibatasi 5–60 pip.")
+
+    l1, l2 = st.columns(2)
+    l1.metric("Layer rencana", int(eu.get("planned_children") or 0))
+    l2.metric("Layer diterima", int(eu.get("accepted_children") or 0))
+    lot_plan = float(eu.get("planned_total_lot") or 0.0)
+    lot_live = int(eu.get("accepted_children") or 0) * 0.01
+    st.caption(f"Rencana total {lot_plan:.2f} lot • diterima broker pada cycle ini {lot_live:.2f} lot • setiap child 0,01 lot.")
+
+    m1, m2 = st.columns(2)
+    m1.metric("Sizing multiplier", _fmt_num(eu.get("sizing_multiplier"), 3))
+    m2.metric("Update runtime", _fmt_wib(observed_at))
+
+
+with diagnostics_tab:
+    with st.expander("Kesehatan strategy & signal", expanded=True):
+        h1, h2 = st.columns(2)
+        h1.metric("Fast EMA outcome (R)", _fmt_num(eu.get("fast_ema_r"), 3))
+        h2.metric("Slow EMA outcome (R)", _fmt_num(eu.get("slow_ema_r"), 3))
+        st.write("M1 selesai terakhir:", eu.get("last_completed_m1") or "—")
+        st.write("Policy hash:", eu.get("policy_hash") or "—")
+        st.write("Git SHA runtime:", eu.get("git_sha") or "—")
+        st.write("Execution scope:", eu.get("execution_scope") or "—")
+        st.write("LIVE execution:", "AKTIF" if eu.get("live_execution_enabled") else "TIDAK AKTIF")
+        if candidate:
+            st.write("Candidate M15:", candidate)
+
+
+with positions_tab:
+    st.subheader("Posisi & order broker EURUSD")
+    if audit_hb is None:
+        st.warning("Heartbeat broker protection audit belum tersedia pada snapshot ini.")
+    else:
+        audit = dict(audit_hb.get("details") or {})
+        positions = [row for row in list(audit.get("open_positions") or []) if _contains_eurusd(row)]
+        accepted = [row for row in list(audit.get("latest_accepted_orders") or []) if _contains_eurusd(row)]
+        a1, a2 = st.columns(2)
+        a1.metric("Posisi EURUSD terbuka", len(positions))
+        a2.metric("Audit broker", _fmt_wib(audit_hb.get("observed_at")))
+        if positions:
+            st.dataframe(positions, hide_index=True, width="stretch")
+            st.caption("SL/TP pada tabel berasal dari posisi broker DEMO yang diaudit, bukan hanya rencana scanner.")
+        else:
+            st.info("Tidak ada posisi EURUSD terbuka yang teridentifikasi pada audit broker terakhir.")
+        if accepted:
+            with st.expander("Order EURUSD terbaru yang diterima broker", expanded=False):
+                st.dataframe(accepted, hide_index=True, width="stretch")
+
+
+with strategy_tab:
+    with st.expander("Kontrak strategy EURUSD yang dibekukan", expanded=False):
+        st.markdown(
+            """
+    - **Signal:** liquidity sweep M15 terhadap 8 candle sebelumnya + body ratio; H1 harus netral menurut kontrak frozen.
+    - **Window signal:** hanya sinyal fresh pada pembukaan M15; sinyal yang terlambat tidak dikejar.
+    - **Stop:** 3× ATR14 sederhana, dibatasi 5–60 pip.
+    - **Target:** 4R.
+    - **Basket risk reference:** 27,25% equity, tetapi jumlah child aktual tetap dibatasi free margin dan expected broker margin.
+    - **Initial margin budget:** 60% reference equity sebelum multiplier.
+    - **Child order:** 0,01 lot per child; semua child wajib memiliki server-side SL + TP.
+    - **Timeout:** maksimum 240 menit dan tidak ditahan melewati 20:00 UTC.
+    - **Scope:** DEMO only. XAUUSD tidak mewarisi override risiko EURUSD.
+
+    Hasil replay terpilih 2016–2025 ($100 → $11.820,23; PF 2,211; floating DD 37,08%) adalah hasil historis terpilih, **bukan** proyeksi return atau batas drawdown forward.
+            """
+        )
+
 
 st.divider()
 st.caption(
