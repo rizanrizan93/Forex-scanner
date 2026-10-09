@@ -1,23 +1,23 @@
 from __future__ import annotations
 
-"""V408 mobile-first XAUUSD tiered zone visualisation.
+"""V408 mobile-first XAUUSD tiered Whalezone visualisation.
 
-The visual layer intentionally consumes the existing causal V405 reconstruction
-instead of inventing chart levels.  It presents the two nearest mapped supply
-and demand tiers in the same visual hierarchy traders commonly use: SELL 2,
-SELL 1, current price, BUY 1, BUY 2.
+V408 is the presentation layer. Zone selection now comes from V409, which
+quality-gates reaction bases using displacement, BOS/MSS, freshness, base
+compression and any explicitly available FVG/liquidity evidence before ranking
+the nearest surviving BUY1/BUY2/SELL1/SELL2 tiers.
 
-This module is display-only.  It has no broker execution authority and does not
+This module is display-only. It has no broker execution authority and does not
 claim to reproduce a proprietary indicator formula.
 """
 
 from math import isfinite
 from typing import Any
 
-from .xau_whalezone_reconstruction_v405 import evaluate_whalezone_reconstruction_v405
+from .xau_whalezone_reaction_base_v409 import evaluate_whalezone_reaction_base_v409
 
 CONTRACT = "XAU_RIZAN_WHALEZONE_VISUAL_V408"
-MODE = "TIERED_ZONE_VISUAL_MAP"
+MODE = "TIERED_REACTION_BASE_VISUAL_MAP"
 MAX_VISUAL_TIERS = 2
 
 
@@ -50,16 +50,16 @@ def _zone(raw: dict[str, Any], *, side: str, tier: int) -> dict[str, Any]:
             "high": high,
             "center": (low + high) / 2.0,
             "tier": tier,
-            "visual_label": f"RIZAN {side} {tier}",
+            "visual_label": f"WHALEZONE {side} {tier}",
         }
     )
     return item
 
 
 def build_whalezone_visual_v408(sd_eval: dict[str, Any] | None) -> dict[str, Any]:
-    """Build a deterministic display payload from the current V405 zone map."""
+    """Build the display payload from the V409 reaction-base reconstruction."""
     sd = _d(sd_eval)
-    base = _d(evaluate_whalezone_reconstruction_v405(sd))
+    base = _d(evaluate_whalezone_reaction_base_v409(sd))
     price = _f(base.get("price_now"))
 
     buy_zones: list[dict[str, Any]] = []
@@ -79,19 +79,18 @@ def build_whalezone_visual_v408(sd_eval: dict[str, Any] | None) -> dict[str, Any
     target_price = _f(current_leg.get("target_price"))
     target_source = "CURRENT_LEG_FORECAST" if target_price is not None else ""
 
-    # Fallback path is intentionally simple: when the runtime does not publish a
-    # leg target, point to the nearest opposing tier rather than fabricating a
-    # precise forecast level.
+    # When runtime has no explicit leg target, only point to the nearest
+    # opposing qualified tier. Never manufacture a precise forecast level.
     if target_price is None:
         focus = str(base.get("direction") or "WAIT").upper()
         if leg_direction not in {"LONG", "SHORT"}:
             leg_direction = focus
         if leg_direction == "LONG" and sell_zones:
             target_price = float(sell_zones[0]["low"])
-            target_source = "NEAREST_SELL_1_EDGE"
+            target_source = "QUALIFIED_SELL_1_EDGE"
         elif leg_direction == "SHORT" and buy_zones:
             target_price = float(buy_zones[0]["high"])
-            target_source = "NEAREST_BUY_1_EDGE"
+            target_source = "QUALIFIED_BUY_1_EDGE"
 
     return {
         "contract": CONTRACT,
@@ -101,6 +100,8 @@ def build_whalezone_visual_v408(sd_eval: dict[str, Any] | None) -> dict[str, Any
         "reason": str(base.get("reason") or ""),
         "price_now": price,
         "atr_reference": _f(base.get("atr_reference")),
+        "atr_source": base.get("atr_source"),
+        "quality_threshold": base.get("quality_threshold"),
         "sell_zones": sell_zones,
         "buy_zones": buy_zones,
         "path": {
@@ -111,6 +112,7 @@ def build_whalezone_visual_v408(sd_eval: dict[str, Any] | None) -> dict[str, Any
         "execution_authority": False,
         "proprietary_formula_claimed": False,
         "source_contract": base.get("contract"),
+        "model": base.get("model"),
     }
 
 
@@ -125,8 +127,13 @@ def _band(zone: dict[str, Any]) -> str:
     return f"{_price(zone.get('low'))}–{_price(zone.get('high'))}"
 
 
+def _score(zone: dict[str, Any]) -> str:
+    score = _f(zone.get("quality_score"))
+    return "—" if score is None else f"Q{score:.0f}"
+
+
 def render_whalezone_visual_v408(sd_heartbeat: dict[str, Any] | None) -> None:
-    """Render the V408 tiered zone map inside the canonical Streamlit dashboard."""
+    """Render the reaction-base Whalezone map in the canonical XAU dashboard."""
     import matplotlib.pyplot as plt
     from matplotlib.ticker import FuncFormatter
     import streamlit as st
@@ -134,14 +141,14 @@ def render_whalezone_visual_v408(sd_heartbeat: dict[str, Any] | None) -> None:
     hb = _d(sd_heartbeat)
     sd = _d(_d(hb.get("details")).get("evaluation"))
 
-    st.markdown("## 🐳 RIZAN Zone Map")
+    st.markdown("## 🐳 WHALEZONE Reconstruction")
     st.caption(
-        "Peta otomatis SELL 1/2 dan BUY 1/2 dari S/D + S/R + liquidity geometry scanner. "
-        "Tier 1 = zona aktif terdekat; Tier 2 = zona berikutnya. Level selalu mengikuti snapshot runtime, bukan angka hard-code."
+        "V409: reaction base → displacement → BOS/MSS → quality gate → tier berdasarkan jarak. "
+        "M15 = zona utama, H1/H4 = konteks parent, M5 = refinement. Angka zona berasal dari snapshot scanner, bukan hard-code."
     )
 
     if not sd:
-        st.info("Zone Map menunggu heartbeat XAUUSD V342.")
+        st.info("Whalezone Map menunggu heartbeat XAUUSD V342.")
         return
 
     payload = build_whalezone_visual_v408(sd)
@@ -151,7 +158,11 @@ def render_whalezone_visual_v408(sd_heartbeat: dict[str, Any] | None) -> None:
     path = _d(payload.get("path"))
 
     if price is None or not (sell_zones or buy_zones):
-        st.warning("Belum ada geometry zona yang cukup untuk digambar.")
+        threshold = payload.get("quality_threshold")
+        st.warning(
+            "Belum ada reaction-base yang lolos quality gate"
+            + (f" ≥ {threshold}." if threshold is not None else ".")
+        )
         return
 
     values: list[float] = [price]
@@ -182,16 +193,23 @@ def render_whalezone_visual_v408(sd_heartbeat: dict[str, Any] | None) -> None:
         ax.spines[side].set_visible(False)
     ax.spines["right"].set_color("#d0d0d0")
 
-    # Draw farther tiers first so Tier 1 remains visually dominant when bands
-    # are close or partially overlap.
+    # Farther tiers are drawn first so Tier 1 remains visually dominant.
     for row in reversed(sell_zones):
         tier = int(row.get("tier") or 1)
         alpha = 0.42 if tier == 1 else 0.26
-        ax.axhspan(float(row["low"]), float(row["high"]), 0.03, 0.96, color="#f238a0", alpha=alpha, zorder=1)
+        ax.axhspan(
+            float(row["low"]),
+            float(row["high"]),
+            0.03,
+            0.96,
+            color="#f238a0",
+            alpha=alpha,
+            zorder=1,
+        )
         ax.text(
-            0.53,
+            0.55,
             float(row["center"]),
-            str(row.get("visual_label") or f"RIZAN SELL {tier}"),
+            str(row.get("visual_label") or f"WHALEZONE SELL {tier}"),
             ha="center",
             va="center",
             fontsize=14 if tier == 1 else 13,
@@ -202,10 +220,10 @@ def render_whalezone_visual_v408(sd_heartbeat: dict[str, Any] | None) -> None:
         ax.text(
             0.035,
             float(row["center"]),
-            f"{row.get('timeframe','—')}  {_band(row)}",
+            f"{row.get('timeframe','—')}  {_band(row)}  {_score(row)}",
             ha="left",
             va="center",
-            fontsize=8.5,
+            fontsize=8.2,
             color="#4d2040",
             zorder=3,
         )
@@ -213,11 +231,19 @@ def render_whalezone_visual_v408(sd_heartbeat: dict[str, Any] | None) -> None:
     for row in reversed(buy_zones):
         tier = int(row.get("tier") or 1)
         alpha = 0.78 if tier == 1 else 0.58
-        ax.axhspan(float(row["low"]), float(row["high"]), 0.03, 0.96, color="#e2e2e2", alpha=alpha, zorder=1)
+        ax.axhspan(
+            float(row["low"]),
+            float(row["high"]),
+            0.03,
+            0.96,
+            color="#e2e2e2",
+            alpha=alpha,
+            zorder=1,
+        )
         ax.text(
-            0.53,
+            0.55,
             float(row["center"]),
-            str(row.get("visual_label") or f"RIZAN BUY {tier}"),
+            str(row.get("visual_label") or f"WHALEZONE BUY {tier}"),
             ha="center",
             va="center",
             fontsize=14 if tier == 1 else 13,
@@ -228,10 +254,10 @@ def render_whalezone_visual_v408(sd_heartbeat: dict[str, Any] | None) -> None:
         ax.text(
             0.035,
             float(row["center"]),
-            f"{row.get('timeframe','—')}  {_band(row)}",
+            f"{row.get('timeframe','—')}  {_band(row)}  {_score(row)}",
             ha="left",
             va="center",
-            fontsize=8.5,
+            fontsize=8.2,
             color="#555555",
             zorder=3,
         )
@@ -258,7 +284,12 @@ def render_whalezone_visual_v408(sd_heartbeat: dict[str, Any] | None) -> None:
             "",
             xy=(0.75, target),
             xytext=(0.75, price),
-            arrowprops={"arrowstyle": "-|>", "lw": 2.3, "color": "#686868", "mutation_scale": 16},
+            arrowprops={
+                "arrowstyle": "-|>",
+                "lw": 2.3,
+                "color": "#686868",
+                "mutation_scale": 16,
+            },
             zorder=5,
         )
         ax.text(
@@ -274,7 +305,13 @@ def render_whalezone_visual_v408(sd_heartbeat: dict[str, Any] | None) -> None:
             zorder=5,
         )
 
-    ax.set_title("XAUUSD  •  RIZAN TIERED ZONE MAP", loc="left", fontsize=15, fontweight="bold", pad=12)
+    ax.set_title(
+        "XAUUSD  •  WHALEZONE REACTION-BASE MAP",
+        loc="left",
+        fontsize=15,
+        fontweight="bold",
+        pad=12,
+    )
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
@@ -284,24 +321,41 @@ def render_whalezone_visual_v408(sd_heartbeat: dict[str, Any] | None) -> None:
     buy2 = buy_zones[1] if len(buy_zones) >= 2 else {}
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("SELL 2", _band(sell2))
-    c2.metric("SELL 1", _band(sell1))
-    c3.metric("BUY 1", _band(buy1))
-    c4.metric("BUY 2", _band(buy2))
+    c1.metric("SELL 2", _band(sell2), _score(sell2))
+    c2.metric("SELL 1", _band(sell1), _score(sell1))
+    c3.metric("BUY 1", _band(buy1), _score(buy1))
+    c4.metric("BUY 2", _band(buy2), _score(buy2))
 
     def meta(row: dict[str, Any]) -> str:
         if not row:
             return "—"
+        life = _d(row.get("lifecycle"))
+        freshness = life.get("freshness") or row.get("condition") or "—"
         return (
-            f"{row.get('timeframe','—')} • {row.get('source_type','—')} • "
-            f"{row.get('lifecycle_state','—')}"
+            f"{row.get('timeframe','—')} • {freshness} • {_score(row)} • "
+            f"distance={float(row.get('distance_atr') or 0):.2f} ATR"
         )
 
     st.caption(
         f"SELL1: {meta(sell1)} | BUY1: {meta(buy1)} | "
         f"Path target: {_price(path.get('target_price'))} ({path.get('target_source','UNAVAILABLE')}). "
-        "Visual map = decision support; trigger entry tetap divalidasi M15 dan refinement M5."
+        "Quality gate V409 menolak zona lemah/degraded sebelum ranking jarak; trigger entry tetap M15 validation + M5 refinement."
     )
+
+    with st.expander("Audit Whalezone V409", expanded=False):
+        st.write(
+            {
+                "source_contract": payload.get("source_contract"),
+                "state": payload.get("state"),
+                "direction": payload.get("direction"),
+                "reason": payload.get("reason"),
+                "atr_source": payload.get("atr_source"),
+                "quality_threshold": payload.get("quality_threshold"),
+                "model": payload.get("model"),
+                "sell_1_components": sell1.get("quality_components"),
+                "buy_1_components": buy1.get("quality_components"),
+            }
+        )
 
 
 __all__ = [
