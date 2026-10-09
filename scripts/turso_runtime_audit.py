@@ -9,7 +9,7 @@ assert {r['symbol'] for r in active}=={'EURUSD','XAUUSD'}
 assert control['metadata']['demo_only'] and not control['metadata']['live_execution_enabled']
 assert control['new_orders_enabled'] and not control['emergency_stop']
 print('TURSO_RUNTIME_CONTROL_OK demo_only=True active_symbols=EURUSD,XAUUSD')
-workers=['ctrader_demo_eurusd_frozen_dd37','ctrader_demo_xau_dual_engine_v344','ctrader_demo_xau_v351_executor','ctrader_demo_xau_v375_reaction_executor']
+workers=['ctrader_demo_eurusd_frozen_dd37','ctrader_demo_xau_sd_liquidity_v342','ctrader_demo_xau_friend_entry_v343','ctrader_demo_xau_v351_executor','ctrader_demo_xau_v375_reaction_executor']
 rows=c.table('runtime_heartbeats').select('*').in_('worker_name',workers).execute().data
 for row in rows:
  d=row.get('details') or {}

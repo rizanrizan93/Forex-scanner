@@ -10,9 +10,8 @@ def _read(path: str) -> str:
 def test_dashboard_publisher_has_serialized_schedule_and_self_handoff() -> None:
     text = _read(".github/workflows/forexrizan-dashboard-bridge-v254.yml")
     assert 'cron: "3 * * * 0-5"' in text
-    # V360 keeps the active publisher alive long enough to publish one fresh
-    # snapshot, then yields to the queued run built from newer main.
-    assert "cancel-in-progress: false" in text
+    # A dashboard-only worker can be replaced when its old backend is blocked.
+    assert "cancel-in-progress: true" in text
     assert "V360 graceful bridge handoff" in text
     assert 'latest_main="$(git rev-parse FETCH_HEAD 2>/dev/null || true)"' in text
     publish_index = text.index('git push --force origin HEAD:dashboard-snapshots-v344')

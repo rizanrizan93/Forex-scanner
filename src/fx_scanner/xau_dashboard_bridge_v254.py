@@ -241,7 +241,7 @@ def build_snapshot(
     previous: dict[str, Any] | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    from .storage.backend import create_backend_client
+    from .storage.backend import create_backend_client, backend_name
 
     current = (now or datetime.now(tz=UTC)).astimezone(UTC)
     previous_payload = dict(previous or {})
@@ -554,7 +554,8 @@ def build_snapshot(
         "control": control_snapshot,
     }
 
-    project_ref = urlsplit(url).hostname or ""
+    source_url = os.getenv("TURSO_DATABASE_URL", "") if backend_name()=="turso" else url
+    project_ref = urlsplit(source_url).hostname or ""
     project_ref = project_ref.split(".", 1)[0]
     payload = {
         "contract": CONTRACT,
@@ -562,7 +563,8 @@ def build_snapshot(
         "source": {
             "project_ref": project_ref,
             "account_telemetry_public": False,
-            "mode": "SUPABASE_SERVICE_ROLE_TO_PUBLIC_READ_ONLY_BRIDGE",
+            "mode": "TURSO_TO_PUBLIC_READ_ONLY_BRIDGE" if backend_name()=="turso" else "SUPABASE_SERVICE_ROLE_TO_PUBLIC_READ_ONLY_BRIDGE",
+            "database_backend": backend_name(),
             "dashboard_refresh_seconds": int(HOT_REFRESH_SECONDS),
             "operational_structure_refresh_seconds": int(HOT_REFRESH_SECONDS),
             "structural_refresh_seconds": int(STRUCTURAL_REFRESH_SECONDS),
