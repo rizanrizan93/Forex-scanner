@@ -45,11 +45,15 @@ def fetch_public_hot_snapshot(
             url or DEFAULT_SNAPSHOT_URL, timeout_seconds=timeout_seconds,
             now=now, opener=opener, require_fresh=True,
         )
+        return _project_turso_snapshot(bridge, now=now)
     except ValueError as exc:
-        if url is not None or str(exc) != "dashboard bridge snapshot stale":
+        stale_errors = {
+            "dashboard bridge snapshot stale",
+            "Turso primary XAU engine heartbeat stale or missing",
+        }
+        if url is not None or str(exc) not in stale_errors:
             raise
-        # Mutable raw URLs can remain cached after a successful new publication.
-        # Resolve the public branch and read its immutable commit instead.
+        # The mutable URL may cache either an old publication or old engine rows.
         current = now or datetime.now(UTC)
         sha = _latest_snapshot_commit(int(current.timestamp() // 90), opener, float(timeout_seconds))
         immutable_url = (
@@ -58,6 +62,10 @@ def fetch_public_hot_snapshot(
         )
         bridge = fetch_snapshot(immutable_url, timeout_seconds=timeout_seconds,
                                 now=now, opener=opener, require_fresh=True)
+        return _project_turso_snapshot(bridge, now=now)
+
+
+def _project_turso_snapshot(bridge: dict[str, Any], *, now: datetime | None) -> dict[str, Any]:
     if dict(bridge.get("source") or {}).get("database_backend") != "turso":
         raise ValueError("dashboard snapshot is not from Turso")
     backend = dict(bridge.get("backend") or {})

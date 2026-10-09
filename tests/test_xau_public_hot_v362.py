@@ -156,7 +156,7 @@ def test_turso_reader_rejects_stale_or_wrong_source_without_fallback(case):
         return _Response(payload)
     with pytest.raises(ValueError):
         fetch_public_hot_snapshot(opener=opener, now=datetime(2026, 10, 2, 13, 21, tzinfo=UTC))
-    assert len(calls) == (2 if case == "old_publication" else 1)
+    assert len(calls) == (2 if case in {"old_publication", "old_primary", "missing_primary"} else 1)
 
 
 def test_event_calendar_display_accepts_mixed_values_without_changing_raw_data():
@@ -170,9 +170,13 @@ def test_event_calendar_display_accepts_mixed_values_without_changing_raw_data()
     assert frame["Forecast"].tolist() == ["—", "1.5", "N/A", "2.5%", "—"]
 
 
-def test_stale_cdn_resolves_immutable_snapshot_and_still_validates_freshness():
+@pytest.mark.parametrize("stale_field", ["publication", "primary"])
+def test_stale_cdn_resolves_immutable_snapshot_and_still_validates_freshness(stale_field):
     old = _bridge()
-    old["as_of"] = "2026-10-02T13:10:00+00:00"
+    if stale_field == "publication":
+        old["as_of"] = "2026-10-02T13:10:00+00:00"
+    else:
+        old["backend"]["heartbeats"][0]["observed_at"] = "2026-10-02T13:10:00+00:00"
     sha = "a" * 40
     calls = []
     def opener(request, timeout):
