@@ -40,7 +40,10 @@ class CrossAssetWriter:
             }
         statements = []
         for state in states:
-            payload = json.dumps(state, allow_nan=False, separators=(",", ":"))
+            try:
+                payload = json.dumps(state, allow_nan=False, separators=(",", ":"))
+            except (ValueError, TypeError):
+                return {"healthy": False, "state": "INVALID_STATE_SERIALIZATION"}
             if len(payload.encode()) > 16384:
                 return {"healthy": False, "state": "PAYLOAD_TOO_LARGE"}
             args = (

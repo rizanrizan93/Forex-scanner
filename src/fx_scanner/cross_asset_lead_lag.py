@@ -162,6 +162,15 @@ def event_windows(index, events: pd.DataFrame | None, pre=15, post=30) -> pd.Ser
     return state
 
 
+def return_features(prices, leader, target, kind="price"):
+    a, b = prices[leader], prices[target]
+    x = a.diff() if kind == "yield" else np.log(a.where(a > 0)).diff()
+    r = np.log(b.where(b > 0)).diff()
+    mean = x.rolling(96, min_periods=48).mean().shift(1)
+    std = x.rolling(96, min_periods=48).std().shift(1).replace(0, np.nan)
+    return {"x": x, "z": (x - mean) / std, "target_now": r, "target_prev": r.shift(1)}
+
+
 def paired_returns(
     prices: pd.DataFrame,
     leader: str,
@@ -170,6 +179,7 @@ def paired_returns(
     lag: int,
     horizon: int | None = None,
     kind="price",
+    prepared=None,
 ) -> pd.DataFrame:
     """Lag means leader close at t predicts target increment ending at t+lag.
 
@@ -178,9 +188,13 @@ def paired_returns(
     """
     if lag % minutes or (horizon is not None and horizon % minutes):
         raise ValueError("LAG_NOT_RESOLVABLE_ON_TIMEFRAME")
-    a, b = prices[leader], prices[target]
-    x = a.diff() if kind == "yield" else np.log(a.where(a > 0)).diff()
-    r = np.log(b.where(b > 0)).diff()
+    b = prices[target]
+    base = (
+        prepared
+        if prepared is not None
+        else return_features(prices, leader, target, kind)
+    )
+    r = base["target_now"]
     steps = (horizon if horizon is not None else lag) // minutes
     if horizon is None:
         y = r.shift(-steps)
@@ -188,20 +202,9 @@ def paired_returns(
     else:
         y = np.log(b.shift(-steps) / b)
         valid = b.notna().rolling(steps + 1).sum().shift(-steps) == steps + 1
-    # Standardize using information strictly preceding the leader move.
-    mean = x.rolling(96, min_periods=48).mean().shift(1)
-    std = x.rolling(96, min_periods=48).std().shift(1).replace(0, np.nan)
-    z = (x - mean) / std
     return pd.DataFrame(
-        {
-            "x": x,
-            "y": y.where(valid),
-            "z": z,
-            "target_now": r,
-            "target_prev": r.shift(1),
-        },
-        index=prices.index,
-    ).replace([np.inf, -np.inf], np.nan)
+        {**base, "y": y.where(valid & np.isfinite(y))}, index=prices.index, copy=False
+    )
 
 
 def independent_events(
@@ -232,9 +235,9 @@ def block_bootstrap(
     estimates = []
     for _ in range(repeats):
         starts = rng.integers(0, len(x), size=int(np.ceil(len(x) / block)))
-        sample = np.concatenate(
-            [x[(start + np.arange(block)) % len(x)] for start in starts]
-        )[: len(x)]
+        # Vectorized gathering preserves the circular block bootstrap while
+        # avoiding hundreds of thousands of small Python allocations per fold.
+        sample = x[(starts[:, None] + np.arange(block)) % len(x)].reshape(-1)[: len(x)]
         estimates.append(sample.mean())
     return tuple(float(v) for v in np.quantile(estimates, [0.025, 0.975]))
 
@@ -338,6 +341,8 @@ def pressure_state(
                 continue
             o = observations.get(c.leader, {})
             at = pd.Timestamp(o.get("observed_at"))
+            if pd.isna(at) or at.tzinfo is None:
+                raise ValueError("LEADER_TIME_MISSING_OR_NAIVE")
             age = (pd.Timestamp(now) - at).total_seconds()
             fresh = at.tzinfo is not None and 0 <= age <= max_age_seconds
             fresh = fresh and o.get("source_healthy") is True

@@ -25,6 +25,7 @@ from .cross_asset_lead_lag import (
     fdr_bh,
     paired_returns,
     regimes,
+    return_features,
     sessions,
     synchronize,
 )
@@ -118,11 +119,28 @@ def select_on_train(prices, leader, target, minutes, cutoff):
     grid = sorted(set(LAGS) | set(range(0, 31, minutes)))
     rows = []
     purge = pd.Timedelta(minutes=120 + minutes)
+    # Reuse causal features across the lag grid, and never compute features
+    # on the unseen suffix during parameter selection.
+    training_prices = prices.loc[prices.index < cutoff, [leader, target]]
+    prepared = return_features(training_prices, leader, target)
+    n_train = training_prices.index.searchsorted(cutoff - purge)
+    observation_stride = 15 if minutes == 1 else 1
+    # M1 training: one seeded random minute per 15-minute block avoids a fixed
+    # news-minute phase and reduces serial dependence. Feature calculations
+    # retain every original M1 bar; validation/OOS retain all eligible events.
+    locations = np.arange(0, n_train, observation_stride)
+    if observation_stride > 1:
+        locations += np.random.default_rng(7291).integers(
+            0, observation_stride, len(locations)
+        )
+        locations = locations[locations < n_train]
     for lag in grid:
         if lag % minutes:
             continue
-        f = paired_returns(prices, leader, target, minutes, lag)
-        train = f.loc[f.index < cutoff - purge]
+        f = paired_returns(
+            training_prices, leader, target, minutes, lag, prepared=prepared
+        )
+        train = f.iloc[locations]
         c = correlation(train)
         partial = residuals(train)
         pc = correlation(partial)
@@ -131,7 +149,11 @@ def select_on_train(prices, leader, target, minutes, cutoff):
                 "lag_minutes": lag,
                 "train_corr": c,
                 "train_partial_corr": pc,
-                "train_spearman": correlation(train, "spearman"),
+                "train_spearman": correlation(
+                    train.iloc[:: max(1, len(train) // 50000)], "spearman"
+                ),
+                "spearman_thinning": max(1, len(train) // 50000),
+                "training_observation_stride": observation_stride,
                 "train_p": block_null_p(partial),
                 "samples": len(train.dropna()),
             }

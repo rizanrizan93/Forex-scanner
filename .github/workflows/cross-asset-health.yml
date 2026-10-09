@@ -19,6 +19,15 @@ jobs:
       FX_DATABASE_BACKEND: turso
       TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
       TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/cross_asset_read_only_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: '1'
+      CTRADER_DISABLE_TOKEN_REFRESH: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,3 +36,6 @@ jobs:
       - run: pip install pandas==2.2.3 numpy==2.3.5 scipy==1.17.0 httpx==0.28.1 pytest==9.0.2 PyYAML==6.0.3
       - run: python -m pytest -q tests/test_cross_asset_lead_lag.py
       - run: python scripts/cross_asset_health.py
+      - run: pip install -r requirements-ctrader.txt
+      - name: Broker bridge read-only DEMO check
+        run: python -m fx_scanner.demo_live_position_snapshot

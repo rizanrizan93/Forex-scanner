@@ -30,14 +30,15 @@ def synthetic(minutes=5, n=4000):
     )
 
 
-def test_identifies_known_lag_without_lookahead_selection():
-    p = synthetic()
+@pytest.mark.parametrize("minutes", [1, 5])
+def test_identifies_known_lag_without_lookahead_selection(minutes):
+    p = synthetic(minutes=minutes)
     cutoff = p.index[2500]
-    chosen, _ = select_on_train(p, "A", "B", 5, cutoff)
-    assert chosen["lag_minutes"] == 10
+    chosen, _ = select_on_train(p, "A", "B", minutes, cutoff)
+    assert chosen["lag_minutes"] == 2 * minutes
     # Altering the unseen suffix cannot alter the training selection.
     p.loc[p.index >= cutoff, "B"] = np.linspace(100, 200, len(p.loc[p.index >= cutoff]))
-    again, _ = select_on_train(p, "A", "B", 5, cutoff)
+    again, _ = select_on_train(p, "A", "B", minutes, cutoff)
     assert again == chosen
 
 
@@ -125,6 +126,10 @@ def state(obs=None, cals=None, **context):
 def test_unapproved_missing_stale_event_and_structure_keep_reference():
     assert state(cals=[calibration(approved=False)])["confidence"] is None
     assert state(cals=[calibration()])["state"] == "STALE_DATA"
+    import json
+
+    # Missing feed timestamps must remain JSON-safe for the publisher.
+    json.dumps(state(cals=[calibration()]), allow_nan=False)
     obs = {
         "A": {"observed_at": "2026-10-09T12:00Z", "source_healthy": True, "zscore": 3}
     }
