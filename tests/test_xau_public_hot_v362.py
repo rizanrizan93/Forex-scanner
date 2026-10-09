@@ -156,7 +156,7 @@ def test_turso_reader_rejects_stale_or_wrong_source_without_fallback(case):
         return _Response(payload)
     with pytest.raises(ValueError):
         fetch_public_hot_snapshot(opener=opener, now=datetime(2026, 10, 2, 13, 21, tzinfo=UTC))
-    assert len(calls) == 1
+    assert len(calls) == (2 if case == "old_publication" else 1)
 
 
 def test_event_calendar_display_accepts_mixed_values_without_changing_raw_data():
@@ -168,3 +168,23 @@ def test_event_calendar_display_accepts_mixed_values_without_changing_raw_data()
     assert pa.Table.from_pandas(frame).num_rows == 5
     assert raw[1] == 1.5
     assert frame["Forecast"].tolist() == ["—", "1.5", "N/A", "2.5%", "—"]
+
+
+def test_stale_cdn_resolves_immutable_snapshot_and_still_validates_freshness():
+    old = _bridge()
+    old["as_of"] = "2026-10-02T13:10:00+00:00"
+    sha = "a" * 40
+    calls = []
+    def opener(request, timeout):
+        calls.append(request.full_url)
+        if "api.github.com" in request.full_url:
+            return _Response({"object": {"sha": sha}})
+        return _Response(_bridge() if sha in request.full_url else old)
+    now = datetime(2026, 10, 2, 13, 21, tzinfo=UTC)
+    out = fetch_public_hot_snapshot(opener=opener, now=now)
+    assert out["hot_transport"]["fresh"]
+    assert len(calls) == 3
+    assert sha in calls[-1]
+    # Multiple pages share the reference lookup budget.
+    fetch_public_hot_snapshot(opener=opener, now=now)
+    assert sum("api.github.com" in url for url in calls) == 1

@@ -1,9 +1,30 @@
 """Canonical read-only Turso transport for every XAU dashboard page."""
 from __future__ import annotations
-from datetime import datetime
+from datetime import UTC, datetime
+from functools import lru_cache
+import json
+import re
 from typing import Any, Callable
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 from .xau_public_hot_v362 import CONTRACT, validate_public_hot_snapshot
+
+
+@lru_cache(maxsize=4)
+def _latest_snapshot_commit(bucket: int, opener: Callable[..., Any], timeout: float) -> str:
+    """Resolve only on stale CDN reads, at most once per 90s per process."""
+    request = Request(
+        "https://api.github.com/repos/rizanrizan93/Forex-scanner/git/ref/heads/dashboard-snapshots-v344",
+        headers={"Accept": "application/vnd.github+json", "Cache-Control": "no-cache",
+                 "User-Agent": "RIZAN-Turso-Dashboard/1.0"},
+    )
+    with opener(request, timeout=timeout) as response:
+        raw = response.read()
+    if len(raw) > 65536:
+        raise ValueError("snapshot reference response too large")
+    sha = str(dict(json.loads(raw).get("object") or {}).get("sha") or "")
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise ValueError("invalid snapshot commit reference")
+    return sha
 
 def fetch_public_hot_snapshot(
     url: str | None = None,
@@ -19,13 +40,24 @@ def fetch_public_hot_snapshot(
     """
     from .xau_dashboard_bridge_v254 import DEFAULT_SNAPSHOT_URL, fetch_snapshot
 
-    bridge = fetch_snapshot(
-        url or DEFAULT_SNAPSHOT_URL,
-        timeout_seconds=timeout_seconds,
-        now=now,
-        opener=opener,
-        require_fresh=True,
-    )
+    try:
+        bridge = fetch_snapshot(
+            url or DEFAULT_SNAPSHOT_URL, timeout_seconds=timeout_seconds,
+            now=now, opener=opener, require_fresh=True,
+        )
+    except ValueError as exc:
+        if url is not None or str(exc) != "dashboard bridge snapshot stale":
+            raise
+        # Mutable raw URLs can remain cached after a successful new publication.
+        # Resolve the public branch and read its immutable commit instead.
+        current = now or datetime.now(UTC)
+        sha = _latest_snapshot_commit(int(current.timestamp() // 90), opener, float(timeout_seconds))
+        immutable_url = (
+            "https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/"
+            + sha + "/runtime/xau_dashboard_snapshot.json"
+        )
+        bridge = fetch_snapshot(immutable_url, timeout_seconds=timeout_seconds,
+                                now=now, opener=opener, require_fresh=True)
     if dict(bridge.get("source") or {}).get("database_backend") != "turso":
         raise ValueError("dashboard snapshot is not from Turso")
     backend = dict(bridge.get("backend") or {})
