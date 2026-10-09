@@ -16,6 +16,7 @@ dependencies = [
   "pyarrow==25.0.1",
   "supabase==2.31.0",
   "cryptography==42.0.8",
+  "httpx==0.28.1",
   "curl-cffi==0.16.3",
 ]
 

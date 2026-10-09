@@ -1,0 +1,38 @@
+name: Turso connection and schema bootstrap
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/turso-bootstrap.yml'
+      - 'scripts/turso_bootstrap.py'
+      - 'src/fx_scanner/storage/turso_client.py'
+      - 'src/fx_scanner/storage/turso_schema.py'
+      - 'turso/schema.sql'
+permissions:
+  contents: read
+concurrency:
+  group: turso-schema-bootstrap
+  cancel-in-progress: false
+jobs:
+  verify-turso:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: src
+      TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pytest==9.0.2 httpx==0.28.1 cryptography==42.0.8
+      - run: python -m pytest -q tests/test_turso_client.py
+      - name: Verify credentials and initialize SQLite schema
+        run: python scripts/turso_bootstrap.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: turso-migration-public-key
+          path: turso-migration-public.pem
