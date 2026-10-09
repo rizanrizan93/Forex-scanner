@@ -1,0 +1,7 @@
+# Research-only dependencies; no broker access or runtime risk-policy changes.
+-e .
+numpy==2.3.5
+scipy==1.17.0
+scikit-learn==1.8.0
+statsmodels==0.15.0
+histdata-fetcher @ git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8

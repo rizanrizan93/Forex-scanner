@@ -1,0 +1,29 @@
+name: RIZAN Cross Asset Research and Runtime Health
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'promotion/rizan-cross-asset-lead-lag']
+    paths:
+      - 'src/fx_scanner/cross_asset*.py'
+      - 'scripts/cross_asset*.py'
+      - 'tests/test_cross_asset*.py'
+      - '.github/workflows/cross-asset-health.yml'
+jobs:
+  read-only-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      PYTHONPATH: src
+      FX_DATABASE_BACKEND: turso
+      TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pandas==2.2.3 numpy==2.3.5 scipy==1.17.0 httpx==0.28.1 pytest==9.0.2 PyYAML==6.0.3
+      - run: python -m pytest -q tests/test_cross_asset_lead_lag.py
+      - run: python scripts/cross_asset_health.py
