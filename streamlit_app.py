@@ -2212,12 +2212,12 @@ with st.expander("Bukti broker DEMO • Order, posisi, SL dan TP", expanded=True
         _positions = list(_audit.get("open_positions") or [])
         st.write("Posisi XAUUSD / EURUSD terbuka:", len(_positions))
         if _positions:
-            st.dataframe(_positions, hide_index=True, use_container_width=True)
+            st.dataframe(_positions, hide_index=True, width="stretch")
         else:
             st.info("Belum ada posisi terbuka pada waktu pemeriksaan ini.")
         if _audit.get("latest_accepted_orders"):
             st.write("Order terbaru yang diterima broker:")
-            st.dataframe(_audit["latest_accepted_orders"], hide_index=True, use_container_width=True)
+            st.dataframe(_audit["latest_accepted_orders"], hide_index=True, width="stretch")
         st.caption("SL dan TP di tabel berasal dari posisi broker aktual. Periksa waktu pembaruan sebelum memakai data ini.")
 if backend is not None and backend_source.startswith("GITHUB_DASHBOARD_BRIDGE"):
     st.caption(
