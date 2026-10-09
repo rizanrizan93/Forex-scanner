@@ -192,3 +192,31 @@ def test_stale_cdn_resolves_immutable_snapshot_and_still_validates_freshness(sta
     # Multiple pages share the reference lookup budget.
     fetch_public_hot_snapshot(opener=opener, now=now)
     assert sum("api.github.com" in url for url in calls) == 1
+
+
+def test_valid_but_lagging_cdn_resolves_before_stale_limit():
+    old = _bridge()
+    old["as_of"] = "2026-10-02T13:19:20+00:00"
+    sha = "b" * 40
+    calls = []
+    def opener(request, timeout):
+        calls.append(request.full_url)
+        if "api.github.com" in request.full_url:
+            return _Response({"object": {"sha": sha}})
+        return _Response(_bridge() if sha in request.full_url else old)
+    result = fetch_public_hot_snapshot(opener=opener, now=datetime(2026, 10, 2, 13, 21, tzinfo=UTC))
+    assert result["hot_transport"]["publication_age_seconds"] == 0
+    assert result["hot_transport"]["age_seconds"] == 60
+    assert len(calls) == 3
+
+
+def test_commit_lookup_outage_keeps_valid_snapshot_and_original_heartbeat():
+    old = _bridge()
+    old["as_of"] = "2026-10-02T13:19:20+00:00"
+    def opener(request, timeout):
+        if "api.github.com" in request.full_url:
+            raise OSError("offline")
+        return _Response(old)
+    result = fetch_public_hot_snapshot(opener=opener, now=datetime(2026, 10, 2, 13, 21, tzinfo=UTC))
+    assert result["hot_transport"]["publication_age_seconds"] == 100
+    assert result["hot_transport"]["age_seconds"] == 60

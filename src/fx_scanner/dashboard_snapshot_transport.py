@@ -35,7 +35,8 @@ def fetch_eurusd_snapshot(
         original = fetch_snapshot(DEFAULT_SNAPSHOT_URL, now=current, opener=opener,
                                   timeout_seconds=timeout_seconds, require_fresh=False)
         age = worker_age(original, EURUSD_WORKER, current)
-        if original["bridge"]["fresh"] and age is not None and age <= 180:
+        if (original["bridge"]["fresh"] and original["bridge"]["age_seconds"] <= 60
+                and age is not None and age <= 180):
             return original
     except Exception:
         # Try the exact latest published commit if the mutable URL is unavailable.

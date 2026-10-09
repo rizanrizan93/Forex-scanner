@@ -53,3 +53,12 @@ def test_resolution_outage_preserves_degraded_snapshot(monkeypatch):
     result = transport.fetch_eurusd_snapshot(now=NOW)
     assert not result["bridge"]["fresh"]
     assert result["bridge"]["latest_read_error"] == "OSError"
+
+
+def test_eurusd_resolves_cdn_lag_before_publication_becomes_stale(monkeypatch):
+    rows = iter([payload(age=100, worker_age=100), payload(age=10, worker_age=20)])
+    monkeypatch.setattr(transport, "fetch_snapshot", lambda *a, **k: next(rows))
+    monkeypatch.setattr(transport, "_latest_snapshot_commit", lambda *a: "b" * 40)
+    result = transport.fetch_eurusd_snapshot(now=NOW)
+    assert result["bridge"]["age_seconds"] == 10
+    assert transport.worker_age(result, transport.EURUSD_WORKER, NOW) == 20

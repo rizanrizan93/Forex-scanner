@@ -746,20 +746,34 @@ def fetch_snapshot(
     if encoding == "gzip":
         raw = gzip.decompress(raw)
     payload = json.loads(raw.decode("utf-8"))
-    try:
-        return validate_snapshot(payload, now=now, require_fresh=require_fresh)
-    except ValueError as exc:
-        if (not resolve_stale or str(url) != DEFAULT_SNAPSHOT_URL
-                or str(exc) != "dashboard bridge snapshot stale"):
-            raise
-        from .xau_turso_hot_snapshot_v407 import _latest_snapshot_commit
-        current = now or datetime.now(UTC)
-        sha = _latest_snapshot_commit(int(current.timestamp() // 90), opener, timeout_seconds)
-        immutable = "https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/" + sha + "/runtime/xau_dashboard_snapshot.json"
-        latest = fetch_snapshot(immutable, timeout_seconds=timeout_seconds, now=now,
-                                opener=opener, require_fresh=require_fresh, resolve_stale=False)
-        latest["bridge"]["resolved_commit"] = sha
-        return latest
+    original = validate_snapshot(payload, now=now, require_fresh=False)
+    age = original["bridge"]["age_seconds"]
+    # Resolve CDN lag before the safety freshness limit is reached. Keep the
+    # reference lookup shared across pages, bounded to one per 90-second bucket.
+    if (resolve_stale and require_fresh and str(url) == DEFAULT_SNAPSHOT_URL
+            and age is not None and age > 60):
+        try:
+            from .xau_turso_hot_snapshot_v407 import _latest_snapshot_commit
+            current = now or datetime.now(UTC)
+            sha = _latest_snapshot_commit(int(current.timestamp() // 90), opener, timeout_seconds)
+            immutable = "https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/" + sha + "/runtime/xau_dashboard_snapshot.json"
+            latest = fetch_snapshot(immutable, timeout_seconds=timeout_seconds, now=now,
+                                    opener=opener, require_fresh=False, resolve_stale=False)
+            latest_age = latest["bridge"]["age_seconds"]
+            if latest_age is not None and latest_age <= age:
+                original = latest
+                original["bridge"]["resolved_commit"] = sha
+        except Exception as exc:
+            # A lookup outage must not hide a snapshot that is still within the
+            # original freshness limit; stale data remains rejected below.
+            if not original["bridge"]["fresh"]:
+                raise
+            original["bridge"]["latest_read_error"] = type(exc).__name__
+    validated = validate_snapshot(original, now=now, require_fresh=require_fresh)
+    for key in ("resolved_commit", "latest_read_error"):
+        if key in original["bridge"]:
+            validated["bridge"][key] = original["bridge"][key]
+    return validated
 
 
 def main(argv: list[str] | None = None) -> int:
