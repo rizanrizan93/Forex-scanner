@@ -35,3 +35,11 @@ jobs:
           cache: pip
       - run: pip install -r requirements-research-cloud.txt
       - run: python scripts/demo_order_protection_audit.py
+      - name: Verify persisted row usage after broker audit
+        run: |
+          python - <<'PYTHON'
+          import json
+          from fx_scanner.storage.backend import create_backend_client
+          from fx_scanner.storage.turso_budget import report_budget
+          print("TURSO_USAGE_PERSISTED " + json.dumps(report_budget(create_backend_client())))
+          PYTHON
