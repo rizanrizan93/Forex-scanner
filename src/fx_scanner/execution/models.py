@@ -66,6 +66,10 @@ class OrderIntent:
         # enforces the process-local DEMO policy before any broker submit.
         demo_auto_intent = self.comment.startswith("DEMO_AUTO:")
         risk_ceiling_pct = 5.0 if demo_auto_intent else 1.0
+        if self.symbol == "EURUSD" and self.comment == "DEMO_AUTO:EURUSD_DD37_FROZEN":
+            # User-frozen EURUSD basket contract; the DEMO router and account
+            # environment checks remain mandatory. Other pair limits are unchanged.
+            risk_ceiling_pct = 27.25
         if not 0 < self.risk_pct <= risk_ceiling_pct:
             raise DataContractError(
                 f"risk_pct must be in (0, {risk_ceiling_pct:g}] percentage points"

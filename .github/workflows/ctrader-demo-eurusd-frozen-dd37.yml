@@ -1,0 +1,53 @@
+name: cTrader Demo EURUSD Frozen DD37
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/fx_scanner/eurusd_frozen_dd37.py'
+      - 'src/fx_scanner/demo_eurusd_frozen_dd37.py'
+      - '.github/workflows/ctrader-demo-eurusd-frozen-dd37.yml'
+  schedule:
+    - cron: '*/5 * * * 1-5'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ctrader-demo-eurusd-frozen-dd37
+  cancel-in-progress: false
+
+jobs:
+  frozen-eurusd-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
+      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
+      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
+      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
+      CTRADER_TOKEN_STATE_DURABLE: '1'
+      CTRADER_DISABLE_TOKEN_REFRESH: '1'
+      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
+      FX_KILL_SWITCH: '0'
+      FX_IDEMPOTENCY_STATE_PATH: /tmp/eurusd_idempotency.json
+      CTRADER_DEMO_AUTOTRADE_ENABLED: I_UNDERSTAND_DEMO_ORDERS
+      CTRADER_DEMO_EURUSD_FROZEN_ENABLED: '1'
+      EURUSD_FROZEN_RUN_SECONDS: '300'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install cTrader runtime
+        run: pip install -r requirements-research-cloud.txt pytest==9.0.2
+      - name: Verify frozen contract and broker safety
+        run: python -m pytest -q tests/test_eurusd_frozen_dd37.py
+      - name: Run frozen EURUSD DEMO forward lane
+        run: python -m fx_scanner.demo_eurusd_frozen_dd37

@@ -73,6 +73,7 @@ DASHBOARD_DEGRADED_MAX_AGE_SECONDS = 24 * 60 * 60.0
 DASHBOARD_BUILD_ID = "RIZAN_V362_SUPABASE_HOT_20261002"
 
 RIZAN_DASHBOARD_HOT_HEARTBEATS = (
+    "ctrader_demo_eurusd_frozen_dd37",
     # Generic minute-tier reads are intentionally small. Prepared/V182/V226,
     # V296 and V328 use dedicated compact projections below.
     # V342/V343 use dedicated compact operational projections below.
@@ -2178,10 +2179,26 @@ backend_label = (
 
 m1, m2, m3, m4, m5 = st.columns(5)
 m1.metric("Runtime Mode", runtime_mode)
-m2.metric("Pair aktif", "XAUUSD")
+m2.metric("Pair aktif", "XAUUSD + EURUSD")
 m3.metric("Top-5 Scan Cadence", fast_setup)
 m4.metric("Execution Watch", execution_watch)
 m5.metric("Dashboard Backend", backend_label)
+_eurusd_hb = next((x for x in ([] if backend is None else backend.get("heartbeats", []))
+    if x.get("worker_name") == "ctrader_demo_eurusd_frozen_dd37"), None)
+with st.expander("EURUSD • Setup compounding dibekukan • DEMO", expanded=False):
+    st.caption("Liquidity sweep M15 • H1 netral • SL 3×ATR14, 5–60 pip • TP 4R • Risiko basket 27,25% • Margin awal 60%")
+    if _eurusd_hb is None:
+        st.info("Menunggu heartbeat EURUSD. Belum dapat memastikan runtime aktif.")
+    else:
+        _eu = dict(_eurusd_hb.get("details") or {})
+        _eu_age = (datetime.now(UTC) - datetime.fromisoformat(str(_eurusd_hb.get("observed_at")).replace("Z", "+00:00"))).total_seconds()
+        st.write("Status:", "STALE" if _eu_age > 180 else str(_eu.get("state") or "UNKNOWN"))
+        st.write("Alasan:", str(_eu.get("reason") or "UNKNOWN"))
+        st.write("Update:", str(_eurusd_hb.get("observed_at")))
+        st.write("Layer rencana / diterima:", _eu.get("planned_children", 0), "/", _eu.get("accepted_children", 0))
+        if _eu.get("entry"):
+            st.write("Entry / SL / TP:", _eu.get("entry"), "/", _eu.get("sl"), "/", _eu.get("tp"))
+        st.caption("DD 37,08% adalah hasil replay 10 tahun; bukan batas DD. Dua pair memakai equity dan margin akun demo yang sama.")
 if backend is not None and backend_source.startswith("GITHUB_DASHBOARD_BRIDGE"):
     st.caption(
         "ForexRizan transport: "

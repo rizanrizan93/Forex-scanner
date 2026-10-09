@@ -1,0 +1,9 @@
+{
+  "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+  "signal_parity_2016_2021": 115,
+  "signal_mismatches": 0,
+  "sizing_parity_baskets_2016_2025": 204,
+  "sizing_mismatches": 0,
+  "virtual_exit_parity_2016_2025": 220,
+  "exit_mismatches": 0
+}

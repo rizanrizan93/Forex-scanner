@@ -254,7 +254,7 @@ def test_v256_dashboard_hides_research_locator_from_operational_decision_path():
     assert "Path target (BUKAN TP order)" in text
     assert "Geometry only — hanya posisi harga relatif terhadap source zone" in text
     assert "Riset V226 — locator historis/depth evidence (BUKAN entry utama)" in text
-    assert 'm2.metric("Pair aktif", "XAUUSD")' in text
+    assert 'm2.metric("Pair aktif", "XAUUSD + EURUSD")' in text
     assert "RIZAN SIMPLE" in text
     assert "Detail Engine" in text
     assert 'st.subheader("RIZAN SIMPLE • XAUUSD")' in text
