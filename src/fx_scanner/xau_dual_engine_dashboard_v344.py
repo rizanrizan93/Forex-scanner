@@ -313,8 +313,8 @@ def render_xau_dual_engine_dashboard(
 ) -> None:
     import streamlit as st
 
-    _render_simple_root(sd_heartbeat)
-    with st.expander("Detail HTF C4 + diagnostics lama", expanded=False):
+    with st.expander("Konteks zona lama · bukan inti keputusan BUY/SELL beku", expanded=False):
+        _render_simple_root(sd_heartbeat)
         _render_c4_summary(sd_heartbeat)
         _legacy.render_xau_dual_engine_dashboard(
             sd_heartbeat=sd_heartbeat,

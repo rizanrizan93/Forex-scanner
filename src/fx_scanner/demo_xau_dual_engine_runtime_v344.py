@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 import os
 from typing import Any
 
+from .xau_frozen_dd50 import evaluate_core, STRATEGY_ID
 from .config import load_project_config
 from .execution.factory import build_ctrader_research_feed
 from .execution.policy import load_execution_policy
@@ -17,7 +18,7 @@ from .xau_sd_liquidity_engine_v342 import evaluate_sd_liquidity
 SYMBOL = "XAUUSD"
 SD_WORKER = "ctrader_demo_xau_sd_liquidity_v342"
 FRIEND_WORKER = "ctrader_demo_xau_friend_entry_v343"
-CONTRACT = "XAU_RIZAN_DUAL_ISOLATED_RUNTIME_V344_5_AFIQ_BEHAVIOR_V376"
+CONTRACT = STRATEGY_ID
 
 
 def _last_close(rows: tuple[Any, ...]) -> float | None:
@@ -106,6 +107,11 @@ def run() -> int:
             now=now,
             source_status=news_source_status,
         )
+        sd_payload["frozen_core"] = evaluate_core(bars_m5=m5, bars_h1=h1, bars_m15=m15,
+            now=now, events=news_events, source_status=news_source_status)
+        sd_payload["core_strategy_id"] = STRATEGY_ID
+        sd_payload["execution_authority"] = False  # Orders require the frozen DEMO executor's broker gates.
+        sd_payload["execution_influence"] = False  # Legacy zone evaluations are context only.
         sd_payload["news_zone"] = news_payload
         behavior_payload = evaluate_afiq_behavioral_layer(
             sd_evaluation=sd_payload,

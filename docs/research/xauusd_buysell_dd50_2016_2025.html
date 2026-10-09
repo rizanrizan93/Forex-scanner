@@ -1,0 +1,76 @@
+<!doctype html><html lang="id"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RIZAN XAUUSD · BUY+SELL DD50</title><style>body{font:16px/1.6 system-ui;background:#f4f6f9;color:#172638;margin:0}main{max-width:1100px;margin:auto;padding:25px 18px}h1{font-size:29px;line-height:1.25}.hero{background:#e7f5ed;border-left:5px solid #28784d;padding:20px}.scroll{overflow:auto}table{min-width:650px;width:100%;border-collapse:collapse;background:white;font-size:14px}th,td{padding:10px;border-bottom:1px solid #d9e2e8;text-align:right}th{background:#e6edf6}pre{white-space:pre-wrap;background:white;padding:15px;font-size:13px}details{background:#fff;border:1px solid #ddd;padding:12px;margin:12px 0}summary{cursor:pointer}</style><main><h1>Kandidat BUY+SELL memenuhi target pada biaya hati-hati</h1><div class="hero"><b>Saldo akhir $11.106,24 · DD floating M1 45,57% · PF1,892</b><p>Modal $100 sekali, periode2016–2025 WIB, tanpa setoran, reset tahunan, atau berhenti saat mencapai profit target. 560setup utama:402BUY+158SELL. Rata-rata4,67setup/bulan, median5, rentang0–12;3bulan noltrade. Akun tetap aktif sampaiakhir2025.</p></div><p><b>Skenario stres gagal:</b> saldo$2.343,61, DD83,32%. Hasil ini memenuhi target pada asumsi biaya hati-hati yang sintetis; belum memenuhi target secara robust pada ketiga biaya dan belum merupakan hasil eksekusi riil FP Markets.</p><h2>Hasil kandidat utama</h2><div class="scroll"><table><tr><th>Biaya</th><th>Saldo akhir</th><th>DD floating</th><th>PF</th><th>Setup</th><th>Setup/bulan</th><th>BUY</th><th>SELL</th><th>Bulan nol</th><th>Entry terakhir WIB</th></tr><tr><td>PUBLIC_AVG_NO_SLIPPAGE</td><td>$18,310.36</td><td>46.13%</td><td>1.932</td><td>554</td><td>4.62</td><td>398</td><td>156</td><td>3</td><td>2025-12-26T19:00:00+07:00</td></tr><tr><td>CAUTIOUS_VARIABLE</td><td>$11,106.24</td><td>45.57%</td><td>1.892</td><td>560</td><td>4.67</td><td>402</td><td>158</td><td>3</td><td>2025-12-26T19:00:00+07:00</td></tr><tr><td>STRESS_VARIABLE</td><td>$2,343.61</td><td>83.32%</td><td>1.663</td><td>565</td><td>4.71</td><td>406</td><td>159</td><td>3</td><td>2025-12-26T19:00:00+07:00</td></tr></table></div><h2>Aturan BUY dan SELL berbeda</h2><p>BUY: Regression Channel Reentry, parameter48, konfirmasi STRICT_H1_M15, filter perubahan harian real yield10Y. SELL: Sweep Candle Confirm, parameter24, konfirmasi STRICT_H1_M15, filter perubahan harian nominal yield US10Y. Sinyal M5 untuk entry. Keduanya SL2,65ATR/anchor, TP6,6R, stop tetap, holding maksimum480menit; entry efektifUTC12–17(WIB19–24), akhir sesiUTC20(WIB03esok). Buffer kalender berita15menit sebelum dan30menit sesudah, dengan guard holding dari aturan sumber; semua pelebaran biaya sintetis berita tetap dipakai.</p><p>Satu akun bersama, satu setup terbuka pada satu waktu, maksimum6setup/hari. Bila sinyal bersamaan, SELL didahulukan. Tidak ada hedge dua arah serentak. Semua urutan transaksi, margin, P/L dan compounding disimulasikan bersama.</p><p><b>Layer mengikuti saldo ekuitas yang telah direalisasi:</b> jumlah diinginkan=max(1,floor(saldo/$100)), masing-masing0,01lot=1oz. Tidak ada cap jumlah layer. Jumlah aktual tetap tunduk pada risk cap12,5% per setup dan margin50%. Saat saldo$1.000, diinginkan10layer=0,10lot; bisa lebih sedikit jika SL atau margin membatasi. Pada biaya hati-hati maksimum lot yang dipakai1,11lot. Tidak ada budgetDD keras yang menghentikan entry.</p><h2>Mengaktifkan BUY dengan aturan lama</h2><p>Perbandingan berikut memakai parameter dan sizing kandidat SELL sebelumnya identik, hanya izin arah yang berubah. Biaya hati-hati:</p><div class="scroll"><table><tr><th>Arah</th><th>Saldo</th><th>DD</th><th>Setup</th><th>Setup/bulan</th></tr><tr><td>SELL_ONLY</td><td>$2,249.26</td><td>49.95%</td><td>158</td><td>1.32</td></tr><tr><td>BUY_ONLY</td><td>$25.93</td><td>76.12%</td><td>104</td><td>0.87</td></tr><tr><td>BOTH</td><td>$678.65</td><td>82.41%</td><td>418</td><td>3.48</td></tr></table></div><p>Konfigurasi baru memilih keluarga BUY berbeda dan sizing lebih konservatif; perbaikan bukan akibat mengaktifkan BUY saja.</p><h2>Rincian seluruh120bulan</h2><details><summary>PUBLIC_AVG_NO_SLIPPAGE · 120bulan</summary><div class="scroll"><table><tr><th>Tahun</th><th>Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>Mei</th><th>Jun</th><th>Jul</th><th>Agu</th><th>Sep</th><th>Okt</th><th>Nov</th><th>Des</th><th>Total</th></tr><tr><th>2016</th><td>7</td><td>6</td><td>4</td><td>3</td><td>9</td><td>7</td><td>5</td><td>5</td><td>5</td><td>8</td><td>6</td><td>4</td><td>69</td></tr><tr><th>2017</th><td>9</td><td>7</td><td>7</td><td>4</td><td>6</td><td>8</td><td>4</td><td>8</td><td>4</td><td>4</td><td>4</td><td>5</td><td>70</td></tr><tr><th>2018</th><td>3</td><td>5</td><td>5</td><td>6</td><td>6</td><td>5</td><td>7</td><td>5</td><td>3</td><td>4</td><td>7</td><td>8</td><td>64</td></tr><tr><th>2019</th><td>9</td><td>7</td><td>5</td><td>2</td><td>5</td><td>5</td><td>1</td><td>5</td><td>4</td><td>4</td><td>4</td><td>3</td><td>54</td></tr><tr><th>2020</th><td>8</td><td>5</td><td>2</td><td>7</td><td>5</td><td>5</td><td>12</td><td>5</td><td>6</td><td>3</td><td>2</td><td>4</td><td>64</td></tr><tr><th>2021</th><td>6</td><td>5</td><td>4</td><td>4</td><td>5</td><td>3</td><td>6</td><td>5</td><td>1</td><td>2</td><td>2</td><td>0</td><td>43</td></tr><tr><th>2022</th><td>2</td><td>3</td><td>4</td><td>0</td><td>4</td><td>2</td><td>2</td><td>5</td><td>4</td><td>1</td><td>7</td><td>2</td><td>36</td></tr><tr><th>2023</th><td>1</td><td>3</td><td>2</td><td>1</td><td>3</td><td>2</td><td>2</td><td>7</td><td>4</td><td>6</td><td>6</td><td>7</td><td>44</td></tr><tr><th>2024</th><td>0</td><td>2</td><td>6</td><td>5</td><td>5</td><td>4</td><td>1</td><td>4</td><td>6</td><td>7</td><td>6</td><td>4</td><td>50</td></tr><tr><th>2025</th><td>3</td><td>2</td><td>6</td><td>2</td><td>4</td><td>4</td><td>6</td><td>5</td><td>5</td><td>9</td><td>8</td><td>6</td><td>60</td></tr></table></div></details><details><summary>CAUTIOUS_VARIABLE · 120bulan</summary><div class="scroll"><table><tr><th>Tahun</th><th>Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>Mei</th><th>Jun</th><th>Jul</th><th>Agu</th><th>Sep</th><th>Okt</th><th>Nov</th><th>Des</th><th>Total</th></tr><tr><th>2016</th><td>7</td><td>6</td><td>4</td><td>3</td><td>9</td><td>7</td><td>5</td><td>5</td><td>6</td><td>8</td><td>6</td><td>4</td><td>70</td></tr><tr><th>2017</th><td>10</td><td>7</td><td>7</td><td>4</td><td>6</td><td>8</td><td>4</td><td>8</td><td>4</td><td>4</td><td>4</td><td>5</td><td>71</td></tr><tr><th>2018</th><td>3</td><td>5</td><td>5</td><td>6</td><td>6</td><td>6</td><td>8</td><td>5</td><td>3</td><td>4</td><td>7</td><td>8</td><td>66</td></tr><tr><th>2019</th><td>9</td><td>8</td><td>6</td><td>2</td><td>5</td><td>5</td><td>1</td><td>5</td><td>4</td><td>4</td><td>4</td><td>3</td><td>56</td></tr><tr><th>2020</th><td>8</td><td>5</td><td>2</td><td>7</td><td>5</td><td>5</td><td>12</td><td>5</td><td>6</td><td>3</td><td>2</td><td>4</td><td>64</td></tr><tr><th>2021</th><td>6</td><td>5</td><td>4</td><td>4</td><td>5</td><td>3</td><td>6</td><td>5</td><td>1</td><td>2</td><td>2</td><td>0</td><td>43</td></tr><tr><th>2022</th><td>2</td><td>3</td><td>4</td><td>0</td><td>4</td><td>2</td><td>2</td><td>5</td><td>4</td><td>1</td><td>7</td><td>2</td><td>36</td></tr><tr><th>2023</th><td>1</td><td>3</td><td>2</td><td>1</td><td>3</td><td>2</td><td>2</td><td>7</td><td>4</td><td>6</td><td>6</td><td>7</td><td>44</td></tr><tr><th>2024</th><td>0</td><td>2</td><td>6</td><td>5</td><td>5</td><td>4</td><td>1</td><td>4</td><td>6</td><td>7</td><td>6</td><td>4</td><td>50</td></tr><tr><th>2025</th><td>3</td><td>2</td><td>6</td><td>2</td><td>4</td><td>4</td><td>6</td><td>5</td><td>5</td><td>9</td><td>8</td><td>6</td><td>60</td></tr></table></div></details><details><summary>STRESS_VARIABLE · 120bulan</summary><div class="scroll"><table><tr><th>Tahun</th><th>Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>Mei</th><th>Jun</th><th>Jul</th><th>Agu</th><th>Sep</th><th>Okt</th><th>Nov</th><th>Des</th><th>Total</th></tr><tr><th>2016</th><td>7</td><td>6</td><td>4</td><td>3</td><td>10</td><td>7</td><td>6</td><td>5</td><td>6</td><td>8</td><td>6</td><td>4</td><td>72</td></tr><tr><th>2017</th><td>11</td><td>7</td><td>8</td><td>4</td><td>7</td><td>8</td><td>4</td><td>8</td><td>4</td><td>5</td><td>4</td><td>5</td><td>75</td></tr><tr><th>2018</th><td>3</td><td>6</td><td>5</td><td>6</td><td>6</td><td>6</td><td>8</td><td>5</td><td>3</td><td>4</td><td>7</td><td>8</td><td>67</td></tr><tr><th>2019</th><td>9</td><td>8</td><td>7</td><td>1</td><td>5</td><td>5</td><td>1</td><td>4</td><td>5</td><td>5</td><td>4</td><td>3</td><td>57</td></tr><tr><th>2020</th><td>8</td><td>5</td><td>1</td><td>6</td><td>5</td><td>6</td><td>12</td><td>1</td><td>6</td><td>3</td><td>2</td><td>4</td><td>59</td></tr><tr><th>2021</th><td>6</td><td>4</td><td>4</td><td>4</td><td>6</td><td>3</td><td>6</td><td>5</td><td>1</td><td>2</td><td>2</td><td>0</td><td>43</td></tr><tr><th>2022</th><td>2</td><td>3</td><td>4</td><td>0</td><td>4</td><td>2</td><td>2</td><td>5</td><td>4</td><td>1</td><td>7</td><td>2</td><td>36</td></tr><tr><th>2023</th><td>1</td><td>4</td><td>2</td><td>1</td><td>3</td><td>2</td><td>2</td><td>7</td><td>5</td><td>6</td><td>6</td><td>7</td><td>46</td></tr><tr><th>2024</th><td>0</td><td>2</td><td>6</td><td>5</td><td>5</td><td>4</td><td>1</td><td>4</td><td>6</td><td>7</td><td>6</td><td>4</td><td>50</td></tr><tr><th>2025</th><td>3</td><td>2</td><td>6</td><td>2</td><td>4</td><td>4</td><td>6</td><td>5</td><td>5</td><td>9</td><td>8</td><td>6</td><td>60</td></tr></table></div></details><h2>Konfigurasi lengkap</h2><pre>{
+  &quot;buy&quot;: {
+    &quot;group&quot;: 274,
+    &quot;primitive_index&quot;: 68,
+    &quot;primitive_families&quot;: [
+      &quot;REGRESSION_CHANNEL_REENTRY&quot;
+    ],
+    &quot;confirmation&quot;: &quot;STRICT_H1_M15&quot;,
+    &quot;operator_index&quot;: 0,
+    &quot;signal_param_index&quot;: 3,
+    &quot;actual_signal_param&quot;: 48,
+    &quot;events&quot;: 6046,
+    &quot;atomic_group&quot;: 680,
+    &quot;direction_permission&quot;: &quot;BUY_ONLY&quot;,
+    &quot;macro_index&quot;: 4,
+    &quot;macro&quot;: &quot;REAL10Y_1D&quot;,
+    &quot;news_exposure_buffer_min&quot;: [
+      15,
+      30
+    ],
+    &quot;stop_atr&quot;: 2.65,
+    &quot;target_r&quot;: 6.6,
+    &quot;hold_minutes&quot;: 480,
+    &quot;exit_mode&quot;: 0,
+    &quot;session_utc&quot;: [
+      12,
+      20
+    ],
+    &quot;stopfloor&quot;: 0.5,
+    &quot;lot&quot;: 0.01,
+    &quot;id&quot;: &quot;S10_DIRECTION_006616&quot;
+  },
+  &quot;sell&quot;: {
+    &quot;group&quot;: 6,
+    &quot;primitive_index&quot;: 1,
+    &quot;primitive_families&quot;: [
+      &quot;SWEEP_CANDLE_CONFIRM&quot;
+    ],
+    &quot;confirmation&quot;: &quot;STRICT_H1_M15&quot;,
+    &quot;operator_index&quot;: 0,
+    &quot;signal_param_index&quot;: 3,
+    &quot;actual_signal_param&quot;: 24,
+    &quot;events&quot;: 3721,
+    &quot;atomic_group&quot;: 10,
+    &quot;direction_permission&quot;: &quot;SELL_ONLY&quot;,
+    &quot;macro_index&quot;: 1,
+    &quot;macro&quot;: &quot;US10Y_1D&quot;,
+    &quot;news_exposure_buffer_min&quot;: [
+      15,
+      30
+    ],
+    &quot;stop_atr&quot;: 2.65,
+    &quot;target_r&quot;: 6.6,
+    &quot;hold_minutes&quot;: 480,
+    &quot;exit_mode&quot;: 0,
+    &quot;session_utc&quot;: [
+      12,
+      20
+    ],
+    &quot;stopfloor&quot;: 0.5,
+    &quot;lot&quot;: 0.01,
+    &quot;id&quot;: &quot;S10_DIRECTION_000183&quot;
+  },
+  &quot;policy&quot;: {
+    &quot;sizekind&quot;: 1.0,
+    &quot;equity_step&quot;: 100.0,
+    &quot;risk_cap&quot;: 0.125,
+    &quot;dd_trigger&quot;: 1.0,
+    &quot;dd_factor&quot;: 1.0,
+    &quot;switch_equity&quot;: 1000000000000.0,
+    &quot;later_step&quot;: 100.0,
+    &quot;dd_budget&quot;: 1.0,
+    &quot;profit_goal&quot;: 0.0,
+    &quot;max_layers&quot;: 0
+  }
+}</pre><h2>Ruang pencarian dan validasi</h2><p>1.308.960 konfigurasi baru dari101stream sinyal(100keluarga dasar ditambah satu varian REGIME_SWITCH), termasukTPbaru, BE exit, langkah ekuitas baru dan risk throttle. Tidak ada yang mencapai target pada tahap ini. Berikutnya19pasangan keluarga BUY berbeda dengan SELL kandidat sebelumnya ×358kebijakan ukuran posisi=6.802konfigurasi akun gabungan;2konfigurasi memenuhi target pada biaya hati-hati. Total tambahan1.315.762, totaltermasukpencariansebelumnya10.901.602. Keluarga BUY partner dipilih berdasarkan hasil retrospektif, bukan data holdout baru.</p><p>30akun pemeriksaan pada giliran ini cocok antara replayM1 penuh dan simulator scalar pembanding; audit portofolio dua keluarga juga cocok dengan mesin cache. Rekonsiliasi saldo=$100+seluruhP/L, jumlah bulanan dan hasil tahunan cocok. Preflight juga memeriksa mesin eksekusi dengan geometri per-sinyal. Data BIDM1, STOP_FIRST, tanpa tick/ASK broker historis. Spread, slippage, carry dan biaya berita sintetis; tidak ada pemodelan kapasitas likuiditas. FRED final/revisi dengan proxy dua hari kerja federal AS, bukan vintage. Semua2016–2025 dipakai untuk seleksi dan optimasi; hasil tidak mengukur performa di luar sampel atau menjamin hasil akun riil.</p></main></html>

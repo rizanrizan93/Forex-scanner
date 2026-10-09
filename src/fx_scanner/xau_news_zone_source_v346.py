@@ -15,6 +15,9 @@ from .providers.transport import UrllibHttpTransport
 NY = ZoneInfo("America/New_York")
 WIB = ZoneInfo("Asia/Jakarta")
 SCOPE = {
+    "PPI",
+    "JOLTS",
+    "ECI",
     "CPI",
     "PCE",
     "NFP",
@@ -57,6 +60,12 @@ def category_from_title(title: str) -> str | None:
     text = re.sub(r"\s+", " ", str(title or "")).upper().strip()
     if not text:
         return None
+    if "PRODUCER PRICE INDEX" in text or re.search(r"\bPPI\b", text):
+        return "PPI"
+    if "JOB OPENINGS" in text or "JOLTS" in text:
+        return "JOLTS"
+    if "EMPLOYMENT COST INDEX" in text or re.search(r"\bECI\b", text):
+        return "ECI"
     if "CONSUMER PRICE INDEX" in text or re.search(r"\bCPI\b", text):
         return "CPI"
     if "PERSONAL INCOME AND OUTLAYS" in text or re.search(r"\bPCE\b", text):

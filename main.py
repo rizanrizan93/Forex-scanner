@@ -21,6 +21,8 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Setup"):
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if xau.open:
         with xau:
+            from fx_scanner.xau_frozen_dd50_dashboard import render_frozen_core
+            render_frozen_core()
             labels = ["Setup", "Hierarki zona", "Keputusan", "Demand", "Makro", "Pengaturan"]
             tabs = st.tabs(labels, key="rizan_xau_detail", on_change="rerun")
             paths = ["streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/1_Demand_Tiers.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]

@@ -5,6 +5,10 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - "src/fx_scanner/xau_frozen_dd50*.py"
+      - "src/fx_scanner/demo_xau_frozen_dd50.py"
+      - "config/frozen/xauusd_buysell_dd50_v1.json"
+      - "tests/test_xau_frozen_dd50.py"
       - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
       - "src/fx_scanner/xau_structural_sr_map_v363.py"
       - "src/fx_scanner/xau_friend_entry_engine_v343.py"
@@ -29,6 +33,10 @@ on:
   push:
     branches: [main]
     paths:
+      - "src/fx_scanner/xau_frozen_dd50*.py"
+      - "src/fx_scanner/demo_xau_frozen_dd50.py"
+      - "config/frozen/xauusd_buysell_dd50_v1.json"
+      - "tests/test_xau_frozen_dd50.py"
       - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
       - "src/fx_scanner/xau_structural_sr_map_v363.py"
       - "src/fx_scanner/xau_friend_entry_engine_v343.py"
@@ -114,6 +122,7 @@ jobs:
           import fx_scanner.demo_xau_dual_engine_runtime_v344
           import fx_scanner.demo_xau_event_risk_v377
           import fx_scanner.demo_xau_v351_executor
+          import fx_scanner.demo_xau_frozen_dd50
           import fx_scanner.demo_xau_v375_reaction_executor
           import fx_scanner.xau_reaction_interceptor_v374
           print("V377_RUNTIME_IMPORT_SMOKE_OK")
@@ -121,6 +130,7 @@ jobs:
       - name: Run V375 reversal-entry regressions plus V377 event semantics
         run: |
           pytest -q \
+            tests/test_xau_frozen_dd50.py \
             tests/test_xau_sd_liquidity_engine_v342.py \
             tests/test_xau_friend_entry_engine_v343.py \
             tests/test_xau_news_zone_v346.py \
@@ -138,7 +148,7 @@ jobs:
         continue-on-error: true
         run: python -m fx_scanner.demo_existing_protection_repair
 
-      - name: Run continuous V342 forecast + V375 DEMO reaction execution
+      - name: Run continuous frozen XAU BUY SELL core + DEMO execution
         if: ${{ github.event_name != 'pull_request' }}
         shell: bash
         run: |
@@ -147,7 +157,7 @@ jobs:
           cycle=0
           while [ $(date +%s) -lt "$end_epoch" ]; do
             cycle=$((cycle + 1))
-            echo "V375_CONTINUOUS_CYCLE cycle=$cycle at=$(date -u +%FT%TZ)"
+            echo "XAU_FROZEN_CONTINUOUS_CYCLE cycle=$cycle at=$(date -u +%FT%TZ)"
             if [ "$cycle" -eq 1 ] || [ $((cycle % 5)) -eq 0 ]; then
               python -m fx_scanner.demo_xau_event_risk_v377 || echo "V377_EVENT_REFRESH_RETRY_NEXT_WINDOW rc=$?"
             fi
@@ -157,7 +167,7 @@ jobs:
             runtime_rc=0
             python -m fx_scanner.demo_xau_dual_engine_runtime_v344 || runtime_rc=$?
             if [ "$runtime_rc" -eq 0 ]; then
-              python -m fx_scanner.demo_xau_v375_reaction_executor || echo "V375_EXECUTOR_RETRY_NEXT_CYCLE rc=$?"
+              CTRADER_DEMO_XAU_FROZEN_ENABLED=1 python -m fx_scanner.demo_xau_frozen_dd50 || echo "XAU_FROZEN_EXECUTOR_RETRY_NEXT_CYCLE rc=$?"
             else
               echo "V344_RUNTIME_RETRY_NEXT_CYCLE rc=$runtime_rc"
             fi

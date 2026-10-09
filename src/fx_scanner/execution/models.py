@@ -70,6 +70,10 @@ class OrderIntent:
             # User-frozen EURUSD basket contract; the DEMO router and account
             # environment checks remain mandatory. Other pair limits are unchanged.
             risk_ceiling_pct = 27.25
+        if self.symbol == "XAUUSD" and self.comment == "DEMO_AUTO:XAU_DD50_FROZEN":
+            # Frozen XAU child budget; aggregate risk and DEMO gates are enforced
+            # by the account-scoped frozen executor and router before submit.
+            risk_ceiling_pct = 12.5
         if not 0 < self.risk_pct <= risk_ceiling_pct:
             raise DataContractError(
                 f"risk_pct must be in (0, {risk_ceiling_pct:g}] percentage points"
