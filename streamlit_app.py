@@ -2200,6 +2200,23 @@ with st.expander("EURUSD • Setup compounding dibekukan • DEMO", expanded=Fal
         if _eu.get("entry"):
             st.write("Entry / SL / TP:", _eu.get("entry"), "/", _eu.get("sl"), "/", _eu.get("tp"))
         st.caption("DD 37,08% adalah hasil replay 10 tahun; bukan batas DD. Dua pair memakai equity dan margin akun demo yang sama.")
+_turso_budget = next((r for r in ([] if backend is None else backend.get("heartbeats", []))
+    if r.get("worker_name") == "turso_free_tier_budget_v1"), None)
+with st.expander("Turso • Kuota gratis dan pemakaian scanner", expanded=False):
+    if _turso_budget is None:
+        st.info("Menunggu laporan pemakaian database.")
+    else:
+        _budget = dict(_turso_budget.get("details") or {})
+        _usage = dict(_budget.get("observed_usage") or {})
+        st.write("Update:", _fmt_wib_datetime(_turso_budget.get("observed_at")))
+        st.write("Periode UTC:", _budget.get("month_utc"))
+        st.write("Baca tercatat / kuota bulanan:", _usage.get("rows_read", 0), "/ 500.000.000")
+        st.write("Tulis tercatat / kuota bulanan:", _usage.get("rows_written", 0), "/ 10.000.000")
+        st.write("Ukuran database teralokasi:", round(float(_budget.get("database_allocated_bytes", 0))/1_000_000, 2), "MB / 5.000 MB")
+        st.write("Status pemakaian tercatat:", _budget.get("status"))
+        if not _budget.get("metering_complete", False):
+            st.caption("Sebagian respons tidak menyertakan meter baris; angka tercatat belum lengkap.")
+        st.caption("Mencakup proses scanner yang sudah diinstrumentasi. Pemakaian sebelum aktivasi, proses yang masih berjalan, dan overhead pencatatan belum termasuk. Total resmi tetap di dashboard Turso.")
 _order_audit = next((x for x in ([] if backend is None else backend.get("heartbeats", []))
     if x.get("worker_name") == "ctrader_demo_order_protection_audit"), None)
 with st.expander("Bukti broker DEMO • Order, posisi, SL dan TP", expanded=True):

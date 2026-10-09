@@ -31,6 +31,7 @@ OUTCOME_REFRESH_SECONDS = 21600.0
 HOT_HEARTBEATS = (
     "ctrader_demo_xau_v351_executor",
     "ctrader_demo_order_protection_audit",
+    "turso_free_tier_budget_v1",
     "ctrader_demo_eurusd_frozen_dd37",
     # Only small, truly minute-sensitive payloads stay in the generic hot set.
     # V296 and V328 are projected separately below so their large research
@@ -245,6 +246,8 @@ def build_snapshot(
 ) -> dict[str, Any]:
     from .storage.backend import create_backend_client, backend_name
 
+    intervals = (300., 1800., 300., 900.) if backend_name()=="turso" else (STRUCTURAL_REFRESH_SECONDS, SUPPORT_REFRESH_SECONDS, COLD_REFRESH_SECONDS, OUTCOME_REFRESH_SECONDS)
+    structural_seconds, support_seconds, cold_seconds, outcome_seconds = intervals
     current = (now or datetime.now(tz=UTC)).astimezone(UTC)
     previous_payload = dict(previous or {})
     previous_backend = dict(previous_payload.get("backend") or {})
@@ -275,25 +278,25 @@ def build_snapshot(
     structural_reused = has_previous and _tier_is_fresh(
         previous_payload,
         source_key="structural_as_of",
-        max_age_seconds=STRUCTURAL_REFRESH_SECONDS,
+        max_age_seconds=structural_seconds,
         now=current,
     )
     support_reused = has_previous and _tier_is_fresh(
         previous_payload,
         source_key="support_as_of",
-        max_age_seconds=SUPPORT_REFRESH_SECONDS,
+        max_age_seconds=support_seconds,
         now=current,
     )
     cold_reused = has_previous and _tier_is_fresh(
         previous_payload,
         source_key="cold_as_of",
-        max_age_seconds=COLD_REFRESH_SECONDS,
+        max_age_seconds=cold_seconds,
         now=current,
     )
     outcomes_reused = has_previous and _tier_is_fresh(
         previous_payload,
         source_key="outcomes_as_of",
-        max_age_seconds=OUTCOME_REFRESH_SECONDS,
+        max_age_seconds=outcome_seconds,
         now=current,
     )
 
@@ -526,10 +529,10 @@ def build_snapshot(
 
     steady_state_bytes_per_minute = (
         hot_payload_bytes
-        + tier_bytes["structural"] / (STRUCTURAL_REFRESH_SECONDS / 60.0)
-        + tier_bytes["support"] / (SUPPORT_REFRESH_SECONDS / 60.0)
-        + tier_bytes["cold"] / (COLD_REFRESH_SECONDS / 60.0)
-        + tier_bytes["outcomes"] / (OUTCOME_REFRESH_SECONDS / 60.0)
+        + tier_bytes["structural"] / (structural_seconds / 60.0)
+        + tier_bytes["support"] / (support_seconds / 60.0)
+        + tier_bytes["cold"] / (cold_seconds / 60.0)
+        + tier_bytes["outcomes"] / (outcome_seconds / 60.0)
     )
     conservative_24x5_month_minutes = 60.0 * 24.0 * 22.0
     projected_month_gib = (
@@ -567,12 +570,13 @@ def build_snapshot(
             "account_telemetry_public": False,
             "mode": "TURSO_TO_PUBLIC_READ_ONLY_BRIDGE" if backend_name()=="turso" else "SUPABASE_SERVICE_ROLE_TO_PUBLIC_READ_ONLY_BRIDGE",
             "database_backend": backend_name(),
+            "database_usage_cycle": client.usage_snapshot() if hasattr(client, "usage_snapshot") else None,
             "dashboard_refresh_seconds": int(HOT_REFRESH_SECONDS),
             "operational_structure_refresh_seconds": int(HOT_REFRESH_SECONDS),
-            "structural_refresh_seconds": int(STRUCTURAL_REFRESH_SECONDS),
-            "support_refresh_seconds": int(SUPPORT_REFRESH_SECONDS),
-            "cold_refresh_seconds": int(COLD_REFRESH_SECONDS),
-            "outcome_refresh_seconds": int(OUTCOME_REFRESH_SECONDS),
+            "structural_refresh_seconds": int(structural_seconds),
+            "support_refresh_seconds": int(support_seconds),
+            "cold_refresh_seconds": int(cold_seconds),
+            "outcome_refresh_seconds": int(outcome_seconds),
             "structural_as_of": structural_as_of,
             "support_as_of": support_as_of,
             "cold_as_of": cold_as_of,
@@ -595,7 +599,7 @@ def build_snapshot(
                     steady_state_bytes_per_minute, 1
                 ),
                 "projected_24x5_month_gib": round(projected_month_gib, 3),
-                "target_month_gib": 3.5,
+                "target_month_gib": None if backend_name()=="turso" else 3.5,
             },
             "execution_authority": False,
             "mutates_database": False,

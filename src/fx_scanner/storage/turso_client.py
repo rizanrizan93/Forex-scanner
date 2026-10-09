@@ -9,6 +9,7 @@ import json
 import math
 import os
 import re
+from threading import Lock
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
@@ -56,15 +57,19 @@ class TursoClient:
         if not token.strip():raise ValueError('TURSO_AUTH_TOKEN is required')
         self.endpoint='https://'+p.netloc+'/v2/pipeline'
         self.http=transport or httpx.Client(timeout=30)
+        self._usage_lock=Lock()
+        self._usage=dict.fromkeys(('requests','statements','rows_read','rows_written','unmetered_statements'),0)
         self.headers={'Authorization':'Bearer '+token.strip(),'Content-Type':'application/json'}
     @classmethod
     def from_env(cls):return cls(os.getenv('TURSO_DATABASE_URL',''),os.getenv('TURSO_AUTH_TOKEN',''))
     def table(self,name):
         if name not in SCHEMA:raise ValueError('unknown scanner table')
         return Query(self,name)
+    def usage_snapshot(self):
+        with self._usage_lock:return dict(self._usage)
     def execute(self,sql,args=()):
         return self.batch([(sql,args)])[0]
-    def batch(self,statements,*,transaction=False):
+    def batch(self,statements,*,transaction=False,track_usage=True):
         steps=[{'stmt':{'sql':sql,'args':[scalar(v) for v in args],'want_rows':True}} for sql,args in statements]
         if transaction:
             steps.insert(0,{'stmt':{'sql':'BEGIN IMMEDIATE'}})
@@ -82,6 +87,17 @@ class TursoClient:
         result=body['results'][0]
         if result['type']!='ok':raise TursoError('Turso pipeline rejected')
         b=result['response']['result']
+        items=b['step_results'][2:-1] if transaction else b['step_results'][1:]
+        if track_usage:
+            with self._usage_lock:
+                self._usage['requests']+=1
+                self._usage['statements']+=len(items)
+                for item in items:
+                    if item and all(isinstance(item.get(f),int) for f in ('rows_read','rows_written')):
+                        for f in ('rows_read','rows_written'):self._usage[f]+=max(0,item[f])
+                    else:self._usage['unmetered_statements']+=1
+            from .turso_usage import record
+            record(self, items)
         for e in b['step_errors']:
             if e is not None:raise TursoError('Turso SQL rejected: '+str(e.get('code','UNKNOWN')))
         items=b['step_results'][2:-1] if transaction else b['step_results'][1:]

@@ -73,6 +73,17 @@ jobs:
           if missing:
               raise SystemExit("FOREXRIZAN_EGRESS_GATE_MISSING=" + ",".join(missing))
           print("FOREXRIZAN_BRIDGE_EGRESS_GATE " + json.dumps(budget, sort_keys=True))
+          if source.get("database_backend") == "turso":
+              usage = dict(source.get("database_usage_cycle") or {})
+              if usage.get("unmetered_statements", 0) or not usage:
+                  print("TURSO_ROW_BUDGET_UNMETERED provider_dashboard_required=1")
+                  raise SystemExit(0)
+              projected_reads = int(usage.get("rows_read", 0)) * 22 * 1440
+              projected_writes = int(usage.get("rows_written", 0)) * 22 * 1440
+              print(f"TURSO_BRIDGE_CONSERVATIVE_MONTH reads={projected_reads} writes={projected_writes}")
+              if projected_reads > 400_000_000 or projected_writes > 8_000_000:
+                  raise SystemExit("TURSO_BRIDGE_ROW_BUDGET_EXCEEDS_80_PERCENT")
+              raise SystemExit(0)
           projected = float(budget["projected_24x5_month_gib"])
           target = float(budget.get("target_month_gib") or 3.5)
           if projected > target:

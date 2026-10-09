@@ -481,23 +481,16 @@ CREATE TABLE IF NOT EXISTS "xau_pressure_depth_episodes" (
   PRIMARY KEY (episode_key)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS smc_features_pkey ON smc_features (id);
 
 CREATE INDEX IF NOT EXISTS smc_features_symbol_idx ON smc_features (symbol);
 
-CREATE UNIQUE INDEX IF NOT EXISTS storage_guard_audit_pkey ON storage_guard_audit (id);
 
 CREATE INDEX IF NOT EXISTS storage_guard_audit_observed_at_idx ON storage_guard_audit (observed_at DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS xau_dom_pressure_samples_pkey ON xau_dom_pressure_samples (observed_at);
 
-CREATE INDEX IF NOT EXISTS xau_dom_pressure_samples_observed_at_desc ON xau_dom_pressure_samples (observed_at DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS broker_account_state_pkey ON broker_account_state (backend, account_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS broker_accounts_pkey ON broker_accounts (backend, account_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS broker_order_events_pkey ON broker_order_events (id);
 
 CREATE INDEX IF NOT EXISTS broker_order_events_backend_account_order_event_idx ON broker_order_events (backend, account_id, broker_order_id, event_type);
 
@@ -515,57 +508,39 @@ CREATE INDEX IF NOT EXISTS broker_order_events_backend_event_observed_idx ON bro
 
 CREATE INDEX IF NOT EXISTS broker_order_events_backend_account_observed_idx ON broker_order_events (backend, account_id, observed_at DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS broker_position_state_pkey ON broker_position_state (backend, account_id, position_id);
 
 CREATE INDEX IF NOT EXISTS broker_position_state_snapshot_idx ON broker_position_state (backend, account_id, snapshot_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS currency_macro_state_currency_observed_at_key ON currency_macro_state (currency, observed_at);
 
-CREATE UNIQUE INDEX IF NOT EXISTS currency_macro_state_pkey ON currency_macro_state (id);
 
-CREATE INDEX IF NOT EXISTS currency_macro_state_idx ON currency_macro_state (currency, observed_at DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS currency_strength_currency_observed_at_key ON currency_strength (currency, observed_at);
 
-CREATE UNIQUE INDEX IF NOT EXISTS currency_strength_pkey ON currency_strength (id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS data_quality_snapshots_pkey ON data_quality_snapshots (id);
 
 CREATE INDEX IF NOT EXISTS data_quality_run_id_idx ON data_quality_snapshots (run_id);
 
 CREATE INDEX IF NOT EXISTS data_quality_symbol_time_idx ON data_quality_snapshots (symbol, observed_at DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS execution_control_pkey ON execution_control (control_key);
 
-CREATE UNIQUE INDEX IF NOT EXISTS fx_symbols_pkey ON fx_symbols (symbol);
 
-CREATE UNIQUE INDEX IF NOT EXISTS liquidity_levels_pkey ON liquidity_levels (id);
 
 CREATE INDEX IF NOT EXISTS liquidity_active_idx ON liquidity_levels (symbol, active, observed_at DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS market_structure_pkey ON market_structure (id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS market_structure_symbol_timeframe_observed_at_key ON market_structure (symbol, timeframe, observed_at);
 
-CREATE UNIQUE INDEX IF NOT EXISTS model_performance_pkey ON model_performance (id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS pair_rankings_pkey ON pair_rankings (id);
 
 CREATE INDEX IF NOT EXISTS pair_rankings_run_rank_idx ON pair_rankings (run_id, rank);
 
 CREATE INDEX IF NOT EXISTS pair_rankings_symbol_idx ON pair_rankings (symbol);
 
-CREATE UNIQUE INDEX IF NOT EXISTS paper_trades_pkey ON paper_trades (id);
 
 CREATE INDEX IF NOT EXISTS paper_trades_signal_id_idx ON paper_trades (signal_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS runtime_heartbeats_pkey ON runtime_heartbeats (worker_name);
 
-CREATE UNIQUE INDEX IF NOT EXISTS scanner_runs_pkey ON scanner_runs (id);
 
 CREATE INDEX IF NOT EXISTS scanner_runs_started_at_idx ON scanner_runs (started_at DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS signals_pkey ON signals (id);
 
 CREATE INDEX IF NOT EXISTS signals_observed_at_desc_idx ON signals (observed_at DESC);
 
@@ -577,9 +552,7 @@ CREATE INDEX IF NOT EXISTS signals_symbol_time_idx ON signals (symbol, observed_
 
 CREATE INDEX IF NOT EXISTS signals_symbol_setup_observed_idx ON signals (symbol, setup_type, observed_at DESC);
 
-CREATE UNIQUE INDEX IF NOT EXISTS xau_outcome_ledger_episode_key_key ON xau_outcome_ledger (episode_key);
 
-CREATE UNIQUE INDEX IF NOT EXISTS xau_outcome_ledger_pkey ON xau_outcome_ledger (id);
 
 CREATE INDEX IF NOT EXISTS xau_outcome_ledger_observed_at_idx ON xau_outcome_ledger (observed_at DESC);
 
@@ -593,9 +566,7 @@ CREATE INDEX IF NOT EXISTS xau_outcome_episode_strategy_observed_idx ON xau_outc
 
 CREATE INDEX IF NOT EXISTS xau_outcome_strategy_observed_idx ON xau_outcome_ledger (strategy_id, observed_at);
 
-CREATE UNIQUE INDEX IF NOT EXISTS xau_prepared_plan_lifecycle_pkey ON xau_prepared_plan_lifecycle (id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS xau_prepared_plan_lifecycle_plan_key_key ON xau_prepared_plan_lifecycle (plan_key);
 
 CREATE INDEX IF NOT EXISTS xau_prepared_plan_lifecycle_created_at_idx ON xau_prepared_plan_lifecycle (created_at DESC);
 
@@ -605,6 +576,13 @@ CREATE INDEX IF NOT EXISTS xau_prepared_plan_lifecycle_state_idx ON xau_prepared
 
 CREATE INDEX IF NOT EXISTS xau_prepared_plan_lifecycle_zone_map_idx ON xau_prepared_plan_lifecycle (zone_id, map_at);
 
-CREATE UNIQUE INDEX IF NOT EXISTS xau_pressure_depth_episodes_pkey ON xau_pressure_depth_episodes (episode_key);
 
 CREATE INDEX IF NOT EXISTS xau_pressure_depth_episodes_touch_desc ON xau_pressure_depth_episodes (first_touch_at DESC);
+CREATE TABLE IF NOT EXISTS turso_usage_daily (
+ day TEXT NOT NULL, worker TEXT NOT NULL,
+ requests INTEGER NOT NULL DEFAULT 0, statements INTEGER NOT NULL DEFAULT 0,
+ rows_read INTEGER NOT NULL DEFAULT 0, rows_written INTEGER NOT NULL DEFAULT 0,
+ unmetered_statements INTEGER NOT NULL DEFAULT 0,
+ PRIMARY KEY(day,worker)
+);
+CREATE INDEX IF NOT EXISTS broker_order_accepted_time ON broker_order_events(observed_at DESC) WHERE event_type='ORDER_ACCEPTED' AND accepted=1;

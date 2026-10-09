@@ -23,6 +23,11 @@ try:
  accepted=[e for e in events if e.get('accepted') and e.get('broker_order_id') and e['event_type']=='ORDER_ACCEPTED']
  summary={'observed_at':now.isoformat(),'demo_only':True,'open_positions':rows,'accepted_orders_since_migration':len({e['broker_order_id'] for e in accepted}), 'latest_accepted_orders':[{'observed_at':e['observed_at'],'symbol':(e.get('payload') or {}).get('symbol'),'entry':(e.get('payload') or {}).get('executed_price'),'sl':(e.get('payload') or {}).get('attached_stop_loss'),'tp':(e.get('payload') or {}).get('attached_take_profit')} for e in accepted[:5]]}
  store.write_heartbeat('ctrader_demo_order_protection_audit',healthy=all(r['protected'] for r in rows),lag_seconds=0.,details=summary)
+ from fx_scanner.storage.turso_budget import report_budget
+ try:
+  report_budget(store.client)
+ except Exception:
+  print('TURSO_BUDGET_REPORT_UNAVAILABLE')
  print('BROKER_ORDER_PROTECTION_AUDIT '+json.dumps(summary,default=str))
 finally:
  session.close()
