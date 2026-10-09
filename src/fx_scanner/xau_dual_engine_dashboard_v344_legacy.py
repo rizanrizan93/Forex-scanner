@@ -37,6 +37,13 @@ _DAY_ID = {
 }
 
 
+
+def _event_value(value: Any) -> str:
+    """Keep mixed numeric/text calendar columns Arrow-compatible for display."""
+    if value is None or (isinstance(value, float) and not isfinite(value)):
+        return "—"
+    return str(value)
+
 def _event_datetime(value: Any) -> datetime | None:
     if not value:
         return None
@@ -697,9 +704,9 @@ def render_xau_dual_engine_dashboard(
                             ),
                             "Event": item.get("title"),
                             "Impact": item.get("impact"),
-                            "Forecast": item.get("forecast"),
-                            "Previous": item.get("previous"),
-                            "Actual": item.get("actual"),
+                            "Forecast": _event_value(item.get("forecast")),
+                            "Previous": _event_value(item.get("previous")),
+                            "Actual": _event_value(item.get("actual")),
                             "Prediksi XAU": _macro_bias_label(item.get("gold_bias")),
                             "Confidence": item.get("gold_bias_confidence"),
                             "Basis": item.get("gold_bias_basis"),
