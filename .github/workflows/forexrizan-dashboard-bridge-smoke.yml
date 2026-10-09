@@ -99,62 +99,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          now_epoch="$(date -u +%s)"
-          snapshot_date="$(
-            gh api "repos/${GITHUB_REPOSITORY}/branches/dashboard-snapshots-v344" \
-              --jq '.commit.commit.committer.date' 2>/dev/null || true
-          )"
-          if [ -z "${snapshot_date}" ]; then
-            snapshot_age=999999
-          else
-            snapshot_epoch="$(date -u -d "${snapshot_date}" +%s)"
-            snapshot_age="$(( now_epoch - snapshot_epoch ))"
-            if [ "${snapshot_age}" -lt 0 ]; then
-              snapshot_age=0
-            fi
-          fi
-
-          publisher_json="$(
-            gh api \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "/repos/${GITHUB_REPOSITORY}/actions/workflows/forexrizan-dashboard-bridge-v254.yml/runs?branch=main&per_page=20"
-          )"
-          active_publishers="$(
-            printf '%s' "${publisher_json}" \
-              | jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending")] | length'
-          )"
-          in_progress_publishers="$(
-            printf '%s' "${publisher_json}" \
-              | jq '[.workflow_runs[] | select(.status == "in_progress")] | length'
-          )"
-
-          echo "FOREXRIZAN_BRIDGE_SMOKE_RECOVERY snapshot_age_seconds=${snapshot_age} active_publishers=${active_publishers} in_progress_publishers=${in_progress_publishers}"
-
-          if [ "${active_publishers}" -gt 0 ] && [ "${snapshot_age}" -gt 240 ] && [ "${in_progress_publishers}" -gt 0 ]; then
-            echo "::warning::ForexRizan bridge stale >240s while publisher is in progress; cancelling zombie/stalled publisher"
-            printf '%s' "${publisher_json}" \
-              | jq -r '.workflow_runs[] | select(.status == "in_progress") | .id' \
-              | while read -r run_id; do
-                  [ -n "${run_id}" ] && gh run cancel -R "${GITHUB_REPOSITORY}" "${run_id}" || true
-                done
-            sleep 5
-
-            active_publishers="$(
-              gh api \
-                -H "Accept: application/vnd.github+json" \
-                -H "X-GitHub-Api-Version: 2022-11-28" \
-                "/repos/${GITHUB_REPOSITORY}/actions/workflows/forexrizan-dashboard-bridge-v254.yml/runs?branch=main&per_page=20" \
-                --jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending")] | length'
-            )"
-          fi
-
-          if [ "${active_publishers}" -eq 0 ]; then
-            echo "::warning::ForexRizan bridge stale and no replacement publisher active; dispatching recovery publisher"
-            gh workflow run -R "${GITHUB_REPOSITORY}" forexrizan-dashboard-bridge-v254.yml --ref main
-          else
-            echo "::warning::ForexRizan bridge recovery publisher is active/queued; waiting for fresh snapshot"
-          fi
+          python scripts/rizan_bridge_watchdog.py
 
           python - <<'PY'
           from fx_scanner.xau_dashboard_bridge_v254 import fetch_snapshot

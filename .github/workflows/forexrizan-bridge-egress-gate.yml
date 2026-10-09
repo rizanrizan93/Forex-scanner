@@ -79,8 +79,9 @@ jobs:
               if usage.get("unmetered_statements", 0) or not usage:
                   print("TURSO_ROW_BUDGET_UNMETERED provider_dashboard_required=1")
                   raise SystemExit(0)
-              projected_reads = int(usage.get("rows_read", 0)) * 22 * 1440
-              projected_writes = int(usage.get("rows_written", 0)) * 22 * 1440
+              cycles_per_minute = 60 / float(source.get("publication_interval_seconds", 60))
+              projected_reads = int(int(usage.get("rows_read", 0)) * 22 * 1440 * cycles_per_minute)
+              projected_writes = int(int(usage.get("rows_written", 0)) * 22 * 1440 * cycles_per_minute)
               print(f"TURSO_BRIDGE_CONSERVATIVE_MONTH reads={projected_reads} writes={projected_writes}")
               if projected_reads > 400_000_000 or projected_writes > 8_000_000:
                   raise SystemExit("TURSO_BRIDGE_ROW_BUDGET_EXCEEDS_80_PERCENT")

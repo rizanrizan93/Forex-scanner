@@ -44,6 +44,7 @@ def fetch_public_hot_snapshot(
         bridge = fetch_snapshot(
             url or DEFAULT_SNAPSHOT_URL, timeout_seconds=timeout_seconds,
             now=now, opener=opener, require_fresh=True,
+            resolve_stale=False,
         )
         return _project_turso_snapshot(bridge, now=now)
     except ValueError as exc:

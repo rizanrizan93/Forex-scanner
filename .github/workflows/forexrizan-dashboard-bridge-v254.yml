@@ -9,9 +9,9 @@ on:
       - main
     paths:
       - "src/fx_scanner/dashboard.py"
+      - "src/fx_scanner/storage/turso_dashboard_reads.py"
       - "src/fx_scanner/xau_dashboard_bridge_v254.py"
       - "src/fx_scanner/xau_canonical_decision_v240.py"
-      - "streamlit_app.py"
       - ".github/workflows/forexrizan-dashboard-bridge-v254.yml"
 
 permissions:
@@ -20,13 +20,14 @@ permissions:
 
 concurrency:
   group: forexrizan-dashboard-bridge-v360-graceful
-  # Dashboard publishing has no broker actions; replace stale backend workers.
-  cancel-in-progress: true
+  # Queue replacements; keep the current publication alive during handoff.
+  # Only the watchdog cancels a publisher with confirmed publication failure.
+  cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 360
     env:
       FX_DATABASE_BACKEND: turso
       TURSO_USAGE_TRACKING: '1'
@@ -63,13 +64,13 @@ jobs:
           git fetch origin dashboard-snapshots-v344 --depth=1 || true
           git show FETCH_HEAD:runtime/xau_dashboard_snapshot.json             > runtime/xau_dashboard_snapshot.json 2>/dev/null || true
 
-      - name: Publish continuous one-minute dashboard snapshots
+      - name: Publish continuous 30-second dashboard snapshots
         shell: bash
         run: |
           set -uo pipefail
           # V325: one stuck PostgREST statement must never freeze the public bridge for minutes.
           # A failed bounded cycle is safer than publishing old data as fresh; the next minute retries.
-          for i in $(seq 1 55); do
+          for i in $(seq 1 660); do
             started="$(date +%s)"
             snapshot_ok=0
             if timeout --signal=TERM --kill-after=5s 35s \
@@ -110,7 +111,10 @@ jobs:
               # snapshot. This avoids a multi-minute stale gap during deploys.
               git fetch origin main --depth=1 >/dev/null 2>&1 || true
               latest_main="$(git rev-parse FETCH_HEAD 2>/dev/null || true)"
-              if [ -n "$latest_main" ] && [ "$latest_main" != "$GITHUB_SHA" ]; then
+              if [ -n "$latest_main" ] && [ "$latest_main" != "$GITHUB_SHA" ] &&
+                 ! git diff --quiet "$GITHUB_SHA" "$latest_main" -- \
+                   src/fx_scanner/dashboard.py src/fx_scanner/xau_dashboard_bridge_v254.py \
+                   src/fx_scanner/storage .github/workflows/forexrizan-dashboard-bridge-v254.yml; then
                 echo "::notice::V360 graceful bridge handoff head=$GITHUB_SHA latest_main=$latest_main"
                 exit 0
               fi
@@ -118,9 +122,9 @@ jobs:
               echo "::warning::Dashboard snapshot generation failed this cycle; worker will continue"
             fi
 
-            if [ "$i" -lt 55 ]; then
+            if [ "$i" -lt 660 ]; then
               elapsed="$(( $(date +%s) - started ))"
-              sleep_for="$(( 60 - elapsed ))"
+              sleep_for="$(( 30 - elapsed ))"
               if [ "$sleep_for" -gt 0 ]; then
                 sleep "$sleep_for"
               fi

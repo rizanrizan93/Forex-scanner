@@ -4,6 +4,7 @@ import argparse
 import gzip
 import json
 import os
+from time import perf_counter
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -244,10 +245,12 @@ def build_snapshot(
     previous: dict[str, Any] | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
+    build_started = perf_counter()
     from .storage.backend import create_backend_client, backend_name
 
     intervals = (300., 1800., 300., 900.) if backend_name()=="turso" else (STRUCTURAL_REFRESH_SECONDS, SUPPORT_REFRESH_SECONDS, COLD_REFRESH_SECONDS, OUTCOME_REFRESH_SECONDS)
     structural_seconds, support_seconds, cold_seconds, outcome_seconds = intervals
+    publication_seconds = 30.0 if backend_name() == "turso" else HOT_REFRESH_SECONDS
     current = (now or datetime.now(tz=UTC)).astimezone(UTC)
     previous_payload = dict(previous or {})
     previous_backend = dict(previous_payload.get("backend") or {})
@@ -299,6 +302,20 @@ def build_snapshot(
         max_age_seconds=outcome_seconds,
         now=current,
     )
+
+    if backend_name() == "turso":
+        from .storage.turso_dashboard_reads import prepare_dashboard_reads
+        client = prepare_dashboard_reads(
+            client, SupabaseDashboardReader,
+            hot_workers=HOT_HEARTBEATS,
+            structural_workers=STRUCTURAL_HEARTBEATS,
+            support_workers=SUPPORT_HEARTBEATS,
+            structural_due=not structural_reused,
+            support_due=not support_reused,
+            cold_due=not cold_reused, outcomes_due=not outcomes_reused,
+        )
+        reader = SupabaseDashboardReader(client)
+        store = SupabaseOperationalStore(url, secret, client=client)
 
     # Minute-level state: small projected/operational payloads only.
     #
@@ -528,7 +545,7 @@ def build_snapshot(
     hot_payload_bytes = hot_heartbeat_bytes + hot_backend_bytes
 
     steady_state_bytes_per_minute = (
-        hot_payload_bytes
+        hot_payload_bytes * (60.0 / publication_seconds)
         + tier_bytes["structural"] / (structural_seconds / 60.0)
         + tier_bytes["support"] / (support_seconds / 60.0)
         + tier_bytes["cold"] / (cold_seconds / 60.0)
@@ -571,7 +588,9 @@ def build_snapshot(
             "mode": "TURSO_TO_PUBLIC_READ_ONLY_BRIDGE" if backend_name()=="turso" else "SUPABASE_SERVICE_ROLE_TO_PUBLIC_READ_ONLY_BRIDGE",
             "database_backend": backend_name(),
             "database_usage_cycle": client.usage_snapshot() if hasattr(client, "usage_snapshot") else None,
+            "snapshot_build_seconds": round(perf_counter() - build_started, 3),
             "dashboard_refresh_seconds": int(HOT_REFRESH_SECONDS),
+            "publication_interval_seconds": int(publication_seconds),
             "operational_structure_refresh_seconds": int(HOT_REFRESH_SECONDS),
             "structural_refresh_seconds": int(structural_seconds),
             "support_refresh_seconds": int(support_seconds),
@@ -698,6 +717,7 @@ def fetch_snapshot(
     now: datetime | None = None,
     opener: Callable[..., Any] = urlopen,
     require_fresh: bool = True,
+    resolve_stale: bool = True,
 ) -> dict[str, Any]:
     request = Request(
         _cache_busted_url(str(url), now=now),
@@ -726,7 +746,20 @@ def fetch_snapshot(
     if encoding == "gzip":
         raw = gzip.decompress(raw)
     payload = json.loads(raw.decode("utf-8"))
-    return validate_snapshot(payload, now=now, require_fresh=require_fresh)
+    try:
+        return validate_snapshot(payload, now=now, require_fresh=require_fresh)
+    except ValueError as exc:
+        if (not resolve_stale or str(url) != DEFAULT_SNAPSHOT_URL
+                or str(exc) != "dashboard bridge snapshot stale"):
+            raise
+        from .xau_turso_hot_snapshot_v407 import _latest_snapshot_commit
+        current = now or datetime.now(UTC)
+        sha = _latest_snapshot_commit(int(current.timestamp() // 90), opener, timeout_seconds)
+        immutable = "https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/" + sha + "/runtime/xau_dashboard_snapshot.json"
+        latest = fetch_snapshot(immutable, timeout_seconds=timeout_seconds, now=now,
+                                opener=opener, require_fresh=require_fresh, resolve_stale=False)
+        latest["bridge"]["resolved_commit"] = sha
+        return latest
 
 
 def main(argv: list[str] | None = None) -> int:

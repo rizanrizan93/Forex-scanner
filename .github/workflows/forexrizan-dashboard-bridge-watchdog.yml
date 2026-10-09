@@ -2,6 +2,9 @@ name: ForexRizan Dashboard Bridge Watchdog
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/forexrizan-dashboard-bridge-watchdog.yml", "scripts/rizan_bridge_watchdog.py"]
   schedule:
     - cron: "*/5 * * * *"
 
@@ -18,80 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Verify dashboard snapshot freshness
-        shell: bash
+      - uses: actions/checkout@v4
+      - name: Verify publication and engine freshness
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-
-          market_open_utc() {
-            weekday="$(date -u +%u)"
-            hour="$(date -u +%H)"
-            if [ "${weekday}" -eq 7 ]; then
-              [ "${hour}" -ge 21 ]
-            elif [ "${weekday}" -ge 1 ] && [ "${weekday}" -le 4 ]; then
-              return 0
-            elif [ "${weekday}" -eq 5 ]; then
-              [ "${hour}" -lt 22 ]
-            else
-              return 1
-            fi
-          }
-
-          if ! market_open_utc; then
-            echo "FOREXRIZAN_BRIDGE_WATCHDOG market=closed action=SKIP"
-            exit 0
-          fi
-
-          now_epoch="$(date -u +%s)"
-          snapshot_date="$(
-            gh api "repos/${GITHUB_REPOSITORY}/branches/dashboard-snapshots"               --jq '.commit.commit.committer.date' 2>/dev/null || true
-          )"
-
-          if [ -z "${snapshot_date}" ]; then
-            age=999999
-          else
-            snapshot_epoch="$(date -u -d "${snapshot_date}" +%s)"
-            age="$(( now_epoch - snapshot_epoch ))"
-            if [ "${age}" -lt 0 ]; then
-              age=0
-            fi
-          fi
-
-          echo "FOREXRIZAN_BRIDGE_WATCHDOG snapshot_age_seconds=${age}"
-
-          if [ "${age}" -le 150 ]; then
-            echo "FOREXRIZAN_BRIDGE_WATCHDOG action=HEALTHY"
-            exit 0
-          fi
-
-          active_json="$(
-            gh run list \
-              -R "${GITHUB_REPOSITORY}" \
-              --workflow forexrizan-dashboard-bridge-v254.yml \
-              --limit 20 \
-              --json databaseId,status \
-              2>/dev/null || echo '[]'
-          )"
-          active="$(
-            printf '%s' "${active_json}" | jq '[.[] | select(.status=="queued" or .status=="in_progress")] | length'
-          )"
-
-          if [ "${active}" -gt 0 ] && [ "${age}" -le 240 ]; then
-            echo "FOREXRIZAN_BRIDGE_WATCHDOG action=WAIT_ACTIVE_PUBLISHER active=${active}"
-            exit 0
-          fi
-
-          if [ "${active}" -gt 0 ] && [ "${age}" -gt 240 ]; then
-            echo "::warning::Bridge stale while publisher is active; cancelling zombie/stalled publisher"
-            printf '%s' "${active_json}" \
-              | jq -r '.[] | select(.status=="in_progress") | .databaseId' \
-              | while read -r run_id; do
-                  [ -n "${run_id}" ] && gh run cancel -R "${GITHUB_REPOSITORY}" "${run_id}" || true
-                done
-            sleep 5
-          fi
-
-          gh workflow run -R "${GITHUB_REPOSITORY}" forexrizan-dashboard-bridge-v254.yml --ref main
-          echo "FOREXRIZAN_BRIDGE_WATCHDOG action=DISPATCH age=${age} active=${active}"
+        run: python scripts/rizan_bridge_watchdog.py
