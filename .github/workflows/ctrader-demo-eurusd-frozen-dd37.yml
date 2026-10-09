@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: ctrader-demo-eurusd-frozen-dd37
@@ -21,8 +22,9 @@ concurrency:
 jobs:
   frozen-eurusd-demo:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 360
     env:
+      GH_TOKEN: ${{ github.token }}
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
       CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
@@ -53,4 +55,43 @@ jobs:
       - name: Verify frozen contract and broker safety
         run: python -m pytest -q tests/test_eurusd_frozen_dd37.py
       - name: Run frozen EURUSD DEMO forward lane
-        run: python -m fx_scanner.demo_eurusd_frozen_dd37
+        shell: bash
+        run: |
+          set -u
+          end_epoch=$(( $(date +%s) + 19800 ))
+          while [ $(date +%s) -lt "$end_epoch" ]; do
+            python -m fx_scanner.demo_eurusd_frozen_dd37 || echo "EURUSD_CYCLE_FAILED retry=next_cycle"
+            latest_main="$(gh api "/repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha 2>/dev/null || true)"
+            if [ -z "$latest_main" ] || [ "$latest_main" != "$GITHUB_SHA" ]; then
+              echo "EURUSD_GRACEFUL_HANDOFF"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Self-handoff continuous EURUSD runtime
+        if: ${{ success() && !cancelled() && github.event_name != 'pull_request' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          market_open_utc() {
+            weekday="$(date -u +%u)"
+            hour="$(date -u +%H)"
+            if [ "${weekday}" -eq 7 ]; then
+              [ "${hour}" -ge 21 ]
+            elif [ "${weekday}" -ge 1 ] && [ "${weekday}" -le 4 ]; then
+              return 0
+            elif [ "${weekday}" -eq 5 ]; then
+              [ "${hour}" -lt 22 ]
+            else
+              return 1
+            fi
+          }
+          if market_open_utc; then
+            gh workflow run -R "${GITHUB_REPOSITORY}" ctrader-demo-eurusd-frozen-dd37.yml --ref main
+            echo "EURUSD_RUNTIME_SELF_HANDOFF_DISPATCHED"
+          else
+            echo "EURUSD_RUNTIME_SELF_HANDOFF_SKIPPED market=closed"
+          fi
