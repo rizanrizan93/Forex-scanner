@@ -161,6 +161,10 @@ jobs:
               echo "V344_RUNTIME_RETRY_NEXT_CYCLE rc=$runtime_rc"
             fi
 
+            if [ "$cycle" -eq 1 ] || [ $((cycle % 5)) -eq 0 ]; then
+              python scripts/demo_order_protection_audit.py || echo "BROKER_ORDER_AUDIT_FAILED retry=next_window"
+            fi
+
             # Graceful code handoff: finish the current market/execution cycle
             # before yielding to a queued run built from newer main.
             latest_main=""

@@ -19,7 +19,7 @@ try:
   if p.symbol not in {'EURUSD','XAUUSD'}: continue
   rows.append({'symbol':p.symbol,'side':str(p.side),'entry':p.open_price,'sl':p.stop_loss,'tp':p.take_profit,'protected':bool(p.stop_loss and p.take_profit),'scanner_owned':str(p.comment or '').startswith(('DEMO_AUTO:','FXIS:'))})
  now=datetime.now(timezone.utc)
- events=store.client.table('broker_order_events').select('observed_at,event_type,accepted,broker_order_id,payload').gte('observed_at','2026-10-09T02:42:00+00:00').order('observed_at',desc=True).limit(1000).execute().data
+ events=store.client.table('broker_order_events').select('observed_at,event_type,accepted,broker_order_id,payload').eq('event_type','ORDER_ACCEPTED').eq('accepted',True).gte('observed_at','2026-10-09T02:42:00+00:00').order('observed_at',desc=True).limit(100000).execute().data
  accepted=[e for e in events if e.get('accepted') and e.get('broker_order_id') and e['event_type']=='ORDER_ACCEPTED']
  summary={'observed_at':now.isoformat(),'demo_only':True,'open_positions':rows,'accepted_orders_since_migration':len({e['broker_order_id'] for e in accepted}), 'latest_accepted_orders':[{'observed_at':e['observed_at'],'symbol':(e.get('payload') or {}).get('symbol'),'entry':(e.get('payload') or {}).get('executed_price'),'sl':(e.get('payload') or {}).get('attached_stop_loss'),'tp':(e.get('payload') or {}).get('attached_take_profit')} for e in accepted[:5]]}
  store.write_heartbeat('ctrader_demo_order_protection_audit',healthy=all(r['protected'] for r in rows),lag_seconds=0.,details=summary)

@@ -2200,6 +2200,25 @@ with st.expander("EURUSD • Setup compounding dibekukan • DEMO", expanded=Fal
         if _eu.get("entry"):
             st.write("Entry / SL / TP:", _eu.get("entry"), "/", _eu.get("sl"), "/", _eu.get("tp"))
         st.caption("DD 37,08% adalah hasil replay 10 tahun; bukan batas DD. Dua pair memakai equity dan margin akun demo yang sama.")
+_order_audit = next((x for x in ([] if backend is None else backend.get("heartbeats", []))
+    if x.get("worker_name") == "ctrader_demo_order_protection_audit"), None)
+with st.expander("Bukti broker DEMO • Order, posisi, SL dan TP", expanded=True):
+    if _order_audit is None:
+        st.info("Menunggu pemeriksaan langsung dari broker.")
+    else:
+        _audit = dict(_order_audit.get("details") or {})
+        st.write("Waktu pemeriksaan broker:", _fmt_wib_datetime(_order_audit.get("observed_at")))
+        st.write("Order diterima sejak migrasi:", _audit.get("accepted_orders_since_migration", 0))
+        _positions = list(_audit.get("open_positions") or [])
+        st.write("Posisi XAUUSD / EURUSD terbuka:", len(_positions))
+        if _positions:
+            st.dataframe(_positions, hide_index=True, use_container_width=True)
+        else:
+            st.info("Belum ada posisi terbuka pada waktu pemeriksaan ini.")
+        if _audit.get("latest_accepted_orders"):
+            st.write("Order terbaru yang diterima broker:")
+            st.dataframe(_audit["latest_accepted_orders"], hide_index=True, use_container_width=True)
+        st.caption("SL dan TP di tabel berasal dari posisi broker aktual. Periksa waktu pembaruan sebelum memakai data ini.")
 if backend is not None and backend_source.startswith("GITHUB_DASHBOARD_BRIDGE"):
     st.caption(
         "ForexRizan transport: "

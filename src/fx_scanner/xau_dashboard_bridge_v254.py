@@ -29,6 +29,8 @@ COLD_REFRESH_SECONDS = 900.0
 OUTCOME_REFRESH_SECONDS = 21600.0
 
 HOT_HEARTBEATS = (
+    "ctrader_demo_xau_v351_executor",
+    "ctrader_demo_order_protection_audit",
     "ctrader_demo_eurusd_frozen_dd37",
     # Only small, truly minute-sensitive payloads stay in the generic hot set.
     # V296 and V328 are projected separately below so their large research
