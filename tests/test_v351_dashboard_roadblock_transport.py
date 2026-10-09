@@ -96,3 +96,18 @@ def test_turso_projection_preserves_both_sides_for_v405_and_v406():
     assert hierarchy['main_buy'] and hierarchy['main_sell']
     assert ev['support_resistance_map']['nearest_support']['price'] == 4185
     assert ev['liquidity_candidates'][0]['price'] == 4205
+
+
+def test_frozen_core_survives_compact_projection_and_public_sanitization():
+    from fx_scanner.xau_dashboard_bridge_v254 import _sanitize
+    from fx_scanner.xau_frozen_dd50 import POLICY_HASH, STRATEGY_ID
+    core={'strategy_id':STRATEGY_ID,'policy_hash':POLICY_HASH,'state':'WAIT',
+        'reason':'OUTSIDE_FROZEN_ENTRY_SESSION','candidate':None,'execution_scope':'DEMO_ONLY'}
+    query=_Query({'worker_name':'ctrader_demo_xau_sd_liquidity_v342',
+        'observed_at':'2026-10-09T15:00:00+00:00','healthy':True,'git_sha':'new-main-sha',
+        'frozen_core':core})
+    row=_sanitize(SupabaseDashboardReader(query).latest_xau_sd_liquidity_operational_heartbeat())
+    assert row['details']['evaluation']['frozen_core']==core
+    assert row['details']['git_sha']=='new-main-sha'
+    assert 'frozen_core:details->evaluation->frozen_core' in query.selected
+    assert 'details' not in query.selected.split(',')

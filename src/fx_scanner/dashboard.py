@@ -452,6 +452,8 @@ class SupabaseDashboardReader:
 
         select_expr = (
             "worker_name,observed_at,healthy,lag_seconds,"
+            "git_sha:details->>git_sha,"
+            "frozen_core:details->evaluation->frozen_core,"
             "state:details->evaluation->>state,"
             "price_now:details->evaluation->price_now,"
             "active_zones:details->evaluation->active_zones,"
@@ -508,6 +510,7 @@ class SupabaseDashboardReader:
         raw = dict(rows[0])
         main_zone = dict(raw.pop("main_reversal_zone", {}) or {})
         evaluation = {
+            "frozen_core": dict(raw.pop("frozen_core", {}) or {}),
             "state": raw.pop("state", None),
             "price_now": raw.pop("price_now", None),
             # The V342 decision zone is the selected MAIN H4 parent. Reuse the
@@ -567,6 +570,7 @@ class SupabaseDashboardReader:
             "historical_depth_prior": {},
         }
         raw["details"] = {
+            "git_sha": raw.pop("git_sha", None),
             "evaluation": evaluation,
             "transport_projection": "V342_OPERATIONAL_60S_COMPACT",
         }
