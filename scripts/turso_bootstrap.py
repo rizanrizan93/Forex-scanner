@@ -1,5 +1,5 @@
 """Initialize Turso without enabling execution; publish only an RSA public key."""
-import base64, hashlib, json, os, sys
+import base64, hashlib, json, os, sys, re
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -16,6 +16,7 @@ def main():
     if c.execute('SELECT 1 AS connected').data!=[{'connected':1}]:raise RuntimeError('connection probe failed')
     print('TURSO_CONNECTION_OK credentials_valid=True')
     schema=Path('turso/schema.sql').read_text()
+    schema=re.sub(r'--[^\n]*','',schema)
     statements=[(s.strip(),()) for s in schema.split(';') if s.strip()]
     c.batch(statements,transaction=True)
     # Fail-closed fresh database: migration is responsible for restoring control.
