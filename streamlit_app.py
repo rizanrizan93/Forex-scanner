@@ -1859,6 +1859,7 @@ def _accept_dashboard_bridge_payload(
     if not candidate_backend:
         raise ValueError("dashboard bridge returned an empty backend snapshot")
     meta = dict(payload.get("bridge") or {})
+    meta["database_backend"] = source.get("database_backend", "supabase")
     meta["source_url_kind"] = (
         "CANONICAL"
         if source_url == DEFAULT_DASHBOARD_SNAPSHOT_URL
@@ -1939,7 +1940,7 @@ public_hot_fresh = False
 full_bridge_was_stale = bool(
     backend is not None and backend_source == "GITHUB_DASHBOARD_BRIDGE_STALE"
 )
-if backend_source != "SUPABASE_DIRECT":
+if backend_source != "SUPABASE_DIRECT" and backend_bridge_meta.get("database_backend") != "turso":
     try:
         public_hot = _load_public_hot_snapshot()
         public_hot_meta = dict(public_hot.get("hot_transport") or {})

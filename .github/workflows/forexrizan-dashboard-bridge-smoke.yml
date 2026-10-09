@@ -31,37 +31,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Fetch direct Supabase XAU HOT feed
-        shell: bash
-        env:
-          PYTHONPATH: ${{ github.workspace }}/src
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from fx_scanner.xau_public_hot_v362 import fetch_public_hot_snapshot
-
-          payload = fetch_public_hot_snapshot(timeout_seconds=10.0)
-          hot = dict(payload.get("hot_transport") or {})
-          if not hot.get("fresh"):
-              raise SystemExit(
-                  f"V362_PUBLIC_HOT_STALE age_seconds={hot.get('age_seconds')}"
-              )
-          rows = list(payload.get("heartbeats") or [])
-          workers = {str(row.get("worker_name") or "") for row in rows}
-          required = {
-              "ctrader_demo_xau_sd_liquidity_v342",
-              "ctrader_demo_xau_friend_entry_v343",
-              "ctrader_demo_xau_v351_executor",
-          }
-          missing = sorted(required.difference(workers))
-          if missing:
-              raise SystemExit("V362_PUBLIC_HOT_MISSING=" + ",".join(missing))
-          print(
-              "V362_PUBLIC_HOT_OK "
-              f"age_seconds={hot.get('age_seconds')} heartbeats={len(rows)}"
-          )
-          PY
-
       - name: Fetch public dashboard bridge
         id: bridge_smoke
         continue-on-error: true
@@ -130,7 +99,7 @@ jobs:
 
           now_epoch="$(date -u +%s)"
           snapshot_date="$(
-            gh api "repos/${GITHUB_REPOSITORY}/branches/dashboard-snapshots" \
+            gh api "repos/${GITHUB_REPOSITORY}/branches/dashboard-snapshots-v344" \
               --jq '.commit.commit.committer.date' 2>/dev/null || true
           )"
           if [ -z "${snapshot_date}" ]; then

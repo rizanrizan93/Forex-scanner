@@ -554,8 +554,8 @@ def build_snapshot(
         "control": control_snapshot,
     }
 
-    source_url = os.getenv("TURSO_DATABASE_URL", "") if backend_name()=="turso" else url
-    project_ref = urlsplit(source_url).hostname or ""
+    # Preserve the dashboard logical project identity across backend migrations.
+    project_ref = urlsplit(url).hostname or ""
     project_ref = project_ref.split(".", 1)[0]
     payload = {
         "contract": CONTRACT,
