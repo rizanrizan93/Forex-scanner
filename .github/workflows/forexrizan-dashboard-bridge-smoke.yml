@@ -31,6 +31,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install dashboard import dependency
+        run: pip install PyYAML==6.0.2
       - name: Fetch public dashboard bridge
         id: bridge_smoke
         continue-on-error: true
