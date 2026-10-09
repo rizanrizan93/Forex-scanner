@@ -22,12 +22,17 @@ if SRC.is_dir() and str(SRC) not in sys.path:
 from fx_scanner.xau_event_dashboard_patch_v377 import (  # noqa: E402
     install_event_macro_dashboard_patch,
 )
+from fx_scanner.xau_whalezone_dashboard_patch_v408 import (  # noqa: E402
+    install_whalezone_dashboard_patch,
+)
 
 APP = ROOT / "streamlit_app.py"
 
 if not APP.is_file():
     raise RuntimeError(f"Streamlit dashboard implementation is missing: {APP}")
 
-# V377 changes presentation semantics only: raw event numerics remain floats/None.
+# Presentation patches only: raw event numerics remain floats/None and V408
+# consumes existing causal zone geometry without adding execution authority.
 install_event_macro_dashboard_patch()
+install_whalezone_dashboard_patch()
 runpy.run_path(str(APP), run_name="__main__")
