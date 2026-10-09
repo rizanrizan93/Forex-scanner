@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if SRC.is_dir() and str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from fx_scanner.xau_public_hot_v362 import fetch_public_hot_snapshot  # noqa: E402
+from fx_scanner.xau_turso_hot_snapshot_v407 import fetch_public_hot_snapshot  # noqa: E402
 from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary  # noqa: E402
 
 
