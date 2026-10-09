@@ -18,7 +18,9 @@ def test_streamlit_app_boots_offline_without_backend_secrets(monkeypatch):
     ).run()
     assert not app.exception
     assert app.title
-    assert app.title[0].value == "RIZAN XAU Institutional Scanner"
+    assert app.title[0].value == "XAUUSD • Setup & zona"
+    assert {"XAUUSD", "EURUSD"}.issubset({tab.label for tab in app.tabs})
+    assert not app.sidebar.children
     offline_ready = any(
         "Dashboard can be deployed now" in element.value
         for element in app.info

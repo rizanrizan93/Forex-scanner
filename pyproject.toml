@@ -13,7 +13,7 @@ dependencies = [
   "pydantic==2.13.4",
   "PyYAML==6.0.3",
   "duckdb==1.5.5",
-  "pyarrow==25.0.1",
+  "pyarrow==24.0.0",
   "supabase==2.31.0",
   "cryptography==42.0.8",
   "httpx==0.28.1",
