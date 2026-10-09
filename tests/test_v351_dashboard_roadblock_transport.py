@@ -76,3 +76,23 @@ def test_v351_compact_dashboard_keeps_roadblock_fields():
     assert "roadblock_room:details->evaluation->roadblock_room" in query.selected
     assert "execution_authority:details->evaluation->execution_authority" in query.selected
     assert "execution_scope:details->evaluation->>execution_scope" in query.selected
+
+
+def test_turso_projection_preserves_both_sides_for_v405_and_v406():
+    from fx_scanner.xau_whalezone_reconstruction_v405 import evaluate_whalezone_reconstruction_v405
+    from fx_scanner.xau_zone_hierarchy_v406 import evaluate_zone_hierarchy_v406
+    zones = [
+        {'direction': 'LONG', 'timeframe': 'H1', 'low': 4180.0, 'high': 4185.0, 'atr': 10.0, 'score': 80, 'condition': 'FRESH'},
+        {'direction': 'SHORT', 'timeframe': 'H1', 'low': 4200.0, 'high': 4205.0, 'atr': 10.0, 'score': 80, 'condition': 'FRESH'},
+    ]
+    query = _Query({'worker_name': 'ctrader_demo_xau_sd_liquidity_v342', 'price_now': 4192.0,
+        'main_reversal_zone': zones[0], 'active_zones': zones,
+        'support_resistance_map': {'nearest_support': {'price': 4185.0}},
+        'liquidity_candidates': [{'side': 'BUY_SIDE', 'price': 4205.0}]})
+    ev = SupabaseDashboardReader(query).latest_xau_sd_liquidity_operational_heartbeat()['details']['evaluation']
+    tiered = evaluate_whalezone_reconstruction_v405(ev)
+    hierarchy = evaluate_zone_hierarchy_v406(ev)
+    assert tiered['buy_zones'] and tiered['sell_zones']
+    assert hierarchy['main_buy'] and hierarchy['main_sell']
+    assert ev['support_resistance_map']['nearest_support']['price'] == 4185
+    assert ev['liquidity_candidates'][0]['price'] == 4205

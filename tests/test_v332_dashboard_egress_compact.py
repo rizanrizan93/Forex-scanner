@@ -208,7 +208,9 @@ def test_v344_v342_projection_keeps_structural_tab_fields_without_full_details()
     assert ev["market_structure"]["H4"]["state"] == "BEARISH_RANGE"
     assert "details" not in query.selected.split(",")
     assert "structural_checkpoints:details->evaluation->structural_path->checkpoints" in query.selected
-    assert "active_zones:" not in query.selected
+    assert "active_zones:details->evaluation->active_zones" in query.selected
+    assert ev["active_zones"] == [{"timeframe": "H4", "direction": "SHORT"}]
+    assert ev["decision_zone"]["low"] == 4176.54
     assert row["details"]["transport_projection"] == "V342_OPERATIONAL_60S_COMPACT"
 
 

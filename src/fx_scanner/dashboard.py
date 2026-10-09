@@ -454,6 +454,10 @@ class SupabaseDashboardReader:
             "worker_name,observed_at,healthy,lag_seconds,"
             "state:details->evaluation->>state,"
             "price_now:details->evaluation->price_now,"
+            "active_zones:details->evaluation->active_zones,"
+            "support_resistance_map:details->evaluation->support_resistance_map,"
+            "liquidity_candidates:details->evaluation->liquidity_candidates,"
+            "decision_zone:details->evaluation->decision_zone,"
             "main_reversal_zone:details->evaluation->main_reversal_zone,"
             "refinement_zone:details->evaluation->refinement_zone,"
             "structural_destination:details->evaluation->structural_destination,"
@@ -508,7 +512,7 @@ class SupabaseDashboardReader:
             "price_now": raw.pop("price_now", None),
             # The V342 decision zone is the selected MAIN H4 parent. Reuse the
             # same projected object instead of retransmitting an identical JSON copy.
-            "decision_zone": dict(main_zone),
+            "decision_zone": dict(raw.pop("decision_zone", {}) or main_zone),
             "main_reversal_zone": main_zone,
             "refinement_zone": dict(raw.pop("refinement_zone", {}) or {}),
             "structural_destination": dict(raw.pop("structural_destination", {}) or {}),
@@ -519,10 +523,12 @@ class SupabaseDashboardReader:
                 "checkpoints": list(raw.pop("structural_checkpoints", []) or []),
             },
             "failure_path": dict(raw.pop("failure_path", {}) or {}),
-            # Full H2 tables and the full zone universe are cold diagnostics.
-            # Primary checkpoints already carry the relevant reaction context.
+            # V390/V404/V405/V406 need both sides of the live zone universe.
+            # Historical H2 tables stay cold; current geometry is operational.
             "support_resistance": [],
-            "active_zones": [],
+            "active_zones": list(raw.pop("active_zones", []) or []),
+            "support_resistance_map": dict(raw.pop("support_resistance_map", {}) or {}),
+            "liquidity_candidates": list(raw.pop("liquidity_candidates", []) or []),
             "micro_confirmation": dict(raw.pop("micro_confirmation", {}) or {}),
             "entry_guide": dict(raw.pop("entry_guide", {}) or {}),
             "liquidity_map": {
