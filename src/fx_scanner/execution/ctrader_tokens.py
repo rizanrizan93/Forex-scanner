@@ -117,6 +117,10 @@ class CTraderTokenStateStore:
     def _supabase_client(self):
         if self._client is not None:
             return self._client
+        from ..storage.backend import backend_name, create_backend_client
+        if backend_name() == "turso":
+            self._client = create_backend_client()
+            return self._client
         url = os.getenv("SUPABASE_URL", "").strip()
         secret_key = os.getenv("SUPABASE_SECRET_KEY", "").strip() or os.getenv(
             "SUPABASE_SERVICE_ROLE_KEY", ""

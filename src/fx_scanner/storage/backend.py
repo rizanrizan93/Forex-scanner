@@ -9,6 +9,9 @@ def backend_name():
 def create_backend_client(url='',secret=''):
     if backend_name()=='turso':
         from .turso_client import TursoClient
-        return TursoClient.from_env()
+        client=TursoClient.from_env()
+        ready=client.table('runtime_heartbeats').select('healthy').eq('worker_name','turso_migration_ready_v1').limit(1).execute().data
+        if ready != [{'healthy':True}]:raise RuntimeError('Turso migration is not verified; execution remains blocked')
+        return client
     from supabase import create_client
     return create_client(url,secret)

@@ -75,3 +75,25 @@ def test_http_protocol_and_error_redaction():
     t=Transport();c=TursoClient('libsql://db.turso.io','secret',transport=t)
     with pytest.raises(TursoError,match='HTTP 401'):c.execute('SELECT ?',['secret'])
     assert t.payload['requests'][-1]['type']=='close'
+
+def test_backend_selection_requires_migration_marker(monkeypatch):
+    from fx_scanner.storage import backend
+    c=Local();monkeypatch.setenv('FX_DATABASE_BACKEND','turso')
+    monkeypatch.setattr(TursoClient,'from_env',classmethod(lambda cls:c))
+    with pytest.raises(RuntimeError,match='migration is not verified'):backend.create_backend_client()
+    c.table('runtime_heartbeats').insert({'worker_name':'turso_migration_ready_v1','observed_at':'2026-01-01T00:00:00+00:00','healthy':True,'details':{}}).execute()
+    assert backend.create_backend_client() is c
+    assert SupabaseOperationalStore.from_env().client is c
+
+def test_remote_batch_commits_only_after_all_previous_steps_succeed():
+    class Transport:
+        def post(self,url,headers,json):
+            self.steps=json['requests'][0]['batch']['steps']
+            # One error prevents the second mutation and commit. Close rolls back.
+            results=[{'cols':[],'rows':[],'affected_row_count':0}, {'cols':[],'rows':[],'affected_row_count':0}, None,None,None]
+            errors=[None,None,{'code':'SQLITE_CONSTRAINT'},None,None]
+            return SimpleNamespace(status_code=200,json=lambda:{'results':[{'type':'ok','response':{'result':{'step_results':results,'step_errors':errors}}}]})
+    t=Transport();c=TursoClient('libsql://db.turso.io','secret',transport=t)
+    with pytest.raises(TursoError,match='SQLITE_CONSTRAINT'):c.batch([('INSERT A',()),('INSERT B',())],transaction=True)
+    assert [x['stmt']['sql'] for x in t.steps]==['PRAGMA foreign_keys=ON','BEGIN IMMEDIATE','INSERT A','INSERT B','COMMIT']
+    assert [x.get('condition') for x in t.steps][2:]==[{'type':'ok','step':1},{'type':'ok','step':2},{'type':'ok','step':3}]

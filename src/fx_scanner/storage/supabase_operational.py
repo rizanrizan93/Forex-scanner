@@ -79,6 +79,9 @@ class SupabaseOperationalStore:
 
     @classmethod
     def from_env(cls, **kwargs) -> "SupabaseOperationalStore":
+        from .backend import backend_name, create_backend_client
+        if backend_name() == "turso" and "client" not in kwargs:
+            return cls("https://turso-backend.invalid", "backend-only", client=create_backend_client(), **kwargs)
         url = os.getenv("SUPABASE_URL", "").strip()
         secret = os.getenv("SUPABASE_SECRET_KEY", "").strip()
         if not secret:

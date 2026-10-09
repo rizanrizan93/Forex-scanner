@@ -241,7 +241,7 @@ def build_snapshot(
     previous: dict[str, Any] | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    from supabase import create_client
+    from .storage.backend import create_backend_client
 
     current = (now or datetime.now(tz=UTC)).astimezone(UTC)
     previous_payload = dict(previous or {})
@@ -257,7 +257,7 @@ def build_snapshot(
     if not secret:
         raise RuntimeError("missing Supabase service-role backend credential")
 
-    client = create_client(url, secret)
+    client = create_backend_client(url, secret)
     reader = SupabaseDashboardReader(client)
     store = SupabaseOperationalStore(url, secret, client=client)
 
