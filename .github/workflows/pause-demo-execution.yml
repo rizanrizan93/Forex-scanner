@@ -44,12 +44,22 @@ jobs:
               result = subprocess.run(['gh','api','--method',method,
                   '/repos/'+repo+'/'+path],check=True,capture_output=True,text=True)
               return json.loads(result.stdout) if result.stdout.strip() else None
-          for workflow in workflows:
-              api('actions/workflows/'+workflow+'/disable', 'PUT')
-              print('DEMO_WORKFLOW_DISABLED '+workflow, flush=True)
+          available = []
+          page = 1
+          while True:
+              batch = api('actions/workflows?per_page=100&page='+str(page))['workflows']
+              available.extend(batch)
+              if len(batch) < 100:
+                  break
+              page += 1
+          selected = [w for w in available if w['path'].split('/')[-1] in workflows]
+          for workflow in selected:
+              if workflow['state'] not in {'disabled_manually','disabled_inactivity','deleted'}:
+                  api('actions/workflows/'+str(workflow['id'])+'/disable', 'PUT')
+              print('DEMO_WORKFLOW_STOPPED '+workflow['path'], flush=True)
           active = {'queued','in_progress','waiting','pending','requested'}
-          for workflow in workflows:
-              runs = api('actions/workflows/'+workflow+'/runs?per_page=100')['workflow_runs']
+          for workflow in selected:
+              runs = api('actions/workflows/'+str(workflow['id'])+'/runs?per_page=100')['workflow_runs']
               for run in runs:
                   if run['status'] in active:
                       try:
@@ -60,20 +70,20 @@ jobs:
                               try:
                                   api('actions/runs/'+str(run['id'])+'/force-cancel','POST')
                               except subprocess.CalledProcessError as exc:
-                                  print('DEMO_CANCEL_RETRY_REQUIRED '+str(run['id'])+' '+exc.stderr.strip(), flush=True)
-                      print('DEMO_RUN_CANCEL_REQUESTED '+str(run['id']), flush=True)
+                                  print('DEMO_OLD_QUEUE_CANCEL_FAILED '+str(run['id'])+' '+exc.stderr.strip(), flush=True)
           for attempt in range(18):
-              remaining = []
-              for workflow in workflows:
-                  state = api('actions/workflows/'+workflow)['state']
-                  if state != 'disabled_manually':
-                      raise RuntimeError('Workflow was re-enabled: '+workflow)
-                  runs = api('actions/workflows/'+workflow+'/runs?per_page=100')['workflow_runs']
-                  remaining.extend(run['id'] for run in runs if run['status'] in active)
-              if not remaining:
-                  print('DEMO_EXECUTION_STOPPED workflows=12 active_runs=0 live_enabled=0', flush=True)
+              running, queued = [], []
+              for workflow in selected:
+                  state = api('actions/workflows/'+str(workflow['id']))['state']
+                  if state not in {'disabled_manually','disabled_inactivity','deleted'}:
+                      raise RuntimeError('Workflow was re-enabled: '+workflow['path'])
+                  runs = api('actions/workflows/'+str(workflow['id'])+'/runs?per_page=100')['workflow_runs']
+                  running.extend(run['id'] for run in runs if run['status'] == 'in_progress')
+                  queued.extend(run['id'] for run in runs if run['status'] in active and run['status'] != 'in_progress')
+              if not running:
+                  print('DEMO_EXECUTION_STOPPED workflows='+str(len(selected))+' running=0 disabled_queue='+str(len(queued))+' live_enabled=0', flush=True)
                   break
-              print('DEMO_CANCELLATION_PENDING count='+str(len(remaining)), flush=True)
+              print('DEMO_CANCELLATION_PENDING running='+str(len(running)), flush=True)
               time.sleep(5)
           else:
-              raise RuntimeError('DEMO runs still active: '+str(remaining))
+              raise RuntimeError('DEMO executor still running: '+str(running))
