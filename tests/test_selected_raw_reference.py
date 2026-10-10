@@ -1,10 +1,17 @@
 import json
 from pathlib import Path
 import pytest
-from fx_scanner.selected_raw_reference import manifest, reference, geometry, EXECUTION_SCOPE
+from fx_scanner.selected_raw_reference import (
+    DEPLOYMENT_PROFILE_ID,
+    EXECUTION_SCOPE,
+    deployment_profile,
+    geometry,
+    manifest,
+    reference,
+)
 
 
-def test_selected_frozen_candidates_and_costs():
+def test_selected_frozen_candidates_and_supervised_risk_overlay():
     xau = reference('XAUUSD'); eur = reference('EURUSD')
     assert xau['metrics']['ending_balance_usd'] == pytest.approx(24852.008274284195)
     assert xau['leverage'] == 100 and xau['layering']['confirmed']
@@ -13,10 +20,30 @@ def test_selected_frozen_candidates_and_costs():
     assert eur['leverage'] == 200 and eur['policy']['equity_dd_trigger'] == .25
     assert eur['layering']['depths_r'] == [0,.2,.4]
     assert EXECUTION_SCOPE == 'MANUAL_REFERENCE_ONLY'
+    assert xau['deployment_scope'] == eur['deployment_scope'] == 'LIVE_MANUAL_APPROVAL_ONLY'
+    assert xau['policy']['risk_ceiling'] == pytest.approx(.125)
+    assert eur['policy']['risk_ceiling'] == pytest.approx(.125)
+    assert xau['source_policy_risk_ceiling'] == pytest.approx(.125)
+    assert eur['source_policy_risk_ceiling'] == pytest.approx(.2725)
+    assert xau['per_ticket_live_risk_ceiling'] == pytest.approx(.01)
+    assert eur['per_ticket_live_risk_ceiling'] == pytest.approx(.01)
     for ref in [xau,eur]:
         activation = ref['frozen']['activation']
         assert activation.get('live_execution_authority', activation.get('live_execution_authorized')) is False
         assert ref['account_type'] == 'RAW'
+
+
+def test_deployment_profile_is_explicitly_supervised():
+    profile = deployment_profile()
+    assert profile['profile_id'] == DEPLOYMENT_PROFILE_ID
+    assert profile['status'] == 'ACTIVE_SCANNER_SUPERVISED'
+    assert profile['execution_mode'] == 'LIVE_MANUAL_APPROVAL_ONLY'
+    assert profile['unattended_live_execution'] is False
+    assert profile['basket_risk_ceiling'] == pytest.approx(.125)
+    assert profile['per_ticket_live_risk_ceiling'] == pytest.approx(.01)
+    assert profile['safety_contract']['ticket_requires_explicit_user_approval'] is True
+    assert profile['safety_contract']['generic_live_autotrade_enabled'] is False
+    assert profile['safety_contract']['generic_kill_switch_remains_active'] is True
 
 
 @pytest.mark.parametrize('symbol',['EURUSD','XAUUSD'])
