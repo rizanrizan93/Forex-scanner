@@ -1,0 +1,75 @@
+name: Pause DEMO execution
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/pause-demo-execution.yml']
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: pause-demo-execution
+  cancel-in-progress: false
+
+jobs:
+  stop-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Disable execution and recovery workflows, cancel active runs
+        shell: python
+        run: |
+          import json, os, subprocess, time
+          repo = os.environ['GITHUB_REPOSITORY']
+          workflows = [
+              'rizan-xau-dual-engine-v344.yml',
+              'ctrader-demo-eurusd-frozen-dd37.yml',
+              'rizan-xau-runtime-takeover-v365.yml',
+              'ctrader-demo-auto-supervisor.yml',
+              'ctrader-demo-auto-recovery-watchdog.yml',
+              'ctrader-demo-xau-execution-lane.yml',
+              'ctrader-demo-auto-pipeline.yml',
+              'ctrader-demo-autotrade.yml',
+              'ctrader-demo-maintenance-pipeline.yml',
+              'ctrader-demo-xau-afic-prepared-lane.yml',
+              'ctrader-demo-order-smoke.yml',
+          ]
+          def api(path, method='GET'):
+              result = subprocess.run(['gh','api','--method',method,
+                  '/repos/'+repo+'/'+path],check=True,capture_output=True,text=True)
+              return json.loads(result.stdout) if result.stdout.strip() else None
+          for workflow in workflows:
+              api('actions/workflows/'+workflow+'/disable', 'PUT')
+              print('DEMO_WORKFLOW_DISABLED '+workflow, flush=True)
+          active = {'queued','in_progress','waiting','pending','requested'}
+          for workflow in workflows:
+              runs = api('actions/workflows/'+workflow+'/runs?per_page=100')['workflow_runs']
+              for run in runs:
+                  if run['status'] in active:
+                      try:
+                          api('actions/runs/'+str(run['id'])+'/cancel','POST')
+                      except subprocess.CalledProcessError:
+                          current = api('actions/runs/'+str(run['id']))
+                          if current['status'] != 'completed':
+                              raise
+                      print('DEMO_RUN_CANCEL_REQUESTED '+str(run['id']), flush=True)
+          for attempt in range(18):
+              remaining = []
+              for workflow in workflows:
+                  state = api('actions/workflows/'+workflow)['state']
+                  if state != 'disabled_manually':
+                      raise RuntimeError('Workflow was re-enabled: '+workflow)
+                  runs = api('actions/workflows/'+workflow+'/runs?per_page=100')['workflow_runs']
+                  remaining.extend(run['id'] for run in runs if run['status'] in active)
+              if not remaining:
+                  print('DEMO_EXECUTION_STOPPED workflows=11 active_runs=0 live_enabled=0', flush=True)
+                  break
+              print('DEMO_CANCELLATION_PENDING count='+str(len(remaining)), flush=True)
+              time.sleep(5)
+          else:
+              raise RuntimeError('DEMO runs still active: '+str(remaining))
