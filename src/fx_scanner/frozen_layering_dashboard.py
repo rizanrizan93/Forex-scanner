@@ -6,7 +6,7 @@ def render_layering(symbol, execution=None):
     import streamlit as st
     frozen=manifest(symbol);cfg=frozen['contract']['configuration']
     execution=execution or {};basket=execution.get('layering') or {}
-    st.subheader(symbol+' · Layering beku V1')
+    st.subheader(symbol+' · executor DEMO · layering sebelumnya')
     st.caption(f"Kandidat #{cfg['id']} · kapasitas equity {cfg['equity_capacity_multiplier']:g}× · tambahan berlaku {cfg['add_expiry_minutes']} menit · child 0,01 lot")
     if execution and execution.get('layering_policy_hash')!=frozen['policy_hash']:
         st.info('Konfigurasi baru sudah dibekukan; menunggu heartbeat runtime dengan versi layering ini.')

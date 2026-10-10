@@ -1,0 +1,388 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_RESEARCH_NOT_ACTIVATED",
+  "user_authorization": {
+    "at": "2026-10-10T14:18:58+07:00",
+    "instruction": "Bekukan strategy terbaru",
+    "selected_scope": "Latest presented preferred EUR RAW 1:200 candidate: $78880.01/DD44.84%, index 140400; not the higher-DD $117495.82 or absolute base maximum."
+  },
+  "contract_sha256": "4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976",
+  "contract": {
+    "symbol": "EURUSD",
+    "strategy_id": "EURUSD_RAW_200_78880_DD4484_FROZEN_V3",
+    "candidate_id": "EUR_RAW200_140400",
+    "account_type": "RAW",
+    "reference_leverage": 200,
+    "previous_contract_sha256": "6388f5c88113049e05869596a5392ee06a4287380aeaac2bdf46c5fa95da5bba",
+    "policy": {
+      "pattern_id": 328.0,
+      "initial_fraction": 0.4,
+      "depth_weight_power": 1.5,
+      "risk_cap_budget": 1.0,
+      "equity_dd_trigger": 0.25,
+      "dd_reduction_factor": 0.7,
+      "capacity_multiplier": 1.0,
+      "cap_at_100": 0.0,
+      "cap_exponent": 0.0,
+      "risk_ceiling": 0.2725,
+      "margin_ceiling": 0.5,
+      "leverage": 200.0,
+      "balance_step_usd": 100.0,
+      "balance_growth_exponent": 1.0
+    },
+    "full_reference_policy": {
+      "risk": 0.2725,
+      "margin": 0.5,
+      "cap_at_100": 0.0,
+      "cap_exponent": 0.0,
+      "fast_span": 2,
+      "fast_threshold": -0.5,
+      "fast_weak": 0.1,
+      "slow_span": 8,
+      "slow_threshold": -0.05,
+      "slow_weak": 0.625,
+      "lookback": 8,
+      "atr_period": 14,
+      "atr_multiplier": 3,
+      "stop_min": 0.0005,
+      "stop_max": 0.006,
+      "target_r": 4,
+      "hold_minutes": 240,
+      "virtual_spread": 0.00012,
+      "virtual_slip": 1e-05,
+      "child_lot": 0.01,
+      "child_units": 1000,
+      "reference_leverage": 200
+    },
+    "layering": {
+      "pattern_id": 328,
+      "stages": 3,
+      "depths_r": [
+        0,
+        0.2,
+        0.4
+      ],
+      "confirmed": false,
+      "add_expiry_minutes": 210,
+      "spacing_exponent": 1,
+      "initial_fraction_of_baseline_children": 0.4,
+      "equity_capacity_multiplier": 1,
+      "depth_weight_power": 1.5,
+      "budget": "FROZEN_RISK_CAP",
+      "equity_dd_trigger": 0.25,
+      "dd_reduction_factor": 0.7,
+      "same_initial_absolute_sl_tp_for_all_children": true
+    },
+    "sizing": {
+      "child_lot": 0.01,
+      "child_units": 1000,
+      "hard_child_cap": null,
+      "zero_cap_policy_meaning": "unlimited count cap, additionally constrained by integer risk, margin and fill-time equity budgets",
+      "risk_ceiling": 0.2725,
+      "margin_ceiling": 0.5,
+      "risk_budget_includes_round_trip_commission": true,
+      "adaptive_reduction": "At flat basket entry, if DD relative to the already known M1 equity peak is >=25%, use 70% of budget and initial desired quantity; no future extrema"
+    },
+    "execution_cost_model": {
+      "spread": 1e-05,
+      "slippage_per_side": 1e-05,
+      "commission_usd_per_001lot_per_side": 0.03,
+      "carry": "original intraday zero carry",
+      "spread_source": "FP Markets September 2026 MT4 published Raw average used as cTrader proxy",
+      "stress": "multiply spread/slippage, keep commission fixed"
+    },
+    "source_signal_policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+    "source_data_sha256": [
+      {
+        "file": "EURUSD_2016.parquet",
+        "sha256": "649bba3fa098b1ae00120f44f89dc5e6ca537ebaad23a137189b2e1ae2b631f5"
+      },
+      {
+        "file": "EURUSD_2017.parquet",
+        "sha256": "511733ed342cabe870ecb31ab3b09c82598364bca5a2816a78745978aece16a4"
+      },
+      {
+        "file": "EURUSD_2018.parquet",
+        "sha256": "6ae642584f43d5ac4258618665b74f790d4d7a09e4dbdba981c6385becf725be"
+      },
+      {
+        "file": "EURUSD_2019.parquet",
+        "sha256": "bb7f012675f109f72334048585c6982c958e99b588140e84f1d9337f8756cc24"
+      },
+      {
+        "file": "EURUSD_2020.parquet",
+        "sha256": "716a81fd7afab12385dc37d113efbd7a3a26abc3527ad242839df9bb905c02e5"
+      },
+      {
+        "file": "EURUSD_2021.parquet",
+        "sha256": "da476f174d3d459908ecbbeb4225727769ee1101460499e679b35b33baa9ce1f"
+      },
+      {
+        "file": "EURUSD_2022.parquet",
+        "sha256": "a77bfbe22abaef6d41d36c18f5cd5409eaf1cdce1dcee31071ebfbef1d9a701b"
+      },
+      {
+        "file": "EURUSD_2023.parquet",
+        "sha256": "71d26b010cc1ac8bac69f2e24478fb63e5e4ea8295f5fc83a90b4f801fe86a6d"
+      },
+      {
+        "file": "EURUSD_2024.parquet",
+        "sha256": "3ebfd405001c8292ec63bcf88d770677e2ec1299e0c3cc34411fd734c469fee0"
+      },
+      {
+        "file": "EURUSD_2025.parquet",
+        "sha256": "04e52e9e91d72dce662beec4b36d71182b2316ff4e4967524c578f23878f97d6"
+      }
+    ]
+  },
+  "evidence": {
+    "initial_cash_usd": 100,
+    "period": [
+      "2016-01-01",
+      "2025-12-31"
+    ],
+    "search_seed": 101020050,
+    "configurations_tested": 1000000,
+    "base_and_stress_metrics": {
+      "base": {
+        "ending_balance_usd": 78880.01371425317,
+        "profit_factor": 1.821027912027097,
+        "max_dd_m1_percent": 44.844858602281555,
+        "max_dd_closed_percent": 42.83438917361344,
+        "trades": 203,
+        "win_rate": 0.6157635467980296,
+        "children": 185856,
+        "baskets_with_adds": 167,
+        "max_planned_risk_percent": 27.24774609657206,
+        "max_margin_percent": 49.998515014832876,
+        "long": 113,
+        "short": 90,
+        "train_2016_2024_balance": 31815.149857130575,
+        "train_dd_percent": 44.844858602281555,
+        "train_pf": 2.4470191754399417,
+        "train_trades": 172
+      },
+      "spread_slip_x1_5": {
+        "ending_balance_usd": 72004.09971423907,
+        "profit_factor": 1.8144246678858722,
+        "max_dd_m1_percent": 45.74923710531756,
+        "max_dd_closed_percent": 43.73824743552852,
+        "trades": 203,
+        "win_rate": 0.6157635467980296,
+        "children": 172159,
+        "baskets_with_adds": 167,
+        "max_planned_risk_percent": 27.248263053579418,
+        "max_margin_percent": 49.99446556314398,
+        "long": 113,
+        "short": 90,
+        "train_2016_2024_balance": 29125.401999982998,
+        "train_dd_percent": 45.74923710531756,
+        "train_pf": 2.3902067862117913,
+        "train_trades": 172
+      },
+      "spread_slip_x2": {
+        "ending_balance_usd": 72205.89700004736,
+        "profit_factor": 1.7956721029990141,
+        "max_dd_m1_percent": 46.12168679785867,
+        "max_dd_closed_percent": 44.09323790470272,
+        "trades": 203,
+        "win_rate": 0.6108374384236454,
+        "children": 176257,
+        "baskets_with_adds": 168,
+        "max_planned_risk_percent": 27.24649501486881,
+        "max_margin_percent": 49.99759051429218,
+        "long": 113,
+        "short": 90,
+        "train_2016_2024_balance": 29945.89528572898,
+        "train_dd_percent": 46.12168679785867,
+        "train_pf": 2.3509328777702874,
+        "train_trades": 172
+      },
+      "spread_slip_x3": {
+        "ending_balance_usd": 51428.85485715357,
+        "profit_factor": 1.760607187099749,
+        "max_dd_m1_percent": 47.48315712560055,
+        "max_dd_closed_percent": 45.436904836144905,
+        "trades": 203,
+        "win_rate": 0.5960591133004927,
+        "children": 130766,
+        "baskets_with_adds": 168,
+        "max_planned_risk_percent": 27.24698167940598,
+        "max_margin_percent": 49.99893353846977,
+        "long": 113,
+        "short": 90,
+        "train_2016_2024_balance": 22290.781714288507,
+        "train_dd_percent": 47.48315712560055,
+        "train_pf": 2.2452479906625684,
+        "train_trades": 172
+      },
+      "confirmation_delay_5m": {
+        "ending_balance_usd": 78880.01371425317,
+        "profit_factor": 1.821027912027097,
+        "max_dd_m1_percent": 44.844858602281555,
+        "max_dd_closed_percent": 42.83438917361344,
+        "trades": 203,
+        "win_rate": 0.6157635467980296,
+        "children": 185856,
+        "baskets_with_adds": 167,
+        "max_planned_risk_percent": 27.24774609657206,
+        "max_margin_percent": 49.998515014832876,
+        "long": 113,
+        "short": 90,
+        "train_2016_2024_balance": 31815.149857130575,
+        "train_dd_percent": 44.844858602281555,
+        "train_pf": 2.4470191754399417,
+        "train_trades": 172
+      },
+      "quote_missing_1pct": {
+        "ending_balance_usd": 79091.55071425304,
+        "profit_factor": 1.8210663248221755,
+        "max_dd_m1_percent": 44.855226489347025,
+        "max_dd_closed_percent": 42.84929123812552,
+        "trades": 203,
+        "win_rate": 0.6157635467980296,
+        "children": 186346,
+        "baskets_with_adds": 167,
+        "max_planned_risk_percent": 27.24748291986605,
+        "max_margin_percent": 49.99426078497237,
+        "long": 113,
+        "short": 90,
+        "train_2016_2024_balance": 31902.805142844827,
+        "train_dd_percent": 44.855226489347025,
+        "train_pf": 2.447549826742509,
+        "train_trades": 172
+      },
+      "opportunity_drop10pct_seed100001": {
+        "ending_balance_usd": 47670.59757140623,
+        "profit_factor": 1.7356922588732628,
+        "max_dd_m1_percent": 47.49407010602547,
+        "max_dd_closed_percent": 42.928824956192926,
+        "trades": 184,
+        "win_rate": 0.6141304347826086,
+        "children": 124862,
+        "baskets_with_adds": 147,
+        "max_planned_risk_percent": 27.24660780360037,
+        "max_margin_percent": 49.99574360482228,
+        "long": 104,
+        "short": 80,
+        "train_2016_2024_balance": 26264.17128570383,
+        "train_dd_percent": 47.49407010602547,
+        "train_pf": 2.343328979309079,
+        "train_trades": 156
+      },
+      "opportunity_drop10pct_seed200050": {
+        "ending_balance_usd": 19949.46142856418,
+        "profit_factor": 1.9984125994561823,
+        "max_dd_m1_percent": 47.355418546617265,
+        "max_dd_closed_percent": 45.43159949940005,
+        "trades": 182,
+        "win_rate": 0.6098901098901099,
+        "children": 42764,
+        "baskets_with_adds": 154,
+        "max_planned_risk_percent": 27.24278786508616,
+        "max_margin_percent": 49.99803452261064,
+        "long": 98,
+        "short": 84,
+        "train_2016_2024_balance": 7540.90557142589,
+        "train_dd_percent": 47.355418546617265,
+        "train_pf": 2.4626976202231137,
+        "train_trades": 154
+      },
+      "opportunity_drop10pct_seed20261010": {
+        "ending_balance_usd": 47946.64228569199,
+        "profit_factor": 1.728782374125646,
+        "max_dd_m1_percent": 46.3136951513492,
+        "max_dd_closed_percent": 44.3593978445899,
+        "trades": 191,
+        "win_rate": 0.6073298429319371,
+        "children": 124460,
+        "baskets_with_adds": 154,
+        "max_planned_risk_percent": 27.244811801559948,
+        "max_margin_percent": 49.99653281818194,
+        "long": 102,
+        "short": 89,
+        "train_2016_2024_balance": 22932.768285704493,
+        "train_dd_percent": 46.3136951513492,
+        "train_pf": 2.1955986150593336,
+        "train_trades": 162
+      },
+      "leverage100_same_parameters": {
+        "ending_balance_usd": 5315.395285712507,
+        "profit_factor": 2.220069156184927,
+        "max_dd_m1_percent": 30.014424160227414,
+        "max_dd_closed_percent": 23.601157627465696,
+        "trades": 203,
+        "win_rate": 0.6009852216748769,
+        "children": 9373,
+        "baskets_with_adds": 163,
+        "max_planned_risk_percent": 17.55472462638872,
+        "max_margin_percent": 49.99097270207533,
+        "long": 113,
+        "short": 90,
+        "train_2016_2024_balance": 3087.227999999007,
+        "train_dd_percent": 30.014424160227414,
+        "train_pf": 2.5921594587138754,
+        "train_trades": 172
+      }
+    },
+    "temporal": {
+      "2016_2024": {
+        "ending_balance_usd": 31815.149857130575,
+        "profit_factor": 2.4470191754399417,
+        "max_dd_m1_percent": 44.844858602281555,
+        "max_dd_closed_percent": 42.83438917361344,
+        "trades": 172,
+        "win_rate": 0.6104651162790697,
+        "children": 57285,
+        "baskets_with_adds": 142,
+        "max_planned_risk_percent": 27.20478660055016,
+        "max_margin_percent": 49.989520460348636,
+        "long": 93,
+        "short": 79,
+        "train_2016_2024_balance": 31815.149857130575,
+        "train_dd_percent": 44.844858602281555,
+        "train_pf": 2.4470191754399417,
+        "train_trades": 172
+      },
+      "2025_restart100": {
+        "ending_balance_usd": 245.39542857136675,
+        "profit_factor": 1.6537870802006156,
+        "max_dd_m1_percent": 38.575393154496716,
+        "max_dd_closed_percent": 32.66641344565624,
+        "trades": 31,
+        "win_rate": 0.6451612903225806,
+        "children": 386,
+        "baskets_with_adds": 25,
+        "max_planned_risk_percent": 25.963309998575777,
+        "max_margin_percent": 49.325669339130066,
+        "long": 20,
+        "short": 11,
+        "train_2016_2024_balance": 100.0,
+        "train_dd_percent": 0.0,
+        "train_pf": 0.0,
+        "train_trades": 0
+      }
+    },
+    "verification": {
+      "scalar_checks": 42,
+      "engine_regression_tests_passed": 41
+    },
+    "candidate_source_sha256": "61dba6772fc5b3efee8fdea98c6eaf64eeb57ab0c01797212f0db0f06ddd94c6",
+    "library_candidate_id": "libfile_ee8d9c6f405c819194c59ceb5d6af13b",
+    "evidence_archive_library_file_id": "libfile_522c8ee6b7388191aefca86b86988d95",
+    "selection_scope": "Posthoc selection on already observed 2016\u20132025; no fresh OOS"
+  },
+  "limitations": [
+    "Posthoc on already observed historical period; no fresh out-of-sample.",
+    "Synthetic Raw spread from published MT4 reference, not historic cTrader Bid/Ask.",
+    "M1 equity markers and native lot reservation differ from broker execution.",
+    "DD threshold is historical, not a forward guarantee."
+  ],
+  "activation": {
+    "scanner_runtime_changed": false,
+    "broker_account_changed": false,
+    "live_execution_authority": false,
+    "xau_frozen_candidate_unchanged": true,
+    "previous_eur_freezes_retained": true
+  }
+}

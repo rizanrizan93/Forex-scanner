@@ -6,7 +6,7 @@ def render_frozen_core():
     import streamlit as st
     from .xau_public_hot_v362 import fetch_public_hot_snapshot
     frozen = manifest()
-    st.subheader('Inti XAUUSD · BUY + SELL · DD50 V1')
+    st.subheader('Inti XAUUSD · signal BUY + SELL · runtime DEMO')
     st.caption('BUY: Regression Channel Reentry 48 · SELL: Sweep Candle Confirm 24 · konfirmasi H1 + M15 · DEMO')
     core, execution = {}, {}
     try:

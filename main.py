@@ -18,11 +18,15 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Setup"):
     xau, eurusd = st.tabs(["XAUUSD", "EURUSD"], key="rizan_pair", on_change="rerun")
     if eurusd.open:
         with eurusd:
+            from fx_scanner.selected_raw_reference_dashboard import render_selected_raw_reference
+            render_selected_raw_reference("EURUSD")
             from fx_scanner.cross_asset_dashboard import render_cross_asset
             render_cross_asset("EURUSD")
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if xau.open:
         with xau:
+            from fx_scanner.selected_raw_reference_dashboard import render_selected_raw_reference
+            render_selected_raw_reference("XAUUSD")
             from fx_scanner.xau_frozen_dd50_dashboard import render_frozen_core
             render_frozen_core()
             from fx_scanner.cross_asset_dashboard import render_cross_asset
