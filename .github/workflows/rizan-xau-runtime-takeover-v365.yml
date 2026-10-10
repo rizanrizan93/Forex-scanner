@@ -1,113 +1,14 @@
-name: RIZAN XAU Runtime Takeover V365
+name: RIZAN XAU Runtime Takeover V365 [DEMO DISABLED]
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/rizan-xau-runtime-takeover-v365.yml"
-      - ".github/workflows/rizan-xau-dual-engine-v344.yml"
-      - "src/fx_scanner/demo_xau_dual_engine_runtime_v344.py"
-      - "src/fx_scanner/demo_xau_v351_executor.py"
-      - "src/fx_scanner/demo_xau_v375_reaction_executor.py"
-      - "src/fx_scanner/xau_reaction_interceptor_v374.py"
 
 permissions:
-  actions: write
   contents: read
 
-concurrency:
-  group: rizan-xau-runtime-takeover-v365
-  cancel-in-progress: true
-
 jobs:
-  safe-takeover:
+  demo-disabled:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 6
-    env:
-      GH_TOKEN: ${{ github.token }}
-      EXPECTED_SHA: ${{ github.sha }}
-      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
     steps:
-      - name: Replace stale XAU runtime only in a post-executor safe window
-        shell: bash
-        run: |
-          set -euo pipefail
-          workflow="rizan-xau-dual-engine-v344.yml"
-
-          active_rows() {
-            gh api               -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow}/runs?per_page=30"               --jq '.workflow_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending") | [.id, .status, .head_sha, .event] | join("|")'
-          }
-
-          safe_executor_window() {
-            local payload observed state accepted observed_epoch now_epoch age
-            payload="$(curl -fsS               "${SUPABASE_URL}/rest/v1/runtime_heartbeats?worker_name=eq.ctrader_demo_xau_v351_executor&select=observed_at,details&limit=1"               -H "apikey: ${SUPABASE_SECRET_KEY}"               -H "Authorization: Bearer ${SUPABASE_SECRET_KEY}")" || return 1
-            observed="$(jq -r '.[0].observed_at // empty' <<<"${payload}")"
-            state="$(jq -r '.[0].details.state // empty' <<<"${payload}")"
-            accepted="$(jq -r '.[0].details.accepted // false' <<<"${payload}")"
-            [ -n "${observed}" ] || return 1
-            observed_epoch="$(date -u -d "${observed}" +%s 2>/dev/null)" || return 1
-            now_epoch="$(date -u +%s)"
-            age=$((now_epoch - observed_epoch))
-            case "${state}" in
-              WAIT|BLOCKED|DUPLICATE_BLOCK|ORDER_NOT_ACCEPTED|ERROR_FAIL_CLOSED)
-                ;;
-              *)
-                return 1
-                ;;
-            esac
-            [ "${accepted}" != "true" ] || return 1
-            [ "${age}" -ge 0 ] && [ "${age}" -le 25 ]
-          }
-
-          stale_in_progress=0
-          while IFS='|' read -r run_id status head_sha event; do
-            [ -n "${run_id:-}" ] || continue
-            if [ "${head_sha}" != "${EXPECTED_SHA}" ] && [ "${status}" = "in_progress" ]; then
-              stale_in_progress=1
-            fi
-          done < <(active_rows)
-
-          if [ "${stale_in_progress}" -eq 1 ]; then
-            safe=0
-            for attempt in $(seq 1 48); do
-              if safe_executor_window; then
-                safe=1
-                echo "V365_SAFE_WINDOW_CONFIRMED attempt=${attempt}"
-                break
-              fi
-              sleep 5
-            done
-            if [ "${safe}" -ne 1 ]; then
-              echo "V365_TAKEOVER_FAIL_CLOSED reason=NO_POST_EXECUTOR_SAFE_WINDOW"
-              exit 1
-            fi
-          fi
-
-          cancelled=0
-          while IFS='|' read -r run_id status head_sha event; do
-            [ -n "${run_id:-}" ] || continue
-            if [ "${head_sha}" = "${EXPECTED_SHA}" ]; then
-              continue
-            fi
-            if [ "${status}" = "in_progress" ] || [ "${status}" = "queued" ] || [ "${status}" = "waiting" ] || [ "${status}" = "pending" ]; then
-              gh api --method POST                 -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" >/dev/null || true
-              cancelled=$((cancelled + 1))
-              echo "V365_CANCELLED_STALE_RUNTIME run_id=${run_id} status=${status} old_sha=${head_sha}"
-            fi
-          done < <(active_rows)
-
-          if [ "${cancelled}" -gt 0 ]; then
-            sleep 8
-          fi
-
-          current_active="$(
-            active_rows | awk -F'|' -v sha="${EXPECTED_SHA}" '$3 == sha {count++} END {print count+0}'
-          )"
-          if [ "${current_active}" -eq 0 ]; then
-            gh api --method POST               -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow}/dispatches"               -f ref=main
-            echo "V365_CURRENT_RUNTIME_DISPATCHED sha=${EXPECTED_SHA}"
-          else
-            echo "V365_CURRENT_RUNTIME_ALREADY_ACTIVE_OR_QUEUED count=${current_active} sha=${EXPECTED_SHA}"
-          fi
+      - run: echo "DEMO runtime takeover disabled. Scanner is migrating to cTrader LIVE read-only account context."
