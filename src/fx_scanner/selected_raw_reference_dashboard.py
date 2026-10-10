@@ -1,4 +1,4 @@
-"""Phone-readable latest frozen references, independent of broker heartbeats."""
+"""Phone-readable latest frozen references plus supervised deployment state."""
 from .selected_raw_reference import reference, geometry
 
 
@@ -7,17 +7,30 @@ def render_selected_raw_reference(symbol):
     import streamlit as st
     r = reference(symbol); m = r['metrics']; cfg = r['layering']; p = r['policy']
     st.subheader(f"{symbol} · strategi RAW terpilih · 1:{r['leverage']}")
-    st.caption('Acuan trading manual. Order otomatis live tidak diaktifkan. Status broker DEMO ditampilkan terpisah.')
+    st.caption(
+        f"Scanner profile aktif · risk basket ≤{p['risk_ceiling']*100:g}% · "
+        f"LIVE hanya melalui approval per ticket; unattended auto-live tetap nonaktif."
+    )
     cols = st.columns(2)
-    cols[0].metric('Saldo replay ($)', f"{m['ending_balance_usd']:,.2f}")
-    cols[1].metric('DD floating M1 (%)', f"{m['max_dd_m1_percent']:.2f}")
+    cols[0].metric('Saldo replay sumber ($)', f"{m['ending_balance_usd']:,.2f}")
+    cols[1].metric('DD floating M1 sumber (%)', f"{m['max_dd_m1_percent']:.2f}")
     st.caption(f"2016–2025 · modal $100 · {m['trades']} basket · {m['trades']/120:.2f} trade/bulan · PF {m['profit_factor']:.3f}")
+    if abs(r['source_policy_risk_ceiling'] - p['risk_ceiling']) > 1e-12:
+        st.warning(
+            f"Risk deployment diturunkan menjadi {p['risk_ceiling']*100:g}%. "
+            f"Replay sumber {symbol} memakai risk ceiling {r['source_policy_risk_ceiling']*100:g}%; "
+            "angka replay di atas belum diklaim sebagai hasil backtest risk baru."
+        )
     rows = [{'Tahap': 'Entry awal' if i == 0 else f'Layer {i}', 'Kedalaman menuju SL (%)': round(d*100,2),
              'Syarat': 'Entry signal' if i == 0 else ('Konfirmasi reversal' if cfg['confirmed'] else 'Limit pada kedalaman')}
             for i,d in enumerate(cfg['depths_r'])]
     st.dataframe(rows, hide_index=True, use_container_width=True)
     trigger = p['equity_dd_trigger']
-    st.caption(f"Risk basket ≤{p['risk_ceiling']*100:g}% · margin ≤{p['margin_ceiling']*100:g}% · unit {r['child_lot']:.2f} lot · tambahan berlaku {cfg.get('add_expiry_minutes', cfg.get('expiry_minutes'))} menit.")
+    st.caption(
+        f"Risk basket scanner ≤{p['risk_ceiling']*100:g}% · margin ≤{p['margin_ceiling']*100:g}% · "
+        f"risk per LIVE ticket ≤{r['per_ticket_live_risk_ceiling']*100:g}% · unit {r['child_lot']:.2f} lot · "
+        f"tambahan berlaku {cfg.get('add_expiry_minutes', cfg.get('expiry_minutes'))} menit."
+    )
     st.caption(f"Entry awal {p['initial_fraction']*100:g}% dari unit dasar · kapasitas {p['capacity_multiplier']:g}× · bobot tahap {p['depth_weight_power']:g}. Jumlah unit mengikuti equity dan budget; jumlah tahap berbeda dari jumlah unit.")
     if trigger:
         st.caption(f"Saat DD yang sudah diketahui ≥{trigger*100:g}%, budget dan jumlah awal turun ke {p['dd_reduction_factor']*100:g}%.")
@@ -29,7 +42,7 @@ def render_selected_raw_reference(symbol):
                 cost_rows.append({'Skenario':label,'Saldo ($)':round(v['ending_balance_usd'],2),'DD (%)':round(v['max_dd_m1_percent'],2)})
         st.dataframe(cost_rows,hide_index=True,use_container_width=True)
         st.caption('Spread RAW memakai referensi MT4 sebagai proxy cTrader; komisi per sisi masuk replay. Seleksi dilakukan pada sejarah yang sudah diamati. DD historis bukan batas kerugian ke depan.')
-        st.json(r['frozen']['contract'])
+        st.json({'deployment': r['deployment_symbol'], 'source_contract': r['frozen']['contract']})
         st.download_button('Unduh kontrak RAW '+symbol, json.dumps(r['frozen'],indent=2),
                            file_name=symbol.lower()+'_raw_selected.json',mime='application/json',key='raw_selected_download_'+symbol)
     with st.expander('Hitung level layer manual dari entry / SL / TP', expanded=False):
