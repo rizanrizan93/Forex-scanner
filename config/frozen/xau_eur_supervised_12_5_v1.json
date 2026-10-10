@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "status": "ACTIVE_SCANNER_SUPERVISED",
+  "profile_id": "XAU_EUR_SUPERVISED_RISK_12_5_V1",
+  "execution_mode": "LIVE_MANUAL_APPROVAL_ONLY",
+  "unattended_live_execution": false,
+  "basket_risk_ceiling": 0.125,
+  "per_ticket_live_risk_ceiling": 0.01,
+  "margin_ceiling": 0.5,
+  "symbols": {
+    "XAUUSD": {
+      "strategy_id": "XAUUSD_LAYERING_226432_RAW_FROZEN_V1",
+      "source_contract_sha256": "7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf",
+      "reference_leverage": 100,
+      "risk_ceiling": 0.125,
+      "margin_ceiling": 0.5
+    },
+    "EURUSD": {
+      "strategy_id": "EURUSD_RAW_200_78880_DD4484_FROZEN_V3",
+      "source_contract_sha256": "4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976",
+      "reference_leverage": 200,
+      "risk_ceiling": 0.125,
+      "margin_ceiling": 0.5,
+      "source_replay_risk_ceiling": 0.2725,
+      "evidence_note": "The archived EUR replay metrics were generated with the original 27.25% risk ceiling. This deployment overlay reduces scanner basket risk to 12.5%; archived performance figures are retained only as source evidence and are not relabelled as a 12.5% backtest."
+    }
+  },
+  "safety_contract": {
+    "ticket_requires_explicit_user_approval": true,
+    "generic_live_autotrade_enabled": false,
+    "generic_kill_switch_remains_active": true,
+    "aggregate_basket_risk_must_not_exceed_profile_ceiling": true,
+    "individual_live_ticket_risk_must_not_exceed_per_ticket_ceiling": true
+  }
+}
