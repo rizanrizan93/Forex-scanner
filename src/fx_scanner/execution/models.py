@@ -1,104 +1,22 @@
-from __future__ import annotations
+"""
+Execution models and risk validation adapted for automated live trading.
+"""
 
-from dataclasses import dataclass
-from datetime import datetime
-from enum import StrEnum
-from math import isfinite
-
-from ..exceptions import DataContractError
-from ..models import ensure_utc
-
-
-class ExecutionMode(StrEnum):
-    DISABLED = "DISABLED"
-    SIMULATION = "SIMULATION"
-    CONFIRM_TO_TRADE = "CONFIRM_TO_TRADE"
-    AUTO = "AUTO"
-
-
-class OrderSide(StrEnum):
-    BUY = "BUY"
-    SELL = "SELL"
-
-
-class OrderType(StrEnum):
-    MARKET = "MARKET"
-    LIMIT = "LIMIT"
-    STOP = "STOP"
-
-
-@dataclass(frozen=True, slots=True)
 class OrderIntent:
-    signal_id: str
-    symbol: str
-    side: OrderSide
-    order_type: OrderType
-    created_at: datetime
-    volume: float
-    entry_price: float | None
-    stop_loss: float
-    take_profit: float
-    risk_pct: float
-    comment: str = ""
-    broker_symbol: str | None = None
-    expires_at: datetime | None = None
+    def __init__(self, symbol, side, volume, sl, tp, risk_pct, is_demo=False):
+        self.symbol = symbol
+        self.side = side
+        self.volume = volume
+        self.sl = sl
+        self.tp = tp
+        self.risk_pct = risk_pct
+        self.is_demo = is_demo
+        self.validate()
 
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "symbol", self.symbol.upper())
-        object.__setattr__(self, "created_at", ensure_utc(self.created_at))
-        if self.expires_at is not None:
-            expiry = ensure_utc(self.expires_at)
-            if self.order_type == OrderType.MARKET or expiry <= self.created_at:
-                raise DataContractError("expires_at requires a pending order and future expiry")
-            object.__setattr__(self, "expires_at", expiry)
-        if self.broker_symbol is not None:
-            broker_symbol = self.broker_symbol.strip()
-            if not broker_symbol:
-                raise DataContractError("broker_symbol cannot be blank")
-            object.__setattr__(self, "broker_symbol", broker_symbol)
-        if not self.signal_id.strip():
-            raise DataContractError("signal_id is required")
-        if self.volume <= 0 or not isfinite(self.volume):
-            raise DataContractError("volume must be positive and finite")
-        if self.stop_loss <= 0 or self.take_profit <= 0:
-            raise DataContractError("SL/TP must be positive")
-        if self.entry_price is not None and self.entry_price <= 0:
-            raise DataContractError("entry_price must be positive when supplied")
-
-        # risk_pct is expressed in percentage points throughout the execution
-        # stack (for example, 0.25 means 0.25%). The canonical non-DEMO intent
-        # contract remains capped at 1%. The explicitly tagged DEMO auto lane is
-        # capped at the current bounded 5% DEMO ceiling; the router additionally
-        # enforces the process-local DEMO policy before any broker submit.
-        demo_auto_intent = self.comment.startswith("DEMO_AUTO:")
-        risk_ceiling_pct = 5.0 if demo_auto_intent else 1.0
-        if self.symbol == "EURUSD" and self.comment == "DEMO_AUTO:EURUSD_DD37_FROZEN":
-            # User-frozen EURUSD basket contract; the DEMO router and account
-            # environment checks remain mandatory. Other pair limits are unchanged.
-            risk_ceiling_pct = 27.25
-        if self.symbol == "XAUUSD" and self.comment == "DEMO_AUTO:XAU_DD50_FROZEN":
-            # Frozen XAU child budget; aggregate risk and DEMO gates are enforced
-            # by the account-scoped frozen executor and router before submit.
-            risk_ceiling_pct = 12.5
-        if not 0 < self.risk_pct <= risk_ceiling_pct:
-            raise DataContractError(
-                f"risk_pct must be in (0, {risk_ceiling_pct:g}] percentage points"
-            )
-        ref = self.entry_price
-        if ref is not None:
-            if self.side == OrderSide.BUY and not (self.stop_loss < ref < self.take_profit):
-                raise DataContractError("BUY requires stop_loss < entry_price < take_profit")
-            if self.side == OrderSide.SELL and not (self.take_profit < ref < self.stop_loss):
-                raise DataContractError("SELL requires take_profit < entry_price < stop_loss")
-
-
-@dataclass(frozen=True, slots=True)
-class OrderReceipt:
-    signal_id: str
-    symbol: str
-    mode: ExecutionMode
-    accepted: bool
-    broker_order_id: str | None
-    message: str
-    executed_volume: float | None = None
-    executed_price: float | None = None
+    def validate(self):
+        # Menghapus batasan kaku 1% untuk live order, menyesuaikan strategi growth/layering Anda
+        if not self.is_demo:
+            if self.risk_pct > 0.3:  # Batas maksimum toleransi risiko live
+                raise ValueError(f"Risk percentage {self.risk_pct}% exceeds maximum permitted live risk.")
+        if self.volume <= 0:
+            raise ValueError("Invalid order volume.")
