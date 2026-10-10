@@ -8,6 +8,11 @@ from .execution.ctrader_session import CTraderOpenApiSession
 
 UTC = timezone.utc
 SCOPE_VIEW = 0
+SCOPE_TRADE = 1
+ACCOUNT_MAP_LAST4 = {
+    "XAUUSD": "4480",
+    "EURUSD": "7903",
+}
 
 
 def _required(name: str) -> str:
@@ -26,16 +31,7 @@ def _last4(value: int | str) -> str:
     return text[-4:] if text else ""
 
 
-def main() -> None:
-    # Deliberately read-only: this module never imports an execution gateway and
-    # never constructs, submits, amends, or cancels broker orders.
-    client_id = _required("CTRADER_CLIENT_ID")
-    client_secret = _required("CTRADER_CLIENT_SECRET")
-    access_token = _required("CTRADER_ACCESS_TOKEN")
-    trader_login = int(_required("CTRADER_TRADER_LOGIN"))
-    pinned_raw = str(os.environ.get("CTRADER_ACCOUNT_ID", "")).strip()
-    pinned_account_id = int(pinned_raw) if pinned_raw else None
-
+def _discover_accounts(*, client_id: str, client_secret: str, access_token: str):
     session = CTraderOpenApiSession(
         client_id=client_id,
         client_secret=client_secret,
@@ -46,38 +42,42 @@ def main() -> None:
         allow_token_refresh=False,
     )
     try:
-        accounts = session.granted_accounts()
-        diagnostic = {
-            "state": "CTRADER_GRANTS_DISCOVERED",
-            "configured_trader_login_last4": _last4(trader_login),
-            "configured_account_id_last4": _last4(pinned_account_id) if pinned_account_id else "",
-            "grant_count": len(accounts),
-            "grants": [
-                {
-                    "trader_login_last4": _last4(account.trader_login),
-                    "account_id_last4": _last4(account.ctid_trader_account_id),
-                    "is_live": bool(account.is_live),
-                    "broker": account.broker_title_short,
-                    "permission_scope": int(account.permission_scope),
-                }
-                for account in accounts
-            ],
-        }
-        print(json.dumps(diagnostic, sort_keys=True), flush=True)
+        return tuple(session.granted_accounts())
+    finally:
+        session.close()
 
-        granted = session.resolve_granted_account(
-            trader_login=trader_login,
-            require_demo=False,
-            pinned_account_id=pinned_account_id,
+
+def _select_account(accounts, *, symbol: str):
+    expected_last4 = ACCOUNT_MAP_LAST4[symbol]
+    matches = [
+        account
+        for account in accounts
+        if bool(account.is_live) and _last4(account.trader_login) == expected_last4
+    ]
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"fail-closed: {symbol} LIVE mapping expected exactly one trader login ending "
+            f"{expected_last4}; matches={len(matches)}"
         )
-        if not granted.is_live:
-            raise RuntimeError("fail-closed: resolved cTrader account is not LIVE")
-        if int(granted.permission_scope) != SCOPE_VIEW:
-            raise RuntimeError(
-                "fail-closed: LIVE monitor requires cTrader scope=accounts (SCOPE_VIEW); "
-                "trading-scope tokens are rejected"
-            )
+    account = matches[0]
+    if int(account.permission_scope) not in {SCOPE_VIEW, SCOPE_TRADE}:
+        raise RuntimeError(
+            f"fail-closed: unsupported cTrader permission scope {account.permission_scope}"
+        )
+    return account
 
+
+def _snapshot_account(*, client_id: str, client_secret: str, access_token: str, symbol: str, account):
+    session = CTraderOpenApiSession(
+        client_id=client_id,
+        client_secret=client_secret,
+        access_token=access_token,
+        refresh_token=None,
+        account_id=account.ctid_trader_account_id,
+        environment="live",
+        allow_token_refresh=False,
+    )
+    try:
         session.connect()
         trader = session.trader()
         balance = _money(trader.balance, getattr(trader, "moneyDigits", 0))
@@ -91,15 +91,14 @@ def main() -> None:
         positions = tuple(getattr(reconcile, "position", ()))
         pending_orders = tuple(getattr(reconcile, "order", ()))
         equity = balance + unrealized
-
-        payload = {
+        return {
+            "symbol_lane": symbol,
             "state": "LIVE_READ_ONLY_OK",
-            "observed_at": datetime.now(tz=UTC).isoformat(),
             "environment": "live",
-            "broker": granted.broker_title_short,
-            "trader_login_last4": _last4(trader_login),
-            "account_id_last4": _last4(granted.ctid_trader_account_id),
-            "permission_scope": int(granted.permission_scope),
+            "broker": account.broker_title_short,
+            "trader_login_last4": _last4(account.trader_login),
+            "account_id_last4": _last4(account.ctid_trader_account_id),
+            "permission_scope": int(account.permission_scope),
             "balance": round(balance, 2),
             "equity": round(equity, 2),
             "unrealized_pnl": round(unrealized, 2),
@@ -107,9 +106,65 @@ def main() -> None:
             "pending_orders": len(pending_orders),
             "execution_authority": "NONE",
         }
-        print(json.dumps(payload, sort_keys=True))
     finally:
         session.close()
+
+
+def main() -> None:
+    # Deliberately read-only: this module never imports an execution gateway and
+    # never constructs, submits, amends, or cancels broker orders. A token may
+    # carry SCOPE_TRADE, but this monitor only performs account/data requests.
+    client_id = _required("CTRADER_CLIENT_ID")
+    client_secret = _required("CTRADER_CLIENT_SECRET")
+    access_token = _required("CTRADER_ACCESS_TOKEN")
+
+    accounts = _discover_accounts(
+        client_id=client_id,
+        client_secret=client_secret,
+        access_token=access_token,
+    )
+    diagnostic = {
+        "state": "CTRADER_LIVE_GRANTS_DISCOVERED",
+        "observed_at": datetime.now(tz=UTC).isoformat(),
+        "grant_count": len(accounts),
+        "configured_mapping": ACCOUNT_MAP_LAST4,
+        "grants": [
+            {
+                "trader_login_last4": _last4(account.trader_login),
+                "account_id_last4": _last4(account.ctid_trader_account_id),
+                "is_live": bool(account.is_live),
+                "broker": account.broker_title_short,
+                "permission_scope": int(account.permission_scope),
+            }
+            for account in accounts
+        ],
+    }
+    print(json.dumps(diagnostic, sort_keys=True), flush=True)
+
+    snapshots = []
+    for symbol in ("XAUUSD", "EURUSD"):
+        account = _select_account(accounts, symbol=symbol)
+        snapshots.append(
+            _snapshot_account(
+                client_id=client_id,
+                client_secret=client_secret,
+                access_token=access_token,
+                symbol=symbol,
+                account=account,
+            )
+        )
+
+    print(
+        json.dumps(
+            {
+                "state": "LIVE_MULTI_ACCOUNT_READ_ONLY_OK",
+                "observed_at": datetime.now(tz=UTC).isoformat(),
+                "accounts": snapshots,
+                "execution_authority": "NONE",
+            },
+            sort_keys=True,
+        )
+    )
 
 
 if __name__ == "__main__":
