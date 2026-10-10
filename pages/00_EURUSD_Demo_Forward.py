@@ -231,6 +231,8 @@ with setup_tab:
         unsafe_allow_html=True,
     )
 
+    from fx_scanner.frozen_layering_dashboard import render_layering
+    render_layering("EURUSD",eu)
     st.subheader("Entry plan")
     entry = eu.get("entry")
     sl = eu.get("sl")

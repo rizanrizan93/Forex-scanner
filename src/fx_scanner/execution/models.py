@@ -41,10 +41,16 @@ class OrderIntent:
     risk_pct: float
     comment: str = ""
     broker_symbol: str | None = None
+    expires_at: datetime | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "symbol", self.symbol.upper())
         object.__setattr__(self, "created_at", ensure_utc(self.created_at))
+        if self.expires_at is not None:
+            expiry = ensure_utc(self.expires_at)
+            if self.order_type == OrderType.MARKET or expiry <= self.created_at:
+                raise DataContractError("expires_at requires a pending order and future expiry")
+            object.__setattr__(self, "expires_at", expiry)
         if self.broker_symbol is not None:
             broker_symbol = self.broker_symbol.strip()
             if not broker_symbol:

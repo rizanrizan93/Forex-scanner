@@ -1,5 +1,6 @@
 """Frozen XAU DEMO execution with durable, at-most-once child reservations."""
 import os
+from . import frozen_layering as layering
 import math
 from copy import deepcopy
 from dataclasses import replace
@@ -88,7 +89,9 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
     details = {'symbol':SYMBOL,'strategy_id':STRATEGY_ID,'policy_hash':POLICY_HASH,
         'execution_scope':'DEMO_ONLY','live_execution_enabled':False,
         'git_sha':os.getenv('GITHUB_SHA','UNKNOWN'),'state':'WAIT','reason':'NO_FRESH_SIGNAL',
-        'activated_at':state['activated_at'],'accepted_children':0}
+        'activated_at':state['activated_at'],'accepted_children':0,
+        'layering_policy_hash':layering.HASHES[SYMBOL],
+        'layering_configuration':layering.manifest(SYMBOL)['contract']['configuration']}
     try:
         if any(x.get('outcome') is None for x in state.get('attempts',{}).values()):
             state['quarantined']=True
@@ -106,8 +109,11 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
             elif not getattr(p,'stopLoss',0) or not getattr(p,'takeProfit',0):
                 state['quarantined']=True
                 raise RuntimeError('XAU_EXISTING_PROTECTION_MISSING')
+        monitored=layering.monitor(state,durable,session,gateway,SYMBOL,LABEL,int(info.symbolId),now,details,gate=gate)
         if state['quarantined']:
             details.update(state='BLOCKED',reason='UNCERTAIN_ATTEMPT_QUARANTINE')
+            return details
+        if monitored:
             return details
         core = candidate_from_heartbeat(store,now)
         candidate = core.get('candidate')
@@ -147,6 +153,12 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
         margin_child = max(entry/100,broker_margin)
         used_margin = snapshot.equity-snapshot.margin_free if snapshot.margin_free is not None else snapshot.equity
         k = layers(snapshot.balance,snapshot.equity,distance,margin_child,snapshot.margin_free or 0.,used_margin)
+        basket=layering.plan(SYMBOL,balance=snapshot.balance,equity=snapshot.equity,
+            free_margin=snapshot.margin_free or 0.,baseline_children=k,entry=entry,stop=stop,target=target,
+            margin_child=margin_child,spread=float(quote.ask-quote.bid),
+            used_margin=max(0.,snapshot.equity-(snapshot.margin_free or 0.)),now=now,expires_at=candidate['expires_at'])
+        k=basket['initial_children']
+        details['layering']=basket
         details.update(equity=snapshot.equity,balance=snapshot.balance,planned_children=k,
             planned_total_lot=k*.01,entry=entry,sl=stop,tp=target,broker_margin_per_child=broker_margin,
             desired_children=max(1,int(snapshot.balance//100)),expires_at=candidate['expires_at'])
@@ -163,6 +175,7 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
         state['expires_at']=candidate['expires_at']
         state['daily_counts']={day:state['daily_counts'].get(day,0)+1}
         state['attempts']={}
+        state['layering_basket']=basket
         durable.save()
         total_risk,total_margin=0.,0.
         for child in range(k):
@@ -206,11 +219,18 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
                 break
             total_risk+=child_risk; total_margin+=margin_child
             details['accepted_children']+=1
+            basket['initial_accepted']+=1
+            durable.save()
             details.update(state='ORDER_ACCEPTED',reason=receipt.message)
             store.record_order_event(backend='CTRADER',account_id=str(session.account_id),
                 signal_key=signal_id,event_type='DEMO_XAU_FROZEN_CHILD',
                 broker_order_id=receipt.broker_order_id,accepted=True,code=STRATEGY_ID,
                 message=receipt.message,payload={**details,'child_index':child,'child_lot':.01})
+        layering.submit_limits(state=state,durable=durable,session=session,gateway=gateway,store=store,
+            base_policy=base_policy,control=control,gate=gate,symbol=SYMBOL,label=LABEL,
+            symbol_id=int(info.symbolId),at=at,details=details)
+        details['planned_children']=basket['total_children']
+        details['planned_total_lot']=basket['total_children']*.01
         return details
     finally:
         durable.save(release=True)

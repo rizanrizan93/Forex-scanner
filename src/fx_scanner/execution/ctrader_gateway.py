@@ -261,6 +261,13 @@ class CTraderExecutionGateway:
         else:
             raise CollectorUnavailable(f"unsupported cTrader order type: {intent.order_type}")
 
+        if intent.expires_at is not None:
+            if intent.expires_at <= datetime.now(tz=UTC):
+                raise CollectorUnavailable("cTrader pending order expiry already elapsed")
+            # ProtoOATimeInForce.GOOD_TILL_DATE, per installed Open API schema.
+            request.timeInForce = 1
+            request.expirationTimestamp = int(intent.expires_at.timestamp() * 1000)
+
         margin_res = self.session.expected_margin(symbol_id, volume_cents)
         if not getattr(margin_res, "margin", None):
             raise CollectorUnavailable("cTrader expected-margin preflight returned no margin")

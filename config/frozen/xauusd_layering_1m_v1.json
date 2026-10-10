@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "strategy_id": "XAUUSD_LAYERING_1M_FROZEN_V1",
+  "policy_hash": "48ebaaf55e089e06f9f72573a7e6cc1c10805f85f4b5114e0f3a4e33088d6e16",
+  "contract": {
+    "symbol": "XAUUSD",
+    "configuration": {
+      "id": 310303,
+      "max_depth_r": 0.65,
+      "spacing_exponent": 1.0,
+      "equity_capacity_multiplier": 1.5,
+      "stages": 3,
+      "confirmed": false,
+      "add_expiry_minutes": 15,
+      "initial_fraction_of_baseline_children": 0.8,
+      "depth_weight_power": 0.0,
+      "budget": "BASELINE_PLANNED_USD",
+      "closed_dd_10pct_half_budget": false
+    },
+    "child_lot": 0.01,
+    "execution_scope": "DEMO_ONLY",
+    "reference_leverage": 100,
+    "risk_cap": 0.125,
+    "margin_cap": 0.5,
+    "slippage_per_unit": 0.05,
+    "runtime_fill_mode": "BROKER_NATIVE_LIMIT_WITH_SERVER_EXPIRY",
+    "preserve_absolute_sl_tp": true
+  },
+  "evidence": {
+    "period": [
+      "2016-01-01",
+      "2025-12-31"
+    ],
+    "configurations_tested": 1000000,
+    "initial_balance_usd": 100,
+    "baseline": {
+      "ending_balance_usd": 11106.236716427939,
+      "profit_factor": 1.8919020427939148,
+      "max_dd_m1_percent": 45.56637028644209,
+      "max_dd_closed_percent": 42.92706779152609,
+      "trades": 560,
+      "win_rate": 0.37142857142857144,
+      "children": 2583,
+      "baskets_with_adds": 0,
+      "max_planned_risk_percent": 12.482411526833893,
+      "max_margin_percent": 44.95954923236344,
+      "long": 402,
+      "short": 158,
+      "train_2016_2024_balance": 508.20009499996377,
+      "train_dd_percent": 45.56637028644209,
+      "train_pf": 1.17453219546234,
+      "train_trades": 500
+    },
+    "selected_posthoc": {
+      "ending_balance_usd": 15418.40922142761,
+      "profit_factor": 1.9882935727106972,
+      "max_dd_m1_percent": 45.22282613233551,
+      "max_dd_closed_percent": 42.92706779152609,
+      "trades": 560,
+      "win_rate": 0.37142857142857144,
+      "children": 3292,
+      "baskets_with_adds": 64,
+      "max_planned_risk_percent": 12.127377554666522,
+      "max_margin_percent": 48.04032760971069,
+      "long": 402,
+      "short": 158,
+      "train_2016_2024_balance": 563.0813753570924,
+      "train_dd_percent": 45.22282613233551,
+      "train_pf": 1.1858357254465186,
+      "train_trades": 500
+    },
+    "promotion_authority": "User explicitly froze both and requested scanner update 2026-10-10",
+    "limitations": [
+      "History already seen; no untouched holdout",
+      "Not robust across all stresses; historical DD is not a forward loss cap",
+      "Actual broker quotes/margin and conservative reservation can change counts/fills"
+    ]
+  }
+}

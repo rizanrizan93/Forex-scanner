@@ -33,7 +33,9 @@ def render_frozen_core():
         cols = st.columns(3)
         for col, field, label in zip(cols,('entry','sl','tp'),('Entry','SL','TP')):
             col.metric(label,f"{execution[field]:,.2f}")
-    st.caption('Layer 0,01 lot per $100 saldo; dibatasi risiko 12,5% equity dan margin 50%. Satu setup aktif; entry 19:00–23:59 WIB; SL 2,65 ATR / struktur; TP 6,6R.')
+    from .frozen_layering_dashboard import render_layering
+    render_layering('XAUUSD',execution)
+    st.caption('Sinyal frozen H1/M15 tetap; layer mengikuti equity, risiko maksimal 12,5% dan margin 50%. SL/TP basket tidak diperlebar.')
     with st.expander('Konfigurasi beku dan bukti replay 10 tahun',expanded=False):
         st.caption('2016–2025 · modal awal $100 sekali · rata-rata 4,67 setup/bulan pada biaya cautious (layer bukan setup baru).')
         rows=[]

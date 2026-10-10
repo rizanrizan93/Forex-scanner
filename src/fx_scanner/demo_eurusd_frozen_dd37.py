@@ -5,6 +5,7 @@ before crossing the broker boundary; interrupted/uncertain attempts quarantine
 new entries and are never resubmitted blindly.
 """
 import os
+from . import frozen_layering as layering
 from copy import deepcopy
 from dataclasses import asdict, replace
 from datetime import UTC, datetime, timedelta
@@ -81,7 +82,9 @@ def manage_exits(session, positions, now, state):
         opened = pd.Timestamp(int(p.tradeData.openTimestamp),unit='ms',tz='UTC')
         old_cursor = pd.Timestamp(state['cursor'])
         # Server SL/TP stay active; timeout/gap closes only this strategy's EURUSD.
-        timed_out = pd.Timestamp(now)>=opened+pd.Timedelta(minutes=240) or now.hour>=20
+        basket_expiry=(state.get('layering_basket') or {}).get('expires_at')
+        timed_out = (pd.Timestamp(now)>=opened+pd.Timedelta(minutes=240) or now.hour>=20
+            or bool(basket_expiry and pd.Timestamp(now)>=pd.Timestamp(basket_expiry)))
         gap = state.get('gap_detected',False)
         if timed_out or gap:
             status, reason = _close_full_position(session,position_id=int(p.positionId),raw_volume=int(p.tradeData.volume))
@@ -98,7 +101,9 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
     details = {'symbol':SYMBOL,'strategy_id':STRATEGY_ID,'policy_hash':POLICY_HASH,
         'policy':asdict(POLICY),'execution_scope':'DEMO_ONLY','live_execution_enabled':False,
         'git_sha':os.getenv('GITHUB_SHA','UNKNOWN'),'state':'WAIT','reason':'NO_FRESH_SWEEP',
-        'activated_at':state['activated_at'],'accepted_children':0}
+        'activated_at':state['activated_at'],'accepted_children':0,
+        'layering_policy_hash':layering.HASHES[SYMBOL],
+        'layering_configuration':layering.manifest(SYMBOL)['contract']['configuration']}
     try:
         attempts = state.get('attempts',{})
         if any(x.get('outcome') is None for x in attempts.values()):
@@ -121,9 +126,12 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
         details.update(fast_ema_r=state['fast'],slow_ema_r=state['slow'],
             sizing_multiplier=multiplier(state['fast'],state['slow']),last_completed_m1=str(raw.index[-1]))
         durable.save()
+        monitored=layering.monitor(state,durable,session,gateway,SYMBOL,LABEL,int(info.symbolId),now,details,gate=gate)
         at = pd.Timestamp(now).floor('15min')
         if state['quarantined']:
             details.update(state='BLOCKED',reason='UNCERTAIN_ATTEMPT_QUARANTINE')
+            return details
+        if monitored:
             return details
         if at not in feature_frame.index or not (0 <= (pd.Timestamp(now)-at).total_seconds() < 60):
             details['reason']='WAIT_NEXT_M15_OPEN_WINDOW'
@@ -135,8 +143,9 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
         if state.get('last_signal') == candidate['at']:
             details['reason']='SIGNAL_ALREADY_CONSUMED'
             return details
-        positions = matching_positions(session.reconcile(),int(info.symbolId))
-        if positions or any(o.tradeData.symbolId==info.symbolId for o in session.reconcile().order):
+        exposure=session.reconcile()
+        positions = matching_positions(exposure,int(info.symbolId))
+        if exposure.position or exposure.order:
             details['reason']='EURUSD_BASKET_OR_EXTERNAL_ORDER_ACTIVE'
             return details
         gate.assert_orders_allowed('AUTO')
@@ -157,6 +166,13 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
         margin_child = max(entry*10,broker_margin)
         k = layers(snapshot.equity,entry,distance,state['fast'],state['slow'],
             margin_per_child=margin_child,free_margin=snapshot.margin_free)
+        basket=layering.plan(SYMBOL,balance=snapshot.balance,equity=snapshot.equity,
+            free_margin=snapshot.margin_free or 0.,baseline_children=k,entry=entry,stop=stop,target=target,
+            margin_child=margin_child,spread=float(quote.ask-quote.bid),
+            used_margin=max(0.,snapshot.equity-(snapshot.margin_free or 0.)),scale=multiplier(state['fast'],state['slow']),
+            now=now,expires_at=(at+pd.Timedelta(minutes=240)).isoformat())
+        k=basket['initial_children']
+        details['layering']=basket
         details.update(equity=snapshot.equity,balance=snapshot.balance,planned_children=k,
             planned_total_lot=k*.01,entry=entry,sl=stop,tp=target,broker_margin_per_child=broker_margin)
         if k<1:
@@ -172,6 +188,7 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
             audit_sink=SupabaseOrderAuditSink(store))
         state['last_signal']=candidate['at']
         state['attempts']={}
+        state['layering_basket']=basket
         durable.save()
         total_risk, total_margin = 0.,0.
         for child in range(k):
@@ -183,7 +200,7 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
                 details['reason']='CHILD_BATCH_QUOTE_DRIFT_OR_SPREAD'
                 break
             child_risk = 1000*(abs(live-stop)+POLICY.virtual_slip)
-            if total_risk+child_risk>snapshot.equity*POLICY.risk*scale+1e-8 or total_margin+margin_child>snapshot.equity*POLICY.margin*scale+1e-8:
+            if total_risk+child_risk>min(snapshot.equity,current.equity)*POLICY.risk*scale+1e-8 or total_margin+margin_child>min(snapshot.equity,current.equity)*POLICY.margin*scale+1e-8:
                 details['reason']='CHILD_BATCH_BUDGET_LIMIT'
                 break
             if current.margin_free is None or current.margin_free < margin_child:
@@ -209,11 +226,18 @@ def cycle(store, gateway, session, base_policy, control, gate, now):
                 break
             total_risk+=child_risk;total_margin+=margin_child
             details['accepted_children']+=1
+            basket['initial_accepted']+=1
+            durable.save()
             details.update(state='ORDER_ACCEPTED',reason=receipt.message)
             store.record_order_event(backend='CTRADER',account_id=str(session.account_id),
                 signal_key=signal_id,event_type='DEMO_EURUSD_FROZEN_CHILD',
                 broker_order_id=receipt.broker_order_id,accepted=True,code=STRATEGY_ID,
                 message=receipt.message,payload={**details,'child_index':child,'child_lot':.01})
+        layering.submit_limits(state=state,durable=durable,session=session,gateway=gateway,store=store,
+            base_policy=base_policy,control=control,gate=gate,symbol=SYMBOL,label=LABEL,
+            symbol_id=int(info.symbolId),at=at,details=details)
+        details['planned_children']=basket['total_children']
+        details['planned_total_lot']=basket['total_children']*.01
         return details
     finally:
         durable.save(release=True)

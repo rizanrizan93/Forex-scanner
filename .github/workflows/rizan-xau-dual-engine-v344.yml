@@ -7,6 +7,11 @@ on:
     paths:
       - "src/fx_scanner/xau_frozen_dd50*.py"
       - "src/fx_scanner/demo_xau_frozen_dd50.py"
+      - "src/fx_scanner/frozen_layering*.py"
+      - "config/frozen/*_layering_1m_v1.json"
+      - "tests/test_frozen_layering.py"
+      - "src/fx_scanner/execution/models.py"
+      - "src/fx_scanner/execution/ctrader_gateway.py"
       - "config/frozen/xauusd_buysell_dd50_v1.json"
       - "tests/test_xau_frozen_dd50.py"
       - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
@@ -35,6 +40,11 @@ on:
     paths:
       - "src/fx_scanner/xau_frozen_dd50*.py"
       - "src/fx_scanner/demo_xau_frozen_dd50.py"
+      - "src/fx_scanner/frozen_layering*.py"
+      - "config/frozen/*_layering_1m_v1.json"
+      - "tests/test_frozen_layering.py"
+      - "src/fx_scanner/execution/models.py"
+      - "src/fx_scanner/execution/ctrader_gateway.py"
       - "config/frozen/xauusd_buysell_dd50_v1.json"
       - "tests/test_xau_frozen_dd50.py"
       - "src/fx_scanner/xau_sd_liquidity_engine_v342.py"
@@ -130,7 +140,7 @@ jobs:
       - name: Run V375 reversal-entry regressions plus V377 event semantics
         run: |
           pytest -q \
-            tests/test_xau_frozen_dd50.py \
+            tests/test_xau_frozen_dd50.py tests/test_frozen_layering.py \
             tests/test_xau_sd_liquidity_engine_v342.py \
             tests/test_xau_friend_entry_engine_v343.py \
             tests/test_xau_news_zone_v346.py \
