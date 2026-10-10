@@ -21,6 +21,11 @@ def _money(value: int | float, digits: int | None) -> float:
     return float(value) / (10 ** int(digits or 0))
 
 
+def _last4(value: int | str) -> str:
+    text = str(value or "")
+    return text[-4:] if text else ""
+
+
 def main() -> None:
     # Deliberately read-only: this module never imports an execution gateway and
     # never constructs, submits, amends, or cancels broker orders.
@@ -41,6 +46,25 @@ def main() -> None:
         allow_token_refresh=False,
     )
     try:
+        accounts = session.granted_accounts()
+        diagnostic = {
+            "state": "CTRADER_GRANTS_DISCOVERED",
+            "configured_trader_login_last4": _last4(trader_login),
+            "configured_account_id_last4": _last4(pinned_account_id) if pinned_account_id else "",
+            "grant_count": len(accounts),
+            "grants": [
+                {
+                    "trader_login_last4": _last4(account.trader_login),
+                    "account_id_last4": _last4(account.ctid_trader_account_id),
+                    "is_live": bool(account.is_live),
+                    "broker": account.broker_title_short,
+                    "permission_scope": int(account.permission_scope),
+                }
+                for account in accounts
+            ],
+        }
+        print(json.dumps(diagnostic, sort_keys=True), flush=True)
+
         granted = session.resolve_granted_account(
             trader_login=trader_login,
             require_demo=False,
@@ -73,8 +97,8 @@ def main() -> None:
             "observed_at": datetime.now(tz=UTC).isoformat(),
             "environment": "live",
             "broker": granted.broker_title_short,
-            "trader_login_last4": str(trader_login)[-4:],
-            "account_id_last4": str(granted.ctid_trader_account_id)[-4:],
+            "trader_login_last4": _last4(trader_login),
+            "account_id_last4": _last4(granted.ctid_trader_account_id),
             "permission_scope": int(granted.permission_scope),
             "balance": round(balance, 2),
             "equity": round(equity, 2),
