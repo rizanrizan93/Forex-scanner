@@ -1,0 +1,104 @@
+{
+  "configuration_count_per_symbol": 100000,
+  "symbol_account_replays": 200000,
+  "matrix_schema_columns": [
+    "balance",
+    "pf",
+    "m1_dd_percent",
+    "closed_dd_percent",
+    "trades",
+    "wins",
+    "children",
+    "baskets_with_adds",
+    "max_planned_risk_pct",
+    "max_margin_pct",
+    "long",
+    "short",
+    "train_balance",
+    "train_dd_percent",
+    "train_pf",
+    "train_trades"
+  ],
+  "annual_prefix_columns": [
+    "balance",
+    "m1_dd_fraction",
+    "gross_gain",
+    "gross_loss",
+    "trades"
+  ],
+  "files": [
+    {
+      "file": "requirements-layering-research.txt",
+      "bytes": 93,
+      "sha256": "b427c720bf143be4f3638df23652520f609a398da19eaa76c44af21727edf4e5"
+    },
+    {
+      "file": "src/fx_scanner/layering_grid.py",
+      "bytes": 10409,
+      "sha256": "d62c1942d77a0f991b2c9e60b7a0a2629f2527307b856021817159dc33a40a5f"
+    },
+    {
+      "file": "scripts/research_layering_100k.py",
+      "bytes": 18194,
+      "sha256": "c9a5ae72f955c70560e4c411c3d54ea90a0cd04f4d8563245db232e54d52903e"
+    },
+    {
+      "file": "scripts/validate_layering_100k.py",
+      "bytes": 11956,
+      "sha256": "8af9a7d4e0cc8ace31290e5fe7a5b4bf2134b948d5ce9988cc80ef6e4487e508"
+    },
+    {
+      "file": "tests/test_layering_grid.py",
+      "bytes": 4530,
+      "sha256": "a359199367ccf2a5b2832ed9545ccbf7250be1646615a0bf86f2ff1b0a145262"
+    },
+    {
+      "file": "research/reports/LAYERING_100K_REPRODUCE.md",
+      "bytes": 4937,
+      "sha256": "c2aa31701ba0133eae707c849e93e39b6929d3393bb36da15fadd322dbd633cc"
+    },
+    {
+      "file": "research/reports/RIZAN_LAYERING_100K_REPORT.md",
+      "bytes": 14778,
+      "sha256": "b03cc8db29fa3caac8f467a3db31663787b4ee1d28c5ed931aa769f13dff969a"
+    },
+    {
+      "file": "research/results/layering_100k_xauusd.json",
+      "bytes": 151140,
+      "sha256": "3f72135b27ff99606033fe73bcb61d64f1b5d901d3a95c8368a6e90af6576f9e"
+    },
+    {
+      "file": "research/results/layering_100k_xauusd.npz",
+      "bytes": 5374970,
+      "sha256": "83587ae111130edc0d18bf52216186488317f36f50111459467e529b9e8693cc"
+    },
+    {
+      "file": "research/results/layering_100k_xauusd_validation.json",
+      "bytes": 154927,
+      "sha256": "7b1ef3ec8db635c191a3c60ace1d9fb2bcc25de52e048e5b8d0aa7296291e08a"
+    },
+    {
+      "file": "research/results/layering_100k_eurusd.json",
+      "bytes": 22949,
+      "sha256": "68feb75234e4a0908a41e216d4ff356c716dcf168fc1783b9bf07e94c7ac5319"
+    },
+    {
+      "file": "research/results/layering_100k_eurusd.npz",
+      "bytes": 17016669,
+      "sha256": "fba573da60394437071de863af85842e49e21bcee2a33fe124bfa7f560596892"
+    },
+    {
+      "file": "research/results/layering_100k_eurusd_validation.json",
+      "bytes": 78595,
+      "sha256": "ee34c165abdd6dc401c3ea6e2a443254ec7e5f5e4fdcc8651ac34b2adf738f65"
+    }
+  ],
+  "evidence_archive": "RIZAN_LAYERING_100K_EVIDENCE.zip",
+  "matrices_storage": "Evidence archive; binary matrices are not added to git",
+  "tests_passed": 2178,
+  "provenance_library_files": [
+    "libfile_a6a7ec3220188191986ccaed350acf15",
+    "libfile_36dccec8e138819195d815f9a12da6cd",
+    "libfile_7783af1e1d148191aca0c787cb497982"
+  ]
+}

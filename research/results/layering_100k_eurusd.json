@@ -1,0 +1,683 @@
+{
+  "symbol": "EURUSD",
+  "configurations_tested": 100000,
+  "period": [
+    "2016-01-01",
+    "2025-12-31"
+  ],
+  "baseline": {
+    "ending_balance_usd": 11820.225714285078,
+    "profit_factor": 2.21114140054485,
+    "max_dd_m1_percent": 37.07720723395633,
+    "max_dd_closed_percent": 34.66054462691077,
+    "trades": 204,
+    "win_rate": 0.5294117647058824,
+    "children": 20570,
+    "baskets_with_adds": 0,
+    "max_planned_risk_percent": 25.873266342902784,
+    "max_margin_percent": 59.985510354014146,
+    "long": 114,
+    "short": 90,
+    "train_2016_2024_balance": 6927.017142856678,
+    "train_dd_percent": 37.07720723395633,
+    "train_pf": 2.107396240808187,
+    "train_trades": 173
+  },
+  "source_files": [
+    {
+      "file": "EURUSD_2016.parquet",
+      "sha256": "649bba3fa098b1ae00120f44f89dc5e6ca537ebaad23a137189b2e1ae2b631f5"
+    },
+    {
+      "file": "EURUSD_2017.parquet",
+      "sha256": "511733ed342cabe870ecb31ab3b09c82598364bca5a2816a78745978aece16a4"
+    },
+    {
+      "file": "EURUSD_2018.parquet",
+      "sha256": "6ae642584f43d5ac4258618665b74f790d4d7a09e4dbdba981c6385becf725be"
+    },
+    {
+      "file": "EURUSD_2019.parquet",
+      "sha256": "bb7f012675f109f72334048585c6982c958e99b588140e84f1d9337f8756cc24"
+    },
+    {
+      "file": "EURUSD_2020.parquet",
+      "sha256": "716a81fd7afab12385dc37d113efbd7a3a26abc3527ad242839df9bb905c02e5"
+    },
+    {
+      "file": "EURUSD_2021.parquet",
+      "sha256": "da476f174d3d459908ecbbeb4225727769ee1101460499e679b35b33baa9ce1f"
+    },
+    {
+      "file": "EURUSD_2022.parquet",
+      "sha256": "a77bfbe22abaef6d41d36c18f5cd5409eaf1cdce1dcee31071ebfbef1d9a701b"
+    },
+    {
+      "file": "EURUSD_2023.parquet",
+      "sha256": "71d26b010cc1ac8bac69f2e24478fb63e5e4ea8295f5fc83a90b4f801fe86a6d"
+    },
+    {
+      "file": "EURUSD_2024.parquet",
+      "sha256": "3ebfd405001c8292ec63bcf88d770677e2ec1299e0c3cc34411fd734c469fee0"
+    },
+    {
+      "file": "EURUSD_2025.parquet",
+      "sha256": "04e52e9e91d72dce662beec4b36d71182b2316ff4e4967524c578f23878f97d6"
+    }
+  ],
+  "production_status": "RESEARCH_ONLY",
+  "selection": "TRAIN 2016\u20132024 lower M1 DD + higher balance, PF>=95% and trades>=75%; train DD then train balance, dedup identical annual prefix metrics",
+  "train_qualifying_parameter_sets": 145,
+  "full_sample_joint_improvement_parameter_sets": 150,
+  "shortlist": [
+    {
+      "configuration": {
+        "id": 80582,
+        "max_depth_r": 0.8166666666666667,
+        "stages": 2,
+        "confirmed": false,
+        "add_expiry_minutes": 120,
+        "initial_fraction_of_baseline_children": 1.0,
+        "depth_weight_power": 0.0,
+        "budget": "FROZEN_RISK_CAP",
+        "closed_dd_10pct_half_budget": false
+      },
+      "metrics": {
+        "ending_balance_usd": 11827.104964285078,
+        "profit_factor": 2.2121603368448026,
+        "max_dd_m1_percent": 37.03094843768939,
+        "max_dd_closed_percent": 34.614662885361724,
+        "trades": 204,
+        "win_rate": 0.5294117647058824,
+        "children": 20576,
+        "baskets_with_adds": 1,
+        "max_planned_risk_percent": 25.84919773701589,
+        "max_margin_percent": 59.969948765835234,
+        "long": 114,
+        "short": 90,
+        "train_2016_2024_balance": 6933.896392856678,
+        "train_dd_percent": 37.03094843768939,
+        "train_pf": 2.108954482469184,
+        "train_trades": 173
+      }
+    },
+    {
+      "configuration": {
+        "id": 70482,
+        "max_depth_r": 0.7333333333333333,
+        "stages": 2,
+        "confirmed": false,
+        "add_expiry_minutes": 90,
+        "initial_fraction_of_baseline_children": 1.0,
+        "depth_weight_power": 0.0,
+        "budget": "FROZEN_RISK_CAP",
+        "closed_dd_10pct_half_budget": false
+      },
+      "metrics": {
+        "ending_balance_usd": 11826.66728571365,
+        "profit_factor": 2.2120602627903363,
+        "max_dd_m1_percent": 37.03345620452122,
+        "max_dd_closed_percent": 34.617049831561424,
+        "trades": 204,
+        "win_rate": 0.5294117647058824,
+        "children": 20576,
+        "baskets_with_adds": 1,
+        "max_planned_risk_percent": 25.853141211431424,
+        "max_margin_percent": 59.977894909654786,
+        "long": 114,
+        "short": 90,
+        "train_2016_2024_balance": 6933.45871428525,
+        "train_dd_percent": 37.03345620452122,
+        "train_pf": 2.108804708279981,
+        "train_trades": 173
+      }
+    },
+    {
+      "configuration": {
+        "id": 90582,
+        "max_depth_r": 0.9,
+        "stages": 2,
+        "confirmed": false,
+        "add_expiry_minutes": 120,
+        "initial_fraction_of_baseline_children": 1.0,
+        "depth_weight_power": 0.0,
+        "budget": "FROZEN_RISK_CAP",
+        "closed_dd_10pct_half_budget": false
+      },
+      "metrics": {
+        "ending_balance_usd": 11824.64978571365,
+        "profit_factor": 2.2117631231239363,
+        "max_dd_m1_percent": 37.07644418928593,
+        "max_dd_closed_percent": 34.66115603552927,
+        "trades": 204,
+        "win_rate": 0.5294117647058824,
+        "children": 20575,
+        "baskets_with_adds": 1,
+        "max_planned_risk_percent": 25.8452554654421,
+        "max_margin_percent": 59.962004727219195,
+        "long": 114,
+        "short": 90,
+        "train_2016_2024_balance": 6931.44121428525,
+        "train_dd_percent": 37.07644418928593,
+        "train_pf": 2.108350108145509,
+        "train_trades": 173
+      }
+    }
+  ],
+  "full_sample_best_joint_diagnostic": {
+    "configuration": {
+      "id": 12946,
+      "max_depth_r": 0.23333333333333334,
+      "stages": 3,
+      "confirmed": false,
+      "add_expiry_minutes": 240,
+      "initial_fraction_of_baseline_children": 0.6,
+      "depth_weight_power": 0.5,
+      "budget": "FROZEN_RISK_CAP",
+      "closed_dd_10pct_half_budget": false
+    },
+    "metrics": {
+      "ending_balance_usd": 11847.494023808376,
+      "profit_factor": 2.388227254600885,
+      "max_dd_m1_percent": 35.15358592939768,
+      "max_dd_closed_percent": 33.21328651725018,
+      "trades": 204,
+      "win_rate": 0.5490196078431373,
+      "children": 18942,
+      "baskets_with_adds": 181,
+      "max_planned_risk_percent": 23.308499275869515,
+      "max_margin_percent": 59.81032804239086,
+      "long": 114,
+      "short": 90,
+      "train_2016_2024_balance": 6811.69070238012,
+      "train_dd_percent": 35.15358592939768,
+      "train_pf": 2.280846865979185,
+      "train_trades": 173
+    },
+    "scope": "POSTHOC_DIAGNOSTIC_NOT_MODEL_SELECTION"
+  },
+  "walk_forward": [
+    {
+      "test_year": 2019,
+      "configuration": {
+        "id": 96630,
+        "max_depth_r": 0.9,
+        "stages": 5,
+        "confirmed": false,
+        "add_expiry_minutes": 150,
+        "initial_fraction_of_baseline_children": 0.4,
+        "depth_weight_power": 1.0,
+        "budget": "FROZEN_RISK_CAP",
+        "closed_dd_10pct_half_budget": false
+      },
+      "common_initial_balance_usd": 158.58357142856187,
+      "candidate": {
+        "ending_balance_usd": 305.41264285711196,
+        "profit_factor": 2.866138855109573,
+        "max_dd_m1_percent": 18.798194326602765,
+        "max_dd_closed_percent": 16.188917601631083,
+        "trades": 19,
+        "win_rate": 0.5789473684210527,
+        "children": 168,
+        "baskets_with_adds": 11,
+        "max_planned_risk_percent": 8.886084586376201,
+        "max_margin_percent": 59.243675092156565,
+        "long": 11,
+        "short": 8,
+        "train_2016_2024_balance": 305.41264285711196,
+        "train_dd_percent": 18.798194326602765,
+        "train_pf": 2.866138855109573,
+        "train_trades": 19
+      },
+      "baseline": {
+        "ending_balance_usd": 433.68785714282717,
+        "profit_factor": 2.920774402042463,
+        "max_dd_m1_percent": 21.29979024414569,
+        "max_dd_closed_percent": 18.220272533867217,
+        "trades": 19,
+        "win_rate": 0.5789473684210527,
+        "children": 272,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 11.743187000309646,
+        "max_margin_percent": 59.68932600521023,
+        "long": 11,
+        "short": 8,
+        "train_2016_2024_balance": 433.68785714282717,
+        "train_dd_percent": 21.29979024414569,
+        "train_pf": 2.920774402042463,
+        "train_trades": 19
+      }
+    },
+    {
+      "test_year": 2020,
+      "configuration": {
+        "id": 100000,
+        "name": "FROZEN_BASELINE"
+      },
+      "common_initial_balance_usd": 433.68785714282717,
+      "candidate": {
+        "ending_balance_usd": 815.6985714285245,
+        "profit_factor": 3.60634902069682,
+        "max_dd_m1_percent": 18.655763494464704,
+        "max_dd_closed_percent": 12.31781567631442,
+        "trades": 18,
+        "win_rate": 0.6666666666666666,
+        "children": 412,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 19.10187005522052,
+        "max_margin_percent": 59.87924864856975,
+        "long": 8,
+        "short": 10,
+        "train_2016_2024_balance": 815.6985714285245,
+        "train_dd_percent": 18.655763494464704,
+        "train_pf": 3.60634902069682,
+        "train_trades": 18
+      },
+      "baseline": {
+        "ending_balance_usd": 815.6985714285245,
+        "profit_factor": 3.60634902069682,
+        "max_dd_m1_percent": 18.655763494464704,
+        "max_dd_closed_percent": 12.31781567631442,
+        "trades": 18,
+        "win_rate": 0.6666666666666666,
+        "children": 412,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 19.10187005522052,
+        "max_margin_percent": 59.87924864856975,
+        "long": 8,
+        "short": 10,
+        "train_2016_2024_balance": 815.6985714285245,
+        "train_dd_percent": 18.655763494464704,
+        "train_pf": 3.60634902069682,
+        "train_trades": 18
+      }
+    },
+    {
+      "test_year": 2021,
+      "configuration": {
+        "id": 100000,
+        "name": "FROZEN_BASELINE"
+      },
+      "common_initial_balance_usd": 815.6985714285245,
+      "candidate": {
+        "ending_balance_usd": 981.5342857141878,
+        "profit_factor": 1.2392479101745184,
+        "max_dd_m1_percent": 30.07677496306037,
+        "max_dd_closed_percent": 26.19884422866558,
+        "trades": 22,
+        "win_rate": 0.5454545454545454,
+        "children": 1120,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 16.876062880106694,
+        "max_margin_percent": 59.84736987193795,
+        "long": 14,
+        "short": 8,
+        "train_2016_2024_balance": 981.5342857141878,
+        "train_dd_percent": 30.07677496306037,
+        "train_pf": 1.2392479101745184,
+        "train_trades": 22
+      },
+      "baseline": {
+        "ending_balance_usd": 981.5342857141878,
+        "profit_factor": 1.2392479101745184,
+        "max_dd_m1_percent": 30.07677496306037,
+        "max_dd_closed_percent": 26.19884422866558,
+        "trades": 22,
+        "win_rate": 0.5454545454545454,
+        "children": 1120,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 16.876062880106694,
+        "max_margin_percent": 59.84736987193795,
+        "long": 14,
+        "short": 8,
+        "train_2016_2024_balance": 981.5342857141878,
+        "train_dd_percent": 30.07677496306037,
+        "train_pf": 1.2392479101745184,
+        "train_trades": 22
+      }
+    },
+    {
+      "test_year": 2022,
+      "configuration": {
+        "id": 100000,
+        "name": "FROZEN_BASELINE"
+      },
+      "common_initial_balance_usd": 981.5342857141878,
+      "candidate": {
+        "ending_balance_usd": 3158.7507142856407,
+        "profit_factor": 3.6483526986132815,
+        "max_dd_m1_percent": 35.34141513812254,
+        "max_dd_closed_percent": 12.752164339347145,
+        "trades": 20,
+        "win_rate": 0.65,
+        "children": 1812,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 25.873266342902784,
+        "max_margin_percent": 59.985510354014146,
+        "long": 11,
+        "short": 9,
+        "train_2016_2024_balance": 3158.7507142856407,
+        "train_dd_percent": 35.34141513812254,
+        "train_pf": 3.6483526986132815,
+        "train_trades": 20
+      },
+      "baseline": {
+        "ending_balance_usd": 3158.7507142856407,
+        "profit_factor": 3.6483526986132815,
+        "max_dd_m1_percent": 35.34141513812254,
+        "max_dd_closed_percent": 12.752164339347145,
+        "trades": 20,
+        "win_rate": 0.65,
+        "children": 1812,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 25.873266342902784,
+        "max_margin_percent": 59.985510354014146,
+        "long": 11,
+        "short": 9,
+        "train_2016_2024_balance": 3158.7507142856407,
+        "train_dd_percent": 35.34141513812254,
+        "train_pf": 3.6483526986132815,
+        "train_trades": 20
+      }
+    },
+    {
+      "test_year": 2023,
+      "configuration": {
+        "id": 100000,
+        "name": "FROZEN_BASELINE"
+      },
+      "common_initial_balance_usd": 3158.7507142856407,
+      "candidate": {
+        "ending_balance_usd": 5081.374999999701,
+        "profit_factor": 1.9786311175486408,
+        "max_dd_m1_percent": 31.4179517438984,
+        "max_dd_closed_percent": 23.304034775026945,
+        "trades": 26,
+        "win_rate": 0.5,
+        "children": 4066,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 17.926987430244473,
+        "max_margin_percent": 59.886413050730525,
+        "long": 14,
+        "short": 12,
+        "train_2016_2024_balance": 5081.374999999701,
+        "train_dd_percent": 31.4179517438984,
+        "train_pf": 1.9786311175486408,
+        "train_trades": 26
+      },
+      "baseline": {
+        "ending_balance_usd": 5081.374999999701,
+        "profit_factor": 1.9786311175486408,
+        "max_dd_m1_percent": 31.4179517438984,
+        "max_dd_closed_percent": 23.304034775026945,
+        "trades": 26,
+        "win_rate": 0.5,
+        "children": 4066,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 17.926987430244473,
+        "max_margin_percent": 59.886413050730525,
+        "long": 14,
+        "short": 12,
+        "train_2016_2024_balance": 5081.374999999701,
+        "train_dd_percent": 31.4179517438984,
+        "train_pf": 1.9786311175486408,
+        "train_trades": 26
+      }
+    },
+    {
+      "test_year": 2024,
+      "configuration": {
+        "id": 100000,
+        "name": "FROZEN_BASELINE"
+      },
+      "common_initial_balance_usd": 5081.374999999701,
+      "candidate": {
+        "ending_balance_usd": 6927.017142856678,
+        "profit_factor": 1.8293537881026485,
+        "max_dd_m1_percent": 20.78963957337007,
+        "max_dd_closed_percent": 18.421195050553134,
+        "trades": 36,
+        "win_rate": 0.4444444444444444,
+        "children": 5826,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 11.285489259354241,
+        "max_margin_percent": 59.55576294810228,
+        "long": 19,
+        "short": 17,
+        "train_2016_2024_balance": 6927.017142856678,
+        "train_dd_percent": 20.78963957337007,
+        "train_pf": 1.8293537881026485,
+        "train_trades": 36
+      },
+      "baseline": {
+        "ending_balance_usd": 6927.017142856678,
+        "profit_factor": 1.8293537881026485,
+        "max_dd_m1_percent": 20.78963957337007,
+        "max_dd_closed_percent": 18.421195050553134,
+        "trades": 36,
+        "win_rate": 0.4444444444444444,
+        "children": 5826,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 11.285489259354241,
+        "max_margin_percent": 59.55576294810228,
+        "long": 19,
+        "short": 17,
+        "train_2016_2024_balance": 6927.017142856678,
+        "train_dd_percent": 20.78963957337007,
+        "train_pf": 1.8293537881026485,
+        "train_trades": 36
+      }
+    },
+    {
+      "test_year": 2025,
+      "configuration": {
+        "id": 80582,
+        "max_depth_r": 0.8166666666666667,
+        "stages": 2,
+        "confirmed": false,
+        "add_expiry_minutes": 120,
+        "initial_fraction_of_baseline_children": 1.0,
+        "depth_weight_power": 0.0,
+        "budget": "FROZEN_RISK_CAP",
+        "closed_dd_10pct_half_budget": false
+      },
+      "common_initial_balance_usd": 6927.017142856678,
+      "candidate": {
+        "ending_balance_usd": 11820.225714285078,
+        "profit_factor": 2.3932503192041663,
+        "max_dd_m1_percent": 18.982251823190293,
+        "max_dd_closed_percent": 9.322337364201944,
+        "trades": 31,
+        "win_rate": 0.5161290322580645,
+        "children": 6864,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 11.98475265835719,
+        "max_margin_percent": 42.41856173808051,
+        "long": 20,
+        "short": 11,
+        "train_2016_2024_balance": 6927.017142856678,
+        "train_dd_percent": 0.0,
+        "train_pf": 0.0,
+        "train_trades": 0
+      },
+      "baseline": {
+        "ending_balance_usd": 11820.225714285078,
+        "profit_factor": 2.3932503192041663,
+        "max_dd_m1_percent": 18.982251823190293,
+        "max_dd_closed_percent": 9.322337364201944,
+        "trades": 31,
+        "win_rate": 0.5161290322580645,
+        "children": 6864,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 11.984752658357598,
+        "max_margin_percent": 42.41856173808051,
+        "long": 20,
+        "short": 11,
+        "train_2016_2024_balance": 6927.017142856678,
+        "train_dd_percent": 0.0,
+        "train_pf": 0.0,
+        "train_trades": 0
+      }
+    }
+  ],
+  "oos_2025": [
+    {
+      "configuration": {
+        "id": 80582,
+        "max_depth_r": 0.8166666666666667,
+        "stages": 2,
+        "confirmed": false,
+        "add_expiry_minutes": 120,
+        "initial_fraction_of_baseline_children": 1.0,
+        "depth_weight_power": 0.0,
+        "budget": "FROZEN_RISK_CAP",
+        "closed_dd_10pct_half_budget": false
+      },
+      "common_initial_balance_usd": 6927.017142856678,
+      "candidate": {
+        "ending_balance_usd": 11820.225714285078,
+        "profit_factor": 2.3932503192041663,
+        "max_dd_m1_percent": 18.982251823190293,
+        "max_dd_closed_percent": 9.322337364201944,
+        "trades": 31,
+        "win_rate": 0.5161290322580645,
+        "children": 6864,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 11.98475265835719,
+        "max_margin_percent": 42.41856173808051,
+        "long": 20,
+        "short": 11,
+        "train_2016_2024_balance": 6927.017142856678,
+        "train_dd_percent": 0.0,
+        "train_pf": 0.0,
+        "train_trades": 0
+      },
+      "baseline": {
+        "ending_balance_usd": 11820.225714285078,
+        "profit_factor": 2.3932503192041663,
+        "max_dd_m1_percent": 18.982251823190293,
+        "max_dd_closed_percent": 9.322337364201944,
+        "trades": 31,
+        "win_rate": 0.5161290322580645,
+        "children": 6864,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 11.984752658357598,
+        "max_margin_percent": 42.41856173808051,
+        "long": 20,
+        "short": 11,
+        "train_2016_2024_balance": 6927.017142856678,
+        "train_dd_percent": 0.0,
+        "train_pf": 0.0,
+        "train_trades": 0
+      }
+    },
+    {
+      "configuration": {
+        "id": 70482,
+        "max_depth_r": 0.7333333333333333,
+        "stages": 2,
+        "confirmed": false,
+        "add_expiry_minutes": 90,
+        "initial_fraction_of_baseline_children": 1.0,
+        "depth_weight_power": 0.0,
+        "budget": "FROZEN_RISK_CAP",
+        "closed_dd_10pct_half_budget": false
+      },
+      "common_initial_balance_usd": 6927.017142856678,
+      "candidate": {
+        "ending_balance_usd": 11820.225714285078,
+        "profit_factor": 2.3932503192041663,
+        "max_dd_m1_percent": 18.982251823190293,
+        "max_dd_closed_percent": 9.322337364201944,
+        "trades": 31,
+        "win_rate": 0.5161290322580645,
+        "children": 6864,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 11.98475265835719,
+        "max_margin_percent": 42.41856173808051,
+        "long": 20,
+        "short": 11,
+        "train_2016_2024_balance": 6927.017142856678,
+        "train_dd_percent": 0.0,
+        "train_pf": 0.0,
+        "train_trades": 0
+      },
+      "baseline": {
+        "ending_balance_usd": 11820.225714285078,
+        "profit_factor": 2.3932503192041663,
+        "max_dd_m1_percent": 18.982251823190293,
+        "max_dd_closed_percent": 9.322337364201944,
+        "trades": 31,
+        "win_rate": 0.5161290322580645,
+        "children": 6864,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 11.984752658357598,
+        "max_margin_percent": 42.41856173808051,
+        "long": 20,
+        "short": 11,
+        "train_2016_2024_balance": 6927.017142856678,
+        "train_dd_percent": 0.0,
+        "train_pf": 0.0,
+        "train_trades": 0
+      }
+    },
+    {
+      "configuration": {
+        "id": 90582,
+        "max_depth_r": 0.9,
+        "stages": 2,
+        "confirmed": false,
+        "add_expiry_minutes": 120,
+        "initial_fraction_of_baseline_children": 1.0,
+        "depth_weight_power": 0.0,
+        "budget": "FROZEN_RISK_CAP",
+        "closed_dd_10pct_half_budget": false
+      },
+      "common_initial_balance_usd": 6927.017142856678,
+      "candidate": {
+        "ending_balance_usd": 11820.225714285078,
+        "profit_factor": 2.3932503192041663,
+        "max_dd_m1_percent": 18.982251823190293,
+        "max_dd_closed_percent": 9.322337364201944,
+        "trades": 31,
+        "win_rate": 0.5161290322580645,
+        "children": 6864,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 11.98475265835719,
+        "max_margin_percent": 42.41856173808051,
+        "long": 20,
+        "short": 11,
+        "train_2016_2024_balance": 6927.017142856678,
+        "train_dd_percent": 0.0,
+        "train_pf": 0.0,
+        "train_trades": 0
+      },
+      "baseline": {
+        "ending_balance_usd": 11820.225714285078,
+        "profit_factor": 2.3932503192041663,
+        "max_dd_m1_percent": 18.982251823190293,
+        "max_dd_closed_percent": 9.322337364201944,
+        "trades": 31,
+        "win_rate": 0.5161290322580645,
+        "children": 6864,
+        "baskets_with_adds": 0,
+        "max_planned_risk_percent": 11.984752658357598,
+        "max_margin_percent": 42.41856173808051,
+        "long": 20,
+        "short": 11,
+        "train_2016_2024_balance": 6927.017142856678,
+        "train_dd_percent": 0.0,
+        "train_pf": 0.0,
+        "train_trades": 0
+      }
+    }
+  ],
+  "elapsed_grid_seconds": 4.6467143009999745,
+  "limitations": [
+    "History already observed; 2025 is retrospective temporal validation, not blinded fresh OOS",
+    "Synthetic frozen spreads, slippage, carry and reference leverage; no historical broker ASK",
+    "Limit one stage attempt per fresh reversal, including zero-size attempts",
+    "EUR aggregate floating-equity OHLC bound; XAU frozen adverse-then-close marker",
+    "Risk degear changes basket budget downward only; never widens frozen risk/margin/SL/TP"
+  ]
+}
