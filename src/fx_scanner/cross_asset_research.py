@@ -437,7 +437,11 @@ def load_directory(directory):
         result = pd.concat(parts).sort_index()
         if result.index.has_duplicates:
             raise ValueError(f"OVERLAPPING_SOURCE_FILES:{symbol}")
-        series[{"UDXUSD": "DXY", "SPXUSD": "SPX"}.get(symbol, symbol)] = result
+        series[
+            {"UDXUSD": "DXY", "SPXUSD": "SPX", "WTIUSD": "WTI", "NSXUSD": "NQ"}.get(
+                symbol, symbol
+            )
+        ] = result
     return series, quality
 
 

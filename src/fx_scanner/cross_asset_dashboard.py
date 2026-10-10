@@ -55,6 +55,7 @@ def render_cross_asset(target, *, context=None):
                 {
                     "Leader": candidate["leader"],
                     "TF": "M" + str(candidate["timeframe_minutes"]),
+                    "OOS": candidate.get("oos_year", 2025),
                     "Lag (min)": candidate.get("lag_minutes"),
                     "P arah OOS (%)": round(100 * oos["probability"], 1)
                     if oos.get("probability") is not None

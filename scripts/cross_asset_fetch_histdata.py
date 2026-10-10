@@ -23,6 +23,8 @@ SYMBOLS = (
     "EURGBP",
     "UDXUSD",
     "SPXUSD",
+    "WTIUSD",
+    "NSXUSD",
 )
 
 

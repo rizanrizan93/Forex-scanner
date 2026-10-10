@@ -1,0 +1,1653 @@
+{
+  "period": "2025, accounts reset $100; lead\u2013lag selection from 2016\u20132024 only",
+  "chosen_by": "MAX_ABSOLUTE_TRAIN_PARTIAL_CORRELATION_EXCLUDING_STRUCTURAL_DXY_EURUSD",
+  "candidate": {
+    "leader": "USDJPY",
+    "timeframe": 5,
+    "lag_minutes": 5,
+    "train_corr": -0.004251751760618324,
+    "train_partial_corr": -0.01577637095930484,
+    "train_spearman": 0.005555537072552936,
+    "spearman_thinning": 18,
+    "train_p": 0.005,
+    "samples": 593959,
+    "sign": -1,
+    "threshold": 2.0
+  },
+  "baseline": {
+    "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+    "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+    "trades": 31,
+    "trades_month": 2.5851027397260276,
+    "win_rate": 0.5161290322580645,
+    "profit_factor": 1.8158388862173331,
+    "expectancy_r": 0.18042299405344037,
+    "max_dd_equity_m1_percent": 29.263900162338803,
+    "ending_balance_usd": 201.79571428571094,
+    "net_return_percent": 101.79571428571094,
+    "average_r": 0.18042299405344037,
+    "median_r": 0.0031941592516749923,
+    "mae_r": 0.5939272417937116,
+    "mfe_r": 0.8482625942062328,
+    "holding_minutes": 203.1290322580645,
+    "long": 20,
+    "short": 11,
+    "session_split": {
+      "ASIA": {
+        "trades": 2,
+        "profit_factor": null,
+        "net_profit_usd": 9.879999999998779
+      },
+      "LONDON": {
+        "trades": 29,
+        "profit_factor": 1.7366559043758498,
+        "net_profit_usd": 91.91571428571213
+      }
+    },
+    "sharpe": null,
+    "sortino": null,
+    "cost": {
+      "spread": 0.00012,
+      "slip_per_side": 1e-05,
+      "extra_round_trip": 0.0
+    },
+    "limitations": [
+      "M1 OHLC equity extrema, not tick-order drawdown",
+      "No native broker ASK/spread history, swaps or execution latency",
+      "Constant 1:100 research margin, not current DEMO broker leverage",
+      "Conditional trade removal preserves frozen virtual feedback"
+    ]
+  },
+  "cross_asset_filter": {
+    "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+    "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+    "trades": 3,
+    "trades_month": 0.25017123287671234,
+    "win_rate": 0.6666666666666666,
+    "profit_factor": 1.2977876106193613,
+    "expectancy_r": -0.1465781565717917,
+    "max_dd_equity_m1_percent": 14.78314669306427,
+    "ending_balance_usd": 101.92285714285667,
+    "net_return_percent": 1.922857142856671,
+    "average_r": -0.1465781565717917,
+    "median_r": 0.031746031746003774,
+    "mae_r": 0.6108617079844737,
+    "mfe_r": 0.6740812639475284,
+    "holding_minutes": 196.66666666666666,
+    "long": 2,
+    "short": 1,
+    "session_split": {
+      "LONDON": {
+        "trades": 3,
+        "profit_factor": 1.2977876106193613,
+        "net_profit_usd": 1.92285714285667
+      }
+    },
+    "sharpe": null,
+    "sortino": null,
+    "cost": {
+      "spread": 0.00012,
+      "slip_per_side": 1e-05,
+      "extra_round_trip": 0.0
+    },
+    "limitations": [
+      "M1 OHLC equity extrema, not tick-order drawdown",
+      "No native broker ASK/spread history, swaps or execution latency",
+      "Constant 1:100 research margin, not current DEMO broker leverage",
+      "Conditional trade removal preserves frozen virtual feedback"
+    ]
+  },
+  "divergence_filter": {
+    "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+    "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+    "trades": 0,
+    "trades_month": 0.0,
+    "win_rate": null,
+    "profit_factor": null,
+    "expectancy_r": null,
+    "max_dd_equity_m1_percent": 0.0,
+    "ending_balance_usd": 100.0,
+    "net_return_percent": 0.0,
+    "average_r": null,
+    "median_r": null,
+    "mae_r": null,
+    "mfe_r": null,
+    "holding_minutes": null,
+    "long": 0,
+    "short": 0,
+    "session_split": {},
+    "sharpe": null,
+    "sortino": null,
+    "cost": {
+      "spread": 0.00012,
+      "slip_per_side": 1e-05,
+      "extra_round_trip": 0.0
+    },
+    "limitations": [
+      "M1 OHLC equity extrema, not tick-order drawdown",
+      "No native broker ASK/spread history, swaps or execution latency",
+      "Constant 1:100 research margin, not current DEMO broker leverage",
+      "Conditional trade removal preserves frozen virtual feedback"
+    ]
+  },
+  "anticipatory_entry": {
+    "status": "NOT_RUN",
+    "reason": "HISTORICAL_EVENT_COVERAGE_AND_VALIDATED_EARLY_STRUCTURE_GEOMETRY_MISSING"
+  },
+  "expectancy_bootstrap_ci": [
+    null,
+    null
+  ],
+  "robustness": [
+    {
+      "kind": "PARAMETER_PERTURBATION",
+      "threshold": 1.5,
+      "lag": 5,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 4,
+        "trades_month": 0.3335616438356165,
+        "win_rate": 0.75,
+        "profit_factor": 1.3907079646015723,
+        "expectancy_r": -0.09262830222490331,
+        "max_dd_equity_m1_percent": 15.554043185052771,
+        "ending_balance_usd": 102.52285714285615,
+        "net_return_percent": 2.5228571428561537,
+        "average_r": -0.09262830222490331,
+        "median_r": 0.05048364628088281,
+        "mae_r": 0.5807255970163737,
+        "mfe_r": 0.6367929215906349,
+        "holding_minutes": 207.25,
+        "long": 3,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 4,
+            "profit_factor": 1.3907079646015723,
+            "net_profit_usd": 2.52285714285616
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "PARAMETER_PERTURBATION",
+      "threshold": 1.5,
+      "lag": 10,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 7,
+        "trades_month": 0.5837328767123288,
+        "win_rate": 0.5714285714285714,
+        "profit_factor": 0.7022863825153071,
+        "expectancy_r": -0.16089692344726578,
+        "max_dd_equity_m1_percent": 21.474421955852158,
+        "ending_balance_usd": 94.7264285714259,
+        "net_return_percent": -5.273571428574101,
+        "average_r": -0.16089692344726578,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6443624557087771,
+        "mfe_r": 0.6327231921255744,
+        "holding_minutes": 196.14285714285714,
+        "long": 6,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 7,
+            "profit_factor": 0.7022863825153071,
+            "net_profit_usd": -5.273571428574098
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "PARAMETER_PERTURBATION",
+      "threshold": 2.0,
+      "lag": 5,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "PARAMETER_PERTURBATION",
+      "threshold": 2.0,
+      "lag": 10,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 4,
+        "trades_month": 0.3335616438356165,
+        "win_rate": 0.5,
+        "profit_factor": 0.7749521104431646,
+        "expectancy_r": -0.36166714888007956,
+        "max_dd_equity_m1_percent": 15.490317391574294,
+        "ending_balance_usd": 97.56642857142764,
+        "net_return_percent": -2.433571428572364,
+        "average_r": -0.36166714888007956,
+        "median_r": -0.4875940470294697,
+        "mae_r": 0.7098798124395911,
+        "mfe_r": 0.5159621366679181,
+        "holding_minutes": 164.0,
+        "long": 3,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 4,
+            "profit_factor": 0.7749521104431646,
+            "net_profit_usd": -2.4335714285723684
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "PARAMETER_PERTURBATION",
+      "threshold": 2.5,
+      "lag": 5,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 0,
+        "trades_month": 0.0,
+        "win_rate": null,
+        "profit_factor": null,
+        "expectancy_r": null,
+        "max_dd_equity_m1_percent": 0.0,
+        "ending_balance_usd": 100.0,
+        "net_return_percent": 0.0,
+        "average_r": null,
+        "median_r": null,
+        "mae_r": null,
+        "mfe_r": null,
+        "holding_minutes": null,
+        "long": 0,
+        "short": 0,
+        "session_split": {},
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "PARAMETER_PERTURBATION",
+      "threshold": 2.5,
+      "lag": 10,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 0,
+        "trades_month": 0.0,
+        "win_rate": null,
+        "profit_factor": null,
+        "expectancy_r": null,
+        "max_dd_equity_m1_percent": 0.0,
+        "ending_balance_usd": 100.0,
+        "net_return_percent": 0.0,
+        "average_r": null,
+        "median_r": null,
+        "mae_r": null,
+        "mfe_r": null,
+        "holding_minutes": null,
+        "long": 0,
+        "short": 0,
+        "session_split": {},
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "ADDITIVE_COST_PENALTY_NOT_FULL_FILL_PATH",
+      "extra_round_trip": 5e-05,
+      "baseline": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 30,
+        "trades_month": 2.5017123287671232,
+        "win_rate": 0.5,
+        "profit_factor": 1.7140448191701247,
+        "expectancy_r": 0.19527311946940457,
+        "max_dd_equity_m1_percent": 31.137406821660257,
+        "ending_balance_usd": 191.94857142856782,
+        "net_return_percent": 91.94857142856782,
+        "average_r": 0.19527311946940457,
+        "median_r": -0.0037428158578086054,
+        "mae_r": 0.5801296051471786,
+        "mfe_r": 0.8765380140131073,
+        "holding_minutes": 208.86666666666667,
+        "long": 20,
+        "short": 10,
+        "session_split": {
+          "ASIA": {
+            "trades": 2,
+            "profit_factor": null,
+            "net_profit_usd": 9.42999999999878
+          },
+          "LONDON": {
+            "trades": 28,
+            "profit_factor": 1.6408142888839152,
+            "net_profit_usd": 82.51857142856909
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 5e-05
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      },
+      "filtered": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.1897763578273841,
+        "expectancy_r": -0.17385325600597581,
+        "max_dd_equity_m1_percent": 15.346160984965529,
+        "ending_balance_usd": 101.27285714285667,
+        "net_return_percent": 1.2728571428566653,
+        "average_r": -0.17385325600597581,
+        "median_r": 0.005291005290978132,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.1897763578273841,
+            "net_profit_usd": 1.2728571428566693
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 5e-05
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "ADDITIVE_COST_PENALTY_NOT_FULL_FILL_PATH",
+      "extra_round_trip": 0.0001,
+      "baseline": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 29,
+        "trades_month": 2.4183219178082194,
+        "win_rate": 0.4827586206896552,
+        "profit_factor": 1.6360334455752208,
+        "expectancy_r": 0.1836547281727235,
+        "max_dd_equity_m1_percent": 32.865844762184715,
+        "ending_balance_usd": 184.05499999999665,
+        "net_return_percent": 84.05499999999665,
+        "average_r": 0.1836547281727235,
+        "median_r": -0.02116402116404751,
+        "mae_r": 0.5803134967740651,
+        "mfe_r": 0.9034273259625358,
+        "holding_minutes": 207.82758620689654,
+        "long": 19,
+        "short": 10,
+        "session_split": {
+          "ASIA": {
+            "trades": 2,
+            "profit_factor": null,
+            "net_profit_usd": 8.979999999998778
+          },
+          "LONDON": {
+            "trades": 27,
+            "profit_factor": 1.5680829329196395,
+            "net_profit_usd": 75.07499999999779
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0001
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      },
+      "filtered": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.3333333333333333,
+        "profit_factor": 1.0880096891400108,
+        "expectancy_r": -0.20112835544015986,
+        "max_dd_equity_m1_percent": 15.909175276866778,
+        "ending_balance_usd": 100.62285714285667,
+        "net_return_percent": 0.6228571428566738,
+        "average_r": -0.20112835544015986,
+        "median_r": -0.02116402116404751,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.0880096891400108,
+            "net_profit_usd": 0.62285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0001
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "ADDITIVE_COST_PENALTY_NOT_FULL_FILL_PATH",
+      "extra_round_trip": 0.0002,
+      "baseline": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 26,
+        "trades_month": 2.168150684931507,
+        "win_rate": 0.46153846153846156,
+        "profit_factor": 1.4792701133535595,
+        "expectancy_r": 0.20641167811139358,
+        "max_dd_equity_m1_percent": 36.71379433574761,
+        "ending_balance_usd": 161.91142857142512,
+        "net_return_percent": 61.91142857142512,
+        "average_r": 0.20641167811139358,
+        "median_r": -0.05341826649600617,
+        "mae_r": 0.5640537343081458,
+        "mfe_r": 0.9707014605555047,
+        "holding_minutes": 211.34615384615384,
+        "long": 18,
+        "short": 8,
+        "session_split": {
+          "ASIA": {
+            "trades": 2,
+            "profit_factor": null,
+            "net_profit_usd": 8.079999999998778
+          },
+          "LONDON": {
+            "trades": 24,
+            "profit_factor": 1.4167210395354903,
+            "net_profit_usd": 53.83142857142634
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0002
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      },
+      "filtered": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.3333333333333333,
+        "profit_factor": 0.9140369967355321,
+        "expectancy_r": -0.25567855430852804,
+        "max_dd_equity_m1_percent": 17.0352038606693,
+        "ending_balance_usd": 99.32285714285666,
+        "net_return_percent": -0.6771428571433376,
+        "average_r": -0.25567855430852804,
+        "median_r": -0.0740740740740988,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 0.9140369967355321,
+            "net_profit_usd": -0.6771428571433291
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0002
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "SIGNAL_INFORMATION_DELAY_NOT_FILL_DELAY",
+      "minutes": 1,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 1,
+        "trades_month": 0.08339041095890412,
+        "win_rate": 1.0,
+        "profit_factor": null,
+        "expectancy_r": 0.5363232889512076,
+        "max_dd_equity_m1_percent": 7.579038544824231,
+        "ending_balance_usd": 108.20000000000043,
+        "net_return_percent": 8.20000000000043,
+        "average_r": 0.5363232889512076,
+        "median_r": 0.5363232889512076,
+        "mae_r": 0.23218874094837272,
+        "mfe_r": 1.0105115627190029,
+        "holding_minutes": 239.0,
+        "long": 1,
+        "short": 0,
+        "session_split": {
+          "LONDON": {
+            "trades": 1,
+            "profit_factor": null,
+            "net_profit_usd": 8.20000000000043
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "SIGNAL_INFORMATION_DELAY_NOT_FILL_DELAY",
+      "minutes": 5,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 2,
+        "trades_month": 0.16678082191780824,
+        "win_rate": 0.5,
+        "profit_factor": 1.8822757829151286,
+        "expectancy_r": -0.23530541842686775,
+        "max_dd_equity_m1_percent": 10.053207944069966,
+        "ending_balance_usd": 103.8435714285714,
+        "net_return_percent": 3.843571428571394,
+        "average_r": -0.23530541842686775,
+        "median_r": -0.23530541842686775,
+        "mae_r": 0.6195614333766579,
+        "mfe_r": 0.526058158774045,
+        "holding_minutes": 152.5,
+        "long": 2,
+        "short": 0,
+        "session_split": {
+          "LONDON": {
+            "trades": 2,
+            "profit_factor": 1.8822757829151286,
+            "net_profit_usd": 3.8435714285713907
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "SIGNAL_INFORMATION_DELAY_NOT_FILL_DELAY",
+      "minutes": 10,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 2,
+        "trades_month": 0.16678082191780824,
+        "win_rate": 0.5,
+        "profit_factor": 0.04131824889322163,
+        "expectancy_r": -0.4875940470294697,
+        "max_dd_equity_m1_percent": 5.787462954900895,
+        "ending_balance_usd": 95.82357142857082,
+        "net_return_percent": -4.1764285714291844,
+        "average_r": -0.4875940470294697,
+        "median_r": -0.4875940470294697,
+        "mae_r": 0.7997633591987026,
+        "mfe_r": 0.17159602820823772,
+        "holding_minutes": 152.5,
+        "long": 2,
+        "short": 0,
+        "session_split": {
+          "LONDON": {
+            "trades": 2,
+            "profit_factor": 0.04131824889322163,
+            "net_profit_usd": -4.1764285714291915
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 0,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 2,
+        "trades_month": 0.16678082191780824,
+        "win_rate": 0.5,
+        "profit_factor": 1.269911504424698,
+        "expectancy_r": -0.23574025073068944,
+        "max_dd_equity_m1_percent": 11.872795891852181,
+        "ending_balance_usd": 101.74285714285682,
+        "net_return_percent": 1.7428571428568205,
+        "average_r": -0.23574025073068944,
+        "median_r": -0.23574025073068944,
+        "mae_r": 0.6199962656804796,
+        "mfe_r": 0.8603282451275985,
+        "holding_minutes": 175.5,
+        "long": 1,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 2,
+            "profit_factor": 1.269911504424698,
+            "net_profit_usd": 1.7428571428568231
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 1,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 2,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 2,
+        "trades_month": 0.16678082191780824,
+        "win_rate": 0.5,
+        "profit_factor": 1.269911504424698,
+        "expectancy_r": -0.23574025073068944,
+        "max_dd_equity_m1_percent": 11.872795891852181,
+        "ending_balance_usd": 101.74285714285682,
+        "net_return_percent": 1.7428571428568205,
+        "average_r": -0.23574025073068944,
+        "median_r": -0.23574025073068944,
+        "mae_r": 0.6199962656804796,
+        "mfe_r": 0.8603282451275985,
+        "holding_minutes": 175.5,
+        "long": 1,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 2,
+            "profit_factor": 1.269911504424698,
+            "net_profit_usd": 1.7428571428568231
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 3,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 2,
+        "trades_month": 0.16678082191780824,
+        "win_rate": 0.5,
+        "profit_factor": 0.02787610619466333,
+        "expectancy_r": -0.48802887933329137,
+        "max_dd_equity_m1_percent": 13.741886998701883,
+        "ending_balance_usd": 93.72285714285624,
+        "net_return_percent": -6.277142857143758,
+        "average_r": -0.48802887933329137,
+        "median_r": -0.48802887933329137,
+        "mae_r": 0.8001981915025242,
+        "mfe_r": 0.5058661145617912,
+        "holding_minutes": 175.5,
+        "long": 1,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 2,
+            "profit_factor": 0.02787610619466333,
+            "net_profit_usd": -6.277142857143759
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 4,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 2,
+        "trades_month": 0.16678082191780824,
+        "win_rate": 0.5,
+        "profit_factor": 1.269911504424698,
+        "expectancy_r": -0.23574025073068944,
+        "max_dd_equity_m1_percent": 11.872795891852181,
+        "ending_balance_usd": 101.74285714285682,
+        "net_return_percent": 1.7428571428568205,
+        "average_r": -0.23574025073068944,
+        "median_r": -0.23574025073068944,
+        "mae_r": 0.6199962656804796,
+        "mfe_r": 0.8603282451275985,
+        "holding_minutes": 175.5,
+        "long": 1,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 2,
+            "profit_factor": 1.269911504424698,
+            "net_profit_usd": 1.7428571428568231
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 5,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 6,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 7,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 8,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 9,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 10,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 11,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 2,
+        "trades_month": 0.16678082191780824,
+        "win_rate": 0.5,
+        "profit_factor": 1.269911504424698,
+        "expectancy_r": -0.23574025073068944,
+        "max_dd_equity_m1_percent": 11.872795891852181,
+        "ending_balance_usd": 101.74285714285682,
+        "net_return_percent": 1.7428571428568205,
+        "average_r": -0.23574025073068944,
+        "median_r": -0.23574025073068944,
+        "mae_r": 0.6199962656804796,
+        "mfe_r": 0.8603282451275985,
+        "holding_minutes": 175.5,
+        "long": 1,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 2,
+            "profit_factor": 1.269911504424698,
+            "net_profit_usd": 1.7428571428568231
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 12,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 13,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 14,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 15,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 2,
+        "trades_month": 0.16678082191780824,
+        "win_rate": 0.5,
+        "profit_factor": 1.269911504424698,
+        "expectancy_r": -0.23574025073068944,
+        "max_dd_equity_m1_percent": 11.872795891852181,
+        "ending_balance_usd": 101.74285714285682,
+        "net_return_percent": 1.7428571428568205,
+        "average_r": -0.23574025073068944,
+        "median_r": -0.23574025073068944,
+        "mae_r": 0.6199962656804796,
+        "mfe_r": 0.8603282451275985,
+        "holding_minutes": 175.5,
+        "long": 1,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 2,
+            "profit_factor": 1.269911504424698,
+            "net_profit_usd": 1.7428571428568231
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 16,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 17,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 3,
+        "trades_month": 0.25017123287671234,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 1.2977876106193613,
+        "expectancy_r": -0.1465781565717917,
+        "max_dd_equity_m1_percent": 14.78314669306427,
+        "ending_balance_usd": 101.92285714285667,
+        "net_return_percent": 1.922857142856671,
+        "average_r": -0.1465781565717917,
+        "median_r": 0.031746031746003774,
+        "mae_r": 0.6108617079844737,
+        "mfe_r": 0.6740812639475284,
+        "holding_minutes": 196.66666666666666,
+        "long": 2,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 3,
+            "profit_factor": 1.2977876106193613,
+            "net_profit_usd": 1.92285714285667
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 18,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 2,
+        "trades_month": 0.16678082191780824,
+        "win_rate": 0.5,
+        "profit_factor": 1.269911504424698,
+        "expectancy_r": -0.23574025073068944,
+        "max_dd_equity_m1_percent": 11.872795891852181,
+        "ending_balance_usd": 101.74285714285682,
+        "net_return_percent": 1.7428571428568205,
+        "average_r": -0.23574025073068944,
+        "median_r": -0.23574025073068944,
+        "mae_r": 0.6199962656804796,
+        "mfe_r": 0.8603282451275985,
+        "holding_minutes": 175.5,
+        "long": 1,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 2,
+            "profit_factor": 1.269911504424698,
+            "net_profit_usd": 1.7428571428568231
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    },
+    {
+      "kind": "RANDOM_TRADE_REMOVAL_10_PERCENT",
+      "seed": 19,
+      "metrics": {
+        "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+        "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+        "trades": 2,
+        "trades_month": 0.16678082191780824,
+        "win_rate": 0.5,
+        "profit_factor": 1.269911504424698,
+        "expectancy_r": -0.23574025073068944,
+        "max_dd_equity_m1_percent": 11.872795891852181,
+        "ending_balance_usd": 101.74285714285682,
+        "net_return_percent": 1.7428571428568205,
+        "average_r": -0.23574025073068944,
+        "median_r": -0.23574025073068944,
+        "mae_r": 0.6199962656804796,
+        "mfe_r": 0.8603282451275985,
+        "holding_minutes": 175.5,
+        "long": 1,
+        "short": 1,
+        "session_split": {
+          "LONDON": {
+            "trades": 2,
+            "profit_factor": 1.269911504424698,
+            "net_profit_usd": 1.7428571428568231
+          }
+        },
+        "sharpe": null,
+        "sortino": null,
+        "cost": {
+          "spread": 0.00012,
+          "slip_per_side": 1e-05,
+          "extra_round_trip": 0.0
+        },
+        "limitations": [
+          "M1 OHLC equity extrema, not tick-order drawdown",
+          "No native broker ASK/spread history, swaps or execution latency",
+          "Constant 1:100 research margin, not current DEMO broker leverage",
+          "Conditional trade removal preserves frozen virtual feedback"
+        ]
+      }
+    }
+  ],
+  "missing_robustness": [
+    "full spread-dependent bracket replay",
+    "execution fill delay",
+    "historical broker tick dropout",
+    "joint alpha calibration",
+    "early-entry zone reconstruction"
+  ],
+  "verdict": "RESEARCH_ONLY; no baseline risk or order logic changed"
+}
