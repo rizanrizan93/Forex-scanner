@@ -31,6 +31,7 @@ jobs:
               'ctrader-demo-eurusd-frozen-dd37.yml',
               'rizan-xau-runtime-takeover-v365.yml',
               'ctrader-demo-auto-supervisor.yml',
+              'ctrader-demo-auto-supervisor-watchdog.yml',
               'ctrader-demo-auto-recovery-watchdog.yml',
               'ctrader-demo-xau-execution-lane.yml',
               'ctrader-demo-auto-pipeline.yml',
@@ -56,7 +57,10 @@ jobs:
                       except subprocess.CalledProcessError:
                           current = api('actions/runs/'+str(run['id']))
                           if current['status'] != 'completed':
-                              raise
+                              try:
+                                  api('actions/runs/'+str(run['id'])+'/force-cancel','POST')
+                              except subprocess.CalledProcessError as exc:
+                                  print('DEMO_CANCEL_RETRY_REQUIRED '+str(run['id'])+' '+exc.stderr.strip(), flush=True)
                       print('DEMO_RUN_CANCEL_REQUESTED '+str(run['id']), flush=True)
           for attempt in range(18):
               remaining = []
@@ -67,7 +71,7 @@ jobs:
                   runs = api('actions/workflows/'+workflow+'/runs?per_page=100')['workflow_runs']
                   remaining.extend(run['id'] for run in runs if run['status'] in active)
               if not remaining:
-                  print('DEMO_EXECUTION_STOPPED workflows=11 active_runs=0 live_enabled=0', flush=True)
+                  print('DEMO_EXECUTION_STOPPED workflows=12 active_runs=0 live_enabled=0', flush=True)
                   break
               print('DEMO_CANCELLATION_PENDING count='+str(len(remaining)), flush=True)
               time.sleep(5)
