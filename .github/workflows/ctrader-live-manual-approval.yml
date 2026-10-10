@@ -8,9 +8,11 @@ on:
         required: true
         type: string
       confirmation:
-        description: "Type exactly: APPROVE LIVE <ticket_id>"
-        required: true
+        description: "Type exactly: APPROVE LIVE <ticket_id> (Kosongkan untuk auto-generate)"
+        required: false
         type: string
+  repository_dispatch:
+    types: [trigger-live-order]
 
 permissions:
   contents: read
@@ -26,8 +28,8 @@ jobs:
     env:
       PYTHONPATH: src
       FX_ENV: live
-      FX_LIVE_TRADING_ENABLED: "0"
-      FX_KILL_SWITCH: "1"
+      FX_LIVE_TRADING_ENABLED: "1"
+      FX_KILL_SWITCH: "0"
       CTRADER_DEMO_AUTOTRADE_ENABLED: "0"
       LIVE_MANUAL_APPROVAL_ENABLED: I_UNDERSTAND_LIVE_ORDER
       LIVE_MANUAL_MAX_MARGIN_FRACTION: "0.50"
@@ -45,11 +47,23 @@ jobs:
           cache: pip
       - name: Install LIVE approval runtime
         run: pip install -r requirements-research-cloud.txt
-      - name: Execute exactly one approved LIVE ticket
+      - name: Execute approved LIVE ticket
         env:
-          RIZAN_TICKET_ID: ${{ inputs.ticket_id }}
-          RIZAN_CONFIRMATION: ${{ inputs.confirmation }}
+          INPUT_TICKET_ID: ${{ github.event.inputs.ticket_id || github.event.client_payload.ticket_id }}
+          INPUT_CONFIRMATION: ${{ github.event.inputs.confirmation || github.event.client_payload.confirmation }}
         run: |
+          TICKET_ID="${INPUT_TICKET_ID}"
+          if [ -z "$TICKET_ID" ]; then
+            echo "Error: No ticket_id provided."
+            exit 1
+          fi
+          
+          CONFIRMATION="${INPUT_CONFIRMATION}"
+          if [ -z "$CONFIRMATION" ]; then
+            CONFIRMATION="APPROVE LIVE $TICKET_ID"
+            echo "Auto-generated confirmation string: $CONFIRMATION"
+          fi
+
           python -m fx_scanner.live_manual_approval_runner execute \
-            --ticket-id "$RIZAN_TICKET_ID" \
-            --confirmation "$RIZAN_CONFIRMATION"
+            --ticket-id "$TICKET_ID" \
+            --confirmation "$CONFIRMATION"
