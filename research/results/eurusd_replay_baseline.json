@@ -1,0 +1,62 @@
+{
+  "baseline_2016_2025": {
+    "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+    "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+    "trades": 204,
+    "trades_month": 1.6997673145359977,
+    "win_rate": 0.5294117647058824,
+    "profit_factor": 2.2111414005448498,
+    "expectancy_r": 0.2743963572566617,
+    "max_dd_equity_m1_percent": 40.00313480008659,
+    "ending_balance_usd": 11820.225714285078,
+    "net_return_percent": 11720.225714285078,
+    "average_r": 0.2743963572566617,
+    "median_r": 0.0777590419773686,
+    "mae_r": 0.618537288995379,
+    "mfe_r": 1.0165651291485436,
+    "holding_minutes": 199.79901960784315,
+    "long": 114,
+    "short": 90,
+    "cost": {
+      "spread": 0.00012,
+      "slip_per_side": 1e-05,
+      "extra_round_trip": 0.0
+    },
+    "limitations": [
+      "M1 OHLC equity extrema, not tick-order drawdown",
+      "No native broker ASK/spread history, swaps or execution latency",
+      "Constant 1:100 research margin, not current DEMO broker leverage",
+      "Conditional trade removal preserves frozen virtual feedback"
+    ]
+  },
+  "baseline_oos_2025": {
+    "scope": "PUBLIC_BID_SYNTHETIC_COST_REPLAY",
+    "policy_hash": "894860d6f8c968b2c6e45800e5f6542adfca5f512027eca7758e5b70a504e0e1",
+    "trades": 31,
+    "trades_month": 2.5851027397260276,
+    "win_rate": 0.5161290322580645,
+    "profit_factor": 1.8158388862173331,
+    "expectancy_r": 0.18042299405344037,
+    "max_dd_equity_m1_percent": 29.263900162338803,
+    "ending_balance_usd": 201.79571428571094,
+    "net_return_percent": 101.79571428571094,
+    "average_r": 0.18042299405344037,
+    "median_r": 0.0031941592516749923,
+    "mae_r": 0.5939272417937116,
+    "mfe_r": 0.8482625942062328,
+    "holding_minutes": 203.1290322580645,
+    "long": 20,
+    "short": 11,
+    "cost": {
+      "spread": 0.00012,
+      "slip_per_side": 1e-05,
+      "extra_round_trip": 0.0
+    },
+    "limitations": [
+      "M1 OHLC equity extrema, not tick-order drawdown",
+      "No native broker ASK/spread history, swaps or execution latency",
+      "Constant 1:100 research margin, not current DEMO broker leverage",
+      "Conditional trade removal preserves frozen virtual feedback"
+    ]
+  }
+}
