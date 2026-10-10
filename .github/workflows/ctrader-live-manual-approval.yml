@@ -50,6 +50,6 @@ jobs:
           RIZAN_TICKET_ID: ${{ inputs.ticket_id }}
           RIZAN_CONFIRMATION: ${{ inputs.confirmation }}
         run: |
-          python -m fx_scanner.live_manual_approval execute \
+          python -m fx_scanner.live_manual_approval_runner execute \
             --ticket-id "$RIZAN_TICKET_ID" \
             --confirmation "$RIZAN_CONFIRMATION"
