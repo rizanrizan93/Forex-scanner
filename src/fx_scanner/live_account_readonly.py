@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from .execution.ctrader_session import CTraderOpenApiSession
 
 UTC = timezone.utc
+SCOPE_VIEW = 0
 
 
 def _required(name: str) -> str:
@@ -21,8 +22,8 @@ def _money(value: int | float, digits: int | None) -> float:
 
 
 def main() -> None:
-    # This runtime is intentionally read-only. It does not import an execution
-    # gateway and never constructs, submits, amends, or cancels broker orders.
+    # Deliberately read-only: this module never imports an execution gateway and
+    # never constructs, submits, amends, or cancels broker orders.
     client_id = _required("CTRADER_CLIENT_ID")
     client_secret = _required("CTRADER_CLIENT_SECRET")
     access_token = _required("CTRADER_ACCESS_TOKEN")
@@ -47,6 +48,11 @@ def main() -> None:
         )
         if not granted.is_live:
             raise RuntimeError("fail-closed: resolved cTrader account is not LIVE")
+        if int(granted.permission_scope) != SCOPE_VIEW:
+            raise RuntimeError(
+                "fail-closed: LIVE monitor requires cTrader scope=accounts (SCOPE_VIEW); "
+                "trading-scope tokens are rejected"
+            )
 
         session.connect()
         trader = session.trader()
