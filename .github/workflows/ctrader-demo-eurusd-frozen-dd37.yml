@@ -1,103 +1,14 @@
-name: cTrader Demo EURUSD Frozen DD37
+name: cTrader DEMO EURUSD Frozen DD37 [DISABLED]
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'src/fx_scanner/eurusd_frozen_dd37.py'
-      - 'src/fx_scanner/demo_eurusd_frozen_dd37.py'
-      - 'src/fx_scanner/frozen_layering*.py'
-      - 'config/frozen/*_layering_1m_v1.json'
-      - 'tests/test_frozen_layering.py'
-      - 'src/fx_scanner/execution/models.py'
-      - 'src/fx_scanner/execution/ctrader_gateway.py'
-      - '.github/workflows/ctrader-demo-eurusd-frozen-dd37.yml'
-  schedule:
-    - cron: '*/5 * * * 1-5'
 
 permissions:
   contents: read
-  actions: write
-
-concurrency:
-  group: ctrader-demo-eurusd-frozen-dd37
-  cancel-in-progress: false
 
 jobs:
-  frozen-eurusd-demo:
+  demo-disabled:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 360
-    env:
-      GH_TOKEN: ${{ github.token }}
-      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
-      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
-      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
-      CTRADER_REFRESH_TOKEN: ${{ secrets.CTRADER_REFRESH_TOKEN }}
-      CTRADER_TRADER_LOGIN: ${{ secrets.CTRADER_TRADER_LOGIN }}
-      CTRADER_ACCOUNT_ID: ${{ secrets.CTRADER_ACCOUNT_ID }}
-      CTRADER_TOKEN_STATE_PATH: /tmp/ctrader_tokens.json
-      CTRADER_TOKEN_STATE_DURABLE: '1'
-      CTRADER_DISABLE_TOKEN_REFRESH: '1'
-      FX_DATABASE_BACKEND: turso
-      TURSO_USAGE_TRACKING: '1'
-      TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-      SUPABASE_URL: https://naxvdtvlfatljzzwhrmo.supabase.co
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
-      FX_KILL_SWITCH: '0'
-      FX_IDEMPOTENCY_STATE_PATH: /tmp/eurusd_idempotency.json
-      CTRADER_DEMO_AUTOTRADE_ENABLED: I_UNDERSTAND_DEMO_ORDERS
-      CTRADER_DEMO_EURUSD_FROZEN_ENABLED: '1'
-      EURUSD_FROZEN_RUN_SECONDS: '300'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: pip
-      - name: Install cTrader runtime
-        run: pip install -r requirements-research-cloud.txt pytest==9.0.2
-      - name: Verify frozen contract and broker safety
-        run: python -m pytest -q tests/test_eurusd_frozen_dd37.py tests/test_frozen_layering.py
-      - name: Run frozen EURUSD DEMO forward lane
-        shell: bash
-        run: |
-          set -u
-          end_epoch=$(( $(date +%s) + 19800 ))
-          while [ $(date +%s) -lt "$end_epoch" ]; do
-            python -m fx_scanner.demo_eurusd_frozen_dd37 || echo "EURUSD_CYCLE_FAILED retry=next_cycle"
-            latest_main="$(gh api "/repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha 2>/dev/null || true)"
-            if [ -z "$latest_main" ] || [ "$latest_main" != "$GITHUB_SHA" ]; then
-              echo "EURUSD_GRACEFUL_HANDOFF"
-              break
-            fi
-            sleep 2
-          done
-
-      - name: Self-handoff continuous EURUSD runtime
-        if: ${{ success() && !cancelled() && github.event_name != 'pull_request' }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          market_open_utc() {
-            weekday="$(date -u +%u)"
-            hour="$(date -u +%H)"
-            if [ "${weekday}" -eq 7 ]; then
-              [ "${hour}" -ge 21 ]
-            elif [ "${weekday}" -ge 1 ] && [ "${weekday}" -le 4 ]; then
-              return 0
-            elif [ "${weekday}" -eq 5 ]; then
-              [ "${hour}" -lt 22 ]
-            else
-              return 1
-            fi
-          }
-          if market_open_utc; then
-            gh workflow run -R "${GITHUB_REPOSITORY}" ctrader-demo-eurusd-frozen-dd37.yml --ref main
-            echo "EURUSD_RUNTIME_SELF_HANDOFF_DISPATCHED"
-          else
-            echo "EURUSD_RUNTIME_SELF_HANDOFF_SKIPPED market=closed"
-          fi
+      - run: echo "EURUSD DEMO execution disabled. Frozen strategy/configuration remains in source; no demo orders may be submitted."
