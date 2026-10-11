@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "status": "PINNED_FAIL_CLOSED",
+  "purpose": "Canonical parity contract between frozen research strategies, current cBot artifacts, and the VPS macro/event bridge. This file grants no broker execution authority.",
+  "execution_authority": "NONE",
+  "xauusd": {
+    "strategy_id": "XAUUSD_LAYERING_226432_RAW_FROZEN_V1",
+    "contract_sha256": "7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf",
+    "current_cbot": {
+      "name": "RizanXAU.algo",
+      "sha256": "35b1e03e777d1867e3de57a4020d014c271ef5acadab549347496f9a75b58184",
+      "prefix": "RZXA1",
+      "checkpoint_schema": 1,
+      "source_package": "RIZAN_CBOT_MIGRATION_20261010.zip",
+      "source_hashes": {
+        "Common/FrozenCore.cs": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+        "Common/RizanRobot.cs": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5"
+      }
+    },
+    "technical": {
+      "sell": {
+        "source_group": 6,
+        "research_id": "S10_DIRECTION_000183",
+        "family": "SWEEP_CANDLE_CONFIRM",
+        "confirmation": "STRICT_H1_M15",
+        "parameter": 24,
+        "macro": "DGS10_1D",
+        "macro_rule": "ALLOW_SELL_ONLY_WHEN_LATEST_ELIGIBLE_DGS10_DELTA_GTE_0"
+      },
+      "buy": {
+        "source_group": 274,
+        "research_id": "S10_DIRECTION_006616",
+        "family": "REGRESSION_CHANNEL_REENTRY",
+        "confirmation": "STRICT_H1_M15",
+        "parameter": 48,
+        "macro": "DFII10_1D",
+        "macro_rule": "ALLOW_BUY_ONLY_WHEN_LATEST_ELIGIBLE_DFII10_DELTA_LTE_0"
+      },
+      "session_utc": [12, 20],
+      "stop_atr": 2.65,
+      "stop_floor_usd": 0.5,
+      "target_r": 6.6,
+      "hold_minutes": 480
+    },
+    "layering": {
+      "stages": 4,
+      "depths_r": [0.0, 0.16111111111111112, 0.32222222222222224, 0.48333333333333334],
+      "confirmed_additions": true,
+      "expiry_minutes": 45,
+      "initial_fraction": 1.0,
+      "depth_weight_power": 0.5,
+      "child_lot": 0.01,
+      "child_units_oz": 1,
+      "risk_ceiling": 0.125,
+      "margin_ceiling": 0.5,
+      "reference_leverage": 100
+    },
+    "macro_event": {
+      "fred_series": ["DGS10", "DFII10"],
+      "availability_proxy": "observation_date_plus_2_US_federal_business_days_at_00_America_New_York",
+      "max_macro_age_days": 7,
+      "event_categories": ["NFP", "CPI", "PPI", "JOLTS", "ECI", "FOMC"],
+      "event_pre_minutes": 15,
+      "event_post_minutes": 30,
+      "planned_hold_intersection_window_relative_to_entry_minutes": [-30, 495],
+      "snapshot_max_age_seconds": 180,
+      "calendar_sources": ["FOREX_FACTORY_WEEKLY", "BLS_OFFICIAL_ICS"],
+      "fail_closed": true
+    }
+  },
+  "eurusd": {
+    "strategy_id": "EURUSD_RAW_200_78880_DD4484_FROZEN_V3",
+    "contract_sha256": "4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976",
+    "current_cbot": {
+      "name": "RizanEURBatch_v1.1.0.algo",
+      "sha256": "ade77a372309c3ab513ed2e5f32741caf4ebd13652b2f9a044e4225d18f89274",
+      "prefix": "RZEU4B",
+      "checkpoint_schema": 2,
+      "execution_model": "EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1",
+      "source_package": "RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip",
+      "source_hashes": {
+        "Common/FrozenCore.cs": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+        "Common/EurBatchExecution.cs": "ce45b7ddaa9db914000cbd1d53622f3ec4f1335b6db8da97a2cd3095321dc9da",
+        "Common/RizanRobot.cs": "29e8704f5c1505b4044a1088b720ab3468ce445a39bbcf3eaa60f292fe1a9387"
+      },
+      "broker_order_topology_note": "Virtual 0.01-lot children are grouped into at most one broker order per second. This preserves child-level budget accounting but is intentionally not the same broker-order topology as one physical order per virtual child."
+    },
+    "frozen": {
+      "reference_leverage": 200,
+      "source_replay_risk_ceiling": 0.2725,
+      "margin_ceiling": 0.5,
+      "target_r": 4.0,
+      "hold_minutes": 240,
+      "child_lot": 0.01,
+      "child_units": 1000,
+      "fast_span": 2,
+      "fast_threshold": -0.5,
+      "fast_weak": 0.1,
+      "slow_span": 8,
+      "slow_threshold": -0.05,
+      "slow_weak": 0.625,
+      "lookback": 8,
+      "atr_period": 14,
+      "atr_multiplier": 3.0,
+      "stop_min": 0.0005,
+      "stop_max": 0.006,
+      "layering_depths_r": [0.0, 0.2, 0.4],
+      "initial_fraction": 0.4,
+      "depth_weight_power": 1.5,
+      "dd_trigger": 0.25,
+      "dd_reduction_factor": 0.7
+    },
+    "deployment_overlay": {
+      "scanner_basket_risk_ceiling": 0.125,
+      "note": "The 12.5% scanner overlay is a forward deployment risk reduction. It must not be presented as the historical 78,880 USD replay configuration, which used a 27.25% source replay risk ceiling."
+    },
+    "macro_event": {
+      "required_by_frozen_signal": false
+    }
+  },
+  "deprecated_artifacts": {
+    "RizanEUR.algo": {
+      "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+      "reason": "Superseded by the batch v1.1.0 execution model for the current EUR cBot path."
+    }
+  }
+}
