@@ -1,0 +1,11 @@
+[Unit]
+Description=Keep bridge DuckDNS address current
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=duckdns-update.service
+
+[Install]
+WantedBy=timers.target
