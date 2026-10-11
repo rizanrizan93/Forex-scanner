@@ -14,7 +14,7 @@
       "path": "cbot_connectivity/vps/xau-v1.0.1/Common/RizanRobot.cs",
       "original": "cbot_sources/archive/migration-20261010/v1.0.1/Common/RizanRobot.cs",
       "original_sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
-      "adapted_sha256": "ac2e3332b537b090f381ee961c52908f531f7a8bd31cce41a6cdf0a8f50ee8a9",
+      "adapted_sha256": "a4d95d3d790eb6cb8d0fb45d8099b70211ecd685b21132214405b6b14d38806f",
       "byte_identical": false
     },
     {
@@ -49,7 +49,7 @@
       "path": "cbot_connectivity/vps/eur-batch-v1.1.0/Common/RizanRobot.cs",
       "original": "cbot_sources/archive/eur-releases/v1.1.0/Common/RizanRobot.cs",
       "original_sha256": "29e8704f5c1505b4044a1088b720ab3468ce445a39bbcf3eaa60f292fe1a9387",
-      "adapted_sha256": "5d586d24e0e0a24f212d4eeb259512987294057d214ca19c8e961e7b0353bd6b",
+      "adapted_sha256": "fd19448154676895cc2003ef891cb5d014933ec7dda23956b804ac86773f70d0",
       "byte_identical": false
     },
     {

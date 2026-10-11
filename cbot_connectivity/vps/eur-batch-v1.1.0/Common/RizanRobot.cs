@@ -198,9 +198,14 @@ public abstract class RizanRobot : Robot
             using var doc=JsonDocument.Parse(text);var root=doc.RootElement;var type=root.GetProperty("type").GetString();
             if(type=="ready")
             {
+                if(!_connecting || _bridgeReady)throw new Exception("BRIDGE_READY_UNEXPECTED");
                 _remoteRevision=root.GetProperty("revision").GetInt64();
                 if(root.TryGetProperty("state",out var value) && value.ValueKind!=JsonValueKind.Null)
-                { _state=JsonSerializer.Deserialize<Checkpoint>(value.GetRawText(),Json)!;ValidateState(); }
+                {
+                    var previousState=_state;
+                    try { _state=JsonSerializer.Deserialize<Checkpoint>(value.GetRawText(),Json)!;ValidateState(); }
+                    catch { _state=previousState;throw; }
+                }
                 else if(_state.Revision>0) { /* local/manual recovery will be written after lease acquisition */ }
                 _bridgeReady=true;_connecting=false;_nextPing=Server.TimeInUtc;_saveInFlight=false;_persistedRevision=_state.Revision;_lastBridgeAck=Server.TimeInUtc;
                 RecoverAttempt();ReconcileExposure();Changed();Persist();_status="BRIDGE_READY";

@@ -1,5 +1,5 @@
 {
-  "git_head_audited": "a84b6e2ddda63ae6cede27c68f7b90e40dcfea2c",
+  "git_head_audited": "9b262fb433fc40e55f94b6477842abe8102212f3",
   "status": {
     "XAU_FROZEN_HASH": "PASS",
     "EUR_FROZEN_HASH": "PASS",
@@ -37,7 +37,7 @@
     "live_vps": "UNREACHABLE_FROM_AUDIT_ENV",
     "broker_orders_sent": 0,
     "bridge_tests_passed": 15,
-    "transport_assertions": 53,
+    "transport_assertions": 55,
     "planner_assertions": 12023,
     "runtime_assertions": 67,
     "source_fields_mapped": 32,

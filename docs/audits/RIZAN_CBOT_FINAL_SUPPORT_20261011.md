@@ -6,11 +6,11 @@ Audit source dan pengujian lokal selesai; kesiapan live belum terbukti. Tidak ad
 
 ## Status wajib
 
-PASS di bawah memiliki ruang lingkup bukti yang dijelaskan setelah tabel. FAIL mencakup pemeriksaan yang gagal **atau belum dapat dibuktikan**; tidak otomatis berarti VPS/provider sedang rusak.
+GIT_HEAD menunjuk commit source lokal yang diaudit sebelum sinkronisasi laporan terakhir; tree delivery GitHub diverifikasi byte-identical. PASS di bawah memiliki ruang lingkup bukti yang dijelaskan setelah tabel. FAIL mencakup pemeriksaan yang gagal **atau belum dapat dibuktikan**; tidak otomatis berarti VPS/provider sedang rusak.
 
 ```text
-GIT_HEAD=a84b6e2ddda63ae6cede27c68f7b90e40dcfea2c
-WORKTREE=bridge-connectivity-audit (clean before report creation; report commit follows)
+GIT_HEAD=9b262fb433fc40e55f94b6477842abe8102212f3
+WORKTREE=rizan-cbot-support-audit-20261011-2f3141b (clean audited source; report sync follows)
 XAU_FROZEN_HASH=PASS
 EUR_FROZEN_HASH=PASS
 XAU_CBOT_SOURCE_PARITY=PASS
@@ -49,7 +49,7 @@ STRATEGY_SUPPORT_READY=NO
 - Source adaptasi: FrozenCore kedua versi, EurBatchExecution dan project byte-identical dengan original; bagian robot di luar metode connectivity dan seluruh Cycle mulai ManagePositions identik. Arsip 50 migration + 67 entri manifest EUR diperiksa tanpa perubahan. Tidak ada archive duplikat baru.
 - XAU replay kernel: 4.000 bar fixture historis (14 BUY, 18 SELL) cocok; confirmation differential 41 kasus cocok. Sizing oracle 240 kasus gabungan pada core migrasi lulus (120 XAU). Source rule BUY regression channel 48, SELL sweep-confirm 24, strict H1/M15, completed M5, 4 depths, 45 menit confirmed additions, risk 12,5%, margin 50%, target 6,6R, hold 480 menit dengan cutoff source 19:59 UTC, child 1 oz, commission .03 per side, stop max(2.65 ATR,.5,anchor), dan reference leverage 100 tetap.
 - EUR Batch v1.1.0 kernel: 23.978 M1, 1.599 features, 31 signals serta split-state virtual feedback/restart cocok dengan reference. Frozen constants: 3 stages 0/.2/.4R, .4 initial, power 1.5, DD .25/reduction .7, risk .2725, margin .5, 4R, 240 menit, leverage 200. Batch-specific planner 12.023 assertions dan original runtime simulation 67 assertions lulus, termasuk one aggregated request/second, pending intent durability, pending volume/first-fill anchor, recovery from exposure/history, uncertain-result quarantine dan no blind retry. Ini belum membuktikan per-basket hasil historical replay identik.
-- Transport patch: 42 assertions XAU + 11 EUR lulus melawan API simulasi; semua test mengirim nol order broker. Kedua salinan patch juga lulus compile terhadap reference .NET 6 dan cAlgo.API paket cTrader.Automate 1.0.21. Ini bukan native Cloud runtime test atau packaged .algo build.
+- Transport patch: 43 assertions XAU + 12 EUR lulus melawan API simulasi; semua test mengirim nol order broker. Kedua salinan patch juga lulus compile terhadap reference .NET 6 dan cAlgo.API paket cTrader.Automate 1.0.21. Ini bukan native Cloud runtime test atau packaged .algo build.
 - Bridge: 15 tests lulus. SQLite WAL/FULL, CAS, receipt retry idempotent sesudah restart, lease 45 detik persisten, namespace terpisah, pending EUR state roundtrip, corruption reject, same-lease simultaneous sockets rejected, token auth, XAU-only snapshot, fake Turso outage, malformed provider schema, loopback backend guard, private state files. Lokal restart/retry PASS bukan full VPS reboot PASS.
 - Macro/event: fetch publik dari mesin audit berhasil untuk DGS10, DFII10, FF dan BLS tanpa error. Macro availability +2 hari kerja federal AS/NY-midnight UTC, holiday test dan stale/future rejection lulus. Snapshot health kini memeriksa umur 180 detik, coverage -30/+495, finite values, available timestamps serta schema event. Ini indikator kesehatan data; tidak memberi arah atau order dan tidak mengubah gate cBot. Event gate unchanged diuji di kedua boundary untuk keenam kategori; BUY memakai DFII10 delta <=0, SELL DGS10 delta >=0; EUR bypass macro tetap. Pengiriman snapshot aktual ke XAU Cloud belum terbukti.
 
@@ -63,7 +63,7 @@ STRATEGY_SUPPORT_READY=NO
 ## Perbaikan yang dikomit
 
 - `cbot_bridge`: registry sesi aktif agar satu lease tidak dipakai dua socket; lease expired tidak mengunci identitas selamanya; send snapshot deadline; DB close saat service berhenti; placeholder token ditolak; default backend loopback 25346 dan public-bind guard; health validation yang mengikuti freshness/coverage frozen. Tidak ada fungsi broker order atau broker credential baru.
-- `cbot_connectivity/vps`: salinan source transport yang terpisah dengan handshake/heartbeat/save-ACK timeout, socket-generation fence, reconnect, transient lease handling dan ACK matching; unchanged Durable/order/recovery methods. Prototipe `cbot_connectivity/vps/bridge` bukan bridge final: gunakan **cbot_bridge** untuk deployment reviewed.
+- `cbot_connectivity/vps`: salinan source transport yang terpisah dengan handshake/heartbeat/save-ACK timeout, socket-generation fence, reconnect, transient lease handling, ACK matching dan rollback state saat checkpoint ready invalid; unchanged Durable/order/recovery methods. Prototipe `cbot_connectivity/vps/bridge` bukan bridge final: gunakan **cbot_bridge** untuk deployment reviewed.
 - Tests, field/pin auditor, service/renewal templates dan disaster-recovery design. Tidak ada deploy script yang dijalankan. Frozen/archives tidak disentuh.
 
 ## Cara mengulang uji lokal
@@ -77,4 +77,4 @@ dotnet run --project cbot_connectivity/vps/tests/TransportXauTests.csproj -c Rel
 dotnet run --project cbot_connectivity/vps/tests/TransportEurTests.csproj -c Release
 ```
 
-Differential original parity dan planner/runtime tests dijalankan pada salinan temporary source archive; source immutable tidak menerima bin/obj/build output. Host audit mengalami keterbatasan process introspection MSBuild sehingga compile menggunakan Roslyn dari SDK 8.0.425; native-reference compile memakai .NET 6 reference pack 6.0.36. Test runtime memakai .NET 8 dan broker API stubs. Warning nullable di stub bukan kegagalan compile source cBot. Tidak ada artifact build dipasang pada akun live.
+Differential original parity dan planner/runtime tests dijalankan pada salinan temporary source archive; source immutable tidak menerima bin/obj/build output. State sehat sebelumnya juga terbukti tetap dipertahankan saat payload ready schema invalid ditolak. Host audit mengalami keterbatasan process introspection MSBuild sehingga compile menggunakan Roslyn dari SDK 8.0.425; native-reference compile memakai .NET 6 reference pack 6.0.36. Test runtime memakai .NET 8 dan broker API stubs. Warning nullable di stub bukan kegagalan compile source cBot. Tidak ada artifact build dipasang pada akun live.
