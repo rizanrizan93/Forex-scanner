@@ -2,10 +2,15 @@
 set -Eeuo pipefail
 
 # RIZAN Forex Scanner - VPS bootstrap
-# Safe scope: prepares the Linux environment, Python venv, project dependencies,
+# Safe scope: prepares the Linux runtime, Python venv, scanner/cTrader dependencies,
 # and a short `cfx` command for opening Codex in this repository.
 # It does NOT enable live trading, place orders, modify broker credentials,
 # or print secret values.
+#
+# IMPORTANT: Streamlit dashboard dependencies are intentionally NOT installed on
+# this cTrader VPS. ctrader-open-api==0.9.2 pins protobuf==3.20.1 while the
+# repository dashboard extra currently pins Streamlit 1.62.0, which requires
+# protobuf>=5.26.1. The dashboard remains a separate deployment surface.
 
 log()  { printf '\n[SETUP] %s\n' "$*"; }
 warn() { printf '\n[WARN] %s\n' "$*" >&2; }
@@ -19,6 +24,40 @@ REPO_DIR="$SCRIPT_DIR"
 
 log "Repository: $REPO_DIR"
 log "User: $(id -un) | Host: $(hostname)"
+
+# ---- Codex launcher first -------------------------------------------------
+# Create this before Python dependency installation so the user still gets the
+# one-word launcher even if a later optional runtime dependency needs attention.
+mkdir -p "$HOME/.local/bin"
+PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
+if [[ -f "$HOME/.bashrc" ]]; then
+  grep -Fqx "$PATH_LINE" "$HOME/.bashrc" || printf '\n%s\n' "$PATH_LINE" >> "$HOME/.bashrc"
+else
+  printf '%s\n' "$PATH_LINE" > "$HOME/.bashrc"
+fi
+export PATH="$HOME/.local/bin:$PATH"
+
+cat > "$HOME/.local/bin/cfx" <<EOF
+#!/usr/bin/env bash
+set -Eeuo pipefail
+REPO="$REPO_DIR"
+cd "\$REPO"
+if [[ -f .venv/bin/activate ]]; then
+  # shellcheck disable=SC1091
+  source .venv/bin/activate
+fi
+CODEX_BIN="\$(command -v codex 2>/dev/null || true)"
+if [[ -z "\$CODEX_BIN" && -x "\$HOME/.local/bin/codex" ]]; then
+  CODEX_BIN="\$HOME/.local/bin/codex"
+fi
+if [[ -z "\$CODEX_BIN" ]]; then
+  echo "Codex CLI tidak ditemukan."
+  exit 1
+fi
+exec "\$CODEX_BIN" -C "\$REPO"
+EOF
+chmod 700 "$HOME/.local/bin/cfx"
+log "Launcher Codex dibuat: cfx"
 
 # ---- Base tools -----------------------------------------------------------
 missing=()
@@ -67,8 +106,19 @@ fi
 source .venv/bin/activate
 python -m pip install --upgrade pip setuptools wheel
 
-log "Memasang dependency project + dev + dashboard + cTrader"
-python -m pip install -e '.[dev,dashboard,ctrader]'
+# Install VPS runtime dependencies without the incompatible dashboard extra.
+log "Memasang dependency inti project"
+python -m pip install -e .
+
+log "Memasang dependency development"
+python -m pip install pytest==9.0.2
+
+log "Memasang dependency cTrader VPS"
+python -m pip install 'ctrader-open-api==0.9.2' 'service-identity==24.2.0'
+
+# Verify the resolver did not leave a broken environment.
+log "Memeriksa konsistensi dependency"
+python -m pip check
 
 # ---- Local state directories ---------------------------------------------
 mkdir -p state logs
@@ -83,7 +133,7 @@ else
   log ".env tidak diubah."
 fi
 
-# ---- Codex discovery + persistent PATH -----------------------------------
+# ---- Codex discovery ------------------------------------------------------
 CODEX_BIN="$(command -v codex 2>/dev/null || true)"
 if [[ -z "$CODEX_BIN" && -x "$HOME/.local/bin/codex" ]]; then
   CODEX_BIN="$HOME/.local/bin/codex"
@@ -95,36 +145,6 @@ else
   log "Codex ditemukan: $CODEX_BIN"
   "$CODEX_BIN" --version || true
 fi
-
-mkdir -p "$HOME/.local/bin"
-PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
-if [[ -f "$HOME/.bashrc" ]]; then
-  grep -Fqx "$PATH_LINE" "$HOME/.bashrc" || printf '\n%s\n' "$PATH_LINE" >> "$HOME/.bashrc"
-else
-  printf '%s\n' "$PATH_LINE" > "$HOME/.bashrc"
-fi
-
-# ---- One-word launcher: cfx ----------------------------------------------
-cat > "$HOME/.local/bin/cfx" <<EOF
-#!/usr/bin/env bash
-set -Eeuo pipefail
-REPO="$REPO_DIR"
-cd "\$REPO"
-if [[ -f .venv/bin/activate ]]; then
-  # shellcheck disable=SC1091
-  source .venv/bin/activate
-fi
-CODEX_BIN="\$(command -v codex 2>/dev/null || true)"
-if [[ -z "\$CODEX_BIN" && -x "\$HOME/.local/bin/codex" ]]; then
-  CODEX_BIN="\$HOME/.local/bin/codex"
-fi
-if [[ -z "\$CODEX_BIN" ]]; then
-  echo "Codex CLI tidak ditemukan."
-  exit 1
-fi
-exec "\$CODEX_BIN" -C "\$REPO"
-EOF
-chmod 700 "$HOME/.local/bin/cfx"
 
 # ---- Non-secret health summary -------------------------------------------
 log "Sanity check project"
@@ -140,6 +160,7 @@ printf 'Repo      : %s\n' "$REPO_DIR"
 printf 'Python    : %s\n' "$(python --version 2>&1)"
 printf 'Venv      : %s/.venv\n' "$REPO_DIR"
 printf 'Codex     : %s\n' "${CODEX_BIN:-BELUM DITEMUKAN}"
+printf 'Dashboard : tidak dipasang di VPS ini (dipisah dari runtime cTrader)\n'
 printf '\nMulai sekarang, untuk membuka Codex langsung di scanner cukup ketik:\n\n'
 printf '    cfx\n\n'
 printf 'Jika shell lama belum mengenali cfx, ketik sekali: source ~/.bashrc\n'
