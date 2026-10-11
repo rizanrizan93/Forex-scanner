@@ -15,7 +15,7 @@ SELECTED = {
         "7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf",
     ),
     "EURUSD": (
-        "eurusd_raw_200_78880_dd4484_frozen_v3.json",
+        "eurusd_raw_selected_v3.json",
         "4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976",
     ),
 }
