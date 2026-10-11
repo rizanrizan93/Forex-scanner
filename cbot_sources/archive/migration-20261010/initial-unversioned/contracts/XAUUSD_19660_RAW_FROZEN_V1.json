@@ -1,0 +1,514 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_RESEARCH_NOT_ACTIVATED",
+  "user_authorization": {
+    "instruction": "Okey kedua akun XAU dan EUR menggunakan RAW silahkan uji replay, bekukan strategy XAU pada kandidat $19.000; Uji juga jika leverage 1:200",
+    "at": "2026-10-10T14:00:01+07:00"
+  },
+  "contract_sha256": "7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf",
+  "contract": {
+    "symbol": "XAUUSD",
+    "strategy_id": "XAUUSD_LAYERING_226432_RAW_FROZEN_V1",
+    "source_candidate": "Original #226432: Standard synthetic $19660.740455713152/DD47.06512527200658%",
+    "policy_vector_columns": [
+      "pattern_id",
+      "initial_fraction",
+      "depth_weight_power",
+      "risk_cap_budget",
+      "equity_dd_trigger",
+      "dd_reduction_factor",
+      "capacity_multiplier",
+      "cap_at_100",
+      "cap_exponent",
+      "risk_ceiling",
+      "margin_ceiling",
+      "leverage",
+      "balance_step_usd",
+      "balance_growth_exponent"
+    ],
+    "policy_vector": [
+      452.0,
+      1.0,
+      0.5,
+      1.0,
+      0.0,
+      1.0,
+      1.0,
+      0.0,
+      1.0,
+      0.125,
+      0.5,
+      100.0,
+      100.0,
+      1.0
+    ],
+    "layering": {
+      "stages": 4,
+      "depths_r": [
+        0,
+        0.16111111111111112,
+        0.32222222222222224,
+        0.48333333333333334
+      ],
+      "confirmed": true,
+      "expiry_minutes": 45,
+      "spacing_exponent": 1,
+      "child_lot": 0.01,
+      "child_units_oz": 1,
+      "depth_weight_power": 0.5
+    },
+    "signal_source": "Archived g-0006 SELL/DGS10 and g-0274 BUY/DFII10; frozen macro availability and event gates",
+    "risk_ceiling": 0.125,
+    "margin_ceiling": 0.5,
+    "target_r": 6.6,
+    "hold_minutes": 480,
+    "stop": "max(2.65*ATR,0.5, structural anchor distance); all children same initial absolute SL/TP",
+    "sizing": "initial desired floor(balance/100) at flat entry; integer children constrained by risk, margin and free margin; residual risk allocated to confirmed additions; no hard total child cap",
+    "signal_input_hashes": [
+      {
+        "file": "events_2016_2025.csv",
+        "sha256": "6ac3b409cbd3c5ece2f398152339a22bdcbcc41c4a80dc5f01a58b2492c78d6e"
+      },
+      {
+        "file": "macro_daily.csv",
+        "sha256": "ce83285c56cb03bffe4bce164959a325330fd4b899dec0df3b71caa2ba943318"
+      },
+      {
+        "file": "xau-2016.csv",
+        "sha256": "8d2b2d4ef05efc9f25d80a583fc7e2c31b91acf7638b6dc52111f705bf0a9ecf"
+      },
+      {
+        "file": "xau-2017.csv",
+        "sha256": "319acced79857059bcb1c646a71db2e99f61e4a95ae50ccae1ea6f07ee17ed23"
+      },
+      {
+        "file": "xau-2018.csv",
+        "sha256": "40b855b33798f0f4de3f86ae16373b7a45e9b199974821c73fb3de0760ad3ec6"
+      },
+      {
+        "file": "xau-2019.csv",
+        "sha256": "4ab0134dd669d8d319329d63bf932a99f44581ae60e109a91985cb76a89ae332"
+      },
+      {
+        "file": "xau-2020.csv",
+        "sha256": "77897672bef2e19ed04b56df4d0d2e7647092dcc0c909af86893176d7b4d5703"
+      },
+      {
+        "file": "xau-2021.csv",
+        "sha256": "884a5b16baca3e93711cabba9b25561a0ff7ed2e87f316c13e93c921f8fe479e"
+      },
+      {
+        "file": "xau-2022.csv",
+        "sha256": "3a7da430431d0cbcccf8992bc228c53b109f7de801c60a2c20c18a328c2a52f7"
+      },
+      {
+        "file": "xau-2023.csv",
+        "sha256": "fc259c7743d654ff9e965054debb71816dd8eef63e44d7d86fd5b14b79e44ab8"
+      },
+      {
+        "file": "xau-2024.csv",
+        "sha256": "42af2a6ece96e557137bb7b0b87955fb09261679b1a783082180c9caae43b656"
+      },
+      {
+        "file": "xau-2025.csv",
+        "sha256": "1f941902891eeec5d1c89d5f1319f7afda39f46c868ca2948ee2dee4797138b4"
+      },
+      {
+        "file": "g-0006.npz",
+        "sha256": "ec9b25f63172fad6235c1d5addcf6b5423b76127d6292359b56d2a89fcde1a24"
+      },
+      {
+        "file": "g-0274.npz",
+        "sha256": "66f553fee73bc47159302887c19fe8320d4fc36d4131ede92d874c37112522a2"
+      }
+    ],
+    "account_type": "RAW",
+    "execution_cost_model": {
+      "commission_per_001lot_per_side_usd": 0.03,
+      "xau_spread": "original synthetic variable profile minus .14; floor .11; same session/shock/news additions",
+      "eur_spread": 1e-05,
+      "xau_slippage_per_side": 0.05,
+      "eur_slippage_per_side": 1e-05,
+      "carry": "original XAU synthetic roll retained; original EUR intraday zero carry",
+      "source_spreads": "https://www.fpmarkets.com/en-sc/forex-spreads/ September 2026 MT4 reference, not actual historical cTrader",
+      "source_commission": "https://www.fpmarkets.com/en-sc/ctrader-fees-and-charges/",
+      "stress_commission": "fixed .03 each side; spread/slippage multiplied separately",
+      "commission_accounting": "entry deducted on each fill, exit on basket liquidation; both reserved in planned risk; entry in free-margin check"
+    },
+    "leverage_policy": {
+      "reference": 100,
+      "tested": [
+        100,
+        200
+      ],
+      "200_is_comparison_not_auto_activation": true
+    }
+  },
+  "evidence": {
+    "period": [
+      "2016-01-01",
+      "2025-12-31"
+    ],
+    "initial_cash_usd": 100,
+    "standard_reference": {
+      "ending_balance_usd": 19660.740455713152,
+      "profit_factor": 1.8914344145559914,
+      "max_dd_m1_percent": 47.06512527200658,
+      "max_dd_closed_percent": 42.99696706828869,
+      "trades": 561,
+      "win_rate": 0.37254901960784315,
+      "children": 4520,
+      "baskets_with_adds": 15,
+      "max_planned_risk_percent": 12.485029599256393,
+      "max_margin_percent": 48.24484276328469,
+      "long": 403,
+      "short": 158,
+      "train_2016_2024_balance": 914.0552414285003,
+      "train_dd_percent": 47.06512527200658,
+      "train_pf": 1.197351531857941,
+      "train_trades": 501
+    },
+    "raw_metrics_by_leverage": {
+      "raw_base": {
+        "100": {
+          "ending_balance_usd": 24852.008274284195,
+          "profit_factor": 1.9014719346454418,
+          "max_dd_m1_percent": 48.245534393904485,
+          "max_dd_closed_percent": 44.517833845009626,
+          "trades": 551,
+          "win_rate": 0.3811252268602541,
+          "children": 5563,
+          "baskets_with_adds": 14,
+          "max_planned_risk_percent": 12.477587027709747,
+          "max_margin_percent": 48.37112085482952,
+          "long": 395,
+          "short": 156,
+          "train_2016_2024_balance": 1109.816538571352,
+          "train_dd_percent": 48.245534393904485,
+          "train_pf": 1.2057232207964383,
+          "train_trades": 491
+        },
+        "200": {
+          "ending_balance_usd": 24851.325588569907,
+          "profit_factor": 1.9018384307431448,
+          "max_dd_m1_percent": 48.26471920459528,
+          "max_dd_closed_percent": 44.333132442937035,
+          "trades": 551,
+          "win_rate": 0.3811252268602541,
+          "children": 5559,
+          "baskets_with_adds": 14,
+          "max_planned_risk_percent": 12.478018740280032,
+          "max_margin_percent": 25.650120962059024,
+          "long": 395,
+          "short": 156,
+          "train_2016_2024_balance": 1109.133852857066,
+          "train_dd_percent": 48.26471920459528,
+          "train_pf": 1.2060843967800348,
+          "train_trades": 491
+        }
+      },
+      "raw_spread_slip_x1_5": {
+        "100": {
+          "ending_balance_usd": 7964.784820000264,
+          "profit_factor": 1.81624185292075,
+          "max_dd_m1_percent": 47.77537877768386,
+          "max_dd_closed_percent": 44.81383910453893,
+          "trades": 555,
+          "win_rate": 0.372972972972973,
+          "children": 2122,
+          "baskets_with_adds": 13,
+          "max_planned_risk_percent": 12.380198216009099,
+          "max_margin_percent": 46.50513682528142,
+          "long": 398,
+          "short": 157,
+          "train_2016_2024_balance": 400.85774857143525,
+          "train_dd_percent": 47.77537877768386,
+          "train_pf": 1.1275261877580067,
+          "train_trades": 495
+        },
+        "200": {
+          "ending_balance_usd": 7964.784820000264,
+          "profit_factor": 1.81624185292075,
+          "max_dd_m1_percent": 47.77537877768386,
+          "max_dd_closed_percent": 44.81383910453893,
+          "trades": 555,
+          "win_rate": 0.372972972972973,
+          "children": 2122,
+          "baskets_with_adds": 13,
+          "max_planned_risk_percent": 12.380198216009099,
+          "max_margin_percent": 23.25256841264071,
+          "long": 398,
+          "short": 157,
+          "train_2016_2024_balance": 400.85774857143525,
+          "train_dd_percent": 47.77537877768386,
+          "train_pf": 1.1275261877580067,
+          "train_trades": 495
+        }
+      },
+      "raw_spread_slip_x2": {
+        "100": {
+          "ending_balance_usd": 6471.3438007141585,
+          "profit_factor": 1.7863955436332204,
+          "max_dd_m1_percent": 60.10307175487406,
+          "max_dd_closed_percent": 58.01081898069499,
+          "trades": 563,
+          "win_rate": 0.36589698046181174,
+          "children": 1806,
+          "baskets_with_adds": 14,
+          "max_planned_risk_percent": 12.386988454400232,
+          "max_margin_percent": 44.81080894237559,
+          "long": 404,
+          "short": 159,
+          "train_2016_2024_balance": 365.9373792858215,
+          "train_dd_percent": 60.10307175487406,
+          "train_pf": 1.1306633611955597,
+          "train_trades": 503
+        },
+        "200": {
+          "ending_balance_usd": 6471.3438007141585,
+          "profit_factor": 1.7863955436332204,
+          "max_dd_m1_percent": 60.10307175487406,
+          "max_dd_closed_percent": 58.01081898069499,
+          "trades": 563,
+          "win_rate": 0.36589698046181174,
+          "children": 1806,
+          "baskets_with_adds": 14,
+          "max_planned_risk_percent": 12.386988454400232,
+          "max_margin_percent": 22.405404471187794,
+          "long": 404,
+          "short": 159,
+          "train_2016_2024_balance": 365.9373792858215,
+          "train_dd_percent": 60.10307175487406,
+          "train_pf": 1.1306633611955597,
+          "train_trades": 503
+        }
+      },
+      "raw_spread_slip_x3": {
+        "100": {
+          "ending_balance_usd": 25.276053571400027,
+          "profit_factor": 0.8305815449209487,
+          "max_dd_m1_percent": 83.09872013666374,
+          "max_dd_closed_percent": 82.76551182958838,
+          "trades": 234,
+          "win_rate": 0.28205128205128205,
+          "children": 242,
+          "baskets_with_adds": 5,
+          "max_planned_risk_percent": 8.73396432259735,
+          "max_margin_percent": 47.81922354823468,
+          "long": 160,
+          "short": 74,
+          "train_2016_2024_balance": 25.276053571400027,
+          "train_dd_percent": 83.09872013666374,
+          "train_pf": 0.8305815449209487,
+          "train_trades": 234
+        },
+        "200": {
+          "ending_balance_usd": 14.203717857113661,
+          "profit_factor": 0.8128519796703202,
+          "max_dd_m1_percent": 90.50243306674365,
+          "max_dd_closed_percent": 90.31518877372237,
+          "trades": 244,
+          "win_rate": 0.27459016393442626,
+          "children": 252,
+          "baskets_with_adds": 5,
+          "max_planned_risk_percent": 12.164437158467784,
+          "max_margin_percent": 47.898755505577704,
+          "long": 168,
+          "short": 76,
+          "train_2016_2024_balance": 14.203717857113661,
+          "train_dd_percent": 90.50243306674365,
+          "train_pf": 0.8128519796703202,
+          "train_trades": 244
+        }
+      },
+      "raw_confirmation_delay5m": {
+        "100": {
+          "ending_balance_usd": 16498.95907714183,
+          "profit_factor": 1.874039449734514,
+          "max_dd_m1_percent": 46.74337331906877,
+          "max_dd_closed_percent": 43.810526361745374,
+          "trades": 550,
+          "win_rate": 0.38,
+          "children": 3906,
+          "baskets_with_adds": 27,
+          "max_planned_risk_percent": 12.481257610841851,
+          "max_margin_percent": 48.67374519892366,
+          "long": 394,
+          "short": 156,
+          "train_2016_2024_balance": 792.1712592856699,
+          "train_dd_percent": 46.74337331906877,
+          "train_pf": 1.1944230248095489,
+          "train_trades": 490
+        },
+        "200": {
+          "ending_balance_usd": 16373.502062856118,
+          "profit_factor": 1.8733684753546251,
+          "max_dd_m1_percent": 46.74337331906877,
+          "max_dd_closed_percent": 43.810526361745374,
+          "trades": 550,
+          "win_rate": 0.38,
+          "children": 3897,
+          "baskets_with_adds": 27,
+          "max_planned_risk_percent": 12.487680810374062,
+          "max_margin_percent": 35.401787315921105,
+          "long": 394,
+          "short": 156,
+          "train_2016_2024_balance": 790.9615699999564,
+          "train_dd_percent": 46.74337331906877,
+          "train_pf": 1.1941525135514424,
+          "train_trades": 490
+        }
+      }
+    },
+    "temporal": {
+      "2016_2024": {
+        "100": {
+          "ending_balance_usd": 1109.816538571352,
+          "profit_factor": 1.2057232207964383,
+          "max_dd_m1_percent": 48.245534393904485,
+          "max_dd_closed_percent": 44.517833845009626,
+          "trades": 491,
+          "win_rate": 0.3645621181262729,
+          "children": 1743,
+          "baskets_with_adds": 12,
+          "max_planned_risk_percent": 12.193993694878927,
+          "max_margin_percent": 43.97028639925814,
+          "long": 350,
+          "short": 141,
+          "train_2016_2024_balance": 1109.816538571352,
+          "train_dd_percent": 48.245534393904485,
+          "train_pf": 1.2057232207964383,
+          "train_trades": 491
+        },
+        "200": {
+          "ending_balance_usd": 1109.133852857066,
+          "profit_factor": 1.2060843967800348,
+          "max_dd_m1_percent": 48.26471920459528,
+          "max_dd_closed_percent": 44.333132442937035,
+          "trades": 491,
+          "win_rate": 0.3645621181262729,
+          "children": 1739,
+          "baskets_with_adds": 12,
+          "max_planned_risk_percent": 12.19950188556136,
+          "max_margin_percent": 25.650120962059024,
+          "long": 350,
+          "short": 141,
+          "train_2016_2024_balance": 1109.133852857066,
+          "train_dd_percent": 48.26471920459528,
+          "train_pf": 1.2060843967800348,
+          "train_trades": 491
+        }
+      },
+      "2025_restart100": {
+        "100": {
+          "ending_balance_usd": 1111.0017749999336,
+          "profit_factor": 1.9951564007628957,
+          "max_dd_m1_percent": 41.60141981958322,
+          "max_dd_closed_percent": 30.032595353255047,
+          "trades": 60,
+          "win_rate": 0.5166666666666667,
+          "children": 173,
+          "baskets_with_adds": 1,
+          "max_planned_risk_percent": 12.44914174885325,
+          "max_margin_percent": 43.73189832141218,
+          "long": 45,
+          "short": 15,
+          "train_2016_2024_balance": 100.0,
+          "train_dd_percent": 0.0,
+          "train_pf": 0.0,
+          "train_trades": 0
+        },
+        "200": {
+          "ending_balance_usd": 1111.0017749999336,
+          "profit_factor": 1.9951564007628957,
+          "max_dd_m1_percent": 41.60141981958322,
+          "max_dd_closed_percent": 30.032595353255047,
+          "trades": 60,
+          "win_rate": 0.5166666666666667,
+          "children": 173,
+          "baskets_with_adds": 1,
+          "max_planned_risk_percent": 12.44914174885325,
+          "max_margin_percent": 21.86594916070609,
+          "long": 45,
+          "short": 15,
+          "train_2016_2024_balance": 100.0,
+          "train_dd_percent": 0.0,
+          "train_pf": 0.0,
+          "train_trades": 0
+        }
+      }
+    },
+    "scalar_checks_count": 11,
+    "selection_scope": "posthoc already observed historical period; no new out-of-sample",
+    "source_hashes": [
+      {
+        "file": "events_2016_2025.csv",
+        "sha256": "6ac3b409cbd3c5ece2f398152339a22bdcbcc41c4a80dc5f01a58b2492c78d6e"
+      },
+      {
+        "file": "macro_daily.csv",
+        "sha256": "ce83285c56cb03bffe4bce164959a325330fd4b899dec0df3b71caa2ba943318"
+      },
+      {
+        "file": "xau-2016.csv",
+        "sha256": "8d2b2d4ef05efc9f25d80a583fc7e2c31b91acf7638b6dc52111f705bf0a9ecf"
+      },
+      {
+        "file": "xau-2017.csv",
+        "sha256": "319acced79857059bcb1c646a71db2e99f61e4a95ae50ccae1ea6f07ee17ed23"
+      },
+      {
+        "file": "xau-2018.csv",
+        "sha256": "40b855b33798f0f4de3f86ae16373b7a45e9b199974821c73fb3de0760ad3ec6"
+      },
+      {
+        "file": "xau-2019.csv",
+        "sha256": "4ab0134dd669d8d319329d63bf932a99f44581ae60e109a91985cb76a89ae332"
+      },
+      {
+        "file": "xau-2020.csv",
+        "sha256": "77897672bef2e19ed04b56df4d0d2e7647092dcc0c909af86893176d7b4d5703"
+      },
+      {
+        "file": "xau-2021.csv",
+        "sha256": "884a5b16baca3e93711cabba9b25561a0ff7ed2e87f316c13e93c921f8fe479e"
+      },
+      {
+        "file": "xau-2022.csv",
+        "sha256": "3a7da430431d0cbcccf8992bc228c53b109f7de801c60a2c20c18a328c2a52f7"
+      },
+      {
+        "file": "xau-2023.csv",
+        "sha256": "fc259c7743d654ff9e965054debb71816dd8eef63e44d7d86fd5b14b79e44ab8"
+      },
+      {
+        "file": "xau-2024.csv",
+        "sha256": "42af2a6ece96e557137bb7b0b87955fb09261679b1a783082180c9caae43b656"
+      },
+      {
+        "file": "xau-2025.csv",
+        "sha256": "1f941902891eeec5d1c89d5f1319f7afda39f46c868ca2948ee2dee4797138b4"
+      },
+      {
+        "file": "g-0006.npz",
+        "sha256": "ec9b25f63172fad6235c1d5addcf6b5423b76127d6292359b56d2a89fcde1a24"
+      },
+      {
+        "file": "g-0274.npz",
+        "sha256": "66f553fee73bc47159302887c19fe8320d4fc36d4131ede92d874c37112522a2"
+      }
+    ]
+  },
+  "activation": {
+    "scanner_runtime_changed": false,
+    "broker_account_changed": false,
+    "live_execution_authorized": false
+  },
+  "limitations": [
+    "RAW spreads from current published MT4 reference used as synthetic cTrader proxy, not historic broker ASK.",
+    "Commission charged separately per fill/exit and reserved in basket risk.",
+    "Original synthetic XAU carry; EUR original intraday zero carry retained.",
+    "M1 equity marker and native research fill/margin rules differ from actual broker.",
+    "Historical DD is not a forward guarantee; frozen does not mean stress-proof."
+  ]
+}

@@ -1,0 +1,19 @@
+[Unit]
+Description=Rizan cBot read-only data and checkpoint bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rizan
+WorkingDirectory=/opt/rizan-bridge
+EnvironmentFile=/opt/rizan-bridge/rizan-bridge.env
+ExecStart=/opt/rizan-bridge/.venv/bin/python server.py
+Restart=on-failure
+RestartSec=20
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
