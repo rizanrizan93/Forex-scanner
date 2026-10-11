@@ -8,20 +8,17 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import hashlib
 import json
 import os
 import re
 import sqlite3
 import ssl
+import tempfile
 import time
 from pathlib import Path
 
 from websockets.asyncio.server import serve
-
-try:
-    from . import feeds
-except ImportError:  # direct script execution on VPS
-    import feeds
 
 CONTRACTS = {
     "RZXA1": {
@@ -45,33 +42,68 @@ def strict_load(text: str):
 
 
 class Store:
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, *, clock=time.time):
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
+        if path.is_symlink():
+            raise ValueError("STATE_PATH_INVALID")
         self.db = sqlite3.connect(path)
+        os.chmod(path, 0o600)
+        self.clock = clock
+        self.db.execute("PRAGMA busy_timeout=5000")
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=FULL")
         self.db.execute(
             "CREATE TABLE IF NOT EXISTS checkpoints("
             "key TEXT PRIMARY KEY, version INTEGER NOT NULL, state TEXT NOT NULL)"
         )
-        self.leases: dict[str, tuple[str, float]] = {}
+        self.db.execute(
+            "CREATE TABLE IF NOT EXISTS bridge_leases("
+            "key TEXT PRIMARY KEY, lease TEXT NOT NULL, expires_at REAL NOT NULL, touched_at REAL NOT NULL)"
+        )
+        self.db.execute(
+            "CREATE TABLE IF NOT EXISTS checkpoint_receipts("
+            "key TEXT NOT NULL, client_revision INTEGER NOT NULL, base INTEGER NOT NULL,"
+            "digest TEXT NOT NULL, version INTEGER NOT NULL, PRIMARY KEY(key,client_revision))"
+        )
+        self.db.commit()
 
     def acquire(self, key: str, lease: str):
-        old = self.leases.get(key)
-        if old and old[1] > time.monotonic() and old[0] != lease:
-            raise ValueError("LEASE_BUSY")
-        self.leases[key] = (lease, time.monotonic() + 45)
-        row = self.db.execute(
-            "SELECT version,state FROM checkpoints WHERE key=?", (key,)
-        ).fetchone()
-        return (row[0], strict_load(row[1])) if row else (0, None)
+        now = self.clock()
+        with self.db:
+            self.db.execute("BEGIN IMMEDIATE")
+            old = self.db.execute(
+                "SELECT lease,expires_at FROM bridge_leases WHERE key=?", (key,)
+            ).fetchone()
+            if old and old[1] > now and old[0] != lease:
+                raise ValueError("LEASE_BUSY")
+            row = self.db.execute(
+                "SELECT version,state FROM checkpoints WHERE key=?", (key,)
+            ).fetchone()
+            state = strict_load(row[1]) if row else None
+            if row:
+                self._validate_state_identity(key, state.get("Revision") if isinstance(state, dict) else None, state)
+            self.db.execute(
+                "INSERT INTO bridge_leases VALUES(?,?,?,?) ON CONFLICT(key) DO UPDATE SET "
+                "lease=excluded.lease,expires_at=excluded.expires_at,touched_at=excluded.touched_at",
+                (key, lease, now + 45, now),
+            )
+        return (row[0], state) if row else (0, None)
 
     def touch(self, key: str, lease: str):
-        old = self.leases.get(key)
-        if not old or old[0] != lease or old[1] <= time.monotonic():
+        with self.db:
+            self.db.execute("BEGIN IMMEDIATE")
+            self._touch(key, lease)
+
+    def _touch(self, key: str, lease: str):
+        now = self.clock()
+        updated = self.db.execute(
+            "UPDATE bridge_leases SET expires_at=?,touched_at=? "
+            "WHERE key=? AND lease=? AND expires_at>?",
+            (now + 45, now, key, lease, now),
+        ).rowcount
+        if updated != 1:
             raise ValueError("LEASE_EXPIRED")
-        self.leases[key] = (lease, time.monotonic() + 45)
 
     @staticmethod
     def _validate_state_identity(key: str, revision: int, state: dict) -> None:
@@ -79,31 +111,51 @@ class Store:
         contract = CONTRACTS[prefix]
         if not isinstance(state, dict):
             raise ValueError("STATE_IDENTITY_INVALID")
-        if state.get("Schema") != contract["schema"]:
+        if type(state.get("Schema")) is not int or state.get("Schema") != contract["schema"]:
             raise ValueError("STATE_SCHEMA_INVALID")
         if state.get("ContractHash") != contract["hash"]:
             raise ValueError("STATE_CONTRACT_INVALID")
         if str(state.get("AccountNumber")) != number or state.get("Symbol") != symbol:
             raise ValueError("STATE_ACCOUNT_SYMBOL_INVALID")
-        if state.get("Revision") != revision or not isinstance(revision, int) or revision < 0:
+        if type(revision) is not int or type(state.get("Revision")) is not int or state.get("Revision") != revision or revision < 0:
             raise ValueError("STATE_REVISION_INVALID")
         expected_model = contract["execution_model"]
         if expected_model is not None:
             if state.get("ExecutionModel") != expected_model:
                 raise ValueError("STATE_EXECUTION_MODEL_INVALID")
             pending = state.get("PendingChildren", 0)
-            if not isinstance(pending, int) or pending < 0 or pending > 2000:
+            if type(pending) is not int or pending < 0 or pending > 2000:
                 raise ValueError("STATE_PENDING_CHILDREN_INVALID")
 
     def save(self, key: str, lease: str, base: int, revision: int, state: dict) -> int:
-        self.touch(key, lease)
+        if type(base) is not int or base < 0:
+            raise ValueError("BASE_REVISION_INVALID")
         self._validate_state_identity(key, revision, state)
-        encoded = json.dumps(state, allow_nan=False, separators=(",", ":"))
+        encoded = json.dumps(state, sort_keys=True, allow_nan=False, separators=(",", ":"))
+        digest = hashlib.sha256(encoded.encode()).hexdigest()
         with self.db:
+            self.db.execute("BEGIN IMMEDIATE")
+            self._touch(key, lease)
+            receipt = self.db.execute(
+                "SELECT base,digest,version FROM checkpoint_receipts WHERE key=? AND client_revision=?",
+                (key, revision),
+            ).fetchone()
+            if receipt:
+                if receipt[:2] != (base, digest):
+                    raise ValueError("STATE_REVISION_REUSE_CONFLICT")
+                # A lost ACK is safe to retry, including after a process restart.
+                return receipt[2]
             row = self.db.execute(
                 "SELECT version,state FROM checkpoints WHERE key=?", (key,)
             ).fetchone()
             version = int(row[0]) if row else 0
+            if row and revision == strict_load(row[1])["Revision"] and base == version - 1:
+                legacy = json.dumps(strict_load(row[1]), sort_keys=True, allow_nan=False,
+                                    separators=(",", ":"))
+                if legacy == encoded:
+                    self.db.execute("INSERT INTO checkpoint_receipts VALUES(?,?,?,?,?)",
+                                    (key, revision, base, digest, version))
+                    return version
             if base != version:
                 raise ValueError("REVISION_CONFLICT")
             if row and revision <= strict_load(row[1])["Revision"]:
@@ -113,7 +165,25 @@ class Store:
                 "ON CONFLICT(key) DO UPDATE SET version=excluded.version,state=excluded.state",
                 (key, version + 1, encoded),
             )
+            self.db.execute(
+                "INSERT INTO checkpoint_receipts VALUES(?,?,?,?,?)",
+                (key, revision, base, digest, version + 1),
+            )
         return version + 1
+
+    def status(self, active_keys: set[str]) -> dict:
+        rows = self.db.execute("SELECT key,version FROM checkpoints").fetchall()
+        result = {}
+        for symbol in ("XAUUSD", "EURUSD"):
+            versions = [v for key, v in rows if key.split(":")[-1].upper() == symbol]
+            connected = sum(key.split(":")[-1].upper() == symbol for key in active_keys)
+            result[symbol] = {
+                "connected": connected,
+                "checkpoint_count": len(versions),
+                "checkpoint_version_max": max(versions, default=0),
+                "execution_authority": "NONE",
+            }
+        return result
 
 
 def _validate_identity(key: str, lease: str, contract_hash: str) -> tuple[str, str, str]:
@@ -137,13 +207,29 @@ def _validate_identity(key: str, lease: str, contract_hash: str) -> tuple[str, s
 
 def _write_snapshot(path: Path, snapshot: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(snapshot, allow_nan=False, separators=(",", ":")))
-    os.chmod(temporary, 0o600)
-    temporary.replace(path)
+    fd, name = tempfile.mkstemp(prefix="." + path.name + ".", dir=path.parent)
+    temporary = Path(name)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w") as output:
+            output.write(json.dumps(snapshot, allow_nan=False, separators=(",", ":")))
+            output.flush()
+            os.fsync(output.fileno())
+        temporary.replace(path)
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 async def main() -> None:
+    try:
+        from . import feeds
+    except ImportError:  # direct script execution on VPS
+        import feeds
     token = os.environ.get("RIZAN_BRIDGE_TOKEN", "")
     if len(token) < 32:
         raise SystemExit("RIZAN_BRIDGE_TOKEN must be a random secret of at least 32 characters")
@@ -166,20 +252,88 @@ async def main() -> None:
     snapshot_path = Path(
         os.environ.get("RIZAN_SNAPSHOT_PATH", "state/xau_macro_event_snapshot.json")
     )
-    peers: set = set()
+    health_path = Path(os.environ.get("RIZAN_HEALTH_PATH", "state/cbot_bridge_health.json"))
+    # Only database credentials are loaded here. Broker credentials remain outside the bridge.
+    turso_env = os.environ.get("RIZAN_TURSO_ENV_FILE")
+    if turso_env:
+        for line in Path(turso_env).read_text().splitlines():
+            name, separator, value = line.partition("=")
+            if separator and name.strip() in {"TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"}:
+                os.environ[name.strip()] = value.strip().strip("'\"")
+        os.environ["FX_DATABASE_BACKEND"] = "turso"
+    peers: dict = {}
     latest = None
+    turso_status = "DISABLED" if not turso_env else "PENDING"
+
+    def health() -> dict:
+        now = time.time()
+        streams = store.status(set(peers.values()))
+        macro_ok = bool(latest and latest.get("Dgs10") and latest.get("Dfii10")
+                        and latest.get("ForexFactoryOk") and latest.get("BlsOk")
+                        and not latest.get("Errors"))
+        if macro_ok:
+            from datetime import datetime
+            try:
+                produced = datetime.fromisoformat(latest["ProducedUtc"])
+                start = datetime.fromisoformat(latest["CoverageFromUtc"])
+                end = datetime.fromisoformat(latest["CoverageToUtc"])
+                macro_ok = all(t.tzinfo for t in (produced, start, end)) and \
+                    0 <= now - produced.timestamp() <= 180 and start.timestamp() <= now < end.timestamp()
+            except (KeyError, TypeError, ValueError):
+                macro_ok = False
+        streams["XAUUSD"]["macro_event_ready"] = macro_ok
+        return {"observed_at_unix": now, "streams": streams,
+                "turso": turso_status, "execution_authority": "NONE"}
+
+    def mirror_turso(status: dict) -> None:
+        from fx_scanner.storage.backend import create_backend_client
+        from datetime import datetime, timezone
+        client = create_backend_client()
+        try:
+            for symbol, details in status["streams"].items():
+                client.table("runtime_heartbeats").upsert({
+                    "worker_name": "cbot_bridge_" + symbol.lower(),
+                    "observed_at": datetime.now(timezone.utc).isoformat(),
+                    "healthy": details["connected"] == 1 and
+                               (symbol != "XAUUSD" or details["macro_event_ready"]),
+                    "lag_seconds": 0.0,
+                    "details": details,
+                }, on_conflict="worker_name", returning="minimal").execute()
+        finally:
+            client.http.close()
+
+    async def monitor() -> None:
+        nonlocal turso_status
+        while True:
+            status = health()
+            if turso_env:
+                try:
+                    await asyncio.to_thread(mirror_turso, status)
+                    turso_status = "PASS"
+                except Exception:
+                    turso_status = "FAIL"
+            _write_snapshot(health_path, health())
+            await asyncio.sleep(30)
 
     async def publish() -> None:
         nonlocal latest
         while True:
-            latest = await asyncio.to_thread(feeds.snapshot)
-            await asyncio.to_thread(_write_snapshot, snapshot_path, latest)
+            try:
+                candidate = await asyncio.to_thread(feeds.snapshot)
+                await asyncio.to_thread(_write_snapshot, snapshot_path, candidate)
+                latest = candidate
+            except Exception:
+                latest = None
+                await asyncio.sleep(15)
+                continue
             wire = json.dumps({"type": "snapshot", "data": latest}, allow_nan=False)
             for ws in tuple(peers):
+                if peers[ws].split(":")[-1].upper() != "XAUUSD":
+                    continue
                 try:
                     await ws.send(wire)
                 except Exception:
-                    peers.discard(ws)
+                    peers.pop(ws, None)
             await asyncio.sleep(60)
 
     async def handler(ws) -> None:
@@ -196,8 +350,8 @@ async def main() -> None:
             version, state = store.acquire(key, lease)
             identity = (key, lease)
             await ws.send(json.dumps({"type": "ready", "revision": version, "state": state}))
-            peers.add(ws)
-            if latest is not None:
+            peers[ws] = key
+            if latest is not None and key.split(":")[-1].upper() == "XAUUSD":
                 await ws.send(
                     json.dumps({"type": "snapshot", "data": latest}, allow_nan=False)
                 )
@@ -210,8 +364,8 @@ async def main() -> None:
                     version = store.save(
                         key,
                         lease,
-                        int(request["base_revision"]),
-                        int(request["client_revision"]),
+                        request["base_revision"],
+                        request["client_revision"],
                         request["state"],
                     )
                     await ws.send(
@@ -233,7 +387,7 @@ async def main() -> None:
         except Exception:
             await ws.close(code=1011)
         finally:
-            peers.discard(ws)
+            peers.pop(ws, None)
             _ = identity
 
     async with serve(
@@ -245,7 +399,7 @@ async def main() -> None:
         ping_interval=15,
         ping_timeout=15,
     ):
-        await publish()
+        await asyncio.gather(publish(), monitor())
 
 
 if __name__ == "__main__":
