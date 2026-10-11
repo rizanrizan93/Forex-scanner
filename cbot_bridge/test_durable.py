@@ -78,6 +78,29 @@ class DurableTests(unittest.TestCase):
             self.store.save(self.xau, self.lease, 0, 1, s)
         self.assertEqual(self.store.acquire(self.xau, self.lease), (0, None))
 
+    def test_corruption_is_not_a_fresh_checkpoint(self):
+        self.store.acquire(self.xau, self.lease)
+        self.store.save(self.xau, self.lease, 0, 1, state("RZXA1", 1, "XAUUSD", 1))
+        self.store.db.execute("UPDATE checkpoints SET state=? WHERE key=?", ('{"Schema":2}',self.xau))
+        self.store.db.commit()
+        self.reopen()
+        with self.assertRaisesRegex(ValueError, "STATE_SCHEMA_INVALID"):
+            self.store.acquire(self.xau, self.lease)
+        self.assertEqual(self.store.db.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0], 1)
+
+    def test_pending_batch_state_roundtrip_and_receipt(self):
+        self.store.acquire(self.eur, self.lease)
+        s = state("RZEU4B", 1, "EURUSD", 19)
+        s.update(PendingChildren=7, PendingFirstFill=True, PendingLabel="synthetic-pending",
+                 PendingStage=0, Basket={"Entry":1.1,"Accepted":[0,0,0,0],"UsedRisk":0,
+                 "StageRisk":[0,0,0,0],"Sequence":1},
+                 Eur={"Fast":-0.2,"Slow":0.1,"Virtual":{"Side":1}})
+        self.assertEqual(self.store.save(self.eur,self.lease,0,19,s),1)
+        self.reopen()
+        self.assertEqual(self.store.acquire(self.eur,self.lease),(1,s))
+        self.assertEqual(self.store.save(self.eur,self.lease,0,19,s),1)
+        self.assertEqual(self.store.db.execute("SELECT COUNT(*) FROM checkpoint_receipts WHERE key=?",(self.eur,)).fetchone()[0],1)
+
     def test_private_files(self):
         self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
         path = Path(self.folder.name) / "health.json"

@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+bin/
+obj/
+rizan-bridge.env
+*.sqlite*
+*.db
+*.pem

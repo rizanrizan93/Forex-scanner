@@ -1,0 +1,16 @@
+{
+  "secret_audit": {
+    "status": "PASS",
+    "files_scanned": 20,
+    "credential_candidates": 0,
+    "limits": "Pattern audit, not a guarantee; no credentials used; only public source and placeholders copied"
+  },
+  "tests_passed": 5,
+  "archive_sha256_checks": 117,
+  "source_project_files_checked": 9,
+  "csharp_build": "PASS_NET6_REFERENCE_AND_CTRADER_API_1.0.21_NO_ALGO_REBUILD",
+  "live_vps": "NOT_ACCESSED",
+  "live_feed_health": "NOT_VERIFIED",
+  "trading": "NOT_ACTIVATED",
+  "transport_simulation_assertions": 53
+}

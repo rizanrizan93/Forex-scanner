@@ -1,0 +1,70 @@
+{
+  "base_commit": "adb5c1c718d3ecef0c36231f48a66eab02dcc6d9",
+  "scope": "Connectivity only; original archives unchanged",
+  "unchanged_methods": "All methods except OnStart, ConnectBridge, ReceiveBridge, Persist, Cycle connectivity preamble, OnStop; added BridgeOffline and ServiceBridge",
+  "files": [
+    {
+      "path": "cbot_connectivity/vps/xau-v1.0.1/Common/FrozenCore.cs",
+      "original": "cbot_sources/archive/migration-20261010/v1.0.1/Common/FrozenCore.cs",
+      "original_sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+      "adapted_sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+      "byte_identical": true
+    },
+    {
+      "path": "cbot_connectivity/vps/xau-v1.0.1/Common/RizanRobot.cs",
+      "original": "cbot_sources/archive/migration-20261010/v1.0.1/Common/RizanRobot.cs",
+      "original_sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+      "adapted_sha256": "ac2e3332b537b090f381ee961c52908f531f7a8bd31cce41a6cdf0a8f50ee8a9",
+      "byte_identical": false
+    },
+    {
+      "path": "cbot_connectivity/vps/xau-v1.0.1/RizanXAU/RizanXAU/RizanXAU.cs",
+      "original": "cbot_sources/archive/migration-20261010/v1.0.1/RizanXAU/RizanXAU/RizanXAU.cs",
+      "original_sha256": "6c0dd273ee48204428fb5e49edae8fa88bbf049b80ca2872c8c45388a7d8c817",
+      "adapted_sha256": "6c0dd273ee48204428fb5e49edae8fa88bbf049b80ca2872c8c45388a7d8c817",
+      "byte_identical": true
+    },
+    {
+      "path": "cbot_connectivity/vps/xau-v1.0.1/RizanXAU/RizanXAU/RizanXAU.csproj",
+      "original": "cbot_sources/archive/migration-20261010/v1.0.1/RizanXAU/RizanXAU/RizanXAU.csproj",
+      "original_sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235",
+      "adapted_sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235",
+      "byte_identical": true
+    },
+    {
+      "path": "cbot_connectivity/vps/eur-batch-v1.1.0/Common/EurBatchExecution.cs",
+      "original": "cbot_sources/archive/eur-releases/v1.1.0/Common/EurBatchExecution.cs",
+      "original_sha256": "ce45b7ddaa9db914000cbd1d53622f3ec4f1335b6db8da97a2cd3095321dc9da",
+      "adapted_sha256": "ce45b7ddaa9db914000cbd1d53622f3ec4f1335b6db8da97a2cd3095321dc9da",
+      "byte_identical": true
+    },
+    {
+      "path": "cbot_connectivity/vps/eur-batch-v1.1.0/Common/FrozenCore.cs",
+      "original": "cbot_sources/archive/eur-releases/v1.1.0/Common/FrozenCore.cs",
+      "original_sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+      "adapted_sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+      "byte_identical": true
+    },
+    {
+      "path": "cbot_connectivity/vps/eur-batch-v1.1.0/Common/RizanRobot.cs",
+      "original": "cbot_sources/archive/eur-releases/v1.1.0/Common/RizanRobot.cs",
+      "original_sha256": "29e8704f5c1505b4044a1088b720ab3468ce445a39bbcf3eaa60f292fe1a9387",
+      "adapted_sha256": "5d586d24e0e0a24f212d4eeb259512987294057d214ca19c8e961e7b0353bd6b",
+      "byte_identical": false
+    },
+    {
+      "path": "cbot_connectivity/vps/eur-batch-v1.1.0/RizanEURBatch/RizanEURBatch/RizanEURBatch.cs",
+      "original": "cbot_sources/archive/eur-releases/v1.1.0/RizanEURBatch/RizanEURBatch/RizanEURBatch.cs",
+      "original_sha256": "96e63461185c6a8566df43cc03007f0a15a64dea41b2e37c41a0853bedecd1b6",
+      "adapted_sha256": "96e63461185c6a8566df43cc03007f0a15a64dea41b2e37c41a0853bedecd1b6",
+      "byte_identical": true
+    },
+    {
+      "path": "cbot_connectivity/vps/eur-batch-v1.1.0/RizanEURBatch/RizanEURBatch/RizanEURBatch.csproj",
+      "original": "cbot_sources/archive/eur-releases/v1.1.0/RizanEURBatch/RizanEURBatch/RizanEURBatch.csproj",
+      "original_sha256": "1173e3e12f4729546a08f17d78cd070b00fa36e2f08f00fff7a8c047b548fd6c",
+      "adapted_sha256": "1173e3e12f4729546a08f17d78cd070b00fa36e2f08f00fff7a8c047b548fd6c",
+      "byte_identical": true
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import asyncio
 import hmac
 import hashlib
 import json
+import math
 import os
 import re
 import sqlite3
@@ -225,18 +226,50 @@ def _write_snapshot(path: Path, snapshot: dict) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def snapshot_ready(snapshot: dict | None, now: float) -> bool:
+    """Data health for both XAU sides, not a trading signal or direction decision."""
+    from datetime import datetime
+    if not isinstance(snapshot,dict) or snapshot.get("ForexFactoryOk") is not True or snapshot.get("BlsOk") is not True or snapshot.get("Errors"):
+        return False
+    try:
+        def stamp(value):
+            t=datetime.fromisoformat(value)
+            if t.tzinfo is None: raise ValueError("OFFSET_REQUIRED")
+            return t.timestamp()
+        produced=stamp(snapshot["ProducedUtc"])
+        if produced>now+5 or now-produced>180:
+            return False
+        if stamp(snapshot["CoverageFromUtc"])>now-30*60 or stamp(snapshot["CoverageToUtc"])<now+495*60:
+            return False
+        for name in ("Dgs10","Dfii10"):
+            point=snapshot[name]
+            if type(point["Delta"]) not in (int,float) or not math.isfinite(point["Delta"]): return False
+            available=stamp(point["AvailableUtc"])
+            if available>now or now-available>7*86400: return False
+        if not isinstance(snapshot["Events"],list): return False
+        for event in snapshot["Events"]:
+            stamp(event["AtUtc"])
+            if not isinstance(event["Category"],str): return False
+        return True
+    except (KeyError,TypeError,ValueError,OverflowError):
+        return False
+
+
 async def main() -> None:
     try:
         from . import feeds
     except ImportError:  # direct script execution on VPS
         import feeds
     token = os.environ.get("RIZAN_BRIDGE_TOKEN", "")
-    if len(token) < 32:
+    if len(token) < 32 or token.startswith("REPLACE_WITH_"):
         raise SystemExit("RIZAN_BRIDGE_TOKEN must be a random secret of at least 32 characters")
     host = os.environ.get("RIZAN_BRIDGE_HOST", "127.0.0.1")
-    port = int(os.environ.get("RIZAN_BRIDGE_PORT", "25345"))
+    port = int(os.environ.get("RIZAN_BRIDGE_PORT", "25346"))
     if not 1 <= port <= 65535:
         raise SystemExit("Bridge backend port must be between 1 and 65535")
+
+    if port == 25346 and host not in ("127.0.0.1", "::1", "localhost"):
+        raise SystemExit("Nginx backend 25346 must bind to loopback")
 
     cert = os.environ.get("RIZAN_TLS_CERT")
     keyfile = os.environ.get("RIZAN_TLS_KEY")
@@ -262,25 +295,14 @@ async def main() -> None:
                 os.environ[name.strip()] = value.strip().strip("'\"")
         os.environ["FX_DATABASE_BACKEND"] = "turso"
     peers: dict = {}
+    active_sessions: dict[str, object] = {}
     latest = None
     turso_status = "DISABLED" if not turso_env else "PENDING"
 
     def health() -> dict:
         now = time.time()
         streams = store.status(set(peers.values()))
-        macro_ok = bool(latest and latest.get("Dgs10") and latest.get("Dfii10")
-                        and latest.get("ForexFactoryOk") and latest.get("BlsOk")
-                        and not latest.get("Errors"))
-        if macro_ok:
-            from datetime import datetime
-            try:
-                produced = datetime.fromisoformat(latest["ProducedUtc"])
-                start = datetime.fromisoformat(latest["CoverageFromUtc"])
-                end = datetime.fromisoformat(latest["CoverageToUtc"])
-                macro_ok = all(t.tzinfo for t in (produced, start, end)) and \
-                    0 <= now - produced.timestamp() <= 180 and start.timestamp() <= now < end.timestamp()
-            except (KeyError, TypeError, ValueError):
-                macro_ok = False
+        macro_ok = snapshot_ready(latest, now)
         streams["XAUUSD"]["macro_event_ready"] = macro_ok
         return {"observed_at_unix": now, "streams": streams,
                 "turso": turso_status, "execution_authority": "NONE"}
@@ -331,7 +353,7 @@ async def main() -> None:
                 if peers[ws].split(":")[-1].upper() != "XAUUSD":
                     continue
                 try:
-                    await ws.send(wire)
+                    await asyncio.wait_for(ws.send(wire), 5)
                 except Exception:
                     peers.pop(ws, None)
             await asyncio.sleep(60)
@@ -347,7 +369,19 @@ async def main() -> None:
             key = str(hello.get("key", ""))
             lease = str(hello.get("lease", ""))
             _validate_identity(key, lease, str(hello.get("contract", "")))
+            previous = active_sessions.get(key)
+            if previous is not None:
+                row = store.db.execute("SELECT expires_at FROM bridge_leases WHERE key=?", (key,)).fetchone()
+                if row and row[0] > store.clock():
+                    raise ValueError("LEASE_BUSY")
+                # An expired session cannot reserve an identity indefinitely.
+                await asyncio.wait_for(previous.close(code=1008), 5)
+                if active_sessions.get(key) is previous:
+                    active_sessions.pop(key, None)
+                elif key in active_sessions:
+                    raise ValueError("LEASE_BUSY")
             version, state = store.acquire(key, lease)
+            active_sessions[key] = ws
             identity = (key, lease)
             await ws.send(json.dumps({"type": "ready", "revision": version, "state": state}))
             peers[ws] = key
@@ -388,7 +422,8 @@ async def main() -> None:
             await ws.close(code=1011)
         finally:
             peers.pop(ws, None)
-            _ = identity
+            if identity is not None and active_sessions.get(identity[0]) is ws:
+                active_sessions.pop(identity[0], None)
 
     async with serve(
         handler,
@@ -399,7 +434,10 @@ async def main() -> None:
         ping_interval=15,
         ping_timeout=15,
     ):
-        await asyncio.gather(publish(), monitor())
+        try:
+            await asyncio.gather(publish(), monitor())
+        finally:
+            store.db.close()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,24 @@
+[Unit]
+Description=RIZAN read-only cBot checkpoint and XAU feed bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__SERVICE_USER__
+WorkingDirectory=__REPO_ROOT__
+Environment=RIZAN_BRIDGE_HOST=127.0.0.1
+Environment=RIZAN_BRIDGE_PORT=25346
+EnvironmentFile=/etc/rizan-bridge/bridge.env
+ExecStart=__REPO_ROOT__/.venv/bin/python __REPO_ROOT__/cbot_bridge/server.py
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__STATE_DIRECTORY__
+
+[Install]
+WantedBy=multi-user.target
