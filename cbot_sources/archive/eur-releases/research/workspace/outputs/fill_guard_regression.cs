@@ -1,0 +1,11 @@
+using System;
+using System.Text.Json;
+using Rizan.Frozen;
+var c=FrozenContract.Eur;
+double quote=1.21497,distance=.00244928571428571,eq=95.9885;
+var s=new Signal(new DateTime(2021,1,25,10,30,0,DateTimeKind.Utc),1,distance);
+var b=FrozenCore.StartBasket(c,s,quote,eq,eq,eq,0,1000*quote/200,.625,100)!;
+double planned=FrozenCore.ChildRisk(c,1,quote,b.Stop),actual=FrozenCore.ChildRisk(c,1,quote+.00001,b.Stop),allocation=FrozenCore.StageAllocation(c,b,0);
+bool prePass=planned<=allocation+1e-8,postFail=actual>allocation+1e-8;
+if(b.InitialWanted!=1||!prePass||!postFail)throw new Exception("REGRESSION_NOT_REPRODUCED");
+Console.WriteLine(JsonSerializer.Serialize(new{Status="REPRODUCED",InitialWanted=b.InitialWanted,PlannedChildRisk=planned,ActualChildRisk=actual,InitialStageAllocation=allocation,AdverseSlippagePips=.1,PreFillPass=prePass,PostFillReject=postFail,Reason="FILL_OR_PROTECTION_OUTSIDE_CONTRACT_CLOSED"}));

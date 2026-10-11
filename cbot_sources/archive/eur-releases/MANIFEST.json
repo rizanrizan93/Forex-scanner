@@ -1,0 +1,2459 @@
+{
+  "schema": 1,
+  "created_utc": "2026-10-11T13:49:04.024461+00:00",
+  "intent": "Archive original EUR cBot releases only; no strategy/config edits, rebuilds or deployment.",
+  "base_main_at_clone": "1b19625d0b80a67091abaacf518750240da1fbad",
+  "archive_root": "cbot_sources/archive/eur-releases",
+  "strategy_or_execution_modified": false,
+  "rebuilt": false,
+  "reconstructed": false,
+  "binary_metadata_versions": {
+    "v1.0.1/compiled/RizanEUR.algo": "1.0.1.0",
+    "v1.0.2/compiled/RizanEUR.algo": "1.0.2.0",
+    "v1.1.0/compiled/RizanEURBatch_v1.1.0.algo": "1.1.0.0"
+  },
+  "files": [
+    {
+      "path": "v1.0.1/Common/FrozenCore.cs",
+      "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+      "size_bytes": 16928,
+      "role": "release-original",
+      "version": "1.0.1",
+      "selected_original": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928
+        }
+      ]
+    },
+    {
+      "path": "v1.0.1/Common/RizanRobot.cs",
+      "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+      "size_bytes": 28028,
+      "role": "release-original",
+      "version": "1.0.1",
+      "selected_original": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028
+        }
+      ]
+    },
+    {
+      "path": "v1.0.1/Parity/Parity.csproj",
+      "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+      "size_bytes": 298,
+      "role": "release-original",
+      "version": "1.0.1",
+      "selected_original": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Parity/Parity.csproj",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298
+        }
+      ]
+    },
+    {
+      "path": "v1.0.1/Parity/Program.cs",
+      "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+      "size_bytes": 4632,
+      "role": "release-original",
+      "version": "1.0.1",
+      "selected_original": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Parity/Program.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632
+        }
+      ]
+    },
+    {
+      "path": "v1.0.1/RizanEUR/RizanEUR/RizanEUR.cs",
+      "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+      "size_bytes": 340,
+      "role": "release-original",
+      "version": "1.0.1",
+      "selected_original": "research_inputs/migration/RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340
+        }
+      ]
+    },
+    {
+      "path": "v1.0.1/RizanEUR/RizanEUR/RizanEUR.csproj",
+      "sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235",
+      "size_bytes": 497,
+      "role": "release-original",
+      "version": "1.0.1",
+      "selected_original": "research_inputs/migration/RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.csproj",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/RizanEUR/RizanEUR/RizanEUR.csproj",
+          "sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235",
+          "size_bytes": 497
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.csproj",
+          "sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235",
+          "size_bytes": 497,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.csproj",
+          "sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235",
+          "size_bytes": 497
+        }
+      ]
+    },
+    {
+      "path": "v1.0.1/compiled/RizanEUR.algo",
+      "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+      "size_bytes": 33688,
+      "role": "release-original",
+      "version": "1.0.1",
+      "selected_original": "research_inputs/migration/RIZAN_CBOT_MIGRATION/compiled/RizanEUR.algo",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/compiled/RizanEUR.algo",
+          "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+          "size_bytes": 33688
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!upload/RizanEUR.algo",
+          "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+          "size_bytes": 33688,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/compiled/RizanEUR.algo",
+          "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+          "size_bytes": 33688,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/compiled/RizanEUR.algo",
+          "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+          "size_bytes": 33688
+        },
+        {
+          "locator": "upload/RizanEUR.algo",
+          "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+          "size_bytes": 33688
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/Assembly.cs",
+      "sha256": "bada19ab2692d73652eaa4bea9c871e9d3d4d6fe2168c223ea70c4d0591cfe37",
+      "size_bytes": 107,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/Assembly.cs",
+      "provenance": [
+        {
+          "locator": "release_eur102/Assembly.cs",
+          "sha256": "bada19ab2692d73652eaa4bea9c871e9d3d4d6fe2168c223ea70c4d0591cfe37",
+          "size_bytes": 107
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/Common/FrozenCore.cs",
+      "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+      "size_bytes": 18832,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/Common/FrozenCore.cs",
+      "provenance": [
+        {
+          "locator": "eur_batch_trial/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!source/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!production/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!source/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "release_eur102/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832
+        },
+        {
+          "locator": "release_eur110/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/Common/RizanRobot.cs",
+      "sha256": "79df564d09b1ef399eb0697d03cce92929a29bd61e4880993d883107993a7248",
+      "size_bytes": 28899,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/Common/RizanRobot.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!production/RizanRobot.cs",
+          "sha256": "79df564d09b1ef399eb0697d03cce92929a29bd61e4880993d883107993a7248",
+          "size_bytes": 28899,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/Common/RizanRobot.cs",
+          "sha256": "79df564d09b1ef399eb0697d03cce92929a29bd61e4880993d883107993a7248",
+          "size_bytes": 28899,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!source/RizanRobot.cs",
+          "sha256": "79df564d09b1ef399eb0697d03cce92929a29bd61e4880993d883107993a7248",
+          "size_bytes": 28899,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "release_eur102/Common/RizanRobot.cs",
+          "sha256": "79df564d09b1ef399eb0697d03cce92929a29bd61e4880993d883107993a7248",
+          "size_bytes": 28899
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/Parity/Parity.csproj",
+      "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+      "size_bytes": 298,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/Parity/Parity.csproj",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/Parity/Program.cs",
+      "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+      "size_bytes": 4632,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/Parity/Program.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/RizanEUR/RizanEUR/RizanEUR.cs",
+      "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+      "size_bytes": 340,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/RizanEUR/RizanEUR/RizanEUR.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/RizanEUR/RizanEUR/RizanEUR.csproj",
+      "sha256": "cbd6656a46af2fb26af02118ff01bb24178bac34ccb3d27201e25d6d133a6a32",
+      "size_bytes": 497,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/RizanEUR/RizanEUR/RizanEUR.csproj",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/RizanEUR/RizanEUR/RizanEUR.csproj",
+          "sha256": "cbd6656a46af2fb26af02118ff01bb24178bac34ccb3d27201e25d6d133a6a32",
+          "size_bytes": 497,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/RizanEUR/RizanEUR/RizanEUR.csproj",
+          "sha256": "cbd6656a46af2fb26af02118ff01bb24178bac34ccb3d27201e25d6d133a6a32",
+          "size_bytes": 497
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/compiled/RizanEUR.algo",
+      "sha256": "5b73f52b412dc0714c16cf7368df6286256580da6fcf852762227b8834651a6f",
+      "size_bytes": 35287,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/compiled/RizanEUR.algo",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/compiled/RizanEUR.algo",
+          "sha256": "5b73f52b412dc0714c16cf7368df6286256580da6fcf852762227b8834651a6f",
+          "size_bytes": 35287,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/RizanEUR/RizanEUR/bin/Release/net6.0/RizanEUR.algo",
+          "sha256": "5b73f52b412dc0714c16cf7368df6286256580da6fcf852762227b8834651a6f",
+          "size_bytes": 35287
+        },
+        {
+          "locator": "release_eur102/compiled/RizanEUR.algo",
+          "sha256": "5b73f52b412dc0714c16cf7368df6286256580da6fcf852762227b8834651a6f",
+          "size_bytes": 35287
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/replay/Global.cs",
+      "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+      "size_bytes": 112,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/replay/Global.cs",
+      "provenance": [
+        {
+          "locator": "amd_eur/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_root_cause/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "fixed/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur102/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "replay_10y/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/replay/Program.cs",
+      "sha256": "86c48f108bbc6fdfe8d7588d102c90ecdae182fb2c43978d98da025f85001e39",
+      "size_bytes": 10290,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/replay/Program.cs",
+      "provenance": [
+        {
+          "locator": "fixed/replay/Program.cs",
+          "sha256": "86c48f108bbc6fdfe8d7588d102c90ecdae182fb2c43978d98da025f85001e39",
+          "size_bytes": 10290
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/replay/Program.cs",
+          "sha256": "86c48f108bbc6fdfe8d7588d102c90ecdae182fb2c43978d98da025f85001e39",
+          "size_bytes": 10290,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/replay/Program.cs",
+          "sha256": "86c48f108bbc6fdfe8d7588d102c90ecdae182fb2c43978d98da025f85001e39",
+          "size_bytes": 10290
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/replay/Replay.csproj",
+      "sha256": "a722cfc5631fe896d3ef4b10993bcb36b16e8fb7a5e715edf41c023040bae88d",
+      "size_bytes": 298,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/replay/Replay.csproj",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/replay/Replay.csproj",
+          "sha256": "a722cfc5631fe896d3ef4b10993bcb36b16e8fb7a5e715edf41c023040bae88d",
+          "size_bytes": 298,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/replay/Replay.csproj",
+          "sha256": "a722cfc5631fe896d3ef4b10993bcb36b16e8fb7a5e715edf41c023040bae88d",
+          "size_bytes": 298
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/tests/FillBudgetTests.cs",
+      "sha256": "f718b76c72634aeccf4ffece7edeeff252cab47232b21680e65a1002254a3004",
+      "size_bytes": 3499,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/tests/FillBudgetTests.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/tests/FillBudgetTests.cs",
+          "sha256": "f718b76c72634aeccf4ffece7edeeff252cab47232b21680e65a1002254a3004",
+          "size_bytes": 3499,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/tests/FillBudgetTests.cs",
+          "sha256": "f718b76c72634aeccf4ffece7edeeff252cab47232b21680e65a1002254a3004",
+          "size_bytes": 3499
+        }
+      ]
+    },
+    {
+      "path": "v1.0.2/tests/FillBudgetTests.csproj",
+      "sha256": "be507afe3aa31a04e486a42268a40690e6bffe0683df757946ac95392d8d4b13",
+      "size_bytes": 377,
+      "role": "release-original",
+      "version": "1.0.2",
+      "selected_original": "release_eur102/tests/FillBudgetTests.csproj",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/tests/FillBudgetTests.csproj",
+          "sha256": "be507afe3aa31a04e486a42268a40690e6bffe0683df757946ac95392d8d4b13",
+          "size_bytes": 377,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/tests/FillBudgetTests.csproj",
+          "sha256": "be507afe3aa31a04e486a42268a40690e6bffe0683df757946ac95392d8d4b13",
+          "size_bytes": 377
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/Common/EurBatchExecution.cs",
+      "sha256": "ce45b7ddaa9db914000cbd1d53622f3ec4f1335b6db8da97a2cd3095321dc9da",
+      "size_bytes": 6269,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/Common/EurBatchExecution.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/Common/EurBatchExecution.cs",
+          "sha256": "ce45b7ddaa9db914000cbd1d53622f3ec4f1335b6db8da97a2cd3095321dc9da",
+          "size_bytes": 6269,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "release_eur110/Common/EurBatchExecution.cs",
+          "sha256": "ce45b7ddaa9db914000cbd1d53622f3ec4f1335b6db8da97a2cd3095321dc9da",
+          "size_bytes": 6269
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/Common/FrozenCore.cs",
+      "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+      "size_bytes": 18832,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/Common/FrozenCore.cs",
+      "provenance": [
+        {
+          "locator": "eur_batch_trial/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!source/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!production/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!source/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "release_eur102/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832
+        },
+        {
+          "locator": "release_eur110/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/Common/RizanRobot.cs",
+      "sha256": "29e8704f5c1505b4044a1088b720ab3468ce445a39bbcf3eaa60f292fe1a9387",
+      "size_bytes": 36513,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/Common/RizanRobot.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/Common/RizanRobot.cs",
+          "sha256": "29e8704f5c1505b4044a1088b720ab3468ce445a39bbcf3eaa60f292fe1a9387",
+          "size_bytes": 36513,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "release_eur110/Common/RizanRobot.cs",
+          "sha256": "29e8704f5c1505b4044a1088b720ab3468ce445a39bbcf3eaa60f292fe1a9387",
+          "size_bytes": 36513
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/RizanEURBatch/RizanEURBatch/RizanEURBatch.cs",
+      "sha256": "96e63461185c6a8566df43cc03007f0a15a64dea41b2e37c41a0853bedecd1b6",
+      "size_bytes": 346,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/RizanEURBatch/RizanEURBatch/RizanEURBatch.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/RizanEURBatch/RizanEURBatch/RizanEURBatch.cs",
+          "sha256": "96e63461185c6a8566df43cc03007f0a15a64dea41b2e37c41a0853bedecd1b6",
+          "size_bytes": 346,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "release_eur110/RizanEURBatch/RizanEURBatch/RizanEURBatch.cs",
+          "sha256": "96e63461185c6a8566df43cc03007f0a15a64dea41b2e37c41a0853bedecd1b6",
+          "size_bytes": 346
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/RizanEURBatch/RizanEURBatch/RizanEURBatch.csproj",
+      "sha256": "1173e3e12f4729546a08f17d78cd070b00fa36e2f08f00fff7a8c047b548fd6c",
+      "size_bytes": 497,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/RizanEURBatch/RizanEURBatch/RizanEURBatch.csproj",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/RizanEURBatch/RizanEURBatch/RizanEURBatch.csproj",
+          "sha256": "1173e3e12f4729546a08f17d78cd070b00fa36e2f08f00fff7a8c047b548fd6c",
+          "size_bytes": 497,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "release_eur110/RizanEURBatch/RizanEURBatch/RizanEURBatch.csproj",
+          "sha256": "1173e3e12f4729546a08f17d78cd070b00fa36e2f08f00fff7a8c047b548fd6c",
+          "size_bytes": 497
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/replay/Global.cs",
+      "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+      "size_bytes": 112,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/replay/Global.cs",
+      "provenance": [
+        {
+          "locator": "amd_eur/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_root_cause/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "fixed/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur102/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "replay_10y/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/replay/Program.cs",
+      "sha256": "3b19b9ae8018a65523a9e8474483ac11aa59b4937939c34aadb2ba346818a78a",
+      "size_bytes": 10945,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/replay/Program.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/replay/Program.cs",
+          "sha256": "3b19b9ae8018a65523a9e8474483ac11aa59b4937939c34aadb2ba346818a78a",
+          "size_bytes": 10945,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "release_eur110/replay/Program.cs",
+          "sha256": "3b19b9ae8018a65523a9e8474483ac11aa59b4937939c34aadb2ba346818a78a",
+          "size_bytes": 10945
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/replay/Replay.csproj",
+      "sha256": "2307bcfb4881713950a243801884da84cccdd923640fc56ca23ee8e44d26d957",
+      "size_bytes": 413,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/replay/Replay.csproj",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/replay/Replay.csproj",
+          "sha256": "2307bcfb4881713950a243801884da84cccdd923640fc56ca23ee8e44d26d957",
+          "size_bytes": 413,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "release_eur110/replay/Replay.csproj",
+          "sha256": "2307bcfb4881713950a243801884da84cccdd923640fc56ca23ee8e44d26d957",
+          "size_bytes": 413
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/tests/ApiStubs.cs",
+      "sha256": "87b9d3a2273337c1c7e99cfda18aaab7321ef1f6f9531ae85296bff73d52d1ca",
+      "size_bytes": 5702,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/tests/ApiStubs.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/tests/ApiStubs.cs",
+          "sha256": "87b9d3a2273337c1c7e99cfda18aaab7321ef1f6f9531ae85296bff73d52d1ca",
+          "size_bytes": 5702,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "release_eur110/tests/ApiStubs.cs",
+          "sha256": "87b9d3a2273337c1c7e99cfda18aaab7321ef1f6f9531ae85296bff73d52d1ca",
+          "size_bytes": 5702
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/tests/PlannerTests.cs",
+      "sha256": "444fcfe3b38cd06fd5f2ce81ad96b61b0369e6e8573133d4c4bb3f20a151d4f2",
+      "size_bytes": 3113,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/tests/PlannerTests.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/tests/PlannerTests.cs",
+          "sha256": "444fcfe3b38cd06fd5f2ce81ad96b61b0369e6e8573133d4c4bb3f20a151d4f2",
+          "size_bytes": 3113,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "release_eur110/tests/PlannerTests.cs",
+          "sha256": "444fcfe3b38cd06fd5f2ce81ad96b61b0369e6e8573133d4c4bb3f20a151d4f2",
+          "size_bytes": 3113
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/tests/PlannerTests.csproj",
+      "sha256": "74dd925ffe9d607ee730818831b9fbe715f0ca99cf021f63c679ce5aa6d6b9af",
+      "size_bytes": 387,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/tests/PlannerTests.csproj",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/tests/PlannerTests.csproj",
+          "sha256": "74dd925ffe9d607ee730818831b9fbe715f0ca99cf021f63c679ce5aa6d6b9af",
+          "size_bytes": 387,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "release_eur110/tests/PlannerTests.csproj",
+          "sha256": "74dd925ffe9d607ee730818831b9fbe715f0ca99cf021f63c679ce5aa6d6b9af",
+          "size_bytes": 387
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/tests/RuntimeTests.cs",
+      "sha256": "fdbdbcab032aa9c55c5e52bd5954390d7b7e7760dfee2cf004eb309304da7f0b",
+      "size_bytes": 7142,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/tests/RuntimeTests.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/tests/RuntimeTests.cs",
+          "sha256": "fdbdbcab032aa9c55c5e52bd5954390d7b7e7760dfee2cf004eb309304da7f0b",
+          "size_bytes": 7142,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "release_eur110/tests/RuntimeTests.cs",
+          "sha256": "fdbdbcab032aa9c55c5e52bd5954390d7b7e7760dfee2cf004eb309304da7f0b",
+          "size_bytes": 7142
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/tests/RuntimeTests.csproj",
+      "sha256": "44df872cd100ae5107c90e59667d1c381a63d74fb8f9751f684896f3e6279030",
+      "size_bytes": 359,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "release_eur110/tests/RuntimeTests.csproj",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/tests/RuntimeTests.csproj",
+          "sha256": "44df872cd100ae5107c90e59667d1c381a63d74fb8f9751f684896f3e6279030",
+          "size_bytes": 359,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "release_eur110/tests/RuntimeTests.csproj",
+          "sha256": "44df872cd100ae5107c90e59667d1c381a63d74fb8f9751f684896f3e6279030",
+          "size_bytes": 359
+        }
+      ]
+    },
+    {
+      "path": "v1.1.0/compiled/RizanEURBatch_v1.1.0.algo",
+      "sha256": "ade77a372309c3ab513ed2e5f32741caf4ebd13652b2f9a044e4225d18f89274",
+      "size_bytes": 39278,
+      "role": "release-original",
+      "version": "1.1.0",
+      "selected_original": "outputs/RizanEURBatch_v1.1.0.algo",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!RizanEURBatch_v1.1.0.algo",
+          "sha256": "ade77a372309c3ab513ed2e5f32741caf4ebd13652b2f9a044e4225d18f89274",
+          "size_bytes": 39278,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RizanEURBatch_v1.1.0.algo",
+          "sha256": "ade77a372309c3ab513ed2e5f32741caf4ebd13652b2f9a044e4225d18f89274",
+          "size_bytes": 39278
+        },
+        {
+          "locator": "release_eur110/RizanEURBatch/RizanEURBatch/bin/Release/net6.0/RizanEURBatch.algo",
+          "sha256": "ade77a372309c3ab513ed2e5f32741caf4ebd13652b2f9a044e4225d18f89274",
+          "size_bytes": 39278
+        }
+      ]
+    },
+    {
+      "path": "snapshots/fixed-workspace/RIZAN_EUR_FIX/Common/FrozenCore.cs",
+      "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+      "size_bytes": 16928,
+      "role": "historical-workspace-snapshot",
+      "version": "1.0.1-project-and-binary; replay-unversioned",
+      "selected_original": "fixed/RIZAN_EUR_FIX/Common/FrozenCore.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928
+        }
+      ]
+    },
+    {
+      "path": "snapshots/fixed-workspace/RIZAN_EUR_FIX/Common/RizanRobot.cs",
+      "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+      "size_bytes": 28028,
+      "role": "historical-workspace-snapshot",
+      "version": "1.0.1-project-and-binary; replay-unversioned",
+      "selected_original": "fixed/RIZAN_EUR_FIX/Common/RizanRobot.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028
+        }
+      ]
+    },
+    {
+      "path": "snapshots/fixed-workspace/RIZAN_EUR_FIX/Parity/Parity.csproj",
+      "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+      "size_bytes": 298,
+      "role": "historical-workspace-snapshot",
+      "version": "1.0.1-project-and-binary; replay-unversioned",
+      "selected_original": "fixed/RIZAN_EUR_FIX/Parity/Parity.csproj",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Parity/Parity.csproj",
+          "sha256": "c121d662b45a1452e40a6073208dc1758720615861403e1ae7cf943fd4bf9f11",
+          "size_bytes": 298
+        }
+      ]
+    },
+    {
+      "path": "snapshots/fixed-workspace/RIZAN_EUR_FIX/Parity/Program.cs",
+      "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+      "size_bytes": 4632,
+      "role": "historical-workspace-snapshot",
+      "version": "1.0.1-project-and-binary; replay-unversioned",
+      "selected_original": "fixed/RIZAN_EUR_FIX/Parity/Program.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Parity/Program.cs",
+          "sha256": "aac6bbac0dae9b2ee1a60e5bb5e0ed8b1f87a4af0b94eb62007e1cc0271d0513",
+          "size_bytes": 4632
+        }
+      ]
+    },
+    {
+      "path": "snapshots/fixed-workspace/RIZAN_EUR_FIX/RizanEUR/RizanEUR/RizanEUR.cs",
+      "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+      "size_bytes": 340,
+      "role": "historical-workspace-snapshot",
+      "version": "1.0.1-project-and-binary; replay-unversioned",
+      "selected_original": "fixed/RIZAN_EUR_FIX/RizanEUR/RizanEUR/RizanEUR.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.cs",
+          "sha256": "8d80dab92cd521697c94bd4582ad1cdb5d07ba028492334825f147fc249e114d",
+          "size_bytes": 340
+        }
+      ]
+    },
+    {
+      "path": "snapshots/fixed-workspace/RIZAN_EUR_FIX/RizanEUR/RizanEUR/RizanEUR.csproj",
+      "sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235",
+      "size_bytes": 497,
+      "role": "historical-workspace-snapshot",
+      "version": "1.0.1-project-and-binary; replay-unversioned",
+      "selected_original": "fixed/RIZAN_EUR_FIX/RizanEUR/RizanEUR/RizanEUR.csproj",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/RizanEUR/RizanEUR/RizanEUR.csproj",
+          "sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235",
+          "size_bytes": 497
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.csproj",
+          "sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235",
+          "size_bytes": 497,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/RizanEUR/RizanEUR/RizanEUR.csproj",
+          "sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235",
+          "size_bytes": 497
+        }
+      ]
+    },
+    {
+      "path": "snapshots/fixed-workspace/RIZAN_EUR_FIX/compiled/RizanEUR.algo",
+      "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+      "size_bytes": 33688,
+      "role": "historical-workspace-snapshot",
+      "version": "1.0.1-project-and-binary; replay-unversioned",
+      "selected_original": "fixed/RIZAN_EUR_FIX/compiled/RizanEUR.algo",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/compiled/RizanEUR.algo",
+          "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+          "size_bytes": 33688
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!upload/RizanEUR.algo",
+          "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+          "size_bytes": 33688,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/compiled/RizanEUR.algo",
+          "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+          "size_bytes": 33688,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/compiled/RizanEUR.algo",
+          "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+          "size_bytes": 33688
+        },
+        {
+          "locator": "upload/RizanEUR.algo",
+          "sha256": "cfe50044f18f70554897a8fe898e32ab54a848954bd28a3bd18d306e56563071",
+          "size_bytes": 33688
+        }
+      ]
+    },
+    {
+      "path": "snapshots/fixed-workspace/replay/Global.cs",
+      "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+      "size_bytes": 112,
+      "role": "historical-workspace-snapshot",
+      "version": "1.0.1-project-and-binary; replay-unversioned",
+      "selected_original": "fixed/replay/Global.cs",
+      "provenance": [
+        {
+          "locator": "amd_eur/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_root_cause/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "fixed/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur102/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "replay_10y/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        }
+      ]
+    },
+    {
+      "path": "snapshots/fixed-workspace/replay/Program.cs",
+      "sha256": "86c48f108bbc6fdfe8d7588d102c90ecdae182fb2c43978d98da025f85001e39",
+      "size_bytes": 10290,
+      "role": "historical-workspace-snapshot",
+      "version": "1.0.1-project-and-binary; replay-unversioned",
+      "selected_original": "fixed/replay/Program.cs",
+      "provenance": [
+        {
+          "locator": "fixed/replay/Program.cs",
+          "sha256": "86c48f108bbc6fdfe8d7588d102c90ecdae182fb2c43978d98da025f85001e39",
+          "size_bytes": 10290
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/replay/Program.cs",
+          "sha256": "86c48f108bbc6fdfe8d7588d102c90ecdae182fb2c43978d98da025f85001e39",
+          "size_bytes": 10290,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "release_eur102/replay/Program.cs",
+          "sha256": "86c48f108bbc6fdfe8d7588d102c90ecdae182fb2c43978d98da025f85001e39",
+          "size_bytes": 10290
+        }
+      ]
+    },
+    {
+      "path": "snapshots/fixed-workspace/replay/Replay.csproj",
+      "sha256": "d84a95f8039514c9847b661986d3e8032f8a28a7e5579774a996ed8ab7629f79",
+      "size_bytes": 312,
+      "role": "historical-workspace-snapshot",
+      "version": "1.0.1-project-and-binary; replay-unversioned",
+      "selected_original": "fixed/replay/Replay.csproj",
+      "provenance": [
+        {
+          "locator": "fixed/replay/Replay.csproj",
+          "sha256": "d84a95f8039514c9847b661986d3e8032f8a28a7e5579774a996ed8ab7629f79",
+          "size_bytes": 312
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/amd_eur/Global.cs",
+      "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+      "size_bytes": 112,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "amd_eur/Global.cs",
+      "provenance": [
+        {
+          "locator": "amd_eur/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_root_cause/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "fixed/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur102/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "replay_10y/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/amd_eur/Program.cs",
+      "sha256": "aee794721910898f1c4ffce9929cad147d508c61081c136ac53aaefbc5df53b0",
+      "size_bytes": 9673,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "amd_eur/Program.cs",
+      "provenance": [
+        {
+          "locator": "amd_eur/Program.cs",
+          "sha256": "aee794721910898f1c4ffce9929cad147d508c61081c136ac53aaefbc5df53b0",
+          "size_bytes": 9673
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!Program.cs",
+          "sha256": "aee794721910898f1c4ffce9929cad147d508c61081c136ac53aaefbc5df53b0",
+          "size_bytes": 9673,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/amd_eur/Replay.csproj",
+      "sha256": "212a8d3e6c46fda5cee29945cb43773a810300b4afb1a6f07415093c19ae8940",
+      "size_bytes": 244,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "amd_eur/Replay.csproj",
+      "provenance": [
+        {
+          "locator": "amd_eur/Replay.csproj",
+          "sha256": "212a8d3e6c46fda5cee29945cb43773a810300b4afb1a6f07415093c19ae8940",
+          "size_bytes": 244
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!Replay.csproj",
+          "sha256": "212a8d3e6c46fda5cee29945cb43773a810300b4afb1a6f07415093c19ae8940",
+          "size_bytes": 244,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/eur_batch_trial/BatchPlanner.cs",
+      "sha256": "8e318bfaf203287f831e4d358aef0400ecf67f073212f7603dab86ca0bbe631b",
+      "size_bytes": 1671,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "eur_batch_trial/BatchPlanner.cs",
+      "provenance": [
+        {
+          "locator": "eur_batch_trial/BatchPlanner.cs",
+          "sha256": "8e318bfaf203287f831e4d358aef0400ecf67f073212f7603dab86ca0bbe631b",
+          "size_bytes": 1671
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/BatchPlanner.cs",
+          "sha256": "8e318bfaf203287f831e4d358aef0400ecf67f073212f7603dab86ca0bbe631b",
+          "size_bytes": 1671,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/eur_batch_trial/FrozenCore.cs",
+      "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+      "size_bytes": 18832,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "eur_batch_trial/FrozenCore.cs",
+      "provenance": [
+        {
+          "locator": "eur_batch_trial/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!source/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!production/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!source/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "release_eur102/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832
+        },
+        {
+          "locator": "release_eur110/Common/FrozenCore.cs",
+          "sha256": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+          "size_bytes": 18832
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/eur_batch_trial/Global.cs",
+      "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+      "size_bytes": 112,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "eur_batch_trial/Global.cs",
+      "provenance": [
+        {
+          "locator": "amd_eur/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_root_cause/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "fixed/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur102/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "replay_10y/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/eur_batch_trial/Program.cs",
+      "sha256": "0a03c6feb20ed10cb4f192aed664ad2c8bd929f077bc033e57087e73ef006214",
+      "size_bytes": 14940,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "eur_batch_trial/Program.cs",
+      "provenance": [
+        {
+          "locator": "eur_batch_trial/Program.cs",
+          "sha256": "0a03c6feb20ed10cb4f192aed664ad2c8bd929f077bc033e57087e73ef006214",
+          "size_bytes": 14940
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/Program.cs",
+          "sha256": "0a03c6feb20ed10cb4f192aed664ad2c8bd929f077bc033e57087e73ef006214",
+          "size_bytes": 14940,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/eur_batch_trial/Tests.cs",
+      "sha256": "57fa90eea4b2c20ec5424c26b942d513babb6b42f5bfebf12b4374282d63d2a1",
+      "size_bytes": 1724,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "eur_batch_trial/Tests.cs",
+      "provenance": [
+        {
+          "locator": "eur_batch_trial/Tests.cs",
+          "sha256": "57fa90eea4b2c20ec5424c26b942d513babb6b42f5bfebf12b4374282d63d2a1",
+          "size_bytes": 1724
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/Tests.cs",
+          "sha256": "57fa90eea4b2c20ec5424c26b942d513babb6b42f5bfebf12b4374282d63d2a1",
+          "size_bytes": 1724,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/eur_root_cause/Global.cs",
+      "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+      "size_bytes": 112,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "eur_root_cause/Global.cs",
+      "provenance": [
+        {
+          "locator": "amd_eur/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_root_cause/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "fixed/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur102/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "replay_10y/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/eur_root_cause/Program.cs",
+      "sha256": "b6ee8cd13f78e611a39ae574f72db99dc140ac6d645648c72a3c5926e1e63ad0",
+      "size_bytes": 13993,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "eur_root_cause/Program.cs",
+      "provenance": [
+        {
+          "locator": "eur_root_cause/Program.cs",
+          "sha256": "b6ee8cd13f78e611a39ae574f72db99dc140ac6d645648c72a3c5926e1e63ad0",
+          "size_bytes": 13993
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!Program.cs",
+          "sha256": "b6ee8cd13f78e611a39ae574f72db99dc140ac6d645648c72a3c5926e1e63ad0",
+          "size_bytes": 13993,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/eur_root_cause/SettlementAudit.cs",
+      "sha256": "05394bc18a753c3433e1733136b309bd9ec5e33c0b5c37a5015e13297081343c",
+      "size_bytes": 14989,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "eur_root_cause/SettlementAudit.cs",
+      "provenance": [
+        {
+          "locator": "eur_root_cause/SettlementAudit.cs",
+          "sha256": "05394bc18a753c3433e1733136b309bd9ec5e33c0b5c37a5015e13297081343c",
+          "size_bytes": 14989
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!SettlementAudit.cs",
+          "sha256": "05394bc18a753c3433e1733136b309bd9ec5e33c0b5c37a5015e13297081343c",
+          "size_bytes": 14989,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/eur_root_cause/SignalExport.cs",
+      "sha256": "8c435edc2815099ffa96e661b35b00160f2e823981ad55037899659e76a8ddb7",
+      "size_bytes": 2989,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "eur_root_cause/SignalExport.cs",
+      "provenance": [
+        {
+          "locator": "eur_root_cause/SignalExport.cs",
+          "sha256": "8c435edc2815099ffa96e661b35b00160f2e823981ad55037899659e76a8ddb7",
+          "size_bytes": 2989
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!SignalExport.cs",
+          "sha256": "8c435edc2815099ffa96e661b35b00160f2e823981ad55037899659e76a8ddb7",
+          "size_bytes": 2989,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/replay_10y/Global.cs",
+      "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+      "size_bytes": 112,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "replay_10y/Global.cs",
+      "provenance": [
+        {
+          "locator": "amd_eur/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_root_cause/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "fixed/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur102/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "replay_10y/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/replay_10y/Program.cs",
+      "sha256": "84b986df0b5b99a54c3b8035721c50d6d2e37333cee6704cbe7477a74e79b6c8",
+      "size_bytes": 10649,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "replay_10y/Program.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!Program.cs",
+          "sha256": "84b986df0b5b99a54c3b8035721c50d6d2e37333cee6704cbe7477a74e79b6c8",
+          "size_bytes": 10649,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "replay_10y/Program.cs",
+          "sha256": "84b986df0b5b99a54c3b8035721c50d6d2e37333cee6704cbe7477a74e79b6c8",
+          "size_bytes": 10649
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/outputs/replay/Global.cs",
+      "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+      "size_bytes": 112,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "outputs/replay/Global.cs",
+      "provenance": [
+        {
+          "locator": "amd_eur/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "eur_root_cause/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "fixed/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip!release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip!eur_batch_trial/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip!RIZAN_EUR_1.0.2/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08"
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip!Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112,
+          "container_sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8"
+        },
+        {
+          "locator": "outputs/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur102/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "release_eur110/replay/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        },
+        {
+          "locator": "replay_10y/Global.cs",
+          "sha256": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+          "size_bytes": 112
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/outputs/replay/Program.cs",
+      "sha256": "353eca8831be0339e7a1e439d71f2a709fb9afa842ec331393818d8a0631faba",
+      "size_bytes": 10358,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "outputs/replay/Program.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!outputs/replay/Program.cs",
+          "sha256": "353eca8831be0339e7a1e439d71f2a709fb9afa842ec331393818d8a0631faba",
+          "size_bytes": 10358,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "outputs/replay/Program.cs",
+          "sha256": "353eca8831be0339e7a1e439d71f2a709fb9afa842ec331393818d8a0631faba",
+          "size_bytes": 10358
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/outputs/replay/Replay.csproj",
+      "sha256": "be06b251982219fe5ad8659b96db74afdeba8ed8c1e6777f0accc343e8191738",
+      "size_bytes": 349,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "outputs/replay/Replay.csproj",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!outputs/replay/Replay.csproj",
+          "sha256": "be06b251982219fe5ad8659b96db74afdeba8ed8c1e6777f0accc343e8191738",
+          "size_bytes": 349,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "outputs/replay/Replay.csproj",
+          "sha256": "be06b251982219fe5ad8659b96db74afdeba8ed8c1e6777f0accc343e8191738",
+          "size_bytes": 349
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/outputs/fill_guard_regression.cs",
+      "sha256": "57773fd4603395691b1cd642dbba375202827b4cb03d855dc1420bf0b83a8b00",
+      "size_bytes": 920,
+      "role": "research-original-not-release",
+      "version": "unversioned",
+      "selected_original": "outputs/fill_guard_regression.cs",
+      "provenance": [
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!outputs/fill_guard_regression.cs",
+          "sha256": "57773fd4603395691b1cd642dbba375202827b4cb03d855dc1420bf0b83a8b00",
+          "size_bytes": 920,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "outputs/fill_guard_regression.cs",
+          "sha256": "57773fd4603395691b1cd642dbba375202827b4cb03d855dc1420bf0b83a8b00",
+          "size_bytes": 920
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+      "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+      "size_bytes": 16928,
+      "role": "research-original-dependency",
+      "version": "1.0.1",
+      "selected_original": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/FrozenCore.cs",
+          "sha256": "ff472cd5d408f69fd1af2142b6a69ff9bc5a17238cd1ccbf8a3af233516f8d07",
+          "size_bytes": 16928
+        }
+      ]
+    },
+    {
+      "path": "research/workspace/research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+      "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+      "size_bytes": 28028,
+      "role": "research-original-dependency",
+      "version": "1.0.1",
+      "selected_original": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+      "provenance": [
+        {
+          "locator": "fixed/RIZAN_EUR_FIX/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028
+        },
+        {
+          "locator": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip!research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028,
+          "container_sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7"
+        },
+        {
+          "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028,
+          "container_sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412"
+        },
+        {
+          "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/Common/RizanRobot.cs",
+          "sha256": "4f774034cbc68aa15c513adfb6455d1f5b8c85067860056c90943920346c63c5",
+          "size_bytes": 28028
+        }
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "path": "outputs/RIZAN_EUR_AMD_72_VARIASI_REPLAY_10_TAHUN.zip",
+      "sha256": "1059c344e989eb7cf6aad6359a6475b9671a143cbc1769a8ec5c059fe202a65f",
+      "status": "read"
+    },
+    {
+      "path": "outputs/RIZAN_EUR_AUDIT_AKAR_SELISIH_78880_VS_ALGO.zip",
+      "sha256": "95fec268e733597bbed5738295efa8892748b8454048240a2d46c3da79c4c987",
+      "status": "read"
+    },
+    {
+      "path": "outputs/RIZAN_EUR_BATCH_v1.1.0_ALGO_SOURCE_REPLAY.zip",
+      "sha256": "2f2d81e671d138afde7b029e00ebdb2be36d18edb58897c53c4b2206afb514d1",
+      "status": "read"
+    },
+    {
+      "path": "outputs/RIZAN_EUR_REPLAY_5_TAHUN_BUKTI.zip",
+      "sha256": "341938de051685382cdcf228883b785f9b8b688e0a4c82166f2515063f1cacb7",
+      "status": "read"
+    },
+    {
+      "path": "outputs/RIZAN_EUR_UJI_BATCH_VS_1_CHILD_PER_DETIK.zip",
+      "sha256": "95db18679fbc174f8e9d88c087c1b130a9d454f472b3c415bfa2b51f5c5bb85d",
+      "status": "read"
+    },
+    {
+      "path": "outputs/RIZAN_EUR_v1.0.2_PERBAIKAN_DAN_REPLAY.zip",
+      "sha256": "49af3d156124419bfcb525741464d206b1d19f3c8a240bcecf750a46b7ad5e08",
+      "status": "read"
+    },
+    {
+      "path": "outputs/RIZAN_EUR_v1.0.2_REPLAY_10_TAHUN_2016_2025.zip",
+      "sha256": "cbc24a45a4fff08513652c28edb0ec91d2a9c21d0b75d19fbde5afb7f98a84e8",
+      "status": "read"
+    },
+    {
+      "path": "research_inputs/EURUSD_RAW_200_DD50_EVIDENCE.zip",
+      "sha256": "53037bfcbd889106d7240c94a0f22d0325eaa00d28c5629f7970c1ca3da6d65a",
+      "status": "invalid_zip_not_reconstructed"
+    },
+    {
+      "path": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip",
+      "sha256": "6ef56bd523caab6a34282637511b552357dd0d9b5367303ffe58aac972bb9412",
+      "status": "read"
+    }
+  ],
+  "excluded_occurrences": [
+    {
+      "locator": "fixed/RIZAN_EUR_FIX/RizanXAU/RizanXAU/RizanXAU.cs",
+      "reason": "xau-only-outside-eur-task",
+      "sha256": "6c0dd273ee48204428fb5e49edae8fa88bbf049b80ca2872c8c45388a7d8c817"
+    },
+    {
+      "locator": "fixed/RIZAN_EUR_FIX/RizanXAU/RizanXAU/RizanXAU.csproj",
+      "reason": "xau-only-outside-eur-task",
+      "sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235"
+    },
+    {
+      "locator": "fixed/RIZAN_EUR_FIX/compiled/RizanXAU.algo",
+      "reason": "xau-only-outside-eur-task",
+      "sha256": "35b1e03e777d1867e3de57a4020d014c271ef5acadab549347496f9a75b58184"
+    },
+    {
+      "locator": "release_eur102/RizanEUR/RizanEUR/obj/Release/net6.0/.NETCoreApp,Version=v6.0.AssemblyAttributes.cs",
+      "reason": "generated-build-intermediate",
+      "sha256": "dcae99597456dc7beaae747a4c9935e4b7cde1af337ef651bfb1b227d7694cf1"
+    },
+    {
+      "locator": "release_eur102/RizanEUR/RizanEUR/obj/Release/net6.0/RizanEUR.AssemblyInfo.cs",
+      "reason": "generated-build-intermediate",
+      "sha256": "1efdec9b61c7d78a0aa7013af32a0bdab4e787a3645e9c148ddecbb7d9045360"
+    },
+    {
+      "locator": "release_eur102/RizanEUR/RizanEUR/obj/Release/net6.0/RizanEUR.GlobalUsings.g.cs",
+      "reason": "generated-build-intermediate",
+      "sha256": "8f86a2cbf00ff3eee0bda2bc0eb5e1fc19c8544d5dc650c53d0132325956b592"
+    },
+    {
+      "locator": "release_eur110/RizanEURBatch/RizanEURBatch/obj/Release/net6.0/.NETCoreApp,Version=v6.0.AssemblyAttributes.cs",
+      "reason": "generated-build-intermediate",
+      "sha256": "dcae99597456dc7beaae747a4c9935e4b7cde1af337ef651bfb1b227d7694cf1"
+    },
+    {
+      "locator": "release_eur110/RizanEURBatch/RizanEURBatch/obj/Release/net6.0/RizanEURBatch.AssemblyInfo.cs",
+      "reason": "generated-build-intermediate",
+      "sha256": "a532a34fbfa1f59de29ede994c449fbed834ce9d05051432c34390ae130ad4a0"
+    },
+    {
+      "locator": "release_eur110/RizanEURBatch/RizanEURBatch/obj/Release/net6.0/RizanEURBatch.GlobalUsings.g.cs",
+      "reason": "generated-build-intermediate",
+      "sha256": "8f86a2cbf00ff3eee0bda2bc0eb5e1fc19c8544d5dc650c53d0132325956b592"
+    },
+    {
+      "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/RizanXAU/RizanXAU/RizanXAU.cs",
+      "reason": "xau-only-outside-eur-task",
+      "sha256": "6c0dd273ee48204428fb5e49edae8fa88bbf049b80ca2872c8c45388a7d8c817"
+    },
+    {
+      "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/RizanXAU/RizanXAU/RizanXAU.csproj",
+      "reason": "xau-only-outside-eur-task",
+      "sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235"
+    },
+    {
+      "locator": "research_inputs/RIZAN_CBOT_MIGRATION_20261010.zip!RIZAN_CBOT_MIGRATION/compiled/RizanXAU.algo",
+      "reason": "xau-only-outside-eur-task",
+      "sha256": "35b1e03e777d1867e3de57a4020d014c271ef5acadab549347496f9a75b58184"
+    },
+    {
+      "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/RizanXAU/RizanXAU/RizanXAU.cs",
+      "reason": "xau-only-outside-eur-task",
+      "sha256": "6c0dd273ee48204428fb5e49edae8fa88bbf049b80ca2872c8c45388a7d8c817"
+    },
+    {
+      "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/RizanXAU/RizanXAU/RizanXAU.csproj",
+      "reason": "xau-only-outside-eur-task",
+      "sha256": "643116fbcef688ac7e3f24d7eb92dde2738728d4a59ef8dfbfe9ec62dfbc4235"
+    },
+    {
+      "locator": "research_inputs/migration/RIZAN_CBOT_MIGRATION/compiled/RizanXAU.algo",
+      "reason": "xau-only-outside-eur-task",
+      "sha256": "35b1e03e777d1867e3de57a4020d014c271ef5acadab549347496f9a75b58184"
+    }
+  ],
+  "coverage": {
+    "source_occurrences": 139,
+    "eligible_eur_occurrences": 124,
+    "distinct_eligible_sha256": 42,
+    "archived_original_files": 64,
+    "all_eligible_readable_original_hashes_covered": true
+  },
+  "notes": [
+    "RizanEUR project, Common and Parity relative layout preserved per release.",
+    "fixed/RIZAN_EUR_FIX declares project version 1.0.1 and includes binary version 1.0.1.0; its replay is retained as an unvalidated mixed historical workspace snapshot.",
+    "One evidence ZIP is invalid/truncated in workspace and was not repaired or reconstructed.",
+    "migration-20261010 is owned by a separate archive task; its destination is not modified here.",
+    "Identical repeated workspace/ZIP originals appear as provenance aliases; distinct byte variants are never silently replaced."
+  ]
+}
