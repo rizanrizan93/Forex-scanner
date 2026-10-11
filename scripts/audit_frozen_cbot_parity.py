@@ -15,7 +15,7 @@ PARITY = ROOT / "config/cbots/frozen_parity_v1.json"
 SUPERVISED = ROOT / "config/frozen/xau_eur_supervised_12_5_v1.json"
 FROZEN = {
     "XAUUSD": ROOT / "config/frozen/xauusd_raw_selected_v1.json",
-    "EURUSD": ROOT / "config/frozen/eurusd_raw_200_78880_dd4484_frozen_v3.json",
+    "EURUSD": ROOT / "config/frozen/eurusd_raw_selected_v3.json",
 }
 
 
