@@ -1,0 +1,51 @@
+name: Frozen cBot Parity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "config/cbots/**"
+      - "config/frozen/**"
+      - "cbot_bridge/**"
+      - "scripts/audit_frozen_cbot_parity.py"
+      - "src/fx_scanner/selected_raw_reference.py"
+      - "src/fx_scanner/execution/ctrader_gateway.py"
+      - "vps_xau_eur_deploy.sh"
+      - ".github/workflows/frozen-cbot-parity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install audit dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install -r cbot_bridge/requirements.txt
+      - name: Verify frozen strategy hashes and cBot pins
+        run: python scripts/audit_frozen_cbot_parity.py
+      - name: Verify bridge state schemas and CAS
+        working-directory: cbot_bridge
+        run: python selftest.py
+      - name: Compile bridge modules
+        run: python -m py_compile cbot_bridge/feeds.py cbot_bridge/server.py cbot_bridge/selftest.py
+      - name: Verify selected references fail closed
+        run: |
+          python - <<'PY'
+          from fx_scanner.selected_raw_reference import validate_raw_reference, get_active_frozen_config
+          assert validate_raw_reference() is True
+          cfg = get_active_frozen_config()
+          assert cfg["unattended_live_execution"] is False
+          assert set(cfg["symbols"]) == {"XAUUSD", "EURUSD"}
+          print("SELECTED_REFERENCE_OK unattended_live_execution=false")
+          PY
