@@ -6,9 +6,11 @@ from types import SimpleNamespace
 from fx_scanner.demo_xau_broker_canary_v272 import (
     EVENT_TYPE,
     SIGNAL_ID,
+    _accepted_once,
     _already_verified,
     _canary_prices,
     _pending_canaries,
+    _record_safe,
 )
 
 
@@ -92,3 +94,51 @@ def test_v272_canary_is_excluded_from_strategy_statistics_by_contract() -> None:
     assert '"exclude_from_strategy_stats": True' in source
     assert 'EVENT_TYPE = "DEMO_XAU_BROKER_CANARY"' in source
     assert "CANARY_CANCELLED_CONFIRMED" in source
+
+
+class _FailingRecordStore:
+    def record_order_event(self, **_kwargs):
+        raise RuntimeError("telemetry down")
+
+
+def test_v273_telemetry_failure_is_noncritical_to_broker_cleanup() -> None:
+    err = _record_safe(
+        _FailingRecordStore(),
+        accepted=True,
+        broker_order_id="123",
+        code="CANARY_ORDER_ACCEPTED",
+        message="ack",
+        payload={},
+    )
+    assert err == "RuntimeError:telemetry down"
+
+
+def test_v273_prior_ack_prevents_second_canary() -> None:
+    row = {
+        "accepted": True,
+        "code": "CANARY_ORDER_ACCEPTED",
+        "event_type": EVENT_TYPE,
+        "broker_order_id": "50916448",
+        "payload": {"diagnostic_only": True},
+        "observed_at": "2026-09-29T14:05:10Z",
+    }
+    accepted = _accepted_once(_Store([row]))
+    assert accepted["broker_order_id"] == "50916448"
+
+
+def test_v273_source_cancels_before_canary_telemetry_and_recovers_prior_ack() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/fx_scanner/demo_xau_broker_canary_v272.py"
+    ).read_text()
+    accepted_action = source.index(
+        'actions.append(f"CANARY_BROKER_ACCEPTED:{receipt_order_id}")'
+    )
+    cancel_loop = source.index("for attempt in range(1, 4):", accepted_action)
+    accepted_telemetry = source.index(
+        'code="CANARY_ORDER_ACCEPTED"', cancel_loop
+    )
+    assert accepted_action < cancel_loop < accepted_telemetry
+    assert "CANARY_PRIOR_ACK_RECOVERED_NO_RESUBMIT" in source
+    assert "recovered_prior_pending" in source
+    assert "Broker cleanup has priority over observability" in source
