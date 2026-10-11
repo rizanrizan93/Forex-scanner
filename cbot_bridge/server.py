@@ -1,4 +1,4 @@
-"""RIZAN cBot bridge: WSS :25345, durable SQLite checkpoints, exclusive leases.
+"""RIZAN cBot bridge: private backend behind WSS, durable checkpoints and leases.
 
 The bridge never holds broker credentials and never submits an order. XAU macro/news
 snapshots are read-only. State identity is pinned to the frozen contract and the
@@ -235,8 +235,8 @@ async def main() -> None:
         raise SystemExit("RIZAN_BRIDGE_TOKEN must be a random secret of at least 32 characters")
     host = os.environ.get("RIZAN_BRIDGE_HOST", "127.0.0.1")
     port = int(os.environ.get("RIZAN_BRIDGE_PORT", "25345"))
-    if port != 25345:
-        raise SystemExit("Current cBot contract requires bridge port 25345")
+    if not 1 <= port <= 65535:
+        raise SystemExit("Bridge backend port must be between 1 and 65535")
 
     cert = os.environ.get("RIZAN_TLS_CERT")
     keyfile = os.environ.get("RIZAN_TLS_KEY")
