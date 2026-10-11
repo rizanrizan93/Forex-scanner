@@ -24,13 +24,11 @@ except ImportError:  # direct script execution on VPS
     import feeds
 
 CONTRACTS = {
-    # Current XAU cBot.
     "RZXA1": {
         "hash": "7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf",
         "schema": 1,
         "execution_model": None,
     },
-    # Current EUR batch cBot v1.1.0.
     "RZEU4B": {
         "hash": "4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976",
         "schema": 2,
@@ -137,6 +135,14 @@ def _validate_identity(key: str, lease: str, contract_hash: str) -> tuple[str, s
     return parts[0], parts[1], parts[2]
 
 
+def _write_snapshot(path: Path, snapshot: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(snapshot, allow_nan=False, separators=(",", ":")))
+    os.chmod(temporary, 0o600)
+    temporary.replace(path)
+
+
 async def main() -> None:
     token = os.environ.get("RIZAN_BRIDGE_TOKEN", "")
     if len(token) < 32:
@@ -157,14 +163,17 @@ async def main() -> None:
         raise SystemExit("Public binding requires RIZAN_TLS_CERT and RIZAN_TLS_KEY")
 
     store = Store(os.environ.get("RIZAN_STATE_DB", "state/rizan-checkpoints.sqlite"))
+    snapshot_path = Path(
+        os.environ.get("RIZAN_SNAPSHOT_PATH", "state/xau_macro_event_snapshot.json")
+    )
     peers: set = set()
     latest = None
 
     async def publish() -> None:
         nonlocal latest
         while True:
-            # feeds.snapshot itself fails closed per component and exposes no secret.
             latest = await asyncio.to_thread(feeds.snapshot)
+            await asyncio.to_thread(_write_snapshot, snapshot_path, latest)
             wire = json.dumps({"type": "snapshot", "data": latest}, allow_nan=False)
             for ws in tuple(peers):
                 try:
@@ -222,11 +231,9 @@ async def main() -> None:
             finally:
                 await ws.close(code=1008)
         except Exception:
-            # Never expose token, raw messages, account state, source bodies, or DB errors.
             await ws.close(code=1011)
         finally:
             peers.discard(ws)
-            # Lease deliberately survives disconnect for 45 seconds to prevent racing sessions.
             _ = identity
 
     async with serve(
