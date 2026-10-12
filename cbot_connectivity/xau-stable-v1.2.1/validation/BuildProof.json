@@ -1,0 +1,16 @@
+{
+  "Version": "1.2.1",
+  "ExecutionModel": "XAU_BATCH_SEND_REF_COOLDOWN_V1",
+  "OriginalAttachmentManifestEntriesVerified": 38,
+  "OriginalExecutionFixtureCount": 33,
+  "OriginalExecutionFixtureSHA256": "cbc09d936979c0e13bfc5baf9b1e535db45c9a1e927b6f803c27815954d1a6dd",
+  "SourceSHA256": {
+    "Common/XauBatchExecution.cs": "5ee79d2d54a616ef207d0800a18eb3e4822af1745db58080437777c5d039d011",
+    "Common/RizanRobot.cs": "e2a6ebec43ae8bfeab5d7dddedee192c9350248251c78c653d3f2d25b6c0c0fa",
+    "Common/FrozenCore.cs": "4d77169b43a38d9f88dadeba542801ce18422a906d42a1665eb912d833ee9670",
+    "Common/XauSendReference.cs": "5b64a8094084cdbc5b473e251abc316954859ff3c3c536b2b0a2e00a0c5fcf09",
+    "RizanXAUStable/RizanXAUStable/RizanXAUStable.cs": "e9465ff13afe1d446376588f4c9057897eb5610fb02c6a54d8ca5bdebf34584f"
+  },
+  "NativeHostVerified": false,
+  "LiveBridgeVerified": false
+}

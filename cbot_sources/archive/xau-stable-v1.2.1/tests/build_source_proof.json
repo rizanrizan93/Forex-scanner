@@ -1,0 +1,46 @@
+{
+  "Pass": true,
+  "Scope": "Compiled portable PDB document checksums equal delivered source",
+  "Documents": [
+    {
+      "Path": "/workspace/scratch/e5488def1bcf/xau_target/source/RizanXAUStable/RizanXAUStable/RizanXAUStable.cs",
+      "Hash": "E9465FF13AFE1D446376588F4C9057897EB5610FB02C6A54D8CA5BDEBF34584F",
+      "Pass": true
+    },
+    {
+      "Path": "/workspace/scratch/e5488def1bcf/xau_target/source/Common/FrozenCore.cs",
+      "Hash": "4D77169B43A38D9F88DADEBA542801CE18422A906D42A1665EB912D833EE9670",
+      "Pass": true
+    },
+    {
+      "Path": "/workspace/scratch/e5488def1bcf/xau_target/source/Common/RizanRobot.cs",
+      "Hash": "E931D86A5D847A0C5EC93DAA68142ACE4C68767245B17C7ECE0AEB29E2F2499F",
+      "Pass": true
+    },
+    {
+      "Path": "/workspace/scratch/e5488def1bcf/xau_target/source/Common/XauBatchExecution.cs",
+      "Hash": "5EE79D2D54A616EF207D0800A18EB3E4822AF1745DB58080437777C5D039D011",
+      "Pass": true
+    },
+    {
+      "Path": "/workspace/scratch/e5488def1bcf/xau_target/source/Common/XauSendReference.cs",
+      "Hash": "5B64A8094084CDBC5B473E251ABC316954859FF3C3C536B2B0A2E00A0C5FCF09",
+      "Pass": true
+    },
+    {
+      "Path": "/workspace/scratch/e5488def1bcf/xau_target/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/RizanXAUStable.GlobalUsings.g.cs",
+      "Hash": "ADDB143F8C43B95F1BB73A0CBA7C793281935C4AB8CCABBDF6B04D3E0F809E0E",
+      "Pass": true
+    },
+    {
+      "Path": "/workspace/scratch/e5488def1bcf/xau_target/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/.NETCoreApp,Version=v6.0.AssemblyAttributes.cs",
+      "Hash": "1B52E6E7B0366EDD343E8FF595132040B1A28FB88B5C0213CE840AD95CD98C80",
+      "Pass": true
+    },
+    {
+      "Path": "/workspace/scratch/e5488def1bcf/xau_target/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/RizanXAUStable.AssemblyInfo.cs",
+      "Hash": "E1CF29EC1130E9B14C6829324A3BF4C551644155AFEC943FD60FAA5600558C61",
+      "Pass": true
+    }
+  ]
+}

@@ -1,0 +1,204 @@
+
+Welcome to .NET 8.0!
+---------------------
+SDK Version: 8.0.425
+
+Telemetry
+---------
+The .NET tools collect usage data in order to help us improve your experience. It is collected by Microsoft and shared with the community. You can opt-out of telemetry by setting the DOTNET_CLI_TELEMETRY_OPTOUT environment variable to '1' or 'true' using your favorite shell.
+
+Read more about .NET CLI Tools telemetry: https://aka.ms/dotnet-cli-telemetry
+
+----------------
+Installed an ASP.NET Core HTTPS development certificate.
+To trust the certificate, view the instructions: https://aka.ms/dotnet-https-linux
+
+----------------
+Write your first app: https://aka.ms/dotnet-hello-world
+Find out what's new: https://aka.ms/dotnet-whats-new
+Explore documentation: https://aka.ms/dotnet-docs
+Report issues and find source on GitHub: https://github.com/dotnet/core
+Use 'dotnet --help' to see available commands or visit: https://aka.ms/dotnet-cli
+--------------------------------------------------------------------------------------
+/workspace/scratch/71f1d28fa2ec/Forex-scanner/cbot_connectivity/xau-stable-v1.2.1/ReplayApi.cs(5,95): warning CS8618: Non-nullable property 'DefaultValue' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable. [/workspace/scratch/71f1d28fa2ec/Forex-scanner/cbot_connectivity/xau-stable-v1.2.1/Tests.csproj]
+{
+  "Pass": true,
+  "NativeHost": false,
+  "Cases": [
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 100,
+      "Move": 0,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 100,
+      "Move": 0.1,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 100,
+      "Move": 0.5,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 1000,
+      "Move": 0,
+      "Quantity": 10
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 1000,
+      "Move": 0.1,
+      "Quantity": 10
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 1000,
+      "Move": 0.5,
+      "Quantity": 10
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 100,
+      "Move": 0,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 100,
+      "Move": 0.1,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 100,
+      "Move": 0.5,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 1000,
+      "Move": 0,
+      "Quantity": 10
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 1000,
+      "Move": 0.1,
+      "Quantity": 10
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 1000,
+      "Move": 0.5,
+      "Quantity": 10
+    },
+    {
+      "Case": "OutsideReferenceWindow",
+      "Side": 1
+    },
+    {
+      "Case": "OutsideReferenceWindow",
+      "Side": -1
+    },
+    {
+      "Case": "Recovery",
+      "Kind": "Exposure",
+      "Pass": true
+    },
+    {
+      "Case": "Recovery",
+      "Kind": "ClosedHistory",
+      "Pass": true
+    },
+    {
+      "Case": "Recovery",
+      "Kind": "MissingComment",
+      "Pass": true
+    },
+    {
+      "Case": "Recovery",
+      "Kind": "TamperedComment",
+      "Pass": true
+    },
+    {
+      "Case": "Recovery",
+      "Kind": "PartialVolume",
+      "Pass": true
+    },
+    {
+      "Case": "Cooldown",
+      "Direction": -1
+    },
+    {
+      "Case": "Cooldown",
+      "Direction": 1
+    },
+    {
+      "Case": "SettlementWait"
+    },
+    {
+      "Case": "BrokerFailure",
+      "Fail": "Reject"
+    },
+    {
+      "Case": "BrokerFailure",
+      "Fail": "Protection"
+    },
+    {
+      "Case": "BrokerFailure",
+      "Fail": "CloseFailure"
+    },
+    {
+      "Case": "BrokerFailure",
+      "Fail": "Partial"
+    },
+    {
+      "Case": "Migration",
+      "Source": "XAU_ARCHIVE_PARITY_V2",
+      "Active": false
+    },
+    {
+      "Case": "Migration",
+      "Source": "XAU_ARCHIVE_PARITY_V2",
+      "Active": true
+    },
+    {
+      "Case": "Migration",
+      "Source": "XAU_BATCH_STAGE_FIXED_REF_WAL_V1",
+      "Active": false
+    },
+    {
+      "Case": "Migration",
+      "Source": "XAU_BATCH_STAGE_FIXED_REF_WAL_V1",
+      "Active": true
+    },
+    {
+      "Case": "PositionClosedWhileStageWaitsAck"
+    },
+    {
+      "Case": "UnmatchedAckIgnored"
+    },
+    {
+      "Case": "MaximumIntentAllowsSafeSmallerBatch",
+      "Maximum": 6,
+      "Actual": 5
+    }
+  ]
+}

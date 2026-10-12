@@ -1,0 +1,216 @@
+{
+  "Pass": true,
+  "NativeHost": false,
+  "Cases": [
+    {
+      "Case": "Normal",
+      "Side": 1,
+      "Cash": 100,
+      "Bridge": false,
+      "VirtualChildren": 1,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Normal",
+      "Side": 1,
+      "Cash": 100,
+      "Bridge": true,
+      "VirtualChildren": 1,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Normal",
+      "Side": 1,
+      "Cash": 1000,
+      "Bridge": false,
+      "VirtualChildren": 10,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Normal",
+      "Side": 1,
+      "Cash": 1000,
+      "Bridge": true,
+      "VirtualChildren": 10,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Normal",
+      "Side": 1,
+      "Cash": 10000,
+      "Bridge": false,
+      "VirtualChildren": 100,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Normal",
+      "Side": 1,
+      "Cash": 10000,
+      "Bridge": true,
+      "VirtualChildren": 100,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Normal",
+      "Side": -1,
+      "Cash": 100,
+      "Bridge": false,
+      "VirtualChildren": 1,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Normal",
+      "Side": -1,
+      "Cash": 100,
+      "Bridge": true,
+      "VirtualChildren": 1,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Normal",
+      "Side": -1,
+      "Cash": 1000,
+      "Bridge": false,
+      "VirtualChildren": 10,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Normal",
+      "Side": -1,
+      "Cash": 1000,
+      "Bridge": true,
+      "VirtualChildren": 10,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Normal",
+      "Side": -1,
+      "Cash": 10000,
+      "Bridge": false,
+      "VirtualChildren": 100,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Normal",
+      "Side": -1,
+      "Cash": 10000,
+      "Bridge": true,
+      "VirtualChildren": 100,
+      "BrokerRequests": 1
+    },
+    {
+      "Case": "Reject",
+      "Requests": 1,
+      "Closes": 0,
+      "Quarantined": true
+    },
+    {
+      "Case": "Protection",
+      "Requests": 1,
+      "Closes": 1,
+      "Quarantined": true
+    },
+    {
+      "Case": "CloseFailure",
+      "Requests": 1,
+      "Closes": 1,
+      "Quarantined": true
+    },
+    {
+      "Case": "ExtraFee",
+      "Requests": 1,
+      "Closes": 1,
+      "Quarantined": false
+    },
+    {
+      "Case": "ExtraSlip",
+      "Requests": 1,
+      "Closes": 1,
+      "Quarantined": false
+    },
+    {
+      "Case": "PartialFill",
+      "Requests": 1,
+      "Closes": 1,
+      "Quarantined": true
+    },
+    {
+      "Case": "PriceBeforeAck",
+      "Requests": 0,
+      "Closes": 0,
+      "Quarantined": false
+    },
+    {
+      "Case": "RecoverExposure",
+      "Accepted": 10,
+      "Quarantined": false
+    },
+    {
+      "Case": "RecoverClosedHistory",
+      "Accepted": 10,
+      "Quarantined": false
+    },
+    {
+      "Case": "RecoverMissing",
+      "Accepted": 0,
+      "Quarantined": true
+    },
+    {
+      "Case": "RecoverDuplicate",
+      "Accepted": 0,
+      "Quarantined": true
+    },
+    {
+      "Case": "RecoverWrongVolume",
+      "Accepted": 0,
+      "Quarantined": true
+    },
+    {
+      "Case": "Migration",
+      "Model": "",
+      "Active": false,
+      "Accepted": true
+    },
+    {
+      "Case": "Migration",
+      "Model": "",
+      "Active": true,
+      "Accepted": false
+    },
+    {
+      "Case": "Migration",
+      "Model": "XAU_ARCHIVE_PARITY_V2",
+      "Active": false,
+      "Accepted": true
+    },
+    {
+      "Case": "Migration",
+      "Model": "XAU_ARCHIVE_PARITY_V2",
+      "Active": true,
+      "Accepted": false
+    },
+    {
+      "Case": "Migration",
+      "Model": "XAU_BATCH_STAGE_FIXED_REF_WAL_V1",
+      "Active": false,
+      "Accepted": true
+    },
+    {
+      "Case": "Migration",
+      "Model": "XAU_BATCH_STAGE_FIXED_REF_WAL_V1",
+      "Active": true,
+      "Accepted": true
+    },
+    {
+      "Case": "StageAdd",
+      "InitialChildren": 10,
+      "AddedChildren": 5,
+      "BrokerRequests": 2
+    },
+    {
+      "Case": "BrokerVolumeLimit",
+      "Requests": 3,
+      "Children": 10
+    }
+  ]
+}
