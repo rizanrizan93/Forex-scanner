@@ -1,0 +1,212 @@
+--- cbot_sources/archive/xau-stable-v1.2.1/source/Common/RizanRobot.cs
++++ cbot_connectivity/xau-stable-v1.2.1/source/Common/RizanRobot.cs
+@@ -84,6 +84,13 @@
+     private ExternalSnapshot? _snapshot;
+     private long _remoteRevision, _persistedRevision, _sentRevision;
+     private bool _bridgeReady, _saveInFlight;
++    // All lifecycle transitions run on the cTrader main thread. Generation fencing
++    // ignores callbacks queued by a socket disposed during a previous session.
++    private bool _connecting, _stopping, _closing;
++    private int _bridgeGeneration, _backoffAttempt, _validHeartbeats;
++    private DateTime _handshakeDeadline, _saveDeadline, _healthySince;
++    private readonly Random _reconnectJitter = new();
++
+     private bool _pendingPreparedHere, _pendingSubmitted;
+     private DateTime _lastBridgeAck, _nextConnect, _nextPing, _nextTelemetry;
+     private DateTime _opsSecond;
+@@ -124,9 +131,6 @@
+         {
+             if(!Uri.TryCreate(BridgeUrl,UriKind.Absolute,out var url) || url.Port!=25345 || (url.Scheme!="wss" && !(url.Scheme=="ws" && url.IsLoopback)) || string.IsNullOrWhiteSpace(BridgeToken))
+             { Print("BRIDGE_REQUIRES_WSS_PORT_25345_AND_TOKEN");Stop();return; }
+-            _bridge=new WebSocketClient();
+-            _bridge.TextReceived += e=>BeginInvokeOnMainThread(()=>ReceiveBridge(e.Text));
+-            _bridge.Disconnected += _=>BeginInvokeOnMainThread(()=>{_bridgeReady=false;_saveInFlight=false;_status="BRIDGE_DISCONNECTED";_nextConnect=Server.TimeInUtc.AddSeconds(15);});
+             ConnectBridge();
+         }
+         else { RecoverAttempt();ReconcileExposure();Changed();Persist(); }
+@@ -174,29 +178,96 @@
+                 throw new Exception("CHECKPOINT_BASKET_INVALID");
+         }
+     }
++    private void BridgeOffline(string reason)
++    {
++        if(_closing)return;
++        _closing=true;
++        try
++        {
++            _bridgeReady=false;_connecting=false;_saveInFlight=false;_snapshot=null;_validHeartbeats=0;
++            ++_bridgeGeneration; // Fence callbacks before synchronous Dispose/close.
++            var old=_bridge;_bridge=null;
++            _status="BRIDGE_DEGRADED";Print("BRIDGE_DEGRADED reason={0}",reason);
++            // cTrader WebSocketClient owns its receive loop; Dispose tears it down.
++            // Never allocate another socket if teardown fails.
++            try { old?.Dispose(); }
++            catch { _stopping=true;Print("BRIDGE_CLOSE_FAILED restart_required=True");return; }
++            Print("BRIDGE_DISCONNECTED");
++            int[] delays={1,2,4,8,15,30};
++            var seconds=delays[Math.Min(_backoffAttempt++,delays.Length-1)];
++            _nextConnect=Server.TimeInUtc.AddSeconds(seconds).AddMilliseconds(_reconnectJitter.Next(0,251));
++            Print("BRIDGE_RECONNECT_SCHEDULED delay_seconds={0}",seconds);
++        }
++        finally { _closing=false; }
++    }
+     private void ConnectBridge()
+     {
+-        if(_bridge==null) return;
+-        _nextConnect=Server.TimeInUtc.AddSeconds(30);
++        if(_stopping || _closing || _connecting || _bridge!=null)return;
++        _connecting=true;_handshakeDeadline=Server.TimeInUtc.AddSeconds(10);
++        var generation=++_bridgeGeneration;
++        Print(_backoffAttempt>0 ? "BRIDGE_RECONNECTING" : "BRIDGE_CONNECTING");
+         try
+         {
+-            _bridge.Connect(new Uri(BridgeUrl));
+-            _bridge.Send(JsonSerializer.Serialize(new{type="hello",token=BridgeToken,key=_stateKey,contract=Contract.Hash,lease=_lease}));
+-        }
+-        catch(Exception e){_status="BRIDGE_CONNECT_FAILED";Print("{0}: {1}",_status,e.GetType().Name);}
++            var socket=new WebSocketClient();_bridge=socket;
++            socket.TextReceived += e=>BeginInvokeOnMainThread(()=>{if(!_stopping && generation==_bridgeGeneration)ReceiveBridge(e.Text);});
++            socket.Disconnected += _=>BeginInvokeOnMainThread(()=>{if(!_stopping && generation==_bridgeGeneration)BridgeOffline("SOCKET_DROP");});
++            socket.Connect(new Uri(BridgeUrl));Print("BRIDGE_CONNECTED");
++            socket.Send(JsonSerializer.Serialize(new{type="hello",token=BridgeToken,key=_stateKey,contract=Contract.Hash,lease=_lease},Json));
++        }
++        catch(Exception e){BridgeOffline("CONNECT_FAILED");Print("BRIDGE_CONNECT_FAILED type={0}",e.GetType().Name);}
++    }
++    private void ServiceBridge(DateTime now)
++    {
++        if(_connecting && now>=_handshakeDeadline)BridgeOffline("HANDSHAKE_TIMEOUT");
++        if(_bridgeReady && ((now-_lastBridgeAck).TotalSeconds>=30 || (_saveInFlight && now>=_saveDeadline)))
++            BridgeOffline(_saveInFlight ? "ACK_TIMEOUT" : "HEARTBEAT_TIMEOUT");
++        if(!_bridgeReady && !_connecting && now>=_nextConnect)ConnectBridge();
++        if(_bridgeReady && now>=_nextPing)
++        {
++            try
++            {
++                _bridge!.Send(JsonSerializer.Serialize(new{type="ping",timestamp=DateTimeOffset.UtcNow.ToString("O",System.Globalization.CultureInfo.InvariantCulture)},Json));
++                _nextPing=now.AddSeconds(10);
++            }
++            catch { BridgeOffline("HEARTBEAT_SEND_FAILED"); }
++        }
+     }
+     private void ReceiveBridge(string text)
+     {
+         try
+         {
+-            using var doc=JsonDocument.Parse(text);var root=doc.RootElement;var type=root.GetProperty("type").GetString();
++            using var doc=JsonDocument.Parse(text);var root=doc.RootElement;
++            if(root.TryGetProperty("timestamp",out var timestamp))JsonSerializer.Deserialize<DateTime>(timestamp.GetRawText(),Json);
++            var type=root.GetProperty("type").GetString();
+             if(type=="ready")
+             {
++                if(!_connecting || _bridgeReady)throw new JsonException("READY_UNEXPECTED");
+                 _remoteRevision=root.GetProperty("revision").GetInt64();
++                if(_remoteRevision<0)throw new JsonException("REVISION_INVALID");
+                 if(root.TryGetProperty("state",out var value) && value.ValueKind!=JsonValueKind.Null)
+-                { _state=JsonSerializer.Deserialize<Checkpoint>(value.GetRawText(),Json)!;ValidateState(); }
++                {
++                    var previous=_state;
++                    try
++                    {
++                        var recovered=JsonSerializer.Deserialize<Checkpoint>(value.GetRawText(),Json) ?? throw new JsonException("EMPTY_CHECKPOINT");
++                        // Never rewind a local WAL intent or LastSignalUtc after a lost ACK.
++                        if(recovered.Revision<previous.Revision)
++                        {
++                            // Local WAL may be newer after a save/ACK loss. Keep its
++                            // intent and watermark; resync it via the normal CAS save.
++                            ValidateState();Print("BRIDGE_RESYNC_LOCAL_WAL_PRESERVED");
++                        }
++                        if(recovered.Revision==previous.Revision && JsonSerializer.Serialize(recovered,Json)!=Serialize())
++                            throw new InvalidOperationException("STATE_REVISION_CONFLICT");
++                        if(recovered.Revision>=previous.Revision)_state=recovered;
++                        ValidateState();
++                    }
++                    catch { _state=previous;throw; }
++                }
+                 else if(_state.Revision>0) { /* local/manual recovery will be written after lease acquisition */ }
+-                _bridgeReady=true;_saveInFlight=false;_persistedRevision=_state.Revision;_lastBridgeAck=Server.TimeInUtc;
++                _bridgeReady=true;_connecting=false;_nextPing=Server.TimeInUtc;_validHeartbeats=0;_healthySince=Server.TimeInUtc;
++                _saveInFlight=false;_persistedRevision=_state.Revision;_lastBridgeAck=Server.TimeInUtc;
++                Print("BRIDGE_HANDSHAKE_OK");Print("TIMESTAMP_VALID checkpoint=True");
+                 RecoverAttempt();ReconcileExposure();Changed();Persist();_status="BRIDGE_READY";
+             }
+             else if(type=="ack")
+@@ -209,11 +280,39 @@
+                 _saveInFlight=false;_lastBridgeAck=Server.TimeInUtc;
+                 Persist();ProcessQueue(Server.TimeInUtc);
+             }
+-            else if(type=="snapshot") _snapshot=JsonSerializer.Deserialize<ExternalSnapshot>(root.GetProperty("data").GetRawText(),Json);
+-            else if(type=="pong") _lastBridgeAck=Server.TimeInUtc;
+-            else if(type=="error") { _bridgeReady=false;_saveInFlight=false;Quarantine("BRIDGE_"+root.GetProperty("code").GetString()); }
+-        }
+-        catch(Exception e){_bridgeReady=false;_status="BRIDGE_MESSAGE_INVALID";Print("{0}: {1}",_status,e.Message);}
++            else if(type=="snapshot")
++            {
++                if(!_bridgeReady)throw new JsonException("SNAPSHOT_BEFORE_HANDSHAKE");
++                var snapshot=JsonSerializer.Deserialize<ExternalSnapshot>(root.GetProperty("data").GetRawText(),Json) ?? throw new JsonException("EMPTY_SNAPSHOT");
++                _snapshot=snapshot;Print("TIMESTAMP_VALID snapshot=True");
++            }
++            else if(type=="pong")
++            {
++                if(!_bridgeReady)throw new JsonException("PONG_BEFORE_HANDSHAKE");
++                _lastBridgeAck=Server.TimeInUtc;++_validHeartbeats;Print("BRIDGE_HEARTBEAT_OK count={0}",_validHeartbeats);
++                if(_validHeartbeats>=3 && (Server.TimeInUtc-_healthySince).TotalSeconds>=20)_backoffAttempt=0;
++                // Only the historical connectivity reason can recover automatically.
++                // Account, execution uncertainty and checkpoint safety faults stay quarantined.
++                if(_validHeartbeats>=3 && BindingOk && _state.Quarantined && _state.QuarantineReason=="BRIDGE_MESSAGE_INVALID")
++                {
++                    ValidateState();RecoverAttempt();ReconcileExposure();
++                    if(_state.QuarantineReason=="BRIDGE_MESSAGE_INVALID")
++                    { _state.Quarantined=false;_state.QuarantineReason="";Changed();Persist();Print("BRIDGE_CONNECTIVITY_RECOVERED"); }
++                }
++            }
++            else if(type=="error")
++            {
++                var code=root.GetProperty("code").GetString() ?? "MESSAGE_INVALID";BridgeOffline(code);
++                if(code=="AUTH_FAILED")_stopping=true;
++                else if(code!="LEASE_BUSY" && code!="LEASE_EXPIRED" && code!="MESSAGE_INVALID" && code!="TIMESTAMP_OFFSET_REQUIRED")Quarantine("BRIDGE_"+code);
++            }
++            else throw new JsonException("MESSAGE_TYPE_INVALID");
++        }
++        catch(Exception e)
++        {
++            BridgeOffline("MESSAGE_INVALID");Print("BRIDGE_MESSAGE_INVALID type={0}",e.GetType().Name);
++            if(e is InvalidOperationException)Quarantine("BRIDGE_STATE_SAFETY_FAULT");
++        }
+     }
+     private void Changed(){_state.Revision++;}
+     private void Persist()
+@@ -224,10 +323,10 @@
+         if(!_bridgeReady || _saveInFlight || _state.Revision<=_persistedRevision)return;
+         try
+         {
+-            _sentRevision=_state.Revision;_saveInFlight=true;_saveSentTicks=System.Diagnostics.Stopwatch.GetTimestamp();
+-            _bridge!.Send(JsonSerializer.Serialize(new{type="save",base_revision=_remoteRevision,client_revision=_sentRevision,state=_state}));
+-        }
+-        catch{_saveInFlight=false;_bridgeReady=false;}
++            _sentRevision=_state.Revision;_saveInFlight=true;_saveSentTicks=System.Diagnostics.Stopwatch.GetTimestamp();_saveDeadline=Server.TimeInUtc.AddSeconds(15);
++            _bridge!.Send(JsonSerializer.Serialize(new{type="save",base_revision=_remoteRevision,client_revision=_sentRevision,state=_state},Json));
++        }
++        catch{BridgeOffline("CHECKPOINT_SEND_FAILED");}
+     }
+     private bool Durable => _persistedRevision>=_state.Revision && (!UsesBridge || (_bridgeReady && (Server.TimeInUtc-_lastBridgeAck).TotalSeconds<30));
+     private void Quarantine(string reason){_state.Quarantined=true;_state.QuarantineReason=reason;Changed();Print("QUARANTINED: {0}",reason);Persist();}
+@@ -247,11 +346,7 @@
+     private void Cycle()
+     {
+         var now=Server.TimeInUtc;
+-        if(UsesBridge)
+-        {
+-            if(!_bridgeReady && now>=_nextConnect)ConnectBridge();
+-            if(_bridgeReady && now>=_nextPing){_bridge!.Send("{\"type\":\"ping\"}");_nextPing=now.AddSeconds(10);}
+-        }
++        if(UsesBridge)ServiceBridge(now);
+         ManagePositions(now);
+         if(UsesBridge && !_bridgeReady){Telemetry(now);return;}
+         var bars=ClosedM1(now);if(bars.Count<100){_status="WARMUP_M1";Telemetry(now);return;}
+@@ -496,5 +591,5 @@
+         Print("RIZAN_STATE status={0}; trading={1}; accountBound={2}; positions={3}; quarantined={4}; reason={5}",_status,EnableTrading,BindingOk,Owned.Length,_state.Quarantined,_state.QuarantineReason);
+         Print("RIZAN_CHECKPOINT {0}",Serialize());
+     }
+-    protected override void OnStop(){Persist();_bridge?.Dispose();Print("RIZAN stopped. Broker SL/TP remain attached; restart requires checkpoint reconciliation.");}
++    protected override void OnStop(){_stopping=true;Persist();++_bridgeGeneration;_bridgeReady=false;_connecting=false;_bridge?.Dispose();_bridge=null;Print("RIZAN stopped. Broker SL/TP remain attached; restart requires checkpoint reconciliation.");}
+ }

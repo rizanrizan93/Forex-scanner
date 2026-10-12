@@ -1,0 +1,174 @@
+{
+  "Pass": true,
+  "MeasuredLive": false,
+  "Cases": [
+    {
+      "PhaseMs": 0,
+      "ScriptedAckMs": 0,
+      "FirstBrokerRequestMs": 0,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 0,
+      "ScriptedAckMs": 25,
+      "FirstBrokerRequestMs": 25,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 0,
+      "ScriptedAckMs": 100,
+      "FirstBrokerRequestMs": 100,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 0,
+      "ScriptedAckMs": 250,
+      "FirstBrokerRequestMs": 250,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 0,
+      "ScriptedAckMs": 500,
+      "FirstBrokerRequestMs": 500,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 0,
+      "ScriptedAckMs": 1000,
+      "FirstBrokerRequestMs": 1000,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 250,
+      "ScriptedAckMs": 0,
+      "FirstBrokerRequestMs": 250,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 250,
+      "ScriptedAckMs": 25,
+      "FirstBrokerRequestMs": 275,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 250,
+      "ScriptedAckMs": 100,
+      "FirstBrokerRequestMs": 350,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 250,
+      "ScriptedAckMs": 250,
+      "FirstBrokerRequestMs": 500,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 250,
+      "ScriptedAckMs": 500,
+      "FirstBrokerRequestMs": 750,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 250,
+      "ScriptedAckMs": 1000,
+      "FirstBrokerRequestMs": 1250,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 750,
+      "ScriptedAckMs": 0,
+      "FirstBrokerRequestMs": 750,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 750,
+      "ScriptedAckMs": 25,
+      "FirstBrokerRequestMs": 775,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 750,
+      "ScriptedAckMs": 100,
+      "FirstBrokerRequestMs": 850,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 750,
+      "ScriptedAckMs": 250,
+      "FirstBrokerRequestMs": 1000,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 750,
+      "ScriptedAckMs": 500,
+      "FirstBrokerRequestMs": 1250,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 750,
+      "ScriptedAckMs": 1000,
+      "FirstBrokerRequestMs": 1750,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 999,
+      "ScriptedAckMs": 0,
+      "FirstBrokerRequestMs": 999,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 999,
+      "ScriptedAckMs": 25,
+      "FirstBrokerRequestMs": 1024,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 999,
+      "ScriptedAckMs": 100,
+      "FirstBrokerRequestMs": 1099,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 999,
+      "ScriptedAckMs": 250,
+      "FirstBrokerRequestMs": 1249,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 999,
+      "ScriptedAckMs": 500,
+      "FirstBrokerRequestMs": 1499,
+      "VirtualChildren": 10,
+      "Requests": 1
+    },
+    {
+      "PhaseMs": 999,
+      "ScriptedAckMs": 1000,
+      "FirstBrokerRequestMs": 1999,
+      "VirtualChildren": 10,
+      "Requests": 1
+    }
+  ]
+}

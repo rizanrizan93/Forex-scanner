@@ -19,6 +19,11 @@ from pandas.tseries.holiday import USFederalHolidayCalendar
 from pandas.tseries.offsets import CustomBusinessDay
 from icalendar import Calendar
 
+try:
+    from .timestamps import parse_utc, utc_text
+except ImportError:
+    from timestamps import parse_utc, utc_text
+
 UTC = timezone.utc
 _CACHE: dict[str, tuple[datetime, bytes]] = {}
 FF = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
@@ -98,7 +103,7 @@ def macro_point(body: bytes, series: str, now: datetime) -> dict[str, object]:
         raise ValueError("MACRO_STALE")
     return {
         "Delta": float(last.delta),
-        "AvailableUtc": last.available.isoformat(),
+        "AvailableUtc": utc_text(last.available.to_pydatetime()),
     }
 
 
@@ -119,7 +124,7 @@ def ff_events(body: bytes, now: datetime) -> tuple[list[dict[str, str]], datetim
         raw = row.get("date")
         if not raw:
             raise ValueError("FF_UNTIMED_EVENT")
-        at = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        at = parse_utc(str(raw))
         if at.tzinfo is None:
             raise ValueError("FF_TIMEZONE_REQUIRED")
         parsed.append((row, at.astimezone(UTC)))
@@ -128,7 +133,7 @@ def ff_events(body: bytes, now: datetime) -> tuple[list[dict[str, str]], datetim
     if any(not start <= at < end for _, at in parsed):
         raise ValueError("FF_WEEK_MISMATCH")
     events = [
-        {"AtUtc": at.isoformat(), "Category": cat}
+        {"AtUtc": utc_text(at), "Category": cat}
         for row, at in parsed
         if str(row.get("country", "")).upper() == "USD"
         and (cat := category(str(row.get("title", ""))))
@@ -148,7 +153,7 @@ def bls_events(body: bytes, start: datetime, end: datetime) -> list[dict[str, st
         dates.append(at)
         cat = category(str(component.get("SUMMARY", "")))
         if cat:
-            events.append({"AtUtc": at.isoformat(), "Category": cat})
+            events.append({"AtUtc": utc_text(at), "Category": cat})
     if not dates or min(dates) > start or max(dates) < end:
         raise ValueError("BLS_CALENDAR_COVERAGE_INCOMPLETE")
     return events
@@ -156,12 +161,15 @@ def bls_events(body: bytes, start: datetime, end: datetime) -> list[dict[str, st
 
 def snapshot(now: datetime | None = None) -> dict[str, object]:
     """Build the exact camel-case snapshot consumed by RizanXAU.algo."""
-    now = (now or datetime.now(UTC)).astimezone(UTC)
+    now = now or datetime.now(UTC)
+    if now.utcoffset() is None:
+        raise ValueError("TIMESTAMP_OFFSET_REQUIRED")
+    now = now.astimezone(UTC)
     errors: list[str] = []
     result: dict[str, object] = {
-        "ProducedUtc": now.isoformat(),
-        "CoverageFromUtc": now.isoformat(),
-        "CoverageToUtc": now.isoformat(),
+        "ProducedUtc": utc_text(now),
+        "CoverageFromUtc": utc_text(now),
+        "CoverageToUtc": utc_text(now),
         "ForexFactoryOk": False,
         "BlsOk": False,
         "Dgs10": None,
@@ -180,8 +188,8 @@ def snapshot(now: datetime | None = None) -> dict[str, object]:
         events, start, end = ff_events(fetch(FF, now, timedelta(minutes=15)), now)
         result.update(
             ForexFactoryOk=True,
-            CoverageFromUtc=start.isoformat(),
-            CoverageToUtc=end.isoformat(),
+            CoverageFromUtc=utc_text(start),
+            CoverageToUtc=utc_text(end),
             Events=events,
         )
     except Exception as exc:

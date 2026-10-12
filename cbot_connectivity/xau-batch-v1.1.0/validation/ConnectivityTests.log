@@ -1,0 +1,2 @@
+/workspace/scratch/71f1d28fa2ec/Forex-scanner/cbot_connectivity/xau-batch-v1.1.0/tests/ApiStubs.cs(5,95): warning CS8618: Non-nullable property 'DefaultValue' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable. [/workspace/scratch/71f1d28fa2ec/Forex-scanner/cbot_connectivity/xau-batch-v1.1.0/tests/ConnectivityTests.csproj]
+{"Pass":true,"Checks":1675,"Cycles":200,"MaximumActiveSockets":1,"FinalActiveSockets":0,"BrokerRequests":0,"LiveVerified":false}

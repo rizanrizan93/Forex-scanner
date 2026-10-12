@@ -1,0 +1,18 @@
+test_durable_exclusivity_and_expiry (test_durable.DurableTests.test_durable_exclusivity_and_expiry) ... ok
+test_identity_and_numeric_validation (test_durable.DurableTests.test_identity_and_numeric_validation) ... ok
+test_legacy_retry (test_durable.DurableTests.test_legacy_retry) ... ok
+test_namespaces_and_state_conflicts (test_durable.DurableTests.test_namespaces_and_state_conflicts) ... ok
+test_private_files (test_durable.DurableTests.test_private_files) ... ok
+test_restart_recovery_and_lost_ack (test_durable.DurableTests.test_restart_recovery_and_lost_ack) ... ok
+test_auth_stream_isolation_and_recovery (test_protocol.ProtocolTests.test_auth_stream_isolation_and_recovery) ... ok
+test_100_cycles_duplicate_session_invalid_payload_and_recovery (test_session_soak.SessionSoak.test_100_cycles_duplicate_session_invalid_payload_and_recovery) ... ok
+test_all_nested_wire_fields (test_timestamps.TimestampTests.test_all_nested_wire_fields) ... ok
+test_bad_save_preserves_checkpoint_across_restart (test_timestamps.TimestampTests.test_bad_save_preserves_checkpoint_across_restart) ... ok
+test_explicit_legacy_utc_repair_preserves_values (test_timestamps.TimestampTests.test_explicit_legacy_utc_repair_preserves_values) ... ok
+test_naive_and_bad_offset_rejected (test_timestamps.TimestampTests.test_naive_and_bad_offset_rejected) ... ok
+test_offsets_normalize_to_same_utc (test_timestamps.TimestampTests.test_offsets_normalize_to_same_utc) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 1.221s
+
+OK

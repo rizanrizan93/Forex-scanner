@@ -16,9 +16,14 @@ import sqlite3
 import ssl
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from websockets.asyncio.server import serve
+try:
+    from .timestamps import validate_timestamps, utc_text
+except ImportError:
+    from timestamps import validate_timestamps, utc_text
 
 CONTRACTS = {
     "RZXA1": {
@@ -131,6 +136,7 @@ class Store:
         if type(base) is not int or base < 0:
             raise ValueError("BASE_REVISION_INVALID")
         self._validate_state_identity(key, revision, state)
+        validate_timestamps(state)
         encoded = json.dumps(state, sort_keys=True, allow_nan=False, separators=(",", ":"))
         digest = hashlib.sha256(encoded.encode()).hexdigest()
         with self.db:
@@ -320,6 +326,7 @@ async def main() -> None:
         while True:
             try:
                 candidate = await asyncio.to_thread(feeds.snapshot)
+                validate_timestamps(candidate)
                 await asyncio.to_thread(_write_snapshot, snapshot_path, candidate)
                 latest = candidate
             except Exception:
@@ -333,7 +340,8 @@ async def main() -> None:
                 try:
                     await ws.send(wire)
                 except Exception:
-                    peers.pop(ws, None)
+                    # Keep identity reserved until the socket actually closes.
+                    await ws.close(code=1011)
             await asyncio.sleep(60)
 
     async def handler(ws) -> None:
@@ -347,8 +355,15 @@ async def main() -> None:
             key = str(hello.get("key", ""))
             lease = str(hello.get("lease", ""))
             _validate_identity(key, lease, str(hello.get("contract", "")))
+            # Reserve before the first await; even the same lease cannot open
+            # a second active session for this account/symbol identity.
+            if key in peers.values():
+                raise ValueError("LEASE_BUSY")
             version, state = store.acquire(key, lease)
+            if state is not None:
+                validate_timestamps(state)
             identity = (key, lease)
+            peers[ws] = key
             await ws.send(json.dumps({"type": "ready", "revision": version, "state": state}))
             peers[ws] = key
             if latest is not None and key.split(":")[-1].upper() == "XAUUSD":
@@ -357,9 +372,10 @@ async def main() -> None:
                 )
             async for wire in ws:
                 request = strict_load(wire)
+                validate_timestamps(request)
                 if request.get("type") == "ping":
                     store.touch(key, lease)
-                    await ws.send('{"type":"pong"}')
+                    await ws.send(json.dumps({"type":"pong", "timestamp":utc_text(datetime.now(timezone.utc))}))
                 elif request.get("type") == "save":
                     version = store.save(
                         key,

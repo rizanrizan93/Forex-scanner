@@ -49,7 +49,9 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                             if symbol == "XAUUSD":
                                 self.assertEqual(json.loads(await ws.recv())["type"], "snapshot")
                             await ws.send('{"type":"ping"}')
-                            self.assertEqual(json.loads(await ws.recv()), {"type": "pong"})
+                            pong=json.loads(await ws.recv())
+                            self.assertEqual(pong["type"], "pong")
+                            server.validate_timestamps(pong)
                             save = {"type": "save", "base_revision": 0, "client_revision": 1,
                                     "state": state(prefix, 1, symbol, 1)}
                             for _ in range(2):

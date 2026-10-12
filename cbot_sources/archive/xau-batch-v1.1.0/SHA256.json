@@ -1,0 +1,23 @@
+{
+  "README_ID.md": "f60e28cde27fd14158d82351d46985e99f1ae3262d70b6b9ff0f4d8dfb1f1a61",
+  "RizanXAUBatch_v1.1.0.algo": "a348edee4e3c1844741bea26fd09ce00fe925d7e2bd374b846fd0d0093f69262",
+  "validation/algo_metadata.json": "4eac179b0e78d80c13a00858a59c94b9c1ae942344068d60bee1aa6f2e8f4ff1",
+  "validation/SizingParityTests.json": "b23e9e021438a242c272bf7a6728e66f3230a9f42e97e637d96d4a05cab04abc",
+  "validation/BatchRuntimeTests.json": "84fb0b6f412943cb56a1c6a1db4b19c4c35e2fb0a301b38b33a925043f5b7f08",
+  "validation/build_source_proof.json": "755e880a76eda5c4f932e76acb894bb50bad139b245f77a398c021f203698783",
+  "validation/BatchAckTests.json": "e8e7c1321a5175ad13099f7dd9abce0dcb4e0abf2b9f09301720e4dbe9d9c235",
+  "tests/VerifyBuild.cs": "592cfc70b7aa4fe861573ee5a6168af0269b8f241101860ede86e0443992aacb",
+  "tests/SizingParityTests.cs": "af053f6f7c0058c8116995e6240351093cdcb5f4fa0fbc3c0f47ceb31a3ee235",
+  "tests/ApiStubs.cs": "47be0807ed4509147fe3d645165d8a9e982ed39670f256adaa31e21359478acd",
+  "tests/BatchAckTests.cs": "af099247628863a9277bb28b967631c5639a6bf26ce6fd69796a821c9f9a43fe",
+  "tests/SizingParityTests.csproj": "da0409d82b98bde9c061d88cc689abeaa901df4ad4bfc8d158bf841f3fb7811f",
+  "tests/BatchAckTests.csproj": "92fcb54852db3b87521b9d10e9374d31fde0891cfba732c2861fc6709813b44d",
+  "tests/BatchRuntimeTests.csproj": "ccf39f8a41a61a740536e4ca26cf39a32961068381e8f673b48e3bf186f065d8",
+  "tests/BatchRuntimeTests.cs": "976a61c55da5e01b25d73e2479179037a6b37ae69d4615677163223d59d9ffdc",
+  "tests/XauBatchSizing.cs": "ea4add5c8fa9648ed9011fd5691bc0ca317980d27f079a74ca6859260d231474",
+  "source/Common/RizanRobot.cs": "aa67775390cc800c947311be4a94b5c0a985642342fd059ec36c9ece88517583",
+  "source/Common/FrozenCore.cs": "4d77169b43a38d9f88dadeba542801ce18422a906d42a1665eb912d833ee9670",
+  "source/Common/XauBatchExecution.cs": "5ee79d2d54a616ef207d0800a18eb3e4822af1745db58080437777c5d039d011",
+  "source/RizanXAUBatch/RizanXAUBatch/RizanXAUBatch.cs": "1309c7000275c564b6cf384f2ec6ad97e9c134c709833a4b37c21461d198f3cb",
+  "source/RizanXAUBatch/RizanXAUBatch/RizanXAUBatch.csproj": "1e6d661b3b5123fc09a475ec6d55e7ff19f4189dcad5c9010d4b630ac3421655"
+}

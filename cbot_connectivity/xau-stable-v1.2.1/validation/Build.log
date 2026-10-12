@@ -1,0 +1,10 @@
+  Determining projects to restore...
+  Restored /workspace/scratch/71f1d28fa2ec/Forex-scanner/cbot_connectivity/xau-stable-v1.2.1/source/RizanXAUStable/RizanXAUStable/RizanXAUStable.csproj (in 39.6 sec).
+  RizanXAUStable -> /workspace/scratch/71f1d28fa2ec/Forex-scanner/cbot_connectivity/xau-stable-v1.2.1/source/RizanXAUStable/RizanXAUStable/bin/Release/net6.0/RizanXAUStable.dll
+  RizanXAUStable -> /workspace/scratch/71f1d28fa2ec/Forex-scanner/cbot_connectivity/xau-stable-v1.2.1/source/RizanXAUStable/RizanXAUStable/bin/Release/net6.0/RizanXAUStable.algo
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:44.65

@@ -1,0 +1,13 @@
+{
+  "Version": "1.1.0",
+  "ExecutionModel": "XAU_BATCH_STAGE_FIXED_REF_WAL_V1",
+  "ContractHash": "7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf",
+  "AlgoSHA256": "a8e36304906e78e3aa5690ed938c258657938c2e51959d857357ed5119c59746",
+  "SourceSHA256": {
+    "Common/RizanRobot.cs": "90744a5782fa50bddac6c4872885569dd86a1cc550bbb68ad60694ea4f80881f",
+    "Common/FrozenCore.cs": "4d77169b43a38d9f88dadeba542801ce18422a906d42a1665eb912d833ee9670",
+    "Common/XauBatchExecution.cs": "5ee79d2d54a616ef207d0800a18eb3e4822af1745db58080437777c5d039d011",
+    "RizanXAUBatch/RizanXAUBatch/RizanXAUBatch.cs": "1309c7000275c564b6cf384f2ec6ad97e9c134c709833a4b37c21461d198f3cb"
+  },
+  "RuntimeProductionVerified": false
+}

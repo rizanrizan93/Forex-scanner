@@ -1,0 +1,13 @@
+{
+  "Pass": true,
+  "FixtureCases": 33,
+  "CompiledAlgoPdbMatchesSource": true,
+  "ConstantSourceReplayMatchesBothDelay2ResearchLedgers": true,
+  "NativeHostBacktest": false,
+  "LiveBridgeTest": false,
+  "OutOfSampleTest": false,
+  "NominalAndDelay2MinimumBalance": 25831.449399998844,
+  "NominalAndDelay2MaximumSyntheticDDPercent": 49.5172120058911,
+  "AllStressMaximumSyntheticDDPercent": 49.5172120058911,
+  "Build": "SDK6 native .algo build; 0 warnings, 0 errors"
+}
