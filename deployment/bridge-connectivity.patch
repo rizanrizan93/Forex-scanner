@@ -1,0 +1,407 @@
+diff --git a/cbot_bridge/feeds.py b/cbot_bridge/feeds.py
+index 1d6c8c44..120bc755 100644
+--- a/cbot_bridge/feeds.py
++++ b/cbot_bridge/feeds.py
+@@ -19,6 +19,11 @@ from pandas.tseries.holiday import USFederalHolidayCalendar
+ from pandas.tseries.offsets import CustomBusinessDay
+ from icalendar import Calendar
+ 
++try:
++    from .timestamps import parse_utc, utc_text
++except ImportError:
++    from timestamps import parse_utc, utc_text
++
+ UTC = timezone.utc
+ _CACHE: dict[str, tuple[datetime, bytes]] = {}
+ FF = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+@@ -98,7 +103,7 @@ def macro_point(body: bytes, series: str, now: datetime) -> dict[str, object]:
+         raise ValueError("MACRO_STALE")
+     return {
+         "Delta": float(last.delta),
+-        "AvailableUtc": last.available.isoformat(),
++        "AvailableUtc": utc_text(last.available.to_pydatetime()),
+     }
+ 
+ 
+@@ -119,7 +124,7 @@ def ff_events(body: bytes, now: datetime) -> tuple[list[dict[str, str]], datetim
+         raw = row.get("date")
+         if not raw:
+             raise ValueError("FF_UNTIMED_EVENT")
+-        at = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
++        at = parse_utc(str(raw))
+         if at.tzinfo is None:
+             raise ValueError("FF_TIMEZONE_REQUIRED")
+         parsed.append((row, at.astimezone(UTC)))
+@@ -128,7 +133,7 @@ def ff_events(body: bytes, now: datetime) -> tuple[list[dict[str, str]], datetim
+     if any(not start <= at < end for _, at in parsed):
+         raise ValueError("FF_WEEK_MISMATCH")
+     events = [
+-        {"AtUtc": at.isoformat(), "Category": cat}
++        {"AtUtc": utc_text(at), "Category": cat}
+         for row, at in parsed
+         if str(row.get("country", "")).upper() == "USD"
+         and (cat := category(str(row.get("title", ""))))
+@@ -148,7 +153,7 @@ def bls_events(body: bytes, start: datetime, end: datetime) -> list[dict[str, st
+         dates.append(at)
+         cat = category(str(component.get("SUMMARY", "")))
+         if cat:
+-            events.append({"AtUtc": at.isoformat(), "Category": cat})
++            events.append({"AtUtc": utc_text(at), "Category": cat})
+     if not dates or min(dates) > start or max(dates) < end:
+         raise ValueError("BLS_CALENDAR_COVERAGE_INCOMPLETE")
+     return events
+@@ -156,12 +161,15 @@ def bls_events(body: bytes, start: datetime, end: datetime) -> list[dict[str, st
+ 
+ def snapshot(now: datetime | None = None) -> dict[str, object]:
+     """Build the exact camel-case snapshot consumed by RizanXAU.algo."""
+-    now = (now or datetime.now(UTC)).astimezone(UTC)
++    now = now or datetime.now(UTC)
++    if now.utcoffset() is None:
++        raise ValueError("TIMESTAMP_OFFSET_REQUIRED")
++    now = now.astimezone(UTC)
+     errors: list[str] = []
+     result: dict[str, object] = {
+-        "ProducedUtc": now.isoformat(),
+-        "CoverageFromUtc": now.isoformat(),
+-        "CoverageToUtc": now.isoformat(),
++        "ProducedUtc": utc_text(now),
++        "CoverageFromUtc": utc_text(now),
++        "CoverageToUtc": utc_text(now),
+         "ForexFactoryOk": False,
+         "BlsOk": False,
+         "Dgs10": None,
+@@ -180,8 +188,8 @@ def snapshot(now: datetime | None = None) -> dict[str, object]:
+         events, start, end = ff_events(fetch(FF, now, timedelta(minutes=15)), now)
+         result.update(
+             ForexFactoryOk=True,
+-            CoverageFromUtc=start.isoformat(),
+-            CoverageToUtc=end.isoformat(),
++            CoverageFromUtc=utc_text(start),
++            CoverageToUtc=utc_text(end),
+             Events=events,
+         )
+     except Exception as exc:
+diff --git a/cbot_bridge/repair_legacy_xau_timestamps.py b/cbot_bridge/repair_legacy_xau_timestamps.py
+new file mode 100644
+index 00000000..a4620197
+--- /dev/null
++++ b/cbot_bridge/repair_legacy_xau_timestamps.py
+@@ -0,0 +1,68 @@
++"""Offline repair of checkpoints emitted by the verified XAU v1.1.0 UTC producer.
++
++Default: read-only audit. Apply only while bridge is stopped, with explicit UTC
++provenance confirmation. Never shifts a time, revision, label, intent or watermark.
++"""
++import argparse
++from datetime import datetime, timezone
++import hashlib
++import json
++from pathlib import Path
++import re
++import sqlite3
++try:
++    from .timestamps import validate_timestamps
++except ImportError:
++    from timestamps import validate_timestamps
++
++HASH="7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf"
++MODEL="XAU_BATCH_STAGE_FIXED_REF_WAL_V1"
++NAIVE=re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?$")
++
++def repair(value):
++    count=0
++    if isinstance(value,dict):
++        for key,item in value.items():
++            if key.lower().endswith('utc') or key=='XauDay':
++                if isinstance(item,str) and NAIVE.fullmatch(item):
++                    datetime.fromisoformat(item) # validate without inferring local timezone
++                    value[key]=item+'Z';count+=1
++            else:count+=repair(item)
++    elif isinstance(value,list):
++        for item in value:count+=repair(item)
++    return count
++
++def encoded(state):
++    return json.dumps(state,sort_keys=True,allow_nan=False,separators=(',',':'))
++
++def main():
++    parser=argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('database',type=Path)
++    parser.add_argument('--key',required=True,help='Exact RZXA1:account:XAUUSD key; never an account wildcard')
++    parser.add_argument('--execution-model',choices=(MODEL,'XAU_BATCH_SEND_REF_COOLDOWN_V1'),default=MODEL)
++    parser.add_argument('--apply',action='store_true')
++    parser.add_argument('--confirm-legacy-utc-producer',action='store_true')
++    args=parser.parse_args()
++    if not re.fullmatch(r'RZXA1:\d+:XAUUSD',args.key):raise SystemExit('KEY_INVALID')
++    if args.apply and not args.confirm_legacy_utc_producer:raise SystemExit('UTC_PROVENANCE_CONFIRMATION_REQUIRED')
++    db=sqlite3.connect(f'file:{args.database.resolve()}?mode=rw' if args.apply else f'file:{args.database.resolve()}?mode=ro',uri=True)
++    row=db.execute('SELECT version,state FROM checkpoints WHERE key=?',(args.key,)).fetchone()
++    if not row:raise SystemExit('CHECKPOINT_NOT_FOUND')
++    state=json.loads(row[1]);old=encoded(state)
++    if state.get('ContractHash')!=HASH or state.get('ExecutionModel')!=args.execution_model or str(state.get('AccountNumber'))!=args.key.split(':')[1] or state.get('Symbol')!='XAUUSD':raise SystemExit('SOURCE_IDENTITY_INVALID')
++    count=repair(state);validate_timestamps(state);new=encoded(state)
++    print(json.dumps({'mode':'apply' if args.apply else 'audit','naive_fields':count,'version_unchanged':row[0],'revision_unchanged':state['Revision']}))
++    if args.apply and count:
++        backup=args.database.with_name(args.database.name+'.before-utc-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ'))
++        backup_db=sqlite3.connect(backup);db.backup(backup_db);backup_db.close();backup.chmod(0o600)
++        with db:
++            db.execute('BEGIN IMMEDIATE')
++            changed=db.execute('UPDATE checkpoints SET state=? WHERE key=? AND version=? AND state=?',(new,args.key,row[0],row[1])).rowcount
++            if changed!=1:raise RuntimeError('CHECKPOINT_CHANGED_DURING_REPAIR')
++            # Preserve lost-ACK idempotency for the current state's exact receipt.
++            db.execute('UPDATE checkpoint_receipts SET digest=? WHERE key=? AND client_revision=? AND version=? AND digest=?',
++                       (hashlib.sha256(new.encode()).hexdigest(),args.key,state['Revision'],row[0],hashlib.sha256(old.encode()).hexdigest()))
++        print('OFFLINE_REPAIR_OK BACKUP_CREATED')
++    db.close()
++
++if __name__=='__main__':main()
+diff --git a/cbot_bridge/server.py b/cbot_bridge/server.py
+index 2c916259..ec07e86f 100644
+--- a/cbot_bridge/server.py
++++ b/cbot_bridge/server.py
+@@ -16,9 +16,14 @@ import sqlite3
+ import ssl
+ import tempfile
+ import time
++from datetime import datetime, timezone
+ from pathlib import Path
+ 
+ from websockets.asyncio.server import serve
++try:
++    from .timestamps import validate_timestamps, utc_text
++except ImportError:
++    from timestamps import validate_timestamps, utc_text
+ 
+ CONTRACTS = {
+     "RZXA1": {
+@@ -131,6 +136,7 @@ class Store:
+         if type(base) is not int or base < 0:
+             raise ValueError("BASE_REVISION_INVALID")
+         self._validate_state_identity(key, revision, state)
++        validate_timestamps(state)
+         encoded = json.dumps(state, sort_keys=True, allow_nan=False, separators=(",", ":"))
+         digest = hashlib.sha256(encoded.encode()).hexdigest()
+         with self.db:
+@@ -320,6 +326,7 @@ async def main() -> None:
+         while True:
+             try:
+                 candidate = await asyncio.to_thread(feeds.snapshot)
++                validate_timestamps(candidate)
+                 await asyncio.to_thread(_write_snapshot, snapshot_path, candidate)
+                 latest = candidate
+             except Exception:
+@@ -333,7 +340,8 @@ async def main() -> None:
+                 try:
+                     await ws.send(wire)
+                 except Exception:
+-                    peers.pop(ws, None)
++                    # Keep identity reserved until the socket actually closes.
++                    await ws.close(code=1011)
+             await asyncio.sleep(60)
+ 
+     async def handler(ws) -> None:
+@@ -347,8 +355,15 @@ async def main() -> None:
+             key = str(hello.get("key", ""))
+             lease = str(hello.get("lease", ""))
+             _validate_identity(key, lease, str(hello.get("contract", "")))
++            # Reserve before the first await; even the same lease cannot open
++            # a second active session for this account/symbol identity.
++            if key in peers.values():
++                raise ValueError("LEASE_BUSY")
+             version, state = store.acquire(key, lease)
++            if state is not None:
++                validate_timestamps(state)
+             identity = (key, lease)
++            peers[ws] = key
+             await ws.send(json.dumps({"type": "ready", "revision": version, "state": state}))
+             peers[ws] = key
+             if latest is not None and key.split(":")[-1].upper() == "XAUUSD":
+@@ -357,9 +372,10 @@ async def main() -> None:
+                 )
+             async for wire in ws:
+                 request = strict_load(wire)
++                validate_timestamps(request)
+                 if request.get("type") == "ping":
+                     store.touch(key, lease)
+-                    await ws.send('{"type":"pong"}')
++                    await ws.send(json.dumps({"type":"pong", "timestamp":utc_text(datetime.now(timezone.utc))}))
+                 elif request.get("type") == "save":
+                     version = store.save(
+                         key,
+diff --git a/cbot_bridge/test_protocol.py b/cbot_bridge/test_protocol.py
+index 7d7b4c0d..9e4b8b45 100644
+--- a/cbot_bridge/test_protocol.py
++++ b/cbot_bridge/test_protocol.py
+@@ -49,7 +49,9 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
+                             if symbol == "XAUUSD":
+                                 self.assertEqual(json.loads(await ws.recv())["type"], "snapshot")
+                             await ws.send('{"type":"ping"}')
+-                            self.assertEqual(json.loads(await ws.recv()), {"type": "pong"})
++                            pong=json.loads(await ws.recv())
++                            self.assertEqual(pong["type"], "pong")
++                            server.validate_timestamps(pong)
+                             save = {"type": "save", "base_revision": 0, "client_revision": 1,
+                                     "state": state(prefix, 1, symbol, 1)}
+                             for _ in range(2):
+diff --git a/cbot_bridge/test_session_soak.py b/cbot_bridge/test_session_soak.py
+new file mode 100644
+index 00000000..a2fecbe0
+--- /dev/null
++++ b/cbot_bridge/test_session_soak.py
+@@ -0,0 +1,57 @@
++"""Real local WebSocket session registry + checkpoint recovery soak (no broker)."""
++import asyncio
++import json
++import os
++import sys
++import tempfile
++import types
++import unittest
++from pathlib import Path
++from unittest.mock import patch
++from websockets.asyncio.client import connect
++import server
++from selftest import state
++
++class SessionSoak(unittest.IsolatedAsyncioTestCase):
++    async def test_100_cycles_duplicate_session_invalid_payload_and_recovery(self):
++        with tempfile.TemporaryDirectory() as folder:
++            env={"RIZAN_BRIDGE_TOKEN":"test-"+"x"*40,"RIZAN_BRIDGE_PORT":"25347",
++                 "RIZAN_STATE_DB":str(Path(folder)/"db.sqlite"),
++                 "RIZAN_SNAPSHOT_PATH":str(Path(folder)/"snapshot.json"),
++                 "RIZAN_HEALTH_PATH":str(Path(folder)/"health.json")}
++            fixture=types.SimpleNamespace(snapshot=lambda:{"ProducedUtc":"2026-10-12T13:30:03.640+00:00"})
++            with patch.dict(os.environ,env,clear=True),patch.dict(sys.modules,{"feeds":fixture}):
++                task=asyncio.create_task(server.main());url="ws://127.0.0.1:25347"
++                try:
++                    for _ in range(50):
++                        if task.done():await task
++                        try:
++                            ws=await connect(url);await ws.close();break
++                        except OSError:await asyncio.sleep(.02)
++                    hello={"type":"hello","key":"RZXA1:1:XAUUSD","lease":"b"*32,
++                           "contract":server.CONTRACTS["RZXA1"]["hash"],"token":env["RIZAN_BRIDGE_TOKEN"]}
++                    saved=state("RZXA1",1,"XAUUSD",1);saved["LastSignalUtc"]="2026-10-12T13:30:03.640Z"
++                    for cycle in range(100):
++                        async with connect(url) as ws:
++                            await ws.send(json.dumps(hello));ready=json.loads(await ws.recv())
++                            self.assertEqual(ready["type"],"ready")
++                            self.assertEqual(ready["revision"],0 if cycle==0 else 1)
++                            if cycle:self.assertEqual(ready["state"],saved)
++                            snap=json.loads(await ws.recv());server.validate_timestamps(snap)
++                            async with connect(url) as duplicate:
++                                await duplicate.send(json.dumps(hello))
++                                self.assertEqual(json.loads(await duplicate.recv()),{"type":"error","code":"LEASE_BUSY"})
++                            # Same WAL request always produces version 1, including lost ACK retries.
++                            await ws.send(json.dumps({"type":"save","base_revision":0,"client_revision":1,"state":saved}))
++                            self.assertEqual(json.loads(await ws.recv())["revision"],1)
++                            await ws.send('{"type":"ping","timestamp":"2026-10-12T13:30:03.640+00:00"}')
++                            self.assertEqual(json.loads(await ws.recv())["type"],"pong")
++                            if cycle%2==0:
++                                bad={**saved,"Revision":2,"LastSignalUtc":"2026-10-12T13:31:03.640"}
++                                await ws.send(json.dumps({"type":"save","base_revision":1,"client_revision":2,"state":bad}))
++                                self.assertEqual(json.loads(await ws.recv()),{"type":"error","code":"TIMESTAMP_OFFSET_REQUIRED"})
++                            else:
++                                await ws.send('{"type":"signal","side":"BUY"}')
++                                self.assertEqual(json.loads(await ws.recv()),{"type":"error","code":"MESSAGE_INVALID"})
++                finally:
++                    task.cancel();await asyncio.gather(task,return_exceptions=True)
+diff --git a/cbot_bridge/test_timestamps.py b/cbot_bridge/test_timestamps.py
+new file mode 100644
+index 00000000..cbb3fc3a
+--- /dev/null
++++ b/cbot_bridge/test_timestamps.py
+@@ -0,0 +1,49 @@
++import unittest
++import tempfile
++from pathlib import Path
++from datetime import datetime, timezone
++from timestamps import parse_utc, utc_text, validate_timestamps
++from server import Store
++from selftest import state
++
++class TimestampTests(unittest.TestCase):
++    def test_offsets_normalize_to_same_utc(self):
++        for suffix, hour in (("Z",13),("+00:00",13),("+07:00",20),("-05:00",8)):
++            parsed = parse_utc(f"2026-10-12T{hour:02}:30:03.640{suffix}")
++            self.assertEqual(parsed, datetime(2026,10,12,13,30,3,640000,tzinfo=timezone.utc))
++            self.assertEqual(utc_text(parsed), "2026-10-12T13:30:03.640+00:00")
++    def test_naive_and_bad_offset_rejected(self):
++        for value in ("2026-10-12T13:30:03.640", "2026-10-12T13:30:03+25:00", "badZ", None):
++            with self.assertRaises(ValueError): parse_utc(value)
++        with self.assertRaisesRegex(ValueError,"TIMESTAMP_OFFSET_REQUIRED"):
++            utc_text(datetime(2026,10,12))
++    def test_all_nested_wire_fields(self):
++        for field in ("timestamp","ts","event_time","generated_at","created_at","server_time",
++                      "signal_time","bar_time","LastSignalUtc","AvailableUtc","XauDay"):
++            validate_timestamps({"checkpoint":[{field:"2026-10-12T13:30:03Z"}]})
++            with self.assertRaisesRegex(ValueError,"TIMESTAMP_OFFSET_REQUIRED"):
++                validate_timestamps({"checkpoint":[{field:"2026-10-12T13:30:03"}]})
++    def test_bad_save_preserves_checkpoint_across_restart(self):
++        with tempfile.TemporaryDirectory() as folder:
++            path=Path(folder)/"state.db";store=Store(path);key="RZXA1:1:XAUUSD";lease="a"*32
++            store.acquire(key,lease);s=state("RZXA1",1,"XAUUSD",1)
++            s["LastSignalUtc"]="2026-10-12T13:30:03.640Z"
++            store.save(key,lease,0,1,s)
++            bad={**s,"Revision":2,"LastSignalUtc":"2026-10-12T13:31:03.640"}
++            with self.assertRaisesRegex(ValueError,"TIMESTAMP_OFFSET_REQUIRED"):
++                store.save(key,lease,1,2,bad)
++            store.db.close();store=Store(path)
++            self.assertEqual(store.acquire(key,lease),(1,s))
++            self.assertEqual(store.save(key,lease,0,1,s),1) # lost ACK is idempotent
++            store.db.close()
++
++    def test_explicit_legacy_utc_repair_preserves_values(self):
++        from repair_legacy_xau_timestamps import repair
++        value={"LastSignalUtc":"2026-10-12T13:30:03.640","PendingLabel":"unchanged", "PendingChildren":10,
++               "nested":{"AtUtc":"2026-10-12T20:30:03.640+07:00"},"Revision":15}
++        self.assertEqual(repair(value),1)
++        self.assertEqual(value["LastSignalUtc"],"2026-10-12T13:30:03.640Z")
++        self.assertEqual(value["nested"]["AtUtc"],"2026-10-12T20:30:03.640+07:00")
++        self.assertEqual(value["PendingChildren"],10)
++        self.assertEqual(value["Revision"],15)
++        validate_timestamps(value)
+diff --git a/cbot_bridge/timestamps.py b/cbot_bridge/timestamps.py
+new file mode 100644
+index 00000000..beadc765
+--- /dev/null
++++ b/cbot_bridge/timestamps.py
+@@ -0,0 +1,38 @@
++"""Strict wire timestamps: offsets required; UTC is the internal representation."""
++from datetime import datetime, timezone
++import re
++
++_OFFSET = re.compile(r"(?:Z|[+-]\d{2}:\d{2})$", re.IGNORECASE)
++_NAMES = {"timestamp", "ts", "event_time", "generated_at", "created_at", "server_time",
++          "signal_time", "bar_time", "observed_at", "xauday"}
++
++
++def parse_utc(value: str) -> datetime:
++    if not isinstance(value, str) or not _OFFSET.search(value):
++        raise ValueError("TIMESTAMP_OFFSET_REQUIRED")
++    try:
++        at = datetime.fromisoformat(value[:-1] + "+00:00" if value[-1:].upper() == "Z" else value)
++        if at.utcoffset() is None:
++            raise ValueError("TIMESTAMP_OFFSET_REQUIRED")
++        return at.astimezone(timezone.utc)
++    except (TypeError, ValueError) as exc:
++        raise ValueError("TIMESTAMP_INVALID") from exc
++
++
++def utc_text(value: datetime) -> str:
++    if value.utcoffset() is None:
++        raise ValueError("TIMESTAMP_OFFSET_REQUIRED")
++    return value.astimezone(timezone.utc).isoformat(timespec="milliseconds")
++
++
++def validate_timestamps(payload) -> None:
++    """Validate nested checkpoints/snapshots without rewriting durable state bytes."""
++    if isinstance(payload, dict):
++        for key, value in payload.items():
++            if key.lower().endswith("utc") or key.lower() in _NAMES:
++                parse_utc(value)
++            else:
++                validate_timestamps(value)
++    elif isinstance(payload, list):
++        for value in payload:
++            validate_timestamps(value)

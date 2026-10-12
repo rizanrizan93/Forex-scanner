@@ -1,0 +1,78 @@
+name: Deploy cBot bridge via SSH
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deployment/**'
+      - 'cbot_bridge/**'
+      - '.github/workflows/deploy-cbot-bridge-ssh.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Audit only or deploy bridge connectivity'
+        type: choice
+        options: [audit, deploy]
+        default: audit
+permissions:
+  contents: read
+concurrency:
+  group: rizan-cbot-bridge-production-ssh
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/main' && github.actor == 'rizanrizan93'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: python -m pip install -r cbot_bridge/requirements.txt
+      - run: python -m unittest discover -s cbot_bridge -p 'test_*.py' -v
+      - run: python -m unittest discover -s deployment -p 'test_*.py' -v
+      - run: python cbot_connectivity/xau-stable-v1.2.1/verify_scope.py
+      - run: dotnet run --project cbot_connectivity/xau-stable-v1.2.1/Tests.csproj
+      - run: dotnet run --project cbot_connectivity/xau-stable-v1.2.1/ConnectivityTests.csproj
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: SSH with pinned host key, backup, deploy and verify
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          DEPLOY_SHA: ${{ github.sha }}
+          DEPLOY_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'deploy' }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" ]] || { echo 'MISSING_SECRET:VPS_SSH_KEY'; exit 1; }
+          [[ -n "$SSH_KNOWN_HOSTS" ]] || { echo 'MISSING_SECRET:VPS_KNOWN_HOSTS'; exit 1; }
+          ssh_dir=$(mktemp -d)
+          trap 'rm -rf "$ssh_dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          ssh-keygen -y -f "$ssh_dir/key" > /dev/null
+          ssh_options=(-i "$ssh_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          target='Rizanrizan@202.74.74.172'
+          remote_dir=$(ssh "${ssh_options[@]}" "$target" 'umask 077; mktemp -d /tmp/rizan-bridge-deploy.XXXXXXXX')
+          [[ "$remote_dir" =~ ^/tmp/rizan-bridge-deploy\.[a-zA-Z0-9]+$ ]] || { echo 'REMOTE_TEMP_INVALID'; exit 1; }
+          cleanup_remote() { ssh "${ssh_options[@]}" "$target" "rm -rf -- '$remote_dir'" > /dev/null 2>&1 || true; }
+          trap 'cleanup_remote; rm -rf "$ssh_dir"' EXIT
+          scp "${ssh_options[@]}" deployment/deploy_bridge.py deployment/bridge-connectivity.patch "$target:$remote_dir/"
+          ssh "${ssh_options[@]}" "$target" "python3 '$remote_dir/deploy_bridge.py' --mode '$DEPLOY_MODE' --sha '$DEPLOY_SHA' --patch '$remote_dir/bridge-connectivity.patch'"
