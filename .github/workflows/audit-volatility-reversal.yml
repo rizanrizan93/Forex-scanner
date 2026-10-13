@@ -1,0 +1,61 @@
+name: XAU Volatility Cost Reversal Audit
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/audit_volatility_reversal.py
+      - .github/workflows/audit-volatility-reversal.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: xau-volatility-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==2.2.6 pandas==2.2.3
+      - name: Wait for locked research result
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner,repo}=context.repo;
+            for(let i=0;i<100;i++){
+              const run=(await github.rest.actions.getWorkflowRun({owner,repo,run_id:38386687428})).data;
+              if(run.status==='completed'){
+                if(run.conclusion!=='success') throw Error('RESEARCH_RUN_FAILED');
+                return;
+              }
+              await new Promise(r=>setTimeout(r,15000));
+            }
+            throw Error('RESEARCH_WAIT_TIMEOUT');
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: volatility-20*
+          path: /tmp/volatility-shards
+          run-id: 38386687428
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: volatility-reversal-results
+          path: /tmp/final-result
+          run-id: 38386687428
+          github-token: ${{ github.token }}
+      - run: PYTHONPATH=src python scripts/audit_volatility_reversal.py
+      - run: |
+          python -m py_compile main.py src/fx_scanner/volatility_reversal_dashboard.py
+          python cbot_connectivity/xau-stable-v1.2.1/verify_scope.py
+          python cbot_connectivity/eur-batch-v1.1.0/verify_scope.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: volatility-reversal-audit
+          path: audit/
+          retention-days: 90
+
