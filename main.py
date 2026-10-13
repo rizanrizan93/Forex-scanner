@@ -35,8 +35,9 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                             from fx_scanner.major_reversal_dashboard import render_major_reversal_dashboard
                             render_major_reversal_dashboard()
                             with st.expander('Arsip riset pantulan kecil 0,5 ATR · bukan reversal utama',expanded=False):
-                                from fx_scanner.reversal_dashboard import render_reversal_dashboard
-                                render_reversal_dashboard()
+                                st.caption('Arsip ini mengukur pantulan 0,5 ATR, bukan profit bersih atau reversal utama harian.')
+                                st.markdown('[Laporan riset lama](https://github.com/rizanrizan93/Forex-scanner/blob/main/docs/XAU_REVERSAL_10M_REPORT_20261013.md)')
+                                st.caption('Zona dan TP/SL contoh lama tidak ditampilkan sebagai rekomendasi reversal utama.')
                         else:
                             if label == "Setup":
                                 from fx_scanner.selected_raw_reference_dashboard import render_selected_raw_reference

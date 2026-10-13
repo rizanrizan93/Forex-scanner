@@ -2,7 +2,7 @@ name: XAU Major Reversal Rejection Audit
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/audit-major-reversal.yml', 'scripts/audit_major_reversal.py']
+    paths: ['.github/workflows/audit-major-reversal.yml', 'scripts/audit_major_reversal.py', 'calibration/major_reversal_results.json', 'calibration/major_reversal_diagnostics.json', 'src/fx_scanner/major_reversal_dashboard.py']
   workflow_dispatch:
 permissions:
   contents: read
@@ -33,6 +33,16 @@ jobs:
           run-id: 38374344264
           github-token: ${{ github.token }}
       - run: PYTHONPATH=src python scripts/audit_major_reversal.py
+      - name: Verify published results and dashboard syntax
+        run: |
+          python -m py_compile main.py src/fx_scanner/major_reversal_dashboard.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for name in ('major_reversal_results.json','major_reversal_diagnostics.json'):
+              assert json.loads((Path('calibration')/name).read_text()) == json.loads((Path('audit')/name).read_text()), name
+          print('PUBLISHED_RESULT_PARITY_PASS')
+          PY
       - run: |
           python cbot_connectivity/xau-stable-v1.2.1/verify_scope.py
           python cbot_connectivity/eur-batch-v1.1.0/verify_scope.py
