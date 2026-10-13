@@ -5,7 +5,7 @@ import re
 import shlex
 import sqlite3
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from deploy_bridge import ROOT, UNIT, MODEL_HASH, MODELS, command, prop, parse_env
 STREAMS = {'RZXA1': ('XAUUSD', MODEL_HASH, MODELS),
            'RZEU4B': ('EURUSD', '4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976',
@@ -67,6 +67,17 @@ def run():
                   'quarantine_reason': safe_identifier(state.get('QuarantineReason')),
                   'invalid_time_fields': time_fields(state)}
         print('BRIDGE_AUDIT_CHECKPOINT=' + json.dumps(result), flush=True)
+        eur = state.get('Eur') or {}
+        h1 = eur.get('H1') or []
+        last_h1 = h1[-1] if h1 else {}
+        basket = state.get('Basket') or {}
+        reading = {'symbol':symbol, 'account_suffix':account[-4:],
+                   **{name:state.get(name) for name in
+                      ('LastBarUtc','LastSignalUtc','LastRealExitUtc','XauResumeUtc','PeakEquity','PendingChildren','PendingFirstFill')},
+                   'pending_label_present':bool(state.get('PendingLabel')), 'basket_present':bool(basket),
+                   'basket_side':basket.get('Side'), 'virtual_present':eur.get('Virtual') is not None,
+                   'h1_records':len(h1), 'latest_h1':{name:last_h1.get(name) for name in ('AtUtc','Ema','Bias')}}
+        print('BRIDGE_AUDIT_READING=' + json.dumps(reading), flush=True)
     for key, expires in db.execute('SELECT key,expires_at FROM bridge_leases'):
         prefix = key.split(':')[0]
         if prefix in STREAMS:
@@ -82,6 +93,28 @@ def run():
             stream = status.get('streams', {}).get(symbol, {})
             print('BRIDGE_AUDIT_HEALTH=' + json.dumps({'symbol':symbol, **{name: stream.get(name) for name in
                   ('connected', 'macro_event_ready', 'checkpoint_revision', 'last_checkpoint_at_unix')}}), flush=True)
+    snapshot = Path(environment.get('RIZAN_SNAPSHOT_PATH', 'state/xau_macro_event_snapshot.json'))
+    if not snapshot.is_absolute():
+        snapshot = ROOT / snapshot
+    if snapshot.is_file():
+        value = json.loads(snapshot.read_text())
+        now = datetime.now(timezone.utc)
+        upcoming = []
+        for item in value.get('Events', []):
+            try:
+                at = datetime.fromisoformat(item['AtUtc'].replace('Z', '+00:00'))
+                if at.utcoffset() is not None and at >= now:
+                    upcoming.append({'AtUtc':item['AtUtc'], 'Category':safe_identifier(item.get('Category'))})
+            except (ValueError, KeyError, TypeError):
+                continue
+        upcoming.sort(key=lambda item:item['AtUtc'])
+        result = {name:value.get(name) for name in ('ProducedUtc','CoverageFromUtc','CoverageToUtc','ForexFactoryOk','BlsOk')}
+        result['macro'] = {name:{field:(value.get(name) or {}).get(field) for field in ('Delta','AvailableUtc')}
+                           for name in ('Dgs10','Dfii10')}
+        result['event_count'] = len(value.get('Events', []))
+        result['upcoming_events'] = upcoming[:6]
+        result['source_error_count'] = len(value.get('Errors', []))
+        print('BRIDGE_AUDIT_XAU_SNAPSHOT=' + json.dumps(result), flush=True)
     print('BRIDGE_AUDIT_READ_ONLY_COMPLETE', flush=True)
 
 
