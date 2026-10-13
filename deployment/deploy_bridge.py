@@ -167,6 +167,13 @@ def run(mode, patch, release_sha):
                 print('CANDIDATE_MISSING_MODULE:' + name, flush=True)
             for kind, name in re.findall(r'^(FAIL|ERROR): ([A-Za-z0-9_.]+)', tests.stderr, re.M):
                 print('CANDIDATE_TEST_' + kind + ':' + name, flush=True)
+            for file, line in re.findall(r'File "([^"]+)", line (\d+)', tests.stderr):
+                name = Path(file).name
+                if re.fullmatch(r'[A-Za-z0-9_.-]+', name):
+                    print('CANDIDATE_TEST_FRAME:' + name + ':' + line, flush=True)
+            for value in re.findall(r'^AssertionError: (.{0,200})$', tests.stderr, re.M):
+                if re.fullmatch(r"[A-Za-z0-9_ '!=<>.-]+", value):
+                    print('CANDIDATE_ASSERTION:' + value, flush=True)
             raise RuntimeError('CANDIDATE_TESTS_FAILED')
         print('CANDIDATE_TESTS_PASS ' + result, flush=True)
         if mode == 'audit':
