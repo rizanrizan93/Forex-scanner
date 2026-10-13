@@ -1,0 +1,1635 @@
+{
+  "contract": "RIZAN_XAU_REVERSAL_RESEARCH_10M_V1",
+  "configurations_evaluated": 10000000,
+  "parameter_grid": {
+    "side": [
+      1,
+      -1
+    ],
+    "lookback_h1": [
+      6,
+      12,
+      24,
+      48,
+      96
+    ],
+    "half_width_atr": [
+      0.0,
+      0.1,
+      0.2,
+      0.35,
+      0.5
+    ],
+    "invalidation_atr": [
+      0.2,
+      0.35,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "reaction_atr": [
+      0.5,
+      0.75,
+      1.0,
+      1.5,
+      2.0
+    ],
+    "horizon_minutes": [
+      30,
+      60,
+      120,
+      240
+    ],
+    "wick_fraction": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.4
+    ],
+    "trend": [
+      "ANY",
+      "ALIGNED",
+      "OPPOSED",
+      "FLAT"
+    ],
+    "approach_atr": [
+      0.0,
+      0.5,
+      1.0,
+      1.5,
+      2.0
+    ],
+    "max_age_hours": [
+      6,
+      12,
+      24,
+      48,
+      96
+    ],
+    "session_utc": [
+      0,
+      6,
+      12,
+      18
+    ]
+  },
+  "period": "2016-2025",
+  "train": "2016-2021",
+  "validation": "2022-2023",
+  "holdout": "2024-2025",
+  "finalist_lock_sha256": "4b6433f5920f62bd47a9262064056e5d88174b91cf2bc13a72d326e7b0c201b8",
+  "selected": {
+    "index": 1966098,
+    "config": {
+      "side": 1,
+      "lookback_h1": 12,
+      "half_width_atr": 0.5,
+      "invalidation_atr": 1.0,
+      "reaction_atr": 0.5,
+      "horizon_minutes": 240,
+      "wick_fraction": 0.0,
+      "trend": "ANY",
+      "approach_atr": 2.0,
+      "max_age_hours": 96,
+      "session_utc": 12
+    },
+    "train": {
+      "n": 350,
+      "reversals": 230,
+      "invalidations": 96,
+      "unresolved": 24,
+      "probability": 0.6571428571428571,
+      "wilson_lower_95": 0.6059491868966217
+    },
+    "validation": {
+      "n": 118,
+      "reversals": 95,
+      "invalidations": 19,
+      "unresolved": 4,
+      "probability": 0.8050847457627118,
+      "wilson_lower_95": 0.7244709740380223
+    },
+    "holdout_by_year": {
+      "2024": {
+        "n": 75,
+        "reversals": 60,
+        "invalidations": 9,
+        "unresolved": 6,
+        "probability": 0.8,
+        "wilson_lower_95": 0.695885054488383
+      },
+      "2025": {
+        "n": 60,
+        "reversals": 51,
+        "invalidations": 9,
+        "unresolved": 0,
+        "probability": 0.85,
+        "wilson_lower_95": 0.7388517410884039
+      }
+    },
+    "holdout": {
+      "n": 135,
+      "reversals": 111,
+      "invalidations": 18,
+      "unresolved": 6,
+      "probability": 0.8222222222222222,
+      "wilson_lower_95": 0.7490888062732284
+    },
+    "qualified": true
+  },
+  "selected_by_side": [
+    {
+      "index": 1966098,
+      "config": {
+        "side": 1,
+        "lookback_h1": 12,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 96,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 350,
+        "reversals": 230,
+        "invalidations": 96,
+        "unresolved": 24,
+        "probability": 0.6571428571428571,
+        "wilson_lower_95": 0.6059491868966217
+      },
+      "validation": {
+        "n": 118,
+        "reversals": 95,
+        "invalidations": 19,
+        "unresolved": 4,
+        "probability": 0.8050847457627118,
+        "wilson_lower_95": 0.7244709740380223
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 75,
+          "reversals": 60,
+          "invalidations": 9,
+          "unresolved": 6,
+          "probability": 0.8,
+          "wilson_lower_95": 0.695885054488383
+        },
+        "2025": {
+          "n": 60,
+          "reversals": 51,
+          "invalidations": 9,
+          "unresolved": 0,
+          "probability": 0.85,
+          "wilson_lower_95": 0.7388517410884039
+        }
+      },
+      "holdout": {
+        "n": 135,
+        "reversals": 111,
+        "invalidations": 18,
+        "unresolved": 6,
+        "probability": 0.8222222222222222,
+        "wilson_lower_95": 0.7490888062732284
+      },
+      "qualified": true
+    },
+    {
+      "index": 6966058,
+      "config": {
+        "side": -1,
+        "lookback_h1": 12,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 1.0,
+        "max_age_hours": 96,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 904,
+        "reversals": 641,
+        "invalidations": 193,
+        "unresolved": 70,
+        "probability": 0.709070796460177,
+        "wilson_lower_95": 0.6786274811567704
+      },
+      "validation": {
+        "n": 245,
+        "reversals": 182,
+        "invalidations": 55,
+        "unresolved": 8,
+        "probability": 0.7428571428571429,
+        "wilson_lower_95": 0.6846743297099956
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 159,
+          "reversals": 116,
+          "invalidations": 31,
+          "unresolved": 12,
+          "probability": 0.7295597484276729,
+          "wilson_lower_95": 0.6557052344442844
+        },
+        "2025": {
+          "n": 153,
+          "reversals": 109,
+          "invalidations": 33,
+          "unresolved": 11,
+          "probability": 0.7124183006535948,
+          "wilson_lower_95": 0.6361854327482541
+        }
+      },
+      "holdout": {
+        "n": 312,
+        "reversals": 225,
+        "invalidations": 64,
+        "unresolved": 23,
+        "probability": 0.7211538461538461,
+        "wilson_lower_95": 0.6689349877485625
+      },
+      "qualified": true
+    }
+  ],
+  "finalists": [
+    {
+      "index": 1966098,
+      "config": {
+        "side": 1,
+        "lookback_h1": 12,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 96,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 350,
+        "reversals": 230,
+        "invalidations": 96,
+        "unresolved": 24,
+        "probability": 0.6571428571428571,
+        "wilson_lower_95": 0.6059491868966217
+      },
+      "validation": {
+        "n": 118,
+        "reversals": 95,
+        "invalidations": 19,
+        "unresolved": 4,
+        "probability": 0.8050847457627118,
+        "wilson_lower_95": 0.7244709740380223
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 75,
+          "reversals": 60,
+          "invalidations": 9,
+          "unresolved": 6,
+          "probability": 0.8,
+          "wilson_lower_95": 0.695885054488383
+        },
+        "2025": {
+          "n": 60,
+          "reversals": 51,
+          "invalidations": 9,
+          "unresolved": 0,
+          "probability": 0.85,
+          "wilson_lower_95": 0.7388517410884039
+        }
+      },
+      "holdout": {
+        "n": 135,
+        "reversals": 111,
+        "invalidations": 18,
+        "unresolved": 6,
+        "probability": 0.8222222222222222,
+        "wilson_lower_95": 0.7490888062732284
+      },
+      "qualified": true
+    },
+    {
+      "index": 1966094,
+      "config": {
+        "side": 1,
+        "lookback_h1": 12,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 48,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 350,
+        "reversals": 230,
+        "invalidations": 96,
+        "unresolved": 24,
+        "probability": 0.6571428571428571,
+        "wilson_lower_95": 0.6059491868966217
+      },
+      "validation": {
+        "n": 118,
+        "reversals": 95,
+        "invalidations": 19,
+        "unresolved": 4,
+        "probability": 0.8050847457627118,
+        "wilson_lower_95": 0.7244709740380223
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 75,
+          "reversals": 60,
+          "invalidations": 9,
+          "unresolved": 6,
+          "probability": 0.8,
+          "wilson_lower_95": 0.695885054488383
+        },
+        "2025": {
+          "n": 60,
+          "reversals": 51,
+          "invalidations": 9,
+          "unresolved": 0,
+          "probability": 0.85,
+          "wilson_lower_95": 0.7388517410884039
+        }
+      },
+      "holdout": {
+        "n": 135,
+        "reversals": 111,
+        "invalidations": 18,
+        "unresolved": 6,
+        "probability": 0.8222222222222222,
+        "wilson_lower_95": 0.7490888062732284
+      },
+      "qualified": true
+    },
+    {
+      "index": 1966090,
+      "config": {
+        "side": 1,
+        "lookback_h1": 12,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 24,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 350,
+        "reversals": 230,
+        "invalidations": 96,
+        "unresolved": 24,
+        "probability": 0.6571428571428571,
+        "wilson_lower_95": 0.6059491868966217
+      },
+      "validation": {
+        "n": 118,
+        "reversals": 95,
+        "invalidations": 19,
+        "unresolved": 4,
+        "probability": 0.8050847457627118,
+        "wilson_lower_95": 0.7244709740380223
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 75,
+          "reversals": 60,
+          "invalidations": 9,
+          "unresolved": 6,
+          "probability": 0.8,
+          "wilson_lower_95": 0.695885054488383
+        },
+        "2025": {
+          "n": 60,
+          "reversals": 51,
+          "invalidations": 9,
+          "unresolved": 0,
+          "probability": 0.85,
+          "wilson_lower_95": 0.7388517410884039
+        }
+      },
+      "holdout": {
+        "n": 135,
+        "reversals": 111,
+        "invalidations": 18,
+        "unresolved": 6,
+        "probability": 0.8222222222222222,
+        "wilson_lower_95": 0.7490888062732284
+      },
+      "qualified": true
+    },
+    {
+      "index": 1966086,
+      "config": {
+        "side": 1,
+        "lookback_h1": 12,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 12,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 349,
+        "reversals": 229,
+        "invalidations": 96,
+        "unresolved": 24,
+        "probability": 0.6561604584527221,
+        "wilson_lower_95": 0.6048690573891286
+      },
+      "validation": {
+        "n": 113,
+        "reversals": 91,
+        "invalidations": 18,
+        "unresolved": 4,
+        "probability": 0.8053097345132744,
+        "wilson_lower_95": 0.7227754502435684
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 75,
+          "reversals": 60,
+          "invalidations": 9,
+          "unresolved": 6,
+          "probability": 0.8,
+          "wilson_lower_95": 0.695885054488383
+        },
+        "2025": {
+          "n": 60,
+          "reversals": 51,
+          "invalidations": 9,
+          "unresolved": 0,
+          "probability": 0.85,
+          "wilson_lower_95": 0.7388517410884039
+        }
+      },
+      "holdout": {
+        "n": 135,
+        "reversals": 111,
+        "invalidations": 18,
+        "unresolved": 6,
+        "probability": 0.8222222222222222,
+        "wilson_lower_95": 0.7490888062732284
+      },
+      "qualified": true
+    },
+    {
+      "index": 966098,
+      "config": {
+        "side": 1,
+        "lookback_h1": 6,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 96,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 367,
+        "reversals": 243,
+        "invalidations": 100,
+        "unresolved": 24,
+        "probability": 0.662125340599455,
+        "wilson_lower_95": 0.6122761667204965
+      },
+      "validation": {
+        "n": 129,
+        "reversals": 103,
+        "invalidations": 24,
+        "unresolved": 2,
+        "probability": 0.7984496124031008,
+        "wilson_lower_95": 0.7210561737902713
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 83,
+          "reversals": 60,
+          "invalidations": 15,
+          "unresolved": 8,
+          "probability": 0.7228915662650602,
+          "wilson_lower_95": 0.6183810285672371
+        },
+        "2025": {
+          "n": 46,
+          "reversals": 38,
+          "invalidations": 5,
+          "unresolved": 3,
+          "probability": 0.8260869565217391,
+          "wilson_lower_95": 0.6927636765607748
+        }
+      },
+      "holdout": {
+        "n": 129,
+        "reversals": 98,
+        "invalidations": 20,
+        "unresolved": 11,
+        "probability": 0.7596899224806202,
+        "wilson_lower_95": 0.6791333389688066
+      },
+      "qualified": true
+    },
+    {
+      "index": 966094,
+      "config": {
+        "side": 1,
+        "lookback_h1": 6,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 48,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 367,
+        "reversals": 243,
+        "invalidations": 100,
+        "unresolved": 24,
+        "probability": 0.662125340599455,
+        "wilson_lower_95": 0.6122761667204965
+      },
+      "validation": {
+        "n": 129,
+        "reversals": 103,
+        "invalidations": 24,
+        "unresolved": 2,
+        "probability": 0.7984496124031008,
+        "wilson_lower_95": 0.7210561737902713
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 83,
+          "reversals": 60,
+          "invalidations": 15,
+          "unresolved": 8,
+          "probability": 0.7228915662650602,
+          "wilson_lower_95": 0.6183810285672371
+        },
+        "2025": {
+          "n": 46,
+          "reversals": 38,
+          "invalidations": 5,
+          "unresolved": 3,
+          "probability": 0.8260869565217391,
+          "wilson_lower_95": 0.6927636765607748
+        }
+      },
+      "holdout": {
+        "n": 129,
+        "reversals": 98,
+        "invalidations": 20,
+        "unresolved": 11,
+        "probability": 0.7596899224806202,
+        "wilson_lower_95": 0.6791333389688066
+      },
+      "qualified": true
+    },
+    {
+      "index": 966090,
+      "config": {
+        "side": 1,
+        "lookback_h1": 6,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 24,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 367,
+        "reversals": 243,
+        "invalidations": 100,
+        "unresolved": 24,
+        "probability": 0.662125340599455,
+        "wilson_lower_95": 0.6122761667204965
+      },
+      "validation": {
+        "n": 129,
+        "reversals": 103,
+        "invalidations": 24,
+        "unresolved": 2,
+        "probability": 0.7984496124031008,
+        "wilson_lower_95": 0.7210561737902713
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 83,
+          "reversals": 60,
+          "invalidations": 15,
+          "unresolved": 8,
+          "probability": 0.7228915662650602,
+          "wilson_lower_95": 0.6183810285672371
+        },
+        "2025": {
+          "n": 46,
+          "reversals": 38,
+          "invalidations": 5,
+          "unresolved": 3,
+          "probability": 0.8260869565217391,
+          "wilson_lower_95": 0.6927636765607748
+        }
+      },
+      "holdout": {
+        "n": 129,
+        "reversals": 98,
+        "invalidations": 20,
+        "unresolved": 11,
+        "probability": 0.7596899224806202,
+        "wilson_lower_95": 0.6791333389688066
+      },
+      "qualified": true
+    },
+    {
+      "index": 966086,
+      "config": {
+        "side": 1,
+        "lookback_h1": 6,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 12,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 367,
+        "reversals": 243,
+        "invalidations": 100,
+        "unresolved": 24,
+        "probability": 0.662125340599455,
+        "wilson_lower_95": 0.6122761667204965
+      },
+      "validation": {
+        "n": 129,
+        "reversals": 103,
+        "invalidations": 24,
+        "unresolved": 2,
+        "probability": 0.7984496124031008,
+        "wilson_lower_95": 0.7210561737902713
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 83,
+          "reversals": 60,
+          "invalidations": 15,
+          "unresolved": 8,
+          "probability": 0.7228915662650602,
+          "wilson_lower_95": 0.6183810285672371
+        },
+        "2025": {
+          "n": 46,
+          "reversals": 38,
+          "invalidations": 5,
+          "unresolved": 3,
+          "probability": 0.8260869565217391,
+          "wilson_lower_95": 0.6927636765607748
+        }
+      },
+      "holdout": {
+        "n": 129,
+        "reversals": 98,
+        "invalidations": 20,
+        "unresolved": 11,
+        "probability": 0.7596899224806202,
+        "wilson_lower_95": 0.6791333389688066
+      },
+      "qualified": true
+    },
+    {
+      "index": 766098,
+      "config": {
+        "side": 1,
+        "lookback_h1": 6,
+        "half_width_atr": 0.35,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 96,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 316,
+        "reversals": 214,
+        "invalidations": 84,
+        "unresolved": 18,
+        "probability": 0.6772151898734177,
+        "wilson_lower_95": 0.6238025520875885
+      },
+      "validation": {
+        "n": 110,
+        "reversals": 88,
+        "invalidations": 21,
+        "unresolved": 1,
+        "probability": 0.8,
+        "wilson_lower_95": 0.7157029644013054
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 63,
+          "reversals": 50,
+          "invalidations": 11,
+          "unresolved": 2,
+          "probability": 0.7936507936507936,
+          "wilson_lower_95": 0.678299516538841
+        },
+        "2025": {
+          "n": 35,
+          "reversals": 27,
+          "invalidations": 6,
+          "unresolved": 2,
+          "probability": 0.7714285714285715,
+          "wilson_lower_95": 0.60982362219898
+        }
+      },
+      "holdout": {
+        "n": 98,
+        "reversals": 77,
+        "invalidations": 17,
+        "unresolved": 4,
+        "probability": 0.7857142857142857,
+        "wilson_lower_95": 0.6945178972085438
+      },
+      "qualified": false
+    },
+    {
+      "index": 766094,
+      "config": {
+        "side": 1,
+        "lookback_h1": 6,
+        "half_width_atr": 0.35,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 48,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 316,
+        "reversals": 214,
+        "invalidations": 84,
+        "unresolved": 18,
+        "probability": 0.6772151898734177,
+        "wilson_lower_95": 0.6238025520875885
+      },
+      "validation": {
+        "n": 110,
+        "reversals": 88,
+        "invalidations": 21,
+        "unresolved": 1,
+        "probability": 0.8,
+        "wilson_lower_95": 0.7157029644013054
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 63,
+          "reversals": 50,
+          "invalidations": 11,
+          "unresolved": 2,
+          "probability": 0.7936507936507936,
+          "wilson_lower_95": 0.678299516538841
+        },
+        "2025": {
+          "n": 35,
+          "reversals": 27,
+          "invalidations": 6,
+          "unresolved": 2,
+          "probability": 0.7714285714285715,
+          "wilson_lower_95": 0.60982362219898
+        }
+      },
+      "holdout": {
+        "n": 98,
+        "reversals": 77,
+        "invalidations": 17,
+        "unresolved": 4,
+        "probability": 0.7857142857142857,
+        "wilson_lower_95": 0.6945178972085438
+      },
+      "qualified": false
+    },
+    {
+      "index": 766090,
+      "config": {
+        "side": 1,
+        "lookback_h1": 6,
+        "half_width_atr": 0.35,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 24,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 316,
+        "reversals": 214,
+        "invalidations": 84,
+        "unresolved": 18,
+        "probability": 0.6772151898734177,
+        "wilson_lower_95": 0.6238025520875885
+      },
+      "validation": {
+        "n": 110,
+        "reversals": 88,
+        "invalidations": 21,
+        "unresolved": 1,
+        "probability": 0.8,
+        "wilson_lower_95": 0.7157029644013054
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 63,
+          "reversals": 50,
+          "invalidations": 11,
+          "unresolved": 2,
+          "probability": 0.7936507936507936,
+          "wilson_lower_95": 0.678299516538841
+        },
+        "2025": {
+          "n": 35,
+          "reversals": 27,
+          "invalidations": 6,
+          "unresolved": 2,
+          "probability": 0.7714285714285715,
+          "wilson_lower_95": 0.60982362219898
+        }
+      },
+      "holdout": {
+        "n": 98,
+        "reversals": 77,
+        "invalidations": 17,
+        "unresolved": 4,
+        "probability": 0.7857142857142857,
+        "wilson_lower_95": 0.6945178972085438
+      },
+      "qualified": false
+    },
+    {
+      "index": 766086,
+      "config": {
+        "side": 1,
+        "lookback_h1": 6,
+        "half_width_atr": 0.35,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 12,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 316,
+        "reversals": 214,
+        "invalidations": 84,
+        "unresolved": 18,
+        "probability": 0.6772151898734177,
+        "wilson_lower_95": 0.6238025520875885
+      },
+      "validation": {
+        "n": 110,
+        "reversals": 88,
+        "invalidations": 21,
+        "unresolved": 1,
+        "probability": 0.8,
+        "wilson_lower_95": 0.7157029644013054
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 63,
+          "reversals": 50,
+          "invalidations": 11,
+          "unresolved": 2,
+          "probability": 0.7936507936507936,
+          "wilson_lower_95": 0.678299516538841
+        },
+        "2025": {
+          "n": 35,
+          "reversals": 27,
+          "invalidations": 6,
+          "unresolved": 2,
+          "probability": 0.7714285714285715,
+          "wilson_lower_95": 0.60982362219898
+        }
+      },
+      "holdout": {
+        "n": 98,
+        "reversals": 77,
+        "invalidations": 17,
+        "unresolved": 4,
+        "probability": 0.7857142857142857,
+        "wilson_lower_95": 0.6945178972085438
+      },
+      "qualified": false
+    },
+    {
+      "index": 966082,
+      "config": {
+        "side": 1,
+        "lookback_h1": 6,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 6,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 367,
+        "reversals": 243,
+        "invalidations": 100,
+        "unresolved": 24,
+        "probability": 0.662125340599455,
+        "wilson_lower_95": 0.6122761667204965
+      },
+      "validation": {
+        "n": 121,
+        "reversals": 96,
+        "invalidations": 23,
+        "unresolved": 2,
+        "probability": 0.7933884297520661,
+        "wilson_lower_95": 0.7127662199819701
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 83,
+          "reversals": 60,
+          "invalidations": 15,
+          "unresolved": 8,
+          "probability": 0.7228915662650602,
+          "wilson_lower_95": 0.6183810285672371
+        },
+        "2025": {
+          "n": 46,
+          "reversals": 38,
+          "invalidations": 5,
+          "unresolved": 3,
+          "probability": 0.8260869565217391,
+          "wilson_lower_95": 0.6927636765607748
+        }
+      },
+      "holdout": {
+        "n": 129,
+        "reversals": 98,
+        "invalidations": 20,
+        "unresolved": 11,
+        "probability": 0.7596899224806202,
+        "wilson_lower_95": 0.6791333389688066
+      },
+      "qualified": true
+    },
+    {
+      "index": 766082,
+      "config": {
+        "side": 1,
+        "lookback_h1": 6,
+        "half_width_atr": 0.35,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 6,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 316,
+        "reversals": 214,
+        "invalidations": 84,
+        "unresolved": 18,
+        "probability": 0.6772151898734177,
+        "wilson_lower_95": 0.6238025520875885
+      },
+      "validation": {
+        "n": 104,
+        "reversals": 83,
+        "invalidations": 20,
+        "unresolved": 1,
+        "probability": 0.7980769230769231,
+        "wilson_lower_95": 0.7109515332475477
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 63,
+          "reversals": 50,
+          "invalidations": 11,
+          "unresolved": 2,
+          "probability": 0.7936507936507936,
+          "wilson_lower_95": 0.678299516538841
+        },
+        "2025": {
+          "n": 35,
+          "reversals": 27,
+          "invalidations": 6,
+          "unresolved": 2,
+          "probability": 0.7714285714285715,
+          "wilson_lower_95": 0.60982362219898
+        }
+      },
+      "holdout": {
+        "n": 98,
+        "reversals": 77,
+        "invalidations": 17,
+        "unresolved": 4,
+        "probability": 0.7857142857142857,
+        "wilson_lower_95": 0.6945178972085438
+      },
+      "qualified": false
+    },
+    {
+      "index": 1926098,
+      "config": {
+        "side": 1,
+        "lookback_h1": 12,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 0.75,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 96,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 350,
+        "reversals": 220,
+        "invalidations": 115,
+        "unresolved": 15,
+        "probability": 0.6285714285714286,
+        "wilson_lower_95": 0.5768100140443334
+      },
+      "validation": {
+        "n": 120,
+        "reversals": 95,
+        "invalidations": 23,
+        "unresolved": 2,
+        "probability": 0.7916666666666666,
+        "wilson_lower_95": 0.7105215895553653
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 75,
+          "reversals": 60,
+          "invalidations": 11,
+          "unresolved": 4,
+          "probability": 0.8,
+          "wilson_lower_95": 0.695885054488383
+        },
+        "2025": {
+          "n": 60,
+          "reversals": 50,
+          "invalidations": 10,
+          "unresolved": 0,
+          "probability": 0.8333333333333334,
+          "wilson_lower_95": 0.7196814850279218
+        }
+      },
+      "holdout": {
+        "n": 135,
+        "reversals": 110,
+        "invalidations": 21,
+        "unresolved": 4,
+        "probability": 0.8148148148148148,
+        "wilson_lower_95": 0.7409054029573563
+      },
+      "qualified": true
+    },
+    {
+      "index": 1926094,
+      "config": {
+        "side": 1,
+        "lookback_h1": 12,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 0.75,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 48,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 350,
+        "reversals": 220,
+        "invalidations": 115,
+        "unresolved": 15,
+        "probability": 0.6285714285714286,
+        "wilson_lower_95": 0.5768100140443334
+      },
+      "validation": {
+        "n": 120,
+        "reversals": 95,
+        "invalidations": 23,
+        "unresolved": 2,
+        "probability": 0.7916666666666666,
+        "wilson_lower_95": 0.7105215895553653
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 75,
+          "reversals": 60,
+          "invalidations": 11,
+          "unresolved": 4,
+          "probability": 0.8,
+          "wilson_lower_95": 0.695885054488383
+        },
+        "2025": {
+          "n": 60,
+          "reversals": 50,
+          "invalidations": 10,
+          "unresolved": 0,
+          "probability": 0.8333333333333334,
+          "wilson_lower_95": 0.7196814850279218
+        }
+      },
+      "holdout": {
+        "n": 135,
+        "reversals": 110,
+        "invalidations": 21,
+        "unresolved": 4,
+        "probability": 0.8148148148148148,
+        "wilson_lower_95": 0.7409054029573563
+      },
+      "qualified": true
+    },
+    {
+      "index": 1926090,
+      "config": {
+        "side": 1,
+        "lookback_h1": 12,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 0.75,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 24,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 350,
+        "reversals": 220,
+        "invalidations": 115,
+        "unresolved": 15,
+        "probability": 0.6285714285714286,
+        "wilson_lower_95": 0.5768100140443334
+      },
+      "validation": {
+        "n": 120,
+        "reversals": 95,
+        "invalidations": 23,
+        "unresolved": 2,
+        "probability": 0.7916666666666666,
+        "wilson_lower_95": 0.7105215895553653
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 75,
+          "reversals": 60,
+          "invalidations": 11,
+          "unresolved": 4,
+          "probability": 0.8,
+          "wilson_lower_95": 0.695885054488383
+        },
+        "2025": {
+          "n": 60,
+          "reversals": 50,
+          "invalidations": 10,
+          "unresolved": 0,
+          "probability": 0.8333333333333334,
+          "wilson_lower_95": 0.7196814850279218
+        }
+      },
+      "holdout": {
+        "n": 135,
+        "reversals": 110,
+        "invalidations": 21,
+        "unresolved": 4,
+        "probability": 0.8148148148148148,
+        "wilson_lower_95": 0.7409054029573563
+      },
+      "qualified": true
+    },
+    {
+      "index": 1926086,
+      "config": {
+        "side": 1,
+        "lookback_h1": 12,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 0.75,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 2.0,
+        "max_age_hours": 12,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 349,
+        "reversals": 219,
+        "invalidations": 115,
+        "unresolved": 15,
+        "probability": 0.6275071633237822,
+        "wilson_lower_95": 0.5756529173745629
+      },
+      "validation": {
+        "n": 115,
+        "reversals": 91,
+        "invalidations": 22,
+        "unresolved": 2,
+        "probability": 0.7913043478260869,
+        "wilson_lower_95": 0.7082200439609929
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 75,
+          "reversals": 60,
+          "invalidations": 11,
+          "unresolved": 4,
+          "probability": 0.8,
+          "wilson_lower_95": 0.695885054488383
+        },
+        "2025": {
+          "n": 60,
+          "reversals": 50,
+          "invalidations": 10,
+          "unresolved": 0,
+          "probability": 0.8333333333333334,
+          "wilson_lower_95": 0.7196814850279218
+        }
+      },
+      "holdout": {
+        "n": 135,
+        "reversals": 110,
+        "invalidations": 21,
+        "unresolved": 4,
+        "probability": 0.8148148148148148,
+        "wilson_lower_95": 0.7409054029573563
+      },
+      "qualified": true
+    },
+    {
+      "index": 2966014,
+      "config": {
+        "side": 1,
+        "lookback_h1": 24,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 0.0,
+        "max_age_hours": 48,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 598,
+        "reversals": 423,
+        "invalidations": 144,
+        "unresolved": 31,
+        "probability": 0.7073578595317725,
+        "wilson_lower_95": 0.6696603084734399
+      },
+      "validation": {
+        "n": 200,
+        "reversals": 153,
+        "invalidations": 38,
+        "unresolved": 9,
+        "probability": 0.765,
+        "wilson_lower_95": 0.7015850701327535
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 100,
+          "reversals": 77,
+          "invalidations": 15,
+          "unresolved": 8,
+          "probability": 0.77,
+          "wilson_lower_95": 0.6784543514317231
+        },
+        "2025": {
+          "n": 83,
+          "reversals": 65,
+          "invalidations": 17,
+          "unresolved": 1,
+          "probability": 0.7831325301204819,
+          "wilson_lower_95": 0.6830297632703793
+        }
+      },
+      "holdout": {
+        "n": 183,
+        "reversals": 142,
+        "invalidations": 32,
+        "unresolved": 9,
+        "probability": 0.7759562841530054,
+        "wilson_lower_95": 0.710227134376393
+      },
+      "qualified": true
+    },
+    {
+      "index": 2966034,
+      "config": {
+        "side": 1,
+        "lookback_h1": 24,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 0.5,
+        "max_age_hours": 48,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 596,
+        "reversals": 421,
+        "invalidations": 144,
+        "unresolved": 31,
+        "probability": 0.7063758389261745,
+        "wilson_lower_95": 0.6685840320898637
+      },
+      "validation": {
+        "n": 199,
+        "reversals": 152,
+        "invalidations": 38,
+        "unresolved": 9,
+        "probability": 0.7638190954773869,
+        "wilson_lower_95": 0.7001580489687874
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 100,
+          "reversals": 77,
+          "invalidations": 15,
+          "unresolved": 8,
+          "probability": 0.77,
+          "wilson_lower_95": 0.6784543514317231
+        },
+        "2025": {
+          "n": 83,
+          "reversals": 65,
+          "invalidations": 17,
+          "unresolved": 1,
+          "probability": 0.7831325301204819,
+          "wilson_lower_95": 0.6830297632703793
+        }
+      },
+      "holdout": {
+        "n": 183,
+        "reversals": 142,
+        "invalidations": 32,
+        "unresolved": 9,
+        "probability": 0.7759562841530054,
+        "wilson_lower_95": 0.710227134376393
+      },
+      "qualified": true
+    },
+    {
+      "index": 6966058,
+      "config": {
+        "side": -1,
+        "lookback_h1": 12,
+        "half_width_atr": 0.5,
+        "invalidation_atr": 1.0,
+        "reaction_atr": 0.5,
+        "horizon_minutes": 240,
+        "wick_fraction": 0.0,
+        "trend": "ANY",
+        "approach_atr": 1.0,
+        "max_age_hours": 96,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 904,
+        "reversals": 641,
+        "invalidations": 193,
+        "unresolved": 70,
+        "probability": 0.709070796460177,
+        "wilson_lower_95": 0.6786274811567704
+      },
+      "validation": {
+        "n": 245,
+        "reversals": 182,
+        "invalidations": 55,
+        "unresolved": 8,
+        "probability": 0.7428571428571429,
+        "wilson_lower_95": 0.6846743297099956
+      },
+      "holdout_by_year": {
+        "2024": {
+          "n": 159,
+          "reversals": 116,
+          "invalidations": 31,
+          "unresolved": 12,
+          "probability": 0.7295597484276729,
+          "wilson_lower_95": 0.6557052344442844
+        },
+        "2025": {
+          "n": 153,
+          "reversals": 109,
+          "invalidations": 33,
+          "unresolved": 11,
+          "probability": 0.7124183006535948,
+          "wilson_lower_95": 0.6361854327482541
+        }
+      },
+      "holdout": {
+        "n": 312,
+        "reversals": 225,
+        "invalidations": 64,
+        "unresolved": 23,
+        "probability": 0.7211538461538461,
+        "wilson_lower_95": 0.6689349877485625
+      },
+      "qualified": true
+    }
+  ],
+  "source_years": [
+    {
+      "contract": "RIZAN_XAU_REVERSAL_RESEARCH_10M_V1",
+      "year": 2016,
+      "configurations": 10000000,
+      "rows": 442246,
+      "first_utc": "2015-10-01T05:00:00+00:00",
+      "last_utc": "2017-01-03T04:59:00+00:00",
+      "source_sha256": "74ad879917025c7e492a2347621e29b7d1a87045c3f31e4859959a3deac648c3",
+      "base_observations": 15665,
+      "censored_outcomes": 27598,
+      "execution_authority": false
+    },
+    {
+      "contract": "RIZAN_XAU_REVERSAL_RESEARCH_10M_V1",
+      "year": 2017,
+      "configurations": 10000000,
+      "rows": 441562,
+      "first_utc": "2016-10-02T23:01:00+00:00",
+      "last_utc": "2018-01-03T04:59:00+00:00",
+      "source_sha256": "a1d758535a60a4ca9ad70d5823bc4b0164b2362e8f031fae49b116658c8e4ec7",
+      "base_observations": 16488,
+      "censored_outcomes": 25157,
+      "execution_authority": false
+    },
+    {
+      "contract": "RIZAN_XAU_REVERSAL_RESEARCH_10M_V1",
+      "year": 2018,
+      "configurations": 10000000,
+      "rows": 443346,
+      "first_utc": "2017-10-01T23:01:00+00:00",
+      "last_utc": "2019-01-03T04:59:00+00:00",
+      "source_sha256": "e45cdc179483eb86434b087c847a9ba0ffeb1b573e86c04db087e74a3f2eb3d4",
+      "base_observations": 16211,
+      "censored_outcomes": 25266,
+      "execution_authority": false
+    },
+    {
+      "contract": "RIZAN_XAU_REVERSAL_RESEARCH_10M_V1",
+      "year": 2019,
+      "configurations": 10000000,
+      "rows": 442932,
+      "first_utc": "2018-10-01T05:00:00+00:00",
+      "last_utc": "2020-01-03T04:59:00+00:00",
+      "source_sha256": "ec0a64f800cbbba6917bb8516357ed4d544ed6a40f062661c9485f28a3776c5a",
+      "base_observations": 15750,
+      "censored_outcomes": 27467,
+      "execution_authority": false
+    },
+    {
+      "contract": "RIZAN_XAU_REVERSAL_RESEARCH_10M_V1",
+      "year": 2020,
+      "configurations": 10000000,
+      "rows": 442842,
+      "first_utc": "2019-10-01T05:00:00+00:00",
+      "last_utc": "2020-12-31T21:58:00+00:00",
+      "source_sha256": "598d036c88cab9c8c8749d98cf325aa662c051ed9b302de285a373805b071d54",
+      "base_observations": 16792,
+      "censored_outcomes": 32166,
+      "execution_authority": false
+    },
+    {
+      "contract": "RIZAN_XAU_REVERSAL_RESEARCH_10M_V1",
+      "year": 2021,
+      "configurations": 10000000,
+      "rows": 441362,
+      "first_utc": "2020-10-01T05:00:00+00:00",
+      "last_utc": "2022-01-03T04:59:00+00:00",
+      "source_sha256": "5022a99cee175bb55a94139f09735deaacc6a66d0c2a0915228eaf139051854d",
+      "base_observations": 16573,
+      "censored_outcomes": 24222,
+      "execution_authority": false
+    },
+    {
+      "contract": "RIZAN_XAU_REVERSAL_RESEARCH_10M_V1",
+      "year": 2022,
+      "configurations": 10000000,
+      "rows": 443798,
+      "first_utc": "2021-10-01T05:00:00+00:00",
+      "last_utc": "2023-01-03T04:59:00+00:00",
+      "source_sha256": "f4c4a92fb43c6e20d6a6d38cbc5d0887fba20a9b3bd4d2482d02a601253a49c5",
+      "base_observations": 17499,
+      "censored_outcomes": 31153,
+      "execution_authority": false
+    },
+    {
+      "contract": "RIZAN_XAU_REVERSAL_RESEARCH_10M_V1",
+      "year": 2023,
+      "configurations": 10000000,
+      "rows": 398411,
+      "first_utc": "2022-10-02T23:00:00+00:00",
+      "last_utc": "2024-01-03T04:59:00+00:00",
+      "source_sha256": "f03c5b6ca8107b2dfa132177f92dab93349daf7171766b4cd68f7a51e988d3c9",
+      "base_observations": 14968,
+      "censored_outcomes": 92759,
+      "execution_authority": false
+    },
+    {
+      "contract": "RIZAN_XAU_REVERSAL_RESEARCH_10M_V1",
+      "year": 2024,
+      "configurations": 10000000,
+      "rows": 445153,
+      "first_utc": "2023-10-01T23:00:00+00:00",
+      "last_utc": "2025-01-03T04:59:00+00:00",
+      "source_sha256": "b8bc1b45b048611aa9f740687532ea74e97b1c3f90b32794d6e37f53940fc0b4",
+      "base_observations": 16638,
+      "censored_outcomes": 23561,
+      "execution_authority": false
+    },
+    {
+      "contract": "RIZAN_XAU_REVERSAL_RESEARCH_10M_V1",
+      "year": 2025,
+      "configurations": 10000000,
+      "rows": 444097,
+      "first_utc": "2024-10-01T05:00:00+00:00",
+      "last_utc": "2026-01-02T21:59:00+00:00",
+      "source_sha256": "6ae0f8390ecde3c2ec956d149306b69fef76419cc2ee60859854084354f0e0de",
+      "base_observations": 17581,
+      "censored_outcomes": 33582,
+      "execution_authority": false
+    }
+  ],
+  "status": "VALIDATED",
+  "execution_authority": false,
+  "probability_kind": "EMPIRICAL_CONDITIONAL_M5_CONFIRMATION",
+  "limitations": [
+    "10m parameter tuples may share identical event masks; not 10m independent edges.",
+    "Public secondary bid M1 OHLC; no broker spread, commission or profit claim.",
+    "Reversal = chosen ATR excursion before invalidation, within chosen horizon; unresolved counts as failure.",
+    "Four-hour non-overlap per base; signals across base configurations remain dependent.",
+    "Wilson intervals are descriptive, not corrected for 10m selection or serial dependence.",
+    "No macro/event conditioning without historical point-in-time provenance."
+  ]
+}

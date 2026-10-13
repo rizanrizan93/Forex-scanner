@@ -1,0 +1,75 @@
+name: XAU Reversal Timing Verification
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/profile_reversal_winners.py
+      - .github/workflows/profile-reversal-winners.yml
+permissions:
+  contents: read
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          pip install numpy==2.2.6 pandas==2.2.3 numba==0.63.1
+          pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/reversal-data
+          key: xau-histdata-fixed-est-${{ matrix.year }}-v1
+      - name: Restore verified historical data
+        env:
+          XAU_V193_YEAR: ${{ matrix.year }}
+          XAU_V193_PRICE_CSV: /tmp/reversal-data/year-${{ matrix.year }}.csv
+          XAU_V193_PRICE_PROVENANCE: /tmp/reversal-data/provenance-${{ matrix.year }}.json
+        run: |
+          if [ ! -f "$XAU_V193_PRICE_CSV" ]; then
+            PYTHONPATH=src python -m fx_scanner.research_xau_histdata_download_v193
+          fi
+          python - <<'PY'
+          import json,os,hashlib
+          from pathlib import Path
+          p=json.loads(Path(os.environ['XAU_V193_PRICE_PROVENANCE']).read_text())
+          assert not p['failed_periods']
+          assert hashlib.sha256(Path(os.environ['XAU_V193_PRICE_CSV']).read_bytes()).hexdigest()==p['normalized_csv_sha256']
+          PY
+      - run: python scripts/profile_reversal_winners.py --csv /tmp/reversal-data/year-${{ matrix.year }}.csv --year ${{ matrix.year }} --result calibration/reversal_10m_results.json --output artifacts/profile-${{ matrix.year }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timing-${{ matrix.year }}
+          path: artifacts/profile-*.json
+          if-no-files-found: error
+          retention-days: 90
+  aggregate:
+    needs: profile
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==2.2.6 pandas==2.2.3 numba==0.63.1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: timing-*
+          path: /tmp/timing-shards
+      - run: python scripts/profile_reversal_winners.py --shards /tmp/timing-shards --result calibration/reversal_10m_results.json --output artifacts/reversal_10m_results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reversal-timing-results
+          path: artifacts/reversal_10m_results.json
+          if-no-files-found: error
+          retention-days: 90

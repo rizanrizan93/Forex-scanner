@@ -12,7 +12,7 @@ st.set_page_config(page_title="RIZAN Scanner", page_icon="📈", layout="wide", 
 install_event_macro_dashboard_patch()
 install_whalezone_dashboard_patch()
 
-def render_dashboard(default_pair="XAUUSD", default_detail="Setup"):
+def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
     st.session_state.setdefault("rizan_pair", default_pair)
     st.session_state.setdefault("rizan_xau_detail", default_detail)
     xau, eurusd = st.tabs(["XAUUSD", "EURUSD"], key="rizan_pair", on_change="rerun")
@@ -25,19 +25,24 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Setup"):
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if xau.open:
         with xau:
-            from fx_scanner.selected_raw_reference_dashboard import render_selected_raw_reference
-            render_selected_raw_reference("XAUUSD")
-            from fx_scanner.xau_frozen_dd50_dashboard import render_frozen_core
-            render_frozen_core()
-            from fx_scanner.cross_asset_dashboard import render_cross_asset
-            render_cross_asset("XAUUSD")
-            labels = ["Setup", "Hierarki zona", "Keputusan", "Demand", "Makro", "Pengaturan"]
+            labels = ["Zona reversal", "Setup", "Hierarki zona", "Keputusan", "Demand", "Makro", "Pengaturan"]
             tabs = st.tabs(labels, key="rizan_xau_detail", on_change="rerun")
-            paths = ["streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/1_Demand_Tiers.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
+            paths = [None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/1_Demand_Tiers.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
             for label, tab, path in zip(labels, tabs, paths):
                 if tab.open:
                     with tab:
-                        runpy.run_path(str(ROOT / path), run_name="__main__", init_globals={"RIZAN_SETTINGS_ONLY": label == "Pengaturan"})
+                        if path is None:
+                            from fx_scanner.reversal_dashboard import render_reversal_dashboard
+                            render_reversal_dashboard()
+                        else:
+                            if label == "Setup":
+                                from fx_scanner.selected_raw_reference_dashboard import render_selected_raw_reference
+                                from fx_scanner.xau_frozen_dd50_dashboard import render_frozen_core
+                                from fx_scanner.cross_asset_dashboard import render_cross_asset
+                                render_selected_raw_reference("XAUUSD")
+                                render_frozen_core()
+                                render_cross_asset("XAUUSD")
+                            runpy.run_path(str(ROOT / path), run_name="__main__", init_globals={"RIZAN_SETTINGS_ONLY": label == "Pengaturan"})
 
 routes = [st.Page(render_dashboard, title="RIZAN Scanner", default=True)]
 for slug, pair, detail in [("EURUSD_Demo_Forward", "EURUSD", "Setup"), ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"), ("Pusat_Keputusan_XAUUSD", "XAUUSD", "Keputusan"), ("Demand_Tiers", "XAUUSD", "Demand"), ("US10Y_Regime_Timing", "XAUUSD", "Makro")]:

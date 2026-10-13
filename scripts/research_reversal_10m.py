@@ -152,6 +152,15 @@ def aggregate(folder, output):
     flat = score.ravel()
     indices = np.flatnonzero(eligible.ravel())
     order = indices[np.argsort(flat[indices], kind="stable")[-20:][::-1]]
+    # Independently lock the validation winner on each side before that side's
+    # holdout is read. BUY/SELL profiles are display contexts, not ensemble votes.
+    side_winners = []
+    for side_index in range(2):
+        start = side_index * (CONFIGURATIONS//2)
+        valid_side = indices[(indices >= start) & (indices < start+CONFIGURATIONS//2)]
+        if len(valid_side):
+            side_winners.append(int(valid_side[np.argsort(flat[valid_side],kind="stable")[-1]]))
+    order = list(dict.fromkeys([int(x) for x in order]+side_winners))
     finalists = []
     for flat_index in order:
         idx = np.unravel_index(int(flat_index), SHAPE)
@@ -175,7 +184,8 @@ def aggregate(folder, output):
     result = {"contract":CONTRACT, "configurations_evaluated":CONFIGURATIONS,
         "parameter_grid":GRID, "period":"2016-2025", "train":"2016-2021",
         "validation":"2022-2023", "holdout":"2024-2025", "finalist_lock_sha256":lock,
-        "selected":selected, "finalists":finalists, "source_years":metadata,
+        "selected":selected, "selected_by_side":[r for r in finalists if r["index"] in side_winners],
+        "finalists":finalists, "source_years":metadata,
         "status":"VALIDATED" if selected and selected["qualified"] else "RESEARCH_ONLY",
         "execution_authority":False, "probability_kind":"EMPIRICAL_CONDITIONAL_M5_CONFIRMATION",
         "limitations":["10m parameter tuples may share identical event masks; not 10m independent edges.",

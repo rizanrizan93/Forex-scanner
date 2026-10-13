@@ -1,5 +1,5 @@
 """Smartphone-readable frozen layering and observed broker state."""
-from .frozen_layering import manifest
+from .dashboard_frozen_manifest import manifest
 
 
 def render_layering(symbol, execution=None):

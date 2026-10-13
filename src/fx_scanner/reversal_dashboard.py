@@ -1,0 +1,81 @@
+"""Scanner-only reversal map, historical evidence and explicit data freshness."""
+from datetime import UTC, datetime
+import json
+from urllib.request import Request, urlopen
+from .reversal_scanner import load_result
+from .reversal_zones import CONTRACT
+
+SNAPSHOT_URL="https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/scanner-reversal-snapshots/runtime/reversal_snapshot.json"
+
+
+def validate_snapshot(snapshot, *, now=None):
+    if snapshot.get("contract")!=CONTRACT or snapshot.get("symbol")!="XAUUSD" or snapshot.get("execution_authority") is not False:
+        raise ValueError("REVERSAL_SNAPSHOT_CONTRACT_INVALID")
+    observed=datetime.fromisoformat(snapshot["as_of"].replace("Z","+00:00"))
+    if observed.tzinfo is None: raise ValueError("TIMESTAMP_OFFSET_REQUIRED")
+    age=((now or datetime.now(UTC))-observed).total_seconds()
+    if not -5<=age<=420 or snapshot.get("state") not in {"MAP_READY","NO_ACTIVE_VALIDATED_ZONE"}:
+        raise ValueError("REVERSAL_SCANNER_STALE_OR_UNAVAILABLE")
+    return snapshot
+
+
+def fetch_snapshot():
+    req=Request(SNAPSHOT_URL,headers={"User-Agent":"RIZAN-Reversal-Scanner","Cache-Control":"no-cache"})
+    with urlopen(req,timeout=10) as response:
+        data=response.read(256001)
+    if len(data)>256000: raise ValueError("REVERSAL_SNAPSHOT_TOO_LARGE")
+    return json.loads(data)
+
+
+def render_reversal_dashboard():
+    import streamlit as st
+    st.subheader("XAU · zona reversal & waktu terbaik")
+    st.caption("Engine scanner terpisah · riset 2016–2025 · tidak mengirim order ke cBots.")
+    try: result=load_result()
+    except (OSError,ValueError):
+        st.info("Riset 10 juta konfigurasi sedang disiapkan; probabilitas belum tersedia.")
+        return
+    selected=result.get("selected_by_side") or [result.get("selected")]
+    try:
+        snapshot=validate_snapshot(st.cache_data(ttl=60)(fetch_snapshot)())
+    except Exception:
+        snapshot=None
+        st.warning("Zona harga live belum tersedia/fresh. Statistik historis tetap dapat dibaca; level harga lama tidak ditampilkan sebagai zona saat ini.")
+    if snapshot:
+        import pandas as pd
+        stamp=pd.Timestamp(snapshot['last_m1_utc']).tz_convert('Asia/Jakarta')
+        st.caption('Data XAU M1: '+stamp.strftime('%d/%m/%Y %H:%M WIB')+' · cTrader read-only')
+        for zone in snapshot['zones']:
+            with st.container(border=True):
+                st.markdown('**'+zone['direction']+' · '+zone['state'].replace('_',' ')+'**')
+                c1,c2=st.columns(2)
+                c1.metric('Zona reversal',f"{zone['low']:,.2f}–{zone['high']:,.2f}")
+                c2.metric('Batas invalidasi',f"{zone['invalidation']:,.2f}")
+                st.caption('Jendela '+zone['session_wib']+' · '+('aktif' if zone['session_active'] else 'di luar jendela riset'))
+                st.caption(f"Reaksi yang diuji: {zone['reaction_distance']:.2f} poin ({zone['reaction_atr']:g} ATR), dalam {zone['horizon_minutes']} menit setelah konfirmasi M5.")
+        if not snapshot['zones']: st.info('Belum ada zona aktif yang sesuai konfigurasi riset.')
+    st.markdown('**Bukti historis · probabilitas setelah konfirmasi M5**')
+    rows=[]
+    for winner in selected:
+        if not winner: continue
+        c=winner['config']; m=winner['holdout']; t=c['session_utc']
+        row={'Arah':'BUY' if c['side']==1 else 'SELL','Jam WIB':f'{(t+7)%24:02d}:00–{(t+13)%24:02d}:00',
+             'P reaksi OOS (%)':round(m['probability']*100,1),'N OOS':m['n'],
+             'Target reaksi ATR':c['reaction_atr'],'Batas invalidasi ATR':c['invalidation_atr'],
+             'Menit':c['horizon_minutes'],'Status':'Lolos kriteria riset' if winner['qualified'] else 'Riset saja'}
+        rows.append(row)
+        profile=winner.get('timing_profile',{})
+        best=profile.get('best_hour_selected_before_holdout'); check=profile.get('best_hour_holdout')
+        if best and check:
+            st.caption(f"{'BUY' if c['side']==1 else 'SELL'} · slot 1 jam dipilih dari validasi: {best['hour_wib']:02d}:00–{(best['hour_wib']+1)%24:02d}:00 WIB. Pengujian akhir: {100*check['probability']:.1f}% dari {check['n']} observasi; sampel lebih kecil.")
+    st.dataframe(rows,hide_index=True,use_container_width=True)
+    st.info('Probabilitas ini mengukur pantulan 0,5 ATR sebelum invalidasi 1 ATR dari anchor, maksimum 4 jam. Ini bukan win rate trading, bukan kepastian major reversal, dan bukan jam pasti harga berbalik.')
+    with st.expander('Metode, konfigurasi dan hasil per tahun'):
+        st.caption('10.000.000 tuple parameter · pencarian 2016–2021 · seleksi 2022–2023 · pengujian akhir 2024–2025. Zona ekstrem H1 sudah terbentuk sebelum candle konfirmasi M5 dibuka.')
+        for winner in selected:
+            if winner:
+                st.json({k:winner[k] for k in ['config','train','validation','holdout','qualified']})
+                if winner.get('timing_profile'):
+                    st.dataframe([{'Tahun':year,**metric} for year,metric in winner['timing_profile']['year_metrics'].items()],hide_index=True)
+        st.caption('Interval Wilson dan bootstrap bulanan bersifat deskriptif; belum mengoreksi seluruh bias seleksi 10 juta konfigurasi. Forward validation tetap diperlukan.')
+        st.download_button('Unduh hasil riset zona',json.dumps(result,indent=2),file_name='RIZAN_XAU_REVERSAL_10M.json',mime='application/json')
