@@ -1,6 +1,8 @@
 """Scanner-only reversal map, historical evidence and explicit data freshness."""
 from datetime import UTC, datetime
 import json
+import re
+from functools import lru_cache
 from urllib.request import Request, urlopen
 from .reversal_scanner import load_result
 from .reversal_zones import CONTRACT
@@ -19,12 +21,33 @@ def validate_snapshot(snapshot, *, now=None):
     return snapshot
 
 
-def fetch_snapshot():
-    req=Request(SNAPSHOT_URL,headers={"User-Agent":"RIZAN-Reversal-Scanner","Cache-Control":"no-cache"})
+def _read_json(url):
+    req=Request(url,headers={"User-Agent":"RIZAN-Reversal-Scanner","Cache-Control":"no-cache"})
     with urlopen(req,timeout=10) as response:
         data=response.read(256001)
     if len(data)>256000: raise ValueError("REVERSAL_SNAPSHOT_TOO_LARGE")
     return json.loads(data)
+
+
+@lru_cache(maxsize=2)
+def _snapshot_commit(bucket):
+    # Resolve public branch metadata at most once/90s on stale CDN reads.
+    ref=_read_json('https://api.github.com/repos/rizanrizan93/Forex-scanner/git/ref/heads/scanner-reversal-snapshots')
+    sha=str(ref.get('object',{}).get('sha',''))
+    if not re.fullmatch('[0-9a-f]{40}',sha): raise ValueError('INVALID_SNAPSHOT_COMMIT')
+    return sha
+
+
+def fetch_snapshot():
+    snapshot=_read_json(SNAPSHOT_URL)
+    try:
+        return validate_snapshot(snapshot)
+    except ValueError as exc:
+        if str(exc)!='REVERSAL_SCANNER_STALE_OR_UNAVAILABLE': raise
+        # Cache-Control alone does not invalidate mutable GitHub CDN branches.
+        sha=_snapshot_commit(int(datetime.now(UTC).timestamp()//90))
+        snapshot=_read_json('https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/'+sha+'/runtime/reversal_snapshot.json')
+        return validate_snapshot(snapshot)
 
 
 def render_reversal_dashboard():
