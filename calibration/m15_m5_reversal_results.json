@@ -1,0 +1,340 @@
+{
+  "contract": "RIZAN_XAU_M15_M5_ANCHOR_REVERSAL_1M_V1",
+  "configurations_evaluated": 1000000,
+  "grid": {
+    "side": [
+      1,
+      -1
+    ],
+    "zone_source": [
+      "PREV_D1",
+      "PREV_2D",
+      "ASIA_00_06",
+      "EUROPE_06_12",
+      "H4_RANGE_6"
+    ],
+    "sweep_depth_atr": [
+      0,
+      0.025,
+      0.05,
+      0.1,
+      0.2
+    ],
+    "stop_extension_atr": [
+      0.05,
+      0.1,
+      0.2,
+      0.35,
+      0.5
+    ],
+    "target_adr_fraction": [
+      0.25,
+      0.35,
+      0.5,
+      0.75,
+      1
+    ],
+    "horizon_minutes": [
+      120,
+      240,
+      360,
+      480
+    ],
+    "wick_fraction": [
+      0,
+      0.2,
+      0.35,
+      0.5,
+      0.65
+    ],
+    "trend": [
+      "ANY",
+      "ALIGNED"
+    ],
+    "approach_atr": [
+      0
+    ],
+    "min_net_rr": [
+      1.5,
+      2,
+      2.5,
+      3,
+      4
+    ],
+    "session_utc": [
+      0,
+      6,
+      12,
+      18
+    ]
+  },
+  "cost_scenarios": [
+    {
+      "name": "reference",
+      "spread": 0.25,
+      "slippage_per_side": 0.05
+    },
+    {
+      "name": "cautious",
+      "spread": 0.5,
+      "slippage_per_side": 0.1
+    },
+    {
+      "name": "stress",
+      "spread": 1,
+      "slippage_per_side": 0.2
+    }
+  ],
+  "min_reward_risk_stress": 1.5,
+  "min_target_adr20_fraction": 0.25,
+  "diagnostic_examples": [
+    {
+      "config": {
+        "side": 1,
+        "zone_source": "ASIA_00_06",
+        "sweep_depth_atr": 0.1,
+        "stop_extension_atr": 0.05,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "trend": "ANY",
+        "approach_atr": 0,
+        "min_net_rr": 1.5,
+        "session_utc": 6
+      },
+      "train": {
+        "n": 189,
+        "censored": 1,
+        "win_rate": 0.21164021164021163,
+        "target_hit_rate": 0.15873015873015872,
+        "stop_rate": 0.7777777777777778,
+        "mean_net_r": -0.37015265888637966,
+        "net_r_sum": -69.95885252952576,
+        "profit_factor": 0.5434956096134291,
+        "mean_stress_r": -0.5742073513212658,
+        "mean_reference_r": -0.2716524382589986,
+        "mean_risk_points": 2.9123296788129855,
+        "mean_target_points": 7.341678195529514,
+        "mean_net_points": -1.0643670193791863,
+        "descriptive_lcb_mean_r": -0.561555166321511
+      },
+      "validation": {
+        "n": 157,
+        "censored": 11,
+        "win_rate": 0.29936305732484075,
+        "target_hit_rate": 0.2484076433121019,
+        "stop_rate": 0.6878980891719745,
+        "mean_net_r": -0.045142800185331115,
+        "net_r_sum": -7.087419629096985,
+        "profit_factor": 0.9362761378022995,
+        "mean_stress_r": -0.1630559028333919,
+        "mean_reference_r": 0.018021011808115966,
+        "mean_risk_points": 4.923403648813819,
+        "mean_target_points": 11.95919994184166,
+        "mean_net_points": 0.4219867196052697,
+        "descriptive_lcb_mean_r": -0.2829420125380149
+      },
+      "descriptive_target_hit_lcb": 0.18736938275892337,
+      "status": "DESCRIPTIVE_ONLY_NOT_SELECTED",
+      "positive_train_years": 0,
+      "positive_validation_years": 2
+    },
+    {
+      "config": {
+        "side": -1,
+        "zone_source": "ASIA_00_06",
+        "sweep_depth_atr": 0,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "trend": "ANY",
+        "approach_atr": 0,
+        "min_net_rr": 1.5,
+        "session_utc": 6
+      },
+      "train": {
+        "n": 233,
+        "censored": 1,
+        "win_rate": 0.2918454935622318,
+        "target_hit_rate": 0.22746781115879827,
+        "stop_rate": 0.6738197424892703,
+        "mean_net_r": -0.18176488226575402,
+        "net_r_sum": -42.351217567920685,
+        "profit_factor": 0.7430690100362616,
+        "mean_stress_r": -0.40362297311872886,
+        "mean_reference_r": -0.038057175828663574,
+        "mean_risk_points": 3.4720381708104213,
+        "mean_target_points": 7.10613561802156,
+        "mean_net_points": -0.6919747174681512,
+        "descriptive_lcb_mean_r": -0.3532142459792038
+      },
+      "validation": {
+        "n": 177,
+        "censored": 13,
+        "win_rate": 0.3107344632768362,
+        "target_hit_rate": 0.23163841807909605,
+        "stop_rate": 0.6440677966101694,
+        "mean_net_r": -0.18251643207787122,
+        "net_r_sum": -32.3054084777832,
+        "profit_factor": 0.7401867044583199,
+        "mean_stress_r": -0.3765986275538213,
+        "mean_reference_r": -0.11173171225914173,
+        "mean_risk_points": 6.066293748758607,
+        "mean_target_points": 12.086341814806232,
+        "mean_net_points": -1.1830659747797216,
+        "descriptive_lcb_mean_r": -0.37981239928086163
+      },
+      "descriptive_target_hit_lcb": 0.1755868361823663,
+      "status": "DESCRIPTIVE_ONLY_NOT_SELECTED",
+      "positive_train_years": 2,
+      "positive_validation_years": 0
+    }
+  ],
+  "ranking": "Highest descriptive Wilson lower bound of target-before-stop rate among fully eligible tuples; not multiple-test corrected",
+  "selected_by_side": [],
+  "walk_forward": [
+    {
+      "test_year": 2020,
+      "selection_data_max_year": 2019,
+      "selected": []
+    },
+    {
+      "test_year": 2021,
+      "selection_data_max_year": 2020,
+      "selected": []
+    },
+    {
+      "test_year": 2022,
+      "selection_data_max_year": 2021,
+      "selected": []
+    },
+    {
+      "test_year": 2023,
+      "selection_data_max_year": 2022,
+      "selected": []
+    },
+    {
+      "test_year": 2024,
+      "selection_data_max_year": 2023,
+      "selected": []
+    },
+    {
+      "test_year": 2025,
+      "selection_data_max_year": 2024,
+      "selected": []
+    }
+  ],
+  "candidate_lock_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "status": "RESEARCH_ONLY",
+  "execution_authority": false,
+  "execution_influence": false,
+  "train": "2016-2021",
+  "validation": "2022-2025 (already seen history)",
+  "fresh_test": "2026-01-01 through 2026-09-30; cached prices exist but candidate outcomes withheld until lock",
+  "source_years": [
+    {
+      "year": 2016,
+      "contract": "RIZAN_XAU_M15_M5_ANCHOR_REVERSAL_1M_V1",
+      "configurations": 1000000,
+      "source_sha256": "74ad879917025c7e492a2347621e29b7d1a87045c3f31e4859959a3deac648c3",
+      "year_rows": 353415,
+      "first_utc": "2015-10-01T05:00:00+00:00",
+      "last_utc": "2017-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2023,
+      "contract": "RIZAN_XAU_M15_M5_ANCHOR_REVERSAL_1M_V1",
+      "configurations": 1000000,
+      "source_sha256": "f03c5b6ca8107b2dfa132177f92dab93349daf7171766b4cd68f7a51e988d3c9",
+      "year_rows": 308752,
+      "first_utc": "2022-10-02T23:00:00+00:00",
+      "last_utc": "2024-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2025,
+      "contract": "RIZAN_XAU_M15_M5_ANCHOR_REVERSAL_1M_V1",
+      "configurations": 1000000,
+      "source_sha256": "6ae0f8390ecde3c2ec956d149306b69fef76419cc2ee60859854084354f0e0de",
+      "year_rows": 353951,
+      "first_utc": "2024-10-01T05:00:00+00:00",
+      "last_utc": "2026-01-02T21:59:00+00:00"
+    },
+    {
+      "year": 2019,
+      "contract": "RIZAN_XAU_M15_M5_ANCHOR_REVERSAL_1M_V1",
+      "configurations": 1000000,
+      "source_sha256": "ec0a64f800cbbba6917bb8516357ed4d544ed6a40f062661c9485f28a3776c5a",
+      "year_rows": 352628,
+      "first_utc": "2018-10-01T05:00:00+00:00",
+      "last_utc": "2020-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2020,
+      "contract": "RIZAN_XAU_M15_M5_ANCHOR_REVERSAL_1M_V1",
+      "configurations": 1000000,
+      "source_sha256": "598d036c88cab9c8c8749d98cf325aa662c051ed9b302de285a373805b071d54",
+      "year_rows": 354291,
+      "first_utc": "2019-10-01T05:00:00+00:00",
+      "last_utc": "2020-12-31T21:58:00+00:00"
+    },
+    {
+      "year": 2018,
+      "contract": "RIZAN_XAU_M15_M5_ANCHOR_REVERSAL_1M_V1",
+      "configurations": 1000000,
+      "source_sha256": "e45cdc179483eb86434b087c847a9ba0ffeb1b573e86c04db087e74a3f2eb3d4",
+      "year_rows": 353778,
+      "first_utc": "2017-10-01T23:01:00+00:00",
+      "last_utc": "2019-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2024,
+      "contract": "RIZAN_XAU_M15_M5_ANCHOR_REVERSAL_1M_V1",
+      "configurations": 1000000,
+      "source_sha256": "b8bc1b45b048611aa9f740687532ea74e97b1c3f90b32794d6e37f53940fc0b4",
+      "year_rows": 355592,
+      "first_utc": "2023-10-01T23:00:00+00:00",
+      "last_utc": "2025-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2017,
+      "contract": "RIZAN_XAU_M15_M5_ANCHOR_REVERSAL_1M_V1",
+      "configurations": 1000000,
+      "source_sha256": "a1d758535a60a4ca9ad70d5823bc4b0164b2362e8f031fae49b116658c8e4ec7",
+      "year_rows": 352360,
+      "first_utc": "2016-10-02T23:01:00+00:00",
+      "last_utc": "2018-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2022,
+      "contract": "RIZAN_XAU_M15_M5_ANCHOR_REVERSAL_1M_V1",
+      "configurations": 1000000,
+      "source_sha256": "f4c4a92fb43c6e20d6a6d38cbc5d0887fba20a9b3bd4d2482d02a601253a49c5",
+      "year_rows": 354568,
+      "first_utc": "2021-10-01T05:00:00+00:00",
+      "last_utc": "2023-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2021,
+      "contract": "RIZAN_XAU_M15_M5_ANCHOR_REVERSAL_1M_V1",
+      "configurations": 1000000,
+      "source_sha256": "5022a99cee175bb55a94139f09735deaacc6a66d0c2a0915228eaf139051854d",
+      "year_rows": 353386,
+      "first_utc": "2020-10-01T05:00:00+00:00",
+      "last_utc": "2022-01-03T04:59:00+00:00"
+    }
+  ],
+  "limitations": [
+    "Historical bid M1 and synthetic spread/slippage, not broker historical bid/ask.",
+    "2024-2025 already seen; cannot claim pristine holdout on that period.",
+    "First eligible trigger per UTC day/session AFTER each configuration filter; six-hour sessions give >=18h between days, so eight-hour positions cannot overlap.",
+    "Censored first trade remains claimed for that day; never replaced using later future-known outcomes. Qualification requires <=2% censoring.",
+    "M15 sweep/reclaim known daily/session anchor, then M5 displacement within 30 minutes. Target 25/35/50/75/100% prior ADR20; structural SL beyond seed M15 extreme plus 0.05/0.1/0.2/0.35/0.5 H1 ATR. RR floors include entry and exit costs. Gaps may exceed 1R; tuples share decisions.",
+    "PF and R are equal nominal risk model, not equity/lot sizing or cBot backtest.",
+    "Costs modeled each fill; timeout closes at market; stops fill worse on adverse opening gap; no overnight positions.",
+    "No claim of one reversal every day; report observed frequency and missing days."
+  ],
+  "publication_notes": [
+    "Copied description corrected to seed M15 SL extreme; numerical results unchanged."
+  ]
+}
