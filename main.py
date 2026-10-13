@@ -32,8 +32,11 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                 if tab.open:
                     with tab:
                         if path is None:
-                            from fx_scanner.h4_d1_reversal_dashboard import render_h4_d1_reversal_dashboard
-                            render_h4_d1_reversal_dashboard()
+                            from fx_scanner.reversal_families_v2_dashboard import render_reversal_families_v2_dashboard
+                            render_reversal_families_v2_dashboard()
+                            with st.expander("Arsip H4/D1 · 20 juta kombinasi",expanded=False):
+                                from fx_scanner.h4_d1_reversal_dashboard import render_h4_d1_reversal_dashboard
+                                render_h4_d1_reversal_dashboard()
                             with st.expander("Arsip M15 → M5 · satu juta konfigurasi",expanded=False):
                                 from fx_scanner.m15_m5_reversal_dashboard import render_m15_m5_reversal_dashboard
                                 render_m15_m5_reversal_dashboard()
