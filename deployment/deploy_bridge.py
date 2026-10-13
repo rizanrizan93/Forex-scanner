@@ -172,7 +172,7 @@ def run(mode, patch, release_sha):
                 if re.fullmatch(r'[A-Za-z0-9_.-]+', name):
                     print('CANDIDATE_TEST_FRAME:' + name + ':' + line, flush=True)
             for value in re.findall(r'^AssertionError: (.{0,200})$', tests.stderr, re.M):
-                if re.fullmatch(r"[A-Za-z0-9_ '!=<>.-]+", value):
+                if re.fullmatch(r"[A-Za-z0-9_ '!=<>.:-]+", value):
                     print('CANDIDATE_ASSERTION:' + value, flush=True)
             raise RuntimeError('CANDIDATE_TESTS_FAILED')
         print('CANDIDATE_TESTS_PASS ' + result, flush=True)

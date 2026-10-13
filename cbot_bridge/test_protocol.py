@@ -45,7 +45,9 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                                  "contract": server.CONTRACTS[prefix]["hash"]}
                         async with connect("ws://127.0.0.1:25346") as ws:
                             await ws.send(json.dumps(hello))
-                            self.assertEqual(json.loads(await ws.recv())["type"], "ready")
+                            response = json.loads(await ws.recv())
+                            self.assertEqual(response["type"], "ready",
+                                             f"{prefix}: {response.get('code', 'NO_ERROR_CODE')}")
                             if symbol == "XAUUSD":
                                 self.assertEqual(json.loads(await ws.recv())["type"], "snapshot")
                             await ws.send('{"type":"ping"}')

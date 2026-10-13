@@ -229,10 +229,17 @@ index 2c916259..ec07e86f 100644
                      version = store.save(
                          key,
 diff --git a/cbot_bridge/test_protocol.py b/cbot_bridge/test_protocol.py
-index 7d7b4c0d..9e4b8b45 100644
+index 7d7b4c0d..5a14d022 100644
 --- a/cbot_bridge/test_protocol.py
 +++ b/cbot_bridge/test_protocol.py
-@@ -49,7 +49,9 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
+@@ -45,11 +45,15 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
+                                  "contract": server.CONTRACTS[prefix]["hash"]}
+                         async with connect("ws://127.0.0.1:25346") as ws:
+                             await ws.send(json.dumps(hello))
+-                            self.assertEqual(json.loads(await ws.recv())["type"], "ready")
++                            response = json.loads(await ws.recv())
++                            self.assertEqual(response["type"], "ready",
++                                             f"{prefix}: {response.get('code', 'NO_ERROR_CODE')}")
                              if symbol == "XAUUSD":
                                  self.assertEqual(json.loads(await ws.recv())["type"], "snapshot")
                              await ws.send('{"type":"ping"}')
