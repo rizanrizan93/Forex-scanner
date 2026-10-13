@@ -35,7 +35,7 @@ def test_minimum_daily_move_and_net_reward_risk_guards():
             if (s[0,si,ti,0]!=-8).any():
                 move=research.GRID['reaction_atr'][ti]*3
                 stress_risk=research.GRID['invalidation_atr'][si]*3+1.2
-                assert (move-.2)/stress_risk>=MIN_RR
+                assert (move-.2)/(stress_risk+.2)>=MIN_RR
 
 
 def test_spread_and_slippage_change_net_fills():
@@ -93,12 +93,20 @@ def test_execution_code_not_imported():
 def test_earlier_ineligible_trigger_does_not_block_later_valid_trigger():
     d=np.array([1,1],np.int64);b=np.array([4,4],np.int64)
     r=np.array([[1.,1.,1.],[3.,3.,3.]]);s=np.array([[-8,-8,-8],[1,1,1]],np.int8)
-    out=research.first_valid_stats(d,b,b,np.array([0,0]),np.array([2,2]),r,s,np.ones(2),np.ones(2),4.)
+    out=research.first_valid_stats(d,b,b,np.array([0,0]),np.array([2,2]),r,s,np.ones(2),np.ones(2),4.,np.full(2,5.))
     assert out[0,1,0,0,2,0]==1 and out[0,1,0,0,2,4]==3.
 
 
 def test_censored_first_eligible_trade_is_not_replaced_using_future_outcomes():
     d=np.array([1,1],np.int64);b=np.array([4,4],np.int64)
     r=np.array([[0.,0.,0.],[3.,3.,3.]]);s=np.array([[-9,-9,-9],[1,1,1]],np.int8)
-    out=research.first_valid_stats(d,b,b,np.array([0,0]),np.array([2,2]),r,s,np.ones(2),np.ones(2),4.)
+    out=research.first_valid_stats(d,b,b,np.array([0,0]),np.array([2,2]),r,s,np.ones(2),np.ones(2),4.,np.full(2,5.))
     assert out[0,1,0,0,2,0]==0 and out[0,1,0,0,2,13]==1
+
+
+def test_net_reward_risk_threshold_changes_first_eligible_trade_without_future_selection():
+    d=np.array([1,1],np.int64);b=np.array([4,4],np.int64)
+    r=np.array([[1.,1.,1.],[3.,3.,3.]]);s=np.ones((2,3),np.int8)
+    out=research.first_valid_stats(d,b,b,np.array([0,0]),np.array([2,2]),r,s,np.ones(2),np.ones(2),4.,np.array([1.8,4.2]))
+    assert out[0,1,0,0,2,4]==1.
+    assert out[0,1,0,4,2,4]==3.

@@ -5,14 +5,14 @@ import numpy as np
 import pandas as pd
 from .reversal_zones import closed_features, base_events
 
-CONTRACT = "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V5"
+CONTRACT = "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V6"
 GRID = {
     "side":[1,-1], "zone_source":["M5_CHANNEL_24","M5_CHANNEL_32","M5_CHANNEL_48","M5_CHANNEL_64","M5_SWEEP_24"],
     "half_width_atr":[0.,.1,.2,.35,.5],
     "invalidation_atr":[.5,.75,1.,1.5,2.],
     "reaction_atr":[1.5,2.,3.,4.,6.], "horizon_minutes":[120,240,360,480],
     "wick_fraction":[0.,.1,.2,.3,.4], "trend":["ANY","ALIGNED","OPPOSED","FLAT"],
-    "approach_atr":[0.,.5,1.,1.5,2.], "max_age_hours":[6,12,24,48,96],
+    "approach_atr":[0.,.5,1.,1.5,2.], "min_net_rr":[1.5,2.,2.5,3.,4.],
     "session_utc":[0,6,12,18],
 }
 SHAPE=tuple(len(v) for v in GRID.values())
@@ -131,6 +131,5 @@ def filter_events(rows,cfg):
     trend=cfg['trend']
     return ((rows.wick_bin>=GRID['wick_fraction'].index(cfg['wick_fraction'])) &
         (rows.approach_bin>=GRID['approach_atr'].index(cfg['approach_atr'])) &
-        (rows.age_bin<=GRID['max_age_hours'].index(cfg['max_age_hours'])) &
         (rows.session==cfg['session_utc']//6) &
         ((rows.trend_bin==['ALIGNED','OPPOSED','FLAT'].index(trend)) if trend!='ANY' else True))

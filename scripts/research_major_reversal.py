@@ -41,7 +41,7 @@ def simulate(times,opens,high,low,close,starts,level,atr,adr,side):
                 move=targets[ti]*atr[e]
                 # All scenarios use the same eligible observation set. Net
                 # target reward, including exit slip, must exceed 1.5x risk.
-                if move<MIN_ADR_FRACTION*adr[e] or (move-.2)/stress_risk<MIN_RR: continue
+                if move<MIN_ADR_FRACTION*adr[e] or (move-.2)/(stress_risk+.2)<MIN_RR: continue
                 for hi in range(4):
                     end=min(times[begin]+horizons[hi]*60,rollover)
                     for ci in range(3):
@@ -94,29 +94,30 @@ def expanded(hist):
 
 
 @njit(cache=False)
-def first_valid_stats(days,wick,approach,trend,session,r,s,risk,atr,target):
+def first_valid_stats(days,wick,approach,trend,session,r,s,risk,atr,target,net_rr):
     stats=np.zeros((5,4,5,5,4,14),np.float64)
     for se in range(4):
         for w in range(5):
             for tr in range(4):
                 for ap in range(5):
-                    last_day=-1;values=np.zeros(14,np.float64)
-                    for i in range(len(days)):
-                        if days[i]==last_day or session[i]!=se or wick[i]<w or approach[i]<ap:continue
-                        if tr!=0 and trend[i]!=tr-1:continue
-                        if s[i,0]==-8 or s[i,1]==-8 or s[i,2]==-8:continue
-                        # Claim this day BEFORE inspecting unknown outcomes.
-                        # Censored first trade cannot be replaced retrospectively.
-                        last_day=days[i]
-                        if s[i,0]==-9 or s[i,1]==-9 or s[i,2]==-9:
-                            values[13]+=1;continue
-                        rr=r[i,1]
-                        values[0]+=1;values[1]+=rr>0;values[2]+=s[i,1]==1;values[3]+=s[i,1]==-1
-                        values[4]+=rr;values[5]+=rr*rr;values[6]+=max(rr,0);values[7]+=max(-rr,0)
-                        values[8]+=r[i,2];values[9]+=r[i,0];values[10]+=risk[i]
-                        values[11]+=target*atr[i];values[12]+=rr*risk[i]
-                    # Current sources are <=15m old; all 6h+ age caps identical.
-                    for age in range(5):stats[w,tr,ap,age,se]=values
+                    floors=np.array([1.5,2.,2.5,3.,4.])
+                    for ri in range(5):
+                        last_day=-1;values=np.zeros(14,np.float64)
+                        for i in range(len(days)):
+                            if days[i]==last_day or session[i]!=se or wick[i]<w or approach[i]<ap or net_rr[i]<floors[ri]:continue
+                            if tr!=0 and trend[i]!=tr-1:continue
+                            if s[i,0]==-8 or s[i,1]==-8 or s[i,2]==-8:continue
+                            # Claim day before unknown outcomes; never replace
+                            # censored first trade using future information.
+                            last_day=days[i]
+                            if s[i,0]==-9 or s[i,1]==-9 or s[i,2]==-9:
+                                values[13]+=1;continue
+                            rr=r[i,1]
+                            values[0]+=1;values[1]+=rr>0;values[2]+=s[i,1]==1;values[3]+=s[i,1]==-1
+                            values[4]+=rr;values[5]+=rr*rr;values[6]+=max(rr,0);values[7]+=max(-rr,0)
+                            values[8]+=r[i,2];values[9]+=r[i,0];values[10]+=risk[i]
+                            values[11]+=target*atr[i];values[12]+=rr*risk[i]
+                        stats[w,tr,ap,ri,se]=values
     return stats
 
 
@@ -136,7 +137,9 @@ def shard(csv,year,output):
                         for hi in range(4):
                             stats=first_valid_stats(days,*bins,np.ascontiguousarray(r[:,si,ti,hi,:]),
                                 np.ascontiguousarray(s[:,si,ti,hi,:]),np.ascontiguousarray(risk[:,si,ti,hi]),
-                                rows.atr.to_numpy(),GRID['reaction_atr'][ti])
+                                rows.atr.to_numpy(),GRID['reaction_atr'][ti],
+                                (GRID['reaction_atr'][ti]*rows.atr.to_numpy()-.2)/
+                                (risk[:,si,ti,hi]+(.6 if side==1 else .1)+.2))
                             for fi,name in enumerate(FIELDS):arrays[name][sid,li,wi,si,ti,hi]=stats[...,fi]
                 print(f'MAJOR_BASE year={year} side={side} lookback={lb} width={width} observations={len(rows)}',flush=True)
     output.parent.mkdir(parents=True,exist_ok=True)
@@ -232,7 +235,7 @@ def aggregate(folder,output):
             '2024-2025 already seen; cannot claim pristine holdout on that period.',
             'First eligible trigger per UTC day/session AFTER each configuration filter; six-hour sessions give >=18h between days, so eight-hour positions cannot overlap.',
             'Censored first trade remains claimed for that day; never replaced using later future-known outcomes. Qualification requires <=2% censoring.',
-            'Current M5 source age caps are identical; many of the 10m tuples share decisions. Confidence is descriptive, not multiple-testing corrected.',
+            'RR floor 1.5/2/2.5/3/4 includes modeled entry and exit costs at normal fills; gaps can exceed planned stop loss. Tuples can share decisions; confidence is descriptive.',
             'PF and R are equal nominal risk model, not equity/lot sizing or cBot backtest.',
             'Costs modeled each fill; timeout closes at market; stops fill worse on adverse opening gap; no overnight positions.',
             'No claim of one reversal every day; report observed frequency and missing days.']}
@@ -252,6 +255,8 @@ def candidate_ledger(csv,year,result,output):
         last_day=None
         for i,stamp in enumerate(rows.index):
             if (s[i,si,ti,hi]==-8).any():continue
+            net_rr=(cfg['reaction_atr']*rows.atr.iloc[i]-.2)/(risk[i,si,ti,hi]+(.6 if cfg['side']==1 else .1)+.2)
+            if net_rr<cfg['min_net_rr']:continue
             day=stamp.date()
             if day==last_day:continue
             last_day=day
