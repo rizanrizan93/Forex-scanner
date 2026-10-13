@@ -93,6 +93,11 @@ def candidate(root, destination, patch):
             upstream.parent.mkdir(parents=True)
             upstream.write_text(base)
             command(['git', 'apply', str(part)], cwd=work)
+            if not target.exists() and target.name.startswith('test_'):
+                # Older VPS checkouts may lack the regression fixture. It is
+                # created only in this candidate and is never deployed.
+                shutil.copyfile(upstream, target)
+                continue
             original = work / 'original'
             original.write_text(base)
             merged = command(['git', 'merge-file', '-p', str(target), str(original), str(upstream)], cwd=work, check=False)

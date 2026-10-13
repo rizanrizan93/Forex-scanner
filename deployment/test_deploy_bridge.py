@@ -12,6 +12,18 @@ REPO = Path(__file__).resolve().parents[1]
 PATCH = REPO / 'deployment/bridge-connectivity.patch'
 
 class DeploymentTests(unittest.TestCase):
+    def test_missing_old_test_fixture_is_created_only_in_candidate(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / 'repo'
+            bridge = root / 'cbot_bridge'
+            bridge.mkdir(parents=True)
+            for name in ('server.py', 'feeds.py', 'selftest.py', 'test_durable.py'):
+                (bridge / name).write_bytes(subprocess.check_output(['git', 'show', 'a25ffbeb:cbot_bridge/' + name], cwd=REPO))
+            out = Path(folder) / 'out'
+            module.candidate(root, out, PATCH)
+            self.assertTrue((out / 'cbot_bridge/test_protocol.py').is_file())
+            self.assertFalse((bridge / 'test_protocol.py').exists())
+
     def test_partial_fix_merges_without_losing_local_changes(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder) / 'repo'
