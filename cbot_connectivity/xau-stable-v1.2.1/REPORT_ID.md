@@ -81,3 +81,9 @@ Stop cBot patch dan bridge; backup checkpoint terbaru terlebih dahulu. Restore s
 ## Publikasi
 
 Patch dipush dan PR #785 digabung ke main atas instruksi pengguna. Merge commit 7fb3c133a69bbee791f073423be20c3c29fec2b2. Deployment VPS berhasil pada c7778659e9146ee775a6aba9d7c84605a3fd9b74 melalui Actions run 38334698546. Validasi deployment, XAU connectivity dan Frozen cBot Parity PASS. CI umum masih FAIL karena import OrderSide/ExecutionMode pada execution/models.py yang sudah bermasalah sebelum pekerjaan ini; file execution tersebut tidak diubah.
+
+## Update runtime 13 Oktober 2026, 09:35 WIB
+
+Checkpoint legacy akun suffix 4480 memiliki empat field tanpa offset. Source canonical v1.0.1 dan core hash diverifikasi sebelum menambahkan repair offline untuk schema 1 tanpa/empty ExecutionModel. Tool hanya memperbaiki timezone serialization: version/revision tetap 628; model dan intent tidak ditulis ulang. Regression lost-ACK setelah repair PASS.
+
+Commit eca8bd4e95396687ecfab3db8daaedded2a9340c dideploy melalui Actions run 38337479301, PASS. Audit read-only run 38337035856 pada 09:35:51 WIB menunjukkan koneksi akun 4480=1, macro_event_ready=true, quarantined=false, invalid_time_fields=[] dan revision 630. cBot pulih otomatis serta melakukan flat-only migration original ke XAU_BATCH_SEND_REF_COOLDOWN_V1; strategy/execution source tidak diubah. Tes bridge 14 PASS dan deployment 10 PASS; CI Connectivity/Parity PASS, CI umum masih FAIL karena execution imports di luar scope.

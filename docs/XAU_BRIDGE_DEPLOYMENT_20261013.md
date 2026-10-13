@@ -1,6 +1,21 @@
 # Hasil deployment XAU bridge — 13 Oktober 2026
 
-## Status
+## Update setelah Journal pengguna, 09:35 WIB
+- Koneksi cBot awal ditolak sebelum handshake karena checkpoint akun suffix 4480 berasal dari format legacy schema 1 tanpa ExecutionModel.
+- Audit read-only 02:28:41 UTC: version/revision 628, core hash sesuai, quarantined=false, macro siap, connected=0. Empat field naive: Eur.LastExitUtc, LastRealExitUtc, LastSignalUtc, XauDay.
+- Provenance diverifikasi terhadap source canonical v1.0.1 pada cbot_sources/archive/migration-20261010/v1.0.1/Common/RizanRobot.cs dan FrozenCore.cs: hash sama, schema 1, tidak memiliki ExecutionModel, UTC converter dan envelope save tanpa opsi Json.
+- Repair offline explicit XAU_LEGACY_CORE_V1 hanya menerima schema 1 dengan ExecutionModel absent/empty, hash/account/symbol sesuai. Tidak menambah model atau mengubah wall-clock, revision, intent, watermark; digest lost-ACK diperbarui secara terikat.
+- Deployment lanjutan eca8bd4e95396687ecfab3db8daaedded2a9340c: SUCCESS, https://github.com/rizanrizan93/Forex-scanner/actions/runs/38337479301.
+- Log repair: naive_fields=4, version_unchanged=628, revision_unchanged=628.
+- Backup terbaru: /home/Rizanrizan/Forex-scanner/state/bridge-backup-20261013T023455Z.
+- Audit read-only 02:35:51 UTC (09:35:51 WIB): service active, account 4480 version/revision 630, hash sesuai, model XAU_BATCH_SEND_REF_COOLDOWN_V1, quarantined=false, invalid_time_fields=[], connected=1, macro_event_ready=true, lease remaining 42.4 detik.
+- Audit ulang 02:37:05 UTC (09:37:05 WIB): koneksi tetap 1, macro siap, quarantined=false, timestamp invalid tetap kosong dan revision maju normal ke 632. Lease diperbarui dengan sisa 40.7 detik.
+- Ini bukti cBot pulih otomatis dan menyimpan checkpoint baru. Transisi model berlangsung melalui flat-only migration asli cBot; tool repair tidak melakukan transisi tersebut.
+- Validasi lanjutan: 14 test bridge, 10 test deployment, 33 fixture C#, 1675 checks/200 cycles; XAU Connectivity dan Frozen Parity PASS. CI umum tetap gagal pada import execution/models.py yang tidak diubah.
+- Workflow audit: https://github.com/rizanrizan93/Forex-scanner/actions/runs/38337035856. Tidak mengirim order, mengambil lease, memodifikasi checkpoint atau merestart service.
+- File algo sebelumnya tetap berlaku; cBot tidak perlu diimport ulang untuk repair checkpoint ini. Journal akhir accountBound/trading/heartbeat dan observasi panjang tetap melengkapi bukti VPS.
+
+## Status deployment pertama
 - Branch: main. PR #785 merged; merge commit 7fb3c133a69bbee791f073423be20c3c29fec2b2.
 - Commit kode yang benar-benar dideploy: c7778659e9146ee775a6aba9d7c84605a3fd9b74.
 - Workflow: https://github.com/rizanrizan93/Forex-scanner/actions/runs/38334698546
