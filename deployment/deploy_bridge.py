@@ -174,6 +174,8 @@ def run(mode, patch, release_sha):
             for value in re.findall(r'^AssertionError: (.{0,200})$', tests.stderr, re.M):
                 if re.fullmatch(r"[A-Za-z0-9_ '!=<>.:-]+", value):
                     print('CANDIDATE_ASSERTION:' + value, flush=True)
+            for prefix, code in re.findall(r'(RZXA1|RZEU4B): ([A-Z_]+)', tests.stderr):
+                print('CANDIDATE_PROTOCOL_REJECTION:' + prefix + ':' + code, flush=True)
             raise RuntimeError('CANDIDATE_TESTS_FAILED')
         print('CANDIDATE_TESTS_PASS ' + result, flush=True)
         if mode == 'audit':
