@@ -1,0 +1,236 @@
+{
+  "contract": "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3",
+  "configurations_evaluated": 10000000,
+  "grid": {
+    "side": [
+      1,
+      -1
+    ],
+    "zone_source": [
+      "D1_PREVIOUS",
+      "H1_6",
+      "H1_12",
+      "H1_24",
+      "M15_CHANNEL_48"
+    ],
+    "half_width_atr": [
+      0.0,
+      0.1,
+      0.2,
+      0.35,
+      0.5
+    ],
+    "invalidation_atr": [
+      0.5,
+      0.75,
+      1.0,
+      1.5,
+      2.0
+    ],
+    "reaction_atr": [
+      1.5,
+      2.0,
+      3.0,
+      4.0,
+      6.0
+    ],
+    "horizon_minutes": [
+      120,
+      240,
+      360,
+      480
+    ],
+    "wick_fraction": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.4
+    ],
+    "trend": [
+      "ANY",
+      "ALIGNED",
+      "OPPOSED",
+      "FLAT"
+    ],
+    "approach_atr": [
+      0.0,
+      0.5,
+      1.0,
+      1.5,
+      2.0
+    ],
+    "max_age_hours": [
+      6,
+      12,
+      24,
+      48,
+      96
+    ],
+    "session_utc": [
+      0,
+      6,
+      12,
+      18
+    ]
+  },
+  "cost_scenarios": [
+    {
+      "name": "reference",
+      "spread": 0.25,
+      "slippage_per_side": 0.05
+    },
+    {
+      "name": "cautious",
+      "spread": 0.5,
+      "slippage_per_side": 0.1
+    },
+    {
+      "name": "stress",
+      "spread": 1.0,
+      "slippage_per_side": 0.2
+    }
+  ],
+  "min_reward_risk_stress": 1.5,
+  "min_target_adr20_fraction": 0.25,
+  "selected_by_side": [],
+  "walk_forward": [
+    {
+      "test_year": 2020,
+      "selection_data_max_year": 2019,
+      "selected": []
+    },
+    {
+      "test_year": 2021,
+      "selection_data_max_year": 2020,
+      "selected": []
+    },
+    {
+      "test_year": 2022,
+      "selection_data_max_year": 2021,
+      "selected": []
+    },
+    {
+      "test_year": 2023,
+      "selection_data_max_year": 2022,
+      "selected": []
+    },
+    {
+      "test_year": 2024,
+      "selection_data_max_year": 2023,
+      "selected": []
+    },
+    {
+      "test_year": 2025,
+      "selection_data_max_year": 2024,
+      "selected": []
+    }
+  ],
+  "candidate_lock_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "status": "NO_QUALIFIED_CANDIDATE",
+  "execution_authority": false,
+  "execution_influence": false,
+  "train": "2016-2021",
+  "validation": "2022-2025 (already seen history)",
+  "fresh_test": "2026-01-01 through 2026-09-30, fetched only AFTER this lock",
+  "source_years": [
+    {
+      "year": 2024,
+      "contract": "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3",
+      "configurations": 10000000,
+      "source_sha256": "b8bc1b45b048611aa9f740687532ea74e97b1c3f90b32794d6e37f53940fc0b4",
+      "year_rows": 355592,
+      "first_utc": "2023-10-01T23:00:00+00:00",
+      "last_utc": "2025-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2016,
+      "contract": "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3",
+      "configurations": 10000000,
+      "source_sha256": "74ad879917025c7e492a2347621e29b7d1a87045c3f31e4859959a3deac648c3",
+      "year_rows": 353415,
+      "first_utc": "2015-10-01T05:00:00+00:00",
+      "last_utc": "2017-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2023,
+      "contract": "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3",
+      "configurations": 10000000,
+      "source_sha256": "f03c5b6ca8107b2dfa132177f92dab93349daf7171766b4cd68f7a51e988d3c9",
+      "year_rows": 308752,
+      "first_utc": "2022-10-02T23:00:00+00:00",
+      "last_utc": "2024-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2018,
+      "contract": "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3",
+      "configurations": 10000000,
+      "source_sha256": "e45cdc179483eb86434b087c847a9ba0ffeb1b573e86c04db087e74a3f2eb3d4",
+      "year_rows": 353778,
+      "first_utc": "2017-10-01T23:01:00+00:00",
+      "last_utc": "2019-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2025,
+      "contract": "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3",
+      "configurations": 10000000,
+      "source_sha256": "6ae0f8390ecde3c2ec956d149306b69fef76419cc2ee60859854084354f0e0de",
+      "year_rows": 353951,
+      "first_utc": "2024-10-01T05:00:00+00:00",
+      "last_utc": "2026-01-02T21:59:00+00:00"
+    },
+    {
+      "year": 2017,
+      "contract": "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3",
+      "configurations": 10000000,
+      "source_sha256": "a1d758535a60a4ca9ad70d5823bc4b0164b2362e8f031fae49b116658c8e4ec7",
+      "year_rows": 352360,
+      "first_utc": "2016-10-02T23:01:00+00:00",
+      "last_utc": "2018-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2022,
+      "contract": "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3",
+      "configurations": 10000000,
+      "source_sha256": "f4c4a92fb43c6e20d6a6d38cbc5d0887fba20a9b3bd4d2482d02a601253a49c5",
+      "year_rows": 354568,
+      "first_utc": "2021-10-01T05:00:00+00:00",
+      "last_utc": "2023-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2019,
+      "contract": "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3",
+      "configurations": 10000000,
+      "source_sha256": "ec0a64f800cbbba6917bb8516357ed4d544ed6a40f062661c9485f28a3776c5a",
+      "year_rows": 352628,
+      "first_utc": "2018-10-01T05:00:00+00:00",
+      "last_utc": "2020-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2021,
+      "contract": "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3",
+      "configurations": 10000000,
+      "source_sha256": "5022a99cee175bb55a94139f09735deaacc6a66d0c2a0915228eaf139051854d",
+      "year_rows": 353386,
+      "first_utc": "2020-10-01T05:00:00+00:00",
+      "last_utc": "2022-01-03T04:59:00+00:00"
+    },
+    {
+      "year": 2020,
+      "contract": "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3",
+      "configurations": 10000000,
+      "source_sha256": "598d036c88cab9c8c8749d98cf325aa662c051ed9b302de285a373805b071d54",
+      "year_rows": 354291,
+      "first_utc": "2019-10-01T05:00:00+00:00",
+      "last_utc": "2020-12-31T21:58:00+00:00"
+    }
+  ],
+  "limitations": [
+    "Historical bid M1 and synthetic spread/slippage, not broker historical bid/ask.",
+    "2024-2025 already seen; cannot claim pristine holdout on that period.",
+    "Eight-hour non-overlap per base, configurations dependent; descriptive confidence not multiple-testing corrected.",
+    "PF and R are equal nominal risk model, not equity/lot sizing or cBot backtest.",
+    "Costs modeled each fill; timeout closes at market; stops fill worse on adverse opening gap; no overnight positions.",
+    "No claim of one reversal every day; report observed frequency and missing days."
+  ]
+}

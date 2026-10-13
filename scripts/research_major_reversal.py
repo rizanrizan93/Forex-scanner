@@ -20,7 +20,7 @@ from fx_scanner.major_reversal import (GRID,SHAPE,CONTRACT,CONFIGURATIONS,COSTS,
 FIELDS=['n','wins','target_hits','stops','r_sum','r_sq','gain','loss','stress_sum','reference_sum','risk_sum','tp_sum','points_sum']
 
 
-@njit(cache=True)
+@njit(cache=False)
 def simulate(times,opens,high,low,close,starts,level,atr,adr,side):
     # Result: event,stop,target,horizon,cost; -9 status = ineligible/censored.
     n=len(starts)

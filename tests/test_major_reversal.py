@@ -69,9 +69,9 @@ def test_future_d1_m15_h1_features_cannot_change_prefix():
 def test_major_observations_nonoverlap_and_m15_confirmation():
     f=features(normalize_bars(fixture()))
     for side in [1,-1]:
-        e=events(f,side,'H1_12',.5)
+        e=events(f,side,'M5_CHANNEL_48',.5)
         assert np.all(np.diff(e.index.asi8)>=480*60*10**9)
-        assert np.all(e.close>=f.loc[e.index,'m15_low']) if side==1 else np.all(e.close<=f.loc[e.index,'m15_high'])
+        assert np.all(f.loc[e.index,f'signal_{side}_M5_CHANNEL_48'])
         assert np.all(e.adr20>0)
 
 

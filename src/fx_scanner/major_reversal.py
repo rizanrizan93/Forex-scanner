@@ -5,9 +5,9 @@ import numpy as np
 import pandas as pd
 from .reversal_zones import closed_features, base_events
 
-CONTRACT = "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3"
+CONTRACT = "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V4"
 GRID = {
-    "side":[1,-1], "zone_source":["D1_PREVIOUS","H1_6","H1_12","H1_24","M15_CHANNEL_48"],
+    "side":[1,-1], "zone_source":["M5_CHANNEL_24","M5_CHANNEL_32","M5_CHANNEL_48","M5_CHANNEL_64","M5_SWEEP_24"],
     "half_width_atr":[0.,.1,.2,.35,.5],
     "invalidation_atr":[.5,.75,1.,1.5,2.],
     "reaction_atr":[1.5,2.,3.,4.,6.], "horizon_minutes":[120,240,360,480],
@@ -58,6 +58,50 @@ def features(m1):
         out[f'formed_{side}_D1_PREVIOUS']=out.d1_formed
         out[f'level_{side}_M15_CHANNEL_48']=out[f'channel_{col}']
         out[f'formed_{side}_M15_CHANNEL_48']=out.channel_formed
+    # Strong bias: completed H1 AND M15 agree. EMA logic is a scanner research
+    # feature; canonical cBot source and parameters remain byte-for-byte intact.
+    h1=m1.resample('1h',label='right',closed='left').agg(agg)
+    h1=h1[m1.close.resample('1h',label='right',closed='left').count()>=45]
+    for frame,name in [(h1,'h1_strict'),(m15,'m15_strict')]:
+        e50=frame.close.ewm(span=50,adjust=False,min_periods=50).mean()
+        e200=frame.close.ewm(span=200,adjust=False,min_periods=200).mean()
+        frame[name]=np.where((frame.close>e200)&(e50>=e50.shift(2)),1,
+            np.where((frame.close<e200)&(e50<=e50.shift(2)),-1,0))
+        keys=pd.DataFrame({'key':out.index},index=out.index)
+        mapped=pd.merge_asof(keys.reset_index(),frame[[name]].reset_index().rename(columns={'timestamp':'key'}),on='key',direction='backward').set_index('timestamp')
+        out[name]=mapped[name]
+    out['strict_combo']=np.where(out.h1_strict==out.m15_strict,out.h1_strict,0)
+    # Entry is a price re-entry after the prior M5 close was outside the band,
+    # not merely the first touch of a moving channel. Bands pre-exist trigger.
+    for n in [24,32,48,64]:
+        weights=np.arange(n)-(n-1)/2;varx=(n*n-1)/12
+        mean=out.close.rolling(n).mean()
+        slope=out.close.rolling(n).apply(lambda a:np.dot(a,weights)/n/varx,raw=True)
+        fitted=mean+slope*(n-1)/2
+        deviation=out.close.rolling(n).std(ddof=0)
+        for side in [1,-1]:
+            band=fitted-side*1.5*deviation
+            source=f'M5_CHANNEL_{n}'
+            out[f'level_{side}_{source}']=band.shift(1)
+            out[f'formed_{side}_{source}']=(out.index.asi8/3.6e12)-5/60
+            out[f'signal_{side}_{source}']=(side*(out.close-band.shift(1))>0)&(side*(out.close.shift(1)-band.shift(2))<=0)
+    tr=pd.concat([out.high-out.low,(out.high-out.close.shift()).abs(),(out.low-out.close.shift()).abs()],axis=1).max(axis=1)
+    a5=tr.rolling(14).mean().to_numpy()
+    prior_low=out.low.shift().rolling(24).min().to_numpy();prior_high=out.high.shift().rolling(24).max().to_numpy()
+    for side in [1,-1]:
+        signal=np.zeros(len(out),bool);level=np.full(len(out),np.nan);formed=np.full(len(out),np.nan)
+        seed=-100;seed_level=0.;seed_break=0.
+        for i,row in enumerate(out.itertuples()):
+            if 0<i-seed<=3:
+                level[i]=seed_level;formed[i]=out.index[seed].value/3.6e12
+                if side*(row.close-seed_break)>.05*a5[i] and side*(row.close-row.open)>0:
+                    signal[i]=True;seed=-100
+            sweep=(row.low<prior_low[i] and row.close>prior_low[i]) if side==1 else (row.high>prior_high[i] and row.close<prior_high[i])
+            if sweep:
+                seed=i;seed_level=row.low if side==1 else row.high;seed_break=row.high if side==1 else row.low
+        out[f'level_{side}_M5_SWEEP_24']=level
+        out[f'formed_{side}_M5_SWEEP_24']=formed
+        out[f'signal_{side}_M5_SWEEP_24']=signal
     return out
 
 
@@ -65,9 +109,11 @@ def events(frame, side, lookback, width):
     result=base_events(frame,side,lookback,width)
     # M5 must reclaim the completed M15 range, rather than requiring the prior
     # M15 body to have turned before the first reversal touch even occurred.
-    mask=(result.close>=frame.loc[result.index,'m15_low']) if side==1 else (result.close<=frame.loc[result.index,'m15_high'])
+    mask=frame.loc[result.index,f'signal_{side}_{lookback}'].fillna(False)
     result=result.loc[mask].copy()
     result['adr20']=frame.loc[result.index,'adr20']
+    aligned=side*frame.loc[result.index,'strict_combo']
+    result['trend_bin']=np.where(aligned>0,0,np.where(aligned<0,1,2))
     # Exit before the earliest NY rollover (21:00 UTC); no swap assumptions.
     remaining=20*60+55-(result.index.hour*60+result.index.minute)
     result=result.loc[(remaining>=120)&(result.adr20>0)]

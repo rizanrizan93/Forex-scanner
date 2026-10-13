@@ -11,7 +11,7 @@ def render_major_reversal_dashboard():
     st.caption('Engine scanner terpisah; tidak memengaruhi cBots XAU/EUR.')
     try:result=json.loads(RESULT.read_text())
     except (OSError,ValueError):
-        st.info('Riset baru sedang berjalan: target 1,5–6 ATR, minimal 25% ADR20, reward/risk net ≥1,5. Zona high/low hari sebelumnya, H1 dan channel M15; kandidat dikunci sebelum pengujian Januari–September 2026.')
+        st.info('Riset reversal utama sedang berjalan: target 1,5–6 ATR, minimal 25% ADR20, reward/risk net ≥1,5. Pengujian re-entry channel dan sweep-confirm M5 dengan konteks H1/M15; kandidat dikunci sebelum pengujian Januari–September 2026.')
         st.caption('Peta lama hanya mengukur pantulan kecil 0,5 ATR. TP/SL contoh lama tidak menjadi rekomendasi reversal utama.')
         return
     st.caption('Status: '+result['status'])
