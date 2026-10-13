@@ -17,15 +17,15 @@ from fx_scanner.reversal_zones import normalize_bars
 from fx_scanner.major_reversal import (GRID,SHAPE,CONTRACT,CONFIGURATIONS,COSTS,MIN_RR,MIN_ADR_FRACTION,
                                       features,events,config,filter_events)
 
-FIELDS=['n','wins','target_hits','stops','r_sum','r_sq','gain','loss','stress_sum','reference_sum','risk_sum','tp_sum','points_sum']
+FIELDS=['n','wins','target_hits','stops','r_sum','r_sq','gain','loss','stress_sum','reference_sum','risk_sum','tp_sum','points_sum','censored']
 
 
 @njit(cache=False)
 def simulate(times,opens,high,low,close,starts,level,atr,adr,side):
-    # Result: event,stop,target,horizon,cost; -9 status = ineligible/censored.
+    # -8 = known ineligible at entry; -9 = unknown future due data gap/end.
     n=len(starts)
     returns=np.zeros((n,5,5,4,3),np.float64)
-    status=np.full((n,5,5,4,3),-9,np.int8)
+    status=np.full((n,5,5,4,3),-8,np.int8)
     risks=np.zeros((n,5,5,4),np.float64)
     spreads=np.array([.25,.5,1.]);slips=np.array([.05,.1,.2])
     stops=np.array([.5,.75,1.,1.5,2.]);targets=np.array([1.5,2.,3.,4.,6.]);horizons=np.array([120,240,360,480])
@@ -48,6 +48,7 @@ def simulate(times,opens,high,low,close,starts,level,atr,adr,side):
                         entry=opens[begin]+(spreads[ci] if side==1 else 0.)+side*slips[ci]
                         risk=side*(entry-sl)
                         if risk<=0: continue
+                        status[e,si,ti,hi,ci]=-9
                         tp=entry+side*move
                         prev=times[begin]-60
                         state=-9;exit_price=0.
@@ -90,6 +91,33 @@ def expanded(hist):
     return np.concatenate([hist.sum(axis=3,keepdims=True),hist],axis=3).transpose(0,3,1,2,4)
 
 
+@njit(cache=False)
+def first_valid_stats(days,wick,approach,trend,session,r,s,risk,atr,target):
+    stats=np.zeros((5,4,5,5,4,14),np.float64)
+    for se in range(4):
+        for w in range(5):
+            for tr in range(4):
+                for ap in range(5):
+                    last_day=-1;values=np.zeros(14,np.float64)
+                    for i in range(len(days)):
+                        if days[i]==last_day or session[i]!=se or wick[i]<w or approach[i]<ap:continue
+                        if tr!=0 and trend[i]!=tr-1:continue
+                        if s[i,0]==-8 or s[i,1]==-8 or s[i,2]==-8:continue
+                        # Claim this day BEFORE inspecting unknown outcomes.
+                        # Censored first trade cannot be replaced retrospectively.
+                        last_day=days[i]
+                        if s[i,0]==-9 or s[i,1]==-9 or s[i,2]==-9:
+                            values[13]+=1;continue
+                        rr=r[i,1]
+                        values[0]+=1;values[1]+=rr>0;values[2]+=s[i,1]==1;values[3]+=s[i,1]==-1
+                        values[4]+=rr;values[5]+=rr*rr;values[6]+=max(rr,0);values[7]+=max(-rr,0)
+                        values[8]+=r[i,2];values[9]+=r[i,0];values[10]+=risk[i]
+                        values[11]+=target*atr[i];values[12]+=rr*risk[i]
+                    # Current sources are <=15m old; all 6h+ age caps identical.
+                    for age in range(5):stats[w,tr,ap,age,se]=values
+    return stats
+
+
 def shard(csv,year,output):
     m1=normalize_bars(pd.read_csv(csv));frame=features(m1)
     arrays={name:np.zeros(SHAPE,np.float32) for name in FIELDS}
@@ -98,20 +126,16 @@ def shard(csv,year,output):
             for wi,width in enumerate(GRID['half_width_atr']):
                 rows=events(frame,side,lb,width).query('year==@year')
                 rows,(r,s,risk)=labelled(m1,rows,side)
-                bins=tuple(rows[c].to_numpy(int) for c in ['wick_bin','approach_bin','age_bin','trend_bin','session'])
+                assert (rows.age_bin==0).all(),'FRESH_SOURCE_AGE_ASSUMPTION'
+                bins=tuple(rows[c].to_numpy(np.int64) for c in ['wick_bin','approach_bin','trend_bin','session'])
+                days=rows.index.asi8//(86400*10**9)
                 for si in range(5):
                     for ti in range(5):
                         for hi in range(4):
-                            mask=(s[:,si,ti,hi]!=-9).all(axis=1)
-                            rr=r[mask,si,ti,hi,1];rs=risk[mask,si,ti,hi]
-                            st=s[mask,si,ti,hi,1]
-                            values=[np.ones(len(rr)),rr>0,st==1,st==-1,rr,rr*rr,np.maximum(rr,0),np.maximum(-rr,0),
-                                r[mask,si,ti,hi,2],r[mask,si,ti,hi,0],rs,
-                                GRID['reaction_atr'][ti]*rows.atr.to_numpy()[mask],rr*rs]
-                            for name,value in zip(FIELDS,values):
-                                hist=np.zeros((5,5,5,3,4),np.float64)
-                                np.add.at(hist,tuple(x[mask] for x in bins),value)
-                                arrays[name][sid,li,wi,si,ti,hi]=expanded(hist)
+                            stats=first_valid_stats(days,*bins,np.ascontiguousarray(r[:,si,ti,hi,:]),
+                                np.ascontiguousarray(s[:,si,ti,hi,:]),np.ascontiguousarray(risk[:,si,ti,hi]),
+                                rows.atr.to_numpy(),GRID['reaction_atr'][ti])
+                            for fi,name in enumerate(FIELDS):arrays[name][sid,li,wi,si,ti,hi]=stats[...,fi]
                 print(f'MAJOR_BASE year={year} side={side} lookback={lb} width={width} observations={len(rows)}',flush=True)
     output.parent.mkdir(parents=True,exist_ok=True)
     np.savez_compressed(output,**arrays)
@@ -123,7 +147,7 @@ def shard(csv,year,output):
 def summary(data):
     n=float(data['n']);mean=data['r_sum']/max(n,1)
     var=max(0.,float(data['r_sq'])/max(n,1)-mean*mean)
-    return {'n':int(round(n)),'win_rate':float(data['wins']/n) if n else None,
+    return {'n':int(round(n)),'censored':int(round(data.get('censored',0))),'win_rate':float(data['wins']/n) if n else None,
         'target_hit_rate':float(data['target_hits']/n) if n else None,'stop_rate':float(data['stops']/n) if n else None,
         'mean_net_r':float(mean),'net_r_sum':float(data['r_sum']),
         'profit_factor':float(data['gain']/data['loss']) if data['loss']>0 else None,
@@ -139,7 +163,9 @@ def select(train,val,good_years,val_good_years,min_train=180,min_val=60,required
     score=mean-1.96*np.sqrt(variance/n)
     eligible=((train['n']>=min_train)&(val['n']>=min_val)&(train['r_sum']>0)&
         (train['gain']>=1.15*train['loss'])&(val['gain']>=1.2*val['loss'])&
-        (val['stress_sum']>0)&(score>0)&(good_years>=required_train_years)&(val_good_years>=required_val_years))
+        (val['stress_sum']>0)&(score>0)&(good_years>=required_train_years)&(val_good_years>=required_val_years)&
+        (train['censored']/np.maximum(train['n']+train['censored'],1)<=.02)&
+        (val['censored']/np.maximum(val['n']+val['censored'],1)<=.02))
     result=[]
     for sid in range(2):
         candidate=np.flatnonzero(eligible[sid].ravel())
@@ -202,7 +228,9 @@ def aggregate(folder,output):
         'source_years':[json.loads(p.with_suffix('.json').read_text()) for p in paths.values()],
         'limitations':['Historical bid M1 and synthetic spread/slippage, not broker historical bid/ask.',
             '2024-2025 already seen; cannot claim pristine holdout on that period.',
-            'Eight-hour non-overlap per base, configurations dependent; descriptive confidence not multiple-testing corrected.',
+            'First eligible trigger per UTC day/session AFTER each configuration filter; six-hour sessions give >=18h between days, so eight-hour positions cannot overlap.',
+            'Censored first trade remains claimed for that day; never replaced using later future-known outcomes. Qualification requires <=2% censoring.',
+            'Current M5 source age caps are identical; many of the 10m tuples share decisions. Confidence is descriptive, not multiple-testing corrected.',
             'PF and R are equal nominal risk model, not equity/lot sizing or cBot backtest.',
             'Costs modeled each fill; timeout closes at market; stops fill worse on adverse opening gap; no overnight positions.',
             'No claim of one reversal every day; report observed frequency and missing days.']}
@@ -219,23 +247,30 @@ def candidate_ledger(csv,year,result,output):
         rows=rows.loc[filter_events(rows,cfg)]
         rows,(r,s,risk)=labelled(m1,rows,cfg['side'])
         si=GRID['invalidation_atr'].index(cfg['invalidation_atr']);ti=GRID['reaction_atr'].index(cfg['reaction_atr']);hi=GRID['horizon_minutes'].index(cfg['horizon_minutes'])
+        last_day=None
         for i,stamp in enumerate(rows.index):
-            if (s[i,si,ti,hi]==-9).any():continue
+            if (s[i,si,ti,hi]==-8).any():continue
+            day=stamp.date()
+            if day==last_day:continue
+            last_day=day
+            censored=bool((s[i,si,ti,hi]==-9).any())
             ledger.append({'index':winner['index'],'at_utc':stamp.isoformat(),'year':year,'month':stamp.strftime('%Y-%m'),
                 'hour_utc':stamp.hour,'r_reference':float(r[i,si,ti,hi,0]),'r_cautious':float(r[i,si,ti,hi,1]),
-                'r_stress':float(r[i,si,ti,hi,2]),'status':int(s[i,si,ti,hi,1]),
+                'r_stress':float(r[i,si,ti,hi,2]),'status':-9 if censored else int(s[i,si,ti,hi,1]),
                 'risk_points':float(risk[i,si,ti,hi]),'target_points':float(cfg['reaction_atr']*rows.atr.iloc[i])})
     output.parent.mkdir(parents=True,exist_ok=True);output.write_text(json.dumps(ledger)+'\n')
 
 
 def ledger_metrics(rows):
+    censored=sum(x['status']==-9 for x in rows)
+    rows=[x for x in rows if x['status']!=-9]
     r=np.array([x['r_cautious'] for x in rows]);eq=np.r_[0,np.cumsum(r)]
     metrics=summary({'n':len(r),'wins':(r>0).sum(),'target_hits':sum(x['status']==1 for x in rows),
         'stops':sum(x['status']==-1 for x in rows),'r_sum':r.sum(),'r_sq':(r*r).sum(),
         'gain':np.maximum(r,0).sum(),'loss':np.maximum(-r,0).sum(),
         'stress_sum':sum(x['r_stress'] for x in rows),'reference_sum':sum(x['r_reference'] for x in rows),
         'risk_sum':sum(x['risk_points'] for x in rows),'tp_sum':sum(x['target_points'] for x in rows),
-        'points_sum':sum(x['r_cautious']*x['risk_points'] for x in rows)})
+        'points_sum':sum(x['r_cautious']*x['risk_points'] for x in rows),'censored':censored})
     metrics['max_drawdown_r']=float(np.max(np.maximum.accumulate(eq)-eq))
     return metrics
 
@@ -256,11 +291,12 @@ def verify_ledgers(folder,result,output):
         historical=[x for x in chosen if x['year']<2026]
         winner['historical_ledger']=ledger_metrics(historical)
         test=[x for x in chosen if x['year']==2026];winner['fresh_2026']=ledger_metrics(test)
-        winner['fresh_2026']['trades_per_month']=len(test)/9
+        winner['fresh_2026']['trades_per_month']=winner['fresh_2026']['n']/9
         # Block-month uncertainty, not a claim of independent trades.
         monthly=[]
-        for month in sorted(set(x['month'] for x in test)):
-            rr=[x['r_cautious'] for x in test if x['month']==month];monthly.append([len(rr),sum(rr)])
+        observed=[x for x in test if x['status']!=-9]
+        for month in sorted(set(x['month'] for x in observed)):
+            rr=[x['r_cautious'] for x in observed if x['month']==month];monthly.append([len(rr),sum(rr)])
         if monthly:
             blocks=np.array(monthly);rng=np.random.default_rng(20261013)
             draws=blocks[rng.integers(0,len(blocks),size=(10000,len(blocks)))].sum(axis=1)
@@ -269,7 +305,8 @@ def verify_ledgers(folder,result,output):
         winner['fresh_2026']['month_block_mean_r_ci95']=ci
         o=winner['fresh_2026']
         winner['qualified']=bool(o['n']>=30 and o['mean_net_r']>0 and (o['profit_factor'] or 0)>=1.2
-            and o['mean_stress_r']>0 and ci[0] is not None and ci[0]>0)
+            and o['mean_stress_r']>0 and ci[0] is not None and ci[0]>0
+            and o['censored']/max(o['n']+o['censored'],1)<=.02)
         # Best one-hour window chosen using 2016-25 only, then test 2026.
         hourly=[]
         for hour in range(24):

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from .reversal_zones import closed_features, base_events
 
-CONTRACT = "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V4"
+CONTRACT = "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V5"
 GRID = {
     "side":[1,-1], "zone_source":["M5_CHANNEL_24","M5_CHANNEL_32","M5_CHANNEL_48","M5_CHANNEL_64","M5_SWEEP_24"],
     "half_width_atr":[0.,.1,.2,.35,.5],
@@ -117,11 +117,10 @@ def events(frame, side, lookback, width):
     # Exit before the earliest NY rollover (21:00 UTC); no swap assumptions.
     remaining=20*60+55-(result.index.hour*60+result.index.minute)
     result=result.loc[(remaining>=120)&(result.adr20>0)]
-    # One base observation per 8h; maximum horizon cannot overlap.
-    keep=[];last=-(2**63)
-    for i, stamp in enumerate(result.index.asi8):
-        if int(stamp)-last>=480*60*10**9: keep.append(i);last=int(stamp)
-    return result.iloc[keep]
+    # Do not thin before configuration filters: an ineligible early touch must
+    # not suppress a later valid trigger. The replay selects first eligible per
+    # UTC day/session AFTER candle, regime and known-at-entry RR filters.
+    return result
 
 
 def config(index):

@@ -28,11 +28,11 @@ def test_grid_is_10_million_targets_at_least_one_atr():
 
 def test_minimum_daily_move_and_net_reward_risk_guards():
     r,s,risk=run(adr=100.)
-    assert np.all(s==-9)  # largest 9-point target < quarter 100 ADR
+    assert np.all(s==-8)  # largest 18-point target < quarter 100 ADR
     r,s,risk=run()
     for si in range(5):
         for ti in range(5):
-            if (s[0,si,ti,0]!=-9).any():
+            if (s[0,si,ti,0]!=-8).any():
                 move=research.GRID['reaction_atr'][ti]*3
                 stress_risk=research.GRID['invalidation_atr'][si]*3+1.2
                 assert (move-.2)/stress_risk>=MIN_RR
@@ -70,7 +70,6 @@ def test_major_observations_nonoverlap_and_m15_confirmation():
     f=features(normalize_bars(fixture()))
     for side in [1,-1]:
         e=events(f,side,'M5_CHANNEL_48',.5)
-        assert np.all(np.diff(e.index.asi8)>=480*60*10**9)
         assert np.all(f.loc[e.index,f'signal_{side}_M5_CHANNEL_48'])
         assert np.all(e.adr20>0)
 
@@ -88,3 +87,17 @@ def test_drawdown_uses_chronological_net_r():
 def test_execution_code_not_imported():
     text=(Path(__file__).parents[1]/'scripts/research_major_reversal.py').read_text()
     assert '.execution' not in text and 'cbot_bridge' not in text
+
+
+def test_earlier_ineligible_trigger_does_not_block_later_valid_trigger():
+    d=np.array([1,1],np.int64);b=np.array([4,4],np.int64)
+    r=np.array([[1.,1.,1.],[3.,3.,3.]]);s=np.array([[-8,-8,-8],[1,1,1]],np.int8)
+    out=research.first_valid_stats(d,b,b,np.array([0,0]),np.array([2,2]),r,s,np.ones(2),np.ones(2),4.)
+    assert out[0,1,0,0,2,0]==1 and out[0,1,0,0,2,4]==3.
+
+
+def test_censored_first_eligible_trade_is_not_replaced_using_future_outcomes():
+    d=np.array([1,1],np.int64);b=np.array([4,4],np.int64)
+    r=np.array([[0.,0.,0.],[3.,3.,3.]]);s=np.array([[-9,-9,-9],[1,1,1]],np.int8)
+    out=research.first_valid_stats(d,b,b,np.array([0,0]),np.array([2,2]),r,s,np.ones(2),np.ones(2),4.)
+    assert out[0,1,0,0,2,0]==0 and out[0,1,0,0,2,13]==1
