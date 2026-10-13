@@ -32,8 +32,11 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                 if tab.open:
                     with tab:
                         if path is None:
-                            from fx_scanner.volatility_reversal_dashboard import render_volatility_reversal_dashboard
-                            render_volatility_reversal_dashboard()
+                            from fx_scanner.m15_m5_reversal_dashboard import render_m15_m5_reversal_dashboard
+                            render_m15_m5_reversal_dashboard()
+                            with st.expander("Arsip volatilitas/biaya · seleksi historis belum lolos",expanded=False):
+                                from fx_scanner.volatility_reversal_dashboard import render_volatility_reversal_dashboard
+                                render_volatility_reversal_dashboard()
                             with st.expander('Arsip stop ATR M5 · seleksi historis belum lolos',expanded=False):
                                 from fx_scanner.structural_reversal_dashboard import render_structural_reversal_dashboard
                                 render_structural_reversal_dashboard()
