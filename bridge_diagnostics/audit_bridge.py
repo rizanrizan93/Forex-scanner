@@ -7,6 +7,9 @@ import sqlite3
 import time
 from datetime import datetime
 from deploy_bridge import ROOT, UNIT, MODEL_HASH, MODELS, command, prop, parse_env
+STREAMS = {'RZXA1': ('XAUUSD', MODEL_HASH, MODELS),
+           'RZEU4B': ('EURUSD', '4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976',
+                      {'EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1'})}
 
 
 def safe_identifier(value):
@@ -49,22 +52,25 @@ def run():
         database = ROOT / database
     db = sqlite3.connect(database.resolve().as_uri() + '?mode=ro', uri=True)
     for key, version, raw in db.execute('SELECT key,version,state FROM checkpoints'):
-        if not key.startswith('RZXA1:'):
+        prefix = key.split(':')[0]
+        if prefix not in STREAMS:
             continue
+        symbol, expected_hash, models = STREAMS[prefix]
         state = json.loads(raw)
         account = key.split(':')[1]
         model = state.get('ExecutionModel')
-        result = {'account_suffix': account[-4:], 'server_revision': version,
+        result = {'symbol': symbol, 'account_suffix': account[-4:], 'server_revision': version,
                   'state_revision': state.get('Revision'), 'schema': state.get('Schema'),
-                  'hash_match': state.get('ContractHash') == MODEL_HASH,
-                  'model': safe_identifier(model), 'verified_repair_model': model in MODELS,
+                  'hash_match': state.get('ContractHash') == expected_hash,
+                  'model': safe_identifier(model), 'verified_repair_model': model in models,
                   'quarantined': state.get('Quarantined'),
                   'quarantine_reason': safe_identifier(state.get('QuarantineReason')),
                   'invalid_time_fields': time_fields(state)}
         print('BRIDGE_AUDIT_CHECKPOINT=' + json.dumps(result), flush=True)
     for key, expires in db.execute('SELECT key,expires_at FROM bridge_leases'):
-        if key.startswith('RZXA1:'):
-            print('BRIDGE_AUDIT_LEASE=' + json.dumps({'account_suffix': key.split(':')[1][-4:],
+        prefix = key.split(':')[0]
+        if prefix in STREAMS:
+            print('BRIDGE_AUDIT_LEASE=' + json.dumps({'symbol': STREAMS[prefix][0], 'account_suffix': key.split(':')[1][-4:],
                                                      'remaining_seconds': round(expires - time.time(), 1)}), flush=True)
     db.close()
     health = Path(environment.get('RIZAN_HEALTH_PATH', 'state/cbot_bridge_health.json'))
@@ -72,9 +78,10 @@ def run():
         health = ROOT / health
     if health.is_file():
         status = json.loads(health.read_text())
-        stream = status.get('streams', {}).get('XAUUSD', {})
-        print('BRIDGE_AUDIT_HEALTH=' + json.dumps({name: stream.get(name) for name in
-              ('connected', 'macro_event_ready', 'checkpoint_revision', 'last_checkpoint_at_unix')}), flush=True)
+        for symbol in ('XAUUSD', 'EURUSD'):
+            stream = status.get('streams', {}).get(symbol, {})
+            print('BRIDGE_AUDIT_HEALTH=' + json.dumps({'symbol':symbol, **{name: stream.get(name) for name in
+                  ('connected', 'macro_event_ready', 'checkpoint_revision', 'last_checkpoint_at_unix')}}), flush=True)
     print('BRIDGE_AUDIT_READ_ONLY_COMPLETE', flush=True)
 
 
