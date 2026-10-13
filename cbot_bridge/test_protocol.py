@@ -2,6 +2,7 @@
 import asyncio
 import json
 import os
+import socket
 import sys
 import tempfile
 import types
@@ -17,8 +18,12 @@ from selftest import state
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_auth_stream_isolation_and_recovery(self):
         with tempfile.TemporaryDirectory() as folder:
+            with socket.socket() as reservation:
+                reservation.bind(("127.0.0.1", 0))
+                port = reservation.getsockname()[1]
+            url = f"ws://127.0.0.1:{port}"
             settings = {"RIZAN_BRIDGE_TOKEN": "test-only-" + "x" * 40,
-                        "RIZAN_BRIDGE_HOST": "127.0.0.1", "RIZAN_BRIDGE_PORT": "25346",
+                        "RIZAN_BRIDGE_HOST": "127.0.0.1", "RIZAN_BRIDGE_PORT": str(port),
                         "RIZAN_STATE_DB": str(Path(folder) / "state.sqlite"),
                         "RIZAN_SNAPSHOT_PATH": str(Path(folder) / "snapshot.json"),
                         "RIZAN_HEALTH_PATH": str(Path(folder) / "health.json")}
@@ -30,7 +35,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                         if task.done():
                             await task
                         try:
-                            ws = await connect("ws://127.0.0.1:25346")
+                            ws = await connect(url)
                             break
                         except OSError:
                             await asyncio.sleep(0.05)
@@ -43,7 +48,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                         hello = {"type": "hello", "token": settings["RIZAN_BRIDGE_TOKEN"],
                                  "key": f"{prefix}:1:{symbol}", "lease": "a" * 32,
                                  "contract": server.CONTRACTS[prefix]["hash"]}
-                        async with connect("ws://127.0.0.1:25346") as ws:
+                        async with connect(url) as ws:
                             await ws.send(json.dumps(hello))
                             response = json.loads(await ws.recv())
                             self.assertEqual(response["type"], "ready",
@@ -59,7 +64,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                             for _ in range(2):
                                 await ws.send(json.dumps(save))
                                 self.assertEqual(json.loads(await ws.recv())["revision"], 1)
-                        async with connect("ws://127.0.0.1:25346") as ws:
+                        async with connect(url) as ws:
                             await ws.send(json.dumps(hello))
                             ready = json.loads(await ws.recv())
                             self.assertEqual(ready["revision"], 1)

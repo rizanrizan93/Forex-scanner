@@ -229,12 +229,46 @@ index 2c916259..ec07e86f 100644
                      version = store.save(
                          key,
 diff --git a/cbot_bridge/test_protocol.py b/cbot_bridge/test_protocol.py
-index 7d7b4c0d..5a14d022 100644
+index 7d7b4c0d..2dfcf824 100644
 --- a/cbot_bridge/test_protocol.py
 +++ b/cbot_bridge/test_protocol.py
-@@ -45,11 +45,15 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
+@@ -2,6 +2,7 @@
+ import asyncio
+ import json
+ import os
++import socket
+ import sys
+ import tempfile
+ import types
+@@ -17,8 +18,12 @@ from selftest import state
+ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
+     async def test_auth_stream_isolation_and_recovery(self):
+         with tempfile.TemporaryDirectory() as folder:
++            with socket.socket() as reservation:
++                reservation.bind(("127.0.0.1", 0))
++                port = reservation.getsockname()[1]
++            url = f"ws://127.0.0.1:{port}"
+             settings = {"RIZAN_BRIDGE_TOKEN": "test-only-" + "x" * 40,
+-                        "RIZAN_BRIDGE_HOST": "127.0.0.1", "RIZAN_BRIDGE_PORT": "25346",
++                        "RIZAN_BRIDGE_HOST": "127.0.0.1", "RIZAN_BRIDGE_PORT": str(port),
+                         "RIZAN_STATE_DB": str(Path(folder) / "state.sqlite"),
+                         "RIZAN_SNAPSHOT_PATH": str(Path(folder) / "snapshot.json"),
+                         "RIZAN_HEALTH_PATH": str(Path(folder) / "health.json")}
+@@ -30,7 +35,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
+                         if task.done():
+                             await task
+                         try:
+-                            ws = await connect("ws://127.0.0.1:25346")
++                            ws = await connect(url)
+                             break
+                         except OSError:
+                             await asyncio.sleep(0.05)
+@@ -43,19 +48,23 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
+                         hello = {"type": "hello", "token": settings["RIZAN_BRIDGE_TOKEN"],
+                                  "key": f"{prefix}:1:{symbol}", "lease": "a" * 32,
                                   "contract": server.CONTRACTS[prefix]["hash"]}
-                         async with connect("ws://127.0.0.1:25346") as ws:
+-                        async with connect("ws://127.0.0.1:25346") as ws:
++                        async with connect(url) as ws:
                              await ws.send(json.dumps(hello))
 -                            self.assertEqual(json.loads(await ws.recv())["type"], "ready")
 +                            response = json.loads(await ws.recv())
@@ -250,16 +284,24 @@ index 7d7b4c0d..5a14d022 100644
                              save = {"type": "save", "base_revision": 0, "client_revision": 1,
                                      "state": state(prefix, 1, symbol, 1)}
                              for _ in range(2):
+                                 await ws.send(json.dumps(save))
+                                 self.assertEqual(json.loads(await ws.recv())["revision"], 1)
+-                        async with connect("ws://127.0.0.1:25346") as ws:
++                        async with connect(url) as ws:
+                             await ws.send(json.dumps(hello))
+                             ready = json.loads(await ws.recv())
+                             self.assertEqual(ready["revision"], 1)
 diff --git a/cbot_bridge/test_session_soak.py b/cbot_bridge/test_session_soak.py
 new file mode 100644
-index 00000000..a2fecbe0
+index 00000000..6db7f7b0
 --- /dev/null
 +++ b/cbot_bridge/test_session_soak.py
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,62 @@
 +"""Real local WebSocket session registry + checkpoint recovery soak (no broker)."""
 +import asyncio
 +import json
 +import os
++import socket
 +import sys
 +import tempfile
 +import types
@@ -273,13 +315,17 @@ index 00000000..a2fecbe0
 +class SessionSoak(unittest.IsolatedAsyncioTestCase):
 +    async def test_100_cycles_duplicate_session_invalid_payload_and_recovery(self):
 +        with tempfile.TemporaryDirectory() as folder:
-+            env={"RIZAN_BRIDGE_TOKEN":"test-"+"x"*40,"RIZAN_BRIDGE_PORT":"25347",
++            with socket.socket() as reservation:
++                reservation.bind(("127.0.0.1", 0))
++                port=reservation.getsockname()[1]
++            env={"RIZAN_BRIDGE_TOKEN":"test-"+"x"*40,"RIZAN_BRIDGE_PORT":str(port),
++                 "RIZAN_BRIDGE_HOST":"127.0.0.1",
 +                 "RIZAN_STATE_DB":str(Path(folder)/"db.sqlite"),
 +                 "RIZAN_SNAPSHOT_PATH":str(Path(folder)/"snapshot.json"),
 +                 "RIZAN_HEALTH_PATH":str(Path(folder)/"health.json")}
 +            fixture=types.SimpleNamespace(snapshot=lambda:{"ProducedUtc":"2026-10-12T13:30:03.640+00:00"})
 +            with patch.dict(os.environ,env,clear=True),patch.dict(sys.modules,{"feeds":fixture}):
-+                task=asyncio.create_task(server.main());url="ws://127.0.0.1:25347"
++                task=asyncio.create_task(server.main());url=f"ws://127.0.0.1:{port}"
 +                try:
 +                    for _ in range(50):
 +                        if task.done():await task

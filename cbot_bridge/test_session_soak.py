@@ -2,6 +2,7 @@
 import asyncio
 import json
 import os
+import socket
 import sys
 import tempfile
 import types
@@ -15,13 +16,17 @@ from selftest import state
 class SessionSoak(unittest.IsolatedAsyncioTestCase):
     async def test_100_cycles_duplicate_session_invalid_payload_and_recovery(self):
         with tempfile.TemporaryDirectory() as folder:
-            env={"RIZAN_BRIDGE_TOKEN":"test-"+"x"*40,"RIZAN_BRIDGE_PORT":"25347",
+            with socket.socket() as reservation:
+                reservation.bind(("127.0.0.1", 0))
+                port=reservation.getsockname()[1]
+            env={"RIZAN_BRIDGE_TOKEN":"test-"+"x"*40,"RIZAN_BRIDGE_PORT":str(port),
+                 "RIZAN_BRIDGE_HOST":"127.0.0.1",
                  "RIZAN_STATE_DB":str(Path(folder)/"db.sqlite"),
                  "RIZAN_SNAPSHOT_PATH":str(Path(folder)/"snapshot.json"),
                  "RIZAN_HEALTH_PATH":str(Path(folder)/"health.json")}
             fixture=types.SimpleNamespace(snapshot=lambda:{"ProducedUtc":"2026-10-12T13:30:03.640+00:00"})
             with patch.dict(os.environ,env,clear=True),patch.dict(sys.modules,{"feeds":fixture}):
-                task=asyncio.create_task(server.main());url="ws://127.0.0.1:25347"
+                task=asyncio.create_task(server.main());url=f"ws://127.0.0.1:{port}"
                 try:
                     for _ in range(50):
                         if task.done():await task
