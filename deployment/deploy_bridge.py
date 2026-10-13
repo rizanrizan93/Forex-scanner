@@ -51,6 +51,14 @@ def candidate(root, destination, patch):
     bridge.mkdir(mode=0o700)
     for path in (root / 'cbot_bridge').glob('*.py'):
         shutil.copyfile(path, bridge / path.name)
+    fixtures = patch.with_name('test-fixtures.json')
+    if fixtures.is_file():
+        supplied = json.loads(fixtures.read_text())
+        if not set(supplied).issubset({'selftest.py', 'test_durable.py'}):
+            raise RuntimeError('TEST_FIXTURE_SCOPE_INVALID')
+        for name, source in supplied.items():
+            # Pinned regression inputs only in the candidate; local tests stay intact.
+            (bridge / name).write_text(source)
     paths = set(re.findall(r'^diff --git a/(\S+) b/\S+$', patch.read_text(), re.M))
     if not paths or not paths.issubset(ALLOWED_PATCH):
         raise RuntimeError('PATCH_SCOPE_INVALID')
@@ -152,7 +160,14 @@ def run(mode, patch, release_sha):
         runtime = {**os.environ, **environment}
         runtime['PYTHONPATH'] = str(ROOT / 'src')
         bridge = scratch / 'candidate/cbot_bridge'
-        command([str(python), '-m', 'unittest', 'discover', '-s', str(bridge), '-p', 'test_*.py'], cwd=scratch / 'candidate', env=runtime, timeout=180)
+        tests = command([str(python), '-m', 'unittest', 'discover', '-s', str(bridge), '-p', 'test_*.py'], cwd=scratch / 'candidate', env=runtime, timeout=180, check=False)
+        if tests.returncode:
+            # Report diagnostic identifiers only, never exception values or state.
+            for name in re.findall(r"ModuleNotFoundError: No module named '([A-Za-z0-9_.]+)'", tests.stderr):
+                print('CANDIDATE_MISSING_MODULE:' + name, flush=True)
+            for kind, name in re.findall(r'^(FAIL|ERROR): ([A-Za-z0-9_.]+)', tests.stderr, re.M):
+                print('CANDIDATE_TEST_' + kind + ':' + name, flush=True)
+            raise RuntimeError('CANDIDATE_TESTS_FAILED')
         print('CANDIDATE_TESTS_PASS ' + result, flush=True)
         if mode == 'audit':
             print('AUDIT_PASS_NO_SERVICE_OR_STATE_CHANGE', flush=True)
