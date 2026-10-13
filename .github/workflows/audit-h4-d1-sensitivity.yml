@@ -1,0 +1,59 @@
+name: XAU H4 D1 Cost Sensitivity Audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [scripts/audit_h4_d1_sensitivity.py, .github/workflows/audit-h4-d1-sensitivity.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: xau-h4d1-sensitivity
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          pip install numpy==2.2.6 pandas==2.2.3 numba==0.63.1
+          pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: h4d1-*-s3
+          path: /tmp/h4d1-pivot2
+          run-id: 38456814232
+          github-token: ${{ github.token }}
+      - run: python scripts/audit_h4_d1_sensitivity.py --shards /tmp/h4d1-pivot2 --output artifacts/h4_sensitivity_locked.json
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/reversal-data
+          key: xau-histdata-fixed-est-2026-v1
+      - name: Check cached 2026 after lock
+        env:
+          XAU_V193_YEAR: 2026
+          XAU_V193_PRICE_CSV: /tmp/reversal-data/year-2026.csv
+          XAU_V193_PRICE_PROVENANCE: /tmp/reversal-data/provenance-2026.json
+        run: |
+          if [ ! -f "$XAU_V193_PRICE_CSV" ]; then PYTHONPATH=src python -m fx_scanner.research_xau_histdata_download_v193; fi
+          python - <<'PY'
+          import json,os,hashlib
+          from pathlib import Path
+          p=json.loads(Path(os.environ['XAU_V193_PRICE_PROVENANCE']).read_text())
+          assert not p['failed_periods']
+          assert hashlib.sha256(Path(os.environ['XAU_V193_PRICE_CSV']).read_bytes()).hexdigest()==p['normalized_csv_sha256']
+          PY
+      - run: python scripts/research_h4_d1_reversal.py --csv /tmp/reversal-data/year-2026.csv --year 2026 --candidates artifacts/h4_sensitivity_locked.json --output artifacts/h4_sensitivity_ledger_2026.json
+      - run: python scripts/audit_h4_d1_sensitivity.py --locked artifacts/h4_sensitivity_locked.json --ledger artifacts/h4_sensitivity_ledger_2026.json --output artifacts/h4_d1_sensitivity_results.json
+      - run: |
+          python cbot_connectivity/xau-stable-v1.2.1/verify_scope.py
+          python cbot_connectivity/eur-batch-v1.1.0/verify_scope.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: h4-d1-sensitivity-audit
+          path: artifacts/
+          retention-days: 90
