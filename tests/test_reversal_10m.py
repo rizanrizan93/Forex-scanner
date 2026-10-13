@@ -93,3 +93,63 @@ def test_no_execution_imports():
     for filename in ["src/fx_scanner/reversal_zones.py", "scripts/research_reversal_10m.py"]:
         text=(root/filename).read_text()
         assert "from .execution" not in text and "cbot_bridge" not in text
+
+
+def result_fixture():
+    from fx_scanner.reversal_zones import CONTRACT
+    cfg={k:v[0] for k,v in GRID.items()}
+    cfg.update(half_width_atr=.5,max_age_hours=96)
+    return {"contract":CONTRACT,"configurations_evaluated":10_000_000,
+        "selected_by_side":[{"config":cfg,"qualified":True,
+                             "holdout":{"n":100,"probability":.7}}]}
+
+
+def test_scanner_stale_fail_closed_no_execution_authority():
+    from fx_scanner.reversal_scanner import evaluate
+    out=evaluate(fixture(),result_fixture(),now=pd.Timestamp('2020-02-01T00:00Z'))
+    assert out['state']=='STALE_DATA' and not out['zones']
+    assert out['execution_authority'] is False and out['execution_influence'] is False
+
+
+def test_scanner_insufficient_history_not_empty_validated_map():
+    from fx_scanner.reversal_scanner import evaluate
+    f=fixture(1)
+    out=evaluate(f,result_fixture(),now=pd.Timestamp('2020-01-02T00:01Z'))
+    assert out['state']=='INSUFFICIENT_HISTORY'
+
+
+def test_scanner_future_bars_are_discarded():
+    from fx_scanner.reversal_scanner import evaluate
+    f=fixture(); cutoff=pd.Timestamp('2020-01-10T12:00Z')
+    original=evaluate(f,result_fixture(),now=cutoff)
+    f.loc[f.timestamp>=cutoff,['open','high','low','close']]+=999
+    assert original==evaluate(f,result_fixture(),now=cutoff)
+
+
+def test_dashboard_rejects_stale_or_order_authority_snapshot():
+    from fx_scanner.reversal_dashboard import validate_snapshot
+    from fx_scanner.reversal_zones import CONTRACT
+    s={'contract':CONTRACT,'symbol':'XAUUSD','execution_authority':False,'state':'MAP_READY','as_of':'2020-01-01T00:00:00Z'}
+    assert validate_snapshot(s,now=pd.Timestamp('2020-01-01T00:01Z'))==s
+    with pytest.raises(ValueError,match='STALE'): validate_snapshot(s,now=pd.Timestamp('2020-01-01T00:08Z'))
+    with pytest.raises(ValueError,match='CONTRACT'): validate_snapshot({**s,'execution_authority':True})
+
+
+def test_display_manifest_hashes_match_frozen_original():
+    import ast
+    from fx_scanner.dashboard_frozen_manifest import manifest,HASHES
+    source=ast.parse((Path(__file__).parents[1]/'src/fx_scanner/frozen_layering.py').read_text())
+    original=next(ast.literal_eval(n.value) for n in source.body if isinstance(n,ast.Assign)
+                  and any(isinstance(t,ast.Name) and t.id=='HASHES' for t in n.targets))
+    assert HASHES==original
+    for symbol in HASHES: assert manifest(symbol)['policy_hash']==HASHES[symbol]
+
+
+def test_reader_has_only_market_data_auth_request_allowlist():
+    import ast
+    script=Path(__file__).parents[1]/'scripts/publish_reversal_snapshot.py'
+    tree=ast.parse(script.read_text())
+    node=next(n for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='READ_REQUESTS' for t in n.targets))
+    names=ast.literal_eval(node.value.args[0])
+    assert names=={'ProtoOAApplicationAuthReq','ProtoOAGetAccountListByAccessTokenReq',
+                   'ProtoOAAccountAuthReq','ProtoOASymbolsListReq','ProtoOAGetTrendbarsReq'}

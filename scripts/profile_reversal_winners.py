@@ -74,6 +74,7 @@ def aggregate_profiles(folder,result,output):
             (session.year==year).sum(),((session.year==year)&(session.outcome==-1)).sum()) for year in range(2016,2026)}
         winner['timing_profile']=profiles
     result['status']='VALIDATED' if result['selected']['qualified'] else 'RESEARCH_ONLY'
+    output.parent.mkdir(parents=True,exist_ok=True)
     output.write_text(json.dumps(result,indent=2,allow_nan=False)+"\n")
 
 

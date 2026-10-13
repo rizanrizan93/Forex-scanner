@@ -196,7 +196,908 @@
         "probability": 0.8222222222222222,
         "wilson_lower_95": 0.7490888062732284
       },
-      "qualified": true
+      "qualified": true,
+      "timing_profile": {
+        "train": {
+          "hours": [
+            {
+              "hour_utc": 0,
+              "hour_wib": 7,
+              "n": 2,
+              "reversals": 2,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.3423719528896193
+            },
+            {
+              "hour_utc": 1,
+              "hour_wib": 8,
+              "n": 7,
+              "reversals": 5,
+              "invalidations": 1,
+              "unresolved": 1,
+              "probability": 0.7142857142857143,
+              "wilson_lower_95": 0.35892909014821267
+            },
+            {
+              "hour_utc": 2,
+              "hour_wib": 9,
+              "n": 13,
+              "reversals": 9,
+              "invalidations": 2,
+              "unresolved": 2,
+              "probability": 0.6923076923076923,
+              "wilson_lower_95": 0.4236888781333764
+            },
+            {
+              "hour_utc": 3,
+              "hour_wib": 10,
+              "n": 7,
+              "reversals": 7,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.6456611570247934
+            },
+            {
+              "hour_utc": 4,
+              "hour_wib": 11,
+              "n": 3,
+              "reversals": 3,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.4384939195509822
+            },
+            {
+              "hour_utc": 5,
+              "hour_wib": 12,
+              "n": 2,
+              "reversals": 1,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.5,
+              "wilson_lower_95": 0.09452865480086611
+            },
+            {
+              "hour_utc": 6,
+              "hour_wib": 13,
+              "n": 1,
+              "reversals": 1,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.20654329147389294
+            },
+            {
+              "hour_utc": 7,
+              "hour_wib": 14,
+              "n": 12,
+              "reversals": 9,
+              "invalidations": 2,
+              "unresolved": 1,
+              "probability": 0.75,
+              "wilson_lower_95": 0.4676896608793401
+            },
+            {
+              "hour_utc": 8,
+              "hour_wib": 15,
+              "n": 17,
+              "reversals": 8,
+              "invalidations": 7,
+              "unresolved": 2,
+              "probability": 0.47058823529411764,
+              "wilson_lower_95": 0.26164801196088106
+            },
+            {
+              "hour_utc": 9,
+              "hour_wib": 16,
+              "n": 16,
+              "reversals": 10,
+              "invalidations": 4,
+              "unresolved": 2,
+              "probability": 0.625,
+              "wilson_lower_95": 0.38640647097934805
+            },
+            {
+              "hour_utc": 10,
+              "hour_wib": 17,
+              "n": 11,
+              "reversals": 8,
+              "invalidations": 3,
+              "unresolved": 0,
+              "probability": 0.7272727272727273,
+              "wilson_lower_95": 0.4343497069897538
+            },
+            {
+              "hour_utc": 11,
+              "hour_wib": 18,
+              "n": 10,
+              "reversals": 9,
+              "invalidations": 0,
+              "unresolved": 1,
+              "probability": 0.9,
+              "wilson_lower_95": 0.5958436145024278
+            },
+            {
+              "hour_utc": 12,
+              "hour_wib": 19,
+              "n": 9,
+              "reversals": 6,
+              "invalidations": 3,
+              "unresolved": 0,
+              "probability": 0.6666666666666666,
+              "wilson_lower_95": 0.35419734749908977
+            },
+            {
+              "hour_utc": 13,
+              "hour_wib": 20,
+              "n": 71,
+              "reversals": 52,
+              "invalidations": 16,
+              "unresolved": 3,
+              "probability": 0.7323943661971831,
+              "wilson_lower_95": 0.6194579122102354
+            },
+            {
+              "hour_utc": 14,
+              "hour_wib": 21,
+              "n": 117,
+              "reversals": 77,
+              "invalidations": 36,
+              "unresolved": 4,
+              "probability": 0.6581196581196581,
+              "wilson_lower_95": 0.5683696349970929
+            },
+            {
+              "hour_utc": 15,
+              "hour_wib": 22,
+              "n": 96,
+              "reversals": 63,
+              "invalidations": 27,
+              "unresolved": 6,
+              "probability": 0.65625,
+              "wilson_lower_95": 0.5568784424044507
+            },
+            {
+              "hour_utc": 16,
+              "hour_wib": 23,
+              "n": 41,
+              "reversals": 25,
+              "invalidations": 8,
+              "unresolved": 8,
+              "probability": 0.6097560975609756,
+              "wilson_lower_95": 0.45726583898692563
+            },
+            {
+              "hour_utc": 17,
+              "hour_wib": 0,
+              "n": 16,
+              "reversals": 7,
+              "invalidations": 6,
+              "unresolved": 3,
+              "probability": 0.4375,
+              "wilson_lower_95": 0.2309836333518552
+            },
+            {
+              "hour_utc": 18,
+              "hour_wib": 1,
+              "n": 16,
+              "reversals": 10,
+              "invalidations": 4,
+              "unresolved": 2,
+              "probability": 0.625,
+              "wilson_lower_95": 0.38640647097934805
+            },
+            {
+              "hour_utc": 19,
+              "hour_wib": 2,
+              "n": 21,
+              "reversals": 17,
+              "invalidations": 3,
+              "unresolved": 1,
+              "probability": 0.8095238095238095,
+              "wilson_lower_95": 0.599990134607267
+            },
+            {
+              "hour_utc": 20,
+              "hour_wib": 3,
+              "n": 8,
+              "reversals": 7,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.875,
+              "wilson_lower_95": 0.5291051942301385
+            },
+            {
+              "hour_utc": 21,
+              "hour_wib": 4,
+              "n": 0,
+              "reversals": 0,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": null,
+              "wilson_lower_95": null
+            },
+            {
+              "hour_utc": 22,
+              "hour_wib": 5,
+              "n": 1,
+              "reversals": 1,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.20654329147389294
+            },
+            {
+              "hour_utc": 23,
+              "hour_wib": 6,
+              "n": 3,
+              "reversals": 3,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.4384939195509822
+            }
+          ],
+          "all_hours_baseline": {
+            "n": 500,
+            "reversals": 340,
+            "invalidations": 124,
+            "unresolved": 36,
+            "probability": 0.68,
+            "wilson_lower_95": 0.6378721940483773
+          }
+        },
+        "validation": {
+          "hours": [
+            {
+              "hour_utc": 0,
+              "hour_wib": 7,
+              "n": 0,
+              "reversals": 0,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": null,
+              "wilson_lower_95": null
+            },
+            {
+              "hour_utc": 1,
+              "hour_wib": 8,
+              "n": 2,
+              "reversals": 2,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.3423719528896193
+            },
+            {
+              "hour_utc": 2,
+              "hour_wib": 9,
+              "n": 1,
+              "reversals": 0,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.0,
+              "wilson_lower_95": 0.0
+            },
+            {
+              "hour_utc": 3,
+              "hour_wib": 10,
+              "n": 3,
+              "reversals": 1,
+              "invalidations": 2,
+              "unresolved": 0,
+              "probability": 0.3333333333333333,
+              "wilson_lower_95": 0.061490315276160515
+            },
+            {
+              "hour_utc": 4,
+              "hour_wib": 11,
+              "n": 1,
+              "reversals": 0,
+              "invalidations": 0,
+              "unresolved": 1,
+              "probability": 0.0,
+              "wilson_lower_95": 0.0
+            },
+            {
+              "hour_utc": 5,
+              "hour_wib": 12,
+              "n": 1,
+              "reversals": 0,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.0,
+              "wilson_lower_95": 0.0
+            },
+            {
+              "hour_utc": 6,
+              "hour_wib": 13,
+              "n": 0,
+              "reversals": 0,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": null,
+              "wilson_lower_95": null
+            },
+            {
+              "hour_utc": 7,
+              "hour_wib": 14,
+              "n": 3,
+              "reversals": 3,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.4384939195509822
+            },
+            {
+              "hour_utc": 8,
+              "hour_wib": 15,
+              "n": 8,
+              "reversals": 6,
+              "invalidations": 2,
+              "unresolved": 0,
+              "probability": 0.75,
+              "wilson_lower_95": 0.40926987910258916
+            },
+            {
+              "hour_utc": 9,
+              "hour_wib": 16,
+              "n": 6,
+              "reversals": 6,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.6096569663469354
+            },
+            {
+              "hour_utc": 10,
+              "hour_wib": 17,
+              "n": 2,
+              "reversals": 2,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.3423719528896193
+            },
+            {
+              "hour_utc": 11,
+              "hour_wib": 18,
+              "n": 3,
+              "reversals": 3,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.4384939195509822
+            },
+            {
+              "hour_utc": 12,
+              "hour_wib": 19,
+              "n": 3,
+              "reversals": 3,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.4384939195509822
+            },
+            {
+              "hour_utc": 13,
+              "hour_wib": 20,
+              "n": 23,
+              "reversals": 22,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.9565217391304348,
+              "wilson_lower_95": 0.7900841350594088
+            },
+            {
+              "hour_utc": 14,
+              "hour_wib": 21,
+              "n": 39,
+              "reversals": 30,
+              "invalidations": 8,
+              "unresolved": 1,
+              "probability": 0.7692307692307693,
+              "wilson_lower_95": 0.6166343954261705
+            },
+            {
+              "hour_utc": 15,
+              "hour_wib": 22,
+              "n": 37,
+              "reversals": 29,
+              "invalidations": 6,
+              "unresolved": 2,
+              "probability": 0.7837837837837838,
+              "wilson_lower_95": 0.6280453872612309
+            },
+            {
+              "hour_utc": 16,
+              "hour_wib": 23,
+              "n": 12,
+              "reversals": 8,
+              "invalidations": 3,
+              "unresolved": 1,
+              "probability": 0.6666666666666666,
+              "wilson_lower_95": 0.3906175873976139
+            },
+            {
+              "hour_utc": 17,
+              "hour_wib": 0,
+              "n": 4,
+              "reversals": 3,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.75,
+              "wilson_lower_95": 0.30063605244263664
+            },
+            {
+              "hour_utc": 18,
+              "hour_wib": 1,
+              "n": 3,
+              "reversals": 2,
+              "invalidations": 0,
+              "unresolved": 1,
+              "probability": 0.6666666666666666,
+              "wilson_lower_95": 0.20765495512648788
+            },
+            {
+              "hour_utc": 19,
+              "hour_wib": 2,
+              "n": 6,
+              "reversals": 5,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.8333333333333334,
+              "wilson_lower_95": 0.4364905634363539
+            },
+            {
+              "hour_utc": 20,
+              "hour_wib": 3,
+              "n": 1,
+              "reversals": 1,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.20654329147389294
+            },
+            {
+              "hour_utc": 21,
+              "hour_wib": 4,
+              "n": 0,
+              "reversals": 0,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": null,
+              "wilson_lower_95": null
+            },
+            {
+              "hour_utc": 22,
+              "hour_wib": 5,
+              "n": 0,
+              "reversals": 0,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": null,
+              "wilson_lower_95": null
+            },
+            {
+              "hour_utc": 23,
+              "hour_wib": 6,
+              "n": 0,
+              "reversals": 0,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": null,
+              "wilson_lower_95": null
+            }
+          ],
+          "all_hours_baseline": {
+            "n": 158,
+            "reversals": 126,
+            "invalidations": 26,
+            "unresolved": 6,
+            "probability": 0.7974683544303798,
+            "wilson_lower_95": 0.7280884970166608
+          }
+        },
+        "holdout": {
+          "hours": [
+            {
+              "hour_utc": 0,
+              "hour_wib": 7,
+              "n": 4,
+              "reversals": 3,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.75,
+              "wilson_lower_95": 0.30063605244263664
+            },
+            {
+              "hour_utc": 1,
+              "hour_wib": 8,
+              "n": 1,
+              "reversals": 1,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.20654329147389294
+            },
+            {
+              "hour_utc": 2,
+              "hour_wib": 9,
+              "n": 4,
+              "reversals": 2,
+              "invalidations": 2,
+              "unresolved": 0,
+              "probability": 0.5,
+              "wilson_lower_95": 0.15003570882017145
+            },
+            {
+              "hour_utc": 3,
+              "hour_wib": 10,
+              "n": 8,
+              "reversals": 6,
+              "invalidations": 1,
+              "unresolved": 1,
+              "probability": 0.75,
+              "wilson_lower_95": 0.40926987910258916
+            },
+            {
+              "hour_utc": 4,
+              "hour_wib": 11,
+              "n": 1,
+              "reversals": 1,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.20654329147389294
+            },
+            {
+              "hour_utc": 5,
+              "hour_wib": 12,
+              "n": 1,
+              "reversals": 0,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.0,
+              "wilson_lower_95": 0.0
+            },
+            {
+              "hour_utc": 6,
+              "hour_wib": 13,
+              "n": 1,
+              "reversals": 0,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.0,
+              "wilson_lower_95": 0.0
+            },
+            {
+              "hour_utc": 7,
+              "hour_wib": 14,
+              "n": 3,
+              "reversals": 3,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.4384939195509822
+            },
+            {
+              "hour_utc": 8,
+              "hour_wib": 15,
+              "n": 7,
+              "reversals": 6,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.8571428571428571,
+              "wilson_lower_95": 0.4868654966809702
+            },
+            {
+              "hour_utc": 9,
+              "hour_wib": 16,
+              "n": 4,
+              "reversals": 3,
+              "invalidations": 0,
+              "unresolved": 1,
+              "probability": 0.75,
+              "wilson_lower_95": 0.30063605244263664
+            },
+            {
+              "hour_utc": 10,
+              "hour_wib": 17,
+              "n": 2,
+              "reversals": 1,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.5,
+              "wilson_lower_95": 0.09452865480086611
+            },
+            {
+              "hour_utc": 11,
+              "hour_wib": 18,
+              "n": 2,
+              "reversals": 1,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.5,
+              "wilson_lower_95": 0.09452865480086611
+            },
+            {
+              "hour_utc": 12,
+              "hour_wib": 19,
+              "n": 6,
+              "reversals": 5,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.8333333333333334,
+              "wilson_lower_95": 0.4364905634363539
+            },
+            {
+              "hour_utc": 13,
+              "hour_wib": 20,
+              "n": 29,
+              "reversals": 22,
+              "invalidations": 5,
+              "unresolved": 2,
+              "probability": 0.7586206896551724,
+              "wilson_lower_95": 0.5789204778167131
+            },
+            {
+              "hour_utc": 14,
+              "hour_wib": 21,
+              "n": 38,
+              "reversals": 34,
+              "invalidations": 3,
+              "unresolved": 1,
+              "probability": 0.8947368421052632,
+              "wilson_lower_95": 0.7586916879980553
+            },
+            {
+              "hour_utc": 15,
+              "hour_wib": 22,
+              "n": 40,
+              "reversals": 31,
+              "invalidations": 7,
+              "unresolved": 2,
+              "probability": 0.775,
+              "wilson_lower_95": 0.6249660359590695
+            },
+            {
+              "hour_utc": 16,
+              "hour_wib": 23,
+              "n": 15,
+              "reversals": 12,
+              "invalidations": 2,
+              "unresolved": 1,
+              "probability": 0.8,
+              "wilson_lower_95": 0.5481406466534955
+            },
+            {
+              "hour_utc": 17,
+              "hour_wib": 0,
+              "n": 7,
+              "reversals": 7,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.6456611570247934
+            },
+            {
+              "hour_utc": 18,
+              "hour_wib": 1,
+              "n": 3,
+              "reversals": 2,
+              "invalidations": 0,
+              "unresolved": 1,
+              "probability": 0.6666666666666666,
+              "wilson_lower_95": 0.20765495512648788
+            },
+            {
+              "hour_utc": 19,
+              "hour_wib": 2,
+              "n": 4,
+              "reversals": 3,
+              "invalidations": 0,
+              "unresolved": 1,
+              "probability": 0.75,
+              "wilson_lower_95": 0.30063605244263664
+            },
+            {
+              "hour_utc": 20,
+              "hour_wib": 3,
+              "n": 6,
+              "reversals": 4,
+              "invalidations": 2,
+              "unresolved": 0,
+              "probability": 0.6666666666666666,
+              "wilson_lower_95": 0.2999883213415286
+            },
+            {
+              "hour_utc": 21,
+              "hour_wib": 4,
+              "n": 1,
+              "reversals": 1,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.20654329147389294
+            },
+            {
+              "hour_utc": 22,
+              "hour_wib": 5,
+              "n": 0,
+              "reversals": 0,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": null,
+              "wilson_lower_95": null
+            },
+            {
+              "hour_utc": 23,
+              "hour_wib": 6,
+              "n": 3,
+              "reversals": 2,
+              "invalidations": 1,
+              "unresolved": 0,
+              "probability": 0.6666666666666666,
+              "wilson_lower_95": 0.20765495512648788
+            }
+          ],
+          "all_hours_baseline": {
+            "n": 190,
+            "reversals": 150,
+            "invalidations": 30,
+            "unresolved": 10,
+            "probability": 0.7894736842105263,
+            "wilson_lower_95": 0.7260583844476365
+          }
+        },
+        "best_hour_selected_before_holdout": {
+          "hour_utc": 15,
+          "hour_wib": 22,
+          "n": 37,
+          "reversals": 29,
+          "invalidations": 6,
+          "unresolved": 2,
+          "probability": 0.7837837837837838,
+          "wilson_lower_95": 0.6280453872612309
+        },
+        "best_hour_holdout": {
+          "hour_utc": 15,
+          "hour_wib": 22,
+          "n": 40,
+          "reversals": 31,
+          "invalidations": 7,
+          "unresolved": 2,
+          "probability": 0.775,
+          "wilson_lower_95": 0.6249660359590695
+        },
+        "holdout_month_block_bootstrap_95": [
+          0.7698412698412699,
+          0.8720045112781954
+        ],
+        "year_metrics": {
+          "2016": {
+            "n": 55,
+            "reversals": 38,
+            "invalidations": 14,
+            "unresolved": 3,
+            "probability": 0.6909090909090909,
+            "wilson_lower_95": 0.5597116084861727
+          },
+          "2017": {
+            "n": 52,
+            "reversals": 32,
+            "invalidations": 18,
+            "unresolved": 2,
+            "probability": 0.6153846153846154,
+            "wilson_lower_95": 0.4795962694074179
+          },
+          "2018": {
+            "n": 41,
+            "reversals": 27,
+            "invalidations": 11,
+            "unresolved": 3,
+            "probability": 0.6585365853658537,
+            "wilson_lower_95": 0.5054955435372689
+          },
+          "2019": {
+            "n": 59,
+            "reversals": 38,
+            "invalidations": 13,
+            "unresolved": 8,
+            "probability": 0.6440677966101694,
+            "wilson_lower_95": 0.5165525967226601
+          },
+          "2020": {
+            "n": 54,
+            "reversals": 35,
+            "invalidations": 16,
+            "unresolved": 3,
+            "probability": 0.6481481481481481,
+            "wilson_lower_95": 0.5148458381779774
+          },
+          "2021": {
+            "n": 89,
+            "reversals": 60,
+            "invalidations": 24,
+            "unresolved": 5,
+            "probability": 0.6741573033707865,
+            "wilson_lower_95": 0.5713403285459205
+          },
+          "2022": {
+            "n": 54,
+            "reversals": 42,
+            "invalidations": 9,
+            "unresolved": 3,
+            "probability": 0.7777777777777778,
+            "wilson_lower_95": 0.6506107316841219
+          },
+          "2023": {
+            "n": 64,
+            "reversals": 53,
+            "invalidations": 10,
+            "unresolved": 1,
+            "probability": 0.828125,
+            "wilson_lower_95": 0.717865585098341
+          },
+          "2024": {
+            "n": 75,
+            "reversals": 60,
+            "invalidations": 9,
+            "unresolved": 6,
+            "probability": 0.8,
+            "wilson_lower_95": 0.695885054488383
+          },
+          "2025": {
+            "n": 60,
+            "reversals": 51,
+            "invalidations": 9,
+            "unresolved": 0,
+            "probability": 0.85,
+            "wilson_lower_95": 0.7388517410884039
+          }
+        }
+      },
+      "reaction_size_sensitivity": [
+        {
+          "reaction_atr": 0.5,
+          "n": 135,
+          "reversals": 111,
+          "invalidations": 18,
+          "probability": 0.8222222222222222
+        },
+        {
+          "reaction_atr": 0.75,
+          "n": 135,
+          "reversals": 89,
+          "invalidations": 29,
+          "probability": 0.6592592592592592
+        },
+        {
+          "reaction_atr": 1.0,
+          "n": 135,
+          "reversals": 66,
+          "invalidations": 41,
+          "probability": 0.4888888888888889
+        },
+        {
+          "reaction_atr": 1.5,
+          "n": 135,
+          "reversals": 50,
+          "invalidations": 45,
+          "probability": 0.37037037037037035
+        },
+        {
+          "reaction_atr": 2.0,
+          "n": 135,
+          "reversals": 35,
+          "invalidations": 47,
+          "probability": 0.25925925925925924
+        }
+      ]
     },
     {
       "index": 6966058,
@@ -255,7 +1156,908 @@
         "probability": 0.7211538461538461,
         "wilson_lower_95": 0.6689349877485625
       },
-      "qualified": true
+      "qualified": true,
+      "timing_profile": {
+        "train": {
+          "hours": [
+            {
+              "hour_utc": 0,
+              "hour_wib": 7,
+              "n": 77,
+              "reversals": 44,
+              "invalidations": 15,
+              "unresolved": 18,
+              "probability": 0.5714285714285714,
+              "wilson_lower_95": 0.4601033109180365
+            },
+            {
+              "hour_utc": 1,
+              "hour_wib": 8,
+              "n": 79,
+              "reversals": 51,
+              "invalidations": 11,
+              "unresolved": 17,
+              "probability": 0.6455696202531646,
+              "wilson_lower_95": 0.5355906892335188
+            },
+            {
+              "hour_utc": 2,
+              "hour_wib": 9,
+              "n": 100,
+              "reversals": 50,
+              "invalidations": 15,
+              "unresolved": 35,
+              "probability": 0.5,
+              "wilson_lower_95": 0.40382982859014716
+            },
+            {
+              "hour_utc": 3,
+              "hour_wib": 10,
+              "n": 77,
+              "reversals": 38,
+              "invalidations": 13,
+              "unresolved": 26,
+              "probability": 0.4935064935064935,
+              "wilson_lower_95": 0.3848283063647114
+            },
+            {
+              "hour_utc": 4,
+              "hour_wib": 11,
+              "n": 47,
+              "reversals": 33,
+              "invalidations": 3,
+              "unresolved": 11,
+              "probability": 0.7021276595744681,
+              "wilson_lower_95": 0.5602205595363459
+            },
+            {
+              "hour_utc": 5,
+              "hour_wib": 12,
+              "n": 36,
+              "reversals": 21,
+              "invalidations": 7,
+              "unresolved": 8,
+              "probability": 0.5833333333333334,
+              "wilson_lower_95": 0.4219996966427768
+            },
+            {
+              "hour_utc": 6,
+              "hour_wib": 13,
+              "n": 71,
+              "reversals": 42,
+              "invalidations": 16,
+              "unresolved": 13,
+              "probability": 0.5915492957746479,
+              "wilson_lower_95": 0.47538570815444975
+            },
+            {
+              "hour_utc": 7,
+              "hour_wib": 14,
+              "n": 144,
+              "reversals": 88,
+              "invalidations": 21,
+              "unresolved": 35,
+              "probability": 0.6111111111111112,
+              "wilson_lower_95": 0.5295875556674611
+            },
+            {
+              "hour_utc": 8,
+              "hour_wib": 15,
+              "n": 148,
+              "reversals": 99,
+              "invalidations": 29,
+              "unresolved": 20,
+              "probability": 0.668918918918919,
+              "wilson_lower_95": 0.5896694324466354
+            },
+            {
+              "hour_utc": 9,
+              "hour_wib": 16,
+              "n": 147,
+              "reversals": 102,
+              "invalidations": 27,
+              "unresolved": 18,
+              "probability": 0.6938775510204082,
+              "wilson_lower_95": 0.6152240580939201
+            },
+            {
+              "hour_utc": 10,
+              "hour_wib": 17,
+              "n": 86,
+              "reversals": 65,
+              "invalidations": 14,
+              "unresolved": 7,
+              "probability": 0.7558139534883721,
+              "wilson_lower_95": 0.6553692879036904
+            },
+            {
+              "hour_utc": 11,
+              "hour_wib": 18,
+              "n": 82,
+              "reversals": 64,
+              "invalidations": 18,
+              "unresolved": 0,
+              "probability": 0.7804878048780488,
+              "wilson_lower_95": 0.6794774330026092
+            },
+            {
+              "hour_utc": 12,
+              "hour_wib": 19,
+              "n": 105,
+              "reversals": 81,
+              "invalidations": 23,
+              "unresolved": 1,
+              "probability": 0.7714285714285715,
+              "wilson_lower_95": 0.6823796607286441
+            },
+            {
+              "hour_utc": 13,
+              "hour_wib": 20,
+              "n": 223,
+              "reversals": 166,
+              "invalidations": 51,
+              "unresolved": 6,
+              "probability": 0.7443946188340808,
+              "wilson_lower_95": 0.6833399791048197
+            },
+            {
+              "hour_utc": 14,
+              "hour_wib": 21,
+              "n": 223,
+              "reversals": 169,
+              "invalidations": 45,
+              "unresolved": 9,
+              "probability": 0.757847533632287,
+              "wilson_lower_95": 0.6975619829172292
+            },
+            {
+              "hour_utc": 15,
+              "hour_wib": 22,
+              "n": 158,
+              "reversals": 106,
+              "invalidations": 37,
+              "unresolved": 15,
+              "probability": 0.6708860759493671,
+              "wilson_lower_95": 0.59432125229959
+            },
+            {
+              "hour_utc": 16,
+              "hour_wib": 23,
+              "n": 114,
+              "reversals": 73,
+              "invalidations": 25,
+              "unresolved": 16,
+              "probability": 0.6403508771929824,
+              "wilson_lower_95": 0.5490074186735066
+            },
+            {
+              "hour_utc": 17,
+              "hour_wib": 0,
+              "n": 81,
+              "reversals": 46,
+              "invalidations": 12,
+              "unresolved": 23,
+              "probability": 0.5679012345679012,
+              "wilson_lower_95": 0.4593724052942849
+            },
+            {
+              "hour_utc": 18,
+              "hour_wib": 1,
+              "n": 89,
+              "reversals": 53,
+              "invalidations": 12,
+              "unresolved": 24,
+              "probability": 0.5955056179775281,
+              "wilson_lower_95": 0.491640345784806
+            },
+            {
+              "hour_utc": 19,
+              "hour_wib": 2,
+              "n": 73,
+              "reversals": 57,
+              "invalidations": 11,
+              "unresolved": 5,
+              "probability": 0.7808219178082192,
+              "wilson_lower_95": 0.6732251787519996
+            },
+            {
+              "hour_utc": 20,
+              "hour_wib": 3,
+              "n": 30,
+              "reversals": 23,
+              "invalidations": 3,
+              "unresolved": 4,
+              "probability": 0.7666666666666667,
+              "wilson_lower_95": 0.5907132766967573
+            },
+            {
+              "hour_utc": 21,
+              "hour_wib": 4,
+              "n": 14,
+              "reversals": 7,
+              "invalidations": 0,
+              "unresolved": 7,
+              "probability": 0.5,
+              "wilson_lower_95": 0.2679886791947528
+            },
+            {
+              "hour_utc": 22,
+              "hour_wib": 5,
+              "n": 1,
+              "reversals": 1,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.20654329147389294
+            },
+            {
+              "hour_utc": 23,
+              "hour_wib": 6,
+              "n": 89,
+              "reversals": 61,
+              "invalidations": 11,
+              "unresolved": 17,
+              "probability": 0.6853932584269663,
+              "wilson_lower_95": 0.58295307963674
+            }
+          ],
+          "all_hours_baseline": {
+            "n": 2294,
+            "reversals": 1540,
+            "invalidations": 419,
+            "unresolved": 335,
+            "probability": 0.6713164777680907,
+            "wilson_lower_95": 0.6518214119482204
+          }
+        },
+        "validation": {
+          "hours": [
+            {
+              "hour_utc": 0,
+              "hour_wib": 7,
+              "n": 13,
+              "reversals": 9,
+              "invalidations": 3,
+              "unresolved": 1,
+              "probability": 0.6923076923076923,
+              "wilson_lower_95": 0.4236888781333764
+            },
+            {
+              "hour_utc": 1,
+              "hour_wib": 8,
+              "n": 21,
+              "reversals": 8,
+              "invalidations": 3,
+              "unresolved": 10,
+              "probability": 0.38095238095238093,
+              "wilson_lower_95": 0.20750767797982508
+            },
+            {
+              "hour_utc": 2,
+              "hour_wib": 9,
+              "n": 30,
+              "reversals": 14,
+              "invalidations": 1,
+              "unresolved": 15,
+              "probability": 0.4666666666666667,
+              "wilson_lower_95": 0.3023212722412823
+            },
+            {
+              "hour_utc": 3,
+              "hour_wib": 10,
+              "n": 25,
+              "reversals": 14,
+              "invalidations": 1,
+              "unresolved": 10,
+              "probability": 0.56,
+              "wilson_lower_95": 0.37067017019564436
+            },
+            {
+              "hour_utc": 4,
+              "hour_wib": 11,
+              "n": 17,
+              "reversals": 12,
+              "invalidations": 3,
+              "unresolved": 2,
+              "probability": 0.7058823529411765,
+              "wilson_lower_95": 0.468664666737861
+            },
+            {
+              "hour_utc": 5,
+              "hour_wib": 12,
+              "n": 15,
+              "reversals": 11,
+              "invalidations": 2,
+              "unresolved": 2,
+              "probability": 0.7333333333333333,
+              "wilson_lower_95": 0.48049110342313245
+            },
+            {
+              "hour_utc": 6,
+              "hour_wib": 13,
+              "n": 27,
+              "reversals": 20,
+              "invalidations": 5,
+              "unresolved": 2,
+              "probability": 0.7407407407407407,
+              "wilson_lower_95": 0.5532106959738432
+            },
+            {
+              "hour_utc": 7,
+              "hour_wib": 14,
+              "n": 40,
+              "reversals": 29,
+              "invalidations": 8,
+              "unresolved": 3,
+              "probability": 0.725,
+              "wilson_lower_95": 0.5716474916687543
+            },
+            {
+              "hour_utc": 8,
+              "hour_wib": 15,
+              "n": 62,
+              "reversals": 41,
+              "invalidations": 10,
+              "unresolved": 11,
+              "probability": 0.6612903225806451,
+              "wilson_lower_95": 0.5371746717131098
+            },
+            {
+              "hour_utc": 9,
+              "hour_wib": 16,
+              "n": 44,
+              "reversals": 29,
+              "invalidations": 8,
+              "unresolved": 7,
+              "probability": 0.6590909090909091,
+              "wilson_lower_95": 0.511388679719395
+            },
+            {
+              "hour_utc": 10,
+              "hour_wib": 17,
+              "n": 23,
+              "reversals": 15,
+              "invalidations": 6,
+              "unresolved": 2,
+              "probability": 0.6521739130434783,
+              "wilson_lower_95": 0.4488997690689163
+            },
+            {
+              "hour_utc": 11,
+              "hour_wib": 18,
+              "n": 25,
+              "reversals": 18,
+              "invalidations": 7,
+              "unresolved": 0,
+              "probability": 0.72,
+              "wilson_lower_95": 0.524230281034417
+            },
+            {
+              "hour_utc": 12,
+              "hour_wib": 19,
+              "n": 35,
+              "reversals": 22,
+              "invalidations": 12,
+              "unresolved": 1,
+              "probability": 0.6285714285714286,
+              "wilson_lower_95": 0.4633664048802107
+            },
+            {
+              "hour_utc": 13,
+              "hour_wib": 20,
+              "n": 63,
+              "reversals": 51,
+              "invalidations": 12,
+              "unresolved": 0,
+              "probability": 0.8095238095238095,
+              "wilson_lower_95": 0.695929795848279
+            },
+            {
+              "hour_utc": 14,
+              "hour_wib": 21,
+              "n": 54,
+              "reversals": 41,
+              "invalidations": 13,
+              "unresolved": 0,
+              "probability": 0.7592592592592593,
+              "wilson_lower_95": 0.6305222087076175
+            },
+            {
+              "hour_utc": 15,
+              "hour_wib": 22,
+              "n": 41,
+              "reversals": 30,
+              "invalidations": 7,
+              "unresolved": 4,
+              "probability": 0.7317073170731707,
+              "wilson_lower_95": 0.5806617472399707
+            },
+            {
+              "hour_utc": 16,
+              "hour_wib": 23,
+              "n": 30,
+              "reversals": 21,
+              "invalidations": 8,
+              "unresolved": 1,
+              "probability": 0.7,
+              "wilson_lower_95": 0.5212387898833981
+            },
+            {
+              "hour_utc": 17,
+              "hour_wib": 0,
+              "n": 22,
+              "reversals": 17,
+              "invalidations": 3,
+              "unresolved": 2,
+              "probability": 0.7727272727272727,
+              "wilson_lower_95": 0.5655964393704065
+            },
+            {
+              "hour_utc": 18,
+              "hour_wib": 1,
+              "n": 25,
+              "reversals": 16,
+              "invalidations": 1,
+              "unresolved": 8,
+              "probability": 0.64,
+              "wilson_lower_95": 0.44518154601046633
+            },
+            {
+              "hour_utc": 19,
+              "hour_wib": 2,
+              "n": 13,
+              "reversals": 9,
+              "invalidations": 4,
+              "unresolved": 0,
+              "probability": 0.6923076923076923,
+              "wilson_lower_95": 0.4236888781333764
+            },
+            {
+              "hour_utc": 20,
+              "hour_wib": 3,
+              "n": 5,
+              "reversals": 2,
+              "invalidations": 2,
+              "unresolved": 1,
+              "probability": 0.4,
+              "wilson_lower_95": 0.11761823115925325
+            },
+            {
+              "hour_utc": 21,
+              "hour_wib": 4,
+              "n": 4,
+              "reversals": 1,
+              "invalidations": 0,
+              "unresolved": 3,
+              "probability": 0.25,
+              "wilson_lower_95": 0.045586062644636216
+            },
+            {
+              "hour_utc": 22,
+              "hour_wib": 5,
+              "n": 2,
+              "reversals": 2,
+              "invalidations": 0,
+              "unresolved": 0,
+              "probability": 1.0,
+              "wilson_lower_95": 0.3423719528896193
+            },
+            {
+              "hour_utc": 23,
+              "hour_wib": 6,
+              "n": 13,
+              "reversals": 10,
+              "invalidations": 2,
+              "unresolved": 1,
+              "probability": 0.7692307692307693,
+              "wilson_lower_95": 0.49743126004873084
+            }
+          ],
+          "all_hours_baseline": {
+            "n": 649,
+            "reversals": 442,
+            "invalidations": 121,
+            "unresolved": 86,
+            "probability": 0.6810477657935285,
+            "wilson_lower_95": 0.6442142511531607
+          }
+        },
+        "holdout": {
+          "hours": [
+            {
+              "hour_utc": 0,
+              "hour_wib": 7,
+              "n": 9,
+              "reversals": 6,
+              "invalidations": 2,
+              "unresolved": 1,
+              "probability": 0.6666666666666666,
+              "wilson_lower_95": 0.35419734749908977
+            },
+            {
+              "hour_utc": 1,
+              "hour_wib": 8,
+              "n": 32,
+              "reversals": 21,
+              "invalidations": 5,
+              "unresolved": 6,
+              "probability": 0.65625,
+              "wilson_lower_95": 0.4831077350878594
+            },
+            {
+              "hour_utc": 2,
+              "hour_wib": 9,
+              "n": 41,
+              "reversals": 29,
+              "invalidations": 7,
+              "unresolved": 5,
+              "probability": 0.7073170731707317,
+              "wilson_lower_95": 0.5552024292386027
+            },
+            {
+              "hour_utc": 3,
+              "hour_wib": 10,
+              "n": 37,
+              "reversals": 19,
+              "invalidations": 8,
+              "unresolved": 10,
+              "probability": 0.5135135135135135,
+              "wilson_lower_95": 0.35894637225980913
+            },
+            {
+              "hour_utc": 4,
+              "hour_wib": 11,
+              "n": 33,
+              "reversals": 21,
+              "invalidations": 6,
+              "unresolved": 6,
+              "probability": 0.6363636363636364,
+              "wilson_lower_95": 0.46615872621534094
+            },
+            {
+              "hour_utc": 5,
+              "hour_wib": 12,
+              "n": 22,
+              "reversals": 16,
+              "invalidations": 4,
+              "unresolved": 2,
+              "probability": 0.7272727272727273,
+              "wilson_lower_95": 0.5184787630099803
+            },
+            {
+              "hour_utc": 6,
+              "hour_wib": 13,
+              "n": 34,
+              "reversals": 24,
+              "invalidations": 2,
+              "unresolved": 8,
+              "probability": 0.7058823529411765,
+              "wilson_lower_95": 0.5383077411853625
+            },
+            {
+              "hour_utc": 7,
+              "hour_wib": 14,
+              "n": 47,
+              "reversals": 29,
+              "invalidations": 11,
+              "unresolved": 7,
+              "probability": 0.6170212765957447,
+              "wilson_lower_95": 0.4742630844397632
+            },
+            {
+              "hour_utc": 8,
+              "hour_wib": 15,
+              "n": 53,
+              "reversals": 29,
+              "invalidations": 10,
+              "unresolved": 14,
+              "probability": 0.5471698113207547,
+              "wilson_lower_95": 0.41453742646439184
+            },
+            {
+              "hour_utc": 9,
+              "hour_wib": 16,
+              "n": 39,
+              "reversals": 23,
+              "invalidations": 5,
+              "unresolved": 11,
+              "probability": 0.5897435897435898,
+              "wilson_lower_95": 0.4341834847334491
+            },
+            {
+              "hour_utc": 10,
+              "hour_wib": 17,
+              "n": 38,
+              "reversals": 33,
+              "invalidations": 3,
+              "unresolved": 2,
+              "probability": 0.868421052631579,
+              "wilson_lower_95": 0.7267282994850113
+            },
+            {
+              "hour_utc": 11,
+              "hour_wib": 18,
+              "n": 35,
+              "reversals": 25,
+              "invalidations": 8,
+              "unresolved": 2,
+              "probability": 0.7142857142857143,
+              "wilson_lower_95": 0.5494475193017891
+            },
+            {
+              "hour_utc": 12,
+              "hour_wib": 19,
+              "n": 33,
+              "reversals": 27,
+              "invalidations": 5,
+              "unresolved": 1,
+              "probability": 0.8181818181818182,
+              "wilson_lower_95": 0.6561143295070478
+            },
+            {
+              "hour_utc": 13,
+              "hour_wib": 20,
+              "n": 69,
+              "reversals": 53,
+              "invalidations": 16,
+              "unresolved": 0,
+              "probability": 0.7681159420289855,
+              "wilson_lower_95": 0.6560292969473013
+            },
+            {
+              "hour_utc": 14,
+              "hour_wib": 21,
+              "n": 87,
+              "reversals": 65,
+              "invalidations": 20,
+              "unresolved": 2,
+              "probability": 0.7471264367816092,
+              "wilson_lower_95": 0.6466822904287989
+            },
+            {
+              "hour_utc": 15,
+              "hour_wib": 22,
+              "n": 53,
+              "reversals": 34,
+              "invalidations": 13,
+              "unresolved": 6,
+              "probability": 0.6415094339622641,
+              "wilson_lower_95": 0.5069089329999881
+            },
+            {
+              "hour_utc": 16,
+              "hour_wib": 23,
+              "n": 39,
+              "reversals": 31,
+              "invalidations": 4,
+              "unresolved": 4,
+              "probability": 0.7948717948717948,
+              "wilson_lower_95": 0.6446572703687137
+            },
+            {
+              "hour_utc": 17,
+              "hour_wib": 0,
+              "n": 31,
+              "reversals": 15,
+              "invalidations": 6,
+              "unresolved": 10,
+              "probability": 0.4838709677419355,
+              "wilson_lower_95": 0.3196998603127883
+            },
+            {
+              "hour_utc": 18,
+              "hour_wib": 1,
+              "n": 30,
+              "reversals": 17,
+              "invalidations": 4,
+              "unresolved": 9,
+              "probability": 0.5666666666666667,
+              "wilson_lower_95": 0.39197009545408734
+            },
+            {
+              "hour_utc": 19,
+              "hour_wib": 2,
+              "n": 15,
+              "reversals": 11,
+              "invalidations": 2,
+              "unresolved": 2,
+              "probability": 0.7333333333333333,
+              "wilson_lower_95": 0.48049110342313245
+            },
+            {
+              "hour_utc": 20,
+              "hour_wib": 3,
+              "n": 6,
+              "reversals": 3,
+              "invalidations": 0,
+              "unresolved": 3,
+              "probability": 0.5,
+              "wilson_lower_95": 0.1876128068994087
+            },
+            {
+              "hour_utc": 21,
+              "hour_wib": 4,
+              "n": 3,
+              "reversals": 0,
+              "invalidations": 0,
+              "unresolved": 3,
+              "probability": 0.0,
+              "wilson_lower_95": 0.0
+            },
+            {
+              "hour_utc": 22,
+              "hour_wib": 5,
+              "n": 2,
+              "reversals": 1,
+              "invalidations": 0,
+              "unresolved": 1,
+              "probability": 0.5,
+              "wilson_lower_95": 0.09452865480086611
+            },
+            {
+              "hour_utc": 23,
+              "hour_wib": 6,
+              "n": 35,
+              "reversals": 25,
+              "invalidations": 8,
+              "unresolved": 2,
+              "probability": 0.7142857142857143,
+              "wilson_lower_95": 0.5494475193017891
+            }
+          ],
+          "all_hours_baseline": {
+            "n": 823,
+            "reversals": 557,
+            "invalidations": 149,
+            "unresolved": 117,
+            "probability": 0.6767922235722965,
+            "wilson_lower_95": 0.6440806005218853
+          }
+        },
+        "best_hour_selected_before_holdout": {
+          "hour_utc": 13,
+          "hour_wib": 20,
+          "n": 63,
+          "reversals": 51,
+          "invalidations": 12,
+          "unresolved": 0,
+          "probability": 0.8095238095238095,
+          "wilson_lower_95": 0.695929795848279
+        },
+        "best_hour_holdout": {
+          "hour_utc": 13,
+          "hour_wib": 20,
+          "n": 69,
+          "reversals": 53,
+          "invalidations": 16,
+          "unresolved": 0,
+          "probability": 0.7681159420289855,
+          "wilson_lower_95": 0.6560292969473013
+        },
+        "holdout_month_block_bootstrap_95": [
+          0.6677852348993288,
+          0.7704929642873728
+        ],
+        "year_metrics": {
+          "2016": {
+            "n": 153,
+            "reversals": 111,
+            "invalidations": 33,
+            "unresolved": 9,
+            "probability": 0.7254901960784313,
+            "wilson_lower_95": 0.6499065559213393
+          },
+          "2017": {
+            "n": 160,
+            "reversals": 121,
+            "invalidations": 29,
+            "unresolved": 10,
+            "probability": 0.75625,
+            "wilson_lower_95": 0.6842247960744506
+          },
+          "2018": {
+            "n": 128,
+            "reversals": 81,
+            "invalidations": 34,
+            "unresolved": 13,
+            "probability": 0.6328125,
+            "wilson_lower_95": 0.546568431638715
+          },
+          "2019": {
+            "n": 146,
+            "reversals": 106,
+            "invalidations": 32,
+            "unresolved": 8,
+            "probability": 0.726027397260274,
+            "wilson_lower_95": 0.6485860417099171
+          },
+          "2020": {
+            "n": 163,
+            "reversals": 116,
+            "invalidations": 35,
+            "unresolved": 12,
+            "probability": 0.7116564417177914,
+            "wilson_lower_95": 0.6378728359967396
+          },
+          "2021": {
+            "n": 154,
+            "reversals": 106,
+            "invalidations": 30,
+            "unresolved": 18,
+            "probability": 0.6883116883116883,
+            "wilson_lower_95": 0.6113232612689152
+          },
+          "2022": {
+            "n": 145,
+            "reversals": 103,
+            "invalidations": 37,
+            "unresolved": 5,
+            "probability": 0.7103448275862069,
+            "wilson_lower_95": 0.6318404606613331
+          },
+          "2023": {
+            "n": 100,
+            "reversals": 79,
+            "invalidations": 18,
+            "unresolved": 3,
+            "probability": 0.79,
+            "wilson_lower_95": 0.7001985069803768
+          },
+          "2024": {
+            "n": 159,
+            "reversals": 116,
+            "invalidations": 31,
+            "unresolved": 12,
+            "probability": 0.7295597484276729,
+            "wilson_lower_95": 0.6557052344442844
+          },
+          "2025": {
+            "n": 153,
+            "reversals": 109,
+            "invalidations": 33,
+            "unresolved": 11,
+            "probability": 0.7124183006535948,
+            "wilson_lower_95": 0.6361854327482541
+          }
+        }
+      },
+      "reaction_size_sensitivity": [
+        {
+          "reaction_atr": 0.5,
+          "n": 312,
+          "reversals": 225,
+          "invalidations": 64,
+          "probability": 0.7211538461538461
+        },
+        {
+          "reaction_atr": 0.75,
+          "n": 312,
+          "reversals": 189,
+          "invalidations": 76,
+          "probability": 0.6057692307692307
+        },
+        {
+          "reaction_atr": 1.0,
+          "n": 312,
+          "reversals": 156,
+          "invalidations": 90,
+          "probability": 0.5
+        },
+        {
+          "reaction_atr": 1.5,
+          "n": 312,
+          "reversals": 114,
+          "invalidations": 96,
+          "probability": 0.36538461538461536
+        },
+        {
+          "reaction_atr": 2.0,
+          "n": 312,
+          "reversals": 79,
+          "invalidations": 102,
+          "probability": 0.2532051282051282
+        }
+      ]
     }
   ],
   "finalists": [
@@ -1631,5 +3433,12 @@
     "Four-hour non-overlap per base; signals across base configurations remain dependent.",
     "Wilson intervals are descriptive, not corrected for 10m selection or serial dependence.",
     "No macro/event conditioning without historical point-in-time provenance."
-  ]
+  ],
+  "verification": {
+    "search_run_id": 38358459137,
+    "initial_search_run_id": 38357252717,
+    "timing_replay_shard_run_id": 38358459232,
+    "local_timing_aggregation_parity": "PASS",
+    "reversal_definition": "0.5 H1 ATR before anchor invalidation 1 ATR within 240 minutes after M5 confirmation"
+  }
 }
