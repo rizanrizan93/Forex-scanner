@@ -28,6 +28,8 @@ def evaluate(raw, result, *, now=None):
         return {**out,"state":"INSUFFICIENT_HISTORY"}
     latest = features.iloc[-1]
     close_time = features.index[-1]
+    if pd.isna(latest.atr) or pd.isna(latest.slope):
+        return {**out,"state":"INSUFFICIENT_HISTORY"}
     if (now-close_time).total_seconds() > 360:
         return {**out,"state":"STALE_M5"}
     winners = result.get("selected_by_side") or [result.get("selected")]

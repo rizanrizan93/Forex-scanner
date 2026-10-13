@@ -66,7 +66,9 @@ def main(output):
                 rows[stamp.isoformat()]={"timestamp":stamp.isoformat(), "low":bar.low/100000.,
                     "open":(bar.low+bar.deltaOpen)/100000.,"high":(bar.low+bar.deltaHigh)/100000.,
                     "close":(bar.low+bar.deltaClose)/100000.}
-            if oldest<=begin or oldest>=end or len(res.trendbar)<1000: break
+            # The backend may return 999 for count=1000. A short page is not
+            # proof that history ended. Continue until range exhausted/empty.
+            if oldest<=begin or oldest>=end: break
             end=oldest-timedelta(milliseconds=1)
             yield deferLater(reactor,.3,lambda:None)  # historical API rate cap
         if not rows: raise RuntimeError("XAU_READ_ONLY_BARS_EMPTY")
