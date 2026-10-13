@@ -15,7 +15,7 @@ class DeploymentTests(unittest.TestCase):
     def test_upgrade_previously_deployed_repair_tool_preserves_local_edits(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder)/'repo'; bridge=root/'cbot_bridge'; bridge.mkdir(parents=True)
-            for name in (*module.PRODUCTION,'selftest.py','test_durable.py','test_protocol.py'):
+            for name in (*(name for name in module.PRODUCTION if name != 'repair_legacy_eur_timestamps.py'),'selftest.py','test_durable.py','test_protocol.py'):
                 (bridge/name).write_bytes(subprocess.check_output(['git','show','c7778659:cbot_bridge/'+name],cwd=REPO))
             with (bridge/'repair_legacy_xau_timestamps.py').open('a') as stream:
                 stream.write('\n# KEEP_LOCAL_DIAGNOSTIC\n')
@@ -23,6 +23,15 @@ class DeploymentTests(unittest.TestCase):
             code=(out/'cbot_bridge/repair_legacy_xau_timestamps.py').read_text()
             self.assertIn('KEEP_LOCAL_DIAGNOSTIC',code)
             self.assertIn('LEGACY_MODEL="XAU_LEGACY_CORE_V1"',code)
+
+    def test_eur_checkpoint_repair_scope_is_exact_schema_model_and_hash(self):
+        state={'Schema':2,'ContractHash':'4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976',
+               'ExecutionModel':'EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1'}
+        self.assertEqual(module.checkpoint_repair_for('RZEU4B:1:EURUSD',state),
+                         ('repair_legacy_eur_timestamps.py','EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1'))
+        self.assertIsNone(module.checkpoint_repair_for('RZEU4B:1:EURUSD',{**state,'Schema':1}))
+        self.assertIsNone(module.checkpoint_repair_for('RZEU4B:1:EURUSD',{**state,'ExecutionModel':'OLD'}))
+        self.assertIsNone(module.checkpoint_repair_for('RZEU4B:1:EURUSD',{**state,'ContractHash':'other'}))
 
     def test_legacy_repair_provenance_does_not_accept_other_hash_or_model(self):
         legacy={'ContractHash':module.MODEL_HASH,'Schema':1}

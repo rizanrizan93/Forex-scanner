@@ -15,7 +15,8 @@ import time
 
 ROOT = Path('/home/Rizanrizan/Forex-scanner')
 UNIT = 'rizan-cbot-bridge.service'
-PRODUCTION = ('server.py', 'feeds.py', 'timestamps.py', 'repair_legacy_xau_timestamps.py')
+PRODUCTION = ('server.py', 'feeds.py', 'timestamps.py', 'repair_legacy_xau_timestamps.py',
+              'repair_legacy_eur_timestamps.py')
 MODEL_HASH = '7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf'
 MODELS = {'XAU_BATCH_STAGE_FIXED_REF_WAL_V1', 'XAU_BATCH_SEND_REF_COOLDOWN_V1'}
 PRIOR_NEW_FILE_BASES = {'cbot_bridge/repair_legacy_xau_timestamps.py':
@@ -31,6 +32,17 @@ def repair_model_for(state):
         return model
     if model in (None, '') and state.get('Schema') == 1:
         return 'XAU_LEGACY_CORE_V1'
+    return None
+
+
+def checkpoint_repair_for(key, state):
+    if key.startswith('RZXA1:'):
+        model = repair_model_for(state)
+        return ('repair_legacy_xau_timestamps.py', model) if model else None
+    if (key.startswith('RZEU4B:') and state.get('Schema') == 2
+            and state.get('ContractHash') == '4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976'
+            and state.get('ExecutionModel') == 'EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1'):
+        return ('repair_legacy_eur_timestamps.py', 'EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1')
     return None
 
 
@@ -225,18 +237,19 @@ def run(mode, patch, release_sha):
             database_backed_up = True
             rows = source.execute('SELECT key,state FROM checkpoints').fetchall()
             source.close()
-            repair_file = bridge / 'repair_legacy_xau_timestamps.py'
             count = 0
             for key, raw in rows:
-                if not key.startswith('RZXA1:'):
+                if not key.startswith(('RZXA1:', 'RZEU4B:')):
                     continue
                 state = json.loads(raw)
-                model = repair_model_for(state)
-                if model is None:
+                selected = checkpoint_repair_for(key, state)
+                if selected is None:
                     # Historical accounts/releases must remain untouched. This
                     # does not relax the server's timestamp or identity guards.
                     print('CHECKPOINT_UNVERIFIED_SOURCE_LEFT_UNCHANGED', flush=True)
                     continue
+                filename, model = selected
+                repair_file = bridge / filename
                 repaired = command([str(python), str(repair_file), str(database), '--key', key,
                                     '--execution-model', model, '--apply', '--confirm-legacy-utc-producer'], env=runtime)
                 try:
@@ -271,6 +284,13 @@ async def run():
     pong=json.loads(await asyncio.wait_for(ws.recv(),15))
     if pong['type']=='snapshot':validate_timestamps(pong);continue
     assert pong['type']=='pong';validate_timestamps(pong);break
+ hello.update(key='RZEU4B:1:EURUSD',contract='4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976',lease=uuid.uuid4().hex)
+ for cycle in range(2):
+  async with connect('wss://rizan-bridge.duckdns.org:25345/',open_timeout=15) as ws:
+   await ws.send(json.dumps(hello))
+   ready=json.loads(await asyncio.wait_for(ws.recv(),15));assert ready['type']=='ready';validate_timestamps(ready)
+   await ws.send('{"type":"ping"}')
+   pong=json.loads(await asyncio.wait_for(ws.recv(),15));assert pong['type']=='pong';validate_timestamps(pong)
 asyncio.run(run())
 '''
             command([str(python), '-c', probe], cwd=ROOT / 'cbot_bridge', env=runtime, timeout=240)
@@ -279,6 +299,7 @@ asyncio.run(run())
             (backup / 'deployed.json').write_text(json.dumps({'sha': release_sha, 'files': manifest}))
             print('DEPLOY_PASS unit=' + UNIT + ' sha=' + release_sha, flush=True)
             print('WSS_AUTH_TIMESTAMP_HEARTBEAT_RECONNECT_PASS synthetic_only no_orders no_checkpoint_save', flush=True)
+            print('WSS_EUR_AUTH_TIMESTAMP_HEARTBEAT_RECONNECT_PASS synthetic_only no_orders no_checkpoint_save', flush=True)
             print('BACKUP_DIRECTORY=' + str(backup), flush=True)
         except Exception:
             if stopped:

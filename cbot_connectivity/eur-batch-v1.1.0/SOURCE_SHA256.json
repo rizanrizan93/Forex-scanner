@@ -1,0 +1,16 @@
+{
+  "compiled/RizanEURBatch_v1.1.0.algo": "ade77a372309c3ab513ed2e5f32741caf4ebd13652b2f9a044e4225d18f89274",
+  "replay/Program.cs": "3b19b9ae8018a65523a9e8474483ac11aa59b4937939c34aadb2ba346818a78a",
+  "replay/Global.cs": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+  "replay/Replay.csproj": "2307bcfb4881713950a243801884da84cccdd923640fc56ca23ee8e44d26d957",
+  "Common/RizanRobot.cs": "29e8704f5c1505b4044a1088b720ab3468ce445a39bbcf3eaa60f292fe1a9387",
+  "Common/EurBatchExecution.cs": "ce45b7ddaa9db914000cbd1d53622f3ec4f1335b6db8da97a2cd3095321dc9da",
+  "Common/FrozenCore.cs": "cec9efaa38cbe8754aeefa3166815110dc363eda2a103a35274a014c8958f22d",
+  "tests/RuntimeTests.csproj": "44df872cd100ae5107c90e59667d1c381a63d74fb8f9751f684896f3e6279030",
+  "tests/PlannerTests.cs": "444fcfe3b38cd06fd5f2ce81ad96b61b0369e6e8573133d4c4bb3f20a151d4f2",
+  "tests/RuntimeTests.cs": "fdbdbcab032aa9c55c5e52bd5954390d7b7e7760dfee2cf004eb309304da7f0b",
+  "tests/PlannerTests.csproj": "74dd925ffe9d607ee730818831b9fbe715f0ca99cf021f63c679ce5aa6d6b9af",
+  "tests/ApiStubs.cs": "87b9d3a2273337c1c7e99cfda18aaab7321ef1f6f9531ae85296bff73d52d1ca",
+  "RizanEURBatch/RizanEURBatch/RizanEURBatch.cs": "96e63461185c6a8566df43cc03007f0a15a64dea41b2e37c41a0853bedecd1b6",
+  "RizanEURBatch/RizanEURBatch/RizanEURBatch.csproj": "1173e3e12f4729546a08f17d78cd070b00fa36e2f08f00fff7a8c047b548fd6c"
+}

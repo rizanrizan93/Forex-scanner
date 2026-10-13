@@ -7,6 +7,38 @@ from server import Store
 from selftest import state
 
 class TimestampTests(unittest.TestCase):
+    def test_eur_repair_preserves_batch_intent_quarantine_and_lost_ack(self):
+        import subprocess,sys,json,hashlib
+        from repair_legacy_eur_timestamps import encoded
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'eur.db';store=Store(path);key='RZEU4B:1:EURUSD';lease='b'*32
+            store.acquire(key,lease);s=state('RZEU4B',1,'EURUSD',1)
+            s.update(LastSignalUtc='0001-01-01T00:00:00Z',XauDay='0001-01-01T00:00:00Z',
+                     PendingLabel='KEEP_INTENT',PendingChildren=7,PendingFirstFill=True,
+                     Quarantined=True,QuarantineReason='BRIDGE_TIMESTAMP_OFFSET_REQUIRED')
+            store.save(key,lease,0,1,s)
+            bad=json.loads(json.dumps(s))
+            bad['LastSignalUtc']=bad['LastSignalUtc'][:-1];bad['XauDay']=bad['XauDay'][:-1]
+            raw=encoded(bad)
+            with store.db:
+                store.db.execute('UPDATE checkpoints SET state=? WHERE key=?',(raw,key))
+                store.db.execute('UPDATE checkpoint_receipts SET digest=? WHERE key=?',
+                                 (hashlib.sha256(raw.encode()).hexdigest(),key))
+            tool=Path(__file__).with_name('repair_legacy_eur_timestamps.py')
+            args=[sys.executable,str(tool),str(path),'--key',key]
+            subprocess.run(args,check=True,capture_output=True)
+            self.assertEqual(store.db.execute('SELECT state FROM checkpoints WHERE key=?',(key,)).fetchone()[0],raw)
+            subprocess.run(args+['--apply','--confirm-legacy-utc-producer'],check=True,capture_output=True)
+            version,repaired=store.acquire(key,lease)
+            self.assertEqual((version,repaired),(1,s))
+            self.assertEqual(store.save(key,lease,0,1,s),1)
+            # Wrong symbol/account key must fail before mutation.
+            wrong=subprocess.run([sys.executable,str(tool),str(path),'--key','RZEU4B:2:EURUSD',
+                                  '--apply','--confirm-legacy-utc-producer'],capture_output=True)
+            self.assertNotEqual(wrong.returncode,0)
+            self.assertEqual(store.acquire(key,lease),(1,s))
+            store.db.close()
+
     def test_legacy_missing_model_repair_preserves_model_revision_and_lost_ack(self):
         import subprocess
         import sys
