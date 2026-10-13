@@ -32,8 +32,11 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                 if tab.open:
                     with tab:
                         if path is None:
-                            from fx_scanner.reversal_dashboard import render_reversal_dashboard
-                            render_reversal_dashboard()
+                            from fx_scanner.major_reversal_dashboard import render_major_reversal_dashboard
+                            render_major_reversal_dashboard()
+                            with st.expander('Arsip riset pantulan kecil 0,5 ATR · bukan reversal utama',expanded=False):
+                                from fx_scanner.reversal_dashboard import render_reversal_dashboard
+                                render_reversal_dashboard()
                         else:
                             if label == "Setup":
                                 from fx_scanner.selected_raw_reference_dashboard import render_selected_raw_reference

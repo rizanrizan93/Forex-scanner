@@ -1,0 +1,90 @@
+import importlib.util
+from pathlib import Path
+import numpy as np
+import pandas as pd
+from fx_scanner.major_reversal import CONFIGURATIONS,features,events,MIN_RR
+from fx_scanner.reversal_zones import normalize_bars
+
+spec=importlib.util.spec_from_file_location('major_research',Path(__file__).parents[1]/'scripts/research_major_reversal.py')
+research=importlib.util.module_from_spec(spec);spec.loader.exec_module(research)
+
+
+def fixture():
+    t=pd.date_range('2020-01-01',periods=45*1440,freq='min',tz='UTC')
+    rng=np.random.default_rng(77);c=1500+np.cumsum(rng.normal(0,.15,len(t)));o=np.r_[c[0],c[:-1]]
+    return pd.DataFrame(dict(timestamp=t,open=o,high=np.maximum(o,c)+.1,low=np.minimum(o,c)-.1,close=c))
+
+
+def run(high=105.,low=100.,close=100.,adr=10.,side=1):
+    times=np.arange(12*3600,21*3600,60,dtype=np.int64)
+    return research.simulate(times,np.full(len(times),100.),np.full(len(times),high),np.full(len(times),low),
+        np.full(len(times),close),np.array([0]),np.array([100.]),np.array([3.]),np.array([adr]),side)
+
+
+def test_grid_is_10_million_targets_at_least_one_atr():
+    assert CONFIGURATIONS==10_000_000
+    assert research.GRID['reaction_atr'][0]==1. and research.GRID['reaction_atr'][-1]==3.
+
+
+def test_minimum_daily_move_and_net_reward_risk_guards():
+    r,s,risk=run(adr=100.)
+    assert np.all(s==-9)  # largest 9-point target < quarter 100 ADR
+    r,s,risk=run()
+    for si in range(5):
+        for ti in range(5):
+            if (s[0,si,ti,0]!=-9).any():
+                move=research.GRID['reaction_atr'][ti]*3
+                stress_risk=research.GRID['invalidation_atr'][si]*3+1.2
+                assert (move-.2)/stress_risk>=MIN_RR
+
+
+def test_spread_and_slippage_change_net_fills():
+    r,s,risk=run(high=120.)
+    # A large target, tight stop and enough bar high resolve in all scenarios.
+    assert np.all(s[0,0,4,0]==1)
+    assert r[0,0,4,0,0]>r[0,0,4,0,1]>r[0,0,4,0,2]
+
+
+def test_stop_first_ambiguity_and_gap_fill():
+    r,s,_=run(high=120.,low=90.)
+    assert np.all(s[0,0,4,0]==-1)
+    assert np.all(r[0,0,4,0]<-1.)  # exit slip charged, no optimistic exact -1R
+
+
+def test_timeout_closes_mark_to_market_instead_of_counting_loss():
+    r,s,_=run(high=100.2,low=99.9,close=100.1)
+    assert np.all(s[0,1,4,0]==0)
+    assert not np.isclose(r[0,1,4,0,1],-1.)
+    assert r[0,1,4,0,1]<0  # small favorable bid move still loses after costs
+
+
+def test_future_d1_m15_h1_features_cannot_change_prefix():
+    f=fixture();cut=pd.Timestamp('2020-02-10T12:00Z')
+    a=features(normalize_bars(f))
+    changed=f.copy();changed.loc[changed.timestamp>=cut,['open','high','low','close']]+=1000
+    b=features(normalize_bars(changed))
+    pd.testing.assert_frame_equal(a.loc[:cut],b.loc[:cut])
+
+
+def test_major_observations_nonoverlap_and_m15_confirmation():
+    f=features(normalize_bars(fixture()))
+    for side in [1,-1]:
+        e=events(f,side,12,.5)
+        assert np.all(np.diff(e.index.asi8)>=480*60*10**9)
+        assert np.all(side*f.loc[e.index,'m15_body']>0)
+        assert np.all(e.adr20>0)
+
+
+def test_drawdown_uses_chronological_net_r():
+    rr=[2.,-1.,-1.,3.]
+    rows=[dict(r_cautious=r,r_stress=r-.1,r_reference=r+.1,status=1 if r>0 else -1,
+               risk_points=2.,target_points=4.) for r in rr]
+    m=research.ledger_metrics(rows)
+    assert m['max_drawdown_r']==2.
+    assert m['profit_factor']==2.5
+    assert m['mean_net_r']==.75
+
+
+def test_execution_code_not_imported():
+    text=(Path(__file__).parents[1]/'scripts/research_major_reversal.py').read_text()
+    assert '.execution' not in text and 'cbot_bridge' not in text
