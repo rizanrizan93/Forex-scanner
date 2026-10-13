@@ -54,8 +54,10 @@ def simulate(times,opens,high,low,close,starts,level,atr,adr,side):
                         state=-9;exit_price=0.
                         for j in range(begin,len(times)):
                             if times[j]>=end:
-                                if j>begin and times[j-1]>=end-300:
-                                    exit_price=close[j-1]+(spreads[ci] if side==-1 else 0.)-side*slips[ci]
+                                if times[j]==end:
+                                    # Market exit uses the actual deadline bar
+                                    # open; never a several-minute-old close.
+                                    exit_price=opens[j]+(spreads[ci] if side==-1 else 0.)-side*slips[ci]
                                     state=0
                                 break
                             if times[j]-prev>300: break

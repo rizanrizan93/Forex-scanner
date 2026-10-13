@@ -56,6 +56,7 @@ def test_timeout_closes_mark_to_market_instead_of_counting_loss():
     assert np.all(s[0,1,4,0]==0)
     assert not np.isclose(r[0,1,4,0,1],-1.)
     assert r[0,1,4,0,1]<0  # small favorable bid move still loses after costs
+    assert np.isclose(r[0,1,4,0,1],-.7/(.75*3+.6))
 
 
 def test_future_d1_m15_h1_features_cannot_change_prefix():
