@@ -74,5 +74,5 @@ jobs:
           [[ "$remote_dir" =~ ^/tmp/rizan-bridge-deploy\.[a-zA-Z0-9]+$ ]] || { echo 'REMOTE_TEMP_INVALID'; exit 1; }
           cleanup_remote() { ssh "${ssh_options[@]}" "$target" "rm -rf -- '$remote_dir'" > /dev/null 2>&1 || true; }
           trap 'cleanup_remote; rm -rf "$ssh_dir"' EXIT
-          scp "${ssh_options[@]}" deployment/deploy_bridge.py deployment/bridge-connectivity.patch "$target:$remote_dir/"
+          scp "${ssh_options[@]}" deployment/deploy_bridge.py deployment/bridge-connectivity.patch deployment/patch-bases.json "$target:$remote_dir/"
           ssh "${ssh_options[@]}" "$target" "python3 '$remote_dir/deploy_bridge.py' --mode '$DEPLOY_MODE' --sha '$DEPLOY_SHA' --patch '$remote_dir/bridge-connectivity.patch'"

@@ -12,6 +12,36 @@ REPO = Path(__file__).resolve().parents[1]
 PATCH = REPO / 'deployment/bridge-connectivity.patch'
 
 class DeploymentTests(unittest.TestCase):
+    def test_partial_fix_merges_without_losing_local_changes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / 'repo'
+            bridge = root / 'cbot_bridge'
+            bridge.mkdir(parents=True)
+            for name in ('server.py', 'feeds.py', 'selftest.py', 'test_durable.py', 'test_protocol.py'):
+                (bridge / name).write_bytes(subprocess.check_output(['git', 'show', 'a25ffbeb:cbot_bridge/' + name], cwd=REPO))
+            server = bridge / 'server.py'
+            # Earlier VPS fix overlaps the import hunk, but agrees with upstream.
+            server.write_text(server.read_text().replace('import time\n', 'import time\nfrom datetime import datetime, timezone\n') + '\n# PRESERVE_LOCAL_FIX\n')
+            out = Path(folder) / 'out'
+            self.assertEqual(module.candidate(root, out, PATCH), 'PATCH_THREE_WAY_MERGED_LOCAL_CHANGES_PRESERVED')
+            merged = (out / 'cbot_bridge/server.py').read_text()
+            self.assertIn('PRESERVE_LOCAL_FIX', merged)
+            self.assertIn('validate_timestamps(request)', merged)
+            self.assertEqual(merged.count('\nfrom datetime import datetime, timezone\n'), 1)
+            self.assertNotIn('<<<<<<<', merged)
+
+    def test_mixed_already_patched_files_are_idempotent(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / 'repo'
+            bridge = root / 'cbot_bridge'
+            bridge.mkdir(parents=True)
+            for name in ('server.py', 'feeds.py', 'selftest.py', 'test_durable.py', 'test_protocol.py'):
+                (bridge / name).write_bytes(subprocess.check_output(['git', 'show', 'a25ffbeb:cbot_bridge/' + name], cwd=REPO))
+            (bridge / 'feeds.py').write_bytes((REPO / 'cbot_bridge/feeds.py').read_bytes())
+            out = Path(folder) / 'out'
+            self.assertEqual(module.candidate(root, out, PATCH), 'PATCH_THREE_WAY_MERGED_LOCAL_CHANGES_PRESERVED')
+            self.assertEqual((out / 'cbot_bridge/feeds.py').read_bytes(), (REPO / 'cbot_bridge/feeds.py').read_bytes())
+
     def test_preserves_unrelated_local_modifications_and_is_idempotent(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder) / 'repo'

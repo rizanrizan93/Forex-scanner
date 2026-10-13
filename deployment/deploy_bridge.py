@@ -60,7 +60,46 @@ def candidate(root, destination, patch):
         return 'PATCH_APPLIED_TO_CANDIDATE'
     if command(['git', 'apply', '--reverse', '--check', str(patch)], cwd=destination, check=False).returncode == 0:
         return 'PATCH_ALREADY_PRESENT'
-    raise RuntimeError('LOCAL_BRIDGE_PATCH_CONFLICT_NO_CHANGE')
+    # Merge partial fixes in the private candidate using verified original blobs.
+    base_file = patch.with_name('patch-bases.json')
+    if not base_file.is_file():
+        raise RuntimeError('LOCAL_BRIDGE_PATCH_CONFLICT_NO_CHANGE')
+    bases = json.loads(base_file.read_text())
+    for block in re.split(r'(?=^diff --git )', patch.read_text(), flags=re.M):
+        if not block.strip():
+            continue
+        path = re.search(r'^diff --git a/(\S+) b/\S+', block, re.M)[1]
+        target = destination / path
+        with tempfile.TemporaryDirectory(prefix='bridge-merge-') as folder:
+            work = Path(folder)
+            part = work / 'part.patch'
+            part.write_text(block)
+            if command(['git', 'apply', '--reverse', '--check', str(part)], cwd=destination, check=False).returncode == 0:
+                continue
+            old_hash = re.search(r'^index ([a-f0-9]+)\.\.', block, re.M)[1]
+            if set(old_hash) == {'0'}:
+                if command(['git', 'apply', '--check', str(part)], cwd=destination, check=False).returncode:
+                    raise RuntimeError('LOCAL_BRIDGE_PATCH_CONFLICT_NO_CHANGE:' + target.name)
+                command(['git', 'apply', str(part)], cwd=destination)
+                continue
+            base = bases.get(path)
+            if base is None:
+                raise RuntimeError('LOCAL_BRIDGE_PATCH_CONFLICT_NO_CHANGE:' + target.name)
+            raw = base.encode()
+            digest = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+            if not digest.startswith(old_hash):
+                raise RuntimeError('PATCH_BASE_HASH_INVALID')
+            upstream = work / path
+            upstream.parent.mkdir(parents=True)
+            upstream.write_text(base)
+            command(['git', 'apply', str(part)], cwd=work)
+            original = work / 'original'
+            original.write_text(base)
+            merged = command(['git', 'merge-file', '-p', str(target), str(original), str(upstream)], cwd=work, check=False)
+            if merged.returncode:
+                raise RuntimeError('LOCAL_BRIDGE_PATCH_CONFLICT_NO_CHANGE:' + target.name)
+            target.write_text(merged.stdout)
+    return 'PATCH_THREE_WAY_MERGED_LOCAL_CHANGES_PRESERVED'
 
 
 def atomic_copy(source, target):
