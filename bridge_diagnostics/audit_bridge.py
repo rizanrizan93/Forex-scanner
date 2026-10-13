@@ -1,0 +1,86 @@
+"""Read-only bridge diagnostics: identifiers only, no credentials or state bodies."""
+import json
+from pathlib import Path
+import re
+import shlex
+import sqlite3
+import time
+from datetime import datetime
+from deploy_bridge import ROOT, UNIT, MODEL_HASH, MODELS, command, prop, parse_env
+
+
+def safe_identifier(value):
+    return value if isinstance(value, str) and re.fullmatch(r'[A-Z0-9_]{1,100}', value) else 'ABSENT_OR_UNRECOGNIZED'
+
+
+def time_fields(value, path=''):
+    result = []
+    if isinstance(value, dict):
+        for name, item in value.items():
+            child = path + '.' + name if path else name
+            if name.lower().endswith('utc') or name == 'XauDay':
+                if isinstance(item, str):
+                    try:
+                        aware = datetime.fromisoformat(item.replace('Z', '+00:00')).utcoffset() is not None
+                    except ValueError:
+                        aware = False
+                    if not aware and re.fullmatch(r'[A-Za-z0-9_.\[\]]{1,150}', child):
+                        result.append(child)
+            else:
+                result.extend(time_fields(item, child))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            result.extend(time_fields(item, path + '[' + str(index) + ']'))
+    return result
+
+
+def run():
+    environment = {}
+    for setting in shlex.split(prop('Environment')):
+        key, sep, value = setting.partition('=')
+        if sep:
+            environment[key] = value
+    for path in re.findall(r'(\S+) \(ignore_errors=(?:yes|no)\)', prop('EnvironmentFiles')):
+        environment.update(parse_env(Path(path).read_text()))
+    active = command(['systemctl', 'is-active', '--quiet', UNIT], check=False).returncode == 0
+    print('BRIDGE_AUDIT_SERVICE_ACTIVE=' + str(active), flush=True)
+    database = Path(environment.get('RIZAN_STATE_DB', 'state/rizan-checkpoints.sqlite'))
+    if not database.is_absolute():
+        database = ROOT / database
+    db = sqlite3.connect(database.resolve().as_uri() + '?mode=ro', uri=True)
+    for key, version, raw in db.execute('SELECT key,version,state FROM checkpoints'):
+        if not key.startswith('RZXA1:'):
+            continue
+        state = json.loads(raw)
+        account = key.split(':')[1]
+        model = state.get('ExecutionModel')
+        result = {'account_suffix': account[-4:], 'server_revision': version,
+                  'state_revision': state.get('Revision'), 'schema': state.get('Schema'),
+                  'hash_match': state.get('ContractHash') == MODEL_HASH,
+                  'model': safe_identifier(model), 'verified_repair_model': model in MODELS,
+                  'quarantined': state.get('Quarantined'),
+                  'quarantine_reason': safe_identifier(state.get('QuarantineReason')),
+                  'invalid_time_fields': time_fields(state)}
+        print('BRIDGE_AUDIT_CHECKPOINT=' + json.dumps(result), flush=True)
+    for key, expires in db.execute('SELECT key,expires_at FROM bridge_leases'):
+        if key.startswith('RZXA1:'):
+            print('BRIDGE_AUDIT_LEASE=' + json.dumps({'account_suffix': key.split(':')[1][-4:],
+                                                     'remaining_seconds': round(expires - time.time(), 1)}), flush=True)
+    db.close()
+    health = Path(environment.get('RIZAN_HEALTH_PATH', 'state/cbot_bridge_health.json'))
+    if not health.is_absolute():
+        health = ROOT / health
+    if health.is_file():
+        status = json.loads(health.read_text())
+        stream = status.get('streams', {}).get('XAUUSD', {})
+        print('BRIDGE_AUDIT_HEALTH=' + json.dumps({name: stream.get(name) for name in
+              ('connected', 'macro_event_ready', 'checkpoint_revision', 'last_checkpoint_at_unix')}), flush=True)
+    print('BRIDGE_AUDIT_READ_ONLY_COMPLETE', flush=True)
+
+
+if __name__ == '__main__':
+    try:
+        run()
+    except Exception as exc:
+        print('BRIDGE_AUDIT_FAILED:' + type(exc).__name__, flush=True)
+        raise SystemExit(1)
