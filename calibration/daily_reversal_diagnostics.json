@@ -1,0 +1,167 @@
+{
+  "contract": "RIZAN_XAU_DAILY_ANCHOR_REVERSAL_NET_V1",
+  "source_run": 38384475679,
+  "cumulative_gates": [
+    {
+      "gate": "train_n_ge_180",
+      "remaining_tuples": 313051,
+      "buy": 114051,
+      "sell": 199000
+    },
+    {
+      "gate": "validation_n_ge_60",
+      "remaining_tuples": 313051,
+      "buy": 114051,
+      "sell": 199000
+    },
+    {
+      "gate": "train_net_positive",
+      "remaining_tuples": 4623,
+      "buy": 4622,
+      "sell": 1
+    },
+    {
+      "gate": "train_pf_ge_1_15",
+      "remaining_tuples": 317,
+      "buy": 317,
+      "sell": 0
+    },
+    {
+      "gate": "validation_pf_ge_1_2",
+      "remaining_tuples": 0,
+      "buy": 0,
+      "sell": 0
+    },
+    {
+      "gate": "validation_stress_positive",
+      "remaining_tuples": 0,
+      "buy": 0,
+      "sell": 0
+    },
+    {
+      "gate": "validation_mean_lcb_positive",
+      "remaining_tuples": 0,
+      "buy": 0,
+      "sell": 0
+    },
+    {
+      "gate": "train_positive_years_ge_5",
+      "remaining_tuples": 0,
+      "buy": 0,
+      "sell": 0
+    },
+    {
+      "gate": "validation_positive_years_ge_3",
+      "remaining_tuples": 0,
+      "buy": 0,
+      "sell": 0
+    },
+    {
+      "gate": "train_censor_le_2pct",
+      "remaining_tuples": 0,
+      "buy": 0,
+      "sell": 0
+    },
+    {
+      "gate": "validation_censor_le_2pct",
+      "remaining_tuples": 0,
+      "buy": 0,
+      "sell": 0
+    }
+  ],
+  "interpretation": "Parameter tuples are not independent strategies. Zero qualifying tuples is not proof all lose money.",
+  "diagnostic_examples": [
+    {
+      "config": {
+        "side": 1,
+        "zone_source": "ASIA_00_06",
+        "sweep_depth_atr": 0.05,
+        "stop_extension_atr": 0.2,
+        "target_adr_fraction": 1,
+        "horizon_minutes": 480,
+        "wick_fraction": 0.5,
+        "trend": "ANY",
+        "approach_atr": 0,
+        "min_net_rr": 2,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 232,
+        "net_r_sum": -46.26459330320358,
+        "mean_net_r": -0.19941635044484302,
+        "profit_factor": 0.7434970864687326,
+        "mean_stress_r": -0.3860350066217883,
+        "censored": 1,
+        "censored_fraction": 0.004291845493562232
+      },
+      "validation": {
+        "n": 131,
+        "net_r_sum": 53.57334804534912,
+        "mean_net_r": 0.40895685530800857,
+        "profit_factor": 1.6149588111585957,
+        "mean_stress_r": 0.21115927659828243,
+        "censored": 12,
+        "censored_fraction": 0.08391608391608392
+      },
+      "validation_lcb_mean_r": -0.03506063955990235,
+      "train_positive_years": 1,
+      "validation_positive_years": 3,
+      "failed_gates": [
+        "train_net_positive",
+        "train_pf_ge_1_15",
+        "validation_mean_lcb_positive",
+        "train_positive_years_ge_5",
+        "validation_censor_le_2pct"
+      ],
+      "status": "REJECTED_DESCRIPTIVE_EXAMPLE_NOT_VALIDATED"
+    },
+    {
+      "config": {
+        "side": -1,
+        "zone_source": "PREV_2D",
+        "sweep_depth_atr": 0.1,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.75,
+        "horizon_minutes": 120,
+        "wick_fraction": 0,
+        "trend": "ANY",
+        "approach_atr": 0.25,
+        "min_net_rr": 3,
+        "session_utc": 12
+      },
+      "train": {
+        "n": 205,
+        "net_r_sum": -81.45364761352539,
+        "mean_net_r": -0.3973348664074409,
+        "profit_factor": 0.4380251201176209,
+        "mean_stress_r": -0.6202664677689715,
+        "censored": 0,
+        "censored_fraction": 0
+      },
+      "validation": {
+        "n": 143,
+        "net_r_sum": 7.005956649780273,
+        "mean_net_r": 0.0489927038446173,
+        "profit_factor": 1.0902163595913068,
+        "mean_stress_r": -0.14583606236464494,
+        "censored": 10,
+        "censored_fraction": 0.06535947712418301
+      },
+      "validation_lcb_mean_r": -0.1843394701855894,
+      "train_positive_years": 1,
+      "validation_positive_years": 2,
+      "failed_gates": [
+        "train_net_positive",
+        "train_pf_ge_1_15",
+        "validation_pf_ge_1_2",
+        "validation_stress_positive",
+        "validation_mean_lcb_positive",
+        "train_positive_years_ge_5",
+        "validation_positive_years_ge_3",
+        "validation_censor_le_2pct"
+      ],
+      "status": "REJECTED_DESCRIPTIVE_EXAMPLE_NOT_VALIDATED"
+    }
+  ]
+}
+

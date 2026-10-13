@@ -1,0 +1,170 @@
+name: XAU Structural Reversal Net Research
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - src/fx_scanner/structural_reversal.py
+      - scripts/research_structural_reversal.py
+      - tests/test_structural_reversal.py
+      - .github/workflows/research-structural-reversal.yml
+permissions:
+  contents: read
+concurrency:
+  group: xau-structural-net-research
+  cancel-in-progress: false
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==2.2.6 pandas==2.2.3 numba==0.63.1 pytest==9.0.2
+      - run: PYTHONPATH=src pytest -q tests/test_structural_reversal.py tests/test_daily_reversal.py tests/test_major_reversal.py tests/test_reversal_10m.py
+  year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2016,2017,2018,2019,2020,2021,2022,2023,2024,2025]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          pip install numpy==2.2.6 pandas==2.2.3 numba==0.63.1
+          pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/reversal-data
+          key: xau-histdata-fixed-est-${{ matrix.year }}-v1
+      - name: Verify historical source or fetch
+        env:
+          XAU_V193_YEAR: ${{ matrix.year }}
+          XAU_V193_PRICE_CSV: /tmp/reversal-data/year-${{ matrix.year }}.csv
+          XAU_V193_PRICE_PROVENANCE: /tmp/reversal-data/provenance-${{ matrix.year }}.json
+        run: |
+          if [ ! -f "$XAU_V193_PRICE_CSV" ]; then PYTHONPATH=src python -m fx_scanner.research_xau_histdata_download_v193; fi
+          python - <<'PY'
+          import json,os,hashlib
+          from pathlib import Path
+          p=json.loads(Path(os.environ['XAU_V193_PRICE_PROVENANCE']).read_text())
+          assert not p['failed_periods']
+          assert hashlib.sha256(Path(os.environ['XAU_V193_PRICE_CSV']).read_bytes()).hexdigest()==p['normalized_csv_sha256']
+          PY
+      - run: python scripts/research_structural_reversal.py --csv /tmp/reversal-data/year-${{ matrix.year }}.csv --year ${{ matrix.year }} --output artifacts/structural-${{ matrix.year }}.npz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: structural-${{ matrix.year }}
+          path: artifacts/structural-*
+          if-no-files-found: error
+          retention-days: 30
+  lock:
+    needs: year
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==2.2.6 pandas==2.2.3 numba==0.63.1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: structural-*
+          path: /tmp/structural-shards
+      - run: python scripts/research_structural_reversal.py --shards /tmp/structural-shards --output artifacts/structural_candidates_locked.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: structural-candidates-locked
+          path: artifacts/structural_candidates_locked.json
+          retention-days: 90
+          if-no-files-found: error
+  ledger:
+    needs: lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          pip install numpy==2.2.6 pandas==2.2.3 numba==0.63.1
+          pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - uses: actions/download-artifact@v4
+        with:
+          name: structural-candidates-locked
+          path: /tmp/locked
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/reversal-data
+          key: xau-histdata-fixed-est-${{ matrix.year }}-v1
+      - name: Fetch only after candidate lock
+        env:
+          XAU_V193_YEAR: ${{ matrix.year }}
+          XAU_V193_PRICE_CSV: /tmp/reversal-data/year-${{ matrix.year }}.csv
+          XAU_V193_PRICE_PROVENANCE: /tmp/reversal-data/provenance-${{ matrix.year }}.json
+        run: |
+          if [ ! -f "$XAU_V193_PRICE_CSV" ]; then PYTHONPATH=src python -m fx_scanner.research_xau_histdata_download_v193; fi
+          python - <<'PY'
+          import json,os,hashlib
+          from pathlib import Path
+          p=json.loads(Path(os.environ['XAU_V193_PRICE_PROVENANCE']).read_text())
+          assert not p['failed_periods']
+          assert hashlib.sha256(Path(os.environ['XAU_V193_PRICE_CSV']).read_bytes()).hexdigest()==p['normalized_csv_sha256']
+          PY
+      - run: python scripts/research_structural_reversal.py --csv /tmp/reversal-data/year-${{ matrix.year }}.csv --year ${{ matrix.year }} --candidates /tmp/locked/structural_candidates_locked.json --output artifacts/ledger-${{ matrix.year }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: structural-ledger-${{ matrix.year }}
+          path: artifacts/ledger-*.json
+          retention-days: 90
+          if-no-files-found: error
+  verify:
+    needs: ledger
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==2.2.6 pandas==2.2.3 numba==0.63.1
+      - uses: actions/download-artifact@v4
+        with:
+          name: structural-candidates-locked
+          path: /tmp/locked
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: structural-ledger-*
+          path: /tmp/structural-ledgers
+      - run: python scripts/research_structural_reversal.py --ledgers /tmp/structural-ledgers --candidates /tmp/locked/structural_candidates_locked.json --output artifacts/structural_reversal_results.json
+      - name: Print result and verify frozen scope
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          print('STRUCTURAL_RESULT_JSON='+json.dumps(json.loads(Path('artifacts/structural_reversal_results.json').read_text())))
+          PY
+          python cbot_connectivity/xau-stable-v1.2.1/verify_scope.py
+          python cbot_connectivity/eur-batch-v1.1.0/verify_scope.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: structural-reversal-results
+          path: artifacts/structural_reversal_results.json
+          retention-days: 90
+          if-no-files-found: error
+
