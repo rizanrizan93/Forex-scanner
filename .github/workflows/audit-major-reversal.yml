@@ -1,0 +1,43 @@
+name: XAU Major Reversal Rejection Audit
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/audit-major-reversal.yml', 'scripts/audit_major_reversal.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: xau-major-reversal-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==2.2.6 pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: major-20*
+          path: /tmp/major-shards
+          run-id: 38374344264
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: major-reversal-results
+          path: /tmp/final-result
+          run-id: 38374344264
+          github-token: ${{ github.token }}
+      - run: PYTHONPATH=src python scripts/audit_major_reversal.py
+      - run: |
+          python cbot_connectivity/xau-stable-v1.2.1/verify_scope.py
+          python cbot_connectivity/eur-batch-v1.1.0/verify_scope.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: major-reversal-audit
+          path: audit/
+          retention-days: 90
