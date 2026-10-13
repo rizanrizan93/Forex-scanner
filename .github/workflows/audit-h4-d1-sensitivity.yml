@@ -24,8 +24,62 @@ jobs:
           pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
       - uses: actions/download-artifact@v4
         with:
-          pattern: h4d1-*-s3
-          path: /tmp/h4d1-pivot2
+          name: h4d1-2016-s3
+          path: /tmp/h4d1-pivot2/2016
+          run-id: 38456814232
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: h4d1-2017-s3
+          path: /tmp/h4d1-pivot2/2017
+          run-id: 38456814232
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: h4d1-2018-s3
+          path: /tmp/h4d1-pivot2/2018
+          run-id: 38456814232
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: h4d1-2019-s3
+          path: /tmp/h4d1-pivot2/2019
+          run-id: 38456814232
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: h4d1-2020-s3
+          path: /tmp/h4d1-pivot2/2020
+          run-id: 38456814232
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: h4d1-2021-s3
+          path: /tmp/h4d1-pivot2/2021
+          run-id: 38456814232
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: h4d1-2022-s3
+          path: /tmp/h4d1-pivot2/2022
+          run-id: 38456814232
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: h4d1-2023-s3
+          path: /tmp/h4d1-pivot2/2023
+          run-id: 38456814232
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: h4d1-2024-s3
+          path: /tmp/h4d1-pivot2/2024
+          run-id: 38456814232
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: h4d1-2025-s3
+          path: /tmp/h4d1-pivot2/2025
           run-id: 38456814232
           github-token: ${{ github.token }}
       - run: python scripts/audit_h4_d1_sensitivity.py --shards /tmp/h4d1-pivot2 --output artifacts/h4_sensitivity_locked.json
@@ -57,3 +111,4 @@ jobs:
           name: h4-d1-sensitivity-audit
           path: artifacts/
           retention-days: 90
+
