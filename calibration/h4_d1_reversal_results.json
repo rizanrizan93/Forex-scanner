@@ -1,0 +1,2185 @@
+{
+  "contract": "RIZAN_XAU_H4_D1_REVERSAL_20M_V1",
+  "configurations_evaluated": 20000000,
+  "grid": {
+    "side": [
+      1,
+      -1
+    ],
+    "zone_source": [
+      "H4_OB_3",
+      "H4_OB_6",
+      "H4_OB_12",
+      "H4_PIVOT_2",
+      "H4_PIVOT_3",
+      "H4_PIVOT_5",
+      "H4_RANGE_6",
+      "H4_RANGE_12",
+      "H4_RANGE_24",
+      "D1_PREVIOUS"
+    ],
+    "padding_atr4": [
+      0,
+      0.025,
+      0.05,
+      0.1,
+      0.2
+    ],
+    "stop_extension_atr": [
+      0.05,
+      0.1,
+      0.2,
+      0.35,
+      0.5
+    ],
+    "target_adr_fraction": [
+      0.25,
+      0.35,
+      0.5,
+      0.75,
+      1
+    ],
+    "horizon_minutes": [
+      120,
+      240,
+      360,
+      480
+    ],
+    "wick_fraction": [
+      0,
+      0.2,
+      0.35,
+      0.5,
+      0.65
+    ],
+    "regime": [
+      "ANY",
+      "ALIGNED",
+      "OPPOSED",
+      "FLAT"
+    ],
+    "max_age_hours": [
+      12,
+      24,
+      48,
+      96,
+      192
+    ],
+    "confirmation": [
+      "TOUCH",
+      "M5_RECLAIM",
+      "M15_RECLAIM",
+      "M5_SWEEP",
+      "M15_SWEEP"
+    ],
+    "session_utc": [
+      0,
+      6,
+      12,
+      18
+    ]
+  },
+  "cost_scenarios": [
+    {
+      "name": "reference",
+      "spread": 0.25,
+      "slippage_per_side": 0.05
+    },
+    {
+      "name": "cautious",
+      "spread": 0.5,
+      "slippage_per_side": 0.1
+    },
+    {
+      "name": "stress",
+      "spread": 1,
+      "slippage_per_side": 0.2
+    }
+  ],
+  "min_reward_risk_stress": 1.5,
+  "min_target_adr20_fraction": 0.25,
+  "selected_by_side": [],
+  "diagnostic_examples": [
+    {
+      "index": 9974461,
+      "config": {
+        "side": 1,
+        "zone_source": "D1_PREVIOUS",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 480,
+        "wick_fraction": 0.2,
+        "regime": "ANY",
+        "max_age_hours": 96,
+        "confirmation": "TOUCH",
+        "session_utc": 6
+      },
+      "train": {
+        "n": 194,
+        "censored": 1,
+        "win_rate": 0.29381443298969073,
+        "target_hit_rate": 0.211340206185567,
+        "stop_rate": 0.7010309278350515,
+        "mean_net_r": -0.21273461706245067,
+        "net_r_sum": -41.27051571011543,
+        "profit_factor": 0.708724005287479,
+        "mean_stress_r": -0.35622382164001465,
+        "mean_reference_r": -0.10508062728901499,
+        "mean_risk_points": 3.5483211438680433,
+        "mean_target_points": 7.46645929395538,
+        "mean_net_points": -0.5732303556707716,
+        "descriptive_lcb_mean_r": -0.3998573459969379
+      },
+      "validation": {
+        "n": 179,
+        "censored": 13,
+        "win_rate": 0.3463687150837989,
+        "target_hit_rate": 0.30726256983240224,
+        "stop_rate": 0.6368715083798883,
+        "mean_net_r": -0.004633566187746698,
+        "net_r_sum": -0.8294083476066589,
+        "profit_factor": 0.9928908693157759,
+        "mean_stress_r": -0.18067302916969,
+        "mean_reference_r": 0.048963685275456095,
+        "mean_risk_points": 6.538028994086068,
+        "mean_target_points": 12.905323561343401,
+        "mean_net_points": 0.4317709760292948,
+        "descriptive_lcb_mean_r": -0.20869396068728463
+      },
+      "descriptive_target_lcb": 0.24431552603247172,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 1,
+      "positive_val_years": 2,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 19964262,
+      "config": {
+        "side": -1,
+        "zone_source": "D1_PREVIOUS",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.25,
+        "horizon_minutes": 360,
+        "wick_fraction": 0,
+        "regime": "OPPOSED",
+        "max_age_hours": 96,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 194,
+        "censored": 2,
+        "win_rate": 0.26288659793814434,
+        "target_hit_rate": 0.23711340206185566,
+        "stop_rate": 0.7268041237113402,
+        "mean_net_r": -0.2687125348860456,
+        "net_r_sum": -52.13023176789284,
+        "profit_factor": 0.6491539035096925,
+        "mean_stress_r": -0.6143530668671598,
+        "mean_reference_r": -0.10693651867896012,
+        "mean_risk_points": 2.454559817756574,
+        "mean_target_points": 5.018798120243034,
+        "mean_net_points": -0.6747341684459411,
+        "descriptive_lcb_mean_r": -0.4559913823207744
+      },
+      "validation": {
+        "n": 187,
+        "censored": 11,
+        "win_rate": 0.35294117647058826,
+        "target_hit_rate": 0.32620320855614976,
+        "stop_rate": 0.6256684491978609,
+        "mean_net_r": 0.03539740083051875,
+        "net_r_sum": 6.619313955307007,
+        "profit_factor": 1.0543885208232313,
+        "mean_stress_r": -0.3327174467198989,
+        "mean_reference_r": 0.13615422325338272,
+        "mean_risk_points": 4.80003695564474,
+        "mean_target_points": 9.25335693359375,
+        "mean_net_points": 0.397466968087589,
+        "descriptive_lcb_mean_r": -0.1721092085051793
+      },
+      "descriptive_target_lcb": 0.2630934532647966,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_censor"
+      ],
+      "positive_train_years": 1,
+      "positive_val_years": 3,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    }
+  ],
+  "diagnostics_by_source": [
+    {
+      "index": 222082,
+      "config": {
+        "side": 1,
+        "zone_source": "H4_OB_3",
+        "padding_atr4": 0.025,
+        "stop_extension_atr": 0.05,
+        "target_adr_fraction": 0.5,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 192,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 218,
+        "censored": 2,
+        "win_rate": 0.25688073394495414,
+        "target_hit_rate": 0.10091743119266056,
+        "stop_rate": 0.6834862385321101,
+        "mean_net_r": -0.3475714725091917,
+        "net_r_sum": -75.77058100700378,
+        "profit_factor": 0.526724401078144,
+        "mean_stress_r": -0.47686754235433876,
+        "mean_reference_r": -0.24401585969629638,
+        "mean_risk_points": 3.7404074712630804,
+        "mean_target_points": 9.59351922831404,
+        "mean_net_points": -1.0744003374642188,
+        "descriptive_lcb_mean_r": -0.51593330607101
+      },
+      "validation": {
+        "n": 154,
+        "censored": 5,
+        "win_rate": 0.33116883116883117,
+        "target_hit_rate": 0.15584415584415584,
+        "stop_rate": 0.6038961038961039,
+        "mean_net_r": -0.04343700737922222,
+        "net_r_sum": -6.689299136400223,
+        "profit_factor": 0.9319547307617088,
+        "mean_stress_r": -0.14558409715627696,
+        "mean_reference_r": 0.019385293706670984,
+        "mean_risk_points": 6.83460418899338,
+        "mean_target_points": 17.22274364124645,
+        "mean_net_points": 0.27816485429739024,
+        "descriptive_lcb_mean_r": -0.2820511112551131
+      },
+      "descriptive_target_lcb": 0.10701866048479707,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 0,
+      "positive_val_years": 1,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 10694082,
+      "config": {
+        "side": -1,
+        "zone_source": "H4_OB_3",
+        "padding_atr4": 0.1,
+        "stop_extension_atr": 0.2,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 192,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 181,
+        "censored": 0,
+        "win_rate": 0.281767955801105,
+        "target_hit_rate": 0.16022099447513813,
+        "stop_rate": 0.6795580110497238,
+        "mean_net_r": -0.2526664417751586,
+        "net_r_sum": -45.73262596130371,
+        "profit_factor": 0.6512297901266523,
+        "mean_stress_r": -0.5382819070341838,
+        "mean_reference_r": -0.08667418838205918,
+        "mean_risk_points": 3.2238885447465253,
+        "mean_target_points": 6.869109348697557,
+        "mean_net_points": -0.47328999029338686,
+        "descriptive_lcb_mean_r": -0.45001803092603276
+      },
+      "validation": {
+        "n": 104,
+        "censored": 3,
+        "win_rate": 0.25,
+        "target_hit_rate": 0.18269230769230768,
+        "stop_rate": 0.7019230769230769,
+        "mean_net_r": -0.30324212404397816,
+        "net_r_sum": -31.53718090057373,
+        "profit_factor": 0.5865803277380152,
+        "mean_stress_r": -0.4599744356595553,
+        "mean_reference_r": -0.24664977106910485,
+        "mean_risk_points": 6.5928191771874065,
+        "mean_target_points": 12.997197811420147,
+        "mean_net_points": -1.9392954959319189,
+        "descriptive_lcb_mean_r": -0.5387454253593397
+      },
+      "descriptive_target_lcb": 0.12019329509173257,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 2,
+      "positive_val_years": 0,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 1654082,
+      "config": {
+        "side": 1,
+        "zone_source": "H4_OB_6",
+        "padding_atr4": 0.1,
+        "stop_extension_atr": 0.1,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 192,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 180,
+        "censored": 1,
+        "win_rate": 0.2388888888888889,
+        "target_hit_rate": 0.16666666666666666,
+        "stop_rate": 0.7444444444444445,
+        "mean_net_r": -0.30141712294684514,
+        "net_r_sum": -54.25508213043213,
+        "profit_factor": 0.6175567430918246,
+        "mean_stress_r": -0.48779457410176597,
+        "mean_reference_r": -0.19244254032770794,
+        "mean_risk_points": 2.747390302022298,
+        "mean_target_points": 6.887194061279297,
+        "mean_net_points": -0.5651346405347188,
+        "descriptive_lcb_mean_r": -0.5039289255386677
+      },
+      "validation": {
+        "n": 133,
+        "censored": 5,
+        "win_rate": 0.2781954887218045,
+        "target_hit_rate": 0.17293233082706766,
+        "stop_rate": 0.6992481203007519,
+        "mean_net_r": -0.22787581888356603,
+        "net_r_sum": -30.307483911514282,
+        "profit_factor": 0.6863342006896094,
+        "mean_stress_r": -0.33879025896689047,
+        "mean_reference_r": -0.16525139754876159,
+        "mean_risk_points": 5.1606464816215345,
+        "mean_target_points": 11.935116072346393,
+        "mean_net_points": -0.8559642375859999,
+        "descriptive_lcb_mean_r": -0.4562034171503415
+      },
+      "descriptive_target_lcb": 0.11808652609827379,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 0,
+      "positive_val_years": 0,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 11854082,
+      "config": {
+        "side": -1,
+        "zone_source": "H4_OB_6",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.1,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 192,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 187,
+        "censored": 0,
+        "win_rate": 0.2620320855614973,
+        "target_hit_rate": 0.13903743315508021,
+        "stop_rate": 0.6844919786096256,
+        "mean_net_r": -0.3462178579626236,
+        "net_r_sum": -64.74273943901062,
+        "profit_factor": 0.5377939596072333,
+        "mean_stress_r": -0.6082579063221732,
+        "mean_reference_r": -0.15450905606070942,
+        "mean_risk_points": 3.3118324687774168,
+        "mean_target_points": 6.98731921190884,
+        "mean_net_points": -0.6151473968424261,
+        "descriptive_lcb_mean_r": -0.5246076323611836
+      },
+      "validation": {
+        "n": 127,
+        "censored": 3,
+        "win_rate": 0.28346456692913385,
+        "target_hit_rate": 0.2047244094488189,
+        "stop_rate": 0.6456692913385826,
+        "mean_net_r": -0.23832853103247215,
+        "net_r_sum": -30.267723441123962,
+        "profit_factor": 0.6527369588043844,
+        "mean_stress_r": -0.43726306074247584,
+        "mean_reference_r": -0.20612003390244613,
+        "mean_risk_points": 6.662023709514949,
+        "mean_target_points": 13.15538409375769,
+        "mean_net_points": -1.0852368272195652,
+        "descriptive_lcb_mean_r": -0.4499056108633296
+      },
+      "descriptive_target_lcb": 0.14371289780112673,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 1,
+      "positive_val_years": 1,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 2654082,
+      "config": {
+        "side": 1,
+        "zone_source": "H4_OB_12",
+        "padding_atr4": 0.1,
+        "stop_extension_atr": 0.1,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 192,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 181,
+        "censored": 1,
+        "win_rate": 0.23756906077348067,
+        "target_hit_rate": 0.16574585635359115,
+        "stop_rate": 0.7458563535911602,
+        "mean_net_r": -0.3056009935410642,
+        "net_r_sum": -55.31377983093262,
+        "profit_factor": 0.6129822175946426,
+        "mean_stress_r": -0.4911040996319681,
+        "mean_reference_r": -0.1971009884091372,
+        "mean_risk_points": 2.741623746756032,
+        "mean_target_points": 6.879974028023567,
+        "mean_net_points": -0.5719772149186108,
+        "descriptive_lcb_mean_r": -0.5071599090096147
+      },
+      "validation": {
+        "n": 133,
+        "censored": 5,
+        "win_rate": 0.2781954887218045,
+        "target_hit_rate": 0.17293233082706766,
+        "stop_rate": 0.6992481203007519,
+        "mean_net_r": -0.22787581888356603,
+        "net_r_sum": -30.307483911514282,
+        "profit_factor": 0.6863342006896094,
+        "mean_stress_r": -0.33879025896689047,
+        "mean_reference_r": -0.16525139754876159,
+        "mean_risk_points": 5.1606464816215345,
+        "mean_target_points": 11.935116072346393,
+        "mean_net_points": -0.8559642375859999,
+        "descriptive_lcb_mean_r": -0.4562034171503415
+      },
+      "descriptive_target_lcb": 0.11808652609827379,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 0,
+      "positive_val_years": 0,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 12854082,
+      "config": {
+        "side": -1,
+        "zone_source": "H4_OB_12",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.1,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 192,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 187,
+        "censored": 0,
+        "win_rate": 0.2620320855614973,
+        "target_hit_rate": 0.13903743315508021,
+        "stop_rate": 0.6844919786096256,
+        "mean_net_r": -0.3466496225346856,
+        "net_r_sum": -64.8234794139862,
+        "profit_factor": 0.5374841398841617,
+        "mean_stress_r": -0.6107177638752576,
+        "mean_reference_r": -0.15474425152661328,
+        "mean_risk_points": 3.3037407818962548,
+        "mean_target_points": 6.988707068132206,
+        "mean_net_points": -0.6070557201609892,
+        "descriptive_lcb_mean_r": -0.5250760401562329
+      },
+      "validation": {
+        "n": 127,
+        "censored": 3,
+        "win_rate": 0.28346456692913385,
+        "target_hit_rate": 0.2047244094488189,
+        "stop_rate": 0.6456692913385826,
+        "mean_net_r": -0.23832853103247215,
+        "net_r_sum": -30.267723441123962,
+        "profit_factor": 0.6527369588043844,
+        "mean_stress_r": -0.43726306074247584,
+        "mean_reference_r": -0.20612003390244613,
+        "mean_risk_points": 6.662023709514949,
+        "mean_target_points": 13.15538409375769,
+        "mean_net_points": -1.0852368272195652,
+        "descriptive_lcb_mean_r": -0.4499056108633296
+      },
+      "descriptive_target_lcb": 0.14371289780112673,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 1,
+      "positive_val_years": 1,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 3972062,
+      "config": {
+        "side": 1,
+        "zone_source": "H4_PIVOT_2",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 360,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 96,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 215,
+        "censored": 1,
+        "win_rate": 0.3395348837209302,
+        "target_hit_rate": 0.22325581395348837,
+        "stop_rate": 0.6465116279069767,
+        "mean_net_r": -0.06419658660888672,
+        "net_r_sum": -13.802266120910645,
+        "profit_factor": 0.905049474736415,
+        "mean_stress_r": -0.2331573198007983,
+        "mean_reference_r": 0.08045681354611418,
+        "mean_risk_points": 3.37793135532113,
+        "mean_target_points": 7.4801691099654795,
+        "mean_net_points": -0.04331554590269577,
+        "descriptive_lcb_mean_r": -0.2535417955926156
+      },
+      "validation": {
+        "n": 174,
+        "censored": 8,
+        "win_rate": 0.2988505747126437,
+        "target_hit_rate": 0.20689655172413793,
+        "stop_rate": 0.6781609195402298,
+        "mean_net_r": -0.1640946001842104,
+        "net_r_sum": -28.552460432052612,
+        "profit_factor": 0.7656336460448725,
+        "mean_stress_r": -0.26472323927386054,
+        "mean_reference_r": -0.08995982148181433,
+        "mean_risk_points": 5.854528843671426,
+        "mean_target_points": 12.438393077631106,
+        "mean_net_points": -1.1510632558800709,
+        "descriptive_lcb_mean_r": -0.36402357835725824
+      },
+      "descriptive_target_lcb": 0.1533560637854794,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 3,
+      "positive_val_years": 1,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 13966042,
+      "config": {
+        "side": -1,
+        "zone_source": "H4_PIVOT_2",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.25,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 48,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 243,
+        "censored": 0,
+        "win_rate": 0.27983539094650206,
+        "target_hit_rate": 0.2551440329218107,
+        "stop_rate": 0.7119341563786008,
+        "mean_net_r": -0.19484638677212437,
+        "net_r_sum": -47.34767198562622,
+        "profit_factor": 0.741532623985894,
+        "mean_stress_r": -0.6034038724232113,
+        "mean_reference_r": -0.012612507667070554,
+        "mean_risk_points": 2.3227675167130837,
+        "mean_target_points": 4.959302517612285,
+        "mean_net_points": -0.40379281299104414,
+        "descriptive_lcb_mean_r": -0.37000664736057487
+      },
+      "validation": {
+        "n": 175,
+        "censored": 3,
+        "win_rate": 0.33714285714285713,
+        "target_hit_rate": 0.2742857142857143,
+        "stop_rate": 0.6571428571428571,
+        "mean_net_r": -0.062103197915213446,
+        "net_r_sum": -10.868059635162354,
+        "profit_factor": 0.9084153122842381,
+        "mean_stress_r": -0.3694945812225342,
+        "mean_reference_r": 0.1371018511908395,
+        "mean_risk_points": 4.412827061244419,
+        "mean_target_points": 8.775041852678571,
+        "mean_net_points": -0.3014649418422154,
+        "descriptive_lcb_mean_r": -0.2690709024020921
+      },
+      "descriptive_target_lcb": 0.21356542670728645,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years"
+      ],
+      "positive_train_years": 1,
+      "positive_val_years": 1,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 4972082,
+      "config": {
+        "side": 1,
+        "zone_source": "H4_PIVOT_3",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 360,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 192,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 181,
+        "censored": 1,
+        "win_rate": 0.287292817679558,
+        "target_hit_rate": 0.19889502762430938,
+        "stop_rate": 0.6906077348066298,
+        "mean_net_r": -0.18855737026225136,
+        "net_r_sum": -34.1288840174675,
+        "profit_factor": 0.7395685339947893,
+        "mean_stress_r": -0.32845401895638987,
+        "mean_reference_r": -0.07211120484283616,
+        "mean_risk_points": 3.297621395047857,
+        "mean_target_points": 7.447805204444169,
+        "mean_net_points": -0.384702711474171,
+        "descriptive_lcb_mean_r": -0.3882083081557168
+      },
+      "validation": {
+        "n": 150,
+        "censored": 3,
+        "win_rate": 0.32,
+        "target_hit_rate": 0.21333333333333335,
+        "stop_rate": 0.66,
+        "mean_net_r": -0.1525283932685852,
+        "net_r_sum": -22.87925899028778,
+        "profit_factor": 0.7750890062253217,
+        "mean_stress_r": -0.2528905487060547,
+        "mean_reference_r": -0.0970013153553009,
+        "mean_risk_points": 5.684634908040365,
+        "mean_target_points": 11.684153849283854,
+        "mean_net_points": -0.7003837585449219,
+        "descriptive_lcb_mean_r": -0.36211430783827525
+      },
+      "descriptive_target_lcb": 0.1553614367018253,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years"
+      ],
+      "positive_train_years": 1,
+      "positive_val_years": 1,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 14966062,
+      "config": {
+        "side": -1,
+        "zone_source": "H4_PIVOT_3",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.25,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 96,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 194,
+        "censored": 0,
+        "win_rate": 0.2268041237113402,
+        "target_hit_rate": 0.20103092783505155,
+        "stop_rate": 0.7680412371134021,
+        "mean_net_r": -0.34000297059717866,
+        "net_r_sum": -65.96057629585266,
+        "profit_factor": 0.5810909054436797,
+        "mean_stress_r": -0.7660043411648151,
+        "mean_reference_r": -0.11767101042049448,
+        "mean_risk_points": 2.2374753853709426,
+        "mean_target_points": 4.912136274514739,
+        "mean_net_points": -0.8926192632655507,
+        "descriptive_lcb_mean_r": -0.5283401576563906
+      },
+      "validation": {
+        "n": 139,
+        "censored": 4,
+        "win_rate": 0.3381294964028777,
+        "target_hit_rate": 0.2733812949640288,
+        "stop_rate": 0.6546762589928058,
+        "mean_net_r": -0.053721117458755165,
+        "net_r_sum": -7.467235326766968,
+        "profit_factor": 0.9206588770126575,
+        "mean_stress_r": -0.40254000108019056,
+        "mean_reference_r": 0.12173076027588879,
+        "mean_risk_points": 4.193722896438708,
+        "mean_target_points": 8.422318163535579,
+        "mean_net_points": -0.13384299569850344,
+        "descriptive_lcb_mean_r": -0.28717377059201965
+      },
+      "descriptive_target_lcb": 0.20613092339079148,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 1,
+      "positive_val_years": 1,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 5942082,
+      "config": {
+        "side": 1,
+        "zone_source": "H4_PIVOT_5",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.35,
+        "target_adr_fraction": 0.5,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 192,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 194,
+        "censored": 1,
+        "win_rate": 0.28865979381443296,
+        "target_hit_rate": 0.14948453608247422,
+        "stop_rate": 0.6907216494845361,
+        "mean_net_r": -0.23113357882524274,
+        "net_r_sum": -44.83991429209709,
+        "profit_factor": 0.6810202338398668,
+        "mean_stress_r": -0.36923292094899207,
+        "mean_reference_r": -0.1389591718457409,
+        "mean_risk_points": 3.8085048321596124,
+        "mean_target_points": 9.721340061463032,
+        "mean_net_points": -0.5555783399601573,
+        "descriptive_lcb_mean_r": -0.41949840854201215
+      },
+      "validation": {
+        "n": 138,
+        "censored": 5,
+        "win_rate": 0.2971014492753623,
+        "target_hit_rate": 0.10869565217391304,
+        "stop_rate": 0.644927536231884,
+        "mean_net_r": -0.27073742168537085,
+        "net_r_sum": -37.36176419258118,
+        "profit_factor": 0.5974434899698443,
+        "mean_stress_r": -0.3567740053370379,
+        "mean_reference_r": -0.21583013042159702,
+        "mean_risk_points": 7.178276227868122,
+        "mean_target_points": 16.832977516063746,
+        "mean_net_points": -1.7777839881786401,
+        "descriptive_lcb_mean_r": -0.4717867704092681
+      },
+      "descriptive_target_lcb": 0.06698480317598647,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 2,
+      "positive_val_years": 0,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 15942482,
+      "config": {
+        "side": -1,
+        "zone_source": "H4_PIVOT_5",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.35,
+        "target_adr_fraction": 0.5,
+        "horizon_minutes": 480,
+        "wick_fraction": 0.2,
+        "regime": "ANY",
+        "max_age_hours": 192,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 180,
+        "censored": 0,
+        "win_rate": 0.2722222222222222,
+        "target_hit_rate": 0.10555555555555556,
+        "stop_rate": 0.6666666666666666,
+        "mean_net_r": -0.2984085950586531,
+        "net_r_sum": -53.713547110557556,
+        "profit_factor": 0.5777692720179961,
+        "mean_stress_r": -0.4983086109161377,
+        "mean_reference_r": -0.1793570081392924,
+        "mean_risk_points": 3.8447643703884546,
+        "mean_target_points": 9.959279632568359,
+        "mean_net_points": -1.094359549217754,
+        "descriptive_lcb_mean_r": -0.47778295500565326
+      },
+      "validation": {
+        "n": 117,
+        "censored": 12,
+        "win_rate": 0.3418803418803419,
+        "target_hit_rate": 0.18803418803418803,
+        "stop_rate": 0.5982905982905983,
+        "mean_net_r": -0.03381932698763334,
+        "net_r_sum": -3.9568612575531006,
+        "profit_factor": 0.9456650550970687,
+        "mean_stress_r": -0.2057650883992513,
+        "mean_reference_r": 0.027549270890716814,
+        "mean_risk_points": 6.60581318129841,
+        "mean_target_points": 16.717212774814705,
+        "mean_net_points": -0.37667830377562433,
+        "descriptive_lcb_mean_r": -0.2970572947899051
+      },
+      "descriptive_target_lcb": 0.12758105898852093,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 2,
+      "positive_val_years": 2,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 6806861,
+      "config": {
+        "side": 1,
+        "zone_source": "H4_RANGE_6",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.05,
+        "target_adr_fraction": 0.25,
+        "horizon_minutes": 480,
+        "wick_fraction": 0.35,
+        "regime": "ANY",
+        "max_age_hours": 96,
+        "confirmation": "TOUCH",
+        "session_utc": 6
+      },
+      "train": {
+        "n": 184,
+        "censored": 0,
+        "win_rate": 0.22282608695652173,
+        "target_hit_rate": 0.21195652173913043,
+        "stop_rate": 0.7771739130434783,
+        "mean_net_r": -0.2688214727070021,
+        "net_r_sum": -49.46315097808838,
+        "profit_factor": 0.6736483186895463,
+        "mean_stress_r": -0.503790918899619,
+        "mean_reference_r": 0.0340067225953807,
+        "mean_risk_points": 2.212682278259941,
+        "mean_target_points": 5.52513719641644,
+        "mean_net_points": -0.5597860916801121,
+        "descriptive_lcb_mean_r": -0.48832096763987415
+      },
+      "validation": {
+        "n": 187,
+        "censored": 2,
+        "win_rate": 0.2887700534759358,
+        "target_hit_rate": 0.27807486631016043,
+        "stop_rate": 0.7058823529411765,
+        "mean_net_r": -0.020222652364860882,
+        "net_r_sum": -3.781635992228985,
+        "profit_factor": 0.9724292165689747,
+        "mean_stress_r": -0.2341961376169786,
+        "mean_reference_r": 0.09463243178505311,
+        "mean_risk_points": 3.693182185371929,
+        "mean_target_points": 9.208339425969251,
+        "mean_net_points": 0.002686426601307915,
+        "descriptive_lcb_mean_r": -0.25394992320844845
+      },
+      "descriptive_target_lcb": 0.218816231673568,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years"
+      ],
+      "positive_train_years": 1,
+      "positive_val_years": 1,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 16966222,
+      "config": {
+        "side": -1,
+        "zone_source": "H4_RANGE_6",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.25,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "OPPOSED",
+        "max_age_hours": 24,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 202,
+        "censored": 0,
+        "win_rate": 0.22772277227722773,
+        "target_hit_rate": 0.20297029702970298,
+        "stop_rate": 0.7673267326732673,
+        "mean_net_r": -0.35495838552418324,
+        "net_r_sum": -71.70159387588501,
+        "profit_factor": 0.5623961154126997,
+        "mean_stress_r": -0.6402777303563486,
+        "mean_reference_r": -0.17602474389985057,
+        "mean_risk_points": 2.3872292018172763,
+        "mean_target_points": 4.9799017198014965,
+        "mean_net_points": -0.7225771752914579,
+        "descriptive_lcb_mean_r": -0.5355817137634508
+      },
+      "validation": {
+        "n": 206,
+        "censored": 7,
+        "win_rate": 0.33495145631067963,
+        "target_hit_rate": 0.3106796116504854,
+        "stop_rate": 0.6553398058252428,
+        "mean_net_r": -0.022483135890034797,
+        "net_r_sum": -4.631525993347168,
+        "profit_factor": 0.9667566179192429,
+        "mean_stress_r": -0.25871813586614667,
+        "mean_reference_r": 0.05856102806271859,
+        "mean_risk_points": 5.130263060042002,
+        "mean_target_points": 9.849693890914176,
+        "mean_net_points": 0.2892868264207562,
+        "descriptive_lcb_mean_r": -0.21843714554640625
+      },
+      "descriptive_target_lcb": 0.25143484454712034,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 0,
+      "positive_val_years": 1,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 7972062,
+      "config": {
+        "side": 1,
+        "zone_source": "H4_RANGE_12",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 360,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 96,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 226,
+        "censored": 1,
+        "win_rate": 0.28761061946902655,
+        "target_hit_rate": 0.21238938053097345,
+        "stop_rate": 0.6814159292035398,
+        "mean_net_r": -0.18302369539716604,
+        "net_r_sum": -41.36335515975952,
+        "profit_factor": 0.7455328100680733,
+        "mean_stress_r": -0.3572565918475126,
+        "mean_reference_r": -0.06837550161686619,
+        "mean_risk_points": 3.2232743997489455,
+        "mean_target_points": 7.265906409879701,
+        "mean_net_points": -0.44157705053818963,
+        "descriptive_lcb_mean_r": -0.36096079272572223
+      },
+      "validation": {
+        "n": 198,
+        "censored": 11,
+        "win_rate": 0.3181818181818182,
+        "target_hit_rate": 0.2222222222222222,
+        "stop_rate": 0.6464646464646465,
+        "mean_net_r": -0.14428775358681728,
+        "net_r_sum": -28.56897521018982,
+        "profit_factor": 0.7859109562514458,
+        "mean_stress_r": -0.2601855186500935,
+        "mean_reference_r": -0.07063577271471119,
+        "mean_risk_points": 5.910844205605863,
+        "mean_target_points": 12.001526803681344,
+        "mean_net_points": -0.926570227651885,
+        "descriptive_lcb_mean_r": -0.33043134802818386
+      },
+      "descriptive_target_lcb": 0.1699108190282207,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 0,
+      "positive_val_years": 1,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 17966442,
+      "config": {
+        "side": -1,
+        "zone_source": "H4_RANGE_12",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.25,
+        "horizon_minutes": 480,
+        "wick_fraction": 0.2,
+        "regime": "ANY",
+        "max_age_hours": 48,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 196,
+        "censored": 2,
+        "win_rate": 0.23469387755102042,
+        "target_hit_rate": 0.1836734693877551,
+        "stop_rate": 0.75,
+        "mean_net_r": -0.3646674314323737,
+        "net_r_sum": -71.47481656074524,
+        "profit_factor": 0.537917377972603,
+        "mean_stress_r": -0.5812248502458844,
+        "mean_reference_r": -0.18278920163913648,
+        "mean_risk_points": 2.687573900028151,
+        "mean_target_points": 5.390052698096451,
+        "mean_net_points": -0.8660949322642112,
+        "descriptive_lcb_mean_r": -0.5370987530015241
+      },
+      "validation": {
+        "n": 171,
+        "censored": 6,
+        "win_rate": 0.36257309941520466,
+        "target_hit_rate": 0.29239766081871343,
+        "stop_rate": 0.631578947368421,
+        "mean_net_r": -0.029227790079618756,
+        "net_r_sum": -4.997952103614807,
+        "profit_factor": 0.9549938336865036,
+        "mean_stress_r": -0.18392609155666062,
+        "mean_reference_r": 0.04644236578578837,
+        "mean_risk_points": 4.985627358419853,
+        "mean_target_points": 9.517020465337742,
+        "mean_net_points": 0.04246944572493347,
+        "descriptive_lcb_mean_r": -0.23248178425483082
+      },
+      "descriptive_target_lcb": 0.22938084032099015,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 0,
+      "positive_val_years": 2,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 8934082,
+      "config": {
+        "side": 1,
+        "zone_source": "H4_RANGE_24",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.35,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 192,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 204,
+        "censored": 1,
+        "win_rate": 0.2107843137254902,
+        "target_hit_rate": 0.16666666666666666,
+        "stop_rate": 0.7696078431372549,
+        "mean_net_r": -0.3710971486334707,
+        "net_r_sum": -75.70381832122803,
+        "profit_factor": 0.5432365384682663,
+        "mean_stress_r": -0.5051900358761058,
+        "mean_reference_r": -0.25488850649665384,
+        "mean_risk_points": 2.841036497377882,
+        "mean_target_points": 6.848825866100835,
+        "mean_net_points": -0.8896473015055937,
+        "descriptive_lcb_mean_r": -0.5531710254654778
+      },
+      "validation": {
+        "n": 140,
+        "censored": 6,
+        "win_rate": 0.24285714285714285,
+        "target_hit_rate": 0.20714285714285716,
+        "stop_rate": 0.7357142857142858,
+        "mean_net_r": -0.28319215093340194,
+        "net_r_sum": -39.64690113067627,
+        "profit_factor": 0.6279346840721521,
+        "mean_stress_r": -0.3994477544512067,
+        "mean_reference_r": -0.17832638025283815,
+        "mean_risk_points": 5.454785483224051,
+        "mean_target_points": 11.519298444475446,
+        "mean_net_points": -1.628880500793457,
+        "descriptive_lcb_mean_r": -0.5068212213738861
+      },
+      "descriptive_target_lcb": 0.14827529229642786,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 0,
+      "positive_val_years": 0,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 18934021,
+      "config": {
+        "side": -1,
+        "zone_source": "H4_RANGE_24",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.35,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 480,
+        "wick_fraction": 0,
+        "regime": "ANY",
+        "max_age_hours": 24,
+        "confirmation": "TOUCH",
+        "session_utc": 6
+      },
+      "train": {
+        "n": 187,
+        "censored": 0,
+        "win_rate": 0.20855614973262032,
+        "target_hit_rate": 0.17647058823529413,
+        "stop_rate": 0.7754010695187166,
+        "mean_net_r": -0.4416806736094429,
+        "net_r_sum": -82.59428596496582,
+        "profit_factor": 0.4572613358996837,
+        "mean_stress_r": -0.7148045116567356,
+        "mean_reference_r": -0.3111658925041158,
+        "mean_risk_points": 3.109341381705381,
+        "mean_target_points": 6.430321759718625,
+        "mean_net_points": -1.3154691043384572,
+        "descriptive_lcb_mean_r": -0.6119502655835418
+      },
+      "validation": {
+        "n": 142,
+        "censored": 9,
+        "win_rate": 0.3028169014084507,
+        "target_hit_rate": 0.2746478873239437,
+        "stop_rate": 0.676056338028169,
+        "mean_net_r": -0.12130070572168054,
+        "net_r_sum": -17.224700212478638,
+        "profit_factor": 0.8249602191148531,
+        "mean_stress_r": -0.28355315033818634,
+        "mean_reference_r": -0.10225556601940745,
+        "mean_risk_points": 6.4392556203922755,
+        "mean_target_points": 12.741697714362346,
+        "mean_net_points": -0.9050608420036208,
+        "descriptive_lcb_mean_r": -0.34752563713845375
+      },
+      "descriptive_target_lcb": 0.2079011507226563,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 0,
+      "positive_val_years": 2,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 9974461,
+      "config": {
+        "side": 1,
+        "zone_source": "D1_PREVIOUS",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.35,
+        "horizon_minutes": 480,
+        "wick_fraction": 0.2,
+        "regime": "ANY",
+        "max_age_hours": 96,
+        "confirmation": "TOUCH",
+        "session_utc": 6
+      },
+      "train": {
+        "n": 194,
+        "censored": 1,
+        "win_rate": 0.29381443298969073,
+        "target_hit_rate": 0.211340206185567,
+        "stop_rate": 0.7010309278350515,
+        "mean_net_r": -0.21273461706245067,
+        "net_r_sum": -41.27051571011543,
+        "profit_factor": 0.708724005287479,
+        "mean_stress_r": -0.35622382164001465,
+        "mean_reference_r": -0.10508062728901499,
+        "mean_risk_points": 3.5483211438680433,
+        "mean_target_points": 7.46645929395538,
+        "mean_net_points": -0.5732303556707716,
+        "descriptive_lcb_mean_r": -0.3998573459969379
+      },
+      "validation": {
+        "n": 179,
+        "censored": 13,
+        "win_rate": 0.3463687150837989,
+        "target_hit_rate": 0.30726256983240224,
+        "stop_rate": 0.6368715083798883,
+        "mean_net_r": -0.004633566187746698,
+        "net_r_sum": -0.8294083476066589,
+        "profit_factor": 0.9928908693157759,
+        "mean_stress_r": -0.18067302916969,
+        "mean_reference_r": 0.048963685275456095,
+        "mean_risk_points": 6.538028994086068,
+        "mean_target_points": 12.905323561343401,
+        "mean_net_points": 0.4317709760292948,
+        "descriptive_lcb_mean_r": -0.20869396068728463
+      },
+      "descriptive_target_lcb": 0.24431552603247172,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_years",
+        "val_censor"
+      ],
+      "positive_train_years": 1,
+      "positive_val_years": 2,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    },
+    {
+      "index": 19964262,
+      "config": {
+        "side": -1,
+        "zone_source": "D1_PREVIOUS",
+        "padding_atr4": 0.2,
+        "stop_extension_atr": 0.5,
+        "target_adr_fraction": 0.25,
+        "horizon_minutes": 360,
+        "wick_fraction": 0,
+        "regime": "OPPOSED",
+        "max_age_hours": 96,
+        "confirmation": "TOUCH",
+        "session_utc": 12
+      },
+      "train": {
+        "n": 194,
+        "censored": 2,
+        "win_rate": 0.26288659793814434,
+        "target_hit_rate": 0.23711340206185566,
+        "stop_rate": 0.7268041237113402,
+        "mean_net_r": -0.2687125348860456,
+        "net_r_sum": -52.13023176789284,
+        "profit_factor": 0.6491539035096925,
+        "mean_stress_r": -0.6143530668671598,
+        "mean_reference_r": -0.10693651867896012,
+        "mean_risk_points": 2.454559817756574,
+        "mean_target_points": 5.018798120243034,
+        "mean_net_points": -0.6747341684459411,
+        "descriptive_lcb_mean_r": -0.4559913823207744
+      },
+      "validation": {
+        "n": 187,
+        "censored": 11,
+        "win_rate": 0.35294117647058826,
+        "target_hit_rate": 0.32620320855614976,
+        "stop_rate": 0.6256684491978609,
+        "mean_net_r": 0.03539740083051875,
+        "net_r_sum": 6.619313955307007,
+        "profit_factor": 1.0543885208232313,
+        "mean_stress_r": -0.3327174467198989,
+        "mean_reference_r": 0.13615422325338272,
+        "mean_risk_points": 4.80003695564474,
+        "mean_target_points": 9.25335693359375,
+        "mean_net_points": 0.397466968087589,
+        "descriptive_lcb_mean_r": -0.1721092085051793
+      },
+      "descriptive_target_lcb": 0.2630934532647966,
+      "failed_gates": [
+        "train_net",
+        "train_pf",
+        "val_pf",
+        "stress",
+        "mean_lcb",
+        "train_years",
+        "val_censor"
+      ],
+      "positive_train_years": 1,
+      "positive_val_years": 3,
+      "status": "DIAGNOSTIC_NOT_VALIDATED"
+    }
+  ],
+  "gate_audits": [
+    {
+      "source": "H4_OB_3",
+      "cumulative_gates": [
+        {
+          "gate": "train_n",
+          "remaining": 5122
+        },
+        {
+          "gate": "val_n",
+          "remaining": 5122
+        },
+        {
+          "gate": "train_net",
+          "remaining": 0
+        },
+        {
+          "gate": "train_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "val_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "stress",
+          "remaining": 0
+        },
+        {
+          "gate": "mean_lcb",
+          "remaining": 0
+        },
+        {
+          "gate": "train_years",
+          "remaining": 0
+        },
+        {
+          "gate": "val_years",
+          "remaining": 0
+        },
+        {
+          "gate": "train_censor",
+          "remaining": 0
+        },
+        {
+          "gate": "val_censor",
+          "remaining": 0
+        }
+      ]
+    },
+    {
+      "source": "H4_OB_6",
+      "cumulative_gates": [
+        {
+          "gate": "train_n",
+          "remaining": 7052
+        },
+        {
+          "gate": "val_n",
+          "remaining": 7052
+        },
+        {
+          "gate": "train_net",
+          "remaining": 0
+        },
+        {
+          "gate": "train_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "val_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "stress",
+          "remaining": 0
+        },
+        {
+          "gate": "mean_lcb",
+          "remaining": 0
+        },
+        {
+          "gate": "train_years",
+          "remaining": 0
+        },
+        {
+          "gate": "val_years",
+          "remaining": 0
+        },
+        {
+          "gate": "train_censor",
+          "remaining": 0
+        },
+        {
+          "gate": "val_censor",
+          "remaining": 0
+        }
+      ]
+    },
+    {
+      "source": "H4_OB_12",
+      "cumulative_gates": [
+        {
+          "gate": "train_n",
+          "remaining": 7101
+        },
+        {
+          "gate": "val_n",
+          "remaining": 7101
+        },
+        {
+          "gate": "train_net",
+          "remaining": 0
+        },
+        {
+          "gate": "train_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "val_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "stress",
+          "remaining": 0
+        },
+        {
+          "gate": "mean_lcb",
+          "remaining": 0
+        },
+        {
+          "gate": "train_years",
+          "remaining": 0
+        },
+        {
+          "gate": "val_years",
+          "remaining": 0
+        },
+        {
+          "gate": "train_censor",
+          "remaining": 0
+        },
+        {
+          "gate": "val_censor",
+          "remaining": 0
+        }
+      ]
+    },
+    {
+      "source": "H4_PIVOT_2",
+      "cumulative_gates": [
+        {
+          "gate": "train_n",
+          "remaining": 24552
+        },
+        {
+          "gate": "val_n",
+          "remaining": 24552
+        },
+        {
+          "gate": "train_net",
+          "remaining": 1228
+        },
+        {
+          "gate": "train_pf",
+          "remaining": 564
+        },
+        {
+          "gate": "val_pf",
+          "remaining": 2
+        },
+        {
+          "gate": "stress",
+          "remaining": 0
+        },
+        {
+          "gate": "mean_lcb",
+          "remaining": 0
+        },
+        {
+          "gate": "train_years",
+          "remaining": 0
+        },
+        {
+          "gate": "val_years",
+          "remaining": 0
+        },
+        {
+          "gate": "train_censor",
+          "remaining": 0
+        },
+        {
+          "gate": "val_censor",
+          "remaining": 0
+        }
+      ]
+    },
+    {
+      "source": "H4_PIVOT_3",
+      "cumulative_gates": [
+        {
+          "gate": "train_n",
+          "remaining": 9934
+        },
+        {
+          "gate": "val_n",
+          "remaining": 9934
+        },
+        {
+          "gate": "train_net",
+          "remaining": 127
+        },
+        {
+          "gate": "train_pf",
+          "remaining": 23
+        },
+        {
+          "gate": "val_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "stress",
+          "remaining": 0
+        },
+        {
+          "gate": "mean_lcb",
+          "remaining": 0
+        },
+        {
+          "gate": "train_years",
+          "remaining": 0
+        },
+        {
+          "gate": "val_years",
+          "remaining": 0
+        },
+        {
+          "gate": "train_censor",
+          "remaining": 0
+        },
+        {
+          "gate": "val_censor",
+          "remaining": 0
+        }
+      ]
+    },
+    {
+      "source": "H4_PIVOT_5",
+      "cumulative_gates": [
+        {
+          "gate": "train_n",
+          "remaining": 396
+        },
+        {
+          "gate": "val_n",
+          "remaining": 396
+        },
+        {
+          "gate": "train_net",
+          "remaining": 0
+        },
+        {
+          "gate": "train_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "val_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "stress",
+          "remaining": 0
+        },
+        {
+          "gate": "mean_lcb",
+          "remaining": 0
+        },
+        {
+          "gate": "train_years",
+          "remaining": 0
+        },
+        {
+          "gate": "val_years",
+          "remaining": 0
+        },
+        {
+          "gate": "train_censor",
+          "remaining": 0
+        },
+        {
+          "gate": "val_censor",
+          "remaining": 0
+        }
+      ]
+    },
+    {
+      "source": "H4_RANGE_6",
+      "cumulative_gates": [
+        {
+          "gate": "train_n",
+          "remaining": 162826
+        },
+        {
+          "gate": "val_n",
+          "remaining": 162826
+        },
+        {
+          "gate": "train_net",
+          "remaining": 683
+        },
+        {
+          "gate": "train_pf",
+          "remaining": 18
+        },
+        {
+          "gate": "val_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "stress",
+          "remaining": 0
+        },
+        {
+          "gate": "mean_lcb",
+          "remaining": 0
+        },
+        {
+          "gate": "train_years",
+          "remaining": 0
+        },
+        {
+          "gate": "val_years",
+          "remaining": 0
+        },
+        {
+          "gate": "train_censor",
+          "remaining": 0
+        },
+        {
+          "gate": "val_censor",
+          "remaining": 0
+        }
+      ]
+    },
+    {
+      "source": "H4_RANGE_12",
+      "cumulative_gates": [
+        {
+          "gate": "train_n",
+          "remaining": 70427
+        },
+        {
+          "gate": "val_n",
+          "remaining": 70427
+        },
+        {
+          "gate": "train_net",
+          "remaining": 174
+        },
+        {
+          "gate": "train_pf",
+          "remaining": 14
+        },
+        {
+          "gate": "val_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "stress",
+          "remaining": 0
+        },
+        {
+          "gate": "mean_lcb",
+          "remaining": 0
+        },
+        {
+          "gate": "train_years",
+          "remaining": 0
+        },
+        {
+          "gate": "val_years",
+          "remaining": 0
+        },
+        {
+          "gate": "train_censor",
+          "remaining": 0
+        },
+        {
+          "gate": "val_censor",
+          "remaining": 0
+        }
+      ]
+    },
+    {
+      "source": "H4_RANGE_24",
+      "cumulative_gates": [
+        {
+          "gate": "train_n",
+          "remaining": 24207
+        },
+        {
+          "gate": "val_n",
+          "remaining": 24207
+        },
+        {
+          "gate": "train_net",
+          "remaining": 0
+        },
+        {
+          "gate": "train_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "val_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "stress",
+          "remaining": 0
+        },
+        {
+          "gate": "mean_lcb",
+          "remaining": 0
+        },
+        {
+          "gate": "train_years",
+          "remaining": 0
+        },
+        {
+          "gate": "val_years",
+          "remaining": 0
+        },
+        {
+          "gate": "train_censor",
+          "remaining": 0
+        },
+        {
+          "gate": "val_censor",
+          "remaining": 0
+        }
+      ]
+    },
+    {
+      "source": "D1_PREVIOUS",
+      "cumulative_gates": [
+        {
+          "gate": "train_n",
+          "remaining": 114411
+        },
+        {
+          "gate": "val_n",
+          "remaining": 114411
+        },
+        {
+          "gate": "train_net",
+          "remaining": 800
+        },
+        {
+          "gate": "train_pf",
+          "remaining": 62
+        },
+        {
+          "gate": "val_pf",
+          "remaining": 0
+        },
+        {
+          "gate": "stress",
+          "remaining": 0
+        },
+        {
+          "gate": "mean_lcb",
+          "remaining": 0
+        },
+        {
+          "gate": "train_years",
+          "remaining": 0
+        },
+        {
+          "gate": "val_years",
+          "remaining": 0
+        },
+        {
+          "gate": "train_censor",
+          "remaining": 0
+        },
+        {
+          "gate": "val_censor",
+          "remaining": 0
+        }
+      ]
+    }
+  ],
+  "walk_forward": [
+    {
+      "test_year": 2020,
+      "selection_data_max_year": 2019,
+      "selected": []
+    },
+    {
+      "test_year": 2021,
+      "selection_data_max_year": 2020,
+      "selected": []
+    },
+    {
+      "test_year": 2022,
+      "selection_data_max_year": 2021,
+      "selected": [
+        {
+          "index": 3958426,
+          "config": {
+            "side": 1,
+            "zone_source": "H4_PIVOT_2",
+            "padding_atr4": 0.2,
+            "stop_extension_atr": 0.35,
+            "target_adr_fraction": 1,
+            "horizon_minutes": 480,
+            "wick_fraction": 0.2,
+            "regime": "ANY",
+            "max_age_hours": 24,
+            "confirmation": "M5_RECLAIM",
+            "session_utc": 12
+          },
+          "train": {
+            "n": 126,
+            "censored": 2,
+            "win_rate": 0.3968253968253968,
+            "target_hit_rate": 0.06349206349206349,
+            "stop_rate": 0.42857142857142855,
+            "mean_net_r": 0.0791868908064706,
+            "net_r_sum": 9.977548241615295,
+            "profit_factor": 1.1618827313362108,
+            "mean_stress_r": -0.05738351837037101,
+            "mean_reference_r": 0.16396590130078414,
+            "mean_risk_points": 5.231824299645802,
+            "mean_target_points": 17.95767357235863,
+            "mean_net_points": 0.5429276057652065,
+            "descriptive_lcb_mean_r": -0.15847172180032856
+          },
+          "validation": {
+            "n": 40,
+            "censored": 0,
+            "win_rate": 0.675000011920929,
+            "target_hit_rate": 0.05000000074505806,
+            "stop_rate": 0.30000001192092896,
+            "mean_net_r": 0.49007701873779297,
+            "net_r_sum": 19.60308074951172,
+            "profit_factor": 2.6061487197875977,
+            "mean_stress_r": 0.3582433760166168,
+            "mean_reference_r": 0.5655487179756165,
+            "mean_risk_points": 6.945669651031494,
+            "mean_target_points": 23.928050994873047,
+            "mean_net_points": 3.3726303577423096,
+            "descriptive_lcb_mean_r": 0.10280215740203857
+          },
+          "descriptive_target_lcb": 0.013820377178490162,
+          "failed_gates": [],
+          "positive_train_years": 3,
+          "positive_val_years": 1,
+          "status": "LOCKED",
+          "test": {
+            "n": 38,
+            "censored": 1,
+            "win_rate": 0.2368421107530594,
+            "target_hit_rate": 0.02631578966975212,
+            "stop_rate": 0.6052631735801697,
+            "mean_net_r": -0.2868858277797699,
+            "net_r_sum": -10.901660919189453,
+            "profit_factor": 0.5745528340339661,
+            "mean_stress_r": -0.3855617940425873,
+            "mean_reference_r": -0.24477063119411469,
+            "mean_risk_points": 6.854198455810547,
+            "mean_target_points": 26.51971435546875,
+            "mean_net_points": -2.1688084602355957,
+            "descriptive_lcb_mean_r": -0.6925815343856812
+          }
+        }
+      ]
+    },
+    {
+      "test_year": 2023,
+      "selection_data_max_year": 2022,
+      "selected": []
+    },
+    {
+      "test_year": 2024,
+      "selection_data_max_year": 2023,
+      "selected": []
+    },
+    {
+      "test_year": 2025,
+      "selection_data_max_year": 2024,
+      "selected": []
+    }
+  ],
+  "candidate_lock_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "status": "RESEARCH_ONLY",
+  "execution_authority": false,
+  "execution_influence": false,
+  "train": "2016-2021",
+  "validation": "2022-2025 already seen; exploratory",
+  "source_years": [
+    {
+      "contract": "RIZAN_XAU_H4_D1_REVERSAL_20M_V1",
+      "year": 2016,
+      "source_index": 0,
+      "local_tuples": 2000000,
+      "configurations": 20000000,
+      "source_sha256": "74ad879917025c7e492a2347621e29b7d1a87045c3f31e4859959a3deac648c3",
+      "year_rows": 353415,
+      "first_utc": "2015-10-01T05:00:00+00:00",
+      "last_utc": "2017-01-03T04:59:00+00:00"
+    },
+    {
+      "contract": "RIZAN_XAU_H4_D1_REVERSAL_20M_V1",
+      "year": 2017,
+      "source_index": 0,
+      "local_tuples": 2000000,
+      "configurations": 20000000,
+      "source_sha256": "a1d758535a60a4ca9ad70d5823bc4b0164b2362e8f031fae49b116658c8e4ec7",
+      "year_rows": 352360,
+      "first_utc": "2016-10-02T23:01:00+00:00",
+      "last_utc": "2018-01-03T04:59:00+00:00"
+    },
+    {
+      "contract": "RIZAN_XAU_H4_D1_REVERSAL_20M_V1",
+      "year": 2018,
+      "source_index": 0,
+      "local_tuples": 2000000,
+      "configurations": 20000000,
+      "source_sha256": "e45cdc179483eb86434b087c847a9ba0ffeb1b573e86c04db087e74a3f2eb3d4",
+      "year_rows": 353778,
+      "first_utc": "2017-10-01T23:01:00+00:00",
+      "last_utc": "2019-01-03T04:59:00+00:00"
+    },
+    {
+      "contract": "RIZAN_XAU_H4_D1_REVERSAL_20M_V1",
+      "year": 2019,
+      "source_index": 0,
+      "local_tuples": 2000000,
+      "configurations": 20000000,
+      "source_sha256": "ec0a64f800cbbba6917bb8516357ed4d544ed6a40f062661c9485f28a3776c5a",
+      "year_rows": 352628,
+      "first_utc": "2018-10-01T05:00:00+00:00",
+      "last_utc": "2020-01-03T04:59:00+00:00"
+    },
+    {
+      "contract": "RIZAN_XAU_H4_D1_REVERSAL_20M_V1",
+      "year": 2020,
+      "source_index": 0,
+      "local_tuples": 2000000,
+      "configurations": 20000000,
+      "source_sha256": "598d036c88cab9c8c8749d98cf325aa662c051ed9b302de285a373805b071d54",
+      "year_rows": 354291,
+      "first_utc": "2019-10-01T05:00:00+00:00",
+      "last_utc": "2020-12-31T21:58:00+00:00"
+    },
+    {
+      "contract": "RIZAN_XAU_H4_D1_REVERSAL_20M_V1",
+      "year": 2021,
+      "source_index": 0,
+      "local_tuples": 2000000,
+      "configurations": 20000000,
+      "source_sha256": "5022a99cee175bb55a94139f09735deaacc6a66d0c2a0915228eaf139051854d",
+      "year_rows": 353386,
+      "first_utc": "2020-10-01T05:00:00+00:00",
+      "last_utc": "2022-01-03T04:59:00+00:00"
+    },
+    {
+      "contract": "RIZAN_XAU_H4_D1_REVERSAL_20M_V1",
+      "year": 2022,
+      "source_index": 0,
+      "local_tuples": 2000000,
+      "configurations": 20000000,
+      "source_sha256": "f4c4a92fb43c6e20d6a6d38cbc5d0887fba20a9b3bd4d2482d02a601253a49c5",
+      "year_rows": 354568,
+      "first_utc": "2021-10-01T05:00:00+00:00",
+      "last_utc": "2023-01-03T04:59:00+00:00"
+    },
+    {
+      "contract": "RIZAN_XAU_H4_D1_REVERSAL_20M_V1",
+      "year": 2023,
+      "source_index": 0,
+      "local_tuples": 2000000,
+      "configurations": 20000000,
+      "source_sha256": "f03c5b6ca8107b2dfa132177f92dab93349daf7171766b4cd68f7a51e988d3c9",
+      "year_rows": 308752,
+      "first_utc": "2022-10-02T23:00:00+00:00",
+      "last_utc": "2024-01-03T04:59:00+00:00"
+    },
+    {
+      "contract": "RIZAN_XAU_H4_D1_REVERSAL_20M_V1",
+      "year": 2024,
+      "source_index": 0,
+      "local_tuples": 2000000,
+      "configurations": 20000000,
+      "source_sha256": "b8bc1b45b048611aa9f740687532ea74e97b1c3f90b32794d6e37f53940fc0b4",
+      "year_rows": 355592,
+      "first_utc": "2023-10-01T23:00:00+00:00",
+      "last_utc": "2025-01-03T04:59:00+00:00"
+    },
+    {
+      "contract": "RIZAN_XAU_H4_D1_REVERSAL_20M_V1",
+      "year": 2025,
+      "source_index": 0,
+      "local_tuples": 2000000,
+      "configurations": 20000000,
+      "source_sha256": "6ae0f8390ecde3c2ec956d149306b69fef76419cc2ee60859854084354f0e0de",
+      "year_rows": 353951,
+      "first_utc": "2024-10-01T05:00:00+00:00",
+      "last_utc": "2026-01-02T21:59:00+00:00"
+    }
+  ],
+  "limitations": [
+    "20M parameter tuples, not independent strategies; statistical intervals not corrected for selection.",
+    "Historical M1 bid with synthetic spread/slippage; no account sizing, compounding or broker tick backtest.",
+    "Only fully closed H4/D1 candles; pivots known after right-bar confirmation; OB definition is operational, not proof of institutional orders.",
+    "First eligible per day after filters; censored first is not replaced; conservative stop-first/gap/deadline fills.",
+    "2026 prices already cached; only locked candidate outcomes evaluated. Empty candidate list means no candidate trades tested in 2026.",
+    "H4 minimum180M1 bars per candle; D1 minimum900. Historical data gaps can censor outcomes."
+  ]
+}
