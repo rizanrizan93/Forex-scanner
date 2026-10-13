@@ -5,12 +5,12 @@ import numpy as np
 import pandas as pd
 from .reversal_zones import closed_features, base_events
 
-CONTRACT = "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V2"
+CONTRACT = "RIZAN_XAU_MAJOR_DAILY_REVERSAL_NET_V3"
 GRID = {
-    "side":[1,-1], "lookback_h1":[6,12,24,48,96],
+    "side":[1,-1], "zone_source":["D1_PREVIOUS","H1_6","H1_12","H1_24","M15_CHANNEL_48"],
     "half_width_atr":[0.,.1,.2,.35,.5],
-    "invalidation_atr":[.15,.25,.35,.5,.75],
-    "reaction_atr":[1.,1.5,2.,2.5,3.], "horizon_minutes":[120,240,360,480],
+    "invalidation_atr":[.5,.75,1.,1.5,2.],
+    "reaction_atr":[1.5,2.,3.,4.,6.], "horizon_minutes":[120,240,360,480],
     "wick_fraction":[0.,.1,.2,.3,.4], "trend":["ANY","ALIGNED","OPPOSED","FLAT"],
     "approach_atr":[0.,.5,1.,1.5,2.], "max_age_hours":[6,12,24,48,96],
     "session_utc":[0,6,12,18],
@@ -34,17 +34,38 @@ def features(m1):
     m15=m15[m1.close.resample('15min',label='right',closed='left').count()>=12]
     m15['m15_body']=m15.close-m15.open
     m15['m15_location']=(m15.close-m15.low)/(m15.high-m15.low).replace(0,np.nan)
-    for frame,cols in [(daily,['adr20']),(m15,['m15_body','m15_location'])]:
+    m15['m15_low']=m15.low;m15['m15_high']=m15.high
+    mean=m15.close.rolling(48).mean()
+    centered=np.arange(48)-23.5;varx=(48**2-1)/12
+    slope=m15.close.rolling(48).apply(lambda a:np.dot(a,centered)/48/varx,raw=True)
+    residual=np.maximum((m15.close*m15.close).rolling(48).mean()-mean*mean-slope*slope*varx,0)
+    fitted=mean+slope*23.5
+    m15['channel_low']=fitted-1.5*np.sqrt(residual)
+    m15['channel_high']=fitted+1.5*np.sqrt(residual)
+    m15['channel_formed']=m15.index.asi8/3.6e12
+    daily['d1_low']=daily.low;daily['d1_high']=daily.high
+    daily['d1_formed']=daily.index.asi8/3.6e12
+    for frame,cols in [(daily,['adr20','d1_low','d1_high','d1_formed']),
+                       (m15,['m15_body','m15_location','m15_low','m15_high','channel_low','channel_high','channel_formed'])]:
         keys=pd.DataFrame({'key':out.index-pd.Timedelta(minutes=5)},index=out.index)
         mapped=pd.merge_asof(keys.reset_index(),frame[cols].reset_index().rename(columns={'timestamp':'key'}),on='key',direction='backward').set_index('timestamp')
         for col in cols: out[col]=mapped[col]
+    for side,col in [(1,'low'),(-1,'high')]:
+        for h in [6,12,24]:
+            out[f'level_{side}_H1_{h}']=out[f'level_{side}_{h}']
+            out[f'formed_{side}_H1_{h}']=out[f'formed_{side}_{h}']
+        out[f'level_{side}_D1_PREVIOUS']=out[f'd1_{col}']
+        out[f'formed_{side}_D1_PREVIOUS']=out.d1_formed
+        out[f'level_{side}_M15_CHANNEL_48']=out[f'channel_{col}']
+        out[f'formed_{side}_M15_CHANNEL_48']=out.channel_formed
     return out
 
 
 def events(frame, side, lookback, width):
     result=base_events(frame,side,lookback,width)
-    location=frame.loc[result.index,'m15_location']
-    mask=(side*frame.loc[result.index,'m15_body']>0)&((location>=.55) if side==1 else (location<=.45))
+    # M5 must reclaim the completed M15 range, rather than requiring the prior
+    # M15 body to have turned before the first reversal touch even occurred.
+    mask=(result.close>=frame.loc[result.index,'m15_low']) if side==1 else (result.close<=frame.loc[result.index,'m15_high'])
     result=result.loc[mask].copy()
     result['adr20']=frame.loc[result.index,'adr20']
     # Exit before the earliest NY rollover (21:00 UTC); no swap assumptions.

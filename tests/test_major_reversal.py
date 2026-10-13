@@ -23,7 +23,7 @@ def run(high=105.,low=100.,close=100.,adr=10.,side=1):
 
 def test_grid_is_10_million_targets_at_least_one_atr():
     assert CONFIGURATIONS==10_000_000
-    assert research.GRID['reaction_atr'][0]==1. and research.GRID['reaction_atr'][-1]==3.
+    assert research.GRID['reaction_atr'][0]>=1. and research.GRID['reaction_atr'][-1]==6.
 
 
 def test_minimum_daily_move_and_net_reward_risk_guards():
@@ -69,9 +69,9 @@ def test_future_d1_m15_h1_features_cannot_change_prefix():
 def test_major_observations_nonoverlap_and_m15_confirmation():
     f=features(normalize_bars(fixture()))
     for side in [1,-1]:
-        e=events(f,side,12,.5)
+        e=events(f,side,'H1_12',.5)
         assert np.all(np.diff(e.index.asi8)>=480*60*10**9)
-        assert np.all(side*f.loc[e.index,'m15_body']>0)
+        assert np.all(e.close>=f.loc[e.index,'m15_low']) if side==1 else np.all(e.close<=f.loc[e.index,'m15_high'])
         assert np.all(e.adr20>0)
 
 

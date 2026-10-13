@@ -28,7 +28,7 @@ def simulate(times,opens,high,low,close,starts,level,atr,adr,side):
     status=np.full((n,5,5,4,3),-9,np.int8)
     risks=np.zeros((n,5,5,4),np.float64)
     spreads=np.array([.25,.5,1.]);slips=np.array([.05,.1,.2])
-    stops=np.array([.15,.25,.35,.5,.75]);targets=np.array([1.,1.5,2.,2.5,3.]);horizons=np.array([120,240,360,480])
+    stops=np.array([.5,.75,1.,1.5,2.]);targets=np.array([1.5,2.,3.,4.,6.]);horizons=np.array([120,240,360,480])
     for e in range(n):
         begin=starts[e]
         rollover=(times[begin]//86400)*86400+20*3600+55*60
@@ -94,7 +94,7 @@ def shard(csv,year,output):
     m1=normalize_bars(pd.read_csv(csv));frame=features(m1)
     arrays={name:np.zeros(SHAPE,np.float32) for name in FIELDS}
     for sid,side in enumerate(GRID['side']):
-        for li,lb in enumerate(GRID['lookback_h1']):
+        for li,lb in enumerate(GRID['zone_source']):
             for wi,width in enumerate(GRID['half_width_atr']):
                 rows=events(frame,side,lb,width).query('year==@year')
                 rows,(r,s,risk)=labelled(m1,rows,side)
@@ -215,7 +215,7 @@ def candidate_ledger(csv,year,result,output):
     if year==2026:m1=m1.loc[m1.index<pd.Timestamp('2026-10-01T00:00Z')]
     frame=features(m1);ledger=[]
     for winner in result['selected_by_side']:
-        cfg=winner['config'];rows=events(frame,cfg['side'],cfg['lookback_h1'],cfg['half_width_atr']).query('year==@year')
+        cfg=winner['config'];rows=events(frame,cfg['side'],cfg['zone_source'],cfg['half_width_atr']).query('year==@year')
         rows=rows.loc[filter_events(rows,cfg)]
         rows,(r,s,risk)=labelled(m1,rows,cfg['side'])
         si=GRID['invalidation_atr'].index(cfg['invalidation_atr']);ti=GRID['reaction_atr'].index(cfg['reaction_atr']);hi=GRID['horizon_minutes'].index(cfg['horizon_minutes'])
