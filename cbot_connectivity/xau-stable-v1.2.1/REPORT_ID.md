@@ -72,7 +72,7 @@ Tool tidak menggeser wall-clock, tidak mengubah revision/intent/LastSignalUtc/Xa
 6. Start bridge, lalu import/start class RizanXAUStable dengan parameter account/WSS/token/trading yang sesuai konfigurasi pengguna sebelumnya. Patch tidak menyalakan order atau mengubah account.
 7. Bukti produksi yang masih wajib: RIZAN_STARTUP_OK version=1.2.1, BRIDGE_CONNECTING, BRIDGE_CONNECTED, BRIDGE_HANDSHAKE_OK, TIMESTAMP_VALID, BRIDGE_HEARTBEAT_OK, accountBound=True, trading=True bila parameter sebelumnya aktif, quarantined=False bila tidak ada safety fault; lalu observasi runtime panjang dan drop/reconnect nyata.
 
-Acceptance produksi belum PASS: tidak ada akses SSH, token bridge produksi atau sesi cTrader dalam lingkungan ini. Server/scanner yang benar-benar berjalan belum dapat diaudit langsung. Bridge tetap menyediakan ready/save/ack/ping/pong/snapshot; tidak ditambahkan jalur external order baru.
+Update 13 Oktober 2026: deployment VPS melalui GitHub Actions SSH sudah PASS pada commit c7778659e9146ee775a6aba9d7c84605a3fd9b74. Autentikasi WSS publik, timestamp aware, heartbeat dan reconnect telah diverifikasi memakai klien sintetis tanpa order atau checkpoint save. Checkpoint dengan provenance yang belum dikenali dibiarkan utuh. Acceptance cBot cTrader sebenarnya masih menunggu Journal; jumlah socket SDK dan quarantined=False pada instance pengguna belum diklaim. Detail deployment dan rollback: docs/XAU_BRIDGE_DEPLOYMENT_20261013.md. Bridge tetap menyediakan ready/save/ack/ping/pong/snapshot; tidak ditambahkan jalur external order baru.
 
 ## Rollback
 
@@ -80,4 +80,4 @@ Stop cBot patch dan bridge; backup checkpoint terbaru terlebih dahulu. Restore s
 
 ## Publikasi
 
-Branch lokal fix/xau121-bridge-connectivity; commit dicantumkan di laporan delivery. CI workflow siap, tetapi CI GitHub belum berjalan karena belum dipush. Penolakan automatic approval review pada push sebelumnya belum diselesaikan oleh izin publikasi eksplisit; tidak dilakukan retry/bypass.
+Patch dipush dan PR #785 digabung ke main atas instruksi pengguna. Merge commit 7fb3c133a69bbee791f073423be20c3c29fec2b2. Deployment VPS berhasil pada c7778659e9146ee775a6aba9d7c84605a3fd9b74 melalui Actions run 38334698546. Validasi deployment, XAU connectivity dan Frozen cBot Parity PASS. CI umum masih FAIL karena import OrderSide/ExecutionMode pada execution/models.py yang sudah bermasalah sebelum pekerjaan ini; file execution tersebut tidak diubah.
