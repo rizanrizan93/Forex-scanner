@@ -1,0 +1,93 @@
+name: XAU Reversal Zones 10M
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/research_reversal_10m.py
+      - src/fx_scanner/reversal_zones.py
+      - tests/test_reversal_10m.py
+      - .github/workflows/research-reversal-10m.yml
+permissions:
+  contents: read
+concurrency:
+  group: xau-reversal-10m
+  cancel-in-progress: false
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==2.2.6 pandas==2.2.3 numba==0.63.1 pytest==9.0.2
+      - run: PYTHONPATH=src pytest -q tests/test_reversal_10m.py
+  year:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        year: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          pip install numpy==2.2.6 pandas==2.2.3 numba==0.63.1
+          pip install 'git+https://github.com/Njenjo/histdata-fetcher.git@4a3c11b67f97758f6e3f77a3e5905b6aa87367b8'
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/reversal-data
+          key: xau-histdata-fixed-est-${{ matrix.year }}-v1
+      - name: Fetch complete historical year with provenance
+        env:
+          XAU_V193_YEAR: ${{ matrix.year }}
+          XAU_V193_PRICE_CSV: /tmp/reversal-data/year-${{ matrix.year }}.csv
+          XAU_V193_PRICE_PROVENANCE: /tmp/reversal-data/provenance-${{ matrix.year }}.json
+        run: |
+          if [ ! -f "$XAU_V193_PRICE_CSV" ]; then
+            PYTHONPATH=src python -m fx_scanner.research_xau_histdata_download_v193
+          fi
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=json.loads(Path(os.environ['XAU_V193_PRICE_PROVENANCE']).read_text())
+          if p['failed_periods']: raise SystemExit('INCOMPLETE_SOURCE_MONTHS')
+          PY
+      - name: Replay all parameter tuples for this year
+        run: python scripts/research_reversal_10m.py --csv /tmp/reversal-data/year-${{ matrix.year }}.csv --year ${{ matrix.year }} --output artifacts/year-${{ matrix.year }}.npz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reversal-${{ matrix.year }}
+          path: |
+            artifacts/year-*
+            /tmp/reversal-data/provenance-*.json
+          if-no-files-found: error
+          retention-days: 30
+  aggregate:
+    needs: year
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==2.2.6 pandas==2.2.3 numba==0.63.1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: reversal-*
+          path: /tmp/reversal-shards
+      - run: python scripts/research_reversal_10m.py --shards /tmp/reversal-shards --output artifacts/reversal_10m_results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reversal-10m-results
+          path: artifacts/reversal_10m_results.json
+          if-no-files-found: error
+          retention-days: 90
