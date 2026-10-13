@@ -5,6 +5,9 @@ on:
     paths:
       - scripts/audit_volatility_reversal.py
       - .github/workflows/audit-volatility-reversal.yml
+      - calibration/volatility_reversal_results.json
+      - calibration/volatility_reversal_diagnostics.json
+      - src/fx_scanner/volatility_reversal_dashboard.py
   workflow_dispatch:
 permissions:
   contents: read
@@ -51,6 +54,13 @@ jobs:
       - run: PYTHONPATH=src python scripts/audit_volatility_reversal.py
       - run: |
           python -m py_compile main.py src/fx_scanner/volatility_reversal_dashboard.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for name in ('volatility_reversal_results.json','volatility_reversal_diagnostics.json'):
+              assert json.loads((Path('calibration')/name).read_text()) == json.loads((Path('audit')/name).read_text()), name
+          print('PUBLISHED_RESULT_PARITY_PASS')
+          PY
           python cbot_connectivity/xau-stable-v1.2.1/verify_scope.py
           python cbot_connectivity/eur-batch-v1.1.0/verify_scope.py
       - uses: actions/upload-artifact@v4
