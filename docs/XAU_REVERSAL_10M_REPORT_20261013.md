@@ -54,4 +54,10 @@ Status MAP_READY diverifikasi di broker reader dengan 13.999 bar M1, `execution_
 
 Dashboard Streamlit mengambil main otomatis. Tidak perlu mengganti .algo atau restart cBots/VPS. Runtime scanner baru adalah read-only dan tidak memengaruhi cBots.
 
+Dashboard merevalidasi snapshot setiap 60 detik selama browser terbuka. Collector membaca cTrader setiap 5 menit; bila GitHub schedule terlambat atau data tidak fresh, harga zona disembunyikan. Panel menunjukkan SL riset, TP ilustratif dari titik tengah zona, rentang TP jika close konfirmasi berada di dalam zona, dan jarak/risk-reward. Ini geometri scanner saja, bukan perubahan SL/TP cBots atau order aktif.
+
+Contoh snapshot 13:47 WIB (1 ATR H1 = 10,854 poin): BUY tengah 4150,73 → TP 4156,16 (5,427 poin), SL 4139,88 (10,854 poin). SELL tengah 4200,52 → TP 4195,09 (5,427 poin), SL 4211,37 (10,854 poin). Reward/risk di tengah zona 0,50; jarak SL bervariasi mengikuti close konfirmasi aktual. Jika close di dalam band, jarak SL berkisar 0,5–1,5 ATR dan reward/risk berkisar 1,00–0,33 sebelum biaya. Jika close di luar band, ilustrasi rentang TP tersebut tidak berlaku.
+
+Verifikasi akhir: replay 10 juta run 38359506865 PASS (18 tests + 10 tahun + agregasi), timing run 38359506981 PASS (10 tahun + agregasi), market-data reader run 38359506844 PASS. CDN fallback ke commit immutable PASS. ImportError CI umum OrderSide pada execution/models.py tetap merupakan issue sebelumnya di luar lingkup engine scanner.
+
 Rollback: disable workflow XAU Reversal Scanner Read Only di GitHub Actions, lalu revert commit riset/dashboard bila ingin mengembalikan UI. Branch snapshot dapat dibiarkan; pembaca akan menandainya stale. Jangan reset checkpoint atau database bridge. Konfigurasi frozen dan .algo tidak perlu dirollback karena tidak berubah.

@@ -50,7 +50,7 @@ def fetch_snapshot():
         return validate_snapshot(snapshot)
 
 
-def render_reversal_dashboard():
+def _render_reversal_dashboard():
     import streamlit as st
     st.subheader("XAU · zona reversal & waktu terbaik")
     st.caption("Engine scanner terpisah · riset 2016–2025 · tidak mengirim order ke cBots.")
@@ -73,7 +73,17 @@ def render_reversal_dashboard():
                 st.markdown('**'+zone['direction']+' · '+zone['state'].replace('_',' ')+'**')
                 c1,c2=st.columns(2)
                 c1.metric('Zona reversal',f"{zone['low']:,.2f}–{zone['high']:,.2f}")
-                c2.metric('Batas invalidasi',f"{zone['invalidation']:,.2f}")
+                c2.metric('Batas invalidasi / SL riset',f"{zone['invalidation']:,.2f}")
+                side=1 if zone['direction']=='BUY' else -1
+                anchor=(zone['low']+zone['high'])/2
+                target=anchor+side*zone['reaction_distance']
+                stop_distance=abs(anchor-zone['invalidation'])
+                c3,c4=st.columns(2)
+                c3.metric('P reaksi OOS setelah konfirmasi',f"{100*zone['probability']:.1f}%" if zone.get('probability') is not None else 'Belum tervalidasi')
+                c4.metric('Target reaksi / TP contoh',f"{target:,.2f}")
+                st.caption(f"Contoh jika konfirmasi tepat di tengah zona {anchor:,.2f}: TP {zone['reaction_distance']:.2f} poin; SL {stop_distance:.2f} poin; reward/risk {zone['reaction_distance']/stop_distance:.2f}. Ini ilustrasi, bukan entry aktif.")
+                tp_low=zone['low']+side*zone['reaction_distance'];tp_high=zone['high']+side*zone['reaction_distance']
+                st.caption(f"Jika close konfirmasi berada di dalam zona: TP ilustratif {min(tp_low,tp_high):,.2f}–{max(tp_low,tp_high):,.2f}. TP aktual dihitung ulang dari close M5 yang memenuhi syarat; SL riset tetap di batas invalidasi snapshot.")
                 st.caption('Jendela '+zone['session_wib']+' · '+('aktif' if zone['session_active'] else 'di luar jendela riset'))
                 st.caption(f"Reaksi yang diuji: {zone['reaction_distance']:.2f} poin ({zone['reaction_atr']:g} ATR), dalam {zone['horizon_minutes']} menit setelah konfirmasi M5.")
         if not snapshot['zones']: st.info('Belum ada zona aktif yang sesuai konfigurasi riset.')
@@ -108,3 +118,10 @@ def render_reversal_dashboard():
                     st.dataframe([{'Tahun':year,**metric} for year,metric in winner['timing_profile']['year_metrics'].items()],hide_index=True)
         st.caption('Interval Wilson dan bootstrap bulanan bersifat deskriptif; belum mengoreksi seluruh bias seleksi 10 juta konfigurasi. Forward validation tetap diperlukan.')
         st.download_button('Unduh hasil riset zona',json.dumps(result,indent=2),file_name='RIZAN_XAU_REVERSAL_10M.json',mime='application/json')
+
+
+def render_reversal_dashboard():
+    import streamlit as st
+    # cache ttl alone does not refresh a browser that remains open. Revalidate
+    # stale data every minute even when no widget interaction occurs.
+    st.fragment(run_every='60s')(_render_reversal_dashboard)()
