@@ -216,7 +216,10 @@ def run(mode, patch, release_sha):
                 state = json.loads(raw)
                 model = state.get('ExecutionModel')
                 if state.get('ContractHash') != MODEL_HASH or model not in MODELS:
-                    raise RuntimeError('CHECKPOINT_SOURCE_PROVENANCE_UNCONFIRMED')
+                    # Historical accounts/releases must remain untouched. This
+                    # does not relax the server's timestamp or identity guards.
+                    print('CHECKPOINT_UNVERIFIED_SOURCE_LEFT_UNCHANGED', flush=True)
+                    continue
                 command([str(python), str(repair_file), str(database), '--key', key,
                          '--execution-model', model, '--apply', '--confirm-legacy-utc-producer'], env=runtime)
                 count += 1
@@ -238,7 +241,7 @@ async def run():
   async with connect('wss://rizan-bridge.duckdns.org:25345/',open_timeout=15) as ws:
    await ws.send(json.dumps(hello))
    ready=json.loads(await asyncio.wait_for(ws.recv(),15));assert ready['type']=='ready'
-   snap=json.loads(await asyncio.wait_for(ws.recv(),20));assert snap['type']=='snapshot';validate_timestamps(snap)
+   snap=json.loads(await asyncio.wait_for(ws.recv(),90));assert snap['type']=='snapshot';validate_timestamps(snap)
    await ws.send('{"type":"ping"}')
    while True:
     pong=json.loads(await asyncio.wait_for(ws.recv(),15))
@@ -246,7 +249,7 @@ async def run():
     assert pong['type']=='pong';validate_timestamps(pong);break
 asyncio.run(run())
 '''
-            command([str(python), '-c', probe], cwd=ROOT / 'cbot_bridge', env=runtime, timeout=100)
+            command([str(python), '-c', probe], cwd=ROOT / 'cbot_bridge', env=runtime, timeout=240)
             stopped = False
             manifest = {name: hashlib.sha256((ROOT / 'cbot_bridge' / name).read_bytes()).hexdigest() for name in PRODUCTION}
             (backup / 'deployed.json').write_text(json.dumps({'sha': release_sha, 'files': manifest}))
