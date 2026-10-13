@@ -12,6 +12,26 @@ REPO = Path(__file__).resolve().parents[1]
 PATCH = REPO / 'deployment/bridge-connectivity.patch'
 
 class DeploymentTests(unittest.TestCase):
+    def test_upgrade_previously_deployed_repair_tool_preserves_local_edits(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)/'repo'; bridge=root/'cbot_bridge'; bridge.mkdir(parents=True)
+            for name in (*module.PRODUCTION,'selftest.py','test_durable.py','test_protocol.py'):
+                (bridge/name).write_bytes(subprocess.check_output(['git','show','c7778659:cbot_bridge/'+name],cwd=REPO))
+            with (bridge/'repair_legacy_xau_timestamps.py').open('a') as stream:
+                stream.write('\n# KEEP_LOCAL_DIAGNOSTIC\n')
+            out=Path(folder)/'out'; module.candidate(root,out,PATCH)
+            code=(out/'cbot_bridge/repair_legacy_xau_timestamps.py').read_text()
+            self.assertIn('KEEP_LOCAL_DIAGNOSTIC',code)
+            self.assertIn('LEGACY_MODEL="XAU_LEGACY_CORE_V1"',code)
+
+    def test_legacy_repair_provenance_does_not_accept_other_hash_or_model(self):
+        legacy={'ContractHash':module.MODEL_HASH,'Schema':1}
+        self.assertEqual(module.repair_model_for(legacy),'XAU_LEGACY_CORE_V1')
+        self.assertEqual(module.repair_model_for({**legacy,'ExecutionModel':''}),'XAU_LEGACY_CORE_V1')
+        self.assertIsNone(module.repair_model_for({**legacy,'ExecutionModel':'UNKNOWN'}))
+        self.assertIsNone(module.repair_model_for({**legacy,'ContractHash':'other'}))
+        self.assertIsNone(module.repair_model_for({**legacy,'Schema':2}))
+
     def test_missing_old_test_fixture_is_created_only_in_candidate(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder) / 'repo'

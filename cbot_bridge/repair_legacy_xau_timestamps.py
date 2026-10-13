@@ -17,6 +17,7 @@ except ImportError:
 
 HASH="7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf"
 MODEL="XAU_BATCH_STAGE_FIXED_REF_WAL_V1"
+LEGACY_MODEL="XAU_LEGACY_CORE_V1"
 NAIVE=re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?$")
 
 def repair(value):
@@ -39,7 +40,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('database',type=Path)
     parser.add_argument('--key',required=True,help='Exact RZXA1:account:XAUUSD key; never an account wildcard')
-    parser.add_argument('--execution-model',choices=(MODEL,'XAU_BATCH_SEND_REF_COOLDOWN_V1'),default=MODEL)
+    parser.add_argument('--execution-model',choices=(MODEL,'XAU_BATCH_SEND_REF_COOLDOWN_V1',LEGACY_MODEL),default=MODEL)
     parser.add_argument('--apply',action='store_true')
     parser.add_argument('--confirm-legacy-utc-producer',action='store_true')
     args=parser.parse_args()
@@ -49,7 +50,13 @@ def main():
     row=db.execute('SELECT version,state FROM checkpoints WHERE key=?',(args.key,)).fetchone()
     if not row:raise SystemExit('CHECKPOINT_NOT_FOUND')
     state=json.loads(row[1]);old=encoded(state)
-    if state.get('ContractHash')!=HASH or state.get('ExecutionModel')!=args.execution_model or str(state.get('AccountNumber'))!=args.key.split(':')[1] or state.get('Symbol')!='XAUUSD':raise SystemExit('SOURCE_IDENTITY_INVALID')
+    # Canonical v1.0.1 has schema 1 and no ExecutionModel property. Its UTC
+    # converter and source are archived with the same core hash. This sentinel
+    # selects that provenance without adding/changing the checkpoint model.
+    model_ok = (state.get('ExecutionModel') in (None, '') and state.get('Schema') == 1
+                if args.execution_model == LEGACY_MODEL
+                else state.get('ExecutionModel') == args.execution_model)
+    if state.get('ContractHash')!=HASH or not model_ok or str(state.get('AccountNumber'))!=args.key.split(':')[1] or state.get('Symbol')!='XAUUSD':raise SystemExit('SOURCE_IDENTITY_INVALID')
     count=repair(state);validate_timestamps(state);new=encoded(state)
     print(json.dumps({'mode':'apply' if args.apply else 'audit','naive_fields':count,'version_unchanged':row[0],'revision_unchanged':state['Revision']}))
     if args.apply and count:

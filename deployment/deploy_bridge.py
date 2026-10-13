@@ -18,7 +18,20 @@ UNIT = 'rizan-cbot-bridge.service'
 PRODUCTION = ('server.py', 'feeds.py', 'timestamps.py', 'repair_legacy_xau_timestamps.py')
 MODEL_HASH = '7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf'
 MODELS = {'XAU_BATCH_STAGE_FIXED_REF_WAL_V1', 'XAU_BATCH_SEND_REF_COOLDOWN_V1'}
+PRIOR_NEW_FILE_BASES = {'cbot_bridge/repair_legacy_xau_timestamps.py':
+                       'a462019753cf02a42f4a9c8fbf394709d16fb929'}
 ALLOWED_PATCH = {f'cbot_bridge/{name}' for name in (*PRODUCTION, 'test_protocol.py', 'test_session_soak.py', 'test_timestamps.py')}
+
+
+def repair_model_for(state):
+    if state.get('ContractHash') != MODEL_HASH:
+        return None
+    model = state.get('ExecutionModel')
+    if model in MODELS:
+        return model
+    if model in (None, '') and state.get('Schema') == 1:
+        return 'XAU_LEGACY_CORE_V1'
+    return None
 
 
 def command(args, *, cwd=ROOT, env=None, timeout=60, check=True):
@@ -85,11 +98,14 @@ def candidate(root, destination, patch):
             if command(['git', 'apply', '--reverse', '--check', str(part)], cwd=destination, check=False).returncode == 0:
                 continue
             old_hash = re.search(r'^index ([a-f0-9]+)\.\.', block, re.M)[1]
-            if set(old_hash) == {'0'}:
-                if command(['git', 'apply', '--check', str(part)], cwd=destination, check=False).returncode:
+            added_file = set(old_hash) == {'0'}
+            if added_file:
+                if command(['git', 'apply', '--check', str(part)], cwd=destination, check=False).returncode == 0:
+                    command(['git', 'apply', str(part)], cwd=destination)
+                    continue
+                old_hash = PRIOR_NEW_FILE_BASES.get(path)
+                if old_hash is None:
                     raise RuntimeError('LOCAL_BRIDGE_PATCH_CONFLICT_NO_CHANGE:' + target.name)
-                command(['git', 'apply', str(part)], cwd=destination)
-                continue
             base = bases.get(path)
             if base is None:
                 raise RuntimeError('LOCAL_BRIDGE_PATCH_CONFLICT_NO_CHANGE:' + target.name)
@@ -99,7 +115,8 @@ def candidate(root, destination, patch):
                 raise RuntimeError('PATCH_BASE_HASH_INVALID')
             upstream = work / path
             upstream.parent.mkdir(parents=True)
-            upstream.write_text(base)
+            if not added_file:
+                upstream.write_text(base)
             command(['git', 'apply', str(part)], cwd=work)
             if not target.exists() and target.name.startswith('test_'):
                 # Older VPS checkouts may lack the regression fixture. It is
@@ -214,14 +231,21 @@ def run(mode, patch, release_sha):
                 if not key.startswith('RZXA1:'):
                     continue
                 state = json.loads(raw)
-                model = state.get('ExecutionModel')
-                if state.get('ContractHash') != MODEL_HASH or model not in MODELS:
+                model = repair_model_for(state)
+                if model is None:
                     # Historical accounts/releases must remain untouched. This
                     # does not relax the server's timestamp or identity guards.
                     print('CHECKPOINT_UNVERIFIED_SOURCE_LEFT_UNCHANGED', flush=True)
                     continue
-                command([str(python), str(repair_file), str(database), '--key', key,
-                         '--execution-model', model, '--apply', '--confirm-legacy-utc-producer'], env=runtime)
+                repaired = command([str(python), str(repair_file), str(database), '--key', key,
+                                    '--execution-model', model, '--apply', '--confirm-legacy-utc-producer'], env=runtime)
+                try:
+                    details = json.loads(repaired.stdout.splitlines()[0])
+                except (ValueError, IndexError):
+                    details = {}
+                print('CHECKPOINT_UTC_REPAIR=' + json.dumps({'account_suffix': key.split(':')[1][-4:],
+                      **{field: details.get(field) for field in
+                         ('naive_fields', 'version_unchanged', 'revision_unchanged')}}), flush=True)
                 count += 1
             for name in PRODUCTION:
                 atomic_copy(bridge / name, ROOT / 'cbot_bridge' / name)

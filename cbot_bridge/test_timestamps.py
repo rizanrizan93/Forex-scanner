@@ -7,6 +7,38 @@ from server import Store
 from selftest import state
 
 class TimestampTests(unittest.TestCase):
+    def test_legacy_missing_model_repair_preserves_model_revision_and_lost_ack(self):
+        import subprocess
+        import sys
+        import json
+        import hashlib
+        from repair_legacy_xau_timestamps import encoded
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'state.db'; store=Store(path); key='RZXA1:1:XAUUSD'; lease='a'*32
+            store.acquire(key,lease); legacy=state('RZXA1',1,'XAUUSD',1)
+            legacy.pop('ExecutionModel',None)
+            legacy.update(LastSignalUtc='0001-01-01T00:00:00', LastRealExitUtc='0001-01-01T00:00:00',
+                          XauDay='0001-01-01T00:00:00', Eur={'LastExitUtc':'0001-01-01T00:00:00'})
+            aware=json.loads(json.dumps(legacy))
+            for field in ('LastSignalUtc','LastRealExitUtc','XauDay'): aware[field]+='Z'
+            aware['Eur']['LastExitUtc']+='Z'
+            store.save(key,lease,0,1,aware)
+            raw=encoded(legacy)
+            with store.db:
+                store.db.execute('UPDATE checkpoints SET state=? WHERE key=?',(raw,key))
+                store.db.execute('UPDATE checkpoint_receipts SET digest=? WHERE key=?',
+                                 (hashlib.sha256(raw.encode()).hexdigest(),key))
+            tool=Path(__file__).with_name('repair_legacy_xau_timestamps.py')
+            args=[sys.executable,str(tool),str(path),'--key',key,'--execution-model','XAU_LEGACY_CORE_V1']
+            subprocess.run(args,check=True,capture_output=True)
+            self.assertEqual(store.db.execute('SELECT state FROM checkpoints WHERE key=?',(key,)).fetchone()[0],raw)
+            subprocess.run(args+['--apply','--confirm-legacy-utc-producer'],check=True,capture_output=True)
+            version,repaired=store.acquire(key,lease)
+            self.assertEqual(version,1); self.assertEqual(repaired,aware)
+            self.assertNotIn('ExecutionModel',repaired)
+            self.assertEqual(store.save(key,lease,0,1,aware),1)
+            store.db.close()
+
     def test_offsets_normalize_to_same_utc(self):
         for suffix, hour in (("Z",13),("+00:00",13),("+07:00",20),("-05:00",8)):
             parsed = parse_utc(f"2026-10-12T{hour:02}:30:03.640{suffix}")

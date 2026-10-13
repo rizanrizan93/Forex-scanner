@@ -83,10 +83,10 @@ index 1d6c8c44..120bc755 100644
      except Exception as exc:
 diff --git a/cbot_bridge/repair_legacy_xau_timestamps.py b/cbot_bridge/repair_legacy_xau_timestamps.py
 new file mode 100644
-index 00000000..a4620197
+index 00000000..e5e0af45
 --- /dev/null
 +++ b/cbot_bridge/repair_legacy_xau_timestamps.py
-@@ -0,0 +1,68 @@
+@@ -0,0 +1,75 @@
 +"""Offline repair of checkpoints emitted by the verified XAU v1.1.0 UTC producer.
 +
 +Default: read-only audit. Apply only while bridge is stopped, with explicit UTC
@@ -106,6 +106,7 @@ index 00000000..a4620197
 +
 +HASH="7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf"
 +MODEL="XAU_BATCH_STAGE_FIXED_REF_WAL_V1"
++LEGACY_MODEL="XAU_LEGACY_CORE_V1"
 +NAIVE=re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?$")
 +
 +def repair(value):
@@ -128,7 +129,7 @@ index 00000000..a4620197
 +    parser=argparse.ArgumentParser(description=__doc__)
 +    parser.add_argument('database',type=Path)
 +    parser.add_argument('--key',required=True,help='Exact RZXA1:account:XAUUSD key; never an account wildcard')
-+    parser.add_argument('--execution-model',choices=(MODEL,'XAU_BATCH_SEND_REF_COOLDOWN_V1'),default=MODEL)
++    parser.add_argument('--execution-model',choices=(MODEL,'XAU_BATCH_SEND_REF_COOLDOWN_V1',LEGACY_MODEL),default=MODEL)
 +    parser.add_argument('--apply',action='store_true')
 +    parser.add_argument('--confirm-legacy-utc-producer',action='store_true')
 +    args=parser.parse_args()
@@ -138,7 +139,13 @@ index 00000000..a4620197
 +    row=db.execute('SELECT version,state FROM checkpoints WHERE key=?',(args.key,)).fetchone()
 +    if not row:raise SystemExit('CHECKPOINT_NOT_FOUND')
 +    state=json.loads(row[1]);old=encoded(state)
-+    if state.get('ContractHash')!=HASH or state.get('ExecutionModel')!=args.execution_model or str(state.get('AccountNumber'))!=args.key.split(':')[1] or state.get('Symbol')!='XAUUSD':raise SystemExit('SOURCE_IDENTITY_INVALID')
++    # Canonical v1.0.1 has schema 1 and no ExecutionModel property. Its UTC
++    # converter and source are archived with the same core hash. This sentinel
++    # selects that provenance without adding/changing the checkpoint model.
++    model_ok = (state.get('ExecutionModel') in (None, '') and state.get('Schema') == 1
++                if args.execution_model == LEGACY_MODEL
++                else state.get('ExecutionModel') == args.execution_model)
++    if state.get('ContractHash')!=HASH or not model_ok or str(state.get('AccountNumber'))!=args.key.split(':')[1] or state.get('Symbol')!='XAUUSD':raise SystemExit('SOURCE_IDENTITY_INVALID')
 +    count=repair(state);validate_timestamps(state);new=encoded(state)
 +    print(json.dumps({'mode':'apply' if args.apply else 'audit','naive_fields':count,'version_unchanged':row[0],'revision_unchanged':state['Revision']}))
 +    if args.apply and count:
@@ -361,10 +368,10 @@ index 00000000..6db7f7b0
 +                    task.cancel();await asyncio.gather(task,return_exceptions=True)
 diff --git a/cbot_bridge/test_timestamps.py b/cbot_bridge/test_timestamps.py
 new file mode 100644
-index 00000000..cbb3fc3a
+index 00000000..4a1d6390
 --- /dev/null
 +++ b/cbot_bridge/test_timestamps.py
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,81 @@
 +import unittest
 +import tempfile
 +from pathlib import Path
@@ -374,6 +381,38 @@ index 00000000..cbb3fc3a
 +from selftest import state
 +
 +class TimestampTests(unittest.TestCase):
++    def test_legacy_missing_model_repair_preserves_model_revision_and_lost_ack(self):
++        import subprocess
++        import sys
++        import json
++        import hashlib
++        from repair_legacy_xau_timestamps import encoded
++        with tempfile.TemporaryDirectory() as folder:
++            path=Path(folder)/'state.db'; store=Store(path); key='RZXA1:1:XAUUSD'; lease='a'*32
++            store.acquire(key,lease); legacy=state('RZXA1',1,'XAUUSD',1)
++            legacy.pop('ExecutionModel',None)
++            legacy.update(LastSignalUtc='0001-01-01T00:00:00', LastRealExitUtc='0001-01-01T00:00:00',
++                          XauDay='0001-01-01T00:00:00', Eur={'LastExitUtc':'0001-01-01T00:00:00'})
++            aware=json.loads(json.dumps(legacy))
++            for field in ('LastSignalUtc','LastRealExitUtc','XauDay'): aware[field]+='Z'
++            aware['Eur']['LastExitUtc']+='Z'
++            store.save(key,lease,0,1,aware)
++            raw=encoded(legacy)
++            with store.db:
++                store.db.execute('UPDATE checkpoints SET state=? WHERE key=?',(raw,key))
++                store.db.execute('UPDATE checkpoint_receipts SET digest=? WHERE key=?',
++                                 (hashlib.sha256(raw.encode()).hexdigest(),key))
++            tool=Path(__file__).with_name('repair_legacy_xau_timestamps.py')
++            args=[sys.executable,str(tool),str(path),'--key',key,'--execution-model','XAU_LEGACY_CORE_V1']
++            subprocess.run(args,check=True,capture_output=True)
++            self.assertEqual(store.db.execute('SELECT state FROM checkpoints WHERE key=?',(key,)).fetchone()[0],raw)
++            subprocess.run(args+['--apply','--confirm-legacy-utc-producer'],check=True,capture_output=True)
++            version,repaired=store.acquire(key,lease)
++            self.assertEqual(version,1); self.assertEqual(repaired,aware)
++            self.assertNotIn('ExecutionModel',repaired)
++            self.assertEqual(store.save(key,lease,0,1,aware),1)
++            store.db.close()
++
 +    def test_offsets_normalize_to_same_utc(self):
 +        for suffix, hour in (("Z",13),("+00:00",13),("+07:00",20),("-05:00",8)):
 +            parsed = parse_utc(f"2026-10-12T{hour:02}:30:03.640{suffix}")
