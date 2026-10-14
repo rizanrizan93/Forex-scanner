@@ -27,3 +27,13 @@ jobs:
         run: dotnet run --project cbot_sources/archive/eur-releases/v1.1.1/tests/RuntimeTests.csproj -c Release
       - name: Build EUR cBot source
         run: dotnet build cbot_sources/archive/eur-releases/v1.1.1/RizanEURBatch/RizanEURBatch/RizanEURBatch.csproj -c Release --nologo
+      - name: Publish deployable cTrader algo
+        run: |
+          dotnet build cbot_sources/archive/eur-releases/v1.1.1/RizanEURBatch/RizanEURBatch/RizanEURBatch.csproj -c Release --nologo -p:AlgoPublish=true -p:IncludeSource=true
+          find cbot_sources/archive/eur-releases/v1.1.1/RizanEURBatch -type f -name '*.algo' -print
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RizanEURBatch-v1.1.1-candidate
+          path: cbot_sources/archive/eur-releases/v1.1.1/RizanEURBatch/**/*.algo
+          if-no-files-found: error
+          retention-days: 7
