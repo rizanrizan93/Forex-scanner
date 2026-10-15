@@ -133,7 +133,7 @@ def test_new_tab_uses_existing_snapshot_and_renders_incomplete():
     from unittest.mock import patch
     from streamlit.testing.v1 import AppTest
     root = Path(__file__).resolve().parents[1]
-    with patch("fx_scanner.xau_turso_hot_snapshot_v407.fetch_public_hot_snapshot", return_value={"heartbeats": []}):
+    with patch("fx_scanner.pre_news_transport.fetch_pre_news_snapshot", return_value={"heartbeats": []}):
         app = AppTest.from_file(str(root / "main.py"))
         app.session_state["rizan_xau_detail"] = "Pre-News"
         app.run()
@@ -149,7 +149,7 @@ def test_panel_shows_complete_fixture_without_orders():
     import streamlit as st
     st.cache_data.clear()
     root = Path(__file__).resolve().parents[1]
-    with patch("fx_scanner.xau_turso_hot_snapshot_v407.fetch_public_hot_snapshot", return_value=snapshot()), patch("fx_scanner.pre_news_dashboard.datetime") as time:
+    with patch("fx_scanner.pre_news_transport.fetch_pre_news_snapshot", return_value=snapshot()), patch("fx_scanner.pre_news_dashboard.datetime") as time:
         time.now.return_value = NOW
         app = AppTest.from_file(str(root / "pages/3_Pre_News_Expectation.py"))
         app.run()

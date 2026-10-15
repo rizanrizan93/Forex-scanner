@@ -6,11 +6,11 @@ from .pre_news_expectation import evaluate_pre_news
 
 def render_pre_news_dashboard():
     import streamlit as st
-    from .xau_turso_hot_snapshot_v407 import fetch_public_hot_snapshot
+    from .pre_news_transport import fetch_pre_news_snapshot
 
     @st.cache_data(ttl=60, show_spinner=False)
     def load_snapshot():
-        return fetch_public_hot_snapshot()
+        return fetch_pre_news_snapshot()
 
     @st.fragment(run_every="60s")
     def panel():

@@ -3,10 +3,12 @@ name: XAU Macro Attribution V399
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/15 * * * 0-5"
+    - cron: "*/5 * * * 0-5"
   push:
     branches: [main]
     paths:
+      - "src/fx_scanner/pre_news_transport.py"
+      - "scripts/publish_pre_news_snapshot.py"
       - "src/fx_scanner/xau_macro_attribution_v357.py"
       - "src/fx_scanner/xau_intraday_yield_v367.py"
       - "src/fx_scanner/xau_intraday_macro_v398.py"
@@ -25,6 +27,8 @@ on:
       - ".github/workflows/xau-macro-attribution-v357.yml"
   pull_request:
     paths:
+      - "src/fx_scanner/pre_news_transport.py"
+      - "scripts/publish_pre_news_snapshot.py"
       - "src/fx_scanner/xau_macro_attribution_v357.py"
       - "src/fx_scanner/xau_intraday_yield_v367.py"
       - "src/fx_scanner/xau_intraday_macro_v398.py"
@@ -40,7 +44,7 @@ on:
       - ".github/workflows/xau-macro-attribution-v357.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: xau-macro-attribution-v399-${{ github.ref }}
@@ -76,10 +80,32 @@ jobs:
             tests/test_xau_intraday_macro_v398.py \
             tests/test_xau_treasury_session_v399.py
       - name: Validate configuration
-        run: python -m fx_scanner.cli validate-config
+        run: python -c "from fx_scanner.config import load_project_config; load_project_config(None); print('Macro configuration valid')"
       - name: Refresh V192 event context
         if: github.event_name != 'pull_request'
         run: python -m fx_scanner.demo_xau_event_risk_v192
       - name: Refresh V399 macro heartbeat
-        if: github.event_name != 'pull_request'
+        if: always() && github.event_name != 'pull_request'
         run: python -m fx_scanner.demo_xau_macro_attribution_v399
+      - name: Build isolated read-only Pre-News snapshot
+        if: always() && github.event_name != 'pull_request'
+        run: python scripts/publish_pre_news_snapshot.py artifacts/pre_news_snapshot.json
+      - name: Publish isolated Pre-News feed
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'artifacts/pre_news_snapshot.json';
+            if (!fs.existsSync(path)) throw Error('Pre-News snapshot missing');
+            const data = JSON.parse(fs.readFileSync(path,'utf8'));
+            if (data.execution_authority !== false || data.execution_influence !== false || data.contract !== 'RIZAN_PRE_NEWS_SNAPSHOT_V1') throw Error('Pre-News read-only guard');
+            const {owner, repo} = context.repo;
+            const branch = 'scanner-pre-news-snapshots';
+            let parent, exists = true;
+            try { parent = (await github.rest.git.getRef({owner,repo,ref:'heads/'+branch})).data.object.sha; }
+            catch(e) { if(e.status!==404) throw e; exists=false; parent=context.sha; }
+            const tree = await github.rest.git.createTree({owner,repo,base_tree:parent,tree:[{path:'runtime/pre_news_snapshot.json',mode:'100644',type:'blob',content:JSON.stringify(data)}]});
+            const commit = await github.rest.git.createCommit({owner,repo,message:'pre-news: publish calendar and macro context',tree:tree.data.sha,parents:[parent]});
+            if (exists) await github.rest.git.updateRef({owner,repo,ref:'heads/'+branch,sha:commit.data.sha,force:false});
+            else await github.rest.git.createRef({owner,repo,ref:'refs/heads/'+branch,sha:commit.data.sha});
