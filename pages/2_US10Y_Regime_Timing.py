@@ -55,6 +55,13 @@ def _dt(value: Any) -> datetime | None:
     return parsed.astimezone(UTC) if parsed.tzinfo else None
 
 
+def _safe_error(exc: Exception) -> str:
+    text = " ".join(str(exc).split())
+    if len(text) > 180:
+        text = text[:177] + "..."
+    return f"{type(exc).__name__}: {text}" if text else type(exc).__name__
+
+
 @st.cache_data(ttl=10, show_spinner=False)
 def load_live_cash_us10y() -> dict[str, Any]:
     query = urlencode(
@@ -149,10 +156,40 @@ last_cash = macro_eval.get("last_cash_yield") or {}
 
 @st.fragment(run_every="20s")
 def render_live_cash_quote() -> None:
+    live_cash = None
+    live_error = None
     try:
         live_cash = load_live_cash_us10y()
-    except Exception:
-        live_cash = None
+    except Exception as exc:
+        live_error = _safe_error(exc)
+
+    if live_cash and live_cash.get("fresh"):
+        health = "CNBC OK"
+        fallback = "TIDAK"
+        health_detail = (
+            f"{live_cash.get('provider') or 'CNBC'} / {live_cash.get('exchange') or 'Tradeweb'}"
+            + (" · realtime=true" if str(live_cash.get("realtime")).lower() == "true" else "")
+        )
+    elif live_cash:
+        health = "CNBC STALE"
+        fallback = "YA"
+        health_detail = (
+            f"quote berusia {float(live_cash.get('age_seconds') or 0.0) / 60:.1f} menit "
+            f"(batas live {LIVE_CASH_MAX_AGE_SECONDS:.0f} detik)"
+        )
+    else:
+        health = "CNBC ERROR"
+        fallback = "YA"
+        health_detail = live_error or "sumber live tidak mengembalikan quote"
+
+    h1, h2, h3 = st.columns(3)
+    h1.metric("Source Health", health)
+    h2.metric("Fallback aktif", fallback)
+    if live_cash and live_cash.get("current_at"):
+        h3.metric("Usia data", f"{float(live_cash.get('age_seconds') or 0.0):.0f} dtk")
+    else:
+        h3.metric("Usia data", "—")
+    st.caption("Health detail: " + health_detail)
 
     if live_cash and live_cash.get("fresh"):
         st.success(
@@ -186,6 +223,9 @@ def render_live_cash_quote() -> None:
         )
     else:
         st.warning("Sumber live cash US10Y sedang tidak tersedia dan belum ada last-valid quote.")
+
+    if live_error:
+        st.caption("Error sumber terakhir: " + live_error)
 
     if proxy_active:
         st.caption("Timing engine tetap memakai Treasury futures ZN yang lebih baru sampai cash feed valid kembali.")
@@ -282,7 +322,10 @@ with st.expander("Detail sumber"):
             "intraday_state": intraday.get("state"),
             "intraday_source": intraday.get("source"),
             "live_cash_display_source": "CNBC_US10Y_TRADEWEB_QUOTE",
+            "live_cash_refresh_seconds": 20,
+            "live_cash_cache_seconds": 10,
             "live_cash_max_age_seconds": LIVE_CASH_MAX_AGE_SECONDS,
+            "fallback_policy": "LAST_VALID_CASH_THEN_ZN_DIRECTION_PROXY_FAIL_CLOSED",
             "alignment": alignment,
         }
     )
