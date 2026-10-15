@@ -291,7 +291,7 @@ async def run():
    ready=json.loads(await asyncio.wait_for(ws.recv(),15));assert ready['type']=='ready';validate_timestamps(ready)
    await ws.send('{"type":"ping"}')
    pong=json.loads(await asyncio.wait_for(ws.recv(),15));assert pong['type']=='pong';validate_timestamps(pong)
-hello.update(key='RZEF245:1:EURUSD',contract='d39e1192b64c3044f3215fa82ceaacdb732b4cf758389ad4f609692e54bdae9a',lease=uuid.uuid4().hex)
+ hello.update(key='RZEF245:1:EURUSD',contract='d39e1192b64c3044f3215fa82ceaacdb732b4cf758389ad4f609692e54bdae9a',lease=uuid.uuid4().hex)
  for cycle in range(2):
   async with connect('wss://rizan-bridge.duckdns.org:25345/',open_timeout=15) as ws:
    await ws.send(json.dumps(hello))

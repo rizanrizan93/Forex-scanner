@@ -1,3 +1,4 @@
+import ast
 import importlib.util
 from pathlib import Path
 import shutil
@@ -12,6 +13,17 @@ REPO = Path(__file__).resolve().parents[1]
 PATCH = REPO / 'deployment/bridge-connectivity.patch'
 
 class DeploymentTests(unittest.TestCase):
+    def test_embedded_wss_probe_compiles_and_covers_f0245(self):
+        tree = ast.parse(Path(module.__file__).read_text())
+        probes = [node.value.value for node in ast.walk(tree)
+                  if isinstance(node, ast.Assign)
+                  and any(isinstance(target, ast.Name) and target.id == 'probe' for target in node.targets)
+                  and isinstance(node.value, ast.Constant)]
+        self.assertEqual(len(probes), 1)
+        compile(probes[0], '<wss-probe>', 'exec')
+        for prefix in ('RZXA1:1:XAUUSD', 'RZEU4B:1:EURUSD', 'RZEF245:1:EURUSD'):
+            self.assertIn(prefix, probes[0])
+
     def test_upgrade_previously_deployed_repair_tool_preserves_local_edits(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder)/'repo'; bridge=root/'cbot_bridge'; bridge.mkdir(parents=True)
@@ -184,3 +196,4 @@ class DeploymentTests(unittest.TestCase):
             self.assertEqual(state['Revision'], 2)
             self.assertEqual(state['LastSignalUtc'], '2026-10-13T00:00:00Z')
             self.assertEqual((root / 'cbot_bridge/server.py').read_text(), 'OLD_server.py')
+
