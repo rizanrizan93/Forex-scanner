@@ -55,11 +55,13 @@ except Exception:
     st.stop()
 macro_eval = data['evaluation']
 st.caption("Feed makro terakhir: " + wib(data['observed_at']) + " · independen dari heartbeat zona XAU")
+proxy_active = (macro_eval.get("intraday_yield_context") or {}).get("timing_basis") == "TREASURY_FUTURES_PROXY"
 last_cash = macro_eval.get('last_cash_yield') or {}
 if last_cash:
     st.info("Kuotasi cash US10Y terakhir: " + fmt(last_cash.get('current'), '%') +
             " · " + wib(last_cash.get('current_at')) +
-            ". Data ini sudah terlambat untuk timing intraday; bias intraday ditahan.")
+            (". Timing menggunakan harga Treasury futures ZN yang lebih baru." if proxy_active else
+             ". Data ini sudah terlambat untuk timing intraday; bias intraday ditahan."))
 
 summary = yield_regime_summary(macro_eval)
 daily = dict(summary.get("daily") or {})
@@ -87,15 +89,20 @@ with c1:
 with c2:
     st.markdown("### US10Y Intraday Pressure")
     st.metric("Bias terhadap XAU", bias_label(intraday.get("gold_bias")))
-    st.metric(
-        "Yield intraday sekarang",
-        fmt(intraday.get("current"), "%"),
-        delta=(
-            None
-            if intraday.get("rebound_from_low_bps") is None
-            else f"{float(intraday.get('rebound_from_low_bps')):+.1f} bps dari low pasca-event"
-        ),
-    )
+    if proxy_active:
+        st.metric("Treasury futures ZN · harga proksi", fmt(intraday.get("futures_price")),
+                  delta=None if intraday.get("futures_change_points") is None else
+                  f"{intraday['futures_change_points']:+.5f} poin vs awal jendela")
+        st.caption("Waktu kuotasi ZN: " + wib(intraday.get("futures_at")))
+        if intraday.get("age_seconds") is not None:
+            st.caption(f"Usia kuotasi proksi: {intraday['age_seconds']/60:.1f} menit · pembaruan feed sekitar 4 menit.")
+        st.caption("Proksi arah yield dari harga futures, bukan yield cash dalam persen. Harga ZN naik → tekanan yield turun; ZN turun → tekanan yield naik. Sumber Yahoo dapat tertunda.")
+    else:
+        st.metric(
+            "Yield intraday sekarang", fmt(intraday.get("current"), "%"),
+            delta=None if intraday.get("rebound_from_low_bps") is None else
+            f"{float(intraday['rebound_from_low_bps']):+.1f} bps dari low pasca-event")
+        st.caption("Waktu kuotasi cash: " + wib(intraday.get("current_at")))
     st.caption(
         "Fungsi: membaca pressure menit/jam terbaru. Yield intraday naik/re-accelerate = "
         "headwind XAU; yield intraday turun = tailwind XAU. Ini dipakai untuk timing."

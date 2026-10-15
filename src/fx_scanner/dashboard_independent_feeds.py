@@ -4,7 +4,7 @@ from copy import deepcopy
 import math
 
 from .manual_reversal_map import validate
-from .pre_news_expectation import MACRO_WORKER, fresh
+from .pre_news_expectation import MACRO_WORKER, fresh, timestamp
 from .pre_news_transport import CONTRACT as MACRO_CONTRACT
 
 
@@ -52,13 +52,30 @@ def macro_input(payload, *, now=None):
     if not evaluation:
         raise ValueError('Data makro belum tersedia')
     intraday = evaluation.get('intraday_yield_context') or {}
-    # Publisher and upstream cached age_seconds are not the quote timestamp.
+    # Validate the timestamp of the actual timing instrument, not cached age_seconds.
     if intraday and not fresh(intraday.get('current_at'), now, 900):
         evaluation['last_cash_yield'] = deepcopy(intraday)
-        evaluation['intraday_yield_context'] = {
-            'available': False, 'state': 'STALE_CASH_QUOTE',
-            'gold_implication': 'UNAVAILABLE', 'source': intraday.get('source'),
-            'current_at': intraday.get('current_at'),
-        }
+        proxy = intraday.get('effective_source') == 'YAHOO_FINANCE_ZN_FRONT_PROXY'
+        futures_at = intraday.get('futures_at')
+        futures_price = intraday.get('futures_price')
+        proxy_fresh = (proxy and intraday.get('available') is True and
+                       fresh(futures_at, now, 900) and futures_price is not None and
+                       math.isfinite(float(futures_price)) and float(futures_price) > 0)
+        if proxy_fresh:
+            # ZN price is not a yield percentage. Keep numeric cash yield historical.
+            evaluation['intraday_yield_context'] = {
+                **intraday, 'current': None, 'current_at': futures_at,
+                'age_seconds': (now-timestamp(futures_at)).total_seconds(),
+                'reference': None, 'reference_at': None, 'net_bps': None,
+                'available': True, 'timing_basis': 'TREASURY_FUTURES_PROXY',
+                'source': 'YAHOO_FINANCE_ZN_FRONT_PROXY',
+                'rebound_from_low_bps': None, 'pullback_from_high_bps': None,
+            }
+        else:
+            evaluation['intraday_yield_context'] = {
+                'available': False, 'state': 'STALE_CASH_QUOTE',
+                'gold_implication': 'UNAVAILABLE', 'source': intraday.get('source'),
+                'current_at': intraday.get('current_at'),
+            }
     return {'evaluation': evaluation, 'observed_at': rows[0]['observed_at'],
             'published_at': payload['published_at']}

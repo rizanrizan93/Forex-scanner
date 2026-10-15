@@ -103,3 +103,53 @@ def test_main_tabs_run_independently_of_legacy_imports(label):
         app.session_state['rizan_xau_detail'] = label
         app.run(timeout=20)
         assert not app.exception and app.metric
+
+
+def futures_feed(*, stale=False):
+    p = macro_feed()
+    context = p['heartbeats'][0]['details']['evaluation']['intraday_yield_context']
+    context.update(current_at=(datetime.now(UTC)-timedelta(hours=15)).isoformat(),
+        effective_source='YAHOO_FINANCE_ZN_FRONT_PROXY',
+        state='US10Y_CASH_LAST_VALID_FUTURES_ACTIVE',
+        futures_at=(datetime.now(UTC)-timedelta(minutes=25 if stale else 10)).isoformat(),
+        futures_price=111.25, futures_change_points=.0625,
+        futures_yield_pressure='YIELD_DOWN_PROXY', freshness='PROXY_FRESH')
+    return p
+
+
+def test_recent_futures_restore_timing_without_relabeling_cash_yield():
+    result = macro_input(futures_feed())['evaluation']
+    active = result['intraday_yield_context']
+    assert active['available'] is True and active['current'] is None
+    assert active['timing_basis'] == 'TREASURY_FUTURES_PROXY'
+    assert active['futures_price'] == 111.25
+    assert result['last_cash_yield']['current'] == 5.19
+    from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary
+    summary = yield_regime_summary(result)
+    assert summary['intraday']['gold_bias'] == 'BULLISH_XAU'
+    assert summary['intraday']['current'] is None
+
+
+def test_stale_futures_never_restore_intraday_even_when_feed_is_new():
+    active = macro_input(futures_feed(stale=True))['evaluation']['intraday_yield_context']
+    assert active['available'] is False and active['gold_implication'] == 'UNAVAILABLE'
+
+
+def test_zn_quote_survives_public_feed_projection():
+    from fx_scanner.demo_xau_macro_attribution_v357 import build_dashboard_projection
+    p = futures_feed()
+    evaluation = p['heartbeats'][0]['details']['evaluation']
+    out = build_dashboard_projection(evaluation)['intraday_yield_context']
+    for key in ['effective_source', 'futures_at', 'futures_price', 'futures_change_points', 'futures_yield_pressure']:
+        assert out[key] == evaluation['intraday_yield_context'][key]
+
+
+def test_proxy_panel_displays_futures_price_and_not_old_cash_as_current_yield():
+    import streamlit as st
+    st.cache_data.clear()
+    with patch('fx_scanner.pre_news_transport.fetch_pre_news_snapshot', new=lambda: futures_feed()):
+        app = AppTest.from_file(str(ROOT/'pages/2_US10Y_Regime_Timing.py')).run()
+        assert not app.exception
+        assert any(x.label == 'Treasury futures ZN · harga proksi' and x.value == '111.250' for x in app.metric)
+        assert not any(x.label == 'Yield intraday sekarang' for x in app.metric)
+        assert any('Waktu kuotasi ZN' in x.value for x in app.caption)

@@ -183,6 +183,16 @@ def build_dashboard_projection(evaluation: dict[str, Any]) -> dict[str, Any]:
                 "age_seconds",
                 "source",
                 "post_event_diagnostic",
+                "freshness",
+                "session_state",
+                "effective_source",
+                "last_cash_yield",
+                "last_cash_at",
+                "futures_price",
+                "futures_at",
+                "futures_change_points",
+                "futures_change_pct",
+                "futures_yield_pressure",
             )
             if key in intraday
         },

@@ -119,6 +119,11 @@ def classify_intraday_us10y(macro_eval: dict[str, Any]) -> dict[str, Any]:
         "available": bool(intraday.get("available", False)),
         "source": intraday.get("source") or "INTRADAY_SECONDARY_PROXY",
         "post_event_diagnostic": dict(intraday.get("post_event_diagnostic") or {}),
+        "timing_basis": intraday.get("timing_basis") or "CASH_YIELD",
+        "futures_price": _f(intraday.get("futures_price")),
+        "futures_at": intraday.get("futures_at"),
+        "futures_change_points": _f(intraday.get("futures_change_points")),
+        "futures_yield_pressure": intraday.get("futures_yield_pressure"),
         "frequency": "INTRADAY",
     }
 
