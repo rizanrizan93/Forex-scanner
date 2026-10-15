@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode, urlparse
+from urllib.request import Request, urlopen
 
 import streamlit as st
 
@@ -15,6 +19,10 @@ from fx_scanner.pre_news_transport import fetch_pre_news_snapshot  # noqa: E402
 from fx_scanner.dashboard_independent_feeds import macro_input  # noqa: E402
 from fx_scanner.manual_reversal_dashboard import wib  # noqa: E402
 from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary  # noqa: E402
+
+CNBC_US10Y_URL = "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol"
+CNBC_US10Y_HOST = "quote.cnbc.com"
+LIVE_CASH_MAX_AGE_SECONDS = 120.0
 
 
 def fmt(value: Any, suffix: str = "") -> str:
@@ -35,6 +43,87 @@ def bias_label(value: Any) -> str:
     return labels.get(str(value or "UNAVAILABLE"), str(value or "UNAVAILABLE"))
 
 
+def _dt(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value.astimezone(UTC) if value.tzinfo else None
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return parsed.astimezone(UTC) if parsed.tzinfo else None
+
+
+@st.cache_data(ttl=10, show_spinner=False)
+def load_live_cash_us10y() -> dict[str, Any]:
+    query = urlencode(
+        {
+            "symbols": "US10Y",
+            "requestMethod": "itv",
+            "noform": "1",
+            "partnerId": "2",
+            "fund": "1",
+            "exthrs": "1",
+            "output": "json",
+            "events": "1",
+        }
+    )
+    request = Request(
+        CNBC_US10Y_URL + "?" + query,
+        headers={
+            "Accept": "application/json,text/plain,*/*",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+            "User-Agent": (
+                "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 "
+                "Chrome/140.0 Mobile Safari/537.36"
+            ),
+        },
+    )
+    with urlopen(request, timeout=8.0) as response:
+        final = urlparse(str(response.geturl()))
+        if final.scheme != "https" or final.hostname != CNBC_US10Y_HOST:
+            raise ValueError("US10Y live quote redirected outside allowed host")
+        raw = response.read(128 * 1024 + 1)
+    if len(raw) > 128 * 1024:
+        raise ValueError("US10Y live quote response too large")
+
+    payload = json.loads(raw.decode("utf-8"))
+    rows = list(dict(payload.get("FormattedQuoteResult") or {}).get("FormattedQuote") or [])
+    if not rows:
+        raise ValueError("US10Y live quote missing")
+    quote = dict(rows[0] or {})
+    if str(quote.get("symbol") or "").upper() != "US10Y":
+        raise ValueError("US10Y live quote symbol mismatch")
+
+    raw_last = str(quote.get("last") or "").replace("%", "").replace(",", "").strip()
+    value = float(raw_last)
+    if not 0.0 < value < 30.0:
+        raise ValueError("US10Y live quote outside valid range")
+
+    observed_at = _dt(quote.get("last_time"))
+    if observed_at is None:
+        raise ValueError("US10Y live quote timestamp missing")
+    now = datetime.now(tz=UTC)
+    age_seconds = max(0.0, (now - observed_at).total_seconds())
+    return {
+        "current": value,
+        "current_at": observed_at.isoformat(),
+        "age_seconds": age_seconds,
+        "fresh": age_seconds <= LIVE_CASH_MAX_AGE_SECONDS,
+        "realtime": quote.get("realTime"),
+        "exchange": quote.get("exchange") or "Tradeweb",
+        "provider": quote.get("provider") or "CNBC QUOTE CACHE",
+        "source": "CNBC_US10Y_TRADEWEB_QUOTE",
+    }
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def load_macro():
+    return fetch_pre_news_snapshot()
+
+
 st.set_page_config(page_title="RIZAN US10Y", layout="wide")
 st.title("RIZAN — US10Y Regime & Timing")
 st.caption(
@@ -42,26 +131,69 @@ st.caption(
     "Keduanya tidak memberi izin order sendiri; keputusan tetap harus dikonfirmasi struktur XAU."
 )
 
-@st.cache_data(ttl=60, show_spinner=False)
-def load_macro():
-    return fetch_pre_news_snapshot()
-
 if st.button("Perbarui tampilan", key="yield_refresh"):
     load_macro.clear()
+    load_live_cash_us10y.clear()
+
 try:
     data = macro_input(load_macro())
 except Exception:
-    st.warning("Feed makro belum dapat diperbarui atau sudah kedaluwarsa. Tampilan mencoba kembali setiap 60 detik.")
+    st.warning("Feed makro belum dapat diperbarui atau sudah kedaluwarsa. Tampilan mencoba kembali setiap 30 detik.")
     st.stop()
-macro_eval = data['evaluation']
-st.caption("Feed makro terakhir: " + wib(data['observed_at']) + " · independen dari heartbeat zona XAU")
+
+macro_eval = data["evaluation"]
+st.caption("Feed makro terakhir: " + wib(data["observed_at"]) + " · independen dari heartbeat zona XAU")
 proxy_active = (macro_eval.get("intraday_yield_context") or {}).get("timing_basis") == "TREASURY_FUTURES_PROXY"
-last_cash = macro_eval.get('last_cash_yield') or {}
-if last_cash:
-    st.info("Kuotasi cash US10Y terakhir: " + fmt(last_cash.get('current'), '%') +
-            " · " + wib(last_cash.get('current_at')) +
-            (". Timing menggunakan harga Treasury futures ZN yang lebih baru." if proxy_active else
-             ". Data ini sudah terlambat untuk timing intraday; bias intraday ditahan."))
+last_cash = macro_eval.get("last_cash_yield") or {}
+
+
+@st.fragment(run_every="20s")
+def render_live_cash_quote() -> None:
+    try:
+        live_cash = load_live_cash_us10y()
+    except Exception:
+        live_cash = None
+
+    if live_cash and live_cash.get("fresh"):
+        st.success(
+            "Cash US10Y LIVE: "
+            + fmt(live_cash.get("current"), "%")
+            + " · "
+            + wib(live_cash.get("current_at"))
+            + f" · usia {float(live_cash.get('age_seconds') or 0.0):.0f} detik"
+            + ". Auto-refresh 20 detik."
+        )
+        st.caption(
+            "Sumber live display: CNBC / Tradeweb. Feed ini dipisahkan dari Daily FRED dan tidak memberi otoritas order."
+        )
+        return
+
+    if live_cash:
+        st.warning(
+            "Cash US10Y live source belum cukup segar: "
+            + fmt(live_cash.get("current"), "%")
+            + " · "
+            + wib(live_cash.get("current_at"))
+            + f" · usia {float(live_cash.get('age_seconds') or 0.0) / 60:.1f} menit."
+        )
+    elif last_cash:
+        st.warning(
+            "Sumber live cash US10Y sedang tidak tersedia. Last valid engine: "
+            + fmt(last_cash.get("current"), "%")
+            + " · "
+            + wib(last_cash.get("current_at"))
+            + "."
+        )
+    else:
+        st.warning("Sumber live cash US10Y sedang tidak tersedia dan belum ada last-valid quote.")
+
+    if proxy_active:
+        st.caption("Timing engine tetap memakai Treasury futures ZN yang lebih baru sampai cash feed valid kembali.")
+    else:
+        st.caption("Timing engine tetap fail-closed; quote stale tidak dianggap sebagai data intraday live.")
+
+
+render_live_cash_quote()
 
 summary = yield_regime_summary(macro_eval)
 daily = dict(summary.get("daily") or {})
@@ -90,19 +222,35 @@ with c2:
     st.markdown("### US10Y Intraday Pressure")
     st.metric("Bias terhadap XAU", bias_label(intraday.get("gold_bias")))
     if proxy_active:
-        st.metric("Treasury futures ZN · harga proksi", fmt(intraday.get("futures_price")),
-                  delta=None if intraday.get("futures_change_points") is None else
-                  f"{intraday['futures_change_points']:+.5f} poin vs awal jendela")
+        st.metric(
+            "Treasury futures ZN · harga proksi",
+            fmt(intraday.get("futures_price")),
+            delta=(
+                None
+                if intraday.get("futures_change_points") is None
+                else f"{intraday['futures_change_points']:+.5f} poin vs awal jendela"
+            ),
+        )
         st.caption("Waktu kuotasi ZN: " + wib(intraday.get("futures_at")))
         if intraday.get("age_seconds") is not None:
-            st.caption(f"Usia kuotasi proksi: {intraday['age_seconds']/60:.1f} menit · pembaruan feed sekitar 4 menit.")
-        st.caption("Proksi arah yield dari harga futures, bukan yield cash dalam persen. Harga ZN naik → tekanan yield turun; ZN turun → tekanan yield naik. Sumber Yahoo dapat tertunda.")
+            st.caption(
+                f"Usia kuotasi proksi: {intraday['age_seconds']/60:.1f} menit · pembaruan feed sekitar 4 menit."
+            )
+        st.caption(
+            "Proksi arah yield dari harga futures, bukan yield cash dalam persen. Harga ZN naik → tekanan yield turun; "
+            "ZN turun → tekanan yield naik. Sumber Yahoo dapat tertunda."
+        )
     else:
         st.metric(
-            "Yield intraday sekarang", fmt(intraday.get("current"), "%"),
-            delta=None if intraday.get("rebound_from_low_bps") is None else
-            f"{float(intraday['rebound_from_low_bps']):+.1f} bps dari low pasca-event")
-        st.caption("Waktu kuotasi cash: " + wib(intraday.get("current_at")))
+            "Yield intraday engine",
+            fmt(intraday.get("current"), "%"),
+            delta=(
+                None
+                if intraday.get("rebound_from_low_bps") is None
+                else f"{float(intraday['rebound_from_low_bps']):+.1f} bps dari low pasca-event"
+            ),
+        )
+        st.caption("Waktu kuotasi engine: " + wib(intraday.get("current_at")))
     st.caption(
         "Fungsi: membaca pressure menit/jam terbaru. Yield intraday naik/re-accelerate = "
         "headwind XAU; yield intraday turun = tailwind XAU. Ini dipakai untuk timing."
@@ -133,6 +281,8 @@ with st.expander("Detail sumber"):
             "daily_source": daily.get("source"),
             "intraday_state": intraday.get("state"),
             "intraday_source": intraday.get("source"),
+            "live_cash_display_source": "CNBC_US10Y_TRADEWEB_QUOTE",
+            "live_cash_max_age_seconds": LIVE_CASH_MAX_AGE_SECONDS,
             "alignment": alignment,
         }
     )
