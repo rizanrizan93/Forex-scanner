@@ -1,0 +1,22 @@
+{
+  "MYFXBOOK": {
+    "enabled": true,
+    "base_url": "https://www.myfxbook.com/calendar_statement.csv",
+    "allowed_host": "www.myfxbook.com",
+    "timezone": "UTC",
+    "role": "SECONDARY_CONSENSUS"
+  },
+  "INVESTING_COM": {
+    "enabled": true,
+    "base_url": "https://www.investing.com/economic-calendar/",
+    "allowed_host": "www.investing.com",
+    "timezone": "UTC",
+    "role": "SECONDARY_CONSENSUS"
+  },
+  "policy": {
+    "official_actual_precedence": true,
+    "source_conflict_abstains": true,
+    "fail_open_secondary_sources": true,
+    "secondary_time_alignment_hours": 14
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "sources": [
+    {
+      "id": "investing_com",
+      "name": "Investing.com Economic Calendar",
+      "enabled": true,
+      "role": "secondary_consensus",
+      "priority": 70,
+      "fields": ["event", "impact", "previous", "consensus", "actual", "release_time"],
+      "normalization": {
+        "Core CPI (MoM)": "CORE_CPI_MOM",
+        "Core CPI (YoY)": "CORE_CPI_YOY",
+        "CPI (MoM)": "CPI_MOM",
+        "CPI (YoY)": "CPI_YOY"
+      }
+    },
+    {
+      "id": "myfxbook",
+      "name": "Myfxbook Economic Calendar",
+      "enabled": true,
+      "role": "secondary_consensus",
+      "priority": 70,
+      "fields": ["event", "impact", "previous", "consensus", "actual", "release_time"],
+      "normalization": {
+        "Core Inflation Rate MoM": "CORE_CPI_MOM",
+        "Core Inflation Rate YoY": "CORE_CPI_YOY",
+        "Inflation Rate MoM": "CPI_MOM",
+        "Inflation Rate YoY": "CPI_YOY"
+      }
+    }
+  ],
+  "fusion_policy": {
+    "single_source_authoritative": false,
+    "source_conflict_state": "SOURCE_CONFLICT",
+    "lower_conviction_on_conflict": true,
+    "prefer_official_actual_after_release": true,
+    "require_fresh_timestamp": true
+  }
+}
