@@ -118,3 +118,12 @@ def test_stale_context_survives_reference_network_failure():
     out=fetch_pre_news_snapshot(now=NOW,opener=opener)
     assert out['publication_fresh'] is False
     assert out['published_at']==old['published_at']
+
+
+def test_mutable_feed_request_uses_minute_bucket_to_avoid_old_cdn_publication():
+    urls=[]
+    def opener(request,**kwargs):
+        urls.append(request.full_url)
+        return io.BytesIO(json.dumps(payload()).encode())
+    fetch_pre_news_snapshot(now=NOW,opener=opener)
+    assert urls[0].endswith('?rizan_minute='+str(int(NOW.timestamp()//60)))

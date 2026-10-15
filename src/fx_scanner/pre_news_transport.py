@@ -38,7 +38,7 @@ def validate_snapshot(data, *, now, require_fresh=True):
 
 def fetch_pre_news_snapshot(*, now=None, opener=urlopen, timeout_seconds=15):
     current = now or datetime.now(UTC)
-    data = _get(ROOT_URL + BRANCH + "/runtime/pre_news_snapshot.json", opener, timeout_seconds)
+    data = _get(ROOT_URL + BRANCH + "/runtime/pre_news_snapshot.json?rizan_minute=" + str(int(current.timestamp() // 60)), opener, timeout_seconds)
     try:
         return validate_snapshot(data, now=current)
     except ValueError as exc:
