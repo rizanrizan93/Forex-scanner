@@ -126,6 +126,9 @@ def _cross_asset_row(result: Any, *, kind: str) -> dict[str, Any]:
 
 
 MACRO_COMPONENT_DASHBOARD_KEYS = (
+    "observed_at",
+    "previous_observed_at",
+    "age_seconds",
     "freshness",
     "current",
     "previous",

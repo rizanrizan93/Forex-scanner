@@ -184,7 +184,8 @@ def test_v360_macro_source_projection_keeps_only_dashboard_component_fields():
     assert row["delta"] == 3.0
     assert row["freshness"] == "FRESH"
     assert "source_url" not in row
-    assert "observed_at" not in row
+    # Pre-news must re-check source age independently of heartbeat publication.
+    assert row["observed_at"] == "2026-09-30T00:00:00+00:00"
     assert projection["fed_repricing_proxy"] == {
         "state": "NEUTRAL_REPRICING_PROXY",
         "delta_bps": -1.0,

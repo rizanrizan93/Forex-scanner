@@ -25,9 +25,9 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
             runpy.run_path(str(ROOT / "pages/00_EURUSD_Demo_Forward.py"), run_name="__main__")
     if xau.open:
         with xau:
-            labels = ["Zona reversal", "Setup", "Hierarki zona", "Keputusan", "Demand", "Makro", "Pengaturan"]
+            labels = ["Zona reversal", "Setup", "Hierarki zona", "Keputusan", "Demand", "Pre-News", "Makro", "Pengaturan"]
             tabs = st.tabs(labels, key="rizan_xau_detail", on_change="rerun")
-            paths = [None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/1_Demand_Tiers.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
+            paths = [None, "streamlit_app.py", "pages/0A_RIZAN_Zone_Hierarchy_V406.py", "pages/0_Pusat_Keputusan_XAUUSD.py", "pages/1_Demand_Tiers.py", "pages/3_Pre_News_Expectation.py", "pages/2_US10Y_Regime_Timing.py", "streamlit_app.py"]
             for label, tab, path in zip(labels, tabs, paths):
                 if tab.open:
                     with tab:

@@ -1,0 +1,3 @@
+from fx_scanner.pre_news_dashboard import render_pre_news_dashboard
+
+render_pre_news_dashboard()

@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_pair_tabs_only_execute_selected_page():
     with patch("runpy.run_path") as execute, patch("fx_scanner.xau_public_hot_v362.fetch_public_hot_snapshot", return_value={"heartbeats": []}):
         app = AppTest.from_file(str(ROOT / "main.py"))
+        app.session_state["rizan_xau_detail"] = "Setup"
         app.run()
         assert not app.exception
         assert {"XAUUSD", "EURUSD"}.issubset({tab.label for tab in app.tabs})
