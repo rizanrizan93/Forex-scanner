@@ -20,11 +20,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cd cbot_sources/archive/xau-rc1-v1.3.0
-          sha256sum -c SHA256.txt
-          test -s RizanXAU_RC1_v1.3.0.algo
-          test -s tests/contract_parity.json
-          test -s tests/fixture_results.json
+          EXPECTED=$(awk '{print $1}' cbot_sources/archive/xau-rc1-v1.3.0/SHA256.txt)
+          ACTUAL=$(sha256sum cbot_sources/archive/xau-rc1-v1.3.0/RizanXAU_RC1_v1.3.0.algo | awk '{print $1}')
+          test "$EXPECTED" = "$ACTUAL"
+          test -s cbot_sources/archive/xau-rc1-v1.3.0/RizanXAU_RC1_v1.3.0.algo
+          test -s cbot_sources/archive/xau-rc1-v1.3.0/tests/contract_parity.json
+          test -s cbot_sources/archive/xau-rc1-v1.3.0/tests/fixture_results.json
       - name: Upload verified RC1 package
         uses: actions/upload-artifact@v4
         with:
