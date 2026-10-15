@@ -67,7 +67,8 @@ jobs:
           s=s.replace('Ack(r);var p=r.Positions.Single();if(kind=="MissingComment")', 'Ack(r);int expectedRecovered=State(r).Basket!.Accepted.Sum();var p=r.Positions.Single();if(kind=="MissingComment")')
           s=s.replace('State(x).Basket!.Accepted.Sum()!=10', 'State(x).Basket!.Accepted.Sum()!=expectedRecovered')
           s=s.replace('if(cap!=6)throw new Exception("SHRINK_SETUP")','if(cap!=5)throw new Exception("SHRINK_SETUP")')
-          s=s.replace('r.LastVolume!=5','r.LastVolume!=4')
+          s=s.replace('r.Symbol.Bid+=.8;r.Symbol.Ask+=.8;r.Mark();Ack(r);if(r.Requests!=1||r.LastVolume!=5', 'r.Symbol.Bid+=.8;r.Symbol.Ask+=.8;r.Mark();r.Account.Equity=100;Ack(r);if(r.Requests!=1||r.LastVolume!=4')
+          s=s.replace('State(r).Basket!.Accepted.Sum()!=5)throw new Exception("DURABLE_MAX_VOLUME_SHRINK")', 'State(r).Basket!.Accepted.Sum()!=4)throw new Exception("DURABLE_MAX_VOLUME_SHRINK")')
           t.write_text(s)
           (out/'config.json').write_text('''{\n  "StrategyId": "XAUUSD_RC1_102_5_PRIMARY_FROZEN_V1",\n  "Version": "1.3.0",\n  "Symbol": "XAUUSD",\n  "ContractHash": "44db60b75e3eb19c0fb94f10baca96f35ab4686086a70eea53f626533ca9923c",\n  "StopAtrMultiplier": 2.4,\n  "TargetR": 5.5,\n  "Stages": 3,\n  "DepthsR": [0, 0.2, 0.4],\n  "ConfirmedAdds": true,\n  "AddTtlMinutes": 90,\n  "RiskBasketMaximumFraction": 0.121,\n  "MarginFraction": 0.5,\n  "BalanceStepUsd": 102.5,\n  "HoldMinutes": 480,\n  "LossCooldownCalendarDays": 3,\n  "SendReferenceToleranceR": 0.2,\n  "EnableTradingDefault": false,\n  "LiveDeployed": false\n}\n''')
           PY
