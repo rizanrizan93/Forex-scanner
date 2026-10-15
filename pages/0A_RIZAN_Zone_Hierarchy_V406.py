@@ -11,7 +11,8 @@ SRC = ROOT / "src"
 if SRC.is_dir() and str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from fx_scanner.xau_turso_hot_snapshot_v407 import fetch_public_hot_snapshot  # noqa: E402
+from fx_scanner.manual_reversal_dashboard import fetch_manual_map, wib  # noqa: E402
+from fx_scanner.dashboard_independent_feeds import hierarchy_input  # noqa: E402
 from fx_scanner.xau_zone_hierarchy_v406 import evaluate_zone_hierarchy_v406  # noqa: E402
 
 
@@ -56,16 +57,24 @@ st.caption(
     "Break decision zone mengubah internal leg; major reversal baru dianggap lebih kuat setelah opposite MAIN zone diterima."
 )
 
-try:
-    snapshot = fetch_public_hot_snapshot()
-except Exception as exc:
-    st.error(f"Snapshot scanner belum tersedia: {type(exc).__name__}: {exc}")
-    st.stop()
+@st.cache_data(ttl=60, show_spinner=False)
+def load_map():
+    return fetch_manual_map()
 
-sd = evaluation(heartbeat(snapshot, "ctrader_demo_xau_sd_liquidity_v342"))
-if not sd:
-    st.warning("Data S/D XAUUSD belum tersedia. V406 tetap fail-closed sampai heartbeat valid masuk.")
+if st.button("Perbarui tampilan", key="hierarchy_refresh"):
+    load_map.clear()
+try:
+    manual = load_map()
+    sd = hierarchy_input(manual)
+except Exception:
+    st.warning("Peta zona belum dapat diperbarui atau candle sudah kedaluwarsa. Tampilan mencoba kembali setiap 60 detik.")
     st.stop()
+st.caption("Sumber: kolektor candle cTrader · candle " + wib(manual.get("price_observed_at")))
+st.caption("H4/H1: zona utama · M15: validasi · M5: refinement. Peta manual ini tidak memakai heartbeat engine eksekusi.")
+if any((x.get('anchor') or {}).get('major_conflict') for x in manual.get('plans', [])):
+    st.warning('Ada zona H1/H4 sisi lawan yang bertumpang tindih; arah memerlukan konfirmasi pada chart.')
+if 'latest_m15_close' not in sd:
+    st.info("Close M15 terbaru belum tersedia di publikasi ini; gate acceptance belum dikonfirmasi.")
 
 hier = evaluate_zone_hierarchy_v406(sd)
 phase = str(hier.get("phase") or "UNAVAILABLE")
@@ -155,6 +164,12 @@ elif phase == "AT_MAIN_SELL":
 else:
     st.info("Belum ada acceptance/rejection yang cukup kuat; gunakan hierarchy sebagai reference geometry.")
 
+with st.expander("Zona asli H4 / H1 / M15 / M5"):
+    st.dataframe([{'TF': z['timeframe'], 'Arah': z['direction'], 'Bawah': z['low'],
+        'Atas': z['high'], 'Batas skenario': z['invalidation'],
+        'Status data': 'cukup baru' if manual.get('timeframe_fresh', {}).get(z['timeframe']) else 'terlambat'}
+        for z in manual.get('zones', [])], hide_index=True, width='stretch')
+
 with st.expander("Audit V406"):
     st.write(
         {
@@ -169,4 +184,4 @@ with st.expander("Audit V406"):
         }
     )
 
-st.caption("V406 adalah decision-support / calibration layer. LIVE auto-execution tetap OFF.")
+st.caption("V406 adalah peta acuan manual dari candle tertutup. Panel ini tidak mengatur order cBot.")

@@ -163,6 +163,8 @@ def evaluate(bars, *, now=None):
     return {**payload,'state':'MAP_AVAILABLE' if fresh else 'STALE_PRICE','price':price,
         'price_observed_at':close_time.isoformat(),'zones':zones,
         'plans':build_plans(zones,frames,price,now) if fresh else [],
+        'latest_closed_m15':({'close':float(frames['M15'].iloc[-1].close),
+            'closed_at':(frames['M15'].iloc[-1].timestamp+pd.Timedelta(minutes=15)).isoformat()} if len(frames['M15']) else None),
         'bar_counts':{tf:len(f) for tf,f in frames.items()},
         'timeframe_fresh':{tf:_fresh_frame(f,tf,now) for tf,f in frames.items()},
         'timeframe_closed_at':{tf:(f.iloc[-1].timestamp+pd.Timedelta(minutes=MINUTES[tf])).isoformat() if len(f) else None for tf,f in frames.items()},

@@ -11,7 +11,9 @@ SRC = ROOT / "src"
 if SRC.is_dir() and str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from fx_scanner.xau_turso_hot_snapshot_v407 import fetch_public_hot_snapshot  # noqa: E402
+from fx_scanner.pre_news_transport import fetch_pre_news_snapshot  # noqa: E402
+from fx_scanner.dashboard_independent_feeds import macro_input  # noqa: E402
+from fx_scanner.manual_reversal_dashboard import wib  # noqa: E402
 from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary  # noqa: E402
 
 
@@ -40,23 +42,24 @@ st.caption(
     "Keduanya tidak memberi izin order sendiri; keputusan tetap harus dikonfirmasi struktur XAU."
 )
 
+@st.cache_data(ttl=60, show_spinner=False)
+def load_macro():
+    return fetch_pre_news_snapshot()
+
+if st.button("Perbarui tampilan", key="yield_refresh"):
+    load_macro.clear()
 try:
-    snapshot = fetch_public_hot_snapshot()
-except Exception as exc:
-    st.error(f"Public HOT snapshot belum tersedia: {type(exc).__name__}: {exc}")
+    data = macro_input(load_macro())
+except Exception:
+    st.warning("Feed makro belum dapat diperbarui atau sudah kedaluwarsa. Tampilan mencoba kembali setiap 60 detik.")
     st.stop()
-
-macro_hb = {}
-for raw in list(snapshot.get("heartbeats") or []):
-    row = dict(raw or {})
-    if row.get("worker_name") == "ctrader_demo_xau_macro_attribution_v357":
-        macro_hb = row
-        break
-
-macro_eval = dict(dict(macro_hb.get("details") or {}).get("evaluation") or {})
-if not macro_eval:
-    st.warning("Snapshot macro V357 belum tersedia.")
-    st.stop()
+macro_eval = data['evaluation']
+st.caption("Feed makro terakhir: " + wib(data['observed_at']) + " · independen dari heartbeat zona XAU")
+last_cash = macro_eval.get('last_cash_yield') or {}
+if last_cash:
+    st.info("Kuotasi cash US10Y terakhir: " + fmt(last_cash.get('current'), '%') +
+            " · " + wib(last_cash.get('current_at')) +
+            ". Data ini sudah terlambat untuk timing intraday; bias intraday ditahan.")
 
 summary = yield_regime_summary(macro_eval)
 daily = dict(summary.get("daily") or {})
@@ -75,6 +78,7 @@ with c1:
             else f"{float(daily.get('delta_bps')):+.1f} bps vs prior day"
         ),
     )
+    st.caption("Tanggal observasi FRED: " + wib(daily.get("observed_at")))
     st.caption(
         "Fungsi: menentukan backdrop 1–beberapa hari. Yield harian turun = tailwind XAU; "
         "yield harian naik = headwind XAU. Ini bukan trigger entry."

@@ -58,10 +58,11 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                         else:
                             # Legacy patches are needed only by the detailed XAU pages.
                             # Keep the manual map and EUR independent of their import graph.
-                            from fx_scanner.xau_event_dashboard_patch_v377 import install_event_macro_dashboard_patch
-                            from fx_scanner.xau_whalezone_dashboard_patch_v408 import install_whalezone_dashboard_patch
-                            install_event_macro_dashboard_patch()
-                            install_whalezone_dashboard_patch()
+                            if label in {"Setup", "Pengaturan"}:
+                                from fx_scanner.xau_event_dashboard_patch_v377 import install_event_macro_dashboard_patch
+                                from fx_scanner.xau_whalezone_dashboard_patch_v408 import install_whalezone_dashboard_patch
+                                install_event_macro_dashboard_patch()
+                                install_whalezone_dashboard_patch()
                             if label == "Setup":
                                 from fx_scanner.selected_raw_reference_dashboard import render_selected_raw_reference
                                 from fx_scanner.xau_frozen_dd50_dashboard import render_frozen_core
@@ -69,7 +70,13 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                                 render_selected_raw_reference("XAUUSD")
                                 render_frozen_core()
                                 render_cross_asset("XAUUSD")
-                            runpy.run_path(str(ROOT / path), run_name="__main__", init_globals={"RIZAN_SETTINGS_ONLY": label == "Pengaturan"})
+                            if label in {"Hierarki zona", "Makro"}:
+                                @st.fragment(run_every="60s")
+                                def independent_panel(path=path):
+                                    runpy.run_path(str(ROOT / path), run_name="__main__")
+                                independent_panel()
+                            else:
+                                runpy.run_path(str(ROOT / path), run_name="__main__", init_globals={"RIZAN_SETTINGS_ONLY": label == "Pengaturan"})
 
 routes = [st.Page(render_dashboard, title="RIZAN Scanner", default=True)]
 for slug, pair, detail in [("EURUSD_Demo_Forward", "EURUSD", "Setup"), ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"), ("Pusat_Keputusan_XAUUSD", "XAUUSD", "Keputusan"), ("Demand_Tiers", "XAUUSD", "Demand"), ("US10Y_Regime_Timing", "XAUUSD", "Makro")]:
