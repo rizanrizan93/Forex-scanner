@@ -21,7 +21,7 @@ class DeploymentTests(unittest.TestCase):
                   and isinstance(node.value, ast.Constant)]
         self.assertEqual(len(probes), 1)
         compile(probes[0], '<wss-probe>', 'exec')
-        for prefix in ('RZXA1:1:XAUUSD', 'RZEU4B:1:EURUSD', 'RZEF245:1:EURUSD'):
+        for prefix in ('RZXA1:1:XAUUSD', 'RZXRC1:1:XAUUSD', 'RZEU4B:1:EURUSD', 'RZEF245:1:EURUSD'):
             self.assertIn(prefix, probes[0])
 
     def test_upgrade_previously_deployed_repair_tool_preserves_local_edits(self):

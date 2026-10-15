@@ -1,0 +1,18 @@
+{
+  "OriginalSha256": "cbe20989440e1aee82f7c72271b78634f4c14a7dfc7367c8576687447aa7ef12",
+  "BridgefixSha256": "0d65d52b41c5815c7d3a10f446e3819fe3e94f499621e02d934bef16ff8f3ffc",
+  "TypeName": "cAlgo.Robots.RizanXAU_RC1_v1_3_0",
+  "AssemblyName": "RizanXAUStable, Version=1.3.0.0, Culture=neutral, PublicKeyToken=null",
+  "Sources": {
+    "source/Common/XauBatchExecution.cs": "5ee79d2d54a616ef207d0800a18eb3e4822af1745db58080437777c5d039d011",
+    "source/Common/FrozenCore.cs": "0169b9cfcb57a9e7842cc6644cce22b9706fbd7fcb8390afab7c0c42bde2ea4e",
+    "source/Common/XauSendReference.cs": "9f952cc4101193e532ac987f28cc075f98ae2bfd65906318dddce9051576c3d0",
+    "source/Common/RizanRobot.cs": "1f3cfe3ce040abaa3833659332f3aa97080bcc5539571ade6ad2ee4ce90f0eb4",
+    "source/RizanXAUStable/RizanXAUStable/RizanXAUStable.cs": "624639f7d868b85e5e2fec9a04afc9e362ab6fd0d003ed899fd6bcbc827330cc"
+  },
+  "LocalPythonBridgeTests": 16,
+  "LocalDeploymentTests": 12,
+  "NativeBuildCompleted": true,
+  "VpsDeploymentCompleted": false,
+  "CTraderRuntimeVerified": false
+}

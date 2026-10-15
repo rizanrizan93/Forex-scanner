@@ -26,6 +26,11 @@ except ImportError:
     from timestamps import validate_timestamps, utc_text
 
 CONTRACTS = {
+    "RZXRC1": {
+        "hash": "44db60b75e3eb19c0fb94f10baca96f35ab4686086a70eea53f626533ca9923c",
+        "schema": 1,
+        "execution_model": "XAU_BATCH_SEND_REF_COOLDOWN_V1",
+    },
     "RZEF245": {
         "hash": "d39e1192b64c3044f3215fa82ceaacdb732b4cf758389ad4f609692e54bdae9a",
         "schema": 3,
@@ -210,7 +215,7 @@ def _validate_identity(key: str, lease: str, contract_hash: str) -> tuple[str, s
     expected = CONTRACTS[parts[0]]["hash"]
     if contract_hash != expected:
         raise ValueError("CONTRACT_INVALID")
-    expected_symbol = "XAUUSD" if parts[0] == "RZXA1" else "EURUSD"
+    expected_symbol = "XAUUSD" if parts[0] in {"RZXA1", "RZXRC1"} else "EURUSD"
     if parts[2].upper() != expected_symbol:
         raise ValueError("SYMBOL_INVALID")
     return parts[0], parts[1], parts[2]
@@ -425,4 +430,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

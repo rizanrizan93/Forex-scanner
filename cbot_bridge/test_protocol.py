@@ -15,6 +15,38 @@ import server
 from selftest import state
 
 
+class RC1IdentityTests(unittest.TestCase):
+    def test_rc1_binding_and_legacy_checkpoint_isolation(self):
+        prefix = "RZXRC1"
+        contract = server.CONTRACTS[prefix]["hash"]
+        server._validate_identity("RZXRC1:1:XAUUSD", "a" * 32, contract)
+        with self.assertRaisesRegex(ValueError, "SYMBOL_INVALID"):
+            server._validate_identity("RZXRC1:1:EURUSD", "a" * 32, contract)
+        with self.assertRaisesRegex(ValueError, "CONTRACT_INVALID"):
+            server._validate_identity("RZXRC1:1:XAUUSD", "a" * 32,
+                                      server.CONTRACTS["RZXA1"]["hash"])
+        with tempfile.TemporaryDirectory() as folder:
+            store = server.Store(Path(folder) / "state.sqlite")
+            try:
+                key = "RZXRC1:1:XAUUSD"
+                store.acquire("RZXA1:1:XAUUSD", "b" * 32)
+                old = state("RZXA1", 1, "XAUUSD", 1)
+                store.save("RZXA1:1:XAUUSD", "b" * 32, 0, 1, old)
+                self.assertEqual(store.acquire(key, "a" * 32), (0, None))
+                rc1 = state(prefix, 1, "XAUUSD", 1)
+                for field, invalid, code in (
+                    ("ContractHash", old["ContractHash"], "STATE_CONTRACT_INVALID"),
+                    ("Schema", 2, "STATE_SCHEMA_INVALID"),
+                    ("ExecutionModel", "OTHER", "STATE_EXECUTION_MODEL_INVALID"),
+                ):
+                    with self.assertRaisesRegex(ValueError, code):
+                        store.save(key, "a" * 32, 0, 1, {**rc1, field: invalid})
+                self.assertEqual(store.save(key, "a" * 32, 0, 1, rc1), 1)
+                self.assertEqual(store.acquire("RZXA1:1:XAUUSD", "b" * 32), (1, old))
+            finally:
+                store.db.close()
+
+
 class ProtocolTests(unittest.IsolatedAsyncioTestCase):
     async def test_auth_stream_isolation_and_recovery(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -44,7 +76,8 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                     async with ws:
                         await ws.send(json.dumps({"type": "hello", "token": "invalid"}))
                         self.assertEqual(json.loads(await ws.recv()), {"type": "error", "code": "AUTH_FAILED"})
-                    for prefix, symbol in (("RZXA1", "XAUUSD"), ("RZEU4B", "EURUSD")):
+                    for prefix, symbol in (("RZXA1", "XAUUSD"), ("RZXRC1", "XAUUSD"),
+                                           ("RZEU4B", "EURUSD"), ("RZEF245", "EURUSD")):
                         hello = {"type": "hello", "token": settings["RIZAN_BRIDGE_TOKEN"],
                                  "key": f"{prefix}:1:{symbol}", "lease": "a" * 32,
                                  "contract": server.CONTRACTS[prefix]["hash"]}

@@ -284,6 +284,17 @@ async def run():
     pong=json.loads(await asyncio.wait_for(ws.recv(),15))
     if pong['type']=='snapshot':validate_timestamps(pong);continue
     assert pong['type']=='pong';validate_timestamps(pong);break
+ hello.update(key='RZXRC1:1:XAUUSD',contract='44db60b75e3eb19c0fb94f10baca96f35ab4686086a70eea53f626533ca9923c',lease=uuid.uuid4().hex)
+ for cycle in range(2):
+  async with connect('wss://rizan-bridge.duckdns.org:25345/',open_timeout=15) as ws:
+   await ws.send(json.dumps(hello))
+   ready=json.loads(await asyncio.wait_for(ws.recv(),15));assert ready['type']=='ready';validate_timestamps(ready)
+   snap=json.loads(await asyncio.wait_for(ws.recv(),90));assert snap['type']=='snapshot';validate_timestamps(snap)
+   await ws.send('{"type":"ping"}')
+   while True:
+    pong=json.loads(await asyncio.wait_for(ws.recv(),15))
+    if pong['type']=='snapshot':validate_timestamps(pong);continue
+    assert pong['type']=='pong';validate_timestamps(pong);break
  hello.update(key='RZEU4B:1:EURUSD',contract='4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976',lease=uuid.uuid4().hex)
  for cycle in range(2):
   async with connect('wss://rizan-bridge.duckdns.org:25345/',open_timeout=15) as ws:
@@ -307,6 +318,7 @@ asyncio.run(run())
             print('DEPLOY_PASS unit=' + UNIT + ' sha=' + release_sha, flush=True)
             print('WSS_AUTH_TIMESTAMP_HEARTBEAT_RECONNECT_PASS synthetic_only no_orders no_checkpoint_save', flush=True)
             print('WSS_EUR_AUTH_TIMESTAMP_HEARTBEAT_RECONNECT_PASS synthetic_only no_orders no_checkpoint_save', flush=True)
+            print('WSS_RC1_AUTH_TIMESTAMP_HEARTBEAT_RECONNECT_PASS synthetic_only no_orders no_checkpoint_save', flush=True)
             print('WSS_F0245_AUTH_TIMESTAMP_HEARTBEAT_RECONNECT_PASS synthetic_only no_orders no_checkpoint_save', flush=True)
             print('BACKUP_DIRECTORY=' + str(backup), flush=True)
         except Exception:

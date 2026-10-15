@@ -1,0 +1,181 @@
+{
+  "Pass": true,
+  "NativeHost": false,
+  "Cases": [
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 100,
+      "Move": 0,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 100,
+      "Move": 0.1,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 100,
+      "Move": 0.5,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 1000,
+      "Move": 0,
+      "Quantity": 9
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 1000,
+      "Move": 0.1,
+      "Quantity": 9
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": 1,
+      "Cash": 1000,
+      "Move": 0.5,
+      "Quantity": 9
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 100,
+      "Move": 0,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 100,
+      "Move": 0.1,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 100,
+      "Move": 0.5,
+      "Quantity": 1
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 1000,
+      "Move": 0,
+      "Quantity": 9
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 1000,
+      "Move": 0.1,
+      "Quantity": 9
+    },
+    {
+      "Case": "SendAfterAck",
+      "Side": -1,
+      "Cash": 1000,
+      "Move": 0.5,
+      "Quantity": 9
+    },
+    {
+      "Case": "OutsideReferenceWindow",
+      "Side": 1
+    },
+    {
+      "Case": "OutsideReferenceWindow",
+      "Side": -1
+    },
+    {
+      "Case": "Recovery",
+      "Kind": "Exposure",
+      "Pass": true
+    },
+    {
+      "Case": "Recovery",
+      "Kind": "ClosedHistory",
+      "Pass": true
+    },
+    {
+      "Case": "Recovery",
+      "Kind": "MissingComment",
+      "Pass": true
+    },
+    {
+      "Case": "Recovery",
+      "Kind": "TamperedComment",
+      "Pass": true
+    },
+    {
+      "Case": "Recovery",
+      "Kind": "PartialVolume",
+      "Pass": true
+    },
+    {
+      "Case": "Cooldown",
+      "Direction": -1
+    },
+    {
+      "Case": "Cooldown",
+      "Direction": 1
+    },
+    {
+      "Case": "SettlementWait"
+    },
+    {
+      "Case": "BrokerFailure",
+      "Fail": "Reject"
+    },
+    {
+      "Case": "BrokerFailure",
+      "Fail": "Protection"
+    },
+    {
+      "Case": "BrokerFailure",
+      "Fail": "CloseFailure"
+    },
+    {
+      "Case": "BrokerFailure",
+      "Fail": "Partial"
+    },
+    {
+      "Case": "Migration",
+      "Source": "XAU_ARCHIVE_PARITY_V2",
+      "Active": false
+    },
+    {
+      "Case": "Migration",
+      "Source": "XAU_ARCHIVE_PARITY_V2",
+      "Active": true
+    },
+    {
+      "Case": "Migration",
+      "Source": "XAU_BATCH_STAGE_FIXED_REF_WAL_V1",
+      "Active": false
+    },
+    {
+      "Case": "Migration",
+      "Source": "XAU_BATCH_STAGE_FIXED_REF_WAL_V1",
+      "Active": true
+    },
+    {
+      "Case": "PositionClosedWhileStageWaitsAck"
+    },
+    {
+      "Case": "UnmatchedAckIgnored"
+    },
+    {
+      "Case": "MaximumIntentAllowsSafeSmallerBatch",
+      "Maximum": 5,
+      "Actual": 4
+    }
+  ]
+}

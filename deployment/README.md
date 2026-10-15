@@ -33,7 +33,12 @@ After adding missing secrets, rerun the failed deployment job, or choose Actions
 5. Atomically install the four production bridge Python files and start the same unit. Preserve local EnvironmentFiles and database paths.
 6. Verify service activity, public WSS authentication, offset-aware snapshot and heartbeat, plus reconnect using synthetic identities without checkpoint saves or broker orders.
 
-The script handles neither cTrader Cloud deployment nor changing Kirim order. The patched RizanXAUStable v1.2.1 algo must also be imported/restarted in cTrader with preserved parameters and checkpoint. Full cBot runtime acceptance still needs its Journal.
+The script handles neither cTrader Cloud deployment nor changing Kirim order.
+For RC1 use the RizanXAU-RC1-v1.3.0-bridgefix artifact from this workflow.
+Its exact RZXRC1/schema-1 contract is validated before deployment, and the public
+WSS probe must also emit WSS_RC1_AUTH_TIMESTAMP_HEARTBEAT_RECONNECT_PASS.
+See cbot_connectivity/xau-rc1-v1.3.0/REPORT_ID.md for replacement and checkpoint
+instructions. Full cBot runtime acceptance still needs its Journal.
 
 ## Failure and rollback
 

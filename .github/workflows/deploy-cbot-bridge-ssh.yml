@@ -34,10 +34,22 @@ jobs:
           python-version: '3.12'
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: |
+            6.0.x
+            8.0.x
       - run: python -m pip install -r cbot_bridge/requirements.txt
       - run: python -m unittest discover -s cbot_bridge -p 'test_*.py' -v
       - run: python -m unittest discover -s deployment -p 'test_*.py' -v
+      - name: Verify RC1 strategy parity and reconnect
+        run: |
+          python cbot_connectivity/xau-rc1-v1.3.0/verify_scope.py
+          dotnet run --project cbot_connectivity/xau-rc1-v1.3.0/Tests.csproj
+          dotnet run --project cbot_connectivity/xau-rc1-v1.3.0/ConnectivityTests.csproj
+          dotnet build cbot_connectivity/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/RizanXAUStable.csproj -c Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RizanXAU-RC1-v1.3.0-bridgefix
+          path: cbot_connectivity/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/bin/Release/net6.0/*.algo
       - run: python cbot_connectivity/xau-stable-v1.2.1/verify_scope.py
       - run: dotnet run --project cbot_connectivity/xau-stable-v1.2.1/Tests.csproj
       - run: dotnet run --project cbot_connectivity/xau-stable-v1.2.1/ConnectivityTests.csproj

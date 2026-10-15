@@ -1,0 +1,13 @@
+{
+  "Pass": true,
+  "Checks": {
+    "contract_hash": true,
+    "stages_depths": true,
+    "ttl90": true,
+    "stop_runtime": true,
+    "stop_sendref": true,
+    "balance_step": true,
+    "old_stop_absent": true,
+    "old_balance_absent": true
+  }
+}

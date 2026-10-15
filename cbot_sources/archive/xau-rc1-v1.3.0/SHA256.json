@@ -1,0 +1,18 @@
+{
+  "Global.cs": "12b882f8b2d0f28ebdd076752f98d3a69d2714fd250d0f25075678f7ab140195",
+  "PARITY_REPORT.md": "c8fdd1844626aa42b136ecee5206780cc59de4f6ec5ec26fda5314ae78a43407",
+  "ReplayApi.cs": "e40ef95a5e14c7432d8ba99805953b9b5e9e7fcf77a73940042211eb1b6fe693",
+  "RizanXAU_RC1_v1.3.0.algo": "cbe20989440e1aee82f7c72271b78634f4c14a7dfc7367c8576687447aa7ef12",
+  "SHA256.txt": "1d2335e61e0f2357da4278b44d1159b7cbe81db9879068d60ce2f8d83b474389",
+  "Tests.csproj": "0d6502aa20c52c9a3ebd7e6424d215c67afbfce6c742800a6fccd6164d86acd9",
+  "config.json": "3adc6462fd8da03bd870f5166219662c39aaca1d29c15cb9252bcea20698e990",
+  "source/Common/FrozenCore.cs": "0169b9cfcb57a9e7842cc6644cce22b9706fbd7fcb8390afab7c0c42bde2ea4e",
+  "source/Common/RizanRobot.cs": "e931d86a5d847a0c5ec93daa68142ace4c68767245b17c7ece0aeb29e2f2499f",
+  "source/Common/XauBatchExecution.cs": "5ee79d2d54a616ef207d0800a18eb3e4822af1745db58080437777c5d039d011",
+  "source/Common/XauSendReference.cs": "9f952cc4101193e532ac987f28cc075f98ae2bfd65906318dddce9051576c3d0",
+  "source/RizanXAUStable/RizanXAUStable/RizanXAUStable.cs": "624639f7d868b85e5e2fec9a04afc9e362ab6fd0d003ed899fd6bcbc827330cc",
+  "source/RizanXAUStable/RizanXAUStable/RizanXAUStable.csproj": "a0018db29eca8b5729987ffb33e3bbe0adcff788d6e1f925602e404b730d84e5",
+  "tests/Tests.cs": "fcea855c5416741caf203fc14712cc33f36e05cf815e1a27821b88760125e78e",
+  "tests/contract_parity.json": "47a1a5681af367d991d03232e72c65e128696c6baae1b5d6a94319881bd13d83",
+  "tests/fixture_results.json": "6be5cb251632c99fd48ccde3a90d40064f4d65850d10f1ad79389256d0ddc0ca"
+}
