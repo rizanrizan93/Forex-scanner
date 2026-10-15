@@ -734,9 +734,107 @@ def run() -> int:
     if bool(ff_cfg.get("enabled", False)):
         try:
             snapshot = ForexFactoryCalendarProvider(
-                trans…4944 tokens truncated…urn_value={"heartbeats": []}):
-        app = AppTest.from_file(str(ROOT / "main.py"))
-        app.session_state["rizan_xau_detail"] = "Pengaturan"
-        app.run()
-        assert not app.exception
-        assert execute.call_args.kwargs["init_globals"]["RIZAN_SETTINGS_ONLY"]
+                transport,
+                url=str(ff_cfg["base_url"]),
+                allowed_host=str(ff_cfg["allowed_host"]),
+            ).fetch(now=now)
+            usd_events = [event for event in snapshot.events if event.currency == "USD"]
+            events.extend(_from_discovery(event) for event in usd_events)
+            source_status["FOREX_FACTORY_WEEKLY"] = f"OK:{len(usd_events)}"
+        except Exception as exc:
+            source_status["FOREX_FACTORY_WEEKLY"] = f"ERROR:{type(exc).__name__}:{exc}"
+
+    bls_cfg = calendar_cfg.get("BLS_OFFICIAL_ICS", {})
+    if bool(bls_cfg.get("enabled", False)):
+        try:
+            response = transport.get(
+                str(bls_cfg["base_url"]),
+                allowed_host=str(bls_cfg["allowed_host"]),
+                headers={"Accept": "text/calendar,text/plain;q=0.9,*/*;q=0.1"},
+            )
+            parsed = parse_bls_ics(response.body, source_url=str(bls_cfg["base_url"]))
+            events.extend(parsed)
+            source_status["BLS_OFFICIAL_ICS"] = f"OK:{len(parsed)}"
+        except Exception as exc:
+            source_status["BLS_OFFICIAL_ICS"] = f"ERROR:{type(exc).__name__}:{exc}"
+
+    bls_release_actuals: dict[str, Any] = {}
+    bls_release_cfg = calendar_cfg.get("BLS_EMPLOYMENT_RELEASE", {})
+    if bool(bls_release_cfg.get("enabled", False)):
+        try:
+            response = transport.get(
+                str(bls_release_cfg["base_url"]),
+                allowed_host=str(bls_release_cfg["allowed_host"]),
+                headers={"Accept": "text/html,*/*;q=0.1"},
+            )
+            bls_release_actuals = parse_bls_employment_release(
+                response.body,
+                source_url=str(bls_release_cfg["base_url"]),
+                now=now,
+            )
+            status = "CURRENT" if bls_release_actuals else "NO_CURRENT_RELEASE"
+            source_status["BLS_EMPLOYMENT_RELEASE"] = f"OK:{status}"
+        except Exception as exc:
+            source_status["BLS_EMPLOYMENT_RELEASE"] = (
+                f"ERROR:{type(exc).__name__}:{exc}"
+            )
+
+    bea_cfg = calendar_cfg.get("BEA_OFFICIAL_SCHEDULE", {})
+    if bool(bea_cfg.get("enabled", False)):
+        try:
+            response = transport.get(
+                str(bea_cfg["base_url"]),
+                allowed_host=str(bea_cfg["allowed_host"]),
+                headers={"Accept": "text/html,*/*;q=0.1"},
+            )
+            parsed = parse_bea_schedule(
+                response.body,
+                source_url=str(bea_cfg["base_url"]),
+                now=now,
+            )
+            events.extend(parsed)
+            source_status["BEA_OFFICIAL_SCHEDULE"] = f"OK:{len(parsed)}"
+        except Exception as exc:
+            source_status["BEA_OFFICIAL_SCHEDULE"] = f"ERROR:{type(exc).__name__}:{exc}"
+
+    merged = _merge_events(events)
+    if bls_release_actuals:
+        merged = overlay_bls_employment_actuals(merged, bls_release_actuals)
+    risk = evaluate_event_risk(merged, now=now)
+    official_count = sum(event.source_tier.startswith("OFFICIAL") for event in merged)
+    discovery_count = sum(event.source_tier == "DISCOVERY_UNVERIFIED" for event in merged)
+    healthy = bool(merged) and any(value.startswith("OK:") for value in source_status.values())
+
+    details = {
+        "contract": CONTRACT,
+        "symbol": "XAUUSD",
+        "currency_focus": "USD",
+        "observed_at": now.isoformat(),
+        "risk": risk,
+        "dashboard_projection": build_dashboard_projection(risk),
+        "source_status": source_status,
+        "event_count": len(merged),
+        "official_or_cadence_verified_count": official_count,
+        "discovery_unverified_count": discovery_count,
+        "policy_effect": "SHADOW_EVENT_CONTEXT_ONLY",
+        "execution_influence": False,
+        "execution_authority": False,
+    }
+    store = SupabaseOperationalStore.from_env()
+    store.write_heartbeat(
+        WORKER_NAME,
+        healthy=healthy,
+        lag_seconds=0.0,
+        details=details,
+    )
+    print(
+        "CTRADER_DEMO_XAU_EVENT_RISK_V192 "
+        f"healthy={int(healthy)} events={len(merged)} "
+        f"state={risk.get('state')} action={risk.get('action')} "
+        f"execution_authority=0"
+    )
+    return 0 if healthy else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(run())
