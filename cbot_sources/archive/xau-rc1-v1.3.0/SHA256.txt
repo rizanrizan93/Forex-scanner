@@ -1,0 +1,1 @@
+cbe20989440e1aee82f7c72271b78634f4c14a7dfc7367c8576687447aa7ef12  cbot_sources/archive/xau-rc1-v1.3.0/RizanXAU_RC1_v1.3.0.algo

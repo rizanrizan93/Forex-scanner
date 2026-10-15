@@ -1,0 +1,20 @@
+{
+  "StrategyId": "XAUUSD_RC1_102_5_PRIMARY_FROZEN_V1",
+  "Version": "1.3.0",
+  "Symbol": "XAUUSD",
+  "ContractHash": "44db60b75e3eb19c0fb94f10baca96f35ab4686086a70eea53f626533ca9923c",
+  "StopAtrMultiplier": 2.4,
+  "TargetR": 5.5,
+  "Stages": 3,
+  "DepthsR": [0, 0.2, 0.4],
+  "ConfirmedAdds": true,
+  "AddTtlMinutes": 90,
+  "RiskBasketMaximumFraction": 0.121,
+  "MarginFraction": 0.5,
+  "BalanceStepUsd": 102.5,
+  "HoldMinutes": 480,
+  "LossCooldownCalendarDays": 3,
+  "SendReferenceToleranceR": 0.2,
+  "EnableTradingDefault": false,
+  "LiveDeployed": false
+}
