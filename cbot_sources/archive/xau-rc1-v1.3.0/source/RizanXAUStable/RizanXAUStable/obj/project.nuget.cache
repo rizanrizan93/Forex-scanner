@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "sQ2+oRZtf80=",
+  "success": true,
+  "projectFilePath": "/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/RizanXAUStable.csproj",
+  "expectedPackageFiles": [
+    "/home/runner/.nuget/packages/ctrader.automate/1.0.21/ctrader.automate.1.0.21.nupkg.sha512"
+  ],
+  "logs": []
+}

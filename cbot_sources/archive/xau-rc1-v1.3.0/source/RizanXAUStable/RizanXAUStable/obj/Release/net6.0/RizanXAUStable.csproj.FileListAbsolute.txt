@@ -1,0 +1,13 @@
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/bin/Release/net6.0/RizanXAUStable.deps.json
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/bin/Release/net6.0/RizanXAUStable.dll
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/bin/Release/net6.0/RizanXAUStable.pdb
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/RizanXAUStable.csproj.AssemblyReference.cache
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/RizanXAUStable.GeneratedMSBuildEditorConfig.editorconfig
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/RizanXAUStable.AssemblyInfoInputs.cache
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/RizanXAUStable.AssemblyInfo.cs
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/RizanXAUStable.csproj.CoreCompileInputs.cache
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/RizanXAUStable.sourcelink.json
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/RizanXAUStable.dll
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/refint/RizanXAUStable.dll
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/RizanXAUStable.pdb
+/home/runner/work/Forex-scanner/Forex-scanner/cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/obj/Release/net6.0/ref/RizanXAUStable.dll

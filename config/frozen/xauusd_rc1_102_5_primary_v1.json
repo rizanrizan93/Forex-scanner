@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN_PRIMARY_RESEARCH_NOT_LIVE_ACTIVATED",
+  "frozen_at": "2026-10-15T14:15:00+07:00",
+  "contract_sha256": "2709c201f7b7854e714ccb1bfe904986b3dfe02cd13d73e6c071b127dd867142",
+  "contract": {
+    "symbol": "XAUUSD",
+    "strategy_id": "XAUUSD_RC1_102_5_PRIMARY_FROZEN_V1",
+    "account_type": "RAW",
+    "selection_status": "PRIMARY_FROZEN_RESEARCH",
+    "source_signal_semantics": "same archived XAU g-0006 SELL/DGS10 and g-0274 BUY/DFII10 admission, macro/event gates and session semantics as prior frozen XAU",
+    "session_utc": {
+      "entry_start_hour": 12,
+      "entry_end_hour_exclusive": 17
+    },
+    "stop": {
+      "formula": "max(0.50, 2.40*ATR_M5, structural_anchor_distance)",
+      "shared_absolute_sl_all_children": true
+    },
+    "target_r": 5.5,
+    "hold_minutes": 480,
+    "loss_cooldown_calendar_days": 3,
+    "layering": {
+      "stages": 3,
+      "depths_r": [0.0, 0.20, 0.40],
+      "confirmed_adds": true,
+      "add_expiry_minutes": 90,
+      "depth_weight_power": 0.5
+    },
+    "sizing": {
+      "initial_fraction": 1.0,
+      "balance_step_usd_per_child": 102.5,
+      "child_lot": 0.01,
+      "child_units_oz": 1.0,
+      "capacity_multiplier": 1.0,
+      "risk_cap_runtime_fraction": 0.121,
+      "margin_cap_fraction": 0.50,
+      "reference": "min(balance,equity)",
+      "integer_children": true,
+      "residual_risk_to_confirmed_adds": true,
+      "hard_total_child_cap": null
+    },
+    "execution": {
+      "reference_leverage": 100,
+      "send_reference_tolerance_r": 0.2,
+      "batch_requests_per_second": 1,
+      "ack_delay_stress_seconds": [0, 2, 5]
+    }
+  },
+  "evidence": {
+    "initial_cash_usd": 100,
+    "period_2016_2025": {
+      "normal_cost_ack0_adverse": {
+        "ending_balance_usd": 40128.46,
+        "max_dd_percent": 45.98,
+        "profit_factor": 2.832,
+        "baskets": 406
+      },
+      "cost_1_5x_worst_observed_dd_percent": 48.87,
+      "cost_2x_worst_observed_dd_percent": 49.35
+    },
+    "period_through_2026_10_09": {
+      "normal_cost_balance_range_usd": [184787, 210099],
+      "normal_cost_max_dd_range_percent": [51.30, 51.35],
+      "baskets": 447,
+      "status_against_dd50_rule": "FAILS_STRICT_DD_LT_50"
+    },
+    "interpretation": "Selected because user explicitly prefers the higher-growth RC1 102.5 profile despite 2026 extension exceeding the strict 50% drawdown ceiling. Historical/synthetic replay is not a guarantee of live performance."
+  },
+  "activation": {
+    "primary_research_profile": true,
+    "live_pointer_changed": false,
+    "compiled_algo_produced": false,
+    "automatic_order_execution_enabled": false,
+    "previous_frozen_xau_preserved": true
+  },
+  "implementation_delta_from_xau_stable_v1_2_1": {
+    "stop_atr_multiple": {"from": 2.65, "to": 2.40},
+    "target_r": {"from": 6.6, "to": 5.5},
+    "stages": {"from": 4, "to": 3},
+    "depths_r": {"from": [0.0, 0.16111111111111112, 0.32222222222222224, 0.48333333333333334], "to": [0.0, 0.20, 0.40]},
+    "add_expiry_minutes": {"from": 45, "to": 90},
+    "balance_step_usd_per_child": {"from": 100.0, "to": 102.5},
+    "unchanged": [
+      "signal admission and macro/event gates",
+      "confirmed additions",
+      "depth weight power 0.5",
+      "hold 480 minutes",
+      "runtime risk cap 12.1%",
+      "margin cap 50%",
+      "3-day loss cooldown",
+      "send-reference/ACK execution model"
+    ]
+  }
+}
