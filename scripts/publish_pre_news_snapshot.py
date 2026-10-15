@@ -32,6 +32,10 @@ def build_snapshot(client, *, now):
             dxy = evaluation.get("dxy_intraday") or details.get("dxy_intraday") or {}
             projection["dxy_intraday"] = {key: dxy.get(key) for key in (
                 "current_at", "reference_at", "freshness", "available", "net_pct", "source")}
+            error = str(dxy.get("error") or "")
+            projection["dxy_intraday"]["source_status"] = (
+                "RATE_LIMITED" if "429" in error else "SOURCE_ERROR" if error else
+                "OK" if dxy.get("available") else "STALE_OR_MISSING")
             context = {"evaluation": projection}
         rows.append({"worker_name": name, "observed_at": row.get("observed_at"),
                      "healthy": row.get("healthy") is True, "details": context})

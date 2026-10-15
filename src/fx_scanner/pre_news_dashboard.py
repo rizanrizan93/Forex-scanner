@@ -1,7 +1,26 @@
 """Mobile-friendly, display-only Pre-News panel with 60-second refresh."""
 from datetime import UTC, datetime
 
-from .pre_news_expectation import evaluate_pre_news
+from .pre_news_expectation import evaluate_pre_news, timestamp
+from zoneinfo import ZoneInfo
+
+
+def _wib(value):
+    at = timestamp(value)
+    return at.astimezone(ZoneInfo("Asia/Jakarta")).strftime("%d-%m %H:%M:%S WIB") if at else "Belum tersedia"
+
+
+def _reason(value):
+    labels = {
+        "DXY_PROVIDER_RATE_LIMITED": "Sumber DXY membatasi permintaan (HTTP 429); bias menunggu data segar",
+        "DXY_STALE_OR_MISSING": "DXY intraday belum tersedia atau sudah kedaluwarsa",
+        "CALENDAR_STALE_MISSING_OR_UNHEALTHY": "Feed kalender belum segar/sehat",
+        "MACRO_STALE_MISSING_OR_UNHEALTHY": "Feed makro belum segar/sehat",
+        "NO_UPCOMING_SUPPORTED_EVENT_IN_CALENDAR": "Belum ada event mendatang yang sesuai di kalender",
+        "CONSENSUS_MACRO_DIVERGENCE": "Ekspektasi konsensus dan tekanan makro berlawanan",
+        "FOMC_LANGUAGE_AND_RATE_PATH_UNMODELED": "FOMC: arahan kebijakan dan konferensi pers belum tercakup",
+    }
+    return labels.get(value, value)
 
 
 def render_pre_news_dashboard():
@@ -37,11 +56,11 @@ def render_pre_news_dashboard():
             st.dataframe(view["event_cluster"], hide_index=True, width="stretch")
         st.write("News gate scanner: " + view["news_gate"] + " · " + view["news_gate_action"])
         if view["reasons"]:
-            st.warning(" · ".join(view["reasons"]))
+            st.warning(" · ".join(_reason(reason) for reason in view["reasons"]))
+        st.caption("Kalender: " + _wib(view["calendar_observed_at"]) + " · Makro: " + _wib(view["macro_observed_at"]))
         if view["components"]:
             with st.expander("Kesegaran dan sumber makro", expanded=view["state"] == "DATA INCOMPLETE"):
                 st.dataframe(view["components"], hide_index=True, width="stretch")
-                st.caption("Kalender: " + str(view["calendar_observed_at"]) + " · Makro: " + str(view["macro_observed_at"]))
         if view["scenarios"]:
             with st.expander("Skenario setelah rilis"):
                 st.dataframe(view["scenarios"], hide_index=True, width="stretch")

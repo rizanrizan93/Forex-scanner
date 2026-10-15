@@ -155,3 +155,19 @@ def test_panel_shows_complete_fixture_without_orders():
         app.run()
         assert not app.exception
         assert any(metric.value == "BEARISH_XAU" for metric in app.metric)
+
+
+def test_rate_limited_dxy_never_authorizes_bias():
+    data = snapshot()
+    dxy = data['heartbeats'][1]['details']['evaluation']['dxy_intraday']
+    dxy.update(current_at=None, net_pct=None, source_status='RATE_LIMITED', freshness='MISSING')
+    view = evaluate_pre_news(data, now=NOW)
+    assert view['state'] == 'DATA INCOMPLETE'
+    assert view['xau_bias'] == 'UNAVAILABLE'
+    assert 'DXY_PROVIDER_RATE_LIMITED' in view['reasons']
+
+
+def test_display_timestamps_use_wib_and_explain_provider_limit():
+    from fx_scanner.pre_news_dashboard import _wib, _reason
+    assert _wib(NOW.isoformat()) == '15-10 17:00:00 WIB'
+    assert 'HTTP 429' in _reason('DXY_PROVIDER_RATE_LIMITED')

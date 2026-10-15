@@ -156,12 +156,15 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         valid = valid and delta is not None
         if not valid:
             reasons.append(name + "_STALE_OR_MISSING")
+            if name == "DXY" and row.get("source_status") == "RATE_LIMITED":
+                reasons.append("DXY_PROVIDER_RATE_LIMITED")
         threshold = 0.05 if intraday else 2.0
         pressure = None if not valid else (1 if delta >= threshold else -1 if delta <= -threshold else 0)
         result["components"].append({"name": name, "fresh": valid, "observed_at": observed,
                                       "delta": delta, "unit": "%" if intraday else "bps",
                                       "frequency": "INTRADAY" if intraday else "DAILY_REGIME",
                                       "source": row.get("source") or row.get("provider"),
+                                      "source_status": row.get("source_status") or row.get("freshness"),
                                       "hawkish_pressure": pressure})
     if reasons:
         result["expectation"] = "UNAVAILABLE"
