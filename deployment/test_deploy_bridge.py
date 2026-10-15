@@ -13,6 +13,27 @@ REPO = Path(__file__).resolve().parents[1]
 PATCH = REPO / 'deployment/bridge-connectivity.patch'
 
 class DeploymentTests(unittest.TestCase):
+    def test_upgrade_deployed_f0245_bridge_preserves_local_changes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / 'repo'
+            bridge = root / 'cbot_bridge'
+            bridge.mkdir(parents=True)
+            names = subprocess.check_output(
+                ['git', 'ls-tree', '--name-only', '0be84776:cbot_bridge'], cwd=REPO,
+                text=True).splitlines()
+            for name in names:
+                if name.endswith('.py'):
+                    (bridge / name).write_bytes(subprocess.check_output(
+                        ['git', 'show', '0be84776:cbot_bridge/' + name], cwd=REPO))
+            with (bridge / 'server.py').open('a') as stream:
+                stream.write('\n# KEEP_F0245_LOCAL_DIAGNOSTIC\n')
+            out = Path(folder) / 'out'
+            module.candidate(root, out, PATCH)
+            source = (out / 'cbot_bridge/server.py').read_text()
+            self.assertIn('KEEP_F0245_LOCAL_DIAGNOSTIC', source)
+            self.assertIn('"RZXRC1"', source)
+            self.assertIn('"RZEF245"', source)
+
     def test_embedded_wss_probe_compiles_and_covers_f0245(self):
         tree = ast.parse(Path(module.__file__).read_text())
         probes = [node.value.value for node in ast.walk(tree)
