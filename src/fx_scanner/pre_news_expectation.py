@@ -41,6 +41,13 @@ def fresh(at: Any, now: datetime, limit: float) -> bool:
     return dt is not None and 0 <= (now - dt).total_seconds() <= limit
 
 
+def _source_conflict(event: dict[str, Any]) -> bool:
+    if str(event.get("source_agreement") or "").upper() == "SOURCE_CONFLICT":
+        return True
+    conflicts = event.get("conflicts") or []
+    return bool(conflicts) if isinstance(conflicts, (list, tuple, set)) else bool(str(conflicts).strip())
+
+
 def _scenarios(category: str) -> list[dict[str, str]]:
     inverse = category in INVERSE
     return [
@@ -51,7 +58,7 @@ def _scenarios(category: str) -> list[dict[str, str]]:
 
 
 def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, Any]:
-    """Consume full or compact V192/V398 heartbeat payloads without mutation."""
+    """Consume full or compact V192/V193/V398 heartbeat payloads without mutation."""
     current = timestamp(now)
     if current is None:
         raise ValueError("now must be timezone-aware")
@@ -101,6 +108,9 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         "event": None, "minutes_to_event": None, "scenarios": [],
         "calendar_observed_at": event_hb.get("observed_at"),
         "macro_observed_at": macro_hb.get("observed_at"),
+        "calendar_fusion_version": event_details.get("calendar_fusion_version"),
+        "calendar_source_status": dict(event_details.get("source_status") or {}),
+        "fusion_policy": dict(event_details.get("fusion_policy") or {}),
         "reasons": reasons, "components": [], "event_cluster": [],
     }
     if "CALENDAR_STALE_MISSING_OR_UNHEALTHY" in reasons:
@@ -119,8 +129,11 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
     tilts = []
     for e in cluster:
         forecast, previous = number(e.get("forecast")), number(e.get("previous"))
+        conflict = _source_conflict(e)
         tilt = None
-        if forecast is not None and previous is not None:
+        if conflict:
+            reasons.append("SOURCE_CONFLICT:" + str(e.get("title")))
+        elif forecast is not None and previous is not None:
             tolerance = max(abs(previous) * 0.01, 1e-9)
             tilt = 0 if abs(forecast - previous) <= tolerance else (1 if forecast > previous else -1)
             if e["category"] in INVERSE:
@@ -128,12 +141,19 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         else:
             reasons.append("CONSENSUS_OR_PREVIOUS_MISSING:" + str(e.get("title")))
         if e["category"] == "FOMC":
-            # Even an unchanged target rate cannot describe statement/press conference.
             reasons.append("FOMC_LANGUAGE_AND_RATE_PATH_UNMODELED")
         if tilt is not None:
             tilts.append(tilt)
-        result["event_cluster"].append({"title": e.get("title"), "category": e["category"],
-                                        "forecast": forecast, "previous": previous, "hawkish_tilt": tilt})
+        result["event_cluster"].append({
+            "title": e.get("title"), "category": e["category"],
+            "event_component": e.get("event_component"),
+            "forecast": forecast, "previous": previous, "hawkish_tilt": tilt,
+            "source_count": e.get("source_count", 1),
+            "sources": e.get("sources") or [e.get("source")],
+            "source_agreement": e.get("source_agreement") or "SINGLE_SOURCE",
+            "source_confidence": e.get("source_confidence") or "LOW",
+            "conflicts": e.get("conflicts") or [],
+        })
     if tilts and len(tilts) == len(cluster):
         if 1 in tilts and -1 in tilts:
             expectation = "MIXED"
@@ -151,7 +171,6 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         row = intraday_dxy if name == "DXY" else (cross.get(name) or components.get(name) or {})
         intraday = name == "DXY"
         observed = row.get("current_at") if intraday else row.get("observed_at")
-        # Daily FRED can span weekends/holidays, but is explicitly a daily regime.
         dxy_limit = 900 if str(row.get("source") or "").startswith("CTRADER_") else 1800
         valid = (fresh(observed, current, dxy_limit if intraday else 7 * 86400)
                  and row.get("freshness") == "FRESH")
@@ -181,7 +200,6 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
     conflict = (1 in pressures and -1 in pressures) or (expected and -expected in pressures)
     direction = expected if expected and not conflict else 0
     result["xau_bias"] = "BEARISH_XAU" if direction == 1 else "BULLISH_XAU" if direction == -1 else "NEUTRAL_MIXED"
-    # This label describes agreement of evidence, never a calibrated win rate.
     result["conviction"] = "LOW" if not direction else "MEDIUM" if pressures.count(direction) >= 3 else "LOW"
     if conflict:
         reasons.append("CONSENSUS_MACRO_DIVERGENCE")
