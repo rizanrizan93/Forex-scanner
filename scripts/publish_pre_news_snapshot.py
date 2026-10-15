@@ -13,9 +13,10 @@ from fx_scanner.demo_xau_event_risk_v192 import build_dashboard_projection as ev
 from fx_scanner.demo_xau_macro_attribution_v357 import build_dashboard_projection as macro_projection
 from fx_scanner.pre_news_expectation import EVENT_WORKER, MACRO_WORKER
 from fx_scanner.pre_news_transport import CONTRACT, MAX_BYTES
+from fx_scanner.dxy_broker_context import select_dxy
 
 
-def build_snapshot(client, *, now):
+def build_snapshot(client, *, now, broker_dxy=None):
     rows = []
     for name in (EVENT_WORKER, MACRO_WORKER):
         response = (client.table("runtime_heartbeats").select("worker_name,observed_at,healthy,details")
@@ -30,8 +31,10 @@ def build_snapshot(client, *, now):
             evaluation = details.get("evaluation") or {}
             projection = macro_projection(evaluation)
             dxy = evaluation.get("dxy_intraday") or details.get("dxy_intraday") or {}
+            dxy = select_dxy(dxy, broker_dxy or {}, now=now)
             projection["dxy_intraday"] = {key: dxy.get(key) for key in (
-                "current_at", "reference_at", "freshness", "available", "net_pct", "source")}
+                "current_at", "reference_at", "freshness", "available", "net_pct", "source",
+                "current", "reference", "basis", "symbol", "frequency", "source_status")}
             error = str(dxy.get("error") or "")
             projection["dxy_intraday"]["source_status"] = (
                 "RATE_LIMITED" if "429" in error else "SOURCE_ERROR" if error else
@@ -45,7 +48,10 @@ def build_snapshot(client, *, now):
 
 def main():
     from fx_scanner.storage.backend import create_backend_client
-    result = build_snapshot(create_backend_client(), now=datetime.now(UTC))
+    broker = {}
+    if len(sys.argv) > 2 and Path(sys.argv[2]).is_file():
+        broker = json.loads(Path(sys.argv[2]).read_text())
+    result = build_snapshot(create_backend_client(), now=datetime.now(UTC), broker_dxy=broker)
     raw = json.dumps(result, ensure_ascii=False, allow_nan=False).encode()
     if len(raw) > MAX_BYTES:
         raise ValueError("pre-news snapshot too large")

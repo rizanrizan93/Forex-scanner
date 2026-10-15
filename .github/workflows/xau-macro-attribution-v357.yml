@@ -7,6 +7,8 @@ on:
   push:
     branches: [main]
     paths:
+      - "src/fx_scanner/dxy_broker_context.py"
+      - "scripts/collect_broker_dxy.py"
       - "src/fx_scanner/pre_news_transport.py"
       - "scripts/publish_pre_news_snapshot.py"
       - "src/fx_scanner/xau_macro_attribution_v357.py"
@@ -27,6 +29,8 @@ on:
       - ".github/workflows/xau-macro-attribution-v357.yml"
   pull_request:
     paths:
+      - "src/fx_scanner/dxy_broker_context.py"
+      - "scripts/collect_broker_dxy.py"
       - "src/fx_scanner/pre_news_transport.py"
       - "scripts/publish_pre_news_snapshot.py"
       - "src/fx_scanner/xau_macro_attribution_v357.py"
@@ -87,9 +91,19 @@ jobs:
       - name: Refresh V399 macro heartbeat
         if: always() && github.event_name != 'pull_request'
         run: python -m fx_scanner.demo_xau_macro_attribution_v399
+      - name: Read broker DXY candles without order APIs
+        if: always() && github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+          CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+          CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+        run: |
+          pip install ctrader-open-api==0.9.2 service-identity==24.2.0
+          python scripts/collect_broker_dxy.py artifacts/dxy_broker.json
       - name: Build isolated read-only Pre-News snapshot
         if: always() && github.event_name != 'pull_request'
-        run: python scripts/publish_pre_news_snapshot.py artifacts/pre_news_snapshot.json
+        run: python scripts/publish_pre_news_snapshot.py artifacts/pre_news_snapshot.json artifacts/dxy_broker.json
       - name: Publish isolated Pre-News feed
         if: always() && github.event_name != 'pull_request'
         uses: actions/github-script@v7

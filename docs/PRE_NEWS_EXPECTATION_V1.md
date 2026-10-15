@@ -35,3 +35,11 @@ The failed refresh was traced to `python -m fx_scanner.cli validate-config` impo
 ### Production verification
 
 Recovery workflow run `38679392249` succeeded through config validation, V192 event refresh, V399 macro refresh and isolated feed publication. The published feed carries calendar heartbeat `2026-10-15T04:03:12Z` and macro heartbeat `2026-10-15T04:03:14Z`, both healthy. Evaluating that publication at its own as-of time confirms that daily FRED observations are usable but DXY intraday is missing. Direct provider diagnostics returned HTTP 429 from Yahoo. Pipeline recovery does not establish DXY availability; the engine still abstains until a fresh valid DXY observation exists. Publication now includes a bounded source-status label (not raw errors or credentials), and the panel explains rate limiting and shows worker timestamps in WIB.
+
+## Broker DXY alternative
+
+A separate protocol-allowlisted cTrader reader discovers DXY/USDX broker symbols and reads only closed M5 trendbars. If a recognized direct broker index is unavailable, it can reconstruct a USDX proxy from EURUSD, USDJPY, GBPUSD, USDCAD, USDSEK and USDCHF using the formula in the ICE Dollar Index FAQ (https://www.ice.com/publicdocs/futures_us/ICE_Dollar_Index_FAQ.pdf). All six currencies and common timestamps are mandatory. At least two synchronized observations spanning 30 minutes in the latest pressure window are required; source age is capped at 15 minutes.
+
+Both alternatives are explicitly labeled broker proxies, not official ICE index quotes. Broker close prices differ from ICE contributor midpoint quotes. Yahoo remains preferred when fresh; only failed/stale Yahoo data is replaced. Broad USD indices and EURUSD alone are never substituted for DXY. The fallback changes only the isolated Pre-News publication, not the macro heartbeat stored for cBots or any execution strategy.
+
+The reader reuses existing read-only market-data credentials and the established account binding. It cannot request orders, positions, token refresh or bridge operations. Credential/account details are not published. Failed collection leaves the original source unavailable rather than granting a bias.

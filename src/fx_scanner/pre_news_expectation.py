@@ -150,7 +150,8 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         intraday = name == "DXY"
         observed = row.get("current_at") if intraday else row.get("observed_at")
         # Daily FRED can span weekends/holidays, but is explicitly a daily regime.
-        valid = (fresh(observed, current, 1800 if intraday else 7 * 86400)
+        dxy_limit = 900 if str(row.get("source") or "").startswith("CTRADER_") else 1800
+        valid = (fresh(observed, current, dxy_limit if intraday else 7 * 86400)
                  and row.get("freshness") == "FRESH")
         delta = number(row.get("net_pct") if intraday else row.get("delta"))
         valid = valid and delta is not None
@@ -161,6 +162,8 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         threshold = 0.05 if intraday else 2.0
         pressure = None if not valid else (1 if delta >= threshold else -1 if delta <= -threshold else 0)
         result["components"].append({"name": name, "fresh": valid, "observed_at": observed,
+                                      "current": number(row.get("current")),
+                                      "basis": row.get("basis"),
                                       "delta": delta, "unit": "%" if intraday else "bps",
                                       "frequency": "INTRADAY" if intraday else "DAILY_REGIME",
                                       "source": row.get("source") or row.get("provider"),

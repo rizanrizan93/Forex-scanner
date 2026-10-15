@@ -58,6 +58,11 @@ def render_pre_news_dashboard():
         if view["reasons"]:
             st.warning(" · ".join(_reason(reason) for reason in view["reasons"]))
         st.caption("Kalender: " + _wib(view["calendar_observed_at"]) + " · Makro: " + _wib(view["macro_observed_at"]))
+        dxy = next((row for row in view["components"] if row["name"] == "DXY"), {})
+        if dxy.get("fresh") and dxy.get("current") is not None:
+            st.metric("Dollar Index · " + str(dxy.get("source")), f'{dxy["current"]:.3f}', delta=f'{dxy["delta"]:+.3f}% / 120 menit')
+            if str(dxy.get("source") or "").startswith("CTRADER_"):
+                st.caption("Proxy dari harga broker; candle M5 tertutup. Bukan feed resmi ICE. Indeks sintetis memakai seluruh enam mata uang pada timestamp yang sama.")
         if view["components"]:
             with st.expander("Kesegaran dan sumber makro", expanded=view["state"] == "DATA INCOMPLETE"):
                 st.dataframe(view["components"], hide_index=True, width="stretch")

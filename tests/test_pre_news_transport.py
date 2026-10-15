@@ -77,6 +77,13 @@ def test_publisher_allowlist_keeps_source_time_and_drops_private_details():
     assert macro['dxy_intraday']['current_at']
     from fx_scanner.pre_news_expectation import evaluate_pre_news
     assert evaluate_pre_news(data,now=NOW)['state']=='PRE_NEWS'
+    # Failed Yahoo DXY can be replaced by validated complete broker-basket data.
+    from fx_scanner.dxy_broker_context import evaluate_broker_dxy
+    from test_dxy_broker_context import basket
+    broker = evaluate_broker_dxy(now=NOW, basket=basket())
+    recovered = publisher.build_snapshot(Client(), now=NOW, broker_dxy=broker)
+    assert recovered['heartbeats'][1]['details']['evaluation']['dxy_intraday']['source'] == 'CTRADER_SYNTHETIC_USDX_6FX'
+    assert evaluate_pre_news(recovered, now=NOW)['state'] == 'PRE_NEWS'
 
 
 def test_macro_validation_has_no_execution_import_dependency():
