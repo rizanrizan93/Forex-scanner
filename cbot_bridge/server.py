@@ -26,6 +26,11 @@ except ImportError:
     from timestamps import validate_timestamps, utc_text
 
 CONTRACTS = {
+    "RZEF245": {
+        "hash": "d39e1192b64c3044f3215fa82ceaacdb732b4cf758389ad4f609692e54bdae9a",
+        "schema": 3,
+        "execution_model": "EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1",
+    },
     "RZXA1": {
         "hash": "7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf",
         "schema": 1,
@@ -420,3 +425,4 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+

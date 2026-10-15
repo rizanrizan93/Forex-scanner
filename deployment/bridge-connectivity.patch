@@ -237,10 +237,10 @@ index 00000000..e5e0af45
 +
 +if __name__=='__main__':main()
 diff --git a/cbot_bridge/server.py b/cbot_bridge/server.py
-index 2c916259..ec07e86f 100644
+index 2c916259..106fa217 100644
 --- a/cbot_bridge/server.py
 +++ b/cbot_bridge/server.py
-@@ -16,9 +16,14 @@ import sqlite3
+@@ -16,11 +16,21 @@
  import ssl
  import tempfile
  import time
@@ -254,8 +254,15 @@ index 2c916259..ec07e86f 100644
 +    from timestamps import validate_timestamps, utc_text
  
  CONTRACTS = {
++    "RZEF245": {
++        "hash": "d39e1192b64c3044f3215fa82ceaacdb732b4cf758389ad4f609692e54bdae9a",
++        "schema": 3,
++        "execution_model": "EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1",
++    },
      "RZXA1": {
-@@ -131,6 +136,7 @@ class Store:
+         "hash": "7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf",
+         "schema": 1,
+@@ -131,6 +141,7 @@
          if type(base) is not int or base < 0:
              raise ValueError("BASE_REVISION_INVALID")
          self._validate_state_identity(key, revision, state)
@@ -263,7 +270,7 @@ index 2c916259..ec07e86f 100644
          encoded = json.dumps(state, sort_keys=True, allow_nan=False, separators=(",", ":"))
          digest = hashlib.sha256(encoded.encode()).hexdigest()
          with self.db:
-@@ -320,6 +326,7 @@ async def main() -> None:
+@@ -320,6 +331,7 @@
          while True:
              try:
                  candidate = await asyncio.to_thread(feeds.snapshot)
@@ -271,7 +278,7 @@ index 2c916259..ec07e86f 100644
                  await asyncio.to_thread(_write_snapshot, snapshot_path, candidate)
                  latest = candidate
              except Exception:
-@@ -333,7 +340,8 @@ async def main() -> None:
+@@ -333,7 +345,8 @@
                  try:
                      await ws.send(wire)
                  except Exception:
@@ -281,7 +288,7 @@ index 2c916259..ec07e86f 100644
              await asyncio.sleep(60)
  
      async def handler(ws) -> None:
-@@ -347,8 +355,15 @@ async def main() -> None:
+@@ -347,8 +360,15 @@
              key = str(hello.get("key", ""))
              lease = str(hello.get("lease", ""))
              _validate_identity(key, lease, str(hello.get("contract", "")))
@@ -297,7 +304,7 @@ index 2c916259..ec07e86f 100644
              await ws.send(json.dumps({"type": "ready", "revision": version, "state": state}))
              peers[ws] = key
              if latest is not None and key.split(":")[-1].upper() == "XAUUSD":
-@@ -357,9 +372,10 @@ async def main() -> None:
+@@ -357,9 +377,10 @@
                  )
              async for wire in ws:
                  request = strict_load(wire)
@@ -603,3 +610,4 @@ index 00000000..beadc765
 +    elif isinstance(payload, list):
 +        for value in payload:
 +            validate_timestamps(value)
+
