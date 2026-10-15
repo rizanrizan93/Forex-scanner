@@ -9,11 +9,36 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from fx_scanner.demo_xau_event_risk_v192 import build_dashboard_projection as event_projection
+from fx_scanner.demo_xau_event_risk_v193 import build_dashboard_projection as event_projection
 from fx_scanner.demo_xau_macro_attribution_v357 import build_dashboard_projection as macro_projection
 from fx_scanner.pre_news_expectation import EVENT_WORKER, MACRO_WORKER
 from fx_scanner.pre_news_transport import CONTRACT, MAX_BYTES
 from fx_scanner.dxy_broker_context import select_dxy
+
+
+def _safe_source_status(value):
+    """Publish bounded provider health without upstream error text or credentials."""
+    text = str(value or "UNKNOWN")
+    parts = text.split(":")
+    if parts[0] == "OK":
+        return ":".join(parts[:2]) if len(parts) > 1 else "OK"
+    if parts[0] == "ERROR":
+        return "ERROR:" + (parts[1] if len(parts) > 1 else "UNKNOWN")
+    if text in {"DISABLED", "UNKNOWN"}:
+        return text
+    return text[:48]
+
+
+def _safe_fusion_policy(value):
+    policy = dict(value or {})
+    allowed = (
+        "identity",
+        "numeric",
+        "official_actual_precedence",
+        "source_conflict_abstains",
+        "secondary_fail_open",
+    )
+    return {key: policy.get(key) for key in allowed if key in policy}
 
 
 def build_snapshot(client, *, now, broker_dxy=None):
@@ -26,7 +51,16 @@ def build_snapshot(client, *, now, broker_dxy=None):
         row = response.data[0]
         details = row.get("details") or {}
         if name == EVENT_WORKER:
-            context = {"risk": event_projection(details.get("risk") or {})}
+            risk = details.get("risk") or details.get("dashboard_projection") or {}
+            context = {
+                "risk": event_projection(risk),
+                "calendar_fusion_version": str(details.get("calendar_fusion_version") or "V192"),
+                "source_status": {
+                    str(key): _safe_source_status(value)
+                    for key, value in dict(details.get("source_status") or {}).items()
+                },
+                "fusion_policy": _safe_fusion_policy(details.get("fusion_policy")),
+            }
         else:
             evaluation = details.get("evaluation") or {}
             projection = macro_projection(evaluation)
