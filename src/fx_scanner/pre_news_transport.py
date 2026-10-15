@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from urllib.request import Request, urlopen
+from urllib.error import URLError
 
 from .pre_news_expectation import EVENT_WORKER, MACRO_WORKER, fresh
 
@@ -22,12 +23,12 @@ def _get(url, opener, timeout):
     return json.loads(raw)
 
 
-def validate_snapshot(data, *, now):
+def validate_snapshot(data, *, now, require_fresh=True):
     if data.get("contract") != CONTRACT:
         raise ValueError("pre-news snapshot contract mismatch")
     if data.get("execution_authority") is not False or data.get("execution_influence") is not False:
         raise ValueError("pre-news snapshot read-only contract mismatch")
-    if not fresh(data.get("published_at"), now, 900):
+    if require_fresh and not fresh(data.get("published_at"), now, 900):
         raise ValueError("pre-news publication stale or invalid")
     rows = data.get("heartbeats")
     if not isinstance(rows, list) or any(row.get("worker_name") not in {EVENT_WORKER, MACRO_WORKER} for row in rows):
@@ -44,8 +45,13 @@ def fetch_pre_news_snapshot(*, now=None, opener=urlopen, timeout_seconds=15):
         if str(exc) != "pre-news publication stale or invalid":
             raise
         # Re-read immutable latest revision when the mutable CDN lane is old.
-        ref = _get("https://api.github.com/repos/rizanrizan93/Forex-scanner/git/ref/heads/" + BRANCH, opener, timeout_seconds)
-        sha = str((ref.get("object") or {}).get("sha") or "")
-        if len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha):
-            raise ValueError("pre-news reference invalid")
-        return validate_snapshot(_get(ROOT_URL + sha + "/runtime/pre_news_snapshot.json", opener, timeout_seconds), now=current)
+        try:
+            ref = _get("https://api.github.com/repos/rizanrizan93/Forex-scanner/git/ref/heads/" + BRANCH, opener, timeout_seconds)
+            sha = str((ref.get("object") or {}).get("sha") or "")
+            if len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha):
+                raise ValueError("pre-news reference invalid")
+            latest = _get(ROOT_URL + sha + "/runtime/pre_news_snapshot.json", opener, timeout_seconds)
+        except (URLError, TimeoutError):
+            latest = data
+        validate_snapshot(latest, now=current, require_fresh=False)
+        return {**latest, "publication_fresh": fresh(latest.get("published_at"), current, 900)}

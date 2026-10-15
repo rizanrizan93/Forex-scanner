@@ -12,6 +12,7 @@ def _wib(value):
 
 def _reason(value):
     labels = {
+        "PUBLICATION_STALE": "Pembaruan feed terlambat; bias ditahan sampai data baru diterima",
         "DXY_PROVIDER_RATE_LIMITED": "Sumber DXY membatasi permintaan (HTTP 429); bias menunggu data segar",
         "DXY_STALE_OR_MISSING": "DXY intraday belum tersedia atau sudah kedaluwarsa",
         "CALENDAR_STALE_MISSING_OR_UNHEALTHY": "Feed kalender belum segar/sehat",
@@ -35,12 +36,22 @@ def render_pre_news_dashboard():
     def panel():
         st.subheader("Pre-News Expectation Engine · XAUUSD")
         st.caption("CPI · NFP/upah/pengangguran · PPI · JOLTS · ECI · FOMC")
+        if st.button("Perbarui tampilan", key="pre_news_refresh"):
+            load_snapshot.clear()
+        st.caption("Panel diperiksa setiap 60 detik · sumber diperbarui sekitar 4 menit selama publisher aktif.")
         try:
             snapshot = load_snapshot()
-        except Exception as exc:
-            st.warning("DATA INCOMPLETE · snapshot belum tersedia (" + type(exc).__name__ + ").")
-            return
+            st.session_state["pre_news_last_snapshot"] = snapshot
+        except Exception:
+            previous = st.session_state.get("pre_news_last_snapshot")
+            if not previous:
+                st.warning("DATA INCOMPLETE · feed belum dapat dihubungi. Panel mencoba kembali setiap 60 detik.")
+                return
+            snapshot = {**previous, "publication_fresh": False}
+            st.warning("Koneksi feed terganggu. Menampilkan data terakhir sebagai referensi; bias ditahan.")
         view = evaluate_pre_news(snapshot, now=datetime.now(UTC))
+        if snapshot.get("published_at"):
+            st.caption("Feed terakhir: " + _wib(snapshot["published_at"]))
         cols = st.columns(2)
         cols[0].metric("Status", view["state"])
         cols[1].metric("Ekspektasi konsensus", view["expectation"])

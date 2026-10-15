@@ -91,3 +91,30 @@ def test_macro_validation_has_no_execution_import_dependency():
     root=Path(__file__).resolve().parents[1]
     result=subprocess.run([sys.executable,'-c',"from fx_scanner.config import load_project_config; load_project_config(None); import sys; assert not any(n.startswith('fx_scanner.execution') for n in sys.modules)"],cwd=root,env=__import__('os').environ|{'PYTHONPATH':str(root/'src')},capture_output=True,text=True)
     assert result.returncode==0,result.stderr
+
+
+def test_stale_feed_returns_context_but_never_a_current_bias():
+    from fx_scanner.pre_news_expectation import evaluate_pre_news
+    old=payload();old['published_at']=(NOW-timedelta(hours=1)).isoformat()
+    responses=iter([old,{'object':{'sha':'b'*40}},old])
+    def opener(*args,**kwargs):return io.BytesIO(json.dumps(next(responses)).encode())
+    out=fetch_pre_news_snapshot(now=NOW,opener=opener)
+    assert out['publication_fresh'] is False
+    view=evaluate_pre_news(out,now=NOW)
+    assert view['state']=='DATA INCOMPLETE'
+    assert view['xau_bias']=='UNAVAILABLE'
+    assert view['event'] is not None
+    assert 'PUBLICATION_STALE' in view['reasons']
+
+
+def test_stale_context_survives_reference_network_failure():
+    from urllib.error import URLError
+    old=payload();old['published_at']=(NOW-timedelta(hours=1)).isoformat()
+    count=[0]
+    def opener(*args,**kwargs):
+        count[0]+=1
+        if count[0]==2:raise URLError('network unavailable')
+        return io.BytesIO(json.dumps(old).encode())
+    out=fetch_pre_news_snapshot(now=NOW,opener=opener)
+    assert out['publication_fresh'] is False
+    assert out['published_at']==old['published_at']

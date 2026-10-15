@@ -47,3 +47,11 @@ The reader reuses existing read-only market-data credentials and the established
 ### Broker source verified
 
 Workflow `38680716928` completed successfully. Broker discovery returned `USDX` and all six constituent FX pairs. The direct broker reader produced `CTRADER_DXY_CFD_PROXY`, state `DXY_FLAT`, latest closed M5 timestamp `2026-10-15T04:15:00Z`, pressure -0.0049114%. No synthetic reconstruction was needed in this production collection. Yahoo also recovered for that run, so source selection correctly retained the fresh Yahoo primary while the broker alternative was independently verified. The published feed at `2026-10-15T04:18:28Z` evaluated as PRE_NEWS; consensus HOT-RISK with NEUTRAL_MIXED XAU due to consensus/macro divergence. These are as-of observations, not a forecast of the release. 81 targeted tests passed.
+
+## Sustained publication and usable degraded display
+
+A one-shot five-minute cron was observed leaving the public feed unchanged for over 30 minutes. The workflow now runs a bounded 5.5-hour publisher that refreshes calendar, macro and read-only broker DXY every four minutes. Hourly scheduled jobs queue a successor; a source push replaces the current build. Every cycle has subprocess timeouts, non-forced branch publication, a cycle number and original source timestamps. One transient failure is retried on the next cycle; three consecutive publication failures stop the job visibly. Source age gates are unchanged.
+
+The display preserves a structurally valid stale snapshot as labeled reference data instead of exiting with a generic ValueError. No current bias is allowed when publication is stale, even if individual heartbeat fields appear recent. Network recovery also preserves last known context in the current UI session with bias withheld. A manual display refresh clears only the UI cache; it does not submit an order or pretend to refresh a source.
+
+87 targeted tests passed, including repeated cycles without another scheduler trigger, transient-failure recovery, repeated-failure shutdown, read-only branch writes, stale context with withheld bias, and loss of reference-endpoint connectivity. The panel polls every 60 seconds; source refresh targets four minutes while the publisher is running. GitHub runner availability and free Streamlit sleep remain hosting limitations, so this is not a guaranteed uptime SLA.

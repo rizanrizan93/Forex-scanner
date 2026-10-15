@@ -69,6 +69,8 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
     macro_details = macro_hb.get("details") or {}
     macro = macro_details.get("evaluation") or macro_details.get("dashboard_projection") or {}
     reasons: list[str] = []
+    if snapshot.get("publication_fresh") is False:
+        reasons.append("PUBLICATION_STALE")
     if not fresh(event_hb.get("observed_at"), current, 600) or not event_hb.get("healthy"):
         reasons.append("CALENDAR_STALE_MISSING_OR_UNHEALTHY")
     if not fresh(macro_hb.get("observed_at"), current, 600) or not macro_hb.get("healthy"):
