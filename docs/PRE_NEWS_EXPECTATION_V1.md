@@ -43,3 +43,7 @@ A separate protocol-allowlisted cTrader reader discovers DXY/USDX broker symbols
 Both alternatives are explicitly labeled broker proxies, not official ICE index quotes. Broker close prices differ from ICE contributor midpoint quotes. Yahoo remains preferred when fresh; only failed/stale Yahoo data is replaced. Broad USD indices and EURUSD alone are never substituted for DXY. The fallback changes only the isolated Pre-News publication, not the macro heartbeat stored for cBots or any execution strategy.
 
 The reader reuses existing read-only market-data credentials and the established account binding. It cannot request orders, positions, token refresh or bridge operations. Credential/account details are not published. Failed collection leaves the original source unavailable rather than granting a bias.
+
+### Broker source verified
+
+Workflow `38680716928` completed successfully. Broker discovery returned `USDX` and all six constituent FX pairs. The direct broker reader produced `CTRADER_DXY_CFD_PROXY`, state `DXY_FLAT`, latest closed M5 timestamp `2026-10-15T04:15:00Z`, pressure -0.0049114%. No synthetic reconstruction was needed in this production collection. Yahoo also recovered for that run, so source selection correctly retained the fresh Yahoo primary while the broker alternative was independently verified. The published feed at `2026-10-15T04:18:28Z` evaluated as PRE_NEWS; consensus HOT-RISK with NEUTRAL_MIXED XAU due to consensus/macro divergence. These are as-of observations, not a forecast of the release. 81 targeted tests passed.
