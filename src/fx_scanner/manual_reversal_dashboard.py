@@ -35,8 +35,9 @@ def latest_commit(bucket):
     return sha
 
 def fetch_manual_map():
+    bucket=int(datetime.now(UTC).timestamp()//60)
     try:
-        p=validate(read_json(BASE+BRANCH+PATH))
+        p=validate(read_json(BASE+BRANCH+PATH+"?rizan_minute="+str(bucket)))
         if p['fresh']:return p
     except (ValueError,OSError,KeyError,TypeError):p=None
     try:return validate(read_json(BASE+latest_commit(int(datetime.now(UTC).timestamp()//90))+PATH))
@@ -56,6 +57,9 @@ def render_snapshot(snapshot):
     if not p['fresh']:
         st.warning('Data reversal belum tersedia atau sudah kedaluwarsa. Level harga disembunyikan sampai snapshot baru tersedia.')
         st.caption('Candle terakhir: '+wib(p.get('price_observed_at')))
+        st.caption('Snapshot diterbitkan: '+wib(p.get('as_of')))
+        if p.get('age_seconds') is not None:
+            st.caption(f"Usia candle {max(0,p['age_seconds'])/60:,.0f} menit · menunggu pembaruan kolektor.")
         return
     price=p['price'];st.caption(f"Harga snapshot {price:,.2f} · candle {wib(p['price_observed_at'])} · bukan bid/ask live")
     st.caption('Tampilan mengecek ulang setiap 60 detik; kolektor candle setiap 5 menit. Cocokkan harga dan candle terakhir dengan chart cTrader Anda.')
@@ -105,7 +109,11 @@ def _render():
     import streamlit as st
     st.subheader('Titik reversal · acuan manual XAU')
     st.caption('Peta H4/H1 → reaksi M15 → konfirmasi M5 · terpisah dari strategi dan order cBot')
-    try:render_snapshot(st.cache_data(ttl=60)(fetch_manual_map)())
+    load=st.cache_data(ttl=60,show_spinner=False)(fetch_manual_map)
+    if st.button('Perbarui tampilan',key='manual_reversal_refresh'):
+        load.clear()
+        latest_commit.cache_clear()
+    try:render_snapshot(load())
     except Exception:
         # A failed map must not abort the other dashboard tabs or expose credentials.
         st.warning('Peta manual belum dapat diperbarui. Level harga tidak ditampilkan; periksa kembali setelah pengambilan candle berikutnya.')

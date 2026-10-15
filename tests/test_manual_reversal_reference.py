@@ -117,4 +117,6 @@ def test_display_imports_cannot_reach_order_bridge_or_strategy_mutation():
         assert not any(any(k in name for k in ['execution','bridge','frozen','strategy','cli','storage']) for name in imports)
     text=(root/'.github/workflows/reversal-scanner-readonly.yml').read_text()
     assert 'runtime/manual_reversal_snapshot.json' in text and 'scanner-reversal-snapshots' in text
-    assert 'workflow_dispatch:' in text and 'execution_influence !== false' in text
+    assert 'workflow_dispatch:' in text and 'scripts/run_reversal_feed.py' in text
+    publisher=(root/'scripts/run_reversal_feed.py').read_text()
+    assert "item.get('execution_influence') is not False" in publisher

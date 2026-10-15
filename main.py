@@ -6,11 +6,7 @@ from pathlib import Path
 import streamlit as st
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
-from fx_scanner.xau_event_dashboard_patch_v377 import install_event_macro_dashboard_patch
-from fx_scanner.xau_whalezone_dashboard_patch_v408 import install_whalezone_dashboard_patch
 st.set_page_config(page_title="RIZAN Scanner", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
-install_event_macro_dashboard_patch()
-install_whalezone_dashboard_patch()
 
 def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
     st.session_state.setdefault("rizan_pair", default_pair)
@@ -60,6 +56,12 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                                 st.markdown('[Laporan riset lama](https://github.com/rizanrizan93/Forex-scanner/blob/main/docs/XAU_REVERSAL_10M_REPORT_20261013.md)')
                                 st.caption('Zona dan TP/SL contoh lama tidak ditampilkan sebagai rekomendasi reversal utama.')
                         else:
+                            # Legacy patches are needed only by the detailed XAU pages.
+                            # Keep the manual map and EUR independent of their import graph.
+                            from fx_scanner.xau_event_dashboard_patch_v377 import install_event_macro_dashboard_patch
+                            from fx_scanner.xau_whalezone_dashboard_patch_v408 import install_whalezone_dashboard_patch
+                            install_event_macro_dashboard_patch()
+                            install_whalezone_dashboard_patch()
                             if label == "Setup":
                                 from fx_scanner.selected_raw_reference_dashboard import render_selected_raw_reference
                                 from fx_scanner.xau_frozen_dd50_dashboard import render_frozen_core

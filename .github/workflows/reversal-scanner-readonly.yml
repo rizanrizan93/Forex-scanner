@@ -4,23 +4,25 @@ on:
   push:
     branches: [main]
     paths:
+      - scripts/run_reversal_feed.py
       - scripts/publish_reversal_snapshot.py
+      - src/fx_scanner/manual_reversal_dashboard.py
       - src/fx_scanner/reversal_scanner.py
       - src/fx_scanner/manual_reversal_map.py
       - calibration/reversal_10m_results.json
       - .github/workflows/reversal-scanner-readonly.yml
   schedule:
-    - cron: '*/5 * * * 1-5'
+    - cron: '17 * * * 0-5'
 permissions:
   contents: write
 concurrency:
   group: xau-reversal-readonly
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 jobs:
   scanner:
     if: github.repository == 'rizanrizan93/Forex-scanner'
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 360
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -31,28 +33,13 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install numpy==2.2.6 pandas==2.2.3 ctrader-open-api==0.9.2 service-identity==24.2.0
-      - name: Collect XAU market bars without order APIs
-        run: python scripts/publish_reversal_snapshot.py artifacts/reversal_snapshot.json
-      - name: Publish only sanitized scanner geometry to isolated branch
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const data = JSON.parse(fs.readFileSync('artifacts/reversal_snapshot.json','utf8'));
-            const manual = JSON.parse(fs.readFileSync('artifacts/manual_reversal_snapshot.json','utf8'));
-            for (const item of [data, manual]) {
-              if (item.execution_authority !== false || item.execution_influence !== false || item.symbol !== 'XAUUSD') throw Error('read-only guard');
-            }
-            if (manual.contract !== 'RIZAN_XAU_MANUAL_REVERSAL_MAP_V2') throw Error('manual contract guard');
-            const {owner, repo} = context.repo;
-            const branch = 'scanner-reversal-snapshots';
-            let parent, exists = true;
-            try { parent = (await github.rest.git.getRef({owner,repo,ref:'heads/'+branch})).data.object.sha; }
-            catch(e) { if(e.status!==404) throw e; exists=false; parent=context.sha; }
-            const tree = await github.rest.git.createTree({owner,repo,base_tree:parent,tree:[{path:'runtime/reversal_snapshot.json',mode:'100644',type:'blob',content:JSON.stringify(data)},{path:'runtime/manual_reversal_snapshot.json',mode:'100644',type:'blob',content:JSON.stringify(manual)}]});
-            const commit = await github.rest.git.createCommit({owner,repo,message:'scanner: read-only XAU reversal map',tree:tree.data.sha,parents:[parent]});
-            if (exists) await github.rest.git.updateRef({owner,repo,ref:'heads/'+branch,sha:commit.data.sha,force:false});
-            else await github.rest.git.createRef({owner,repo,ref:'refs/heads/'+branch,sha:commit.data.sha});
+      - name: Publish read-only XAU geometry every five minutes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        # The publisher validates the read-only and freshness contracts;
+        # only runtime/reversal_snapshot.json and runtime/manual_reversal_snapshot.json
+        # are written on scanner-reversal-snapshots.
+        run: python -u scripts/run_reversal_feed.py
       - uses: actions/upload-artifact@v4
         with:
           name: reversal-readonly-snapshot
