@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"src"))
 from fx_scanner.reversal_scanner import evaluate, load_result
+from fx_scanner.manual_reversal_map import evaluate as evaluate_manual, CONTRACT as MANUAL_CONTRACT
 
 READ_REQUESTS = frozenset({"ProtoOAApplicationAuthReq", "ProtoOAGetAccountListByAccessTokenReq",
     "ProtoOAAccountAuthReq", "ProtoOASymbolsListReq", "ProtoOAGetTrendbarsReq"})
@@ -75,7 +76,29 @@ def main(output):
         snapshot=evaluate(list(rows.values()),result,now=now)
         Path(output).parent.mkdir(parents=True,exist_ok=True)
         Path(output).write_text(json.dumps(snapshot,indent=2,allow_nan=False)+"\n")
+        # Reuse this existing read-only connection; do not start another collector,
+        # touch the cBot bridge, renew OAuth, or alter the legacy snapshot contract.
+        native={"M1":list(rows.values())}
+        manual={"contract":MANUAL_CONTRACT,"symbol":"XAUUSD","as_of":now.isoformat(),
+            "execution_authority":False,"execution_influence":False,"probability":None,
+            "validation_status":"MANUAL_REFERENCE_NOT_CALIBRATED","state":"DATA_UNAVAILABLE","zones":[],"plans":[]}
+        try:
+            for tf,days,count in [("H4",100,600),("H1",60,900),("M15",15,900),("M5",6,900)]:
+                yield deferLater(reactor,.3,lambda:None)
+                res=yield request("ProtoOAGetTrendbarsReq",ctidTraderAccountId=account,symbolId=symbols[0].symbolId,
+                    period=ProtoOATrendbarPeriod.Value(tf),fromTimestamp=int((now-timedelta(days=days)).timestamp()*1000),
+                    toTimestamp=int(now.timestamp()*1000),count=count)
+                native[tf]=[{"timestamp":datetime.fromtimestamp(b.utcTimestampInMinutes*60,UTC).isoformat(),
+                    "low":b.low/100000.,"open":(b.low+b.deltaOpen)/100000.,
+                    "high":(b.low+b.deltaHigh)/100000.,"close":(b.low+b.deltaClose)/100000.} for b in res.trendbar]
+            manual=evaluate_manual(native,now=now)
+        except Exception:
+            # Fail closed for the optional manual panel; keep the existing read-only
+            # legacy snapshot usable. No source exception or credential is published.
+            print("MANUAL_REVERSAL_DATA_UNAVAILABLE",flush=True)
+        Path(output).with_name("manual_reversal_snapshot.json").write_text(json.dumps(manual,indent=2,allow_nan=False)+"\n")
         print("REVERSAL_SCANNER_READ_ONLY state="+snapshot["state"]+" bars="+str(len(rows))+" execution_authority=False",flush=True)
+        print("MANUAL_REVERSAL_READ_ONLY state="+manual["state"]+" plans="+str(len(manual["plans"]))+" execution_influence=False",flush=True)
 
     def finish(value):
         if hasattr(value,"check"): errors.append(value.type.__name__)
