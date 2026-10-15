@@ -67,7 +67,7 @@ def cycle(index):
     broker, snapshot = folder/'dxy_broker.json', folder/'pre_news_snapshot.json'
     broker.unlink(missing_ok=True);snapshot.unlink(missing_ok=True)
     statuses = {
-        'calendar':run_step('calendar',['-m','fx_scanner.demo_xau_event_risk_v192'],60),
+        'calendar':run_step('calendar',['-m','fx_scanner.demo_xau_event_risk_v193'],60),
         'macro':run_step('macro',['-m','fx_scanner.demo_xau_macro_attribution_v399'],60),
         'broker_dxy':run_step('broker_dxy',['scripts/collect_broker_dxy.py',str(broker)],55),
     }
