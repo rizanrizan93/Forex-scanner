@@ -1,0 +1,22 @@
+name: Native runtime capability check
+on:
+  push:
+    branches: [codex/native-tick-preflight-20261017]
+    paths: ['.github/workflows/native-runtime-capabilities.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capabilities:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/codex/native-tick-preflight-20261017' && github.actor == 'rizanrizan93'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect official runtime without account access
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull ghcr.io/spotware/ctrader-console:latest
+          docker image inspect ghcr.io/spotware/ctrader-console:latest --format '{{json .RepoDigests}}'
+          docker run --rm ghcr.io/spotware/ctrader-console:latest --version
+          docker run --rm ghcr.io/spotware/ctrader-console:latest --help
