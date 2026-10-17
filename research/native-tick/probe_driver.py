@@ -17,6 +17,10 @@ def execute(args,name,timeout=600,cwd=None):
             output[name+'Exit']='TIMEOUT';return -1
 try:
     config=json.loads((root/'identity.json').read_text())
+    if os.environ.get('RIZAN_NATIVE_PRECISE')=='1':
+        try:
+            output['official_cli_formula']=urllib.request.urlopen('https://raw.githubusercontent.com/spotware/homebrew-tap/main/Formula/ctrader-cli.rb',timeout=20).read().decode()[:18000]
+        except Exception as e:output['official_cli_formula_error']=type(e).__name__
     sdk=root/'cli';sdk.mkdir()
     archive=root/'cli.tar.gz'
     urllib.request.urlretrieve('https://getctrader.spotware.com/cli/homebrew/ctrader-cli-5.9.0-linux-x64.tar.gz',archive)
@@ -54,7 +58,7 @@ try:
             execute([str(cli),'metadata',str(algo)],'metadata',60)
             args=[str(cli),'backtest',str(algo),'--ctid='+config['ctid'],'--pwd-file='+str(root/'password.pwd'),'--account='+str(config['account']),'--symbol=XAUUSD','--period=m1','--start='+os.environ.get('RIZAN_NATIVE_START',('09/06/2025' if strategy else '10/06/2025')),'--end='+os.environ.get('RIZAN_NATIVE_END',('14/06/2025' if strategy else '11/06/2025')),'--balance=100','--data-mode=ticks','--report-json='+str(root/'report.json'),'--exit-on-stop']
             if not strategy and os.environ.get('RIZAN_NATIVE_FEE_BATCH')=='1':args+=['--FeeProbe=true','--commission=30']
-            if os.environ.get('RIZAN_NATIVE_PRECISE')=='1':args+=['--precise-conversion']
+            if os.environ.get('RIZAN_NATIVE_PRECISE')=='1':args+=['--precise-conversion=true']
             if strategy:output['CostScope']='execution smoke only; native CLI 5.9 lacks per-lot commission override; no performance certification'
             execute(args,'native_backtest',1200 if strategy else 900)
             if not strategy and os.environ.get('RIZAN_SKIP_COST_PROBE')!='1':
