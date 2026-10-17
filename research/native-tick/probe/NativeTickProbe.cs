@@ -9,17 +9,18 @@ public class NativeTickProbe : Robot
     readonly Dictionary<string,long> counts = new();
     readonly Dictionary<string,DateTime> previous = new();
     readonly Dictionary<string,string> first = new(), last = new();
+    readonly Dictionary<string,double> minSpread=new(),maxSpread=new();
     long reversed, futureBars;
     protected override void OnStart()
     {
         if (RunningMode == RunningMode.RealTime) { Print("BACKTEST_ONLY_REFUSED"); Stop(); return; }
         foreach(var name in new[]{"XAUUSD","EURUSD"})
         {
-            counts[name]=0;
+            counts[name]=0;minSpread[name]=double.PositiveInfinity;maxSpread[name]=0;
             var s=Symbols.GetSymbol(name);
             s.Tick += e => Observe(name);
             var bars=MarketData.GetBars(TimeFrame.Minute,name);
-            Print("PROBE_CONTEXT "+JsonSerializer.Serialize(new {Symbol=name, LotSize=s.LotSize, MinUnits=s.VolumeInUnitsMin, EstimateBuy001=s.GetEstimatedMargin(TradeType.Buy,s.QuantityToVolumeInUnits(0.01)), Bars=bars.Count, Latest=bars.Count>0?bars.OpenTimes.LastValue.ToString("O"):"none", Now=Server.Time.ToString("O")}));
+            Print("PROBE_CONTEXT "+JsonSerializer.Serialize(new {Symbol=name,Bid=s.Bid,Ask=s.Ask,Spread=s.Ask-s.Bid, LotSize=s.LotSize, MinUnits=s.VolumeInUnitsMin, EstimateBuy001=s.GetEstimatedMargin(TradeType.Buy,s.QuantityToVolumeInUnits(0.01)), Bars=bars.Count, Latest=bars.Count>0?bars.OpenTimes.LastValue.ToString("O"):"none", Now=Server.Time.ToString("O")}));
             if(bars.Count>0 && bars.OpenTimes.LastValue>Server.Time) futureBars++;
         }
         Print("PROBE_ACCOUNT "+JsonSerializer.Serialize(new{Mode=RunningMode.ToString(),Balance=Account.Balance,Leverage=Account.PreciseLeverage,Currency=Account.Asset.Name}));
@@ -27,6 +28,7 @@ public class NativeTickProbe : Robot
     void Observe(string name)
     {
         var t=Server.Time;
+        var symbol=Symbols.GetSymbol(name);var spread=symbol.Ask-symbol.Bid;minSpread[name]=Math.Min(minSpread[name],spread);maxSpread[name]=Math.Max(maxSpread[name],spread);
         if(previous.TryGetValue(name,out var p) && t<p) reversed++;
         previous[name]=t;
         if(counts[name]++==0)first[name]=t.ToString("O");
@@ -34,6 +36,6 @@ public class NativeTickProbe : Robot
     }
     protected override void OnStop()
     {
-        Print("PROBE_RESULT "+JsonSerializer.Serialize(new{Counts=counts,First=first,Last=last,Reversed=reversed,FutureBars=futureBars,Balance=Account.Balance,Equity=Account.Equity,Positions=Positions.Count}));
+        Print("PROBE_RESULT "+JsonSerializer.Serialize(new{Counts=counts,MinSpread=minSpread,MaxSpread=maxSpread,First=first,Last=last,Reversed=reversed,FutureBars=futureBars,Balance=Account.Balance,Equity=Account.Equity,Positions=Positions.Count}));
     }
 }
