@@ -1,0 +1,62 @@
+name: Native 5.10 strategy RAW replay
+on:
+  push:
+    branches: [codex/native-tick-preflight-20261017]
+    paths: ['.github/workflows/native-tick-docker-strategy.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rizan-native-tick-docker-strategy
+  cancel-in-progress: false
+jobs:
+  probe:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/codex/native-tick-preflight-20261017' && github.actor == 'rizanrizan93'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            6.0.x
+      - name: Run isolated backtest probe
+        shell: bash
+        env:
+          RIZAN_NATIVE_DOCKER: '1'
+          RIZAN_NATIVE_PRECISE: '1'
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          work=$(mktemp -d)
+          export RIZAN_NATIVE_PRIVATE="$work"
+          trap 'rm -rf -- "$RIZAN_NATIVE_PRIVATE"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$work/ssh-key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$work/known_hosts"
+          ssh_options=(-i "$work/ssh-key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$work/known_hosts" -o ConnectTimeout=20)
+          base64 -d research/native-tick/identity.sealed | ssh "${ssh_options[@]}" Rizanrizan@202.74.74.172 'openssl pkeyutl -decrypt -inkey "$HOME/.local/state/rizan-native-preflight/transfer.pem" -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 -pkeyopt rsa_mgf1_md:sha256' > "$work/identity.json"
+          ssh "${ssh_options[@]}" Rizanrizan@202.74.74.172 'python3 -' > "$work/password.pwd" <<'PY'
+          import json,pathlib,sys
+          context=json.loads((pathlib.Path.home()/'.local/state/rizan-native-preflight/context.json').read_text())
+          candidates=context['CredentialCandidates']
+          if len(candidates)!=1:raise SystemExit('CREDENTIAL_CANDIDATE_NOT_UNIQUE')
+          p=pathlib.Path(candidates[0])
+          if p.is_symlink() or not p.is_file():raise SystemExit('CREDENTIAL_FILE_INVALID')
+          sys.stdout.buffer.write(p.read_bytes())
+          PY
+          python3 -c 'import base64,json,sys; sys.stdout.buffer.write(base64.b64decode(json.load(open("research/native-tick/strategy-opt2.sealed.json"))["wrapped"]))' | ssh "${ssh_options[@]}" Rizanrizan@202.74.74.172 'openssl pkeyutl -decrypt -inkey "$HOME/.local/state/rizan-native-preflight/transfer.pem" -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 -pkeyopt rsa_mgf1_md:sha256' > "$work/source-key"
+          export RIZAN_NATIVE_STRATEGY=1
+          export RIZAN_NATIVE_VARIANT=optimized2
+          python3 -m venv "$work/venv"
+          "$work/venv/bin/pip" -q install cryptography
+          "$work/venv/bin/python" research/native-tick/docker_probe_driver.py
+
+# Compatibility probe revision 2
+
+# Smoke revision 2: inspect native execution before cost certification
