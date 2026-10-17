@@ -56,7 +56,7 @@ try:
             if strategy:output['CostScope']='execution smoke only; native CLI 5.9 lacks per-lot commission override; no performance certification'
             execute(args,'native_backtest',1200 if strategy else 900)
             if not strategy:
-                execute([str(cli),'backtest',str(algo),*auth,'-q','--symbol=XAUUSD','--period=m1','--from=2025-06-10','--to=2025-06-11','--data-mode=ticks','--balance=100','--commission=3','--commission-type=UsdPerOneLot','--exit-on-stop'],'interactive_cost_probe',900)
+                execute([str(cli),'backtest','--algo-file='+str(algo),*auth,'-q','--symbol=XAUUSD','--period=m1','--from=2025-06-10','--to=2025-06-11','--data-mode=ticks','--balance=100','--commission=3','--commission-type=UsdPerOneLot','--FeeProbe=true','--exit-on-stop'],'interactive_cost_probe',900)
 except Exception as e:
     output['exceptionType']=type(e).__name__
     output['exception']=str(e)
