@@ -27,7 +27,13 @@ try:
         if p.is_file() and ('.' not in p.name or p.name=='algohost.netcore'):p.chmod(0o700)
     cli=next(p for p in sdk.rglob('ctrader-cli') if p.is_file())
     execute([str(cli),'--version'],'version',60)
-    execute([str(cli),'backtest','--help'],'help',60)
+    auth=['--ctid='+config['ctid'],'--pwd-file='+str(root/'password.pwd'),'--account='+str(config['account'])]
+    execute([str(cli),'account',*auth,'-q'],'account',90)
+    for symbol in ['XAUUSD','EURUSD']:
+        execute([str(cli),'symbol',*auth,'-q','--symbol='+symbol],'symbol_'+symbol,90)
+    execute([str(cli),'--commands'],'help',60)
+    execute([str(cli),'create','cbot','ProbeTemplate','csharp','-q'],'create',60,cwd=root)
+    output['GeneratedProjects']={str(p.relative_to(root)):p.read_text() for p in root.rglob('*.csproj')}
     project=repo/'research/native-tick/probe/NativeTickProbe.csproj'
     if execute(['dotnet','build',str(project),'-c','Release','-o',str(root/'build')],'build',300)==0:
         algos=list((root/'build').rglob('*.algo'))
