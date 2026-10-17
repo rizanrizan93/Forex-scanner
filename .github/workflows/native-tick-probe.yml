@@ -53,3 +53,5 @@ jobs:
           "$work/venv/bin/python" research/native-tick/probe_driver.py
 
 # Compatibility probe revision 2
+
+# Verify account leverage 200 without live operations
