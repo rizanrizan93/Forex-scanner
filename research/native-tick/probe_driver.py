@@ -37,7 +37,7 @@ try:
     strategy=os.environ.get('RIZAN_NATIVE_STRATEGY')=='1'
     project=repo/'research/native-tick/probe/NativeTickProbe.csproj'
     if strategy:
-        envelope=json.loads((repo/'research/native-tick/strategy.sealed.json').read_text())
+        envelope=json.loads((repo/('research/native-tick/strategy-opt.sealed.json' if os.environ.get('RIZAN_NATIVE_VARIANT')=='optimized' else 'research/native-tick/strategy.sealed.json')).read_text())
         raw=AESGCM((root/'source-key').read_bytes()).decrypt(base64.b64decode(envelope['nonce']),base64.b64decode(envelope['ciphertext']),b'native-strategy-v1')
         folder=root/'strategy';folder.mkdir()
         with zipfile.ZipFile(io.BytesIO(raw)) as z:z.extractall(folder)
@@ -63,6 +63,10 @@ except Exception as e:
 finally:
     # Only named diagnostic logs/reports are included, never credentials or config.
     output['logs']={p.name:p.read_text(errors='replace')[-300000:] for p in root.glob('*.log')}
+    log=root/'native_backtest.log'
+    if log.exists():
+        markers=('NATIVE_','RIZAN_BATCH ','QUARANTIN','RIZAN_PORTFOLIO_START','Error |','Crashed','RUNTIME_EXCEPTION','BROKER_BATCH','RIZAN_STARTUP_OK','RIZAN_LATENCY','Create order','Execute','Close position')
+        output['native_key_events']=[line for line in log.read_text(errors='replace').splitlines() if any(m in line for m in markers)][:20000]
     if (root/'report.json').exists():
         p=root/'report.json';output['report']=p.read_text(errors='replace')[:1000000]
     raw=gzip.compress(json.dumps(output).encode())
