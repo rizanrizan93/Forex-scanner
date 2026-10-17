@@ -1,0 +1,94 @@
+name: Native tick VPS preflight
+on:
+  push:
+    branches: [codex/native-tick-preflight-20261017]
+    paths: ['.github/workflows/native-tick-vps-preflight.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rizan-native-tick-preflight
+  cancel-in-progress: false
+jobs:
+  preflight:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/codex/native-tick-preflight-20261017' && github.actor == 'rizanrizan93'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect native test prerequisites without trading
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" ]] || { echo 'MISSING_SECRET:VPS_SSH_KEY'; exit 1; }
+          [[ -n "$SSH_KNOWN_HOSTS" ]] || { echo 'MISSING_SECRET:VPS_KNOWN_HOSTS'; exit 1; }
+          ssh_dir=$(mktemp -d)
+          export RIZAN_SSH_TEMP="$ssh_dir"
+          cleanup() { python3 -c 'import os,pathlib; p=pathlib.Path(os.environ["RIZAN_SSH_TEMP"]); [(p/n).unlink(missing_ok=True) for n in ("key","known_hosts")]; p.rmdir()'; }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          ssh-keygen -y -f "$ssh_dir/key" > /dev/null
+          ssh -i "$ssh_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 Rizanrizan@202.74.74.172 'python3 -' <<'PY'
+          import json, os, shutil, subprocess, stat
+          from pathlib import Path
+          def call(args):
+              try:
+                  r=subprocess.run(args,capture_output=True,text=True,timeout=25)
+                  return r.returncode,r.stdout.strip()
+              except Exception:
+                  return -1,''
+          home=Path.home()
+          report={'SSH':'PASS','CommandsAllowed':['docker version','docker image ls','docker ps','file metadata'],'TradingCommandsExecuted':False,'ServicesChanged':False}
+          memory={}
+          for line in Path('/proc/meminfo').read_text().splitlines():
+              key,rest=line.split(':',1)
+              if key in ('MemTotal','MemAvailable','SwapTotal','SwapFree'):memory[key+'MiB']=int(rest.split()[0])//1024
+          report['Memory']=memory
+          report['DiskFreeMiB']=shutil.disk_usage(home).free//1024**2
+          docker=shutil.which('docker')
+          prefix=[]
+          if docker:
+              for trial in ([docker],['sudo','-n',docker]):
+                  code,out=call(trial+['version','--format','{{.Server.Version}}'])
+                  if code==0:prefix=trial;report['DockerVersion']=out;break
+          report['DockerAvailable']=bool(prefix)
+          if prefix:
+              code,out=call(prefix+['image','ls','--format','{{.Repository}}:{{.Tag}}'])
+              report['CTraderImages']=[x for x in out.splitlines() if x.startswith('ghcr.io/spotware/ctrader-console:')]
+              code,out=call(prefix+['ps','--format','{{.Image}}'])
+              report['CTraderContainersRunning']=sum('spotware/ctrader-console' in x for x in out.splitlines())
+          roots=[home/'ctrader',home/'ctrader-secrets',home/'.secrets',home/'.config/ctrader',Path('/opt/ctrader'),Path('/run/secrets')]
+          try:
+              roots += [p for p in home.iterdir() if p.is_dir() and not p.is_symlink() and any(v in p.name.lower() for v in ('ctrader','ctid','secret'))]
+          except OSError:pass
+          candidates=set();algos=set()
+          for root in set(roots):
+              if not root.is_dir() or root.is_symlink():continue
+              for here,dirs,files in os.walk(root,followlinks=False):
+                  depth=len(Path(here).relative_to(root).parts)
+                  dirs[:]=[] if depth>=3 else [n for n in dirs if n not in ('node_modules','.git','data','cache')]
+                  for n in files:
+                      p=Path(here)/n
+                      if p.is_symlink():continue
+                      low=n.lower()
+                      if low.endswith('.pwd') or ('ctid' in low and ('password' in low or 'pwd' in low)):
+                          try:
+                              st=p.stat()
+                              if stat.S_ISREG(st.st_mode) and 0<st.st_size<4096:candidates.add(str(p))
+                          except OSError:pass
+                      if low.endswith('.algo'):algos.add(str(p))
+          report['CredentialFileCandidates']=len(candidates)
+          report['AlgoFilesInTestFolders']=len(algos)
+          state=home/'.local/state/rizan-native-preflight';state.mkdir(mode=0o700,parents=True,exist_ok=True);state.chmod(0o700)
+          target=state/'context.json'
+          if target.is_symlink():raise SystemExit('CONTEXT_SYMLINK_REFUSED')
+          fd=os.open(target,os.O_WRONLY|os.O_CREAT|os.O_TRUNC|os.O_NOFOLLOW,0o600)
+          with os.fdopen(fd,'w') as f:json.dump({'DockerPrefix':prefix,'CredentialCandidates':sorted(candidates),'AlgoFiles':sorted(algos),'PublicSummary':report},f)
+          report['PrivateContextSaved']=True
+          print(json.dumps(report,sort_keys=True))
+          PY
