@@ -53,7 +53,7 @@ try:
             algo=algos[0]
             execute([str(cli),'metadata',str(algo)],'metadata',60)
             args=[str(cli),'backtest',str(algo),'--ctid='+config['ctid'],'--pwd-file='+str(root/'password.pwd'),'--account='+str(config['account']),'--symbol=XAUUSD','--period=m1','--start='+('09/06/2025' if strategy else '10/06/2025'),'--end='+('14/06/2025' if strategy else '11/06/2025'),'--balance=100','--data-mode=ticks','--report-json='+str(root/'report.json'),'--exit-on-stop']
-            if strategy:args+=['--commission=3','--commission-type=UsdPerOneLot']
+            if strategy:output['CostScope']='execution smoke only; native CLI 5.9 lacks per-lot commission override; no performance certification'
             execute(args,'native_backtest',1200 if strategy else 900)
 except Exception as e:
     output['exceptionType']=type(e).__name__
