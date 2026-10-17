@@ -68,3 +68,5 @@ jobs:
 # Audit native spread and commission routing
 
 # Audit commission in isolated native simulation; live mode refused
+
+# Verify explicit boolean option syntax and current official package
