@@ -53,6 +53,12 @@ try:
         execute([str(cli),'--commands'],'help',60)
         execute([str(cli),'create','cbot','ProbeTemplate','csharp','-q'],'create',60,cwd=root)
         output['GeneratedProjects']={str(p.relative_to(root)):p.read_text() for p in root.rglob('*.csproj')}
+    if os.environ.get('RIZAN_NATIVE_READ_HISTORY')=='1':
+        output['kind']='read-only broker hourly history availability'
+        for year in ['2016','2012']:
+            for symbol in ['XAUUSD','EURUSD']:
+                execute([str(cli),'candles',*auth,'-q','--symbol='+symbol,'--period=h1','--from='+year+'-01-04','--to='+year+'-01-05'],'candles_'+year+'_'+symbol,120)
+        raise SystemExit(0)
     strategy=os.environ.get('RIZAN_NATIVE_STRATEGY')=='1'
     project=repo/'research/native-tick/probe/NativeTickProbe.csproj'
     if strategy:
