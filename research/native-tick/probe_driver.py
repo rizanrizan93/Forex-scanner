@@ -37,7 +37,7 @@ try:
     strategy=os.environ.get('RIZAN_NATIVE_STRATEGY')=='1'
     project=repo/'research/native-tick/probe/NativeTickProbe.csproj'
     if strategy:
-        envelope=json.loads((repo/('research/native-tick/strategy-opt.sealed.json' if os.environ.get('RIZAN_NATIVE_VARIANT')=='optimized' else 'research/native-tick/strategy.sealed.json')).read_text())
+        envelope=json.loads((repo/('research/native-tick/strategy-opt2.sealed.json' if os.environ.get('RIZAN_NATIVE_VARIANT')=='optimized2' else 'research/native-tick/strategy-opt.sealed.json' if os.environ.get('RIZAN_NATIVE_VARIANT')=='optimized' else 'research/native-tick/strategy.sealed.json')).read_text())
         raw=AESGCM((root/'source-key').read_bytes()).decrypt(base64.b64decode(envelope['nonce']),base64.b64decode(envelope['ciphertext']),b'native-strategy-v1')
         folder=root/'strategy';folder.mkdir()
         with zipfile.ZipFile(io.BytesIO(raw)) as z:z.extractall(folder)
