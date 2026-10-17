@@ -5,7 +5,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 root=pathlib.Path(os.environ['RIZAN_NATIVE_PRIVATE'])
 repo=pathlib.Path.cwd()
-output={'kind':'native tick probe','tradingCommandsExecuted':False}
+output={'kind':'native tick probe','LiveTradingCommandsExecuted':False,'BacktestOnly':True}
 def execute(args,name,timeout=600,cwd=None):
     container_name=None
     if args[0]=='docker-native':
@@ -78,7 +78,7 @@ try:
                 args+=['--commission-auto'] if os.environ.get('RIZAN_NATIVE_COMMISSIONS','auto')=='auto' else ['--commission=3','--commission-type=UsdPerOneLot']
                 output['CostScope']='broker symbol commission auto' if os.environ.get('RIZAN_NATIVE_COMMISSIONS','auto')=='auto' else 'USD 3 per lot per side'
             if strategy and not docker_mode:output['CostScope']='execution smoke only; native CLI 5.9 lacks per-lot commission override; no performance certification'
-            execute(args,'native_backtest',1200 if strategy else 900)
+            execute(args,'native_backtest',int(os.environ.get('RIZAN_NATIVE_TIMEOUT',1200 if strategy else 900)))
             if not strategy and not docker_mode and os.environ.get('RIZAN_SKIP_COST_PROBE')!='1':
                 execute([str(cli),'backtest','--algo-file='+str(algo),*auth,'-q','--symbol=XAUUSD','--period=m1','--from=2025-06-10','--to=2025-06-11','--data-mode=ticks','--balance=100','--commission=3','--commission-type=UsdPerOneLot','--FeeProbe=true','--exit-on-stop'],'interactive_cost_probe',900)
 except Exception as e:
