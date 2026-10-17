@@ -55,3 +55,5 @@ jobs:
           "$work/venv/bin/python" research/native-tick/probe_driver.py
 
 # Compatibility probe revision 2
+
+# Smoke revision 2: inspect native execution before cost certification
