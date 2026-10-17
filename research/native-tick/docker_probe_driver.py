@@ -92,7 +92,7 @@ finally:
         markers=('NATIVE_','RIZAN_BATCH ','QUARANTIN','RIZAN_PORTFOLIO_START','Error |','Crashed','RUNTIME_EXCEPTION','BROKER_BATCH','RIZAN_STARTUP_OK','RIZAN_LATENCY','Create order','Execute','Close position')
         output['native_key_events']=[line for line in log.read_text(errors='replace').splitlines() if any(m in line for m in markers)][:20000]
     if (root/'report.json').exists():
-        p=root/'report.json';output['report']=p.read_text(errors='replace')[:1000000]
+        p=root/'report.json';output['report']=json.dumps(json.loads(p.read_text()),separators=(',',':'))
     raw=gzip.compress(json.dumps(output).encode())
     key=os.urandom(32);nonce=os.urandom(12)
     public=serialization.load_pem_public_key((repo/'research/native-tick/result-public.pem').read_bytes())
