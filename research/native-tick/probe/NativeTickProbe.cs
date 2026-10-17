@@ -6,6 +6,10 @@ namespace cAlgo.Robots;
 [Robot(TimeZone=TimeZones.UTC, AccessRights=AccessRights.None)]
 public class NativeTickProbe : Robot
 {
+    [Parameter("Fee probe in backtest only",DefaultValue=false)]
+    public bool FeeProbe {get;set;}
+    bool nativeAllowed,feeOpened,feeClosed;
+    DateTime feeAt;
     readonly Dictionary<string,long> counts = new();
     readonly Dictionary<string,DateTime> previous = new();
     readonly Dictionary<string,string> first = new(), last = new();
@@ -14,6 +18,7 @@ public class NativeTickProbe : Robot
     protected override void OnStart()
     {
         if (RunningMode == RunningMode.RealTime) { Print("BACKTEST_ONLY_REFUSED"); Stop(); return; }
+        nativeAllowed=true;if(FeeProbe)Timer.Start(TimeSpan.FromSeconds(1));
         foreach(var name in new[]{"XAUUSD","EURUSD"})
         {
             counts[name]=0;minSpread[name]=double.PositiveInfinity;maxSpread[name]=0;
@@ -33,6 +38,26 @@ public class NativeTickProbe : Robot
         previous[name]=t;
         if(counts[name]++==0)first[name]=t.ToString("O");
         last[name]=t.ToString("O");
+    }
+    protected override void OnTimer()
+    {
+        if(!nativeAllowed || RunningMode==RunningMode.RealTime || !FeeProbe)return;
+        if(!feeOpened)
+        {
+            feeOpened=true;feeAt=Server.Time;
+            foreach(var name in new[]{"XAUUSD","EURUSD"})
+            {
+                var s=Symbols.GetSymbol(name);
+                var r=ExecuteMarketOrder(TradeType.Buy,name,s.QuantityToVolumeInUnits(.01),"NATIVE FEE PROBE");
+                Print("PROBE_FILL "+JsonSerializer.Serialize(new{Symbol=name,Success=r.IsSuccessful,Error=r.Error?.ToString(),Commission=r.Position?.Commissions,Entry=r.Position?.EntryPrice}));
+            }
+        }
+        else if(!feeClosed && (Server.Time-feeAt).TotalSeconds>=60)
+        {
+            feeClosed=true;
+            foreach(var p in Positions)if(p.Label=="NATIVE FEE PROBE")ClosePosition(p);
+            foreach(var h in History)Print("PROBE_FEE "+JsonSerializer.Serialize(new{Symbol=h.SymbolName,Commission=h.Commissions,Net=h.NetProfit,Gross=h.GrossProfit,Units=h.VolumeInUnits}));
+        }
     }
     protected override void OnStop()
     {
