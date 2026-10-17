@@ -1,5 +1,5 @@
 """Isolated native backtest probe. Never invokes the live run command."""
-import base64, gzip, hashlib, json, os, pathlib, subprocess, tarfile, traceback, urllib.request
+import base64, gzip, hashlib, io, json, os, pathlib, subprocess, tarfile, traceback, urllib.request, zipfile
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -34,7 +34,17 @@ try:
     execute([str(cli),'--commands'],'help',60)
     execute([str(cli),'create','cbot','ProbeTemplate','csharp','-q'],'create',60,cwd=root)
     output['GeneratedProjects']={str(p.relative_to(root)):p.read_text() for p in root.rglob('*.csproj')}
+    strategy=os.environ.get('RIZAN_NATIVE_STRATEGY')=='1'
     project=repo/'research/native-tick/probe/NativeTickProbe.csproj'
+    if strategy:
+        envelope=json.loads((repo/'research/native-tick/strategy.sealed.json').read_text())
+        raw=AESGCM((root/'source-key').read_bytes()).decrypt(base64.b64decode(envelope['nonce']),base64.b64decode(envelope['ciphertext']),b'native-strategy-v1')
+        folder=root/'strategy';folder.mkdir()
+        with zipfile.ZipFile(io.BytesIO(raw)) as z:z.extractall(folder)
+        project=folder/'RizanPortfolio.csproj'
+        output['kind']='native strategy smoke with historical macro permission proxy'
+        output['SourceSHA256']={str(p.relative_to(folder)):hashlib.sha256(p.read_bytes()).hexdigest() for p in folder.rglob('*.cs')}
+
     if execute(['dotnet','build',str(project),'-c','Release','-o',str(root/'build')],'build',300)==0:
         algos=list((root/'build').rglob('*.algo'))
         if not algos:algos=list(project.parent.rglob('*.algo'))
@@ -42,8 +52,9 @@ try:
         if algos:
             algo=algos[0]
             execute([str(cli),'metadata',str(algo)],'metadata',60)
-            args=[str(cli),'backtest',str(algo),'--ctid='+config['ctid'],'--pwd-file='+str(root/'password.pwd'),'--account='+str(config['account']),'--symbol=XAUUSD','--period=m1','--start=10/06/2025','--end=11/06/2025','--balance=100','--data-mode=ticks','--report-json='+str(root/'report.json'),'--exit-on-stop']
-            execute(args,'native_backtest',900)
+            args=[str(cli),'backtest',str(algo),'--ctid='+config['ctid'],'--pwd-file='+str(root/'password.pwd'),'--account='+str(config['account']),'--symbol=XAUUSD','--period=m1','--start='+('09/06/2025' if strategy else '10/06/2025'),'--end='+('14/06/2025' if strategy else '11/06/2025'),'--balance=100','--data-mode=ticks','--report-json='+str(root/'report.json'),'--exit-on-stop']
+            if strategy:args+=['--commission=3','--commission-type=UsdPerOneLot']
+            execute(args,'native_backtest',1200 if strategy else 900)
 except Exception as e:
     output['exceptionType']=type(e).__name__
     output['exception']=str(e)
