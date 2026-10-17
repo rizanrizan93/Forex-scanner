@@ -49,13 +49,13 @@ public class NativeTickProbe : Robot
             {
                 var s=Symbols.GetSymbol(name);
                 var r=ExecuteMarketOrder(TradeType.Buy,name,s.QuantityToVolumeInUnits(.01),"NATIVE FEE PROBE");
-                Print("PROBE_FILL "+JsonSerializer.Serialize(new{Symbol=name,Success=r.IsSuccessful,Error=r.Error?.ToString(),Commission=r.Position?.Commissions,Entry=r.Position?.EntryPrice}));
+                Print("PROBE_FILL "+JsonSerializer.Serialize(new{Symbol=name,Success=r.IsSuccessful,Error=r.Error?.ToString(),Commission=r.Position?.Commissions,Entry=r.Position?.EntryPrice,Margin=Account.Margin,Bid=s.Bid,Ask=s.Ask,EstimatedMargin=s.GetEstimatedMargin(TradeType.Buy,s.QuantityToVolumeInUnits(.01))}));
             }
         }
         else if(!feeClosed && (Server.Time-feeAt).TotalSeconds>=60)
         {
             feeClosed=true;
-            foreach(var p in Positions)if(p.Label=="NATIVE FEE PROBE")ClosePosition(p);
+            foreach(var p in System.Linq.Enumerable.ToArray(Positions))if(p.Label=="NATIVE FEE PROBE")ClosePosition(p);
             foreach(var h in History)Print("PROBE_FEE "+JsonSerializer.Serialize(new{Symbol=h.SymbolName,Commission=h.Commissions,Net=h.NetProfit,Gross=h.GrossProfit,Units=h.VolumeInUnits}));
         }
     }
