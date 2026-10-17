@@ -57,3 +57,5 @@ jobs:
 # Verify account leverage 200 without live operations
 
 # Audit native spread and commission routing
+
+# Audit commission in isolated native simulation; live mode refused
