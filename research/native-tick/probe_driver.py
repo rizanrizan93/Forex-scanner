@@ -53,6 +53,7 @@ try:
             algo=algos[0]
             execute([str(cli),'metadata',str(algo)],'metadata',60)
             args=[str(cli),'backtest',str(algo),'--ctid='+config['ctid'],'--pwd-file='+str(root/'password.pwd'),'--account='+str(config['account']),'--symbol=XAUUSD','--period=m1','--start='+os.environ.get('RIZAN_NATIVE_START',('09/06/2025' if strategy else '10/06/2025')),'--end='+os.environ.get('RIZAN_NATIVE_END',('14/06/2025' if strategy else '11/06/2025')),'--balance=100','--data-mode=ticks','--report-json='+str(root/'report.json'),'--exit-on-stop']
+            if not strategy and os.environ.get('RIZAN_NATIVE_FEE_BATCH')=='1':args+=['--FeeProbe=true','--commission=30']
             if strategy:output['CostScope']='execution smoke only; native CLI 5.9 lacks per-lot commission override; no performance certification'
             execute(args,'native_backtest',1200 if strategy else 900)
             if not strategy and os.environ.get('RIZAN_SKIP_COST_PROBE')!='1':
