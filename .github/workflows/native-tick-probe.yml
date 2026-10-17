@@ -49,3 +49,5 @@ jobs:
           python3 -m venv "$work/venv"
           "$work/venv/bin/pip" -q install cryptography
           "$work/venv/bin/python" research/native-tick/probe_driver.py
+
+# Compatibility probe revision 2
