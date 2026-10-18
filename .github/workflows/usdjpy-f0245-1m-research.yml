@@ -5,6 +5,7 @@ on:
       - research/usdjpy-f0245-1m-20261018
     paths:
       - .github/workflows/usdjpy-f0245-1m-research.yml
+      - research/usdjpy_f0245_inspired_1m.cpp
   workflow_dispatch:
 permissions:
   contents: read
