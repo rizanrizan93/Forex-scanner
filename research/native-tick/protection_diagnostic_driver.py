@@ -90,7 +90,7 @@ try:
             needle='        var protection=ModifyPosition(p,b.Stop,b.Target,ProtectionType.Absolute);'
             replacement='''        var diagnosticBeforeStop=p.StopLoss;var diagnosticBeforeTarget=p.TakeProfit;
         var protection=ModifyPosition(p,b.Stop,b.Target,ProtectionType.Absolute);
-        Print("NATIVE_PROTECTION_DIAG symbol={0}; id={1}; success={2}; error={3}; requested_stop={4:R}; requested_target={5:R}; before_stop={6}; before_target={7}; after_stop={8}; after_target={9}; result_stop={10}; result_target={11}; units={12}; wanted={13}; tick={14}",SymbolName,p.Id,protection.IsSuccessful,protection.Error,b.Stop,b.Target,diagnosticBeforeStop,diagnosticBeforeTarget,p.StopLoss,p.TakeProfit,protection.Position?.StopLoss,protection.Position?.TakeProfit,p.VolumeInUnits,volume,Symbol.TickSize);'''
+        Print("NATIVE_PROTECTION_DIAG symbol={0}; id={1}; success={2}; error={3}; requested_stop={4:R}; requested_target={5:R}; before_stop={6}; before_target={7}; after_stop={8}; after_target={9}; result_stop={10}; result_target={11}; units={12}; wanted={13}; tick={14}",SymbolName,p.Id,protection.IsSuccessful,protection.Error,b.Stop,b.Target,diagnosticBeforeStop,diagnosticBeforeTarget,p.StopLoss,p.TakeProfit,protection.Position?.StopLoss,protection.Position?.TakeProfit,p.VolumeInUnits,_state.PendingChildren*Contract.ChildUnits,Symbol.TickSize);'''
             if needle not in source:raise ValueError('PROTECTION_DIAGNOSTIC_SOURCE_MISMATCH')
             p.write_text(source.replace(needle,replacement))
         project=folder/'RizanPortfolio.csproj'
