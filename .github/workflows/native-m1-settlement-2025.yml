@@ -64,3 +64,5 @@ jobs:
 # Compatibility probe revision 2
 
 # Smoke revision 2: inspect native execution before cost certification
+
+# Repeat after M1 history snapshot repair; failed cache runs excluded.
