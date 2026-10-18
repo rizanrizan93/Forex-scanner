@@ -7,7 +7,7 @@ permissions:
   contents: read
   actions: write
 concurrency:
-  group: full-frozen-parity-research-v3
+  group: full-frozen-parity-research-v5
   cancel-in-progress: false
 jobs:
   audit:
@@ -22,6 +22,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: rizanrizan93/Forex-scanner
         run: |
+          gh run cancel 39133465258 || true
+          gh run cancel 39133188070 || true
           gh run cancel 39132968933 || true
           gh run cancel 39132263934 || true
       - uses: actions/setup-dotnet@v4
@@ -36,7 +38,7 @@ jobs:
         run: |
           cd research/full_frozen_parity
           python build_tests.py --sdk "$DOTNET_ROOT"
-      - name: Audit all original Parquet files on runner via authorized SSH
+      - name: Audit checksum-identical public bytes after fresh SHA256 of 174 VPS files
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
@@ -76,5 +78,3 @@ jobs:
           name: frozen-source-full-tick-audit
           path: research/full_frozen_parity
           retention-days: 30
-
-# audit bundle v3 retains original test API fixtures
