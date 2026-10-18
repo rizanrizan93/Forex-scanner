@@ -28,8 +28,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: rizanrizan93/Forex-scanner
         run: |
-          gh run watch 39133031471 --exit-status --interval 30
-          gh run download 39133031471 --name frozen-source-full-tick-audit --dir /tmp/audited
+          gh run watch 39133188070 --exit-status --interval 30
+          gh run download 39133188070 --name frozen-source-full-tick-audit --dir /tmp/audited
           python - <<'PY'
           import json
           a=json.load(open('/tmp/audited/results/data_quality.json'))
