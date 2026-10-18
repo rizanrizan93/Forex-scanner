@@ -1,0 +1,51 @@
+name: Audit tick archive coverage and replay tools on VPS
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-tick-replay-readiness.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read-only audit file coverage and executable replay tools
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20 -i "$d/key" Rizanrizan@202.74.74.172 'python3 -' <<'PY'
+          from pathlib import Path
+          import shutil, json, hashlib, os, datetime, collections
+          root=Path.home()/'rizan-ticks'
+          state=json.loads((root/'.jobs/archive_status.json').read_text())
+          allmonths=[(y,m) for y in range(2019,2027) for m in range(1,13) if (y,m)<=(2026,10)]
+          missing={}
+          for s in ['XAUUSD','EURUSD']:
+            missing[s]=[]
+            dates=[]
+            for y,m in allmonths:
+              p=root/s/str(y)/f'{s}_{y:04d}-{m:02d}.parquet'
+              if not p.exists():
+                missing[s].append(f'{y:04d}-{m:02d}')
+              else:
+                dates.append(f'{y:04d}-{m:02d}')
+            print(s,'present=',len(dates),'missing=',len(missing[s]),'missing_months=',','.join(missing[s]))
+            print(s,'latest_file=',dates[-1] if dates else 'none')
+          print('2019_to_2025_complete=',all(not any(int(x[:4])<=2025 for x in miss) for miss in missing.values()))
+          print('STATE=',state['state'],'LAST=',state['last_item'],'FAIL_COUNT=',state['failed'])
+          for e in state.get('errors',[]):print('ERROR=',e)
+          for cmd in ['ctrader-cli','dotnet','python3','docker','duckdb']:
+            print('COMMAND=',cmd,'PATH=',shutil.which(cmd))
+          print('RAM=',Path('/proc/meminfo').read_text().splitlines()[0])
+          PY
