@@ -1,0 +1,69 @@
+name: Public real tick native CSV validation
+on:
+  push:
+    branches: [codex/native-tick-preflight-20261017]
+    paths: ['.github/workflows/native-public-tick-csv.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rizan-native-public-tick-csv
+  cancel-in-progress: false
+jobs:
+  probe:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/codex/native-tick-preflight-20261017' && github.actor == 'rizanrizan93'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            6.0.x
+      - name: Run isolated backtest probe
+        shell: bash
+        env:
+          RIZAN_NATIVE_DOCKER: '1'
+          RIZAN_NATIVE_READ_HISTORY: '1'
+          RIZAN_READ_YEARS: '2025'
+          RIZAN_READ_FROM: '06-10'
+          RIZAN_READ_TO: '06-11'
+          RIZAN_SKIP_COST_PROBE: '1' 
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          work=$(mktemp -d)
+          export RIZAN_NATIVE_PRIVATE="$work"
+          trap 'rm -rf -- "$RIZAN_NATIVE_PRIVATE"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$work/ssh-key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$work/known_hosts"
+          ssh_options=(-i "$work/ssh-key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$work/known_hosts" -o ConnectTimeout=20)
+          base64 -d research/native-tick/identity.sealed | ssh "${ssh_options[@]}" Rizanrizan@202.74.74.172 'openssl pkeyutl -decrypt -inkey "$HOME/.local/state/rizan-native-preflight/transfer.pem" -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 -pkeyopt rsa_mgf1_md:sha256' > "$work/identity.json"
+          ssh "${ssh_options[@]}" Rizanrizan@202.74.74.172 'python3 -' > "$work/password.pwd" <<'PY'
+          import json,pathlib,sys
+          context=json.loads((pathlib.Path.home()/'.local/state/rizan-native-preflight/context.json').read_text())
+          candidates=context['CredentialCandidates']
+          if len(candidates)!=1:raise SystemExit('CREDENTIAL_CANDIDATE_NOT_UNIQUE')
+          p=pathlib.Path(candidates[0])
+          if p.is_symlink() or not p.is_file():raise SystemExit('CREDENTIAL_FILE_INVALID')
+          sys.stdout.buffer.write(p.read_bytes())
+          PY
+          python3 -m venv "$work/venv"
+          "$work/venv/bin/pip" -q install cryptography
+          "$work/venv/bin/python" research/native-tick/public_tick/public_tick_driver.py
+
+# Compatibility probe revision 2
+
+# Verify account leverage 200 without live operations
+
+# Audit native spread and commission routing
+
+# Audit commission in isolated native simulation; live mode refused
+
+# Verify explicit boolean option syntax and current official package
