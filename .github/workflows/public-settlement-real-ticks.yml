@@ -50,3 +50,5 @@ jobs:
 # Compatibility probe revision 2
 
 # Smoke revision 2: inspect native execution before cost certification
+
+# Retry with bounded encrypted transport chunks.
