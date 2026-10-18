@@ -1,0 +1,53 @@
+name: USDJPY HistData M1 source validation
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths:
+      - .github/workflows/usdjpy-histdata-m1-validation.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-histdata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install downloader
+        run: pip install --disable-pip-version-check histdata-fetcher==0.1.0
+      - name: Fetch one year of genuine USDJPY M1 and audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from histdata_fetcher import fetch_data
+          import hashlib
+          import pandas as pd
+          import json
+          out = fetch_data(pair="USDJPY", start_date="2016-01-01", end_date="2016-12-31", timeframe="1min", output_format="csv", output_path="usdjpy_2016_m1.csv", max_workers=2)
+          print('FETCHED_PERIODS', out.fetched_periods, flush=True)
+          print('FAILED_PERIODS', [(f.period_label, f.reason) for f in out.failed_periods], flush=True)
+          df = out.data
+          if df.empty or len(df) < 170000:
+              raise RuntimeError(f'HISTDATA_INCOMPLETE rows={len(df)}')
+          times = pd.to_datetime(df['datetime'])
+          if times.iloc[0].year != 2016 or times.iloc[-1].year != 2016:
+              raise RuntimeError('DATE_MISMATCH')
+          diff = times.diff().dropna()
+          stats = {'source': 'HistData M1', 'timezone': 'EST fixed UTC-5', 'rows': int(len(df)), 'first': str(times.min()), 'last': str(times.max()), 'duplicate_timestamps': int(times.duplicated().sum()), 'gaps_gte_5min': int((diff >= pd.Timedelta(minutes=5)).sum()),'nonpositive_prices':int((df[['open','high','low','close']]<=0).any(axis=1).sum())}
+          print('DATA_AUDIT',json.dumps(stats),flush=True)
+          with open('usdjpy_2016_m1.csv','rb') as f:stats['sha256'] = hashlib.file_digest(f,'sha256').hexdigest()
+          with open('audit_2016.json','w') as f:json.dump(stats,f,indent=2)
+          print('SHA256',stats['sha256'],flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rizan-usdjpy-histdata-2016-m1-validation
+          path: |
+            audit_2016.json
+            usdjpy_2016_m1.csv
+          if-no-files-found: warn
