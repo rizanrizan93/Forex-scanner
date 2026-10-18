@@ -1,0 +1,70 @@
+name: RIZAN frozen source and full tick audit
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-full-frozen-parity.yml]
+permissions:
+  contents: read
+concurrency:
+  group: full-frozen-parity-research
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract immutable source and audit tools
+        run: tar -xzf research/full_frozen_parity/bundle.tgz -C research/full_frozen_parity
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install research dependencies
+        run: pip install numpy pandas pyarrow matplotlib
+      - name: Unit tests on checksum-frozen source
+        run: |
+          cd research/full_frozen_parity
+          python build_tests.py --sdk "$DOTNET_ROOT"
+      - name: Audit all original Parquet files on runner via authorized SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          python research/full_frozen_parity/audit_ticks.py --target Rizanrizan@202.74.74.172 --key "$d/key" --hosts "$d/hosts" --out research/full_frozen_parity/results
+      - name: Save audit and source on isolated VPS result path
+        if: always()
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          target='Rizanrizan@202.74.74.172'
+          dest='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/full-frozen-parity-2019-2026'
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          tar -czf audit-source-results.tgz -C research full_frozen_parity
+          ssh "${opts[@]}" "$target" "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" audit-source-results.tgz "$target:$dest/"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frozen-source-full-tick-audit
+          path: research/full_frozen_parity
+          retention-days: 30
