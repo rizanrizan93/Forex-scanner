@@ -22,12 +22,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p data-usdjpy
-          npx --yes dukascopy-node -i usdjpy -from 2016-01-01 -to 2026-10-19 -t h1 -f csv -p bid -dir data-usdjpy -bs 30 -bp 200
+          npx --yes dukascopy-node -i usdjpy -from 2016-01-01 -to 2026-10-17 -t h1 -f csv -p bid -dir data-usdjpy -fn usdjpy_h1_2016_2026 -bs 30 -bp 200 -r 3 -re
           echo 'FILES:'
           find data-usdjpy -type f -maxdepth 4 -printf '%p %s bytes\n'
           echo 'SAMPLES:'
           find data-usdjpy -type f -name '*.csv' -exec sh -c 'echo File: "$1"; head -n 3 "$1"; tail -n 3 "$1"; wc -l "$1"' sh {} \;
-          test "$(find data-usdjpy -name '*.csv' -type f | wc -l)" -ge 1
+          test "$(find data-usdjpy -name '*.csv' -type f -size +100k | wc -l)" -ge 1
           find data-usdjpy -name '*.csv' -type f -print0 | xargs -0 sha256sum > data_hashes.sha256
       - uses: actions/upload-artifact@v4
         if: always()
