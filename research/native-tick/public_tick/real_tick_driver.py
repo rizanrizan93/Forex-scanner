@@ -20,7 +20,7 @@ def download(item):
    except Exception as e:errors.append(type(e).__name__+':'+str(e));time.sleep(1)
  return item,None,{'symbol':symbol,'date':dt.isoformat(),'hour':h,'errors':errors}
 try:
- env=json.loads((repo/'research/native-tick/public-harness.sealed.json').read_text());raw=AESGCM((root/'source-key').read_bytes()).decrypt(base64.b64decode(env['nonce']),base64.b64decode(env['ciphertext']),b'public-tick-harness-v1');folder=root/'source';folder.mkdir()
+ env=json.loads((repo/'research/native-tick/public-harness.sealed.json').read_text());env['ciphertext']=''.join((repo/'research/native-tick'/name).read_text().strip() for name in env['parts']);raw=AESGCM((root/'source-key').read_bytes()).decrypt(base64.b64decode(env['nonce']),base64.b64decode(env['ciphertext']),b'public-tick-harness-v1');folder=root/'source';folder.mkdir()
  with zipfile.ZipFile(io.BytesIO(raw)) as z:z.extractall(folder)
  out['source_hashes']={str(p.relative_to(folder)):hashlib.sha256(p.read_bytes()).hexdigest() for p in folder.rglob('*.cs')}
  if command(['dotnet','build',str(folder/'TickResearch.csproj'),'-c','Release','-o',str(root/'build')],'build',300)!=0:raise RuntimeError('COMPILE_FAILED')
