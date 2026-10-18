@@ -1,0 +1,90 @@
+name: RIZAN corrected two-gap final replay and audit
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-critical-two-gap-final.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  final_replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rizanrizan93/Forex-scanner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas pyarrow matplotlib
+      - name: Assemble immutable baseline and all verified original hourly recoveries
+        run: |
+          gh run download 39139148589 --name RIZAN-FINAL-FROZEN-TICK-PARITY-2019-2026 --dir /tmp/previous-zip
+          python - <<'PY'
+          import pathlib,zipfile,hashlib,tarfile
+          p=pathlib.Path('/tmp/previous-zip/RIZAN_FROZEN_TICK_AUDIT.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='241e1288889e57596202658b45dcb9e2711f77710645ca0c5d3eef52729d247c'
+          zipfile.ZipFile(p).extractall('/tmp/previous')
+          with tarfile.open('research/critical_revalidation/executed-controls.tgz')as t:t.extractall('research/critical_revalidation/executed_controls',filter='data')
+          PY
+          gh run download 39170473819 --name RIZAN-CRITICAL-GAP-RETRY --dir /tmp/gap-known
+          cp -a /tmp/gap-known/gap_repair research/critical_revalidation/
+          gh run download 39172140288 --name RIZAN-FINAL-HOURLY-RETRY --dir research/critical_revalidation/extended_hour_recovery
+          gh run download 39171728062 --name RIZAN-TARGETED-FOUR-HOURS --dir research/critical_revalidation/four_hour_recovery
+          gh run download 39170069211 --name RIZAN-CRITICAL-GAP-SOURCE-VERIFICATION --dir /tmp/first-probe
+          cp /tmp/first-probe/gap_repair/HOURLY_PROVENANCE.json research/critical_revalidation/gap_repair/FIRST_HOURLY_PROVENANCE.json
+          python research/critical_revalidation/merge_recovered.py
+          python research/critical_revalidation/prepare_revalidation.py
+      - name: Run corrected shared-wallet replay continuously through all 87 months
+        run: RIZAN_REPLAY_MODES=patched python research/critical_revalidation/execute_revalidation.py
+      - name: Reuse completed adapter-only intervention and quote diagnostic
+        run: |
+          gh run watch 39170910880 --exit-status --interval 30
+          gh run download 39170910880 --name RIZAN-CRITICAL-FROZEN-REVALIDATION --dir /tmp/core
+          python - <<'PY'
+          import zipfile
+          zipfile.ZipFile('/tmp/core/RIZAN_CRITICAL_REVALIDATION.zip').extractall('/tmp/core-extracted')
+          PY
+          cp -a /tmp/core-extracted/control_results research/critical_revalidation/
+          cp -a /tmp/core-extracted/locked_schedule research/critical_revalidation/
+          cp -a /tmp/core-extracted/engine/validation/. research/critical_revalidation/engine/validation/
+          git rev-parse HEAD > research/critical_revalidation/FINAL_EVIDENCE_COMMIT.txt
+      - name: Final independent reconciliation of all cases and package all executed evidence
+        run: python research/critical_revalidation/finalize_critical.py
+      - name: Store final package on isolated VPS research path and verify bytes
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          dest='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/critical-frozen-revalidation-2019-2026/final-two-gap'
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" research/critical_revalidation/RIZAN_CRITICAL_REVALIDATION.zip research/critical_revalidation/PACKAGE_SHA256.txt research/critical_revalidation/LAPORAN_CRITICAL_REVALIDATION.md "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && sha256sum -c PACKAGE_SHA256.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-CRITICAL-TWO-GAP-FINAL
+          path: |
+            research/critical_revalidation/RIZAN_CRITICAL_REVALIDATION.zip
+            research/critical_revalidation/LAPORAN_CRITICAL_REVALIDATION.md
+            research/critical_revalidation/BEFORE_VS_AFTER_AUDIT.csv
+            research/critical_revalidation/CONTROLLED_M1_TICK_CHAIN.csv
+            research/critical_revalidation/DIFFERENTIAL_TEST_SUMMARY.json
+            research/critical_revalidation/RECONCILIATION.json
+            research/critical_revalidation/PACKAGE_SHA256.txt
+            research/critical_revalidation/patched_results/progress.log
+          retention-days: 90
