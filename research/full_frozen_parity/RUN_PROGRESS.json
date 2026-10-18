@@ -1,0 +1,151 @@
+{
+  "updated_utc": "2026-10-18T14:41:16.236725+00:00",
+  "phase": "pilot",
+  "month": "2019-03",
+  "scenarios": [
+    {
+      "Config": {
+        "Name": "D_10S_ARCHIVED_FLAGS",
+        "BrokerDelay": 10,
+        "AckDelay": 10,
+        "Cost": 1,
+        "Xau": true,
+        "Eur": true,
+        "Macro": true
+      },
+      "ProcessedThrough": "2019-03",
+      "EndingBalance": 131.9269999999999,
+      "MaximumFloatingDDPct": 26.304420870734223,
+      "TotalBaskets": 13,
+      "BrokerRequests": 14,
+      "TotalTicks": 15187085,
+      "CashReconciliationError": 5.684341886080802e-14
+    },
+    {
+      "Config": {
+        "Name": "A_IDEAL_ARCHIVED_FLAGS",
+        "BrokerDelay": 0,
+        "AckDelay": 0,
+        "Cost": 1,
+        "Xau": true,
+        "Eur": true,
+        "Macro": true
+      },
+      "ProcessedThrough": "2019-03",
+      "EndingBalance": 203.31999999999599,
+      "MaximumFloatingDDPct": 25.6258378277277,
+      "TotalBaskets": 16,
+      "BrokerRequests": 20,
+      "TotalTicks": 15187085,
+      "CashReconciliationError": 8.526512829121202e-14
+    },
+    {
+      "Config": {
+        "Name": "D_5S_ARCHIVED_FLAGS",
+        "BrokerDelay": 5,
+        "AckDelay": 5,
+        "Cost": 1,
+        "Xau": true,
+        "Eur": true,
+        "Macro": true
+      },
+      "ProcessedThrough": "2019-03",
+      "EndingBalance": 146.2609999999976,
+      "MaximumFloatingDDPct": 25.878458992418953,
+      "TotalBaskets": 13,
+      "BrokerRequests": 16,
+      "TotalTicks": 15187085,
+      "CashReconciliationError": 2.842170943040401e-14
+    },
+    {
+      "Config": {
+        "Name": "C_COST2_ARCHIVED_FLAGS",
+        "BrokerDelay": 2,
+        "AckDelay": 2,
+        "Cost": 2,
+        "Xau": true,
+        "Eur": true,
+        "Macro": true
+      },
+      "ProcessedThrough": "2019-03",
+      "EndingBalance": 92.24000000000383,
+      "MaximumFloatingDDPct": 12.915763007884712,
+      "TotalBaskets": 14,
+      "BrokerRequests": 14,
+      "TotalTicks": 15187085,
+      "CashReconciliationError": 7.105427357601002e-14
+    },
+    {
+      "Config": {
+        "Name": "STRICT_MISSING_MACRO_XAU_BLOCKED",
+        "BrokerDelay": 2,
+        "AckDelay": 2,
+        "Cost": 1,
+        "Xau": true,
+        "Eur": true,
+        "Macro": false
+      },
+      "ProcessedThrough": "2019-03",
+      "EndingBalance": 158.4199999999948,
+      "MaximumFloatingDDPct": 25.232523252326168,
+      "TotalBaskets": 4,
+      "BrokerRequests": 7,
+      "TotalTicks": 15187085,
+      "CashReconciliationError": 2.842170943040401e-14
+    },
+    {
+      "Config": {
+        "Name": "E_XAU_ONLY_ARCHIVED_FLAGS",
+        "BrokerDelay": 2,
+        "AckDelay": 2,
+        "Cost": 1,
+        "Xau": true,
+        "Eur": false,
+        "Macro": true
+      },
+      "ProcessedThrough": "2019-03",
+      "EndingBalance": 93.36000000000138,
+      "MaximumFloatingDDPct": 11.985309629287451,
+      "TotalBaskets": 10,
+      "BrokerRequests": 10,
+      "TotalTicks": 15187085,
+      "CashReconciliationError": 2.842170943040401e-14
+    },
+    {
+      "Config": {
+        "Name": "C_COST1_5_ARCHIVED_FLAGS",
+        "BrokerDelay": 2,
+        "AckDelay": 2,
+        "Cost": 1.5,
+        "Xau": true,
+        "Eur": true,
+        "Macro": true
+      },
+      "ProcessedThrough": "2019-03",
+      "EndingBalance": 90.86999999999694,
+      "MaximumFloatingDDPct": 14.301747788886848,
+      "TotalBaskets": 14,
+      "BrokerRequests": 14,
+      "TotalTicks": 15187085,
+      "CashReconciliationError": 5.684341886080802e-14
+    },
+    {
+      "Config": {
+        "Name": "B_MODEL_2S_ARCHIVED_FLAGS",
+        "BrokerDelay": 2,
+        "AckDelay": 2,
+        "Cost": 1,
+        "Xau": true,
+        "Eur": true,
+        "Macro": true
+      },
+      "ProcessedThrough": "2019-03",
+      "EndingBalance": 150.82999999999643,
+      "MaximumFloatingDDPct": 25.741483272627903,
+      "TotalBaskets": 14,
+      "BrokerRequests": 17,
+      "TotalTicks": 15187085,
+      "CashReconciliationError": 2.842170943040401e-14
+    }
+  ]
+}
