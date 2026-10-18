@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "original_parquet_point": 1000,
+  "recovered_point": 1000,
+  "overlap_raw_ticks": 40518,
+  "overlap_unique_quote_tuples": 40518,
+  "matched_unique_tuples": 40518,
+  "matched_pct": 100.0,
+  "criterion": "Exact UTC millisecond timestamp and integer bid AND ask equality, all overlap tick tuples at Oct10 20h and Oct20 00h; volumes not compared."
+}
