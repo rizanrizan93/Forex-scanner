@@ -1,0 +1,36 @@
+name: RIZAN final independent hourly retries
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-critical-final-hour-retry.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas pyarrow
+      - name: Reuse first four-hour verification and recover second confirmed weekday gap
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: rizanrizan93/Forex-scanner
+        run: |
+          gh run watch 39171837699 --exit-status --interval 30
+          gh run download 39171837699 --name RIZAN-EXTENDED-GAP-RECOVERY --dir /tmp/targeted
+          gh run download 39170473819 --name RIZAN-CRITICAL-GAP-RETRY --dir /tmp/retry-known
+          mkdir -p research/critical_revalidation/extended_hour_recovery
+          cp /tmp/targeted/*.bi5 research/critical_revalidation/extended_hour_recovery/ || true
+          cp /tmp/retry-known/gap_repair/bi5/XAUUSD_2025_11_31_16h_ticks.bi5 research/critical_revalidation/extended_hour_recovery/
+          python research/critical_revalidation/target_final_retry.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-FINAL-HOURLY-RETRY
+          path: research/critical_revalidation/extended_hour_recovery
+          retention-days: 90
