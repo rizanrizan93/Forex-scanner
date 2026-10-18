@@ -63,3 +63,5 @@ jobs:
 # Compatibility probe revision 2
 
 # Smoke revision 2: inspect native execution before cost certification
+
+# Diagnostic fields use persisted requested quantity in every execution scope.
