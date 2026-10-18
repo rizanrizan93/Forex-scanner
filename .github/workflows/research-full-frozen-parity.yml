@@ -76,3 +76,5 @@ jobs:
           name: frozen-source-full-tick-audit
           path: research/full_frozen_parity
           retention-days: 30
+
+# audit bundle v3 retains original test API fixtures
