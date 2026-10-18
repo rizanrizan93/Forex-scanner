@@ -1,7 +1,7 @@
 from pathlib import Path
 import json,lzma,hashlib,datetime as dt
 import numpy as np,pandas as pd,pyarrow as pa,pyarrow.parquet as pq
-r=Path(__file__).resolve().parent;out=r/'gap_repair';old=Path('/tmp/previous');gaps=[g for g in json.load(open(old/'data_audit/gaps.json'))if g['symbol']=='XAUUSD'and g['from'].startswith(('2025-10-10','2025-12-30'))];assert len(gaps)==2
+r=Path(__file__).resolve().parent;out=r/'gap_repair';old=Path('/tmp/previous');gaps=[g for g in json.load(open(old/'data_audit/gaps.json'))if g['symbol']=='XAUUSD'and g['seconds']>36*3600 and g['from'].startswith(('2025-10-10','2025-12-30'))];assert len(gaps)==2
 files={};manifest=[]
 for folder in [out/'bi5',r/'extended_hour_recovery',r/'four_hour_recovery']:
  for p in sorted(folder.glob('*.bi5')):

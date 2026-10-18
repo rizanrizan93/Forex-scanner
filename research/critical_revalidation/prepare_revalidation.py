@@ -18,6 +18,14 @@ s=s.replace('Ledger=host.History,','Decisions=decisions,Ledger=host.History,');p
 p=engine/'ApiStubs.cs';s=p.read_text().replace('Requests++;BeforeMarketFill?.Invoke();','Requests++;OrderEvents.Add(new{At=Server.TimeInUtc,Symbol=symbol,Side=side.ToString(),Volume=volume,Label=label,Status="REQUEST",RequestId=Requests});BeforeMarketFill?.Invoke();');p.write_text(s)
 # Allow deterministic overlay of verified recovered ticks during monthly read. Always verify originals first.
 p=engine/'run_ticks.py';s=p.read_text();s=s.replace("d=pf.read(columns=['timestamp','bid','ask']).to_pandas();t=", "d=pf.read(columns=['timestamp','bid','ask']).to_pandas();\n  if os.environ.get('RIZAN_GAP_PATCH') and sym=='XAUUSD' and ym in ['2025-10','2025-12']:\n   patch=pq.read_table(os.environ['RIZAN_GAP_PATCH']).to_pandas()[['timestamp','bid','ask']]\n   patch['timestamp']=pd.to_datetime(patch.timestamp,utc=True);patch=patch[patch.timestamp.dt.strftime('%Y-%m')==ym];d['timestamp']=pd.to_datetime(d.timestamp,utc=True)\n   assert not d.timestamp.isin(patch.timestamp).any()\n   d=pd.concat([d,patch],ignore_index=True).sort_values('timestamp',kind='stable').reset_index(drop=True)\n   print('VERIFIED_GAP_OVERLAY',len(patch),flush=True)\n  t=")
+hook="""if os.environ.get('RIZAN_GAP_PATCH') and sym=='XAUUSD' and ym in ['2025-10','2025-12']:
+   spread=b['ask']-b['bid'];wib=(pd.to_datetime(d.timestamp,utc=True).dt.hour.to_numpy()+7)%24
+   stats=lambda z:{'n':len(z),'mean':float(np.mean(z)),'p50':float(np.quantile(z,.5)),'p95':float(np.quantile(z,.95)),'p99':float(np.quantile(z,.99)),'max':float(np.max(z))} if len(z) else None
+   gapids=np.flatnonzero(np.diff(t)>300000)
+   record={'symbol':sym,'month':ym,'original_parquet_sha256':checks[name],'overlay_parquet_sha256':hashlib.file_digest(open(os.environ['RIZAN_GAP_PATCH'],'rb'),'sha256').hexdigest(),'ticks_after':len(b),'duplicate_timestamps_retained':int((np.diff(t)==0).sum()),'backward_timestamps':int((np.diff(t)<0).sum()),'invalid_bid_ask':int((spread<0).sum()),'point':scale,'spread':stats(spread),'spread_sessions_wib':{label:stats(spread[mask]) for label,mask in [('Asia',(wib>=6)&(wib<14)),('London',(wib>=14)&(wib<19)),('NewYork',(wib>=19)|(wib<1)),('Rollover',(wib>=1)&(wib<6))]},'gaps_gt_5m':[{'from':str(pd.Timestamp(int(t[i]),unit='ms',tz='UTC')),'to':str(pd.Timestamp(int(t[i+1]),unit='ms',tz='UTC')),'seconds':float((t[i+1]-t[i])/1000),'classification':'REVIEW_WITH_SESSION_CALENDAR'}for i in gapids]}
+   (out/('OVERLAY_QA_'+sym+'_'+ym+'.json')).write_text(json.dumps(record,indent=2))
+  parts.append(b);path.unlink();del d,t"""
+s=s.replace('parts.append(b);path.unlink();del d,t',hook)
 p.write_text(s)
 # Financial reports use the corrected count for the patched scenario set, but provenance retains original manifest.
 for name in ['control_audit','patched_audit']:
