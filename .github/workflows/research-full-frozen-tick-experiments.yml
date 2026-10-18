@@ -18,7 +18,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: rizanrizan93/Forex-scanner
-        run: gh run cancel 39134851964 || true
+        run: gh run cancel 39135448129 || true
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
@@ -33,13 +33,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: rizanrizan93/Forex-scanner
         run: |
-          gh run watch 39133725995 --exit-status --interval 30
-          gh run download 39133725995 --name frozen-source-full-tick-audit --dir /tmp/audited
+          gh run watch 39136481123 --exit-status --interval 30
+          gh run download 39136481123 --name frozen-source-full-tick-audit --dir /tmp/audited
           python - <<'PY'
           import json
           a=json.load(open('/tmp/audited/results/data_quality.json'))
           assert a['processed_files']==174
           PY
+          cp /tmp/audited/audit_ticks.py research/full_frozen_parity/audit_ticks.py
+          cp /tmp/audited/UTC_COVERAGE_OPTIMIZATION_PROOF.json research/full_frozen_parity/
+          cp -a /tmp/audited/validation/. research/full_frozen_parity/validation/
       - name: Execute pilot Q1 then continuous 87-month eight-scenario tick research
         env:
           GH_TOKEN: ${{ github.token }}
