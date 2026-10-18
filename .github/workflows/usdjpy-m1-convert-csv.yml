@@ -1,0 +1,56 @@
+name: USDJPY full M1 CSV conversion
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths: [.github/workflows/usdjpy-m1-convert-csv.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install parquet reader
+        run: pip install --disable-pip-version-check pandas numpy pyarrow
+      - uses: actions/download-artifact@v4
+        with:
+          name: rizan-usdjpy-histdata-m1-2016-2026
+          run-id: 39176485530
+          github-token: ${{ github.token }}
+          path: original
+      - name: Convert audited parquet records into one compact compressed CSV
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pandas as pd,gzip,glob,csv,hashlib,json
+          m=json.load(open('original/audits/m1_yearly_manifest.json'))
+          counts=[]
+          with gzip.open('USDJPY_M1_2016_2026_UTC.csv.gz','wt',compresslevel=6,newline='') as fo:
+            w=csv.writer(fo);w.writerow(['minute_utc','open','high','low','close'])
+            for f in sorted(glob.glob('original/data/USDJPY_M1_*.parquet')):
+              y=int(f.split('_')[-1].split('.')[0]);q=pd.read_parquet(f)
+              with open(f,'rb') as fp:sha=hashlib.file_digest(fp,'sha256').hexdigest()
+              target=next(z for z in m if z['year']==y)
+              if sha!=target['sha256'] or len(q)!=target['rows']:raise RuntimeError(f'SOURCE_MISMATCH_{y}')
+              for bar in q.itertuples(index=False):
+                w.writerow([bar.datetime.strftime('%Y-%m-%dT%H:%M:%SZ'),f'{bar.open:.5f}',f'{bar.high:.5f}',f'{bar.low:.5f}',f'{bar.close:.5f}'])
+              counts.append({'year':y,'rows':len(q),'sha256':sha})
+              print('CONVERT_YEAR',y,len(q),flush=True)
+          with open('csv_export_audit.json','w') as fo:json.dump({'source':'HistData fixed EST timestamps +5h converted to UTC','original_run':39176485530,'years':counts,'total_bars':sum(x['rows'] for x in counts)},fo,indent=2)
+          print('EXPORT_SUMMARY','TOTAL',sum(x['rows'] for x in counts),flush=True)
+          PY
+          gzip -t USDJPY_M1_2016_2026_UTC.csv.gz
+          ls -lh USDJPY_M1_2016_2026_UTC.csv.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rizan-usdjpy-m1-all-years-csv-gz
+          path: |
+            USDJPY_M1_2016_2026_UTC.csv.gz
+            csv_export_audit.json
+          if-no-files-found: error
