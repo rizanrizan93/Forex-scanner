@@ -68,7 +68,30 @@ try:
         raw=AESGCM((root/'source-key').read_bytes()).decrypt(base64.b64decode(envelope['nonce']),base64.b64decode(envelope['ciphertext']),b'native-strategy-v1')
         folder=root/'strategy';folder.mkdir()
         with zipfile.ZipFile(io.BytesIO(raw)) as z:z.extractall(folder)
+        if os.environ.get('RIZAN_NATIVE_DATA_MODE')=='m1':
+            import os,pathlib,hashlib
+            folder=pathlib.Path(os.environ['RIZAN_NATIVE_PRIVATE'])/'strategy'
+            for rel in ['xau/RizanRobot.cs','eur/RizanRobot.cs']:
+             p=folder/rel;s=p.read_text();a=s.index('    private List<Candle> ClosedM1(DateTime now)');b=s.index('{',a);depth=1;i=b+1
+             while depth:
+              if s[i]=='{':depth+=1
+              if s[i]=='}':depth-=1
+              i+=1
+             body='''    private DateTime _comparisonMinute;
+                private List<Candle> _comparisonBars=new();
+                private List<Candle> ClosedM1(DateTime now)
+                {
+                    var minute=new DateTime(now.Year,now.Month,now.Day,now.Hour,now.Minute,0,DateTimeKind.Utc);
+                    if(_comparisonMinute==minute)return _comparisonBars;
+                    _comparisonMinute=minute;var rows=new List<Candle>();
+                    for(int i=0;i<_m1.Count;i++)
+                    {var at=DateTime.SpecifyKind(_m1.OpenTimes[i],DateTimeKind.Utc);if(at.AddMinutes(1)>now)break;
+                     rows.Add(new(at,_m1.OpenPrices[i],_m1.HighPrices[i],_m1.LowPrices[i],_m1.ClosePrices[i]));}
+                    _comparisonBars=rows;return rows;
+                }'''
+             p.write_text(s[:a]+body+s[i:])
         project=folder/'RizanPortfolio.csproj'
+        output['BarSnapshotPolicy']='full closed-bar scan at each new minute in M1 comparison' if os.environ.get('RIZAN_NATIVE_DATA_MODE')=='m1' else 'existing tick cache'
         output['kind']='native strategy smoke with historical macro permission proxy'
         output['SourceSHA256']={str(p.relative_to(folder)):hashlib.sha256(p.read_bytes()).hexdigest() for p in folder.rglob('*.cs')}
 
