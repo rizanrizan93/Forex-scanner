@@ -2,7 +2,7 @@ from pathlib import Path
 import os,subprocess,json,hashlib
 r=Path(__file__).resolve().parent;e=r/'engine'
 env=os.environ.copy();env.pop('GH_TOKEN',None);env['RIZAN_PARALLEL_SCENARIOS']='1'
-for mode in ['control','patched']:
+for mode in os.environ.get('RIZAN_REPLAY_MODES','control,patched').split(','):
  patch=r/'gap_repair/XAUUSD_gap_patch.parquet'
  if mode=='patched' and not patch.exists():continue
  if mode=='patched':env['RIZAN_GAP_PATCH']=str(patch)
