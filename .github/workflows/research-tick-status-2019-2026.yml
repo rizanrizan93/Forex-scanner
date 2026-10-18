@@ -1,0 +1,50 @@
+name: Inspect public tick archive progress on VPS
+on:
+  push:
+    branches:
+      - research/tick-archive-2019-2026
+    paths:
+      - .github/workflows/research-tick-status-2019-2026.yml
+permissions:
+  contents: read
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Read archive status from VPS
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$tmp/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$tmp/hosts"
+          chmod 600 "$tmp/key"
+          ssh -i "$tmp/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$tmp/hosts" -o ConnectTimeout=20 Rizanrizan@202.74.74.172 'bash -s' <<'REMOTE'
+          set -eu
+          root="$HOME/rizan-ticks"
+          echo "TICK_ARCHIVE_READ_ONLY_STATUS"
+          if [[ -f "$root/.jobs/archive_status.json" ]]; then
+            python3 - "$root/.jobs/archive_status.json" <<'PY'
+          import json,sys
+          s=json.load(open(sys.argv[1]))
+          print('status=',s.get('state'))
+          print('last_item=',s.get('last_item'))
+          print('downloaded=',s.get('downloaded'))
+          print('already_present=',s.get('present'))
+          print('failed=',s.get('failed'))
+          print('bytes_total=',s.get('bytes'))
+          print('recent_errors=',s.get('errors',[])[-4:])
+          print('updated_utc=',s.get('updated_utc'))
+          PY
+          fi
+          if [[ -f "$root/.jobs/fetcher.pid" ]] && kill -0 "$(cat "$root/.jobs/fetcher.pid")" 2>/dev/null; then echo 'PROCESS_RUNNING=yes'; else echo 'PROCESS_RUNNING=no'; fi
+          du -sh "$root/XAUUSD" "$root/EURUSD" 2>/dev/null || true
+          df -h "$root"
+          REMOTE
