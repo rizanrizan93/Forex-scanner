@@ -1,0 +1,34 @@
+name: USDJPY verified public H1 samples
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths: [.github/workflows/usdjpy-public-h1-samples.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve three public datasets without mixing date gaps
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          curl --fail --location --silent --show-error --retry 3 https://raw.githubusercontent.com/ejtraderLabs/historical-data/main/USDJPY/USDJPYh1.csv -o data/USDJPY_H1_2012_2022.csv
+          curl --fail --location --silent --show-error --retry 3 https://raw.githubusercontent.com/MithigaDM/FX-Data/main/USDJPY-2024-2025-Hourly.csv -o data/USDJPY_H1_2024_2025.csv
+          curl --fail --location --silent --show-error --retry 3 https://raw.githubusercontent.com/getdata-finance/usdjpy-1h-ohlcv-forex-historical-data/main/USDJPY_1h.csv -o data/USDJPY_H1_2026_sample.csv
+          for f in data/*.csv; do
+            echo "DATASET $f lines=$(wc -l < "$f") bytes=$(wc -c < "$f")"
+            test "$(wc -l < "$f")" -gt 3000
+            head -n 2 "$f"
+            tail -n 2 "$f"
+          done
+          sha256sum data/*.csv > data/checksums.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: usdjpy-disjoint-h1-samples
+          path: data/
+          if-no-files-found: error
