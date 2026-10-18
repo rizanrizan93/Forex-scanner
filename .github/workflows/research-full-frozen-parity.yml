@@ -7,7 +7,7 @@ permissions:
   contents: read
   actions: write
 concurrency:
-  group: full-frozen-parity-research
+  group: full-frozen-parity-research-v3
   cancel-in-progress: false
 jobs:
   audit:
@@ -17,11 +17,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Extract immutable source and audit tools
         run: tar -xzf research/full_frozen_parity/bundle.tgz -C research/full_frozen_parity
-      - name: Cancel superseded timestamp-unit audit only
+      - name: Cancel superseded audits only
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: rizanrizan93/Forex-scanner
-        run: gh run cancel 39132263934 || true
+        run: |
+          gh run cancel 39132968933 || true
+          gh run cancel 39132263934 || true
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
