@@ -1,0 +1,45 @@
+name: RIZAN critical gap retry and recovery
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-critical-gap-retry.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas pyarrow
+      - name: Retrieve exact prior audit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: rizanrizan93/Forex-scanner
+        run: |
+          gh run download 39139148589 --name RIZAN-FINAL-FROZEN-TICK-PARITY-2019-2026 --dir /tmp/final
+          python - <<'PY'
+          import zipfile,hashlib,pathlib
+          p=pathlib.Path('/tmp/final/RIZAN_FROZEN_TICK_AUDIT.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='241e1288889e57596202658b45dcb9e2711f77710645ca0c5d3eef52729d247c'
+          zipfile.ZipFile(p).extractall('/tmp/previous')
+          PY
+      - name: Verify original hourly tick archives and reclassify long weekday gaps
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: rizanrizan93/Forex-scanner
+        run: |
+          mkdir -p research/critical_revalidation/gap_repair/bi5
+          gh run download 39170069211 --name RIZAN-CRITICAL-GAP-SOURCE-VERIFICATION --dir /tmp/gap-first
+          cp -a /tmp/gap-first/gap_repair/bi5/. research/critical_revalidation/gap_repair/bi5/
+          python research/critical_revalidation/retry_gap.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-CRITICAL-GAP-RETRY
+          path: research/critical_revalidation
+          retention-days: 90
