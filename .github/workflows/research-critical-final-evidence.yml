@@ -1,0 +1,70 @@
+name: RIZAN critical audit final evidence and package
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-critical-final-evidence.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rizanrizan93/Forex-scanner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas pyarrow matplotlib
+      - name: Require completed controlled replay and obtain exact artifacts
+        run: |
+          gh run watch 39170910880 --exit-status --interval 30
+          gh run download 39170910880 --name RIZAN-CRITICAL-FROZEN-REVALIDATION --dir /tmp/core
+          gh run download 39139148589 --name RIZAN-FINAL-FROZEN-TICK-PARITY-2019-2026 --dir /tmp/previous-zip
+          python - <<'PY'
+          import zipfile,pathlib,hashlib,tarfile
+          p=pathlib.Path('/tmp/previous-zip/RIZAN_FROZEN_TICK_AUDIT.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='241e1288889e57596202658b45dcb9e2711f77710645ca0c5d3eef52729d247c'
+          zipfile.ZipFile(p).extractall('/tmp/previous')
+          zipfile.ZipFile('/tmp/core/RIZAN_CRITICAL_REVALIDATION.zip').extractall('/tmp/final-critical')
+          with tarfile.open('research/critical_revalidation/executed-controls.tgz') as t:t.extractall('/tmp/final-critical/executed_controls',filter='data')
+          PY
+          cp research/critical_revalidation/finalize_critical.py /tmp/final-critical/
+          cp research/critical_revalidation/locked_schedule.py /tmp/final-critical/
+          git rev-parse HEAD > /tmp/final-critical/FINAL_EVIDENCE_COMMIT.txt
+      - name: Verify provenance and rebuild final report with executed differential and OHLC controls
+        run: python /tmp/final-critical/finalize_critical.py
+      - name: Preserve final research on VPS only and verify package bytes
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          dest='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/critical-frozen-revalidation-2019-2026/final'
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" /tmp/final-critical/RIZAN_CRITICAL_REVALIDATION.zip /tmp/final-critical/PACKAGE_SHA256.txt /tmp/final-critical/LAPORAN_CRITICAL_REVALIDATION.md "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && sha256sum -c PACKAGE_SHA256.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-CRITICAL-REVALIDATION-FINAL
+          path: |
+            /tmp/final-critical/RIZAN_CRITICAL_REVALIDATION.zip
+            /tmp/final-critical/PACKAGE_SHA256.txt
+            /tmp/final-critical/LAPORAN_CRITICAL_REVALIDATION.md
+            /tmp/final-critical/BEFORE_VS_AFTER_AUDIT.csv
+            /tmp/final-critical/CONTROLLED_M1_TICK_CHAIN.csv
+            /tmp/final-critical/DIFFERENTIAL_TEST_SUMMARY.json
+            /tmp/final-critical/RECONCILIATION.json
+          retention-days: 90
