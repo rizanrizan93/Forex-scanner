@@ -18,7 +18,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: rizanrizan93/Forex-scanner
-        run: gh run cancel 39133812149 || true
+        run: gh run cancel 39133942969 || true
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
@@ -81,6 +81,7 @@ jobs:
           opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
           ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
           scp "${opts[@]}" research/full_frozen_parity/RIZAN_FROZEN_TICK_AUDIT.zip "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "python3 -c \"from pathlib import Path;import zipfile;p=Path('$dest');zipfile.ZipFile(p/'RIZAN_FROZEN_TICK_AUDIT.zip').extractall(p/'artifacts')\""
       - uses: actions/upload-artifact@v4
         if: always()
         with:
