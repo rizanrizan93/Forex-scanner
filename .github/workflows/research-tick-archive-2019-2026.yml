@@ -1,0 +1,182 @@
+name: Archive public XAU EUR tick data to isolated VPS directory
+on:
+  push:
+    branches:
+      - research/tick-archive-2019-2026
+    paths:
+      - .github/workflows/research-tick-archive-2019-2026.yml
+permissions:
+  contents: read
+concurrency:
+  group: research-tick-archive-2019-2026
+  cancel-in-progress: false
+jobs:
+  start_archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: SSH bootstrap downloader (no bridge or cBot mutation)
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          if [[ -z "${SSH_PRIVATE_KEY:-}" || -z "${SSH_KNOWN_HOSTS:-}" ]]; then
+            echo "SSH_SECRETS_UNAVAILABLE"; exit 1
+          fi
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$tmp/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$tmp/known_hosts"
+          chmod 600 "$tmp/key" "$tmp/known_hosts"
+          ssh-keygen -y -f "$tmp/key" >/dev/null
+          ssh -i "$tmp/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$tmp/known_hosts" -o ConnectTimeout=20 Rizanrizan@202.74.74.172 'bash -s' <<'REMOTE'
+          set -Eeuo pipefail
+          umask 077
+          root="$HOME/rizan-ticks"
+          jobs="$root/.jobs"
+          mkdir -p "$jobs" "$root/XAUUSD" "$root/EURUSD"
+          chmod 700 "$jobs"
+          cat > "$jobs/public_tick_fetcher_2019_2026.py" <<'PY'
+          #!/usr/bin/env python3
+          """Read-only public market-data archiver. Does not interact with trading services."""
+          import csv
+          import hashlib
+          import json
+          import os
+          import shutil
+          import time
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError, URLError
+
+          ROOT = Path.home() / "rizan-ticks"
+          JOB = ROOT / ".jobs"
+          STATE = JOB / "archive_status.json"
+          MANIFEST = JOB / "manifest_sha256.csv"
+          BASE = "https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data"
+          LIMIT_BPS = 600 * 1024
+          MIN_FREE = 20 * 1024**3
+          MON = [(y, m) for y in range(2019, 2027) for m in range(1, 13) if (y, m) <= (2026, 10)]
+          PAIRS = ["XAUUSD", "EURUSD"]
+          stats = {"state": "starting", "downloaded": 0, "present": 0, "failed": 0, "bytes": 0, "source": BASE,
+                   "requested_months_per_symbol": len(MON), "symbols": PAIRS, "last_item": None, "errors": []}
+          def save():
+              stats["updated_utc"] = datetime.now(timezone.utc).isoformat()
+              temp = STATE.with_suffix(".tmp")
+              temp.write_text(json.dumps(stats, indent=2), encoding="utf-8")
+              os.replace(temp, STATE)
+          def parquet_ok(path):
+              if not path.is_file() or path.stat().st_size < 100000:
+                  return False
+              with open(path, "rb") as f:
+                  head = f.read(4)
+                  f.seek(-4, 2)
+                  foot = f.read(4)
+              return head == b"PAR1" and foot == b"PAR1"
+          def download(sym, y, m):
+              name = f"{sym}_{y:04d}-{m:02d}.parquet"
+              dest = ROOT / sym / str(y) / name
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              if parquet_ok(dest):
+                  stats["present"] += 1
+                  return
+              part = dest.with_suffix(".parquet.part")
+              url = f"{BASE}/{sym}/{name}?download=true"
+              for attempt in range(1, 5):
+                  if shutil.disk_usage(ROOT).free < MIN_FREE:
+                      raise RuntimeError("DISK_RESERVE_20_GIB_REACHED")
+                  try:
+                      req = Request(url, headers={"User-Agent": "RizanResearchArchive/1.0"})
+                      with urlopen(req, timeout=35) as resp:
+                          if resp.status != 200:
+                              raise RuntimeError(f"HTTP_STATUS_{resp.status}")
+                          # Temp file from scratch; no unvalidated resume fragments.
+                          with open(part, "wb") as f:
+                              started = time.monotonic()
+                              size = 0
+                              while True:
+                                  data = resp.read(128 * 1024)
+                                  if not data:
+                                      break
+                                  f.write(data)
+                                  size += len(data)
+                                  elapsed = time.monotonic() - started
+                                  if elapsed > 0 and size / elapsed > LIMIT_BPS:
+                                      time.sleep(size / LIMIT_BPS - elapsed)
+                              f.flush()
+                              os.fsync(f.fileno())
+                      if not parquet_ok(part):
+                          raise RuntimeError("NOT_VALID_PARQUET")
+                      checksum = hashlib.sha256()
+                      with open(part, "rb") as f:
+                          for block in iter(lambda: f.read(1024 * 1024), b""):
+                              checksum.update(block)
+                      os.replace(part, dest)
+                      with open(MANIFEST, "a", newline="") as f:
+                          csv.writer(f).writerow([sym, str(y), f"{m:02d}", dest.name,
+                                                  str(dest.stat().st_size), checksum.hexdigest(), url])
+                      stats["downloaded"] += 1
+                      stats["bytes"] += dest.stat().st_size
+                      return
+                  except HTTPError as e:
+                      if e.code == 404:
+                          stats["failed"] += 1
+                          stats["errors"].append(f"{name}: HTTP_404_SOURCE_NOT_FOUND")
+                          return
+                      err = f"HTTP_{e.code}"
+                  except Exception as e:
+                      err = type(e).__name__ + ":" + str(e)[:100]
+                  if part.exists():
+                      part.unlink()
+                  if attempt < 4:
+                      time.sleep(min(30, 2**attempt * 3))
+              stats["failed"] += 1
+              stats["errors"].append(f"{name}: {err}")
+              stats["errors"] = stats["errors"][-40:]
+          def main():
+              if not MANIFEST.exists():
+                  with open(MANIFEST, "w", newline="") as f:
+                      csv.writer(f).writerow(["symbol", "year", "month", "filename", "bytes", "sha256", "source_url"])
+              stats["state"] = "running"
+              save()
+              try:
+                  for year, month in MON:
+                      for sym in PAIRS:
+                          stats["last_item"] = f"{sym}_{year:04d}-{month:02d}"
+                          download(sym, year, month)
+                          save()
+                  stats["state"] = "completed_with_gaps" if stats["failed"] else "completed"
+              except Exception as e:
+                  stats["state"] = "stopped"
+                  stats["errors"].append(type(e).__name__ + ":" + str(e)[:160])
+              finally:
+                  save()
+          if __name__ == "__main__":
+              main()
+          PY
+          chmod 700 "$jobs/public_tick_fetcher_2019_2026.py"
+          if [[ -s "$jobs/fetcher.pid" ]] && kill -0 "$(cat "$jobs/fetcher.pid")" 2>/dev/null; then
+            echo "TICK_ARCHIVER_ALREADY_RUNNING"
+          else
+            nohup nice -n 15 ionice -c3 python3 "$jobs/public_tick_fetcher_2019_2026.py" > "$jobs/fetcher.log" 2>&1 </dev/null &
+            pid=$!
+            printf '%s\n' "$pid" > "$jobs/fetcher.pid"
+            sleep 4
+            if kill -0 "$pid" 2>/dev/null; then
+              echo "TICK_ARCHIVER_STARTED pid=$pid"
+            else
+              echo "TICK_ARCHIVER_EXITED_EARLY"
+              tail -c 1000 "$jobs/fetcher.log" || true
+              exit 1
+            fi
+          fi
+          df -h "$root"
+          if [[ -f "$jobs/archive_status.json" ]]; then
+            python3 -c 'import json,sys; a=json.load(open(sys.argv[1]));print("status="+a["state"],"files_downloaded="+str(a["downloaded"]),"last_item="+str(a["last_item"]))' "$jobs/archive_status.json"
+          fi
+          REMOTE
