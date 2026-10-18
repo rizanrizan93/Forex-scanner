@@ -17,7 +17,7 @@ s=s.replace('Ledger=host.History,','Decisions=decisions,Ledger=host.History,');p
 # Small sampling fixture records all intents and protection modifications without changing execution.
 p=engine/'ApiStubs.cs';s=p.read_text().replace('Requests++;BeforeMarketFill?.Invoke();','Requests++;OrderEvents.Add(new{At=Server.TimeInUtc,Symbol=symbol,Side=side.ToString(),Volume=volume,Label=label,Status="REQUEST",RequestId=Requests});BeforeMarketFill?.Invoke();');p.write_text(s)
 # Allow deterministic overlay of verified recovered ticks during monthly read. Always verify originals first.
-p=engine/'run_ticks.py';s=p.read_text();s=s.replace("d=pf.read(columns=['timestamp','bid','ask']).to_pandas();t=", "d=pf.read(columns=['timestamp','bid','ask']).to_pandas();\n  if os.environ.get('RIZAN_GAP_PATCH') and sym=='XAUUSD' and ym=='2025-10':\n   patch=pq.read_table(os.environ['RIZAN_GAP_PATCH']).to_pandas()[['timestamp','bid','ask']]\n   patch['timestamp']=pd.to_datetime(patch.timestamp,utc=True);d['timestamp']=pd.to_datetime(d.timestamp,utc=True)\n   assert not d.timestamp.isin(patch.timestamp).any()\n   d=pd.concat([d,patch],ignore_index=True).sort_values('timestamp',kind='stable').reset_index(drop=True)\n   print('VERIFIED_GAP_OVERLAY',len(patch),flush=True)\n  t=")
+p=engine/'run_ticks.py';s=p.read_text();s=s.replace("d=pf.read(columns=['timestamp','bid','ask']).to_pandas();t=", "d=pf.read(columns=['timestamp','bid','ask']).to_pandas();\n  if os.environ.get('RIZAN_GAP_PATCH') and sym=='XAUUSD' and ym in ['2025-10','2025-12']:\n   patch=pq.read_table(os.environ['RIZAN_GAP_PATCH']).to_pandas()[['timestamp','bid','ask']]\n   patch['timestamp']=pd.to_datetime(patch.timestamp,utc=True);patch=patch[patch.timestamp.dt.strftime('%Y-%m')==ym];d['timestamp']=pd.to_datetime(d.timestamp,utc=True)\n   assert not d.timestamp.isin(patch.timestamp).any()\n   d=pd.concat([d,patch],ignore_index=True).sort_values('timestamp',kind='stable').reset_index(drop=True)\n   print('VERIFIED_GAP_OVERLAY',len(patch),flush=True)\n  t=")
 p.write_text(s)
 # Financial reports use the corrected count for the patched scenario set, but provenance retains original manifest.
 for name in ['control_audit','patched_audit']:
@@ -33,7 +33,7 @@ if patchpath.exists() and summary.get('ticks_added',0)>0:
  corrected=pd.concat([original,q]).sort_values('timestamp',kind='stable');corrected.to_csv(r/'patched_audit/XAUUSD_m1.csv',index=False,float_format='%.10f')
  qa=json.load(open(r/'patched_audit/data_quality.json'));qa['original_total_ticks']=qa['total_ticks'];qa['total_ticks']+=len(p);qa['status']='PARTIAL_DATA_GAP_UNRESOLVED_WITH_VERIFIED_PARTIAL_RECOVERY';qa['patch_ticks']=len(p)
  for f in qa['files']:
-  if f['file']=='XAUUSD_2025-10.parquet':f['original_ticks']=f['ticks'];f['ticks']+=len(p);f['overlay_sha256']=summary['parquet_sha256']
+  if f['file'].startswith('XAUUSD_') and f['file'][7:14] in summary.get('by_month',{'2025-10':len(p)}):f['original_ticks']=f['ticks'];f['ticks']+=int(summary.get('by_month',{'2025-10':len(p)})[f['file'][7:14]]);f['overlay_sha256']=summary['parquet_sha256']
  json.dump(qa,open(r/'patched_audit/data_quality.json','w'),indent=2)
  summary['minutes_recovered']=len(q);summary['full_gap_resolved']=False
  json.dump(summary,open(r/'gap_repair/GAP_REPAIR_SUMMARY.json','w'),indent=2)
