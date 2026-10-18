@@ -1,0 +1,108 @@
+name: RIZAN final audit with execution validity limits
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-critical-execution-final.yml]
+permissions:
+  contents: read
+  actions: read
+env:
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: rizanrizan93/Forex-scanner
+jobs:
+  publish_audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas pyarrow matplotlib
+      - name: Retrieve completed reconciled replays without rerunning or changing strategy
+        run: |
+          gh run watch 39175040987 --exit-status --interval 30
+          gh run download 39175040987 --name RIZAN-CRITICAL-AUDIT-DEFINITIVE --dir /tmp/reconciled
+          gh run download 39139148589 --name RIZAN-FINAL-FROZEN-TICK-PARITY-2019-2026 --dir /tmp/old-final
+          python - <<'PY'
+          import zipfile,pathlib,hashlib,tarfile
+          p=pathlib.Path('/tmp/reconciled/RIZAN_CRITICAL_REVALIDATION.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='e98742ade10fb6b13475253815e6454dd663693fc109dea26c0e75f08b993348'
+          zipfile.ZipFile(p).extractall('/tmp/audited-final')
+          q=pathlib.Path('/tmp/old-final/RIZAN_FROZEN_TICK_AUDIT.zip')
+          assert hashlib.sha256(q.read_bytes()).hexdigest()=='241e1288889e57596202658b45dcb9e2711f77710645ca0c5d3eef52729d247c'
+          zipfile.ZipFile(q).extractall('/tmp/previous')
+          with tarfile.open('research/critical_revalidation/causal-extended-evidence.tgz')as t:t.extractall('/tmp/audited-final/causal_extended',filter='data')
+          with tarfile.open('research/critical_revalidation/execution-closure-evidence.tgz')as t:t.extractall('/tmp/audited-final/execution_closure_evidence',filter='data')
+          PY
+          cp research/critical_revalidation/finalize_critical.py /tmp/audited-final/
+          git rev-parse HEAD > /tmp/audited-final/REPORT_SOURCE_COMMIT.txt
+      - name: Read-only low-memory check of untouched original VPS month files
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          ssh -i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" Rizanrizan@202.74.74.172 'nice -n 15 ionice -c3 python3 -' > /tmp/audited-final/VPS_ORIGINAL_MONTHS_UNCHANGED.json <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          rows=[]
+          for month in ['2025-10','2025-12']:
+              p=Path('/home/Rizanrizan/rizan-ticks/XAUUSD/2025')/('XAUUSD_'+month+'.parquet')
+              h=hashlib.sha256()
+              with p.open('rb') as f:
+                  while True:
+                      b=f.read(1048576)
+                      if not b:break
+                      h.update(b)
+              rows.append({'file':p.name,'sha256':h.hexdigest(),'bytes':p.stat().st_size})
+          print(json.dumps(rows))
+          PY
+          python - <<'PY'
+          import json
+          a=json.load(open('/tmp/audited-final/VPS_ORIGINAL_MONTHS_UNCHANGED.json'))
+          m={x['file']:x['sha256']for x in json.load(open('/tmp/previous/data_audit/data_quality.json'))['files']}
+          assert all(x['sha256']==m[x['file']]for x in a)
+          print('ORIGINAL_VPS_MONTH_HASHES_UNCHANGED',len(a))
+          PY
+      - name: Reconcile exact quotes, publish causal findings and archive all audited artifacts
+        run: python /tmp/audited-final/finalize_critical.py
+      - name: Save definitive report and package to isolated VPS research folder
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          dest='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/critical-frozen-revalidation-2019-2026/final-execution-audited'
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" /tmp/audited-final/RIZAN_CRITICAL_REVALIDATION.zip /tmp/audited-final/PACKAGE_SHA256.txt /tmp/audited-final/LAPORAN_CRITICAL_REVALIDATION.md "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && sha256sum -c PACKAGE_SHA256.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-CRITICAL-AUDIT-EXECUTION-FINAL
+          path: |
+            /tmp/audited-final/RIZAN_CRITICAL_REVALIDATION.zip
+            /tmp/audited-final/LAPORAN_CRITICAL_REVALIDATION.md
+            /tmp/audited-final/PACKAGE_SHA256.txt
+            /tmp/audited-final/BEFORE_VS_AFTER_AUDIT.csv
+            /tmp/audited-final/EXTENDED_CONTROLLED_OHLC_COMPARISON.csv
+            /tmp/audited-final/LOCKED_REFERENCE_RECONCILIATION.json
+            /tmp/audited-final/RECONCILIATION.json
+            /tmp/audited-final/DIFFERENTIAL_TEST_SUMMARY.json
+          retention-days: 90
