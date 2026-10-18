@@ -1,0 +1,34 @@
+name: RIZAN December31 and remaining October source recovery
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-critical-extended-recovery.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas pyarrow
+      - name: Reuse first four-hour verification and recover second confirmed weekday gap
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: rizanrizan93/Forex-scanner
+        run: |
+          gh run watch 39171728062 --exit-status --interval 30
+          gh run download 39171728062 --name RIZAN-TARGETED-FOUR-HOURS --dir /tmp/targeted
+          mkdir -p research/critical_revalidation/extended_hour_recovery
+          cp /tmp/targeted/*.bi5 research/critical_revalidation/extended_hour_recovery/ || true
+          python research/critical_revalidation/target_extended.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-EXTENDED-GAP-RECOVERY
+          path: research/critical_revalidation/extended_hour_recovery
+          retention-days: 90
