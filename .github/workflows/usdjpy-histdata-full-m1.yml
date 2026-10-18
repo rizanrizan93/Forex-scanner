@@ -1,0 +1,68 @@
+name: USDJPY HistData M1 2016-2026 verified archive
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths:
+      - .github/workflows/usdjpy-histdata-full-m1.yml
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  acquire-2016-2026:
+    runs-on: ubuntu-latest
+    timeout-minutes: 42
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install public archive downloader
+        run: pip install --disable-pip-version-check histdata-fetcher==0.1.0
+      - name: Download and independently audit complete calendar years
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data audits
+          python - <<'PY'
+          from histdata_fetcher import fetch_data
+          import datetime as dt,json,hashlib,os
+          import pandas as pd
+          meta=[]
+          for yr in range(2016,2027):
+            first=f'{yr}-01-01'
+            last=f'{yr}-12-31' if yr<2026 else '2026-10-15'
+            print('START_YEAR',yr,first,last,flush=True)
+            try:
+              r=fetch_data(pair='USDJPY',start_date=first,end_date=last,timeframe='1min',output_format=None,max_workers=2)
+              if not r.failed_periods and len(r.data)>100000:
+                df=r.data.copy()
+                ts=pd.to_datetime(df.datetime)
+                df['datetime']=ts+pd.Timedelta(hours=5) # HistData uses fixed EST: UTC = EST+5.
+                df=df.loc[(df.datetime.dt.year==yr)&(df.datetime<=pd.Timestamp('2026-10-16'))]
+                df=df.sort_values('datetime')
+                if df.datetime.duplicated().any():raise ValueError('DUPLICATE_MINUTE')
+                if (df[['open','high','low','close']]<=0).any(axis=None):raise ValueError('NONPOSITIVE_PRICE')
+                if ((df.high<df[['open','close','low']].max(axis=1)) | (df.low>df[['open','close','high']].min(axis=1))).any():raise ValueError('MALFORMED_OHLC')
+                output=f'data/USDJPY_M1_{yr}.parquet'
+                df.to_parquet(output,index=False,compression='zstd')
+                with open(output,'rb') as f:sha=hashlib.file_digest(f,'sha256').hexdigest()
+                gaps=int((df.datetime.diff().dropna() >= pd.Timedelta(minutes=5)).sum())
+                record=dict(year=yr,rows=int(len(df)),first=str(df.datetime.iloc[0]),last=str(df.datetime.iloc[-1]),gaps_gte_5min=gaps,periods=r.fetched_periods,sha256=sha,bytes=os.stat(output).st_size,failed_periods=[])
+                meta.append(record)
+                print('YEAR_SUCCESS',json.dumps(record),flush=True)
+              else:
+                failure=dict(year=yr,failed_periods=[dict(label=x.period_label,reason=x.reason) for x in r.failed_periods],rows=len(r.data))
+                meta.append(failure);print('YEAR_FAILED',json.dumps(failure),flush=True)
+            except Exception as e:
+              record=dict(year=yr,error=f'{type(e).__name__}: {e}')
+              meta.append(record);print('YEAR_ERROR',json.dumps(record),flush=True)
+          with open('audits/m1_yearly_manifest.json','w') as f:json.dump(meta,f,indent=2)
+          if len([x for x in meta if 'sha256' in x])!=11:raise RuntimeError('M1_HISTORY_MISSING_YEAR')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rizan-usdjpy-histdata-m1-2016-2026
+          path: |
+            audits/m1_yearly_manifest.json
+            data/*.parquet
+          if-no-files-found: warn
+          compression-level: 6
