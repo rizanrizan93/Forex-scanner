@@ -19,10 +19,13 @@ static const double stops[]={0.4,0.6,0.845,1.0,1.3,1.7,2.0,2.5}, rr[]={2,3,4,6,8
 uint64_t mix(uint64_t &x){x+=0x9e3779b97f4a7c15ULL;uint64_t z=x;z=(z^(z>>30))*0xbf58476d1ce4e5b9ULL;z=(z^(z>>27))*0x94d049bb133111ebULL;return z^(z>>31);}
 P makeP(uint64_t seed){P p{};auto pick=[&](int n){return int(mix(seed)%uint64_t(n));};
 p.fam=pick(7);p.fast=pick(6);p.slow=pick(6);p.look=pick(4);p.side=pick(3);p.filter=pick(3);p.stop=pick(8);p.rr=pick(6);p.risk=pick(8);p.margin=pick(4);p.hold=pick(7);p.throttle=pick(3);p.thr=pick(6);
+// Normalize parameters that do not affect the executable signal.
 if(p.fam!=2&&p.fam!=3)p.look=0;
-if(p.fam==4||p.fam==6||p.fam==0)p.thr=0;
-if(p.fam==2||p.fam==3||p.fam==4||p.fam==5)p.fast=0;
-if(p.fam!=0&&p.fam!=1&&p.fam!=5&&p.fam!=6)p.slow=0;
+if(p.fam==0||p.fam==2||p.fam==3||p.fam==4||p.fam==6)p.thr=0;
+// EMA pullback always uses the fast EMA. EMA crossover uses both.
+// For other families, both EMAs are inactive without a trend/counter filter.
+if(p.filter==0&&p.fam!=0&&p.fam!=6){p.fast=0;p.slow=0;}
+if(p.filter==0&&p.fam==0)p.slow=0;
 uint64_t k=p.fam;k=k*6+p.fast;k=k*6+p.slow;k=k*4+p.look;k=k*3+p.side;k=k*3+p.filter;k=k*8+p.stop;k=k*6+p.rr;k=k*8+p.risk;k=k*4+p.margin;k=k*7+p.hold;k=k*3+p.throttle;k=k*6+p.thr;p.key=k;return p;
 }
 bool load(string path){
