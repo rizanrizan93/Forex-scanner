@@ -1,0 +1,55 @@
+name: USDJPY 2016-2026 Yahoo D1 source validation
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths: [.github/workflows/usdjpy-yahoo-d1-2026.yml]
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  dataset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify USDJPY historical daily range via Yahoo
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import urllib.request,json,datetime,csv,hashlib,time
+          t0=int(datetime.datetime(2014,1,1,tzinfo=datetime.timezone.utc).timestamp())
+          t1=int(datetime.datetime(2026,10,19,tzinfo=datetime.timezone.utc).timestamp())
+          hosts=['query2.finance.yahoo.com','query1.finance.yahoo.com']
+          syms=['JPY=X','USDJPY=X']
+          for host in hosts:
+            for sym in syms:
+              url=f'https://{host}/v8/finance/chart/{sym}?period1={t0}&period2={t1}&interval=1d&events=history'
+              try:
+                req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36','Accept':'application/json'})
+                with urllib.request.urlopen(req,timeout=30) as response:data=response.read()
+                doc=json.loads(data)
+                result=(doc.get('chart',{}).get('result') or [None])[0]
+                if not result:raise RuntimeError(str(doc.get('chart',{}).get('error')))
+                stamps=result['timestamp'];q=result['indicators']['quote'][0];rows=[]
+                for i,stamp in enumerate(stamps):
+                  date=datetime.datetime.fromtimestamp(stamp,datetime.timezone.utc).strftime('%Y-%m-%d')
+                  fields=[q[k][i] for k in ('open','high','low','close')]
+                  if all(v is not None and v>0 for v in fields):rows.append([date]+fields)
+                first,last=rows[0][0],rows[-1][0]
+                if len(rows)<2300 or first>'2015-01-01' or last<'2026-10-14':
+                  raise ValueError(f'INSUFFICIENT days={len(rows)} date={first}..{last}')
+                with open('USDJPY_2014_20261018_D1.csv','w') as f:
+                  writer=csv.writer(f);writer.writerow(['Date','Open','High','Low','Close']);writer.writerows(rows)
+                print(f'VALID_SOURCE {host}/{sym} bars={len(rows)} date={first}..{last} sha256={hashlib.sha256(data).hexdigest()}',flush=True)
+                break
+              except Exception as e:print('SOURCE_FAILED',host,sym,type(e).__name__,str(e)[:250],flush=True)
+            else:continue
+            break
+          else:raise RuntimeError('NO_VALID_DAILY_SOURCE')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: usdjpy-yahoo-d1-through-2026-10-18
+          path: USDJPY_2014_20261018_D1.csv
+          if-no-files-found: warn
