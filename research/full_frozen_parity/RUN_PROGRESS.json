@@ -1,7 +1,7 @@
 {
-  "updated_utc": "2026-10-18T14:46:20.538441+00:00",
+  "updated_utc": "2026-10-18T14:47:13.654148+00:00",
   "phase": "replay_results",
-  "month": "2023-12",
+  "month": "2024-12",
   "scenarios": [
     {
       "Config": {
@@ -13,13 +13,13 @@
         "Eur": true,
         "Macro": true
       },
-      "ProcessedThrough": "2023-12",
-      "EndingBalance": 864.4289999999081,
+      "ProcessedThrough": "2024-12",
+      "EndingBalance": 1344.6739999996648,
       "MaximumFloatingDDPct": 51.54041687849985,
-      "TotalBaskets": 243,
-      "BrokerRequests": 301,
-      "TotalTicks": 453923977,
-      "CashReconciliationError": -3.069544618483633e-12
+      "TotalBaskets": 301,
+      "BrokerRequests": 380,
+      "TotalTicks": 542727555,
+      "CashReconciliationError": -5.6843418860808015e-12
     },
     {
       "Config": {
@@ -31,13 +31,13 @@
         "Eur": true,
         "Macro": true
       },
-      "ProcessedThrough": "2023-12",
-      "EndingBalance": 4420.440999999162,
-      "MaximumFloatingDDPct": 63.00514959382265,
-      "TotalBaskets": 285,
-      "BrokerRequests": 440,
-      "TotalTicks": 453923977,
-      "CashReconciliationError": 1.8189894035458565e-12
+      "ProcessedThrough": "2024-12",
+      "EndingBalance": 16476.1269999962,
+      "MaximumFloatingDDPct": 64.46088643920137,
+      "TotalBaskets": 353,
+      "BrokerRequests": 553,
+      "TotalTicks": 542727555,
+      "CashReconciliationError": 0
     },
     {
       "Config": {
@@ -49,13 +49,13 @@
         "Eur": true,
         "Macro": true
       },
-      "ProcessedThrough": "2023-12",
-      "EndingBalance": 5062.743999999436,
+      "ProcessedThrough": "2024-12",
+      "EndingBalance": 17888.747999997166,
       "MaximumFloatingDDPct": 47.020298864588874,
-      "TotalBaskets": 258,
-      "BrokerRequests": 347,
-      "TotalTicks": 453923977,
-      "CashReconciliationError": -1.8189894035458565e-12
+      "TotalBaskets": 317,
+      "BrokerRequests": 429,
+      "TotalTicks": 542727555,
+      "CashReconciliationError": -7.275957614183426e-12
     },
     {
       "Config": {
@@ -67,13 +67,13 @@
         "Eur": true,
         "Macro": true
       },
-      "ProcessedThrough": "2023-12",
-      "EndingBalance": 18.71900000004863,
-      "MaximumFloatingDDPct": 85.38057824772673,
-      "TotalBaskets": 215,
-      "BrokerRequests": 216,
-      "TotalTicks": 453923977,
-      "CashReconciliationError": 6.892264536872972e-13
+      "ProcessedThrough": "2024-12",
+      "EndingBalance": 15.959000000051244,
+      "MaximumFloatingDDPct": 87.53612096027179,
+      "TotalBaskets": 230,
+      "BrokerRequests": 231,
+      "TotalTicks": 542727555,
+      "CashReconciliationError": 6.572520305780927e-13
     },
     {
       "Config": {
@@ -85,13 +85,13 @@
         "Eur": true,
         "Macro": false
       },
-      "ProcessedThrough": "2023-12",
-      "EndingBalance": 2132.0799999995625,
-      "MaximumFloatingDDPct": 43.550672685934835,
-      "TotalBaskets": 99,
-      "BrokerRequests": 204,
-      "TotalTicks": 453923977,
-      "CashReconciliationError": 9.094947017729282e-13
+      "ProcessedThrough": "2024-12",
+      "EndingBalance": 2872.319999999281,
+      "MaximumFloatingDDPct": 52.05194412395093,
+      "TotalBaskets": 126,
+      "BrokerRequests": 264,
+      "TotalTicks": 542727555,
+      "CashReconciliationError": -4.547473508864641e-13
     },
     {
       "Config": {
@@ -103,12 +103,12 @@
         "Eur": false,
         "Macro": true
       },
-      "ProcessedThrough": "2023-12",
-      "EndingBalance": 155.68000000001615,
+      "ProcessedThrough": "2024-12",
+      "EndingBalance": 202.48800000000523,
       "MaximumFloatingDDPct": 48.92998698532396,
-      "TotalBaskets": 172,
-      "BrokerRequests": 175,
-      "TotalTicks": 453923977,
+      "TotalBaskets": 208,
+      "BrokerRequests": 211,
+      "TotalTicks": 542727555,
       "CashReconciliationError": 3.410605131648481e-13
     },
     {
@@ -121,13 +121,13 @@
         "Eur": true,
         "Macro": true
       },
-      "ProcessedThrough": "2023-12",
-      "EndingBalance": 109.15499999995014,
+      "ProcessedThrough": "2024-12",
+      "EndingBalance": 145.39299999994932,
       "MaximumFloatingDDPct": 46.251583005156064,
-      "TotalBaskets": 268,
-      "BrokerRequests": 271,
-      "TotalTicks": 453923977,
-      "CashReconciliationError": 7.247535904753022e-13
+      "TotalBaskets": 334,
+      "BrokerRequests": 337,
+      "TotalTicks": 542727555,
+      "CashReconciliationError": 5.115907697472721e-13
     },
     {
       "Config": {
@@ -139,13 +139,13 @@
         "Eur": true,
         "Macro": true
       },
-      "ProcessedThrough": "2023-12",
-      "EndingBalance": 1752.8139999997043,
+      "ProcessedThrough": "2024-12",
+      "EndingBalance": 3874.8109999990993,
       "MaximumFloatingDDPct": 54.72299883185223,
-      "TotalBaskets": 272,
-      "BrokerRequests": 382,
-      "TotalTicks": 453923977,
-      "CashReconciliationError": 2.2737367544323206e-13
+      "TotalBaskets": 335,
+      "BrokerRequests": 476,
+      "TotalTicks": 542727555,
+      "CashReconciliationError": -5.002220859751105e-12
     }
   ]
 }
