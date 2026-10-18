@@ -1,0 +1,34 @@
+name: Validate XAU EUR public Parquet tick schema without VPS load
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths:
+      - .github/workflows/research-public-tick-source-check.yml
+permissions: {}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Setup isolated Python parquet inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip -q install pyarrow
+          python - <<'PY'
+          import io
+          import urllib.request
+          import pyarrow.parquet as pq
+          from urllib.error import URLError
+          base='https://huggingface.co/datasets/Henrik404/dukascopy-ticks/resolve/main/data/'
+          for s in ['XAUUSD','EURUSD']:
+              fn=f'{s}_2019-01.parquet'
+              url=base+s+'/'+fn
+              with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'RizanResearchSchemaAudit/1.0'}),timeout=60) as r:
+                  raw=r.read()
+              p=pq.ParquetFile(io.BytesIO(raw))
+              print('SYMBOL=',s,'SIZE_BYTES=',len(raw),'ROWS=',p.metadata.num_rows,'ROW_GROUPS=',p.metadata.num_row_groups)
+              print('SCHEMA=',str(p.schema_arrow))
+              batch=next(p.iter_batches(batch_size=5))
+              print('FIRST_ROWS=',str(batch.to_pydict())[:1500])
+          PY
