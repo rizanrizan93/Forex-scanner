@@ -1,0 +1,57 @@
+name: USDJPY completed daily 2016-Oct2026 final 1M
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths: [.github/workflows/usdjpy-2016-2026-completed-final.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  final:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and freeze only completed historical daily candles
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,io,hashlib
+          from urllib.request import Request,urlopen
+          src='https://becoin.net/api/trading-asset-history?slug=usdjpy'
+          with urlopen(Request(src,headers={'User-Agent':'Mozilla/5.0','Accept':'text/csv'}),timeout=40) as r: payload=r.read()
+          rec=list(csv.DictReader(io.StringIO(payload.decode('utf-8-sig'))));data=[]
+          for z in rec:
+            if '2014-01-01'<=z['Date']<='2026-10-15':
+              try:
+                v=[float(z[k]) for k in ('Open','High','Low','Close')]
+                if all(x>0 for x in v) and v[2]<=min(v[0],v[3]) and max(v[0],v[3])<=v[1]:data.append([z['Date']]+v)
+              except (ValueError,TypeError,KeyError):pass
+          data.sort()
+          if len(data)<3000 or data[0][0]!='2014-01-01' or data[-1][0]!='2026-10-15':raise ValueError(f'BAD_DAILY_COVERAGE {len(data)} {data[0][0] if data else None} {data[-1][0] if data else None}')
+          if len({v[0] for v in data})!=len(data):raise ValueError('DUPLICATE_DATES')
+          with open('usdjpy_completed_D1.csv','w') as f:
+            w=csv.writer(f);w.writerow(['Date','Open','High','Low','Close']);w.writerows(data)
+          with open('input_provenance.txt','w') as f:f.write(f'origin={src}\nlast_completed_candle={data[-1][0]}\nrows={len(data)}\nsource_raw_sha256={hashlib.sha256(payload).hexdigest()}\n')
+          print('VERIFIED_COMPLETED_BARS',len(data),data[0][0],data[-1][0],hashlib.sha256(payload).hexdigest())
+          PY
+      - name: Full 1M compounding screen and replays
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O3 research/usdjpy_2016_2026_completed_candles.cpp -o replay
+          ./replay usdjpy_completed_D1.csv 2>&1 | tee replay.log
+          grep -q 'EVALUATED_UNIQUE=1000000' replay.log
+          grep -q '"last":"2026-10-15"' audit_summary.json
+          cat audit_summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rizan-usdjpy-2016-2026-completed-d1-final-1m
+          path: |
+            audit_summary.json
+            ranked_results.csv
+            replay.log
+            input_provenance.txt
+            usdjpy_completed_D1.csv
+          if-no-files-found: warn
