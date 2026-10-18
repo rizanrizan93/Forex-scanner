@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: rizan-public-settlement-real-ticks
+  group: rizan-public-settlement-real-ticks-continuous
   cancel-in-progress: false
 jobs:
   probe:
@@ -52,3 +52,5 @@ jobs:
 # Smoke revision 2: inspect native execution before cost certification
 
 # Retry with bounded encrypted transport chunks.
+
+# Continuous per-second M1 counterfactual; actual quote stream unchanged.
