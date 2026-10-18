@@ -13,6 +13,13 @@ def load_results(root):
  return d
 before=load_results(old/'replay_results');groups={'BEFORE':before,'ADAPTER_CORRECTED':load_results(r/'control_results'),'ADAPTER_AND_PARTIAL_DATA_REPAIR':load_results(r/'patched_results')}
 summary=json.load(open(r/'gap_repair/GAP_REPAIR_SUMMARY.json'))
+if 'october_expected_open_hours' in summary:
+ summary.pop('full_gap_resolved',None);summary['october_normal_open_archives_recovered']=summary['october_verified_open_hours']==summary['october_expected_open_hours']
+ ext=r/'extended_hour_recovery/EXTENDED_HOURS.json'
+ if ext.exists():
+  eh=json.load(open(ext));dec=[x for x in eh if x['hour_utc'].startswith('2025-12-31')];summary['december31_verified_nonempty_hours']=sum(x['status']=='VERIFIED_DECODE'for x in dec);summary['december31_verified_empty_hours']=sum(x['status']=='EMPTY_NO_TICKS'for x in dec);summary['december31_unresolved_hours']=[x['hour_utc']for x in dec if x['status']=='DATA_GAP_UNRESOLVED']
+ summary['all_other_gap_calendar_certified']=False
+ json.dump(summary,open(r/'gap_repair/GAP_REPAIR_SUMMARY.json','w'),indent=2)
 for mode,results in groups.items():
  for name,d in results.items():
   history=d['Ledger'];baskets=d['Baskets'];cash=100+sum(h['NetProfit']for h in history)-d['EndingBalance'];ids=[h['PositionId']for h in history]
@@ -29,9 +36,9 @@ for mode,results in groups.items():
   m=pd.DataFrame(d['Monthly']);m.to_csv(dest/'MONTHLY.csv',index=False);m['Year']=m.Month.str[:4];m.groupby('Year').agg(NetProfit=('NetProfit','sum'),EndBalance=('EndBalance','last')).to_csv(dest/'ANNUAL.csv')
   pd.DataFrame(d['SourceStatusEvents']).to_csv(dest/'SOURCE_STATUS_EVENTS.csv',index=False)
   pd.DataFrame(baskets).groupby('MaxStage').agg(Baskets=('Pnl','size'),PnL=('Pnl','sum'),Wins=('Pnl',lambda x:(x>0).sum())).to_csv(dest/'LAYERING.csv')
-  eq=pd.DataFrame(d['EquityCurve']);eq['At']=pd.to_datetime(eq.At,utc=True);fig,ax=plt.subplots(2,1,figsize=(11,6),sharex=True,gridspec_kw={'height_ratios':[2,1]});ax[0].plot(eq.At,eq.Equity,label='Equity');ax[0].plot(eq.At,eq.Balance,label='Balance',alpha=.6);ax[0].set_yscale('log');ax[0].legend();ax[0].set_title(mode+' / '+name);ax[0].set_ylabel('USD (log)');ax[1].plot(eq.At,eq.get('DrawdownPct'),label='Sampled current DD');ax[1].plot(eq.At,eq.get('MaxDDPct'),'.',label='Running full-tick maximum DD');ax[1].set_ylabel('DD %');ax[1].legend();fig.tight_layout();fig.savefig(dest/'EQUITY_DRAWDOWN.png',dpi=150);plt.close(fig)
+  eq=pd.DataFrame(d['EquityCurve']);eq['At']=pd.to_datetime(eq.At,utc=True,format="mixed");fig,ax=plt.subplots(2,1,figsize=(11,6),sharex=True,gridspec_kw={'height_ratios':[2,1]});ax[0].plot(eq.At,eq.Equity,label='Equity');ax[0].plot(eq.At,eq.Balance,label='Balance',alpha=.6);ax[0].set_yscale('log');ax[0].legend();ax[0].set_title(mode+' / '+name);ax[0].set_ylabel('USD (log)');ax[1].plot(eq.At,eq.get('DrawdownPct'),label='Sampled current DD');ax[1].plot(eq.At,eq.get('MaxDDPct'),'.',label='Running full-tick maximum DD');ax[1].set_ylabel('DD %');ax[1].legend();fig.tight_layout();fig.savefig(dest/'EQUITY_DRAWDOWN.png',dpi=150);plt.close(fig)
   # Gap exposure audit retains before/after entry/exit, including positions that straddle unresolved range.
-  hs=pd.DataFrame(history);hs['EntryTime']=pd.to_datetime(hs.EntryTime,utc=True);hs['ExitTime']=pd.to_datetime(hs.ExitTime,utc=True);hs[(hs.EntryTime<pd.Timestamp('2025-10-20T00:00Z'))&(hs.ExitTime>pd.Timestamp('2025-10-10T20:59:58Z'))].to_csv(dest/'OCTOBER_GAP_EXPOSURES.csv',index=False)
+  hs=pd.DataFrame(history);hs['EntryTime']=pd.to_datetime(hs.EntryTime,utc=True,format="mixed");hs['ExitTime']=pd.to_datetime(hs.ExitTime,utc=True,format="mixed");hs[(hs.EntryTime<pd.Timestamp('2025-10-20T00:00Z'))&(hs.ExitTime>pd.Timestamp('2025-10-10T20:59:58Z'))].to_csv(dest/'OCTOBER_GAP_EXPOSURES.csv',index=False);hs[(hs.EntryTime<pd.Timestamp('2026-01-01T23:00:00Z'))&(hs.ExitTime>pd.Timestamp('2025-12-30T23:59:59Z'))].to_csv(dest/'DECEMBER_GAP_EXPOSURES.csv',index=False)
 # Pair on immutable basket signal timestamp, symbol, stage, sequence; preserve unmatched orders and size changes.
 for name in before:
  for tag,new in [('ADAPTER_CORRECTED',groups['ADAPTER_CORRECTED']),('ADAPTER_AND_PARTIAL_DATA_REPAIR',groups['ADAPTER_AND_PARTIAL_DATA_REPAIR'])]:
@@ -114,7 +121,7 @@ if controls.exists():
   if df.empty:continue
   stop=df.Comment.str.split(';').str[4].astype(float);risk=(df.EntryPrice-stop).abs()*df.VolumeInUnits
   df['MFE_R_gross_position']=df.Mfe/risk;df['MAE_R_gross_position']=df.Mae/risk
-  for k in ['EntryTime','ExitTime']:df[k+'_WIB']=pd.to_datetime(df[k],utc=True).dt.tz_convert('Asia/Jakarta').astype(str)
+  for k in ['EntryTime','ExitTime']:df[k+'_WIB']=pd.to_datetime(df[k],utc=True,format="mixed").dt.tz_convert('Asia/Jakarta').astype(str)
   df.to_csv(ledger,index=False)
  for path in [r/'engine/SourceTape.cs',r/'engine/ApiStubs.cs']:
   (r/(path.name+'.diff')).write_text(''.join(difflib.unified_diff((old/path.name).read_text().splitlines(True),path.read_text().splitlines(True),fromfile='8fdfe44/'+path.name,tofile='corrected/'+path.name)))
