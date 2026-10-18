@@ -1,0 +1,79 @@
+name: RIZAN independent reconciliation and final Indonesian report
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-full-frozen-final-report.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy matplotlib
+      - name: Retrieve completed immutable replay artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: rizanrizan93/Forex-scanner
+        run: |
+          gh run watch 39137064825 --exit-status --interval 30
+          gh run download 39137064825 --name rizan-frozen-tick-partial-parity-results --dir /tmp/completed
+          python - <<'PY'
+          import zipfile
+          zipfile.ZipFile('/tmp/completed/RIZAN_FROZEN_TICK_AUDIT.zip').extractall('/tmp/rizan-final')
+          PY
+          cp research/full_frozen_parity/finalize_report.py /tmp/rizan-final/
+          mkdir -p /tmp/rizan-final/workflows
+          cp .github/workflows/research-full-frozen-parity.yml /tmp/rizan-final/workflows/
+          cp .github/workflows/research-full-frozen-tick-experiments.yml /tmp/rizan-final/workflows/
+          cp .github/workflows/research-full-frozen-final-report.yml /tmp/rizan-final/workflows/
+      - name: Independently verify ledgers, quarter parity and source settlement then package results
+        run: |
+          python research/full_frozen_parity/finalize_report.py /tmp/rizan-final 8fdfe44e2523dba77a4f37207c0feddd1f069dd9 39137064825
+          cd /tmp/rizan-final
+          sha256sum RIZAN_FROZEN_TICK_AUDIT.zip > PACKAGE_SHA256.txt
+      - name: Save final package only inside requested VPS research directory
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          target='Rizanrizan@202.74.74.172'
+          dest='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/full-frozen-parity-2019-2026'
+          ssh "${opts[@]}" "$target" "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" /tmp/rizan-final/RIZAN_FROZEN_TICK_AUDIT.zip /tmp/rizan-final/PACKAGE_SHA256.txt "$target:$dest/"
+          ssh "${opts[@]}" "$target" 'python3 -' <<'PY'
+          from pathlib import Path
+          import hashlib,zipfile,json
+          root=Path('/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/full-frozen-parity-2019-2026')
+          p=root/'RIZAN_FROZEN_TICK_AUDIT.zip'
+          wanted=(root/'PACKAGE_SHA256.txt').read_text().split()[0]
+          actual=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()
+          assert actual==wanted
+          with zipfile.ZipFile(p) as z:
+            assert all(not n.startswith('/') and '..' not in Path(n).parts for n in z.namelist())
+            z.extractall(root/'artifacts')
+          print(json.dumps({'vps_package_sha256':actual,'size_bytes':p.stat().st_size,'research_artifacts_saved':True}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RIZAN-FINAL-FROZEN-TICK-PARITY-2019-2026
+          path: |
+            /tmp/rizan-final/RIZAN_FROZEN_TICK_AUDIT.zip
+            /tmp/rizan-final/LAPORAN_RIZAN_TICK_2019_2026.md
+            /tmp/rizan-final/INDEPENDENT_RECONCILIATION.json
+            /tmp/rizan-final/PACKAGE_SHA256.txt
+          retention-days: 30
