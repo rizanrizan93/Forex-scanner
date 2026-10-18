@@ -15,12 +15,12 @@ jobs:
         shell: python
         run: |
           import urllib.request,lzma,struct,json,concurrent.futures
-          urls=[f'https://{host}/datafeed/{symbol}/{year}/{month}/07/12h_ticks.bi5' for host in ['datafeed.dukascopy.com','www.dukascopy.com'] for symbol in ['XAUUSD','EURUSD'] for year,month in [('2019','00'),('2025','00')]]
+          urls=['https://www.dukascopy.com/datafeed/XAUUSD/'+p for p in ['2019/00/07/13h_ticks.bi5','2019/00/08/12h_ticks.bi5','2019/00/02/12h_ticks.bi5','2025/05/12/12h_ticks.bi5','2026/00/05/12h_ticks.bi5']]
           def read(url):
             try:
               req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Accept':'*/*'})
               r=urllib.request.urlopen(req,timeout=20);data=r.read();raw=lzma.decompress(data) if data else b''
               return {'url':url,'status':r.status,'bytes':len(data),'ticks':len(raw)//20,'first':struct.unpack('>3I2f',raw[:20]) if raw else None}
             except Exception as e:return {'url':url,'error':type(e).__name__+':'+str(e)}
-          with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+          with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             for row in pool.map(read,urls):print('PUBLIC_SAMPLE '+json.dumps(row))
