@@ -1,0 +1,63 @@
+name: USDJPY 2016-Oct2026 Full D1 Million Replay
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths: [.github/workflows/usdjpy-2016-2026-full-million.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  full-continuous-d1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download independently dated daily OHLC through Oct 18 only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv,io,hashlib
+          from urllib.request import Request,urlopen
+          url='https://becoin.net/api/trading-asset-history?slug=usdjpy'
+          with urlopen(Request(url,headers={'User-Agent':'Mozilla/5.0','Accept':'text/csv'}),timeout=40) as r:
+            data=r.read()
+          records=list(csv.DictReader(io.StringIO(data.decode('utf-8-sig'))))
+          out=[]
+          for z in records:
+            d=z['Date']
+            if '2014-01-01'<=d<='2026-10-18':
+              try:
+                nums=[float(z[k]) for k in ('Open','High','Low','Close')]
+                if all(n>0 for n in nums) and nums[1]>=nums[2] and nums[2]<=min(nums[0],nums[3])<=nums[1]:
+                  out.append((d,*nums))
+              except (ValueError,TypeError,KeyError): pass
+          out.sort(key=lambda x:x[0])
+          if len(out)<2900 or out[0][0]>'2014-01-06' or out[-1][0]<'2026-10-14':
+            raise ValueError(f'FAIL_SOURCE_COVERAGE {len(out)} {out[0][0] if out else None}..{out[-1][0] if out else None}')
+          if len(set(x[0] for x in out))!=len(out):raise ValueError('DUPLICATE_DATES')
+          with open('usdjpy_D1_2014_to_2026_10_18.csv','w') as f:
+            w=csv.writer(f);w.writerow(['Date','Open','High','Low','Close']);w.writerows(out)
+          with open('input_audit.txt','w') as f:
+            f.write(f'source={url}\nrows={len(out)}\nfirst={out[0][0]}\nlast={out[-1][0]}\nraw_sha256={hashlib.sha256(data).hexdigest()}\n')
+          print('VERIFIED_DATE_RANGE',out[0][0],out[-1][0],'BARS',len(out),'RAW_SHA256',hashlib.sha256(data).hexdigest())
+          PY
+      - name: Compile and run million unique effective configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -O3 -std=c++17 research/usdjpy_2016_2026_full_million.cpp -o full_replay
+          ./full_replay usdjpy_D1_2014_to_2026_10_18.csv 2>&1 | tee replay.log
+          grep -q 'EVALUATED_UNIQUE=1000000' replay.log
+          grep -q '"last":"2026-10-18"' audit_summary.json
+          cat audit_summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rizan-usdjpy-2016-2026-10-18-1m
+          path: |
+            usdjpy_D1_2014_to_2026_10_18.csv
+            ranked_results.csv
+            audit_summary.json
+            input_audit.txt
+            replay.log
+          if-no-files-found: warn
