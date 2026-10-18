@@ -1,0 +1,73 @@
+name: Validate sample Parquet tick records on VPS
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths:
+      - .github/workflows/research-tick-sample-quality.yml
+permissions:
+  contents: read
+jobs:
+  inspect_sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read-only inspect Parquet sample schema, bid/ask and year coverage
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$tmp/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$tmp/hosts"
+          chmod 600 "$tmp/key"
+          ssh -i "$tmp/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$tmp/hosts" -o ConnectTimeout=20 Rizanrizan@202.74.74.172 'python3 -' <<'PY'
+          from pathlib import Path
+          import importlib.util
+          import hashlib
+          import json
+          import os
+          root = Path.home() / 'rizan-ticks'
+          files = list(root.glob('XAUUSD/*/*.parquet')) + list(root.glob('EURUSD/*/*.parquet'))
+          completed = len(files)
+          part = list(root.glob('XAUUSD/*/*.part')) + list(root.glob('EURUSD/*/*.part'))
+          print('PARQUET_FILES=',completed)
+          print('PARTIAL_FILES=',len(part))
+          print('PARQUET_BY_SYMBOL=', {s: len(list((root / s).glob('*/*.parquet'))) for s in ['XAUUSD','EURUSD']})
+          samples = [
+             root/'XAUUSD/2019/XAUUSD_2019-01.parquet',
+             root/'EURUSD/2019/EURUSD_2019-01.parquet',
+             root/'XAUUSD/2025/XAUUSD_2025-08.parquet',
+             root/'EURUSD/2025/EURUSD_2025-08.parquet',
+          ]
+          available = {mod:importlib.util.find_spec(mod) is not None for mod in ['pyarrow','pandas','duckdb']}
+          print('MODULES=',json.dumps(available))
+          pa = None
+          if available['pyarrow']:
+            import pyarrow.parquet as pq
+            pa = pq
+          for file in samples:
+            if not file.exists():
+              print('SAMPLE_NOT_READY=',file.name)
+              continue
+            with file.open('rb') as f:
+              magic = f.read(4)
+              f.seek(-4,os.SEEK_END)
+              footer = f.read(4)
+            print('SAMPLE=',file.name,'BYTES=',file.stat().st_size,'PARQUET_MAGIC=',magic==b'PAR1' and footer==b'PAR1')
+            if pa is not None:
+              metadata = pa.read_metadata(file)
+              print('PARQUET_ROWS=',metadata.num_rows,'PARQUET_ROWGROUPS=',metadata.num_row_groups,'SCHEMA=',str(metadata.schema)[:850].replace('\n',' | '))
+              table = pa.ParquetFile(file).iter_batches(batch_size=3)
+              head = next(table, None)
+              if head is not None:
+                print('TICK_SAMPLE=',str(head.to_pydict())[:1150])
+          status = root/'.jobs/archive_status.json'
+          if status.exists():
+            d=json.loads(status.read_text())
+            print('DOWNLOAD_STATUS=',d['state'],'DOWNLOADED=',d['downloaded'],'FAILED=',d['failed'],'LAST=',d['last_item'])
+          PY
