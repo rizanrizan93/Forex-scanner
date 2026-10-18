@@ -1,0 +1,83 @@
+name: RIZAN actual ticks frozen source partial parity experiments
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-full-frozen-tick-experiments.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract audited research bundle
+        run: tar -xzf research/full_frozen_parity/tick-engine.tgz -C research/full_frozen_parity
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas pyarrow matplotlib
+      - name: Compile actual-source tick adapter before waiting for data audit
+        run: RIZAN_COMPILE_ONLY=1 python research/full_frozen_parity/run_ticks.py --target unused --key unused --hosts unused --audit /tmp --out /tmp/build
+      - name: Require successful complete data audit and retrieve audited candles
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: rizanrizan93/Forex-scanner
+        run: |
+          gh run watch 39132263934 --exit-status --interval 30
+          gh run download 39132263934 --name frozen-source-full-tick-audit --dir /tmp/audited
+          python - <<'PY'
+          import json
+          a=json.load(open('/tmp/audited/results/data_quality.json'))
+          assert a['processed_files']==174
+          PY
+      - name: Execute pilot Q1 then continuous 87-month eight-scenario tick research
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          r='research/full_frozen_parity'
+          python "$r/run_ticks.py" --target Rizanrizan@202.74.74.172 --key "$d/key" --hosts "$d/hosts" --audit /tmp/audited/results --out "$r/pilot" --months 3
+          python "$r/run_ticks.py" --target Rizanrizan@202.74.74.172 --key "$d/key" --hosts "$d/hosts" --audit /tmp/audited/results --out "$r/replay_results"
+      - name: Reconcile and make reports
+        if: always()
+        run: python research/full_frozen_parity/report.py /tmp/audited/results research/full_frozen_parity
+      - name: Save all research artifacts into isolated VPS result folder
+        if: always()
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          dest='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/full-frozen-parity-2019-2026'
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" research/full_frozen_parity/RIZAN_FROZEN_TICK_AUDIT.zip "Rizanrizan@202.74.74.172:$dest/"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rizan-frozen-tick-partial-parity-results
+          path: |
+            research/full_frozen_parity/RIZAN_FROZEN_TICK_AUDIT.zip
+            research/full_frozen_parity/REPORT.md
+            research/full_frozen_parity/SUMMARY.json
+          retention-days: 30
