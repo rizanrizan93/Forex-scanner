@@ -1,0 +1,42 @@
+name: USDJPY 1M isolated compounding research
+on:
+  push:
+    branches:
+      - research/usdjpy-f0245-1m-20261018
+    paths:
+      - .github/workflows/usdjpy-f0245-1m-research.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download public USDJPY D1 history
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --retry 5 --retry-delay 3 "https://raw.githubusercontent.com/MithigaDM/FX-Data/main/USDJPY-10-year-daily-data.csv" -o usdjpy_daily.csv
+          test "$(wc -l < usdjpy_daily.csv)" -gt 9000
+          head -n 2 usdjpy_daily.csv
+          sha256sum usdjpy_daily.csv > source_data.sha256
+      - name: Compile research-only scanner
+        run: |
+          g++ -O3 -std=c++17 -Wall -Wextra research/usdjpy_f0245_inspired_1m.cpp -o usdjpy_scan
+      - name: Run exactly one million unique parameter combinations
+        run: |
+          ./usdjpy_scan usdjpy_daily.csv 2>&1 | tee scan.log
+          grep -q "EVALUATED_UNIQUE=1000000" scan.log
+          cat audit_summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: usdjpy-f0245-inspired-1m-d1-research
+          path: |
+            audit_summary.json
+            ranked_results.csv
+            scan.log
+            source_data.sha256
+          if-no-files-found: warn
