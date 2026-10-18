@@ -1,0 +1,26 @@
+name: Public tick provider diagnostics
+on:
+  push:
+    branches: [codex/native-tick-preflight-20261017]
+    paths: ['.github/workflows/public-tick-provider-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  read:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.actor == 'rizanrizan93'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Read public bid ask samples
+        shell: python
+        run: |
+          import urllib.request,lzma,struct,json,concurrent.futures
+          urls=[f'https://{host}/datafeed/{symbol}/{year}/{month}/07/12h_ticks.bi5' for host in ['datafeed.dukascopy.com','www.dukascopy.com'] for symbol in ['XAUUSD','EURUSD'] for year,month in [('2019','00'),('2025','00')]]
+          def read(url):
+            try:
+              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Accept':'*/*'})
+              r=urllib.request.urlopen(req,timeout=20);data=r.read();raw=lzma.decompress(data) if data else b''
+              return {'url':url,'status':r.status,'bytes':len(data),'ticks':len(raw)//20,'first':struct.unpack('>3I2f',raw[:20]) if raw else None}
+            except Exception as e:return {'url':url,'error':type(e).__name__+':'+str(e)}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            for row in pool.map(read,urls):print('PUBLIC_SAMPLE '+json.dumps(row))
