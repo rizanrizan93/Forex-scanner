@@ -1,8 +1,8 @@
 {
   "status": "AUDIT_RUNNING",
-  "processed_files": 12,
+  "processed_files": 24,
   "expected_files": 174,
-  "last_file": "EURUSD_2019-06.parquet",
-  "ticks_scanned": 30969788,
+  "last_file": "EURUSD_2019-12.parquet",
+  "ticks_scanned": 66004771,
   "fresh_vps_hashes_verified": 174
 }
