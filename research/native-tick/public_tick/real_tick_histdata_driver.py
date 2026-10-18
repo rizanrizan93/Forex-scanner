@@ -20,7 +20,7 @@ def download(item):
    except Exception as e:errors.append(type(e).__name__+':'+str(e));time.sleep(1)
  return item,None,{'symbol':symbol,'date':dt.isoformat(),'hour':h,'errors':errors}
 try:
- env=json.loads((repo/'research/native-tick/public-harness.sealed.json').read_text());env['ciphertext']=''.join((repo/'research/native-tick'/name).read_text().strip() for name in env['parts']);raw=AESGCM((root/'source-key').read_bytes()).decrypt(base64.b64decode(env['nonce']),base64.b64decode(env['ciphertext']),b'public-tick-harness-v1');folder=root/'source';folder.mkdir()
+ env=json.loads((repo/'research/native-tick'/os.environ.get('RIZAN_SOURCE_MANIFEST','public-harness.sealed.json')).read_text());env['ciphertext']=''.join((repo/'research/native-tick'/name).read_text().strip() for name in env['parts']);raw=AESGCM((root/'source-key').read_bytes()).decrypt(base64.b64decode(env['nonce']),base64.b64decode(env['ciphertext']),b'public-tick-harness-v1');folder=root/'source';folder.mkdir()
  with zipfile.ZipFile(io.BytesIO(raw)) as z:z.extractall(folder)
  out['source_hashes']={str(p.relative_to(folder)):hashlib.sha256(p.read_bytes()).hexdigest() for p in folder.rglob('*.cs')}
  if command(['dotnet','build',str(folder/'TickResearch.csproj'),'-c','Release','-o',str(root/'build')],'build',300)!=0:raise RuntimeError('COMPILE_FAILED')
@@ -29,12 +29,12 @@ try:
  rows=[]
  for symbol in ['EURUSD','XAUUSD']:
   data,audit=module.fetch(symbol);rows.extend(data);out['audit'].append(audit)
- out['downloaded_ticks']=len(rows);out['data_source']='HistData Generic ASCII bid/ask; sampled tick/one-second resolution; not full broker tick stream'
+ out['downloaded_ticks']=len(rows);out['data_source']='HistData Generic ASCII tick bid/ask with millisecond timestamps; public source, not native broker engine'
  rows.sort(key=lambda x:(x[0],x[1]));data=root/'quotes.bin'
  with data.open('wb') as f:
   for r in rows:f.write(struct.pack('<qBdd',*r))
  out['ticks_sha256']=hashlib.sha256(data.read_bytes()).hexdigest();out['TickCount']=len(rows)
- rc=command(['dotnet',str(root/'build/TickResearch.dll'),str(folder),str(data),str(root/'result.json')],'replay',1200)
+ rc=command(['dotnet',str(root/'build/TickResearch.dll'),str(folder),str(data),str(root/'result.json')],'replay',int(os.environ.get('RIZAN_REPLAY_TIMEOUT','1200')))
  if (root/'result.json').exists():out['result']=json.loads((root/'result.json').read_text())
 except Exception as e:out['error']=type(e).__name__+':'+str(e);out['traceback']=traceback.format_exc()
 finally:
