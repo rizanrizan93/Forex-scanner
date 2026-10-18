@@ -18,7 +18,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: rizanrizan93/Forex-scanner
-        run: gh run cancel 39135448129 || true
+        run: gh run cancel 39136601225 || true
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
@@ -60,7 +60,7 @@ jobs:
           chmod 600 "$d/key" "$d/hosts"
           r='research/full_frozen_parity'
           python "$r/run_ticks.py" --target Rizanrizan@202.74.74.172 --key "$d/key" --hosts "$d/hosts" --audit /tmp/audited/results --out "$r/pilot" --months 3
-          python "$r/run_ticks.py" --target Rizanrizan@202.74.74.172 --key "$d/key" --hosts "$d/hosts" --audit /tmp/audited/results --out "$r/replay_results"
+          RIZAN_PARALLEL_SCENARIOS=1 python "$r/run_ticks.py" --target Rizanrizan@202.74.74.172 --key "$d/key" --hosts "$d/hosts" --audit /tmp/audited/results --out "$r/replay_results"
       - name: Reconcile and make reports
         if: always()
         run: python research/full_frozen_parity/report.py /tmp/audited/results research/full_frozen_parity

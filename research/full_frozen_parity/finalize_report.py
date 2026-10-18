@@ -13,6 +13,9 @@ for p in files:
  d=json.loads(p.read_text())
  if 'Config' in d:reports[d['Config']['Name']]=d
 assert len(reports)==8
+base_summary=json.loads((root/'SUMMARY.json').read_text())
+assert base_summary['complete_eight_scenario_period'] and len(base_summary['pilot_reconciliation'])==8
+assert all(x['quarterly_state_replay_equal'] and x.get('serial_parallel_q1_ledger_equal',False) for x in base_summary['pilot_reconciliation'])
 quality=json.loads((root/'data_audit/data_quality.json').read_text());fresh=json.loads((root/'data_audit/fresh_vps_checksums.json').read_text())
 assert quality['processed_files']==174 and len(fresh)==174
 expected={f'{s}_{y}-{m:02}.parquet' for y in range(2019,2027) for m in range(1,13) if (y,m)<=(2026,3) for s in ['XAUUSD','EURUSD']}
