@@ -4,7 +4,7 @@ on:
     branches: [research/tick-archive-2019-2026]
     paths: [.github/workflows/research-full-frozen-tick-experiments.yml]
 permissions:
-  contents: read
+  contents: write
   actions: read
 jobs:
   replay:
@@ -28,8 +28,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: rizanrizan93/Forex-scanner
         run: |
-          gh run watch 39132263934 --exit-status --interval 30
-          gh run download 39132263934 --name frozen-source-full-tick-audit --dir /tmp/audited
+          gh run watch 39133031471 --exit-status --interval 30
+          gh run download 39133031471 --name frozen-source-full-tick-audit --dir /tmp/audited
           python - <<'PY'
           import json
           a=json.load(open('/tmp/audited/results/data_quality.json'))
@@ -37,6 +37,8 @@ jobs:
           PY
       - name: Execute pilot Q1 then continuous 87-month eight-scenario tick research
         env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: rizanrizan93/Forex-scanner
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
@@ -57,6 +59,8 @@ jobs:
       - name: Save all research artifacts into isolated VPS result folder
         if: always()
         env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: rizanrizan93/Forex-scanner
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
