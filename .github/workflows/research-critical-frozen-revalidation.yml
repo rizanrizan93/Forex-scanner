@@ -1,0 +1,85 @@
+name: RIZAN critical frozen tick revalidation
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-critical-frozen-revalidation.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  revalidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      GH_REPO: rizanrizan93/Forex-scanner
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy pandas pyarrow matplotlib
+      - name: Retrieve immutable prior results and first verified hourly evidence
+        run: |
+          gh run download 39139148589 --name RIZAN-FINAL-FROZEN-TICK-PARITY-2019-2026 --dir /tmp/final
+          python - <<'PY'
+          import zipfile,hashlib,pathlib
+          p=pathlib.Path('/tmp/final/RIZAN_FROZEN_TICK_AUDIT.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='241e1288889e57596202658b45dcb9e2711f77710645ca0c5d3eef52729d247c'
+          zipfile.ZipFile(p).extractall('/tmp/previous')
+          PY
+          gh run download 39170069211 --name RIZAN-CRITICAL-GAP-SOURCE-VERIFICATION --dir /tmp/gap-first
+          cp -a /tmp/gap-first/gap_repair research/critical_revalidation/
+          python research/critical_revalidation/prepare_revalidation.py
+      - name: Run frozen-source settlement portfolio and reconnect regression suites
+        run: python research/critical_revalidation/engine/build_tests.py --sdk "$DOTNET_ROOT"
+      - name: Replay all 87 months with corrected adapter and original audited data
+        run: RIZAN_REPLAY_MODES=control python research/critical_revalidation/execute_revalidation.py
+      - name: Retrieve completed original hourly retries without changing original data
+        run: |
+          gh run watch 39170473819 --exit-status --interval 30
+          gh run download 39170473819 --name RIZAN-CRITICAL-GAP-RETRY --dir /tmp/gap-retry
+          cp -a /tmp/gap-retry/gap_repair/. research/critical_revalidation/gap_repair/
+          python research/critical_revalidation/prepare_revalidation.py
+      - name: Replay all 87 months using same corrected adapter and verified partial overlay
+        run: RIZAN_REPLAY_MODES=patched python research/critical_revalidation/execute_revalidation.py
+      - name: Locked schedule and volume quote cost diagnostic
+        run: python research/critical_revalidation/locked_schedule.py
+      - name: Independent reconciliation and critical report
+        run: |
+          git rev-parse HEAD > research/critical_revalidation/COMMIT.txt
+          python research/critical_revalidation/finalize_critical.py
+      - name: Save isolated research package to VPS and verify checksum
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          dest='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/critical-frozen-revalidation-2019-2026'
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" research/critical_revalidation/RIZAN_CRITICAL_REVALIDATION.zip research/critical_revalidation/PACKAGE_SHA256.txt "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && sha256sum -c PACKAGE_SHA256.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-CRITICAL-FROZEN-REVALIDATION
+          path: |
+            research/critical_revalidation/RIZAN_CRITICAL_REVALIDATION.zip
+            research/critical_revalidation/LAPORAN_CRITICAL_REVALIDATION.md
+            research/critical_revalidation/BEFORE_VS_AFTER_AUDIT.csv
+            research/critical_revalidation/RECONCILIATION.json
+            research/critical_revalidation/PACKAGE_SHA256.txt
+            research/critical_revalidation/control_results/progress.log
+            research/critical_revalidation/patched_results/progress.log
+          retention-days: 90
