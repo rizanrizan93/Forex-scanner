@@ -1,0 +1,63 @@
+name: Archive research replay ledgers to isolated VPS folder
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths:
+      - .github/workflows/research-tick-save-ledgers-vps.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  save_research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Download completed Stage0 research artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: rizanrizan93/Forex-scanner
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/rizan-tick-ledgers/{normal,cost2}
+          gh run download 39127405263 --name rizan-real-tick-technical-stage0-2019-2026 --dir /tmp/rizan-tick-ledgers/normal
+          gh run download 39127548181 --name rizan-real-tick-technical-stage0-2019-2026-cost2 --dir /tmp/rizan-tick-ledgers/cost2
+          python3 - <<'PY'
+          import json
+          a=json.load(open('/tmp/rizan-tick-ledgers/normal/tick_portfolio_2019_2026_stage0.json'))
+          b=json.load(open('/tmp/rizan-tick-ledgers/cost2/tick_portfolio_2019_2026_stage0_cost2.json'))
+          for label,r in [('nominal',a),('cost2',b)]:
+              assert len(r['monthly'])==87 and r['period_end']=='2026-03'
+              assert abs(100+sum(t['pnl'] for t in r['ledger'])-r['end_balance_technical_stage0'])<.001
+              print('LEDGER_AUDIT_PASS',label,'basket_count',len(r['ledger']))
+          report=(
+              '# RIZAN REAL TICK TECHNICAL STAGE0 ONLY\\n\\n'
+              'These ledgers ARE NOT parity to production Settlement V1.1.1.\\n'
+              'XAU macro, later batch stages, EUR virtual feedback, cBot checkpoints and broker tiers are absent.\\n'
+              'DD based on adverse 1-minute extremes constructed from real Dukascopy bid/ask ticks.\\n'
+              'Review source on GitHub research/tick-archive-2019-2026.\\n'
+              'DO NOT use the outputs to change production sizing.\\n'
+          )
+          open('/tmp/rizan-tick-ledgers/README_STAGE0_RESEARCH.md','w').write(report)
+          PY
+      - name: SCP into tick archive only (no production service changes)
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          dir=$(mktemp -d)
+          trap 'rm -rf "$dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$dir/hosts"
+          chmod 600 "$dir/key"
+          ops=(-i "$dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$dir/hosts" -o ConnectTimeout=20)
+          target='Rizanrizan@202.74.74.172'
+          remote_dir='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/stage0-technical-2019-2026'
+          ssh "${ops[@]}" "$target" "umask 077; mkdir -p '$remote_dir'; chmod 700 '$remote_dir'"
+          scp "${ops[@]}" /tmp/rizan-tick-ledgers/normal/tick_portfolio_2019_2026_stage0.json "$target:$remote_dir/"
+          scp "${ops[@]}" /tmp/rizan-tick-ledgers/cost2/tick_portfolio_2019_2026_stage0_cost2.json "$target:$remote_dir/"
+          scp "${ops[@]}" /tmp/rizan-tick-ledgers/README_STAGE0_RESEARCH.md "$target:$remote_dir/"
+          ssh "${ops[@]}" "$target" "cd '$remote_dir'; sha256sum tick_portfolio_2019_2026_stage0.json tick_portfolio_2019_2026_stage0_cost2.json; du -sh ."
