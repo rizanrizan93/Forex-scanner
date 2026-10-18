@@ -1,0 +1,32 @@
+name: RIZAN raw-tick technical setup pilot (research only)
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-tick-setup-pilot.yml]
+permissions:
+  contents: read
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install independent research environment
+        run: python -m pip -q install 'pyarrow>=17,<24' 'pandas>=2.2,<3' 'numpy>=1.26,<3'
+      - name: Run raw tick XAU/EUR signal and first-batch diagnostic (no broker)
+        run: |
+          python research/tick_replay_2019/pilot_research.py \
+            --months 2019-01 2019-02 \
+            --out tick_pilot_results.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tick-setup-pilot-2019-jan-feb
+          path: tick_pilot_results.json
+          if-no-files-found: warn
+          retention-days: 30
