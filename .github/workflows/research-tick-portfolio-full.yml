@@ -1,0 +1,32 @@
+name: RIZAN full tick XAU EUR shared-cash stage0 research 2019-2026
+on:
+  push:
+    branches: [research/tick-archive-2019-2026]
+    paths: [.github/workflows/research-tick-portfolio-full.yml]
+permissions:
+  contents: read
+concurrency:
+  group: rizan-tick-stage0-full-2019-2026
+  cancel-in-progress: false
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip -q install 'pyarrow>=17,<24' 'pandas>=2.2,<3' 'numpy>=1.26,<3'
+      - name: Full sequential real-tick research 2019-Jan to 2026-Mar
+        run: |
+          python -u research/tick_replay_2019/portfolio_stage0.py \
+            --start 2019-01 --end 2026-03 --cost 1 \
+            --out tick_portfolio_2019_2026_stage0.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rizan-real-tick-technical-stage0-2019-2026
+          path: tick_portfolio_2019_2026_stage0.json
+          retention-days: 45
+          if-no-files-found: warn
