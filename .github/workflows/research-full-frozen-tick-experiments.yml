@@ -18,7 +18,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: rizanrizan93/Forex-scanner
-        run: gh run cancel 39133942969 || true
+        run: gh run cancel 39134259626 || true
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
