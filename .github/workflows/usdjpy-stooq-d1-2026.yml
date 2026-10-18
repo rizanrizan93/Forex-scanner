@@ -1,0 +1,50 @@
+name: USDJPY 2016-2026 D1 source validation
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths: [.github/workflows/usdjpy-stooq-d1-2026.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch Stooq USDJPY daily and verify date coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import urllib.request,csv,io,datetime,hashlib
+          urls=[
+              'https://stooq.com/q/d/l/?s=usdjpy&i=d&d1=20140101&d2=20261018',
+              'https://stooq.com/q/d/l/?s=usdjpy&d1=20140101&d2=20261018&i=d&ignore=.csv'
+          ]
+          for u in urls:
+              try:
+                  request=urllib.request.Request(u,headers={'User-Agent':'Mozilla/5.0'})
+                  with urllib.request.urlopen(request,timeout=40) as r: payload=r.read()
+                  content=payload.decode('utf-8-sig')
+                  rows=list(csv.DictReader(io.StringIO(content)))
+                  if not rows or not all(k in rows[0] for k in ['Date','Open','High','Low','Close']):
+                      raise RuntimeError('NOT_OHLC_CSV:'+content[:100])
+                  rows=[r for r in rows if r['Date']<='2026-10-18']
+                  dates=[r['Date'] for r in rows]
+                  if min(dates)>'2016-01-01' or max(dates)<'2026-10-14' or len(rows)<2500:
+                      raise RuntimeError(f'INSUFFICIENT_COVERAGE dates={min(dates)}..{max(dates)} bars={len(rows)}')
+                  with open('usdjpy_2014_20261018_stooq.csv','w') as out:
+                      w=csv.writer(out);w.writerow(['Date','Open','High','Low','Close'])
+                      for r in rows:w.writerow([r[k] for k in ['Date','Open','High','Low','Close']])
+                  print('VALID_D1_SOURCE dates=',min(dates),max(dates),'bars=',len(rows),'sha256=',hashlib.sha256(payload).hexdigest())
+                  break
+              except Exception as e:print('CANDIDATE_FAILED',type(e).__name__,str(e)[:250])
+          else: raise RuntimeError('NO_ACCEPTABLE_2016_2026_DATA')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: usdjpy-stooq-d1-2014-20261018
+          path: usdjpy_2014_20261018_stooq.csv
+          if-no-files-found: warn
