@@ -1,0 +1,41 @@
+name: USDJPY 2016-2026 verified OHLC daily
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths: [.github/workflows/usdjpy-becoin-d1-2026.yml]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and audit provider daily OHLC
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from urllib.request import Request,urlopen
+          from urllib.error import HTTPError
+          import csv,io,datetime,hashlib
+          url='https://becoin.net/api/trading-asset-history?slug=usdjpy'
+          request=Request(url,headers={'User-Agent':'Mozilla/5.0 (compatible; RizanUSDJPYBacktest/1.0)','Accept':'text/csv,*/*'})
+          with urlopen(request,timeout=50) as response:
+            data=response.read()
+            print('HTTP_STATUS',response.status,'TYPE',response.headers.get('Content-Type'),'BYTES',len(data))
+          payload=data.decode('utf-8-sig')
+          rows=list(csv.reader(io.StringIO(payload)))
+          print('SOURCE_HEADER',rows[0] if rows else '<none>')
+          print('SOURCE_HEAD',rows[1:3])
+          print('SOURCE_TAIL',rows[-3:])
+          if len(rows)<3000:raise RuntimeError('INSUFFICIENT_ROWS')
+          with open('usdjpy_full_source.csv','wb') as f:f.write(data)
+          print('SOURCE_SHA256',hashlib.sha256(data).hexdigest())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: usdjpy-becoin-ohlc-daily-unedited
+          path: usdjpy_full_source.csv
+          if-no-files-found: warn
