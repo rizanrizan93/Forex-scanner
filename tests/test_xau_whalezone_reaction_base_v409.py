@@ -114,3 +114,17 @@ def test_v409_missing_fvg_and_sweep_are_not_fabricated() -> None:
     assert result["model"]["missing_evidence_policy"] == (
         "RENORMALIZE_AVAILABLE_COMPONENTS_DO_NOT_INVENT"
     )
+
+
+def test_terminal_lifecycle_cannot_be_resurrected_by_active_condition() -> None:
+    stale = zone("LONG", 4130., 4140., zone_id="stale", condition="ACTIVE")
+    stale["lifecycle_state"] = "BROKEN"
+    nested = zone("SHORT", 4210., 4220., zone_id="nested", condition="ACTIVE")
+    nested["lifecycle"]["freshness"] = "INVALID"
+    good = zone("LONG", 4110., 4120., zone_id="good")
+    result = evaluate_whalezone_reaction_base_v409(
+        {"price_now": 4175., "active_zones": [stale, nested, good]}
+    )
+    assert [x["zone_id"] for x in result["buy_zones"]] == ["good"]
+    assert result["sell_zones"] == []
+    assert result["rejected_candidate_count"] >= 2
