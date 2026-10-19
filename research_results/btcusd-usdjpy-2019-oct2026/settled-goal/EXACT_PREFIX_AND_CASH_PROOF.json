@@ -1,0 +1,110 @@
+[
+  {
+    "symbol": "BTCUSD",
+    "variant": "POSITION",
+    "id": 792291,
+    "exact_baseline_ledger_prefix": true,
+    "cash_error": 4.18367562815547e-11,
+    "trades": 67,
+    "ending_cash": 105967.78548298623,
+    "all_future_entries_disabled_after_first_settled_goal": true,
+    "source_sha256": "e06a38d37c4188c771bf53fc64fd961fd563ebee798fb38c4d27ef5ec30ed336",
+    "canonical_data_sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504"
+  },
+  {
+    "symbol": "BTCUSD",
+    "variant": "POSITION",
+    "id": 960091,
+    "exact_baseline_ledger_prefix": true,
+    "cash_error": 5.189804141991772e-11,
+    "trades": 91,
+    "ending_cash": 121855.37873946762,
+    "all_future_entries_disabled_after_first_settled_goal": true,
+    "source_sha256": "e06a38d37c4188c771bf53fc64fd961fd563ebee798fb38c4d27ef5ec30ed336",
+    "canonical_data_sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504"
+  },
+  {
+    "symbol": "BTCUSD",
+    "variant": "POSITION",
+    "id": 483339,
+    "exact_baseline_ledger_prefix": true,
+    "cash_error": 2.9103830456733704e-11,
+    "trades": 81,
+    "ending_cash": 165268.61381023473,
+    "all_future_entries_disabled_after_first_settled_goal": true,
+    "source_sha256": "e06a38d37c4188c771bf53fc64fd961fd563ebee798fb38c4d27ef5ec30ed336",
+    "canonical_data_sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504"
+  },
+  {
+    "symbol": "BTCUSD",
+    "variant": "POSITION",
+    "id": 936995,
+    "exact_baseline_ledger_prefix": true,
+    "cash_error": 6.821210263296962e-11,
+    "trades": 123,
+    "ending_cash": 106549.66708310472,
+    "all_future_entries_disabled_after_first_settled_goal": true,
+    "source_sha256": "e06a38d37c4188c771bf53fc64fd961fd563ebee798fb38c4d27ef5ec30ed336",
+    "canonical_data_sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504"
+  },
+  {
+    "symbol": "BTCUSD",
+    "variant": "POSITION",
+    "id": 353879,
+    "exact_baseline_ledger_prefix": true,
+    "cash_error": 4.3655745685100555e-11,
+    "trades": 430,
+    "ending_cash": 106913.7058091294,
+    "all_future_entries_disabled_after_first_settled_goal": true,
+    "source_sha256": "e06a38d37c4188c771bf53fc64fd961fd563ebee798fb38c4d27ef5ec30ed336",
+    "canonical_data_sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504"
+  },
+  {
+    "symbol": "BTCUSD",
+    "variant": "POSITION",
+    "id": 817035,
+    "exact_baseline_ledger_prefix": true,
+    "cash_error": 4.092726157978177e-11,
+    "trades": 82,
+    "ending_cash": 199349.355214438,
+    "all_future_entries_disabled_after_first_settled_goal": true,
+    "source_sha256": "e06a38d37c4188c771bf53fc64fd961fd563ebee798fb38c4d27ef5ec30ed336",
+    "canonical_data_sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504"
+  },
+  {
+    "symbol": "BTCUSD",
+    "variant": "POSITION",
+    "id": 682607,
+    "exact_baseline_ledger_prefix": true,
+    "cash_error": 4.207769961794838e-06,
+    "trades": 72,
+    "ending_cash": 10978.89804,
+    "all_future_entries_disabled_after_first_settled_goal": false,
+    "source_sha256": "e06a38d37c4188c771bf53fc64fd961fd563ebee798fb38c4d27ef5ec30ed336",
+    "canonical_data_sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504"
+  },
+  {
+    "symbol": "USDJPY",
+    "variant": "GENERIC",
+    "id": 496711,
+    "exact_baseline_ledger_prefix": true,
+    "cash_error": 4.851408448303118e-06,
+    "trades": 295,
+    "ending_cash": 11285.80817,
+    "all_future_entries_disabled_after_first_settled_goal": false,
+    "source_sha256": "60d76417cd7dad87de52488e1f305f784802fee61f903b934fc785b0437c3940",
+    "canonical_data_sha256": "aa92c0d449860f86026df7840be9ab583be99aa017c7cac5abe546cfd84845b5"
+  },
+  {
+    "symbol": "USDJPY",
+    "variant": "GENERIC",
+    "id": 578508,
+    "exact_baseline_ledger_prefix": true,
+    "cash_error": 5.2998075261712074e-08,
+    "trades": 26,
+    "ending_cash": 2701.382131,
+    "all_future_entries_disabled_after_first_settled_goal": false,
+    "source_sha256": "60d76417cd7dad87de52488e1f305f784802fee61f903b934fc785b0437c3940",
+    "canonical_data_sha256": "aa92c0d449860f86026df7840be9ab583be99aa017c7cac5abe546cfd84845b5"
+  }
+]
