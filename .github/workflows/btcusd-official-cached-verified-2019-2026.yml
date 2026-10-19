@@ -1,0 +1,62 @@
+name: BTCUSD official full source verified from archived API responses
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/btcusd-official-cached-verified-2019-2026.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-OFFICIAL-FULL-1M-2019-2026
+          run-id: 39210897306
+          github-token: ${{ github.token }}
+          path: raw_snapshot
+      - name: Reuse all3813 original API responses and preserve old input
+        run: |
+          mkdir -p research_btc_jpy/data research_btc_jpy/primary_api
+          cp raw_snapshot/data/* research_btc_jpy/data/
+          cp raw_snapshot/primary_api/* research_btc_jpy/primary_api/
+          gzip -dk research_btc_jpy/data/BTCUSD_M1.csv.gz
+      - name: Build complete official source with timestamp checks
+        run: |
+          set -euo pipefail
+          python -u research_btc_jpy/primary_full_btc.py | tee research_btc_jpy/OFFICIAL_BUILD.log
+          python - <<'PY'
+          import json,pandas as pd,hashlib
+          p=json.load(open('research_btc_jpy/data/BTCUSD_OFFICIAL_FULL_PROVENANCE.json'))
+          a=json.load(open('research_btc_jpy/data/BTCUSD_AUDIT.json'))
+          assert p['status']=='OFFICIAL_OHLC_COMPLETE' and p['rows']==3811680 and p['missing_minutes']==0
+          assert len(p['requests'])==3813 and all(x['status']=='OK' for x in p['requests'])
+          assert a['rows']==3811680 and a['gap_count']==0 and len(a['months'])==87
+          assert hashlib.sha256(open('research_btc_jpy/data/BTCUSD_M1.csv','rb').read()).hexdigest()==a['sha256']
+          q=pd.DatetimeIndex(pd.to_datetime(pd.Series([25771680]),unit='m',utc=True)).as_unit('ns')
+          assert str(q[0])=='2019-01-01 00:00:00+00:00'
+          print('OFFICIAL_SOURCE_VERIFIED',p['rows'],p['source_comparison'])
+          PY
+          sha256sum research_btc_jpy/primary_full_btc.py research_btc_jpy/prepare.py > research_btc_jpy/data/SOURCE_SHA256.txt
+          git rev-parse HEAD > research_btc_jpy/data/COMMIT.txt
+      - name: Compress exact derived input
+        if: always()
+        run: gzip -f research_btc_jpy/data/BTCUSD_M1.csv || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BTCUSD-OFFICIAL-SOURCE-VERIFIED
+          path: |
+            research_btc_jpy/data/
+            research_btc_jpy/primary_api/
+            research_btc_jpy/primary_full_btc.py
+            research_btc_jpy/prepare.py
+            research_btc_jpy/OFFICIAL_BTC_PROTOCOL.md
+            research_btc_jpy/OFFICIAL_BUILD.log
+          compression-level: 1
+          retention-days: 30
