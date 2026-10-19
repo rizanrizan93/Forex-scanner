@@ -1,0 +1,58 @@
+name: BTC challenger289 decision audit
+on:
+  push:
+    branches: [research/btc-buysell-dd56-600k-2019-2026]
+    paths: [.github/workflows/btc-regime-decision.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  decision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 tabulate
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTC-ENTRY-EXIT-REGIME-AUDIT
+          run-id: 39339805695
+          github-token: ${{ github.token }}
+          path: downloaded
+      - name: Verify all source checksums and write decision package
+        run: python -u research_btc_jpy/finalize_btc_regime_decision.py
+      - name: Save isolated decision package to research VPS and verify
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-entry-exit-regime/review-$GITHUB_RUN_ID"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -l 24000 "${opts[@]}" decision_results/*.zip decision_results/LAPORAN_KEPUTUSAN*.md decision_results/CHALLENGER_289_CONFIG.json decision_results/PACKAGE_SHA256.txt "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c3 sha256sum -c PACKAGE_SHA256.txt" > decision_results/VPS_VERIFICATION.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BTC-CHALLENGER-289-AUDITED
+          path: |
+            decision_results/RIZAN_BTC_CHALLENGER_289_AUDITED.zip
+            decision_results/LAPORAN_KEPUTUSAN*.md
+            decision_results/CHALLENGER_289*.csv
+            decision_results/CHALLENGER_289*.json
+            decision_results/CHALLENGER_289*.png
+            decision_results/DECISION_PROVENANCE.json
+            decision_results/COMPARISON_WITH_BASELINE.csv
+            decision_results/PACKAGE_SHA256.txt
+            decision_results/VPS_VERIFICATION.txt
+          retention-days: 90
+          compression-level: 1
