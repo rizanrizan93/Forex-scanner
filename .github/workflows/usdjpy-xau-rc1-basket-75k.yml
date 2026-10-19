@@ -2,7 +2,7 @@ name: USDJPY XAU RC1-style 75K M1 basket study
 on:
   push:
     branches: [research/usdjpy-f0245-1m-20261018]
-    paths: [.github/workflows/usdjpy-xau-rc1-basket-75k.yml]
+    paths: [.github/workflows/usdjpy-xau-rc1-basket-75k.yml, research/usdjpy_xau_rc1_basket_75k.cpp]
   workflow_dispatch:
 permissions:
   contents: read
