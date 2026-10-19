@@ -16,7 +16,7 @@ jobs:
         run: |
           python - <<'PY'
           import subprocess,json,time
-          for rid in [39251677841,39252456294]:
+          for rid in [39251677841,39256137521]:
             for attempt in range(140):
               q=json.loads(subprocess.check_output(['gh','api','repos/rizanrizan93/Forex-scanner/actions/runs/'+str(rid)]))
               if q['status']=='completed':
@@ -35,7 +35,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: RIZAN-BTC-DD60-LEGACY-AUDITED
-          run-id: 39252456294
+          run-id: 39256137521
           github-token: ${{ github.token }}
           path: legacyrun
       - name: Verify all source manifests and assemble final report
@@ -90,3 +90,5 @@ jobs:
             final_review/*.txt
           compression-level: 1
           retention-days: 90
+
+# Uses recovered audit; original 157320 financial sizing records unchanged.
