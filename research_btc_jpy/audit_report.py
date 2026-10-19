@@ -5,7 +5,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 ROOT=pathlib.Path(__file__).resolve().parent
-symbol=sys.argv[1];r=ROOT/f'results_{symbol}';summary=json.loads((r/'SUMMARY.json').read_text());audit=json.loads((ROOT/'data'/f'{symbol}_AUDIT.json').read_text())
+symbol=sys.argv[1];r=ROOT/f'results_{symbol}';summary=json.loads((r/'SUMMARY.json').read_text());audit=json.loads((ROOT/'data'/f'{symbol}_AUDIT.json').read_text());direct=summary.get('execution_resolution')=='ALL_1000000_DIRECT_M1'
 v=pd.read_csv(r/'M1_VALIDATION.csv');base=v[v['case']=='BASE'].sort_values('equity',ascending=False)
 checks=[]
 def ck(name,value):
@@ -67,7 +67,7 @@ sections=[]
 for cid in dict.fromkeys(chosen):sections.append(f'### Candidate {cid}\n\n'+table(cases_for(cid),['case','equity','floating_dd','pf','trades','adds']))
 report=f'''# RIZAN {symbol} — 1,000,000 configurations, 2019–2026Q1
 
-**Status: EXPLORATORY / BROKER_NOT_VALIDATED.** Independent new strategy research, not frozen XAU/EUR parity. USD100 initial, no topups. 12 families, 1,000,000 unique active parameter combinations. Screen timeframes in minutes: {sorted(timeframes)}; shortlisted candidates rerun on actual minute OHLC. These are not real tick bid/ask replays.
+**Status: EXPLORATORY / BROKER_NOT_VALIDATED.** Independent new strategy research, not frozen XAU/EUR parity. USD100 initial, no topups. 12 families, 1,000,000 unique active parameter combinations. Signal timeframes in minutes: {sorted(timeframes)}. {'All1,000,000 configurations replayed directly on publishedM1OHLC, no coarser-bar preselection; global leaders stress-tested.' if direct else 'CoarserOHLC screening, followed by shortlistedM1reruns.'} These are not real tick bid/ask replays.
 
 Input: {summary['m1_rows']:,} M1 bars; {summary['first']}–{summary['last']} UTC;87months. Data statusPARTIAL, {audit['gap_count']:,} timestamp gaps; {str(len(audit.get('original_quarantined_conflicts',audit.get('conflicting_timestamps_quarantined',[]))))+' original conflicting source timestamps quarantined; exact duplicate OHLC collapsed, nominal year file ownership prevents overlap. Official API repairs, if performed, are separately identified in BTCUSD_PRIMARY_API_PROVENANCE.json.' if symbol=='BTCUSD' else 'Market-weekend gaps are not automatically certified as safe.'} No missing candles synthesized locally. All input hashes and raw source provenance included.
 
