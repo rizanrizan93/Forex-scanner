@@ -1,0 +1,66 @@
+[
+  {
+    "variant": "POSITION_HIGH",
+    "independent_cash_reconciliation": true,
+    "max_error": 3.54702933691442e-11,
+    "checks": [
+      {
+        "id": 1003440,
+        "cash_error": 3.54702933691442e-11,
+        "trades": 88
+      },
+      {
+        "id": 1003441,
+        "cash_error": 3.54702933691442e-11,
+        "trades": 88
+      },
+      {
+        "id": 1003442,
+        "cash_error": 3.54702933691442e-11,
+        "trades": 88
+      },
+      {
+        "id": 1003444,
+        "cash_error": 3.54702933691442e-11,
+        "trades": 88
+      },
+      {
+        "id": 1003449,
+        "cash_error": 3.54702933691442e-11,
+        "trades": 88
+      }
+    ]
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "independent_cash_reconciliation": true,
+    "max_error": 1.4842953532934189e-09,
+    "checks": [
+      {
+        "id": 1004209,
+        "cash_error": 1.4842953532934189e-09,
+        "trades": 63
+      },
+      {
+        "id": 1005275,
+        "cash_error": 3.055902197957039e-10,
+        "trades": 63
+      },
+      {
+        "id": 1005344,
+        "cash_error": 3.128661774098873e-10,
+        "trades": 63
+      },
+      {
+        "id": 1005413,
+        "cash_error": 3.128661774098873e-10,
+        "trades": 63
+      },
+      {
+        "id": 1005482,
+        "cash_error": 3.2741809263825417e-10,
+        "trades": 63
+      }
+    ]
+  }
+]
