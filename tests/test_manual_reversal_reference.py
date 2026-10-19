@@ -3,7 +3,7 @@ from pathlib import Path
 import ast,json
 import pandas as pd
 import pytest
-from fx_scanner.manual_reversal_map import CONTRACT,frame,project,build_plans,reversal_phase,validate,annotate_intraday_zone_risk
+from fx_scanner.manual_reversal_map import CONTRACT,frame,project,build_plans,reversal_phase,validate,annotate_intraday_zone_risk,derive_h2_from_h1,derive_h12_from_h4
 
 NOW=pd.Timestamp('2026-10-15T14:30Z')
 
@@ -152,3 +152,57 @@ def test_repeated_m15_contact_degrades_h1_zone_without_inventing_probability():
     assert z['lifecycle'] == 'DEGRADED'
     assert z['risk_state'] == 'REPEATED_TESTS'
     assert z['probability'] is None
+
+
+def test_h2_derived_only_from_two_completed_adjacent_h1_candles():
+    base=pd.Timestamp('2026-10-15T10:00Z')
+    rows=[
+        {'timestamp':(base+pd.Timedelta(hours=k)).isoformat(),
+         'open':100.+k, 'high':101.+k, 'low':99.+k, 'close':100.5+k}
+        for k in [0,1,2,3]]
+    derived=derive_h2_from_h1(rows,base+pd.Timedelta(hours=4))
+    assert len(derived)==2
+    assert derived[0]['timestamp']==base.isoformat()
+    assert derived[0]['low']==99. and derived[0]['high']==102.
+    assert len(derive_h2_from_h1(rows,base+pd.Timedelta(hours=3)))==1
+    missing=[x for x in rows if x['timestamp'] != (base+pd.Timedelta(hours=1)).isoformat()]
+    assert len(derive_h2_from_h1(missing,base+pd.Timedelta(hours=4)))==1
+
+
+def test_h12_derived_only_from_three_closed_h4_bars():
+    base=pd.Timestamp('2026-10-15T00:00Z')
+    rows=[{'timestamp':(base+pd.Timedelta(hours=4*k)).isoformat(),
+           'open':100.,'high':102.,'low':98.,'close':101.} for k in range(6)]
+    assert len(derive_h12_from_h4(rows,base+pd.Timedelta(hours=24)))==2
+    missing=rows[:2]+rows[3:]
+    assert len(derive_h12_from_h4(missing,base+pd.Timedelta(hours=24)))==1
+
+
+def test_h2_promotes_only_with_overlapping_h1_support():
+    z=project([zone(),zone('H2',low=99.,high=101.),zone('H4',low=95.,high=97.)],102.1)
+    f=candles()
+    f['H2']=frame([{'timestamp':NOW-pd.Timedelta(hours=2),
+                    'open':102., 'high':103., 'low':101., 'close':102.1}], 'H2', NOW)
+    p=build_plans(z,f,102.1,NOW)[0]
+    assert p['anchor']['timeframe']=='H2'
+    assert p['contexts_htf']['H4']['timeframe']=='H4'
+    z2=project([zone(),zone('H2',low=90.,high=92.)],102.1)
+    assert build_plans(z2,f,102.1,NOW)[0]['anchor']['timeframe']=='H1'
+
+
+def test_degraded_h2_does_not_replace_h1():
+    z=project([zone(),zone('H2',low=99.,high=101.,touch_count=3,lifecycle='DEGRADED')],102.1)
+    f=candles()
+    f['H2']=frame([{'timestamp':NOW-pd.Timedelta(hours=2),
+                    'open':102.,'high':103.,'low':101.,'close':102.1}], 'H2', NOW)
+    assert build_plans(z,f,102.1,NOW)[0]['anchor']['timeframe']=='H1'
+
+
+def test_new_high_timeframe_bars_must_be_closed_and_are_read_only():
+    now=pd.Timestamp('2026-10-19T14:30Z')
+    for tf, mins in [('D1',1440),('W1',10080)]:
+        last={'timestamp':(now-pd.Timedelta(minutes=mins-10)).isoformat(),
+              'open':100.,'high':101.,'low':99.,'close':100.}
+        assert frame([last],tf,now).empty
+    assert 'D1' in __import__('fx_scanner.manual_reversal_map',fromlist=['MINUTES']).MINUTES
+    assert 'W1' in __import__('fx_scanner.manual_reversal_map',fromlist=['MINUTES']).MINUTES

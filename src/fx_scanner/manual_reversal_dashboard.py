@@ -13,13 +13,14 @@ PHASES={
  'MENUNGGU_BREAK_M5':'Reclaim M15 terlihat · menunggu break M5',
  'KONFIRMASI_STRUKTUR':'Konfirmasi M15 → M5 teramati',
  'KONFLIK_H1_H4':'Konflik demand dan supply H1/H4',
+ 'KONFLIK_STRUKTUR_H1_H2_H4':'Zona BUY/SELL H1/H2/H4 bertumpang tindih',
  'DATA_KONFIRMASI_BELUM_LENGKAP':'Candle konfirmasi belum lengkap / terlambat',
  'KONFIRMASI_LAMA':'Konfirmasi lama · tunggu pengujian ulang',
  'KONFIRMASI_BATAL':'Konfirmasi dibatalkan harga berikutnya',
  'RECLAIM_LAMA_TUNGGU_ULANG':'Reclaim lama · tunggu pengujian ulang',
  'GERAK_SUDAH_BERJALAN':'Harga sudah bergerak dari konfirmasi',
  'LEWATI_BATAS_SKENARIO':'Harga melewati batas skenario',
- 'TEMBUS_SEMENTARA_TUNGGU_TF_ASAL':'Tembus sementara · tunggu penutupan candle H1/H4 dan reclaim M15',
+ 'TEMBUS_SEMENTARA_TUNGGU_TF_ASAL':'Tembus sementara · tunggu penutupan candle asal dan reclaim M15',
 }
 
 def read_json(url):
@@ -69,28 +70,34 @@ def render_snapshot(snapshot):
         with col:
             st.markdown('#### '+('Kandidat demand · BUY' if side=='BUY' else 'Kandidat supply · SELL'))
             if side not in plans:
-                st.info('Belum ada acuan H1/H4 yang aktif dan datanya cukup baru pada sisi harga ini.');continue
+                st.info('Belum ada acuan H1/H2/H4 yang aktif dan datanya cukup baru pada sisi harga ini.');continue
             plan=plans[side];z=plan['anchor'];phase=plan['phase'];label=PHASES.get(phase,'Menunggu pemeriksaan data')
             if phase=='KONFIRMASI_STRUKTUR':st.info(label+' · periksa ulang chart sebelum keputusan manual')
-            elif phase in {'KONFLIK_H1_H4','LEWATI_BATAS_SKENARIO','KONFIRMASI_BATAL','TEMBUS_SEMENTARA_TUNGGU_TF_ASAL'}:st.warning(label)
+            elif phase in {'KONFLIK_H1_H4','KONFLIK_STRUKTUR_H1_H2_H4','LEWATI_BATAS_SKENARIO','KONFIRMASI_BATAL','TEMBUS_SEMENTARA_TUNGGU_TF_ASAL'}:st.warning(label)
             else:st.write('**'+label+'**')
             st.metric('Area acuan '+z['timeframe'],f"{z['low']:,.2f}–{z['high']:,.2f}")
             st.caption('Terbentuk '+wib(z['available_at'])+' · '+('belum ada retest teramati' if z['touch_count']==0 else f"{z['touch_count']} episode retest teramati")
                        +' · sumber hitung '+str(z.get('touch_count_source') or 'SOURCE_TF'))
             if z.get('risk_state') == 'PENDING_PARENT_CLOSE':
-                st.warning('Batas skenario ditembus sebelum konfirmasi close H1/H4; zona dikarantina sebagai acuan reversal sampai ada reclaim/penutupan sumber.')
+                st.warning('Batas skenario ditembus sebelum penutupan candle timeframe asal; zona dikarantina sampai konfirmasi/reclaim.')
             elif z.get('lifecycle') == 'DEGRADED':
                 st.warning('Zona sudah diuji berulang kali; perlakukan sebagai zona melemah, bukan fresh demand/supply.')
             st.write(f"Batas skenario: **{z['invalidation']:,.2f}**")
+            if z['timeframe']=='H2':
+                st.caption('H2 diprioritaskan hanya bila demand/supply H1 searah beririsan, H2 belum melemah, dan sumber H1 lengkap.')
             st.caption(plan['invalidation_rule']+' Batas ini bukan SL order yang telah dipasang.')
             target=plan.get('target_reference')
-            if target is None:st.write('Level lawan H1/H4 di depan harga: belum tersedia.')
+            if target is None:st.write('Level lawan H1/H2/H4 di depan harga: belum tersedia.')
             else:
-                st.write(f"Level lawan H1/H4: **{target:,.2f}**")
+                st.write(f"Level lawan H1/H2/H4: **{target:,.2f}**")
                 st.caption(f"Jarak dari harga snapshot: ${plan['target_distance_usd']:,.2f} per ounce. Referensi tujuan, bukan jaminan TP tercapai.")
             context=plan.get('context_h4')
             if context and context['zone_id']!=z['zone_id']:
                 st.caption(f"Konteks H4: {context['low']:,.2f}–{context['high']:,.2f}")
+            for tf, ctx in (plan.get('contexts_htf') or {}).items():
+                if tf == 'H4' or not ctx:
+                    continue
+                st.caption(f"Konteks {tf} {ctx['direction']}: {ctx['low']:,.2f}–{ctx['high']:,.2f} · bukan trigger entry")
             if z['overlap'] and not z['major_conflict']:st.caption('Ada irisan dengan zona mikro sisi lawan; arah mikro masih perlu dikonfirmasi.')
             if plan.get('rejection_m15_at'):st.write('Reclaim M15: '+wib(plan['rejection_m15_at']))
             if plan.get('confirmation_m5_at'):
@@ -99,8 +106,8 @@ def render_snapshot(snapshot):
             for tf in ['M15','M5']:
                 refs=[x for x in plan['refinements'] if x['timeframe']==tf]
                 if refs:st.caption(tf+' refinement: '+', '.join(f"{x['low']:,.2f}–{x['high']:,.2f}" for x in refs[:2]))
-    st.caption('H1 adalah acuan terdekat, H4 konteks lebih besar; keduanya bukan label probabilitas. M15 memvalidasi reaksi, M5 memeriksa perubahan struktur lokal setelah M15 selesai.')
-    with st.expander('Peta semua timeframe dan usia data',expanded=False):
+    st.caption('Acuan utama: H1 / H2 terkonfirmasi irisan H1; H4 fallback struktural. H12/D1/W1 konteks besar, bukan trigger. Reclaim M15 dan break M5 tetap wajib untuk referensi manual. PF bruto historis bukan estimasi laba live.')
+    with st.expander('Peta semua timeframe (H1/H2/H4/H12/D1/W1/M15/M5) dan usia data',expanded=False):
         rows=[{'TF':z['timeframe'],'Arah':z['direction'],'Bawah':round(z['low'],2),'Atas':round(z['high'],2),
             'Batas skenario':round(z['invalidation'],2),'Posisi':z['position'],'Lifecycle':z.get('lifecycle'),'Risiko break':z.get('risk_state'),
             'Sentuhan':z['touch_count'],'Sumber sentuhan':z.get('touch_count_source'),
@@ -109,13 +116,14 @@ def render_snapshot(snapshot):
         st.dataframe(rows,hide_index=True,width='stretch')
         for tf,at in p.get('timeframe_closed_at',{}).items():st.caption(tf+' · close '+wib(at)+' · '+('cukup baru' if p.get('timeframe_fresh',{}).get(tf) else 'belum lengkap / terlambat'))
         st.download_button('Unduh peta manual JSON',json.dumps(p,indent=2),file_name='RIZAN_XAU_Manual_Reversal.json',mime='application/json',key='manual_reversal_json')
+    st.caption('Benchmark first-touch historis 2019–Maret 2026 (Dukascopy M1 turunan tick, target 1 ATR, 24 jam): PF bruto H2 OOS sekitar 1,21; belum termasuk biaya, banyak sinyal belum diuji sebagai order, bukan win-rate entry manual.')
     st.caption('Pemetaan struktural untuk keputusan manual. Probabilitas reversal dan keuntungan belum terkalibrasi; jarak gerak $10–$100 bukan target yang dijanjikan.')
 
 
 def _render():
     import streamlit as st
     st.subheader('Titik reversal · acuan manual XAU')
-    st.caption('Peta H4/H1 → reaksi M15 → konfirmasi M5 · terpisah dari strategi dan order cBot')
+    st.caption('H1/H2 anchor · H4/H12/D1/W1 konteks · M15 reclaim · M5 refinement · sepenuhnya terpisah dari order cBot')
     load=st.cache_data(ttl=60,show_spinner=False)(fetch_manual_map)
     if st.button('Perbarui tampilan',key='manual_reversal_refresh'):
         load.clear()

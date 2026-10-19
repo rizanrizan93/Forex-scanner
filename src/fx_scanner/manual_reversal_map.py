@@ -5,8 +5,12 @@ import math
 import pandas as pd
 
 CONTRACT = 'RIZAN_XAU_MANUAL_REVERSAL_MAP_V2'
-MINUTES = {'H4':240, 'H1':60, 'M15':15, 'M5':5, 'M1':1}
-MAX_AGE_HOURS = {'H4':1440, 'H1':504, 'M15':72, 'M5':24}
+MINUTES = {'W1':10080, 'D1':1440, 'H12':720, 'H4':240, 'H2':120, 'H1':60, 'M15':15, 'M5':5, 'M1':1}
+MAX_AGE_HOURS = {'W1':8760, 'D1':4320, 'H12':2160, 'H4':1440, 'H2':720, 'H1':504, 'M15':72, 'M5':24}
+TF_PRIORITY = ('H1', 'H2', 'H4', 'H12', 'D1', 'W1', 'M15', 'M5')
+STRUCTURAL_TFS = frozenset(('H1','H2','H4','H12','D1','W1'))
+CONTEXT_TFS = ('H4', 'H12', 'D1', 'W1')
+ANCHOR_TFS = frozenset(('H1','H2','H4'))
 
 def timestamp(value):
     p=pd.Timestamp(value)
@@ -24,6 +28,48 @@ def frame(rows, tf, now):
     if not all(math.isfinite(x) for x in f[cols[1:]].to_numpy().ravel()):raise ValueError('Harga candle tidak finite')
     if ((f.low<=0)|(f.high<f[['open','close','low']].max(axis=1))|(f.low>f[['open','close','high']].min(axis=1))).any():raise ValueError('Geometri OHLC tidak valid')
     return f.loc[f.timestamp+pd.Timedelta(minutes=MINUTES[tf])<=timestamp(now)].sort_values('timestamp').reset_index(drop=True)
+
+def derive_h2_from_h1(rows, now):
+    """Construct only fully completed, contiguous H2 bars from native H1.
+
+    Missing one of the two closed H1 candles invalidates the corresponding H2.
+    UTC midnight is the fixed aggregation anchor used in historical replay.
+    """
+    f = frame(rows, 'H1', now)
+    if f.empty:
+        return []
+    h = f.set_index('timestamp').resample('2h', label='left', closed='left').agg(
+        open=('open', 'first'), high=('high', 'max'),
+        low=('low', 'min'), close=('close', 'last'), count=('close', 'size'),
+    )
+    h = h.loc[h['count'] == 2].drop(columns=['count'])
+    # Exact one-hour separation is required, not just two sparse rows.
+    present = set(f['timestamp'])
+    h = h.loc[[ts in present and ts + pd.Timedelta(hours=1) in present for ts in h.index]]
+    return [{'timestamp': ts.isoformat(),
+             'open': float(row['open']), 'high': float(row['high']),
+             'low': float(row['low']), 'close': float(row['close'])}
+            for ts, row in h.iterrows() if ts + pd.Timedelta(hours=2) <= timestamp(now)]
+
+
+def derive_h12_from_h4(rows, now):
+    """Closed H12 context from three adjacent native H4 candles."""
+    f = frame(rows, 'H4', now)
+    if f.empty:
+        return []
+    h = f.set_index('timestamp').resample('12h', label='left', closed='left').agg(
+        open=('open', 'first'), high=('high', 'max'),
+        low=('low', 'min'), close=('close', 'last'), count=('close', 'size'),
+    )
+    present = set(f['timestamp'])
+    h = h.loc[h['count'] == 3].drop(columns=['count'])
+    h = h.loc[[all(ts + pd.Timedelta(hours=4*i) in present for i in range(3))
+               for ts in h.index]]
+    return [{'timestamp': ts.isoformat(),
+             'open': float(row['open']), 'high': float(row['high']),
+             'low': float(row['low']), 'close': float(row['close'])}
+            for ts, row in h.iterrows() if ts + pd.Timedelta(hours=12) <= timestamp(now)]
+
 
 def detect(rows, tf, now):
     f=frame(rows,tf,now)
@@ -55,7 +101,9 @@ def detect(rows, tf, now):
             'available_at':available.isoformat(),'origin_at':f.iloc[i-count].timestamp.isoformat(),
             'touch_count':touches,'lifecycle':'FRESH' if touches==0 else 'RETESTED',
             'structural_bos':bos,'base_bars':count,'atr':a,'source_type':'BASE_DISPLACEMENT',
-            'role':'UTAMA' if tf in {'H4','H1'} else 'REAKSI / REFINEMENT','probability':None})
+            'role':('UTAMA' if tf in ANCHOR_TFS else
+                        'KONTEKS HTF' if tf in STRUCTURAL_TFS else 'REAKSI / REFINEMENT'),
+            'probability':None})
     return zones
 
 def project(zones, price):
@@ -70,15 +118,15 @@ def project(zones, price):
         z['eligible']=bool(low<=price if buy else high>=price)
         z['position']='DI ZONA' if low<=price<=high else 'DI BAWAH HARGA' if high<price else 'DI ATAS HARGA'
         z['overlap']=any(x['direction']!=z['direction'] and max(low,x['low'])<min(high,x['high']) for x in rows)
-        z['major_conflict']=any(x['direction']!=z['direction'] and x['timeframe'] in {'H4','H1'} and max(low,x['low'])<min(high,x['high']) for x in rows)
+        z['major_conflict']=any(x['direction']!=z['direction'] and x['timeframe'] in ANCHOR_TFS and max(low,x['low'])<min(high,x['high']) for x in rows)
         # A target behind the actual snapshot price has already been passed.
-        opposing=[x for x in rows if x['direction']!=z['direction'] and x['timeframe'] in {'H4','H1'} and (x['low']>max(high,price) if buy else x['high']<min(low,price))]
+        opposing=[x for x in rows if x['direction']!=z['direction'] and x['timeframe'] in ANCHOR_TFS and (x['low']>max(high,price) if buy else x['high']<min(low,price))]
         opposing.sort(key=lambda x:x['low'] if buy else -x['high'])
         target=(opposing[0]['low'] if buy else opposing[0]['high']) if opposing else None
         z.update(tp1_reference=target,target_structural=target,confirmation_required='Reclaim M15 selesai, lalu break tiga candle lokal M5 setelahnya.',probability=None)
-    rows.sort(key=lambda z:(z['distance'],['H4','H1','M15','M5'].index(z['timeframe']),z['available_at']))
+    rows.sort(key=lambda z:(z['distance'],TF_PRIORITY.index(z['timeframe']),z['available_at']))
     selected=[]
-    for tf in ['H4','H1','M15','M5']:
+    for tf in TF_PRIORITY:
         for side in ['BUY','SELL']:
             group=[x for x in rows if x['timeframe']==tf and x['direction']==side]
             # Eligibility precedes the cap: two above-price BUY zones cannot hide demand below price.
@@ -96,7 +144,7 @@ def annotate_intraday_zone_risk(zones, m15, price):
     for z in zones:
         z['risk_state'] = 'NORMAL'
         z['touch_count_source'] = 'SOURCE_TF'
-        if z['timeframe'] not in {'H1', 'H4'}:
+        if z['timeframe'] not in ANCHOR_TFS:
             continue
         if not m15.empty:
             available = timestamp(z['available_at'])
@@ -180,15 +228,30 @@ def reversal_phase(zone, frames, price, now):
 def build_plans(zones,frames,price,now):
     plans=[]
     for side in ['BUY','SELL']:
-        eligible=[z for z in zones if z['direction']==side and z['eligible'] and z['timeframe'] in {'H4','H1'} and _fresh_frame(frames.get(z['timeframe'],pd.DataFrame()),z['timeframe'],now)]
-        # H1 is the actionable anchor; H4 supplies larger context, not a fake confidence boost.
-        eligible.sort(key=lambda z:(z['timeframe']!='H1',z['distance']))
+        eligible=[z for z in zones if z['direction']==side and z['eligible'] and
+                  z['timeframe'] in ANCHOR_TFS and
+                  z.get('risk_state') != 'PENDING_PARENT_CLOSE' and
+                  _fresh_frame(frames.get(z['timeframe'],pd.DataFrame()),z['timeframe'],now)]
         if not eligible:continue
-        anchor=eligible[0];same=[z for z in eligible if z['timeframe']=='H4']
+        # Keep the causal H1 base. Promote a clean H2 only when it agrees with
+        # an overlapping H1 zone; this is not an optimized entry rule.
+        h1=sorted((z for z in eligible if z['timeframe']=='H1'),key=lambda z:z['distance'])
+        h2=sorted((z for z in eligible if z['timeframe']=='H2' and
+                    z.get('lifecycle')!='DEGRADED' and z.get('touch_count',0)<=1),
+                    key=lambda z:z['distance'])
+        endorsed=[z for z in h2 if any(max(z['low'],u['low'])<=min(z['high'],u['high']) for u in h1)]
+        fallback=sorted(eligible,key=lambda z:(TF_PRIORITY.index(z['timeframe']),z['distance']))
+        anchor=(endorsed or h1 or h2 or fallback)[0]
+        same=[z for z in zones if z['direction']==side and z['timeframe']=='H4' and
+              _fresh_frame(frames.get('H4',pd.DataFrame()),'H4',now)]
         context=min(same,key=lambda z:z['distance']) if same else None
+        contexts={tf:min((z for z in zones if z['direction']==side and z['timeframe']==tf),
+                         key=lambda z:z['distance'], default=None)
+                  for tf in CONTEXT_TFS}
         refinements=[z for z in zones if z['direction']==side and z['timeframe'] in {'M15','M5'} and _fresh_frame(frames.get(z['timeframe'],pd.DataFrame()),z['timeframe'],now) and max(z['low'],anchor['low'])<min(z['high'],anchor['high'])]
         phase=reversal_phase(anchor,frames,price,now)
         plans.append({'direction':side,'anchor':anchor,'context_h4':context,
+             'contexts_htf':contexts,
             'refinements':refinements,'target_reference':anchor['target_structural'],
             'target_distance_usd':abs(anchor['target_structural']-price) if anchor['target_structural'] is not None else None,
             'invalidation_rule':'Close '+anchor['timeframe']+' melewati batas skenario.',
@@ -203,8 +266,14 @@ def evaluate(bars, *, now=None):
         'probability':None,'zones':[],'plans':[],'state':'DATA_UNAVAILABLE'}
     if m1.empty:return payload
     last=m1.iloc[-1];close_time=last.timestamp+pd.Timedelta(minutes=1);price=float(last.close)
-    frames={tf:frame(bars.get(tf,[]),tf,now) for tf in ['H4','H1','M15','M5']}
-    raw=[z for tf in frames for z in detect(bars.get(tf,[]),tf,now)]
+    # Optional higher-TF context cannot degrade the existing source frames.
+    enriched=dict(bars)
+    if not enriched.get('H2') and enriched.get('H1'):
+        enriched['H2']=derive_h2_from_h1(enriched['H1'],now)
+    if not enriched.get('H12') and enriched.get('H4'):
+        enriched['H12']=derive_h12_from_h4(enriched['H4'],now)
+    frames={tf:frame(enriched.get(tf,[]),tf,now) for tf in TF_PRIORITY}
+    raw=[z for tf in frames if tf!='M1' for z in detect(enriched.get(tf,[]),tf,now)]
     zones=annotate_intraday_zone_risk(project(raw,price),frames['M15'],price)
     age=(now-close_time).total_seconds();fresh=0<=age<=420
     return {**payload,'state':'MAP_AVAILABLE' if fresh else 'STALE_PRICE','price':price,
@@ -239,7 +308,7 @@ def validate(payload, *, now=None):
     indexed={z['zone_id']:z for z in p.get('zones',[])}
     for plan in p.get('plans',[]):
         anchor=plan.get('anchor') or {}
-        if anchor.get('zone_id') not in indexed or anchor!=indexed[anchor['zone_id']] or anchor.get('timeframe') not in {'H4','H1'} or not anchor.get('eligible') or plan.get('direction')!=anchor.get('direction'):
+        if anchor.get('zone_id') not in indexed or anchor!=indexed[anchor['zone_id']] or anchor.get('timeframe') not in ANCHOR_TFS or not anchor.get('eligible') or plan.get('direction')!=anchor.get('direction'):
             raise ValueError('Acuan utama harus H4/H1 yang valid')
         if plan.get('execution_authority') is not False or plan.get('execution_influence') is not False or plan.get('probability') is not None:raise ValueError('Rencana manual tidak boleh mengatur eksekusi')
         for field in ['rejection_m15_at','confirmation_m5_at']:
