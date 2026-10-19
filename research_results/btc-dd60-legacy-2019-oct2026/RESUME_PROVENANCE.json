@@ -1,0 +1,8 @@
+{
+  "original_sizing_run": 39252456294,
+  "original_sizing_commit": "0d6c1065aff3cfb6c838372dada44e097f193b7e",
+  "checkpoint_sha256": "7d97759d0bc498d64e9c81380a0526a7a4b2ca7be1093eb55cf5baa8fadb0e4e",
+  "rows_unchanged": 157320,
+  "failure_reason": "Legacy BASE-only reconciler scanned newly added stress ledgers and compared their balance to BASE. Filter now restricts BASE files, while separate all-case reconciler verifies every scenario. No tolerance or financial execution changes.",
+  "original_seeds_reverified": true
+}
