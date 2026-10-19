@@ -86,6 +86,50 @@ def project(zones, price):
     return selected
 
 
+def annotate_intraday_zone_risk(zones, m15, price):
+    """Supplement parent-TF lifecycle with *closed* M15 evidence.
+
+    A temporary M1/M15 breach is quarantined for manual reversal selection,
+    not declared a terminal H1/H4 break until its source candle closes.
+    Does not make a trade decision or estimate a reversal probability.
+    """
+    for z in zones:
+        z['risk_state'] = 'NORMAL'
+        z['touch_count_source'] = 'SOURCE_TF'
+        if z['timeframe'] not in {'H1', 'H4'}:
+            continue
+        if not m15.empty:
+            available = timestamp(z['available_at'])
+            # M15 timestamps denote OPEN times: count candles that closed
+            # *after* the source zone became available.
+            completed = m15.loc[m15.timestamp + pd.Timedelta(minutes=15) > available]
+            if not completed.empty:
+                inside = (completed.high >= z['low']) & (completed.low <= z['high'])
+                episodes = int((inside & ~inside.shift(fill_value=False)).sum())
+                z['touch_count'] = max(int(z.get('touch_count', 0)), episodes)
+                z['touch_count_source'] = 'MAX_SOURCE_AND_M15_EPISODES'
+                last = completed.iloc[-1]
+                # Source-TF invalidation remains in detect(); this is a
+                # nonterminal caution while the H1/H4 candle is forming.
+                m15_breach = (last.close < z['invalidation'] if z['direction'] == 'BUY'
+                              else last.close > z['invalidation'])
+                if m15_breach:
+                    z['risk_state'] = 'PENDING_PARENT_CLOSE'
+        breached_price = (price < z['invalidation'] if z['direction'] == 'BUY'
+                          else price > z['invalidation'])
+        if breached_price:
+            z['risk_state'] = 'PENDING_PARENT_CLOSE'
+        if z['touch_count'] >= 3:
+            z['lifecycle'] = 'DEGRADED'
+            if z['risk_state'] == 'NORMAL':
+                z['risk_state'] = 'REPEATED_TESTS'
+        elif z['touch_count'] > 0:
+            z['lifecycle'] = 'RETESTED'
+        else:
+            z['lifecycle'] = 'FRESH'
+    return zones
+
+
 def _fresh_frame(f, tf, now):
     if f.empty:return False
     closed=f.iloc[-1].timestamp+pd.Timedelta(minutes=MINUTES[tf])
@@ -98,6 +142,8 @@ def reversal_phase(zone, frames, price, now):
     out={'phase':'MENUNGGU_HARGA','rejection_m15_at':None,'confirmation_m5_at':None,
          'confirmation_reference':None,'probability':None}
     if zone.get('major_conflict'):return {**out,'phase':'KONFLIK_H1_H4'}
+    if zone.get('risk_state') == 'PENDING_PARENT_CLOSE':
+        return {**out,'phase':'TEMBUS_SEMENTARA_TUNGGU_TF_ASAL'}
     if side*(price-zone['invalidation'])<=0:return {**out,'phase':'LEWATI_BATAS_SKENARIO'}
     if not all(_fresh_frame(frames.get(tf,pd.DataFrame()),tf,now) for tf in ['M15','M5']):
         return {**out,'phase':'DATA_KONFIRMASI_BELUM_LENGKAP'}
@@ -158,7 +204,8 @@ def evaluate(bars, *, now=None):
     if m1.empty:return payload
     last=m1.iloc[-1];close_time=last.timestamp+pd.Timedelta(minutes=1);price=float(last.close)
     frames={tf:frame(bars.get(tf,[]),tf,now) for tf in ['H4','H1','M15','M5']}
-    raw=[z for tf in frames for z in detect(bars.get(tf,[]),tf,now)];zones=project(raw,price)
+    raw=[z for tf in frames for z in detect(bars.get(tf,[]),tf,now)]
+    zones=annotate_intraday_zone_risk(project(raw,price),frames['M15'],price)
     age=(now-close_time).total_seconds();fresh=0<=age<=420
     return {**payload,'state':'MAP_AVAILABLE' if fresh else 'STALE_PRICE','price':price,
         'price_observed_at':close_time.isoformat(),'zones':zones,
