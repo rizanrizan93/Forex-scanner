@@ -101,7 +101,7 @@ def detect(rows, tf, now):
             'available_at':available.isoformat(),'origin_at':f.iloc[i-count].timestamp.isoformat(),
             'touch_count':touches,'lifecycle':'FRESH' if touches==0 else 'RETESTED',
             'structural_bos':bos,'base_bars':count,'atr':a,'source_type':'BASE_DISPLACEMENT',
-            'role':('ACUAN' if tf in ANCHOR_TFS else
+            'role':('UTAMA' if tf in ANCHOR_TFS else
                         'KONTEKS HTF' if tf in STRUCTURAL_TFS else 'REAKSI / REFINEMENT'),
             'probability':None})
     return zones
@@ -189,7 +189,7 @@ def reversal_phase(zone, frames, price, now):
     side=1 if zone['direction']=='BUY' else -1
     out={'phase':'MENUNGGU_HARGA','rejection_m15_at':None,'confirmation_m5_at':None,
          'confirmation_reference':None,'probability':None}
-    if zone.get('major_conflict'):return {**out,'phase':'KONFLIK_STRUKTUR_H1_H2_H4'}
+    if zone.get('major_conflict'):return {**out,'phase':'KONFLIK_H1_H4'}
     if zone.get('risk_state') == 'PENDING_PARENT_CLOSE':
         return {**out,'phase':'TEMBUS_SEMENTARA_TUNGGU_TF_ASAL'}
     if side*(price-zone['invalidation'])<=0:return {**out,'phase':'LEWATI_BATAS_SKENARIO'}
