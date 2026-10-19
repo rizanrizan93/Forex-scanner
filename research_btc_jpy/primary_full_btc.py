@@ -38,7 +38,7 @@ def main():
    if (i+1)%100==0:print('PRIMARY_FULL',i+1,'/',len(buckets),'rows',len(vals),flush=True)
  q=pd.DataFrame(vals,columns=['minute','open','high','low','close','volume']);del vals
  if q.minute.duplicated().any():raise ValueError('DUPLICATE_PRIMARY_TIMESTAMP')
- q.index=pd.to_datetime(q.minute,unit='m',utc=True).as_unit('ns');q=q.sort_index()
+ q.index=pd.DatetimeIndex(pd.to_datetime(q.minute,unit='m',utc=True)).as_unit('ns');q=q.sort_index()
  oldpath=data/'BTCUSD_M1.csv';comparison={}
  if oldpath.exists():
   old=pd.read_csv(oldpath,index_col=0,parse_dates=True);old.index=pd.to_datetime(old.index,utc=True).as_unit('ns');old=old.add_suffix('_old');both=old.join(q[['open','high','low','close']],how='inner')
