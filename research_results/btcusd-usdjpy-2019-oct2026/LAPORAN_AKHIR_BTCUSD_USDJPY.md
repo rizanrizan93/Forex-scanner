@@ -104,7 +104,7 @@ Seleksi memakai periode penuh sehingga risiko overfit besar. Segmen restart$100 
 - PnL dan kas dihitung ulang independen; bukti per kandidat di EXACT_PREFIX_AND_CASH_PROOF.json.
 - Regresi perubahan harga masa depan:500konfigurasi per universe/instrumen; hasil sebelum cutoff sama persis. Ini cakupan pengujian, bukan bukti formal setiap jalur broker.
 - Fixture memeriksa sisi bid/ask model, STOP_FIRST, gap SL, volume minimum, delay, penambahan stage dan rekonsiliasi.
-- Dua percobaan workflow gagal pada nama artifact/filename ZIP, lalu diperbaiki. Kegagalan packaging tidak dipakai sebagai bukti finansial. Run sukses dan checksum final menjadi rujukan.
+- Beberapa percobaan workflow gagal pada pemilihan/nama paket, lalu diperbaiki. Satu run goal agresif berhasil menghitung keuangan, menyimpan VPS dan memverifikasi checksum, tetapi publikasi file kecil ke branch terkena konflik409 akibat perubahan branch bersamaan. Pipeline delivery akhir memeriksa tiga tahap sukses tersebut dan merekonsiliasi kembali kedua ledger. Kegagalan publikasi tidak dinyatakan sebagai kegagalan finansial atau disembunyikan; checksum paket dan bukti delivery menjadi rujukan.
 
 Tidak ada perubahan cBot live, order broker, bridge, env produksi, risk live, dataset tick asli, atau merge ke main.
 
