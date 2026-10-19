@@ -68,3 +68,5 @@ jobs:
           path: goal_lock/
           compression-level: 1
           retention-days: 90
+
+# Re-execute verified cash policy after correcting package filename only.
