@@ -16,7 +16,7 @@ def sha(p):
 def table(rows,cols):
  out=['| '+' | '.join(cols)+' |','|'+'|'.join(['---']*len(cols))+'|']
  for row in rows:
-  out.append('| '+' | '.join(f'{row.get(c):,.2f}' if isinstance(row.get(c),(float,np.floating)) else str(row.get(c,'')) for c in cols)+' |')
+  out.append('| '+' | '.join(f'{row.get(c):,.2f}' if isinstance(row.get(c),(float,np.floating)) else ('—' if row.get(c) is None else str(row.get(c,''))) for c in cols)+' |')
  return '\n'.join(out)
 found={}
 for p in STUDIES.iterdir():
@@ -177,6 +177,10 @@ for symbol in ['BTCUSD','USDJPY']:
  for p in control.iterdir() if control.exists() else []:
   if symbol in p.name:shutil.copytree(p,pack/'MARCH_LOCKED_CONTROLS'/p.name,dirs_exist_ok=True)
  for name in ['LAPORAN_BTCUSD_USDJPY_2019_2026.md','FINAL_COMPARISON.csv','ALL_LEADER_RESULTS.csv','ALL_SELECTED_SCENARIOS.csv','CONFIGURATIONS.json','UNIVERSE_STATISTICS.json','CASH_RECONCILIATION.json','GLOBAL_UNIQUE_PARAMETER_COUNTS.json','FINAL_STATUS.json']:shutil.copy2(OUT/name,pack/name)
+ for variant in ['SESSIONS','POSITION']:
+  data=pack/'FULL_PERIOD'/variant/'data'
+  for p in data.glob('*_M1.csv.gz'):p.unlink()
+  dump(data/'DATASET_REFERENCE.json',{'canonical_dataset':'FULL_PERIOD/GENERIC/data/'+symbol+'_M1.csv.gz','identical_input_sha256':jread(found[(symbol,variant)]/'data'/(symbol+'_AUDIT.json'))['sha256']})
  for p in pack.rglob('*'):
   if p.is_file() and '__pycache__' in p.parts:p.unlink()
  with open(pack/'MANIFEST_SHA256.csv','w') as f:
