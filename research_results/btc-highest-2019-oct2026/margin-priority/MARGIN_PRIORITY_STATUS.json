@@ -1,0 +1,12 @@
+{
+  "status": "SELECTED_CANDIDATE_EXECUTION_SENSITIVITY_NOT_BROKER_PARITY",
+  "parameters_unchanged": true,
+  "selected_count": 20,
+  "changed_final_balances": 0,
+  "exhaustive_corrected_search": false,
+  "same_50pct_model_stopout": true,
+  "closer_adverse_boundary_and_worse_open_gap_fill": true,
+  "cash_reconciled": true,
+  "baseline_ledgers_exact": true,
+  "source_selected_from_run": 39233081519
+}
