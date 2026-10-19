@@ -9,6 +9,7 @@ s=src.replace('const vector<S>& signals(const P&p)','const vector<S>& rawSignals
 s=s.replace('struct Model{','const vector<S>& signals(const P&p);\ndouble shortRisk=-1,shortMargin=-1;\nstruct Model{')
 s=re.sub(r'const double risks\[\]=\{[^}]+\},margins\[\]=\{[^}]+\};','const double risks[]={'+','.join(map(str,r))+'},margins[]={'+','.join(map(str,m))+'};',s)
 s=s.replace('stops[]={.5,.75,1.,1.5,2.,3.}','stops[]={.5,.75,1.,1.5,2.,3.,4.}')
+s=s.replace('tps[]={2.,3.,4.,6.,8.,12.,16.,24.}', 'tps[]={2.,3.,4.,6.,8.,12.,16.,24.,1.5}')
 s=s.replace('int trades=0,wins=0,adds=0,skips=0,liquidations=0;','int trades=0,wins=0,adds=0,skips=0,liquidations=0,buys=0,sells=0;double buyPnl=0,sellPnl=0;')
 s=s.replace('const double frac=margins[p.margin],risk=risks[p.risk];','const double frac=side<0&&shortMargin>=0?shortMargin:margins[p.margin],risk=side<0&&shortRisk>=0?shortRisk:risks[p.risk];')
 s=s.replace('r.trades++;r.adds+=adds;','r.trades++;if(side>0){r.buys++;r.buyPnl+=pnl;}else{r.sells++;r.sellPnl+=pnl;}r.adds+=adds;')
@@ -20,3 +21,4 @@ driver=(root/'btc_ten_million.cpp').read_text().split('int main(int argc,char**a
 driver=driver.split('void sanity(){')[0]
 (out/'shared_driver.hpp').write_text(driver)
 (out/'SOURCE_HASHES.json').write_text(json.dumps({'source_sha256':hashlib.sha256(src.encode()).hexdigest(),'adapter_sha256':hashlib.sha256(s.encode()).hexdigest()},indent=2))
+
