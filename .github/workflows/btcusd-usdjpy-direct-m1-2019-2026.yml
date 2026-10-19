@@ -1,0 +1,90 @@
+name: BTCUSD USDJPY exhaustive direct M1 million replay
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/btcusd-usdjpy-direct-m1-2019-2026.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  direct:
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        symbol: [BTCUSD, USDJPY]
+        shard: [0, 1, 2, 3, 4]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib
+      - uses: actions/download-artifact@v4
+        if: matrix.symbol == 'USDJPY'
+        with:
+          name: rizan-usdjpy-m1-all-years-csv-gz
+          run-id: 39176779912
+          github-token: ${{ github.token }}
+          path: research_btc_jpy/input_usdjpy
+      - name: Prepare USDJPY
+        if: matrix.symbol == 'USDJPY'
+        run: python research_btc_jpy/prepare.py USDJPY --usdjpy research_btc_jpy/input_usdjpy/USDJPY_M1_2016_2026_UTC.csv.gz
+      - name: Wait for corrected official BTC data artifact
+        if: matrix.symbol == 'BTCUSD'
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 160); do
+            FOUND=$(gh api repos/rizanrizan93/Forex-scanner/actions/runs/39210052954/artifacts --jq '[.artifacts[] | select(.name == "RIZAN-BTCUSD-PRIMARY-CORRECTED-1M-2019-2026")] | length')
+            if [ "$FOUND" = 1 ]; then exit 0; fi
+            sleep 15
+          done
+          exit 1
+      - uses: actions/download-artifact@v4
+        if: matrix.symbol == 'BTCUSD'
+        with:
+          name: RIZAN-BTCUSD-PRIMARY-CORRECTED-1M-2019-2026
+          run-id: 39210052954
+          github-token: ${{ github.token }}
+          path: btc_corrected
+      - name: Install exact BTC input and provenance
+        if: matrix.symbol == 'BTCUSD'
+        run: |
+          mkdir -p research_btc_jpy/data
+          cp btc_corrected/data/* research_btc_jpy/data/
+          gzip -dk research_btc_jpy/data/BTCUSD_M1.csv.gz
+      - name: Compile and verify
+        run: |
+          set -euo pipefail
+          mkdir -p research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}
+          g++ -O3 -std=c++17 -Wall -Wextra research_btc_jpy/search_direct_m1.cpp -o direct
+          ./direct --test | tee research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/ENGINE_FIXTURES.log
+          sha256sum research_btc_jpy/search_direct_m1.cpp research_btc_jpy/prepare.py > research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/SOURCE_SHA256.txt
+          sha256sum research_btc_jpy/data/${{ matrix.symbol }}_M1.csv > research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/INPUT_SHA256.txt
+          git rev-parse HEAD > research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/COMMIT.txt
+      - name: Directly replay disjoint200k parameter IDs on real M1
+        run: |
+          set -euo pipefail
+          ./direct research_btc_jpy/data/${{ matrix.symbol }}_M1.csv ${{ matrix.symbol }} research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }} 1000000 ${{ matrix.shard }} 5 | tee research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/RUN.log
+          grep -q 'COMPLETE_DIRECT_M1 evaluated=200000 stream_unique=1000000' research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/RUN.log
+      - name: Preserve audited input once per instrument
+        if: matrix.shard == 0
+        run: |
+          mkdir -p research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/input
+          cp research_btc_jpy/data/*.json research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/input/
+          gzip -c research_btc_jpy/data/${{ matrix.symbol }}_M1.csv > research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/input/${{ matrix.symbol }}_M1.csv.gz
+      - name: Compress screen and record shard integrity
+        if: always()
+        run: |
+          gzip -f research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/ALL_CONFIGURATIONS.csv || true
+          cp research_btc_jpy/search_direct_m1.cpp research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/
+          cp research_btc_jpy/DIRECT_M1_PROTOCOL.md research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-DIRECT-M1-${{ matrix.symbol }}-${{ matrix.shard }}
+          path: research_btc_jpy/direct_${{ matrix.symbol }}_${{ matrix.shard }}/
+          compression-level: 1
+          retention-days: 30
+          if-no-files-found: error
