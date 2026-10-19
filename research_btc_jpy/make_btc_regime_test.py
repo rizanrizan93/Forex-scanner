@@ -7,7 +7,7 @@ int main(){
  directional=false;custom=false;engineFixtures();minutes.clear();templates.clear();
  setup("source/data/BTCUSD_M1.csv");parity();
  auto ck=[](bool ok,string s){if(!ok)throw runtime_error(s);cout<<"PASS "<<s<<endl;};
- geometry();ck(configs.size()==3888,"profile_count3888");
+ geometry();ck(configs.size()==7776,"profile_count7776");
  int64_t t=parse("2020-01-01 00:00:00");P p{};p.stop=2;p.tp=3;p.hold=3;p.risk=findrisk(.05);p.margin=1;
  auto bars=[&](){minutes={{t,100,100.2,99.8,100},{t+1,100,102.2,99.9,102},{t+2,102,102.2,100.4,101},{t+3,101,101.2,100.8,101}};active={{0,0,1,0,1}};custom=true;directional=true;longP=shortP=p;shortRisk=shortMargin=-1;longExit=shortExit=0;stopAnchors.clear();entryRefs.clear();};
  bars();auto fixed=simulate(p,true,t,t+4);bars();longExit=2;auto trail=simulate(p,true,t,t+4);ck(trail.eq<fixed.eq&&trail.eq>100,"trailing_after_closed_bar_next_minute");
