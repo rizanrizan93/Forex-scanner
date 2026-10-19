@@ -37,7 +37,7 @@ for archive,manifest,variants in archives:
    studies[variant]=(study,flags)
    q=pd.read_csv(io.BytesIO(read(prefix+'results_BTCUSD/ALL_CONFIGURATIONS.csv.gz')),compression='gzip')
    assert len(q)==1000000
-   low=q[(q.full_floating_dd<60)&(q.full_trades>0)];band=q[(q.full_floating_dd>=50)&(q.full_floating_dd<60)&(q.full_trades>0)];under=q[(q.full_floating_dd<60)&(q.full_trades>0)]
+   low=q[(q.full_floating_dd<60)&(q.full_trades>=30)];band=q[(q.full_floating_dd>=50)&(q.full_floating_dd<60)&(q.full_trades>=30)];under=q[(q.full_floating_dd<60)&(q.full_trades>=30)]
    b=pd.concat([low.nlargest(10,'full_equity'),band.nlargest(10,'full_equity')]).drop_duplicates('id');b['variant']=variant;b['origin']='PRIOR_FULL_TABLE';baseline.append(b)
    train=q[(q.train_dd<50)&(q.train_trades>=20)].nlargest(2,'train_equity')
    seed=pd.concat([low.nlargest(5,'full_equity'),under.nlargest(5,'full_equity'),q.nlargest(3,'full_equity'),train]).drop_duplicates('id')
@@ -81,8 +81,8 @@ ref=pd.concat(refined,ignore_index=True);ref.to_csv(OUT/'ALL_TARGETED_SIZING_CAS
 pool=pd.concat(baseline+[ref],ignore_index=True)
 for col in PH[1:]:
  if col!='family':pool[col]=pd.to_numeric(pool[col]).round(12)
-low=pool[(pool.full_floating_dd<60)&(pool.full_trades>0)].sort_values('full_equity',ascending=False).drop_duplicates(PH[1:]).head(5)
-band=pool[(pool.full_floating_dd<50)&(pool.full_trades>0)].sort_values('full_equity',ascending=False).drop_duplicates(PH[1:]).head(5)
+low=pool[(pool.full_floating_dd<60)&(pool.full_trades>=30)].sort_values('full_equity',ascending=False).drop_duplicates(PH[1:]).head(5)
+band=pool[(pool.full_floating_dd<50)&(pool.full_trades>=30)].sort_values('full_equity',ascending=False).drop_duplicates(PH[1:]).head(5)
 chosen=pd.concat([low.assign(criterion='DD_LT60'),band.assign(criterion='DD_LT50_BACKUP')]).drop_duplicates(['variant','id'])
 chosen.to_csv(OUT/'SELECTED_BEFORE_STRESS.csv',index=False)
 allcases=[];cash=[];curves=[]
@@ -105,6 +105,20 @@ for variant,g in chosen.groupby('variant'):
   for a in ax:a.grid(alpha=.25)
   fig.tight_layout();fig.savefig(rv/('raw_'+str(cid)+'_plot.png'),dpi=140);plt.close(fig)
 stress=pd.concat(allcases,ignore_index=True);stress.to_csv(OUT/'ALL_SELECTED_STRESS.csv',index=False);dump(OUT/'CASH_RECONCILIATION.json',cash)
+all_cash=[]
+for _,r in stress.iterrows():
+ study,_flags=studies[r.variant]
+ suffix='' if r['case']=='BASE' else '_'+r['case']
+ ledger=study/'raw_validation'/('raw_'+str(int(r.id))+suffix+'_ledger.csv')
+ l=pd.read_csv(ledger)
+ if len(l):
+  gross=l.side*(l.exit_price-l.entry_average)*l.quantity
+  net=gross-l.entry_commission-l.exit_commission-l.financing
+  errors=[float(abs(gross-l.gross_pnl).max()),float(abs(net-l.net_pnl).max()),float(abs(100+net.cumsum()-l.balance).max()),abs(float(l.balance.iloc[-1])-r.equity)]
+  assert max(errors)<max(1e-6,abs(r.equity)*1e-9),(r.variant,r.id,r['case'],errors)
+ else:errors=[0.];assert r.equity==100
+ all_cash.append({'variant':r.variant,'id':int(r.id),'case':r['case'],'maximum_error':max(errors),'pass':True})
+dump(OUT/'ALL_CASE_CASH_RECONCILIATION.json',all_cash)
 base=stress[stress['case']=='BASE'].merge(chosen[['variant','id','criterion','origin']],on=['variant','id']);base['win_rate']=100*base.wins/base.trades
 base.to_csv(OUT/'FINAL_DD60_LEGACY_COMPARISON.csv',index=False)
 leaders=[]
@@ -121,7 +135,7 @@ for leader in leaders:
  report+='## '+leader['criterion']+'\n\n'
  report+=pd.DataFrame([leader])[PH+['equity','floating_dd']].to_markdown(index=False,floatfmt='.6f')+'\n\n'
  report+=z[['case','equity','floating_dd','trades','adds','skips','liquidations']].to_markdown(index=False,floatfmt='.4f')+'\n\n'
-report+='Seluruh seed original direproduksi sebelum fine sizing. Kandidat terpilih direplay ulang dan ledger BASE direkonsiliasi independen. Source/diff parameter dan semua hasil sizing disimpan. Minimumtrade pada seleksi legacy adalah>0 sesuai scanner lama; kandidat dengan frekuensi rendah wajib dilabel, tidak boleh disamakan dengan syarat30basket pada10juta replay komposit. Tidak ada top-up, reset, stop setelah target, atau DDclamp.\n\n'
+report+='Seluruh seed original direproduksi sebelum fine sizing. Kandidat terpilih direplay ulang dan ledger seluruh skenario direkonsiliasi independen. Source/diff parameter dan semua hasil sizing disimpan. Seleksi minimum30basket, konsisten dengan10juta replay komposit. Tidak ada top-up, reset, stop setelah target, atau DDclamp.\n\n'
 report+='Batas tetap: officialBitstampM1 bukan tick bid/ask broker, leverage10 hipotesis; step/min0,01BTC,max100BTC; spread5bp,slip1bp/sisi,fee5bp/sisi,financing3bpnotional/hari. Cost1.5/2 mengalikan fee/slip/carry tanpa menggandakan spread. Delayminimum1menit bukan2detik. Closed-only signals,nextopen,stop-first,gapopenlebihburuk. Modelstopoutpriority dancapital-floorlama dipertahankan. Segmen restart100 dan pemilihanfullperiod bukan untouchedOOS. Hasil portfolio BTC+XAU/EUR belum diuji. Konfigurasi risk nominal bukan alokasi portofolio. Live/frozenXAU-EUR tidak diubah.\n\n'
 report+='Sumber lengkap6universe dan manifestinput tersedia pada Actions39218690359 serta39233081519. SHA256uncompressedCSV c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504. Label parity adalah konsistensi model, bukan broker-nativeparity.\n'
 (OUT/'LAPORAN_BTC_DD60_LEGACY.md').write_text(report)
