@@ -1,0 +1,10 @@
+PASS buy_ask_to_bid_takeprofit
+PASS simultaneous_SL_TP_STOP_FIRST
+PASS gap_stop_worse_open
+PASS sell_exit_ask_stop_first
+PASS minimum_volume_margin_reject
+PASS next_minute_delay_changes_fill
+PASS closed_depth_add_next_open
+PASS cash_reconciliation
+PASS no_entries_beyond_end_boundary
+ENGINE_FIXTURES_PASS 9
