@@ -1,0 +1,56 @@
+{
+  "BTCUSD": {
+    "original_full_archive_sha256": "d1bbb2176182d3971350d8a871482ba522e06d441a507f3c7b21c8d3dfa91109",
+    "max_observed_signal_bid": 126202.0,
+    "capital_floor_check": [
+      {
+        "id": 792291,
+        "criterion": "FULL",
+        "ending_cash": 85424.58710634119,
+        "maximum_model_floor": 63.101,
+        "nominal_leader_not_stopped_by_floor": true
+      },
+      {
+        "id": 682607,
+        "criterion": "DD50",
+        "ending_cash": 10978.89803579223,
+        "maximum_model_floor": 63.101,
+        "nominal_leader_not_stopped_by_floor": true
+      },
+      {
+        "id": 500406,
+        "criterion": "TRAIN",
+        "ending_cash": 11418.3784070316,
+        "maximum_model_floor": 63.101,
+        "nominal_leader_not_stopped_by_floor": true
+      }
+    ]
+  },
+  "USDJPY": {
+    "original_full_archive_sha256": "c9854a7ee6cf506b426a74cfb40cd4e27f64d627d1fac7c062df685af446c7fc",
+    "max_observed_signal_bid": 163.976,
+    "capital_floor_check": [
+      {
+        "id": 496711,
+        "criterion": "FULL",
+        "ending_cash": 11285.808174851409,
+        "maximum_model_floor": 2.5,
+        "nominal_leader_not_stopped_by_floor": true
+      },
+      {
+        "id": 578508,
+        "criterion": "DD50",
+        "ending_cash": 2701.3821309470018,
+        "maximum_model_floor": 2.5,
+        "nominal_leader_not_stopped_by_floor": true
+      },
+      {
+        "id": 514964,
+        "criterion": "TRAIN",
+        "ending_cash": 266.4004110198049,
+        "maximum_model_floor": 2.5,
+        "nominal_leader_not_stopped_by_floor": true
+      }
+    ]
+  }
+}
