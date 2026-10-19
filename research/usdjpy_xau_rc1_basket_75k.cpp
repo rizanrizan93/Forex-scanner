@@ -210,7 +210,7 @@ ExitResult simulate(const Model &model,int y0,int y1,double spread){
        if(!touched)continue;
        if(model.addConfirm>0&&!(confirmed[j]&(side==1?1:2)))continue;
        // Fill at the level or the worse tradable open. No adds on stop/TP minute.
-       const double fill=side==1?min(depthPrice+spread,openAsk):max(depthPrice,b.o);
+       const double fill=side==1?min(depthPrice+spread,openAsk):max(depthPrice,double(b.o));
        const double rpu=(max(0.,side*(fill-sl)))/fill+.00006;
        const double remainingBudget=max(0.,riskBudget-allocatedRisk);
        double share=(model.stages==2)?1.:(stage==1?.52:1.);
