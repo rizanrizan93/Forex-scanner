@@ -177,3 +177,30 @@ def test_us10y_page_still_shows_independent_cash_health_when_macro_feed_stale():
     assert any(x.label == 'Source Health' for x in app.metric)
     assert not any(x.label == 'FRED DGS10' for x in app.metric)
     assert any('Feed engine Daily FRED' in x.value for x in app.warning)
+
+
+def test_cash_chosen_at_publish_time_can_age_into_fresh_futures_fallback():
+    p = futures_feed()
+    context = p['heartbeats'][0]['details']['evaluation']['intraday_yield_context']
+    # Producer selected cash, but that quote is now 15+ minutes old.
+    context['effective_source'] = 'YAHOO_FINANCE_TNX_INTRADAY_PROXY'
+    context['gold_implication'] = 'GOLD_HEADWIND'  # must NOT leak into ZN bias
+    context['futures_yield_pressure'] = 'YIELD_FLAT_PROXY'
+    result = macro_input(p)['evaluation']
+    active = result['intraday_yield_context']
+    assert active['timing_basis'] == 'TREASURY_FUTURES_PROXY'
+    assert active['current'] is None
+    assert active['gold_implication'] == 'UNAVAILABLE'
+    assert active['state'] == 'YIELD_FLAT_PROXY'
+    from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary
+    assert yield_regime_summary(result)['intraday']['gold_bias'] == 'NEUTRAL_MIXED'
+
+
+def test_futures_unknown_pressure_does_not_restore_stale_cash_quote():
+    p = futures_feed()
+    context = p['heartbeats'][0]['details']['evaluation']['intraday_yield_context']
+    context['effective_source'] = 'YAHOO_FINANCE_TNX_INTRADAY_PROXY'
+    context['futures_yield_pressure'] = 'UNKNOWN'
+    active = macro_input(p)['evaluation']['intraday_yield_context']
+    assert active['available'] is False
+    assert active['gold_implication'] == 'UNAVAILABLE'
