@@ -47,7 +47,8 @@ for variant,study in studies.items():
  if len(t):cohorts.append(t);criteria['TRAIN']=int(t.iloc[0].id)
  sel=pd.concat(cohorts).drop_duplicates('id');selected[variant]=(sel,criteria)
  stats.append({'variant':variant,'configurations':len(q),'target_final_100k_count':int((q.full_equity>=100000).sum()),'maximum_final':float(q.full_equity.max()),'top20_cutoff':float(f.full_equity.min()),'unique_tuples':1000000,'source_sha256':sha(study/'search_direct_m1.cpp'),'selected_parameters':len(sel)})
- with open(r/'ALL_CONFIGURATIONS.csv','rb') as a,gzip.open(r/'ALL_CONFIGURATIONS.csv.gz','wb',compresslevel=5) as b:shutil.copyfileobj(a,b) if (r/'ALL_CONFIGURATIONS.csv').exists() else None
+ if (r/'ALL_CONFIGURATIONS.csv').exists():
+  with open(r/'ALL_CONFIGURATIONS.csv','rb') as a,gzip.open(r/'ALL_CONFIGURATIONS.csv.gz','wb',compresslevel=5) as b:shutil.copyfileobj(a,b)
  if (r/'ALL_CONFIGURATIONS.csv').exists():(r/'ALL_CONFIGURATIONS.csv').unlink()
  rv=study/'raw_validation';rv.mkdir(exist_ok=True);sel.to_csv(rv/'SELECTED_ROWS.csv',index=False)
  source=study/'search_direct_m1.cpp';flag=[]
