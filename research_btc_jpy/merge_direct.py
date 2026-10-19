@@ -4,7 +4,7 @@ import pandas as pd
 def main():
  p=argparse.ArgumentParser();p.add_argument('symbol');p.add_argument('input');p.add_argument('output');a=p.parse_args()
  root=pathlib.Path(a.input);dest=pathlib.Path(a.output);dest.mkdir(parents=True,exist_ok=True)
- dirs=sorted(root.glob(f'{a.symbol}_*'))
+ dirs=sorted(x for x in root.glob(f'{a.symbol}_*') if x.is_dir())
  if len(dirs)!=5:raise AssertionError(f'Expected5shards,got{len(dirs)}')
  seen=set();allhash=set();frames=[];summary=None;sources=set();inputs=set();total_targets=0;total_dd=0;traincount=0;shardinfo=[]
  out=dest/f'results_{a.symbol}';out.mkdir(exist_ok=True);data=dest/'data';data.mkdir(exist_ok=True)
