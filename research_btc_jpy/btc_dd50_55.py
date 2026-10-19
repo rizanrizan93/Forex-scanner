@@ -35,7 +35,7 @@ for archive,manifest,variants in archives:
    if 'POSITION' in variant:shutil.copy2(study/'search_direct_m1.cpp',study/'search_position_direct.cpp');flags=['-DPOSITION_VARIANT']
    if 'SESSIONS' in variant:shutil.copy2(study/'search_direct_m1.cpp',study/'search_sessions_direct.cpp');flags=['-DSESSION_VARIANT']
    studies[variant]=(study,flags)
-   q=pd.read_csv(io.BytesIO(read(prefix+'results_BTCUSD/ALL_CONFIGURATIONS.csv.gz')))
+   q=pd.read_csv(io.BytesIO(read(prefix+'results_BTCUSD/ALL_CONFIGURATIONS.csv.gz')),compression='gzip')
    assert len(q)==1000000
    low=q[(q.full_floating_dd<50)&(q.full_trades>0)];band=q[(q.full_floating_dd>=50)&(q.full_floating_dd<=55)&(q.full_trades>0)];under=q[(q.full_floating_dd<=55)&(q.full_trades>0)]
    b=pd.concat([low.nlargest(10,'full_equity'),band.nlargest(10,'full_equity')]).drop_duplicates('id');b['variant']=variant;b['origin']='PRIOR_FULL_TABLE';baseline.append(b)
@@ -76,6 +76,8 @@ for variant,(study,flags) in studies.items():
  dump(sweepdir/'SIZING_SWEEP_PROOF.json',sweep_proof[-1])
 ref=pd.concat(refined,ignore_index=True);ref.to_csv(OUT/'ALL_TARGETED_SIZING_CASES.csv',index=False)
 pool=pd.concat(baseline+[ref],ignore_index=True)
+for col in PH[1:]:
+ if col!='family':pool[col]=pd.to_numeric(pool[col]).round(12)
 low=pool[(pool.full_floating_dd<50)&(pool.full_trades>0)].sort_values('full_equity',ascending=False).drop_duplicates(PH[1:]).head(5)
 band=pool[(pool.full_floating_dd>=50)&(pool.full_floating_dd<=55)&(pool.full_trades>0)].sort_values('full_equity',ascending=False).drop_duplicates(PH[1:]).head(5)
 chosen=pd.concat([low.assign(criterion='DD_LT50'),band.assign(criterion='DD_50_TO55')]).drop_duplicates(['variant','id'])
