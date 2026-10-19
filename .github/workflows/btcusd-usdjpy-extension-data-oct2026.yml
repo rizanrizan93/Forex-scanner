@@ -1,0 +1,93 @@
+name: BTCUSD USDJPY common completed M1 extension to15Oct2026
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/btcusd-usdjpy-extension-data-oct2026.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  extend_data:
+    strategy:
+      fail-fast: false
+      matrix: {symbol: [BTCUSD, USDJPY]}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy
+      - uses: actions/download-artifact@v4
+        if: matrix.symbol == 'USDJPY'
+        with:
+          name: rizan-usdjpy-m1-all-years-csv-gz
+          run-id: 39176779912
+          github-token: ${{ github.token }}
+          path: research_btc_jpy/input_usdjpy
+      - name: Wait for successful complete official BTC source
+        if: matrix.symbol == 'BTCUSD'
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 100); do
+            STATE=$(gh api repos/rizanrizan93/Forex-scanner/actions/runs/39211599931 --jq '.status + ":" + (.conclusion // "")')
+            if [ "$STATE" = completed:success ]; then exit 0; fi
+            if [ "$STATE" = completed:failure ]; then exit 1; fi
+            sleep 15
+          done
+          exit 1
+      - uses: actions/download-artifact@v4
+        if: matrix.symbol == 'BTCUSD'
+        with:
+          name: RIZAN-BTCUSD-OFFICIAL-SOURCE-VERIFIED
+          run-id: 39211599931
+          github-token: ${{ github.token }}
+          path: original_btc
+      - name: Install archived official BTC candles and source responses
+        if: matrix.symbol == 'BTCUSD'
+        run: |
+          mkdir -p research_btc_jpy/data research_btc_jpy/primary_api
+          cp original_btc/data/* research_btc_jpy/data/
+          cp original_btc/primary_api/* research_btc_jpy/primary_api/
+          gzip -dk research_btc_jpy/data/BTCUSD_M1.csv.gz
+      - name: Freeze common completed endpoint and build extended source
+        env: {RESEARCH_SYMBOL: '${{ matrix.symbol }}'}
+        run: |
+          set -euo pipefail
+          python -u - <<'PY'
+          import sys,os,pandas as pd
+          sys.path.insert(0,'research_btc_jpy')
+          import prepare,primary_full_btc
+          prepare.END=pd.Timestamp('2026-10-16',tz='UTC')
+          if os.environ['RESEARCH_SYMBOL']=='BTCUSD':primary_full_btc.main()
+          else:
+            sys.argv=['prepare.py','USDJPY','--usdjpy','research_btc_jpy/input_usdjpy/USDJPY_M1_2016_2026_UTC.csv.gz']
+            prepare.main()
+          PY
+          python - <<'PY'
+          import json,os
+          s=os.environ['RESEARCH_SYMBOL'];a=json.load(open('research_btc_jpy/data/'+s+'_AUDIT.json'))
+          assert a['last']=='2026-10-15 23:59:00+00:00' and len(a['months'])==94
+          if s=='BTCUSD':
+            p=json.load(open('research_btc_jpy/data/BTCUSD_OFFICIAL_FULL_PROVENANCE.json'))
+            assert p['status']=='OFFICIAL_OHLC_COMPLETE' and p['missing_minutes']==0
+          print('EXTENDED_INPUT_VERIFIED',s,a['rows'],a['last'])
+          PY
+          git rev-parse HEAD > research_btc_jpy/data/EXTENSION_COMMIT.txt
+      - name: Compress extended exact candles
+        if: always()
+        run: gzip -f research_btc_jpy/data/${{ matrix.symbol }}_M1.csv || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-${{ matrix.symbol }}-EXTENDED-INPUT-2019-OCT2026
+          path: |
+            research_btc_jpy/data/${{ matrix.symbol }}_M1.csv.gz
+            research_btc_jpy/data/*.json
+            research_btc_jpy/data/EXTENSION_COMMIT.txt
+            research_btc_jpy/primary_api/
+            research_btc_jpy/prepare.py
+            research_btc_jpy/primary_full_btc.py
+            research_btc_jpy/EXTENSION_PROTOCOL.md
+          compression-level: 1
+          retention-days: 30
