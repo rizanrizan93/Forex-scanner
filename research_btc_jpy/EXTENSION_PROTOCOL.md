@@ -1,0 +1,7 @@
+# Locked-parameter extension to15October2026
+
+The primary comparable selection period remains2019-01-01–2026-03-31. Independently produce both datasets through2026-10-15 23:59UTC, the latest common fully available day in the existing USDJPY minute export (next source observation ends16Oct00:00). BTC uses official historical exchangeOHLC for the entire interval, retaining rawresponseSHA. No partial16October included.
+
+Only parameters selected by March-period rules may enter the extension. Global top20full-period, top20DD50, top20train-ranked from the directM1 million universe will be frozen. All selected rows (including unfavorable extension results) must be exported. No parameters are selected, altered, or sorted for promotion based on April–October outcomes. Re-execute same parameters continuously from$100 inJanuary2019, preserving full position/equity/cooldown path acrossMarch31. Earlier Marchboundary forcedclose is not re-injected; independent throughMarch replay must still reconcile against March selection output on the same historical prefix.
+
+Report March and extendedperiod results separately. Historical extension is not a liveforwardtest or a virgin holdout: prior unrelated research has examined these markets. If a target is only reached during the extension or only at high drawdown, say so. Costs, leverage, minvolume, financing and all model limitations remain unchanged. No frozen XAU/EUR modifications or liveoperations.
