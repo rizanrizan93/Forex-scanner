@@ -153,3 +153,27 @@ def test_proxy_panel_displays_futures_price_and_not_old_cash_as_current_yield():
         assert any(x.label == 'Treasury futures ZN · harga proksi' and x.value == '111.250' for x in app.metric)
         assert not any(x.label == 'Yield intraday sekarang' for x in app.metric)
         assert any('Waktu kuotasi ZN' in x.value for x in app.caption)
+
+
+def test_zone_adapter_preserves_degraded_lifecycle_and_pending_breach():
+    p = zone_map()
+    parent = next(z for z in p['zones'] if z['timeframe'] == 'H1')
+    parent['lifecycle'] = 'DEGRADED'
+    parent['touch_count'] = 3
+    parent['risk_state'] = 'PENDING_PARENT_CLOSE'
+    out = hierarchy_input(p)
+    mapped = next(z for z in out['active_zones'] if z['zone_id'] == parent['zone_id'])
+    assert mapped['condition'] == 'DEGRADED'
+    assert mapped['intraday_quarantined'] is True
+    assert mapped['lifecycle']['freshness'] == 'DEGRADED'
+
+
+def test_us10y_page_still_shows_independent_cash_health_when_macro_feed_stale():
+    import streamlit as st
+    st.cache_data.clear()
+    with patch('fx_scanner.pre_news_transport.fetch_pre_news_snapshot', side_effect=ValueError('stale macro')):
+        app = AppTest.from_file(str(ROOT/'pages/2_US10Y_Regime_Timing.py')).run(timeout=20)
+    assert not app.exception
+    assert any(x.label == 'Source Health' for x in app.metric)
+    assert not any(x.label == 'FRED DGS10' for x in app.metric)
+    assert any('Feed engine Daily FRED' in x.value for x in app.warning)
