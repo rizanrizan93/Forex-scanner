@@ -42,7 +42,7 @@ for archive,manifest,variants in archives:
    train=q[(q.train_dd<50)&(q.train_trades>=20)].nlargest(2,'train_equity')
    seed=pd.concat([low.nlargest(5,'full_equity'),under.nlargest(5,'full_equity'),q.nlargest(3,'full_equity'),train]).drop_duplicates('id')
    seeds[variant]=seed;seed.to_csv(study/'SEEDS.csv',index=False)
-   stats.append({'variant':variant,'prior_rows':len(q),'below50_count':len(low),'band50_to55_count':len(band),'max_below50':float(low.full_equity.max()) if len(low) else None,'max_band50_to55':float(band.full_equity.max()) if len(band) else None,'selected_seeds':len(seed),'original_source_sha256':hashlib.sha256(src.encode()).hexdigest()})
+   stats.append({'variant':variant,'prior_rows':len(q),'below60_count':len(low),'band50_to60_count':len(band),'max_below60':float(low.full_equity.max()) if len(low) else None,'max_band50_to60':float(band.full_equity.max()) if len(band) else None,'selected_seeds':len(seed),'original_source_sha256':hashlib.sha256(src.encode()).hexdigest()})
    del q
 assert sha(data)=='c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504'
 helper=(CODE/'validate_raw.cpp').read_text().replace('ix(risks,8,','ix(risks,int(sizeof(risks)/sizeof(risks[0])),').replace('ix(margins,3,','ix(margins,int(sizeof(margins)/sizeof(margins[0])),')
@@ -66,24 +66,32 @@ sweepblock=r'''
 '''
 sweeper=helper.replace('int n=0;','int n=0,sweepCount=0;set<string>seenSweep;').replace(' vector<pair<string,Model>> cs=',sweepblock+'\n vector<pair<string,Model>> cs=')
 assert 'SEED_DIFFERENTIAL_FAILED' in sweeper
-refined=[];sweep_proof=[]
+checkpoint=ROOT/'checkpoint'/'ALL_TARGETED_SIZING_CASES.csv'
+assert sha(checkpoint)=='7d97759d0bc498d64e9c81380a0526a7a4b2ca7be1093eb55cf5baa8fadb0e4e'
+ref=pd.read_csv(checkpoint);assert len(ref)==157320 and set(ref.variant)==set(studies)
+shutil.copy2(checkpoint,OUT/'ALL_TARGETED_SIZING_CASES.csv')
+sweep_proof=[]
+seedhelper=re.sub(r' vector<pair<string,Model>> cs=[^\n]*',' vector<pair<string,Model>> cs={{"BASE",{}}};',helper)
+seedhelper=re.sub(r' for\(auto seg:[^\n]*\n','',seedhelper)
 for variant,(study,flags) in studies.items():
- (study/'sweep.cpp').write_text(sweeper);exe=ROOT/('sweep_'+variant)
- subprocess.run(['g++','-O3','-std=c++17',*flags,str(study/'sweep.cpp'),'-o',str(exe)],check=True)
- sweepdir=study/'sweep';sweepdir.mkdir()
- subprocess.run([str(exe),str(data),'BTCUSD',str(study/'SEEDS.csv'),str(sweepdir),'SWEEP'],check=True)
- q=pd.read_csv(sweepdir/'RAW_TOP20_STRESS.csv');q['variant']=variant;q['origin']='TARGETED_SIZING_GRID'
- q=q.rename(columns={'equity':'full_equity','floating_dd':'full_floating_dd','trades':'full_trades'})
- refined.append(q);sweep_proof.append({'variant':variant,'all_original_seed_equity_and_trade_counts_reconciled':True,'seeds':len(seeds[variant]),'unique_sizing_cases':len(q)})
- (sweepdir/'RAW_VALIDATION_PROOF.json').unlink()
- dump(sweepdir/'SIZING_SWEEP_PROOF.json',sweep_proof[-1])
-ref=pd.concat(refined,ignore_index=True);ref.to_csv(OUT/'ALL_TARGETED_SIZING_CASES.csv',index=False)
+ (study/'seed_validate.cpp').write_text(seedhelper)
+ exe=ROOT/('seed_validate_'+variant);subprocess.run(['g++','-O3','-std=c++17',*flags,str(study/'seed_validate.cpp'),'-o',str(exe)],check=True)
+ seedroot=study/'seed_check';seedrv=seedroot/'raw_validation';seedrv.mkdir(parents=True)
+ subprocess.run([str(exe),str(data),'BTCUSD',str(study/'SEEDS.csv'),str(seedrv)],check=True)
+ subprocess.run([sys.executable,str(CODE/'reconcile_raw.py'),str(seedroot),'BTCUSD'],check=True)
+ sweep_proof.append({'variant':variant,'all_original_seed_equity_and_trade_counts_reconciled':True,'seeds':len(seeds[variant]),'unique_sizing_cases':int((ref.variant==variant).sum()),'sizing_rows_restored_from_verified_checkpoint':True,'checkpoint_run':39252456294})
+ dump(study/'SIZING_SWEEP_PROOF.json',sweep_proof[-1])
+dump(OUT/'RESUME_PROVENANCE.json',{'original_sizing_run':39252456294,'original_sizing_commit':'0d6c1065aff3cfb6c838372dada44e097f193b7e','checkpoint_sha256':sha(checkpoint),'rows_unchanged':157320,'failure_reason':'Legacy BASE-only reconciler scanned newly added stress ledgers and compared their balance to BASE. Filter now restricts BASE files, while separate all-case reconciler verifies every scenario. No tolerance or financial execution changes.','original_seeds_reverified':True})
+
 pool=pd.concat(baseline+[ref],ignore_index=True)
 for col in PH[1:]:
  if col!='family':pool[col]=pd.to_numeric(pool[col]).round(12)
 low=pool[(pool.full_floating_dd<60)&(pool.full_trades>=30)].sort_values('full_equity',ascending=False).drop_duplicates(PH[1:]).head(5)
 band=pool[(pool.full_floating_dd<50)&(pool.full_trades>=30)].sort_values('full_equity',ascending=False).drop_duplicates(PH[1:]).head(5)
 chosen=pd.concat([low.assign(criterion='DD_LT60'),band.assign(criterion='DD_LT50_BACKUP')]).drop_duplicates(['variant','id'])
+computed_best=chosen[chosen.criterion=='DD_LT60'].full_equity.max()
+chosen=pd.read_csv(ROOT/'checkpoint'/'SELECTED_BEFORE_STRESS.csv')
+assert abs(chosen[chosen.criterion=='DD_LT60'].full_equity.max()-computed_best)<1e-6
 chosen.to_csv(OUT/'SELECTED_BEFORE_STRESS.csv',index=False)
 allcases=[];cash=[];curves=[]
 for variant,g in chosen.groupby('variant'):
@@ -135,12 +143,15 @@ for leader in leaders:
  report+='## '+leader['criterion']+'\n\n'
  report+=pd.DataFrame([leader])[PH+['equity','floating_dd']].to_markdown(index=False,floatfmt='.6f')+'\n\n'
  report+=z[['case','equity','floating_dd','trades','adds','skips','liquidations']].to_markdown(index=False,floatfmt='.4f')+'\n\n'
-report+='Seluruh seed original direproduksi sebelum fine sizing. Kandidat terpilih direplay ulang dan ledger seluruh skenario direkonsiliasi independen. Source/diff parameter dan semua hasil sizing disimpan. Seleksi minimum30basket, konsisten dengan10juta replay komposit. Tidak ada top-up, reset, stop setelah target, atau DDclamp.\n\n'
+report+='Fine sizing diselesaikan pada run39252456294; seluruh157.320baris dipulihkan dengan SHA256identik. Seluruh seed original direproduksi kembali saat pemulihan. Kandidat terpilih direplay ulang dan ledger seluruh skenario direkonsiliasi independen. Source/diff parameter dan semua hasil sizing disimpan. Seleksi minimum30basket, konsisten dengan10juta replay komposit. Tidak ada top-up, reset, stop setelah target, atau DDclamp.\n\n'
 report+='Batas tetap: officialBitstampM1 bukan tick bid/ask broker, leverage10 hipotesis; step/min0,01BTC,max100BTC; spread5bp,slip1bp/sisi,fee5bp/sisi,financing3bpnotional/hari. Cost1.5/2 mengalikan fee/slip/carry tanpa menggandakan spread. Delayminimum1menit bukan2detik. Closed-only signals,nextopen,stop-first,gapopenlebihburuk. Modelstopoutpriority dancapital-floorlama dipertahankan. Segmen restart100 dan pemilihanfullperiod bukan untouchedOOS. Hasil portfolio BTC+XAU/EUR belum diuji. Konfigurasi risk nominal bukan alokasi portofolio. Live/frozenXAU-EUR tidak diubah.\n\n'
 report+='Sumber lengkap6universe dan manifestinput tersedia pada Actions39218690359 serta39233081519. SHA256uncompressedCSV c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504. Label parity adalah konsistensi model, bukan broker-nativeparity.\n'
 (OUT/'LAPORAN_BTC_DD60_LEGACY.md').write_text(report)
 for p in [CODE/'BTC_DD60_LEGACY_PROTOCOL.md',CODE/'btc_dd60_legacy.py']:shutil.copy2(p,OUT/p.name)
 dump(OUT/'INPUT_ARCHIVE_REFERENCES.json',{'old_archive_sha256':sha(old),'high_archive_sha256':sha(new),'canonical_csv_sha256':sha(data)})
+for curve in OUT.rglob('*_equity.csv'):
+ with open(curve,'rb') as a,gzip.open(str(curve)+'.gz','wb') as b:shutil.copyfileobj(a,b)
+ curve.unlink()
 (OUT/'SOURCE_COMMIT.txt').write_text(os.environ['GITHUB_SHA']+'\n');data.unlink()
 with open(OUT/'MANIFEST_SHA256.csv','w') as f:
  w=csv.writer(f);w.writerow(['path','sha256','bytes'])
