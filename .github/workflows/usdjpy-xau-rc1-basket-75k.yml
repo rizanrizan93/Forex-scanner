@@ -1,0 +1,43 @@
+name: USDJPY XAU RC1-style 75K M1 basket study
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths: [.github/workflows/usdjpy-xau-rc1-basket-75k.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rizan-usdjpy-m1-all-years-csv-gz
+          run-id: 39176779912
+          github-token: ${{ github.token }}
+          path: input
+      - name: Audit M1 archive
+        run: |
+          set -euo pipefail
+          gzip -t input/USDJPY_M1_2016_2026_UTC.csv.gz
+          gzip -dc input/USDJPY_M1_2016_2026_UTC.csv.gz > usd_jpy_m1.csv
+          test "$(wc -l < usd_jpy_m1.csv)" -gt 3900000
+          sha256sum input/USDJPY_M1_2016_2026_UTC.csv.gz > M1_input.sha256
+      - name: Compile and replay RC1-style USDJPY basket configurations
+        run: |
+          set -euo pipefail
+          g++ -O3 -std=c++17 -Wall -Wextra research/usdjpy_xau_rc1_basket_75k.cpp -o basket
+          ./basket usd_jpy_m1.csv 2>&1 | tee basket_scan.log
+          grep -q 'COMPLETE tested=75000' basket_scan.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: usd-jpy-75k-xau-rc1-basket-research
+          path: |
+            xau_basket_usdjpy_75k_screen.csv
+            basket_scan.log
+            M1_input.sha256
+          if-no-files-found: warn
