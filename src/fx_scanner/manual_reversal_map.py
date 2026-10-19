@@ -197,6 +197,8 @@ def reversal_phase(zone, frames, price, now):
     if zone.get('major_conflict'):return {**out,'phase':'KONFLIK_H1_H4'}
     if zone.get('risk_state') == 'PENDING_PARENT_CLOSE':
         return {**out,'phase':'TEMBUS_SEMENTARA_TUNGGU_TF_ASAL'}
+    if zone.get('lifecycle') == 'DEGRADED' or zone.get('touch_count',0)>=3:
+        return {**out,'phase':'ZONA_MELEMAH_TUNGGU_BASIS_BARU'}
     if side*(price-zone['invalidation'])<=0:return {**out,'phase':'LEWATI_BATAS_SKENARIO'}
     if not all(_fresh_frame(frames.get(tf,pd.DataFrame()),tf,now) for tf in ['M15','M5']):
         return {**out,'phase':'DATA_KONFIRMASI_BELUM_LENGKAP'}
@@ -242,11 +244,16 @@ def build_plans(zones,frames,price,now):
         # an overlapping H1 zone; this is not an optimized entry rule.
         h1=sorted((z for z in eligible if z['timeframe']=='H1'),key=lambda z:z['distance'])
         h2=sorted((z for z in eligible if z['timeframe']=='H2' and
-                    z.get('lifecycle')!='DEGRADED' and z.get('touch_count',0)<=1),
+                    z.get('lifecycle')!='DEGRADED' and z.get('touch_count',0)<3),
                     key=lambda z:z['distance'])
         endorsed=[z for z in h2 if any(max(z['low'],u['low'])<=min(z['high'],u['high']) for u in h1)]
-        fallback=sorted(eligible,key=lambda z:(TF_PRIORITY.index(z['timeframe']),z['distance']))
-        anchor=(endorsed or h1 or h2 or fallback)[0]
+        fallback=sorted(eligible,key=lambda z:(z['distance'], TF_PRIORITY.index(z['timeframe'])))
+        # Never replace a zone at current price with a more distant fresh
+        # H2. H2 wins a price-distance tie only with same-side H1 overlap.
+        choices=endorsed+h1
+        choices.sort(key=lambda z:(z['distance'], 0 if z in endorsed else 1,
+                                   z.get('touch_count',0), TF_PRIORITY.index(z['timeframe'])))
+        anchor=choices[0] if choices else (h2 or fallback)[0]
         same=[z for z in zones if z['direction']==side and z['timeframe']=='H4' and
               _fresh_frame(frames.get('H4',pd.DataFrame()),'H4',now)]
         context=min(same,key=lambda z:z['distance']) if same else None
