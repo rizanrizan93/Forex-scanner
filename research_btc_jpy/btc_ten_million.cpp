@@ -50,8 +50,8 @@ void activate(const F&f){
 }
 uint64_t mix(uint64_t x){x+=0x9e3779b97f4a7c15ULL;x=(x^(x>>30))*0xbf58476d1ce4e5b9ULL;x=(x^(x>>27))*0x94d049bb133111ebULL;return x^(x>>31);}
 P config(const F&f,int j){
- const int n=6*8*4*10*6*3*3;uint64_t a=mix(f.id)|1;while(gcd(a,uint64_t(n))!=1)a+=2;
- uint64_t z=(mix(f.id+99991)+uint64_t(j)*a)%n;P p=f.p;p.id=(f.id-1)*10+j+1;
+ const int n=6*8*4*10*6*3*3;uint64_t a=(mix(f.id)%n)|1;while(gcd(a,uint64_t(n))!=1)a+=2;
+ uint64_t z=(mix(f.id+99991)%n+uint64_t(j)*a)%n;P p=f.p;p.id=(f.id-1)*10+j+1;
  p.stop=z%6;z/=6;p.tp=z%8;z/=8;p.hold=z%4;z/=4;p.risk=z%10;z/=10;p.margin=z%6;z/=6;p.layers=z%3;z/=3;p.be=z%3;return p;
 }
 string fh="recipe_id,vol_gate,rsi_gate,weekday_gate,close_location_gate,daily_trend_gate";
