@@ -7,9 +7,9 @@ import numpy as np
 import prepare
 ROOT=pathlib.Path(__file__).resolve().parent
 def main():
-    d=ROOT/'data';path=d/'BTCUSD_M1.csv';q=pd.read_csv(path,index_col=0,parse_dates=True);q.index=pd.to_datetime(q.index,utc=True)
+    d=ROOT/'data';path=d/'BTCUSD_M1.csv';q=pd.read_csv(path,index_col=0,parse_dates=True);q.index=pd.to_datetime(q.index,utc=True).as_unit('ns')
     old=json.loads((d/'BTCUSD_AUDIT.json').read_text());shutil.copy2(d/'BTCUSD_AUDIT.json',d/'BTCUSD_PRE_PRIMARY_API_AUDIT.json')
-    allminutes=pd.date_range(prepare.START,prepare.END-pd.Timedelta(minutes=1),freq='min')
+    allminutes=pd.date_range(prepare.START,prepare.END-pd.Timedelta(minutes=1),freq='min').as_unit('ns')
     missing=allminutes.difference(q.index);requested=set(missing.asi8//60000000000)
     buckets=sorted({int(x)//1000*1000 for x in requested});cache=ROOT/'primary_api';cache.mkdir(exist_ok=True)
     def fetch(start):
