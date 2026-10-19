@@ -1,0 +1,70 @@
+name: RIZAN aggressive settled cash goal exact prefix audit
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/btcusd-usdjpy-aggressive-goal.yml]
+  workflow_dispatch:
+permissions: {contents: write, actions: read}
+jobs:
+  compact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib tabulate
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-AGGRESSIVE-VERIFIED
+          run-id: 39220603070
+          github-token: ${{ github.token }}
+          path: input
+      - name: Verify original archive hashes before compacting
+        run: |
+          set -euo pipefail
+          cd input
+          sha256sum -c PACKAGE_SHA256.txt
+      - name: Create strict JSON and independently hashed portable archives
+        run: python -u research_btc_jpy/aggressive_goal_lock.py
+      - name: Persist portable reports and charts to same isolated VPS folder
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          dest='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btcusd-usdjpy-million-2019-oct2026/aggressive-settled-goal-100k'
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -r -l 24000 "${opts[@]}" goal_lock/* "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c3 sha256sum -c PACKAGE_SHA256.txt" > goal_lock/VPS_PORTABLE_VERIFICATION.txt
+      - name: Publish small review files and charts on research branch
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import pathlib,json,base64,subprocess
+          for p in pathlib.Path('goal_lock').iterdir():
+            if p.suffix not in ['.json','.md','.png','.txt']:continue
+            path='research_results/btcusd-usdjpy-2019-oct2026/aggressive-settled-goal/'+p.name
+            branch='research/btcusd-usdjpy-million-2019-2026'
+            old=subprocess.run(['gh','api','repos/rizanrizan93/Forex-scanner/contents/'+path+'?ref='+branch],capture_output=True,text=True)
+            b={'message':'research: publish settled goal '+p.name,'branch':branch,'content':base64.b64encode(p.read_bytes()).decode()}
+            if old.returncode==0:b['sha']=json.loads(old.stdout)['sha']
+            f=pathlib.Path('/tmp/portable_payload.json');f.write_text(json.dumps(b))
+            subprocess.run(['gh','api','--method','PUT','repos/rizanrizan93/Forex-scanner/contents/'+path,'--input',str(f),'--silent'],check=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-AGGRESSIVE-SETTLED-CASH-GOAL
+          path: goal_lock/
+          compression-level: 1
+          retention-days: 90
