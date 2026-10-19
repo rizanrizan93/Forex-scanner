@@ -43,7 +43,7 @@ vector<B> aggregate(int w){vector<B> v;
 int key(const P&p){return ((p.tf*12+p.family)*4+p.look)*3+p.threshold;}
 const vector<S>& signals(const P&p){int k=key(p);auto it=templates.find(k);if(it!=templates.end())return it->second;auto&v=agg[p.tf];vector<S> ss;int look=looks[p.look],w=widths[p.tf];double thresh=.1*p.threshold;size_t ht=0;
  for(int i=max(100,look+2);i+1<int(v.size());i++){auto&a=v[i];auto&prev=v[i-1];int64_t avail=a.t+w;
-  if(a.n<w*.8||v[i+1].t!=avail||a.atr<=0||minutes[a.mi].t!=a.t)continue;
+  if(a.n<w*.8||v[i+1].t!=avail||a.atr<=0||minutes[a.mi].t!=a.t||minutes[v[i+1].mi].t!=avail)continue;
   while(ht+1<h4.size()&&h4[ht+1].t+240<=avail)ht++;
   if(h4[ht].t+240>avail)continue;
   int trend=h4[ht].c>h4[ht].e80&&h4[ht].e20>h4[ht].e80?1:h4[ht].c<h4[ht].e80&&h4[ht].e20<h4[ht].e80?-1:0;
