@@ -1,0 +1,6 @@
+# BTC legacy DD60 continuation
+Separate from 10m new composite replay run39251677841. Screen all six prior BTC universes (6mrows) at floatingDD<60%,>=30baskets; preserve hashes and original sources. Select top5 eligible,top3unconstrained and2trainseeds per universe.
+Fine grid risk1–40% in1%steps; margin10/20/25% plus30–95% in1%steps. Extend source numeric arrays only; reproduce every original seed before sweep. Deduplicate active execution tuples per source universe. No signal geometry changes.
+Select top5 DD<60 andtop5DD<50,>=30baskets; raw replay cost1.5/2,minimumM1delay,NO_ADDS,leverage2/5,and3restartsegments. Export and independently reconcile every case ledger,BASEmonthly/yearly andplots. Label inherited broker assumptions and full-period optimization.
+USD100 standalone2019–15Oct2026, no topups,model leverage10, canonicalCSVhash c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504. Same fee/spread/carry model,STOP_FIRST andcapitalfloor as prior. FrozenXAU-EUR/live untouched. CompleteVPSresearchfolder andActionsartifacts required.
+This is targeted continuation and rescreening, not additional independent families. Report actual unique new sizing cases, six-million legacy rows separately from ten-million composite trials.
