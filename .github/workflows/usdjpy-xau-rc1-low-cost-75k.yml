@@ -1,0 +1,39 @@
+name: USDJPY XAU RC1 75K optimistic spread study
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths: [.github/workflows/usdjpy-xau-rc1-low-cost-75k.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rizan-usdjpy-m1-all-years-csv-gz
+          run-id: 39176779912
+          github-token: ${{ github.token }}
+          path: input
+      - name: Validate data and run optimistic spread challenge
+        run: |
+          set -euo pipefail
+          gzip -t input/USDJPY_M1_2016_2026_UTC.csv.gz
+          gzip -dc input/USDJPY_M1_2016_2026_UTC.csv.gz > usdjpy.csv
+          sha256sum input/USDJPY_M1_2016_2026_UTC.csv.gz > M1_input.sha256
+          g++ -O3 -std=c++17 research/usdjpy_xau_rc1_basket_75k_optimistic_cost.cpp -o search
+          ./search usdjpy.csv 2>&1 | tee research.log
+          grep -q 'COMPLETE tested=75000' research.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: usd-jpy-75k-low-cost-rc1-basket-research
+          path: |
+            xau_basket_usdjpy_75k_low_cost.csv
+            M1_input.sha256
+            research.log
+          if-no-files-found: warn
