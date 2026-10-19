@@ -1,0 +1,131 @@
+name: RIZAN final BTCUSD USDJPY target evidence delivery
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/btcusd-usdjpy-final-delivery.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require final cash-policy proof to succeed
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python - <<'PY'
+          import subprocess,json,time
+          for i in range(90):
+            j=json.loads(subprocess.check_output(['gh','api','repos/rizanrizan93/Forex-scanner/actions/runs/39230334699']))
+            if j['status']=='completed':
+              assert j['conclusion']=='success',j['conclusion']
+              break
+            time.sleep(10)
+          else:raise RuntimeError('Final proof not completed')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-SETTLED-CASH-GOAL-LOCK
+          run-id: 39220176510
+          github-token: ${{ github.token }}
+          path: original_goal
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-AGGRESSIVE-SETTLED-CASH-GOAL
+          run-id: 39230334699
+          github-token: ${{ github.token }}
+          path: aggressive_goal
+      - name: Reconcile chosen settled-cash ledgers and package audit trail
+        run: |
+          set -euo pipefail
+          (cd original_goal && sha256sum -c PACKAGE_SHA256.txt)
+          (cd aggressive_goal && sha256sum -c PACKAGE_SHA256.txt)
+          python - <<'PY'
+          import pathlib,json,hashlib,zipfile,shutil,csv,math,os
+          root=pathlib.Path('delivery');root.mkdir()
+          pack=root/'review';pack.mkdir()
+          src=pathlib.Path('research_results/btcusd-usdjpy-2019-oct2026')
+          shutil.copy2(src/'LAPORAN_AKHIR_BTCUSD_USDJPY.md',pack)
+          for name in ['LAPORAN_BTCUSD_USDJPY_2019_2026.md','FINAL_STATUS.json','CONFIGURATIONS.json']:
+            shutil.copy2(src/name,pack)
+          for d in ['aggressive','portable']:
+            for p in (src/d).glob('*'):
+              if p.suffix in ['.md','.json','.txt'] and p.name!='FINAL_STATUS.json':
+                dest=pack/d;dest.mkdir(exist_ok=True);shutil.copy2(p,dest/p.name)
+          chosen=[];proof=[]
+          for folder,symbol,cid,variant in [('original_goal','BTCUSD',792291,'POSITION'),('aggressive_goal','USDJPY',823347,'AGGRESSIVE')]:
+            p=pathlib.Path(folder)
+            z=next(p.glob('RIZAN*.zip'));shutil.copy2(z,pack/z.name)
+            for n in ['GOAL_LOCK_STATUS.json','EXACT_PREFIX_AND_CASH_PROOF.json','GOAL_LOCK_SCAN.csv','GOAL_LOCK_STRESS.csv','GOAL_LOCK_CONFIGURATIONS.csv','LAPORAN_GOAL_LOCK.md','VPS_PORTABLE_VERIFICATION.txt']:
+              q=pack/folder;q.mkdir(exist_ok=True);shutil.copy2(p/n,q/n)
+            matches=[r for r in csv.DictReader(open(p/'GOAL_LOCK_STRESS.csv')) if r['symbol']==symbol and int(r['id'])==cid and r['case']=='BASE'];assert len(matches)==1
+            selected=matches[0];chosen.append(selected)
+            l=list(csv.DictReader(open(p/(symbol+'_'+variant)/'raw_validation'/('raw_'+str(cid)+'_ledger.csv'))))
+            cash=100.;maxerr=0.
+            for i,r in enumerate(l):
+              num=lambda k:float(r[k])
+              pnl=num('side')*(num('exit_price')-num('entry_average'))*num('quantity')
+              if symbol=='USDJPY':pnl/=num('exit_price')
+              pnl-=num('entry_commission')+num('exit_commission')+num('financing')
+              maxerr=max(maxerr,abs(pnl-num('net_pnl')));cash+=pnl;maxerr=max(maxerr,abs(cash-num('balance')))
+              assert i==len(l)-1 or num('balance')<100000
+            assert cash>=100000 and abs(cash-float(selected['equity']))<1e-6 and maxerr<1e-6
+            b=json.load(open(p/'EXACT_PREFIX_AND_CASH_PROOF.json'));b=[x for x in b if x['symbol']==symbol and x['id']==cid][0];assert b['exact_baseline_ledger_prefix'] and b['all_future_entries_disabled_after_first_settled_goal']
+            proof.append({'symbol':symbol,'id':cid,'baskets':len(l),'independently_rebuilt_cash':cash,'max_cash_error':maxerr,'last_exit_utc':l[-1]['exit_utc'],'exact_original_prefix':True,'first_cash_goal_is_last_trade':True})
+            plot=p/(symbol+'_'+variant)/'raw_validation'/('raw_'+str(cid)+'_goal.png');shutil.copy2(plot,root/(symbol+'_GOAL_LOCK.png'))
+          (root/'FINAL_SELECTED_CASH_PROOF.json').write_text(json.dumps(proof,indent=2))
+          (pack/'FINAL_SELECTED_CASH_PROOF.json').write_text(json.dumps(proof,indent=2))
+          (root/'CONFIGURATIONS_EXACT.json').write_text(json.dumps(chosen,indent=2))
+          shutil.copy2(root/'CONFIGURATIONS_EXACT.json',pack)
+          (pack/'DELIVERY_SOURCE_COMMIT.txt').write_text(os.environ['GITHUB_SHA']+'\n')
+          for p in root.glob('*.png'):shutil.copy2(p,pack)
+          shutil.copy2(src/'LAPORAN_AKHIR_BTCUSD_USDJPY.md',root)
+          def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+          with open(pack/'MANIFEST_SHA256.csv','w') as f:
+            w=csv.writer(f);w.writerow(['path','sha256','bytes'])
+            for p in sorted(pack.rglob('*')):
+              if p.is_file() and p.name!='MANIFEST_SHA256.csv':w.writerow([str(p.relative_to(pack)),sha(p),p.stat().st_size])
+          zpath=root/'RIZAN_BTCUSD_USDJPY_FINAL_EVIDENCE.zip'
+          with zipfile.ZipFile(zpath,'w',zipfile.ZIP_DEFLATED,compresslevel=5) as z:
+            for p in pack.rglob('*'):
+              if p.is_file():z.write(p,str(p.relative_to(pack)))
+          with zipfile.ZipFile(zpath) as z:
+            assert z.testzip() is None
+            for r in csv.DictReader(__import__('io').TextIOWrapper(z.open('MANIFEST_SHA256.csv'))):
+              assert hashlib.sha256(z.read(r['path'])).hexdigest()==r['sha256']
+          with open(root/'DELIVERY_SHA256.txt','w') as f:
+            for p in sorted(root.iterdir()):
+              if p.is_file() and p.name!='DELIVERY_SHA256.txt':f.write(sha(p)+'  '+p.name+'\n')
+          print(json.dumps(proof,indent=2));print('DELIVERY_VERIFIED',zpath.stat().st_size,sha(zpath))
+          PY
+      - name: Preserve final readable report and proof on isolated VPS
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          dest='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btcusd-usdjpy-million-2019-oct2026/final-delivery'
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -l 24000 "${opts[@]}" delivery/*.zip delivery/*.md delivery/*.json delivery/*.png delivery/*.txt "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c3 sha256sum -c DELIVERY_SHA256.txt" > delivery/VPS_FINAL_VERIFICATION.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-FINAL-TARGET-EVIDENCE
+          path: |
+            delivery/*.zip
+            delivery/*.md
+            delivery/*.json
+            delivery/*.png
+            delivery/*.txt
+          compression-level: 1
+          retention-days: 90
