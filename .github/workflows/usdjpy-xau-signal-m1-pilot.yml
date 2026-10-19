@@ -1,0 +1,43 @@
+name: USDJPY XAU-logic M1 research pilot
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths: [.github/workflows/usdjpy-xau-signal-m1-pilot.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rizan-usdjpy-m1-all-years-csv-gz
+          run-id: 39176779912
+          github-token: ${{ github.token }}
+          path: input
+      - name: Verify input source and date range
+        run: |
+          set -euo pipefail
+          gzip -t input/USDJPY_M1_2016_2026_UTC.csv.gz
+          gzip -dc input/USDJPY_M1_2016_2026_UTC.csv.gz > usdjpy_m1.csv
+          test "$(wc -l < usdjpy_m1.csv)" -gt 3900000
+          sha256sum input/USDJPY_M1_2016_2026_UTC.csv.gz > input_checksum.sha256
+      - name: Compile and replay XAU signal adaptation
+        run: |
+          set -euo pipefail
+          g++ -O3 -std=c++17 -Wall -Wextra research/usdjpy_xau_signal_port_m1.cpp -o xau_port_replay
+          ./xau_port_replay usdjpy_m1.csv 2>&1 | tee replay.log
+          grep -q 'SCAN_DONE' replay.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rizan-usdjpy-xau-source-inspired-pilot
+          path: |
+            xau_to_usdjpy_candidates.csv
+            input_checksum.sha256
+            replay.log
+          if-no-files-found: warn
