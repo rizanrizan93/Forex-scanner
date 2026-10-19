@@ -1,0 +1,107 @@
+name: RIZAN BTCUSD USDJPY research definitive artifacts
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/btcusd-usdjpy-definitive-artifacts.yml]
+  workflow_dispatch:
+permissions: {contents: write, actions: read}
+jobs:
+  final:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib
+      - name: Require all audited full-period and position experiments
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 160); do
+            OK=0
+            for RID in 39214728591 39216189180 39213656204; do
+              STATE=$(gh api repos/rizanrizan93/Forex-scanner/actions/runs/$RID --jq '.status + ":" + (.conclusion // "")')
+              if [ "$STATE" = completed:failure ]; then exit 1; fi
+              if [ "$STATE" = completed:success ]; then OK=$((OK+1)); fi
+            done
+            if [ "$OK" = 3 ]; then exit 0; fi
+            sleep 15
+          done
+          exit 1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: RIZAN-AUDITED-OCT-*
+          run-id: 39214728591
+          github-token: ${{ github.token }}
+          path: full_studies
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: RIZAN-AUDITED-OCT-*
+          run-id: 39216189180
+          github-token: ${{ github.token }}
+          path: full_studies
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: RIZAN-AUDITED-BTCUSD-*
+          run-id: 39213178402
+          github-token: ${{ github.token }}
+          path: march_controls
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: RIZAN-AUDITED-USDJPY-*-FINAL
+          run-id: 39213656204
+          github-token: ${{ github.token }}
+          path: march_controls
+      - name: Verify source syntax before final computation
+        run: python -m py_compile research_btc_jpy/finalize_report.py research_btc_jpy/reconcile_raw.py
+      - name: Reconstruct global leaders audit cash draw charts and package artifacts
+        run: |
+          set -euo pipefail
+          python -u research_btc_jpy/finalize_report.py | tee finalization.log
+          cp finalization.log final_research_deliverables/
+      - name: Persist report and packages to isolated VPS research storage
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btcusd-usdjpy-million-2019-oct2026/final-${GITHUB_RUN_ID}"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          required=$(du -sk final_research_deliverables | cut -f1)
+          free=$(ssh "${opts[@]}" Rizanrizan@202.74.74.172 "df -Pk /home/Rizanrizan/rizan-ticks | tail -1 | awk '{print \$4}'")
+          test "$free" -gt "$((required+102400))"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" final_research_deliverables/* "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && sha256sum -c PACKAGE_SHA256.txt" > final_research_deliverables/VPS_CHECKSUM_VERIFICATION.txt
+          printf '{"saved":true,"path":"%s","sha256_verified":true}\n' "$dest" > final_research_deliverables/VPS_STORAGE_RECEIPT.json
+      - name: Save reviewable text results on research branch only
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,pathlib,base64,subprocess
+          branch='research/btcusd-usdjpy-million-2019-2026'
+          for name in ['LAPORAN_BTCUSD_USDJPY_2019_2026.md','FINAL_COMPARISON.csv','CONFIGURATIONS.json','FINAL_STATUS.json','PACKAGE_SHA256.txt','VPS_STORAGE_RECEIPT.json']:
+              path='research_results/btcusd-usdjpy-2019-oct2026/'+name
+              old=subprocess.run(['gh','api','repos/rizanrizan93/Forex-scanner/contents/'+path+'?ref='+branch],capture_output=True,text=True)
+              body={'message':'research: publish independently reconciled '+name,'branch':branch,'content':base64.b64encode((pathlib.Path('final_research_deliverables')/name).read_bytes()).decode()}
+              if old.returncode==0:body['sha']=json.loads(old.stdout)['sha']
+              payload=pathlib.Path('/tmp/rizan_report_payload.json');payload.write_text(json.dumps(body))
+              subprocess.run(['gh','api','--method','PUT','repos/rizanrizan93/Forex-scanner/contents/'+path,'--input',str(payload),'--silent'],check=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BTCUSD-USDJPY-DEFINITIVE-2019-2026
+          path: final_research_deliverables/
+          compression-level: 1
+          retention-days: 90
+          if-no-files-found: warn
