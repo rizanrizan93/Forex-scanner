@@ -1,0 +1,702 @@
+[
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003442,
+    "case": "BASE",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003442,
+    "case": "COST1_5",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003442,
+    "case": "COST2",
+    "maximum_error": 2.1827872842550278e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003442,
+    "case": "DELAY_NEXT_M1",
+    "maximum_error": 8.003553375601768e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003442,
+    "case": "NO_ADDS",
+    "maximum_error": 5.238689482212067e-10,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003442,
+    "case": "LEVERAGE2",
+    "maximum_error": 1.0913936421275139e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003442,
+    "case": "LEVERAGE5",
+    "maximum_error": 4.3655745685100555e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003442,
+    "case": "TRAIN_2019_2022",
+    "maximum_error": 1.5916157281026244e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003442,
+    "case": "VALID_2023_2024",
+    "maximum_error": 3.410605131648481e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003442,
+    "case": "TEST_2025_OCT2026",
+    "maximum_error": 0.0,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003441,
+    "case": "BASE",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003441,
+    "case": "COST1_5",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003441,
+    "case": "COST2",
+    "maximum_error": 2.1827872842550278e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003441,
+    "case": "DELAY_NEXT_M1",
+    "maximum_error": 8.003553375601768e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003441,
+    "case": "NO_ADDS",
+    "maximum_error": 5.238689482212067e-10,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003441,
+    "case": "LEVERAGE2",
+    "maximum_error": 3.637978807091713e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003441,
+    "case": "LEVERAGE5",
+    "maximum_error": 5.820766091346741e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003441,
+    "case": "TRAIN_2019_2022",
+    "maximum_error": 1.5916157281026244e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003441,
+    "case": "VALID_2023_2024",
+    "maximum_error": 3.410605131648481e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003441,
+    "case": "TEST_2025_OCT2026",
+    "maximum_error": 0.0,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003444,
+    "case": "BASE",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003444,
+    "case": "COST1_5",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003444,
+    "case": "COST2",
+    "maximum_error": 2.1827872842550278e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003444,
+    "case": "DELAY_NEXT_M1",
+    "maximum_error": 8.003553375601768e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003444,
+    "case": "NO_ADDS",
+    "maximum_error": 5.238689482212067e-10,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003444,
+    "case": "LEVERAGE2",
+    "maximum_error": 1.1823431123048067e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003444,
+    "case": "LEVERAGE5",
+    "maximum_error": 5.820766091346741e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003444,
+    "case": "TRAIN_2019_2022",
+    "maximum_error": 1.5916157281026244e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003444,
+    "case": "VALID_2023_2024",
+    "maximum_error": 3.410605131648481e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003444,
+    "case": "TEST_2025_OCT2026",
+    "maximum_error": 0.0,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003440,
+    "case": "BASE",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003440,
+    "case": "COST1_5",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003440,
+    "case": "COST2",
+    "maximum_error": 2.1827872842550278e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003440,
+    "case": "DELAY_NEXT_M1",
+    "maximum_error": 8.003553375601768e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003440,
+    "case": "NO_ADDS",
+    "maximum_error": 5.238689482212067e-10,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003440,
+    "case": "LEVERAGE2",
+    "maximum_error": 4.547473508864641e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003440,
+    "case": "LEVERAGE5",
+    "maximum_error": 5.820766091346741e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003440,
+    "case": "TRAIN_2019_2022",
+    "maximum_error": 1.5916157281026244e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003440,
+    "case": "VALID_2023_2024",
+    "maximum_error": 3.410605131648481e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003440,
+    "case": "TEST_2025_OCT2026",
+    "maximum_error": 0.0,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003449,
+    "case": "BASE",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003449,
+    "case": "COST1_5",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003449,
+    "case": "COST2",
+    "maximum_error": 2.1827872842550278e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003449,
+    "case": "DELAY_NEXT_M1",
+    "maximum_error": 8.003553375601768e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003449,
+    "case": "NO_ADDS",
+    "maximum_error": 5.238689482212067e-10,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003449,
+    "case": "LEVERAGE2",
+    "maximum_error": 9.094947017729282e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003449,
+    "case": "LEVERAGE5",
+    "maximum_error": 4.001776687800884e-11,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003449,
+    "case": "TRAIN_2019_2022",
+    "maximum_error": 1.5916157281026244e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003449,
+    "case": "VALID_2023_2024",
+    "maximum_error": 3.410605131648481e-12,
+    "pass": true
+  },
+  {
+    "variant": "POSITION_HIGH",
+    "id": 1003449,
+    "case": "TEST_2025_OCT2026",
+    "maximum_error": 0.0,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1004209,
+    "case": "BASE",
+    "maximum_error": 3.958120942115784e-09,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1004209,
+    "case": "COST1_5",
+    "maximum_error": 3.725290298461914e-09,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1004209,
+    "case": "COST2",
+    "maximum_error": 1.979060471057892e-09,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1004209,
+    "case": "DELAY_NEXT_M1",
+    "maximum_error": 1.4551915228366852e-09,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1004209,
+    "case": "NO_ADDS",
+    "maximum_error": 3.958120942115784e-09,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1004209,
+    "case": "LEVERAGE2",
+    "maximum_error": 2.7284841053187847e-12,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1004209,
+    "case": "LEVERAGE5",
+    "maximum_error": 1.6007106751203537e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1004209,
+    "case": "TRAIN_2019_2022",
+    "maximum_error": 1.127773430198431e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1004209,
+    "case": "VALID_2023_2024",
+    "maximum_error": 9.094947017729282e-13,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1004209,
+    "case": "TEST_2025_OCT2026",
+    "maximum_error": 2.1316282072803006e-13,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005482,
+    "case": "BASE",
+    "maximum_error": 4.0745362639427185e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005482,
+    "case": "COST1_5",
+    "maximum_error": 6.402842700481415e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005482,
+    "case": "COST2",
+    "maximum_error": 3.4924596548080444e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005482,
+    "case": "DELAY_NEXT_M1",
+    "maximum_error": 2.6193447411060333e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005482,
+    "case": "NO_ADDS",
+    "maximum_error": 4.0745362639427185e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005482,
+    "case": "LEVERAGE2",
+    "maximum_error": 1.9895196601282805e-13,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005482,
+    "case": "LEVERAGE5",
+    "maximum_error": 1.0913936421275139e-11,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005482,
+    "case": "TRAIN_2019_2022",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005482,
+    "case": "VALID_2023_2024",
+    "maximum_error": 1.3642420526593924e-12,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005482,
+    "case": "TEST_2025_OCT2026",
+    "maximum_error": 0.0,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005413,
+    "case": "BASE",
+    "maximum_error": 4.0745362639427185e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005413,
+    "case": "COST1_5",
+    "maximum_error": 6.402842700481415e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005413,
+    "case": "COST2",
+    "maximum_error": 3.4924596548080444e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005413,
+    "case": "DELAY_NEXT_M1",
+    "maximum_error": 2.764863893389702e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005413,
+    "case": "NO_ADDS",
+    "maximum_error": 4.0745362639427185e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005413,
+    "case": "LEVERAGE2",
+    "maximum_error": 1.9895196601282805e-13,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005413,
+    "case": "LEVERAGE5",
+    "maximum_error": 1.0913936421275139e-11,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005413,
+    "case": "TRAIN_2019_2022",
+    "maximum_error": 4.18367562815547e-11,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005413,
+    "case": "VALID_2023_2024",
+    "maximum_error": 1.3642420526593924e-12,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005413,
+    "case": "TEST_2025_OCT2026",
+    "maximum_error": 0.0,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005344,
+    "case": "BASE",
+    "maximum_error": 5.238689482212067e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005344,
+    "case": "COST1_5",
+    "maximum_error": 6.402842700481415e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005344,
+    "case": "COST2",
+    "maximum_error": 3.4924596548080444e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005344,
+    "case": "DELAY_NEXT_M1",
+    "maximum_error": 2.6193447411060333e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005344,
+    "case": "NO_ADDS",
+    "maximum_error": 5.238689482212067e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005344,
+    "case": "LEVERAGE2",
+    "maximum_error": 1.9895196601282805e-13,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005344,
+    "case": "LEVERAGE5",
+    "maximum_error": 1.0913936421275139e-11,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005344,
+    "case": "TRAIN_2019_2022",
+    "maximum_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005344,
+    "case": "VALID_2023_2024",
+    "maximum_error": 1.3642420526593924e-12,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005344,
+    "case": "TEST_2025_OCT2026",
+    "maximum_error": 0.0,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005275,
+    "case": "BASE",
+    "maximum_error": 5.238689482212067e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005275,
+    "case": "COST1_5",
+    "maximum_error": 6.402842700481415e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005275,
+    "case": "COST2",
+    "maximum_error": 3.2014213502407074e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005275,
+    "case": "DELAY_NEXT_M1",
+    "maximum_error": 3.055902197957039e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005275,
+    "case": "NO_ADDS",
+    "maximum_error": 5.238689482212067e-10,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005275,
+    "case": "LEVERAGE2",
+    "maximum_error": 1.9895196601282805e-13,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005275,
+    "case": "LEVERAGE5",
+    "maximum_error": 1.0913936421275139e-11,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005275,
+    "case": "TRAIN_2019_2022",
+    "maximum_error": 3.456079866737127e-11,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005275,
+    "case": "VALID_2023_2024",
+    "maximum_error": 1.3642420526593924e-12,
+    "pass": true
+  },
+  {
+    "variant": "PREVIOUS_AGGRESSIVE",
+    "id": 1005275,
+    "case": "TEST_2025_OCT2026",
+    "maximum_error": 0.0,
+    "pass": true
+  }
+]
