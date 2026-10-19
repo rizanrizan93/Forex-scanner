@@ -12,7 +12,7 @@ def ck(name,value):
     if not bool(value):raise AssertionError(name)
     checks.append({'name':name,'pass':True})
 ck('one_million_unique_configurations',summary['unique_configurations']==1000000)
-ck('all_87_months_input',len(audit['months'])==87)
+period_month=pd.Timestamp(summary['last']).strftime('%Y-%m');month_count=len(pd.period_range('2019-01',period_month,freq='M'));test_label='TEST_2025_2026Q1' if 'TEST_2025_2026Q1' in set(v['case']) else 'TEST_2025_2026_TO_OCT15';ck('all_declared_months_input',len(audit['months'])==month_count)
 ck('input_sha256',hashlib.sha256((ROOT/'data'/f'{symbol}_M1.csv').read_bytes()).hexdigest()==audit['sha256'])
 count=0;ids=set();families=set();timeframes=set()
 for q in pd.read_csv(r/'ALL_CONFIGURATIONS.csv',chunksize=100000):
@@ -35,7 +35,7 @@ for p in sorted(r.glob('candidate_*_ledger.csv')):
     q['month']=exit.dt.strftime('%Y-%m');q['year']=exit.dt.year
     for key in ['month','year']:
         z=q.groupby(key).agg(net_profit=('net_pnl','sum'),trades=('net_pnl','size'),wins=('net_pnl',lambda x:int((x>0).sum())),adds=('adds','sum'),commission_entry=('entry_commission','sum'),commission_exit=('exit_commission','sum'),financing=('financing','sum'))
-        if key=='month':z=z.reindex(pd.period_range('2019-01','2026-03',freq='M').astype(str),fill_value=0)
+        if key=='month':z=z.reindex(pd.period_range('2019-01',period_month,freq='M').astype(str),fill_value=0)
         z['ending_balance']=100+z.net_profit.cumsum();z.to_csv(r/f'candidate_{cid}_{key}.csv')
     ledger_info.append({'id':cid,'net_cash_error':casherror,'gross_pnl_error':error,'final_equity_error':last,'positions':len(q)})
     curve=pd.read_csv(r/f'candidate_{cid}_equity.csv');curve['timestamp']=pd.to_datetime(curve.timestamp,utc=True)
@@ -49,7 +49,7 @@ def cases_for(cid):return v[v.id==cid]
 robust=[]
 for _,b in good.iterrows():
     cv=cases_for(b.id).set_index('case')
-    if all(cv.loc[c,'equity']>100 and cv.loc[c,'floating_dd']<50 for c in ['COST1_5','COST2','VALID_2023_2024','TEST_2025_2026Q1']):robust.append(int(b.id))
+    if all(cv.loc[c,'equity']>100 and cv.loc[c,'floating_dd']<50 for c in ['COST1_5','COST2','VALID_2023_2024',test_label]):robust.append(int(b.id))
 summary.update({'timeframes_minutes':sorted(timeframes),'M1_target_count':int((base.equity>=100000).sum()),'M1_target_dd50_count':len(good),'M1_robust_target_ids':robust,'max_independent_reconciliation_error':maxerror,'data_status':audit['status'],'macro_filter':'NONE_NEW_RESEARCH','broker_execution_status':'NOT_VALIDATED','selection_warning':'1M multiple comparisons; historical split only; no virgin prospective holdout.'})
 (r/'FINAL_SUMMARY.json').write_text(json.dumps(summary,indent=2));(r/'RECONCILIATION.json').write_text(json.dumps({'max_error':maxerror,'ledgers':ledger_info,'checks':checks},indent=2))
 columns=['id','family','tf_minutes','equity','floating_dd','pf','trades','wins','adds','risk','margin_fraction','add_stages','stop_atr','tp_R','hold_bars','breakeven_R']
@@ -65,11 +65,11 @@ if len(dd):chosen.append(int(dd.iloc[0].id))
 if trainbest is not None:chosen.append(int(trainbest.id))
 sections=[]
 for cid in dict.fromkeys(chosen):sections.append(f'### Candidate {cid}\n\n'+table(cases_for(cid),['case','equity','floating_dd','pf','trades','adds']))
-report=f'''# RIZAN {symbol} — 1,000,000 configurations, 2019–2026Q1
+report=f'''# RIZAN {symbol} — 1,000,000 configurations, 2019–{summary['last'][:10]}
 
 **Status: EXPLORATORY / BROKER_NOT_VALIDATED.** Independent new strategy research, not frozen XAU/EUR parity. USD100 initial, no topups. 12 families, 1,000,000 unique active parameter combinations. Signal timeframes in minutes: {sorted(timeframes)}. {'All1,000,000 configurations replayed directly on publishedM1OHLC, no coarser-bar preselection; global leaders stress-tested.' if direct else 'CoarserOHLC screening, followed by shortlistedM1reruns.'} These are not real tick bid/ask replays.
 
-Input: {summary['m1_rows']:,} M1 bars; {summary['first']}–{summary['last']} UTC;87months. Data statusPARTIAL, {audit['gap_count']:,} timestamp gaps; {str(len(audit.get('original_quarantined_conflicts',audit.get('conflicting_timestamps_quarantined',[]))))+' original conflicting source timestamps quarantined; exact duplicate OHLC collapsed, nominal year file ownership prevents overlap. Official API repairs, if performed, are separately identified in BTCUSD_PRIMARY_API_PROVENANCE.json.' if symbol=='BTCUSD' else 'Market-weekend gaps are not automatically certified as safe.'} No missing candles synthesized locally. All input hashes and raw source provenance included.
+Input: {summary['m1_rows']:,} M1 bars; {summary['first']}–{summary['last']} UTC;{month_count}months. Data statusPARTIAL, {audit['gap_count']:,} timestamp gaps; {str(len(audit.get('original_quarantined_conflicts',audit.get('conflicting_timestamps_quarantined',[]))))+' original conflicting source timestamps quarantined; exact duplicate OHLC collapsed, nominal year file ownership prevents overlap. Official API repairs, if performed, are separately identified in BTCUSD_PRIMARY_API_PROVENANCE.json.' if symbol=='BTCUSD' else 'Market-weekend gaps are not automatically certified as safe.'} No missing candles synthesized locally. All input hashes and raw source provenance included.
 
 ## Target outcome
 
