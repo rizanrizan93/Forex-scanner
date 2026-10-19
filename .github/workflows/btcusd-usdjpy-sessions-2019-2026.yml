@@ -1,0 +1,86 @@
+name: BTCUSD USDJPY session liquidity million search
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/btcusd-usdjpy-sessions-2019-2026.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  sessions:
+    strategy:
+      fail-fast: false
+      matrix: {symbol: [BTCUSD, USDJPY]}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas numpy matplotlib
+      - uses: actions/download-artifact@v4
+        if: matrix.symbol == 'USDJPY'
+        with:
+          name: rizan-usdjpy-m1-all-years-csv-gz
+          run-id: 39176779912
+          github-token: ${{ github.token }}
+          path: research_btc_jpy/input_usdjpy
+      - name: Prepare USDJPY
+        if: matrix.symbol == 'USDJPY'
+        run: python research_btc_jpy/prepare.py USDJPY --usdjpy research_btc_jpy/input_usdjpy/USDJPY_M1_2016_2026_UTC.csv.gz
+      - name: Wait only for completed BTC official repair research artifact
+        if: matrix.symbol == 'BTCUSD'
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 120); do
+            FOUND=$(gh api repos/rizanrizan93/Forex-scanner/actions/runs/39209246145/artifacts --jq '[.artifacts[] | select(.name == "RIZAN-BTCUSD-PHASE2-1M-2019-2026")] | length')
+            if [ "$FOUND" = 1 ]; then exit 0; fi
+            sleep 15
+          done
+          exit 1
+      - uses: actions/download-artifact@v4
+        if: matrix.symbol == 'BTCUSD'
+        with:
+          name: RIZAN-BTCUSD-PHASE2-1M-2019-2026
+          run-id: 39209246145
+          github-token: ${{ github.token }}
+          path: prior_btc
+      - name: Preserve repaired BTC input and provenance
+        if: matrix.symbol == 'BTCUSD'
+        run: |
+          mkdir -p research_btc_jpy/data
+          cp prior_btc/data/* research_btc_jpy/data/
+          gzip -dk research_btc_jpy/data/BTCUSD_M1.csv.gz
+      - name: Compile session family engine and execution fixtures
+        run: |
+          set -euo pipefail
+          mkdir -p research_btc_jpy/results_${{ matrix.symbol }}
+          cp research_btc_jpy/search_sessions.cpp research_btc_jpy/search.cpp
+          g++ -O3 -std=c++17 -Wall -Wextra research_btc_jpy/search.cpp -o search
+          ./search --test | tee research_btc_jpy/results_${{ matrix.symbol }}/ENGINE_FIXTURES.log
+          sha256sum research_btc_jpy/*.cpp research_btc_jpy/*.py research_btc_jpy/*.md > research_btc_jpy/results_${{ matrix.symbol }}/SOURCE_SHA256.txt
+          git rev-parse HEAD > research_btc_jpy/results_${{ matrix.symbol }}/COMMIT.txt
+      - name: Execute one million session configurations and M1 validation
+        run: |
+          set -euo pipefail
+          ./search research_btc_jpy/data/${{ matrix.symbol }}_M1.csv ${{ matrix.symbol }} research_btc_jpy/results_${{ matrix.symbol }} 1000000 | tee research_btc_jpy/results_${{ matrix.symbol }}/RUN.log
+          grep -q 'COMPLETE unique=1000000' research_btc_jpy/results_${{ matrix.symbol }}/RUN.log
+          python research_btc_jpy/audit_report.py ${{ matrix.symbol }}
+      - name: Compress
+        if: always()
+        run: |
+          gzip -f research_btc_jpy/results_${{ matrix.symbol }}/ALL_CONFIGURATIONS.csv || true
+          gzip -f research_btc_jpy/data/${{ matrix.symbol }}_M1.csv || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-${{ matrix.symbol }}-SESSIONS-1M-2019-2026
+          compression-level: 1
+          retention-days: 30
+          path: |
+            research_btc_jpy/results_${{ matrix.symbol }}/
+            research_btc_jpy/data/
+            research_btc_jpy/*.cpp
+            research_btc_jpy/*.py
+            research_btc_jpy/*.md
+          if-no-files-found: error
