@@ -14,9 +14,9 @@ def ck(name,value):
 ck('one_million_unique_configurations',summary['unique_configurations']==1000000)
 ck('all_87_months_input',len(audit['months'])==87)
 ck('input_sha256',hashlib.sha256((ROOT/'data'/f'{symbol}_M1.csv').read_bytes()).hexdigest()==audit['sha256'])
-count=0;ids=set();families=set()
+count=0;ids=set();families=set();timeframes=set()
 for q in pd.read_csv(r/'ALL_CONFIGURATIONS.csv',chunksize=100000):
-    count+=len(q);ck(f'finite_screen_rows_{count}',np.isfinite(q.select_dtypes('number').to_numpy()).all());families.update(q.family.unique());ids.update(q.id.tolist())
+    count+=len(q);ck(f'finite_screen_rows_{count}',np.isfinite(q.select_dtypes('number').to_numpy()).all());families.update(q.family.unique());timeframes.update(int(x) for x in q.tf_minutes.unique());ids.update(q.id.tolist())
 ck('screen_row_count',count==1000000 and len(ids)==count);ck('twelve_families',len(families)==12)
 maxerror=0;ledger_info=[]
 for p in sorted(r.glob('candidate_*_ledger.csv')):
@@ -50,7 +50,7 @@ robust=[]
 for _,b in good.iterrows():
     cv=cases_for(b.id).set_index('case')
     if all(cv.loc[c,'equity']>100 and cv.loc[c,'floating_dd']<50 for c in ['COST1_5','COST2','VALID_2023_2024','TEST_2025_2026Q1']):robust.append(int(b.id))
-summary.update({'M1_target_count':int((base.equity>=100000).sum()),'M1_target_dd50_count':len(good),'M1_robust_target_ids':robust,'max_independent_reconciliation_error':maxerror,'data_status':audit['status'],'macro_filter':'NONE_NEW_RESEARCH','broker_execution_status':'NOT_VALIDATED','selection_warning':'1M multiple comparisons; historical split only; no virgin prospective holdout.'})
+summary.update({'timeframes_minutes':sorted(timeframes),'M1_target_count':int((base.equity>=100000).sum()),'M1_target_dd50_count':len(good),'M1_robust_target_ids':robust,'max_independent_reconciliation_error':maxerror,'data_status':audit['status'],'macro_filter':'NONE_NEW_RESEARCH','broker_execution_status':'NOT_VALIDATED','selection_warning':'1M multiple comparisons; historical split only; no virgin prospective holdout.'})
 (r/'FINAL_SUMMARY.json').write_text(json.dumps(summary,indent=2));(r/'RECONCILIATION.json').write_text(json.dumps({'max_error':maxerror,'ledgers':ledger_info,'checks':checks},indent=2))
 columns=['id','family','tf_minutes','equity','floating_dd','pf','trades','wins','adds','risk','margin_fraction','add_stages','stop_atr','tp_R','hold_bars','breakeven_R']
 base[columns+['cohort']].to_csv(r/'M1_RANKED.csv',index=False)
@@ -67,9 +67,9 @@ sections=[]
 for cid in dict.fromkeys(chosen):sections.append(f'### Candidate {cid}\n\n'+table(cases_for(cid),['case','equity','floating_dd','pf','trades','adds']))
 report=f'''# RIZAN {symbol} — 1,000,000 configurations, 2019–2026Q1
 
-**Status: EXPLORATORY / BROKER_NOT_VALIDATED.** Independent new strategy research, not frozen XAU/EUR parity. USD100 initial, no topups. 12 families, 1,000,000 unique active parameter combinations. Screened using M15/H1/H4 OHLC; shortlisted candidates rerun on actual minute OHLC. These are not real tick bid/ask replays.
+**Status: EXPLORATORY / BROKER_NOT_VALIDATED.** Independent new strategy research, not frozen XAU/EUR parity. USD100 initial, no topups. 12 families, 1,000,000 unique active parameter combinations. Screen timeframes in minutes: {sorted(timeframes)}; shortlisted candidates rerun on actual minute OHLC. These are not real tick bid/ask replays.
 
-Input: {summary['m1_rows']:,} M1 bars; {summary['first']}–{summary['last']} UTC;87months. Data statusPARTIAL, {audit['gap_count']:,} timestamp gaps; {'188 conflicting source timestamps quarantined; exact duplicate OHLC collapsed, nominal year file ownership prevents overlap.' if symbol=='BTCUSD' else 'Market-weekend gaps are not automatically certified as safe.'} No missing candles synthesized. All input hashes and raw source provenance included.
+Input: {summary['m1_rows']:,} M1 bars; {summary['first']}–{summary['last']} UTC;87months. Data statusPARTIAL, {audit['gap_count']:,} timestamp gaps; {str(len(audit.get('original_quarantined_conflicts',audit.get('conflicting_timestamps_quarantined',[]))))+' original conflicting source timestamps quarantined; exact duplicate OHLC collapsed, nominal year file ownership prevents overlap. Official API repairs, if performed, are separately identified in BTCUSD_PRIMARY_API_PROVENANCE.json.' if symbol=='BTCUSD' else 'Market-weekend gaps are not automatically certified as safe.'} No missing candles synthesized locally. All input hashes and raw source provenance included.
 
 ## Target outcome
 
