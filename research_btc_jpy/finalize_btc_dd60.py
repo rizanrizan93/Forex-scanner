@@ -17,6 +17,18 @@ new=n['leaders']['DD_LT60'];old=next(x for x in l['leaders'] if x['criterion']==
 newwins=new['equity']>old['equity'];champ=new if newwins else old
 assert champ['floating_dd']<60 and champ['trades']>=30
 cases=[x for x in (ns if newwins else ls) if int(x['id'])==int(champ['id']) and (newwins or x['variant']==champ['variant'])]
+# Original audit ZIP remains intact on VPS/Actions; compact review omits curve CSV only.
+legacy_original=legacy
+with zipfile.ZipFile(legacy_original) as z:
+ names=[p for p in z.namelist() if not p.endswith('_equity.csv.gz') and p!='MANIFEST_SHA256.csv' and not p.endswith('/')]
+ buf=io.StringIO();w=csv.writer(buf);w.writerow(['path','sha256','bytes'])
+ for p in names:
+  b=z.read(p);w.writerow([p,hashlib.sha256(b).hexdigest(),len(b)])
+ legacy=R/'RIZAN_BTC_DD60_LEGACY_REVIEW.zip'
+ with zipfile.ZipFile(legacy,'w',zipfile.ZIP_DEFLATED,compresslevel=4) as out:
+  for p in names:out.writestr(p,z.read(p))
+  out.writestr('MANIFEST_SHA256.csv',buf.getvalue())
+verify(legacy,'MANIFEST_SHA256.csv')
 def money(x):return '$'+f'{float(x):,.2f}'
 def pct(x):return f'{float(x):.2f}%'
 def table(h,rows):return '| '+' | '.join(h)+' |\n|'+'|'.join(['---']*len(h))+'|\n'+''.join('| '+' | '.join(str(x) for x in r)+' |\n' for r in rows)+'\n'
@@ -46,12 +58,13 @@ report+='Seluruh rentang dipakai untuk seleksi setelah banyak percobaan: optimas
 report+='Data **officialBitstampOHLC M1, bukan tick bid/ask broker**. Leverage10 hipotesis,min/step0,01BTC,max100BTC;spread5bp,slip1bp/sisi,fee5bp/sisi,financingdebit3bpnotional/hari. KontrakRAW/leverage tiers/swap historis broker belum dibuktikan. Sinyal memakai candleclosed,entrynextopen;trendH4/D1closed;warmup source tetap. Tidak ada makro historis sintetis.\n\n'
 report+='Stop-first pada bar ambigu,gapSL pada open lebih buruk. DD diperiksa setiapM1,grafik snapshotperjam. PrioritasSL/TP sebelum fallbackstopout dan capital-floorpermanen source lama tetap. ACK,reconnect,partialfill,depth dan spesifikasi broker native belum divalidasi. Tidak ada top-up,reset,DDclamp atau stop setelah target.\n\n'
 report+='**BTC belum diuji dengan equity/margin bersama XAU–EUR.** Saldo standalone tidak dijumlahkan. cBotlive/frozenXAU-EUR,bridge dan envproduksi tidak diubah;tidak ada order atau merge main.\n\n'
+report+='Publikasi ringkasan pada run39256137521 gagal dengan GitHubHTTP403/rule-timeout setelah pengujian dan verifikasiVPS sukses. Finalisasi ini memeriksa ulang manifest dan menerbitkan bukti ringkas; tidak mengubah hasil keuangan.\n\n'
 report+='## Artefak\n\nRun10juta: https://github.com/rizanrizan93/Forex-scanner/actions/runs/39251677841\n\nRunlegacy: https://github.com/rizanrizan93/Forex-scanner/actions/runs/39256137521\n\nCommit10juta: '+n['source_commit']+'\n\nCommitlegacy audit/recovery:d81470688b94a78b6c845e0f8c38e301672dd297; original fine-sizing commit:0d6c1065aff3cfb6c838372dada44e097f193b7e\n\n'
 report+='CSVinputSHA256:c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504.\n\nVPS10juta:/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-ten-million-dd60-2019-oct2026/run-39251677841/\n\nVPSlegacy:/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-dd60-legacy-2019-oct2026/run-39256137521/\n\n'
-report+='FINAL_REVIEW memuat laporan ini,ZIPreview10juta,danZIPlegacy lengkap(source,config,ledger,rekonsiliasi,bulanan/tahunan,grafik,manifest). Seluruh10tabel million-row berada di RIZAN_BTC_TEN_MILLION_COMPLETE.zip pada Actions/VPS10juta,SHA256efd72e0ba283a726d99f1186a57dd5a4a8aaea83c7853f1a3cc596410ff91a91. Review tidak menduplikasi10juta tabel/curveCSV besar. Semua manifest telah diverifikasi ulang.\n'
+report+='FINAL_REVIEW memuat laporan ini,ZIPreview10juta,danZIPlegacy review(source,config,ledger,rekonsiliasi,bulanan/tahunan,grafik,manifest). Seluruh10tabel million-row berada di RIZAN_BTC_TEN_MILLION_COMPLETE.zip pada Actions/VPS10juta,SHA256efd72e0ba283a726d99f1186a57dd5a4a8aaea83c7853f1a3cc596410ff91a91. Review tidak menduplikasi10juta tabel/curveCSV besar. ZIPlegacy asli dengan seluruhcurveCSV tetap tersimpan di Actions/VPS; review hanya menghilangkan filecurve, bukan ledger atau kasus menurut performa. Semua manifest telah diverifikasi ulang.\n'
 (O/'LAPORAN_BTC_DD60_FINAL.md').write_text(report)
 shutil.copy2(ten,O/ten.name);shutil.copy2(legacy,O/legacy.name)
-status={'overall_champion_origin':'COMPOSITE_10M' if newwins else 'LEGACY_FINE_SIZING','overall_champion':champ,'ten_status':n,'legacy_status':l,'finalizer_commit':os.environ['GITHUB_SHA'],'source_review_sha256':sha(ten),'source_legacy_sha256':sha(legacy)}
+status={'overall_champion_origin':'COMPOSITE_10M' if newwins else 'LEGACY_FINE_SIZING','overall_champion':champ,'ten_status':n,'legacy_status':l,'finalizer_commit':os.environ['GITHUB_SHA'],'source_review_sha256':sha(ten),'source_legacy_sha256':sha(legacy_original),'compact_legacy_review_sha256':sha(legacy)}
 (O/'FINAL_STATUS.json').write_text(json.dumps(status,indent=2,allow_nan=False))
 with open(O/'MANIFEST_SHA256.csv','w') as f:
  w=csv.writer(f);w.writerow(['path','sha256','bytes'])
