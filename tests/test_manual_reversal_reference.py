@@ -3,7 +3,7 @@ from pathlib import Path
 import ast,json
 import pandas as pd
 import pytest
-from fx_scanner.manual_reversal_map import CONTRACT,frame,project,build_plans,reversal_phase,validate
+from fx_scanner.manual_reversal_map import CONTRACT,frame,project,build_plans,reversal_phase,validate,annotate_intraday_zone_risk
 
 NOW=pd.Timestamp('2026-10-15T14:30Z')
 
@@ -120,3 +120,35 @@ def test_display_imports_cannot_reach_order_bridge_or_strategy_mutation():
     assert 'workflow_dispatch:' in text and 'scripts/run_reversal_feed.py' in text
     publisher=(root/'scripts/run_reversal_feed.py').read_text()
     assert "item.get('execution_influence') is not False" in publisher
+
+
+def test_unconfirmed_m15_close_beyond_h1_zone_quarantines_not_retires():
+    z = project([zone()], 101.0)[0]
+    rows = pd.DataFrame([{
+        'timestamp': NOW-pd.Timedelta(minutes=15), 'open': 99.0,
+        'high': 100.5, 'low': 97.2, 'close': 97.5,
+    }])
+    annotate_intraday_zone_risk([z], rows, 101.0)
+    assert z['risk_state'] == 'PENDING_PARENT_CLOSE'
+    assert z['touch_count'] == 1
+    assert reversal_phase(z, candles(), 101.0, NOW)['phase'] == 'TEMBUS_SEMENTARA_TUNGGU_TF_ASAL'
+    assert z['probability'] is None
+    # A wick alone with the close back above invalidation is not a break.
+    rows.loc[0, 'close'] = 101.0
+    annotate_intraday_zone_risk([z], rows, 101.0)
+    assert z['risk_state'] == 'NORMAL'
+
+
+def test_repeated_m15_contact_degrades_h1_zone_without_inventing_probability():
+    z = project([zone()], 101.0)[0]
+    rows = pd.DataFrame([
+        {'timestamp': NOW-pd.Timedelta(minutes=90-i*15),
+         'open': 101., 'high': 101.5,
+         'low': 99. if i in {0, 2, 4} else 100.5, 'close': 101.}
+        for i in range(6)
+    ]).sort_values('timestamp').reset_index(drop=True)
+    annotate_intraday_zone_risk([z], rows, 101.0)
+    assert z['touch_count'] == 3
+    assert z['lifecycle'] == 'DEGRADED'
+    assert z['risk_state'] == 'REPEATED_TESTS'
+    assert z['probability'] is None
