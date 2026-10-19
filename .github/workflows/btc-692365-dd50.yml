@@ -47,7 +47,7 @@ jobs:
           import pathlib,json,base64,subprocess,time
           branch='research/btc-692365-dd50-2019-2026'
           for p in pathlib.Path('focus_results').iterdir():
-            if not p.is_file() or p.suffix not in ['.md','.json','.csv','.txt']:continue
+            if not p.is_file() or p.suffix not in ['.md','.json','.csv','.txt'] or p.name.startswith('candidate_'):continue
             path='research_results/btc-692365-dd50-2019-oct2026/'+p.name
             for attempt in range(6):
               old=subprocess.run(['gh','api','repos/rizanrizan93/Forex-scanner/contents/'+path+'?ref='+branch],capture_output=True,text=True)
@@ -74,3 +74,5 @@ jobs:
           retention-days: 90
 
 # Explicit gzip decoder; original archive hashes and financial engine unchanged.
+
+# Stage2: fine margins plus explicit DD45/DD48 buffer sensitivity.
