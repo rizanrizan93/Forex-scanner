@@ -1,0 +1,7 @@
+# Entire official BTCUSD candle source verification
+
+After a deterministic sample found16 mismatched OHLC rows among16,126 overlap minutes, the final BTC study will use the entire2019–2026Q1 historical Bitstamp M1 API feed rather than mixing incomplete archived CSV bars with missing-minute patches. This choice precedes observing the final replay. Primary feed precedence applies to every timestamp, never conditional on strategy performance. All raw API responses, hashes, volumes, input differences and original research CSV preserved. Empty/failing API periods remain explicitly missing, no locally interpolated prices. Provider zero-volume OHLC candles are source-published candles, not ticks.
+
+Fetch fixed1000-minute UTC intervals, convert epoch units explicitly, pin pandas2.2.3; validatepositive finiteOHLC, timebounds, timestampuniqueness, volume and chronologicalcoverage. If complete, expectedcalendarminutes=end-start; no certification of historical brokerbid/ask/calendar/swap/margin. If provider empty/failure, statusPARTIAL, not automatically marketclosed. The full feed is a historical snapshot downloaded19Oct2026, not a macro pointintime feed.
+
+Rerun the same genericmillion and all sessionmillion shortlisted candidates on the final source. All1million generic configurations must run directlyonM1 in disjoint shards. Same$100, no topups, same explicit modelcosts, risk, leverage and parameterseed. Previous CDD and failed/patchedAPI runs remain labeledsupersededsourcecontrols, not additionaldistinctstrategies or validatedtargets.
