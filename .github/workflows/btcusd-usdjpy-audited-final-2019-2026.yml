@@ -1,0 +1,122 @@
+name: RIZAN BTCUSD USDJPY audited million M1 final results
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/btcusd-usdjpy-audited-final-2019-2026.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  audit:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        symbol: [BTCUSD, USDJPY]
+        variant: [GENERIC, SESSIONS]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SOURCE_RUN: ${{ matrix.symbol == 'BTCUSD' && '39211829715' || matrix.variant == 'GENERIC' && '39210294092' || '39211058509' }}
+      SOURCE_PATTERN: ${{ matrix.symbol == 'BTCUSD' && format('RIZAN-OFFICIAL-DIRECT-BTCUSD-{0}-*', matrix.variant) || matrix.variant == 'GENERIC' && 'RIZAN-DIRECT-M1-USDJPY-*' || 'RIZAN-FINAL-DIRECT-USDJPY-SESSIONS-*' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib
+      - name: Require completed source computations and valid locked extension data
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 160); do
+            SOURCE_STATE=$(gh api repos/rizanrizan93/Forex-scanner/actions/runs/$SOURCE_RUN --jq '.status + ":" + (.conclusion // "")')
+            EXTENSION_STATE=$(gh api repos/rizanrizan93/Forex-scanner/actions/runs/39212036090 --jq '.status + ":" + (.conclusion // "")')
+            SOURCE_OK=false
+            if [ "$SOURCE_STATE" = completed:success ]; then SOURCE_OK=true; fi
+            if [ "$SOURCE_RUN" = 39211058509 ]; then
+              JPY_JOBS=$(gh api repos/rizanrizan93/Forex-scanner/actions/runs/$SOURCE_RUN/jobs?per_page=100 --jq '[.jobs[] | select(.name | contains("USDJPY")) | select(.conclusion == "success")] | length')
+              if [ "$JPY_JOBS" = 5 ]; then SOURCE_OK=true; fi
+            fi
+            if [ "$SOURCE_OK" = true ] && [ "$EXTENSION_STATE" = completed:success ]; then exit 0; fi
+            if [ "$SOURCE_STATE" = completed:failure ] || [ "$EXTENSION_STATE" = completed:failure ]; then exit 1; fi
+            sleep 15
+          done
+          exit 1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ env.SOURCE_PATTERN }}
+          run-id: ${{ env.SOURCE_RUN }}
+          github-token: ${{ github.token }}
+          path: raw_shards
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-${{ matrix.symbol }}-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: extended_data
+      - name: Merge five disjoint shards with one million exact unique tuples
+        env: {RESEARCH_SYMBOL: '${{ matrix.symbol }}'}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os,pathlib,shutil
+          s=os.environ['RESEARCH_SYMBOL'];root=pathlib.Path('raw_shards');dest=pathlib.Path('normalized');dest.mkdir()
+          shards=[p for p in root.iterdir() if p.is_dir()]
+          assert len(shards)==5
+          for p in shards:shutil.copytree(p,dest/(s+'_'+p.name.split('-')[-1]))
+          PY
+          python research_btc_jpy/merge_direct.py ${{ matrix.symbol }} normalized study
+          cp research_btc_jpy/audit_report.py study/
+          python study/audit_report.py ${{ matrix.symbol }}
+          python research_btc_jpy/universe_statistics.py study ${{ matrix.symbol }}
+          python research_btc_jpy/select_locked.py study ${{ matrix.symbol }}
+      - name: Compile exact archived engine and test no future-price dependence
+        run: |
+          set -euo pipefail
+          cp research_btc_jpy/prefix_invariance.cpp research_btc_jpy/forward_locked.cpp study/
+          VARIANT_FLAG=''
+          if [ '${{ matrix.variant }}' = SESSIONS ]; then
+            cp study/search_direct_m1.cpp study/search_sessions_direct.cpp
+            VARIANT_FLAG='-DSESSION_VARIANT'
+          fi
+          g++ -O3 -std=c++17 $VARIANT_FLAG study/prefix_invariance.cpp -o prefix
+          ./prefix study/data/${{ matrix.symbol }}_M1.csv ${{ matrix.symbol }} study/results_${{ matrix.symbol }}/PREFIX_INVARIANCE.json
+          g++ -O3 -std=c++17 $VARIANT_FLAG study/forward_locked.cpp -o forward
+      - name: Execute locked extension through15Oct without changing parameters
+        run: |
+          set -euo pipefail
+          mkdir -p study/extension
+          gzip -dk extended_data/data/${{ matrix.symbol }}_M1.csv.gz
+          ./forward extended_data/data/${{ matrix.symbol }}_M1.csv ${{ matrix.symbol }} study/results_${{ matrix.symbol }}/LOCKED_SELECTION.csv study/extension | tee study/extension/RUN.log
+          python research_btc_jpy/analyze_extension.py study ${{ matrix.symbol }}
+          cp extended_data/data/${{ matrix.symbol }}_AUDIT.json study/extension/EXTENDED_INPUT_AUDIT.json
+          cp extended_data/EXTENSION_PROTOCOL.md study/extension/ || true
+          sha256sum extended_data/data/${{ matrix.symbol }}_M1.csv > study/extension/INPUT_SHA256.txt
+      - name: Package audited source, full rows, ledgers and charts
+        env: {RESEARCH_SYMBOL: '${{ matrix.symbol }}', RESEARCH_VARIANT: '${{ matrix.variant }}'}
+        run: |
+          set -euo pipefail
+          gzip -f study/results_${{ matrix.symbol }}/ALL_CONFIGURATIONS.csv
+          gzip -f study/data/${{ matrix.symbol }}_M1.csv
+          git rev-parse HEAD > study/AUDIT_COMMIT.txt
+          cp research_btc_jpy/RESEARCH_PROTOCOL.md research_btc_jpy/DIRECT_M1_PROTOCOL.md research_btc_jpy/PHASE3_PROTOCOL.md research_btc_jpy/OFFICIAL_BTC_PROTOCOL.md research_btc_jpy/EXTENSION_PROTOCOL.md study/
+          cp research_btc_jpy/prepare.py research_btc_jpy/primary_full_btc.py research_btc_jpy/merge_direct.py research_btc_jpy/select_locked.py research_btc_jpy/universe_statistics.py research_btc_jpy/analyze_extension.py study/
+          python - <<'PY'
+          import os,pathlib,hashlib,shutil,json
+          s=os.environ['RESEARCH_SYMBOL'];v=os.environ['RESEARCH_VARIANT'];root=pathlib.Path('study')
+          if v=='GENERIC':shutil.copy2(pathlib.Path('extended_data/data')/(s+'_M1.csv.gz'),root/'extension'/('EXTENDED_'+s+'_M1.csv.gz'))
+          else:
+            for p in (root/'data').glob('*_M1.csv.gz'):p.unlink()
+          (root/'UNIVERSE.json').write_text(json.dumps({'symbol':s,'variant':v,'source_run':os.environ['SOURCE_RUN'],'selection_end':'2026-03-31','extension_end':'2026-10-15','independent_initial_USD':100,'topup':False},indent=2))
+          with open(root/'MANIFEST_SHA256.csv','w') as f:
+            f.write('path,sha256,bytes\n')
+            for p in sorted(root.rglob('*')):
+              if p.is_file() and '__pycache__' not in p.parts and p.name!='MANIFEST_SHA256.csv':f.write(f'{p.relative_to(root)},{hashlib.sha256(p.read_bytes()).hexdigest()},{p.stat().st_size}\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-AUDITED-${{ matrix.symbol }}-${{ matrix.variant }}
+          path: study/
+          compression-level: 1
+          retention-days: 30
+          if-no-files-found: error
