@@ -127,7 +127,15 @@ def render_snapshot(snapshot):
         st.dataframe(rows,hide_index=True,width='stretch')
         for tf,at in p.get('timeframe_closed_at',{}).items():st.caption(tf+' · close '+wib(at)+' · '+('cukup baru' if p.get('timeframe_fresh',{}).get(tf) else 'belum lengkap / terlambat'))
         st.download_button('Unduh peta manual JSON',json.dumps(p,indent=2),file_name='RIZAN_XAU_Manual_Reversal.json',mime='application/json',key='manual_reversal_json')
-    st.caption('Benchmark first-touch historis 2019–Maret 2026 (Dukascopy M1 turunan tick, target 1 ATR, 24 jam): PF bruto H2 OOS sekitar 1,21; belum termasuk biaya, banyak sinyal belum diuji sebagai order, bukan win-rate entry manual.')
+    with st.expander('Audit PF historis — jangan disamakan dengan peluang reversal', expanded=False):
+        st.caption('2019–Maret 2026 · Dukascopy BID M1 turunan tick, bukan tick native bid/ask FP Markets. Replay entry setelah reclaim M15 + break M5, TP 1,5R, stop distal, estimasi spread/komisi/slippage dan reopening gap.')
+        st.dataframe([
+            {'Zona': 'Gabungan H1/H2/H4', 'PF 2019–23': 0.842, 'PF 2024–25': 0.937, 'PF 2026 Q1': 1.489},
+            {'Zona': 'H2 saja', 'PF 2019–23': 0.831, 'PF 2024–25': 0.941, 'PF 2026 Q1': 1.720},
+        ], hide_index=True, width='stretch')
+        st.warning('PF baseline train/validasi masih di bawah 1. Periode 2026 Q1 pendek; PF satu posisi gabungan saat itu hanya sekitar 1,03. Zona adalah referensi struktur, bukan sinyal yang edge trading-nya telah terbukti.')
+        st.caption('PF berasal dari ledger kandidat terpisah, bukan order/portfolio live. Pencarian 6.242 filter memiliki risiko overfitting. Belum ada probabilitas yang terkalibrasi.')
+        st.markdown('[Metodologi audit dan batas pengujian](https://github.com/rizanrizan93/Forex-scanner/blob/main/docs/research/manual_xau_confirmed_reversal_pf_2019_2026.md)')
     st.caption('Pemetaan struktural untuk keputusan manual. Probabilitas reversal dan keuntungan belum terkalibrasi; jarak gerak $10–$100 bukan target yang dijanjikan.')
 
 
