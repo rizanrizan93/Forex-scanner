@@ -21,6 +21,7 @@ PHASES={
  'GERAK_SUDAH_BERJALAN':'Harga sudah bergerak dari konfirmasi',
  'LEWATI_BATAS_SKENARIO':'Harga melewati batas skenario',
  'TEMBUS_SEMENTARA_TUNGGU_TF_ASAL':'Tembus sementara · tunggu penutupan candle asal dan reclaim M15',
+ 'ZONA_MELEMAH_TUNGGU_BASIS_BARU':'Zona sudah melemah · menunggu basis baru, bukan entry reversal',
 }
 
 def read_json(url):
@@ -73,18 +74,20 @@ def render_snapshot(snapshot):
                 st.info('Belum ada acuan H1/H2/H4 yang aktif dan datanya cukup baru pada sisi harga ini.');continue
             plan=plans[side];z=plan['anchor'];phase=plan['phase'];label=PHASES.get(phase,'Menunggu pemeriksaan data')
             if phase=='KONFIRMASI_STRUKTUR':st.info(label+' · periksa ulang chart sebelum keputusan manual')
-            elif phase in {'KONFLIK_H1_H4','KONFLIK_STRUKTUR_H1_H2_H4','LEWATI_BATAS_SKENARIO','KONFIRMASI_BATAL','TEMBUS_SEMENTARA_TUNGGU_TF_ASAL'}:st.warning(label)
+            elif phase in {'KONFLIK_H1_H4','KONFLIK_STRUKTUR_H1_H2_H4','LEWATI_BATAS_SKENARIO','KONFIRMASI_BATAL','TEMBUS_SEMENTARA_TUNGGU_TF_ASAL','ZONA_MELEMAH_TUNGGU_BASIS_BARU'}:st.warning(label)
             else:st.write('**'+label+'**')
             st.metric('Area acuan '+z['timeframe'],f"{z['low']:,.2f}–{z['high']:,.2f}")
             st.caption('Terbentuk '+wib(z['available_at'])+' · '+('belum ada retest teramati' if z['touch_count']==0 else f"{z['touch_count']} episode retest teramati")
                        +' · sumber hitung '+str(z.get('touch_count_source') or 'SOURCE_TF'))
+            if z.get('touch_count',0)==2:
+                st.warning('Sudah 2 episode retest; zona ini bukan fresh. Konfirmasi M15/M5 diperlukan dan risiko breakdown meningkat.')
             if z.get('risk_state') == 'PENDING_PARENT_CLOSE':
                 st.warning('Batas skenario ditembus sebelum penutupan candle timeframe asal; zona dikarantina sampai konfirmasi/reclaim.')
             elif z.get('lifecycle') == 'DEGRADED':
                 st.warning('Zona sudah diuji berulang kali; perlakukan sebagai zona melemah, bukan fresh demand/supply.')
             st.write(f"Batas skenario: **{z['invalidation']:,.2f}**")
             if z['timeframe']=='H2':
-                st.caption('H2 diprioritaskan hanya bila demand/supply H1 searah beririsan, H2 belum melemah, dan sumber H1 lengkap.')
+                st.caption('H2 dipilih bila beririsan H1 searah, belum DEGRADED, dan tidak lebih jauh dari anchor H1 terdekat.')
             st.caption(plan['invalidation_rule']+' Batas ini bukan SL order yang telah dipasang.')
             target=plan.get('target_reference')
             if target is None:st.write('Level lawan H1/H2/H4 di depan harga: belum tersedia.')
@@ -98,6 +101,14 @@ def render_snapshot(snapshot):
                 if tf == 'H4' or not ctx:
                     continue
                 st.caption(f"Konteks {tf} {ctx['direction']}: {ctx['low']:,.2f}–{ctx['high']:,.2f} · bukan trigger entry")
+            next_zones=sorted(
+                (q for q in p.get('zones',[]) if q['direction']==side and
+                 q['timeframe'] in {'H1','H2','H4'} and q['zone_id']!=z['zone_id'] and
+                 q.get('eligible') and q.get('distance',0)>z.get('distance',0)),
+                key=lambda q:q.get('distance',float('inf')))
+            if next_zones:
+                nxt=next_zones[0]
+                st.caption(f"Zona berikutnya {nxt['timeframe']}: {nxt['low']:,.2f}–{nxt['high']:,.2f} · status {nxt.get('lifecycle','UNKNOWN')}; bukan target otomatis.")
             if z['overlap'] and not z['major_conflict']:st.caption('Ada irisan dengan zona mikro sisi lawan; arah mikro masih perlu dikonfirmasi.')
             if plan.get('rejection_m15_at'):st.write('Reclaim M15: '+wib(plan['rejection_m15_at']))
             if plan.get('confirmation_m5_at'):
