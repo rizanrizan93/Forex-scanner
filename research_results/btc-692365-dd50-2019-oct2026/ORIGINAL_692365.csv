@@ -1,0 +1,2 @@
+id,tf_minutes,family,lookback,threshold_index,trend_filter,session_utc,side,stop_atr,tp_R,hold_bars,risk,margin_fraction,add_stages,breakeven_R,full_equity,full_floating_dd,full_balance_dd,full_pf,full_trades,full_wins,full_adds,full_skips,full_liquidations,full_reconciliation_error,train_equity,train_dd,train_trades
+692365,240,displacement_follow,8,2,1,1,1,2.0,16,32,0.4,0.95,2,2,1005025.524,67.92092401,57.16066881,1.405202214,63,33,36,0,0,2.328306437e-10,33265.20706,67.92092401,29
