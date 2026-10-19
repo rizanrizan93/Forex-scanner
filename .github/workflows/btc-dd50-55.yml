@@ -78,3 +78,5 @@ jobs:
             dd_results/*.txt
           compression-level: 1
           retention-days: 90
+
+# Explicit gzip decoder; original archive hashes and financial engine unchanged.
