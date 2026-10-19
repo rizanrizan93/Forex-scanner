@@ -1,0 +1,15 @@
+{
+  "financial_files_byte_identical": true,
+  "execution_sources_byte_identical": true,
+  "reason": "Correct inherited generic shortlist wording in metadata only; actual DD constrained selection was already correct in CSV/report.",
+  "changed": [
+    {
+      "path": "POSITION_HIGH/raw_validation/RAW_VALIDATION_PROOF.json",
+      "before_sha256": "e04284440186194c5d98aa8872bed012fe825d4ff627e2dcffd5e351e70bd095",
+      "after_sha256": "12e6dab3e7de76c1eaa110321117dd889ec82e4fe1f62e14817ca27fb500ca9b",
+      "original_label": "Global full-period top20, DD50 top20 and train-selected top20 union; no minimum full trade-count filter"
+    }
+  ],
+  "original_archive_sha256": "d880365f4ccb67de9b813182be75ecac3986de4bc6b4fe3cbd422f18728ffd13",
+  "financial_run": 39243543774
+}
