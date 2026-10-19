@@ -1,0 +1,70 @@
+name: BTCUSD complete official exchange OHLC build
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/btcusd-official-full-2019-2026.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  extend:
+    strategy:
+      fail-fast: false
+      matrix: {symbol: [BTCUSD]}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib
+      - uses: actions/download-artifact@v4
+        if: matrix.symbol == 'USDJPY'
+        with:
+          name: rizan-usdjpy-m1-all-years-csv-gz
+          run-id: 39176779912
+          github-token: ${{ github.token }}
+          path: research_btc_jpy/input_usdjpy
+      - name: Prepare original audited inputs
+        run: python research_btc_jpy/prepare.py ${{ matrix.symbol }} --usdjpy research_btc_jpy/input_usdjpy/USDJPY_M1_2016_2026_UTC.csv.gz
+      - name: Recover missing BTCUSD candles from official Bitstamp API
+        if: matrix.symbol == 'BTCUSD'
+        run: |
+          set -euo pipefail
+          python -u research_btc_jpy/primary_full_btc.py | tee research_btc_jpy/PRIMARY_API_REPAIR.log
+      - name: Select predeclared H4 D1 extended engine for USDJPY
+        if: matrix.symbol == 'USDJPY'
+        run: cp research_btc_jpy/search_long.cpp research_btc_jpy/search.cpp
+      - name: Compile and verify
+        run: |
+          set -euo pipefail
+          mkdir -p research_btc_jpy/results_${{ matrix.symbol }}
+          g++ -O3 -std=c++17 -Wall -Wextra research_btc_jpy/search.cpp -o search
+          ./search --test | tee research_btc_jpy/results_${{ matrix.symbol }}/ENGINE_FIXTURES.log
+          sha256sum research_btc_jpy/*.py research_btc_jpy/*.cpp research_btc_jpy/*.md > research_btc_jpy/results_${{ matrix.symbol }}/SOURCE_SHA256.txt
+          git rev-parse HEAD > research_btc_jpy/results_${{ matrix.symbol }}/COMMIT.txt
+      - name: Execute one million configurations and all M1 sensitivities
+        run: |
+          set -euo pipefail
+          ./search research_btc_jpy/data/${{ matrix.symbol }}_M1.csv ${{ matrix.symbol }} research_btc_jpy/results_${{ matrix.symbol }} 1000000 | tee research_btc_jpy/results_${{ matrix.symbol }}/RUN.log
+          grep -q 'COMPLETE unique=1000000' research_btc_jpy/results_${{ matrix.symbol }}/RUN.log
+          python research_btc_jpy/audit_report.py ${{ matrix.symbol }}
+      - name: Compress reproducibility inputs
+        if: always()
+        run: |
+          gzip -f research_btc_jpy/results_${{ matrix.symbol }}/ALL_CONFIGURATIONS.csv || true
+          gzip -f research_btc_jpy/data/${{ matrix.symbol }}_M1.csv || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-${{ matrix.symbol }}-OFFICIAL-FULL-1M-2019-2026
+          compression-level: 1
+          retention-days: 30
+          path: |
+            research_btc_jpy/results_${{ matrix.symbol }}/
+            research_btc_jpy/data/
+            research_btc_jpy/primary_api/
+            research_btc_jpy/PRIMARY_API_REPAIR.log
+            research_btc_jpy/*.py
+            research_btc_jpy/*.cpp
+            research_btc_jpy/*.md
+          if-no-files-found: error
