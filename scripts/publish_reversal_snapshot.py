@@ -91,6 +91,25 @@ def main(output):
                 native[tf]=[{"timestamp":datetime.fromtimestamp(b.utcTimestampInMinutes*60,UTC).isoformat(),
                     "low":b.low/100000.,"open":(b.low+b.deltaOpen)/100000.,
                     "high":(b.low+b.deltaHigh)/100000.,"close":(b.low+b.deltaClose)/100000.} for b in res.trendbar]
+            # H2 and H12 are causally derived from native H1/H4 in the
+            # manual-only engine. Fetch daily/weekly natively as optional HTF
+            # reference; one unsupported period must not remove the H1 map.
+            for tf, days, count in [("D1", 600, 650), ("W1", 1200, 250)]:
+                try:
+                    yield deferLater(reactor, .3, lambda: None)
+                    res=yield request("ProtoOAGetTrendbarsReq",
+                        ctidTraderAccountId=account, symbolId=symbols[0].symbolId,
+                        period=ProtoOATrendbarPeriod.Value(tf),
+                        fromTimestamp=int((now-timedelta(days=days)).timestamp()*1000),
+                        toTimestamp=int(now.timestamp()*1000), count=count)
+                    native[tf]=[{"timestamp":datetime.fromtimestamp(b.utcTimestampInMinutes*60,UTC).isoformat(),
+                        "low":b.low/100000., "open":(b.low+b.deltaOpen)/100000.,
+                        "high":(b.low+b.deltaHigh)/100000.,
+                        "close":(b.low+b.deltaClose)/100000.} for b in res.trendbar]
+                except Exception:
+                    # HTF optional context absent, never synthesize from M1.
+                    native[tf]=[]
+                    print("MANUAL_OPTIONAL_"+tf+"_UNAVAILABLE",flush=True)
             manual=evaluate_manual(native,now=now)
         except Exception:
             # Fail closed for the optional manual panel; keep the existing read-only
