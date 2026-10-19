@@ -206,3 +206,22 @@ def test_new_high_timeframe_bars_must_be_closed_and_are_read_only():
         assert frame([last],tf,now).empty
     assert 'D1' in __import__('fx_scanner.manual_reversal_map',fromlist=['MINUTES']).MINUTES
     assert 'W1' in __import__('fx_scanner.manual_reversal_map',fromlist=['MINUTES']).MINUTES
+
+
+def test_native_daily_friday_close_is_not_falsely_stale_on_monday():
+    from fx_scanner.manual_reversal_map import _fresh_frame
+    friday_start=pd.Timestamp('2026-10-15T21:00Z')
+    candle=frame([{'timestamp':friday_start.isoformat(),
+                   'open':100.,'high':101.,'low':99.,'close':100.5}],
+                 'D1',pd.Timestamp('2026-10-19T15:00Z'))
+    assert _fresh_frame(candle,'D1',pd.Timestamp('2026-10-19T15:00Z'))
+    assert not _fresh_frame(candle,'D1',pd.Timestamp('2026-10-20T22:00Z'))
+
+
+def test_native_h12_open_can_follow_non_utc_midnight_broker_anchor():
+    now=pd.Timestamp('2026-10-19T15:00Z')
+    source=frame([{'timestamp':'2026-10-19T01:00:00+00:00',
+                   'open':100., 'high':102., 'low':99., 'close':101.}],
+                 'H12',now)
+    from fx_scanner.manual_reversal_map import _fresh_frame
+    assert len(source)==1 and _fresh_frame(source,'H12',now)
