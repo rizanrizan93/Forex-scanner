@@ -181,7 +181,12 @@ def annotate_intraday_zone_risk(zones, m15, price):
 def _fresh_frame(f, tf, now):
     if f.empty:return False
     closed=f.iloc[-1].timestamp+pd.Timedelta(minutes=MINUTES[tf])
-    return 0<=(timestamp(now)-closed).total_seconds()<=(MINUTES[tf]+10)*60
+    age=(timestamp(now)-closed).total_seconds()
+    # Last completed daily candle can be Friday 21:00 UTC through the
+    # following Monday session. Do not mark missing weekend candles as stale;
+    # still fail closed after 72 hours (holidays are not extrapolated).
+    limit=72*3600 if tf=='D1' else (MINUTES[tf]+10)*60
+    return 0<=age<=limit
 
 
 def reversal_phase(zone, frames, price, now):
