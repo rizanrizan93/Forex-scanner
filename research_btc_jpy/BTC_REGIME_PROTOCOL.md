@@ -10,10 +10,8 @@ Leverage10,minimum/step0.01BTC,max100BTC,spread5bp,fees5bp/side,slip1bp/side,
 financing debit3bp/day both sides. Normal/cost1.5/cost2/delay1min/lev2/lev5.
 Cost stress never scales spread. No tick or broker FULL_PARITY claim.
 
-3888 profile geometries,each evaluated BUY and SELL: 2TF(H1/H4) x6families
-(sweep_reclaim,break_retest,trend_pullback,channel_reversion,compression_break,
-displacement_follow) x3entry modes x3regimes x2stops x3targets x2holds x3exits.
-7776 directional configurations,15552 TRAIN/VALID rows. Same prior raw family
+7776 profile geometries,each evaluated BUY and SELL: 2TF(H1/H4) x12 prior base families x3entry modes x3regimes x2stops x3targets x2holds x3exits.
+15552 directional configurations,31104 TRAIN/VALID rows. Same prior raw family
 definitions,threshold1. Entry0 next open;entry1 next closed candle breaks signal
 extreme;entry2 next closed candle retests signal midpoint and rejects in direction.
 No entry more than0.5ATR beyond last closed signal/confirmation close. No candle
@@ -26,12 +24,12 @@ SL0=1.5ATR;SL1 signal/confirmation extreme plus0.15ATR,entry-to-stop must be
 exit2 trailing1.5R from completedM1close after1.5R close profit,nextminute effective.
 No layers. No year-dependent trading rule or hindsight regime label.
 
-TRAIN2019–2022 and VALID2023–2024 are used for selection. Each diagnostic segment
-starts at100 separately; those balances are NEVER added or chained to create
+TRAIN2019–2022 and VALID2023–2024 are used for selection. Profile diagnostic segments start at10000 separately to reduce minimumlot distortion;
+pair TRAIN uses100 and VALID10000, normalized returns and annual trade coverage; those balances are NEVER added or chained to create
 full-period performance. Final2019–2026 replay uses one uninterrupted100USD
 account,sharedmargin/state,one activebasket,busy signals ignored. Simultaneous
 opposing entry signals are both discarded. BUY and SELL may use different
-profile geometry and directional risk. Pair sizing riskBUY2/3/5/8/10%,SELLweight
+profile geometry and directional risk. Pair sizing riskBUY5/8/10/15/20%,SELLweight
 0.5/1/1.5;sharedmargin50/75%,up to12profilesperdirection,at most4320pairs.
 
 Individual selection initially requires profitable TRAIN and VALID,PF>1.05,
@@ -46,3 +44,5 @@ does not make2026 independent validation. No promised profit everyyear/regime.
 Report eachyear and direction,fees/carry,cashreconciliation,robustness failures,
 baseline comparison and whether600k/DD56 survives. No live changes or mainmerge.
 Inherited capitalfloor,OHLCbounds,expiry/SL/TP/stopout model limitations retained.
+
+V2: minimum3 actual baskets per TRAINyear2019–2022 and VALIDyear2023–2024 for selection coverage. Full2019–2026 ALWAYS100USD,minimum0.01BTC unchanged. Inactive2025/2026 is rejection evidence,not successful risk control. First attempt retained.
