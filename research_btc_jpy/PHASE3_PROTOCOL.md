@@ -1,0 +1,9 @@
+# Phase3 — session and daily-liquidity families
+
+Declared before executing the session search. First generic million USDJPY configurations did not hit100k, and the H4/D1 extension also did not. Continue with12 separate session/context predicates, one million unique parameter tuples per asset. Seed202610190603. M5/M15/H1 signals, always completed H4 trend filter. Identical risk1–20%, margin10–50%, fees, carry, volumegrid, no topups and dates2019–Mar2026. Risk, leverage and transactioncosts are not adjusted to force the target.
+
+Families: Asia range breakout; Asia sweep/reclaim; previous tradingday breakout; previous tradingday sweep; previous tradingday midpoint reclaim; Tokyo openingrange breakout; London openingrange breakout; NewYork openingrange breakout; Asia falsebreak reversal; dailytrend pullback; London compression expansion; previousday range expansion.
+
+Asia range00:00–03/04/06/08UTC; Tokyo00:00–00:30/01:00/01:30/02:00; London ranges07–08/08–09/09–10/10–11; NY12–13/13–14/14–15/15–16. A range is usable only after its end, with at least80% of minute observations. Previous tradingday OHLC is from the most recent strictly earlier calendar day present in the source. No future daily/range values used before availability. The precise thresholds are in the source and all configurations are exported.
+
+BTC must use the official-API-repaired input from Phase2, preserve original and repaired audit/provenance and hash. USDJPY uses the same existing audited input export. Session keys differ from prior generic templates; a million tuples does not mean a million statistically independent families. Fullperiod exploratory ranking and train-only ranking stay separate. Historical test data has previously been researched and is not a virgin holdout. Broker/tick parity remains unproved.
