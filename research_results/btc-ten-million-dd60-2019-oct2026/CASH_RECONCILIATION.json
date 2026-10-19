@@ -1,0 +1,1962 @@
+[
+  {
+    "id": 5937693,
+    "case": "BASE",
+    "baskets": 265,
+    "max_cash_error": 1.8189894035458565e-11,
+    "pass": true
+  },
+  {
+    "id": 5937693,
+    "case": "COST1_5",
+    "baskets": 264,
+    "max_cash_error": 5.820766091346741e-11,
+    "pass": true
+  },
+  {
+    "id": 5937693,
+    "case": "COST2",
+    "baskets": 261,
+    "max_cash_error": 2.7284841053187847e-11,
+    "pass": true
+  },
+  {
+    "id": 5937693,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 265,
+    "max_cash_error": 8.003553375601768e-11,
+    "pass": true
+  },
+  {
+    "id": 5937693,
+    "case": "LEVERAGE2",
+    "baskets": 8,
+    "max_cash_error": 1.4210854715202004e-14,
+    "pass": true
+  },
+  {
+    "id": 5937693,
+    "case": "LEVERAGE5",
+    "baskets": 217,
+    "max_cash_error": 1.5916157281026244e-12,
+    "pass": true
+  },
+  {
+    "id": 5937693,
+    "case": "NO_ADDS",
+    "baskets": 278,
+    "max_cash_error": 4.729372449219227e-11,
+    "pass": true
+  },
+  {
+    "id": 5937693,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 105,
+    "max_cash_error": 2.2737367544323206e-12,
+    "pass": true
+  },
+  {
+    "id": 5937693,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 19,
+    "max_cash_error": 5.684341886080802e-14,
+    "pass": true
+  },
+  {
+    "id": 5937693,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 545010,
+    "case": "BASE",
+    "baskets": 40,
+    "max_cash_error": 2.2282620193436742e-11,
+    "pass": true
+  },
+  {
+    "id": 545010,
+    "case": "COST1_5",
+    "baskets": 40,
+    "max_cash_error": 2.000888343900442e-11,
+    "pass": true
+  },
+  {
+    "id": 545010,
+    "case": "COST2",
+    "baskets": 40,
+    "max_cash_error": 1.2732925824820995e-11,
+    "pass": true
+  },
+  {
+    "id": 545010,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 40,
+    "max_cash_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "id": 545010,
+    "case": "LEVERAGE2",
+    "baskets": 16,
+    "max_cash_error": 5.684341886080802e-14,
+    "pass": true
+  },
+  {
+    "id": 545010,
+    "case": "LEVERAGE5",
+    "baskets": 40,
+    "max_cash_error": 2.7284841053187847e-12,
+    "pass": true
+  },
+  {
+    "id": 545010,
+    "case": "NO_ADDS",
+    "baskets": 40,
+    "max_cash_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "id": 545010,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 22,
+    "max_cash_error": 5.4569682106375694e-12,
+    "pass": true
+  },
+  {
+    "id": 545010,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 3,
+    "max_cash_error": 7.460698725481052e-14,
+    "pass": true
+  },
+  {
+    "id": 545010,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 6358947,
+    "case": "BASE",
+    "baskets": 94,
+    "max_cash_error": 5.093170329928398e-11,
+    "pass": true
+  },
+  {
+    "id": 6358947,
+    "case": "COST1_5",
+    "baskets": 94,
+    "max_cash_error": 1.8189894035458565e-11,
+    "pass": true
+  },
+  {
+    "id": 6358947,
+    "case": "COST2",
+    "baskets": 94,
+    "max_cash_error": 3.9108272176235914e-11,
+    "pass": true
+  },
+  {
+    "id": 6358947,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 94,
+    "max_cash_error": 4.001776687800884e-11,
+    "pass": true
+  },
+  {
+    "id": 6358947,
+    "case": "LEVERAGE2",
+    "baskets": 50,
+    "max_cash_error": 2.2737367544323206e-13,
+    "pass": true
+  },
+  {
+    "id": 6358947,
+    "case": "LEVERAGE5",
+    "baskets": 94,
+    "max_cash_error": 4.547473508864641e-12,
+    "pass": true
+  },
+  {
+    "id": 6358947,
+    "case": "NO_ADDS",
+    "baskets": 94,
+    "max_cash_error": 5.093170329928398e-11,
+    "pass": true
+  },
+  {
+    "id": 6358947,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 61,
+    "max_cash_error": 2.1600499167107046e-12,
+    "pass": true
+  },
+  {
+    "id": 6358947,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 18,
+    "max_cash_error": 1.2505552149377763e-12,
+    "pass": true
+  },
+  {
+    "id": 6358947,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 3,
+    "max_cash_error": 1.4921397450962104e-13,
+    "pass": true
+  },
+  {
+    "id": 3280800,
+    "case": "BASE",
+    "baskets": 70,
+    "max_cash_error": 3.092281986027956e-11,
+    "pass": true
+  },
+  {
+    "id": 3280800,
+    "case": "COST1_5",
+    "baskets": 70,
+    "max_cash_error": 1.2732925824820995e-11,
+    "pass": true
+  },
+  {
+    "id": 3280800,
+    "case": "COST2",
+    "baskets": 70,
+    "max_cash_error": 1.3642420526593924e-11,
+    "pass": true
+  },
+  {
+    "id": 3280800,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 70,
+    "max_cash_error": 9.094947017729282e-12,
+    "pass": true
+  },
+  {
+    "id": 3280800,
+    "case": "LEVERAGE2",
+    "baskets": 65,
+    "max_cash_error": 1.5916157281026244e-12,
+    "pass": true
+  },
+  {
+    "id": 3280800,
+    "case": "LEVERAGE5",
+    "baskets": 70,
+    "max_cash_error": 2.3646862246096134e-11,
+    "pass": true
+  },
+  {
+    "id": 3280800,
+    "case": "NO_ADDS",
+    "baskets": 70,
+    "max_cash_error": 3.092281986027956e-11,
+    "pass": true
+  },
+  {
+    "id": 3280800,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 34,
+    "max_cash_error": 5.5706550483591855e-12,
+    "pass": true
+  },
+  {
+    "id": 3280800,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 21,
+    "max_cash_error": 2.8421709430404007e-13,
+    "pass": true
+  },
+  {
+    "id": 3280800,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 3745106,
+    "case": "BASE",
+    "baskets": 125,
+    "max_cash_error": 8.185452315956354e-11,
+    "pass": true
+  },
+  {
+    "id": 3745106,
+    "case": "COST1_5",
+    "baskets": 125,
+    "max_cash_error": 2.000888343900442e-11,
+    "pass": true
+  },
+  {
+    "id": 3745106,
+    "case": "COST2",
+    "baskets": 125,
+    "max_cash_error": 8.640199666842818e-12,
+    "pass": true
+  },
+  {
+    "id": 3745106,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 125,
+    "max_cash_error": 3.2741809263825417e-11,
+    "pass": true
+  },
+  {
+    "id": 3745106,
+    "case": "LEVERAGE2",
+    "baskets": 38,
+    "max_cash_error": 8.526512829121202e-14,
+    "pass": true
+  },
+  {
+    "id": 3745106,
+    "case": "LEVERAGE5",
+    "baskets": 125,
+    "max_cash_error": 5.229594535194337e-12,
+    "pass": true
+  },
+  {
+    "id": 3745106,
+    "case": "NO_ADDS",
+    "baskets": 125,
+    "max_cash_error": 8.185452315956354e-11,
+    "pass": true
+  },
+  {
+    "id": 3745106,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 53,
+    "max_cash_error": 8.185452315956354e-12,
+    "pass": true
+  },
+  {
+    "id": 3745106,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 44,
+    "max_cash_error": 2.6147972675971687e-12,
+    "pass": true
+  },
+  {
+    "id": 3745106,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 117741,
+    "case": "BASE",
+    "baskets": 32,
+    "max_cash_error": 1.6370904631912708e-11,
+    "pass": true
+  },
+  {
+    "id": 117741,
+    "case": "COST1_5",
+    "baskets": 32,
+    "max_cash_error": 4.661160346586257e-12,
+    "pass": true
+  },
+  {
+    "id": 117741,
+    "case": "COST2",
+    "baskets": 30,
+    "max_cash_error": 4.092726157978177e-12,
+    "pass": true
+  },
+  {
+    "id": 117741,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 32,
+    "max_cash_error": 1.6370904631912708e-11,
+    "pass": true
+  },
+  {
+    "id": 117741,
+    "case": "LEVERAGE2",
+    "baskets": 6,
+    "max_cash_error": 4.263256414560601e-14,
+    "pass": true
+  },
+  {
+    "id": 117741,
+    "case": "LEVERAGE5",
+    "baskets": 30,
+    "max_cash_error": 1.000444171950221e-11,
+    "pass": true
+  },
+  {
+    "id": 117741,
+    "case": "NO_ADDS",
+    "baskets": 32,
+    "max_cash_error": 5.820766091346741e-11,
+    "pass": true
+  },
+  {
+    "id": 117741,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 14,
+    "max_cash_error": 1.9326762412674725e-12,
+    "pass": true
+  },
+  {
+    "id": 117741,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 8,
+    "max_cash_error": 1.0231815394945443e-12,
+    "pass": true
+  },
+  {
+    "id": 117741,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 9695283,
+    "case": "BASE",
+    "baskets": 76,
+    "max_cash_error": 1.4551915228366852e-11,
+    "pass": true
+  },
+  {
+    "id": 9695283,
+    "case": "COST1_5",
+    "baskets": 76,
+    "max_cash_error": 8.185452315956354e-12,
+    "pass": true
+  },
+  {
+    "id": 9695283,
+    "case": "COST2",
+    "baskets": 76,
+    "max_cash_error": 9.094947017729282e-12,
+    "pass": true
+  },
+  {
+    "id": 9695283,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 76,
+    "max_cash_error": 7.275957614183426e-12,
+    "pass": true
+  },
+  {
+    "id": 9695283,
+    "case": "LEVERAGE2",
+    "baskets": 1,
+    "max_cash_error": 1.4210854715202004e-14,
+    "pass": true
+  },
+  {
+    "id": 9695283,
+    "case": "LEVERAGE5",
+    "baskets": 76,
+    "max_cash_error": 6.821210263296962e-13,
+    "pass": true
+  },
+  {
+    "id": 9695283,
+    "case": "NO_ADDS",
+    "baskets": 76,
+    "max_cash_error": 1.4551915228366852e-11,
+    "pass": true
+  },
+  {
+    "id": 9695283,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 35,
+    "max_cash_error": 1.5916157281026244e-12,
+    "pass": true
+  },
+  {
+    "id": 9695283,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 9,
+    "max_cash_error": 1.1368683772161603e-13,
+    "pass": true
+  },
+  {
+    "id": 9695283,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 3218170,
+    "case": "BASE",
+    "baskets": 113,
+    "max_cash_error": 9.094947017729282e-12,
+    "pass": true
+  },
+  {
+    "id": 3218170,
+    "case": "COST1_5",
+    "baskets": 111,
+    "max_cash_error": 1.4551915228366852e-11,
+    "pass": true
+  },
+  {
+    "id": 3218170,
+    "case": "COST2",
+    "baskets": 110,
+    "max_cash_error": 1.7280399333685637e-11,
+    "pass": true
+  },
+  {
+    "id": 3218170,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 114,
+    "max_cash_error": 2.000888343900442e-11,
+    "pass": true
+  },
+  {
+    "id": 3218170,
+    "case": "LEVERAGE2",
+    "baskets": 1,
+    "max_cash_error": 1.4210854715202004e-14,
+    "pass": true
+  },
+  {
+    "id": 3218170,
+    "case": "LEVERAGE5",
+    "baskets": 108,
+    "max_cash_error": 5.002220859751105e-12,
+    "pass": true
+  },
+  {
+    "id": 3218170,
+    "case": "NO_ADDS",
+    "baskets": 114,
+    "max_cash_error": 3.2741809263825417e-11,
+    "pass": true
+  },
+  {
+    "id": 3218170,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 53,
+    "max_cash_error": 1.8189894035458565e-12,
+    "pass": true
+  },
+  {
+    "id": 3218170,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 4,
+    "max_cash_error": 9.947598300641403e-14,
+    "pass": true
+  },
+  {
+    "id": 3218170,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 4851598,
+    "case": "BASE",
+    "baskets": 75,
+    "max_cash_error": 1.750777300912887e-11,
+    "pass": true
+  },
+  {
+    "id": 4851598,
+    "case": "COST1_5",
+    "baskets": 75,
+    "max_cash_error": 2.2964741219766438e-11,
+    "pass": true
+  },
+  {
+    "id": 4851598,
+    "case": "COST2",
+    "baskets": 75,
+    "max_cash_error": 3.001332515850663e-11,
+    "pass": true
+  },
+  {
+    "id": 4851598,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 76,
+    "max_cash_error": 7.185008144006133e-11,
+    "pass": true
+  },
+  {
+    "id": 4851598,
+    "case": "LEVERAGE2",
+    "baskets": 34,
+    "max_cash_error": 1.1368683772161603e-13,
+    "pass": true
+  },
+  {
+    "id": 4851598,
+    "case": "LEVERAGE5",
+    "baskets": 75,
+    "max_cash_error": 1.7053025658242404e-12,
+    "pass": true
+  },
+  {
+    "id": 4851598,
+    "case": "NO_ADDS",
+    "baskets": 75,
+    "max_cash_error": 3.728928277269006e-11,
+    "pass": true
+  },
+  {
+    "id": 4851598,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 39,
+    "max_cash_error": 2.7284841053187847e-12,
+    "pass": true
+  },
+  {
+    "id": 4851598,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 23,
+    "max_cash_error": 2.0463630789890885e-12,
+    "pass": true
+  },
+  {
+    "id": 4851598,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 9948449,
+    "case": "BASE",
+    "baskets": 140,
+    "max_cash_error": 2.546585164964199e-11,
+    "pass": true
+  },
+  {
+    "id": 9948449,
+    "case": "COST1_5",
+    "baskets": 140,
+    "max_cash_error": 1.546140993013978e-11,
+    "pass": true
+  },
+  {
+    "id": 9948449,
+    "case": "COST2",
+    "baskets": 141,
+    "max_cash_error": 8.185452315956354e-12,
+    "pass": true
+  },
+  {
+    "id": 9948449,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 145,
+    "max_cash_error": 8.185452315956354e-12,
+    "pass": true
+  },
+  {
+    "id": 9948449,
+    "case": "LEVERAGE2",
+    "baskets": 30,
+    "max_cash_error": 8.526512829121202e-14,
+    "pass": true
+  },
+  {
+    "id": 9948449,
+    "case": "LEVERAGE5",
+    "baskets": 140,
+    "max_cash_error": 1.8189894035458565e-12,
+    "pass": true
+  },
+  {
+    "id": 9948449,
+    "case": "NO_ADDS",
+    "baskets": 140,
+    "max_cash_error": 2.546585164964199e-11,
+    "pass": true
+  },
+  {
+    "id": 9948449,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 64,
+    "max_cash_error": 2.5011104298755527e-12,
+    "pass": true
+  },
+  {
+    "id": 9948449,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 34,
+    "max_cash_error": 1.7053025658242404e-13,
+    "pass": true
+  },
+  {
+    "id": 9948449,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 7344752,
+    "case": "BASE",
+    "baskets": 145,
+    "max_cash_error": 5.4569682106375694e-12,
+    "pass": true
+  },
+  {
+    "id": 7344752,
+    "case": "COST1_5",
+    "baskets": 145,
+    "max_cash_error": 1.6370904631912708e-11,
+    "pass": true
+  },
+  {
+    "id": 7344752,
+    "case": "COST2",
+    "baskets": 143,
+    "max_cash_error": 9.549694368615746e-12,
+    "pass": true
+  },
+  {
+    "id": 7344752,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 144,
+    "max_cash_error": 2.546585164964199e-11,
+    "pass": true
+  },
+  {
+    "id": 7344752,
+    "case": "LEVERAGE2",
+    "baskets": 55,
+    "max_cash_error": 1.4210854715202004e-13,
+    "pass": true
+  },
+  {
+    "id": 7344752,
+    "case": "LEVERAGE5",
+    "baskets": 143,
+    "max_cash_error": 6.366462912410498e-12,
+    "pass": true
+  },
+  {
+    "id": 7344752,
+    "case": "NO_ADDS",
+    "baskets": 145,
+    "max_cash_error": 5.4569682106375694e-12,
+    "pass": true
+  },
+  {
+    "id": 7344752,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 51,
+    "max_cash_error": 1.8474111129762605e-13,
+    "pass": true
+  },
+  {
+    "id": 7344752,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 50,
+    "max_cash_error": 2.6147972675971687e-12,
+    "pass": true
+  },
+  {
+    "id": 7344752,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 6490224,
+    "case": "BASE",
+    "baskets": 86,
+    "max_cash_error": 1.4551915228366852e-11,
+    "pass": true
+  },
+  {
+    "id": 6490224,
+    "case": "COST1_5",
+    "baskets": 86,
+    "max_cash_error": 7.73070496506989e-12,
+    "pass": true
+  },
+  {
+    "id": 6490224,
+    "case": "COST2",
+    "baskets": 84,
+    "max_cash_error": 1.000444171950221e-11,
+    "pass": true
+  },
+  {
+    "id": 6490224,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 86,
+    "max_cash_error": 3.2741809263825417e-11,
+    "pass": true
+  },
+  {
+    "id": 6490224,
+    "case": "LEVERAGE2",
+    "baskets": 20,
+    "max_cash_error": 5.684341886080802e-14,
+    "pass": true
+  },
+  {
+    "id": 6490224,
+    "case": "LEVERAGE5",
+    "baskets": 83,
+    "max_cash_error": 2.9558577807620168e-12,
+    "pass": true
+  },
+  {
+    "id": 6490224,
+    "case": "NO_ADDS",
+    "baskets": 86,
+    "max_cash_error": 1.1641532182693481e-10,
+    "pass": true
+  },
+  {
+    "id": 6490224,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 39,
+    "max_cash_error": 3.637978807091713e-12,
+    "pass": true
+  },
+  {
+    "id": 6490224,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 2,
+    "max_cash_error": 1.4210854715202004e-13,
+    "pass": true
+  },
+  {
+    "id": 6490224,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 6639955,
+    "case": "BASE",
+    "baskets": 62,
+    "max_cash_error": 1.0913936421275139e-11,
+    "pass": true
+  },
+  {
+    "id": 6639955,
+    "case": "COST1_5",
+    "baskets": 62,
+    "max_cash_error": 1.6370904631912708e-11,
+    "pass": true
+  },
+  {
+    "id": 6639955,
+    "case": "COST2",
+    "baskets": 62,
+    "max_cash_error": 1.7280399333685637e-11,
+    "pass": true
+  },
+  {
+    "id": 6639955,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 63,
+    "max_cash_error": 7.275957614183426e-12,
+    "pass": true
+  },
+  {
+    "id": 6639955,
+    "case": "LEVERAGE2",
+    "baskets": 56,
+    "max_cash_error": 4.547473508864641e-13,
+    "pass": true
+  },
+  {
+    "id": 6639955,
+    "case": "LEVERAGE5",
+    "baskets": 62,
+    "max_cash_error": 3.808509063674137e-12,
+    "pass": true
+  },
+  {
+    "id": 6639955,
+    "case": "NO_ADDS",
+    "baskets": 62,
+    "max_cash_error": 1.0913936421275139e-11,
+    "pass": true
+  },
+  {
+    "id": 6639955,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 30,
+    "max_cash_error": 1.4779288903810084e-12,
+    "pass": true
+  },
+  {
+    "id": 6639955,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 23,
+    "max_cash_error": 2.8421709430404007e-13,
+    "pass": true
+  },
+  {
+    "id": 6639955,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 5162185,
+    "case": "BASE",
+    "baskets": 44,
+    "max_cash_error": 7.275957614183426e-12,
+    "pass": true
+  },
+  {
+    "id": 5162185,
+    "case": "COST1_5",
+    "baskets": 43,
+    "max_cash_error": 1.0459189070388675e-11,
+    "pass": true
+  },
+  {
+    "id": 5162185,
+    "case": "COST2",
+    "baskets": 43,
+    "max_cash_error": 4.092726157978177e-12,
+    "pass": true
+  },
+  {
+    "id": 5162185,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 43,
+    "max_cash_error": 8.640199666842818e-12,
+    "pass": true
+  },
+  {
+    "id": 5162185,
+    "case": "LEVERAGE2",
+    "baskets": 39,
+    "max_cash_error": 9.094947017729282e-13,
+    "pass": true
+  },
+  {
+    "id": 5162185,
+    "case": "LEVERAGE5",
+    "baskets": 44,
+    "max_cash_error": 6.366462912410498e-12,
+    "pass": true
+  },
+  {
+    "id": 5162185,
+    "case": "NO_ADDS",
+    "baskets": 44,
+    "max_cash_error": 2.1827872842550278e-11,
+    "pass": true
+  },
+  {
+    "id": 5162185,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 17,
+    "max_cash_error": 1.9895196601282805e-13,
+    "pass": true
+  },
+  {
+    "id": 5162185,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 16,
+    "max_cash_error": 1.6484591469634324e-12,
+    "pass": true
+  },
+  {
+    "id": 5162185,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 3333422,
+    "case": "BASE",
+    "baskets": 110,
+    "max_cash_error": 4.092726157978177e-12,
+    "pass": true
+  },
+  {
+    "id": 3333422,
+    "case": "COST1_5",
+    "baskets": 110,
+    "max_cash_error": 4.547473508864641e-12,
+    "pass": true
+  },
+  {
+    "id": 3333422,
+    "case": "COST2",
+    "baskets": 110,
+    "max_cash_error": 1.4097167877480388e-11,
+    "pass": true
+  },
+  {
+    "id": 3333422,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 108,
+    "max_cash_error": 4.092726157978177e-12,
+    "pass": true
+  },
+  {
+    "id": 3333422,
+    "case": "LEVERAGE2",
+    "baskets": 20,
+    "max_cash_error": 5.684341886080802e-14,
+    "pass": true
+  },
+  {
+    "id": 3333422,
+    "case": "LEVERAGE5",
+    "baskets": 106,
+    "max_cash_error": 3.637978807091713e-12,
+    "pass": true
+  },
+  {
+    "id": 3333422,
+    "case": "NO_ADDS",
+    "baskets": 110,
+    "max_cash_error": 4.092726157978177e-12,
+    "pass": true
+  },
+  {
+    "id": 3333422,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 52,
+    "max_cash_error": 6.110667527536862e-13,
+    "pass": true
+  },
+  {
+    "id": 3333422,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 31,
+    "max_cash_error": 1.7053025658242404e-13,
+    "pass": true
+  },
+  {
+    "id": 3333422,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 5514177,
+    "case": "BASE",
+    "baskets": 41,
+    "max_cash_error": 1.000444171950221e-11,
+    "pass": true
+  },
+  {
+    "id": 5514177,
+    "case": "COST1_5",
+    "baskets": 41,
+    "max_cash_error": 2.2737367544323206e-12,
+    "pass": true
+  },
+  {
+    "id": 5514177,
+    "case": "COST2",
+    "baskets": 41,
+    "max_cash_error": 5.9117155615240335e-12,
+    "pass": true
+  },
+  {
+    "id": 5514177,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 41,
+    "max_cash_error": 1.0913936421275139e-11,
+    "pass": true
+  },
+  {
+    "id": 5514177,
+    "case": "LEVERAGE2",
+    "baskets": 10,
+    "max_cash_error": 5.684341886080802e-14,
+    "pass": true
+  },
+  {
+    "id": 5514177,
+    "case": "LEVERAGE5",
+    "baskets": 41,
+    "max_cash_error": 5.229594535194337e-12,
+    "pass": true
+  },
+  {
+    "id": 5514177,
+    "case": "NO_ADDS",
+    "baskets": 41,
+    "max_cash_error": 1.000444171950221e-11,
+    "pass": true
+  },
+  {
+    "id": 5514177,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 19,
+    "max_cash_error": 4.547473508864641e-13,
+    "pass": true
+  },
+  {
+    "id": 5514177,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 10,
+    "max_cash_error": 7.283063041541027e-14,
+    "pass": true
+  },
+  {
+    "id": 5514177,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 5159670,
+    "case": "BASE",
+    "baskets": 47,
+    "max_cash_error": 7.275957614183426e-12,
+    "pass": true
+  },
+  {
+    "id": 5159670,
+    "case": "COST1_5",
+    "baskets": 47,
+    "max_cash_error": 1.13509202037676e-11,
+    "pass": true
+  },
+  {
+    "id": 5159670,
+    "case": "COST2",
+    "baskets": 47,
+    "max_cash_error": 5.002220859751105e-12,
+    "pass": true
+  },
+  {
+    "id": 5159670,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 48,
+    "max_cash_error": 8.185452315956354e-12,
+    "pass": true
+  },
+  {
+    "id": 5159670,
+    "case": "LEVERAGE2",
+    "baskets": 22,
+    "max_cash_error": 1.1368683772161603e-13,
+    "pass": true
+  },
+  {
+    "id": 5159670,
+    "case": "LEVERAGE5",
+    "baskets": 47,
+    "max_cash_error": 1.5347723092418164e-12,
+    "pass": true
+  },
+  {
+    "id": 5159670,
+    "case": "NO_ADDS",
+    "baskets": 47,
+    "max_cash_error": 7.275957614183426e-12,
+    "pass": true
+  },
+  {
+    "id": 5159670,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 27,
+    "max_cash_error": 1.8189894035458565e-12,
+    "pass": true
+  },
+  {
+    "id": 5159670,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 3,
+    "max_cash_error": 7.460698725481052e-14,
+    "pass": true
+  },
+  {
+    "id": 5159670,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 4211966,
+    "case": "BASE",
+    "baskets": 58,
+    "max_cash_error": 4.9112713895738125e-11,
+    "pass": true
+  },
+  {
+    "id": 4211966,
+    "case": "COST1_5",
+    "baskets": 58,
+    "max_cash_error": 3.001332515850663e-11,
+    "pass": true
+  },
+  {
+    "id": 4211966,
+    "case": "COST2",
+    "baskets": 58,
+    "max_cash_error": 2.773958840407431e-11,
+    "pass": true
+  },
+  {
+    "id": 4211966,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 58,
+    "max_cash_error": 6.730260793119669e-11,
+    "pass": true
+  },
+  {
+    "id": 4211966,
+    "case": "LEVERAGE2",
+    "baskets": 19,
+    "max_cash_error": 1.1368683772161603e-13,
+    "pass": true
+  },
+  {
+    "id": 4211966,
+    "case": "LEVERAGE5",
+    "baskets": 58,
+    "max_cash_error": 2.2737367544323206e-12,
+    "pass": true
+  },
+  {
+    "id": 4211966,
+    "case": "NO_ADDS",
+    "baskets": 58,
+    "max_cash_error": 2.2737367544323206e-11,
+    "pass": true
+  },
+  {
+    "id": 4211966,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 25,
+    "max_cash_error": 1.7053025658242404e-12,
+    "pass": true
+  },
+  {
+    "id": 4211966,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 22,
+    "max_cash_error": 3.979039320256561e-12,
+    "pass": true
+  },
+  {
+    "id": 4211966,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 2,
+    "max_cash_error": 1.5631940186722204e-13,
+    "pass": true
+  },
+  {
+    "id": 5971172,
+    "case": "BASE",
+    "baskets": 110,
+    "max_cash_error": 1.4551915228366852e-11,
+    "pass": true
+  },
+  {
+    "id": 5971172,
+    "case": "COST1_5",
+    "baskets": 110,
+    "max_cash_error": 7.275957614183426e-12,
+    "pass": true
+  },
+  {
+    "id": 5971172,
+    "case": "COST2",
+    "baskets": 111,
+    "max_cash_error": 7.275957614183426e-12,
+    "pass": true
+  },
+  {
+    "id": 5971172,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 113,
+    "max_cash_error": 5.4569682106375694e-12,
+    "pass": true
+  },
+  {
+    "id": 5971172,
+    "case": "LEVERAGE2",
+    "baskets": 16,
+    "max_cash_error": 5.684341886080802e-14,
+    "pass": true
+  },
+  {
+    "id": 5971172,
+    "case": "LEVERAGE5",
+    "baskets": 102,
+    "max_cash_error": 9.094947017729282e-13,
+    "pass": true
+  },
+  {
+    "id": 5971172,
+    "case": "NO_ADDS",
+    "baskets": 110,
+    "max_cash_error": 9.094947017729282e-12,
+    "pass": true
+  },
+  {
+    "id": 5971172,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 60,
+    "max_cash_error": 2.7284841053187847e-12,
+    "pass": true
+  },
+  {
+    "id": 5971172,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 4,
+    "max_cash_error": 1.4210854715202004e-14,
+    "pass": true
+  },
+  {
+    "id": 5971172,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 6737075,
+    "case": "BASE",
+    "baskets": 133,
+    "max_cash_error": 8.185452315956354e-12,
+    "pass": true
+  },
+  {
+    "id": 6737075,
+    "case": "COST1_5",
+    "baskets": 132,
+    "max_cash_error": 1.864464138634503e-11,
+    "pass": true
+  },
+  {
+    "id": 6737075,
+    "case": "COST2",
+    "baskets": 131,
+    "max_cash_error": 5.002220859751105e-12,
+    "pass": true
+  },
+  {
+    "id": 6737075,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 131,
+    "max_cash_error": 1.9099388737231493e-11,
+    "pass": true
+  },
+  {
+    "id": 6737075,
+    "case": "LEVERAGE2",
+    "baskets": 83,
+    "max_cash_error": 2.8421709430404007e-13,
+    "pass": true
+  },
+  {
+    "id": 6737075,
+    "case": "LEVERAGE5",
+    "baskets": 133,
+    "max_cash_error": 2.3646862246096134e-11,
+    "pass": true
+  },
+  {
+    "id": 6737075,
+    "case": "NO_ADDS",
+    "baskets": 153,
+    "max_cash_error": 5.820766091346741e-11,
+    "pass": true
+  },
+  {
+    "id": 6737075,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 41,
+    "max_cash_error": 4.547473508864641e-13,
+    "pass": true
+  },
+  {
+    "id": 6737075,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 14,
+    "max_cash_error": 5.115907697472721e-13,
+    "pass": true
+  },
+  {
+    "id": 6737075,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 5857742,
+    "case": "BASE",
+    "baskets": 84,
+    "max_cash_error": 1.4281908988778014e-11,
+    "pass": true
+  },
+  {
+    "id": 5857742,
+    "case": "COST1_5",
+    "baskets": 84,
+    "max_cash_error": 1.3642420526593924e-11,
+    "pass": true
+  },
+  {
+    "id": 5857742,
+    "case": "COST2",
+    "baskets": 84,
+    "max_cash_error": 4.092726157978177e-12,
+    "pass": true
+  },
+  {
+    "id": 5857742,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 84,
+    "max_cash_error": 1.7280399333685637e-11,
+    "pass": true
+  },
+  {
+    "id": 5857742,
+    "case": "LEVERAGE2",
+    "baskets": 13,
+    "max_cash_error": 2.842170943040401e-14,
+    "pass": true
+  },
+  {
+    "id": 5857742,
+    "case": "LEVERAGE5",
+    "baskets": 82,
+    "max_cash_error": 1.758593271006248e-12,
+    "pass": true
+  },
+  {
+    "id": 5857742,
+    "case": "NO_ADDS",
+    "baskets": 84,
+    "max_cash_error": 1.4281908988778014e-11,
+    "pass": true
+  },
+  {
+    "id": 5857742,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 35,
+    "max_cash_error": 7.389644451905042e-13,
+    "pass": true
+  },
+  {
+    "id": 5857742,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 28,
+    "max_cash_error": 5.968558980384842e-13,
+    "pass": true
+  },
+  {
+    "id": 5857742,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 7,
+    "max_cash_error": 1.4210854715202004e-14,
+    "pass": true
+  },
+  {
+    "id": 488218,
+    "case": "BASE",
+    "baskets": 85,
+    "max_cash_error": 1.0913936421275139e-11,
+    "pass": true
+  },
+  {
+    "id": 488218,
+    "case": "COST1_5",
+    "baskets": 85,
+    "max_cash_error": 7.73070496506989e-12,
+    "pass": true
+  },
+  {
+    "id": 488218,
+    "case": "COST2",
+    "baskets": 85,
+    "max_cash_error": 1.000444171950221e-11,
+    "pass": true
+  },
+  {
+    "id": 488218,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 85,
+    "max_cash_error": 2.9103830456733704e-11,
+    "pass": true
+  },
+  {
+    "id": 488218,
+    "case": "LEVERAGE2",
+    "baskets": 29,
+    "max_cash_error": 3.730349362740526e-14,
+    "pass": true
+  },
+  {
+    "id": 488218,
+    "case": "LEVERAGE5",
+    "baskets": 85,
+    "max_cash_error": 4.547473508864641e-12,
+    "pass": true
+  },
+  {
+    "id": 488218,
+    "case": "NO_ADDS",
+    "baskets": 85,
+    "max_cash_error": 1.5006662579253316e-11,
+    "pass": true
+  },
+  {
+    "id": 488218,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 46,
+    "max_cash_error": 5.4569682106375694e-12,
+    "pass": true
+  },
+  {
+    "id": 488218,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 1,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 488218,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 2042884,
+    "case": "BASE",
+    "baskets": 65,
+    "max_cash_error": 8.640199666842818e-12,
+    "pass": true
+  },
+  {
+    "id": 2042884,
+    "case": "COST1_5",
+    "baskets": 65,
+    "max_cash_error": 3.183231456205249e-12,
+    "pass": true
+  },
+  {
+    "id": 2042884,
+    "case": "COST2",
+    "baskets": 65,
+    "max_cash_error": 3.183231456205249e-12,
+    "pass": true
+  },
+  {
+    "id": 2042884,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 66,
+    "max_cash_error": 2.7284841053187847e-12,
+    "pass": true
+  },
+  {
+    "id": 2042884,
+    "case": "LEVERAGE2",
+    "baskets": 3,
+    "max_cash_error": 1.4210854715202004e-14,
+    "pass": true
+  },
+  {
+    "id": 2042884,
+    "case": "LEVERAGE5",
+    "baskets": 42,
+    "max_cash_error": 3.979039320256561e-13,
+    "pass": true
+  },
+  {
+    "id": 2042884,
+    "case": "NO_ADDS",
+    "baskets": 65,
+    "max_cash_error": 8.640199666842818e-12,
+    "pass": true
+  },
+  {
+    "id": 2042884,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 30,
+    "max_cash_error": 9.094947017729282e-13,
+    "pass": true
+  },
+  {
+    "id": 2042884,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 10,
+    "max_cash_error": 4.263256414560601e-14,
+    "pass": true
+  },
+  {
+    "id": 2042884,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 7344751,
+    "case": "BASE",
+    "baskets": 166,
+    "max_cash_error": 2.7939677238464355e-09,
+    "pass": true
+  },
+  {
+    "id": 7344751,
+    "case": "COST1_5",
+    "baskets": 165,
+    "max_cash_error": 5.238689482212067e-10,
+    "pass": true
+  },
+  {
+    "id": 7344751,
+    "case": "COST2",
+    "baskets": 141,
+    "max_cash_error": 2.1827872842550278e-11,
+    "pass": true
+  },
+  {
+    "id": 7344751,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 164,
+    "max_cash_error": 2.7939677238464355e-09,
+    "pass": true
+  },
+  {
+    "id": 7344751,
+    "case": "LEVERAGE2",
+    "baskets": 163,
+    "max_cash_error": 6.821210263296962e-12,
+    "pass": true
+  },
+  {
+    "id": 7344751,
+    "case": "LEVERAGE5",
+    "baskets": 169,
+    "max_cash_error": 1.8917489796876907e-10,
+    "pass": true
+  },
+  {
+    "id": 7344751,
+    "case": "NO_ADDS",
+    "baskets": 13,
+    "max_cash_error": 4.405364961712621e-13,
+    "pass": true
+  },
+  {
+    "id": 7344751,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 63,
+    "max_cash_error": 3.637978807091713e-12,
+    "pass": true
+  },
+  {
+    "id": 7344751,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 58,
+    "max_cash_error": 2.091837814077735e-11,
+    "pass": true
+  },
+  {
+    "id": 7344751,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 1,
+    "max_cash_error": 1.4210854715202004e-14,
+    "pass": true
+  },
+  {
+    "id": 7227664,
+    "case": "BASE",
+    "baskets": 105,
+    "max_cash_error": 1.7462298274040222e-10,
+    "pass": true
+  },
+  {
+    "id": 7227664,
+    "case": "COST1_5",
+    "baskets": 105,
+    "max_cash_error": 8.36735125631094e-11,
+    "pass": true
+  },
+  {
+    "id": 7227664,
+    "case": "COST2",
+    "baskets": 105,
+    "max_cash_error": 4.3655745685100555e-11,
+    "pass": true
+  },
+  {
+    "id": 7227664,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 104,
+    "max_cash_error": 1.964508555829525e-10,
+    "pass": true
+  },
+  {
+    "id": 7227664,
+    "case": "LEVERAGE2",
+    "baskets": 100,
+    "max_cash_error": 6.821210263296962e-13,
+    "pass": true
+  },
+  {
+    "id": 7227664,
+    "case": "LEVERAGE5",
+    "baskets": 105,
+    "max_cash_error": 1.1596057447604835e-11,
+    "pass": true
+  },
+  {
+    "id": 7227664,
+    "case": "NO_ADDS",
+    "baskets": 105,
+    "max_cash_error": 1.7462298274040222e-10,
+    "pass": true
+  },
+  {
+    "id": 7227664,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 48,
+    "max_cash_error": 7.958078640513122e-12,
+    "pass": true
+  },
+  {
+    "id": 7227664,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 28,
+    "max_cash_error": 7.389644451905042e-13,
+    "pass": true
+  },
+  {
+    "id": 7227664,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 2676261,
+    "case": "BASE",
+    "baskets": 32,
+    "max_cash_error": 3.4924596548080444e-10,
+    "pass": true
+  },
+  {
+    "id": 2676261,
+    "case": "COST1_5",
+    "baskets": 32,
+    "max_cash_error": 1.6007106751203537e-10,
+    "pass": true
+  },
+  {
+    "id": 2676261,
+    "case": "COST2",
+    "baskets": 32,
+    "max_cash_error": 9.822542779147625e-11,
+    "pass": true
+  },
+  {
+    "id": 2676261,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 32,
+    "max_cash_error": 2.9103830456733704e-10,
+    "pass": true
+  },
+  {
+    "id": 2676261,
+    "case": "LEVERAGE2",
+    "baskets": 31,
+    "max_cash_error": 9.094947017729282e-13,
+    "pass": true
+  },
+  {
+    "id": 2676261,
+    "case": "LEVERAGE5",
+    "baskets": 32,
+    "max_cash_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "id": 2676261,
+    "case": "NO_ADDS",
+    "baskets": 32,
+    "max_cash_error": 3.4924596548080444e-10,
+    "pass": true
+  },
+  {
+    "id": 2676261,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 13,
+    "max_cash_error": 1.8189894035458565e-12,
+    "pass": true
+  },
+  {
+    "id": 2676261,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 11,
+    "max_cash_error": 3.637978807091713e-12,
+    "pass": true
+  },
+  {
+    "id": 2676261,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 2,
+    "max_cash_error": 2.913225216616411e-13,
+    "pass": true
+  },
+  {
+    "id": 4695447,
+    "case": "BASE",
+    "baskets": 106,
+    "max_cash_error": 5.966285243630409e-10,
+    "pass": true
+  },
+  {
+    "id": 4695447,
+    "case": "COST1_5",
+    "baskets": 107,
+    "max_cash_error": 9.458744898438454e-11,
+    "pass": true
+  },
+  {
+    "id": 4695447,
+    "case": "COST2",
+    "baskets": 107,
+    "max_cash_error": 9.458744898438454e-11,
+    "pass": true
+  },
+  {
+    "id": 4695447,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 106,
+    "max_cash_error": 3.7834979593753815e-10,
+    "pass": true
+  },
+  {
+    "id": 4695447,
+    "case": "LEVERAGE2",
+    "baskets": 102,
+    "max_cash_error": 6.821210263296962e-13,
+    "pass": true
+  },
+  {
+    "id": 4695447,
+    "case": "LEVERAGE5",
+    "baskets": 106,
+    "max_cash_error": 3.637978807091713e-11,
+    "pass": true
+  },
+  {
+    "id": 4695447,
+    "case": "NO_ADDS",
+    "baskets": 106,
+    "max_cash_error": 4.0381564758718014e-10,
+    "pass": true
+  },
+  {
+    "id": 4695447,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 51,
+    "max_cash_error": 1.9326762412674725e-12,
+    "pass": true
+  },
+  {
+    "id": 4695447,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 28,
+    "max_cash_error": 9.094947017729282e-12,
+    "pass": true
+  },
+  {
+    "id": 4695447,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 0,
+    "max_cash_error": 0.0,
+    "pass": true
+  },
+  {
+    "id": 6019120,
+    "case": "BASE",
+    "baskets": 78,
+    "max_cash_error": 2.0372681319713593e-10,
+    "pass": true
+  },
+  {
+    "id": 6019120,
+    "case": "COST1_5",
+    "baskets": 78,
+    "max_cash_error": 8.36735125631094e-11,
+    "pass": true
+  },
+  {
+    "id": 6019120,
+    "case": "COST2",
+    "baskets": 78,
+    "max_cash_error": 6.912159733474255e-11,
+    "pass": true
+  },
+  {
+    "id": 6019120,
+    "case": "DELAY_NEXT_M1",
+    "baskets": 78,
+    "max_cash_error": 1.1641532182693481e-10,
+    "pass": true
+  },
+  {
+    "id": 6019120,
+    "case": "LEVERAGE2",
+    "baskets": 61,
+    "max_cash_error": 5.684341886080801e-13,
+    "pass": true
+  },
+  {
+    "id": 6019120,
+    "case": "LEVERAGE5",
+    "baskets": 78,
+    "max_cash_error": 1.0459189070388675e-11,
+    "pass": true
+  },
+  {
+    "id": 6019120,
+    "case": "NO_ADDS",
+    "baskets": 78,
+    "max_cash_error": 2.0372681319713593e-10,
+    "pass": true
+  },
+  {
+    "id": 6019120,
+    "case": "SEGMENT_2019_2022",
+    "baskets": 37,
+    "max_cash_error": 2.2737367544323206e-12,
+    "pass": true
+  },
+  {
+    "id": 6019120,
+    "case": "SEGMENT_2023_2024",
+    "baskets": 22,
+    "max_cash_error": 2.7284841053187847e-12,
+    "pass": true
+  },
+  {
+    "id": 6019120,
+    "case": "SEGMENT_2025_OCT2026",
+    "baskets": 1,
+    "max_cash_error": 0.0,
+    "pass": true
+  }
+]
