@@ -1,0 +1,92 @@
+name: BTC DD60 final combined report and packages
+on:
+  push:
+    branches: [research/btc-10m-dd60-2019-2026]
+    paths: [.github/workflows/btc-dd60-final.yml]
+  workflow_dispatch:
+permissions: {contents: write, actions: read}
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for authorized research runs to finish
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python - <<'PY'
+          import subprocess,json,time
+          for rid in [39251677841,39252456294]:
+            for attempt in range(140):
+              q=json.loads(subprocess.check_output(['gh','api','repos/rizanrizan93/Forex-scanner/actions/runs/'+str(rid)]))
+              if q['status']=='completed':
+                assert q['conclusion']=='success',(rid,q['conclusion'])
+                break
+              print('Waiting for research run',rid,flush=True)
+              time.sleep(30)
+            else:raise RuntimeError('Research run timeout')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTC-TEN-MILLION-AUDITED
+          run-id: 39251677841
+          github-token: ${{ github.token }}
+          path: newrun
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTC-DD60-LEGACY-AUDITED
+          run-id: 39252456294
+          github-token: ${{ github.token }}
+          path: legacyrun
+      - name: Verify all source manifests and assemble final report
+        run: python research_btc_jpy/finalize_btc_dd60.py
+      - name: Save final combined research review to VPS
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-dd60-final-review-2019-oct2026/run-$GITHUB_RUN_ID"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -l 24000 "${opts[@]}" final_review/RIZAN_BTC_DD60_FINAL_REVIEW.zip final_review/*.md final_review/*.json final_review/*.csv final_review/*.txt "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c3 sha256sum -c PACKAGE_SHA256.txt" > final_review/VPS_VERIFICATION.txt
+      - name: Publish final review evidence on research branch
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python - <<'PY'
+          import pathlib,json,subprocess,base64,time
+          branch='research/btc-10m-dd60-2019-2026'
+          for name in ['LAPORAN_BTC_DD60_FINAL.md','FINAL_STATUS.json','MANIFEST_SHA256.csv','PACKAGE_SHA256.txt','VPS_VERIFICATION.txt']:
+            p=pathlib.Path('final_review')/name
+            target='research_results/btc-dd60-final-review/'+name
+            for attempt in range(6):
+              old=subprocess.run(['gh','api','repos/rizanrizan93/Forex-scanner/contents/'+target+'?ref='+branch],capture_output=True,text=True)
+              body={'message':'research: publish combined BTC DD60 review '+name,'branch':branch,'content':base64.b64encode(p.read_bytes()).decode()}
+              if old.returncode==0:body['sha']=json.loads(old.stdout)['sha']
+              f=pathlib.Path('/tmp/final_publish.json');f.write_text(json.dumps(body))
+              q=subprocess.run(['gh','api','--method','PUT','repos/rizanrizan93/Forex-scanner/contents/'+target,'--input',str(f),'--silent'],capture_output=True,text=True)
+              if q.returncode==0:break
+              if '409' not in q.stderr:raise RuntimeError(q.stderr)
+              time.sleep(1)
+            else:raise RuntimeError('Publication conflict')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BTC-DD60-FINAL-REVIEW
+          path: |
+            final_review/RIZAN_BTC_DD60_FINAL_REVIEW.zip
+            final_review/*.md
+            final_review/*.json
+            final_review/*.csv
+            final_review/*.txt
+          compression-level: 1
+          retention-days: 90
