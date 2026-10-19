@@ -1,0 +1,67 @@
+name: BTC minimum500k sizing stress refinement final audit
+on:
+  push:
+    branches: [research/btc-buysell-dd56-600k-2019-2026]
+    paths: [.github/workflows/btc-growth500-final.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  final:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib tabulate
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTC-GROWTH500-AUDITED
+          run-id: 39342348232
+          github-token: ${{ github.token }}
+          path: downloaded
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: source
+      - name: Verify source525 nearby sizings3150 scenarios replay finalists reconcile
+        run: |
+          set -euo pipefail
+          gzip -dk source/data/BTCUSD_M1.csv.gz
+          python -u research_btc_jpy/finalize_btc_growth500.py
+      - name: Save final BTC research package to VPS and verify checksum
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-growth500-repair/final-$GITHUB_RUN_ID"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -l 24000 "${opts[@]}" growth500_final/RIZAN_BTC_MIN500K_FINAL_AUDITED.zip growth500_final/LAPORAN_AKHIR_BTC_MIN500K.md growth500_final/FINAL_GROWTH500_STATUS.json growth500_final/PACKAGE_SHA256.txt "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c3 sha256sum -c PACKAGE_SHA256.txt" > growth500_final/FINAL_VPS_VERIFICATION.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BTC-MIN500K-FINAL-AUDITED
+          path: |
+            growth500_final/RIZAN_BTC_MIN500K_FINAL_AUDITED.zip
+            growth500_final/LAPORAN_AKHIR_BTC_MIN500K.md
+            growth500_final/FINAL_GROWTH500_STATUS.json
+            growth500_final/FINAL_PRIMARY_CONFIG.json
+            growth500_final/REFINE*.csv
+            growth500_final/REFINE*.json
+            growth500_final/FINAL_PRIMARY_EQUITY_DD.png
+            growth500_final/PACKAGE_SHA256.txt
+            growth500_final/FINAL_VPS_VERIFICATION.txt
+          retention-days: 90
+          compression-level: 1
