@@ -1,0 +1,96 @@
+{
+  "policy": "settled cash >=100000 after completed basket; no later entries",
+  "goal_is_user_threshold_not_optimized_date": true,
+  "period": "2019-01-01 through 2026-10-15",
+  "broker_parity": "NOT_VALIDATED",
+  "input_is_M1_not_bid_ask_ticks": true,
+  "complete_selected_raw_leader_cohort": [
+    {
+      "symbol": "BTCUSD",
+      "candidates": 167,
+      "cash_goal_hits": 6
+    },
+    {
+      "symbol": "USDJPY",
+      "candidates": 167,
+      "cash_goal_hits": 0
+    }
+  ],
+  "hit_candidates": [
+    {
+      "symbol": "BTCUSD",
+      "variant": "POSITION",
+      "id": 792291,
+      "baseline_final": 85424.58711,
+      "baseline_trades": 79,
+      "max_settled_cash": 105967.78548298623,
+      "cash_goal_hit": true,
+      "goal_lock_final": 105967.78548298623,
+      "goal_trade_count": 67,
+      "first_goal_exit_utc": "2025-08-11 00:00:00"
+    },
+    {
+      "symbol": "BTCUSD",
+      "variant": "POSITION",
+      "id": 960091,
+      "baseline_final": 80791.15375,
+      "baseline_trades": 104,
+      "max_settled_cash": 121855.37873946762,
+      "cash_goal_hit": true,
+      "goal_lock_final": 121855.37873946762,
+      "goal_trade_count": 91,
+      "first_goal_exit_utc": "2025-10-04 08:00:00"
+    },
+    {
+      "symbol": "BTCUSD",
+      "variant": "POSITION",
+      "id": 483339,
+      "baseline_final": 55543.67855,
+      "baseline_trades": 135,
+      "max_settled_cash": 165268.61381023473,
+      "cash_goal_hit": true,
+      "goal_lock_final": 165268.61381023473,
+      "goal_trade_count": 81,
+      "first_goal_exit_utc": "2024-03-11 15:06:00"
+    },
+    {
+      "symbol": "BTCUSD",
+      "variant": "POSITION",
+      "id": 936995,
+      "baseline_final": 48810.7787,
+      "baseline_trades": 154,
+      "max_settled_cash": 106549.66708310472,
+      "cash_goal_hit": true,
+      "goal_lock_final": 106549.66708310472,
+      "goal_trade_count": 123,
+      "first_goal_exit_utc": "2025-05-12 08:00:00"
+    },
+    {
+      "symbol": "BTCUSD",
+      "variant": "POSITION",
+      "id": 353879,
+      "baseline_final": 17512.96646,
+      "baseline_trades": 680,
+      "max_settled_cash": 201267.6785626929,
+      "cash_goal_hit": true,
+      "goal_lock_final": 106913.7058091294,
+      "goal_trade_count": 430,
+      "first_goal_exit_utc": "2024-03-15 08:00:00"
+    },
+    {
+      "symbol": "BTCUSD",
+      "variant": "POSITION",
+      "id": 817035,
+      "baseline_final": 13883.46916,
+      "baseline_trades": 136,
+      "max_settled_cash": 199349.355214438,
+      "cash_goal_hit": true,
+      "goal_lock_final": 199349.355214438,
+      "goal_trade_count": 82,
+      "first_goal_exit_utc": "2024-03-11 15:06:00"
+    }
+  ],
+  "replayed_candidates": 9,
+  "source_change_only_goal_guard": true,
+  "baseline_final_results_unchanged": true
+}
