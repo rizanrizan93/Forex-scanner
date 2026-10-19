@@ -61,11 +61,11 @@ with zipfile.ZipFile(ROOT/'input'/'RIZAN_BTC_HIGHEST_COMPLETE.zip') as z:
    rec={'variant':variant,'id':int(r.id),'rank_nominal':int(r['rank']),'baseline_equity':float(a.equity),'priority_equity':float(b.equity),'equity_difference':float(b.equity-a.equity),'baseline_dd':float(a.floating_dd),'priority_dd':float(b.floating_dd),'priority_stopouts':int(b.liquidations),'baseline_stopouts':int(a.liquidations),'baseline_trades':int(a.trades),'priority_trades':int(b.trades)}
    comparisons.append(rec)
   # Both exact engine sources are preserved separately above.
-  (study/srcname).unlink()
+  # Keep the strict include source plus both explicitly named engine snapshots.
  # Copy the prior report, top20 table, integration schema and notes into a compact
  # final evidence bundle; no rewriting of original findings.
  for n in ['LAPORAN_BTC_HIGHEST.md','TOP20_HIGHEST_TERMINAL.csv','ALL_SELECTED_STRESS.csv','HIGHEST_STATUS.json','XAU_EUR_BTC_INTEGRATION_CONTRACT.json','CASH_RECONCILIATION.json','PACKAGE_SHA256.txt']:
-  (OUT/n).write_bytes(read(n) if n in expected else z.read(n))
+  (OUT/n).write_bytes((ROOT/'input'/n).read_bytes() if n=='PACKAGE_SHA256.txt' else read(n))
  c=pd.DataFrame(comparisons).sort_values('rank_nominal');c.to_csv(OUT/'MARGIN_PRIORITY_COMPARISON.csv',index=False)
  (OUT/'MARGIN_PRIORITY_CASH_PROOF.json').write_text(json.dumps(cash,indent=2))
  # Independent arithmetic fixtures for the linear model boundary.
