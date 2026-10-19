@@ -1,0 +1,77 @@
+name: BTCUSD USDJPY position H4 D1 million direct M1 search
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/btcusd-usdjpy-position-million.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  full_october:
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        symbol: [BTCUSD, USDJPY]
+        variant: [POSITION]
+        shard: [0, 1, 2, 3, 4]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-${{ matrix.symbol }}-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: source
+      - name: Validate exact completed input and instrument highprecision export only
+        env: {RESEARCH_SYMBOL: '${{ matrix.symbol }}', RESEARCH_VARIANT: '${{ matrix.variant }}'}
+        run: |
+          set -euo pipefail
+          mkdir -p result
+          gzip -dk source/data/${{ matrix.symbol }}_M1.csv.gz
+          python - <<'PY'
+          import pathlib,os,json,hashlib,difflib
+          s=os.environ['RESEARCH_SYMBOL'];v=os.environ['RESEARCH_VARIANT'];a=json.load(open('source/data/'+s+'_AUDIT.json'))
+          assert len(a['months'])==94 and a['last']=='2026-10-15 23:59:00+00:00'
+          assert hashlib.sha256(open('source/data/'+s+'_M1.csv','rb').read()).hexdigest()==a['sha256']
+          if s=='BTCUSD':
+            p=json.load(open('source/data/BTCUSD_OFFICIAL_FULL_PROVENANCE.json'));assert p['status']=='OFFICIAL_OHLC_COMPLETE' and p['missing_minutes']==0
+          src=pathlib.Path('research_btc_jpy/search_position_direct.cpp')
+          pathlib.Path('result/search_direct_m1.cpp').write_text(src.read_text())
+          PY
+          g++ -O3 -std=c++17 -Wall -Wextra result/search_direct_m1.cpp -o replay
+          ./replay --test | tee result/ENGINE_FIXTURES.log
+          sha256sum result/search_direct_m1.cpp > result/SOURCE_SHA256.txt
+          sha256sum source/data/${{ matrix.symbol }}_M1.csv > result/INPUT_SHA256.txt
+          git rev-parse HEAD > result/COMMIT.txt
+      - name: Directly execute200k disjoint configurations over full requestedperiod
+        run: |
+          set -euo pipefail
+          ./replay source/data/${{ matrix.symbol }}_M1.csv ${{ matrix.symbol }} result 1000000 ${{ matrix.shard }} 5 | tee result/RUN.log
+          grep -q 'COMPLETE_DIRECT_M1 evaluated=200000 stream_unique=1000000' result/RUN.log
+      - name: Preserve full input and all provenance once per instrument
+        if: matrix.shard == 0
+        run: |
+          mkdir -p result/input
+          cp source/data/*.json result/input/
+          cp source/data/${{ matrix.symbol }}_M1.csv.gz result/input/
+      - name: Preserve sourceauditmetadata for session universe
+        if: false
+        run: |
+          mkdir -p result/input
+          cp source/data/*.json result/input/
+      - name: Compress and retain exact declared protocol
+        if: always()
+        run: |
+          gzip -f result/ALL_CONFIGURATIONS.csv || true
+          cp research_btc_jpy/FULL_OCTOBER_PROTOCOL.md research_btc_jpy/POSITION_PROTOCOL.md result/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-POSITION-M1-${{ matrix.symbol }}-${{ matrix.shard }}
+          path: result/
+          compression-level: 1
+          retention-days: 30
