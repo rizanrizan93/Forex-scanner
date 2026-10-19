@@ -1,4 +1,4 @@
-name: BTC BUY SELL 630k DD56 target600k
+name: BTC BUY SELL resume182700 audit630k DD56
 on:
   push:
     branches: [research/btc-buysell-dd56-600k-2019-2026]
@@ -23,7 +23,14 @@ jobs:
           run-id: 39212036090
           github-token: ${{ github.token }}
           path: source
-      - name: Prepare compile fixtures baseline differential and search
+      - run: pip install --disable-pip-version-check pandas==2.2.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: RIZAN-BTC-BOTH56-SHARD-*
+          run-id: 39273886250
+          github-token: ${{ github.token }}
+          path: checkpoint
+      - name: Prepare compile fixtures baseline differential and resume
         run: |
           set -euo pipefail
           mkdir -p result
@@ -34,9 +41,10 @@ jobs:
           python research_btc_jpy/generate_btc_both.py CONFIGS.csv
           g++ -O3 -std=c++17 result/btc_both.cpp -o replay
           ./replay --test | tee result/FIXTURES.log
-          ./replay search source/data/BTCUSD_M1.csv result CONFIGS.csv ${{ matrix.shard }} | tee result/RUN.log
-          grep -q 'COMPLETE 157500' result/RUN.log
-          gzip -f result/RESULTS.csv
+          python research_btc_jpy/resume_btc_both.py prepare ${{ matrix.shard }}
+          ./replay search source/data/BTCUSD_M1.csv result REMAINING.csv ${{ matrix.shard }} | tee result/RUN.log
+          grep -q 'COMPLETE 45675' result/RUN.log
+          python research_btc_jpy/resume_btc_both.py merge ${{ matrix.shard }}
           git rev-parse HEAD > result/COMMIT.txt
       - uses: actions/upload-artifact@v4
         if: always()
@@ -98,3 +106,4 @@ jobs:
             both_results/*.txt
           retention-days: 90
           compression-level: 1
+
