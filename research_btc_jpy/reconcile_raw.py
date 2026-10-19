@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 root=pathlib.Path(sys.argv[1]);symbol=sys.argv[2];r=root/'raw_validation';v=pd.read_csv(r/'RAW_TOP20_STRESS.csv');rows=[];maxerr=0
 for p in sorted(r.glob('raw_*_ledger.csv')):
+ if len(p.name.split('_'))!=3:continue # This checker compares BASE only; all-case checker handles stress.
  cid=int(p.name.split('_')[1]);q=pd.read_csv(p);b=v[(v.id==cid)&(v['case']=='BASE')].iloc[0]
  if q.empty:continue
  gross=q.side*(q.exit_price-q.entry_average)*q.quantity
