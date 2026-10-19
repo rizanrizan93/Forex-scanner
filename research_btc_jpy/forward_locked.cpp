@@ -1,7 +1,9 @@
 // Only parameters selected before the April–October extension may be provided.
 // Reconcile March results before running any extension scenario.
 #define main research_original_main
-#ifdef SESSION_VARIANT
+#ifdef HIGH_PRECISION_EXPORT
+#include "engine_high_precision.cpp"
+#elif defined(SESSION_VARIANT)
 #include "search_sessions_direct.cpp"
 #else
 #include "search_direct_m1.cpp"
@@ -15,7 +17,7 @@ int main(int argc,char**argv){try{
  buildDays();
 #endif
  ifstream f(argv[3]);string line;getline(f,line);auto h=csvrow(line);map<string,int>cols;for(int i=0;i<int(h.size());i++)cols[h[i]]=i;
- ofstream resultcsv(outdir+"/LOCKED_EXTENSION_RESULTS.csv");resultcsv<<setprecision(12)<<"case,"<<ph<<","<<rh<<"\n";
+ ofstream resultcsv(outdir+"/LOCKED_EXTENSION_RESULTS.csv");resultcsv<<setprecision(17)<<"case,"<<ph<<","<<rh<<"\n";
  int64_t begin=parse("2019-01-01 00:00:00"),march=parse("2026-04-01 00:00:00"),finish=parse("2026-10-16 00:00:00");int count=0;
  while(getline(f,line)){auto row=csvrow(line);auto str=[&](const char*k){return row.at(cols.at(k));};auto val=[&](const char*k){return stod(str(k));};P p{};p.id=int(val("id"));p.tf=indexof(widths,3,val("tf_minutes"));p.look=indexof(looks,4,val("lookback"));p.threshold=int(val("threshold_index"));p.trend=int(val("trend_filter"));p.session=int(val("session_utc"));p.side=int(val("side"));p.stop=indexof(stops,6,val("stop_atr"));p.tp=indexof(tps,8,val("tp_R"));p.hold=indexof(holds,4,val("hold_bars"));p.risk=indexof(risks,8,val("risk"));p.margin=indexof(margins,3,val("margin_fraction"));p.layers=int(val("add_stages"));p.be=int(val("breakeven_R"));p.family=-1;for(int k=0;k<12;k++)if(str("family")==names[k])p.family=k;if(p.family<0)throw runtime_error("FAMILY_NOT_FOUND");
   R check=simulate(p,true,begin,march);double expected=val("march_equity");if(abs(check.eq-expected)>max(1e-6,abs(expected)*1e-9)||check.trades!=int(val("march_trades")))throw runtime_error("MARCH_PREFIX_MISMATCH id="+to_string(p.id));
