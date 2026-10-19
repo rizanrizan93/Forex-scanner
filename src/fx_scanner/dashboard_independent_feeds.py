@@ -59,19 +59,26 @@ def macro_input(payload, *, now=None):
     # Validate the timestamp of the actual timing instrument, not cached age_seconds.
     if intraday and not fresh(intraday.get('current_at'), now, 900):
         evaluation['last_cash_yield'] = deepcopy(intraday)
-        proxy = intraday.get('effective_source') == 'YAHOO_FINANCE_ZN_FRONT_PROXY'
         futures_at = intraday.get('futures_at')
         futures_price = intraday.get('futures_price')
-        proxy_fresh = (proxy and intraday.get('available') is True and
+        pressure = str(intraday.get('futures_yield_pressure') or '').upper()
+        # The chosen publication-time cash source can age out while ZN remains
+        # independently fresh. Require a recognized directional pressure value.
+        proxy_fresh = (intraday.get('available') is True and
                        fresh(futures_at, now, 900) and futures_price is not None and
-                       math.isfinite(float(futures_price)) and float(futures_price) > 0)
+                       math.isfinite(float(futures_price)) and float(futures_price) > 0 and
+                       pressure in {'YIELD_UP_PROXY', 'YIELD_DOWN_PROXY', 'YIELD_FLAT_PROXY'})
         if proxy_fresh:
-            # ZN price is not a yield percentage. Keep numeric cash yield historical.
+            implication = ('GOLD_HEADWIND' if pressure == 'YIELD_UP_PROXY'
+                           else 'GOLD_SUPPORT' if pressure == 'YIELD_DOWN_PROXY'
+                           else 'UNAVAILABLE')
+            # ZN price is not a yield percentage. Stale cash bias must not leak.
             evaluation['intraday_yield_context'] = {
                 **intraday, 'current': None, 'current_at': futures_at,
                 'age_seconds': (now-timestamp(futures_at)).total_seconds(),
                 'reference': None, 'reference_at': None, 'net_bps': None,
                 'available': True, 'timing_basis': 'TREASURY_FUTURES_PROXY',
+                'state': pressure, 'gold_implication': implication,
                 'source': 'YAHOO_FINANCE_ZN_FRONT_PROXY',
                 'rebound_from_low_bps': None, 'pullback_from_high_bps': None,
             }
