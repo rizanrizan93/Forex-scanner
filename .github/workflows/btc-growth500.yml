@@ -1,0 +1,101 @@
+name: BTC growth repair minimum500k DD56
+on:
+  push:
+    branches: [research/btc-buysell-dd56-600k-2019-2026]
+    paths: [.github/workflows/btc-growth500.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  search:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: {shard: [0,1,2,3]}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: source
+      - name: Fixtures baseline reproduction and23328 geometry screen
+        run: |
+          set -euo pipefail
+          mkdir -p result
+          gzip -dk source/data/BTCUSD_M1.csv.gz
+          echo 'c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504  source/data/BTCUSD_M1.csv' | sha256sum -c -
+          python research_btc_jpy/prepare_btc_growth500.py result
+          python research_btc_jpy/make_btc_growth500_test.py result
+          cp research_btc_jpy/btc_growth500.cpp result/
+          g++ -O3 -std=c++17 result/btc_growth500.cpp -o growth500_replay
+          g++ -O3 -std=c++17 result/growth500_fixtures.cpp -o growth500_fixtures
+          ./growth500_fixtures | tee result/FIXTURES.log
+          ./growth500_replay catalog source/data/BTCUSD_M1.csv result
+          python research_btc_jpy/generate_btc_growth500.py result
+          ./growth500_replay search source/data/BTCUSD_M1.csv result result/STAGE1_CONFIGS.csv ${{ matrix.shard }} | tee result/RUN.log
+          grep -q 'COMPLETE 5832' result/RUN.log
+          git rev-parse HEAD > result/COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-GROWTH500-SHARD-${{ matrix.shard }}
+          path: result/
+          retention-days: 90
+  audit:
+    needs: search
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib tabulate
+      - uses: actions/download-artifact@v4
+        with: {pattern: BTC-GROWTH500-SHARD-*, path: growth500_shards}
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: source
+      - name: Sizing grid locked stress independent cash audit and package
+        run: |
+          set -euo pipefail
+          gzip -dk source/data/BTCUSD_M1.csv.gz
+          python -u research_btc_jpy/audit_btc_growth500.py
+      - name: Save research to VPS and verify package checksum
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-growth500-repair/run-$GITHUB_RUN_ID"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -l 24000 "${opts[@]}" growth500_results/*.zip growth500_results/*.md growth500_results/GROWTH500_STATUS.json growth500_results/PACKAGE_SHA256.txt "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c3 sha256sum -c PACKAGE_SHA256.txt" > growth500_results/VPS_VERIFICATION.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BTC-GROWTH500-AUDITED
+          path: |
+            growth500_results/*.zip
+            growth500_results/*.md
+            growth500_results/*.json
+            growth500_results/*.csv
+            growth500_results/*.txt
+            growth500_results/PRIMARY_EQUITY_DD.png
+          retention-days: 90
+          compression-level: 1
