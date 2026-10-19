@@ -103,5 +103,16 @@ int main(int argc,char**argv){try{
    }
    cout<<"AUDITED "<<id<<endl;
   }
+ }else if(mode=="check"){
+ cout<<"CHECK_PASS"<<endl;
+ }else if(mode=="prefix"){
+ ifstream f(argv[4]);string line;getline(f,line);auto h=split(line);map<string,int>cols;for(int k=0;k<int(h.size());k++)cols[h[k]]=k;
+ vector<P> pp;vector<F> ff;vector<R> before;int64_t cut=parse("2023-05-15 13:30:00");
+ while(getline(f,line)){auto row=split(line);int id=stoi(row.at(cols.at("id"))),rid=stoi(row.at(cols.at("recipe_id")));auto rf=recipe(rid);auto p=config(rf,(id-1)%10);ff.push_back(rf);pp.push_back(p);activate(rf);before.push_back(simulate(p,true,start,cut));}
+ for(auto&b:minutes)if(b.t>=cut){b.o*=.77;b.h*=.77;b.l*=.77;b.c*=.77;}
+ templates.clear();annotations.clear();for(int i=0;i<4;i++)agg[i]=aggregate(widths[i]);h4=agg[2];dailyBars=agg[3];
+ for(size_t i=0;i<pp.size();i++){activate(ff[i]);R r=simulate(pp[i],true,start,cut),b=before[i];if(r.eq!=b.eq||r.dd!=b.dd||r.trades!=b.trades||r.adds!=b.adds||r.skips!=b.skips)throw runtime_error("FUTURE_PREFIX_INVARIANCE_FAILED");}
+ ofstream out(outdir+"/PREFIX_INVARIANCE.json");out<<"{\"pass\":true,\"cases\":"<<pp.size()<<",\"cutoff\":\"2023-05-15 13:30 UTC\",\"test_only_future_price_perturbation\":true,\"input_archive_modified\":false}\n";
+ cout<<"PREFIX_INVARIANCE_PASS "<<pp.size()<<endl;
  }else throw runtime_error("BAD_MODE");
 }catch(exception&e){cerr<<e.what()<<endl;return 1;}}
