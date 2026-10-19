@@ -91,10 +91,11 @@ def main(output):
                 native[tf]=[{"timestamp":datetime.fromtimestamp(b.utcTimestampInMinutes*60,UTC).isoformat(),
                     "low":b.low/100000.,"open":(b.low+b.deltaOpen)/100000.,
                     "high":(b.low+b.deltaHigh)/100000.,"close":(b.low+b.deltaClose)/100000.} for b in res.trendbar]
-            # H2 and H12 are causally derived from native H1/H4 in the
-            # manual-only engine. Fetch daily/weekly natively as optional HTF
+            # H2 is derived from two closed H1 bars. Native H12 is
+            # preferred because broker H4 sessions need not align to UTC
+            # 00/04/08 boundaries. D1/W1 are optional HTF
             # reference; one unsupported period must not remove the H1 map.
-            for tf, days, count in [("D1", 600, 650), ("W1", 1200, 250)]:
+            for tf, days, count in [("H12", 150, 320), ("D1", 600, 650), ("W1", 1200, 250)]:
                 try:
                     yield deferLater(reactor, .3, lambda: None)
                     res=yield request("ProtoOAGetTrendbarsReq",
