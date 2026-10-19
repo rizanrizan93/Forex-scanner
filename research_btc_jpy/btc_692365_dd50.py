@@ -20,7 +20,7 @@ with zipfile.ZipFile(arc) as z:
 assert sha(data)=='c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504'
 # Same execution rules, expanded numeric sizing arrays only.
 src2=re.sub(r'const double risks\[\]=\{[^}]+\},margins\[\]=\{[^}]+\};',
- 'const double risks[]={'+','.join(str(i/100) for i in range(1,61))+'},margins[]={.3,.5,.6,.75,.95};',src)
+ 'const double risks[]={'+','.join(str(i/100) for i in range(1,61))+'},margins[]={'+','.join(str(x) for x in [.3,.5,.6,.75,.95]+[i/100 for i in range(30,96) if i not in [30,50,60,75,95]])+'};',src)
 assert src2!=src
 (O/'search_direct_m1.cpp').write_text(src2)
 driver=r'''
@@ -49,7 +49,7 @@ int main(int argc,char**argv){try{
    seeds.push_back(x.first);if(++got>=(band==2?8:12))break;
   }
  }
- for(auto x:seeds)for(int rr=0;rr<40;rr++)for(int mm=0;mm<5;mm++){x.risk=rr;x.margin=mm;eval(x);}
+ for(auto x:seeds)for(int rr=0;rr<40;rr++)for(int mm=0;mm<int(sizeof(margins)/sizeof(margins[0]));mm++){x.risk=rr;x.margin=mm;eval(x);}
  out.close();
  ofstream selected("focus_results/SELECTED.csv");selected<<setprecision(17)<<ph<<","<<rh<<"\n";set<int> ids;
  // Baseline, unconstrained highest, top 5 below 50, top 3 from 50 to55.
@@ -57,6 +57,7 @@ int main(int argc,char**argv){try{
  sort(rows.begin(),rows.end(),[](auto&x,auto&y){return x.second.eq>y.second.eq;});
  ids.insert(rows[0].first.id);
  for(int band=0;band<2;band++){int n=0;for(auto&x:rows)if(x.second.trades>=20&&(band==0?x.second.dd<50:(x.second.dd>=50&&x.second.dd<=55))){ids.insert(x.first.id);if(++n>=(band==0?5:3))break;}}
+ for(double bound:vector<double>{45.,48.})for(auto&x:rows)if(x.second.trades>=20&&x.second.dd<bound){ids.insert(x.first.id);break;}
  ofstream stress("focus_results/ALL_SELECTED_STRESS.csv");stress<<setprecision(17)<<"case,"<<ph<<","<<rh<<"\n";
  for(auto&x:rows)if(ids.count(x.first.id)){
   params(selected,x.first);selected<<",";result(selected,x.second);selected<<"\n";
@@ -112,6 +113,12 @@ report+=comparison[cols].to_markdown(index=False,floatfmt='.4f')+'\n\n'
 report+='## Konfigurasi dan sensitivitas pilihan DD<50\n\n'
 report+=best[['id','stop_atr','tp_R','hold_bars','risk','margin_fraction','add_stages','breakeven_R']].to_markdown(index=False)+'\n\n'
 report+=s[s.id==best.iloc[0].id][['case','equity','floating_dd','trades','adds','skips','liquidations']].to_markdown(index=False,floatfmt='.4f')+'\n\n'
+report+='## Pembanding ruang DD\n\n'
+for bound in [45,48]:
+ v=base[(base.floating_dd<bound)&(base.trades>=20)].nlargest(1,'equity')
+ if len(v):
+  report+=f'Pilihan tertinggi yang direplay untuk DD<{bound}:\n\n'+v[['id','equity','floating_dd','risk','margin_fraction','stop_atr','tp_R','hold_bars','add_stages','breakeven_R']].to_markdown(index=False)+'\n\n'
+  report+=s[s.id==v.iloc[0].id][['case','equity','floating_dd','trades','skips']].to_markdown(index=False,floatfmt='.4f')+'\n\n'
 report+='Semua kasus biaya/latensi memakai parameter terkunci. Segment2019–22/2023–24/2025–Okt2026 masing-masing restartUSD100; bukan OOS tak tersentuh. Seluruh periode dipakai seleksi, sehingga hasil ini optimasi historis dan rentan overfit. Batas DD<50 disaring pada BASE, bukan jaminan untuk skenario stres atau masa depan.\n\n'
 report+='Model tetap: Bitstamp M1 OHLC resmi, bukan tick bid/ask broker. Leverage10 hipotesis; margin linear, minimum/step0.01BTC,max100BTC. Spread5bp,slippage1bp/sisi,komisi5bp/sisi,financing debit3bpnotional/hari. COST1_5/2 mengalikan fee/slip/carry, bukan spread. Delay NEXT_M1 minimum satu menit, bukan2detik. Financing long/short sama sesuai model sebelumnya, bukan spesifikasi broker yang dibuktikan.\n\n'
 report+='DD model diperiksa tiapM1 dengan urutan intrabar konservatif/stop-first. Grafik hanya snapshotperjam, angka DD acuan dari tabel fullM1. Stop gap memakai open yang lebih buruk. BE mulai berlaku barnext. Bila layering, initialrisk40%,adds pada25/50%kedalamanstop lalu barnext; risk bukan persen kerugian pasti. NO_ADDS mengalokasikan100%initialrisk sehingga bukan ablation volume tetap. ModelSL/TP mendahului fallbackstopout; ACK/recovery/partialfills/dynamicbrokerleverage tidak divalidasi. Capital-floor permanen source dipertahankan. Tidak ada DDclamp, penghentian setelah target, reset atau top-up.\n\n'
