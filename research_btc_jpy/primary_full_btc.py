@@ -11,7 +11,7 @@ def main():
  buckets=list(range(start//1000*1000,end,1000))
  def get(t):
   url=f'https://www.bitstamp.net/api/v2/ohlc/btcusd/?step=60&limit=1000&start={t*60}&end={(t+999)*60}';dest=cache/f'{t}.json.gz';error=''
-  assert 1546200000<=t*60<1776000000
+  assert (start//1000*1000)<=t<end
   for attempt in range(4):
    try:
     if dest.exists():
