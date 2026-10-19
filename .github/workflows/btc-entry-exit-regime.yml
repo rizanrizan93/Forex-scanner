@@ -1,0 +1,99 @@
+name: BTC causal entry SL TP regime repair
+on:
+  push:
+    branches: [research/btc-buysell-dd56-600k-2019-2026]
+    paths: [.github/workflows/btc-entry-exit-regime.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  screen:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: {shard: [0,1,2,3]}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: source
+      - name: Compile validate and screen
+        run: |
+          set -euo pipefail
+          mkdir -p result
+          gzip -dk source/data/BTCUSD_M1.csv.gz
+          echo 'c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504  source/data/BTCUSD_M1.csv' | sha256sum -c -
+          python research_btc_jpy/prepare_btc_regime.py result
+          python research_btc_jpy/make_btc_regime_test.py result
+          cp research_btc_jpy/btc_regime.cpp result/
+          g++ -O3 -std=c++17 result/btc_regime.cpp -o regime_replay
+          g++ -O3 -std=c++17 result/regime_fixtures.cpp -o regime_fixtures
+          ./regime_fixtures | tee result/FIXTURES.log
+          ./regime_replay screen source/data/BTCUSD_M1.csv result ${{ matrix.shard }} | tee result/RUN.log
+          grep -q 'SCREEN_COMPLETE 972' result/RUN.log
+          git rev-parse HEAD > result/COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BTC-REGIME-SCREEN-${{ matrix.shard }}
+          path: result/
+          retention-days: 90
+  audit:
+    needs: screen
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib tabulate
+      - uses: actions/download-artifact@v4
+        with: {pattern: BTC-REGIME-SCREEN-*, path: regime_shards}
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: source
+      - name: Select before2025 pair sharedbalance stress reconcile package
+        run: |
+          set -euo pipefail
+          gzip -dk source/data/BTCUSD_M1.csv.gz
+          python -u research_btc_jpy/audit_btc_regime.py
+      - name: Save isolated BTC research to VPS and verify checksum
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-entry-exit-regime/run-$GITHUB_RUN_ID"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -l 24000 "${opts[@]}" regime_results/*.zip regime_results/*.md regime_results/*STATUS.json regime_results/PACKAGE_SHA256.txt "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c3 sha256sum -c PACKAGE_SHA256.txt" > regime_results/VPS_VERIFICATION.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BTC-ENTRY-EXIT-REGIME-AUDIT
+          path: |
+            regime_results/*.zip
+            regime_results/*.md
+            regime_results/*.json
+            regime_results/*.csv
+            regime_results/*.txt
+            regime_results/*.png
+          retention-days: 90
+          compression-level: 1
