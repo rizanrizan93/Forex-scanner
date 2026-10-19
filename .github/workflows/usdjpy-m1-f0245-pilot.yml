@@ -1,0 +1,48 @@
+name: USDJPY M1 F0245 inspired pilot 2016-Oct2026
+on:
+  push:
+    branches: [research/usdjpy-f0245-1m-20261018]
+    paths: [.github/workflows/usdjpy-m1-f0245-pilot.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: rizan-usdjpy-m1-all-years-csv-gz
+          run-id: 39176779912
+          github-token: ${{ github.token }}
+          path: input
+      - name: Verify and extract original UTC M1 price archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          gzip -t input/USDJPY_M1_2016_2026_UTC.csv.gz
+          gzip -dc input/USDJPY_M1_2016_2026_UTC.csv.gz > usdjpy_m1.csv
+          test "$(wc -l < usdjpy_m1.csv)" -gt 3900000
+          head -n 2 usdjpy_m1.csv
+          tail -n 2 usdjpy_m1.csv
+          sha256sum input/USDJPY_M1_2016_2026_UTC.csv.gz > input.sha256
+      - name: Compile and execute USDJPY minute-granularity replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O3 -Wall research/usdjpy_m1_f0245_inspired_screen.cpp -o m1_replay
+          ./m1_replay usdjpy_m1.csv 2>&1 | tee m1_replay.log
+          grep -q 'SIMULATION_COMPLETE' m1_replay.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rizan-usdjpy-m1-f0245-inspired-pilot
+          path: |
+            m1_candidate_results.csv
+            m1_data_validation.json
+            m1_replay.log
+            input.sha256
+          if-no-files-found: warn
