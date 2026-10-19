@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with: {ref: research/btcusd-usdjpy-million-2019-2026}
       - name: Require final cash-policy proof to succeed
         env: {GH_TOKEN: '${{ github.token }}'}
         run: |
@@ -118,7 +119,7 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
           chmod 600 "$d/key" "$d/hosts"
-          dest='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btcusd-usdjpy-million-2019-oct2026/final-delivery'
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btcusd-usdjpy-million-2019-oct2026/final-delivery-$GITHUB_RUN_ID"
           opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
           ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
           scp -l 24000 "${opts[@]}" delivery/*.zip delivery/*.md delivery/*.json delivery/*.png delivery/*.txt "Rizanrizan@202.74.74.172:$dest/"
