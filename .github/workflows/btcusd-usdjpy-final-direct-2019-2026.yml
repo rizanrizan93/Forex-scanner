@@ -1,0 +1,109 @@
+name: Final official BTC and session USDJPY direct M1 universes
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/btcusd-usdjpy-final-direct-2019-2026.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  final_direct:
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - {symbol: USDJPY, variant: SESSIONS, shard: 0}
+          - {symbol: USDJPY, variant: SESSIONS, shard: 1}
+          - {symbol: USDJPY, variant: SESSIONS, shard: 2}
+          - {symbol: USDJPY, variant: SESSIONS, shard: 3}
+          - {symbol: USDJPY, variant: SESSIONS, shard: 4}
+          - {symbol: BTCUSD, variant: GENERIC, shard: 0}
+          - {symbol: BTCUSD, variant: GENERIC, shard: 1}
+          - {symbol: BTCUSD, variant: GENERIC, shard: 2}
+          - {symbol: BTCUSD, variant: GENERIC, shard: 3}
+          - {symbol: BTCUSD, variant: GENERIC, shard: 4}
+          - {symbol: BTCUSD, variant: SESSIONS, shard: 0}
+          - {symbol: BTCUSD, variant: SESSIONS, shard: 1}
+          - {symbol: BTCUSD, variant: SESSIONS, shard: 2}
+          - {symbol: BTCUSD, variant: SESSIONS, shard: 3}
+          - {symbol: BTCUSD, variant: SESSIONS, shard: 4}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib
+      - uses: actions/download-artifact@v4
+        if: matrix.symbol == 'USDJPY'
+        with:
+          name: rizan-usdjpy-m1-all-years-csv-gz
+          run-id: 39176779912
+          github-token: ${{ github.token }}
+          path: research_btc_jpy/input_usdjpy
+      - name: Prepare USDJPY with corrected audit time units
+        if: matrix.symbol == 'USDJPY'
+        run: python research_btc_jpy/prepare.py USDJPY --usdjpy research_btc_jpy/input_usdjpy/USDJPY_M1_2016_2026_UTC.csv.gz
+      - name: Wait for entire official BTC source artifact
+        if: matrix.symbol == 'BTCUSD'
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 200); do
+            FOUND=$(gh api repos/rizanrizan93/Forex-scanner/actions/runs/39210897306/artifacts --jq '[.artifacts[] | select(.name == "RIZAN-BTCUSD-OFFICIAL-FULL-1M-2019-2026")] | length')
+            if [ "$FOUND" = 1 ]; then exit 0; fi
+            sleep 15
+          done
+          exit 1
+      - uses: actions/download-artifact@v4
+        if: matrix.symbol == 'BTCUSD'
+        with:
+          name: RIZAN-BTCUSD-OFFICIAL-FULL-1M-2019-2026
+          run-id: 39210897306
+          github-token: ${{ github.token }}
+          path: official_btc
+      - name: Install exact official BTC input and proof
+        if: matrix.symbol == 'BTCUSD'
+        run: |
+          mkdir -p research_btc_jpy/data
+          cp official_btc/data/* research_btc_jpy/data/
+          gzip -dk research_btc_jpy/data/BTCUSD_M1.csv.gz
+      - name: Select exact direct M1 engine and run execution tests
+        run: |
+          set -euo pipefail
+          mkdir -p result
+          if [ '${{ matrix.variant }}' = SESSIONS ]; then
+            cp research_btc_jpy/search_sessions_direct.cpp engine.cpp
+          else
+            cp research_btc_jpy/search_direct_m1.cpp engine.cpp
+          fi
+          cp engine.cpp result/search_direct_m1.cpp
+          g++ -O3 -std=c++17 -Wall -Wextra engine.cpp -o direct
+          ./direct --test | tee result/ENGINE_FIXTURES.log
+          sha256sum engine.cpp research_btc_jpy/prepare.py > result/SOURCE_SHA256.txt
+          sha256sum research_btc_jpy/data/${{ matrix.symbol }}_M1.csv > result/INPUT_SHA256.txt
+          git rev-parse HEAD > result/COMMIT.txt
+      - name: Direct M1 replay of200k disjoint configuration IDs and stress tests
+        run: |
+          set -euo pipefail
+          ./direct research_btc_jpy/data/${{ matrix.symbol }}_M1.csv ${{ matrix.symbol }} result 1000000 ${{ matrix.shard }} 5 | tee result/RUN.log
+          grep -q 'COMPLETE_DIRECT_M1 evaluated=200000 stream_unique=1000000' result/RUN.log
+      - name: Preserve audited input once per universe
+        if: matrix.shard == 0
+        run: |
+          mkdir -p result/input
+          cp research_btc_jpy/data/*.json result/input/
+          gzip -c research_btc_jpy/data/${{ matrix.symbol }}_M1.csv > result/input/${{ matrix.symbol }}_M1.csv.gz
+      - name: Compress shard rows
+        if: always()
+        run: |
+          gzip -f result/ALL_CONFIGURATIONS.csv || true
+          cp research_btc_jpy/DIRECT_M1_PROTOCOL.md research_btc_jpy/PHASE3_PROTOCOL.md research_btc_jpy/OFFICIAL_BTC_PROTOCOL.md result/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-FINAL-DIRECT-${{ matrix.symbol }}-${{ matrix.variant }}-${{ matrix.shard }}
+          path: result/
+          compression-level: 1
+          retention-days: 30
+          if-no-files-found: error
