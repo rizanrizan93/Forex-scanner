@@ -1,0 +1,149 @@
+name: BTC 1m composite recipes 10m configurations DD60
+on:
+  push:
+    branches: [research/btc-10m-dd60-2019-2026]
+    paths: [.github/workflows/btc-ten-million-dd60.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: source
+      - name: Compile adapter validate inherited fixtures and exact original baseline
+        run: |
+          set -euo pipefail
+          mkdir -p preflight
+          gzip -dk source/data/BTCUSD_M1.csv.gz
+          echo 'c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504  source/data/BTCUSD_M1.csv' | sha256sum -c -
+          python research_btc_jpy/prepare_btc_ten.py preflight
+          cp research_btc_jpy/btc_ten_million.cpp preflight/
+          g++ -O3 -std=c++17 preflight/btc_ten_million.cpp -o replay
+          ./replay --test | tee preflight/ENGINE_FIXTURES.log
+          ./replay check source/data/BTCUSD_M1.csv preflight | tee preflight/PARITY.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: RIZAN-BTC-TEN-PREFLIGHT, path: preflight/, retention-days: 90}
+  search:
+    needs: preflight
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix: {shard: [0,1,2,3,4,5,6,7,8,9]}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: source
+      - name: Run one million full period configurations
+        run: |
+          set -euo pipefail
+          mkdir -p result
+          gzip -dk source/data/BTCUSD_M1.csv.gz
+          echo 'c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504  source/data/BTCUSD_M1.csv' | sha256sum -c -
+          python research_btc_jpy/prepare_btc_ten.py result
+          cp research_btc_jpy/btc_ten_million.cpp research_btc_jpy/BTC_TEN_MILLION_PROTOCOL.md result/
+          g++ -O3 -std=c++17 result/btc_ten_million.cpp -o replay
+          ./replay --test | tee result/ENGINE_FIXTURES.log
+          sha256sum source/data/BTCUSD_M1.csv > result/INPUT_SHA256.txt
+          git rev-parse HEAD > result/COMMIT.txt
+          ./replay search source/data/BTCUSD_M1.csv result ${{ matrix.shard }} | tee result/RUN.log
+          grep -q 'COMPLETE recipes=100000 configs=1000000' result/RUN.log
+          gzip -f result/ALL_CONFIGURATIONS.csv
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BTC-TEN-SHARD-${{ matrix.shard }}
+          path: result/
+          compression-level: 1
+          retention-days: 90
+  audit:
+    needs: search
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions: {contents: write, actions: read}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib tabulate
+      - uses: actions/download-artifact@v4
+        with: {pattern: RIZAN-BTC-TEN-SHARD-*, path: shards}
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: source
+      - name: Count every row regenerate finalists stress test reconcile and package
+        run: |
+          set -euo pipefail
+          gzip -dk source/data/BTCUSD_M1.csv.gz
+          python -u research_btc_jpy/audit_btc_ten.py
+      - name: Store packages on isolated VPS research path
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-ten-million-dd60-2019-oct2026/run-$GITHUB_RUN_ID"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -l 24000 "${opts[@]}" ten_results/*.zip ten_results/LAPORAN_BTC_TEN_MILLION.md ten_results/*STATUS.json ten_results/*PROOF.json ten_results/PACKAGE_SHA256.txt "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c3 sha256sum -c PACKAGE_SHA256.txt" > ten_results/VPS_VERIFICATION.txt
+      - name: Publish compact review evidence
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python - <<'PY'
+          import pathlib,json,base64,subprocess,time
+          branch='research/btc-10m-dd60-2019-2026'
+          names=['TEN_MILLION_STATUS.json','TEN_MILLION_COUNT_PROOF.json','FINAL_SELECTED_METRICS.csv','COHORT_RANKINGS.csv','ALL_SELECTED_STRESS.csv','CASH_RECONCILIATION.json','PREFIX_INVARIANCE.json','LAPORAN_BTC_TEN_MILLION.md','PACKAGE_SHA256.txt','VPS_VERIFICATION.txt']
+          for name in names:
+            p=pathlib.Path('ten_results')/name
+            path='research_results/btc-ten-million-dd60-2019-oct2026/'+name
+            for attempt in range(6):
+              old=subprocess.run(['gh','api','repos/rizanrizan93/Forex-scanner/contents/'+path+'?ref='+branch],capture_output=True,text=True)
+              payload={'message':'research: publish BTC10m audit '+name,'branch':branch,'content':base64.b64encode(p.read_bytes()).decode()}
+              if old.returncode==0:payload['sha']=json.loads(old.stdout)['sha']
+              f=pathlib.Path('/tmp/ten_publish.json');f.write_text(json.dumps(payload))
+              q=subprocess.run(['gh','api','--method','PUT','repos/rizanrizan93/Forex-scanner/contents/'+path,'--input',str(f),'--silent'],capture_output=True,text=True)
+              if q.returncode==0:break
+              if '409' not in q.stderr:raise RuntimeError(q.stderr)
+              time.sleep(1)
+            else:raise RuntimeError('Publication conflict '+name)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BTC-TEN-MILLION-AUDITED
+          path: |
+            ten_results/*.zip
+            ten_results/*.md
+            ten_results/*.json
+            ten_results/*.csv
+            ten_results/*.txt
+          compression-level: 1
+          retention-days: 90
