@@ -3,7 +3,9 @@ name: XAU Macro Attribution V399
 on:
   workflow_dispatch:
   schedule:
-    - cron: "7 * * * 0-5"
+    # Multiple staggered triggers keep one successor queued while the 5.5h
+    # publisher holds the concurrency group. Schedules are best effort.
+    - cron: "7,22,37,52 * * * 0-5"
   push:
     branches: [main]
     paths:
