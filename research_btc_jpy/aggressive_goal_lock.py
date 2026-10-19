@@ -101,6 +101,6 @@ with open(OUT/'MANIFEST_SHA256.csv','w') as f:
 with zipfile.ZipFile('RIZAN_AGGRESSIVE_SETTLED_GOAL_LOCK.zip','w',zipfile.ZIP_DEFLATED,compresslevel=5) as z:
  for p in OUT.rglob('*'):
   if p.is_file():z.write(p,str(p.relative_to(OUT)))
-shutil.copy2('RIZAN_SETTLED_CASH_GOAL_LOCK.zip',OUT/'RIZAN_SETTLED_CASH_GOAL_LOCK.zip')
-(OUT/'PACKAGE_SHA256.txt').write_text(sha(OUT/'RIZAN_SETTLED_CASH_GOAL_LOCK.zip')+'  RIZAN_SETTLED_CASH_GOAL_LOCK.zip\n')
+shutil.copy2('RIZAN_AGGRESSIVE_SETTLED_GOAL_LOCK.zip',OUT/'RIZAN_AGGRESSIVE_SETTLED_GOAL_LOCK.zip')
+(OUT/'PACKAGE_SHA256.txt').write_text(sha(OUT/'RIZAN_AGGRESSIVE_SETTLED_GOAL_LOCK.zip')+'  RIZAN_AGGRESSIVE_SETTLED_GOAL_LOCK.zip\n')
 print(json.dumps(summary,indent=2),flush=True)
