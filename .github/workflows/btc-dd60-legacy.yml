@@ -26,6 +26,14 @@ jobs:
           run-id: 39233081519
           github-token: ${{ github.token }}
           path: high
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTC-DD60-LEGACY-AUDITED
+          run-id: 39252456294
+          github-token: ${{ github.token }}
+          path: checkpoint
+      - name: Regression test BASE versus stress case selection
+        run: python research_btc_jpy/test_reconcile_case_selection.py
       - name: Reconstruct and independently audit all selected BTC configurations
         run: python -u research_btc_jpy/btc_dd60_legacy.py
       - name: Save complete and review packages to isolated VPS research folder
@@ -82,3 +90,5 @@ jobs:
 # Explicit gzip decoder; original archive hashes and financial engine unchanged.
 
 # Stage2: fine margins plus explicit DD45/DD48 buffer sensitivity.
+
+# Resume immutable sizing checkpoint; repair audit file selection without rerunning grid.
