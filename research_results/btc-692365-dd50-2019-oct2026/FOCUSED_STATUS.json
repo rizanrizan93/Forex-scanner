@@ -6,14 +6,14 @@
     "2026-10-15"
   ],
   "initial_USD": 100,
-  "unique_focused_cases": 34340,
-  "dd_lt50_cases": 14990,
+  "unique_focused_cases": 112420,
+  "dd_lt50_cases": 42528,
   "baseline_differential_pass": true,
   "cash_reconciliation_pass": true,
   "signal_locked": "H4 displacement threshold 0.2, closed H4 trend, BUY, UTC00-08",
   "best_below50": {
     "case": "BASE",
-    "id": 2020724,
+    "id": 2065842,
     "tf_minutes": 240,
     "family": "displacement_follow",
     "lookback": 8,
@@ -24,21 +24,21 @@
     "stop_atr": 2,
     "tp_R": 16,
     "hold_bars": 32,
-    "risk": 0.25,
-    "margin_fraction": 0.5999999999999999,
+    "risk": 0.4,
+    "margin_fraction": 0.4299999999999999,
     "add_stages": 2,
-    "breakeven_R": 1,
-    "equity": 48153.12059835348,
-    "floating_dd": 49.93009300594047,
-    "balance_dd": 47.15852811794732,
-    "pf": 1.6082485780043634,
-    "trades": 66,
-    "wins": 45,
-    "adds": 45,
+    "breakeven_R": 0,
+    "equity": 53784.540863855895,
+    "floating_dd": 49.43009447477722,
+    "balance_dd": 46.20338215493842,
+    "pf": 1.542394247749953,
+    "trades": 63,
+    "wins": 35,
+    "adds": 8,
     "skips": 0,
     "liquidations": 0,
-    "reconciliation_error": 7.16227077646181e-12,
-    "win_rate": 68.18181818181819
+    "reconciliation_error": 6.366462912410498e-12,
+    "win_rate": 55.55555555555556
   },
   "secondary_50_to55": {
     "case": "BASE",
@@ -72,5 +72,5 @@
   "lookahead": "closed signals and next open inherited source; no new future-dependent rules",
   "OOS": false,
   "XAU_EUR_integration": "NOT_TESTED",
-  "source_commit": "d5010a6cbb2878a7964fd543e79589241cbf323d"
+  "source_commit": "bff6add740dd7e48c0428bc53786501f4fc91dbd"
 }
