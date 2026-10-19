@@ -39,6 +39,23 @@ WEIGHTS: dict[str, float] = {
 
 _INVALID_CONDITIONS = {"BROKEN", "INVALID", "RETIRED"}
 
+def _invalid_lifecycle(row: dict[str, Any]) -> bool:
+    """Any explicit terminal marker vetoes ACTIVE, including nested metadata.
+
+    A later/outer ACTIVE label must not resurrect an invalidated source zone.
+    """
+    nested = row.get("lifecycle")
+    nested = nested if isinstance(nested, dict) else {}
+    for value in (
+        row.get("condition"), row.get("lifecycle_state"), row.get("freshness"),
+        nested.get("condition"), nested.get("state"), nested.get("freshness"),
+    ):
+        state = str(value or "").strip().upper()
+        if any(state == terminal or state.startswith(terminal + "_")
+               for terminal in _INVALID_CONDITIONS):
+            return True
+    return False
+
 
 def _d(value: Any) -> dict[str, Any]:
     return dict(value or {})
@@ -152,6 +169,8 @@ def _bos_mss(row: dict[str, Any]) -> float | None:
 
 
 def _freshness(row: dict[str, Any]) -> float | None:
+    if _invalid_lifecycle(row):
+        return 0.0
     lifecycle = _d(row.get("lifecycle"))
     freshness = str(
         lifecycle.get("freshness")
@@ -326,8 +345,7 @@ def _candidate(raw: dict[str, Any], *, price: float, atr: float) -> dict[str, An
     direction = str(row.get("direction") or "").upper()
     if direction not in {"LONG", "SHORT"}:
         return None
-    condition = str(row.get("condition") or row.get("lifecycle_state") or "ACTIVE").upper()
-    if condition in _INVALID_CONDITIONS or bool(row.get("intraday_quarantined")):
+    if _invalid_lifecycle(row) or bool(row.get("intraday_quarantined")):
         return None
     band = _band(row)
     if band is None:
