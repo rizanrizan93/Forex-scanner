@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-ROOT=pathlib.Path.cwd();STUDIES=ROOT/'full_studies';OUT=ROOT/'deliverables';OUT.mkdir(exist_ok=True);CODE=ROOT/'research_btc_jpy'
+ROOT=pathlib.Path.cwd();STUDIES=ROOT/'full_studies';OUT=ROOT/'final_research_deliverables';OUT.mkdir(exist_ok=True);CODE=ROOT/'research_btc_jpy'
 PH=['id','tf_minutes','family','lookback','threshold_index','trend_filter','session_utc','side','stop_atr','tp_R','hold_bars','risk','margin_fraction','add_stages','breakeven_R']
 def jread(p):return json.loads(pathlib.Path(p).read_text())
 def dump(p,x):pathlib.Path(p).write_text(json.dumps(x,indent=2,default=lambda z:z.item() if hasattr(z,'item') else str(z)))
@@ -170,17 +170,21 @@ Paket perinstrumen memuat seluruhkonfigurasi,sourceexecuted,parameterpemimpin,le
 (OUT/'LAPORAN_BTCUSD_USDJPY_2019_2026.md').write_text(report)
 dump(OUT/'FINAL_STATUS.json',{'status':status,'target_hits_across_universes':target,'global_unique_parameters':unique,'full_period_end':'2026-10-15','initial_USD_each':100,'broker_execution':'NOT_VALIDATED','research_only':True,'leaders':selected})
 for symbol in ['BTCUSD','USDJPY']:
- pack=ROOT/('package_'+symbol);pack.mkdir(exist_ok=True)
+ pack=ROOT/'rizan_final_packages'/symbol;pack.mkdir(parents=True,exist_ok=True)
  for variant in ['GENERIC','SESSIONS','POSITION']:
   src=found[(symbol,variant)];shutil.copytree(src,pack/'FULL_PERIOD'/variant,dirs_exist_ok=True)
  control=ROOT/'march_controls'
  for p in control.iterdir() if control.exists() else []:
   if symbol in p.name:shutil.copytree(p,pack/'MARCH_LOCKED_CONTROLS'/p.name,dirs_exist_ok=True)
+ tools=pack/'REPRODUCTION_TOOLS';tools.mkdir(exist_ok=True)
+ for p in CODE.iterdir():
+  if p.is_file() and p.suffix in ['.py','.cpp','.md','.yml']:shutil.copy2(p,tools/p.name)
  for name in ['LAPORAN_BTCUSD_USDJPY_2019_2026.md','FINAL_COMPARISON.csv','ALL_LEADER_RESULTS.csv','ALL_SELECTED_SCENARIOS.csv','CONFIGURATIONS.json','UNIVERSE_STATISTICS.json','CASH_RECONCILIATION.json','GLOBAL_UNIQUE_PARAMETER_COUNTS.json','FINAL_STATUS.json']:shutil.copy2(OUT/name,pack/name)
  for variant in ['SESSIONS','POSITION']:
   data=pack/'FULL_PERIOD'/variant/'data'
   for p in data.glob('*_M1.csv.gz'):p.unlink()
   dump(data/'DATASET_REFERENCE.json',{'canonical_dataset':'FULL_PERIOD/GENERIC/data/'+symbol+'_M1.csv.gz','identical_input_sha256':jread(found[(symbol,variant)]/'data'/(symbol+'_AUDIT.json'))['sha256']})
+ (pack/'REPORT_SOURCE_COMMIT.txt').write_text(__import__('os').environ.get('GITHUB_SHA','unknown')+'\n')
  for p in pack.rglob('*'):
   if p.is_file() and '__pycache__' in p.parts:p.unlink()
  with open(pack/'MANIFEST_SHA256.csv','w') as f:
