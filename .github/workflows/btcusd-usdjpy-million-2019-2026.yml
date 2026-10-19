@@ -6,9 +6,17 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  actions: read
+  actions: write
 jobs:
+  supersede_initial:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stop superseded research run only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST repos/rizanrizan93/Forex-scanner/actions/runs/39208609672/cancel || true
   screen:
+    needs: supersede_initial
     strategy:
       fail-fast: false
       matrix:
