@@ -16,7 +16,7 @@ jobs:
       - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib tabulate
       - uses: actions/download-artifact@v4
         with:
-          name: RIZAN-SETTLED-CASH-GOAL-LOCK
+          name: RIZAN-PORTABLE-VERIFIED-2019-2026
           run-id: 39218690359
           github-token: ${{ github.token }}
           path: input
@@ -43,7 +43,7 @@ jobs:
           dest='/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btcusd-usdjpy-million-2019-oct2026/settled-goal-100k'
           opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
           ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
-          scp -l 24000 "${opts[@]}" goal_lock/* "Rizanrizan@202.74.74.172:$dest/"
+          scp -r -l 24000 "${opts[@]}" goal_lock/* "Rizanrizan@202.74.74.172:$dest/"
           ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c3 sha256sum -c PACKAGE_SHA256.txt" > goal_lock/VPS_PORTABLE_VERIFICATION.txt
       - name: Publish small review files and charts on research branch
         env: {GH_TOKEN: '${{ github.token }}'}
