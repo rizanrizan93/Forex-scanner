@@ -1,0 +1,7 @@
+# BTC BUY+SELL target600k DD56 — preregistered bounded search
+InitialUSD100, no topups.2019-01-01–2026-10-15. Target finalbalance>=600000 AND floatingDD<=56 AND at least1 executed basket eachdirection AND at least30 total.
+100 prior-selected signal/execution geometries; 21 BUY riskbudgets0.10..0.30 step0.01;12 SELLriskbudgets0.01,0.02,0.03,0.04,0.06,0.08,0.10,0.12,0.15,0.20,0.25,0.30;5 BUYmarginfractions0.5,0.75,0.85,0.9,0.95;5 SELLmarginfractions0.1,0.3,0.5,0.75,0.95. Exactly630000 configurations,4disjointshards157500each.
+BUY+SELL enabled in everyconfig; require actual bothdirections for leaderboard eligibility. One chronological sharedbalance,one activebasket; busy signalsignored. Directionalrisk/margin are only new sizingbehavior; seed signalgeometry,stops,targets,stages,hold and all extra filters retained. No calendar-year switching,DDclamp,topup,capitalreset,synthetictick,or targetstop.
+All selection in-sample. Not1million independentfamilies;100 postselectedgeometries from12families ofearlierresearch. No predictiveguarantee.
+OfficialBitstampM1OHLC inputSHA256 c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504. Leverage10 hypothesis,minstep0.01BTC,max100BTC;spread5bp,fee5bp/side,slip1bp/side,carrydebit3bp/day bothdirections. Brokercontractunverified.
+Inherited9fixtures,old692365and955kbaselinereproduction. SelectedBASEreplay exact;independentcash/perdirectioncountschecks;cost1.5/2,delaynextM1,leverage2/5 stress. Fullmodelnotnativebidaskticks;notFULLPARITY. SharedBTC-XAU-EURnotyettested. No livechanges,noorders,noMAINmerge.
