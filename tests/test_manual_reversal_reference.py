@@ -225,3 +225,29 @@ def test_native_h12_open_can_follow_non_utc_midnight_broker_anchor():
                  'H12',now)
     from fx_scanner.manual_reversal_map import _fresh_frame
     assert len(source)==1 and _fresh_frame(source,'H12',now)
+
+
+def test_distant_clean_h2_never_hides_a_near_degraded_h1():
+    base=[zone(low=99.,high=101.,touch_count=3,lifecycle='DEGRADED'),
+          zone('H1',low=90.,high=92.),
+          zone('H2',low=90.,high=92.)]
+    z=project(base,100.)
+    f=candles()
+    f['H2']=frame([{'timestamp':NOW-pd.Timedelta(hours=2),
+                    'open':102.,'high':103.,'low':101.,'close':102.1}], 'H2', NOW)
+    chosen=build_plans(z,f,100.,NOW)[0]
+    assert chosen['anchor']['timeframe']=='H1'
+    assert chosen['anchor']['low']==99.
+    assert chosen['phase']=='ZONA_MELEMAH_TUNGGU_BASIS_BARU'
+
+
+def test_h2_with_two_touches_can_be_near_anchor_but_requires_confirmation():
+    z=project([zone(low=98.,high=100.,touch_count=3,lifecycle='DEGRADED'),
+               zone('H2',low=99.,high=101.,touch_count=2,lifecycle='RETESTED')],100.)
+    f=candles()
+    f['H2']=frame([{'timestamp':NOW-pd.Timedelta(hours=2),
+                    'open':102.,'high':103.,'low':101.,'close':102.1}], 'H2', NOW)
+    chosen=build_plans(z,f,100.,NOW)[0]
+    assert chosen['anchor']['timeframe']=='H2'
+    assert chosen['anchor']['touch_count']==2
+    assert chosen['phase']!='KONFIRMASI_STRUKTUR'
