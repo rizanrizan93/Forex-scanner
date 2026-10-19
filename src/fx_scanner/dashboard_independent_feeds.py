@@ -16,9 +16,13 @@ def hierarchy_input(payload, *, now=None):
     for z in p.get('zones', []):
         if not p.get('timeframe_fresh', {}).get(z['timeframe']) or not z.get('eligible'):
             continue
+        lifecycle = str(z.get('lifecycle') or 'ACTIVE').upper()
+        # Do not rebrand a degraded / provisionally breached zone as ACTIVE.
         rows.append({**z, 'direction': 'LONG' if z['direction'] == 'BUY' else 'SHORT',
-                     'condition': 'ACTIVE', 'lifecycle_state': z.get('lifecycle', 'ACTIVE'),
-                     'lifecycle': {'touch_count': z.get('touch_count', 0)}})
+                     'condition': lifecycle,
+                     'lifecycle_state': lifecycle,
+                     'intraday_quarantined': z.get('risk_state') == 'PENDING_PARENT_CLOSE',
+                     'lifecycle': {'freshness': lifecycle, 'touch_count': z.get('touch_count', 0)}})
     structural = [z for z in rows if z['timeframe'] in {'H1', 'H4'}]
     micro = [z for z in rows if z['timeframe'] in {'M15', 'M5'}]
     micro.sort(key=lambda z: (z.get('distance', float('inf')), z['timeframe'] != 'M15'))

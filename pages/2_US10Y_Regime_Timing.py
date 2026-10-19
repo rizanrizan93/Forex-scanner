@@ -142,14 +142,17 @@ if st.button("Perbarui tampilan", key="yield_refresh"):
     load_macro.clear()
     load_live_cash_us10y.clear()
 
+# The independently fetched CNBC cash quote must remain visible even when the
+# GitHub-published macro engine heartbeat is stale or temporarily unavailable.
+macro_error = None
 try:
     data = macro_input(load_macro())
-except Exception:
-    st.warning("Feed makro belum dapat diperbarui atau sudah kedaluwarsa. Tampilan mencoba kembali setiap 30 detik.")
-    st.stop()
+    macro_eval = data["evaluation"]
+    st.caption("Feed makro terakhir: " + wib(data["observed_at"]) + " · independen dari heartbeat zona XAU")
+except Exception as exc:
+    macro_error = _safe_error(exc)
+    macro_eval = {}
 
-macro_eval = data["evaluation"]
-st.caption("Feed makro terakhir: " + wib(data["observed_at"]) + " · independen dari heartbeat zona XAU")
 proxy_active = (macro_eval.get("intraday_yield_context") or {}).get("timing_basis") == "TREASURY_FUTURES_PROXY"
 last_cash = macro_eval.get("last_cash_yield") or {}
 
@@ -234,6 +237,16 @@ def render_live_cash_quote() -> None:
 
 
 render_live_cash_quote()
+
+if macro_error is not None:
+    st.warning(
+        "Feed engine Daily FRED / intraday belum dapat diverifikasi. "
+        "Panel CNBC di atas berjalan secara independen; "
+        "bias dan alignment makro disembunyikan sampai snapshot sehat."
+    )
+    st.caption("Diagnosis feed engine: " + macro_error)
+    st.caption("Tekan 'Perbarui tampilan' untuk memuat ulang snapshot; quote CNBC menyegarkan sendiri setiap 20 detik.")
+    st.stop()
 
 summary = yield_regime_summary(macro_eval)
 daily = dict(summary.get("daily") or {})

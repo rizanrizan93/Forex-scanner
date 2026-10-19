@@ -19,6 +19,7 @@ PHASES={
  'RECLAIM_LAMA_TUNGGU_ULANG':'Reclaim lama · tunggu pengujian ulang',
  'GERAK_SUDAH_BERJALAN':'Harga sudah bergerak dari konfirmasi',
  'LEWATI_BATAS_SKENARIO':'Harga melewati batas skenario',
+ 'TEMBUS_SEMENTARA_TUNGGU_TF_ASAL':'Tembus sementara · tunggu penutupan candle H1/H4 dan reclaim M15',
 }
 
 def read_json(url):
@@ -71,10 +72,15 @@ def render_snapshot(snapshot):
                 st.info('Belum ada acuan H1/H4 yang aktif dan datanya cukup baru pada sisi harga ini.');continue
             plan=plans[side];z=plan['anchor'];phase=plan['phase'];label=PHASES.get(phase,'Menunggu pemeriksaan data')
             if phase=='KONFIRMASI_STRUKTUR':st.info(label+' · periksa ulang chart sebelum keputusan manual')
-            elif phase in {'KONFLIK_H1_H4','LEWATI_BATAS_SKENARIO','KONFIRMASI_BATAL'}:st.warning(label)
+            elif phase in {'KONFLIK_H1_H4','LEWATI_BATAS_SKENARIO','KONFIRMASI_BATAL','TEMBUS_SEMENTARA_TUNGGU_TF_ASAL'}:st.warning(label)
             else:st.write('**'+label+'**')
             st.metric('Area acuan '+z['timeframe'],f"{z['low']:,.2f}–{z['high']:,.2f}")
-            st.caption('Terbentuk '+wib(z['available_at'])+' · '+('belum retest pada TF asal' if z['touch_count']==0 else f"{z['touch_count']} episode retest TF asal"))
+            st.caption('Terbentuk '+wib(z['available_at'])+' · '+('belum ada retest teramati' if z['touch_count']==0 else f"{z['touch_count']} episode retest teramati")
+                       +' · sumber hitung '+str(z.get('touch_count_source') or 'SOURCE_TF'))
+            if z.get('risk_state') == 'PENDING_PARENT_CLOSE':
+                st.warning('Batas skenario ditembus sebelum konfirmasi close H1/H4; zona dikarantina sebagai acuan reversal sampai ada reclaim/penutupan sumber.')
+            elif z.get('lifecycle') == 'DEGRADED':
+                st.warning('Zona sudah diuji berulang kali; perlakukan sebagai zona melemah, bukan fresh demand/supply.')
             st.write(f"Batas skenario: **{z['invalidation']:,.2f}**")
             st.caption(plan['invalidation_rule']+' Batas ini bukan SL order yang telah dipasang.')
             target=plan.get('target_reference')
@@ -96,7 +102,8 @@ def render_snapshot(snapshot):
     st.caption('H1 adalah acuan terdekat, H4 konteks lebih besar; keduanya bukan label probabilitas. M15 memvalidasi reaksi, M5 memeriksa perubahan struktur lokal setelah M15 selesai.')
     with st.expander('Peta semua timeframe dan usia data',expanded=False):
         rows=[{'TF':z['timeframe'],'Arah':z['direction'],'Bawah':round(z['low'],2),'Atas':round(z['high'],2),
-            'Batas skenario':round(z['invalidation'],2),'Posisi':z['position'],'Sentuhan TF':z['touch_count'],
+            'Batas skenario':round(z['invalidation'],2),'Posisi':z['position'],'Lifecycle':z.get('lifecycle'),'Risiko break':z.get('risk_state'),
+            'Sentuhan':z['touch_count'],'Sumber sentuhan':z.get('touch_count_source'),
             'BOS saat pembentukan':z['structural_bos'],'Konflik H1/H4':z['major_conflict'],'Terbentuk WIB':wib(z['available_at'])}
             for z in p.get('zones',[])]
         st.dataframe(rows,hide_index=True,width='stretch')

@@ -73,6 +73,9 @@ st.caption("Sumber: kolektor candle cTrader · candle " + wib(manual.get("price_
 st.caption("H4/H1: zona utama · M15: validasi · M5: refinement. Peta manual ini tidak memakai heartbeat engine eksekusi.")
 if any((x.get('anchor') or {}).get('major_conflict') for x in manual.get('plans', [])):
     st.warning('Ada zona H1/H4 sisi lawan yang bertumpang tindih; arah memerlukan konfirmasi pada chart.')
+pending = [z for z in manual.get('zones', []) if z.get('risk_state') == 'PENDING_PARENT_CLOSE' and z.get('timeframe') in {'H1', 'H4'}]
+if pending:
+    st.warning(f"{len(pending)} zona struktural mengalami penembusan sementara; menunggu close H1/H4. Zona ini tidak digunakan sebagai anchor reversal.")
 if 'latest_m15_close' not in sd:
     st.info("Close M15 terbaru belum tersedia di publikasi ini; gate acceptance belum dikonfirmasi.")
 
@@ -167,6 +170,8 @@ else:
 with st.expander("Zona asli H4 / H1 / M15 / M5"):
     st.dataframe([{'TF': z['timeframe'], 'Arah': z['direction'], 'Bawah': z['low'],
         'Atas': z['high'], 'Batas skenario': z['invalidation'],
+        'Lifecycle': z.get('lifecycle','—'), 'Sentuhan': z.get('touch_count',0),
+        'Risiko break': z.get('risk_state','—'),
         'Status data': 'cukup baru' if manual.get('timeframe_fresh', {}).get(z['timeframe']) else 'terlambat'}
         for z in manual.get('zones', [])], hide_index=True, width='stretch')
 
