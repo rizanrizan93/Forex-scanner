@@ -1,0 +1,92 @@
+name: USDJPY precision export reconciliation final
+on:
+  push:
+    branches: [research/btcusd-usdjpy-million-2019-2026]
+    paths: [.github/workflows/usdjpy-precision-export-final-2019-2026.yml]
+  workflow_dispatch:
+permissions: {contents: read, actions: read}
+jobs:
+  precision:
+    strategy:
+      fail-fast: false
+      matrix: {variant: [GENERIC, SESSIONS]}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-AUDITED-USDJPY-${{ matrix.variant }}
+          run-id: 39213178402
+          github-token: ${{ github.token }}
+          path: study
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-USDJPY-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: extended_data
+      - name: Export-only precision correction with exact source diff
+        run: |
+          set -euo pipefail
+          cp research_btc_jpy/forward_locked.cpp study/
+          cp study/extension/LOCKED_EXTENSION_RESULTS.csv study/extension/BEFORE_PRECISION_RESULTS.csv
+          python - <<'PY'
+          import pathlib,difflib
+          root=pathlib.Path('study');p=root/'search_direct_m1.cpp';before=p.read_text()
+          old='ledger<<setprecision(12);curve<<setprecision(12);';new='ledger<<setprecision(17);curve<<setprecision(17);'
+          assert before.count(old)==1
+          after=before.replace(old,new);(root/'engine_high_precision.cpp').write_text(after)
+          (root/'PRECISION_EXPORT_DIFF.patch').write_text(''.join(difflib.unified_diff(before.splitlines(True),after.splitlines(True),fromfile='archived_engine.cpp',tofile='export_precision17.cpp')))
+          PY
+      - name: Re-export same locked financial paths and reconcile March
+        run: |
+          set -euo pipefail
+          VARIANT_FLAG=''
+          if [ '${{ matrix.variant }}' = SESSIONS ]; then VARIANT_FLAG='-DSESSION_VARIANT'; fi
+          g++ -O3 -std=c++17 -DHIGH_PRECISION_EXPORT $VARIANT_FLAG study/forward_locked.cpp -o forward
+          gzip -dk extended_data/data/USDJPY_M1.csv.gz
+          ./forward extended_data/data/USDJPY_M1.csv USDJPY study/results_USDJPY/LOCKED_SELECTION.csv study/extension | tee study/extension/RUN_PRECISION17.log
+          python - <<'PY'
+          import pandas as pd,numpy as np,json
+          a=pd.read_csv('study/extension/BEFORE_PRECISION_RESULTS.csv');b=pd.read_csv('study/extension/LOCKED_EXTENSION_RESULTS.csv')
+          assert a[['case','id']].equals(b[['case','id']])
+          for c in ['equity','floating_dd','balance_dd','pf']:
+            assert np.allclose(a[c],b[c],rtol=1e-10,atol=1e-9),c
+          for c in ['trades','wins','adds','skips','liquidations']:assert a[c].equals(b[c]),c
+          json.dump({'financial_paths_unchanged':True,'change':'CSV monetary/price export precision12 to17 significant digits only','strategy_parameter_changes':False,'before_rows':len(a),'all_March_prefixes_reconciled':True},open('study/PRECISION_EXPORT_REGRESSION.json','w'),indent=2)
+          PY
+          python research_btc_jpy/analyze_extension.py study USDJPY
+          cp extended_data/data/USDJPY_AUDIT.json study/extension/EXTENDED_INPUT_AUDIT.json
+          sha256sum extended_data/data/USDJPY_M1.csv > study/extension/INPUT_SHA256.txt
+      - name: Package complete result with all checks
+        env: {RESEARCH_VARIANT: '${{ matrix.variant }}'}
+        run: |
+          set -euo pipefail
+          gzip -f study/results_USDJPY/ALL_CONFIGURATIONS.csv
+          gzip -f study/data/USDJPY_M1.csv
+          git rev-parse HEAD > study/AUDIT_COMMIT.txt
+          cp research_btc_jpy/RESEARCH_PROTOCOL.md research_btc_jpy/DIRECT_M1_PROTOCOL.md research_btc_jpy/PHASE3_PROTOCOL.md research_btc_jpy/OFFICIAL_BTC_PROTOCOL.md research_btc_jpy/EXTENSION_PROTOCOL.md study/
+          cp research_btc_jpy/prepare.py research_btc_jpy/primary_full_btc.py research_btc_jpy/merge_direct.py research_btc_jpy/select_locked.py research_btc_jpy/universe_statistics.py research_btc_jpy/analyze_extension.py study/
+          python - <<'PY'
+          import os,pathlib,hashlib,shutil,json
+          v=os.environ['RESEARCH_VARIANT'];root=pathlib.Path('study')
+          if v=='GENERIC':shutil.copy2('extended_data/data/USDJPY_M1.csv.gz',root/'extension'/'EXTENDED_USDJPY_M1.csv.gz')
+          else:
+            for p in (root/'data').glob('*_M1.csv.gz'):p.unlink()
+          (root/'UNIVERSE.json').write_text(json.dumps({'symbol':'USDJPY','variant':v,'selection_end':'2026-03-31','extension_end':'2026-10-15','independent_initial_USD':100,'topup':False,'precision_export_verified':True},indent=2))
+          with open(root/'MANIFEST_SHA256.csv','w') as f:
+            f.write('path,sha256,bytes\n')
+            for p in sorted(root.rglob('*')):
+              if p.is_file() and '__pycache__' not in p.parts and p!=root/'MANIFEST_SHA256.csv':f.write(f'{p.relative_to(root)},{hashlib.sha256(p.read_bytes()).hexdigest()},{p.stat().st_size}\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-AUDITED-USDJPY-${{ matrix.variant }}-FINAL
+          path: study/
+          compression-level: 1
+          retention-days: 30
