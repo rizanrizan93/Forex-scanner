@@ -28,6 +28,8 @@ def get(y):
     return out,{'url':url,'raw_sha256':hashlib.sha256(raw).hexdigest(),'raw_bytes':len(raw),'raw_rows':len(df),'outside_nominal_year_excluded':int((~own).sum()),'selected_rows':len(out),'merge_rule':'Use only timestamps within nominal file year; reject duplicates within resulting input.'}
 def audit(symbol,df,provenance):
     df=df.sort_index()
+    # Pandas3 defaults to microseconds; .asi8 must explicitly be nanoseconds.
+    df.index=df.index.as_unit('ns')
     (ROOT/'data').mkdir(exist_ok=True)
     dup=df[df.index.duplicated(False)]
     conflicts=[];identical_removed=0
