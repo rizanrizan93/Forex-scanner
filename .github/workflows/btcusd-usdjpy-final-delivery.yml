@@ -48,7 +48,7 @@ jobs:
           src=pathlib.Path('research_results/btcusd-usdjpy-2019-oct2026')
           shutil.copy2(src/'LAPORAN_AKHIR_BTCUSD_USDJPY.md',pack)
           for name in ['LAPORAN_BTCUSD_USDJPY_2019_2026.md','FINAL_STATUS.json','CONFIGURATIONS.json']:
-            shutil.copy2(src/name,pack)
+            shutil.copy2(src/(("portable/"+name) if name=="FINAL_STATUS.json" else name),pack/name)
           for d in ['aggressive','portable']:
             for p in (src/d).glob('*'):
               if p.suffix in ['.md','.json','.txt'] and p.name!='FINAL_STATUS.json':
