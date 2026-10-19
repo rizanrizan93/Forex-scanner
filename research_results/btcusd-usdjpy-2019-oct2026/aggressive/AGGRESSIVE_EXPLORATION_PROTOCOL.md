@@ -1,0 +1,5 @@
+# Separate aggressive universe, declared before execution
+
+Same twelve GENERIC signal families, M15/H1/H4, closed-only and direct M1 execution, canonical full 2019-01-01 through 2026-10-15 inputs, standalone USD100, no topups. One million deterministic unique active tuples per instrument, five disjoint shards. USDJPY leverage200, BTC leverage10 hypothetical sensitivity2 unchanged.
+
+Grid risk10/15/20/25/30/40/50/60% per basket, margin50/75/95%, stop0.5/0.75/1/1.5/2/3 ATR, TP2/3/4/6/8/12/16/24R, other parameter generation and costs unchanged. These are highly aggressive historical exploration parameters, not advice or frozen XAU/EUR baseline changes. Seed202610190604. Raw final-target hits counted for all trade counts; shortlist top20 full, DD50, train-only union; independent source reconstruction, cash reconciliation, stresses and dataset/source hashes mandatory. Separate settled-cash target guard can be tested after baseline selected ledger audit, never silently imposed. Report zero-hit results honestly. This is further in-sample search with multiple-testing/selection bias, not genuine OOS confirmation.
