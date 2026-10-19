@@ -1,0 +1,179 @@
+{
+  "status": "EXPLORATORY_M1_NOT_BROKER_VALIDATED",
+  "initial_USD": 100,
+  "period_end": "2026-10-15",
+  "prior_rows_screened": 6000000,
+  "targeted_sizing_evaluations": 7488,
+  "source_numeric_grids_only_changed": true,
+  "original_seed_differential": [
+    {
+      "variant": "ORIGINAL_GENERIC",
+      "all_original_seed_equity_and_trade_counts_reconciled": true,
+      "seeds": 11,
+      "unique_sizing_cases": 1144
+    },
+    {
+      "variant": "ORIGINAL_SESSIONS",
+      "all_original_seed_equity_and_trade_counts_reconciled": true,
+      "seeds": 10,
+      "unique_sizing_cases": 1040
+    },
+    {
+      "variant": "ORIGINAL_POSITION",
+      "all_original_seed_equity_and_trade_counts_reconciled": true,
+      "seeds": 13,
+      "unique_sizing_cases": 1352
+    },
+    {
+      "variant": "PREVIOUS_AGGRESSIVE",
+      "all_original_seed_equity_and_trade_counts_reconciled": true,
+      "seeds": 15,
+      "unique_sizing_cases": 1560
+    },
+    {
+      "variant": "POSITION_HIGH",
+      "all_original_seed_equity_and_trade_counts_reconciled": true,
+      "seeds": 12,
+      "unique_sizing_cases": 1248
+    },
+    {
+      "variant": "SESSIONS_HIGH",
+      "all_original_seed_equity_and_trade_counts_reconciled": true,
+      "seeds": 11,
+      "unique_sizing_cases": 1144
+    }
+  ],
+  "leaders": [
+    {
+      "case": "BASE",
+      "id": 1000072,
+      "tf_minutes": 1440,
+      "family": "structure_break",
+      "lookback": 8,
+      "threshold_index": 1,
+      "trend_filter": 1,
+      "session_utc": 0,
+      "side": 1,
+      "stop_atr": 0.75,
+      "tp_R": 24,
+      "hold_bars": 32,
+      "risk": 0.1,
+      "margin_fraction": 0.95,
+      "add_stages": 1,
+      "breakeven_R": 1,
+      "equity": 56582.384152394334,
+      "floating_dd": 46.75451955302392,
+      "balance_dd": 31.61074171985101,
+      "pf": 2.297414295999691,
+      "trades": 88,
+      "wins": 41,
+      "adds": 70,
+      "skips": 0,
+      "liquidations": 0,
+      "reconciliation_error": 3.637978807091713e-12,
+      "variant": "POSITION_HIGH",
+      "criterion": "DD_LT50",
+      "origin": "TARGETED_SIZING_GRID",
+      "win_rate": 46.59090909090909
+    },
+    {
+      "case": "BASE",
+      "id": 1000184,
+      "tf_minutes": 1440,
+      "family": "structure_break",
+      "lookback": 8,
+      "threshold_index": 2,
+      "trend_filter": 1,
+      "session_utc": 0,
+      "side": 1,
+      "stop_atr": 0.75,
+      "tp_R": 24,
+      "hold_bars": 32,
+      "risk": 0.12,
+      "margin_fraction": 0.95,
+      "add_stages": 2,
+      "breakeven_R": 1,
+      "equity": 79912.95404148397,
+      "floating_dd": 54.33224847025842,
+      "balance_dd": 38.3499156747186,
+      "pf": 2.296135939115012,
+      "trades": 77,
+      "wins": 41,
+      "adds": 97,
+      "skips": 5,
+      "liquidations": 0,
+      "reconciliation_error": 7.275957614183428e-12,
+      "variant": "POSITION_HIGH",
+      "criterion": "DD_50_TO55",
+      "origin": "TARGETED_SIZING_GRID",
+      "win_rate": 53.246753246753244
+    }
+  ],
+  "universes": [
+    {
+      "variant": "ORIGINAL_GENERIC",
+      "prior_rows": 1000000,
+      "below50_count": 660906,
+      "band50_to55_count": 26215,
+      "max_below50": 7522.34077,
+      "max_band50_to55": 4018.786408,
+      "selected_seeds": 11,
+      "original_source_sha256": "d515657e49038dbec079939764152a476a5100b6f870edb6f1875de6d9b04de4"
+    },
+    {
+      "variant": "ORIGINAL_SESSIONS",
+      "prior_rows": 1000000,
+      "below50_count": 582177,
+      "band50_to55_count": 29341,
+      "max_below50": 990.1024746,
+      "max_band50_to55": 607.2913983,
+      "selected_seeds": 10,
+      "original_source_sha256": "a34728f15f56ce2506963b225a7f546d3a8c232ea5e3e5f858029917c937862c"
+    },
+    {
+      "variant": "ORIGINAL_POSITION",
+      "prior_rows": 1000000,
+      "below50_count": 441361,
+      "band50_to55_count": 11595,
+      "max_below50": 10978.89804,
+      "max_band50_to55": 9524.380781,
+      "selected_seeds": 13,
+      "original_source_sha256": "2cf1ba1af41f7b15588557969c661921895cbcf84b3323fefda49a828b27ab5c"
+    },
+    {
+      "variant": "PREVIOUS_AGGRESSIVE",
+      "prior_rows": 1000000,
+      "below50_count": 155632,
+      "band50_to55_count": 29833,
+      "max_below50": 4664.187245,
+      "max_band50_to55": 34028.13644,
+      "selected_seeds": 15,
+      "original_source_sha256": "ffe67c8fba086eba19c3eb894ed5e1cc24d45812af03aedf79ae230be86bd024"
+    },
+    {
+      "variant": "POSITION_HIGH",
+      "prior_rows": 1000000,
+      "below50_count": 265891,
+      "band50_to55_count": 37619,
+      "max_below50": 56582.38415,
+      "max_band50_to55": 27635.85696,
+      "selected_seeds": 12,
+      "original_source_sha256": "ca08c70505568fff80314a5f67f71e037efb1da918c2a6ffddc9db3a2bd238d3"
+    },
+    {
+      "variant": "SESSIONS_HIGH",
+      "prior_rows": 1000000,
+      "below50_count": 55521,
+      "band50_to55_count": 18831,
+      "max_below50": 1803.842142,
+      "max_band50_to55": 3062.728964,
+      "selected_seeds": 11,
+      "original_source_sha256": "1915f61871ff9d1ac6a5ba14febf0d8c5a5c7dfb92a36b17e0575c88a0703045"
+    }
+  ],
+  "BTC_leverage_model": 10,
+  "broker_leverage_verified": false,
+  "combined_XAU_EUR_DD": "NOT_TESTED",
+  "no_DD_kill_switch": true,
+  "all_selected_cash_reconciled": true
+}
