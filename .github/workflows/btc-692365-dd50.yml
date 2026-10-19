@@ -1,0 +1,76 @@
+name: BTC 692365 focused geometry DD50 audit
+on:
+  push:
+    branches: [research/btc-692365-dd50-2019-2026]
+    paths: [.github/workflows/btc-692365-dd50.yml]
+  workflow_dispatch:
+permissions: {contents: write, actions: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --disable-pip-version-check pandas==2.2.3 numpy matplotlib tabulate
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTC-HIGHEST-AUDITED
+          run-id: 39233081519
+          github-token: ${{ github.token }}
+          path: high
+      - name: Reconstruct and independently audit all selected BTC configurations
+        run: python -u research_btc_jpy/btc_692365_dd50.py
+      - name: Save complete and review packages to isolated VPS research folder
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-692365-dd50-2019-oct2026/run-$GITHUB_RUN_ID"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -l 24000 "${opts[@]}" focus_results/*.zip focus_results/*.md focus_results/*.json focus_results/*.csv focus_results/*.txt "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c3 sha256sum -c PACKAGE_SHA256.txt" > focus_results/VPS_VERIFICATION.txt
+      - name: Publish small review evidence with branch conflict retries
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python - <<'PY'
+          import pathlib,json,base64,subprocess,time
+          branch='research/btc-692365-dd50-2019-2026'
+          for p in pathlib.Path('focus_results').iterdir():
+            if not p.is_file() or p.suffix not in ['.md','.json','.csv','.txt']:continue
+            path='research_results/btc-692365-dd50-2019-oct2026/'+p.name
+            for attempt in range(6):
+              old=subprocess.run(['gh','api','repos/rizanrizan93/Forex-scanner/contents/'+path+'?ref='+branch],capture_output=True,text=True)
+              b={'message':'research: publish BTC highest audit '+p.name,'branch':branch,'content':base64.b64encode(p.read_bytes()).decode()}
+              if old.returncode==0:b['sha']=json.loads(old.stdout)['sha']
+              f=pathlib.Path('/tmp/btc_publish.json');f.write_text(json.dumps(b))
+              q=subprocess.run(['gh','api','--method','PUT','repos/rizanrizan93/Forex-scanner/contents/'+path,'--input',str(f),'--silent'],capture_output=True,text=True)
+              if q.returncode==0:break
+              if '409' not in q.stderr:raise RuntimeError(q.stderr)
+              time.sleep(1)
+            else:raise RuntimeError('Publication conflict persisted: '+p.name)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BTC-692365-DD50-AUDITED
+          path: |
+            focus_results/*.zip
+            focus_results/*.md
+            focus_results/*.json
+            focus_results/*.csv
+            focus_results/*.txt
+          compression-level: 1
+          retention-days: 90
+
+# Explicit gzip decoder; original archive hashes and financial engine unchanged.
