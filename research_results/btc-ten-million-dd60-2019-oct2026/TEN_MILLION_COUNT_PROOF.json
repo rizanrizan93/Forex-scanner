@@ -1,0 +1,137 @@
+{
+  "rows": 10000000,
+  "unique_configuration_ids": 10000000,
+  "unique_canonical_composite_recipes": 1000000,
+  "configurations_per_recipe": 10,
+  "fundamental_families": 12,
+  "grammar_space": 6561000,
+  "grammar_affine_coprime": true,
+  "full_tables": [
+    {
+      "shard": 0,
+      "recipes": 100000,
+      "configurations": 1000000,
+      "recipes_without_accepted_signals": 54514,
+      "eligible_DD60": 34938,
+      "minimum_baskets": 30,
+      "grammar_primitives": 7290,
+      "grammar_space": 6561000,
+      "fundamental_families": 12,
+      "full_table_SHA256": "672571d3cb47c213b914e2aa494faebfd9971c3c66d1e252f5f3c058d00fd4b8"
+    },
+    {
+      "shard": 1,
+      "recipes": 100000,
+      "configurations": 1000000,
+      "recipes_without_accepted_signals": 53956,
+      "eligible_DD60": 37273,
+      "minimum_baskets": 30,
+      "grammar_primitives": 7290,
+      "grammar_space": 6561000,
+      "fundamental_families": 12,
+      "full_table_SHA256": "d726d726423ebdab074de71a72b77642bc98b130f84e0e4eadec5de1464c3856"
+    },
+    {
+      "shard": 2,
+      "recipes": 100000,
+      "configurations": 1000000,
+      "recipes_without_accepted_signals": 54405,
+      "eligible_DD60": 34811,
+      "minimum_baskets": 30,
+      "grammar_primitives": 7290,
+      "grammar_space": 6561000,
+      "fundamental_families": 12,
+      "full_table_SHA256": "1f0e3c84283f0a43d54c550ce6ecfd0ef68d1a812582f82f97b1eb17ae6b8ae7"
+    },
+    {
+      "shard": 3,
+      "recipes": 100000,
+      "configurations": 1000000,
+      "recipes_without_accepted_signals": 53694,
+      "eligible_DD60": 36607,
+      "minimum_baskets": 30,
+      "grammar_primitives": 7290,
+      "grammar_space": 6561000,
+      "fundamental_families": 12,
+      "full_table_SHA256": "f9811bc8f1a656efaacf6b34dcf4a69fb56ad705d5ce8e3e9cca8091fd1c8d60"
+    },
+    {
+      "shard": 4,
+      "recipes": 100000,
+      "configurations": 1000000,
+      "recipes_without_accepted_signals": 54047,
+      "eligible_DD60": 34720,
+      "minimum_baskets": 30,
+      "grammar_primitives": 7290,
+      "grammar_space": 6561000,
+      "fundamental_families": 12,
+      "full_table_SHA256": "26f665dab72b7ef3563224ef68a205d1ed1a91dd57298807fccafb5010be8bfd"
+    },
+    {
+      "shard": 5,
+      "recipes": 100000,
+      "configurations": 1000000,
+      "recipes_without_accepted_signals": 53781,
+      "eligible_DD60": 36814,
+      "minimum_baskets": 30,
+      "grammar_primitives": 7290,
+      "grammar_space": 6561000,
+      "fundamental_families": 12,
+      "full_table_SHA256": "37e062752f41f626ffc85507eac1c1f04e5d0f29bc9ab60298000bd6ccfe989c"
+    },
+    {
+      "shard": 6,
+      "recipes": 100000,
+      "configurations": 1000000,
+      "recipes_without_accepted_signals": 54808,
+      "eligible_DD60": 34283,
+      "minimum_baskets": 30,
+      "grammar_primitives": 7290,
+      "grammar_space": 6561000,
+      "fundamental_families": 12,
+      "full_table_SHA256": "0c8ae107aae891d423ede3cb55b628c94fd9bb085d1271efbabba40347f29e74"
+    },
+    {
+      "shard": 7,
+      "recipes": 100000,
+      "configurations": 1000000,
+      "recipes_without_accepted_signals": 54338,
+      "eligible_DD60": 36792,
+      "minimum_baskets": 30,
+      "grammar_primitives": 7290,
+      "grammar_space": 6561000,
+      "fundamental_families": 12,
+      "full_table_SHA256": "0257ed678a28531501704d20a6fa4ffe18e08fbf710eb1c71a120843c1937d7b"
+    },
+    {
+      "shard": 8,
+      "recipes": 100000,
+      "configurations": 1000000,
+      "recipes_without_accepted_signals": 54680,
+      "eligible_DD60": 35023,
+      "minimum_baskets": 30,
+      "grammar_primitives": 7290,
+      "grammar_space": 6561000,
+      "fundamental_families": 12,
+      "full_table_SHA256": "7286e502b911c6ceb083b3f78a2383da2eac6166f076109886caa19e3216f8f2"
+    },
+    {
+      "shard": 9,
+      "recipes": 100000,
+      "configurations": 1000000,
+      "recipes_without_accepted_signals": 53782,
+      "eligible_DD60": 37309,
+      "minimum_baskets": 30,
+      "grammar_primitives": 7290,
+      "grammar_space": 6561000,
+      "fundamental_families": 12,
+      "full_table_SHA256": "4b1a856d7eba3faa4050fa2bd63775ce49116a25164fb24c0c5bda6a308a0b41"
+    }
+  ],
+  "source_metadata": {
+    "original_sha256": "ca08c70505568fff80314a5f67f71e037efb1da918c2a6ffddc9db3a2bd238d3",
+    "engine_sha256": "4ca9cfa9935e8de7b06d72bcbf8b885052ef3443e6f42c5eef76ae96ec466be1",
+    "driver_sha256": "04d7257dbc5efbe2d2e4bd0bdeef906b2bf12aac9812bd8e9aef955d36dd93d2"
+  },
+  "observational_signal_equivalence_not_excluded": true
+}
