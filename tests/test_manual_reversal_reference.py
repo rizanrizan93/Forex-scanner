@@ -269,7 +269,7 @@ def _candidate_a_case(*, side='BUY', ready=60, downtrend=True,
     for dt in pd.date_range(available, now-pd.Timedelta(minutes=1),freq='min'):
         crossing=(dt==now-pd.Timedelta(minutes=touch_offset))
         m1_rows.append({'timestamp':dt.isoformat(),'open':101.,
-                        'high':101.5 if not crossing else 100.5,
+                        'high':101.5,
                         'low':100.8 if not crossing else 99.,
                         'close':101.})
     # Make 50+ daily closed candles, with a monotonically trending EMA.
