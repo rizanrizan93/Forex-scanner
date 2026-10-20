@@ -1,0 +1,14 @@
+{
+  "scope": "Full shared-wallet replay of RISK and TRIPLE, two OHLC paths each; use original frozen BASE A/B as controls. Not a sum of sliced historical trade PnL.",
+  "rules": {
+    "RISK_VETO": "Flag when side*NASDAQ100_20obs_return<0 AND side*VIX_5obs_change>0.",
+    "TRIPLE_VETO": "RISK_VETO plus side*DGS2_20obs_change>0."
+  },
+  "availability": "Two US federal business-day conservative lag; stale observation>10 calendar days invalid. Current-vintage not certified point-in-time.",
+  "evaluation": "Classify previously executed baseline BTC fills; arithmetic slice of old trades is NOT a replay of a new strategy. Cannot infer changed ending balance, DD or profitability.",
+  "native_frozen_source_unchanged": true,
+  "no_new_entry_trigger": "Macro veto only; no M5/M15 sweep/BOS/retest changes.",
+  "baseline_native_source_commit": "1d6ad83f285f293b103342073b637fa16e597fb9",
+  "hypotheses_preregistered_commit": "e7d2de669c5afc2190e62c951aec2add56a389d5",
+  "model": "BTC leverage10x, XAU/EUR200x; portfolio risk20.75%, margin50%; fixed weekend assumedMon00-Fri22UTC; baseline costs and delay2s unchanged. No live changes."
+}

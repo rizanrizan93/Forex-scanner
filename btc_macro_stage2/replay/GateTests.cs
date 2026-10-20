@@ -1,0 +1,10 @@
+using System;using System.IO;using System.Linq;using System.Globalization;using System.Collections.Generic;using Rizan.Portfolio;
+static class GateTests{
+ static int n;static void A(bool b,string s){n++;if(!b)throw new Exception(s);}static void Throws(Action a,string message){bool caught=false;try{a();}catch(Exception e){caught=e.Message.Contains(message);}A(caught,message);}
+ static DateTime D(string s)=>DateTime.Parse(s,CultureInfo.InvariantCulture,DateTimeStyles.AssumeUniversal|DateTimeStyles.AdjustToUniversal);
+ public static void Main(string[] args){var lines=File.ReadAllLines(Path.Combine(args[0],"SIGNAL_MACRO_FEATURES.csv"));var head=lines[0].Split(',');int I(string s)=>Array.IndexOf(head,s);var signals=new Dictionary<DateTime,BtcSignal>();BtcMacroGate.Load(args[0]);foreach(var l in lines.Skip(1)){var p=l.Split(',');var s=new BtcSignal(D(p[I("at")]),int.Parse(p[I("side")]),1,1);signals.Add(s.At,s);A(BtcMacroGate.Allow(s,"BASE"),"BASE");A(BtcMacroGate.Allow(s,"RISK")== (p[I("risk_veto")]!="True"),"RISK parity");A(BtcMacroGate.Allow(s,"TRIPLE")== (p[I("triple_veto")]!="True"),"TRIPLE parity");A(!BtcMacroGate.Allow(s,"UNKNOWN"),"unknown mode");}
+ var original=Console.Out;Console.SetOut(new StringWriter());BtcMacroGate.AssertCoverage(signals);Console.SetOut(original);n++;
+ var first=signals.First().Value;Throws(()=>BtcMacroGate.Allow(first with{Side=-first.Side},"RISK"),"UNKNOWN_MACRO_SIGNAL");Throws(()=>BtcMacroGate.Allow(first with{At=first.At.AddSeconds(1)},"RISK"),"UNKNOWN_MACRO_SIGNAL");signals.Remove(first.At);Throws(()=>BtcMacroGate.AssertCoverage(signals),"MACRO_SIGNAL_COVERAGE_MISMATCH");
+ var dir=Path.Combine(Path.GetTempPath(),"rizan-gate-"+Guid.NewGuid());Directory.CreateDirectory(dir);var bad=lines.ToArray();var q=bad[1].Split(',');q[I("NASDAQ100_available")]=first.At.AddHours(1).ToString("O");bad[1]=string.Join(',',q);File.WriteAllLines(Path.Combine(dir,"SIGNAL_MACRO_FEATURES.csv"),bad);Throws(()=>BtcMacroGate.Load(dir),"FUTURE_MACRO");Directory.Delete(dir,true);BtcMacroGate.Load(args[0]);
+ Console.WriteLine("{\"passed\":"+n+",\"failed\":0,\"signals\":"+(lines.Length-1)+"}");}
+}

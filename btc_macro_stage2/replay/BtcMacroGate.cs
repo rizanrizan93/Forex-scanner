@@ -1,0 +1,9 @@
+using System;using System.IO;using System.Linq;using System.Globalization;using System.Collections.Generic;using Rizan.Portfolio;
+static class BtcMacroGate {
+ record F(int Side,bool Risk,bool Triple);
+ static Dictionary<DateTime,F> features=new();
+ static DateTime D(string s)=>DateTime.Parse(s,CultureInfo.InvariantCulture,DateTimeStyles.AssumeUniversal|DateTimeStyles.AdjustToUniversal);
+ public static void Load(string root){features.Clear();var lines=File.ReadAllLines(Path.Combine(root,"SIGNAL_MACRO_FEATURES.csv"));var header=lines[0].Split(',');int I(string name)=>Array.IndexOf(header,name);foreach(var l in lines.Skip(1)){var p=l.Split(',');var at=D(p[I("at")]);int side=int.Parse(p[I("side")]);bool valid=p[I("valid")]=="True";foreach(var col in new[]{"NASDAQ100","VIXCLS","DGS2"}){if(D(p[I(col+"_available")])>at)throw new Exception("FUTURE_MACRO");if((at.Date-D(p[I(col+"_observation")]).Date).TotalDays>10)valid=false;}double N(string n)=>double.Parse(p[I(n+"_change")],CultureInfo.InvariantCulture);bool risk=valid&&side*N("NASDAQ100")<0&&side*N("VIXCLS")>0;bool triple=risk&&side*N("DGS2")>0;if(risk!=(p[I("risk_veto")]=="True")||triple!=(p[I("triple_veto")]=="True"))throw new Exception("PYTHON_CSHARP_GATE_PARITY");if(!valid)throw new Exception("STALE_OR_MISSING_MACRO");features.Add(at,new(side,risk,triple));}}
+ public static void AssertCoverage(Dictionary<DateTime,BtcSignal> signals){if(signals.Count!=features.Count||signals.Any(p=>!features.TryGetValue(p.Key,out var f)||f.Side!=p.Value.Side))throw new Exception("MACRO_SIGNAL_COVERAGE_MISMATCH");Console.WriteLine("MACRO_GATE_PARITY "+features.Count+" signals; RISK veto="+features.Values.Count(f=>f.Risk)+" TRIPLE veto="+features.Values.Count(f=>f.Triple));}
+ public static bool Allow(BtcSignal s,string mode){if(!features.TryGetValue(s.At,out var f)||f.Side!=s.Side)throw new Exception("UNKNOWN_MACRO_SIGNAL");return mode=="BASE"||mode=="RISK"&&!f.Risk||mode=="TRIPLE"&&!f.Triple;}
+}
