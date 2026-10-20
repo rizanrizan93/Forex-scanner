@@ -1,0 +1,114 @@
+name: XAU EUR BTC final build audit and archive
+on:
+  push:
+    branches: [research/xau-eur-btc-integrated-2019-2026]
+    paths: ['.github/workflows/portfolio-three-final.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.426
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: btc_input
+      - name: Verify package and independently reconcile all three replay cases
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir publish extracted
+          cp portfolio_three/RIZAN_XAU_EUR_BTC_INTEGRATED_AUDIT_2019_2026.zip publish/
+          python - <<'PY' > publish/CI_PACKAGE_VERIFICATION.json
+          import zipfile,json,gzip,hashlib
+          from pathlib import Path
+          p=Path('publish/RIZAN_XAU_EUR_BTC_INTEGRATED_AUDIT_2019_2026.zip')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='198bdecc59f0b47647477dca50685a0b8a05dd14b34680767f0f18e2f48954ed'
+          z=zipfile.ZipFile(p);assert z.testzip() is None
+          m=json.loads(z.read('MANIFEST_SHA256.json'))
+          for n,h in m.items():assert hashlib.sha256(z.read(n)).hexdigest()==h,n
+          checks=[]
+          for n in z.namelist():
+              if not n.endswith('_RAW_REPLAY.json.gz'):continue
+              r=json.loads(gzip.decompress(z.read(n)));s=r['Summary'];hist=r['BrokerHistory']
+              assert s['ErrorCount']==0 and not s['AccountingBlock'] and not s['Quarantined'] and s['OpenPositions']==0
+              net=sum(h['GrossProfit']+h['Commissions']+h['ExitCommission']+h['Swap'] for h in hist)
+              assert abs(100+net-s['EndingBalance'])<1e-5
+              assert all(abs(h['NetProfit']-(h['GrossProfit']+h['Commissions']+h['ExitCommission']+h['Swap']))<1e-7 for h in hist)
+              peak=100;dd=0
+              for e in r['CashEvents']:peak=max(peak,e['Balance']);dd=max(dd,100*(peak-e['Balance'])/peak)
+              assert abs(dd-s['MaxClosedDDPct'])<1e-8
+              checks.append({'case':s['cfg']['Name'],'balance':s['EndingBalance'],'cash_error':100+net-s['EndingBalance'],'balance_dd':dd})
+          assert len(checks)==3
+          print(json.dumps({'Pass':True,'Members':len(m),'Reconciliation':checks},indent=2))
+          PY
+          unzip -q publish/RIZAN_XAU_EUR_BTC_INTEGRATED_AUDIT_2019_2026.zip -d extracted
+          cp extracted/RizanXauEurBtcPortfolio_RESEARCH_V1_2_0.algo extracted/LAPORAN_XAU_EUR_BTC_2019_2026.md extracted/STATUS.json extracted/FINAL_METRICS.csv extracted/BUY_SELL_CONTRIBUTIONS.csv extracted/CASH_RECONCILIATION.json extracted/EQUITY_DRAWDOWN.png publish/
+          gzip -dk btc_input/data/BTCUSD_M1.csv.gz
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          assert hashlib.file_digest(Path('btc_input/data/BTCUSD_M1.csv').open('rb'),'sha256').hexdigest()=='c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504'
+          PY
+      - name: Repeat official native build and all 1301 regression checks
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p extracted/vendor/automate extracted/vendor/net6ref
+          curl -fsSL --retry 3 --max-time 120 https://api.nuget.org/v3-flatcontainer/ctrader.automate/1.0.21/ctrader.automate.1.0.21.nupkg -o automate.zip
+          curl -fsSL --retry 3 --max-time 120 https://api.nuget.org/v3-flatcontainer/microsoft.netcore.app.ref/6.0.36/microsoft.netcore.app.ref.6.0.36.nupkg -o net6ref.zip
+          unzip -q automate.zip -d extracted/vendor/automate
+          unzip -q net6ref.zip -d extracted/vendor/net6ref
+          sdk=$(dirname "$(readlink -f "$(command -v dotnet)")")
+          python extracted/build_native.py --sdk "$sdk" > publish/CI_NATIVE_BUILD.log
+          for suite in SettlementTests PortfolioTests TimingTests; do
+            python extracted/run_local.py "$sdk" "$suite" > "publish/CI_$suite.json"
+          done
+          python extracted/run_local.py "$sdk" btc btc_input/data/BTCUSD_M1.csv extracted/BTC_REFERENCE_SIGNALS.csv > publish/CI_BTC_TESTS.json
+          cp extracted/native/RizanXauEurBtcPortfolio_RESEARCH_V1_2_0.algo publish/CI_NATIVE_REBUILD.algo
+          cp extracted/native/compile.log publish/CI_NATIVE_COMPILER.log
+      - name: Store isolated research files and verify every checksum on VPS
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/xau-eur-btc-integrated-2019-2026/run-$GITHUB_RUN_ID"
+          printf '%s\n' "$dest" > publish/VPS_RESEARCH_PATH.txt
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          r=Path('publish')
+          (r/'PACKAGE_SHA256.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(r.iterdir()) if p.is_file() and p.name!='PACKAGE_SHA256.txt'))
+          PY
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -l 24000 "${opts[@]}" publish/* "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c 3 sha256sum -c PACKAGE_SHA256.txt" > publish/VPS_VERIFICATION.txt
+          scp "${opts[@]}" publish/VPS_VERIFICATION.txt "Rizanrizan@202.74.74.172:$dest/"
+          cat publish/VPS_VERIFICATION.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-XAU-EUR-BTC-INTEGRATED-AUDITED
+          path: publish/
+          if-no-files-found: error
