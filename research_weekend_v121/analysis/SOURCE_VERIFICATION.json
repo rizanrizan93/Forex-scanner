@@ -1,0 +1,16 @@
+{
+  "source/BtcWeekendPolicy.cs": true,
+  "source/BtcCore.cs": true,
+  "source/RizanXauEurPortfolio.cs": true,
+  "source/RizanPortfolio.csproj": true,
+  "source/PortfolioHost.cs": true,
+  "source/BtcEngine.cs": true,
+  "source/eur/FrozenCore.cs": true,
+  "source/eur/EurBatchExecution.cs": true,
+  "source/eur/F0245Policy.cs": true,
+  "source/eur/RizanRobot.cs": true,
+  "source/xau/XauSendReference.cs": true,
+  "source/xau/FrozenCore.cs": true,
+  "source/xau/XauBatchExecution.cs": true,
+  "source/xau/RizanRobot.cs": true
+}

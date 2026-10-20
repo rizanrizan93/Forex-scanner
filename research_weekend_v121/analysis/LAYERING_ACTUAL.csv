@@ -1,0 +1,7 @@
+path,symbol,baskets,multi_fill_baskets,baskets_with_later_stage,max_stage_index,max_fills_per_basket,max_total_units_per_basket
+A,XAUUSD,287,76,5,1,10,20000
+A,EURUSD,178,153,147,2,89,176795000
+A,BTCUSD,96,0,0,0,1,100
+B,XAUUSD,291,130,6,1,10,20000
+B,EURUSD,179,157,149,2,135,270000000
+B,BTCUSD,95,0,0,0,1,100

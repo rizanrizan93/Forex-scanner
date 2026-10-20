@@ -1,0 +1,22 @@
+[
+  {
+    "path": "A",
+    "cash_residual": -1.6763806343078613e-08,
+    "monthly_cash_residual": 0.0,
+    "cutoff_timed_btc_closes": 23,
+    "cutoff_net": 379484.13867848425,
+    "cutoff_buys": 23,
+    "cutoff_sells": 0,
+    "note": "Cutoff-timed exits identified by Friday 21:30 UTC timestamp, not proof of exit reason alone."
+  },
+  {
+    "path": "B",
+    "cash_residual": -2.0116567611694336e-07,
+    "monthly_cash_residual": 0.0,
+    "cutoff_timed_btc_closes": 23,
+    "cutoff_net": 1806853.1511517472,
+    "cutoff_buys": 23,
+    "cutoff_sells": 0,
+    "note": "Cutoff-timed exits identified by Friday 21:30 UTC timestamp, not proof of exit reason alone."
+  }
+]
