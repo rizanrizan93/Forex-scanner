@@ -6,12 +6,15 @@
   "byte_identical": true,
   "functions_executed": [
     "frame",
-    "detect"
+    "detect",
+    "reversal_phase",
+    "_fresh_frame"
   ],
   "not_executed": [
     "evaluate",
-    "build_plans",
-    "reversal_phase"
+    "build_plans"
   ],
-  "note": "Independent challenger uses actual zone geometry; not exact frozen dashboard CandidateA strategy replication."
+  "note": "Independent challenger uses actual zone geometry; not exact frozen dashboard CandidateA strategy replication.",
+  "M15_M5_extension": "Original reversal_phase executed in separately declared post-initial-results diagnostic."
 }
+
