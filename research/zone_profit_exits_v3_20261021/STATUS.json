@@ -1,0 +1,16 @@
+{
+  "experiment": "RZ-PROFIT-EXIT-V3-20261021",
+  "selected_before_new_outcomes": "BASE_1R_60",
+  "prevalidation_commit": "d0fa290ba82563bc9a2573d47a7567be6ffff9d1",
+  "new_date_replay_complete": true,
+  "consistent_profit_improvement_qualified": false,
+  "live_qualified": false,
+  "baseline_v2_reproduced": true,
+  "tests_v3": 15,
+  "tests_baseline_v2": 12,
+  "xau_eur_validated": false,
+  "orders_sent": false,
+  "bridge_modified": false,
+  "frozen_strategy_modified": false,
+  "risk_or_leverage_increased": false
+}

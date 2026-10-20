@@ -1,0 +1,14 @@
+{
+  "baseline_repository_commit": "2ecd2fe80c520eaf28b03ca30f78b4a3fea1f656",
+  "baseline_zip_library_id": "libfile_556ba2dd8c7c8191a16d05d94fda01ad",
+  "baseline_zip_sha256": "43ce4bf3874045adb4f0d78be45d669346db50c0ee80766346432e808fc4b1ae",
+  "files": {
+    "baseline_v2/challenger.py": "1c305962b8b7fd08b6c13f9486b87b1a297c9707ee4fe2135d738675b8c2981b",
+    "baseline_v2/prepare_inputs.py": "c804f98babe84fb865b29b6fe9acfcf441c3feb7c8dcb28e69b1f80b46153871",
+    "baseline_v2/download_inputs.py": "2e22f5f527fd0cdff55d5b53e38d55daa1ff51f696787acc6cde5baef4cabf9c",
+    "upstream/manual_reversal_map.py": "dcd8b9e54074eb596da153f201d1a57d5c4374d9a826b419d143330f0d1eb3b7",
+    "book_adapter.py": "0fbddd8bf94204ecb5f058b8cb36b2c99ee3731b44c605c739306a105567a8ae"
+  },
+  "original_v2_zip_members_verified": 86,
+  "frozen_and_production_files_modified": false
+}

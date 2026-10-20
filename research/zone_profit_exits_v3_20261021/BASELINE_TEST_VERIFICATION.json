@@ -1,0 +1,8 @@
+{
+  "command": "python3 -m unittest test_challenger -v",
+  "cwd": "baseline_v2",
+  "tests_run": 12,
+  "exit_code": 0,
+  "result": "OK",
+  "note": "Verified in this request; original baseline tests are unchanged."
+}

@@ -1,0 +1,43 @@
+{
+  "complete_exit_model_rows": 195,
+  "all_signal_exit_model_rows": 208,
+  "status_counts": {
+    "COMPLETE": 195,
+    "QUOTE_GAP_CENSORED": 7,
+    "RIGHT_CENSORED": 6
+  },
+  "signal_events_with_valid_entry": {
+    "new_validation": 13,
+    "seen_diagnostic": 6,
+    "training": 7
+  },
+  "common120m_events": {
+    "new_validation": 11,
+    "seen_diagnostic": 6,
+    "training": 7
+  },
+  "max_cash_identity_residual_usd_per_initial_btc": 5.684341886080802e-14,
+  "cost_identity": "PASS",
+  "causal_entry_and_zone_times": "PASS",
+  "selection_hash_unchanged": true,
+  "structural_target_usage": {
+    "count": {
+      "new_validation": 11,
+      "seen_diagnostic": 6,
+      "training": 7
+    },
+    "sum": {
+      "new_validation": 7,
+      "seen_diagnostic": 1,
+      "training": 2
+    }
+  },
+  "structural_binding_events": {
+    "new_validation": 1,
+    "seen_diagnostic": 1,
+    "training": 2
+  },
+  "structural_flag_semantics": "target_used means a valid forward boundary was observed; binding_events counts cases where it actually reduced the2R cap",
+  "no_portfolio_compounding_claim": true,
+  "no_live_actions": true
+}

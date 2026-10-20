@@ -1,0 +1,230 @@
+{
+  "books": [
+    {
+      "day": "2024-06-28",
+      "messages": 863345,
+      "invalid_seconds": 3,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 169.5
+    },
+    {
+      "day": "2024-06-29",
+      "messages": 860978,
+      "invalid_seconds": 3,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 80.1
+    },
+    {
+      "day": "2024-06-30",
+      "messages": 862983,
+      "invalid_seconds": 3,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 101.6
+    },
+    {
+      "day": "2024-07-01",
+      "messages": 863643,
+      "invalid_seconds": 3,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 122.7
+    },
+    {
+      "day": "2024-07-29",
+      "messages": 863992,
+      "invalid_seconds": 2,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 225.9
+    },
+    {
+      "day": "2024-07-30",
+      "messages": 863970,
+      "invalid_seconds": 2,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 259.9
+    },
+    {
+      "day": "2024-07-31",
+      "messages": 863978,
+      "invalid_seconds": 2,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 147.3
+    },
+    {
+      "day": "2024-08-01",
+      "messages": 863880,
+      "invalid_seconds": 11,
+      "timestamp_regressions": 0,
+      "resets": 3,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 225.4
+    },
+    {
+      "day": "2024-09-28",
+      "messages": 863494,
+      "invalid_seconds": 2,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 135.9
+    },
+    {
+      "day": "2024-09-29",
+      "messages": 863235,
+      "invalid_seconds": 2,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 90.3
+    },
+    {
+      "day": "2024-09-30",
+      "messages": 863885,
+      "invalid_seconds": 2,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 258.7
+    },
+    {
+      "day": "2024-10-01",
+      "messages": 863932,
+      "invalid_seconds": 2,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 335.3
+    },
+    {
+      "day": "2024-10-29",
+      "messages": 863864,
+      "invalid_seconds": 12,
+      "timestamp_regressions": 0,
+      "resets": 3,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 345.2
+    },
+    {
+      "day": "2024-10-30",
+      "messages": 863962,
+      "invalid_seconds": 2,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 214.3
+    },
+    {
+      "day": "2024-10-31",
+      "messages": 863941,
+      "invalid_seconds": 2,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 189.1
+    },
+    {
+      "day": "2024-11-01",
+      "messages": 863972,
+      "invalid_seconds": 2,
+      "timestamp_regressions": 0,
+      "resets": 2,
+      "zip_crc_full_read": true,
+      "sample_seconds": 86400,
+      "book_publication_latency_assumption_ms": 1000,
+      "seconds": 229.7
+    }
+  ],
+  "trades": [
+    {
+      "day": "2024-07-01",
+      "trade_rows_raw": 909309,
+      "trade_rows_unique": 909309,
+      "duplicate_ids_removed": 0,
+      "unknown_sides": 0,
+      "side_semantics": "liquidity taker side per Tardis schema",
+      "arrival_minus_exchange_ms_median": 44.789,
+      "arrival_minus_exchange_ms_p99": 1749.4903200000374,
+      "negative_arrival_lag_n": 0,
+      "gzip_full_read": true
+    },
+    {
+      "day": "2024-08-01",
+      "trade_rows_raw": 1746471,
+      "trade_rows_unique": 1746471,
+      "duplicate_ids_removed": 0,
+      "unknown_sides": 0,
+      "side_semantics": "liquidity taker side per Tardis schema",
+      "arrival_minus_exchange_ms_median": 52.117,
+      "arrival_minus_exchange_ms_p99": 4204.0392999999995,
+      "negative_arrival_lag_n": 0,
+      "gzip_full_read": true
+    },
+    {
+      "day": "2024-10-01",
+      "trade_rows_raw": 2909028,
+      "trade_rows_unique": 2909028,
+      "duplicate_ids_removed": 0,
+      "unknown_sides": 0,
+      "side_semantics": "liquidity taker side per Tardis schema",
+      "arrival_minus_exchange_ms_median": 43.861,
+      "arrival_minus_exchange_ms_p99": 2908.244799999982,
+      "negative_arrival_lag_n": 0,
+      "gzip_full_read": true
+    },
+    {
+      "day": "2024-11-01",
+      "trade_rows_raw": 2211768,
+      "trade_rows_unique": 2211768,
+      "duplicate_ids_removed": 0,
+      "unknown_sides": 0,
+      "side_semantics": "liquidity taker side per Tardis schema",
+      "arrival_minus_exchange_ms_median": 43.722,
+      "arrival_minus_exchange_ms_p99": 1049.755,
+      "negative_arrival_lag_n": 0,
+      "gzip_full_read": true
+    }
+  ]
+}
