@@ -1,0 +1,142 @@
+[
+  {
+    "kind": "book",
+    "day": "2024-01-29",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-01-29_BTCUSDT_ob500.data.zip",
+    "bytes": 219936815,
+    "sha256": "fe55d3baa3527905239da3ce9c3d68b25eb5adb56d457069b5061ba6bc7a1ef4"
+  },
+  {
+    "kind": "book",
+    "day": "2024-01-30",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-01-30_BTCUSDT_ob500.data.zip",
+    "bytes": 213627960,
+    "sha256": "47d915055090c3d4cca18e8136a5820a7a03d337ab532065cf130c96daa2c456"
+  },
+  {
+    "kind": "book",
+    "day": "2024-01-31",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-01-31_BTCUSDT_ob500.data.zip",
+    "bytes": 237856414,
+    "sha256": "5f0c924ac5ebea06ecd799a1766f8827013f959dd3894cf1c0ecea4f78723bdd"
+  },
+  {
+    "kind": "book",
+    "day": "2024-02-01",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-02-01_BTCUSDT_ob500.data.zip",
+    "bytes": 221463847,
+    "sha256": "9f9a6ee5cc9688b2f51a2165c4c34706c4930e48c996bbc1d6db9b6e012a37a5"
+  },
+  {
+    "kind": "book",
+    "day": "2024-02-27",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-02-27_BTCUSDT_ob500.data.zip",
+    "bytes": 319505779,
+    "sha256": "e60b387dacba40afd2146d912c144a7722325050fe0da1cdfcfff8709f0faae0"
+  },
+  {
+    "kind": "book",
+    "day": "2024-02-28",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-02-28_BTCUSDT_ob500.data.zip",
+    "bytes": 410422380,
+    "sha256": "b374324aadc1721a8f8ac3d3d88338a7490a85d96768f118a1abf4b4e58f3559"
+  },
+  {
+    "kind": "book",
+    "day": "2024-02-29",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-02-29_BTCUSDT_ob500.data.zip",
+    "bytes": 358265374,
+    "sha256": "e3fbc58e1ca46058d225ee789fdb8c4926c7043be58f5586b8ef95987707572a"
+  },
+  {
+    "kind": "book",
+    "day": "2024-03-01",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-03-01_BTCUSDT_ob500.data.zip",
+    "bytes": 265827137,
+    "sha256": "da47ee76c8c6c2ff9ca38f6c703fa29cf7c948c24d85793867875812351082d8"
+  },
+  {
+    "kind": "book",
+    "day": "2024-03-29",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-03-29_BTCUSDT_ob500.data.zip",
+    "bytes": 228288091,
+    "sha256": "a54a80225c7c0c5337114cf007753ee48018b370f90a8de3e225a1d4922467ea"
+  },
+  {
+    "kind": "book",
+    "day": "2024-03-30",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-03-30_BTCUSDT_ob500.data.zip",
+    "bytes": 157073819,
+    "sha256": "e097558368114dd4de395c10e38197bfa6febd6ed2efd53530ad6b6fae1bfacf"
+  },
+  {
+    "kind": "book",
+    "day": "2024-03-31",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-03-31_BTCUSDT_ob500.data.zip",
+    "bytes": 170431135,
+    "sha256": "c08624c9d4a26605fe72ef6cb67c4407eb13af846289c357441af1dca3a57397"
+  },
+  {
+    "kind": "book",
+    "day": "2024-04-01",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-04-01_BTCUSDT_ob500.data.zip",
+    "bytes": 255515982,
+    "sha256": "26f141dbfc3979092673c93ea52209a2195eb547d350c69e1542db64b3b58fc4"
+  },
+  {
+    "kind": "book",
+    "day": "2024-04-28",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-04-28_BTCUSDT_ob500.data.zip",
+    "bytes": 170130180,
+    "sha256": "ac035e461994d0077bb1e82929e4d7248b7dc4786a2cdb3b6f12b5045e0668b2"
+  },
+  {
+    "kind": "book",
+    "day": "2024-04-29",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-04-29_BTCUSDT_ob500.data.zip",
+    "bytes": 250023959,
+    "sha256": "c539fe5cf0fffa38edfb3a14c438522f018eba96b2da0cb575116f6d83df1664"
+  },
+  {
+    "kind": "book",
+    "day": "2024-04-30",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-04-30_BTCUSDT_ob500.data.zip",
+    "bytes": 345584858,
+    "sha256": "ba78ad9a52aa3b1df42449f1cba2550e67807f580b1e26b55be894364127b2f1"
+  },
+  {
+    "kind": "book",
+    "day": "2024-05-01",
+    "url": "https://quote-saver.bycsi.com/orderbook/linear/BTCUSDT/2024-05-01_BTCUSDT_ob500.data.zip",
+    "bytes": 412557103,
+    "sha256": "c53a9ec53b271c2d61b0c50b4df98496f48d7f39ca4bd97c0cf2bc179bf3db16"
+  },
+  {
+    "kind": "trades",
+    "day": "2024-02-01",
+    "url": "https://datasets.tardis.dev/v1/bybit/trades/2024/02/01/BTCUSDT.csv.gz",
+    "bytes": 34379237,
+    "sha256": "77240dcc1196864b37122829b54f9f760ce8ca895d76dabbbb8042238ba0f927"
+  },
+  {
+    "kind": "trades",
+    "day": "2024-03-01",
+    "url": "https://datasets.tardis.dev/v1/bybit/trades/2024/03/01/BTCUSDT.csv.gz",
+    "bytes": 40470821,
+    "sha256": "51e16f56271c6cba43a2c59a03c66e03ce34d6b332be7e166e314e23febcae58"
+  },
+  {
+    "kind": "trades",
+    "day": "2024-04-01",
+    "url": "https://datasets.tardis.dev/v1/bybit/trades/2024/04/01/BTCUSDT.csv.gz",
+    "bytes": 41912089,
+    "sha256": "f6e5a0810385999f65632e95953fa956336cce37176076eb660ddbb2c06612c8"
+  },
+  {
+    "kind": "trades",
+    "day": "2024-05-01",
+    "url": "https://datasets.tardis.dev/v1/bybit/trades/2024/05/01/BTCUSDT.csv.gz",
+    "bytes": 78572986,
+    "sha256": "ffcbb030d996582e506b687443276c7613e2521a3be50b1b0b19c6bc95054d76"
+  }
+]

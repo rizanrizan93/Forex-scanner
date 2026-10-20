@@ -1,0 +1,5 @@
+numpy==2.3.5
+pandas==2.2.3
+orjson==3.13.0
+sortedcontainers==2.4.0
+matplotlib==3.10.8

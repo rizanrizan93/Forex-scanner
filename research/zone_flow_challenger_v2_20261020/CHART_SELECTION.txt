@@ -1,0 +1,2 @@
+First chronologically observed H1 absorption proxy, fallback first control if no H1. No selection by PnL.
+2024-02-01|1a24ee5b9a2d4fac

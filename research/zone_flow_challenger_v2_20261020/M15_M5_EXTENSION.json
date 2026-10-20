@@ -1,0 +1,11 @@
+{
+  "stage": "Added after initial M1 challenger outcomes were inspected; explicitly exploratory, not preregistered holdout confirmation",
+  "reason": "Complete the agreed M15 validation -> M5 structure timing comparator, separate from the faster M1 experiment",
+  "functions": "Original manual_reversal_map.reversal_phase, frame, _fresh_frame; unchanged source",
+  "variants": ["baseline_M15_M5", "absorption_M15_M5"],
+  "entry": "First observed KONFIRMASI_STRUKTUR within60min of original first touch. For absorption variant, M5 confirmation must close strictly after observed absorption. M15 reclaim precedes M5 break by original function rules.",
+  "stop": "Same fixed distal±0.1H1ATR as all V2 variants; reject intervening quote stop/gap",
+  "horizons_minutes": [30, 60, 120],
+  "not_modified": "Original three timing variants, costs, split and their outcome metrics",
+  "interpretation": "Small-sample diagnostic only; preserve baseline without absorption to isolate the extra evidence"
+}

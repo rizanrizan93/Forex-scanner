@@ -1,0 +1,25 @@
+{
+  "id": "RZ-ZONE-FLOW-CHALLENGER-V2-20261020",
+  "research_complete": true,
+  "actual_L2_and_trade_tape_used": true,
+  "positive_normal_cost_results_in_some_small_samples": true,
+  "robust_win_rate_improvement_established": false,
+  "qualified_for_live": false,
+  "xau_eur_validated": false,
+  "official_bookmap_terminal_connected": false,
+  "frozen_strategy_modified": false,
+  "bridge_modified": false,
+  "orders_sent": false,
+  "regression_tests_passed": 12,
+  "sample_days": [
+    "2024-02-01",
+    "2024-03-01",
+    "2024-04-01",
+    "2024-05-01"
+  ],
+  "holdout_days": [
+    "2024-04-01",
+    "2024-05-01"
+  ],
+  "M15_M5_extension_post_initial_results": true
+}

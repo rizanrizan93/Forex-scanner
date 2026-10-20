@@ -1,0 +1,75 @@
+{
+  "id": "RZ-ZONE-FLOW-CHALLENGER-V2-20261020",
+  "role": "RESEARCH_ONLY",
+  "sample_days": [
+    "2024-02-01",
+    "2024-03-01",
+    "2024-04-01",
+    "2024-05-01"
+  ],
+  "warmup_days": 3,
+  "all_book_days": [
+    "2024-01-29",
+    "2024-01-30",
+    "2024-01-31",
+    "2024-02-01",
+    "2024-02-27",
+    "2024-02-28",
+    "2024-02-29",
+    "2024-03-01",
+    "2024-03-29",
+    "2024-03-30",
+    "2024-03-31",
+    "2024-04-01",
+    "2024-04-28",
+    "2024-04-29",
+    "2024-04-30",
+    "2024-05-01"
+  ],
+  "development": [
+    "2024-02-01",
+    "2024-03-01"
+  ],
+  "diagnostic_holdout": [
+    "2024-04-01",
+    "2024-05-01"
+  ],
+  "instrument": "BTCUSDT Bybit linear perpetual; not CFD XAU/EUR/BTC",
+  "selection": "first-day-month public trades sample; convenience sample, not random or independent certification",
+  "zones": "H1 base/departure demand/supply, available only after departure closes; H4 context prior completed candles; one M15 sweep/reclaim family as control",
+  "source": "actual repo supply/demand zone functions will be audited before implementing; no grid search",
+  "entry_variants": [
+    "baseline_first_touch",
+    "absorption_early",
+    "absorption_reclaim"
+  ],
+  "lookback_flow_seconds": 15,
+  "absorption": "counter-side taker notional in prior15s >=75th percentile of trailing30min 15s notional; directional adverse price change <=0.10 H1ATR; at least10s of valid quotes; opposing flow fraction>=0.60",
+  "replenishment_proxy": "same price near zone before/after observed counter-side trades, retained as evidence only; not proof of iceberg",
+  "reclaim": "after absorption price closes completed M1 on favorable side of zone proximal within10minutes; must wait for close; no future outcome used",
+  "horizons_minutes": [
+    30,
+    60,
+    120
+  ],
+  "entry_delay_seconds": 1,
+  "stop": "outside distal/sweep extreme plus0.10H1ATR, stop locked at entry, risk0.15-4H1ATR",
+  "target": "1R fixed across entry variants; target to opposing known zone also logged as room diagnostic",
+  "cost_bps_per_side": {
+    "commission": 5.5,
+    "slippage": 1
+  },
+  "financing_bps_notional_daily": 3,
+  "stress_multipliers": [
+    1,
+    1.5,
+    2
+  ],
+  "spread": "actual reconstructed bid/ask; never multiplied",
+  "orderbook_clock": "exchange publication timestamp + assumed1s availability; no arrival timestamps in archive",
+  "trade_clock": "max(exchange_timestamp,local_arrival_timestamp); never use future arrivals",
+  "overlap": "report paired zone opportunity outcomes plus independent one-position-per-variant ledgers; per-horizon independently",
+  "missing_data": "fail closed; no CVD/absorption from missing tape or cancellations",
+  "frozen_strategy_modified": false,
+  "production_bridge_modified": false
+}

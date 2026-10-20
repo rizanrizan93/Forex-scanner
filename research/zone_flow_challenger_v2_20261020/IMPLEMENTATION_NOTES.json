@@ -1,0 +1,15 @@
+{
+  "written_before_outcomes": true,
+  "actual_zone_engine": "upstream/manual_reversal_map.py::detect called on growing H1 prefixes; no future survivorship filtering",
+  "age_policy": "First touch within12h of effective availability; replay warmup detects earlier touches. This is a fresh-zone challenger, not all old dashboard zones.",
+  "h4": "Context from last two fully closed H4: higher-high/higher-low BULL, lower-high/lower-low BEAR, otherwise RANGE; annotate rather than veto.72h warmup is insufficient for all long H4 zone lookbacks.",
+  "cohorts": ["H1 base/departure zones", "M15 prior16 extreme first-touch control"],
+  "absorption_sweep": "At/after first touch, cross the fixed prior15minute extreme; within10min of touch detect counter flow and limited adverse price progress. Entry still within zone plus0.25H1ATR.",
+  "threshold": "Counter15s notional percentile75 from prior30min rolling counter15s observations, per aggressor side. At least30min tape and10 valid quote samples in15s required; counter share>=0.60. No calibrated probability.",
+  "trade_localization": "Counter notional fraction and percentile use actual tape. Additional trade notional inside zone±0.1ATR is recorded and must be positive.",
+  "reclaim": "First completed M1 close after observed absorption back above BUY proximal/below SELL proximal, within10min from absorption; may execute next quote. Do not use an unfinished M1 close.",
+  "stop": "Fixed zone distal±0.1ATR for all timing variants; breach while waiting cancels entry. No use of future sweep extreme.",
+  "depth": "Near-depth retention and imbalance are recorded as evidence, not mandatory thresholds. They cannot independently prove absorption or an iceberg.",
+  "main_comparison": "Report event study and one-position-per-variant separately; purge diagnostic shared cohort using baseline-complete zone events. No winner selected from holdout.",
+  "limits": "Four first-days only, not full Feb-May. Actual XAU/EUR L2 and CFD basis remain unvalidated. A new research strategy, not frozen cBot modification."
+}

@@ -1,0 +1,17 @@
+{
+  "upstream_commit": "e357272fec03411a6e7c4d2397faf742d1a11047",
+  "path": "src/fx_scanner/manual_reversal_map.py",
+  "git_blob": "f955bd5e8e7c78f0b920567ed073489fa32b68af",
+  "sha256": "dcd8b9e54074eb596da153f201d1a57d5c4374d9a826b419d143330f0d1eb3b7",
+  "byte_identical": true,
+  "functions_executed": [
+    "frame",
+    "detect"
+  ],
+  "not_executed": [
+    "evaluate",
+    "build_plans",
+    "reversal_phase"
+  ],
+  "note": "Independent challenger uses actual zone geometry; not exact frozen dashboard CandidateA strategy replication."
+}

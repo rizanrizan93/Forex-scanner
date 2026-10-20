@@ -1,0 +1,8 @@
+{
+  "completed_model_rows": 933,
+  "gross_and_net_R_cash_identity": "PASS",
+  "entry_after_decision": "PASS",
+  "zone_available_before_touch": "PASS",
+  "duplicate_event_variant_horizon_rows": 0,
+  "note": "Counterfactual variant/horizon rows are not independent trades and must not be summed as a combined portfolio."
+}

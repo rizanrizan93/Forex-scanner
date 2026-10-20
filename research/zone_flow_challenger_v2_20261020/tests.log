@@ -1,0 +1,17 @@
+test_births_not_survivorship_filtered (test_challenger.Tests.test_births_not_survivorship_filtered) ... ok
+test_gap_censored_and_right_edge_not_forced (test_challenger.Tests.test_gap_censored_and_right_edge_not_forced) ... ok
+test_h4_context_ignores_unfinished (test_challenger.Tests.test_h4_context_ignores_unfinished) ... ok
+test_horizon_units_are_explicit_minutes (test_challenger.Tests.test_horizon_units_are_explicit_minutes) ... ok
+test_late_trade_not_exposed_at_exchange_time (test_challenger.Tests.test_late_trade_not_exposed_at_exchange_time) ... ok
+test_no_tape_cannot_claim_absorption (test_challenger.Tests.test_no_tape_cannot_claim_absorption) ... ok
+test_original_m15_then_m5_sequence_uses_closed_candles (test_challenger.Tests.test_original_m15_then_m5_sequence_uses_closed_candles) ... ok
+test_original_zone_prefix_ignores_future (test_challenger.Tests.test_original_zone_prefix_ignores_future) ... ok
+test_reclaim_only_after_m1_close (test_challenger.Tests.test_reclaim_only_after_m1_close) ... ok
+test_snapshot_required (test_challenger.Tests.test_snapshot_required) ... ok
+test_stress_does_not_change_spread_or_fill (test_challenger.Tests.test_stress_does_not_change_spread_or_fill) ... ok
+test_waiting_reclaim_cannot_ignore_stop (test_challenger.Tests.test_waiting_reclaim_cannot_ignore_stop) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.177s
+
+OK

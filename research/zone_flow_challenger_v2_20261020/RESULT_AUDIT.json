@@ -1,0 +1,27 @@
+{
+  "zone_opportunities": 97,
+  "by_day": {
+    "('2024-02-01', 'H1_SD')": 3,
+    "('2024-02-01', 'M15_EXTREME_CONTROL')": 20,
+    "('2024-03-01', 'H1_SD')": 4,
+    "('2024-03-01', 'M15_EXTREME_CONTROL')": 12,
+    "('2024-04-01', 'H1_SD')": 4,
+    "('2024-04-01', 'M15_EXTREME_CONTROL')": 28,
+    "('2024-05-01', 'H1_SD')": 5,
+    "('2024-05-01', 'M15_EXTREME_CONTROL')": 21
+  },
+  "status_counts": {
+    "COMPLETE": 933,
+    "NO_ENTRY_SIGNAL": 507,
+    "RIGHT_CENSORED": 15
+  },
+  "absorption_reasons": {
+    "ABSORPTION_PROXY_OBSERVED": 93,
+    "NO_ABSORPTION_WITHIN10M": 3,
+    "ZONE_INVALIDATED_BEFORE_SIGNAL": 1
+  },
+  "source_manual_sha256": "dcd8b9e54074eb596da153f201d1a57d5c4374d9a826b419d143330f0d1eb3b7",
+  "execution_influence": false,
+  "probability": null,
+  "live_modified": false
+}
