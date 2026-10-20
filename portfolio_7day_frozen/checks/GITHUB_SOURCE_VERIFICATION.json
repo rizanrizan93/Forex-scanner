@@ -1,0 +1,23 @@
+{
+  "source_commit": "787ac228837175f9c07c4e13070e2794ebc7a7fe",
+  "all_exact": true,
+  "source_sha256": {
+    "work/source/BtcSevenDayFeed.cs": "9cde1307a398cebc02039daeeef30537da6cee30e161fc1a54b19cad2d0d344d",
+    "work/source/RizanPortfolio.csproj": "22e025f51e9027d19fce8c1c8c2a08554687bc2108222efbc5b947cb3beba64a",
+    "work/source/BtcStateLink.cs": "94925538e1f11d1f808532c5f16291ca90282567f3d1f290f630f8284c208110",
+    "work/source/PortfolioHost.cs": "1d02f9c0a997450790e9c0145f6443dd0fcc6c446ed846265c1779faf38f9744",
+    "work/source/BtcCore.cs": "7cd70e9fd34860580ea2da0fb8a46530eaf856414b0cc9b62b52c4c5b2f7a56d",
+    "work/source/BtcWeekendPolicy.cs": "b6005e1bd500970e270243cfc3c32c6d57fd0a03083f6ddc22175b0625efa490",
+    "work/source/BtcEngine.cs": "a77b49852146cd447bcfca77b130255d33a2f8cbc740d37b6bec0a85ea494ae2",
+    "work/source/RizanXauEurPortfolio.cs": "0ed40c6fa450e25a6aa6cd4ca28e248fb3e0739a0b62ac5e913b339443854d31",
+    "work/source/xau/XauSendReference.cs": "845a2d552a45757ffde77e12c699015612acd6a7394903866ff12bc7a9d58649",
+    "work/source/xau/FrozenCore.cs": "b853e9f7e68e9f425764ebcc4bececb0ddd0959973ee29c92d24b8aec0cb32c7",
+    "work/source/xau/XauBatchExecution.cs": "68e865b3933d33fae9025d7aeba2325078e1c1d7fc7ad4ad81e2c69569c3f281",
+    "work/source/xau/RizanRobot.cs": "bc7935c11ba3f008b2967e9c06e9ac53f3a40f757827c8b301b791cd535eabce",
+    "work/source/eur/EurBatchExecution.cs": "d088e41ec1fc31810c2c9af375fef549c898f7c87443c44d2076c8a8fbab4a5e",
+    "work/source/eur/F0245Policy.cs": "b20531243536a7bf9d8a7a44c82b46de5f51ffc0ff21887a9f2dc8050fffea28",
+    "work/source/eur/FrozenCore.cs": "a4fb2355bca26beb8926a467399b76960613cecbff3172e71d3b713d537e7f99",
+    "work/source/eur/RizanRobot.cs": "cf660a604d7e749c47a27d2799ac970cbcb2c3611895ce6a83c260990d890d40"
+  },
+  "evidence": "manifest retrieved from final GitHub commit; restored local files match every hash"
+}

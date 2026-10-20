@@ -1,0 +1,354 @@
+--- LF122/source/BtcSevenDayFeed.cs
++++ V130/source/BtcSevenDayFeed.cs
+@@ -0,0 +1,40 @@
++using System;
++using System.IO;
++using System.Linq;
++using System.Collections.Generic;
++using System.Text.Json;
++using System.Security.Cryptography;
++namespace Rizan.Portfolio;
++// No broker bars or mixed spot/CFD series. The historical seed is pinned bytewise.
++internal sealed class BtcSevenDayFeed
++{
++    internal const string Contract="RZ-7D130-BTC8500283-LFOLLOW-WEEKEND";
++    internal const string SeedHash="e041102102e4ae2768e06f0261b4bfbfabc056ffa5decde21e161d8904179030";
++    internal const long SeedEnd=1792108800; // 2026-10-16 00:00 UTC
++    internal DateTime Through {get;private set;}
++    internal Dictionary<DateTime,BtcSignal> Signals {get;private set;}=new();
++    internal bool Fresh(DateTime now)=>Through==Hour(now);
++    internal static DateTime Hour(DateTime t)=>new(t.Year,t.Month,t.Day,t.Hour,0,0,DateTimeKind.Utc);
++    internal void Accept(JsonElement root,DateTime now)
++    {
++        if(root.GetProperty("contract").GetString()!=Contract||root.GetProperty("source").GetString()!="BITSTAMP_BTCUSD_M1")throw new Exception("FEED_CONTRACT");
++        long through=root.GetProperty("through").GetInt64();
++        if(through%3600!=0||DateTimeOffset.FromUnixTimeSeconds(through).UtcDateTime!=Hour(now))throw new Exception("FEED_STALE_OR_FUTURE");
++        var bars=new List<BtcBar>();long last=-1;int seedRows=0;
++        using var buffer=new MemoryStream();using var binary=new BinaryWriter(buffer);
++        foreach(var row in root.GetProperty("bars").EnumerateArray())
++        {
++            if(row.GetArrayLength()!=6||bars.Count>=200000)throw new Exception("FEED_LENGTH");
++            var v=row.EnumerateArray().ToArray();long at=v[0].GetInt64();double o=v[1].GetDouble(),h=v[2].GetDouble(),l=v[3].GetDouble(),c=v[4].GetDouble();int n=v[5].GetInt32();
++            if(at%3600!=0||at<=last||at+3600>through||n<1||n>60||new[]{o,h,l,c}.Any(x=>!double.IsFinite(x)||x<=0)||h<Math.Max(o,c)||l>Math.Min(o,c)||l>h)throw new Exception("FEED_BAR_INVALID");
++            if(at>=SeedEnd&&(at!=last+3600||n!=60))throw new Exception("FEED_EXTENSION_GAP");
++            if(at<SeedEnd){binary.Write(at);binary.Write(o);binary.Write(h);binary.Write(l);binary.Write(c);binary.Write(n);seedRows++;}
++            bars.Add(new(DateTimeOffset.FromUnixTimeSeconds(at).UtcDateTime,o,h,l,c,n));last=at;
++        }
++        if(bars.Count==0||new DateTimeOffset(bars[0].At).ToUnixTimeSeconds()!=1546300800||last+3600!=through||seedRows!=68280)throw new Exception("FEED_COVERAGE");
++        if(Convert.ToHexString(SHA256.HashData(buffer.ToArray())).ToLowerInvariant()!=SeedHash)throw new Exception("FEED_SEED_HASH");
++        var candidate=BtcCore.Signals(bars,BtcCore.Aggregate(bars,240));
++        // Publish atomically only after every check passes.
++        Signals=candidate;Through=DateTimeOffset.FromUnixTimeSeconds(through).UtcDateTime;
++    }
++}
+--- LF122/source/BtcStateLink.cs
++++ V130/source/BtcStateLink.cs
+@@ -0,0 +1,67 @@
++using System;
++using System.Text.Json;
++using cAlgo.API;
++namespace Rizan.Portfolio;
++// Research bridge endpoint: data and durable state only. It cannot request trades.
++internal sealed class BtcStateLink : IDisposable
++{
++    readonly RizanPortfolio host;readonly string key;readonly Action<JsonElement> recover;readonly Action<JsonElement> feed;
++    readonly string lease=Guid.NewGuid().ToString("N");
++    WebSocketClient? socket;int generation;bool connecting,connected,stopped,inFlight;int failures;
++    DateTime deadline,nextConnect,nextPing,lastAck;long remote,acked=-1,sent,revision;string current="";
++    internal bool Fatal {get;private set;}
++    internal bool FeedReady {get;private set;}
++    internal bool Healthy=>connected&&!Fatal&&(host.Server.TimeInUtc-lastAck).TotalSeconds<25;
++    internal bool Persisted(long r)=>Healthy&&acked>=r&&!inFlight;
++    internal BtcStateLink(RizanPortfolio h,Action<JsonElement> recovery,Action<JsonElement> data)
++    {host=h;key="RZBTC7D130:"+h.Account.Number+":BTCUSD";recover=recovery;feed=data;}
++    internal static bool ValidUrl(string value)=>Uri.TryCreate(value,UriKind.Absolute,out var u)&&u.Port==25345&&string.IsNullOrEmpty(u.UserInfo)&&string.IsNullOrEmpty(u.Query)&&string.IsNullOrEmpty(u.Fragment)&&(u.Scheme=="wss"||u.Scheme=="ws"&&u.IsLoopback);
++    internal void Changed(long r,string state){revision=r;current=state;Flush();}
++    internal void Tick()
++    {
++        var now=host.Server.TimeInUtc;
++        if(stopped||Fatal)return;
++        if(connecting&&now>=deadline||connected&&((now-lastAck).TotalSeconds>=25||inFlight&&now>=deadline))Offline();
++        if(!connecting&&!connected&&now>=nextConnect)Connect();
++        if(Healthy&&now>=nextPing){try{socket!.Send("{\"type\":\"ping\"}");nextPing=now.AddSeconds(10);}catch{Offline();}}
++        Flush();
++    }
++    void Connect()
++    {
++        if(!ValidUrl(host.BtcBridgeUrl)||host.BtcBridgeToken.Length<32){Fatal=true;host.Log("BTC_BRIDGE_CONFIG_INVALID");return;}
++        try{connecting=true;deadline=host.Server.TimeInUtc.AddSeconds(10);int g=++generation;socket=new WebSocketClient();
++            socket.TextReceived+=e=>host.Dispatch(()=>{if(!stopped&&g==generation)Receive(e.Text);});
++            socket.Disconnected+=_=>host.Dispatch(()=>{if(!stopped&&g==generation)Offline();});
++            socket.Connect(new Uri(host.BtcBridgeUrl));socket.Send(JsonSerializer.Serialize(new{type="hello",key,lease,contract=BtcSevenDayFeed.Contract,token=host.BtcBridgeToken}));}
++        catch{Offline();}
++    }
++    void Offline(){++generation;connected=false;connecting=false;inFlight=false;acked=-1;FeedReady=false;var old=socket;socket=null;try{old?.Dispose();}catch{}nextConnect=host.Server.TimeInUtc.AddSeconds(Math.Min(30,1<<Math.Min(5,failures++)));host.Log("BTC_BRIDGE_OFFLINE entry_blocked=True");}
++    void Flush()
++    {
++        if(!Healthy||inFlight||current.Length==0||acked>=revision)return;
++        try{sent=revision;inFlight=true;deadline=host.Server.TimeInUtc.AddSeconds(5);
++            socket!.Send("{\"type\":\"save\",\"base_revision\":"+remote+",\"client_revision\":"+sent+",\"state\":"+current+"}");}
++        catch{Offline();}
++    }
++    internal void Receive(string text)
++    {
++        try{
++            if(text.Length>16000000)throw new Exception("FRAME_SIZE");using var doc=JsonDocument.Parse(text);var root=doc.RootElement;
++            switch(root.GetProperty("type").GetString()){
++                case "ready":
++                    if(!connecting||connected)throw new Exception("READY_UNEXPECTED");
++                    remote=root.GetProperty("revision").GetInt64();if(remote<0)throw new Exception("REVISION_INVALID");
++                    recover(root.GetProperty("state"));connected=true;connecting=false;acked=-1;inFlight=false;lastAck=host.Server.TimeInUtc;nextPing=lastAck;Flush();break;
++                case "ack":
++                    if(!connected||!inFlight||root.GetProperty("client_revision").GetInt64()!=sent||root.GetProperty("revision").GetInt64()!=remote+1)throw new Exception("ACK_CONFLICT");
++                    remote++;acked=sent;inFlight=false;lastAck=host.Server.TimeInUtc;Flush();break;
++                case "pong":if(!connected)throw new Exception("PONG_BEFORE_READY");lastAck=host.Server.TimeInUtc;failures=0;break;
++                case "feed":if(!connected)throw new Exception("FEED_BEFORE_READY");try{feed(root);FeedReady=true;}catch{FeedReady=false;host.Log("BTC_FEED_REJECTED entry_blocked=True");}break;
++                case "feed_unavailable":FeedReady=false;host.Log("BTC_FEED_UNAVAILABLE entry_blocked=True");break;
++                case "error":
++                    var code=root.GetProperty("code").GetString();if(code!="LEASE_BUSY"&&code!="LEASE_EXPIRED")Fatal=true;Offline();host.Log("BTC_BRIDGE_REJECTED entry_blocked=True");break;
++                default:throw new Exception("MESSAGE_INVALID");}
++        }catch{Fatal=true;Offline();host.Log("BTC_BRIDGE_SAFETY_FAULT entry_blocked=True");}
++    }
++    public void Dispose(){stopped=true;++generation;try{socket?.Dispose();}catch{}socket=null;connected=false;}
++}
+--- LF122/source/PortfolioHost.cs
++++ V130/source/PortfolioHost.cs
+@@ -23,15 +23,19 @@
+     public double PortfolioRiskPercent { get; set; } = 20.75;
+     [Parameter("Bridge WSS :25345", DefaultValue="", Group="Pemulihan dan data")]
+     public string BridgeUrl { get; set; } = "";
+-    [Parameter("Token bridge", DefaultValue="", Group="Pemulihan dan data")]
++    [Parameter("Token bridge", DefaultValue="", IsValueVisibleInTitle=false, Group="Pemulihan dan data")]
+     public string BridgeToken { get; set; } = "";
++    [Parameter("BTC 7D WSS :25345", DefaultValue="", Group="Pemulihan dan data")]
++    public string BtcBridgeUrl {get;set;}="";
++    [Parameter("Token BTC 7D", DefaultValue="", IsValueVisibleInTitle=false, Group="Pemulihan dan data")]
++    public string BtcBridgeToken {get;set;}="";
+     internal XauEngine? Xau { get; private set; }
+     [Parameter("BTC aktif", DefaultValue=true, Group="Strategi")]
+     public bool EnableBtc {get;set;}=true;
+     internal BtcEngine? Btc {get;private set;}
+     internal EurEngine? Eur { get; private set; }
+     internal IEnumerable<EngineContext> Engines => new EngineContext?[]{Eur,Xau,Btc}.OfType<EngineContext>();
+-    internal bool PortfolioReady => !_shuttingDown && Engines.Any() && Engines.All(e=>e.RecoveryReady);
++    internal bool PortfolioReady => !_shuttingDown && Engines.Any() && Engines.All(e=>e.RecoveryReady) && (Xau==null||Xau.BridgeEntryHealthy) && (Eur==null||Eur.BridgeEntryHealthy);
+     public long PortfolioBudgetBlocks { get; private set; }
+ #if REPLAY
+     // Isolated-source parity controls only; absent from the native cBot build.
+@@ -53,12 +57,12 @@
+         ExpectedAccount=ExpectedAccount.Trim();
+         if(!double.IsFinite(PortfolioRiskPercent)||Math.Abs(PortfolioRiskPercent-20.75)>1e-9||!EnableXau&&!EnableEur&&!EnableBtc)
+         {Print("PORTFOLIO_CONFIG_INVALID");Stop();return;}
+-        if(EnableTrading&&(ExpectedAccount!=Account.Number.ToString()||string.IsNullOrWhiteSpace(BridgeUrl)))
++        if(EnableTrading&&(ExpectedAccount!=Account.Number.ToString()||(!BtcStateLink.ValidUrl(BridgeUrl)||BridgeToken.Length<32)||EnableBtc&&(!BtcStateLink.ValidUrl(BtcBridgeUrl)||BtcBridgeToken.Length<32)))
+         {Print("PORTFOLIO_FULL_ACCOUNT_AND_BRIDGE_REQUIRED");Stop();return;}
+         if(Account.AccountType!=AccountType.Hedged||Account.Asset.Name!="USD")
+         {Print("PORTFOLIO_USD_HEDGED_ACCOUNT_REQUIRED");Stop();return;}
+-        var settings=JsonSerializer.Serialize(new{Schema=1,Account=Account.Number,Risk=PortfolioRiskPercent,Margin=.5,XAU=EnableXau,EUR=EnableEur,BTC=EnableBtc});
+-        var key="RIZAN THREE LF122 "+Account.Number;
++        var settings=JsonSerializer.Serialize(new{Schema=1,Release="7D130",BtcFeed=BtcSevenDayFeed.Contract,Account=Account.Number,Risk=PortfolioRiskPercent,Margin=.5,XAU=EnableXau,EUR=EnableEur,BTC=EnableBtc});
++        var key="RIZAN THREE 7D130 "+Account.Number;
+         var saved=LocalStorage.GetString(key,LocalStorageScope.Instance);
+         if(!string.IsNullOrEmpty(saved)&&saved!=settings){Print("PORTFOLIO_SETTINGS_CHECKPOINT_MISMATCH");Stop();return;}
+         LocalStorage.SetString(key,settings,LocalStorageScope.Instance);LocalStorage.Flush(LocalStorageScope.Instance);
+@@ -70,7 +74,7 @@
+         if(Eur!=null)Symbols.GetSymbol("EURUSD").Tick+=EurTick;
+         if(Btc!=null)Symbols.GetSymbol("BTCUSD").Tick+=BtcTick;
+         _running=true;Timer.Start(TimeSpan.FromSeconds(1));
+-        Print("RIZAN_PORTFOLIO_START version=1.2.2-research-leverage-follow XAU=RC1_1.3.0 EUR=F0245_1.2.1 BTC=8500283 account={0} risk_cap={1}% margin_cap=50%",Account.Number,PortfolioRiskPercent);
++        Print("RIZAN_PORTFOLIO_START version=1.3.0-frozen-7day-weekend XAU=RC1_1.3.0 EUR=F0245_1.2.1 BTC=8500283 account={0} risk_cap={1}% margin_cap=50%",Account.Number,PortfolioRiskPercent);
+     }
+     private void XauTick(SymbolTickEventArgs e){if(_running)Xau?.OnTick();}
+     private void BtcTick(SymbolTickEventArgs e){if(_running)Btc?.OnTick();}
+@@ -158,9 +162,9 @@
+     internal bool BtcFillWithinBudget(EngineContext caller,Position p,double reference,double distance,double value)=>
+         p.StopLoss!=null&&p.TakeProfit!=null&&OpenRisk()+Engines.Where(e=>e!=caller).Sum(e=>e.PendingRisk)<=Math.Min(reference,Math.Min(Account.Balance,Account.Equity))*PortfolioRiskPercent/100+1e-8&&ReservedMargin()+Engines.Where(e=>e!=caller).Sum(e=>e.PendingMargin)<=Math.Min(reference,Math.Min(Account.Balance,Account.Equity))*.5+1e-8;
+ 
+-    internal TradeResult Send(TradeType side,string symbol,double units,string label,double sl,double tp,string comment)=>ExecuteMarketOrder(side,symbol,units,label,sl,tp,comment);
+-    internal TradeResult Protect(Position p,double sl,double tp,ProtectionType type)=>ModifyPosition(p,sl,tp,type);
+-    internal TradeResult Close(Position p)=>ClosePosition(p);
++    internal TradeResult Send(TradeType side,string symbol,double units,string label,double sl,double tp,string comment){if(!EnableTrading)throw new InvalidOperationException("TRADING_DISABLED");return ExecuteMarketOrder(side,symbol,units,label,sl,tp,comment);}
++    internal TradeResult Protect(Position p,double sl,double tp,ProtectionType type){if(!EnableTrading)throw new InvalidOperationException("TRADING_DISABLED");return ModifyPosition(p,sl,tp,type);}
++    internal TradeResult Close(Position p){if(!EnableTrading)throw new InvalidOperationException("TRADING_DISABLED");return ClosePosition(p);}
+     internal void Dispatch(Action action)=>BeginInvokeOnMainThread(action);
+     internal void Log(string format,params object[] values)=>Print(format,values);
+ }
+--- LF122/source/BtcEngine.cs
++++ V130/source/BtcEngine.cs
+@@ -7,26 +7,45 @@
+ internal sealed class BtcEngine : EngineContext
+ {
+     internal const string Prefix="RZBTC8500283";
+-    sealed class State {public int Schema{get;set;}=1;public DateTime LastSignal{get;set;} public DateTime Expiry{get;set;} public bool Sending{get;set;} public bool Fault{get;set;} public bool ExitPending{get;set;} public DateTime WeekendLockUntil{get;set;} public string ExitReason{get;set;}="";}
+-    State state=new();bool ready;DateTime nextSchedule,nextExitAttempt,nextCloseLog;DateTime? weekClose;bool marketOpen;string key="";DateTime nextRead;Dictionary<DateTime,BtcSignal> signals=new();
++    sealed class State {public int Schema{get;set;}=1;public string ContractHash{get;set;}=BtcSevenDayFeed.Contract;public long AccountNumber{get;set;} public string Symbol{get;set;}="BTCUSD";public long Revision{get;set;}public DateTime LastSignal{get;set;} public DateTime Expiry{get;set;} public bool Sending{get;set;} public bool Fault{get;set;} public bool ExitPending{get;set;} public DateTime WeekendLockUntil{get;set;} public string ExitReason{get;set;}="";}
++    State state=new();bool ready;DateTime nextSchedule,nextExitAttempt,nextCloseLog;DateTime? weekClose;bool marketOpen;string key="";
+     internal BtcEngine(RizanPortfolio host):base(host,"BTCUSD"){}
+-    internal override bool RecoveryReady=>ready&&!state.Fault&&!state.ExitPending;
++    bool replay,restored;BtcStateLink? link;BtcSignal? prepared;readonly BtcSevenDayFeed feed=new();
++    internal override bool RecoveryReady=>ready&&!state.Fault&&!state.ExitPending&&(replay||link!=null&&link.FeedReady&&link.Persisted(state.Revision)&&feed.Fresh(Server.TimeInUtc));
+     internal override double PendingRisk=>0;
+     internal override double PendingMargin=>0;
+     internal override string PendingOrderLabel=>"";
+     internal override void SetParameters(){}
+     IEnumerable<Position> Owned=>Positions.Where(p=>p.SymbolName==Instrument&&p.Label.StartsWith(Prefix+"|",StringComparison.Ordinal));
+-    void Save(){LocalStorage.SetString(key,JsonSerializer.Serialize(state),LocalStorageScope.Instance);LocalStorage.Flush(LocalStorageScope.Instance);}
+-    public override void OnStart()
+-    {
+-        key="RIZAN BTC LF122 "+Account.Number;
+-        try{var saved=LocalStorage.GetString(key,LocalStorageScope.Instance);if(!string.IsNullOrEmpty(saved))state=JsonSerializer.Deserialize<State>(saved)??throw new Exception("BTC_NULL_STATE");
+-            if(state.Schema!=1||state.Sending||Owned.Count()>1||Owned.Any(p=>p.StopLoss==null||p.TakeProfit==null)||Owned.Any()&&state.Expiry==default)throw new Exception("BTC_RECOVERY_REQUIRES_RECONCILIATION");
+-            ready=true;Save();Manage(Server.TimeInUtc);}
+-        catch(Exception ex){state.Fault=true;Print("BTC_RECOVERY_BLOCK {0}",ex.Message);Stop();}
++    void Save(){
++        state.AccountNumber=Account.Number;state.Revision++;
++        string value=JsonSerializer.Serialize(state);
++        try{LocalStorage.SetString(key,value,LocalStorageScope.Instance);LocalStorage.Flush(LocalStorageScope.Instance);
++            if(LocalStorage.GetString(key,LocalStorageScope.Instance)!=value)throw new Exception("BTC_LOCAL_READBACK");
++            link?.Changed(state.Revision,value);}
++        catch{state.Fault=true;Print("BTC_LOCAL_CHECKPOINT_FAILED entry_blocked=True");throw;}
+     }
+-    // Used by the source replay with the same entry and portfolio gate as the cBot.
+-    internal void ReplayStart(){key="RIZAN BTC LF122 "+Account.Number;ready=true;}
++    void Validate(State x){if(x.Schema!=1||x.ContractHash!=BtcSevenDayFeed.Contract||x.AccountNumber!=Account.Number||x.Symbol!="BTCUSD"||x.Revision<0)throw new Exception("BTC_STATE_IDENTITY");}
++    void Recover(JsonElement value){
++        if(value.ValueKind!=JsonValueKind.Null){var remote=JsonSerializer.Deserialize<State>(value.GetRawText())??throw new Exception("BTC_NULL_STATE");Validate(remote);
++            if(restored&&remote.Revision>state.Revision)throw new Exception("BTC_REMOTE_WRITER_AHEAD");
++            if(remote.Revision==state.Revision&&JsonSerializer.Serialize(remote)!=JsonSerializer.Serialize(state))throw new Exception("BTC_STATE_REVISION_CONFLICT");
++            if(remote.Revision>state.Revision)state=remote;
++        }
++        if(state.Sending||Owned.Count()>1||Owned.Any(p=>p.StopLoss==null||p.TakeProfit==null)||Owned.Any()&&state.Expiry==default)state.Fault=true;
++        if(state.Revision==0&&History.Any(p=>p.SymbolName==Instrument&&p.Label.StartsWith(Prefix+"|",StringComparison.Ordinal)))state.Fault=true;
++        restored=true;ready=true;Save();Manage(Server.TimeInUtc);
++    }
++    public override void OnStart(){
++        key="RIZAN BTC 7D130 "+Account.Number;state.AccountNumber=Account.Number;
++        try{var saved=LocalStorage.GetString(key,LocalStorageScope.Instance);if(!string.IsNullOrEmpty(saved)){state=JsonSerializer.Deserialize<State>(saved)??throw new Exception("BTC_NULL_STATE");Validate(state);ready=true;if(state.Sending)state.Fault=true;}
++            if(replay){ready=true;Save();Manage(Server.TimeInUtc);return;}
++            link=new BtcStateLink(Host,Recover,root=>feed.Accept(root,Server.TimeInUtc));
++            link.Changed(state.Revision,JsonSerializer.Serialize(state));link.Tick();
++        }catch{state.Fault=true;Print("BTC_RECOVERY_BLOCK entry_blocked=True");Stop();}
++    }
++    // Explicit fake-broker replay entry point, never called by native OnStart.
++    internal void ReplayStart(){key="RIZAN BTC 7D130 "+Account.Number;state.AccountNumber=Account.Number;ready=true;replay=true;}
+     public override void OnTick()=>Manage(Server.TimeInUtc);
+     internal void InvalidateSchedule()=>nextSchedule=default;
+     void RefreshSchedule(DateTime now)
+@@ -55,27 +74,33 @@
+             catch(Exception ex){if(now>=nextCloseLog){nextCloseLog=now.AddSeconds(10);Print("BTC_CLOSE_RETRY id={0} reason={1} error={2}",p.Id,state.ExitReason,ex.Message);}}}
+         if(!Owned.Any()){Print("BTC_FLAT_CONFIRMED reason={0} at={1}",state.ExitReason,now);state.ExitPending=false;state.ExitReason="";SaveExitIntent();}
+     }
+-    public override void OnTimer()
+-    {
+-        var now=Server.TimeInUtc;Manage(now);if(!RecoveryReady||now<nextRead)return;
+-        nextRead=new DateTime(now.Year,now.Month,now.Day,now.Hour,0,0,DateTimeKind.Utc).AddHours(1);
+-        try{
+-            var seed=new DateTime(2019,1,1,0,0,0,DateTimeKind.Utc);
+-            List<BtcBar> Read(TimeFrame tf,int width){var bars=MarketData.GetBars(tf,Instrument);
+-                while(bars.Count>0&&bars.OpenTimes[0]>seed&&bars.LoadMoreHistory()>0){}
+-                if(bars.Count==0||(bars.OpenTimes[0]>seed&&bars.Count<1000))throw new Exception("BTC_HISTORY_WARMUP_UNAVAILABLE");
+-                Print("BTC_HISTORY_SEED tf={0} first={1} bars={2}",width,bars.OpenTimes[0],bars.Count);
+-                var closed=new List<BtcBar>();for(int i=0;i<bars.Count;i++)if(bars.OpenTimes[i]>=seed&&bars.OpenTimes[i].AddMinutes(width)<=now)closed.Add(new(bars.OpenTimes[i],bars.OpenPrices[i],bars.HighPrices[i],bars.LowPrices[i],bars.ClosePrices[i],width));return closed;}
+-            signals=BtcCore.Signals(Read(TimeFrame.Hour,60),Read(TimeFrame.Hour4,240));
+-            var at=new DateTime(now.Year,now.Month,now.Day,now.Hour,0,0,DateTimeKind.Utc);
+-            if((now-at).TotalSeconds<=5&&signals.TryGetValue(at,out var s))Enter(s,now);
+-        }catch(Exception ex){state.Fault=true;Save();Print("BTC_ENGINE_ERROR {0}",ex.Message);}
++    public override void OnTimer(){
++        var now=Server.TimeInUtc;Manage(now);if(replay)return;
++        link?.Tick();
++        if(prepared!=null){var signal=prepared;
++            if((now-signal.At).TotalSeconds>5||link==null||link.Fatal){prepared=null;state.Sending=false;Save();}
++            else if(link.Persisted(state.Revision)){prepared=null;
++                try{ExecuteSignal(signal,now);state.Sending=false;Save();}catch{state.Fault=true;Save();Print("BTC_EXECUTION_UNCERTAIN entry_blocked=True");}}
++        }
++        if(!RecoveryReady)return;
++        var at=BtcSevenDayFeed.Hour(now);
++        if((now-at).TotalSeconds<=5&&feed.Signals.TryGetValue(at,out var s))Enter(s,now);
+     }
+-    internal void Enter(BtcSignal s,DateTime now)
++    internal void Enter(BtcSignal s,DateTime now){
++        if(replay){ExecuteSignal(s,now);return;}
++        Manage(now);
++        if(!RecoveryReady||prepared!=null||s.At>now||(now-s.At).TotalSeconds>5||s.At<=state.LastSignal)return;
++        state.LastSignal=s.At; // consume even when busy/OFF; never catch up a missed signal
++        if(!Host.EnableTrading||Owned.Any()||!Host.PortfolioReady||!Host.NoForeignExposure()||!BtcWeekendPolicy.CanEnter(now,weekClose,marketOpen,state.WeekendLockUntil)){Save();return;}
++        state.Expiry=s.At.AddHours(s.Side>0?128:8);
++        if(weekClose.HasValue)state.Expiry=new[]{state.Expiry,weekClose.Value.AddMinutes(-BtcWeekendPolicy.FlattenMinutes)}.Min();
++        state.Sending=true;Save();prepared=s; // broker request waits for durable remote ACK
++    }
++    void ExecuteSignal(BtcSignal s,DateTime now)
+     {
+         Manage(now);
+-        if(!RecoveryReady||s.At>now||(now-s.At).TotalSeconds>5||s.At<=state.LastSignal)return;
+-        state.LastSignal=s.At;Save(); // Busy signals are consumed, never replayed later.
++        if(!RecoveryReady||s.At>now||(now-s.At).TotalSeconds>5||replay&&s.At<=state.LastSignal)return;
++        if(replay){state.LastSignal=s.At;Save();} // Busy signals are consumed, never replayed later.
+         if(!Host.EnableTrading||Owned.Any()||!Host.PortfolioReady||!Host.NoForeignExposure()||!BtcWeekendPolicy.CanEnter(now,weekClose,marketOpen,state.WeekendLockUntil))return;
+         int side=s.Side;double quote=side>0?Symbol.Ask:Symbol.Bid,fill=quote+side*Symbol.Bid*.0001,dist=(side>0?2:1.5)*s.Atr;
+         if(!double.IsFinite(fill)||fill<=0||dist<=0||fill-side*dist<=0||side*(fill-s.Reference)>.5*s.Atr)return;
+@@ -94,11 +119,12 @@
+         units=Math.Min(units,Symbol.VolumeInUnitsMax);
+         state.Expiry=s.At.AddHours(side>0?128:8);
+         if(weekClose.HasValue)state.Expiry=new[]{state.Expiry,weekClose.Value.AddMinutes(-BtcWeekendPolicy.FlattenMinutes)}.Min();
+-        state.Sending=true;Save();
++        if(replay){state.Sending=true;Save();}
+         var result=ExecuteMarketOrder(side>0?TradeType.Buy:TradeType.Sell,Instrument,units,Prefix+"|"+s.At.Ticks,dist/Symbol.PipSize,dist*(side>0?12:2)/Symbol.PipSize,"BTC8500283");
+-        if(result.IsSuccessful&&result.Position!=null){var p=result.Position;
+-            if(p.StopLoss==null||p.TakeProfit==null||!Host.BtcFillWithinBudget(this,p,reference,dist,valuePerUnit)){var close=ClosePosition(p);if(!close.IsSuccessful)state.Fault=true;}}
+-        state.Sending=false;Save();
++        if(!result.IsSuccessful||result.Position==null){state.Fault=true;throw new Exception("BTC_ORDER_NOT_CONFIRMED");}
++        if(result.Position!=null){var p=result.Position;
++            if(p.StopLoss==null||p.TakeProfit==null||!Host.BtcFillWithinBudget(this,p,reference,dist,valuePerUnit)){state.ExitPending=true;state.ExitReason="FILL_PROTECTION_OR_BUDGET";Save();var close=ClosePosition(p);if(!close.IsSuccessful)state.Fault=true;else{state.ExitPending=false;state.ExitReason="";}}}
++        if(replay){state.Sending=false;Save();}
+     }
+-    public override void OnStop(){if(ready)Save();}
++    public override void OnStop(){try{if(ready)Save();}finally{link?.Dispose();}}
+ }
+--- LF122/source/RizanXauEurPortfolio.cs
++++ V130/source/RizanXauEurPortfolio.cs
+@@ -1,4 +1,4 @@
+ using cAlgo.API;
+ namespace cAlgo.Robots;
+ [Robot(TimeZone=TimeZones.UTC,AccessRights=AccessRights.None)]
+-public sealed class RizanXauEurBtcLeverageFollow : Rizan.Portfolio.RizanPortfolio {}
++public sealed class RizanXauEurBtcFrozen7D130 : Rizan.Portfolio.RizanPortfolio {}
+--- LF122/source/xau/RizanRobot.cs
++++ V130/source/xau/RizanRobot.cs
+@@ -110,6 +110,7 @@
+     private double _lastAckRttMs = -1;
+     private static double ElapsedMs(long ticks) => ticks==0 ? -1 : (System.Diagnostics.Stopwatch.GetTimestamp()-ticks)*1000d/System.Diagnostics.Stopwatch.Frequency;
+     private readonly string _lease = Guid.NewGuid().ToString("N");
++    internal bool BridgeEntryHealthy => !UsesBridge || (_bridgeReady && (Server.TimeInUtc-_lastBridgeAck).TotalSeconds<25);
+     private bool UsesBridge => !string.IsNullOrWhiteSpace(BridgeUrl);
+     private bool Owns(Position p) => p.SymbolName == SymbolName && p.Label?.StartsWith(Prefix+"|",StringComparison.Ordinal)==true;
+     private Position[] Owned => Positions.Where(Owns).ToArray();
+--- LF122/source/eur/RizanRobot.cs
++++ V130/source/eur/RizanRobot.cs
+@@ -92,6 +92,7 @@
+     private bool Batch => Contract.Symbol=="EURUSD";
+     private string ExecutionModel => Batch ? EurBatchExecution.Model : "CHILD_V1";
+     private int OrderRate => Batch ? 1 : ChildrenPerSecond;
++    internal bool BridgeEntryHealthy => !UsesBridge || (_bridgeReady && (Server.TimeInUtc-_lastBridgeAck).TotalSeconds<25);
+     private bool UsesBridge => !string.IsNullOrWhiteSpace(BridgeUrl);
+     private bool Owns(Position p) => p.SymbolName == SymbolName && p.Label?.StartsWith(Prefix+"|",StringComparison.Ordinal)==true;
+     private Position[] Owned => Positions.Where(Owns).ToArray();
+--- V130-pre-final/work/source/BtcEngine.cs
++++ V130-final/work/source/BtcEngine.cs
+@@ -16,7 +16,7 @@
+     internal override double PendingMargin=>0;
+     internal override string PendingOrderLabel=>"";
+     internal override void SetParameters(){}
+-    IEnumerable<Position> Owned=>Positions.Where(p=>p.SymbolName==Instrument&&p.Label.StartsWith(Prefix+"|",StringComparison.Ordinal));
++    IEnumerable<Position> Owned=>Positions.Where(p=>p.SymbolName==Instrument&&p.Label?.StartsWith(Prefix+"|",StringComparison.Ordinal)==true);
+     void Save(){
+         state.AccountNumber=Account.Number;state.Revision++;
+         string value=JsonSerializer.Serialize(state);
+@@ -33,7 +33,7 @@
+             if(remote.Revision>state.Revision)state=remote;
+         }
+         if(state.Sending||Owned.Count()>1||Owned.Any(p=>p.StopLoss==null||p.TakeProfit==null)||Owned.Any()&&state.Expiry==default)state.Fault=true;
+-        if(state.Revision==0&&History.Any(p=>p.SymbolName==Instrument&&p.Label.StartsWith(Prefix+"|",StringComparison.Ordinal)))state.Fault=true;
++        if(state.Revision==0&&History.Any(p=>p.SymbolName==Instrument&&p.Label?.StartsWith(Prefix+"|",StringComparison.Ordinal)==true))state.Fault=true;
+         restored=true;ready=true;Save();Manage(Server.TimeInUtc);
+     }
+     public override void OnStart(){

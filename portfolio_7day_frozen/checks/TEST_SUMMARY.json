@@ -1,0 +1,15 @@
+{
+  "pass": true,
+  "csharp_assertions": 1087,
+  "suites": {
+    "LeverageTests": 31,
+    "WeekendTests": 25,
+    "PortfolioTests": 827,
+    "SevenDayTests": 204
+  },
+  "python_network_and_store_tests": 6,
+  "official_native_compiler_errors": 0,
+  "official_native_compiler_warnings": 0,
+  "native_platform_execution_tested": false,
+  "live_orders": 0
+}

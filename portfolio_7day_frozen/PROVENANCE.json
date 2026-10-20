@@ -1,0 +1,13 @@
+{
+  "source_commit": "787ac228837175f9c07c4e13070e2794ebc7a7fe",
+  "branch": "release/xau-eur-btc-7day-frozen-v1.3.0",
+  "frozen_v121_not_modified": true,
+  "selected_research_commit": "4578909e40e6b3ba57b1c82e0e1c524cd33f1a08",
+  "audit_run": 39402108661,
+  "audit_commit": "787ac228837175f9c07c4e13070e2794ebc7a7fe",
+  "audit_conclusion": "success",
+  "audit_artifact_id": 12255635264,
+  "audit_outer_zip_sha256": "48dacfdf517b54a58d48da25013ae8e39e46b101580b6627eaa91dd7e6fa6a07",
+  "release_binary_origin": "CI_NATIVE_REBUILD.algo from final source, promoted as release",
+  "last_completed_full_replay_source_commit": "43d78e4a407ad4348109d3b401d2bc913e8f2ef8"
+}

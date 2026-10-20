@@ -1,0 +1,3 @@
+path,ending_balance,floating_dd_pct,balance_dd_pct,profit_factor,basket_win_rate_pct,baskets,buy_baskets,sell_baskets,xau_baskets,eur_baskets,btc_baskets,btc_buy,btc_sell,cash_residual,open_positions,terminal_forced_close,errors,dd56_qualified
+A,23680551.816309176,56.66959939905322,49.56153919141903,2.2754414265753033,48.42657342657343,572,360,212,294,183,95,58,37,-7.152557373046875e-07,0,0,0,False
+B,23610673.158474263,61.74719675920029,49.03173603143029,2.162093700682468,50.0,574,364,210,297,182,95,58,37,-5.997717380523682e-07,0,0,0,False

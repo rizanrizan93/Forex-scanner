@@ -1,0 +1,171 @@
+{
+  "release": "RZ-7D130-BTC8500283-LFOLLOW-WEEKEND",
+  "initial_balance_usd": 100,
+  "topups": 0,
+  "portfolio_last_bar_utc": "2026-10-09T21:58:00Z",
+  "model_leverage_all_symbols": 200,
+  "native_margin": "broker GetEstimatedMargin per symbol/tier; cannot force BTC leverage200 from account leverage",
+  "portfolio": {
+    "risk_cap_entry": 0.2075,
+    "margin_cap_entry": 0.5,
+    "priority": [
+      "EUR",
+      "XAU",
+      "BTC"
+    ],
+    "safety_first": "BTC Manage before bridge/strategy timers"
+  },
+  "btc": {
+    "candidate": 8500283,
+    "buy": {
+      "profile": 7844,
+      "tf": "H4",
+      "type": "displacement_follow",
+      "body_atr_gt": 1.4,
+      "close_above_previous_high": true,
+      "h4_trend": "closed close>EMA80 and EMA20>EMA80",
+      "entry_utc": "00:00-08:00",
+      "sl_atr": 2,
+      "tp_r": 12,
+      "hold_hours": 128,
+      "risk_budget": 0.23,
+      "margin_budget": 0.95
+    },
+    "sell": {
+      "profile": 2269,
+      "tf": "H1",
+      "type": "compression_break",
+      "prior4_mean_range_lt_prev_atr": 0.7,
+      "close_lt": "prior16 low minus0.1ATR",
+      "h4_trend": "closed close<EMA80 and EMA20<EMA80",
+      "abs_body_atr_max": 2.5,
+      "rsi14_min": 25,
+      "atr14_to_20bars_back_range": [
+        0.6,
+        1.8
+      ],
+      "sl_atr": 1.5,
+      "tp_r": 2,
+      "hold_hours": 8,
+      "risk_budget": 0.18,
+      "margin_budget": 0.3
+    },
+    "indicator": "single Bitstamp M1 seven-day series, H1/H4 UTC seed2019; no broker weekday splice",
+    "seed": {
+      "contract": "RZ-7D130-BTC8500283-LFOLLOW-WEEKEND",
+      "m1_sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504",
+      "seed_h1_binary_sha256": "e041102102e4ae2768e06f0261b4bfbfabc056ffa5decde21e161d8904179030",
+      "seed_h1_rows": 68280,
+      "seed_end_unix": 1792108800,
+      "csv_sha256": "b8cc6dece79c77a2ad92c85f32cb37f45f5c003cc91910fe442c350fe7def4f4"
+    },
+    "closed_bars_only": true,
+    "next_open_model": true,
+    "max_chase_atr": 0.5,
+    "simultaneous_opposites": "discard",
+    "busy_signals": "consume, never queue",
+    "max_active_baskets": 1,
+    "layers": 0,
+    "break_even": false,
+    "trailing": false,
+    "min_btc": 0.01,
+    "step_btc": 0.01,
+    "max_btc": 100,
+    "weekend": {
+      "entry_buffer_minutes": 60,
+      "flat_buffer_minutes": 30,
+      "native_session": "Symbol.MarketHours.IsOpened UTC",
+      "replay_session": "Mon00-Fri22 UTC assumed",
+      "saturday_sunday_entries": false,
+      "close_intent_persistent": true,
+      "retry_rejected_close": true,
+      "off_blocks_close": true
+    }
+  },
+  "xau": {
+    "contract_hash": "44db60b75e3eb19c0fb94f10baca96f35ab4686086a70eea53f626533ca9923c",
+    "stages": 3,
+    "depths": [
+      0,
+      0.2,
+      0.4
+    ],
+    "confirmed": true,
+    "add_minutes": 90,
+    "initial_fraction": 1,
+    "weight_power": 0.5,
+    "risk_fraction": 0.121,
+    "margin_fraction": 0.5,
+    "target_r": 5.5,
+    "stop_atr_multiplier": 2.4,
+    "balance_step_usd": 102.5,
+    "hold_minutes": 480,
+    "child_units": 1,
+    "reference_leverage_in_contract": 100,
+    "native_margin": "actual broker estimate",
+    "execution_reserve_slippage": 0.1,
+    "execution_reserve_commission_per_side": 0.06,
+    "loss_cooldown_days": 3,
+    "send_tolerance_r": 0.2,
+    "authoritative_signal_source": "work/source/xau/FrozenCore.cs and RizanRobot.cs"
+  },
+  "eur": {
+    "contract_hash": "d39e1192b64c3044f3215fa82ceaacdb732b4cf758389ad4f609692e54bdae9a",
+    "stages": 3,
+    "depths": [
+      0,
+      0.2,
+      0.4
+    ],
+    "add_minutes": 210,
+    "initial_fraction": 0.4,
+    "weight_power": 1.5,
+    "risk_fraction": 0.2075,
+    "margin_fraction": 0.5,
+    "target_r": 10,
+    "execution_distance_multiplier": 0.845,
+    "hold_minutes": 240,
+    "child_units": 1000,
+    "commission_per_child_side": 0.03,
+    "slippage": 1e-05,
+    "break_even": "cost-adjusted at2R, no guaranteed zero loss",
+    "virtual_feedback": "original4R reference and EurScale unchanged",
+    "authoritative_signal_source": "work/source/eur/FrozenCore.cs and F0245Policy.cs"
+  },
+  "normal_replay_cost": {
+    "BTC": {
+      "spread_bp": 5,
+      "commission_bp_per_side": 5,
+      "slippage_bp_per_side": 1,
+      "funding_debit_bp_per_day": 3
+    },
+    "XAU": {
+      "spread": "actual CSV",
+      "commission_usd_per_unit_side": 0.03,
+      "slippage_usd": 0.05,
+      "funding": "CSV roll increments times volumeUSD1/day"
+    },
+    "EUR": {
+      "spread": 1e-05,
+      "commission_usd_per_unit_side": 3e-05,
+      "slippage": 1e-05
+    },
+    "cost_stress_policy": "multiply commission/slippage/funding only; spread fixed; not run here",
+    "execution_delay_seconds": 2,
+    "bridge_ack_seconds": 2
+  },
+  "native_bridge": {
+    "xau_eur_existing": "existing private WSS25345; no production mutation",
+    "btc7d_new": "isolated backend127.0.0.1:8130 behind reviewed WSS25345 path; not installed",
+    "account_binding_required": true,
+    "token_min_length": 32,
+    "public_plaintext_forbidden": true,
+    "tokens_hidden_in_title": true,
+    "sqlite_wal_synchronous": "FULL",
+    "cas_and_lease": true,
+    "intent_ack_before_btc_order": true,
+    "heartbeat_entry_block_seconds": 25,
+    "lease_expiry_seconds": 45,
+    "broker_credentials_or_executor": "NONE"
+  }
+}

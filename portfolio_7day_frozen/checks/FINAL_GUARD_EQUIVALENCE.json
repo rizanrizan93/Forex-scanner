@@ -1,0 +1,22 @@
+{
+  "full_replay_source_commit": "43d78e4a407ad4348109d3b401d2bc913e8f2ef8",
+  "final_native_source_commit": "787ac228837175f9c07c4e13070e2794ebc7a7fe",
+  "only_final_engine_change": "two null-safe label ownership predicates",
+  "normalized_engine_exactly_identical": true,
+  "final_full_replay_rerun_completed": false,
+  "reason": "workspace maintenance removed running replay and input/SDK files; actual completed replay retained in recovered archive",
+  "datasets": {
+    "A": {
+      "closed_positions": 4385,
+      "all_labels_nonnull": true,
+      "ending_balance": 23680551.816309176,
+      "floating_dd_pct": 56.66959939905322
+    },
+    "B": {
+      "closed_positions": 5175,
+      "all_labels_nonnull": true,
+      "ending_balance": 23610673.158474263,
+      "floating_dd_pct": 61.74719675920029
+    }
+  }
+}
