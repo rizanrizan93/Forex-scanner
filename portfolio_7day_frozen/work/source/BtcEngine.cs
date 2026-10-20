@@ -16,7 +16,7 @@ internal sealed class BtcEngine : EngineContext
     internal override double PendingMargin=>0;
     internal override string PendingOrderLabel=>"";
     internal override void SetParameters(){}
-    IEnumerable<Position> Owned=>Positions.Where(p=>p.SymbolName==Instrument&&p.Label.StartsWith(Prefix+"|",StringComparison.Ordinal));
+    IEnumerable<Position> Owned=>Positions.Where(p=>p.SymbolName==Instrument&&p.Label?.StartsWith(Prefix+"|",StringComparison.Ordinal)==true);
     void Save(){
         state.AccountNumber=Account.Number;state.Revision++;
         string value=JsonSerializer.Serialize(state);
@@ -33,7 +33,7 @@ internal sealed class BtcEngine : EngineContext
             if(remote.Revision>state.Revision)state=remote;
         }
         if(state.Sending||Owned.Count()>1||Owned.Any(p=>p.StopLoss==null||p.TakeProfit==null)||Owned.Any()&&state.Expiry==default)state.Fault=true;
-        if(state.Revision==0&&History.Any(p=>p.SymbolName==Instrument&&p.Label.StartsWith(Prefix+"|",StringComparison.Ordinal)))state.Fault=true;
+        if(state.Revision==0&&History.Any(p=>p.SymbolName==Instrument&&p.Label?.StartsWith(Prefix+"|",StringComparison.Ordinal)==true))state.Fault=true;
         restored=true;ready=true;Save();Manage(Server.TimeInUtc);
     }
     public override void OnStart(){

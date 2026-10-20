@@ -40,5 +40,7 @@ var rh=new TestHost{EnableTrading=true,EnableXau=false,EnableEur=false,BtcBridge
 var xy=new TestHost{EnableTrading=true,EnableBtc=false,ExpectedAccount="1237903",BridgeUrl="wss://example.invalid:25345"};xy.CreateEngines();
 foreach(var context in new EngineContext[]{xy.Xau!,xy.Eur!}){var type=context is Rizan.Portfolio.Xau.RizanRobot?typeof(Rizan.Portfolio.Xau.RizanRobot):typeof(Rizan.Portfolio.Eur.RizanRobot);var bf=BindingFlags.Instance|BindingFlags.NonPublic;type.GetField("_bridgeReady",bf)!.SetValue(context,true);type.GetField("_lastBridgeAck",bf)!.SetValue(context,xy.Server.TimeInUtc);}
 Check(xy.PortfolioReady,"XAU_EUR_FRESH_BRIDGE_GATE");xy.Server.TimeInUtc=xy.Server.TimeInUtc.AddSeconds(26);Check(!xy.PortfolioReady,"XAU_EUR_STALE_GLOBAL_GATE");
+// Manual BTC trades/history may have null labels. They must never enter ownership scans.
+var(manual,manualLink,manualWire)=Host();manual.History.Add(new(){SymbolName="BTCUSD",Label=null!});manual.Positions.Add(new(){SymbolName="BTCUSD",Label=null!,VolumeInUnits=.1,EntryPrice=10000,StopLoss=9900,TakeProfit=11000});Handshake(manual,manualWire);manual.Server.TimeInUtc=now.AddHours(21.5);manual.Btc!.Manage(manual.Server.TimeInUtc);Check(manual.Positions.Count==1&&manual.Closes==0&&!manual.NoForeignExposure(),"MANUAL_NULL_LABEL_IGNORED_NOT_CLOSED_AND_ENTRY_BLOCKED");
 Console.WriteLine(JsonSerializer.Serialize(new{Pass=true,Checks=checks,SignalParity=refs.Length,LiveOrders=0,FakeBrokerOnly=true,DefaultOff=true,NativeProtocol=true}));
 sealed class TestHost:RizanPortfolio{}
