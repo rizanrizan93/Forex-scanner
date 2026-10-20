@@ -1,0 +1,70 @@
+name: Frozen 7-day V130 native and bridge audit
+on:
+  push:
+    branches: [release/xau-eur-btc-7day-frozen-v1.3.0]
+    paths: ['.github/workflows/frozen-7day-v130.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.426
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build official native and test frozen bridge offline
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p publish portfolio_7day_frozen/work/vendor/automate portfolio_7day_frozen/work/vendor/net6ref
+          python -m pip install -r portfolio_7day_frozen/bridge/requirements.txt
+          python - <<'PY'
+          import base64,gzip
+          from pathlib import Path
+          p=Path('portfolio_7day_frozen/bootstrap/BITSTAMP_H1_SEED.csv.gz.b64')
+          p.with_name('BITSTAMP_H1_SEED.csv').write_bytes(gzip.decompress(base64.b64decode(p.read_bytes())))
+          PY
+          curl -fsSL --retry 3 --max-time 120 https://api.nuget.org/v3-flatcontainer/ctrader.automate/1.0.21/ctrader.automate.1.0.21.nupkg -o automate.zip
+          curl -fsSL --retry 3 --max-time 120 https://api.nuget.org/v3-flatcontainer/microsoft.netcore.app.ref/6.0.36/microsoft.netcore.app.ref.6.0.36.nupkg -o net6ref.zip
+          unzip -q automate.zip -d portfolio_7day_frozen/work/vendor/automate
+          unzip -q net6ref.zip -d portfolio_7day_frozen/work/vendor/net6ref
+          sdk=$(dirname "$(readlink -f "$(command -v dotnet)")")
+          python portfolio_7day_frozen/work/build_native.py --sdk "$sdk" > publish/NATIVE_BUILD.log
+          test ! -s portfolio_7day_frozen/work/native/compile.log
+          cp portfolio_7day_frozen/work/native/*V1_3_0.algo publish/CI_NATIVE_REBUILD.algo
+          python portfolio_7day_frozen/make_feed_fixture.py
+          for suite in PortfolioTests WeekendTests LeverageTests; do
+            python portfolio_7day_frozen/work/run_local.py "$sdk" "$suite" > "publish/$suite.json"
+          done
+          python portfolio_7day_frozen/work/run_local.py "$sdk" SevenDayTests portfolio_7day_frozen/checks/feed.json portfolio_7day_frozen/checks/reference_signals.json > publish/SevenDayTests.json
+          python -m unittest discover -s portfolio_7day_frozen/bridge -p test_bridge.py -v > publish/BRIDGE_TESTS.log 2>&1
+      - name: Read-only production bridge audit
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 'python3 -' < portfolio_7day_frozen/bridge/audit_vps_readonly.py > publish/VPS_BRIDGE_READONLY.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-FROZEN-7DAY-V130-NATIVE-BRIDGE-AUDIT
+          path: publish/
+          if-no-files-found: error
