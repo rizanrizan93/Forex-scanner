@@ -51,7 +51,7 @@ internal sealed class BtcEngine : EngineContext
         // Default OFF is respected for closes too. A running, enabled bot and an
         // available broker are required; do not report a closed position on rejection.
         if(!Host.EnableTrading||!marketOpen){if(now>=nextCloseLog){nextCloseLog=now.AddSeconds(30);Print("BTC_EXIT_WAIT reason={0} enabled={1} market_open={2} remaining={3}",state.ExitReason,Host.EnableTrading,marketOpen,owned.Length);}return;}
-        foreach(var p in owned){try{var r=ClosePosition(p);if(!r.IsSuccessful&&now>=nextCloseLog){nextCloseLog=now.AddSeconds(10);Print("BTC_CLOSE_RETRY id={0} reason={1} error={2}",p.Id,state.ExitReason,r.Error);}}
+        foreach(var p in owned){try{var r=ClosePosition(p);if(!r.IsSuccessful&&now>=nextCloseLog){nextCloseLog=now.AddSeconds(10);Print("BTC_CLOSE_RETRY id={0} reason={1} error={2}",p.Id,state.ExitReason,r.Error?.ToString()??"UNKNOWN");}}
             catch(Exception ex){if(now>=nextCloseLog){nextCloseLog=now.AddSeconds(10);Print("BTC_CLOSE_RETRY id={0} reason={1} error={2}",p.Id,state.ExitReason,ex.Message);}}}
         if(!Owned.Any()){Print("BTC_FLAT_CONFIRMED reason={0} at={1}",state.ExitReason,now);state.ExitPending=false;state.ExitReason="";SaveExitIntent();}
     }

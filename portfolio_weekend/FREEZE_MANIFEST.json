@@ -37,7 +37,7 @@
     "source/RizanXauEurPortfolio.cs": "ba208d4767575bd6c5f5de6eb2532e1cdeaba198f64cf960c9b3ebd59765918e",
     "source/RizanPortfolio.csproj": "cf65e49926a4c460ae7082ca0e6a9f9ac1280e0698b8332fd379760927d98637",
     "source/PortfolioHost.cs": "ce4d2de57420986f8d068ead268a6bbdc8758ca741b1345acd0040789642e5c0",
-    "source/BtcEngine.cs": "0f85ae6f9ab19cbb42ab548bdf5bf21577a6a9d54a4a7af0b9478ac38932ba0c",
+    "source/BtcEngine.cs": "a49bc92318d32853767f02226094826d56485a09856683dfed44d565fd850821",
     "source/eur/FrozenCore.cs": "a4fb2355bca26beb8926a467399b76960613cecbff3172e71d3b713d537e7f99",
     "source/eur/EurBatchExecution.cs": "d088e41ec1fc31810c2c9af375fef549c898f7c87443c44d2076c8a8fbab4a5e",
     "source/eur/F0245Policy.cs": "b20531243536a7bf9d8a7a44c82b46de5f51ffc0ff21887a9f2dc8050fffea28",
@@ -46,5 +46,7 @@
     "source/xau/FrozenCore.cs": "b853e9f7e68e9f425764ebcc4bececb0ddd0959973ee29c92d24b8aec0cb32c7",
     "source/xau/XauBatchExecution.cs": "68e865b3933d33fae9025d7aeba2325078e1c1d7fc7ad4ad81e2c69569c3f281",
     "source/xau/RizanRobot.cs": "de7d076f0f36650badcf101e0ea6c1b766f7a3c77021e99b35caa2b7a57392a4"
-  }
+  },
+  "native_source_commit": "2381141bf98579ecc8ce4c26cb9a0afb5470d5a1",
+  "build_run": 39371048685
 }
