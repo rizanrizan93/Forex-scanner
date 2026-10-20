@@ -4,6 +4,7 @@ from functools import lru_cache
 import json,re
 from urllib.request import Request,urlopen
 from .manual_reversal_map import validate
+from .manual_reversal_orderflow import summarize_plan_liquidity
 
 BASE='https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/'
 BRANCH='scanner-reversal-snapshots';PATH='/runtime/manual_reversal_snapshot.json'
@@ -49,12 +50,22 @@ def fetch_manual_map():
         raise
 
 
+def fetch_manual_orderflow():
+    """Optional independent Bookmap/CME/crypto or broker DOM research sidecar.
+
+    No collector is installed by this UI change. Missing files mean NO_DATA,
+    not a synthetic Bookmap observation.
+    """
+    bucket=int(datetime.now(UTC).timestamp()//60)
+    return read_json(BASE+BRANCH+'/runtime/manual_reversal_orderflow_snapshot.json?research_minute='+str(bucket))
+
+
 def wib(value):
     import pandas as pd
     return pd.Timestamp(value).tz_convert('Asia/Jakarta').strftime('%d/%m %H:%M WIB') if value else '—'
 
 
-def render_snapshot(snapshot):
+def render_snapshot(snapshot, orderflow_sidecar=None):
     import streamlit as st
     p=validate(snapshot)
     if not p['fresh']:
@@ -77,6 +88,18 @@ def render_snapshot(snapshot):
             elif phase in {'KONFLIK_H1_H4','KONFLIK_STRUKTUR_H1_H2_H4','LEWATI_BATAS_SKENARIO','KONFIRMASI_BATAL','TEMBUS_SEMENTARA_TUNGGU_TF_ASAL','ZONA_MELEMAH_TUNGGU_BASIS_BARU'}:st.warning(label)
             else:st.write('**'+label+'**')
             st.metric('Area acuan '+z['timeframe'],f"{z['low']:,.2f}–{z['high']:,.2f}")
+            liquidity=summarize_plan_liquidity(
+                plan, orderflow_sidecar, symbol=p.get('symbol','XAUUSD'))
+            state=liquidity['state']
+            source=liquidity.get('source') or 'belum ada feed'
+            age_at=liquidity.get('evidence_at')
+            ordinal=liquidity.get('support_index')
+            ordinal_note=(' · indeks ordinal '+str(ordinal)+' (bukan probabilitas)' if ordinal is not None else '')
+            st.caption('RLFE order flow [RISET]: '+state+
+                       ' · '+source+ordinal_note+
+                       ' · '+str(liquidity.get('reason'))+
+                       (' · data '+wib(age_at) if age_at else '')+
+                       ' · tidak mengubah WATCH/WAIT atau izin order')
             candidate=plan.get('candidate_a') or {}
             if candidate.get('model')=='CANDIDATE_A_TP1R_WATCH':
                 state=candidate.get('state','WAIT')
@@ -171,7 +194,12 @@ def _render():
     if st.button('Perbarui tampilan',key='manual_reversal_refresh'):
         load.clear()
         latest_commit.cache_clear()
-    try:render_snapshot(load())
+    try:
+        try:
+            sidecar=st.cache_data(ttl=60,show_spinner=False)(fetch_manual_orderflow)()
+        except (ValueError,OSError,KeyError,TypeError):
+            sidecar=None
+        render_snapshot(load(), orderflow_sidecar=sidecar)
     except Exception:
         # A failed map must not abort the other dashboard tabs or expose credentials.
         st.warning('Peta manual belum dapat diperbarui. Level harga tidak ditampilkan; periksa kembali setelah pengambilan candle berikutnya.')
