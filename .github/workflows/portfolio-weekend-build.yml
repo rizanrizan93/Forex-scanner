@@ -1,0 +1,73 @@
+name: Frozen weekend build and safety validation
+on:
+  push:
+    branches: [release/xau-eur-btc-frozen-weekend-v1.2.1]
+    paths: ['.github/workflows/portfolio-weekend-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.426
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: btc_input
+      - name: Official native build and all safety regression suites
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p results portfolio_weekend/vendor/automate portfolio_weekend/vendor/net6ref
+          curl -fsSL --retry 3 --max-time 120 https://api.nuget.org/v3-flatcontainer/ctrader.automate/1.0.21/ctrader.automate.1.0.21.nupkg -o automate.zip
+          curl -fsSL --retry 3 --max-time 120 https://api.nuget.org/v3-flatcontainer/microsoft.netcore.app.ref/6.0.36/microsoft.netcore.app.ref.6.0.36.nupkg -o net6ref.zip
+          unzip -q automate.zip -d portfolio_weekend/vendor/automate
+          unzip -q net6ref.zip -d portfolio_weekend/vendor/net6ref
+          sdk=$(dirname "$(readlink -f "$(command -v dotnet)")")
+          python portfolio_weekend/build_native.py --sdk "$sdk" > results/NATIVE_BUILD.log
+          for suite in SettlementTests PortfolioTests TimingTests WeekendTests; do
+            python portfolio_weekend/run_local.py "$sdk" "$suite" > "results/$suite.json"
+          done
+          gzip -dk btc_input/data/BTCUSD_M1.csv.gz
+          python portfolio_weekend/run_local.py "$sdk" btc btc_input/data/BTCUSD_M1.csv portfolio_weekend/BTC_REFERENCE_SIGNALS.csv > results/BTC_TESTS.json
+          python portfolio_weekend/run_local.py "$sdk" replay > results/REPLAY_COMPILE.log
+          cp portfolio_weekend/native/RizanXauEurBtcPortfolio_FROZEN_WEEKEND_V1_2_1.algo results/
+          cp portfolio_weekend/native/compile.log results/NATIVE_COMPILER.log
+          cp portfolio_weekend/FREEZE_MANIFEST.json portfolio_weekend/README_FROZEN_WEEKEND.md results/
+          mkdir -p tools/host/fxr tools/shared/Microsoft.NETCore.App tools/packs/Microsoft.NETCore.App.Ref tools/sdk/8.0.426
+          cp "$sdk/dotnet" tools/
+          cp -a "$sdk/host/fxr/8.0.32" tools/host/fxr/
+          cp -a "$sdk/shared/Microsoft.NETCore.App/8.0.32" tools/shared/Microsoft.NETCore.App/
+          cp -a "$sdk/packs/Microsoft.NETCore.App.Ref/8.0.32" tools/packs/Microsoft.NETCore.App.Ref/
+          cp -a "$sdk/sdk/8.0.426/Roslyn" tools/sdk/8.0.426/
+          cp "$sdk/sdk/8.0.426/Microsoft.Build.Framework.dll" "$sdk/sdk/8.0.426/Microsoft.Build.Utilities.Core.dll" tools/sdk/8.0.426/
+          cp -a portfolio_weekend/vendor tools/
+          tar -czf results/MINIMAL_BUILD_TOOLS.tar.gz tools
+          cp btc_input/data/BTCUSD_M1.csv.gz results/
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          r=Path('results')
+          (r/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(r.iterdir()) if p.is_file()))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-FROZEN-WEEKEND-BUILD-VALIDATION
+          path: |
+            results/
+            portfolio_weekend/validation/*/events.log
+            portfolio_weekend/validation/*/compile.log
+            portfolio_weekend/audit/events.log
+            portfolio_weekend/audit/compile.log
+          retention-days: 7
