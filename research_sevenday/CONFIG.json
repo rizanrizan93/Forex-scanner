@@ -1,0 +1,20 @@
+{
+  "id": "RZ-BTC-7D-WEEKEND-L200",
+  "based_on": "LF122 source c187174e27894abad35f010b6ee6766971055665",
+  "indicator_source": "Bitstamp OHLC M1 all seven days, aggregate H1/H4 in UTC",
+  "indicator_seed": "2019-01-01 UTC",
+  "execution": "FP Markets intended; research fake broker, Monday00-Friday22 UTC assumed",
+  "entry_buffer_minutes": 60,
+  "flatten_buffer_minutes": 30,
+  "btc_leverage_model": 200,
+  "xau_eur_leverage_model": 200,
+  "portfolio_risk_cap": 0.2075,
+  "entry_margin_cap": 0.5,
+  "btc_fixed_10x_floor": false,
+  "native_seven_day_external_feed_integrated": false,
+  "native_deployment_ready": false,
+  "trading_enabled": false,
+  "live_changed": false,
+  "existing_native_LF122_uses_broker_GetBars": true,
+  "full_parity": false
+}
