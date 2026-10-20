@@ -1,0 +1,80 @@
+name: BTC risk appetite full replay audit
+on:
+  push:
+    branches: [research/btc-macro-suitability-20261020]
+    paths: [btc_macro_stage2/**, .github/workflows/btc-macro-risk-replay.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.426
+      - name: Verify four challengers and two frozen controls and package hashes
+        run: |
+          set -Eeuo pipefail
+          sha256sum -c btc_macro_stage2/ZIP_SHA256.txt
+          mkdir publish frozen
+          cp btc_macro_stage2/RIZAN_BTC_MACRO_RISK_REPLAY_20261020.zip publish/
+          python btc_macro_stage2/verify_replay_zip.py publish/RIZAN_BTC_MACRO_RISK_REPLAY_20261020.zip > publish/CI_AUDIT.json
+          unzip -q publish/RIZAN_BTC_MACRO_RISK_REPLAY_20261020.zip -d frozen
+          cp frozen/LAPORAN_REPLAY_BTC_MACRO_RISK.md frozen/METRICS.csv frozen/ANNUAL.csv frozen/DIRECTION_CONTRIBUTIONS.csv frozen/EQUITY_DD.png frozen/AUDIT.json frozen/REPLAY_PROTOCOL.json publish/
+          python - <<'PY'
+          from pathlib import Path
+          import json,hashlib,zipfile
+          old=zipfile.ZipFile('portfolio_weekend/RIZAN_XAU_EUR_BTC_FROZEN_WEEKEND_V121.zip')
+          m=json.loads(old.read('FREEZE_MANIFEST.json'))
+          for n,h in m['source_sha256'].items():
+              p=Path('frozen')/n
+              if p.is_file(): assert hashlib.sha256(p.read_bytes()).hexdigest()==h,n
+          # Baselines must match the already frozen full fill ledger, independently of the report.
+          import gzip
+          for side in ['A','B']:
+              previous=json.loads(gzip.decompress(old.read('WEEKEND_PATH_'+side+'_RAW.json.gz')))
+              current=json.loads(gzip.decompress(Path('frozen/BASE_PATH_'+side+'_RAW.json.gz').read_bytes()))
+              assert current['BrokerHistory']==previous['BrokerHistory']
+          PY
+      - name: Rebuild fixed filters and repeat 433 gate checks
+        run: |
+          set -Eeuo pipefail
+          cp -r frozen/source btc_macro_stage2/source
+          sdk=$(dirname "$(readlink -f "$(command -v dotnet)")")
+          python btc_macro_stage2/build_gate_tests.py "$sdk" > publish/CI_GATE_TESTS.json
+      - name: Archive isolated research and verify VPS checksums
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-macro-risk-replay-20261020/run-$GITHUB_RUN_ID"
+          printf '%s\n' "$dest" > publish/VPS_RESEARCH_PATH.txt
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          r=Path('publish')
+          (r/'PACKAGE_SHA256.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(r.iterdir()) if p.is_file() and p.name!='PACKAGE_SHA256.txt'))
+          PY
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -l 24000 "${opts[@]}" publish/* "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c 3 sha256sum -c PACKAGE_SHA256.txt" > publish/VPS_VERIFICATION.txt
+          scp "${opts[@]}" publish/VPS_VERIFICATION.txt "Rizanrizan@202.74.74.172:$dest/"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BTC-MACRO-RISK-REPLAY-AUDITED
+          path: publish/
+          if-no-files-found: error
+          retention-days: 90
