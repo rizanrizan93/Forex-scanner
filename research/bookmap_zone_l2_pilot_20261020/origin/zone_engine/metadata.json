@@ -1,0 +1,7 @@
+{
+  "period": "2019-01 through 2026-03",
+  "research": "M15 causal reversal families with M1 stop-first synthetic bid fills, not raw tick, no macro vintage",
+  "settings": "H1/H2/H4 Candidate A unrelated; family-selected on 2019-23 only",
+  "n_train_candidate_min": 65,
+  "n_validation_candidate_min": 20
+}

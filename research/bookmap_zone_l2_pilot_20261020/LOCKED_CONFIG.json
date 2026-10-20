@@ -1,0 +1,33 @@
+{
+  "experiment_id": "RZ-ZONE-L2-PILOT-20261020-V0.1",
+  "frozen_cbot_modified": false,
+  "instrument": "Bybit linear BTCUSDT perpetual; not BTCUSD/XAUUSD/EURUSD broker",
+  "days": "2024-01-01 through 2024-01-08 UTC",
+  "split": "Jan 1 warmup; Jan 2-5 descriptive development; Jan 6-8 chronological diagnostic holdout",
+  "data": "official archived orderbook.500 snapshots+deltas; no usable trades currently",
+  "sampling": "1s causal last-book-at-or-before grid, reject book older than 2s",
+  "zone_engine": "existing liquidity_sweep family, M15, previous 16 closed M15 high/low, ATR mean prior56 TR, depth0, wick>=0.3, simultaneous opposite discard",
+  "entry": "first valid quote at least 1s after M15 close; marketable ask BUY/bid SELL",
+  "stop": "swept candle extreme plus0.1priorATR; risk0.15-4ATR",
+  "tp": "1R price distance",
+  "holding_seconds": 1800,
+  "overlap": "paired event study; overlapping signals kept and reported, not portfolio PnL",
+  "filters_locked": [
+    "baseline",
+    "imbalance: direction*(bidNotional-askNotional)/(bidNotional+askNotional)>=0.2 within5bps of mid",
+    "persistent: last60s at least60% valid samples have aligned imbalance>=0.2; at least55validseconds",
+    "both: imbalance AND persistent"
+  ],
+  "fees_bps_per_side": 5.5,
+  "slippage_bps_per_side": 1,
+  "spread": "actual sampled bid/ask, not multiplied",
+  "financing_bps_notional_daily": 3,
+  "stress": "fees/slippage/financing1x,1.5x,2x; same spread",
+  "caveats": [
+    "This is a new research pilot, not replay of original XAU/EUR configurations",
+    "30min horizon explicitly new; original scripts use minutes despite hold_h label",
+    "No trade-side CVD/absorption/iceberg inferred from cancellations",
+    "No native latency, queue, funding settlements or market impact certification",
+    "Holdout is only three days and not proof of robustness"
+  ]
+}

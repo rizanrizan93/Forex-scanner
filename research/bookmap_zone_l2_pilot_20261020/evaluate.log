@@ -1,0 +1,52 @@
+       cohort       split     filter  cost_multiplier  candidate_events  eligible_paired_events  n  coverage_pct  wins  losses  target_first_n  stop_first_n  timeout_n  target_first_pct  gross_positive_pct   win_pct  win_wilson_lo  win_wilson_hi  mean_net_R  sum_net_R     PF_R  rejected_n  rejected_mean_R  mean_R_per_baseline_opportunity
+ exante_touch development   baseline              1.0                61                      56 56    100.000000    26      30              22            22         12         39.285714           51.785714 46.428571      34.019643      59.296043   -0.494756 -27.706359 0.325504           0              NaN                        -0.494756
+ exante_touch development  imbalance              1.0                61                      56  8     14.285714     3       5               2             5          1         25.000000           37.500000 37.500000      13.684176      69.426215   -0.819761  -6.558091 0.179432          48        -0.440589                        -0.117109
+ exante_touch development persistent              1.0                61                      56  0      0.000000     0       0               0             0          0               NaN                 NaN       NaN            NaN            NaN         NaN   0.000000      NaN          56        -0.494756                         0.000000
+ exante_touch development       both              1.0                61                      56  0      0.000000     0       0               0             0          0               NaN                 NaN       NaN            NaN            NaN         NaN   0.000000      NaN          56        -0.494756                         0.000000
+ exante_touch     holdout   baseline              1.0                60                      57 57    100.000000    29      28              29            24          4         50.877193           54.385965 50.877193      38.259680      63.383932   -0.616817 -35.158597 0.219126           0              NaN                        -0.616817
+ exante_touch     holdout  imbalance              1.0                60                      57 11     19.298246     7       4               7             3          1         63.636364           63.636364 63.636364      35.379678      84.833776   -0.289417  -3.183591 0.461397          46        -0.695109                        -0.055852
+ exante_touch     holdout persistent              1.0                60                      57  0      0.000000     0       0               0             0          0               NaN                 NaN       NaN            NaN            NaN         NaN   0.000000      NaN          57        -0.616817                         0.000000
+ exante_touch     holdout       both              1.0                60                      57  0      0.000000     0       0               0             0          0               NaN                 NaN       NaN            NaN            NaN         NaN   0.000000      NaN          57        -0.616817                         0.000000
+   repo_h1_m5 development   baseline              1.0                 6                       6  6    100.000000     2       4               1             2          3         16.666667           33.333333 33.333333       9.676933      70.001168   -0.256140  -1.536838 0.471030           0              NaN                        -0.256140
+   repo_h1_m5 development  imbalance              1.0                 6                       6  0      0.000000     0       0               0             0          0               NaN                 NaN       NaN            NaN            NaN         NaN   0.000000      NaN           6        -0.256140                         0.000000
+   repo_h1_m5 development persistent              1.0                 6                       6  0      0.000000     0       0               0             0          0               NaN                 NaN       NaN            NaN            NaN         NaN   0.000000      NaN           6        -0.256140                         0.000000
+   repo_h1_m5 development       both              1.0                 6                       6  0      0.000000     0       0               0             0          0               NaN                 NaN       NaN            NaN            NaN         NaN   0.000000      NaN           6        -0.256140                         0.000000
+   repo_h1_m5     holdout   baseline              1.0                10                      10 10    100.000000     2       8               0             2          8          0.000000           30.000000 20.000000       5.668095      50.984315   -0.430435  -4.304348 0.028703           0              NaN                        -0.430435
+   repo_h1_m5     holdout  imbalance              1.0                10                      10  2     20.000000     0       2               0             0          2          0.000000            0.000000  0.000000       0.000000      65.762805   -0.296712  -0.593424 0.000000           8        -0.463865                        -0.059342
+   repo_h1_m5     holdout persistent              1.0                10                      10  0      0.000000     0       0               0             0          0               NaN                 NaN       NaN            NaN            NaN         NaN   0.000000      NaN          10        -0.430435                         0.000000
+   repo_h1_m5     holdout       both              1.0                10                      10  0      0.000000     0       0               0             0          0               NaN                 NaN       NaN            NaN            NaN         NaN   0.000000      NaN          10        -0.430435                         0.000000
+sweep_reclaim development   baseline              1.0                27                      27 27    100.000000    11      16               8             4         15         29.629630           62.962963 40.740741      24.514513      59.273617   -0.218437  -5.897807 0.477324           0              NaN                        -0.218437
+sweep_reclaim development  imbalance              1.0                27                      27  2      7.407407     0       2               0             1          1          0.000000           50.000000  0.000000       0.000000      65.762805   -0.640896  -1.281792 0.000000          25        -0.184641                        -0.047474
+sweep_reclaim development persistent              1.0                27                      27  2      7.407407     1       1               1             1          0         50.000000           50.000000 50.000000       9.452865      90.547135   -0.295781  -0.591562 0.527744          25        -0.212250                        -0.021910
+sweep_reclaim development       both              1.0                27                      27  1      3.703704     0       1               0             1          0          0.000000            0.000000  0.000000       0.000000      79.345671   -1.252631  -1.252631 0.000000          26        -0.178661                        -0.046394
+sweep_reclaim     holdout   baseline              1.0                25                      25 25    100.000000    11      14               9             8          8         36.000000           48.000000 44.000000      26.665375      62.932983   -0.634027 -15.850663 0.131090           0              NaN                        -0.634027
+sweep_reclaim     holdout  imbalance              1.0                25                      25  2      8.000000     0       2               0             1          1          0.000000            0.000000  0.000000       0.000000      65.762805   -0.953281  -1.906563 0.000000          23        -0.606265                        -0.076263
+sweep_reclaim     holdout persistent              1.0                25                      25  1      4.000000     0       1               0             0          1          0.000000            0.000000  0.000000       0.000000      79.345671   -0.147494  -0.147494 0.000000          24        -0.654299                        -0.005900
+sweep_reclaim     holdout       both              1.0                25                      25  1      4.000000     0       1               0             0          1          0.000000            0.000000  0.000000       0.000000      79.345671   -0.147494  -0.147494 0.000000          24        -0.654299                        -0.005900
+{
+  "events": 189,
+  "status_counts": {
+    "complete": 181,
+    "invalid_risk": 7,
+    "quote_gap_censored": 1
+  },
+  "feature_valid": 189,
+  "overlap_counts": {
+    "exante_touch:development": 11,
+    "exante_touch:holdout": 15,
+    "repo_h1_m5:development": 0,
+    "repo_h1_m5:holdout": 0,
+    "sweep_reclaim:development": 1,
+    "sweep_reclaim:holdout": 1
+  },
+  "causal_feature_and_zone_assertions": "PASS",
+  "original_source_sha256": {
+    "exante_level_research.py": "c4c0d9b880433af201a8a9681e12c075adbedf8ccb392a2f092308c6f6cd68a8",
+    "second_pass.py": "f25d1e232bc13c9e463957574afba45f927461ccb8432220e9c94a62ed4184ca",
+    "run_research.py": "e31201919e8a5d3daebf92c2062d91cdeb72c1888c809499f01fac9e263699b1",
+    "reversal_zones.py": "b9bb0e9d9568fde985e193cb8d4de67923aab05f956298af28fd24a4b790101f",
+    "research_xau_zone_reversal_depth_v225.py": "e9cd46427932e6e344e2fb58635269222c5d5f7921f45fe7587d645f42b3deff"
+  },
+  "model": "paired event study, risk normalized, no compounded portfolio claim",
+  "holdout_definition": "Jan6-8; very small chronological diagnostic, not certification"
+}

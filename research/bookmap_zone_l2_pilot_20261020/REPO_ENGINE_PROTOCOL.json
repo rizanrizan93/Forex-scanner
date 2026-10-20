@@ -1,0 +1,15 @@
+{
+  "stage": "After first two cohort calculations, before inspecting their results; no parameter selection from outcomes",
+  "reason": "Repository audit also located the existing standalone H1/M5 zone engine; include its actual functions unchanged.",
+  "source_commit": "e357272fec03411a6e7c4d2397faf742d1a11047",
+  "source": "src/fx_scanner/reversal_zones.py",
+  "cohort": "repo_h1_m5",
+  "functions": "closed_features -> base_events -> wick_bin>=3 -> thin_events; imported original source unchanged",
+  "fixed_geometry": {"lookback_h1": 6, "half_width_atr": 0.1, "wick_fraction": 0.3, "side": [1, -1]},
+  "other_filters": "Original base_events defaults; all sessions, no extra trend/approach/age restriction beyond base_events",
+  "entry": "One second after closed M5 confirmation; same L2 filters, fees and model as other cohorts",
+  "stop": "Level minus direction*0.75 H1 ATR; entry risk0.15-4ATR",
+  "tp": "1R",
+  "horizon_seconds": 1800,
+  "scope": "Single research configuration on BTC quotes. Not the XAU V225 supply/demand engine, not XAU broker validation, not a grid optimization."
+}

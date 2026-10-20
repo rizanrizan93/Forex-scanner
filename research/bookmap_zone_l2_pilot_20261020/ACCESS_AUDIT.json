@@ -1,0 +1,6 @@
+{
+  "bookmap_account": "Not connected; no authorized terminal/API session supplied",
+  "bybit_orderbook_archive": "8 full ZIPs downloaded and read; source URLs/SHA256 in DATA_AUDIT.json",
+  "bybit_trade_archive": "public.bybit.com returned status200 text/html Site Unavailable; rejected by gzip validation; not used",
+  "tardis_attempt": "binance-futures Jan1 2024 sample URLs returned404; alternative Deribit Nov1 2019 trade sample HTTP200 gzip observed but not used; no venue substitution"
+}

@@ -1,0 +1,27 @@
+{
+  "events": 189,
+  "status_counts": {
+    "complete": 181,
+    "invalid_risk": 7,
+    "quote_gap_censored": 1
+  },
+  "feature_valid": 189,
+  "overlap_counts": {
+    "exante_touch:development": 11,
+    "exante_touch:holdout": 15,
+    "repo_h1_m5:development": 0,
+    "repo_h1_m5:holdout": 0,
+    "sweep_reclaim:development": 1,
+    "sweep_reclaim:holdout": 1
+  },
+  "causal_feature_and_zone_assertions": "PASS",
+  "original_source_sha256": {
+    "exante_level_research.py": "c4c0d9b880433af201a8a9681e12c075adbedf8ccb392a2f092308c6f6cd68a8",
+    "second_pass.py": "f25d1e232bc13c9e463957574afba45f927461ccb8432220e9c94a62ed4184ca",
+    "run_research.py": "e31201919e8a5d3daebf92c2062d91cdeb72c1888c809499f01fac9e263699b1",
+    "reversal_zones.py": "b9bb0e9d9568fde985e193cb8d4de67923aab05f956298af28fd24a4b790101f",
+    "research_xau_zone_reversal_depth_v225.py": "e9cd46427932e6e344e2fb58635269222c5d5f7921f45fe7587d645f42b3deff"
+  },
+  "model": "paired event study, risk normalized, no compounded portfolio claim",
+  "holdout_definition": "Jan6-8; very small chronological diagnostic, not certification"
+}

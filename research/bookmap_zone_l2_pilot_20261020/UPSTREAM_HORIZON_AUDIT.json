@@ -1,0 +1,18 @@
+{
+  "source": "origin/zone_engine/run_research.py and second_pass.py",
+  "finding": "hold_h label differs from minutes arithmetic; first timeout quote is the next minute after deadline",
+  "reproduction": [
+    {
+      "hold_argument_label_h": 12,
+      "actual_exit_minutes": 13,
+      "status": 3,
+      "execution": "Original AST function without Numba decorator; formula unchanged"
+    },
+    {
+      "hold_argument_label_h": 24,
+      "actual_exit_minutes": 25,
+      "status": 3,
+      "execution": "Original AST function without Numba decorator; formula unchanged"
+    }
+  ]
+}

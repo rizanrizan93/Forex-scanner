@@ -1,0 +1,6 @@
+{
+  "change": "Route evidence through generic zone_overlay annotation and reject missing latest depth feature",
+  "comparison_sha256_before": "c4d38c080279064014e845c94cb6f86395337bd71ca0de99660b8210b758276e",
+  "comparison_sha256_after": "c4d38c080279064014e845c94cb6f86395337bd71ca0de99660b8210b758276e",
+  "outcome_metrics_unchanged": true
+}

@@ -1,0 +1,13 @@
+{
+  "stage": "Written before outcome evaluation; depth reconstruction is still running",
+  "reason": "A reclaim filter tests confirmation. A separate causal first-touch cohort is necessary to evaluate zone discrimination before reclaim.",
+  "cohort": "exante_touch",
+  "map": "Prior 16 fully closed M15 high and low, released at the current M15 open; ATR is prior 56 closed TR mean.",
+  "event": "First touch of either level per M15 window; first chronologically, no future selection. Repeated neighboring windows may overlap.",
+  "entry": "First valid quote one second after touch, maximum wait five seconds; feature evidence strictly before decision.",
+  "stop": "Mapped level minus direction*0.75 priorATR; entry risk 0.15 to 4 ATR",
+  "tp": "1R",
+  "horizon_seconds": 1800,
+  "filters": "Same three prespecified L2 filters and baseline as LOCKED_CONFIG.json",
+  "status": "New research adaptation; no claim of exact replication of an old strategy or broker execution"
+}
