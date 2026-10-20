@@ -1,0 +1,36 @@
+name: BTC 7D connectivity audit
+on:
+  push:
+    branches: [fix/btc7d-bridge-connectivity-20261021]
+    paths: ['bridge_repair_btc/**', '.github/workflows/btc7d-connectivity-repair.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rizan-cbot-bridge-production-ssh
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read-only VPS audit
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          ssh_dir=$(mktemp -d)
+          trap 'rm -rf "$ssh_dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          ssh -i "$ssh_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=20 Rizanrizan@202.74.74.172 'python3 -' < bridge_repair_btc/audit_btc.py | tee BTC_VPS_AUDIT.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTC7D-READONLY-AUDIT
+          path: BTC_VPS_AUDIT.json
