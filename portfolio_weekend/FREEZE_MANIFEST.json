@@ -1,0 +1,50 @@
+{
+  "release": "1.2.1 FROZEN WEEKEND",
+  "base_source_commit": "441088c90d323c008af7016a3adabe24138fd183",
+  "base_algo_sha256": "510a584e82d7f3286b9b4ac0975d65138ba0437f64eb7aad7c04af8a32b77584",
+  "strategy": "SettlementXAU/EUR + BTC8500283",
+  "btc_buy": {
+    "profile": 7844,
+    "risk": 0.23,
+    "margin": 0.95,
+    "sl_atr": 2,
+    "tp_R": 12,
+    "hold_hours": 128
+  },
+  "btc_sell": {
+    "profile": 2269,
+    "risk": 0.18,
+    "margin": 0.3,
+    "sl_atr": 1.5,
+    "tp_R": 2,
+    "hold_hours": 8
+  },
+  "portfolio_risk_cap": 0.2075,
+  "margin_cap": 0.5,
+  "btc_margin_model_leverage": 10,
+  "xau_eur_model_leverage": 200,
+  "entry_buffer_minutes": 60,
+  "flatten_buffer_minutes": 30,
+  "schedule": "Symbol.MarketHours.IsOpened(DateTime), robot UTC; latest open minute Mon-Fri; Saturday/Sunday UTC blocked",
+  "schedule_refresh_minutes": 5,
+  "exit_retry_seconds": 1,
+  "frozen_risk_ui": true,
+  "live_deployed": false,
+  "previous_24m_results_not_weekend_release_results": true,
+  "source_sha256": {
+    "source/BtcWeekendPolicy.cs": "b6005e1bd500970e270243cfc3c32c6d57fd0a03083f6ddc22175b0625efa490",
+    "source/BtcCore.cs": "7cd70e9fd34860580ea2da0fb8a46530eaf856414b0cc9b62b52c4c5b2f7a56d",
+    "source/RizanXauEurPortfolio.cs": "ba208d4767575bd6c5f5de6eb2532e1cdeaba198f64cf960c9b3ebd59765918e",
+    "source/RizanPortfolio.csproj": "cf65e49926a4c460ae7082ca0e6a9f9ac1280e0698b8332fd379760927d98637",
+    "source/PortfolioHost.cs": "ce4d2de57420986f8d068ead268a6bbdc8758ca741b1345acd0040789642e5c0",
+    "source/BtcEngine.cs": "0f85ae6f9ab19cbb42ab548bdf5bf21577a6a9d54a4a7af0b9478ac38932ba0c",
+    "source/eur/FrozenCore.cs": "a4fb2355bca26beb8926a467399b76960613cecbff3172e71d3b713d537e7f99",
+    "source/eur/EurBatchExecution.cs": "d088e41ec1fc31810c2c9af375fef549c898f7c87443c44d2076c8a8fbab4a5e",
+    "source/eur/F0245Policy.cs": "b20531243536a7bf9d8a7a44c82b46de5f51ffc0ff21887a9f2dc8050fffea28",
+    "source/eur/RizanRobot.cs": "e25986f631071309b2751c6aa244a46d689de12e27e6c1afaa8dc208aed74bd7",
+    "source/xau/XauSendReference.cs": "845a2d552a45757ffde77e12c699015612acd6a7394903866ff12bc7a9d58649",
+    "source/xau/FrozenCore.cs": "b853e9f7e68e9f425764ebcc4bececb0ddd0959973ee29c92d24b8aec0cb32c7",
+    "source/xau/XauBatchExecution.cs": "68e865b3933d33fae9025d7aeba2325078e1c1d7fc7ad4ad81e2c69569c3f281",
+    "source/xau/RizanRobot.cs": "de7d076f0f36650badcf101e0ea6c1b766f7a3c77021e99b35caa2b7a57392a4"
+  }
+}

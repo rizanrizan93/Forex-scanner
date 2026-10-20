@@ -1,0 +1,126 @@
+--- v1.2.0/source/BtcEngine.cs
++++ v1.2.1/source/BtcEngine.cs
+@@ -7,10 +7,10 @@
+ internal sealed class BtcEngine : EngineContext
+ {
+     internal const string Prefix="RZBTC8500283";
+-    sealed class State {public int Schema{get;set;}=1;public DateTime LastSignal{get;set;} public DateTime Expiry{get;set;} public bool Sending{get;set;} public bool Fault{get;set;}}
+-    State state=new();bool ready;string key="";DateTime nextRead;Dictionary<DateTime,BtcSignal> signals=new();
++    sealed class State {public int Schema{get;set;}=1;public DateTime LastSignal{get;set;} public DateTime Expiry{get;set;} public bool Sending{get;set;} public bool Fault{get;set;} public bool ExitPending{get;set;} public DateTime WeekendLockUntil{get;set;} public string ExitReason{get;set;}="";}
++    State state=new();bool ready;DateTime nextSchedule,nextExitAttempt,nextCloseLog;DateTime? weekClose;bool marketOpen;string key="";DateTime nextRead;Dictionary<DateTime,BtcSignal> signals=new();
+     internal BtcEngine(RizanPortfolio host):base(host,"BTCUSD"){}
+-    internal override bool RecoveryReady=>ready&&!state.Fault;
++    internal override bool RecoveryReady=>ready&&!state.Fault&&!state.ExitPending;
+     internal override double PendingRisk=>0;
+     internal override double PendingMargin=>0;
+     internal override string PendingOrderLabel=>"";
+@@ -22,13 +22,39 @@
+         key="RIZAN BTC 8500283 V1 "+Account.Number;
+         try{var saved=LocalStorage.GetString(key,LocalStorageScope.Instance);if(!string.IsNullOrEmpty(saved))state=JsonSerializer.Deserialize<State>(saved)??throw new Exception("BTC_NULL_STATE");
+             if(state.Schema!=1||state.Sending||Owned.Count()>1||Owned.Any(p=>p.StopLoss==null||p.TakeProfit==null)||Owned.Any()&&state.Expiry==default)throw new Exception("BTC_RECOVERY_REQUIRES_RECONCILIATION");
+-            ready=true;Save();}
++            ready=true;Save();Manage(Server.TimeInUtc);}
+         catch(Exception ex){state.Fault=true;Print("BTC_RECOVERY_BLOCK {0}",ex.Message);Stop();}
+     }
+     // Used by the source replay with the same entry and portfolio gate as the cBot.
+     internal void ReplayStart(){key="RIZAN BTC 8500283 V1 "+Account.Number;ready=true;}
+     public override void OnTick()=>Manage(Server.TimeInUtc);
+-    internal void Manage(DateTime now){foreach(var p in Owned.ToArray())if(now>=state.Expiry){var r=ClosePosition(p);if(!r.IsSuccessful){state.Fault=true;Save();}}}
++    internal void InvalidateSchedule()=>nextSchedule=default;
++    void RefreshSchedule(DateTime now)
++    {
++        try{
++            marketOpen=Symbol.MarketHours.IsOpened(now);
++            if(now>=nextSchedule){weekClose=BtcWeekendPolicy.LastClose(now,t=>Symbol.MarketHours.IsOpened(t));nextSchedule=now.AddMinutes(5);}
++        }catch(Exception ex){marketOpen=false;weekClose=null;nextSchedule=now.AddSeconds(5);Print("BTC_SCHEDULE_UNAVAILABLE {0}",ex.Message);}
++    }
++    void SaveExitIntent(){try{Save();}catch(Exception ex){state.Fault=true;Print("BTC_EXIT_PERSIST_FAILED {0}",ex.Message);}}
++    internal void Manage(DateTime now)
++    {
++        if(!ready)return;
++        RefreshSchedule(now);
++        var owned=Owned.ToArray();
++        bool weekend=BtcWeekendPolicy.MustFlatten(now,weekClose);
++        if(weekend&&(BtcWeekendPolicy.Weekend(now)||weekClose.HasValue)&&state.WeekendLockUntil<=now){state.WeekendLockUntil=BtcWeekendPolicy.Monday(now).AddDays(7);SaveExitIntent();}
++        if(owned.Length==0){if(state.ExitPending){state.ExitPending=false;state.ExitReason="";SaveExitIntent();}return;}
++        if(weekend||now>=state.Expiry){if(!state.ExitPending){state.ExitPending=true;state.ExitReason=weekend?"WEEKEND_FLAT":"EXPIRY";SaveExitIntent();}}
++        if(!state.ExitPending||now<nextExitAttempt)return;
++        nextExitAttempt=now.AddSeconds(1);
++        // Default OFF is respected for closes too. A running, enabled bot and an
++        // available broker are required; do not report a closed position on rejection.
++        if(!Host.EnableTrading||!marketOpen){if(now>=nextCloseLog){nextCloseLog=now.AddSeconds(30);Print("BTC_EXIT_WAIT reason={0} enabled={1} market_open={2} remaining={3}",state.ExitReason,Host.EnableTrading,marketOpen,owned.Length);}return;}
++        foreach(var p in owned){try{var r=ClosePosition(p);if(!r.IsSuccessful&&now>=nextCloseLog){nextCloseLog=now.AddSeconds(10);Print("BTC_CLOSE_RETRY id={0} reason={1} error={2}",p.Id,state.ExitReason,r.Error);}}
++            catch(Exception ex){if(now>=nextCloseLog){nextCloseLog=now.AddSeconds(10);Print("BTC_CLOSE_RETRY id={0} reason={1} error={2}",p.Id,state.ExitReason,ex.Message);}}}
++        if(!Owned.Any()){Print("BTC_FLAT_CONFIRMED reason={0} at={1}",state.ExitReason,now);state.ExitPending=false;state.ExitReason="";SaveExitIntent();}
++    }
+     public override void OnTimer()
+     {
+         var now=Server.TimeInUtc;Manage(now);if(!RecoveryReady||now<nextRead)return;
+@@ -47,9 +73,10 @@
+     }
+     internal void Enter(BtcSignal s,DateTime now)
+     {
++        Manage(now);
+         if(!RecoveryReady||s.At>now||(now-s.At).TotalSeconds>5||s.At<=state.LastSignal)return;
+         state.LastSignal=s.At;Save(); // Busy signals are consumed, never replayed later.
+-        if(!Host.EnableTrading||Owned.Any()||!Host.PortfolioReady||!Host.NoForeignExposure())return;
++        if(!Host.EnableTrading||Owned.Any()||!Host.PortfolioReady||!Host.NoForeignExposure()||!BtcWeekendPolicy.CanEnter(now,weekClose,marketOpen,state.WeekendLockUntil))return;
+         int side=s.Side;double quote=side>0?Symbol.Ask:Symbol.Bid,fill=quote+side*Symbol.Bid*.0001,dist=(side>0?2:1.5)*s.Atr;
+         if(!double.IsFinite(fill)||fill<=0||dist<=0||fill-side*dist<=0||side*(fill-s.Reference)>.5*s.Atr)return;
+         double reference=Math.Min(Account.Balance,Account.Equity),risk=side>0?.23:.18,margin=side>0?.95:.30;
+@@ -65,7 +92,9 @@
+         units=Host.CapBtc(this,units,dist,fill,side,valuePerUnit);
+         if(units<Symbol.VolumeInUnitsMin||units*valuePerUnit<.01)return;
+         units=Math.Min(units,Symbol.VolumeInUnitsMax);
+-        state.Expiry=s.At.AddHours(side>0?128:8);state.Sending=true;Save();
++        state.Expiry=s.At.AddHours(side>0?128:8);
++        if(weekClose.HasValue)state.Expiry=new[]{state.Expiry,weekClose.Value.AddMinutes(-BtcWeekendPolicy.FlattenMinutes)}.Min();
++        state.Sending=true;Save();
+         var result=ExecuteMarketOrder(side>0?TradeType.Buy:TradeType.Sell,Instrument,units,Prefix+"|"+s.At.Ticks,dist/Symbol.PipSize,dist*(side>0?12:2)/Symbol.PipSize,"BTC8500283");
+         if(result.IsSuccessful&&result.Position!=null){var p=result.Position;
+             if(p.StopLoss==null||p.TakeProfit==null||!Host.BtcFillWithinBudget(this,p,reference,dist,valuePerUnit)){var close=ClosePosition(p);if(!close.IsSuccessful)state.Fault=true;}}
+--- v1.2.0/source/PortfolioHost.cs
++++ v1.2.1/source/PortfolioHost.cs
+@@ -19,7 +19,7 @@
+     public bool EnableXau { get; set; } = true;
+     [Parameter("EUR aktif", DefaultValue=true, Group="Strategi")]
+     public bool EnableEur { get; set; } = true;
+-    [Parameter("Batas risiko terbuka gabungan %", DefaultValue=20.75, MinValue=1, MaxValue=32.85, Group="Portofolio")]
++    [Parameter("Batas risiko terbuka gabungan %", DefaultValue=20.75, MinValue=20.75, MaxValue=20.75, Group="Portofolio")]
+     public double PortfolioRiskPercent { get; set; } = 20.75;
+     [Parameter("Bridge WSS :25345", DefaultValue="", Group="Pemulihan dan data")]
+     public string BridgeUrl { get; set; } = "";
+@@ -51,14 +51,14 @@
+     protected override void OnStart()
+     {
+         ExpectedAccount=ExpectedAccount.Trim();
+-        if(!double.IsFinite(PortfolioRiskPercent)||PortfolioRiskPercent<1||PortfolioRiskPercent>32.85||!EnableXau&&!EnableEur&&!EnableBtc)
++        if(!double.IsFinite(PortfolioRiskPercent)||Math.Abs(PortfolioRiskPercent-20.75)>1e-9||!EnableXau&&!EnableEur&&!EnableBtc)
+         {Print("PORTFOLIO_CONFIG_INVALID");Stop();return;}
+         if(EnableTrading&&(ExpectedAccount!=Account.Number.ToString()||string.IsNullOrWhiteSpace(BridgeUrl)))
+         {Print("PORTFOLIO_FULL_ACCOUNT_AND_BRIDGE_REQUIRED");Stop();return;}
+         if(Account.AccountType!=AccountType.Hedged||Account.Asset.Name!="USD")
+         {Print("PORTFOLIO_USD_HEDGED_ACCOUNT_REQUIRED");Stop();return;}
+         var settings=JsonSerializer.Serialize(new{Schema=1,Account=Account.Number,Risk=PortfolioRiskPercent,Margin=.5,XAU=EnableXau,EUR=EnableEur,BTC=EnableBtc});
+-        var key="RIZAN THREE PORTFOLIO V1 "+Account.Number;
++        var key="RIZAN THREE FROZEN V121 "+Account.Number;
+         var saved=LocalStorage.GetString(key,LocalStorageScope.Instance);
+         if(!string.IsNullOrEmpty(saved)&&saved!=settings){Print("PORTFOLIO_SETTINGS_CHECKPOINT_MISMATCH");Stop();return;}
+         LocalStorage.SetString(key,settings,LocalStorageScope.Instance);LocalStorage.Flush(LocalStorageScope.Instance);
+@@ -70,7 +70,7 @@
+         if(Eur!=null)Symbols.GetSymbol("EURUSD").Tick+=EurTick;
+         if(Btc!=null)Symbols.GetSymbol("BTCUSD").Tick+=BtcTick;
+         _running=true;Timer.Start(TimeSpan.FromSeconds(1));
+-        Print("RIZAN_PORTFOLIO_START version=1.2.0-three-research XAU=RC1_1.3.0 EUR=F0245_1.2.1 BTC=8500283 account={0} risk_cap={1}% margin_cap=50%",Account.Number,PortfolioRiskPercent);
++        Print("RIZAN_PORTFOLIO_START version=1.2.1-three-frozen-weekend XAU=RC1_1.3.0 EUR=F0245_1.2.1 BTC=8500283 account={0} risk_cap={1}% margin_cap=50%",Account.Number,PortfolioRiskPercent);
+     }
+     private void XauTick(SymbolTickEventArgs e){if(_running)Xau?.OnTick();}
+     private void BtcTick(SymbolTickEventArgs e){if(_running)Btc?.OnTick();}
+@@ -78,6 +78,7 @@
+     protected override void OnTimer()
+     {
+         if(!_running)return;
++        Btc?.Manage(Server.TimeInUtc); // Friday safety runs before strategy/bridge work.
+         // Stable EUR -> XAU order; no winner is selected using future prices.
+         foreach(var e in Engines)if(!e.Stopped)e.OnTimer();
+         if(Server.TimeInUtc>=_nextTelemetry){_nextTelemetry=Server.TimeInUtc.AddMinutes(1);Print("RIZAN_PORTFOLIO ready={0} balance={1} equity={2} margin={3} open_risk={4} pending_risk={5} budget_blocks={6}",PortfolioReady,Account.Balance,Account.Equity,Account.Margin,OpenRisk(),Engines.Sum(e=>e.PendingRisk),PortfolioBudgetBlocks);}
