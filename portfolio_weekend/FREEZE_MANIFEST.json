@@ -47,6 +47,7 @@
     "source/xau/XauBatchExecution.cs": "68e865b3933d33fae9025d7aeba2325078e1c1d7fc7ad4ad81e2c69569c3f281",
     "source/xau/RizanRobot.cs": "de7d076f0f36650badcf101e0ea6c1b766f7a3c77021e99b35caa2b7a57392a4"
   },
-  "native_source_commit": "2381141bf98579ecc8ce4c26cb9a0afb5470d5a1",
-  "build_run": 39371048685
+  "native_source_commit": "1d6ad83f285f293b103342073b637fa16e597fb9",
+  "build_run": 39371048685,
+  "dd56_qualified_after_weekend_change": false
 }

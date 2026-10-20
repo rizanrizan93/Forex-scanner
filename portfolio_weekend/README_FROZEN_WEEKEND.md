@@ -1,11 +1,17 @@
 # RIZAN XAU–EUR–BTC Frozen Weekend V1.2.1
 
-Strategi baseline dibekukan; tidak ada pencarian ulang entry/SL/TP/risk. XAU/EUR tidak diubah. Portfolio cap20.75% tetap dan dikunci pada startup. Batas margin50%, model BTC10x, XAU/EUR200x. Pengiriman order defaultOFF. Tidak ada perubahan/deployment live.
+Source strategi dibekukan. XAU/EUR tidak diubah dan BTC tetap memakai profil 7844/2269; tidak ada optimasi ulang entry, TP, SL atau risiko. Cap risiko portofolio dikunci pada 20,75%, margin entry 50%, model leverage BTC 10× dan XAU/EUR 200×. Kirim order default OFF. Tidak ada deployment live.
 
-BTC: larang entry60menit sebelum penutupan mingguan; force-exit30menit sebelumnya. Jadwal dihitung dari MarketHours broker di UTC, disegarkan5menit. Sabtu/Minggu UTC selalu blok entry dan flat-intent. Hari libur yang tercermin pada API memajukan penutupan ke sesi terakhir yang tersedia. Entry tidak diulang pada Senin: hanya sinyal closed baru yang boleh masuk. Expiry=min(hold asli,cutoff flat mingguan).
+**Batas DD 56% tidak lagi terpenuhi dalam replay versi ini.** Hasil lama $24,54–24,80 juta tidak boleh dipakai sebagai hasil versi dengan aturan akhir pekan. Lihat laporan dan WEEKEND_FINAL_METRICS.csv untuk angka baru.
 
-Penutupan berjalan pada timer1detik dan tick, sebelum pekerjaan entry/bridge host. Intent exit disimpan sebelum request; posisi belum dianggap flat bila broker menolak. Retry1detik selama pasar terbuka dan Kirim orderON. Pending exit tetap diproses setelah restart. Bot tidak menutup posisi XAU/EUR/manual. Bila pasar sudah tutup, runtime/offline, koneksi putus, atau broker menolak sampai cutoff lewat, tidak ada software yang dapat menjamin fill; log EXIT_WAIT/RETRY dan intent dipertahankan, posisi ditutup pada kesempatan pertama saat pasar terbuka. Server-side SL/TP tetap ada.
+BTC berhenti entry 60 menit sebelum penutupan mingguan dan mulai ditutup 30 menit sebelumnya. Jadwal berasal dari MarketHours simbol broker, disegarkan setiap lima menit. Sabtu/Minggu UTC selalu memblokir entry. Hold efektif dibatasi cutoff mingguan. Jika hari libur tercermin di API, penutupan maju ke sesi terakhir yang tersedia.
 
-WIB=UTC+7: contoh close Jumat22UTC berarti Sabtu05WIB, flatten mulaiSabtu04:30WIB; close21UTC berarti Sabtu04WIB, flattenSabtu03:30WIB. Ini contoh, bukan hardcode jam broker Anda. Native memakai API jadwal simbol aktual. Perubahan5menit mendadak/holiday tidak tercatat API tetap keterbatasan. Sesi diresolusi menit dengan buffer30menit.
+Penutupan diperiksa oleh timer satu detik dan tick, sebelum pekerjaan entry/bridge. Intent exit disimpan sebelum request. Penolakan close tidak dianggap sukses; request dicoba ulang setiap detik saat pasar terbuka dan Kirim order ON. Pending exit diproses kembali setelah restart. Posisi XAU/EUR/manual tidak ditutup oleh pengaman BTC.
 
-Nilai$24.54–24.80juta adalah versi SEBELUM weekend guard, bukan hasil versi ini. Replay baru harus diberi label asumsi jam historis; histori sesi broker/DST belum tersedia. BTC Bitstamp tersedia7hari, sehingga replay baru membuang bar sesi tertutup dari kalkulasi indikator. Hasil model OHLC bukan tick broker/FULL_PARITY dan bukan jaminanmasa depan.
+Bot harus aktif dan broker terhubung. Jika runtime offline, pasar sudah tutup, atau broker terus menolak close, software tidak dapat menjamin fill. Intent dan log EXIT_WAIT/CLOSE_RETRY dipertahankan; penutupan dicoba pada kesempatan pertama saat pasar terbuka. Server-side SL/TP tetap ada.
+
+WIB = UTC+7. Contoh close Jumat 22 UTC berarti Sabtu 05 WIB; flatten dimulai Sabtu 04.30 WIB. Native tidak meng-hardcode contoh jam ini: ia memakai API broker aktual.
+
+Replay mengasumsikan Senin 00 UTC–Jumat 22 UTC, dengan bar BTC sesi tertutup dibuang dari indikator. Histori jadwal/DST broker belum disertifikasi. Model OHLC bukan tick broker atau FULL_PARITY, dan bukan bukti performa masa depan.
+
+File baru ini tidak mengganti atau me-restart instance live. Jangan menjalankan versi lama dan baru bersamaan pada satu akun. Jika posisi atau intent lama masih ada, periksa recovery sebelum pergantian.
