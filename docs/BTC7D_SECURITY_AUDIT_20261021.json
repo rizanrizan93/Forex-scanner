@@ -1,0 +1,568 @@
+{
+  "observed_utc": "2026-10-20T23:13:23.443468+00:00",
+  "read_only": true,
+  "native_before": {
+    "observed_unix": 1792537969.409124,
+    "read_only": true,
+    "infrastructure": {
+      "read_only": true,
+      "services": {
+        "rizan-btc7d130.service": {
+          "active": "active",
+          "unit_path": "/etc/systemd/system/rizan-btc7d130.service",
+          "btc7d_mentioned": true
+        },
+        "rizan-cbot-bridge.service": {
+          "active": "active",
+          "unit_path": "/etc/systemd/system/rizan-cbot-bridge.service",
+          "btc7d_mentioned": false
+        },
+        "rizan-research-cloud.service": {
+          "active": "inactive",
+          "unit_path": "/etc/systemd/system/rizan-research-cloud.service",
+          "btc7d_mentioned": false
+        }
+      },
+      "production_contracts": [
+        "RZEF245",
+        "RZXA1",
+        "RZEU4B",
+        "RZXRC1"
+      ],
+      "routing": [
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "listen 25345 ssl;"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "listen [::]:25345 ssl;"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "server_name rizan-bridge.duckdns.org;"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "location = /btc7d130 {"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "proxy_pass http://127.0.0.1:8130;"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "location / {"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "proxy_pass http://127.0.0.1:25346;"
+        }
+      ],
+      "listeners": {
+        "8130": true,
+        "25345": true,
+        "25346": true
+      },
+      "nginx_readable": true,
+      "btc_candidate_paths": [
+        "/home/Rizanrizan/btc7d-audit-39510945722",
+        "/home/Rizanrizan/btc7d-audit-39510733830",
+        "/home/Rizanrizan/btc7d-audit-39513463956",
+        "/home/Rizanrizan/btc7d-incoming-39507175279",
+        "/home/Rizanrizan/rizan-btc7d130"
+      ]
+    },
+    "tokens_match": true,
+    "btc_account_matches_expected": true,
+    "main_database": {
+      "exists": true,
+      "leases": [
+        {
+          "namespace": "RZXA1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 392732.14,
+          "expires_in_s": -392687.14
+        },
+        {
+          "namespace": "RZEU4B",
+          "symbol": "EURUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 392731.79,
+          "expires_in_s": -392686.79
+        },
+        {
+          "namespace": "RZXA1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 483190.98,
+          "expires_in_s": -483145.98
+        },
+        {
+          "namespace": "RZEU4B",
+          "symbol": "EURUSD",
+          "account_matches_expected": true,
+          "active": false,
+          "last_touch_age_s": 497889.87,
+          "expires_in_s": -497844.87
+        },
+        {
+          "namespace": "RZEF245",
+          "symbol": "EURUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 392731.38,
+          "expires_in_s": -392686.38
+        },
+        {
+          "namespace": "RZEF245",
+          "symbol": "EURUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 6.5,
+          "expires_in_s": 38.5
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 392731.96,
+          "expires_in_s": -392686.96
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 392477.78,
+          "expires_in_s": -392432.78
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 4.45,
+          "expires_in_s": 40.55
+        }
+      ],
+      "checkpoints": [
+        {
+          "namespace": "RZXA1",
+          "symbol": "XAUUSD",
+          "server_revision": 3777,
+          "client_revision": 3777,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        },
+        {
+          "namespace": "RZEU4B",
+          "symbol": "EURUSD",
+          "server_revision": 4257,
+          "client_revision": 4258,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        },
+        {
+          "namespace": "RZEF245",
+          "symbol": "EURUSD",
+          "server_revision": 5343,
+          "client_revision": 5344,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "server_revision": 1455,
+          "client_revision": 1456,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "server_revision": 3459,
+          "client_revision": 3460,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        }
+      ]
+    },
+    "btc_database": {
+      "exists": true,
+      "leases": [
+        {
+          "namespace": "RZBTC7D130",
+          "symbol": "BTCUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 4.43,
+          "expires_in_s": 40.57
+        }
+      ],
+      "checkpoints": [
+        {
+          "namespace": "RZBTC7D130",
+          "symbol": "BTCUSD",
+          "server_revision": 2,
+          "client_revision": 2,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        }
+      ]
+    },
+    "btc_fixed_error_counts": {
+      "AUTH_FAILED": 0,
+      "IDENTITY_INVALID": 0,
+      "LEASE_BUSY": 0,
+      "FEED_NOT_CURRENT": 0,
+      "M1_GAP": 0,
+      "Traceback": 15,
+      "Main process exited": 0
+    }
+  },
+  "native_after": {
+    "observed_unix": 1792538003.3941967,
+    "read_only": true,
+    "infrastructure": {
+      "read_only": true,
+      "services": {
+        "rizan-btc7d130.service": {
+          "active": "active",
+          "unit_path": "/etc/systemd/system/rizan-btc7d130.service",
+          "btc7d_mentioned": true
+        },
+        "rizan-cbot-bridge.service": {
+          "active": "active",
+          "unit_path": "/etc/systemd/system/rizan-cbot-bridge.service",
+          "btc7d_mentioned": false
+        },
+        "rizan-research-cloud.service": {
+          "active": "inactive",
+          "unit_path": "/etc/systemd/system/rizan-research-cloud.service",
+          "btc7d_mentioned": false
+        }
+      },
+      "production_contracts": [
+        "RZEF245",
+        "RZXA1",
+        "RZEU4B",
+        "RZXRC1"
+      ],
+      "routing": [
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "listen 25345 ssl;"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "listen [::]:25345 ssl;"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "server_name rizan-bridge.duckdns.org;"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "location = /btc7d130 {"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "proxy_pass http://127.0.0.1:8130;"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "location / {"
+        },
+        {
+          "file": "/etc/nginx/conf.d/rizan-wss.conf",
+          "directive": "proxy_pass http://127.0.0.1:25346;"
+        }
+      ],
+      "listeners": {
+        "8130": true,
+        "25345": true,
+        "25346": true
+      },
+      "nginx_readable": true,
+      "btc_candidate_paths": [
+        "/home/Rizanrizan/btc7d-audit-39510945722",
+        "/home/Rizanrizan/btc7d-audit-39510733830",
+        "/home/Rizanrizan/btc7d-audit-39513463956",
+        "/home/Rizanrizan/btc7d-incoming-39507175279",
+        "/home/Rizanrizan/rizan-btc7d130"
+      ]
+    },
+    "tokens_match": true,
+    "btc_account_matches_expected": true,
+    "main_database": {
+      "exists": true,
+      "leases": [
+        {
+          "namespace": "RZXA1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 392766.12,
+          "expires_in_s": -392721.12
+        },
+        {
+          "namespace": "RZEU4B",
+          "symbol": "EURUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 392765.77,
+          "expires_in_s": -392720.77
+        },
+        {
+          "namespace": "RZXA1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 483224.96,
+          "expires_in_s": -483179.96
+        },
+        {
+          "namespace": "RZEU4B",
+          "symbol": "EURUSD",
+          "account_matches_expected": true,
+          "active": false,
+          "last_touch_age_s": 497923.85,
+          "expires_in_s": -497878.85
+        },
+        {
+          "namespace": "RZEF245",
+          "symbol": "EURUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 392765.36,
+          "expires_in_s": -392720.36
+        },
+        {
+          "namespace": "RZEF245",
+          "symbol": "EURUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 0.48,
+          "expires_in_s": 44.52
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 392765.95,
+          "expires_in_s": -392720.95
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": false,
+          "active": false,
+          "last_touch_age_s": 392511.76,
+          "expires_in_s": -392466.76
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 6.48,
+          "expires_in_s": 38.52
+        }
+      ],
+      "checkpoints": [
+        {
+          "namespace": "RZXA1",
+          "symbol": "XAUUSD",
+          "server_revision": 3777,
+          "client_revision": 3777,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        },
+        {
+          "namespace": "RZEU4B",
+          "symbol": "EURUSD",
+          "server_revision": 4257,
+          "client_revision": 4258,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        },
+        {
+          "namespace": "RZEF245",
+          "symbol": "EURUSD",
+          "server_revision": 5344,
+          "client_revision": 5345,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "server_revision": 1455,
+          "client_revision": 1456,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "server_revision": 3460,
+          "client_revision": 3461,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        }
+      ]
+    },
+    "btc_database": {
+      "exists": true,
+      "leases": [
+        {
+          "namespace": "RZBTC7D130",
+          "symbol": "BTCUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 6.46,
+          "expires_in_s": 38.54
+        }
+      ],
+      "checkpoints": [
+        {
+          "namespace": "RZBTC7D130",
+          "symbol": "BTCUSD",
+          "server_revision": 2,
+          "client_revision": 2,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        }
+      ]
+    },
+    "btc_fixed_error_counts": {
+      "AUTH_FAILED": 0,
+      "IDENTITY_INVALID": 0,
+      "LEASE_BUSY": 0,
+      "FEED_NOT_CURRENT": 0,
+      "M1_GAP": 0,
+      "Traceback": 18,
+      "Main process exited": 0
+    }
+  },
+  "units": {
+    "rizan-cbot-bridge.service": {
+      "MainPID": "206489",
+      "NRestarts": "0",
+      "WorkingDirectory": "/home/Rizanrizan/Forex-scanner",
+      "ProtectHome": "no",
+      "ProtectSystem": "no",
+      "NoNewPrivileges": "yes",
+      "ActiveState": "active"
+    },
+    "rizan-btc7d130.service": {
+      "MainPID": "343330",
+      "NRestarts": "0",
+      "WorkingDirectory": "/home/Rizanrizan/rizan-btc7d130/releases/7c254d57ac3f77177d0441001528e3156b035b06",
+      "ProtectHome": "read-only",
+      "ProtectSystem": "strict",
+      "NoNewPrivileges": "yes",
+      "ActiveState": "active"
+    }
+  },
+  "service_pids_unchanged": {
+    "rizan-cbot-bridge.service": true,
+    "rizan-btc7d130.service": true
+  },
+  "btc_source_sha256": {
+    "server.py": "895aad658748ee8ec854ef077130d0ee255cc02fc4a914df176bc27379371f31",
+    "store_base.py": "cec7665eba484f6b71fc786a262c89a64affb5e86a785de4f836568dfe203ecc",
+    "timestamps.py": "f6815cedf2fb445998c8502e08a31dc784bd03d1d8d30f7afa1dd071dff7f460",
+    "BITSTAMP_H1_SEED.csv": "b8cc6dece79c77a2ad92c85f32cb37f45f5c003cc91910fe442c350fe7def4f4"
+  },
+  "btc_env_permissions": {
+    "mode": "0o600",
+    "uid": 0,
+    "group_or_other_access": false,
+    "is_symlink": false
+  },
+  "btc_db_permissions": {
+    "mode": "0o600",
+    "uid": 1001,
+    "group_or_other_access": false,
+    "is_symlink": false
+  },
+  "btc_sqlite_quick_check": "ok",
+  "listeners": [
+    "127.0.0.1:25346",
+    "127.0.0.1:8130",
+    "0.0.0.0:25345",
+    "[::]:25345"
+  ],
+  "private_backends_loopback_only": true,
+  "public_tls": {
+    "hostname_and_chain_valid": true,
+    "protocol": "TLSv1.3",
+    "expires": "Jan  9 14:29:40 2027 GMT",
+    "expires_in_days": 80.64
+  },
+  "public_btc_auth_checks": [
+    {
+      "case": "invalid_token",
+      "expected": "AUTH_FAILED",
+      "received": "AUTH_FAILED",
+      "pass": true
+    },
+    {
+      "case": "correct_token_wrong_account",
+      "expected": "IDENTITY_INVALID",
+      "received": "IDENTITY_INVALID",
+      "pass": true
+    },
+    {
+      "case": "correct_token_wrong_contract",
+      "expected": "IDENTITY_INVALID",
+      "received": "IDENTITY_INVALID",
+      "pass": true
+    }
+  ],
+  "feed_reconstruction": {
+    "independent_reconstruction_current": true,
+    "source": "BITSTAMP_BTCUSD_M1",
+    "contract": "RZ-7D130-BTC8500283-LFOLLOW-WEEKEND",
+    "rows": 68399,
+    "through_unix": 1792537200
+  },
+  "probe_lease_acquisitions": 0,
+  "probe_checkpoint_writes": 0,
+  "production_changes": false,
+  "orders_sent": false,
+  "native_entry_readiness_observed": false,
+  "pinned_frozen_source_match": true,
+  "expected_source_sha256": {
+    "server.py": "895aad658748ee8ec854ef077130d0ee255cc02fc4a914df176bc27379371f31",
+    "store_base.py": "cec7665eba484f6b71fc786a262c89a64affb5e86a785de4f836568dfe203ecc",
+    "timestamps.py": "f6815cedf2fb445998c8502e08a31dc784bd03d1d8d30f7afa1dd071dff7f460",
+    "BITSTAMP_H1_SEED.csv": "b8cc6dece79c77a2ad92c85f32cb37f45f5c003cc91910fe442c350fe7def4f4"
+  },
+  "actions_run": 39513463956,
+  "actions_job": 118939863539,
+  "actions_conclusion": "success",
+  "artifact_id": 12306593530,
+  "artifact_outer_sha256": "ff2ede0db63afa26f9352b8a8e687c40f7236dbe30ceb5f25672872d1bc43bf7"
+}
