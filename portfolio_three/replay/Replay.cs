@@ -136,8 +136,8 @@ sealed class Simulation
   return new{Summary,CashFlows=cashFlows,Annual=annual,Monthly=trades.GroupBy(t=>t.Exit.ToString("yyyy-MM")).Select(g=>new{Month=g.Key,Baskets=g.Count(),NetPnl=g.Sum(t=>t.Pnl),BalanceAfter=g.Last().BalanceAfter}),Ledger=trades,Curve=curve,BrokerHistory=host.History,CashEvents=cashEvents,Open=host.Positions,Errors=errors};
  }
  bool Transition(DateTime time,bool hx,bool he){
-  if(host.Positions.Any(p=>p.SymbolName=="BTCUSD"))return true;
-  foreach(var p in host.Positions){if(p.SymbolName=="XAUUSD"?!hx:!he)continue;var s=host.Symbols.GetSymbol(p.SymbolName);int sign=p.TradeType==TradeType.Buy?1:-1;double exit=sign==1?s.Bid:s.Ask;if(sign*(exit-p.StopLoss!.Value)<=0||sign*(exit-p.TakeProfit!.Value)>=0)return true;}
+
+  foreach(var p in host.Positions){if(p.SymbolName!="BTCUSD"&&(p.SymbolName=="XAUUSD"?!hx:!he))continue;var s=host.Symbols.GetSymbol(p.SymbolName);int sign=p.TradeType==TradeType.Buy?1:-1;double exit=sign==1?s.Bid:s.Ask;if(sign*(exit-p.StopLoss!.Value)<=0||sign*(exit-p.TakeProfit!.Value)>=0)return true;}
   foreach(var l in legs){if(l.IsXau?!hx:!he)continue;dynamic? b=l.Basket;if(l.Acks.Count>0)return true;if(b==null)continue;if((int)b.QueueStage>=0||(string)l.State.PendingLabel!=""||time>=((DateTime)b.ExitUtc))return true;
    if(!l.IsXau&&host.Positions.Any(p=>p.SymbolName==l.Symbol)){var s=host.Symbols.GetSymbol(l.Symbol);double quote=(int)b.Side==1?s.Ask:s.Bid,exit=(int)b.Side==1?s.Bid:s.Ask;
     if(!(bool)b.BreakEvenArmed&&(int)b.Side*(exit-(double)b.Entry)>=2*(double)b.OriginalDistance)return true;

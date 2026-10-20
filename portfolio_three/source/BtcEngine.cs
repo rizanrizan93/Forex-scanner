@@ -37,7 +37,8 @@ internal sealed class BtcEngine : EngineContext
             var seed=new DateTime(2019,1,1,0,0,0,DateTimeKind.Utc);
             List<BtcBar> Read(TimeFrame tf,int width){var bars=MarketData.GetBars(tf,Instrument);
                 while(bars.Count>0&&bars.OpenTimes[0]>seed&&bars.LoadMoreHistory()>0){}
-                if(bars.Count==0||bars.OpenTimes[0]>seed)throw new Exception("BTC_HISTORY_SEED_UNAVAILABLE");
+                if(bars.Count==0||(bars.OpenTimes[0]>seed&&bars.Count<1000))throw new Exception("BTC_HISTORY_WARMUP_UNAVAILABLE");
+                Print("BTC_HISTORY_SEED tf={0} first={1} bars={2}",width,bars.OpenTimes[0],bars.Count);
                 var closed=new List<BtcBar>();for(int i=0;i<bars.Count;i++)if(bars.OpenTimes[i]>=seed&&bars.OpenTimes[i].AddMinutes(width)<=now)closed.Add(new(bars.OpenTimes[i],bars.OpenPrices[i],bars.HighPrices[i],bars.LowPrices[i],bars.ClosePrices[i],width));return closed;}
             signals=BtcCore.Signals(Read(TimeFrame.Hour,60),Read(TimeFrame.Hour4,240));
             var at=new DateTime(now.Year,now.Month,now.Day,now.Hour,0,0,DateTimeKind.Utc);
