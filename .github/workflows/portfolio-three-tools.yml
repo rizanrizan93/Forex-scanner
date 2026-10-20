@@ -1,0 +1,39 @@
+name: Portfolio three-symbol research tools
+on:
+  push:
+    branches: [research/xau-eur-btc-integrated-2019-2026]
+    paths: ['.github/workflows/portfolio-three-tools.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.426
+      - name: Package compiler and official cTrader dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p tools/sdk/8.0.426 tools/vendor/automate tools/vendor/net6ref
+          root=$(dirname "$(readlink -f "$(command -v dotnet)")")
+          cp "$root/dotnet" tools/
+          cp -a "$root/host" "$root/shared" "$root/packs" tools/
+          cp -a "$root/sdk/8.0.426/Roslyn" tools/sdk/8.0.426/
+          cp "$root/sdk/8.0.426/Microsoft.Build.Framework.dll" "$root/sdk/8.0.426/Microsoft.Build.Utilities.Core.dll" tools/sdk/8.0.426/
+          curl -fsSL --retry 3 https://api.nuget.org/v3-flatcontainer/ctrader.automate/1.0.21/ctrader.automate.1.0.21.nupkg -o automate.zip
+          curl -fsSL --retry 3 https://api.nuget.org/v3-flatcontainer/microsoft.netcore.app.ref/6.0.36/microsoft.netcore.app.ref.6.0.36.nupkg -o net6ref.zip
+          unzip -q automate.zip -d tools/vendor/automate
+          unzip -q net6ref.zip -d tools/vendor/net6ref
+          tar -czf portfolio-build-tools.tar.gz tools
+          sha256sum portfolio-build-tools.tar.gz > TOOLS_SHA256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PORTFOLIO-THREE-BUILD-TOOLS
+          path: |
+            portfolio-build-tools.tar.gz
+            TOOLS_SHA256.txt
+          retention-days: 7
