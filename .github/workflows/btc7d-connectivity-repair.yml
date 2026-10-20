@@ -34,8 +34,10 @@ jobs:
           remote="/home/Rizanrizan/btc7d-audit-${GITHUB_RUN_ID}"
           ssh "${opts[@]}" "$target" "umask 077; mkdir -p '$remote'"
           scp "${opts[@]}" bridge_repair_btc/{audit_btc.py,lease_audit.py} "$target:$remote/"
-          ssh "${opts[@]}" "$target" "sudo -n python3 '$remote/lease_audit.py'" | tee BTC_LEASE_AUDIT.json
+          ssh "${opts[@]}" "$target" "sudo -n python3 '$remote/lease_audit.py'" | tee BTC_LEASE_FIRST.json
+          sleep 15
+          ssh "${opts[@]}" "$target" "sudo -n python3 '$remote/lease_audit.py'" | tee BTC_LEASE_SECOND.json
       - uses: actions/upload-artifact@v4
         with:
           name: BTC7D-LEASE-AUDIT
-          path: BTC_LEASE_AUDIT.json
+          path: BTC_LEASE_*.json
