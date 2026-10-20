@@ -5,8 +5,9 @@ sdk=root/'dotnet';x=inp/'xau_2012_2026.csv';e=inp/'eur_2012_2026_recovered.csv';
 for p,h in [(x,'3fda8011082e2691b6ebe1a8a4da5fff8e4bf0fc07baf57506b7894d95fc1808'),(e,'3c74ac5ccaeeac64f44693bc6bd4406e9225a9ef61dbb5f80756530f050506ec'),(btc,'c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504')]:assert hashlib.file_digest(p.open('rb'),'sha256').hexdigest()==h
 cases=[('NORMAL',{}),('CONTROL',{'RESEARCH_CONTROL':'1'}),('COST_15',{'RESEARCH_COST':'1.5'}),('COST_20',{'RESEARCH_COST':'2'}),('NEXT_M1',{'RESEARCH_NEXT_M1':'1'}),('BTC_L2',{'RESEARCH_BTC_LEVERAGE':'2'}),('BTC_L5',{'RESEARCH_BTC_LEVERAGE':'5'}),('FULL_INDICATORS',{'BTC_FULL_INDICATORS':'1'}),('LEGACY_7D',{'BTC_FULL_INDICATORS':'1','BTC_SEVEN_DAY':'1'})]
 # Run the independent reference before any cost or execution variant.
-for path in ['A','B']:
+for path in os.environ.get('RESEARCH_PATHS','A,B').split(','):
  for name,extra in cases:
+  if os.environ.get('RESEARCH_CASES') and name not in os.environ['RESEARCH_CASES'].split(','):continue
   case=name+'_'+path;p=out/(case+'.json');packed=out/(case+'.json.gz')
   if packed.exists():continue
   w=r/('legacy_work' if name=='LEGACY_7D' else 'work')

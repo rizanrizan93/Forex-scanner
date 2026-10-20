@@ -1,0 +1,14 @@
+{
+  "BTCUSD_M1.csv": {
+    "sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504",
+    "bytes": 326159079
+  },
+  "xau_2012_2026.csv": {
+    "sha256": "3fda8011082e2691b6ebe1a8a4da5fff8e4bf0fc07baf57506b7894d95fc1808",
+    "bytes": 405672214
+  },
+  "eur_2012_2026_recovered.csv": {
+    "sha256": "3c74ac5ccaeeac64f44693bc6bd4406e9225a9ef61dbb5f80756530f050506ec",
+    "bytes": 316413286
+  }
+}

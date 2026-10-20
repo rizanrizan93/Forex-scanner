@@ -1,0 +1,9 @@
+work/
+legacy_work/
+results/
+*tape.json
+BATCH*.log
+run_batch_b.py
+run_ablation.py
+run_leverage.py
+analysis/PARTIAL_METRICS.json

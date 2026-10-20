@@ -1,0 +1,12 @@
+{
+  "A": {
+    "exact_legacy_shared_BrokerHistory_fields": true,
+    "new_EntryTime_field_absent_in_legacy_archive": true,
+    "metrics_match": true
+  },
+  "B": {
+    "exact_legacy_shared_BrokerHistory_fields": true,
+    "new_EntryTime_field_absent_in_legacy_archive": true,
+    "metrics_match": true
+  }
+}
