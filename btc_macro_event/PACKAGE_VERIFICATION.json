@@ -1,0 +1,47 @@
+{
+  "files_verified": 51,
+  "cases": [
+    {
+      "case": "BASE_PATH_A",
+      "cash_residual": -1.6763806343078613e-08,
+      "btc_positions": 96
+    },
+    {
+      "case": "BASE_PATH_B",
+      "cash_residual": -2.0116567611694336e-07,
+      "btc_positions": 95
+    },
+    {
+      "case": "MACRO_PATH_A",
+      "cash_residual": -9.313225746154785e-09,
+      "btc_positions": 68
+    },
+    {
+      "case": "MACRO_PATH_B",
+      "cash_residual": -7.450580596923828e-08,
+      "btc_positions": 68
+    },
+    {
+      "case": "EVENT_PATH_A",
+      "cash_residual": -1.30385160446167e-08,
+      "btc_positions": 87
+    },
+    {
+      "case": "EVENT_PATH_B",
+      "cash_residual": -1.0058283805847168e-07,
+      "btc_positions": 87
+    },
+    {
+      "case": "BOTH_PATH_A",
+      "cash_residual": -1.6763806343078613e-08,
+      "btc_positions": 62
+    },
+    {
+      "case": "BOTH_PATH_B",
+      "cash_residual": -9.12696123123169e-08,
+      "btc_positions": 62
+    }
+  ],
+  "macro_vintage_certified": false,
+  "live_changed": false
+}
