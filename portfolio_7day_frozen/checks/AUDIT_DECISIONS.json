@@ -1,0 +1,16 @@
+{
+  "frozen_strategy_model": "RZ-BTC-7D-WEEKEND-L200",
+  "native_release": "1.3.0.0",
+  "baseline_release_unchanged": "1.2.1.0",
+  "trading_enabled_default": false,
+  "production_bridge_modified": false,
+  "production_env_read_or_modified_by_new_service": false,
+  "infrastructure_changes": [
+    "BTC full seven-day pinned Bitstamp source instead of broker GetBars",
+    "durable BTC remote CAS lease with local readback WAL and ACK before order",
+    "shared new-entry gate requires current XAU/EUR bridge heartbeat; position safety independent",
+    "sole order authority rejects EnableTrading=false including closes"
+  ],
+  "old_offline_entry_regressions": "Retained separately with failed diagnostic output. Their expected transport-independent entry intentionally prohibited by release; not counted as pass.",
+  "full_parity": false
+}

@@ -1,0 +1,8 @@
+{
+  "contract": "RZ-7D130-BTC8500283-LFOLLOW-WEEKEND",
+  "m1_sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504",
+  "seed_h1_binary_sha256": "e041102102e4ae2768e06f0261b4bfbfabc056ffa5decde21e161d8904179030",
+  "seed_h1_rows": 68280,
+  "seed_end_unix": 1792108800,
+  "csv_sha256": "b8cc6dece79c77a2ad92c85f32cb37f45f5c003cc91910fe442c350fe7def4f4"
+}

@@ -1,0 +1,27 @@
+{
+  "release": "V1.3.0",
+  "baseline_source_commit": "c187174e27894abad35f010b6ee6766971055665",
+  "selected_research_commit": "4578909e40e6b3ba57b1c82e0e1c524cd33f1a08",
+  "native_assembly_version": "1.3.0.0",
+  "default_enable_trading": false,
+  "model_btc_leverage": 200,
+  "native_margin": "Symbol.GetEstimatedMargin; account leverage does not override broker symbol/tier",
+  "source_sha256": {
+    "work/source/BtcSevenDayFeed.cs": "9cde1307a398cebc02039daeeef30537da6cee30e161fc1a54b19cad2d0d344d",
+    "work/source/RizanPortfolio.csproj": "22e025f51e9027d19fce8c1c8c2a08554687bc2108222efbc5b947cb3beba64a",
+    "work/source/BtcStateLink.cs": "94925538e1f11d1f808532c5f16291ca90282567f3d1f290f630f8284c208110",
+    "work/source/PortfolioHost.cs": "5cb17340930a84dd2e0e9d31fa0be53f8c00e5d7cb436322af6f615f713f6e2d",
+    "work/source/BtcCore.cs": "7cd70e9fd34860580ea2da0fb8a46530eaf856414b0cc9b62b52c4c5b2f7a56d",
+    "work/source/BtcWeekendPolicy.cs": "b6005e1bd500970e270243cfc3c32c6d57fd0a03083f6ddc22175b0625efa490",
+    "work/source/BtcEngine.cs": "6ffc443e7f9618f6e8fb529ab2ebdfb168f4b0668234a03c93ccb643b50def80",
+    "work/source/RizanXauEurPortfolio.cs": "0ed40c6fa450e25a6aa6cd4ca28e248fb3e0739a0b62ac5e913b339443854d31",
+    "work/source/xau/XauSendReference.cs": "845a2d552a45757ffde77e12c699015612acd6a7394903866ff12bc7a9d58649",
+    "work/source/xau/FrozenCore.cs": "b853e9f7e68e9f425764ebcc4bececb0ddd0959973ee29c92d24b8aec0cb32c7",
+    "work/source/xau/XauBatchExecution.cs": "68e865b3933d33fae9025d7aeba2325078e1c1d7fc7ad4ad81e2c69569c3f281",
+    "work/source/xau/RizanRobot.cs": "bc7935c11ba3f008b2967e9c06e9ac53f3a40f757827c8b301b791cd535eabce",
+    "work/source/eur/EurBatchExecution.cs": "d088e41ec1fc31810c2c9af375fef549c898f7c87443c44d2076c8a8fbab4a5e",
+    "work/source/eur/F0245Policy.cs": "b20531243536a7bf9d8a7a44c82b46de5f51ffc0ff21887a9f2dc8050fffea28",
+    "work/source/eur/FrozenCore.cs": "a4fb2355bca26beb8926a467399b76960613cecbff3172e71d3b713d537e7f99",
+    "work/source/eur/RizanRobot.cs": "cf660a604d7e749c47a27d2799ac970cbcb2c3611895ce6a83c260990d890d40"
+  }
+}
