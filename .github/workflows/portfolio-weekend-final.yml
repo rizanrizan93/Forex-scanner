@@ -1,0 +1,104 @@
+name: Frozen Weekend final audit and archive
+on:
+  push:
+    branches: [release/xau-eur-btc-frozen-weekend-v1.2.1]
+    paths: ['.github/workflows/portfolio-weekend-final.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.426
+      - uses: actions/download-artifact@v4
+        with:
+          name: RIZAN-BTCUSD-EXTENDED-INPUT-2019-OCT2026
+          run-id: 39212036090
+          github-token: ${{ github.token }}
+          path: btc_input
+      - name: Verify frozen source, package, cash and all weekend exposure
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir publish frozen
+          cp portfolio_weekend/RIZAN_XAU_EUR_BTC_FROZEN_WEEKEND_V121.zip publish/
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          assert hashlib.sha256(Path('publish/RIZAN_XAU_EUR_BTC_FROZEN_WEEKEND_V121.zip').read_bytes()).hexdigest()=='6b5387dbea7c874c60d5479a61ac5f6a29f86c9907a8fdc370a04b72f7c0095f'
+          PY
+          python portfolio_weekend/verify_frozen_package.py publish/RIZAN_XAU_EUR_BTC_FROZEN_WEEKEND_V121.zip > publish/CI_WEEKEND_AND_CASH_AUDIT.json
+          unzip -q publish/RIZAN_XAU_EUR_BTC_FROZEN_WEEKEND_V121.zip -d frozen
+          cp frozen/RizanXauEurBtcPortfolio_FROZEN_WEEKEND_V1_2_1.algo frozen/LAPORAN_FROZEN_WEEKEND_V121.md frozen/FROZEN_STATUS.json frozen/FREEZE_MANIFEST.json frozen/WEEKEND_FINAL_METRICS.csv frozen/WEEKEND_AND_CASH_AUDIT.json frozen/WEEKEND_EQUITY_DD.png publish/
+          cp portfolio_weekend/verify_frozen_package.py publish/
+          python - <<'PY'
+          from pathlib import Path
+          import json,hashlib,zipfile
+          r=Path('frozen')
+          m=json.loads((r/'FREEZE_MANIFEST.json').read_text())
+          for n,h in m['source_sha256'].items():assert hashlib.sha256((r/n).read_bytes()).hexdigest()==h,n
+          base=zipfile.ZipFile('portfolio_three/RIZAN_XAU_EUR_BTC_INTEGRATED_AUDIT_2019_2026.zip')
+          for sub in ['xau','eur']:
+              for p in (r/'source'/sub).glob('*.cs'):assert p.read_bytes()==base.read(str(p.relative_to(r))),str(p)
+          assert json.loads((r/'FROZEN_STATUS.json').read_text())['dd56_qualified']==False
+          PY
+          gzip -dk btc_input/data/BTCUSD_M1.csv.gz
+      - name: Repeat official build and all 1326 checks
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p frozen/vendor/automate frozen/vendor/net6ref
+          curl -fsSL --retry 3 --max-time 120 https://api.nuget.org/v3-flatcontainer/ctrader.automate/1.0.21/ctrader.automate.1.0.21.nupkg -o automate.zip
+          curl -fsSL --retry 3 --max-time 120 https://api.nuget.org/v3-flatcontainer/microsoft.netcore.app.ref/6.0.36/microsoft.netcore.app.ref.6.0.36.nupkg -o net6ref.zip
+          unzip -q automate.zip -d frozen/vendor/automate
+          unzip -q net6ref.zip -d frozen/vendor/net6ref
+          sdk=$(dirname "$(readlink -f "$(command -v dotnet)")")
+          python frozen/build_native.py --sdk "$sdk" > publish/CI_NATIVE_BUILD.log
+          test ! -s frozen/native/compile.log
+          for suite in SettlementTests PortfolioTests TimingTests WeekendTests; do
+            python frozen/run_local.py "$sdk" "$suite" > "publish/CI_$suite.json"
+          done
+          python frozen/run_local.py "$sdk" btc btc_input/data/BTCUSD_M1.csv portfolio_weekend/BTC_REFERENCE_SIGNALS.csv > publish/CI_BTC_TESTS.json
+          cp frozen/native/RizanXauEurBtcPortfolio_FROZEN_WEEKEND_V1_2_1.algo publish/CI_NATIVE_REBUILD.algo
+          cp frozen/native/compile.log publish/CI_NATIVE_COMPILER.log
+      - name: Store isolated frozen research version and verify VPS checksums
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          chmod 600 "$d/key" "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=30)
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/xau-eur-btc-frozen-weekend-v121/run-$GITHUB_RUN_ID"
+          printf '%s\n' "$dest" > publish/VPS_RESEARCH_PATH.txt
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          r=Path('publish')
+          (r/'PACKAGE_SHA256.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in sorted(r.iterdir()) if p.is_file() and p.name!='PACKAGE_SHA256.txt'))
+          PY
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "umask 077; mkdir -p '$dest'"
+          scp -l 24000 "${opts[@]}" publish/* "Rizanrizan@202.74.74.172:$dest/"
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 "cd '$dest' && nice -n 15 ionice -c 3 sha256sum -c PACKAGE_SHA256.txt" > publish/VPS_VERIFICATION.txt
+          scp "${opts[@]}" publish/VPS_VERIFICATION.txt "Rizanrizan@202.74.74.172:$dest/"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-XAU-EUR-BTC-FROZEN-WEEKEND-V121-AUDITED
+          path: publish/
+          if-no-files-found: error
