@@ -23,11 +23,11 @@ public abstract class RizanPortfolio : Robot
     public double PortfolioRiskPercent { get; set; } = 20.75;
     [Parameter("Bridge WSS :25345", DefaultValue="", Group="Pemulihan dan data")]
     public string BridgeUrl { get; set; } = "";
-    [Parameter("Token bridge", DefaultValue="", Group="Pemulihan dan data")]
+    [Parameter("Token bridge", DefaultValue="", IsValueVisibleInTitle=false, Group="Pemulihan dan data")]
     public string BridgeToken { get; set; } = "";
     [Parameter("BTC 7D WSS :25345", DefaultValue="", Group="Pemulihan dan data")]
     public string BtcBridgeUrl {get;set;}="";
-    [Parameter("Token BTC 7D", DefaultValue="", Group="Pemulihan dan data")]
+    [Parameter("Token BTC 7D", DefaultValue="", IsValueVisibleInTitle=false, Group="Pemulihan dan data")]
     public string BtcBridgeToken {get;set;}="";
     internal XauEngine? Xau { get; private set; }
     [Parameter("BTC aktif", DefaultValue=true, Group="Strategi")]
@@ -57,7 +57,7 @@ public abstract class RizanPortfolio : Robot
         ExpectedAccount=ExpectedAccount.Trim();
         if(!double.IsFinite(PortfolioRiskPercent)||Math.Abs(PortfolioRiskPercent-20.75)>1e-9||!EnableXau&&!EnableEur&&!EnableBtc)
         {Print("PORTFOLIO_CONFIG_INVALID");Stop();return;}
-        if(EnableTrading&&(ExpectedAccount!=Account.Number.ToString()||string.IsNullOrWhiteSpace(BridgeUrl)||EnableBtc&&(!BtcStateLink.ValidUrl(BtcBridgeUrl)||BtcBridgeToken.Length<32)))
+        if(EnableTrading&&(ExpectedAccount!=Account.Number.ToString()||(!BtcStateLink.ValidUrl(BridgeUrl)||BridgeToken.Length<32)||EnableBtc&&(!BtcStateLink.ValidUrl(BtcBridgeUrl)||BtcBridgeToken.Length<32)))
         {Print("PORTFOLIO_FULL_ACCOUNT_AND_BRIDGE_REQUIRED");Stop();return;}
         if(Account.AccountType!=AccountType.Hedged||Account.Asset.Name!="USD")
         {Print("PORTFOLIO_USD_HEDGED_ACCOUNT_REQUIRED");Stop();return;}

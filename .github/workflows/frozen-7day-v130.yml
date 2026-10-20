@@ -39,6 +39,15 @@ jobs:
           sdk=$(dirname "$(readlink -f "$(command -v dotnet)")")
           python portfolio_7day_frozen/work/build_native.py --sdk "$sdk" > publish/NATIVE_BUILD.log
           test ! -s portfolio_7day_frozen/work/native/compile.log
+          python - <<'PYMETA'
+          import json
+          from pathlib import Path
+          m=json.loads(Path('portfolio_7day_frozen/work/native/RizanXauEurPortfolio.algo.metadata').read_text())[0]
+          p={v['PropertyName']:v for v in m['Parameters']}
+          assert p['EnableTrading']['DefaultValue'] is False
+          assert all(p[n]['IsValueVisibleInTitle'] is False for n in ['BridgeToken','BtcBridgeToken'])
+          assert 'Version=1.3.0.0' in m['AssemblyName']
+          PYMETA
           cp portfolio_7day_frozen/work/native/*V1_3_0.algo publish/CI_NATIVE_REBUILD.algo
           python portfolio_7day_frozen/make_feed_fixture.py
           for suite in PortfolioTests WeekendTests LeverageTests; do

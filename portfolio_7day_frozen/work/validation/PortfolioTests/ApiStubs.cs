@@ -2,7 +2,7 @@ using System;using System.Linq;
 using System.Collections.Generic;
 using cAlgo.API.Internals;
 namespace cAlgo.API {
-[AttributeUsage(AttributeTargets.Property)] public class ParameterAttribute:Attribute {public ParameterAttribute(string name){} public object DefaultValue{get;set;} public string Group{get;set;}=""; public double MinValue{get;set;} public double MaxValue{get;set;} }
+[AttributeUsage(AttributeTargets.Property)] public class ParameterAttribute:Attribute {public ParameterAttribute(string name){} public object DefaultValue{get;set;} public string Group{get;set;}="";public bool IsValueVisibleInTitle{get;set;}=true; public double MinValue{get;set;} public double MaxValue{get;set;} }
 public enum TradeType {Buy,Sell} public enum RoundingMode {Down} public enum ProtectionType {Absolute} public enum LocalStorageScope {Instance}
 public class Asset {public string Name{get;set;}="USD";}
 public class Account {public AccountType AccountType{get;set;}=AccountType.Hedged;public Asset Asset{get;}=new();public double Equity{get;set;}=100;public double Balance{get;set;}=100;public double Margin{get;set;} public double FreeMargin=>Equity-Margin; public long Number{get;set;}=1237903;public bool IsLive{get;set;} public double PreciseLeverage{get;set;}=200;}
