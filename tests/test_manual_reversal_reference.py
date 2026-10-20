@@ -294,7 +294,7 @@ def test_candidate_a_watch_buy_short_d1_with_causal_first_touch():
     assert result['state']=='WATCH'
     assert result['reason']=='SEMUA_FILTER_TERKONFIRMASI'
     assert result['d1_bias']=='BEARISH'
-    assert result['confirmation_lag_minutes']==20.
+    assert result['confirmation_lag_minutes']==19.  # first touch observed at closed M1
     assert result['entry_reference']==101.
     assert abs(result['tp_1r_reference']-104.1)<1e-6
     assert result['execution_authority'] is False
