@@ -1,0 +1,26 @@
+{
+  "ready": true,
+  "feed_current": true,
+  "feed_rows": 68398,
+  "feed_through": 1792533600,
+  "checkpoint_revision": 0,
+  "recovered_state_present": false,
+  "probe_checkpoint_writes": 0,
+  "installed": true,
+  "token_reused_from_main": true,
+  "production_env_modified": false,
+  "main_bridge_restarted": false,
+  "main_pid_unchanged": true,
+  "main_source_unchanged": true,
+  "strategy_modified": false,
+  "orders_sent": false,
+  "cbot_trading_setting_changed": false,
+  "btc_service": "rizan-btc7d130.service",
+  "btc_url": "wss://rizan-bridge.duckdns.org:25345/btc7d130",
+  "preflight": {
+    "feed_rows": 68398,
+    "through": 1792533600
+  },
+  "probe_lease_expiry_seconds": 45,
+  "source_commit": "7c254d57ac3f77177d0441001528e3156b035b06"
+}
