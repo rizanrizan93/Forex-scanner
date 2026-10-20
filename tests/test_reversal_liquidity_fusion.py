@@ -55,3 +55,13 @@ def test_invalid_ohlc_proxy_and_naive_time_rejected():
         evaluate_zone_orderflow(ZONE, event(depth_imbalance=float("nan")), now=NOW)
     with pytest.raises(ValueError):
         evaluate_zone_orderflow(ZONE, event(), now=NOW.replace(tzinfo=None))
+
+
+def test_eur_and_btc_have_separate_venue_contracts():
+    eur_zone = {**ZONE, "zone_id": "eur-h1"}
+    eur = event(zone_id="eur-h1", symbol="EURUSD", source="CME_6E")
+    assert evaluate_zone_orderflow(eur_zone, eur, symbol="EURUSD", now=NOW)["state"] == "SUPPORTIVE"
+    btc_zone = {**ZONE, "zone_id": "btc-h1"}
+    btc = event(zone_id="btc-h1", symbol="BTCUSD", source="CRYPTO_PERP")
+    assert evaluate_zone_orderflow(btc_zone, btc, symbol="BTCUSD", now=NOW)["state"] == "SUPPORTIVE"
+    assert evaluate_zone_orderflow(btc_zone, btc, symbol="XAUUSD", now=NOW)["state"] == "NO_DATA"
