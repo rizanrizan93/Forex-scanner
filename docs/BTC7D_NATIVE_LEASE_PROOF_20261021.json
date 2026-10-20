@@ -1,0 +1,102 @@
+{
+  "audit_run": 39510945722,
+  "audit_job": 118931517351,
+  "status": "completed",
+  "conclusion": "success",
+  "method": "Two read-only snapshots; no WebSocket probe, no lease acquisition, no service restart or database writes",
+  "samples": [
+    {
+      "observed_unix": 1792536637.2296922,
+      "tokens_match": true,
+      "primary_active_expected_account": [
+        {
+          "namespace": "RZEF245",
+          "symbol": "EURUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 10.32,
+          "expires_in_s": 34.68
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 6.32,
+          "expires_in_s": 38.68
+        }
+      ],
+      "btc_leases": [
+        {
+          "namespace": "RZBTC7D130",
+          "symbol": "BTCUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 11.29,
+          "expires_in_s": 33.71
+        }
+      ],
+      "btc_checkpoints": [
+        {
+          "namespace": "RZBTC7D130",
+          "symbol": "BTCUSD",
+          "server_revision": 2,
+          "client_revision": 2,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        }
+      ]
+    },
+    {
+      "observed_unix": 1792536656.1182904,
+      "tokens_match": true,
+      "primary_active_expected_account": [
+        {
+          "namespace": "RZEF245",
+          "symbol": "EURUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 8.21,
+          "expires_in_s": 36.79
+        },
+        {
+          "namespace": "RZXRC1",
+          "symbol": "XAUUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 5.19,
+          "expires_in_s": 39.81
+        }
+      ],
+      "btc_leases": [
+        {
+          "namespace": "RZBTC7D130",
+          "symbol": "BTCUSD",
+          "account_matches_expected": true,
+          "active": true,
+          "last_touch_age_s": 7.19,
+          "expires_in_s": 37.81
+        }
+      ],
+      "btc_checkpoints": [
+        {
+          "namespace": "RZBTC7D130",
+          "symbol": "BTCUSD",
+          "server_revision": 2,
+          "client_revision": 2,
+          "quarantined": false,
+          "exit_pending": false,
+          "sending": false
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Lease updates prove at least one active client per identity, not which displayed cTrader instance owns it.",
+    "No direct native FeedReady/RecoveryReady/EnableTrading telemetry in this audit; do not claim trade eligibility.",
+    "Exact prior BTC rejection code was not logged by the native binary, so do not invent it."
+  ],
+  "runtime_changes": false,
+  "orders_sent": false
+}
