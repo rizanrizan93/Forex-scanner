@@ -262,4 +262,4 @@ Perubahan kas dan net fill yang closed direkonsiliasi secara terpisah. Pada inpu
 | 2026-09 | -332,696.17 | 13,691,430.96 | -336,749.36 | 17,561,166.86 |
 | 2026-10 | 477,276.32 | 14,168,707.28 | 482,107.37 | 18,043,274.23 |
 
-Ledger asli, raw replay, diff, seluruh CSV serta bukti build/tes ada dalam ZIP pendamping. Hash seluruh deliverable dan source riset ada pada DELIVERY_SHA256.json.
+Ledger asli, raw replay, diff, seluruh CSV serta bukti build/tes ada dalam ZIP pendamping. Hash berkas unduhan ada pada DELIVERY_SHA256.json; hash anggota ZIP termasuk source riset ada pada MEMBER_SHA256.json.
