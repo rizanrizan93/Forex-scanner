@@ -1,4 +1,4 @@
-name: BTC 7D lease and routing audit
+name: BTC VPS security and live connectivity audit
 on:
   push:
     branches: [fix/btc7d-bridge-connectivity-20261021]
@@ -11,12 +11,12 @@ concurrency:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Read-only lease and route audit
+      - name: SSH audit without acquiring live leases
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
@@ -33,11 +33,10 @@ jobs:
           target=Rizanrizan@202.74.74.172
           remote="/home/Rizanrizan/btc7d-audit-${GITHUB_RUN_ID}"
           ssh "${opts[@]}" "$target" "umask 077; mkdir -p '$remote'"
-          scp "${opts[@]}" bridge_repair_btc/{audit_btc.py,lease_audit.py} "$target:$remote/"
-          ssh "${opts[@]}" "$target" "sudo -n python3 '$remote/lease_audit.py'" | tee BTC_LEASE_FIRST.json
-          sleep 15
-          ssh "${opts[@]}" "$target" "sudo -n python3 '$remote/lease_audit.py'" | tee BTC_LEASE_SECOND.json
+          scp "${opts[@]}" bridge_repair_btc/{audit_btc.py,lease_audit.py,security_audit.py} "$target:$remote/"
+          ssh "${opts[@]}" "$target" "sudo -n /home/Rizanrizan/rizan-btc7d130/venv/bin/python '$remote/security_audit.py'" | tee BTC_SECURITY_AND_NATIVE_AUDIT.json
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: BTC7D-LEASE-AUDIT
-          path: BTC_LEASE_*.json
+          name: BTC7D-SECURITY-NATIVE-AUDIT
+          path: BTC_SECURITY_AND_NATIVE_AUDIT.json
