@@ -77,6 +77,30 @@ def render_snapshot(snapshot):
             elif phase in {'KONFLIK_H1_H4','KONFLIK_STRUKTUR_H1_H2_H4','LEWATI_BATAS_SKENARIO','KONFIRMASI_BATAL','TEMBUS_SEMENTARA_TUNGGU_TF_ASAL','ZONA_MELEMAH_TUNGGU_BASIS_BARU'}:st.warning(label)
             else:st.write('**'+label+'**')
             st.metric('Area acuan '+z['timeframe'],f"{z['low']:,.2f}–{z['high']:,.2f}")
+            candidate=plan.get('candidate_a') or {}
+            if candidate.get('model')=='CANDIDATE_A_TP1R_WATCH':
+                state=candidate.get('state','WAIT')
+                st.markdown('##### Kandidat A · TP 1R · riset manual')
+                if state=='WATCH':
+                    st.info('WATCH — filter D1 countertrend, first touch ≤12 jam, reclaim M15 dan BOS M5 ≤30 menit terpenuhi. **Ini bukan izin order.**')
+                    st.caption('Level berikut adalah referensi dari close M5, bukan harga bid/ask fill broker.')
+                    c1,c2,c3=st.columns(3)
+                    c1.metric('M5 referensi',f"{candidate['entry_reference']:,.2f}")
+                    c2.metric('SL skenario',f"{candidate['sl_reference']:,.2f}")
+                    c3.metric('TP 1R skenario',f"{candidate['tp_1r_reference']:,.2f}")
+                else:
+                    st.caption('Kandidat A: WAIT · '+str(candidate.get('reason','DATA_TIDAK_TERSEDIA')).replace('_',' '))
+                if candidate.get('first_touch_at'):
+                    st.caption('First touch '+wib(candidate['first_touch_at'])+
+                               ' · usia zona saat touch '+str(candidate.get('zone_age_at_first_touch_minutes'))+' menit')
+                if candidate.get('d1_closed_at'):
+                    st.caption('D1 EMA20/50 ('+str(candidate.get('d1_bias'))+
+                               ') · candle selesai '+wib(candidate['d1_closed_at'])+
+                               ' · EMA20 '+str(candidate.get('ema20'))+
+                               ' / EMA50 '+str(candidate.get('ema50')))
+                if candidate.get('confirmation_lag_minutes') is not None:
+                    st.caption('Touch → close M5 '+str(candidate['confirmation_lag_minutes'])+' menit · batas 30 menit')
+                st.caption('PF R satu-posisi TP1R historis ≈1,163 (2019–Mar 2026), bootstrap 95% 0,934–1,433. Belum terbukti edge live; tidak terhubung ke cBot.')
             st.caption('Terbentuk '+wib(z['available_at'])+' · '+('belum ada retest teramati' if z['touch_count']==0 else f"{z['touch_count']} episode retest teramati")
                        +' · sumber hitung '+str(z.get('touch_count_source') or 'SOURCE_TF'))
             if z.get('touch_count',0)==2:
@@ -117,7 +141,7 @@ def render_snapshot(snapshot):
             for tf in ['M15','M5']:
                 refs=[x for x in plan['refinements'] if x['timeframe']==tf]
                 if refs:st.caption(tf+' refinement: '+', '.join(f"{x['low']:,.2f}–{x['high']:,.2f}" for x in refs[:2]))
-    st.caption('Acuan utama: H1 / H2 terkonfirmasi irisan H1; H4 fallback struktural. H12/D1/W1 konteks besar, bukan trigger. Reclaim M15 dan break M5 tetap wajib untuk referensi manual. PF bruto historis bukan estimasi laba live.')
+    st.caption('Acuan H1/H2/H4 + WATCH Kandidat A: D1 EMA20/50 selesai dan countertrend, first touch ≤12 jam, reclaim M15 dan break M5 ≤30 menit dari first touch. H12/D1/W1 tetap konteks, bukan sinyal order.')
     with st.expander('Peta semua timeframe (H1/H2/H4/H12/D1/W1/M15/M5) dan usia data',expanded=False):
         rows=[{'TF':z['timeframe'],'Arah':z['direction'],'Bawah':round(z['low'],2),'Atas':round(z['high'],2),
             'Batas skenario':round(z['invalidation'],2),'Posisi':z['position'],'Lifecycle':z.get('lifecycle'),'Risiko break':z.get('risk_state'),
