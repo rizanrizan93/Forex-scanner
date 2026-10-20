@@ -1,0 +1,109 @@
+{
+  "experiment": "RZ-PROFIT-EXIT-V3-20261021",
+  "role": "RESEARCH_ONLY",
+  "entry": "V2 H1_SD absorption_early unchanged; all entry thresholds, original SL, initial risk distance unchanged",
+  "risk": "UnitR per initial risk; no risk/leverage increase or compounding; no account return claim",
+  "training_days": [
+    "2024-02-01",
+    "2024-03-01"
+  ],
+  "previously_seen_diagnostic_days": [
+    "2024-04-01",
+    "2024-05-01"
+  ],
+  "new_validation_days": [
+    "2024-07-01",
+    "2024-08-01",
+    "2024-10-01",
+    "2024-11-01"
+  ],
+  "new_book_days": [
+    "2024-06-28",
+    "2024-06-29",
+    "2024-06-30",
+    "2024-07-01",
+    "2024-07-29",
+    "2024-07-30",
+    "2024-07-31",
+    "2024-08-01",
+    "2024-09-28",
+    "2024-09-29",
+    "2024-09-30",
+    "2024-10-01",
+    "2024-10-29",
+    "2024-10-30",
+    "2024-10-31",
+    "2024-11-01"
+  ],
+  "new_dates_reason": "First weekday-of-month samples with public trade tape; exclude June/Sep/Dec firstdays that fall on weekend; convenience sample, not continuous or random",
+  "new_dates_status": "Locked before downloading/replaying new outcomes; not globally untouched historical certification",
+  "exit_variants": [
+    {
+      "id": "BASE_1R_60",
+      "tp_R": 1,
+      "hold_min": 60
+    },
+    {
+      "id": "TP15_60",
+      "tp_R": 1.5,
+      "hold_min": 60
+    },
+    {
+      "id": "TP2_120",
+      "tp_R": 2,
+      "hold_min": 120
+    },
+    {
+      "id": "STRUCT_CAP2_120",
+      "tp_R": 2,
+      "hold_min": 120,
+      "structural_cap": true
+    },
+    {
+      "id": "PARTIAL_1R_2R_120",
+      "tp_R": 2,
+      "hold_min": 120,
+      "partial_at_R": 1,
+      "partial_fraction": 0.5
+    },
+    {
+      "id": "BE_AFTER1R_TP2_120",
+      "tp_R": 2,
+      "hold_min": 120,
+      "be_after_R": 1
+    },
+    {
+      "id": "TRAIL075_AFTER1R_TP2_120",
+      "tp_R": 2,
+      "hold_min": 120,
+      "trail_after_R": 1,
+      "trail_distance_R": 0.75
+    },
+    {
+      "id": "TIME_PROTECT_TP2_120",
+      "tp_R": 2,
+      "hold_min": 120,
+      "protect_after_min": 30,
+      "required_mfe_R": 0.5
+    }
+  ],
+  "structural_rule": "Nearest opposing H1 boundary already known at touch, if forward of actual entry; target=min(2R,roomR), else fallback2R. No future target movement. Record fallback count.",
+  "execution": "V2 quote model1s; BUYask/SELLbid; delay1s; quote-triggered exits at executable sampled quote; no full parity",
+  "be_rule": "Move stop to entry price only after1R observed, effective next quote; not cost-neutral",
+  "trail_rule": "After1R, stop=max(prior stop, prior executable peak minus0.75R); update only after current quote exit checks, effective next quote",
+  "partial_rule": "Close half at first observed1R executable quote and half at2R/stop/timeout. Charge proportional exit fees and financing per closed fraction; charge entry once.",
+  "time_protect_rule": "At30min, if observed MFE<0.5R close; otherwise original120min cap. Stop and TP checked first.",
+  "fees_bps_per_side": 5.5,
+  "slippage_bps_per_side": 1,
+  "financing_bps_notional_per_day": 3,
+  "cost_multipliers": [
+    1,
+    1.5,
+    2
+  ],
+  "spread": "Observed bid/ask, never multiplied",
+  "selection": "Use only Feb/Mar TRAIN one-position results: require n>=5, positive meanR and PF>1 under1x and1.5x; rank by meanR per common opportunity under1.5x, tie max cumulativeR DD then id. If none qualify, select least-bad train diagnostic by same ranking and mark failed training; never relabel as qualified.",
+  "freeze_selection_before_new_results": true,
+  "paired_comparison": "All variants same entry events, plus identical-common-complete event pairs vsBASE. One-position schedule independent by variant; report skipped overlaps and censoring.",
+  "no_production_changes": true
+}

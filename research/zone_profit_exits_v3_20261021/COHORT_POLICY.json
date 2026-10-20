@@ -1,0 +1,8 @@
+{
+  "stage": "Before calculating V3 exit outcomes or new-date selection results",
+  "primary_cohort": "All entry opportunities must have a full120minute quote window after entry, with no missing quote in that window. This is a common offline data-availability cohort, not an entry filter executable live.",
+  "reason": "Compare all exit rules on the same fully observable opportunities; prevent horizon-dependent right-edge exclusions from creating apparent gains.",
+  "legacy_control": "Re-run V2 simulate at1R/60min unchanged and compare with its archived event ledger; it censors when requested horizon exceeds dataset end even if an earlier terminal event might have occurred. V3 primary cohort avoids that boundary. No claim of full parity.",
+  "secondary": "Retain all signals and excluded reasons, full exit model rows, overlap skips and fill ledger. Do not erase censoring failures.",
+  "no_frozen_mutation": true
+}

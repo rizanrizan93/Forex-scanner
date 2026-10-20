@@ -1,0 +1,21 @@
+test_baseline_matches_v2_cash_model (test_profit_engine.Tests.test_baseline_matches_v2_cash_model) ... ok
+test_common_cohort_rejects_future_missing_window (test_profit_engine.Tests.test_common_cohort_rejects_future_missing_window) ... ok
+test_partial_entry_fee_charged_once (test_profit_engine.Tests.test_partial_entry_fee_charged_once) ... ok
+test_partial_then_stop_is_not_full_profit (test_profit_engine.Tests.test_partial_then_stop_is_not_full_profit) ... ok
+test_partial_weighted_profit (test_profit_engine.Tests.test_partial_weighted_profit) ... ok
+test_price_break_even_still_pays_costs (test_profit_engine.Tests.test_price_break_even_still_pays_costs) ... ok
+test_right_edge_is_censored_not_forced_profit (test_profit_engine.Tests.test_right_edge_is_censored_not_forced_profit) ... ok
+test_selection_never_uses_validation_profit (test_profit_engine.Tests.test_selection_never_uses_validation_profit) ... TRAIN SELECTION {"policy": "A", "training_screen_pass": true, "n": 6, "train_mean_R_1x": 0.2, "train_mean_R_15x": 0.2, "rank_profit_per_opportunity_15x": 0.2, "rank_DD_15x": 1, "selection_source": "Feb/Mar training only", "new_validation_results_seen_at_selection": false, "not_live_qualified": true, "protocol_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"}
+ok
+test_short_side_sign (test_profit_engine.Tests.test_short_side_sign) ... ok
+test_stop_gap_uses_worse_quote (test_profit_engine.Tests.test_stop_gap_uses_worse_quote) ... ok
+test_stress_monotone_same_fill (test_profit_engine.Tests.test_stress_monotone_same_fill) ... ok
+test_structural_cap_and_fallback (test_profit_engine.Tests.test_structural_cap_and_fallback) ... ok
+test_time_protect_at30min (test_profit_engine.Tests.test_time_protect_at30min) ... ok
+test_time_protect_preserves_trade_if_mfe_sufficient (test_profit_engine.Tests.test_time_protect_preserves_trade_if_mfe_sufficient) ... ok
+test_trailing_effective_next_quote_and_future_invariant (test_profit_engine.Tests.test_trailing_effective_next_quote_and_future_invariant) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.064s
+
+OK

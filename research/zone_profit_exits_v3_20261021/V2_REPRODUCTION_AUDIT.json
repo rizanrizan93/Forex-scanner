@@ -1,0 +1,14 @@
+{
+  "matched_signal_events": 13,
+  "status_match": true,
+  "max_absolute_errors": {
+    "entry_px": 0.0,
+    "exit_px": 0.0,
+    "gross_R": 0.0,
+    "cost_R": 0.0,
+    "net_R_1x": 0.0,
+    "net_R_1.5x": 0.0,
+    "net_R_2x": 0.0
+  },
+  "new_base_exit_matches_original_model": true
+}

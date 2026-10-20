@@ -1,0 +1,5 @@
+2024-02-01 H1 touches 3 signals 3
+2024-03-01 H1 touches 4 signals 4
+2024-04-01 H1 touches 4 signals 4
+2024-05-01 H1 touches 5 signals 5
+TRAIN SELECTION {"policy": "BASE_1R_60", "training_screen_pass": true, "n": 6, "train_mean_R_1x": 0.14563210407214064, "train_mean_R_15x": 0.05812452439418392, "rank_profit_per_opportunity_15x": 0.049821020909300504, "rank_DD_15x": 0.7061886443264295, "selection_source": "Feb/Mar training only", "new_validation_results_seen_at_selection": false, "not_live_qualified": true, "protocol_sha256": "ca8d66734a1fce0242761d920a327c0b0cfa8882e6ca1a96bd253dc7fe8dba20"}

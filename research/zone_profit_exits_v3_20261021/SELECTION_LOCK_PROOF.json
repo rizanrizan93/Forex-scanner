@@ -1,0 +1,6 @@
+{
+  "selection_sha256": "c55ae35a0a3bb8d56fdd0a0ce5c0578924769658204b642fb0ecdab202fa5f50",
+  "new_outcome_replay_started": false,
+  "entry_and_protocol_locked": true,
+  "purpose": "Verify selection unchanged after new-data replay; repository pre-validation commit provides additional provenance."
+}
