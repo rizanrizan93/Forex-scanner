@@ -1,0 +1,6 @@
+{
+  "TradingDefault": false,
+  "Assembly": "RizanXauEurBtcPortfolio, Version=1.2.2.0, Culture=neutral, PublicKeyToken=null",
+  "Robot": "RizanXauEurBtcLeverageFollow",
+  "CompilerWarningsErrors": 0
+}

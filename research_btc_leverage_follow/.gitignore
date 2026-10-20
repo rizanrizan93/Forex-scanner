@@ -1,0 +1,17 @@
+work/vendor/
+work/builder/
+work/native/
+work/replay/*.dll
+work/replay/*.runtimeconfig.json
+work/replay/*.rsp
+work/replay/*.log
+work/validation/*/*.dll
+work/validation/*/*.json
+work/validation/*/*.rsp
+work/validation/*/*.log
+work/audit/*.dll
+work/audit/*.json
+work/audit/*.rsp
+work/audit/*.log
+results/
+*tape.json
