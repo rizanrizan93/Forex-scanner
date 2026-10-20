@@ -1,4 +1,4 @@
-name: BTC 7D connectivity repair
+name: BTC 7D lease and routing audit
 on:
   push:
     branches: [fix/btc7d-bridge-connectivity-20261021]
@@ -9,32 +9,14 @@ concurrency:
   group: rizan-cbot-bridge-production-ssh
   cancel-in-progress: false
 jobs:
-  repair:
+  audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Verify immutable bridge and seed; run original protocol tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m pip install -r portfolio_7day_frozen/bridge/requirements.txt
-          python - <<'PY'
-          import base64,gzip,hashlib,pathlib
-          p=pathlib.Path('portfolio_7day_frozen/bootstrap')
-          b=gzip.decompress(base64.b64decode((p/'BITSTAMP_H1_SEED.csv.gz.b64').read_text()))
-          assert hashlib.sha256(b).hexdigest()=='b8cc6dece79c77a2ad92c85f32cb37f45f5c003cc91910fe442c350fe7def4f4'
-          (p/'BITSTAMP_H1_SEED.csv').write_bytes(b)
-          PY
-          python -m py_compile bridge_repair_btc/deploy_btc.py
-          cd portfolio_7day_frozen/bridge
-          python -m unittest test_bridge -v
-      - name: Install isolated BTC backend; add route; verify TLS feed
+      - name: Read-only lease and route audit
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
@@ -49,15 +31,11 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
           opts=(-i "$ssh_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=20)
           target=Rizanrizan@202.74.74.172
-          remote="/home/Rizanrizan/btc7d-incoming-${GITHUB_RUN_ID}"
+          remote="/home/Rizanrizan/btc7d-audit-${GITHUB_RUN_ID}"
           ssh "${opts[@]}" "$target" "umask 077; mkdir -p '$remote'"
-          scp "${opts[@]}" portfolio_7day_frozen/bridge/{server.py,store_base.py,timestamps.py,requirements.txt} portfolio_7day_frozen/bootstrap/BITSTAMP_H1_SEED.csv bridge_repair_btc/deploy_btc.py "$target:$remote/"
-          ssh "${opts[@]}" "$target" "sudo -n python3 '$remote/deploy_btc.py' --bundle '$remote' --sha '${GITHUB_SHA}'" | tee BTC_DEPLOYMENT_VERIFICATION.json
-          ssh "${opts[@]}" "$target" 'python3 -' < bridge_repair_btc/audit_btc.py | tee BTC_VPS_AFTER.json
+          scp "${opts[@]}" bridge_repair_btc/{audit_btc.py,lease_audit.py} "$target:$remote/"
+          ssh "${opts[@]}" "$target" "sudo -n python3 '$remote/lease_audit.py'" | tee BTC_LEASE_AUDIT.json
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: BTC7D-REPAIR-VERIFICATION
-          path: |
-            BTC_DEPLOYMENT_VERIFICATION.json
-            BTC_VPS_AFTER.json
+          name: BTC7D-LEASE-AUDIT
+          path: BTC_LEASE_AUDIT.json
