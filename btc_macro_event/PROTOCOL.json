@@ -1,0 +1,19 @@
+{
+  "baseline_source_commit": "1d6ad83f285f293b103342073b637fa16e597fb9",
+  "variants": [
+    "BASE",
+    "MACRO",
+    "EVENT",
+    "BOTH"
+  ],
+  "macro": "DFII10 latest observation available under conservative 2-US-federal-business-day lag; delta vs 20 prior nonmissing observations. BUY delta<=0, SELL delta>=0. Reject missing/stale >10 days. No threshold search.",
+  "event": "Block new entry from 1min after public FOMC rate decision through +24h. No pre-event knowledge, no outcome/surprise/direction used. 63 regular decisions/emergency rate cuts; not CPI/NFP or every Fed announcement.",
+  "macro_vintage_certified": false,
+  "limitation": "Current-vintage historical DFII10, may contain revisions; lag prevents same-day access but is not ALFRED point-in-time certification. XAU macro reconstruction unchanged and uncertified. Diagnostic OHLC paths, not tick parity.",
+  "parameters": "No entry/SL/TP/risk/leverage/calendar changes; all three instruments share same account and execution. BTC10x XAU/EUR200x inherited frozen baseline.",
+  "data_sha256": {
+    "real_yield.csv": "d9fe7489314b15699ab1df14bcc8194933b86f9d66c6743222dcf109d10d013d",
+    "fred_daily.csv": "8260fdb609efba1c17e5753e0fd4ab95e407b9182476ad78b5083cf927f49471",
+    "fomc.csv": "fa6add9d6783038290b8be585e5d3bb7ce2dad0122b68bd03df678da8d4fc584"
+  }
+}
