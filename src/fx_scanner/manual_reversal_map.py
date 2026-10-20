@@ -232,6 +232,88 @@ def reversal_phase(zone, frames, price, now):
     return {**out,'phase':'MENUNGGU_BREAK_M5' if timestamp(now)<=closed+pd.Timedelta(minutes=60) else 'RECLAIM_LAMA_TUNGGU_ULANG'}
 
 
+
+def candidate_a_watch(zone, frames, price, now, phase):
+    """Candidate A / TP1R diagnostic, never an order or calibrated probability.
+
+    Origin → earliest observable M1 first-touch <=12h; completed M15
+    reclaim → subsequent M5 BOS <=30m from first touch; completed D1
+    EMA20/EMA50 must be available and opposite to zone direction.
+    'entry_reference' is the M5 close, *not* a bid/ask executable fill.
+    """
+    out={'model':'CANDIDATE_A_TP1R_WATCH', 'state':'WAIT',
+         'reason':'BELUM_SENTUH', 'first_touch_at':None,
+         'zone_age_at_first_touch_minutes':None, 'confirmation_lag_minutes':None,
+         'd1_bias':'UNAVAILABLE', 'd1_closed_at':None, 'ema20':None,
+         'ema50':None, 'entry_reference':None, 'sl_reference':None,
+         'tp_1r_reference':None, 'rr_reference':1.0,
+         'execution_authority':False, 'execution_influence':False,
+         'probability':None}
+    now=timestamp(now); available=timestamp(zone['available_at'])
+    m1=frames.get('M1',pd.DataFrame())
+    if m1.empty or m1.iloc[0].timestamp > available:
+        return {**out,'reason':'RIWAYAT_M1_TIDAK_LENGKAP'}
+    observed=m1.loc[(m1.timestamp>=available)&
+        (m1.high>=zone['low'])&(m1.low<=zone['high'])]
+    if observed.empty:return out
+    touched=observed.iloc[0].timestamp+pd.Timedelta(minutes=1)
+    age=(touched-available).total_seconds()/60.
+    out.update(first_touch_at=touched.isoformat(),
+               zone_age_at_first_touch_minutes=round(age,1))
+    if age>720:return {**out,'reason':'FIRST_TOUCH_LEBIH_12_JAM'}
+    if zone.get('risk_state')=='PENDING_PARENT_CLOSE' or zone.get('lifecycle')=='DEGRADED' or zone.get('touch_count',0)>=3:
+        return {**out,'reason':'ZONA_TIDAK_LAYAK'}
+    if zone.get('major_conflict'):
+        return {**out,'reason':'KONFLIK_STRUKTUR'}
+    if (price-zone['invalidation'])*(1 if zone['direction']=='BUY' else -1)<=0:
+        return {**out,'reason':'INVALIDASI_TERTEMBUS'}
+
+    d1=frames.get('D1',pd.DataFrame())
+    reference=timestamp(phase.get('confirmation_m5_at') or now)
+    if d1.empty:
+        return {**out,'reason':'D1_BELUM_SIAP'}
+    known=d1.loc[d1.timestamp+pd.Timedelta(days=1)<=reference].copy()
+    if len(known)<50:
+        return {**out,'reason':'D1_EMA50_BELUM_SIAP'}
+    closed=known.iloc[-1].timestamp+pd.Timedelta(days=1)
+    if not _fresh_frame(known,'D1',reference):
+        return {**out,'reason':'D1_KEDALUWARSA'}
+    ema20=known.close.ewm(span=20,adjust=False,min_periods=20).mean().iloc[-1]
+    ema50=known.close.ewm(span=50,adjust=False,min_periods=50).mean().iloc[-1]
+    if not (math.isfinite(ema20) and math.isfinite(ema50)):
+        return {**out,'reason':'D1_EMA50_BELUM_SIAP'}
+    bias='BULLISH' if ema20>ema50 else 'BEARISH' if ema20<ema50 else 'FLAT'
+    out.update(d1_bias=bias,d1_closed_at=closed.isoformat(),
+               ema20=round(float(ema20),5),ema50=round(float(ema50),5))
+    opposite=(zone['direction']=='BUY' and bias=='BEARISH') or (
+              zone['direction']=='SELL' and bias=='BULLISH')
+    if not opposite:return {**out,'reason':'D1_TIDAK_BERLAWANAN'}
+    if phase.get('phase')!='KONFIRMASI_STRUKTUR':
+        return {**out,'reason':'MENUNGGU_KONFIRMASI_M15_M5'}
+    m15_at=phase.get('rejection_m15_at')
+    m5_at=phase.get('confirmation_m5_at')
+    if not m15_at or not m5_at:
+        return {**out,'reason':'KONFIRMASI_TIDAK_LENGKAP'}
+    m15_at=timestamp(m15_at);m5_at=timestamp(m5_at)
+    lag=(m5_at-touched).total_seconds()/60.
+    out['confirmation_lag_minutes']=round(lag,1)
+    if not (touched<=m15_at<m5_at<=now):
+        return {**out,'reason':'URUTAN_WAKTU_TIDAK_VALID'}
+    if lag>30:return {**out,'reason':'KONFIRMASI_LEBIH_30_MENIT'}
+    entry=phase.get('confirmation_reference')
+    if entry is None or not math.isfinite(float(entry)):
+        return {**out,'reason':'REFERENSI_ENTRY_TIDAK_VALID'}
+    entry=float(entry); sl=float(zone['invalidation'])
+    side=1 if zone['direction']=='BUY' else -1
+    risk=(entry-sl)*side
+    if risk<=0:return {**out,'reason':'RISIKO_TIDAK_VALID'}
+    return {**out,'state':'WATCH','reason':'SEMUA_FILTER_TERKONFIRMASI',
+            'entry_reference':round(entry,5),
+            'sl_reference':round(sl,5),
+            'tp_1r_reference':round(entry+side*risk,5)}
+
+
+
 def build_plans(zones,frames,price,now):
     plans=[]
     for side in ['BUY','SELL']:
@@ -262,7 +344,9 @@ def build_plans(zones,frames,price,now):
                   for tf in CONTEXT_TFS}
         refinements=[z for z in zones if z['direction']==side and z['timeframe'] in {'M15','M5'} and _fresh_frame(frames.get(z['timeframe'],pd.DataFrame()),z['timeframe'],now) and max(z['low'],anchor['low'])<min(z['high'],anchor['high'])]
         phase=reversal_phase(anchor,frames,price,now)
+        candidate=candidate_a_watch(anchor,frames,price,now,phase)
         plans.append({'direction':side,'anchor':anchor,'context_h4':context,
+             'candidate_a':candidate,
              'contexts_htf':contexts,
             'refinements':refinements,'target_reference':anchor['target_structural'],
             'target_distance_usd':abs(anchor['target_structural']-price) if anchor['target_structural'] is not None else None,
@@ -285,6 +369,7 @@ def evaluate(bars, *, now=None):
     if not enriched.get('H12') and enriched.get('H4'):
         enriched['H12']=derive_h12_from_h4(enriched['H4'],now)
     frames={tf:frame(enriched.get(tf,[]),tf,now) for tf in TF_PRIORITY}
+    frames['M1']=m1
     raw=[z for tf in frames if tf!='M1' for z in detect(enriched.get(tf,[]),tf,now)]
     zones=annotate_intraday_zone_risk(project(raw,price),frames['M15'],price)
     age=(now-close_time).total_seconds();fresh=0<=age<=420
@@ -323,6 +408,23 @@ def validate(payload, *, now=None):
         if anchor.get('zone_id') not in indexed or anchor!=indexed[anchor['zone_id']] or anchor.get('timeframe') not in ANCHOR_TFS or not anchor.get('eligible') or plan.get('direction')!=anchor.get('direction'):
             raise ValueError('Acuan utama harus H4/H1 yang valid')
         if plan.get('execution_authority') is not False or plan.get('execution_influence') is not False or plan.get('probability') is not None:raise ValueError('Rencana manual tidak boleh mengatur eksekusi')
+        candidate=plan.get('candidate_a')
+        if candidate is not None:
+            if candidate.get('execution_authority') is not False or candidate.get('execution_influence') is not False or candidate.get('probability') is not None:
+                raise ValueError('Candidate A hanya referensi manual')
+            if candidate.get('state') not in {'WATCH','WAIT'} or candidate.get('model')!='CANDIDATE_A_TP1R_WATCH' or candidate.get('rr_reference')!=1.0:
+                raise ValueError('Kontrak Candidate A tidak valid')
+            if candidate.get('first_touch_at') and timestamp(candidate['first_touch_at'])>timestamp(p['as_of']):
+                raise ValueError('First touch masa depan')
+            if candidate.get('d1_closed_at') and timestamp(candidate['d1_closed_at'])>timestamp(p['as_of']):
+                raise ValueError('EMA menggunakan D1 masa depan')
+            if candidate['state']=='WATCH':
+                entry=candidate.get('entry_reference');sl=candidate.get('sl_reference');tp=candidate.get('tp_1r_reference')
+                if any(v is None or not math.isfinite(float(v)) for v in (entry,sl,tp)):
+                    raise ValueError('Level WATCH tidak valid')
+                side=1 if plan['direction']=='BUY' else -1
+                if (float(entry)-float(sl))*side<=0 or abs((float(tp)-float(entry))-(float(entry)-float(sl)))>1e-3:
+                    raise ValueError('Geometri TP 1R tidak valid')
         for field in ['rejection_m15_at','confirmation_m5_at']:
             if plan.get(field) and timestamp(plan[field])>timestamp(p['as_of']):raise ValueError('Konfirmasi dari masa depan')
         if plan.get('confirmation_m5_at') and (not plan.get('rejection_m15_at') or timestamp(plan['confirmation_m5_at'])<=timestamp(plan['rejection_m15_at'])):raise ValueError('Urutan konfirmasi tidak valid')

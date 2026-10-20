@@ -251,3 +251,81 @@ def test_h2_with_two_touches_can_be_near_anchor_but_requires_confirmation():
     assert chosen['anchor']['timeframe']=='H2'
     assert chosen['anchor']['touch_count']==2
     assert chosen['phase']!='KONFIRMASI_STRUKTUR'
+
+
+# Candidate A is a parallel manual research watch, NOT the legacy zone
+# phase, broker order path, or a calibrated reversal probability.
+def _candidate_a_case(*, side='BUY', ready=60, downtrend=True,
+                      touch_offset=25, formed_hours=5, confirm_offset=5):
+    from fx_scanner.manual_reversal_map import candidate_a_watch
+    now=pd.Timestamp('2026-10-20T12:00:00Z')
+    available=now-pd.Timedelta(hours=formed_hours)
+    z={'timeframe':'H1','direction':side,'low':98.,'high':100.,
+       'available_at':available.isoformat(),
+       'invalidation':97.9 if side=='BUY' else 100.1,
+       'lifecycle':'FRESH','touch_count':0,'major_conflict':False,
+       'risk_state':'NORMAL'}
+    m1_rows=[]
+    for dt in pd.date_range(available, now-pd.Timedelta(minutes=1),freq='min'):
+        crossing=(dt==now-pd.Timedelta(minutes=touch_offset))
+        m1_rows.append({'timestamp':dt.isoformat(),'open':101.,
+                        'high':101.5,
+                        'low':100.8 if not crossing else 99.,
+                        'close':101.})
+    # Make 50+ daily closed candles, with a monotonically trending EMA.
+    daily=pd.date_range(end=now.normalize()-pd.Timedelta(days=1),
+                        periods=ready,freq='D',tz='UTC')
+    d1_rows=[]
+    for i,dt in enumerate(daily):
+        level=150.-i if downtrend else 100.+i
+        d1_rows.append({'timestamp':dt.isoformat(),'open':level+.5,
+                        'high':level+1.,'low':level-1.,'close':level})
+    frames={'M1':frame(m1_rows,'M1',now),'D1':frame(d1_rows,'D1',now)}
+    confirm=now-pd.Timedelta(minutes=confirm_offset)
+    phase={'phase':'KONFIRMASI_STRUKTUR',
+           'rejection_m15_at':(confirm-pd.Timedelta(minutes=10)).isoformat(),
+           'confirmation_m5_at':confirm.isoformat(),
+           'confirmation_reference':101. if side=='BUY' else 97.}
+    return candidate_a_watch(z,frames,102. if side=='BUY' else 97.,now,phase)
+
+
+def test_candidate_a_watch_buy_short_d1_with_causal_first_touch():
+    result=_candidate_a_case()
+    assert result['state']=='WATCH'
+    assert result['reason']=='SEMUA_FILTER_TERKONFIRMASI'
+    assert result['d1_bias']=='BEARISH'
+    assert result['confirmation_lag_minutes']==19.  # first touch observed at closed M1
+    assert result['entry_reference']==101.
+    assert abs(result['tp_1r_reference']-104.1)<1e-6
+    assert result['execution_authority'] is False
+    assert result['execution_influence'] is False
+    assert result['probability'] is None
+
+
+def test_candidate_a_watch_sell_only_against_ready_bullish_d1():
+    result=_candidate_a_case(side='SELL',downtrend=False)
+    assert result['state']=='WATCH' and result['d1_bias']=='BULLISH'
+    assert abs(result['tp_1r_reference']-93.9)<1e-6
+
+
+def test_candidate_a_blocks_missing_and_same_direction_d1():
+    assert _candidate_a_case(ready=30)['reason']=='D1_EMA50_BELUM_SIAP'
+    assert _candidate_a_case(downtrend=False)['reason']=='D1_TIDAK_BERLAWANAN'
+
+
+def test_candidate_a_blocks_late_first_touch_and_late_confirmation():
+    assert _candidate_a_case(formed_hours=15)['reason']=='FIRST_TOUCH_LEBIH_12_JAM'
+    assert _candidate_a_case(touch_offset=50)['reason']=='KONFIRMASI_LEBIH_30_MENIT'
+
+
+def test_candidate_a_cannot_reuse_historical_confirmation_without_m1_coverage():
+    from fx_scanner.manual_reversal_map import candidate_a_watch
+    now=pd.Timestamp('2026-10-20T12:00Z')
+    zone={'available_at':(now-pd.Timedelta(days=20)).isoformat(),
+          'direction':'BUY','low':98.,'high':100.,
+          'invalidation':97.9,'lifecycle':'RETESTED'}
+    observed=frame([{'timestamp':(now-pd.Timedelta(minutes=20)).isoformat(),
+                    'open':99.,'high':100.,'low':98.,'close':99.}],'M1',now)
+    result=candidate_a_watch(zone,{'M1':observed},101.,now,{'phase':'KONFIRMASI_STRUKTUR'})
+    assert result['state']=='WAIT'
+    assert result['reason']=='RIWAYAT_M1_TIDAK_LENGKAP'

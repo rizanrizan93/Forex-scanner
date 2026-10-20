@@ -26,3 +26,21 @@ def test_stale_prices_are_hidden_instead_of_rendered_as_current_reference():
     app=render(p)
     assert not app.exception and not app.metric
     assert app.warning and 'kedaluwarsa' in app.warning[0].value
+
+
+def test_candidate_a_research_watch_shows_non_executable_1r_reference():
+    p=snapshot()
+    p['plans'][0]['candidate_a']={
+        'model':'CANDIDATE_A_TP1R_WATCH','state':'WATCH',
+        'reason':'SEMUA_FILTER_TERKONFIRMASI',
+        'first_touch_at':p['as_of'],'zone_age_at_first_touch_minutes':20,
+        'confirmation_lag_minutes':20,'d1_bias':'BEARISH',
+        'd1_closed_at':p['as_of'],'ema20':100.,'ema50':101.,
+        'entry_reference':102.,'sl_reference':97.9,'tp_1r_reference':106.1,
+        'rr_reference':1.0,'execution_authority':False,
+        'execution_influence':False,'probability':None}
+    app=render(p)
+    assert not app.exception
+    assert any('WATCH' in x.value and 'bukan izin order' in x.value for x in app.info)
+    assert any(x.label=='TP 1R skenario' for x in app.metric)
+    assert not app.button and not app.checkbox
