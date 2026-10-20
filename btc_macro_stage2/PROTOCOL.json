@@ -1,0 +1,9 @@
+{
+  "scope": "Data feasibility and conditional trade diagnostic ONLY; no new shared-wallet replay and no new trading rule deployed.",
+  "rules": {
+    "RISK_VETO": "Flag when side*NASDAQ100_20obs_return<0 AND side*VIX_5obs_change>0.",
+    "TRIPLE_VETO": "RISK_VETO plus side*DGS2_20obs_change>0."
+  },
+  "availability": "Two US federal business-day conservative lag; stale observation>10 calendar days invalid. Current-vintage not certified point-in-time.",
+  "evaluation": "Classify previously executed baseline BTC fills; arithmetic slice of old trades is NOT a replay of a new strategy. Cannot infer changed ending balance, DD or profitability."
+}

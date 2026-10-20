@@ -1,0 +1,38 @@
+{
+  "coverage": [
+    {
+      "series": "NASDAQ100",
+      "observations": 2206,
+      "first": "2018-01-02",
+      "last": "2026-10-09",
+      "lookback": 20
+    },
+    {
+      "series": "VIXCLS",
+      "observations": 2238,
+      "first": "2018-01-02",
+      "last": "2026-10-09",
+      "lookback": 5
+    },
+    {
+      "series": "DGS2",
+      "observations": 2194,
+      "first": "2018-01-02",
+      "last": "2026-10-09",
+      "lookback": 20
+    }
+  ],
+  "signals_checked": 107,
+  "all_three_inputs_available": 107,
+  "risk_veto_flags": 19,
+  "triple_veto_flags": 8,
+  "future_observation_access": 0,
+  "macro_vintage_certified": false,
+  "new_replay_executed": false,
+  "live_changed": false,
+  "raw_data_sha256": {
+    "rates.csv": "a17467930d23fce12cea4b95a3eb8d38a7e86d97d78f6f3fa6982e0379892f13",
+    "risk_close.csv": "e4e6eddabcfb0b2adc556a1cb550d42bae69af70ed311496edd291db909fd534",
+    "risk_daily.csv": "c101356812fe16352735049e2ad00001aac116b6768a9b6775e2feed0bb0afb8"
+  }
+}

@@ -1,0 +1,9 @@
+path,rule,group,trades,wins,mean_net_return_on_entry_notional_pct,warning
+A,risk_veto,flagged,17,11,0.7311547734343238,Conditional baseline slice; not a new replay or counterfactual portfolio result
+A,risk_veto,not_flagged,79,40,0.6158062018613569,Conditional baseline slice; not a new replay or counterfactual portfolio result
+A,triple_veto,flagged,7,3,0.19999499253822478,Conditional baseline slice; not a new replay or counterfactual portfolio result
+A,triple_veto,not_flagged,89,48,0.6705433275018329,Conditional baseline slice; not a new replay or counterfactual portfolio result
+B,risk_veto,flagged,17,11,0.7236973588822826,Conditional baseline slice; not a new replay or counterfactual portfolio result
+B,risk_veto,not_flagged,78,39,0.6116072888933523,Conditional baseline slice; not a new replay or counterfactual portfolio result
+B,triple_veto,flagged,7,3,0.1916587251649052,Conditional baseline slice; not a new replay or counterfactual portfolio result
+B,triple_veto,not_flagged,88,47,0.6666660518014311,Conditional baseline slice; not a new replay or counterfactual portfolio result
