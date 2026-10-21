@@ -46,17 +46,27 @@ command=docker+['run','--pull=never','--name',container,'--memory=4g','--cpus=2'
     '--mount','type=bind,src='+str(root)+',dst=/mnt/test',
     '-e','DOTNET_ROLL_FORWARD=Major',image_id]+args
 result={'case':case,'binary':manifest,'image':image_id,
-        'native_runtime':True,'ApiStubs':False,'cached_signals':False,
-        'live_command_invoked':False,'credential_exported':False,'timeout':False}
+        'execution_host':'isolated GitHub Actions test runner','native_runtime':True,'ApiStubs':False,'cached_signals':False,
+        'live_command_invoked':False,'credentials_in_public_output':False,'timeout':False}
 print('NATIVE_M1_LAUNCH '+json.dumps(case),flush=True)
 start=time.monotonic()
 try:
     with (root/'native.log').open('w') as f:
-        result['exit_code']=subprocess.run(command,stdout=f,stderr=subprocess.STDOUT,
-            timeout=case.get('timeout_seconds',1200)).returncode
+        process=subprocess.Popen(command,stdout=f,stderr=subprocess.STDOUT)
+        next_progress=0
+        while process.poll() is None:
+            elapsed=time.monotonic()-start
+            if elapsed>case.get('timeout_seconds',1200):raise subprocess.TimeoutExpired(command,case.get('timeout_seconds',1200))
+            if elapsed>=next_progress:
+                next_progress=elapsed+30
+                current=(root/'native.log').read_text(errors='replace')
+                percent=re.findall(r'Progress \| Backtesting \| ([0-9.]+) %',current)
+                print('NATIVE_M1_PROGRESS '+json.dumps({'seconds':round(elapsed),'percent':percent[-1] if percent else None}),flush=True)
+            time.sleep(2)
+        result['exit_code']=process.returncode
 except subprocess.TimeoutExpired:
     result['timeout']=True
-    subprocess.run(docker+['rm','-f',container],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    subprocess.run(docker+['kill',container],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 finally:
     (root/'password.pwd').unlink(missing_ok=True)
 result['elapsed_seconds']=round(time.monotonic()-start,2)
@@ -67,7 +77,7 @@ try:
     with tarfile.open(fileobj=proc.stdout,mode='r|') as tar:
         for member in tar:
             name=member.name
-            if member.isfile() and 'backtest' in name.lower() and name.lower().endswith(('.txt','.log','.json')) and member.size<50_000_000:
+            if member.isfile() and any(v in name.lower() for v in ('backtest','calgo','ctrader')) and name.lower().endswith(('.txt','.log','.json')) and member.size<50_000_000:
                 data=tar.extractfile(member).read()
                 out=root/'runtime-logs'/name
                 out.parent.mkdir(parents=True,exist_ok=True);out.write_bytes(data)
@@ -81,10 +91,12 @@ for f in (root/'data').rglob('*'):
     if f.is_file() and f.suffix.lower() in ('.txt','.log'):log+='\n'+f.read_text(errors='replace')
 # Export only bot-owned diagnostics. Never copy native account/auth lines.
 prefixes=('NATIVE_BACKTEST_','NATIVE_SIGNAL ','NATIVE_ORDER_RESULT ','RIZAN_BATCH ',
-          'RIZAN_STARTUP_OK','RIZAN_PORTFOLIO ready=','QUARANTINED:',
+          'RIZAN_STARTUP_OK','RIZAN_STATE status=','RIZAN_TRANSPORT symbol=','RIZAN_PORTFOLIO ready=','QUARANTINED:',
           'BROKER_CHILD_CONTRACT_MISMATCH','HEDGED_ACCOUNT_REQUIRED','USD_ACCOUNT_REQUIRED',
           'PORTFOLIO_ENGINE_START_ERROR','PORTFOLIO_ENGINE_START_FAILED')
 safe=[line for line in log.splitlines() if any(p in line for p in prefixes)]
+for v in secret_values:
+    if v:safe=[line.replace(v,'[REDACTED]') for line in safe]
 result['signal_count']=sum('NATIVE_SIGNAL ' in s for s in safe)
 result['order_requests']=sum('NATIVE_ORDER_RESULT ' in s for s in safe)
 result['accepted_orders']=sum('NATIVE_ORDER_RESULT ' in s and 'success=True' in s for s in safe)
