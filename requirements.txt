@@ -9,3 +9,4 @@ streamlit==1.62.0
 cryptography==42.0.8
 
 matplotlib==3.10.7
+httpx==0.28.1
