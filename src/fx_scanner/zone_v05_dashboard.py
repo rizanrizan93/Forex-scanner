@@ -11,7 +11,7 @@ def fetch():
     try:
         p=validate(read_json(BASE+BRANCH+PATH+'?v05='+str(bucket)))
         age=(datetime.now(UTC)-datetime.fromisoformat(p.get('evaluated_close_at') or p['as_of'])).total_seconds()
-        if p['fresh'] and age<=300:return p
+        if p['fresh'] and age<=300 and 'watch_zones' in p:return p
     except (ValueError,OSError,KeyError,TypeError):pass
     try:
         return validate(read_json(BASE+latest_commit(bucket//3)+PATH))

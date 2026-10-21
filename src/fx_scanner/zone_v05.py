@@ -20,7 +20,7 @@ INF=np.iinfo(np.int64).max
 def blank(now, reason='DATA_UNAVAILABLE'):
     return dict(contract=CONTRACT,symbol='XAUUSD',as_of=timestamp(now).isoformat(),
                 execution_authority=False,execution_influence=False,probability=None,
-                state='WAIT',reason=reason,plans=[],decisions=[],refresh_seconds=300,
+                state='WAIT',reason=reason,plans=[],decisions=[],watch_zones=[],refresh_seconds=300,
                 validation_status='DEVELOPMENT_CANDIDATE_NOT_INDEPENDENTLY_VALIDATED',
                 route_status='CONDITIONAL_NEXT_LEG_NOT_VALIDATED')
 
