@@ -33,7 +33,8 @@ jobs:
           dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/october-entry-audit-20261021/run-${GITHUB_RUN_ID}"
           target=Rizanrizan@202.74.74.172
           ssh "${opts[@]}" "$target" "umask 077; mkdir -p '$dest'"
-          scp "${opts[@]}" october_entry_audit/inventory.py "$target:$dest/"
+          scp "${opts[@]}" october_entry_audit/{inventory.py,extra_audit.py,lease_audit.py,audit_btc.py} "$target:$dest/"
+          ssh "${opts[@]}" "$target" "sudo -n nice -n 15 ionice -c 3 /home/Rizanrizan/rizan-btc7d130/venv/bin/python '$dest/extra_audit.py'" | tee EXTRA_AUDIT.log
           ssh "${opts[@]}" "$target" "nice -n 15 ionice -c 3 /home/Rizanrizan/rizan-btc7d130/venv/bin/python '$dest/inventory.py' '$dest'" | tee INVENTORY_EXPORT.log
           mkdir -p publish
           scp "${opts[@]}" "$target:$dest/*.json" "$target:$dest/BTC_H1.csv" publish/
@@ -47,3 +48,4 @@ jobs:
           path: |
             publish/
             INVENTORY_EXPORT.log
+            EXTRA_AUDIT.log
