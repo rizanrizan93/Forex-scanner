@@ -1,0 +1,50 @@
+name: Read native pending-signal evidence without changing state
+on:
+  push:
+    branches: [research/october-entry-audit-20261021]
+    paths: ['.github/workflows/october-state-diagnostics.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read exact persisted signal markers and current macro only
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          mkdir -p publish
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh -i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20 Rizanrizan@202.74.74.172 'sudo -n /usr/bin/python3 -' <<'PY' > publish/NATIVE_PENDING_SIGNAL_AND_CURRENT_MACRO.json
+          import datetime,json,pathlib,sqlite3,sys
+          sys.path.insert(0,'/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/october-order-readiness/run-39535798577')
+          import lease_audit
+          env=lease_audit.env('rizan-cbot-bridge.service');base=pathlib.Path('/home/Rizanrizan/Forex-scanner')
+          def path(name,default):
+              p=pathlib.Path(env.get(name,default));return p if p.is_absolute() else base/p
+          db=path('RIZAN_STATE_DB','state/rizan-checkpoints.sqlite');con=sqlite3.connect(db.resolve().as_uri()+'?mode=ro',uri=True);con.execute('PRAGMA query_only=ON')
+          out={'read_only':True,'observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'states':[],'macro_caution':'Current snapshot only; NOT evidence of what was delivered at a past signal time.'}
+          names=['EpochUtc','LastBarUtc','LastSignalUtc','LastRealExitUtc','XauPendingSignal','XauDay','XauDaySignals','XauResumeUtc','Quarantined','QuarantineReason','PendingLabel','PendingChildren','PeakEquity','Basket']
+          for key,version,raw in con.execute('SELECT key,version,state FROM checkpoints'):
+              if ':2147903:' not in key:continue
+              state=json.loads(raw);out['states'].append({'namespace':key.split(':')[0],'server_revision':version,'state':{k:state[k] for k in names if k in state}})
+          con.close();snap=path('RIZAN_SNAPSHOT_PATH','state/xau_macro_event_snapshot.json')
+          if snap.exists():
+              s=json.loads(snap.read_text());out['current_macro']={k:s.get(k) for k in ['ProducedUtc','CoverageFromUtc','CoverageToUtc','ForexFactoryOk','BlsOk','Dgs10','Dfii10']};out['current_snapshot_events_on_oct20']=[v for v in s.get('Events',[]) if str(v.get('AtUtc','')).startswith('2026-10-20')]
+          print(json.dumps(out,indent=2))
+          PY
+          cat publish/NATIVE_PENDING_SIGNAL_AND_CURRENT_MACRO.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-NATIVE-PENDING-SIGNAL-READONLY
+          path: publish/
