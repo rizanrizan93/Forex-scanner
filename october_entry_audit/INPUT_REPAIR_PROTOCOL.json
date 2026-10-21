@@ -1,30 +1,11 @@
 {
-  "experiment": "OCTOBER_ENTRY_AUDIT_PROXY_DATA_REPAIR",
-  "locked_before_any_completed_replay_outcomes": true,
-  "previous_warmup": "2026-07-01",
-  "current_warmup": "2026-09-01",
-  "reason": "Repeated unavailable/time-out warmup archives and runner egress; bounded one-month warmup still exceeds source 200 H1 minimum at first test day. This changes input seed, not entry/SL/TP/risk source. Not full native or broker parity.",
-  "data_egress": "VPS isolated research folder; live services untouched",
-  "initial_balance_usd": 100,
-  "topups": 0,
-  "periods_wib": [
-    [
-      "2026-10-01",
-      "2026-10-21 exclusive"
-    ],
-    [
-      "2026-10-10",
-      "2026-10-21 exclusive"
-    ]
-  ],
-  "macro_controls": [
-    "TECH_ALLOWED synthetic permissions; not reconstructed vintage macro",
-    "STRICT_NO_MACRO XAU blocked"
-  ],
-  "paths": [
-    "A",
-    "B"
-  ],
-  "btc_indicators": "Full pinned 2019 Bitstamp H1 seed; never shortened",
-  "frozen_strategy_source_unchanged": true
+  "created_utc": "2026-10-21T02:14:00Z",
+  "purpose": "Recover verified immutable FX prefix after upstream repeated 503; execute same bounded diagnostic",
+  "original_xau_sha256": "3fda8011082e2691b6ebe1a8a4da5fff8e4bf0fc07baf57506b7894d95fc1808",
+  "original_eur_sha256": "3c74ac5ccaeeac64f44693bc6bd4406e9225a9ef61dbb5f80756530f050506ec",
+  "prefix": "2026-09-01 through 2026-10-09 original OHLC; both original full CSV byte hashes verified locally",
+  "extension": "Dukascopy Oct10-Oct20, bid+ask, no missing weekday file tolerated, no imputation",
+  "macro": "Two explicitly synthetic gate controls only; not historical macro parity",
+  "baseline_source_unchanged": true,
+  "live_changes": false
 }

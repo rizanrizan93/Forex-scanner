@@ -1,4 +1,4 @@
-name: October frozen source proxy replay via VPS data
+name: October verified prefix hybrid proxy replay
 on:
   push:
     branches: [research/october-entry-audit-20261021]
@@ -54,8 +54,10 @@ jobs:
               for p in Path('resume').rglob('*.bi5'):t.add(p,arcname='publish/proxy_raw/'+p.name,recursive=False)
           PY
           ssh "${opts[@]}" "$target" "umask 077; mkdir -p '$dest'"
-          scp "${opts[@]}" october_entry_audit/prepare_proxy.py raw-cache.tar.gz "$target:$dest/"
-          ssh "${opts[@]}" "$target" "cd '$dest' && tar -xzf raw-cache.tar.gz && nice -n 15 ionice -c 3 /usr/bin/python3 prepare_proxy.py" | tee PROXY_INPUT.log
+          scp "${opts[@]}" october_entry_audit/prepare_hybrid.py raw-cache.tar.gz "$target:$dest/"
+          ssh "${opts[@]}" "$target" "mkdir -p '$dest/october_entry_audit/verified_inputs'"
+          scp "${opts[@]}" october_entry_audit/verified_inputs/*.gz "$target:$dest/october_entry_audit/verified_inputs/"
+          ssh "${opts[@]}" "$target" "cd '$dest' && tar -xzf raw-cache.tar.gz && nice -n 15 ionice -c 3 /usr/bin/python3 prepare_hybrid.py" | tee PROXY_INPUT.log
           ssh "${opts[@]}" "$target" "cd '$dest' && tar -czf PROXY_DATA.tar.gz publish"
           scp "${opts[@]}" "$target:$dest/PROXY_DATA.tar.gz" .
           tar -xzf PROXY_DATA.tar.gz
