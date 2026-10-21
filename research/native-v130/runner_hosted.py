@@ -97,11 +97,12 @@ prefixes=('NATIVE_BACKTEST_','NATIVE_SIGNAL ','NATIVE_ORDER_RESULT ','RIZAN_BATC
 safe=[line for line in log.splitlines() if any(p in line for p in prefixes)]
 for v in secret_values:
     if v:safe=[line.replace(v,'[REDACTED]') for line in safe]
+safe=list(dict.fromkeys(safe))
 result['signal_count']=sum('NATIVE_SIGNAL ' in s for s in safe)
 result['order_requests']=sum('NATIVE_ORDER_RESULT ' in s for s in safe)
 result['accepted_orders']=sum('NATIVE_ORDER_RESULT ' in s and 'success=True' in s for s in safe)
 result['quarantine_count']=sum('QUARANTINED:' in s for s in safe)
-result['startup_ok']=any('RIZAN_STARTUP_OK' in s for s in safe)
+result['startup_ok']=any('RIZAN_STARTUP_OK' in s or 'NATIVE_BACKTEST_BTC historical_prefix=True' in s for s in safe)
 result['summaries']=[s for s in safe if 'NATIVE_BACKTEST_SUMMARY' in s]
 result['recent_bot_logs']=safe[-15:]
 result['first_signals']=[s for s in safe if 'NATIVE_SIGNAL ' in s][:10]
@@ -126,6 +127,16 @@ if not result['native_report_created'] or result['timeout'] or result.get('exit_
 result['native_log_files']=[str(p.relative_to(root/'runtime-logs')) for p in (root/'runtime-logs').rglob('*') if p.is_file()]
 if (root/'report.json').is_file():
     report=json.loads((root/'report.json').read_text());result['report_keys']=list(report) if isinstance(report,dict) else str(type(report))
+    wanted={'balance','equity','netprofit','totaltrades','winningtrades','losingtrades','initialbalance','startingcapital','commission','spread','maxdrawdown','maxbalancedrawdown','maxequitydrawdown','profitfactor','grossprofit','grossloss'}
+    nums={}
+    def collect(obj,path=''):
+        if isinstance(obj,dict):
+            for k,v in obj.items():
+                norm=re.sub('[^a-z]','',k.lower())
+                if norm in wanted and isinstance(v,(int,float)):nums[path+k]=v
+                elif isinstance(v,dict):collect(v,path+k+'.')
+    collect(report.get('main',{}),'main.');collect(report.get('tradeStatistics',{}),'tradeStatistics.')
+    result['report_numeric_summary']=nums
 (root/'PUBLIC_RESULT.json').write_text(json.dumps(result,indent=2))
 print('NATIVE_M1_RESULT '+json.dumps(result),flush=True)
 raise SystemExit(0 if result.get('exit_code')==0 and not result['timeout'] else 2)
