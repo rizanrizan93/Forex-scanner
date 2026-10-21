@@ -1,4 +1,4 @@
-name: October FX input availability probe
+name: October frozen source price-proxy replay
 on:
   push:
     branches: [research/october-entry-audit-20261021]
@@ -7,25 +7,36 @@ permissions:
   contents: read
   actions: read
 jobs:
-  audit:
+  replay:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.426
       - uses: actions/download-artifact@v4
         with:
           name: RIZAN-OCTOBER-ENTRY-AUDIT
-          run-id: 39528352854
+          run-id: 39528092818
           github-token: ${{ github.token }}
           path: prior
-      - name: Check public FX M1 coverage without modifying native data
-        run: python3 october_entry_audit/fx_probe.py
+      - name: Acquire separate public FX and BTC execution inputs
+        run: python3 october_entry_audit/prepare_proxy.py | tee PROXY_INPUT.log
+      - name: Compile unchanged frozen strategy with bounded-window harness
+        run: |
+          python3 october_entry_audit/build_proxy.py
+          dotnet build october_entry_audit/ProxyReplay.csproj --configuration Release | tee publish/PROXY_BUILD.log
+          cp october_entry_audit/PROXY_HARNESS.diff publish/
+      - name: Execute start1/start10 price-proxy and macro-block controls
+        run: python3 october_entry_audit/run_proxy.py | tee publish/PROXY_EXECUTION.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: RIZAN-OCTOBER-FX-DATA-PROBE
+          name: RIZAN-OCTOBER-FROZEN-SOURCE-PROXY-REPLAY
           path: |
             publish/
+            PROXY_INPUT.log
             prior/
