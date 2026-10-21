@@ -15,8 +15,8 @@ import base64,json
 _LAST_GOOD=None
 @lru_cache(maxsize=4)
 def _api_snapshot(bucket):
- # Shared process cache bounds anonymous API fallback traffic to 40 calls/hour.
- meta=read_json('https://api.github.com/repos/rizanrizan93/Forex-scanner/contents'+PATH+'?ref='+BRANCH)
+ # Shared process cache bounds anonymous API fallback traffic to at most 60 calls/hour.
+ meta=read_json('https://api.github.com/repos/rizanrizan93/Forex-scanner/contents'+PATH+'?ref='+BRANCH+'&rizan_minute='+str(bucket))
  if meta.get('encoding')!='base64':raise ValueError('Unsupported snapshot encoding')
  raw=base64.b64decode(meta['content'],validate=False)
  if len(raw)>900000:raise ValueError('Snapshot too large')
@@ -31,7 +31,7 @@ def fetch():
   if p['fresh']:return p
  except (ValueError,OSError,KeyError,TypeError):pass
  try:
-  candidate=_api_snapshot(int(now.timestamp()//90))
+  candidate=_api_snapshot(int(now.timestamp()//60))
   p=validate(candidate)
   _LAST_GOOD=candidate
   return p
