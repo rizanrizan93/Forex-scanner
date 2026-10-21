@@ -64,5 +64,12 @@ manifest_path=work/'NATIVE_ADAPTER_MANIFEST.json';m=json.loads(manifest_path.rea
 for name in ('BtcEngine.cs','PortfolioHost.cs','BtcHistoricalFeed.cs'):
     item=m['source'].setdefault(name,{});item['after']=hashlib.sha256((source/name).read_bytes()).hexdigest()
 manifest_path.write_text(json.dumps(m,indent=2))
-with (work/'NATIVE_ADAPTER.diff').open('a') as f:f.write(''.join(difflib.unified_diff(before.splitlines(True),s.splitlines(True),fromfile='frozen/BtcEngine.cs',tofile='native-backtest/BtcEngine.cs')))
+frozen_source=seed.parent.parent/'work/source'
+diffs=[]
+for path in sorted(source.rglob('*.cs')):
+    name=path.relative_to(source);prior=frozen_source/name
+    old=prior.read_text() if prior.is_file() else ''
+    new=path.read_text()
+    if old!=new:diffs.extend(difflib.unified_diff(old.splitlines(True),new.splitlines(True),fromfile='frozen/'+str(name),tofile='native-backtest/'+str(name)))
+(work/'NATIVE_ADAPTER.diff').write_text(''.join(diffs))
 print('NATIVE_BTC_PREFIX_ADAPTER_PREPARED seed_hash_verified=True execution_method_unchanged=True')
