@@ -219,3 +219,25 @@ def test_dashboard_only_shows_v05_not_added_supply_demand_panel():
     assert not any('SUPPLY · area pantau SELL' in x.value for x in app.markdown)
     assert not app.metric and not app.button
     assert any('Belum ada setup ENTRY EMA V05' in x.value for x in app.info)
+
+
+def test_watch_checklist_observes_candles_without_promoting_zone_to_entry():
+    import json
+    from streamlit.testing.v1 import AppTest
+    from fx_scanner.zone_v05 import watch_checks,zone
+    a,z,m,five,fifteen=frames();a.formed_ns=T
+    obs=watch_checks(a,m.iloc[:22],five,fifteen,T+22*MIN)
+    assert obs['first_touch_at']==pd.Timestamp(T,tz='UTC').isoformat()
+    assert obs['confirmation_m5_at']==pd.Timestamp(T+20*MIN,tz='UTC').isoformat()
+    assert obs['sl']==97.
+    assert 'entry' not in obs
+    missing=watch_checks(a,m.drop(index=2),five,fifteen,T+22*MIN)
+    assert missing['observation_status']=='RIWAYAT_M1_BELUM_LENGKAP' and missing['first_touch_at'] is None
+    now=pd.Timestamp.now(tz='UTC');p=blank(now);source=zone(a)
+    p.update(evaluated_close_at=now.floor('5min').isoformat(),watch_zones=[source],watch_checks={source['id']:obs})
+    app=AppTest.from_string('import json\nfrom fx_scanner.zone_v05_dashboard import render_snapshot\nrender_snapshot(json.loads('+repr(json.dumps(p))+'))').run(timeout=15)
+    assert not app.exception
+    assert any('Belum menjadi kandidat ENTRY' in x.value for x in app.markdown)
+    assert sum('Teramati' in x.value for x in app.markdown)==3
+    assert any(x.label=='SL skenario observasi' for x in app.metric)
+    assert not any('BUY · ENTRY' in x.value for x in app.markdown)

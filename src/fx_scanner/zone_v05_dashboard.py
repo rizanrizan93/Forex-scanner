@@ -73,20 +73,21 @@ def fetch():
         raise ValueError('Snapshot unavailable')
 
 
-def render_requirements(a,plan=None):
+def render_requirements(a,plan=None,observation=None):
     """Explain existing gates; observation is never promoted to an entry signal."""
     import streamlit as st
     buy=a['side']=='BUY';prox=a['high'] if buy else a['low'];distal=a['low'] if buy else a['high']
     tf=a['timeframe'];over='di atas' if buy else 'di bawah';broken='di bawah' if buy else 'di atas'
     st.write(f"**Zona invalid:** candle **{tf} ditutup {broken} batas zona sekitar {distal:,.2f}**.")
     st.caption('Wick melewati batas saja belum membatalkan struktur. Batas invalidasi zona berbeda dari SL transaksi.')
-    if plan is None:
-        st.caption('Zona struktur tambahan untuk observasi; bukan kandidat ENTRY EMA V05. Checklist V05 hanya ditampilkan pada setup yang dipilih engine.')
-        return
+    values=plan if plan is not None else observation
     def status(key):
-        return 'Teramati · '+wib(plan[key]) if plan.get(key) else 'Menunggu'
+        if values is None:return 'Belum dinilai untuk entry'
+        if values.get(key):return 'Teramati · '+wib(values[key])
+        if values.get('observation_status')=='RIWAYAT_M1_BELUM_LENGKAP':return 'Belum dapat dipastikan · riwayat M1 belum lengkap'
+        return 'Menunggu'
     rows=[
-        {'Syarat':'Zona terpilih engine EMA20 H1','Status':'Terpilih'},
+        {'Syarat':'Zona terpilih engine EMA20 H1','Status':'Terpilih' if plan is not None else 'Belum menjadi kandidat ENTRY'},
         {'Syarat':f"Harga menguji zona {a['low']:,.2f}–{a['high']:,.2f}",'Status':status('first_touch_at')},
         {'Syarat':f"M15 {'bullish' if buy else 'bearish'} ditutup kembali {over} {prox:,.2f}",'Status':status('reclaim_m15_at')},
         {'Syarat':f"Sesudah reclaim M15: M5 {'bullish menembus high' if buy else 'bearish menembus low'} 3 candle M5 sebelumnya, close {over} {prox:,.2f}",'Status':status('confirmation_m5_at')},
@@ -95,6 +96,9 @@ def render_requirements(a,plan=None):
     for row in rows:
         st.markdown('- '+row['Syarat']+' — **'+row['Status']+'**')
     st.caption('Konfirmasi teramati belum berarti semua pemeriksaan biaya, target, sesi, dan data lolos. Ikuti status serta alasan setup di atas.')
+    if plan is None:
+        st.caption('WATCH observasi: sentuhan/reclaim/BOS yang teramati di zona ini belum menjadikannya ENTRY V05. Engine harus memilih kandidat dan seluruh syarat entry harus lolos.')
+        if values and values.get('observation_status')=='JENDELA_KONFIRMASI_SUDAH_LEWAT':st.warning('Jendela konfirmasi sudah lewat. Tanggal teramati merupakan riwayat, bukan entry baru.')
 
 
 def render_snapshot(snapshot):
@@ -134,6 +138,20 @@ def render_v05_details(snapshot):
         for label,key in [('Sentuhan','first_touch_at'),('Reclaim M15','reclaim_m15_at'),('BOS M5','confirmation_m5_at')]:
             st.write(label+': '+wib(x.get(key)))
         st.caption('A → B adalah setup saat ini. B → C → D: WATCH bersyarat; arah berlawanan perlu zona dan konfirmasi baru. Tidak wajib bergantian BUY/SELL.')
+    represented={x['source']['side'] for x in p.get('plans',[])}
+    for a in p.get('watch_zones',[]):
+        if a['side'] in represented:continue
+        obs=p.get('watch_checks',{}).get(a['id'])
+        st.markdown('#### '+a['side']+' · WATCH · belum kandidat ENTRY V05')
+        st.metric('Zona pantauan · '+a['timeframe'],f"{a['low']:,.2f}–{a['high']:,.2f}")
+        st.caption('Terbentuk '+wib(a['formed_at']))
+        render_requirements(a,observation=obs)
+        reference_button(a)
+        if obs and obs.get('sl') is not None:
+            st.metric('SL skenario observasi',f"{obs['sl']:,.2f}")
+            st.caption('Batas distal zona ±0,2 ATR sumber. Ini skenario struktur, belum SL dari setup ENTRY V05 yang lolos.')
+        for label,key in [('Sentuhan','first_touch_at'),('Reclaim M15','reclaim_m15_at'),('BOS M5','confirmation_m5_at')]:
+            st.write(label+': '+(wib(obs.get(key)) if obs and obs.get(key) else 'Belum teramati / belum dapat dinilai'))
 
 
 def _render():

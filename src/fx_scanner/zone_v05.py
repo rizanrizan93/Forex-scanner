@@ -146,6 +146,28 @@ def completed(rows,tf,now):
     return q
 
 
+def watch_checks(a,m,m5,m15,now_ns):
+    """Observe the checklist without admitting a non-selected zone to V05."""
+    d=int(a.direction)
+    out=dict(first_touch_at=None,reclaim_m15_at=None,confirmation_m5_at=None,
+             sl=float((a.low if d==1 else a.high)-d*.2*a.atr),observation_status='MENUNGGU_SENTUHAN')
+    q=m[(m.timestamp.astype('int64')>=a.formed_ns)&(m.timestamp.astype('int64')+MIN<=now_ns)]
+    times=q.timestamp.astype('int64').to_numpy()
+    if not len(times) or times[0]!=a.formed_ns or (len(times)>1 and np.any(np.diff(times)!=MIN)):
+        out['observation_status']='RIWAYAT_M1_BELUM_LENGKAP';return out
+    hit=q[(q.low<=a.high)&(q.high>=a.low)]
+    if hit.empty:return out
+    at=hit.timestamp.iloc[0].value
+    out['first_touch_at']=pd.Timestamp(at,tz='UTC').isoformat()
+    end=min(now_ns,at+120*MIN,int(a.dead))
+    reclaim,conf=confirmation(m5,m15,at,end,d,a.high if d==1 else a.low)
+    for key,value in [('reclaim_m15_at',reclaim),('confirmation_m5_at',conf)]:
+        if value is not None:out[key]=pd.Timestamp(value,tz='UTC').isoformat()
+    out['observation_status']='KONFIRMASI_TERAMATI' if conf else 'MENUNGGU_BOS_M5' if reclaim else 'MENUNGGU_RECLAIM_M15'
+    if at-a.formed_ns>24*HOUR or now_ns>at+120*MIN:out['observation_status']='JENDELA_KONFIRMASI_SUDAH_LEWAT'
+    return out
+
+
 def build_plan(a,z,m,m5,m15,now_ns,costs):
     d=int(a.direction);prox=a.high if d==1 else a.low
     p=dict(source=zone(a),state='WATCH',reason='MENUNGGU_SENTUHAN',
@@ -276,6 +298,8 @@ def evaluate(native,*,now=None,spreads=None,previous=None):
         selected=active[:1]
         price=float(m.close.iloc[-1]);out['price_reference']=price
         out['watch_zones']=watch_zones(z,price,latest_m1)
+        by_id={zone(a)['id']:a for a in z.itertuples()}
+        out['watch_checks']={a['id']:watch_checks(by_id[a['id']],m,m5,m15,latest_m1) for a in out['watch_zones']}
         sd,events=supply_demand(z,qs,price,latest_m1,previous)
         out.update(supply_demand_policy='BASE_BOS_STICKY_1',supply_demand_zones=sd,supply_demand_events=events,
                    ema_bias={('H1' if tf==60 else 'H4'):('BUY' if q.close.iloc[-1]>q.ema20.iloc[-1] else 'SELL' if q.close.iloc[-1]<q.ema20.iloc[-1] else 'NETRAL') for tf,q in qs.items()})
