@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: rizan-native-autonomous-m1
+  group: rizan-native-autonomous-btc-m1
   cancel-in-progress: false
 jobs:
   native:
