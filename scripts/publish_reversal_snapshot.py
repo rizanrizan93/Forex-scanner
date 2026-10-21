@@ -125,9 +125,7 @@ def main(output):
             previous_path=Path(output).with_name('zone_v05_previous.json')
             previous=json.loads(previous_path.read_text()) if previous_path.exists() else None
             v05=evaluate_v05(native,now=now,previous=previous)
-            anchors=sorted({x['entry_at'] for x in v05.get('recent_events',[])
-                            if x.get('entry_at') and x['state']=='BLOCK' and
-                            datetime.fromisoformat(x['entry_at'])>=now-timedelta(hours=24)})
+            anchors=v05.get('quote_anchors',[])
             spreads={}
             for anchor in anchors[:8]:
                 T=datetime.fromisoformat(anchor);quotes={}

@@ -84,3 +84,18 @@ def test_panel_renders_watch_and_entry_as_research_without_orders():
     assert any('BUY · ENTRY' in x.value for x in app.markdown)
     assert any(x.label=='TP sebelum zona B' for x in app.metric)
     assert not app.button and not app.checkbox
+
+
+def test_old_confirmation_is_not_presented_as_current_cost_block():
+    a,z,m,five,fifteen=frames()
+    p=build_plan(a,z,m,five,fifteen,T+25*HOUR,{})
+    assert p['state']=='BATAL' and p['reason']=='KONFIRMASI_LAMA_LEBIH_24_JAM'
+
+
+def test_fresh_direct_snapshot_does_not_require_github_api():
+    from unittest.mock import patch
+    from fx_scanner import zone_v05_dashboard as panel
+    now=pd.Timestamp.now(tz='UTC');p=blank(now);p['evaluated_close_at']=now.floor('5min').isoformat()
+    with patch.object(panel,'read_json',return_value=p),patch.object(panel,'latest_commit',side_effect=OSError('API unavailable')) as commit:
+        assert panel.fetch()['fresh']
+        commit.assert_not_called()

@@ -139,6 +139,8 @@ def build_plan(a,z,m,m5,m15,now_ns,costs):
             (risk<=0,'RISIKO_TIDAK_VALID')]
     for fail,reason in checks:
         if fail:p.update(state='BATAL',reason=reason);return p
+    if now_ns-mt[j]>=24*HOUR:
+        p.update(state='BATAL',reason='KONFIRMASI_LAMA_LEBIH_24_JAM');return p
     spread=costs.get(pd.Timestamp(mt[j],tz='UTC').isoformat())
     cost=float(spread)+.17 if spread is not None and math.isfinite(float(spread)) and 0<=float(spread)<=50 else None
     if cost is None:
@@ -208,6 +210,7 @@ def evaluate(native,*,now=None,spreads=None,previous=None):
         out['plans']=selected
         out['decisions']=[dict(side=s,result='ENTRY' if any(p['source']['side']==s and p['state']=='ENTRY' for p in selected) else 'TIDAK_ENTRY',
             reason=next((p['reason'] for p in selected if p['source']['side']==s),'TIDAK_ADA_SETUP_YANG_LOLOS')) for s in ('BUY','SELL')]
+        out['quote_anchors']=sorted({p['entry_at'] for p in allplans if p['state']=='BLOCK' and p.get('entry_at')},reverse=True)[:8]
         out['recent_events']=sorted([p for p in allplans if p.get('confirmation_m5_at')],key=lambda x:x['confirmation_m5_at'],reverse=True)[:8]
         out.update(state='ENTRY' if any(p['state']=='ENTRY' for p in selected) else 'WATCH',reason='EVALUASI_CLOSE_M5_SELESAI')
         for p in selected:

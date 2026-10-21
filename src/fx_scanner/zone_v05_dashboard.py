@@ -9,13 +9,15 @@ PATH='/runtime/zone_v05_snapshot.json'
 def fetch():
     bucket=int(datetime.now(UTC).timestamp()//30)
     p=None
-    for ref in (BRANCH,latest_commit(bucket//3)):
-        try:
-            p=validate(read_json(BASE+ref+PATH+'?v05='+str(bucket)))
-            if p['fresh']:return p
-        except (ValueError,OSError,KeyError,TypeError):pass
-    if p is not None:return p
-    raise ValueError('Snapshot unavailable')
+    try:
+        p=validate(read_json(BASE+BRANCH+PATH+'?v05='+str(bucket)))
+        if p['fresh']:return p
+    except (ValueError,OSError,KeyError,TypeError):pass
+    try:
+        return validate(read_json(BASE+latest_commit(bucket//3)+PATH))
+    except (ValueError,OSError,KeyError,TypeError):
+        if p is not None:return p
+        raise ValueError('Snapshot unavailable')
 
 
 def render_snapshot(snapshot):
