@@ -60,3 +60,15 @@ def test_cbots_tab_is_lazy_and_zone_tab_stays_clean():
   app=AppTest.from_file(str(Path(__file__).resolve().parents[1]/'main.py'));app.session_state['rizan_pair']='cBots';app.run(timeout=15)
   assert not app.exception;assert any(t.label=='cBots' for t in app.tabs);run.assert_not_called()
   assert not app.expander;assert any('cBots' in h.value for h in app.subheader)
+
+
+def test_mismatched_account_and_foreign_exposure_block_manual_entry():
+ c,m,n=fixture();m['account_binding']='different';m['foreign_exposure']=True
+ r=project([c],m,n,now=NOW)['symbols'][0]
+ assert r['status']=='BLOCK' and 'akun yang sama' in r['reason'] and 'posisi asing' in r['reason']
+
+
+def test_btc_five_second_signal_is_never_relabelled_fresh():
+ c,m,n=fixture();c.update(symbol='BTCUSD',bar_at=NOW.replace(second=0).isoformat());c['signal'].update(atr=100,distance=200,anchor=80000)
+ r=project([c],m,n,now=NOW)['symbols'][0]
+ assert r['signal'] is None and r['entry'] is None and 'sudah lewat' in r['reason']
