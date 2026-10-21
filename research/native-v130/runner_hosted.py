@@ -42,6 +42,7 @@ args=['backtest','/mnt/test/NativeHistorical.algo',
     '--EnableEur='+str(case.get('eur',False)).lower(),
     '--EnableBtc='+str(case.get('btc',False)).lower(),
     '--data-dir=/mnt/test/data','--report-json=/mnt/test/report.json','--exit-on-stop']
+if case.get('historical_macro'):args.append('--HistoricalMacro=true')
 command=docker+['run','--pull=never','--name',container,'--memory=4g','--cpus=2',
     '--mount','type=bind,src='+str(root)+',dst=/mnt/test',
     '-e','DOTNET_ROLL_FORWARD=Major',image_id]+args
