@@ -9,7 +9,10 @@ def fetch(url):
   try:
    request_url=url.replace('datafeed.dukascopy.com','www.dukascopy.com') if n%2 and 'datafeed.dukascopy.com' in url else url
    with urllib.request.urlopen(urllib.request.Request(request_url,headers={'User-Agent':'RIZAN-isolated-October-replay'}),timeout=15) as r:b=r.read(2_000_001)
-   assert len(b)<=2_000_000;return b
+   assert len(b)<=2_000_000
+   if '.bi5' in url:
+    test=lzma.decompress(b) if b else b'';assert len(test)%24==0
+   return b
   except urllib.error.HTTPError as e:
    if e.code==404:raise
    if n==5:raise
@@ -20,8 +23,9 @@ def get(job):
  sym,day,side=job;url=f'https://datafeed.dukascopy.com/datafeed/{sym}/{day.year}/{day.month-1:02d}/{day.day:02d}/{side}_candles_min_1.bi5';name=f'{sym}_{day}_{side}.bi5';path=raw/name
  try:b=path.read_bytes() if path.exists() else fetch(url)
  except urllib.error.HTTPError as e:
-  if e.code==404:return {'symbol':sym,'day':str(day),'side':side,'status':404,'url':url},[]
-  raise
+  return {'symbol':sym,'day':str(day),'side':side,'status':e.code,'url':url},[]
+ except Exception as e:
+  return {'symbol':sym,'day':str(day),'side':side,'status':type(e).__name__,'url':url},[]
  path.write_bytes(b)
  decom=lzma.decompress(b) if b else b'';assert len(decom)%24==0
  scale=1000 if sym=='XAUUSD' else 100000;rows=[];invalid=0
@@ -33,7 +37,11 @@ def get(job):
   if at<END:rows.append((at,o/scale,h/scale,l/scale,c/scale,vol))
  return {'symbol':sym,'day':str(day),'side':side,'status':200,'url':url,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'valid_records':len(rows),'zero_price_rows_excluded':invalid},rows
 jobs=[(s,d,side) for s in ['XAUUSD','EURUSD'] for d in days for side in ['BID','ASK']]
-with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:values=list(ex.map(get,jobs))
+values=[]
+with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+ for i,result in enumerate(ex.map(get,jobs),1):
+  values.append(result)
+  if i%40==0:print('FX_FETCH_PROGRESS',i,'of',len(jobs),flush=True)
 manifest=[x[0] for x in values];(out/'PROXY_FX_INPUT_MANIFEST.json').write_text(json.dumps(manifest,indent=2))
 quality={};data={}
 for sym in ['XAUUSD','EURUSD']:
