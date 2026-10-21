@@ -86,7 +86,7 @@ def supply_demand(z,qs,price,now_ns,previous=None):
     prior=(previous or {}).get('supply_demand_zones',[]) if (previous or {}).get('contract')==CONTRACT else []
     result=[];events=[]
     # Full base candle preceding a strong displacement/BOS; exclude EMA, gaps and pivots.
-    pool=z[(z.family==0)&(z['style']==0)&(z.lookback==20)&(z.formed_ns<=now_ns)&(z.formed_ns>=now_ns-120*HOUR)]
+    pool=z[(z.family==0)&(z['style']==0)&(z.lookback.isin([8,20]))&(z.formed_ns<=now_ns)&(z.formed_ns>=now_ns-120*HOUR)]
     for side,d in [('BUY',1),('SELL',-1)]:
         old=next((dict(a) for a in prior if a['side']==side),None)
         if old:

@@ -194,6 +194,9 @@ def test_supply_demand_stays_fixed_until_source_close_invalidates_even_after_120
     q.loc[1,'close']=100.5
     zones,events=supply_demand(z,qs,103.,now,None)
     assert not zones
+    z.loc[0,['lookback','low','high']]=[8,99.,100.]
+    zones,events=supply_demand(z,qs,103.,now,None)
+    assert zones[0]['low']==99. and zones[0]['family']==0
 
 
 def test_feed_failure_preserves_saved_supply_demand_without_claiming_freshness():
