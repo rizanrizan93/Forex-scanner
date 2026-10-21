@@ -1,0 +1,104 @@
+{
+  "case": {
+    "symbol": "EURUSD",
+    "eur": true,
+    "xau": false,
+    "btc": false,
+    "start": "09/06/2025",
+    "end": "16/06/2025",
+    "timeout_seconds": 1200
+  },
+  "binary": {
+    "sha256": "700fb07c515c09b084bbf0d79fc04502aba876912ac4d302db52991b8019eb17",
+    "frozen_source": "787ac228837175f9c07c4e13070e2794ebc7a7fe",
+    "variant": "native-historical-local-transport-v1",
+    "original_frozen_binary": false
+  },
+  "image": "sha256:012d69330ad10a4e7e397f6b70b4eabf63050eebfcdd756a06d6d7481cb994d2",
+  "execution_host": "isolated GitHub Actions test runner",
+  "native_runtime": true,
+  "ApiStubs": false,
+  "cached_signals": false,
+  "live_command_invoked": false,
+  "credentials_in_public_output": false,
+  "timeout": false,
+  "exit_code": 0,
+  "elapsed_seconds": 108.01,
+  "signal_count": 1,
+  "order_requests": 3,
+  "accepted_orders": 3,
+  "quarantine_count": 0,
+  "startup_ok": true,
+  "summaries": [
+    "16/06/2025 23:59:00.000 | Info | NATIVE_BACKTEST_SUMMARY balance=86.07000000000001 equity=86.07000000000001 closed_fills=3 open_positions=0 leverage=200"
+  ],
+  "recent_bot_logs": [
+    "16/06/2025 23:54:01.000 | Info | RIZAN_STATE status=BROKER_BATCH_ACCEPTED; trading=True; accountBound=True; positions=0; quarantined=False; reason=",
+    "16/06/2025 23:54:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=86.07000000000001 equity=86.07000000000001 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "16/06/2025 23:55:01.000 | Info | RIZAN_TRANSPORT symbol=EURUSD; bridge=False; continuity=True; local_revision=9008",
+    "16/06/2025 23:55:01.000 | Info | RIZAN_STATE status=BROKER_BATCH_ACCEPTED; trading=True; accountBound=True; positions=0; quarantined=False; reason=",
+    "16/06/2025 23:55:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=86.07000000000001 equity=86.07000000000001 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "16/06/2025 23:56:01.000 | Info | RIZAN_TRANSPORT symbol=EURUSD; bridge=False; continuity=True; local_revision=9009",
+    "16/06/2025 23:56:01.000 | Info | RIZAN_STATE status=BROKER_BATCH_ACCEPTED; trading=True; accountBound=True; positions=0; quarantined=False; reason=",
+    "16/06/2025 23:56:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=86.07000000000001 equity=86.07000000000001 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "16/06/2025 23:57:01.000 | Info | RIZAN_TRANSPORT symbol=EURUSD; bridge=False; continuity=True; local_revision=9010",
+    "16/06/2025 23:57:01.000 | Info | RIZAN_STATE status=BROKER_BATCH_ACCEPTED; trading=True; accountBound=True; positions=0; quarantined=False; reason=",
+    "16/06/2025 23:57:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=86.07000000000001 equity=86.07000000000001 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "16/06/2025 23:58:01.000 | Info | RIZAN_TRANSPORT symbol=EURUSD; bridge=False; continuity=True; local_revision=9011",
+    "16/06/2025 23:58:01.000 | Info | RIZAN_STATE status=BROKER_BATCH_ACCEPTED; trading=True; accountBound=True; positions=0; quarantined=False; reason=",
+    "16/06/2025 23:58:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=86.07000000000001 equity=86.07000000000001 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "16/06/2025 23:59:00.000 | Info | NATIVE_BACKTEST_SUMMARY balance=86.07000000000001 equity=86.07000000000001 closed_fills=3 open_positions=0 leverage=200"
+  ],
+  "first_signals": [
+    "13/06/2025 10:00:00.000 | Info | NATIVE_SIGNAL symbol=EURUSD side=1 at=2025-06-13T10:00:00.0000000Z"
+  ],
+  "first_orders": [
+    "13/06/2025 10:00:00.000 | Info | NATIVE_ORDER_RESULT symbol=EURUSD success=True error=null position=1 units=2000 at=2025-06-13T10:00:00.0000000Z",
+    "13/06/2025 10:24:00.000 | Info | NATIVE_ORDER_RESULT symbol=EURUSD success=True error=null position=2 units=1000 at=2025-06-13T10:24:00.0000000Z",
+    "13/06/2025 10:38:00.000 | Info | NATIVE_ORDER_RESULT symbol=EURUSD success=True error=null position=3 units=4000 at=2025-06-13T10:38:00.0000000Z"
+  ],
+  "native_report_created": true,
+  "error_categories": {
+    "authentication": false,
+    "no_data": false,
+    "unrecognized_parameter": false,
+    "memory": false,
+    "access_rights": false,
+    "runtime_exception": false
+  },
+  "state_reasons": {},
+  "native_log_files": [
+    "app/ctrader-cli.runtimeconfig.json",
+    "app/ctrader-cli.deps.json",
+    "app/algohost.netcore/cTrader.Automate.Host.NetCore.runtimeconfig.json",
+    "app/algohost.netcore/cTrader.Automate.Host.NetCore.deps.json",
+    "root/cAlgo/Data/cBots/NativeHistorical/1e76afc7-df49-427c-9c85-f6e601709754/Backtesting/events.json",
+    "root/cAlgo/Data/cBots/NativeHistorical/1e76afc7-df49-427c-9c85-f6e601709754/Backtesting/log.txt"
+  ],
+  "report_keys": [
+    "main",
+    "equity",
+    "tradeStatistics",
+    "parameters",
+    "usedSymbols",
+    "positions",
+    "orders",
+    "history",
+    "entries",
+    "profitsLosses",
+    "roi"
+  ],
+  "report_numeric_summary": {
+    "main.netProfit": -13.93,
+    "main.startingCapital": 100
+  },
+  "audit": {
+    "workflow_run": 39693514591,
+    "workflow_conclusion": "success",
+    "starting_balance": 100,
+    "ending_balance": 86.07,
+    "spread_pips": 0,
+    "commission_cli": 0,
+    "historical_test_only": true
+  }
+}
