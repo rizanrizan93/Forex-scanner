@@ -35,6 +35,7 @@ def loop():
    if not remote.startswith('/tmp/rizan-monitor.') or not remote.endswith('/read_cbot_native.py') or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._-' for c in remote):raise ValueError('REMOTE_READER_PATH_INVALID')
    result=subprocess.run(['ssh',*options,'Rizanrizan@202.74.74.172','sudo -n /usr/bin/python3 '+remote+(' --btc' if hour!=last_hour else '')],capture_output=True,text=True,timeout=150,check=True)
    native=json.loads(result.stdout)
+   if native.get('btc_feed_error'):print('CBOT_BTC_FEED_UNAVAILABLE '+native['btc_feed_error'],flush=True)
    if 'btc_feed' in native:btc=native.pop('btc_feed');last_hour=hour
    if btc:native['btc_feed']=btc
    (FOLDER/'native.json').write_text(json.dumps(native,allow_nan=False))

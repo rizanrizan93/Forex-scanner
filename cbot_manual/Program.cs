@@ -35,8 +35,17 @@ foreach(var symbol in new[]{"XAUUSD","EURUSD"}){
 try{
  var feed=new BtcSevenDayFeed();feed.Accept(input.GetProperty("native").GetProperty("btc_feed"),now);
  var at=BtcSevenDayFeed.Hour(now);var signals=feed.Signals;signals.TryGetValue(at,out var signal);
- // BTC has breakout conditions rather than a supply/demand entry zone.
+ // Inspect the unchanged core's features for explanatory breakout levels only.
+ var hourly=input.GetProperty("native").GetProperty("btc_feed").GetProperty("bars").EnumerateArray().Select(v=>{var a=v.EnumerateArray().ToArray();return new BtcBar(DateTimeOffset.FromUnixTimeSeconds(a[0].GetInt64()).UtcDateTime,a[1].GetDouble(),a[2].GetDouble(),a[3].GetDouble(),a[4].GetDouble(),a[5].GetInt32());}).ToList();
+ var four=BtcCore.Aggregate(hourly,240).Where(b=>b.At.AddHours(4)<=now).ToList();
+ var method=typeof(BtcCore).GetMethod("Features",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic)!;
+ var hf=((System.Collections.IEnumerable)method.Invoke(null,new object[]{hourly})!).Cast<object>().ToArray();
+ var qf=((System.Collections.IEnumerable)method.Invoke(null,new object[]{four})!).Cast<object>().ToArray();
+ double Number(object f,string name)=>(double)f.GetType().GetProperty(name)!.GetValue(f)!;
+ var last4=four[^1];double atr4=Number(qf[^1],"Atr"),atr1=Number(hf[^1],"Atr");
+ double buyLevel=Math.Max(last4.Open+1.4*atr4,four[^2].High);
+ double sellLevel=hourly.Skip(hourly.Count-17).Take(16).Min(b=>b.Low)-.1*atr1;
  results.Add(new{symbol="BTCUSD",bar_at=feed.Through,h1_bias=0,m15_bias=0,session_open=now.DayOfWeek!=DayOfWeek.Saturday&&now.DayOfWeek!=DayOfWeek.Sunday,
-  areas=Array.Empty<object>(),signal=signal==null?null:new{at=signal.At,side=signal.Side>0?"BUY":"SELL",atr=signal.Atr,anchor=signal.Reference,distance=(signal.Side>0?2:1.5)*signal.Atr},target_r=signal?.Side>0?12d:2d,stop_atr=0d,depths=new[]{0d},addition_confirmation=false});
+  areas=new[]{new{side="BUY",low=buyLevel,high=buyLevel,condition="Level momentum H4: close > high H4 sebelumnya dan body >1,4 ATR; tren EMA20/80 bullish, close sebelum 15:00 WIB"},new{side="SELL",low=sellLevel,high=sellLevel,condition="Close H1 di bawah range 16 jam − 0,1 ATR; tren H4 bearish, kompresi range, filter RSI dan volatilitas"}},signal=signal==null?null:new{at=signal.At,side=signal.Side>0?"BUY":"SELL",atr=signal.Atr,anchor=signal.Reference,distance=(signal.Side>0?2:1.5)*signal.Atr},target_r=signal?.Side>0?12d:2d,stop_atr=0d,depths=new[]{0d},addition_confirmation=false});
 }catch{results.Add(new{symbol="BTCUSD",error="FEED_BTC_BELUM_TERVERIFIKASI"});}
 File.WriteAllText(args[1],JsonSerializer.Serialize(results));

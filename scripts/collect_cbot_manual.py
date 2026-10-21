@@ -49,10 +49,12 @@ def main(output):
     out['quotes'][symbol]=points
    except Exception:out['quotes'][symbol]={}
   names={r.symbol_id(s):s for s in ['XAUUSD','EURUSD','BTCUSD']}
-  for pos in r.reconcile().position:
+  reconciled=r.reconcile();out['foreign_exposure']=False;out['pending_orders']=bool(reconciled.order)
+  for pos in reconciled.position:
    d=pos.tradeData;label=str(getattr(d,'label',''))
    if label.startswith(('RZXRC1|','RZEF245|','RZBTC8500283|')):
     out['positions'].append({'symbol':names.get(d.symbolId),'side':'BUY' if d.tradeSide==1 else 'SELL','entry':pos.price,'sl':getattr(pos,'stopLoss',None),'tp':getattr(pos,'takeProfit',None)})
+   else:out['foreign_exposure']=True
   out['as_of']=datetime.now(UTC).isoformat();p.write_text(json.dumps(out,allow_nan=False))
  finally:r.close()
 if __name__=='__main__':main(sys.argv[1])

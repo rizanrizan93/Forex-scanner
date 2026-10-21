@@ -77,6 +77,7 @@ def project(calculations,market,native,*,now=None):
     if (symbol=='XAUUSD' and spread>1.5) or (symbol=='EURUSD' and spread>.00022):c['blockers'].append('Spread melebihi batas strategi')
    else:c['blockers'].append('Quote bid/ask belum cukup baru')
    if not fresh(native.get('as_of'),now,90):c['blockers'].append('Pembacaan checkpoint belum diperbarui')
+   if market.get('foreign_exposure') or market.get('pending_orders'):c['blockers'].append('Ada posisi asing atau pending order; periksa exposure akun')
    if market.get('positions'):c['blockers'].append('Ada posisi portofolio; periksa risiko gabungan sebelum menambah')
    if c['blockers']:c['status']='BLOCK';c['reason']='; '.join(dict.fromkeys(c['blockers']))
   c['positions']=[p for p in market.get('positions',[]) if p.get('symbol')==symbol]

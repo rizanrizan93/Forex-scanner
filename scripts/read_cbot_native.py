@@ -38,9 +38,13 @@ def main():
   s=json.loads(snap.read_text());out['macro']={k:s.get(k) for k in ['ProducedUtc','CoverageFromUtc','CoverageToUtc','ForexFactoryOk','BlsOk','Dgs10','Dfii10','Events']}
  if '--btc' in sys.argv:
   try:
-   unit='rizan-btc7d130.service';wd=P(prop(unit,'WorkingDirectory'));sys.path.insert(0,str(wd))
-   from server import Feed
-   seed=wd/'BITSTAMP_H1_SEED.csv';f=Feed(seed);f.update(time.time());out['btc_feed']=json.loads(f.wire(time.time()))
-  except Exception:out['btc_feed_error']='FEED_UNAVAILABLE'
+   unit='rizan-btc7d130.service';wd=P(prop(unit,'WorkingDirectory'));be=env(unit)
+   match=re.search(r'path=([^ ;}]+)',prop(unit,'ExecStart'))
+   if not match or not P(match.group(1)).is_file():raise ValueError('BTC_INTERPRETER_UNAVAILABLE')
+   seed=be.get('RZ7D_SEED_CSV',str(wd/'BITSTAMP_H1_SEED.csv'))
+   code="import sys,time;sys.path.insert(0,sys.argv[1]);from server import Feed;f=Feed(sys.argv[2]);f.update(time.time());print(f.wire(time.time()))"
+   child=subprocess.run([match.group(1),'-c',code,str(wd),seed],capture_output=True,text=True,check=True,timeout=110,cwd=wd)
+   out['btc_feed']=json.loads(child.stdout)
+  except Exception as exc:out['btc_feed_error']=type(exc).__name__
  print(json.dumps(out,allow_nan=False))
 if __name__=='__main__':main()
