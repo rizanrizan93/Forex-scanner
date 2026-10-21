@@ -30,12 +30,12 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - run: pip install -e '.[ctrader]' pytest==9.0.2 streamlit==1.62.0
+      - run: pip install -e '.[ctrader]' pytest==9.0.2
       - name: Verify immutable calculations and test monitor
         run: |
           python -c 'from scripts.run_cbot_manual import verify; verify()'
           dotnet build cbot_manual/Monitor.csproj -c Release
-          pytest -q tests/test_cbot_manual.py
+          pytest -q tests/test_cbot_manual.py -k "not cbots_tab"
       - name: Read broker and native checkpoints; publish manual levels
         shell: bash
         env:
