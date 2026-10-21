@@ -24,3 +24,20 @@ def spread_asof(bid,ask,at):
     b,a=values
     if not all(math.isfinite(x) and x>0 for x in values) or a<b or a-b>50:return None
     return a-b
+
+
+def entry_open_quote(bid,ask,anchor,until):
+    """First observed BID of new M1, plus ASK known then; no forming OHLC.
+
+    Caller must request the complete BID range starting exactly at anchor.
+    Truncated ranges cannot establish the first tick and are rejected.
+    """
+    if bid.hasMore or ask.hasMore:return None
+    b=[(t,p) for t,p in decode(bid) if anchor<=t<=until]
+    if not b or b[0][0]>=anchor+60000:return None
+    t,price=b[0]
+    a=[(tm,p) for tm,p in decode(ask) if tm<=t]
+    if not a or t-a[-1][0]>20000:return None
+    spread=a[-1][1]-price
+    if not math.isfinite(price) or price<=0 or not 0<=spread<=50:return None
+    return dict(price=price,spread=spread,observed_ms=t)

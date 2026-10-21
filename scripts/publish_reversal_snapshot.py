@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"src"))
 from fx_scanner.reversal_scanner import evaluate, load_result
 from fx_scanner.zone_v05 import evaluate as evaluate_v05, blank as blank_v05
-from fx_scanner.zone_v05_quotes import spread_asof
+from fx_scanner.zone_v05_quotes import spread_asof, entry_open_quote
 from fx_scanner.manual_reversal_map import evaluate as evaluate_manual, CONTRACT as MANUAL_CONTRACT
 
 READ_REQUESTS = frozenset({"ProtoOAApplicationAuthReq", "ProtoOAGetAccountListByAccessTokenReq",
@@ -124,21 +124,29 @@ def main(output):
         try:
             previous_path=Path(output).with_name('zone_v05_previous.json')
             previous=json.loads(previous_path.read_text()) if previous_path.exists() else None
-            v05=evaluate_v05(native,now=now,previous=previous)
-            anchors=v05.get('quote_anchors',[])
+            v05=evaluate_v05(native,now=datetime.now(UTC),previous=previous)
+            opening=set(v05.get('open_quote_anchors',[]))
+            anchors=sorted(opening|set(v05.get('quote_anchors',[])),reverse=True)[:8]
             spreads={}
             for anchor in anchors[:8]:
-                T=datetime.fromisoformat(anchor);quotes={}
+                T=datetime.fromisoformat(anchor);quotes={};until=datetime.now(UTC) if anchor in opening else T
                 for kind in ('BID','ASK'):
                     yield deferLater(reactor,.3,lambda:None)
                     r=yield request('ProtoOAGetTickDataReq',ctidTraderAccountId=account,
                         symbolId=symbols[0].symbolId,type=ProtoOAQuoteType.Value(kind),
-                        fromTimestamp=int((T-timedelta(seconds=30)).timestamp()*1000),
-                        toTimestamp=int(T.timestamp()*1000))
+                        fromTimestamp=int((T if anchor in opening and kind=='BID' else T-timedelta(seconds=30)).timestamp()*1000),
+                        toTimestamp=int(until.timestamp()*1000))
                     quotes[kind]=r
-                value=spread_asof(quotes['BID'],quotes['ASK'],int(T.timestamp()*1000))
-                if value is not None:spreads[anchor]=value
-            v05=evaluate_v05(native,now=now,spreads=spreads,previous=previous)
+                if anchor in opening:
+                    point=entry_open_quote(quotes['BID'],quotes['ASK'],int(T.timestamp()*1000),int(until.timestamp()*1000))
+                    if point is not None:
+                        native.setdefault('entry_open_quotes',[]).append(dict(timestamp=anchor,price=point['price'],
+                            observed_at=datetime.fromtimestamp(point['observed_ms']/1000,UTC).isoformat()))
+                        spreads[anchor]=point['spread']
+                else:
+                    value=spread_asof(quotes['BID'],quotes['ASK'],int(T.timestamp()*1000))
+                    if value is not None:spreads[anchor]=value
+            v05=evaluate_v05(native,now=datetime.now(UTC),spreads=spreads,previous=previous)
         except Exception:
             v05=blank_v05(now,'V05_DATA_UNAVAILABLE')
             print('V05_DATA_UNAVAILABLE',flush=True)

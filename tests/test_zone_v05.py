@@ -108,3 +108,20 @@ def test_consumer_expires_entry_even_when_cached_snapshot_is_within_grace():
     p=blank(now);p.update(state='ENTRY',evaluated_close_at=(now-pd.Timedelta(minutes=6)).isoformat(),plans=[plan],decisions=[dict(side='BUY',result='ENTRY',reason='OK')])
     q=validate(p,now=now)
     assert q['fresh'] and q['plans'][0]['state']=='AKTIF_REFERENSI' and q['decisions'][0]['result']=='TIDAK_ENTRY'
+
+
+def test_entry_open_uses_first_tick_and_only_ask_known_at_that_tick():
+    from fx_scanner.zone_v05_quotes import entry_open_quote
+    # Reverse-chronological delta encoding: first bid is 4000 at10005ms.
+    b=N(tickData=[N(timestamp=10020,tick=400100000),N(timestamp=-15,tick=-100000)],hasMore=False)
+    a=N(tickData=[N(timestamp=10015,tick=400120000),N(timestamp=-12,tick=-100000)],hasMore=False)
+    p=entry_open_quote(b,a,10000,10030)
+    assert p['price']==4000 and p['observed_ms']==10005 and p['spread']==pytest.approx(.2)
+    b.hasMore=True
+    assert entry_open_quote(b,a,10000,10030) is None
+
+
+def test_missing_next_m1_requests_observed_open_quote_instead_of_waiting_one_minute():
+    a,z,m,five,fifteen=frames()
+    p=build_plan(a,z,m.iloc[:20],five,fifteen,T+20*MIN+5_000_000_000,{})
+    assert p['state']=='WATCH' and p['open_quote_anchor']==pd.Timestamp(T+20*MIN,tz='UTC').isoformat()

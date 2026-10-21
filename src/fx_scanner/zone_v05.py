@@ -42,7 +42,7 @@ def preserve_registry(z,previous,cutoff):
     if records:
         prior=pd.DataFrame(records)[cols]
         z=pd.concat([prior,z[cols]],ignore_index=True).drop_duplicates(keys,keep='first')
-    z=z[z.formed_ns>=cutoff].sort_values('formed_ns',kind='stable').reset_index(drop=True)
+    z=z[(z.formed_ns>=cutoff)].sort_values('formed_ns',kind='stable').reset_index(drop=True)
     return z
 
 
@@ -127,7 +127,7 @@ def build_plan(a,z,m,m5,m15,now_ns,costs):
     p['confirmation_m5_at']=pd.Timestamp(conf,tz='UTC').isoformat()
     j=int(np.searchsorted(mt,conf))
     if j>=len(m) or mt[j]-conf>MIN:
-        p.update(reason='MENUNGGU_OPEN_M1_SETELAH_KONFIRMASI');return p
+        p.update(reason='MENUNGGU_QUOTE_OPEN_SETELAH_CLOSE',open_quote_anchor=pd.Timestamp(conf,tz='UTC').isoformat());return p
     entry=float(m.open.iloc[j]);risk=d*(entry-p['sl'])
     p.update(entry=entry,entry_at=pd.Timestamp(mt[j],tz='UTC').isoformat())
     spent=m.iloc[i:j]
@@ -196,12 +196,21 @@ def evaluate(native,*,now=None,spreads=None,previous=None):
         if close!=expected or m.timestamp.iloc[-1].value+MIN<close or int(m15.closed_ns.iloc[-1])!=now.floor('15min').value:
             out['evaluated_close_at']=None
             return validate(out,now=now)
+        # An observed opening BID is a price point, never a forming candle.
+        quote_points=[]
+        for quote in native.get('entry_open_quotes',[]):
+            t=timestamp(quote['timestamp']);observed=timestamp(quote['observed_at']);price=float(quote['price'])
+            if t.value!=close or not t<=observed<=now or observed>=t+pd.Timedelta(minutes=1) or not math.isfinite(price) or price<=0:continue
+            if (m.timestamp==t).any():continue
+            quote_points.append(dict(timestamp=t,open=price,high=price,low=price,close=price))
+        if quote_points:m=pd.concat([m,pd.DataFrame(quote_points)],ignore_index=True).sort_values('timestamp').reset_index(drop=True)
         out['cost_basis']='BROKER_ASOF_ENTRY_SPREAD_PLUS_0_17_PROXY'
         costs=spreads or {}
         registered=preserve_registry(nodes(qs,m.set_index('timestamp')),previous,close-168*HOUR)
+        registered=registered[registered.formed_ns<=now.value].reset_index(drop=True)
         out['node_registry']=registered.to_dict('records')
         z=lifecycle(registered,qs,m)
-        latest_m1=m.timestamp.iloc[-1].value+MIN
+        latest_m1=min(now.value,m.timestamp.iloc[-1].value+MIN)
         sources=z[(z.family==5)&(z.lookback==20)&(z.strength>=.6)&(z.formed_ns>=close-144*HOUR)]
         allplans=[build_plan(a,z,m,m5,m15,latest_m1,costs) for a in sources.itertuples()]
         # One research position at a time, same deterministic entry/origin ordering as FIFO.
@@ -223,6 +232,7 @@ def evaluate(native,*,now=None,spreads=None,previous=None):
         out['plans']=selected
         out['decisions']=[dict(side=s,result='ENTRY' if any(p['source']['side']==s and p['state']=='ENTRY' for p in selected) else 'TIDAK_ENTRY',
             reason=next((p['reason'] for p in selected if p['source']['side']==s),'TIDAK_ADA_SETUP_YANG_LOLOS')) for s in ('BUY','SELL')]
+        out['open_quote_anchors']=sorted({p['open_quote_anchor'] for p in allplans if p.get('open_quote_anchor')},reverse=True)[:8]
         out['quote_anchors']=sorted({p['entry_at'] for p in allplans if p['state']=='BLOCK' and p.get('entry_at')},reverse=True)[:8]
         out['recent_events']=sorted([p for p in allplans if p.get('confirmation_m5_at')],key=lambda x:x['confirmation_m5_at'],reverse=True)[:8]
         out.update(state='ENTRY' if any(p['state']=='ENTRY' for p in selected) else 'WATCH',reason='EVALUASI_CLOSE_M5_SELESAI')

@@ -91,11 +91,11 @@ def test_v05_publication_rejects_execution_authority():
         api.assert_not_called()
 
 
-def test_aligned_collector_waits_for_next_closed_m1_after_m5():
+def test_aligned_collector_removes_mandatory_one_minute_wait():
     elapsed=[0.];wall=[3600.];calls=[]
     def cycle(i):
         calls.append(i);elapsed[0]+=20;wall[0]+=20
     def sleep(n):elapsed[0]+=n;wall[0]+=n
     feed.run_loop(seconds=400,cycle_fn=cycle,clock=lambda:elapsed[0],wall_clock=lambda:wall[0],sleeper=sleep,align_to_close=True)
-    assert len(calls)==3
+    assert len(calls)==2
     assert elapsed[0]==400

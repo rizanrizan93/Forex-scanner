@@ -112,7 +112,7 @@ def run_loop(*, seconds=19800, interval=300, cycle_fn=cycle,
                 raise RuntimeError('Three consecutive reversal publication failures') from None
         remaining = min(interval - (clock() - tick), seconds - (clock() - started))
         if align_to_close:
-            remaining=min((math.floor((wall_clock()-62)/interval)+1)*interval+62-wall_clock(),seconds-(clock()-started))
+            remaining=min((math.floor((wall_clock()-2)/interval)+1)*interval+2-wall_clock(),seconds-(clock()-started))
         if remaining > 0:
             sleeper(remaining)
     return index

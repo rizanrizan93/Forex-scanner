@@ -29,7 +29,7 @@ def render_snapshot(snapshot):
     if not p['fresh']:
         st.warning('WAIT · data V05 belum lengkap atau terlambat. Entry dan level harga disembunyikan.');return
     st.caption('Evaluasi close M5: '+wib(p['evaluated_close_at'])+' · berikutnya '+wib(p.get('next_evaluation_at')))
-    st.caption('Evaluasi setiap 5 menit, sekitar 1 menit setelah close agar open M1 referensi sudah tersedia. Tampilan mengecek setiap 30 detik; waktu pengambilan data dapat menambah jeda.')
+    st.caption('Evaluasi dimulai setelah close M5 tanpa menunggu satu menit. Entry memerlukan quote pembuka M1 dan spread yang teramati. Tampilan mengecek setiap 10 detik; pengambilan data dan jaringan tetap menambah jeda.')
     for row in p.get('decisions',[]):
         st.write('**'+row['side']+' · '+row['result']+'** — '+row['reason'].replace('_',' '))
     if not p.get('plans'):st.info('Tidak ada zona aktif yang memenuhi syarat awal. Menunggu close berikutnya.')
@@ -57,7 +57,7 @@ def render_snapshot(snapshot):
 
 def _render():
     import streamlit as st
-    load=st.cache_data(ttl=25,show_spinner=False)(fetch)
+    load=st.cache_data(ttl=8,show_spinner=False)(fetch)
     try:render_snapshot(load())
     except Exception:
         st.subheader('V05 · Zona dinamis')
@@ -66,4 +66,4 @@ def _render():
 
 def render_zone_v05():
     import streamlit as st
-    st.fragment(run_every='30s')(_render)()
+    st.fragment(run_every='10s')(_render)()
