@@ -1,0 +1,450 @@
+{
+  "CoverageFromUtc": "2025-06-08T04:00:00Z",
+  "CoverageToUtc": "2025-06-22T04:00:00Z",
+  "Dfii10": [
+    {
+      "ObservationDate": "2025-05-01",
+      "Value": 2.0,
+      "Delta": 0.06,
+      "AvailableUtc": "2025-05-05T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-02",
+      "Value": 2.06,
+      "Delta": 0.06,
+      "AvailableUtc": "2025-05-06T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-05",
+      "Value": 2.08,
+      "Delta": 0.02,
+      "AvailableUtc": "2025-05-07T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-06",
+      "Value": 2.04,
+      "Delta": -0.04,
+      "AvailableUtc": "2025-05-08T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-07",
+      "Value": 2.01,
+      "Delta": -0.03,
+      "AvailableUtc": "2025-05-09T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-08",
+      "Value": 2.08,
+      "Delta": 0.07,
+      "AvailableUtc": "2025-05-12T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-09",
+      "Value": 2.08,
+      "Delta": 0.0,
+      "AvailableUtc": "2025-05-13T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-12",
+      "Value": 2.16,
+      "Delta": 0.08,
+      "AvailableUtc": "2025-05-14T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-13",
+      "Value": 2.17,
+      "Delta": 0.01,
+      "AvailableUtc": "2025-05-15T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-14",
+      "Value": 2.16,
+      "Delta": -0.01,
+      "AvailableUtc": "2025-05-16T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-15",
+      "Value": 2.11,
+      "Delta": -0.05,
+      "AvailableUtc": "2025-05-19T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-16",
+      "Value": 2.09,
+      "Delta": -0.02,
+      "AvailableUtc": "2025-05-20T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-19",
+      "Value": 2.1,
+      "Delta": 0.01,
+      "AvailableUtc": "2025-05-21T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-20",
+      "Value": 2.13,
+      "Delta": 0.03,
+      "AvailableUtc": "2025-05-22T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-21",
+      "Value": 2.23,
+      "Delta": 0.1,
+      "AvailableUtc": "2025-05-23T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-22",
+      "Value": 2.2,
+      "Delta": -0.03,
+      "AvailableUtc": "2025-05-27T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-23",
+      "Value": 2.18,
+      "Delta": -0.02,
+      "AvailableUtc": "2025-05-28T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-27",
+      "Value": 2.11,
+      "Delta": -0.07,
+      "AvailableUtc": "2025-05-29T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-28",
+      "Value": 2.15,
+      "Delta": 0.04,
+      "AvailableUtc": "2025-05-30T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-29",
+      "Value": 2.11,
+      "Delta": -0.04,
+      "AvailableUtc": "2025-06-02T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-30",
+      "Value": 2.07,
+      "Delta": -0.04,
+      "AvailableUtc": "2025-06-03T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-02",
+      "Value": 2.13,
+      "Delta": 0.06,
+      "AvailableUtc": "2025-06-04T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-03",
+      "Value": 2.14,
+      "Delta": 0.01,
+      "AvailableUtc": "2025-06-05T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-04",
+      "Value": 2.06,
+      "Delta": -0.08,
+      "AvailableUtc": "2025-06-06T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-05",
+      "Value": 2.11,
+      "Delta": 0.05,
+      "AvailableUtc": "2025-06-09T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-06",
+      "Value": 2.2,
+      "Delta": 0.09,
+      "AvailableUtc": "2025-06-10T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-09",
+      "Value": 2.18,
+      "Delta": -0.02,
+      "AvailableUtc": "2025-06-11T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-10",
+      "Value": 2.18,
+      "Delta": 0.0,
+      "AvailableUtc": "2025-06-12T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-11",
+      "Value": 2.14,
+      "Delta": -0.04,
+      "AvailableUtc": "2025-06-13T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-12",
+      "Value": 2.11,
+      "Delta": -0.03,
+      "AvailableUtc": "2025-06-16T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-13",
+      "Value": 2.13,
+      "Delta": 0.02,
+      "AvailableUtc": "2025-06-17T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-16",
+      "Value": 2.16,
+      "Delta": 0.03,
+      "AvailableUtc": "2025-06-18T04:00:00Z"
+    }
+  ],
+  "Dgs10": [
+    {
+      "ObservationDate": "2025-05-01",
+      "Value": 4.25,
+      "Delta": 0.08,
+      "AvailableUtc": "2025-05-05T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-02",
+      "Value": 4.33,
+      "Delta": 0.08,
+      "AvailableUtc": "2025-05-06T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-05",
+      "Value": 4.36,
+      "Delta": 0.03,
+      "AvailableUtc": "2025-05-07T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-06",
+      "Value": 4.3,
+      "Delta": -0.06,
+      "AvailableUtc": "2025-05-08T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-07",
+      "Value": 4.26,
+      "Delta": -0.04,
+      "AvailableUtc": "2025-05-09T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-08",
+      "Value": 4.37,
+      "Delta": 0.11,
+      "AvailableUtc": "2025-05-12T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-09",
+      "Value": 4.37,
+      "Delta": 0.0,
+      "AvailableUtc": "2025-05-13T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-12",
+      "Value": 4.45,
+      "Delta": 0.08,
+      "AvailableUtc": "2025-05-14T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-13",
+      "Value": 4.49,
+      "Delta": 0.04,
+      "AvailableUtc": "2025-05-15T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-14",
+      "Value": 4.53,
+      "Delta": 0.04,
+      "AvailableUtc": "2025-05-16T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-15",
+      "Value": 4.45,
+      "Delta": -0.08,
+      "AvailableUtc": "2025-05-19T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-16",
+      "Value": 4.43,
+      "Delta": -0.02,
+      "AvailableUtc": "2025-05-20T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-19",
+      "Value": 4.46,
+      "Delta": 0.03,
+      "AvailableUtc": "2025-05-21T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-20",
+      "Value": 4.48,
+      "Delta": 0.02,
+      "AvailableUtc": "2025-05-22T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-21",
+      "Value": 4.58,
+      "Delta": 0.1,
+      "AvailableUtc": "2025-05-23T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-22",
+      "Value": 4.54,
+      "Delta": -0.04,
+      "AvailableUtc": "2025-05-27T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-23",
+      "Value": 4.51,
+      "Delta": -0.03,
+      "AvailableUtc": "2025-05-28T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-27",
+      "Value": 4.43,
+      "Delta": -0.08,
+      "AvailableUtc": "2025-05-29T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-28",
+      "Value": 4.47,
+      "Delta": 0.04,
+      "AvailableUtc": "2025-05-30T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-29",
+      "Value": 4.43,
+      "Delta": -0.04,
+      "AvailableUtc": "2025-06-02T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-05-30",
+      "Value": 4.41,
+      "Delta": -0.02,
+      "AvailableUtc": "2025-06-03T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-02",
+      "Value": 4.46,
+      "Delta": 0.05,
+      "AvailableUtc": "2025-06-04T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-03",
+      "Value": 4.46,
+      "Delta": 0.0,
+      "AvailableUtc": "2025-06-05T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-04",
+      "Value": 4.37,
+      "Delta": -0.09,
+      "AvailableUtc": "2025-06-06T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-05",
+      "Value": 4.4,
+      "Delta": 0.03,
+      "AvailableUtc": "2025-06-09T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-06",
+      "Value": 4.51,
+      "Delta": 0.11,
+      "AvailableUtc": "2025-06-10T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-09",
+      "Value": 4.49,
+      "Delta": -0.02,
+      "AvailableUtc": "2025-06-11T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-10",
+      "Value": 4.47,
+      "Delta": -0.02,
+      "AvailableUtc": "2025-06-12T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-11",
+      "Value": 4.41,
+      "Delta": -0.06,
+      "AvailableUtc": "2025-06-13T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-12",
+      "Value": 4.36,
+      "Delta": -0.05,
+      "AvailableUtc": "2025-06-16T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-13",
+      "Value": 4.41,
+      "Delta": 0.05,
+      "AvailableUtc": "2025-06-17T04:00:00Z"
+    },
+    {
+      "ObservationDate": "2025-06-16",
+      "Value": 4.46,
+      "Delta": 0.05,
+      "AvailableUtc": "2025-06-18T04:00:00Z"
+    }
+  ],
+  "Events": [
+    {
+      "AtUtc": "2025-06-11T12:30:00Z",
+      "Category": "CPI"
+    },
+    {
+      "AtUtc": "2025-06-12T12:30:00Z",
+      "Category": "PPI"
+    },
+    {
+      "AtUtc": "2025-06-18T14:00:00Z",
+      "Category": "JOLTS"
+    },
+    {
+      "AtUtc": "2025-06-18T18:00:00Z",
+      "Category": "FOMC"
+    },
+    {
+      "AtUtc": "2025-06-18T18:30:00Z",
+      "Category": "FOMC"
+    }
+  ],
+  "Provenance": {
+    "purpose": "Historical raw input reconstruction for native autonomous execution test; no cached trading signals or entry-permission flags.",
+    "availability_rule": "Exact frozen bridge rule: daily change and +2 US federal business days at midnight America/New_York.",
+    "point_in_time_archive": false,
+    "limitation": "Retrospective Treasury observations and archived event schedules; not a recorded 2025 live bridge snapshot. Limited to declared two-week coverage.",
+    "Dgs10Source": {
+      "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=2025",
+      "field": "BC_10YEAR",
+      "sha256": "a2cc07beec4e2099dc6a578de847b4de16e8db121ec9ba0d53c9f3e38d5409a8"
+    },
+    "Dfii10Source": {
+      "url": "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_real_yield_curve&field_tdr_date_value=2025",
+      "field": "TC_10YEAR",
+      "sha256": "2dac30ca1866a4d5f3862e2834b440966b501e1d8170674e22c54a611753b5d9"
+    },
+    "Calendars": [
+      "https://www.forexfactory.com/calendar?week=jun8.2025",
+      "https://www.forexfactory.com/calendar?week=jun15.2025",
+      "https://www.bls.gov/schedule/2025/06_sched.htm",
+      "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+    ],
+    "calendar_scope": [
+      "NFP",
+      "CPI",
+      "PPI",
+      "JOLTS",
+      "ECI",
+      "FOMC"
+    ],
+    "notes": [
+      "USD events only from Forex Factory; duplicated CPI/PPI/FOMC events deduplicated by UTC time/category.",
+      "BLS State Job Openings June 18 included because the existing frozen bridge category regex also matches that title.",
+      "Employer Costs for Employee Compensation June 13 does not match Employment Cost Index and is not relabeled ECI.",
+      "Forex Factory times shown in Europe/London (GMT+1); BLS times Eastern daylight time."
+    ]
+  }
+}
