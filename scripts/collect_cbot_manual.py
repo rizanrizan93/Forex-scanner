@@ -1,5 +1,5 @@
 """Bounded cTrader reader. Every outgoing protobuf request is allowlisted."""
-import collections,json,os,sys,time
+import collections,hashlib,json,os,sys,time
 from datetime import datetime,UTC,timedelta
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
@@ -16,8 +16,9 @@ def main(output):
  r=Reader(client_id=os.environ['CTRADER_CLIENT_ID'],client_secret=os.environ['CTRADER_CLIENT_SECRET'],access_token=os.environ['CTRADER_ACCESS_TOKEN'],account_id=None,environment='live',refresh_token=None,allow_token_refresh=False,request_timeout_seconds=20)
  out={'as_of':now.isoformat(),'bars':{},'quotes':{},'positions':[],'read_only':True}
  try:
-  grants=[a for a in r.granted_accounts() if a.is_live and a.trader_login==2147903]
+  grants=[a for a in r.granted_accounts() if a.is_live and str(a.trader_login).endswith('7903')]
   if len(grants)!=1:raise RuntimeError('ACCOUNT_BINDING_MISMATCH')
+  out['account_binding']=hashlib.sha256(str(grants[0].trader_login).encode()).hexdigest()
   r.account_id=grants[0].ctid_trader_account_id;r.connect();r.load_symbols(['XAUUSD','EURUSD','BTCUSD'])
   for symbol in ['XAUUSD','EURUSD']:
    cached={b['timestamp']:b for b in bars.get(symbol,[])};begin=now-timedelta(days=14)

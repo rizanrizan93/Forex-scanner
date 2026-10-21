@@ -7,8 +7,8 @@ NOW=datetime(2026,10,21,12,0,10,tzinfo=UTC)
 def fixture():
  at=NOW.replace(second=0).isoformat();old=(NOW-timedelta(days=1)).isoformat()
  c={'symbol':'XAUUSD','bar_at':at,'session_open':True,'areas':[{'side':'BUY','low':4100.,'high':4100.,'condition':'Reclaim'}],'signal':{'at':at,'side':'BUY','atr':2.,'anchor':4098.,'distance':0},'target_r':5.5,'stop_atr':2.4,'depths':[0,.2,.4],'addition_confirmation':True}
- m={'as_of':NOW.isoformat(),'quotes':{'XAUUSD':{'BID':{'price':4105.,'at':NOW.isoformat()},'ASK':{'price':4105.2,'at':NOW.isoformat()}}},'positions':[]}
- n={'as_of':NOW.isoformat(),'states':{'XAUUSD':{'ContractHash':HASHES['XAUUSD'],'LastBarUtc':at}},'macro':{'ProducedUtc':NOW.isoformat(),'ForexFactoryOk':True,'BlsOk':True,'CoverageFromUtc':old,'CoverageToUtc':(NOW+timedelta(days=1)).isoformat(),'Dfii10':{'AvailableUtc':old,'Delta':-.01},'Dgs10':{'AvailableUtc':old,'Delta':.01},'Events':[]}}
+ m={'as_of':NOW.isoformat(),'account_binding':'same-private-binding','quotes':{'XAUUSD':{'BID':{'price':4105.,'at':NOW.isoformat()},'ASK':{'price':4105.2,'at':NOW.isoformat()}}},'positions':[]}
+ n={'as_of':NOW.isoformat(),'account_binding':'same-private-binding','states':{'XAUUSD':{'ContractHash':HASHES['XAUUSD'],'LastBarUtc':at}},'macro':{'ProducedUtc':NOW.isoformat(),'ForexFactoryOk':True,'BlsOk':True,'CoverageFromUtc':old,'CoverageToUtc':(NOW+timedelta(days=1)).isoformat(),'Dfii10':{'AvailableUtc':old,'Delta':-.01},'Dgs10':{'AvailableUtc':old,'Delta':.01},'Events':[]}}
  return c,m,n
 def test_fx_levels_use_execution_cost_and_structural_stop():
  c,m,n=fixture();p=project([c],m,n,now=NOW);r=p['symbols'][0]

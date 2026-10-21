@@ -43,6 +43,7 @@ def project(calculations,market,native,*,now=None):
    c['status']='ENTRY_MANUAL';c['reason']='Pola entry kode beku terkonfirmasi; acuan untuk diperiksa manual'
    ns=(native.get('states') or {}).get(symbol) or {}
    if symbol in HASHES:
+    if not market.get('account_binding') or market.get('account_binding')!=native.get('account_binding'):c['blockers'].append('Pembacaan broker dan checkpoint belum cocok pada akun yang sama')
     if ns.get('ContractHash')!=HASHES[symbol]:c['blockers'].append('Versi checkpoint cBot belum cocok')
     if not fresh(ns.get('LastBarUtc'),now,120):c['blockers'].append('Status terminal belum cukup baru')
     if ns.get('Quarantined'):c['blockers'].append('cBot sedang dikarantina')

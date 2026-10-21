@@ -35,7 +35,7 @@ jobs:
         run: |
           python -c 'from scripts.run_cbot_manual import verify; verify()'
           dotnet build cbot_manual/Monitor.csproj -c Release
-          pytest -q tests/test_cbot_manual.py -k "not cbots_tab"
+          python -m pytest -q tests/test_cbot_manual.py -k "not cbots_tab"
       - name: Read broker and native checkpoints; publish manual levels
         shell: bash
         env:

@@ -3,7 +3,7 @@
 Outputs only fields needed by the manual monitor. No lease acquire, checkpoint
 save, service restart, token output or cTrader request is possible here.
 """
-import datetime,json,pathlib,re,shlex,sqlite3,subprocess,sys,time
+import datetime,hashlib,json,pathlib,re,shlex,sqlite3,subprocess,sys,time
 P=pathlib.Path;BASE=P('/home/Rizanrizan/Forex-scanner')
 def prop(unit,name):
  return subprocess.run(['systemctl','show',unit,'--value','-p',name],capture_output=True,text=True,check=True,timeout=10).stdout.strip()
@@ -26,7 +26,10 @@ def main():
  fields=['ContractHash','EpochUtc','LastBarUtc','LastSignalUtc','LastRealExitUtc','XauResumeUtc','XauDay','XauDaySignals','Quarantined','QuarantineReason','Eur']
  for key,raw in con.execute('SELECT key,state FROM checkpoints'):
   parts=key.split(':')
-  if len(parts)!=3 or parts[1]!='2147903' or parts[0] not in {'RZXRC1','RZEF245'}:continue
+  if len(parts)!=3 or not parts[1].endswith('7903') or parts[0] not in {'RZXRC1','RZEF245'}:continue
+  binding=hashlib.sha256(parts[1].encode()).hexdigest()
+  if out.get('account_binding') and out['account_binding']!=binding:raise ValueError('AMBIGUOUS_ACCOUNT_BINDING')
+  out['account_binding']=binding
   state=json.loads(raw);s={k:state[k] for k in fields if k in state};s['pending_intent']=bool(state.get('PendingLabel'));s['has_basket']=bool(state.get('Basket'))
   out['states'][parts[-1]]=s
  con.close()
