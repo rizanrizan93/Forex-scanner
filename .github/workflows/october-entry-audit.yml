@@ -1,4 +1,4 @@
-name: October frozen source price-proxy replay
+name: October frozen source proxy replay via VPS data
 on:
   push:
     branches: [research/october-entry-audit-20261021]
@@ -32,26 +32,41 @@ jobs:
           run-id: 39529776251
           github-token: ${{ github.token }}
           path: resume
-      - name: Resume verified-format raw downloads
+      - name: Acquire separate data using isolated research folder on VPS
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
-          mkdir -p publish/proxy_raw
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20)
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/october-entry-audit-20261021/proxy-${GITHUB_RUN_ID}"
+          target=Rizanrizan@202.74.74.172
           python3 - <<'PY'
+          import tarfile
           from pathlib import Path
-          import shutil
-          for p in Path('resume').rglob('*.bi5'):
-              shutil.copyfile(p,Path('publish/proxy_raw')/p.name)
-          print('cached_raw_files',len(list(Path('publish/proxy_raw').glob('*.bi5'))))
+          with tarfile.open('raw-cache.tar.gz','w:gz') as t:
+              for p in Path('resume').rglob('*.bi5'):t.add(p,arcname='publish/proxy_raw/'+p.name,recursive=False)
           PY
-      - name: Acquire separate public FX and BTC execution inputs
-        run: python3 october_entry_audit/prepare_proxy.py | tee PROXY_INPUT.log
-      - name: Compile unchanged frozen strategy with bounded-window harness
+          ssh "${opts[@]}" "$target" "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" october_entry_audit/prepare_proxy.py raw-cache.tar.gz "$target:$dest/"
+          ssh "${opts[@]}" "$target" "cd '$dest' && tar -xzf raw-cache.tar.gz && nice -n 15 ionice -c 3 /usr/bin/python3 prepare_proxy.py" | tee PROXY_INPUT.log
+          ssh "${opts[@]}" "$target" "cd '$dest' && tar -czf PROXY_DATA.tar.gz publish"
+          scp "${opts[@]}" "$target:$dest/PROXY_DATA.tar.gz" .
+          tar -xzf PROXY_DATA.tar.gz
+          printf '%s\n' "$dest" > publish/VPS_PROXY_DATA_PATH.txt
+      - name: Compile source and execute bounded windows
         run: |
           python3 october_entry_audit/build_proxy.py
           dotnet build october_entry_audit/ProxyReplay.csproj --configuration Release | tee publish/PROXY_BUILD.log
-          cp october_entry_audit/PROXY_HARNESS.diff publish/
-      - name: Execute start1/start10 price-proxy and macro-block controls
-        run: python3 october_entry_audit/run_proxy.py | tee publish/PROXY_EXECUTION.log
-      - name: Require actual completed replay rows
+          cp october_entry_audit/PROXY_HARNESS.diff october_entry_audit/INPUT_REPAIR_PROTOCOL.json publish/
+          python3 october_entry_audit/run_proxy.py | tee publish/PROXY_EXECUTION.log
+      - name: Require completed cases
         run: |
           test -s publish/PROXY_ENTRY_SUMMARY.json
           python3 - <<'PY'

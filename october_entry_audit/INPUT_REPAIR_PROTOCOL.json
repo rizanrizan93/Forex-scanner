@@ -1,0 +1,30 @@
+{
+  "experiment": "OCTOBER_ENTRY_AUDIT_PROXY_DATA_REPAIR",
+  "locked_before_any_completed_replay_outcomes": true,
+  "previous_warmup": "2026-07-01",
+  "current_warmup": "2026-09-01",
+  "reason": "Repeated unavailable/time-out warmup archives and runner egress; bounded one-month warmup still exceeds source 200 H1 minimum at first test day. This changes input seed, not entry/SL/TP/risk source. Not full native or broker parity.",
+  "data_egress": "VPS isolated research folder; live services untouched",
+  "initial_balance_usd": 100,
+  "topups": 0,
+  "periods_wib": [
+    [
+      "2026-10-01",
+      "2026-10-21 exclusive"
+    ],
+    [
+      "2026-10-10",
+      "2026-10-21 exclusive"
+    ]
+  ],
+  "macro_controls": [
+    "TECH_ALLOWED synthetic permissions; not reconstructed vintage macro",
+    "STRICT_NO_MACRO XAU blocked"
+  ],
+  "paths": [
+    "A",
+    "B"
+  ],
+  "btc_indicators": "Full pinned 2019 Bitstamp H1 seed; never shortened",
+  "frozen_strategy_source_unchanged": true
+}
