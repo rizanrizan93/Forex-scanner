@@ -31,7 +31,7 @@ def decode(response):
     absolute=int(raw[0].timestamp)
     result=[]
     for i,t in enumerate(raw):
-        if i: absolute-=int(t.timestamp)
+        if i: absolute+=int(t.timestamp)  # broker sends signed NEGATIVE offset for older tick
         result.append((absolute,round(int(t.tick)/100000,5)))
     result.reverse()
     if any(result[j][0]>result[j+1][0] for j in range(len(result)-1)):
