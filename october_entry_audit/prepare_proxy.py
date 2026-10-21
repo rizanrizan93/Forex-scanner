@@ -5,15 +5,16 @@ START=datetime.datetime(2026,9,30,17,tzinfo=UTC);END=datetime.datetime(2026,10,2
 days=[];d=datetime.date(2026,7,1)
 while d<=datetime.date(2026,10,20):days.append(d);d+=datetime.timedelta(days=1)
 def fetch(url):
- for n in range(3):
+ for n in range(6):
   try:
-   with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'RIZAN-isolated-October-replay'}),timeout=25) as r:b=r.read(2_000_001)
+   request_url=url.replace('datafeed.dukascopy.com','www.dukascopy.com') if n%2 and 'datafeed.dukascopy.com' in url else url
+   with urllib.request.urlopen(urllib.request.Request(request_url,headers={'User-Agent':'RIZAN-isolated-October-replay'}),timeout=15) as r:b=r.read(2_000_001)
    assert len(b)<=2_000_000;return b
   except urllib.error.HTTPError as e:
    if e.code==404:raise
-   if n==2:raise
+   if n==5:raise
   except Exception:
-   if n==2:raise
+   if n==5:raise
   time.sleep(n+1)
 def get(job):
  sym,day,side=job;url=f'https://datafeed.dukascopy.com/datafeed/{sym}/{day.year}/{day.month-1:02d}/{day.day:02d}/{side}_candles_min_1.bi5';name=f'{sym}_{day}_{side}.bi5';path=raw/name
@@ -32,7 +33,7 @@ def get(job):
   if at<END:rows.append((at,o/scale,h/scale,l/scale,c/scale,vol))
  return {'symbol':sym,'day':str(day),'side':side,'status':200,'url':url,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'valid_records':len(rows),'zero_price_rows_excluded':invalid},rows
 jobs=[(s,d,side) for s in ['XAUUSD','EURUSD'] for d in days for side in ['BID','ASK']]
-with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:values=list(ex.map(get,jobs))
+with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:values=list(ex.map(get,jobs))
 manifest=[x[0] for x in values];(out/'PROXY_FX_INPUT_MANIFEST.json').write_text(json.dumps(manifest,indent=2))
 quality={};data={}
 for sym in ['XAUUSD','EURUSD']:
