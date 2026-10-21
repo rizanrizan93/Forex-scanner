@@ -9,8 +9,15 @@ sys.path.insert(0, str(ROOT / "src"))
 st.set_page_config(page_title="RIZAN Scanner", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
 st.markdown(
     """<style>
+    /* Legacy EUR/Setup pages reduce .block-container padding to .75rem.
+       Reserve space for Streamlit's header so it cannot cover navigation. */
+    [data-testid="stMainBlockContainer"] {
+        padding-top: 4.5rem !important;
+    }
+    [data-testid="stLayoutWrapper"]:has(> .st-key-rizan_primary_navigation) {
+        position: sticky; top: 3.5rem; z-index: 990;
+    }
     .st-key-rizan_primary_navigation {
-        position: sticky; top: 2.875rem; z-index: 990;
         background: var(--background-color); padding: .4rem 0;
         border-bottom: 1px solid rgba(128, 128, 128, .2);
     }
