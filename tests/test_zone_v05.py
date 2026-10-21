@@ -77,6 +77,7 @@ def test_panel_renders_watch_and_entry_as_research_without_orders():
     from streamlit.testing.v1 import AppTest
     now=pd.Timestamp.now(tz='UTC');a,z,m,five,fifteen=frames();en=pd.Timestamp(T+20*MIN,tz='UTC').isoformat()
     plan=build_plan(a,z,m.iloc[:22],five,fifteen,T+22*MIN,{en:.3})
+    plan['confirmation_m5_at']=(now-pd.Timedelta(minutes=1)).isoformat()
     p=blank(now);p.update(evaluated_close_at=now.floor('5min').isoformat(),plans=[plan],decisions=[dict(side='BUY',result='ENTRY',reason='SYARAT_TERPENUHI')])
     source='from fx_scanner.zone_v05_dashboard import render_snapshot\nimport json\nrender_snapshot(json.loads('+repr(json.dumps(p))+'))'
     app=AppTest.from_string(source).run(timeout=15)
@@ -99,3 +100,11 @@ def test_fresh_direct_snapshot_does_not_require_github_api():
     with patch.object(panel,'read_json',return_value=p),patch.object(panel,'latest_commit',side_effect=OSError('API unavailable')) as commit:
         assert panel.fetch()['fresh']
         commit.assert_not_called()
+
+
+def test_consumer_expires_entry_even_when_cached_snapshot_is_within_grace():
+    now=pd.Timestamp.now(tz='UTC');a,z,m,five,fifteen=frames();en=pd.Timestamp(T+20*MIN,tz='UTC').isoformat()
+    plan=build_plan(a,z,m.iloc[:22],five,fifteen,T+22*MIN,{en:.3});plan['confirmation_m5_at']=(now-pd.Timedelta(minutes=6)).isoformat()
+    p=blank(now);p.update(state='ENTRY',evaluated_close_at=(now-pd.Timedelta(minutes=6)).isoformat(),plans=[plan],decisions=[dict(side='BUY',result='ENTRY',reason='OK')])
+    q=validate(p,now=now)
+    assert q['fresh'] and q['plans'][0]['state']=='AKTIF_REFERENSI' and q['decisions'][0]['result']=='TIDAK_ENTRY'

@@ -167,6 +167,19 @@ def validate(p,*,now=None):
         p['fresh']=0<=age<=420 and 0<=produced<=420
     if not p['fresh']:
         p.update(state='WAIT',reason='DATA_BELUM_LENGKAP_ATAU_TERLAMBAT',plans=[],decisions=[])
+    else:
+        plans=[]
+        for plan in p.get('plans',[]):
+            plan=dict(plan);confirmed=plan.get('confirmation_m5_at')
+            age=(now-timestamp(confirmed)).total_seconds() if confirmed else 0
+            if confirmed and age>=86400:continue
+            if plan.get('state')=='ENTRY' and age>300:
+                plan.update(state='AKTIF_REFERENSI',reason='ENTRY_BARU_SUDAH_LEWAT')
+            plans.append(plan)
+        p['plans']=plans
+        p['decisions']=[dict(side=x['side'],result='ENTRY' if any(q.get('state')=='ENTRY' and q['source']['side']==x['side'] for q in plans) else 'TIDAK_ENTRY',
+            reason=next((q['reason'] for q in plans if q['source']['side']==x['side']),'TIDAK_ADA_SETUP_YANG_LOLOS')) for x in p.get('decisions',[])]
+        if p.get('state')=='ENTRY' and not any(q.get('state')=='ENTRY' for q in plans):p['state']='WATCH'
     return p
 
 
