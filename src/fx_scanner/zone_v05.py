@@ -81,6 +81,41 @@ def watch_zones(z,price,now_ns):
     return result
 
 
+def supply_demand(z,qs,price,now_ns,previous=None):
+    """Sticky closed-candle base zones; independent of V05 entry selection."""
+    prior=(previous or {}).get('supply_demand_zones',[]) if (previous or {}).get('contract')==CONTRACT else []
+    result=[];events=[]
+    # Full base candle preceding a strong displacement/BOS; exclude EMA, gaps and pivots.
+    pool=z[(z.family==0)&(z['style']==0)&(z.lookback==20)&(z.formed_ns<=now_ns)&(z.formed_ns>=now_ns-120*HOUR)]
+    for side,d in [('BUY',1),('SELL',-1)]:
+        old=next((dict(a) for a in prior if a['side']==side),None)
+        if old:
+            tf=int(old['timeframe'][1:])*60;q=qs[tf]
+            checked=timestamp(old['checked_close_at']).value
+            times=q.time.astype('int64');closes=q.close
+            # Never silently replace a saved reference after losing its candle history.
+            if times.iloc[0]>checked:
+                old.update(status='DATA_GAP');result.append(old);continue
+            bad=(times>checked)&(d*(closes-(old['low'] if d==1 else old['high']))<0)
+            if not bad.any():
+                old.update(checked_close_at=q.time.iloc[-1].isoformat(),status='VALID')
+                result.append(old);continue
+            events.append(dict(old,invalidated_at=q.time[bad].iloc[0].isoformat(),status='INVALID'))
+        choices=[]
+        for a in pool[pool.direction==d].itertuples():
+            q=qs[int(a.tf)];times=q.time.astype('int64')
+            if times.iloc[0]>a.formed_ns:continue
+            bad=(times>a.formed_ns)&(d*(q.close-(a.low if d==1 else a.high))<0)
+            if bad.any() or (price<a.low if d==1 else price>a.high):continue
+            distance=max(a.low-price,price-a.high,0)
+            choices.append((int(a.tf)!=60,distance,-int(a.formed_ns),a))
+        if not choices:continue
+        a=min(choices,key=lambda x:x[:3])[3]
+        result.append(dict(zone(a),status='VALID',selected_at=pd.Timestamp(now_ns,tz='UTC').isoformat(),
+                           checked_close_at=qs[int(a.tf)].time.iloc[-1].isoformat()))
+    return result,events
+
+
 def confirmation(m5,m15,touch,end,d,prox):
     fifteen=m15[(m15.closed_ns>touch)&(m15.closed_ns<=end)]
     fifteen=fifteen[(d*(fifteen.close-prox)>0)&(d*(fifteen.close-fifteen.open)>0)]
@@ -181,6 +216,8 @@ def validate(p,*,now=None):
         p['fresh']=0<=age<=420 and 0<=produced<=420
     if not p['fresh']:
         p.update(state='WAIT',reason='DATA_BELUM_LENGKAP_ATAU_TERLAMBAT',plans=[],decisions=[],watch_zones=[])
+        # Preserve sticky references for the producer, but never present stale validity as current.
+        p['supply_demand_zones']=[dict(a,status='DATA_STALE') for a in p.get('supply_demand_zones',[])]
     else:
         plans=[]
         for plan in p.get('plans',[]):
@@ -199,6 +236,8 @@ def validate(p,*,now=None):
 
 def evaluate(native,*,now=None,spreads=None,previous=None):
     now=timestamp(now or datetime.now(UTC));out=blank(now)
+    saved_sd=(previous or {}).get('supply_demand_zones',[]) if (previous or {}).get('contract')==CONTRACT else []
+    out['supply_demand_zones']=[dict(a,status='DATA_STALE') for a in saved_sd]
     try:
         m=frame(native.get('M1',[]),'M1',now);m5=completed(native.get('M5',[]),'M5',now);m15=completed(native.get('M15',[]),'M15',now)
         qs={60:prepared(native.get('H1',[]),'H1',now),240:prepared(native.get('H4',[]),'H4',now)}
@@ -237,6 +276,9 @@ def evaluate(native,*,now=None,spreads=None,previous=None):
         selected=active[:1]
         price=float(m.close.iloc[-1]);out['price_reference']=price
         out['watch_zones']=watch_zones(z,price,latest_m1)
+        sd,events=supply_demand(z,qs,price,latest_m1,previous)
+        out.update(supply_demand_policy='BASE_BOS_STICKY_1',supply_demand_zones=sd,supply_demand_events=events,
+                   ema_bias={('H1' if tf==60 else 'H4'):('BUY' if q.close.iloc[-1]>q.ema20.iloc[-1] else 'SELL' if q.close.iloc[-1]<q.ema20.iloc[-1] else 'NETRAL') for tf,q in qs.items()})
         for side in ('BUY','SELL'):
             if any(p['source']['side']==side for p in selected):continue
             q=[p for p in allplans if p['source']['side']==side and p['state'] in ('WATCH','BLOCK')]
@@ -257,4 +299,6 @@ def evaluate(native,*,now=None,spreads=None,previous=None):
                 validated=False)
         return validate(out,now=now)
     except (ValueError,KeyError,TypeError,IndexError,OverflowError):
-        return blank(now,'DATA_TIDAK_VALID')
+        out=blank(now,'DATA_TIDAK_VALID')
+        out['supply_demand_zones']=[dict(a,status='DATA_STALE') for a in saved_sd]
+        return out

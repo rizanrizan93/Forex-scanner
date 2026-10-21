@@ -97,7 +97,7 @@ def test_old_confirmation_is_not_presented_as_current_cost_block():
 def test_fresh_direct_snapshot_does_not_require_github_api():
     from unittest.mock import patch
     from fx_scanner import zone_v05_dashboard as panel
-    now=pd.Timestamp.now(tz='UTC');p=blank(now);p['evaluated_close_at']=now.floor('5min').isoformat()
+    now=pd.Timestamp.now(tz='UTC');p=blank(now);p['evaluated_close_at']=now.floor('5min').isoformat();p['supply_demand_policy']='BASE_BOS_STICKY_1'
     with patch.object(panel,'read_json',return_value=p),patch.object(panel,'latest_commit',side_effect=OSError('API unavailable')) as commit:
         assert panel.fetch()['fresh']
         commit.assert_not_called()
@@ -175,3 +175,43 @@ def test_reference_decoder_rejects_corrupt_or_wrong_side_geometry():
     assert decode_reference(encode(),'BUY') is None
     ref['source']['high']=float('nan')
     assert decode_reference(encode(),'SELL') is None
+
+
+def test_supply_demand_stays_fixed_until_source_close_invalidates_even_after_120h():
+    from fx_scanner.zone_v05 import supply_demand,CONTRACT
+    now=T+130*HOUR
+    old=dict(id='saved',family=0,side='BUY',timeframe='H1',low=99.,high=100.,formed_at=pd.Timestamp(T,tz='UTC').isoformat(),selected_at=pd.Timestamp(T,tz='UTC').isoformat(),checked_close_at=pd.Timestamp(now-HOUR,tz='UTC').isoformat())
+    q=pd.DataFrame(dict(time=pd.to_datetime([now-HOUR,now],utc=True),close=[102.,102.]))
+    qs={60:q,240:q}
+    z=pd.DataFrame([dict(family=f,style=0,lookback=20,tf=60,direction=1,formed_ns=now-HOUR,low=lo,high=lo+1) for f,lo in [(0,101.),(5,102.)]])
+    prior=dict(contract=CONTRACT,supply_demand_zones=[old])
+    zones,events=supply_demand(z,qs,103.,now,prior)
+    assert zones[0]['id']=='saved' and zones[0]['low']==99. and not events
+    q.loc[1,'close']=98.
+    zones,events=supply_demand(z,qs,103.,now,prior)
+    assert events[0]['id']=='saved' and events[0]['status']=='INVALID'
+    assert not zones  # Both the saved zone and replacement were broken; EMA is excluded.
+    q.loc[1,'close']=100.5
+    zones,events=supply_demand(z,qs,103.,now,None)
+    assert not zones
+
+
+def test_feed_failure_preserves_saved_supply_demand_without_claiming_freshness():
+    from fx_scanner.zone_v05 import evaluate,CONTRACT
+    prior=dict(contract=CONTRACT,supply_demand_zones=[dict(id='saved',status='VALID')])
+    result=evaluate({},previous=prior)
+    assert result['supply_demand_zones']==[dict(id='saved',status='DATA_STALE')]
+
+
+def test_supply_demand_panel_shows_fixed_bounds_and_explicit_watch():
+    import json
+    from streamlit.testing.v1 import AppTest
+    now=pd.Timestamp.now(tz='UTC');p=blank(now)
+    a=dict(side='SELL',timeframe='H1',low=100.,high=102.,formed_at=now.isoformat(),selected_at=now.isoformat(),checked_close_at=now.isoformat(),status='VALID')
+    p.update(evaluated_close_at=now.floor('5min').isoformat(),supply_demand_policy='BASE_BOS_STICKY_1',supply_demand_zones=[a],ema_bias={'H1':'SELL'})
+    app=AppTest.from_string('import json\nfrom fx_scanner.zone_v05_dashboard import render_snapshot\nrender_snapshot(json.loads('+repr(json.dumps(p))+'))').run(timeout=15)
+    assert not app.exception
+    assert any('SUPPLY · area pantau SELL' in x.value for x in app.markdown)
+    assert any('close H1 di atas 102.00' in x.value for x in app.markdown)
+    assert any('belum merupakan sinyal ENTRY' in x.value for x in app.info)
+    assert [x.label for x in app.button]==['Kunci zona SELL sebagai acuan']
