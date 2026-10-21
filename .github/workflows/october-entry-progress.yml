@@ -1,0 +1,36 @@
+name: October research download progress
+on:
+  push:
+    branches: [research/october-entry-audit-20261021]
+    paths: ['.github/workflows/october-entry-progress.yml']
+permissions:
+  contents: read
+jobs:
+  progress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read isolated research progress only
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh -i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20 Rizanrizan@202.74.74.172 'python3 -' <<'PY'
+          from pathlib import Path
+          import time,json,collections
+          p=Path('/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/october-entry-audit-20261021/proxy-39530506904/publish')
+          files=list((p/'proxy_raw').glob('*.bi5'))
+          out={'observed_unix':time.time(),'raw_files':len(files),'files_by_symbol':dict(collections.Counter(f.name.split('_')[0] for f in files)),'outputs':{n:(p/n).stat().st_size for n in ['PROXY_FX_INPUT_MANIFEST.json','PROXY_DATA_QUALITY.json','XAUUSD_PROXY.csv','EURUSD_PROXY.csv','BTC_EXECUTION_PROXY.csv'] if (p/n).exists()}}
+          m=p/'PROXY_FX_INPUT_MANIFEST.json'
+          if m.exists():
+              v=json.loads(m.read_text());out['status_counts']=dict(collections.Counter(str(x['status']) for x in v));out['failures']=[x for x in v if x['status']!=200]
+          print(json.dumps(out,indent=2))
+          PY
