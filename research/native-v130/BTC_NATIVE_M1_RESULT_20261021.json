@@ -9,7 +9,7 @@
     "timeout_seconds": 1200
   },
   "binary": {
-    "sha256": "a126c0ef09cb00794d99cb67f127efca62af98456ec9446accc8a2e1a549df5c",
+    "sha256": "03970c5d1115c862e95dbc7512455995f8eebfd6107f1d63695cd17e96f63071",
     "frozen_source": "787ac228837175f9c07c4e13070e2794ebc7a7fe",
     "variant": "native-historical-local-transport-v1",
     "original_frozen_binary": false
@@ -23,35 +23,33 @@
   "credentials_in_public_output": false,
   "timeout": false,
   "exit_code": 0,
-  "elapsed_seconds": 80.01,
-  "signal_count": 4,
+  "elapsed_seconds": 70.01,
+  "signal_count": 3,
   "order_requests": 1,
   "accepted_orders": 1,
   "quarantine_count": 0,
-  "startup_ok": false,
+  "startup_ok": true,
   "summaries": [
-    "01/07/2025 23:59:00.000 | Info | NATIVE_BACKTEST_SUMMARY balance=99.64 equity=99.64 closed_fills=1 open_positions=0 leverage=200",
     "01/07/2025 23:59:00.000 | Info | NATIVE_BACKTEST_SUMMARY balance=99.64 equity=99.64 closed_fills=1 open_positions=0 leverage=200"
   ],
   "recent_bot_logs": [
-    "01/07/2025 23:45:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:46:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:47:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:48:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:49:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:50:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:51:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:52:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:53:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:54:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:55:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:56:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:57:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:58:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
-    "01/07/2025 23:59:00.000 | Info | NATIVE_BACKTEST_SUMMARY balance=99.64 equity=99.64 closed_fills=1 open_positions=0 leverage=200"
+    "25/06/2025 01:05:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:06:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:07:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:08:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:09:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:10:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:11:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:12:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:13:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:14:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:15:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:16:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:17:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:18:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "25/06/2025 01:19:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=99.64 equity=99.64 margin=0 open_risk=0 pending_risk=0 budget_blocks=0"
   ],
   "first_signals": [
-    "10/06/2025 00:00:00.000 | Info | NATIVE_SIGNAL symbol=BTCUSD side=1 at=2025-06-10T00:00:00.0000000Z",
     "10/06/2025 00:00:00.000 | Info | NATIVE_SIGNAL symbol=BTCUSD side=1 at=2025-06-10T00:00:00.0000000Z",
     "19/06/2025 14:00:00.000 | Info | NATIVE_SIGNAL symbol=BTCUSD side=-1 at=2025-06-19T14:00:00.0000000Z",
     "19/06/2025 15:00:00.000 | Info | NATIVE_SIGNAL symbol=BTCUSD side=-1 at=2025-06-19T15:00:00.0000000Z"
@@ -70,12 +68,12 @@
   },
   "state_reasons": {},
   "native_log_files": [
-    "app/ctrader-cli.deps.json",
     "app/ctrader-cli.runtimeconfig.json",
+    "app/ctrader-cli.deps.json",
     "app/algohost.netcore/cTrader.Automate.Host.NetCore.runtimeconfig.json",
     "app/algohost.netcore/cTrader.Automate.Host.NetCore.deps.json",
-    "root/cAlgo/Data/cBots/NativeHistorical/62109a7a-7a70-4e66-9e28-f6862e2480a4/Backtesting/log.txt",
-    "root/cAlgo/Data/cBots/NativeHistorical/62109a7a-7a70-4e66-9e28-f6862e2480a4/Backtesting/events.json"
+    "root/cAlgo/Data/cBots/NativeHistorical/b7414df4-f77d-4de4-a5da-08734b1b04e1/Backtesting/events.json",
+    "root/cAlgo/Data/cBots/NativeHistorical/b7414df4-f77d-4de4-a5da-08734b1b04e1/Backtesting/log.txt"
   ],
   "report_keys": [
     "main",
@@ -90,13 +88,18 @@
     "profitsLosses",
     "roi"
   ],
+  "report_numeric_summary": {
+    "main.netProfit": -0.36,
+    "main.startingCapital": 100
+  },
   "audit": {
-    "unique_signal_logs": [
-      "10/06/2025 00:00:00.000 | Info | NATIVE_SIGNAL symbol=BTCUSD side=1 at=2025-06-10T00:00:00.0000000Z",
-      "19/06/2025 14:00:00.000 | Info | NATIVE_SIGNAL symbol=BTCUSD side=-1 at=2025-06-19T14:00:00.0000000Z",
-      "19/06/2025 15:00:00.000 | Info | NATIVE_SIGNAL symbol=BTCUSD side=-1 at=2025-06-19T15:00:00.0000000Z"
-    ],
-    "workflow_run": 39692984388,
-    "workflow_cleanup_error": "Native runtime exited 0; Actions job subsequently failed removing root-owned price-cache files"
+    "workflow_run": 39693375246,
+    "workflow_conclusion": "success",
+    "interpretation": "Autonomous native M1 signal computation and market-order execution confirmed. No supplied signals or external order calls.",
+    "starting_balance": 100,
+    "ending_balance": 99.64,
+    "spread_pips": 0,
+    "commission_cli": 0,
+    "historical_test_only": true
   }
 }
