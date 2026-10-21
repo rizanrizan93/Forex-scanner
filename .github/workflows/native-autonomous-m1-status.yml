@@ -26,7 +26,7 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_dir/key"
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
           ssh -i "$ssh_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=20 Rizanrizan@202.74.74.172 'python3 -' <<'PY'
-          import json,time,re
+          import json,time,re,base64,subprocess
           from pathlib import Path
           root=Path.home()/'REPLAY_RESULTS/native-autonomous-m1'
           files=[p for p in root.glob('run.*/native.log') if p.is_file() and not p.is_symlink()]
@@ -36,6 +36,13 @@ jobs:
           prefixes=('NATIVE_BACKTEST_','NATIVE_SIGNAL ','NATIVE_ORDER_RESULT ','RIZAN_PORTFOLIO ready=','RIZAN_TRANSPORT symbol=','RIZAN_STARTUP_OK','QUARANTINED:')
           safe=[s for s in lines if any(v in s for v in prefixes)]
           print('NATIVE_M1_PROGRESS '+json.dumps({'log_bytes':p.stat().st_size,'idle_seconds':round(time.time()-p.stat().st_mtime),'signals':sum('NATIVE_SIGNAL ' in s for s in safe),'requests':sum('NATIVE_ORDER_RESULT ' in s for s in safe),'accepted':sum('NATIVE_ORDER_RESULT ' in s and 'success=True' in s for s in safe),'last_bot_logs':safe[-8:],'report_created':(p.parent/'report.json').is_file()}))
+          identity=json.loads(subprocess.run(['openssl','pkeyutl','-decrypt','-inkey',str(Path.home()/'.local/state/rizan-native-preflight/transfer.pem'),'-pkeyopt','rsa_padding_mode:oaep','-pkeyopt','rsa_oaep_md:sha256','-pkeyopt','rsa_mgf1_md:sha256'],input=base64.b64decode((p.parent/'identity.sealed').read_bytes()),capture_output=True,check=True).stdout)
+          ctx=json.loads((Path.home()/'.local/state/rizan-native-preflight/context.json').read_text())
+          redacted='\n'.join(lines[-24:])
+          for v in [str(identity['ctid']),str(identity['account'])]+[Path(v).read_text().strip() for v in ctx['CredentialCandidates']]:
+              if v:redacted=redacted.replace(v,'[REDACTED]')
+          redacted=re.sub(r'[\w.+-]+@[\w.-]+','[EMAIL]',redacted)
+          print('NATIVE_M1_REDACTED_TAIL '+json.dumps(redacted))
           q=p.parent/'PUBLIC_RESULT.json'
           if q.is_file():print('NATIVE_M1_FINISHED '+q.read_text())
           PY
