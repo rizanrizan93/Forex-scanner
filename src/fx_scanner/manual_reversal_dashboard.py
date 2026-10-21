@@ -54,6 +54,38 @@ def wib(value):
     return pd.Timestamp(value).tz_convert('Asia/Jakarta').strftime('%d/%m %H:%M WIB') if value else '—'
 
 
+
+def confirmed_rebound_plan(plan):
+    """Conservative dashboard-only display gate, not a calibrated probability.
+
+    It never creates signals, changes the snapshot, or grants execution.
+    Pre-touch and unconfirmed levels remain in the collapsed research audit.
+    """
+    z = plan.get('anchor') or {}
+    c = plan.get('candidate_a') or {}
+    if c.get('model') != 'CANDIDATE_A_TP1R_WATCH' or c.get('state') != 'WATCH':
+        return False
+    if plan.get('phase') != 'KONFIRMASI_STRUKTUR':
+        return False
+    if not z.get('eligible') or not z.get('structural_bos') or z.get('major_conflict'):
+        return False
+    if z.get('lifecycle') == 'DEGRADED' or z.get('risk_state') != 'NORMAL':
+        return False
+    if not isinstance(z.get('touch_count'), int) or z['touch_count'] > 1:
+        return False
+    if not all((c.get('first_touch_at'), plan.get('rejection_m15_at'),
+                plan.get('confirmation_m5_at'))):
+        return False
+    age = c.get('zone_age_at_first_touch_minutes')
+    lag = c.get('confirmation_lag_minutes')
+    if not isinstance(age, (int, float)) or not isinstance(lag, (int, float)):
+        return False
+    if not (0 <= age <= 720 and 0 <= lag <= 30):
+        return False
+    return all(c.get(key) is not None for key in (
+        'entry_reference', 'sl_reference', 'tp_1r_reference'))
+
+
 def render_snapshot(snapshot):
     import streamlit as st
     p=validate(snapshot)
@@ -66,12 +98,16 @@ def render_snapshot(snapshot):
         return
     price=p['price'];st.caption(f"Harga snapshot {price:,.2f} · candle {wib(p['price_observed_at'])} · bukan bid/ask live")
     st.caption('Tampilan mengecek ulang setiap 60 detik; kolektor candle setiap 5 menit. Cocokkan harga dan candle terakhir dengan chart cTrader Anda.')
-    plans={x['direction']:x for x in p.get('plans',[])}
+    raw_plans={x['direction']:x for x in p.get('plans',[])}
+    plans={side:plan for side,plan in raw_plans.items() if confirmed_rebound_plan(plan)}
+    st.caption('Mode seleksi ketat: hanya WATCH terkonfirmasi M15 → M5, first touch ≤12 jam, displacement BOS, maksimal 1 episode retest, tanpa risiko break atau konflik. Bukan jaminan harga berbalik.')
+    if not plans:
+        st.info('Belum ada zona pantulan yang lolos filter ketat. Area berisiko dan belum terkonfirmasi tidak ditampilkan sebagai kandidat entry.')
     for side,col in zip(['BUY','SELL'],st.columns(2)):
         with col:
-            st.markdown('#### '+('Kandidat demand · BUY' if side=='BUY' else 'Kandidat supply · SELL'))
+            st.markdown('#### '+('Pantulan BUY · terkonfirmasi' if side=='BUY' else 'Pantulan SELL · terkonfirmasi'))
             if side not in plans:
-                st.info('Belum ada acuan H1/H2/H4 yang aktif dan datanya cukup baru pada sisi harga ini.');continue
+                st.caption('Tidak ada zona yang lolos filter ketat pada sisi ini.');continue
             plan=plans[side];z=plan['anchor'];phase=plan['phase'];label=PHASES.get(phase,'Menunggu pemeriksaan data')
             if phase=='KONFIRMASI_STRUKTUR':st.info(label+' · periksa ulang chart sebelum keputusan manual')
             elif phase in {'KONFLIK_H1_H4','KONFLIK_STRUKTUR_H1_H2_H4','LEWATI_BATAS_SKENARIO','KONFIRMASI_BATAL','TEMBUS_SEMENTARA_TUNGGU_TF_ASAL','ZONA_MELEMAH_TUNGGU_BASIS_BARU'}:st.warning(label)
@@ -82,7 +118,7 @@ def render_snapshot(snapshot):
                 state=candidate.get('state','WAIT')
                 st.markdown('##### Kandidat A · TP 1R · riset manual')
                 if state=='WATCH':
-                    st.info('WATCH — filter D1 countertrend, first touch ≤12 jam, reclaim M15 dan BOS M5 ≤30 menit terpenuhi. **Ini bukan izin order.**')
+                    st.info('WATCH — konfirmasi pantulan teramati, retest ≤1 dan displacement BOS pada pembentukan zona. Risiko breakdown tetap ada. **Ini bukan izin order.**')
                     st.caption('Level berikut adalah referensi dari close M5, bukan harga bid/ask fill broker.')
                     c1,c2,c3=st.columns(3)
                     c1.metric('M5 referensi',f"{candidate['entry_reference']:,.2f}")
@@ -118,31 +154,12 @@ def render_snapshot(snapshot):
             else:
                 st.write(f"Level lawan H1/H2/H4: **{target:,.2f}**")
                 st.caption(f"Jarak dari harga snapshot: ${plan['target_distance_usd']:,.2f} per ounce. Referensi tujuan, bukan jaminan TP tercapai.")
-            context=plan.get('context_h4')
-            if context and context['zone_id']!=z['zone_id']:
-                st.caption(f"Konteks H4: {context['low']:,.2f}–{context['high']:,.2f}")
-            for tf, ctx in (plan.get('contexts_htf') or {}).items():
-                if tf == 'H4' or not ctx:
-                    continue
-                st.caption(f"Konteks {tf} {ctx['direction']}: {ctx['low']:,.2f}–{ctx['high']:,.2f} · bukan trigger entry")
-            next_zones=sorted(
-                (q for q in p.get('zones',[]) if q['direction']==side and
-                 q['timeframe'] in {'H1','H2','H4'} and q['zone_id']!=z['zone_id'] and
-                 q.get('eligible') and q.get('distance',0)>z.get('distance',0)),
-                key=lambda q:q.get('distance',float('inf')))
-            if next_zones:
-                nxt=next_zones[0]
-                st.caption(f"Zona berikutnya {nxt['timeframe']}: {nxt['low']:,.2f}–{nxt['high']:,.2f} · status {nxt.get('lifecycle','UNKNOWN')}; bukan target otomatis.")
-            if z['overlap'] and not z['major_conflict']:st.caption('Ada irisan dengan zona mikro sisi lawan; arah mikro masih perlu dikonfirmasi.')
             if plan.get('rejection_m15_at'):st.write('Reclaim M15: '+wib(plan['rejection_m15_at']))
             if plan.get('confirmation_m5_at'):
                 st.write('Break M5: '+wib(plan['confirmation_m5_at']))
                 st.caption(f"Close konfirmasi {plan['confirmation_reference']:,.2f}; bukan harga entry saat ini.")
-            for tf in ['M15','M5']:
-                refs=[x for x in plan['refinements'] if x['timeframe']==tf]
-                if refs:st.caption(tf+' refinement: '+', '.join(f"{x['low']:,.2f}–{x['high']:,.2f}" for x in refs[:2]))
-    st.caption('Acuan H1/H2/H4 + WATCH Kandidat A: D1 EMA20/50 selesai dan countertrend, first touch ≤12 jam, reclaim M15 dan break M5 ≤30 menit dari first touch. H12/D1/W1 tetap konteks, bukan sinyal order.')
-    with st.expander('Peta semua timeframe (H1/H2/H4/H12/D1/W1/M15/M5) dan usia data',expanded=False):
+    st.caption('Hanya zona yang memenuhi gerbang konfirmasi ditampilkan di panel utama. Penyaringan ini belum tervalidasi sebagai probabilitas reversal atau profit dan tidak terhubung ke eksekusi cBot.')
+    with st.expander('Audit zona ditolak dan semua timeframe · bukan kandidat entry',expanded=False):
         rows=[{'TF':z['timeframe'],'Arah':z['direction'],'Bawah':round(z['low'],2),'Atas':round(z['high'],2),
             'Batas skenario':round(z['invalidation'],2),'Posisi':z['position'],'Lifecycle':z.get('lifecycle'),'Risiko break':z.get('risk_state'),
             'Sentuhan':z['touch_count'],'Sumber sentuhan':z.get('touch_count_source'),
