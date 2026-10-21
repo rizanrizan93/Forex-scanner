@@ -1,0 +1,71 @@
+{
+  "binary_sha256": "a3d00f27ebe1f4f9eec2ede99fe56ef581556c42492e6e04817be19b19003b9c",
+  "image_id": "sha256:285484fad431e0ffa4ca96662e82ea66cead93c97cf0e3c46006e80cab4734ba",
+  "native_algo": true,
+  "mode": "backtest",
+  "start": "09/06/2025",
+  "end": "11/06/2025",
+  "initial_balance": 100,
+  "services_changed": false,
+  "live_run_invoked": false,
+  "credential_exported": false,
+  "full_2019_2026_completed": false,
+  "runs": [
+    {
+      "stage": "version",
+      "timeout": false,
+      "exit_code": 0,
+      "markers": [],
+      "runtime_versions": [
+        "5.10.1.0"
+      ],
+      "possible_oom": false
+    },
+    {
+      "stage": "metadata",
+      "timeout": false,
+      "exit_code": 0,
+      "markers": [],
+      "runtime_versions": [],
+      "possible_oom": false
+    },
+    {
+      "stage": "backtest",
+      "timeout": false,
+      "exit_code": 1,
+      "markers": [
+        "PORTFOLIO_FULL_ACCOUNT_AND_BRIDGE_REQUIRED"
+      ],
+      "runtime_versions": [],
+      "possible_oom": false
+    }
+  ],
+  "metadata": {
+    "Name": "FrozenV130",
+    "Type": "Indicator",
+    "AccessRights": "None"
+  },
+  "parameters": [
+    {
+      "name": "EnableTrading",
+      "default": false
+    },
+    {
+      "name": "EnableXau",
+      "default": true
+    },
+    {
+      "name": "EnableEur",
+      "default": true
+    },
+    {
+      "name": "EnableBtc",
+      "default": true
+    }
+  ],
+  "native_report_created": false,
+  "status": "BLOCKED_AT_STARTUP",
+  "interpretation": "Official native CLI metadata accepted the frozen binary; backtest exited 1 with startup account/bridge guard. No report or native P/L exists. The run supplied account binding but no production or historical bridge parameters. This guard alone cannot distinguish account mismatch from absent bridge fields.",
+  "source_guard": "portfolio_7day_frozen/work/source/PortfolioHost.cs:60",
+  "required_next_step": "Provide isolated historical transport, recovery/ACK state, BTC 7-day feed, and point-in-time macro/calendar tied to virtual backtest time. Do not connect this historical replay to production bridge state."
+}
