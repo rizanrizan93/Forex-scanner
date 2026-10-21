@@ -1,0 +1,300 @@
+[
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_A",
+    "window": "FX_SINCE_FIRST_RETAINED_BRIDGE",
+    "start_utc": "2026-10-11T07:37:13.917326+00:00",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "A",
+    "macro": "TECH_ALLOWED",
+    "btc_enabled": false,
+    "raw_candidates": {
+      "XAUUSD": 4,
+      "EURUSD": 1
+    },
+    "accepted_baskets": {
+      "EURUSD": 1,
+      "XAUUSD": 1
+    },
+    "broker_requests": 3,
+    "ending_balance": 97.4354999999988,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 1.4210854715202004e-14,
+    "gate_counts": {
+      "BASKET_PREPARED": 2,
+      "NO_INTEGER_CHILD_WITHIN_BUDGET": 1,
+      "XAU_LOSS_COOLDOWN": 1
+    }
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_B",
+    "window": "FX_SINCE_FIRST_RETAINED_BRIDGE",
+    "start_utc": "2026-10-11T07:37:13.917326+00:00",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "B",
+    "macro": "TECH_ALLOWED",
+    "btc_enabled": false,
+    "raw_candidates": {
+      "XAUUSD": 4,
+      "EURUSD": 1
+    },
+    "accepted_baskets": {
+      "EURUSD": 1,
+      "XAUUSD": 1
+    },
+    "broker_requests": 3,
+    "ending_balance": 103.66299999999733,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 1.4210854715202004e-14,
+    "gate_counts": {
+      "BASKET_PREPARED": 2,
+      "NO_INTEGER_CHILD_WITHIN_BUDGET": 1,
+      "XAU_LOSS_COOLDOWN": 2
+    }
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_A",
+    "window": "FX_SINCE_FIRST_RETAINED_BRIDGE",
+    "start_utc": "2026-10-11T07:37:13.917326+00:00",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "A",
+    "macro": "STRICT_NO_MACRO",
+    "btc_enabled": false,
+    "raw_candidates": {
+      "XAUUSD": 4,
+      "EURUSD": 1
+    },
+    "accepted_baskets": {
+      "EURUSD": 1
+    },
+    "broker_requests": 2,
+    "ending_balance": 104.13399999999882,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 1.4210854715202004e-14,
+    "gate_counts": {
+      "BASKET_PREPARED": 1,
+      "XAU_MACRO_NEWS_FEED_REQUIRED": 4
+    }
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_B",
+    "window": "FX_SINCE_FIRST_RETAINED_BRIDGE",
+    "start_utc": "2026-10-11T07:37:13.917326+00:00",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "B",
+    "macro": "STRICT_NO_MACRO",
+    "btc_enabled": false,
+    "raw_candidates": {
+      "XAUUSD": 4,
+      "EURUSD": 1
+    },
+    "accepted_baskets": {
+      "EURUSD": 1
+    },
+    "broker_requests": 2,
+    "ending_balance": 104.08299999999791,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 1.4210854715202004e-14,
+    "gate_counts": {
+      "BASKET_PREPARED": 1,
+      "XAU_MACRO_NEWS_FEED_REQUIRED": 4
+    }
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_TECH_ALLOWED_A",
+    "window": "FX_CHECKPOINT_EPOCHS",
+    "start_utc": "2026-10-15T05:19:17.639Z",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "A",
+    "macro": "TECH_ALLOWED",
+    "btc_enabled": false,
+    "raw_candidates": {
+      "XAUUSD": 3
+    },
+    "accepted_baskets": {
+      "XAUUSD": 1
+    },
+    "broker_requests": 1,
+    "ending_balance": 108.47149999999998,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 0.0,
+    "gate_counts": {
+      "BASKET_PREPARED": 1,
+      "XAU_LOSS_COOLDOWN": 1
+    }
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_TECH_ALLOWED_B",
+    "window": "FX_CHECKPOINT_EPOCHS",
+    "start_utc": "2026-10-15T05:19:17.639Z",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "B",
+    "macro": "TECH_ALLOWED",
+    "btc_enabled": false,
+    "raw_candidates": {
+      "XAUUSD": 3
+    },
+    "accepted_baskets": {
+      "XAUUSD": 1
+    },
+    "broker_requests": 1,
+    "ending_balance": 114.74999999999942,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 0.0,
+    "gate_counts": {
+      "BASKET_PREPARED": 1,
+      "XAU_LOSS_COOLDOWN": 2
+    }
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_STRICT_NO_MACRO_A",
+    "window": "FX_CHECKPOINT_EPOCHS",
+    "start_utc": "2026-10-15T05:19:17.639Z",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "A",
+    "macro": "STRICT_NO_MACRO",
+    "btc_enabled": false,
+    "raw_candidates": {
+      "XAUUSD": 3
+    },
+    "accepted_baskets": {},
+    "broker_requests": 0,
+    "ending_balance": 115.17,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 0.0,
+    "gate_counts": {
+      "XAU_MACRO_NEWS_FEED_REQUIRED": 3
+    }
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_STRICT_NO_MACRO_B",
+    "window": "FX_CHECKPOINT_EPOCHS",
+    "start_utc": "2026-10-15T05:19:17.639Z",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "B",
+    "macro": "STRICT_NO_MACRO",
+    "btc_enabled": false,
+    "raw_candidates": {
+      "XAUUSD": 3
+    },
+    "accepted_baskets": {},
+    "broker_requests": 0,
+    "ending_balance": 115.17,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 0.0,
+    "gate_counts": {
+      "XAU_MACRO_NEWS_FEED_REQUIRED": 3
+    }
+  },
+  {
+    "case": "COMBINED_BTC_BACKEND_TECH_ALLOWED_A",
+    "window": "COMBINED_BTC_BACKEND",
+    "start_utc": "2026-10-20T22:19:45.738285+00:00",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "A",
+    "macro": "TECH_ALLOWED",
+    "btc_enabled": true,
+    "raw_candidates": {},
+    "accepted_baskets": {},
+    "broker_requests": 0,
+    "ending_balance": 115.17,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 0.0,
+    "gate_counts": {}
+  },
+  {
+    "case": "COMBINED_BTC_BACKEND_TECH_ALLOWED_B",
+    "window": "COMBINED_BTC_BACKEND",
+    "start_utc": "2026-10-20T22:19:45.738285+00:00",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "B",
+    "macro": "TECH_ALLOWED",
+    "btc_enabled": true,
+    "raw_candidates": {},
+    "accepted_baskets": {},
+    "broker_requests": 0,
+    "ending_balance": 115.17,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 0.0,
+    "gate_counts": {}
+  },
+  {
+    "case": "COMBINED_BTC_BACKEND_STRICT_NO_MACRO_A",
+    "window": "COMBINED_BTC_BACKEND",
+    "start_utc": "2026-10-20T22:19:45.738285+00:00",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "A",
+    "macro": "STRICT_NO_MACRO",
+    "btc_enabled": true,
+    "raw_candidates": {},
+    "accepted_baskets": {},
+    "broker_requests": 0,
+    "ending_balance": 115.17,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 0.0,
+    "gate_counts": {}
+  },
+  {
+    "case": "COMBINED_BTC_BACKEND_STRICT_NO_MACRO_B",
+    "window": "COMBINED_BTC_BACKEND",
+    "start_utc": "2026-10-20T22:19:45.738285+00:00",
+    "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+    "path": "B",
+    "macro": "STRICT_NO_MACRO",
+    "btc_enabled": true,
+    "raw_candidates": {},
+    "accepted_baskets": {},
+    "broker_requests": 0,
+    "ending_balance": 115.17,
+    "open_positions_end": 0,
+    "error_count": 0,
+    "quarantined": false,
+    "accounting_block": false,
+    "terminal_forced_closes": 0,
+    "cash_residual": 0.0,
+    "gate_counts": {}
+  }
+]

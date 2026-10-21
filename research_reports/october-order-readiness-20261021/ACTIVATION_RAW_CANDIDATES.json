@@ -1,0 +1,314 @@
+[
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_A",
+    "candidates": [
+      {
+        "utc": "2026-10-14T12:35:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 7.215000000000016,
+        "Anchor": 4156.2715,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:05:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 2.743571428571418,
+        "Anchor": 4127.384357142857,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:40:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 5.626428571428668,
+        "Anchor": 4127.822642857143,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T13:55:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 6.002857142857205,
+        "Anchor": 4134.950285714286,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-13T11:00:00Z",
+        "symbol": "EURUSD",
+        "direction": "SELL",
+        "Distance": 0.0015535714285714718,
+        "Fast": -0.31255179522557003,
+        "Slow": 0.06324706959677678
+      }
+    ]
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_B",
+    "candidates": [
+      {
+        "utc": "2026-10-14T12:35:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 7.215000000000016,
+        "Anchor": 4156.2715,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:05:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 2.743571428571418,
+        "Anchor": 4127.384357142857,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:40:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 5.626428571428668,
+        "Anchor": 4127.822642857143,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T13:55:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 6.002857142857205,
+        "Anchor": 4134.950285714286,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-13T11:00:00Z",
+        "symbol": "EURUSD",
+        "direction": "SELL",
+        "Distance": 0.0015535714285714718,
+        "Fast": -0.31255179522557003,
+        "Slow": 0.06324706959677678
+      }
+    ]
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_A",
+    "candidates": [
+      {
+        "utc": "2026-10-14T12:35:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 7.215000000000016,
+        "Anchor": 4156.2715,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:05:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 2.743571428571418,
+        "Anchor": 4127.384357142857,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:40:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 5.626428571428668,
+        "Anchor": 4127.822642857143,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T13:55:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 6.002857142857205,
+        "Anchor": 4134.950285714286,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-13T11:00:00Z",
+        "symbol": "EURUSD",
+        "direction": "SELL",
+        "Distance": 0.0015535714285714718,
+        "Fast": -0.31255179522557003,
+        "Slow": 0.06324706959677678
+      }
+    ]
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_B",
+    "candidates": [
+      {
+        "utc": "2026-10-14T12:35:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 7.215000000000016,
+        "Anchor": 4156.2715,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:05:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 2.743571428571418,
+        "Anchor": 4127.384357142857,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:40:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 5.626428571428668,
+        "Anchor": 4127.822642857143,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T13:55:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 6.002857142857205,
+        "Anchor": 4134.950285714286,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-13T11:00:00Z",
+        "symbol": "EURUSD",
+        "direction": "SELL",
+        "Distance": 0.0015535714285714718,
+        "Fast": -0.31255179522557003,
+        "Slow": 0.06324706959677678
+      }
+    ]
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_TECH_ALLOWED_A",
+    "candidates": [
+      {
+        "utc": "2026-10-20T12:05:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 2.743571428571418,
+        "Anchor": 4127.384357142857,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:40:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 5.626428571428668,
+        "Anchor": 4127.822642857143,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T13:55:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 6.002857142857205,
+        "Anchor": 4134.950285714286,
+        "macro_eligibility_reconstructed": false
+      }
+    ]
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_TECH_ALLOWED_B",
+    "candidates": [
+      {
+        "utc": "2026-10-20T12:05:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 2.743571428571418,
+        "Anchor": 4127.384357142857,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:40:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 5.626428571428668,
+        "Anchor": 4127.822642857143,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T13:55:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 6.002857142857205,
+        "Anchor": 4134.950285714286,
+        "macro_eligibility_reconstructed": false
+      }
+    ]
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_STRICT_NO_MACRO_A",
+    "candidates": [
+      {
+        "utc": "2026-10-20T12:05:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 2.743571428571418,
+        "Anchor": 4127.384357142857,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:40:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 5.626428571428668,
+        "Anchor": 4127.822642857143,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T13:55:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 6.002857142857205,
+        "Anchor": 4134.950285714286,
+        "macro_eligibility_reconstructed": false
+      }
+    ]
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_STRICT_NO_MACRO_B",
+    "candidates": [
+      {
+        "utc": "2026-10-20T12:05:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 2.743571428571418,
+        "Anchor": 4127.384357142857,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T12:40:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 5.626428571428668,
+        "Anchor": 4127.822642857143,
+        "macro_eligibility_reconstructed": false
+      },
+      {
+        "utc": "2026-10-20T13:55:00Z",
+        "symbol": "XAUUSD",
+        "direction": "SELL",
+        "Atr": 6.002857142857205,
+        "Anchor": 4134.950285714286,
+        "macro_eligibility_reconstructed": false
+      }
+    ]
+  },
+  {
+    "case": "COMBINED_BTC_BACKEND_TECH_ALLOWED_A",
+    "candidates": []
+  },
+  {
+    "case": "COMBINED_BTC_BACKEND_TECH_ALLOWED_B",
+    "candidates": []
+  },
+  {
+    "case": "COMBINED_BTC_BACKEND_STRICT_NO_MACRO_A",
+    "candidates": []
+  },
+  {
+    "case": "COMBINED_BTC_BACKEND_STRICT_NO_MACRO_B",
+    "candidates": []
+  }
+]

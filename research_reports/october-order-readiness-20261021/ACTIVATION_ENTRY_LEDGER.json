@@ -1,0 +1,66 @@
+[
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_A",
+    "symbol": "EURUSD",
+    "basket_key": "RZEF245|639274860000000000",
+    "entry_utc": "2026-10-13T11:00:04Z",
+    "direction": "SELL",
+    "fills_or_batches": 2
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_A",
+    "symbol": "XAUUSD",
+    "basket_key": "RZXRC1|639280947000000000",
+    "entry_utc": "2026-10-20T12:05:04Z",
+    "direction": "SELL",
+    "fills_or_batches": 1
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_B",
+    "symbol": "EURUSD",
+    "basket_key": "RZEF245|639274860000000000",
+    "entry_utc": "2026-10-13T11:00:04Z",
+    "direction": "SELL",
+    "fills_or_batches": 2
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_B",
+    "symbol": "XAUUSD",
+    "basket_key": "RZXRC1|639280947000000000",
+    "entry_utc": "2026-10-20T12:05:04Z",
+    "direction": "SELL",
+    "fills_or_batches": 1
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_A",
+    "symbol": "EURUSD",
+    "basket_key": "RZEF245|639274860000000000",
+    "entry_utc": "2026-10-13T11:00:04Z",
+    "direction": "SELL",
+    "fills_or_batches": 2
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_B",
+    "symbol": "EURUSD",
+    "basket_key": "RZEF245|639274860000000000",
+    "entry_utc": "2026-10-13T11:00:04Z",
+    "direction": "SELL",
+    "fills_or_batches": 2
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_TECH_ALLOWED_A",
+    "symbol": "XAUUSD",
+    "basket_key": "RZXRC1|639280947000000000",
+    "entry_utc": "2026-10-20T12:05:04Z",
+    "direction": "SELL",
+    "fills_or_batches": 1
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_TECH_ALLOWED_B",
+    "symbol": "XAUUSD",
+    "basket_key": "RZXRC1|639280947000000000",
+    "entry_utc": "2026-10-20T12:05:04Z",
+    "direction": "SELL",
+    "fills_or_batches": 1
+  }
+]

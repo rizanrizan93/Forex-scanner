@@ -1,0 +1,245 @@
+{
+  "observed_utc": "2026-10-21T02:48:58.731760+00:00",
+  "read_only": true,
+  "services": {
+    "rizan-cbot-bridge.service": {
+      "properties": {
+        "NRestarts": "0",
+        "ExecMainStartTimestamp": "Fri 2026-10-16 17:07:07 WIB",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Fri 2026-10-16 17:07:07 WIB"
+      },
+      "retained_journal_records": 375,
+      "first_retained_utc": "2026-10-11T07:37:13.917326+00:00",
+      "last_retained_utc": "2026-10-20T23:52:01.977120+00:00",
+      "markers": {
+        "Started": {
+          "count": 15,
+          "first_utc": "2026-10-11T07:37:13.917326+00:00",
+          "last_utc": "2026-10-16T10:07:07.117056+00:00"
+        },
+        "Starting": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "server listening": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "connection open": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "connection closed": {
+          "count": 14,
+          "first_utc": "2026-10-20T22:16:21.183283+00:00",
+          "last_utc": "2026-10-20T23:13:23.348287+00:00"
+        },
+        "AUTH_FAILED": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "LEASE_BUSY": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "IDENTITY_INVALID": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "FEED_NOT_CURRENT": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "M1_GAP": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "Traceback": {
+          "count": 31,
+          "first_utc": "2026-10-12T18:06:07.499140+00:00",
+          "last_utc": "2026-10-20T23:52:01.977120+00:00"
+        },
+        "Main process exited": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "BRIDGE_HANDSHAKE_OK": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "BTC_BRIDGE": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        }
+      }
+    },
+    "rizan-btc7d130.service": {
+      "properties": {
+        "NRestarts": "0",
+        "ExecMainStartTimestamp": "Wed 2026-10-21 05:19:45 WIB",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Wed 2026-10-21 05:19:45 WIB"
+      },
+      "retained_journal_records": 157,
+      "first_retained_utc": "2026-10-20T22:19:45.738285+00:00",
+      "last_retained_utc": "2026-10-20T23:13:23.351943+00:00",
+      "markers": {
+        "Started": {
+          "count": 1,
+          "first_utc": "2026-10-20T22:19:45.738285+00:00",
+          "last_utc": "2026-10-20T22:19:45.738285+00:00"
+        },
+        "Starting": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "server listening": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "connection open": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "connection closed": {
+          "count": 12,
+          "first_utc": "2026-10-20T22:20:12.946285+00:00",
+          "last_utc": "2026-10-20T23:13:23.351943+00:00"
+        },
+        "AUTH_FAILED": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "LEASE_BUSY": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "IDENTITY_INVALID": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "FEED_NOT_CURRENT": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "M1_GAP": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "Traceback": {
+          "count": 18,
+          "first_utc": "2026-10-20T22:20:12.946285+00:00",
+          "last_utc": "2026-10-20T23:13:23.351943+00:00"
+        },
+        "Main process exited": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "BRIDGE_HANDSHAKE_OK": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        },
+        "BTC_BRIDGE": {
+          "count": 0,
+          "first_utc": null,
+          "last_utc": null
+        }
+      }
+    }
+  },
+  "states": [
+    {
+      "unit": "rizan-cbot-bridge.service",
+      "namespace": "RZEU4B",
+      "symbol": "EURUSD",
+      "server_revision": 4257,
+      "state": {
+        "EpochUtc": "2026-10-12T02:53:25.945Z",
+        "LastBarUtc": "2026-10-15T04:53:00Z",
+        "LastSignalUtc": "2026-10-13T11:00:00Z",
+        "LastRealExitUtc": "0001-01-01T00:00:00Z",
+        "PeakEquity": 101.02,
+        "Quarantined": false,
+        "QuarantineReason": "",
+        "Revision": 4258
+      },
+      "basket_present": false,
+      "pending_label_present": false
+    },
+    {
+      "unit": "rizan-cbot-bridge.service",
+      "namespace": "RZEF245",
+      "symbol": "EURUSD",
+      "server_revision": 5559,
+      "state": {
+        "EpochUtc": "2026-10-15T05:19:17.639Z",
+        "LastBarUtc": "2026-10-21T02:47:00Z",
+        "LastSignalUtc": "0001-01-01T00:00:00Z",
+        "LastRealExitUtc": "0001-01-01T00:00:00Z",
+        "PeakEquity": 149.85,
+        "Quarantined": false,
+        "QuarantineReason": "",
+        "Revision": 5560
+      },
+      "basket_present": false,
+      "pending_label_present": false
+    },
+    {
+      "unit": "rizan-cbot-bridge.service",
+      "namespace": "RZXRC1",
+      "symbol": "XAUUSD",
+      "server_revision": 3675,
+      "state": {
+        "EpochUtc": "2026-10-16T10:28:50.937Z",
+        "LastBarUtc": "2026-10-21T02:47:00Z",
+        "LastSignalUtc": "0001-01-01T00:00:00Z",
+        "LastRealExitUtc": "0001-01-01T00:00:00Z",
+        "PeakEquity": 115.17,
+        "Quarantined": false,
+        "QuarantineReason": "",
+        "XauResumeUtc": "0001-01-01T00:00:00Z",
+        "Revision": 3676
+      },
+      "basket_present": false,
+      "pending_label_present": false
+    },
+    {
+      "unit": "rizan-btc7d130.service",
+      "namespace": "RZBTC7D130",
+      "symbol": "BTCUSD",
+      "server_revision": 2,
+      "state": {
+        "LastSignal": "0001-01-01T00:00:00",
+        "Fault": false,
+        "Sending": false,
+        "ExitPending": false,
+        "Revision": 2
+      },
+      "basket_present": false,
+      "pending_label_present": false
+    }
+  ],
+  "native_bar_caches": []
+}

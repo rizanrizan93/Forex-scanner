@@ -1,0 +1,253 @@
+{
+  "read_only": true,
+  "live_orders_sent": 0,
+  "token_refresh_enabled": false,
+  "history_start_utc": "2026-09-01T00:00:00Z",
+  "purpose": "Native M1 candle signal/execution diagnosis; historical bid/ask spread, macro and native terminal state not reconstructed",
+  "expected_account_matches": 1,
+  "account": {
+    "balance": 115.17,
+    "account_last4": "7903",
+    "is_live": true
+  },
+  "current_positions_count": 0,
+  "current_pending_orders_count": 0,
+  "contracts": {
+    "XAUUSD": {
+      "digits": 2,
+      "pipPosition": 2,
+      "minVolume": 100,
+      "stepVolume": 100,
+      "maxVolume": 200000,
+      "lotSize": 10000,
+      "maxExposure": 10000000000000,
+      "tradingMode": 0
+    },
+    "EURUSD": {
+      "digits": 5,
+      "pipPosition": 4,
+      "minVolume": 100000,
+      "stepVolume": 100000,
+      "maxVolume": 500000000,
+      "lotSize": 10000000,
+      "maxExposure": 10000000000000,
+      "tradingMode": 0
+    },
+    "BTCUSD": {
+      "digits": 2,
+      "pipPosition": 0,
+      "minVolume": 1,
+      "stepVolume": 1,
+      "maxVolume": 1000,
+      "lotSize": 100,
+      "maxExposure": 10000000000000,
+      "tradingMode": 0
+    }
+  },
+  "end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+  "data": {
+    "XAUUSD": {
+      "rows": 49622,
+      "start": "2026-09-01T00:00:00+00:00",
+      "end": "2026-10-21T02:48:00+00:00",
+      "pages": [
+        {
+          "rows": 4999,
+          "earliest": "2026-10-15T11:21:00+00:00",
+          "latest": "2026-10-21T02:48:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-10-09T19:52:00+00:00",
+          "latest": "2026-10-15T11:20:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-10-06T05:26:00+00:00",
+          "latest": "2026-10-09T19:51:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-30T13:57:00+00:00",
+          "latest": "2026-10-06T05:25:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-24T23:30:00+00:00",
+          "latest": "2026-09-30T13:56:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-21T08:02:00+00:00",
+          "latest": "2026-09-24T23:29:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-15T16:33:00+00:00",
+          "latest": "2026-09-21T08:01:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-10T02:06:00+00:00",
+          "latest": "2026-09-15T16:32:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-04T08:09:00+00:00",
+          "latest": "2026-09-10T02:05:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-08-31T16:41:00+00:00",
+          "latest": "2026-09-04T08:08:00+00:00"
+        }
+      ],
+      "sha256": "64305795e5c9c5368777c1506f88ececea7df5d425de44442fcdc0e7dd1b0078",
+      "spread_note": "Historical spread unavailable; explicit .26 XAU / .00001 EUR placeholder for separate model replay, not broker execution parity."
+    },
+    "EURUSD": {
+      "rows": 51514,
+      "start": "2026-09-01T00:00:00+00:00",
+      "end": "2026-10-21T02:48:00+00:00",
+      "pages": [
+        {
+          "rows": 4999,
+          "earliest": "2026-10-15T14:49:00+00:00",
+          "latest": "2026-10-21T02:48:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-10-12T02:45:00+00:00",
+          "latest": "2026-10-15T14:48:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-10-06T14:26:00+00:00",
+          "latest": "2026-10-12T02:44:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-10-01T02:36:00+00:00",
+          "latest": "2026-10-06T14:25:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-25T14:26:00+00:00",
+          "latest": "2026-10-01T02:35:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-22T02:31:00+00:00",
+          "latest": "2026-09-25T14:25:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-16T14:29:00+00:00",
+          "latest": "2026-09-22T02:30:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-11T02:21:00+00:00",
+          "latest": "2026-09-16T14:28:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-07T13:43:00+00:00",
+          "latest": "2026-09-11T02:20:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-02T01:31:00+00:00",
+          "latest": "2026-09-07T13:42:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-08-27T13:06:00+00:00",
+          "latest": "2026-09-02T01:30:00+00:00"
+        }
+      ],
+      "sha256": "0d373771fbdda9b9a96e34ca0700bbb24cb0c60ef4c3033562e4d4989955f497",
+      "spread_note": "Historical spread unavailable; explicit .26 XAU / .00001 EUR placeholder for separate model replay, not broker execution parity."
+    },
+    "BTCUSD": {
+      "rows": 51982,
+      "start": "2026-09-01T00:00:00+00:00",
+      "end": "2026-10-21T02:48:00+00:00",
+      "pages": [
+        {
+          "rows": 5000,
+          "earliest": "2026-10-15T15:27:00+00:00",
+          "latest": "2026-10-21T02:49:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-10-12T04:05:00+00:00",
+          "latest": "2026-10-15T15:26:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-10-06T16:42:00+00:00",
+          "latest": "2026-10-12T04:04:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-10-01T05:21:00+00:00",
+          "latest": "2026-10-06T16:41:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-25T17:57:00+00:00",
+          "latest": "2026-10-01T05:20:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-22T06:34:00+00:00",
+          "latest": "2026-09-25T17:56:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-16T19:11:00+00:00",
+          "latest": "2026-09-22T06:33:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-11T07:49:00+00:00",
+          "latest": "2026-09-16T19:10:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-07T20:26:00+00:00",
+          "latest": "2026-09-11T07:48:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-09-02T09:04:00+00:00",
+          "latest": "2026-09-07T20:25:00+00:00"
+        },
+        {
+          "rows": 5000,
+          "earliest": "2026-08-27T21:41:00+00:00",
+          "latest": "2026-09-02T09:03:00+00:00"
+        }
+      ],
+      "sha256": "4f3ca20ae09567d9a1c7c3c0fef179e8286d795527cee3c580ea8cc5ac36476e",
+      "spread_note": "Historical spread unavailable; explicit .26 XAU / .00001 EUR placeholder for separate model replay, not broker execution parity."
+    }
+  },
+  "owned_order_history": {
+    "has_more": false,
+    "orders": []
+  },
+  "status": "BROKER_HISTORY_ACQUIRED",
+  "outgoing_request_counts": {
+    "ProtoOAApplicationAuthReq": 1,
+    "ProtoOAGetAccountListByAccessTokenReq": 1,
+    "ProtoOAAccountAuthReq": 1,
+    "ProtoOASymbolsListReq": 1,
+    "ProtoOASymbolByIdReq": 1,
+    "ProtoOATraderReq": 1,
+    "ProtoOAReconcileReq": 1,
+    "ProtoOAGetTrendbarsReq": 32,
+    "ProtoOAOrderListReq": 1
+  }
+}

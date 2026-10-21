@@ -1,0 +1,8 @@
+{
+  "read_only_production": true,
+  "source_release": "/home/Rizanrizan/rizan-btc7d130/releases/7c254d57ac3f77177d0441001528e3156b035b06",
+  "seed_csv_sha256": "b8cc6dece79c77a2ad92c85f32cb37f45f5c003cc91910fe442c350fe7def4f4",
+  "rows": 68403,
+  "through_unix": 1792551600,
+  "csv_sha256": "20174ee3b0eb839729ff69ddb5f8fb50fb8415316d8f69b757232dafd11c0061"
+}

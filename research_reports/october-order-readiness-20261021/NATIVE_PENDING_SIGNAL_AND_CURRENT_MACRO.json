@@ -1,0 +1,79 @@
+{
+  "read_only": true,
+  "observed_utc": "2026-10-21T03:04:37.025655+00:00",
+  "states": [
+    {
+      "namespace": "RZEU4B",
+      "server_revision": 4257,
+      "state": {
+        "EpochUtc": "2026-10-12T02:53:25.945Z",
+        "LastBarUtc": "2026-10-15T04:53:00Z",
+        "LastSignalUtc": "2026-10-13T11:00:00Z",
+        "LastRealExitUtc": "0001-01-01T00:00:00Z",
+        "XauDay": "0001-01-01T00:00:00Z",
+        "XauDaySignals": 0,
+        "Quarantined": false,
+        "QuarantineReason": "",
+        "PendingLabel": "",
+        "PendingChildren": 0,
+        "PeakEquity": 101.02,
+        "Basket": null
+      }
+    },
+    {
+      "namespace": "RZEF245",
+      "server_revision": 5575,
+      "state": {
+        "EpochUtc": "2026-10-15T05:19:17.639Z",
+        "LastBarUtc": "2026-10-21T03:03:00Z",
+        "LastSignalUtc": "0001-01-01T00:00:00Z",
+        "LastRealExitUtc": "0001-01-01T00:00:00Z",
+        "XauDay": "0001-01-01T00:00:00Z",
+        "XauDaySignals": 0,
+        "Quarantined": false,
+        "QuarantineReason": "",
+        "PendingLabel": "",
+        "PendingChildren": 0,
+        "PeakEquity": 149.85,
+        "Basket": null
+      }
+    },
+    {
+      "namespace": "RZXRC1",
+      "server_revision": 3691,
+      "state": {
+        "EpochUtc": "2026-10-16T10:28:50.937Z",
+        "LastBarUtc": "2026-10-21T03:03:00Z",
+        "LastSignalUtc": "0001-01-01T00:00:00Z",
+        "LastRealExitUtc": "0001-01-01T00:00:00Z",
+        "XauPendingSignal": null,
+        "XauDay": "0001-01-01T00:00:00Z",
+        "XauDaySignals": 0,
+        "XauResumeUtc": "0001-01-01T00:00:00Z",
+        "Quarantined": false,
+        "QuarantineReason": "",
+        "PendingLabel": "",
+        "PendingChildren": 0,
+        "PeakEquity": 115.17,
+        "Basket": null
+      }
+    }
+  ],
+  "macro_caution": "Current snapshot only; NOT evidence of what was delivered at a past signal time.",
+  "current_macro": {
+    "ProducedUtc": "2026-10-21T03:03:42.168+00:00",
+    "CoverageFromUtc": "2026-10-18T04:00:00.000+00:00",
+    "CoverageToUtc": "2026-10-25T04:00:00.000+00:00",
+    "ForexFactoryOk": true,
+    "BlsOk": true,
+    "Dgs10": {
+      "Delta": -0.009999999999999787,
+      "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+    },
+    "Dfii10": {
+      "Delta": -0.03999999999999959,
+      "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+    }
+  },
+  "current_snapshot_events_on_oct20": []
+}

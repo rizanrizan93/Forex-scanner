@@ -1,0 +1,34 @@
+{
+  "source_checks": 16,
+  "source_all_match": true,
+  "replay_cases": 12,
+  "all_replay_cases_pass": true,
+  "all_cash_residual_abs_lt_1e_6": true,
+  "orderability_fixture_cases": 24,
+  "all_fixtures_pass": true,
+  "regression_suites": [
+    {
+      "name": "PortfolioTests",
+      "checks": 827,
+      "pass": true
+    },
+    {
+      "name": "WeekendTests",
+      "checks": 25,
+      "pass": true
+    },
+    {
+      "name": "LeverageTests",
+      "checks": 31,
+      "pass": true
+    },
+    {
+      "name": "SevenDayTests",
+      "checks": 204,
+      "pass": true
+    }
+  ],
+  "regression_checks_total": 1087,
+  "live_orders_sent_by_audit": 0,
+  "native_order_acceptance_proven": false
+}

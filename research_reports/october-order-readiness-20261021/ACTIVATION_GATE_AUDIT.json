@@ -1,0 +1,272 @@
+[
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_A",
+    "At": "2026-10-13T11:00:00Z",
+    "Symbol": "EURUSD",
+    "Status": "BASKET_PREPARED",
+    "BasketPrepared": true,
+    "Balance": 115.17,
+    "Equity": 115.17
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_A",
+    "At": "2026-10-14T12:35:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "NO_INTEGER_CHILD_WITHIN_BUDGET",
+    "BasketPrepared": false,
+    "Balance": 104.13399999999882,
+    "Equity": 104.13399999999882
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_A",
+    "At": "2026-10-20T12:05:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "BASKET_PREPARED",
+    "BasketPrepared": true,
+    "Balance": 104.13399999999882,
+    "Equity": 104.13399999999882
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_A",
+    "At": "2026-10-20T13:55:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_LOSS_COOLDOWN",
+    "BasketPrepared": false,
+    "Balance": 97.4354999999988,
+    "Equity": 97.4354999999988
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_B",
+    "At": "2026-10-13T11:00:00Z",
+    "Symbol": "EURUSD",
+    "Status": "BASKET_PREPARED",
+    "BasketPrepared": true,
+    "Balance": 115.17,
+    "Equity": 115.17
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_B",
+    "At": "2026-10-14T12:35:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "NO_INTEGER_CHILD_WITHIN_BUDGET",
+    "BasketPrepared": false,
+    "Balance": 104.08299999999791,
+    "Equity": 104.08299999999791
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_B",
+    "At": "2026-10-20T12:05:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "BASKET_PREPARED",
+    "BasketPrepared": true,
+    "Balance": 104.08299999999791,
+    "Equity": 104.08299999999791
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_B",
+    "At": "2026-10-20T12:40:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_LOSS_COOLDOWN",
+    "BasketPrepared": false,
+    "Balance": 103.66299999999733,
+    "Equity": 103.66299999999733
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_TECH_ALLOWED_B",
+    "At": "2026-10-20T13:55:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_LOSS_COOLDOWN",
+    "BasketPrepared": false,
+    "Balance": 103.66299999999733,
+    "Equity": 103.66299999999733
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_A",
+    "At": "2026-10-13T11:00:00Z",
+    "Symbol": "EURUSD",
+    "Status": "BASKET_PREPARED",
+    "BasketPrepared": true,
+    "Balance": 115.17,
+    "Equity": 115.17
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_A",
+    "At": "2026-10-14T12:35:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 104.13399999999882,
+    "Equity": 104.13399999999882
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_A",
+    "At": "2026-10-20T12:05:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 104.13399999999882,
+    "Equity": 104.13399999999882
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_A",
+    "At": "2026-10-20T12:40:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 104.13399999999882,
+    "Equity": 104.13399999999882
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_A",
+    "At": "2026-10-20T13:55:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 104.13399999999882,
+    "Equity": 104.13399999999882
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_B",
+    "At": "2026-10-13T11:00:00Z",
+    "Symbol": "EURUSD",
+    "Status": "BASKET_PREPARED",
+    "BasketPrepared": true,
+    "Balance": 115.17,
+    "Equity": 115.17
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_B",
+    "At": "2026-10-14T12:35:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 104.08299999999791,
+    "Equity": 104.08299999999791
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_B",
+    "At": "2026-10-20T12:05:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 104.08299999999791,
+    "Equity": 104.08299999999791
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_B",
+    "At": "2026-10-20T12:40:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 104.08299999999791,
+    "Equity": 104.08299999999791
+  },
+  {
+    "case": "FX_SINCE_FIRST_RETAINED_BRIDGE_STRICT_NO_MACRO_B",
+    "At": "2026-10-20T13:55:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 104.08299999999791,
+    "Equity": 104.08299999999791
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_TECH_ALLOWED_A",
+    "At": "2026-10-20T12:05:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "BASKET_PREPARED",
+    "BasketPrepared": true,
+    "Balance": 115.17,
+    "Equity": 115.17
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_TECH_ALLOWED_A",
+    "At": "2026-10-20T13:55:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_LOSS_COOLDOWN",
+    "BasketPrepared": false,
+    "Balance": 108.47149999999998,
+    "Equity": 108.47149999999998
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_TECH_ALLOWED_B",
+    "At": "2026-10-20T12:05:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "BASKET_PREPARED",
+    "BasketPrepared": true,
+    "Balance": 115.17,
+    "Equity": 115.17
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_TECH_ALLOWED_B",
+    "At": "2026-10-20T12:40:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_LOSS_COOLDOWN",
+    "BasketPrepared": false,
+    "Balance": 114.74999999999942,
+    "Equity": 114.74999999999942
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_TECH_ALLOWED_B",
+    "At": "2026-10-20T13:55:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_LOSS_COOLDOWN",
+    "BasketPrepared": false,
+    "Balance": 114.74999999999942,
+    "Equity": 114.74999999999942
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_STRICT_NO_MACRO_A",
+    "At": "2026-10-20T12:05:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 115.17,
+    "Equity": 115.17
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_STRICT_NO_MACRO_A",
+    "At": "2026-10-20T12:40:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 115.17,
+    "Equity": 115.17
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_STRICT_NO_MACRO_A",
+    "At": "2026-10-20T13:55:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 115.17,
+    "Equity": 115.17
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_STRICT_NO_MACRO_B",
+    "At": "2026-10-20T12:05:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 115.17,
+    "Equity": 115.17
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_STRICT_NO_MACRO_B",
+    "At": "2026-10-20T12:40:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 115.17,
+    "Equity": 115.17
+  },
+  {
+    "case": "FX_CHECKPOINT_EPOCHS_STRICT_NO_MACRO_B",
+    "At": "2026-10-20T13:55:00Z",
+    "Symbol": "XAUUSD",
+    "Status": "XAU_MACRO_NEWS_FEED_REQUIRED",
+    "BasketPrepared": false,
+    "Balance": 115.17,
+    "Equity": 115.17
+  }
+]

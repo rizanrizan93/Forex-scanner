@@ -1,0 +1,18 @@
+{
+  "work/source/BtcSevenDayFeed.cs": true,
+  "work/source/RizanPortfolio.csproj": true,
+  "work/source/BtcStateLink.cs": true,
+  "work/source/PortfolioHost.cs": true,
+  "work/source/BtcCore.cs": true,
+  "work/source/BtcWeekendPolicy.cs": true,
+  "work/source/BtcEngine.cs": true,
+  "work/source/RizanXauEurPortfolio.cs": true,
+  "work/source/xau/XauSendReference.cs": true,
+  "work/source/xau/FrozenCore.cs": true,
+  "work/source/xau/XauBatchExecution.cs": true,
+  "work/source/xau/RizanRobot.cs": true,
+  "work/source/eur/EurBatchExecution.cs": true,
+  "work/source/eur/F0245Policy.cs": true,
+  "work/source/eur/FrozenCore.cs": true,
+  "work/source/eur/RizanRobot.cs": true
+}

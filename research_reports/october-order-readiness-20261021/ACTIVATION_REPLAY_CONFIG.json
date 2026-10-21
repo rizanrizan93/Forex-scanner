@@ -1,0 +1,15 @@
+{
+  "main_first_retained_bridge_start_utc": "2026-10-11T07:37:13.917326+00:00",
+  "earliest_window_note": "FX_SINCE_FIRST_RETAINED_BRIDGE applies CURRENT frozen source to earliest retained bridge period, not a replay of historical cBot version transitions. No journal proof of Oct10 start retained.",
+  "data_end_exclusive_utc": "2026-10-21T02:49:00+00:00",
+  "xau_checkpoint_epoch_utc": "2026-10-16T10:28:50.937Z",
+  "eur_checkpoint_epoch_utc": "2026-10-15T05:19:17.639Z",
+  "btc_backend_first_retained_start_utc": "2026-10-20T22:19:45.738285+00:00",
+  "initial_balance": 115.17,
+  "activation_note": "Epoch is checkpoint initialization, not certified first cBot handshake. BTC date is backend start, not first terminal-ready timestamp. FX cases use current frozen source with BTC disabled before BTC backend; combined cases assume reliable handshake from backend start.",
+  "macro": "TECH_ALLOWED and STRICT_NO_MACRO are explicitly synthetic controls, not historical macro reconstruction.",
+  "spread": "XAU .26 and EUR .00001 fixed assumptions; BTC 5bp. Native historical ask/spread unavailable.",
+  "bridge": "Reliable scripted ACK 2 seconds, not real terminal connection history.",
+  "state": "Fresh simulated account at $115.17; historical native checkpoint chain/virtual EUR seed parity not certified.",
+  "broker_io": "Fake broker only; native order acceptance not asserted."
+}

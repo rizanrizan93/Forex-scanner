@@ -1,0 +1,26 @@
+[
+  {
+    "run_id": 39536869038,
+    "artifact_id": 12318001900,
+    "local_name": "ACTIVATION_REPLAY_EXTENDED.zip",
+    "bytes": 2983349,
+    "sha256": "5897e08bebe02306d75509ea15127379555c74e7c6e994f5747c48552b4b5b4e",
+    "url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/39536869038/artifacts/12318001900"
+  },
+  {
+    "run_id": 39535910719,
+    "artifact_id": 12316729929,
+    "local_name": "ORDERABILITY_TESTS.zip",
+    "bytes": 6141,
+    "sha256": "8849a8779b4a959df398aefb3a2b21b725373cb2b961ebbf63683b1408126cf3",
+    "url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/39535910719/artifacts/12316729929"
+  },
+  {
+    "run_id": 39535798577,
+    "artifact_id": 12317199084,
+    "local_name": "BROKER_READONLY.zip",
+    "bytes": 1813484,
+    "sha256": "2a4cfa10af4209578a327616f5dba42a3e53ea5a852ea18fe704f1a9ac21815e",
+    "url": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/39535798577/artifacts/12317199084"
+  }
+]
