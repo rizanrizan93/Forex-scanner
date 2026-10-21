@@ -64,7 +64,7 @@ def fetch():
     try:
         p=validate(read_json(BASE+BRANCH+PATH+'?v05='+str(bucket)))
         age=(datetime.now(UTC)-datetime.fromisoformat(p.get('evaluated_close_at') or p['as_of'])).total_seconds()
-        if p['fresh'] and age<=300 and 'supply_demand_policy' in p:return p
+        if p['fresh'] and age<=300 and 'watch_zones' in p:return p
     except (ValueError,OSError,KeyError,TypeError):pass
     try:
         return validate(read_json(BASE+latest_commit(bucket//3)+PATH))
@@ -80,11 +80,13 @@ def render_requirements(a,plan=None):
     tf=a['timeframe'];over='di atas' if buy else 'di bawah';broken='di bawah' if buy else 'di atas'
     st.write(f"**Zona invalid:** candle **{tf} ditutup {broken} batas zona sekitar {distal:,.2f}**.")
     st.caption('Wick melewati batas saja belum membatalkan struktur. Batas invalidasi zona berbeda dari SL transaksi.')
+    if plan is None:
+        st.caption('Zona struktur tambahan untuk observasi; bukan kandidat ENTRY EMA V05. Checklist V05 hanya ditampilkan pada setup yang dipilih engine.')
+        return
     def status(key):
-        if plan is None:return 'Belum dinilai untuk entry'
         return 'Teramati · '+wib(plan[key]) if plan.get(key) else 'Menunggu'
     rows=[
-        {'Syarat':'Zona terpilih engine EMA20 H1','Status':'Terpilih' if plan is not None else 'Belum menjadi kandidat ENTRY'},
+        {'Syarat':'Zona terpilih engine EMA20 H1','Status':'Terpilih'},
         {'Syarat':f"Harga menguji zona {a['low']:,.2f}–{a['high']:,.2f}",'Status':status('first_touch_at')},
         {'Syarat':f"M15 {'bullish' if buy else 'bearish'} ditutup kembali {over} {prox:,.2f}",'Status':status('reclaim_m15_at')},
         {'Syarat':f"Sesudah reclaim M15: M5 {'bullish menembus high' if buy else 'bearish menembus low'} 3 candle M5 sebelumnya, close {over} {prox:,.2f}",'Status':status('confirmation_m5_at')},
@@ -92,39 +94,16 @@ def render_requirements(a,plan=None):
     st.markdown('**Syarat konfirmasi:**')
     for row in rows:
         st.markdown('- '+row['Syarat']+' — **'+row['Status']+'**')
-    if plan is None:
-        st.caption('Area ini hanya zona pantauan struktur. Konfirmasi harga di sini belum otomatis menjadi ENTRY V05; engine harus memilih sumber setup terlebih dahulu.')
-    else:
-        st.caption('Konfirmasi teramati belum berarti semua pemeriksaan biaya, target, sesi, dan data lolos. Ikuti status serta alasan setup di atas.')
+    st.caption('Konfirmasi teramati belum berarti semua pemeriksaan biaya, target, sesi, dan data lolos. Ikuti status serta alasan setup di atas.')
 
 
 def render_snapshot(snapshot):
     import streamlit as st
     p=validate(snapshot)
-    st.subheader('Zona supply/demand XAUUSD')
+    st.subheader('EMA V05 · perjalanan zona A → B')
+    st.caption('A adalah zona sumber EMA20 H1; B adalah zona lawan yang dipilih sebagai tujuan. Setelah A → B selesai, C dan D menunggu setup baru. BUY/SELL tidak harus bergantian.')
     render_references()
-    if not p['fresh']:
-        st.warning('WAIT · data zona terlambat. Status validitas terbaru belum dapat dipastikan.');return
-    st.caption('Pembaruan close M5: '+wib(p['evaluated_close_at']))
-    st.caption('Zona H1 diprioritaskan; H4 digunakan bila H1 tidak tersedia. Batas diambil dari candle dasar sebelum dorongan kuat yang menembus struktur. Zona terpilih dipertahankan sampai candle timeframe sumber ditutup melewati batas invalidasi.')
-    for tf,bias in p.get('ema_bias',{}).items():
-        st.caption('Arah EMA20 '+tf+': '+bias+' · konteks arah, bukan batas zona atau sinyal entry')
-    for event in p.get('supply_demand_events',[]):
-        st.warning(f"Zona {'demand' if event['side']=='BUY' else 'supply'} sebelumnya {event['low']:,.2f}–{event['high']:,.2f} INVALID · close {event['timeframe']} pada "+wib(event['invalidated_at']))
-    for a in p.get('supply_demand_zones',[]):
-        buy=a['side']=='BUY';distal=a['low'] if buy else a['high']
-        st.markdown('#### '+('DEMAND · area pantau BUY' if buy else 'SUPPLY · area pantau SELL'))
-        st.metric('Zona '+a['timeframe'],f"{a['low']:,.2f}–{a['high']:,.2f}")
-        st.caption('Terbentuk '+wib(a['formed_at'])+' · dipilih '+wib(a['selected_at']))
-        st.write(f"**Invalid jika close {a['timeframe']} {'di bawah' if buy else 'di atas'} {distal:,.2f}.** Wick saja belum membatalkan zona; batas ini bukan SL transaksi.")
-        if a['status']=='VALID':st.caption('Masih valid pada close '+wib(a['checked_close_at'])+' · zona tetap, tidak mengikuti harga')
-        else:st.warning('WAIT · riwayat candle belum mencukupi untuk memastikan validitas. Batas lama dipertahankan sebagai catatan.')
-        st.info('WATCH · area persiapan, belum merupakan sinyal ENTRY. Konfirmasi entry supply/demand belum diaktifkan atau diuji sebagai pengganti strategi EMA V05.')
-        reference_button(a)
-    if not p.get('supply_demand_policy'):st.info('Menunggu publikasi feed supply/demand terbaru.')
-    elif not p.get('supply_demand_zones'):st.info('Belum ada zona supply/demand yang memenuhi definisi pada candle tersedia.')
-    with st.expander('Riset entry EMA V05 · strategi terpisah'):
-        render_v05_details(p)
+    render_v05_details(p)
 
 
 def render_v05_details(snapshot):
@@ -138,17 +117,7 @@ def render_v05_details(snapshot):
     st.info('Konfirmasi M15 → M5 dapat menambah jeda beberapa hingga puluhan menit. Jika harga sudah terlalu jauh atau RR memburuk, setup dibatalkan. WATCH membantu persiapan lebih awal; aturan entry cepat belum diuji untuk menggantikan konfirmasi ini.')
     for row in p.get('decisions',[]):
         st.write('**'+row['side']+' · '+row['result']+'** — '+row['reason'].replace('_',' '))
-    if not p.get('plans'):st.info('Belum ada setup ENTRY. Zona pantauan di bawah tetap menjadi acuan; tunggu konfirmasi.')
-    if p.get('watch_zones'):
-        represented={x['source']['side'] for x in p.get('plans',[])}
-        for a in p.get('watch_zones',[]):
-            if a['side'] in represented:continue
-            st.markdown('#### '+a['side']+' · WATCH · zona pantauan')
-            st.metric('Zona '+a['timeframe'],f"{a['low']:,.2f}–{a['high']:,.2f}")
-            st.caption('Terbentuk '+wib(a['formed_at'])+' · acuan struktur; belum memenuhi seluruh syarat ENTRY')
-            render_requirements(a)
-            if not p.get('supply_demand_policy'):reference_button(a)
-    elif not p.get('plans'):st.caption('Belum ada zona struktur yang masih valid pada snapshot ini. Menunggu pembentukan zona baru.')
+    if not p.get('plans'):st.info('Belum ada setup ENTRY EMA V05. Menunggu kandidat zona A dan konfirmasi yang memenuhi syarat.')
     for x in p.get('plans',[]):
         a=x['source'];b=x.get('target')
         st.markdown('#### '+a['side']+' · '+x['state'])
@@ -156,7 +125,7 @@ def render_v05_details(snapshot):
         st.metric('Zona A · '+a['timeframe'],f"{a['low']:,.2f}–{a['high']:,.2f}")
         st.caption('Dibentuk '+wib(a['formed_at'])+' · zona dibekukan untuk setup ini')
         render_requirements(a,x)
-        if not p.get('supply_demand_policy'):reference_button(a)
+        reference_button(a)
         if x.get('entry') is not None:st.metric('Entry referensi open M1',f"{x['entry']:,.2f}")
         if x.get('sl') is not None:st.metric('SL skenario',f"{x['sl']:,.2f}")
         if b:st.metric('Zona B · '+b['timeframe'],f"{b['low']:,.2f}–{b['high']:,.2f}")
@@ -172,7 +141,7 @@ def _render():
     load=st.cache_data(ttl=8,show_spinner=False)(fetch)
     try:render_snapshot(load())
     except Exception:
-        st.subheader('Zona dinamis XAUUSD')
+        st.subheader('EMA V05 · perjalanan zona A → B')
         render_references()
         st.warning('WAIT · snapshot V05 belum tersedia. Menunggu kolektor candle; tidak ada entry yang diterbitkan.')
 

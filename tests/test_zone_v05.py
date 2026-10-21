@@ -149,6 +149,7 @@ def test_locked_zone_survives_reselection_stale_feed_and_reload_until_released()
     from streamlit.testing.v1 import AppTest
     now=pd.Timestamp.now(tz='UTC');p=blank(now)
     p.update(evaluated_close_at=now.floor('5min').isoformat(),watch_zones=[dict(side='SELL',timeframe='H1',low=4119.39,high=4124.25,formed_at=now.isoformat())])
+    p['plans']=[dict(source=p['watch_zones'][0],state='WATCH',reason='MENUNGGU_KONFIRMASI')]
     source='import json\nfrom fx_scanner.zone_v05_dashboard import render_snapshot\nrender_snapshot(json.loads('+repr(json.dumps(p))+'))'
     app=AppTest.from_string(source).run(timeout=15)
     app.button[0].click().run()
@@ -206,7 +207,7 @@ def test_feed_failure_preserves_saved_supply_demand_without_claiming_freshness()
     assert result['supply_demand_zones']==[dict(id='saved',status='DATA_STALE')]
 
 
-def test_supply_demand_panel_shows_fixed_bounds_and_explicit_watch():
+def test_dashboard_only_shows_v05_not_added_supply_demand_panel():
     import json
     from streamlit.testing.v1 import AppTest
     now=pd.Timestamp.now(tz='UTC');p=blank(now)
@@ -214,7 +215,7 @@ def test_supply_demand_panel_shows_fixed_bounds_and_explicit_watch():
     p.update(evaluated_close_at=now.floor('5min').isoformat(),supply_demand_policy='BASE_BOS_STICKY_1',supply_demand_zones=[a],ema_bias={'H1':'SELL'})
     app=AppTest.from_string('import json\nfrom fx_scanner.zone_v05_dashboard import render_snapshot\nrender_snapshot(json.loads('+repr(json.dumps(p))+'))').run(timeout=15)
     assert not app.exception
-    assert any('SUPPLY · area pantau SELL' in x.value for x in app.markdown)
-    assert any('close H1 di atas 102.00' in x.value for x in app.markdown)
-    assert any('belum merupakan sinyal ENTRY' in x.value for x in app.info)
-    assert [x.label for x in app.button]==['Kunci zona SELL sebagai acuan']
+    assert any('EMA V05' in x.value for x in app.subheader)
+    assert not any('SUPPLY · area pantau SELL' in x.value for x in app.markdown)
+    assert not app.metric and not app.button
+    assert any('Belum ada setup ENTRY EMA V05' in x.value for x in app.info)
