@@ -58,7 +58,11 @@ jobs:
           umask 077
           ssh_dir=$(mktemp -d)
           test_dir=$(mktemp -d)
-          trap 'rm -rf -- "$ssh_dir" "$test_dir"' EXIT
+          cleanup() {
+            rm -rf -- "$ssh_dir"
+            sudo rm -rf -- "$test_dir"
+          }
+          trap cleanup EXIT
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_dir/key"
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
           docker pull ghcr.io/spotware/ctrader-console:latest
