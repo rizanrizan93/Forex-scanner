@@ -10,16 +10,18 @@ from pathlib import Path
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"src"))
 from fx_scanner.reversal_scanner import evaluate, load_result
+from fx_scanner.zone_v05 import evaluate as evaluate_v05, blank as blank_v05
+from fx_scanner.zone_v05_quotes import spread_asof
 from fx_scanner.manual_reversal_map import evaluate as evaluate_manual, CONTRACT as MANUAL_CONTRACT
 
 READ_REQUESTS = frozenset({"ProtoOAApplicationAuthReq", "ProtoOAGetAccountListByAccessTokenReq",
-    "ProtoOAAccountAuthReq", "ProtoOASymbolsListReq", "ProtoOAGetTrendbarsReq"})
+    "ProtoOAAccountAuthReq", "ProtoOASymbolsListReq", "ProtoOAGetTrendbarsReq", "ProtoOAGetTickDataReq"})
 
 
 def main(output):
     from ctrader_open_api import Client, Protobuf, TcpProtocol, EndPoints
     from ctrader_open_api.messages import OpenApiMessages_pb2 as messages
-    from ctrader_open_api.messages.OpenApiModelMessages_pb2 import ProtoOATrendbarPeriod
+    from ctrader_open_api.messages.OpenApiModelMessages_pb2 import ProtoOATrendbarPeriod, ProtoOAQuoteType
     from twisted.internet import reactor, defer
     from twisted.internet.task import deferLater
     credentials={name:os.environ.get(name,"").strip() for name in
@@ -116,6 +118,33 @@ def main(output):
             # Fail closed for the optional manual panel; keep the existing read-only
             # legacy snapshot usable. No source exception or credential is published.
             print("MANUAL_REVERSAL_DATA_UNAVAILABLE",flush=True)
+        # The same native feed evaluates V05. Historical quotes only: no orders,
+        # spot subscriptions, token changes, positions or cBot bridge calls.
+        v05=blank_v05(now)
+        try:
+            previous_path=Path(output).with_name('zone_v05_previous.json')
+            previous=json.loads(previous_path.read_text()) if previous_path.exists() else None
+            v05=evaluate_v05(native,now=now,previous=previous)
+            anchors=sorted({x['entry_at'] for x in v05.get('recent_events',[])
+                            if x.get('entry_at') and x['state']=='BLOCK' and
+                            datetime.fromisoformat(x['entry_at'])>=now-timedelta(hours=24)})
+            spreads={}
+            for anchor in anchors[:8]:
+                T=datetime.fromisoformat(anchor);quotes={}
+                for kind in ('BID','ASK'):
+                    yield deferLater(reactor,.3,lambda:None)
+                    r=yield request('ProtoOAGetTickDataReq',ctidTraderAccountId=account,
+                        symbolId=symbols[0].symbolId,type=ProtoOAQuoteType.Value(kind),
+                        fromTimestamp=int((T-timedelta(seconds=30)).timestamp()*1000),
+                        toTimestamp=int(T.timestamp()*1000))
+                    quotes[kind]=r
+                value=spread_asof(quotes['BID'],quotes['ASK'],int(T.timestamp()*1000))
+                if value is not None:spreads[anchor]=value
+            v05=evaluate_v05(native,now=now,spreads=spreads,previous=previous)
+        except Exception:
+            v05=blank_v05(now,'V05_DATA_UNAVAILABLE')
+            print('V05_DATA_UNAVAILABLE',flush=True)
+        Path(output).with_name('zone_v05_snapshot.json').write_text(json.dumps(v05,indent=2,allow_nan=False)+'\n')
         Path(output).with_name("manual_reversal_snapshot.json").write_text(json.dumps(manual,indent=2,allow_nan=False)+"\n")
         print("REVERSAL_SCANNER_READ_ONLY state="+snapshot["state"]+" bars="+str(len(rows))+" execution_authority=False",flush=True)
         print("MANUAL_REVERSAL_READ_ONLY state="+manual["state"]+" plans="+str(len(manual["plans"]))+" execution_influence=False",flush=True)

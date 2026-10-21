@@ -28,6 +28,8 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                 if tab.open:
                     with tab:
                         if path is None:
+                            from fx_scanner.zone_v05_dashboard import render_zone_v05
+                            render_zone_v05()
                             from fx_scanner.manual_reversal_dashboard import render_manual_reversal_dashboard
                             render_manual_reversal_dashboard()
                             with st.expander("Arsip riset keluarga reversal · bukan acuan harga aktif", expanded=False):

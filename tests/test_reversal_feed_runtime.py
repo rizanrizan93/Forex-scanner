@@ -81,3 +81,21 @@ def test_manual_tab_does_not_load_legacy_patches():
         app = AppTest.from_file(str(ROOT/'main.py')).run(timeout=20)
         assert not app.exception
         assert any(x.label == 'Area acuan H1' for x in app.metric)
+
+
+def test_v05_publication_rejects_execution_authority():
+    from fx_scanner.zone_v05 import blank
+    p=blank(datetime.now(UTC));p['execution_authority']=True
+    with patch.object(feed,'github_api') as api:
+        with pytest.raises(ValueError):feed.publish(snapshot(),snapshot(),v05=p)
+        api.assert_not_called()
+
+
+def test_aligned_collector_waits_for_next_closed_m1_after_m5():
+    elapsed=[0.];wall=[3600.];calls=[]
+    def cycle(i):
+        calls.append(i);elapsed[0]+=20;wall[0]+=20
+    def sleep(n):elapsed[0]+=n;wall[0]+=n
+    feed.run_loop(seconds=400,cycle_fn=cycle,clock=lambda:elapsed[0],wall_clock=lambda:wall[0],sleeper=sleep,align_to_close=True)
+    assert len(calls)==3
+    assert elapsed[0]==400

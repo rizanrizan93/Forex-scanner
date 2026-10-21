@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import base64
+import math
 import json
 import os
 from pathlib import Path
@@ -14,9 +16,10 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 from fx_scanner.manual_reversal_map import validate
+from fx_scanner.zone_v05 import blank as blank_v05, validate as validate_v05
 
 BRANCH = 'scanner-reversal-snapshots'
-PATHS = ('runtime/reversal_snapshot.json', 'runtime/manual_reversal_snapshot.json')
+PATHS = ('runtime/reversal_snapshot.json', 'runtime/manual_reversal_snapshot.json', 'runtime/zone_v05_snapshot.json')
 
 
 def github_api(method, path, payload=None):
@@ -32,15 +35,16 @@ def github_api(method, path, payload=None):
         return json.load(response)
 
 
-def publish(data, manual, api=github_api, *, now=None):
-    for item in (data, manual):
+def publish(data, manual, api=github_api, *, now=None, v05=None):
+    v05=validate_v05(v05 or blank_v05(now or datetime.now(UTC)),now=now)
+    for item in (data, manual, v05):
         if (item.get('execution_authority') is not False or
             item.get('execution_influence') is not False or item.get('symbol') != 'XAUUSD'):
             raise ValueError('Reversal read-only guard')
     # A new commit must not make an old market price look fresh.
     if not validate(manual, now=now or datetime.now(UTC))['fresh']:
         raise ValueError('Reversal collection stale or unavailable')
-    contents = [json.dumps(item, allow_nan=False) for item in (data, manual)]
+    contents = [json.dumps(item, allow_nan=False) for item in (data, manual, v05)]
     if any(len(raw.encode()) > 1_000_000 for raw in contents):
         raise ValueError('Reversal publication too large')
     try:
@@ -68,7 +72,17 @@ def cycle(index):
     folder.mkdir(exist_ok=True)
     snapshot = folder / 'reversal_snapshot.json'
     manual = folder / 'manual_reversal_snapshot.json'
-    for path in (snapshot, manual):
+    v05 = folder / 'zone_v05_snapshot.json'
+    previous=folder/'zone_v05_previous.json'
+    if v05.exists():
+        previous.write_bytes(v05.read_bytes())
+    elif not previous.exists():
+        try:
+            value=github_api('GET','contents/runtime/zone_v05_snapshot.json?ref='+BRANCH)
+            previous.write_bytes(base64.b64decode(value['content']))
+        except (HTTPError,KeyError,ValueError):
+            pass
+    for path in (snapshot, manual, v05):
         path.unlink(missing_ok=True)
     subprocess.run([sys.executable, 'scripts/publish_reversal_snapshot.py', str(snapshot)],
                    cwd=ROOT, timeout=210, check=True)
@@ -76,13 +90,13 @@ def cycle(index):
     mapping = json.loads(manual.read_text())
     mapping['publisher'] = {'cycle': index, 'refresh_seconds': 300,
                             'build': os.environ.get('GITHUB_SHA', '')}
-    sha = publish(data, mapping)
+    sha = publish(data, mapping, v05=json.loads(v05.read_text()))
     print('REVERSAL_PUBLISHED cycle=' + str(index) + ' at=' + mapping['as_of'] +
           ' candle=' + str(mapping.get('price_observed_at')) + ' commit=' + sha, flush=True)
 
 
 def run_loop(*, seconds=19800, interval=300, cycle_fn=cycle,
-             clock=time.monotonic, sleeper=time.sleep):
+             clock=time.monotonic, sleeper=time.sleep, align_to_close=False, wall_clock=time.time):
     started = clock()
     index = failures = 0
     while clock() - started < seconds:
@@ -97,10 +111,12 @@ def run_loop(*, seconds=19800, interval=300, cycle_fn=cycle,
             if failures >= 3:
                 raise RuntimeError('Three consecutive reversal publication failures') from None
         remaining = min(interval - (clock() - tick), seconds - (clock() - started))
+        if align_to_close:
+            remaining=min((math.floor((wall_clock()-62)/interval)+1)*interval+62-wall_clock(),seconds-(clock()-started))
         if remaining > 0:
             sleeper(remaining)
     return index
 
 
 if __name__ == '__main__':
-    run_loop()
+    run_loop(align_to_close=True)

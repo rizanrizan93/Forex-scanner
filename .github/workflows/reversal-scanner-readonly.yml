@@ -9,6 +9,7 @@ on:
       - src/fx_scanner/manual_reversal_dashboard.py
       - src/fx_scanner/reversal_scanner.py
       - src/fx_scanner/manual_reversal_map.py
+      - src/fx_scanner/zone_v05*.py
       - calibration/reversal_10m_results.json
       - .github/workflows/reversal-scanner-readonly.yml
   schedule:
@@ -37,7 +38,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         # The publisher validates the read-only and freshness contracts;
-        # only runtime/reversal_snapshot.json and runtime/manual_reversal_snapshot.json
+        # only runtime/reversal_snapshot.json, runtime/manual_reversal_snapshot.json
+        # and runtime/zone_v05_snapshot.json
         # are written on scanner-reversal-snapshots.
         run: python -u scripts/run_reversal_feed.py
       - uses: actions/upload-artifact@v4
@@ -46,5 +48,6 @@ jobs:
           path: |
             artifacts/reversal_snapshot.json
             artifacts/manual_reversal_snapshot.json
+            artifacts/zone_v05_snapshot.json
           if-no-files-found: error
           retention-days: 7
