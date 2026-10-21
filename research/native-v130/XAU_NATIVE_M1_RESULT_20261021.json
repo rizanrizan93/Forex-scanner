@@ -1,0 +1,108 @@
+{
+  "case": {
+    "symbol": "XAUUSD",
+    "eur": false,
+    "xau": true,
+    "btc": false,
+    "start": "09/06/2025",
+    "end": "16/06/2025",
+    "timeout_seconds": 1200
+  },
+  "binary": {
+    "sha256": "d1e2fdd2d662d79fa6a552284ed937e3933c73c844980d8b23d7afafd1f923d0",
+    "frozen_source": "787ac228837175f9c07c4e13070e2794ebc7a7fe",
+    "variant": "native-historical-local-transport-v1",
+    "original_frozen_binary": false
+  },
+  "image": "sha256:012d69330ad10a4e7e397f6b70b4eabf63050eebfcdd756a06d6d7481cb994d2",
+  "execution_host": "isolated GitHub Actions test runner",
+  "native_runtime": true,
+  "ApiStubs": false,
+  "cached_signals": false,
+  "live_command_invoked": false,
+  "credentials_in_public_output": false,
+  "timeout": false,
+  "exit_code": 0,
+  "elapsed_seconds": 114.01,
+  "signal_count": 8,
+  "order_requests": 0,
+  "accepted_orders": 0,
+  "quarantine_count": 0,
+  "startup_ok": true,
+  "summaries": [
+    "16/06/2025 23:59:00.000 | Info | NATIVE_BACKTEST_SUMMARY balance=100 equity=100 closed_fills=0 open_positions=0 leverage=200",
+    "16/06/2025 23:59:00.000 | Info | NATIVE_BACKTEST_SUMMARY balance=100 equity=100 closed_fills=0 open_positions=0 leverage=200"
+  ],
+  "recent_bot_logs": [
+    "16/06/2025 23:54:01.000 | Info | RIZAN_STATE status=XAU_MACRO_NEWS_FEED_REQUIRED; trading=True; accountBound=True; positions=0; quarantined=False; reason=",
+    "16/06/2025 23:54:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=100 equity=100 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "16/06/2025 23:55:01.000 | Info | RIZAN_TRANSPORT symbol=XAUUSD; bridge=False; continuity=True; local_revision=6886",
+    "16/06/2025 23:55:01.000 | Info | RIZAN_STATE status=XAU_MACRO_NEWS_FEED_REQUIRED; trading=True; accountBound=True; positions=0; quarantined=False; reason=",
+    "16/06/2025 23:55:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=100 equity=100 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "16/06/2025 23:56:01.000 | Info | RIZAN_TRANSPORT symbol=XAUUSD; bridge=False; continuity=True; local_revision=6887",
+    "16/06/2025 23:56:01.000 | Info | RIZAN_STATE status=XAU_MACRO_NEWS_FEED_REQUIRED; trading=True; accountBound=True; positions=0; quarantined=False; reason=",
+    "16/06/2025 23:56:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=100 equity=100 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "16/06/2025 23:57:01.000 | Info | RIZAN_TRANSPORT symbol=XAUUSD; bridge=False; continuity=True; local_revision=6888",
+    "16/06/2025 23:57:01.000 | Info | RIZAN_STATE status=XAU_MACRO_NEWS_FEED_REQUIRED; trading=True; accountBound=True; positions=0; quarantined=False; reason=",
+    "16/06/2025 23:57:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=100 equity=100 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "16/06/2025 23:58:01.000 | Info | RIZAN_TRANSPORT symbol=XAUUSD; bridge=False; continuity=True; local_revision=6889",
+    "16/06/2025 23:58:01.000 | Info | RIZAN_STATE status=XAU_MACRO_NEWS_FEED_REQUIRED; trading=True; accountBound=True; positions=0; quarantined=False; reason=",
+    "16/06/2025 23:58:01.000 | Info | RIZAN_PORTFOLIO ready=True balance=100 equity=100 margin=0 open_risk=0 pending_risk=0 budget_blocks=0",
+    "16/06/2025 23:59:00.000 | Info | NATIVE_BACKTEST_SUMMARY balance=100 equity=100 closed_fills=0 open_positions=0 leverage=200"
+  ],
+  "first_signals": [
+    "12/06/2025 15:20:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-12T15:20:00.0000000Z",
+    "13/06/2025 15:05:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-13T15:05:00.0000000Z",
+    "13/06/2025 15:20:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-13T15:20:00.0000000Z",
+    "13/06/2025 15:40:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-13T15:40:00.0000000Z",
+    "12/06/2025 15:20:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-12T15:20:00.0000000Z",
+    "13/06/2025 15:05:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-13T15:05:00.0000000Z",
+    "13/06/2025 15:20:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-13T15:20:00.0000000Z",
+    "13/06/2025 15:40:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-13T15:40:00.0000000Z"
+  ],
+  "first_orders": [],
+  "native_report_created": true,
+  "error_categories": {
+    "authentication": false,
+    "no_data": false,
+    "unrecognized_parameter": false,
+    "memory": false,
+    "access_rights": false,
+    "runtime_exception": false
+  },
+  "state_reasons": {
+    "XAU_MACRO_NEWS_FEED_REQUIRED": 12558
+  },
+  "native_log_files": [
+    "app/ctrader-cli.deps.json",
+    "app/ctrader-cli.runtimeconfig.json",
+    "app/algohost.netcore/cTrader.Automate.Host.NetCore.runtimeconfig.json",
+    "app/algohost.netcore/cTrader.Automate.Host.NetCore.deps.json",
+    "root/cAlgo/Data/cBots/NativeHistorical/24701c1b-3879-4a3a-9352-87016ff30779/Backtesting/log.txt",
+    "root/cAlgo/Data/cBots/NativeHistorical/24701c1b-3879-4a3a-9352-87016ff30779/Backtesting/events.json"
+  ],
+  "report_keys": [
+    "main",
+    "equity",
+    "tradeStatistics",
+    "parameters",
+    "usedSymbols",
+    "positions",
+    "orders",
+    "history",
+    "entries",
+    "profitsLosses",
+    "roi"
+  ],
+  "audit": {
+    "unique_signal_logs": [
+      "12/06/2025 15:20:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-12T15:20:00.0000000Z",
+      "13/06/2025 15:05:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-13T15:05:00.0000000Z",
+      "13/06/2025 15:20:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-13T15:20:00.0000000Z",
+      "13/06/2025 15:40:00.000 | Info | NATIVE_SIGNAL symbol=XAUUSD side=1 at=2025-06-13T15:40:00.0000000Z"
+    ],
+    "workflow_run": 39693094569,
+    "workflow_cleanup_error": "Native runtime exited 0; Actions job subsequently failed removing root-owned price-cache files",
+    "interpretation": "Price-only native test. Four unique XAU signals computed; original external macro/news requirements correctly prevent orders."
+  }
+}
