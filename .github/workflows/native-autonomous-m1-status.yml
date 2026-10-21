@@ -33,6 +33,11 @@ jobs:
           if not files:print('NATIVE_M1_PROGRESS NO_LOG');raise SystemExit(0)
           p=max(files,key=lambda p:p.stat().st_mtime)
           text=p.read_text(errors='replace'); lines=text.splitlines()
+          files=[f for f in p.parent.rglob('*') if f.is_file() and f.suffix.lower() in ('.log','.txt','.json','.cbotset') and f.name not in ('PUBLIC_RESULT.json','BINARY_MANIFEST.json','CASE.json')]
+          print('NATIVE_M1_FILES '+json.dumps([{'path':str(f.relative_to(p.parent)),'bytes':f.stat().st_size} for f in files]))
+          for f in files:
+              if f!=p and f.suffix.lower() in ('.log','.txt'):lines+=f.read_text(errors='replace').splitlines()
+
           prefixes=('NATIVE_BACKTEST_','NATIVE_SIGNAL ','NATIVE_ORDER_RESULT ','RIZAN_PORTFOLIO ready=','RIZAN_TRANSPORT symbol=','RIZAN_STARTUP_OK','QUARANTINED:')
           safe=[s for s in lines if any(v in s for v in prefixes)]
           print('NATIVE_M1_PROGRESS '+json.dumps({'log_bytes':p.stat().st_size,'idle_seconds':round(time.time()-p.stat().st_mtime),'signals':sum('NATIVE_SIGNAL ' in s for s in safe),'requests':sum('NATIVE_ORDER_RESULT ' in s for s in safe),'accepted':sum('NATIVE_ORDER_RESULT ' in s and 'success=True' in s for s in safe),'last_bot_logs':safe[-8:],'report_created':(p.parent/'report.json').is_file()}))
