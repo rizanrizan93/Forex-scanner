@@ -1,5 +1,5 @@
 """Read-only service timeline, native checkpoints and bounded input-cache inventory."""
-import datetime,json,pathlib,sqlite3,subprocess,time,sys,collections
+import re,datetime,json,pathlib,sqlite3,subprocess,time,sys,collections
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent))
 import lease_audit
 P=pathlib.Path;BASE=P('/home/Rizanrizan/Forex-scanner')
@@ -11,14 +11,17 @@ for unit in ['rizan-cbot-bridge.service','rizan-btc7d130.service']:
  # Do not export raw journal messages or any credentials, only timestamps and fixed marker counts.
  r=subprocess.run(['journalctl','-u',unit,'--since','2026-10-09 00:00:00 UTC','-n','40000','--no-pager','-o','json'],capture_output=True,text=True,timeout=25)
  markers=['Started','Starting','server listening','connection open','connection closed','AUTH_FAILED','LEASE_BUSY','IDENTITY_INVALID','FEED_NOT_CURRENT','M1_GAP','Traceback','Main process exited','BRIDGE_HANDSHAKE_OK','BTC_BRIDGE']
- events={k:[] for k in markers};records=0;first=None;last=None
+ events={k:[] for k in markers};classes={};records=0;first=None;last=None
  for line in r.stdout.splitlines():
   try:v=json.loads(line);at=datetime.datetime.fromtimestamp(int(v['__REALTIME_TIMESTAMP'])/1e6,UTC).isoformat();msg=str(v.get('MESSAGE',''))
   except Exception:continue
   first=first or at;last=at;records+=1
   for marker in markers:
    if marker in msg:events[marker].append(at)
- out['services'][unit]={'properties':props,'retained_journal_records':records,'first_retained_utc':first,'last_retained_utc':last,'markers':{k:{'count':len(v),'first_utc':v[0] if v else None,'last_utc':v[-1] if v else None} for k,v in events.items()}}
+  for part in msg.splitlines():
+   m=re.match(r'^([A-Za-z_][A-Za-z_0-9.]*(?:Error|Exception|ClosedOK|InvalidUpgrade|InvalidMessage|InvalidStatus)):',part)
+   if m:classes.setdefault(m.group(1),[]).append(at)
+ out['services'][unit]={'properties':props,'exception_classes':{k:{'count':len(v),'first_utc':v[0],'last_utc':v[-1]} for k,v in classes.items()},'retained_journal_records':records,'first_retained_utc':first,'last_retained_utc':last,'markers':{k:{'count':len(v),'first_utc':v[0] if v else None,'last_utc':v[-1] if v else None} for k,v in events.items()}}
  env=lease_audit.env(unit)
  path=P(env.get('RZ7D_STATE_DB',env.get('RIZAN_STATE_DB','state/rizan-checkpoints.sqlite')))
  if not path.is_absolute():path=BASE/path
