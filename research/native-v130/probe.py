@@ -85,3 +85,5 @@ else:result['native_report_created']=False
 (root/'PUBLIC_RESULT.json').write_text(json.dumps(result,indent=2))
 (root/'password.pwd').unlink(missing_ok=True)
 print(json.dumps(result))
+if any(r.get("exit_code") != 0 or r["timeout"] for r in result["runs"]):
+    raise SystemExit(2)
