@@ -71,7 +71,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import json
-          x=json.load(open('publish/ACTIVATION_ENTRY_SUMMARY.json'));assert len(x)==8 and all(v['error_count']==0 for v in x)
+          x=json.load(open('publish/ACTIVATION_ENTRY_SUMMARY.json'));assert len(x)==12 and all(v['error_count']==0 for v in x)
           PY
       - uses: actions/upload-artifact@v4
         if: always()

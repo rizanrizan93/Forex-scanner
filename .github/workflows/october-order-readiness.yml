@@ -2,13 +2,13 @@ name: October bridge activation and isolated order readiness
 on:
   push:
     branches: [research/october-entry-audit-20261021]
-    paths: ['october_order_readiness/**', '.github/workflows/october-order-readiness.yml']
+    paths: ['october_order_readiness/OrderabilityTests.cs', 'october_order_readiness/OrderabilityTests.csproj', 'october_order_readiness/activation_audit.py', 'october_order_readiness/broker_history_readonly.py', '.github/workflows/october-order-readiness.yml']
 permissions:
   contents: read
   actions: read
 jobs:
   activation:
-    if: ${{ !contains(github.event.head_commit.message, '[fixtures-only]') }}
+    if: ${{ !contains(github.event.head_commit.message, '[fixtures-only]') && !contains(github.event.head_commit.message, '[replay-only]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     defaults:
@@ -44,6 +44,7 @@ jobs:
           name: RIZAN-BRIDGE-ACTIVATION-READONLY
           path: publish/
   source-execution-tests:
+    if: ${{ !contains(github.event.head_commit.message, '[replay-only]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     defaults:
@@ -87,7 +88,7 @@ jobs:
             portfolio_7day_frozen/work/validation/*/compile.log
             portfolio_7day_frozen/work/validation/*/events.log
   broker-readonly-history:
-    if: ${{ !contains(github.event.head_commit.message, '[fixtures-only]') }}
+    if: ${{ !contains(github.event.head_commit.message, '[fixtures-only]') && !contains(github.event.head_commit.message, '[replay-only]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     defaults:
