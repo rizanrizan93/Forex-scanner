@@ -1,0 +1,39 @@
+name: Native V130 isolated algo backtest
+on:
+  push:
+    branches: [research/native-v130-isolated-20261022]
+    paths: ['.github/workflows/native-v130-isolated.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rizan-native-v130-isolated
+  cancel-in-progress: false
+jobs:
+  native:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/research/native-v130-isolated-20261022' && github.actor == 'rizanrizan93'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Execute isolated native backtest on existing VPS runtime
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          ssh_dir=$(mktemp -d)
+          trap 'rm -rf -- "$ssh_dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          ssh_options=(-i "$ssh_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          target='Rizanrizan@202.74.74.172'
+          remote_dir=$(ssh "${ssh_options[@]}" "$target" 'umask 077; mkdir -p "$HOME/REPLAY_RESULTS/native-v130"; mktemp -d "$HOME/REPLAY_RESULTS/native-v130/run.XXXXXXXX"')
+          [[ "$remote_dir" =~ ^/home/Rizanrizan/REPLAY_RESULTS/native-v130/run\.[a-zA-Z0-9]+$ ]] || { echo INVALID_TEST_DIRECTORY; exit 1; }
+          scp "${ssh_options[@]}" research/native-v130/probe.py research/native-v130/FrozenV130.algo.b64 research/native-tick/identity.sealed "$target:$remote_dir/"
+          ssh "${ssh_options[@]}" "$target" "python3 '$remote_dir/probe.py' '$remote_dir'"
