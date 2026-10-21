@@ -35,6 +35,10 @@ def decode(response):
         result.append((absolute,round(int(t.tick)/100000,5)))
     result.reverse()
     if any(result[j][0]>result[j+1][0] for j in range(len(result)-1)):
+        print('TICK_ENCODING_AUDIT', 'count',len(raw),
+              'head_timestamp_fields',[int(t.timestamp) for t in raw[:6]],
+              'tail_timestamp_fields',[int(t.timestamp) for t in raw[-6:]],
+              'first_last_decoded',[result[0][0],result[-1][0]],flush=True)
         raise RuntimeError('INVALID_RELATIVE_TICK_TIME')
     return result
 
