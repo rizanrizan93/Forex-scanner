@@ -29,10 +29,13 @@ def decode(response):
     raw=list(response.tickData)
     if not raw:return []
     absolute=int(raw[0].timestamp)
+    price=int(raw[0].tick)
     result=[]
     for i,t in enumerate(raw):
-        if i: absolute+=int(t.timestamp)  # broker sends signed NEGATIVE offset for older tick
-        result.append((absolute,round(int(t.tick)/100000,5)))
+        if i:
+            absolute+=int(t.timestamp)  # negative time delta for earlier quote
+            price+=int(t.tick)           # signed price delta from preceding quote
+        result.append((absolute,round(price/100000,5)))
     result.reverse()
     if any(result[j][0]>result[j+1][0] for j in range(len(result)-1)):
         print('TICK_ENCODING_AUDIT', 'count',len(raw),
@@ -75,6 +78,7 @@ def collect():
     b=status['BID'];a=status['ASK']
     valid=(b['asof'] is not None and a['asof'] is not None and
            b['asof_age_ms']<=20000 and a['asof_age_ms']<=20000 and
+           1000<b['asof']<10000 and 1000<a['asof']<10000 and
            a['asof']>=b['asof'] and not a['has_more'] and not b['has_more'])
     obj={'source':'FP_MARKETS_CTRADER_NATIVE_TICK_SAMPLE',
          'type':'QUOTE_ONLY_NO_EXECUTION','anchor_utc':T.isoformat(),
