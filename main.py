@@ -8,6 +8,13 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 st.set_page_config(page_title="RIZAN Scanner", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
 
+@st.cache_resource(show_spinner=False)
+def load_zone_panel(source_revision):
+    """Reload the panel once per source revision, including on a running app."""
+    from importlib import reload
+    from fx_scanner import zone_v05_dashboard
+    return reload(zone_v05_dashboard).render_zone_v05
+
 def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
     st.session_state.setdefault("rizan_pair", default_pair)
     st.session_state.setdefault("rizan_xau_detail", default_detail)
@@ -32,8 +39,8 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                 if tab.open:
                     with tab:
                         if path is None:
-                            from fx_scanner.zone_v05_dashboard import render_zone_v05
-                            render_zone_v05()
+                            panel_source = ROOT / "src/fx_scanner/zone_v05_dashboard.py"
+                            load_zone_panel(panel_source.stat().st_mtime_ns)()
                         else:
                             # Legacy patches are needed only by the detailed XAU pages.
                             # Keep the manual map and EUR independent of their import graph.
