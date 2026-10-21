@@ -1,0 +1,49 @@
+name: October frozen cBot entry audit
+on:
+  push:
+    branches: [research/october-entry-audit-20261021]
+    paths: ['october_entry_audit/**', '.github/workflows/october-entry-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.426
+      - name: Read-only VPS inventory and isolated BTC data export
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20)
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/october-entry-audit-20261021/run-${GITHUB_RUN_ID}"
+          target=Rizanrizan@202.74.74.172
+          ssh "${opts[@]}" "$target" "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" october_entry_audit/inventory.py "$target:$dest/"
+          ssh "${opts[@]}" "$target" "nice -n 15 ionice -c 3 /home/Rizanrizan/rizan-btc7d130/venv/bin/python '$dest/inventory.py' '$dest'" | tee INVENTORY_EXPORT.log
+          mkdir -p publish
+          scp "${opts[@]}" "$target:$dest/*.json" "$target:$dest/BTC_H1.csv" publish/
+      - name: Recompute BTC source signals using unchanged frozen core
+        run: |
+          dotnet run --project october_entry_audit/BtcSignalAudit.csproj --configuration Release -- publish/BTC_H1.csv publish | tee publish/BTC_SIGNAL_EXECUTION.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-OCTOBER-ENTRY-AUDIT
+          path: |
+            publish/
+            INVENTORY_EXPORT.log
