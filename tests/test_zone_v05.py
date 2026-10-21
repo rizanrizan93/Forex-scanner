@@ -241,3 +241,34 @@ def test_watch_checklist_observes_candles_without_promoting_zone_to_entry():
     assert sum('Teramati' in x.value for x in app.markdown)==3
     assert any(x.label=='SL skenario observasi' for x in app.metric)
     assert not any('BUY · ENTRY' in x.value for x in app.markdown)
+
+
+def test_zone_fetch_uses_contents_api_when_raw_snapshot_is_stale():
+    import base64,json
+    from unittest.mock import patch
+    from fx_scanner import zone_v05_dashboard as panel
+    now=datetime.now(UTC);fresh=blank(now);fresh['evaluated_close_at']=now.isoformat()
+    stale=dict(fresh,as_of=(now-timedelta(minutes=20)).isoformat(),evaluated_close_at=(now-timedelta(minutes=20)).isoformat())
+    calls=[]
+    def read(url):
+        calls.append(url)
+        if 'api.github.com' in url:return dict(encoding='base64',content=base64.b64encode(json.dumps(fresh).encode()).decode())
+        return stale
+    panel._api_snapshot.cache_clear()
+    try:
+        with patch.object(panel,'read_json',side_effect=read):
+            assert panel.fetch()['fresh']
+            assert panel.fetch()['fresh']
+        assert sum('/contents/' in x for x in calls)==1
+        assert any('rizan_minute=' in x for x in calls)
+    finally:panel._api_snapshot.cache_clear()
+
+
+def test_zone_fetch_never_turns_cached_stale_prices_into_entry():
+    from unittest.mock import patch
+    from fx_scanner import zone_v05_dashboard as panel
+    now=datetime.now(UTC);stale=blank(now-timedelta(minutes=20));stale['evaluated_close_at']=stale['as_of']
+    stale.update(plans=[dict(state='ENTRY')],watch_zones=[dict(low=100.,high=101.)])
+    with patch.object(panel,'read_json',return_value=stale),patch.object(panel,'_api_snapshot',return_value=stale):
+        result=panel.fetch()
+    assert not result['fresh'] and not result['plans'] and not result['watch_zones']

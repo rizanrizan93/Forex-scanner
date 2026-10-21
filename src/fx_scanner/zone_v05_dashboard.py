@@ -3,6 +3,7 @@ from datetime import UTC,datetime
 import base64
 import json
 import math
+from functools import lru_cache
 from .manual_reversal_dashboard import read_json,latest_commit,wib,BASE,BRANCH
 from .zone_v05 import validate
 PATH='/runtime/zone_v05_snapshot.json'
@@ -58,6 +59,16 @@ def reference_button(a):
     st.button('Kunci zona '+side+' sebagai acuan',key='lock_ref_'+side,on_click=save_reference,args=(a,))
 
 
+@lru_cache(maxsize=2)
+def _api_snapshot(bucket):
+    """Minute-bounded fallback independent of cached raw URLs and branch refs."""
+    meta=read_json('https://api.github.com/repos/rizanrizan93/Forex-scanner/contents'+PATH+'?ref='+BRANCH+'&rizan_minute='+str(bucket))
+    if meta.get('encoding')!='base64':raise ValueError('Unsupported snapshot encoding')
+    raw=base64.b64decode(meta['content'],validate=False)
+    if len(raw)>900000:raise ValueError('Snapshot too large')
+    return json.loads(raw)
+
+
 def fetch():
     bucket=int(datetime.now(UTC).timestamp()//30)
     p=None
@@ -67,7 +78,10 @@ def fetch():
         if p['fresh'] and age<=300 and 'watch_zones' in p:return p
     except (ValueError,OSError,KeyError,TypeError):pass
     try:
-        return validate(read_json(BASE+latest_commit(bucket//3)+PATH))
+        alternate=validate(_api_snapshot(int(datetime.now(UTC).timestamp()//60)))
+        if alternate['fresh'] or p is None:return alternate
+        if p['fresh']:return p
+        return max((p,alternate),key=lambda x:x.get('as_of',''))
     except (ValueError,OSError,KeyError,TypeError):
         if p is not None:return p
         raise ValueError('Snapshot unavailable')
@@ -114,6 +128,7 @@ def render_v05_details(snapshot):
     import streamlit as st
     p=validate(snapshot)
     if not p['fresh']:
+        st.caption('Candle terakhir: '+wib(p.get('evaluated_close_at'))+' · snapshot diterbitkan: '+wib(p.get('as_of')))
         st.warning('WAIT · data V05 belum lengkap atau terlambat. Entry dan level harga disembunyikan.');return
     st.caption('Evaluasi close M5: '+wib(p['evaluated_close_at'])+' · berikutnya '+wib(p.get('next_evaluation_at')))
     st.caption('ENTRY V05: first touch ≤24 jam; reclaim M15 → BOS M5 ≤120 menit setelah touch; entry referensi open M1 sesudah konfirmasi. Sesi 14.00–23.59 WIB; satu posisi referensi aktif.')
