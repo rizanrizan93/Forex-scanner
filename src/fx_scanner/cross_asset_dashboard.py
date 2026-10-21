@@ -69,7 +69,7 @@ def render_cross_asset(target, *, context=None):
                 }
             )
         if rows:
-            st.dataframe(rows, hide_index=True, use_container_width=True)
+            st.dataframe(rows, hide_index=True, width="stretch")
         else:
             st.caption(
                 "Tidak ada hasil kalibrasi tersedia. Angka contoh tidak digunakan sebagai hasil."

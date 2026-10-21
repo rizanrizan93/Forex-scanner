@@ -17,7 +17,7 @@ def render_layering(symbol, execution=None):
         rows.append({'Tahap':'Entry awal' if i==0 else f'Layer {i}',
             'Kedalaman menuju SL (%)':round(depth*100,2),
             'Harga rencana':observed.get('entry'), 'Child rencana':observed.get('children')})
-    st.dataframe(rows,hide_index=True,use_container_width=True)
+    st.dataframe(rows,hide_index=True,width="stretch")
     cols=st.columns(2)
     cols[0].metric('Child aktif',execution.get('active_children','—'))
     cols[1].metric('Limit menunggu',execution.get('pending_children','—'))
@@ -30,7 +30,7 @@ def render_layering(symbol, execution=None):
         st.dataframe([{'Mode':name,'Saldo akhir ($)':round(r['ending_balance_usd'],2),
             'DD M1 (%)':round(r['max_dd_m1_percent'],2),'PF':round(r['profit_factor'],3),
             'Setup/bulan':round(r['trades']/120,2)} for name,r in [('Baseline',b),('Layering beku',m)]],
-            hide_index=True,use_container_width=True)
+            hide_index=True,width="stretch")
         st.caption('Replay 2016–2025, modal $100. Kandidat dipilih dari sejarah yang sudah terlihat; belum konsisten pada seluruh stress test. Eksekusi forward memakai quote/margin broker dan cadangan margin konservatif, sehingga jumlah/fill dapat berbeda.')
         st.json(frozen['contract'])
         import json

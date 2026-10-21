@@ -46,7 +46,7 @@ def render_daily_reversal_dashboard():
                         'Expectancy train (R)':round(example['train']['mean_net_r'],3),
                         'Expectancy validation (R)':round(example['validation']['mean_net_r'],3),
                         'Status':'DITOLAK'})
-                st.dataframe(rows,hide_index=True,use_container_width=True)
+                st.dataframe(rows,hide_index=True,width="stretch")
                 st.caption('SL berada di luar ekstrem sweep ditambah buffer; target mengikuti ADR20 sebelum entry. Persentase peluang reversal belum tersedia untuk kandidat yang tervalidasi. Biaya yang diuji bersifat sintetis.')
     for c in result.get('selected_by_side',[]):
         cfg=c['config'];m=c.get('fresh_2026',{})

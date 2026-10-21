@@ -28,7 +28,7 @@ def render_h4_d1_reversal_dashboard():
    for e in examples:
     cfg=e['config'];a=e['train'];b=e['validation'];h=cfg['session_utc']
     rows.append({'Arah':'BUY' if cfg['side']==1 else 'SELL','Zona':cfg['zone_source'],'D1':cfg['regime'],'Konfirmasi':cfg['confirmation'],'Sesi WIB':f'{(h+7)%24:02d}:00–{(h+13)%24:02d}:00','N train':a['n'],'N validation':b['n'],'TP-hit train':f"{a['target_hit_rate']:.1%}",'TP-hit validation':f"{b['target_hit_rate']:.1%}",'PF train':round(a['profit_factor'] or 0,3),'PF validation':round(b['profit_factor'] or 0,3),'TP rata-rata':round(b['mean_target_points'],2),'SL rata-rata':round(b['mean_risk_points'],2),'Gagal':', '.join(e.get('failed_gates',[]))})
-   st.dataframe(rows,hide_index=True,use_container_width=True)
+   st.dataframe(rows,hide_index=True,width="stretch")
    st.caption('Jarak dalam poin harga XAU/USD per ounce, bukan nominal akun. Censored dikeluarkan dari peluang; lihat ukurannya di rincian. Jam belum disebut waktu terbaik tanpa kelulusan.')
    st.json(examples)
  st.caption('Synthetic spread/slippage; beberapa tuple berbagi keputusan. Confidence tidak dikoreksi banyak pencarian. Tidak ada perubahan strategy/execution cBot.')
@@ -42,4 +42,4 @@ def render_h4_d1_reversal_dashboard():
     st.write({'Arah':'BUY' if cfg['side']==1 else 'SELL','Zona':cfg['zone_source'],'D1':cfg['regime'],'Konfirmasi':cfg['confirmation'],'Sesi WIB':f'{(h+7)%24:02d}:00–{(h+13)%24:02d}:00','PF train':a['profit_factor'],'PF validation':b['profit_factor'],'PF 2026':t.get('profit_factor'),'TP sebelum SL 2026':t.get('target_hit_rate'),'N 2026':t.get('n'),'Expectancy stress validation':b['mean_stress_r'],'Status':'PENELITIAN SAJA'})
     st.json(e)
  with st.expander('Perbandingan sepuluh keluarga zona · diagnostik'):
-  st.dataframe([{'Arah':'BUY' if e['config']['side']==1 else 'SELL','Zona':e['config']['zone_source'],'D1':e['config']['regime'],'Konfirmasi':e['config']['confirmation'],'N validation':e['validation']['n'],'TP-hit validation':round(e['validation']['target_hit_rate']*100,2),'PF train':round(e['train']['profit_factor'] or 0,3),'PF validation':round(e['validation']['profit_factor'] or 0,3)} for e in r.get('diagnostics_by_source',[])],hide_index=True,use_container_width=True)
+  st.dataframe([{'Arah':'BUY' if e['config']['side']==1 else 'SELL','Zona':e['config']['zone_source'],'D1':e['config']['regime'],'Konfirmasi':e['config']['confirmation'],'N validation':e['validation']['n'],'TP-hit validation':round(e['validation']['target_hit_rate']*100,2),'PF train':round(e['train']['profit_factor'] or 0,3),'PF validation':round(e['validation']['profit_factor'] or 0,3)} for e in r.get('diagnostics_by_source',[])],hide_index=True,width="stretch")

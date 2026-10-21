@@ -44,7 +44,7 @@ def render_frozen_core():
             rows.append({'Biaya':account['scenario'],'Saldo akhir ($)':round(m['balance_usd'],2),
                 'Max DD equity (%)':round(m['equity_m1_dd_percent'],2),'Setup':m['parent_setups'],
                 'Target $10.000 & DD <50%':m['balance_usd']>=10000 and m['equity_m1_dd_percent']<50})
-        st.dataframe(rows,hide_index=True,use_container_width=True)
+        st.dataframe(rows,hide_index=True,width="stretch")
         st.warning('Biaya stres gagal: DD 83,32%. Hasil ini dioptimasi pada periode replay, belum holdout; biaya sintetis dan makro harian revisi. DD50 adalah hasil replay, bukan batas kerugian forward.')
         st.caption(STRATEGY_ID+' · SHA256 '+POLICY_HASH)
         st.json(frozen['contract'])

@@ -24,7 +24,7 @@ def render_m15_m5_reversal_dashboard():
    'PF train':round(a['profit_factor'] or 0,3),'PF validation':round(b['profit_factor'] or 0,3),'TP / ADR20':f"{cfg['target_adr_fraction']:.0%}",'Buffer SL / ATR H1':cfg['stop_extension_atr'],'Status':'PENELITIAN'})
  if rows:
   with st.expander('Contoh penelitian · probabilitas historis deskriptif'):
-   st.dataframe(rows,hide_index=True,use_container_width=True)
+   st.dataframe(rows,hide_index=True,width="stretch")
    st.caption('Jam ini belum disebut waktu reversal terbaik. SL di luar ekstrem seed M15 +buffer; jarak harga berubah sesuai volatilitas.')
  for e in r.get('selected_by_side',[]):
   st.json({'config':e['config'],'train':e.get('train'),'validation':e.get('validation'),'test_2026':e.get('fresh_2026'),'qualified':e.get('qualified',False)})

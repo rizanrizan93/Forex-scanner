@@ -26,5 +26,5 @@ def render_reversal_families_v2_dashboard():
   for e in r.get('diagnostics_by_source',[]):
    cfg=e['config'];a=e['train'];b=e['validation'];h=cfg['session_utc']
    rows.append({'Arah':'BUY' if cfg['side']==1 else 'SELL','Keluarga':cfg['family'],'Entry':cfg['entry'],'TP ADR20':cfg['target_adr_fraction'],'D1':cfg['regime'],'Konfirmasi':cfg['confirmation'],'SesiWIB':f'{(h+7)%24:02d}–{(h+13)%24:02d}','Phase':cfg['session_phase'],'Ntrain':a['n'],'Nval':b['n'],'TP-hitval':round(b['target_hit_rate']*100,2),'PFtrain':round(a['profit_factor'] or 0,3),'PFval':round(b['profit_factor'] or 0,3),'Fillrateval':round(b['fill_rate']*100,2),'TP harga':round(b['mean_target_points'],2),'SL harga':round(b['mean_risk_points'],2),'Gagal':', '.join(e.get('failed_gates',[]))})
-  st.dataframe(rows,hide_index=True,use_container_width=True)
+  st.dataframe(rows,hide_index=True,width="stretch")
  st.caption('Poin harga XAU/USD perounce, bukan dolar akun. Retest memakai modelM1konservatif, bukan jaminan limitfill broker. Notfilled dan censored terpisah; firstintent tidak diganti berdasarkan outcome. Confidence tidak dikoreksi banyak percobaan; cBot tetap terpisah.')

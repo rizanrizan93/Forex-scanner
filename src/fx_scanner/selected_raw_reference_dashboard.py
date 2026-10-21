@@ -24,7 +24,7 @@ def render_selected_raw_reference(symbol):
     rows = [{'Tahap': 'Entry awal' if i == 0 else f'Layer {i}', 'Kedalaman menuju SL (%)': round(d*100,2),
              'Syarat': 'Entry signal' if i == 0 else ('Konfirmasi reversal' if cfg['confirmed'] else 'Limit pada kedalaman')}
             for i,d in enumerate(cfg['depths_r'])]
-    st.dataframe(rows, hide_index=True, use_container_width=True)
+    st.dataframe(rows, hide_index=True, width="stretch")
     trigger = p['equity_dd_trigger']
     st.caption(
         f"Risk basket scanner ≤{p['risk_ceiling']*100:g}% · margin ≤{p['margin_ceiling']*100:g}% · "
@@ -40,7 +40,7 @@ def render_selected_raw_reference(symbol):
             if key in r['stress']:
                 v = r['stress'][key]
                 cost_rows.append({'Skenario':label,'Saldo ($)':round(v['ending_balance_usd'],2),'DD (%)':round(v['max_dd_m1_percent'],2)})
-        st.dataframe(cost_rows,hide_index=True,use_container_width=True)
+        st.dataframe(cost_rows,hide_index=True,width="stretch")
         st.caption('Spread RAW memakai referensi MT4 sebagai proxy cTrader; komisi per sisi masuk replay. Seleksi dilakukan pada sejarah yang sudah diamati. DD historis bukan batas kerugian ke depan.')
         st.json({'deployment': r['deployment_symbol'], 'source_contract': r['frozen']['contract']})
         st.download_button('Unduh kontrak RAW '+symbol, json.dumps(r['frozen'],indent=2),
@@ -56,7 +56,7 @@ def render_selected_raw_reference(symbol):
             try:
                 stages = geometry(symbol,entry,stop,target)
                 st.dataframe([{'Tahap':x['stage'],'Level pemicu':x['trigger'],'SL':x['sl'],'TP':x['tp'],
-                               'Konfirmasi wajib':x['requires_confirmation']} for x in stages],hide_index=True,use_container_width=True)
+                               'Konfirmasi wajib':x['requires_confirmation']} for x in stages],hide_index=True,width="stretch")
                 st.caption('Level pemicu acuan manual, bukan harga fill terjamin. Semua layer berbagi SL/TP awal. Kalkulator ini tidak mengirim order.')
             except ValueError as exc:
                 st.error(str(exc))

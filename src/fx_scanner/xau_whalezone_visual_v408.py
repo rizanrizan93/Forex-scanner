@@ -312,7 +312,7 @@ def render_whalezone_visual_v408(sd_heartbeat: dict[str, Any] | None) -> None:
         fontweight="bold",
         pad=12,
     )
-    st.pyplot(fig, use_container_width=True)
+    st.pyplot(fig, width="stretch")
     plt.close(fig)
 
     sell1 = sell_zones[0] if len(sell_zones) >= 1 else {}

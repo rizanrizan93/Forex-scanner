@@ -101,14 +101,14 @@ def _render_reversal_dashboard():
         best=profile.get('best_hour_selected_before_holdout'); check=profile.get('best_hour_holdout')
         if best and check and check.get('probability') is not None:
             st.caption(f"{'BUY' if c['side']==1 else 'SELL'} · slot 1 jam dipilih dari validasi: {best['hour_wib']:02d}:00–{(best['hour_wib']+1)%24:02d}:00 WIB. Pengujian akhir: {100*check['probability']:.1f}% dari {check['n']} observasi; sampel lebih kecil.")
-    st.dataframe(rows,hide_index=True,use_container_width=True)
+    st.dataframe(rows,hide_index=True,width="stretch")
     st.info('Probabilitas ini mengukur pantulan 0,5 ATR sebelum invalidasi 1 ATR dari anchor, maksimum 4 jam. Ini bukan win rate trading, bukan kepastian major reversal, dan bukan jam pasti harga berbalik.')
     if any(w and w.get('reaction_size_sensitivity') for w in selected):
         st.markdown('**Jika pantulan yang diminta lebih besar**')
         st.dataframe([{'Arah':'BUY' if w['config']['side']==1 else 'SELL',
                        'Reaksi ATR':m['reaction_atr'],'P reaksi OOS (%)':round(100*m['probability'],1),
                        'N':m['n']} for w in selected if w for m in w.get('reaction_size_sensitivity',[])],
-                     hide_index=True,use_container_width=True)
+                     hide_index=True,width="stretch")
     with st.expander('Metode, konfigurasi dan hasil per tahun'):
         st.caption('10.000.000 tuple parameter · pencarian 2016–2021 · seleksi 2022–2023 · pengujian akhir 2024–2025. Zona ekstrem H1 sudah terbentuk sebelum candle konfirmasi M5 dibuka.')
         for winner in selected:
