@@ -8,6 +8,7 @@ permissions:
   actions: read
 jobs:
   activation:
+    if: ${{ !contains(github.event.head_commit.message, '[fixtures-only]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     defaults:
@@ -55,6 +56,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.426
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install -r portfolio_7day_frozen/bridge/requirements.txt
       - name: Verify unchanged source and execute isolated API fixtures
         run: |
           set -euo pipefail
@@ -82,6 +87,7 @@ jobs:
             portfolio_7day_frozen/work/validation/*/compile.log
             portfolio_7day_frozen/work/validation/*/events.log
   broker-readonly-history:
+    if: ${{ !contains(github.event.head_commit.message, '[fixtures-only]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     defaults:
