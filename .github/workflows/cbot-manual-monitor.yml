@@ -1,0 +1,62 @@
+name: cBot strategy manual monitor (read only)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['cbot_manual/**', 'scripts/*cbot_manual.py', 'scripts/read_cbot_native.py', 'src/fx_scanner/cbot_manual*.py', '.github/workflows/cbot-manual-monitor.yml']
+  schedule:
+    - cron: '7 */5 * * *'
+permissions:
+  contents: write
+concurrency:
+  group: cbot-manual-monitor
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: pip install -e '.[ctrader]' pytest==9.0.2 streamlit==1.62.0
+      - name: Verify immutable calculations and test monitor
+        run: |
+          python -c 'from scripts.run_cbot_manual import verify; verify()'
+          dotnet build cbot_manual/Monitor.csproj -c Release
+          pytest -q tests/test_cbot_manual.py
+      - name: Read broker and native checkpoints; publish manual levels
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          remote=''
+          cleanup() {
+            if [[ -n "$remote" ]]; then ssh "${opts[@]}" Rizanrizan@202.74.74.172 "rm -rf -- '$remote'" > /dev/null 2>&1 || true; fi
+            rm -rf -- "$d"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20)
+          remote=$(ssh "${opts[@]}" Rizanrizan@202.74.74.172 'umask 077; mktemp -d /tmp/rizan-monitor.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-monitor\.[a-zA-Z0-9]+$ ]]
+          scp "${opts[@]}" scripts/read_cbot_native.py "Rizanrizan@202.74.74.172:$remote/"
+          export CBOT_SSH_KEY="$d/key" CBOT_SSH_HOSTS="$d/hosts" CBOT_READER_PATH="$remote/read_cbot_native.py"
+          python -u scripts/run_cbot_manual.py

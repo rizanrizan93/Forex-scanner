@@ -11,7 +11,11 @@ st.set_page_config(page_title="RIZAN Scanner", page_icon="📈", layout="wide", 
 def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
     st.session_state.setdefault("rizan_pair", default_pair)
     st.session_state.setdefault("rizan_xau_detail", default_detail)
-    xau, eurusd = st.tabs(["XAUUSD", "EURUSD"], key="rizan_pair", on_change="rerun")
+    xau, eurusd, cbots = st.tabs(["XAUUSD", "EURUSD", "cBots"], key="rizan_pair", on_change="rerun")
+    if cbots.open:
+        with cbots:
+            from fx_scanner.cbot_manual_dashboard import render_cbot_manual_dashboard
+            render_cbot_manual_dashboard()
     if eurusd.open:
         with eurusd:
             from fx_scanner.selected_raw_reference_dashboard import render_selected_raw_reference

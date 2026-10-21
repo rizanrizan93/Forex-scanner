@@ -1,0 +1,11 @@
+{
+  "source_commit": "e357272fec03411a6e7c4d2397faf742d1a11047",
+  "release": "V1.3.0",
+  "files": {
+    "source/BtcCore.cs": "7cd70e9fd34860580ea2da0fb8a46530eaf856414b0cc9b62b52c4c5b2f7a56d",
+    "source/BtcSevenDayFeed.cs": "9cde1307a398cebc02039daeeef30537da6cee30e161fc1a54b19cad2d0d344d",
+    "source/eur/F0245Policy.cs": "b20531243536a7bf9d8a7a44c82b46de5f51ffc0ff21887a9f2dc8050fffea28",
+    "source/eur/FrozenCore.cs": "a4fb2355bca26beb8926a467399b76960613cecbff3172e71d3b713d537e7f99",
+    "source/xau/FrozenCore.cs": "b853e9f7e68e9f425764ebcc4bececb0ddd0959973ee29c92d24b8aec0cb32c7"
+  }
+}
