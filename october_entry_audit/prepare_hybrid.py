@@ -5,19 +5,19 @@ START=datetime.datetime(2026,9,30,17,tzinfo=UTC);END=datetime.datetime(2026,10,2
 days=[];d=datetime.date(2026,10,10)
 while d<=datetime.date(2026,10,20):days.append(d);d+=datetime.timedelta(days=1)
 def fetch(url):
- for n in range(2):
+ for n in range(3):
   try:
-   request_url=url.replace('datafeed.dukascopy.com','www.dukascopy.com') if n%2 and 'datafeed.dukascopy.com' in url else url
-   with urllib.request.urlopen(urllib.request.Request(request_url,headers={'User-Agent':'RIZAN-isolated-October-replay'}),timeout=10) as r:b=r.read(2_000_001)
+   request_url=url
+   with urllib.request.urlopen(urllib.request.Request(request_url,headers={'User-Agent':'RIZAN-research-data-audit'}),timeout=25) as r:b=r.read(2_000_001)
    assert len(b)<=2_000_000
    if '.bi5' in url:
     test=lzma.decompress(b) if b else b'';assert len(test)%24==0
    return b
   except urllib.error.HTTPError as e:
    if e.code==404:raise
-   if n==1:raise
+   if n==2:raise
   except Exception:
-   if n==1:raise
+   if n==2:raise
   time.sleep(n+1)
 def get(job):
  sym,day,side=job;url=f'https://datafeed.dukascopy.com/datafeed/{sym}/{day.year}/{day.month-1:02d}/{day.day:02d}/{side}_candles_min_1.bi5';name=f'{sym}_{day}_{side}.bi5';path=raw/name
@@ -38,7 +38,7 @@ def get(job):
  return {'symbol':sym,'day':str(day),'side':side,'status':200,'url':url,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'valid_records':len(rows),'zero_price_rows_excluded':invalid},rows
 jobs=[(s,d,side) for s in ['XAUUSD','EURUSD'] for d in days for side in ['BID','ASK']]
 values=[]
-with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
  for i,result in enumerate(ex.map(get,jobs),1):
   values.append(result)
   if i%40==0:print('FX_FETCH_PROGRESS',i,'of',len(jobs),flush=True)
