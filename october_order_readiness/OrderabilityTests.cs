@@ -20,10 +20,11 @@ foreach(bool xau in new[]{true,false})foreach(int side in new[]{1,-1})foreach(st
  if(scenario=="STALE_BRIDGE")Set("_lastBridgeAck",h.Server.TimeInUtc.AddSeconds(-31));
  object signal=xau?new X.Signal(h.Server.TimeInUtc,side,0,5,2000-side*10):new E.Signal(h.Server.TimeInUtc,side,.002,0,0);
  Call("PrepareBasket",signal,h.Server.TimeInUtc);Call("Persist");
- long remote=0;int saveCursor=0;void AckAll(){for(int i=0;i<20;i++){if(saveCursor>=wire.Sent.Count)return;using var d=JsonDocument.Parse(wire.Sent[saveCursor++]);if(d.RootElement.GetProperty("type").GetString()=="save")Call("ReceiveBridge",JsonSerializer.Serialize(new{type="ack",revision=++remote,client_revision=d.RootElement.GetProperty("client_revision").GetInt64()}));}throw new Exception("ACK_LOOP");}
+ long remote=0;int saveCursor=0;void AckOne(){if(saveCursor>=wire.Sent.Count)return;using var d=JsonDocument.Parse(wire.Sent[saveCursor++]);if(d.RootElement.GetProperty("type").GetString()=="save")Call("ReceiveBridge",JsonSerializer.Serialize(new{type="ack",revision=++remote,client_revision=d.RootElement.GetProperty("client_revision").GetInt64()}));}
+ void AckAll(){for(int i=0;i<20;i++){if(saveCursor>=wire.Sent.Count)return;using var d=JsonDocument.Parse(wire.Sent[saveCursor++]);if(d.RootElement.GetProperty("type").GetString()=="save")Call("ReceiveBridge",JsonSerializer.Serialize(new{type="ack",revision=++remote,client_revision=d.RootElement.GetProperty("client_revision").GetInt64()}));}throw new Exception("ACK_LOOP");}
  // Initial basket persistence may be acknowledged; the entry intent ACK is withheld in NO_ACK.
- AckAll();if(scenario=="STALE_BRIDGE")Set("_lastBridgeAck",h.Server.TimeInUtc.AddSeconds(-31));Call("ProcessQueue",h.Server.TimeInUtc);int beforeIntentAck=h.Requests;
- if(scenario!="NO_ACK"){AckAll();Call("ProcessQueue",h.Server.TimeInUtc);}
+ AckOne();if(scenario=="STALE_BRIDGE")Set("_lastBridgeAck",h.Server.TimeInUtc.AddSeconds(-31));Call("ProcessQueue",h.Server.TimeInUtc);int beforeIntentAck=h.Requests;
+ if(scenario!="NO_ACK"&&scenario!="STALE_BRIDGE"){AckAll();Call("ProcessQueue",h.Server.TimeInUtc);}
  var st=Get("_state");bool quarantined=(bool)st.GetType().GetProperty("Quarantined")!.GetValue(st)!;
  bool expected=scenario=="VALID_ACK";bool passed=h.Requests==(expected?1:0)&&(!expected||h.Positions.Count==1&&h.Positions[0].StopLoss.HasValue&&h.Positions[0].TakeProfit.HasValue&&!quarantined)&&beforeIntentAck==0;
  var row=new{symbol=q.Name,direction=side==1?"BUY":"SELL",scenario,passed,broker_requests=h.Requests,before_intent_ack=beforeIntentAck,positions=h.Positions.Count,status=(string)Get("_status"),quarantined,scope="ISOLATED_API_STUB_EXECUTION_FIXTURE_NO_NETWORK_NO_LIVE_ORDER"};results.Add(row);Console.WriteLine(JsonSerializer.Serialize(row));

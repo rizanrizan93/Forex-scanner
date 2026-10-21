@@ -3,7 +3,7 @@ import collections,csv,datetime,hashlib,json,os,pathlib,time
 from fx_scanner.execution.ctrader_session import CTraderOpenApiSession
 UTC=datetime.timezone.utc;P=pathlib.Path;out=P('publish');out.mkdir(exist_ok=True)
 class ReadOnlySession(CTraderOpenApiSession):
- allowed={'ProtoOAApplicationAuthReq','ProtoOAAccountAuthReq','ProtoOAGetAccountListByAccessTokenReq','ProtoOASymbolsListReq','ProtoOASymbolByIdReq','ProtoOAGetTrendbarsReq','ProtoOATraderReq','ProtoOAReconcileReq','ProtoOAGetPositionUnrealizedPnLReq','ProtoHeartbeatEvent','ProtoOAOrderListReq','ProtoOADealListReq'}
+ allowed={'ProtoOAApplicationAuthReq','ProtoOAAccountAuthReq','ProtoOAGetAccountListByAccessTokenReq','ProtoOASymbolsListReq','ProtoOASymbolByIdReq','ProtoOAGetTrendbarsReq','ProtoOATraderReq','ProtoOAReconcileReq','ProtoOAGetPositionUnrealizedPnLReq','ProtoHeartbeatEvent','ProtoOAOrderListReq','ProtoOADealListReq','ProtoOAExpectedMarginReq'}
  def _send_sync(self,message,**kw):
   name=message.DESCRIPTOR.name
   if name not in self.allowed:raise RuntimeError('NON_READ_ONLY_MESSAGE_DENIED')
@@ -22,11 +22,16 @@ def main():
   report['expected_account_matches']=len(matches)
   if len(matches)!=1:report['status']='EXPECTED_ACCOUNT_NOT_GRANTED';return report
   session.account_id=matches[0].ctid_trader_account_id;session.connect();session.load_symbols(['XAUUSD','EURUSD','BTCUSD'])
-  trader=session.trader();digits=int(getattr(trader,'moneyDigits',0) or 0);report['account']={'balance':trader.balance/10**digits,'account_last4':'7903','is_live':True}
+  trader=session.trader();digits=int(getattr(trader,'moneyDigits',0) or 0);report['account']={'balance':trader.balance/10**digits,'account_last4':'7903','is_live':True,'broker_leverage_in_cents':int(getattr(trader,'leverageInCents',0))}
   reconciled=session.reconcile();report['current_positions_count']=len(reconciled.position);report['current_pending_orders_count']=len(reconciled.order)
   report['contracts']={}
   for symbol in ['XAUUSD','EURUSD','BTCUSD']:
    m=session.symbol_info(symbol);report['contracts'][symbol]={k:getattr(m,k) for k in ['digits','pipPosition','minVolume','stepVolume','maxVolume','lotSize','maxExposure','tradingMode'] if hasattr(m,k)}
+  report['minimum_volume_margin']={}
+  for symbol in ['XAUUSD','EURUSD','BTCUSD']:
+   try:
+    meta=session.symbol_info(symbol);m=session.expected_margin(session.symbol_id(symbol),int(meta.minVolume));md=int(getattr(m,'moneyDigits',digits));report['minimum_volume_margin'][symbol]={'volume_api_cents':int(meta.minVolume),'volume_units':int(meta.minVolume)/100,'money_digits':md,'margin':[{'volume_api_cents':int(v.volume),'buy_margin':v.buyMargin/10**md,'sell_margin':v.sellMargin/10**md} for v in m.margin]}
+   except Exception as e:report['minimum_volume_margin'][symbol]={'available':False,'error_type':type(e).__name__}
   now=datetime.datetime.now(UTC).replace(second=0,microsecond=0);begin=datetime.datetime(2026,9,1,tzinfo=UTC);report['end_exclusive_utc']=now.isoformat();report['data']={}
   for symbol in ['XAUUSD','EURUSD','BTCUSD']:
    cursor=now;merged={};pages=[]
