@@ -1,0 +1,41 @@
+name: Read native M1 test progress
+on:
+  push:
+    branches: [research/native-v130-isolated-20261022]
+    paths: ['.github/workflows/native-autonomous-m1-status.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  status:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/research/native-v130-isolated-20261022' && github.actor == 'rizanrizan93'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read diagnostic counters only
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          ssh_dir=$(mktemp -d)
+          trap 'rm -rf -- "$ssh_dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          ssh -i "$ssh_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=20 Rizanrizan@202.74.74.172 'python3 -' <<'PY'
+          import json,time,re
+          from pathlib import Path
+          root=Path.home()/'REPLAY_RESULTS/native-autonomous-m1'
+          files=[p for p in root.glob('run.*/native.log') if p.is_file() and not p.is_symlink()]
+          if not files:print('NATIVE_M1_PROGRESS NO_LOG');raise SystemExit(0)
+          p=max(files,key=lambda p:p.stat().st_mtime)
+          text=p.read_text(errors='replace'); lines=text.splitlines()
+          prefixes=('NATIVE_BACKTEST_','NATIVE_SIGNAL ','NATIVE_ORDER_RESULT ','RIZAN_PORTFOLIO ready=','RIZAN_TRANSPORT symbol=','RIZAN_STARTUP_OK','QUARANTINED:')
+          safe=[s for s in lines if any(v in s for v in prefixes)]
+          print('NATIVE_M1_PROGRESS '+json.dumps({'log_bytes':p.stat().st_size,'idle_seconds':round(time.time()-p.stat().st_mtime),'signals':sum('NATIVE_SIGNAL ' in s for s in safe),'requests':sum('NATIVE_ORDER_RESULT ' in s for s in safe),'accepted':sum('NATIVE_ORDER_RESULT ' in s and 'success=True' in s for s in safe),'last_bot_logs':safe[-8:],'report_created':(p.parent/'report.json').is_file()}))
+          q=p.parent/'PUBLIC_RESULT.json'
+          if q.is_file():print('NATIVE_M1_FINISHED '+q.read_text())
+          PY
