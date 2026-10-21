@@ -1,0 +1,114 @@
+name: October bridge activation and isolated order readiness
+on:
+  push:
+    branches: [research/october-entry-audit-20261021]
+    paths: ['october_order_readiness/**', '.github/workflows/october-order-readiness.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  activation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read-only bridge timeline and native checkpoints
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          mkdir -p publish
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20)
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/october-order-readiness/run-${GITHUB_RUN_ID}"
+          target=Rizanrizan@202.74.74.172
+          ssh "${opts[@]}" "$target" "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" october_order_readiness/activation_audit.py october_entry_audit/lease_audit.py october_entry_audit/audit_btc.py "$target:$dest/"
+          ssh "${opts[@]}" "$target" "sudo -n /usr/bin/python3 '$dest/activation_audit.py'" > publish/BRIDGE_ACTIVATION_READONLY.json
+          cat publish/BRIDGE_ACTIVATION_READONLY.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BRIDGE-ACTIVATION-READONLY
+          path: publish/
+  source-execution-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.426
+      - name: Verify unchanged source and execute isolated API fixtures
+        run: |
+          set -euo pipefail
+          mkdir -p publish
+          python3 - <<'PY'
+          import base64,gzip,hashlib,json,pathlib
+          p=pathlib.Path('portfolio_7day_frozen');m=json.loads((p/'FREEZE_MANIFEST.json').read_text())
+          for name,expected in m['source_sha256'].items():assert hashlib.sha256((p/name).read_bytes()).hexdigest()==expected,name
+          seed=p/'bootstrap/BITSTAMP_H1_SEED.csv.gz.b64';seed.with_name('BITSTAMP_H1_SEED.csv').write_bytes(gzip.decompress(base64.b64decode(seed.read_bytes())))
+          print('ALL_FROZEN_SOURCE_HASHES_MATCH')
+          PY
+          dotnet run --configuration Release --project october_order_readiness/OrderabilityTests.csproj | tee publish/ORDERABILITY_FIXTURE_EXECUTION.log
+          python3 portfolio_7day_frozen/make_feed_fixture.py
+          sdk=$(dirname "$(readlink -f "$(command -v dotnet)")")
+          for suite in PortfolioTests WeekendTests LeverageTests; do
+            python3 portfolio_7day_frozen/work/run_local.py "$sdk" "$suite" | tee "publish/$suite.json"
+          done
+          python3 portfolio_7day_frozen/work/run_local.py "$sdk" SevenDayTests portfolio_7day_frozen/checks/feed.json portfolio_7day_frozen/checks/reference_signals.json | tee publish/SevenDayTests.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-ISOLATED-SOURCE-ORDERABILITY
+          path: |
+            publish/
+            portfolio_7day_frozen/work/validation/*/compile.log
+            portfolio_7day_frozen/work/validation/*/events.log
+  broker-readonly-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONPATH: src
+      FX_LIVE_TRADING_ENABLED: '0'
+      FX_KILL_SWITCH: '1'
+      CTRADER_DEMO_AUTOTRADE_ENABLED: '0'
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[ctrader]' > /tmp/research-install.log 2>&1
+      - name: Read broker history with outbound mutation messages denied
+        run: python3 october_order_readiness/broker_history_readonly.py | tee BROKER_HISTORY_EXECUTION.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-BROKER-OCTOBER-READONLY-HISTORY
+          path: |
+            publish/
+            BROKER_HISTORY_EXECUTION.log
