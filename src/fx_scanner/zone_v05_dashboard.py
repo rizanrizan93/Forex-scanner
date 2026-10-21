@@ -1,6 +1,5 @@
 """V05 research card, independent of cBot and legacy reversal filters."""
 from datetime import UTC,datetime
-import json
 from .manual_reversal_dashboard import read_json,latest_commit,wib,BASE,BRANCH
 from .zone_v05 import validate
 PATH='/runtime/zone_v05_snapshot.json'
@@ -24,12 +23,10 @@ def fetch():
 def render_snapshot(snapshot):
     import streamlit as st
     p=validate(snapshot)
-    st.subheader('V05 · Zona dinamis → konfirmasi → entry riset')
-    st.caption('EMA20 H1 · reclaim M15 · BOS M5 · target lawan H1/H4. Kandidat riset; tidak mengirim order.')
+    st.subheader('Zona dinamis XAUUSD')
     if not p['fresh']:
         st.warning('WAIT · data V05 belum lengkap atau terlambat. Entry dan level harga disembunyikan.');return
     st.caption('Evaluasi close M5: '+wib(p['evaluated_close_at'])+' · berikutnya '+wib(p.get('next_evaluation_at')))
-    st.caption('Evaluasi dimulai setelah close M5 tanpa menunggu satu menit. Entry memerlukan quote pembuka M1 dan spread yang teramati. Tampilan mengecek setiap 10 detik; pengambilan data dan jaringan tetap menambah jeda.')
     for row in p.get('decisions',[]):
         st.write('**'+row['side']+' · '+row['result']+'** — '+row['reason'].replace('_',' '))
     if not p.get('plans'):st.info('Tidak ada zona aktif yang memenuhi syarat awal. Menunggu close berikutnya.')
@@ -47,12 +44,6 @@ def render_snapshot(snapshot):
         for label,key in [('Sentuhan','first_touch_at'),('Reclaim M15','reclaim_m15_at'),('BOS M5','confirmation_m5_at')]:
             st.write(label+': '+wib(x.get(key)))
         st.caption('A → B adalah setup saat ini. B → C → D: WATCH bersyarat; arah berlawanan perlu zona dan konfirmasi baru. Tidak wajib bergantian BUY/SELL.')
-    with st.expander('Evaluasi setup terakhir · bukan sinyal entry baru'):
-        st.dataframe([{'Arah':x['source']['side'],'Status':x['state'],'Alasan':x['reason'],
-            'Close M5 WIB':wib(x.get('confirmation_m5_at'))} for x in p.get('recent_events',[])],hide_index=True,width='stretch')
-        for tf,at in p.get('timeframe_closed_at',{}).items():st.caption(tf+' close '+wib(at))
-        st.download_button('Unduh evaluasi V05',json.dumps(p,indent=2),file_name='RIZAN_V05.json',mime='application/json',key='v05_download')
-    st.caption('Kalibrasi 2019–2025: 216 transaksi, PF 1,34, biaya 2× PF 1,11. Q1 2026 hanya 6 transaksi; bukan holdout independen. Sesi V05 14:00–23:59 WIB. Feed native rolling belum diuji parity penuh dengan replay Dukascopy.')
 
 
 def _render():
@@ -60,7 +51,7 @@ def _render():
     load=st.cache_data(ttl=8,show_spinner=False)(fetch)
     try:render_snapshot(load())
     except Exception:
-        st.subheader('V05 · Zona dinamis')
+        st.subheader('Zona dinamis XAUUSD')
         st.warning('WAIT · snapshot V05 belum tersedia. Menunggu kolektor candle; tidak ada entry yang diterbitkan.')
 
 

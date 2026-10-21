@@ -30,33 +30,6 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                         if path is None:
                             from fx_scanner.zone_v05_dashboard import render_zone_v05
                             render_zone_v05()
-                            from fx_scanner.manual_reversal_dashboard import render_manual_reversal_dashboard
-                            render_manual_reversal_dashboard()
-                            with st.expander("Arsip riset keluarga reversal · bukan acuan harga aktif", expanded=False):
-                                from fx_scanner.reversal_families_v2_dashboard import render_reversal_families_v2_dashboard
-                                render_reversal_families_v2_dashboard()
-                            with st.expander("Arsip H4/D1 · 20 juta kombinasi",expanded=False):
-                                from fx_scanner.h4_d1_reversal_dashboard import render_h4_d1_reversal_dashboard
-                                render_h4_d1_reversal_dashboard()
-                            with st.expander("Arsip M15 → M5 · satu juta konfigurasi",expanded=False):
-                                from fx_scanner.m15_m5_reversal_dashboard import render_m15_m5_reversal_dashboard
-                                render_m15_m5_reversal_dashboard()
-                            with st.expander("Arsip volatilitas/biaya · seleksi historis belum lolos",expanded=False):
-                                from fx_scanner.volatility_reversal_dashboard import render_volatility_reversal_dashboard
-                                render_volatility_reversal_dashboard()
-                            with st.expander('Arsip stop ATR M5 · seleksi historis belum lolos',expanded=False):
-                                from fx_scanner.structural_reversal_dashboard import render_structural_reversal_dashboard
-                                render_structural_reversal_dashboard()
-                            with st.expander('Arsip sweep hari/sesi · belum lolos profit stabil',expanded=False):
-                                from fx_scanner.daily_reversal_dashboard import render_daily_reversal_dashboard
-                                render_daily_reversal_dashboard()
-                            with st.expander('Arsip riset channel M5 · belum lolos profit stabil',expanded=False):
-                                from fx_scanner.major_reversal_dashboard import render_major_reversal_dashboard
-                                render_major_reversal_dashboard()
-                            with st.expander('Arsip riset pantulan kecil 0,5 ATR · bukan reversal utama',expanded=False):
-                                st.caption('Arsip ini mengukur pantulan 0,5 ATR, bukan profit bersih atau reversal utama harian.')
-                                st.markdown('[Laporan riset lama](https://github.com/rizanrizan93/Forex-scanner/blob/main/docs/XAU_REVERSAL_10M_REPORT_20261013.md)')
-                                st.caption('Zona dan TP/SL contoh lama tidak ditampilkan sebagai rekomendasi reversal utama.')
                         else:
                             # Legacy patches are needed only by the detailed XAU pages.
                             # Keep the manual map and EUR independent of their import graph.
