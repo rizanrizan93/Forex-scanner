@@ -1,0 +1,82 @@
+{
+  "contract": "RIZAN_REVERSAL_V1_0_FROZEN_FORWARD_PROTOCOL",
+  "status": "RESEARCH_ONLY_NO_TRADING_NO_DEPLOYMENT",
+  "symbols": [
+    "XAUUSD",
+    "EURUSD"
+  ],
+  "holdout": {
+    "start_utc": "2026-04-01T00:00:00Z",
+    "end_utc_exclusive": "2026-10-20T00:00:00Z",
+    "training_and_model_selection_allowed": false
+  },
+  "initial_warmup": "2026-03-15T00:00:00Z",
+  "baseline_research": {
+    "XAUUSD": {
+      "source_version": "V0.7",
+      "family": "H1_ORDER_BLOCK_ROLE_FLIP",
+      "setup": "ACCEPTANCE_STRONG_THEN_6H_RETEST",
+      "entry_retest_atr_offset": 0,
+      "sl_atr": 1.5,
+      "tp_r": 2,
+      "max_holding_hours": 24
+    },
+    "EURUSD": {
+      "source_version": "V0.7",
+      "family": "H1_ORDER_BLOCK_REJECTION",
+      "setup": "REJECTION_STRONG_THEN_6H_RETEST",
+      "entry_retest_atr_offset": 0.1,
+      "sl_atr": 1.5,
+      "tp_r": 1,
+      "max_holding_hours": 24
+    }
+  },
+  "challenger_exit": {
+    "XAUUSD": {
+      "source_version": "V0.8",
+      "rule": "H4_ATR14_ABOVE_LAST_50_BAR_MEDIAN_FIXED_TP_ELSE_PARTIAL_BE",
+      "partial_before_destination_atr": 0.1,
+      "minimum_partial_distance_r": 0.5
+    },
+    "EURUSD": {
+      "source_version": "V0.7",
+      "rule": "HALF_PROFIT_BEFORE_NEAREST_OPPOSING_LEVEL_RUNNER_STOP_BREAKEVEN",
+      "partial_before_destination_atr": 0.1,
+      "minimum_partial_distance_r": 0.5
+    }
+  },
+  "execution_assumptions": {
+    "reference": "Dukascopy M1 BID+ASK quotes; not FP Markets native order simulation",
+    "entry": "post-confirmation retest limit, conservative M1 handling",
+    "fill": "STOP_FIRST_IF_M1_AMBIGUOUS",
+    "gap": "STOP_AT_WORSE_REOPENING_PRICE",
+    "max_simultaneous_positions_per_symbol": 1,
+    "commission_per_roundtrip_price_units": {
+      "XAUUSD": 0.07,
+      "EURUSD": 0.00007
+    },
+    "slippage_per_side_price_units": {
+      "XAUUSD": 0.05,
+      "EURUSD": 0.000005
+    }
+  },
+  "metrics": [
+    "n",
+    "win_rate",
+    "net_pf_r",
+    "mean_r",
+    "total_r",
+    "max_drawdown_r",
+    "fee_stress_x2",
+    "monthly_block_bootstrap"
+  ],
+  "gates": [
+    "no_future_level",
+    "no_hindsight_tp",
+    "one_position_active_per_symbol",
+    "bid_ask_positive_nontrivial_spread",
+    "no_probabilities_without_calibration",
+    "no_config_selection_on_holdout"
+  ],
+  "disclaimer": "Publication of market data alone does not establish an out-of-sample PF. No live trading permitted."
+}
