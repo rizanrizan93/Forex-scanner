@@ -51,6 +51,10 @@ for name in ('eur/RizanRobot.cs','xau/RizanRobot.cs'):
         if(Host.IsHistoricalBacktest && _nativeLastPersistedJson==json && _localRevision>=_state.Revision)return;''')
     change(name,'            _localRevision=_state.Revision;', '''            _localRevision=_state.Revision;
             if(Host.IsHistoricalBacktest)_nativeLastPersistedJson=json;''')
+    # Checkpoint persistence is unchanged; avoid buffering the full serialized
+    # checkpoint into the cTrader log every simulated minute.
+    change(name,'        Print("RIZAN_CHECKPOINT {0}",Serialize());',
+        '        if(!Host.IsHistoricalBacktest)Print("RIZAN_CHECKPOINT {0}",Serialize());')
     # Cache only the native closed-bar materialization; no indicator/signal cache.
     # Preserve every bar and rebuild if cTrader prepends/drops history.
     change(name,'    private List<Candle> ClosedM1(DateTime now)', '''    private readonly List<Candle> _nativeClosedCache=new();
