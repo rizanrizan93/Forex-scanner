@@ -1,0 +1,36 @@
+name: Reversal V10 Broker M1 Research Read Only
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/reversal-v10-ctrader-readonly.yml
+permissions:
+  contents: read
+jobs:
+  historical-research:
+    if: github.repository == 'rizanrizan93/Forex-scanner'
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install market-data reader only
+        run: pip install ctrader-open-api==0.9.2 service-identity==24.2.0
+      - name: Read historical broker M1 (no orders, positions, bridge, or token writes)
+        run: python -u scripts/research_v10/collect_ctrader_m1.py artifacts/research_v10_ctrader
+      - name: Retain temporary historical OHLC and quality manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reversal-v10-ctrader-m1-historical
+          path: artifacts/research_v10_ctrader/
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 6
