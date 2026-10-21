@@ -125,3 +125,19 @@ def test_missing_next_m1_requests_observed_open_quote_instead_of_waiting_one_min
     a,z,m,five,fifteen=frames()
     p=build_plan(a,z,m.iloc[:20],five,fifteen,T+20*MIN+5_000_000_000,{})
     assert p['state']=='WATCH' and p['open_quote_anchor']==pd.Timestamp(T+20*MIN,tz='UTC').isoformat()
+
+
+def test_watch_zones_are_independent_of_entry_but_exclude_broken_and_future_nodes():
+    from fx_scanner.zone_v05 import watch_zones
+    z=pd.DataFrame([dict(family=5,tf=60,direction=d,formed_ns=at,low=lo,high=hi,dead=dead) for d,at,lo,hi,dead in [
+        (1,T-HOUR,99.,100.,INF),(-1,T-HOUR,110.,111.,INF),
+        (1,T-HOUR,103.,104.,T-1),(-1,T+HOUR,105.,106.,INF),
+        (1,T-HOUR,107.,108.,INF)]])
+    result=watch_zones(z,105.,T)
+    assert [(x['side'],x['low']) for x in result]==[('BUY',99.),('SELL',110.)]
+    assert all(x['state']=='WATCH_ZONE_ONLY' for x in result)
+
+
+def test_stale_snapshot_cannot_show_watch_zones_as_current():
+    now=datetime.now(UTC);p=blank(now);p.update(evaluated_close_at=(now-timedelta(minutes=8)).isoformat(),watch_zones=[dict(low=99,high=100)])
+    assert validate(p,now=now)['watch_zones']==[]

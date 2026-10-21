@@ -94,5 +94,7 @@ def validate(payload,*,now=None):
   expired=s and (not expires or (now>=expires if c.get('symbol')!='BTCUSD' else now>expires))
   if not p['fresh'] or expired:
    c.update(status='DATA_TERLAMBAT' if not p['fresh'] else 'WAIT',reason='Data terlambat' if not p['fresh'] else 'Jendela entry sudah lewat; tunggu sinyal baru',entry=None,sl=None,tp=None,layers=[],signal=None)
-   if not p['fresh']:c.update(areas=[],positions=[])
+   if not p['fresh']:
+    c['reference_areas']=deepcopy(c.get('areas') or c.get('reference_areas') or []) if fresh(p.get('market_observed_at'),now,600) else []
+    c.update(areas=[],positions=[])
  return p

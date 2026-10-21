@@ -67,6 +67,20 @@ def zone(a):
                 formed_at=pd.Timestamp(a.formed_ns,tz='UTC').isoformat(),family=int(a.family))
 
 
+def watch_zones(z,price,now_ns):
+    """Nearest unbroken structure for observation, independent of entry admission."""
+    result=[]
+    pool=z[(z.formed_ns<=now_ns)&(z.formed_ns>=now_ns-120*HOUR)&(z.dead>now_ns)].copy()
+    for d in (1,-1):
+        q=pool[(pool.direction==d)&((price>=pool.low) if d==1 else (price<=pool.high))].copy()
+        if q.empty:continue
+        q['distance']=np.maximum(np.maximum(q.low-price,price-q.high),0)
+        q=q.sort_values(['distance','formed_ns'],ascending=[True,False],kind='stable')
+        a=next(q.itertuples())
+        result.append(dict(zone(a),state='WATCH_ZONE_ONLY',reason='ZONA_PANTAUAN_BELUM_LOLOS_ENTRY',distance=float(a.distance)))
+    return result
+
+
 def confirmation(m5,m15,touch,end,d,prox):
     fifteen=m15[(m15.closed_ns>touch)&(m15.closed_ns<=end)]
     fifteen=fifteen[(d*(fifteen.close-prox)>0)&(d*(fifteen.close-fifteen.open)>0)]
@@ -166,7 +180,7 @@ def validate(p,*,now=None):
         produced=(now-timestamp(p['as_of'])).total_seconds()
         p['fresh']=0<=age<=420 and 0<=produced<=420
     if not p['fresh']:
-        p.update(state='WAIT',reason='DATA_BELUM_LENGKAP_ATAU_TERLAMBAT',plans=[],decisions=[])
+        p.update(state='WAIT',reason='DATA_BELUM_LENGKAP_ATAU_TERLAMBAT',plans=[],decisions=[],watch_zones=[])
     else:
         plans=[]
         for plan in p.get('plans',[]):
@@ -222,6 +236,7 @@ def evaluate(native,*,now=None,spreads=None,previous=None):
         active=[p for p in allplans if p['state'] in ('ENTRY','AKTIF_REFERENSI')]
         selected=active[:1]
         price=float(m.close.iloc[-1]);out['price_reference']=price
+        out['watch_zones']=watch_zones(z,price,latest_m1)
         for side in ('BUY','SELL'):
             if any(p['source']['side']==side for p in selected):continue
             q=[p for p in allplans if p['source']['side']==side and p['state'] in ('WATCH','BLOCK')]

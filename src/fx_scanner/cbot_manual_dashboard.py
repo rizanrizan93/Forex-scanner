@@ -10,22 +10,41 @@ def wib(value):
 from .cbot_manual import validate
 BASE='https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/'
 BRANCH='cbot-manual-snapshots';PATH='/runtime/cbot_manual_snapshot.json'
+from functools import lru_cache
+import base64,json
+_LAST_GOOD=None
+@lru_cache(maxsize=4)
+def _api_snapshot(bucket):
+ # Shared process cache bounds anonymous API fallback traffic to 40 calls/hour.
+ meta=read_json('https://api.github.com/repos/rizanrizan93/Forex-scanner/contents'+PATH+'?ref='+BRANCH)
+ if meta.get('encoding')!='base64':raise ValueError('Unsupported snapshot encoding')
+ raw=base64.b64decode(meta['content'],validate=False)
+ if len(raw)>900000:raise ValueError('Snapshot too large')
+ return json.loads(raw)
 def fetch():
- bucket=int(datetime.now(UTC).timestamp()//15)
- p=validate(read_json(BASE+BRANCH+PATH+'?minute='+str(bucket)))
- if p['fresh']:return p
- ref=read_json('https://api.github.com/repos/rizanrizan93/Forex-scanner/git/ref/heads/'+BRANCH)
- sha=ref['object']['sha']
- import re
- if not re.fullmatch('[0-9a-f]{40}',sha):raise ValueError('Invalid ref')
- return validate(read_json(BASE+sha+PATH))
+ global _LAST_GOOD
+ now=datetime.now(UTC);bucket=int(now.timestamp()//15);candidate=None
+ try:
+  candidate=read_json(BASE+BRANCH+PATH+'?minute='+str(bucket))
+  p=validate(candidate)
+  _LAST_GOOD=candidate
+  if p['fresh']:return p
+ except (ValueError,OSError,KeyError,TypeError):pass
+ try:
+  candidate=_api_snapshot(int(now.timestamp()//90))
+  p=validate(candidate)
+  _LAST_GOOD=candidate
+  return p
+ except (ValueError,OSError,KeyError,TypeError):
+  if _LAST_GOOD is not None:return validate(_LAST_GOOD)
+  raise ValueError('Snapshot unavailable')
 def render_snapshot(payload):
  import streamlit as st
  p=validate(payload)
  st.subheader('cBots · persiapan dan entry manual')
  st.caption('Strategi beku XAU–EUR–BTC V1.3.0 · pembacaan pasar dan posisi saja')
  st.caption('Perhitungan memakai kode sinyal cBot. Ini cermin terpisah: perbedaan history pemanasan dan status terminal dapat menghasilkan keputusan berbeda. Periksa volume, margin, posisi, dan harga di cTrader sebelum entry manual.')
- if not p['fresh']:st.warning('WAIT · data monitor terlambat. Level disembunyikan.');return
+ if not p['fresh']:st.warning('WAIT · pembaruan terlambat. Hanya area pantauan terakhir ditampilkan beserta waktunya; entry dan posisi lama disembunyikan.')
  st.caption('Pembaruan '+wib(p['as_of'])+' · tampilan mengecek 10 detik')
  labels={'ENTRY_MANUAL':'ENTRY · acuan manual','WATCH':'WATCH · persiapan','WAIT':'WAIT · menunggu','BLOCK':'BLOCK · syarat belum lengkap','POSISI_AKTIF':'POSISI AKTIF','DATA_TERLAMBAT':'WAIT · data terlambat'}
  for c in p.get('symbols',[]):
@@ -33,8 +52,8 @@ def render_snapshot(payload):
   st.markdown('### '+symbol+' · '+labels.get(c['status'],c['status']))
   st.write(c['reason'])
   if c.get('bar_at'):st.caption('Candle strategi selesai '+wib(c['bar_at']))
-  for area in c.get('areas',[]):
-   st.metric(area['side']+' · level pemicu',f"{area['low']:,.{digits}f}" if area['low']==area['high'] else f"{area['low']:,.{digits}f}–{area['high']:,.{digits}f}")
+  for area in c.get('areas',[]) or c.get('reference_areas',[]):
+   st.metric(area['side']+(' · area terakhir (bukan entry)' if not p['fresh'] else ' · level pemicu'),f"{area['low']:,.{digits}f}" if area['low']==area['high'] else f"{area['low']:,.{digits}f}–{area['high']:,.{digits}f}")
    st.caption(area['condition'])
   if symbol=='BTCUSD' and not c.get('error'):st.caption('BUY: momentum H4 bullish sesi awal UTC. SELL: breakout bawah range H1 dengan tren H4 bearish dan filter volatilitas/RSI. Feed Bitstamp tujuh hari; jadwal broker tetap wajib.')
   if c.get('signal'):
@@ -55,7 +74,9 @@ def _render():
  import streamlit as st
  load=st.cache_data(ttl=8,show_spinner=False)(fetch)
  try:render_snapshot(load())
- except Exception:st.warning('WAIT · feed cBots belum tersedia. Belum ada level entry manual yang dapat ditampilkan.')
+ except Exception:
+  st.subheader('cBots · persiapan dan entry manual')
+  st.warning('WAIT · koneksi feed sedang terganggu. Dashboard mencoba ulang otomatis; belum ada entry baru yang dapat diverifikasi.')
 def render_cbot_manual_dashboard():
  import streamlit as st
  st.fragment(run_every='10s')(_render)()

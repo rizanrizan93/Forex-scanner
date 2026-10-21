@@ -72,3 +72,25 @@ def test_btc_five_second_signal_is_never_relabelled_fresh():
  c,m,n=fixture();c.update(symbol='BTCUSD',bar_at=NOW.replace(second=0).isoformat());c['signal'].update(atr=100,distance=200,anchor=80000)
  r=project([c],m,n,now=NOW)['symbols'][0]
  assert r['signal'] is None and r['entry'] is None and 'sudah lewat' in r['reason']
+
+
+def test_raw_transport_timeout_uses_contents_api_fallback():
+ from fx_scanner import cbot_manual_dashboard as panel
+ import base64,json
+ c,m,n=fixture();p=project([c],m,n,now=NOW)
+ meta={'encoding':'base64','content':base64.b64encode(json.dumps(p).encode()).decode()}
+ def read(url):
+  if url.startswith(panel.BASE):raise OSError('timed out')
+  return meta
+ panel._api_snapshot.cache_clear()
+ with patch.object(panel,'read_json',side_effect=read):
+  q=panel.fetch();assert q['contract']==p['contract']
+ panel._api_snapshot.cache_clear()
+
+
+def test_stale_watch_reference_is_labeled_but_never_an_entry():
+ c,m,n=fixture();p=project([c],m,n,now=NOW)
+ q=validate(p,now=NOW+timedelta(minutes=2));r=q['symbols'][0]
+ assert r['reference_areas'] and not r['areas'] and r['entry'] is None
+ q=validate(p,now=NOW+timedelta(minutes=11))
+ assert not q['symbols'][0]['reference_areas']

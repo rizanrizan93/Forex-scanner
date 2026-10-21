@@ -29,7 +29,15 @@ def render_snapshot(snapshot):
     st.caption('Evaluasi close M5: '+wib(p['evaluated_close_at'])+' · berikutnya '+wib(p.get('next_evaluation_at')))
     for row in p.get('decisions',[]):
         st.write('**'+row['side']+' · '+row['result']+'** — '+row['reason'].replace('_',' '))
-    if not p.get('plans'):st.info('Tidak ada zona aktif yang memenuhi syarat awal. Menunggu close berikutnya.')
+    if not p.get('plans'):st.info('Belum ada setup ENTRY. Zona pantauan di bawah tetap menjadi acuan; tunggu konfirmasi.')
+    if p.get('watch_zones'):
+        represented={x['source']['side'] for x in p.get('plans',[])}
+        for a in p.get('watch_zones',[]):
+            if a['side'] in represented:continue
+            st.markdown('#### '+a['side']+' · WATCH · zona pantauan')
+            st.metric('Zona '+a['timeframe'],f"{a['low']:,.2f}–{a['high']:,.2f}")
+            st.caption('Terbentuk '+wib(a['formed_at'])+' · acuan struktur; belum memenuhi seluruh syarat ENTRY')
+    elif not p.get('plans'):st.caption('Belum ada zona struktur yang masih valid pada snapshot ini. Menunggu pembentukan zona baru.')
     for x in p.get('plans',[]):
         a=x['source'];b=x.get('target')
         st.markdown('#### '+a['side']+' · '+x['state'])
