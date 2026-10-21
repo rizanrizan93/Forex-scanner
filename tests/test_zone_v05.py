@@ -84,7 +84,8 @@ def test_panel_renders_watch_and_entry_as_research_without_orders():
     assert not app.exception
     assert any('BUY · ENTRY' in x.value for x in app.markdown)
     assert any(x.label=='TP sebelum zona B' for x in app.metric)
-    assert not app.button and not app.checkbox
+    assert [x.label for x in app.button]==['Kunci zona BUY sebagai acuan']
+    assert not app.checkbox
 
 
 def test_old_confirmation_is_not_presented_as_current_cost_block():
@@ -141,3 +142,36 @@ def test_watch_zones_are_independent_of_entry_but_exclude_broken_and_future_node
 def test_stale_snapshot_cannot_show_watch_zones_as_current():
     now=datetime.now(UTC);p=blank(now);p.update(evaluated_close_at=(now-timedelta(minutes=8)).isoformat(),watch_zones=[dict(low=99,high=100)])
     assert validate(p,now=now)['watch_zones']==[]
+
+
+def test_locked_zone_survives_reselection_stale_feed_and_reload_until_released():
+    import json
+    from streamlit.testing.v1 import AppTest
+    now=pd.Timestamp.now(tz='UTC');p=blank(now)
+    p.update(evaluated_close_at=now.floor('5min').isoformat(),watch_zones=[dict(side='SELL',timeframe='H1',low=4119.39,high=4124.25,formed_at=now.isoformat())])
+    source='import json\nfrom fx_scanner.zone_v05_dashboard import render_snapshot\nrender_snapshot(json.loads('+repr(json.dumps(p))+'))'
+    app=AppTest.from_string(source).run(timeout=15)
+    app.button[0].click().run()
+    saved=dict(app.query_params)
+    assert any(x.label=='Acuan tersimpan · H1' and x.value=='4,119.39–4,124.25' for x in app.metric)
+    p['watch_zones'][0].update(low=4127.41,high=4132.02)
+    p['evaluated_close_at']=(now-pd.Timedelta(minutes=20)).isoformat()
+    reloaded=AppTest.from_string('import json\nfrom fx_scanner.zone_v05_dashboard import render_snapshot\nrender_snapshot(json.loads('+repr(json.dumps(p))+'))')
+    reloaded.query_params.update(saved)
+    reloaded.run(timeout=15)
+    assert not reloaded.exception
+    assert any(x.value=='4,119.39–4,124.25' for x in reloaded.metric)
+    assert not any('4,132.02' in x.value for x in reloaded.metric)
+    reloaded.button[0].click().run()
+    assert not reloaded.metric and not reloaded.query_params
+
+
+def test_reference_decoder_rejects_corrupt_or_wrong_side_geometry():
+    import base64,json
+    from fx_scanner.zone_v05_dashboard import decode_reference
+    assert decode_reference('not-base64','BUY') is None
+    ref=dict(source=dict(side='SELL',timeframe='H1',low=100,high=101,formed_at='2026-10-21T10:00:00+00:00'),saved_at='2026-10-21T10:00:00+00:00')
+    encode=lambda:base64.urlsafe_b64encode(json.dumps(ref).encode()).decode()
+    assert decode_reference(encode(),'BUY') is None
+    ref['source']['high']=float('nan')
+    assert decode_reference(encode(),'SELL') is None
