@@ -1,0 +1,173 @@
+[
+  {
+    "name": "FULL_CURRENT_DATA_RECONSTRUCTION",
+    "signal_utc": "2026-10-20T12:05:00Z",
+    "signal_wib": "2026-10-20 19:05:00",
+    "direction": "SELL",
+    "macro_passed": false,
+    "status": "XAU_MACRO_DIRECTION_BLOCK",
+    "dgs10": {
+      "Delta": -0.009999999999999787,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "dfii10": {
+      "Delta": -0.03999999999999959,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "scope": "RECONSTRUCTION_NOT_DELIVERY_PROOF",
+    "historical_terminal_delivery_proven": false,
+    "live_orders": 0
+  },
+  {
+    "name": "YIELD_ONLY_CALENDAR_ALLOWED_CONTROL",
+    "signal_utc": "2026-10-20T12:05:00Z",
+    "signal_wib": "2026-10-20 19:05:00",
+    "direction": "SELL",
+    "macro_passed": false,
+    "status": "XAU_MACRO_DIRECTION_BLOCK",
+    "dgs10": {
+      "Delta": -0.009999999999999787,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "dfii10": {
+      "Delta": -0.03999999999999959,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "scope": "SYNTHETIC_CALENDAR_CONTROL_WITH_RECONSTRUCTED_YIELD",
+    "historical_terminal_delivery_proven": false,
+    "live_orders": 0
+  },
+  {
+    "name": "POSITIVE_YIELD_CONTROL",
+    "signal_utc": "2026-10-20T12:05:00Z",
+    "signal_wib": "2026-10-20 19:05:00",
+    "direction": "SELL",
+    "macro_passed": true,
+    "status": "MACRO_OK",
+    "dgs10": {
+      "Delta": 0.01,
+      "AvailableUtc": "2026-10-20T12:05:00+00:00"
+    },
+    "dfii10": {
+      "Delta": -0.03999999999999959,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "scope": "SYNTHETIC_POSITIVE_CONTROL_NOT_HISTORICAL_DATA",
+    "historical_terminal_delivery_proven": false,
+    "live_orders": 0
+  },
+  {
+    "name": "FULL_CURRENT_DATA_RECONSTRUCTION",
+    "signal_utc": "2026-10-20T12:40:00Z",
+    "signal_wib": "2026-10-20 19:40:00",
+    "direction": "SELL",
+    "macro_passed": false,
+    "status": "XAU_MACRO_DIRECTION_BLOCK",
+    "dgs10": {
+      "Delta": -0.009999999999999787,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "dfii10": {
+      "Delta": -0.03999999999999959,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "scope": "RECONSTRUCTION_NOT_DELIVERY_PROOF",
+    "historical_terminal_delivery_proven": false,
+    "live_orders": 0
+  },
+  {
+    "name": "YIELD_ONLY_CALENDAR_ALLOWED_CONTROL",
+    "signal_utc": "2026-10-20T12:40:00Z",
+    "signal_wib": "2026-10-20 19:40:00",
+    "direction": "SELL",
+    "macro_passed": false,
+    "status": "XAU_MACRO_DIRECTION_BLOCK",
+    "dgs10": {
+      "Delta": -0.009999999999999787,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "dfii10": {
+      "Delta": -0.03999999999999959,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "scope": "SYNTHETIC_CALENDAR_CONTROL_WITH_RECONSTRUCTED_YIELD",
+    "historical_terminal_delivery_proven": false,
+    "live_orders": 0
+  },
+  {
+    "name": "POSITIVE_YIELD_CONTROL",
+    "signal_utc": "2026-10-20T12:40:00Z",
+    "signal_wib": "2026-10-20 19:40:00",
+    "direction": "SELL",
+    "macro_passed": true,
+    "status": "MACRO_OK",
+    "dgs10": {
+      "Delta": 0.01,
+      "AvailableUtc": "2026-10-20T12:40:00+00:00"
+    },
+    "dfii10": {
+      "Delta": -0.03999999999999959,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "scope": "SYNTHETIC_POSITIVE_CONTROL_NOT_HISTORICAL_DATA",
+    "historical_terminal_delivery_proven": false,
+    "live_orders": 0
+  },
+  {
+    "name": "FULL_CURRENT_DATA_RECONSTRUCTION",
+    "signal_utc": "2026-10-20T13:55:00Z",
+    "signal_wib": "2026-10-20 20:55:00",
+    "direction": "SELL",
+    "macro_passed": false,
+    "status": "XAU_MACRO_DIRECTION_BLOCK",
+    "dgs10": {
+      "Delta": -0.009999999999999787,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "dfii10": {
+      "Delta": -0.03999999999999959,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "scope": "RECONSTRUCTION_NOT_DELIVERY_PROOF",
+    "historical_terminal_delivery_proven": false,
+    "live_orders": 0
+  },
+  {
+    "name": "YIELD_ONLY_CALENDAR_ALLOWED_CONTROL",
+    "signal_utc": "2026-10-20T13:55:00Z",
+    "signal_wib": "2026-10-20 20:55:00",
+    "direction": "SELL",
+    "macro_passed": false,
+    "status": "XAU_MACRO_DIRECTION_BLOCK",
+    "dgs10": {
+      "Delta": -0.009999999999999787,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "dfii10": {
+      "Delta": -0.03999999999999959,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "scope": "SYNTHETIC_CALENDAR_CONTROL_WITH_RECONSTRUCTED_YIELD",
+    "historical_terminal_delivery_proven": false,
+    "live_orders": 0
+  },
+  {
+    "name": "POSITIVE_YIELD_CONTROL",
+    "signal_utc": "2026-10-20T13:55:00Z",
+    "signal_wib": "2026-10-20 20:55:00",
+    "direction": "SELL",
+    "macro_passed": true,
+    "status": "MACRO_OK",
+    "dgs10": {
+      "Delta": 0.01,
+      "AvailableUtc": "2026-10-20T13:55:00+00:00"
+    },
+    "dfii10": {
+      "Delta": -0.03999999999999959,
+      "AvailableUtc": "2026-10-20T04:00:00+00:00"
+    },
+    "scope": "SYNTHETIC_POSITIVE_CONTROL_NOT_HISTORICAL_DATA",
+    "historical_terminal_delivery_proven": false,
+    "live_orders": 0
+  }
+]

@@ -1,0 +1,353 @@
+{
+  "observed_utc": "2026-10-21T03:25:48.326841+00:00",
+  "read_only_production": true,
+  "historical_delivery_proven": false,
+  "running_adapter_path": "/home/Rizanrizan/Forex-scanner/cbot_bridge/feeds.py",
+  "running_adapter_sha256": "527dc0c1375c54d6350422181d56c1695d1d7e6ffb7c147c1ec8bf48bd3e2bbe",
+  "lag_rule": "exact running macro_point: two US federal business days at America/New_York midnight",
+  "sources": [
+    {
+      "name": "DGS10_CURRENT.csv",
+      "kind": "FRED_CURRENT_NOT_CERTIFIED_VINTAGE",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10",
+      "bytes": 269107,
+      "sha256": "ffc712cda8ff329de0f07ea6d5d9b97a094fe40da0486319ae12bbbe19d7381d",
+      "status": "downloaded"
+    },
+    {
+      "name": "DGS10_ALFRED_VINTAGE_20261020.csv",
+      "kind": "ALFRED_REQUESTED_VINTAGE",
+      "url": "https://alfred.stlouisfed.org/graph/alfredgraph.csv?id=DGS10&vintage_date=2026-10-20",
+      "bytes": 269116,
+      "sha256": "d88ecae1b5262394a79e9f1a20b1f5ebb2b59c13bf97c9498a28a8b27087c119",
+      "status": "downloaded"
+    },
+    {
+      "name": "DFII10_CURRENT.csv",
+      "kind": "FRED_CURRENT_NOT_CERTIFIED_VINTAGE",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DFII10",
+      "bytes": 99287,
+      "sha256": "1c768040c217140094683e1c87474b2df9badf09f4f917731f8e036f759b2583",
+      "status": "downloaded"
+    },
+    {
+      "name": "DFII10_ALFRED_VINTAGE_20261020.csv",
+      "kind": "ALFRED_REQUESTED_VINTAGE",
+      "url": "https://alfred.stlouisfed.org/graph/alfredgraph.csv?id=DFII10&vintage_date=2026-10-20",
+      "bytes": 99296,
+      "sha256": "ebc310bdae9afc010250f9fc7c33b969f75a1dda5210c8ef03b6c092bf94ea9c",
+      "status": "downloaded"
+    },
+    {
+      "name": "FF_THISWEEK_AT_AUDIT.json",
+      "kind": "CALENDAR_RETRIEVED_AFTER_SIGNAL",
+      "url": "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
+      "bytes": 11604,
+      "sha256": "201a2a2677079f0a62dc36e2054b2640a8c5c2c64b8a209c62905efdb9c72c44",
+      "status": "downloaded"
+    },
+    {
+      "name": "BLS_ICS_AT_AUDIT.ics",
+      "kind": "CALENDAR_RETRIEVED_AFTER_SIGNAL",
+      "url": "https://www.bls.gov/schedule/news_release/bls.ics",
+      "bytes": 80672,
+      "sha256": "92a350111ace106deaab5584e4084366bd367b594a0d0bad116008d82d63e501",
+      "status": "downloaded"
+    }
+  ],
+  "asof_points": [
+    {
+      "signal_utc": "2026-10-20T12:05:00+00:00",
+      "signal_wib": "2026-10-20T19:05:00+07:00",
+      "points": {
+        "DGS10": {
+          "observation_date": "2026-10-16",
+          "value": 5.09,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 5.1,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.009999999999999787,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        },
+        "DFII10": {
+          "observation_date": "2026-10-16",
+          "value": 2.74,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 2.78,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.03999999999999959,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        }
+      },
+      "scope": "AS_OF_RECONSTRUCTION_FROM_NEWLY_DOWNLOADED_DATA_NOT_TERMINAL_DELIVERY_LOG",
+      "calendar_reconstruction": {
+        "ff_ok": true,
+        "bls_ok": true,
+        "events_in_hold_window": [],
+        "errors": []
+      }
+    },
+    {
+      "signal_utc": "2026-10-20T12:40:00+00:00",
+      "signal_wib": "2026-10-20T19:40:00+07:00",
+      "points": {
+        "DGS10": {
+          "observation_date": "2026-10-16",
+          "value": 5.09,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 5.1,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.009999999999999787,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        },
+        "DFII10": {
+          "observation_date": "2026-10-16",
+          "value": 2.74,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 2.78,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.03999999999999959,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        }
+      },
+      "scope": "AS_OF_RECONSTRUCTION_FROM_NEWLY_DOWNLOADED_DATA_NOT_TERMINAL_DELIVERY_LOG",
+      "calendar_reconstruction": {
+        "ff_ok": true,
+        "bls_ok": true,
+        "events_in_hold_window": [],
+        "errors": []
+      }
+    },
+    {
+      "signal_utc": "2026-10-20T13:55:00+00:00",
+      "signal_wib": "2026-10-20T20:55:00+07:00",
+      "points": {
+        "DGS10": {
+          "observation_date": "2026-10-16",
+          "value": 5.09,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 5.1,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.009999999999999787,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        },
+        "DFII10": {
+          "observation_date": "2026-10-16",
+          "value": 2.74,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 2.78,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.03999999999999959,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        }
+      },
+      "scope": "AS_OF_RECONSTRUCTION_FROM_NEWLY_DOWNLOADED_DATA_NOT_TERMINAL_DELIVERY_LOG",
+      "calendar_reconstruction": {
+        "ff_ok": true,
+        "bls_ok": true,
+        "events_in_hold_window": [],
+        "errors": []
+      }
+    }
+  ],
+  "vintage_checks": [
+    {
+      "series": "DGS10",
+      "requested_vintage": "2026-10-20",
+      "columns": [
+        "observation_date",
+        "DGS10_20261020"
+      ],
+      "vintage_header_verified": true,
+      "points": [
+        {
+          "signal_utc": "2026-10-20T12:05:00+00:00",
+          "observation_date": "2026-10-16",
+          "value": 5.09,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 5.1,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.009999999999999787,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        },
+        {
+          "signal_utc": "2026-10-20T12:40:00+00:00",
+          "observation_date": "2026-10-16",
+          "value": 5.09,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 5.1,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.009999999999999787,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        },
+        {
+          "signal_utc": "2026-10-20T13:55:00+00:00",
+          "observation_date": "2026-10-16",
+          "value": 5.09,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 5.1,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.009999999999999787,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        }
+      ]
+    },
+    {
+      "series": "DFII10",
+      "requested_vintage": "2026-10-20",
+      "columns": [
+        "observation_date",
+        "DFII10_20261020"
+      ],
+      "vintage_header_verified": true,
+      "points": [
+        {
+          "signal_utc": "2026-10-20T12:05:00+00:00",
+          "observation_date": "2026-10-16",
+          "value": 2.74,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 2.78,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.03999999999999959,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        },
+        {
+          "signal_utc": "2026-10-20T12:40:00+00:00",
+          "observation_date": "2026-10-16",
+          "value": 2.74,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 2.78,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.03999999999999959,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        },
+        {
+          "signal_utc": "2026-10-20T13:55:00+00:00",
+          "observation_date": "2026-10-16",
+          "value": 2.74,
+          "previous_observation_date": "2026-10-15",
+          "previous_value": 2.78,
+          "available_utc": "2026-10-20T04:00:00+00:00",
+          "native_adapter_point": {
+            "Delta": -0.03999999999999959,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        }
+      ]
+    }
+  ],
+  "archive_scan": {
+    "roots": [
+      "/home/Rizanrizan/Forex-scanner/state",
+      "/home/Rizanrizan/Forex-scanner/cbot_bridge",
+      "/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS"
+    ],
+    "files_visited": 1039,
+    "bounded_cap_hit": false,
+    "candidate_files": [
+      {
+        "path": "/home/Rizanrizan/Forex-scanner/state/xau_macro_event_probe.json",
+        "bytes": 10560
+      },
+      {
+        "path": "/home/Rizanrizan/Forex-scanner/state/xau_macro_event_snapshot.json",
+        "bytes": 7295
+      },
+      {
+        "path": "/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/october-macro-audit/run-39538488841/MACRO_GATE_INPUT.json",
+        "bytes": 41351
+      },
+      {
+        "path": "/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-macro-risk-replay-20261020/run-39394740246/LAPORAN_REPLAY_BTC_MACRO_RISK.md",
+        "bytes": 3686
+      },
+      {
+        "path": "/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-macro-risk-replay-20261020/run-39394740246/RIZAN_BTC_MACRO_RISK_REPLAY_20261020.zip",
+        "bytes": 10437451
+      },
+      {
+        "path": "/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-macro-event-weekend-20261020/run-39382525371/LAPORAN_BTC_MACRO_EVENT.md",
+        "bytes": 3617
+      },
+      {
+        "path": "/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/btc-macro-event-weekend-20261020/run-39382525371/RIZAN_BTC_MACRO_EVENT_WEEKEND_20261020.zip",
+        "bytes": 12361350
+      },
+      {
+        "path": "/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/full-frozen-parity-2019-2026/artifacts/archived_macro_flags.json.gz",
+        "bytes": 8500
+      },
+      {
+        "path": "/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/full-frozen-parity-2019-2026/artifacts/replay_results/STRICT_MISSING_MACRO_XAU_BLOCKED.json",
+        "bytes": 835027
+      },
+      {
+        "path": "/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/full-frozen-parity-2019-2026/artifacts/pilot/STRICT_MISSING_MACRO_XAU_BLOCKED.json",
+        "bytes": 31429
+      }
+    ],
+    "macro_snapshots_found": [
+      {
+        "path": "/home/Rizanrizan/Forex-scanner/state/xau_macro_event_probe.json",
+        "member": null,
+        "snapshot": {
+          "ProducedUtc": "2026-10-11T07:37:09.572928+00:00",
+          "CoverageFromUtc": "2026-10-11T04:00:00+00:00",
+          "CoverageToUtc": "2026-10-18T04:00:00+00:00",
+          "ForexFactoryOk": true,
+          "BlsOk": true,
+          "Dgs10": {
+            "Delta": 0.010000000000000675,
+            "AvailableUtc": "2026-10-09T04:00:00+00:00"
+          },
+          "Dfii10": {
+            "Delta": 0.009999999999999787,
+            "AvailableUtc": "2026-10-09T04:00:00+00:00"
+          }
+        }
+      },
+      {
+        "path": "/home/Rizanrizan/Forex-scanner/state/xau_macro_event_snapshot.json",
+        "member": null,
+        "snapshot": {
+          "ProducedUtc": "2026-10-21T03:25:59.927+00:00",
+          "CoverageFromUtc": "2026-10-18T04:00:00.000+00:00",
+          "CoverageToUtc": "2026-10-25T04:00:00.000+00:00",
+          "ForexFactoryOk": true,
+          "BlsOk": true,
+          "Dgs10": {
+            "Delta": -0.009999999999999787,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          },
+          "Dfii10": {
+            "Delta": -0.03999999999999959,
+            "AvailableUtc": "2026-10-20T04:00:00.000+00:00"
+          }
+        }
+      }
+    ],
+    "signal_day_snapshots": []
+  }
+}
