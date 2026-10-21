@@ -1,0 +1,58 @@
+name: October 20 macro as-of reconstruction and native gate audit
+on:
+  push:
+    branches: [research/october-entry-audit-20261021]
+    paths: ['october_macro_audit/**', '.github/workflows/october-macro-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.426
+      - name: Read macro sources and archives without changing services
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          mkdir -p publish
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20)
+          dest="/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/october-macro-audit/run-${GITHUB_RUN_ID}"
+          target=Rizanrizan@202.74.74.172
+          ssh "${opts[@]}" "$target" "umask 077; mkdir -p '$dest'"
+          scp "${opts[@]}" october_macro_audit/audit_macro.py "$target:$dest/"
+          ssh "${opts[@]}" "$target" "sudo -n /usr/bin/python3 - '$dest'" <<'PY' | tee publish/MACRO_VPS_EXECUTION.log
+          import os,re,subprocess,sys
+          dest=sys.argv[1];info=subprocess.run(['systemctl','show','rizan-cbot-bridge.service','--value','-p','ExecStart'],capture_output=True,text=True,check=True).stdout;py=re.search(r'path=([^ ;}]+)',info).group(1);assert 'python' in py.rsplit('/',1)[-1];os.environ['PYTHONDONTWRITEBYTECODE']='1';os.execv(py,[py,dest+'/audit_macro.py',dest])
+          PY
+          ssh "${opts[@]}" "$target" "sudo -n tar -C '$dest' -czf - ." > MACRO_SOURCE_EVIDENCE.tar.gz
+          tar -xzf MACRO_SOURCE_EVIDENCE.tar.gz -C publish
+      - name: Verify frozen source and test exact native macro function
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path('portfolio_7day_frozen');m=json.loads((p/'FREEZE_MANIFEST.json').read_text());assert all(hashlib.sha256((p/n).read_bytes()).hexdigest()==h for n,h in m['source_sha256'].items())
+          a=json.loads(pathlib.Path('publish/MACRO_RECONSTRUCTION_AUDIT.json').read_text());same=a['running_adapter_sha256']==hashlib.sha256(pathlib.Path('cbot_bridge/feeds.py').read_bytes()).hexdigest();pathlib.Path('publish/SOURCE_VERIFICATION.json').write_text(json.dumps({'frozen_files_match':len(m['source_sha256']),'running_adapter_matches_research_checkout':same},indent=2));print('ADAPTER_SOURCE_MATCH',same)
+          PY
+          dotnet run -c Release --project october_macro_audit/MacroGateReplay.csproj | tee publish/MACRO_NATIVE_GATE_EXECUTION.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIZAN-OCT20-MACRO-GATE-AUDIT
+          path: publish/
