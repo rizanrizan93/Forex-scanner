@@ -140,7 +140,7 @@ def load_h15_daily():
 st.set_page_config(page_title="RIZAN US10Y", layout="wide")
 st.title("RIZAN — US10Y Regime & Timing")
 st.caption(
-    "Daily FRED dipakai untuk regime makro. Intraday US10Y dipakai untuk timing/pressure. "
+    "Daily FRED (fallback Federal Reserve H.15) untuk regime makro. Intraday US10Y untuk timing/pressure. "
     "Keduanya tidak memberi izin order sendiri; keputusan tetap harus dikonfirmasi struktur XAU."
 )
 
