@@ -26,6 +26,8 @@ jobs:
           pip install scipy==1.17.0
       - name: Streamlit syntax smoke
         run: python -m py_compile main.py streamlit_app.py
+      - name: Zone V05 M1 regression
+        run: pytest -q tests/test_zone_v05.py
       - name: Unit tests
         run: pytest -q
       - name: Config contract
