@@ -17,7 +17,7 @@ import streamlit as st
 
 
 FRED_SERIES = {
-    "CPIAUCSL", "PCEPILFE", "PCEPI", "DFEDTARU",
+    "CPIAUCSL", "PCEPILFE", "PCEPI", "DFEDTARU", "DGS2",
     "DCOILWTICO", "DCOILBRENTEU",
 }
 YAHOO_SYMBOLS = {"DX-Y.NYB", "GC=F", "SI=F", "CL=F", "BZ=F"}
@@ -192,7 +192,7 @@ def _market_metric(slot, title, data, *, unit=""):
     if data and data.get("fresh"):
         slot.metric(title, _fmt(data["value"], unit),
                     delta=_delta(data["pct"], "%"))
-        slot.caption(f"{data['source']} · observasi {str(data['observed'])[:19]} UTC")
+        slot.caption(f"{data['source']} · Δ vs penutupan/observasi sebelumnya · {str(data['observed'])[:19]} UTC")
     elif data:
         slot.metric(title, "STALE")
         slot.caption(f"Quote terakhir {str(data.get('observed'))[:19]} UTC · tidak digunakan untuk bias")
@@ -223,6 +223,17 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
         st.metric("Spread 10Y − 2Y", _fmt(spread, " bps", 1))
     else:
         st.caption("Spread 10Y−2Y tidak dihitung bila tanggal observasi berbeda/kurang data.")
+    recent_two_year, _ = _safe(fred_history, "DGS2")
+    if recent_two_year and len(recent_two_year) >= 5 and _recent(recent_two_year[-1][0], 7):
+        last_five = recent_two_year[-5:]
+        last_value = last_five[-1][1]
+        peak = max(val for _, val in last_five)
+        st.caption("US2Y (5 observasi): " +
+                   ("TERTINGGI 5 SESI" if last_value >= peak else
+                    f"di bawah high 5 sesi {_fmt(peak, '%', 3)}") +
+                   f" · observasi {last_five[-1][0]} · FRED DGS2")
+    else:
+        st.caption("Status tertinggi 5 sesi US2Y belum dapat diverifikasi.")
     live, live_error = _safe(us2y_live)
     if live:
         st.success("Cash US2Y intraday: " + _fmt(live["value"], "%", 3)
@@ -239,14 +250,23 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
     policy, _ = _last("DFEDTARU")
     cpi, cpi_date, cpi_error = _yoy("CPIAUCSL")
     pce, pce_date, pce_error = _yoy("PCEPILFE")
-    p1, p2, p3 = st.columns(3)
+    headline, headline_date, headline_error = _yoy("PCEPI")
+    p1, p2 = st.columns(2)
     valid_policy = policy is not None and _recent(policy[0], 7)
     p1.metric("Fed target upper", _fmt(policy[1], "%") if valid_policy else "—")
     p1.caption("FRED DFEDTARU · " + (policy[0] if policy else "belum tersedia"))
     p2.metric("CPI YoY", _fmt(cpi, "%"))
     p2.caption("FRED CPIAUCSL · " + str(cpi_date or cpi_error or "belum tersedia"))
-    p3.metric("Core PCE YoY", _fmt(pce, "%"))
-    p3.caption("FRED PCEPILFE · " + str(pce_date or pce_error or "belum tersedia"))
+    p3, p4 = st.columns(2)
+    p3.metric("PCE headline YoY", _fmt(headline, "%"))
+    p3.caption("FRED PCEPI · " + str(headline_date or headline_error or "belum tersedia"))
+    p4.metric("Core PCE YoY", _fmt(pce, "%"))
+    p4.caption("FRED PCEPILFE · " + str(pce_date or pce_error or "belum tersedia"))
+    if headline is not None:
+        st.caption("Inflasi PCE vs target Fed 2%: " +
+                   ("DI ATAS TARGET" if headline > 2 else
+                    "DI BAWAH TARGET" if headline < 2 else "PADA TARGET") +
+                   ". Ini tidak berarti Fed pasti menaikkan/menahan suku bunga.")
     st.markdown("[Probabilitas FOMC terbaru: CME FedWatch](https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html)")
     st.caption("Probabilitas cut/hold/hike tidak disalin menjadi angka otomatis karena belum ada "
                "feed probabilitas yang terverifikasi. Angka inflasi = YoY, bukan surprise vs konsensus. "
