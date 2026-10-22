@@ -179,20 +179,40 @@ def render_v05_details(snapshot):
         for label,key in [('Sentuhan','first_touch_at'),('Reclaim M15','reclaim_m15_at'),('BOS M5','confirmation_m5_at')]:
             st.write(label+': '+wib(x.get(key)))
         st.caption('A → B adalah setup saat ini. B → C → D: WATCH bersyarat; arah berlawanan perlu zona dan konfirmasi baru. Tidak wajib bergantian BUY/SELL.')
-    represented={x['source']['side'] for x in p.get('plans',[])}
+    represented={x['source']['id'] for x in p.get('plans',[]) if x.get('source',{}).get('id')}
+    visible_sides={x['source']['side'] for x in p.get('plans',[]) if x.get('source')}
     for a in p.get('watch_zones',[]):
-        if a['side'] in represented:continue
+        if a['id'] in represented:
+            continue
+        visible_sides.add(a['side'])
+        pending=a.get('state')=='PENDING_INVALIDATION'
         obs=p.get('watch_checks',{}).get(a['id'])
-        st.markdown('#### '+a['side']+' · WATCH · belum kandidat ENTRY V05')
+        st.markdown('#### '+a['side']+' · '+('PENDING INVALIDATION' if pending else 'WATCH')+' · bukan ENTRY V05')
         st.metric('Zona pantauan · '+a['timeframe'],f"{a['low']:,.2f}–{a['high']:,.2f}")
-        st.caption('Terbentuk '+wib(a['formed_at']))
+        st.caption('Terbentuk '+wib(a['formed_at'])+' · batas zona tetap sampai penutupan candle sumber')
+        if pending:
+            boundary=a['low'] if a['side']=='BUY' else a['high']
+            tf=a['timeframe']
+            last_close=p.get('timeframe_closed_at',{}).get(tf)
+            st.warning(
+                f"PENDING INVALIDATION · harga melewati batas {boundary:,.2f}, "
+                f"tetapi belum ada penutupan candle {tf} yang mengonfirmasi invalidasi. "
+                "Zona ini hanya dipantau, bukan sinyal BUY/SELL atau limit order. "
+                "Tunggu candle sumber ditutup."
+            )
+            if last_close:
+                st.caption('Penutupan terakhir '+tf+': '+wib(last_close))
         render_requirements(a,observation=obs)
-        reference_button(a)
-        if obs and obs.get('sl') is not None:
+        if not pending:
+            reference_button(a)
+        if obs and obs.get('sl') is not None and not pending:
             st.metric('SL skenario observasi',f"{obs['sl']:,.2f}")
             st.caption('Batas distal zona ±0,2 ATR sumber. Ini skenario struktur, belum SL dari setup ENTRY V05 yang lolos.')
         for label,key in [('Sentuhan','first_touch_at'),('Reclaim M15','reclaim_m15_at'),('BOS M5','confirmation_m5_at')]:
             st.write(label+': '+(wib(obs.get(key)) if obs and obs.get(key) else 'Belum teramati / belum dapat dinilai'))
+    for side in ('BUY','SELL'):
+        if side not in visible_sides:
+            st.info('Tidak ada zona '+side+' yang masih memenuhi kriteria WATCH H1/H4 saat ini; tunggu zona valid baru. Zona yang telah invalid pada close TF sumber tidak ditampilkan sebagai peluang entry.')
 
 
 def _render():
