@@ -16,6 +16,8 @@ from urllib.request import Request, urlopen
 
 import streamlit as st
 
+from .xau_macro_gold_consensus import analyze_gold_macro
+
 
 FRED_SERIES = {
     "CPIAUCSL", "PCEPILFE", "PCEPI", "DFEDTARU", "DGS2",
@@ -227,6 +229,122 @@ def _market_metric(slot, title, data, *, unit=""):
     else:
         slot.metric(title, "BELUM TERSEDIA")
         slot.caption("Feed harga belum dapat diverifikasi")
+
+
+def _selected_dxy(macro_eval, feeds):
+    """Prefer time-stamped Yahoo DXY, then independently fresh worker proxy."""
+    dxy = feeds["market"].get("DX-Y.NYB")
+    if dxy and _recent(dxy.get("observed"), 1.5 / 24):
+        return dxy
+    row = (macro_eval or {}).get("dxy_intraday") or {}
+    if (row.get("freshness") == "FRESH"
+            and _number(row.get("current")) is not None
+            and _number(row.get("net_pct")) is not None
+            and _recent(row.get("current_at"), 1.5 / 24)):
+        return {
+            "value": float(row["current"]),
+            "pct": float(row["net_pct"]),
+            "observed": row["current_at"],
+            "fresh": True,
+            "source": row.get("source") or "Macro worker DXY",
+            "basis": "referensi intraday worker",
+        }
+    return dxy
+
+
+def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
+    """Render a single aggregate XAU macro verdict at the TOP of the Macro tab."""
+    feeds = load_external_macro_inputs()
+    h15, _ = _safe(h15_loader)
+    yield_rows = {
+        key: _yield_row(macro_eval, h15, key)
+        for key in ("US2Y", "US10Y", "REAL_YIELD_10Y")
+    }
+    pce, _, _ = _yoy("PCEPI", feeds)
+    cpi, _, _ = _yoy("CPIAUCSL", feeds)
+    wti = _market_or_fred("CL=F", "DCOILWTICO", feeds)
+    brent = _market_or_fred("BZ=F", "DCOILBRENTEU", feeds)
+    gold = feeds["market"].get("GC=F")
+    silver = feeds["market"].get("SI=F")
+    result = analyze_gold_macro(
+        yields=yield_rows,
+        dxy=_selected_dxy(macro_eval, feeds),
+        pce_yoy=pce, cpi_yoy=cpi,
+        oil={"WTI": wti, "Brent": brent},
+        metals={"Gold": gold, "Silver": silver},
+        fed_repricing=(macro_eval or {}).get("fed_repricing_proxy"),
+    )
+
+    st.subheader("KESIMPULAN GABUNGAN MAKRO GOLD")
+    st.caption("RIZAN Macro Synthesis · pembacaan independen US yield, real yield dan DXY; "
+               "inflasi, Fed, energi, dan logam ikut sebagai konteks. Semua berbasis data "
+               "tercatat, bukan asumsi.")
+    a, b, c = st.columns(3)
+    a.metric("Bias XAUUSD", result["bias"])
+    b.metric("Indeks arah makro", "—" if result["score"] is None
+             else f"{result['score']:+d} / 100")
+    c.metric("Cakupan feed", f"{result['coverage_pct']}%")
+    st.caption("Kekuatan: " + result["strength"] +
+               " · Horizon: " + result["horizon"] +
+               " · skor heuristik, BUKAN probabilitas atau akurasi historis.")
+
+    if result["state"] == "WAIT_DATA":
+        st.warning("WAIT DATA · " + result["rationale"] +
+                   " Kurang: " + ", ".join(result["missing"]))
+    elif result["state"] == "CONFLICT":
+        st.warning(result["bias"] + " · KONFLIK YIELD vs DXY. " + result["rationale"])
+    elif result["bias"] == "BULLISH XAU":
+        st.success("TAILWIND EMAS · " + result["rationale"])
+    elif result["bias"] == "BEARISH XAU":
+        st.warning("HEADWIND EMAS · " + result["rationale"])
+    else:
+        st.info("NETRAL / MIXED · " + result["rationale"])
+
+    def names(rows):
+        return ", ".join(item["name"] for item in rows) or "Tidak ada"
+    st.write("**Mendukung BUY:** " + names(result["bullish"]) +
+             "  |  **Mendukung SELL:** " + names(result["bearish"]))
+    if result["neutral"]:
+        st.caption("Belum directional: " + names(result["neutral"]))
+
+    risk = event_risk or {}
+    state = str(risk.get("state") or "UNAVAILABLE")
+    if state not in {"CLEAR", "UNAVAILABLE"}:
+        st.warning("EVENT RISK: " + state + " · " +
+                   str(risk.get("action") or "Perhatikan jadwal rilis; hindari chase menjelang berita."))
+    else:
+        st.caption("Event risk: " + state +
+                   " · pastikan waktu rilis dan konferensi FOMC sebelum memasang order manual.")
+
+    with st.expander("Rincian faktor, tanggal data, dan alasan perhitungan", expanded=False):
+        st.dataframe([
+            {
+                "Indikator": factor["name"],
+                "Efek XAU": ("BULLISH" if factor["direction"] == 1 else
+                            "BEARISH" if factor["direction"] == -1 else
+                            "FLAT" if factor["direction"] == 0 else "UNAVAILABLE"),
+                "Keterangan": factor["reason"],
+                "Sumber": factor.get("source") or "—",
+                "Waktu observasi (UTC)": str(factor.get("observed_at") or "—"),
+                "Dalam skor": bool(factor.get("counted")),
+            }
+            for factor in result["factors"]
+        ], hide_index=True, use_container_width=True)
+        st.markdown("**Makro pendukung (tidak dihitung ganda):**")
+        for line in result["context"]:
+            st.caption("• " + line)
+        st.caption("Perhitungan: kelompok Treasury 55% (real yield 50%, US2Y 30%, "
+                   "US10Y 20% di dalam kelompok), DXY 45%. Skor + = mendukung emas; "
+                   "- = menekan emas. Kondisi data kosong/stale = WAIT DATA. "
+                   "Bobot belum divalidasi dengan out-of-sample replay.")
+
+    st.info("KESIMPULAN EKSEKUSI: " +
+            ("WAIT — data makro utama belum lengkap. " if result["score"] is None else
+             "Makro hanya filter arah, bukan sinyal trading. ") +
+            "Tetap gunakan H1 untuk bias/zona, M15 untuk validasi reversal/MSS, "
+            "dan M5 untuk timing serta SL/TP struktural. "
+            "Tidak mengubah strategi, bridge, atau order cBot.")
+    return result
 
 
 def render_macro_risk_monitor(macro_eval, h15_loader):
