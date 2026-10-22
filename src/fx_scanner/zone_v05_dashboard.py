@@ -96,9 +96,21 @@ def render_requirements(a,plan=None,observation=None):
     st.caption('Wick melewati batas saja belum membatalkan struktur. Batas invalidasi zona berbeda dari SL transaksi.')
     values=plan if plan is not None else observation
     def status(key):
-        if values is None:return 'Belum dinilai untuk entry'
-        if values.get(key):return 'Teramati · '+wib(values[key])
-        if values.get('observation_status')=='RIWAYAT_M1_BELUM_LENGKAP':return 'Belum dapat dipastikan · riwayat M1 belum lengkap'
+        if values is None:
+            return 'Belum dinilai untuk entry'
+        if values.get(key):
+            return 'Teramati · ' + wib(values[key])
+        issues = {
+            'RIWAYAT_M1_BELUM_MENCAKUP_ZONA': 'M1 belum mencakup awal zona',
+            'GAP_M1_SEBELUM_SENTUHAN': 'Gap M1 sebelum first touch',
+            'GAP_M1_SAAT_MEMANTAU': 'Gap M1 belum terverifikasi',
+            'RIWAYAT_M1_BELUM_LENGKAP': 'Riwayat M1 belum lengkap',
+        }
+        issue = issues.get(values.get('observation_status'))
+        if issue:
+            if key == 'first_touch_at' and values.get('observed_touch_at'):
+                return 'Sentuhan terlihat · ' + wib(values['observed_touch_at']) + ' · first touch belum terbukti'
+            return 'Belum dapat dipastikan · ' + issue
         return 'Menunggu'
     rows=[
         {'Syarat':'Zona terpilih engine EMA20 H1','Status':'Terpilih' if plan is not None else 'Belum menjadi kandidat ENTRY'},
@@ -109,6 +121,20 @@ def render_requirements(a,plan=None,observation=None):
     st.markdown('**Syarat konfirmasi:**')
     for row in rows:
         st.markdown('- '+row['Syarat']+' — **'+row['Status']+'**')
+    if observation is not None:
+        audit = observation.get('m1_audit') or {}
+        if audit:
+            st.caption('Audit M1 zona WATCH: ' + str(audit['m1_bars']) +
+                       ' candle hingga titik pemeriksaan; ' +
+                       str(audit['m1_missing_minutes']) + ' menit tanpa candle, ' +
+                       str(audit['m5_excluded_missing_minutes']) +
+                       ' menit dibuktikan tidak menyentuh zona oleh M5, ' +
+                       str(audit['unverified_minutes']) + ' menit belum terverifikasi.')
+            if audit.get('first_unverified_at'):
+                st.caption('Gap pertama yang belum terbukti aman: ' +
+                           wib(audit['first_unverified_at']) +
+                           ' · awal zona: ' + wib(audit['required_from']) +
+                           ' · M1 tersedia mulai: ' + wib(audit.get('first_m1_at')))
     st.caption('Konfirmasi teramati belum berarti semua pemeriksaan biaya, target, sesi, dan data lolos. Ikuti status serta alasan setup di atas.')
     if plan is None:
         st.caption('WATCH observasi: sentuhan/reclaim/BOS yang teramati di zona ini belum menjadikannya ENTRY V05. Engine harus memilih kandidat dan seluruh syarat entry harus lolos.')
