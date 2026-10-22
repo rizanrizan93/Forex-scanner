@@ -330,3 +330,101 @@ def test_watch_no_touch_with_safe_m1_gap_remains_waiting():
     assert obs['first_touch_at'] is None
     assert obs['m1_audit']['unverified_minutes']==0
     assert obs['m1_audit']['m5_excluded_missing_minutes']==1
+
+
+def test_watch_buy_pending_until_parent_h1_close_then_invalid():
+    from fx_scanner.zone_v05 import lifecycle,watch_zones
+    row=dict(family=5,tf=60,direction=1,formed_ns=T-HOUR,
+             low=100.,high=101.,atr=2.,strength=1.,style=0,lookback=20)
+    z=pd.DataFrame([row])
+    minute=pd.DataFrame({'timestamp':pd.to_datetime([T],utc=True),'high':[102.],'low':[99.]})
+    h1=pd.DataFrame({'time':pd.to_datetime([T],utc=True),'close':[101.]})
+    still_valid=lifecycle(z,{60:h1},minute)
+    provisional=watch_zones(still_valid,99.,T+20*MIN)
+    assert len(provisional)==1
+    assert provisional[0]['side']=='BUY'
+    assert provisional[0]['state']=='PENDING_INVALIDATION'
+    assert provisional[0]['entry_allowed'] is False
+    assert (provisional[0]['low'],provisional[0]['high'])==(100.,101.)
+    # A wick past 100 followed by H1 close at 100 is not confirmed invalid.
+    h1=pd.DataFrame({'time':pd.to_datetime([T,T+HOUR],utc=True),
+                     'close':[101.,100.]})
+    still_valid=lifecycle(z,{60:h1},minute)
+    assert watch_zones(still_valid,99.,T+HOUR)==[dict(provisional[0])]
+    # Close strictly below the distal limit confirms H1 invalidation.
+    h1.loc[1,'close']=99.
+    broken=lifecycle(z,{60:h1},minute)
+    assert not watch_zones(broken,99.,T+HOUR)
+
+
+def test_watch_sell_pending_until_parent_h4_close_then_invalid():
+    from fx_scanner.zone_v05 import lifecycle,watch_zones
+    row=dict(family=5,tf=240,direction=-1,formed_ns=T-4*HOUR,
+             low=109.,high=110.,atr=2.,strength=1.,style=0,lookback=20)
+    z=pd.DataFrame([row])
+    minute=pd.DataFrame({'timestamp':pd.to_datetime([T],utc=True),'high':[111.],'low':[108.]})
+    h4=pd.DataFrame({'time':pd.to_datetime([T],utc=True),'close':[109.]})
+    provisional=watch_zones(lifecycle(z,{240:h4},minute),111.,T+HOUR)
+    assert len(provisional)==1
+    assert provisional[0]['side']=='SELL'
+    assert provisional[0]['state']=='PENDING_INVALIDATION'
+    assert provisional[0]['entry_allowed'] is False
+    h4=pd.DataFrame({'time':pd.to_datetime([T,T+4*HOUR],utc=True),
+                     'close':[109.,110.5]})
+    assert not watch_zones(lifecycle(z,{240:h4},minute),111.,T+4*HOUR)
+
+
+def test_watch_pending_geometry_sticky_until_parent_close():
+    from fx_scanner.zone_v05 import watch_zones,INF
+    rows=[
+        dict(family=5,tf=60,direction=1,formed_ns=T-HOUR,
+             low=100.,high=101.,atr=2.,strength=1.,style=0,lookback=20,dead=INF),
+        dict(family=6,tf=60,direction=1,formed_ns=T-HOUR,
+             low=100.8,high=102.,atr=2.,strength=1.,style=0,lookback=20,dead=INF),
+    ]
+    z=pd.DataFrame(rows)
+    first=watch_zones(z,100.4,T)[0]
+    assert first['low']==100.8 or first['low']==100.
+    # Force a known saved geometry; an intrabar move must preserve it.
+    from fx_scanner.zone_v05 import zone,CONTRACT
+    saved=dict(contract=CONTRACT,watch_zones=[zone(N(**rows[0]))])
+    active=watch_zones(z,102.5,T,previous=saved)
+    assert active[0]['low']==100.
+    pending=watch_zones(z,99.5,T+MIN,previous=dict(contract=CONTRACT,watch_zones=active))
+    assert len(pending)==1
+    assert pending[0]['state']=='PENDING_INVALIDATION'
+    assert pending[0]['id']==saved['watch_zones'][0]['id']
+
+
+def test_watch_shows_active_and_pending_separately():
+    from fx_scanner.zone_v05 import watch_zones,INF
+    z=pd.DataFrame([
+        dict(family=5,tf=60,direction=1,formed_ns=T-HOUR,low=99.,high=100.,atr=1.,dead=INF),
+        dict(family=6,tf=60,direction=1,formed_ns=T-HOUR,low=102.,high=103.,atr=1.,dead=INF),
+    ])
+    selected=watch_zones(z,101.,T)
+    assert len(selected)==2
+    assert {(a['side'],a['state']) for a in selected}=={
+        ('BUY','WATCH_ZONE_ONLY'),('BUY','PENDING_INVALIDATION')}
+
+
+def test_pending_zone_dashboard_warns_without_limit_or_sl():
+    import json
+    from streamlit.testing.v1 import AppTest
+    from fx_scanner.zone_v05 import zone
+    now=pd.Timestamp.now(tz='UTC')
+    a=N(family=5,tf=60,direction=1,formed_ns=(now-pd.Timedelta(hours=1)).value,
+        low=100.,high=101.)
+    watch=dict(zone(a),state='PENDING_INVALIDATION',entry_allowed=False)
+    snap=blank(now)
+    snap.update(evaluated_close_at=now.floor('5min').isoformat(),
+                timeframe_closed_at={'H1':(now-pd.Timedelta(hours=1)).isoformat()},
+                watch_zones=[watch],watch_checks={
+                    watch['id']:dict(sl=99.,observation_status='MENUNGGU_RECLAIM_M15')})
+    source='import json\\nfrom fx_scanner.zone_v05_dashboard import render_snapshot\\nrender_snapshot(json.loads('+repr(json.dumps(snap))+'))'
+    app=AppTest.from_string(source).run(timeout=15)
+    assert not app.exception
+    assert any('PENDING INVALIDATION' in x.message for x in app.warning)
+    assert not any(x.label=='SL skenario observasi' for x in app.metric)
+    assert not app.button
+    assert not any('BUY · ENTRY' in x.value for x in app.markdown)
