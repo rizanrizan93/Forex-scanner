@@ -22,6 +22,7 @@ def render_snapshot(snapshot, *, now=None):
 
     p = build_zone_paths(snapshot, now=now)
     st.subheader("RIZAN · Predictive Zone-to-Zone A → B")
+    st.caption("Versi dashboard: A→B 1.0 · 22 Oktober 2026 · tampilan riset manual")
     st.caption("Peta manual H4/H1 → validasi M15/M5. Zona A dipilih sebelum disentuh; B harus zona lawan yang sudah terbentuk dan belum tersentuh, bukan target yang diciptakan dari prediksi.")
     st.info("Mode riset read-only. Tidak mengirim limit order, tidak memengaruhi cBot, dan belum memiliki win rate/probabilitas yang terkalibrasi. RR LIMIT adalah **kotor**, belum memasukkan spread, komisi, slippage atau swap.")
     if p["price"] is None:
