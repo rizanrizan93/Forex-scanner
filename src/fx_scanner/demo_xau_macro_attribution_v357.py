@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from .config import load_project_config
+from .xau_h15_daily_fallback import fetch_h15_daily_rows
 from .providers.factory import build_provider_runtime
 from .providers.semantics import ProviderStatus
 from .storage.supabase_operational import SupabaseOperationalStore
@@ -222,6 +223,8 @@ def run() -> int:
         and 0.0 <= (now - previous_refresh_at).total_seconds()
         <= DAILY_CROSS_ASSET_REFRESH_SECONDS
     )
+    h15_fallback_used: list[str] = []
+    h15_fallback_error: str | None = None
     if reuse_daily:
         cross_asset = {
             str(name): dict(value or {})
@@ -238,8 +241,28 @@ def run() -> int:
                 max_age_seconds=float(spec["max_age_seconds"]),
             )
             cross_asset[name] = _cross_asset_row(result, kind=str(spec["kind"]))
+        # Restore official published H.15 observations only where FRED failed.
+        # DTWEXBGS is not an H.15 series and must remain unavailable if missing.
+        names = ("US2Y", "US10Y", "REAL_YIELD_10Y")
+        needs_fallback = [
+            name for name in names
+            if cross_asset[name].get("freshness") != "FRESH"
+            or cross_asset[name].get("delta") is None
+        ]
+        if needs_fallback:
+            try:
+                h15 = fetch_h15_daily_rows(now=now)
+                for name in needs_fallback:
+                    alternative = h15.get(name) or {}
+                    if alternative.get("freshness") == "FRESH" and alternative.get("delta") is not None:
+                        cross_asset[name] = alternative
+                        h15_fallback_used.append(name)
+            except Exception as exc:
+                h15_fallback_error = type(exc).__name__
         cross_asset_refreshed_at = now.isoformat()
-        cross_asset_refresh_mode = "REFRESHED_FRED"
+        cross_asset_refresh_mode = (
+            "REFRESHED_FRED_H15_FALLBACK" if h15_fallback_used else "REFRESHED_FRED"
+        )
 
     event_context, event_observed_at = _event_context(store)
     intraday_cfg = dict(
@@ -325,11 +348,14 @@ def run() -> int:
         "cross_asset": cross_asset,
         "cross_asset_refreshed_at": cross_asset_refreshed_at,
         "cross_asset_refresh_mode": cross_asset_refresh_mode,
+        "h15_fallback_used": h15_fallback_used,
+        "h15_fallback_error": h15_fallback_error,
         "intraday_us10y": intraday_yield,
         "intraday_source_status": intraday_source_status,
         "event_observed_at": event_observed_at,
         "data_policy": {
             "cross_asset_frequency": "DAILY_WITH_15M_REUSE",
+            "daily_yield_fallback": "OFFICIAL_FEDERAL_RESERVE_H15_READ_ONLY",
             "intraday_us10y_frequency": "RUNTIME_CYCLE",
             "intraday_us10y_source": "YAHOO_FINANCE_TNX_SECONDARY_PROXY",
             "dxy_proxy": "DTWEXBGS_NOT_ICE_DXY",
