@@ -37,3 +37,23 @@ A later observed M1 touch is displayed separately as **observed**,
 never as a **verified first touch** unless the earlier data were
 sufficient. Existing V05 ENTRY selection, SL, TP, broker authorization,
 and cBot paths are unchanged. Missing evidence fails closed.
+
+## Confirmed vs pending H1/H4 zone invalidation
+
+The read-only WATCH map no longer discards a BUY merely because the latest
+M1 reference price is under its distal LOW (or a SELL because M1 exceeds
+its distal HIGH). The zone is displayed as **PENDING INVALIDATION** until
+the source timeframe H1/H4 candle closes beyond the distal boundary.
+A wick, or an intrabar M1 break, cannot invalidate the parent zone.
+On confirmed source close, the pre-existing lifecycle rule sets
+`dead` and the zone drops from active WATCH selection.
+
+At most one normal WATCH and one PENDING per side are displayed. The
+last published geometry is preferred while it remains structurally valid,
+so normal-to-pending transitions do not arbitrarily switch the tracked
+zone. The dashboard labels provisional zones as non-entry observation,
+hides provisional SL scenarios and does not offer them as new locked
+entry references. No new orders, pending order triggers, or trading
+permissions are added; research V05 execution gates remain independent.
+If no valid BUY or SELL structure is left, the dashboard states this
+explicitly rather than inventing a fresh reversal zone.
