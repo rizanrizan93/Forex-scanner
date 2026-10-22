@@ -1,0 +1,41 @@
+name: XAU Zone A-B Dashboard Smoke
+
+on:
+  pull_request:
+    paths:
+      - "src/fx_scanner/predictive_zone_to_zone.py"
+      - "src/fx_scanner/predictive_zone_dashboard.py"
+      - "tests/test_predictive_zone_to_zone.py"
+      - "main.py"
+      - ".github/workflows/xau-zone-path-smoke.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/predictive_zone_to_zone.py"
+      - "src/fx_scanner/predictive_zone_dashboard.py"
+      - "tests/test_predictive_zone_to_zone.py"
+      - "main.py"
+      - ".github/workflows/xau-zone-path-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  zone-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install application
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+      - name: Syntax and deterministic strategy contracts
+        run: |
+          python -m py_compile main.py src/fx_scanner/predictive_zone_to_zone.py src/fx_scanner/predictive_zone_dashboard.py
+          pytest -q tests/test_predictive_zone_to_zone.py tests/test_dashboard_pair_tabs.py tests/test_zone_v05.py
