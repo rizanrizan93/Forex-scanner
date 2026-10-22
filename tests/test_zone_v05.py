@@ -232,7 +232,10 @@ def test_watch_checklist_observes_candles_without_promoting_zone_to_entry():
     assert obs['sl']==97.
     assert 'entry' not in obs
     missing=watch_checks(a,m.drop(index=2),five,fifteen,T+22*MIN)
-    assert missing['observation_status']=='RIWAYAT_M1_BELUM_LENGKAP' and missing['first_touch_at'] is None
+    # A later missing M1 cannot erase a proven earlier first touch.
+    assert missing['first_touch_at']==obs['first_touch_at']
+    assert missing['confirmation_m5_at']==obs['confirmation_m5_at']
+    assert missing['m1_audit']['unverified_minutes']==0
     now=pd.Timestamp.now(tz='UTC');p=blank(now);source=zone(a)
     p.update(evaluated_close_at=now.floor('5min').isoformat(),watch_zones=[source],watch_checks={source['id']:obs})
     app=AppTest.from_string('import json\nfrom fx_scanner.zone_v05_dashboard import render_snapshot\nrender_snapshot(json.loads('+repr(json.dumps(p))+'))').run(timeout=15)
@@ -272,3 +275,58 @@ def test_zone_fetch_never_turns_cached_stale_prices_into_entry():
     with patch.object(panel,'read_json',return_value=stale),patch.object(panel,'_api_snapshot',return_value=stale):
         result=panel.fetch()
     assert not result['fresh'] and not result['plans'] and not result['watch_zones']
+
+
+def test_watch_m1_gap_before_touch_verified_by_outside_zone_m5():
+    from fx_scanner.zone_v05 import watch_checks
+    a,z,m,five,fifteen=frames()
+    a.formed_ns=T
+    m.loc[:,'low']=101.5
+    m.loc[10,'low']=99.5
+    five.loc[0,'low']=101.5  # Whole [T,T+5m) M5 bar excludes BUY zone <=101.
+    obs=watch_checks(a,m.drop(index=2),five,fifteen,T+22*MIN)
+    assert obs['first_touch_at']==pd.Timestamp(T+10*MIN,tz='UTC').isoformat()
+    assert obs['m1_audit']['m1_missing_minutes']==1
+    assert obs['m1_audit']['m5_excluded_missing_minutes']==1
+    assert obs['m1_audit']['unverified_minutes']==0
+    assert obs['reclaim_m15_at']==pd.Timestamp(T+15*MIN,tz='UTC').isoformat()
+
+
+def test_watch_m1_ambiguous_gap_cannot_claim_first_touch_or_reclaim():
+    from fx_scanner.zone_v05 import watch_checks
+    a,z,m,five,fifteen=frames()
+    a.formed_ns=T
+    m.loc[:,'low']=101.5
+    m.loc[10,'low']=99.5
+    five.loc[0,'low']=100.  # M5 intersected zone during missing minute.
+    obs=watch_checks(a,m.drop(index=2),five,fifteen,T+22*MIN)
+    assert obs['observation_status']=='GAP_M1_SEBELUM_SENTUHAN'
+    assert obs['observed_touch_at']==pd.Timestamp(T+10*MIN,tz='UTC').isoformat()
+    assert obs['first_touch_at'] is None
+    assert obs['confirmation_m5_at'] is None
+    assert obs['m1_audit']['unverified_minutes']==1
+
+
+def test_watch_m1_truncated_history_explicitly_reports_missing_origin():
+    from fx_scanner.zone_v05 import watch_checks
+    a,z,m,five,fifteen=frames()
+    a.formed_ns=T
+    m.loc[:,'low']=101.5
+    m.loc[10,'low']=99.5
+    obs=watch_checks(a,m.iloc[6:],five,fifteen,T+22*MIN)
+    assert obs['observation_status']=='RIWAYAT_M1_BELUM_MENCAKUP_ZONA'
+    assert obs['first_touch_at'] is None
+    assert obs['m1_audit']['unverified_minutes']>=1
+
+
+def test_watch_no_touch_with_safe_m1_gap_remains_waiting():
+    from fx_scanner.zone_v05 import watch_checks
+    a,z,m,five,fifteen=frames()
+    a.formed_ns=T
+    m.loc[:,'low']=101.5
+    five.loc[0,'low']=101.5
+    obs=watch_checks(a,m.drop(index=2),five,fifteen,T+22*MIN)
+    assert obs['observation_status']=='MENUNGGU_SENTUHAN'
+    assert obs['first_touch_at'] is None
+    assert obs['m1_audit']['unverified_minutes']==0
+    assert obs['m1_audit']['m5_excluded_missing_minutes']==1
