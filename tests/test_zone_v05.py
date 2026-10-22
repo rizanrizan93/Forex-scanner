@@ -135,7 +135,8 @@ def test_watch_zones_are_independent_of_entry_but_exclude_broken_and_future_node
         (1,T-HOUR,103.,104.,T-1),(-1,T+HOUR,105.,106.,INF),
         (1,T-HOUR,107.,108.,INF)]])
     result=watch_zones(z,105.,T)
-    assert [(x['side'],x['low']) for x in result]==[('BUY',99.),('SELL',110.)]
+    assert [(x['side'],x['low']) for x in result]==[('BUY',99.),('BUY',107.),('SELL',110.)]
+    assert result[1]['state']=='PENDING_INVALIDATION'
     assert all(x['state']=='WATCH_ZONE_ONLY' for x in result)
 
 
@@ -421,7 +422,7 @@ def test_pending_zone_dashboard_warns_without_limit_or_sl():
                 timeframe_closed_at={'H1':(now-pd.Timedelta(hours=1)).isoformat()},
                 watch_zones=[watch],watch_checks={
                     watch['id']:dict(sl=99.,observation_status='MENUNGGU_RECLAIM_M15')})
-    source='import json\\nfrom fx_scanner.zone_v05_dashboard import render_snapshot\\nrender_snapshot(json.loads('+repr(json.dumps(snap))+'))'
+    source='import json\nfrom fx_scanner.zone_v05_dashboard import render_snapshot\nrender_snapshot(json.loads('+repr(json.dumps(snap))+'))'
     app=AppTest.from_string(source).run(timeout=15)
     assert not app.exception
     assert any('PENDING INVALIDATION' in x.message for x in app.warning)
