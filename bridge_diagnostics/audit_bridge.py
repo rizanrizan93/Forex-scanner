@@ -7,9 +7,15 @@ import sqlite3
 import time
 from datetime import datetime, timezone
 from deploy_bridge import ROOT, UNIT, MODEL_HASH, MODELS, command, prop, parse_env
-STREAMS = {'RZXA1': ('XAUUSD', MODEL_HASH, MODELS),
-           'RZEU4B': ('EURUSD', '4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976',
-                      {'EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1'})}
+# Read-only audit covers current LIVE cBot contracts and legacy rows.
+STREAMS = {
+    'RZXRC1': ('XAUUSD', '44db60b75e3eb19c0fb94f10baca96f35ab4686086a70eea53f626533ca9923c', {'XAU_BATCH_SEND_REF_COOLDOWN_V1'}),
+    'RZEF245': ('EURUSD', 'd39e1192b64c3044f3215fa82ceaacdb732b4cf758389ad4f609692e54bdae9a', {'EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1'}),
+    'RZXA1': ('XAUUSD', MODEL_HASH, MODELS),
+    'RZEU4B': ('EURUSD', '4b4ef3cbe83c26b0752c11d05c866a7345b5db93b8011af091d9e8ad68d77976',
+               {'EUR_BATCH_1S_FILL_ANCHOR_ZONE_V1'}),
+}
+CURRENT_PREFIXES = {'RZXRC1', 'RZEF245'}
 
 
 def safe_identifier(value):
@@ -59,7 +65,7 @@ def run():
         state = json.loads(raw)
         account = key.split(':')[1]
         model = state.get('ExecutionModel')
-        result = {'symbol': symbol, 'account_suffix': account[-4:], 'server_revision': version,
+        result = {'symbol': symbol, 'contract_prefix': prefix, 'current_contract': prefix in CURRENT_PREFIXES, 'account_suffix': account[-4:], 'server_revision': version,
                   'state_revision': state.get('Revision'), 'schema': state.get('Schema'),
                   'hash_match': state.get('ContractHash') == expected_hash,
                   'model': safe_identifier(model), 'verified_repair_model': model in models,
@@ -78,11 +84,13 @@ def run():
                    'basket_side':basket.get('Side'), 'virtual_present':eur.get('Virtual') is not None,
                    'h1_records':len(h1), 'latest_h1':{name:last_h1.get(name) for name in ('AtUtc','Ema','Bias')}}
         print('BRIDGE_AUDIT_READING=' + json.dumps(reading), flush=True)
-    for key, expires in db.execute('SELECT key,expires_at FROM bridge_leases'):
+    for key, expires, touched in db.execute('SELECT key,expires_at,touched_at FROM bridge_leases'):
         prefix = key.split(':')[0]
         if prefix in STREAMS:
-            print('BRIDGE_AUDIT_LEASE=' + json.dumps({'symbol': STREAMS[prefix][0], 'account_suffix': key.split(':')[1][-4:],
-                                                     'remaining_seconds': round(expires - time.time(), 1)}), flush=True)
+            print('BRIDGE_AUDIT_LEASE=' + json.dumps({'symbol': STREAMS[prefix][0], 'contract_prefix': prefix, 'current_contract': prefix in CURRENT_PREFIXES,
+                                                     'account_suffix': key.split(':')[1][-4:],
+                                                     'remaining_seconds': round(expires - time.time(), 1),
+                                                     'last_touch_age_seconds': round(time.time() - touched, 1)}), flush=True)
     db.close()
     health = Path(environment.get('RIZAN_HEALTH_PATH', 'state/cbot_bridge_health.json'))
     if not health.is_absolute():
@@ -91,8 +99,12 @@ def run():
         status = json.loads(health.read_text())
         for symbol in ('XAUUSD', 'EURUSD'):
             stream = status.get('streams', {}).get(symbol, {})
-            print('BRIDGE_AUDIT_HEALTH=' + json.dumps({'symbol':symbol, **{name: stream.get(name) for name in
-                  ('connected', 'macro_event_ready', 'checkpoint_revision', 'last_checkpoint_at_unix')}}), flush=True)
+            observed = status.get('observed_at_unix')
+            age_seconds = round(time.time() - observed, 1) if isinstance(observed, (int, float)) else None
+            print('BRIDGE_AUDIT_HEALTH=' + json.dumps({'symbol': symbol,
+                  'health_age_seconds': age_seconds,
+                  **{name: stream.get(name) for name in
+                  ('connected', 'checkpoint_count', 'checkpoint_version_max', 'macro_event_ready')}}), flush=True)
     snapshot = Path(environment.get('RIZAN_SNAPSHOT_PATH', 'state/xau_macro_event_snapshot.json'))
     if not snapshot.is_absolute():
         snapshot = ROOT / snapshot
@@ -115,6 +127,10 @@ def run():
         result['upcoming_events'] = upcoming[:6]
         result['source_error_count'] = len(value.get('Errors', []))
         print('BRIDGE_AUDIT_XAU_SNAPSHOT=' + json.dumps(result), flush=True)
+    btc = command(['systemctl', 'is-active', 'rizan-btc7d130.service'], check=False)
+    print('BRIDGE_AUDIT_BTC_SERVICE=' + json.dumps({
+        'active': btc.returncode == 0 and btc.stdout.strip() == 'active',
+        'service': 'rizan-btc7d130.service'}), flush=True)
     print('BRIDGE_AUDIT_READ_ONLY_COMPLETE', flush=True)
 
 
