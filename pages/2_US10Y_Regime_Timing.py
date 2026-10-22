@@ -248,8 +248,8 @@ render_live_cash_quote()
 if macro_error is not None:
     st.warning(
         "Feed engine Daily FRED / intraday belum dapat diverifikasi. "
-        "Panel CNBC di atas berjalan secara independen; "
-        "bias dan alignment makro disembunyikan sampai snapshot sehat."
+        "Panel CNBC dan fallback H.15 dapat berjalan secara independen; "
+        "bias intraday tetap tidak tersedia bila snapshot engine tidak sehat."
     )
     st.caption("Diagnosis feed engine: " + macro_error)
     st.caption("Tekan 'Perbarui tampilan' untuk memuat ulang snapshot; quote CNBC menyegarkan sendiri setiap 20 detik.")
