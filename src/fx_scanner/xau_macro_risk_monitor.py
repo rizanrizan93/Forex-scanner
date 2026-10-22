@@ -98,7 +98,11 @@ def market_quote(symbol):
         raise ValueError("Market quote absent")
     meta = rows[0].get("meta") or {}
     current = _number(meta.get("regularMarketPrice"))
-    prior = _number(meta.get("chartPreviousClose") or meta.get("previousClose"))
+    prior = _number(meta.get("previousClose"))
+    basis = "penutupan sebelumnya"
+    if prior is None:
+        prior = _number(meta.get("chartPreviousClose"))
+        basis = "awal rentang grafik"
     at = meta.get("regularMarketTime")
     observed = (datetime.fromtimestamp(float(at), UTC).isoformat()
                 if at is not None else None)
@@ -107,7 +111,7 @@ def market_quote(symbol):
     return {
         "value": current, "pct": (current / prior - 1) * 100,
         "observed": observed, "fresh": _recent(observed, 2),
-        "source": "Yahoo Finance · kemungkinan tertunda",
+        "source": "Yahoo Finance · kemungkinan tertunda", "basis": basis,
     }
 
 
@@ -207,7 +211,8 @@ def _market_or_fred(symbol, fred_series, feeds):
     if rows and len(rows) >= 2 and _recent(rows[-1][0], 7):
         (prev_date, previous), (date, current) = rows[-2:]
         return {"value": current, "pct": 100 * (current / previous - 1),
-                "observed": date, "fresh": True, "source": "FRED (spot harian)"}
+                "observed": date, "fresh": True, "source": "FRED (spot harian)",
+                "basis": "observasi sebelumnya"}
     return data if data else None
 
 
@@ -215,7 +220,7 @@ def _market_metric(slot, title, data, *, unit=""):
     if data and data.get("fresh"):
         slot.metric(title, _fmt(data["value"], unit),
                     delta=_delta(data["pct"], "%"))
-        slot.caption(f"{data['source']} · Δ vs penutupan/observasi sebelumnya · {str(data['observed'])[:19]} UTC")
+        slot.caption(f"{data['source']} · Δ vs {data.get('basis') or 'observasi sebelumnya'} · {str(data['observed'])[:19]} UTC")
     elif data:
         slot.metric(title, "STALE")
         slot.caption(f"Quote terakhir {str(data.get('observed'))[:19]} UTC · tidak digunakan untuk bias")
@@ -258,6 +263,15 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                    f" · observasi {last_five[-1][0]} · FRED DGS2")
     else:
         st.caption("Status tertinggi 5 sesi US2Y belum dapat diverifikasi.")
+    if us2 and us10:
+        d2, d10 = _number(us2.get("delta")), _number(us10.get("delta"))
+        if d2 is not None and d10 is not None:
+            if d2 >= 1 and d10 >= 1:
+                st.caption("Treasury: kedua yield naik harian → tekanan potensial terhadap XAU.")
+            elif d2 <= -1 and d10 <= -1:
+                st.caption("Treasury: kedua yield turun harian → dukungan potensial terhadap XAU.")
+            else:
+                st.caption("Treasury: yield mixed/flat; tidak ada konfirmasi tekanan searah.")
     live, live_error = feeds["us2y"]
     if live:
         st.success("Cash US2Y intraday: " + _fmt(live["value"], "%", 3)
@@ -302,6 +316,13 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
     oil1, oil2 = st.columns(2)
     _market_metric(oil1, "WTI (USD/barel)", wti)
     _market_metric(oil2, "Brent (USD/barel)", brent)
+    if wti and brent and wti.get("fresh") and brent.get("fresh"):
+        if wti["pct"] > 0 and brent["pct"] > 0:
+            st.caption("Harga WTI dan Brent sama-sama menguat terhadap basisnya; risiko tekanan inflasi energi dapat meningkat.")
+        elif wti["pct"] < 0 and brent["pct"] < 0:
+            st.caption("Harga WTI dan Brent sama-sama melemah terhadap basisnya; tekanan energi jangka pendek berkurang.")
+        else:
+            st.caption("WTI dan Brent belum searah; dorongan inflasi energi belum terkonfirmasi.")
     st.caption("Futures Yahoo dapat tertunda; fallback FRED adalah harga spot harian, "
                "bukan quote live. Lonjakan minyak berpotensi menambah inflasi tetapi "
                "dampak bersih terhadap emas bergantung pada real yield dan risiko geopolitik.")
@@ -323,6 +344,13 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
     _market_metric(dx, "DXY", dxy)
     _market_metric(au, "Gold futures GC", gold)
     _market_metric(ag, "Silver futures SI", silver)
+    if all(item and item.get("fresh") for item in (dxy, gold, silver)):
+        if dxy["pct"] > 0 and gold["pct"] < 0 and silver["pct"] < 0:
+            st.caption("DXY menguat sementara futures emas dan perak melemah: tekanan lintas aset teramati pada basis masing-masing.")
+        else:
+            st.caption("Tekanan DXY terhadap emas dan perak belum terkonfirmasi serempak.")
+    else:
+        st.caption("Konfirmasi lintas aset tertunda karena ada quote DXY/logam yang belum segar.")
     st.caption("GC/SI adalah futures, bukan harga spot cTrader XAUUSD/XAGUSD. "
                "DXY dan yield menguat bersamaan sering menjadi headwind emas, "
                "namun hubungan ini tidak selalu berlaku.")
