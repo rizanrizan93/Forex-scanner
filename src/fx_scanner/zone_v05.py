@@ -146,25 +146,86 @@ def completed(rows,tf,now):
     return q
 
 
+def _watch_m1_audit(a, m, m5, end_ns):
+    """Prove pre-touch M1 coverage; an outside-zone M5 can clear empty M1 minutes.
+
+    Missing broker M1 candles are not fabricated. An M5 candle entirely outside
+    the zone proves no touch occurred in its five-minute interval, but an M5
+    candle intersecting the zone never proves the exact first-touch minute.
+    This evidence is for WATCH only, never the executable V05 plan.
+    """
+    start_ns = int(a.formed_ns)
+    observed = m[(m.timestamp.astype('int64') >= start_ns) &
+                 (m.timestamp.astype('int64') <= end_ns)]
+    stamps = observed.timestamp.astype('int64').to_numpy()
+    expected = np.arange(start_ns, end_ns + MIN, MIN, dtype=np.int64)
+    missing = np.setdiff1d(expected, stamps, assume_unique=True)
+    cleared = np.zeros(len(missing), dtype=bool)
+    if len(missing) and len(m5):
+        ends = m5.closed_ns.to_numpy(dtype=np.int64)
+        opens = ends - 5 * MIN
+        idx = np.searchsorted(opens, missing, side='right') - 1
+        valid = idx >= 0
+        positions = np.clip(idx, 0, len(ends) - 1)
+        valid &= missing < ends[positions]
+        highs = m5.high.to_numpy()
+        lows = m5.low.to_numpy()
+        cleared = valid & ((highs[positions] < float(a.low)) |
+                           (lows[positions] > float(a.high)))
+    unverified = missing[~cleared]
+    stamp = lambda t: pd.Timestamp(int(t), tz='UTC').isoformat()
+    return dict(required_from=stamp(start_ns), checked_through=stamp(end_ns),
+                first_m1_at=stamp(stamps[0]) if len(stamps) else None,
+                m1_bars=int(len(stamps)), m1_missing_minutes=int(len(missing)),
+                m5_excluded_missing_minutes=int(cleared.sum()),
+                unverified_minutes=int(len(unverified)),
+                first_unverified_at=stamp(unverified[0]) if len(unverified) else None)
+
+
 def watch_checks(a,m,m5,m15,now_ns):
-    """Observe the checklist without admitting a non-selected zone to V05."""
-    d=int(a.direction)
-    out=dict(first_touch_at=None,reclaim_m15_at=None,confirmation_m5_at=None,
-             sl=float((a.low if d==1 else a.high)-d*.2*a.atr),observation_status='MENUNGGU_SENTUHAN')
-    q=m[(m.timestamp.astype('int64')>=a.formed_ns)&(m.timestamp.astype('int64')+MIN<=now_ns)]
-    times=q.timestamp.astype('int64').to_numpy()
-    if not len(times) or times[0]!=a.formed_ns or (len(times)>1 and np.any(np.diff(times)!=MIN)):
-        out['observation_status']='RIWAYAT_M1_BELUM_LENGKAP';return out
-    hit=q[(q.low<=a.high)&(q.high>=a.low)]
-    if hit.empty:return out
-    at=hit.timestamp.iloc[0].value
-    out['first_touch_at']=pd.Timestamp(at,tz='UTC').isoformat()
-    end=min(now_ns,at+120*MIN,int(a.dead))
-    reclaim,conf=confirmation(m5,m15,at,end,d,a.high if d==1 else a.low)
-    for key,value in [('reclaim_m15_at',reclaim),('confirmation_m5_at',conf)]:
-        if value is not None:out[key]=pd.Timestamp(value,tz='UTC').isoformat()
-    out['observation_status']='KONFIRMASI_TERAMATI' if conf else 'MENUNGGU_BOS_M5' if reclaim else 'MENUNGGU_RECLAIM_M15'
-    if at-a.formed_ns>24*HOUR or now_ns>at+120*MIN:out['observation_status']='JENDELA_KONFIRMASI_SUDAH_LEWAT'
+    """Observe WATCH without making a non-selected zone an ENTRY candidate.
+
+    Only minutes before the first observed touch need M1 first-touch proof.
+    A later M1 gap cannot erase an already verified touch; M15/M5 confirmation
+    is evaluated independently from closed native candles.
+    """
+    d = int(a.direction)
+    out = dict(first_touch_at=None, reclaim_m15_at=None, confirmation_m5_at=None,
+               sl=float((a.low if d == 1 else a.high) - d * .2 * a.atr),
+               observation_status='MENUNGGU_SENTUHAN')
+    q = m[(m.timestamp.astype('int64') >= a.formed_ns) &
+          (m.timestamp.astype('int64') + MIN <= now_ns)]
+    hit = q[(q.low <= a.high) & (q.high >= a.low)]
+    if len(hit):
+        at = int(hit.timestamp.iloc[0].value)
+        out['observed_touch_at'] = pd.Timestamp(at, tz='UTC').isoformat()
+        until = at
+    else:
+        until = int(q.timestamp.iloc[-1].value) if len(q) else int(a.formed_ns)
+    audit = _watch_m1_audit(a, m, m5, until)
+    out['m1_audit'] = audit
+    if audit['unverified_minutes']:
+        first = pd.Timestamp(audit['first_unverified_at']).value
+        first_available = pd.Timestamp(audit['first_m1_at']).value if audit['first_m1_at'] else INF
+        if first < first_available:
+            state = 'RIWAYAT_M1_BELUM_MENCAKUP_ZONA'
+        else:
+            state = 'GAP_M1_SEBELUM_SENTUHAN' if len(hit) else 'GAP_M1_SAAT_MEMANTAU'
+        out['observation_status'] = state
+        return out
+    if hit.empty:
+        return out
+    out['first_touch_at'] = pd.Timestamp(at, tz='UTC').isoformat()
+    end = min(now_ns, at + 120 * MIN, int(a.dead))
+    reclaim, conf = confirmation(m5, m15, at, end, d, a.high if d == 1 else a.low)
+    for key, value in [('reclaim_m15_at', reclaim), ('confirmation_m5_at', conf)]:
+        if value is not None:
+            out[key] = pd.Timestamp(value, tz='UTC').isoformat()
+    out['observation_status'] = ('KONFIRMASI_TERAMATI' if conf else
+                                 'MENUNGGU_BOS_M5' if reclaim else
+                                 'MENUNGGU_RECLAIM_M15')
+    if at - a.formed_ns > 24 * HOUR or now_ns > at + 120 * MIN:
+        out['observation_status'] = 'JENDELA_KONFIRMASI_SUDAH_LEWAT'
     return out
 
 
