@@ -91,7 +91,7 @@ for f in (root/'runtime-logs').rglob('*'):
 for f in (root/'data').rglob('*'):
     if f.is_file() and f.suffix.lower() in ('.txt','.log'):log+='\n'+f.read_text(errors='replace')
 # Export only bot-owned diagnostics. Never copy native account/auth lines.
-prefixes=('NATIVE_BACKTEST_','NATIVE_SIGNAL ','NATIVE_ORDER_RESULT ','RIZAN_BATCH ',
+prefixes=('NATIVE_DATA_STATE ','NATIVE_WARMUP ','NATIVE_BACKTEST_','NATIVE_SIGNAL ','NATIVE_ORDER_RESULT ','RIZAN_BATCH ',
           'RIZAN_STARTUP_OK','RIZAN_STATE status=','RIZAN_TRANSPORT symbol=','RIZAN_PORTFOLIO ready=','QUARANTINED:',
           'BROKER_CHILD_CONTRACT_MISMATCH','HEDGED_ACCOUNT_REQUIRED','USD_ACCOUNT_REQUIRED',
           'PORTFOLIO_ENGINE_START_ERROR','PORTFOLIO_ENGINE_START_FAILED')
@@ -108,6 +108,13 @@ result['summaries']=[s for s in safe if 'NATIVE_BACKTEST_SUMMARY' in s]
 result['recent_bot_logs']=safe[-15:]
 result['first_signals']=[s for s in safe if 'NATIVE_SIGNAL ' in s][:10]
 result['first_orders']=[s for s in safe if 'NATIVE_ORDER_RESULT ' in s][:10]
+result['warmup']=[line for line in safe if 'NATIVE_WARMUP ' in line]
+result['data_samples']={}
+for symbol in ('EURUSD','XAUUSD'):
+    rows=[line for line in safe if 'NATIVE_DATA_STATE symbol='+symbol+' ' in line]
+    rows.sort(key=lambda line:re.search(r'at=([^ ]+)',line).group(1))
+    if rows:result['data_samples'][symbol]={'first':rows[0],'last':rows[-1]}
+result['orders_by_symbol']={symbol:sum('NATIVE_ORDER_RESULT symbol='+symbol+' ' in line and 'success=True' in line for line in safe) for symbol in ('EURUSD','XAUUSD','BTCUSD')}
 result['native_report_created']=(root/'report.json').is_file()
 result['error_categories']={name:any(word in log.lower() for word in words) for name,words in {
     'authentication':['invalid credentials','authentication failed','wrong password'],
