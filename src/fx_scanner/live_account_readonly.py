@@ -10,7 +10,7 @@ UTC = timezone.utc
 SCOPE_VIEW = 0
 SCOPE_TRADE = 1
 ACCOUNT_MAP_LAST4 = {
-    "XAUUSD": "4480",
+    "XAUUSD": "7903",
     "EURUSD": "7903",
 }
 
@@ -67,7 +67,27 @@ def _select_account(accounts, *, symbol: str):
     return account
 
 
-def _snapshot_account(*, client_id: str, client_secret: str, access_token: str, symbol: str, account):
+def _group_mapped_accounts(accounts):
+    """Resolve LIVE grants by symbol, then deduplicate by the broker account ID.
+
+    Each cTrader account balance, equity, open position and pending order is an
+    account-wide total. Never report it twice simply because two cBots trade it.
+    """
+    grouped = {}
+    for symbol in ACCOUNT_MAP_LAST4:
+        account = _select_account(accounts, symbol=symbol)
+        identifier = str(account.ctid_trader_account_id)
+        if identifier in grouped:
+            found, symbols = grouped[identifier]
+            if str(found.trader_login) != str(account.trader_login):
+                raise RuntimeError("fail-closed: conflicting LIVE account identity")
+            symbols.append(symbol)
+        else:
+            grouped[identifier] = (account, [symbol])
+    return tuple((account, tuple(symbols)) for account, symbols in grouped.values())
+
+
+def _snapshot_account(*, client_id: str, client_secret: str, access_token: str, symbol_lanes: tuple[str, ...], account):
     session = CTraderOpenApiSession(
         client_id=client_id,
         client_secret=client_secret,
@@ -92,7 +112,8 @@ def _snapshot_account(*, client_id: str, client_secret: str, access_token: str, 
         pending_orders = tuple(getattr(reconcile, "order", ()))
         equity = balance + unrealized
         return {
-            "symbol_lane": symbol,
+            "symbol_lanes": list(symbol_lanes),
+            "account_scope": "SHARED_ACCOUNT_TOTAL" if len(symbol_lanes) > 1 else "ACCOUNT_TOTAL",
             "state": "LIVE_READ_ONLY_OK",
             "environment": "live",
             "broker": account.broker_title_short,
@@ -141,15 +162,15 @@ def main() -> None:
     }
     print(json.dumps(diagnostic, sort_keys=True), flush=True)
 
+    grouped = _group_mapped_accounts(accounts)
     snapshots = []
-    for symbol in ("XAUUSD", "EURUSD"):
-        account = _select_account(accounts, symbol=symbol)
+    for account, symbol_lanes in grouped:
         snapshots.append(
             _snapshot_account(
                 client_id=client_id,
                 client_secret=client_secret,
                 access_token=access_token,
-                symbol=symbol,
+                symbol_lanes=symbol_lanes,
                 account=account,
             )
         )
@@ -157,8 +178,14 @@ def main() -> None:
     print(
         json.dumps(
             {
-                "state": "LIVE_MULTI_ACCOUNT_READ_ONLY_OK",
+                "state": (
+                    "LIVE_SHARED_ACCOUNT_READ_ONLY_OK"
+                    if len(grouped) == 1 and len(grouped[0][1]) > 1
+                    else "LIVE_MULTI_ACCOUNT_READ_ONLY_OK"
+                ),
                 "observed_at": datetime.now(tz=UTC).isoformat(),
+                "unique_account_count": len(snapshots),
+                "configured_mapping": ACCOUNT_MAP_LAST4,
                 "accounts": snapshots,
                 "execution_authority": "NONE",
             },
