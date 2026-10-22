@@ -97,7 +97,7 @@ def analyze_gold_macro(
 
     treasury = (
         weighted_yield_sum / available_yield_weight
-        if available_yield_weight >= 0.49 else None
+        if len(available) >= 2 and available_yield_weight >= 0.49 else None
     )
     dxy = dxy or {}
     dxy_pct = _num(dxy.get("pct"))
