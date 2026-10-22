@@ -137,7 +137,7 @@ def test_watch_zones_are_independent_of_entry_but_exclude_broken_and_future_node
     result=watch_zones(z,105.,T)
     assert [(x['side'],x['low']) for x in result]==[('BUY',99.),('BUY',107.),('SELL',110.)]
     assert result[1]['state']=='PENDING_INVALIDATION'
-    assert all(x['state']=='WATCH_ZONE_ONLY' for x in result)
+    assert [x['state'] for x in result]==['WATCH_ZONE_ONLY','PENDING_INVALIDATION','WATCH_ZONE_ONLY']
 
 
 def test_stale_snapshot_cannot_show_watch_zones_as_current():
@@ -425,7 +425,7 @@ def test_pending_zone_dashboard_warns_without_limit_or_sl():
     source='import json\nfrom fx_scanner.zone_v05_dashboard import render_snapshot\nrender_snapshot(json.loads('+repr(json.dumps(snap))+'))'
     app=AppTest.from_string(source).run(timeout=15)
     assert not app.exception
-    assert any('PENDING INVALIDATION' in x.message for x in app.warning)
+    assert any('PENDING INVALIDATION' in x.value for x in app.warning)
     assert not any(x.label=='SL skenario observasi' for x in app.metric)
     assert not app.button
     assert not any('BUY · ENTRY' in x.value for x in app.markdown)
