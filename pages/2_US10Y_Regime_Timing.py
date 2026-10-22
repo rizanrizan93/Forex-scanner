@@ -20,7 +20,9 @@ from fx_scanner.dashboard_independent_feeds import macro_input  # noqa: E402
 from fx_scanner.manual_reversal_dashboard import wib  # noqa: E402
 from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary  # noqa: E402
 from fx_scanner.xau_h15_daily_fallback import fetch_h15_daily_rows  # noqa: E402
-from fx_scanner.xau_macro_risk_monitor import render_macro_risk_monitor  # noqa: E402
+from fx_scanner.xau_macro_risk_monitor import (  # noqa: E402
+    render_macro_risk_monitor, fred_history, market_quote, us2y_live,
+)
 
 CNBC_US10Y_URL = "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol"
 CNBC_US10Y_HOST = "quote.cnbc.com"
@@ -149,6 +151,9 @@ if st.button("Perbarui tampilan", key="yield_refresh"):
     load_macro.clear()
     load_live_cash_us10y.clear()
     load_h15_daily.clear()
+    fred_history.clear()
+    market_quote.clear()
+    us2y_live.clear()
 
 # The independently fetched CNBC cash quote must remain visible even when the
 # GitHub-published macro engine heartbeat is stale or temporarily unavailable.
