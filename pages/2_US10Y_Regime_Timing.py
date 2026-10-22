@@ -21,8 +21,8 @@ from fx_scanner.manual_reversal_dashboard import wib  # noqa: E402
 from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary  # noqa: E402
 from fx_scanner.xau_h15_daily_fallback import fetch_h15_daily_rows  # noqa: E402
 from fx_scanner.xau_macro_risk_monitor import (  # noqa: E402
-    render_macro_risk_monitor, fred_history, market_quote, us2y_live,
-    load_external_macro_inputs,
+    render_macro_risk_monitor, render_gold_macro_conclusion,
+    fred_history, market_quote, us2y_live, load_external_macro_inputs,
 )
 
 CNBC_US10Y_URL = "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol"
@@ -160,9 +160,21 @@ if st.button("Perbarui tampilan", key="yield_refresh"):
 # The independently fetched CNBC cash quote must remain visible even when the
 # GitHub-published macro engine heartbeat is stale or temporarily unavailable.
 macro_error = None
+event_risk = {}
 try:
-    data = macro_input(load_macro())
+    raw_snapshot = load_macro()
+    data = macro_input(raw_snapshot)
     macro_eval = data["evaluation"]
+    events = [
+        hb for hb in (raw_snapshot.get("heartbeats") or [])
+        if hb.get("worker_name") == "ctrader_demo_xau_event_risk_v192"
+        and hb.get("healthy") is True
+        and _dt(hb.get("observed_at")) is not None
+        and 0 <= (datetime.now(UTC) - _dt(hb.get("observed_at"))).total_seconds() <= 900
+    ]
+    events.sort(key=lambda hb: str(hb.get("observed_at") or ""), reverse=True)
+    if events:
+        event_risk = dict((events[0].get("details") or {}).get("risk") or {})
     st.caption("Feed makro terakhir: " + wib(data["observed_at"]) + " · independen dari heartbeat zona XAU")
 except Exception as exc:
     macro_error = _safe_error(exc)
@@ -171,6 +183,8 @@ except Exception as exc:
 proxy_active = (macro_eval.get("intraday_yield_context") or {}).get("timing_basis") == "TREASURY_FUTURES_PROXY"
 last_cash = macro_eval.get("last_cash_yield") or {}
 
+
+render_gold_macro_conclusion(macro_eval, load_h15_daily, event_risk=event_risk)
 
 @st.fragment(run_every="20s")
 def render_live_cash_quote() -> None:
