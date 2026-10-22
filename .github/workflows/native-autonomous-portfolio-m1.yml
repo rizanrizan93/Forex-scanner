@@ -1,4 +1,4 @@
-name: Native autonomous combined portfolio M1 test
+name: Native autonomous combined portfolio M1 data audit
 on:
   push:
     branches: [research/native-v130-isolated-20261022]
