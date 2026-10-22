@@ -1,0 +1,107 @@
+name: Native autonomous combined portfolio M1 test
+on:
+  push:
+    branches: [research/native-v130-isolated-20261022]
+    paths: ['.github/workflows/native-autonomous-portfolio-m1.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rizan-native-autonomous-portfolio-m1
+  cancel-in-progress: false
+jobs:
+  native:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/research/native-v130-isolated-20261022' && github.actor == 'rizanrizan93'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 787ac228837175f9c07c4e13070e2794ebc7a7fe
+          path: frozen
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.426
+      - name: Build native historical transport from frozen source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a frozen/portfolio_7day_frozen/work native-work
+          python3 research/native-v130/prepare_native.py native-work
+          python3 research/native-v130/prepare_btc.py native-work frozen/portfolio_7day_frozen/bootstrap/BITSTAMP_H1_SEED.csv.gz.b64
+          python3 research/native-v130/prepare_xau.py native-work research/native-v130/XAU_HISTORICAL_INPUTS_JUNE2025.json
+          python3 research/native-v130/prepare_portfolio.py native-work
+          mkdir -p native-work/vendor/automate native-work/vendor/net6ref
+          curl -fsSL --retry 3 --max-time 120 https://api.nuget.org/v3-flatcontainer/ctrader.automate/1.0.21/ctrader.automate.1.0.21.nupkg -o automate.zip
+          curl -fsSL --retry 3 --max-time 120 https://api.nuget.org/v3-flatcontainer/microsoft.netcore.app.ref/6.0.36/microsoft.netcore.app.ref.6.0.36.nupkg -o net6ref.zip
+          unzip -q automate.zip -d native-work/vendor/automate
+          unzip -q net6ref.zip -d native-work/vendor/net6ref
+          sdk=$(dirname "$(readlink -f "$(command -v dotnet)")")
+          python3 native-work/build_native.py --sdk "$sdk" || { cat native-work/native/compile.log; cat native-work/native/bundle.log 2>/dev/null || true; exit 1; }
+          cp native-work/native/RizanXauEurBtcPortfolio_FROZEN_7DAY_WEEKEND_V1_3_0.algo NativeHistorical.algo
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          sha=hashlib.sha256(Path('NativeHistorical.algo').read_bytes()).hexdigest()
+          Path('BINARY_MANIFEST.json').write_text(json.dumps({'sha256':sha,'frozen_source':'787ac228837175f9c07c4e13070e2794ebc7a7fe','variant':'native-historical-local-transport-v1','original_frozen_binary':False}))
+          Path('CASE.json').write_text(json.dumps({'symbol':'XAUUSD','eur':True,'xau':True,'btc':True,'historical_macro':True,'start':'09/06/2025','end':'16/06/2025','timeout_seconds':1200}))
+          PY
+      - name: Run isolated native cTrader backtest on hosted test machine
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          ssh_dir=$(mktemp -d)
+          test_dir=$(mktemp -d)
+          cleanup() {
+            rm -rf -- "$ssh_dir"
+            sudo rm -rf -- "$test_dir"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          docker pull ghcr.io/spotware/ctrader-console:latest
+          ssh -i "$ssh_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=20 Rizanrizan@202.74.74.172 'python3 -' > "$ssh_dir/auth.json" <<'PY'
+          import json,subprocess,base64
+          from pathlib import Path
+          ctx=json.loads((Path.home()/'.local/state/rizan-native-preflight/context.json').read_text())
+          roots=Path.home()/'REPLAY_RESULTS/native-autonomous-m1'
+          p=max(roots.glob('run.*/identity.sealed'),key=lambda p:p.stat().st_mtime)
+          identity=json.loads(subprocess.run(['openssl','pkeyutl','-decrypt','-inkey',str(Path.home()/'.local/state/rizan-native-preflight/transfer.pem'),'-pkeyopt','rsa_padding_mode:oaep','-pkeyopt','rsa_oaep_md:sha256','-pkeyopt','rsa_mgf1_md:sha256'],input=base64.b64decode(p.read_bytes()),capture_output=True,check=True).stdout)
+          assert len(ctx['CredentialCandidates'])==1
+          identity['password']=Path(ctx['CredentialCandidates'][0]).read_text()
+          print(json.dumps(identity))
+          PY
+          python3 - "$ssh_dir/auth.json" "$test_dir" <<'PY'
+          import sys,json
+          from pathlib import Path
+          auth=json.loads(Path(sys.argv[1]).read_text());target=Path(sys.argv[2])
+          (target/'password.pwd').write_text(auth.pop('password'))
+          (target/'AUTH_PRIVATE.json').write_text(json.dumps(auth))
+          PY
+          rm -f "$ssh_dir/auth.json"
+          cp NativeHistorical.algo BINARY_MANIFEST.json CASE.json "$test_dir/"
+          python3 research/native-v130/runner_hosted.py "$test_dir" hosted || result=$?
+          cp "$test_dir/PUBLIC_RESULT.json" PUBLIC_RESULT.json
+          exit "${result:-0}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-autonomous-portfolio-m1-evidence
+          path: |
+            PUBLIC_RESULT.json
+            NativeHistorical.algo
+            BINARY_MANIFEST.json
+            CASE.json
+            native-work/NATIVE_ADAPTER_MANIFEST.json
+            native-work/NATIVE_ADAPTER.diff
+            native-work/native/compile.log
+          retention-days: 14
