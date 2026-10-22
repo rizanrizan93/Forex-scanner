@@ -18,7 +18,8 @@ def classify_daily_us10y(macro_eval: dict[str, Any]) -> dict[str, Any]:
     delta_bps = _f(row.get("delta"))
     freshness = str(row.get("freshness") or "UNAVAILABLE")
 
-    if current is None or previous is None or delta_bps is None:
+    # Never turn cached or stale data into a directional daily trading regime.
+    if freshness != "FRESH" or current is None or previous is None or delta_bps is None:
         return {
             "state": "UNAVAILABLE",
             "gold_bias": "UNAVAILABLE",
