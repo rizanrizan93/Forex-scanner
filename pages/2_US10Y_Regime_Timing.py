@@ -20,6 +20,7 @@ from fx_scanner.dashboard_independent_feeds import macro_input  # noqa: E402
 from fx_scanner.manual_reversal_dashboard import wib  # noqa: E402
 from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary  # noqa: E402
 from fx_scanner.xau_h15_daily_fallback import fetch_h15_daily_rows  # noqa: E402
+from fx_scanner.xau_macro_risk_monitor import render_macro_risk_monitor  # noqa: E402
 
 CNBC_US10Y_URL = "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol"
 CNBC_US10Y_HOST = "quote.cnbc.com"
@@ -138,7 +139,7 @@ def load_h15_daily():
 
 
 st.set_page_config(page_title="RIZAN US10Y", layout="wide")
-st.title("RIZAN — US10Y Regime & Timing")
+st.title("RIZAN — Makro XAU: Treasury & Cross-Asset")
 st.caption(
     "Daily FRED (fallback Federal Reserve H.15) untuk regime makro. Intraday US10Y untuk timing/pressure. "
     "Keduanya tidak memberi izin order sendiri; keputusan tetap harus dikonfirmasi struktur XAU."
@@ -348,6 +349,8 @@ elif alignment == "INTRADAY_UNAVAILABLE":
     st.info("INTRADAY BELUM TERSEDIA • " + str(summary.get("decision_note") or ""))
 else:
     st.info("YIELD MIXED • " + str(summary.get("decision_note") or ""))
+
+render_macro_risk_monitor(macro_eval, load_h15_daily)
 
 st.markdown("### Cara baca cepat")
 st.write(
