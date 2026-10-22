@@ -67,17 +67,46 @@ def zone(a):
                 formed_at=pd.Timestamp(a.formed_ns,tz='UTC').isoformat(),family=int(a.family))
 
 
-def watch_zones(z,price,now_ns):
-    """Nearest unbroken structure for observation, independent of entry admission."""
-    result=[]
-    pool=z[(z.formed_ns<=now_ns)&(z.formed_ns>=now_ns-120*HOUR)&(z.dead>now_ns)].copy()
-    for d in (1,-1):
-        q=pool[(pool.direction==d)&((price>=pool.low) if d==1 else (price<=pool.high))].copy()
-        if q.empty:continue
-        q['distance']=np.maximum(np.maximum(q.low-price,price-q.high),0)
-        q=q.sort_values(['distance','formed_ns'],ascending=[True,False],kind='stable')
-        a=next(q.itertuples())
-        result.append(dict(zone(a),state='WATCH_ZONE_ONLY',reason='ZONA_PANTAUAN_BELUM_LOLOS_ENTRY',distance=float(a.distance)))
+def watch_zones(z, price, now_ns, previous=None):
+    """Show valid zones and provisional breaches until source-TF close.
+
+    `lifecycle` sets dead at the first completed H1/H4 candle that closes
+    past the distal boundary. A live M1 price beyond it is NOT a confirmed
+    invalidation. Keep that zone as a separate, read-only PENDING watch
+    without changing V05 entry admission or execution decisions.
+    """
+    result = []
+    pool = z[(z.formed_ns <= now_ns) &
+             (z.formed_ns >= now_ns - 120 * HOUR) &
+             (z.dead > now_ns)].copy()
+    earlier = (previous or {}).get('watch_zones', []) if (previous or {}).get('contract') == CONTRACT else []
+    old_ids = {p.get('id') for p in earlier if p.get('id')}
+    for d, side in ((1, 'BUY'), (-1, 'SELL')):
+        q = pool[pool.direction == d].copy()
+        if q.empty:
+            continue
+        # Current price may be outside the zone while its H1/H4 candle is open.
+        pending = price < q.low if d == 1 else price > q.high
+        q['pending'] = pending
+        q['distance'] = np.maximum(np.maximum(q.low - price, price - q.high), 0)
+        # Show at most one active and one pending zone per side; retain the
+        # previously displayed geometry as long as its parent close is valid.
+        for is_pending in (False, True):
+            candidates = q[q.pending == is_pending].sort_values(
+                ['distance', 'formed_ns'], ascending=[True, False], kind='stable')
+            if candidates.empty:
+                continue
+            a = next(candidates.itertuples())
+            for candidate in candidates.itertuples():
+                if zone(candidate)['id'] in old_ids:
+                    a = candidate
+                    break
+            state = 'PENDING_INVALIDATION' if is_pending else 'WATCH_ZONE_ONLY'
+            result.append(dict(zone(a), state=state,
+                               reason=('HARGA_MELAMPAUI_DISTAL_TUNGGU_CLOSE_TF_ASAL'
+                                       if is_pending else 'ZONA_PANTAUAN_BELUM_LOLOS_ENTRY'),
+                               distance=float(a.distance),
+                               entry_allowed=False))
     return result
 
 
@@ -358,7 +387,7 @@ def evaluate(native,*,now=None,spreads=None,previous=None):
         active=[p for p in allplans if p['state'] in ('ENTRY','AKTIF_REFERENSI')]
         selected=active[:1]
         price=float(m.close.iloc[-1]);out['price_reference']=price
-        out['watch_zones']=watch_zones(z,price,latest_m1)
+        out['watch_zones']=watch_zones(z,price,latest_m1,previous=previous)
         by_id={zone(a)['id']:a for a in z.itertuples()}
         out['watch_checks']={a['id']:watch_checks(by_id[a['id']],m,m5,m15,latest_m1) for a in out['watch_zones']}
         sd,events=supply_demand(z,qs,price,latest_m1,previous)
