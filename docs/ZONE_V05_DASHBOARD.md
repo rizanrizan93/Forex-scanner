@@ -15,3 +15,25 @@ BUY A → SELL B → BUY C → SELL D is NOT a validated strategy. B is a target
 Calibration2019–2025:216trades,PF1.34266,fees2xPF1.10746,win41.67%,2021losing. DiagnosticQ12026:6trades,PF1.96811. Entire2019–2025 is optimized development; Q1 globally previously seen. No calibrated probability and no assertion of high precision.
 
 Runtime files on scanner-reversal-snapshots: runtime/zone_v05_snapshot.json plus existing legacy/manual snapshots in one commit. Native H1/H4 need >=300/210 bars; incomplete/stale data fail closed. Registry and display snapshots are limited to1MB by publisher. The existing bounded read-only Actions collector is reused; it does not provide a VPS availability guarantee. Snapshot freshness must be inspected separately from deployment success.
+
+## WATCH M1 coverage audit (22 October 2026)
+
+WATCH observations now audit M1 coverage only from a zone's formation
+through the earliest observed touch (or through the last closed M1 if no
+touch has been observed). A gap **after** a verified first touch no longer
+invalidates that earlier proof. Missing M1 minutes can be ruled out as
+possible touches when a completed broker-native M5 candle covering the
+minute is wholly **outside** the zone. This is negative evidence; an M5
+candle intersecting a zone cannot establish first-touch timing or candle
+sequence and therefore does not clear the gap. No synthetic M1 candle
+or broker quote is created.
+
+Each WATCH observation includes `m1_audit`: required origin, last
+inspected minute, first available M1, M1 row count, missing-minute count,
+M5-excluded missing minutes, number and first timestamp of unresolved
+minutes. Unresolved periods report a distinct status for insufficient
+history, ambiguous pre-touch data, or gaps while awaiting a touch.
+A later observed M1 touch is displayed separately as **observed**,
+never as a **verified first touch** unless the earlier data were
+sufficient. Existing V05 ENTRY selection, SL, TP, broker authorization,
+and cBot paths are unchanged. Missing evidence fails closed.
