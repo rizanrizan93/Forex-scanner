@@ -8,6 +8,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from math import isfinite
 from urllib.parse import quote, urlencode, urlparse
@@ -137,13 +138,35 @@ def _safe(call, *args):
         return None, type(e).__name__
 
 
-def _last(series):
-    rows, err = _safe(fred_history, series)
-    return (rows[-1] if rows else None), err
+@st.cache_data(ttl=120, show_spinner=False)
+def load_external_macro_inputs():
+    """Parallel bounded requests; cache even failed sources to keep UI responsive."""
+    fred_codes = sorted(FRED_SERIES)
+    market_codes = sorted(YAHOO_SYMBOLS)
+    tasks = [("fred", code) for code in fred_codes] + [
+        ("market", code) for code in market_codes
+    ] + [("us2y", "US2Y")]
+    def read(kind, code):
+        fn = fred_history if kind == "fred" else market_quote if kind == "market" else us2y_live
+        return _safe(fn, code) if kind != "us2y" else _safe(fn)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {key: pool.submit(read, *key) for key in tasks}
+        outcomes = {key: future.result() for key, future in futures.items()}
+    return {
+        "fred": {code: outcomes[("fred", code)][0] for code in fred_codes},
+        "market": {code: outcomes[("market", code)][0] for code in market_codes},
+        "us2y": outcomes[("us2y", "US2Y")],
+    }
 
 
-def _yoy(series):
-    rows, err = _safe(fred_history, series)
+def _last(series, feeds):
+    rows = feeds["fred"].get(series)
+    return (rows[-1] if rows else None), None
+
+
+def _yoy(series, feeds):
+    rows = feeds["fred"].get(series)
+    err = None if rows else "UNAVAILABLE"
     if not rows:
         return None, None, err
     date, current = rows[-1]
@@ -176,11 +199,11 @@ def _yield_row(macro_eval, h15, symbol):
     return {}
 
 
-def _market_or_fred(symbol, fred_series):
-    data, _ = _safe(market_quote, symbol)
+def _market_or_fred(symbol, fred_series, feeds):
+    data = feeds["market"].get(symbol)
     if data and data["fresh"]:
         return data
-    rows, _ = _safe(fred_history, fred_series)
+    rows = feeds["fred"].get(fred_series)
     if rows and len(rows) >= 2 and _recent(rows[-1][0], 7):
         (prev_date, previous), (date, current) = rows[-2:]
         return {"value": current, "pct": 100 * (current / previous - 1),
@@ -208,6 +231,7 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
     st.caption("Data independen, hanya untuk analisis manual. Refresh dashboard 60 detik; "
                "tiap sumber punya frekuensi dan timestamp sendiri. Tidak mengubah sinyal cBot.")
 
+    feeds = load_external_macro_inputs()
     h15, h15_err = _safe(h15_loader)
     st.subheader("1 · Treasury AS: US2Y + US10Y")
     us2 = _yield_row(macro_eval, h15, "US2Y")
@@ -223,7 +247,7 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
         st.metric("Spread 10Y − 2Y", _fmt(spread, " bps", 1))
     else:
         st.caption("Spread 10Y−2Y tidak dihitung bila tanggal observasi berbeda/kurang data.")
-    recent_two_year, _ = _safe(fred_history, "DGS2")
+    recent_two_year = feeds["fred"].get("DGS2")
     if recent_two_year and len(recent_two_year) >= 5 and _recent(recent_two_year[-1][0], 7):
         last_five = recent_two_year[-5:]
         last_value = last_five[-1][1]
@@ -234,7 +258,7 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                    f" · observasi {last_five[-1][0]} · FRED DGS2")
     else:
         st.caption("Status tertinggi 5 sesi US2Y belum dapat diverifikasi.")
-    live, live_error = _safe(us2y_live)
+    live, live_error = feeds["us2y"]
     if live:
         st.success("Cash US2Y intraday: " + _fmt(live["value"], "%", 3)
                    + " · " + str(live["observed"]) + " · CNBC/Tradeweb")
@@ -247,10 +271,10 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                "Kenaikan yield dapat menekan XAU, tetapi bukan sinyal SELL otomatis.")
 
     st.subheader("2 · Ekspektasi Fed dan inflasi")
-    policy, _ = _last("DFEDTARU")
-    cpi, cpi_date, cpi_error = _yoy("CPIAUCSL")
-    pce, pce_date, pce_error = _yoy("PCEPILFE")
-    headline, headline_date, headline_error = _yoy("PCEPI")
+    policy, _ = _last("DFEDTARU", feeds)
+    cpi, cpi_date, cpi_error = _yoy("CPIAUCSL", feeds)
+    pce, pce_date, pce_error = _yoy("PCEPILFE", feeds)
+    headline, headline_date, headline_error = _yoy("PCEPI", feeds)
     p1, p2 = st.columns(2)
     valid_policy = policy is not None and _recent(policy[0], 7)
     p1.metric("Fed target upper", _fmt(policy[1], "%") if valid_policy else "—")
@@ -273,8 +297,8 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                "PCE adalah metrik inflasi kebijakan Fed; CPI indikator pelengkap.")
 
     st.subheader("3 · Energi dan risiko inflasi")
-    wti = _market_or_fred("CL=F", "DCOILWTICO")
-    brent = _market_or_fred("BZ=F", "DCOILBRENTEU")
+    wti = _market_or_fred("CL=F", "DCOILWTICO", feeds)
+    brent = _market_or_fred("BZ=F", "DCOILBRENTEU", feeds)
     oil1, oil2 = st.columns(2)
     _market_metric(oil1, "WTI (USD/barel)", wti)
     _market_metric(oil2, "Brent (USD/barel)", brent)
@@ -283,7 +307,7 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                "dampak bersih terhadap emas bergantung pada real yield dan risiko geopolitik.")
 
     st.subheader("4 · Dolar AS dan logam mulia")
-    dxy, _ = _safe(market_quote, "DX-Y.NYB")
+    dxy = feeds["market"].get("DX-Y.NYB")
     if not dxy or not dxy["fresh"]:
         d = macro_eval.get("dxy_intraday") or {}
         if (_number(d.get("current")) is not None
@@ -293,8 +317,8 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
             dxy = {"value": float(d["current"]), "pct": float(d["net_pct"]),
                    "observed": d["current_at"], "fresh": True,
                    "source": str(d.get("source") or "Macro worker")}
-    gold, _ = _safe(market_quote, "GC=F")
-    silver, _ = _safe(market_quote, "SI=F")
+    gold = feeds["market"].get("GC=F")
+    silver = feeds["market"].get("SI=F")
     dx, au, ag = st.columns(3)
     _market_metric(dx, "DXY", dxy)
     _market_metric(au, "Gold futures GC", gold)
