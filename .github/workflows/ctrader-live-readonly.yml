@@ -8,6 +8,7 @@ on:
     paths:
       - ".github/workflows/ctrader-live-readonly.yml"
       - "src/fx_scanner/live_account_readonly.py"
+      - "tests/test_live_account_readonly.py"
   schedule:
     - cron: "*/5 * * * 0-5"
 
@@ -41,5 +42,7 @@ jobs:
           cache: pip
       - name: Install cTrader read-only runtime
         run: pip install -r requirements-research-cloud.txt
+      - name: Regression test shared LIVE portfolio mapping (read only)
+        run: python -m unittest discover -s tests -p 'test_live_account_readonly.py' -v
       - name: Verify LIVE account with view-only token
         run: python -m fx_scanner.live_account_readonly
