@@ -19,6 +19,7 @@ from fx_scanner.pre_news_transport import fetch_pre_news_snapshot  # noqa: E402
 from fx_scanner.dashboard_independent_feeds import macro_input  # noqa: E402
 from fx_scanner.manual_reversal_dashboard import wib  # noqa: E402
 from fx_scanner.xau_yield_regime_view_v372 import yield_regime_summary  # noqa: E402
+from fx_scanner.xau_h15_daily_fallback import fetch_h15_daily_rows  # noqa: E402
 
 CNBC_US10Y_URL = "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol"
 CNBC_US10Y_HOST = "quote.cnbc.com"
@@ -131,6 +132,11 @@ def load_macro():
     return fetch_pre_news_snapshot()
 
 
+@st.cache_data(ttl=900, show_spinner=False)
+def load_h15_daily():
+    return fetch_h15_daily_rows()
+
+
 st.set_page_config(page_title="RIZAN US10Y", layout="wide")
 st.title("RIZAN — US10Y Regime & Timing")
 st.caption(
@@ -141,6 +147,7 @@ st.caption(
 if st.button("Perbarui tampilan", key="yield_refresh"):
     load_macro.clear()
     load_live_cash_us10y.clear()
+    load_h15_daily.clear()
 
 # The independently fetched CNBC cash quote must remain visible even when the
 # GitHub-published macro engine heartbeat is stale or temporarily unavailable.
@@ -246,18 +253,40 @@ if macro_error is not None:
     )
     st.caption("Diagnosis feed engine: " + macro_error)
     st.caption("Tekan 'Perbarui tampilan' untuk memuat ulang snapshot; quote CNBC menyegarkan sendiri setiap 20 detik.")
-    st.stop()
+    # The daily reference can still recover directly from H.15 when the
+    # separately published macro-worker snapshot is unavailable.
 
 summary = yield_regime_summary(macro_eval)
 daily = dict(summary.get("daily") or {})
 intraday = dict(summary.get("intraday") or {})
+h15_display_active = False
+h15_display_error = None
+if daily.get("gold_bias") == "UNAVAILABLE":
+    try:
+        official = dict(load_h15_daily().get("US10Y") or {})
+        if official.get("freshness") == "FRESH" and official.get("delta") is not None:
+            display_only = dict(macro_eval)
+            display_only["components"] = {
+                **dict(macro_eval.get("components") or {}), "US10Y": official,
+            }
+            summary = yield_regime_summary(display_only)
+            daily = dict(summary.get("daily") or {})
+            intraday = dict(summary.get("intraday") or {})
+            h15_display_active = True
+    except Exception as exc:
+        h15_display_error = _safe_error(exc)
+
 
 c1, c2 = st.columns(2)
 with c1:
     st.markdown("### US10Y Daily Regime")
     st.metric("Bias terhadap XAU", bias_label(daily.get("gold_bias")))
+    if h15_display_active:
+        st.info("Fallback Federal Reserve H.15 aktif karena FRED/worker belum menyediakan DGS10. Hanya konteks tampilan, tanpa otoritas order.")
+    elif daily.get("gold_bias") == "UNAVAILABLE":
+        st.warning("DGS10 harian belum valid; fallback H.15 juga belum menyediakan observasi segar.")
     st.metric(
-        "FRED DGS10",
+        "Fed H.15 DGS10 (fallback)" if h15_display_active else "FRED DGS10",
         fmt(daily.get("current"), "%"),
         delta=(
             None
@@ -265,7 +294,8 @@ with c1:
             else f"{float(daily.get('delta_bps')):+.1f} bps vs prior day"
         ),
     )
-    st.caption("Tanggal observasi FRED: " + wib(daily.get("observed_at")))
+    st.caption("Tanggal observasi daily: " + str(daily.get("observed_at") or "—")[:10])
+    st.caption("Sumber harian: " + str(daily.get("source") or "UNAVAILABLE"))
     st.caption(
         "Fungsi: menentukan backdrop 1–beberapa hari. Yield harian turun = tailwind XAU; "
         "yield harian naik = headwind XAU. Ini bukan trigger entry."
@@ -332,6 +362,8 @@ with st.expander("Detail sumber"):
             "daily_state": daily.get("state"),
             "daily_freshness": daily.get("freshness"),
             "daily_source": daily.get("source"),
+            "h15_display_fallback_active": h15_display_active,
+            "h15_display_error": h15_display_error,
             "intraday_state": intraday.get("state"),
             "intraday_source": intraday.get("source"),
             "live_cash_display_source": "CNBC_US10Y_TRADEWEB_QUOTE",
