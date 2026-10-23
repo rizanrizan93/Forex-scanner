@@ -2,15 +2,6 @@ name: cTrader Demo Position Snapshot
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0,5,10,15,20,25,30,35,40,45,50,55 * * * 1-5"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/ctrader-demo-position-snapshot.yml"
-      - "src/fx_scanner/demo_live_position_snapshot.py"
-      - "src/fx_scanner/demo_broker_pnl.py"
 
 permissions:
   actions: write
