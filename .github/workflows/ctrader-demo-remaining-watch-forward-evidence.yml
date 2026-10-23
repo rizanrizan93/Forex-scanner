@@ -2,15 +2,6 @@ name: cTrader Demo Remaining Watch Forward Evidence
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - research/remaining-watch-crossfeed-v2
-    paths:
-      - "src/fx_scanner/demo_remaining_watch_forward_evidence.py"
-      - "src/fx_scanner/demo_remaining_watch_forward_observer.py"
-      - ".github/workflows/ctrader-demo-remaining-watch-forward-evidence.yml"
-  schedule:
-    - cron: "57 */4 * * 1-5"
 
 permissions:
   contents: read
