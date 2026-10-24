@@ -152,4 +152,4 @@ def test_reader_has_only_market_data_auth_request_allowlist():
     node=next(n for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='READ_REQUESTS' for t in n.targets))
     names=ast.literal_eval(node.value.args[0])
     assert names=={'ProtoOAApplicationAuthReq','ProtoOAGetAccountListByAccessTokenReq',
-                   'ProtoOAAccountAuthReq','ProtoOASymbolsListReq','ProtoOAGetTrendbarsReq'}
+                   'ProtoOAAccountAuthReq','ProtoOASymbolsListReq','ProtoOAGetTrendbarsReq','ProtoOAGetTickDataReq'}
