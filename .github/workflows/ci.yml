@@ -23,7 +23,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e .
-          pip install scipy==1.17.0
+          pip install scipy==1.17.0 numba==0.63.1
       - name: Streamlit syntax smoke
         run: python -m py_compile main.py streamlit_app.py
       - name: Zone V05 M1 regression
