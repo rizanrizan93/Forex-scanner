@@ -1,0 +1,25 @@
+{
+  "status": "Adaptive targeted SELL session search after phases1-2; same primary metrics; previously seen tape",
+  "sessions_utc": {
+    "1": "07-12",
+    "2": "12-17",
+    "4": "00-07",
+    "5": "17-22"
+  },
+  "ttl_hours": [
+    1,
+    4,
+    24
+  ],
+  "hold_hours": [
+    24,
+    72,
+    240
+  ],
+  "stop_usd": [
+    10,
+    12.5,
+    15,
+    20
+  ]
+}

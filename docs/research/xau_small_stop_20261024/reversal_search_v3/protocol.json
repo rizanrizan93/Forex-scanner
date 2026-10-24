@@ -1,0 +1,26 @@
+{
+  "purpose": "Separate BUY and SELL with TP price 25 and stops 5/7.5/10/12.5/15/20 USD/oz.",
+  "entry_fraction": [
+    0,
+    0.5,
+    0.8,
+    1
+  ],
+  "holding_hours": [
+    72,
+    240
+  ],
+  "filters": "19 existing price profiles initially; new sell-context profiles may be tested as explicit subsequent phase",
+  "targets": 25,
+  "train": "2019-2022 with horizon embargo",
+  "review": "2023-2025 with horizon embargo; previously seen tape; exploratory",
+  "primary_gates": {
+    "train_n": 60,
+    "review_n": 30,
+    "train_and_review_win_pct": 55,
+    "train_and_review_full_tp_pct": 50,
+    "train_and_review_pf": 1.5,
+    "review_cost2_pf": 1.2
+  },
+  "warning": "High net win rate and full TP rate are reported separately; no moving SL inside the distal zone. No live changes during search."
+}

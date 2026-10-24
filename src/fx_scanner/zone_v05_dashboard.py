@@ -143,11 +143,14 @@ def render_requirements(a,plan=None,observation=None):
 
 def render_snapshot(snapshot):
     import streamlit as st
+    from .xau_prealert_dashboard import render_prealerts
     p=validate(snapshot)
-    st.subheader('EMA V05 · perjalanan zona A → B')
-    st.caption('A adalah zona sumber EMA20 H1; B adalah zona lawan yang dipilih sebagai tujuan. Setelah A → B selesai, C dan D menunggu setup baru. BUY/SELL tidak harus bergantian.')
-    render_references()
-    render_v05_details(p)
+    render_prealerts(p)
+    with st.expander('Detail EMA V05 · konfirmasi M15 → M5', expanded=False):
+        st.subheader('EMA V05 · perjalanan zona A → B')
+        st.caption('A adalah zona sumber EMA20 H1; B adalah zona lawan yang dipilih sebagai tujuan. Setelah A → B selesai, C dan D menunggu setup baru. BUY/SELL tidak harus bergantian.')
+        render_references()
+        render_v05_details(p)
 
 
 def render_v05_details(snapshot):

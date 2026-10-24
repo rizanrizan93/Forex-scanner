@@ -1,0 +1,13 @@
+{
+  "family": 3,
+  "frac": 1.0,
+  "buffer": -0.8,
+  "target": 25.0,
+  "profile": 12,
+  "ttl": 4,
+  "session": 0,
+  "cost": 1,
+  "hold": 240,
+  "direction": 1,
+  "delay_seconds": 0
+}

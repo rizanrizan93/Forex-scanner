@@ -1,0 +1,12 @@
+{
+  "family": 0,
+  "frac": 1.0,
+  "buffer": -0.6,
+  "target": 25.0,
+  "profile": 12,
+  "ttl": 4,
+  "session": 3,
+  "cost": 1,
+  "hold": 240,
+  "direction": 1
+}

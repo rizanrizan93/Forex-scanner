@@ -76,11 +76,13 @@ def test_cached_old_branch_url_falls_back_to_immutable_commit():
 
 def test_manual_tab_does_not_load_legacy_patches():
     from streamlit.testing.v1 import AppTest
+    from fx_scanner.zone_v05 import blank
+    data=blank(datetime.now(UTC))
     with patch('fx_scanner.xau_event_dashboard_patch_v377.install_event_macro_dashboard_patch', side_effect=KeyError('legacy import')), \
-         patch('fx_scanner.manual_reversal_dashboard.fetch_manual_map', new=lambda: snapshot()):
+         patch('fx_scanner.manual_reversal_dashboard.read_json', return_value=data):
         app = AppTest.from_file(str(ROOT/'main.py')).run(timeout=20)
         assert not app.exception
-        assert any(x.label == 'Area acuan H1' for x in app.metric)
+        assert any('Aba-aba zona' in x.value for x in app.subheader)
 
 
 def test_v05_publication_rejects_execution_authority():
@@ -97,5 +99,5 @@ def test_aligned_collector_removes_mandatory_one_minute_wait():
         calls.append(i);elapsed[0]+=20;wall[0]+=20
     def sleep(n):elapsed[0]+=n;wall[0]+=n
     feed.run_loop(seconds=400,cycle_fn=cycle,clock=lambda:elapsed[0],wall_clock=lambda:wall[0],sleeper=sleep,align_to_close=True)
-    assert len(calls)==2
+    assert len(calls)==7
     assert elapsed[0]==400

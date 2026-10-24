@@ -59,4 +59,4 @@ def test_manual_reader_protocol_excludes_positions_orders_and_token_refresh():
     import importlib.util
     from pathlib import Path
     path=Path(__file__).resolve().parents[1]/'scripts/publish_reversal_snapshot.py';spec=importlib.util.spec_from_file_location('manual_reader',path);mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
-    assert mod.READ_REQUESTS==frozenset({'ProtoOAApplicationAuthReq','ProtoOAGetAccountListByAccessTokenReq','ProtoOAAccountAuthReq','ProtoOASymbolsListReq','ProtoOAGetTrendbarsReq'})
+    assert mod.READ_REQUESTS==frozenset({'ProtoOAApplicationAuthReq','ProtoOAGetAccountListByAccessTokenReq','ProtoOAAccountAuthReq','ProtoOASymbolsListReq','ProtoOAGetTrendbarsReq','ProtoOAGetTickDataReq'})

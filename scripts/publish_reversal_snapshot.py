@@ -13,6 +13,7 @@ from fx_scanner.reversal_scanner import evaluate, load_result
 from fx_scanner.zone_v05 import evaluate as evaluate_v05, blank as blank_v05
 from fx_scanner.zone_v05_quotes import spread_asof, entry_open_quote
 from fx_scanner.manual_reversal_map import evaluate as evaluate_manual, CONTRACT as MANUAL_CONTRACT
+from fx_scanner.xau_prealerts import build as build_prealerts
 
 READ_REQUESTS = frozenset({"ProtoOAApplicationAuthReq", "ProtoOAGetAccountListByAccessTokenReq",
     "ProtoOAAccountAuthReq", "ProtoOASymbolsListReq", "ProtoOAGetTrendbarsReq", "ProtoOAGetTickDataReq"})
@@ -121,6 +122,7 @@ def main(output):
         # The same native feed evaluates V05. Historical quotes only: no orders,
         # spot subscriptions, token changes, positions or cBot bridge calls.
         v05=blank_v05(now)
+        previous=None
         try:
             previous_path=Path(output).with_name('zone_v05_previous.json')
             previous=json.loads(previous_path.read_text()) if previous_path.exists() else None
@@ -150,6 +152,11 @@ def main(output):
         except Exception:
             v05=blank_v05(now,'V05_DATA_UNAVAILABLE')
             print('V05_DATA_UNAVAILABLE',flush=True)
+        # Independent research prealerts consume the collected candles only.
+        # The collection cutoff prevents a formerly forming bar being treated
+        # as complete merely because network/processing time has elapsed.
+        v05['prealerts'] = build_prealerts(native, now=datetime.now(UTC), data_as_of=now,
+            previous=(previous or {}).get('prealerts'))
         Path(output).with_name('zone_v05_snapshot.json').write_text(json.dumps(v05,indent=2,allow_nan=False)+'\n')
         Path(output).with_name("manual_reversal_snapshot.json").write_text(json.dumps(manual,indent=2,allow_nan=False)+"\n")
         print("REVERSAL_SCANNER_READ_ONLY state="+snapshot["state"]+" bars="+str(len(rows))+" execution_authority=False",flush=True)
