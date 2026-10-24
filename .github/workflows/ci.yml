@@ -24,6 +24,20 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
           pip install scipy==1.17.0 numba==0.63.1
+      - name: Verify Numba research dependency
+        run: |
+          python - <<'PY'
+          import numba
+          import scipy
+          from numba import njit
+
+          @njit
+          def _smoke(n):
+              return n * n + 1
+
+          assert _smoke(6) == 37
+          print(f"NUMBA_CI_READY numba={numba.__version__} scipy={scipy.__version__} jit=OK")
+          PY
       - name: Streamlit syntax smoke
         run: python -m py_compile main.py streamlit_app.py
       - name: Zone V05 M1 regression
