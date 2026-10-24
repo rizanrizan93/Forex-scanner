@@ -45,7 +45,9 @@ def render_snapshot(payload):
  st.caption('Strategi beku XAU–EUR–BTC V1.3.0 · pembacaan pasar dan posisi saja')
  st.caption('Perhitungan memakai kode sinyal cBot. Ini cermin terpisah: perbedaan history pemanasan dan status terminal dapat menghasilkan keputusan berbeda. Periksa volume, margin, posisi, dan harga di cTrader sebelum entry manual.')
  if not p['fresh']:st.warning('WAIT · pembaruan terlambat. Hanya area pantauan terakhir ditampilkan beserta waktunya; entry dan posisi lama disembunyikan.')
- st.caption('Pembaruan '+wib(p['as_of'])+' · tampilan mengecek 10 detik')
+ st.caption('Pembaruan monitor '+wib(p['as_of'])+' · tampilan mengecek 10 detik')
+ st.caption('Checkpoint VPS terakhir terbaca: '+wib(p.get('native_observed_at'))+' · data pasar: '+wib(p.get('market_observed_at')))
+ st.caption('Status monitor dan checkpoint ini dipisahkan dari heartbeat database lama. Data fresh tidak otomatis membuktikan koneksi WebSocket broker atau kesiapan order cBot LIVE.')
  labels={'ENTRY_MANUAL':'ENTRY · acuan manual','WATCH':'WATCH · persiapan','WAIT':'WAIT · menunggu','BLOCK':'BLOCK · syarat belum lengkap','POSISI_AKTIF':'POSISI AKTIF','DATA_TERLAMBAT':'WAIT · data terlambat'}
  for c in p.get('symbols',[]):
   symbol=c['symbol'];digits=5 if symbol=='EURUSD' else 2
