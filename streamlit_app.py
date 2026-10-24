@@ -25,6 +25,7 @@ from fx_scanner.dashboard import (
     SupabaseDashboardReader,
     merge_runtime_heartbeat_rows,
 )
+from fx_scanner.runtime_telemetry_labels import annotate_heartbeat_rows
 from fx_scanner.execution.policy import load_execution_policy
 from fx_scanner.sessions import session_label
 from fx_scanner.providers.factory import build_provider_runtime
@@ -10193,6 +10194,24 @@ with system_tab:
                 f"{type(exc).__name__}: {exc}"
             )
     if heartbeat_rows:
+        # Presentation-only: historical cbot_bridge_* rows are never proof of
+        # current LIVE WebSocket health. The original healthy flag is retained
+        # exclusively as its archived DB value, not a current VPS assertion.
+        heartbeat_rows = annotate_heartbeat_rows(
+            heartbeat_rows, now=datetime.now(tz=UTC)
+        )
+        legacy_archives = [
+            row for row in heartbeat_rows
+            if row["telemetry_origin"].startswith("ARSIP BRIDGE DB")
+            and row["telemetry_interpretation"] == "ARSIP / BELUM TERVERIFIKASI LIVE"
+        ]
+        if legacy_archives:
+            st.warning(
+                "Heartbeat cbot_bridge_* pada database adalah data historis, "
+                "BUKAN status bridge LIVE saat ini. Periksa pemantauan cBots "
+                "dan status systemd VPS secara terpisah. "
+                "Kolom healthy di bawah merupakan nilai lama yang tersimpan."
+            )
         heartbeats = _convert_frame_times_to_wib(
             _frame(heartbeat_rows),
             ("observed_at",),
