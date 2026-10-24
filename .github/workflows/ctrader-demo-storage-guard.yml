@@ -2,15 +2,6 @@ name: cTrader Demo Storage Guard
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 */6 * * *"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/ctrader-demo-storage-guard.yml"
-      - "src/fx_scanner/demo_storage_guard.py"
-      - "supabase/schemas/fx_core.sql"
 
 permissions:
   contents: read
