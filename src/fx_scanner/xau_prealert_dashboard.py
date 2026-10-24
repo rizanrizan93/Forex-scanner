@@ -14,8 +14,9 @@ def render_prealerts(snapshot, *, now=None):
     if group.get('contract') != CONTRACT:
         st.info('Aba-aba SL kecil belum diterbitkan kolektor. Status ENTRY V05 di detail bawah memakai konfirmasi lama.')
         return
-    st.caption('Riset SL kecil · hasil historis masih eksploratif. Publikasi data sekitar 5 menit; '
-               'refresh layar 10 detik tidak mempercepat sumber harga.')
+    interval = int(group.get('producer_interval_seconds', 300))
+    st.caption(f'Riset SL kecil · hasil historis masih eksploratif. Target publikasi data {interval} detik; '
+               'layar diperbarui 10 detik. Siklus data yang lambat tetap diblokir oleh pemeriksaan kesegaran.')
     seen = st.session_state.setdefault('rizan_prealert_first_seen', {})
     shown = []
     for plan in group.get('plans', []):

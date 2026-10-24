@@ -83,7 +83,7 @@ def build(native, *, now, previous=None, data_as_of=None):
     data_as_of = timestamp(data_as_of) if data_as_of is not None else now
     result = dict(contract=CONTRACT, as_of=now.isoformat(), plans=[],
                   execution_authority=False, execution_influence=False,
-                  sell_status='SELL_BELUM_LOLOS_RISET', producer_interval_seconds=300,
+                  sell_status='SELL_BELUM_LOLOS_RISET', producer_interval_seconds=60,
                   validation='NATIVE_OPERATIONAL_ADAPTATION_PARITY_NOT_VERIFIED')
     try:
         m = frame(native.get('M1', []), 'M1', data_as_of)

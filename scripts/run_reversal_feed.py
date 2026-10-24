@@ -88,14 +88,14 @@ def cycle(index):
                    cwd=ROOT, timeout=210, check=True)
     data = json.loads(snapshot.read_text())
     mapping = json.loads(manual.read_text())
-    mapping['publisher'] = {'cycle': index, 'refresh_seconds': 300,
+    mapping['publisher'] = {'cycle': index, 'refresh_seconds': 60,
                             'build': os.environ.get('GITHUB_SHA', '')}
     sha = publish(data, mapping, v05=json.loads(v05.read_text()))
     print('REVERSAL_PUBLISHED cycle=' + str(index) + ' at=' + mapping['as_of'] +
           ' candle=' + str(mapping.get('price_observed_at')) + ' commit=' + sha, flush=True)
 
 
-def run_loop(*, seconds=19800, interval=300, cycle_fn=cycle,
+def run_loop(*, seconds=19800, interval=60, cycle_fn=cycle,
              clock=time.monotonic, sleeper=time.sleep, align_to_close=False, wall_clock=time.time):
     started = clock()
     index = failures = 0
