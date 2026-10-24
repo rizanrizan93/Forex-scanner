@@ -5,12 +5,31 @@ on:
       - audit/live-p2-p3-readonly-20261024
     paths:
       - .github/workflows/audit-live-p2-p3-readonly-20261024.yml
+      - src/fx_scanner/runtime_telemetry_labels.py
+      - tests/test_runtime_telemetry_labels.py
+      - streamlit_app.py
+      - src/fx_scanner/cbot_manual_dashboard.py
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  verify-telemetry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify audit-only display logic and dashboard syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=src python -m unittest discover -s tests -p test_runtime_telemetry_labels.py -v
+          python -m py_compile streamlit_app.py src/fx_scanner/runtime_telemetry_labels.py src/fx_scanner/cbot_manual_dashboard.py
+
   inspect:
     runs-on: ubuntu-latest
     timeout-minutes: 6
