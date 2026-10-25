@@ -1,0 +1,22 @@
+{
+  "purpose": "Manual builder reference; this JSON is not an installable cTrader plugin",
+  "name": "RIZAN XAU cBot",
+  "description": "Chart M5 dan sinyal teknis dari core XAU cBot V1.3.0. Bias H1/M15, aba-aba dan acuan SL/TP asli. Hanya membaca data, tanpa order atau akses akun.",
+  "url": "https://forexrizan.streamlit.app/cbot-plugin?embed=true",
+  "image": "icon-300.png",
+  "mobile_placements": [
+    {"placement": "wl_bs", "name": "Trade tabs bottom sheet", "height_percent": 100},
+    {"placement": "so_bs", "name": "Symbol overview bottom sheet", "height_percent": 100}
+  ],
+  "desktop_placements": [
+    {"placement": "asp_t", "name": "Active Symbol Panel tab", "title": "RIZAN XAU"}
+  ],
+  "sdk_requests": [],
+  "account_permissions": [],
+  "symbol": "XAUUSD",
+  "entry_core": "XAU V1.3.0",
+  "indicator_release": "1.0.1",
+  "trailing": false,
+  "target_r": 5.5,
+  "hold_minutes": 480
+}

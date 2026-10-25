@@ -102,7 +102,12 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
                             else:
                                 runpy.run_path(str(ROOT / path), run_name="__main__", init_globals={"RIZAN_SETTINGS_ONLY": label == "Pengaturan"})
 
-routes = [st.Page(render_dashboard, title="RIZAN Scanner", default=True)]
+def render_cbot_webview():
+    from fx_scanner.cbot_webview_dashboard import render_webview_plugin
+    render_webview_plugin()
+
+routes = [st.Page(render_dashboard, title="RIZAN Scanner", default=True),
+          st.Page(render_cbot_webview, title="RIZAN cBot Plugin", url_path="cbot-plugin")]
 for slug, pair, detail in [("EURUSD_Demo_Forward", "EURUSD", "Setup"), ("Zona_Prediktif_XAUUSD", "XAUUSD", "Zona A→B"), ("RIZAN_Zone_Hierarchy_V406", "XAUUSD", "Hierarki zona"), ("Pusat_Keputusan_XAUUSD", "XAUUSD", "Keputusan"), ("Demand_Tiers", "XAUUSD", "Demand"), ("US10Y_Regime_Timing", "XAUUSD", "Makro")]:
     def route(pair=pair, detail=detail):
         render_dashboard(pair, detail)
