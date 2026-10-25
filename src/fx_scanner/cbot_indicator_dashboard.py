@@ -1,7 +1,7 @@
-"""XAU indicator charts and a session-local manual trailing scenario."""
+"""Read-only projection of the original XAU cBot technical rules."""
 from datetime import UTC,datetime
 from .cbot_manual import stamp,fresh
-from .cbot_indicator import number,seed,advance
+from .cbot_indicator import number
 
 def render(c,p,*,now=None):
     import streamlit as st
@@ -47,32 +47,4 @@ def render(c,p,*,now=None):
                 color=alt.condition('datum.signal_side == 1',alt.value('#22c55e'),alt.value('#ef4444')))
             st.altair_chart(chart.properties(height=300),width='stretch')
             st.caption('Panah historis = konfirmasi teknis, belum memeriksa macro, news atau penerimaan order. Garis putus-putus adalah ambang indikator, bukan zona entry tetap.')
-    mode=st.radio('Exit untuk trading manual',['Trailing manual','Acuan exit asli cBot'],key='cbot_indicator_exit',horizontal=True)
-    if mode=='Acuan exit asli cBot':
-        st.caption('SL awal: maksimum dari $0,50, 2,4 ATR M5, dan jarak anchor struktural. Target asli 5,5R; hold asli maksimal 8 jam. Tidak ada trailing pada aturan asli.');return
-    st.caption('Skenario trailing tanpa TP tetap: aktif setelah +1R, jarak 1R. Stop hanya diperketat setelah M1 selesai. Nilai bawaan ini belum diuji sebagai strategi profitabel.')
-    key='rizan_xau_manual_trailing'
-    q=c.get('indicator_quote') or {};bid=q.get('BID') or {};ask=q.get('ASK') or {}
-    quote_ok=all(number(v.get('price')) and fresh(v.get('at'),now,15) for v in [bid,ask]) and ask.get('price',0)>=bid.get('price',float('inf'))
-    default=float(c.get('entry') or f.get('close') or 1.)
-    initial=float(c.get('sl') or max(.01,default-2.4*(f.get('atr') or 1.)))
-    with st.expander('Pantau trailing dari entry dan SL manual Anda'):
-        st.caption('Isi harga posisi Anda. Tombol ini hanya membuat skenario di dashboard; SL broker harus Anda ubah sendiri. Pemantauan mulai sekarang, bukan replay sejak order lama.')
-        with st.form('cbot_indicator_manual_form'):
-            side=st.selectbox('Arah posisi',['BUY','SELL'])
-            entry=st.number_input('Harga entry posisi',min_value=.01,value=default,step=.1,format='%.2f')
-            stop=st.number_input('SL awal posisi',min_value=.01,value=initial,step=.1,format='%.2f')
-            clicked=st.form_submit_button('Mulai skenario trailing',disabled=not quote_ok)
-        if clicked:
-            try:st.session_state[key]=seed(1 if side=='BUY' else -1,entry,stop,now.isoformat(),ask['price']-bid['price'])
-            except ValueError as e:st.error(str(e))
-    if key in st.session_state:
-        try:
-            s=advance(st.session_state[key],c.get('indicator_m1') or [],as_of=p.get('market_observed_at'),now=now)
-            st.session_state[key]=s
-            label='DATA TERPUTUS' if s['coverage_gap'] else 'STOP TERAMATI' if s['stopped'] else 'TRAIL AKTIF' if s['active'] else 'SL AWAL · MENUNGGU +1R'
-            st.metric('Skenario trailing · '+label,f"{s['stop']:,.2f}")
-            if s['stopped']:st.caption(f"Exit skenario {s['exit']:,.2f}; ini bukan konfirmasi exit broker.")
-            st.caption('Spread SELL diasumsikan tetap sebesar spread saat mulai; ASK historis intramenit tidak tersedia. Menit entry yang belum lengkap dilewati. Skenario hilang jika sesi browser direset.')
-        except ValueError as e:st.warning(str(e))
-        if st.button('Hapus skenario trailing'):del st.session_state[key];st.rerun()
+    st.caption('Exit asli cBot: SL awal maksimum dari $0,50, 2,4 ATR M5, dan jarak anchor struktural; TP 5,5R; hold maksimal 8 jam. Tidak ada trailing tambahan.')

@@ -1,4 +1,4 @@
-# RIZAN XAU cBot Indicator v1.0.0
+# RIZAN XAU cBot Indicator v1.0.1
 
 Konversi **aturan entry teknis XAU cBot V1.3.0** menjadi indikator chart cTrader
 dan indikator di dashboard scanner. Bukan strategi reversal baru dan bukan bukti
@@ -46,42 +46,27 @@ ambang indikator, bias H1/M15, aba-aba dan panah teknis historis. Sinyal entry
 manual tetap memakai gate macro/checkpoint/quote yang telah ada pada monitor.
 Publikasi fresh tidak otomatis membuktikan kesiapan order cBot LIVE.
 
-Pilih **Trailing manual** untuk exit tanpa TP tetap. Buka panel pemantauan dan
-isi arah, harga entry serta SL awal posisi Anda, lalu tekan **Mulai skenario
-trailing**. Ini hanya membuat state di sesi browser, tidak mengirim order atau
-mengubah SL broker. Mode **Acuan exit asli cBot** menampilkan aturan exit asli.
-
-Trailing manual bawaan aktif setelah +1R dan berjarak 1R awal. Watermark hanya
-berasal dari M1 yang sudah selesai; stop baru berlaku untuk menit berikutnya,
-stop tidak pernah dilonggarkan. Stop lama diperiksa sebelum excursion baru,
-gap merugikan dihitung pada harga open. Parameter ini belum diteliti sebagai
-strategi profitabel dan dapat menghasilkan exit kurang dari +1R atau kerugian.
-Skenario hanya menghitung level harga, tanpa komisi, sizing, swap atau PnL akun.
-
-Pemantauan dimulai sekarang; menit entry yang belum lengkap dilewati. ASK high/low
-historis tidak tersedia, sehingga SELL memakai spread tetap saat mulai sebagai
-proxy. Data terputus memblokir pembaruan. Reset sesi browser menghapus skenario.
-Periksa SL sesungguhnya di broker; angka dashboard bukan konfirmasi SL terpasang.
+Exit mengikuti kontrak asli: SL struktural/2,4 ATR M5 dengan floor $0,50,
+TP 5,5R dan hold maksimal 480 menit. **Tidak ada opsi trailing manual, input
+setup baru atau entry sebelum konfirmasi.** Aba-aba hanya informasi persiapan.
 
 ## Indikator chart cTrader
 
 Custom indicator hanya didukung cTrader **Windows/Mac**, bukan chart Android,
 Web atau cloud indicator. Android menggunakan dashboard di atas.
 
-1. Unduh `releases/RizanXauCbotIndicator_v1.0.0.algo`.
+1. Unduh `releases/RizanXauCbotIndicator_v1.0.1.algo`.
 2. Buka file di cTrader Windows/Mac dan pasang pada chart **XAUUSD M5**.
 3. Tunggu pemanasan setidaknya 200 candle H1. Indikator mencoba memuat 16.000
    candle M1; jika tidak mencukupi, tampilannya tetap WARMUP.
 4. Panah merupakan konfirmasi teknis; baca macro/news dan readiness melalui
    dashboard. Indikator chart tidak tersambung ke bridge atau checkpoint cBot.
 
-`Track fresh technical scenario` default **false**. Jika diaktifkan, indikator
-menyimpan skenario saat benar-benar mengamati sinyal teknis dalam jendela 60 detik,
-menggunakan bid/ask saat itu sebagai referensi. Ia tidak membuat skenario dari
-panah historis, tidak menimpa skenario yang masih berjalan, dan tidak mengelola
-posisi broker. Jarak/pemicu trailing dapat diubah dalam R. Skenario chart berbeda
-dari input posisi manual di dashboard dan hilang saat instance indikator dimulai
-ulang. Penghitungan SELL tetap memakai asumsi spread saat mulai.
+Versi 1.0.1 menghapus opsi tracking/trailing tambahan dari versi 1.0.0.
+Tidak ada parameter untuk meracik ulang entry atau exit. Satu-satunya parameter
+indikator adalah jumlah history M1 untuk pemanasan. Garis pemicu dan panah tetap
+mengikuti core asli; harga entry/SL/TP adalah referensi teknis dari quote saat
+konfirmasi, bukan bukti posisi broker.
 
 ## Batas parity dan timing
 
@@ -112,13 +97,12 @@ PYTHONPATH=src:. python3 -m pytest -q tests/test_cbot_indicator.py tests/test_cb
 Fixture parity adalah 60.000 M1 pertama tahun 2022 dari arsip XAU yang sudah
 digunakan sebelumnya; header `timestamp,open,high,low,close`. Hasil: 12.000 frame,
 9.601 frame sesudah warmup, 33 perbandingan prefix termasuk 15 BUY dan 5 SELL
-terkonfirmasi; parity side/ATR/anchor dan invariansi prefix lulus. Pemeriksaan
-stop-first, gap, spread SELL, partial entry minute dan coverage gap juga lulus.
+terkonfirmasi; parity side/ATR/anchor dan invariansi prefix lulus. Referensi SL/TP juga dibandingkan dengan parameter FrozenContract asli.
 Adapter lama dibanding adapter baru menghasilkan semua field lama identik;
 field tambahan adalah indikator dan history. Metadata paket menandai `Indicator`,
 bukan Robot, dengan capabilities kosong.
 
-28 tes Python terkait lulus. Satu assertion test navigasi lama diperbarui dari
+Tes Python terkait indikator, monitor dan telemetry diperiksa ulang untuk versi ini. Satu assertion test navigasi lama diperbarui dari
 tab ke radio yang sudah digunakan main.py; kode navigasi tidak diubah. SDK build
 lulus tanpa error. Belum diuji interaktif pada aplikasi Windows/Mac atau chart
 broker pengguna. Bukti build dan hash paket terdapat dalam `BUILD_PROOF.json`.

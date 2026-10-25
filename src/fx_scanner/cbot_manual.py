@@ -83,8 +83,6 @@ def project(calculations,market,native,*,now=None):
   c['positions']=[p for p in market.get('positions',[]) if p.get('symbol')==symbol]
   if c['positions']:
    c.update(status='POSISI_AKTIF',reason='Posisi cBot teramati di broker; bukan entry baru',entry=None,sl=None,tp=None,layers=[])
-  from .cbot_indicator import attach_market
-  attach_market(c,market)
   rows.append(c)
  return {'contract':CONTRACT,'as_of':now.isoformat(),'market_observed_at':market.get('as_of'),'native_observed_at':native.get('as_of'),'source_commit':SOURCE_COMMIT,'source_release':'V1.3.0','execution_authority':False,'execution_influence':False,'symbols':rows}
 def validate(payload,*,now=None):

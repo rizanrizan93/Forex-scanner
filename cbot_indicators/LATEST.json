@@ -1,0 +1,11 @@
+{
+  "version": "1.0.1",
+  "artifact": "releases/RizanXauCbotIndicator_v1.0.1.algo",
+  "source": "releases/RizanXauCbotIndicator_v1.0.1_SOURCE.zip",
+  "supersedes": "1.0.0",
+  "entry_core": "XAU V1.3.0",
+  "exit": "ORIGINAL_FIXED_TP",
+  "target_r": 5.5,
+  "hold_minutes": 480,
+  "manual_trailing": false
+}
