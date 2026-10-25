@@ -22,6 +22,18 @@ foreach(var f in samples)
     Check((native?.Side??0)==f.SignalSide,"native signal side at "+f.AtUtc);
     if(native!=null){confirmed++;if(native.Side==1)buy++;else sell++;
         Check(Math.Abs(native.Anchor-f.SignalAnchor)<1e-8 && Math.Abs(native.Atr-f.Atr)<1e-8,"native geometry");}
+    if(f.SignalSide!=0)
+    {
+        double bid=f.Close,ask=bid+.2;
+        var plan=XauIndicatorCore.Reference(f,bid,ask);
+        var contract=X.FrozenContract.Xau;
+        double expected=(f.SignalSide==1 ? ask : bid)+f.SignalSide*.10;
+        double anchor=f.SignalAnchor+(f.SignalSide==-1 ? ask-bid : 0);
+        double distance=Math.Max(.5,Math.Max(contract.StopAtrMultiplier*f.Atr,f.SignalSide*(expected-anchor)));
+        Check(Math.Abs(plan.Entry-expected)<1e-8 && Math.Abs(plan.Stop-(expected-f.SignalSide*distance))<1e-8 &&
+              Math.Abs(plan.Target-(expected+f.SignalSide*contract.TargetR*distance))<1e-8,"original fixed exit reference");
+        Check(contract.TargetR==5.5 && contract.HoldMinutes==480,"original exit contract");
+    }
     // Full-history evaluation cannot change the already-known prefix result.
     var replay=XauIndicatorCore.Build(bars,f.AtUtc).Last();
     Check(JsonSerializer.Serialize(replay.Display())==JsonSerializer.Serialize(f.Display()),"future bars affect frame");
@@ -33,15 +45,6 @@ foreach(var f in samples)
     Check(Math.Abs(f.BuyTriggerNext-band)<1e-8,"next-bar threshold");
 }
 Check(confirmed>0,"fixture must include confirmed signals");
-var at=new DateTime(2026,10,21,12,0,0,DateTimeKind.Utc);
-var t=new ManualTrailing(1,100,90,at,0);
-t.Step(new(at,100,130,89,125));Check(t.Stopped && t.Exit==90,"SL before favorable path");
-t=new(1,100,90,at,0);t.Step(new(at,100,120,99,118));
-Check(t.Active && t.Stop==110,"closed-minute trailing");
-t.Step(new(at.AddMinutes(1),105,106,100,101));Check(t.Stopped && t.Exit==105,"adverse gap");
-t=new(-1,100,110,at,1);t.Step(new(at,100,101,80,82));Check(t.Active && t.Stop==91,"SELL ask offset");
-t=new(1,100,90,at.AddSeconds(10),0);t.Step(new(at,100,130,99,120));Check(t.Stop==90,"partial entry minute excluded");
-t.Step(new(at.AddMinutes(2),100,101,99,100));Check(t.CoverageGap,"missing M1 blocks scenario");
 Console.WriteLine(JsonSerializer.Serialize(new{status="PASS",frames=frames.Count,warm_frames=eligible.Count,
     native_prefix_comparisons=samples.Count,confirmed,buy,sell,
-    checks=new[]{"native signal/ATR/anchor parity","prefix invariance","next-candle band", "stop-first", "gap", "SELL spread", "partial minute", "coverage gap"}}));
+    checks=new[]{"native signal/ATR/anchor parity","prefix invariance","next-candle band", "original fixed exit reference"}}));

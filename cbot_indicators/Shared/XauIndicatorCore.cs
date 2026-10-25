@@ -82,7 +82,7 @@ public static class XauIndicatorCore
         int side=f.SignalSide;double spread=ask-bid;
         double entry=(side==1 ? ask : bid)+side*.10;
         double anchor=f.SignalAnchor+(side==-1 ? spread : 0);
-        double distance=Math.Max(.5,Math.Max(2.4*f.Atr,side*(entry-anchor)));
-        return(entry,entry-side*distance,entry+side*5.5*distance);
+        double distance=Math.Max(.5,Math.Max(X.FrozenContract.Xau.StopAtrMultiplier*f.Atr,side*(entry-anchor)));
+        return(entry,entry-side*distance,entry+side*X.FrozenContract.Xau.TargetR*distance);
     }
 }

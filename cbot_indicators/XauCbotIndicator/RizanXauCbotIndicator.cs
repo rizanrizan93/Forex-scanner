@@ -12,24 +12,15 @@ public class RizanXauCbotIndicator : Indicator
 {
     [Parameter("Warmup M1 bars",DefaultValue=16000,MinValue=12000,MaxValue=100000)]
     public int WarmupBars {get;set;}
-    [Parameter("Track fresh technical scenario",DefaultValue=false)]
-    public bool TrackScenario {get;set;}
-    [Parameter("Manual trail activate (R)",DefaultValue=1.0,MinValue=0.0,MaxValue=10.0)]
-    public double ActivationR {get;set;}
-    [Parameter("Manual trail distance (R)",DefaultValue=1.0,MinValue=.1,MaxValue=10.0)]
-    public double DistanceR {get;set;}
     [Output("BUY next-close threshold",LineColor="LimeGreen",LineStyle=LineStyle.Dots)]
     public IndicatorDataSeries BuyLine {get;set;}=null!;
     [Output("SELL confirmation estimate",LineColor="Tomato",LineStyle=LineStyle.Dots)]
     public IndicatorDataSeries SellLine {get;set;}=null!;
-    [Output("Manual trailing scenario",LineColor="Gold",Thickness=2)]
-    public IndicatorDataSeries TrailLine {get;set;}=null!;
     cAlgo.API.Bars m1=null!;
     Dictionary<DateTime,XauIndicatorFrame> frames=new();
     List<X.Candle> closed=new();
     XauIndicatorFrame? latest;
-    DateTime lastMinute,lastScenario;
-    ManualTrailing? scenario;
+    DateTime lastMinute;
     bool validSymbol;
 
     protected override void Initialize()
@@ -73,28 +64,16 @@ public class RizanXauCbotIndicator : Indicator
         {
             var plan=XauIndicatorCore.Reference(latest,Symbol.Bid,Symbol.Ask);
             levels=$"\nAcuan {plan.Entry:F2} | SL awal {plan.Stop:F2} | TP asli {plan.Target:F2}";
-            if(TrackScenario && latest.AtUtc>lastScenario && (scenario==null || scenario.Stopped))
-            {
-                // Start ONLY from a signal actually observed during its live window.
-                lastScenario=latest.AtUtc;
-                scenario=new(latest.SignalSide,plan.Entry,plan.Stop,now,Symbol.Ask-Symbol.Bid,ActivationR,DistanceR);
-            }
         }
-        if(scenario!=null && fresh)
-        {
-            foreach(var b in closed)scenario.Step(b);
-            levels+=$"\nTRAIL SIMULASI {scenario.Stop:F2} | "+(scenario.CoverageGap ? "HISTORY TERPUTUS" : scenario.Stopped ? "STOP TERAMATI" : scenario.Active ? "AKTIF" : "BELUM AKTIF");
-            if(Bars.Count>0 && !scenario.Stopped && !scenario.CoverageGap)TrailLine[Bars.Count-1]=scenario.Stop;
-        }
-        if(!fresh && Bars.Count>0){BuyLine[Bars.Count-1]=double.NaN;SellLine[Bars.Count-1]=double.NaN;TrailLine[Bars.Count-1]=double.NaN;}
+        if(!fresh && Bars.Count>0){BuyLine[Bars.Count-1]=double.NaN;SellLine[Bars.Count-1]=double.NaN;}
         Message("RIZAN · indikator entry cBot XAU V1.3.0\n"+state+
             $"\nBias H1 {latest.H1Bias:+0;-0;0} | M15 {latest.M15Bias:+0;-0;0}"+levels+
             "\nMacro, news, exposure dan readiness cBot belum diperiksa di chart."+
-            "\nPanah = teknis historis; trailing hanya skenario, tidak mengubah SL broker.");
+            "\nPanah = sinyal teknis asli setelah close M5; TP 5,5R, hold asli maksimal 8 jam.");
     }
     void Paint(int index)
     {
-        BuyLine[index]=double.NaN;SellLine[index]=double.NaN;TrailLine[index]=double.NaN;
+        BuyLine[index]=double.NaN;SellLine[index]=double.NaN;
         var at=DateTime.SpecifyKind(Bars.OpenTimes[index],DateTimeKind.Utc);
         if(!frames.TryGetValue(at,out var f) || !f.Warm)return;
         BuyLine[index]=f.BuyTriggerNext;
