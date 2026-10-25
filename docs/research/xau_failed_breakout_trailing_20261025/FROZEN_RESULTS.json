@@ -1,0 +1,1398 @@
+{
+  "cost1_delay0": {
+    "all": {
+      "n": 219,
+      "win_pct": 30.136986301369863,
+      "pf": 1.081274165441742,
+      "net_R": 12.670680822424895,
+      "net_usd_per_oz": 93.51249193633765,
+      "mean_risk": 5.678715120881151,
+      "net_ge25_pct": 4.5662100456621,
+      "mfe_ge25_pct": 7.76255707762557,
+      "max_R_drawdown": 32.489660424786116,
+      "max_consecutive_losses": 14,
+      "median_net_usd_per_oz": -3.2986185425985504
+    },
+    "train": {
+      "n": 135,
+      "win_pct": 34.81481481481482,
+      "pf": 1.3867689256401263,
+      "net_R": 35.06776583378251,
+      "net_usd_per_oz": 226.06870357076838,
+      "mean_risk": 5.514256854816496,
+      "net_ge25_pct": 6.666666666666667,
+      "mfe_ge25_pct": 11.11111111111111,
+      "max_R_drawdown": 18.020310375241237,
+      "max_consecutive_losses": 14,
+      "median_net_usd_per_oz": -2.9481003968256188
+    },
+    "review": {
+      "n": 83,
+      "win_pct": 22.89156626506024,
+      "pf": 0.6670468325416689,
+      "net_R": -21.380815304352254,
+      "net_usd_per_oz": -121.88095387832347,
+      "mean_risk": 5.888067242101393,
+      "net_ge25_pct": 1.2048192771084338,
+      "mfe_ge25_pct": 2.4096385542168677,
+      "max_R_drawdown": 28.439052366054398,
+      "max_consecutive_losses": 8,
+      "median_net_usd_per_oz": -3.7707361111112165
+    },
+    "q1_2026": {
+      "n": 1,
+      "win_pct": 0.0,
+      "pf": 0.0,
+      "net_R": -1.016269707005366,
+      "net_usd_per_oz": -10.67525775610728,
+      "mean_risk": 10.504354978329502,
+      "net_ge25_pct": 0.0,
+      "mfe_ge25_pct": 0.0,
+      "max_R_drawdown": 1.016269707005366,
+      "max_consecutive_losses": 1,
+      "median_net_usd_per_oz": -10.67525775610728
+    },
+    "train_sides": {
+      "1": {
+        "n": 68,
+        "win_pct": 38.23529411764706,
+        "pf": 1.3453882360794032,
+        "net_R": 15.304894702056217,
+        "net_usd_per_oz": 131.87721887270055,
+        "mean_risk": 5.774980184645157,
+        "net_ge25_pct": 4.411764705882353,
+        "mfe_ge25_pct": 10.294117647058822,
+        "max_R_drawdown": 16.17574183471339,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -2.592567189431854
+      },
+      "-1": {
+        "n": 67,
+        "win_pct": 31.343283582089555,
+        "pf": 1.4263248097826147,
+        "net_R": 19.762871131726282,
+        "net_usd_per_oz": 94.1914846980679,
+        "mean_risk": 5.2496421320053175,
+        "net_ge25_pct": 8.955223880597014,
+        "mfe_ge25_pct": 11.940298507462686,
+        "max_R_drawdown": 15.345881784899586,
+        "max_consecutive_losses": 14,
+        "median_net_usd_per_oz": -3.152552148811062
+      }
+    },
+    "train_regimes": {
+      "1": {
+        "n": 56,
+        "win_pct": 37.5,
+        "pf": 1.4980662093598818,
+        "net_R": 17.88216659472036,
+        "net_usd_per_oz": 112.09300428017991,
+        "mean_risk": 5.682090596724229,
+        "net_ge25_pct": 8.928571428571429,
+        "mfe_ge25_pct": 12.5,
+        "max_R_drawdown": 16.67705445264935,
+        "max_consecutive_losses": 16,
+        "median_net_usd_per_oz": -2.512558878640269
+      },
+      "0": {
+        "n": 18,
+        "win_pct": 44.44444444444444,
+        "pf": 3.3555315484689197,
+        "net_R": 22.519977248698392,
+        "net_usd_per_oz": 86.56266206089228,
+        "mean_risk": 4.907618379142061,
+        "net_ge25_pct": 5.555555555555555,
+        "mfe_ge25_pct": 11.11111111111111,
+        "max_R_drawdown": 3.166596008041206,
+        "max_consecutive_losses": 3,
+        "median_net_usd_per_oz": -3.0833874774713377
+      },
+      "-1": {
+        "n": 61,
+        "win_pct": 29.508196721311474,
+        "pf": 0.8819954821539215,
+        "net_R": -5.334378009636255,
+        "net_usd_per_oz": 27.41303722969625,
+        "mean_risk": 5.539188051788739,
+        "net_ge25_pct": 4.918032786885246,
+        "mfe_ge25_pct": 9.836065573770492,
+        "max_R_drawdown": 19.98587176807151,
+        "max_consecutive_losses": 15,
+        "median_net_usd_per_oz": -3.214945978104582
+      }
+    },
+    "review_sides": {
+      "1": {
+        "n": 32,
+        "win_pct": 34.375,
+        "pf": 1.168899067140114,
+        "net_R": 3.705754464778353,
+        "net_usd_per_oz": -1.825580325243287,
+        "mean_risk": 6.208492180302734,
+        "net_ge25_pct": 3.125,
+        "mfe_ge25_pct": 3.125,
+        "max_R_drawdown": 6.104302636311077,
+        "max_consecutive_losses": 4,
+        "median_net_usd_per_oz": -3.3284692149979156
+      },
+      "-1": {
+        "n": 51,
+        "win_pct": 15.686274509803921,
+        "pf": 0.40658671207765534,
+        "net_R": -25.08656976913061,
+        "net_usd_per_oz": -120.05537355308019,
+        "mean_risk": 5.687016300484865,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 1.9607843137254901,
+        "max_R_drawdown": 32.09981439521753,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -4.17022063496504
+      }
+    },
+    "review_regimes": {
+      "1": {
+        "n": 49,
+        "win_pct": 18.367346938775512,
+        "pf": 0.661348518272387,
+        "net_R": -13.259615007046094,
+        "net_usd_per_oz": -56.91677891583352,
+        "mean_risk": 5.575254448216625,
+        "net_ge25_pct": 2.0408163265306123,
+        "mfe_ge25_pct": 4.081632653061225,
+        "max_R_drawdown": 23.430554847569947,
+        "max_consecutive_losses": 8,
+        "median_net_usd_per_oz": -3.8568324819917548
+      },
+      "0": {
+        "n": 13,
+        "win_pct": 23.076923076923077,
+        "pf": 0.4322658355323366,
+        "net_R": -5.956795030539473,
+        "net_usd_per_oz": -40.677792697596864,
+        "mean_risk": 6.3510924294670215,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 8.190966475665533,
+        "max_consecutive_losses": 4,
+        "median_net_usd_per_oz": -3.2769311111444868
+      },
+      "-1": {
+        "n": 21,
+        "win_pct": 33.33333333333333,
+        "pf": 0.8514406404340148,
+        "net_R": -2.16440526676669,
+        "net_usd_per_oz": -24.28638226489311,
+        "mean_risk": 6.331329121368082,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 5.187049894993869,
+        "max_consecutive_losses": 5,
+        "median_net_usd_per_oz": -3.6627795481823413
+      }
+    },
+    "q1_sides": {
+      "1": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.016269707005366,
+        "net_usd_per_oz": -10.67525775610728,
+        "mean_risk": 10.504354978329502,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.016269707005366,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -10.67525775610728
+      },
+      "-1": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      }
+    },
+    "q1_regimes": {
+      "1": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.016269707005366,
+        "net_usd_per_oz": -10.67525775610728,
+        "mean_risk": 10.504354978329502,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.016269707005366,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -10.67525775610728
+      },
+      "0": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      },
+      "-1": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      }
+    },
+    "annual": {
+      "2019": {
+        "n": 25,
+        "win_pct": 32.0,
+        "pf": 1.4515701648858108,
+        "net_R": 8.143329603379275,
+        "net_usd_per_oz": 52.15972140889409,
+        "mean_risk": 3.244438456871394,
+        "net_ge25_pct": 4.0,
+        "mfe_ge25_pct": 12.0,
+        "max_R_drawdown": 11.6647780334645,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -1.8381264985061665
+      },
+      "2020": {
+        "n": 30,
+        "win_pct": 43.333333333333336,
+        "pf": 1.8869110183965716,
+        "net_R": 14.180958515571094,
+        "net_usd_per_oz": 125.92700469122205,
+        "mean_risk": 7.620360470282867,
+        "net_ge25_pct": 16.666666666666664,
+        "mfe_ge25_pct": 23.333333333333332,
+        "max_R_drawdown": 11.059329366042373,
+        "max_consecutive_losses": 7,
+        "median_net_usd_per_oz": -2.8370095681577783
+      },
+      "2021": {
+        "n": 29,
+        "win_pct": 48.275862068965516,
+        "pf": 1.6295259363314851,
+        "net_R": 9.943776453709617,
+        "net_usd_per_oz": 40.930667616324214,
+        "mean_risk": 5.450222964922149,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 3.4482758620689653,
+        "max_R_drawdown": 3.427103014302962,
+        "max_consecutive_losses": 3,
+        "median_net_usd_per_oz": -1.8637765873015277
+      },
+      "2022": {
+        "n": 51,
+        "win_pct": 23.52941176470588,
+        "pf": 1.0685355674313894,
+        "net_R": 2.7997012611225216,
+        "net_usd_per_oz": 7.051309854328071,
+        "mean_risk": 5.424439880141446,
+        "net_ge25_pct": 5.88235294117647,
+        "mfe_ge25_pct": 7.8431372549019605,
+        "max_R_drawdown": 18.02031037524124,
+        "max_consecutive_losses": 14,
+        "median_net_usd_per_oz": -3.752203823917227
+      },
+      "2023": {
+        "n": 28,
+        "win_pct": 32.142857142857146,
+        "pf": 1.016294790840851,
+        "net_R": 0.3136427952542329,
+        "net_usd_per_oz": -8.905565542422071,
+        "mean_risk": 5.01241299678214,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 3.571428571428571,
+        "max_R_drawdown": 7.631040161500804,
+        "max_consecutive_losses": 6,
+        "median_net_usd_per_oz": -2.492428856784144
+      },
+      "2024": {
+        "n": 31,
+        "win_pct": 22.58064516129032,
+        "pf": 0.6891813163741553,
+        "net_R": -7.809235816803241,
+        "net_usd_per_oz": -21.350156599274214,
+        "mean_risk": 5.6795787577618,
+        "net_ge25_pct": 3.225806451612903,
+        "mfe_ge25_pct": 3.225806451612903,
+        "max_R_drawdown": 16.5110751193363,
+        "max_consecutive_losses": 7,
+        "median_net_usd_per_oz": -3.6627795481823413
+      },
+      "2025": {
+        "n": 24,
+        "win_pct": 12.5,
+        "pf": 0.3002427182341729,
+        "net_R": -13.885222282803245,
+        "net_usd_per_oz": -91.6252317366272,
+        "mean_risk": 7.178961487245829,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 13.885222282803246,
+        "max_consecutive_losses": 8,
+        "median_net_usd_per_oz": -4.795511621945736
+      },
+      "2026": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.016269707005366,
+        "net_usd_per_oz": -10.67525775610728,
+        "mean_risk": 10.504354978329502,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.016269707005366,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -10.67525775610728
+      }
+    }
+  },
+  "cost2_delay0": {
+    "all": {
+      "n": 219,
+      "win_pct": 30.59360730593607,
+      "pf": 0.9356519116311792,
+      "net_R": -10.34707951503912,
+      "net_usd_per_oz": -14.18169731459048,
+      "mean_risk": 5.996684184261067,
+      "net_ge25_pct": 4.10958904109589,
+      "mfe_ge25_pct": 7.30593607305936,
+      "max_R_drawdown": 43.12410245656254,
+      "max_consecutive_losses": 14,
+      "median_net_usd_per_oz": -3.8636011904759227
+    },
+    "train": {
+      "n": 136,
+      "win_pct": 35.294117647058826,
+      "pf": 1.2055164183633988,
+      "net_R": 19.313468580535243,
+      "net_usd_per_oz": 155.21798420271026,
+      "mean_risk": 5.839248167650841,
+      "net_ge25_pct": 5.88235294117647,
+      "mfe_ge25_pct": 10.294117647058822,
+      "max_R_drawdown": 18.763483503403734,
+      "max_consecutive_losses": 14,
+      "median_net_usd_per_oz": -3.452615817204899
+    },
+    "review": {
+      "n": 82,
+      "win_pct": 23.170731707317074,
+      "pf": 0.5648395399972028,
+      "net_R": -28.630673906491698,
+      "net_usd_per_oz": -157.64749735429402,
+      "mean_risk": 6.191765904480858,
+      "net_ge25_pct": 1.2195121951219512,
+      "mfe_ge25_pct": 2.4390243902439024,
+      "max_R_drawdown": 31.70644032461764,
+      "max_consecutive_losses": 8,
+      "median_net_usd_per_oz": -4.370419822026923
+    },
+    "q1_2026": {
+      "n": 1,
+      "win_pct": 0.0,
+      "pf": 0.0,
+      "net_R": -1.029874189082661,
+      "net_usd_per_oz": -11.752184163006682,
+      "mean_risk": 11.411281385228904,
+      "net_ge25_pct": 0.0,
+      "mfe_ge25_pct": 0.0,
+      "max_R_drawdown": 1.029874189082661,
+      "max_consecutive_losses": 1,
+      "median_net_usd_per_oz": -11.752184163006682
+    },
+    "train_sides": {
+      "1": {
+        "n": 68,
+        "win_pct": 38.23529411764706,
+        "pf": 1.1577967403503349,
+        "net_R": 7.243617129360513,
+        "net_usd_per_oz": 96.12333774540005,
+        "mean_risk": 6.130772554164283,
+        "net_ge25_pct": 2.941176470588235,
+        "mfe_ge25_pct": 10.294117647058822,
+        "max_R_drawdown": 16.96377837533396,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -3.108240132831872
+      },
+      "-1": {
+        "n": 68,
+        "win_pct": 32.35294117647059,
+        "pf": 1.251086063534135,
+        "net_R": 12.069851451174726,
+        "net_usd_per_oz": 59.0946464573102,
+        "mean_risk": 5.5477237811374,
+        "net_ge25_pct": 8.823529411764707,
+        "mfe_ge25_pct": 10.294117647058822,
+        "max_R_drawdown": 18.142508229467527,
+        "max_consecutive_losses": 14,
+        "median_net_usd_per_oz": -3.582921791668298
+      }
+    },
+    "train_regimes": {
+      "1": {
+        "n": 57,
+        "win_pct": 38.59649122807017,
+        "pf": 1.355678204181317,
+        "net_R": 13.244459556256869,
+        "net_usd_per_oz": 83.83930070090081,
+        "mean_risk": 5.952711723890249,
+        "net_ge25_pct": 8.771929824561402,
+        "mfe_ge25_pct": 10.526315789473683,
+        "max_R_drawdown": 17.150327759607947,
+        "max_consecutive_losses": 16,
+        "median_net_usd_per_oz": -2.96928501796175
+      },
+      "0": {
+        "n": 18,
+        "win_pct": 44.44444444444444,
+        "pf": 2.7743071921505638,
+        "net_R": 17.554071866478196,
+        "net_usd_per_oz": 76.44124039162571,
+        "mean_risk": 5.288105805903115,
+        "net_ge25_pct": 5.555555555555555,
+        "mfe_ge25_pct": 11.11111111111111,
+        "max_R_drawdown": 3.281353312770932,
+        "max_consecutive_losses": 3,
+        "median_net_usd_per_oz": -3.5360785263713432
+      },
+      "-1": {
+        "n": 61,
+        "win_pct": 29.508196721311474,
+        "pf": 0.7548264811536427,
+        "net_R": -11.485062842199824,
+        "net_usd_per_oz": -5.062556889816285,
+        "mean_risk": 5.8958570169264615,
+        "net_ge25_pct": 3.278688524590164,
+        "mfe_ge25_pct": 9.836065573770492,
+        "max_R_drawdown": 23.827545317128646,
+        "max_consecutive_losses": 15,
+        "median_net_usd_per_oz": -3.702787194304704
+      }
+    },
+    "review_sides": {
+      "1": {
+        "n": 31,
+        "win_pct": 35.483870967741936,
+        "pf": 1.0338927547474597,
+        "net_R": 0.7304500799994817,
+        "net_usd_per_oz": -4.522820089402908,
+        "mean_risk": 6.331336131916215,
+        "net_ge25_pct": 3.225806451612903,
+        "mfe_ge25_pct": 3.225806451612903,
+        "max_R_drawdown": 6.555967959478022,
+        "max_consecutive_losses": 4,
+        "median_net_usd_per_oz": -3.9435679493973272
+      },
+      "-1": {
+        "n": 51,
+        "win_pct": 15.686274509803921,
+        "pf": 0.33634527624565436,
+        "net_R": -29.361123986491183,
+        "net_usd_per_oz": -153.1246772648911,
+        "mean_risk": 6.106929099569172,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 1.9607843137254901,
+        "max_R_drawdown": 34.00028117739903,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -4.897186653088631
+      }
+    },
+    "review_regimes": {
+      "1": {
+        "n": 49,
+        "win_pct": 18.367346938775512,
+        "pf": 0.5570576461997947,
+        "net_R": -18.166516290936727,
+        "net_usd_per_oz": -88.68508560944483,
+        "mean_risk": 5.998512686520705,
+        "net_ge25_pct": 2.0408163265306123,
+        "mfe_ge25_pct": 4.081632653061225,
+        "max_R_drawdown": 25.146166519152835,
+        "max_consecutive_losses": 8,
+        "median_net_usd_per_oz": -4.481583652212784
+      },
+      "0": {
+        "n": 12,
+        "win_pct": 25.0,
+        "pf": 0.3943287854650787,
+        "net_R": -5.943442250824807,
+        "net_usd_per_oz": -32.84343927855524,
+        "mean_risk": 6.050915666823774,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 8.599383103354436,
+        "max_consecutive_losses": 4,
+        "median_net_usd_per_oz": -3.42017840510304
+      },
+      "-1": {
+        "n": 21,
+        "win_pct": 33.33333333333333,
+        "pf": 0.6979567525319822,
+        "net_R": -4.520715364730162,
+        "net_usd_per_oz": -36.11897246629394,
+        "mean_risk": 6.72317592981098,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 6.824544278406538,
+        "max_consecutive_losses": 5,
+        "median_net_usd_per_oz": -4.182326556682508
+      }
+    },
+    "q1_sides": {
+      "1": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.029874189082661,
+        "net_usd_per_oz": -11.752184163006682,
+        "mean_risk": 11.411281385228904,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.029874189082661,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -11.752184163006682
+      },
+      "-1": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      }
+    },
+    "q1_regimes": {
+      "1": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.029874189082661,
+        "net_usd_per_oz": -11.752184163006682,
+        "mean_risk": 11.411281385228904,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.029874189082661,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -11.752184163006682
+      },
+      "0": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      },
+      "-1": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      }
+    },
+    "annual": {
+      "2019": {
+        "n": 26,
+        "win_pct": 34.61538461538461,
+        "pf": 1.3541668810075114,
+        "net_R": 6.726099795562975,
+        "net_usd_per_oz": 43.966559254660226,
+        "mean_risk": 3.4467775269527534,
+        "net_ge25_pct": 3.8461538461538463,
+        "mfe_ge25_pct": 11.538461538461538,
+        "max_R_drawdown": 12.234070766228353,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -2.2375251749381246
+      },
+      "2020": {
+        "n": 30,
+        "win_pct": 43.333333333333336,
+        "pf": 1.6720028210858835,
+        "net_R": 11.085522671234303,
+        "net_usd_per_oz": 107.11165413373271,
+        "mean_risk": 8.03086308342287,
+        "net_ge25_pct": 13.333333333333334,
+        "mfe_ge25_pct": 20.0,
+        "max_R_drawdown": 11.605730660487534,
+        "max_consecutive_losses": 7,
+        "median_net_usd_per_oz": -3.32599869980792
+      },
+      "2021": {
+        "n": 29,
+        "win_pct": 48.275862068965516,
+        "pf": 1.330487218739901,
+        "net_R": 5.40573774510511,
+        "net_usd_per_oz": 24.88744475645769,
+        "mean_risk": 5.801697900287653,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 3.4482758620689653,
+        "max_R_drawdown": 4.310880134392457,
+        "max_consecutive_losses": 3,
+        "median_net_usd_per_oz": -2.2777765873016698
+      },
+      "2022": {
+        "n": 51,
+        "win_pct": 23.52941176470588,
+        "pf": 0.9073389050744161,
+        "net_R": -3.9038916313671446,
+        "net_usd_per_oz": -20.747673942140423,
+        "mean_risk": 5.791105950759112,
+        "net_ge25_pct": 5.88235294117647,
+        "mfe_ge25_pct": 7.8431372549019605,
+        "max_R_drawdown": 18.763483503403734,
+        "max_consecutive_losses": 14,
+        "median_net_usd_per_oz": -4.323375000000041
+      },
+      "2023": {
+        "n": 28,
+        "win_pct": 32.142857142857146,
+        "pf": 0.8091521440818752,
+        "net_R": -3.869330309194121,
+        "net_usd_per_oz": -24.22728386262256,
+        "mean_risk": 5.350684922135729,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 3.571428571428571,
+        "max_R_drawdown": 8.953464829331342,
+        "max_consecutive_losses": 6,
+        "median_net_usd_per_oz": -2.9985513643619726
+      },
+      "2024": {
+        "n": 31,
+        "win_pct": 22.58064516129032,
+        "pf": 0.6000724203652474,
+        "net_R": -10.36340499633216,
+        "net_usd_per_oz": -39.2748457382305,
+        "mean_risk": 6.062948990177941,
+        "net_ge25_pct": 3.225806451612903,
+        "mfe_ge25_pct": 3.225806451612903,
+        "max_R_drawdown": 17.678509223378526,
+        "max_consecutive_losses": 7,
+        "median_net_usd_per_oz": -4.182326556682508
+      },
+      "2025": {
+        "n": 23,
+        "win_pct": 13.043478260869565,
+        "pf": 0.26562650642475044,
+        "net_R": -14.397938600965414,
+        "net_usd_per_oz": -94.14536775344092,
+        "mean_risk": 7.389313376178863,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 14.397938600965414,
+        "max_consecutive_losses": 8,
+        "median_net_usd_per_oz": -5.2773204045679245
+      },
+      "2026": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.029874189082661,
+        "net_usd_per_oz": -11.752184163006682,
+        "mean_risk": 11.411281385228904,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.029874189082661,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -11.752184163006682
+      }
+    }
+  },
+  "cost1_delay60": {
+    "all": {
+      "n": 218,
+      "win_pct": 30.73394495412844,
+      "pf": 1.0904696783900407,
+      "net_R": 14.068785443331642,
+      "net_usd_per_oz": 104.70472610792095,
+      "mean_risk": 5.6906384869905065,
+      "net_ge25_pct": 4.128440366972478,
+      "mfe_ge25_pct": 8.256880733944955,
+      "max_R_drawdown": 32.21828719888374,
+      "max_consecutive_losses": 14,
+      "median_net_usd_per_oz": -3.180895958962791
+    },
+    "train": {
+      "n": 134,
+      "win_pct": 35.07462686567165,
+      "pf": 1.3893480593906358,
+      "net_R": 35.524374930670945,
+      "net_usd_per_oz": 202.79903178102327,
+      "mean_risk": 5.5331963428065025,
+      "net_ge25_pct": 5.970149253731343,
+      "mfe_ge25_pct": 11.194029850746269,
+      "max_R_drawdown": 17.973583990120318,
+      "max_consecutive_losses": 14,
+      "median_net_usd_per_oz": -2.9067454633340537
+    },
+    "review": {
+      "n": 83,
+      "win_pct": 24.096385542168676,
+      "pf": 0.6770821102362081,
+      "net_R": -20.418165484127147,
+      "net_usd_per_oz": -93.35866583403958,
+      "mean_risk": 5.958386430387105,
+      "net_ge25_pct": 1.2048192771084338,
+      "mfe_ge25_pct": 3.614457831325301,
+      "max_R_drawdown": 28.20777241636852,
+      "max_consecutive_losses": 8,
+      "median_net_usd_per_oz": -3.89239778906666
+    },
+    "q1_2026": {
+      "n": 1,
+      "win_pct": 0.0,
+      "pf": 0.0,
+      "net_R": -1.037424003212166,
+      "net_usd_per_oz": -4.735639839062727,
+      "mean_risk": 4.564806505729393,
+      "net_ge25_pct": 0.0,
+      "mfe_ge25_pct": 0.0,
+      "max_R_drawdown": 1.037424003212166,
+      "max_consecutive_losses": 1,
+      "median_net_usd_per_oz": -4.735639839062727
+    },
+    "train_sides": {
+      "1": {
+        "n": 67,
+        "win_pct": 38.80597014925373,
+        "pf": 1.3589436901723961,
+        "net_R": 15.516143536877372,
+        "net_usd_per_oz": 136.487214770156,
+        "mean_risk": 5.8021113763279235,
+        "net_ge25_pct": 2.9850746268656714,
+        "mfe_ge25_pct": 10.44776119402985,
+        "max_R_drawdown": 14.944988268919285,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -2.231426934523894
+      },
+      "-1": {
+        "n": 67,
+        "win_pct": 31.343283582089555,
+        "pf": 1.4167215864415614,
+        "net_R": 20.008231393793576,
+        "net_usd_per_oz": 66.31181701086724,
+        "mean_risk": 5.264281309285082,
+        "net_ge25_pct": 8.955223880597014,
+        "mfe_ge25_pct": 11.940298507462686,
+        "max_R_drawdown": 17.229243545056015,
+        "max_consecutive_losses": 14,
+        "median_net_usd_per_oz": -3.029405952380927
+      }
+    },
+    "train_regimes": {
+      "1": {
+        "n": 57,
+        "win_pct": 36.84210526315789,
+        "pf": 1.3870124100597132,
+        "net_R": 14.660548549418932,
+        "net_usd_per_oz": 74.67562836875801,
+        "mean_risk": 5.904355181743372,
+        "net_ge25_pct": 8.771929824561402,
+        "mfe_ge25_pct": 12.280701754385964,
+        "max_R_drawdown": 18.585602388001725,
+        "max_consecutive_losses": 17,
+        "median_net_usd_per_oz": -2.354525768355569
+      },
+      "0": {
+        "n": 17,
+        "win_pct": 47.05882352941176,
+        "pf": 3.8018066236114207,
+        "net_R": 25.69751438998623,
+        "net_usd_per_oz": 91.46968047405907,
+        "mean_risk": 4.337017061040289,
+        "net_ge25_pct": 5.88235294117647,
+        "mfe_ge25_pct": 11.76470588235294,
+        "max_R_drawdown": 3.174047994511495,
+        "max_consecutive_losses": 3,
+        "median_net_usd_per_oz": -2.7194359954713216
+      },
+      "-1": {
+        "n": 60,
+        "win_pct": 30.0,
+        "pf": 0.8906097479695648,
+        "net_R": -4.833688008734221,
+        "net_usd_per_oz": 36.6537229382062,
+        "mean_risk": 5.519512908983571,
+        "net_ge25_pct": 3.3333333333333335,
+        "mfe_ge25_pct": 10.0,
+        "max_R_drawdown": 19.028941265843102,
+        "max_consecutive_losses": 14,
+        "median_net_usd_per_oz": -3.317452658497025
+      }
+    },
+    "review_sides": {
+      "1": {
+        "n": 32,
+        "win_pct": 37.5,
+        "pf": 1.291423437862058,
+        "net_R": 6.095254613189347,
+        "net_usd_per_oz": 30.07568598880782,
+        "mean_risk": 6.169850685865626,
+        "net_ge25_pct": 3.125,
+        "mfe_ge25_pct": 6.25,
+        "max_R_drawdown": 5.504959886039306,
+        "max_consecutive_losses": 3,
+        "median_net_usd_per_oz": -3.747094471693777
+      },
+      "-1": {
+        "n": 51,
+        "win_pct": 15.686274509803921,
+        "pf": 0.37342369555015614,
+        "net_R": -26.51342009731649,
+        "net_usd_per_oz": -123.43435182284745,
+        "mean_risk": 5.825702975969209,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 1.9607843137254901,
+        "max_R_drawdown": 32.88533664183688,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -3.9838100840238138
+      }
+    },
+    "review_regimes": {
+      "1": {
+        "n": 49,
+        "win_pct": 18.367346938775512,
+        "pf": 0.6331674742191219,
+        "net_R": -14.37223939500235,
+        "net_usd_per_oz": -65.51229789798788,
+        "mean_risk": 5.728499109975812,
+        "net_ge25_pct": 2.0408163265306123,
+        "mfe_ge25_pct": 4.081632653061225,
+        "max_R_drawdown": 23.975187333783825,
+        "max_consecutive_losses": 8,
+        "median_net_usd_per_oz": -3.9072272138203736
+      },
+      "0": {
+        "n": 14,
+        "win_pct": 28.57142857142857,
+        "pf": 0.5122462067544986,
+        "net_R": -5.129140700846062,
+        "net_usd_per_oz": -20.795087401142165,
+        "mean_risk": 6.713073756354139,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 7.142857142857142,
+        "max_R_drawdown": 8.038431077776742,
+        "max_consecutive_losses": 4,
+        "median_net_usd_per_oz": -2.899121230158786
+      },
+      "-1": {
+        "n": 20,
+        "win_pct": 35.0,
+        "pf": 0.9322659528715703,
+        "net_R": -0.9167853882787336,
+        "net_usd_per_oz": -7.051280534909569,
+        "mean_risk": 5.993329237217847,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 5.1956884843537425,
+        "max_consecutive_losses": 5,
+        "median_net_usd_per_oz": -3.909332081184124
+      }
+    },
+    "q1_sides": {
+      "1": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.037424003212166,
+        "net_usd_per_oz": -4.735639839062727,
+        "mean_risk": 4.564806505729393,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.037424003212166,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -4.735639839062727
+      },
+      "-1": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      }
+    },
+    "q1_regimes": {
+      "1": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.037424003212166,
+        "net_usd_per_oz": -4.735639839062727,
+        "mean_risk": 4.564806505729393,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.037424003212166,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -4.735639839062727
+      },
+      "0": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      },
+      "-1": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      }
+    },
+    "annual": {
+      "2019": {
+        "n": 25,
+        "win_pct": 32.0,
+        "pf": 1.4285328008263196,
+        "net_R": 7.758123903956886,
+        "net_usd_per_oz": 46.09604240513882,
+        "mean_risk": 3.3088466670274013,
+        "net_ge25_pct": 4.0,
+        "mfe_ge25_pct": 12.0,
+        "max_R_drawdown": 11.708040548527709,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -1.78524576024438
+      },
+      "2020": {
+        "n": 28,
+        "win_pct": 46.42857142857143,
+        "pf": 2.177906844474344,
+        "net_R": 17.218535496873923,
+        "net_usd_per_oz": 141.786343695267,
+        "mean_risk": 7.276056425500526,
+        "net_ge25_pct": 14.285714285714285,
+        "mfe_ge25_pct": 25.0,
+        "max_R_drawdown": 9.903309605354016,
+        "max_consecutive_losses": 6,
+        "median_net_usd_per_oz": -2.536980881913445
+      },
+      "2021": {
+        "n": 29,
+        "win_pct": 48.275862068965516,
+        "pf": 1.6625229379174085,
+        "net_R": 10.461473264532973,
+        "net_usd_per_oz": 38.598729997314024,
+        "mean_risk": 5.528498425763512,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 3.4482758620689653,
+        "max_R_drawdown": 3.4663720503073923,
+        "max_consecutive_losses": 3,
+        "median_net_usd_per_oz": -1.9587528601698057
+      },
+      "2022": {
+        "n": 52,
+        "win_pct": 23.076923076923077,
+        "pf": 1.0020183791513597,
+        "net_R": 0.08624226530716261,
+        "net_usd_per_oz": -23.68208431669656,
+        "mean_risk": 5.666752096139034,
+        "net_ge25_pct": 5.769230769230769,
+        "mfe_ge25_pct": 7.6923076923076925,
+        "max_R_drawdown": 17.97358399012033,
+        "max_consecutive_losses": 14,
+        "median_net_usd_per_oz": -3.870101399916654
+      },
+      "2023": {
+        "n": 27,
+        "win_pct": 33.33333333333333,
+        "pf": 1.0364374570395058,
+        "net_R": 0.663003994136963,
+        "net_usd_per_oz": 4.671388349515633,
+        "mean_risk": 4.857393168134405,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 3.7037037037037033,
+        "max_R_drawdown": 5.70115254597653,
+        "max_consecutive_losses": 5,
+        "median_net_usd_per_oz": -2.324556056477754
+      },
+      "2024": {
+        "n": 31,
+        "win_pct": 22.58064516129032,
+        "pf": 0.6843409143542474,
+        "net_R": -7.939488776161662,
+        "net_usd_per_oz": -19.844037452283935,
+        "mean_risk": 5.597654648974669,
+        "net_ge25_pct": 3.225806451612903,
+        "mfe_ge25_pct": 3.225806451612903,
+        "max_R_drawdown": 16.364628335067167,
+        "max_consecutive_losses": 7,
+        "median_net_usd_per_oz": -3.789794588752599
+      },
+      "2025": {
+        "n": 25,
+        "win_pct": 16.0,
+        "pf": 0.33903070253631873,
+        "net_R": -13.141680702102448,
+        "net_usd_per_oz": -78.18601673127131,
+        "mean_risk": 7.59476656257144,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 4.0,
+        "max_R_drawdown": 13.45105809801207,
+        "max_consecutive_losses": 8,
+        "median_net_usd_per_oz": -4.1352554676367035
+      },
+      "2026": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.037424003212166,
+        "net_usd_per_oz": -4.735639839062727,
+        "mean_risk": 4.564806505729393,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.037424003212166,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -4.735639839062727
+      }
+    }
+  },
+  "cost1_delay300": {
+    "all": {
+      "n": 219,
+      "win_pct": 30.136986301369863,
+      "pf": 1.1188571045540479,
+      "net_R": 18.542377710434565,
+      "net_usd_per_oz": 66.48725893633454,
+      "mean_risk": 5.682950371736156,
+      "net_ge25_pct": 3.65296803652968,
+      "mfe_ge25_pct": 8.21917808219178,
+      "max_R_drawdown": 37.100922711778125,
+      "max_consecutive_losses": 14,
+      "median_net_usd_per_oz": -3.1255035440888443
+    },
+    "train": {
+      "n": 134,
+      "win_pct": 34.32835820895522,
+      "pf": 1.4990471379521753,
+      "net_R": 44.71666370583573,
+      "net_usd_per_oz": 195.095202105493,
+      "mean_risk": 5.420805952997344,
+      "net_ge25_pct": 5.223880597014925,
+      "mfe_ge25_pct": 10.44776119402985,
+      "max_R_drawdown": 17.702976144251693,
+      "max_consecutive_losses": 14,
+      "median_net_usd_per_oz": -2.615223898353158
+    },
+    "review": {
+      "n": 84,
+      "win_pct": 23.809523809523807,
+      "pf": 0.6153160329901723,
+      "net_R": -25.149322169025186,
+      "net_usd_per_oz": -121.60527970727304,
+      "mean_risk": 6.087452688121955,
+      "net_ge25_pct": 1.1904761904761905,
+      "mfe_ge25_pct": 4.761904761904762,
+      "max_R_drawdown": 29.121966420407436,
+      "max_consecutive_losses": 8,
+      "median_net_usd_per_oz": -3.6355209902316545
+    },
+    "q1_2026": {
+      "n": 1,
+      "win_pct": 0.0,
+      "pf": 0.0,
+      "net_R": -1.0249638263759766,
+      "net_usd_per_oz": -7.002663461885394,
+      "mean_risk": 6.832107906329838,
+      "net_ge25_pct": 0.0,
+      "mfe_ge25_pct": 0.0,
+      "max_R_drawdown": 1.0249638263759766,
+      "max_consecutive_losses": 1,
+      "median_net_usd_per_oz": -7.002663461885394
+    },
+    "train_sides": {
+      "1": {
+        "n": 67,
+        "win_pct": 37.3134328358209,
+        "pf": 1.334203986484103,
+        "net_R": 14.839247832115001,
+        "net_usd_per_oz": 91.75066761817317,
+        "mean_risk": 5.672057809773771,
+        "net_ge25_pct": 1.4925373134328357,
+        "mfe_ge25_pct": 8.955223880597014,
+        "max_R_drawdown": 15.917786673289921,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -2.4275271149918756
+      },
+      "-1": {
+        "n": 67,
+        "win_pct": 31.343283582089555,
+        "pf": 1.6609708470707891,
+        "net_R": 29.87741587372073,
+        "net_usd_per_oz": 103.34453448731982,
+        "mean_risk": 5.169554096220916,
+        "net_ge25_pct": 8.955223880597014,
+        "mfe_ge25_pct": 11.940298507462686,
+        "max_R_drawdown": 15.673200251016588,
+        "max_consecutive_losses": 14,
+        "median_net_usd_per_oz": -3.0534615079032412
+      }
+    },
+    "train_regimes": {
+      "1": {
+        "n": 56,
+        "win_pct": 37.5,
+        "pf": 1.5415922918800173,
+        "net_R": 18.931930401465518,
+        "net_usd_per_oz": 113.085270268577,
+        "mean_risk": 5.674890903000025,
+        "net_ge25_pct": 8.928571428571429,
+        "mfe_ge25_pct": 12.5,
+        "max_R_drawdown": 16.682557065141744,
+        "max_consecutive_losses": 16,
+        "median_net_usd_per_oz": -2.2407956349372045
+      },
+      "0": {
+        "n": 18,
+        "win_pct": 44.44444444444444,
+        "pf": 4.790809585129677,
+        "net_R": 35.75774390223086,
+        "net_usd_per_oz": 96.059979622714,
+        "mean_risk": 4.446939374469846,
+        "net_ge25_pct": 5.555555555555555,
+        "mfe_ge25_pct": 11.11111111111111,
+        "max_R_drawdown": 3.1853416752088313,
+        "max_consecutive_losses": 3,
+        "median_net_usd_per_oz": -2.5970201843491756
+      },
+      "-1": {
+        "n": 60,
+        "win_pct": 28.333333333333332,
+        "pf": 0.7794327665336099,
+        "net_R": -9.973010597860643,
+        "net_usd_per_oz": -14.050047785798036,
+        "mean_risk": 5.475819973219757,
+        "net_ge25_pct": 1.6666666666666667,
+        "mfe_ge25_pct": 8.333333333333332,
+        "max_R_drawdown": 23.575860318161528,
+        "max_consecutive_losses": 15,
+        "median_net_usd_per_oz": -3.2017076007485175
+      }
+    },
+    "review_sides": {
+      "1": {
+        "n": 33,
+        "win_pct": 33.33333333333333,
+        "pf": 0.9493995039549646,
+        "net_R": -1.1699217347182809,
+        "net_usd_per_oz": -11.24117994723709,
+        "mean_risk": 6.400516900758021,
+        "net_ge25_pct": 3.0303030303030303,
+        "mfe_ge25_pct": 6.0606060606060606,
+        "max_R_drawdown": 6.789366471845279,
+        "max_consecutive_losses": 4,
+        "median_net_usd_per_oz": -3.2015686813568207
+      },
+      "-1": {
+        "n": 51,
+        "win_pct": 17.647058823529413,
+        "pf": 0.4325184491984905,
+        "net_R": -23.979400434306907,
+        "net_usd_per_oz": -110.36409976003596,
+        "mean_risk": 5.8848817270045,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 3.9215686274509802,
+        "max_R_drawdown": 31.592382575671923,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -3.96391785714306
+      }
+    },
+    "review_regimes": {
+      "1": {
+        "n": 50,
+        "win_pct": 20.0,
+        "pf": 0.5854660151823485,
+        "net_R": -16.682178595221284,
+        "net_usd_per_oz": -66.61671297818297,
+        "mean_risk": 6.03601482359486,
+        "net_ge25_pct": 2.0,
+        "mfe_ge25_pct": 6.0,
+        "max_R_drawdown": 24.036932946842036,
+        "max_consecutive_losses": 8,
+        "median_net_usd_per_oz": -3.695341043809587
+      },
+      "0": {
+        "n": 13,
+        "win_pct": 23.076923076923077,
+        "pf": 0.4860773268705269,
+        "net_R": -5.401624396850936,
+        "net_usd_per_oz": -30.84259396313027,
+        "mean_risk": 5.745935194636261,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 7.699858783783197,
+        "max_consecutive_losses": 4,
+        "median_net_usd_per_oz": -3.6285146825395693
+      },
+      "-1": {
+        "n": 21,
+        "win_pct": 33.33333333333333,
+        "pf": 0.7903601867567238,
+        "net_R": -3.0655191769529666,
+        "net_usd_per_oz": -24.14597276595982,
+        "mean_risk": 6.421339385344275,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 4.761904761904762,
+        "max_R_drawdown": 6.770307113126513,
+        "max_consecutive_losses": 5,
+        "median_net_usd_per_oz": -3.5347996031750357
+      }
+    },
+    "q1_sides": {
+      "1": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.0249638263759766,
+        "net_usd_per_oz": -7.002663461885394,
+        "mean_risk": 6.832107906329838,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.0249638263759766,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -7.002663461885394
+      },
+      "-1": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      }
+    },
+    "q1_regimes": {
+      "1": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.0249638263759766,
+        "net_usd_per_oz": -7.002663461885394,
+        "mean_risk": 6.832107906329838,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.0249638263759766,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -7.002663461885394
+      },
+      "0": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      },
+      "-1": {
+        "n": 0,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": 0.0,
+        "net_usd_per_oz": 0.0
+      }
+    },
+    "annual": {
+      "2019": {
+        "n": 26,
+        "win_pct": 34.61538461538461,
+        "pf": 1.6563756210625935,
+        "net_R": 11.838366259763621,
+        "net_usd_per_oz": 43.94330338321117,
+        "mean_risk": 3.5557671805708844,
+        "net_ge25_pct": 3.8461538461538463,
+        "mfe_ge25_pct": 11.538461538461538,
+        "max_R_drawdown": 11.641275560317162,
+        "max_consecutive_losses": 11,
+        "median_net_usd_per_oz": -1.7164325757737937
+      },
+      "2020": {
+        "n": 29,
+        "win_pct": 41.37931034482759,
+        "pf": 2.4792875284043228,
+        "net_R": 21.957496163274065,
+        "net_usd_per_oz": 149.23169087678684,
+        "mean_risk": 7.1162924013601225,
+        "net_ge25_pct": 13.793103448275861,
+        "mfe_ge25_pct": 24.137931034482758,
+        "max_R_drawdown": 10.866920492974288,
+        "max_consecutive_losses": 7,
+        "median_net_usd_per_oz": -2.482770270300098
+      },
+      "2021": {
+        "n": 29,
+        "win_pct": 48.275862068965516,
+        "pf": 1.7298198407199192,
+        "net_R": 11.502258299039067,
+        "net_usd_per_oz": 33.47574711213469,
+        "mean_risk": 5.612155139946316,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 3.4482758620689653,
+        "max_R_drawdown": 4.128765702397725,
+        "max_consecutive_losses": 3,
+        "median_net_usd_per_oz": -2.0353571428571557
+      },
+      "2022": {
+        "n": 50,
+        "win_pct": 22.0,
+        "pf": 0.9858058058141305,
+        "net_R": -0.5814570162410295,
+        "net_usd_per_oz": -31.555539266639734,
+        "mean_risk": 5.296261446178287,
+        "net_ge25_pct": 4.0,
+        "mfe_ge25_pct": 6.0,
+        "max_R_drawdown": 17.702976144251686,
+        "max_consecutive_losses": 14,
+        "median_net_usd_per_oz": -4.01385708397922
+      },
+      "2023": {
+        "n": 28,
+        "win_pct": 32.142857142857146,
+        "pf": 0.9838575689967378,
+        "net_R": -0.3116772641553367,
+        "net_usd_per_oz": -12.403046305633197,
+        "mean_risk": 5.198424854142876,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 3.571428571428571,
+        "max_R_drawdown": 6.582049797937248,
+        "max_consecutive_losses": 6,
+        "median_net_usd_per_oz": -2.7846363308445197
+      },
+      "2024": {
+        "n": 31,
+        "win_pct": 22.58064516129032,
+        "pf": 0.5130343576657234,
+        "net_R": -12.319343262748587,
+        "net_usd_per_oz": -22.71427168353064,
+        "mean_risk": 5.689744579071511,
+        "net_ge25_pct": 3.225806451612903,
+        "mfe_ge25_pct": 3.225806451612903,
+        "max_R_drawdown": 17.037712794913084,
+        "max_consecutive_losses": 7,
+        "median_net_usd_per_oz": -3.5347996031750357
+      },
+      "2025": {
+        "n": 25,
+        "win_pct": 16.0,
+        "pf": 0.3973023883945121,
+        "net_R": -12.518301642121259,
+        "net_usd_per_oz": -86.48796171810922,
+        "mean_risk": 7.576321917401073,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 8.0,
+        "max_R_drawdown": 12.518301642121259,
+        "max_consecutive_losses": 8,
+        "median_net_usd_per_oz": -4.960919561146131
+      },
+      "2026": {
+        "n": 1,
+        "win_pct": 0.0,
+        "pf": 0.0,
+        "net_R": -1.0249638263759766,
+        "net_usd_per_oz": -7.002663461885394,
+        "mean_risk": 6.832107906329838,
+        "net_ge25_pct": 0.0,
+        "mfe_ge25_pct": 0.0,
+        "max_R_drawdown": 1.0249638263759766,
+        "max_consecutive_losses": 1,
+        "median_net_usd_per_oz": -7.002663461885394
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "rows": 194,
+  "max_absolute_price_pnl_mfe_error": 6.821210263296962e-13,
+  "limit_first_touch_rechecks": 0,
+  "checks": [
+    "adverse gap",
+    "stop first",
+    "closed minute trailing update",
+    "never loosen stop",
+    "chronological FIFO",
+    "costs and carry",
+    "H1 ATR available at signal",
+    "no favorable limit fill-bar credit",
+    "preceding completed UTC level",
+    "closed bar sweep-reclaim-structure reconstruction",
+    "initial structural stop and buffer"
+  ],
+  "scope": "Reconstructs frozen accepted signals and exits; not a full independent enumeration of rejected or omitted signals."
+}
