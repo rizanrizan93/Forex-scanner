@@ -1,0 +1,1 @@
+{"status":"PASS","frames":12000,"warm_frames":9601,"native_prefix_comparisons":33,"confirmed":20,"buy":15,"sell":5,"checks":["native signal/ATR/anchor parity","prefix invariance","next-candle band","stop-first","gap","SELL spread","partial minute","coverage gap"]}

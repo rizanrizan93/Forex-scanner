@@ -3,6 +3,13 @@ from copy import deepcopy
 from unittest.mock import patch
 import pytest
 from fx_scanner.cbot_manual import project,validate,HASHES,macro_reason
+def load_script(name):
+ from pathlib import Path
+ import importlib.util
+ path=Path(__file__).resolve().parents[1]/'scripts'/(name+'.py')
+ spec=importlib.util.spec_from_file_location(name,path)
+ module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+ return module
 NOW=datetime(2026,10,21,12,0,10,tzinfo=UTC)
 def fixture():
  at=NOW.replace(second=0).isoformat();old=(NOW-timedelta(days=1)).isoformat()
@@ -40,11 +47,10 @@ def test_cbot_position_is_not_displayed_as_new_entry():
  r=project([c],m,n,now=NOW)['symbols'][0];assert r['status']=='POSISI_AKTIF' and r['entry'] is None
 
 def test_immutable_source_manifest():
- from scripts.run_cbot_manual import verify
- verify()
+ load_script('run_cbot_manual').verify()
 
 def test_reader_denies_every_order_message():
- from scripts.collect_cbot_manual import Reader
+ Reader=load_script('collect_cbot_manual').Reader
  from types import SimpleNamespace
  reader=object.__new__(Reader)
  for name in ['ProtoOANewOrderReq','ProtoOAAmendPositionSLTPReq','ProtoOACancelOrderReq','ProtoOAClosePositionReq']:
@@ -58,7 +64,7 @@ def test_cbots_tab_is_lazy_and_zone_tab_stays_clean():
  def fake_fetch():return p
  with patch.object(panel,'fetch',new=fake_fetch),patch('runpy.run_path') as run:
   app=AppTest.from_file(str(Path(__file__).resolve().parents[1]/'main.py'));app.session_state['rizan_pair']='cBots';app.run(timeout=15)
-  assert not app.exception;assert any(t.label=='cBots' for t in app.tabs);run.assert_not_called()
+  assert not app.exception;assert app.radio(key='rizan_pair').value=='cBots';run.assert_not_called()
   assert not app.expander;assert any('cBots' in h.value for h in app.subheader)
 
 

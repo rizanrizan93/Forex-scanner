@@ -2,6 +2,7 @@ using System.Text.Json;
 using X=Rizan.Portfolio.Xau;
 using E=Rizan.Portfolio.Eur;
 using Rizan.Portfolio;
+using Rizan.Indicators;
 var input=JsonDocument.Parse(File.ReadAllText(args[0])).RootElement;
 var now=input.GetProperty("as_of").GetDateTime();
 var results=new List<object>();
@@ -18,8 +19,10 @@ foreach(var symbol in new[]{"XAUUSD","EURUSD"}){
   var win=m5.Skip(n-49).Take(48).Select(c=>c.Close).ToArray();double mean=win.Average(),weighted=win.Select((v,i)=>i*v).Sum();
   double slope=(weighted-48d*47/2*mean)/(48d*(48d*48-1)/12);double fit=mean+slope*47/2;double sd=Math.Sqrt(win.Average(v=>Math.Pow(v-mean,2)));
   var signal=X.FrozenCore.XauSignal(bars,available);
+  var indicator=XauIndicatorCore.Build(bars,available);
   results.Add(new{symbol,bar_at=b.End(5),h1_bias=hb[^1],m15_bias=mb[^1],session_open=b.End(5).Hour>=12&&b.End(5).Hour<17&&(int)b.End(5).DayOfWeek>0&&(int)b.End(5).DayOfWeek<6,
    warmup_start=bars[0].OpenUtc,areas=new[]{new{side="BUY",low=fit-1.5*sd,high=fit-1.5*sd,condition="Close M5 kembali di atas batas channel, candle bullish, bias H1 dan M15 BUY"},new{side="SELL",low=previous.Max(c=>c.High),high=previous.Max(c=>c.High),condition="Sweep high 24 candle M5 lalu close bearish menembus low candle sweep − 0,05 ATR dalam 1–3 candle; bias H1 dan M15 SELL"}},
+   indicator=indicator.LastOrDefault()?.Display(),indicator_history=indicator.TakeLast(96).Select(x=>x.Display()).ToArray(),
    signal=signal==null?null:new{at=signal.AtUtc,side=signal.Side>0?"BUY":"SELL",atr=signal.Atr,anchor=signal.Anchor,distance=signal.Distance},target_r=5.5,stop_atr=2.4,depths=new[]{0d,.2,.4},addition_confirmation=true});
  }else{
   var eb=bars.Select(b=>new E.Candle(b.OpenUtc,b.Open,b.High,b.Low,b.Close)).ToList();

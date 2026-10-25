@@ -32,7 +32,7 @@ def project(calculations,market,native,*,now=None):
    c['reason']='Feed strategi BTC belum tersedia';rows.append(c);continue
   bar=stamp(c.get('bar_at'));limit=3660 if symbol=='BTCUSD' else (960 if symbol=='EURUSD' else 360)
   if not bar or not fresh(c.get('bar_at'),now,limit):
-   c.update(status='DATA_TERLAMBAT',reason='Candle strategi belum diperbarui',areas=[],signal=None);rows.append(c);continue
+   c.update(status='DATA_TERLAMBAT',reason='Candle strategi belum diperbarui',areas=[],signal=None,indicator=None,indicator_history=[]);rows.append(c);continue
   s=c.get('signal');c['status']='WATCH' if c.get('session_open') else 'WAIT';c['reason']='Menunggu pola dan penutupan candle sesuai strategi' if c.get('session_open') else 'Di luar jendela sinyal strategi'
   # The native window is <60 seconds for FX and <=5 seconds for BTC.
   valid_until=(stamp(s['at'])+timedelta(seconds=5 if symbol=='BTCUSD' else 60)) if s else None
@@ -83,6 +83,8 @@ def project(calculations,market,native,*,now=None):
   c['positions']=[p for p in market.get('positions',[]) if p.get('symbol')==symbol]
   if c['positions']:
    c.update(status='POSISI_AKTIF',reason='Posisi cBot teramati di broker; bukan entry baru',entry=None,sl=None,tp=None,layers=[])
+  from .cbot_indicator import attach_market
+  attach_market(c,market)
   rows.append(c)
  return {'contract':CONTRACT,'as_of':now.isoformat(),'market_observed_at':market.get('as_of'),'native_observed_at':native.get('as_of'),'source_commit':SOURCE_COMMIT,'source_release':'V1.3.0','execution_authority':False,'execution_influence':False,'symbols':rows}
 def validate(payload,*,now=None):
@@ -96,5 +98,5 @@ def validate(payload,*,now=None):
    c.update(status='DATA_TERLAMBAT' if not p['fresh'] else 'WAIT',reason='Data terlambat' if not p['fresh'] else 'Jendela entry sudah lewat; tunggu sinyal baru',entry=None,sl=None,tp=None,layers=[],signal=None)
    if not p['fresh']:
     c['reference_areas']=deepcopy(c.get('areas') or c.get('reference_areas') or []) if fresh(p.get('market_observed_at'),now,600) else []
-    c.update(areas=[],positions=[])
+    c.update(areas=[],positions=[],indicator=None,indicator_history=[],indicator_m1=[],indicator_quote={})
  return p
