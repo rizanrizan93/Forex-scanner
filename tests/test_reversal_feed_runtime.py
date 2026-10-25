@@ -101,3 +101,39 @@ def test_aligned_collector_removes_mandatory_one_minute_wait():
     feed.run_loop(seconds=400,cycle_fn=cycle,clock=lambda:elapsed[0],wall_clock=lambda:wall[0],sleeper=sleep,align_to_close=True)
     assert len(calls)==7
     assert elapsed[0]==400
+
+def test_expected_stale_market_data_does_not_fail_job():
+    elapsed = [0.]
+    calls = []
+    def collect(index):
+        calls.append(index)
+        raise feed.StalePriceSkip('Market closed')
+    def sleep(seconds):
+        elapsed[0] += seconds
+    assert feed.run_loop(seconds=900, interval=300, cycle_fn=collect,
+                         clock=lambda: elapsed[0], sleeper=sleep) == 3
+    assert calls == [1, 2, 3]
+
+
+def test_stale_market_data_resets_prior_real_failure_count():
+    elapsed = [0.]
+    def collect(index):
+        if index == 2:
+            raise feed.StalePriceSkip('Market closed')
+        raise ConnectionError('API unavailable')
+    def sleep(seconds):
+        elapsed[0] += seconds
+    with pytest.raises(RuntimeError, match='Three consecutive'):
+        feed.run_loop(seconds=1500, interval=300, cycle_fn=collect,
+                      clock=lambda: elapsed[0], sleeper=sleep)
+
+
+def test_real_failures_still_fail_closed():
+    elapsed = [0.]
+    def collect(index):
+        raise RuntimeError('Real collector bug')
+    def sleep(seconds):
+        elapsed[0] += seconds
+    with pytest.raises(RuntimeError, match='Three consecutive'):
+        feed.run_loop(seconds=900, interval=300, cycle_fn=collect,
+                      clock=lambda: elapsed[0], sleeper=sleep)

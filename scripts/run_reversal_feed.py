@@ -21,6 +21,9 @@ from fx_scanner.zone_v05 import blank as blank_v05, validate as validate_v05
 BRANCH = 'scanner-reversal-snapshots'
 PATHS = ('runtime/reversal_snapshot.json', 'runtime/manual_reversal_snapshot.json', 'runtime/zone_v05_snapshot.json')
 
+class StalePriceSkip(ValueError):
+    """Expected missing/stale market bars; never publish or report a fresh signal."""
+
 
 def github_api(method, path, payload=None):
     repository = os.environ['GITHUB_REPOSITORY']
@@ -43,7 +46,7 @@ def publish(data, manual, api=github_api, *, now=None, v05=None):
             raise ValueError('Reversal read-only guard')
     # A new commit must not make an old market price look fresh.
     if not validate(manual, now=now or datetime.now(UTC))['fresh']:
-        raise ValueError('Reversal collection stale or unavailable')
+        raise StalePriceSkip('Reversal collection stale or unavailable')
     contents = [json.dumps(item, allow_nan=False) for item in (data, manual, v05)]
     if any(len(raw.encode()) > 1_000_000 for raw in contents):
         raise ValueError('Reversal publication too large')
@@ -90,7 +93,13 @@ def cycle(index):
     mapping = json.loads(manual.read_text())
     mapping['publisher'] = {'cycle': index, 'refresh_seconds': 60,
                             'build': os.environ.get('GITHUB_SHA', '')}
-    sha = publish(data, mapping, v05=json.loads(v05.read_text()))
+    try:
+        sha = publish(data, mapping, v05=json.loads(v05.read_text()))
+    except StalePriceSkip:
+        # A stale artifact must not be uploaded as though publication succeeded.
+        for path in (snapshot, manual, v05):
+            path.unlink(missing_ok=True)
+        raise
     print('REVERSAL_PUBLISHED cycle=' + str(index) + ' at=' + mapping['as_of'] +
           ' candle=' + str(mapping.get('price_observed_at')) + ' commit=' + sha, flush=True)
 
@@ -105,6 +114,11 @@ def run_loop(*, seconds=19800, interval=60, cycle_fn=cycle,
         try:
             cycle_fn(index)
             failures = 0
+        except StalePriceSkip:
+            # Weekends and session closures are expected, not broken CI.
+            # Keep polling: an in-progress job may span market reopening.
+            failures = 0
+            print('REVERSAL_CYCLE_SKIPPED_STALE_PRICE cycle=' + str(index), flush=True)
         except Exception as exc:
             failures += 1
             print('REVERSAL_CYCLE_FAILED cycle=' + str(index) + ' type=' + type(exc).__name__, flush=True)
@@ -119,4 +133,5 @@ def run_loop(*, seconds=19800, interval=60, cycle_fn=cycle,
 
 
 if __name__ == '__main__':
-    run_loop(align_to_close=True)
+    # Hourly scheduler: finish before the next run; sample closed M5 bars.
+    run_loop(seconds=3300, interval=300, align_to_close=True)

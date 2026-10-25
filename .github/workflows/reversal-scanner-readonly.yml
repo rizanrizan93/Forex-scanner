@@ -23,7 +23,7 @@ jobs:
   scanner:
     if: github.repository == 'rizanrizan93/Forex-scanner'
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 65
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
@@ -49,5 +49,6 @@ jobs:
             artifacts/reversal_snapshot.json
             artifacts/manual_reversal_snapshot.json
             artifacts/zone_v05_snapshot.json
-          if-no-files-found: error
+          # Market closed: intentionally no fresh publication, not a job failure.
+          if-no-files-found: ignore
           retention-days: 7
