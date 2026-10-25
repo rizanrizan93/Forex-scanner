@@ -46,9 +46,11 @@ def test_stale_future_and_tampered_state_fail_closed():
 
 def test_source_files_remain_pinned_and_indicator_has_no_trading_calls():
     from pathlib import Path
-    from scripts.run_cbot_manual import verify
-    verify()
-    path=Path(__file__).resolve().parents[1]/'cbot_indicators/XauCbotIndicator/RizanXauCbotIndicator.cs'
+    import json,hashlib
+    root=Path(__file__).resolve().parents[1]
+    manifest=json.loads((root/'cbot_manual/SOURCE_MANIFEST.json').read_text())
+    assert all(hashlib.sha256((root/'cbot_manual'/p).read_bytes()).hexdigest()==sha for p,sha in manifest['files'].items())
+    path=root/'cbot_indicators/XauCbotIndicator/RizanXauCbotIndicator.cs'
     source=path.read_text()
     assert 'AccessRights=AccessRights.None' in source and ': Indicator' in source
     for token in ['ExecuteMarketOrder','ModifyPosition','PlaceLimitOrder','ClosePosition','LocalStorage','WebSocket']:
