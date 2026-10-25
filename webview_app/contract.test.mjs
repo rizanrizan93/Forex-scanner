@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {runtimeState,priceBounds} from './contract.js';
+const now=Date.parse('2026-10-21T12:00:10Z');
+const view=()=>({schema:'RIZAN_WEBVIEW_V1',mode:'live',execution_authority:false,execution_influence:false,status:'ENTRY_MANUAL',reason:'ready',source_as_of:new Date(now).toISOString(),candle_as_of:'2026-10-21T12:00:00Z',fresh_until:new Date(now+90000).toISOString(),entry_until:new Date(now+15000).toISOString(),entry:{side:'BUY',entry:4100,sl:4090,tp:4155}});
+test('entry expires at exact boundary without a network refresh',()=>{const v=view();assert.ok(runtimeState(v,now).entry);assert.equal(runtimeState(v,now+15000).entry,null);assert.equal(runtimeState(v,now+15000).status,'SINYAL_LEWAT');});
+test('stale publication hides all actionable output',()=>{const v=view();assert.equal(runtimeState(v,now+90000).fresh,false);assert.equal(runtimeState(v,now+90000).entry,null);});
+test('demo can never export a live entry',()=>{const v={...view(),mode:'demo'};assert.equal(runtimeState(v,now).entry,null);assert.equal(runtimeState(v,now).status,'MODE_UJI');});
+test('tampered authority and bad geometry are refused',()=>{let v=view();v.execution_authority=true;assert.equal(runtimeState(v,now).entry,null);v=view();v.entry.tp=4110;assert.equal(runtimeState(v,now).entry,null);});
+test('SELL geometry mirrors the original fixed 5.5R',()=>{const v=view();v.entry={side:'SELL',entry:4100,sl:4110,tp:4045};assert.equal(runtimeState(v,now).entry.side,'SELL');});
+test('future source clocks fail closed',()=>{const v=view();v.source_as_of=new Date(now+6000).toISOString();assert.equal(runtimeState(v,now).entry,null);});
+test('flat and empty chart domains remain finite',()=>{assert.deepEqual(priceBounds([]),[0,1]);const b=priceBounds([{low:4100,high:4100}]);assert.ok(b[0]<4100&&b[1]>4100);});
