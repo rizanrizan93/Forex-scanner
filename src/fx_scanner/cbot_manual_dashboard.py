@@ -54,7 +54,10 @@ def render_snapshot(payload):
   st.markdown('### '+symbol+' · '+labels.get(c['status'],c['status']))
   st.write(c['reason'])
   if c.get('bar_at'):st.caption('Candle strategi selesai '+wib(c['bar_at']))
-  for area in c.get('areas',[]) or c.get('reference_areas',[]):
+  if symbol=='XAUUSD':
+   from .cbot_indicator_dashboard import render as render_indicator
+   render_indicator(c,p)
+  for area in ([] if symbol=='XAUUSD' and c.get('indicator') else (c.get('areas',[]) or c.get('reference_areas',[]))):
    st.metric(area['side']+(' · area terakhir (bukan entry)' if not p['fresh'] else ' · level pemicu'),f"{area['low']:,.{digits}f}" if area['low']==area['high'] else f"{area['low']:,.{digits}f}–{area['high']:,.{digits}f}")
    st.caption(area['condition'])
   if symbol=='BTCUSD' and not c.get('error'):st.caption('BUY: momentum H4 bullish sesi awal UTC. SELL: breakout bawah range H1 dengan tren H4 bearish dan filter volatilitas/RSI. Feed Bitstamp tujuh hari; jadwal broker tetap wajib.')

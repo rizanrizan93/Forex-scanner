@@ -1,0 +1,16 @@
+{
+  "status": "BUILD_PASS",
+  "framework": "net6.0",
+  "sdk": "8.0.426",
+  "automate_package": "1.0.21",
+  "metadata_type": "Indicator",
+  "capabilities": [],
+  "broker_ui_runtime_tested": false,
+  "python_related_tests_passed": 28,
+  "legacy_adapter_fields_unchanged": true,
+  "live_execution_changed": false,
+  "pinned_source_manifest_unchanged": true,
+  "source_commit": "e357272fec03411a6e7c4d2397faf742d1a11047",
+  "artifact_sha256": "d0cdf710d130428d8512e0b3798d36c6aeb0417aee3031956050e8d294419c92",
+  "fixture_sha256": "d1295cb751dba99996916f811f6d871c23d695fdb5107aaad6a78538ef381d6e"
+}

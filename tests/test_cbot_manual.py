@@ -58,7 +58,7 @@ def test_cbots_tab_is_lazy_and_zone_tab_stays_clean():
  def fake_fetch():return p
  with patch.object(panel,'fetch',new=fake_fetch),patch('runpy.run_path') as run:
   app=AppTest.from_file(str(Path(__file__).resolve().parents[1]/'main.py'));app.session_state['rizan_pair']='cBots';app.run(timeout=15)
-  assert not app.exception;assert any(t.label=='cBots' for t in app.tabs);run.assert_not_called()
+  assert not app.exception;assert app.radio(key='rizan_pair').value=='cBots';run.assert_not_called()
   assert not app.expander;assert any('cBots' in h.value for h in app.subheader)
 
 
