@@ -1,0 +1,255 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "status": "BLOCKED_ENVIRONMENT_UNAVAILABLE_BEFORE_COMBINED_VALIDATION",
+  "user_goal": "Freeze BUFFER first; then improve EUR and BTC while keeping XAU settings fixed. Never touch LIVE.",
+  "frozen": {
+    "library_file_id": "libfile_65af9c91f2c08191b6aa3d1c00dca925",
+    "file_id": "file_00000000b17081f5ae6674d6c58d16f2",
+    "version": 0,
+    "filename": "RIZAN_BUFFER_FROZEN_V1_20261027.zip",
+    "bytes": 1335530,
+    "raw_reference": {
+      "library_file_id": "libfile_56be77c4e0408191a8b45d2aae5fa7a6",
+      "file_id": "file_0000000027e481f68475370c724ad873",
+      "version": 5,
+      "sha256": "7a126cc48457e10c9a1ced1496cdf875ed6a4df84bad11f23129b20c3073b0dd"
+    },
+    "config": {
+      "Id": "V4_BUFFER180",
+      "SafetyFraction": 0.9,
+      "XauRisk": 1.5,
+      "XauWindow": 180,
+      "XauZone": 0.8,
+      "XauPause": true,
+      "XauStep": 51.25,
+      "EurWindow": 60,
+      "EurPause": true,
+      "EurInitial": 0.8,
+      "EurBE": 3
+    },
+    "normal_B": {
+      "balance": 938466200.2239354,
+      "dd": 64.89756276978311,
+      "EUR_pnl": 19152193.156465188,
+      "BTC_pnl": 2864646.683420022,
+      "XAU_pnl": 916449260.3840327
+    },
+    "normal_A": {
+      "balance": 988747417.2738367,
+      "dd": 65.27357657931316
+    },
+    "cost2_B": {
+      "balance": 842853657.6189626,
+      "dd": 72.21320348415222
+    },
+    "cost2_A": {
+      "balance": 894066819.4963478,
+      "dd": 72.00245518606857
+    },
+    "immutable": true,
+    "no_live_changes": true
+  },
+  "research_checkpoint": {
+    "library_file_id": "libfile_f88b25751d188191903a8c06d2d0e27f",
+    "file_id": "file_00000000759481f59f7f646631a4aab8",
+    "version": 1,
+    "filename": "RIZAN_BUFFER_EUR_BTC_RESEARCH_20261027.zip",
+    "bytes": 485068,
+    "sha256": "6191eab32b918b9d42a39f51f5f4e6dadfabce206695e77234c3583d24a110d0",
+    "contents": "R2 source, DLL, configs, scripts, 1247 legacy and474 batch test evidence; six audited completed-case summaries and annual/monthly aggregates. Consult RESULTS.json for exact audited IDs. No raw transaction ledgers; large raw archive save failed."
+  },
+  "scope": {
+    "period_start": "2019-01-01",
+    "last_price_date": "2026-10-09",
+    "actual_cutoff": "2026-10-09T21:59:00Z",
+    "initial_cash": 100,
+    "topups": 0,
+    "model_leverage": 200,
+    "cost_stress": "commission/slippage/funding only; spread fixed",
+    "synthetic_M1": true,
+    "native_tick_certified": false,
+    "macro_vintage_certified": false,
+    "out_of_sample": false,
+    "shared_wallet": true
+  },
+  "validation": {
+    "legacy_checks_passed": 1247,
+    "new_batch_checks_passed": 474,
+    "fake_broker_only": true,
+    "live_orders": 0,
+    "R1_default_control": {
+      "all_original_output_fields_identical": true,
+      "observed_stdout": "CONTROL_R1_FULL_PARITY_PASS",
+      "balance": 938466200.2239354
+    },
+    "R2_default_control": {
+      "summary_balance": 938466200.2239354,
+      "summary_dd": 64.89756276978311,
+      "full_original_fields_comparison": "PENDING: command failed before execution when environment disconnected"
+    },
+    "excluded_R1_BTC": "Aborted before scoring: extra-order funding origin had to move from signal time to actual fill time. R1 result not used.",
+    "xau_source_lock_checked": true
+  },
+  "observed_screening_normal_B": [
+    {
+      "id": "EUR_W180",
+      "balance": 941558532.5064769,
+      "dd": 64.89756276978311,
+      "EUR_pnl_rounded_2dp": 18342244.83,
+      "audit_pass_observed": true
+    },
+    {
+      "id": "EUR_INITIAL100",
+      "balance": 949358805.026103,
+      "dd": 65.50482310023779,
+      "EUR_pnl_rounded_2dp": 21132502.1,
+      "BTC_pnl_rounded_2dp": 2881315.37,
+      "audit_pass_observed": true
+    },
+    {
+      "id": "EUR_TP14",
+      "balance": 939503084.0058436,
+      "dd": 64.91634443572029,
+      "EUR_pnl_rounded_2dp": 17884300.9,
+      "audit_pass_observed": true
+    },
+    {
+      "id": "EUR_SL075",
+      "balance": 944916844.4919255,
+      "dd": 68.58862719712963,
+      "EUR_pnl": 24171663.076539233,
+      "BTC_pnl": 2796944.939080446,
+      "XAU_pnl": 917948136.476291,
+      "audit_pass_observed": true
+    },
+    {
+      "id": "EUR_I100_SL075",
+      "balance": 934452860.8917804,
+      "dd": 68.54691099669267,
+      "audit_pass_observed": null,
+      "note": "Completed metrics observed; latest full audit not confirmed after disconnect. Below frozen B balance."
+    },
+    {
+      "id": "BTC_B8_R025",
+      "balance": 954701599.9473718,
+      "dd": 65.26195395385692,
+      "audit_pass_observed": null,
+      "note": "Completed metrics observed; consult saved checkpoint for any existing audit, otherwise re-audit."
+    },
+    {
+      "id": "BTC_B32_R025",
+      "balance": 970155086.5512081,
+      "dd": 65.27089327103148,
+      "BTC_pnl": 21888122.843829397,
+      "EUR_pnl": 19549910.261859804,
+      "XAU_pnl": 928716953.4455117,
+      "additional_BTC_orders": 1051,
+      "BTC_baskets": 95,
+      "audit_pass_observed": true
+    },
+    {
+      "id": "BTC_B32_R010",
+      "balance": 950042950.0963482,
+      "dd": 64.89756276978311,
+      "audit_pass_observed": null,
+      "note": "Completed metrics observed; consult saved checkpoint before claiming full audit."
+    },
+    {
+      "id": "BTC_B128_R025",
+      "balance": 969277569.7663804,
+      "dd": 65.27089327103148,
+      "audit_pass_observed": null,
+      "note": "Completed metrics observed; latest full audit not confirmed. Lower portfolio balance than BTC32."
+    }
+  ],
+  "proposed_selection": {
+    "EUR": "EUR_INITIAL100",
+    "BTC": "BTC_B32_R025",
+    "reason": "Highest normal B portfolio balance among known own-instrument profit improvements and DD<=72.2132%. Not out-of-sample.",
+    "combined_profile": [
+      {
+        "Id": "BUFFER_EUR_BTC_V2_CANDIDATE",
+        "SafetyFraction": 0.9,
+        "XauRisk": 1.5,
+        "XauWindow": 180,
+        "XauZone": 0.8,
+        "XauPause": true,
+        "XauStep": 51.25,
+        "EurWindow": 180,
+        "EurPause": true,
+        "EurInitial": 1,
+        "EurBE": 3,
+        "BtcBatchOrders": 32,
+        "BtcBatchRisk": 0.025,
+        "BtcBatchMargin": 0.1,
+        "BtcBatchSeconds": 180
+      }
+    ],
+    "defaults_explicit": {
+      "EurRisk": 1,
+      "EurStop": 0.845,
+      "EurTarget": 10,
+      "EurDepth": 1,
+      "PlanningCost": 1,
+      "BtcRisk": 1,
+      "BtcBuyTarget": 12,
+      "BtcSellTarget": 2,
+      "BtcBuyStop": 2,
+      "BtcSellStop": 1.5,
+      "BtcBuyHours": 128,
+      "BtcSellHours": 8,
+      "BtcBatchZone": 0.5
+    },
+    "combined_validation_started": false,
+    "combined_balance": null,
+    "not_promoted": true
+  },
+  "pending_steps": [
+    "Wait until an execution environment is genuinely available; do not repeatedly call exec while unavailable.",
+    "Restore frozen/reference and research Library ZIPs with fresh Library helpers. Use this supplemental state for results observed after research checkpoint v1.",
+    "Restore input CSVs/runtime/compiler if needed. Reference FX archive libfile_0443b246f9648191aca2c89be59b5e15; BTC GitHub artifact12168391422 in rizanrizan93/Forex-scanner.",
+    "Re-audit any still-available completed reports and compare CONTROL_R2 against frozen B for every original root field; extra BtcResearchStatus must all be false.",
+    "Construct proposed combined config by merging only Eur* from selected EUR and Btc* from selected BTC into frozen profile. Never blindly merge whole BTC profile over EUR, as it would restore frozen EUR parameters.",
+    "Run combined candidate in SIX independent 2019-2026 scenarios: pathsA/B x costs1/1.5/2, all with work_r2/replay/Replay.dll. These six runs have NOT been started.",
+    "Use <=6 replay processes on8GiB/8cores. Start2, wait for input loading to settle, then2, then2 to avoid memory peaks.",
+    "Audit cash/ledger/cost components/flat terminal/no errors/BTC terminal status/first fill deadline/order caps/XAU lock. Compare both normal paths, per-asset PnL, all6 DD and cost2 min with frozen benchmarks.",
+    "Save complete research report/source/summaries. Do not replace BUFFER FROZEN V1 or modify LIVE. If raw archive cannot be saved, say so and keep source, aggregates and audit proofs durable."
+  ],
+  "acceptance": {
+    "own_EUR_and_BTC_pnl_must_increase": true,
+    "both_normal_path_ending_balances_must_improve": true,
+    "all6_max_dd_ceiling_pct": 72.21320348415222,
+    "cost2_min_A_B_floor": 842853657.6189626,
+    "full_audits_required": true,
+    "not_native_or_live_certification": true
+  },
+  "implementation_notes": [
+    "R2 batch code is replay-only; native OnStart hard-blocks batch mode. Global portfolio risk20.75% and margin50% unchanged; per-orderBTC cap100 unchanged; safety0.9.",
+    "BTC batch active only when batch budget supports the100BTC reference order; before activation preserve legacy single-order sizing. Budget1%/2.5% is mode-batch allowance, not a universal first-order risk limit.",
+    "Extra children use actual fill timestamp for funding. First legacy-labelled order keeps frozen accounting for comparison. ResearchAccounting.cs belongs in work_r2/replay, not source, because legacy test stubs lack Position.EntryTime.",
+    "R2 records BTC basket PnL by signal across its children, retains unique per-child labels and cancels queue after bracket exit/deadline/expiry/budget failure. Remaining terminal queue/fault/exit flags are included in BtcResearchStatus.",
+    "run_batch_tests.py work_r2 passed474 checks; run_legacy_tests.py passed1247. Do not overwrite a running Replay.dll. build_batch.py accepts output-folder argument; use a distinct folder for revisions.",
+    "SourceXAU and frozen configuration remain intact; shared-wallet changes can still alter XAU sizes/fills/PnL.",
+    "Library large raw research replacement failed; compact checkpoint v1 succeeded. No evidence that latest unsaved raw reports remain accessible after environment loss."
+  ],
+  "recovery_inputs": {
+    "XAU": {
+      "filename": "xau_2012_2026.csv",
+      "sha256": "3fda8011082e2691b6ebe1a8a4da5fff8e4bf0fc07baf57506b7894d95fc1808"
+    },
+    "EUR": {
+      "filename": "eur_2012_2026.csv",
+      "sha256": "3c74ac5ccaeeac64f44693bc6bd4406e9225a9ef61dbb5f80756530f050506ec"
+    },
+    "BTC": {
+      "filename": "BTCUSD_M1.csv",
+      "sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504"
+    },
+    "runtime": "Microsoft.NETCore.App8.0.32",
+    "compiler": "Microsoft.Net.Compilers.Toolset4.11.0",
+    "research_root": "buffer_growth",
+    "reference_root": "v4_resume"
+  },
+  "interruption": "Last exec_command never started: 409 environment_offline. No six-scenario combined validation or local SELECTION.json creation is confirmed."
+}
