@@ -1,0 +1,37 @@
+name: Portfolio billion research input inventory only
+on:
+  push:
+    branches: [research/portfolio-billion-20261027]
+    paths: ['.github/workflows/portfolio-billion-inputs.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read research input names without changing VPS files or services
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +x
+          umask 077
+          task_dir=$(mktemp -d)
+          trap 'rm -rf "$task_dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$task_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$task_dir/hosts"
+          chmod 600 "$task_dir/key" "$task_dir/hosts"
+          ssh -i "$task_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$task_dir/hosts" -o ConnectTimeout=30 Rizanrizan@202.74.74.172 'nice -n 15 ionice -c 3 python3 -' < portfolio_billion_research/inventory_inputs.py > INPUT_INVENTORY.json
+          cat INPUT_INVENTORY.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PORTFOLIO-BILLION-INPUT-INVENTORY
+          path: INPUT_INVENTORY.json
+          retention-days: 7
