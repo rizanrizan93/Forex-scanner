@@ -35,3 +35,5 @@ jobs:
           name: PORTFOLIO-BILLION-INPUT-INVENTORY
           path: INPUT_INVENTORY.json
           retention-days: 7
+
+# Inventory revision 2: archived research prices only, read-only.
