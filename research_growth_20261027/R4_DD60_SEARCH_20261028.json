@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "snapshot_jakarta": "2026-10-28T13:59:31.052610+07:00",
-  "status": "Continuing existing control plus declared cap15/cap10 B2 priority runs; no restart; no valid candidate score yet",
+  "snapshot_jakarta": "2026-10-28T14:31:39.566743+07:00",
+  "status": "CONTROL_RAW_EXPORT_RECOVERY_RUNNING; complete candidate raw and cash audits retained, qualification still gated by all-fields default parity",
   "plan": {
     "created_jakarta": "2026-10-28T13:32:59.387392+07:00",
     "user_goal": "Highest ending balance while measured max equity DD is strictly below 60% across all six A/B x costs1/1.5/2; no claim this combination is guaranteed.",
@@ -171,7 +171,33 @@
       "working_directory": "r4_priority_cap10",
       "source": "r4_research/run_priority_cap10.py",
       "does_not_expand_parameter_grid": true
-    }
+    },
+    "conditional_lower_cap_extension": {
+      "caps": [
+        9,
+        7.5,
+        5
+      ],
+      "trigger": "Only if no primary grid candidate passes all-six worst DD<60. Stops without new replays when primary succeeds.",
+      "script": "r4_research/continue_if_needed.py",
+      "stage_file": "r4_research/CONTINUATION.json",
+      "overall_result_file": "r4_research/OVERALL_ACCEPTANCE.json",
+      "new_engine_changes": false,
+      "DD_and_ranking_rules_unchanged": true
+    },
+    "active_controller": "r4_research/resume_after_export_fix.py",
+    "export_recovery": {
+      "path": "/workspace/scratch/545ae3743761/r4_research/work_r4_export2/replay/Replay.dll",
+      "binary_sha256": "d43605b0d144a70fb59d477500a26a58167216b1e8f126e99ee23906feaf2df1",
+      "prior_binary_sha256": "3c4ae4ff63dcd1454a39e32486f625094fd62c501df9ee60d5624c57aef2d23a",
+      "economic_model_source_identical": true,
+      "only_change": "Verified atomic report export, independent plain JSON backup, gzip round-trip SHA256 and disk flush. No sizing/strategy/math changes.",
+      "all_instrument_source_identical": true,
+      "fake_broker_only": true,
+      "live_orders": 0,
+      "default_full_parity_must_be_rerun": true
+    },
+    "failed_control_raw": "Preserved in invalid_exports/CONTROL_B_C2; never use as complete raw evidence"
   },
   "build": {
     "binary_sha256": "3c4ae4ff63dcd1454a39e32486f625094fd62c501df9ee60d5624c57aef2d23a",
@@ -210,9 +236,10 @@
   },
   "binary_commit": "16e6411fc935bfda3fad89853f910b0aed41bb0e",
   "runtime_status": {
-    "stage": "default_parity_control_running",
-    "updated_jakarta": "2026-10-28T13:32:59.387863+07:00",
-    "complete": false
+    "stage": "default_control_export_recovery",
+    "updated_jakarta": "2026-10-28T14:22:19.813277+07:00",
+    "complete": false,
+    "reason": "Prior raw export truncated despite process return0. Re-run only control with atomic verified export; preserve valid candidate raw files."
   },
   "control_job": {
     "started_utc": 1793169179.389315,
@@ -398,6 +425,18 @@
     "r4_research/run_priority_cap10.py": {
       "sha256": "aa800a6fd852a96f308e58e726351bd0c500cbae3faa4d4dc19ebd6cf93d7971",
       "content": "from pathlib import Path\nimport json,sys,time,importlib.util,shutil,hashlib,subprocess\nfrom datetime import datetime\nfrom zoneinfo import ZoneInfo\n\nP=Path(__file__).resolve().parent;W=P.parent;R=W/'r4_priority_cap10'\nR.mkdir(exist_ok=True)\ndef put(p,x):\n    t=p.with_suffix(p.suffix+'.tmp');t.write_text(json.dumps(x,indent=2)+'\\n');t.replace(p)\ndef load(p):return json.loads(p.read_text())\nprofile=next(x for x in load(P/'PROFILES.json') if x['PortfolioCapPct']==10)\nput(R/(profile['Id']+'.json'),[profile])\nfor name in ['fresh_xau_tape.json','fresh_eur_tape.json']:\n    dest=R/name\n    if not dest.exists():dest.symlink_to(W/'buffer_growth'/name)\nfor name in ['FROZEN_BUFFER_LOCK.json','audit_growth.py']:shutil.copy2(P/name,R/name)\nspec=importlib.util.spec_from_file_location('r4_priority_replay_helper',W/'r3_research/run_r3.py');runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)\nrunner.ROOT=R;runner.BIN=P/'work_r4/replay/Replay.dll';runner.EXPECTED=load(P/'BUILD.json')['binary_sha256']\nassert hashlib.sha256(runner.BIN.read_bytes()).hexdigest()==runner.EXPECTED\nput(R/'STATUS.json',{'stage':'priority_cap10_B2_running','valid_score':False,'default_parity_required':True,'created_jakarta':datetime.now(ZoneInfo('Asia/Jakarta')).isoformat()})\nrunner.replay([profile],'B_COST2',2,'B')\norigin=R/'B_COST2';metrics=load(origin/'RUN.json.metrics.json');assert len(metrics)==1\nraw=origin/(profile['Id']+'_B_cost2.json.gz');assert raw.exists()\n# Precompute one already-declared grid cell. Install only before primary replay starts.\n# Even if primary starts in this small window, it begins with cap17.5; no cap15\n# writer exists yet. A late cache miss can cause duplicate compute, never a second\n# counted grid cell. Preserve the priority job's separate provenance.\ndest=P/'SCREEN_B_C2';job=dest/'JOB.json';installed=False\nif not job.exists():\n    dest.mkdir(exist_ok=True);target=dest/raw.name;tmp=target.with_suffix('.tmp');shutil.copy2(raw,tmp);tmp.replace(target)\n    shutil.copy2(origin/'JOB.json',dest/'PRECOMPUTED_CAP10_JOB.json')\n    row=dict(metrics[0],File=str(target));mp=dest/'RUN.json.metrics.json';existing=load(mp) if mp.exists() else [];existing=[v for v in existing if v['Profile']['Id']!=profile['Id']];put(mp,existing+[row]);installed=True\nput(R/'STATUS.json',{'stage':'awaiting_default_parity','valid_score':False,'primary_cache_installed':installed})\nwhile not (P/'DEFAULT_PARITY.json').exists():\n    state=load(P/'STATUS.json')\n    if state.get('stage')=='error':raise RuntimeError('Primary control failed; do not score priority report')\n    time.sleep(15)\nassert load(P/'DEFAULT_PARITY.json')['pass'],'Primary default parity failed; priority result is invalid'\nwith (R/'audit.log').open('w') as log:subprocess.run([sys.executable,str(R/'audit_growth.py')],stdout=log,stderr=log,check=True)\nrows=load(R/'RESULTS.json');assert len(rows)==1 and rows[0]['pass']\nx=rows[0];base=next(a for a in load(W/'r3_restore/r2/buffer_growth/RESULTS.json') if a['id']=='BUFFER_EUR_BTC_V2_CANDIDATE' and a['way']=='B' and a['cost']==2)\nresult={'id':profile['Id'],'way':'B','cost':2,'balance':x['balance'],'dd':x['dd'],'audit':True,'default_parity_pass':True,'scenario_DD_below60':x['dd']<60,'delta_balance_vs_R2':x['balance']-base['balance'],'delta_DD_vs_R2_pp':x['dd']-base['dd'],'full_six_complete':False,'primary_cache_installed':installed,'raw_sha256':x['sha256']}\nput(R/'PRELIMINARY_RESULT.json',result);put(R/'STATUS.json',{'stage':'audited_priority_result_ready','valid_score':True,'full_six_complete':False})\nprint(json.dumps(result,indent=2),flush=True)\n"
+    },
+    "r4_research/fix_export.py": {
+      "sha256": "4b89babc63762928d84e089673dfa6728a3086c5a4fed561d49a540017a3d3c4",
+      "content": "from pathlib import Path\nimport shutil,subprocess,hashlib,json\nR=Path(__file__).resolve().parent;W=R.parent;old=R/'work_r4';new=R/'work_r4_export2'\nassert not new.exists(),'Do not overwrite a running binary'\nshutil.copytree(old,new)\np=new/'replay/Replay.cs';s=p.read_text()\nline=' using(var f=File.Create(output))using(var gz=new System.IO.Compression.GZipStream(f,System.IO.Compression.CompressionLevel.Fastest))JsonSerializer.Serialize(gz,result);'\nassert s.count(line)==1\nhelper='''\nstatic void ExportVerified(object value,string output){\n var payload=JsonSerializer.SerializeToUtf8Bytes(value);\n string plainHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(payload)).ToLowerInvariant();\n string backup=output+\".raw.json\",temp=backup+\".tmp\";\n using(var f=new FileStream(temp,FileMode.Create,FileAccess.Write,FileShare.None)){f.Write(payload);f.Flush(true);}\n File.Move(temp,backup,true);\n for(int attempt=0;attempt<3;attempt++){\n  string candidate=output+\".tmp\";\n  using(var f=new FileStream(candidate,FileMode.Create,FileAccess.Write,FileShare.None)){\n   using(var gz=new System.IO.Compression.GZipStream(f,System.IO.Compression.CompressionLevel.Fastest,true)){gz.Write(payload);}\n   f.Flush(true);\n  }\n  string actual;\n  using(var f=File.OpenRead(candidate))using(var gz=new System.IO.Compression.GZipStream(f,System.IO.Compression.CompressionMode.Decompress))actual=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(gz)).ToLowerInvariant();\n  if(actual!=plainHash){if(attempt==2)throw new IOException(\"EXPORT_HASH_MISMATCH\");continue;}\n  File.Move(candidate,output,true);\n  string packedHash;\n  using(var f=File.OpenRead(output))packedHash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(f)).ToLowerInvariant();\n  File.WriteAllText(output+\".integrity.json\",JsonSerializer.Serialize(new{ExportVersion=2,Verified=true,UncompressedSha256=plainHash,UncompressedBytes=payload.Length,GzipSha256=packedHash}));\n  return;\n }\n throw new IOException(\"EXPORT_NOT_VERIFIED\");\n}\n\n'''\ns=s.replace(line,' ExportVerified(result,output);');needle='record struct Row';assert s.count(needle)==1;s=s.replace(needle,helper+needle);p.write_text(s)\nnormalized=s.replace(helper,'').replace(' ExportVerified(result,output);',line)\nassert normalized==(old/'replay/Replay.cs').read_text(),'Only export code may change'\nfor p in (old/'source').rglob('*.cs'):assert p.read_bytes()==(new/'source'/p.relative_to(old/'source')).read_bytes()\nrsp=(old/'replay/build.rsp').read_text().replace(str(old),str(new));(new/'replay/build.rsp').write_text(rsp)\nwith (new/'replay/compile_export2.log').open('w') as f:subprocess.run([str(W/'dotnet_host/dotnet'),str(W/'diagnostics/compiler/tasks/netcore/bincore/csc.dll'),'@'+str(new/'replay/build.rsp')],stdout=f,stderr=f,check=True)\ninfo={'path':str(new/'replay/Replay.dll'),'binary_sha256':hashlib.sha256((new/'replay/Replay.dll').read_bytes()).hexdigest(),'prior_binary_sha256':json.loads((R/'BUILD.json').read_text())['binary_sha256'],'economic_model_source_identical':True,'only_change':'Verified atomic report export, independent plain JSON backup, gzip round-trip SHA256 and disk flush. No sizing/strategy/math changes.','all_instrument_source_identical':True,'fake_broker_only':True,'live_orders':0,'default_full_parity_must_be_rerun':True}\n(R/'BUILD_EXPORT2.json').write_text(json.dumps(info,indent=2));print(json.dumps(info,indent=2))\n"
+    },
+    "r4_research/resume_after_export_fix.py": {
+      "sha256": "1cfdce29ab775aa93af94e4514381b80a89b294af7d8c5b40e8d30907e88e1f2",
+      "content": "from pathlib import Path\nimport json,gzip,hashlib,shutil,subprocess,sys,importlib.util\n\nR=Path(__file__).resolve().parent;W=R.parent\ndef read(p):return json.loads(p.read_text())\ndef put(p,v):\n    t=p.with_suffix(p.suffix+'.tmp');t.write_text(json.dumps(v,indent=2)+'\\n');t.replace(p)\nspec=importlib.util.spec_from_file_location('r4_recovery_controller',R/'run_r4.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)\nexport=read(R/'BUILD_EXPORT2.json');m.runner.BIN=Path(export['path']);m.runner.EXPECTED=export['binary_sha256']\nassert hashlib.sha256(m.runner.BIN.read_bytes()).hexdigest()==m.runner.EXPECTED\ndef quarantine(p,reason):\n    q=R/'invalid_exports'/p.parent.name;q.mkdir(parents=True,exist_ok=True)\n    target=q/p.name\n    if not target.exists():shutil.move(str(p),target)\n    put(q/(p.name+'.failure.json'),{'reason':reason,'original_path':str(p),'preserved_path':str(target),'sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'do_not_score':True})\ndef validate(p):\n    with gzip.open(p,'rt') as f:return json.load(f)\ndef main():\n    m.status('default_control_export_recovery',complete=False,reason='Prior raw export truncated despite process return0. Re-run only control with atomic verified export; preserve valid candidate raw files.')\n    old=R/'CONTROL_B_C2/BUFFER_EUR_BTC_V2_CANDIDATE_B_cost2.json.gz'\n    if old.exists():\n        try:validate(old)\n        except (ValueError,OSError,EOFError) as e:quarantine(old,repr(e))\n    control=read(R/'BUFFER_EUR_BTC_V2_CANDIDATE.json')[0];profiles=read(R/'PROFILES.json')\n    m.runner.replay([control],'CONTROL_B_C2_EXPORT2',2,'B')\n    p=R/'CONTROL_B_C2_EXPORT2'/f\"{control['Id']}_B_cost2.json.gz\";new=validate(p)\n    integrity=read(Path(str(p)+'.integrity.json'));assert integrity['Verified']\n    assert hashlib.sha256(p.read_bytes()).hexdigest()==integrity['GzipSha256']\n    plain=Path(str(p)+'.raw.json');assert hashlib.sha256(plain.read_bytes()).hexdigest()==integrity['UncompressedSha256']\n    ref=m.BASE/'COMBINED_B_C2'/p.name;old=validate(ref);checks={k:k in new and new[k]==v for k,v in old.items()}\n    parity={'pass':all(checks.values()),'fields':checks,'old_root_fields':len(old),'control_raw':str(p),'export_integrity':integrity,'export_recovery':True,'economic_model_source_identical_to_prior_R4':True,'R4_original_binary':read(R/'BUILD.json')['binary_sha256'],'R4_verified_export_binary':export['binary_sha256'],'no_excluded_fields':True}\n    put(R/'DEFAULT_PARITY.json',parity);assert parity['pass'],'Full default parity failed'\n    print('DEFAULT_FULL_PARITY_PASS_VERIFIED_EXPORT',flush=True)\n    # Reuse completed priority cells only when their complete raw JSON validates.\n    dest=R/'SCREEN_B_C2';dest.mkdir(exist_ok=True);cached=[]\n    for folder in ['r4_priority','r4_priority_cap10']:\n        origin=W/folder/'B_COST2';mp=origin/'RUN.json.metrics.json'\n        if not mp.exists():continue\n        for row in read(mp):\n            raw=origin/(row['Profile']['Id']+'_B_cost2.json.gz')\n            try:data=validate(raw)\n            except (ValueError,OSError,EOFError) as e:\n                put(origin/'EXPORT_REJECTED.json',{'raw':str(raw),'reason':repr(e),'must_replay':True});continue\n            assert data['Summary']==row['Summary']\n            target=dest/raw.name;shutil.copy2(raw,target);shutil.copy2(origin/'JOB.json',dest/(row['Profile']['Id']+'_PRECOMPUTED_JOB.json'))\n            cached.append(dict(row,File=str(target)))\n    validnames={Path(row['File']).name for row in cached}\n    for p in dest.glob('*.json.gz'):\n        if p.name not in validnames:\n            try:validate(p)\n            except (ValueError,OSError,EOFError) as e:quarantine(p,repr(e))\n    put(dest/'RUN.json.metrics.json',cached)\n    m.audit();m.status('screening_four_caps',complete=False,export_recovery_complete=True,priority_cells_reused=[x['Profile']['Id'] for x in cached])\n    m.pair(profiles,('SCREEN_B_C2',2,'B'),('SCREEN_B_C1',1,'B'))\n    rows=m.audit();selected=[]\n    for profile in profiles:\n        group=[x for x in rows if x['id']==profile['Id'] and x['way']=='B' and x['cost'] in [1,2]];assert len(group)==2\n        if max(x['dd'] for x in group)<60:selected.append(profile)\n    put(R/'SELECTION.json',{'selected_for_full6':[x['Id'] for x in selected],'rule':'Both B endpoints strictly below60 after audits, then full six','not_final':True})\n    if selected:\n        m.status('full_six_validation',complete=False,selected=[x['Id'] for x in selected])\n        m.pair(selected,('FINAL_A_C2',2,'A'),('FINAL_A_C1',1,'A'))\n        m.pair(selected,('FINAL_A_C1.5',1.5,'A'),('FINAL_B_C1.5',1.5,'B'))\n        rows=m.audit()\n    subprocess.run([sys.executable,str(R/'aggregate_growth.py')],check=True);m.finish(rows)\nif __name__=='__main__':\n    try:main()\n    except BaseException as e:m.status('error',complete=False,error=repr(e));raise\n"
+    },
+    "r4_research/continue_if_needed.py": {
+      "sha256": "e57147738fe27cde6041b93804206cfc1b85cab509677481a974f43491c6eec5",
+      "content": "from pathlib import Path\nimport json,time,sys,shutil,subprocess,importlib.util\n\nP=Path(__file__).resolve().parent;W=P.parent;E=W/'r4_lower_caps'\nE.mkdir(exist_ok=True)\ndef read(p):return json.loads(p.read_text())\ndef put(p,v):\n    t=p.with_suffix(p.suffix+'.tmp');t.write_text(json.dumps(v,indent=2)+'\\n');t.replace(p)\ndef state(stage,**kw):\n    v={'stage':stage,'caps_if_needed':[9,7.5,5],'directory':str(E),'script':str(Path(__file__).resolve()),**kw}\n    put(P/'CONTINUATION.json',v);put(E/'STATUS.json',v)\n\nstate('queued_only_if_primary_finishes_without_DD60_candidate',complete=False)\nwhile True:\n    s=read(P/'STATUS.json')\n    if s.get('stage')=='error':state('blocked_by_primary_error',complete=False,error=s);sys.exit(1)\n    if s.get('complete'):break\n    time.sleep(15)\nprimary=read(P/'ACCEPTANCE.json')\nif primary.get('best_balance_under_60_DD'):\n    put(P/'OVERALL_ACCEPTANCE.json',{'primary':primary,'extension_not_needed':True,'best_balance_under_60_DD':primary['best_balance_under_60_DD']})\n    state('not_needed_primary_target_passed',complete=True);sys.exit(0)\nassert read(P/'DEFAULT_PARITY.json')['pass']\nstate('testing_lower_cap_guards',complete=False)\ntd=E/'risk_validation';td.mkdir(exist_ok=True)\nsource=(P/'RiskCapTests.cs').read_text();old='new[]{10d,12.5,15,17.5,20.75}';assert source.count(old)==1\n(td/'RiskCapTests.cs').write_text(source.replace(old,'new[]{5d,7.5,9,10,12.5,15,17.5,20.75}'))\nrsp=(P/'risk_validation/build.rsp').read_text().replace(str(P/'risk_validation/Tests.dll'),str(td/'Tests.dll')).replace(str(P/'RiskCapTests.cs'),str(td/'RiskCapTests.cs'))\n(td/'build.rsp').write_text(rsp)\nhost=W/'dotnet_host/dotnet';compiler=W/'diagnostics/compiler/tasks/netcore/bincore/csc.dll'\nwith (td/'compile.log').open('w') as f:subprocess.run([str(host),str(compiler),'@'+str(td/'build.rsp')],stdout=f,stderr=f,check=True)\nshutil.copy2(P/'risk_validation/Tests.runtimeconfig.json',td/'Tests.runtimeconfig.json')\nwith (td/'result.json').open('w') as f,(td/'events.log').open('w') as err:subprocess.run([str(host),str(td/'Tests.dll')],stdout=f,stderr=err,check=True)\nassert read(td/'result.json')['Pass'] and read(td/'result.json')['Checks']==577\nspec=importlib.util.spec_from_file_location('r4_controller_extension',P/'run_r4.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)\nm.R=E;m.runner.ROOT=E\nif (P/'BUILD_EXPORT2.json').exists():\n    export=read(P/'BUILD_EXPORT2.json');m.runner.BIN=Path(export['path']);m.runner.EXPECTED=export['binary_sha256']\nseed=read(m.BASE/'BUFFER_EUR_BTC_V2_CANDIDATE.json')[0]\nprofiles=[]\nfor cap in [9,7.5,5]:\n    x=dict(seed,Id='R4_CAP_'+str(cap).replace('.','p'),PortfolioCapPct=cap);profiles.append(x);put(E/(x['Id']+'.json'),[x])\nput(E/'PROFILES.json',profiles)\nput(E/'PLAN.json',{'trigger':'No primary-grid candidate meets measured worst DD<60 across full six. This extension was queued before the primary result, without changing the target.','caps':[9,7.5,5],'highest_balance_priority':True,'same_R4_binary':read(P/'BUILD.json')['binary_sha256'],'same_frozen_R2_seed':True,'native_or_LIVE_changes':False,'old_profit_thresholds_still_reported':True})\nfor name in ['audit_growth.py','aggregate_growth.py','FROZEN_BUFFER_LOCK.json','DEFAULT_PARITY.json']:shutil.copy2(P/name,E/name)\nfor name in ['fresh_xau_tape.json','fresh_eur_tape.json']:\n    q=E/name\n    if not q.exists():q.symlink_to(W/'buffer_growth'/name)\nstate('lower_caps_B1_B2_running',complete=False)\nm.pair(profiles,('SCREEN_B_C2',2,'B'),('SCREEN_B_C1',1,'B'))\nrows=m.audit();chosen=[]\nfor x in profiles:\n    a=[v for v in rows if v['id']==x['Id']]\n    assert len(a)==2\n    if max(v['dd'] for v in a)<60:chosen.append(x)\nput(E/'SELECTION.json',{'selected_for_full6':[x['Id'] for x in chosen],'target_unchanged':'strictly below60, both B endpoints, then full six'})\nif chosen:\n    state('lower_caps_full_six_running',complete=False,selected=[x['Id'] for x in chosen])\n    m.pair(chosen,('FINAL_A_C2',2,'A'),('FINAL_A_C1',1,'A'))\n    m.pair(chosen,('FINAL_A_C1.5',1.5,'A'),('FINAL_B_C1.5',1.5,'B'))\n    rows=m.audit()\nsubprocess.run([sys.executable,str(E/'aggregate_growth.py')],check=True)\nm.finish(rows)\nextension=read(E/'ACCEPTANCE.json')\nreport=(E/'REPORT.md').read_text().replace('Batas sizing global yang diuji:17,5%,15%,12,5%,10%.','Batas sizing global tambahan yang diuji:9%,7,5%,5%.').replace('termasuk kontrol','dengan kontrol yang diwarisi dari putaran utama')\n(E/'REPORT.md').write_text(report)\ncombined={'primary':primary,'extension':extension,'tested_unique_configurations':7,'best_balance_under_60_DD':extension['best_balance_under_60_DD'],'target_rule_unchanged':'Max ending balance among audited full-six candidates with worst DD strictly below60. Old BUFFER/R2 profit criteria remain separate.','raw_durable_save_confirmed':False}\nput(P/'OVERALL_ACCEPTANCE.json',combined)\nstate('primary_and_extension_complete',complete=True,best=combined['best_balance_under_60_DD'])\nprint(json.dumps(combined,indent=2),flush=True)\n"
     }
   },
   "changed_CSharp_sha256": {
@@ -408,7 +447,7 @@
   "new_DD_under60_proven": false,
   "source_persisted_on_research_branch": true,
   "final_raw_archive_saved": false,
-  "restore_note": "Restore frozen R2 package and original data/runtime paths. Decode the pinned .dll.gz.b64 artifact to exact work_r4/replay/Replay.dll; verify DLL SHA. Restore the .runtimeconfig.json from the R2 runtime config. Restore source files below including r3 replay helper dependency. Never rebuild or overwrite frozen/running DLLs. Existing outputs are not evidence of a surviving process after workspace loss.",
+  "restore_note": "Use active_entrypoint, not the old run_r4.py main. Restore BOTH pinned research binaries: original in work_r4/replay/Replay.dll, verified-export binary in work_r4_export2/replay/Replay.dll. Preserve original BUILD.json and new BUILD_EXPORT2.json. No economic-model source changes in export2. Completed cap15/cap10 raw must not be rerun if valid. Recover the full default gate before qualifying candidates. Conditional continuation handles lower caps only if primary all-six target fails. Raw Library persistence remains blocked by quota.",
   "control_latest_log": "MONTH BUFFER_EUR_BTC_V2_CANDIDATE_B 2026-04-01 balance=518131420.87595004 requests=65558 positions=0 ack=0",
   "priority_runtime_status": {
     "stage": "priority_cap15_B2_running",
@@ -576,6 +615,387 @@
         "pid": 7
       },
       "latest_log": "MONTH R4_CAP_10_B 2025-10-01 balance=29018249.9730671 requests=14091 positions=0 ack=0"
+    }
+  },
+  "active_entrypoint": "r4_research/resume_after_export_fix.py",
+  "verified_export_build": {
+    "path": "/workspace/scratch/545ae3743761/r4_research/work_r4_export2/replay/Replay.dll",
+    "binary_sha256": "d43605b0d144a70fb59d477500a26a58167216b1e8f126e99ee23906feaf2df1",
+    "prior_binary_sha256": "3c4ae4ff63dcd1454a39e32486f625094fd62c501df9ee60d5624c57aef2d23a",
+    "economic_model_source_identical": true,
+    "only_change": "Verified atomic report export, independent plain JSON backup, gzip round-trip SHA256 and disk flush. No sizing/strategy/math changes.",
+    "all_instrument_source_identical": true,
+    "fake_broker_only": true,
+    "live_orders": 0,
+    "default_full_parity_must_be_rerun": true
+  },
+  "verified_export_artifact": {
+    "repository_path": "research_growth_20261027/R4_EXPORT2_DLL_20261028.dll.gz.b64",
+    "dll_sha256": "d43605b0d144a70fb59d477500a26a58167216b1e8f126e99ee23906feaf2df1",
+    "gzip_sha256": "32b9ac110909b5a70d976e7cc7e6625562257cf77197ea77b48fe2b80f4bb7cb",
+    "base64_characters": 189508,
+    "encoding": "base64(gzip(research Replay.dll)), gzip mtime0",
+    "replay_only": true,
+    "economic_model_unchanged": true
+  },
+  "verified_export_binary_commit": "f88d9af756c7369c068f0b1028d53faf332b370f",
+  "export_verification_test": {
+    "pass": true,
+    "million_records_roundtrip": 1000000,
+    "gzip_CRC_valid": true,
+    "sha256_matches": true,
+    "plain_backup_matches": true
+  },
+  "conditional_continuation": {
+    "stage": "queued_only_if_primary_finishes_without_DD60_candidate",
+    "caps_if_needed": [
+      9,
+      7.5,
+      5
+    ],
+    "directory": "/workspace/scratch/545ae3743761/r4_lower_caps",
+    "script": "/workspace/scratch/545ae3743761/r4_research/continue_if_needed.py",
+    "complete": false
+  },
+  "failed_control_export": {
+    "reason": "Incomplete gzip/JSON despite process return0; not accepted. Partial raw preserved, not repaired using frozen reference.",
+    "metadata": {
+      "reason": "EOFError('Compressed file ended before the end-of-stream marker was reached')",
+      "original_path": "/workspace/scratch/545ae3743761/r4_research/CONTROL_B_C2/BUFFER_EUR_BTC_V2_CANDIDATE_B_cost2.json.gz",
+      "preserved_path": "/workspace/scratch/545ae3743761/r4_research/invalid_exports/CONTROL_B_C2/BUFFER_EUR_BTC_V2_CANDIDATE_B_cost2.json.gz",
+      "sha256": "bc3d8bec708db192622fcefd1faa91d49044d8c5d1897c1f98d91d50b61adc12",
+      "do_not_score": true
+    }
+  },
+  "recovery_control_job": {
+    "started_utc": 1793172143.2124648,
+    "cmd": [
+      "/workspace/scratch/545ae3743761/dotnet_host/dotnet",
+      "/workspace/scratch/545ae3743761/r4_research/work_r4_export2/replay/Replay.dll",
+      "/workspace/scratch/545ae3743761/v4_resume/inputs/xau_2012_2026.csv",
+      "/workspace/scratch/545ae3743761/v4_resume/inputs/eur_2012_2026.csv",
+      "/workspace/scratch/545ae3743761/r4_research/CONTROL_B_C2_EXPORT2/RUN.json",
+      "full",
+      "2019",
+      "2026"
+    ],
+    "cost": 2,
+    "way": "B",
+    "profiles": [
+      {
+        "Id": "BUFFER_EUR_BTC_V2_CANDIDATE",
+        "SafetyFraction": 0.9,
+        "XauRisk": 1.5,
+        "XauWindow": 180,
+        "XauZone": 0.8,
+        "XauPause": true,
+        "XauStep": 51.25,
+        "EurWindow": 180,
+        "EurPause": true,
+        "EurInitial": 1,
+        "EurBE": 3,
+        "BtcBatchOrders": 32,
+        "BtcBatchRisk": 0.025,
+        "BtcBatchMargin": 0.1,
+        "BtcBatchSeconds": 180,
+        "PortfolioCapPct": 20.75
+      }
+    ],
+    "binary_sha256": "d43605b0d144a70fb59d477500a26a58167216b1e8f126e99ee23906feaf2df1",
+    "environment": {
+      "BTC_INPUT": "/workspace/scratch/545ae3743761/v4_resume/inputs/BTCUSD_M1.csv",
+      "BTC_SIGNAL_CACHE": "/workspace/scratch/545ae3743761/v4_resume/baseline/results/FROZEN_7D130_A.json.btc_signals.json",
+      "RESEARCH_CONFIGS": "/workspace/scratch/545ae3743761/r4_research/CONTROL_B_C2_EXPORT2/profiles.json",
+      "RESEARCH_PATH": "B",
+      "RESEARCH_COST": "2",
+      "DOTNET_GCHeapHardLimit": "0xC0000000",
+      "DOTNET_gcServer": "1",
+      "DOTNET_GCHeapCount": "4"
+    },
+    "pid": 6
+  },
+  "candidate_mechanical_audits_not_yet_qualified": {
+    "r4_priority": {
+      "rows": [
+        {
+          "file": "B_COST2/R4_CAP_15_B_cost2.json.gz",
+          "id": "R4_CAP_15",
+          "way": "B",
+          "cost": 2,
+          "pass": true,
+          "checks": {
+            "cash": true,
+            "ledger": true,
+            "no_topup": true,
+            "flat": true,
+            "no_errors": true,
+            "no_quarantine": true,
+            "no_accounting_block": true,
+            "no_forced_close": true,
+            "positive_equity": true,
+            "cutoff": true,
+            "all_orders_accounted": true,
+            "per_order_volume_caps": true,
+            "pnl_components": true,
+            "xau_parameters_locked": true,
+            "portfolio_cap_matches_config": true,
+            "btc_terminal_safety": true,
+            "initial_deadline": true,
+            "btc_child_deadline": true
+          },
+          "balance": 750394667.141257,
+          "dd": 75.80958620915821,
+          "pf": 2.444448816179979,
+          "winrate_pct": 48.88507718696398,
+          "baskets": 583,
+          "orders": 88678,
+          "symbols": {
+            "XAUUSD": {
+              "orders": 48610,
+              "baskets": 304,
+              "pnl": 737169805.7849629,
+              "winning_baskets": 128,
+              "gain": 1186082373.9941962,
+              "loss": 448912568.2092754,
+              "pf": 2.642123339797572,
+              "winrate_pct": 42.10526315789474
+            },
+            "BTCUSD": {
+              "orders": 778,
+              "baskets": 95,
+              "pnl": 5435345.038783112,
+              "winning_baskets": 51,
+              "gain": 46224050.57457394,
+              "loss": 40788705.5357908,
+              "pf": 1.133256129788522,
+              "winrate_pct": 53.68421052631579
+            },
+            "EURUSD": {
+              "orders": 39290,
+              "baskets": 184,
+              "pnl": 7789416.317532777,
+              "winning_baskets": 106,
+              "gain": 37590501.351609185,
+              "loss": 29801085.034075342,
+              "pf": 1.2613802923157738,
+              "winrate_pct": 57.608695652173914
+            }
+          },
+          "initial_fill_max_seconds": 6,
+          "btc_additional_orders": 683,
+          "btc_latest_child_seconds": 162,
+          "sha256": "c79d46a569f7dc46d599039eaea8cb9dd8d5c93541f40fc3a80e19c19b51f2b9",
+          "summary": {
+            "cfg": {
+              "Name": "R4_CAP_15_B",
+              "Leverage": 200,
+              "Cost": 2,
+              "Delay": 2,
+              "Adverse": false,
+              "Risk": 15,
+              "Xau": true,
+              "Eur": true,
+              "Bypass": false,
+              "LastYear": 2026,
+              "Btc": true
+            },
+            "TerminalForcedCloses": 0,
+            "AccountingBlock": false,
+            "BtcFridayCloseHourUTC": 22,
+            "HistoricalBrokerSessionCertified": false,
+            "BtcWeekendBarsFiltered": false,
+            "BtcIndicatorSource": "Bitstamp OHLC all seven days",
+            "NativeSevenDayFeedIntegrated": true,
+            "NativeBridgeIOExercisedInReplay": false,
+            "NativeBridgeProtocolTestedSeparately": true,
+            "SyntheticReliableHeartbeats": true,
+            "BrokerEntryDelaySeconds": 2,
+            "DelayPolicy": "broker 2 seconds",
+            "SpreadStressMultiplier": 1,
+            "BtcLeverage": 200,
+            "BrokerRequestsWithDelay": 88678,
+            "BrokerMarketEvents": 177356,
+            "ClockMonotonic": true,
+            "SyntheticSeconds": 4681812,
+            "AckWaitingSeconds": 3202113,
+            "MovingQuotesWhileAckPending": 2986674,
+            "PathDependsOnPosition": false,
+            "RealTicks": false,
+            "MacroVintageCertified": false,
+            "EndingBalance": 750394667.141257,
+            "TotalContributions": 100,
+            "TradingPnl": 750394567.141257,
+            "CashFlowAdjustedMaxDDPct": 75.80958620915821,
+            "EndingNav": 750394667.141257,
+            "MinimumEquity": 84.02675179581153,
+            "MaxEquityDDPct": 75.80958620915821,
+            "MaxClosedDDPct": 72.93595348587799,
+            "PF": 2.444448816179979,
+            "Baskets": 583,
+            "AcceptedBaskets": 583,
+            "RejectedFillBaskets": 0,
+            "XauBaskets": 304,
+            "EurBaskets": 184,
+            "BtcBaskets": 95,
+            "BtcBuys": 360,
+            "BtcSells": 418,
+            "EndingEquity": 750394667.141257,
+            "OpenPositions": 0,
+            "ActualCutoff": "2026-10-09T21:59:00Z",
+            "PortfolioBudgetBlocks": 382,
+            "MaxObservedMarginPct": 55.69976948173823,
+            "MaxObservedOpenRiskPct": 17.64476253738689,
+            "OverlapMinutes": 23,
+            "MissingActiveInstrumentMinutes": 2832,
+            "Orders": 88678,
+            "Quarantined": false,
+            "ErrorCount": 0
+          }
+        }
+      ],
+      "default_full_parity_confirmed": false,
+      "selection_or_promotion_allowed": false
+    },
+    "r4_priority_cap10": {
+      "rows": [
+        {
+          "file": "B_COST2/R4_CAP_10_B_cost2.json.gz",
+          "id": "R4_CAP_10",
+          "way": "B",
+          "cost": 2,
+          "pass": true,
+          "checks": {
+            "cash": true,
+            "ledger": true,
+            "no_topup": true,
+            "flat": true,
+            "no_errors": true,
+            "no_quarantine": true,
+            "no_accounting_block": true,
+            "no_forced_close": true,
+            "positive_equity": true,
+            "cutoff": true,
+            "all_orders_accounted": true,
+            "per_order_volume_caps": true,
+            "pnl_components": true,
+            "xau_parameters_locked": true,
+            "portfolio_cap_matches_config": true,
+            "btc_terminal_safety": true,
+            "initial_deadline": true,
+            "btc_child_deadline": true
+          },
+          "balance": 348791739.4138574,
+          "dd": 78.34624213770361,
+          "pf": 2.134155471106287,
+          "winrate_pct": 48.19897084048027,
+          "baskets": 583,
+          "orders": 52383,
+          "symbols": {
+            "XAUUSD": {
+              "orders": 26003,
+              "baskets": 305,
+              "pnl": 353560896.0658221,
+              "winning_baskets": 129,
+              "gain": 613563487.2700924,
+              "loss": 260002591.20429623,
+              "pf": 2.3598360478953335,
+              "winrate_pct": 42.295081967213115
+            },
+            "BTCUSD": {
+              "orders": 513,
+              "baskets": 95,
+              "pnl": -3559431.9254110386,
+              "winning_baskets": 51,
+              "gain": 22304118.846871506,
+              "loss": 25863550.772282556,
+              "pf": 0.8623765175651898,
+              "winrate_pct": 53.68421052631579
+            },
+            "EURUSD": {
+              "orders": 25867,
+              "baskets": 183,
+              "pnl": -1209824.72652157,
+              "winning_baskets": 101,
+              "gain": 20458272.03194959,
+              "loss": 21668096.75847101,
+              "pf": 0.9441656210046023,
+              "winrate_pct": 55.19125683060109
+            }
+          },
+          "initial_fill_max_seconds": 6,
+          "btc_additional_orders": 418,
+          "btc_latest_child_seconds": 95,
+          "sha256": "ba120db97d363e012a12c5e7d617362b8c921e1fb5f5899a3cd8f1f6cbc50e68",
+          "summary": {
+            "cfg": {
+              "Name": "R4_CAP_10_B",
+              "Leverage": 200,
+              "Cost": 2,
+              "Delay": 2,
+              "Adverse": false,
+              "Risk": 10,
+              "Xau": true,
+              "Eur": true,
+              "Bypass": false,
+              "LastYear": 2026,
+              "Btc": true
+            },
+            "TerminalForcedCloses": 0,
+            "AccountingBlock": false,
+            "BtcFridayCloseHourUTC": 22,
+            "HistoricalBrokerSessionCertified": false,
+            "BtcWeekendBarsFiltered": false,
+            "BtcIndicatorSource": "Bitstamp OHLC all seven days",
+            "NativeSevenDayFeedIntegrated": true,
+            "NativeBridgeIOExercisedInReplay": false,
+            "NativeBridgeProtocolTestedSeparately": true,
+            "SyntheticReliableHeartbeats": true,
+            "BrokerEntryDelaySeconds": 2,
+            "DelayPolicy": "broker 2 seconds",
+            "SpreadStressMultiplier": 1,
+            "BtcLeverage": 200,
+            "BrokerRequestsWithDelay": 52383,
+            "BrokerMarketEvents": 104766,
+            "ClockMonotonic": true,
+            "SyntheticSeconds": 4405958,
+            "AckWaitingSeconds": 3121421,
+            "MovingQuotesWhileAckPending": 2943948,
+            "PathDependsOnPosition": false,
+            "RealTicks": false,
+            "MacroVintageCertified": false,
+            "EndingBalance": 348791739.4138574,
+            "TotalContributions": 100,
+            "TradingPnl": 348791639.4138574,
+            "CashFlowAdjustedMaxDDPct": 78.34624213770361,
+            "EndingNav": 348791739.4138574,
+            "MinimumEquity": 86.86697382727614,
+            "MaxEquityDDPct": 78.34624213770361,
+            "MaxClosedDDPct": 75.71163397296297,
+            "PF": 2.134155471106287,
+            "Baskets": 583,
+            "AcceptedBaskets": 583,
+            "RejectedFillBaskets": 0,
+            "XauBaskets": 305,
+            "EurBaskets": 183,
+            "BtcBaskets": 95,
+            "BtcBuys": 247,
+            "BtcSells": 266,
+            "EndingEquity": 348791739.4138574,
+            "OpenPositions": 0,
+            "ActualCutoff": "2026-10-09T21:59:00Z",
+            "PortfolioBudgetBlocks": 1014,
+            "MaxObservedMarginPct": 53.157993379589,
+            "MaxObservedOpenRiskPct": 11.12768684292206,
+            "OverlapMinutes": 23,
+            "MissingActiveInstrumentMinutes": 2832,
+            "Orders": 52383,
+            "Quarantined": false,
+            "ErrorCount": 0
+          }
+        }
+      ],
+      "default_full_parity_confirmed": false,
+      "selection_or_promotion_allowed": false
     }
   }
 }
