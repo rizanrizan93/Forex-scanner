@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "snapshot_jakarta": "2026-10-28T13:46:30.312307+07:00",
-  "status": "CONTROL_AND_PRIORITY_CAP15_ACTUALLY_RUNNING; all scoring remains gated by full R2 default parity",
+  "snapshot_jakarta": "2026-10-28T13:59:31.052610+07:00",
+  "status": "Continuing existing control plus declared cap15/cap10 B2 priority runs; no restart; no valid candidate score yet",
   "plan": {
     "created_jakarta": "2026-10-28T13:32:59.387392+07:00",
     "user_goal": "Highest ending balance while measured max equity DD is strictly below 60% across all six A/B x costs1/1.5/2; no claim this combination is guaranteed.",
@@ -161,6 +161,15 @@
       "reason": "User requests seeing results; precompute one declared grid cell while default control finishes. No scoring before full default parity passes. Cache into primary only before its replay starts, otherwise treat as extra independent replicate.",
       "working_directory": "r4_priority",
       "source": "r4_research/run_priority.py",
+      "does_not_expand_parameter_grid": true
+    },
+    "priority_precompute_additional": {
+      "cap": 10,
+      "way": "B",
+      "cost": 2,
+      "reason": "Precompute another declared grid cell with settled inputs and free memory; no scoring before full default parity passes.",
+      "working_directory": "r4_priority_cap10",
+      "source": "r4_research/run_priority_cap10.py",
       "does_not_expand_parameter_grid": true
     }
   },
@@ -385,6 +394,10 @@
     "r4_research/run_priority.py": {
       "sha256": "3ad29b75b1338f26ec7bc057cc00691f72afc418989e4f2dbff8068e069959b1",
       "content": "from pathlib import Path\nimport json,sys,time,importlib.util,shutil,hashlib,subprocess\nfrom datetime import datetime\nfrom zoneinfo import ZoneInfo\n\nP=Path(__file__).resolve().parent;W=P.parent;R=W/'r4_priority'\nR.mkdir(exist_ok=True)\ndef put(p,x):\n    t=p.with_suffix(p.suffix+'.tmp');t.write_text(json.dumps(x,indent=2)+'\\n');t.replace(p)\ndef load(p):return json.loads(p.read_text())\nprofile=next(x for x in load(P/'PROFILES.json') if x['PortfolioCapPct']==15)\nput(R/(profile['Id']+'.json'),[profile])\nfor name in ['fresh_xau_tape.json','fresh_eur_tape.json']:\n    dest=R/name\n    if not dest.exists():dest.symlink_to(W/'buffer_growth'/name)\nfor name in ['FROZEN_BUFFER_LOCK.json','audit_growth.py']:shutil.copy2(P/name,R/name)\nspec=importlib.util.spec_from_file_location('r4_priority_replay_helper',W/'r3_research/run_r3.py');runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)\nrunner.ROOT=R;runner.BIN=P/'work_r4/replay/Replay.dll';runner.EXPECTED=load(P/'BUILD.json')['binary_sha256']\nassert hashlib.sha256(runner.BIN.read_bytes()).hexdigest()==runner.EXPECTED\nput(R/'STATUS.json',{'stage':'priority_cap15_B2_running','valid_score':False,'default_parity_required':True,'created_jakarta':datetime.now(ZoneInfo('Asia/Jakarta')).isoformat()})\nrunner.replay([profile],'B_COST2',2,'B')\norigin=R/'B_COST2';metrics=load(origin/'RUN.json.metrics.json');assert len(metrics)==1\nraw=origin/(profile['Id']+'_B_cost2.json.gz');assert raw.exists()\n# Precompute one already-declared grid cell. Install only before primary replay starts.\n# Even if primary starts in this small window, it begins with cap17.5; no cap15\n# writer exists yet. A late cache miss can cause duplicate compute, never a second\n# counted grid cell. Preserve the priority job's separate provenance.\ndest=P/'SCREEN_B_C2';job=dest/'JOB.json';installed=False\nif not job.exists():\n    dest.mkdir(exist_ok=True);target=dest/raw.name;tmp=target.with_suffix('.tmp');shutil.copy2(raw,tmp);tmp.replace(target)\n    shutil.copy2(origin/'JOB.json',dest/'PRECOMPUTED_CAP15_JOB.json')\n    row=dict(metrics[0],File=str(target));put(dest/'RUN.json.metrics.json',[row]);installed=True\nput(R/'STATUS.json',{'stage':'awaiting_default_parity','valid_score':False,'primary_cache_installed':installed})\nwhile not (P/'DEFAULT_PARITY.json').exists():\n    state=load(P/'STATUS.json')\n    if state.get('stage')=='error':raise RuntimeError('Primary control failed; do not score priority report')\n    time.sleep(15)\nassert load(P/'DEFAULT_PARITY.json')['pass'],'Primary default parity failed; priority result is invalid'\nwith (R/'audit.log').open('w') as log:subprocess.run([sys.executable,str(R/'audit_growth.py')],stdout=log,stderr=log,check=True)\nrows=load(R/'RESULTS.json');assert len(rows)==1 and rows[0]['pass']\nx=rows[0];base=next(a for a in load(W/'r3_restore/r2/buffer_growth/RESULTS.json') if a['id']=='BUFFER_EUR_BTC_V2_CANDIDATE' and a['way']=='B' and a['cost']==2)\nresult={'id':profile['Id'],'way':'B','cost':2,'balance':x['balance'],'dd':x['dd'],'audit':True,'default_parity_pass':True,'scenario_DD_below60':x['dd']<60,'delta_balance_vs_R2':x['balance']-base['balance'],'delta_DD_vs_R2_pp':x['dd']-base['dd'],'full_six_complete':False,'primary_cache_installed':installed,'raw_sha256':x['sha256']}\nput(R/'PRELIMINARY_RESULT.json',result);put(R/'STATUS.json',{'stage':'audited_priority_result_ready','valid_score':True,'full_six_complete':False})\nprint(json.dumps(result,indent=2),flush=True)\n"
+    },
+    "r4_research/run_priority_cap10.py": {
+      "sha256": "aa800a6fd852a96f308e58e726351bd0c500cbae3faa4d4dc19ebd6cf93d7971",
+      "content": "from pathlib import Path\nimport json,sys,time,importlib.util,shutil,hashlib,subprocess\nfrom datetime import datetime\nfrom zoneinfo import ZoneInfo\n\nP=Path(__file__).resolve().parent;W=P.parent;R=W/'r4_priority_cap10'\nR.mkdir(exist_ok=True)\ndef put(p,x):\n    t=p.with_suffix(p.suffix+'.tmp');t.write_text(json.dumps(x,indent=2)+'\\n');t.replace(p)\ndef load(p):return json.loads(p.read_text())\nprofile=next(x for x in load(P/'PROFILES.json') if x['PortfolioCapPct']==10)\nput(R/(profile['Id']+'.json'),[profile])\nfor name in ['fresh_xau_tape.json','fresh_eur_tape.json']:\n    dest=R/name\n    if not dest.exists():dest.symlink_to(W/'buffer_growth'/name)\nfor name in ['FROZEN_BUFFER_LOCK.json','audit_growth.py']:shutil.copy2(P/name,R/name)\nspec=importlib.util.spec_from_file_location('r4_priority_replay_helper',W/'r3_research/run_r3.py');runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)\nrunner.ROOT=R;runner.BIN=P/'work_r4/replay/Replay.dll';runner.EXPECTED=load(P/'BUILD.json')['binary_sha256']\nassert hashlib.sha256(runner.BIN.read_bytes()).hexdigest()==runner.EXPECTED\nput(R/'STATUS.json',{'stage':'priority_cap10_B2_running','valid_score':False,'default_parity_required':True,'created_jakarta':datetime.now(ZoneInfo('Asia/Jakarta')).isoformat()})\nrunner.replay([profile],'B_COST2',2,'B')\norigin=R/'B_COST2';metrics=load(origin/'RUN.json.metrics.json');assert len(metrics)==1\nraw=origin/(profile['Id']+'_B_cost2.json.gz');assert raw.exists()\n# Precompute one already-declared grid cell. Install only before primary replay starts.\n# Even if primary starts in this small window, it begins with cap17.5; no cap15\n# writer exists yet. A late cache miss can cause duplicate compute, never a second\n# counted grid cell. Preserve the priority job's separate provenance.\ndest=P/'SCREEN_B_C2';job=dest/'JOB.json';installed=False\nif not job.exists():\n    dest.mkdir(exist_ok=True);target=dest/raw.name;tmp=target.with_suffix('.tmp');shutil.copy2(raw,tmp);tmp.replace(target)\n    shutil.copy2(origin/'JOB.json',dest/'PRECOMPUTED_CAP10_JOB.json')\n    row=dict(metrics[0],File=str(target));mp=dest/'RUN.json.metrics.json';existing=load(mp) if mp.exists() else [];existing=[v for v in existing if v['Profile']['Id']!=profile['Id']];put(mp,existing+[row]);installed=True\nput(R/'STATUS.json',{'stage':'awaiting_default_parity','valid_score':False,'primary_cache_installed':installed})\nwhile not (P/'DEFAULT_PARITY.json').exists():\n    state=load(P/'STATUS.json')\n    if state.get('stage')=='error':raise RuntimeError('Primary control failed; do not score priority report')\n    time.sleep(15)\nassert load(P/'DEFAULT_PARITY.json')['pass'],'Primary default parity failed; priority result is invalid'\nwith (R/'audit.log').open('w') as log:subprocess.run([sys.executable,str(R/'audit_growth.py')],stdout=log,stderr=log,check=True)\nrows=load(R/'RESULTS.json');assert len(rows)==1 and rows[0]['pass']\nx=rows[0];base=next(a for a in load(W/'r3_restore/r2/buffer_growth/RESULTS.json') if a['id']=='BUFFER_EUR_BTC_V2_CANDIDATE' and a['way']=='B' and a['cost']==2)\nresult={'id':profile['Id'],'way':'B','cost':2,'balance':x['balance'],'dd':x['dd'],'audit':True,'default_parity_pass':True,'scenario_DD_below60':x['dd']<60,'delta_balance_vs_R2':x['balance']-base['balance'],'delta_DD_vs_R2_pp':x['dd']-base['dd'],'full_six_complete':False,'primary_cache_installed':installed,'raw_sha256':x['sha256']}\nput(R/'PRELIMINARY_RESULT.json',result);put(R/'STATUS.json',{'stage':'audited_priority_result_ready','valid_score':True,'full_six_complete':False})\nprint(json.dumps(result,indent=2),flush=True)\n"
     }
   },
   "changed_CSharp_sha256": {
@@ -396,7 +409,7 @@
   "source_persisted_on_research_branch": true,
   "final_raw_archive_saved": false,
   "restore_note": "Restore frozen R2 package and original data/runtime paths. Decode the pinned .dll.gz.b64 artifact to exact work_r4/replay/Replay.dll; verify DLL SHA. Restore the .runtimeconfig.json from the R2 runtime config. Restore source files below including r3 replay helper dependency. Never rebuild or overwrite frozen/running DLLs. Existing outputs are not evidence of a surviving process after workspace loss.",
-  "control_latest_log": "MONTH BUFFER_EUR_BTC_V2_CANDIDATE_B 2025-06-05 balance=111780709.59080651 requests=28283 positions=0 ack=0",
+  "control_latest_log": "MONTH BUFFER_EUR_BTC_V2_CANDIDATE_B 2026-04-01 balance=518131420.87595004 requests=65558 positions=0 ack=0",
   "priority_runtime_status": {
     "stage": "priority_cap15_B2_running",
     "valid_score": false,
@@ -450,5 +463,119 @@
     },
     "pid": 6
   },
-  "priority_latest_log": "MONTH R4_CAP_15_B 2023-09-11 balance=699194.2787488407 requests=2414 positions=0 ack=0"
+  "priority_latest_log": "MONTH R4_CAP_15_B 2023-09-11 balance=699194.2787488407 requests=2414 positions=0 ack=0",
+  "priority_runs": {
+    "r4_priority": {
+      "status": {
+        "stage": "priority_cap15_B2_running",
+        "valid_score": false,
+        "default_parity_required": true,
+        "created_jakarta": "2026-10-28T13:43:18.821400+07:00"
+      },
+      "job": {
+        "started_utc": 1793169798.8237646,
+        "cmd": [
+          "/workspace/scratch/545ae3743761/dotnet_host/dotnet",
+          "/workspace/scratch/545ae3743761/r4_research/work_r4/replay/Replay.dll",
+          "/workspace/scratch/545ae3743761/v4_resume/inputs/xau_2012_2026.csv",
+          "/workspace/scratch/545ae3743761/v4_resume/inputs/eur_2012_2026.csv",
+          "/workspace/scratch/545ae3743761/r4_priority/B_COST2/RUN.json",
+          "full",
+          "2019",
+          "2026"
+        ],
+        "cost": 2,
+        "way": "B",
+        "profiles": [
+          {
+            "Id": "R4_CAP_15",
+            "SafetyFraction": 0.9,
+            "XauRisk": 1.5,
+            "XauWindow": 180,
+            "XauZone": 0.8,
+            "XauPause": true,
+            "XauStep": 51.25,
+            "EurWindow": 180,
+            "EurPause": true,
+            "EurInitial": 1,
+            "EurBE": 3,
+            "BtcBatchOrders": 32,
+            "BtcBatchRisk": 0.025,
+            "BtcBatchMargin": 0.1,
+            "BtcBatchSeconds": 180,
+            "PortfolioCapPct": 15
+          }
+        ],
+        "binary_sha256": "3c4ae4ff63dcd1454a39e32486f625094fd62c501df9ee60d5624c57aef2d23a",
+        "environment": {
+          "BTC_INPUT": "/workspace/scratch/545ae3743761/v4_resume/inputs/BTCUSD_M1.csv",
+          "BTC_SIGNAL_CACHE": "/workspace/scratch/545ae3743761/v4_resume/baseline/results/FROZEN_7D130_A.json.btc_signals.json",
+          "RESEARCH_CONFIGS": "/workspace/scratch/545ae3743761/r4_priority/B_COST2/profiles.json",
+          "RESEARCH_PATH": "B",
+          "RESEARCH_COST": "2",
+          "DOTNET_GCHeapHardLimit": "0xC0000000",
+          "DOTNET_gcServer": "1",
+          "DOTNET_GCHeapCount": "4"
+        },
+        "pid": 6
+      },
+      "latest_log": "MONTH R4_CAP_15_B 2025-11-06 balance=150946358.71733564 requests=38395 positions=0 ack=0"
+    },
+    "r4_priority_cap10": {
+      "status": {
+        "stage": "priority_cap10_B2_running",
+        "valid_score": false,
+        "default_parity_required": true,
+        "created_jakarta": "2026-10-28T13:48:54.610690+07:00"
+      },
+      "job": {
+        "started_utc": 1793170134.6123211,
+        "cmd": [
+          "/workspace/scratch/545ae3743761/dotnet_host/dotnet",
+          "/workspace/scratch/545ae3743761/r4_research/work_r4/replay/Replay.dll",
+          "/workspace/scratch/545ae3743761/v4_resume/inputs/xau_2012_2026.csv",
+          "/workspace/scratch/545ae3743761/v4_resume/inputs/eur_2012_2026.csv",
+          "/workspace/scratch/545ae3743761/r4_priority_cap10/B_COST2/RUN.json",
+          "full",
+          "2019",
+          "2026"
+        ],
+        "cost": 2,
+        "way": "B",
+        "profiles": [
+          {
+            "Id": "R4_CAP_10",
+            "SafetyFraction": 0.9,
+            "XauRisk": 1.5,
+            "XauWindow": 180,
+            "XauZone": 0.8,
+            "XauPause": true,
+            "XauStep": 51.25,
+            "EurWindow": 180,
+            "EurPause": true,
+            "EurInitial": 1,
+            "EurBE": 3,
+            "BtcBatchOrders": 32,
+            "BtcBatchRisk": 0.025,
+            "BtcBatchMargin": 0.1,
+            "BtcBatchSeconds": 180,
+            "PortfolioCapPct": 10
+          }
+        ],
+        "binary_sha256": "3c4ae4ff63dcd1454a39e32486f625094fd62c501df9ee60d5624c57aef2d23a",
+        "environment": {
+          "BTC_INPUT": "/workspace/scratch/545ae3743761/v4_resume/inputs/BTCUSD_M1.csv",
+          "BTC_SIGNAL_CACHE": "/workspace/scratch/545ae3743761/v4_resume/baseline/results/FROZEN_7D130_A.json.btc_signals.json",
+          "RESEARCH_CONFIGS": "/workspace/scratch/545ae3743761/r4_priority_cap10/B_COST2/profiles.json",
+          "RESEARCH_PATH": "B",
+          "RESEARCH_COST": "2",
+          "DOTNET_GCHeapHardLimit": "0xC0000000",
+          "DOTNET_gcServer": "1",
+          "DOTNET_GCHeapCount": "4"
+        },
+        "pid": 7
+      },
+      "latest_log": "MONTH R4_CAP_10_B 2025-10-01 balance=29018249.9730671 requests=14091 positions=0 ack=0"
+    }
+  }
 }
