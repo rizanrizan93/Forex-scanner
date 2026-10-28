@@ -1,0 +1,665 @@
+{
+  "schema": 1,
+  "id": "RIZAN_BUFFER_EUR_BTC_R2_FROZEN_20261028",
+  "frozen_at_jakarta": "2026-10-28T12:47:06.388535+07:00",
+  "immutable": true,
+  "user_authorization": "Bekukan dulu R2, lalu lanjut uji R3",
+  "status": "FROZEN_RESEARCH_REFERENCE_WITH_DISCLOSED_ACCEPTANCE_FAILURE",
+  "scope": "Historical replay reference only; no promotion to LIVE. BUFFER V1 remains a separate immutable reference. All new experiments belong to R3 or later.",
+  "source_archive": {
+    "library_file_id": "libfile_583f19ae940c8191a192731d6e8c7274",
+    "version": 0,
+    "filename": "RIZAN_R2_COMBINED_VALIDATION_20261028.zip",
+    "sha256": "e60974fafbb9e7d47f6dea27e0bc5e1e56d6433d1601f4c467a8b2cf587fe4ae",
+    "bytes": 99819133,
+    "source_manifest_entries_verified": 178
+  },
+  "config": [
+    {
+      "Id": "BUFFER_EUR_BTC_V2_CANDIDATE",
+      "SafetyFraction": 0.9,
+      "XauRisk": 1.5,
+      "XauWindow": 180,
+      "XauZone": 0.8,
+      "XauPause": true,
+      "XauStep": 51.25,
+      "EurWindow": 180,
+      "EurPause": true,
+      "EurInitial": 1,
+      "EurBE": 3,
+      "BtcBatchOrders": 32,
+      "BtcBatchRisk": 0.025,
+      "BtcBatchMargin": 0.1,
+      "BtcBatchSeconds": 180
+    }
+  ],
+  "config_file_sha256": "c1eb7018d907684f650eb743d161813783c17f2d8a323d52ac60914a22787550",
+  "binary": {
+    "path": "buffer_growth/work_r2/replay/Replay.dll",
+    "sha256": "79b61fb0565957ed792a67c8c0de08e18c5a5e8b2b892ccb1c320f9ad9b5e653"
+  },
+  "source_code_sha256": {
+    "buffer_growth/pack_research.py": "e35104a131fe83e84a109d9491a2ed4286b093bb79931206c2492351b33def12",
+    "buffer_growth/aggregate_growth.py": "65f58a269b6e0344e0eae1e140501c2142cff7d98232a4a2ae86a2c52d35fcb9",
+    "buffer_growth/build_batch.py": "6a9b10ad2c3a85dda4dbd69c1196175dff570b5a95c45d89c4b8f6f6d1edeb9b",
+    "buffer_growth/run_legacy_tests.py": "6fa40d739727b41be2754abe06c0e4921ba32b85842e8404b414809597387925",
+    "buffer_growth/report_growth.py": "5f0ece1f998dcc1d73883d79bc6f3c351bd55178a9c839a71706864b742daf42",
+    "buffer_growth/BatchTests.cs": "e85c1efade4073ee0374fbfdd8537b97d46994cca4a3dcfe150ef7412c8b9a45",
+    "buffer_growth/audit_growth.py": "31979309acf6092106327f08fe75e56214d3a9affd848cbe79029a88072601ed",
+    "buffer_growth/run_batch_tests.py": "bce65ca61ce8b41ec4290e1dcbbc6e0132b1d975527370c96d428b7dbd1142c3",
+    "buffer_growth/restore_results.py": "9c179896568f5090c3d403d49b9908aaf73e19d950f9220ffc776c6cad9b61b8",
+    "buffer_growth/work_r2/source/BtcStateLink.cs": "94925538e1f11d1f808532c5f16291ca90282567f3d1f290f630f8284c208110",
+    "buffer_growth/work_r2/source/ResearchParams.cs": "33b3189450052388689562002a40b733f474fcffd7c22ef3b65360343772a45f",
+    "buffer_growth/work_r2/source/BtcSevenDayFeed.cs": "9cde1307a398cebc02039daeeef30537da6cee30e161fc1a54b19cad2d0d344d",
+    "buffer_growth/work_r2/source/BtcEngine.cs": "0130be20e03ab4fa4f4bb68cb3db94c43fe9aad386108babb5e053367794afe6",
+    "buffer_growth/work_r2/source/RizanXauEurPortfolio.cs": "0ed40c6fa450e25a6aa6cd4ca28e248fb3e0739a0b62ac5e913b339443854d31",
+    "buffer_growth/work_r2/source/BtcWeekendPolicy.cs": "b6005e1bd500970e270243cfc3c32c6d57fd0a03083f6ddc22175b0625efa490",
+    "buffer_growth/work_r2/source/BtcCore.cs": "7cd70e9fd34860580ea2da0fb8a46530eaf856414b0cc9b62b52c4c5b2f7a56d",
+    "buffer_growth/work_r2/source/PortfolioHost.cs": "a5818002094c5508f2b985fe408e6543f98417bb95677d8bba02da9e4fe5e20f",
+    "buffer_growth/work_r2/tests/Global.cs": "67be15acb503d20ee1eb2cf9f90d3f96a86c2c4da39e2a8d8bf3a504986402bf",
+    "buffer_growth/work_r2/replay/Replay.runtimeconfig.json": "d7312adbfcfb0827b21be358168718588f05422f10859281598171801691437f",
+    "buffer_growth/work_r2/replay/Replay.cs": "ebafd00a9e0493948cf1bd8581aa6688c1f3669b7e3643f158ea392cc4e2c7cf",
+    "buffer_growth/work_r2/replay/ApiStubs.cs": "5bcdd7690bb9617acd497578f6a454cf916f34b7e408416ab9741498f4a95d3d",
+    "buffer_growth/work_r2/replay/Replay.dll": "79b61fb0565957ed792a67c8c0de08e18c5a5e8b2b892ccb1c320f9ad9b5e653",
+    "buffer_growth/work_r2/replay/ResearchAccounting.cs": "f782c588131657e890d9d82bb91600d7324a4f5196f8ecf57ef6936b7a92da6b",
+    "buffer_growth/work_r2/source/eur/FrozenCore.cs": "a4fb2355bca26beb8926a467399b76960613cecbff3172e71d3b713d537e7f99",
+    "buffer_growth/work_r2/source/eur/EurBatchExecution.cs": "d088e41ec1fc31810c2c9af375fef549c898f7c87443c44d2076c8a8fbab4a5e",
+    "buffer_growth/work_r2/source/eur/F0245Policy.cs": "33cec3bfa3bdd52cf448a78197b674aef490109f8a6c9d13b663cf94e2d8138c",
+    "buffer_growth/work_r2/source/eur/RizanRobot.cs": "ef2cc7f07a85ce5c5a35d4bf2fdfaa938136253cabac76a3ec4046ace8a97a32",
+    "buffer_growth/work_r2/source/xau/FrozenCore.cs": "b853e9f7e68e9f425764ebcc4bececb0ddd0959973ee29c92d24b8aec0cb32c7",
+    "buffer_growth/work_r2/source/xau/XauBatchExecution.cs": "68e865b3933d33fae9025d7aeba2325078e1c1d7fc7ad4ad81e2c69569c3f281",
+    "buffer_growth/work_r2/source/xau/RizanRobot.cs": "6718d3b8158f0d8b85cc9e51cf7232cfcdcde2a7ba29616f71f45fd20582f6a7",
+    "buffer_growth/work_r2/source/xau/XauSendReference.cs": "845a2d552a45757ffde77e12c699015612acd6a7394903866ff12bc7a9d58649",
+    "buffer_growth/legacy_validation/SevenDayTests/Tests.runtimeconfig.json": "d7312adbfcfb0827b21be358168718588f05422f10859281598171801691437f",
+    "buffer_growth/legacy_validation/PortfolioTests/Tests.runtimeconfig.json": "d7312adbfcfb0827b21be358168718588f05422f10859281598171801691437f",
+    "buffer_growth/legacy_validation/CapacityTests/Tests.runtimeconfig.json": "d7312adbfcfb0827b21be358168718588f05422f10859281598171801691437f",
+    "buffer_growth/legacy_validation/HeadroomTests/Tests.runtimeconfig.json": "d7312adbfcfb0827b21be358168718588f05422f10859281598171801691437f",
+    "buffer_growth/legacy_validation/LeverageTests/Tests.runtimeconfig.json": "d7312adbfcfb0827b21be358168718588f05422f10859281598171801691437f",
+    "buffer_growth/legacy_validation/WeekendTests/Tests.runtimeconfig.json": "d7312adbfcfb0827b21be358168718588f05422f10859281598171801691437f",
+    "buffer_growth/legacy_validation/BtcProfileTests/Tests.runtimeconfig.json": "d7312adbfcfb0827b21be358168718588f05422f10859281598171801691437f",
+    "buffer_growth/validation_work_r2/Tests.runtimeconfig.json": "d7312adbfcfb0827b21be358168718588f05422f10859281598171801691437f",
+    "resume_runs.py": "40d788b725e31dc78617f42d18b282c5abce796f68b004f84591aa954844367d",
+    "finalize_validation.py": "dce35e93e9f293bbbac659a550dec37285c83f3a9051dc8059f7fab00c73ffe7",
+    "watch_finalize.py": "12f3791e00c9fc82140a9756b63c2380c6fd30e5a6d26b4c905828113c391a82",
+    "runtime_launcher.py": "3f1f7caed0a2b08e2d7608a4d2b1cdb0b970a18828a2ec7d90e548212a1fac20",
+    "register_external.py": "70681e3739544a7d0d266ba2114b854c6b5748060631123490e6396f3ab50c48",
+    "pack_validation.py": "cd5858b5f447c7521e9df215f1125fec79d294c4e1677cdaa372429a80ae42d4"
+  },
+  "input_sha256": {
+    "xau_2012_2026.csv": {
+      "sha256": "3fda8011082e2691b6ebe1a8a4da5fff8e4bf0fc07baf57506b7894d95fc1808",
+      "bytes": 405672214
+    },
+    "eur_2012_2026.csv": {
+      "sha256": "3c74ac5ccaeeac64f44693bc6bd4406e9225a9ef61dbb5f80756530f050506ec",
+      "bytes": 316413286
+    },
+    "BTCUSD_M1.csv": {
+      "sha256": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504",
+      "bytes": 326159079
+    }
+  },
+  "original_fx_archive_library_id": "libfile_0443b246f9648191aca2c89be59b5e15",
+  "btc_input_members": [
+    "inputs/BTCUSD_M1.csv.gz"
+  ],
+  "period": {
+    "start": "2019-01-01",
+    "cutoff": "2026-10-09T21:59:00Z",
+    "initial_cash": 100,
+    "topups": 0,
+    "leverage": 200,
+    "shared_wallet": true,
+    "costs": [
+      1,
+      1.5,
+      2
+    ],
+    "paths": [
+      "A",
+      "B"
+    ]
+  },
+  "scenarios": [
+    {
+      "way": "A",
+      "cost": 1,
+      "balance": 1051126595.699221,
+      "dd": 65.83731286743308,
+      "pf": 2.647050647285777,
+      "winrate_pct": 49.572649572649574,
+      "baskets": 585,
+      "orders": 119955,
+      "pass": true,
+      "sha256": "e5a8885ba33a5c520266e78785773d241d2ae0b464fe20a0f3576b3b4accd84b",
+      "file": "COMBINED_A_C1/BUFFER_EUR_BTC_V2_CANDIDATE_A_cost1.json.gz",
+      "symbols": {
+        "XAUUSD": {
+          "orders": 68351,
+          "baskets": 305,
+          "pnl": 1006395715.4232984,
+          "winning_baskets": 128,
+          "gain": 1550819844.5779898,
+          "loss": 544424129.1546997,
+          "pf": 2.8485509027417115,
+          "winrate_pct": 41.967213114754095
+        },
+        "BTCUSD": {
+          "orders": 1133,
+          "baskets": 95,
+          "pnl": 23803786.104050253,
+          "winning_baskets": 54,
+          "gain": 80432459.26474863,
+          "loss": 56628673.16069835,
+          "pf": 1.4203486462856185,
+          "winrate_pct": 56.8421052631579
+        },
+        "EURUSD": {
+          "orders": 50471,
+          "baskets": 185,
+          "pnl": 20926994.171853215,
+          "winning_baskets": 108,
+          "gain": 58061303.72904276,
+          "loss": 37134309.55719249,
+          "pf": 1.5635487618160644,
+          "winrate_pct": 58.37837837837838
+        }
+      }
+    },
+    {
+      "way": "A",
+      "cost": 1.5,
+      "balance": 977009626.7332854,
+      "dd": 67.79459182390943,
+      "pf": 2.6452327599386813,
+      "winrate_pct": 49.14383561643836,
+      "baskets": 584,
+      "orders": 106980,
+      "pass": true,
+      "sha256": "f2bc2e444dfa37ee8d27b04be2c8f5e33fb98ae60194c2b5fffccdda08d34a91",
+      "file": "COMBINED_A_C1.5/BUFFER_EUR_BTC_V2_CANDIDATE_A_cost1.5.json.gz",
+      "symbols": {
+        "XAUUSD": {
+          "orders": 60426,
+          "baskets": 304,
+          "pnl": 949059454.1609615,
+          "winning_baskets": 126,
+          "gain": 1457217155.2124925,
+          "loss": 508157701.05151445,
+          "pf": 2.867647488559397,
+          "winrate_pct": 41.44736842105263
+        },
+        "BTCUSD": {
+          "orders": 999,
+          "baskets": 95,
+          "pnl": 13917818.971708614,
+          "winning_baskets": 54,
+          "gain": 64590126.58059892,
+          "loss": 50672307.608890295,
+          "pf": 1.2746632160337372,
+          "winrate_pct": 56.8421052631579
+        },
+        "EURUSD": {
+          "orders": 45555,
+          "baskets": 185,
+          "pnl": 14032253.600822233,
+          "winning_baskets": 107,
+          "gain": 49044982.894356586,
+          "loss": 35012729.29353661,
+          "pf": 1.4007757716680014,
+          "winrate_pct": 57.83783783783784
+        }
+      }
+    },
+    {
+      "way": "A",
+      "cost": 2,
+      "balance": 896369444.8155998,
+      "dd": 72.06434784309153,
+      "pf": 2.638552212936907,
+      "winrate_pct": 48.8013698630137,
+      "baskets": 584,
+      "orders": 94768,
+      "pass": true,
+      "sha256": "174b5c8582be04ee616b6dad30c55b2afa6d366dea17f6512970d0b433c8770b",
+      "file": "COMBINED_A_C2/BUFFER_EUR_BTC_V2_CANDIDATE_A_cost2.json.gz",
+      "symbols": {
+        "XAUUSD": {
+          "orders": 52948,
+          "baskets": 304,
+          "pnl": 881574704.6278994,
+          "winning_baskets": 127,
+          "gain": 1351752005.3164835,
+          "loss": 470177300.68861806,
+          "pf": 2.874983550538739,
+          "winrate_pct": 41.776315789473685
+        },
+        "BTCUSD": {
+          "orders": 828,
+          "baskets": 95,
+          "pnl": 6372729.005708854,
+          "winning_baskets": 52,
+          "gain": 50326145.917558424,
+          "loss": 43953416.91184958,
+          "pf": 1.144988250139679,
+          "winrate_pct": 54.73684210526316
+        },
+        "EURUSD": {
+          "orders": 40992,
+          "baskets": 185,
+          "pnl": 8421911.182005776,
+          "winning_baskets": 106,
+          "gain": 41340800.99621468,
+          "loss": 32918889.814207014,
+          "pf": 1.2558382506074968,
+          "winrate_pct": 57.2972972972973
+        }
+      }
+    },
+    {
+      "way": "B",
+      "cost": 1,
+      "balance": 992612612.1518544,
+      "dd": 65.88601151219306,
+      "pf": 2.562260486087672,
+      "winrate_pct": 49.914236706689536,
+      "baskets": 583,
+      "orders": 120205,
+      "pass": true,
+      "sha256": "4aae365508bdd6c39768ee701a6a36236e4ea851c9f9b3fcded48f87e6495fe3",
+      "file": "COMBINED_B_C1/BUFFER_EUR_BTC_V2_CANDIDATE_B_cost1.json.gz",
+      "symbols": {
+        "XAUUSD": {
+          "orders": 67874,
+          "baskets": 304,
+          "pnl": 946396113.3159311,
+          "winning_baskets": 127,
+          "gain": 1489873297.20942,
+          "loss": 543477183.8935244,
+          "pf": 2.7413722992671374,
+          "winrate_pct": 41.776315789473685
+        },
+        "BTCUSD": {
+          "orders": 1175,
+          "baskets": 95,
+          "pnl": 24003492.971518353,
+          "winning_baskets": 53,
+          "gain": 80216379.74950445,
+          "loss": 56212886.7779861,
+          "pf": 1.4270105014588668,
+          "winrate_pct": 55.78947368421053
+        },
+        "EURUSD": {
+          "orders": 51156,
+          "baskets": 184,
+          "pnl": 22212905.864405733,
+          "winning_baskets": 111,
+          "gain": 57892238.04938429,
+          "loss": 35679332.18498088,
+          "pf": 1.6225706733870393,
+          "winrate_pct": 60.32608695652174
+        }
+      }
+    },
+    {
+      "way": "B",
+      "cost": 1.5,
+      "balance": 922340948.4453279,
+      "dd": 68.073176029848,
+      "pf": 2.5592011453717345,
+      "winrate_pct": 49.39965694682676,
+      "baskets": 583,
+      "orders": 106943,
+      "pass": true,
+      "sha256": "412601a4993da31c5bd7bde2a012a253bfb869a70852bc527979babcdaebfa01",
+      "file": "COMBINED_B_C1.5/BUFFER_EUR_BTC_V2_CANDIDATE_B_cost1.5.json.gz",
+      "symbols": {
+        "XAUUSD": {
+          "orders": 60100,
+          "baskets": 304,
+          "pnl": 893038192.909841,
+          "winning_baskets": 127,
+          "gain": 1400755646.0769694,
+          "loss": 507717453.1671289,
+          "pf": 2.758927504538381,
+          "winrate_pct": 41.776315789473685
+        },
+        "BTCUSD": {
+          "orders": 974,
+          "baskets": 95,
+          "pnl": 14437819.004274266,
+          "winning_baskets": 53,
+          "gain": 64594258.65420373,
+          "loss": 50156439.64992947,
+          "pf": 1.2878557390644962,
+          "winrate_pct": 55.78947368421053
+        },
+        "EURUSD": {
+          "orders": 45869,
+          "baskets": 184,
+          "pnl": 14864836.531402078,
+          "winning_baskets": 108,
+          "gain": 48538000.47693535,
+          "loss": 33673163.94553568,
+          "pf": 1.4414446042386349,
+          "winrate_pct": 58.69565217391305
+        }
+      }
+    },
+    {
+      "way": "B",
+      "cost": 2,
+      "balance": 843903457.6124135,
+      "dd": 72.11258758977101,
+      "pf": 2.5334467877315117,
+      "winrate_pct": 48.88507718696398,
+      "baskets": 583,
+      "orders": 96355,
+      "pass": true,
+      "sha256": "083b94a3c928d811639302eb6b5acd887ca7da77ac0a9c6be1bb2e25062e324d",
+      "file": "COMBINED_B_C2/BUFFER_EUR_BTC_V2_CANDIDATE_B_cost2.json.gz",
+      "symbols": {
+        "XAUUSD": {
+          "orders": 53403,
+          "baskets": 304,
+          "pnl": 827750328.9555831,
+          "winning_baskets": 128,
+          "gain": 1301584423.3184133,
+          "loss": 473834094.36287695,
+          "pf": 2.7469201537059917,
+          "winrate_pct": 42.10526315789474
+        },
+        "BTCUSD": {
+          "orders": 832,
+          "baskets": 95,
+          "pnl": 6759229.842203139,
+          "winning_baskets": 51,
+          "gain": 50846032.46572561,
+          "loss": 44086802.623522446,
+          "pf": 1.1533163994659206,
+          "winrate_pct": 53.68421052631579
+        },
+        "EURUSD": {
+          "orders": 42120,
+          "baskets": 184,
+          "pnl": 9393798.814638471,
+          "winning_baskets": 106,
+          "gain": 41803936.69955687,
+          "loss": 32410137.88491719,
+          "pf": 1.289841371486769,
+          "winrate_pct": 57.608695652173914
+        }
+      }
+    }
+  ],
+  "full_control_parity": {
+    "all_original_fields_identical": true,
+    "fields": {
+      "Summary": true,
+      "CashFlows": true,
+      "Annual": true,
+      "Monthly": true,
+      "Ledger": true,
+      "Curve": true,
+      "BrokerHistory": true,
+      "CashEvents": true,
+      "Open": true,
+      "Errors": true
+    },
+    "extra_fields": {
+      "BtcResearchStatus": {
+        "Faulted": false,
+        "QueuedAtEnd": false,
+        "ExitPendingAtEnd": false
+      }
+    },
+    "btc_status_clean": true
+  },
+  "tests": {
+    "legacy_checks": 1247,
+    "batch_checks": 474,
+    "fake_broker_only": true,
+    "live_orders": 0
+  },
+  "acceptance": {
+    "pass": false,
+    "portfolio_and_normal_asset_criteria_pass": true,
+    "all_six_asset_pnl_improve": false,
+    "checks": {
+      "control_r2_full_parity": true,
+      "full_audits": true,
+      "six_scenarios": true,
+      "normal_A_improves": true,
+      "normal_B_improves": true,
+      "worst_dd_ceiling": true,
+      "cost2_floor": true,
+      "normal_A_EURUSD_pnl_improves": true,
+      "normal_A_BTCUSD_pnl_improves": true,
+      "normal_B_EURUSD_pnl_improves": true,
+      "normal_B_BTCUSD_pnl_improves": true,
+      "own_pnl_A_cost1_EURUSD_improves": true,
+      "own_pnl_A_cost1_BTCUSD_improves": true,
+      "own_pnl_A_cost1.5_EURUSD_improves": false,
+      "own_pnl_A_cost1.5_BTCUSD_improves": true,
+      "own_pnl_A_cost2_EURUSD_improves": false,
+      "own_pnl_A_cost2_BTCUSD_improves": true,
+      "own_pnl_B_cost1_EURUSD_improves": true,
+      "own_pnl_B_cost1_BTCUSD_improves": true,
+      "own_pnl_B_cost1.5_EURUSD_improves": false,
+      "own_pnl_B_cost1.5_BTCUSD_improves": true,
+      "own_pnl_B_cost2_EURUSD_improves": false,
+      "own_pnl_B_cost2_BTCUSD_improves": true
+    },
+    "own_pnl_scope": "Conservative reading: require EUR/BTC PnL improvement at same path/cost in all six. Portfolio constraints and normal-path asset improvement are reported separately so this interpretation is explicit; numerical balance/DD thresholds are unchanged.",
+    "worst_dd": 72.11258758977101,
+    "cost2_min_balance": 843903457.6124135,
+    "pnl_comparison": [
+      {
+        "way": "A",
+        "cost": 1,
+        "symbol": "XAUUSD",
+        "frozen_pnl": 966858937.0504893,
+        "candidate_pnl": 1006395715.4232984,
+        "delta": 39536778.37280905
+      },
+      {
+        "way": "A",
+        "cost": 1,
+        "symbol": "EURUSD",
+        "frozen_pnl": 18971870.12701842,
+        "candidate_pnl": 20926994.171853215,
+        "delta": 1955124.0448347963
+      },
+      {
+        "way": "A",
+        "cost": 1,
+        "symbol": "BTCUSD",
+        "frozen_pnl": 2916510.096319641,
+        "candidate_pnl": 23803786.104050253,
+        "delta": 20887276.00773061
+      },
+      {
+        "way": "A",
+        "cost": 1.5,
+        "symbol": "XAUUSD",
+        "frozen_pnl": 927996730.4725287,
+        "candidate_pnl": 949059454.1609615,
+        "delta": 21062723.688432813
+      },
+      {
+        "way": "A",
+        "cost": 1.5,
+        "symbol": "EURUSD",
+        "frozen_pnl": 16466364.020199569,
+        "candidate_pnl": 14032253.600822233,
+        "delta": -2434110.4193773363
+      },
+      {
+        "way": "A",
+        "cost": 1.5,
+        "symbol": "BTCUSD",
+        "frozen_pnl": 2492100.4680109173,
+        "candidate_pnl": 13917818.971708614,
+        "delta": 11425718.503697697
+      },
+      {
+        "way": "A",
+        "cost": 2,
+        "symbol": "XAUUSD",
+        "frozen_pnl": 878532528.9846581,
+        "candidate_pnl": 881574704.6278994,
+        "delta": 3042175.6432412863
+      },
+      {
+        "way": "A",
+        "cost": 2,
+        "symbol": "EURUSD",
+        "frozen_pnl": 13401310.754477095,
+        "candidate_pnl": 8421911.182005776,
+        "delta": -4979399.572471319
+      },
+      {
+        "way": "A",
+        "cost": 2,
+        "symbol": "BTCUSD",
+        "frozen_pnl": 2132879.757226133,
+        "candidate_pnl": 6372729.005708854,
+        "delta": 4239849.248482721
+      },
+      {
+        "way": "B",
+        "cost": 1,
+        "symbol": "XAUUSD",
+        "frozen_pnl": 916449260.3840327,
+        "candidate_pnl": 946396113.3159311,
+        "delta": 29946852.931898355
+      },
+      {
+        "way": "B",
+        "cost": 1,
+        "symbol": "EURUSD",
+        "frozen_pnl": 19152193.156465188,
+        "candidate_pnl": 22212905.864405733,
+        "delta": 3060712.707940545
+      },
+      {
+        "way": "B",
+        "cost": 1,
+        "symbol": "BTCUSD",
+        "frozen_pnl": 2864646.683420022,
+        "candidate_pnl": 24003492.971518353,
+        "delta": 21138846.28809833
+      },
+      {
+        "way": "B",
+        "cost": 1.5,
+        "symbol": "XAUUSD",
+        "frozen_pnl": 878457321.495622,
+        "candidate_pnl": 893038192.909841,
+        "delta": 14580871.414218903
+      },
+      {
+        "way": "B",
+        "cost": 1.5,
+        "symbol": "EURUSD",
+        "frozen_pnl": 16338603.112884236,
+        "candidate_pnl": 14864836.531402078,
+        "delta": -1473766.581482159
+      },
+      {
+        "way": "B",
+        "cost": 1.5,
+        "symbol": "BTCUSD",
+        "frozen_pnl": 2450828.9682189105,
+        "candidate_pnl": 14437819.004274266,
+        "delta": 11986990.036055356
+      },
+      {
+        "way": "B",
+        "cost": 2,
+        "symbol": "XAUUSD",
+        "frozen_pnl": 827475655.0999275,
+        "candidate_pnl": 827750328.9555831,
+        "delta": 274673.85565555096
+      },
+      {
+        "way": "B",
+        "cost": 2,
+        "symbol": "EURUSD",
+        "frozen_pnl": 13304204.548635457,
+        "candidate_pnl": 9393798.814638471,
+        "delta": -3910405.7339969855
+      },
+      {
+        "way": "B",
+        "cost": 2,
+        "symbol": "BTCUSD",
+        "frozen_pnl": 2073697.9704144346,
+        "candidate_pnl": 6759229.842203139,
+        "delta": 4685531.871788705
+      }
+    ],
+    "goal_1bn_normal": {
+      "A": true,
+      "B": false
+    },
+    "frozen_unchanged": true,
+    "live_changes": false,
+    "native_tick": false,
+    "out_of_sample": false
+  },
+  "worst_dd_all6_pct": 72.11258758977101,
+  "highest_balance": 1051126595.699221,
+  "cost2_min_balance": 843903457.6124135,
+  "no_live_changes": true,
+  "buffer_v1_unchanged": true,
+  "xau_source_and_parameters_unchanged": true,
+  "limitations": {
+    "synthetic_M1_OHLC": true,
+    "native_ticks": false,
+    "independent_out_of_sample": false,
+    "macro_vintage_certified": false,
+    "spread_stressed": false,
+    "commission_slippage_funding_stressed": true,
+    "broker_liquidity_and_margin_tiers_certified": false
+  },
+  "freeze_policy": "Do not overwrite frozen code, config, reports or archive. Verify hashes before comparison. Any changes require a distinct R3-or-later identity. A freeze is an archival decision and does not erase failed acceptance checks.",
+  "frozen_archive": {
+    "library_file_id": "libfile_4a122877c66881919f6e43c2a362a4a4",
+    "file_id": "file_00000000e3d481fd9819c87fdfdf1c5c",
+    "file_name": "RIZAN_BUFFER_EUR_BTC_R2_FROZEN_20261028.zip",
+    "current_version_number": 0,
+    "sha256": "827390c3b5e8f044bac069367747b96195df1b484bf9118bf4312c22a3c344b8",
+    "bytes": 102298957,
+    "manifest_entries_verified": 183,
+    "binary_sha256": "79b61fb0565957ed792a67c8c0de08e18c5a5e8b2b892ccb1c320f9ad9b5e653",
+    "config": [
+      {
+        "Id": "BUFFER_EUR_BTC_V2_CANDIDATE",
+        "SafetyFraction": 0.9,
+        "XauRisk": 1.5,
+        "XauWindow": 180,
+        "XauZone": 0.8,
+        "XauPause": true,
+        "XauStep": 51.25,
+        "EurWindow": 180,
+        "EurPause": true,
+        "EurInitial": 1,
+        "EurBE": 3,
+        "BtcBatchOrders": 32,
+        "BtcBatchRisk": 0.025,
+        "BtcBatchMargin": 0.1,
+        "BtcBatchSeconds": 180
+      }
+    ],
+    "status": "FROZEN_RESEARCH_REFERENCE_WITH_DISCLOSED_ACCEPTANCE_FAILURE",
+    "immutable": true,
+    "no_live_changes": true,
+    "buffer_v1_unchanged": true,
+    "benchmark_member_sha256": {
+      "RESULTS.json": "dbd08fa0f6503d1c63a71fffa749692a1d99944f2cf6b3501567f6e94aac3900",
+      "COMBINED_ACCEPTANCE.json": "ef416971e0549ea447f1f4d1d7f8208500914755d57e6dfcfbc861f473c862cc",
+      "BUFFER_EUR_BTC_V2_CANDIDATE.json": "c1eb7018d907684f650eb743d161813783c17f2d8a323d52ac60914a22787550"
+    }
+  }
+}
