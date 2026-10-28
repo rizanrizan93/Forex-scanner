@@ -53,7 +53,10 @@
   "legacy_fixture_adaptation": "SevenDayTests retains 204 original assertions; order-flow setup now ACKs both initial signal intent and sized order intent before expecting fake fill. Source retained. Batch test assertion name updated to unverified-bridge block.",
   "full_historical_economic_parity": {
     "pass": null,
-    "status": "running"
+    "status": "interrupted_environment_unavailable",
+    "scenario": "B cost2 full2019-2026",
+    "last_observed_progress": "2022-03-01",
+    "completed_result_not_retrievable": true
   },
   "native_actual_broker_and_bridge_tested": false,
   "cTrader_GUI_import_tested": false,
@@ -63,6 +66,7 @@
   "BUFFER_V1_unchanged": true,
   "R2_unchanged": true,
   "R4": "stopped_by_user",
-  "deployment_status": "SDK-built; local native tests pass; actual demo broker/bridge acceptance required",
-  "frozen_worst_DD_pct": 71.62168392163699
+  "deployment_status": "SDK build passed, 2168 checks passed; full replay comparison interrupted; actual cTrader GUI/broker/bridge acceptance not performed.",
+  "frozen_worst_DD_pct": 71.62168392163699,
+  "delivery_note": "Native .algo and ZIP were built in scratch before environment became unavailable. Library upload of frozen archive failed storage quota. Native source, profile lock, SDK build proof and 2168 passing checks persisted on research branch. Downloadable scratch files may require environment recovery. Rebuild source with cTrader SDK if unavailable."
 }

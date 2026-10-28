@@ -1,0 +1,15 @@
+{
+  "profile": "R3_I100_W060",
+  "R4": "stopped_by_user",
+  "frozen": true,
+  "native_sdk_build": {
+    "errors": 0,
+    "warnings": 0,
+    "algo_sha256": "98c45d186d53d3c5ebd9add82b9de2b6f2e57d146f2db967204a74a6c3bbda49"
+  },
+  "checks_passed": 2168,
+  "full_parity": "interrupted_environment_unavailable",
+  "actual_deployment_tested": false,
+  "production_changes": false,
+  "source_commit": "c98233fdaf43f0dfe0f0dfe301c6dd99058d4e44"
+}
