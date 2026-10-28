@@ -1,0 +1,30 @@
+test_all_three_contracts_roundtrip_and_restart (test_bridge.DurableTests.test_all_three_contracts_roundtrip_and_restart) ... ok
+test_cas_wrong_revision_and_nan (test_bridge.DurableTests.test_cas_wrong_revision_and_nan) ... ok
+test_lease_expiry_old_writer_blocked (test_bridge.DurableTests.test_lease_expiry_old_writer_blocked) ... ok
+test_legacy_live_namespaces_rejected (test_bridge.DurableTests.test_legacy_live_namespaces_rejected) ... ok
+test_lost_ack_idempotent_receipt (test_bridge.DurableTests.test_lost_ack_idempotent_receipt) ... ok
+test_pending_intent_preserved_and_validated (test_bridge.DurableTests.test_pending_intent_preserved_and_validated) ... ok
+test_timestamps_offset_required (test_bridge.DurableTests.test_timestamps_offset_required) ... ok
+test_wrong_account_symbol_contract_profile_rejected (test_bridge.DurableTests.test_wrong_account_symbol_contract_profile_rejected) ... ok
+test_clock_older_than_seed_rejected (test_bridge.FeedTests.test_clock_older_than_seed_rejected) ... ok
+test_invalid_prices_rejected (test_bridge.FeedTests.test_invalid_prices_rejected) ... ok
+test_m1_extension_and_cache_restart (test_bridge.FeedTests.test_m1_extension_and_cache_restart) ... ok
+test_missing_minute_never_synthesized (test_bridge.FeedTests.test_missing_minute_never_synthesized) ... ok
+test_real_seed_and_no_fetch_when_current (test_bridge.FeedTests.test_real_seed_and_no_fetch_when_current) ... ok
+test_seed_tampering_rejected (test_bridge.FeedTests.test_seed_tampering_rejected) ... ok
+test_allowlist_enforced (test_bridge.WireTests.test_allowlist_enforced) ... ok
+test_no_btc_packet_not_published (test_bridge.WireTests.test_no_btc_packet_not_published) ... ok
+test_parallel_xau_eur_btc_separate_keys (test_bridge.WireTests.test_parallel_xau_eur_btc_separate_keys) ... ok
+test_ready_feed_save_ack_and_ping (test_bridge.WireTests.test_ready_feed_save_ack_and_ping) ... ok
+test_second_instance_rejected (test_bridge.WireTests.test_second_instance_rejected) ... ok
+test_stale_btc_not_published (test_bridge.WireTests.test_stale_btc_not_published) ... ok
+test_wrong_path_and_contract_rejected (test_bridge.WireTests.test_wrong_path_and_contract_rejected) ... ok
+test_wrong_token_rejected (test_bridge.WireTests.test_wrong_token_rejected) ... ok
+test_three_csharp_checkpoints_over_real_websocket (test_native_frames.ActualNativeFrames.test_three_csharp_checkpoints_over_real_websocket) ... ok
+test_real_tls_handshake_auth_and_heartbeat (test_tls.WssTests.test_real_tls_handshake_auth_and_heartbeat) ... Executing <Task pending name='Task-125' coro=<WssTests.test_real_tls_handshake_auth_and_heartbeat() running at /workspace/scratch/545ae3743761/r3_release/bridge/test_tls.py:15> wait_for=<_GatheringFuture pending cb=[Task.task_wakeup()] created at /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/tasks.py:712> cb=[_run_until_complete_cb() at /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/base_events.py:181] created at /opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/asyncio/runners.py:100> took 0.364 seconds
+ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 1.308s
+
+OK

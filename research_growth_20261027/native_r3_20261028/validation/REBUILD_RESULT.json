@@ -1,0 +1,18 @@
+{
+  "pass": true,
+  "official_cTrader_Automate": "1.0.21",
+  "SDK": "8.0.427",
+  "target_framework": "net6.0",
+  "errors": 0,
+  "warnings": 0,
+  "robot_count": 1,
+  "robot_type": "cAlgo.Robots.RizanPortfolioR3Frozen",
+  "native_REPLAY_not_defined": true,
+  "algo_header_valid": true,
+  "algo_bytes": 156865,
+  "algo_sha256": "6caee2dad79f7f4cfd4d6b74cefd1bb87c901e45dea94aaa365117fc04561753",
+  "dll_sha256": "92c1aab8a2764c638040ece36623ba670c3c6f1609dc1f7faaf4ad9ceda874f9",
+  "all_18_source_hashes_match_frozen_native_port": true,
+  "original_strategy_source_not_changed": true,
+  "actual_cTrader_GUI_import_tested": false
+}

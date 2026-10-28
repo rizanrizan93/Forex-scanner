@@ -1,0 +1,18 @@
+{
+  "native_source_origin": "rizanrizan93/Forex-scanner@2a53869c25186eb59be54eb191f00359daaa5fed:research_growth_20261027/native_r3_20261028/source",
+  "native_source_changed": false,
+  "existing_bridge_source_tree": "bc9a84f4e770de8b3285ec7319c5a2f5e3fabe0a",
+  "reused_existing_bridge_parts": [
+    "durable checkpoint Store (WAL,FULL,CAS,lease,receipts)",
+    "macro/news feeds.py",
+    "timestamps.py"
+  ],
+  "new_parts": [
+    "R3-only identity/schema/profile validation",
+    "BTC native intent fields preservation",
+    "automatic pinned Bitstamp M1 extension",
+    "separate deployment/service/routing/probe",
+    "24 tests"
+  ],
+  "no_production_bridge_connection_performed": true
+}

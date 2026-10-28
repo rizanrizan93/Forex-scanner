@@ -1,0 +1,15 @@
+{
+  "archive": "/workspace/scratch/545ae3743761/RIZAN_R3_CBOT_BRIDGE_20261028.zip",
+  "bytes": 1333462,
+  "sha256": "dfa43ae7b772ba33475e3646d41ac9c930827729c413ca68673135e9bd94e592",
+  "files": 61,
+  "all_manifest_entries_verified": true,
+  "algo_sha256": "6caee2dad79f7f4cfd4d6b74cefd1bb87c901e45dea94aaa365117fc04561753",
+  "source_hashes_match": true,
+  "bridge_publicly_deployed": false,
+  "main_LIVE_unchanged": true,
+  "library_file_id": "libfile_22259a516e9081918febeaaf8ef00a96",
+  "library_version": 0,
+  "library_link": "https://chatgpt.com/library?file_id=libfile_22259a516e9081918febeaaf8ef00a96&account_id=personal",
+  "seed_available_in_release_zip": true
+}

@@ -1,0 +1,25 @@
+[Unit]
+Description=RIZAN R3 isolated checkpoint and data bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rizan-r3
+Group=rizan-r3
+WorkingDirectory=/opt/rizan-r3-bridge
+EnvironmentFile=/etc/rizan-r3-bridge.env
+ExecStart=/opt/rizan-r3-bridge/.venv/bin/python /opt/rizan-r3-bridge/server.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+StateDirectory=rizan-r3-bridge
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/rizan-r3-bridge
+
+[Install]
+WantedBy=multi-user.target
