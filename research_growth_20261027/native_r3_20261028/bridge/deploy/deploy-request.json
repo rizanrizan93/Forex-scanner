@@ -1,5 +1,8 @@
 {
-  "mode": "audit",
+  "mode": "deploy",
   "requested_by_user": "Deploy isolated R3 bridge via GitHub, without modifying legacy bridge strategy/state or main branch",
-  "broker_order_authority": false
+  "broker_order_authority": false,
+  "audit_run": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/40684141341",
+  "audit_result": "success",
+  "user_authorization": "Deploy bridge VPS via GitHub; retain isolated R3 service and namespace; no broker orders."
 }
