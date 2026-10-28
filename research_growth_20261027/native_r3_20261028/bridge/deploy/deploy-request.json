@@ -1,0 +1,5 @@
+{
+  "mode": "audit",
+  "requested_by_user": "Deploy isolated R3 bridge via GitHub, without modifying legacy bridge strategy/state or main branch",
+  "broker_order_authority": false
+}

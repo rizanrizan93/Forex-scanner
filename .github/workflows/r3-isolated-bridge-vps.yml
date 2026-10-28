@@ -1,0 +1,69 @@
+name: R3 isolated bridge VPS
+on:
+  push:
+    branches: [research/portfolio-billion-20261027]
+    paths:
+      - '.github/workflows/r3-isolated-bridge-vps.yml'
+      - 'research_growth_20261027/native_r3_20261028/bridge/deploy/remote_deploy.py'
+      - 'research_growth_20261027/native_r3_20261028/bridge/deploy/deploy-request.json'
+permissions:
+  contents: read
+concurrency:
+  group: rizan-r3-isolated-bridge-vps
+  cancel-in-progress: false
+jobs:
+  validate-and-deploy:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/research/portfolio-billion-20261027'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      R3_ROOT: research_growth_20261027/native_r3_20261028
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify pinned seed and run bridge tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip,hashlib,os
+          from pathlib import Path
+          root=Path(os.environ['R3_ROOT'])/'bridge'
+          packed=(root/'BTC_SEED_PACKET.json.gz').read_bytes()
+          assert hashlib.sha256(packed).hexdigest()=='e2aa2501134a2e0cfdb97f1c16f513c4ccab994aebc6872d278b9855a64ece0c'
+          (root/'BTC_SEED_PACKET.json').write_bytes(gzip.decompress(packed))
+          PY
+          python -m pip install -r "$R3_ROOT/bridge/requirements.txt"
+          python -m unittest discover -s "$R3_ROOT/bridge" -p 'test_*.py' -v
+          python -m unittest discover -s "$R3_ROOT/bridge/deploy" -p 'test_remote_deploy.py' -v
+      - name: Isolated VPS operation with pinned SSH host key
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" ]] || { echo 'MISSING_SECRET:VPS_SSH_KEY'; exit 1; }
+          [[ -n "$SSH_KNOWN_HOSTS" ]] || { echo 'MISSING_SECRET:VPS_KNOWN_HOSTS'; exit 1; }
+          mode=$(python -c 'import json,os,pathlib; print(json.loads((pathlib.Path(os.environ["R3_ROOT"])/"bridge/deploy/deploy-request.json").read_text())["mode"])')
+          [[ "$mode" == audit || "$mode" == deploy ]] || { echo 'MODE_INVALID'; exit 1; }
+          ssh_dir=$(mktemp -d)
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          ssh-keygen -y -f "$ssh_dir/key" >/dev/null
+          options=(-i "$ssh_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$ssh_dir/known_hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          target='Rizanrizan@202.74.74.172'
+          remote_dir=$(ssh "${options[@]}" "$target" 'umask 077; mktemp -d /tmp/rizan-r3-deploy.XXXXXXXX')
+          [[ "$remote_dir" =~ ^/tmp/rizan-r3-deploy\.[a-zA-Z0-9]+$ ]] || { echo 'REMOTE_DIR_INVALID'; exit 1; }
+          cleanup() { ssh "${options[@]}" "$target" "rm -rf -- '$remote_dir'" >/dev/null 2>&1 || true; rm -rf "$ssh_dir"; }
+          trap cleanup EXIT
+          tar -czf "$ssh_dir/r3-bridge.tar.gz" -C "$R3_ROOT" bridge validation/native_fixtures
+          scp "${options[@]}" "$ssh_dir/r3-bridge.tar.gz" "$target:$remote_dir/payload.tar.gz"
+          ssh "${options[@]}" "$target" "tar -xzf '$remote_dir/payload.tar.gz' -C '$remote_dir' && sudo -n /usr/bin/python3 '$remote_dir/bridge/deploy/remote_deploy.py' --mode '$mode' --source '$remote_dir/bridge'"
