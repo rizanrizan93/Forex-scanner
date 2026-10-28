@@ -1,0 +1,44 @@
+{
+  "profile": "R3_I100_W060",
+  "deployment": "installed_and_publicly_verified",
+  "deployed_at_utc": "2026-10-28T12:03:03Z",
+  "deployed_at_jakarta": "2026-10-28T19:03:03+07:00",
+  "algo_sha256": "6caee2dad79f7f4cfd4d6b74cefd1bb87c901e45dea94aaa365117fc04561753",
+  "algo_library_file_id": "libfile_16cab0431e648191b334a47111e450e0",
+  "workflow_run": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/40684387460",
+  "workflow_conclusion": "success",
+  "vps_service": "rizan-r3-bridge.service",
+  "vps_service_active": true,
+  "backend": "127.0.0.1:25347",
+  "public_macro_url": "wss://rizan-bridge.duckdns.org:25345/r3/",
+  "public_btc_url": "wss://rizan-bridge.duckdns.org:25345/r3/btc",
+  "authentication": "Existing private bridge token reused on R3; not displayed or committed.",
+  "registered_account_count": 2,
+  "public_probe": {
+    "EURUSD": {
+      "handshake": true,
+      "heartbeat": true,
+      "data_ready": true
+    },
+    "XAUUSD": {
+      "handshake": true,
+      "heartbeat": true,
+      "data_ready": true
+    },
+    "BTCUSD": {
+      "handshake": true,
+      "heartbeat": true,
+      "data_ready": true
+    }
+  },
+  "bridge_tests_passed": 24,
+  "deployment_parser_tests_passed": 4,
+  "legacy_bridge_pid_unchanged": true,
+  "legacy_checkpoints_not_modified_by_deploy": true,
+  "main_branch_changed": false,
+  "real_broker_orders_from_deploy": 0,
+  "actual_cTrader_GUI_import_or_broker_execution_tested": false,
+  "diagnostic_lease_wait_seconds": 60,
+  "frozen_strategy_changed": false,
+  "R2_and_BUFFER_V1_changed": false
+}

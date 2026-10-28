@@ -40,11 +40,32 @@
   "full_historical_replay_comparison": "interrupted_previous_environment_not_completed",
   "actual_cTrader_GUI_import_tested": false,
   "actual_broker_execution_tested": false,
-  "public_bridge_deployed": false,
-  "public_bridge_authenticated_tested": false,
+  "public_bridge_deployed": true,
+  "public_bridge_authenticated_tested": true,
   "bridge_configuration": "separate R3-only service/token/account allowlist/database; nginx snippet supplied, not applied",
   "main_or_LIVE_modified": false,
   "real_orders": 0,
   "frozen_worst_DD_percent": 71.62168392163699,
-  "supersedes_prior_expired_download_links": true
+  "supersedes_prior_expired_download_links": true,
+  "public_deployment_report": "DEPLOYMENT_RESULT_20261028.json",
+  "public_bridge_probe": {
+    "EURUSD": {
+      "handshake": true,
+      "heartbeat": true,
+      "data_ready": true
+    },
+    "XAUUSD": {
+      "handshake": true,
+      "heartbeat": true,
+      "data_ready": true
+    },
+    "BTCUSD": {
+      "handshake": true,
+      "heartbeat": true,
+      "data_ready": true
+    }
+  },
+  "deployment_workflow_run": "https://github.com/rizanrizan93/Forex-scanner/actions/runs/40684387460",
+  "legacy_bridge_pid_unchanged": true,
+  "broker_execution_tested": false
 }
