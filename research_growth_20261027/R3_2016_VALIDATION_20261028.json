@@ -64,13 +64,17 @@
     "resume_after_control.py": {
       "sha256": "464ab90e1d6e415d48464705c95c396692e62499615025ba49493eb76e60ac37",
       "content": "from pathlib import Path\nimport time,json,subprocess,sys\nR=Path(__file__).resolve().parent\nwhile True:\n complete=(R/'control_2019/B_COST2/COMPLETE.json').exists()\n state=json.loads((R/'STATUS.json').read_text())\n if complete and state.get('stage')=='error':break\n job=R/'control_2019/B_COST2/JOB.json'\n if job.exists():\n  v=json.loads(job.read_text())\n  if v.get('returncode',0)!=0:raise RuntimeError('Control failed, preserve logs')\n time.sleep(5)\nprint('RESUMING_WITH_VERIFIED_TAPE_CACHE',flush=True)\nwith (R/'resumed_controller.log').open('w') as log:subprocess.run([sys.executable,str(R/'run_validation.py')],stdout=log,stderr=log,check=True)\nwith (R/'audit.log').open('w') as log:subprocess.run([sys.executable,str(R/'audit_results.py')],stdout=log,stderr=log,check=True)\nprint('ALL_SIX_AND_AUDITS_COMPLETE',flush=True)\n"
+    },
+    "precompute_cost15.py": {
+      "sha256": "383d02247b20dd2e0562618acfe87aa63f0aa603429398ea0647f4b9b67a4a09",
+      "content": "import run_validation as m\nm.run(m.extended/'COST1.5',2016,1.5,'AB',m.R/'data/BTCUSD_2016_2026_M1.csv',m.extended/'TAPES_HEAP6G/RUN.json.btc_signals.json')\nprint('COST15_TWO_SCENARIOS_COMPLETE',flush=True)\n"
     }
   },
   "runtime_status": {
-    "stage": "control2019_running_2026_two_extended2016_A_scenarios_running_2025",
+    "stage": "six2016_scenarios_three_cost_processes_running",
     "complete": false,
-    "old_cache_rebuild_failure_recovered": true,
-    "new_XAU2019_plus_signals_and_confirmations_parity_pass": true
+    "control2019_full_raw_pass": true,
+    "native_LIVE_and_bridge_changed": false
   },
   "memory_recovery": {
     "failed_tape_job": "extended/TAPES",
@@ -79,5 +83,20 @@
     "heap_limit_GiB": 6,
     "control_kept_running": true
   },
-  "restore_note": "Running processes are not durable. Only completed raw reports with verified hashes are reusable. After workspace loss restore inputs and code, rerun only missing cases. Do not change native cBot or bridge."
+  "restore_note": "Running processes are not durable. Only completed raw reports with verified hashes are reusable. After workspace loss restore inputs and code, rerun only missing cases. Do not change native cBot or bridge.",
+  "CONTROL_PARITY": {
+    "pass": true,
+    "control_2019_full_raw_sha256": "48eeaf78c8cb9a38670b5db35b3fbcf392712e68ad14710746ade17e34487490",
+    "frozen_raw_sha256": "48eeaf78c8cb9a38670b5db35b3fbcf392712e68ad14710746ade17e34487490",
+    "full_raw_no_excluded_fields": true,
+    "XAU_2019_plus_exact_signal_parity": true,
+    "XAU_confirmations_identical": true,
+    "new_XAU_raw_signal_counts": {
+      "2016": 152,
+      "2017": 145,
+      "2018": 170
+    },
+    "frozen_strategy_parameters_unchanged": true,
+    "LIVE_unchanged": true
+  }
 }
