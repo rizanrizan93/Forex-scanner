@@ -1,0 +1,11 @@
+{
+  "all_pass": true,
+  "legacy_checks": 1247,
+  "batch_checks": 474,
+  "native_checks": 447,
+  "native_branch_compiled_without_REPLAY": true,
+  "fake_broker_only": true,
+  "real_orders": 0,
+  "replay_binary": "/workspace/scratch/545ae3743761/native_r3/parity_binary/Replay.dll",
+  "replay_binary_sha256": "46861b6be295ee13416b55ceb8efcf77b2703685d47a7ef8a89160bd06110bc2"
+}

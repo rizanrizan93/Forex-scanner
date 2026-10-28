@@ -1,0 +1,122 @@
+[
+  {
+    "Flags": "Robot",
+    "Guid": "00000000-0000-0000-0000-000000000000",
+    "Group": "Custom",
+    "FriendlyName": "RizanPortfolioR3Frozen",
+    "ShortName": null,
+    "TypeName": "cAlgo.Robots.RizanPortfolioR3Frozen",
+    "AssemblyName": "RizanPortfolioR3Frozen, Version=3.0.0.0, Culture=neutral, PublicKeyToken=null",
+    "TimeZone": "UTC",
+    "IsOverlay": false,
+    "IsPercentage": false,
+    "ScalePrecision": null,
+    "Levels": [],
+    "DefaultSymbolName": null,
+    "DefaultTimeFrame": null,
+    "Video": null,
+    "Lines": [],
+    "Clouds": [],
+    "Parameters": [
+      {
+        "DefaultValue": false,
+        "ParameterType": "Boolean",
+        "PropertyName": "EnableTrading",
+        "FriendlyName": "Kirim order",
+        "GroupName": "Eksekusi",
+        "IsValueVisibleInTitle": true,
+        "Description": ""
+      },
+      {
+        "DefaultValue": "",
+        "ParameterType": "String",
+        "PropertyName": "ExpectedAccount",
+        "FriendlyName": "Nomor akun penuh",
+        "GroupName": "Eksekusi",
+        "IsValueVisibleInTitle": true,
+        "Description": ""
+      },
+      {
+        "DefaultValue": true,
+        "ParameterType": "Boolean",
+        "PropertyName": "EnableXau",
+        "FriendlyName": "XAU aktif",
+        "GroupName": "Strategi",
+        "IsValueVisibleInTitle": true,
+        "Description": ""
+      },
+      {
+        "DefaultValue": true,
+        "ParameterType": "Boolean",
+        "PropertyName": "EnableEur",
+        "FriendlyName": "EUR aktif",
+        "GroupName": "Strategi",
+        "IsValueVisibleInTitle": true,
+        "Description": ""
+      },
+      {
+        "MinValue": 20.75,
+        "MaxValue": 20.75,
+        "Step": 0.1,
+        "DefaultValue": 20.75,
+        "ParameterType": "Double",
+        "PropertyName": "PortfolioRiskPercent",
+        "FriendlyName": "Batas risiko terbuka gabungan %",
+        "GroupName": "Portofolio",
+        "IsValueVisibleInTitle": true,
+        "Description": ""
+      },
+      {
+        "DefaultValue": "",
+        "ParameterType": "String",
+        "PropertyName": "BridgeUrl",
+        "FriendlyName": "Bridge WSS :25345",
+        "GroupName": "Pemulihan dan data",
+        "IsValueVisibleInTitle": true,
+        "Description": ""
+      },
+      {
+        "DefaultValue": "",
+        "ParameterType": "String",
+        "PropertyName": "BridgeToken",
+        "FriendlyName": "Token bridge",
+        "GroupName": "Pemulihan dan data",
+        "IsValueVisibleInTitle": false,
+        "Description": ""
+      },
+      {
+        "DefaultValue": "",
+        "ParameterType": "String",
+        "PropertyName": "BtcBridgeUrl",
+        "FriendlyName": "BTC 7D WSS :25345",
+        "GroupName": "Pemulihan dan data",
+        "IsValueVisibleInTitle": true,
+        "Description": ""
+      },
+      {
+        "DefaultValue": "",
+        "ParameterType": "String",
+        "PropertyName": "BtcBridgeToken",
+        "FriendlyName": "Token BTC 7D",
+        "GroupName": "Pemulihan dan data",
+        "IsValueVisibleInTitle": false,
+        "Description": ""
+      },
+      {
+        "DefaultValue": true,
+        "ParameterType": "Boolean",
+        "PropertyName": "EnableBtc",
+        "FriendlyName": "BTC aktif",
+        "GroupName": "Strategi",
+        "IsValueVisibleInTitle": true,
+        "Description": ""
+      }
+    ],
+    "Capabilities": [],
+    "CustomAttributes": [],
+    "Sets": [],
+    "AddIndicatorsToChart": false,
+    "AdditionalInfoUrl": null,
+    "Bars": []
+  }
+]

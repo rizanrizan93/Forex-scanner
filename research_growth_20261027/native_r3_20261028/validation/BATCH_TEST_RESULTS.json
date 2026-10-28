@@ -1,0 +1,8 @@
+{
+  "Pass": true,
+  "Checks": 474,
+  "FakeBrokerOnly": true,
+  "LiveOrders": 0,
+  "BothSides": true,
+  "PerOrderBtcCap": 100
+}

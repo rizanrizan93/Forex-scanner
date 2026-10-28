@@ -1,0 +1,46 @@
+using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using cAlgo.API;
+using Rizan.Portfolio;
+int checks=0;void Check(bool x,string why){checks++;if(!x)throw new Exception(why);}
+void Reject(Action action,string why){bool caught=false;try{action();}catch{caught=true;}Check(caught,why);}
+var text=File.ReadAllText(args[0]);using var packet=JsonDocument.Parse(text);var now=DateTimeOffset.FromUnixTimeSeconds(BtcSevenDayFeed.SeedEnd).UtcDateTime;
+var f=new BtcSevenDayFeed();f.Accept(packet.RootElement,now);Check(f.Fresh(now),"ACTUAL_PINNED_SEED_ACCEPTED");
+using var reference=JsonDocument.Parse(File.ReadAllText(args[1]));var refs=reference.RootElement.EnumerateObject().ToArray();var max=refs.Max(p=>p.Value.GetProperty("At").GetDateTime());
+Check(f.Signals.Count(p=>p.Key<=max)==refs.Length,"SIGNAL_COUNT_M1_REPLAY_PARITY");
+foreach(var a in refs){var r=a.Value;var at=r.GetProperty("At").GetDateTime();Check(f.Signals.TryGetValue(at,out var actual)&&actual.Side==r.GetProperty("Side").GetInt32()&&Math.Abs(actual.Atr-r.GetProperty("Atr").GetDouble())<1e-8&&Math.Abs(actual.Reference-r.GetProperty("Reference").GetDouble())<1e-8,"M1_REPLAY_SIGNAL_PARITY "+a.Name);}
+Check(f.Signals.Values.Any(s=>s.At.DayOfWeek==DayOfWeek.Saturday||s.At.DayOfWeek==DayOfWeek.Sunday),"WEEKEND_BARS_RETAINED");
+Reject(()=>f.Accept(packet.RootElement,now.AddHours(1)),"STALE_REJECTED");Reject(()=>f.Accept(packet.RootElement,now.AddHours(-1)),"FUTURE_REJECTED");
+void Mutate(Action<JsonNode> edit,string why){var n=JsonNode.Parse(text)!;edit(n);using var p=JsonDocument.Parse(n.ToJsonString());Reject(()=>new BtcSevenDayFeed().Accept(p.RootElement,now),why);}
+Mutate(n=>n["contract"]="WRONG","CONTRACT_REJECTED");Mutate(n=>n["source"]="BROKER","BROKER_SERIES_REJECTED");
+Mutate(n=>n["bars"]![0]![1]=3693.86,"PINNED_SEED_TAMPER_REJECTED");Mutate(n=>n["bars"]![0]![5]=61,"COUNT_REJECTED");Mutate(n=>n["bars"]![1]![0]=1546300800,"DUPLICATE_REJECTED");Mutate(n=>n["bars"]!.AsArray().RemoveAt(0),"MISSING_SEED_REJECTED");
+Check(!BtcStateLink.ValidUrl("ws://example.com:25345/btc130"),"PLAINTEXT_PUBLIC_REJECTED");Check(!BtcStateLink.ValidUrl("wss://example.com:443/"),"WRONG_PORT_REJECTED");Check(!BtcStateLink.ValidUrl("wss://a:b@example.com:25345/"),"URL_CREDENTIAL_REJECTED");Check(BtcStateLink.ValidUrl("wss://example.com:25345/btc130"),"WSS_ACCEPTED");
+object Field(object o,string n)=>o.GetType().GetField(n,BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(o)!;
+(TestHost,BtcStateLink,WebSocketClient) Host(bool enabled=true){var h=new TestHost{EnableTrading=enabled,EnableXau=false,EnableEur=false,BtcBridgeUrl="ws://127.0.0.1:25345/btc130",BtcBridgeToken=new string('x',48)};h.Server.TimeInUtc=now;h.Account.Balance=h.Account.Equity=100000;h.CreateEngines();h.Btc!.OnStart();var l=(BtcStateLink)Field(h.Btc,"link");var ws=(WebSocketClient)Field(l,"socket");h.Symbols.GetSymbol("BTCUSD").Bid=10000;h.Symbols.GetSymbol("BTCUSD").Ask=10005;return(h,l,ws);}
+void Ack(WebSocketClient ws){var save=ws.Sent.Last(x=>x.Contains("\"type\":\"save\""));using var p=JsonDocument.Parse(save);ws.Emit(JsonSerializer.Serialize(new{type="ack",revision=p.RootElement.GetProperty("base_revision").GetInt64()+1,client_revision=p.RootElement.GetProperty("client_revision").GetInt64()}));}
+void Handshake(TestHost h,WebSocketClient ws){ws.Emit("{\"type\":\"ready\",\"revision\":0,\"state\":null}");ws.Emit(text);Ack(ws);Check(h.Btc!.RecoveryReady,"NATIVE_BRIDGE_READY_AFTER_SEED_AND_DURABLE_ACK");}
+var(h,l,ws)=Host();Check(!h.Btc!.RecoveryReady,"NO_ENTRY_BEFORE_HANDSHAKE");Handshake(h,ws);
+h.Btc.Enter(new(now,1,200,10000),now);Check(h.Requests==0,"INTENT_WAIT_FOR_ACK");Check(!h.PortfolioReady,"GLOBAL_ENTRY_GATE_WHILE_ACK_PENDING");Ack(ws);h.Btc.OnTimer();Ack(ws);h.Btc.OnTimer();Check(h.Requests==1&&h.Positions.Count==1,"EXACTLY_ONE_FAKE_BROKER_ORDER_AFTER_ACK");Ack(ws);
+h.Btc.Enter(new(now,1,200,10000),now);Check(h.Requests==1,"DUPLICATE_SIGNAL_CONSUMED");
+ws.Drop();Check(!h.PortfolioReady,"BRIDGE_DROP_BLOCKS_ALL_NEW_ENTRIES");h.Server.TimeInUtc=now.AddHours(21.5);h.FailClose=true;h.Btc.Manage(h.Server.TimeInUtc);Check(h.Positions.Count==1&&h.LocalStorage.Values.Values.Any(x=>x.Contains("\"ExitPending\":true")),"DISCONNECTED_REJECTED_CLOSE_INTENT_DURABLE");
+h.EnableTrading=false;h.FailClose=false;h.Server.TimeInUtc=h.Server.TimeInUtc.AddSeconds(2);h.Btc.Manage(h.Server.TimeInUtc);Check(h.Positions.Count==1,"OFF_BLOCKS_CLOSE");h.EnableTrading=true;h.Server.TimeInUtc=h.Server.TimeInUtc.AddSeconds(2);h.Btc.Manage(h.Server.TimeInUtc);Check(h.Positions.Count==0,"CLOSE_RETRY_WITHOUT_FEED_OR_BRIDGE");
+var(off,_,ow)=Host(false);Handshake(off,ow);off.Btc!.Enter(new(now,1,200,10000),now);off.Btc.OnTimer();Check(off.Requests==0,"OFF_NEVER_SENDS");Reject(()=>off.Send(TradeType.Buy,"BTCUSD",1,"x",1,1,"x"),"HOST_FINAL_OFF_GUARD");
+var(bad,bl,bw)=Host();Handshake(bad,bw);bw.Emit("{\"type\":\"ack\",\"revision\":99,\"client_revision\":99}");Check(bl.Fatal&&!bad.PortfolioReady,"UNSOLICITED_ACK_FAILS_CLOSED");
+var(stale,sl,sw)=Host();Handshake(stale,sw);stale.Server.TimeInUtc=now.AddSeconds(26);sl.Tick();Check(!stale.PortfolioReady,"HEARTBEAT_TIMEOUT_BLOCKS");
+var(corrupt,cl,cw)=Host();Handshake(corrupt,cw);cw.Emit("{\"type\":\"feed_unavailable\"}");Check(!corrupt.PortfolioReady,"UNAVAILABLE_FEED_BLOCKS");cw.Emit(text);Check(corrupt.PortfolioReady,"VALID_FEED_RECOVERS");
+var(torn,tl,tw)=Host();Handshake(torn,tw);torn.LocalStorage.FailWrite=true;Reject(()=>torn.Btc!.Enter(new(now,1,200,10000),now),"WAL_FAILURE_ABORTS_ENTRY");Check(torn.Requests==0&&!torn.PortfolioReady,"WAL_FAILURE_NO_ORDER");
+// Restart with a persisted close intent still closes without remote readiness.
+var(before,rl,rw)=Host();Handshake(before,rw);before.Btc!.Enter(new(now,1,200,10000),now);Ack(rw);before.Btc.OnTimer();Ack(rw);before.Btc.OnTimer();Ack(rw);before.FailClose=true;before.Server.TimeInUtc=now.AddHours(21.5);before.Btc.Manage(before.Server.TimeInUtc);
+var restarted=new TestHost{EnableTrading=true,EnableXau=false,EnableEur=false,BtcBridgeUrl="ws://127.0.0.1:25345/btc130",BtcBridgeToken=new string('x',48)};restarted.Server.TimeInUtc=before.Server.TimeInUtc.AddSeconds(2);foreach(var pair in before.LocalStorage.Values)restarted.LocalStorage.Values[pair.Key]=pair.Value;restarted.Positions.AddRange(before.Positions);restarted.CreateEngines();restarted.Btc!.OnStart();restarted.Btc.OnTimer();Check(restarted.Positions.Count==0,"RESTART_WAL_INTENT_CLOSE_BEFORE_BRIDGE_READY");
+// Restored Sending intent is uncertain: never auto-resubmit.
+var(intent,il,iw)=Host();Handshake(intent,iw);intent.Btc!.Enter(new(now,1,200,10000),now);
+var rh=new TestHost{EnableTrading=true,EnableXau=false,EnableEur=false,BtcBridgeUrl="ws://127.0.0.1:25345/btc130",BtcBridgeToken=new string('x',48)};rh.Server.TimeInUtc=now;foreach(var pair in intent.LocalStorage.Values)rh.LocalStorage.Values[pair.Key]=pair.Value;rh.CreateEngines();rh.Btc!.OnStart();var rlink=(BtcStateLink)Field(rh.Btc,"link");var rs=(WebSocketClient)Field(rlink,"socket");rs.Emit("{\"type\":\"ready\",\"revision\":0,\"state\":null}");rs.Emit(text);Ack(rs);rh.Btc.OnTimer();Check(rh.Requests==0&&!rh.PortfolioReady,"RESTART_UNCERTAIN_INTENT_NEVER_RESENDS");
+// XAU/EUR-only infrastructure: shared gate rejects stale/disconnected bridge.
+var xy=new TestHost{EnableTrading=true,EnableBtc=false,ExpectedAccount="1237903",BridgeUrl="wss://example.invalid:25345"};xy.CreateEngines();
+foreach(var context in new EngineContext[]{xy.Xau!,xy.Eur!}){var type=context is Rizan.Portfolio.Xau.RizanRobot?typeof(Rizan.Portfolio.Xau.RizanRobot):typeof(Rizan.Portfolio.Eur.RizanRobot);var bf=BindingFlags.Instance|BindingFlags.NonPublic;type.GetField("_bridgeReady",bf)!.SetValue(context,true);type.GetField("_lastBridgeAck",bf)!.SetValue(context,xy.Server.TimeInUtc);}
+Check(xy.PortfolioReady,"XAU_EUR_FRESH_BRIDGE_GATE");xy.Server.TimeInUtc=xy.Server.TimeInUtc.AddSeconds(26);Check(!xy.PortfolioReady,"XAU_EUR_STALE_GLOBAL_GATE");
+// Manual BTC trades/history may have null labels. They must never enter ownership scans.
+var(manual,manualLink,manualWire)=Host();manual.History.Add(new(){SymbolName="BTCUSD",Label=null!});manual.Positions.Add(new(){SymbolName="BTCUSD",Label=null!,VolumeInUnits=.1,EntryPrice=10000,StopLoss=9900,TakeProfit=11000});Handshake(manual,manualWire);manual.Server.TimeInUtc=now.AddHours(21.5);manual.Btc!.Manage(manual.Server.TimeInUtc);Check(manual.Positions.Count==1&&manual.Closes==0&&!manual.NoForeignExposure(),"MANUAL_NULL_LABEL_IGNORED_NOT_CLOSED_AND_ENTRY_BLOCKED");
+Console.WriteLine(JsonSerializer.Serialize(new{Pass=true,Checks=checks,SignalParity=refs.Length,LiveOrders=0,FakeBrokerOnly=true,DefaultOff=true,NativeProtocol=true}));
+sealed class TestHost:RizanPortfolio{}

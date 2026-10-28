@@ -1,0 +1,9 @@
+{
+  "Pass": true,
+  "Checks": 447,
+  "NativeBranch": true,
+  "FakeBrokerOnly": true,
+  "RealOrders": 0,
+  "Profile": "R3_I100_W060",
+  "BuyAndSell": true
+}

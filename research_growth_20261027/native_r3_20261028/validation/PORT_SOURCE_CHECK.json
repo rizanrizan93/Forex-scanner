@@ -1,0 +1,12 @@
+{
+  "changed_existing_files": [
+    "PortfolioHost.cs",
+    "BtcEngine.cs",
+    "ResearchParams.cs",
+    "BtcStateLink.cs",
+    "RizanXauEurPortfolio.cs"
+  ],
+  "XAU_source_byte_identical": true,
+  "EUR_source_byte_identical": true,
+  "frozen_R2_and_replay_source_not_modified": true
+}

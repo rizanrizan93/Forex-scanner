@@ -1,0 +1,6 @@
+{
+  "stage": "stopped_by_user",
+  "complete": false,
+  "reason": "User requested freeze R3 and convert to native cBot instead of continuing R4",
+  "at_jakarta": "2026-10-28T15:14:23.127278+07:00"
+}
