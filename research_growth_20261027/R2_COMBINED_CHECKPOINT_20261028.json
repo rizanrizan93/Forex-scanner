@@ -1,0 +1,186 @@
+{
+  "schema": 2,
+  "date": "2026-10-28",
+  "timezone": "Asia/Jakarta",
+  "status": "FIVE_OF_SIX_COMBINED_COMPLETED_AUDIT_PASS_LAST_RUNNING",
+  "research_branch": "research/portfolio-billion-20261027",
+  "supersedes_for_current_execution": "BUFFER_FROZEN_EUR_BTC_STATE_20261027.json",
+  "frozen": {
+    "library_file_id": "libfile_65af9c91f2c08191b6aa3d1c00dca925",
+    "version": 0,
+    "sha256": "e47245454073d31084531ae74de6c7d856e9e2df63e135f7f18f480a99305f46",
+    "immutable": true,
+    "live_changes": false
+  },
+  "recovery": {
+    "reference_archive_sha256": "7a126cc48457e10c9a1ced1496cdf875ed6a4df84bad11f23129b20c3073b0dd",
+    "research_archive_sha256": "6191eab32b918b9d42a39f51f5f4e6dadfabce206695e77234c3583d24a110d0",
+    "manifest_entries_verified": {
+      "reference": 169,
+      "research": 66
+    },
+    "reference_raw_reports_restored": 16,
+    "input_sha256": {
+      "XAU": "3fda8011082e2691b6ebe1a8a4da5fff8e4bf0fc07baf57506b7894d95fc1808",
+      "EUR": "3c74ac5ccaeeac64f44693bc6bd4406e9225a9ef61dbb5f80756530f050506ec",
+      "BTC": "c217e367a22cab5f157d6d8a38828b9ada249f5a2d0657f20d204fee881c9504"
+    },
+    "btc_artifact": 12168391422,
+    "runtime": "8.0.32",
+    "compiler": "4.11.0"
+  },
+  "r2_binary_sha256": "79b61fb0565957ed792a67c8c0de08e18c5a5e8b2b892ccb1c320f9ad9b5e653",
+  "control_r2": {
+    "all_original_fields_identical": true,
+    "fields": [
+      "Summary",
+      "CashFlows",
+      "Annual",
+      "Monthly",
+      "Ledger",
+      "Curve",
+      "BrokerHistory",
+      "CashEvents",
+      "Open",
+      "Errors"
+    ],
+    "BtcResearchStatus": {
+      "Faulted": false,
+      "QueuedAtEnd": false,
+      "ExitPendingAtEnd": false
+    },
+    "balance": 938466200.2239354,
+    "dd": 64.89756276978311,
+    "audit_pass": true
+  },
+  "tests": {
+    "fresh_legacy_checks_pass": 1247,
+    "fresh_batch_checks_pass": 474,
+    "total": 1721,
+    "fake_broker_only": true,
+    "live_orders": 0,
+    "xau_source_exactly_matches_frozen": true
+  },
+  "combined_profile": {
+    "Id": "BUFFER_EUR_BTC_V2_CANDIDATE",
+    "SafetyFraction": 0.9,
+    "XauRisk": 1.5,
+    "XauWindow": 180,
+    "XauZone": 0.8,
+    "XauPause": true,
+    "XauStep": 51.25,
+    "EurWindow": 180,
+    "EurPause": true,
+    "EurInitial": 1,
+    "EurBE": 3,
+    "BtcBatchOrders": 32,
+    "BtcBatchRisk": 0.025,
+    "BtcBatchMargin": 0.1,
+    "BtcBatchSeconds": 180
+  },
+  "completed": [
+    {
+      "way": "A",
+      "cost": 1,
+      "balance": 1051126595.699221,
+      "dd": 65.83731286743308,
+      "pf": 2.647050647285777,
+      "baskets": 585,
+      "orders": 119955,
+      "max_risk_pct": 24.286240279752068,
+      "max_margin_pct": 56.03222636843323,
+      "audit_pass": true
+    },
+    {
+      "way": "B",
+      "cost": 1,
+      "balance": 992612612.1518544,
+      "dd": 65.88601151219306,
+      "pf": 2.562260486087672,
+      "baskets": 583,
+      "orders": 120205,
+      "max_risk_pct": 24.269503304924235,
+      "max_margin_pct": 56.319329002906365,
+      "audit_pass": true
+    },
+    {
+      "way": "A",
+      "cost": 1.5,
+      "balance": 977009626.7332854,
+      "dd": 67.79459182390943,
+      "audit_pass": true
+    },
+    {
+      "way": "B",
+      "cost": 1.5,
+      "balance": 922340948.4453279,
+      "dd": 68.073176029848,
+      "audit_pass": true
+    },
+    {
+      "way": "A",
+      "cost": 2,
+      "balance": 896369444.8155998,
+      "dd": 72.06434784309153,
+      "pf": 2.638552212936907,
+      "baskets": 584,
+      "orders": 94768,
+      "first_fill_max_seconds": 6,
+      "btc_child_max_seconds": 140,
+      "audit_pass": true,
+      "EUR_pnl": 8421911.182005776,
+      "BTC_pnl": 6372729.005708854,
+      "XAU_pnl": 881574704.6278994
+    }
+  ],
+  "pending": {
+    "way": "B",
+    "cost": 2,
+    "status": "RUNNING_WHEN_LAST_VERIFIED",
+    "last_logged_month": "2025-12",
+    "balance": null,
+    "dd": null,
+    "no_final_report_yet": true
+  },
+  "caveats": {
+    "native_tick": false,
+    "out_of_sample": false,
+    "macro_vintage_certified": false,
+    "last_price": "2026-10-09T21:59:00Z",
+    "initial_cash": 100,
+    "topups": 0,
+    "leverage_model": 200,
+    "shared_wallet": true,
+    "cost_stress": "commission/slippage/funding; spread fixed"
+  },
+  "findings": {
+    "normal_A_above_1bn": true,
+    "normal_B_above_1bn": false,
+    "EUR_cost2_A_frozen_pnl": 13401310.754477095,
+    "EUR_cost2_A_new_pnl": 8421911.182005776,
+    "note": "EUR profit improvement is not consistent under stress; do not claim full acceptance before all six and all per-symbol comparisons."
+  },
+  "incidents": {
+    "memory_loading_failures": 2,
+    "unscored": true,
+    "last_scenario_restarted_once_after_environment_interruption": true,
+    "restart_common_monthly_lines_checked": 78,
+    "restart_common_monthly_lines_identical": true,
+    "latest_transport_disconnect": "Environment returned; process remained alive. Do not start a duplicate."
+  },
+  "raw_storage": {
+    "new_reports": "Five completed combined reports plus control exist in scratch at time of last inspection; not yet durably uploaded",
+    "partial_zip": "RIZAN_R2_CHECKPOINT_5OF6_20261028.zip",
+    "partial_zip_bytes": 92910831,
+    "partial_zip_sha256": "9a056395010635f82959f4076f77d20eb732a65b30b8458681e9984d13621ad4",
+    "partial_zip_manifest_entries": 162,
+    "partial_zip_includes_btc_csv": true,
+    "library_save": "FAILED at prepare_uploads; no Library ID confirmed. This GitHub JSON preserves verified text results, not raw ledgers."
+  },
+  "pending_steps": [
+    "Do not rerun the five completed scenarios or the control without a concrete need.",
+    "Finish or recover only last B/cost2 scenario; verify active process before launching any retry.",
+    "Audit all six, aggregate annual/monthly results, per-symbol PnL/cost/timing, evaluate unchanged balance/DD thresholds and disclose stress EUR decline.",
+    "Save complete raw/source/data checkpoint when upload works. Keep frozen BUFFER and LIVE unchanged."
+  ]
+}
