@@ -2,7 +2,7 @@
   "schema": 2,
   "date": "2026-10-28",
   "timezone": "Asia/Jakarta",
-  "status": "FIVE_OF_SIX_COMBINED_COMPLETED_AUDIT_PASS_LAST_RUNNING",
+  "status": "BLOCKED_ENVIRONMENT_UNAVAILABLE_FIVE_OF_SIX_COMBINED_AUDITED",
   "research_branch": "research/portfolio-billion-20261027",
   "supersedes_for_current_execution": "BUFFER_FROZEN_EUR_BTC_STATE_20261027.json",
   "frozen": {
@@ -136,11 +136,12 @@
   "pending": {
     "way": "B",
     "cost": 2,
-    "status": "RUNNING_WHEN_LAST_VERIFIED",
-    "last_logged_month": "2025-12",
+    "status": "FINAL_STATUS_UNVERIFIED_AFTER_TRANSPORT_DISCONNECTION",
+    "last_logged_month": "2026-09",
     "balance": null,
     "dd": null,
-    "no_final_report_yet": true
+    "no_final_report_confirmed": true,
+    "note": "Latest verified log reached September 2026. Process may still exist; verify process and final report before retrying. Do not infer a completed result."
   },
   "caveats": {
     "native_tick": false,
@@ -166,7 +167,7 @@
     "last_scenario_restarted_once_after_environment_interruption": true,
     "restart_common_monthly_lines_checked": 78,
     "restart_common_monthly_lines_identical": true,
-    "latest_transport_disconnect": "Environment returned; process remained alive. Do not start a duplicate."
+    "latest_transport_disconnect": "exec-server transport disconnected; recovery timed out; environment explicitly unavailable. Last scenario final status unverified."
   },
   "raw_storage": {
     "new_reports": "Five completed combined reports plus control exist in scratch at time of last inspection; not yet durably uploaded",
@@ -179,7 +180,7 @@
   },
   "pending_steps": [
     "Do not rerun the five completed scenarios or the control without a concrete need.",
-    "Finish or recover only last B/cost2 scenario; verify active process before launching any retry.",
+    "On a genuinely available environment, check COMBINED_B_C2/RUN.json.metrics.json and REAL_JOB.json, and active process. Recover the completed report if present; never launch a duplicate. Only rerun the last scenario if its process is gone and no valid final report exists.",
     "Audit all six, aggregate annual/monthly results, per-symbol PnL/cost/timing, evaluate unchanged balance/DD thresholds and disclose stress EUR decline.",
     "Save complete raw/source/data checkpoint when upload works. Keep frozen BUFFER and LIVE unchanged."
   ]
