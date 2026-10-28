@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "snapshot_jakarta": "2026-10-28T13:37:07.244321+07:00",
-  "status": "DEFAULT_PARITY_CONTROL_ACTUALLY_RUNNING; four candidate caps queued until parity passes",
+  "snapshot_jakarta": "2026-10-28T13:46:30.312307+07:00",
+  "status": "CONTROL_AND_PRIORITY_CAP15_ACTUALLY_RUNNING; all scoring remains gated by full R2 default parity",
   "plan": {
     "created_jakarta": "2026-10-28T13:32:59.387392+07:00",
     "user_goal": "Highest ending balance while measured max equity DD is strictly below 60% across all six A/B x costs1/1.5/2; no claim this combination is guaranteed.",
@@ -153,7 +153,16 @@
     "independent_OOS": false,
     "live_changes": false,
     "R3_ongoing_work_preserved": true,
-    "storage": "Library capacity is currently full. Source/checkpoint can be preserved on the authorized research branch; do not claim final raw archive saved without successful receipt."
+    "storage": "Library capacity is currently full. Source/checkpoint can be preserved on the authorized research branch; do not claim final raw archive saved without successful receipt.",
+    "priority_precompute": {
+      "cap": 15,
+      "way": "B",
+      "cost": 2,
+      "reason": "User requests seeing results; precompute one declared grid cell while default control finishes. No scoring before full default parity passes. Cache into primary only before its replay starts, otherwise treat as extra independent replicate.",
+      "working_directory": "r4_priority",
+      "source": "r4_research/run_priority.py",
+      "does_not_expand_parameter_grid": true
+    }
   },
   "build": {
     "binary_sha256": "3c4ae4ff63dcd1454a39e32486f625094fd62c501df9ee60d5624c57aef2d23a",
@@ -372,6 +381,10 @@
     "r3_research/run_r3.py": {
       "sha256": "24f15a513c4fe2296489b212190018dc9137963ae64446a119c69a89fc11d3b5",
       "content": "from pathlib import Path\nimport os,json,time,subprocess,hashlib,shutil,sys,threading\n\nROOT=Path(__file__).resolve().parent\nWS=ROOT.parent\nR2=WS/'r3_restore/r2/buffer_growth'\nBIN=WS/'buffer_growth/work_r2/replay/Replay.dll'\nHOST=WS/'dotnet_host/dotnet'\nINPUT=WS/'v4_resume/inputs'\nEXPECTED='79b61fb0565957ed792a67c8c0de08e18c5a5e8b2b892ccb1c320f9ad9b5e653'\nCEILING=72.21320348415222\nFLOOR=842853657.6189626\n\ndef put(path,obj):\n    temp=path.with_suffix(path.suffix+'.tmp')\n    temp.write_text(json.dumps(obj,indent=2));temp.replace(path)\n\ndef init():\n    assert hashlib.sha256(BIN.read_bytes()).hexdigest()==EXPECTED\n    base=json.loads((R2/'BUFFER_EUR_BTC_V2_CANDIDATE.json').read_text())[0]\n    profiles=[]\n    for tag,initial,window in [('I090_W180',.9,180),('I100_W060',1,60),('I090_W060',.9,60)]:\n        p=dict(base,Id='R3_'+tag,EurInitial=initial,EurWindow=window)\n        assert all(p[k]==v for k,v in base.items() if k not in ['Id','EurInitial','EurWindow'])\n        profiles.append(p);put(ROOT/(p['Id']+'.json'),[p])\n    put(ROOT/'SCREEN_PROFILES.json',profiles)\n    for name in ['fresh_xau_tape.json','fresh_eur_tape.json']:\n        dest=ROOT/name\n        if not dest.exists():dest.symlink_to(WS/'buffer_growth'/name)\n    for name in ['FROZEN_BUFFER_LOCK.json','audit_growth.py','aggregate_growth.py']:\n        shutil.copy2(R2/name,ROOT/name)\n    put(ROOT/'PLAN.json',{'created_utc':time.time(),'scope':'REPLAY only; BUFFER V1, XAU, BTC32 and LIVE unchanged','r2_archive':'libfile_583f19ae940c8191a192731d6e8c7274','binary_sha256':EXPECTED,'profiles':profiles,'screens':[{'way':'B','cost':c} for c in [2,1]],'selection':'Two distinct audited screening leaders: highest normal B balance and lowest worst DD across B1/B2. Prefer candidates within frozen DD ceiling and B2 floor; no silent relaxation. Include R2 as an existing comparator. If leaders both R2, validate best R3 challenger by normal balance to learn whether screen rejection holds on A. Full six required for any final claim.','acceptance':{'dd_ceiling':CEILING,'cost2_floor':FLOOR,'normal_A_floor':988747417.2738367,'normal_B_floor':938466200.2239354,'own_EUR_BTC_all6_pnl_improve':True},'independent_OOS':False,'real_ticks':False,'spread_stressed':False})\n    return profiles\n\ndef replay(profiles,folder,cost,way,on_loaded=None):\n    out=ROOT/folder;out.mkdir(exist_ok=True)\n    config=out/'profiles.json';put(config,profiles)\n    completed=[];todo=[]\n    for p in profiles:\n        target=out/f\"{p['Id']}_{way}_cost{cost}.json.gz\"\n        # Only a completed metrics row plus nonempty raw report can be reused.\n        metrics=out/'RUN.json.metrics.json'\n        rows=json.loads(metrics.read_text()) if metrics.exists() else []\n        if target.exists() and any(x['Profile']['Id']==p['Id'] for x in rows):completed.append(p)\n        else:todo.append(p)\n    if not todo:\n        print('REUSE',folder,flush=True)\n        if on_loaded:on_loaded.set()\n        return\n    put(config,todo)\n    env=os.environ.copy();env.update(BTC_INPUT=str(INPUT/'BTCUSD_M1.csv'),BTC_SIGNAL_CACHE=str(WS/'v4_resume/baseline/results/FROZEN_7D130_A.json.btc_signals.json'),RESEARCH_CONFIGS=str(config),RESEARCH_PATH=way,RESEARCH_COST=str(cost),DOTNET_GCHeapHardLimit='0xC0000000',DOTNET_gcServer='1',DOTNET_GCHeapCount='4')\n    cmd=[str(HOST),str(BIN),str(INPUT/'xau_2012_2026.csv'),str(INPUT/'eur_2012_2026.csv'),str(out/'RUN.json'),'full','2019','2026']\n    info={'started_utc':time.time(),'cmd':cmd,'cost':cost,'way':way,'profiles':todo,'binary_sha256':EXPECTED,'environment':{k:v for k,v in env.items() if k.startswith(('BTC_','RESEARCH_','DOTNET_'))}}\n    with (out/'replay.log').open('w') as log:\n        p=subprocess.Popen(cmd,env=env,stdout=log,stderr=log);info['pid']=p.pid;put(out/'JOB.json',info)\n        print('START',folder,p.pid,flush=True)\n        last=''\n        while p.poll() is None:\n            time.sleep(15)\n            lines=(out/'replay.log').read_text(errors='replace').splitlines()\n            if lines and lines[-1]!=last:\n                last=lines[-1];print(folder,last[:550],flush=True)\n            if on_loaded and any(x.startswith('TAPES ') for x in lines):on_loaded.set()\n        info.update(returncode=p.returncode,finished_utc=time.time());put(out/'JOB.json',info)\n    if on_loaded:on_loaded.set()\n    print('END',folder,p.returncode,flush=True)\n    if p.returncode:raise RuntimeError(f'{folder}: replay failed {p.returncode}')\n\ndef audit():\n    log=ROOT/'audit.log'\n    with log.open('w') as f:subprocess.run([sys.executable,str(ROOT/'audit_growth.py')],stdout=f,stderr=subprocess.STDOUT,check=True)\n    rows=json.loads((ROOT/'RESULTS.json').read_text())\n    if not all(x['pass'] for x in rows):raise RuntimeError('Full audit failed; inspect RESULTS.json')\n    return rows\n\ndef leaders(rows,profiles):\n    old=json.loads((R2/'RESULTS.json').read_text())\n    old=[x for x in old if x['id']=='BUFFER_EUR_BTC_V2_CANDIDATE' and x['way']=='B' and x['cost'] in [1,2]]\n    scores=[]\n    for pid in [p['Id'] for p in profiles]+['BUFFER_EUR_BTC_V2_CANDIDATE']:\n        pair=[x for x in rows+old if x['id']==pid and x['way']=='B' and x['cost'] in [1,2]]\n        assert len(pair)==2,(pid,len(pair))\n        normal=next(x for x in pair if x['cost']==1);stress=next(x for x in pair if x['cost']==2)\n        scores.append({'id':pid,'normal_balance':normal['balance'],'stress_balance':stress['balance'],'worst_dd':max(x['dd'] for x in pair),'audited':all(x['pass'] for x in pair),'within_portfolio_screen_limits':max(x['dd'] for x in pair)<=CEILING and stress['balance']>=FLOOR})\n    eligible=[x for x in scores if x['audited'] and x['within_portfolio_screen_limits']]\n    top=max(eligible,key=lambda x:x['normal_balance']);low=min(eligible,key=lambda x:x['worst_dd'])\n    selected=list(dict.fromkeys(x['id'] for x in [top,low] if x['id'].startswith('R3_')))\n    if not selected:selected=[max((x for x in scores if x['id'].startswith('R3_')),key=lambda x:x['normal_balance'])['id']]\n    put(ROOT/'SELECTION.json',{'scores':scores,'highest_balance_screen':top,'lowest_dd_screen':low,'selected_for_full6':selected,'not_final_until_full6':True})\n    return [p for p in profiles if p['Id'] in selected]\n\ndef main():\n    profiles=init();put(ROOT/'STATUS.json',{'stage':'screening','started_utc':time.time(),'complete':False})\n    # Stagger input loading; cap each managed heap at 3 GiB on 8 GiB host.\n    loaded=threading.Event();errors=[]\n    def stress():\n        try:replay(profiles,'SCREEN_B_C2',2,'B',loaded)\n        except BaseException as e:errors.append(repr(e));loaded.set()\n    worker=threading.Thread(target=stress);worker.start()\n    while not loaded.wait(15):print('WAIT input loading B2',flush=True)\n    if errors:raise RuntimeError(errors)\n    replay(profiles,'SCREEN_B_C1',1,'B');worker.join()\n    if errors:raise RuntimeError(errors)\n    rows=audit();selected=leaders(rows,profiles)\n    put(ROOT/'STATUS.json',{'stage':'full_six_validation','selected':[p['Id'] for p in selected],'screen_runs_complete':6,'complete':False})\n    for cost,way in [(2,'A'),(1,'A'),(1.5,'A'),(1.5,'B')]:replay(selected,f'FINAL_{way}_C{cost}',cost,way)\n    audit()\n    subprocess.run([sys.executable,str(ROOT/'aggregate_growth.py')],check=True)\n    put(ROOT/'STATUS.json',{'stage':'all_replays_and_audits_complete','complete':True,'finished_utc':time.time(),'selected':[p['Id'] for p in selected]})\n\nif __name__=='__main__':\n    try:main()\n    except BaseException as e:\n        put(ROOT/'STATUS.json',{'stage':'error','error':repr(e),'complete':False,'at_utc':time.time()});raise\n"
+    },
+    "r4_research/run_priority.py": {
+      "sha256": "3ad29b75b1338f26ec7bc057cc00691f72afc418989e4f2dbff8068e069959b1",
+      "content": "from pathlib import Path\nimport json,sys,time,importlib.util,shutil,hashlib,subprocess\nfrom datetime import datetime\nfrom zoneinfo import ZoneInfo\n\nP=Path(__file__).resolve().parent;W=P.parent;R=W/'r4_priority'\nR.mkdir(exist_ok=True)\ndef put(p,x):\n    t=p.with_suffix(p.suffix+'.tmp');t.write_text(json.dumps(x,indent=2)+'\\n');t.replace(p)\ndef load(p):return json.loads(p.read_text())\nprofile=next(x for x in load(P/'PROFILES.json') if x['PortfolioCapPct']==15)\nput(R/(profile['Id']+'.json'),[profile])\nfor name in ['fresh_xau_tape.json','fresh_eur_tape.json']:\n    dest=R/name\n    if not dest.exists():dest.symlink_to(W/'buffer_growth'/name)\nfor name in ['FROZEN_BUFFER_LOCK.json','audit_growth.py']:shutil.copy2(P/name,R/name)\nspec=importlib.util.spec_from_file_location('r4_priority_replay_helper',W/'r3_research/run_r3.py');runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)\nrunner.ROOT=R;runner.BIN=P/'work_r4/replay/Replay.dll';runner.EXPECTED=load(P/'BUILD.json')['binary_sha256']\nassert hashlib.sha256(runner.BIN.read_bytes()).hexdigest()==runner.EXPECTED\nput(R/'STATUS.json',{'stage':'priority_cap15_B2_running','valid_score':False,'default_parity_required':True,'created_jakarta':datetime.now(ZoneInfo('Asia/Jakarta')).isoformat()})\nrunner.replay([profile],'B_COST2',2,'B')\norigin=R/'B_COST2';metrics=load(origin/'RUN.json.metrics.json');assert len(metrics)==1\nraw=origin/(profile['Id']+'_B_cost2.json.gz');assert raw.exists()\n# Precompute one already-declared grid cell. Install only before primary replay starts.\n# Even if primary starts in this small window, it begins with cap17.5; no cap15\n# writer exists yet. A late cache miss can cause duplicate compute, never a second\n# counted grid cell. Preserve the priority job's separate provenance.\ndest=P/'SCREEN_B_C2';job=dest/'JOB.json';installed=False\nif not job.exists():\n    dest.mkdir(exist_ok=True);target=dest/raw.name;tmp=target.with_suffix('.tmp');shutil.copy2(raw,tmp);tmp.replace(target)\n    shutil.copy2(origin/'JOB.json',dest/'PRECOMPUTED_CAP15_JOB.json')\n    row=dict(metrics[0],File=str(target));put(dest/'RUN.json.metrics.json',[row]);installed=True\nput(R/'STATUS.json',{'stage':'awaiting_default_parity','valid_score':False,'primary_cache_installed':installed})\nwhile not (P/'DEFAULT_PARITY.json').exists():\n    state=load(P/'STATUS.json')\n    if state.get('stage')=='error':raise RuntimeError('Primary control failed; do not score priority report')\n    time.sleep(15)\nassert load(P/'DEFAULT_PARITY.json')['pass'],'Primary default parity failed; priority result is invalid'\nwith (R/'audit.log').open('w') as log:subprocess.run([sys.executable,str(R/'audit_growth.py')],stdout=log,stderr=log,check=True)\nrows=load(R/'RESULTS.json');assert len(rows)==1 and rows[0]['pass']\nx=rows[0];base=next(a for a in load(W/'r3_restore/r2/buffer_growth/RESULTS.json') if a['id']=='BUFFER_EUR_BTC_V2_CANDIDATE' and a['way']=='B' and a['cost']==2)\nresult={'id':profile['Id'],'way':'B','cost':2,'balance':x['balance'],'dd':x['dd'],'audit':True,'default_parity_pass':True,'scenario_DD_below60':x['dd']<60,'delta_balance_vs_R2':x['balance']-base['balance'],'delta_DD_vs_R2_pp':x['dd']-base['dd'],'full_six_complete':False,'primary_cache_installed':installed,'raw_sha256':x['sha256']}\nput(R/'PRELIMINARY_RESULT.json',result);put(R/'STATUS.json',{'stage':'audited_priority_result_ready','valid_score':True,'full_six_complete':False})\nprint(json.dumps(result,indent=2),flush=True)\n"
     }
   },
   "changed_CSharp_sha256": {
@@ -383,5 +396,59 @@
   "source_persisted_on_research_branch": true,
   "final_raw_archive_saved": false,
   "restore_note": "Restore frozen R2 package and original data/runtime paths. Decode the pinned .dll.gz.b64 artifact to exact work_r4/replay/Replay.dll; verify DLL SHA. Restore the .runtimeconfig.json from the R2 runtime config. Restore source files below including r3 replay helper dependency. Never rebuild or overwrite frozen/running DLLs. Existing outputs are not evidence of a surviving process after workspace loss.",
-  "control_latest_log": "MONTH BUFFER_EUR_BTC_V2_CANDIDATE_B 2023-08-03 balance=1686792.1614566606 requests=3304 positions=0 ack=0"
+  "control_latest_log": "MONTH BUFFER_EUR_BTC_V2_CANDIDATE_B 2025-06-05 balance=111780709.59080651 requests=28283 positions=0 ack=0",
+  "priority_runtime_status": {
+    "stage": "priority_cap15_B2_running",
+    "valid_score": false,
+    "default_parity_required": true,
+    "created_jakarta": "2026-10-28T13:43:18.821400+07:00"
+  },
+  "priority_job": {
+    "started_utc": 1793169798.8237646,
+    "cmd": [
+      "/workspace/scratch/545ae3743761/dotnet_host/dotnet",
+      "/workspace/scratch/545ae3743761/r4_research/work_r4/replay/Replay.dll",
+      "/workspace/scratch/545ae3743761/v4_resume/inputs/xau_2012_2026.csv",
+      "/workspace/scratch/545ae3743761/v4_resume/inputs/eur_2012_2026.csv",
+      "/workspace/scratch/545ae3743761/r4_priority/B_COST2/RUN.json",
+      "full",
+      "2019",
+      "2026"
+    ],
+    "cost": 2,
+    "way": "B",
+    "profiles": [
+      {
+        "Id": "R4_CAP_15",
+        "SafetyFraction": 0.9,
+        "XauRisk": 1.5,
+        "XauWindow": 180,
+        "XauZone": 0.8,
+        "XauPause": true,
+        "XauStep": 51.25,
+        "EurWindow": 180,
+        "EurPause": true,
+        "EurInitial": 1,
+        "EurBE": 3,
+        "BtcBatchOrders": 32,
+        "BtcBatchRisk": 0.025,
+        "BtcBatchMargin": 0.1,
+        "BtcBatchSeconds": 180,
+        "PortfolioCapPct": 15
+      }
+    ],
+    "binary_sha256": "3c4ae4ff63dcd1454a39e32486f625094fd62c501df9ee60d5624c57aef2d23a",
+    "environment": {
+      "BTC_INPUT": "/workspace/scratch/545ae3743761/v4_resume/inputs/BTCUSD_M1.csv",
+      "BTC_SIGNAL_CACHE": "/workspace/scratch/545ae3743761/v4_resume/baseline/results/FROZEN_7D130_A.json.btc_signals.json",
+      "RESEARCH_CONFIGS": "/workspace/scratch/545ae3743761/r4_priority/B_COST2/profiles.json",
+      "RESEARCH_PATH": "B",
+      "RESEARCH_COST": "2",
+      "DOTNET_GCHeapHardLimit": "0xC0000000",
+      "DOTNET_gcServer": "1",
+      "DOTNET_GCHeapCount": "4"
+    },
+    "pid": 6
+  },
+  "priority_latest_log": "MONTH R4_CAP_15_B 2023-09-11 balance=699194.2787488407 requests=2414 positions=0 ack=0"
 }
