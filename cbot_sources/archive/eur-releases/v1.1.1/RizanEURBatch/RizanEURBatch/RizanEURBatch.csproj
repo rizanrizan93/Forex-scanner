@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><Version>1.1.1</Version><TargetFramework>net6.0</TargetFramework><LangVersion>latest</LangVersion><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><AlgoPublish>false</AlgoPublish><IncludeSource>false</IncludeSource></PropertyGroup>
+<ItemGroup><PackageReference Include="cTrader.Automate" Version="1.0.21" /></ItemGroup>
+<ItemGroup><Compile Include="../../Common/*.cs" Link="Common/%(Filename)%(Extension)" /></ItemGroup>
+</Project>
