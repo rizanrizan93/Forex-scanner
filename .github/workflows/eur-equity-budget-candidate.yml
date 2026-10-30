@@ -1,0 +1,29 @@
+name: EUR equity-budget candidate
+
+on:
+  pull_request:
+    paths:
+      - "cbot_sources/archive/eur-releases/v1.1.0/**"
+      - ".github/workflows/eur-equity-budget-candidate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dotnet-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+      - name: Planner regression tests
+        run: dotnet run --project cbot_sources/archive/eur-releases/v1.1.0/tests/PlannerTests.csproj -c Release
+      - name: Runtime regression tests
+        run: dotnet run --project cbot_sources/archive/eur-releases/v1.1.0/tests/RuntimeTests.csproj -c Release
+      - name: Build EUR cBot source
+        run: dotnet build cbot_sources/archive/eur-releases/v1.1.0/RizanEURBatch/RizanEURBatch/RizanEURBatch.csproj -c Release --nologo

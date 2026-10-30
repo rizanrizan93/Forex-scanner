@@ -10,7 +10,7 @@ for(int i=0;i<3000;i++){
  double Margin(int q)=>q*margin*(q>50?1.1:1);
  int q=EurBatchExecution.Count(c,b,stage,quote,equity,equity-used,used,spread,cap,first,Margin),brute=0;
  for(int k=1;k<=cap;k++){double risk=first?FrozenCore.ChildRisk(c,side,b.Entry,b.Stop):FrozenCore.PlannedChildRisk(c,side,quote,b.Stop),cost=k*(c.ChildUnits*(spread+c.Slip)+c.CommissionPerSide),reference=Math.Min(b.ReferenceBalance,equity-cost);
- bool ok=reference>0&&b.StageRisk[stage]+k*risk<=FrozenCore.StageAllocation(c,b,stage)+1e-8&&b.UsedRisk+k*risk<=Math.Min(b.RiskBudget,reference*c.RiskFraction*b.Scale)+1e-8&&used+Margin(k)<=reference*c.MarginFraction*b.Scale+1e-8&&equity-used>=Margin(k)+cost;if(ok)brute=k;}
+ bool ok=reference>0&&b.StageRisk[stage]+k*risk<=FrozenCore.StageAllocation(c,b,stage)+1e-8&&b.UsedRisk+k*risk<=Math.Min(b.RiskBudget,reference*c.RiskFraction*b.Scale)+1e-8&&used+Margin(k)<=FrozenCore.MarginCeiling(c,reference,b.Scale)+1e-8&&equity-used>=Margin(k)+cost;if(ok)brute=k;}
  Check(q==brute,"MAXIMAL_WITH_TIERS");
  if(q>0){if(first)EurBatchExecution.AnchorFirstFill(c,b,quote+side*c.Slip);Check(EurBatchExecution.ActualOk(c,b,stage,quote+side*c.Slip,equity-q*(c.ChildUnits*(spread+c.Slip)+c.CommissionPerSide),used+Margin(q),q),"PLANNED_ACTUAL_PARITY");}
  Check(EurBatchExecution.Count(c,b,stage,double.NaN,equity,equity-used,used,spread,cap,first,Margin)==0,"INVALID_QUOTE");
@@ -26,6 +26,19 @@ foreach(int leverage in new[]{30,100,200})foreach(int side in new[]{1,-1}){
  EurBatchExecution.Accept(c,b,0,b.Entry,q);Check(b.Accepted[0]==q&&Math.Abs(b.UsedRisk-q*per)<1e-8,"AGGREGATED_ACCEPTANCE");
  Check(b.QueueStage==-1&&b.NextStage==1,"QUEUE_TRANSITION");
  bool duplicate=false;try{EurBatchExecution.Accept(c,b,0,b.Entry,q);}catch(InvalidOperationException){duplicate=true;}Check(duplicate,"NO_DOUBLE_ACCEPTANCE");
+}
+// Regression: virtual feedback can lower EUR scale to .1. The risk budget must shrink,
+// but broker-minimum 1,000-unit execution must not be blocked only because the margin
+// ceiling was multiplied by the same scale. $100 remains constrained by the 50% hard
+// margin ceiling and by the .1-scaled risk budget.
+foreach(int leverage in new[]{30,100,200})foreach(int side in new[]{1,-1}){
+ double quote=1.1,spread=.00001,scale=.1,margin=1000*quote/leverage;
+ var b=EurBatchExecution.Start(c,new(new DateTime(2020,1,1,12,0,0,DateTimeKind.Utc),side,.002),quote,100,100,100,0,margin,scale,100);
+ Check(b!=null,"LOW_SCALE_SMALL_CAPITAL_STARTS");
+ int q=EurBatchExecution.Count(c,b!,0,quote,100,100,0,spread,b!.QueueRemaining,true,k=>k*margin);
+ examples.Add(new{Leverage=leverage,Side=side,Equity=100,Quote=quote,StopPips=20,Scale=scale,InitialChildren=q,Lots=q*.01,ProjectedMargin=q*margin,ScaledRiskBudget=100*c.RiskFraction*scale,HardMarginCeiling=FrozenCore.MarginCeiling(c,100,scale)});
+ Check(q>=1,"LOW_SCALE_MIN_CHILD_FITS");
+ Check(q*margin<=FrozenCore.MarginCeiling(c,100,scale)+1e-8,"LOW_SCALE_MARGIN_WITHIN_HARD_CEILING");
 }
 Console.WriteLine(JsonSerializer.Serialize(new{Pass=true,Assertions=assertions,Examples=examples}));
 void Check(bool value,string name){assertions++;if(!value)throw new Exception(name);}

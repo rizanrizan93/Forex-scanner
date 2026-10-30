@@ -85,6 +85,9 @@ public static class FrozenCore
     // Bridge identity retains the complete original account/symbol key.
     public static string CheckpointStorageKey(string identity) => "Rizan"+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).Substring(0,40);
     public static bool Finite(double x) => !double.IsNaN(x) && !double.IsInfinity(x);
+    // EUR feedback scaling is a risk scaler. MarginFraction remains the hard account-level ceiling,
+    // otherwise scale=.1 can make one broker-minimum 1,000-unit child mathematically impossible.
+    public static double MarginCeiling(FrozenContract c,double reference,double scale) => reference*c.MarginFraction*(c.Symbol=="EURUSD" ? 1d : scale);
     public static bool ValidCheckpointPeak(double value) => Finite(value) && value>=0;
     public static DateTime Floor(DateTime at, int minutes) => new(at.Ticks - at.Ticks % TimeSpan.FromMinutes(minutes).Ticks, DateTimeKind.Utc);
     public static List<Candle> Aggregate(IEnumerable<Candle> bars, int minutes, DateTime available)
@@ -249,14 +252,14 @@ public static class FrozenCore
         double reference=Math.Min(b.ReferenceBalance,projectedEquity);
         return reference>0 && Finite(risk) && risk>0 && b.StageRisk[stage]+risk<=StageAllocation(c,b,stage)+1e-8 &&
             b.UsedRisk+risk<=Math.Min(b.RiskBudget,reference*c.RiskFraction*b.Scale)+1e-8 &&
-            usedMargin+marginChild<=reference*c.MarginFraction*b.Scale+1e-8 && freeMargin>=marginChild+c.ChildUnits*(spread+c.Slip)+c.CommissionPerSide;
+            usedMargin+marginChild<=MarginCeiling(c,reference,b.Scale)+1e-8 && freeMargin>=marginChild+c.ChildUnits*(spread+c.Slip)+c.CommissionPerSide;
     }
     public static bool ActualFillBudgetOk(FrozenContract c,Basket b,int stage,double actualFill,double equity,double usedMargin)
     {
         if(stage<0 || stage>=c.Stages || !new[]{actualFill,equity}.All(x=>Finite(x)&&x>0) || !Finite(usedMargin) || usedMargin<0)return false;
         double risk=ChildRisk(c,b.Side,actualFill,b.Stop),reference=Math.Min(b.ReferenceBalance,equity);
         return Finite(risk) && risk>0 && b.StageRisk[stage]+risk<=StageAllocation(c,b,stage)+1e-8 &&
-            b.UsedRisk+risk<=Math.Min(b.RiskBudget,reference*c.RiskFraction*b.Scale)+1e-8 && usedMargin<=reference*c.MarginFraction*b.Scale+1e-8;
+            b.UsedRisk+risk<=Math.Min(b.RiskBudget,reference*c.RiskFraction*b.Scale)+1e-8 && usedMargin<=MarginCeiling(c,reference,b.Scale)+1e-8;
     }
     public static Basket? StartBasket(FrozenContract c,Signal signal,double entry,double balance,double equity,double freeMargin,double usedMargin,double marginChild,double scale,double peak)
     {
@@ -264,7 +267,7 @@ public static class FrozenCore
         double distance=c.Symbol=="XAUUSD" ? Math.Max(.5,Math.Max(2.65*signal.Atr,signal.Side*(entry-signal.Anchor))) : signal.Distance;
         if(!Finite(distance) || distance<=0 || signal.Side is not (1 or -1)) return null;
         double stop=entry-signal.Side*distance;double reference=Math.Min(balance,equity);
-        double rc=reference*c.RiskFraction*scale;double mc=Math.Max(0,Math.Min(freeMargin,reference*c.MarginFraction*scale-usedMargin));
+        double rc=reference*c.RiskFraction*scale;double mc=Math.Max(0,Math.Min(freeMargin,MarginCeiling(c,reference,scale)-usedMargin));
         double risk=c.Symbol=="EURUSD" ? PlannedChildRisk(c,signal.Side,entry,stop) : ChildRisk(c,signal.Side,entry,stop);
         int count=FloorCount(Math.Min(rc/risk,mc/marginChild));
         if(c.Symbol=="XAUUSD") count=Math.Min(count,Math.Max(1,FloorCount(balance/100)));
@@ -282,7 +285,8 @@ public static class FrozenCore
         double denom=Enumerable.Range(1,c.Stages-1).Sum(k=>Math.Pow(k+1,c.WeightPower));
         double share=StageAllocation(c,b,stage);var risk=c.Symbol=="EURUSD" ? PlannedChildRisk(c,b.Side,fill,b.Stop) : ChildRisk(c,b.Side,fill,b.Stop);
         if(risk<=0 || !Finite(risk)) return 0;
-        double mb=Math.Max(0,Math.Min(freeMargin,Math.Min(b.ReferenceBalance,equity)*c.MarginFraction*b.Scale-usedMargin));
+        double reference=Math.Min(b.ReferenceBalance,equity);
+        double mb=Math.Max(0,Math.Min(freeMargin,MarginCeiling(c,reference,b.Scale)-usedMargin));
         return FloorCount(Math.Min(share/risk,Math.Min(Math.Max(0,b.RiskBudget-b.UsedRisk)/risk,mb/marginChild)));
     }
     public static double StageAllocation(FrozenContract c,Basket b,int stage) => stage==0 ? b.InitialRiskAllocation :
