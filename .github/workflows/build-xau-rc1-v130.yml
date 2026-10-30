@@ -1,0 +1,140 @@
+name: Build XAU RC1 v1.3.0
+
+on:
+  push:
+    branches: ["freeze/xau-rc1-1025-primary"]
+    paths:
+      - ".github/workflows/build-xau-rc1-v130.yml"
+      - "config/frozen/xauusd_rc1_102_5_primary_v1.json"
+
+permissions:
+  contents: write
+
+jobs:
+  build-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: freeze/xau-rc1-1025-primary
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+      - name: Prepare isolated RC1 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=cbot_sources/archive/xau-stable-v1.2.1
+          OUT=cbot_sources/archive/xau-rc1-v1.3.0
+          rm -rf "$OUT"
+          mkdir -p "$OUT"
+          cp -R "$SRC/source" "$OUT/source"
+          cp "$SRC/Global.cs" "$OUT/Global.cs"
+          cp "$SRC/ReplayApi.cs" "$OUT/ReplayApi.cs"
+          cp "$SRC/Tests.csproj" "$OUT/Tests.csproj"
+          mkdir -p "$OUT/tests"
+          cp "$SRC/tests/Tests.cs" "$OUT/tests/Tests.cs"
+          python - <<'PY'
+          from pathlib import Path
+          out=Path('cbot_sources/archive/xau-rc1-v1.3.0')
+          f=out/'source/Common/FrozenCore.cs'
+          s=f.read_text()
+          s=s.replace('double RiskFraction, double MarginFraction, double TargetR, int HoldMinutes,\n    double Slip, double ChildUnits, double CommissionPerSide, int ReferenceLeverage)',
+                      'double RiskFraction, double MarginFraction, double TargetR, double StopAtrMultiplier, double BalanceStepUsd, int HoldMinutes,\n    double Slip, double ChildUnits, double CommissionPerSide, int ReferenceLeverage)')
+          s=s.replace('3, new[] { 0d, .2, .4 }, false, 210, .4, 1.5, .2725, .5, 4, 240, .00001, 1000, .03, 200);',
+                      '3, new[] { 0d, .2, .4 }, false, 210, .4, 1.5, .2725, .5, 4, 3.0, 100, 240, .00001, 1000, .03, 200);')
+          old='4, new[] { 0d, .16111111111111112, .32222222222222224, .48333333333333334 },\n        true, 45, 1, .5, .125, .5, 6.6, 480, .05, 1, .03, 100);'
+          new='3, new[] { 0d, .2, .4 },\n        true, 90, 1, .5, .121, .5, 5.5, 2.4, 102.5, 480, .05, 1, .03, 100);'
+          if old not in s: raise SystemExit('XAU_CONTRACT_PATTERN_NOT_FOUND')
+          s=s.replace('"7ab0cd24eb2e46480d0ba371ba2cd713c5d6bd30747aee71f91ced5a57fce8bf",\n        '+old,
+                      '"44db60b75e3eb19c0fb94f10baca96f35ab4686086a70eea53f626533ca9923c",\n        '+new)
+          s=s.replace('Math.Max(2.65*signal.Atr,signal.Side*(entry-signal.Anchor))','Math.Max(c.StopAtrMultiplier*signal.Atr,signal.Side*(entry-signal.Anchor))')
+          s=s.replace('FloorCount(balance/100)','FloorCount(balance/c.BalanceStepUsd)')
+          f.write_text(s)
+          f=out/'source/Common/XauSendReference.cs'
+          s=f.read_text().replace('Math.Max(2.65*signal.Atr,side*(entry-signal.Anchor-(side==-1?spread:0)))','Math.Max(c.StopAtrMultiplier*signal.Atr,side*(entry-signal.Anchor-(side==-1?spread:0)))')
+          f.write_text(s)
+          bot=out/'source/RizanXAUStable/RizanXAUStable/RizanXAUStable.cs'
+          bot.write_text('using cAlgo.API;using Rizan.Frozen;namespace cAlgo.Robots;[Robot(TimeZone=TimeZones.UTC,AccessRights=AccessRights.None)]public class RizanXAU_RC1_v1_3_0:RizanRobot{protected override FrozenContract Contract=>FrozenContract.Xau;protected override string Prefix=>"RZXRC1";protected override string LoginSuffix=>"4480";}\n')
+          proj=out/'source/RizanXAUStable/RizanXAUStable/RizanXAUStable.csproj'
+          s=proj.read_text().replace('<Version>1.2.1</Version>','<Version>1.3.0</Version>').replace('<AlgoPublish>false</AlgoPublish>','<AlgoPublish>true</AlgoPublish>')
+          proj.write_text(s)
+          t=out/'tests/Tests.cs'
+          s=t.read_text()
+          s=s.replace('Ack(r);var p=r.Positions.Single();if(kind=="MissingComment")', 'Ack(r);int expectedRecovered=State(r).Basket!.Accepted.Sum();var p=r.Positions.Single();if(kind=="MissingComment")')
+          s=s.replace('State(x).Basket!.Accepted.Sum()!=10', 'State(x).Basket!.Accepted.Sum()!=expectedRecovered')
+          s=s.replace('if(cap!=6)throw new Exception("SHRINK_SETUP")','if(cap!=5)throw new Exception("SHRINK_SETUP")')
+          s=s.replace('r.Symbol.Bid+=.8;r.Symbol.Ask+=.8;r.Mark();Ack(r);if(r.Requests!=1||r.LastVolume!=5', 'r.Symbol.Bid+=.8;r.Symbol.Ask+=.8;r.Mark();r.Account.Equity=100;Ack(r);if(r.Requests!=1||r.LastVolume!=4')
+          s=s.replace('State(r).Basket!.Accepted.Sum()!=5)throw new Exception("DURABLE_MAX_VOLUME_SHRINK")', 'State(r).Basket!.Accepted.Sum()!=4)throw new Exception("DURABLE_MAX_VOLUME_SHRINK")')
+          t.write_text(s)
+          (out/'config.json').write_text('''{\n  "StrategyId": "XAUUSD_RC1_102_5_PRIMARY_FROZEN_V1",\n  "Version": "1.3.0",\n  "Symbol": "XAUUSD",\n  "ContractHash": "44db60b75e3eb19c0fb94f10baca96f35ab4686086a70eea53f626533ca9923c",\n  "StopAtrMultiplier": 2.4,\n  "TargetR": 5.5,\n  "Stages": 3,\n  "DepthsR": [0, 0.2, 0.4],\n  "ConfirmedAdds": true,\n  "AddTtlMinutes": 90,\n  "RiskBasketMaximumFraction": 0.121,\n  "MarginFraction": 0.5,\n  "BalanceStepUsd": 102.5,\n  "HoldMinutes": 480,\n  "LossCooldownCalendarDays": 3,\n  "SendReferenceToleranceR": 0.2,\n  "EnableTradingDefault": false,\n  "LiveDeployed": false\n}\n''')
+          PY
+      - name: Contract parity assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          out=Path('cbot_sources/archive/xau-rc1-v1.3.0')
+          s=(out/'source/Common/FrozenCore.cs').read_text()
+          x=(out/'source/Common/XauSendReference.cs').read_text()
+          checks={
+            'contract_hash':'44db60b75e3eb19c0fb94f10baca96f35ab4686086a70eea53f626533ca9923c' in s,
+            'stages_depths':'3, new[] { 0d, .2, .4 }' in s,
+            'ttl90':'true, 90, 1, .5, .121, .5, 5.5, 2.4, 102.5, 480' in s,
+            'stop_runtime':'c.StopAtrMultiplier*signal.Atr' in s,
+            'stop_sendref':'c.StopAtrMultiplier*signal.Atr' in x,
+            'balance_step':'balance/c.BalanceStepUsd' in s,
+            'old_stop_absent':'2.65*signal.Atr' not in s and '2.65*signal.Atr' not in x,
+            'old_balance_absent':'balance/100' not in s,
+          }
+          if not all(checks.values()): raise SystemExit(json.dumps(checks,indent=2))
+          (out/'tests/contract_parity.json').write_text(json.dumps({'Pass':True,'Checks':checks},indent=2))
+          PY
+      - name: Run execution fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd cbot_sources/archive/xau-rc1-v1.3.0
+          dotnet run -c Release --project Tests.csproj | tee tests/fixture_results.json
+      - name: Build cTrader algo
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROJ=cbot_sources/archive/xau-rc1-v1.3.0/source/RizanXAUStable/RizanXAUStable/RizanXAUStable.csproj
+          dotnet restore "$PROJ"
+          dotnet build "$PROJ" -c Release -p:AlgoPublish=true
+          ALGO=$(find cbot_sources/archive/xau-rc1-v1.3.0/source -type f -name '*.algo' | head -1 || true)
+          if [ -z "$ALGO" ]; then
+            dotnet publish "$PROJ" -c Release -p:AlgoPublish=true
+            ALGO=$(find cbot_sources/archive/xau-rc1-v1.3.0/source -type f -name '*.algo' | head -1 || true)
+          fi
+          test -n "$ALGO"
+          cp "$ALGO" cbot_sources/archive/xau-rc1-v1.3.0/RizanXAU_RC1_v1.3.0.algo
+          sha256sum cbot_sources/archive/xau-rc1-v1.3.0/RizanXAU_RC1_v1.3.0.algo > cbot_sources/archive/xau-rc1-v1.3.0/SHA256.txt
+      - name: Record build and commit release
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=cbot_sources/archive/xau-rc1-v1.3.0
+          cat > "$OUT/PARITY_REPORT.md" <<'EOF'
+          # XAU RC1 v1.3.0 parity report
+
+          Strategy: `XAUUSD_RC1_102_5_PRIMARY_FROZEN_V1`.
+
+          Build asserts the embedded cBot contract matches RC1 $102.5: 2.4 ATR/structural stop, 5.5R target, 3 stages at 0/0.20/0.40R, 90 minute confirmed-add TTL, 12.1% basket risk cap, 50% margin cap, $102.50 balance step, 480 minute hold, 3-day loss cooldown, and 0.20R send-reference tolerance.
+
+          Execution fixtures are inherited from XAU stable v1.2.1 and rerun against the patched RC1 source. The `.algo` is compiled from this isolated source and defaults to trading disabled.
+
+          Historical replay reference through 2026-10-09 is research evidence, not a native cTrader tick backtest and not a guarantee of live results. RC1 $102.5 exceeded the former <50% DD criterion in the 2026 extension (about 51.3% observed in the synthetic replay).
+          EOF
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add "$OUT"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Build XAU RC1 v1.3.0 algo and parity fixtures [skip ci]"
+          git push origin HEAD:freeze/xau-rc1-1025-primary
