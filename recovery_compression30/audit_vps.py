@@ -6,12 +6,12 @@ NEEDLES=['1114218301','63.66304388135381','COMP_R3','RIZAN_XAU_TARGET_2B_DD60_RE
 PRUNE={'.git','.ssh','.cache','.local','.venv','venv','node_modules','rizan-ticks','ticks','__pycache__','site-packages','bin','obj'}
 def main():
  out=Path(sys.argv[1]);assert re.fullmatch(r'/tmp/rizan-compression-recovery\.[A-Za-z0-9]+/evidence',str(out));out.mkdir(mode=0o700)
- roots=[Path('/home/Rizanrizan')]+list(Path('/opt').glob('rizan*'))+list(Path('/var/backups').glob('rizan*'))+list(Path('/tmp').glob('rizan*'))
+ roots=[Path('/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS'),Path('/home/Rizanrizan')]+list(Path('/opt').glob('rizan*'))+list(Path('/var/backups').glob('rizan*'))+list(Path('/tmp').glob('rizan*'))
  hits=[];copied=[];scanned=0;total=0;limited=False
  for root in roots:
   if not root.is_dir() or out.parent==root or str(root)=='/opt/rizan-compression-bridge':continue
   for folder,dirs,files in os.walk(root,followlinks=False):
-   dirs[:]=[d for d in dirs if d not in PRUNE and not d.startswith('.') and len(Path(folder).relative_to(root).parts)<7]
+   dirs[:]=[d for d in dirs if d not in PRUNE and (not d.startswith('.') or d=='.worktrees') and len(Path(folder).relative_to(root).parts)<(12 if root.name=='REPLAY_RESULTS' else 7)]
    for name in files:
     p=Path(folder)/name;scanned+=1
     if scanned>150000:limited=True;break
