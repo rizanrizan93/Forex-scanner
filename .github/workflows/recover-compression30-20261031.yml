@@ -1,0 +1,50 @@
+name: Recover original compression30 research files (read only)
+on:
+  push:
+    branches: ['work/recover-compression30-20261031']
+    paths: ['recovery_compression30/**','.github/workflows/recover-compression30-20261031.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rizan-cbot-bridge-production-ssh
+  cancel-in-progress: false
+jobs:
+  recover-readonly:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/work/recover-compression30-20261031'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Search research and backup files without changing services
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || exit 1
+          private_dir=$(mktemp -d)
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$private_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$private_dir/known_hosts"
+          ssh_options=(-i "$private_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$private_dir/known_hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          target='Rizanrizan@202.74.74.172'
+          remote_dir=$(ssh "${ssh_options[@]}" "$target" 'umask 077; mktemp -d /tmp/rizan-compression-recovery.XXXXXXXX')
+          [[ "$remote_dir" =~ ^/tmp/rizan-compression-recovery\.[a-zA-Z0-9]+$ ]] || exit 1
+          cleanup() { ssh "${ssh_options[@]}" "$target" "sudo -n rm -rf -- '$remote_dir'" > /dev/null 2>&1 || true; rm -rf "$private_dir"; }
+          trap cleanup EXIT
+          scp "${ssh_options[@]}" recovery_compression30/audit_vps.py "$target:$remote_dir/"
+          ssh "${ssh_options[@]}" "$target" "sudo -n python3 '$remote_dir/audit_vps.py' '$remote_dir/evidence'; sudo -n chown -R \$(id -u):\$(id -g) '$remote_dir/evidence'" | tee RECOVERY_LOG.txt
+          mkdir recovered
+          scp -r "${ssh_options[@]}" "$target:$remote_dir/evidence/." recovered/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compression30-recovery-evidence
+          retention-days: 1
+          path: |
+            recovered/
+            RECOVERY_LOG.txt
