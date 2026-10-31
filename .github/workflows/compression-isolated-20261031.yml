@@ -1,0 +1,53 @@
+name: Deploy isolated compression bridge
+on:
+  push:
+    branches: ['work/compression-native-20261031']
+    paths: ['isolated_compression_20261031/**', '.github/workflows/compression-isolated-20261031.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rizan-cbot-bridge-production-ssh
+  cancel-in-progress: false
+jobs:
+  deploy-isolated:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/work/compression-native-20261031'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify and test exact bridge package
+        run: |
+          echo '1f26acfec036f3beac037736c25b37e5e2f9c301673c178fe3c10160581df3b8  isolated_compression_20261031/compression_bridge.tar.gz' | sha256sum -c -
+          mkdir candidate
+          tar -xzf isolated_compression_20261031/compression_bridge.tar.gz -C candidate
+          python -m pip install -r candidate/bridge/requirements.txt
+          python -m unittest discover -s candidate/bridge/deploy -p 'test_*.py' -v
+      - name: Install new service and additive route, verify over public WSS
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" ]] || { echo MISSING_VPS_SSH_KEY; exit 1; }
+          [[ -n "$SSH_KNOWN_HOSTS" ]] || { echo MISSING_VPS_KNOWN_HOSTS; exit 1; }
+          private_dir=$(mktemp -d)
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$private_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$private_dir/known_hosts"
+          ssh_options=(-i "$private_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$private_dir/known_hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          target='Rizanrizan@202.74.74.172'
+          remote_dir=$(ssh "${ssh_options[@]}" "$target" 'umask 077; mktemp -d /tmp/rizan-compression.XXXXXXXX')
+          [[ "$remote_dir" =~ ^/tmp/rizan-compression\.[a-zA-Z0-9]+$ ]] || exit 1
+          cleanup() { ssh "${ssh_options[@]}" "$target" "rm -rf -- '$remote_dir'" > /dev/null 2>&1 || true; rm -rf "$private_dir"; }
+          trap cleanup EXIT
+          scp "${ssh_options[@]}" isolated_compression_20261031/compression_bridge.tar.gz "$target:$remote_dir/"
+          ssh "${ssh_options[@]}" "$target" "set -e; echo '1f26acfec036f3beac037736c25b37e5e2f9c301673c178fe3c10160581df3b8  $remote_dir/compression_bridge.tar.gz' | sha256sum -c -; tar -xzf '$remote_dir/compression_bridge.tar.gz' -C '$remote_dir'; sudo -n python3 '$remote_dir/bridge/deploy/provision_isolated.py'" | tee VPS_COMPRESSION_RESULT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compression-vps-verification
+          path: VPS_COMPRESSION_RESULT.txt
