@@ -1,0 +1,73 @@
+name: Build TP500 cBot and deploy isolated bridge
+on:
+  push:
+    branches: ['work/tp500-frozen-20261101']
+    paths: ['isolated_tp500_20261101/**', '.github/workflows/tp500-isolated-20261101.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rizan-cbot-bridge-production-ssh
+  cancel-in-progress: false
+jobs:
+  build-and-deploy:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/work/tp500-frozen-20261101'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact package
+        run: |
+          sha256sum -c isolated_tp500_20261101/SHA256SUMS
+          mkdir candidate
+          tar -xzf isolated_tp500_20261101/tp500-native.tar.gz -C candidate
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Official cTrader build and native order tests
+        env:
+          DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+        run: |
+          dotnet build candidate/source/RizanPortfolioTP500Frozen.csproj -c Release --warnaserror
+          dotnet build candidate/validation/native/NativeHarness.csproj -c Release
+          dotnet candidate/validation/native/bin/Release/net8.0/NativeHarness.dll candidate/bridge/BTC_SEED_PACKET.json candidate/validation/native_fixtures/BTC.json
+          dotnet build candidate/validation/native/FxNativeHarness.csproj -c Release
+          dotnet candidate/validation/native/bin/Release/net8.0/FxNativeHarness.dll candidate/validation/native_fixtures
+      - name: Bridge, TLS, durable state and routing tests
+        run: |
+          python -m pip install -r candidate/bridge/requirements.txt
+          python -m unittest discover -s candidate/bridge -p 'test_*.py' -v
+          python -m unittest discover -s candidate/bridge/deploy -p 'test_*.py' -v
+      - name: Install TP500 service, preserve existing services, verify public WSS
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" ]] || { echo MISSING_VPS_SSH_KEY; exit 1; }
+          [[ -n "$SSH_KNOWN_HOSTS" ]] || { echo MISSING_VPS_KNOWN_HOSTS; exit 1; }
+          private_dir=$(mktemp -d)
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$private_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$private_dir/known_hosts"
+          ssh_options=(-i "$private_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$private_dir/known_hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          target='Rizanrizan@202.74.74.172'
+          remote_dir=$(ssh "${ssh_options[@]}" "$target" 'umask 077; mktemp -d /tmp/rizan-tp500.XXXXXXXX')
+          [[ "$remote_dir" =~ ^/tmp/rizan-tp500\.[a-zA-Z0-9]+$ ]] || exit 1
+          cleanup() { ssh "${ssh_options[@]}" "$target" "rm -rf -- '$remote_dir'" > /dev/null 2>&1 || true; rm -rf "$private_dir"; }
+          trap cleanup EXIT
+          scp "${ssh_options[@]}" isolated_tp500_20261101/tp500-native.tar.gz "$target:$remote_dir/"
+          expected=$(cut -d' ' -f1 isolated_tp500_20261101/SHA256SUMS)
+          [[ "$expected" =~ ^[a-f0-9]{64}$ ]] || exit 1
+          ssh "${ssh_options[@]}" "$target" "set -e; echo '$expected  $remote_dir/tp500-native.tar.gz' | sha256sum -c -; tar -xzf '$remote_dir/tp500-native.tar.gz' -C '$remote_dir'; sudo -n python3 '$remote_dir/bridge/deploy/provision_isolated.py'" | tee VPS_TP500_RESULT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tp500-build-and-vps-verification
+          path: |
+            VPS_TP500_RESULT.txt
+            candidate/source/bin/Release/net6.0/*.algo
+            candidate/source/bin/Release/net6.0/*.metadata
