@@ -1,0 +1,74 @@
+name: Build BTC10 frozen and verify isolated bridge
+on:
+  push:
+    branches: ['work/btc-eff20-frozen-20261102']
+    paths: ['isolated_btc10_20261102/**', '.github/workflows/btc10-isolated-20261102.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rizan-cbot-bridge-production-ssh
+  cancel-in-progress: false
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Restore pinned native base and apply frozen overlay
+        run: |
+          sha256sum -c isolated_tp500_20261101/SHA256SUMS
+          sha256sum -c isolated_btc10_20261102/SHA256SUMS
+          mkdir candidate
+          tar -xzf isolated_tp500_20261101/tp500-native.tar.gz -C candidate
+          tar -xzf isolated_btc10_20261102/overlay.tar.gz -C candidate
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Official build and native order path tests with simulated broker
+        env:
+          DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+        run: |
+          dotnet build candidate/source/RizanPortfolioBTC10Frozen.csproj -c Release --warnaserror
+          dotnet build candidate/validation/native/NativeHarness.csproj -c Release --warnaserror
+          dotnet candidate/validation/native/bin/Release/net8.0/NativeHarness.dll candidate/bridge/BTC_SEED_PACKET.json candidate/validation/native_fixtures/BTC.json
+          dotnet build candidate/validation/native/FxNativeHarness.csproj -c Release --warnaserror
+          dotnet candidate/validation/native/bin/Release/net8.0/FxNativeHarness.dll candidate/validation/native_fixtures
+          dotnet run --project candidate/validation/gates/Gates.csproj -c Release -- candidate/bridge/BTC_SEED_PACKET.json candidate/validation/EXPECTED_BTC10.json
+      - name: Authentication TLS persistence and deployment checks
+        run: |
+          python -m pip install -r candidate/bridge/requirements.txt
+          python -m unittest discover -s candidate/bridge -p 'test_*.py'
+          python -m unittest discover -s candidate/bridge/deploy -p 'test_*.py'
+          tar --exclude='*/bin' --exclude='*/obj' --exclude='*/__pycache__' -czf btc10-native.tar.gz -C candidate .
+          sha256sum btc10-native.tar.gz > btc10-native.sha256
+      - name: Provision isolated data and checkpoint bridge without broker execution
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]]
+          private_dir=$(mktemp -d)
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$private_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$private_dir/known_hosts"
+          ssh_options=(-i "$private_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$private_dir/known_hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          target='Rizanrizan@202.74.74.172'
+          remote_dir=$(ssh "${ssh_options[@]}" "$target" 'umask 077; mktemp -d /tmp/rizan-btc10.XXXXXXXX')
+          [[ "$remote_dir" =~ ^/tmp/rizan-btc10\.[a-zA-Z0-9]+$ ]]
+          cleanup() { ssh "${ssh_options[@]}" "$target" "rm -rf -- '$remote_dir'" > /dev/null 2>&1 || true; rm -rf "$private_dir"; }
+          trap cleanup EXIT
+          scp "${ssh_options[@]}" btc10-native.tar.gz btc10-native.sha256 "$target:$remote_dir/"
+          ssh "${ssh_options[@]}" "$target" "set -e; cd '$remote_dir'; sha256sum -c btc10-native.sha256; tar -xzf btc10-native.tar.gz; sudo -n python3 bridge/deploy/provision_isolated.py" | tee VPS_BTC10_RESULT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: btc10-build-and-bridge-verification
+          path: |
+            VPS_BTC10_RESULT.txt
+            candidate/source/bin/Release/net6.0/*.algo
+            candidate/source/bin/Release/net6.0/*.metadata
