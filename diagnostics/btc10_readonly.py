@@ -1,5 +1,5 @@
 """Read-only diagnostics; never acquire a cBot lease or submit broker requests."""
-import asyncio,collections,hashlib,json,os,re,socket,sqlite3,subprocess,time
+import asyncio,collections,hashlib,json,os,re,shutil,socket,sqlite3,subprocess,time
 from pathlib import Path
 from datetime import datetime,timezone
 
@@ -9,6 +9,14 @@ def run(args):
 def report(label,data):print(label+'='+json.dumps(data,allow_nan=False),flush=True)
 
 report('OBSERVED',{'utc':datetime.now(timezone.utc).isoformat(),'load':os.getloadavg(),'execution_authority':'NONE','mutations':0})
+disk=shutil.disk_usage('/')
+report('HOST',{'cpu_count':os.cpu_count(),'uptime_seconds':float(Path('/proc/uptime').read_text().split()[0]),'disk_total_gib':round(disk.total/2**30,2),'disk_free_gib':round(disk.free/2**30,2)})
+code,text=run(['ps','-eo','pid,comm,pcpu,pmem,rss','--sort=-rss']);report('PROCESS_MEMORY',{'code':code,'top':text.splitlines()[:13]})
+code,text=run(['systemctl','--failed','--no-pager','--no-legend']);report('FAILED_UNITS',{'code':code,'units':[l.split()[0] for l in text.splitlines() if l.strip()][:30]})
+code,text=run(['journalctl','-k','--since','-2 hours','--no-pager','-o','cat','-n','500'])
+report('KERNEL',{'code':code,'counts':{k:text.lower().count(k) for k in ['out of memory','oom-kill','killed process','i/o error','ext4-fs error','segfault']}})
+code,text=run(['journalctl','-u','ssh.service','--since','-2 hours','--no-pager','-o','cat','-n','500'])
+report('SSH_LOG_SUMMARY',{'code':code,'counts':{k:text.count(k) for k in ['Failed password','Accepted publickey','Accepted password','Invalid user','authentication failure','MaxStartups']}})
 for unit in ['rizan-btc10-bridge.service','rizan-tp500-bridge.service','rizan-cbot-bridge.service','nginx.service']:
  code,text=run(['systemctl','show',unit,'--no-pager','-p','ActiveState','-p','SubState','-p','NRestarts','-p','ExecMainStartTimestamp','-p','MemoryCurrent','-p','CPUUsageNSec'])
  report('SERVICE',{'unit':unit,'code':code,**dict(x.split('=',1) for x in text.splitlines() if '=' in x)})
