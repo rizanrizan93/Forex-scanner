@@ -24,6 +24,7 @@ jobs:
         run: |
           set +x
           set -euo pipefail
+          python3 diagnostics/vps_network_readonly.py
           umask 077
           [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]]
           private_dir=$(mktemp -d)
