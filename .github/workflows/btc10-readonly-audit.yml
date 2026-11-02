@@ -2,7 +2,7 @@ name: BTC10 read-only bridge audit
 on:
   push:
     branches: ['work/btc-eff20-frozen-20261102']
-    paths: ['diagnostics/btc10_readonly.py', '.github/workflows/btc10-readonly-audit.yml']
+    paths: ['diagnostics/btc10_readonly.py', 'diagnostics/btc10_connection_history.py', '.github/workflows/btc10-readonly-audit.yml']
 permissions:
   contents: read
 concurrency:
@@ -33,3 +33,4 @@ jobs:
           ssh_options=(-4 -i "$private_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$private_dir/known_hosts" -o ConnectTimeout=45 -o ConnectionAttempts=1 -o IPQoS=none -o Compression=no -o ServerAliveInterval=10 -o ServerAliveCountMax=2)
           trap 'rm -rf "$private_dir"' EXIT
           ssh "${ssh_options[@]}" Rizanrizan@202.74.74.172 'sudo -n /opt/rizan-btc10-bridge/.venv/bin/python -' < diagnostics/btc10_readonly.py
+          ssh "${ssh_options[@]}" Rizanrizan@202.74.74.172 'sudo -n python3 -' < diagnostics/btc10_connection_history.py
