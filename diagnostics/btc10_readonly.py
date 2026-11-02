@@ -12,6 +12,16 @@ report('OBSERVED',{'utc':datetime.now(timezone.utc).isoformat(),'load':os.getloa
 disk=shutil.disk_usage('/')
 report('HOST',{'cpu_count':os.cpu_count(),'uptime_seconds':float(Path('/proc/uptime').read_text().split()[0]),'disk_total_gib':round(disk.total/2**30,2),'disk_free_gib':round(disk.free/2**30,2)})
 code,text=run(['ps','-eo','pid,comm,pcpu,pmem,rss','--sort=-rss']);report('PROCESS_MEMORY',{'code':code,'top':text.splitlines()[:13]})
+for proc in Path('/proc').iterdir():
+ if not proc.name.isdigit():continue
+ try:
+  name=(proc/'comm').read_text().strip()
+  if name not in ['dotnet','python','python3','python3.12','VBCSCompiler']:continue
+  status=dict(l.split(':',1) for l in (proc/'status').read_text().splitlines() if ':' in l)
+  args=(proc/'cmdline').read_bytes().decode(errors='replace').split('\0')
+  files=[Path(a).name for a in args if a.endswith(('.dll','.csproj','.py')) and not a.startswith('-')]
+  report('WORKLOAD',{'pid':int(proc.name),'comm':name,'rss':status.get('VmRSS','').strip(),'workload_files':files,'cwd':str((proc/'cwd').resolve()),'cgroup':(proc/'cgroup').read_text().strip()[:250]})
+ except (OSError,ValueError):pass
 code,text=run(['systemctl','--failed','--no-pager','--no-legend']);report('FAILED_UNITS',{'code':code,'units':[l.split()[0] for l in text.splitlines() if l.strip()][:30]})
 code,text=run(['journalctl','-k','--since','-2 hours','--no-pager','-o','cat','-n','500'])
 report('KERNEL',{'code':code,'counts':{k:text.lower().count(k) for k in ['out of memory','oom-kill','killed process','i/o error','ext4-fs error','segfault']}})
