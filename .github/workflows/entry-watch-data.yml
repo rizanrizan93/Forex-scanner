@@ -61,7 +61,10 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Calculate raw candidates using frozen source without execution engine
-        run: dotnet run --project diagnostics/entry_watch_v1/Signals.csproj -c Release -- evidence
+        run: |
+          dotnet run --project diagnostics/entry_watch_v1/Signals.csproj -c Release -- evidence
+          seed_from=$(python -c 'import json;d=json.load(open("evidence/vps.json"));s=next(x["state"] for x in d["checkpoints"] if x["state"].get("Symbol")=="EURUSD");print(s["Eur"]["H1"][0]["AtUtc"])')
+          dotnet run --project diagnostics/entry_watch_v1/Signals.csproj -c Release -- evidence "$seed_from"
       - name: Read current macro snapshot using frozen adapter
         run: python candidate/bridge/feeds.py > evidence/macro_current.json
       - uses: actions/upload-artifact@v4

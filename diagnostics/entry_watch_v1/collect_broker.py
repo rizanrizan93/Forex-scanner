@@ -37,7 +37,7 @@ def main():
 
     OUT.mkdir(exist_ok=True)
     now = datetime.now(UTC).replace(second=0,microsecond=0)
-    start = datetime(2026,11,1,tzinfo=UTC)
+    start = now-timedelta(days=3)
     summary = {'observed_utc':now.isoformat(),'account_suffix':'7903',
         'execution_authority':'NONE','errors':[],'bars':{},'history':{}}
     session = ReadSession(client_id=os.environ['CTRADER_CLIENT_ID'],
