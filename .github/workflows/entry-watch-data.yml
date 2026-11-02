@@ -1,0 +1,72 @@
+name: Frozen entry watch read-only data
+on:
+  push:
+    branches: ['work/monitor-data-readonly-20261103']
+    paths: ['diagnostics/entry_watch_v1/**', '.github/workflows/entry-watch-data.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rizan-entry-watch-data-readonly
+  cancel-in-progress: false
+jobs:
+  evidence:
+    if: github.ref == 'refs/heads/work/monitor-data-readonly-20261103'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate deny-by-default request guard
+        run: python -m unittest discover -s diagnostics/entry_watch_v1 -p test_readonly.py -v
+      - name: Install read-only protocol client
+        run: python -m pip install ctrader-open-api==0.9.2 pandas==2.2.3 icalendar==6.3.1
+      - name: Read checkpoint and frozen BTC source without acquiring leases
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          mkdir -p evidence
+          private_dir=$(mktemp -d)
+          trap 'rm -rf "$private_dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$private_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$private_dir/known_hosts"
+          ssh -4 -i "$private_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$private_dir/known_hosts" -o ConnectTimeout=30 -o ServerAliveInterval=10 -o ServerAliveCountMax=2 Rizanrizan@202.74.74.172 'sudo -n python3 -' < diagnostics/entry_watch_v1/collect_vps.py > evidence/vps.json
+          python -c 'import json; d=json.load(open("evidence/vps.json")); print("VPS_EVIDENCE="+json.dumps({"observed_utc":d["observed_utc"],"health":d.get("health"),"checkpoints":[{"symbol":x["state"].get("Symbol"),"last_signal":x["state"].get("LastSignalUtc",x["state"].get("LastSignal")),"last_bar":x["state"].get("LastBarUtc")} for x in d["checkpoints"]],"errors":d["errors"]}))'
+      - name: Read broker candles orders deals and contracts
+        env:
+          CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+          CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+          CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+        run: python diagnostics/entry_watch_v1/collect_broker.py
+      - name: Restore frozen signal source only
+        run: |
+          sha256sum -c isolated_tp500_20261101/SHA256SUMS
+          sha256sum -c isolated_btc10_20261102/SHA256SUMS
+          mkdir candidate
+          tar -xzf isolated_tp500_20261101/tp500-native.tar.gz -C candidate
+          tar -xzf isolated_btc10_20261102/overlay.tar.gz -C candidate
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Calculate raw candidates using frozen source without execution engine
+        run: dotnet run --project diagnostics/entry_watch_v1/Signals.csproj -c Release -- evidence
+      - name: Read current macro snapshot using frozen adapter
+        run: python candidate/bridge/feeds.py > evidence/macro_current.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frozen-entry-watch-readonly-evidence
+          retention-days: 7
+          path: evidence/
