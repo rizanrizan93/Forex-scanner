@@ -1,5 +1,5 @@
 """Bounded VPS memory recovery. No broker API, credentials or strategy changes."""
-import fcntl,json,os,re,shutil,sqlite3,subprocess,time
+import fcntl,json,os,re,shutil,sqlite3,subprocess,sys,time
 from pathlib import Path
 from datetime import datetime,timezone
 
@@ -58,6 +58,32 @@ def ensure_swap():
    shutil.copy2(fstab,backup)
    with fstab.open('a') as f:f.write(('' if not text or text.endswith('\n') else '\n')+str(target)+' none swap sw 0 0\n');f.flush();os.fsync(f.fileno())
  emit('SWAP_RECOVERY',{'created':created,'active':str(target) in active,'swap_kib':memory()['SwapTotal'],'existing_swap_preserved':not created})
+def retire_idle():
+ protected=['rizan-btc10-bridge.service','rizan-cbot-bridge.service','rizan-btc7d130.service','nginx.service']
+ starts={u:prop(u,'ExecMainStartTimestampMonotonic') for u in protected}
+ retired=[];record=[]
+ for unit in OLD_UNITS:
+  state_dir=prop(unit,'StateDirectory')
+  if not re.fullmatch(r'rizan-[a-z0-9-]+',state_dir):emit('RETIRE_SKIPPED',{'unit':unit,'reason':'UNKNOWN_STATE_DIRECTORY'});continue
+  evidence=idle_evidence(Path('/var/lib')/state_dir)
+  if not evidence['eligible']:emit('RETIRE_SKIPPED',{'unit':unit,**evidence});continue
+  enabled=subprocess.run(['systemctl','is-enabled',unit],text=True,capture_output=True,timeout=10).stdout.strip()
+  item={'unit':unit,'enabled_before':enabled,'active_before':prop(unit,'ActiveState'),'evidence':evidence}
+  record.append(item)
+  receipt=Path('/var/lib/rizan-maintenance')/('retired-bridge-'+unit+'-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')+'.json')
+  with receipt.open('x') as f:json.dump(item,f,indent=2);f.flush();os.fsync(f.fileno())
+  run(['systemctl','stop',unit])
+  if prop(unit,'ActiveState')!='inactive':raise RuntimeError('LEGACY_STOP_NOT_CONFIRMED')
+  run(['systemctl','disable',unit]);retired.append(unit)
+  emit('LEGACY_RETIRED',{'unit':unit,'checkpoint_files_preserved':True,'receipt':str(receipt),'active':prop(unit,'ActiveState')})
+ for unit in protected:
+  if prop(unit,'ExecMainStartTimestampMonotonic')!=starts[unit]:raise RuntimeError('PROTECTED_SERVICE_START_CHANGED')
+ emit('PROTECTED_SERVICES_PRESERVED',{'units':protected,'starts_unchanged':True})
+ return retired
+def cpu_sample():
+ def sample():return [int(x) for x in Path('/proc/stat').read_text().splitlines()[0].split()[1:9]]
+ a=sample();time.sleep(1);b=sample();diff=[y-x for x,y in zip(a,b)];total=sum(diff)
+ return {'busy_pct':round(100*(total-diff[3]-diff[4])/max(total,1),2),'iowait_pct':round(100*diff[4]/max(total,1),2)}
 def main():
  if os.geteuid()!=0:raise RuntimeError('ROOT_REQUIRED')
  with open('/run/lock/rizan-memory-recovery.lock','w') as lock:
@@ -69,5 +95,6 @@ def main():
    if re.fullmatch(r'rizan-[a-z0-9-]+',state_dir):report.update(idle_evidence(Path('/var/lib')/state_dir))
    else:report.update(eligible=False,reason='STATE_DIRECTORY_NOT_RECOGNIZED')
    emit('LEGACY_INVENTORY',report)
-  emit('MEMORY_AFTER_KIB',memory());emit('RECOVERY_COMPLETE',{'utc':datetime.now(timezone.utc).isoformat(),'strategy_changed':False,'broker_orders':0,'services_stopped':[]})
+  retired=retire_idle() if '--retire-idle' in sys.argv[1:] else []
+  emit('MEMORY_AFTER_KIB',memory());emit('CPU_SAMPLE',cpu_sample());emit('RECOVERY_COMPLETE',{'utc':datetime.now(timezone.utc).isoformat(),'strategy_changed':False,'broker_orders':0,'services_stopped':retired})
 if __name__=='__main__':main()
