@@ -20,6 +20,7 @@ jobs:
           mkdir candidate
           tar -xzf isolated_tp500_20261101/tp500-native.tar.gz -C candidate
           tar -xzf isolated_btc10_20261102/overlay.tar.gz -C candidate
+          sha256sum candidate/bridge/server.py | cut -d ' ' -f 1 > candidate/bridge/server.before.sha256
           python repairs/btc10_transport/apply.py
       - uses: actions/setup-dotnet@v4
         with:
@@ -52,3 +53,43 @@ jobs:
         with:
           name: btc10-transport-repair-verified
           path: deliverable/
+  deploy-transport:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    concurrency:
+      group: rizan-cbot-bridge-production-ssh
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: btc10-transport-repair-verified
+          path: deliverable
+      - name: Deploy tested bridge transport with automatic rollback
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          private_dir=$(mktemp -d)
+          trap 'rm -rf "$private_dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$private_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$private_dir/known_hosts"
+          opts=(-4 -i "$private_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$private_dir/known_hosts" -o ConnectTimeout=30 -o ServerAliveInterval=10 -o ServerAliveCountMax=2)
+          target=Rizanrizan@202.74.74.172
+          remote_dir=$(ssh "${opts[@]}" "$target" 'umask 077; mktemp -d /tmp/rizan-transport.XXXXXXXX')
+          [[ "$remote_dir" =~ ^/tmp/rizan-transport\.[a-zA-Z0-9]+$ ]]
+          scp "${opts[@]}" deliverable/transport-repair-source.tar.gz repairs/btc10_transport/deploy.py "$target:$remote_dir/"
+          ssh "${opts[@]}" "$target" "set -e; cd '$remote_dir'; mkdir candidate; tar -xzf transport-repair-source.tar.gz -C candidate; sudo -n python3 deploy.py" | tee TRANSPORT_DEPLOY_RESULT.txt
+          ssh "${opts[@]}" "$target" "rm -rf -- '$remote_dir'"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: btc10-transport-deployment-result
+          path: TRANSPORT_DEPLOY_RESULT.txt
