@@ -1,0 +1,54 @@
+name: BTC10 transport repair validation
+on:
+  push:
+    branches: ['work/btc10-transport-repair-20261103']
+    paths: ['repairs/btc10_transport/**', '.github/workflows/btc10-transport-repair.yml']
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Restore pinned frozen source and apply transport patch
+        run: |
+          sha256sum -c isolated_tp500_20261101/SHA256SUMS
+          sha256sum -c isolated_btc10_20261102/SHA256SUMS
+          mkdir candidate
+          tar -xzf isolated_tp500_20261101/tp500-native.tar.gz -C candidate
+          tar -xzf isolated_btc10_20261102/overlay.tar.gz -C candidate
+          python repairs/btc10_transport/apply.py
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build official algo and simulate native execution and frozen parity
+        env:
+          DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+        run: |
+          set -euo pipefail
+          dotnet build candidate/source/RizanPortfolioBTC10Frozen.csproj -c Release --warnaserror
+          dotnet build candidate/validation/native/NativeHarness.csproj -c Release --warnaserror
+          dotnet candidate/validation/native/bin/Release/net8.0/NativeHarness.dll candidate/bridge/BTC_SEED_PACKET.json candidate/validation/native_fixtures/BTC.json
+          dotnet build candidate/validation/native/FxNativeHarness.csproj -c Release --warnaserror
+          dotnet candidate/validation/native/bin/Release/net8.0/FxNativeHarness.dll candidate/validation/native_fixtures
+          dotnet run --project candidate/validation/gates/Gates.csproj -c Release -- candidate/bridge/BTC_SEED_PACKET.json candidate/validation/EXPECTED_BTC10.json
+      - name: Test socket fencing, lease safety and feed delivery
+        run: |
+          python -m pip install -r candidate/bridge/requirements.txt
+          python repairs/btc10_transport/test_transport.py -v
+          python -m unittest discover -s candidate/bridge -p 'test_*.py' -v
+          python -m unittest discover -s candidate/bridge/deploy -p 'test_*.py' -v
+      - name: Package verified candidate without deployment
+        run: |
+          mkdir deliverable
+          cp candidate/source/bin/Release/net6.0/*.algo deliverable/
+          cp candidate/TRANSPORT_SOURCE_AUDIT.json deliverable/
+          tar --exclude='*/bin' --exclude='*/obj' --exclude='*/__pycache__' -czf deliverable/transport-repair-source.tar.gz -C candidate .
+          cd deliverable && sha256sum * > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: btc10-transport-repair-verified
+          path: deliverable/
