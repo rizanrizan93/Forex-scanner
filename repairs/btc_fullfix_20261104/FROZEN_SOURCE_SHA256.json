@@ -1,0 +1,23 @@
+{
+  "BtcNativeLifecycle.cs": "9ef248bbd74ec9306c69958c595838e1fb49abd0abd4e68556373f773ba6d401",
+  "RizanPortfolioBTC10Frozen.csproj": "845da2a3a0dd7dd21eb7a6706b86fb6468119efbf44e8d7c67fb6bf1e14a2ddf",
+  "BtcEntryGate.cs": "bbe80162a992409af6cad710ed6e5fb95310a86208f4905e7d363b7898813432",
+  "BtcStateLink.cs": "e675ef5bdc57d6098bfb4306ca70f42bf489a113d33277fc5dbd5f4980966fa0",
+  "ResearchParams.cs": "d6ca47eae290decb137f4873c17a0293524efe6c7ad5a86df94be0b3a4cb8378",
+  "FrozenR3.cs": "22c2f820ac7365b41850d140ae9088d5816b521b3f578c0a1c5ce4ab0141ed1c",
+  "RizanXauEurPortfolio.cs": "a0539bec1df4c90790a6a99f00779ff4b083a5a0bd32bb35f5ce97d3e9d16bd5",
+  "CompressionEntry.cs": "a704b20b964bffc94e091c8ba8b1231981c6d441ca49519050f65add6526195d",
+  "BtcWeekendPolicy.cs": "b6005e1bd500970e270243cfc3c32c6d57fd0a03083f6ddc22175b0625efa490",
+  "BtcCore.cs": "fe7a7efbac2538bcd9b8befc1ded7eabb91df188d2a3a41506edf26c4c39575f",
+  "PortfolioHost.cs": "6ce9ba424521a81fed4b6ece68e7a50fa69707332c7e3301e8c82dfedd2faede",
+  "BtcSevenDayFeed.cs": "9cde1307a398cebc02039daeeef30537da6cee30e161fc1a54b19cad2d0d344d",
+  "BtcEngine.cs": "106ac56455f9cc4cfa00562246aa3223541162c7a3d86b64d17a0daf1b3224a0",
+  "eur/EurBatchExecution.cs": "d088e41ec1fc31810c2c9af375fef549c898f7c87443c44d2076c8a8fbab4a5e",
+  "eur/F0245Policy.cs": "84cae1cceaa6b387923bde641979293e7a97edd7fb74b20a9e3fcbe20c674c36",
+  "eur/RizanRobot.cs": "31ab591d6e011d787cadc4e87c19c2a3c783d0ebc114119d5cd129ddc51d70a9",
+  "eur/FrozenCore.cs": "bc026af7a2ef0499b77f25e764a1ae6d77839ba29bfab6a4ea133de7799d4cb1",
+  "xau/RizanRobot.cs": "766eb16a2a1c1073d247e196b4321edef8cf9e507d63fdeb39c5ac98d32ce7c5",
+  "xau/XauBatchExecution.cs": "68e865b3933d33fae9025d7aeba2325078e1c1d7fc7ad4ad81e2c69569c3f281",
+  "xau/FrozenCore.cs": "b853e9f7e68e9f425764ebcc4bececb0ddd0959973ee29c92d24b8aec0cb32c7",
+  "xau/XauSendReference.cs": "845a2d552a45757ffde77e12c699015612acd6a7394903866ff12bc7a9d58649"
+}

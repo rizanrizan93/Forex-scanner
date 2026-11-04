@@ -1,0 +1,73 @@
+{
+  "observed_utc": "2026-11-04T00:03:50.319044+00:00",
+  "health": {
+    "profile": "F005_BTC10_FROZEN_20261102",
+    "observed_utc": "2026-11-04T00:03:42.141+00:00",
+    "btc": "ready",
+    "macro_snapshot_present": true,
+    "connected": 3,
+    "execution_authority": "NONE"
+  },
+  "leases": [
+    {
+      "symbol": "EURUSD",
+      "age_seconds": 9.098850727081299,
+      "remaining_seconds": 35.90114736557007
+    },
+    {
+      "symbol": "XAUUSD",
+      "age_seconds": 3.0967957973480225,
+      "remaining_seconds": 41.90320324897766
+    },
+    {
+      "symbol": "BTCUSD",
+      "age_seconds": 8.093950986862183,
+      "remaining_seconds": 36.90604853630066
+    }
+  ],
+  "checkpoints": [
+    {
+      "symbol": "EURUSD",
+      "server_version": 2815,
+      "state_sha256": "6d8244983f9eafa947eaef596785dbfd61505c70ad6b39ba38c7c7ccafd36df9",
+      "Revision": 2855,
+      "LastBarUtc": "2026-11-04T00:02:00Z",
+      "LastSignalUtc": "0001-01-01T00:00:00Z",
+      "Quarantined": false
+    },
+    {
+      "symbol": "XAUUSD",
+      "server_version": 2715,
+      "state_sha256": "a1554e0bccb886921e24764868d66827cc18514a2cd9a18e7727827a7190c9fa",
+      "Revision": 2742,
+      "LastBarUtc": "2026-11-04T00:02:00Z",
+      "LastSignalUtc": "0001-01-01T00:00:00Z",
+      "Quarantined": false,
+      "XauResumeUtc": "0001-01-01T00:00:00Z"
+    },
+    {
+      "symbol": "BTCUSD",
+      "server_version": 167,
+      "state_sha256": "f9108392c6974476c03668e6c945725b2e822e166747c778f1e909459422f6a8",
+      "Revision": 168,
+      "WeekendLockUntil": "2026-11-09T00:00:00Z",
+      "Fault": false,
+      "Sending": false,
+      "LastSignal": "0001-01-01T00:00:00"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 13281554088,
+      "sha256": "bfdfd12c72e450994ec2006bd7345f7d898b237b5945d74abf1292c11348ad0d"
+    },
+    {
+      "id": 13278761059,
+      "sha256": "fe1594e4b7679ae8f0e81decc68073bd045698d980e44d38d963004e6232c7dc"
+    },
+    {
+      "id": 13233657362,
+      "sha256": "e4d8f4485d7dd4a602e343a6905ecf686c259bdf51dbf98d10ec5a39ddf36193"
+    }
+  ]
+}

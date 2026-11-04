@@ -1,0 +1,48 @@
+name: BTC full replacement build and recovery validation
+on:
+  push:
+    branches: ['fix/btc-full-recovery-20261104']
+    paths: ['repairs/btc_fullfix_20261104/**', '.github/workflows/btc-fullfix-validation.yml']
+permissions:
+  contents: read
+jobs:
+  offline-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Source scope and native lock recovery regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          cd repairs/btc_fullfix_20261104
+          gzip -dk bridge/BTC_SEED_PACKET.json.gz
+          python3 verify_scope.py | tee ../../results/scope.json
+          dotnet run --project validation/LockRecoveryTests.csproj -c Release -- bridge/BTC_SEED_PACKET.json | tee ../../results/lock-recovery.log
+      - name: Official cTrader full build and frozen regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd repairs/btc_fullfix_20261104
+          dotnet build source/RizanPortfolioBTC10FullFix.csproj -c Release --warnaserror | tee ../../results/build.log
+          dotnet run --project validation/WeekendTests.csproj -c Release | tee ../../results/weekend.log
+          dotnet run --project validation/native/NativeHarness.csproj -c Release -- bridge/BTC_SEED_PACKET.json | tee ../../results/native.log
+          dotnet run --project validation/native/FxNativeHarness.csproj -c Release -- validation/native_fixtures | tee ../../results/fx-native.log
+          dotnet run --project validation/gates/Gates.csproj -c Release -- bridge/BTC_SEED_PACKET.json validation/EXPECTED_BTC10.json | tee ../../results/gates.log
+          find source/bin/Release/net6.0 -maxdepth 1 -name '*.algo' -exec cp '{}' ../../results/RizanPortfolioBTC10FullFix_20261104.algo \;
+          test -f ../../results/RizanPortfolioBTC10FullFix_20261104.algo
+          sha256sum source/*.cs source/*/*.cs ../../results/*.algo > ../../results/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: btc-fullfix-build-results
+          path: results/
+          retention-days: 30
