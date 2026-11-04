@@ -35,4 +35,4 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$task_dir/hosts"
           ssh-keygen -y -f "$task_dir/key" > /dev/null
           opts=(-i "$task_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$task_dir/hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
-          ssh "${opts[@]}" Rizanrizan@202.74.74.172 'python3 -' < operations/btc_weekend_20261104/preflight.py
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 'sudo -n python3 -' < operations/btc_weekend_20261104/preflight.py
