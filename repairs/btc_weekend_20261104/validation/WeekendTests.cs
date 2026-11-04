@@ -13,7 +13,7 @@ object Field(object o,string name)=>o.GetType().GetField(name,F.Instance|F.NonPu
 void Set(object o,string name,object value)=>o.GetType().GetField(name,F.Instance|F.NonPublic)!.SetValue(o,value);
 DateTime Lock(BtcEngine b)=>(DateTime)Field(b,"state").GetType().GetProperty("WeekendLockUntil")!.GetValue(Field(b,"state"))!;
 void SetLock(BtcEngine b,DateTime value)=>Field(b,"state").GetType().GetProperty("WeekendLockUntil")!.SetValue(Field(b,"state"),value);
-RizanPortfolio Make(DateTime now,bool replay=true){var h=new RizanPortfolio{EnableTrading=false,EnableXau=false,EnableEur=false,EnableBtc=true,BtcBridgeUrl="wss://test.invalid:25345",BtcBridgeToken=new string('x',32)};h.Server.TimeInUtc=now;h.CreateEngines();if(replay)h.Btc!.ReplayStart();return h;}
+RizanPortfolio Make(DateTime now,bool replay=true){var h=new WeekendHost{EnableTrading=false,EnableXau=false,EnableEur=false,EnableBtc=true,BtcBridgeUrl="wss://test.invalid:25345",BtcBridgeToken=new string('x',32)};h.Server.TimeInUtc=now;h.CreateEngines();if(replay)h.Btc!.ReplayStart();return h;}
 void At(RizanPortfolio h,DateTime now){h.Server.TimeInUtc=now;h.Btc!.Manage(now);Check(h.Requests==0,"NO_TEST_ORDERS");}
 bool Eligible(RizanPortfolio h,DateTime now)=>BtcWeekendPolicy.CanEnter(now,(DateTime?)Field(h.Btc!,"weekClose"),(bool)Field(h.Btc!,"marketOpen"),Lock(h.Btc!));
 var mon=U("2026-11-02T00:00:00Z");
@@ -67,3 +67,5 @@ foreach(string s in new[]{"2027-01-04T00:00:00Z","2029-01-01T00:00:00Z","2026-12
  Check(Lock(h.Btc!)==(legacy?at.AddDays(7):at),"YEAR_BOUNDARY_STALE");Check(Eligible(h,at)==!legacy,"YEAR_BOUNDARY_ELIGIBILITY");
 }
 Console.WriteLine(JsonSerializer.Serialize(new{Pass=true,Checks=checks,Legacy=legacy,FakeBrokerOnly=true,RealOrders=0}));
+
+sealed class WeekendHost:RizanPortfolio {}
