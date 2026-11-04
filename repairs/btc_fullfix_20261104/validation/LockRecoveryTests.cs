@@ -31,6 +31,7 @@ TestHost Make(DateTime? at=null,Action<TestHost>? mutate=null,bool ack=true,bool
  Set(h,"AccountNumber",h.Account.Number);Set(h,"Revision",168L);Set(h,"WeekendLockUntil",poison);mutate?.Invoke(h);
  string remote=JsonSerializer.Serialize(State(h));
  if(localAhead){Set(h,"Revision",169L);h.LocalStorage.Values[FrozenR3.BtcStorageKey(h.Account.Number)]=JsonSerializer.Serialize(State(h));}
+ else typeof(BtcEngine).GetField("state",F.Instance|F.NonPublic)!.SetValue(h.Btc,Activator.CreateInstance(State(h).GetType(),true));
  h.Btc!.OnStart();var w=new Wire(h);h.Wire=w;w.Ready(remote);if(feed)w.Feed(Packet(h.Server.TimeInUtc));if(ack)w.AckAll();return h;
 }
 void Tick(TestHost h)=>h.Btc!.OnTimer();
