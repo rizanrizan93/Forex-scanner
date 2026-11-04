@@ -1,0 +1,38 @@
+name: BTC weekend approved deployment preflight
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['operations/btc_weekend_20261104/**', '.github/workflows/btc-weekend-preflight.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rizan-cbot-bridge-production-ssh
+  cancel-in-progress: false
+jobs:
+  preflight:
+    if: github.repository == 'rizanrizan93/Forex-scanner' && github.ref == 'refs/heads/main' && github.actor == 'rizanrizan93'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Remote backup and redacted state audit only
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]]
+          task_dir=$(mktemp -d)
+          trap 'rm -rf -- "$task_dir"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$task_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$task_dir/hosts"
+          ssh-keygen -y -f "$task_dir/key" > /dev/null
+          opts=(-i "$task_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$task_dir/hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          ssh "${opts[@]}" Rizanrizan@202.74.74.172 'python3 -' < operations/btc_weekend_20261104/preflight.py
