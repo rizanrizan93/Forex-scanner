@@ -1,0 +1,10 @@
+{
+  "OfficialBuild": true,
+  "ApiVersion": "1.0.21",
+  "TargetFramework": "net6.0",
+  "RobotMetadataIdenticalToFrozen": true,
+  "FrozenGithubOverlaySourceMatches": 21,
+  "FrozenSourceFiles": 21,
+  "LiveRuntimeVerified": false,
+  "LiveDeployed": false
+}
