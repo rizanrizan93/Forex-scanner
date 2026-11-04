@@ -1,0 +1,50 @@
+name: BTC weekend fix offline validation
+on:
+  push:
+    branches: ['fix/btc-weekend-cache-20261104']
+    paths: ['repairs/btc_weekend_20261104/**', '.github/workflows/btc-weekend-fix-validation.yml']
+permissions:
+  contents: read
+jobs:
+  offline-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Frozen source scope and before-after regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          gzip -dk repairs/btc_weekend_20261104/bridge/BTC_SEED_PACKET.json.gz
+          python3 repairs/btc_weekend_20261104/verify_scope.py | tee results/scope.json
+          cp -a repairs/btc_weekend_20261104 /tmp/btc-weekend-legacy
+          python3 /tmp/btc-weekend-legacy/verify_scope.py --legacy
+          dotnet run --project /tmp/btc-weekend-legacy/validation/WeekendTests.csproj -c Release -- --legacy | tee results/weekend-before.log
+          dotnet run --project repairs/btc_weekend_20261104/validation/WeekendTests.csproj -c Release | tee results/weekend-after.log
+      - name: Official cTrader build and frozen regression suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd repairs/btc_weekend_20261104
+          dotnet build source/RizanPortfolioBTC10Frozen.csproj -c Release --warnaserror | tee ../../results/build.log
+          dotnet run --project validation/native/NativeHarness.csproj -c Release -- bridge/BTC_SEED_PACKET.json | tee ../../results/native.log
+          dotnet run --project validation/native/FxNativeHarness.csproj -c Release -- validation/native_fixtures | tee ../../results/fx-native.log
+          dotnet run --project validation/gates/Gates.csproj -c Release -- bridge/BTC_SEED_PACKET.json validation/EXPECTED_BTC10.json | tee ../../results/gates.log
+          python3 verify_scope.py | tee ../../results/scope-after.json
+          find source -name '*.algo' -exec cp '{}' ../../results/ \;
+          test -f ../../results/RizanPortfolioBTC10Frozen.algo
+          sha256sum source/*.cs source/*/*.cs ../../results/*.algo > ../../results/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: btc-weekend-fix-offline-results
+          path: results/
+          retention-days: 14
