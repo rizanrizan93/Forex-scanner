@@ -1,0 +1,14 @@
+{
+  "build_run": 41757212527,
+  "build_source": "2fc87dc90b7bf0e7b6468b7ed70d944aa8b0cfef",
+  "new_instance_test_run": 41757501169,
+  "new_instance_test_commit": "2051a3e8c46c6a1b540ede32c11eba2052421da0",
+  "production_sources_unchanged_between_runs": true,
+  "compile_warnings": 0,
+  "compile_errors": 0,
+  "total_checks": 920,
+  "actual_live_deployed": false,
+  "actual_lock_repaired": false,
+  "parameters_identical_to_frozen": true,
+  "sha256": "8927fb01bc209471e51af56db79269c00f2b719cbe06c681cb0c56885e275cce"
+}
