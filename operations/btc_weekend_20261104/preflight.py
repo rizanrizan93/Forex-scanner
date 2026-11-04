@@ -62,6 +62,20 @@ def audit(folder, backup_root):
                                           and state.get('Schema') == 1
                                           and state.get('NativeProfileHash') == PROFILE
                                           and state.get('ContractHash') == 'RZ-7D130-BTC8500283-LFOLLOW-WEEKEND')
+            if symbol == 'BTCUSD':
+                receipt = db.execute(
+                    'SELECT base,digest,version FROM checkpoint_receipts WHERE key=? AND client_revision=?',
+                    (key, state.get('Revision')),
+                ).fetchone()
+                item['durable_receipt_matches_checkpoint'] = bool(
+                    receipt and receipt[1] == item['state_sha256']
+                    and receipt[2] == version and receipt[0] + 1 == version
+                )
+                item['known_lock_correction_persisted'] = bool(
+                    item.get('identity_valid') and item['durable_receipt_matches_checkpoint']
+                    and state.get('WeekendLockUntil') in ('2026-11-02T00:00:00Z', '2026-11-02T00:00:00.0000000Z')
+                    and state.get('Revision', 0) >= 170
+                )
             result['states'].append(item)
         if len(accounts) != 1 or len([x for x in result['states'] if x['symbol'] == 'BTCUSD']) != 1:
             raise ValueError('IDENTITY_AMBIGUOUS')
