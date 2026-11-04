@@ -39,8 +39,8 @@ jobs:
           dotnet run --project validation/native/FxNativeHarness.csproj -c Release -- validation/native_fixtures | tee ../../results/fx-native.log
           dotnet run --project validation/gates/Gates.csproj -c Release -- bridge/BTC_SEED_PACKET.json validation/EXPECTED_BTC10.json | tee ../../results/gates.log
           python3 verify_scope.py | tee ../../results/scope-after.json
-          find source -name '*.algo' -exec cp '{}' ../../results/ \;
-          test -f ../../results/RizanPortfolioBTC10Frozen.algo
+          find source/bin/Release/net6.0 -maxdepth 1 -name '*.algo' -exec cp '{}' ../../results/RizanPortfolioBTC10Frozen_WeekendFix_20261104.algo \;
+          test -f ../../results/RizanPortfolioBTC10Frozen_WeekendFix_20261104.algo
           sha256sum source/*.cs source/*/*.cs ../../results/*.algo > ../../results/SHA256SUMS
       - uses: actions/upload-artifact@v4
         if: always()
