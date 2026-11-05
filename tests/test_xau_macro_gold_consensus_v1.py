@@ -31,7 +31,7 @@ def fresh_dxy(change=-0.18, observed=None):
     return {
         "pct": change, "fresh": True,
         "source": "YAHOO_FINANCE_ICE_DXY_PROXY",
-        "observed": (observed or NOW - timedelta(minutes=10)).isoformat(),
+        "observed": (observed or NOW - timedelta(minutes=2)).isoformat(),
         "basis": "reference",
     }
 
