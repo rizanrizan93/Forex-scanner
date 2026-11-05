@@ -10,6 +10,7 @@ import io
 import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 from math import isfinite
 from urllib.parse import quote, urlencode, urlparse
 from urllib.request import Request, urlopen
@@ -88,7 +89,7 @@ def fred_history(series):
     return sorted(records.items())
 
 
-@st.cache_data(ttl=180, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def market_quote(symbol):
     if symbol not in YAHOO_SYMBOLS:
         raise ValueError("Unapproved market symbol")
@@ -180,7 +181,7 @@ def _safe(call, *args):
         return None, type(e).__name__
 
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def load_external_macro_inputs():
     """Parallel bounded requests; cache even failed sources to keep UI responsive."""
     fred_codes = sorted(FRED_SERIES)
@@ -355,18 +356,28 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
 
     oil_view = result["oil_assessment"]
     st.markdown("**OIL → INFLASI → THE FED → REAL YIELD | RISIKO GEOPOLITIK**")
-    if oil_view["wti"] and oil_view["brent"]:
-        w, b = oil_view["wti"], oil_view["brent"]
-        st.write(
-            f"**WTI:** ${w['value']:.2f}/barel ({w['pct']:+.2f}%) · "
-            f"**Brent:** ${b['value']:.2f}/barel ({b['pct']:+.2f}%)"
-        )
-        st.caption(
-            f"Feed Oil: {oil_view['status']} · WTI {w['source']}, {w['observed']} · "
-            f"Brent {b['source']}, {b['observed']} · "
-            f"basis WTI: {w['basis'] or 'tidak diketahui'}; "
-            f"Brent: {b['basis'] or 'tidak diketahui'}"
-        )
+    for symbol in ("WTI", "Brent"):
+        q = oil_view["quotes"][symbol]
+        if q["value"] is None:
+            st.write(f"**{symbol}:** BELUM TERSEDIA")
+        else:
+            change = "—" if q["pct"] is None else f"{q['pct']:+.2f}%"
+            st.write(f"**{symbol}:** USD {q['value']:.2f}/barel ({change}) · "
+                     f"**{q['status']}**")
+        if q["observed"] is not None:
+            observed_wib = datetime.fromisoformat(q["observed"]).astimezone(
+                ZoneInfo("Asia/Jakarta")).strftime("%d/%m %H:%M:%S")
+            age = ("—" if q["age_minutes"] is None else
+                   f"{q['age_minutes']:.1f} menit")
+            st.caption(f"Timestamp {symbol}: {observed_wib} WIB · usia {age} · "
+                       f"{q['source']} · basis {q['basis'] or '—'}")
+    if any(oil_view["quotes"][name]["status"] == "DELAYED"
+           for name in ("WTI", "Brent")):
+        st.warning("QUOTE OIL DELAYED (>5 MENIT). Harga terakhir hanya referensi; "
+                   "tidak dihitung sebagai sinyal Oil intraday pada skor XAU.")
+    st.caption("Cache market quote ±60 detik; harga pasar Yahoo Finance dapat "
+               "tertunda oleh penyedia. Timestamp sumber, bukan waktu refresh "
+               "aplikasi, menentukan kelayakan skor.")
     st.write("**Kesimpulan Oil:** " + oil_view["summary"])
     st.write("**Implikasi XAU melalui inflasi:** " + oil_view["xau_inflation_bias"])
     st.caption("Jalur inflasi/Fed: " + oil_view["inflation_path"])
@@ -386,7 +397,8 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             f"cakupan gabungan: {result['coverage_pct']}%"
         )
     st.caption(
-        "Oil adalah satu cluster WTI+Brent dengan bobot 0/8/15% sesuai validitasnya. "
+        "Oil adalah satu cluster WTI+Brent: hanya quote intraday dengan usia <=5 menit "
+        "yang dapat memberi bobot 15%, sedangkan FRED harian valid maksimal 8%. "
         "Geopolitik dan safe haven masing-masing maksimal 5% dan baru dinilai "
         "berdasarkan peliputan multi-sumber serta konfirmasi pasar. "
         "Skor belum terkalibrasi; tidak mengotorisasi order cBot."
@@ -453,11 +465,11 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             st.caption("• " + line)
         st.caption("Perhitungan: Treasury (real yield 50%, US2Y 30%, US10Y 20% "
                    "di dalam kelompok) + DXY, mempertahankan rasio 55:45 dari sisa bobot. "
-                   "Oil: 15% futures intraday atau 8% FRED spot harian ≤48 jam. "
+                   "Oil: 15% futures intraday bila timestamp quote <=5 menit, "
+                   "8% FRED spot harian bila valid ≤48 jam. "
                    "Geopolitical risk dan safe haven: masing-masing 5% bila koroborasi "
-                   "berita serta pasar valid. Jika data tidak valid, alokasi kembali "
-                   "ke Treasury/DXY. Kondisi core kosong/stale = WAIT_DATA. "
-                   "Semua bobot heuristik dan belum diuji out-of-sample.")
+                   "berita serta pasar valid. Quote terlambat tidak masuk skor Oil intraday. "
+                   "Data core hilang/stale = WAIT_DATA. Bobot belum diuji out-of-sample.")
 
     st.info("KESIMPULAN EKSEKUSI: " +
             ("WAIT — data makro utama belum lengkap. " if result["score"] is None else
