@@ -65,12 +65,20 @@ def cnbc(sym):
         "exchange":d.get("exchange"),
     }
 
+def goldapi(sym):
+    p=open_json("https://api.gold-api.com/price/"+sym)
+    return {"name":p.get("name"),"price":p.get("price"),
+            "updatedAt":p.get("updatedAt"),
+            "age_minutes":age(p.get("updatedAt"))}
+
 if __name__ == "__main__":
     specs=[("Yahoo",s,yahoo) for s in
            ("DX-Y.NYB","GC=F","SI=F","CL=F","BZ=F","^VIX","JPY=X","CHF=X")]
+    specs += [("Gold-API",s,goldapi) for s in ("XAU","XAG")]
     specs += [("CNBC",s,cnbc) for s in
               (".DXY","DXY","DX=F","DX-Y.NYB","@GC.1","@GC.0","@SI.1","@SI.0",
-               "@CL.1","@BZ.1","@BRN.1",".VIX","JPY=","CHF=","US10Y")]
+               "@CL.1","@BZ.1","@BRN.1",".VIX","JPY=","CHF=","US10Y",
+               "XAU=","XAG=","XAUUSD","XAGUSD","XAUUSD=","XAGUSD=","GOLD","SILVER","XAU/USD","XAG/USD")]
     with ThreadPoolExecutor(max_workers=9) as pool:
         results=list(pool.map(lambda item:safe(*item),specs))
     print("OBSERVED_UTC",NOW.isoformat())
