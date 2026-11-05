@@ -1,0 +1,22 @@
+name: Readonly Macro Public Quote Provider Probe
+
+on:
+  pull_request:
+    paths:
+      - "scripts/probe_public_macro_quote_feeds.py"
+      - ".github/workflows/macro-public-feed-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe-quotes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Probe publicly available sources and timestamps
+        run: python scripts/probe_public_macro_quote_feeds.py
