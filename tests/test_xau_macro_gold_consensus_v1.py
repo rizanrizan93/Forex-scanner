@@ -74,6 +74,34 @@ class GoldMacroConsensusTests(unittest.TestCase):
         self.assertIsNone(result["score"])
         self.assertEqual(result["state"], "WAIT_DATA")
 
+    def test_wait_data_keeps_complete_breakdown_for_macro_panel(self):
+        result = analyze_gold_macro(
+            yields=fresh_yields(),
+            dxy=fresh_dxy(observed=NOW - timedelta(hours=5)),
+            now=NOW,
+        )
+        self.assertEqual(result["state"], "WAIT_DATA")
+        self.assertIsNone(result["score"])
+        for factor in ("Treasury", "DXY", "Oil", "Geopolitical", "Safe Haven"):
+            self.assertIn(factor, result["score_breakdown"])
+            self.assertIsNone(result["score_breakdown"][factor])
+
+    def test_valid_oil_during_wait_data_is_context_not_scored(self):
+        observed = (NOW - timedelta(minutes=1)).isoformat()
+        quote = {"value": 85.0, "pct": 1.5, "observed": observed,
+                 "fresh": True, "source": "Yahoo Finance · kemungkinan tertunda",
+                 "basis": "penutupan sebelumnya"}
+        result = analyze_gold_macro(
+            yields=fresh_yields(),
+            dxy=fresh_dxy(observed=NOW - timedelta(hours=5)),
+            oil={"WTI": quote, "Brent": quote}, now=NOW,
+        )
+        self.assertEqual(result["state"], "WAIT_DATA")
+        self.assertEqual(result["oil_weight_pct"], 15)
+        self.assertFalse(result["oil_score_counted"])
+        self.assertFalse(result["oil_assessment"]["score_influence"])
+        self.assertIsNone(result["score_breakdown"]["Oil"])
+
     def test_only_one_yield_blocks_direction(self):
         yields = fresh_yields()
         yields["US2Y"]["freshness"] = "STALE"

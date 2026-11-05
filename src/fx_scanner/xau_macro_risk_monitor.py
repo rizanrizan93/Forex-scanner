@@ -281,7 +281,7 @@ def _delta(n, suffix=""):
 
 
 def _yield_row(macro_eval, h15, symbol):
-    row = dict((macro_eval.get("components") or {}).get(symbol) or {})
+    row = dict(((macro_eval or {}).get("components") or {}).get(symbol) or {})
     if (row.get("freshness") == "FRESH"
             and _recent(row.get("observed_at"), 5)
             and _number(row.get("current")) is not None
@@ -296,11 +296,16 @@ def _yield_row(macro_eval, h15, symbol):
 
 def _market_or_fred(symbol, fred_series, feeds):
     data = feeds["market"].get(symbol)
-    if data and data["fresh"]:
+    # Cached provider flags alone are insufficient: the quote timestamp may
+    # have aged beyond five minutes since retrieval. Fall back to daily FRED
+    # context rather than treating a stale futures quote as intraday evidence.
+    if data and quote_freshness(data)["eligible"]:
         return data
     rows = feeds["fred"].get(fred_series)
     if rows and len(rows) >= 2 and _recent(rows[-1][0], 7):
         (prev_date, previous), (date, current) = rows[-2:]
+        if previous <= 0 or current <= 0:
+            return data
         return {"value": current, "pct": 100 * (current / previous - 1),
                 "observed": date, "fresh": True, "source": "FRED (spot harian)",
                 "basis": "observasi sebelumnya"}
@@ -447,12 +452,16 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     st.write("**Implikasi XAU melalui inflasi:** " + oil_view["xau_inflation_bias"])
     st.caption("Jalur inflasi/Fed: " + oil_view["inflation_path"])
     st.caption("Jalur geopolitik/safe haven: " + oil_view["safe_haven_path"])
-    st.write(
-        "**Kontribusi Oil ke skor:** " +
-        (f"AKTIF · bobot {result['oil_weight_pct']}% · "
-         f"kontribusi {result['score_breakdown']['Oil']:+.1f} poin"
-         if result["oil_score_counted"] else "TIDAK AKTIF · bobot 0%")
-    )
+    if result["score"] is None:
+        st.write("**Kontribusi Oil ke skor:** BELUM DINILAI · skor utama WAIT_DATA; "
+                 "WTI/Brent tetap ditampilkan sebagai konteks.")
+    else:
+        st.write(
+            "**Kontribusi Oil ke skor:** " +
+            (f"AKTIF · bobot {result['oil_weight_pct']}% · "
+             f"kontribusi {result['score_breakdown']['Oil']:+.1f} poin"
+             if result["oil_score_counted"] else "TIDAK AKTIF · bobot 0%")
+        )
     st.caption(oil_view["score_reason"])
     if result["core_score"] is not None:
         st.caption(
@@ -484,7 +493,7 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
         "VIX: " + ("—" if market_risk["VIX"] is None else f"{market_risk['VIX']:+.2f}%") +
         " · USDJPY: " + ("—" if market_risk["USDJPY"] is None else f"{market_risk['USDJPY']:+.2f}%") +
         " · USDCHF: " + ("—" if market_risk["USDCHF"] is None else f"{market_risk['USDCHF']:+.2f}%") +
-        " (vs previous close; hanya quote segar <=90 menit)."
+        " (vs previous close; hanya quote segar <=5 menit)."
     )
     st.caption("Berita geopolitik: " + geo["news_status"] +
                (" · " + geo["reported_region"] if geo["reported_region"] else "") +
@@ -547,6 +556,7 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
 
 def render_macro_risk_monitor(macro_eval, h15_loader):
     """Additional display-only panel; no interaction with strategy or broker."""
+    macro_eval = macro_eval or {}
     st.divider()
     st.header("MONITOR MAKRO XAU — 4 PILAR")
     st.caption("Data independen, hanya untuk analisis manual. Refresh dashboard 60 detik; "

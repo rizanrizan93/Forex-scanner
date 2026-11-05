@@ -189,7 +189,10 @@ def analyze_gold_macro(
     if dollar is None:
         missing.append("DXY intraday (usia sumber maksimal 5 menit)")
     core_score = None
-    breakdown = {"Treasury": None, "DXY": None, "Oil": None}
+    # Keep a stable schema even when core feeds are unavailable. The Macro
+    # panel renders Geo/Safe Haven breakdown during WAIT_DATA too.
+    breakdown = {"Treasury": None, "DXY": None, "Oil": None,
+                 "Geopolitical": None, "Safe Haven": None}
     if missing:
         score = None
         bias = "DATA TIDAK CUKUP"
@@ -253,6 +256,13 @@ def analyze_gold_macro(
             strength = "RENDAH / MIXED"
             rationale = "Gabungan yield, DXY, dan Oil belum memberi dominasi kuat."
 
+    # An eligible Oil feed cannot contribute points if the core macro score
+    # is WAIT_DATA. Keep Oil visible as context but do not call it counted.
+    oil_scored = oil_counted and score is not None
+    oil_assessment["score_influence"] = oil_scored
+    if oil_counted and not oil_scored:
+        oil_assessment["score_reason"] += " Core WAIT_DATA; kontribusi Oil ditangguhkan."
+
     context: list[str] = []
     pce, cpi = _num(pce_yoy), _num(cpi_yoy)
     if pce is not None:
@@ -296,7 +306,7 @@ def analyze_gold_macro(
         "geo_weight_pct": round(geo_weight * 100),
         "haven_weight_pct": round(haven_weight * 100),
         "geo_haven_assessment": geo_haven,
-        "oil_score_counted": oil_counted, "coverage_core_pct": coverage_core_pct,
+        "oil_score_counted": oil_scored, "coverage_core_pct": coverage_core_pct,
         "coverage_pct": coverage, "state": state,
         "rationale": rationale, "missing": missing,
         "factors": details, "bullish": bullish, "bearish": bearish,
