@@ -307,6 +307,30 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     if result["neutral"]:
         st.caption("Belum directional: " + names(result["neutral"]))
 
+    oil_view = result["oil_assessment"]
+    st.markdown("**OIL → INFLASI → THE FED → REAL YIELD | RISIKO GEOPOLITIK**")
+    if oil_view["wti"] and oil_view["brent"]:
+        w, b = oil_view["wti"], oil_view["brent"]
+        st.write(
+            f"**WTI:** ${w['value']:.2f}/barel ({w['pct']:+.2f}%) · "
+            f"**Brent:** ${b['value']:.2f}/barel ({b['pct']:+.2f}%)"
+        )
+        st.caption(
+            f"Feed Oil: {oil_view['status']} · WTI {w['source']}, {w['observed']} · "
+            f"Brent {b['source']}, {b['observed']} · "
+            f"basis WTI: {w['basis'] or 'tidak diketahui'}; "
+            f"Brent: {b['basis'] or 'tidak diketahui'}"
+        )
+    st.write("**Kesimpulan Oil:** " + oil_view["summary"])
+    st.write("**Implikasi XAU melalui inflasi:** " + oil_view["xau_inflation_bias"])
+    st.caption("Jalur inflasi/Fed: " + oil_view["inflation_path"])
+    st.caption("Jalur geopolitik/safe haven: " + oil_view["safe_haven_path"])
+    st.caption(
+        "Oil adalah konteks bersyarat, BUKAN input skor numerik. "
+        "Indeks arah makro tetap hanya menggunakan kelompok Treasury 55% dan DXY 45%; "
+        "tidak mengubah entry, order, atau strategi cBot."
+    )
+
     risk = event_risk or {}
     state = str(risk.get("state") or "UNAVAILABLE")
     if state not in {"CLEAR", "UNAVAILABLE"}:
