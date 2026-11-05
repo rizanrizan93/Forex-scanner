@@ -296,13 +296,28 @@ def _yield_row(macro_eval, h15, symbol):
 
 def _market_or_fred(symbol, fred_series, feeds):
     data = feeds["market"].get(symbol)
-    # Cached provider flags alone are insufficient: the quote timestamp may
-    # have aged beyond five minutes since retrieval. Fall back to daily FRED
-    # context rather than treating a stale futures quote as intraday evidence.
+    # Keep the same source in the Energy panel and the Macro conclusion.
+    # CNBC futures exchange-delay is usable ONLY as a low-weight context for
+    # <=15 min (never relabel as live). Daily FRED can substitute only when
+    # its observation is <=48h old, not a 3+ day historical reference.
     if data and quote_freshness(data)["eligible"]:
         return data
+    if data and symbol in {"CL=F", "BZ=F"}:
+        stamp = _date(data.get("observed"))
+        age = ((datetime.now(UTC) - stamp.astimezone(UTC)).total_seconds()
+               if stamp is not None and stamp.tzinfo is not None else -1)
+        if (0 <= age <= 15 * 60
+                and str(data.get("source") or "").startswith(
+                    "CNBC Quote Cache · futures exchange-delayed")
+                and data.get("instrument_type") == "FUTURES"
+                and data.get("provider_realtime") is False
+                and data.get("basis") == "penutupan sebelumnya"
+                and _number(data.get("value")) is not None
+                and _number(data.get("pct")) is not None
+                and _number(data.get("value")) > 0):
+            return data
     rows = feeds["fred"].get(fred_series)
-    if rows and len(rows) >= 2 and _recent(rows[-1][0], 7):
+    if rows and len(rows) >= 2 and _recent(rows[-1][0], 2):
         (prev_date, previous), (date, current) = rows[-2:]
         if previous <= 0 or current <= 0:
             return data
@@ -401,6 +416,30 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     b.metric("Indeks arah makro", "—" if result["score"] is None
              else f"{result['score']:+d} / 100")
     c.metric("Cakupan feed", f"{result['coverage_pct']}%")
+    oil_view = result["oil_assessment"]
+    if result["score"] is None:
+        st.info("BOBOT OIL (WTI + Brent): belum aktif · WAIT_DATA pada Treasury/DXY. "
+                "Harga minyak tetap tersedia sebagai konteks, bukan skor.")
+    elif result["oil_score_counted"]:
+        oil_points = result["score_breakdown"]["Oil"]
+        st.write(f"**BOBOT OIL (WTI + Brent): {result['oil_weight_pct']}% "
+                 f"· kontribusi {oil_points:+.2f} poin pada skor XAU**")
+        st.caption("Kualitas sumber: " + oil_view["status"] + " · " +
+                   oil_view["score_reason"])
+    else:
+        st.caption("**BOBOT OIL (WTI + Brent): 0% · tidak masuk skor XAU** "
+                   "(feed tidak cukup segar/sebanding).")
+    wti_top, brent_top = (oil_view["quotes"].get(name) or {}
+                          for name in ("WTI", "Brent"))
+    st.caption(
+        "Sumber skor Oil: WTI " +
+        (_fmt(wti_top.get("value"), " USD/barel") + " · " +
+         str(wti_top.get("status") or "UNAVAILABLE")) +
+        " | Brent " +
+        (_fmt(brent_top.get("value"), " USD/barel") + " · " +
+         str(brent_top.get("status") or "UNAVAILABLE")) +
+        " · instrumen dan timestamp tercantum di bawah. "
+        "Bobot heuristik, bukan akurasi yang telah divalidasi.")
     st.caption("Kekuatan: " + result["strength"] +
                " · Horizon: " + result["horizon"] +
                " · skor heuristik, BUKAN probabilitas atau akurasi historis.")
@@ -424,7 +463,6 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     if result["neutral"]:
         st.caption("Belum directional: " + names(result["neutral"]))
 
-    oil_view = result["oil_assessment"]
     st.markdown("**OIL → INFLASI → THE FED → REAL YIELD | RISIKO GEOPOLITIK**")
     for symbol in ("WTI", "Brent"):
         q = oil_view["quotes"][symbol]
@@ -441,10 +479,14 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
                    f"{q['age_minutes']:.1f} menit")
             st.caption(f"Timestamp {symbol}: {observed_wib} WIB · usia {age} · "
                        f"{q['source']} · basis {q['basis'] or '—'}")
-    if any(oil_view["quotes"][name]["status"] == "DELAYED"
-           for name in ("WTI", "Brent")):
-        st.warning("QUOTE OIL DELAYED (>5 MENIT). Harga terakhir hanya referensi; "
-                   "tidak dihitung sebagai sinyal Oil intraday pada skor XAU.")
+    if oil_view["status"] == "FUTURES_DELAYED":
+        st.warning("OIL FUTURES EXCHANGE-DELAYED (≤15 menit). WTI+Brent "
+                   "digunakan hanya sebagai konteks inflasi berbobot RENDAH 5% "
+                   "jika Treasury/DXY valid, BUKAN harga live atau pemicu order.")
+    elif any(str(oil_view["quotes"][name]["status"]).startswith("DELAYED")
+             for name in ("WTI", "Brent")):
+        st.warning("QUOTE OIL DELAYED. Data tidak memenuhi kontrak waktu/kualitas "
+                   "untuk skor Oil; harga tetap referensi.")
     st.caption("Cache market quote ±60 detik; harga pasar Yahoo Finance dapat "
                "tertunda oleh penyedia. Timestamp sumber, bukan waktu refresh "
                "aplikasi, menentukan kelayakan skor.")
@@ -471,8 +513,9 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             f"cakupan gabungan: {result['coverage_pct']}%"
         )
     st.caption(
-        "Oil adalah satu cluster WTI+Brent: hanya quote intraday dengan usia <=5 menit "
-        "yang dapat memberi bobot 15%, sedangkan FRED harian valid maksimal 8%. "
+        "Oil adalah satu cluster WTI+Brent: quote intraday valid ≤5 menit "
+        "berbobot 15%; CNBC futures exchange-delayed ≤15 menit berbobot "
+        "rendah 5%; FRED harian ≤48 jam berbobot 8%. "
         "Geopolitik dan safe haven masing-masing maksimal 5% dan baru dinilai "
         "berdasarkan peliputan multi-sumber serta konfirmasi pasar. "
         "Skor belum terkalibrasi; tidak mengotorisasi order cBot."
@@ -539,10 +582,10 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             st.caption("• " + line)
         st.caption("Perhitungan: Treasury (real yield 50%, US2Y 30%, US10Y 20% "
                    "di dalam kelompok) + DXY, mempertahankan rasio 55:45 dari sisa bobot. "
-                   "Oil: 15% futures intraday bila timestamp quote <=5 menit, "
-                   "8% FRED spot harian bila valid ≤48 jam. "
+                   "Oil: 15% intraday ≤5 menit; 5% futures CNBC tertunda ≤15 menit; "
+                   "8% FRED spot harian ≤48 jam. "
                    "Geopolitical risk dan safe haven: masing-masing 5% bila koroborasi "
-                   "berita serta pasar valid. Quote terlambat tidak masuk skor Oil intraday. "
+                   "berita serta pasar valid. Futures tertunda hanya konteks bobot rendah. "
                    "Data core hilang/stale = WAIT_DATA. Bobot belum diuji out-of-sample.")
 
     st.info("KESIMPULAN EKSEKUSI: " +
