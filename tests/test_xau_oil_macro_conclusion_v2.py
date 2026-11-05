@@ -69,6 +69,13 @@ class OilContextTests(unittest.TestCase):
         self.assertEqual(r["trend"], "UNKNOWN")
 
 
+    def test_old_daily_spot_is_labeled_stale_context(self):
+        old = quote(1, source="FRED (spot harian)",
+                    observed=NOW - timedelta(days=3),
+                    basis="observasi sebelumnya")
+        out = oil_quote_status(old, NOW)
+        self.assertEqual(out["status"], "STALE_DAILY_CONTEXT")
+
     def test_intraday_quote_at_six_minutes_is_delayed_not_scored(self):
         at = NOW - timedelta(minutes=6)
         wti = quote(1, observed=at)
