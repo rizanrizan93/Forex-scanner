@@ -9,6 +9,8 @@ from datetime import UTC, datetime
 from math import isfinite
 from typing import Any
 
+OIL_INTRADAY_MAX_AGE_SECONDS = 5 * 60  # quote timestamp, NOT freshness claim
+
 
 def _num(value: Any) -> float | None:
     try:
@@ -35,12 +37,43 @@ def _validated(row: dict[str, Any] | None, now: datetime) -> dict[str, Any] | No
     if pct is None or value is None or value <= 0 or observed is None or cadence is None:
         return None
     age_s = (now - observed).total_seconds()
-    max_s = 7 * 86400 if cadence == "HARIAN" else 2 * 3600
+    max_s = 7 * 86400 if cadence == "HARIAN" else OIL_INTRADAY_MAX_AGE_SECONDS
     if not 0 <= age_s <= max_s:
         return None
     return {"value": value, "pct": pct, "observed": observed.isoformat(),
             "source": source, "basis": str(row.get("basis") or ""),
             "cadence": cadence}
+
+
+def oil_quote_status(row: dict[str, Any] | None, now: datetime) -> dict[str, Any]:
+    """Keep a delayed last quote visible, never relabel it as live."""
+    row = row or {}
+    date = _date(row.get("observed"))
+    age = (now.astimezone(UTC) - date).total_seconds() if date else None
+    source = str(row.get("source") or "")
+    value, pct = _num(row.get("value")), _num(row.get("pct"))
+    is_intraday = source.startswith("Yahoo Finance")
+    is_daily = source.startswith("FRED")
+    if not row or age is None or value is None or value <= 0 or pct is None:
+        status = "UNAVAILABLE"
+    elif age < 0:
+        status = "INVALID_TIMESTAMP"
+    elif is_daily:
+        status = "DAILY_CONTEXT"
+    elif not is_intraday:
+        status = "UNVERIFIED"
+    elif row.get("fresh") is True and age <= OIL_INTRADAY_MAX_AGE_SECONDS:
+        status = "FRESH_5M"
+    else:
+        status = "DELAYED"
+    return {
+        "value": value, "pct": pct,
+        "observed": date.isoformat() if date else None,
+        "age_minutes": round(age / 60, 1) if age is not None and age >= 0 else None,
+        "status": status,
+        "source": source or "UNAVAILABLE",
+        "basis": str(row.get("basis") or ""),
+    }
 
 
 def assess_oil_macro(oil: dict[str, dict[str, Any] | None] | None, now: datetime) -> dict[str, Any]:
@@ -54,13 +87,20 @@ def assess_oil_macro(oil: dict[str, dict[str, Any] | None] | None, now: datetime
     base = {
         "status": "BELUM LENGKAP", "trend": "UNKNOWN",
         "wti": wti, "brent": brent,
+        "quotes": {
+            "WTI": oil_quote_status(oil.get("WTI"), now),
+            "Brent": oil_quote_status(oil.get("Brent"), now),
+        },
         "xau_inflation_bias": "TIDAK DINILAI",
         "inflation_path": "Jalur Oil → inflasi → Fed → real yield belum terkonfirmasi.",
         "safe_haven_path": "Geopolitik/safe haven tidak bisa disimpulkan hanya dari harga minyak.",
         "score_influence": False,
     }
     if wti is None or brent is None:
-        base["summary"] = "WTI/Brent belum lengkap atau tidak segar; tidak dipakai menyimpulkan arah XAU."
+        base["summary"] = (
+            "WTI/Brent belum lengkap atau quote intraday berusia lebih dari 5 menit; "
+            "data terakhir tetap ditampilkan, tetapi tidak menambah bobot Oil."
+        )
         return base
     if wti["cadence"] != brent["cadence"] or wti["basis"] != brent["basis"]:
         base.update(status="TIDAK SEBANDING", summary=(

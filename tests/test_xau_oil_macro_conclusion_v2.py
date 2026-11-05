@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from fx_scanner.xau_oil_macro_context import assess_oil_macro
+from fx_scanner.xau_oil_macro_context import assess_oil_macro, oil_quote_status
 
 
 NOW = datetime(2026, 11, 5, 12, 40, tzinfo=UTC)
@@ -18,7 +18,7 @@ def quote(pct, *, source="Yahoo Finance · kemungkinan tertunda",
     return {
         "value": value, "pct": pct, "fresh": True, "source": source,
         "basis": basis,
-        "observed": (observed or (NOW - timedelta(minutes=20))).isoformat(),
+        "observed": (observed or (NOW - timedelta(minutes=2))).isoformat(),
     }
 
 
@@ -68,6 +68,31 @@ class OilContextTests(unittest.TestCase):
         self.assertEqual(r["status"], "TIDAK SEBANDING")
         self.assertEqual(r["trend"], "UNKNOWN")
 
+
+    def test_intraday_quote_at_six_minutes_is_delayed_not_scored(self):
+        at = NOW - timedelta(minutes=6)
+        wti = quote(1, observed=at)
+        brent = quote(2, observed=at)
+        r = assess_oil_macro({"WTI": wti, "Brent": brent}, NOW)
+        self.assertEqual(r["status"], "BELUM LENGKAP")
+        self.assertEqual(r["quotes"]["WTI"]["status"], "DELAYED")
+        self.assertEqual(r["quotes"]["Brent"]["status"], "DELAYED")
+        self.assertGreater(r["quotes"]["WTI"]["age_minutes"], 5)
+
+    def test_intraday_quote_at_five_minutes_remains_eligible(self):
+        at = NOW - timedelta(minutes=5)
+        r = assess_oil_macro({
+            "WTI": quote(1, observed=at),
+            "Brent": quote(2, observed=at),
+        }, NOW)
+        self.assertEqual(r["trend"], "NAIK")
+        self.assertEqual(r["quotes"]["WTI"]["status"], "FRESH_5M")
+
+    def test_daily_quote_is_labeled_daily_not_intraday(self):
+        at = NOW - timedelta(hours=24)
+        x = oil_quote_status(quote(2, source="FRED (spot harian)",
+                      observed=at, basis="observasi sebelumnya"), NOW)
+        self.assertEqual(x["status"], "DAILY_CONTEXT")
     def test_missing_quote_is_unavailable(self):
         r = assess_oil_macro({"WTI": quote(1)}, NOW)
         self.assertEqual(r["status"], "BELUM LENGKAP")
