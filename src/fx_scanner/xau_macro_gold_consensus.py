@@ -11,6 +11,8 @@ from datetime import UTC, datetime
 from math import isfinite
 from typing import Any
 
+from .xau_oil_macro_context import assess_oil_macro
+
 YIELD_WEIGHTS = {"REAL_YIELD_10Y": 0.50, "US2Y": 0.30, "US10Y": 0.20}
 YIELD_NAMES = {
     "REAL_YIELD_10Y": "Real yield 10Y",
@@ -168,15 +170,9 @@ def analyze_gold_macro(
     else:
         context.append("Probabilitas FOMC belum tersedia sebagai feed terverifikasi; tidak diasumsikan HOLD/HIKE.")
 
-    oil = oil or {}
-    wti, brent = oil.get("WTI") or {}, oil.get("Brent") or {}
-    if all(item.get("fresh") and _num(item.get("pct")) is not None for item in (wti, brent)):
-        w, b = _num(wti["pct"]), _num(brent["pct"])
-        trend = ("keduanya naik" if w > 0 and b > 0 else
-                 "keduanya turun" if w < 0 and b < 0 else "tidak searah")
-        context.append(f"Energi: WTI {w:+.2f}%, Brent {b:+.2f}% ({trend}); risiko inflasi dua arah, bukan suara otomatis.")
-    else:
-        context.append("Energi: observasi WTI/Brent belum cukup segar/komplet.")
+    oil_assessment = assess_oil_macro(oil, now)
+    context.append("Energi: " + oil_assessment["summary"] +
+                   " Jalur Oil bukan vote independen; interpretasi bersyarat.")
 
     metals = metals or {}
     gold, silver = metals.get("Gold") or {}, metals.get("Silver") or {}
@@ -195,6 +191,7 @@ def analyze_gold_macro(
         "rationale": rationale, "missing": missing,
         "factors": details, "bullish": bullish, "bearish": bearish,
         "neutral": neutral, "context": context,
+        "oil_assessment": oil_assessment,
         "model": "EXPLAINABLE_HEURISTIC_V1_NOT_CALIBRATED",
         "horizon": "intraday ke 1–3 sesi (konteks, bukan prediksi)",
         "as_of_utc": now.isoformat(),
