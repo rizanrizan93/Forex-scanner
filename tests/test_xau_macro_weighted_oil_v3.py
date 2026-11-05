@@ -19,7 +19,7 @@ def dxy(pct=0):
     return {"pct": pct, "observed": (NOW - timedelta(minutes=5)).isoformat(),
             "fresh": True, "source": "Yahoo", "basis": "previous"}
 
-def quote(pct, *, daily=False, hours_ago=0.25, basis=None):
+def quote(pct, *, daily=False, hours_ago=2/60, basis=None):
     return {
         "pct": pct, "value": 90,
         "source": "FRED (spot harian)" if daily else "Yahoo Finance · kemungkinan tertunda",
@@ -38,6 +38,19 @@ class WeightedOilScoreTests(unittest.TestCase):
         self.assertEqual(result["oil_weight_pct"], 0)
         self.assertIsNone(result["score_breakdown"]["Oil"])
 
+
+    def test_six_minute_oil_quote_must_not_shift_macro_score(self):
+        result = analyze_gold_macro(yields=yields(2), dxy=dxy(0),
+                                    oil=oil(2, hours_ago=6/60), now=NOW)
+        self.assertEqual(result["score"], -55)
+        self.assertEqual(result["oil_weight_pct"], 0)
+        self.assertEqual(result["oil_assessment"]["quotes"]["WTI"]["status"], "DELAYED")
+
+    def test_one_minute_oil_quote_can_shift_macro_score(self):
+        result = analyze_gold_macro(yields=yields(2), dxy=dxy(0),
+                                    oil=oil(2, hours_ago=1/60), now=NOW)
+        self.assertEqual(result["oil_weight_pct"], 15)
+        self.assertEqual(result["score"], -62)
     def test_rising_oil_makes_score_more_bearish(self):
         result = analyze_gold_macro(yields=yields(2), dxy=dxy(0),
                                     oil=oil(1), now=NOW)
