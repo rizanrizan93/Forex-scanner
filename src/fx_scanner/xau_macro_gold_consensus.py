@@ -1,9 +1,10 @@
 """Explainable, read-only XAU macro synthesis.
 
-Treasury (real yield/US2Y/US10Y as ONE cluster), DXY and quality-gated
-WTI+Brent (as ONE small inflation channel) contribute to a heuristic XAU score.
-Do not separately vote Fed/inflation again: those overlap with yield and Oil.
-Oil cannot infer geopolitics from price alone. Never authorize orders.
+Treasury, DXY, Oil inflation, and a capped geopolitical/safe-haven
+risk cluster contribute conservatively to a heuristic XAU score.
+News reports and market proxies must be fresh and independently corroborated;
+do not infer geopolitics from Oil, nor double-count Fed/real yield or gold.
+Never authorize orders.
 """
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ from math import isfinite
 from typing import Any
 
 from .xau_oil_macro_context import assess_oil_macro
+from .xau_geopolitical_safehaven import assess_geopolitical_safehaven
 
 YIELD_WEIGHTS = {"REAL_YIELD_10Y": 0.50, "US2Y": 0.30, "US10Y": 0.20}
 YIELD_NAMES = {
@@ -58,6 +60,9 @@ def analyze_gold_macro(
     oil: dict[str, dict[str, Any] | None] | None = None,
     metals: dict[str, dict[str, Any] | None] | None = None,
     fed_repricing: dict[str, Any] | None = None,
+    geopolitical_articles: list[dict[str, Any]] | None = None,
+    haven_markets: dict[str, dict[str, Any] | None] | None = None,
+    geopolitical_news_error: str | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
     """Return deterministic, provenance-aware macro context, never order permissions.
@@ -151,12 +156,32 @@ def analyze_gold_macro(
             "source": (oil_assessment["wti"] or {}).get("source"),
             "counted": True, "weight": oil_weight,
         })
+    geo_haven = assess_geopolitical_safehaven(
+        articles=geopolitical_articles, markets=haven_markets, now=now,
+        news_error=geopolitical_news_error,
+    )
+    geo_weight = geo_haven["geo_weight"]
+    haven_weight = geo_haven["haven_weight"]
+    risk_weight = geo_haven["total_weight"]
+    for name, weight, vote in (
+        ("Geopolitical risk (news + market)", geo_weight, geo_haven["geopolitical_vote"]),
+        ("Safe haven demand (VIX + JPY/CHF)", haven_weight, geo_haven["safehaven_vote"]),
+    ):
+        if weight > 0:
+            details.append({
+                "name": name, "group": "Geo/Safe Haven",
+                "direction": vote, "reason": geo_haven["status"],
+                "observed_at": now.isoformat(), "source": (
+                    "GDELT reports + market proxy" if name.startswith("Geopolitical")
+                    else "Yahoo Finance cross-asset proxies"),
+                "counted": True, "weight": weight,
+            })
     core_coverage_fraction = (
         0.55 * min(1, available_yield_weight) + 0.45 * int(dxy_valid)
     )
-    # Published coverage covers all three clusters (Oil max 15%). Daily oil
-    # counts as partial coverage; stale Oil does not masquerade as live.
-    coverage = round(100 * (0.85 * core_coverage_fraction + oil_weight))
+    # 75% core + 15% Oil + 10% geopolitics/safe-haven theoretical coverage.
+    # Missing independent feeds reduce coverage, not retroactively invent votes.
+    coverage = round(100 * (0.75 * core_coverage_fraction + oil_weight + risk_weight))
     coverage_core_pct = round(100 * core_coverage_fraction)
     missing = []
     if treasury is None:
@@ -174,21 +199,32 @@ def analyze_gold_macro(
     else:
         base = 0.55 * treasury + 0.45 * dollar
         core_score = round(100 * base)
-        # Oil off => preserve exact legacy 55/45 model. Oil on => shrink
-        # existing core pro-rata and dedicate only 8%/15% to the energy vote.
-        treasury_points = 100 * (1 - oil_weight) * 0.55 * treasury
-        dollar_points = 100 * (1 - oil_weight) * 0.45 * dollar
+        # Preserve Oil's 0/8/15% allocation; the risk group (max 10%)
+        # reallocates only part of the remaining Treasury+DXY cluster.
+        core_weight = 1 - oil_weight - risk_weight
+        treasury_points = 100 * core_weight * 0.55 * treasury
+        dollar_points = 100 * core_weight * 0.45 * dollar
         oil_points = 100 * oil_weight * oil_vote if oil_counted else 0.0
+        geopolitical_points = 100 * geo_weight * (geo_haven["geopolitical_vote"] or 0)
+        haven_points = 100 * haven_weight * (geo_haven["safehaven_vote"] or 0)
         breakdown = {
             "Treasury": round(treasury_points, 2),
             "DXY": round(dollar_points, 2),
             "Oil": round(oil_points, 2) if oil_counted else None,
+            "Geopolitical": round(geopolitical_points, 2) if geo_weight else None,
+            "Safe Haven": round(haven_points, 2) if haven_weight else None,
         }
-        score = round(treasury_points + dollar_points + oil_points)
+        score = round(treasury_points + dollar_points + oil_points
+                      + geopolitical_points + haven_points)
         core_conflict = treasury * dollar < 0
         oil_conflict = oil_counted and oil_vote != 0 and base * oil_vote < 0
+        risk_conflict = any(
+            v is not None and v * base < 0
+            for v in (geo_haven["geopolitical_vote"], geo_haven["safehaven_vote"])
+        )
         state = ("CONFLICT" if core_conflict else
-                 "OIL_CONFLICT" if oil_conflict else "ALIGNED_OR_FLAT")
+                 "OIL_CONFLICT" if oil_conflict else
+                 "RISK_CONFLICT" if risk_conflict else "ALIGNED_OR_FLAT")
         if score >= 25:
             bias = "BULLISH XAU"
         elif score <= -25:
@@ -201,7 +237,11 @@ def analyze_gold_macro(
         elif state == "OIL_CONFLICT":
             strength = "TERBATAS · KONFLIK OIL"
             rationale = ("Jalur inflasi Oil berlawanan dengan Treasury/DXY; "
-                         "skor gabungan sudah memasukkan perbedaan ini, belum ada konfirmasi geopolitik.")
+                         "skor gabungan telah memasukkan ketidakselarasan tersebut.")
+        elif state == "RISK_CONFLICT":
+            strength = "TERBATAS · KONFLIK SAFE HAVEN"
+            rationale = ("Indikasi geopolitik/safe haven berlawanan dengan Treasury/DXY; "
+                         "tunggu konfirmasi struktur harga.")
         elif abs(score) >= 65 and available_yield_weight >= 0.99 and dollar != 0 and treasury * dollar > 0:
             strength = "KONFLUENSI KUAT (HEURISTIK)"
             rationale = ("Yield dan DXY searah, dengan kontribusi Oil sesuai data "
@@ -234,7 +274,9 @@ def analyze_gold_macro(
 
     context.append("Energi: " + oil_assessment["summary"] + " " +
                    oil_assessment["score_reason"] +
-                   " Jalur geopolitik tidak pernah otomatis menjadi vote.")
+                   " Harga minyak sendiri bukan bukti geopolitik.")
+    context.append("Geo + safe haven: " + geo_haven["status"] + " · " +
+                   geo_haven["summary"])
 
     metals = metals or {}
     gold, silver = metals.get("Gold") or {}, metals.get("Silver") or {}
@@ -251,13 +293,16 @@ def analyze_gold_macro(
         "bias": bias, "strength": strength, "score": score,
         "core_score": core_score, "score_breakdown": breakdown,
         "oil_weight_pct": round(oil_weight * 100),
+        "geo_weight_pct": round(geo_weight * 100),
+        "haven_weight_pct": round(haven_weight * 100),
+        "geo_haven_assessment": geo_haven,
         "oil_score_counted": oil_counted, "coverage_core_pct": coverage_core_pct,
         "coverage_pct": coverage, "state": state,
         "rationale": rationale, "missing": missing,
         "factors": details, "bullish": bullish, "bearish": bearish,
         "neutral": neutral, "context": context,
         "oil_assessment": oil_assessment,
-        "model": "EXPLAINABLE_HEURISTIC_V2_OIL_WEIGHTED_NOT_CALIBRATED",
+        "model": "EXPLAINABLE_HEURISTIC_V3_OIL_GEO_HAVEN_NOT_CALIBRATED",
         "horizon": "intraday ke 1–3 sesi (konteks, bukan prediksi)",
         "as_of_utc": now.isoformat(),
         "execution_authority": False, "execution_influence": False,

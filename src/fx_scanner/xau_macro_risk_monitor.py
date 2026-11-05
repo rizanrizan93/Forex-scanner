@@ -23,7 +23,7 @@ FRED_SERIES = {
     "CPIAUCSL", "PCEPILFE", "PCEPI", "DFEDTARU", "DGS2",
     "DCOILWTICO", "DCOILBRENTEU",
 }
-YAHOO_SYMBOLS = {"DX-Y.NYB", "GC=F", "SI=F", "CL=F", "BZ=F"}
+YAHOO_SYMBOLS = {"DX-Y.NYB", "GC=F", "SI=F", "CL=F", "BZ=F", "^VIX", "JPY=X", "CHF=X"}
 MAX_BODY = 256 * 1024
 
 
@@ -117,6 +117,42 @@ def market_quote(symbol):
     }
 
 
+@st.cache_data(ttl=600, show_spinner=False)
+def geopolitical_headlines():
+    """Discover time-stamped articles, not verified events or trading triggers.
+
+    GDELT only indexes/report-matches headlines; independent reputable domains
+    and risk-off prices must both corroborate before any macro vote.
+    """
+    q = ('("missile strike" OR "missile attack" OR "airstrike" OR '
+         '"drone attack" OR "military strike" OR "military escalation") '
+         '(Iran OR Israel OR Ukraine OR Russia OR Taiwan OR Yemen OR "Red Sea" OR Korea) '
+         'sourcelang:english')
+    url = "https://api.gdeltproject.org/api/v2/doc/doc?" + urlencode({
+        "query": q, "mode": "ArtList", "format": "json",
+        "sort": "DateDesc", "timespan": "24h", "maxrecords": "50",
+    })
+    raw = json.loads(_fetch(url, "api.gdeltproject.org").decode("utf-8"))
+    articles = raw.get("articles") if isinstance(raw, dict) else None
+    if not isinstance(articles, list):
+        raise ValueError("GDELT document response lacks article list")
+    result = []
+    for article in articles[:50]:
+        if not isinstance(article, dict):
+            continue
+        seen = str(article.get("seendate") or "")
+        try:
+            observed = datetime.strptime(seen, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC).isoformat()
+        except ValueError:
+            continue
+        result.append({
+            "title": str(article.get("title") or "")[:400],
+            "url": str(article.get("url") or "")[:1800],
+            "observed": observed,
+        })
+    return result
+
+
 @st.cache_data(ttl=15, show_spinner=False)
 def us2y_live():
     endpoint = "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol"
@@ -151,10 +187,12 @@ def load_external_macro_inputs():
     market_codes = sorted(YAHOO_SYMBOLS)
     tasks = [("fred", code) for code in fred_codes] + [
         ("market", code) for code in market_codes
-    ] + [("us2y", "US2Y")]
+    ] + [("us2y", "US2Y"), ("geo", "GDELT")]
     def read(kind, code):
-        fn = fred_history if kind == "fred" else market_quote if kind == "market" else us2y_live
-        return _safe(fn, code) if kind != "us2y" else _safe(fn)
+        fn = (fred_history if kind == "fred" else
+              market_quote if kind == "market" else
+              us2y_live if kind == "us2y" else geopolitical_headlines)
+        return _safe(fn, code) if kind in {"fred", "market"} else _safe(fn)
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = {key: pool.submit(read, *key) for key in tasks}
         outcomes = {key: future.result() for key, future in futures.items()}
@@ -162,6 +200,7 @@ def load_external_macro_inputs():
         "fred": {code: outcomes[("fred", code)][0] for code in fred_codes},
         "market": {code: outcomes[("market", code)][0] for code in market_codes},
         "us2y": outcomes[("us2y", "US2Y")],
+        "geo_news": outcomes[("geo", "GDELT")],
     }
 
 
@@ -273,12 +312,19 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
         oil={"WTI": wti, "Brent": brent},
         metals={"Gold": gold, "Silver": silver},
         fed_repricing=(macro_eval or {}).get("fed_repricing_proxy"),
+        geopolitical_articles=(feeds.get("geo_news") or (None, "NO_FEED"))[0],
+        geopolitical_news_error=(feeds.get("geo_news") or (None, "NO_FEED"))[1],
+        haven_markets={
+            "^VIX": feeds["market"].get("^VIX"),
+            "JPY=X": feeds["market"].get("JPY=X"),
+            "CHF=X": feeds["market"].get("CHF=X"),
+        },
     )
 
     st.subheader("KESIMPULAN GABUNGAN MAKRO GOLD")
-    st.caption("RIZAN Macro Synthesis V2 · bobot adaptif Treasury/DXY + Oil (WTI dan Brent); "
-               "Oil berpengaruh melalui jalur inflasi hanya saat feed valid. "
-               "Fed, inflasi dan geopolitik tidak dihitung ganda.")
+    st.caption("RIZAN Macro Synthesis V3 · Treasury/DXY + Oil + konfirmasi Geopolitical Risk "
+               "dan Safe Haven (VIX, JPY, CHF). Tidak ada asumsi geopolitik dari Oil; "
+               "bobot risiko aktif hanya bila bukti berita/pasar memenuhi syarat.")
     a, b, c = st.columns(3)
     a.metric("Bias XAUUSD", result["bias"])
     b.metric("Indeks arah makro", "—" if result["score"] is None
@@ -291,7 +337,7 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     if result["state"] == "WAIT_DATA":
         st.warning("WAIT DATA · " + result["rationale"] +
                    " Kurang: " + ", ".join(result["missing"]))
-    elif result["state"] in {"CONFLICT", "OIL_CONFLICT"}:
+    elif result["state"] in {"CONFLICT", "OIL_CONFLICT", "RISK_CONFLICT"}:
         st.warning(result["bias"] + " · " + result["rationale"])
     elif result["bias"] == "BULLISH XAU":
         st.success("TAILWIND EMAS · " + result["rationale"])
@@ -340,14 +386,44 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             f"cakupan gabungan: {result['coverage_pct']}%"
         )
     st.caption(
-        "Bobot aktif: " +
-        (f"Treasury {(1-result['oil_weight_pct']/100)*55:.2f}% · "
-         f"DXY {(1-result['oil_weight_pct']/100)*45:.2f}% · "
-         f"Oil {result['oil_weight_pct']}%. "
-         if result["oil_score_counted"] else "Treasury 55% · DXY 45%; Oil tidak dihitung. ") +
-        "Oil terdiri dari satu cluster WTI+Brent; jalur geopolitik tidak diasumsikan. "
-        "Ini skor heuristik belum terkalibrasi, bukan izin membuka order cBot."
+        "Oil adalah satu cluster WTI+Brent dengan bobot 0/8/15% sesuai validitasnya. "
+        "Geopolitik dan safe haven masing-masing maksimal 5% dan baru dinilai "
+        "berdasarkan peliputan multi-sumber serta konfirmasi pasar. "
+        "Skor belum terkalibrasi; tidak mengotorisasi order cBot."
     )
+
+    geo = result["geo_haven_assessment"]
+    st.markdown("**GEOPOLITICAL RISK & SAFE HAVEN — SKOR TERVERIFIKASI**")
+    st.write("**Status risiko:** " + geo["status"])
+    st.write(
+        f"**Kontribusi skor:** Geopolitik "
+        f"{result['score_breakdown']['Geopolitical'] if result['score_breakdown']['Geopolitical'] is not None else '—'} poin "
+        f"(bobot {result['geo_weight_pct']}%) · Safe Haven "
+        f"{result['score_breakdown']['Safe Haven'] if result['score_breakdown']['Safe Haven'] is not None else '—'} poin "
+        f"(bobot {result['haven_weight_pct']}%)"
+    )
+    market_risk = geo["market_pct"]
+    st.caption(
+        "VIX: " + ("—" if market_risk["VIX"] is None else f"{market_risk['VIX']:+.2f}%") +
+        " · USDJPY: " + ("—" if market_risk["USDJPY"] is None else f"{market_risk['USDJPY']:+.2f}%") +
+        " · USDCHF: " + ("—" if market_risk["USDCHF"] is None else f"{market_risk['USDCHF']:+.2f}%") +
+        " (vs previous close; hanya quote segar <=90 menit)."
+    )
+    st.caption("Berita geopolitik: " + geo["news_status"] +
+               (" · " + geo["reported_region"] if geo["reported_region"] else "") +
+               (" · feed error: " + geo["news_error"] if geo["news_error"] else ""))
+    for item in geo["news_evidence"]:
+        st.caption(f"Media: {item['source']} · {item['observed']} UTC · {item['title']}")
+    st.caption(geo["summary"])
+    if result["core_score"] is not None:
+        st.caption("Alokasi final: Treasury "
+                   f"{(1-(result['oil_weight_pct'] + result['geo_weight_pct'] + result['haven_weight_pct'])/100)*55:.2f}%"
+                   " · DXY "
+                   f"{(1-(result['oil_weight_pct'] + result['geo_weight_pct'] + result['haven_weight_pct'])/100)*45:.2f}%"
+                   f" · Oil {result['oil_weight_pct']}% "
+                   f" · Geo {result['geo_weight_pct']}% "
+                   f" · Safe Haven {result['haven_weight_pct']}%. "
+                   "Total alokasi = 100% jika data core valid; belum dikalibrasi.")
 
     risk = event_risk or {}
     state = str(risk.get("state") or "UNAVAILABLE")
@@ -376,12 +452,12 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
         for line in result["context"]:
             st.caption("• " + line)
         st.caption("Perhitungan: Treasury (real yield 50%, US2Y 30%, US10Y 20% "
-                   "di dalam kelompok) + DXY; 15% dialihkan ke satu cluster Oil bila "
-                   "futures WTI/Brent intraday valid, 8% bila hanya FRED harian valid "
-                   "(maksimal 48 jam), 0% bila Oil tidak valid. Sisa bobot Treasury "
-                   "dan DXY mempertahankan rasio 55:45. Skor positif mendukung XAU. "
-                   "Kondisi core data kosong/stale = WAIT DATA. "
-                   "Bobot belum divalidasi melalui out-of-sample replay.")
+                   "di dalam kelompok) + DXY, mempertahankan rasio 55:45 dari sisa bobot. "
+                   "Oil: 15% futures intraday atau 8% FRED spot harian ≤48 jam. "
+                   "Geopolitical risk dan safe haven: masing-masing 5% bila koroborasi "
+                   "berita serta pasar valid. Jika data tidak valid, alokasi kembali "
+                   "ke Treasury/DXY. Kondisi core kosong/stale = WAIT_DATA. "
+                   "Semua bobot heuristik dan belum diuji out-of-sample.")
 
     st.info("KESIMPULAN EKSEKUSI: " +
             ("WAIT — data makro utama belum lengkap. " if result["score"] is None else
