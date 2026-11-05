@@ -104,7 +104,7 @@ class WeightedOilScoreTests(unittest.TestCase):
             metals={"Gold": {"fresh": True, "pct": 2},
                     "Silver": {"fresh": True, "pct": -2}}, now=NOW)
         self.assertEqual(clean["score"], contextual["score"])
-        self.assertEqual(clean["model"], "EXPLAINABLE_HEURISTIC_V2_OIL_WEIGHTED_NOT_CALIBRATED")
+        self.assertEqual(clean["model"], "EXPLAINABLE_HEURISTIC_V3_OIL_GEO_HAVEN_NOT_CALIBRATED")
 
 if __name__ == "__main__":
     unittest.main()
