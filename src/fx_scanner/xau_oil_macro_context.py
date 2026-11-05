@@ -10,6 +10,9 @@ from math import isfinite
 from typing import Any
 
 OIL_INTRADAY_MAX_AGE_SECONDS = 5 * 60  # quote timestamp, NOT freshness claim
+# CNBC explicitly marks exchange-delayed futures. They can be a low-weight
+# macro context for up to 15 minutes, NEVER live intraday confirmation.
+OIL_DELAYED_FUTURES_MAX_AGE_SECONDS = 15 * 60
 
 
 def _num(value: Any) -> float | None:
@@ -29,20 +32,40 @@ def _date(value: Any) -> datetime | None:
 
 
 def _validated(row: dict[str, Any] | None, now: datetime) -> dict[str, Any] | None:
-    if not row or row.get("fresh") is not True:
+    if not row:
         return None
-    pct, value, observed = _num(row.get("pct")), _num(row.get("value")), _date(row.get("observed"))
+    pct, value = _num(row.get("pct")), _num(row.get("value"))
+    observed = _date(row.get("observed"))
     source = str(row.get("source") or "")
-    cadence = "HARIAN" if source.startswith("FRED") else "INTRADAY" if (source.startswith("Yahoo Finance") or source.startswith("CNBC Quote Cache")) else None
-    if pct is None or value is None or value <= 0 or observed is None or cadence is None:
+    basis = str(row.get("basis") or "")
+    if pct is None or value is None or value <= 0 or observed is None:
         return None
     age_s = (now - observed).total_seconds()
-    max_s = 7 * 86400 if cadence == "HARIAN" else OIL_INTRADAY_MAX_AGE_SECONDS
-    if not 0 <= age_s <= max_s:
+    if age_s < 0:
         return None
+
+    if source.startswith("FRED"):
+        if row.get("fresh") is not True or age_s > 7 * 86400:
+            return None
+        cadence = "HARIAN"
+    elif (source.startswith("CNBC Quote Cache · futures exchange-delayed")
+          and row.get("instrument_type") == "FUTURES"
+          and row.get("provider_realtime") is False
+          and basis == "penutupan sebelumnya"
+          and age_s <= OIL_DELAYED_FUTURES_MAX_AGE_SECONDS):
+        # The vendor explicitly labels exchange-delay: score with lower
+        # confidence, never as a live five-minute confirmation.
+        cadence = "FUTURES_DELAYED"
+    elif ((source.startswith("Yahoo Finance") or
+           source.startswith("CNBC Quote Cache"))
+          and row.get("fresh") is True
+          and age_s <= OIL_INTRADAY_MAX_AGE_SECONDS):
+        cadence = "INTRADAY"
+    else:
+        return None
+
     return {"value": value, "pct": pct, "observed": observed.isoformat(),
-            "source": source, "basis": str(row.get("basis") or ""),
-            "cadence": cadence}
+            "source": source, "basis": basis, "cadence": cadence}
 
 
 def oil_quote_status(row: dict[str, Any] | None, now: datetime) -> dict[str, Any]:
@@ -59,9 +82,15 @@ def oil_quote_status(row: dict[str, Any] | None, now: datetime) -> dict[str, Any
     elif age < 0:
         status = "INVALID_TIMESTAMP"
     elif is_daily:
-        status = "DAILY_CONTEXT"
+        status = "DAILY_CONTEXT" if age <= 48 * 3600 else "STALE_DAILY_CONTEXT"
     elif not is_intraday:
         status = "UNVERIFIED"
+    elif (source.startswith("CNBC Quote Cache · futures exchange-delayed")
+          and row.get("instrument_type") == "FUTURES"
+          and row.get("provider_realtime") is False
+          and str(row.get("basis") or "") == "penutupan sebelumnya"
+          and age <= OIL_DELAYED_FUTURES_MAX_AGE_SECONDS):
+        status = "DELAYED_15M_LOW_WEIGHT"
     elif row.get("fresh") is True and age <= OIL_INTRADAY_MAX_AGE_SECONDS:
         status = "FRESH_5M"
     else:
@@ -98,8 +127,9 @@ def assess_oil_macro(oil: dict[str, dict[str, Any] | None] | None, now: datetime
     }
     if wti is None or brent is None:
         base["summary"] = (
-            "WTI/Brent belum lengkap atau quote intraday berusia lebih dari 5 menit; "
-            "data terakhir tetap ditampilkan, tetapi tidak menambah bobot Oil."
+            "WTI/Brent tidak lengkap, tidak sebanding, atau melampaui batas sumber "
+            "(5 menit live / 15 menit futures CNBC tertunda / 48 jam FRED untuk skor); "
+            "data terakhir hanya ditampilkan sebagai referensi."
         )
         return base
     if wti["cadence"] != brent["cadence"] or wti["basis"] != brent["basis"]:
@@ -111,6 +141,16 @@ def assess_oil_macro(oil: dict[str, dict[str, Any] | None] | None, now: datetime
             wti["observed"][:10] != brent["observed"][:10]):
         base.update(status="TIDAK SEBANDING", summary=(
             "Tanggal observasi harian WTI dan Brent tidak sama; arah gabungan tidak disimpulkan."
+        ))
+        return base
+
+    # An Oil pair represents ONE macro cluster. Mixing observations more than
+    # two minutes apart can make even two delayed futures incomparable.
+    if wti["cadence"] != "HARIAN" and abs(
+        (_date(wti["observed"]) - _date(brent["observed"])).total_seconds()
+    ) > 120:
+        base.update(status="TIDAK SEBANDING", summary=(
+            "Timestamp WTI–Brent berbeda lebih dari 2 menit; tidak dibobotkan bersama."
         ))
         return base
 
