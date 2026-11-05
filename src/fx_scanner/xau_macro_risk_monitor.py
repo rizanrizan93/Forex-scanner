@@ -19,6 +19,7 @@ import streamlit as st
 
 from .xau_macro_gold_consensus import analyze_gold_macro
 from .xau_market_quote_health import quote_freshness, QUOTE_MAX_AGE_SECONDS
+from .xau_cnbc_macro_quotes import fetch_cnbc_market_quotes, fetch_goldapi_spot
 
 
 FRED_SERIES = {
@@ -182,27 +183,74 @@ def _safe(call, *args):
         return None, type(e).__name__
 
 
+@st.cache_data(ttl=30, show_spinner=False)
+def cnbc_macro_quotes_cached():
+    """One bounded CNBC request for DXY, haven FX, spot metals, and futures."""
+    return fetch_cnbc_market_quotes()
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def goldapi_spot_cached(symbol):
+    """Only needed if CNBC spot quote is missing/delayed."""
+    return fetch_goldapi_spot(symbol)
+
+
 @st.cache_data(ttl=60, show_spinner=False)
 def load_external_macro_inputs():
-    """Parallel bounded requests; cache even failed sources to keep UI responsive."""
+    """CNBC fast batch PRIMARY; Yahoo only if CNBC symbol missing.
+
+    Avoid 8 simultaneous Yahoo hits (429 observed in live probe).
+    Futures may legally be exchange-delayed; still show last quote with time.
+    """
     fred_codes = sorted(FRED_SERIES)
-    market_codes = sorted(YAHOO_SYMBOLS)
     tasks = [("fred", code) for code in fred_codes] + [
-        ("market", code) for code in market_codes
-    ] + [("us2y", "US2Y"), ("geo", "GDELT")]
+        ("cnbc", "ALL"), ("us2y", "US2Y"), ("geo", "GDELT")
+    ]
     def read(kind, code):
         fn = (fred_history if kind == "fred" else
-              market_quote if kind == "market" else
+              cnbc_macro_quotes_cached if kind == "cnbc" else
               us2y_live if kind == "us2y" else geopolitical_headlines)
-        return _safe(fn, code) if kind in {"fred", "market"} else _safe(fn)
+        return _safe(fn, code) if kind == "fred" else _safe(fn)
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = {key: pool.submit(read, *key) for key in tasks}
         outcomes = {key: future.result() for key, future in futures.items()}
+    fast, fast_err = outcomes[("cnbc", "ALL")]
+    fast = dict(fast or {})
+    market = {code: fast[code] for code in YAHOO_SYMBOLS if code in fast}
+    missing = [code for code in sorted(YAHOO_SYMBOLS) if code not in market]
+    # Yahoo fallback ONLY for absent symbols, never for existing delayed futures
+    # (which are already the best legally available no-key reference quote).
+    fallback_errors: dict[str, str] = {}
+    if missing:
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            attempts = list(pool.map(lambda code: _safe(market_quote, code), missing))
+        for code, (q, err) in zip(missing, attempts):
+            if q is not None:
+                market[code] = q
+            if err:
+                fallback_errors[code] = err
+    spot: dict[str, dict | None] = {
+        name: fast.get(name) for name in ("XAU_SPOT", "XAG_SPOT")
+    }
+    for name, provider_key in (("XAU_SPOT", "XAU"), ("XAG_SPOT", "XAG")):
+        if not quote_freshness(spot.get(name))["eligible"]:
+            quote, _ = _safe(goldapi_spot_cached, provider_key)
+            if quote is not None and quote_freshness(quote)["eligible"]:
+                spot[name] = quote
+            elif spot.get(name) is None:
+                spot[name] = quote
     return {
         "fred": {code: outcomes[("fred", code)][0] for code in fred_codes},
-        "market": {code: outcomes[("market", code)][0] for code in market_codes},
+        "market": market,
+        "spot": spot,
         "us2y": outcomes[("us2y", "US2Y")],
         "geo_news": outcomes[("geo", "GDELT")],
+        "source_health": {
+            "cnbc_count": len(fast),
+            "cnbc_error": fast_err,
+            "yahoo_missing": missing,
+            "yahoo_errors": fallback_errors,
+        },
     }
 
 
@@ -282,7 +330,7 @@ def _market_metric(slot, title, data, *, unit=""):
 
 
 def _selected_dxy(macro_eval, feeds):
-    """Prefer time-stamped Yahoo DXY, then independently fresh worker proxy."""
+    """Prefer source-timestamped CNBC DXY, then independently fresh worker proxy."""
     dxy = feeds["market"].get("DX-Y.NYB")
     if dxy and quote_freshness(dxy)["eligible"]:
         return dxy
@@ -333,9 +381,16 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     )
 
     st.subheader("KESIMPULAN GABUNGAN MAKRO GOLD")
-    st.caption("RIZAN Macro Synthesis V3 · Treasury/DXY + Oil + konfirmasi Geopolitical Risk "
-               "dan Safe Haven (VIX, JPY, CHF). Tidak ada asumsi geopolitik dari Oil; "
-               "bobot risiko aktif hanya bila bukti berita/pasar memenuhi syarat.")
+    st.caption("RIZAN Macro Synthesis V3 · sumber CNBC cepat untuk DXY/VIX/FX, "
+               "Gold & Silver spot real-time indikatif; futures tetap delayed bila "
+               "aturan bursanya demikian. Bobot mengikuti timestamp sumber.")
+    provider_status = feeds.get("source_health") or {}
+    if provider_status.get("cnbc_count"):
+        st.caption(f"CNBC public batch: {provider_status['cnbc_count']} simbol tersedia · "
+                   "cache 30–60 detik · label live hanya jika timestamp ≤5 menit.")
+    else:
+        st.warning("CNBC fast feed tidak tersedia. Yahoo fallback digunakan bila tersedia; "
+                   "jangan anggap harga lama sebagai live.")
     a, b, c = st.columns(3)
     a.metric("Bias XAUUSD", result["bias"])
     b.metric("Indeks arah makro", "—" if result["score"] is None
@@ -572,21 +627,25 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                "PCE adalah metrik inflasi kebijakan Fed; CPI indikator pelengkap.")
 
     st.subheader("3 · Energi dan risiko inflasi")
-    wti = _market_or_fred("CL=F", "DCOILWTICO", feeds)
-    brent = _market_or_fred("BZ=F", "DCOILBRENTEU", feeds)
+    wti = feeds["market"].get("CL=F") or _market_or_fred("CL=F", "DCOILWTICO", feeds)
+    brent = feeds["market"].get("BZ=F") or _market_or_fred("BZ=F", "DCOILBRENTEU", feeds)
     oil1, oil2 = st.columns(2)
-    _market_metric(oil1, "WTI (USD/barel)", wti)
-    _market_metric(oil2, "Brent (USD/barel)", brent)
-    if wti and brent and wti.get("fresh") and brent.get("fresh"):
-        if wti["pct"] > 0 and brent["pct"] > 0:
-            st.caption("Harga WTI dan Brent sama-sama menguat terhadap basisnya; risiko tekanan inflasi energi dapat meningkat.")
-        elif wti["pct"] < 0 and brent["pct"] < 0:
-            st.caption("Harga WTI dan Brent sama-sama melemah terhadap basisnya; tekanan energi jangka pendek berkurang.")
+    _market_metric(oil1, "WTI futures (USD/barel)", wti)
+    _market_metric(oil2, "Brent futures (USD/barel)", brent)
+    # The scored Oil channel may use genuinely DAILY FRED as a separate
+    # lower-weight context. Never relabel delayed futures as live spot.
+    valid_wti = _market_or_fred("CL=F", "DCOILWTICO", feeds)
+    valid_brent = _market_or_fred("BZ=F", "DCOILBRENTEU", feeds)
+    if valid_wti and valid_brent and valid_wti.get("fresh") and valid_brent.get("fresh"):
+        if valid_wti["pct"] > 0 and valid_brent["pct"] > 0:
+            st.caption("Energi naik terhadap basis masing-masing; tekanan inflasi bisa meningkat.")
+        elif valid_wti["pct"] < 0 and valid_brent["pct"] < 0:
+            st.caption("Energi turun terhadap basis masing-masing; tekanan inflasi bisa mereda.")
         else:
-            st.caption("WTI dan Brent belum searah; dorongan inflasi energi belum terkonfirmasi.")
-    st.caption("Futures Yahoo dapat tertunda; fallback FRED adalah harga spot harian, "
-               "bukan quote live. Lonjakan minyak berpotensi menambah inflasi tetapi "
-               "dampak bersih terhadap emas bergantung pada real yield dan risiko geopolitik.")
+            st.caption("WTI dan Brent tidak searah; arah inflasi energi belum jelas.")
+    st.caption("Futures CNBC/Yahoo dapat tertunda sekitar 10 menit menurut ketentuan bursa. "
+               "Feed ini diperbarui dengan timestamp sumber, bukan dianggap real-time. "
+               "FRED spot harian hanya dipakai sebagai konteks berbobot lebih rendah.")
 
     st.subheader("4 · Dolar AS dan logam mulia")
     st.caption("Yahoo Finance dapat tertunda meski cache diperbarui setiap 60 detik. "
@@ -609,6 +668,17 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
     _market_metric(dx, "DXY", dxy)
     _market_metric(au, "Gold futures GC", gold)
     _market_metric(ag, "Silver futures SI", silver)
+    st.markdown("**Harga spot lebih cepat (indikatif, BUKAN futures)**")
+    spot_gold = (feeds.get("spot") or {}).get("XAU_SPOT")
+    spot_silver = (feeds.get("spot") or {}).get("XAG_SPOT")
+    spot_a, spot_b = st.columns(2)
+    _market_metric(spot_a, "Gold spot XAU/USD", spot_gold)
+    _market_metric(spot_b, "Silver spot XAG/USD", spot_silver)
+    if all(quote_freshness(q)["eligible"] for q in (spot_gold, spot_silver)):
+        st.caption("Spot XAU/XAG segar menurut timestamp penyedia; gunakan hanya "
+                   "sebagai konteks, harga bukan bid/ask FP Markets cTrader.")
+    else:
+        st.caption("Minimal satu harga spot tidak segar; bukan konfirmasi saat ini.")
     if any(not quote_freshness(item)["eligible"] for item in (dxy, gold, silver)):
         st.warning("Sebagian feed DXY/Gold/Silver DELAYED (>5 menit) atau hanya data harian. "
                    "Harga terakhir ditampilkan sebagai referensi, bukan konfirmasi pasar intraday.")
@@ -619,7 +689,8 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
             st.caption("Tekanan DXY terhadap emas dan perak belum terkonfirmasi serempak.")
     else:
         st.caption("Konfirmasi lintas aset tertunda karena ada quote DXY/logam yang belum segar.")
-    st.caption("GC/SI adalah futures, bukan harga spot cTrader XAUUSD/XAGUSD. "
+    st.caption("GC/SI adalah futures exchange-delayed. XAU/XAG spot CNBC/Gold-API "
+               "adalah harga indikatif dengan pembaruan terpisah, bukan bid/ask cTrader. "
                "DXY dan yield menguat bersamaan sering menjadi headwind emas, "
                "namun hubungan ini tidak selalu berlaku.")
 

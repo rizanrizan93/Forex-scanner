@@ -25,6 +25,8 @@ from fx_scanner.xau_h15_daily_fallback import fetch_h15_daily_rows  # noqa: E402
 # deployment updates their .py files. Refresh ONLY the read-only XAU macro
 # modules when file revisions change; no cBot, broker, or bridge modules loaded.
 from importlib import invalidate_caches, reload  # noqa: E402
+import fx_scanner.xau_cnbc_macro_quotes as _macro_quotes  # noqa: E402
+import fx_scanner.xau_market_quote_health as _macro_health  # noqa: E402
 import fx_scanner.xau_oil_macro_context as _macro_oil  # noqa: E402
 import fx_scanner.xau_geopolitical_safehaven as _macro_geo  # noqa: E402
 import fx_scanner.xau_macro_gold_consensus as _macro_core  # noqa: E402
@@ -32,7 +34,7 @@ import fx_scanner.xau_macro_risk_monitor as _macro_ui  # noqa: E402
 
 
 def _refresh_macro_code_if_changed() -> None:
-    modules = (_macro_oil, _macro_geo, _macro_core, _macro_ui)
+    modules = (_macro_quotes, _macro_health, _macro_oil, _macro_geo, _macro_core, _macro_ui)
     signature = tuple(
         (str(module.__file__), Path(module.__file__).stat().st_mtime_ns,
          Path(module.__file__).stat().st_size)
@@ -50,6 +52,7 @@ _refresh_macro_code_if_changed()
 from fx_scanner.xau_macro_risk_monitor import (  # noqa: E402
     render_macro_risk_monitor, render_gold_macro_conclusion,
     fred_history, market_quote, us2y_live, load_external_macro_inputs,
+    cnbc_macro_quotes_cached, goldapi_spot_cached,
 )
 
 CNBC_US10Y_URL = "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol"
@@ -174,7 +177,7 @@ st.caption(
     "Daily FRED (fallback Federal Reserve H.15) untuk regime makro. Intraday US10Y untuk timing/pressure. "
     "Keduanya tidak memberi izin order sendiri; keputusan tetap harus dikonfirmasi struktur XAU."
 )
-st.caption("Versi dashboard: RIZAN Macro V3 · Treasury / DXY / Oil / Geopolitical Risk / Safe Haven · read-only")
+st.caption("Versi dashboard: RIZAN Macro V3.1 FAST FEED · CNBC DXY/VIX/FX + Spot XAU/XAG · futures delayed · read-only")
 
 if st.button("Perbarui tampilan", key="yield_refresh"):
     load_macro.clear()
@@ -182,6 +185,8 @@ if st.button("Perbarui tampilan", key="yield_refresh"):
     load_h15_daily.clear()
     fred_history.clear()
     market_quote.clear()
+    cnbc_macro_quotes_cached.clear()
+    goldapi_spot_cached.clear()
     us2y_live.clear()
     load_external_macro_inputs.clear()
 

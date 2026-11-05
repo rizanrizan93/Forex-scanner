@@ -33,7 +33,7 @@ def _validated(row: dict[str, Any] | None, now: datetime) -> dict[str, Any] | No
         return None
     pct, value, observed = _num(row.get("pct")), _num(row.get("value")), _date(row.get("observed"))
     source = str(row.get("source") or "")
-    cadence = "HARIAN" if source.startswith("FRED") else "INTRADAY" if source.startswith("Yahoo Finance") else None
+    cadence = "HARIAN" if source.startswith("FRED") else "INTRADAY" if (source.startswith("Yahoo Finance") or source.startswith("CNBC Quote Cache")) else None
     if pct is None or value is None or value <= 0 or observed is None or cadence is None:
         return None
     age_s = (now - observed).total_seconds()
@@ -52,7 +52,7 @@ def oil_quote_status(row: dict[str, Any] | None, now: datetime) -> dict[str, Any
     age = (now.astimezone(UTC) - date).total_seconds() if date else None
     source = str(row.get("source") or "")
     value, pct = _num(row.get("value")), _num(row.get("pct"))
-    is_intraday = source.startswith("Yahoo Finance")
+    is_intraday = source.startswith("Yahoo Finance") or source.startswith("CNBC Quote Cache")
     is_daily = source.startswith("FRED")
     if not row or age is None or value is None or value <= 0 or pct is None:
         status = "UNAVAILABLE"
