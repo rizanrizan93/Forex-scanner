@@ -1,0 +1,42 @@
+name: XAU Oil Macro Score Regression
+
+on:
+  pull_request:
+    paths:
+      - "src/fx_scanner/xau_macro_gold_consensus.py"
+      - "src/fx_scanner/xau_oil_macro_context.py"
+      - "src/fx_scanner/xau_macro_risk_monitor.py"
+      - "tests/test_xau_macro_gold_consensus_v1.py"
+      - "tests/test_xau_oil_macro_conclusion_v2.py"
+      - "tests/test_xau_macro_weighted_oil_v3.py"
+      - ".github/workflows/xau-oil-score-regression.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/xau_macro_gold_consensus.py"
+      - "src/fx_scanner/xau_oil_macro_context.py"
+      - "src/fx_scanner/xau_macro_risk_monitor.py"
+      - "tests/test_xau_macro_gold_consensus_v1.py"
+      - "tests/test_xau_oil_macro_conclusion_v2.py"
+      - "tests/test_xau_macro_weighted_oil_v3.py"
+      - ".github/workflows/xau-oil-score-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  oil-macro-score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile score and dashboard modules
+        run: python -m py_compile src/fx_scanner/xau_macro_gold_consensus.py src/fx_scanner/xau_oil_macro_context.py src/fx_scanner/xau_macro_risk_monitor.py
+      - name: Core and Oil regression (stdlib only)
+        run: |
+          python -m unittest discover -s tests -p 'test_xau_macro_gold_consensus_v1.py' -v
+          python -m unittest discover -s tests -p 'test_xau_oil_macro_conclusion_v2.py' -v
+          python -m unittest discover -s tests -p 'test_xau_macro_weighted_oil_v3.py' -v

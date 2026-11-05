@@ -276,9 +276,9 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     )
 
     st.subheader("KESIMPULAN GABUNGAN MAKRO GOLD")
-    st.caption("RIZAN Macro Synthesis · pembacaan independen US yield, real yield dan DXY; "
-               "inflasi, Fed, energi, dan logam ikut sebagai konteks. Semua berbasis data "
-               "tercatat, bukan asumsi.")
+    st.caption("RIZAN Macro Synthesis V2 · bobot adaptif Treasury/DXY + Oil (WTI dan Brent); "
+               "Oil berpengaruh melalui jalur inflasi hanya saat feed valid. "
+               "Fed, inflasi dan geopolitik tidak dihitung ganda.")
     a, b, c = st.columns(3)
     a.metric("Bias XAUUSD", result["bias"])
     b.metric("Indeks arah makro", "—" if result["score"] is None
@@ -291,8 +291,8 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     if result["state"] == "WAIT_DATA":
         st.warning("WAIT DATA · " + result["rationale"] +
                    " Kurang: " + ", ".join(result["missing"]))
-    elif result["state"] == "CONFLICT":
-        st.warning(result["bias"] + " · KONFLIK YIELD vs DXY. " + result["rationale"])
+    elif result["state"] in {"CONFLICT", "OIL_CONFLICT"}:
+        st.warning(result["bias"] + " · " + result["rationale"])
     elif result["bias"] == "BULLISH XAU":
         st.success("TAILWIND EMAS · " + result["rationale"])
     elif result["bias"] == "BEARISH XAU":
@@ -325,10 +325,28 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     st.write("**Implikasi XAU melalui inflasi:** " + oil_view["xau_inflation_bias"])
     st.caption("Jalur inflasi/Fed: " + oil_view["inflation_path"])
     st.caption("Jalur geopolitik/safe haven: " + oil_view["safe_haven_path"])
+    st.write(
+        "**Kontribusi Oil ke skor:** " +
+        (f"AKTIF · bobot {result['oil_weight_pct']}% · "
+         f"kontribusi {result['score_breakdown']['Oil']:+.1f} poin"
+         if result["oil_score_counted"] else "TIDAK AKTIF · bobot 0%")
+    )
+    st.caption(oil_view["score_reason"])
+    if result["core_score"] is not None:
+        st.caption(
+            f"Skor Treasury–DXY tanpa Oil: {result['core_score']:+d} · "
+            f"skor gabungan setelah Oil: {result['score']:+d} / 100 · "
+            f"cakupan core: {result['coverage_core_pct']}% · "
+            f"cakupan gabungan: {result['coverage_pct']}%"
+        )
     st.caption(
-        "Oil adalah konteks bersyarat, BUKAN input skor numerik. "
-        "Indeks arah makro tetap hanya menggunakan kelompok Treasury 55% dan DXY 45%; "
-        "tidak mengubah entry, order, atau strategi cBot."
+        "Bobot aktif: " +
+        (f"Treasury {(1-result['oil_weight_pct']/100)*55:.2f}% · "
+         f"DXY {(1-result['oil_weight_pct']/100)*45:.2f}% · "
+         f"Oil {result['oil_weight_pct']}%. "
+         if result["oil_score_counted"] else "Treasury 55% · DXY 45%; Oil tidak dihitung. ") +
+        "Oil terdiri dari satu cluster WTI+Brent; jalur geopolitik tidak diasumsikan. "
+        "Ini skor heuristik belum terkalibrasi, bukan izin membuka order cBot."
     )
 
     risk = event_risk or {}
@@ -357,10 +375,13 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
         st.markdown("**Makro pendukung (tidak dihitung ganda):**")
         for line in result["context"]:
             st.caption("• " + line)
-        st.caption("Perhitungan: kelompok Treasury 55% (real yield 50%, US2Y 30%, "
-                   "US10Y 20% di dalam kelompok), DXY 45%. Skor + = mendukung emas; "
-                   "- = menekan emas. Kondisi data kosong/stale = WAIT DATA. "
-                   "Bobot belum divalidasi dengan out-of-sample replay.")
+        st.caption("Perhitungan: Treasury (real yield 50%, US2Y 30%, US10Y 20% "
+                   "di dalam kelompok) + DXY; 15% dialihkan ke satu cluster Oil bila "
+                   "futures WTI/Brent intraday valid, 8% bila hanya FRED harian valid "
+                   "(maksimal 48 jam), 0% bila Oil tidak valid. Sisa bobot Treasury "
+                   "dan DXY mempertahankan rasio 55:45. Skor positif mendukung XAU. "
+                   "Kondisi core data kosong/stale = WAIT DATA. "
+                   "Bobot belum divalidasi melalui out-of-sample replay.")
 
     st.info("KESIMPULAN EKSEKUSI: " +
             ("WAIT — data makro utama belum lengkap. " if result["score"] is None else

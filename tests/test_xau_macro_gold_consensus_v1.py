@@ -43,7 +43,8 @@ class GoldMacroConsensusTests(unittest.TestCase):
         )
         self.assertEqual(result["bias"], "BULLISH XAU")
         self.assertGreater(result["score"], 50)
-        self.assertEqual(result["coverage_pct"], 100)
+        self.assertEqual(result["coverage_core_pct"], 100)
+        self.assertEqual(result["coverage_pct"], 85)  # 15% Oil feed unavailable
         self.assertIs(result["execution_authority"], False)
 
     def test_bearish_alignment(self):
