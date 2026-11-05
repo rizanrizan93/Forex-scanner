@@ -1,9 +1,9 @@
 """Explainable, read-only XAU macro synthesis.
 
-Two independently interpreted near-term drivers vote: Treasury rate pressure
-(real yield/US2Y/US10Y within ONE cluster) and DXY. Inflation, FOMC proxies,
-energy and metal futures are explicitly context/confirmation, not extra votes.
-This avoids correlated yield double counting and spurious certainty.
+Treasury (real yield/US2Y/US10Y as ONE cluster), DXY and quality-gated
+WTI+Brent (as ONE small inflation channel) contribute to a heuristic XAU score.
+Do not separately vote Fed/inflation again: those overlap with yield and Oil.
+Oil cannot infer geopolitics from price alone. Never authorize orders.
 """
 from __future__ import annotations
 
@@ -116,13 +116,55 @@ def analyze_gold_macro(
         "source": dxy.get("source"),
         "counted": dxy_valid, "weight": 1.0,
     })
-    coverage = round(100 * (0.55 * min(1, available_yield_weight)
-                            + 0.45 * int(dxy_valid)))
+    # Oil is a separate, *small* inflation channel. Treat WTI+Brent as ONE
+    # source cluster; never count oil twice or manufacture geopolitical signs.
+    # Intraday futures are prioritized; daily FRED observations receive a
+    # reduced allocation only while both are <=48h old.
+    oil_assessment = assess_oil_macro(oil, now)
+    oil_status = oil_assessment["status"]
+    oil_trend = oil_assessment["trend"]
+    oil_vote = {"TURUN": 1, "NAIK": -1, "MIXED/FLAT": 0}.get(oil_trend)
+    daily_oil_recent = (
+        oil_status == "HARIAN"
+        and all(_valid((oil_assessment.get(name) or {}).get("observed"), now, 48)
+                for name in ("wti", "brent"))
+    )
+    oil_weight = (0.15 if oil_status == "INTRADAY" and oil_vote is not None
+                  else 0.08 if daily_oil_recent and oil_vote is not None
+                  else 0.0)
+    oil_counted = oil_weight > 0
+    oil_assessment["score_influence"] = oil_counted
+    oil_assessment["score_weight_pct"] = round(100 * oil_weight)
+    oil_assessment["score_reason"] = (
+        "Futures intraday WTI+Brent dinilai sebagai satu kanal inflasi (bobot 15%)."
+        if oil_status == "INTRADAY" and oil_counted
+        else "FRED spot harian WTI+Brent: bobot konservatif 8% (usia data maksimal 48 jam)."
+        if oil_status == "HARIAN" and oil_counted
+        else "Oil tidak lolos validasi kelengkapan/kesetaraan/freshness untuk skor; tetap konteks."
+    )
+    if oil_counted:
+        details.append({
+            "name": "Oil WTI+Brent (inflasi)", "group": "Oil",
+            "direction": oil_vote,
+            "reason": oil_assessment["summary"] + " " + oil_assessment["score_reason"],
+            "observed_at": (oil_assessment["wti"] or {}).get("observed"),
+            "source": (oil_assessment["wti"] or {}).get("source"),
+            "counted": True, "weight": oil_weight,
+        })
+    core_coverage_fraction = (
+        0.55 * min(1, available_yield_weight) + 0.45 * int(dxy_valid)
+    )
+    # Published coverage covers all three clusters (Oil max 15%). Daily oil
+    # counts as partial coverage; stale Oil does not masquerade as live.
+    coverage = round(100 * (0.85 * core_coverage_fraction + oil_weight))
+    coverage_core_pct = round(100 * core_coverage_fraction)
     missing = []
     if treasury is None:
         missing.append("Treasury (minimal dua sumber yield valid)")
     if dollar is None:
         missing.append("DXY intraday (<90 menit)")
+    core_score = None
+    breakdown = {"Treasury": None, "DXY": None, "Oil": None}
     if missing:
         score = None
         bias = "DATA TIDAK CUKUP"
@@ -130,8 +172,23 @@ def analyze_gold_macro(
         rationale = "Data pasar utama belum memadai untuk kesimpulan arah."
         state = "WAIT_DATA"
     else:
-        score = round(100 * (0.55 * treasury + 0.45 * dollar))
-        state = "CONFLICT" if treasury * dollar < 0 else "ALIGNED_OR_FLAT"
+        base = 0.55 * treasury + 0.45 * dollar
+        core_score = round(100 * base)
+        # Oil off => preserve exact legacy 55/45 model. Oil on => shrink
+        # existing core pro-rata and dedicate only 8%/15% to the energy vote.
+        treasury_points = 100 * (1 - oil_weight) * 0.55 * treasury
+        dollar_points = 100 * (1 - oil_weight) * 0.45 * dollar
+        oil_points = 100 * oil_weight * oil_vote if oil_counted else 0.0
+        breakdown = {
+            "Treasury": round(treasury_points, 2),
+            "DXY": round(dollar_points, 2),
+            "Oil": round(oil_points, 2) if oil_counted else None,
+        }
+        score = round(treasury_points + dollar_points + oil_points)
+        core_conflict = treasury * dollar < 0
+        oil_conflict = oil_counted and oil_vote != 0 and base * oil_vote < 0
+        state = ("CONFLICT" if core_conflict else
+                 "OIL_CONFLICT" if oil_conflict else "ALIGNED_OR_FLAT")
         if score >= 25:
             bias = "BULLISH XAU"
         elif score <= -25:
@@ -141,15 +198,20 @@ def analyze_gold_macro(
         if state == "CONFLICT":
             strength = "TERBATAS · KONFLIK"
             rationale = "Treasury dan DXY saling bertentangan; keunggulan arah belum konsisten."
+        elif state == "OIL_CONFLICT":
+            strength = "TERBATAS · KONFLIK OIL"
+            rationale = ("Jalur inflasi Oil berlawanan dengan Treasury/DXY; "
+                         "skor gabungan sudah memasukkan perbedaan ini, belum ada konfirmasi geopolitik.")
         elif abs(score) >= 65 and available_yield_weight >= 0.99 and dollar != 0 and treasury * dollar > 0:
             strength = "KONFLUENSI KUAT (HEURISTIK)"
-            rationale = "Tekanan yield dan DXY mendukung arah yang sama; tetap perlu validasi harga."
+            rationale = ("Yield dan DXY searah, dengan kontribusi Oil sesuai data "
+                         "yang tersedia; tetap perlu validasi harga.")
         elif abs(score) >= 25:
             strength = "SEDANG (HEURISTIK)"
-            rationale = "Arah makro dominan, tetapi bukan jaminan harga akan mengikuti."
+            rationale = "Arah makro dominan setelah pembobotan Oil bila valid; bukan jaminan harga."
         else:
             strength = "RENDAH / MIXED"
-            rationale = "Dorongan makro dominan belum cukup besar dibanding faktor penentang."
+            rationale = "Gabungan yield, DXY, dan Oil belum memberi dominasi kuat."
 
     context: list[str] = []
     pce, cpi = _num(pce_yoy), _num(cpi_yoy)
@@ -170,9 +232,9 @@ def analyze_gold_macro(
     else:
         context.append("Probabilitas FOMC belum tersedia sebagai feed terverifikasi; tidak diasumsikan HOLD/HIKE.")
 
-    oil_assessment = assess_oil_macro(oil, now)
-    context.append("Energi: " + oil_assessment["summary"] +
-                   " Jalur Oil bukan vote independen; interpretasi bersyarat.")
+    context.append("Energi: " + oil_assessment["summary"] + " " +
+                   oil_assessment["score_reason"] +
+                   " Jalur geopolitik tidak pernah otomatis menjadi vote.")
 
     metals = metals or {}
     gold, silver = metals.get("Gold") or {}, metals.get("Silver") or {}
@@ -187,12 +249,15 @@ def analyze_gold_macro(
     neutral = [item for item in details if item["direction"] == 0]
     return {
         "bias": bias, "strength": strength, "score": score,
+        "core_score": core_score, "score_breakdown": breakdown,
+        "oil_weight_pct": round(oil_weight * 100),
+        "oil_score_counted": oil_counted, "coverage_core_pct": coverage_core_pct,
         "coverage_pct": coverage, "state": state,
         "rationale": rationale, "missing": missing,
         "factors": details, "bullish": bullish, "bearish": bearish,
         "neutral": neutral, "context": context,
         "oil_assessment": oil_assessment,
-        "model": "EXPLAINABLE_HEURISTIC_V1_NOT_CALIBRATED",
+        "model": "EXPLAINABLE_HEURISTIC_V2_OIL_WEIGHTED_NOT_CALIBRATED",
         "horizon": "intraday ke 1–3 sesi (konteks, bukan prediksi)",
         "as_of_utc": now.isoformat(),
         "execution_authority": False, "execution_influence": False,
