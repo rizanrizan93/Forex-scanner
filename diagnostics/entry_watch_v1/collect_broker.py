@@ -1,6 +1,6 @@
 """Historical data requests only; no order execution or token refresh."""
 import csv, hashlib, json, math, os, time
-from m1_integrity import inspect, retry_windows, public_report
+from m1_integrity import inspect, retry_windows, public_report, in_frozen_entry_session
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -10,7 +10,7 @@ ALLOWED = frozenset({'ProtoOAApplicationAuthReq','ProtoOAAccountAuthReq',
     'ProtoOAGetAccountListByAccessTokenReq','ProtoOASymbolsListReq',
     'ProtoOASymbolByIdReq','ProtoOAGetTrendbarsReq','ProtoOATraderReq',
     'ProtoOAReconcileReq','ProtoOAGetPositionUnrealizedPnLReq',
-    'ProtoOADealListReq','ProtoOAOrderListReq'})
+    'ProtoOADealListReq','ProtoOAOrderListReq','ProtoOAGetTickDataReq'})
 
 def guard(message):
     if type(message).__name__ not in ALLOWED:
@@ -142,6 +142,45 @@ def main():
                     'backfill_query_errors':retry_errors,
                     'broker_candle_revision_conflicts':revised,
                     'complete_contiguous_strategy_session':integrity['strategy_missing']==0})
+                # For missing M1 inside frozen entry sessions only, ask the
+                # SAME cTrader broker for BID and ASK ticks in that exact
+                # minute. Tick requests are historical/read-only and cannot
+                # change orders or positions. The API retains at most 7 days.
+                tick_checks=[]
+                pending=[t for t in inspect(symbol,bars.keys(),catalogue[symbol])[
+                    'open_missing_minutes'] if in_frozen_entry_session(symbol,t)]
+                for at in pending[:6]:
+                    entry={'minute_utc':at.isoformat(),'source':'CTRADER_HISTORICAL_TICKS',
+                           'synthetic_m1_created':False}
+                    if now-at>=timedelta(days=7):
+                        entry['status']='OUTSIDE_7DAY_TICK_RETENTION'
+                    else:
+                        counts={}
+                        for side_name,side_id in [('bid',1),('ask',2)]:
+                            req=messages.ProtoOAGetTickDataReq()
+                            req.ctidTraderAccountId=session.account_id
+                            req.symbolId=session.symbol_id(symbol)
+                            req.type=side_id
+                            req.fromTimestamp=int(at.timestamp()*1000)
+                            req.toTimestamp=int((at+timedelta(minutes=1)).timestamp()*1000)-1
+                            try:
+                                res=session._send_sync(req)
+                                counts[side_name]=len(getattr(res,'tickData',()))
+                                counts[side_name+'_has_more']=bool(getattr(res,'hasMore',False))
+                            except Exception as e:
+                                counts[side_name+'_error_type']=type(e).__name__
+                        entry['tick_response']=counts
+                        if any(k.endswith('_error_type') for k in counts):
+                            entry['status']='TICK_EVIDENCE_UNVERIFIED'
+                        elif counts.get('bid',0)>0 or counts.get('ask',0)>0:
+                            entry['status']='TICKS_EXIST_NATIVE_M1_MISSING'
+                        elif counts.get('bid_has_more') or counts.get('ask_has_more'):
+                            entry['status']='TICK_RESPONSE_TRUNCATED'
+                        else:
+                            entry['status']='NO_BROKER_TICKS_REPORTED'
+                    tick_checks.append(entry)
+                integrity['strategy_tick_checks']=tick_checks
+                integrity['strategy_tick_checks_truncated']=len(pending)>len(tick_checks)
                 if retry_errors:summary['errors'].append(symbol+':M1_RETRY_PARTIAL')
                 if revised:summary['errors'].append(symbol+':M1_CANDLE_REVISION_CONFLICT')
                 path=OUT/(symbol+'_M1.csv')
