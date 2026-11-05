@@ -452,12 +452,16 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     st.write("**Implikasi XAU melalui inflasi:** " + oil_view["xau_inflation_bias"])
     st.caption("Jalur inflasi/Fed: " + oil_view["inflation_path"])
     st.caption("Jalur geopolitik/safe haven: " + oil_view["safe_haven_path"])
-    st.write(
-        "**Kontribusi Oil ke skor:** " +
-        (f"AKTIF · bobot {result['oil_weight_pct']}% · "
-         f"kontribusi {result['score_breakdown']['Oil']:+.1f} poin"
-         if result["oil_score_counted"] else "TIDAK AKTIF · bobot 0%")
-    )
+    if result["score"] is None:
+        st.write("**Kontribusi Oil ke skor:** BELUM DINILAI · skor utama WAIT_DATA; "
+                 "WTI/Brent tetap ditampilkan sebagai konteks.")
+    else:
+        st.write(
+            "**Kontribusi Oil ke skor:** " +
+            (f"AKTIF · bobot {result['oil_weight_pct']}% · "
+             f"kontribusi {result['score_breakdown']['Oil']:+.1f} poin"
+             if result["oil_score_counted"] else "TIDAK AKTIF · bobot 0%")
+        )
     st.caption(oil_view["score_reason"])
     if result["core_score"] is not None:
         st.caption(
