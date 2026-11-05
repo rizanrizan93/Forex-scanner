@@ -18,6 +18,7 @@ from urllib.request import Request, urlopen
 import streamlit as st
 
 from .xau_macro_gold_consensus import analyze_gold_macro
+from .xau_market_quote_health import quote_freshness, QUOTE_MAX_AGE_SECONDS
 
 
 FRED_SERIES = {
@@ -113,7 +114,7 @@ def market_quote(symbol):
         raise ValueError("Market quote invalid")
     return {
         "value": current, "pct": (current / prior - 1) * 100,
-        "observed": observed, "fresh": _recent(observed, 2),
+        "observed": observed, "fresh": _recent(observed, QUOTE_MAX_AGE_SECONDS / 86400),
         "source": "Yahoo Finance · kemungkinan tertunda", "basis": basis,
     }
 
@@ -259,28 +260,38 @@ def _market_or_fred(symbol, fred_series, feeds):
 
 
 def _market_metric(slot, title, data, *, unit=""):
-    if data and data.get("fresh"):
-        slot.metric(title, _fmt(data["value"], unit),
-                    delta=_delta(data["pct"], "%"))
-        slot.caption(f"{data['source']} · Δ vs {data.get('basis') or 'observasi sebelumnya'} · {str(data['observed'])[:19]} UTC")
-    elif data:
-        slot.metric(title, "STALE")
-        slot.caption(f"Quote terakhir {str(data.get('observed'))[:19]} UTC · tidak digunakan untuk bias")
-    else:
+    quality = quote_freshness(data)
+    if not data or quality["status"] == "UNAVAILABLE":
         slot.metric(title, "BELUM TERSEDIA")
-        slot.caption("Feed harga belum dapat diverifikasi")
+        slot.caption("Feed tidak memberikan timestamp sumber yang dapat diverifikasi.")
+        return
+    eligible = quality["eligible"]
+    daily = quality["status"].startswith("HARIAN")
+    slot.metric(title if eligible else title + (" · HARIAN" if daily else " · DELAYED"),
+                _fmt(data.get("value"), unit),
+                delta=_delta(data.get("pct"), "%") if eligible else None)
+    age = ("—" if quality["age_minutes"] is None else
+           f"{quality['age_minutes']:.1f} menit")
+    slot.caption(
+        f"Status {quality['status']} · timestamp sumber "
+        f"{quality['observed_wib']} WIB · usia {age} · "
+        f"{data.get('source') or '—'} · basis: {data.get('basis') or '—'}"
+    )
+    if not eligible:
+        slot.warning("Bukan harga intraday segar; perubahan terakhir tidak dipakai "
+                     "sebagai konfirmasi arah XAU saat ini.")
 
 
 def _selected_dxy(macro_eval, feeds):
     """Prefer time-stamped Yahoo DXY, then independently fresh worker proxy."""
     dxy = feeds["market"].get("DX-Y.NYB")
-    if dxy and _recent(dxy.get("observed"), 1.5 / 24):
+    if dxy and quote_freshness(dxy)["eligible"]:
         return dxy
     row = (macro_eval or {}).get("dxy_intraday") or {}
     if (row.get("freshness") == "FRESH"
             and _number(row.get("current")) is not None
             and _number(row.get("net_pct")) is not None
-            and _recent(row.get("current_at"), 1.5 / 24)):
+            and _recent(row.get("current_at"), QUOTE_MAX_AGE_SECONDS / 86400)):
         return {
             "value": float(row["current"]),
             "pct": float(row["net_pct"]),
@@ -579,23 +590,27 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                "dampak bersih terhadap emas bergantung pada real yield dan risiko geopolitik.")
 
     st.subheader("4 · Dolar AS dan logam mulia")
+    st.caption("Yahoo Finance dapat tertunda meski cache diperbarui setiap 60 detik. "
+               "Sumber quote harus berusia maksimal 5 menit untuk status FRESH; "
+               "data DELAYED adalah harga terakhir, bukan harga live.")
     dxy = feeds["market"].get("DX-Y.NYB")
-    if not dxy or not dxy["fresh"]:
+    if not quote_freshness(dxy)["eligible"]:
         d = macro_eval.get("dxy_intraday") or {}
         if (_number(d.get("current")) is not None
                 and _number(d.get("net_pct")) is not None
-                and _recent(d.get("current_at"), 0.02)
+                and _recent(d.get("current_at"), QUOTE_MAX_AGE_SECONDS / 86400)
                 and d.get("freshness") == "FRESH"):
             dxy = {"value": float(d["current"]), "pct": float(d["net_pct"]),
                    "observed": d["current_at"], "fresh": True,
-                   "source": str(d.get("source") or "Macro worker")}
+                   "source": str(d.get("source") or "Macro worker"),
+                   "basis": "referensi intraday worker"}
     gold = feeds["market"].get("GC=F")
     silver = feeds["market"].get("SI=F")
     dx, au, ag = st.columns(3)
     _market_metric(dx, "DXY", dxy)
     _market_metric(au, "Gold futures GC", gold)
     _market_metric(ag, "Silver futures SI", silver)
-    if all(item and item.get("fresh") for item in (dxy, gold, silver)):
+    if all(quote_freshness(item)["eligible"] for item in (dxy, gold, silver)):
         if dxy["pct"] > 0 and gold["pct"] < 0 and silver["pct"] < 0:
             st.caption("DXY menguat sementara futures emas dan perak melemah: tekanan lintas aset teramati pada basis masing-masing.")
         else:
