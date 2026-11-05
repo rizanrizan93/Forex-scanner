@@ -68,8 +68,11 @@ def _valid_market(row: dict[str, Any] | None, now: datetime) -> float | None:
     value, price, at = _num(row.get("pct")), _num(row.get("value")), _dt(row.get("observed"))
     if row.get("fresh") is not True or value is None or price is None or price <= 0 or at is None:
         return None
-    # Prices from Yahoo: compare to prior session close, not to the same 90-minute period.
-    if not str(row.get("source") or "").startswith("Yahoo Finance"):
+    # Yahoo or CNBC: compare to prior session close (not the last 5min).
+    # Both must be verified against the source timestamp.
+    source = str(row.get("source") or "")
+    if not (source.startswith("Yahoo Finance") or
+            source.startswith("CNBC Quote Cache")):
         return None
     if str(row.get("basis") or "") != "penutupan sebelumnya":
         return None
