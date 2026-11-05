@@ -278,8 +278,7 @@ def _market_metric(slot, title, data, *, unit=""):
         f"{data.get('source') or '—'} · basis: {data.get('basis') or '—'}"
     )
     if not eligible:
-        slot.warning("Bukan harga intraday segar; perubahan terakhir tidak dipakai "
-                     "sebagai konfirmasi arah XAU saat ini.")
+        slot.caption("Hanya harga referensi; tidak berlaku sebagai konfirmasi intraday.")
 
 
 def _selected_dxy(macro_eval, feeds):
@@ -610,6 +609,9 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
     _market_metric(dx, "DXY", dxy)
     _market_metric(au, "Gold futures GC", gold)
     _market_metric(ag, "Silver futures SI", silver)
+    if any(not quote_freshness(item)["eligible"] for item in (dxy, gold, silver)):
+        st.warning("Sebagian feed DXY/Gold/Silver DELAYED (>5 menit) atau hanya data harian. "
+                   "Harga terakhir ditampilkan sebagai referensi, bukan konfirmasi pasar intraday.")
     if all(quote_freshness(item)["eligible"] for item in (dxy, gold, silver)):
         if dxy["pct"] > 0 and gold["pct"] < 0 and silver["pct"] < 0:
             st.caption("DXY menguat sementara futures emas dan perak melemah: tekanan lintas aset teramati pada basis masing-masing.")
