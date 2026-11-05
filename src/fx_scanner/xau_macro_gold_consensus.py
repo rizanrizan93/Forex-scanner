@@ -135,6 +135,7 @@ def analyze_gold_macro(
                 for name in ("wti", "brent"))
     )
     oil_weight = (0.15 if oil_status == "INTRADAY" and oil_vote is not None
+                  else 0.05 if oil_status == "FUTURES_DELAYED" and oil_vote is not None
                   else 0.08 if daily_oil_recent and oil_vote is not None
                   else 0.0)
     oil_counted = oil_weight > 0
@@ -143,6 +144,8 @@ def analyze_gold_macro(
     oil_assessment["score_reason"] = (
         "Futures intraday WTI+Brent dinilai sebagai satu kanal inflasi (bobot 15%)."
         if oil_status == "INTRADAY" and oil_counted
+        else "Futures CNBC exchange-delayed ≤15 menit: hanya bobot heuristik 5%; BUKAN sinyal live."
+        if oil_status == "FUTURES_DELAYED" and oil_counted
         else "FRED spot harian WTI+Brent: bobot konservatif 8% (usia data maksimal 48 jam)."
         if oil_status == "HARIAN" and oil_counted
         else "Oil tidak lolos validasi kelengkapan/kesetaraan/freshness untuk skor; tetap konteks."
@@ -179,7 +182,7 @@ def analyze_gold_macro(
     core_coverage_fraction = (
         0.55 * min(1, available_yield_weight) + 0.45 * int(dxy_valid)
     )
-    # 75% core + 15% Oil + 10% geopolitics/safe-haven theoretical coverage.
+    # 75% core + up to 15% Oil (5% if delayed) + up to 10% risk cluster.
     # Missing independent feeds reduce coverage, not retroactively invent votes.
     coverage = round(100 * (0.75 * core_coverage_fraction + oil_weight + risk_weight))
     coverage_core_pct = round(100 * core_coverage_fraction)
