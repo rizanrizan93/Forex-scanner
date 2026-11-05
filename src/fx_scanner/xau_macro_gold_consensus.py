@@ -189,7 +189,10 @@ def analyze_gold_macro(
     if dollar is None:
         missing.append("DXY intraday (usia sumber maksimal 5 menit)")
     core_score = None
-    breakdown = {"Treasury": None, "DXY": None, "Oil": None}
+    # Keep a stable schema even when core feeds are unavailable. The Macro
+    # panel renders Geo/Safe Haven breakdown during WAIT_DATA too.
+    breakdown = {"Treasury": None, "DXY": None, "Oil": None,
+                 "Geopolitical": None, "Safe Haven": None}
     if missing:
         score = None
         bias = "DATA TIDAK CUKUP"
