@@ -1,5 +1,6 @@
 """Historical data requests only; no order execution or token refresh."""
-import csv, hashlib, json, os, time
+import csv, hashlib, json, math, os, time
+from m1_integrity import inspect, retry_windows, public_report
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -102,6 +103,47 @@ def main():
                         if lo<=b.timestamp<hi and b.timestamp+timedelta(minutes=1)<=now:
                             bars[b.timestamp]=b
                     lo=hi
+                # Check every market-open minute against the broker schedule
+                # (including New York DST) and query gaps a second time using
+                # only historical read-only trendbar requests.
+                initial_integrity=inspect(symbol,bars.keys(),catalogue[symbol])
+                if not bars:raise RuntimeError('NO_BROKER_M1_BARS')
+                retry_plan=retry_windows(initial_integrity['open_missing_minutes'])
+                recovered=0
+                revised=0
+                retry_errors=[]
+                for gap_lo,gap_hi in retry_plan:
+                    try:
+                        retry=session.historical_bars(symbol,'M1',
+                            from_time=gap_lo,to_time=gap_hi,count=2000)
+                    except Exception as e:
+                        if 'returned no M1 bars' not in str(e):
+                            retry_errors.append(type(e).__name__)
+                        continue
+                    for b in retry:
+                        if not (gap_lo<=b.timestamp<gap_hi and
+                                b.timestamp+timedelta(minutes=1)<=now):
+                            continue
+                        old=bars.get(b.timestamp)
+                        if old is None:
+                            bars[b.timestamp]=b
+                            recovered+=1
+                        elif (old.open,old.high,old.low,old.close)!=(b.open,b.high,b.low,b.close):
+                            revised+=1  # keep first candle; mark unstable source
+                for b in bars.values():
+                    o,h,l,c=b.open,b.high,b.low,b.close
+                    if not all(math.isfinite(x) and x>0 for x in (o,h,l,c)) or not (
+                            l<=min(o,c) and h>=max(o,c)):
+                        raise RuntimeError('BROKER_M1_INVALID_OHLC')
+                integrity=public_report(inspect(symbol,bars.keys(),catalogue[symbol]))
+                integrity.update({'first_pass_open_missing':initial_integrity['open_missing'],
+                    'backfill_queries':len(retry_plan),
+                    'backfill_recovered_minutes':recovered,
+                    'backfill_query_errors':retry_errors,
+                    'broker_candle_revision_conflicts':revised,
+                    'complete_contiguous_strategy_session':integrity['strategy_missing']==0})
+                if retry_errors:summary['errors'].append(symbol+':M1_RETRY_PARTIAL')
+                if revised:summary['errors'].append(symbol+':M1_CANDLE_REVISION_CONFLICT')
                 path=OUT/(symbol+'_M1.csv')
                 with path.open('w') as f:
                     w=csv.writer(f);w.writerow(['utc','open','high','low','close'])
@@ -110,7 +152,8 @@ def main():
                 summary['bars'][symbol]={'count':len(bars),'first':min(bars).isoformat() if bars else None,
                     'last':max(bars).isoformat() if bars else None,
                     'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
-                    'source':'CTRADER_LIVE_BROKER','spread_history_available':False}
+                    'source':'CTRADER_LIVE_BROKER','spread_history_available':False,
+                    'integrity':integrity}
             except Exception as e:
                 summary['errors'].append(symbol+':'+type(e).__name__)
                 summary['bars'][symbol]={'error_type':type(e).__name__}
