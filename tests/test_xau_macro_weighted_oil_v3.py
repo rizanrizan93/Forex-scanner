@@ -46,6 +46,62 @@ class WeightedOilScoreTests(unittest.TestCase):
         self.assertEqual(result["oil_weight_pct"], 0)
         self.assertEqual(result["oil_assessment"]["quotes"]["WTI"]["status"], "DELAYED")
 
+    def test_cnbc_delayed_futures_can_contribute_reduced_five_percent(self):
+        raw = {
+            "value": 91.36, "pct": 1.5, "fresh": False,
+            "source": "CNBC Quote Cache · futures exchange-delayed",
+            "basis": "penutupan sebelumnya", "instrument_type": "FUTURES",
+            "provider_realtime": False,
+            "observed": (NOW - timedelta(minutes=10)).isoformat(),
+        }
+        r = analyze_gold_macro(yields=yields(), dxy=dxy(),
+                               oil={"WTI": raw, "Brent": dict(raw)}, now=NOW)
+        self.assertEqual(r["oil_assessment"]["status"], "FUTURES_DELAYED")
+        self.assertEqual(r["oil_weight_pct"], 5)
+        self.assertEqual(r["score_breakdown"]["Oil"], -5)
+        self.assertEqual(r["score"], -57)
+        self.assertTrue(r["oil_score_counted"])
+        self.assertFalse(r["execution_authority"])
+
+    def test_delayed_futures_beyond_fifteen_minutes_never_affect_score(self):
+        raw = {
+            "value": 91.36, "pct": 1.5, "fresh": False,
+            "source": "CNBC Quote Cache · futures exchange-delayed",
+            "basis": "penutupan sebelumnya", "instrument_type": "FUTURES",
+            "provider_realtime": False,
+            "observed": (NOW - timedelta(minutes=16)).isoformat(),
+        }
+        r = analyze_gold_macro(yields=yields(), dxy=dxy(),
+                               oil={"WTI": raw, "Brent": dict(raw)}, now=NOW)
+        self.assertEqual(r["oil_weight_pct"], 0)
+        self.assertEqual(r["score"], -55)
+
+    def test_delayed_futures_requires_vendor_delay_flag(self):
+        raw = {
+            "value": 91.36, "pct": 1.5, "fresh": False,
+            "source": "CNBC Quote Cache · futures exchange-delayed",
+            "basis": "penutupan sebelumnya", "instrument_type": "FUTURES",
+            "observed": (NOW - timedelta(minutes=10)).isoformat(),
+        }
+        r = analyze_gold_macro(yields=yields(), dxy=dxy(),
+                               oil={"WTI": raw, "Brent": dict(raw)}, now=NOW)
+        self.assertEqual(r["oil_weight_pct"], 0)
+
+    def test_delayed_futures_requires_aligned_observation_times(self):
+        raw = {
+            "value": 91.36, "pct": 1.5, "fresh": False,
+            "source": "CNBC Quote Cache · futures exchange-delayed",
+            "basis": "penutupan sebelumnya", "instrument_type": "FUTURES",
+            "provider_realtime": False,
+            "observed": (NOW - timedelta(minutes=10)).isoformat(),
+        }
+        brent = dict(raw)
+        brent["observed"] = (NOW - timedelta(minutes=7)).isoformat()
+        r = analyze_gold_macro(yields=yields(), dxy=dxy(),
+                               oil={"WTI": raw, "Brent": brent}, now=NOW)
+        self.assertEqual(r["oil_assessment"]["status"], "TIDAK SEBANDING")
+        self.assertEqual(r["oil_weight_pct"], 0)
+
     def test_one_minute_oil_quote_can_shift_macro_score(self):
         result = analyze_gold_macro(yields=yields(2), dxy=dxy(0),
                                     oil=oil(2, hours_ago=1/60), now=NOW)

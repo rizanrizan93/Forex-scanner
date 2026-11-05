@@ -35,6 +35,43 @@ class MacroPanelResilienceTests(unittest.TestCase):
         self.assertAlmostEqual(quote["pct"], 100 * (92.0 / 90.0 - 1))
         self.assertEqual(quote["basis"], "observasi sebelumnya")
 
+    def test_cnbc_delayed_futures_is_consistent_with_score_input(self):
+        now = datetime.now(UTC)
+        market = {
+            "value": 91.36, "pct": -0.42,
+            "source": "CNBC Quote Cache · futures exchange-delayed",
+            "instrument_type": "FUTURES", "provider_realtime": False,
+            "fresh": False, "basis": "penutupan sebelumnya",
+            "observed": (now - timedelta(minutes=10)).isoformat(),
+        }
+        feeds = {
+            "market": {"CL=F": market},
+            "fred": {"DCOILWTICO": [
+                ((now - timedelta(days=4)).date().isoformat(), 98.0),
+                ((now - timedelta(days=3)).date().isoformat(), 99.64),
+            ]},
+        }
+        self.assertIs(_market_or_fred("CL=F", "DCOILWTICO", feeds), market)
+
+    def test_very_old_futures_prefers_recent_daily_reference(self):
+        now = datetime.now(UTC)
+        market = {
+            "value": 91.36, "pct": -0.42,
+            "source": "CNBC Quote Cache · futures exchange-delayed",
+            "instrument_type": "FUTURES", "provider_realtime": False,
+            "fresh": False, "basis": "penutupan sebelumnya",
+            "observed": (now - timedelta(minutes=20)).isoformat(),
+        }
+        feeds = {
+            "market": {"CL=F": market},
+            "fred": {"DCOILWTICO": [
+                ((now - timedelta(days=2)).date().isoformat(), 97.0),
+                ((now - timedelta(days=1)).date().isoformat(), 98.0),
+            ]},
+        }
+        self.assertEqual(_market_or_fred("CL=F", "DCOILWTICO", feeds)["source"],
+                         "FRED (spot harian)")
+
     def test_fresh_futures_quote_keeps_intraday_priority(self):
         now = datetime.now(UTC)
         source = {"value": 95.0, "pct": 1.2,
