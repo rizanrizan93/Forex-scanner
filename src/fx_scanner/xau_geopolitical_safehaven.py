@@ -73,7 +73,7 @@ def _valid_market(row: dict[str, Any] | None, now: datetime) -> float | None:
         return None
     if str(row.get("basis") or "") != "penutupan sebelumnya":
         return None
-    if not 0 <= (now - at).total_seconds() <= 90 * 60:
+    if not 0 <= (now - at).total_seconds() <= 5 * 60:
         return None
     return value
 

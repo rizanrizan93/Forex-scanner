@@ -110,7 +110,7 @@ def analyze_gold_macro(
     dxy_pct = _num(dxy.get("pct"))
     dxy_valid = (dxy.get("fresh") is True
                  and dxy_pct is not None
-                 and _valid(dxy.get("observed"), now, 1.5))
+                 and _valid(dxy.get("observed"), now, 5 / 60))
     dollar = -_sign(dxy_pct, 0.05) if dxy_valid else None
     details.append({
         "name": "DXY", "group": "Dollar",
@@ -187,7 +187,7 @@ def analyze_gold_macro(
     if treasury is None:
         missing.append("Treasury (minimal dua sumber yield valid)")
     if dollar is None:
-        missing.append("DXY intraday (<90 menit)")
+        missing.append("DXY intraday (usia sumber maksimal 5 menit)")
     core_score = None
     breakdown = {"Treasury": None, "DXY": None, "Oil": None}
     if missing:
