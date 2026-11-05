@@ -74,6 +74,18 @@ class GoldMacroConsensusTests(unittest.TestCase):
         self.assertIsNone(result["score"])
         self.assertEqual(result["state"], "WAIT_DATA")
 
+    def test_wait_data_keeps_complete_breakdown_for_macro_panel(self):
+        result = analyze_gold_macro(
+            yields=fresh_yields(),
+            dxy=fresh_dxy(observed=NOW - timedelta(hours=5)),
+            now=NOW,
+        )
+        self.assertEqual(result["state"], "WAIT_DATA")
+        self.assertIsNone(result["score"])
+        for factor in ("Treasury", "DXY", "Oil", "Geopolitical", "Safe Haven"):
+            self.assertIn(factor, result["score_breakdown"])
+            self.assertIsNone(result["score_breakdown"][factor])
+
     def test_only_one_yield_blocks_direction(self):
         yields = fresh_yields()
         yields["US2Y"]["freshness"] = "STALE"
