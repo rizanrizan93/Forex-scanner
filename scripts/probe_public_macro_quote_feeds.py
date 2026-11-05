@@ -71,9 +71,18 @@ def goldapi(sym):
             "updatedAt":p.get("updatedAt"),
             "age_minutes":age(p.get("updatedAt"))}
 
+def cnbc_batch(sym):
+    params=urlencode({"symbols":"|".join((".DXY",".VIX","JPY=","CHF=","XAU=","XAG=","@GC.1","@SI.1","@CL.1","@BZ.1")),
+        "requestMethod":"itv","noform":"1","partnerId":"2","fund":"1","exthrs":"1","output":"json","events":"1"})
+    p=open_json("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?"+params)
+    rows=(p.get("FormattedQuoteResult") or {}).get("FormattedQuote") or []
+    return {"count":len(rows),"found":[{"s":x.get("symbol"),"t":x.get("last_time"),
+            "live":x.get("realTime"),"last":x.get("last")} for x in rows]}
+
 if __name__ == "__main__":
     specs=[("Yahoo",s,yahoo) for s in
            ("DX-Y.NYB","GC=F","SI=F","CL=F","BZ=F","^VIX","JPY=X","CHF=X")]
+    specs += [("CNBC_Batch","ALL",cnbc_batch)]
     specs += [("Gold-API",s,goldapi) for s in ("XAU","XAG")]
     specs += [("CNBC",s,cnbc) for s in
               (".DXY","DXY","DX=F","DX-Y.NYB","@GC.1","@GC.0","@SI.1","@SI.0",
