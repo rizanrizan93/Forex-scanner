@@ -7,6 +7,7 @@ on:
       - "src/fx_scanner/xau_oil_macro_context.py"
       - "src/fx_scanner/xau_geopolitical_safehaven.py"
       - "src/fx_scanner/xau_macro_risk_monitor.py"
+      - "pages/2_US10Y_Regime_Timing.py"
       - "tests/test_xau_macro_gold_consensus_v1.py"
       - "tests/test_xau_oil_macro_conclusion_v2.py"
       - "tests/test_xau_macro_weighted_oil_v3.py"
@@ -19,6 +20,7 @@ on:
       - "src/fx_scanner/xau_oil_macro_context.py"
       - "src/fx_scanner/xau_geopolitical_safehaven.py"
       - "src/fx_scanner/xau_macro_risk_monitor.py"
+      - "pages/2_US10Y_Regime_Timing.py"
       - "tests/test_xau_macro_gold_consensus_v1.py"
       - "tests/test_xau_oil_macro_conclusion_v2.py"
       - "tests/test_xau_macro_weighted_oil_v3.py"
@@ -38,7 +40,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Compile score and dashboard modules
-        run: python -m py_compile src/fx_scanner/xau_macro_gold_consensus.py src/fx_scanner/xau_oil_macro_context.py src/fx_scanner/xau_geopolitical_safehaven.py src/fx_scanner/xau_macro_risk_monitor.py
+        run: python -m py_compile src/fx_scanner/xau_macro_gold_consensus.py src/fx_scanner/xau_oil_macro_context.py src/fx_scanner/xau_geopolitical_safehaven.py src/fx_scanner/xau_macro_risk_monitor.py pages/2_US10Y_Regime_Timing.py
       - name: Core and Oil regression (stdlib only)
         run: |
           python -m unittest discover -s tests -p 'test_xau_macro_gold_consensus_v1.py' -v
