@@ -9,7 +9,7 @@ class GuardTests(unittest.TestCase):
             with self.subTest(name=name),self.assertRaisesRegex(RuntimeError,'NON_READ_REQUEST_BLOCKED'):
                 module.guard(type(name,(),{})())
     def test_read_requests_allowed(self):
-        for name in ['ProtoOAGetTrendbarsReq','ProtoOAOrderListReq','ProtoOADealListReq']:
+        for name in ['ProtoOAGetTrendbarsReq','ProtoOAGetTickDataReq','ProtoOAOrderListReq','ProtoOADealListReq']:
             module.guard(type(name,(),{})())
     def test_recursive_account_identifier_removal(self):
         self.assertEqual(module.sanitize({'nested':[{'ctidTraderAccountId':'123','orderId':'456'}]}),
