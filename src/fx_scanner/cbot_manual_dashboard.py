@@ -44,7 +44,15 @@ def render_snapshot(payload):
  st.subheader('cBots · persiapan dan entry manual')
  st.caption('Strategi beku XAU–EUR–BTC V1.3.0 · pembacaan pasar dan posisi saja')
  st.caption('Perhitungan memakai kode sinyal cBot. Ini cermin terpisah: perbedaan history pemanasan dan status terminal dapat menghasilkan keputusan berbeda. Periksa volume, margin, posisi, dan harga di cTrader sebelum entry manual.')
- if not p['fresh']:st.warning('WAIT · pembaruan terlambat. Hanya area pantauan terakhir ditampilkan beserta waktunya; entry dan posisi lama disembunyikan.')
+ if not p['fresh']:
+  published=stamp(p.get('as_of'))
+  age_minutes=max(0,int((datetime.now(UTC)-published).total_seconds()//60)) if published else None
+  age_label=f"{age_minutes} menit" if age_minutes is not None else "tidak diketahui"
+  st.warning("WAIT · feed cBots kedaluwarsa (publikasi terakhir "+age_label+" lalu). "
+             "Ini bukan bukti cBot LIVE berhenti. Area lama hanya referensi; "
+             "entry, sinyal, dan posisi yang sudah kedaluwarsa disembunyikan.")
+  st.caption("Pemulihan penerbit snapshot ditangani oleh watchdog GitHub Actions. "
+             "Refresh layar 10 detik tidak sama dengan pembaruan data broker.")
  st.caption('Pembaruan monitor '+wib(p['as_of'])+' · tampilan mengecek 10 detik')
  st.caption('Checkpoint VPS terakhir terbaca: '+wib(p.get('native_observed_at'))+' · data pasar: '+wib(p.get('market_observed_at')))
  st.caption('Status monitor dan checkpoint ini dipisahkan dari heartbeat database lama. Data fresh tidak otomatis membuktikan koneksi WebSocket broker atau kesiapan order cBot LIVE.')
