@@ -1,7 +1,9 @@
 """Regression tests: macro spot/geo feeds are informational and fail closed."""
 from datetime import UTC, datetime, timedelta
 
-from fx_scanner.xau_macro_spot_news_v2 import parse_dia_spot, _parse_rss
+from fx_scanner.xau_macro_spot_news_v2 import (
+    parse_dia_spot, _parse_rss, SpotMomentumTracker,
+)
 from fx_scanner.xau_oil_macro_context import assess_oil_macro, oil_quote_status
 from fx_scanner.xau_geopolitical_safehaven import assess_geopolitical_safehaven
 
@@ -69,3 +71,53 @@ def test_rss_timestamp_and_corrob_market_required_for_geopolitical_vote():
     )
     assert empty_market["geo_weight"] == 0
     assert empty_market["haven_weight"] == 0
+
+
+def test_live_dia_rwa_timestamp_field_parses_and_has_no_fake_previous_close():
+    raw = {
+        "Name": "Crude Oil", "Price": 91.5, "Ticker": "WTI-USD",
+        "Timestamp": NOW.isoformat().replace("+00:00", "Z"),
+    }
+    quote = parse_dia_spot(raw, symbol="WTI", now=NOW)
+    assert quote is not None
+    assert quote["value"] == 91.5
+    assert quote["fresh"] is True
+    assert quote["pct"] is None
+    assert quote["instrument_type"] == "SPOT"
+
+
+def test_intraday_dia_momentum_requires_actual_separate_timed_observations():
+    tracker = SpotMomentumTracker()
+    baseline = parse_dia_spot({
+        "Price": 90, "Timestamp": NOW.isoformat(),
+    }, symbol="WTI", now=NOW)
+    initial = tracker.observe("WTI", baseline, now=NOW)
+    assert initial["pct"] is None
+    five_min = NOW + timedelta(minutes=5)
+    early = parse_dia_spot({
+        "Price": 90.5, "Timestamp": five_min.isoformat(),
+    }, symbol="WTI", now=five_min)
+    assert tracker.observe("WTI", early, now=five_min)["pct"] is None
+    later = NOW + timedelta(minutes=12)
+    new_quote = parse_dia_spot({
+        "Price": 91, "Timestamp": later.isoformat(),
+    }, symbol="WTI", now=later)
+    enrichment = tracker.observe("WTI", new_quote, now=later)
+    assert enrichment["pct"] > 1
+    assert enrichment["basis"] == "perubahan spot 10–20 menit"
+    assert 10 <= enrichment["momentum_window_minutes"] <= 20
+    assert oil_quote_status(enrichment, later)["status"] == "SPOT_MOMENTUM_10_20M"
+
+
+def test_dia_tracker_never_scores_stale_or_repeated_price_as_fresh():
+    tracker = SpotMomentumTracker()
+    old = parse_dia_spot({
+        "Price": 91, "Timestamp": (NOW - timedelta(minutes=20)).isoformat(),
+    }, symbol="WTI", now=NOW)
+    assert old["fresh"] is False
+    assert tracker.observe("WTI", old, now=NOW)["pct"] is None
+    fresh = parse_dia_spot({
+        "Price": 92, "Timestamp": NOW.isoformat(),
+    }, symbol="WTI", now=NOW)
+    assert tracker.observe("WTI", fresh, now=NOW)["pct"] is None
+    assert tracker.observe("WTI", fresh, now=NOW)["pct"] is None

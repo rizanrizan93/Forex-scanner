@@ -63,6 +63,21 @@ class WeightedOilScoreTests(unittest.TestCase):
         self.assertFalse(r["oil_score_counted"])
         self.assertFalse(r["execution_authority"])
 
+    def test_source_derived_dia_spot_momentum_caps_oil_at_five_percent(self):
+        spot = {
+            "value": 91, "pct": 1.0,
+            "source": "DIA RWA · spot minyak indikatif",
+            "basis": "perubahan spot 10–20 menit",
+            "instrument_type": "SPOT", "fresh": True,
+            "observed": (NOW - timedelta(minutes=1)).isoformat(),
+        }
+        r = analyze_gold_macro(yields=yields(), dxy=dxy(),
+                               oil={"WTI": spot, "Brent": dict(spot)}, now=NOW)
+        self.assertEqual(r["oil_assessment"]["status"], "SPOT_MOMENTUM")
+        self.assertEqual(r["oil_weight_pct"], 5)
+        self.assertEqual(r["score_breakdown"]["Oil"], -5)
+        self.assertFalse(r["execution_authority"])
+
     def test_delayed_futures_beyond_fifteen_minutes_never_affect_score(self):
         raw = {
             "value": 91.36, "pct": 1.5, "fresh": False,

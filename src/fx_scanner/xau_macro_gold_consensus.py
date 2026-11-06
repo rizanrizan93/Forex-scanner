@@ -135,14 +135,17 @@ def analyze_gold_macro(
                 for name in ("wti", "brent"))
     )
     oil_weight = (0.15 if oil_status == "INTRADAY" and oil_vote is not None
+                  else 0.05 if oil_status == "SPOT_MOMENTUM" and oil_vote is not None
                   else 0.08 if daily_oil_recent and oil_vote is not None
                   else 0.0)
     oil_counted = oil_weight > 0
     oil_assessment["score_influence"] = oil_counted
     oil_assessment["score_weight_pct"] = round(100 * oil_weight)
     oil_assessment["score_reason"] = (
-        "Spot indikatif DIA WTI+Brent segar (≤5 menit) adalah satu kanal inflasi (bobot 15%)."
+        "Spot indikatif DIA WTI+Brent segar (≤5 menit) dengan baseline penutupan (bobot 15%)."
         if oil_status == "INTRADAY" and oil_counted
+        else "Momentum spot DIA 10–20 menit (bobot indikatif 5%, bukan tren inflasi harian)."
+        if oil_status == "SPOT_MOMENTUM" and oil_counted
         else "FRED spot harian WTI+Brent: bobot konservatif 8% (usia data maksimal 48 jam)."
         if oil_status == "HARIAN" and oil_counted
         else "Oil tidak lolos validasi kelengkapan/kesetaraan/freshness untuk skor; tetap konteks."

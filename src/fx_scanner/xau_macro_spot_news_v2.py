@@ -9,7 +9,8 @@ from __future__ import annotations
 import json
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from threading import Lock
 from email.utils import parsedate_to_datetime
 from math import isfinite
 from urllib.parse import urlparse
@@ -55,7 +56,7 @@ def parse_dia_spot(payload, *, symbol, now):
         return None
     price = _number(payload.get("Price", payload.get("price")))
     previous = _number(payload.get("PriceYesterday", payload.get("prev_close")))
-    observed = _date(payload.get("Time", payload.get("timestamp")))
+    observed = _date(payload.get("Timestamp") or payload.get("Time") or payload.get("timestamp"))
     if price is None or not 0 < price < 10000 or observed is None:
         return None
     if previous is not None and not 0 < previous < 10000:
@@ -78,6 +79,59 @@ def parse_dia_spot(payload, *, symbol, now):
         "provider_realtime": fresh,
         "provider_symbol": DIA_SYMBOLS[symbol],
     }
+
+
+class SpotMomentumTracker:
+    """In-process, source-timestamped WTI/Brent spot change (not previous close).
+
+    If DIA omits PriceYesterday, compare with a verified 10-20-minute-old DIA
+    sample. No interpolation, synthetic baseline, or previous-session guessing.
+    A process restart simply resets warm-up and disables the momentum vote.
+    """
+
+    def __init__(self):
+        self._lock = Lock()
+        self._samples = {}
+
+    def observe(self, symbol, quote, *, now):
+        if symbol not in DIA_SYMBOLS or not quote or not quote.get("fresh"):
+            return quote
+        observed = _date(quote.get("observed"))
+        price = _number(quote.get("value"))
+        if observed is None or price is None or price <= 0:
+            return quote
+        if not 0 <= (now.astimezone(UTC) - observed).total_seconds() <= MAX_AGE_SECONDS:
+            return quote
+
+        with self._lock:
+            history = self._samples.setdefault(symbol, [])
+            history[:] = [(at, val) for at, val in history
+                          if at <= observed and observed - at <= timedelta(minutes=30)]
+            if all(at != observed for at, _ in history):
+                history.append((observed, price))
+            history.sort(key=lambda item: item[0])
+            if quote.get("pct") is not None:
+                return quote  # real same-provider previous close wins
+            candidates = [
+                (at, val) for at, val in history
+                if 600 <= (observed - at).total_seconds() <= 1200 and val > 0
+            ]
+            if not candidates:
+                return quote
+            baseline_at, baseline = min(
+                candidates,
+                key=lambda item: abs((observed - item[0]).total_seconds() - 900),
+            )
+            elapsed = (observed - baseline_at).total_seconds() / 60
+            enriched = dict(quote)
+            enriched["pct"] = 100 * (price / baseline - 1)
+            enriched["basis"] = "perubahan spot 10–20 menit"
+            enriched["momentum_window_minutes"] = round(elapsed, 1)
+            enriched["baseline_observed"] = baseline_at.isoformat()
+            return enriched
+
+
+_SPOT_MOMENTUM = SpotMomentumTracker()
 
 
 def _fetch(url, expected_host):
@@ -105,7 +159,7 @@ def fetch_dia_spot(symbol):
     quote = parse_dia_spot(payload, symbol=symbol, now=datetime.now(UTC))
     if quote is None:
         raise ValueError("DIA spot quote lacks valid price or source timestamp")
-    return quote
+    return _SPOT_MOMENTUM.observe(symbol, quote, now=datetime.now(UTC))
 
 
 def _parse_rss(body, now):
