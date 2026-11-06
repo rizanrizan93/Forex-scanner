@@ -1,0 +1,56 @@
+name: Macro Spot & Geopolitical Public Feed Probe (read-only)
+
+on:
+  push:
+    branches:
+      - fix/macro-source-live-probe-20261107
+    paths:
+      - ".github/workflows/macro-public-feed-probe.yml"
+      - "src/fx_scanner/xau_macro_spot_news_v2.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Probe live public sources (no broker access or credentials)
+        shell: bash
+        run: |
+          PYTHONPATH=src python - <<'PY'
+          import json
+          from datetime import datetime, UTC
+          from fx_scanner.xau_macro_spot_news_v2 import (
+              DIA_HOST, DIA_SYMBOLS, _fetch, fetch_dia_spot, fetch_geopolitical_rss, RSS_FEEDS
+          )
+          ok_oil = 0
+          for symbol, code in DIA_SYMBOLS.items():
+              try:
+                  raw = json.loads(_fetch(
+                      f"https://{DIA_HOST}/v1/rwa/Commodities/{code}",
+                      DIA_HOST
+                  ))
+                  print(f"{symbol} raw type={type(raw).__name__} keys={sorted(raw.keys()) if isinstance(raw, dict) else 'n/a'}")
+                  quote = fetch_dia_spot(symbol)
+                  print(f"{symbol}: value={quote['value']} pct={quote['pct']} observed={quote['observed']} fresh={quote['fresh']}")
+                  ok_oil += 1
+              except Exception as exc:
+                  print(f"{symbol}: ERROR {type(exc).__name__}: {exc}")
+          try:
+              articles = fetch_geopolitical_rss()
+              print(f"RSS articles={len(articles)} sample_sources={sorted({(a.get('url') or '').split('/')[2] for a in articles})}")
+              ok_rss = True
+          except Exception as exc:
+              print(f"RSS: ERROR {type(exc).__name__}: {exc}")
+              ok_rss = False
+          print(f"RESULT: verified_spot_feeds={ok_oil}/2 verified_rss={ok_rss} asof_utc={datetime.now(UTC).isoformat()}")
+          if ok_oil == 0 or not ok_rss:
+              raise SystemExit(1)
+          PY
