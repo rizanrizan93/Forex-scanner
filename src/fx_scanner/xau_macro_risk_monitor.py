@@ -20,11 +20,14 @@ import streamlit as st
 from .xau_macro_gold_consensus import analyze_gold_macro
 from .xau_market_quote_health import quote_freshness, QUOTE_MAX_AGE_SECONDS
 from .xau_cnbc_macro_quotes import fetch_cnbc_market_quotes, fetch_goldapi_spot
+from .xau_macro_daily_regime import (
+    assess_daily_regime, fred_daily_yield_row, FRED_YIELD_SERIES,
+)
 
 
 FRED_SERIES = {
     "CPIAUCSL", "PCEPILFE", "PCEPI", "DFEDTARU", "DGS2",
-    "DCOILWTICO", "DCOILBRENTEU",
+    "DCOILWTICO", "DCOILBRENTEU", "DGS10", "DFII10",
 }
 YAHOO_SYMBOLS = {"DX-Y.NYB", "GC=F", "SI=F", "CL=F", "BZ=F", "^VIX", "JPY=X", "CHF=X"}
 MAX_BODY = 256 * 1024
@@ -280,7 +283,8 @@ def _delta(n, suffix=""):
     return None if n is None else f"{n:+.2f}{suffix}"
 
 
-def _yield_row(macro_eval, h15, symbol):
+def _yield_row(macro_eval, h15, symbol, fred=None):
+    """Use fresh worker/H15 observations; FRED official daily if unavailable."""
     row = dict(((macro_eval or {}).get("components") or {}).get(symbol) or {})
     if (row.get("freshness") == "FRESH"
             and _recent(row.get("observed_at"), 5)
@@ -289,9 +293,19 @@ def _yield_row(macro_eval, h15, symbol):
         return row
     fallback = dict((h15 or {}).get(symbol) or {})
     if (fallback.get("freshness") == "FRESH"
-            and _recent(fallback.get("observed_at"), 5)):
+            and _recent(fallback.get("observed_at"), 5)
+            and _number(fallback.get("delta")) is not None):
         return fallback
-    return {}
+    series = FRED_YIELD_SERIES.get(symbol)
+    observation = fred_daily_yield_row(symbol, (fred or {}).get(series),
+                                       now=datetime.now(UTC))
+    return observation or {}
+
+
+def _daily_dxy_last(feeds):
+    """Last published DXY session (NOT live) for regime-only view."""
+    row = (feeds.get("market") or {}).get("DX-Y.NYB") or {}
+    return dict(row)
 
 
 def _market_or_fred(symbol, fred_series, feeds):
@@ -375,9 +389,13 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     feeds = load_external_macro_inputs()
     h15, _ = _safe(h15_loader)
     yield_rows = {
-        key: _yield_row(macro_eval, h15, key)
+        key: _yield_row(macro_eval, h15, key, feeds.get("fred"))
         for key in ("US2Y", "US10Y", "REAL_YIELD_10Y")
     }
+    daily_regime = assess_daily_regime(
+        yields=yield_rows, dxy_last=_daily_dxy_last(feeds),
+        now=datetime.now(UTC),
+    )
     pce, _, _ = _yoy("PCEPI", feeds)
     cpi, _, _ = _yoy("CPIAUCSL", feeds)
     wti = _market_or_fred("CL=F", "DCOILWTICO", feeds)
@@ -416,6 +434,45 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     b.metric("Indeks arah makro", "—" if result["score"] is None
              else f"{result['score']:+d} / 100")
     c.metric("Cakupan feed", f"{result['coverage_pct']}%")
+    with st.container(border=True):
+        st.markdown("**CADANGAN: REGIME MAKRO HARIAN (bukan sinyal live)**")
+        st.caption("Menggunakan perubahan yield resmi harian terakhir (worker/H.15/FRED) "
+                   "dan perubahan DXY terhadap penutupan sebelumnya. "
+                   "Saat DXY intraday berhenti bergerak, skor regime tetap "
+                   "tersedia selama data terakhir masih memenuhi batas usia.")
+        daily_a, daily_b = st.columns(2)
+        daily_a.metric("Bias regime", daily_regime["bias"])
+        daily_b.metric("Skor regime", "—" if daily_regime["score"] is None
+                       else f"{daily_regime['score']:+d} / 100")
+        st.caption(
+            f"Cakupan regime harian: {daily_regime['coverage_pct']}% · "
+            f"DXY: {daily_regime['dxy_source'] or 'tidak ada'} · "
+            f"last published: {daily_regime['dxy_timestamp'] or '—'} UTC. "
+            "Regime bukan validasi entry M5/M15, tidak menggantikan skor intraday."
+        )
+        if daily_regime["score"] is None:
+            st.warning("Fallback regime belum lengkap: " +
+                       ", ".join(daily_regime["missing"]))
+        elif result["state"] == "WAIT_DATA":
+            st.info("Skor intraday tetap WAIT_DATA; latar belakang regime "
+                    "ditampilkan sebagai informasi dengan keyakinan lebih rendah.")
+    with st.expander("Diagnostik sumber makro & penyebab WAIT DATA"):
+        for comp in daily_regime["components"]:
+            st.caption(
+                f"{comp['name']}: " +
+                ("VALID" if comp["valid"] else "MISSING/STALE") +
+                f" · {comp['provider'] or '—'} · "
+                f"Δ {comp['delta_bps'] if comp['delta_bps'] is not None else '—'} bps "
+                f"· timestamp {comp['timestamp'] or '—'}"
+            )
+        st.caption("Kekurangan intraday: " +
+                   (", ".join(result["missing"]) if result["missing"] else "Tidak ada"))
+        source_errors = (feeds.get("source_health") or {})
+        st.caption(
+            "Status CNBC: " +
+            (str(source_errors.get("cnbc_count") or 0) + " simbol") +
+            " · Error: " + str(source_errors.get("cnbc_error") or "tidak ada")
+        )
     oil_view = result["oil_assessment"]
     if result["score"] is None:
         st.info("BOBOT OIL (WTI + Brent): belum aktif · WAIT_DATA pada Treasury/DXY. "
@@ -445,8 +502,9 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
                " · skor heuristik, BUKAN probabilitas atau akurasi historis.")
 
     if result["state"] == "WAIT_DATA":
-        st.warning("WAIT DATA · " + result["rationale"] +
-                   " Kurang: " + ", ".join(result["missing"]))
+        st.warning("SKOR INTRADAY: WAIT DATA · " + result["rationale"] +
+                   " Kurang: " + ", ".join(result["missing"]) +
+                   ". Lihat REGIME HARIAN sebagai konteks cadangan, bukan sinyal entry.")
     elif result["state"] in {"CONFLICT", "OIL_CONFLICT", "RISK_CONFLICT"}:
         st.warning(result["bias"] + " · " + result["rationale"])
     elif result["bias"] == "BULLISH XAU":

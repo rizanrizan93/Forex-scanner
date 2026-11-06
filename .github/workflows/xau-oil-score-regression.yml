@@ -9,6 +9,7 @@ on:
       - "src/fx_scanner/xau_macro_risk_monitor.py"
       - "src/fx_scanner/xau_market_quote_health.py"
       - "src/fx_scanner/xau_cnbc_macro_quotes.py"
+      - "src/fx_scanner/xau_macro_daily_regime.py"
       - "pages/2_US10Y_Regime_Timing.py"
       - "tests/test_xau_macro_gold_consensus_v1.py"
       - "tests/test_xau_oil_macro_conclusion_v2.py"
@@ -16,6 +17,7 @@ on:
       - "tests/test_xau_geopolitical_safehaven_v4.py"
       - "tests/test_xau_market_quote_health_v5.py"
       - "tests/test_xau_cnbc_macro_quotes_v6.py"
+      - "tests/test_xau_macro_daily_regime_v7.py"
       - ".github/workflows/xau-oil-score-regression.yml"
   push:
     branches: [main]
@@ -26,6 +28,7 @@ on:
       - "src/fx_scanner/xau_macro_risk_monitor.py"
       - "src/fx_scanner/xau_market_quote_health.py"
       - "src/fx_scanner/xau_cnbc_macro_quotes.py"
+      - "src/fx_scanner/xau_macro_daily_regime.py"
       - "pages/2_US10Y_Regime_Timing.py"
       - "tests/test_xau_macro_gold_consensus_v1.py"
       - "tests/test_xau_oil_macro_conclusion_v2.py"
@@ -33,6 +36,7 @@ on:
       - "tests/test_xau_geopolitical_safehaven_v4.py"
       - "tests/test_xau_market_quote_health_v5.py"
       - "tests/test_xau_cnbc_macro_quotes_v6.py"
+      - "tests/test_xau_macro_daily_regime_v7.py"
       - ".github/workflows/xau-oil-score-regression.yml"
 
 permissions:
@@ -48,7 +52,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Compile score and dashboard modules
-        run: python -m py_compile src/fx_scanner/xau_macro_gold_consensus.py src/fx_scanner/xau_oil_macro_context.py src/fx_scanner/xau_geopolitical_safehaven.py src/fx_scanner/xau_macro_risk_monitor.py pages/2_US10Y_Regime_Timing.py src/fx_scanner/xau_market_quote_health.py src/fx_scanner/xau_cnbc_macro_quotes.py
+        run: python -m py_compile src/fx_scanner/xau_macro_gold_consensus.py src/fx_scanner/xau_oil_macro_context.py src/fx_scanner/xau_geopolitical_safehaven.py src/fx_scanner/xau_macro_risk_monitor.py pages/2_US10Y_Regime_Timing.py src/fx_scanner/xau_market_quote_health.py src/fx_scanner/xau_cnbc_macro_quotes.py src/fx_scanner/xau_macro_daily_regime.py
       - name: Core and Oil regression (stdlib only)
         run: |
           python -m unittest discover -s tests -p 'test_xau_macro_gold_consensus_v1.py' -v
@@ -57,3 +61,4 @@ jobs:
           python -m unittest discover -s tests -p 'test_xau_geopolitical_safehaven_v4.py' -v
           python -m unittest discover -s tests -p 'test_xau_market_quote_health_v5.py' -v
           python -m unittest discover -s tests -p 'test_xau_cnbc_macro_quotes_v6.py' -v
+          python -m unittest discover -s tests -p 'test_xau_macro_daily_regime_v7.py' -v
