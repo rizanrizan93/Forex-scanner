@@ -18,8 +18,13 @@ st.markdown(
         position: sticky; top: 3.5rem; z-index: 990;
     }
     .st-key-rizan_primary_navigation {
-        background: var(--background-color); padding: .4rem 0;
+        /* Opaque sticky surface prevents scrolled cBot captions from
+           becoming visible behind the radio controls on mobile browsers. */
+        background: var(--background-color, #0e1117) !important;
+        padding: .4rem .25rem;
+        box-shadow: 0 6px 0 var(--background-color, #0e1117);
         border-bottom: 1px solid rgba(128, 128, 128, .2);
+        isolation: isolate;
     }
     .st-key-rizan_primary_navigation [role="radiogroup"],
     .st-key-rizan_xau_navigation [role="radiogroup"] {
