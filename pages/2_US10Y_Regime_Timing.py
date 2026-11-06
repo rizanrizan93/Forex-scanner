@@ -27,6 +27,7 @@ from fx_scanner.xau_h15_daily_fallback import fetch_h15_daily_rows  # noqa: E402
 from importlib import invalidate_caches, reload  # noqa: E402
 import fx_scanner.xau_cnbc_macro_quotes as _macro_quotes  # noqa: E402
 import fx_scanner.xau_market_quote_health as _macro_health  # noqa: E402
+import fx_scanner.xau_macro_daily_regime as _macro_daily  # noqa: E402
 import fx_scanner.xau_oil_macro_context as _macro_oil  # noqa: E402
 import fx_scanner.xau_geopolitical_safehaven as _macro_geo  # noqa: E402
 import fx_scanner.xau_macro_gold_consensus as _macro_core  # noqa: E402
@@ -34,7 +35,7 @@ import fx_scanner.xau_macro_risk_monitor as _macro_ui  # noqa: E402
 
 
 def _refresh_macro_code_if_changed() -> None:
-    modules = (_macro_quotes, _macro_health, _macro_oil, _macro_geo, _macro_core, _macro_ui)
+    modules = (_macro_quotes, _macro_health, _macro_daily, _macro_oil, _macro_geo, _macro_core, _macro_ui)
     signature = tuple(
         (str(module.__file__), Path(module.__file__).stat().st_mtime_ns,
          Path(module.__file__).stat().st_size)
@@ -177,7 +178,7 @@ st.caption(
     "Daily FRED (fallback Federal Reserve H.15) untuk regime makro. Intraday US10Y untuk timing/pressure. "
     "Keduanya tidak memberi izin order sendiri; keputusan tetap harus dikonfirmasi struktur XAU."
 )
-st.caption("Versi dashboard: RIZAN Macro V3.1 FAST FEED · CNBC DXY/VIX/FX + Spot XAU/XAG · futures delayed · read-only")
+st.caption("Versi dashboard: RIZAN Macro V3.2 DAILY REGIME FALLBACK · Intraday + H.15/FRED Treasury & DXY last session · read-only")
 
 if st.button("Perbarui tampilan", key="yield_refresh"):
     load_macro.clear()
