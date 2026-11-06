@@ -39,7 +39,7 @@ jobs:
                       f"https://{DIA_HOST}/v1/rwa/Commodities/{code}",
                       DIA_HOST
                   ))
-                  print(f"{symbol} raw type={type(raw).__name__} keys={sorted(raw.keys()) if isinstance(raw, dict) else 'n/a'}")
+                  print(f"{symbol} raw type={type(raw).__name__} keys={sorted(raw.keys()) if isinstance(raw, dict) else 'n/a'} timestamp={raw.get('Timestamp') if isinstance(raw, dict) else None!r} price_type={type(raw.get('Price')).__name__ if isinstance(raw, dict) else 'n/a'}")
                   quote = fetch_dia_spot(symbol)
                   print(f"{symbol}: value={quote['value']} pct={quote['pct']} observed={quote['observed']} fresh={quote['fresh']}")
                   ok_oil += 1
