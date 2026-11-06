@@ -46,7 +46,7 @@ class WeightedOilScoreTests(unittest.TestCase):
         self.assertEqual(result["oil_weight_pct"], 0)
         self.assertEqual(result["oil_assessment"]["quotes"]["WTI"]["status"], "DELAYED")
 
-    def test_cnbc_delayed_futures_can_contribute_reduced_five_percent(self):
+    def test_cnbc_delayed_futures_no_longer_contribute_to_spot_only_macro(self):
         raw = {
             "value": 91.36, "pct": 1.5, "fresh": False,
             "source": "CNBC Quote Cache · futures exchange-delayed",
@@ -57,10 +57,10 @@ class WeightedOilScoreTests(unittest.TestCase):
         r = analyze_gold_macro(yields=yields(), dxy=dxy(),
                                oil={"WTI": raw, "Brent": dict(raw)}, now=NOW)
         self.assertEqual(r["oil_assessment"]["status"], "FUTURES_DELAYED")
-        self.assertEqual(r["oil_weight_pct"], 5)
-        self.assertEqual(r["score_breakdown"]["Oil"], -5)
-        self.assertEqual(r["score"], -57)
-        self.assertTrue(r["oil_score_counted"])
+        self.assertEqual(r["oil_weight_pct"], 0)
+        self.assertIsNone(r["score_breakdown"]["Oil"])
+        self.assertEqual(r["score"], -55)
+        self.assertFalse(r["oil_score_counted"])
         self.assertFalse(r["execution_authority"])
 
     def test_delayed_futures_beyond_fifteen_minutes_never_affect_score(self):
