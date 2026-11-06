@@ -1,0 +1,57 @@
+name: Validate and provision isolated DISP1506 bridge
+on:
+  push:
+    branches: ['work/disp1506-frozen-20261107']
+    paths: ['isolated_disp1506_20261107/**', '.github/workflows/disp1506-isolated.yml']
+permissions:
+  contents: read
+concurrency:
+  group: rizan-cbot-bridge-production-ssh
+  cancel-in-progress: false
+jobs:
+  isolated-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Restore reviewed sidecar sources
+        run: |
+          set -euo pipefail
+          base64 -d isolated_disp1506_20261107/bridge.tar.gz.b64 > bridge.tar.gz
+          sha256sum -c isolated_disp1506_20261107/bridge.sha256
+          mkdir candidate
+          tar -xzf bridge.tar.gz -C candidate
+          gzip -dc repairs/btc_fullfix_20261104/bridge/BTC_SEED_PACKET.json.gz > candidate/bridge/BTC_SEED_PACKET.json
+          python -m pip install -r candidate/bridge/requirements.txt
+          python -m unittest discover -s candidate/bridge -p 'test_*.py'
+          python -m unittest discover -s candidate/bridge/deploy -p 'test_*.py'
+          tar -czf disp1506-bridge.tar.gz -C candidate .
+          sha256sum disp1506-bridge.tar.gz > disp1506-bridge.sha256
+      - name: Install new service and additive WSS route; preserve existing bridges
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]]
+          private_dir=$(mktemp -d)
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$private_dir/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$private_dir/known_hosts"
+          ssh_options=(-i "$private_dir/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$private_dir/known_hosts" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          target='Rizanrizan@202.74.74.172'
+          remote_dir=$(ssh "${ssh_options[@]}" "$target" 'umask 077; mktemp -d /tmp/rizan-disp1506.XXXXXXXX')
+          [[ "$remote_dir" =~ ^/tmp/rizan-disp1506\.[a-zA-Z0-9]+$ ]]
+          cleanup() { ssh "${ssh_options[@]}" "$target" "rm -rf -- '$remote_dir'" > /dev/null 2>&1 || true; rm -rf "$private_dir"; }
+          trap cleanup EXIT
+          scp "${ssh_options[@]}" disp1506-bridge.tar.gz disp1506-bridge.sha256 "$target:$remote_dir/"
+          ssh "${ssh_options[@]}" "$target" "set -e; cd '$remote_dir'; sha256sum -c disp1506-bridge.sha256; tar -xzf disp1506-bridge.tar.gz; sudo -n python3 bridge/deploy/provision_isolated.py" | tee VPS_DISP1506_RESULT.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: disp1506-isolated-bridge-verification
+          path: VPS_DISP1506_RESULT.txt
