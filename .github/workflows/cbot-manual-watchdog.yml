@@ -1,6 +1,9 @@
 name: cBot Manual Monitor Watchdog (Read Only)
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/cbot_manual_watchdog.py', '.github/workflows/cbot-manual-watchdog.yml']
   schedule:
     # Independent recovery path if the long-running publisher finishes and
     # GitHub misses or delays its next scheduled start.
