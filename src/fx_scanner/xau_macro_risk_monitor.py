@@ -363,7 +363,8 @@ def _market_or_fred(symbol, fred_series, feeds):
 def _spot_oil_or_fred(name, symbol, fred_series, feeds):
     """Prefer timestamped DIA spot, then true daily physical spot; no futures."""
     direct = (feeds.get("oil_spot") or {}).get(name)
-    if direct and quote_freshness(direct)["eligible"]:
+    if (direct and quote_freshness(direct)["eligible"]
+            and _number(direct.get("pct")) is not None):
         return direct
     daily = _market_or_fred(symbol, fred_series, feeds)
     return daily or direct
@@ -567,8 +568,8 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
                        f"{q['source']} · basis {q['basis'] or '—'}")
     if any(str(oil_view["quotes"][name]["status"]) == "SPOT_NO_BASELINE"
            for name in ("WTI", "Brent")):
-        st.warning("Harga spot tersedia, tetapi baseline perubahan harian tidak valid; "
-                   "bobot Oil = 0%, tidak menebak arah dari harga tunggal.")
+        st.warning("Harga spot tersedia, tetapi histori perubahan 10–20 menit "
+                   "belum lengkap; bobot dari spot = 0% sampai data cukup.")
     elif any(str(oil_view["quotes"][name]["status"]).startswith(("DELAYED", "STALE"))
              for name in ("WTI", "Brent")):
         st.warning("QUOTE OIL DELAYED. Data tidak memenuhi kontrak waktu/kualitas "
@@ -599,8 +600,8 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             f"cakupan gabungan: {result['coverage_pct']}%"
         )
     st.caption(
-        "Oil adalah satu cluster WTI+Brent: spot indikatif valid ≤5 menit "
-        "berbobot 15%; FRED spot harian ≤48 jam berbobot 8%; "
+        "Oil satu cluster WTI+Brent: spot dengan prior close valid ≤5 menit 15%; "
+        "momentum spot DIA 10–20 menit 5%; FRED spot harian ≤48 jam 8%; "
         "futures tidak dihitung. "
         "Geopolitik dan safe haven masing-masing maksimal 5% dan baru dinilai "
         "berdasarkan peliputan multi-sumber serta konfirmasi pasar. "
@@ -624,7 +625,9 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
         " · USDCHF: " + ("—" if market_risk["USDCHF"] is None else f"{market_risk['USDCHF']:+.2f}%") +
         " (vs previous close; hanya quote segar <=5 menit)."
     )
+    articles, article_error = feeds.get("geo_news") or (None, "NO_FEED")
     st.caption("Berita geopolitik: " + geo["news_status"] +
+               f" · artikel indeks/RSS: {len(articles or [])}" +
                (" · " + geo["reported_region"] if geo["reported_region"] else "") +
                (" · feed error: " + geo["news_error"] if geo["news_error"] else ""))
     for item in geo["news_evidence"]:
@@ -668,7 +671,8 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             st.caption("• " + line)
         st.caption("Perhitungan: Treasury (real yield 50%, US2Y 30%, US10Y 20% "
                    "di dalam kelompok) + DXY, mempertahankan rasio 55:45 dari sisa bobot. "
-                   "Oil: 15% spot indikatif ≤5 menit; 8% FRED spot harian ≤48 jam. "
+                   "Oil: 15% spot dengan prior-close; 5% momentum DIA 10–20 menit; "
+                   "8% FRED spot harian ≤48 jam. "
                    "Geopolitical risk dan safe haven: masing-masing 5% bila koroborasi "
                    "berita serta pasar valid. Futures tidak digunakan. "
                    "Data core hilang/stale = WAIT_DATA. Bobot belum diuji out-of-sample.")
@@ -765,8 +769,10 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                "PCE adalah metrik inflasi kebijakan Fed; CPI indikator pelengkap.")
 
     st.subheader("3 · Energi dan risiko inflasi")
-    wti = _spot_oil_or_fred("WTI", "CL=F", "DCOILWTICO", feeds)
-    brent = _spot_oil_or_fred("Brent", "BZ=F", "DCOILBRENTEU", feeds)
+    wti = (feeds.get("oil_spot") or {}).get("WTI") or _spot_oil_or_fred(
+        "WTI", "CL=F", "DCOILWTICO", feeds)
+    brent = (feeds.get("oil_spot") or {}).get("Brent") or _spot_oil_or_fred(
+        "Brent", "BZ=F", "DCOILBRENTEU", feeds)
     oil1, oil2 = st.columns(2)
     _market_metric(oil1, "WTI spot indikatif (USD/barel)", wti)
     _market_metric(oil2, "Brent spot indikatif (USD/barel)", brent)
@@ -781,9 +787,11 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
             st.caption("Energi turun terhadap basis masing-masing; tekanan inflasi bisa mereda.")
         else:
             st.caption("WTI dan Brent tidak searah; arah inflasi energi belum jelas.")
-    st.caption("DIA WTI/Brent adalah spot referensi indikatif (bukan bid/ask broker); "
-               "hanya dinilai bila timestamp ≤5 menit dan ada baseline perubahan yang valid. "
-               "FRED physical spot harian adalah fallback dengan bobot lebih rendah.")
+    st.caption("DIA WTI/Brent adalah spot indikatif (bukan bid/ask broker). "
+               "Keterangan persen: perubahan dari observasi DIA 10–20 menit sebelumnya; "
+               "maksimum bobot momentum 5% hanya saat kedua quote segar ≤5 menit. "
+               "Sebelum riwayat terbentuk, tidak ada suara spot. "
+               "FRED physical spot harian adalah sumber skor cadangan 8%.")
 
     st.subheader("4 · Dolar AS dan logam mulia")
     st.caption("Yahoo Finance dapat tertunda meski cache diperbarui setiap 60 detik. "
