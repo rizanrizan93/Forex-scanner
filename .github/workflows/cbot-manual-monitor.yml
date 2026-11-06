@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths: ['cbot_manual/**', 'scripts/*cbot_manual.py', 'scripts/read_cbot_native.py', 'src/fx_scanner/cbot_manual*.py', '.github/workflows/cbot-manual-monitor.yml']
   schedule:
-    - cron: '7 */5 * * *'
+    - cron: '7,37 * * * *'
 permissions:
   contents: write
 concurrency:
@@ -14,12 +14,14 @@ concurrency:
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    timeout-minutes: 50
     env:
       CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
       CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
       GITHUB_TOKEN: ${{ github.token }}
+      # Bounded producer shifts permit automatic handoff every ~30 minutes.
+      CBOT_MONITOR_SECONDS: '2040'
     steps:
       - uses: actions/checkout@v4
         with:
