@@ -9,6 +9,12 @@ on:
       - "src/fx_scanner/xau_macro_spot_news_v2.py"
   pull_request:
     branches: [main]
+    paths:
+      - ".github/workflows/macro-public-feed-probe.yml"
+      - "src/fx_scanner/xau_macro_spot_news_v2.py"
+      - "src/fx_scanner/xau_macro_risk_monitor.py"
+      - "src/fx_scanner/xau_oil_macro_context.py"
+      - "src/fx_scanner/xau_macro_gold_consensus.py"
   workflow_dispatch:
 
 permissions:
