@@ -44,7 +44,14 @@ def _validated(row: dict[str, Any] | None, now: datetime) -> dict[str, Any] | No
     if age_s < 0:
         return None
 
-    if source.startswith("FRED"):
+    if source.startswith("DIA RWA"):
+        if (row.get("instrument_type") != "SPOT"
+                or row.get("fresh") is not True
+                or basis != "penutupan sebelumnya"
+                or age_s > OIL_INTRADAY_MAX_AGE_SECONDS):
+            return None
+        cadence = "INTRADAY"
+    elif source.startswith("FRED"):
         if row.get("fresh") is not True or age_s > 7 * 86400:
             return None
         cadence = "HARIAN"
@@ -75,12 +82,21 @@ def oil_quote_status(row: dict[str, Any] | None, now: datetime) -> dict[str, Any
     age = (now.astimezone(UTC) - date).total_seconds() if date else None
     source = str(row.get("source") or "")
     value, pct = _num(row.get("value")), _num(row.get("pct"))
-    is_intraday = source.startswith("Yahoo Finance") or source.startswith("CNBC Quote Cache")
+    is_intraday = (source.startswith("DIA RWA") or
+                   source.startswith("Yahoo Finance") or
+                   source.startswith("CNBC Quote Cache"))
     is_daily = source.startswith("FRED")
-    if not row or age is None or value is None or value <= 0 or pct is None:
+    if not row or age is None or value is None or value <= 0:
         status = "UNAVAILABLE"
     elif age < 0:
         status = "INVALID_TIMESTAMP"
+    elif source.startswith("DIA RWA"):
+        if not row.get("fresh") or age > OIL_INTRADAY_MAX_AGE_SECONDS:
+            status = "STALE_SPOT"
+        else:
+            status = "SPOT_FRESH_5M" if pct is not None else "SPOT_NO_BASELINE"
+    elif pct is None:
+        status = "NO_CHANGE_BASELINE"
     elif is_daily:
         status = "DAILY_CONTEXT" if age <= 48 * 3600 else "STALE_DAILY_CONTEXT"
     elif not is_intraday:
@@ -128,7 +144,7 @@ def assess_oil_macro(oil: dict[str, dict[str, Any] | None] | None, now: datetime
     if wti is None or brent is None:
         base["summary"] = (
             "WTI/Brent tidak lengkap, tidak sebanding, atau melampaui batas sumber "
-            "(5 menit live / 15 menit futures CNBC tertunda / 48 jam FRED untuk skor); "
+            "(spot intraday ≤5 menit dengan baseline valid / spot harian FRED ≤48 jam); "
             "data terakhir hanya ditampilkan sebagai referensi."
         )
         return base

@@ -20,6 +20,7 @@ import streamlit as st
 from .xau_macro_gold_consensus import analyze_gold_macro
 from .xau_market_quote_health import quote_freshness, QUOTE_MAX_AGE_SECONDS
 from .xau_cnbc_macro_quotes import fetch_cnbc_market_quotes, fetch_goldapi_spot
+from .xau_macro_spot_news_v2 import fetch_dia_spot, fetch_geopolitical_rss
 from .xau_macro_daily_regime import (
     assess_daily_regime, fred_daily_yield_row, FRED_YIELD_SERIES,
 )
@@ -29,7 +30,7 @@ FRED_SERIES = {
     "CPIAUCSL", "PCEPILFE", "PCEPI", "DFEDTARU", "DGS2",
     "DCOILWTICO", "DCOILBRENTEU", "DGS10", "DFII10",
 }
-YAHOO_SYMBOLS = {"DX-Y.NYB", "GC=F", "SI=F", "CL=F", "BZ=F", "^VIX", "JPY=X", "CHF=X"}
+YAHOO_SYMBOLS = {"DX-Y.NYB", "^VIX", "JPY=X", "CHF=X"}  # no delayed futures
 MAX_BODY = 256 * 1024
 
 
@@ -125,11 +126,7 @@ def market_quote(symbol):
 
 @st.cache_data(ttl=600, show_spinner=False)
 def geopolitical_headlines():
-    """Discover time-stamped articles, not verified events or trading triggers.
-
-    GDELT only indexes/report-matches headlines; independent reputable domains
-    and risk-off prices must both corroborate before any macro vote.
-    """
+    """Merge GDELT reports with independent publisher RSS; never assume events."""
     q = ('("missile strike" OR "missile attack" OR "airstrike" OR '
          '"drone attack" OR "military strike" OR "military escalation") '
          '(Iran OR Israel OR Ukraine OR Russia OR Taiwan OR Yemen OR "Red Sea" OR Korea) '
@@ -138,25 +135,42 @@ def geopolitical_headlines():
         "query": q, "mode": "ArtList", "format": "json",
         "sort": "DateDesc", "timespan": "24h", "maxrecords": "50",
     })
-    raw = json.loads(_fetch(url, "api.gdeltproject.org").decode("utf-8"))
-    articles = raw.get("articles") if isinstance(raw, dict) else None
-    if not isinstance(articles, list):
-        raise ValueError("GDELT document response lacks article list")
-    result = []
-    for article in articles[:50]:
-        if not isinstance(article, dict):
-            continue
-        seen = str(article.get("seendate") or "")
-        try:
-            observed = datetime.strptime(seen, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC).isoformat()
-        except ValueError:
-            continue
-        result.append({
-            "title": str(article.get("title") or "")[:400],
-            "url": str(article.get("url") or "")[:1800],
-            "observed": observed,
-        })
-    return result
+    articles = []
+    gdelt_ok = False
+    try:
+        raw = json.loads(_fetch(url, "api.gdeltproject.org").decode("utf-8"))
+        rows = raw.get("articles") if isinstance(raw, dict) else None
+        if not isinstance(rows, list):
+            raise ValueError("GDELT response lacks article list")
+        gdelt_ok = True
+        for item in rows[:50]:
+            if not isinstance(item, dict):
+                continue
+            try:
+                stamp = datetime.strptime(
+                    str(item.get("seendate") or ""), "%Y%m%dT%H%M%SZ"
+                ).replace(tzinfo=UTC).isoformat()
+            except ValueError:
+                continue
+            articles.append({
+                "title": str(item.get("title") or "")[:400],
+                "url": str(item.get("url") or "")[:1800],
+                "observed": stamp,
+            })
+    except (ValueError, OSError, json.JSONDecodeError):
+        pass
+    rss, rss_error = _safe(fetch_geopolitical_rss)
+    if rss:
+        articles.extend(rss)
+    if not gdelt_ok and rss_error:
+        raise ValueError("GDELT and trusted publisher RSS are unavailable")
+    seen, merged = set(), []
+    for item in articles:
+        href = item.get("url")
+        if href and href not in seen:
+            seen.add(href)
+            merged.append(item)
+    return merged[:100]
 
 
 @st.cache_data(ttl=15, show_spinner=False)
@@ -207,13 +221,15 @@ def load_external_macro_inputs():
     """
     fred_codes = sorted(FRED_SERIES)
     tasks = [("fred", code) for code in fred_codes] + [
-        ("cnbc", "ALL"), ("us2y", "US2Y"), ("geo", "GDELT")
+        ("cnbc", "ALL"), ("us2y", "US2Y"), ("geo", "GDELT"),
+        ("oil", "WTI"), ("oil", "Brent"),
     ]
     def read(kind, code):
         fn = (fred_history if kind == "fred" else
               cnbc_macro_quotes_cached if kind == "cnbc" else
-              us2y_live if kind == "us2y" else geopolitical_headlines)
-        return _safe(fn, code) if kind == "fred" else _safe(fn)
+              us2y_live if kind == "us2y" else
+              fetch_dia_spot if kind == "oil" else geopolitical_headlines)
+        return _safe(fn, code) if kind in {"fred", "oil"} else _safe(fn)
     with ThreadPoolExecutor(max_workers=8) as pool:
         futures = {key: pool.submit(read, *key) for key in tasks}
         outcomes = {key: future.result() for key, future in futures.items()}
@@ -246,6 +262,7 @@ def load_external_macro_inputs():
         "fred": {code: outcomes[("fred", code)][0] for code in fred_codes},
         "market": market,
         "spot": spot,
+        "oil_spot": {key: outcomes[("oil", key)][0] for key in ("WTI", "Brent")},
         "us2y": outcomes[("us2y", "US2Y")],
         "geo_news": outcomes[("geo", "GDELT")],
         "source_health": {
@@ -253,6 +270,8 @@ def load_external_macro_inputs():
             "cnbc_error": fast_err,
             "yahoo_missing": missing,
             "yahoo_errors": fallback_errors,
+            "dia_wti_error": outcomes[("oil", "WTI")][1],
+            "dia_brent_error": outcomes[("oil", "Brent")][1],
         },
     }
 
@@ -341,6 +360,15 @@ def _market_or_fred(symbol, fred_series, feeds):
     return data if data else None
 
 
+def _spot_oil_or_fred(name, symbol, fred_series, feeds):
+    """Prefer timestamped DIA spot, then true daily physical spot; no futures."""
+    direct = (feeds.get("oil_spot") or {}).get(name)
+    if direct and quote_freshness(direct)["eligible"]:
+        return direct
+    daily = _market_or_fred(symbol, fred_series, feeds)
+    return daily or direct
+
+
 def _market_metric(slot, title, data, *, unit=""):
     quality = quote_freshness(data)
     if not data or quality["status"] == "UNAVAILABLE":
@@ -398,10 +426,10 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     )
     pce, _, _ = _yoy("PCEPI", feeds)
     cpi, _, _ = _yoy("CPIAUCSL", feeds)
-    wti = _market_or_fred("CL=F", "DCOILWTICO", feeds)
-    brent = _market_or_fred("BZ=F", "DCOILBRENTEU", feeds)
-    gold = feeds["market"].get("GC=F")
-    silver = feeds["market"].get("SI=F")
+    wti = _spot_oil_or_fred("WTI", "CL=F", "DCOILWTICO", feeds)
+    brent = _spot_oil_or_fred("Brent", "BZ=F", "DCOILBRENTEU", feeds)
+    gold = (feeds.get("spot") or {}).get("XAU_SPOT")
+    silver = (feeds.get("spot") or {}).get("XAG_SPOT")
     result = analyze_gold_macro(
         yields=yield_rows,
         dxy=_selected_dxy(macro_eval, feeds),
@@ -419,9 +447,9 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     )
 
     st.subheader("KESIMPULAN GABUNGAN MAKRO GOLD")
-    st.caption("RIZAN Macro Synthesis V3 · sumber CNBC cepat untuk DXY/VIX/FX, "
-               "Gold & Silver spot real-time indikatif; futures tetap delayed bila "
-               "aturan bursanya demikian. Bobot mengikuti timestamp sumber.")
+    st.caption("RIZAN Macro Spot V4 · WTI/Brent DIA spot indikatif (atau FRED harian), "
+               "XAU/XAG spot OTC indikatif, DXY/VIX/FX CNBC. "
+               "Setiap bobot menggunakan timestamp asli; tidak menggunakan futures.")
     provider_status = feeds.get("source_health") or {}
     if provider_status.get("cnbc_count"):
         st.caption(f"CNBC public batch: {provider_status['cnbc_count']} simbol tersedia · "
@@ -485,7 +513,7 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
                    oil_view["score_reason"])
     else:
         st.caption("**BOBOT OIL (WTI + Brent): 0% · tidak masuk skor XAU** "
-                   "(feed tidak cukup segar/sebanding).")
+                   "(spot stale, tidak sebanding, atau perubahan vs baseline belum ada).")
     wti_top, brent_top = (oil_view["quotes"].get(name) or {}
                           for name in ("WTI", "Brent"))
     st.caption(
@@ -537,11 +565,11 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
                    f"{q['age_minutes']:.1f} menit")
             st.caption(f"Timestamp {symbol}: {observed_wib} WIB · usia {age} · "
                        f"{q['source']} · basis {q['basis'] or '—'}")
-    if oil_view["status"] == "FUTURES_DELAYED":
-        st.warning("OIL FUTURES EXCHANGE-DELAYED (≤15 menit). WTI+Brent "
-                   "digunakan hanya sebagai konteks inflasi berbobot RENDAH 5% "
-                   "jika Treasury/DXY valid, BUKAN harga live atau pemicu order.")
-    elif any(str(oil_view["quotes"][name]["status"]).startswith("DELAYED")
+    if any(str(oil_view["quotes"][name]["status"]) == "SPOT_NO_BASELINE"
+           for name in ("WTI", "Brent")):
+        st.warning("Harga spot tersedia, tetapi baseline perubahan harian tidak valid; "
+                   "bobot Oil = 0%, tidak menebak arah dari harga tunggal.")
+    elif any(str(oil_view["quotes"][name]["status"]).startswith(("DELAYED", "STALE"))
              for name in ("WTI", "Brent")):
         st.warning("QUOTE OIL DELAYED. Data tidak memenuhi kontrak waktu/kualitas "
                    "untuk skor Oil; harga tetap referensi.")
@@ -571,9 +599,9 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             f"cakupan gabungan: {result['coverage_pct']}%"
         )
     st.caption(
-        "Oil adalah satu cluster WTI+Brent: quote intraday valid ≤5 menit "
-        "berbobot 15%; CNBC futures exchange-delayed ≤15 menit berbobot "
-        "rendah 5%; FRED harian ≤48 jam berbobot 8%. "
+        "Oil adalah satu cluster WTI+Brent: spot indikatif valid ≤5 menit "
+        "berbobot 15%; FRED spot harian ≤48 jam berbobot 8%; "
+        "futures tidak dihitung. "
         "Geopolitik dan safe haven masing-masing maksimal 5% dan baru dinilai "
         "berdasarkan peliputan multi-sumber serta konfirmasi pasar. "
         "Skor belum terkalibrasi; tidak mengotorisasi order cBot."
@@ -640,10 +668,9 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             st.caption("• " + line)
         st.caption("Perhitungan: Treasury (real yield 50%, US2Y 30%, US10Y 20% "
                    "di dalam kelompok) + DXY, mempertahankan rasio 55:45 dari sisa bobot. "
-                   "Oil: 15% intraday ≤5 menit; 5% futures CNBC tertunda ≤15 menit; "
-                   "8% FRED spot harian ≤48 jam. "
+                   "Oil: 15% spot indikatif ≤5 menit; 8% FRED spot harian ≤48 jam. "
                    "Geopolitical risk dan safe haven: masing-masing 5% bila koroborasi "
-                   "berita serta pasar valid. Futures tertunda hanya konteks bobot rendah. "
+                   "berita serta pasar valid. Futures tidak digunakan. "
                    "Data core hilang/stale = WAIT_DATA. Bobot belum diuji out-of-sample.")
 
     st.info("KESIMPULAN EKSEKUSI: " +
@@ -738,15 +765,15 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                "PCE adalah metrik inflasi kebijakan Fed; CPI indikator pelengkap.")
 
     st.subheader("3 · Energi dan risiko inflasi")
-    wti = feeds["market"].get("CL=F") or _market_or_fred("CL=F", "DCOILWTICO", feeds)
-    brent = feeds["market"].get("BZ=F") or _market_or_fred("BZ=F", "DCOILBRENTEU", feeds)
+    wti = _spot_oil_or_fred("WTI", "CL=F", "DCOILWTICO", feeds)
+    brent = _spot_oil_or_fred("Brent", "BZ=F", "DCOILBRENTEU", feeds)
     oil1, oil2 = st.columns(2)
-    _market_metric(oil1, "WTI futures (USD/barel)", wti)
-    _market_metric(oil2, "Brent futures (USD/barel)", brent)
+    _market_metric(oil1, "WTI spot indikatif (USD/barel)", wti)
+    _market_metric(oil2, "Brent spot indikatif (USD/barel)", brent)
     # The scored Oil channel may use genuinely DAILY FRED as a separate
     # lower-weight context. Never relabel delayed futures as live spot.
-    valid_wti = _market_or_fred("CL=F", "DCOILWTICO", feeds)
-    valid_brent = _market_or_fred("BZ=F", "DCOILBRENTEU", feeds)
+    valid_wti = wti
+    valid_brent = brent
     if valid_wti and valid_brent and valid_wti.get("fresh") and valid_brent.get("fresh"):
         if valid_wti["pct"] > 0 and valid_brent["pct"] > 0:
             st.caption("Energi naik terhadap basis masing-masing; tekanan inflasi bisa meningkat.")
@@ -754,9 +781,9 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
             st.caption("Energi turun terhadap basis masing-masing; tekanan inflasi bisa mereda.")
         else:
             st.caption("WTI dan Brent tidak searah; arah inflasi energi belum jelas.")
-    st.caption("Futures CNBC/Yahoo dapat tertunda sekitar 10 menit menurut ketentuan bursa. "
-               "Feed ini diperbarui dengan timestamp sumber, bukan dianggap real-time. "
-               "FRED spot harian hanya dipakai sebagai konteks berbobot lebih rendah.")
+    st.caption("DIA WTI/Brent adalah spot referensi indikatif (bukan bid/ask broker); "
+               "hanya dinilai bila timestamp ≤5 menit dan ada baseline perubahan yang valid. "
+               "FRED physical spot harian adalah fallback dengan bobot lebih rendah.")
 
     st.subheader("4 · Dolar AS dan logam mulia")
     st.caption("Yahoo Finance dapat tertunda meski cache diperbarui setiap 60 detik. "
@@ -773,37 +800,26 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
                    "observed": d["current_at"], "fresh": True,
                    "source": str(d.get("source") or "Macro worker"),
                    "basis": "referensi intraday worker"}
-    gold = feeds["market"].get("GC=F")
-    silver = feeds["market"].get("SI=F")
+    gold = (feeds.get("spot") or {}).get("XAU_SPOT")
+    silver = (feeds.get("spot") or {}).get("XAG_SPOT")
     dx, au, ag = st.columns(3)
     _market_metric(dx, "DXY", dxy)
-    _market_metric(au, "Gold futures GC", gold)
-    _market_metric(ag, "Silver futures SI", silver)
-    st.markdown("**Harga spot lebih cepat (indikatif, BUKAN futures)**")
-    spot_gold = (feeds.get("spot") or {}).get("XAU_SPOT")
-    spot_silver = (feeds.get("spot") or {}).get("XAG_SPOT")
-    spot_a, spot_b = st.columns(2)
-    _market_metric(spot_a, "Gold spot XAU/USD", spot_gold)
-    _market_metric(spot_b, "Silver spot XAG/USD", spot_silver)
-    if all(quote_freshness(q)["eligible"] for q in (spot_gold, spot_silver)):
-        st.caption("Spot XAU/XAG segar menurut timestamp penyedia; gunakan hanya "
-                   "sebagai konteks, harga bukan bid/ask FP Markets cTrader.")
-    else:
-        st.caption("Minimal satu harga spot tidak segar; bukan konfirmasi saat ini.")
+    _market_metric(au, "Gold spot XAU/USD", gold)
+    _market_metric(ag, "Silver spot XAG/USD", silver)
     if any(not quote_freshness(item)["eligible"] for item in (dxy, gold, silver)):
-        st.warning("Sebagian feed DXY/Gold/Silver DELAYED (>5 menit) atau hanya data harian. "
-                   "Harga terakhir ditampilkan sebagai referensi, bukan konfirmasi pasar intraday.")
-    if all(quote_freshness(item)["eligible"] for item in (dxy, gold, silver)):
+        st.warning("Sebagian feed DXY/XAU spot/XAG spot tidak segar. "
+                   "Harga terakhir hanya referensi, bukan konfirmasi saat ini.")
+    if all(quote_freshness(item)["eligible"] and _number(item.get("pct")) is not None
+           for item in (dxy, gold, silver)):
         if dxy["pct"] > 0 and gold["pct"] < 0 and silver["pct"] < 0:
-            st.caption("DXY menguat sementara futures emas dan perak melemah: tekanan lintas aset teramati pada basis masing-masing.")
+            st.caption("DXY menguat bersamaan dengan pelemahan spot XAU dan XAG.")
         else:
-            st.caption("Tekanan DXY terhadap emas dan perak belum terkonfirmasi serempak.")
+            st.caption("Tekanan DXY terhadap spot XAU/XAG belum searah.")
     else:
-        st.caption("Konfirmasi lintas aset tertunda karena ada quote DXY/logam yang belum segar.")
-    st.caption("GC/SI adalah futures exchange-delayed. XAU/XAG spot CNBC/Gold-API "
-               "adalah harga indikatif dengan pembaruan terpisah, bukan bid/ask cTrader. "
-               "DXY dan yield menguat bersamaan sering menjadi headwind emas, "
-               "namun hubungan ini tidak selalu berlaku.")
+        st.caption("Perubahan spot vs penutupan sebelumnya belum lengkap; "
+                   "tidak dibuat sinyal lintas aset.")
+    st.caption("Spot XAU/XAG adalah OTC indikatif, bukan bid/ask FP Markets cTrader. "
+               "Arah emas tidak disimpulkan dari satu quote yang tidak punya baseline.")
 
     st.info("KESIMPULAN OPERASIONAL: konteks makro saja, BUKAN sinyal entry. "
             "Konfirmasi di H1 (bias/zona), M15 (MSS/reversal), M5 (refinement). "

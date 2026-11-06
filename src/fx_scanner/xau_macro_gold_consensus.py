@@ -123,8 +123,8 @@ def analyze_gold_macro(
     })
     # Oil is a separate, *small* inflation channel. Treat WTI+Brent as ONE
     # source cluster; never count oil twice or manufacture geopolitical signs.
-    # Intraday futures are prioritized; daily FRED observations receive a
-    # reduced allocation only while both are <=48h old.
+    # Intraday DIA indicative spot is prioritized; daily FRED physical spot
+    # receives a reduced allocation only while both are <=48h old.
     oil_assessment = assess_oil_macro(oil, now)
     oil_status = oil_assessment["status"]
     oil_trend = oil_assessment["trend"]
@@ -135,17 +135,14 @@ def analyze_gold_macro(
                 for name in ("wti", "brent"))
     )
     oil_weight = (0.15 if oil_status == "INTRADAY" and oil_vote is not None
-                  else 0.05 if oil_status == "FUTURES_DELAYED" and oil_vote is not None
                   else 0.08 if daily_oil_recent and oil_vote is not None
                   else 0.0)
     oil_counted = oil_weight > 0
     oil_assessment["score_influence"] = oil_counted
     oil_assessment["score_weight_pct"] = round(100 * oil_weight)
     oil_assessment["score_reason"] = (
-        "Futures intraday WTI+Brent dinilai sebagai satu kanal inflasi (bobot 15%)."
+        "Spot indikatif DIA WTI+Brent segar (≤5 menit) adalah satu kanal inflasi (bobot 15%)."
         if oil_status == "INTRADAY" and oil_counted
-        else "Futures CNBC exchange-delayed ≤15 menit: hanya bobot heuristik 5%; BUKAN sinyal live."
-        if oil_status == "FUTURES_DELAYED" and oil_counted
         else "FRED spot harian WTI+Brent: bobot konservatif 8% (usia data maksimal 48 jam)."
         if oil_status == "HARIAN" and oil_counted
         else "Oil tidak lolos validasi kelengkapan/kesetaraan/freshness untuk skor; tetap konteks."
@@ -175,7 +172,7 @@ def analyze_gold_macro(
                 "name": name, "group": "Geo/Safe Haven",
                 "direction": vote, "reason": geo_haven["status"],
                 "observed_at": now.isoformat(), "source": (
-                    "GDELT reports + market proxy" if name.startswith("Geopolitical")
+                    "GDELT/publisher RSS reports + market proxy" if name.startswith("Geopolitical")
                     else "Yahoo Finance cross-asset proxies"),
                 "counted": True, "weight": weight,
             })
@@ -295,9 +292,9 @@ def analyze_gold_macro(
     gold, silver = metals.get("Gold") or {}, metals.get("Silver") or {}
     if all(item.get("fresh") and _num(item.get("pct")) is not None for item in (gold, silver)):
         g, s = _num(gold["pct"]), _num(silver["pct"])
-        context.append(f"Konfirmasi harga: futures Gold {g:+.2f}%, Silver {s:+.2f}%; tidak dipakai memberi suara makro.")
+        context.append(f"Konfirmasi harga: spot XAU {g:+.2f}%, XAG {s:+.2f}%; tidak dipakai memberi suara makro.")
     else:
-        context.append("Konfirmasi Gold/Silver futures belum komplet; tidak menjadi vote.")
+        context.append("Konfirmasi spot XAU/XAG belum komplet; tidak menjadi vote.")
 
     bullish = [item for item in details if item["direction"] == 1]
     bearish = [item for item in details if item["direction"] == -1]
