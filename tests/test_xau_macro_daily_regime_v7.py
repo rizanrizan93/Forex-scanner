@@ -29,7 +29,7 @@ class DailyRegimeTests(unittest.TestCase):
     def test_closed_session_can_use_last_dxy_and_official_treasury(self):
         r=assess_daily_regime(yields=rows(),dxy_last=close(4),now=NOW)
         self.assertEqual(r["status"],"REGIME_HARIAN_TERSEDIA")
-        self.assertEqual(r["bias"],"BEARISH REGIME")
+        self.assertEqual(r["bias"],"NETRAL / MIXED REGIME")
         self.assertEqual(r["score"],-10)
         self.assertEqual(r["coverage_pct"],100)
         self.assertFalse(r["execution_authority"])
@@ -64,7 +64,11 @@ class DailyRegimeTests(unittest.TestCase):
         self.assertIsNone(r["score"])
 
     def test_daily_rejects_unaligned_observations(self):
-        r=assess_daily_regime(yields=rows(),dxy_last=close(90),now=NOW)
+        # Data penutupan DXY 96h lalu dan yield 2h lalu berbeda >72h.
+        official = rows()
+        for item in official.values():
+            item["observed_at"] = (NOW-timedelta(hours=2)).isoformat()
+        r=assess_daily_regime(yields=official,dxy_last=close(96),now=NOW)
         self.assertIsNone(r["score"])
 
     def test_at_least_two_valid_yields_required(self):
