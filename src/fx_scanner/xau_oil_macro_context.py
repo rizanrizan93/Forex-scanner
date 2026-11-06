@@ -47,10 +47,11 @@ def _validated(row: dict[str, Any] | None, now: datetime) -> dict[str, Any] | No
     if source.startswith("DIA RWA"):
         if (row.get("instrument_type") != "SPOT"
                 or row.get("fresh") is not True
-                or basis != "penutupan sebelumnya"
+                or basis not in {"penutupan sebelumnya", "perubahan spot 10–20 menit"}
                 or age_s > OIL_INTRADAY_MAX_AGE_SECONDS):
             return None
-        cadence = "INTRADAY"
+        cadence = ("SPOT_MOMENTUM" if basis == "perubahan spot 10–20 menit"
+                   else "INTRADAY")
     elif source.startswith("FRED"):
         if row.get("fresh") is not True or age_s > 7 * 86400:
             return None
@@ -94,7 +95,10 @@ def oil_quote_status(row: dict[str, Any] | None, now: datetime) -> dict[str, Any
         if not row.get("fresh") or age > OIL_INTRADAY_MAX_AGE_SECONDS:
             status = "STALE_SPOT"
         else:
-            status = "SPOT_FRESH_5M" if pct is not None else "SPOT_NO_BASELINE"
+            status = ("SPOT_MOMENTUM_10_20M"
+                      if pct is not None and row.get("basis") == "perubahan spot 10–20 menit"
+                      else "SPOT_FRESH_5M" if pct is not None
+                      else "SPOT_NO_BASELINE")
     elif pct is None:
         status = "NO_CHANGE_BASELINE"
     elif is_daily:
@@ -144,7 +148,7 @@ def assess_oil_macro(oil: dict[str, dict[str, Any] | None] | None, now: datetime
     if wti is None or brent is None:
         base["summary"] = (
             "WTI/Brent tidak lengkap, tidak sebanding, atau melampaui batas sumber "
-            "(spot intraday ≤5 menit dengan baseline valid / spot harian FRED ≤48 jam); "
+            "(spot ≤5 menit dengan baseline 10–20 menit / spot harian FRED ≤48 jam); "
             "data terakhir hanya ditampilkan sebagai referensi."
         )
         return base
