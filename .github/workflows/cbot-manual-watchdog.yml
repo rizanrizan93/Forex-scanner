@@ -1,0 +1,23 @@
+name: cBot Manual Monitor Watchdog (Read Only)
+on:
+  workflow_dispatch:
+  schedule:
+    # Independent recovery path if the long-running publisher finishes and
+    # GitHub misses or delays its next scheduled start.
+    - cron: '3,13,23,33,43,53 * * * *'
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: cbot-manual-watchdog
+  cancel-in-progress: false
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check snapshot freshness and restart idle monitor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/cbot_manual_watchdog.py
