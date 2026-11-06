@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from math import isfinite
@@ -132,13 +133,18 @@ def fetch_geopolitical_rss():
     now = datetime.now(UTC)
     articles = []
     successes = 0
-    for host, url in RSS_FEEDS:
+    def one(source):
+        host, url = source
         try:
-            body = _fetch(url, host)
-            articles.extend(_parse_rss(body, now))
-            successes += 1
+            return _parse_rss(_fetch(url, host), now)
         except (OSError, ValueError, ET.ParseError):
-            continue
+            return None
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        for found in pool.map(one, RSS_FEEDS):
+            if found is not None:
+                articles.extend(found)
+                successes += 1
     if not successes:
         raise ValueError("Every trusted geopolitical RSS feed failed")
     seen = set()
