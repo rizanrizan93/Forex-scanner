@@ -131,6 +131,83 @@ def run():
     print('BRIDGE_AUDIT_BTC_SERVICE=' + json.dumps({
         'active': btc.returncode == 0 and btc.stdout.strip() == 'active',
         'service': 'rizan-btc7d130.service'}), flush=True)
+    # Independent BTC10 and isolated-bridge diagnostics: read-only, no service mutation.
+    for unit_name in ('rizan-btc10-bridge.service', 'rizan-btc7d130.service',
+                      'rizan-disp1506-bridge.service'):
+        response = command(['systemctl', 'is-active', unit_name], check=False)
+        print('BRIDGE_AUDIT_SERVICE=' + json.dumps({
+            'unit': unit_name, 'status': response.stdout.strip()[:40],
+            'active': response.returncode == 0}), flush=True)
+    btc_root = Path('/var/lib/rizan-btc10-bridge')
+    health_file = btc_root / 'health.json'
+    try:
+        if health_file.is_file():
+            value = json.loads(health_file.read_text())
+            observed = value.get('observed_utc')
+            try:
+                at = datetime.fromisoformat(str(observed).replace('Z', '+00:00'))
+                age = round((datetime.now(timezone.utc) - at).total_seconds(), 1) if at.utcoffset() is not None else None
+            except (TypeError, ValueError):
+                age = None
+            print('BRIDGE_AUDIT_BTC10_HEALTH=' + json.dumps({
+                'age_seconds': age, 'profile': safe_identifier(value.get('profile')),
+                'btc': safe_identifier(value.get('btc')),
+                'connected': value.get('connected') if isinstance(value.get('connected'), int) else None,
+                'execution_authority': safe_identifier(value.get('execution_authority')),
+                'macro_snapshot_present': value.get('macro_snapshot_present')
+            }), flush=True)
+        else:
+            print('BRIDGE_AUDIT_BTC10_HEALTH=ABSENT', flush=True)
+    except (OSError, ValueError, TypeError) as exc:
+        print('BRIDGE_AUDIT_BTC10_HEALTH_READ_ERROR=' + type(exc).__name__, flush=True)
+    btc_db = btc_root / 'checkpoints.sqlite'
+    try:
+        btc_con = sqlite3.connect(btc_db.resolve().as_uri() + '?mode=ro', uri=True, timeout=5)
+        btc_con.execute('PRAGMA query_only=ON')
+        try:
+            for key, version, raw in btc_con.execute('SELECT key,version,state FROM checkpoints'):
+                state = json.loads(raw)
+                account = str(state.get('AccountNumber', ''))
+                symbol = state.get('Symbol')
+                if not account.endswith('7903') or symbol not in ('XAUUSD', 'EURUSD', 'BTCUSD'):
+                    continue
+                summary = {'symbol': symbol, 'account_suffix': account[-4:],
+                           'server_version': version, 'client_revision': state.get('Revision')}
+                for field in ('LastBarUtc', 'LastSignalUtc', 'WeekendLockUntil',
+                              'Quarantined', 'Fault', 'Sending', 'ExitPending'):
+                    value = state.get(field)
+                    if isinstance(value, (str, int, float, bool)) or value is None:
+                        summary[field] = value[:48] if isinstance(value, str) else value
+                summary['pending_intent'] = bool(state.get('NativePendingLabel') or state.get('PendingLabel'))
+                print('BRIDGE_AUDIT_BTC10_STATUS=' + json.dumps(summary), flush=True)
+            for key, expires, touched in btc_con.execute('SELECT key,expires_at,touched_at FROM bridge_leases'):
+                if not re.search(r'7903:(?:XAUUSD|EURUSD|BTCUSD)
+                symbol = key.split(':')[-1]
+                if symbol not in ('XAUUSD', 'EURUSD', 'BTCUSD'):
+                    continue
+                print('BRIDGE_AUDIT_BTC10_LEASE=' + json.dumps({
+                    'symbol': symbol, 'account_suffix': '7903',
+                    'remaining_seconds': round(expires - time.time(), 1),
+                    'last_touch_age_seconds': round(time.time() - touched, 1)
+                }), flush=True)
+        finally:
+            btc_con.close()
+    except (OSError, sqlite3.Error, ValueError, TypeError) as exc:
+        print('BRIDGE_AUDIT_BTC10_DB_READ_ERROR=' + type(exc).__name__, flush=True)
+, key):
+                    continue
+                symbol = key.split(':')[-1]
+                if symbol not in ('XAUUSD', 'EURUSD', 'BTCUSD'):
+                    continue
+                print('BRIDGE_AUDIT_BTC10_LEASE=' + json.dumps({
+                    'symbol': symbol, 'account_suffix': '7903',
+                    'remaining_seconds': round(expires - time.time(), 1),
+                    'last_touch_age_seconds': round(time.time() - touched, 1)
+                }), flush=True)
+        finally:
+            btc_con.close()
+    except (OSError, sqlite3.Error, ValueError, TypeError) as exc:
+        print('BRIDGE_AUDIT_BTC10_DB_READ_ERROR=' + type(exc).__name__, flush=True)
     print('BRIDGE_AUDIT_READ_ONLY_COMPLETE', flush=True)
 
 
