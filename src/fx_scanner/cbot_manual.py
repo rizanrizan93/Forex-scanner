@@ -29,7 +29,8 @@ def project(calculations,market,native,*,now=None):
  for calc in calculations:
   c=deepcopy(calc);symbol=c['symbol'];c.update(status='WAIT',entry=None,sl=None,tp=None,layers=[],blockers=[])
   if c.get('error'):
-   c['reason']='Feed strategi BTC belum tersedia';rows.append(c);continue
+   c.update(status='DATA_TERLAMBAT',reason='Feed strategi BTC gagal diverifikasi',areas=[],signal=None,indicator=None,indicator_history=[])
+   rows.append(c);continue
   bar=stamp(c.get('bar_at'));limit=3660 if symbol=='BTCUSD' else (960 if symbol=='EURUSD' else 360)
   if not bar or not fresh(c.get('bar_at'),now,limit):
    c.update(status='DATA_TERLAMBAT',reason='Candle strategi belum diperbarui',areas=[],signal=None,indicator=None,indicator_history=[]);rows.append(c);continue
