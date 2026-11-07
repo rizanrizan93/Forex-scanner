@@ -100,3 +100,11 @@ def test_stale_watch_reference_is_labeled_but_never_an_entry():
  assert r['reference_areas'] and not r['areas'] and r['entry'] is None
  q=validate(p,now=NOW+timedelta(minutes=11))
  assert not q['symbols'][0]['reference_areas']
+
+
+def test_btc_unverified_feed_is_never_reported_as_wait():
+ c,m,n=fixture();c.update(symbol='BTCUSD',error='FEED_BTC_BELUM_TERVERIFIKASI')
+ r=project([c],m,n,now=NOW)['symbols'][0]
+ assert r['status']=='DATA_TERLAMBAT'
+ assert r['signal'] is None and not r['areas']
+ assert 'gagal diverifikasi' in r['reason']
