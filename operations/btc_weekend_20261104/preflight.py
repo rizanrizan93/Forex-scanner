@@ -6,6 +6,7 @@ reuses the reviewed, read-only preflight without checkpoint/service mutation.
 import hashlib
 import json
 import os
+import subprocess
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -97,6 +98,35 @@ def audit(folder, backup_root):
     if health.is_file():
         data = json.loads(health.read_text())
         result['health'] = {k: data.get(k) for k in ('profile', 'observed_utc', 'btc', 'connected', 'execution_authority')}
+    # Aggregate recent transport symptoms without revealing journal lines, IPs or tokens.
+    result['recent_transport_log_counts'] = {}
+    needles = {
+        'auth_rejected': ('auth_failed', 'authentication failed', 'unauthorized'),
+        'lease_conflict': ('lease_busy', 'lease_expired'),
+        'connect': ('connected', 'handshake', 'client accepted'),
+        'disconnect': ('disconnected', 'connection closed', 'websocket closed'),
+        'timeout': ('timeout', 'timed out'),
+        'transport_error': ('connection refused', 'reset by peer', 'tls error'),
+        'server_error': ('traceback', 'exception', 'error')
+    }
+    for unit in ('rizan-btc10-bridge.service', 'rizan-btc7d130.service',
+                 'rizan-disp1506-bridge.service'):
+        try:
+            process = subprocess.run(
+                ['journalctl', '-u', unit, '--since', '30 minutes ago',
+                 '--no-pager', '-o', 'cat'],
+                capture_output=True, text=True, timeout=12, check=False)
+            if process.returncode != 0:
+                result['recent_transport_log_counts'][unit] = {'read_error': 'JOURNAL_UNAVAILABLE'}
+                continue
+            lines = process.stdout.splitlines()[-8000:]
+            result['recent_transport_log_counts'][unit] = {
+                'lines_inspected': len(lines),
+                **{category: sum(any(word in line.lower() for word in words) for line in lines)
+                   for category, words in needles.items()}
+            }
+        except (OSError, subprocess.TimeoutExpired):
+            result['recent_transport_log_counts'][unit] = {'read_error': 'JOURNAL_TIMEOUT_OR_IO'}
     result['limitations'] = ['Pre-maintenance remote snapshot only; writer remains active',
                             'Local cTrader checkpoint, active binary, parameters and journal unavailable',
                             'No broker position or pending order verification in this script',
