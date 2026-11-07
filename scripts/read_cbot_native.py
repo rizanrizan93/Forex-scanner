@@ -45,6 +45,14 @@ def main():
    code="import sys,time;sys.path.insert(0,sys.argv[1]);from server import Feed;f=Feed(sys.argv[2]);f.update(time.time());print(f.wire(time.time()))"
    child=subprocess.run([match.group(1),'-c',code,str(wd),seed],capture_output=True,text=True,check=True,timeout=110,cwd=wd)
    out['btc_feed']=json.loads(child.stdout)
+  except subprocess.CalledProcessError as exc:
+   # Classify only a fixed list of Python failures. Never publish stderr, URLs or tokens.
+   detail=(exc.stderr or '')[-6000:]
+   categories=('HTTPError','URLError','TimeoutError','ConnectionError',
+               'FileNotFoundError','PermissionError','ModuleNotFoundError',
+               'ValueError','RuntimeError','KeyError','JSONDecodeError')
+   out['btc_feed_error']='CalledProcessError'
+   out['btc_feed_error_category']=next((label for label in categories if label in detail),'UNCLASSIFIED')
   except Exception as exc:out['btc_feed_error']=type(exc).__name__
  print(json.dumps(out,allow_nan=False))
 if __name__=='__main__':main()
