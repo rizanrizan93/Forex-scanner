@@ -1,4 +1,8 @@
-"""Pre-maintenance remote backup and redacted audit; never modifies live state."""
+"""Pre-maintenance remote backup and redacted audit; never modifies live state.
+
+Operator requested current LIVE 7903 bridge verification on 2026-11-08. This
+reuses the reviewed, read-only preflight without checkpoint/service mutation.
+"""
 import hashlib
 import json
 import os
