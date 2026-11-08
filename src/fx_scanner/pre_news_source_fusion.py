@@ -45,7 +45,13 @@ def canonical_event_key(title: str) -> str:
     normalized key rather than being silently mapped to the wrong component.
     """
     text = _clean_title(title)
-    core = "CORE" in text
+    core = (
+        "CORE" in text
+        or "EX FOOD ENERGY" in text
+        or "EXCLUDING FOOD ENERGY" in text
+        or "EX FOOD AND ENERGY" in text
+        or "EXCLUDING FOOD AND ENERGY" in text
+    )
     yoy = "YOY" in text
     mom = "MOM" in text
 
