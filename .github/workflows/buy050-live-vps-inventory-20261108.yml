@@ -142,7 +142,7 @@ jobs:
                   'service_active':cmd(['systemctl','is-active','rizan-buy050-bridge.service']).strip()=='active',
                   'mem_mb':next((x.get('systemd_mem_mb') for x in services if x.get('unit')=='rizan-buy050-bridge.service'),None)
               }
-                    print('BUY050_VPS_INVENTORY_BEGIN')
+          print('BUY050_VPS_INVENTORY_BEGIN')
           print(json.dumps(snapshot,sort_keys=True))
           print('BUY050_VPS_INVENTORY_END')
           PY
