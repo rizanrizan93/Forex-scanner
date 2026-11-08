@@ -1,0 +1,41 @@
+name: BUY050 Research Retrieve Prior Tick Audit Archive (no live)
+on:
+  push:
+    branches: ['research/buy050-integrated-replay-20261108']
+    paths: ['.github/workflows/buy050-research-fetch-tick-audit-20261108.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Copy historical archived dataset only from VPS
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          sshopt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=25)
+          mkdir -p research_archive
+          scp "${sshopt[@]}" Rizanrizan@202.74.74.172:/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS/full-frozen-parity-2019-2026/RIZAN_FROZEN_TICK_AUDIT.zip research_archive/
+          python3 - <<'PY'
+          import zipfile,json,pathlib
+          x=pathlib.Path("research_archive/RIZAN_FROZEN_TICK_AUDIT.zip")
+          with zipfile.ZipFile(x) as z:
+           items=[{"path":i.filename,"bytes":i.file_size} for i in z.infolist()]
+           print("TICK_ARCHIVE_LIST="+json.dumps({"count":len(items),"total_uncompressed":sum(i["bytes"] for i in items),"files":items[:170]}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RIZAN_FROZEN_TICK_AUDIT_READONLY_2019_2026
+          path: research_archive/RIZAN_FROZEN_TICK_AUDIT.zip
+          retention-days: 7
+          compression-level: 0
