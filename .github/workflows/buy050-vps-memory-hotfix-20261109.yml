@@ -1,0 +1,146 @@
+name: BUY050 Isolated VPS Memory Feed Hotfix (guarded + rollback)
+on:
+  push:
+    branches: ['fix/buy050-cloud-memory-resilience-v2-20261109']
+    paths:
+      - '.github/workflows/buy050-vps-memory-hotfix-20261109.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rizan-buy050-isolated-deploy
+  cancel-in-progress: false
+jobs:
+  deploy-bridge-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify bridge source and simulated websocket protocol before any remote action
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile repairs/buy050_identity_20261108/bridge/server.py
+          python3 -m pip install -r repairs/buy050_identity_20261108/bridge/requirements.txt
+          (cd repairs/buy050_identity_20261108/bridge && python3 -m unittest -q test_bridge.DurableTests test_bridge.WireTests)
+      - name: Guarded isolated service-only bridge replacement / automatic rollback
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo 'SSH_PREREQUISITES_MISSING'; exit 1; }
+          d=$(mktemp -d)
+          remote=''
+          sshopt=()
+          cleanup() {
+            if [[ -n "$remote" ]]; then
+              ssh "${sshopt[@]}" 'Rizanrizan@202.74.74.172' "rm -rf -- '$remote'" >/dev/null 2>&1 || true
+            fi
+            rm -rf -- "$d"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          sshopt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20)
+          remote=$(ssh "${sshopt[@]}" 'Rizanrizan@202.74.74.172' 'umask 077; mktemp -d /tmp/rizan-buy050-memory.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-buy050-memory\.[A-Za-z0-9]+$ ]] || exit 1
+          scp -q "${sshopt[@]}" repairs/buy050_identity_20261108/bridge/server.py "Rizanrizan@202.74.74.172:$remote/server.py"
+          ssh "${sshopt[@]}" 'Rizanrizan@202.74.74.172' "sudo -n python3 - '$remote/server.py'" <<'PY'
+          import datetime,hashlib,json,os,shutil,sqlite3,subprocess,sys,time
+          from pathlib import Path
+          SOURCE=Path(sys.argv[1])
+          TARGET=Path('/opt/rizan-buy050-bridge/server.py')
+          UNIT='rizan-buy050-bridge.service'
+          STATE=Path('/var/lib/rizan-buy050-bridge')
+          EXPECTED_SHA='351ce3fe0442061be264303280f79c4ac4acc7edd2c3cb7df13732d3e221f8d7'
+          def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+          def system(*cmd):
+              p=subprocess.run(cmd,capture_output=True,text=True,timeout=40)
+              if p.returncode:raise RuntimeError('SYSTEM_OPERATION_FAILED:'+cmd[0]+':'+cmd[1])
+              return p.stdout.strip()
+          def prop(k):return system('systemctl','show',UNIT,'--value','-p',k)
+          def fresh_health(min_observed=None):
+              try:
+                  payload=json.loads((STATE/'health.json').read_text())
+                  when=datetime.datetime.fromisoformat(payload['observed_utc'].replace('Z','+00:00'))
+                  if min_observed is not None and when<min_observed:return None
+                  if not 0<=(datetime.datetime.now(datetime.timezone.utc)-when).total_seconds()<45:return None
+                  return payload
+              except (KeyError,ValueError,OSError,TypeError):return None
+          if os.geteuid()!=0:raise RuntimeError('ROOT_REQUIRED')
+          if not SOURCE.is_file() or not TARGET.is_file() or SOURCE.is_symlink() or TARGET.is_symlink():
+              raise RuntimeError('EXPECTED_SOURCE_OR_TARGET_NOT_REGULAR')
+          if not TARGET.parent.samefile('/opt/rizan-buy050-bridge') or prop('ActiveState')!='active':
+              raise RuntimeError('BUY050_SERVICE_NOT_ACTIVE')
+          if '/opt/rizan-buy050-bridge/server.py' not in prop('ExecStart'):
+              raise RuntimeError('WRONG_SERVICE_TARGET')
+          if sha(TARGET)!=EXPECTED_SHA:raise RuntimeError('INSTALLED_SERVER_SHA_CHANGED_STOP_AND_REVIEW')
+          oldpid=int(prop('MainPID') or '0')
+          if oldpid<=0:raise RuntimeError('BUY050_PID_NOT_PRESENT')
+          oldh=fresh_health()
+          if oldh is None or oldh.get('profile')!='RIZAN_BUY050_FROZEN_20261107' or oldh.get('btc')!='ready' or (oldh.get('connected') or 0)<3:
+              raise RuntimeError('BUY050_PREFLIGHT_NOT_HEALTHY')
+          # Never copy or remove checkpoint.sqlite, leases, credentials, seed or active orders.
+          state_db=STATE/'checkpoints.sqlite'
+          if not state_db.is_file():raise RuntimeError('CHECKPOINT_DATABASE_MISSING')
+          db_inode=state_db.stat().st_ino
+          newsha=sha(SOURCE)
+          if newsha==EXPECTED_SHA:raise RuntimeError('NO_SOURCE_CHANGE')
+          compile(SOURCE.read_text(),str(SOURCE),'exec')
+          backup_dir=Path('/var/backups/rizan-buy050')
+          backup_dir.mkdir(mode=0o700,parents=True,exist_ok=True)
+          backup=backup_dir/('server-memory-'+str(int(time.time()))+'-'+str(os.getpid())+'.py')
+          shutil.copy2(TARGET,backup)
+          staged=TARGET.with_name('server.py.next.'+str(os.getpid()))
+          shutil.copy2(SOURCE,staged)
+          stat=TARGET.stat()
+          os.chown(staged,stat.st_uid,stat.st_gid)
+          os.chmod(staged,stat.st_mode & 0o777)
+          installed=False
+          try:
+              os.replace(staged,TARGET)
+              installed=True
+              system('systemctl','restart',UNIT)
+              restart_at=datetime.datetime.now(datetime.timezone.utc)
+              healthy=False
+              last=None
+              for _ in range(32):
+                  time.sleep(5)
+                  if prop('ActiveState')!='active':continue
+                  last=fresh_health(restart_at)
+                  if last and last.get('profile')=='RIZAN_BUY050_FROZEN_20261107' and last.get('btc')=='ready' and (last.get('connected') or 0)>=3:
+                      healthy=True
+                      break
+              if not healthy:raise RuntimeError('BUY050_POST_DEPLOY_RECONNECTION_NOT_READY')
+              if sha(TARGET)!=newsha or state_db.stat().st_ino!=db_inode:
+                  raise RuntimeError('CODE_SHA_OR_CHECKPOINT_INODE_CHANGED')
+              result={'deployed':True,'unit':UNIT,'profile':last.get('profile'),
+                      'old_sha256':EXPECTED_SHA,'new_sha256':newsha,
+                      'old_pid':oldpid,'new_pid':int(prop('MainPID') or 0),
+                      'connected':last.get('connected'),'btc':last.get('btc'),
+                      'checkpoint_inode_preserved':True,'other_services_touched':False,
+                      'nginx_touched':False,'cloud_instance_touched':False,
+                      'orders_sent':0,'rollback_backup_present':backup.is_file(),
+                      'at':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+              print('BUY050_MEMORY_DEPLOY_RESULT_BEGIN')
+              print(json.dumps(result,sort_keys=True))
+              print('BUY050_MEMORY_DEPLOY_RESULT_END')
+          except Exception as exc:
+              if installed:
+                  shutil.copy2(backup,staged)
+                  os.chown(staged,stat.st_uid,stat.st_gid)
+                  os.chmod(staged,stat.st_mode & 0o777)
+                  os.replace(staged,TARGET)
+                  system('systemctl','restart',UNIT)
+              print('BUY050_MEMORY_DEPLOY_ROLLED_BACK code='+type(exc).__name__+' reason='+str(exc))
+              raise
+          finally:
+              staged.unlink(missing_ok=True)
+          PY
