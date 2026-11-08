@@ -61,10 +61,12 @@ def evaluate_snapshot(raw, *, now=None):
         symbol = r["symbol"]
         if not snapshot_fresh:
             state = "DATA_TERLAMBAT"
-        elif not bridge_ready or r.get("lease_active") is not True:
-            state = "BELUM_TERHUBUNG"
+        elif r.get("unrecognized_checkpoint") is True:
+            state = "ALGO_PERLU_VERIFIKASI"
         elif r.get("checkpoint_present") is not True or r.get("identity_ok") is not True:
             state = "IDENTITAS_BERMASALAH"
+        elif not bridge_ready or r.get("lease_active") is not True:
+            state = "BELUM_TERHUBUNG"
         elif r.get("fault") is True or r.get("quarantined") is True or r.get("exit_pending") is True:
             state = "BLOKIR_NATIVE"
         elif r.get("checkpoint_basket") is True or r.get("pending_intent") is True:
@@ -113,22 +115,31 @@ def render_snapshot(raw, *, now=None):
 
     model = evaluate_snapshot(raw, now=now)
     p = model["payload"]
-    st.subheader("cBots · BUY050 RuntimeGuard")
-    st.caption("P3_BUY050 · XAUUSD + EURUSD + BTCUSD · LIVE akun ****7903 · monitor read-only")
+    st.subheader("cBots · Monitor BUY050")
+    st.caption("Profil checkpoint P3_BUY050 · XAUUSD + EURUSD + BTCUSD · LIVE akun ****7903 · read-only")
     st.caption(
-        "Dasbor mengikuti identitas checkpoint BUY050, bukan sinyal manual V1.3.0. "
-        "Data berasal dari publikasi audit VPS, bukan streaming tick atau izin order terminal."
+        "Identitas profil BUY050 yang terdaftar belum membuktikan versi .algo terbaru "
+        "yang sedang dijalankan cTrader. Data berasal dari audit VPS read-only, "
+        "bukan streaming terminal maupun konfirmasi order."
     )
     if not model["fresh"]:
-        st.error("DATA TERLAMBAT · publikasi BUY050 lebih dari 15 menit. Semua status aktif dinonaktifkan.")
+        st.error("DATA TERLAMBAT · publikasi BUY050 lebih dari 15 menit. "
+                 "Status LIVE saat ini tidak dapat diverifikasi; ini tidak membuktikan cBot mati.")
     elif not model["bridge_ready"]:
         st.warning("Bridge belum dapat dikonfirmasi baru dan sehat. Jangan tafsirkan ini sebagai sinyal entry.")
     else:
         st.info("Bridge BUY050 teramati; kesehatan koneksi tidak membuktikan cBot dapat mengirim order.")
     rows = p["symbols"]
-    st.metric("Checkpoint terhubung", str(sum(model["statuses"][s] in ("TERPANTAU", "CHECKPOINT_AKTIF", "BLOKIR_NATIVE") for s in SYMBOLS)) + "/3")
+    count = sum(model["statuses"][s] in ("TERPANTAU", "CHECKPOINT_AKTIF", "BLOKIR_NATIVE") for s in SYMBOLS)
+    st.metric("Checkpoint terverifikasi", (str(count) if model["fresh"] else "—") + "/3")
+    historical_connected = (p.get("bridge") or {}).get("connected")
+    if not model["fresh"] and type(historical_connected) is int:
+        st.caption(f"Snapshot terakhir melaporkan {historical_connected}/3 koneksi bridge; "
+                   "angka historis, bukan status LIVE sekarang.")
     st.caption("Terakhir dipublikasikan " + _wib(p.get("observed_at")) + " · heartbeat bridge " + _wib((p.get("bridge") or {}).get("observed_at")))
-    st.caption("Batas risiko gabungan 20,75% · batas margin 50% · cBot gabungan satu instance. Parameter merupakan profil frozen; nilai eksekusi tetap ditentukan broker dan cTrader.")
+    st.caption("Batas risiko terdaftar 20,75% · margin 50%. "
+               "Parameter ini milik profil monitor BUY050, belum tentu sama dengan .algo baru. "
+               "Periksa parameter aktual pada cTrader.")
     labels = {
         "TERPANTAU": "TERPANTAU · belum ada kandidat entry terverifikasi",
         "CHECKPOINT_AKTIF": "CHECKPOINT AKTIF · periksa posisi/intent di cTrader",
@@ -136,12 +147,18 @@ def render_snapshot(raw, *, now=None):
         "BELUM_TERHUBUNG": "WAIT · lease/bridge belum terverifikasi",
         "IDENTITAS_BERMASALAH": "BLOCK · checkpoint/profil tidak cocok",
         "DATA_TERLAMBAT": "WAIT · data terlambat",
+        "ALGO_PERLU_VERIFIKASI": "BLOCK · format checkpoint baru perlu verifikasi",
     }
     by_symbol = {r["symbol"]: r for r in rows}
     for symbol in SYMBOLS:
         item = by_symbol[symbol]
         st.markdown("### " + symbol + " · " + labels[model["statuses"][symbol]])
-        st.caption(_profile_details(symbol))
+        st.caption("Profil BUY050 tersimpan (bukan konfigurasi .algo yang baru diverifikasi): "
+                   + _profile_details(symbol))
+        if model["fresh"] and item.get("unrecognized_checkpoint") is True:
+            st.warning("Ditemukan checkpoint lain untuk instrumen dan akun ini yang tidak cocok "
+                       "dengan identitas BUY050 tersimpan. Sinkronisasi kontrak algo/bridge "
+                       "perlu diperiksa; status otomatis tidak dinyatakan aktif.")
         if model["fresh"] and item.get("checkpoint_present") is True:
             st.write("Checkpoint versi:", item.get("checkpoint_version") if type(item.get("checkpoint_version")) is int else "—")
             st.write("Candle terakhir native:", _wib(item.get("last_bar_at")))
@@ -153,7 +170,7 @@ def render_snapshot(raw, *, now=None):
             if item.get("fault") or item.get("quarantined"):
                 st.error("Native fault/quarantine terdeteksi: entry otomatis harus dianggap terblokir.")
         else:
-            st.caption("Belum ada checkpoint BUY050 yang valid dan baru untuk instrumen ini.")
+            st.caption("Belum ada checkpoint BUY050 baru yang dapat diverifikasi untuk instrumen ini.")
         st.caption(
             "**Entry / SL / TP berikutnya: belum terverifikasi.** "
             "Checkpoint bridge tidak berisi paket kandidat, quote eksekusi, dan ukuran order lengkap. "
@@ -177,10 +194,6 @@ def _render():
     try:
         now = datetime.now(timezone.utc)
         render_snapshot(cached(int(now.timestamp() // 45)), now=now)
-        from .cbot_buy050_shadow_dashboard import render_shadow_panel
-        render_shadow_panel()
-        from .cbot_buy050_event_dashboard import render_audit_panel
-        render_audit_panel()
     except (OSError, ValueError, TypeError, KeyError, TimeoutError):
         st.subheader("cBots · BUY050 RuntimeGuard")
         st.warning(
@@ -188,7 +201,22 @@ def _render():
             "Strategi lama V1.3.0 tidak digunakan sebagai pengganti. "
             "Tidak ada entry, SL atau TP LIVE yang dapat dipastikan dari monitor ini."
         )
-        st.caption("Profil beku: XAU SL 2,4 ATR / TP 4,5R; EUR TP 10R; BTC BUY 12R dan SELL 2R. Portofolio cap risiko 20,75%, margin 50%.")
+        st.caption("Profil lama BUY050 tidak dapat diverifikasi. Cek versi .algo serta "
+                   "koneksi cTrader sebelum menganggap status monitor mencerminkan LIVE.")
+        return
+
+    # Optional secondary audit panels must never erase an otherwise valid
+    # primary read-only checkpoint status if their separate feeds fail.
+    try:
+        from .cbot_buy050_shadow_dashboard import render_shadow_panel
+        render_shadow_panel()
+    except (OSError, ValueError, TypeError, KeyError, TimeoutError):
+        st.warning("Panel sinyal shadow sementara tidak tersedia (monitor utama tetap ditampilkan).")
+    try:
+        from .cbot_buy050_event_dashboard import render_audit_panel
+        render_audit_panel()
+    except (OSError, ValueError, TypeError, KeyError, TimeoutError):
+        st.warning("Panel audit event sementara tidak tersedia (monitor utama tetap ditampilkan).")
 
 
 def render_buy050_dashboard():
