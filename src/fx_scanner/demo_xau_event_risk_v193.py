@@ -61,6 +61,7 @@ DASHBOARD_EVENT_KEYS = (
     "forecast_source_count",
     "forecast_sources",
     "forecast_quotes",
+    "rejected_quote_sources",
     "source_agreement",
     "source_confidence",
     "conflicts",
@@ -260,6 +261,7 @@ def _enrich_event_dict(
                 "forecast_source_count": 0,
                 "forecast_sources": [],
                 "forecast_quotes": [],
+                "rejected_quote_sources": [],
                 "source_agreement": "SINGLE_SOURCE",
                 "source_confidence": "LOW",
                 "conflicts": [],
@@ -274,6 +276,7 @@ def _enrich_event_dict(
         {"source": source, "forecast": value, "previous": previous}
         for source, value, previous in fused.forecast_quotes
     ]
+    row["rejected_quote_sources"] = list(fused.rejected_quote_sources)
     row["source_agreement"] = fused.source_agreement
     row["conflicts"] = list(fused.conflicts)
     if fused.source_conflict:
