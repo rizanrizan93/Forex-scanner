@@ -78,6 +78,20 @@ foreach(var symbol in new[]{"XAUUSD","EURUSD","BTCUSD"}) {
     try{
         var state = native.GetProperty("states").GetProperty(symbol);
         var quote = Quote(market,symbol,now);
+        // A source-level signal never overrides native risk state or a broker
+        // position. Hide actionable geometry when exposure is uncertain.
+        bool flagged(string key) => state.TryGetProperty(key,out var v)&&v.ValueKind==JsonValueKind.True;
+        if(flagged("Quarantined") || flagged("Fault") || flagged("ExitPending") || flagged("has_basket") || flagged("pending_intent")){
+            result.Add(Empty(symbol,null,"NATIVE_BLOCK","Native checkpoint has quarantine, fault, position or outstanding intent."));continue;
+        }
+        if((market.TryGetProperty("foreign_exposure",out var foreign)&&foreign.ValueKind==JsonValueKind.True)
+           || (market.TryGetProperty("pending_orders",out var pending)&&pending.ValueKind==JsonValueKind.True)
+           || (market.TryGetProperty("positions",out var active)&&active.ValueKind==JsonValueKind.Array&&active.GetArrayLength()>0)){
+            result.Add(Empty(symbol,null,"PORTFOLIO_EXPOSURE_BLOCK","Account exposure or pending orders require native portfolio reconciliation."));continue;
+        }
+        if(symbol=="BTCUSD" && Stamp(state,"WeekendLockUntil") is DateTime lockedUntil && now<lockedUntil){
+            result.Add(Empty(symbol,null,"BTC_WEEKEND_LOCK","Native BTC lock remains in force."));continue;
+        }
         if(symbol=="BTCUSD"){
             if(!native.TryGetProperty("btc_feed",out var packet)||packet.ValueKind!=JsonValueKind.Object){
                 result.Add(Empty(symbol,null,"BTC_FEED_MISSING","BTC seed dan extension belum tervalidasi."));continue;
