@@ -49,8 +49,8 @@ def main():
      except Exception as e:data["availableLeverageRequestsError"]=type(e).__name__
     if leverage_id:
      try:
-      from ctrader_open_api.messages.OpenApiMessages_pb2 import ProtoOADynamicLeverageByIDReq
-      req=ProtoOADynamicLeverageByIDReq()
+      from ctrader_open_api.messages import OpenApiMessages_pb2 as msg
+      req=msg.ProtoOAGetDynamicLeverageByIDReq()
       req.ctidTraderAccountId=account.ctid_trader_account_id
       req.leverageId=int(leverage_id)
       response=session._send_sync(req)
