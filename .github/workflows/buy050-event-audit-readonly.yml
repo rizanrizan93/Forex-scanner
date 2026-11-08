@@ -137,6 +137,7 @@ jobs:
             'execution_influence','started_at','ended_at','samples','failures',
             'max_interval_s','unobserved_gap_s','continuous_coverage_confirmed',
             'terminal_journal_available','broker_deals_verified','broker_open_positions_observed',
+            'broker_orders_history_complete','broker_history_from','broker_history_to',
             'broker_observed_at','end_state','events'
           }, 'PUBLIC_AUDIT_FIELD_ALLOWLIST_FAILED'
           assert set(obj['end_state'])=={'XAUUSD','EURUSD','BTCUSD'}
@@ -160,8 +161,11 @@ jobs:
             const raw=fs.readFileSync(process.env.EVENT_OUTPUT,'utf8');
             const data=JSON.parse(raw);
             if(data.read_only!==true || data.execution_authority!==false
-               || data.execution_influence!==false || data.broker_deals_verified!==false)
-                throw new Error('PUBLIC_AUDIT_EXECUTION_CLAIM_INVALID');
+               || data.execution_influence!==false)
+                throw new Error('PUBLIC_AUDIT_EXECUTION_AUTHORITY_INVALID');
+            if(data.broker_deals_verified===true &&
+               (!data.broker_history_from || !data.broker_history_to))
+                throw new Error('BROKER_DEAL_HISTORY_PROVENANCE_MISSING');
             const {owner,repo}=context.repo;
             const branch='buy050-event-audit';
             const path='runtime/buy050_event_timeline.json';
