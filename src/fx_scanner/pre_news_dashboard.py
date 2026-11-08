@@ -1,8 +1,22 @@
 """Mobile-friendly, display-only Pre-News panel with 60-second refresh."""
 from datetime import UTC, datetime
 
-from .pre_news_expectation import evaluate_pre_news, timestamp
+from .pre_news_expectation import evaluate_pre_news, timestamp, MIN_FORECAST_SOURCES
+from .pre_news_source_fusion import (
+    SOURCE_FOREX_FACTORY, SOURCE_MYFXBOOK, SOURCE_INVESTING,
+)
 from zoneinfo import ZoneInfo
+
+FORECAST_SOURCES = (
+    SOURCE_FOREX_FACTORY,
+    SOURCE_INVESTING,
+    SOURCE_MYFXBOOK,
+)
+SOURCE_LABELS = {
+    SOURCE_FOREX_FACTORY: "Forex Factory",
+    SOURCE_INVESTING: "Investing.com",
+    SOURCE_MYFXBOOK: "Myfxbook",
+}
 
 
 def _wib(value):
@@ -11,6 +25,9 @@ def _wib(value):
 
 
 def _reason(value):
+    if str(value).startswith("FORECAST_QUORUM:"):
+        _, title, count = str(value).split(":", 2)
+        return f"{title}: forecast valid baru {count}; minimal 3 sumber independen"
     labels = {
         "PUBLICATION_STALE": "Pembaruan feed terlambat; bias ditahan sampai data baru diterima",
         "DXY_PROVIDER_RATE_LIMITED": "Sumber DXY membatasi permintaan (HTTP 429); bias menunggu data segar",
@@ -52,19 +69,67 @@ def render_pre_news_dashboard():
         view = evaluate_pre_news(snapshot, now=datetime.now(UTC))
         if snapshot.get("published_at"):
             st.caption("Feed terakhir: " + _wib(snapshot["published_at"]))
+        st.metric("Kesimpulan forecast untuk XAUUSD", view["forecast_risk"])
+        st.caption(
+            "COOL RISK = data USD diperkirakan mendingin → bias awal bullish XAU. "
+            "HOT RISK = data USD diperkirakan memanas → bias awal bearish XAU. "
+            "Wajib ≥3 forecast numerik untuk setiap komponen rilis, bukan sekadar 3 kalender aktif. "
+            "Ini bukan prediksi surprise aktual atau sinyal order."
+        )
         cols = st.columns(2)
-        cols[0].metric("Status", view["state"])
-        cols[1].metric("Ekspektasi konsensus", view["expectation"])
+        cols[0].metric("Status validasi makro", view["state"])
+        cols[1].metric("Ekspektasi terkonfirmasi", view["expectation"])
         cols = st.columns(2)
-        cols[0].metric("Bias XAU", view["xau_bias"])
+        cols[0].metric("Bias XAU setelah konfirmasi makro", view["xau_bias"])
         cols[1].metric("Keselarasan bukti", view["conviction"])
-        st.caption("COOL/HOT-RISK = konsensus dibanding angka sebelumnya; bukan prediksi surprise. Keselarasan bukti bukan probabilitas menang.")
+        st.caption("Makro DXY/US2Y/US10Y/real yield menjadi konfirmasi terpisah. Jika belum segar, bias makro ditahan; forecast 3 sumber tetap terlihat sebagai skenario pra-rilis.")
         event = view.get("event")
         if event:
             st.write(str(event.get("title")) + " · " + str(view["event_time_wib"]) + " WIB")
             st.caption("Sumber kalender: " + str(event.get("source") or "Belum tersedia") + " · " + str(event.get("source_tier") or "Belum terverifikasi"))
             st.metric("Menuju rilis", f'{view["minutes_to_event"]:,.1f} menit')
-            st.dataframe(view["event_cluster"], hide_index=True, width="stretch")
+            cluster = view["event_cluster"]
+            if cluster:
+                min_count = min(int(row.get("forecast_source_count") or 0) for row in cluster)
+                st.metric(
+                    "Quorum forecast per komponen",
+                    f"{min_count}/{MIN_FORECAST_SOURCES}",
+                )
+                st.dataframe(
+                    [{
+                        "Komponen": row.get("event_component") or row.get("title"),
+                        "Forecast konsensus": row.get("forecast"),
+                        "Previous": row.get("previous"),
+                        "Forecast valid": row.get("forecast_source_count"),
+                        "Perbedaan sumber": row.get("source_agreement"),
+                    } for row in cluster],
+                    hide_index=True, width="stretch",
+                )
+                provider_rows = []
+                status_map = view.get("calendar_source_status") or {}
+                for item in cluster:
+                    quotes = {
+                        quote["source"]: quote
+                        for quote in item.get("forecast_quotes") or []
+                        if isinstance(quote, dict) and quote.get("source")
+                    }
+                    for source in FORECAST_SOURCES:
+                        quote = quotes.get(source) or {}
+                        provider_rows.append({
+                            "Komponen": item.get("event_component") or item.get("title"),
+                            "Sumber": SOURCE_LABELS[source],
+                            "Forecast": quote.get("forecast"),
+                            "Previous": quote.get("previous"),
+                            "Status feed": status_map.get(source, "BELUM TERSEDIA"),
+                            "Verifikasi": "VALID" if quote.get("forecast") is not None else "MISSING",
+                        })
+                st.markdown("**Perbandingan forecast dari 3 sumber**")
+                st.dataframe(provider_rows, hide_index=True, width="stretch")
+                st.caption(
+                    "Sumber: Forex Factory, Investing.com, Myfxbook. "
+                    "Indikator dan periode harus identik; sumber tanpa angka forecast "
+                    "tidak dihitung. Konflik antar-sumber → tidak ada kesimpulan arah."
+                )
         st.write("News gate scanner: " + view["news_gate"] + " · " + view["news_gate_action"])
         if view["reasons"]:
             st.warning(" · ".join(_reason(reason) for reason in view["reasons"]))

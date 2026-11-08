@@ -98,3 +98,30 @@ def test_official_actual_overrides_secondary_actual():
         ]
     )
     assert fused.actual == 0.5
+
+
+def test_quorum_counts_distinct_numeric_forecasts_not_calendar_rows():
+    rows = [
+        SourceQuote(SOURCE_INVESTING, "CPI (MoM)", "USD", _at(), 0.2, 0.3),
+        SourceQuote(SOURCE_MYFXBOOK, "Inflation Rate MoM", "USD", _at(), 0.2, 0.3),
+        SourceQuote("BLS_OFFICIAL_ICS", "Consumer Price Index MoM", "USD", _at()),
+    ]
+    fused = fuse_consensus(rows)
+    assert fused.source_count == 3
+    assert fused.forecast_source_count == 2
+    assert set(fused.forecast_sources) == {SOURCE_INVESTING, SOURCE_MYFXBOOK}
+    assert len(fused.forecast_quotes) == 2
+    rows.append(SourceQuote("FOREX_FACTORY_WEEKLY", "CPI (MoM)", "USD", _at(), 0.2, 0.3))
+    fused = fuse_consensus(rows)
+    assert fused.forecast_source_count == 3
+
+
+def test_duplicate_provider_never_inflates_forecast_quorum():
+    rows = [
+        SourceQuote(SOURCE_INVESTING, "CPI (MoM)", "USD", _at(), 0.2, 0.3),
+        SourceQuote(SOURCE_INVESTING, "CPI (MoM)", "USD", _at(), 0.4, 0.3),
+        SourceQuote(SOURCE_MYFXBOOK, "Inflation Rate MoM", "USD", _at(), 0.2, 0.3),
+    ]
+    fused = fuse_consensus(rows)
+    assert fused.forecast_source_count == 2
+    assert "DUPLICATE_SOURCE_FORECAST_CONFLICT" in fused.conflicts

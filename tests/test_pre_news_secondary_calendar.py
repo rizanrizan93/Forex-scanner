@@ -129,3 +129,26 @@ def test_secondary_clock_can_align_to_trusted_matching_component_only():
     untouched = next(item for item in aligned if item.title == "Core Inflation Rate YoY")
     assert matched.scheduled_at == trusted.scheduled_at
     assert untouched.scheduled_at.hour == 8
+
+
+def test_three_forecasts_survive_worker_dashboard_projection():
+    from fx_scanner.demo_xau_event_risk_v193 import build_dashboard_projection
+    events = [
+        _risk_event("FOREX_FACTORY_WEEKLY", "Core CPI (MoM)", 0.3, 0.2),
+        _risk_event("INVESTING_COM", "Core CPI (MoM)", 0.3, 0.2),
+        _risk_event("MYFXBOOK", "Core Inflation Rate MoM", 0.3, 0.2),
+    ]
+    fused, metadata = _fuse_events(_align_secondary_events(events))
+    risk = _enrich_risk(
+        {"focal_event": fused[0].as_dict(),
+         "upcoming_events": [fused[0].as_dict()],
+         "latest_released_event": None},
+        metadata,
+    )
+    serialized = build_dashboard_projection(risk)
+    focal = serialized["focal_event"]
+    assert focal["forecast_source_count"] == 3
+    assert len(focal["forecast_quotes"]) == 3
+    assert all(row["forecast"] == 0.3 for row in focal["forecast_quotes"])
+    assert serialized["execution_authority"] is False
+    assert serialized["execution_influence"] is False

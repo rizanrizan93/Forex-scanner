@@ -50,6 +50,9 @@ DASHBOARD_EVENT_KEYS = (
     "gold_bias_confidence",
     "source_count",
     "sources",
+    "forecast_source_count",
+    "forecast_sources",
+    "forecast_quotes",
     "source_agreement",
     "source_confidence",
     "conflicts",
@@ -246,6 +249,9 @@ def _enrich_event_dict(
             {
                 "source_count": 1,
                 "sources": [row.get("source")],
+                "forecast_source_count": 0,
+                "forecast_sources": [],
+                "forecast_quotes": [],
                 "source_agreement": "SINGLE_SOURCE",
                 "source_confidence": "LOW",
                 "conflicts": [],
@@ -254,6 +260,12 @@ def _enrich_event_dict(
         return row
     row["source_count"] = fused.source_count
     row["sources"] = list(fused.sources)
+    row["forecast_source_count"] = fused.forecast_source_count
+    row["forecast_sources"] = list(fused.forecast_sources)
+    row["forecast_quotes"] = [
+        {"source": source, "forecast": value, "previous": previous}
+        for source, value, previous in fused.forecast_quotes
+    ]
     row["source_agreement"] = fused.source_agreement
     row["conflicts"] = list(fused.conflicts)
     if fused.source_conflict:
@@ -261,9 +273,9 @@ def _enrich_event_dict(
         row["gold_bias"] = "NEUTRAL_SOURCE_CONFLICT"
         row["gold_bias_confidence"] = "LOW"
         row["gold_bias_basis"] = "SOURCE_CONFLICT"
-    elif fused.source_count >= 3:
+    elif fused.forecast_source_count >= 3:
         row["source_confidence"] = "HIGH"
-    elif fused.source_count >= 2:
+    elif fused.forecast_source_count >= 2:
         row["source_confidence"] = "MEDIUM"
     else:
         row["source_confidence"] = "LOW"

@@ -10,6 +10,10 @@ from math import isfinite
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from .pre_news_source_fusion import SECONDARY_CONSENSUS_SOURCES
+
+MIN_FORECAST_SOURCES = 3
+
 CONTRACT = "RIZAN_PRE_NEWS_EXPECTATION_V1"
 EVENT_WORKER = "ctrader_demo_xau_event_risk_v192"
 MACRO_WORKER = "ctrader_demo_xau_macro_attribution_v357"
@@ -101,6 +105,10 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         "contract": CONTRACT, "observed_at": current.isoformat(),
         "state": "DATA INCOMPLETE", "expectation": "UNAVAILABLE",
         "xau_bias": "UNAVAILABLE", "conviction": "UNAVAILABLE",
+        "forecast_risk": "UNAVAILABLE",
+        "forecast_xau_bias": "UNAVAILABLE",
+        "forecast_quorum_required": MIN_FORECAST_SOURCES,
+        "forecast_quorum_met": False,
         "probability": None, "calibration": "UNVALIDATED_HEURISTIC",
         "execution_authority": False, "execution_influence": False,
         "news_gate": str(risk.get("state") or "UNAVAILABLE"),
@@ -126,22 +134,56 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                   scenarios=_scenarios(event["category"]))
     # Evaluate all simultaneous components, e.g. headline/core CPI and NFP/wages.
     cluster = [e for t, e in upcoming if t == at]
+    # Official calendar schedule-only entries (without forecast) should not
+    # veto a simultaneous measurable CPI/NFP/PPI release component. An event
+    # with a partial numeric forecast still participates and requires quorum.
+    measured = [e for e in cluster if number(e.get("forecast")) is not None]
+    if measured:
+        cluster = measured
     tilts = []
+    quorum_counts: list[int] = []
     for e in cluster:
         forecast, previous = number(e.get("forecast")), number(e.get("previous"))
         conflict = _source_conflict(e)
+        # Verify the actual numeric rows, NOT the total number of calendar
+        # sources. Official schedules do not publish independent forecasts.
+        source_quotes: dict[str, dict[str, Any]] = {}
+        raw_quotes = e.get("forecast_quotes") or []
+        if isinstance(raw_quotes, list):
+            for quote in raw_quotes:
+                if not isinstance(quote, dict):
+                    continue
+                provider = str(quote.get("source") or "").strip().upper()
+                value = number(quote.get("forecast"))
+                if provider not in SECONDARY_CONSENSUS_SOURCES or value is None:
+                    continue
+                if provider in source_quotes and source_quotes[provider]["forecast"] != value:
+                    conflict = True
+                source_quotes[provider] = {
+                    "source": provider, "forecast": value,
+                    "previous": number(quote.get("previous")),
+                }
+        count = len(source_quotes)
+        quorum_counts.append(count)
         tilt = None
         if conflict:
             reasons.append("SOURCE_CONFLICT:" + str(e.get("title")))
-        elif forecast is not None and previous is not None:
-            tolerance = max(abs(previous) * 0.01, 1e-9)
-            tilt = 0 if abs(forecast - previous) <= tolerance else (1 if forecast > previous else -1)
-            if e["category"] in INVERSE:
-                tilt *= -1
-        else:
-            reasons.append("CONSENSUS_OR_PREVIOUS_MISSING:" + str(e.get("title")))
+        if count < MIN_FORECAST_SOURCES:
+            reasons.append(
+                "FORECAST_QUORUM:" + str(e.get("title")) +
+                f":{count}/{MIN_FORECAST_SOURCES}"
+            )
+        if not conflict and count >= MIN_FORECAST_SOURCES:
+            if forecast is not None and previous is not None:
+                tolerance = max(abs(previous) * 0.01, 1e-9)
+                tilt = 0 if abs(forecast - previous) <= tolerance else (1 if forecast > previous else -1)
+                if e["category"] in INVERSE:
+                    tilt *= -1
+            else:
+                reasons.append("CONSENSUS_OR_PREVIOUS_MISSING:" + str(e.get("title")))
         if e["category"] == "FOMC":
             reasons.append("FOMC_LANGUAGE_AND_RATE_PATH_UNMODELED")
+            tilt = None
         if tilt is not None:
             tilts.append(tilt)
         result["event_cluster"].append({
@@ -150,11 +192,21 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
             "forecast": forecast, "previous": previous, "hawkish_tilt": tilt,
             "source_count": e.get("source_count", 1),
             "sources": e.get("sources") or [e.get("source")],
+            "forecast_source_count": count,
+            "forecast_sources": sorted(source_quotes),
+            "forecast_quotes": [source_quotes[p] for p in sorted(source_quotes)],
             "source_agreement": e.get("source_agreement") or "SINGLE_SOURCE",
             "source_confidence": e.get("source_confidence") or "LOW",
             "conflicts": e.get("conflicts") or [],
         })
-    if tilts and len(tilts) == len(cluster):
+    result["forecast_quorum_met"] = (
+        bool(cluster) and all(count >= MIN_FORECAST_SOURCES for count in quorum_counts)
+    )
+    calendar_valid = not any(
+        reason in reasons
+        for reason in ("PUBLICATION_STALE", "CALENDAR_STALE_MISSING_OR_UNHEALTHY")
+    )
+    if tilts and len(tilts) == len(cluster) and calendar_valid:
         if 1 in tilts and -1 in tilts:
             expectation = "MIXED"
         elif 1 in tilts:
@@ -164,6 +216,18 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         else:
             expectation = "INLINE"
         result["expectation"] = expectation
+        result["forecast_risk"] = {
+            "HOT-RISK": "HOT RISK (BEARISH XAU)",
+            "COOL": "COOL RISK (BULLISH XAU)",
+            "INLINE": "INLINE (NEUTRAL XAU)",
+            "MIXED": "MIXED (NEUTRAL XAU)",
+        }[expectation]
+        result["forecast_xau_bias"] = {
+            "HOT-RISK": "BEARISH_XAU",
+            "COOL": "BULLISH_XAU",
+            "INLINE": "NEUTRAL_MIXED",
+            "MIXED": "NEUTRAL_MIXED",
+        }[expectation]
     components = macro.get("components") or {}
     cross = macro_details.get("cross_asset") or {}
     intraday_dxy = macro.get("dxy_intraday") or macro_details.get("dxy_intraday") or {}

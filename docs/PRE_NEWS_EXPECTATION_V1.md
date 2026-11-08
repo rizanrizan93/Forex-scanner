@@ -55,3 +55,28 @@ A one-shot five-minute cron was observed leaving the public feed unchanged for o
 The display preserves a structurally valid stale snapshot as labeled reference data instead of exiting with a generic ValueError. No current bias is allowed when publication is stale, even if individual heartbeat fields appear recent. Network recovery also preserves last known context in the current UI session with bias withheld. A manual display refresh clears only the UI cache; it does not submit an order or pretend to refresh a source.
 
 87 targeted tests passed, including repeated cycles without another scheduler trigger, transient-failure recovery, repeated-failure shutdown, read-only branch writes, stale context with withheld bias, and loss of reference-endpoint connectivity. The panel polls every 60 seconds; source refresh targets four minutes while the publisher is running. GitHub runner availability and free Streamlit sleep remain hosting limitations, so this is not a guaranteed uptime SLA.
+
+
+## Forecast quorum V2 · 2026-11-08
+
+The Pre-News dashboard now requires **three distinct numeric forecast quotes**
+for each exact USD release component before emitting a forecast-only COOL RISK
+(bullish XAU) or HOT RISK (bearish XAU) classification. The supported independent
+consensus providers are Forex Factory Weekly, Investing.com and Myfxbook.
+An official BLS/BEA schedule with no numerical forecast never satisfies the
+quorum. Duplicate rows from one provider never count twice. The median is
+computed per provider, and material disagreements or duplicate-source conflicts
+make the event ineligible for a directional classification.
+
+The event producer preserves the individual numeric forecast, previous value
+and source in the read-only publication. The dashboard shows a comparison table,
+minimum verified count across simultaneous events, per-provider feed status,
+and an explicit forecast-only XAU risk conclusion. A missing provider quote
+shows MISSING rather than being estimated, substituted or silently counted.
+Macro evidence remains a separate confirmation gate; a valid three-source
+forecast scenario can be displayed while stale DXY/yield components still
+suppress the confirmed XAU bias. FOMC language and press-conference risk
+remain unmodeled and do not receive a simplistic directional pre-release call.
+
+Only the Pre-News information path changes. No order, cBot, bridge, strategy,
+position sizing or live broker execution code is modified.
