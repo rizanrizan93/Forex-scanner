@@ -252,3 +252,17 @@ def test_parallel_official_schedule_without_forecast_does_not_veto_valid_compone
     view = evaluate_pre_news(data, now=NOW)
     assert len(view["event_cluster"]) == 1
     assert view["forecast_risk"] == "COOL RISK (BULLISH XAU)"
+
+
+def test_alternative_three_forecast_provider_quorum_in_six_source_pool():
+    data = snapshot(-1)
+    event = data["heartbeats"][0]["details"]["risk"]["focal_event"]
+    event["forecast_quotes"] = [
+        {"source": provider, "forecast": 2, "previous": 3}
+        for provider in ("FOREX_FACTORY_WEEKLY", "SHOWMYTRADES", "HELIOUS")
+    ]
+    result = evaluate_pre_news(data, now=NOW)
+    assert result["state"] == "PRE_NEWS"
+    assert result["forecast_quorum_met"] is True
+    assert result["forecast_risk"] == "COOL RISK (BULLISH XAU)"
+    assert result["xau_bias"] == "BULLISH_XAU"
