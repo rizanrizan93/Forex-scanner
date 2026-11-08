@@ -18,6 +18,7 @@ from urllib.request import Request, urlopen
 import streamlit as st
 
 from .xau_macro_gold_consensus import analyze_gold_macro
+from .xau_m15_macro_forecast import render_macro_m15_forecast
 from .xau_market_quote_health import quote_freshness, QUOTE_MAX_AGE_SECONDS
 from .xau_cnbc_macro_quotes import fetch_cnbc_market_quotes, fetch_goldapi_spot
 from .xau_macro_spot_news_v2 import fetch_dia_spot, fetch_geopolitical_rss
@@ -413,6 +414,13 @@ def _selected_dxy(macro_eval, feeds):
     return dxy
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def load_macro_m15_snapshot_readonly():
+    """Independent public cTrader M15 snapshot. Never fetch broker order state."""
+    from .manual_reversal_dashboard import fetch_manual_map
+    return fetch_manual_map()
+
+
 def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     """Render a single aggregate XAU macro verdict at the TOP of the Macro tab."""
     feeds = load_external_macro_inputs()
@@ -445,6 +453,13 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             "JPY=X": feeds["market"].get("JPY=X"),
             "CHF=X": feeds["market"].get("CHF=X"),
         },
+    )
+
+    # M15 directional context is shown before the long macro breakdown.
+    # It remains read-only; stale/missing source yields WAIT_DATA, never a call.
+    render_macro_m15_forecast(
+        result, snapshot_loader=load_macro_m15_snapshot_readonly,
+        event_risk=event_risk,
     )
 
     st.subheader("KESIMPULAN GABUNGAN MAKRO GOLD")
