@@ -83,9 +83,23 @@ public abstract class RizanPortfolio : Robot
         {Print("PORTFOLIO_USD_HEDGED_ACCOUNT_REQUIRED");Stop();return;}
         var settings=JsonSerializer.Serialize(new{Schema=1,Release=FrozenR3.ProfileId,BtcFeed=BtcSevenDayFeed.Contract,Account=Account.Number,Risk=PortfolioRiskPercent,Margin=.5,XAU=EnableXau,EUR=EnableEur,BTC=EnableBtc});
         var key=FrozenR3.PortfolioStorageKey(Account.Number);
-        var saved=LocalStorage.GetString(key,LocalStorageScope.Instance);
-        if(!string.IsNullOrEmpty(saved)&&saved!=settings){Print("PORTFOLIO_SETTINGS_CHECKPOINT_MISMATCH");Stop();return;}
-        LocalStorage.SetString(key,settings,LocalStorageScope.Instance);LocalStorage.Flush(LocalStorageScope.Instance);
+        // LocalStorage may fail in cTrader Cloud. Never start the engines with an
+        // unverified portfolio identity or overwrite/reset an unreadable checkpoint.
+        try
+        {
+            var saved=LocalStorage.GetString(key,LocalStorageScope.Instance);
+            if(!string.IsNullOrEmpty(saved)&&saved!=settings){Print("PORTFOLIO_SETTINGS_CHECKPOINT_MISMATCH");Stop();return;}
+            LocalStorage.SetString(key,settings,LocalStorageScope.Instance);
+            LocalStorage.Flush(LocalStorageScope.Instance);
+            var verified=LocalStorage.GetString(key,LocalStorageScope.Instance);
+            if(verified!=settings){Print("PORTFOLIO_STORAGE_VERIFY_FAILED entry_blocked=True");Stop();return;}
+        }
+        catch(Exception ex)
+        {
+            Print("PORTFOLIO_STORAGE_FAULT type={0}; entry_blocked=True; checkpoint_preserved=True",ex.GetType().Name);
+            Stop();
+            return;
+        }
         CreateEngines();
         try { foreach(var e in Engines)e.OnStart(); }
         catch(Exception ex){Print("PORTFOLIO_ENGINE_START_ERROR {0}",ex.Message);StopEngines();Stop();return;}
