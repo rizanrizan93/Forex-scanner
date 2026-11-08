@@ -199,13 +199,14 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         # A 2-source or incomplete-component indication is informational
         # ONLY, never labeled as a validated three-source consensus. Two
         # independent vendors must provide both forecast and previous.
-        indicative = None
+        indicative = tilt
         paired = sum(quote["previous"] is not None for quote in source_quotes.values())
-        if not conflict and count >= 2 and paired >= 2 and forecast is not None and previous is not None and e["category"] != "FOMC":
+        if indicative is None and not conflict and count >= 2 and paired >= 2 and forecast is not None and previous is not None and e["category"] != "FOMC":
             tolerance = max(abs(previous) * 0.01, 1e-9)
             indicative = 0 if abs(forecast - previous) <= tolerance else (1 if forecast > previous else -1)
             if e["category"] in INVERSE:
                 indicative *= -1
+        if indicative is not None:
             provisional_tilts.append(indicative)
         result["event_cluster"].append({
             "title": e.get("title"), "category": e["category"],
