@@ -90,6 +90,23 @@ def render_pre_news_dashboard():
         cols[0].metric("Bias XAU setelah konfirmasi makro", view["xau_bias"])
         cols[1].metric("Keselarasan bukti", view["conviction"])
         st.caption("Makro DXY/US2Y/US10Y/real yield menjadi konfirmasi terpisah. Jika belum segar, bias makro ditahan; forecast 3 sumber tetap terlihat sebagai skenario pra-rilis.")
+        status_map = view.get("calendar_source_status") or {}
+        online = sum(
+            str(status_map.get(source) or "").startswith("OK:")
+            for source in FORECAST_SOURCES
+        )
+        st.caption(
+            f"Status koneksi penyedia: {online}/{len(FORECAST_SOURCES)} aktif. "
+            "Angka ini bukan jumlah forecast yang cocok untuk event terpilih."
+        )
+        with st.expander("Status keenam penyedia forecast"):
+            st.dataframe(
+                [{
+                    "Sumber": SOURCE_LABELS[source],
+                    "Status": status_map.get(source, "TIDAK TERSEDIA"),
+                } for source in FORECAST_SOURCES],
+                hide_index=True, width="stretch",
+            )
         event = view.get("event")
         if event:
             st.write(str(event.get("title")) + " · " + str(view["event_time_wib"]) + " WIB")
