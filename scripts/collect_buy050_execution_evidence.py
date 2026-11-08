@@ -96,7 +96,8 @@ def read():
                 "BROKER_ORDER_ACCEPTED","BROKER_ORDER_FILLED",
                 "BROKER_ORDER_REJECTED","BROKER_ORDER_CANCELLED",
                 "BROKER_ORDER_EXPIRED","BROKER_DEAL_FILLED",
-                "BROKER_DEAL_PARTIAL","BROKER_DEAL_REJECTED"
+                "BROKER_DEAL_PARTIAL","BROKER_DEAL_REJECTED",
+                "BROKER_DEAL_ERROR","BROKER_DEAL_NO_RESPONSE"
             }:
                 return
             if not at or at<since or at>clock+timedelta(seconds=5):
@@ -133,7 +134,7 @@ def read():
                 status=int(deal.dealStatus)
                 kind={2:"BROKER_DEAL_FILLED",3:"BROKER_DEAL_PARTIAL",
                       4:"BROKER_DEAL_REJECTED",5:"BROKER_DEAL_REJECTED",
-                      6:"BROKER_DEAL_REJECTED",7:"BROKER_DEAL_REJECTED"}.get(status)
+                      6:"BROKER_DEAL_ERROR",7:"BROKER_DEAL_NO_RESPONSE"}.get(status)
                 audit_row(sym,from_ms_at(deal.utcLastUpdateTimestamp or deal.executionTimestamp or deal.createTimestamp),kind,signal_at)
         except Exception:
             # A failed historical request never proves absence of deals.
