@@ -1,0 +1,39 @@
+name: BUY050 runtime resilience native build (NO LIVE DEPLOY)
+on:
+  push:
+    branches: ['fix/buy050-runtime-guard-20261108']
+    paths:
+      - 'repairs/buy050_identity_20261108/source/**'
+      - 'repairs/buy050_identity_20261108/validation/test_runtime_resilience.py'
+      - '.github/workflows/buy050-runtime-guard-validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run nontrading regression and resource scope check
+        run: python3 -m unittest -v repairs/buy050_identity_20261108/validation/test_runtime_resilience.py
+      - name: Compile official cTrader Automate native artifact
+        run: |
+          set -euo pipefail
+          cd repairs/buy050_identity_20261108
+          dotnet build source/RizanBuy050Frozen.csproj -c Release --warnaserror
+          mkdir -p artifacts
+          find source/bin/Release/net6.0 -maxdepth 1 -name '*.algo' -exec cp '{}' artifacts/RizanBuy050RuntimeGuard_20261108.algo \;
+          test -s artifacts/RizanBuy050RuntimeGuard_20261108.algo
+          sha256sum artifacts/RizanBuy050RuntimeGuard_20261108.algo > artifacts/RUNTIME_SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: RizanBuy050RuntimeGuard_20261108
+          path: repairs/buy050_identity_20261108/artifacts/
+          retention-days: 30

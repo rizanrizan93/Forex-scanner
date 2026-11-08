@@ -102,7 +102,7 @@ public abstract class RizanRobot : Rizan.Portfolio.EngineContext
     private readonly Random _reconnectJitter = new();
 
     private bool _pendingPreparedHere, _pendingSubmitted;
-    private DateTime _lastBridgeAck, _nextConnect, _nextPing, _nextTelemetry;
+    private DateTime _lastBridgeAck, _nextConnect, _nextPing, _nextTelemetry, _nextCheckpointJournal;
     private DateTime _opsSecond;
     private int _ops;
     private string _stateKey = "";
@@ -387,16 +387,34 @@ public abstract class RizanRobot : Rizan.Portfolio.EngineContext
     private void Quarantine(string reason){_state.Quarantined=true;_state.QuarantineReason=reason;Changed();Print("QUARANTINED: {0}",reason);Persist();}
     private bool BindingOk => ExpectedAccount==Account.Number.ToString() && (!Account.IsLive || ExpectedAccount.EndsWith(LoginSuffix,StringComparison.Ordinal));
     private List<Candle>? _closedCache;
-    private DateTime _closedCacheAt;
+    private DateTime _closedCacheAt, _closedCacheFirstUtc;
+    // Reuse completed M1 candles when only newer bars arrive. The full historical
+    // list and its order are identical to the frozen full-rebuild algorithm.
+    // Rebuild if cTrader rotates or backfills the underlying Bars collection.
     private List<Candle> ClosedM1(DateTime now)
     {
-        int last=_m1.Count-1;while(last>=0&&_m1.OpenTimes[last].AddMinutes(1)>now)last--;
-        var cacheAt=last>=0?DateTime.SpecifyKind(_m1.OpenTimes[last],DateTimeKind.Utc):default;
-        if(_closedCache!=null&&cacheAt==_closedCacheAt)return _closedCache;
-        var r=new List<Candle>();for(int i=0;i<_m1.Count;i++)
-        { var at=DateTime.SpecifyKind(_m1.OpenTimes[i],DateTimeKind.Utc);if(at.AddMinutes(1)>now)break;
-            r.Add(new(at,_m1.OpenPrices[i],_m1.HighPrices[i],_m1.LowPrices[i],_m1.ClosePrices[i])); }
-        _closedCacheAt=cacheAt;_closedCache=r;return r;
+        int last=_m1.Count-1;
+        while(last>=0 && _m1.OpenTimes[last].AddMinutes(1)>now)last--;
+        var cacheAt=last>=0 ? DateTime.SpecifyKind(_m1.OpenTimes[last],DateTimeKind.Utc) : default;
+        if(_closedCache!=null && cacheAt==_closedCacheAt)return _closedCache;
+        if(_closedCache!=null && _closedCache.Count>0 && last>=_closedCache.Count &&
+           DateTime.SpecifyKind(_m1.OpenTimes[0],DateTimeKind.Utc)==_closedCacheFirstUtc &&
+           DateTime.SpecifyKind(_m1.OpenTimes[_closedCache.Count-1],DateTimeKind.Utc)==_closedCacheAt)
+        {
+            // No historical recomputation or fresh O(history) allocation per M1 bar.
+            for(int i=_closedCache.Count;i<=last;i++)
+                _closedCache.Add(new(DateTime.SpecifyKind(_m1.OpenTimes[i],DateTimeKind.Utc),
+                    _m1.OpenPrices[i],_m1.HighPrices[i],_m1.LowPrices[i],_m1.ClosePrices[i]));
+            _closedCacheAt=cacheAt;
+            return _closedCache;
+        }
+        var r=new List<Candle>(Math.Max(0,last+1));
+        for(int i=0;i<=last;i++)
+            r.Add(new(DateTime.SpecifyKind(_m1.OpenTimes[i],DateTimeKind.Utc),
+                _m1.OpenPrices[i],_m1.HighPrices[i],_m1.LowPrices[i],_m1.ClosePrices[i]));
+        _closedCacheFirstUtc=r.Count>0 ? r[0].OpenUtc : default;
+        _closedCacheAt=cacheAt;_closedCache=r;
+        return r;
     }
     public override void OnTimer()
     {
@@ -732,7 +750,13 @@ public abstract class RizanRobot : Rizan.Portfolio.EngineContext
         if(now<_nextTelemetry)return;_nextTelemetry=now.AddMinutes(1);
         Print("RIZAN_TRANSPORT symbol={0}; bridge={1}; continuity={2}; local_revision={3}",SymbolName,_bridgeReady,_continuityReady,_localRevision);
         Print("RIZAN_STATE status={0}; trading={1}; accountBound={2}; positions={3}; quarantined={4}; reason={5}",_status,EnableTrading,BindingOk,Owned.Length,_state.Quarantined,_state.QuarantineReason);
-        Print("RIZAN_CHECKPOINT {0}",Serialize());
+        // Journal output is diagnostics only; durable checkpoint persistence is unchanged.
+        // Full JSON on every minute previously created unnecessary allocations/log volume.
+        if(now>=_nextCheckpointJournal)
+        {
+            _nextCheckpointJournal=now.AddMinutes(5);
+            Print("RIZAN_CHECKPOINT {0}",Serialize());
+        }
     }
     public override void OnStop(){_stopping=true;Persist();++_bridgeGeneration;_bridgeReady=false;_connecting=false;_bridge?.Dispose();_bridge=null;Print("RIZAN stopped. Broker SL/TP remain attached; restart requires checkpoint reconciliation.");}
     internal override bool RecoveryReady => !_state.Quarantined && (_bridgeReady || _continuityReady) && !Stopped && !_stopping;
