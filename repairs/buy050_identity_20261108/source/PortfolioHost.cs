@@ -150,12 +150,13 @@ public abstract class RizanPortfolio : Robot
         if(Server.TimeInUtc>=_nextRuntimeTelemetry)
         {
             _nextRuntimeTelemetry=Server.TimeInUtc.AddMinutes(1);
-            var gc=GC.GetGCMemoryInfo();
-            Print("RIZAN_RUNTIME_HEALTH uptime_s={0:F0}; managed_heap_mb={1:F1}; gc2={2}; heap_size_mb={3:F1}; total_allocated_mb={4:F1}; working_set_mb={5:F1}; total_positions={6}; no_sl_positions={7}; note=NO_SL_FORCES_OPEN_RISK_INFINITY",
+            // Diagnostics must never fail an order-management timer.
+            double workingSetMb=-1;
+            try { using var process=System.Diagnostics.Process.GetCurrentProcess(); workingSetMb=process.WorkingSet64/1048576d; }
+            catch { /* Cloud process metrics can be sandbox-restricted. */ }
+            Print("RIZAN_RUNTIME_HEALTH uptime_s={0:F0}; managed_heap_mb={1:F1}; gc2={2}; total_allocated_mb={3:F1}; working_set_mb={4:F1}; total_positions={5}; no_sl_positions={6}; note=NO_SL_FORCES_OPEN_RISK_INFINITY",
                 (Server.TimeInUtc-_startedUtc).TotalSeconds,GC.GetTotalMemory(false)/1048576d,
-                GC.CollectionCount(2),gc.HeapSizeBytes/1048576d,
-                GC.GetTotalAllocatedBytes(false)/1048576d,
-                System.Diagnostics.Process.GetCurrentProcess().WorkingSet64/1048576d,
+                GC.CollectionCount(2),GC.GetTotalAllocatedBytes(false)/1048576d,workingSetMb,
                 Positions.Count,Positions.Count(p=>p.StopLoss==null));
         }
 #if !REPLAY
