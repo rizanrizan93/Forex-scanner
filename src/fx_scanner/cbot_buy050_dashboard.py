@@ -1,0 +1,193 @@
+"""BUY050 cBots dashboard. Read-only observations, never projected trade orders."""
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
+
+CONTRACT = "RIZAN_BUY050_READONLY_V1"
+RELEASE = "BUY050_RUNTIMEGUARD_20261108"
+SYMBOLS = ("XAUUSD", "EURUSD", "BTCUSD")
+SNAPSHOT_URL = (
+    "https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/"
+    "buy050-monitor-snapshots/runtime/buy050_live_snapshot.json"
+)
+WIB = ZoneInfo("Asia/Jakarta")
+
+
+def _time(value):
+    try:
+        t = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return t.astimezone(timezone.utc) if t.tzinfo else None
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
+def _wib(value):
+    t = _time(value)
+    return t.astimezone(WIB).strftime("%d/%m %H:%M:%S WIB") if t else "—"
+
+
+def evaluate_snapshot(raw, *, now=None):
+    """Reject spoofed/old contracts and distinguish publication from LIVE readiness."""
+    now = now or datetime.now(timezone.utc)
+    if (
+        not isinstance(raw, dict) or raw.get("contract") != CONTRACT
+        or raw.get("source_release") != RELEASE
+        or raw.get("strategy") != "P3_BUY050"
+        or raw.get("account_suffix") != "7903"
+        or raw.get("read_only") is not True
+        or raw.get("execution_authority") is not False
+    ):
+        raise ValueError("INVALID_BUY050_MONITOR_CONTRACT")
+    observed = _time(raw.get("observed_at"))
+    rows = raw.get("symbols")
+    if not isinstance(rows, list) or len(rows) != len(SYMBOLS):
+        raise ValueError("INVALID_BUY050_SYMBOLS")
+    if {r.get("symbol") for r in rows if isinstance(r, dict)} != set(SYMBOLS):
+        raise ValueError("INVALID_BUY050_SYMBOL_SET")
+    age = (now - observed).total_seconds() if observed else float("inf")
+    snapshot_fresh = -30 <= age <= 900
+    health = raw.get("bridge") if isinstance(raw.get("bridge"), dict) else {}
+    health_at = _time(health.get("observed_at"))
+    health_age = (now - health_at).total_seconds() if health_at else float("inf")
+    bridge_ready = (
+        snapshot_fresh and raw.get("service_active") is True
+        and health.get("profile_ok") is True and -30 <= health_age <= 120
+    )
+    status = {}
+    for r in rows:
+        symbol = r["symbol"]
+        if not snapshot_fresh:
+            state = "DATA_TERLAMBAT"
+        elif not bridge_ready or r.get("lease_active") is not True:
+            state = "BELUM_TERHUBUNG"
+        elif r.get("checkpoint_present") is not True or r.get("identity_ok") is not True:
+            state = "IDENTITAS_BERMASALAH"
+        elif r.get("fault") is True or r.get("quarantined") is True or r.get("exit_pending") is True:
+            state = "BLOKIR_NATIVE"
+        elif r.get("checkpoint_basket") is True or r.get("pending_intent") is True:
+            state = "CHECKPOINT_AKTIF"
+        else:
+            state = "TERPANTAU"
+        status[symbol] = state
+    return {
+        "payload": raw, "observed_at": observed,
+        "fresh": snapshot_fresh, "bridge_ready": bridge_ready,
+        "health_age_seconds": health_age, "age_seconds": age,
+        "statuses": status,
+    }
+
+
+def _fetch(bucket):
+    # Cache-buster is publication-scale; refresh UI does not imply broker poll.
+    req = Request(SNAPSHOT_URL + "?slot=" + str(bucket), headers={"User-Agent": "RIZAN-cBots-readonly/1"})
+    with urlopen(req, timeout=9) as response:
+        data = response.read(80_001)
+    if len(data) > 80_000:
+        raise ValueError("BUY050_MONITOR_TOO_LARGE")
+    return json.loads(data)
+
+
+def _profile_details(symbol):
+    return {
+        "XAUUSD": (
+            "Frozen utama: SL 2,4 × ATR; TP 4,5R; pengali risiko 1,65. "
+            "BUY050 juga memuat entry tambahan H1 dan guard portofolio."
+        ),
+        "EURUSD": (
+            "Frozen EUR: target 10R; konfigurasi EurStop 0,845 dan "
+            "EurRisk 0,80; layering sesuai state native."
+        ),
+        "BTCUSD": (
+            "Frozen BTC: BUY SL 2 × ATR / TP 12R, SELL SL 1,5 × ATR / TP 2R. "
+            "Setup original + Break40; batas risiko basket tambahan 2,5%; "
+            "guard akhir pekan mengikuti jam broker."
+        ),
+    }[symbol]
+
+
+def render_snapshot(raw, *, now=None):
+    import streamlit as st
+
+    model = evaluate_snapshot(raw, now=now)
+    p = model["payload"]
+    st.subheader("cBots · BUY050 RuntimeGuard")
+    st.caption("P3_BUY050 · XAUUSD + EURUSD + BTCUSD · LIVE akun ****7903 · monitor read-only")
+    st.caption(
+        "Dasbor mengikuti identitas checkpoint BUY050, bukan sinyal manual V1.3.0. "
+        "Data berasal dari publikasi audit VPS, bukan streaming tick atau izin order terminal."
+    )
+    if not model["fresh"]:
+        st.error("DATA TERLAMBAT · publikasi BUY050 lebih dari 15 menit. Semua status aktif dinonaktifkan.")
+    elif not model["bridge_ready"]:
+        st.warning("Bridge belum dapat dikonfirmasi baru dan sehat. Jangan tafsirkan ini sebagai sinyal entry.")
+    else:
+        st.info("Bridge BUY050 teramati; kesehatan koneksi tidak membuktikan cBot dapat mengirim order.")
+    rows = p["symbols"]
+    st.metric("Checkpoint terhubung", str(sum(model["statuses"][s] in ("TERPANTAU", "CHECKPOINT_AKTIF", "BLOKIR_NATIVE") for s in SYMBOLS)) + "/3")
+    st.caption("Terakhir dipublikasikan " + _wib(p.get("observed_at")) + " · heartbeat bridge " + _wib((p.get("bridge") or {}).get("observed_at")))
+    st.caption("Batas risiko gabungan 20,75% · batas margin 50% · cBot gabungan satu instance. Parameter merupakan profil frozen; nilai eksekusi tetap ditentukan broker dan cTrader.")
+    labels = {
+        "TERPANTAU": "TERPANTAU · belum ada kandidat entry terverifikasi",
+        "CHECKPOINT_AKTIF": "CHECKPOINT AKTIF · periksa posisi/intent di cTrader",
+        "BLOKIR_NATIVE": "BLOKIR · fault, quarantine, atau exit pending",
+        "BELUM_TERHUBUNG": "WAIT · lease/bridge belum terverifikasi",
+        "IDENTITAS_BERMASALAH": "BLOCK · checkpoint/profil tidak cocok",
+        "DATA_TERLAMBAT": "WAIT · data terlambat",
+    }
+    by_symbol = {r["symbol"]: r for r in rows}
+    for symbol in SYMBOLS:
+        item = by_symbol[symbol]
+        st.markdown("### " + symbol + " · " + labels[model["statuses"][symbol]])
+        st.caption(_profile_details(symbol))
+        if model["fresh"] and item.get("checkpoint_present") is True:
+            st.write("Checkpoint versi:", item.get("checkpoint_version") if type(item.get("checkpoint_version")) is int else "—")
+            st.write("Candle terakhir native:", _wib(item.get("last_bar_at")))
+            st.write("Sinyal terakhir tercatat:", _wib(item.get("last_signal_at")))
+            if item.get("last_signal_at"):
+                st.caption("Timestamp sinyal bukan bukti order broker berhasil ataupun sinyal baru yang masih berlaku.")
+            if item.get("weekend_lock_until"):
+                st.caption("Guard weekend BTC tercatat hingga " + _wib(item.get("weekend_lock_until")) + "; tidak otomatis berarti sedang terkunci.")
+            if item.get("fault") or item.get("quarantined"):
+                st.error("Native fault/quarantine terdeteksi: entry otomatis harus dianggap terblokir.")
+        else:
+            st.caption("Belum ada checkpoint BUY050 yang valid dan baru untuk instrumen ini.")
+        st.caption(
+            "**Entry / SL / TP berikutnya: belum terverifikasi.** "
+            "Checkpoint bridge tidak berisi paket kandidat, quote eksekusi, dan ukuran order lengkap. "
+            "Dashboard tidak mengarang level atau menampilkan ulang sinyal V1.3.0."
+        )
+        st.divider()
+    st.caption(
+        "Snapshot VPS dibaca tanpa mengubah cBot, systemd, lease, atau broker. "
+        "Eksekusi, floating P/L, volume, margin, posisi manual, dan konfirmasi SL/TP hanya dapat dipastikan di cTrader."
+    )
+
+
+def _render():
+    import streamlit as st
+
+    st.session_state.setdefault("rizan_buy050_view", True)
+    @st.cache_data(ttl=45, show_spinner=False)
+    def cached(slot):
+        return _fetch(slot)
+
+    try:
+        now = datetime.now(timezone.utc)
+        render_snapshot(cached(int(now.timestamp() // 45)), now=now)
+    except (OSError, ValueError, TypeError, KeyError, TimeoutError):
+        st.subheader("cBots · BUY050 RuntimeGuard")
+        st.warning(
+            "WAIT · snapshot BUY050 belum tersedia atau tidak valid. "
+            "Strategi lama V1.3.0 tidak digunakan sebagai pengganti. "
+            "Tidak ada entry, SL atau TP LIVE yang dapat dipastikan dari monitor ini."
+        )
+        st.caption("Profil beku: XAU SL 2,4 ATR / TP 4,5R; EUR TP 10R; BTC BUY 12R dan SELL 2R. Portofolio cap risiko 20,75%, margin 50%.")
+
+
+def render_buy050_dashboard():
+    import streamlit as st
+
+    st.fragment(run_every="60s")(_render)()
