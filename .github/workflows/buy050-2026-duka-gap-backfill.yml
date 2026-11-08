@@ -1,0 +1,35 @@
+name: BUY050 2026 Dukascopy Public Raw Tick Gap Backfill RESEARCH
+on:
+  push:
+    branches: ['research/buy050-integrated-replay-20261108']
+    paths: ['.github/workflows/buy050-2026-duka-gap-backfill.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - {symbol: XAUUSD, month: '2026-04'}
+          - {symbol: EURUSD, month: '2026-05'}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fetch, verify and aggregate original public raw bi5 without interpolation
+        run: |
+          python research/buy050_integrated_20261108/recover_missing_2026_dukascopy.py "${{ matrix.symbol }}" "${{ matrix.month }}" out
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: public-duka-ticks-${{ matrix.symbol }}-${{ matrix.month }}
+          path: out/
+          retention-days: 7
+          compression-level: 0
