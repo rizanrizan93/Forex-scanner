@@ -1,0 +1,104 @@
+name: BUY050 cBots Dashboard Snapshot (readonly)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/read_buy050_dashboard.py'
+      - 'src/fx_scanner/cbot_buy050_dashboard.py'
+      - 'tests/test_buy050_dashboard.py'
+      - '.github/workflows/buy050-dashboard-readonly.yml'
+  schedule:
+    - cron: '*/5 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: buy050-cbots-readonly-publisher
+  cancel-in-progress: false
+
+jobs:
+  read-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check contract validation tests
+        run: python -m unittest discover -s tests -p 'test_buy050_dashboard.py' -v
+        env:
+          PYTHONPATH: src
+      - name: Read-only VPS BUY050 checkpoint inventory
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "${SSH_PRIVATE_KEY}" && -n "${SSH_KNOWN_HOSTS}" ]] || { echo "BUY050_MONITOR_SSH_PREREQUISITES_MISSING"; exit 1; }
+          d=$(mktemp -d)
+          remote=''
+          opts=()
+          cleanup() {
+            if [[ -n "$remote" ]]; then
+              ssh "${opts[@]}" 'Rizanrizan@202.74.74.172' "rm -rf -- '$remote'" >/dev/null 2>&1 || true
+            fi
+            rm -rf -- "$d"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=15)
+          remote=$(ssh "${opts[@]}" 'Rizanrizan@202.74.74.172' 'umask 077; mktemp -d /tmp/rizan-buy050-dashboard.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-buy050-dashboard\.[a-zA-Z0-9]+$ ]]
+          scp -q "${opts[@]}" scripts/read_buy050_dashboard.py "Rizanrizan@202.74.74.172:$remote/"
+          ssh "${opts[@]}" 'Rizanrizan@202.74.74.172' "sudo -n /usr/bin/python3 '$remote/read_buy050_dashboard.py'" > "$RUNNER_TEMP/buy050_live_snapshot.json"
+          # Validate the schema without printing account or internal checkpoint content.
+          PYTHONPATH=src python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from fx_scanner.cbot_buy050_dashboard import evaluate_snapshot
+          p=os.path.join(os.environ['RUNNER_TEMP'],'buy050_live_snapshot.json')
+          with open(p,encoding='utf-8') as stream: data=json.load(stream)
+          result=evaluate_snapshot(data,now=datetime.now(timezone.utc))
+          assert result['fresh'], 'VPS_SNAPSHOT_NOT_FRESH'
+          assert set(data)=={'contract','strategy','source_release','account_suffix','observed_at','read_only','execution_authority','service_active','bridge','symbols'}, 'OUTPUT_FIELD_ALLOWLIST_FAILED'
+          for row in data['symbols']:
+              assert set(row)<=set(('symbol','identity_ok','checkpoint_present','lease_active','lease_touched_at','checkpoint_version','last_bar_at','last_signal_at','checkpoint_basket','pending_intent','fault','quarantined','weekend_lock_until','exit_pending')), 'SYMBOL_FIELD_ALLOWLIST_FAILED'
+          print('BUY050_READONLY_SNAPSHOT_VALIDATED',len(data['symbols']))
+          PY
+      - name: Publish sanitized snapshot on isolated branch
+        uses: actions/github-script@v7
+        env:
+          BUY050_OUTPUT: ${{ runner.temp }}/buy050_live_snapshot.json
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const raw = fs.readFileSync(process.env.BUY050_OUTPUT, 'utf8');
+            const data = JSON.parse(raw);
+            if (data.read_only !== true || data.execution_authority !== false)
+              throw new Error('NOT_READONLY');
+            const {owner,repo} = context.repo;
+            const path = 'runtime/buy050_live_snapshot.json';
+            const branch = 'buy050-monitor-snapshots';
+            let sha;
+            try {
+              const existing = await github.rest.repos.getContent({owner,repo,path,ref:branch});
+              sha = existing.data.sha;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+            await github.rest.repos.createOrUpdateFileContents({
+              owner,repo,path,branch,sha,
+              message:'chore(monitor): refresh sanitized BUY050 readonly checkpoint status',
+              content:Buffer.from(raw).toString('base64')
+            });
+            core.info('BUY050_READONLY_SNAPSHOT_PUBLISHED');
