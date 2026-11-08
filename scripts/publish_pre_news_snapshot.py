@@ -21,7 +21,13 @@ def _safe_source_status(value):
     text = str(value or "UNKNOWN")
     parts = text.split(":")
     if parts[0] == "OK":
-        return ":".join(parts[:2]) if len(parts) > 1 else "OK"
+        # Keep only numeric event/forecast counts, never raw upstream payload.
+        safe = ":".join(parts[:2]) if len(parts) > 1 and parts[1].isdigit() else "OK"
+        if len(parts) > 2 and parts[2].startswith("FORECASTS_"):
+            n = parts[2].removeprefix("FORECASTS_")
+            if n.isdigit():
+                safe += ":FORECASTS_" + n
+        return safe
     if parts[0] == "ERROR":
         return "ERROR:" + (parts[1] if len(parts) > 1 else "UNKNOWN")
     if text in {"DISABLED", "UNKNOWN"}:
