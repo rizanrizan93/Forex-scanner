@@ -127,7 +127,22 @@ jobs:
                     'buy050_health':health,'buy050_store':store,'services':services,'journal_counts':journals,
                     'socket_connections_by_service':socket_counts,'sqlite_inventory':legacy_databases,
                     'inventory_note':'A systemd bridge is not a cTrader Cloud cBot instance; do not delete state or shared services without independent dependency check.'}
-          print('BUY050_VPS_INVENTORY_BEGIN')
+          # Follow two samples of existing BUY050 leases; this does not create a new client.
+          if store.get('active_lease_symbols')==['BTCUSD','EURUSD','XAUUSD']:
+              time.sleep(12)
+              current=time.time()
+              fdb=Path('/var/lib/rizan-buy050-bridge/checkpoints.sqlite')
+              with sqlite3.connect(fdb.resolve().as_uri()+'?mode=ro',uri=True,timeout=3) as db:
+                  newer=db.execute('SELECT key,touched_at,expires_at FROM bridge_leases').fetchall()
+                  versions=db.execute('SELECT key,version FROM checkpoints').fetchall()
+              snapshot['followup_12s']={
+                  'lease_age_seconds':{str(key).split(':')[-1]:round(current-float(touched),1) for key,touched,_ in newer},
+                  'fresh_symbols':sorted(str(key).split(':')[-1] for key,touched,expires in newer if float(expires)>current and current-float(touched)<30),
+                  'checkpoint_versions':{str(key).split(':')[-1]:int(version) for key,version in versions},
+                  'service_active':cmd(['systemctl','is-active','rizan-buy050-bridge.service']).strip()=='active',
+                  'mem_mb':next((x.get('systemd_mem_mb') for x in services if x.get('unit')=='rizan-buy050-bridge.service'),None)
+              }
+                    print('BUY050_VPS_INVENTORY_BEGIN')
           print(json.dumps(snapshot,sort_keys=True))
           print('BUY050_VPS_INVENTORY_END')
           PY
