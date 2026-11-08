@@ -1,0 +1,40 @@
+name: Pre-News Provider Access Probe
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/pre-news-provider-probe.yml"
+      - "src/fx_scanner/pre_news_secondary_calendar.py"
+      - "config/pre_news_secondary_sources.json"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check upstream endpoint access, safe metadata only
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.error, json, socket
+          socket.setdefaulttimeout(9)
+          sources = {
+              'SHOWMYTRADES':'https://showmytrades.com/api/public/calendar/v1?currency=USD&impact=high,medium&days=7',
+              'HELIOUS':'https://api.helious.io/v1/calendar?days_back=1&days_ahead=7&country=US',
+              'TRADING_ECONOMICS_GUEST':'https://api.tradingeconomics.com/calendar?c=guest:guest&f=json',
+              'OHLC':'https://api.ohlc.io/v1/economic/events',
+          }
+          for name,url in sources.items():
+              try:
+                  req=urllib.request.Request(url,headers={'Accept':'application/json','User-Agent':'RIZAN-PreNews-SourceProbe/1.0'})
+                  with urllib.request.urlopen(req,timeout=9) as resp:
+                      b=resp.read(150000)
+                      o=json.loads(b)
+                      if isinstance(o,dict):
+                          events=next((o.get(k) for k in ('events','data','results','calendar') if isinstance(o.get(k),list)),[])
+                          print(name, 'HTTP',resp.status,'keys',list(o.keys())[:15],'events',len(events),'event_fields',list(events[0].keys())[:25] if events and isinstance(events[0],dict) else [])
+                      else:
+                          print(name,'HTTP',resp.status,'array_size',len(o),'event_fields',list(o[0])[:20] if o and isinstance(o[0],dict) else [])
+              except Exception as e:
+                  print(name,'UNAVAILABLE',type(e).__name__,str(e)[:120].replace('\n',' '))
+          PY
