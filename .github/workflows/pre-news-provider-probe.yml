@@ -31,8 +31,8 @@ jobs:
                       b=resp.read(150000)
                       o=json.loads(b)
                       if isinstance(o,dict):
-                          events=next((o.get(k) for k in ('events','data','results','calendar') if isinstance(o.get(k),list)),[])
-                          print(name, 'HTTP',resp.status,'keys',list(o.keys())[:15],'events',len(events),'event_fields',list(events[0].keys())[:25] if events and isinstance(events[0],dict) else [])
+                          events=(o.get('data',{}).get('events',[]) if isinstance(o.get('data'),dict) else next((o.get(k) for k in ('events','data','results','calendar') if isinstance(o.get(k),list)),[]))
+                          print(name, 'HTTP',resp.status,'keys',list(o.keys())[:15],'events',len(events),'event_fields',list(events[0].keys())[:25] if events and isinstance(events[0],dict) else [], 'forecast_present', sum(1 for e in events if e.get('forecast') not in (None,'')), 'sample',str(events[0])[:300] if events else '')
                       else:
                           print(name,'HTTP',resp.status,'array_size',len(o),'event_fields',list(o[0])[:20] if o and isinstance(o[0],dict) else [])
               except Exception as e:
