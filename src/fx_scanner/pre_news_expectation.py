@@ -196,7 +196,11 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
     result["forecast_quorum_met"] = (
         bool(cluster) and all(count >= MIN_FORECAST_SOURCES for count in quorum_counts)
     )
-    if tilts and len(tilts) == len(cluster):
+    calendar_valid = not any(
+        reason in reasons
+        for reason in ("PUBLICATION_STALE", "CALENDAR_STALE_MISSING_OR_UNHEALTHY")
+    )
+    if tilts and len(tilts) == len(cluster) and calendar_valid:
         if 1 in tilts and -1 in tilts:
             expectation = "MIXED"
         elif 1 in tilts:
