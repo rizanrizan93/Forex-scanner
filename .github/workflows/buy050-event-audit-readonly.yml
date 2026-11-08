@@ -1,0 +1,178 @@
+name: BUY050 Native Event Audit (read-only 1s sampling)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/watch_buy050_native_events.py'
+      - 'scripts/collect_buy050_execution_evidence.py'
+      - 'scripts/merge_buy050_event_audit.py'
+      - 'src/fx_scanner/cbot_buy050_event_dashboard.py'
+      - 'tests/test_buy050_event_audit.py'
+      - '.github/workflows/buy050-event-audit-readonly.yml'
+  schedule:
+    - cron: '*/5 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: buy050-signal-event-audit
+  cancel-in-progress: false
+
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install read-only broker dependencies
+        run: pip install -e '.[ctrader]' PyYAML
+      - name: Test audit fail-closed behavior before VPS access
+        run: python -m unittest discover -s tests -p 'test_buy050_event_audit.py' -v
+        env:
+          PYTHONPATH: 'src:.'
+      - name: Sample native BUY050 checkpoint on VPS (readonly, 1-second)
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo "SSH_PREREQUISITES_MISSING"; exit 1; }
+          d=$(mktemp -d)
+          remote=''
+          opts=()
+          cleanup() {
+            if [[ -n "$remote" ]]; then
+              ssh "${opts[@]}" 'Rizanrizan@202.74.74.172' "rm -rf -- '$remote'" >/dev/null 2>&1 || true
+            fi
+            rm -rf -- "$d"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20 -o ServerAliveInterval=30)
+          remote=$(ssh "${opts[@]}" 'Rizanrizan@202.74.74.172' 'umask 077; mktemp -d /tmp/rizan-buy050-events.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-buy050-events\.[A-Za-z0-9]+$ ]]
+          scp -q "${opts[@]}" scripts/watch_buy050_native_events.py "Rizanrizan@202.74.74.172:$remote/"
+          seconds=250
+          if [[ "$EVENT_NAME" == 'push' ]]; then seconds=15; fi
+          ssh "${opts[@]}" 'Rizanrizan@202.74.74.172' "sudo -n /usr/bin/python3 '$remote/watch_buy050_native_events.py' --seconds $seconds" > "$RUNNER_TEMP/buy050_watch_private.json"
+          python - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'buy050_watch_private.json')
+          with open(p) as f: data=json.load(f)
+          assert data['read_only'] is True and data['execution_authority'] is False
+          assert data['samples']>=2 and data['source']=='VPS_SQLITE_READONLY_1S_SAMPLING'
+          print('BUY050_EVENT_SAMPLE_OK',data['samples'])
+          PY
+      - name: Reconcile current open positions via read-only broker API
+        shell: bash
+        run: |
+          set +x
+          set -euo pipefail
+          if python scripts/collect_buy050_execution_evidence.py > "$RUNNER_TEMP/buy050_broker_private.json" 2>/dev/null; then
+            echo "BUY050_BROKER_OPEN_EVIDENCE_COLLECTED"
+          else
+            rm -f "$RUNNER_TEMP/buy050_broker_private.json"
+            echo "BUY050_BROKER_EVIDENCE_UNAVAILABLE; native audit continues without FILLED claims"
+          fi
+      - name: Fetch last sanitized audit snapshot for cross-run gap checks
+        uses: actions/github-script@v7
+        env:
+          PRIOR_FILE: ${{ runner.temp }}/buy050_event_previous.json
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs=require('fs');
+            const {owner,repo}=context.repo;
+            try {
+              const r=await github.rest.repos.getContent({
+                owner,repo,path:'runtime/buy050_event_timeline.json',ref:'buy050-event-audit'
+              });
+              if (r.data.type!=='file' || !r.data.content) throw new Error('INVALID_OLD_FILE');
+              const raw=Buffer.from(r.data.content,'base64').toString('utf8');
+              if (raw.length>70000) throw new Error('OLD_AUDIT_TOO_LARGE');
+              fs.writeFileSync(process.env.PRIOR_FILE,raw);
+            } catch(e) {
+              if(e.status!==404) throw e;
+              core.info('BUY050_AUDIT_BASELINE_FIRST_RUN');
+            }
+      - name: Merge events and positive broker open-position evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--current "$RUNNER_TEMP/buy050_watch_private.json"
+                --previous "$RUNNER_TEMP/buy050_event_previous.json"
+                --output "$RUNNER_TEMP/buy050_event_timeline.json")
+          if [[ -s "$RUNNER_TEMP/buy050_broker_private.json" ]]; then
+            args+=(--broker "$RUNNER_TEMP/buy050_broker_private.json")
+          fi
+          python scripts/merge_buy050_event_audit.py "${args[@]}"
+      - name: Validate strict public field allowlist
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=src python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from fx_scanner.cbot_buy050_event_dashboard import evaluate_timeline
+          p=os.path.join(os.environ['RUNNER_TEMP'],'buy050_event_timeline.json')
+          with open(p) as f: obj=json.load(f)
+          assert set(obj)=={
+            'contract','strategy','profile_sha256','read_only','execution_authority',
+            'execution_influence','started_at','ended_at','samples','failures',
+            'max_interval_s','unobserved_gap_s','continuous_coverage_confirmed',
+            'terminal_journal_available','broker_deals_verified','broker_open_positions_observed',
+            'broker_observed_at','end_state','events'
+          }, 'PUBLIC_AUDIT_FIELD_ALLOWLIST_FAILED'
+          assert set(obj['end_state'])=={'XAUUSD','EURUSD','BTCUSD'}
+          for state in obj['end_state'].values():assert set(state)=={'version','signal'}
+          for row in obj['events']:
+            assert set(row)=={'id','symbol','event','observed_at','signal_at',
+               'origin','checkpoint_version','evidence','protection'}, 'EVENT_FIELD_ALLOWLIST_FAILED'
+          view=evaluate_timeline(obj,now=datetime.now(timezone.utc))
+          assert view['fresh']
+          assert os.path.getsize(p)<70000
+          print('BUY050_EVENT_PUBLIC_VALIDATED',len(view['events']))
+          PY
+      - name: Publish sanitized event timeline only
+        uses: actions/github-script@v7
+        env:
+          EVENT_OUTPUT: ${{ runner.temp }}/buy050_event_timeline.json
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs=require('fs');
+            const raw=fs.readFileSync(process.env.EVENT_OUTPUT,'utf8');
+            const data=JSON.parse(raw);
+            if(data.read_only!==true || data.execution_authority!==false
+               || data.execution_influence!==false || data.broker_deals_verified!==false)
+                throw new Error('PUBLIC_AUDIT_EXECUTION_CLAIM_INVALID');
+            const {owner,repo}=context.repo;
+            const branch='buy050-event-audit';
+            const path='runtime/buy050_event_timeline.json';
+            let sha;
+            try {
+              const old=await github.rest.repos.getContent({owner,repo,path,ref:branch});
+              sha=old.data.sha;
+            } catch(e){if(e.status!==404) throw e;}
+            await github.rest.repos.createOrUpdateFileContents({
+              owner,repo,path,branch,sha,
+              message:'chore(cbots): refresh redacted BUY050 native event evidence and monitoring gaps',
+              content:Buffer.from(raw).toString('base64')
+            });
+            core.info('BUY050_EVENT_TIMELINE_PUBLISHED');
