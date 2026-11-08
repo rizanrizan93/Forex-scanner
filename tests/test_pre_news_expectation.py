@@ -218,3 +218,19 @@ def test_three_source_forecast_is_visible_but_macro_stale_cannot_confirm_bias():
     assert view["state"] == "DATA INCOMPLETE"
     assert view["xau_bias"] == "UNAVAILABLE"
     assert not view["execution_influence"]
+
+
+def test_stale_calendar_cannot_display_even_forecast_only_risk():
+    data = snapshot(-1)
+    data["heartbeats"][0]["observed_at"] = (NOW - timedelta(minutes=20)).isoformat()
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["forecast_risk"] == "UNAVAILABLE"
+    assert view["xau_bias"] == "UNAVAILABLE"
+
+
+def test_stale_publication_never_displays_direction():
+    data = snapshot(-1)
+    data["publication_fresh"] = False
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["forecast_risk"] == "UNAVAILABLE"
+    assert view["xau_bias"] == "UNAVAILABLE"
