@@ -378,3 +378,39 @@ def test_long_countdown_expressed_as_days_hours_minutes():
     from fx_scanner.pre_news_dashboard import _countdown
     assert _countdown(2300) == "1 hari 14 jam 20 menit"
     assert _countdown(40) == "0 jam 40 menit"
+
+
+def test_cpi_monthly_cool_three_sources_annual_hot_two_sources_is_mixed_qualified_lean():
+    data = snapshot(-1)
+    risk = data["heartbeats"][0]["details"]["risk"]
+    base = risk["focal_event"]
+    at = base["scheduled_at"]
+
+    def item(title, key, forecast, previous, providers):
+        return {
+            "title": title, "category": "CPI", "event_component": key,
+            "scheduled_at": at, "forecast": forecast, "previous": previous,
+            "forecast_quotes": [
+                {"source": source, "forecast": forecast, "previous": previous}
+                for source in providers
+            ],
+        }
+
+    risk["upcoming_events"] = [
+        item("CPI m/m", "CPI_MOM", 0.3, 0.6,
+             ("FOREX_FACTORY_WEEKLY", "HELIOUS", "SHOWMYTRADES")),
+        item("Core CPI m/m", "CORE_CPI_MOM", 0.2, 0.3,
+             ("FOREX_FACTORY_WEEKLY", "HELIOUS", "SHOWMYTRADES")),
+        item("CPI YoY", "CPI_YOY", 3.9, 3.7,
+             ("HELIOUS", "SHOWMYTRADES")),
+        item("Core CPI YoY", "CORE_CPI_YOY", 2.8, 2.6,
+             ("HELIOUS", "SHOWMYTRADES")),
+    ]
+    risk["focal_event"] = None
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["news_conclusion_status"] == "MIXED"
+    assert "MOM COOL LEAN" in view["news_conclusion"]
+    assert view["forecast_quorum_met"] is False
+    assert view["forecast_risk"] == "UNAVAILABLE"
+    assert view["xau_bias"] == "UNAVAILABLE"
+    assert view["execution_authority"] is False
