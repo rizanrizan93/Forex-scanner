@@ -1,0 +1,115 @@
+name: BUY050 stop unused legacy VPS bridge services 20261108
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/buy050-retire-legacy-vps-20261108.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rizan-buy050-isolated-deploy
+  cancel-in-progress: false
+jobs:
+  retire-only-inactive-legacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Guarded stop-disable old services only; preserve checkpoints
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo "SSH_UNAVAILABLE"; exit 1; }
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known_hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          ssh_options=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known_hosts" -o ConnectTimeout=20)
+          ssh "${ssh_options[@]}" 'Rizanrizan@202.74.74.172' 'sudo -n python3 -' <<'PY'
+          import os,sys,json,sqlite3,time,datetime,subprocess,re
+          from pathlib import Path
+          KEEP='rizan-buy050-bridge.service'
+          RETIRE=('rizan-btc10-bridge.service','rizan-disp1506-bridge.service',
+                  'rizan-cbot-bridge.service','rizan-btc7d130.service')
+          DB_DIRS=('/var/lib/rizan-btc10-bridge','/var/lib/rizan-disp1506-bridge',
+                   '/var/lib/rizan-r3-bridge','/var/lib/rizan-compression-bridge',
+                   '/var/lib/rizan-tp500-bridge')
+          def run(args,ok=True):
+              p=subprocess.run(args,check=False,capture_output=True,text=True,timeout=25)
+              if ok and p.returncode:raise RuntimeError('COMMAND_FAILED:'+args[0]+':'+args[1])
+              return p.stdout.strip()
+          def prop(unit,field):
+              return run(['systemctl','show',unit,'--value','-p',field],ok=False)
+          def health_check():
+              if prop(KEEP,'ActiveState')!='active':raise RuntimeError('BUY050_INACTIVE')
+              h=json.loads(Path('/var/lib/rizan-buy050-bridge/health.json').read_text())
+              now=datetime.datetime.now(datetime.timezone.utc)
+              observed=datetime.datetime.fromisoformat(str(h['observed_utc']).replace('Z','+00:00'))
+              if not 0<=(now-observed).total_seconds()<60:raise RuntimeError('BUY050_HEALTH_STALE')
+              if h.get('profile')!='RIZAN_BUY050_FROZEN_20261107' or h.get('btc')!='ready' or int(h.get('connected') or 0)<3:
+                  raise RuntimeError('BUY050_CONNECTIONS_NOT_READY')
+              file=Path('/var/lib/rizan-buy050-bridge/checkpoints.sqlite')
+              with sqlite3.connect(file.resolve().as_uri()+'?mode=ro',uri=True,timeout=3) as db:
+                  leases=db.execute('SELECT key,expires_at,touched_at FROM bridge_leases').fetchall()
+              now_s=time.time()
+              fresh={str(k).split(':')[-1] for k,until,touched in leases if float(until)>now_s and now_s-float(touched)<30}
+              if fresh!={'XAUUSD','EURUSD','BTCUSD'}:raise RuntimeError('BUY050_LEASES_NOT_FRESH')
+              return {'connected':h['connected'],'fresh_symbols':sorted(fresh),
+                      'health_age_seconds':round((now-observed).total_seconds(),1)}
+          initial=health_check()
+          ss=run(['ss','-H','-tnp','state','established'],ok=False).splitlines()
+          states={}
+          for unit in RETIRE:
+              active=prop(unit,'ActiveState')
+              enabled=prop(unit,'UnitFileState')
+              pid=prop(unit,'MainPID')
+              req=prop(unit,'RequiredBy').split()
+              conns=0 if not pid.isdigit() or int(pid)==0 else sum(('pid='+pid+',') in line or ('pid='+pid+')') in line for line in ss)
+              mem=prop(unit,'MemoryCurrent')
+              states[unit]={'active':active,'enabled':enabled,'connections':conns,
+                            'required_by_count':len(req),'mem_mb':round(int(mem)/1048576,2) if mem.isdigit() and int(mem)<10**13 else 0}
+              if conns or req:raise RuntimeError('LEGACY_SERVICE_HAS_CLIENT_OR_DEPENDENCY:'+unit)
+          for folder in DB_DIRS:
+              dbfile=Path(folder)/'checkpoints.sqlite'
+              if not dbfile.is_file():continue
+              with sqlite3.connect(dbfile.resolve().as_uri()+'?mode=ro',uri=True,timeout=3) as db:
+                  names={x[0] for x in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                  if 'bridge_leases' in names:
+                      live=db.execute('SELECT COUNT(*) FROM bridge_leases WHERE expires_at>?',(time.time(),)).fetchone()[0]
+                      if live:raise RuntimeError('LEGACY_CHECKPOINT_HAS_ACTIVE_LEASE:'+Path(folder).name)
+          changed=[]
+          try:
+              for unit in RETIRE:
+                  if states[unit]['active']=='active' or states[unit]['enabled']=='enabled':
+                      run(['systemctl','disable','--now',unit])
+                      changed.append(unit)
+              for unit in RETIRE:
+                  if prop(unit,'ActiveState')!='inactive' or prop(unit,'UnitFileState') not in ('disabled','static'):
+                      raise RuntimeError('LEGACY_STOP_NOT_VERIFIED:'+unit)
+              after=health_check()
+              if prop(KEEP,'MainPID')=='0':raise RuntimeError('BUY050_PID_MISSING')
+          except Exception:
+              # Roll back only the old service states if the new bridge fails.
+              for unit in reversed(changed):
+                  if states[unit]['enabled']=='enabled':
+                      subprocess.run(['systemctl','enable','--now',unit],capture_output=True,timeout=20)
+                  elif states[unit]['active']=='active':
+                      subprocess.run(['systemctl','start',unit],capture_output=True,timeout=20)
+              raise
+          print('BUY050_LEGACY_RETIRE_AUDIT_BEGIN')
+          print(json.dumps({'observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                            'action':'systemctl_disable_now_exact_legacy_only',
+                            'before':initial,'after':after,'legacy_before':states,
+                            'changed_units':changed,'legacy_after':{u:prop(u,'ActiveState') for u in RETIRE},
+                            'new_buy050_unit':prop(KEEP,'ActiveState'),
+                            'estimated_freed_service_memory_mb':round(sum(v['mem_mb'] for v in states.values()),2),
+                            'checkpoints_deleted':False,'state_dirs_deleted':False,
+                            'nginx_modified':False,'ctrader_cloud_touched':False,'broker_orders':0},
+                           sort_keys=True))
+          print('BUY050_LEGACY_RETIRE_AUDIT_END')
+          PY
