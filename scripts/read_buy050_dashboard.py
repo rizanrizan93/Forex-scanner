@@ -97,9 +97,18 @@ def snapshot():
 
     selected = {}
     account_values = set()
+    unrecognized = set()
     for key, version, raw in states:
         identified = checkpoint_symbol(key)
         if not identified:
+            # A newly deployed algo may use a new checkpoint prefix/profile.
+            # Never declare such checkpoints connected under the OLD identity.
+            # Report only the symbol-level mismatch; do not expose raw keys.
+            parts = str(key).split(":")
+            if (len(parts) >= 3 and parts[-1] in CONTRACTS
+                    and re.fullmatch(r"[1-9][0-9]{0,18}", parts[-2])
+                    and parts[-2].endswith(ACCOUNT_SUFFIX)):
+                unrecognized.add(parts[-1])
             continue
         symbol, account = identified
         if symbol in selected:
@@ -116,7 +125,7 @@ def snapshot():
             "lease_active": False, "lease_touched_at": None, "checkpoint_version": None,
             "last_bar_at": None, "last_signal_at": None, "checkpoint_basket": False,
             "pending_intent": False, "fault": False, "quarantined": False,
-            "weekend_lock_until": None,
+            "weekend_lock_until": None, "unrecognized_checkpoint": symbol in unrecognized,
         }
         if symbol in selected:
             key, version, state = selected[symbol]
