@@ -34,10 +34,11 @@
     "free_delay_minutes": 60
   },
   "TRADING_ECONOMICS": {
-    "enabled": true,
+    "enabled": false,
     "base_url": "https://api.tradingeconomics.com/calendar/country/united%20states",
     "allowed_host": "api.tradingeconomics.com",
     "role": "LICENSED_CONSENSUS",
-    "api_key_environment": "RIZAN_TRADING_ECONOMICS_API_KEY"
+    "api_key_environment": "RIZAN_TRADING_ECONOMICS_API_KEY",
+    "enable_note": "requires explicit license, key and safe polling cadence"
   }
 }
