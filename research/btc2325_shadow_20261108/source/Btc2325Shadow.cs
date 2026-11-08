@@ -64,8 +64,10 @@ public sealed class RizanBtc2325Shadow : Robot
         _h4 = MarketData.GetBars(TimeFrame.Hour4, "BTCUSD");
         _m1 = MarketData.GetBars(TimeFrame.Minute, "BTCUSD");
         _lastDecisionHourUtc = DateTime.MinValue;
+        Print("BTC2325_HISTORY_CHECK cTrader_source=True; h1_bars={0}; h4_bars={1}; m1_bars={2}; original_Bitstamp_M1_parity_unverified=True",_h1.Count,_h4.Count,_m1.Count);
         _lastClosedMinuteUtc = DateTime.MinValue;
         Print("BTC2325_RESEARCH_ONLY id={0}; orders_enabled=False; signal=H4_SWEEP20_THEN_H1_EMA20; account_scope=NO_POSITION_MODIFICATION", CandidateId);
+        Print("BTC2325_PARITY_AUDIT_VERSION=2; holding_exit=H1_expiry_final_M1_close; paper_cash_init=observed_Account_Balance; strategy_guard_exact=False");
         Print("BTC2325_PARITY_WARNING frozen_guard=historical_BUY050_closed_balance; runtime_guard=causal_observed_account_balance; model_not_equivalent=True");
         Print("BTC2325_PARITY_WARNING native_shared_account_replay=False; floating_DD_unverified=True; max_3200BTC_not_broker_verified=True");
         Timer.Start(TimeSpan.FromSeconds(1));
@@ -128,7 +130,9 @@ public sealed class RizanBtc2325Shadow : Robot
         // The H1 signal is from the hour which just closed; H4 features are the
         // most recent *completed* H4 candle, never the H4 in progress.
         int hi = LastClosed(_h1, decisionUtc, 1), h4i = LastClosed(_h4, decisionUtc, 4);
-        if(hi < 210 || h4i < 100) return null;
+        // Frozen Python research allows signals only after index 410; this is
+        // a minimum warmup, not proof of a matching historical feed origin.
+        if(hi <= 410 || h4i < 100) return null;
         double atr4 = AtrAt(_h4, h4i), atr1 = AtrAt(_h1, hi);
         if(!double.IsFinite(atr4) || !double.IsFinite(atr1) || atr4 <= 0 || atr1 <= 0) return null;
         double o4 = _h4.OpenPrices[h4i], c4 = _h4.ClosePrices[h4i], high4 = _h4.HighPrices[h4i], low4 = _h4.LowPrices[h4i];
@@ -219,7 +223,7 @@ public sealed class RizanBtc2325Shadow : Robot
             return;
         }
         _basket=new VirtualBasket{
-            Family=s.Family,Side=s.Side,EntryAtUtc=hourUtc,ExpiresUtc=hourUtc.AddHours(s.HoldHours),
+            Family=s.Family,Side=s.Side,EntryAtUtc=hourUtc,ExpiresUtc=hourUtc.AddHours(s.HoldHours).AddMinutes(59),
             Quantity=qty,Entry=assumedEntry,Stop=assumedEntry-s.Side*s.Distance,
             Target=assumedEntry+s.Side*s.Distance*10
         };
@@ -251,11 +255,19 @@ public sealed class RizanBtc2325Shadow : Robot
     private void MonitorVirtual(DateTime nowUtc)
     {
         if(_basket == null)return;
-        // Process all completed minutes since last timer (including cTrader tab inactivity).
-        for(int i=0;i<_m1.Count;i++)
+        // Binary-search first unseen minute; avoid scanning all M1 history
+        // every second. UTC time cursor is safe across bar index rotation.
+        int lo=0, hi=_m1.Count;
+        while(lo<hi)
+        {
+            int mid=lo+(hi-lo)/2;
+            if(_m1.OpenTimes[mid]<=_lastClosedMinuteUtc)lo=mid+1;
+            else hi=mid;
+        }
+        for(int i=lo;i<_m1.Count;i++)
         {
             var at=_m1.OpenTimes[i];
-            if(at<=_lastClosedMinuteUtc || at.AddMinutes(1)>nowUtc)continue;
+            if(at.AddMinutes(1)>nowUtc)break;
             _lastClosedMinuteUtc=at;
             var b=_basket;
             if(b==null)break;
