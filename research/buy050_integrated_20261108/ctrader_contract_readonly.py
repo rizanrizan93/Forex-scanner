@@ -40,7 +40,7 @@ def main():
      if data.get(v) is not None:data[v.replace("Volume","VolumeUnits").replace("lotSize","lotSizeUnits")] = float(data[v])/100.0
     if data.get("lotSize") and data.get("maxVolume"):
      data["maxLotsPerOrder"]=float(data["maxVolume"])/float(data["lotSize"])
-    # cTrader return dynamic leverage tiers via readonly ProtoOADynamicLeverageByIDReq.
+    # cTrader return dynamic leverage tiers via readonly ProtoOAGetDynamicLeverageByIDReq.
     leverage_id=data.get("leverageId")
     if sym=="BTCUSD":
      try:
