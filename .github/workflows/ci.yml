@@ -42,6 +42,13 @@ jobs:
         run: python -m py_compile main.py streamlit_app.py
       - name: Zone V05 M1 regression
         run: pytest -q tests/test_zone_v05.py
+      - name: Pre-News three-source regression
+        run: |
+          pytest -q tests/test_pre_news_source_fusion.py \
+            tests/test_pre_news_secondary_calendar.py \
+            tests/test_pre_news_expectation.py \
+            tests/test_pre_news_transport.py \
+            tests/test_pre_news_runtime.py
       - name: Unit tests
         run: pytest -q
       - name: Config contract
