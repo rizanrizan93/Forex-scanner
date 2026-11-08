@@ -54,8 +54,8 @@ def render_dashboard(default_pair="XAUUSD", default_detail="Zona reversal"):
         )
     if pair == "cBots":
         with st.container(key="rizan_cbots_content"):
-            from fx_scanner.cbot_manual_dashboard import render_cbot_manual_dashboard
-            render_cbot_manual_dashboard()
+            from fx_scanner.cbot_buy050_dashboard import render_buy050_dashboard
+            render_buy050_dashboard()
     if pair == "EURUSD":
         with st.container(key="rizan_eurusd_content"):
             from fx_scanner.selected_raw_reference_dashboard import render_selected_raw_reference
