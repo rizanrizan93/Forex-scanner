@@ -157,6 +157,7 @@ class FusedConsensus:
     forecast_source_count: int
     forecast_sources: tuple[str, ...]
     forecast_quotes: tuple[tuple[str, float, float | None], ...]
+    rejected_quote_sources: tuple[str, ...]
 
     @property
     def source_conflict(self) -> bool:
@@ -174,6 +175,20 @@ def _fuse_numeric(values: list[float], *, field: str) -> tuple[float | None, boo
     # absorbs formatting/rounding differences without hiding a real divergence.
     tolerance = max(0.01, abs(center) * 0.02)
     return center, spread > tolerance
+
+def _comparable_inflation_quote(key: str, forecast: float | None, previous: float | None) -> bool:
+    """Do not compare CPI growth-rate percentages with CPI index levels.
+
+    A provider may label both 'CPI m/m' and an index-level series with the same
+    title. Values over 10 percentage points/month (or 30 points/year) are
+    quarantined, not silently rescaled or interpreted as inflation forecasts.
+    This affects forecast consensus only; official actuals are unaffected.
+    """
+    if key in {"CPI_MOM", "CORE_CPI_MOM"}:
+        return all(abs(value) <= 10.0 for value in (forecast, previous) if value is not None)
+    if key in {"CPI_YOY", "CORE_CPI_YOY"}:
+        return all(abs(value) <= 30.0 for value in (forecast, previous) if value is not None)
+    return True
 
 
 def fuse_consensus(quotes: Iterable[SourceQuote]) -> FusedConsensus:
@@ -199,7 +214,15 @@ def fuse_consensus(quotes: Iterable[SourceQuote]) -> FusedConsensus:
     # row, duplicate provider row, or missing forecast must not count.
     forecasts_by_source: dict[str, SourceQuote] = {}
     previous_by_source: dict[str, SourceQuote] = {}
+    rejected_quote_sources: set[str] = set()
     for row in rows:
+        # A schedule-only row may legitimately carry an index-level previous
+        # value. Quarantine ONLY provider rows claiming a numeric forecast.
+        if row.forecast is not None and not _comparable_inflation_quote(
+            row.canonical_key, row.forecast, row.previous
+        ):
+            rejected_quote_sources.add(row.source)
+            continue
         if row.forecast is not None:
             prior = forecasts_by_source.get(row.source)
             if prior is None:
@@ -273,6 +296,7 @@ def fuse_consensus(quotes: Iterable[SourceQuote]) -> FusedConsensus:
         forecast_source_count=len(forecast_sources),
         forecast_sources=forecast_sources,
         forecast_quotes=forecast_quotes,
+        rejected_quote_sources=tuple(sorted(rejected_quote_sources)),
     )
 
 

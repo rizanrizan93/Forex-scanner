@@ -10,7 +10,9 @@ from math import isfinite
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from .pre_news_source_fusion import SECONDARY_CONSENSUS_SOURCES
+from .pre_news_source_fusion import (
+    SECONDARY_CONSENSUS_SOURCES, _comparable_inflation_quote, canonical_event_key,
+)
 
 MIN_FORECAST_SOURCES = 3
 
@@ -155,9 +157,14 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
     for e in cluster:
         forecast, previous = number(e.get("forecast")), number(e.get("previous"))
         conflict = _source_conflict(e)
+        component = str(e.get("event_component") or canonical_event_key(str(e.get("title") or "")))
+        if not _comparable_inflation_quote(component, forecast, previous):
+            conflict = True
+            reasons.append("UNIT_MISMATCH_EVENT:" + str(e.get("title")))
         # Verify the actual numeric rows, NOT the total number of calendar
         # sources. Official schedules do not publish independent forecasts.
         source_quotes: dict[str, dict[str, Any]] = {}
+        invalid_sources: set[str] = set(str(x) for x in (e.get("rejected_quote_sources") or []))
         raw_quotes = e.get("forecast_quotes") or []
         if isinstance(raw_quotes, list):
             for quote in raw_quotes:
@@ -167,23 +174,28 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                 value = number(quote.get("forecast"))
                 if provider not in SECONDARY_CONSENSUS_SOURCES or value is None:
                     continue
+                quoted_previous = number(quote.get("previous"))
+                if not _comparable_inflation_quote(component, value, quoted_previous):
+                    invalid_sources.add(provider)
+                    continue
                 if provider in source_quotes and source_quotes[provider]["forecast"] != value:
                     conflict = True
                 source_quotes[provider] = {
                     "source": provider, "forecast": value,
-                    "previous": number(quote.get("previous")),
+                    "previous": quoted_previous,
                 }
         count = len(source_quotes)
-        quorum_counts.append(count)
+        paired = sum(quote["previous"] is not None for quote in source_quotes.values())
+        quorum_counts.append(paired)
         tilt = None
         if conflict:
             reasons.append("SOURCE_CONFLICT:" + str(e.get("title")))
-        if count < MIN_FORECAST_SOURCES:
+        if paired < MIN_FORECAST_SOURCES:
             reasons.append(
                 "FORECAST_QUORUM:" + str(e.get("title")) +
-                f":{count}/{MIN_FORECAST_SOURCES}"
+                f":{paired}/{MIN_FORECAST_SOURCES}"
             )
-        if not conflict and count >= MIN_FORECAST_SOURCES:
+        if not conflict and paired >= MIN_FORECAST_SOURCES:
             if forecast is not None and previous is not None:
                 tolerance = max(abs(previous) * 0.01, 1e-9)
                 tilt = 0 if abs(forecast - previous) <= tolerance else (1 if forecast > previous else -1)
@@ -200,7 +212,6 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         # ONLY, never labeled as a validated three-source consensus. Two
         # independent vendors must provide both forecast and previous.
         indicative = tilt
-        paired = sum(quote["previous"] is not None for quote in source_quotes.values())
         if indicative is None and not conflict and count >= 2 and paired >= 2 and forecast is not None and previous is not None and e["category"] != "FOMC":
             tolerance = max(abs(previous) * 0.01, 1e-9)
             indicative = 0 if abs(forecast - previous) <= tolerance else (1 if forecast > previous else -1)
@@ -216,6 +227,8 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
             "source_count": e.get("source_count", 1),
             "sources": e.get("sources") or [e.get("source")],
             "forecast_source_count": count,
+            "forecast_pair_count": paired,
+            "rejected_quote_sources": sorted(invalid_sources),
             "forecast_sources": sorted(source_quotes),
             "forecast_quotes": [source_quotes[p] for p in sorted(source_quotes)],
             "source_agreement": e.get("source_agreement") or "SINGLE_SOURCE",
@@ -245,6 +258,36 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                 "Komponen rilis menunjukkan implikasi hawkish dan dovish bersamaan. "
                 "Tunggu actual versus forecast dan respons DXY/yield."
             )
+            # Two independently verified CPI monthly components can establish a
+            # *qualified* directional lean even if unverified YoY estimates
+            # disagree. Keep MIXED status and the strict overall quorum.
+            monthly = [
+                row for row in result["event_cluster"]
+                if row.get("event_component") in {"CPI_MOM", "CORE_CPI_MOM"}
+                and row.get("forecast_pair_count", 0) >= MIN_FORECAST_SOURCES
+            ]
+            opposed = [
+                row for row in result["event_cluster"]
+                if row.get("indicative_hawkish_tilt") == 1
+            ]
+            if (
+                len(monthly) == 2
+                and all(row.get("indicative_hawkish_tilt") == -1 for row in monthly)
+                and opposed
+                and all(
+                    row.get("event_component") in {"CPI_YOY", "CORE_CPI_YOY"}
+                    and row.get("forecast_pair_count", 0) < MIN_FORECAST_SOURCES
+                    for row in opposed
+                )
+            ):
+                result["news_conclusion"] = "MIXED — MOM COOL LEAN (BELUM TERVERIFIKASI PENUH)"
+                result["news_conclusion_basis"] = (
+                    "Headline dan Core CPI bulanan sama-sama menunjukkan perlambatan "
+                    "dengan minimal 3 pasangan forecast/previous; estimasi tahunan "
+                    "justru HOT tetapi belum memenuhi quorum. "
+                    "COOL hanya indikasi komponen bulanan, bukan arah XAU "
+                    "terkonfirmasi atau izin entry."
+                )
         else:
             pressure = next(iter(signed)) if signed else 0
             label = (

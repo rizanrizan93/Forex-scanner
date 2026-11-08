@@ -30,6 +30,14 @@ def _wib(value):
     at = timestamp(value)
     return at.astimezone(ZoneInfo("Asia/Jakarta")).strftime("%d-%m %H:%M:%S WIB") if at else "Belum tersedia"
 
+def _countdown(minutes):
+    if minutes is None:
+        return "Belum tersedia"
+    whole = max(0, round(float(minutes)))
+    days, remaining = divmod(whole, 1440)
+    hours, mins = divmod(remaining, 60)
+    return (f"{days} hari " if days else "") + f"{hours} jam {mins} menit"
+
 
 def _reason(value):
     if str(value).startswith("FORECAST_QUORUM:"):
@@ -42,6 +50,7 @@ def _reason(value):
         "CALENDAR_STALE_MISSING_OR_UNHEALTHY": "Feed kalender belum segar/sehat",
         "MACRO_STALE_MISSING_OR_UNHEALTHY": "Feed makro belum segar/sehat",
         "NO_UPCOMING_SUPPORTED_EVENT_IN_CALENDAR": "Belum ada event mendatang yang sesuai di kalender",
+        "UNIT_MISMATCH_EVENT": "Nilai indeks CPI terdeteksi pada kolom persentase; bias ditahan",
         "CONSENSUS_MACRO_DIVERGENCE": "Ekspektasi konsensus dan tekanan makro berlawanan",
         "FOMC_LANGUAGE_AND_RATE_PATH_UNMODELED": "FOMC: arahan kebijakan dan konferensi pers belum tercakup",
     }
@@ -118,12 +127,13 @@ def render_pre_news_dashboard():
         if event:
             st.write(str(event.get("title")) + " · " + str(view["event_time_wib"]) + " WIB")
             st.caption("Sumber kalender: " + str(event.get("source") or "Belum tersedia") + " · " + str(event.get("source_tier") or "Belum terverifikasi"))
-            st.metric("Menuju rilis", f'{view["minutes_to_event"]:,.1f} menit')
+            st.metric("Menuju rilis", _countdown(view["minutes_to_event"]))
+            st.caption(f'{view["minutes_to_event"]:,.1f} menit hingga rilis resmi (WIB)')
             cluster = view["event_cluster"]
             if cluster:
-                min_count = min(int(row.get("forecast_source_count") or 0) for row in cluster)
+                min_count = min(int(row.get("forecast_pair_count") or 0) for row in cluster)
                 st.metric(
-                    "Quorum forecast per komponen",
+                    "Quorum forecast+previous per komponen",
                     f"{min_count}/{MIN_FORECAST_SOURCES}",
                 )
                 st.dataframe(
@@ -131,11 +141,24 @@ def render_pre_news_dashboard():
                         "Komponen": row.get("event_component") or row.get("title"),
                         "Forecast konsensus": row.get("forecast"),
                         "Previous": row.get("previous"),
-                        "Forecast valid": row.get("forecast_source_count"),
+                        "Forecast numerik": row.get("forecast_source_count"),
+                        "Pasangan valid": row.get("forecast_pair_count"),
+                        "Sumber dikarantina": ", ".join(row.get("rejected_quote_sources") or []),
                         "Perbedaan sumber": row.get("source_agreement"),
                     } for row in cluster],
                     hide_index=True, width="stretch",
                 )
+                quarantined = [
+                    f'{item.get("event_component") or item.get("title")}: ' +
+                    ", ".join(item.get("rejected_quote_sources") or [])
+                    for item in cluster if item.get("rejected_quote_sources")
+                ]
+                if quarantined:
+                    st.warning(
+                        "Validasi satuan: forecast indeks yang salah dipetakan " +
+                        "dikarantina (tidak dihitung sebagai persentase). " +
+                        " · ".join(quarantined)
+                    )
                 provider_rows = []
                 status_map = view.get("calendar_source_status") or {}
                 for item in cluster:
@@ -152,7 +175,11 @@ def render_pre_news_dashboard():
                             "Forecast": quote.get("forecast"),
                             "Previous": quote.get("previous"),
                             "Status feed": status_map.get(source, "BELUM TERSEDIA"),
-                            "Verifikasi": "VALID" if quote.get("forecast") is not None else "MISSING",
+                            "Verifikasi": (
+                                "KARANTINA UNIT" if source in (item.get("rejected_quote_sources") or []) and quote.get("forecast") is None
+                                else "VALID" if quote.get("forecast") is not None and quote.get("previous") is not None
+                                else "PARTIAL" if quote.get("forecast") is not None else "MISSING"
+                            ),
                         })
                 st.markdown("**Perbandingan forecast dari hingga 6 sumber**")
                 st.dataframe(provider_rows, hide_index=True, width="stretch")

@@ -61,6 +61,7 @@ DASHBOARD_EVENT_KEYS = (
     "forecast_source_count",
     "forecast_sources",
     "forecast_quotes",
+    "rejected_quote_sources",
     "source_agreement",
     "source_confidence",
     "conflicts",
@@ -260,6 +261,7 @@ def _enrich_event_dict(
                 "forecast_source_count": 0,
                 "forecast_sources": [],
                 "forecast_quotes": [],
+                "rejected_quote_sources": [],
                 "source_agreement": "SINGLE_SOURCE",
                 "source_confidence": "LOW",
                 "conflicts": [],
@@ -274,6 +276,7 @@ def _enrich_event_dict(
         {"source": source, "forecast": value, "previous": previous}
         for source, value, previous in fused.forecast_quotes
     ]
+    row["rejected_quote_sources"] = list(fused.rejected_quote_sources)
     row["source_agreement"] = fused.source_agreement
     row["conflicts"] = list(fused.conflicts)
     if fused.source_conflict:
@@ -282,7 +285,7 @@ def _enrich_event_dict(
         row["gold_bias_confidence"] = "LOW"
         row["gold_bias_basis"] = "SOURCE_CONFLICT"
     elif fused.forecast_source_count >= 3:
-        row["source_confidence"] = "HIGH"
+        row["source_confidence"] = "MEDIUM" if fused.rejected_quote_sources else "HIGH"
     elif fused.forecast_source_count >= 2:
         row["source_confidence"] = "MEDIUM"
     else:

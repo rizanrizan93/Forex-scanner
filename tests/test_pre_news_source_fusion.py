@@ -178,3 +178,45 @@ def test_conflicting_previous_among_forecast_providers_still_blocks_direction():
     fused = fuse_consensus(values)
     assert fused.forecast_source_count == 3
     assert "PREVIOUS_CONFLICT" in fused.conflicts
+
+
+def test_cpi_index_level_mislabeled_mom_is_quarantined_before_fusion():
+    """Reproduces Nov 9 Helious rows: index 337 vs CPI MoM 0.3."""
+    at = datetime(2026, 11, 10, 13, 30, tzinfo=UTC)
+    rows = [
+        SourceQuote("FOREX_FACTORY_WEEKLY", "CPI m/m", "USD", at, 0.3, 0.6),
+        SourceQuote("SHOWMYTRADES", "Consumer Price Index MoM", "USD", at, 0.3, 0.6),
+        SourceQuote("HELIOUS", "Consumer Price Index (MoM)", "USD", at, 337.02, 336.94),
+        SourceQuote("HELIOUS", "Consumer Price Index (MoM)", "USD", at, 0.3, 0.6),
+    ]
+    result = fuse_consensus(rows)
+    assert result.forecast == 0.3
+    assert result.previous == 0.6
+    assert result.forecast_source_count == 3
+    assert result.forecast_sources == ("FOREX_FACTORY_WEEKLY", "HELIOUS", "SHOWMYTRADES")
+    assert result.rejected_quote_sources == ("HELIOUS",)
+    assert result.conflicts == ()
+    assert result.source_agreement == "MULTI_SOURCE_AGREE"
+
+
+def test_cpi_mom_index_only_provider_cannot_satisfy_forecast_quorum():
+    at = datetime(2026, 11, 10, 13, 30, tzinfo=UTC)
+    result = fuse_consensus([
+        SourceQuote("FOREX_FACTORY_WEEKLY", "CPI m/m", "USD", at, 0.3, 0.6),
+        SourceQuote("HELIOUS", "Consumer Price Index MoM", "USD", at, 168.66, 168.77),
+    ])
+    assert result.forecast_source_count == 1
+    assert result.forecast == 0.3
+    assert result.previous == 0.6
+    assert result.rejected_quote_sources == ("HELIOUS",)
+
+
+def test_cpi_yoy_index_scale_rejected_but_legitimate_rate_kept():
+    rows = [
+        SourceQuote("HELIOUS", "CPI YoY", "USD", _at(), 337.02, 336.94),
+        SourceQuote("SHOWMYTRADES", "CPI YoY", "USD", _at(), 3.9, 3.7),
+    ]
+    fused = fuse_consensus(rows)
+    assert fused.forecast_source_count == 1
+    assert fused.forecast == 3.9
+    assert fused.rejected_quote_sources == ("HELIOUS",)
