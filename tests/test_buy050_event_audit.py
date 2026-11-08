@@ -80,6 +80,39 @@ class EventAuditTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             evaluate_timeline(p,now=T+timedelta(seconds=30))
 
+    def test_broker_confirmed_deal_and_order_statuses_with_provenance(self):
+        a=audit()
+        b={"contract":"RIZAN_BUY050_BROKER_OPEN_V1","read_only":True,
+           "execution_authority":False,"deals_history_checked":True,
+           "orders_history_checked":True,
+           "history_from":stamp(-86400),"history_to":stamp(12),
+           "observed_at":stamp(13),"open_position_evidence":[],
+           "execution_evidence":[
+               {"symbol":"XAUUSD","signal_at":stamp(-60),
+                "observed_at":stamp(10),"event":"BROKER_DEAL_FILLED"},
+               {"symbol":"EURUSD","signal_at":stamp(-20),
+                "observed_at":stamp(11),"event":"BROKER_ORDER_REJECTED"},
+           ]}
+        out=merge(a,broker=b,now=T+timedelta(seconds=20))
+        self.assertTrue(out["broker_deals_verified"])
+        self.assertTrue(out["broker_orders_history_complete"])
+        kinds={x["event"] for x in out["events"]}
+        self.assertEqual(kinds,{"BROKER_DEAL_FILLED","BROKER_ORDER_REJECTED"})
+        self.assertTrue(evaluate_timeline(out,now=T+timedelta(seconds=20))["fresh"])
+
+    def test_broker_future_event_fails_closed(self):
+        b={"contract":"RIZAN_BUY050_BROKER_OPEN_V1","read_only":True,
+           "execution_authority":False,"deals_history_checked":True,
+           "orders_history_checked":True,
+           "history_from":stamp(-86400),"history_to":stamp(12),
+           "observed_at":stamp(13),"open_position_evidence":[],
+           "execution_evidence":[
+               {"symbol":"XAUUSD","signal_at":stamp(10),
+                "observed_at":stamp(600),"event":"BROKER_DEAL_FILLED"},
+           ]}
+        with self.assertRaises(ValueError):
+            merge(audit(),broker=b,now=T+timedelta(seconds=20))
+
     def test_raw_state_never_reaches_display_json(self):
         a=audit()
         a["start_state"]["XAUUSD"]["account"]=1237903
