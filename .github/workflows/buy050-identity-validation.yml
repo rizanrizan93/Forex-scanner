@@ -1,0 +1,53 @@
+name: BUY050 native build and bridge identity validation
+on:
+  push:
+    branches: [main, 'fix/buy050-identity-20261108']
+    paths:
+      - 'repairs/buy050_identity_20261108/**'
+      - '.github/workflows/buy050-identity-validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Test isolated bridge, deploy safety, and BTC seed
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd repairs/buy050_identity_20261108
+          python -m pip install -r bridge/requirements.txt
+          python -m py_compile bridge/*.py bridge/deploy/*.py
+          (cd bridge && python -m unittest -v test_bridge test_native_frames test_buy050_isolation test_source_transport_only)
+          (cd bridge/deploy && python -m unittest -v test_provision)
+          gzip -dk bridge/BTC_SEED_PACKET.json.gz
+          echo '210b1855ac5ffab2b628a7b4d301290427dc04e86a4a6042599d6d0ac8b873f2  bridge/BTC_SEED_PACKET.json' | sha256sum -c -
+      - name: Official cTrader Automate native build
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd repairs/buy050_identity_20261108
+          dotnet build source/RizanBuy050Frozen.csproj -c Release --warnaserror
+          mkdir -p artifacts
+          find source/bin/Release/net6.0 -maxdepth 1 -name '*.algo' -exec cp '{}' artifacts/RizanBuy050BridgeFix_20261108.algo \;
+          test -s artifacts/RizanBuy050BridgeFix_20261108.algo
+          sha256sum artifacts/*.algo > artifacts/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: RizanBuy050BridgeFix_20261108
+          path: repairs/buy050_identity_20261108/artifacts/
+          retention-days: 30
