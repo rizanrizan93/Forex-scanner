@@ -26,6 +26,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/rizan_bridge_watchdog.py
+      - name: Verify BUY050 recovery gating (no duplicate dispatch)
+        run: python -m unittest discover -s tests -p 'test_buy050_publication_watchdog.py' -v
       - name: Recover stalled BUY050 read-only publication (never trade)
         if: always()
         env:
