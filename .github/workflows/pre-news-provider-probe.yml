@@ -13,6 +13,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Exercise actual provider adapters, read-only
+        run: |
+          PYTHONPATH=src python - <<'PY'
+          from datetime import UTC, datetime
+          from fx_scanner.pre_news_additional_providers import (
+              ShowMyTradesCalendarProvider, HeliousCalendarProvider
+          )
+          from fx_scanner.providers.transport import UrllibHttpTransport
+          transport = UrllibHttpTransport(timeout_seconds=12,max_response_bytes=2000000)
+          for provider in (ShowMyTradesCalendarProvider, HeliousCalendarProvider):
+              try:
+                  result = provider(transport).fetch(now=datetime.now(UTC))
+                  print(provider.__name__, "ADAPTER_OK",
+                        "events",len(result.events),
+                        "forecast",sum(e.forecast is not None for e in result.events),
+                        "CPI",[(e.title,e.forecast) for e in result.events if "CPI" in e.title.upper()][:6])
+              except Exception as exc:
+                  print(provider.__name__, "ADAPTER_ERROR", type(exc).__name__,
+                        str(exc).split(":")[0][:90])
+          PY
       - name: Check upstream endpoint access, safe metadata only
         run: |
           python - <<'PY'
