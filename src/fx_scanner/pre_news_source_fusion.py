@@ -206,7 +206,12 @@ def fuse_consensus(quotes: Iterable[SourceQuote]) -> FusedConsensus:
                 forecasts_by_source[row.source] = row
             elif abs(prior.forecast - row.forecast) > 1e-9:
                 conflicts.append("DUPLICATE_SOURCE_FORECAST_CONFLICT")
-        if row.previous is not None:
+        # Compare previous observations only within the same numeric
+        # forecast series. BLS/BEA official schedule observations can be index
+        # levels (e.g. CPI index 338.9), not calendar CPI MoM percentages.
+        # Their values remain in official release data but must not contaminate
+        # the pre-release forecast-vs-previous consensus comparison.
+        if row.previous is not None and row.forecast is not None:
             prior = previous_by_source.get(row.source)
             if prior is None:
                 previous_by_source[row.source] = row
