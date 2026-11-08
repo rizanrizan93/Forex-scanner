@@ -142,6 +142,9 @@ class FusedConsensus:
     source_agreement: str
     conflicts: tuple[str, ...]
     source_count: int
+    forecast_source_count: int
+    forecast_sources: tuple[str, ...]
+    forecast_quotes: tuple[tuple[str, float, float | None], ...]
 
     @property
     def source_conflict(self) -> bool:
@@ -179,16 +182,41 @@ def fuse_consensus(quotes: Iterable[SourceQuote]) -> FusedConsensus:
     if max(abs((value - anchor).total_seconds()) for value in times) > 120:
         conflicts.append("RELEASE_TIME_CONFLICT")
 
+    # Forecast quorum must be based on DISTINCT providers with an actual
+    # numeric forecast for this exact release component. A BLS/BEA schedule
+    # row, duplicate provider row, or missing forecast must not count.
+    forecasts_by_source: dict[str, SourceQuote] = {}
+    previous_by_source: dict[str, SourceQuote] = {}
+    for row in rows:
+        if row.forecast is not None:
+            prior = forecasts_by_source.get(row.source)
+            if prior is None:
+                forecasts_by_source[row.source] = row
+            elif abs(prior.forecast - row.forecast) > 1e-9:
+                conflicts.append("DUPLICATE_SOURCE_FORECAST_CONFLICT")
+        if row.previous is not None:
+            prior = previous_by_source.get(row.source)
+            if prior is None:
+                previous_by_source[row.source] = row
+            elif abs(prior.previous - row.previous) > 1e-9:
+                conflicts.append("DUPLICATE_SOURCE_PREVIOUS_CONFLICT")
+
     forecast, forecast_conflict = _fuse_numeric(
-        [row.forecast for row in rows if row.forecast is not None], field="forecast"
+        [row.forecast for row in forecasts_by_source.values()], field="forecast"
     )
     previous, previous_conflict = _fuse_numeric(
-        [row.previous for row in rows if row.previous is not None], field="previous"
+        [row.previous for row in previous_by_source.values()], field="previous"
     )
     if forecast_conflict:
         conflicts.append("CONSENSUS_CONFLICT")
     if previous_conflict:
         conflicts.append("PREVIOUS_CONFLICT")
+    forecast_sources = tuple(sorted(forecasts_by_source))
+    forecast_quotes = tuple(
+        (source, forecasts_by_source[source].forecast,
+         forecasts_by_source[source].previous)
+        for source in forecast_sources
+    )
 
     official_actuals = [
         row.actual
@@ -225,6 +253,9 @@ def fuse_consensus(quotes: Iterable[SourceQuote]) -> FusedConsensus:
         source_agreement=agreement,
         conflicts=tuple(conflicts),
         source_count=len(sources),
+        forecast_source_count=len(forecast_sources),
+        forecast_sources=forecast_sources,
+        forecast_quotes=forecast_quotes,
     )
 
 
