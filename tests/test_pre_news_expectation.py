@@ -99,6 +99,7 @@ def test_simultaneous_core_headline_conflict():
     assert len(view["event_cluster"]) == 2
     assert view["expectation"] == "MIXED"
     assert view["xau_bias"] == "NEUTRAL_MIXED"
+    assert view["news_conclusion_status"] == "MIXED"
 
 
 def test_past_release_excluded_and_closest_future_selected():
