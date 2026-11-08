@@ -46,6 +46,16 @@ class RuntimeResilience(unittest.TestCase):
             self.assertEqual(c.update(rows,tick+1),baseline(rows,tick+1))
             self.assertEqual(c.update(rows,tick+1),baseline(rows,tick+1))
         self.assertLess(c.full_rebuilds,10)
+    def test_localstorage_startup_failclosed_and_manual_risk_unchanged(self):
+        source=(S/"PortfolioHost.cs").read_text()
+        self.assertIn('PORTFOLIO_STORAGE_FAULT', source)
+        self.assertIn('PORTFOLIO_STORAGE_VERIFY_FAILED', source)
+        self.assertIn('var verified=LocalStorage.GetString(key,LocalStorageScope.Instance);', source)
+        self.assertIn('if(verified!=settings)', source)
+        self.assertIn('if(p.StopLoss==null)return double.PositiveInfinity;', source)
+        self.assertIn('!NoForeignExposure()', source)
+        self.assertNotIn('LocalStorage.Remove(', source)
+
     def test_frozen_parameters_and_failsafe_unchanged(self):
         source=(S/"PortfolioHost.cs").read_text()
         for required in ("20.75", "XauTargetR", "XauRiskMultiplier", "OpenRisk()", "NoForeignExposure()", "PortfolioReady", "RIZAN_BTC_TICK_FAULT", "RIZAN_RUNTIME_HEALTH", "OnException(Exception exception)"):
