@@ -1,0 +1,32 @@
+name: BUY050 FP Markets contract metadata READ ONLY
+on:
+  push:
+    branches: ['research/buy050-integrated-replay-20261108']
+    paths:
+      - '.github/workflows/buy050-fp-contract-readonly-20261108.yml'
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  symbols:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      PYTHONPATH: src
+      FX_ENV: live
+      FX_LIVE_TRADING_ENABLED: '0'
+      FX_KILL_SWITCH: '1'
+      CTRADER_DEMO_AUTOTRADE_ENABLED: '0'
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install read-only API client
+        run: pip install -r requirements-ctrader.txt
+      - name: Query broker contract metadata without submitting orders
+        run: python research/buy050_integrated_20261108/ctrader_contract_readonly.py
