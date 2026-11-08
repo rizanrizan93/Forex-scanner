@@ -122,7 +122,7 @@ jobs:
               service['enabled']=opts.get('UnitFileState','unknown')
               service['required_by_unit_count']=len(opts.get('RequiredBy','').split())
               service['wanted_by_unit_count']=len(opts.get('WantedBy','').split())
-                    snapshot={'observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+          snapshot={'observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
                     'read_only':True,'orders_sent':0,'account_suffix':'7903',
                     'buy050_health':health,'buy050_store':store,'services':services,'journal_counts':journals,
                     'socket_connections_by_service':socket_counts,'sqlite_inventory':legacy_databases,
