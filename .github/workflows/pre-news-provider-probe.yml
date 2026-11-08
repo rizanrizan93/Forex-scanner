@@ -32,7 +32,7 @@ jobs:
                   print(provider.__name__, "ADAPTER_OK",
                         "events",len(result.events),
                         "forecast",sum(e.forecast is not None for e in result.events),
-                        "CPI",[(e.title,e.forecast) for e in result.events if "CPI" in e.title.upper()][:6])
+                        "FORECAST_EVENTS",[(e.scheduled_at.isoformat(),e.title,e.forecast) for e in result.events if e.forecast is not None][:20])
               except Exception as exc:
                   print(provider.__name__, "ADAPTER_ERROR", type(exc).__name__,
                         str(exc).split(":")[0][:90])
