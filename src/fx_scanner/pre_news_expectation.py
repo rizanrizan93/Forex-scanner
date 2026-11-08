@@ -134,6 +134,12 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                   scenarios=_scenarios(event["category"]))
     # Evaluate all simultaneous components, e.g. headline/core CPI and NFP/wages.
     cluster = [e for t, e in upcoming if t == at]
+    # Official calendar schedule-only entries (without forecast) should not
+    # veto a simultaneous measurable CPI/NFP/PPI release component. An event
+    # with a partial numeric forecast still participates and requires quorum.
+    measured = [e for e in cluster if number(e.get("forecast")) is not None]
+    if measured:
+        cluster = measured
     tilts = []
     quorum_counts: list[int] = []
     for e in cluster:
