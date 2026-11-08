@@ -42,6 +42,11 @@ def main():
      data["maxLotsPerOrder"]=float(data["maxVolume"])/float(data["lotSize"])
     # cTrader return dynamic leverage tiers via readonly ProtoOADynamicLeverageByIDReq.
     leverage_id=data.get("leverageId")
+    if sym=="BTCUSD":
+     try:
+      from ctrader_open_api.messages import OpenApiMessages_pb2 as api_messages
+      data["availableLeverageRequests"]=[k for k in dir(api_messages) if "Leverage" in k]
+     except Exception as e:data["availableLeverageRequestsError"]=type(e).__name__
     if leverage_id:
      try:
       from ctrader_open_api.messages.OpenApiMessages_pb2 import ProtoOADynamicLeverageByIDReq
