@@ -1,0 +1,7 @@
+BUY050 isolated bridge regression — 2026-11-08
+28/28 Python bridge/protocol/integration/transport-source tests: PASS
+Python py_compile bridge and deployment: PASS
+Native cTrader patched C# build: NOT RUN (dotnet/cTrader SDK unavailable in this environment)
+Broker LIVE handshake, native feed parity, on-account execution: NOT RUN
+Old XAU/BTC native fixture profile mismatch rejected by server as intended.
+Original BUY050 .algo preserved SHA256: a89f8ddbeeba549adb08e779c7ab2396d4b4a97dfe17bf3d7169b11a25a90ce0

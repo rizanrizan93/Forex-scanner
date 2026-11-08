@@ -1,0 +1,45 @@
+name: BUY050 VPS read-only preflight
+on:
+  push:
+    branches: ['fix/buy050-identity-20261108']
+    paths:
+      - 'repairs/buy050_identity_20261108/bridge/deploy/preflight_readonly.py'
+      - '.github/workflows/buy050-vps-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rizan-buy050-readonly-preflight
+  cancel-in-progress: false
+jobs:
+  audit-only:
+    if: github.repository == 'rizanrizan93/Forex-scanner'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect live bridge prerequisites without mutations
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo "SSH_PREREQUISITES_UNAVAILABLE"; exit 1; }
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          sshopt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=20)
+          host='Rizanrizan@202.74.74.172'
+          remote=$(ssh "${sshopt[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-buy050-preflight.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-buy050-preflight\.[a-zA-Z0-9]+$ ]] || exit 1
+          cleanup() { ssh "${sshopt[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; }
+          trap 'cleanup; rm -rf "$d"' EXIT
+          scp "${sshopt[@]}" repairs/buy050_identity_20261108/bridge/deploy/preflight_readonly.py repairs/buy050_identity_20261108/bridge/deploy/provision_isolated.py "$host:$remote/"
+          ssh "${sshopt[@]}" "$host" "sudo -n python3 '$remote/preflight_readonly.py'"

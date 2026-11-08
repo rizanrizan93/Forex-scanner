@@ -1,0 +1,25 @@
+[Unit]
+Description=RIZAN BUY050 frozen isolated checkpoint and data bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rizan-buy050
+Group=rizan-buy050
+WorkingDirectory=/opt/rizan-buy050-bridge
+EnvironmentFile=/etc/rizan-buy050-bridge.env
+ExecStart=/opt/rizan-buy050-bridge/.venv/bin/python /opt/rizan-buy050-bridge/server.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+StateDirectory=rizan-buy050-bridge
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/rizan-buy050-bridge
+
+[Install]
+WantedBy=multi-user.target

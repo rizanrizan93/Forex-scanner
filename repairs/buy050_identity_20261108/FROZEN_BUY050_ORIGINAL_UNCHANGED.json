@@ -1,0 +1,778 @@
+{
+  "status": "FROZEN_STRATEGY_NATIVE_BUILD_PENDING",
+  "name": "P3_BUY050",
+  "declared_spec": {
+    "name": "P3_BUY050",
+    "tape": "tapes/EARLY_12_00_WIB.json",
+    "layering": true,
+    "sides": {
+      "BUY": {
+        "depth": -1,
+        "initial": 1,
+        "margin": 0.5,
+        "risk": 0.05,
+        "sl": 1.25,
+        "tp": 12
+      },
+      "SELL": {
+        "depth": -1,
+        "initial": 1,
+        "margin": 0.5,
+        "risk": 0.19965,
+        "sl": 1.5,
+        "tp": 2
+      }
+    },
+    "profile_overrides": {
+      "XauRisk": 1.65
+    },
+    "selection_reason": "Reduce additional BUY sizing only"
+  },
+  "resolved_main_profile": {
+    "Id": "P3_BUY050",
+    "SafetyFraction": 0.9,
+    "XauHold": 480,
+    "XauRisk": 1.65,
+    "EurRisk": 0.8,
+    "BtcRisk": 1,
+    "XauWindow": 180,
+    "XauZone": 0.8,
+    "XauPause": true,
+    "XauStep": 51.25,
+    "XauTarget": 4.5,
+    "XauStop": 2.4,
+    "XauCooldown": 3,
+    "EurWindow": 60,
+    "EurPause": true,
+    "EurInitial": 1,
+    "EurTarget": 10,
+    "EurBE": 3,
+    "EurStop": 0.845,
+    "EurDepth": 1,
+    "PlanningCost": 1,
+    "BtcBuyTarget": 12,
+    "BtcSellTarget": 2,
+    "BtcBuyStop": 2,
+    "BtcSellStop": 1.5,
+    "BtcBatchOrders": 32,
+    "BtcBatchSeconds": 180,
+    "BtcBatchRisk": 0.025,
+    "BtcBatchMargin": 0.1,
+    "BtcBatchZone": 0.5,
+    "BtcBuyHours": 128,
+    "BtcSellHours": 8
+  },
+  "additional_XAU_effective_settings": {
+    "BUY": {
+      "depth": -1,
+      "initial": 1,
+      "margin": 0.5,
+      "risk": 0.05,
+      "sl": 1.25,
+      "tp": 12,
+      "effective_risk_fraction": 0.05,
+      "effective_stages": 1
+    },
+    "SELL": {
+      "depth": -1,
+      "initial": 1,
+      "margin": 0.5,
+      "risk": 0.19965,
+      "sl": 1.5,
+      "tp": 2,
+      "effective_risk_fraction": 0.19965,
+      "effective_stages": 1
+    }
+  },
+  "additional_entry": {
+    "name": "EARLY_12_00_WIB",
+    "start_utc": 5,
+    "end_utc": 17,
+    "lookback": 10,
+    "body_atr_min": 1,
+    "mean_body_multiplier": 1.5,
+    "ER_min": 0.2,
+    "SELL_trend": false,
+    "BUY_only": false,
+    "timezone": "UTC; WIB entry12:00-24:00, end00:00 next day excluded",
+    "time_basis": "signal at fully closed H1 end",
+    "minimum_H1_rows_before_signal": 100,
+    "complete_contiguous_H1_bars": 11,
+    "BUY_RSI_range": [
+      35,
+      85
+    ],
+    "SELL_RSI_range": [
+      15,
+      65
+    ],
+    "close_location_min": 0.55,
+    "BUY_trend": "EMA20>EMA80 and close>EMA80",
+    "SELL_trend_filter": false,
+    "breakout": "BUY close>previousH1high; SELL close<previousH1low",
+    "indicators": "ATR14/RSI14 recursive EWM alpha1/14 adjust=False; EMA20/80 adjust=False; ER20; exact source reference_phase2/prepare.py"
+  },
+  "portfolio": {
+    "initial_usd": 100,
+    "leverage": 200,
+    "admission_risk_percent": 20.75,
+    "admission_margin_percent": 50,
+    "additional_hold_minutes": 480,
+    "additional_exit_cutoff_UTC": "19:59",
+    "primary_signal_priority": true,
+    "hard_DD_cap": false
+  },
+  "normal_result": {
+    "ending_usd": 2130037987.0146687,
+    "floating_dd_pct": 59.96640612031923,
+    "additional_net_pnl": 636599022.5253533,
+    "baskets": 1051,
+    "additional_baskets": 231,
+    "actual_cutoff": "2026-10-09T21:59:00Z"
+  },
+  "frequency_WIB": {
+    "basis": "basket entry, Asia/Jakarta; excludes partial October2026 from complete-month average",
+    "complete_months": 93,
+    "avg_per_complete_month": 11.236559139784946,
+    "avg_additional_per_complete_month": 2.4731182795698925,
+    "min_complete": 4,
+    "max_complete": 17,
+    "zero_complete": [],
+    "annual": [
+      {
+        "year": 2019,
+        "baskets": 125,
+        "additional": 23,
+        "partial": false
+      },
+      {
+        "year": 2020,
+        "baskets": 145,
+        "additional": 32,
+        "partial": false
+      },
+      {
+        "year": 2021,
+        "baskets": 145,
+        "additional": 34,
+        "partial": false
+      },
+      {
+        "year": 2022,
+        "baskets": 121,
+        "additional": 37,
+        "partial": false
+      },
+      {
+        "year": 2023,
+        "baskets": 114,
+        "additional": 16,
+        "partial": false
+      },
+      {
+        "year": 2024,
+        "baskets": 158,
+        "additional": 38,
+        "partial": false
+      },
+      {
+        "year": 2025,
+        "baskets": 144,
+        "additional": 34,
+        "partial": false
+      },
+      {
+        "year": 2026,
+        "baskets": 99,
+        "additional": 17,
+        "partial": true
+      }
+    ],
+    "monthly": [
+      {
+        "month": "2019-01",
+        "baskets": 8,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2019-02",
+        "baskets": 7,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2019-03",
+        "baskets": 11,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2019-04",
+        "baskets": 8,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2019-05",
+        "baskets": 12,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2019-06",
+        "baskets": 9,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2019-07",
+        "baskets": 8,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2019-08",
+        "baskets": 16,
+        "additional": 4,
+        "partial": false
+      },
+      {
+        "month": "2019-09",
+        "baskets": 13,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2019-10",
+        "baskets": 12,
+        "additional": 4,
+        "partial": false
+      },
+      {
+        "month": "2019-11",
+        "baskets": 10,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2019-12",
+        "baskets": 11,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2020-01",
+        "baskets": 14,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2020-02",
+        "baskets": 16,
+        "additional": 6,
+        "partial": false
+      },
+      {
+        "month": "2020-03",
+        "baskets": 10,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2020-04",
+        "baskets": 13,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2020-05",
+        "baskets": 8,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2020-06",
+        "baskets": 12,
+        "additional": 4,
+        "partial": false
+      },
+      {
+        "month": "2020-07",
+        "baskets": 17,
+        "additional": 7,
+        "partial": false
+      },
+      {
+        "month": "2020-08",
+        "baskets": 9,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2020-09",
+        "baskets": 11,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2020-10",
+        "baskets": 12,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2020-11",
+        "baskets": 8,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2020-12",
+        "baskets": 15,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2021-01",
+        "baskets": 11,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2021-02",
+        "baskets": 17,
+        "additional": 6,
+        "partial": false
+      },
+      {
+        "month": "2021-03",
+        "baskets": 10,
+        "additional": 4,
+        "partial": false
+      },
+      {
+        "month": "2021-04",
+        "baskets": 14,
+        "additional": 4,
+        "partial": false
+      },
+      {
+        "month": "2021-05",
+        "baskets": 11,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2021-06",
+        "baskets": 9,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2021-07",
+        "baskets": 13,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2021-08",
+        "baskets": 12,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2021-09",
+        "baskets": 14,
+        "additional": 6,
+        "partial": false
+      },
+      {
+        "month": "2021-10",
+        "baskets": 11,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2021-11",
+        "baskets": 11,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2021-12",
+        "baskets": 12,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2022-01",
+        "baskets": 10,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2022-02",
+        "baskets": 8,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2022-03",
+        "baskets": 12,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2022-04",
+        "baskets": 8,
+        "additional": 5,
+        "partial": false
+      },
+      {
+        "month": "2022-05",
+        "baskets": 10,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2022-06",
+        "baskets": 10,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2022-07",
+        "baskets": 13,
+        "additional": 4,
+        "partial": false
+      },
+      {
+        "month": "2022-08",
+        "baskets": 9,
+        "additional": 4,
+        "partial": false
+      },
+      {
+        "month": "2022-09",
+        "baskets": 8,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2022-10",
+        "baskets": 10,
+        "additional": 4,
+        "partial": false
+      },
+      {
+        "month": "2022-11",
+        "baskets": 11,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2022-12",
+        "baskets": 12,
+        "additional": 4,
+        "partial": false
+      },
+      {
+        "month": "2023-01",
+        "baskets": 11,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2023-02",
+        "baskets": 5,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2023-03",
+        "baskets": 6,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2023-04",
+        "baskets": 7,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2023-05",
+        "baskets": 6,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2023-06",
+        "baskets": 4,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2023-07",
+        "baskets": 9,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2023-08",
+        "baskets": 13,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2023-09",
+        "baskets": 11,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2023-10",
+        "baskets": 14,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2023-11",
+        "baskets": 11,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2023-12",
+        "baskets": 17,
+        "additional": 5,
+        "partial": false
+      },
+      {
+        "month": "2024-01",
+        "baskets": 16,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2024-02",
+        "baskets": 12,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2024-03",
+        "baskets": 14,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2024-04",
+        "baskets": 13,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2024-05",
+        "baskets": 11,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2024-06",
+        "baskets": 11,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2024-07",
+        "baskets": 15,
+        "additional": 7,
+        "partial": false
+      },
+      {
+        "month": "2024-08",
+        "baskets": 9,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2024-09",
+        "baskets": 17,
+        "additional": 6,
+        "partial": false
+      },
+      {
+        "month": "2024-10",
+        "baskets": 17,
+        "additional": 5,
+        "partial": false
+      },
+      {
+        "month": "2024-11",
+        "baskets": 11,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2024-12",
+        "baskets": 12,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2025-01",
+        "baskets": 11,
+        "additional": 6,
+        "partial": false
+      },
+      {
+        "month": "2025-02",
+        "baskets": 7,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2025-03",
+        "baskets": 11,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2025-04",
+        "baskets": 12,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2025-05",
+        "baskets": 13,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2025-06",
+        "baskets": 10,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2025-07",
+        "baskets": 13,
+        "additional": 5,
+        "partial": false
+      },
+      {
+        "month": "2025-08",
+        "baskets": 16,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2025-09",
+        "baskets": 9,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2025-10",
+        "baskets": 17,
+        "additional": 5,
+        "partial": false
+      },
+      {
+        "month": "2025-11",
+        "baskets": 11,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2025-12",
+        "baskets": 14,
+        "additional": 4,
+        "partial": false
+      },
+      {
+        "month": "2026-01",
+        "baskets": 13,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2026-02",
+        "baskets": 8,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2026-03",
+        "baskets": 10,
+        "additional": 1,
+        "partial": false
+      },
+      {
+        "month": "2026-04",
+        "baskets": 10,
+        "additional": 3,
+        "partial": false
+      },
+      {
+        "month": "2026-05",
+        "baskets": 11,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-06",
+        "baskets": 9,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2026-07",
+        "baskets": 8,
+        "additional": 0,
+        "partial": false
+      },
+      {
+        "month": "2026-08",
+        "baskets": 12,
+        "additional": 2,
+        "partial": false
+      },
+      {
+        "month": "2026-09",
+        "baskets": 12,
+        "additional": 4,
+        "partial": false
+      },
+      {
+        "month": "2026-10",
+        "baskets": 6,
+        "additional": 1,
+        "partial": true
+      }
+    ],
+    "by_instrument_complete_months": {
+      "XAUUSD": {
+        "baskets": 613,
+        "average_per_month": 6.591397849462366
+      },
+      "EURUSD": {
+        "baskets": 279,
+        "average_per_month": 3.0
+      },
+      "BTCUSD": {
+        "baskets": 153,
+        "average_per_month": 1.6451612903225807
+      }
+    }
+  },
+  "required_stress_completed": true,
+  "target_met_all_three": false,
+  "frozen_changed": false,
+  "live_changed": false,
+  "freeze_authorized": true,
+  "native_validation": "PENDING"
+}

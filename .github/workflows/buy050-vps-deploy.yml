@@ -1,0 +1,59 @@
+name: BUY050 isolated VPS bridge deploy
+on:
+  push:
+    branches: ['fix/buy050-identity-20261108']
+    paths:
+      - '.github/workflows/buy050-vps-deploy.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rizan-buy050-isolated-deploy
+  cancel-in-progress: false
+jobs:
+  isolated-deployment:
+    if: github.repository == 'rizanrizan93/Forex-scanner'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate all BUY050 Python sources and pinned seed
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd repairs/buy050_identity_20261108
+          gzip -t bridge/BTC_SEED_PACKET.json.gz
+          gzip -dk bridge/BTC_SEED_PACKET.json.gz
+          echo '210b1855ac5ffab2b628a7b4d301290427dc04e86a4a6042599d6d0ac8b873f2  bridge/BTC_SEED_PACKET.json' | sha256sum -c -
+          python -m py_compile bridge/*.py bridge/deploy/*.py
+          rm bridge/BTC_SEED_PACKET.json
+      - name: Secure staged deployment and read-only post-audit
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo "SSH_PREREQUISITES_UNAVAILABLE"; exit 1; }
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          sshopt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          host='Rizanrizan@202.74.74.172'
+          remote=$(ssh "${sshopt[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-buy050-deploy.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-buy050-deploy\.[a-zA-Z0-9]+$ ]] || exit 1
+          cleanup() { ssh "${sshopt[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; }
+          trap 'cleanup; rm -rf "$d"' EXIT
+          scp -r "${sshopt[@]}" repairs/buy050_identity_20261108/bridge "$host:$remote/"
+          ssh "${sshopt[@]}" "$host" "sudo -n python3 '$remote/bridge/deploy/preflight_readonly.py'"
+          ssh "${sshopt[@]}" "$host" "sudo -n python3 '$remote/bridge/deploy/provision_isolated.py'"
+          ssh "${sshopt[@]}" "$host" "sudo -n systemctl is-active --quiet rizan-buy050-bridge.service && sudo -n systemctl is-active --quiet rizan-btc10-bridge.service && sudo -n systemctl is-active --quiet rizan-disp1506-bridge.service && echo 'BUY050_SERVICE_AND_LEGACY_BRIDGES_HEALTHY'"
