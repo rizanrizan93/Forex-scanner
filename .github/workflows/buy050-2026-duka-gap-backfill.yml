@@ -8,14 +8,23 @@ permissions: {contents: read}
 jobs:
   backfill:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 3
       matrix:
         include:
-          - {symbol: XAUUSD, month: '2026-04'}
-          - {symbol: EURUSD, month: '2026-05'}
+          - {symbol: XAUUSD, month: '2026-05'}
+          - {symbol: XAUUSD, month: '2026-06'}
+          - {symbol: XAUUSD, month: '2026-07'}
+          - {symbol: XAUUSD, month: '2026-08'}
+          - {symbol: XAUUSD, month: '2026-09'}
+          - {symbol: XAUUSD, month: '2026-10'}
+          - {symbol: EURUSD, month: '2026-06'}
+          - {symbol: EURUSD, month: '2026-07'}
+          - {symbol: EURUSD, month: '2026-08'}
+          - {symbol: EURUSD, month: '2026-09'}
+          - {symbol: EURUSD, month: '2026-10'}
     steps:
       - uses: actions/checkout@v4
         with:
