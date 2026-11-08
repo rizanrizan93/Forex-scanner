@@ -4,6 +4,7 @@ on:
     branches: ['research/buy050-integrated-replay-20261108']
     paths:
       - '.github/workflows/buy050-fp-contract-readonly-20261108.yml'
+      - 'research/buy050_integrated_20261108/ctrader_contract_readonly.py'
   workflow_dispatch:
 permissions: {contents: read}
 jobs:
