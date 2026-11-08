@@ -1,0 +1,154 @@
+name: BUY050 Native Strategy Shadow (readonly)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'buy050_shadow/**'
+      - 'scripts/read_buy050_shadow_native.py'
+      - 'scripts/collect_buy050_shadow_market.py'
+      - 'src/fx_scanner/cbot_buy050_shadow_dashboard.py'
+      - '.github/workflows/buy050-shadow-readonly.yml'
+  schedule:
+    - cron: '*/5 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: buy050-native-shadow
+  cancel-in-progress: false
+
+jobs:
+  shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CTRADER_CLIENT_ID: ${{ secrets.CTRADER_CLIENT_ID }}
+      CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
+      CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore previous broker M1 cache if available
+        uses: actions/cache/restore@v4
+        with:
+          path: artifacts/buy050_shadow/market.json
+          key: buy050-shadow-market-${{ github.run_id }}
+          restore-keys: |
+            buy050-shadow-market-
+      - name: Build original frozen signal sources (no cTrader runtime)
+        run: dotnet build buy050_shadow/Buy050Shadow.csproj -c Release --nologo
+      - name: Obtain BUY050 private native state (read-only)
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "${SSH_PRIVATE_KEY}" && -n "${SSH_KNOWN_HOSTS}" ]] || { echo "BUY050_SSH_MISSING"; exit 1; }
+          mkdir -p artifacts/buy050_shadow
+          d=$(mktemp -d)
+          remote=''
+          opts=()
+          cleanup() {
+            if [[ -n "$remote" ]]; then
+              ssh "${opts[@]}" 'Rizanrizan@202.74.74.172' "rm -rf -- '$remote'" >/dev/null 2>&1 || true
+            fi
+            rm -rf -- "$d"
+          }
+          trap cleanup EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          opts=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/hosts" -o ConnectTimeout=20)
+          remote=$(ssh "${opts[@]}" 'Rizanrizan@202.74.74.172' 'umask 077; mktemp -d /tmp/rizan-buy050-shadow.XXXXXXXX')
+          [[ "$remote" =~ ^/tmp/rizan-buy050-shadow\.[A-Za-z0-9]+$ ]]
+          scp -q "${opts[@]}" scripts/read_buy050_shadow_native.py "Rizanrizan@202.74.74.172:$remote/"
+          ssh "${opts[@]}" 'Rizanrizan@202.74.74.172' "sudo -n /usr/bin/python3 '$remote/read_buy050_shadow_native.py'" > "$RUNNER_TEMP/buy050_native_private.json"
+          python - <<'PY'
+          import os,json
+          p=os.path.join(os.environ['RUNNER_TEMP'],'buy050_native_private.json')
+          with open(p) as f: v=json.load(f)
+          assert v.get('read_only') is True
+          assert set(v.get('states') or {})=={'XAUUSD','EURUSD','BTCUSD'}
+          print('BUY050_NATIVE_READONLY_OK')
+          PY
+      - name: Obtain fresh cTrader LIVE quotes and M1 candles (read-only)
+        run: |
+          mkdir -p artifacts/buy050_shadow
+          python scripts/collect_buy050_shadow_market.py artifacts/buy050_shadow/market.json
+          python - <<'PY'
+          import json
+          p='artifacts/buy050_shadow/market.json'
+          with open(p) as f:v=json.load(f)
+          assert v.get('read_only') is True
+          assert isinstance(v.get('account_binding'),str)
+          print('BUY050_MARKET_READONLY_OK')
+          PY
+      - name: Compute shadow signals with frozen C# core
+        run: |
+          python - <<'PY'
+          import json,os
+          with open('artifacts/buy050_shadow/market.json') as f: market=json.load(f)
+          with open(os.path.join(os.environ['RUNNER_TEMP'],'buy050_native_private.json')) as f: native=json.load(f)
+          with open(os.path.join(os.environ['RUNNER_TEMP'],'buy050_shadow_input.json'),'w') as f: json.dump({'market':market,'native':native},f,allow_nan=False)
+          PY
+          dotnet buy050_shadow/bin/Release/net8.0/Buy050Shadow.dll "$RUNNER_TEMP/buy050_shadow_input.json" "$RUNNER_TEMP/buy050_shadow_snapshot.json"
+      - name: Validate public projection and forbid raw inputs
+        env:
+          OUTPUT_FILE: ${{ runner.temp }}/buy050_shadow_snapshot.json
+        run: |
+          PYTHONPATH=src python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from fx_scanner.cbot_buy050_shadow_dashboard import evaluate_shadow
+          with open(os.environ['OUTPUT_FILE']) as f: p=json.load(f)
+          view=evaluate_shadow(p,now=datetime.now(timezone.utc))
+          assert view['fresh']
+          assert set(p)=={'contract','strategy','profile_sha256','source_core','as_of','read_only','execution_authority','execution_influence','symbols'}
+          for row in p['symbols']:
+              assert set(row)=={'symbol','status','reason','bar_at','candidate','source_core','execution_authority','execution_influence'}
+              if row['candidate']:
+                  assert set(row['candidate'])=={'at','side','origin','entry','sl','tp','target_r','valid_until','blockers','confidence'}
+          print('BUY050_SHADOW_PUBLIC_PROJECTION_VALIDATED')
+          PY
+      - name: Publish read-only calculated shadow (isolated branch)
+        uses: actions/github-script@v7
+        env:
+          SHADOW_OUTPUT: ${{ runner.temp }}/buy050_shadow_snapshot.json
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs=require('fs');
+            const raw=fs.readFileSync(process.env.SHADOW_OUTPUT,'utf8');
+            const payload=JSON.parse(raw);
+            if(payload.execution_authority!==false || payload.execution_influence!==false || payload.read_only!==true)
+              throw new Error('NOT_READONLY');
+            const {owner,repo}=context.repo;
+            const path='runtime/buy050_shadow_snapshot.json';
+            const branch='buy050-shadow-snapshots';
+            let sha;
+            try{
+              const r=await github.rest.repos.getContent({owner,repo,path,ref:branch});
+              sha=r.data.sha;
+            }catch(e){if(e.status!==404)throw e;}
+            await github.rest.repos.createOrUpdateFileContents({
+              owner,repo,path,branch,sha,content:Buffer.from(raw).toString('base64'),
+              message:'chore(shadow): refresh sanitized native BUY050 signal projection'
+            });
+            core.info('BUY050_SHADOW_SANITIZED_PUBLISHED');
+      - name: Save incremental LIVE market M1 cache for the next evaluation
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: artifacts/buy050_shadow/market.json
+          key: buy050-shadow-market-${{ github.run_id }}
