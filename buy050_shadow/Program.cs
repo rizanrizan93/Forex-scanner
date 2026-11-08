@@ -136,7 +136,7 @@ foreach(var symbol in new[]{"XAUUSD","EURUSD","BTCUSD"}) {
             if(state.TryGetProperty("Eur",out var eurRaw)&&eurRaw.ValueKind==JsonValueKind.Object)
                 eur=JsonSerializer.Deserialize<E.EurState>(eurRaw.GetRawText())??new();
             else {
-                result.Add(Empty(symbol,available,"EUR_STATE_MISSING","EurState native dibutuhkan untuk bias dan fitur.");continue;
+                result.Add(Empty(symbol,available,"EUR_STATE_MISSING","EurState native dibutuhkan untuk bias dan fitur."));continue;
             }
             var ebar=bars.Select(x=>new E.Candle(x.OpenUtc,x.Open,x.High,x.Low,x.Close)).ToList();
             var features=E.FrozenCore.EurFeatures(ebar,available,eur);
@@ -147,10 +147,10 @@ foreach(var symbol in new[]{"XAUUSD","EURUSD","BTCUSD"}) {
             }
             s=E.F0245Policy.ExecutionSignal(s);
             if(!Frozen(s.AtUtc,now,60)||quote==null) {
-                result.Add(Empty(symbol,available,"CANDIDATE_EXPIRED","Window EUR 60 detik atau quote 15 detik sudah lewat.");continue;
+                result.Add(Empty(symbol,available,"CANDIDATE_EXPIRED","Window EUR 60 detik atau quote 15 detik sudah lewat."));continue;
             }
             if(quote.Value.ask-quote.Value.bid>.00022){
-                result.Add(Empty(symbol,available,"SPREAD_BLOCK","Spread EUR > 0,00022.");continue;
+                result.Add(Empty(symbol,available,"SPREAD_BLOCK","Spread EUR > 0,00022."));continue;
             }
             double entry=s.Side>0?quote.Value.ask:quote.Value.bid;
             result.Add(Candidate(symbol,now,s.AtUtc,s.Side,s.AsiaExtra?"F0245_ASIA":"F0245",
