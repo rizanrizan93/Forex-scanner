@@ -54,7 +54,10 @@ def read():
             "LastSignal", "Fault", "ExitPending", "WeekendLockUntil",
             "Sending", "BatchActive", "BatchRemaining",
         ]
-        out["states"][symbol] = {field: state.get(field) for field in fields if field in state}
+        projection = {field: state.get(field) for field in fields if field in state}
+        projection["has_basket"] = bool(state.get("Basket")) if symbol != "BTCUSD" else bool(state.get("BatchActive"))
+        projection["pending_intent"] = bool(state.get("PendingLabel") or state.get("PendingFirstFill")) if symbol != "BTCUSD" else bool(state.get("Sending") or state.get("BatchRemaining") or state.get("HandoffSignal"))
+        out["states"][symbol] = projection
     if len(accounts) != 1 or set(out["states"]) != {"XAUUSD", "EURUSD", "BTCUSD"}:
         raise ValueError("FULL_ACCOUNT_NATIVE_STATES_REQUIRED")
     out["account_binding"] = hashlib.sha256(next(iter(accounts)).encode()).hexdigest()
