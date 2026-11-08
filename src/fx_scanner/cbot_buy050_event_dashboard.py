@@ -19,6 +19,14 @@ NAMES={
     "EXIT_PENDING_ON":"Exit pending terdeteksi",
     "CHECKPOINT_RESET":"Versi checkpoint menurun",
     "BROKER_OPEN_POSITION_OBSERVED":"Posisi BUY050 terbuka terverifikasi broker",
+    "BROKER_ORDER_ACCEPTED":"Order BUY050 diterima broker",
+    "BROKER_ORDER_FILLED":"Order BUY050 berstatus FILLED",
+    "BROKER_ORDER_REJECTED":"Order BUY050 ditolak broker",
+    "BROKER_ORDER_CANCELLED":"Order BUY050 dibatalkan",
+    "BROKER_ORDER_EXPIRED":"Order BUY050 kedaluwarsa",
+    "BROKER_DEAL_FILLED":"Deal BUY050 FILLED (bukti eksekusi)",
+    "BROKER_DEAL_PARTIAL":"Deal BUY050 terisi sebagian",
+    "BROKER_DEAL_REJECTED":"Deal BUY050 ditolak / error eksekusi",
 }
 SYMBOLS=("XAUUSD","EURUSD","BTCUSD")
 TZ=ZoneInfo("Asia/Jakarta")
@@ -42,12 +50,18 @@ def evaluate_timeline(raw,*,now=None):
         or raw.get("execution_authority") is not False
         or raw.get("execution_influence") is not False
         or raw.get("terminal_journal_available") is not False
-        or raw.get("broker_deals_verified") is not False):
+        or type(raw.get("broker_deals_verified")) is not bool
+        or type(raw.get("broker_orders_history_complete",False)) is not bool):
         raise ValueError("INVALID_BUY050_TIMELINE")
     started,ended=dt(raw.get("started_at")),dt(raw.get("ended_at"))
     if not started or not ended or ended<started or ended>now+timedelta(seconds=30):
         raise ValueError("TIMELINE_CLOCK_INVALID")
     age=(now-ended).total_seconds()
+    hist_from,hist_to=dt(raw.get("broker_history_from")),dt(raw.get("broker_history_to"))
+    if (raw.get("broker_deals_verified") is True or raw.get("broker_orders_history_complete") is True) and (
+        not hist_from or not hist_to or not hist_from<=hist_to<=now+timedelta(seconds=30)
+    ):
+        raise ValueError("BROKER_HISTORY_UNATTESTED")
     rows=raw.get("events")
     if not isinstance(rows,list) or len(rows)>120:
         raise ValueError("TIMELINE_EVENTS_INVALID")
@@ -72,7 +86,11 @@ def evaluate_timeline(raw,*,now=None):
         "max_interval_s":raw.get("max_interval_s"),"unobserved_gap_s":gap,
         "broker_open_positions_observed":raw.get("broker_open_positions_observed") is True,
         "broker_observed_at":raw.get("broker_observed_at"),
-        "continuous_coverage_confirmed":raw.get("continuous_coverage_confirmed") is True
+        "continuous_coverage_confirmed":raw.get("continuous_coverage_confirmed") is True,
+        "broker_deals_verified":raw.get("broker_deals_verified") is True,
+        "broker_orders_history_complete":raw.get("broker_orders_history_complete") is True,
+        "broker_history_from":raw.get("broker_history_from"),
+        "broker_history_to":raw.get("broker_history_to")
     }
 
 def fetch(slot):
@@ -99,7 +117,13 @@ def render_timeline(raw,*,now=None):
         st.info("Cakupan belum kontinu: sinyal pada jeda antar-job atau saat pembacaan gagal mungkin tidak tertangkap langsung. Jangan artikan riwayat kosong sebagai tidak ada sinyal.")
     if not view["broker_open_positions_observed"]:
         st.caption("Rekonsiliasi posisi broker pada publikasi ini belum tersedia. Tidak ada keputusan FILLED/REJECTED yang dapat dipastikan.")
-    st.caption("Terminal journal dan histori deal tertutup belum terhubung. Posisi terbuka adalah bukti positif, tetapi tidak ditemukannya posisi bukan bukti order gagal.")
+    if view["broker_deals_verified"]:
+        st.caption("Histori deal broker dibaca untuk jendela "+wib(view["broker_history_from"])+" – "+wib(view["broker_history_to"])+". Status FILLED/REJECTED hanya dari record broker yang cocok.")
+    else:
+        st.caption("Histori deal belum lengkap atau tidak tersedia. Tanpa record broker yang cocok, status eksekusi tetap UNKNOWN.")
+    if not view["broker_orders_history_complete"]:
+        st.caption("Histori order broker belum lengkap. Terminal journal native juga belum terhubung.")
+    st.caption("Posisi terbuka merupakan bukti positif; tidak ditemukannya posisi bukan bukti order gagal atau sinyal terlewat.")
     if not view["events"]:
         st.caption("Belum ada perubahan checkpoint atau posisi BUY050 baru yang tercatat pada riwayat audit.")
     else:
@@ -114,7 +138,7 @@ def render_timeline(raw,*,now=None):
                 "Proteksi":item.get("protection") or "—",
             })
         st.dataframe(display,hide_index=True,width="stretch")
-    st.caption("Kategori SENT, FILLED tertutup, dan REJECTED memerlukan event terminal/deal broker yang dapat dicocokkan. Audit ini tidak menyimpulkannya dari checkpoint saja.")
+    st.caption("Order ACCEPTED, FILLED, dan REJECTED hanya ditampilkan jika ada record broker historis dengan label strategi yang cocok. Sinyal yang tidak diikuti record broker tetap UNKNOWN, bukan otomatis terlewat.")
 
 def render_audit_panel():
     import streamlit as st
