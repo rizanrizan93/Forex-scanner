@@ -1,0 +1,7 @@
+# BTC $2.325B historical candidate — cTrader research prototype
+Source: user-supplied RIZAN_BTC_2325M_SETUP_REPLAY_M1_20261108.zip.
+Native cTrader *.algo is strictly **shadow/research only**. It sends ZERO orders and does not change BUY050 LIVE.
+Implements H4 Sweep20/Reclaim (ATR14; body reversal; RSI 70/30, stop 1.5 ATR, TP10R, hold72h), H1 EMA20 reclaim with H4 EMA20/80 + ER20 >0.15 (H1 body .25ATR, stop2ATR TP10R hold128h), priority Sweep>EMA, completed H1/H4 bars, next H1 open, M1 virtual SL-first replay, Friday 22 UTC flat, weekday-only, six-hour cooldown, baseline sizing 2.5% risk/10% margin 1:200 and theoretical max3200BTC.
+The frozen strategy's 10% drawdown guard used *fixed historical BUY050 settled balance*, not a causal combined-account rule. The shadow engine uses only *observed account balance*, so **this is a distinct, unvalidated guard**; historical parity and $2.325B claims do not transfer.
+Uses cTrader broker bars, not Bitstamp research M1. Volumes are simulation quantities, not broker orders, and may be far above broker capacities.
+This artifact does NOT integrate the BUY050 XAU/EUR/BTC execution engines and does NOT reconstruct shared-account floating DD, margin, original BTC incumbent future priority, restart-durable paper state or account-specific execution. Do NOT deploy instead of current BUY050. For future LIVE merge, full native replay, real broker contract limits, position reconciliation and source identity approvals are required.

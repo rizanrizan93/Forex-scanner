@@ -1,0 +1,39 @@
+name: BTC2325 shadow native cTrader build NO LIVE DEPLOY
+on:
+  push:
+    branches: ['research/btc2325-shadow-20261108']
+    paths:
+      - 'research/btc2325_shadow_20261108/**'
+      - '.github/workflows/btc2325-shadow-build-20261108.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Static no-trade regression checks
+        run: python3 -m unittest discover -v -s research/btc2325_shadow_20261108/tests
+      - name: Compile native cTrader research .algo
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd research/btc2325_shadow_20261108
+          dotnet build source/RizanBtc2325Shadow.csproj -c Release --warnaserror
+          mkdir -p artifacts
+          find source/bin/Release/net6.0 -maxdepth 1 -name '*.algo' -exec cp '{}' artifacts/RizanBtc2325Shadow_RESEARCH_20261108.algo \;
+          test -s artifacts/RizanBtc2325Shadow_RESEARCH_20261108.algo
+          sha256sum artifacts/*.algo > artifacts/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: RizanBtc2325Shadow_RESEARCH_20261108
+          path: research/btc2325_shadow_20261108/artifacts/
+          retention-days: 30
