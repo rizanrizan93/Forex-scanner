@@ -71,7 +71,7 @@ jobs:
           assert result['fresh'], 'VPS_SNAPSHOT_NOT_FRESH'
           assert set(data)=={'contract','strategy','source_release','account_suffix','observed_at','read_only','execution_authority','service_active','bridge','symbols'}, 'OUTPUT_FIELD_ALLOWLIST_FAILED'
           for row in data['symbols']:
-              assert set(row)<=set(('symbol','identity_ok','checkpoint_present','lease_active','lease_touched_at','checkpoint_version','last_bar_at','last_signal_at','checkpoint_basket','pending_intent','fault','quarantined','weekend_lock_until','exit_pending')), 'SYMBOL_FIELD_ALLOWLIST_FAILED'
+              assert set(row)<=set(('symbol','identity_ok','checkpoint_present','lease_active','lease_touched_at','checkpoint_version','last_bar_at','last_signal_at','checkpoint_basket','pending_intent','fault','quarantined','weekend_lock_until','exit_pending','unrecognized_checkpoint')), 'SYMBOL_FIELD_ALLOWLIST_FAILED'
           print('BUY050_READONLY_SNAPSHOT_VALIDATED',len(data['symbols']))
           PY
       - name: Publish sanitized snapshot on isolated branch
