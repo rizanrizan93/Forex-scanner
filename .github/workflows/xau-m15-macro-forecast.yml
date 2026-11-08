@@ -1,0 +1,38 @@
+name: XAU M15 Macro Forecast Readonly
+
+on:
+  pull_request:
+    paths:
+      - "src/fx_scanner/xau_m15_macro_forecast.py"
+      - "src/fx_scanner/xau_macro_risk_monitor.py"
+      - "tests/test_xau_m15_macro_forecast.py"
+      - ".github/workflows/xau-m15-macro-forecast.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/fx_scanner/xau_m15_macro_forecast.py"
+      - "src/fx_scanner/xau_macro_risk_monitor.py"
+      - "tests/test_xau_m15_macro_forecast.py"
+      - ".github/workflows/xau-m15-macro-forecast.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-m15-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile M15 and existing macro dashboard
+        run: |
+          python -m py_compile src/fx_scanner/xau_m15_macro_forecast.py src/fx_scanner/xau_macro_risk_monitor.py
+      - name: Install focused test runner
+        run: python -m pip install pytest==9.0.2
+      - name: Test M15 alignment, freshness, event guards
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/test_xau_m15_macro_forecast.py
