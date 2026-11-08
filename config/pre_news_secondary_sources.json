@@ -18,5 +18,26 @@
     "source_conflict_abstains": true,
     "fail_open_secondary_sources": true,
     "secondary_time_alignment_hours": 14
+  },
+  "SHOWMYTRADES": {
+    "enabled": true,
+    "base_url": "https://showmytrades.com/api/public/calendar/v1",
+    "allowed_host": "showmytrades.com",
+    "role": "SECONDARY_CONSENSUS",
+    "cache_minutes": 15
+  },
+  "HELIOUS": {
+    "enabled": true,
+    "base_url": "https://api.helious.io/v1/calendar",
+    "allowed_host": "api.helious.io",
+    "role": "SECONDARY_CONSENSUS",
+    "free_delay_minutes": 60
+  },
+  "TRADING_ECONOMICS": {
+    "enabled": true,
+    "base_url": "https://api.tradingeconomics.com/calendar/country/united%20states",
+    "allowed_host": "api.tradingeconomics.com",
+    "role": "LICENSED_CONSENSUS",
+    "api_key_environment": "RIZAN_TRADING_ECONOMICS_API_KEY"
   }
 }
