@@ -84,13 +84,16 @@ foreach(var symbol in new[]{"XAUUSD","EURUSD","BTCUSD"}) {
         if(flagged("Quarantined") || flagged("Fault") || flagged("ExitPending") || flagged("has_basket") || flagged("pending_intent")){
             result.Add(Empty(symbol,null,"NATIVE_BLOCK","Native checkpoint has quarantine, fault, position or outstanding intent."));continue;
         }
+        if(symbol!="BTCUSD" && now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday){
+            result.Add(Empty(symbol,null,"WEEKEND_FX","FX strategy closed for new weekend entries."));continue;
+        }
+        if(symbol=="BTCUSD" && Stamp(state,"WeekendLockUntil") is DateTime lockedUntil && now<lockedUntil){
+            result.Add(Empty(symbol,null,"BTC_WEEKEND_LOCK","Native BTC lock remains in force."));continue;
+        }
         if((market.TryGetProperty("foreign_exposure",out var foreign)&&foreign.ValueKind==JsonValueKind.True)
            || (market.TryGetProperty("pending_orders",out var pending)&&pending.ValueKind==JsonValueKind.True)
            || (market.TryGetProperty("positions",out var active)&&active.ValueKind==JsonValueKind.Array&&active.GetArrayLength()>0)){
             result.Add(Empty(symbol,null,"PORTFOLIO_EXPOSURE_BLOCK","Account exposure or pending orders require native portfolio reconciliation."));continue;
-        }
-        if(symbol=="BTCUSD" && Stamp(state,"WeekendLockUntil") is DateTime lockedUntil && now<lockedUntil){
-            result.Add(Empty(symbol,null,"BTC_WEEKEND_LOCK","Native BTC lock remains in force."));continue;
         }
         if(symbol=="BTCUSD"){
             if(!native.TryGetProperty("btc_feed",out var packet)||packet.ValueKind!=JsonValueKind.Object){
