@@ -343,3 +343,38 @@ def test_one_source_or_no_forecast_returns_explanatory_conclusion():
     assert view["news_conclusion_status"] == "INSUFFICIENT"
     assert "BELUM" in view["news_conclusion"]
     assert view["forecast_risk"] == "UNAVAILABLE"
+
+
+def test_three_numeric_forecasts_but_only_two_previous_values_is_not_quorum():
+    data = snapshot(-1)
+    event = data["heartbeats"][0]["details"]["risk"]["focal_event"]
+    event["forecast_quotes"][2]["previous"] = None
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["event_cluster"][0]["forecast_source_count"] == 3
+    assert view["event_cluster"][0]["forecast_pair_count"] == 2
+    assert view["forecast_quorum_met"] is False
+    assert view["forecast_risk"] == "UNAVAILABLE"
+    assert view["news_conclusion_status"] == "PROVISIONAL"
+
+
+def test_legacy_cpi_index_level_summary_never_authorizes_hot_or_cool():
+    data = snapshot(-1)
+    event = data["heartbeats"][0]["details"]["risk"]["focal_event"]
+    event.update(title="CPI m/m", event_component="CPI_MOM",
+                 forecast=168.66, previous=168.77,
+                 forecast_quotes=[
+                     {"source": "FOREX_FACTORY_WEEKLY", "forecast": 0.3, "previous": 0.6},
+                     {"source": "HELIOUS", "forecast": 337.02, "previous": 336.94},
+                 ])
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["state"] == "DATA INCOMPLETE"
+    assert view["forecast_quorum_met"] is False
+    assert view["xau_bias"] == "UNAVAILABLE"
+    assert "HELIOUS" in view["event_cluster"][0]["rejected_quote_sources"]
+    assert view["news_conclusion_status"] == "INSUFFICIENT"
+
+
+def test_long_countdown_expressed_as_days_hours_minutes():
+    from fx_scanner.pre_news_dashboard import _countdown
+    assert _countdown(2300) == "1 hari 14 jam 20 menit"
+    assert _countdown(40) == "0 jam 40 menit"
