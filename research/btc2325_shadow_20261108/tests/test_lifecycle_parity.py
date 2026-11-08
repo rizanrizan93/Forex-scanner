@@ -32,6 +32,9 @@ class LifecycleParity(unittest.TestCase):
         self.assertIn('Math.Max(_closedPeak, _cash)',block)
         self.assertIn('1-_cash/_closedPeak',block)
         self.assertNotIn('Account.Balance)',block)
+        self.assertIn('Account.Balance+_paperRealizedPnl',SOURCE)
+        self.assertIn('_paperRealizedPnl+=pnl',SOURCE)
+        self.assertIn('guard=causal_observed_balance_plus_paper_realized_pnl',SOURCE)
     def test_frozen_families_still_shadow_no_orders(self):
         for token in ['"H4_SWEEP20"','"H1_EMA20"','1.5*atr4','2*atr1','Target=assumedEntry+s.Side*s.Distance*10',
                       'RiskFraction = 0.025','MarginFraction = 0.10','MaxModelBtcQuantity = 3200']:
