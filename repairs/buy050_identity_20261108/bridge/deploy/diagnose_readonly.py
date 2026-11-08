@@ -49,5 +49,14 @@ def report():
             if response.returncode!=0 and not any(record['probe_flags'].values()):
                 record['failure_kind']=next((c for c in ['ValueError','RuntimeError','OSError','SystemExit','KeyError','FileNotFoundError','PermissionError','TypeError'] if c in raw),'UNKNOWN')
         except subprocess.TimeoutExpired:record['probe_timed_out']=True
+    try:
+        check=subprocess.run(['/opt/rizan-buy050-bridge/.venv/bin/python','-c',
+            "import feeds,json; s=feeds.snapshot(); print(json.dumps({'ForexFactoryOk':s.get('ForexFactoryOk'),'BlsOk':s.get('BlsOk'),'Dgs10':s.get('Dgs10') is not None,'Dfii10':s.get('Dfii10') is not None,'CoverageFromUtc':s.get('CoverageFromUtc'),'CoverageToUtc':s.get('CoverageToUtc'),'ErrorTypes':s.get('Errors',[]),'EventCount':len(s.get('Events',[]))}))"],
+            cwd='/opt/rizan-buy050-bridge',capture_output=True,text=True,timeout=90)
+        if check.returncode==0:
+            public=json.loads(check.stdout)
+            record['macro_public_sources']=public
+        else:record['macro_public_source_probe_failed']=True
+    except Exception:record['macro_public_source_probe_failed']=True
     print(json.dumps(record,sort_keys=True))
 if __name__=='__main__':report()
