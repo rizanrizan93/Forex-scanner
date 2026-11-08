@@ -22,8 +22,14 @@ internal sealed partial class BtcEngine : EngineContext
     void Save(){
         state.AccountNumber=Account.Number;state.Revision++;
         string value=JsonSerializer.Serialize(state);
-        try{LocalStorage.SetString(key,value,LocalStorageScope.Instance);LocalStorage.Flush(LocalStorageScope.Instance);
-            if(LocalStorage.GetString(key,LocalStorageScope.Instance)!=value)throw new Exception("BTC_LOCAL_READBACK");
+        try{
+            // Cloud LocalStorage cannot survive a process restart. Remote CAS ACK
+            // is required by RecoveryReady/EnsureNativeIntent before any entry.
+            if(!IsCloudRuntime){
+                LocalStorage.SetString(key,value,LocalStorageScope.Instance);
+                LocalStorage.Flush(LocalStorageScope.Instance);
+                if(LocalStorage.GetString(key,LocalStorageScope.Instance)!=value)throw new Exception("BTC_LOCAL_READBACK");
+            }
             link?.Changed(state.Revision,value);}
         catch{state.Fault=true;Print("BTC_LOCAL_CHECKPOINT_FAILED entry_blocked=True");throw;}
     }
@@ -43,7 +49,7 @@ internal sealed partial class BtcEngine : EngineContext
         Print("BTC_FULLFIX_20261104 cache_boundary_fixed=True scoped_lock_recovery=True");
         // Native R3 batch uses the same sizing core with durable per-order intents.
         key=FrozenR3.BtcStorageKey(Account.Number);state.AccountNumber=Account.Number;
-        try{var saved=LocalStorage.GetString(key,LocalStorageScope.Instance);if(!string.IsNullOrEmpty(saved)){state=DecodeNativeState(saved)??throw new Exception("BTC_NULL_STATE");Validate(state);ready=true;}
+        try{var saved=IsCloudRuntime ? null : LocalStorage.GetString(key,LocalStorageScope.Instance);if(!string.IsNullOrEmpty(saved)){state=DecodeNativeState(saved)??throw new Exception("BTC_NULL_STATE");Validate(state);ready=true;}
             if(replay){ready=true;Save();Manage(Server.TimeInUtc);return;}
             link=new BtcStateLink(Host,Recover,root=>feed.Accept(root,Server.TimeInUtc));
             link.Changed(state.Revision,JsonSerializer.Serialize(state));link.Tick();
