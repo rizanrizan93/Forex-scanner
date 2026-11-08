@@ -67,7 +67,7 @@ public sealed class RizanBtc2325Shadow : Robot
         Print("BTC2325_HISTORY_CHECK cTrader_source=True; h1_bars={0}; h4_bars={1}; m1_bars={2}; original_Bitstamp_M1_parity_unverified=True",_h1.Count,_h4.Count,_m1.Count);
         _lastClosedMinuteUtc = DateTime.MinValue;
         Print("BTC2325_RESEARCH_ONLY id={0}; orders_enabled=False; signal=H4_SWEEP20_THEN_H1_EMA20; account_scope=NO_POSITION_MODIFICATION", CandidateId);
-        Print("BTC2325_PARITY_AUDIT_VERSION=2; holding_exit=H1_expiry_final_M1_close; paper_cash_init=observed_Account_Balance; strategy_guard_exact=False");
+        Print("BTC2325_PARITY_AUDIT_VERSION=3; holding_exit=H1_expiry_final_M1_close; paper_cash_init=observed_Account_Balance; strategy_guard_exact=False; guard=causal_paper_cash");
         Print("BTC2325_PARITY_WARNING frozen_guard=historical_BUY050_closed_balance; runtime_guard=causal_observed_account_balance; model_not_equivalent=True");
         Print("BTC2325_PARITY_WARNING native_shared_account_replay=False; floating_DD_unverified=True; max_3200BTC_not_broker_verified=True");
         Timer.Start(TimeSpan.FromSeconds(1));
@@ -178,13 +178,28 @@ public sealed class RizanBtc2325Shadow : Robot
     {
         // This guard is intentionally NOT passed off as the fixed BUY050 baseline
         // historical cash curve, whose future path cannot be used for live signals.
-        _closedPeak = Math.Max(_closedPeak, Account.Balance);
-        return _closedPeak > 0 && (1-Account.Balance/_closedPeak) < .10;
+        // Paper-only cumulative cash includes realized model PnL. Never use
+        // changing real-account balance as a substitute for paper PnL.
+        // Distinct from frozen historical BUY050 baseline guard.
+        _closedPeak = Math.Max(_closedPeak, _cash);
+        return _closedPeak > 0 && (1-_cash/_closedPeak) < .10;
     }
 
     private void Decide(DateTime hourUtc, DateTime nowUtc)
     {
         if(_lastDecisionHourUtc == hourUtc) return;
+        // At the exact H1 rollover cTrader can expose the new candle later
+        // than the timer callback. Wait for the actual next-hour bar before
+        // marking this decision as consumed; no synthetic late entry.
+        int currentH1 = _h1.Count-1;
+        if(currentH1<0 || _h1.OpenTimes[currentH1] != hourUtc)
+        {
+            if(nowUtc-hourUtc<=TimeSpan.FromMinutes(2))return;
+            _lastDecisionHourUtc=hourUtc;
+            ++_skipped;
+            Print("BTC2325_SHADOW_SKIP reason=NEW_H1_BAR_UNAVAILABLE; at={0:o}",hourUtc);
+            return;
+        }
         _lastDecisionHourUtc = hourUtc;
         var signal = ClosedSignal(hourUtc);
         if(signal == null) return;
@@ -195,19 +210,15 @@ public sealed class RizanBtc2325Shadow : Robot
         else if(IncumbentBusy()) reason = "BTC_INCUMBENT_PRIORITY_OR_BROKER_EXPOSURE";
         else if(!CausalObservedGuardOk()) reason = "CAUSAL_BALANCE_GUARD_10PCT";
         else if(nowUtc - hourUtc > TimeSpan.FromMinutes(2)) reason = "MISSED_NEXT_H1_OPEN";
-        else if(_lastExitUtc != default && hourUtc < _lastExitUtc.AddHours(6)) reason = "SIX_HOUR_COOLDOWN";
+        else if(_lastExitUtc != default &&
+                hourUtc.AddHours(-1) <
+                new DateTime(_lastExitUtc.Year,_lastExitUtc.Month,_lastExitUtc.Day,_lastExitUtc.Hour,0,0,DateTimeKind.Utc).AddHours(6))
+            reason = "SIX_HOUR_COOLDOWN";
 
         if(reason != "")
         {
             ++_skipped;
             if(LogSkippedSignals) Print("BTC2325_SHADOW_SKIP at={0:o}; family={1}; side={2}; reason={3}",hourUtc,signal.Value.Family,signal.Value.Side,reason);
-            return;
-        }
-        int currentH1 = _h1.Count-1;
-        if(currentH1<0 || _h1.OpenTimes[currentH1] != hourUtc)
-        {
-            ++_skipped;
-            Print("BTC2325_SHADOW_SKIP reason=NEW_H1_BAR_UNAVAILABLE; at={0:o}",hourUtc);
             return;
         }
         var s = signal.Value;
