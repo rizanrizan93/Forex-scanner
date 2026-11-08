@@ -47,7 +47,7 @@ public abstract class RizanPortfolio : Robot
     // Isolated-source parity controls only; absent from the native cBot build.
     internal bool BypassSharedChecks;
 #endif
-    private DateTime _nextTelemetry;
+    private DateTime _nextTelemetry, _nextRuntimeTelemetry, _startedUtc;
     private bool _running;
     private bool _shuttingDown;
 
@@ -60,6 +60,9 @@ public abstract class RizanPortfolio : Robot
     }
     protected override void OnStart()
     {
+        _startedUtc=Server.TimeInUtc;
+        Print("RIZAN_RUNTIME_START managed_heap_mb={0:F1}; gc2={1}",
+            GC.GetTotalMemory(false)/1048576d,GC.CollectionCount(2));
         ExpectedAccount=ExpectedAccount.Trim();
         if(string.IsNullOrWhiteSpace(BtcBridgeToken))BtcBridgeToken=BridgeToken;
         if(string.IsNullOrWhiteSpace(BtcBridgeUrl)&&!string.IsNullOrWhiteSpace(BridgeUrl))BtcBridgeUrl=BridgeUrl.TrimEnd('/')+"/btc";
@@ -94,7 +97,18 @@ public abstract class RizanPortfolio : Robot
         Print("RIZAN_PORTFOLIO_START version=4.1.0-buy050-20261107 XAU=T45_SL24_R165_PLUS_H1_DISPLACEMENT EUR=R080 BTC=ORIGINAL_PLUS_BREAK40_ALL account={0} risk_cap={1}% margin_cap=50%",Account.Number,PortfolioRiskPercent);
     }
     private void XauTick(SymbolTickEventArgs e){if(_running)Xau?.OnTick();}
-    private void BtcTick(SymbolTickEventArgs e){if(_running)Btc?.OnTick();}
+    // A managed BTC tick error must not escape into the cTrader host; stop new
+    // entries on uncertain runtime state while the timer keeps managing positions.
+    private void BtcTick(SymbolTickEventArgs e)
+    {
+        if(!_running)return;
+        try{Btc?.OnTick();}
+        catch(Exception ex) when (ex is not OutOfMemoryException)
+        {
+            Print("RIZAN_BTC_TICK_FAULT type={0}; new_entries_blocked=True",ex.GetType().Name);
+            Btc?.NativeRuntimeFault(ex);
+        }
+    }
     private void EurTick(SymbolTickEventArgs e){if(_running)Eur?.OnTick();}
     protected override void OnTimer()
     {
@@ -106,9 +120,23 @@ public abstract class RizanPortfolio : Robot
         // Stable EUR -> XAU order; no winner is selected using future prices.
         foreach(var e in Engines)if(!e.Stopped)e.OnTimer();
         if(Server.TimeInUtc>=_nextTelemetry){_nextTelemetry=Server.TimeInUtc.AddMinutes(1);Print("RIZAN_PORTFOLIO ready={0} balance={1} equity={2} margin={3} open_risk={4} pending_risk={5} budget_blocks={6}",PortfolioReady,Account.Balance,Account.Equity,Account.Margin,OpenRisk(),Engines.Sum(e=>e.PendingRisk),PortfolioBudgetBlocks);}
+        if(Server.TimeInUtc>=_nextRuntimeTelemetry)
+        {
+            _nextRuntimeTelemetry=Server.TimeInUtc.AddMinutes(1);
+            Print("RIZAN_RUNTIME_HEALTH uptime_s={0:F0}; managed_heap_mb={1:F1}; gc2={2}; total_positions={3}; no_sl_positions={4}; note=NO_SL_FORCES_OPEN_RISK_INFINITY",
+                (Server.TimeInUtc-_startedUtc).TotalSeconds,GC.GetTotalMemory(false)/1048576d,
+                GC.CollectionCount(2),Positions.Count,Positions.Count(p=>p.StopLoss==null));
+        }
 #if !REPLAY
         }catch(Exception ex){Btc?.NativeRuntimeFault(ex);Print("R3_PORTFOLIO_TIMER_BLOCK type={0}",ex.GetType().Name);}
 #endif
+    }
+    // cTrader calls this for otherwise-unhandled managed exceptions. It cannot
+    // intercept SIGKILL, host OOM termination, or cloud supervisor recycling.
+    protected override void OnException(Exception exception)
+    {
+        Print("RIZAN_UNHANDLED_EXCEPTION type={0}; managed_heap_mb={1:F1}",
+            exception.GetType().Name,GC.GetTotalMemory(false)/1048576d);
     }
     protected override void OnStop()
     {
