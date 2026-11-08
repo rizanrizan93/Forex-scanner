@@ -39,7 +39,7 @@ jobs:
       - name: Restore previous broker M1 cache if available
         uses: actions/cache/restore@v4
         with:
-          path: artifacts/buy050_shadow/market.json
+          path: artifacts/buy050_shadow/market_bars_cache.json
           key: buy050-shadow-market-${{ github.run_id }}
           restore-keys: |
             buy050-shadow-market-
@@ -85,6 +85,9 @@ jobs:
       - name: Obtain fresh cTrader LIVE quotes and M1 candles (read-only)
         run: |
           mkdir -p artifacts/buy050_shadow
+          if [[ -f artifacts/buy050_shadow/market_bars_cache.json ]]; then
+            cp artifacts/buy050_shadow/market_bars_cache.json artifacts/buy050_shadow/market.json
+          fi
           python scripts/collect_buy050_shadow_market.py artifacts/buy050_shadow/market.json
           python - <<'PY'
           import json
@@ -146,9 +149,19 @@ jobs:
               message:'chore(shadow): refresh sanitized native BUY050 signal projection'
             });
             core.info('BUY050_SHADOW_SANITIZED_PUBLISHED');
-      - name: Save incremental LIVE market M1 cache for the next evaluation
+      - name: Save price-bar cache ONLY, never account/positions/quotes
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          source='artifacts/buy050_shadow/market.json'
+          with open(source) as f: obj=json.load(f)
+          with open('artifacts/buy050_shadow/market_bars_cache.json','w') as f:
+              json.dump({'bars':obj['bars']},f,allow_nan=False)
+          PY
+      - name: Save incremental price bar cache without private account data
         uses: actions/cache/save@v4
-        if: always()
+        if: success()
         with:
-          path: artifacts/buy050_shadow/market.json
+          path: artifacts/buy050_shadow/market_bars_cache.json
           key: buy050-shadow-market-${{ github.run_id }}
