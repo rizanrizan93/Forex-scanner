@@ -285,7 +285,7 @@ def _enrich_event_dict(
         row["gold_bias_confidence"] = "LOW"
         row["gold_bias_basis"] = "SOURCE_CONFLICT"
     elif fused.forecast_source_count >= 3:
-        row["source_confidence"] = "HIGH"
+        row["source_confidence"] = "MEDIUM" if fused.rejected_quote_sources else "HIGH"
     elif fused.forecast_source_count >= 2:
         row["source_confidence"] = "MEDIUM"
     else:
