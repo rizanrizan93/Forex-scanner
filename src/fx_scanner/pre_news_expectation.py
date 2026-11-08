@@ -109,6 +109,10 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         "forecast_xau_bias": "UNAVAILABLE",
         "forecast_quorum_required": MIN_FORECAST_SOURCES,
         "forecast_quorum_met": False,
+        "news_conclusion": "BELUM ADA KESIMPULAN NEWS XAU",
+        "news_conclusion_status": "INSUFFICIENT",
+        "news_conclusion_basis": "Menunggu forecast numerik dan data kalender yang valid.",
+        "news_conclusion_components": 0,
         "probability": None, "calibration": "UNVALIDATED_HEURISTIC",
         "execution_authority": False, "execution_influence": False,
         "news_gate": str(risk.get("state") or "UNAVAILABLE"),
@@ -126,6 +130,11 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         result["news_gate_action"] = "UNAVAILABLE"
     if not upcoming:
         reasons.append("NO_UPCOMING_SUPPORTED_EVENT_IN_CALENDAR")
+        result["news_conclusion"] = "TIDAK ADA NEWS USD PRIORITAS TERDEKAT"
+        result["news_conclusion_basis"] = (
+            "Tidak ada rilis USD yang memenuhi cakupan kalender saat ini; "
+            "ini bukan bukti tidak ada peristiwa ekonomi."
+        )
         return result
     at, event = upcoming[0]
     minutes = (at - current).total_seconds() / 60
@@ -141,6 +150,7 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
     if measured:
         cluster = measured
     tilts = []
+    provisional_tilts: list[int] = []
     quorum_counts: list[int] = []
     for e in cluster:
         forecast, previous = number(e.get("forecast")), number(e.get("previous"))
@@ -186,10 +196,22 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
             tilt = None
         if tilt is not None:
             tilts.append(tilt)
+        # A 2-source or incomplete-component indication is informational
+        # ONLY, never labeled as a validated three-source consensus. Two
+        # independent vendors must provide both forecast and previous.
+        indicative = None
+        paired = sum(quote["previous"] is not None for quote in source_quotes.values())
+        if not conflict and count >= 2 and paired >= 2 and forecast is not None and previous is not None and e["category"] != "FOMC":
+            tolerance = max(abs(previous) * 0.01, 1e-9)
+            indicative = 0 if abs(forecast - previous) <= tolerance else (1 if forecast > previous else -1)
+            if e["category"] in INVERSE:
+                indicative *= -1
+            provisional_tilts.append(indicative)
         result["event_cluster"].append({
             "title": e.get("title"), "category": e["category"],
             "event_component": e.get("event_component"),
             "forecast": forecast, "previous": previous, "hawkish_tilt": tilt,
+            "indicative_hawkish_tilt": indicative,
             "source_count": e.get("source_count", 1),
             "sources": e.get("sources") or [e.get("source")],
             "forecast_source_count": count,
@@ -206,6 +228,52 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         reason in reasons
         for reason in ("PUBLICATION_STALE", "CALENDAR_STALE_MISSING_OR_UNHEALTHY")
     )
+    if not calendar_valid:
+        result["news_conclusion"] = "DATA KALENDER TERLAMBAT — TUNGGU UPDATE"
+        result["news_conclusion_status"] = "STALE"
+        result["news_conclusion_basis"] = (
+            "Tidak mengeluarkan bias arah dari kalender yang tidak segar."
+        )
+    elif provisional_tilts:
+        signed = set(provisional_tilts) - {0}
+        incomplete = len(tilts) != len(cluster)
+        if signed == {1, -1}:
+            result["news_conclusion"] = "MIXED RISK — XAU TIDAK ADA BIAS DOMINAN"
+            result["news_conclusion_status"] = "MIXED"
+            result["news_conclusion_basis"] = (
+                "Komponen rilis menunjukkan implikasi hawkish dan dovish bersamaan. "
+                "Tunggu actual versus forecast dan respons DXY/yield."
+            )
+        else:
+            pressure = next(iter(signed)) if signed else 0
+            label = (
+                "HOT RISK — BEARISH XAU" if pressure == 1 else
+                "COOL RISK — BULLISH XAU" if pressure == -1 else
+                "INLINE — XAU NETRAL"
+            )
+            validated = bool(tilts) and not incomplete
+            result["news_conclusion_status"] = "VALIDATED" if validated else "PROVISIONAL"
+            result["news_conclusion"] = (
+                label + (" (PRA-RILIS)" if validated else " (INDIKASI SEMENTARA)")
+            )
+            result["news_conclusion_components"] = len(provisional_tilts)
+            result["news_conclusion_basis"] = (
+                f"{len(provisional_tilts)} komponen memiliki perbandingan forecast/previous "
+                f"dari minimal 2 penyedia. " +
+                ("Semua komponen memenuhi quorum 3 sumber." if validated else
+                 "Belum semua komponen memenuhi quorum 3 sumber atau bebas konflik; "
+                 "kesimpulan bukan sinyal entry.")
+            )
+    else:
+        any_conflict = any(_source_conflict(e) for e in cluster)
+        result["news_conclusion"] = (
+            "DATA KONFLIK — XAU BELUM ADA BIAS" if any_conflict else
+            "FORECAST BELUM CUKUP — XAU BELUM ADA BIAS"
+        )
+        result["news_conclusion_basis"] = (
+            "Tidak ditemukan sedikitnya dua forecast lengkap yang searah dan bebas "
+            "konflik untuk rilis ini. Kesimpulan arah ditahan."
+        )
     if tilts and len(tilts) == len(cluster) and calendar_valid:
         if 1 in tilts and -1 in tilts:
             expectation = "MIXED"
