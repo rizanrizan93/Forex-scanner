@@ -14,8 +14,8 @@ class TestShadow(unittest.TestCase):
         for v in ('"H4_SWEEP20"','"H1_EMA20"','1.5*atr4','2*atr1',
                   'RiskFraction = 0.025','MarginFraction = 0.10',
                   'MaxModelBtcQuantity = 3200', 'BtcStep = 0.01',
-                  'Stop = assumedEntry-s.Side*s.Distance',
-                  'Target = assumedEntry+s.Side*s.Distance*10',
+                  'Stop=assumedEntry-s.Side*s.Distance',
+                  'Target=assumedEntry+s.Side*s.Distance*10',
                   'BTC2325_SHADOW_HEALTH'):
             self.assertIn(v,s)
     def test_completed_bars_and_research_warmup(self):
