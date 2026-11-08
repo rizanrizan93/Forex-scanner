@@ -179,6 +179,8 @@ def _render():
         render_snapshot(cached(int(now.timestamp() // 45)), now=now)
         from .cbot_buy050_shadow_dashboard import render_shadow_panel
         render_shadow_panel()
+        from .cbot_buy050_event_dashboard import render_audit_panel
+        render_audit_panel()
     except (OSError, ValueError, TypeError, KeyError, TimeoutError):
         st.subheader("cBots · BUY050 RuntimeGuard")
         st.warning(
