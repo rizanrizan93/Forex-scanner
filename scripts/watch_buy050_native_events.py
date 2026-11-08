@@ -146,6 +146,7 @@ def watch(seconds=235, interval=1.0, clock=time.monotonic, sleeper=time.sleep, c
         started = instant()
         deadline = clock() + seconds
         previous = None
+        initial = None
         events = []
         samples = 0
         failures = 0
@@ -159,6 +160,8 @@ def watch(seconds=235, interval=1.0, clock=time.monotonic, sleeper=time.sleep, c
                 if previous is not None:
                     events.extend(transition(previous, current, observed_at))
                 previous = current
+                if initial is None:
+                    initial = current
                 samples += 1
                 if last_t is not None:
                     longest_gap_s = max(longest_gap_s, tick-last_t)
@@ -182,7 +185,7 @@ def watch(seconds=235, interval=1.0, clock=time.monotonic, sleeper=time.sleep, c
             read_only=True, execution_authority=False, execution_influence=False,
             started_at=started, ended_at=instant(), samples=samples,
             failures=failures, max_interval_s=round(longest_gap_s, 3),
-            end_state=previous, events=events[-240:],
+            start_state=initial, end_state=previous, events=events[-240:],
             source="VPS_SQLITE_READONLY_1S_SAMPLING",
             terminal_journal_available=False,
             broker_deals_verified=False,
