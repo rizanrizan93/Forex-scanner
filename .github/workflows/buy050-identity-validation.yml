@@ -29,12 +29,12 @@ jobs:
         run: |
           set -euo pipefail
           cd repairs/buy050_identity_20261108
+          gzip -dk bridge/BTC_SEED_PACKET.json.gz
+          echo '210b1855ac5ffab2b628a7b4d301290427dc04e86a4a6042599d6d0ac8b873f2  bridge/BTC_SEED_PACKET.json' | sha256sum -c -
           python -m pip install -r bridge/requirements.txt
           python -m py_compile bridge/*.py bridge/deploy/*.py
           (cd bridge && python -m unittest -v test_bridge test_native_frames test_buy050_isolation test_source_transport_only)
           (cd bridge/deploy && python -m unittest -v test_provision)
-          gzip -dk bridge/BTC_SEED_PACKET.json.gz
-          echo '210b1855ac5ffab2b628a7b4d301290427dc04e86a4a6042599d6d0ac8b873f2  bridge/BTC_SEED_PACKET.json' | sha256sum -c -
       - name: Official cTrader Automate native build
         shell: bash
         run: |
