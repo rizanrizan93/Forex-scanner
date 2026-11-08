@@ -266,3 +266,79 @@ def test_alternative_three_forecast_provider_quorum_in_six_source_pool():
     assert result["forecast_quorum_met"] is True
     assert result["forecast_risk"] == "COOL RISK (BULLISH XAU)"
     assert result["xau_bias"] == "BULLISH_XAU"
+
+
+def test_news_conclusion_validated_hot_cool_and_inline():
+    for tilt, label in ((1, "HOT RISK"), (-1, "COOL RISK"), (0, "INLINE")):
+        view = evaluate_pre_news(snapshot(tilt), now=NOW)
+        assert view["news_conclusion_status"] == "VALIDATED"
+        assert view["news_conclusion"].startswith(label)
+        assert "PRA-RILIS" in view["news_conclusion"]
+        assert view["execution_authority"] is False
+
+
+def test_two_valid_providers_get_provisional_news_indication_not_validated_bias():
+    data = snapshot(-1)
+    event = data["heartbeats"][0]["details"]["risk"]["focal_event"]
+    event["forecast_quotes"] = event["forecast_quotes"][:2]
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["news_conclusion_status"] == "PROVISIONAL"
+    assert "COOL RISK" in view["news_conclusion"]
+    assert "INDIKASI SEMENTARA" in view["news_conclusion"]
+    assert view["forecast_risk"] == "UNAVAILABLE"
+    assert view["xau_bias"] == "UNAVAILABLE"
+
+
+def test_partial_core_cpi_bullish_with_conflicting_headline_is_labeled_provisional():
+    data = snapshot(-1)
+    risk = data["heartbeats"][0]["details"]["risk"]
+    core = risk["focal_event"]
+    core["title"] = "Core CPI m/m"
+    core["event_component"] = "CORE_CPI_MOM"
+    headline = dict(core, title="CPI m/m", event_component="CPI_MOM",
+                    forecast=0.3, previous=0.6,
+                    source_agreement="SOURCE_CONFLICT",
+                    conflicts=["PREVIOUS_CONFLICT"])
+    risk["upcoming_events"].append(headline)
+    view = evaluate_pre_news(data, now=NOW)
+    assert len(view["event_cluster"]) == 2
+    assert view["news_conclusion_status"] == "PROVISIONAL"
+    assert "COOL RISK" in view["news_conclusion"]
+    assert view["forecast_risk"] == "UNAVAILABLE"
+    assert view["xau_bias"] == "UNAVAILABLE"
+
+
+def test_opposing_two_source_indications_are_mixed_not_forced():
+    data = snapshot(-1)
+    risk = data["heartbeats"][0]["details"]["risk"]
+    first = risk["focal_event"]
+    first["forecast_quotes"] = first["forecast_quotes"][:2]
+    second = dict(first, title="Headline CPI", forecast=4, previous=3,
+                  forecast_quotes=[
+                      {"source": "FOREX_FACTORY_WEEKLY", "forecast": 4, "previous": 3},
+                      {"source": "HELIOUS", "forecast": 4, "previous": 3},
+                  ])
+    risk["upcoming_events"].append(second)
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["news_conclusion_status"] == "MIXED"
+    assert "MIXED" in view["news_conclusion"]
+    assert view["forecast_risk"] == "UNAVAILABLE"
+
+
+def test_stale_calendar_suppresses_any_pre_news_indication():
+    data = snapshot(-1)
+    data["heartbeats"][0]["observed_at"] = (NOW - timedelta(minutes=11)).isoformat()
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["news_conclusion_status"] == "STALE"
+    assert "TERLAMBAT" in view["news_conclusion"]
+    assert "BULLISH" not in view["news_conclusion"]
+
+
+def test_one_source_or_no_forecast_returns_explanatory_conclusion():
+    data = snapshot(-1)
+    event = data["heartbeats"][0]["details"]["risk"]["focal_event"]
+    event["forecast_quotes"] = event["forecast_quotes"][:1]
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["news_conclusion_status"] == "INSUFFICIENT"
+    assert "BELUM" in view["news_conclusion"]
+    assert view["forecast_risk"] == "UNAVAILABLE"
