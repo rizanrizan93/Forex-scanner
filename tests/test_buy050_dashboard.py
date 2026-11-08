@@ -74,6 +74,21 @@ class Buy050DashboardTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             evaluate_snapshot(p, now=NOW)
 
+    def test_replaced_algo_checkpoint_is_not_misreported_as_connected(self):
+        p = sample()
+        p["symbols"][0]["unrecognized_checkpoint"] = True
+        view = evaluate_snapshot(p, now=NOW)
+        self.assertEqual(view["statuses"]["XAUUSD"], "ALGO_PERLU_VERIFIKASI")
+        self.assertEqual(view["statuses"]["EURUSD"], "TERPANTAU")
+
+    def test_healthy_bridge_does_not_override_missing_checkpoint(self):
+        p = sample()
+        p["symbols"][2]["checkpoint_present"] = False
+        self.assertEqual(
+            evaluate_snapshot(p, now=NOW)["statuses"]["BTCUSD"],
+            "IDENTITAS_BERMASALAH",
+        )
+
     def test_contract_requires_all_three_symbols(self):
         p = sample()
         p["symbols"].pop()
