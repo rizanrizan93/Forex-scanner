@@ -91,9 +91,41 @@ jobs:
               journals[name]={'lines':len(lines),
                             'error_events':sum(bool(re.search(r'exception|error|crash|failed|timeout|killed',x,re.I)) for x in lines),
                             'startup_events':sum('BUY050_BRIDGE_LISTENING' in x or 'Started ' in x for x in lines)}
-          snapshot={'observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+          # Inspect only metadata of legacy bridge sockets and state, without auth or order probes.
+          socket_counts={}
+          ss=cmd(['ss','-H','-tnp','state','established'],timeout=10)
+          for unit in services:
+              pid_text=cmd(['systemctl','show',unit['unit'],'--value','-p','MainPID']).strip()
+              if pid_text.isdigit() and int(pid_text)>0:
+                  socket_counts[unit['unit']]=sum(('pid='+pid_text+',') in row or ('pid='+pid_text+')') in row for row in ss.splitlines())
+          legacy_databases=[]
+          root=Path('/var/lib')
+          for directory in sorted(root.glob('rizan-*')):
+              if not directory.is_dir():continue
+              for dbfile in sorted(list(directory.glob('*.sqlite'))+list(directory.glob('*.db')))[:10]:
+                  item={'folder':directory.name,'file':dbfile.name,'size_mb':round(dbfile.stat().st_size/1048576,2)}
+                  try:
+                      with sqlite3.connect(dbfile.resolve().as_uri()+'?mode=ro',uri=True,timeout=2) as db:
+                          schema=[x[0] for x in db.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+                          item['has_checkpoint']='checkpoints' in schema
+                          item['has_bridge_leases']='bridge_leases' in schema
+                          if 'bridge_leases' in schema:
+                              ls=db.execute('SELECT key,expires_at,touched_at FROM bridge_leases').fetchall()
+                              item['lease_count']=len(ls)
+                              item['fresh_lease_count']=sum(float(z[1])>time.time() for z in ls)
+                              item['fresh_lease_symbols']=[str(z[0]).split(':')[-1] for z in ls if float(z[1])>time.time()]
+                  except Exception as ex:item['inspection_error']=type(ex).__name__
+                  legacy_databases.append(item)
+          for service in services:
+              show=cmd(['systemctl','show',service['unit'],'--no-pager','-p','UnitFileState','-p','RequiredBy','-p','WantedBy','-p','PartOf'])
+              opts={k:v.strip() for k,v in (line.split('=',1) for line in show.splitlines() if '=' in line)}
+              service['enabled']=opts.get('UnitFileState','unknown')
+              service['required_by_unit_count']=len(opts.get('RequiredBy','').split())
+              service['wanted_by_unit_count']=len(opts.get('WantedBy','').split())
+                    snapshot={'observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
                     'read_only':True,'orders_sent':0,'account_suffix':'7903',
                     'buy050_health':health,'buy050_store':store,'services':services,'journal_counts':journals,
+                    'socket_connections_by_service':socket_counts,'sqlite_inventory':legacy_databases,
                     'inventory_note':'A systemd bridge is not a cTrader Cloud cBot instance; do not delete state or shared services without independent dependency check.'}
           print('BUY050_VPS_INVENTORY_BEGIN')
           print(json.dumps(snapshot,sort_keys=True))
