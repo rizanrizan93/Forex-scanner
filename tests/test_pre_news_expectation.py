@@ -234,3 +234,20 @@ def test_stale_publication_never_displays_direction():
     view = evaluate_pre_news(data, now=NOW)
     assert view["forecast_risk"] == "UNAVAILABLE"
     assert view["xau_bias"] == "UNAVAILABLE"
+
+
+def test_parallel_official_schedule_without_forecast_does_not_veto_valid_components():
+    data = snapshot(-1)
+    risk = data["heartbeats"][0]["details"]["risk"]
+    schedule = dict(
+        risk["focal_event"],
+        title="BLS CPI release schedule",
+        forecast=None,
+        previous=None,
+        forecast_quotes=[],
+        source_count=1,
+    )
+    risk["upcoming_events"].append(schedule)
+    view = evaluate_pre_news(data, now=NOW)
+    assert len(view["event_cluster"]) == 1
+    assert view["forecast_risk"] == "COOL RISK (BULLISH XAU)"
