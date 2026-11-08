@@ -37,7 +37,7 @@ static (double bid,double ask)? Quote(JsonElement market,string symbol,DateTime 
     if (!market.TryGetProperty("quotes",out var q)||!q.TryGetProperty(symbol,out var obj)||
         !obj.TryGetProperty("BID",out var b)||!obj.TryGetProperty("ASK",out var a))return null;
     if(!Frozen(Stamp(b,"at"),now,15)||!Frozen(Stamp(a,"at"),now,15))return null;
-    var bid=Num(b,"price"),ask=Num(a,"price");
+    var bid=Num(b,"price");var ask=Num(a,"price");
     return bid>0&&ask>=bid?(bid.Value,ask.Value):null;
 }
 static List<X.Candle> Bars(JsonElement market,string symbol,DateTime now){
