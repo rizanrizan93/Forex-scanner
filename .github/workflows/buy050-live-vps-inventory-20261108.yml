@@ -1,0 +1,101 @@
+name: BUY050 LIVE VPS Inventory Readonly 20261108
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/buy050-live-vps-inventory-20261108.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: buy050-readonly-inventory
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Read-only bridge and legacy service inventory
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          [[ -n "$SSH_PRIVATE_KEY" && -n "$SSH_KNOWN_HOSTS" ]] || { echo "SSH_PREREQUISITES_MISSING"; exit 1; }
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known_hosts"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          ssh_opt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known_hosts" -o ConnectTimeout=20)
+          ssh "${ssh_opt[@]}" 'Rizanrizan@202.74.74.172' 'sudo -n python3 -' <<'PY'
+          import os,sys,json,sqlite3,time,subprocess,re,datetime
+          from pathlib import Path
+          def cmd(argv,timeout=9):
+              try:
+                  p=subprocess.run(argv,text=True,capture_output=True,timeout=timeout)
+                  return p.stdout if p.returncode==0 else ""
+              except Exception:return ""
+          def svc(name):
+              body=cmd(['systemctl','show',name,'--no-pager','-p','ActiveState','-p','SubState','-p','MainPID','-p','NRestarts','-p','MemoryCurrent','-p','ExecMainStartTimestamp'])
+              rec={k:v.strip() for k,v in (line.split('=',1) for line in body.splitlines() if '=' in line)}
+              pid=int(rec.get('MainPID') or 0)
+              mem=rec.get('MemoryCurrent','')
+              out={'unit':name,'active':rec.get('ActiveState','unknown'),'sub':rec.get('SubState','unknown'),
+                   'pid_present':pid>0,'restarts':rec.get('NRestarts','unknown'),
+                   'systemd_mem_mb':round(int(mem)/1048576,2) if mem.isdigit() and int(mem)<10**14 else None,
+                   'started':rec.get('ExecMainStartTimestamp','')[:32]}
+              if pid>0:
+                  try:
+                      status=Path('/proc')/str(pid)/'status'
+                      fields={k:v for k,v in (line.split(':',1) for line in status.read_text().splitlines() if ':' in line)}
+                      out['rss_kb']=int(fields.get('VmRSS','0 kB').strip().split()[0])
+                      out['peak_rss_kb']=int(fields.get('VmHWM','0 kB').strip().split()[0])
+                  except Exception:pass
+              return out
+          names=cmd(['systemctl','list-units','--type=service','--all','--plain','--no-legend']).splitlines()
+          units=sorted({x.split()[0] for x in names if x.split() and ('rizan-' in x.split()[0] or 'forex-' in x.split()[0])})
+          for required in ('rizan-buy050-bridge.service','rizan-btc10-bridge.service',
+                           'rizan-disp1506-bridge.service','rizan-tp500-bridge.service',
+                           'rizan-cbot-bridge.service','rizan-compression-bridge.service'):
+              if required not in units:units.append(required)
+          services=[svc(x) for x in sorted(set(units))[:70]]
+          health={}
+          f=Path('/var/lib/rizan-buy050-bridge/health.json')
+          try:
+              h=json.loads(f.read_text())
+              observed=h.get('observed_utc','')
+              dt=datetime.datetime.fromisoformat(observed.replace('Z','+00:00'))
+              health={'age_seconds':round((datetime.datetime.now(datetime.timezone.utc)-dt).total_seconds(),1),
+                      'btc':str(h.get('btc'))[:32],'macro_snapshot_present':h.get('macro_snapshot_present'),
+                      'connected':h.get('connected'),'profile':h.get('profile')}
+          except Exception as e:health={'error':type(e).__name__}
+          store={}
+          fdb=Path('/var/lib/rizan-buy050-bridge/checkpoints.sqlite')
+          if fdb.is_file():
+              try:
+                  with sqlite3.connect(fdb.resolve().as_uri()+'?mode=ro',uri=True,timeout=3) as conn:
+                      leases=conn.execute('SELECT key,expires_at,touched_at FROM bridge_leases').fetchall()
+                      cps=conn.execute('SELECT key,version FROM checkpoints').fetchall()
+                  now=time.time()
+                  store={'leases_total':len(leases),
+                         'active_lease_symbols':sorted([str(x[0]).split(':')[-1] for x in leases if float(x[1])>now]),
+                         'lease_ages_s':{str(x[0]).split(':')[-1]:round(now-float(x[2]),1) for x in leases},
+                         'checkpoint_versions':{str(x[0]).split(':')[-1]:int(x[1]) for x in cps}}
+              except Exception as e:store={'error':type(e).__name__}
+          journals={}
+          for name in ('rizan-buy050-bridge.service','rizan-btc10-bridge.service','rizan-disp1506-bridge.service'):
+              lines=cmd(['journalctl','--since','-35 minutes','--no-pager','-n','400','-u',name],timeout=10).splitlines()
+              journals[name]={'lines':len(lines),
+                            'error_events':sum(bool(re.search(r'exception|error|crash|failed|timeout|killed',x,re.I)) for x in lines),
+                            'startup_events':sum('BUY050_BRIDGE_LISTENING' in x or 'Started ' in x for x in lines)}
+          snapshot={'observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    'read_only':True,'orders_sent':0,'account_suffix':'7903',
+                    'buy050_health':health,'buy050_store':store,'services':services,'journal_counts':journals,
+                    'inventory_note':'A systemd bridge is not a cTrader Cloud cBot instance; do not delete state or shared services without independent dependency check.'}
+          print('BUY050_VPS_INVENTORY_BEGIN')
+          print(json.dumps(snapshot,sort_keys=True))
+          print('BUY050_VPS_INVENTORY_END')
+          PY
