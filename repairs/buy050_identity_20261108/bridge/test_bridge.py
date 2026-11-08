@@ -77,7 +77,27 @@ class WireTests(unittest.IsolatedAsyncioTestCase):
  async def test_ready_feed_save_ack_and_ping(self):
   ws,r=await self.open();self.assertEqual(r,dict(type='ready',revision=0,state=None));self.assertEqual(json.loads(await ws.recv())['type'],'feed')
   await ws.send(json.dumps(dict(type='save',base_revision=0,client_revision=1,state=state(BTC))));self.assertEqual(json.loads(await ws.recv()),dict(type='ack',revision=1,client_revision=1))
-  await ws.send('{"type":"ping"}');self.assertEqual(json.loads(await ws.recv())['type'],'pong');self.assertEqual(json.loads(await ws.recv())['type'],'feed');await ws.close()
+  await ws.send('{"type":"ping"}');self.assertEqual(json.loads(await ws.recv())['type'],'pong')
+  with self.assertRaises(asyncio.TimeoutError):await asyncio.wait_for(ws.recv(),0.1)
+  await ws.close()
+ async def test_btc_feed_deduplicated_but_recoverable_after_unavailable_and_rollover(self):
+  ws,r=await self.open();self.assertEqual(r['type'],'ready')
+  initial=json.loads(await ws.recv());self.assertEqual(initial['type'],'feed')
+  await self.bridge.broadcast()
+  with self.assertRaises(asyncio.TimeoutError):await asyncio.wait_for(ws.recv(),0.1)
+  self.bridge.feed=None;await self.bridge.broadcast()
+  self.assertEqual(json.loads(await ws.recv())['type'],'feed_unavailable')
+  await self.bridge.broadcast()
+  with self.assertRaises(asyncio.TimeoutError):await asyncio.wait_for(ws.recv(),0.1)
+  self.bridge.feed=initial;await self.bridge.broadcast()
+  self.assertEqual(json.loads(await ws.recv())['type'],'feed')
+  self.bridge.clock=lambda:SEED_END+3600
+  self.bridge.feed={**initial,'through':SEED_END+3600}
+  await self.bridge.broadcast()
+  updated=json.loads(await ws.recv());self.assertEqual(updated['through'],SEED_END+3600)
+  await self.bridge.broadcast()
+  with self.assertRaises(asyncio.TimeoutError):await asyncio.wait_for(ws.recv(),0.1)
+  await ws.close()
  async def test_parallel_xau_eur_btc_separate_keys(self):
   opened=[]
   for key in [XAU,EUR,BTC]:
