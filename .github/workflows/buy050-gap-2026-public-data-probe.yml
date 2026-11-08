@@ -1,0 +1,39 @@
+name: BUY050 Research Missing 2026 Dukascopy Tick Gap Probe
+on:
+  push:
+    branches: ['research/buy050-integrated-replay-20261108']
+    paths: ['.github/workflows/buy050-gap-2026-public-data-probe.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Fetch two missing 2026 one-hour public data samples
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import datetime,urllib.request,lzma,struct,hashlib,json
+          from pathlib import Path
+          cases=[("XAUUSD",2026,3,1,12),("EURUSD",2026,4,1,12)]
+          out=[]
+          for sym,y,m,d,h in cases:
+           url=f"https://datafeed.dukascopy.com/datafeed/{sym}/{y}/{m:02d}/{d:02d}/{h:02d}h_ticks.bi5"
+           record={"symbol":sym,"utc":f"{y}-{m+1:02d}-{d:02d}T{h:02d}:00Z"}
+           try:
+            req=urllib.request.Request(url,headers={"User-Agent":"RizanResearch/1.0"})
+            with urllib.request.urlopen(req,timeout=25) as res: raw=res.read(2_000_000)
+            record["raw_bytes_sample"]=len(raw);record["sha256_sample"]=hashlib.sha256(raw).hexdigest()
+            try:
+             unpack=lzma.decompress(raw)
+             record["decompressed_bytes"]=len(unpack)
+             if len(unpack)>=20:
+              record["first_ms_offset"]=struct.unpack_from(">I",unpack,0)[0]
+             record["valid_tick_records"]=len(unpack)//20
+            except Exception as ex:
+             record["decompress_failure"]=type(ex).__name__
+           except Exception as ex:record["fetch_failure"]=type(ex).__name__
+           out.append(record)
+          print("DUKASCOPY_2026_GAP_PROBE="+json.dumps(out,sort_keys=True))
+          PY
