@@ -56,3 +56,24 @@ index-level observations cannot be compared against a monthly growth-rate
 forecast, preventing false PREVIOUS_CONFLICT for CPI MoM. True forecast-provider
 disagreements remain conflicting. The view is informational and does not grant
 order execution, alter news gates, or change cBots, VPS or bridge.
+
+
+## CPI unit-safety and complete-pair quorum (2026-11-09)
+
+Observed failure: one Helious CPI MoM entry contained an index level
+(337.02/336.94), alongside a true percent change (0.3%/0.6%). The earlier
+fusion produced a false "SOURCE_CONFLICT" and a nonsensical median of index
+level and percentage. CPI/Core CPI MoM and YoY quoted percent series now
+quarantine out-of-range values rather than scaling or guessing a percentage.
+An invalid provider row is excluded from numeric fusion while the provider
+remains visible in source status; valid rows from that same provider may still
+participate, with confidence downgraded and rejected-quote provenance shown.
+
+The 3-source quorum now requires 3 distinct, complete forecast-and-previous
+pairs for that exact component and release, not 3 forecasts with only 1 previous
+number. Missing, contradictory, stale, or malformed data never create a high
+confidence directional trade signal. A legacy snapshot carrying an index-level
+median is suppressed at read time. CPI MoM headline/core and YoY components
+remain separate to expose mixed-risk outcomes and possible base effects.
+This patch only changes the Pre-News informational pipeline; LIVE cBot order
+rules and broker bridge remain untouched.
