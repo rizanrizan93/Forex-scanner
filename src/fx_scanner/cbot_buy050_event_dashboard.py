@@ -26,7 +26,9 @@ NAMES={
     "BROKER_ORDER_EXPIRED":"Order BUY050 kedaluwarsa",
     "BROKER_DEAL_FILLED":"Deal BUY050 FILLED (bukti eksekusi)",
     "BROKER_DEAL_PARTIAL":"Deal BUY050 terisi sebagian",
-    "BROKER_DEAL_REJECTED":"Deal BUY050 ditolak / error eksekusi",
+    "BROKER_DEAL_REJECTED":"Deal BUY050 ditolak",
+    "BROKER_DEAL_ERROR":"Deal BUY050 mengalami error eksekusi",
+    "BROKER_DEAL_NO_RESPONSE":"Deal BUY050 tanpa respons LP (MISSED)",
 }
 SYMBOLS=("XAUUSD","EURUSD","BTCUSD")
 TZ=ZoneInfo("Asia/Jakarta")
