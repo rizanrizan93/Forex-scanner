@@ -35,7 +35,8 @@ jobs:
           python -m py_compile src/fx_scanner/demo_xau_event_risk_v193.py
       - name: Source fusion, calendar, expectation and dashboard regression
         run: |
-          pytest -q tests/test_pre_news_source_fusion.py \
+          pytest -q tests/test_pre_news_additional_providers.py \
+            tests/test_pre_news_source_fusion.py \
             tests/test_pre_news_secondary_calendar.py \
             tests/test_pre_news_expectation.py \
             tests/test_pre_news_transport.py \
