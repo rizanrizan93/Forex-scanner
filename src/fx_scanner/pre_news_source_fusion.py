@@ -17,10 +17,16 @@ from typing import Iterable
 SOURCE_INVESTING = "INVESTING_COM"
 SOURCE_MYFXBOOK = "MYFXBOOK"
 SOURCE_FOREX_FACTORY = "FOREX_FACTORY_WEEKLY"
+SOURCE_SHOWMYTRADES = "SHOWMYTRADES"
+SOURCE_HELIOUS = "HELIOUS"
+SOURCE_TRADING_ECONOMICS = "TRADING_ECONOMICS"
 
-SECONDARY_CONSENSUS_SOURCES = frozenset(
-    {SOURCE_INVESTING, SOURCE_MYFXBOOK, SOURCE_FOREX_FACTORY}
-)
+# Count distinct forecast providers with numeric figures, never the
+# count of downloaded schedules or duplicated rows.
+SECONDARY_CONSENSUS_SOURCES = frozenset({
+    SOURCE_INVESTING, SOURCE_MYFXBOOK, SOURCE_FOREX_FACTORY,
+    SOURCE_SHOWMYTRADES, SOURCE_HELIOUS, SOURCE_TRADING_ECONOMICS,
+})
 
 
 def _clean_title(title: str) -> str:
@@ -39,7 +45,13 @@ def canonical_event_key(title: str) -> str:
     normalized key rather than being silently mapped to the wrong component.
     """
     text = _clean_title(title)
-    core = "CORE" in text
+    core = (
+        "CORE" in text
+        or "EX FOOD ENERGY" in text
+        or "EXCLUDING FOOD ENERGY" in text
+        or "EX FOOD AND ENERGY" in text
+        or "EXCLUDING FOOD AND ENERGY" in text
+    )
     yoy = "YOY" in text
     mom = "MOM" in text
 

@@ -4,18 +4,25 @@ from datetime import UTC, datetime
 from .pre_news_expectation import evaluate_pre_news, timestamp, MIN_FORECAST_SOURCES
 from .pre_news_source_fusion import (
     SOURCE_FOREX_FACTORY, SOURCE_MYFXBOOK, SOURCE_INVESTING,
+    SOURCE_SHOWMYTRADES, SOURCE_HELIOUS, SOURCE_TRADING_ECONOMICS,
 )
 from zoneinfo import ZoneInfo
 
 FORECAST_SOURCES = (
     SOURCE_FOREX_FACTORY,
+    SOURCE_SHOWMYTRADES,
+    SOURCE_HELIOUS,
     SOURCE_INVESTING,
     SOURCE_MYFXBOOK,
+    SOURCE_TRADING_ECONOMICS,
 )
 SOURCE_LABELS = {
     SOURCE_FOREX_FACTORY: "Forex Factory",
+    SOURCE_SHOWMYTRADES: "ShowMyTrades",
+    SOURCE_HELIOUS: "Helious (delay)",
     SOURCE_INVESTING: "Investing.com",
     SOURCE_MYFXBOOK: "Myfxbook",
+    SOURCE_TRADING_ECONOMICS: "Trading Economics (licensed)",
 }
 
 
@@ -73,7 +80,7 @@ def render_pre_news_dashboard():
         st.caption(
             "COOL RISK = data USD diperkirakan mendingin → bias awal bullish XAU. "
             "HOT RISK = data USD diperkirakan memanas → bias awal bearish XAU. "
-            "Wajib ≥3 forecast numerik untuk setiap komponen rilis, bukan sekadar 3 kalender aktif. "
+            "Minimal 3 forecast numerik dari 6 sumber yang didukung untuk setiap komponen rilis. "
             "Ini bukan prediksi surprise aktual atau sinyal order."
         )
         cols = st.columns(2)
@@ -83,6 +90,23 @@ def render_pre_news_dashboard():
         cols[0].metric("Bias XAU setelah konfirmasi makro", view["xau_bias"])
         cols[1].metric("Keselarasan bukti", view["conviction"])
         st.caption("Makro DXY/US2Y/US10Y/real yield menjadi konfirmasi terpisah. Jika belum segar, bias makro ditahan; forecast 3 sumber tetap terlihat sebagai skenario pra-rilis.")
+        status_map = view.get("calendar_source_status") or {}
+        online = sum(
+            str(status_map.get(source) or "").startswith("OK:")
+            for source in FORECAST_SOURCES
+        )
+        st.caption(
+            f"Status koneksi penyedia: {online}/{len(FORECAST_SOURCES)} aktif. "
+            "Angka ini bukan jumlah forecast yang cocok untuk event terpilih."
+        )
+        with st.expander("Status keenam penyedia forecast"):
+            st.dataframe(
+                [{
+                    "Sumber": SOURCE_LABELS[source],
+                    "Status": status_map.get(source, "TIDAK TERSEDIA"),
+                } for source in FORECAST_SOURCES],
+                hide_index=True, width="stretch",
+            )
         event = view.get("event")
         if event:
             st.write(str(event.get("title")) + " · " + str(view["event_time_wib"]) + " WIB")
@@ -123,12 +147,15 @@ def render_pre_news_dashboard():
                             "Status feed": status_map.get(source, "BELUM TERSEDIA"),
                             "Verifikasi": "VALID" if quote.get("forecast") is not None else "MISSING",
                         })
-                st.markdown("**Perbandingan forecast dari 3 sumber**")
+                st.markdown("**Perbandingan forecast dari hingga 6 sumber**")
                 st.dataframe(provider_rows, hide_index=True, width="stretch")
                 st.caption(
-                    "Sumber: Forex Factory, Investing.com, Myfxbook. "
-                    "Indikator dan periode harus identik; sumber tanpa angka forecast "
-                    "tidak dihitung. Konflik antar-sumber → tidak ada kesimpulan arah."
+                    "Sumber: Forex Factory, ShowMyTrades, Helious, Investing.com, "
+                    "Myfxbook, Trading Economics (opsional/berlisensi). "
+                    "Provider dengan status error/nonaktif atau forecast kosong tidak dihitung. "
+                    "Konflik angka antar-provider → kesimpulan arah ditahan. "
+                    "Beberapa penyedia dapat menggunakan konsensus hulu yang sama; "
+                    "jumlah vendor bukan bukti survei ekonom yang independen."
                 )
         st.write("News gate scanner: " + view["news_gate"] + " · " + view["news_gate_action"])
         if view["reasons"]:

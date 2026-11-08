@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime
 import json
+import os
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -26,12 +27,19 @@ from .demo_xau_event_risk_v192 import (
     parse_bls_ics,
 )
 from .pre_news_secondary_calendar import InvestingCalendarProvider, MyfxbookCalendarProvider
+from .pre_news_additional_providers import (
+    ShowMyTradesCalendarProvider, HeliousCalendarProvider,
+    TradingEconomicsCalendarProvider,
+)
 from .pre_news_source_fusion import FusedConsensus, SourceQuote, canonical_event_key, fuse_consensus
 from .providers.news import ForexFactoryCalendarProvider
 from .providers.transport import UrllibHttpTransport
 from .storage.supabase_operational import SupabaseOperationalStore
 
-SECONDARY_SOURCES = frozenset({"MYFXBOOK", "INVESTING_COM"})
+SECONDARY_SOURCES = frozenset({
+    "MYFXBOOK", "INVESTING_COM", "SHOWMYTRADES",
+    "HELIOUS", "TRADING_ECONOMICS",
+})
 IMPACT_RANK = {"LOW": 1, "MEDIUM": 2, "HIGH": 3}
 DASHBOARD_EVENT_KEYS = (
     "source",
@@ -429,6 +437,53 @@ def run() -> int:
         except Exception as exc:
             source_status["INVESTING_COM"] = f"ERROR:{type(exc).__name__}"
 
+    # Additional keyless sources augment, rather than replace, Forex Factory.
+    # Provider errors are isolated; no missing value is fabricated.
+    for source, adapter in (
+        ("SHOWMYTRADES", ShowMyTradesCalendarProvider),
+        ("HELIOUS", HeliousCalendarProvider),
+    ):
+        provider_cfg = dict(secondary_cfg.get(source) or {})
+        if not bool(provider_cfg.get("enabled", False)):
+            source_status[source] = "DISABLED"
+            continue
+        try:
+            snap = adapter(
+                transport,
+                url=str(provider_cfg["base_url"]),
+                allowed_host=str(provider_cfg["allowed_host"]),
+            ).fetch(now=now)
+            usd = [item for item in snap.events if item.currency == "USD"]
+            events.extend(_secondary_tier(_from_discovery(item)) for item in usd)
+            count_numeric = sum(item.forecast is not None for item in usd)
+            source_status[source] = f"OK:{len(usd)}:FORECASTS_{count_numeric}"
+        except Exception as exc:
+            source_status[source] = f"ERROR:{type(exc).__name__}"
+
+    # Trading Economics consensus API is subscription-gated. Never use
+    # guest credentials or incur quota charges without explicit activation.
+    te_cfg = dict(secondary_cfg.get("TRADING_ECONOMICS") or {})
+    te_key_env = str(te_cfg.get("api_key_environment") or "RIZAN_TRADING_ECONOMICS_API_KEY")
+    te_key = os.getenv(te_key_env, "").strip()
+    if not bool(te_cfg.get("enabled", False)):
+        source_status["TRADING_ECONOMICS"] = "DISABLED"
+    elif not te_key:
+        source_status["TRADING_ECONOMICS"] = "AUTH_REQUIRED"
+    else:
+        try:
+            te = TradingEconomicsCalendarProvider(
+                transport, api_key=te_key,
+                url=str(te_cfg["base_url"]),
+                allowed_host=str(te_cfg["allowed_host"]),
+            ).fetch(now=now)
+            usd = [item for item in te.events if item.currency == "USD"]
+            events.extend(_secondary_tier(_from_discovery(item)) for item in usd)
+            source_status["TRADING_ECONOMICS"] = (
+                f"OK:{len(usd)}:FORECASTS_{sum(item.forecast is not None for item in usd)}"
+            )
+        except Exception as exc:
+            source_status["TRADING_ECONOMICS"] = f"ERROR:{type(exc).__name__}"
+
     aligned = _align_secondary_events(events, max_hours=max_align_hours)
     fused_events, fusion_metadata = _fuse_events(aligned)
     if bls_release_actuals:
@@ -443,7 +498,7 @@ def run() -> int:
     healthy = bool(fused_events) and any(value.startswith("OK:") for value in source_status.values())
     details = {
         "contract": CONTRACT,
-        "calendar_fusion_version": "V193",
+        "calendar_fusion_version": "V193_SIX_PROVIDER",
         "symbol": "XAUUSD",
         "currency_focus": "USD",
         "observed_at": now.isoformat(),
