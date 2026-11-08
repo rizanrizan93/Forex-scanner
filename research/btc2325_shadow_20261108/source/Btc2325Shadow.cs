@@ -39,7 +39,7 @@ public sealed class RizanBtc2325Shadow : Robot
     private DateTime _nextStatusUtc;
     private DateTime _lastExitUtc;
     private VirtualBasket? _basket;
-    private double _cash, _closedPeak;
+    private double _cash, _closedPeak, _paperRealizedPnl;
     private int _signals, _paperTrades, _wins, _skipped;
 
     private sealed class VirtualBasket
@@ -58,6 +58,7 @@ public sealed class RizanBtc2325Shadow : Robot
 
     protected override void OnStart()
     {
+        _paperRealizedPnl=0;
         _cash = Account.Balance;
         _closedPeak = _cash;
         _h1 = MarketData.GetBars(TimeFrame.Hour, "BTCUSD");
@@ -67,7 +68,7 @@ public sealed class RizanBtc2325Shadow : Robot
         Print("BTC2325_HISTORY_CHECK cTrader_source=True; h1_bars={0}; h4_bars={1}; m1_bars={2}; original_Bitstamp_M1_parity_unverified=True",_h1.Count,_h4.Count,_m1.Count);
         _lastClosedMinuteUtc = DateTime.MinValue;
         Print("BTC2325_RESEARCH_ONLY id={0}; orders_enabled=False; signal=H4_SWEEP20_THEN_H1_EMA20; account_scope=NO_POSITION_MODIFICATION", CandidateId);
-        Print("BTC2325_PARITY_AUDIT_VERSION=3; holding_exit=H1_expiry_final_M1_close; paper_cash_init=observed_Account_Balance; strategy_guard_exact=False; guard=causal_paper_cash");
+        Print("BTC2325_PARITY_AUDIT_VERSION=4; holding_exit=H1_expiry_final_M1_close; strategy_guard_exact=False; guard=causal_observed_balance_plus_paper_realized_pnl");
         Print("BTC2325_PARITY_WARNING frozen_guard=historical_BUY050_closed_balance; runtime_guard=causal_observed_account_balance; model_not_equivalent=True");
         Print("BTC2325_PARITY_WARNING native_shared_account_replay=False; floating_DD_unverified=True; max_3200BTC_not_broker_verified=True");
         Timer.Start(TimeSpan.FromSeconds(1));
@@ -254,7 +255,8 @@ public sealed class RizanBtc2325Shadow : Robot
         double fees=b.Quantity*CommissionPerSide*CostMultiplier*(b.Entry+modelExit);
         double funding=b.Quantity*b.Entry*FundingPerDay*holdingDays*CostMultiplier;
         double pnl=b.Side*b.Quantity*(modelExit-b.Entry)-fees-funding;
-        _cash+=pnl;
+        _paperRealizedPnl+=pnl;
+        _cash=Account.Balance+_paperRealizedPnl;
         _closedPeak=Math.Max(_closedPeak,_cash);
         if(pnl>0)++_wins;
         _basket=null;
@@ -298,6 +300,11 @@ public sealed class RizanBtc2325Shadow : Robot
         try
         {
             DateTime now=Server.TimeInUtc;
+            // Causal proxy of one account: observed realized broker cash plus
+            // paper realized BTC overlay. This is NOT frozen BUY050 reference
+            // cash because manual/other brokerage activity can affect it.
+            _cash=Account.Balance+_paperRealizedPnl;
+            _closedPeak=Math.Max(_closedPeak,_cash);
             if(_basket != null) MonitorVirtual(now);
             else if(_m1.Count>0) _lastClosedMinuteUtc=_m1.OpenTimes[Math.Max(0,_m1.Count-2)];
             var hour=new DateTime(now.Year,now.Month,now.Day,now.Hour,0,0,DateTimeKind.Utc);
@@ -305,7 +312,7 @@ public sealed class RizanBtc2325Shadow : Robot
             if(now>=_nextStatusUtc)
             {
                 _nextStatusUtc=now.AddMinutes(1);
-                Print("BTC2325_SHADOW_HEALTH at={0:o}; basket={1}; paper_cash={2:F2}; signals={3}; paper_trades={4}; wins={5}; skipped={6}; live_orders=0; data_source=cTrader_broker_not_Bitstamp",
+                Print("BTC2325_SHADOW_HEALTH at={0:o}; basket={1}; paper_cash={2:F2}; signals={3}; paper_trades={4}; wins={5}; skipped={6}; live_orders=0; data_source=cTrader_broker_not_Bitstamp; guard=observed_realized_plus_paper",
                     now,_basket!=null,_cash,_signals,_paperTrades,_wins,_skipped);
             }
         }
