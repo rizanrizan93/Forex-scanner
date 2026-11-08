@@ -23,8 +23,8 @@ jobs:
       - name: Inspect live bridge prerequisites without mutations
         shell: bash
         env:
-          SSH_PRIVATE_KEY: \${{ secrets.VPS_SSH_KEY }}
-          SSH_KNOWN_HOSTS: \${{ secrets.VPS_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
           set +x
           set -euo pipefail
@@ -37,9 +37,9 @@ jobs:
           ssh-keygen -y -f "$d/key" >/dev/null
           sshopt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=20)
           host='Rizanrizan@202.74.74.172'
-          remote=$(ssh "\${sshopt[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-buy050-preflight.XXXXXXXX')
+          remote=$(ssh "${sshopt[@]}" "$host" 'umask 077; mktemp -d /tmp/rizan-buy050-preflight.XXXXXXXX')
           [[ "$remote" =~ ^/tmp/rizan-buy050-preflight\.[a-zA-Z0-9]+$ ]] || exit 1
-          cleanup() { ssh "\${sshopt[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; }
+          cleanup() { ssh "${sshopt[@]}" "$host" "rm -rf -- '$remote'" >/dev/null 2>&1 || true; }
           trap 'cleanup; rm -rf "$d"' EXIT
-          scp "\${sshopt[@]}" repairs/buy050_identity_20261108/bridge/deploy/preflight_readonly.py repairs/buy050_identity_20261108/bridge/deploy/provision_isolated.py "$host:$remote/"
-          ssh "\${sshopt[@]}" "$host" "sudo -n python3 '$remote/preflight_readonly.py'"
+          scp "${sshopt[@]}" repairs/buy050_identity_20261108/bridge/deploy/preflight_readonly.py repairs/buy050_identity_20261108/bridge/deploy/provision_isolated.py "$host:$remote/"
+          ssh "${sshopt[@]}" "$host" "sudo -n python3 '$remote/preflight_readonly.py'"
