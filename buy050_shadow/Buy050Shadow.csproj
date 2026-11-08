@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../repairs/buy050_identity_20261108/source/xau/FrozenCore.cs" Link="Frozen/xau/FrozenCore.cs"/>
+    <Compile Include="../repairs/buy050_identity_20261108/source/eur/FrozenCore.cs" Link="Frozen/eur/FrozenCore.cs"/>
+    <Compile Include="../repairs/buy050_identity_20261108/source/eur/F0245Policy.cs" Link="Frozen/eur/F0245Policy.cs"/>
+    <Compile Include="../repairs/buy050_identity_20261108/source/eur/EurBatchExecution.cs" Link="Frozen/eur/EurBatchExecution.cs"/>
+    <Compile Include="../repairs/buy050_identity_20261108/source/BtcCore.cs" Link="Frozen/BtcCore.cs"/>
+    <Compile Include="../repairs/buy050_identity_20261108/source/BtcEntryGate.cs" Link="Frozen/BtcEntryGate.cs"/>
+    <Compile Include="../repairs/buy050_identity_20261108/source/BtcSevenDayFeed.cs" Link="Frozen/BtcSevenDayFeed.cs"/>
+    <Compile Include="../repairs/buy050_identity_20261108/source/EntryFamilies.cs" Link="Frozen/EntryFamilies.cs"/>
+    <Compile Include="../repairs/buy050_identity_20261108/source/CompressionEntry.cs" Link="Frozen/CompressionEntry.cs"/>
+    <Compile Include="../repairs/buy050_identity_20261108/source/ResearchParams.cs" Link="Frozen/ResearchParams.cs"/>
+    <Compile Include="../repairs/buy050_identity_20261108/source/FrozenR3.cs" Link="Frozen/FrozenR3.cs"/>
+  </ItemGroup>
+</Project>
