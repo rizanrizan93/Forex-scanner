@@ -258,6 +258,36 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                 "Komponen rilis menunjukkan implikasi hawkish dan dovish bersamaan. "
                 "Tunggu actual versus forecast dan respons DXY/yield."
             )
+            # Two independently verified CPI monthly components can establish a
+            # *qualified* directional lean even if unverified YoY estimates
+            # disagree. Keep MIXED status and the strict overall quorum.
+            monthly = [
+                row for row in result["event_cluster"]
+                if row.get("event_component") in {"CPI_MOM", "CORE_CPI_MOM"}
+                and row.get("forecast_pair_count", 0) >= MIN_FORECAST_SOURCES
+            ]
+            opposed = [
+                row for row in result["event_cluster"]
+                if row.get("indicative_hawkish_tilt") == 1
+            ]
+            if (
+                len(monthly) == 2
+                and all(row.get("indicative_hawkish_tilt") == -1 for row in monthly)
+                and opposed
+                and all(
+                    row.get("event_component") in {"CPI_YOY", "CORE_CPI_YOY"}
+                    and row.get("forecast_pair_count", 0) < MIN_FORECAST_SOURCES
+                    for row in opposed
+                )
+            ):
+                result["news_conclusion"] = "MIXED — MOM COOL LEAN (BELUM TERVERIFIKASI PENUH)"
+                result["news_conclusion_basis"] = (
+                    "Headline dan Core CPI bulanan sama-sama menunjukkan perlambatan "
+                    "dengan minimal 3 pasangan forecast/previous; estimasi tahunan "
+                    "justru HOT tetapi belum memenuhi quorum. "
+                    "COOL hanya indikasi komponen bulanan, bukan arah XAU "
+                    "terkonfirmasi atau izin entry."
+                )
         else:
             pressure = next(iter(signed)) if signed else 0
             label = (
