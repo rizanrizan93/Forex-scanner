@@ -27,6 +27,6 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install read-only API client
-        run: pip install -r requirements-ctrader.txt
+        run: pip install -r requirements-research-cloud.txt
       - name: Query broker contract metadata without submitting orders
         run: python research/buy050_integrated_20261108/ctrader_contract_readonly.py
