@@ -150,3 +150,31 @@ def test_realistic_three_sources_fuse_core_separately_from_headline():
     assert by_key["CORE_CPI_MOM"].forecast_source_count == 3
     assert by_key["CORE_CPI_MOM"].forecast == 0.2
     assert by_key["CPI_MOM"].forecast_source_count == 1
+
+
+def test_official_cpi_index_previous_cannot_corrupt_percent_forecast_consensus():
+    from fx_scanner.pre_news_source_fusion import SOURCE_FOREX_FACTORY
+    values = [
+        SourceQuote(SOURCE_FOREX_FACTORY, "CPI (MoM)", "USD", _at(), 0.3, 0.6),
+        SourceQuote("SHOWMYTRADES", "Consumer Price Index MoM", "USD", _at(), 0.3, 0.6),
+        SourceQuote("HELIOUS", "Consumer Price Index (MoM)", "USD", _at(), 0.3, 0.6),
+        SourceQuote("BLS_OFFICIAL_ICS", "Consumer Price Index MoM", "USD", _at(), None, 338.9),
+        SourceQuote("BLS_OFFICIAL_ICS", "Consumer Price Index MoM", "USD", _at(), None, 168.77),
+    ]
+    fused = fuse_consensus(values)
+    assert fused.forecast == 0.3
+    assert fused.previous == 0.6
+    assert fused.forecast_source_count == 3
+    assert not fused.conflicts
+
+
+def test_conflicting_previous_among_forecast_providers_still_blocks_direction():
+    from fx_scanner.pre_news_source_fusion import SOURCE_FOREX_FACTORY
+    values = [
+        SourceQuote(SOURCE_FOREX_FACTORY, "CPI (MoM)", "USD", _at(), 0.3, 0.6),
+        SourceQuote("SHOWMYTRADES", "Consumer Price Index MoM", "USD", _at(), 0.3, 0.2),
+        SourceQuote("HELIOUS", "Consumer Price Index (MoM)", "USD", _at(), 0.3, 0.6),
+    ]
+    fused = fuse_consensus(values)
+    assert fused.forecast_source_count == 3
+    assert "PREVIOUS_CONFLICT" in fused.conflicts
