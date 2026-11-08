@@ -76,7 +76,14 @@ def render_pre_news_dashboard():
         view = evaluate_pre_news(snapshot, now=datetime.now(UTC))
         if snapshot.get("published_at"):
             st.caption("Feed terakhir: " + _wib(snapshot["published_at"]))
-        st.metric("Kesimpulan forecast untuk XAUUSD", view["forecast_risk"])
+        st.metric("KESIMPULAN PRE-NEWS XAUUSD", view["news_conclusion"])
+        st.caption(view["news_conclusion_basis"])
+        st.caption(
+            "VALIDATED = semua komponen sudah memenuhi 3 forecast independen. "
+            "INDIKASI SEMENTARA = sebagian komponen hanya memiliki 2 sumber "
+            "atau masih ada komponen yang belum tervalidasi; bukan izin entry."
+        )
+        st.metric("Status validasi 3 sumber", view["forecast_risk"])
         st.caption(
             "COOL RISK = data USD diperkirakan mendingin → bias awal bullish XAU. "
             "HOT RISK = data USD diperkirakan memanas → bias awal bearish XAU. "
