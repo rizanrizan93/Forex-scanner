@@ -84,7 +84,7 @@ foreach(var symbol in new[]{"XAUUSD","EURUSD","BTCUSD"}) {
         if(flagged("Quarantined") || flagged("Fault") || flagged("ExitPending") || flagged("has_basket") || flagged("pending_intent")){
             result.Add(Empty(symbol,null,"NATIVE_BLOCK","Native checkpoint has quarantine, fault, position or outstanding intent."));continue;
         }
-        if(symbol!="BTCUSD" && now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday){
+        if(symbol!="BTCUSD" && (now.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)){
             result.Add(Empty(symbol,null,"WEEKEND_FX","FX strategy closed for new weekend entries."));continue;
         }
         if(symbol=="BTCUSD" && Stamp(state,"WeekendLockUntil") is DateTime lockedUntil && now<lockedUntil){
