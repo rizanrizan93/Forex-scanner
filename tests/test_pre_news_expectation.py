@@ -11,7 +11,13 @@ NOW = datetime(2026, 10, 15, 10, tzinfo=UTC)
 def snapshot(tilt=1, category="CPI"):
     event = {"title": "Test " + category, "category": category,
              "scheduled_at": (NOW + timedelta(hours=1)).isoformat(),
-             "forecast": 3 + tilt, "previous": 3, "actual": 999}
+             "forecast": 3 + tilt, "previous": 3, "actual": 999,
+             "source_count": 3,
+             "sources": ["FOREX_FACTORY_WEEKLY", "INVESTING_COM", "MYFXBOOK"],
+             "forecast_quotes": [
+                 {"source": source, "forecast": 3 + tilt, "previous": 3}
+                 for source in ("FOREX_FACTORY_WEEKLY", "INVESTING_COM", "MYFXBOOK")
+             ]}
     daily = {name: {"observed_at": (NOW - timedelta(days=1)).isoformat(),
                     "freshness": "FRESH", "delta": 4 * tilt, "provider": "FRED"}
              for name in ("US2Y", "US10Y", "REAL_YIELD_10Y")}
@@ -171,3 +177,44 @@ def test_display_timestamps_use_wib_and_explain_provider_limit():
     from fx_scanner.pre_news_dashboard import _wib, _reason
     assert _wib(NOW.isoformat()) == '15-10 17:00:00 WIB'
     assert 'HTTP 429' in _reason('DXY_PROVIDER_RATE_LIMITED')
+
+
+def test_three_independent_numeric_forecasts_are_required_for_direction():
+    data = snapshot(-1)
+    event = data["heartbeats"][0]["details"]["risk"]["focal_event"]
+    event["forecast_quotes"] = event["forecast_quotes"][:2]
+    # Metadata claiming three active calendars must never substitute for 3 quotes.
+    event["source_count"] = 4
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["forecast_risk"] == "UNAVAILABLE"
+    assert view["xau_bias"] == "UNAVAILABLE"
+    assert view["state"] == "DATA INCOMPLETE"
+    assert any(reason.startswith("FORECAST_QUORUM:") for reason in view["reasons"])
+
+
+def test_duplicate_provider_does_not_count_toward_three_forecasts():
+    data = snapshot()
+    event = data["heartbeats"][0]["details"]["risk"]["focal_event"]
+    event["forecast_quotes"][2]["source"] = "INVESTING_COM"
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["event_cluster"][0]["forecast_source_count"] == 2
+    assert view["forecast_risk"] == "UNAVAILABLE"
+
+
+def test_official_schedule_is_not_a_third_independent_forecast():
+    data = snapshot()
+    event = data["heartbeats"][0]["details"]["risk"]["focal_event"]
+    event["forecast_quotes"][2]["source"] = "BLS_OFFICIAL_ICS"
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["event_cluster"][0]["forecast_source_count"] == 2
+    assert view["forecast_risk"] == "UNAVAILABLE"
+
+
+def test_three_source_forecast_is_visible_but_macro_stale_cannot_confirm_bias():
+    data = snapshot(-1)
+    data["heartbeats"][1]["observed_at"] = (NOW - timedelta(minutes=20)).isoformat()
+    view = evaluate_pre_news(data, now=NOW)
+    assert view["forecast_risk"] == "COOL RISK (BULLISH XAU)"
+    assert view["state"] == "DATA INCOMPLETE"
+    assert view["xau_bias"] == "UNAVAILABLE"
+    assert not view["execution_influence"]
