@@ -20,7 +20,10 @@ SYMBOLS=("XAUUSD","EURUSD","BTCUSD")
 KINDS={
     "SIGNAL_RECORDED", "SIGNAL_CHANGED_DURING_GAP", "INTENT_PREPARED",
     "BASKET_STATE_ACTIVE", "QUARANTINE_ON", "FAULT_ON",
-    "EXIT_PENDING_ON", "CHECKPOINT_RESET", "BROKER_OPEN_POSITION_OBSERVED"
+    "EXIT_PENDING_ON", "CHECKPOINT_RESET", "BROKER_OPEN_POSITION_OBSERVED",
+    "BROKER_ORDER_ACCEPTED", "BROKER_ORDER_FILLED", "BROKER_ORDER_REJECTED",
+    "BROKER_ORDER_EXPIRED", "BROKER_ORDER_CANCELLED", "BROKER_DEAL_FILLED",
+    "BROKER_DEAL_PARTIAL", "BROKER_DEAL_REJECTED"
 }
 ORIGINS={"INCUMBENT","XAU_H1_DISPLACEMENT","BTC_H4_BREAK40_ALL"}
 
@@ -40,7 +43,7 @@ def event(s,kind,at,signal_at=None,origin=None,version=None,evidence=None,protec
         "symbol":s, "event":kind, "observed_at":at,
         "signal_at":signal_at, "origin":origin if origin in ORIGINS else None,
         "checkpoint_version":version if type(version) is int and version>=0 else None,
-        "evidence":evidence if evidence in {"NATIVE_CHECKPOINT_TRANSITION","INFERRED_BETWEEN_POLL_WINDOWS","BROKER_RECONCILE_OPEN_POSITION"} else None,
+        "evidence":evidence if evidence in {"NATIVE_CHECKPOINT_TRANSITION","INFERRED_BETWEEN_POLL_WINDOWS","BROKER_RECONCILE_OPEN_POSITION","BROKER_ORDER_HISTORY","BROKER_DEAL_HISTORY"} else None,
         "protection":protection if protection in {"SL_TP_PRESENT","PROTECTION_INCOMPLETE"} else None
     }
 
@@ -122,14 +125,26 @@ def merge(current,broker=None,previous=None,now=None):
     broker_as_of=None
     broker_ok=False
     broker_rows=[]
+    deal_history_complete=False
+    order_history_complete=False
+    history_start=None
+    history_end=None
     if broker is not None:
         if (not isinstance(broker,dict) or broker.get("contract")!=BROKER
             or broker.get("read_only") is not True or broker.get("execution_authority") is not False
-            or broker.get("deals_history_checked") is not False):
+            or type(broker.get("deals_history_checked")) is not bool):
             raise ValueError("BROKER_EVIDENCE_CONTRACT_INVALID")
         broker_as_of=parse(broker.get("observed_at"))
         if not broker_as_of or abs((broker_as_of-end).total_seconds())>180:
             raise ValueError("BROKER_EVIDENCE_STALE")
+        history_start=parse(broker.get("history_from"))
+        history_end=parse(broker.get("history_to"))
+        history_clock_ok=bool(history_start and history_end
+            and history_start<=history_end<=broker_as_of+timedelta(seconds=10)
+            and history_end-history_start<=timedelta(hours=49)
+            and broker_as_of-history_end<=timedelta(minutes=3))
+        deal_history_complete=broker.get("deals_history_checked") is True and history_clock_ok
+        order_history_complete=broker.get("orders_history_checked") is True and history_clock_ok
         evidence=broker.get("open_position_evidence")
         if not isinstance(evidence,list) or len(evidence)>120:
             raise ValueError("BROKER_ROWS_INVALID")
@@ -147,6 +162,27 @@ def merge(current,broker=None,previous=None,now=None):
             events.append(event(row["symbol"],"BROKER_OPEN_POSITION_OBSERVED",
                 sig.isoformat(),sig.isoformat(),evidence="BROKER_RECONCILE_OPEN_POSITION",
                 protection=protect))
+        histories=broker.get("execution_evidence",[])
+        if not isinstance(histories,list) or len(histories)>180:
+            raise ValueError("BROKER_EXECUTION_ROWS_INVALID")
+        for row in histories:
+            if not isinstance(row,dict) or row.get("symbol") not in SYMBOLS:
+                raise ValueError("BROKER_EXECUTION_SYMBOL_INVALID")
+            kind=row.get("event")
+            if kind not in {
+                "BROKER_ORDER_ACCEPTED","BROKER_ORDER_FILLED","BROKER_ORDER_REJECTED",
+                "BROKER_ORDER_EXPIRED","BROKER_ORDER_CANCELLED","BROKER_DEAL_FILLED",
+                "BROKER_DEAL_PARTIAL","BROKER_DEAL_REJECTED"
+            }:
+                raise ValueError("BROKER_EXECUTION_STATUS_INVALID")
+            observed=parse(row.get("observed_at"))
+            signal=parse(row.get("signal_at"))
+            if not observed or not signal or signal>observed+timedelta(seconds=10) or observed>broker_as_of+timedelta(seconds=10):
+                raise ValueError("BROKER_EXECUTION_TIMESTAMP_INVALID")
+            if not history_clock_ok or observed<history_start-timedelta(seconds=10):
+                raise ValueError("BROKER_EXECUTION_WINDOW_NOT_VERIFIED")
+            events.append(event(row["symbol"],kind,observed.isoformat(),signal.isoformat(),
+                evidence="BROKER_ORDER_HISTORY" if kind.startswith("BROKER_ORDER_") else "BROKER_DEAL_HISTORY"))
         broker_ok=True
     # Keep only recent sanitized records. Never publish raw checkpoints or
     # account bindings; all output fields are allowlisted and safe to display.
@@ -165,7 +201,10 @@ def merge(current,broker=None,previous=None,now=None):
         "unobserved_gap_s":gap_s,
         "continuous_coverage_confirmed":gap_s is not None and gap_s<=2 and current["failures"]==0
             and (current.get("max_interval_s") or 999)<=2,
-        "terminal_journal_available":False,"broker_deals_verified":False,
+        "terminal_journal_available":False,"broker_deals_verified":deal_history_complete,
+        "broker_orders_history_complete":order_history_complete,
+        "broker_history_from":history_start.isoformat() if history_start else None,
+        "broker_history_to":history_end.isoformat() if history_end else None,
         "broker_open_positions_observed":broker_ok,
         "broker_observed_at":broker_as_of.isoformat() if broker_as_of else None,
         "end_state":last,"events":ordered
