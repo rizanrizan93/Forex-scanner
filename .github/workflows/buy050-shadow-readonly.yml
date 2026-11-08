@@ -45,6 +45,8 @@ jobs:
             buy050-shadow-market-
       - name: Build original frozen signal sources (no cTrader runtime)
         run: dotnet build buy050_shadow/Buy050Shadow.csproj -c Release --nologo
+      - name: Verify shadow contract, expiry and SL/TP geometry tests
+        run: PYTHONPATH=src python -m unittest discover -s tests -p 'test_buy050_shadow.py' -v
       - name: Obtain BUY050 private native state (read-only)
         shell: bash
         env:
