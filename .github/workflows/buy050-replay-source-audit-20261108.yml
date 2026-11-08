@@ -1,0 +1,60 @@
+name: BUY050 research introspection source and parquet schema READONLY
+on:
+  push:
+    branches: ['research/buy050-integrated-replay-20261108']
+    paths: ['.github/workflows/buy050-replay-source-audit-20261108.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Read-only source/structure metadata
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          sshopt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=20)
+          ssh "${sshopt[@]}" Rizanrizan@202.74.74.172 'python3 -' <<'PY'
+          import json,os,subprocess,glob,sys
+          from pathlib import Path
+          base=Path("/home/Rizanrizan/rizan-ticks")
+          dirs=["xau-eur-btc-integrated-2019-2026","full-frozen-parity-2019-2026","critical-frozen-revalidation-2019-2026","xau-eur-btc-frozen-weekend-v121","stage0-technical-2019-2026","btc-692365-dd50-2019-oct2026"]
+          out={"results":{},"python_executables":[],"file_schema":{}}
+          for dirname in dirs:
+           p=base/"REPLAY_RESULTS"/dirname
+           if p.is_dir():
+            found=[]
+            for f in p.rglob("*"):
+             if f.is_file():
+              found.append({"name":str(f.relative_to(p))[:140],"size":f.stat().st_size})
+              if len(found)>=85:break
+            out["results"][dirname]=found
+          for py in ["/usr/bin/python3","/opt/rizan-buy050-bridge/.venv/bin/python","/home/Rizanrizan/.venv/bin/python"]:
+           if not Path(py).exists():continue
+           code="import importlib.util,json;print(json.dumps({x:bool(importlib.util.find_spec(x)) for x in ('duckdb','pyarrow','polars','pandas','fastparquet')}))"
+           try:
+            c=subprocess.run([py,"-c",code],capture_output=True,text=True,timeout=8)
+            out["python_executables"].append({"path":py,"modules":json.loads(c.stdout) if c.returncode==0 else {"rc":c.returncode}})
+           except Exception as e:out["python_executables"].append({"path":py,"err":type(e).__name__})
+          # schema only if python reader already present
+          sample=base/"XAUUSD/2019/XAUUSD_2019-01.parquet"
+          if sample.is_file():
+           for py in ["/opt/rizan-buy050-bridge/.venv/bin/python","/usr/bin/python3"]:
+            code="import pyarrow.parquet as pq,json,sys;f=pq.ParquetFile(sys.argv[1]);print(json.dumps({'schema':str(f.schema_arrow),'rows':f.metadata.num_rows,'groups':f.num_row_groups,'first':f.read_row_group(0).slice(0,2).to_pylist()},default=str))"
+            try:
+             p=subprocess.run([py,"-c",code,str(sample)],capture_output=True,text=True,timeout=12)
+             if p.returncode==0:
+              out["file_schema"]=json.loads(p.stdout);break
+            except Exception:pass
+          print("REPLAY_SOURCE_AUDIT="+json.dumps(out))
+          PY
