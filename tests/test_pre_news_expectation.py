@@ -144,7 +144,8 @@ def test_new_tab_uses_existing_snapshot_and_renders_incomplete():
         app.session_state["rizan_xau_detail"] = "Pre-News"
         app.run()
         assert not app.exception
-        assert any(tab.label == "Pre-News" for tab in app.tabs)
+        # main.py uses persistent st.radio navigation rather than st.tabs.
+        assert any("Pre-News" in radio.options for radio in app.radio)
         assert any(metric.value == "DATA INCOMPLETE" for metric in app.metric)
 
 
