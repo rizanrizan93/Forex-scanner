@@ -1,0 +1,75 @@
+name: BUY050 Integrated Historical Replay Data Inventory (read-only)
+on:
+  push:
+    branches: ['research/buy050-integrated-replay-20261108']
+    paths: ['.github/workflows/buy050-integrated-inventory-20261108.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Read-only VPS historical data index
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set +x
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          trap 'rm -rf "$d"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$d/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$d/known"
+          ssh-keygen -y -f "$d/key" >/dev/null
+          sshopt=(-i "$d/key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$d/known" -o ConnectTimeout=20)
+          ssh "${sshopt[@]}" Rizanrizan@202.74.74.172 'python3 -' <<'PY'
+          import os,json,glob,subprocess,datetime,sys,shutil,collections
+          from pathlib import Path
+          def command(argv,secs=12):
+           try:
+            r=subprocess.run(argv,capture_output=True,text=True,timeout=secs)
+            return {"rc":r.returncode,"out":r.stdout.strip()[:2400]}
+           except Exception as e:return {"error":type(e).__name__}
+          root=Path("/home/Rizanrizan/rizan-ticks")
+          result={"date_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                  "data_path_exists":root.is_dir(),"orders_sent":0,"live_modified":False,
+                  "disk":command(["df","-h",str(root.parent)]),
+                  "memory":command(["free","-m"]),
+                  "python":sys.version.split()[0],
+                  "pyarrow":None,"duckdb":None,"pandas":None,
+                  "ctrader_binary": bool(shutil.which("ctrader")),"dotnet":bool(shutil.which("dotnet")),
+                  "docker":bool(shutil.which("docker")),
+                  "git":bool(shutil.which("git")),
+                  "symbols":{},"candidate_replay_paths":[]}
+          for module in ("pyarrow","duckdb","pandas"):
+           try:
+            mod=__import__(module);result[module]=getattr(mod,"__version__","installed")
+           except Exception:pass
+          for sym in ("XAUUSD","EURUSD","BTCUSD"):
+           target=root/sym
+           files=[]
+           if target.exists():
+            for p in target.rglob("*"):
+             if p.is_file() and p.suffix.lower() in (".parquet",".csv",".gz",".json",".jsonl",".zst",".zip"):
+              files.append(p)
+             if len(files)>250:break
+           files.sort()
+           result["symbols"][sym]={"exists":target.is_dir(),"files_sampled":len(files),
+                "first": [{"name":str(p.relative_to(root)),"bytes":p.stat().st_size} for p in files[:5]],
+                "last": [{"name":str(p.relative_to(root)),"bytes":p.stat().st_size} for p in files[-5:]],
+                "count_by_ext":dict(collections.Counter(p.suffix for p in files)),
+                "total_sampled_mb":round(sum(p.stat().st_size for p in files)/1048576,2)}
+          for candidate in (root/".jobs/archive_status.json",root/"manifest_sha256.csv",
+                            Path("/home/Rizanrizan/rizan-ticks/REPLAY_RESULTS"),
+                            Path("/home/Rizanrizan/rizan-ticks/DATA"),
+                            Path("/opt/rizan-buy050-bridge")):
+           if candidate.is_file():
+            result["candidate_replay_paths"].append({"name":str(candidate),"bytes":candidate.stat().st_size,"sample":candidate.read_text(errors="replace")[:800] if candidate.suffix==".json" else None})
+           elif candidate.is_dir():
+            result["candidate_replay_paths"].append({"name":str(candidate),"entries":[x.name for x in list(candidate.iterdir())[:35]]})
+          print("BUY050_INTEGRATED_DATA_INVENTORY="+json.dumps(result,sort_keys=True))
+          PY
