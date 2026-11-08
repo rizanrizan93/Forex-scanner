@@ -64,3 +64,5 @@ jobs:
           print(json.dumps(out,sort_keys=True))
           print('BUY050_VPS_RESOURCE_AUDIT_END')
           PY
+
+# Post-deployment audit trigger 2026-11-08T22:08Z; read-only logic unchanged.
