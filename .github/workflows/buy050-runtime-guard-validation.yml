@@ -1,7 +1,7 @@
 name: BUY050 runtime resilience native build (NO LIVE DEPLOY)
 on:
   push:
-    branches: ['fix/buy050-runtime-guard-20261108']
+    branches: ['fix/buy050-runtime-guard-20261108', 'fix/buy050-localstorage-failclosed-20261108']
     paths:
       - 'repairs/buy050_identity_20261108/source/**'
       - 'repairs/buy050_identity_20261108/validation/test_runtime_resilience.py'
