@@ -44,14 +44,14 @@ public sealed class RizanBtc2325Shadow : Robot
 
     private sealed class VirtualBasket
     {
-        public required string Family { get; init; }
-        public required int Side { get; init; }
-        public required DateTime EntryAtUtc { get; init; }
-        public required DateTime ExpiresUtc { get; init; }
-        public required double Quantity { get; init; }
-        public required double Entry { get; init; }
-        public required double Stop { get; init; }
-        public required double Target { get; init; }
+        public string Family { get; init; } = "";
+        public int Side { get; init; }
+        public DateTime EntryAtUtc { get; init; }
+        public DateTime ExpiresUtc { get; init; }
+        public double Quantity { get; init; }
+        public double Entry { get; init; }
+        public double Stop { get; init; }
+        public double Target { get; init; }
     }
 
     private readonly record struct Signal(int Side, string Family, double Distance, int HoldHours);
