@@ -2,7 +2,7 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from fx_scanner.cbot_buy050_shadow_dashboard import PROFILE, evaluate_shadow
+from fx_scanner.cbot_buy050_shadow_dashboard import PROFILE, evaluate_shadow, verified_live_symbols
 
 
 T0 = datetime(2026, 11, 9, 12, 0, 0, tzinfo=timezone.utc)
@@ -33,6 +33,47 @@ def sample():
 
 
 class ShadowViewTests(unittest.TestCase):
+    @staticmethod
+    def primary_live():
+        return {
+            "contract": "RIZAN_BUY050_READONLY_V1",
+            "strategy": "P3_BUY050",
+            "source_release": "BUY050_RUNTIMEGUARD_20261108",
+            "account_suffix": "7903",
+            "observed_at": T0.isoformat(),
+            "read_only": True,
+            "execution_authority": False,
+            "service_active": True,
+            "bridge": {"observed_at": T0.isoformat(), "connected": 3,
+                       "profile_ok": True, "macro_snapshot_present": True},
+            "symbols": [
+                {"symbol": symbol, "checkpoint_present": True, "identity_ok": True,
+                 "lease_active": True, "checkpoint_basket": False,
+                 "pending_intent": False, "quarantined": False, "fault": False}
+                for symbol in ("XAUUSD", "EURUSD", "BTCUSD")
+            ],
+        }
+
+    def test_shadow_geometry_requires_independent_live_identity(self):
+        p = self.primary_live()
+        self.assertTrue(all(verified_live_symbols(p, now=T0).values()))
+        p["symbols"][2]["unrecognized_checkpoint"] = True
+        states = verified_live_symbols(p, now=T0)
+        self.assertFalse(states["BTCUSD"])
+        self.assertTrue(states["XAUUSD"])
+        p["symbols"][0]["lease_active"] = False
+        self.assertFalse(verified_live_symbols(p, now=T0)["XAUUSD"])
+
+    def test_outdated_or_missing_primary_never_verifies_shadow(self):
+        p = self.primary_live()
+        self.assertFalse(any(verified_live_symbols(p, now=T0 + timedelta(minutes=16)).values()))
+        self.assertFalse(any(verified_live_symbols(None, now=T0).values()))
+
+    def test_bridge_health_is_required_for_shadow(self):
+        p = self.primary_live()
+        p["bridge"]["observed_at"] = (T0 - timedelta(minutes=3)).isoformat()
+        self.assertFalse(any(verified_live_symbols(p, now=T0).values()))
+
     def test_technical_levels_must_expire(self):
         s = sample()
         self.assertIsNotNone(evaluate_shadow(s, now=T0 + timedelta(seconds=2))["symbols"]["BTCUSD"]["candidate"])
