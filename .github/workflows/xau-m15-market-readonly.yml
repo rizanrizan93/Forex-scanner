@@ -35,7 +35,9 @@ jobs:
       CTRADER_CLIENT_SECRET: ${{ secrets.CTRADER_CLIENT_SECRET }}
       CTRADER_ACCESS_TOKEN: ${{ secrets.CTRADER_ACCESS_TOKEN }}
       GITHUB_TOKEN: ${{ github.token }}
-      XAU_M15_LOOP_SECONDS: ${{ github.event_name == 'push' && '420' || '3300' }}
+      # Keep the first publisher alive across the hour; 7-minute push runs
+      # previously created a ~45-minute gap until the next scheduled run.
+      XAU_M15_LOOP_SECONDS: '3300'
     steps:
       - uses: actions/checkout@v4
         with:
