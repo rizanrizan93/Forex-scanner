@@ -7,8 +7,11 @@ on:
       - "src/fx_scanner/xau_m15_market_feed.py"
       - "main.py"
       - "src/fx_scanner/xau_macro_risk_monitor.py"
+      - "pages/2_US10Y_Regime_Timing.py"
+      - ".streamlit/config.toml"
       - "tests/test_xau_m15_macro_forecast.py"
       - "tests/test_xau_m15_market_freshness_recovery.py"
+      - "tests/test_xau_m15_hot_reload.py"
       - ".github/workflows/xau-m15-macro-forecast.yml"
   push:
     branches: [main]
@@ -17,8 +20,11 @@ on:
       - "src/fx_scanner/xau_m15_market_feed.py"
       - "main.py"
       - "src/fx_scanner/xau_macro_risk_monitor.py"
+      - "pages/2_US10Y_Regime_Timing.py"
+      - ".streamlit/config.toml"
       - "tests/test_xau_m15_macro_forecast.py"
       - "tests/test_xau_m15_market_freshness_recovery.py"
+      - "tests/test_xau_m15_hot_reload.py"
       - ".github/workflows/xau-m15-macro-forecast.yml"
 
 permissions:
@@ -35,10 +41,10 @@ jobs:
           python-version: "3.11"
       - name: Compile M15 and existing macro dashboard
         run: |
-          python -m py_compile main.py src/fx_scanner/xau_m15_macro_forecast.py src/fx_scanner/xau_macro_risk_monitor.py src/fx_scanner/xau_m15_market_feed.py
+          python -m py_compile main.py pages/2_US10Y_Regime_Timing.py src/fx_scanner/xau_m15_macro_forecast.py src/fx_scanner/xau_macro_risk_monitor.py src/fx_scanner/xau_m15_market_feed.py
       - name: Install focused test runner
         run: python -m pip install pytest==9.0.2
       - name: Test M15 alignment, freshness, event guards
         env:
           PYTHONPATH: src
-        run: python -m pytest -q tests/test_xau_m15_macro_forecast.py tests/test_xau_m15_market_freshness_recovery.py
+        run: python -m pytest -q tests/test_xau_m15_macro_forecast.py tests/test_xau_m15_market_freshness_recovery.py tests/test_xau_m15_hot_reload.py
