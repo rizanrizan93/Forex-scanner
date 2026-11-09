@@ -213,6 +213,21 @@ def goldapi_spot_cached(symbol):
     return fetch_goldapi_spot(symbol)
 
 
+def _stale_dxy_needs_fallback(market, *, now=None):
+    """A present but ineligible CNBC DXY must not suppress vendor fallback."""
+    dxy = (market or {}).get("DX-Y.NYB")
+    return dxy is not None and not quote_freshness(dxy, now=now)["eligible"]
+
+
+def _select_vendor_quote(existing, candidate, *, now=None):
+    """Replace an old quote ONLY with a genuinely live candidate."""
+    if candidate is not None and quote_freshness(candidate, now=now)["eligible"]:
+        return candidate, True
+    if existing is None:
+        return candidate, False  # historical reference, never a live score
+    return existing, False
+
+
 @st.cache_data(ttl=60, show_spinner=False)
 def load_external_macro_inputs():
     """CNBC primary with time-verified fallback for missing and stale DXY.
@@ -243,12 +258,7 @@ def load_external_macro_inputs():
     # The original presence-only condition left a stale CNBC DXY in place,
     # producing exactly 41% coverage (Treasury valid, DXY ineligible).
     # Recheck the source timestamp rather than marking CNBC as unavailable.
-    stale_dxy = (
-        ["DX-Y.NYB"]
-        if "DX-Y.NYB" in market and
-        not quote_freshness(market["DX-Y.NYB"])["eligible"]
-        else []
-    )
+    stale_dxy = ["DX-Y.NYB"] if _stale_dxy_needs_fallback(market) else []
     fallback_candidates = sorted(set(missing + stale_dxy))
     fallback_errors: dict[str, str] = {}
     recovered: list[str] = []
@@ -260,12 +270,11 @@ def load_external_macro_inputs():
         for code, (q, err) in zip(fallback_candidates, attempts):
             # Yahoo's quote must be independently eligible; never substitute
             # an old vendor price just because HTTP returned successfully.
-            if q is not None and quote_freshness(q)["eligible"]:
-                market[code] = q
+            chosen, fresh = _select_vendor_quote(market.get(code), q)
+            if chosen is not None:
+                market[code] = chosen
+            if fresh:
                 recovered.append(code)
-            elif code not in market and q is not None:
-                # Keep a stale reference visible as historical only.
-                market[code] = q
             if err:
                 fallback_errors[code] = err
     spot: dict[str, dict | None] = {
