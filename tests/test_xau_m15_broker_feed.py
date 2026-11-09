@@ -75,3 +75,46 @@ def test_readonly_protocol_has_no_orders_positions_or_refresh():
     assert "ProtoOAReconcileReq" not in ReadOnly.allowed
     assert "ProtoOARefreshTokenReq" not in ReadOnly.allowed
     assert "ProtoOAGetTrendbarsReq" in ReadOnly.allowed
+
+
+def test_missing_macro_now_returns_explicit_technical_bias_only():
+    snap = fresh()
+    result = forecast_m15_xau({"score": None, "coverage_core_pct": 0,
+                               "state": "WAIT_DATA", "missing": ["DXY", "Treasury"]},
+                              snap, now=NOW)
+    assert result["status"] == "TECHNICAL_ONLY"
+    assert result["direction"] == "BIAS TEKNIKAL BULLISH M15"
+    assert result["index"] is None  # no invented macro confluence
+    assert result["macro_index"] is None
+    assert result["technical_index"] is not None
+    assert result["execution_authority"] is False
+
+
+def test_negative_price_change_reports_bearish_technical_only():
+    snap = fresh()
+    snap["price"] = 4058.0
+    r = forecast_m15_xau({}, snap, now=NOW)
+    assert r["status"] == "TECHNICAL_ONLY"
+    assert r["direction"] == "BIAS TEKNIKAL BEARISH M15"
+
+
+def test_price_chop_is_neutral_not_false_trend():
+    snap = fresh()
+    snap["price"] = 4060.4
+    r = forecast_m15_xau({}, snap, now=NOW)
+    assert r["status"] == "TECHNICAL_ONLY"
+    assert r["direction"] == "NETRAL · BELUM ADA EDGE M15"
+
+
+def test_event_high_blocks_technical_fallback_even_with_fresh_candle():
+    r = forecast_m15_xau({}, fresh(), now=NOW, event_risk={"state": "HIGH"})
+    assert r["status"] == "EVENT_RISK"
+    assert r["direction"] == "BELUM ADA PREDIKSI"
+
+
+def test_stale_price_never_uses_technical_only_fallback():
+    snap = fresh()
+    snap["price_observed_at"] = (NOW - timedelta(minutes=6)).isoformat()
+    r = forecast_m15_xau({}, snap, now=NOW)
+    assert r["status"] == "WAIT_DATA"
+    assert r["direction"] == "BELUM ADA PREDIKSI"
