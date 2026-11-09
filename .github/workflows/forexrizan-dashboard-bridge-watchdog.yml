@@ -2,6 +2,12 @@ name: ForexRizan Dashboard Bridge Watchdog
 
 on:
   workflow_dispatch:
+  # A completed main checkpoint publication also verifies independent shadow
+  # and event freshness. This is in addition to the best-effort cron trigger.
+  workflow_run:
+    workflows: ["BUY050 cBots Dashboard Snapshot (readonly)"]
+    types: [completed]
+    branches: [main]
   push:
     branches: [main]
     paths: [".github/workflows/forexrizan-dashboard-bridge-watchdog.yml", "scripts/rizan_bridge_watchdog.py", "scripts/buy050_publication_watchdog.py", "tests/test_buy050_publication_watchdog.py", "scripts/buy050_auxiliary_watchdog.py", "tests/test_buy050_auxiliary_watchdog.py"]
