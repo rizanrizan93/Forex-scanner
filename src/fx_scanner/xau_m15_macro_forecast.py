@@ -261,7 +261,9 @@ def render_macro_m15_forecast(
     try:
         snapshot = snapshot_loader()
     except Exception as exc:
-        error = type(exc).__name__
+        # Our own sanitized source error codes are useful diagnostics.
+        # Do not print network exception bodies or credentials.
+        error = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
     forecast = forecast_m15_xau(macro_result, snapshot, event_risk=event_risk)
     start = _utc(forecast["candle_start"]).astimezone(WIB)
     end = _utc(forecast["candle_end"]).astimezone(WIB)
@@ -272,10 +274,31 @@ def render_macro_m15_forecast(
         f"tersisa {forecast['seconds_remaining'] // 60:02d}:"
         f"{forecast['seconds_remaining'] % 60:02d} · pembaruan dashboard ±60 detik."
     )
+    # A 4-minute-old candle should never appear blank when broker evidence is
+    # already usable. Keep the primary value compact for mobile screens.
+    if forecast["status"] == "TECHNICAL_ONLY":
+        headline = forecast["direction"].replace("BIAS TEKNIKAL ", "")
+        strength = "TERBATAS"
+        heading = "Bias harga sementara"
+    elif forecast["status"] == "EVENT_RISK":
+        headline, strength, heading = "DITAHAN: NEWS", "RISIKO EVENT", "Status prediksi"
+    elif forecast["status"] == "WAIT_DATA":
+        headline, strength, heading = "MENUNGGU FEED", "DATA BELUM VALID", "Status prediksi"
+    else:
+        headline = forecast["direction"].replace("PREDIKSI ", "")
+        strength = forecast["confluence"]
+        heading = "Perkiraan candle"
+    if isinstance(snapshot, dict):
+        st.caption(
+            "cTrader 7903 · harga M1 " + _wib(snapshot.get("price_observed_at"))
+            + " · close M15 " + _wib(
+                (snapshot.get("latest_closed_m15") or {}).get("closed_at")
+            )
+        )
     a, b, c = st.columns(3)
-    a.metric("Perkiraan candle", forecast["direction"])
-    b.metric("Indeks konfluensi", "—" if forecast["index"] is None else f"{forecast['index']:+.1f} / 100")
-    c.metric("Kekuatan bukti", forecast["confluence"])
+    a.metric(heading, headline)
+    b.metric("Indeks gabungan", "—" if forecast["index"] is None else f"{forecast['index']:+.1f} / 100")
+    c.metric("Konfirmasi", strength)
     if forecast["status"] != "READY":
         if forecast["status"] == "TECHNICAL_ONLY":
             st.info("BIAS TEKNIKAL SEMENTARA · makro belum terkonfirmasi. Bukan sinyal entry.")
