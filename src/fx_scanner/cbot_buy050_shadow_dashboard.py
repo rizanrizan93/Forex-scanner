@@ -98,19 +98,48 @@ def fetch_shadow(bucket):
     return json.loads(raw)
 
 
-def render_shadow(payload, *, now=None):
+def verified_live_symbols(primary_snapshot, *, now=None):
+    """Use the independent LIVE checkpoint as a strict gate for shadow levels.
+
+    A stale monitor, missing bridge lease, changed profile, or native fault must
+    never give a technical shadow scenario the appearance of a LIVE signal.
+    """
+    if not isinstance(primary_snapshot, dict):
+        return {symbol: False for symbol in SYMBOLS}
+    try:
+        from .cbot_buy050_dashboard import evaluate_snapshot
+        view = evaluate_snapshot(primary_snapshot, now=now)
+        return {
+            symbol: bool(view["fresh"] and view["bridge_ready"]
+                         and view["statuses"].get(symbol) in ("TERPANTAU", "CHECKPOINT_AKTIF"))
+            for symbol in SYMBOLS
+        }
+    except (ValueError, TypeError, KeyError):
+        return {symbol: False for symbol in SYMBOLS}
+
+
+def render_shadow(payload, *, now=None, primary_snapshot=None):
     import streamlit as st
 
     model = evaluate_shadow(payload, now=now)
     st.markdown("#### Sinyal teknis native BUY050 · XAU / EUR / BTC")
-    st.caption("Perhitungan memakai modul C# frozen; status merupakan evaluasi bayangan, bukan order broker. Periode publikasi sekitar 5 menit, sehingga window sinyal 60 detik dan BTC 5 detik bisa terlewat.")
+    st.caption("Sinyal shadow berasal dari referensi C# frozen BUY050, bukan hash binary .algo terbaru yang dipastikan berjalan di cTrader. "
+               "Periode publikasi bergantung pada runner GitHub; kandidat XAU/EUR 60 detik dan BTC 5 detik dapat terlewat.")
     st.caption("Data shadow " + _wib(model["as_of"]))
     if not model["fresh"]:
-        st.warning("Snapshot shadow tidak baru; level entry/SL/TP disembunyikan.")
+        st.warning("Snapshot shadow terlambat. Semua arah dan level entry/SL/TP LIVE tidak terverifikasi.")
+        st.caption("Feed shadow sedang menunggu pembaruan independen; ini bukan bukti cBot mati atau tidak ada sinyal.")
+        return
+    allowed = verified_live_symbols(primary_snapshot, now=now)
+    if not all(allowed.values()):
+        st.info("Validasi lintas-feed: sebagian/seluruh checkpoint, lease, atau identitas bridge LIVE belum memenuhi syarat. "
+                "Level shadow tidak boleh dianggap siap dieksekusi.")
     for symbol in SYMBOLS:
         row = model["symbols"][symbol]
         st.markdown("**" + symbol + " · " + row["status"] + "**")
-        cand = row["candidate"]
+        cand = row["candidate"] if allowed[symbol] else None
+        if row["candidate"] and not allowed[symbol]:
+            st.warning("Kandidat teknis disembunyikan: identitas/lease/checkpoint LIVE belum terverifikasi.")
         if cand:
             side = cand["side"]
             st.caption("Pola " + cand.get("origin", "—") + " · " + side + " · berlaku maksimal sampai " + _wib(cand["valid_until"]))
@@ -125,7 +154,7 @@ def render_shadow(payload, *, now=None):
     st.caption("Tidak ada fungsi order, stop/start, atau pengubahan parameter cBot pada modul ini.")
 
 
-def render_shadow_panel():
+def render_shadow_panel(primary_snapshot=None):
     import streamlit as st
 
     @st.cache_data(ttl=50, show_spinner=False)
@@ -134,7 +163,7 @@ def render_shadow_panel():
 
     try:
         now = datetime.now(timezone.utc)
-        render_shadow(cached(int(now.timestamp() // 50)), now=now)
+        render_shadow(cached(int(now.timestamp() // 50)), now=now, primary_snapshot=primary_snapshot)
     except (OSError, ValueError, TypeError, KeyError, TimeoutError):
         st.markdown("#### Sinyal teknis native BUY050")
         st.info("Snapshot shadow belum tersedia/valid. Entry, SL, dan TP tidak akan dibuat dari sinyal lama atau data yang tidak lengkap.")
