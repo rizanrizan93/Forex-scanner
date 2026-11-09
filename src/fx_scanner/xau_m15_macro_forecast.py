@@ -179,24 +179,45 @@ def forecast_m15_xau(
         result["reason"] = "Perubahan harga >1,5% dalam satu candle; periksa gap/ketidaksesuaian feed."
         return result
 
-    macro_score = _number(macro.get("score"))
-    core_coverage = _number(macro.get("coverage_core_pct"))
-    if (macro_score is None or abs(macro_score) > 100
-            or core_coverage is None or core_coverage < 75
-            or str(macro.get("state")) == "WAIT_DATA"):
-        result["reason"] = "Data Treasury/DXY untuk skor gabungan makro belum memadai."
-        return result
-
+    # Price-only fallback is intentionally restricted to the dedicated,
+    # validated LIVE broker source; legacy reversal snapshots cannot qualify.
+    # Momentum is an observed technical bias, not an invented macro forecast.
+    candle_score = max(-100.0, min(100.0, delta_pct / 0.05 * 100))
+    result["technical_index"] = round(candle_score, 1)
     event_state = str((event_risk or {}).get("state") or "UNAVAILABLE").upper()
     if event_state not in {"CLEAR", "UNAVAILABLE", "NONE"}:
         result["status"] = "EVENT_RISK"
         result["reason"] = "Risiko rilis berita aktif (" + event_state + "); prediksi arah ditangguhkan."
         return result
 
+    macro_score = _number(macro.get("score"))
+    core_coverage = _number(macro.get("coverage_core_pct"))
+    if (macro_score is None or abs(macro_score) > 100
+            or core_coverage is None or core_coverage < 75
+            or str(macro.get("state")) == "WAIT_DATA"):
+        if fast:
+            # Min. ~0.02% movement limits flip-flopping on tick-sized noise.
+            # No numerical probability or macro contribution is asserted.
+            result["status"] = "TECHNICAL_ONLY"
+            result["confluence"] = "TERBATAS · TANPA KONFIRMASI MAKRO"
+            if delta_pct >= 0.02:
+                result["direction"] = "BIAS TEKNIKAL BULLISH M15"
+            elif delta_pct <= -0.02:
+                result["direction"] = "BIAS TEKNIKAL BEARISH M15"
+            else:
+                result["direction"] = "NETRAL · BELUM ADA EDGE M15"
+            result["reason"] = (
+                "Arah sementara berdasarkan pergerakan harga broker pada candle M15 "
+                "yang sedang terbentuk; Treasury/DXY belum lengkap. "
+                "Bukan prediksi gabungan atau sinyal eksekusi."
+            )
+        else:
+            result["reason"] = "Data Treasury/DXY untuk skor gabungan makro belum memadai."
+        return result
+
     # Macro already incorporates non-duplicated Oil, geopolitical and safe
     # haven votes. Same-source M15 reference acts only as 20% confirmation.
     # +/-0.05% is a heuristic momentum scale, not a measured volatility model.
-    candle_score = max(-100.0, min(100.0, delta_pct / 0.05 * 100))
     combined = 0.80 * macro_score + 0.20 * candle_score
     result.update(
         status="READY",
@@ -256,7 +277,16 @@ def render_macro_m15_forecast(
     b.metric("Indeks konfluensi", "—" if forecast["index"] is None else f"{forecast['index']:+.1f} / 100")
     c.metric("Kekuatan bukti", forecast["confluence"])
     if forecast["status"] != "READY":
-        st.warning(f"{forecast['status']} · {forecast['reason']}")
+        if forecast["status"] == "TECHNICAL_ONLY":
+            st.info("BIAS TEKNIKAL SEMENTARA · makro belum terkonfirmasi. Bukan sinyal entry.")
+            st.caption(forecast["reason"])
+            st.caption(
+                f"Indeks momentum harga M15: {forecast['technical_index']:+.1f}/100 "
+                "(heuristik, bukan probabilitas). "
+                "Indeks konfluensi gabungan tetap tidak tersedia."
+            )
+        else:
+            st.warning(f"{forecast['status']} · {forecast['reason']}")
         if isinstance(snapshot, dict):
             broker = snapshot.get("contract") == FAST_CONTRACT
             st.caption(
