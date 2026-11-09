@@ -9,6 +9,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -33,7 +34,7 @@ from .pre_news_additional_providers import (
 )
 from .pre_news_source_fusion import FusedConsensus, SourceQuote, canonical_event_key, fuse_consensus
 from .providers.news import ForexFactoryCalendarProvider
-from .providers.transport import UrllibHttpTransport
+from .providers.transport import UrllibHttpTransport, HttpTransportError
 from .storage.supabase_operational import SupabaseOperationalStore
 
 SECONDARY_SOURCES = frozenset({
@@ -41,6 +42,41 @@ SECONDARY_SOURCES = frozenset({
     "HELIOUS", "TRADING_ECONOMICS",
 })
 IMPACT_RANK = {"LOW": 1, "MEDIUM": 2, "HIGH": 3}
+
+# Secondary feeds can intermittently time out or rate-limit. Retry a single
+# transient failure, never HTTP 401/403, redirects, or contract mismatches.
+# No scraping bypasses or unlicensed API access.
+_TRANSIENT_ERRORS = frozenset({
+    "HTTP_429", "HTTP_500", "HTTP_502", "HTTP_503", "HTTP_504", "TIMEOUT",
+})
+
+
+class _RetryingSecondaryTransport:
+    def __init__(self, transport: Any, *, delay_seconds: float = 0.7) -> None:
+        self.transport, self.delay_seconds = transport, delay_seconds
+
+    def get(self, url: str, **kwargs: Any) -> Any:
+        try:
+            return self.transport.get(url, **kwargs)
+        except HttpTransportError as exc:
+            error = str(exc)
+            if error not in _TRANSIENT_ERRORS and not error.startswith("NETWORK:"):
+                raise
+            time.sleep(self.delay_seconds)
+            return self.transport.get(url, **kwargs)
+
+
+def _provider_failure(exc: Exception) -> str:
+    """Expose only bounded error categories; never tokens, URLs or response body."""
+    name = type(exc).__name__
+    message = str(exc)
+    category = next((code for code in _TRANSIENT_ERRORS if code in message), None)
+    if category is None:
+        category = next((code for code in ("HTTP_401", "HTTP_403", "NETWORK", "SSL") if code in message), None)
+    if category is None:
+        category = "SCHEMA_OR_ACCESS"
+    return f"ERROR:{name}:{category}"
+
 DASHBOARD_EVENT_KEYS = (
     "source",
     "source_tier",
@@ -337,6 +373,7 @@ def run() -> int:
         max_response_bytes=int(transport_cfg["max_response_bytes"]),
         user_agent=str(transport_cfg["user_agent"]),
     )
+    secondary_transport = _RetryingSecondaryTransport(transport)
     secondary_cfg = _secondary_config()
     policy_cfg = dict(secondary_cfg.get("policy") or {})
     max_align_hours = float(policy_cfg.get("secondary_time_alignment_hours", 14))
@@ -414,7 +451,7 @@ def run() -> int:
     if bool(myfx_cfg.get("enabled", False)):
         try:
             snapshot = MyfxbookCalendarProvider(
-                transport,
+                secondary_transport,
                 url=str(myfx_cfg["base_url"]),
                 allowed_host=str(myfx_cfg["allowed_host"]),
                 timezone_name=str(myfx_cfg.get("timezone", "UTC")),
@@ -423,13 +460,13 @@ def run() -> int:
             events.extend(_secondary_tier(_from_discovery(event)) for event in usd_events)
             source_status["MYFXBOOK"] = f"OK:{len(usd_events)}"
         except Exception as exc:
-            source_status["MYFXBOOK"] = f"ERROR:{type(exc).__name__}"
+            source_status["MYFXBOOK"] = _provider_failure(exc)
 
     investing_cfg = dict(secondary_cfg.get("INVESTING_COM") or {})
     if bool(investing_cfg.get("enabled", False)):
         try:
             snapshot = InvestingCalendarProvider(
-                transport,
+                secondary_transport,
                 url=str(investing_cfg["base_url"]),
                 allowed_host=str(investing_cfg["allowed_host"]),
                 timezone_name=str(investing_cfg.get("timezone", "UTC")),
@@ -438,7 +475,7 @@ def run() -> int:
             events.extend(_secondary_tier(_from_discovery(event)) for event in usd_events)
             source_status["INVESTING_COM"] = f"OK:{len(usd_events)}"
         except Exception as exc:
-            source_status["INVESTING_COM"] = f"ERROR:{type(exc).__name__}"
+            source_status["INVESTING_COM"] = _provider_failure(exc)
 
     # Additional keyless sources augment, rather than replace, Forex Factory.
     # Provider errors are isolated; no missing value is fabricated.
@@ -452,7 +489,7 @@ def run() -> int:
             continue
         try:
             snap = adapter(
-                transport,
+                secondary_transport,
                 url=str(provider_cfg["base_url"]),
                 allowed_host=str(provider_cfg["allowed_host"]),
             ).fetch(now=now)
@@ -461,7 +498,7 @@ def run() -> int:
             count_numeric = sum(item.forecast is not None for item in usd)
             source_status[source] = f"OK:{len(usd)}:FORECASTS_{count_numeric}"
         except Exception as exc:
-            source_status[source] = f"ERROR:{type(exc).__name__}"
+            source_status[source] = _provider_failure(exc)
 
     # Trading Economics consensus API is subscription-gated. Never use
     # guest credentials or incur quota charges without explicit activation.
@@ -475,7 +512,7 @@ def run() -> int:
     else:
         try:
             te = TradingEconomicsCalendarProvider(
-                transport, api_key=te_key,
+                secondary_transport, api_key=te_key,
                 url=str(te_cfg["base_url"]),
                 allowed_host=str(te_cfg["allowed_host"]),
             ).fetch(now=now)
@@ -485,7 +522,7 @@ def run() -> int:
                 f"OK:{len(usd)}:FORECASTS_{sum(item.forecast is not None for item in usd)}"
             )
         except Exception as exc:
-            source_status["TRADING_ECONOMICS"] = f"ERROR:{type(exc).__name__}"
+            source_status["TRADING_ECONOMICS"] = _provider_failure(exc)
 
     aligned = _align_secondary_events(events, max_hours=max_align_hours)
     fused_events, fusion_metadata = _fuse_events(aligned)
