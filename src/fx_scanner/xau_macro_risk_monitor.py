@@ -701,6 +701,30 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     return result
 
 
+
+def _oil_direction_caption(wti, brent, *, now=None) -> str:
+    """Display-only oil momentum. Missing or non-comparable changes = no vote."""
+    quotes = (wti, brent)
+    if not all(isinstance(row, dict) for row in quotes):
+        return "Momentum WTI/Brent belum lengkap; tidak ada konfirmasi inflasi energi."
+    # Daily FRED and delayed quote timestamps must never appear intraday LIVE.
+    if not all(quote_freshness(row, now=now)["eligible"] for row in quotes):
+        return "Momentum minyak intraday belum segar; harga terakhir hanya referensi."
+    values = [_number(row.get("pct")) for row in quotes]
+    if any(value is None for value in values):
+        return "Harga minyak tersedia, tetapi baseline perubahan WTI/Brent belum lengkap; arah tidak dinilai."
+    # Different reference bases are not independently comparable momentum.
+    bases = [str(row.get("basis") or "").strip() for row in quotes]
+    if not all(bases) or bases[0] != bases[1]:
+        return "Perubahan WTI/Brent memakai basis berbeda/belum diketahui; arah gabungan tidak dinilai."
+    if values[0] > 0 and values[1] > 0:
+        return "Energi naik terhadap basis sebanding; tekanan inflasi bisa meningkat."
+    if values[0] < 0 and values[1] < 0:
+        return "Energi turun terhadap basis sebanding; tekanan inflasi bisa mereda."
+    return "WTI dan Brent mixed/flat; belum ada konfirmasi arah inflasi energi."
+
+
+
 def render_macro_risk_monitor(macro_eval, h15_loader):
     """Additional display-only panel; no interaction with strategy or broker."""
     macro_eval = macro_eval or {}
@@ -793,15 +817,10 @@ def render_macro_risk_monitor(macro_eval, h15_loader):
     _market_metric(oil2, "Brent spot indikatif (USD/barel)", brent)
     # The scored Oil channel may use genuinely DAILY FRED as a separate
     # lower-weight context. Never relabel delayed futures as live spot.
-    valid_wti = wti
-    valid_brent = brent
-    if valid_wti and valid_brent and valid_wti.get("fresh") and valid_brent.get("fresh"):
-        if valid_wti["pct"] > 0 and valid_brent["pct"] > 0:
-            st.caption("Energi naik terhadap basis masing-masing; tekanan inflasi bisa meningkat.")
-        elif valid_wti["pct"] < 0 and valid_brent["pct"] < 0:
-            st.caption("Energi turun terhadap basis masing-masing; tekanan inflasi bisa mereda.")
-        else:
-            st.caption("WTI dan Brent tidak searah; arah inflasi energi belum jelas.")
+    # An indicative spot quote can be fresh with pct=None when its
+    # separate 10–20-minute baseline has not formed. Never infer a direction
+    # from the fresh flag alone or compare a None/NaN pct to zero.
+    st.caption(_oil_direction_caption(wti, brent))
     st.caption("DIA WTI/Brent adalah spot indikatif (bukan bid/ask broker). "
                "Keterangan persen: perubahan dari observasi DIA 10–20 menit sebelumnya; "
                "maksimum bobot momentum 5% hanya saat kedua quote segar ≤5 menit. "
