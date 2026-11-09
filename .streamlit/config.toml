@@ -1,6 +1,7 @@
 [server]
 headless = true
-runOnSave = false
+runOnSave = true
+# Rerun long-lived sessions when code is updated by Streamlit Cloud.
 
 [browser]
 gatherUsageStats = false
