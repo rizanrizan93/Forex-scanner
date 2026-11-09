@@ -13,6 +13,7 @@ on:
       - "tests/test_xau_m15_market_freshness_recovery.py"
       - "tests/test_xau_m15_hot_reload.py"
       - "tests/test_xau_macro_oil_missing_pct_20261109.py"
+      - "tests/test_xau_macro_dxy_stale_recovery_20261110.py"
       - ".github/workflows/xau-m15-macro-forecast.yml"
   push:
     branches: [main]
@@ -27,6 +28,7 @@ on:
       - "tests/test_xau_m15_market_freshness_recovery.py"
       - "tests/test_xau_m15_hot_reload.py"
       - "tests/test_xau_macro_oil_missing_pct_20261109.py"
+      - "tests/test_xau_macro_dxy_stale_recovery_20261110.py"
       - ".github/workflows/xau-m15-macro-forecast.yml"
 
 permissions:
@@ -49,4 +51,4 @@ jobs:
       - name: Test M15 alignment, freshness, event guards
         env:
           PYTHONPATH: src
-        run: python -m pytest -q tests/test_xau_m15_macro_forecast.py tests/test_xau_m15_market_freshness_recovery.py tests/test_xau_m15_hot_reload.py tests/test_xau_macro_oil_missing_pct_20261109.py
+        run: python -m pytest -q tests/test_xau_m15_macro_forecast.py tests/test_xau_m15_market_freshness_recovery.py tests/test_xau_m15_hot_reload.py tests/test_xau_macro_oil_missing_pct_20261109.py tests/test_xau_macro_dxy_stale_recovery_20261110.py
