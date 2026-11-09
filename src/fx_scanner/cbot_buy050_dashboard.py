@@ -193,7 +193,8 @@ def _render():
 
     try:
         now = datetime.now(timezone.utc)
-        render_snapshot(cached(int(now.timestamp() // 45)), now=now)
+        primary_snapshot = cached(int(now.timestamp() // 45))
+        render_snapshot(primary_snapshot, now=now)
     except (OSError, ValueError, TypeError, KeyError, TimeoutError):
         st.subheader("cBots · BUY050 RuntimeGuard")
         st.warning(
@@ -209,7 +210,7 @@ def _render():
     # primary read-only checkpoint status if their separate feeds fail.
     try:
         from .cbot_buy050_shadow_dashboard import render_shadow_panel
-        render_shadow_panel()
+        render_shadow_panel(primary_snapshot=primary_snapshot)
     except (OSError, ValueError, TypeError, KeyError, TimeoutError):
         st.warning("Panel sinyal shadow sementara tidak tersedia (monitor utama tetap ditampilkan).")
     try:
