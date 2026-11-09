@@ -29,7 +29,14 @@ def _safe_source_status(value):
                 safe += ":FORECASTS_" + n
         return safe
     if parts[0] == "ERROR":
-        return "ERROR:" + (parts[1] if len(parts) > 1 else "UNKNOWN")
+        # Keep public, bounded diagnostics (401/403 vs 429/timeout) while
+        # excluding credentials, URLs and upstream response bodies.
+        error = parts[1] if len(parts) > 1 and parts[1].isidentifier() else "UNKNOWN"
+        reason = parts[2] if len(parts) > 2 else ""
+        allowed = {"HTTP_401", "HTTP_403", "HTTP_429", "HTTP_500",
+                   "HTTP_502", "HTTP_503", "HTTP_504", "TIMEOUT",
+                   "NETWORK", "SSL", "SCHEMA_OR_ACCESS"}
+        return "ERROR:" + error + (":" + reason if reason in allowed else "")
     if text in {"DISABLED", "UNKNOWN"}:
         return text
     return text[:48]
