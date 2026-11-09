@@ -252,6 +252,25 @@ def render_macro_m15_forecast(
     c.metric("Kekuatan bukti", forecast["confluence"])
     if forecast["status"] != "READY":
         st.warning(f"{forecast['status']} · {forecast['reason']}")
+        if isinstance(snapshot, dict):
+            broker = snapshot.get("contract") == FAST_CONTRACT
+            st.caption(
+                ("Feed cTrader LIVE 7903" if broker else "Feed reversal lama")
+                + " · publikasi: " + _wib(snapshot.get("as_of"))
+                + " · harga M1: " + _wib(snapshot.get("price_observed_at"))
+                + " · close M15 terakhir: "
+                + _wib((snapshot.get("latest_closed_m15") or {}).get("closed_at"))
+            )
+        if forecast.get("price") is not None:
+            st.caption(
+                "Momentum candle yang sedang terbentuk (bukan prediksi): "
+                + ("NAIK" if forecast["delta_pct"] > 0 else
+                   "TURUN" if forecast["delta_pct"] < 0 else "DATAR")
+                + f" {forecast['delta_pct']:+.3f}% dari close M15 sebelumnya."
+            )
+        missing = (macro_result or {}).get("missing") or []
+        if missing:
+            st.caption("Penghalang makro: " + "; ".join(str(x) for x in missing[:4]))
         if error:
             st.caption("Diagnosis snapshot M15: " + error)
     else:
