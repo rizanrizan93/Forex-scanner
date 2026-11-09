@@ -17,7 +17,7 @@ from urllib.request import Request, urlopen
 
 import streamlit as st
 
-from .xau_macro_gold_consensus import analyze_gold_macro
+from .xau_macro_gold_consensus import analyze_gold_macro, explain_oil_component
 from .xau_m15_macro_forecast import render_macro_m15_forecast
 from .xau_market_quote_health import quote_freshness, QUOTE_MAX_AGE_SECONDS
 from .xau_cnbc_macro_quotes import fetch_cnbc_market_quotes, fetch_goldapi_spot
@@ -478,6 +478,11 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
     b.metric("Indeks arah makro", "—" if result["score"] is None
              else f"{result['score']:+d} / 100")
     c.metric("Cakupan feed", f"{result['coverage_pct']}%")
+    # Explicit oil verdict belongs to the combined XAU macro conclusion,
+    # not only the lower-level oil diagnostics.
+    oil_component = explain_oil_component(result)
+    st.write("**WTI + Brent dalam kesimpulan makro XAU:** " + oil_component["headline"])
+    st.caption(oil_component["detail"])
     with st.container(border=True):
         st.markdown("**CADANGAN: REGIME MAKRO HARIAN (bukan sinyal live)**")
         st.caption("Menggunakan perubahan yield resmi harian terakhir (worker/H.15/FRED) "
@@ -518,18 +523,6 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
             " · Error: " + str(source_errors.get("cnbc_error") or "tidak ada")
         )
     oil_view = result["oil_assessment"]
-    if result["score"] is None:
-        st.info("BOBOT OIL (WTI + Brent): belum aktif · WAIT_DATA pada Treasury/DXY. "
-                "Harga minyak tetap tersedia sebagai konteks, bukan skor.")
-    elif result["oil_score_counted"]:
-        oil_points = result["score_breakdown"]["Oil"]
-        st.write(f"**BOBOT OIL (WTI + Brent): {result['oil_weight_pct']}% "
-                 f"· kontribusi {oil_points:+.2f} poin pada skor XAU**")
-        st.caption("Kualitas sumber: " + oil_view["status"] + " · " +
-                   oil_view["score_reason"])
-    else:
-        st.caption("**BOBOT OIL (WTI + Brent): 0% · tidak masuk skor XAU** "
-                   "(spot stale, tidak sebanding, atau perubahan vs baseline belum ada).")
     wti_top, brent_top = (oil_view["quotes"].get(name) or {}
                           for name in ("WTI", "Brent"))
     st.caption(
