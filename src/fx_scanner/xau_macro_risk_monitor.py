@@ -533,6 +533,16 @@ def render_gold_macro_conclusion(macro_eval, h15_loader, *, event_risk=None):
                  if "DX-Y.NYB" in provider_status.get("yahoo_recovered", [])
                  else "belum menghasilkan quote yang lolos batas 5 menit.")
             )
+        # A real daily backdrop is useful, but must NEVER masquerade as an
+        # intraday score or receive permission to drive an order.
+        if daily_regime["score"] is not None:
+            st.info(
+                "Konteks alternatif REGIME HARIAN (bukan sinyal live): " +
+                str(daily_regime["bias"]) + " · skor " +
+                f"{daily_regime['score']:+d}/100 · " +
+                f"cakupan {daily_regime['coverage_pct']}%. " +
+                "Tunggu DXY intraday segar untuk kesimpulan utama."
+            )
     # Explicit oil verdict belongs to the combined XAU macro conclusion,
     # not only the lower-level oil diagnostics.
     oil_component = explain_oil_component(result)
