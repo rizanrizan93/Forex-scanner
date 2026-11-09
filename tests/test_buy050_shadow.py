@@ -110,6 +110,18 @@ class ShadowViewTests(unittest.TestCase):
         s["symbols"][0]["candidate"]["blockers"] = []
         self.assertIsNone(evaluate_shadow(s, now=T0)["symbols"]["XAUUSD"]["candidate"])
 
+    def test_fresh_publication_cannot_label_stale_bars_no_signal(self):
+        s = sample()
+        s["symbols"][0].update(status="NO_SIGNAL", candidate=None,
+                                bar_at=(T0 - timedelta(minutes=5)).isoformat())
+        s["symbols"][2].update(status="NO_SIGNAL", candidate=None,
+                                bar_at=(T0 - timedelta(hours=2)).isoformat())
+        evaluated = evaluate_shadow(s, now=T0 + timedelta(seconds=1))
+        self.assertEqual(evaluated["symbols"]["XAUUSD"]["status"], "DATA_TERLAMBAT")
+        self.assertEqual(evaluated["symbols"]["BTCUSD"]["status"], "DATA_TERLAMBAT")
+        self.assertIsNone(evaluated["symbols"]["BTCUSD"]["candidate"])
+        self.assertEqual(evaluated["symbols"]["EURUSD"]["status"], "SETUP_SHADOW")
+
 
 if __name__ == "__main__":
     unittest.main()
