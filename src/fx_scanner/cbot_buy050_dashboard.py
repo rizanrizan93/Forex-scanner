@@ -162,6 +162,10 @@ def render_snapshot(raw, *, now=None):
         if model["fresh"] and item.get("checkpoint_present") is True:
             st.write("Checkpoint versi:", item.get("checkpoint_version") if type(item.get("checkpoint_version")) is int else "—")
             st.write("Candle terakhir native:", _wib(item.get("last_bar_at")))
+            if symbol == "BTCUSD" and not item.get("last_bar_at"):
+                st.caption("Checkpoint BTC profil ini tidak menyediakan timestamp LastBarUtc. "
+                           "Lease aktif bukan bukti candle atau feed BTC terbaru; "
+                           "gunakan validasi feed shadow dan terminal cTrader.")
             st.write("Sinyal terakhir tercatat:", _wib(item.get("last_signal_at")))
             if item.get("last_signal_at"):
                 st.caption("Timestamp sinyal bukan bukti order broker berhasil ataupun sinyal baru yang masih berlaku.")
