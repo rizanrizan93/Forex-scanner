@@ -14,6 +14,7 @@ on:
       - "tests/test_xau_macro_gold_consensus_v1.py"
       - "tests/test_xau_oil_macro_conclusion_v2.py"
       - "tests/test_xau_macro_weighted_oil_v3.py"
+      - "tests/test_xau_oil_component_summary_20261109.py"
       - "tests/test_xau_geopolitical_safehaven_v4.py"
       - "tests/test_xau_market_quote_health_v5.py"
       - "tests/test_xau_cnbc_macro_quotes_v6.py"
@@ -33,6 +34,7 @@ on:
       - "tests/test_xau_macro_gold_consensus_v1.py"
       - "tests/test_xau_oil_macro_conclusion_v2.py"
       - "tests/test_xau_macro_weighted_oil_v3.py"
+      - "tests/test_xau_oil_component_summary_20261109.py"
       - "tests/test_xau_geopolitical_safehaven_v4.py"
       - "tests/test_xau_market_quote_health_v5.py"
       - "tests/test_xau_cnbc_macro_quotes_v6.py"
@@ -58,6 +60,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_xau_macro_gold_consensus_v1.py' -v
           python -m unittest discover -s tests -p 'test_xau_oil_macro_conclusion_v2.py' -v
           python -m unittest discover -s tests -p 'test_xau_macro_weighted_oil_v3.py' -v
+          python -m unittest discover -s tests -p 'test_xau_oil_component_summary_20261109.py' -v
           python -m unittest discover -s tests -p 'test_xau_geopolitical_safehaven_v4.py' -v
           python -m unittest discover -s tests -p 'test_xau_market_quote_health_v5.py' -v
           python -m unittest discover -s tests -p 'test_xau_cnbc_macro_quotes_v6.py' -v
