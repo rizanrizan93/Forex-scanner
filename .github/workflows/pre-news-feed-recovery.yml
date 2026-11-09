@@ -1,0 +1,91 @@
+name: Pre-News Snapshot Recovery (read-only)
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rizan-pre-news-snapshot-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://naxvdtvlfatljzzwhrmo.supabase.co' }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SECRET_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check actual publication age (do not overwrite healthy publisher)
+        id: health
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          from datetime import UTC, datetime
+          from urllib.request import Request, urlopen
+          import json
+          try:
+              u = ("https://raw.githubusercontent.com/rizanrizan93/Forex-scanner/"
+                   "scanner-pre-news-snapshots/runtime/pre_news_snapshot.json?recovery=" +
+                   str(int(datetime.now(UTC).timestamp())))
+              with urlopen(Request(u, headers={"Cache-Control": "no-cache"}), timeout=12) as response:
+                  data = json.load(response)
+              dt = datetime.fromisoformat(str(data["published_at"]).replace("Z","+00:00"))
+              age = (datetime.now(UTC) - dt.astimezone(UTC)).total_seconds()
+              stale = age < 0 or age > 660
+          except (OSError, ValueError, KeyError, TypeError):
+              stale = True
+          print("stale=" + ("true" if stale else "false"))
+          PY
+      - uses: actions/setup-python@v5
+        if: steps.health.outputs.stale == 'true'
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install read-only snapshot dependencies
+        if: steps.health.outputs.stale == 'true'
+        run: python -m pip install -e .
+      - name: Refresh calendar and macro heartbeats (no order access)
+        if: steps.health.outputs.stale == 'true'
+        shell: bash
+        run: |
+          set +e
+          python -m fx_scanner.demo_xau_event_risk_v193
+          echo "calendar_exit=$?"
+          python -m fx_scanner.demo_xau_macro_attribution_v399
+          echo "macro_exit=$?"
+          exit 0
+      - name: Publish only when both worker observations are genuinely fresh
+        if: steps.health.outputs.stale == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python scripts/publish_pre_news_snapshot.py artifacts/pre_news_snapshot.json
+          python - <<'PY'
+          import json
+          from datetime import UTC, datetime
+          from pathlib import Path
+          from fx_scanner.pre_news_expectation import EVENT_WORKER, MACRO_WORKER
+          from scripts.run_pre_news_feed import publish
+          data = json.loads(Path("artifacts/pre_news_snapshot.json").read_text())
+          now = datetime.now(UTC)
+          active = set()
+          for item in data.get("heartbeats", []):
+              at = datetime.fromisoformat(str(item["observed_at"]).replace("Z", "+00:00"))
+              age = (now - at.astimezone(UTC)).total_seconds()
+              if item.get("healthy") is True and 0 <= age <= 600:
+                  active.add(item["worker_name"])
+          if not {EVENT_WORKER, MACRO_WORKER}.issubset(active):
+              raise SystemExit("Do not publish: calendar/macro worker heartbeat is stale")
+          data["publisher"] = {"mode": "scheduled_readonly_recovery",
+                               "refresh_seconds": 600}
+          publish(data)
+          print("PRE_NEWS_RECOVERY_PUBLISHED")
+          PY
