@@ -5,7 +5,7 @@ Freshness is checked again at read time, independently of publication age.
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, date
 from math import isfinite
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -22,6 +22,20 @@ MACRO_WORKER = "ctrader_demo_xau_macro_attribution_v357"
 DIRECT = {"CPI", "PPI", "EMPLOYMENT", "NFP", "WAGES", "ECI", "JOLTS", "FOMC"}
 INVERSE = {"UNEMPLOYMENT_RATE"}
 SUPPORTED = DIRECT | INVERSE
+
+# BLS: October 2025 all-items and core indexes were unavailable; the
+# October 2026 twelve-month headline/core comparisons are not published.
+# This is a release-specific exception, not a blanket CPI YoY exclusion.
+OCT_2026_CPI_RELEASE = date(2026, 11, 10)
+UNPUBLISHED_OCT_2026_COMPONENTS = frozenset({"CPI_YOY", "CORE_CPI_YOY"})
+
+
+def _unpublished_oct_2026_cpi_yoy(event: dict[str, Any], at: datetime) -> bool:
+    component = str(event.get("event_component") or canonical_event_key(str(event.get("title") or "")))
+    return (at.date() == OCT_2026_CPI_RELEASE and
+            event.get("category") == "CPI" and
+            component in UNPUBLISHED_OCT_2026_COMPONENTS)
+
 
 
 def timestamp(value: Any) -> datetime | None:
@@ -126,6 +140,7 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
         "calendar_source_status": dict(event_details.get("source_status") or {}),
         "fusion_policy": dict(event_details.get("fusion_policy") or {}),
         "reasons": reasons, "components": [], "event_cluster": [],
+        "unpublished_components": [],
     }
     if "CALENDAR_STALE_MISSING_OR_UNHEALTHY" in reasons:
         result["news_gate"] = "UNAVAILABLE_STALE_CALENDAR"
@@ -145,6 +160,20 @@ def evaluate_pre_news(snapshot: dict[str, Any], *, now: datetime) -> dict[str, A
                   scenarios=_scenarios(event["category"]))
     # Evaluate all simultaneous components, e.g. headline/core CPI and NFP/wages.
     cluster = [e for t, e in upcoming if t == at]
+    # Official BLS notice: Oct-2026 CPI annual headline/core values have no
+    # Oct-2025 reference index. Never give calendar-only YoY forecasts a vote.
+    result["unpublished_components"] = [
+        str(e.get("event_component") or canonical_event_key(str(e.get("title") or "")))
+        for e in cluster if _unpublished_oct_2026_cpi_yoy(e, at)
+    ]
+    cluster = [e for e in cluster if not _unpublished_oct_2026_cpi_yoy(e, at)]
+    if not cluster:
+        result["news_conclusion"] = "CPI YOY TIDAK DIRILIS — TUNGGU KOMPONEN BULANAN"
+        result["news_conclusion_basis"] = (
+            "BLS tidak menerbitkan headline/core CPI YoY Oktober 2026; "
+            "forecast kalender YoY tidak dihitung sebagai bukti rilis."
+        )
+        return result
     # Official calendar schedule-only entries (without forecast) should not
     # veto a simultaneous measurable CPI/NFP/PPI release component. An event
     # with a partial numeric forecast still participates and requires quorum.
